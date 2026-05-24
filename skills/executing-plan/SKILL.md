@@ -1,0 +1,104 @@
+---
+name: executing-plan
+description: Use when you have a written implementation plan to execute. Default mode is subagent-driven (dispatches fresh subagent per task with two-stage review). Fallback mode is inline execution for environments without subagent support. If superpowers:subagent-driven-development or superpowers:executing-plans are available, delegates to them.
+---
+
+# Executing a Plan
+
+## Overview
+
+Load plan from the active intent's `plan.md`, execute all tasks, review between tasks, report when complete.
+
+**Announce at start:** "I'm using the executing-plan skill to implement this plan."
+
+## Mode Selection
+
+### Check for superpowers first
+If `superpowers:subagent-driven-development` is available as a skill, delegate to it. If only `superpowers:executing-plans` is available, delegate to that. If neither is available, use Plastic's own execution engine below.
+
+**CRITICAL — when delegating to superpowers:**
+- Tell the skill that the plan is at `.plastic/store/NNN--slug-XXXXXX/plan.md` (not `docs/superpowers/plans/`)
+- Tell the skill that specs live at `.plastic/store/NNN--slug-XXXXXX/spec.md` (not `docs/superpowers/specs/`)
+- All meta-artifacts must stay inside `.plastic/store/NNN--slug-XXXXXX/`
+- Code files go in the project tree as normal
+- Superpowers skills respect "user preferences for plan/spec location" — Plastic IS that preference
+
+### Subagent-Driven (Default)
+Dispatches a fresh subagent per task. Controller never implements — only dispatches, reviews, and tracks progress. Two-stage review after each task: spec compliance first, then code quality.
+
+### Inline (Fallback)
+Executes tasks sequentially in the current session. Use when subagents aren't available or user explicitly requests inline mode.
+
+To select: user says "inline", "execute inline", or "no subagents".
+
+## Subagent-Driven Workflow
+
+### Step 1: Load Plan
+1. Read the active intent's `plan.md`
+2. Extract ALL tasks with their full text — store in memory. Never make subagents read the plan file.
+3. Create a task list to track progress
+
+### Step 2: Execute Each Task
+
+For each task sequentially (never parallel — conflict risk):
+
+**a. Dispatch implementer subagent**
+Use the Agent tool with the implementer prompt template. Include:
+- Full task text (pasted in, not file reference)
+- Project context from CLAUDE.md
+- Active intent context from intent.md
+
+**b. Handle implementer response**
+- DONE → proceed to spec review
+- DONE_WITH_CONCERNS → note concerns, proceed to spec review
+- NEEDS_CONTEXT → provide missing context, re-dispatch
+- BLOCKED → stop, report to user, wait for resolution
+
+**c. Dispatch spec compliance reviewer**
+Use the Agent tool with spec-reviewer prompt. The reviewer reads actual code and compares against the task requirements. Pass/fail.
+- If fail: implementer fixes, spec reviewer re-reviews (loop until pass)
+
+**d. Dispatch code quality reviewer**
+Only after spec compliance passes. Reviews clean code, testing, architecture. Pass/fail.
+- If fail: implementer fixes, quality reviewer re-reviews (loop until pass)
+
+**e. Mark task complete**, move to next
+
+### Step 3: Final Review
+After all tasks complete, dispatch a final reviewer for the entire implementation.
+
+### Step 4: Update Intent
+Update the active intent's `## Build` and `## Observe` sections. If all work is done, update `## Outcome` and status.
+
+## Inline Workflow
+
+### Step 1: Load and Review Plan
+1. Read plan file from active intent
+2. Review critically — raise concerns before starting
+3. Create task list to track progress
+
+### Step 2: Execute Tasks
+For each task:
+1. Mark as in_progress
+2. Follow each step exactly
+3. Run verifications as specified
+4. Mark as completed
+
+### Step 3: Update Intent
+Same as subagent-driven Step 4.
+
+## Model Selection for Subagents
+
+Match model to task complexity:
+- **Mechanical tasks** (config files, boilerplate): cheapest available
+- **Standard implementation**: default model
+- **Architecture, integration, review**: most capable model
+
+## Prompt Templates
+
+Subagent prompts are in this skill's directory:
+- `implementer-prompt.md` — template for implementer subagents
+- `spec-reviewer-prompt.md` — template for spec compliance reviewers
+- `code-quality-reviewer-prompt.md` — template for code quality reviewers
+
+Read the appropriate template when dispatching each subagent type.

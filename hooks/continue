@@ -1,0 +1,120 @@
+#!/bin/bash
+INPUT=$(cat)
+MESSAGE=$(echo "$INPUT" | ruby -rjson -e 'puts JSON.parse(STDIN.read)["user_prompt"]' 2>/dev/null || echo "")
+
+if echo "$MESSAGE" | grep -iq '\bcontinue\b'; then
+  INTENT_DATA=$(ruby -r json -r date <<'RUBY' 2>/dev/null
+    index_path = ".plastic/INDEX.md"
+    exit unless File.exist?(index_path)
+
+    lines = File.readlines(index_path)
+    active = []
+    future = []
+    section = nil
+
+    lines.each do |line|
+      if line.start_with?("## Active")
+        section = :active
+        next
+      elsif line.start_with?("## Future")
+        section = :future
+        next
+      elsif line.start_with?("## ")
+        section = nil
+        next
+      end
+
+      next unless section && line.strip.start_with?("- [")
+
+      if section == :active
+        active << line.strip
+      elsif section == :future
+        future << line.strip
+      end
+    end
+
+    stale = []
+    stale_days = 3
+
+    future.each do |f|
+      if f =~ /store\/([\w-]+)\//
+        dir = ".plastic/store/#{$1}"
+        intent_file = "#{dir}/intent.md"
+        next unless File.exist?(intent_file)
+
+        content = File.read(intent_file)
+        if content =~ /^updated:\s*(\d{4}-\d{2}-\d{2})/
+          updated = Date.parse($1)
+          age = (Date.today - updated).to_i
+          if age >= stale_days
+            name = f[/\[([^\]]+)\]/, 1] || "unknown"
+            stale << { entry: f, age: age, name: name }
+          end
+        end
+      end
+    end
+
+    result = { active: active, future: future, stale: stale }
+    puts JSON.generate(result)
+RUBY
+  )
+
+  if [ -z "$INTENT_DATA" ]; then
+    # Fallback: no Ruby output, use simple continue
+    cat <<'HOOKJSON'
+{
+  "hookSpecificOutput": {
+    "hookEventName": "UserPromptSubmit",
+    "additionalContext": "PLASTIC CONTINUE — The user wants to resume previous work.\n\nRead .plastic/INDEX.md and follow the continuing skill workflow."
+  }
+}
+HOOKJSON
+    exit 0
+  fi
+
+  CONTEXT=$(ruby -r json <<RUBY 2>/dev/null
+    data = JSON.parse('${INTENT_DATA}')
+    parts = []
+    parts << "PLASTIC CONTINUE — The user wants to resume work.\\n"
+
+    if data["active"].any?
+      parts << "## Active Intents (work on these first)\\n"
+      data["active"].each { |a| parts << a }
+      parts << ""
+    else
+      parts << "## No Active Intents\\n"
+    end
+
+    if data["future"].any?
+      parts << "## Future Intents (offer as next work)\\n"
+      data["future"].each { |f| parts << f }
+      parts << ""
+    end
+
+    if data["stale"].any?
+      parts << "## Stale Future Intents (untouched #{data["stale"].map { |s| "#{s["age"]}+" }.min} days)\\n"
+      parts << "These future intents have not been actioned. Ask the user what to do with each:\\n"
+      data["stale"].each do |s|
+        parts << "- #{s["name"]} (#{s["age"]} days old) — options: activate, abandon, or defer to agent (implement / research / ideate)"
+      end
+      parts << ""
+    end
+
+    parts << "Follow the plastic:continuing skill workflow.\\n"
+    parts << "1. If active intents exist: read their state and resume\\n"
+    parts << "2. If no active intents: present future intents as options\\n"
+    parts << "3. If stale intents exist: surface them and ask user to decide"
+
+    puts parts.join("\\n")
+RUBY
+  )
+
+  cat <<HOOKJSON
+{
+  "hookSpecificOutput": {
+    "hookEventName": "UserPromptSubmit",
+    "additionalContext": "${CONTEXT}"
+  }
+}
+HOOKJSON
+fi

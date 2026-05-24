@@ -1,0 +1,7 @@
+#!/bin/bash
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+HOOK_NAME="$1"
+shift
+if [ -f "$HOOK_DIR/$HOOK_NAME" ]; then
+  exec "$HOOK_DIR/$HOOK_NAME" "$@"
+fi

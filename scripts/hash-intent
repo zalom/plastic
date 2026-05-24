@@ -1,0 +1,29 @@
+#!/bin/bash
+# Generate a 6-char deterministic hash for an intent name.
+# Auto-detects Ruby or Node.js. Exits with error if neither available.
+#
+# Usage: hash-intent "intent name words"
+
+INTENT_NAME="$1"
+
+if [ -z "$INTENT_NAME" ]; then
+  echo "Usage: hash-intent \"intent name\"" >&2
+  exit 1
+fi
+
+# Try Ruby first (macOS/Linux default)
+if command -v ruby &>/dev/null; then
+  ruby -r digest -e 'puts Digest::SHA256.hexdigest(ARGV[0]).to_i(16).to_s(36)[0,6]' "$INTENT_NAME"
+  exit 0
+fi
+
+# Fallback to Node.js (common on Windows)
+if command -v node &>/dev/null; then
+  node -e "const c=require('crypto');console.log(BigInt('0x'+c.createHash('sha256').update(process.argv[1]).digest('hex')).toString(36).slice(0,6))" "$INTENT_NAME"
+  exit 0
+fi
+
+echo "Error: Neither ruby nor node found. Install one of them." >&2
+echo "  macOS/Linux: Ruby is usually pre-installed" >&2
+echo "  Windows: Install Node.js or use WSL" >&2
+exit 1

@@ -1,0 +1,106 @@
+#!/bin/bash
+INDEX=".plastic/INDEX.md"
+if [ ! -f "$INDEX" ]; then
+  exit 0
+fi
+
+INTENT_DATA=$(ruby -r json -r date <<'RUBY' 2>/dev/null
+  lines = File.readlines(".plastic/INDEX.md")
+  active = []
+  future = []
+  section = nil
+
+  lines.each do |line|
+    if line.start_with?("## Active")
+      section = :active
+      next
+    elsif line.start_with?("## Future")
+      section = :future
+      next
+    elsif line.start_with?("## ")
+      section = nil
+      next
+    end
+
+    next unless section && line.strip.start_with?("- [")
+
+    if section == :active
+      active << line.strip
+    elsif section == :future
+      future << line.strip
+    end
+  end
+
+  stale = []
+  stale_days = 3
+
+  future.each do |f|
+    if f =~ /store\/([\w-]+)\//
+      dir = ".plastic/store/#{$1}"
+      intent_file = "#{dir}/intent.md"
+      next unless File.exist?(intent_file)
+
+      content = File.read(intent_file)
+      if content =~ /^updated:\s*(\d{4}-\d{2}-\d{2})/
+        updated = Date.parse($1)
+        age = (Date.today - updated).to_i
+        if age >= stale_days
+          name = f[/\[([^\]]+)\]/, 1] || "unknown"
+          stale << { entry: f, age: age, name: name }
+        end
+      end
+    end
+  end
+
+  result = { active: active, future: future, stale: stale }
+  puts JSON.generate(result)
+RUBY
+)
+
+if [ -z "$INTENT_DATA" ]; then
+  exit 0
+fi
+
+HAS_ACTIVE=$(echo "$INTENT_DATA" | ruby -r json -e 'puts JSON.parse(STDIN.read)["active"].any?' 2>/dev/null)
+HAS_STALE=$(echo "$INTENT_DATA" | ruby -r json -e 'puts JSON.parse(STDIN.read)["stale"].any?' 2>/dev/null)
+
+if [ "$HAS_ACTIVE" != "true" ] && [ "$HAS_STALE" != "true" ]; then
+  FUTURE_COUNT=$(echo "$INTENT_DATA" | ruby -r json -e 'puts JSON.parse(STDIN.read)["future"].length' 2>/dev/null)
+  if [ "$FUTURE_COUNT" = "0" ]; then
+    exit 0
+  fi
+fi
+
+CONTEXT=$(ruby -r json <<RUBY 2>/dev/null
+  data = JSON.parse('${INTENT_DATA}')
+  parts = []
+  parts << "PLASTIC — Intent store loaded from .plastic/INDEX.md\\n"
+
+  if data["active"].any?
+    parts << "Active intents:\\n"
+    data["active"].each { |a| parts << a }
+    parts << ""
+  else
+    parts << "No active intents. #{data["future"].length} future intents available.\\n"
+  end
+
+  if data["stale"].any?
+    parts << "\\nStale future intents (untouched for days):\\n"
+    data["stale"].each do |s|
+      parts << "- #{s["name"]} (#{s["age"]} days) — consider: activate, abandon, or defer to agent"
+    end
+    parts << "\\nWhen appropriate, ask the user what to do with stale intents."
+  end
+
+  puts parts.join("\\n")
+RUBY
+)
+
+cat <<HOOKJSON
+{
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "additionalContext": "${CONTEXT}"
+  }
+}
+HOOKJSON
