@@ -1,0 +1,6 @@
+version: 1
+name: plastic
+
+hash_length: 6
+hash_algorithm: sha256-base36
+max_slug_words: 5
