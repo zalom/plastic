@@ -1,0 +1,20 @@
+{
+  "name": "plastic",
+  "description": "Marketplace for Plastic — intent-driven state management",
+  "owner": {
+    "name": "Zlatko Alomerovic",
+    "email": "zlatko.alomerovic@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "plastic",
+      "description": "Intent-driven state management for AI coding sessions",
+      "version": "0.1.0",
+      "source": "./",
+      "author": {
+        "name": "Zlatko Alomerovic",
+        "email": "zlatko.alomerovic@gmail.com"
+      }
+    }
+  ]
+}
