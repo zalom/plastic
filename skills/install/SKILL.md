@@ -37,6 +37,16 @@ Initialize git:
 cd ~/.plastic && git init && git add . && git commit -m "chore: initialize Plastic global intent store"
 ```
 
+**Step 2b: Copy utility scripts**
+
+```bash
+mkdir -p ~/.plastic/scripts
+cp "${CLAUDE_PLUGIN_ROOT}/scripts/hash-intent" ~/.plastic/scripts/hash-intent
+chmod +x ~/.plastic/scripts/hash-intent
+```
+
+This ensures project agents can generate hashes via `~/.plastic/scripts/hash-intent` without depending on a specific agent's plugin cache path.
+
 **Step 3: Configure project roots**
 
 Ask the user:
