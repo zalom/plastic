@@ -1,11 +1,32 @@
 #!/bin/bash
-INDEX=".plastic/INDEX.md"
-if [ ! -f "$INDEX" ]; then
+# Plastic session-start hook — reads global intent store at ~/.plastic/
+# Falls back to per-project .plastic/ for legacy/local installs
+
+GLOBAL_INDEX="$HOME/.plastic/INDEX.md"
+LOCAL_INDEX=".plastic/INDEX.md"
+GLOBAL_PROJECTS="$HOME/.plastic/projects.yml"
+
+# Determine which index to use
+if [ -f "$GLOBAL_INDEX" ]; then
+  INDEX="$GLOBAL_INDEX"
+  STORE_ROOT="$HOME/.plastic"
+  MODE="global"
+elif [ -f "$LOCAL_INDEX" ]; then
+  INDEX="$LOCAL_INDEX"
+  STORE_ROOT=".plastic"
+  MODE="local"
+else
   exit 0
 fi
 
-INTENT_DATA=$(ruby -r json -r date <<'RUBY' 2>/dev/null
-  lines = File.readlines(".plastic/INDEX.md")
+# Read intent data + detect current project
+INTENT_DATA=$(ruby -r json -r date -r yaml <<RUBY 2>/dev/null
+  index_path = "${INDEX}"
+  store_root = "${STORE_ROOT}"
+  mode = "${MODE}"
+  cwd = Dir.pwd
+
+  lines = File.readlines(index_path)
   active = []
   future = []
   section = nil
@@ -31,12 +52,18 @@ INTENT_DATA=$(ruby -r json -r date <<'RUBY' 2>/dev/null
     end
   end
 
+  # Check for stale future intents
   stale = []
   stale_days = 3
+  config_path = "#{store_root}/config.yml"
+  if File.exist?(config_path)
+    config = YAML.safe_load(File.read(config_path)) rescue {}
+    stale_days = config["stale_threshold_days"] || 3
+  end
 
   future.each do |f|
     if f =~ /store\/([\w-]+)\//
-      dir = ".plastic/store/#{$1}"
+      dir = "#{store_root}/store/#{$1}"
       intent_file = "#{dir}/intent.md"
       next unless File.exist?(intent_file)
 
@@ -52,7 +79,29 @@ INTENT_DATA=$(ruby -r json -r date <<'RUBY' 2>/dev/null
     end
   end
 
-  result = { active: active, future: future, stale: stale }
+  # Detect current project from projects.yml
+  current_project = nil
+  if mode == "global"
+    projects_path = "#{store_root}/projects.yml"
+    if File.exist?(projects_path)
+      projects = YAML.safe_load(File.read(projects_path)) rescue {}
+      (projects["projects"] || {}).each do |slug, info|
+        project_path = File.expand_path(info["path"])
+        if cwd.start_with?(project_path)
+          current_project = { slug: slug, parent: info["parent"], path: project_path }
+          break
+        end
+      end
+    end
+  end
+
+  result = {
+    active: active,
+    future: future,
+    stale: stale,
+    mode: mode,
+    current_project: current_project
+  }
   puts JSON.generate(result)
 RUBY
 )
@@ -74,7 +123,21 @@ fi
 CONTEXT=$(ruby -r json <<RUBY 2>/dev/null
   data = JSON.parse('${INTENT_DATA}')
   parts = []
-  parts << "PLASTIC — Intent store loaded from .plastic/INDEX.md\\n"
+  mode = data["mode"]
+  project = data["current_project"]
+
+  if mode == "global"
+    if project
+      parts << "PLASTIC — Global store | Project: #{project["slug"]} (#{project["path"]})\\n"
+      if project["parent"]
+        parts << "Governing intent: #{project["parent"]}\\n"
+      end
+    else
+      parts << "PLASTIC — Global store loaded from ~/.plastic/\\n"
+    end
+  else
+    parts << "PLASTIC — Local store loaded from .plastic/\\n"
+  end
 
   if data["active"].any?
     parts << "Active intents:\\n"
