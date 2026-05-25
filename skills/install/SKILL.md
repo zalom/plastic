@@ -1,61 +1,75 @@
 ---
 name: install
-description: Use when initializing Plastic in a new project. Creates the .plastic/ directory structure with store/, INDEX.md, and config.yml. Run this after installing the plugin via 'claude plugin add plastic@plastic'.
+description: Use when initializing Plastic globally (~/.plastic/) or locally in a project. Global install is recommended — creates the global intent store as a git-backed repository. Local install creates .plastic/ in the current project for testing.
 ---
 
 # Install Plastic
 
-Initialize the `.plastic/` intent store in the current project.
+## Modes
 
-## Prerequisites
+### Global Install (default, recommended)
 
-The Plastic plugin must already be installed:
-1. Marketplace registered in `~/.claude/settings.json` under `extraKnownMarketplaces`
-2. Plugin installed via `claude plugin add plastic@plastic`
+Run `/plastic:install` with no arguments.
 
-## Procedure
+#### Procedure
 
-### Step 1: Check for existing installation
+**Step 1: Check for existing installation**
 
-Check if `.plastic/` directory already exists in the project root.
+Check if `~/.plastic/INDEX.md` exists.
+- If yes: announce "Plastic is already installed globally at ~/.plastic/." and offer to check for upgrades (new skills, hooks, config changes).
+- If no: proceed.
 
-- If `.plastic/INDEX.md` exists: announce "Plastic is already initialized in this project." and stop.
-- If `.plastic/` exists but is incomplete (missing INDEX.md or config.yml): warn and offer to repair.
-- If `.plastic/` does not exist: proceed.
-
-### Step 2: Create directory structure
-
-Create the following structure using templates from the plugin:
-
-```
-.plastic/
-├── config.yml      # Copy from ${CLAUDE_PLUGIN_ROOT}/templates/config.yml
-├── INDEX.md        # Copy from ${CLAUDE_PLUGIN_ROOT}/templates/index.md
-└── store/          # Empty directory (add .gitkeep)
-```
-
-Read templates from the plugin directory:
-- `config.yml` from `${CLAUDE_PLUGIN_ROOT}/templates/config.yml`
-- `INDEX.md` from `${CLAUDE_PLUGIN_ROOT}/templates/index.md`
-
-Create `store/` as an empty directory with a `.gitkeep` file to ensure git tracks it.
-
-### Step 3: Git tracking decision
-
-Ask the user:
-
-> "Should intents be tracked in git? (Recommended: yes — intents are lightweight markdown and benefit from version history)"
-
-- **Yes (default):** No action needed. `.plastic/` is tracked normally.
-- **No:** Add `.plastic/store/` to the project's `.gitignore`. Keep `.plastic/config.yml` and `.plastic/INDEX.md` tracked.
-
-### Step 4: Commit
+**Step 2: Create ~/.plastic/ as a git repo**
 
 ```bash
-git add .plastic/
-git commit -m "chore: initialize Plastic intent store"
+mkdir -p ~/.plastic/store ~/.plastic/projects
 ```
 
-### Step 5: Announce
+Copy templates from the plugin:
+- `config.yml` from `${CLAUDE_PLUGIN_ROOT}/templates/config.yml`
+- `projects.yml` from `${CLAUDE_PLUGIN_ROOT}/templates/projects.yml`
+- `INDEX.md` from `${CLAUDE_PLUGIN_ROOT}/templates/index.md`
 
-> "Plastic initialized. Create your first intent with `/plastic:creating-intent`."
+Add `.gitkeep` to `store/` and `projects/`.
+
+Initialize git:
+```bash
+cd ~/.plastic && git init && git add . && git commit -m "chore: initialize Plastic global intent store"
+```
+
+**Step 3: Configure project roots**
+
+Ask the user:
+> "Where do you keep your projects? Default: ~/.plastic/projects/"
+> "Add additional roots? (e.g., ~/apps/personal/, ~/apps/companies/)"
+
+Update `config.yml` with any additional roots.
+
+Auto-commit the config change.
+
+**Step 4: Announce**
+
+> "Plastic installed globally at ~/.plastic/. Create your first intent with `/plastic:creating-intent`."
+
+### Local Install (testing/legacy)
+
+Run `/plastic:install --local`.
+
+#### Procedure
+
+**Step 1:** Check if `.plastic/` exists in CWD — if so, warn and exit.
+
+**Step 2:** Create `.plastic/` in CWD:
+- `config.yml` from templates
+- `INDEX.md` from templates
+- `store/` with `.gitkeep`
+
+**Step 3:** If global install exists (`~/.plastic/projects.yml`), register this project:
+- Determine project slug from directory name
+- Detect git remote URL if available
+- Add entry to `~/.plastic/projects.yml` with `parent: null`
+- Auto-commit in `~/.plastic/`
+
+**Step 4:** Commit in project: `git add .plastic/ && git commit -m "chore: initialize Plastic local store"`
+
+**Step 5:** Announce: "Plastic initialized locally. This is a testing/legacy mode. Consider `/plastic:install` for global mode."
