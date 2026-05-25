@@ -30,6 +30,20 @@ In Claude Code, run:
 /plastic:install
 ```
 
+## Global vs Local
+
+**Global (recommended):** Plastic stores all intents at `~/.plastic/`. Projects spawned by implementation intents get their own `.plastic_store/` for tactical intents.
+
+```
+/plastic:install
+```
+
+**Local (testing):** Intents stored per-project in `.plastic/`. Useful for trying Plastic in a single project.
+
+```
+/plastic:install --local
+```
+
 ## Prerequisites
 
 Plastic hooks use Ruby or Node.js for generating deterministic directory hashes. **One** of the following must be available:

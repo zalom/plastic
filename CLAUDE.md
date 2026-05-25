@@ -5,6 +5,25 @@
 
 Plastic implements the "Intent → Build → Observe → Repeat" SDLC with Zettelkasten-inspired linking between intents. All project state lives in `.plastic/`. Everything is an intent. Built as a Claude Code plugin (skills, hooks, agents, templates). No external dependencies.
 
+## Global Mode
+
+Plastic operates as a global intent store at `~/.plastic/`. This is the default and recommended mode.
+
+- **Strategic intents** live in `~/.plastic/store/` — goals, explorations, big ideas
+- **Tactical intents** live in `<project>/.plastic_store/` — sub-tasks within a project
+- **Project registry** at `~/.plastic/projects.yml` maps project slugs to paths
+- **Config** at `~/.plastic/config.yml` holds user preferences
+
+If no global install exists, Plastic falls back to per-project `.plastic/` (legacy mode).
+
+### Wikilink Conventions
+
+| Syntax | Meaning |
+|--------|---------|
+| `[[NNN-HASH]]` | Link to intent in same store |
+| `[[global:NNN-HASH]]` | Link to intent in `~/.plastic/store/` |
+| `[[project-slug:NNN-HASH]]` | Link to intent in a project's `.plastic_store/` |
+
 ## Intents Are the Foundation
 
 ALL work flows through intents. No skill, agent, or workflow creates directories, specs, plans, or artifacts outside the intent system. Intents are the substrate — everything else operates within them.
@@ -83,9 +102,9 @@ Intents can be created by humans or AI agents (`author` field): `human`, `claude
 
 When new work begins:
 1. Scan `.plastic/store/` for the next sequential ID
-2. Generate hash: `"${CLAUDE_PLUGIN_ROOT}/scripts/hash-intent" "intent name"`
-3. Create `.plastic/store/NNN--three-to-five-words-XXXXXX/intent.md`
-4. Update `.plastic/INDEX.md` — add to Active section and appropriate cluster
+2. Generate hash: `"${CLAUDE_PLUGIN_ROOT}/scripts/hash-intent" "intent name"` (or `~/.plastic/scripts/hash-intent` for project agents)
+3. Create intent directory in the appropriate store (`~/.plastic/store/` or `<project>/.plastic_store/`)
+4. Update INDEX.md — add to Active section and appropriate cluster
 5. Set frontmatter: id, intent, status, type, author, created, tags
 6. Add links to related intents in `## Links` section
 
