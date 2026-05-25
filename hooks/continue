@@ -3,9 +3,26 @@ INPUT=$(cat)
 MESSAGE=$(echo "$INPUT" | ruby -rjson -e 'puts JSON.parse(STDIN.read)["user_prompt"]' 2>/dev/null || echo "")
 
 if echo "$MESSAGE" | grep -iq '\bcontinue\b'; then
-  INTENT_DATA=$(ruby -r json -r date <<'RUBY' 2>/dev/null
-    index_path = ".plastic/INDEX.md"
-    exit unless File.exist?(index_path)
+  GLOBAL_INDEX="$HOME/.plastic/INDEX.md"
+  LOCAL_INDEX=".plastic/INDEX.md"
+
+  if [ -f "$GLOBAL_INDEX" ]; then
+    INDEX="$GLOBAL_INDEX"
+    STORE_ROOT="$HOME/.plastic"
+    MODE="global"
+  elif [ -f "$LOCAL_INDEX" ]; then
+    INDEX="$LOCAL_INDEX"
+    STORE_ROOT=".plastic"
+    MODE="local"
+  else
+    exit 0
+  fi
+
+  INTENT_DATA=$(ruby -r json -r date -r yaml <<RUBY 2>/dev/null
+    index_path = "${INDEX}"
+    store_root = "${STORE_ROOT}"
+    mode = "${MODE}"
+    cwd = Dir.pwd
 
     lines = File.readlines(index_path)
     active = []
@@ -35,10 +52,15 @@ if echo "$MESSAGE" | grep -iq '\bcontinue\b'; then
 
     stale = []
     stale_days = 3
+    config_path = "#{store_root}/config.yml"
+    if File.exist?(config_path)
+      config = YAML.safe_load(File.read(config_path)) rescue {}
+      stale_days = config["stale_threshold_days"] || 3
+    end
 
     future.each do |f|
       if f =~ /store\/([\w-]+)\//
-        dir = ".plastic/store/#{$1}"
+        dir = "#{store_root}/store/#{$1}"
         intent_file = "#{dir}/intent.md"
         next unless File.exist?(intent_file)
 
@@ -54,18 +76,32 @@ if echo "$MESSAGE" | grep -iq '\bcontinue\b'; then
       end
     end
 
-    result = { active: active, future: future, stale: stale }
+    current_project = nil
+    if mode == "global"
+      projects_path = "#{store_root}/projects.yml"
+      if File.exist?(projects_path)
+        projects = YAML.safe_load(File.read(projects_path)) rescue {}
+        (projects["projects"] || {}).each do |slug, info|
+          project_path = File.expand_path(info["path"])
+          if cwd.start_with?(project_path)
+            current_project = { slug: slug, parent: info["parent"], path: project_path }
+            break
+          end
+        end
+      end
+    end
+
+    result = { active: active, future: future, stale: stale, mode: mode, current_project: current_project }
     puts JSON.generate(result)
 RUBY
   )
 
   if [ -z "$INTENT_DATA" ]; then
-    # Fallback: no Ruby output, use simple continue
     cat <<'HOOKJSON'
 {
   "hookSpecificOutput": {
     "hookEventName": "UserPromptSubmit",
-    "additionalContext": "PLASTIC CONTINUE — The user wants to resume previous work.\n\nRead .plastic/INDEX.md and follow the continuing skill workflow."
+    "additionalContext": "PLASTIC CONTINUE — The user wants to resume previous work.\n\nRead ~/.plastic/INDEX.md (or .plastic/INDEX.md) and follow the continuing skill workflow."
   }
 }
 HOOKJSON
@@ -75,7 +111,15 @@ HOOKJSON
   CONTEXT=$(ruby -r json <<RUBY 2>/dev/null
     data = JSON.parse('${INTENT_DATA}')
     parts = []
+    mode = data["mode"]
+    project = data["current_project"]
+
     parts << "PLASTIC CONTINUE — The user wants to resume work.\\n"
+
+    if mode == "global" && project
+      parts << "Project: #{project["slug"]} (#{project["path"]})\\n"
+      parts << "Governing intent: #{project["parent"]}\\n" if project["parent"]
+    end
 
     if data["active"].any?
       parts << "## Active Intents (work on these first)\\n"
@@ -92,7 +136,7 @@ HOOKJSON
     end
 
     if data["stale"].any?
-      parts << "## Stale Future Intents (untouched #{data["stale"].map { |s| "#{s["age"]}+" }.min} days)\\n"
+      parts << "## Stale Future Intents\\n"
       parts << "These future intents have not been actioned. Ask the user what to do with each:\\n"
       data["stale"].each do |s|
         parts << "- #{s["name"]} (#{s["age"]} days old) — options: activate, abandon, or defer to agent (implement / research / ideate)"
