@@ -11,28 +11,22 @@ Plastic implements the "Intent → Build → Observe → Repeat" SDLC with Zette
 
 ### 1. Register the marketplace
 
-Add to `~/.claude/settings.json`:
-
-```json
-{
-  "extraKnownMarketplaces": {
-    "plastic": {
-      "source": { "source": "github", "repo": "zalom/plastic" }
-    }
-  }
-}
+In Claude Code, run:
+```
+/plugin marketplace add zalom/plastic
 ```
 
 ### 2. Install the plugin
 
-```bash
-claude plugin add plastic@plastic
+In Claude Code, run:
+```
+/plugin add plastic@plastic
 ```
 
 ### 3. Initialize in your project
 
-```bash
-# In your project directory, run:
+In Claude Code, run:
+```
 /plastic:install
 ```
 
