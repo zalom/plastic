@@ -1,14 +1,14 @@
 ---
 id: "{{ID}}"
+hash: "{{HASH}}"
 intent: "{{INTENT}}"
 status: {{STATUS}}
 type: {{TYPE}}
 author: {{AUTHOR}}
 created: {{DATE}}
 updated: {{DATE}}
-follows: {{FOLLOWS}}
-source: {{SOURCE}}
-supersedes: null
+project: {{PROJECT}}
+parent: {{PARENT}}
 tags: [{{TAGS}}]
 ---
 
@@ -28,4 +28,4 @@ tags: [{{TAGS}}]
 (filled when intent reaches terminal status)
 
 ## Links
-- (link to related intents)
+- (use [[NNN-HASH]] wikilinks to related intents)
