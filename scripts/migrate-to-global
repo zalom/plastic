@@ -1,0 +1,92 @@
+#!/bin/bash
+# Migrate a per-project .plastic/ store to the global ~/.plastic/ store.
+# Usage: migrate-to-global [project-path]
+#
+# This script:
+# 1. Copies store/ and INDEX.md to ~/.plastic/
+# 2. Registers the project in projects.yml
+# 3. Rewrites relative links to [[NNN-HASH]] wikilinks
+# 4. Commits in ~/.plastic/
+
+set -e
+
+PROJECT_PATH="${1:-.}"
+PROJECT_PATH="$(cd "$PROJECT_PATH" && pwd)"
+PROJECT_SLUG="$(basename "$PROJECT_PATH")"
+GLOBAL_ROOT="$HOME/.plastic"
+LOCAL_PLASTIC="$PROJECT_PATH/.plastic"
+
+if [ ! -d "$GLOBAL_ROOT" ]; then
+  echo "Error: Global Plastic not installed. Run /plastic:install first." >&2
+  exit 1
+fi
+
+if [ ! -d "$LOCAL_PLASTIC/store" ]; then
+  echo "Error: No .plastic/store/ found at $PROJECT_PATH" >&2
+  exit 1
+fi
+
+echo "Migrating $PROJECT_SLUG to global store at $GLOBAL_ROOT..."
+
+# Copy store contents
+echo "  Copying intents..."
+cp -R "$LOCAL_PLASTIC/store/"* "$GLOBAL_ROOT/store/" 2>/dev/null || true
+
+# Copy INDEX.md (merge manually if global already has content)
+if [ ! -s "$GLOBAL_ROOT/INDEX.md" ] || grep -q "^(no active intents)" "$GLOBAL_ROOT/INDEX.md"; then
+  echo "  Copying INDEX.md..."
+  cp "$LOCAL_PLASTIC/INDEX.md" "$GLOBAL_ROOT/INDEX.md"
+else
+  echo "  WARNING: Global INDEX.md already has content. Manual merge needed."
+  echo "  Local INDEX.md saved as $GLOBAL_ROOT/INDEX.md.migrated"
+  cp "$LOCAL_PLASTIC/INDEX.md" "$GLOBAL_ROOT/INDEX.md.migrated"
+fi
+
+# Rewrite relative links to wikilinks
+echo "  Rewriting links to [[NNN-HASH]] format..."
+ruby <<'RUBY'
+  Dir.glob(File.expand_path("~/.plastic/store/*/intent.md")).each do |f|
+    content = File.read(f)
+    # Match patterns like [name](../NNN--slug-HASH/intent.md)
+    updated = content.gsub(/\[([^\]]+)\]\(\.\.\/(\d+)--[^\/]*-([a-z0-9]+)\/intent\.md\)/) do
+      name = $1
+      nnn = $2
+      hash = $3
+      "[[#{nnn}-#{hash}]] #{name}"
+    end
+    if updated != content
+      File.write(f, updated)
+      puts "    Updated: #{File.basename(File.dirname(f))}"
+    end
+  end
+RUBY
+
+# Register project in projects.yml
+echo "  Registering project..."
+REMOTE=$(cd "$PROJECT_PATH" && git remote get-url origin 2>/dev/null || echo "null")
+ruby -r yaml <<RUBY
+  path = File.expand_path("$GLOBAL_ROOT/projects.yml")
+  data = YAML.safe_load(File.read(path)) rescue {}
+  data["projects"] ||= {}
+  data["projects"]["$PROJECT_SLUG"] = {
+    "path" => "$PROJECT_PATH",
+    "parent" => nil,
+    "remote" => "$REMOTE" == "null" ? nil : "$REMOTE",
+    "registered" => Date.today.to_s,
+    "status" => "active"
+  }
+  File.write(path, YAML.dump(data))
+RUBY
+
+# Commit
+echo "  Committing..."
+cd "$GLOBAL_ROOT"
+git add .
+git commit -m "feat: migrate $PROJECT_SLUG intents to global store"
+
+echo "Done! Intents migrated to $GLOBAL_ROOT"
+echo ""
+echo "Next steps:"
+echo "  1. Review ~/.plastic/INDEX.md"
+echo "  2. Remove $LOCAL_PLASTIC/store/ and $LOCAL_PLASTIC/INDEX.md from the project"
+echo "  3. Keep $LOCAL_PLASTIC/plugin/ if using as development copy"
