@@ -1,0 +1,3 @@
+# Plastic project registry
+# Maps project slugs to paths and parent intents
+projects: {}
