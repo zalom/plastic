@@ -1,5 +1,5 @@
 ---
-name: intent-curator
+name: plastic:intent-curator
 description: |
   Use this agent when completing or reviewing intents, reorganizing the index,
   or when the intent store needs maintenance. Examples:

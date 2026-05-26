@@ -1,5 +1,5 @@
 ---
-name: future-intent-researcher
+name: plastic:future-intent-researcher
 description: |
   Use this agent to research future intents autonomously. Picks up parked
   intents from INDEX.md, investigates them via web search and codebase analysis,

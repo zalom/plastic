@@ -1,5 +1,5 @@
 ---
-name: continuing
+name: plastic:continuing
 description: Use when the user says "continue" after a /clear, or when resuming work in a new session. Reads intent state from global store (~/.plastic/) or local store, offers active intents first, then future intents, and surfaces stale intents for triage.
 ---
 

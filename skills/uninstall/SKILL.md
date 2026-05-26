@@ -1,5 +1,5 @@
 ---
-name: uninstall
+name: plastic:uninstall
 description: Use when the user wants to remove Plastic. Deregisters the plugin from the current agent (Claude Code, Cursor, etc.) and optionally deletes all data.
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: creating-intent
+name: plastic:creating-intent
 description: Use when new work begins, the user expresses a new goal, says "new intent", or no active intent exists for the current task. Creates intents in the global store (~/.plastic/store/) or in a project's .plastic_store/ depending on context.
 ---
 

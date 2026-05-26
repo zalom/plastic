@@ -1,5 +1,5 @@
 ---
-name: install
+name: plastic:install
 description: Use when initializing Plastic globally (~/.plastic/) or locally in a project. Global install is recommended — creates the global intent store as a git-backed repository. Local install creates .plastic/ in the current project for testing.
 ---
 

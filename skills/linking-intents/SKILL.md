@@ -1,5 +1,5 @@
 ---
-name: linking-intents
+name: plastic:linking-intents
 description: Use when creating connections between intents, the user says "link" or "connect", or when discovering that two intents are related. Manages follows, source, supersedes, and cross-reference links.
 ---
 
