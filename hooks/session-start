@@ -54,12 +54,11 @@ INTENT_DATA=$(ruby -r json -r date -r yaml <<RUBY 2>/dev/null
 
   # Check for stale future intents
   stale = []
-  stale_days = 3
-  config_path = "#{store_root}/config.yml"
-  if File.exist?(config_path)
-    config = YAML.safe_load(File.read(config_path)) rescue {}
-    stale_days = config["stale_threshold_days"] || 3
-  end
+  read_config = ENV["CLAUDE_PLUGIN_ROOT"] ?
+    "#{ENV["CLAUDE_PLUGIN_ROOT"]}/scripts/read-config" :
+    File.expand_path("~/.plastic/scripts/read-config")
+  stale_days = \`"#{read_config}" stale_threshold_days\`.strip.to_i
+  stale_days = 3 if stale_days == 0
 
   future.each do |f|
     if f =~ /store\/([\w-]+)\//
