@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ruby *)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(git *)",
+      "Bash(mkdir *)",
+      "Bash(chmod *)",
+      "mcp__serena__*"
+    ]
+  }
+}
