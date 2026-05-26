@@ -82,9 +82,11 @@ class ReadConfigTest < Minitest::Test
   end
 
   def test_no_config_files_returns_builtin_default
-    out, _, status = run_script("stale_threshold_days", global_dir: Dir.mktmpdir)
-    assert status.success?
-    assert_equal "3", out
+    Dir.mktmpdir("plastic-empty") do |empty_dir|
+      out, _, status = run_script("stale_threshold_days", global_dir: empty_dir)
+      assert status.success?
+      assert_equal "3", out
+    end
   end
 
   def test_json_output_for_hash_values

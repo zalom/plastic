@@ -9,7 +9,6 @@
 
 require "yaml"
 require "json"
-require "pathname"
 
 DEFAULTS = {
   "version" => 3,
@@ -37,9 +36,11 @@ def parse_args(argv)
   while i < argv.length
     case argv[i]
     when "--default"
+      abort "Error: --default requires a value" unless argv[i + 1]
       default_val = argv[i + 1]
       i += 2
     when "--project"
+      abort "Error: --project requires a value" unless argv[i + 1]
       project_dir = argv[i + 1]
       i += 2
     else
