@@ -42,10 +42,27 @@ cd ~/.plastic && git init && git add . && git commit -m "chore: initialize Plast
 ```bash
 mkdir -p ~/.plastic/scripts
 cp "${CLAUDE_PLUGIN_ROOT}/scripts/hash-intent" ~/.plastic/scripts/hash-intent
-chmod +x ~/.plastic/scripts/hash-intent
+cp "${CLAUDE_PLUGIN_ROOT}/scripts/read-config" ~/.plastic/scripts/read-config
+chmod +x ~/.plastic/scripts/hash-intent ~/.plastic/scripts/read-config
 ```
 
 This ensures project agents can generate hashes via `~/.plastic/scripts/hash-intent` without depending on a specific agent's plugin cache path.
+
+**Step 2c: Detect agent type and set preferences**
+
+Detect which agent is running:
+- If `CLAUDE_CODE` env var is set or we're running inside Claude Code → `agent.type: claude-code`
+- If `HERMES_HOME` env var is set → `agent.type: hermes`
+- Otherwise → ask the user: "Which AI agent are you using? (claude-code / hermes / other)"
+
+Ask the user:
+> "Enable Agent Teams? (experimental — parallel project work with teammates)"
+> - Yes → set `parallel_mode: agent-teams`
+> - No → set `parallel_mode: linear` (subagents only)
+
+Update `~/.plastic/config.yml` with detected/chosen values using `read-config --migrate` first to ensure v3 schema, then write the agent-specific values.
+
+Auto-commit the config change.
 
 **Step 3: Configure project roots**
 
