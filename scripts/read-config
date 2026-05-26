@@ -81,6 +81,29 @@ def format_value(value)
   end
 end
 
+# Handle --migrate mode
+if ARGV.include?("--migrate")
+  global_root = ENV.fetch("PLASTIC_GLOBAL_ROOT", File.expand_path("~/.plastic"))
+  config_path = File.join(global_root, "config.yml")
+  config = load_yaml(config_path)
+
+  if config["version"].to_i >= 3
+    puts "Config already at version #{config["version"]}."
+    exit 0
+  end
+
+  config["version"] = 3
+  config["agent"] ||= {}
+  config["agent"]["type"] ||= "claude-code"
+  config["agent"]["parallel_mode"] ||= "linear"
+  config["architect"] ||= {}
+  config["architect"]["style"] ||= nil
+
+  File.write(config_path, YAML.dump(config))
+  puts "Migrated config.yml to version 3."
+  exit 0
+end
+
 key, explicit_default, project_dir = parse_args(ARGV)
 
 if key.nil? || key.empty?

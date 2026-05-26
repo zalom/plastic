@@ -103,3 +103,76 @@ class ReadConfigTest < Minitest::Test
     refute status.success?
   end
 end
+
+class ReadConfigMigrateTest < Minitest::Test
+  SCRIPT = File.expand_path("../../scripts/read-config", __FILE__)
+
+  def setup
+    @global_dir = Dir.mktmpdir("plastic-global")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@global_dir)
+  end
+
+  def test_migrate_adds_missing_agent_section
+    v2_config = {
+      "version" => 2,
+      "project_roots" => ["~/.plastic/projects"],
+      "stale_threshold_days" => 3,
+      "execution_mode" => "subagent-driven",
+      "hash_length" => 6,
+      "hash_algorithm" => "sha256-base36",
+      "max_slug_words" => 5
+    }
+    File.write(File.join(@global_dir, "config.yml"), YAML.dump(v2_config))
+
+    env = { "PLASTIC_GLOBAL_ROOT" => @global_dir }
+    stdout, _, status = Open3.capture3(env, SCRIPT, "--migrate")
+    assert status.success?
+
+    migrated = YAML.safe_load(File.read(File.join(@global_dir, "config.yml")))
+    assert_equal 3, migrated["version"]
+    assert_equal "claude-code", migrated["agent"]["type"]
+    assert_equal "linear", migrated["agent"]["parallel_mode"]
+    assert_kind_of Hash, migrated["architect"]
+  end
+
+  def test_migrate_preserves_existing_values
+    config = {
+      "version" => 2,
+      "stale_threshold_days" => 7,
+      "project_roots" => ["~/my-projects"],
+      "execution_mode" => "subagent-driven",
+      "hash_length" => 6,
+      "hash_algorithm" => "sha256-base36",
+      "max_slug_words" => 5
+    }
+    File.write(File.join(@global_dir, "config.yml"), YAML.dump(config))
+
+    env = { "PLASTIC_GLOBAL_ROOT" => @global_dir }
+    Open3.capture3(env, SCRIPT, "--migrate")
+
+    migrated = YAML.safe_load(File.read(File.join(@global_dir, "config.yml")))
+    assert_equal 7, migrated["stale_threshold_days"]
+    assert_equal ["~/my-projects"], migrated["project_roots"]
+  end
+
+  def test_migrate_noop_when_already_v3
+    config = {
+      "version" => 3,
+      "agent" => { "type" => "hermes", "parallel_mode" => "hermes-batch" },
+      "architect" => { "style" => "go-stdlib" },
+      "stale_threshold_days" => 3
+    }
+    File.write(File.join(@global_dir, "config.yml"), YAML.dump(config))
+
+    env = { "PLASTIC_GLOBAL_ROOT" => @global_dir }
+    stdout, _, status = Open3.capture3(env, SCRIPT, "--migrate")
+    assert status.success?
+    assert_includes stdout, "already"
+
+    after = YAML.safe_load(File.read(File.join(@global_dir, "config.yml")))
+    assert_equal "hermes", after["agent"]["type"]
+  end
+end
