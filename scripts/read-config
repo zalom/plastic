@@ -1,0 +1,128 @@
+#!/usr/bin/env ruby
+# Usage: read-config <key> [--default VALUE] [--project PATH]
+# Resolves a config value: project -> global -> built-in defaults.
+# Nested keys use dot notation: agent.type, architect.style
+# Returns scalar values as strings, hash/array values as JSON.
+#
+# Environment:
+#   PLASTIC_GLOBAL_ROOT -- override ~/.plastic (for testing)
+
+require "yaml"
+require "json"
+
+DEFAULTS = {
+  "version" => 3,
+  "stale_threshold_days" => 3,
+  "execution_mode" => "subagent-driven",
+  "hash_length" => 6,
+  "hash_algorithm" => "sha256-base36",
+  "max_slug_words" => 5,
+  "project_roots" => ["~/.plastic/projects"],
+  "agent" => {
+    "type" => "claude-code",
+    "parallel_mode" => "linear"
+  },
+  "architect" => {
+    "style" => nil
+  }
+}.freeze
+
+def parse_args(argv)
+  key = nil
+  default_val = nil
+  project_dir = nil
+
+  i = 0
+  while i < argv.length
+    case argv[i]
+    when "--default"
+      abort "Error: --default requires a value" unless argv[i + 1]
+      default_val = argv[i + 1]
+      i += 2
+    when "--project"
+      abort "Error: --project requires a value" unless argv[i + 1]
+      project_dir = argv[i + 1]
+      i += 2
+    else
+      key = argv[i]
+      i += 1
+    end
+  end
+
+  [key, default_val, project_dir]
+end
+
+def load_yaml(path)
+  return {} unless File.exist?(path)
+  YAML.safe_load(File.read(path)) || {}
+rescue => e
+  $stderr.puts "Warning: failed to parse #{path}: #{e.message}"
+  {}
+end
+
+def dig_key(hash, dotted_key)
+  keys = dotted_key.split(".")
+  value = hash
+  keys.each do |k|
+    return nil unless value.is_a?(Hash) && value.key?(k)
+    value = value[k]
+  end
+  value
+end
+
+def format_value(value)
+  case value
+  when Hash, Array
+    JSON.generate(value)
+  when nil
+    ""
+  else
+    value.to_s
+  end
+end
+
+# Handle --migrate mode
+if ARGV.include?("--migrate")
+  global_root = ENV.fetch("PLASTIC_GLOBAL_ROOT", File.expand_path("~/.plastic"))
+  config_path = File.join(global_root, "config.yml")
+  config = load_yaml(config_path)
+
+  if config["version"].to_i >= 3
+    puts "Config already at version #{config["version"]}."
+    exit 0
+  end
+
+  config["version"] = 3
+  config["agent"] ||= {}
+  config["agent"]["type"] ||= "claude-code"
+  config["agent"]["parallel_mode"] ||= "linear"
+  config["architect"] ||= {}
+  config["architect"]["style"] ||= nil
+
+  File.write(config_path, YAML.dump(config))
+  puts "Migrated config.yml to version 3."
+  exit 0
+end
+
+key, explicit_default, project_dir = parse_args(ARGV)
+
+if key.nil? || key.empty?
+  $stderr.puts "Usage: read-config <key> [--default VALUE] [--project PATH]"
+  exit 1
+end
+
+global_root = ENV.fetch("PLASTIC_GLOBAL_ROOT", File.expand_path("~/.plastic"))
+global_config = load_yaml(File.join(global_root, "config.yml"))
+
+project_config = {}
+if project_dir
+  project_config_path = File.join(project_dir, ".plastic_store", "config.yml")
+  project_config = load_yaml(project_config_path)
+end
+
+value = dig_key(project_config, key)
+value = dig_key(global_config, key) if value.nil?
+value = explicit_default if value.nil? && explicit_default
+value = dig_key(DEFAULTS, key) if value.nil?
+
+puts format_value(value)

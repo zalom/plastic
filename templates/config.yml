@@ -1,4 +1,4 @@
-version: 2
+version: 3
 project_roots:
   - ~/.plastic/projects
 stale_threshold_days: 3
@@ -6,3 +6,8 @@ execution_mode: subagent-driven
 hash_length: 6
 hash_algorithm: sha256-base36
 max_slug_words: 5
+agent:
+  type: claude-code
+  parallel_mode: linear
+architect:
+  style:
