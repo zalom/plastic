@@ -78,15 +78,15 @@ git tag -a vX.Y.Z -m "vX.Y.Z — [release name]
 git push origin main --tags
 ```
 
-### 7. GitHub Release (optional)
+### 7. GitHub Release
 
-If the repo has GitHub releases enabled, create one from the tag:
+Create a GitHub release from the tag. Use `--generate-notes` to auto-generate changelog from commits since the previous tag:
 
 ```bash
-gh release create vX.Y.Z --title "vX.Y.Z — [release name]" --generate-notes
+gh release create vX.Y.Z --title "vX.Y.Z — [release name]" --generate-notes --notes-start-tag <previous-tag>
 ```
 
-GitHub's `--generate-notes` auto-generates release notes from PRs and commits since the previous tag.
+For the first release (no previous tag), write notes manually with `--notes "..."` instead.
 
 ## Conventions
 
