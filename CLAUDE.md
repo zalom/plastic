@@ -3,14 +3,14 @@
 > Named after **neuroplasticity** — the brain's ability to rewire, adapt, and heal.
 > This system is adaptive, malleable, dynamic, and resilient.
 
-Plastic implements the "Intent → Build → Observe → Repeat" SDLC with Zettelkasten-inspired linking between intents. All state lives in `~/.plastic/` by default. Everything is an intent. Built as a Claude Code plugin (skills, hooks, agents, templates). No external dependencies.
+Plastic implements the "What → Why → How → Next" lifecycle with Zettelkasten-inspired linking between intents. All state lives in `~/.plastic/` by default. Everything is an intent. Built as a Claude Code plugin (skills, hooks, agents, templates). No external dependencies.
 
 ## Global Mode
 
 Plastic operates as a global intent store at `~/.plastic/`. This is the default and recommended mode.
 
 - **Strategic intents** live in `~/.plastic/store/` — goals, explorations, big ideas
-- **Tactical intents** live in `<project>/.plastic_store/` — sub-tasks within a project
+- **Tactical intents** live in `<project>/.plastic/store/` — sub-tasks within a project
 - **Project registry** at `~/.plastic/projects.yml` maps project slugs to paths
 - **Config** at `~/.plastic/config.yml` holds user preferences
 
@@ -22,7 +22,7 @@ If no global install exists, Plastic falls back to per-project `.plastic/` (lega
 |--------|---------|
 | `[[NNN-HASH]]` | Link to intent in same store |
 | `[[global:NNN-HASH]]` | Link to intent in `~/.plastic/store/` |
-| `[[project-slug:NNN-HASH]]` | Link to intent in a project's `.plastic_store/` |
+| `[[project-slug:NNN-HASH]]` | Link to intent in a project's `.plastic/store/` (tactical) |
 
 ## Intents Are the Foundation
 
@@ -32,10 +32,10 @@ ALL work flows through intents. No skill, agent, or workflow creates directories
 
 1. **Before starting any work**, check `~/.plastic/INDEX.md` for the active intent. If none exists, create one first. (Legacy per-project mode uses `.plastic/INDEX.md` instead.)
 2. **Never create** `docs/superpowers/specs/`, `docs/plans/`, `researches/`, or similar directories. All artifacts go into the active intent's directory.
-3. **When a skill produces output** (spec, plan, checklist), write it inside `~/.plastic/store/NNN--slug-XXXXXX/`. For project-tactical intents, use `<project>/.plastic_store/NNN--slug-XXXXXX/`.
-4. **When a skill completes**, update the intent's `## Build` or `## Observe` sections.
-5. **When work is done**, update intent's `## Outcome` and status to `completed`. Update INDEX.md.
-6. **Researches are intents** with type `exploration`. No separate folder.
+3. **When a skill produces output** (spec, plan, checklist), write it inside `~/.plastic/store/NNN--slug-XXXXXX/`. For project-tactical intents, use `<project>/.plastic/store/NNN--slug-XXXXXX/`.
+4. **When a skill completes**, capture observations in `## Insights`.
+5. **When work is done**, write `## Outcome` (presence = done). Update INDEX.md.
+6. **Researches are intents.** No separate folder.
 
 ### How Other Skills Work WITH Intents
 
@@ -44,9 +44,9 @@ ALL work flows through intents. No skill, agent, or workflow creates directories
 | `superpowers:brainstorming` | Creates `docs/superpowers/specs/*.md` | Spec goes into active intent's dir: `~/.plastic/store/NNN--slug-XXXXXX/spec.md` |
 | `superpowers:writing-plans` | Creates plan in `docs/` or root | Plan goes into `~/.plastic/store/NNN--slug-XXXXXX/plan.md` |
 | `superpowers:test-driven-development` | Works standalone | Tests tracked in active intent's `checklist.md` |
-| `superpowers:systematic-debugging` | Works standalone | Bug investigation IS an intent (type: `bug`). Create one. |
+| `superpowers:systematic-debugging` | Works standalone | Bug investigation IS an intent. Create one. |
 | `superpowers:executing-plans` | Reads plan from default location | Reads plan from active intent's `plan.md` |
-| `superpowers:verification-before-completion` | Verifies then reports | Updates intent's `## Observe` section and `## Outcome` |
+| `superpowers:verification-before-completion` | Verifies then reports | Updates intent's `## Insights` section and `## Outcome` |
 | `superpowers:requesting-code-review` | Reviews current branch | Review scoped to the active intent's work |
 
 ### Delegation to External Skills
@@ -58,7 +58,7 @@ When Plastic delegates to an external skill (e.g. `superpowers:subagent-driven-d
 - `superpowers:subagent-driven-development` creates files per plan → **OK** as long as code files go in the project tree, only planning artifacts go in `~/.plastic/`
 - `superpowers:finishing-a-development-branch` → **OK** as-is, operates on git branches not Plastic directories
 
-**The rule is simple:** code goes in the project. Plans, specs, checklists, savepoints, and all meta-artifacts go in `~/.plastic/store/NNN--slug-XXXXXX/` (or `<project>/.plastic_store/NNN--slug-XXXXXX/` for project-tactical intents). No exceptions. If an external skill tries to create a directory outside the active store for meta-artifacts, redirect it.
+**The rule is simple:** code goes in the project. Plans, specs, checklists, savepoints, and all meta-artifacts go in `~/.plastic/store/NNN--slug-XXXXXX/` (or `<project>/.plastic/store/NNN--slug-XXXXXX/` for project-tactical intents). No exceptions. If an external skill tries to create a directory outside the active store for meta-artifacts, redirect it.
 
 ## State System
 
@@ -81,9 +81,9 @@ Global mode (default):
 Per-project tactical store (optional, for sub-tasks within a project):
 
 ```
-<project>/.plastic_store/
-└── NNN--three-to-five-words-XXXXXX/      # One directory per tactical intent
-    └── ...                               # Same structure as global store
+<project>/.plastic/store/
+└── NNN--three-to-five-words-XXXXXX/  # One directory per tactical intent
+    └── ...                           # Same structure as global store
 ```
 
 Legacy per-project mode (fallback when no global install exists):
@@ -99,22 +99,19 @@ Legacy per-project mode (fallback when no global install exists):
 
 ### Directory Naming
 
-Format: `NNN--three-to-five-words-XXXXXX` — applies to all stores (`~/.plastic/store/`, `<project>/.plastic_store/`, and legacy `.plastic/store/`).
+Format: `NNN--three-to-five-words-XXXXXX` — applies to all stores (`~/.plastic/store/`, `<project>/.plastic/store/`, and legacy `.plastic/store/`).
 - `NNN` — zero-padded sequential number (scoped within its store)
 - `three-to-five-words` — human-readable slug (3-5 words max)
 - `XXXXXX` — 6-char deterministic hash (SHA-256 → base36, Ruby stdlib)
 
 ### Intent Lifecycle
 
-```
-future → proposed → active → completed | abandoned
-```
+State is derived from filesystem conventions:
+- Has `## Context` content → permanent (not fleeting)
+- Has `actions/` directory → actionable
+- Has `## Outcome` content → done
 
-- **future** — parked for later; agents may research autonomously
-- **proposed** — identified but not started
-- **active** — currently being worked on
-- **completed** — done, outcome recorded
-- **abandoned** — dropped or superseded
+Active / Future / Completed are INDEX.md placement, not frontmatter fields.
 
 ### Authorship
 
@@ -123,12 +120,12 @@ Intents can be created by humans or AI agents (`author` field): `human`, `claude
 ### Creating an Intent
 
 When new work begins:
-1. Determine the target store: `~/.plastic/store/` for strategic intents (default), `<project>/.plastic_store/` for project-tactical intents, or `<project>/.plastic/store/` in legacy mode
+1. Determine the target store: `~/.plastic/store/` for strategic intents (default), `<project>/.plastic/store/` for project-tactical intents, or `<project>/.plastic/store/` in legacy mode
 2. Scan the target store directory for the next sequential ID
 3. Generate hash: `"${CLAUDE_PLUGIN_ROOT}/scripts/hash-intent" "intent name"` (or `~/.plastic/scripts/hash-intent` for project agents)
 4. Create the intent directory in the chosen store
 5. Update the appropriate `INDEX.md` — add to Active section and appropriate cluster
-6. Set frontmatter: id, intent, status, type, author, created, tags
+6. Set frontmatter: id, intent, sources, chain, author, created, tags
 7. Add links to related intents in `## Links` section
 
 ## Context Management (Start-Save-Continue)
@@ -138,7 +135,7 @@ Triggered by PreCompact hook or manually:
 1. Find active intent(s) from `~/.plastic/INDEX.md` (or `.plastic/INDEX.md` in legacy mode)
 2. Update active intent's `checklist.md` (check off completed items)
 3. Update active intent's `savepoint.md` (in-progress, next steps, blockers, discoveries)
-4. Update active intent's `intent.md` Build/Observe sections
+4. Add observations to `## Insights`
 5. Update `~/.plastic/INDEX.md`
 6. Commit: `cd ~/.plastic && git add . && git commit -m "chore: savepoint — [intent name]"` (legacy: `git add .plastic/ && git commit -m "chore: savepoint — [intent name]"`)
 7. Notify user to `/clear`
@@ -158,7 +155,7 @@ Triggered by UserPromptSubmit hook when user says "continue". Priority order:
 **2. No active intents → offer future intents:**
 1. List all future intents from INDEX.md
 2. Present them as options: "Which intent would you like to activate?"
-3. When user picks one, update `status: active` and move to Active in INDEX.md
+3. When user picks one, move to Active in INDEX.md
 
 **3. Stale future intents (untouched 3+ days) → triage:**
 Surface stale intents and ask the user what to do with each:
@@ -178,7 +175,7 @@ Surface stale intents and ask the user what to do with each:
 | D3 | Project name | Plastic | 2026-05-24 | Neuroplasticity metaphor |
 | D4 | State system | Intent-driven, Zettelkasten linking | 2026-05-24 | File-based, git-native, extractable |
 | D5 | All skills through intents | Intents are the foundation | 2026-05-24 | Single coherent system |
-| D6 | Researches are intents | Type: exploration | 2026-05-24 | No separate folder needed |
+| D6 | Researches are intents | Intents, no special type | 2026-05-24 | No separate folder needed |
 | D7 | Directory hashing | SHA-256 → base36, 6 chars | 2026-05-24 | Deterministic, no gems, collision-safe |
 | D8 | Vector database | SQLite + sqlite-vec via neighbor gem | 2026-05-24 | Ruby-native, no external services, migration path to pgvector |
 | D9 | Stale intent threshold | 3 days | 2026-05-24 | Balance between actionable nudging and not being annoying |
@@ -188,3 +185,8 @@ Surface stale intents and ask the user what to do with each:
 | D13 | Two-tier architecture | Strategic (global) + tactical (project) | 2026-05-25 | Avoid cluttering global store with sub-tasks |
 | D14 | Wikilink format | [[NNN-HASH]] with global:/project: prefixes | 2026-05-25 | Grep-friendly, Zettelkasten-native, resolver-friendly |
 | D15 | Frontmatter | Identity only, links in body as wikilinks | 2026-05-25 | Single file = single source of truth, no drift |
+| D16 | Convention-over-configuration | Filesystem as schema | 2026-06-01 | Presence of sections/files signals state, not explicit fields |
+| D17 | What→Why→How→Next lifecycle | Sections replace status field | 2026-06-01 | Intent/Context/Insights/Outcome map to lifecycle phases |
+| D18 | Minimal frontmatter | id, intent, sources, chain, created, author, tags | 2026-06-01 | Remove status, type, project, parent — derive from conventions |
+| D19 | AGENTS.md as contract | Conventions codex for all agents | 2026-06-01 | Single source of truth for agent behavior rules |
+| D20 | Projects as hubs | Two-store architecture, project-\<name\> tags | 2026-06-01 | Strategic intents link to projects via tags and chain |

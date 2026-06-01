@@ -5,7 +5,7 @@
 
 ## What Is This?
 
-Plastic implements the "Intent → Build → Observe → Repeat" SDLC with Zettelkasten-inspired linking. All project state lives in `.plastic/`. Everything is an intent.
+Plastic implements the "What → Why → How → Next" lifecycle with Zettelkasten-inspired linking. All project state lives in `.plastic/`. Everything is an intent.
 
 ## Installation
 
@@ -32,7 +32,7 @@ In Claude Code, run:
 
 ## Global vs Local
 
-**Global (recommended):** Plastic stores all intents at `~/.plastic/`. Projects spawned by implementation intents get their own `.plastic_store/` for tactical intents.
+**Global (recommended):** Plastic stores all intents at `~/.plastic/`. Projects spawned by implementation intents get their own `.plastic/store/` for tactical intents.
 
 ```
 /plastic:install
@@ -75,6 +75,7 @@ Download from https://rubyinstaller.org/ or `winget install RubyInstallerTeam.Ru
 
 ```
 .plastic/
+├── AGENTS.md           # Conventions contract for all agents
 ├── config.yml          # Plugin configuration
 ├── INDEX.md            # Brain's entry point
 └── store/
