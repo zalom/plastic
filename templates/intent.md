@@ -1,14 +1,10 @@
 ---
 id: "{{ID}}"
-hash: "{{HASH}}"
 intent: "{{INTENT}}"
-status: {{STATUS}}
-type: {{TYPE}}
-author: {{AUTHOR}}
+sources: [{{SOURCES}}]
+chain: []
 created: {{DATE}}
-updated: {{DATE}}
-project: {{PROJECT}}
-parent: {{PARENT}}
+author: {{AUTHOR}}
 tags: [{{TAGS}}]
 ---
 
@@ -16,16 +12,13 @@ tags: [{{TAGS}}]
 {{DESCRIPTION}}
 
 ## Context
-- (what the agent needs to know)
+(why this intent exists — background, then ### Decisions after brainstorming)
 
-## Build
-(filled as work happens)
-
-## Observe
-(filled after building)
+## Insights
+(observations captured throughout — raw material for future intents)
 
 ## Outcome
-(filled when intent reaches terminal status)
+(the result — implementation details, deliverables)
 
 ## Links
 - (use [[NNN-HASH]] wikilinks to related intents)
