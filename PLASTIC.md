@@ -342,5 +342,13 @@ This store works in two modes without modification:
 
 No special tooling required for either mode.
 
+## Git Rules
+
+The global store (`~/.plastic/`) is tracked with git locally but **never pushed
+to a remote**. It contains sensitive data (intents, decisions, project context).
+
+- `~/.plastic/`: git tracked, **never push**
+- Project repos: push only when the user explicitly confirms
+
 ## Agent-Specific Files
 
