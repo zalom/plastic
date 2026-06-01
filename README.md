@@ -5,7 +5,7 @@
 
 ## What Is This?
 
-Plastic implements the "What → Why → How → Next" lifecycle with Zettelkasten-inspired linking. All project state lives in `.plastic/`. Everything is an intent.
+Plastic implements two nested processes: **Build → Observe → Repeat** (Coordinator's continuous loop) and **What → Why → How → Next** (intent's finite lifecycle). Zettelkasten-inspired linking connects intents. All project state lives in `.plastic/`. Everything is an intent.
 
 ## Installation
 

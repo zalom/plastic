@@ -3,7 +3,7 @@
 > Named after **neuroplasticity** — the brain's ability to rewire, adapt, and heal.
 > This system is adaptive, malleable, dynamic, and resilient.
 
-Plastic implements the "What → Why → How → Next" lifecycle with Zettelkasten-inspired linking between intents. All state lives in `~/.plastic/` by default. Everything is an intent. Built as a Claude Code plugin (skills, hooks, agents, templates). No external dependencies.
+Plastic implements two nested processes: **Build → Observe → Repeat** (the Coordinator's continuous loop — dispatch work, review results, repeat) and **What → Why → How → Next** (an intent's finite lifecycle — desire, reasoning, delivery, insights). Insights from a completed intent feed back into the Coordinator's Observe phase, closing the loop. Zettelkasten-inspired linking connects intents. All state lives in `~/.plastic/` by default. Everything is an intent. Built as a Claude Code plugin (skills, hooks, agents, templates). No external dependencies.
 
 ## Global Mode
 
