@@ -68,7 +68,7 @@ Only after spec compliance passes. Reviews clean code, testing, architecture. Pa
 After all tasks complete, dispatch a final reviewer for the entire implementation.
 
 ### Step 4: Update Intent
-Update the active intent's `## Build` and `## Observe` sections. If all work is done, update `## Outcome` and status.
+Capture observations in `## Insights`. If all work is done, write `## Outcome`.
 
 ## Inline Workflow
 
@@ -85,7 +85,7 @@ For each task:
 4. Mark as completed
 
 ### Step 3: Update Intent
-Same as subagent-driven Step 4.
+Capture observations in `## Insights`. If all work is done, write `## Outcome`.
 
 ## Model Selection for Subagents
 

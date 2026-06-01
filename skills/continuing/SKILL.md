@@ -24,7 +24,7 @@ Read the INDEX.md from the active store. Extract intents under `## Active` and `
 ### 2. Detect Current Project (global mode only)
 Read `~/.plastic/projects.yml`, match CWD against registered project paths. If in a project:
 - Load the governing intent (from `parent` in projects.yml)
-- Load tactical intents from `<project>/.plastic_store/`
+- Load tactical intents from `<project>/.plastic/store/`
 
 ### 3. If Active Intents Exist → Resume
 
@@ -33,8 +33,7 @@ For each active intent in the store:
 **a. Read intent.md:**
 - What we're doing (`## Intent`)
 - Why (`## Context`)
-- What's been done (`## Build`)
-- What's been observed (`## Observe`)
+- What insights have emerged (`## Insights`)
 
 **b. Read savepoint.md** (if exists):
 - What was in progress, what's next, blockers
@@ -57,11 +56,11 @@ Blockers: [from savepoint, or "none"]
 
 ### 4. If No Active Intents → Offer Future Intents
 
-Present future intents as options. When user picks one, update `status: active` and move to Active in INDEX.md. Auto-commit.
+Present future intents as options. When user picks one, move to Active in INDEX.md. Auto-commit.
 
 ### 5. Surface Stale Future Intents
 
-If any future intent has `updated` date older than the configured `stale_threshold_days` (default 3):
+If any future intent has `created` date older than the configured `stale_threshold_days` (default 3):
 
 ```
 Stale future intents (no action taken):

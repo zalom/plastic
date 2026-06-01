@@ -42,9 +42,7 @@ Read the intent directory at `.plastic/store/NNN--slug-XXXXXX/`:
 ```
 
 **c. Update intent.md:**
-- Add session work to `## Build` section
-- Add observations to `## Observe` section
-- Update `updated` date in frontmatter
+- Add observations to `## Insights` section
 
 ### 3. Update INDEX.md
 Verify the `## Active` section is accurate.

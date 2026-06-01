@@ -52,15 +52,15 @@ for f in .plastic/store/*/intent.md; do
   ruby -e '
     data = File.read(ARGV[0]).split("---")[1]
     parsed = YAML.safe_load(data)
-    puts "#{parsed["status"]}|#{parsed["id"]}|#{parsed["intent"]}|#{ARGV[1]}"
+    puts "#{parsed["id"]}|#{parsed["intent"]}|#{ARGV[1]}"
   ' "$f" "$dir" 2>/dev/null
-done | sort -t'|' -k2
+done | sort -t'|' -k1
 ```
 
 ### Suggest Clusters
 When 3+ intents share tags but aren't in a cluster, suggest a new cluster heading.
 
 ### Flag Orphans
-Intents with no links (no `follows`, no `source`, no `## Links` entries, not in any cluster) should be flagged for curation.
+Intents with no links (empty `sources`, empty `chain`, no `## Links` entries, not in any cluster) should be flagged for curation.
 
 REQUIRED BACKGROUND: linking-intents (for understanding connection types and Zettelkasten theory)
