@@ -29,6 +29,20 @@ Copy templates from the plugin:
 - `config.yml` from `${CLAUDE_PLUGIN_ROOT}/templates/config.yml`
 - `projects.yml` from `${CLAUDE_PLUGIN_ROOT}/templates/projects.yml`
 - `INDEX.md` from `${CLAUDE_PLUGIN_ROOT}/templates/index.md`
+- `PLASTIC.md` from `${CLAUDE_PLUGIN_ROOT}/PLASTIC.md`
+
+Create `AGENTS.md` (user-editable, not overwritten on updates):
+```markdown
+# Plastic — Agent Instructions
+
+Read `PLASTIC.md` in this directory. It contains all Plastic conventions.
+Follow it exactly. Never modify it — it is overwritten on plugin updates.
+
+This file (`AGENTS.md`) is where project-specific rules live. Users and agents
+may add content below.
+
+---
+```
 
 Add `.gitkeep` to `store/` and `projects/`.
 

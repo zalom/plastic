@@ -1,6 +1,6 @@
 # Plastic — Project Agent Instructions
 
-> Full conventions: see `~/.plastic/AGENTS.md` (the global agent contract).
+> Full conventions: see `~/.plastic/PLASTIC.md` (the global conventions contract).
 > This file covers project-scoped rules only.
 
 ## Your Role
