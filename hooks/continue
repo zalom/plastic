@@ -65,7 +65,7 @@ if echo "$MESSAGE" | grep -iq '\bcontinue\b'; then
         next unless File.exist?(intent_file)
 
         content = File.read(intent_file)
-        if content =~ /^updated:\s*(\d{4}-\d{2}-\d{2})/
+        if content =~ /^created:\s*['"]?(\d{4}-\d{2}-\d{2})/
           updated = Date.parse($1)
           age = (Date.today - updated).to_i
           if age >= stale_days

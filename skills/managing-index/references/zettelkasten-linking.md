@@ -8,9 +8,9 @@
 
 ## Three Connection Types (Ranked)
 
-1. **Direct links** (strongest) — explicit `[text](path)` in `## Links` section
-2. **Folgezettel/sequence** — `follows` field in frontmatter, derivation chains
-3. **Tags** (weakest) — shared tags for filtered discovery
+1. **Direct links** (strongest) — wikilinks in `## Links` section
+2. **Sources/Chain** (knowledge graph) — `sources` array (backward), `chain` array (forward) in frontmatter
+3. **Tags** (weakest) — shared tags, `project-<name>` for project membership
 
 ## When to Create a Cluster
 
