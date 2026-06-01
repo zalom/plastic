@@ -27,109 +27,113 @@ else
   exit 0
 fi
 
-MATCHES=$(ruby -r json -r yaml <<'RUBY' 2>/dev/null
-  store_root = ARGV[0]
-  message = ARGV[1]
+# macOS ships bash 3.2 — avoid heredocs inside $( ... ).
+# Write Ruby to temp files and pass shell values via ENV.
+PLASTIC_TMP=$(mktemp -d "${TMPDIR:-/tmp}/plastic.XXXXXX")
+trap 'rm -rf "$PLASTIC_TMP"' EXIT
 
-  # Read INDEX.md to find future intents
-  index_path = "#{store_root}/INDEX.md"
-  exit 0 unless File.exist?(index_path)
+cat > "$PLASTIC_TMP/match.rb" <<'RUBY'
+# encoding: UTF-8
+require "json"
+require "yaml"
 
-  lines = File.readlines(index_path)
-  future_dirs = []
-  section = nil
+store_root = ENV.fetch("STORE_ROOT")
+message    = ENV.fetch("MESSAGE")
 
-  lines.each do |line|
-    section = :future if line.start_with?("## Future")
-    section = nil if line.start_with?("## ") && !line.start_with?("## Future")
-    next unless section == :future && line.strip.start_with?("- [")
+index_path = "#{store_root}/INDEX.md"
+exit 0 unless File.exist?(index_path)
 
-    if line =~ /store\/([\w-]+)\//
-      future_dirs << $1
-    end
+lines = File.readlines(index_path)
+future_dirs = []
+section = nil
+
+lines.each do |line|
+  section = :future if line.start_with?("## Future")
+  section = nil if line.start_with?("## ") && !line.start_with?("## Future")
+  next unless section == :future && line.strip.start_with?("- [")
+
+  if line =~ /store\/([\w-]+)\//
+    future_dirs << $1
+  end
+end
+
+exit 0 if future_dirs.empty?
+
+matches = []
+message_words = message.split(/\W+/).reject { |w| w.length < 4 }
+
+future_dirs.each do |dir|
+  intent_path = "#{store_root}/store/#{dir}/intent.md"
+  next unless File.exist?(intent_path)
+
+  content = File.read(intent_path)
+
+  tags = []
+  if content =~ /^tags:\s*\[([^\]]+)\]/
+    tags = $1.split(",").map(&:strip).map(&:downcase)
   end
 
-  exit 0 if future_dirs.empty?
-
-  # Build keyword index from each future intent's tags and name
-  matches = []
-  message_words = message.split(/\W+/).reject { |w| w.length < 4 }
-
-  future_dirs.each do |dir|
-    intent_path = "#{store_root}/store/#{dir}/intent.md"
-    next unless File.exist?(intent_path)
-
-    content = File.read(intent_path)
-
-    # Extract tags
-    tags = []
-    if content =~ /^tags:\s*\[([^\]]+)\]/
-      tags = $1.split(",").map(&:strip).map(&:downcase)
-    end
-
-    # Extract intent name
-    intent_name = ""
-    if content =~ /^intent:\s*["']?(.+?)["']?\s*$/
-      intent_name = $1.downcase
-    end
-
-    # Extract id
-    intent_id = ""
-    if content =~ /^id:\s*["']?(\d+)["']?\s*$/
-      intent_id = $1
-    end
-
-    # Build searchable keywords from tags + intent name words
-    keywords = tags + intent_name.split(/\W+/).reject { |w| w.length < 4 }
-    keywords = keywords.map(&:downcase).uniq
-
-    # Check for matches
-    matched_keywords = keywords.select { |kw| message.include?(kw) }
-
-    # Also check if any message words appear in the intent name
-    name_matches = message_words.select { |w| intent_name.include?(w) }
-    matched_keywords = (matched_keywords + name_matches).uniq
-
-    if matched_keywords.length >= 1
-      # Read the intent line from INDEX.md for display
-      index_line = lines.find { |l| l.include?(dir) }&.strip || "#{intent_id} — #{intent_name}"
-      matches << {
-        id: intent_id,
-        name: intent_name,
-        keywords: matched_keywords,
-        index_line: index_line
-      }
-    end
+  intent_name = ""
+  if content =~ /^intent:\s*["']?(.+?)["']?\s*$/
+    intent_name = $1.downcase
   end
 
-  if matches.any?
-    puts JSON.generate(matches)
+  intent_id = ""
+  if content =~ /^id:\s*["']?(\d+)["']?\s*$/
+    intent_id = $1
   end
+
+  keywords = tags + intent_name.split(/\W+/).reject { |w| w.length < 4 }
+  keywords = keywords.map(&:downcase).uniq
+
+  matched_keywords = keywords.select { |kw| message.include?(kw) }
+
+  name_matches = message_words.select { |w| intent_name.include?(w) }
+  matched_keywords = (matched_keywords + name_matches).uniq
+
+  if matched_keywords.length >= 1
+    index_line = lines.find { |l| l.include?(dir) }&.strip || "#{intent_id} — #{intent_name}"
+    matches << {
+      id: intent_id,
+      name: intent_name,
+      keywords: matched_keywords,
+      index_line: index_line
+    }
+  end
+end
+
+if matches.any?
+  puts JSON.generate(matches)
+end
 RUBY
-  "$STORE_ROOT" "$MESSAGE"
-)
+
+MATCHES=$(STORE_ROOT="$STORE_ROOT" MESSAGE="$MESSAGE" ruby "$PLASTIC_TMP/match.rb" 2>/dev/null)
 
 if [ -z "$MATCHES" ] || [ "$MATCHES" = "null" ]; then
   exit 0
 fi
 
-CONTEXT=$(ruby -r json <<RUBY 2>/dev/null
-  matches = JSON.parse('${MATCHES}')
-  parts = []
-  parts << "PLASTIC — Future intents related to this message:\\n"
-  matches.each do |m|
-    parts << "#{m["index_line"]} (matched: #{m["keywords"].join(", ")})"
-  end
-  parts << "\\nConsider asking the user if they want to activate any of these, or note the connection."
-  puts parts.join("\\n")
-RUBY
-)
+cat > "$PLASTIC_TMP/context.rb" <<'RUBY'
+# encoding: UTF-8
+require "json"
 
-cat <<HOOKJSON
-{
-  "hookSpecificOutput": {
-    "hookEventName": "UserPromptSubmit",
-    "additionalContext": "${CONTEXT}"
+matches = JSON.parse(ENV.fetch("MATCHES"))
+parts = []
+parts << "PLASTIC — Future intents related to this message:\n"
+matches.each do |m|
+  parts << "#{m["index_line"]} (matched: #{m["keywords"].join(", ")})"
+end
+parts << "\nConsider asking the user if they want to activate any of these, or note the connection."
+
+context = parts.join("\n")
+
+payload = {
+  "hookSpecificOutput" => {
+    "hookEventName" => "UserPromptSubmit",
+    "additionalContext" => context
   }
 }
-HOOKJSON
+puts JSON.generate(payload)
+RUBY
+
+MATCHES="$MATCHES" ruby "$PLASTIC_TMP/context.rb"
