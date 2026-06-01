@@ -28,7 +28,7 @@ Dispatches to the `plastic:intent-curator` agent for intent store maintenance.
 Invoke the `plastic:intent-curator` agent via the Agent tool with `subagent_type: "plastic:intent-curator"`. Pass the user's request as the prompt, including:
 
 1. **What to do** — complete intent, reorganize, triage stale, etc.
-2. **Which store** — global (`~/.plastic/`) or project (`.plastic_store/`)
+2. **Which store** — global (`~/.plastic/`) or project (`.plastic/store/`)
 3. **Which intents** — by ID or "all active"
 
 The agent handles:
