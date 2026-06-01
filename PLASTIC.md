@@ -349,6 +349,9 @@ to a remote**. It contains sensitive data (intents, decisions, project context).
 
 - `~/.plastic/`: git tracked, **never push**
 - Project repos: push only when the user explicitly confirms
+- Agent-created repos: **private by default**. When an agent creates a GitHub
+  repository (e.g., for a new project), it must be private unless the user
+  explicitly requests public. Use `gh repo create --private`.
 
 ## Agent-Specific Files
 

@@ -78,6 +78,24 @@ Update `~/.plastic/config.yml` with detected/chosen values using `read-config --
 
 Auto-commit the config change.
 
+**Step 2d: Configure GitHub and push preferences**
+
+Inform the user:
+> "Plastic agents can create GitHub repositories for new projects.
+> By default, all agent-created repos are **private**. Your global
+> intent store (~/.plastic/) is never pushed — it stays local-only."
+
+Ask the user:
+> "Default visibility for agent-created repos?"
+> - Private (recommended) → set `github.default_visibility: private`
+> - Public → set `github.default_visibility: public`
+
+> "Allow agents to push to GitHub without asking?"
+> - No (recommended) → set `github.auto_push: false`
+> - Yes → set `github.auto_push: true`
+
+Update `config.yml` with chosen values. Auto-commit.
+
 **Step 3: Configure project roots**
 
 Ask the user:
