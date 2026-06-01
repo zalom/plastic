@@ -16,8 +16,47 @@ Run `/plastic:install` with no arguments.
 **Step 1: Check for existing installation**
 
 Check if `~/.plastic/INDEX.md` exists.
-- If yes: announce "Plastic is already installed globally at ~/.plastic/." and offer to check for upgrades (new skills, hooks, config changes).
-- If no: proceed.
+- If yes: run the **Upgrade** procedure (see below).
+- If no: proceed with fresh install.
+
+### Upgrade (when already installed)
+
+When `~/.plastic/` already exists, sync core files without touching user data:
+
+**1. Sync PLASTIC.md** (always overwrite — this is the contract):
+```bash
+cp "${CLAUDE_PLUGIN_ROOT}/PLASTIC.md" ~/.plastic/PLASTIC.md
+```
+
+**2. Sync utility scripts** (always overwrite):
+```bash
+cp "${CLAUDE_PLUGIN_ROOT}/scripts/hash-intent" ~/.plastic/scripts/hash-intent
+cp "${CLAUDE_PLUGIN_ROOT}/scripts/read-config" ~/.plastic/scripts/read-config
+chmod +x ~/.plastic/scripts/hash-intent ~/.plastic/scripts/read-config
+```
+
+**3. Create AGENTS.md if missing** (never overwrite — user-editable):
+```bash
+if [ ! -f ~/.plastic/AGENTS.md ]; then
+  # create the clean starter AGENTS.md (see Step 2 below for content)
+fi
+```
+
+**4. Report what changed:**
+```
+Plastic upgraded.
+- PLASTIC.md: updated to latest conventions
+- Scripts: updated (hash-intent, read-config)
+- AGENTS.md: [created | already exists, preserved]
+- INDEX.md, config.yml, projects.yml, store/: untouched
+```
+
+**5. Auto-commit:**
+```bash
+cd ~/.plastic && git add -A && git commit -m "chore: upgrade Plastic core files"
+```
+
+Never touch: `INDEX.md`, `config.yml`, `projects.yml`, `store/`, `AGENTS.md` (if it exists).
 
 **Step 2: Create ~/.plastic/ as a git repo**
 
