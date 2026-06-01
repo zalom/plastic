@@ -1,17 +1,11 @@
 #!/bin/bash
-# Plastic future-intent-check hook — surfaces relevant future intents
-# when the user's prompt matches intent keywords/tags.
-# Runs on every UserPromptSubmit.
-
 INPUT=$(cat)
 MESSAGE=$(echo "$INPUT" | ruby -rjson -e 'puts JSON.parse(STDIN.read)["user_prompt"].downcase' 2>/dev/null || echo "")
 
-# Skip empty or very short messages
 if [ ${#MESSAGE} -lt 10 ]; then
   exit 0
 fi
 
-# Skip if message is just "continue" (handled by continue hook)
 if echo "$MESSAGE" | grep -qx '\s*continue\s*'; then
   exit 0
 fi
@@ -27,113 +21,5 @@ else
   exit 0
 fi
 
-# macOS ships bash 3.2 — avoid heredocs inside $( ... ).
-# Write Ruby to temp files and pass shell values via ENV.
-PLASTIC_TMP=$(mktemp -d "${TMPDIR:-/tmp}/plastic.XXXXXX")
-trap 'rm -rf "$PLASTIC_TMP"' EXIT
-
-cat > "$PLASTIC_TMP/match.rb" <<'RUBY'
-# encoding: UTF-8
-require "json"
-require "yaml"
-
-store_root = ENV.fetch("STORE_ROOT")
-message    = ENV.fetch("MESSAGE")
-
-index_path = "#{store_root}/INDEX.md"
-exit 0 unless File.exist?(index_path)
-
-lines = File.readlines(index_path)
-future_dirs = []
-section = nil
-
-lines.each do |line|
-  section = :future if line.start_with?("## Future")
-  section = nil if line.start_with?("## ") && !line.start_with?("## Future")
-  next unless section == :future && line.strip.start_with?("- [")
-
-  if line =~ /store\/([\w-]+)\//
-    future_dirs << $1
-  end
-end
-
-exit 0 if future_dirs.empty?
-
-matches = []
-message_words = message.split(/\W+/).reject { |w| w.length < 4 }
-
-future_dirs.each do |dir|
-  intent_path = "#{store_root}/store/#{dir}/intent.md"
-  next unless File.exist?(intent_path)
-
-  content = File.read(intent_path)
-
-  tags = []
-  if content =~ /^tags:\s*\[([^\]]+)\]/
-    tags = $1.split(",").map(&:strip).map(&:downcase)
-  end
-
-  intent_name = ""
-  if content =~ /^intent:\s*["']?(.+?)["']?\s*$/
-    intent_name = $1.downcase
-  end
-
-  intent_id = ""
-  if content =~ /^id:\s*["']?(\d+)["']?\s*$/
-    intent_id = $1
-  end
-
-  keywords = tags + intent_name.split(/\W+/).reject { |w| w.length < 4 }
-  keywords = keywords.map(&:downcase).uniq
-
-  matched_keywords = keywords.select { |kw| message.include?(kw) }
-
-  name_matches = message_words.select { |w| intent_name.include?(w) }
-  matched_keywords = (matched_keywords + name_matches).uniq
-
-  if matched_keywords.length >= 1
-    index_line = lines.find { |l| l.include?(dir) }&.strip || "#{intent_id} — #{intent_name}"
-    matches << {
-      id: intent_id,
-      name: intent_name,
-      keywords: matched_keywords,
-      index_line: index_line
-    }
-  end
-end
-
-if matches.any?
-  puts JSON.generate(matches)
-end
-RUBY
-
-MATCHES=$(STORE_ROOT="$STORE_ROOT" MESSAGE="$MESSAGE" ruby "$PLASTIC_TMP/match.rb" 2>/dev/null)
-
-if [ -z "$MATCHES" ] || [ "$MATCHES" = "null" ]; then
-  exit 0
-fi
-
-cat > "$PLASTIC_TMP/context.rb" <<'RUBY'
-# encoding: UTF-8
-require "json"
-
-matches = JSON.parse(ENV.fetch("MATCHES"))
-parts = []
-parts << "PLASTIC — Future intents related to this message:\n"
-matches.each do |m|
-  parts << "#{m["index_line"]} (matched: #{m["keywords"].join(", ")})"
-end
-parts << "\nConsider asking the user if they want to activate any of these, or note the connection."
-
-context = parts.join("\n")
-
-payload = {
-  "hookSpecificOutput" => {
-    "hookEventName" => "UserPromptSubmit",
-    "additionalContext" => context
-  }
-}
-puts JSON.generate(payload)
-RUBY
-
-MATCHES="$MATCHES" ruby "$PLASTIC_TMP/context.rb"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ruby "$SCRIPT_DIR/../scripts/hook-future-intent-check" "$STORE_ROOT" "$MESSAGE"

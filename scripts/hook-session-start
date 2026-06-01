@@ -1,0 +1,128 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# Usage: hook-session-start <index_path> <store_root> <mode> [plugin_root]
+# Outputs hook JSON for the session-start hook. Exits silently if nothing to show.
+
+require "json"
+require "date"
+require "yaml"
+
+index_path, store_root, mode, plugin_root = ARGV
+exit 0 unless index_path && store_root && mode
+
+# --- Parse INDEX.md ---
+
+lines = File.readlines(index_path)
+active = []
+future = []
+section = nil
+
+lines.each do |line|
+  if line.start_with?("## Active")
+    section = :active
+    next
+  elsif line.start_with?("## Future")
+    section = :future
+    next
+  elsif line.start_with?("## ")
+    section = nil
+    next
+  end
+
+  next unless section && line.strip.start_with?("- [")
+
+  if section == :active
+    active << line.strip
+  elsif section == :future
+    future << line.strip
+  end
+end
+
+# --- Detect stale future intents ---
+
+stale = []
+read_config = if plugin_root && !plugin_root.empty?
+  "#{plugin_root}/scripts/read-config"
+else
+  File.expand_path("~/.plastic/scripts/read-config")
+end
+stale_days = `"#{read_config}" stale_threshold_days`.strip.to_i
+stale_days = 3 if stale_days == 0
+
+future.each do |f|
+  if f =~ /store\/([\w-]+)\//
+    intent_file = "#{store_root}/store/#{$1}/intent.md"
+    next unless File.exist?(intent_file)
+
+    content = File.read(intent_file)
+    if content =~ /^created:\s*['"]?(\d{4}-\d{2}-\d{2})/
+      age = (Date.today - Date.parse($1)).to_i
+      if age >= stale_days
+        name = f[/\[([^\]]+)\]/, 1] || "unknown"
+        stale << { name: name, age: age, entry: f }
+      end
+    end
+  end
+end
+
+# --- Detect current project ---
+
+current_project = nil
+if mode == "global"
+  projects_path = "#{store_root}/projects.yml"
+  if File.exist?(projects_path)
+    projects = YAML.safe_load(File.read(projects_path)) rescue {}
+    cwd = Dir.pwd
+    (projects["projects"] || {}).each do |slug, info|
+      project_path = File.expand_path(info["path"])
+      if cwd.start_with?(project_path)
+        current_project = { "slug" => slug, "parent" => info["parent"], "path" => project_path }
+        break
+      end
+    end
+  end
+end
+
+# --- Early exit if nothing to show ---
+
+exit 0 if active.empty? && stale.empty? && future.empty?
+exit 0 if !active.any? && !stale.any? && future.length == 0
+
+# --- Build context ---
+
+parts = []
+
+if mode == "global"
+  if current_project
+    parts << "PLASTIC — Global store | Project: #{current_project["slug"]} (#{current_project["path"]})\n"
+    parts << "Governing intent: #{current_project["parent"]}\n" if current_project["parent"]
+  else
+    parts << "PLASTIC — Global store loaded from ~/.plastic/\n"
+  end
+else
+  parts << "PLASTIC — Local store loaded from .plastic/\n"
+end
+
+if active.any?
+  parts << "Active intents:\n"
+  active.each { |a| parts << a }
+  parts << ""
+else
+  parts << "No active intents. #{future.length} future intents available.\n"
+end
+
+if stale.any?
+  parts << "\nStale future intents (untouched for days):\n"
+  stale.each do |s|
+    parts << "- #{s[:name]} (#{s[:age]} days) — consider: activate, abandon, or defer to agent"
+  end
+  parts << "\nWhen appropriate, ask the user what to do with stale intents."
+end
+
+payload = {
+  "hookSpecificOutput" => {
+    "hookEventName" => "SessionStart",
+    "additionalContext" => parts.join("\n")
+  }
+}
+puts JSON.generate(payload)

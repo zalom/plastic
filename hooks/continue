@@ -1,5 +1,4 @@
 #!/bin/bash
-
 INPUT=$(cat)
 MESSAGE=$(echo "$INPUT" | ruby -rjson -e 'puts JSON.parse(STDIN.read)["user_prompt"]' 2>/dev/null || echo "")
 
@@ -19,97 +18,12 @@ if echo "$MESSAGE" | grep -iq '\bcontinue\b'; then
     exit 0
   fi
 
-  # macOS ships bash 3.2, whose parser mishandles heredocs nested inside $( ... ).
-  # So we write each Ruby program to a temp file (top-level heredoc, which parses
-  # fine) and execute the file. Shell values are passed via the environment.
-  PLASTIC_TMP=$(mktemp -d "${TMPDIR:-/tmp}/plastic.XXXXXX")
-  trap 'rm -rf "$PLASTIC_TMP"' EXIT
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+  OUTPUT=$(ruby "$SCRIPT_DIR/../scripts/hook-continue" "$INDEX" "$STORE_ROOT" "$MODE" 2>/dev/null)
 
-  cat > "$PLASTIC_TMP/intent.rb" <<'RUBY'
-# encoding: UTF-8
-require "json"
-require "date"
-require "yaml"
-
-index_path = ENV.fetch("INDEX")
-store_root = ENV.fetch("STORE_ROOT")
-mode       = ENV.fetch("MODE")
-cwd        = Dir.pwd
-
-lines = File.readlines(index_path)
-active = []
-future = []
-section = nil
-
-lines.each do |line|
-  if line.start_with?("## Active")
-    section = :active
-    next
-  elsif line.start_with?("## Future")
-    section = :future
-    next
-  elsif line.start_with?("## ")
-    section = nil
-    next
-  end
-
-  next unless section && line.strip.start_with?("- [")
-
-  if section == :active
-    active << line.strip
-  elsif section == :future
-    future << line.strip
-  end
-end
-
-stale = []
-stale_days = 3
-config_path = "#{store_root}/config.yml"
-if File.exist?(config_path)
-  config = YAML.safe_load(File.read(config_path)) rescue {}
-  stale_days = config["stale_threshold_days"] || 3
-end
-
-future.each do |f|
-  if f =~ /store\/([\w-]+)\//
-    dir = "#{store_root}/store/#{$1}"
-    intent_file = "#{dir}/intent.md"
-    next unless File.exist?(intent_file)
-
-    content = File.read(intent_file)
-    if content =~ /^created:\s*['"]?(\d{4}-\d{2}-\d{2})/
-      updated = Date.parse($1)
-      age = (Date.today - updated).to_i
-      if age >= stale_days
-        name = f[/\[([^\]]+)\]/, 1] || "unknown"
-        stale << { entry: f, age: age, name: name }
-      end
-    end
-  end
-end
-
-current_project = nil
-if mode == "global"
-  projects_path = "#{store_root}/projects.yml"
-  if File.exist?(projects_path)
-    projects = YAML.safe_load(File.read(projects_path)) rescue {}
-    (projects["projects"] || {}).each do |slug, info|
-      project_path = File.expand_path(info["path"])
-      if cwd.start_with?(project_path)
-        current_project = { slug: slug, parent: info["parent"], path: project_path }
-        break
-      end
-    end
-  end
-end
-
-result = { active: active, future: future, stale: stale, mode: mode, current_project: current_project }
-puts JSON.generate(result)
-RUBY
-
-  INTENT_DATA=$(INDEX="$INDEX" STORE_ROOT="$STORE_ROOT" MODE="$MODE" ruby "$PLASTIC_TMP/intent.rb" 2>/dev/null)
-
-  if [ -z "$INTENT_DATA" ]; then
+  if [ -n "$OUTPUT" ]; then
+    echo "$OUTPUT"
+  else
     cat <<'HOOKJSON'
 {
   "hookSpecificOutput": {
@@ -118,63 +32,5 @@ RUBY
   }
 }
 HOOKJSON
-    exit 0
   fi
-
-  cat > "$PLASTIC_TMP/context.rb" <<'RUBY'
-# encoding: UTF-8
-require "json"
-
-data = JSON.parse(ENV.fetch("INTENT_DATA"))
-parts = []
-mode = data["mode"]
-project = data["current_project"]
-
-parts << "PLASTIC CONTINUE — The user wants to resume work.\n"
-
-if mode == "global" && project
-  parts << "Project: #{project["slug"]} (#{project["path"]})\n"
-  parts << "Governing intent: #{project["parent"]}\n" if project["parent"]
-end
-
-if data["active"].any?
-  parts << "## Active Intents (work on these first)\n"
-  data["active"].each { |a| parts << a }
-  parts << ""
-else
-  parts << "## No Active Intents\n"
-end
-
-if data["future"].any?
-  parts << "## Future Intents (offer as next work)\n"
-  data["future"].each { |f| parts << f }
-  parts << ""
-end
-
-if data["stale"].any?
-  parts << "## Stale Future Intents\n"
-  parts << "These future intents have not been actioned. Ask the user what to do with each:\n"
-  data["stale"].each do |s|
-    parts << "- #{s["name"]} (#{s["age"]} days old) — options: activate, abandon, or defer to agent (implement / research / ideate)"
-  end
-  parts << ""
-end
-
-parts << "Follow the plastic:continuing skill workflow.\n"
-parts << "1. If active intents exist: read their state and resume\n"
-parts << "2. If no active intents: present future intents as options\n"
-parts << "3. If stale intents exist: surface them and ask user to decide"
-
-context = parts.join("\n")
-
-payload = {
-  "hookSpecificOutput" => {
-    "hookEventName" => "UserPromptSubmit",
-    "additionalContext" => context
-  }
-}
-puts JSON.generate(payload)
-RUBY
-
-  INTENT_DATA="$INTENT_DATA" ruby "$PLASTIC_TMP/context.rb"
 fi
