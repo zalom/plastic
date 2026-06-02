@@ -1,6 +1,6 @@
 {
   "name": "plastic",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "Intent-driven state management for AI coding sessions",
   "type": "module"
 }
