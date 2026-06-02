@@ -14,11 +14,11 @@ tags: [{{TAGS}}]
 ## Context
 (why this intent exists — background, then ### Decisions after brainstorming)
 
-## Insights
-(observations captured throughout — raw material for future intents)
-
 ## Outcome
 (the result — implementation details, deliverables)
+
+## Insights
+(observations captured throughout — raw material for future intents)
 
 ## Links
 - (use [[NNN-HASH]] wikilinks to related intents)

@@ -6,6 +6,7 @@
 require "json"
 require "date"
 require "yaml"
+require_relative "lib/bridge"
 
 index_path, store_root, mode, plugin_root = ARGV
 exit 0 unless index_path && store_root && mode
@@ -36,6 +37,18 @@ lines.each do |line|
   elsif section == :future
     future << line.strip
   end
+end
+
+# --- Derive bridge for active intent ---
+
+bridge_data = nil
+if active.length == 1 && active.first =~ /store\/([\w-]+)\//
+  dir_name = $1
+  intent_dir = "#{store_root}/store/#{dir_name}"
+  session = ENV["CLAUDE_SESSION_ID"] || Process.pid.to_s
+  intent_id = dir_name
+  intent_name = active.first[/\[([^\]]+)\]/, 1] || "unknown"
+  bridge_data = Bridge.derive(session, intent_id: intent_id, intent_dir: intent_dir, store: store_root, name: intent_name)
 end
 
 # --- Detect stale future intents ---
@@ -106,6 +119,12 @@ end
 if active.any?
   parts << "Active intents:\n"
   active.each { |a| parts << a }
+  if bridge_data
+    stage = bridge_data["build"]["stage"]
+    missing = bridge_data["build"]["missing"]
+    missing_str = missing.empty? ? "none" : missing.join(", ")
+    parts << "Stage: #{stage} | Next: #{missing_str}"
+  end
   parts << ""
 else
   parts << "No active intents. #{future.length} future intents available.\n"

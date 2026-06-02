@@ -1,0 +1,136 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# Usage: hook-gate-check <file_path>
+# PostToolUse gate enforcement for Plastic intent lifecycle.
+# Checks if a written file triggers a stage-transition gate.
+# Exit 0 = allow (optionally with transition context)
+# Exit 2 = block (gate violation)
+
+require "json"
+require_relative "lib/bridge"
+
+file_path = ARGV[0]
+exit 0 unless file_path && !file_path.empty?
+
+# --- Find bridge file ---
+
+session = ENV["CLAUDE_SESSION_ID"]
+bridge_path = nil
+bridge_data = nil
+
+if session && !session.empty?
+  bridge_path = Bridge.path(session)
+  bridge_data = Bridge.read(session) if File.exist?(bridge_path)
+end
+
+# Fallback: scan /tmp for most recent plastic bridge file
+unless bridge_data
+  candidates = Dir.glob("/tmp/plastic-*.json").reject { |f| f.end_with?(".tmp") }
+  if candidates.any?
+    bridge_path = candidates.max_by { |f| File.mtime(f) }
+    raw = JSON.parse(File.read(bridge_path)) rescue nil
+    if raw
+      session = raw["session"]
+      bridge_data = raw
+    end
+  end
+end
+
+# No bridge = no active intent = no enforcement
+exit 0 unless bridge_data && session
+
+# --- Resolve intent directory ---
+
+intent_info = bridge_data["intent"]
+exit 0 unless intent_info
+
+store = intent_info["store"]
+dir = intent_info["dir"]
+intent_dir = "#{store}/#{dir}"
+
+# Normalize both paths for comparison
+intent_dir_abs = File.expand_path(intent_dir)
+file_path_abs = File.expand_path(file_path)
+
+# Not inside intent dir = not our business
+exit 0 unless file_path_abs.start_with?("#{intent_dir_abs}/")
+
+# --- Determine if this is a stage-transition file ---
+
+relative = file_path_abs.sub("#{intent_dir_abs}/", "")
+basename = File.basename(file_path)
+
+stage_files = %w[spec.md plan.md checklist.md outcome.md]
+is_stage_file = stage_files.include?(basename)
+is_action_file = relative.start_with?("actions/")
+
+if is_stage_file || is_action_file
+  # Run gate check
+  error = Bridge.check_gate(intent_dir_abs, file_path_abs)
+
+  if error
+    # Gate violation — block the write
+    bridge_data["build"]["gate_failures"] = (bridge_data["build"]["gate_failures"] || 0) + 1
+    Bridge.write(session, bridge_data)
+
+    payload = {
+      "decision" => "block",
+      "reason" => "PLASTIC GATE — #{error}"
+    }
+    puts JSON.generate(payload)
+    exit 2
+  end
+
+  # Gate passed — update bridge with new stage
+  old_stage = bridge_data["build"]["stage"]
+  new_stage = Bridge.derive_stage(intent_dir_abs)
+  new_missing = Bridge.missing_for_stage(new_stage) - Bridge.has_files(intent_dir_abs)
+
+  bridge_data["build"]["stage"] = new_stage
+  bridge_data["build"]["has"] = Bridge.has_files(intent_dir_abs)
+  bridge_data["build"]["missing"] = new_missing
+  bridge_data["build"]["gate_failures"] = 0
+  bridge_data["build"]["last_activity"] = Time.now.utc.iso8601
+
+  if old_stage != new_stage
+    bridge_data["observe"]["last_transition"] = "#{old_stage} → #{new_stage}"
+  end
+
+  Bridge.write(session, bridge_data)
+
+  # Build transition context
+  stage_labels = { "what" => "What", "why" => "Why", "how" => "How", "exec" => "Exec", "done" => "Done" }
+  next_hints = {
+    "why" => "write spec.md",
+    "how" => "write plan.md, create actions/, write checklist.md",
+    "exec" => "complete checklist items, write outcome.md",
+    "done" => "intent complete"
+  }
+
+  context_parts = ["PLASTIC"]
+  if old_stage != new_stage
+    context_parts[0] = "PLASTIC — Stage transition: #{stage_labels[old_stage] || old_stage} → #{stage_labels[new_stage] || new_stage}."
+  else
+    context_parts[0] = "PLASTIC — #{basename} written (stage: #{stage_labels[new_stage] || new_stage})."
+  end
+  context_parts << "#{basename} written."  if old_stage != new_stage
+  if new_missing.any?
+    context_parts << "Next: #{new_missing.join(", ")}"
+  elsif next_hints[new_stage]
+    context_parts << "Next: #{next_hints[new_stage]}"
+  end
+
+  payload = {
+    "hookSpecificOutput" => {
+      "hookEventName" => "PostToolUse",
+      "additionalContext" => context_parts.join(" ")
+    }
+  }
+  puts JSON.generate(payload)
+  exit 0
+else
+  # Regular file in intent dir — just update last_activity
+  bridge_data["build"]["last_activity"] = Time.now.utc.iso8601
+  Bridge.write(session, bridge_data)
+  exit 0
+end
