@@ -37,7 +37,8 @@ matches = []
 message_words = message.split(/\W+/).reject { |w| w.length < 4 }
 
 future_dirs.each do |dir|
-  intent_path = "#{store_root}/store/#{dir}/intent.md"
+  folgezettel_id = dir.split("--").first
+  intent_path = "#{store_root}/store/#{dir}/#{folgezettel_id}.md"
   next unless File.exist?(intent_path)
 
   content = File.read(intent_path)
@@ -53,7 +54,7 @@ future_dirs.each do |dir|
   end
 
   intent_id = ""
-  if content =~ /^id:\s*["']?(\d+)["']?\s*$/
+  if content =~ /^id:\s*["']?([a-z0-9]+)["']?\s*$/
     intent_id = $1
   end
 
