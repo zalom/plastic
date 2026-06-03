@@ -1,0 +1,535 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# Migrate a Plastic store from NNN-HASH naming to Folgezettel naming.
+#
+# Usage:
+#   migrate-folgezettel <store_root> [--dry-run]
+#
+# Phases:
+#   1. Read all intents, parse frontmatter
+#   2. Build knowledge graph from sources/chain
+#   3. Assign Folgezettel IDs via DFS traversal
+#   4. Update markdown file contents (frontmatter + wikilinks)
+#   5. Rename intent.md -> {ID}.md inside each directory
+#   6. Rename directories from NNN--slug-HASH -> ID--slug
+#   7. Rewrite INDEX.md paths and display text
+#   8. Update projects.yml parent references
+
+require "yaml"
+require "fileutils"
+
+# --- Intent data structure ---
+
+Intent = Struct.new(
+  :old_id,         # e.g. "001"
+  :old_id_unpadded, # e.g. "1"
+  :dir_name,       # e.g. "001--research-reddit-saved-posts-3k8gyi"
+  :hash_suffix,    # e.g. "3k8gyi"
+  :slug,           # e.g. "research-reddit-saved-posts"
+  :title,          # from frontmatter intent field
+  :sources,        # array of old_id strings (padded to 3)
+  :chain,          # array of old_id strings (padded to 3)
+  :created,        # date string
+  :folgezettel_id, # assigned Folgezettel ID
+  :raw_frontmatter, # original frontmatter text
+  keyword_init: true
+)
+
+# --- Helpers ---
+
+def pad3(id)
+  id.to_s.rjust(3, "0")
+end
+
+def unpad(id)
+  id.to_s.sub(/\A0+/, "").then { |s| s.empty? ? "0" : s }
+end
+
+def parse_id_list(value)
+  return [] if value.nil?
+  return [] if value.is_a?(Array) && value.empty?
+
+  if value.is_a?(Array)
+    value.map { |v| pad3(v.to_s.delete("'\"").strip) }
+  elsif value.is_a?(String)
+    value.strip.delete("'\"").split(",").map { |v| pad3(v.strip) }
+  else
+    []
+  end
+end
+
+def parse_frontmatter(text)
+  return [{}, text] unless text.start_with?("---")
+
+  parts = text.split(/^---\s*$/, 3)
+  return [{}, text] if parts.length < 3
+
+  fm_text = parts[1]
+  body = "---\n#{fm_text}---#{parts[2]}"
+
+  begin
+    data = YAML.safe_load(fm_text, permitted_classes: [Date]) || {}
+  rescue => e
+    $stderr.puts "  YAML parse warning: #{e.message}"
+    data = {}
+  end
+
+  [data, fm_text]
+end
+
+def parse_dir_name(dir_name)
+  # Format: NNN--slug-HASH
+  # e.g. 001--research-reddit-saved-posts-3k8gyi
+  match = dir_name.match(/\A(\d+)--(.+)\z/)
+  return nil unless match
+
+  nnn = match[1]
+  rest = match[2]
+
+  # Split slug from hash: last 6 alphanumeric chars after final hyphen
+  slug_hash_match = rest.match(/\A(.+)-([a-z0-9]{6})\z/)
+  return nil unless slug_hash_match
+
+  slug = slug_hash_match[1]
+  hash_suffix = slug_hash_match[2]
+
+  { nnn: nnn, slug: slug, hash: hash_suffix }
+end
+
+# --- Phase 1: Read all intents ---
+
+def read_intents(store_path)
+  intents = {}
+
+  Dir.glob("#{store_path}/*--*").sort.each do |dir|
+    dir_name = File.basename(dir)
+    intent_file = File.join(dir, "intent.md")
+    next unless File.exist?(intent_file)
+
+    parsed = parse_dir_name(dir_name)
+    next unless parsed
+
+    text = File.read(intent_file)
+    data, fm_text = parse_frontmatter(text)
+
+    old_id = pad3(data["id"].to_s.delete("'\"").strip)
+
+    intent = Intent.new(
+      old_id: old_id,
+      old_id_unpadded: unpad(old_id),
+      dir_name: dir_name,
+      hash_suffix: parsed[:hash],
+      slug: parsed[:slug],
+      title: (data["intent"] || "").to_s.split(" — ").first.split("—").first.strip,
+      sources: parse_id_list(data["sources"]),
+      chain: parse_id_list(data["chain"]),
+      created: data["created"].to_s,
+      folgezettel_id: nil,
+      raw_frontmatter: fm_text
+    )
+
+    intents[old_id] = intent
+  end
+
+  intents
+end
+
+# --- Phase 2 & 3: Build graph and assign Folgezettel IDs ---
+
+def assign_folgezettel_ids(intents)
+  # Build parent->children map using sources (reverse: source is parent)
+  children_of = Hash.new { |h, k| h[k] = [] }
+
+  intents.each_value do |intent|
+    if intent.sources.empty? || intent.sources.none? { |s| intents.key?(s) }
+      # Root intent — no parent in store
+    else
+      # Primary parent is FIRST source that exists in store
+      primary_parent = intent.sources.find { |s| intents.key?(s) }
+      children_of[primary_parent] << intent.old_id if primary_parent
+    end
+  end
+
+  # Sort children by creation date
+  children_of.each do |parent_id, child_ids|
+    children_of[parent_id] = child_ids.sort_by { |cid| intents[cid].created }
+  end
+
+  # Find roots: intents with no sources or no source in store
+  roots = intents.values.select do |intent|
+    intent.sources.empty? || intent.sources.none? { |s| intents.key?(s) }
+  end.sort_by(&:created)
+
+  # DFS assignment
+  assigned = {}
+  root_counter = 0
+
+  assign_children = lambda do |parent_fz_id, parent_old_id|
+    kids = children_of[parent_old_id] || []
+    return if kids.empty?
+
+    # Determine if children get letters or digits
+    use_letter = parent_fz_id[-1].match?(/\d/)
+
+    kids.each_with_index do |child_id, idx|
+      next if assigned[child_id] # skip if already assigned
+
+      if use_letter
+        suffix = ("a".ord + idx).chr
+      else
+        suffix = (idx + 1).to_s
+      end
+
+      fz_id = "#{parent_fz_id}#{suffix}"
+      intents[child_id].folgezettel_id = fz_id
+      assigned[child_id] = true
+
+      # Recurse
+      assign_children.call(fz_id, child_id)
+    end
+  end
+
+  roots.each do |intent|
+    root_counter += 1
+    fz_id = root_counter.to_s
+    intent.folgezettel_id = fz_id
+    assigned[intent.old_id] = true
+
+    assign_children.call(fz_id, intent.old_id)
+  end
+
+  # Check for unassigned (orphans that somehow weren't caught as roots)
+  intents.each_value do |intent|
+    unless assigned[intent.old_id]
+      root_counter += 1
+      intent.folgezettel_id = root_counter.to_s
+      assigned[intent.old_id] = true
+      $stderr.puts "  Warning: orphan intent #{intent.old_id} assigned root #{intent.folgezettel_id}"
+      assign_children.call(intent.folgezettel_id, intent.old_id)
+    end
+  end
+end
+
+# --- Build mapping tables ---
+
+def build_mappings(intents)
+  # old_id (padded) -> folgezettel_id
+  id_map = {}
+  # old_dir_name -> new_dir_name
+  dir_map = {}
+  # old_id_unpadded-hash -> folgezettel_id (for wikilinks)
+  wikilink_map = {}
+
+  intents.each_value do |intent|
+    id_map[intent.old_id] = intent.folgezettel_id
+    id_map[intent.old_id_unpadded] = intent.folgezettel_id
+
+    new_dir = "#{intent.folgezettel_id}--#{intent.slug}"
+    dir_map[intent.dir_name] = new_dir
+
+    # Wikilinks use unpadded: e.g. "6-2yv12k" or "32-3f73ef"
+    wikilink_key = "#{intent.old_id_unpadded}-#{intent.hash_suffix}"
+    wikilink_map[wikilink_key] = intent.folgezettel_id
+  end
+
+  { id_map: id_map, dir_map: dir_map, wikilink_map: wikilink_map }
+end
+
+# --- Phase 4: Update file contents ---
+
+def update_file_contents(store_path, intents, mappings, dry_run:)
+  wikilink_map = mappings[:wikilink_map]
+  id_map = mappings[:id_map]
+
+  intents.each_value do |intent|
+    dir = File.join(store_path, intent.dir_name)
+
+    Dir.glob("#{dir}/**/*.md").each do |md_file|
+      text = File.read(md_file)
+      updated = text.dup
+
+      # Replace wikilinks: [[NNN-HASH]] -> [[folgezettel_id]]
+      # Also handles [[NNN-HASH|display text]] and [[global:NNN-HASH]]
+      updated.gsub!(/\[\[(global:)?(\d+-[a-z0-9]{5,6})(\|[^\]]+)?\]\]/) do |match|
+        prefix = $1 || ""
+        old_ref = $2
+        display = $3 || ""
+
+        new_id = wikilink_map[old_ref]
+        if new_id
+          "[[#{prefix}#{new_id}#{display}]]"
+        else
+          match # leave unchanged if not found
+        end
+      end
+
+      # Replace frontmatter id field
+      updated.gsub!(/^(id:\s*)['"]?\d{1,3}['"]?\s*$/) do |match|
+        "#{$1}'#{intent.folgezettel_id}'"
+      end
+
+      # Replace source/chain references in frontmatter
+      # Handle both inline and block styles
+      updated.gsub!(/^(\s*-\s*)['"]?(\d{1,3})['"]?\s*$/) do |match|
+        ref_id = pad3($2)
+        new_id = id_map[ref_id]
+        if new_id
+          "#{$1}'#{new_id}'"
+        else
+          match
+        end
+      end
+
+      if updated != text
+        if dry_run
+          puts "  Would update: #{md_file}"
+        else
+          File.write(md_file, updated)
+          puts "  Updated: #{md_file}"
+        end
+      end
+    end
+  end
+end
+
+# --- Phase 5: Rename intent.md -> {ID}.md ---
+
+def rename_intent_files(store_path, intents, dry_run:)
+  intents.each_value do |intent|
+    dir = File.join(store_path, intent.dir_name)
+    old_file = File.join(dir, "intent.md")
+    new_file = File.join(dir, "#{intent.folgezettel_id}.md")
+
+    next unless File.exist?(old_file)
+
+    if dry_run
+      puts "  Would rename: intent.md -> #{intent.folgezettel_id}.md (in #{intent.dir_name})"
+    else
+      File.rename(old_file, new_file)
+      puts "  Renamed: intent.md -> #{intent.folgezettel_id}.md (in #{intent.dir_name})"
+    end
+  end
+end
+
+# --- Phase 6: Rename directories ---
+
+def rename_directories(store_path, intents, mappings, dry_run:)
+  dir_map = mappings[:dir_map]
+
+  # Sort by path length descending to avoid conflicts
+  sorted = intents.values.sort_by { |i| -i.dir_name.length }
+
+  sorted.each do |intent|
+    old_dir = File.join(store_path, intent.dir_name)
+    new_dir_name = dir_map[intent.dir_name]
+    new_dir = File.join(store_path, new_dir_name)
+
+    next unless Dir.exist?(old_dir)
+
+    if dry_run
+      puts "  Would rename dir: #{intent.dir_name} -> #{new_dir_name}"
+    else
+      File.rename(old_dir, new_dir)
+      puts "  Renamed dir: #{intent.dir_name} -> #{new_dir_name}"
+    end
+  end
+end
+
+# --- Phase 7: Rewrite INDEX.md ---
+
+def rewrite_index(store_root, intents, mappings, dry_run:)
+  index_path = File.join(store_root, "INDEX.md")
+  return unless File.exist?(index_path)
+
+  text = File.read(index_path)
+  updated = text.dup
+
+  id_map = mappings[:id_map]
+  dir_map = mappings[:dir_map]
+
+  # Replace store paths: store/OLD_DIR/intent.md -> store/NEW_DIR/ID.md
+  dir_map.each do |old_dir, new_dir|
+    intent = intents.values.find { |i| i.dir_name == old_dir }
+    next unless intent
+
+    updated.gsub!("store/#{old_dir}/intent.md", "store/#{new_dir}/#{intent.folgezettel_id}.md")
+  end
+
+  # Replace display text in links: [NNN — -> [folgezettel_id —
+  intents.each_value do |intent|
+    # Match [001 — or [1 — patterns
+    updated.gsub!(/\[#{Regexp.escape(intent.old_id_unpadded.rjust(3, "0"))} —/, "[#{intent.folgezettel_id} —")
+    # Also handle unpadded if different
+    if intent.old_id_unpadded != intent.old_id
+      updated.gsub!(/\[#{Regexp.escape(intent.old_id_unpadded)} —/, "[#{intent.folgezettel_id} —")
+    end
+  end
+
+  # Replace "from: NNN+NNN" annotations
+  updated.gsub!(/from:\s*(\d{1,3})\+(\d{1,3})/) do
+    id1 = id_map[pad3($1)] || id_map[$1] || $1
+    id2 = id_map[pad3($2)] || id_map[$2] || $2
+    "from: #{id1}+#{id2}"
+  end
+
+  # Replace "from: NNN," (single source)
+  updated.gsub!(/from:\s*(\d{1,3})(?=[,\s])/) do
+    new_id = id_map[pad3($1)] || id_map[$1] || $1
+    "from: #{new_id}"
+  end
+
+  # Replace "after: NNN" annotations
+  updated.gsub!(/after:\s*(\d{1,3})/) do
+    new_id = id_map[pad3($1)] || id_map[$1] || $1
+    "after: #{new_id}"
+  end
+
+  # Replace "superseded by NNN"
+  updated.gsub!(/superseded by (\d{1,3})/) do
+    new_id = id_map[pad3($1)] || id_map[$1] || $1
+    "superseded by #{new_id}"
+  end
+
+  # Replace "→ NNN)" pattern (like "abandoned → 032")
+  updated.gsub!(/→\s*(\d{1,3})\)/) do
+    new_id = id_map[pad3($1)] || id_map[$1] || $1
+    "→ #{new_id})"
+  end
+
+  if updated != text
+    if dry_run
+      puts "  Would update INDEX.md"
+      # Show the diff
+      text.lines.zip(updated.lines).each_with_index do |(old_line, new_line), idx|
+        if old_line != new_line
+          puts "    L#{idx + 1}: #{old_line&.chomp}"
+          puts "    =>  #{new_line&.chomp}"
+        end
+      end
+    else
+      File.write(index_path, updated)
+      puts "  Updated INDEX.md"
+    end
+  end
+end
+
+# --- Phase 8: Update projects.yml ---
+
+def update_projects_yml(store_root, mappings, dry_run:)
+  projects_path = File.join(store_root, "projects.yml")
+  return unless File.exist?(projects_path)
+
+  text = File.read(projects_path)
+  updated = text.dup
+  id_map = mappings[:id_map]
+
+  # Replace parent: 'NNN' references
+  updated.gsub!(/^(\s*parent:\s*)['"](\d{1,3})['"]\s*$/) do
+    prefix = $1
+    old_id = $2
+    new_id = id_map[pad3(old_id)] || id_map[old_id] || old_id
+    "#{prefix}'#{new_id}'"
+  end
+
+  if updated != text
+    if dry_run
+      puts "  Would update projects.yml"
+      puts "    #{text.lines.find { |l| l.include?("parent:") && l.include?("'") }&.chomp}"
+      puts "    => #{updated.lines.find { |l| l.include?("parent:") && l.include?("'") }&.chomp}"
+    else
+      File.write(projects_path, updated)
+      puts "  Updated projects.yml"
+    end
+  end
+end
+
+# --- Main ---
+
+def main
+  store_root = ARGV[0]
+  dry_run = ARGV.include?("--dry-run")
+
+  unless store_root && Dir.exist?(store_root)
+    $stderr.puts "Usage: migrate-folgezettel <store_root> [--dry-run]"
+    $stderr.puts "  store_root: path to Plastic root (e.g., ~/.plastic)"
+    exit 1
+  end
+
+  store_path = File.join(store_root, "store")
+
+  unless Dir.exist?(store_path)
+    $stderr.puts "Error: #{store_path} does not exist"
+    exit 1
+  end
+
+  puts "Plastic Folgezettel Migration"
+  puts "Store: #{store_root}"
+  puts "Mode: #{dry_run ? 'DRY RUN' : 'LIVE'}"
+  puts
+
+  # Phase 1: Read intents
+  puts "Phase 1: Reading intents..."
+  intents = read_intents(store_path)
+  puts "  Found #{intents.size} intents"
+  puts
+
+  # Phase 2 & 3: Assign Folgezettel IDs
+  puts "Phase 2-3: Building graph and assigning Folgezettel IDs..."
+  assign_folgezettel_ids(intents)
+
+  # Display mapping
+  puts
+  puts "Mapping (#{intents.size} intents):"
+  puts "-" * 60
+  puts format("%-6s %-10s %s", "OLD", "NEW", "TITLE")
+  puts "-" * 60
+
+  intents.values.sort_by { |i| i.folgezettel_id.chars.map { |c| c.match?(/\d/) ? [0, c.to_i] : [1, c.ord] }.flatten }.each do |intent|
+    puts format("%-6s %-10s %s", intent.old_id, intent.folgezettel_id, intent.title[0..50])
+  end
+  puts
+
+  # Build mappings
+  mappings = build_mappings(intents)
+
+  if dry_run
+    puts "DRY RUN — no changes will be made."
+    puts
+    puts "Phase 4: File content updates..."
+    update_file_contents(store_path, intents, mappings, dry_run: true)
+    puts
+    puts "Phase 5: Intent file renames..."
+    rename_intent_files(store_path, intents, dry_run: true)
+    puts
+    puts "Phase 6: Directory renames..."
+    rename_directories(store_path, intents, mappings, dry_run: true)
+    puts
+    puts "Phase 7: INDEX.md updates..."
+    rewrite_index(store_root, intents, mappings, dry_run: true)
+    puts
+    puts "Phase 8: projects.yml updates..."
+    update_projects_yml(store_root, mappings, dry_run: true)
+  else
+    puts "Phase 4: Updating file contents..."
+    update_file_contents(store_path, intents, mappings, dry_run: false)
+    puts
+    puts "Phase 5: Renaming intent files..."
+    rename_intent_files(store_path, intents, dry_run: false)
+    puts
+    puts "Phase 6: Renaming directories..."
+    rename_directories(store_path, intents, mappings, dry_run: false)
+    puts
+    puts "Phase 7: Rewriting INDEX.md..."
+    rewrite_index(store_root, intents, mappings, dry_run: false)
+    puts
+    puts "Phase 8: Updating projects.yml..."
+    update_projects_yml(store_root, mappings, dry_run: false)
+  end
+
+  puts
+  puts "Done."
+end
+
+main
