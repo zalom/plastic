@@ -229,9 +229,9 @@ def build_mappings(intents)
     new_dir = "#{intent.folgezettel_id}--#{intent.slug}"
     dir_map[intent.dir_name] = new_dir
 
-    # Wikilinks use unpadded: e.g. "6-2yv12k" or "32-3f73ef"
-    wikilink_key = "#{intent.old_id_unpadded}-#{intent.hash_suffix}"
-    wikilink_map[wikilink_key] = intent.folgezettel_id
+    # Wikilinks may use padded or unpadded: "006-2yv12k" or "6-2yv12k"
+    wikilink_map["#{intent.old_id_unpadded}-#{intent.hash_suffix}"] = intent.folgezettel_id
+    wikilink_map["#{intent.old_id}-#{intent.hash_suffix}"] = intent.folgezettel_id
   end
 
   { id_map: id_map, dir_map: dir_map, wikilink_map: wikilink_map }
