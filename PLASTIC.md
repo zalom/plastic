@@ -7,13 +7,14 @@
 
 ## What is an Intent
 
-An intent is a directory in the store containing `intent.md` and optional supporting files.
+An intent is a directory in the store containing `{ID}.md` and optional supporting files.
 It represents a desire — something a human or agent wants to accomplish, explore, or understand.
+Intents are atomic thoughts that need to be developed.
 
 ```
 store/
-  NNN--three-to-five-words-XXXXXX/
-    intent.md          # required — the intent itself
+  ID--three-to-five-words/
+    {ID}.md            # required — the intent itself (e.g., 1a1.md)
     spec.md            # optional — consolidated specification (Why deliverable)
     plan.md            # optional — implementation plan (How deliverable)
     checklist.md       # optional — execution registry with checkboxes (How deliverable)
@@ -29,10 +30,10 @@ Identity and knowledge graph only. Nothing operational.
 
 ```yaml
 ---
-id: "032"
+id: "4a1"
 intent: "Short description of the desire"
-sources: ["031"]       # backward links — what influenced this intent's creation
-chain: ["033", "034"]  # forward links — what this intent spawned
+sources: ["4a"]        # backward links — what influenced this intent's creation
+chain: ["4a1a", "4a1b"] # forward links — what this intent spawned
 created: 2026-05-29
 author: human          # human | agent-name
 tags: [plastic, architecture]
@@ -42,6 +43,7 @@ tags: [plastic, architecture]
 - `sources` and `chain` form the double-linked knowledge graph
 - `sources` = what fed into this intent (parents, inspirations, prerequisites)
 - `chain` = what this intent produced (children, follow-ups, spin-offs)
+- IDs use Folgezettel format — the same identifier used in wikilinks and filenames
 - No other fields. Everything else is derived from conventions.
 
 ## Two Processes
@@ -71,7 +73,7 @@ Every intent progresses through four stages. Each stage has a deliverable.
 The desire. One paragraph. What the human or agent wants.
 This exists from the moment the intent is created.
 
-**Deliverable:** `intent.md`
+**Deliverable:** `{ID}.md`
 
 ### Why → `## Context` + `### Decisions` sections
 
@@ -116,25 +118,21 @@ State is derived from what exists, not from what's declared.
 
 | Convention | Signal |
 |---|---|
-| `## Context` has content | Intent is permanent (not fleeting) |
-| `actions/` directory exists | Intent is actionable |
-| `spec.md` exists | Why phase complete |
-| `plan.md` + `actions/` + `checklist.md` exist | How phase complete |
-| `outcome.md` exists | Intent is done |
-| No `## Context` | Intent is fleeting (quick capture, not yet developed) |
-| No `actions/` | Intent is non-actionable (research, exploration, idea) |
+| No `## Context` | Intent is fleeting (quick capture, non-actionable) |
+| `## Context` has content | Intent is permanent (developed, actionable) |
+| `## Outcome` has content | Intent is done |
 
 ### Transitions
 
-- Fleeting → permanent: add `## Context` (one-way)
-- Non-actionable → actionable: create `actions/` directory (one-way)
-- Fleeting intents cannot be actionable — develop the Why before the How
+- Fleeting → permanent: add `## Context` (one-way, also makes it actionable)
+- There is no separate "non-actionable → actionable" transition — permanence implies actionability
+- Even research intents are actionable: the research itself is the action, the conclusion is the outcome
 
 ### Actions
 
-When an intent becomes actionable, create `actions/` with:
-- `ACTION_N.md` — individual work items
-- `CHECKLIST.md` — execution registry tracking progress
+When an intent becomes permanent, it is actionable. Create `actions/` with:
+- `ACTION_N.md` — individual work items, each self-contained with all resources and context from plan.md
+- `CHECKLIST.md` — execution registry tracking progress; serves as the savepoint of execution
 
 Status lives on actions, not on the intent. An intent can have multiple
 parallel workstreams.
@@ -150,8 +148,8 @@ Global mode (default):
 ├── projects.yml                          # Project slug → path registry
 ├── INDEX.md                              # Brain's entry point
 └── store/
-    └── NNN--three-to-five-words-XXXXXX/  # One directory per strategic intent
-        ├── intent.md                     # The intent (always present)
+    └── ID--three-to-five-words/          # One directory per strategic intent
+        ├── {ID}.md                       # The intent (always present, e.g., 1a1.md)
         ├── spec.md                       # Consolidated specification (optional — Why deliverable)
         ├── plan.md                       # Implementation plan (optional — How deliverable)
         ├── checklist.md                  # Execution registry with checkboxes (optional — How deliverable)
@@ -175,24 +173,40 @@ Legacy per-project mode (fallback when no global install exists):
 ├── config.yml
 ├── INDEX.md
 └── store/
-    └── NNN--three-to-five-words-XXXXXX/
+    └── ID--three-to-five-words/
         └── ...
 ```
 
-### Directory Naming
+### Directory Naming — Folgezettel
 
-Format: `NNN--three-to-five-words-XXXXXX` — applies to all stores.
-- `NNN` — zero-padded sequential number (scoped within its store)
+Format: `ID--three-to-five-words` — applies to all stores.
+- `ID` — Folgezettel identifier using Luhmann's alternating convention
+- `--` — separator
 - `three-to-five-words` — human-readable slug (3-5 words max)
-- `XXXXXX` — 6-char deterministic hash (SHA-256 → base36, Ruby stdlib)
+
+Folgezettel IDs encode lineage:
+- Root intents: sequential numbers (`1`, `2`, `3`...)
+- Branches alternate letters and numbers: `1` → `1a` → `1a1` → `1a1a` → ...
+- Multiple branches from the same parent increment: `1a`, `1b`, `1c` or `1a1`, `1a2`, `1a3`
+- IDs are assigned at creation time and never change
+
+### Intent Filename
+
+The intent file is named `{ID}.md` — the Folgezettel ID with `.md` extension.
+This makes `[[ID]]` wikilinks resolve directly in Obsidian.
+
+Examples:
+- Directory `1a1--design-plastic-state-system/` contains `1a1.md`
+- Directory `4a1b--lifecycle-file-mapping/` contains `4a1b.md`
 
 ### Wikilink Conventions
 
 | Syntax | Meaning |
 |--------|---------|
-| `[[NNN-HASH]]` | Link to intent in same store |
-| `[[global:NNN-HASH]]` | Link to intent in `~/.plastic/store/` |
-| `[[project-slug:NNN-HASH]]` | Link to intent in a project's `.plastic/store/` |
+| `[[ID]]` | Link to intent in same store (e.g., `[[1a1]]`) |
+| `[[ID\|display text]]` | Link with human-readable label (e.g., `[[1a1\|Design Plastic]]`) |
+| `[[global:ID]]` | Link to intent in `~/.plastic/store/` |
+| `[[project-slug:ID]]` | Link to intent in a project's `.plastic/store/` |
 
 ### Authorship
 
@@ -208,13 +222,12 @@ Sections: `## Active`, `## Future`, `## Clusters`, `## Abandoned`, `## Completed
 ## Creating an Intent
 
 1. Determine the target store: `~/.plastic/store/` for strategic intents (default), `<project>/.plastic/store/` for project-tactical intents
-2. Scan the target store directory for the next sequential ID
-3. Generate hash: `"${CLAUDE_PLUGIN_ROOT}/scripts/hash-intent" "intent name"`
-4. Create the intent directory in the chosen store
-5. Create `intent.md` with frontmatter (id, intent, sources, chain, created, author, tags)
-6. Write `## Intent` — the What
-7. Add remaining sections: `## Context`, `## Outcome`, `## Insights`, `## Links`
-8. Update the appropriate `INDEX.md` — add to Active section and appropriate cluster
+2. Determine the Folgezettel ID: If root (no parent), find highest root number +1. If branch, run `"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" <parent_id> <store_path>`
+3. Create the intent directory in the chosen store (e.g., `ID--three-to-five-words`)
+4. Create `{ID}.md` with frontmatter (id, intent, sources, chain, created, author, tags)
+5. Write `## Intent` — the What
+6. Add remaining sections: `## Context`, `## Outcome`, `## Insights`, `## Links`
+7. Update the appropriate `INDEX.md` — add to Active section and appropriate cluster
 
 A fleeting intent can skip `## Context` — just `## Intent` and empty sections.
 
@@ -274,11 +287,25 @@ ALL work flows through intents. No skill, agent, or workflow creates directories
 
 When Plastic delegates to an external skill, **Plastic's directory rules OVERRIDE the external skill's defaults:**
 
-- Plans save to `~/.plastic/store/NNN--slug-XXXXXX/plan.md` (not `docs/superpowers/plans/`)
-- Specs save to `~/.plastic/store/NNN--slug-XXXXXX/spec.md` (not `docs/superpowers/specs/`)
+- Plans save to `~/.plastic/store/ID--slug/plan.md` (not `docs/superpowers/plans/`)
+- Specs save to `~/.plastic/store/ID--slug/spec.md` (not `docs/superpowers/specs/`)
 - Code files go in the project tree; meta-artifacts go in the intent directory
 
 **The rule is simple:** code goes in the project. Plans, specs, checklists, savepoints, and all meta-artifacts go in the intent directory. No exceptions.
+
+## Hubs
+
+A Hub is a cloud of intents around related topics. Hubs emerge naturally from
+Folgezettel branching — intents that spawn in the same direction (same concept,
+new ideas, new features) cluster into a Hub.
+
+- A Hub can spawn a Project. The Hub holds the founding ideas.
+- A single intent can also spawn a Project (Intent-spawned vs Hub-spawned).
+- Hub-spawned projects revolve around different ideas/features around related topics.
+- Intent-spawned projects revolve around the single founding intent.
+- A Project is the result of ideation — the deliverable outcome of one or more intents.
+
+Hubs are represented as clusters in INDEX.md.
 
 ## Projects
 
@@ -307,20 +334,35 @@ Cross-linking: tactical intents in the project store reference global hub intent
 
 ## Agent Architecture
 
-One Coordinator per Plastic store. The Coordinator orchestrates all work.
+### Main Orchestrator
 
-Rules:
-- 1 Coordinator : 1 Store (the global `~/.plastic/`)
-- 1 Coordinator : N Agent Teams (one per project being worked on)
-- 1 Agent : 1 Intent (exclusive assignment)
-- 1 Agent : N Sub-agents (for parallel Actions within an intent)
+The Main Orchestrator manages the global store (Main Knowledge Base). It:
+- Recognizes, creates, updates, and groups intents
+- Spawns Project Orchestrators for registered projects
+- Receives contributions back from Project Orchestrators
+- Is the only agent that runs in a loop (continuous Build→Observe→Repeat)
 
-The Coordinator can be any agent platform: Claude Code, Hermes, OpenClaw.
+### Project Orchestrators
+
+Project Orchestrators manage project stores (Project Knowledge Bases). They:
+- Care about intents and execution within their project
+- Spawn teams to develop and execute intents
+- Contribute back to the Main Orchestrator when new intents are born
+  that could enrich the Main Knowledge Base
+
+The Main Orchestrator and Project Orchestrators can be any agent platform: Claude Code, Hermes, OpenClaw.
 Agents and sub-agents can also be any platform.
 
 Two modes:
-- **Human-driven:** Human chats with Coordinator, creates intents, brainstorms, then Coordinator dispatches Agents for execution.
-- **Autonomous:** Human gives Coordinator a starting intent with defined outcomes. Coordinator runs the full cycle — Agents do the lifecycle (What→Why→How→Exec), Coordinator reviews Insights, spawns next intents, dispatches again. Human is the boss but doesn't need to be in the loop for every decision.
+- **Human-driven:** Human chats with Main Orchestrator, creates intents, brainstorms, then Main Orchestrator dispatches Project Orchestrators and Agents for execution.
+- **Autonomous:** Human gives Main Orchestrator a starting intent with defined outcomes. Main Orchestrator runs the full cycle — Agents do the lifecycle (What→Why→How→Exec), Main Orchestrator reviews Insights, spawns next intents, dispatches again. Human is the boss but doesn't need to be in the loop for every decision.
+
+Rules:
+- 1 Main Orchestrator : 1 Global Store (`~/.plastic/`)
+- 1 Main Orchestrator : N Project Orchestrators
+- 1 Project Orchestrator : 1 Project Store
+- 1 Agent : 1 Intent (exclusive assignment)
+- 1 Agent : N Sub-agents (for parallel Actions within an intent)
 
 When "work on Project X":
 1. Read `projects.yml` → find project path
