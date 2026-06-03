@@ -19,10 +19,21 @@ description: Use when new work begins, the user expresses a new goal, says "new 
 
 ### Detection logic:
 1. Read `~/.plastic/projects.yml`
-2. Match CWD against registered project paths
-3. If match → project intent (tactical)
-4. If no match → global intent (strategic)
-5. If no global install exists, fall back to local `.plastic/store/`
+2. **CWD match:** Match CWD against registered project paths
+   - If CWD is inside a registered project → **project intent (tactical)**
+3. **Explicit mention:** User mentions an existing project by name ("add this to reddit-kb", "new intent for plastic")
+   - Look up project in `projects.yml` by slug
+   - If found → **project intent (tactical)** in that project's `.plastic/store/`
+   - Agent changes working directory to the project path for execution
+4. **No match:** CWD is not in a project AND no project mentioned
+   - → **global intent (strategic)** in `~/.plastic/store/`
+5. **No global install:** fall back to local `.plastic/store/`
+
+When creating a tactical intent in a project store:
+- Read the project's `AGENTS.md` for project context and decisions
+- Link back to the project's governing intent (from `projects.yml` `parent` field) via `sources`
+- Add `[[global:<parent_ID>]]` backlink in `## Links`
+- The intent's Folgezettel ID is scoped to the project store (run `folgezettel-id` against the project's `.plastic/store/`)
 
 ## Workflow
 
@@ -34,17 +45,22 @@ description: Use when new work begins, the user expresses a new goal, says "new 
 
 ### 2. Determine Folgezettel ID
 
-**Root intent (no parent):**
+IDs are scoped to the store they live in. Use the correct store path:
+
+**Global store:**
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" "<STORE>"
+"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" "~/.plastic/store"
 ```
 
-**Branch intent (has parent):**
+**Project store:**
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" "<project-path>/.plastic/store"
+```
+
+**Branch intent (has parent, either store):**
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" "<STORE>" "<parent_id>"
 ```
-
-Example: if parent is `1a1b1a` and children `1a1b1a1`–`1a1b1a4` exist, returns `1a1b1a5`.
 
 ### 3. Determine Intent Properties
 

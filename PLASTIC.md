@@ -121,6 +121,7 @@ State is derived from what exists, not from what's declared.
 | No `## Context` | Intent is fleeting (quick capture, non-actionable) |
 | `## Context` has content | Intent is permanent (developed, actionable) |
 | `## Outcome` has content | Intent is done |
+| `## Insights` has `(autonomous)` entries | Intent is/was being delivered autonomously |
 
 ### Transitions
 
@@ -234,6 +235,7 @@ A fleeting intent can skip `## Context` — just `## Intent` and empty sections.
 ## Progressing an Intent
 
 1. **What → Why:** Brainstorm, explore, grill. Add Context + Decisions to `## Context`. Write `spec.md`.
+   - **Autonomous handoff:** When Why is complete, human can invoke `plastic:auto` to hand off How and Exec to the agent. The agent completes any remaining Why gaps through self-directed research, then proceeds through How and Exec autonomously.
 2. **Why → How:** Research decisions, plan. Write `plan.md`, create `actions/`, write `checklist.md`.
 3. **How → Exec:** Execute actions, update `checklist.md`. When all done, write `outcome.md`.
 4. **Throughout:** Capture observations in `## Insights` (append-only). These spark future intents.
@@ -382,6 +384,22 @@ Each Agent runs **What → Why → How → Exec** on its assigned intent:
 2. Handles full lifecycle: What→Why→How→Exec
 3. Can spawn sub-agents for parallel Actions
 4. When done: notifies Coordinator (triggers Observe phase)
+
+### Autonomous Delivery
+
+Human owns What and Why for human-initiated intents. Agent assists (research,
+exploration) but human drives until handoff. When Why is complete — or human
+triggers `plastic:auto` — the agent takes over How and Exec autonomously.
+
+- **Safe-by-default:** Agent always prefers non-destructive routes (rename vs
+  delete, additive migrations, backups before changes). Destructive actions on
+  existing projects require human approval unless `--skip-permissions` is set.
+- **One agent per intent.** Agent follows the full W→W→H→E lifecycle.
+- **Notification only on:** finish or hard stop (blocked on destructive action,
+  unresolvable error). No progress reports — `## Insights` tracks everything.
+- **Greenfield autonomy:** During initial project creation, all decisions are
+  non-destructive (nothing to destroy). Agent has full autonomy for greenfield choices.
+- **Autonomous decisions** are logged in `## Insights` with `(autonomous)` marker.
 
 ## Hook Enforcement
 

@@ -61,7 +61,36 @@ When all branches are resolved:
 1. Write the complete spec to the active intent directory (`spec.md`)
 2. List all decisions made
 3. List any deferred items (things the user explicitly chose to decide later)
-4. Ask: "Ready to plan implementation, or do you want another pass?"
+4. Proceed to Autonomous Handoff Offer (step 6)
+
+### 6. Autonomous Handoff Offer
+
+After closing out (spec written, decisions listed), assess whether the agent has enough context to deliver the intent autonomously.
+
+**Self-assessment checklist:**
+- All key decisions resolved (no open "it depends" or "TBD")
+- Scope is clear and bounded
+- Dependencies are identified
+- Success criteria are defined
+
+If ALL items pass, offer autonomous delivery:
+
+> "I have enough context to take this from here. Here's my understanding:
+>
+> **Decisions:** [list key decisions]
+> **Scope:** [one-line scope summary]
+> **Approach:** [high-level approach]
+>
+> Want to grill more, or should I go autonomous?"
+
+- If human says go → invoke `plastic:auto`
+- If human says grill more → continue grilling (reset to step 2)
+- If human says neither (wants to drive manually) → proceed as before (offer planning)
+
+This offer replaces the final question in Close Out ("Ready to plan implementation, or do you want another pass?"). The new options are:
+1. Go autonomous (`plastic:auto`)
+2. Grill more (continue interrogation)
+3. Plan manually (invoke `superpowers:writing-plans` or proceed with human-driven planning)
 
 ## Relationship to superpowers:brainstorming
 

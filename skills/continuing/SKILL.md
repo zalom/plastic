@@ -54,6 +54,24 @@ Blockers: [from savepoint, or "none"]
 
 **e. Resume** — proceed with the next step.
 
+### 3b. Detect Autonomous Resume
+
+When resuming an active intent, check `## Insights` for entries containing `(autonomous)`.
+
+If found — this intent was being delivered autonomously:
+
+**Announce:**
+```
+Resuming autonomous delivery of intent [ID] — [name]
+Store: [global | project:<slug> | local]
+Last autonomous action: [last (autonomous) insight entry]
+Next step: [from checklist or savepoint]
+```
+
+**Then:** Continue autonomous execution by invoking `plastic:auto`. The auto skill will pick up from the current lifecycle stage (it reads filesystem state to determine where to resume).
+
+If NOT found — resume normally as described in step 3.
+
 ### 4. If No Active Intents → Offer Future Intents
 
 Present future intents as options. When user picks one, move to Active in INDEX.md. Auto-commit.
@@ -73,6 +91,7 @@ Stale future intents (no action taken):
      - implement: agent builds it
      - research: agent investigates feasibility
      - ideate: agent explores the problem space
+  d) Auto — go fully autonomous (invokes plastic:auto — agent delivers the intent end-to-end)
 ```
 
 Auto-commit all triage changes.
