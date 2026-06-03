@@ -17,9 +17,9 @@ Load plan from the active intent's `plan.md`, execute all tasks, review between 
 If `superpowers:subagent-driven-development` is available as a skill, delegate to it. If only `superpowers:executing-plans` is available, delegate to that. If neither is available, use Plastic's own execution engine below.
 
 **CRITICAL — when delegating to superpowers:**
-- Tell the skill that the plan is at `.plastic/store/NNN--slug-XXXXXX/plan.md` (not `docs/superpowers/plans/`)
-- Tell the skill that specs live at `.plastic/store/NNN--slug-XXXXXX/spec.md` (not `docs/superpowers/specs/`)
-- All meta-artifacts must stay inside `.plastic/store/NNN--slug-XXXXXX/`
+- Tell the skill that the plan is at `.plastic/store/ID--slug/plan.md` (not `docs/superpowers/plans/`)
+- Tell the skill that specs live at `.plastic/store/ID--slug/spec.md` (not `docs/superpowers/specs/`)
+- All meta-artifacts must stay inside `.plastic/store/ID--slug/`
 - Code files go in the project tree as normal
 - Superpowers skills respect "user preferences for plan/spec location" — Plastic IS that preference
 
@@ -46,7 +46,7 @@ For each task sequentially (never parallel — conflict risk):
 Use the Agent tool with the implementer prompt template. Include:
 - Full task text (pasted in, not file reference)
 - Project context from CLAUDE.md
-- Active intent context from intent.md
+- Active intent context from `{ID}.md`
 
 **b. Handle implementer response**
 - DONE → proceed to spec review

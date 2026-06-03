@@ -30,7 +30,7 @@ Read `~/.plastic/projects.yml`, match CWD against registered project paths. If i
 
 For each active intent in the store:
 
-**a. Read intent.md:**
+**a. Read `{ID}.md`:**
 - What we're doing (`## Intent`)
 - Why (`## Context`)
 - What insights have emerged (`## Insights`)
@@ -43,7 +43,7 @@ For each active intent in the store:
 
 **d. Announce:**
 ```
-Resuming intent NNN — [name]
+Resuming intent [ID] — [name]
 Store: [global | project:<slug> | local]
 Status: active
 Last session: [date from savepoint]
@@ -65,7 +65,7 @@ If any future intent has `created` date older than the configured `stale_thresho
 ```
 Stale future intents (no action taken):
 
-- [NNN — name] (X days old)
+- [ID — name] (X days old)
   Options:
   a) Activate — start working on it now
   b) Abandon — mark as abandoned

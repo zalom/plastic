@@ -22,7 +22,7 @@ Core files (Plastic-owned, always overwritten):
 | File | Source | Destination |
 |---|---|---|
 | `PLASTIC.md` | `${CLAUDE_PLUGIN_ROOT}/PLASTIC.md` | `~/.plastic/PLASTIC.md` |
-| `hash-intent` | `${CLAUDE_PLUGIN_ROOT}/scripts/hash-intent` | `~/.plastic/scripts/hash-intent` |
+| `folgezettel-id` | `${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id` | `~/.plastic/scripts/folgezettel-id` |
 | `read-config` | `${CLAUDE_PLUGIN_ROOT}/scripts/read-config` | `~/.plastic/scripts/read-config` |
 
 Created if missing (user-owned, never overwritten):
@@ -63,9 +63,9 @@ cp "${CLAUDE_PLUGIN_ROOT}/PLASTIC.md" ~/.plastic/PLASTIC.md
 
 ```bash
 mkdir -p ~/.plastic/scripts
-cp "${CLAUDE_PLUGIN_ROOT}/scripts/hash-intent" ~/.plastic/scripts/hash-intent
+cp "${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" ~/.plastic/scripts/folgezettel-id
 cp "${CLAUDE_PLUGIN_ROOT}/scripts/read-config" ~/.plastic/scripts/read-config
-chmod +x ~/.plastic/scripts/hash-intent ~/.plastic/scripts/read-config
+chmod +x ~/.plastic/scripts/folgezettel-id ~/.plastic/scripts/read-config
 ```
 
 ### Step 4: Create AGENTS.md if missing
@@ -91,7 +91,7 @@ fi
 ```
 Plastic updated.
 - PLASTIC.md: synced to latest conventions
-- Scripts: synced (hash-intent, read-config)
+- Scripts: synced (folgezettel-id, read-config)
 - AGENTS.md: [created | preserved (user-editable)]
 - User data: untouched (INDEX.md, config.yml, projects.yml, store/)
 ```

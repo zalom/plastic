@@ -11,8 +11,8 @@ You are working on this project as part of a strategic intent. Your governing in
 
 1. **Check active tactical intents** in `.plastic/store/` — these are your current tasks
 2. **Create new tactical intents** when you discover sub-work needed
-3. **Use [[NNN-HASH]] wikilinks** to link intents to each other
-4. **Use [[global:NNN-HASH]]** to link back to the governing strategic intent
+3. **Use [[ID]] wikilinks** to link intents to each other
+4. **Use [[global:ID]]** to link back to the governing strategic intent
 5. **Auto-commit** all intent changes in this project's git repo
 
 ## Intent Lifecycle — What→Why→How→Next
@@ -36,10 +36,10 @@ Active/Future/Completed placement is managed in INDEX.md, not in frontmatter.
 ## Creating Tactical Intents
 
 1. Scan `.plastic/store/` for the next sequential ID
-2. Generate hash: `~/.plastic/scripts/hash-intent "intent name"`
-3. Create `.plastic/store/NNN--slug-XXXXXX/intent.md`
+2. Generate ID: `~/.plastic/scripts/folgezettel-id`
+3. Create `.plastic/store/ID--slug/{ID}.md`
 4. Set frontmatter: `id`, `intent`, `sources` (array — link to governing intent), `chain` (starts empty), `created`, `author`, `tags`
-5. Add `[[global:NNN-HASH]]` backlink in `## Links`
+5. Add `[[global:ID]]` backlink in `## Links`
 
 ## When You're Done
 

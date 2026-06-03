@@ -17,7 +17,7 @@ description: Use when context is being compacted (PreCompact hook), user says "s
 Read `.plastic/INDEX.md` and extract all intents listed under `## Active`.
 
 ### 2. For Each Active Intent
-Read the intent directory at `.plastic/store/NNN--slug-XXXXXX/`:
+Read the intent directory at `.plastic/store/ID--slug/`:
 
 **a. Update checklist.md** (if exists):
 - Check off completed items
@@ -41,7 +41,7 @@ Read the intent directory at `.plastic/store/NNN--slug-XXXXXX/`:
 - (important things learned)
 ```
 
-**c. Update intent.md:**
+**c. Update `{ID}.md`:**
 - Add observations to `## Insights` section
 
 ### 3. Update INDEX.md
@@ -54,4 +54,4 @@ git commit -m "chore: savepoint — [active intent name]"
 ```
 
 ### 5. Notify User
-Tell the user: "Context is getting large. I've saved progress to intent NNN — [name]. Please run `/clear` and say `continue` to resume."
+Tell the user: "Context is getting large. I've saved progress to intent [ID] — [name]. Please run `/clear` and say `continue` to resume."

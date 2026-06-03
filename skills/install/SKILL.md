@@ -55,12 +55,12 @@ cd ~/.plastic && git init && git add . && git commit -m "chore: initialize Plast
 
 ```bash
 mkdir -p ~/.plastic/scripts
-cp "${CLAUDE_PLUGIN_ROOT}/scripts/hash-intent" ~/.plastic/scripts/hash-intent
+cp "${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" ~/.plastic/scripts/folgezettel-id
 cp "${CLAUDE_PLUGIN_ROOT}/scripts/read-config" ~/.plastic/scripts/read-config
-chmod +x ~/.plastic/scripts/hash-intent ~/.plastic/scripts/read-config
+chmod +x ~/.plastic/scripts/folgezettel-id ~/.plastic/scripts/read-config
 ```
 
-This ensures project agents can generate hashes via `~/.plastic/scripts/hash-intent` without depending on a specific agent's plugin cache path.
+This ensures project agents can generate hashes via `~/.plastic/scripts/folgezettel-id` without depending on a specific agent's plugin cache path.
 
 **Step 2c: Detect agent type and set preferences**
 

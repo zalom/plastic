@@ -17,19 +17,19 @@ Explicit wikilinks in the `## Links` section. Bidirectional — add to both inte
 
 ```markdown
 ## Links
-- [[001-3k8gyi]] — research this plan is based on
+- [[1a]] — research this plan is based on
 ```
 
 ### 2. Sources (Backward)
 The `sources` array in frontmatter. What influenced this intent — backward links to parent/prior work:
 ```yaml
-sources: ["001-3k8gyi", "003-wigjln"]
+sources: ["1a", "1a2"]
 ```
 
 ### 3. Chain (Forward)
 The `chain` array in frontmatter. What this intent spawned — forward links to children/follow-on work:
 ```yaml
-chain: ["006-2yv12k", "007-9xm3ab"]
+chain: ["1b1", "1b2"]
 ```
 
 ### 4. Tags (Weakest)
@@ -41,10 +41,11 @@ tags: [plastic, project-reddit-kb]
 ## Workflow
 
 ### 1. Identify Intents to Connect
-Show existing intents by scanning `.plastic/store/*/intent.md` frontmatter:
+Show existing intents by scanning `.plastic/store/` for intent files:
 ```bash
-for f in .plastic/store/*/intent.md; do
-  ruby -ryaml -e '
+for dir in .plastic/store/*/; do
+  f=$(find "$dir" -maxdepth 1 -name "*.md" ! -name "spec.md" ! -name "plan.md" ! -name "checklist.md" ! -name "outcome.md" ! -name "savepoint.md" | head -1)
+  [ -n "$f" ] && ruby -ryaml -e '
     data = File.read(ARGV[0]).split("---")[1]
     parsed = YAML.safe_load(data)
     puts "#{parsed["id"]} | #{parsed["intent"]}" if parsed

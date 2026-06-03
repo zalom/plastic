@@ -19,14 +19,14 @@ INDEX.md is a Zettelkasten main structure note — the brain's entry point. It h
 Intents currently being worked on. Max 1-2 for focus.
 ```markdown
 ## Active
-- [003 — Design Plastic](store/003--design-plastic-state-system-wigjln/intent.md) — decision, human
+- [1a2 — Design Plastic](store/1a2--design-plastic-state-system/1a2.md) — decision, human
 ```
 
 ### Future
 Intents parked for later. May be picked up by agents.
 ```markdown
 ## Future
-- [006 — Build Reddit KB](store/006--build-reddit-knowledge-base-2yv12k/intent.md) — implementation, human
+- [1b1 — Build Reddit KB](store/1b1--build-reddit-knowledge-base/1b1.md) — implementation, human
 ```
 
 ### Clusters
@@ -34,8 +34,8 @@ Topic-based groupings. Manually curated. Create a new cluster when 3+ intents sh
 ```markdown
 ## Clusters
 ### Reddit Knowledge Base
-- [001 — Research](store/001--research-reddit-saved-posts-3k8gyi/intent.md)
-- [002 — Plan](store/002--plan-reddit-knowledge-base-324trd/intent.md)
+- [1a — Research](store/1a--research-reddit-saved-posts/1a.md)
+- [1a1 — Plan](store/1a1--plan-reddit-knowledge-base/1a1.md)
 ```
 
 ### Completed
@@ -44,16 +44,16 @@ All completed intents with dates. Links preserved, never deleted.
 ## Workflow
 
 ### Rebuild Sections
-Scan `.plastic/store/*/intent.md` frontmatter and rebuild each section:
+Scan `.plastic/store/` for intent files and rebuild each section:
 
 ```bash
-for f in .plastic/store/*/intent.md; do
-  dir=$(dirname "$f" | xargs basename)
-  ruby -e '
+for dir in .plastic/store/*/; do
+  f=$(find "$dir" -maxdepth 1 -name "*.md" ! -name "spec.md" ! -name "plan.md" ! -name "checklist.md" ! -name "outcome.md" ! -name "savepoint.md" | head -1)
+  [ -n "$f" ] && dirname_slug=$(basename "$dir") && ruby -e '
     data = File.read(ARGV[0]).split("---")[1]
     parsed = YAML.safe_load(data)
     puts "#{parsed["id"]}|#{parsed["intent"]}|#{ARGV[1]}"
-  ' "$f" "$dir" 2>/dev/null
+  ' "$f" "$dirname_slug" 2>/dev/null
 done | sort -t'|' -k1
 ```
 

@@ -40,7 +40,7 @@ Pre-1.0: minor bumps for features, patch for fixes. No major until stable.
 
 ```bash
 git checkout main
-git merge <branch-name> --no-ff -m "feat: merge intent NNN — [description]"
+git merge <branch-name> --no-ff -m "feat: merge intent [ID] — [description]"
 ```
 
 Always `--no-ff` to preserve branch history in the merge commit.

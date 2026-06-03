@@ -5,7 +5,7 @@
 # This script:
 # 1. Copies store/ and INDEX.md to ~/.plastic/
 # 2. Registers the project in projects.yml
-# 3. Rewrites relative links to [[NNN-HASH]] wikilinks
+# 3. Rewrites relative links to [[ID]] wikilinks
 # 4. Commits in ~/.plastic/
 
 set -e
@@ -43,20 +43,24 @@ else
 fi
 
 # Rewrite relative links to wikilinks
-echo "  Rewriting links to [[NNN-HASH]] format..."
+echo "  Rewriting links to [[ID]] format..."
 ruby <<'RUBY'
-  Dir.glob(File.expand_path("~/.plastic/store/*/intent.md")).each do |f|
+  # Find intent files (named {ID}.md, the primary file in each intent directory)
+  Dir.glob(File.expand_path("~/.plastic/store/*/")).each do |dir|
+    id = File.basename(dir).split("--").first
+    f = File.join(dir, "#{id}.md")
+    next unless File.exist?(f)
     content = File.read(f)
-    # Match patterns like [name](../NNN--slug-HASH/intent.md)
-    updated = content.gsub(/\[([^\]]+)\]\(\.\.\/(\d+)--[^\/]*-([a-z0-9]+)\/intent\.md\)/) do
+    # Match patterns like [name](../ID--slug/old-file.md)
+    updated = content.gsub(/\[([^\]]+)\]\(\.\.\/([^\/]+)\/[^)]+\.md\)/) do
       name = $1
-      nnn = $2
-      hash = $3
-      "[[#{nnn}-#{hash}]] #{name}"
+      dir_name = $2
+      target_id = dir_name.split("--").first
+      "[[#{target_id}]] #{name}"
     end
     if updated != content
       File.write(f, updated)
-      puts "    Updated: #{File.basename(File.dirname(f))}"
+      puts "    Updated: #{File.basename(dir)}"
     end
   end
 RUBY

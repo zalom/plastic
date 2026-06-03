@@ -21,4 +21,4 @@ tags: [{{TAGS}}]
 (observations captured throughout — raw material for future intents)
 
 ## Links
-- (use [[NNN-HASH]] wikilinks to related intents)
+- (use [[ID]] or [[ID|display text]] wikilinks to related intents)
