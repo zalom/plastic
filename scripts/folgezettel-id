@@ -1,0 +1,40 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# Generate the next available Folgezettel ID for a new intent.
+#
+# Usage:
+#   folgezettel-id <store_path>                    # next root ID
+#   folgezettel-id <store_path> <parent_id>        # next child of parent
+
+store_path = ARGV[0]
+parent_id = ARGV[1] # nil for root
+
+unless store_path && Dir.exist?(store_path)
+  $stderr.puts "Usage: folgezettel-id <store_path> [parent_id]"
+  exit 1
+end
+
+existing_dirs = Dir.glob("#{store_path}/*--*").map { |d| File.basename(d).split("--").first }
+
+if parent_id.nil? || parent_id.empty?
+  roots = existing_dirs.select { |id| id.match?(/\A\d+\z/) }.map(&:to_i)
+  next_root = roots.empty? ? 1 : roots.max + 1
+  puts next_root.to_s
+else
+  depth = parent_id.length
+  use_letter = parent_id[-1].match?(/\d/)
+
+  children = existing_dirs.select do |id|
+    id.start_with?(parent_id) && id.length == depth + 1
+  end
+
+  suffixes = children.map { |id| id[-1] }
+
+  if use_letter
+    last = suffixes.select { |s| s.match?(/[a-z]/) }.max || "`"
+    puts "#{parent_id}#{last.succ}"
+  else
+    last = suffixes.select { |s| s.match?(/\d/) }.map(&:to_i).max || 0
+    puts "#{parent_id}#{last + 1}"
+  end
+end
