@@ -46,30 +46,7 @@ In Claude Code, run:
 
 ## Prerequisites
 
-Plastic hooks use Ruby or Node.js for generating deterministic directory hashes. **One** of the following must be available:
-
-### macOS / Linux
-Ruby is pre-installed. No action needed.
-
-```bash
-# Verify:
-ruby -r digest -e 'puts Digest::SHA256.hexdigest("test").to_i(16).to_s(36)[0,6]'
-```
-
-### Windows
-
-**Option A — WSL (recommended):**
-```bash
-wsl ruby -r digest -e 'puts Digest::SHA256.hexdigest("test").to_i(16).to_s(36)[0,6]'
-```
-
-**Option B — Node.js:**
-```bash
-node -e "const c=require('crypto');console.log(BigInt('0x'+c.createHash('sha256').update(process.argv[1]).digest('hex')).toString(36).slice(0,6))" "test"
-```
-
-**Option C — Install Ruby:**
-Download from https://rubyinstaller.org/ or `winget install RubyInstallerTeam.Ruby`.
+Plastic hooks use Ruby for intent ID generation. Ruby is pre-installed on macOS/Linux. On Windows, use WSL or install Ruby from https://rubyinstaller.org/.
 
 ## Directory Structure
 
@@ -79,8 +56,8 @@ Download from https://rubyinstaller.org/ or `winget install RubyInstallerTeam.Ru
 ├── config.yml          # Plugin configuration
 ├── INDEX.md            # Brain's entry point
 └── store/
-    └── NNN--three-to-five-words-XXXXXX/
-        ├── intent.md       # Always present
+    └── ID--three-to-five-words/
+        ├── {ID}.md         # Always present (e.g., 1a1.md)
         ├── spec.md         # Optional (brainstorming output)
         ├── plan.md         # Optional (implementation plan)
         ├── checklist.md    # Optional (progress tracking)
