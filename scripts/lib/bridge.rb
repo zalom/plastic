@@ -8,6 +8,12 @@ require "tempfile"
 module Bridge
   STAGES = %w[what why how exec done].freeze
 
+  def self.intent_file(intent_dir)
+    dir_name = File.basename(intent_dir)
+    folgezettel_id = dir_name.split("--").first
+    "#{intent_dir}/#{folgezettel_id}.md"
+  end
+
   def self.path(session)
     "/tmp/plastic-#{session}.json"
   end
@@ -39,22 +45,24 @@ module Bridge
       return "exec"
     end
     return "how" if File.exist?("#{intent_dir}/spec.md")
-    return "why" if File.exist?("#{intent_dir}/intent.md")
+    return "why" if File.exist?(intent_file(intent_dir))
     "what"
   end
 
   def self.has_files(intent_dir)
     files = []
-    %w[intent.md spec.md plan.md checklist.md outcome.md].each do |f|
+    ifile = File.basename(intent_file(intent_dir))
+    [ifile, "spec.md", "plan.md", "checklist.md", "outcome.md"].each do |f|
       files << f if File.exist?("#{intent_dir}/#{f}")
     end
     files << "actions/" if File.directory?("#{intent_dir}/actions")
     files
   end
 
-  def self.missing_for_stage(stage)
+  def self.missing_for_stage(stage, intent_dir = nil)
+    ifile = intent_dir ? File.basename(intent_file(intent_dir)) : "intent.md"
     case stage
-    when "what" then ["intent.md"]
+    when "what" then [ifile]
     when "why" then ["spec.md"]
     when "how" then ["plan.md", "actions/", "checklist.md"]
     when "exec" then ["outcome.md"]
@@ -65,7 +73,7 @@ module Bridge
   def self.derive(session, intent_id:, intent_dir:, store:, name:)
     stage = derive_stage(intent_dir)
     has = has_files(intent_dir)
-    missing = missing_for_stage(stage) - has
+    missing = missing_for_stage(stage, intent_dir) - has
 
     data = {
       "session" => session,
@@ -104,9 +112,9 @@ module Bridge
 
     case basename
     when "spec.md"
-      intent_file = "#{intent_dir}/intent.md"
-      unless File.exist?(intent_file) && File.read(intent_file).include?("## Intent")
-        return "Cannot start Why — What is incomplete (intent.md missing or no ## Intent)"
+      ifile = intent_file(intent_dir)
+      unless File.exist?(ifile) && File.read(ifile).include?("## Intent")
+        return "Cannot start Why — What is incomplete (#{File.basename(ifile)} missing or no ## Intent)"
       end
     when "plan.md"
       unless File.exist?("#{intent_dir}/spec.md")
