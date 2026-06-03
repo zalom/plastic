@@ -67,8 +67,16 @@ Only after spec compliance passes. Reviews clean code, testing, architecture. Pa
 ### Step 3: Final Review
 After all tasks complete, dispatch a final reviewer for the entire implementation.
 
-### Step 4: Update Intent
-Capture observations in `## Insights`. If all work is done, write `## Outcome`.
+### Step 4: Update Intent and Complete
+Capture observations in `## Insights`. When ALL checklist items are checked:
+
+1. Write `outcome.md` with detailed results in the intent directory
+2. Write `## Outcome` summary in the intent file (1-2 sentences)
+3. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
+4. Update cluster entries to show `_(completed)_`
+5. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: complete intent <ID> — <name>"`
+
+**This is NOT optional.** An intent with all checklist items done but no Outcome is a broken state. Complete the intent immediately — do not leave it for later.
 
 ## Inline Workflow
 
@@ -84,8 +92,16 @@ For each task:
 3. Run verifications as specified
 4. Mark as completed
 
-### Step 3: Update Intent
-Capture observations in `## Insights`. If all work is done, write `## Outcome`.
+### Step 3: Update Intent and Complete
+Capture observations in `## Insights`. When ALL checklist items are checked:
+
+1. Write `outcome.md` with detailed results in the intent directory
+2. Write `## Outcome` summary in the intent file (1-2 sentences)
+3. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
+4. Update cluster entries to show `_(completed)_`
+5. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: complete intent <ID> — <name>"`
+
+**This is NOT optional.** Complete the intent immediately when work is done.
 
 ## Model Selection for Subagents
 
