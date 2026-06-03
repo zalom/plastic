@@ -32,40 +32,40 @@ description: Use when new work begins, the user expresses a new goal, says "new 
 - **Project:** `<project-path>/.plastic/store/`
 - **Legacy local:** `.plastic/store/`
 
-### 2. Determine Next ID
+### 2. Determine Folgezettel ID
 
-Scan the store directory for the highest existing ID:
+**Root intent (no parent):**
 ```bash
-ls -d <STORE>/[0-9]*/ 2>/dev/null | sort -t'-' -k1 -n | tail -1
-```
-Increment by 1, zero-pad to 3 digits.
-
-### 3. Generate Hash
-
-```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/hash-intent" "intent name words"
+"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" "<STORE>"
 ```
 
-### 4. Determine Intent Properties
+**Branch intent (has parent):**
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" "<STORE>" "<parent_id>"
+```
+
+Example: if parent is `1a1b1a` and children `1a1b1a1`–`1a1b1a4` exist, returns `1a1b1a5`.
+
+### 3. Determine Intent Properties
 
 Ask or infer from context:
 - **intent**: one-line description
 - **author**: `human` | `claude-code` | other agent name
-- **sources**: array of IDs that influenced this intent (e.g., `["001-3k8gyi"]`)
+- **sources**: array of Folgezettel IDs that influenced this intent (e.g., `["4a1"]`)
 - **chain**: starts empty `[]`, populated when this intent spawns others
 - **tags**: freeform list (use `project-<name>` for project membership)
 
 Place in `## Active` or `## Future` in INDEX.md (status is convention-derived, not a frontmatter field).
 
-### 5. Create Directory and Files
+### 4. Create Directory and Files
 
 ```bash
-mkdir -p <STORE>/NNN--slug-XXXXXX
+mkdir -p <STORE>/ID--slug
 ```
 
-Write `intent.md` using the intent template. For project intents, add the governing intent's ID to `sources` and add `[[global:NNN-HASH]]` backlink in `## Links`.
+Write `{ID}.md` using the intent template. For project intents, add the governing intent's ID to `sources` and add `[[global:ID]]` backlink in `## Links`.
 
-### 6. If Implementation Intent Spawns a Project
+### 5. If Implementation Intent Spawns a Project
 
 When the user says "start building" or the plan calls for a new project:
 
@@ -83,14 +83,14 @@ When the user says "start building" or the plan calls for a new project:
    ```yaml
    <slug>:
      path: <full-path>
-     parent: "NNN-HASH"
+     parent: "ID"
      registered: <today>
      status: active
    ```
 5. Add `project-<slug>` to the intent's `tags` array
 6. Auto-commit in both `~/.plastic/` and the new project
 
-### 7. Update INDEX.md
+### 6. Update INDEX.md
 
 - **Global intents:** update `~/.plastic/INDEX.md`
 - **Project intents:** no global INDEX.md change (tactical intents are project-scoped)
@@ -98,12 +98,12 @@ When the user says "start building" or the plan calls for a new project:
 
 Add to `## Active` (or `## Future`) and appropriate cluster.
 
-### 8. Auto-commit
+### 7. Auto-commit
 
 ```bash
-cd <store-root> && git add . && git commit -m "feat: create intent NNN — [name]"
+cd <store-root> && git add . && git commit -m "feat: create intent ID — [name]"
 ```
 
-### 9. Announce
+### 8. Announce
 
-"Created intent NNN — [name]. Placed in: [Active|Future]. Store: [global|project:<slug>|local]."
+"Created intent ID — [name]. Placed in: [Active|Future]. Store: [global|project:<slug>|local]."
