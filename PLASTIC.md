@@ -158,7 +158,7 @@ Global mode (default):
         └── savepoint.md                  # Session state for resume (optional)
 ```
 
-Per-project tactical store (optional, for sub-tasks within a project):
+Per-project store (for intents that belong to a specific project):
 
 ```
 <project>/.plastic/
@@ -166,6 +166,19 @@ Per-project tactical store (optional, for sub-tasks within a project):
 ├── INDEX.md                              # Project-scoped index
 └── config.yml                            # Project-scoped config (overrides global)
 ```
+
+### Privacy and Collaboration
+
+**`.plastic/` is always private.** It is gitignored in every project — never committed, never pushed. Each person has their own intent store with their own thought evolution.
+
+Collaboration happens through the project's shared contracts:
+- **AGENTS.md** — project conventions contract (checked into git)
+- **PLASTIC.md** — intent lifecycle rules (checked into git)
+- **Pull requests** — the collaboration layer for code changes
+
+The knowledge pipeline: **intents (private thinking) → PLASTIC.md + AGENTS.md (shared contracts)**. When an intent delivers something that changes how the project works, the decision gets written into one of these shared files. The intents themselves are working memory; the contracts are the crystallized, authoritative output.
+
+Project config (`<project>/.plastic/config.yml`) overrides global config (`~/.plastic/config.yml`). Both are private.
 
 Legacy per-project mode (fallback when no global install exists):
 
