@@ -51,8 +51,7 @@ end
 future.each do |f|
   if f =~ /store\/([\w-]+)\//
     dir_name = $1
-    folgezettel_id = dir_name.split("--").first
-    intent_file = "#{store_root}/store/#{dir_name}/#{folgezettel_id}.md"
+    intent_file = "#{store_root}/store/#{dir_name}/#{dir_name}.md"
     next unless File.exist?(intent_file)
 
     content = File.read(intent_file)

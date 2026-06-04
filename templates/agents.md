@@ -37,7 +37,7 @@ Active/Future/Completed placement is managed in INDEX.md, not in frontmatter.
 
 1. Scan `.plastic/store/` for the next sequential ID
 2. Generate ID: `~/.plastic/scripts/folgezettel-id`
-3. Create `.plastic/store/ID--slug/{ID}.md`
+3. Create `.plastic/store/ID--slug/ID--slug.md`
 4. Set frontmatter: `id`, `intent`, `sources` (array — link to governing intent), `chain` (starts empty), `created`, `author`, `tags`
 5. Add `[[global:ID]]` backlink in `## Links`
 

@@ -30,7 +30,7 @@ Read `~/.plastic/projects.yml`, match CWD against registered project paths. If i
 
 For each active intent in the store:
 
-**a. Read `{ID}.md`:**
+**a. Read `{ID}--{slug}.md`:**
 - What we're doing (`## Intent`)
 - Why (`## Context`)
 - What insights have emerged (`## Insights`)

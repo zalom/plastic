@@ -46,7 +46,7 @@ For each task sequentially (never parallel — conflict risk):
 Use the Agent tool with the implementer prompt template. Include:
 - Full task text (pasted in, not file reference)
 - Project context from CLAUDE.md
-- Active intent context from `{ID}.md`
+- Active intent context from `{ID}--{slug}.md`
 
 **b. Handle implementer response**
 - DONE → proceed to spec review

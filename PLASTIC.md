@@ -7,14 +7,14 @@
 
 ## What is an Intent
 
-An intent is a directory in the store containing `{ID}.md` and optional supporting files.
+An intent is a directory in the store containing `{ID}--{slug}.md` and optional supporting files.
 It represents a desire — something a human or agent wants to accomplish, explore, or understand.
 Intents are atomic thoughts that need to be developed.
 
 ```
 store/
   ID--three-to-five-words/
-    {ID}.md            # required — the intent itself (e.g., 1a1.md)
+    {ID}--{slug}.md            # required — the intent itself (e.g., 1a1--design-plastic.md)
     spec.md            # optional — consolidated specification (Why deliverable)
     plan.md            # optional — implementation plan (How deliverable)
     checklist.md       # optional — execution registry with checkboxes (How deliverable)
@@ -73,7 +73,7 @@ Every intent progresses through four stages. Each stage has a deliverable.
 The desire. One paragraph. What the human or agent wants.
 This exists from the moment the intent is created.
 
-**Deliverable:** `{ID}.md`
+**Deliverable:** `{ID}--{slug}.md`
 
 ### Why → `## Context` + `### Decisions` sections
 
@@ -150,7 +150,7 @@ Global mode (default):
 ├── INDEX.md                              # Brain's entry point
 └── store/
     └── ID--three-to-five-words/          # One directory per strategic intent
-        ├── {ID}.md                       # The intent (always present, e.g., 1a1.md)
+        ├── {ID}--{slug}.md                       # The intent (always present, e.g., 1a1--design-plastic.md)
         ├── spec.md                       # Consolidated specification (optional — Why deliverable)
         ├── plan.md                       # Implementation plan (optional — How deliverable)
         ├── checklist.md                  # Execution registry with checkboxes (optional — How deliverable)
@@ -193,12 +193,12 @@ Folgezettel IDs encode lineage:
 
 ### Intent Filename
 
-The intent file is named `{ID}.md` — the Folgezettel ID with `.md` extension.
-This makes `[[ID]]` wikilinks resolve directly in Obsidian.
+The intent file is named `{ID}--{slug}.md` — matching the directory name.
+Wikilinks use the ID only (`[[1a1]]`) and resolve via Obsidian alias or search.
 
 Examples:
-- Directory `1a1--design-plastic-state-system/` contains `1a1.md`
-- Directory `4a1b--lifecycle-file-mapping/` contains `4a1b.md`
+- Directory `1a1--design-plastic-state-system/` contains `1a1--design-plastic-state-system.md`
+- Directory `4a1b--lifecycle-file-mapping/` contains `4a1b--lifecycle-file-mapping.md`
 
 ### Wikilink Conventions
 
@@ -225,7 +225,7 @@ Sections: `## Active`, `## Future`, `## Clusters`, `## Abandoned`, `## Completed
 1. Determine the target store: `~/.plastic/store/` for strategic intents (default), `<project>/.plastic/store/` for project-tactical intents
 2. Determine the Folgezettel ID: If root (no parent), find highest root number +1. If branch, run `"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" <parent_id> <store_path>`
 3. Create the intent directory in the chosen store (e.g., `ID--three-to-five-words`)
-4. Create `{ID}.md` with frontmatter (id, intent, sources, chain, created, author, tags)
+4. Create `{ID}--{slug}.md` with frontmatter (id, intent, sources, chain, created, author, tags)
 5. Write `## Intent` — the What
 6. Add remaining sections: `## Context`, `## Outcome`, `## Insights`, `## Links`
 7. Update the appropriate `INDEX.md` — add to Active section and appropriate cluster

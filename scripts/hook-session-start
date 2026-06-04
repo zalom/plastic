@@ -64,7 +64,8 @@ stale_days = 3 if stale_days == 0
 
 future.each do |f|
   if f =~ /store\/([\w-]+)\//
-    intent_file = "#{store_root}/store/#{$1}/intent.md"
+    dir_name = $1
+    intent_file = "#{store_root}/store/#{dir_name}/#{dir_name}.md"
     next unless File.exist?(intent_file)
 
     content = File.read(intent_file)

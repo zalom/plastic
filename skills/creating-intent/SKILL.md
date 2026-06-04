@@ -79,7 +79,7 @@ Place in `## Active` or `## Future` in INDEX.md (status is convention-derived, n
 mkdir -p <STORE>/ID--slug
 ```
 
-Write `{ID}.md` using the intent template. For project intents, add the governing intent's ID to `sources` and add `[[global:ID]]` backlink in `## Links`.
+Write `{ID}--{slug}.md` using the intent template. For project intents, add the governing intent's ID to `sources` and add `[[global:ID]]` backlink in `## Links`.
 
 ### 5. If Implementation Intent Spawns a Project
 

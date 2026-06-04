@@ -57,7 +57,7 @@ Plastic hooks use Ruby for intent ID generation. Ruby is pre-installed on macOS/
 ├── INDEX.md            # Brain's entry point
 └── store/
     └── ID--three-to-five-words/
-        ├── {ID}.md         # Always present (e.g., 1a1.md)
+        ├── {ID}--{slug}.md         # Always present (e.g., 1a1--design-plastic.md)
         ├── spec.md         # Optional (brainstorming output)
         ├── plan.md         # Optional (implementation plan)
         ├── checklist.md    # Optional (progress tracking)

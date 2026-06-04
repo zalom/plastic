@@ -41,7 +41,7 @@ Read the intent directory at `.plastic/store/ID--slug/`:
 - (important things learned)
 ```
 
-**c. Update `{ID}.md`:**
+**c. Update `{ID}--{slug}.md`:**
 - Add observations to `## Insights` section
 
 ### 3. Update INDEX.md

@@ -2,7 +2,7 @@
 
 ## Three Structural Layers
 
-1. **Content notes** — individual intents (`.plastic/store/ID--slug/{ID}.md`)
+1. **Content notes** — individual intents (`.plastic/store/ID--slug/ID--slug.md`)
 2. **Structure notes** — INDEX.md clusters that organize related intents
 3. **Main structure note** — INDEX.md itself, the top-level entry point
 

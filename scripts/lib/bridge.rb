@@ -10,8 +10,7 @@ module Bridge
 
   def self.intent_file(intent_dir)
     dir_name = File.basename(intent_dir)
-    folgezettel_id = dir_name.split("--").first
-    "#{intent_dir}/#{folgezettel_id}.md"
+    "#{intent_dir}/#{dir_name}.md"
   end
 
   def self.path(session)
