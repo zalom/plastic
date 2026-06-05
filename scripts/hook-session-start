@@ -82,44 +82,60 @@ end
 # --- Detect current project ---
 
 current_project = nil
-if mode == "global"
-  projects_path = "#{store_root}/projects.yml"
-  if File.exist?(projects_path)
-    projects = YAML.safe_load(File.read(projects_path)) rescue {}
-    cwd = Dir.pwd
-    (projects["projects"] || {}).each do |slug, info|
-      project_path = File.expand_path(info["path"])
-      if cwd.start_with?(project_path)
-        current_project = { "slug" => slug, "parent" => info["parent"], "path" => project_path }
-        break
+project_active = []
+project_future = []
+
+projects_path = "#{store_root}/projects.yml"
+if File.exist?(projects_path)
+  projects = YAML.safe_load(File.read(projects_path)) rescue {}
+  cwd = Dir.pwd
+  (projects["projects"] || {}).each do |slug, info|
+    project_path = File.expand_path(info["path"])
+    if cwd.start_with?(project_path)
+      current_project = { "slug" => slug, "parent" => info["parent"], "path" => project_path }
+      project_index = "#{store_root}/projects/#{slug}/INDEX.md"
+      if File.exist?(project_index)
+        p_section = nil
+        File.readlines(project_index).each do |pline|
+          if pline.start_with?("## Active")
+            p_section = :active
+            next
+          elsif pline.start_with?("## Future")
+            p_section = :future
+            next
+          elsif pline.start_with?("## ")
+            p_section = nil
+            next
+          end
+          next unless p_section && pline.strip.start_with?("- [")
+          project_active << pline.strip if p_section == :active
+          project_future << pline.strip if p_section == :future
+        end
       end
+      break
     end
   end
 end
 
 # --- Early exit if nothing to show ---
 
-exit 0 if active.empty? && stale.empty? && future.empty?
-exit 0 if !active.any? && !stale.any? && future.length == 0
+all_active = active + project_active
+all_future = future + project_future
+exit 0 if all_active.empty? && stale.empty? && all_future.empty?
 
 # --- Build context ---
 
 parts = []
 
-if mode == "global"
-  if current_project
-    parts << "PLASTIC — Global store | Project: #{current_project["slug"]} (#{current_project["path"]})\n"
-    parts << "Governing intent: #{current_project["parent"]}\n" if current_project["parent"]
-  else
-    parts << "PLASTIC — Global store loaded from ~/.plastic/\n"
-  end
+if current_project
+  parts << "PLASTIC — Global store | Project: #{current_project["slug"]} (#{current_project["path"]})\n"
 else
-  parts << "PLASTIC — Local store loaded from .plastic/\n"
+  parts << "PLASTIC — Global store loaded from ~/.plastic/\n"
 end
 
-if active.any?
+if all_active.any?
   parts << "Active intents:\n"
-  active.each { |a| parts << a }
+  all_active.each { |a| parts << a }
   if bridge_data
     stage = bridge_data["build"]["stage"]
     missing = bridge_data["build"]["missing"]

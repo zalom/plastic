@@ -4,19 +4,14 @@ MESSAGE=$(echo "$INPUT" | ruby -rjson -e 'puts JSON.parse(STDIN.read)["user_prom
 
 if echo "$MESSAGE" | grep -iq '\bcontinue\b'; then
   GLOBAL_INDEX="$HOME/.plastic/INDEX.md"
-  LOCAL_INDEX=".plastic/INDEX.md"
 
-  if [ -f "$GLOBAL_INDEX" ]; then
-    INDEX="$GLOBAL_INDEX"
-    STORE_ROOT="$HOME/.plastic"
-    MODE="global"
-  elif [ -f "$LOCAL_INDEX" ]; then
-    INDEX="$LOCAL_INDEX"
-    STORE_ROOT=".plastic"
-    MODE="local"
-  else
+  if [ ! -f "$GLOBAL_INDEX" ]; then
     exit 0
   fi
+
+  INDEX="$GLOBAL_INDEX"
+  STORE_ROOT="$HOME/.plastic"
+  MODE="global"
 
   SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
   OUTPUT=$(ruby "$SCRIPT_DIR/../scripts/hook-continue" "$INDEX" "$STORE_ROOT" "$MODE" 2>/dev/null)
@@ -28,7 +23,7 @@ if echo "$MESSAGE" | grep -iq '\bcontinue\b'; then
 {
   "hookSpecificOutput": {
     "hookEventName": "UserPromptSubmit",
-    "additionalContext": "PLASTIC CONTINUE — The user wants to resume previous work.\n\nRead ~/.plastic/INDEX.md (or .plastic/INDEX.md) and follow the continuing skill workflow."
+    "additionalContext": "PLASTIC CONTINUE — The user wants to resume previous work.\n\nRead ~/.plastic/INDEX.md and follow the continuing skill workflow."
   }
 }
 HOOKJSON

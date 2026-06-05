@@ -44,10 +44,10 @@ All completed intents with dates. Links preserved, never deleted.
 ## Workflow
 
 ### Rebuild Sections
-Scan `.plastic/store/` for intent files and rebuild each section:
+Scan the active store's `store/` directory for intent files and rebuild each section:
 
 ```bash
-for dir in .plastic/store/*/; do
+for dir in $STORE_ROOT/store/*/; do
   f=$(find "$dir" -maxdepth 1 -name "*.md" ! -name "spec.md" ! -name "plan.md" ! -name "checklist.md" ! -name "outcome.md" ! -name "savepoint.md" | head -1)
   [ -n "$f" ] && dirname_slug=$(basename "$dir") && ruby -e '
     data = File.read(ARGV[0]).split("---")[1]

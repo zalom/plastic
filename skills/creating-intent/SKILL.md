@@ -1,6 +1,6 @@
 ---
 name: plastic:creating-intent
-description: Use when new work begins, the user expresses a new goal, says "new intent", or no active intent exists for the current task. Creates intents in the global store (~/.plastic/store/) or in a project's .plastic/store/ depending on context.
+description: Use when new work begins, the user expresses a new goal, says "new intent", or no active intent exists for the current task. Creates intents in the global store (~/.plastic/store/) or in a project's store (~/.plastic/projects/{slug}/store/) depending on context.
 ---
 
 # Creating an Intent
@@ -15,7 +15,7 @@ description: Use when new work begins, the user expresses a new goal, says "new 
 
 **Global intent** (strategic): created when working outside a registered project, or when the user expresses a high-level goal. Stored in `~/.plastic/store/`.
 
-**Project intent** (tactical): created when working inside a registered project directory. Stored in `<project>/.plastic/store/`. Automatically linked to the project's governing intent.
+**Project intent** (tactical): created when working inside a registered project directory. Stored in `~/.plastic/projects/{slug}/store/`. Automatically linked to the project's governing intent.
 
 ### Detection logic:
 1. Read `~/.plastic/projects.yml`
@@ -23,25 +23,23 @@ description: Use when new work begins, the user expresses a new goal, says "new 
    - If CWD is inside a registered project → **project intent (tactical)**
 3. **Explicit mention:** User mentions an existing project by name ("add this to reddit-kb", "new intent for plastic")
    - Look up project in `projects.yml` by slug
-   - If found → **project intent (tactical)** in that project's `.plastic/store/`
+   - If found → **project intent (tactical)** in that project's store at `~/.plastic/projects/{slug}/store/`
    - Agent changes working directory to the project path for execution
 4. **No match:** CWD is not in a project AND no project mentioned
    - → **global intent (strategic)** in `~/.plastic/store/`
-5. **No global install:** fall back to local `.plastic/store/`
 
 When creating a tactical intent in a project store:
 - Read the project's `AGENTS.md` for project context and decisions
 - Link back to the project's governing intent (from `projects.yml` `parent` field) via `sources`
 - Add `[[global:<parent_ID>]]` backlink in `## Links`
-- The intent's Folgezettel ID is scoped to the project store (run `folgezettel-id` against the project's `.plastic/store/`)
+- The intent's Folgezettel ID is scoped to the project store (run `folgezettel-id` against the project's store at `~/.plastic/projects/{slug}/store/`)
 
 ## Workflow
 
 ### 1. Determine Store Location
 
 - **Global:** `~/.plastic/store/`
-- **Project:** `<project-path>/.plastic/store/`
-- **Legacy local:** `.plastic/store/`
+- **Project:** `~/.plastic/projects/{slug}/store/`
 
 ### 2. Determine Folgezettel ID
 
@@ -54,7 +52,7 @@ IDs are scoped to the store they live in. Use the correct store path:
 
 **Project store:**
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" "<project-path>/.plastic/store"
+"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" "~/.plastic/projects/{slug}/store"
 ```
 
 **Branch intent (has parent, either store):**
@@ -91,8 +89,8 @@ When the user says "start building" or the plan calls for a new project:
    mkdir -p <project_root>/<slug>
    cd <project_root>/<slug>
    git init
-   mkdir -p .plastic/store
-   touch .plastic/store/.gitkeep
+   mkdir -p ~/.plastic/projects/{slug}/store
+   touch ~/.plastic/projects/{slug}/store/.gitkeep
    ```
 3. Copy `AGENTS.md` template from `${CLAUDE_PLUGIN_ROOT}/templates/agents.md`
 4. Register in `~/.plastic/projects.yml`:
@@ -110,7 +108,6 @@ When the user says "start building" or the plan calls for a new project:
 
 - **Global intents:** update `~/.plastic/INDEX.md`
 - **Project intents:** no global INDEX.md change (tactical intents are project-scoped)
-- **Legacy local:** update `.plastic/INDEX.md`
 
 Add to `## Active` (or `## Future`) and appropriate cluster.
 

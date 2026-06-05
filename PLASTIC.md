@@ -158,38 +158,26 @@ Global mode (default):
         └── savepoint.md                  # Session state for resume (optional)
 ```
 
-Per-project store (for intents that belong to a specific project):
+Per-project store (centralized under `~/.plastic/projects/`):
 
 ```
-<project>/.plastic/
-├── store/                                # Project-scoped intents
-├── INDEX.md                              # Project-scoped index
-└── config.yml                            # Project-scoped config (overrides global)
+~/.plastic/projects/
+└── {slug}/                               # One directory per registered project
+    ├── store/                            # Project-scoped intents
+    └── INDEX.md                          # Project-scoped index
 ```
+
+Project stores are derived from `projects.yml` — the path is always `~/.plastic/projects/{slug}/store/`.
+No files are placed in the project's code directory. The SessionStart hook detects the project
+by matching CWD against `projects.yml` and loads the appropriate store automatically.
 
 ### Privacy and Collaboration
 
-**`.plastic/` is always private.** It is gitignored in every project — never committed, never pushed. Each person has their own intent store with their own thought evolution.
+**Plastic is personal.** All intent data lives under `~/.plastic/` — one location, one git repo, never pushed. Each person has their own intent store with their own thought evolution. No files are placed in project directories.
 
-Collaboration happens through the project's shared contracts:
-- **AGENTS.md** — project conventions contract (checked into git)
-- **PLASTIC.md** — intent lifecycle rules (checked into git)
-- **Pull requests** — the collaboration layer for code changes
+Collaboration happens through pull requests and project conventions, not shared intents. When an intent delivers something that changes how a project works, the decision gets written into the project's shared files (README, docs, config). The intents themselves are private working memory.
 
-The knowledge pipeline: **intents (private thinking) → PLASTIC.md + AGENTS.md (shared contracts)**. When an intent delivers something that changes how the project works, the decision gets written into one of these shared files. The intents themselves are working memory; the contracts are the crystallized, authoritative output.
-
-Project config (`<project>/.plastic/config.yml`) overrides global config (`~/.plastic/config.yml`). Both are private.
-
-Legacy per-project mode (fallback when no global install exists):
-
-```
-<project>/.plastic/                       # Replaces ~/.plastic/ entirely
-├── config.yml
-├── INDEX.md
-└── store/
-    └── ID--three-to-five-words/
-        └── ...
-```
+Project config (`~/.plastic/projects/{slug}/config.yml`) overrides global config (`~/.plastic/config.yml`). Both are private.
 
 ### Directory Naming — Folgezettel
 
@@ -220,7 +208,7 @@ Examples:
 | `[[ID]]` | Link to intent in same store (e.g., `[[1a1]]`) |
 | `[[ID\|display text]]` | Link with human-readable label (e.g., `[[1a1\|Design Plastic]]`) |
 | `[[global:ID]]` | Link to intent in `~/.plastic/store/` |
-| `[[project-slug:ID]]` | Link to intent in a project's `.plastic/store/` |
+| `[[project-slug:ID]]` | Link to intent in `~/.plastic/projects/{slug}/store/` |
 
 ### Authorship
 
@@ -235,7 +223,7 @@ Sections: `## Active`, `## Future`, `## Clusters`, `## Abandoned`, `## Completed
 
 ## Creating an Intent
 
-1. Determine the target store: `~/.plastic/store/` for strategic intents (default), `<project>/.plastic/store/` for project-tactical intents
+1. Determine the target store: `~/.plastic/store/` for global intents (default), `~/.plastic/projects/{slug}/store/` for project intents
 2. Determine the Folgezettel ID: If root (no parent), find highest root number +1. If branch, run `"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" <parent_id> <store_path>`
 3. Create the intent directory in the chosen store (e.g., `ID--three-to-five-words`)
 4. Create `{ID}--{slug}.md` with frontmatter (id, intent, sources, chain, created, author, tags)
@@ -324,16 +312,14 @@ Hubs are represented as clusters in INDEX.md.
 
 ## Projects
 
-A Project is a deliverable grouping of intents — a hub that connects related work into something that can be delivered. Projects have two stores:
+A Project is a deliverable grouping of intents — a hub that connects related work into something that can be delivered. Projects have two stores, both under `~/.plastic/`:
 
-- **Global store** (`~/.plastic/store/`): strategic intents — ideas, research, explorations, project-spawning hub intents. These never move.
-- **Project store** (`<project-path>/.plastic/`): tactical intents — implementation, actions, execution, delivery artifacts. Self-contained.
+- **Global store** (`~/.plastic/store/`): strategic intents — ideas, research, explorations that span multiple projects or don't belong to any project.
+- **Project store** (`~/.plastic/projects/{slug}/store/`): project-scoped intents — implementation, actions, execution, delivery artifacts.
 
-If a project has no configured codebase path, the fallback location is `~/.plastic/projects/<name>/.plastic/`.
+No files are placed in project code directories. The SessionStart hook detects the project by matching CWD against `projects.yml` and loads the appropriate store.
 
-Project membership is expressed via `project-<name>` tags on intents (convention, grepable). The global INDEX.md clusters are the visual representation of project hubs.
-
-`projects.yml` maps project names to codebase paths and is the registry the Coordinator reads to find projects:
+`projects.yml` maps project slugs to codebase paths:
 ```yaml
 projects:
   plastic:
@@ -343,9 +329,11 @@ projects:
     status: active
 ```
 
-Config resolution: project `.plastic/config.yml` overrides global `~/.plastic/config.yml` — like Rails environments override application config.
+The project store path is always derived: `~/.plastic/projects/{slug}/store/`. No explicit store path in `projects.yml`.
 
-Cross-linking: tactical intents in the project store reference global hub intents via `sources`. Global hub intents reference the project's tactical intents via `chain`.
+Config resolution: `~/.plastic/projects/{slug}/config.yml` overrides `~/.plastic/config.yml`.
+
+Cross-linking: project intents reference global intents via `[[global:ID]]`. Global intents reference project intents via `[[project-slug:ID]]`.
 
 ## Agent Architecture
 

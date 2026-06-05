@@ -76,10 +76,10 @@ Each decision should include:
 
 ### 5. Create Tactical Mirror
 
-Create the first intent in the project's `.plastic/store/`:
+Create the first intent in the project's store at `~/.plastic/projects/{slug}/store/`:
 
-**Directory:** `.plastic/store/1--<project-slug>/`
-**File:** `.plastic/store/1--<project-slug>/1.md`
+**Directory:** `~/.plastic/projects/{slug}/store/1--{slug}/`
+**File:** `~/.plastic/projects/{slug}/store/1--{slug}/1--{slug}.md`
 
 ```yaml
 ---
@@ -100,7 +100,7 @@ Sections:
 - `## Insights` — empty
 - `## Links` — `[[global:<founding_intent_ID>|<founding intent name>]]`
 
-Update the project's `.plastic/INDEX.md`:
+Update the project's `~/.plastic/projects/{slug}/INDEX.md`:
 ```markdown
 # Index
 

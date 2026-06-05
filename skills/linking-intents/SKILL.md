@@ -41,9 +41,9 @@ tags: [plastic, project-reddit-kb]
 ## Workflow
 
 ### 1. Identify Intents to Connect
-Show existing intents by scanning `.plastic/store/` for intent files:
+Show existing intents by scanning the store's directory for intent files:
 ```bash
-for dir in .plastic/store/*/; do
+for dir in $STORE_ROOT/store/*/; do
   f=$(find "$dir" -maxdepth 1 -name "*.md" ! -name "spec.md" ! -name "plan.md" ! -name "checklist.md" ! -name "outcome.md" ! -name "savepoint.md" | head -1)
   [ -n "$f" ] && ruby -ryaml -e '
     data = File.read(ARGV[0]).split("---")[1]

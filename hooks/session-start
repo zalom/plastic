@@ -1,18 +1,9 @@
 #!/bin/bash
 GLOBAL_INDEX="$HOME/.plastic/INDEX.md"
-LOCAL_INDEX=".plastic/INDEX.md"
 
-if [ -f "$GLOBAL_INDEX" ]; then
-  INDEX="$GLOBAL_INDEX"
-  STORE_ROOT="$HOME/.plastic"
-  MODE="global"
-elif [ -f "$LOCAL_INDEX" ]; then
-  INDEX="$LOCAL_INDEX"
-  STORE_ROOT=".plastic"
-  MODE="local"
-else
+if [ ! -f "$GLOBAL_INDEX" ]; then
   exit 0
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ruby "$SCRIPT_DIR/../scripts/hook-session-start" "$INDEX" "$STORE_ROOT" "$MODE" "${CLAUDE_PLUGIN_ROOT:-}"
+ruby "$SCRIPT_DIR/../scripts/hook-session-start" "$GLOBAL_INDEX" "$HOME/.plastic" "global" "${CLAUDE_PLUGIN_ROOT:-}"

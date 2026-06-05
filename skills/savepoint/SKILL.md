@@ -14,10 +14,10 @@ description: Use when context is being compacted (PreCompact hook), user says "s
 ## Workflow
 
 ### 1. Find Active Intent(s)
-Read `.plastic/INDEX.md` and extract all intents listed under `## Active`.
+Read `~/.plastic/INDEX.md` (or the project INDEX.md) and extract all intents listed under `## Active`.
 
 ### 2. For Each Active Intent
-Read the intent directory at `.plastic/store/ID--slug/`:
+Read the intent directory at `~/.plastic/store/ID--slug/`:
 
 **a. Update checklist.md** (if exists):
 - Check off completed items

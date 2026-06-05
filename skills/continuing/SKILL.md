@@ -13,7 +13,7 @@ description: Use when the user says "continue" after a /clear, or when resuming 
 ## Determine Store
 
 1. Check `~/.plastic/INDEX.md` → global mode
-2. Else check `.plastic/INDEX.md` → local/legacy mode
+2. 
 3. If neither exists → announce "No Plastic store found. Run /plastic:install."
 
 ## Workflow
@@ -24,7 +24,7 @@ Read the INDEX.md from the active store. Extract intents under `## Active` and `
 ### 2. Detect Current Project (global mode only)
 Read `~/.plastic/projects.yml`, match CWD against registered project paths. If in a project:
 - Load the governing intent (from `parent` in projects.yml)
-- Load tactical intents from `<project>/.plastic/store/`
+- Load tactical intents from `~/.plastic/projects/{slug}/store/`
 
 ### 3. If Active Intents Exist → Resume
 
