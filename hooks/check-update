@@ -13,19 +13,29 @@ if [ ! -f "$VERSION_FILE" ]; then
   exit 0
 fi
 
-CURRENT=$(cat "$VERSION_FILE" | tr -d '[:space:]')
+CURRENT=$(cat "$VERSION_FILE" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$')
+
+if [ -z "$CURRENT" ]; then
+  exit 0
+fi
 
 # Background check — don't block session start
 (
-  LATEST=$(npm view @zalom/plastic version 2>/dev/null | tr -d '[:space:]')
-  if [ -n "$LATEST" ] && [ "$LATEST" != "$CURRENT" ]; then
-    cat > "$CACHE_FILE" <<EOF
-{"current":"$CURRENT","latest":"$LATEST","checked":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","updateAvailable":true}
-EOF
+  RAW=$(npm view @zalom/plastic version 2>/dev/null)
+  LATEST=$(echo "$RAW" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$')
+
+  if [ -z "$LATEST" ]; then
+    exit 0
+  fi
+
+  CHECKED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+  if [ "$LATEST" != "$CURRENT" ]; then
+    printf '{"current":"%s","latest":"%s","checked":"%s","updateAvailable":true}\n' \
+      "$CURRENT" "$LATEST" "$CHECKED" > "$CACHE_FILE"
   else
-    cat > "$CACHE_FILE" <<EOF
-{"current":"$CURRENT","latest":"$CURRENT","checked":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","updateAvailable":false}
-EOF
+    printf '{"current":"%s","latest":"%s","checked":"%s","updateAvailable":false}\n' \
+      "$CURRENT" "$LATEST" "$CHECKED" > "$CACHE_FILE"
   fi
 ) &
 
