@@ -9,9 +9,6 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "scripts": {
-    "test": "node --test test/*_test.js"
-  },
   "keywords": [
     "intent-driven",
     "idea-development",
@@ -35,14 +32,12 @@
   "homepage": "https://github.com/zalom/plastic",
   "files": [
     "bin/",
-    "lib/",
+    "scripts/",
     "skills/",
     "hooks/",
     "agents/",
-    "scripts/",
     "templates/",
     "PLASTIC.md",
-    "deprecations.yml",
-    "LICENSE"
+    "deprecations.yml"
   ]
 }
