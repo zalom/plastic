@@ -1,0 +1,32 @@
+#!/bin/bash
+# plastic-hook-version: 1.0.0
+# Runs on SessionStart — checks npm for newer version, writes cache
+
+PLASTIC_HOME="$HOME/.plastic"
+CACHE_DIR="$PLASTIC_HOME/.cache"
+CACHE_FILE="$CACHE_DIR/update-check.json"
+VERSION_FILE="$PLASTIC_HOME/VERSION"
+
+mkdir -p "$CACHE_DIR"
+
+if [ ! -f "$VERSION_FILE" ]; then
+  exit 0
+fi
+
+CURRENT=$(cat "$VERSION_FILE" | tr -d '[:space:]')
+
+# Background check — don't block session start
+(
+  LATEST=$(npm view @zalom/plastic version 2>/dev/null | tr -d '[:space:]')
+  if [ -n "$LATEST" ] && [ "$LATEST" != "$CURRENT" ]; then
+    cat > "$CACHE_FILE" <<EOF
+{"current":"$CURRENT","latest":"$LATEST","checked":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","updateAvailable":true}
+EOF
+  else
+    cat > "$CACHE_FILE" <<EOF
+{"current":"$CURRENT","latest":"$CURRENT","checked":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","updateAvailable":false}
+EOF
+  fi
+) &
+
+exit 0

@@ -1,0 +1,16 @@
+#!/bin/bash
+# plastic-hook-version: 1.0.0
+# StatusLine hook — shows update available warning
+
+CACHE_FILE="$HOME/.plastic/.cache/update-check.json"
+
+if [ ! -f "$CACHE_FILE" ]; then
+  exit 0
+fi
+
+UPDATE_AVAILABLE=$(grep -o '"updateAvailable":true' "$CACHE_FILE" 2>/dev/null)
+if [ -n "$UPDATE_AVAILABLE" ]; then
+  LATEST=$(grep -o '"latest":"[^"]*"' "$CACHE_FILE" | cut -d'"' -f4)
+  CURRENT=$(grep -o '"current":"[^"]*"' "$CACHE_FILE" | cut -d'"' -f4)
+  echo "Plastic update: $CURRENT → $LATEST — run /plastic:update"
+fi

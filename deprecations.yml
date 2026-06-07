@@ -11,4 +11,13 @@
 #   removal: semver where feature is removed
 #   link: optional URL to migration guide
 
-deprecations: []
+deprecations:
+  - id: cc-plugin-to-npx
+    severity: info
+    summary: "Plastic distribution is moving from Claude Code plugin to npx install"
+    migration_steps:
+      - "Install new distribution: npx @zalom/plastic@latest"
+      - "Verify: check that ~/.plastic/ is intact and hooks work"
+      - "Remove old plugin: /plugin remove plastic"
+    introduced: "1.0.0"
+    removal: "2.0.0"

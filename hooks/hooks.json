@@ -8,6 +8,11 @@
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" session-start",
             "statusMessage": "Loading Plastic context..."
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/check-update\"",
+            "statusMessage": ""
           }
         ]
       }
@@ -54,6 +59,17 @@
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/future-intent-check\"",
             "statusMessage": "Checking future intents..."
+          }
+        ]
+      }
+    ],
+    "statusLine": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/statusline\""
           }
         ]
       }

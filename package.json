@@ -10,7 +10,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "test": "node --test test/"
+    "test": "node --test test/*_test.js"
   },
   "keywords": [
     "intent-driven",
