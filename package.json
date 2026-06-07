@@ -1,6 +1,43 @@
 {
-  "name": "plastic",
-  "version": "0.9.0",
-  "description": "Intent-driven state management for AI coding sessions",
-  "type": "module"
+  "name": "@zalom/plastic",
+  "version": "1.0.0-alpha.1",
+  "description": "Intent-driven idea development system for AI coding agents",
+  "type": "module",
+  "bin": {
+    "plastic": "bin/install.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "intent-driven",
+    "idea-development",
+    "zettelkasten",
+    "ai-agent",
+    "multi-agent",
+    "neuroplasticity",
+    "claude-code",
+    "codex-cli",
+    "hermes"
+  ],
+  "author": {
+    "name": "Zlatko Alomerovic",
+    "email": "zlatko.alomerovic@gmail.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zalom/plastic"
+  },
+  "homepage": "https://github.com/zalom/plastic",
+  "files": [
+    "bin/",
+    "scripts/",
+    "skills/",
+    "hooks/",
+    "agents/",
+    "templates/",
+    "PLASTIC.md",
+    "deprecations.yml"
+  ]
 }

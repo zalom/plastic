@@ -1,46 +1,19 @@
 ---
-name: plastic:update
-description: Use when updating Plastic after a plugin update, or when the user says "update plastic". Syncs core files (PLASTIC.md, scripts) to the global store without touching user data.
+name: update
+description: Use when updating Plastic after a plugin update, or when the user says "update plastic". Runs the npx installer to sync core files and re-register agent adapters.
 ---
 
 # Update Plastic
 
 ## When to Use
-- After a plugin update (new version of Plastic installed)
 - User says "update plastic", "sync plastic", or "upgrade plastic"
-- Something seems out of date in the global store
+- Statusline shows "Plastic update available"
+- After a version bump notification
 
 ## Prerequisites
 
 Global install must exist (`~/.plastic/INDEX.md` present). If not, tell the
-user to run `/plastic:install` first.
-
-## What Gets Updated
-
-Core files (Plastic-owned, always overwritten):
-
-| File | Source | Destination |
-|---|---|---|
-| `PLASTIC.md` | `${CLAUDE_PLUGIN_ROOT}/PLASTIC.md` | `~/.plastic/PLASTIC.md` |
-| `folgezettel-id` | `${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id` | `~/.plastic/scripts/folgezettel-id` |
-| `read-config` | `${CLAUDE_PLUGIN_ROOT}/scripts/read-config` | `~/.plastic/scripts/read-config` |
-
-Created if missing (user-owned, never overwritten):
-
-| File | Action |
-|---|---|
-| `AGENTS.md` | Create with clean starter content if not present |
-| `scripts/` dir | Create if not present |
-
-Never touched (user data):
-
-| File | Reason |
-|---|---|
-| `INDEX.md` | User's intent index |
-| `config.yml` | User's preferences |
-| `projects.yml` | User's project registry |
-| `store/` | User's intents |
-| `AGENTS.md` (if exists) | User's project rules and decisions |
+user to run `npx @zalom/plastic@latest` first.
 
 ## Procedure
 
@@ -48,56 +21,49 @@ Never touched (user data):
 
 ```bash
 if [ ! -f ~/.plastic/INDEX.md ]; then
-  echo "No global install found. Run /plastic:install first."
+  echo "No global install found. Run: npx @zalom/plastic@latest"
   exit
 fi
 ```
 
-### Step 2: Sync PLASTIC.md
+### Step 2: Run the installer
 
 ```bash
-cp "${CLAUDE_PLUGIN_ROOT}/PLASTIC.md" ~/.plastic/PLASTIC.md
+npx @zalom/plastic@latest --claude
 ```
 
-### Step 3: Sync scripts
+This re-runs the installer which:
+- Downloads the latest version from npm
+- Syncs core files (PLASTIC.md, scripts, hooks) to ~/.plastic/
+- Re-registers hooks and skills into Claude Code's ~/.claude/
+- Preserves all user data (INDEX.md, config.yml, projects.yml, store/)
+
+### Step 3: Announce key changes
+
+After the installer completes, read `~/.plastic/PLASTIC.md` and announce any
+convention changes that affect the current session. This corrects the agent's
+in-context understanding without needing /clear.
+
+Format:
+```
+Plastic updated to vX.Y.Z.
+
+Key changes in this version:
+- [list notable convention changes if any]
+
+Recommendation: run /clear for a clean session with all new conventions loaded.
+```
+
+### Step 4: Commit
 
 ```bash
-mkdir -p ~/.plastic/scripts
-cp "${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" ~/.plastic/scripts/folgezettel-id
-cp "${CLAUDE_PLUGIN_ROOT}/scripts/read-config" ~/.plastic/scripts/read-config
-chmod +x ~/.plastic/scripts/folgezettel-id ~/.plastic/scripts/read-config
+cd ~/.plastic && git add PLASTIC.md scripts/ AGENTS.md VERSION 2>/dev/null && git commit -m "chore: update Plastic core files" --allow-empty
 ```
 
-### Step 4: Create AGENTS.md if missing
+### Step 5: Clear update cache
 
 ```bash
-if [ ! -f ~/.plastic/AGENTS.md ]; then
-  cat > ~/.plastic/AGENTS.md << 'EOF'
-# Plastic — Agent Instructions
-
-Read `PLASTIC.md` in this directory. It contains all Plastic conventions.
-Follow it exactly. Never modify it — it is overwritten on plugin updates.
-
-This file (`AGENTS.md`) is where project-specific rules live. Users and agents
-may add content below.
-
----
-EOF
-fi
+rm -f ~/.plastic/.cache/update-check.json
 ```
 
-### Step 5: Report
-
-```
-Plastic updated.
-- PLASTIC.md: synced to latest conventions
-- Scripts: synced (folgezettel-id, read-config)
-- AGENTS.md: [created | preserved (user-editable)]
-- User data: untouched (INDEX.md, config.yml, projects.yml, store/)
-```
-
-### Step 6: Commit
-
-```bash
-cd ~/.plastic && git add PLASTIC.md scripts/ AGENTS.md 2>/dev/null && git commit -m "chore: update Plastic core files" --allow-empty
-```
+This removes the statusline warning since the update is now applied.
