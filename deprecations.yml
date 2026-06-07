@@ -1,0 +1,14 @@
+# Plastic deprecation notices
+# Each entry is shown to the user during SessionStart.
+# See PLASTIC.md "Deprecation Process" for the full convention.
+#
+# Schema:
+#   id: unique-slug (used for dismissal tracking)
+#   severity: info | warning | critical
+#   summary: one-line human description
+#   migration_steps: ordered list of what user must do
+#   introduced: semver where notice was added
+#   removal: semver where feature is removed
+#   link: optional URL to migration guide
+
+deprecations: []

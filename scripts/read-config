@@ -18,6 +18,7 @@ DEFAULTS = {
   "hash_algorithm" => "sha256-base36",
   "max_slug_words" => 5,
   "project_roots" => ["~/.plastic/projects"],
+  "deprecations_dismissed" => [],
   "agent" => {
     "type" => "claude-code",
     "parallel_mode" => "linear"

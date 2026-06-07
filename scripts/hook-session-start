@@ -117,11 +117,44 @@ if File.exist?(projects_path)
   end
 end
 
+# --- Load deprecations ---
+
+deprecations = []
+if plugin_root && !plugin_root.empty?
+  dep_file = "#{plugin_root}/deprecations.yml"
+  if File.exist?(dep_file)
+    dep_data = YAML.safe_load(File.read(dep_file)) rescue {}
+    deprecations = dep_data["deprecations"] || []
+  end
+end
+
+dismissed_json = `"#{read_config}" deprecations_dismissed`.strip
+dismissed = begin
+  JSON.parse(dismissed_json)
+rescue
+  []
+end
+
+current_version = nil
+if plugin_root && !plugin_root.empty?
+  plugin_json_path = "#{plugin_root}/.claude-plugin/plugin.json"
+  if File.exist?(plugin_json_path)
+    pj = JSON.parse(File.read(plugin_json_path)) rescue {}
+    current_version = pj["version"]
+  end
+end
+
+active_deprecations = deprecations.select do |dep|
+  next true if dep["severity"] == "critical"
+  next true if current_version && dep["removal"] == current_version
+  !dismissed.include?(dep["id"])
+end
+
 # --- Early exit if nothing to show ---
 
 all_active = active + project_active
 all_future = future + project_future
-exit 0 if all_active.empty? && stale.empty? && all_future.empty?
+exit 0 if all_active.empty? && stale.empty? && all_future.empty? && active_deprecations.empty?
 
 # --- Build context ---
 
@@ -153,6 +186,33 @@ if stale.any?
     parts << "- #{s[:name]} (#{s[:age]} days) — consider: activate, abandon, or defer to agent"
   end
   parts << "\nWhen appropriate, ask the user what to do with stale intents."
+end
+
+if active_deprecations.any?
+  parts << ""
+  active_deprecations.each do |dep|
+    severity = dep["severity"] || "info"
+    summary = dep["summary"] || dep["id"]
+    removal = dep["removal"]
+    link = dep["link"]
+    steps = dep["migration_steps"] || []
+
+    if severity == "info"
+      line = "i Deprecation: #{summary}. Removed in: #{removal}."
+      line += " See: #{link}" if link
+      parts << line
+    else
+      marker = severity == "critical" ? "!! DEPRECATION (critical)" : "! DEPRECATION (warning)"
+      parts << "#{marker}: #{summary}"
+      if steps.any?
+        parts << "  Migration steps:"
+        steps.each_with_index { |s, i| parts << "  #{i + 1}. #{s}" }
+      end
+      trail = "  Removed in: #{removal}"
+      trail += " | Details: #{link}" if link
+      parts << trail
+    end
+  end
 end
 
 payload = {
