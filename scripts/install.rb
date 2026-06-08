@@ -304,40 +304,76 @@ end
 
 def merge_claude_hooks(settings_path)
   settings = read_json_safe(settings_path) || {}
-  return if settings.nil? # unparseable — refuse to modify
+  return if settings.nil?
 
   hooks = settings["hooks"] ||= {}
   hook_dir = File.join(Dir.home, ".claude", "hooks")
 
+  purge_stale_plastic_hooks(hooks)
+
   plastic_hooks = {
-    "SessionStart" => [
-      { "type" => "command", "command" => "ruby #{hook_dir}/plastic-session-start", "statusMessage" => "Loading Plastic context..." },
-      { "type" => "command", "command" => "#{hook_dir}/plastic-check-update", "statusMessage" => "" },
-    ],
-    "PreCompact" => [
-      { "type" => "command", "command" => "ruby #{hook_dir}/plastic-savepoint", "statusMessage" => "Saving Plastic intent state..." },
-    ],
-    "PostToolUse" => [
-      { "matcher" => "Write|Edit", "type" => "command", "command" => "#{hook_dir}/plastic-gate-check", "statusMessage" => "Checking lifecycle gates..." },
-    ],
-    "UserPromptSubmit" => [
-      { "type" => "command", "command" => "#{hook_dir}/plastic-continue", "statusMessage" => "Checking for continue..." },
-      { "type" => "command", "command" => "#{hook_dir}/plastic-future-intent-check", "statusMessage" => "Checking future intents..." },
-    ],
-    "statusLine" => [
-      { "type" => "command", "command" => "#{hook_dir}/plastic-statusline" },
-    ],
+    "SessionStart" => {
+      "matcher" => "",
+      "hooks" => [
+        { "type" => "command", "command" => "#{hook_dir}/plastic-session-start", "statusMessage" => "Loading Plastic context..." },
+        { "type" => "command", "command" => "#{hook_dir}/plastic-check-update", "statusMessage" => "" },
+      ],
+    },
+    "PreCompact" => {
+      "matcher" => "",
+      "hooks" => [
+        { "type" => "command", "command" => "#{hook_dir}/plastic-savepoint", "statusMessage" => "Saving Plastic intent state..." },
+      ],
+    },
+    "PostToolUse" => {
+      "matcher" => "Write|Edit",
+      "hooks" => [
+        { "type" => "command", "command" => "#{hook_dir}/plastic-gate-check", "statusMessage" => "Checking lifecycle gates..." },
+      ],
+    },
+    "UserPromptSubmit" => {
+      "matcher" => "",
+      "hooks" => [
+        { "type" => "command", "command" => "#{hook_dir}/plastic-continue", "statusMessage" => "Checking for continue..." },
+        { "type" => "command", "command" => "#{hook_dir}/plastic-future-intent-check", "statusMessage" => "Checking future intents..." },
+      ],
+    },
   }
 
-  plastic_hooks.each do |event, entries|
+  plastic_hooks.each do |event, group|
     hooks[event] ||= []
-    entries.each do |entry|
-      already = hooks[event].any? { |h| h["command"] == entry["command"] }
-      hooks[event] << entry unless already
+    existing = hooks[event].find { |g| g.is_a?(Hash) && g["hooks"].is_a?(Array) && g["hooks"].any? { |h| h["command"].to_s.include?("plastic-") } }
+
+    if existing
+      existing["matcher"] = group["matcher"]
+      existing["hooks"] = group["hooks"]
+    else
+      hooks[event] << group
     end
   end
 
+  settings["statusLine"] = { "type" => "command", "command" => "#{hook_dir}/plastic-statusline" }
+
   write_json_atomic(settings_path, settings)
+end
+
+def purge_stale_plastic_hooks(hooks)
+  stale = ->(cmd) { cmd.to_s.match?(/ruby\s+.*plastic-/) || cmd.to_s.match?(/plastic-[a-z-]+\.rb/) }
+
+  hooks.each do |event, groups|
+    next unless groups.is_a?(Array)
+
+    hooks[event] = groups.map do |group|
+      if group.is_a?(Hash) && group["hooks"].is_a?(Array)
+        group["hooks"].reject! { |h| stale.call(h["command"]) }
+        group unless group["hooks"].empty?
+      elsif group.is_a?(Hash) && group["command"]
+        stale.call(group["command"]) ? nil : group
+      else
+        group
+      end
+    end.compact
+  end
 end
 
 # --- Uninstall ---
@@ -403,11 +439,24 @@ def remove_claude_hooks(settings_path)
   settings = read_json_safe(settings_path)
   return unless settings && settings["hooks"]
 
-  settings["hooks"].each do |event, entries|
-    settings["hooks"][event] = entries.reject { |h| (h["command"] || "").include?("plastic-") }
+  settings["hooks"].each do |event, groups|
+    next unless groups.is_a?(Array)
+
+    settings["hooks"][event] = groups.map do |group|
+      if group.is_a?(Hash) && group["hooks"].is_a?(Array)
+        group["hooks"].reject! { |h| h["command"].to_s.include?("plastic-") }
+        group unless group["hooks"].empty?
+      elsif group.is_a?(Hash) && group["command"]
+        group["command"].to_s.include?("plastic-") ? nil : group
+      else
+        group
+      end
+    end.compact
   end
-  settings["hooks"].delete_if { |_, v| v.empty? }
+
+  settings["hooks"].delete_if { |_, v| v.is_a?(Array) && v.empty? }
   settings.delete("hooks") if settings["hooks"]&.empty?
+  settings.delete("statusLine") if settings.dig("statusLine", "command").to_s.include?("plastic-")
 
   write_json_atomic(settings_path, settings)
 end
