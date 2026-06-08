@@ -294,7 +294,10 @@ def install_claude(config, force)
   File.write(version_file, "#{VERSION}\n")
   installed << version_file
 
-  # Merge hooks into settings.json
+  # Sync marketplace plugin so Claude Code discovers skills
+  sync_marketplace_plugin(config[:dir])
+
+  # Merge hooks + enabledPlugins into settings.json
   settings_path = File.join(config[:dir], "settings.json")
   merge_claude_hooks(settings_path)
 
@@ -331,6 +334,74 @@ def install_hermes(config, force)
   write_manifest(installed, manifest_path)
 
   { agent: config[:name], success: true, files: installed.size }
+end
+
+# --- Marketplace plugin sync ---
+
+def sync_marketplace_plugin(claude_dir)
+  marketplace_dir = File.join(claude_dir, "plugins", "marketplaces", "plastic")
+  plugin_meta_dir = File.join(marketplace_dir, ".claude-plugin")
+
+  FileUtils.mkdir_p(plugin_meta_dir)
+
+  plugin_json = {
+    "name" => "plastic",
+    "description" => "Intent-driven state management for AI coding sessions. Neuroplasticity for your codebase.",
+    "version" => VERSION,
+    "author" => { "name" => "Zlatko Alomerovic", "email" => "zlatko.alomerovic@gmail.com" },
+    "homepage" => "https://github.com/zalom/plastic",
+    "repository" => "https://github.com/zalom/plastic",
+    "license" => "MIT",
+    "keywords" => %w[intent-driven state-management zettelkasten ai-agent]
+  }
+  write_json_atomic(File.join(plugin_meta_dir, "plugin.json"), plugin_json)
+
+  marketplace_json = {
+    "name" => "plastic",
+    "description" => "Marketplace for Plastic — intent-driven state management",
+    "owner" => { "name" => "Zlatko Alomerovic", "email" => "zlatko.alomerovic@gmail.com" },
+    "plugins" => [{
+      "name" => "plastic",
+      "description" => "Intent-driven state management for AI coding sessions",
+      "version" => VERSION,
+      "source" => "./",
+      "author" => { "name" => "Zlatko Alomerovic", "email" => "zlatko.alomerovic@gmail.com" }
+    }]
+  }
+  write_json_atomic(File.join(plugin_meta_dir, "marketplace.json"), marketplace_json)
+
+  # Sync skills
+  skills_source = File.join(PACKAGE_ROOT, "skills")
+  skills_dest = File.join(marketplace_dir, "skills")
+  if File.directory?(skills_source)
+    FileUtils.rm_rf(skills_dest)
+    copy_dir_recursive(skills_source, skills_dest)
+  end
+
+  # Sync agents
+  agents_source = File.join(PACKAGE_ROOT, "agents")
+  agents_dest = File.join(marketplace_dir, "agents")
+  if File.directory?(agents_source)
+    FileUtils.rm_rf(agents_dest)
+    copy_dir_recursive(agents_source, agents_dest)
+  end
+
+  # Write .claude/settings.json (permissions)
+  claude_settings_dir = File.join(marketplace_dir, ".claude")
+  FileUtils.mkdir_p(claude_settings_dir)
+  write_json_atomic(File.join(claude_settings_dir, "settings.json"), {
+    "permissions" => {
+      "allow" => [
+        "Bash(ruby *)",
+        "Bash(ls *)",
+        "Bash(find *)",
+        "Bash(git *)",
+        "Bash(mkdir *)",
+        "Bash(chmod *)",
+        "mcp__serena__*"
+      ]
+    }
+  })
 end
 
 # --- settings.json merge (read-modify-write, never clobber) ---
@@ -393,6 +464,14 @@ def merge_claude_hooks(settings_path)
   end
 
   settings["statusLine"] = { "type" => "command", "command" => "#{hook_dir}/plastic-statusline" }
+
+  # Register Plastic as an enabled plugin for skill discovery
+  plugins = settings["enabledPlugins"] ||= {}
+  plugins["plastic@plastic"] = true
+
+  # Register the marketplace source
+  marketplaces = settings["extraKnownMarketplaces"] ||= {}
+  marketplaces["plastic"] ||= { "source" => { "source" => "github", "repo" => "zalom/plastic" } }
 
   write_json_atomic(settings_path, settings)
 end
@@ -462,7 +541,12 @@ def uninstall_agent(key, config)
 
   # Clean known directories
   dirs_to_clean = case key
-                  when "claude" then [File.join(config[:dir], "plastic"), File.join(config[:dir], "skills", "plastic")]
+                  when "claude"
+                    [
+                      File.join(config[:dir], "plastic"),
+                      File.join(config[:dir], "skills", "plastic"),
+                      File.join(config[:dir], "plugins", "marketplaces", "plastic"),
+                    ]
                   else [File.join(config[:dir], "skills", "plastic")]
                   end
 
@@ -505,6 +589,12 @@ def remove_claude_hooks(settings_path)
       original = JSON.parse(File.read(original_path)) rescue nil
       settings["statusLine"] = original if original
     end
+  end
+
+  # Remove from enabledPlugins
+  if settings["enabledPlugins"]
+    settings["enabledPlugins"].delete("plastic@plastic")
+    settings.delete("enabledPlugins") if settings["enabledPlugins"].empty?
   end
 
   write_json_atomic(settings_path, settings)
