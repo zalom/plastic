@@ -217,6 +217,31 @@ def bootstrap
   puts "  \u{2705} Store bootstrapped"
 end
 
+def bootstrap_project_store(slug)
+  project_dir = File.join(PLASTIC_HOME, "projects", slug)
+  store_dir = File.join(project_dir, "store")
+
+  FileUtils.mkdir_p(store_dir)
+
+  template = File.join(PACKAGE_ROOT, "templates", "project.yml")
+  dest = File.join(project_dir, "project.yml")
+  write_if_missing(dest, File.read(template)) if File.exist?(template)
+
+  write_if_missing(File.join(project_dir, "INDEX.md"), <<~MD)
+    # Index
+
+    ## Active
+
+    ## Future
+
+    ## Clusters
+
+    ## Abandoned
+
+    ## Completed
+  MD
+end
+
 # --- Agent adapters ---
 
 def install_for_agent(key, force)
