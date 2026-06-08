@@ -150,11 +150,22 @@ active_deprecations = deprecations.select do |dep|
   !dismissed.include?(dep["id"])
 end
 
+# --- Check for available updates (from previous session's check) ---
+
+update_notice = nil
+cache_file = "#{store_root}/.cache/update-check.json"
+if File.exist?(cache_file)
+  cache = JSON.parse(File.read(cache_file)) rescue {}
+  if cache["updateAvailable"]
+    update_notice = "Plastic update available: #{cache["current"]} -> #{cache["latest"]} — run /plastic:update"
+  end
+end
+
 # --- Early exit if nothing to show ---
 
 all_active = active + project_active
 all_future = future + project_future
-exit 0 if all_active.empty? && stale.empty? && all_future.empty? && active_deprecations.empty?
+exit 0 if all_active.empty? && stale.empty? && all_future.empty? && active_deprecations.empty? && update_notice.nil?
 
 # --- Build context ---
 
@@ -213,6 +224,10 @@ if active_deprecations.any?
       parts << trail
     end
   end
+end
+
+if update_notice
+  parts.unshift("! #{update_notice}\n")
 end
 
 payload = {

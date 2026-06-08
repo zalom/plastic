@@ -365,17 +365,19 @@ def merge_claude_hooks(settings_path)
 end
 
 def purge_stale_plastic_hooks(hooks)
-  stale = ->(cmd) { cmd.to_s.match?(/ruby\s+.*plastic-/) || cmd.to_s.match?(/plastic-[a-z-]+\.rb/) }
+  plastic_cmd = ->(cmd) { cmd.to_s.include?("plastic-") }
+
+  hooks.delete("statusLine")
 
   hooks.each do |event, groups|
     next unless groups.is_a?(Array)
 
     hooks[event] = groups.map do |group|
       if group.is_a?(Hash) && group["hooks"].is_a?(Array)
-        group["hooks"].reject! { |h| stale.call(h["command"]) }
+        group["hooks"].reject! { |h| plastic_cmd.call(h["command"]) }
         group unless group["hooks"].empty?
       elsif group.is_a?(Hash) && group["command"]
-        stale.call(group["command"]) ? nil : group
+        plastic_cmd.call(group["command"]) ? nil : group
       else
         group
       end
