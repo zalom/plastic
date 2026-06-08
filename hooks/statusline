@@ -1,16 +1,56 @@
 #!/bin/bash
-# plastic-hook-version: 1.0.0
-# StatusLine hook — shows update available warning
+# plastic-hook-version: 2.0.0
+# StatusLine hook — chains user's original statusline, adds Plastic info
 
-CACHE_FILE="$HOME/.plastic/.cache/update-check.json"
+INPUT=$(cat)
 
-if [ ! -f "$CACHE_FILE" ]; then
-  exit 0
+# --- Chain original statusline ---
+ORIGINAL_CONFIG="$HOME/.plastic/.cache/original-statusline.json"
+ORIGINAL_OUTPUT=""
+if [ -f "$ORIGINAL_CONFIG" ]; then
+  ORIGINAL_CMD=$(grep -o '"command":"[^"]*"' "$ORIGINAL_CONFIG" 2>/dev/null | head -1 | cut -d'"' -f4)
+  if [ -z "$ORIGINAL_CMD" ]; then
+    ORIGINAL_CMD=$(grep -o '"command": "[^"]*"' "$ORIGINAL_CONFIG" 2>/dev/null | head -1 | sed 's/.*"command": "//;s/".*//')
+  fi
+  if [ -n "$ORIGINAL_CMD" ] && [ -x "$ORIGINAL_CMD" ]; then
+    ORIGINAL_OUTPUT=$(echo "$INPUT" | "$ORIGINAL_CMD" 2>/dev/null)
+  fi
 fi
 
-UPDATE_AVAILABLE=$(grep -o '"updateAvailable":true' "$CACHE_FILE" 2>/dev/null)
-if [ -n "$UPDATE_AVAILABLE" ]; then
-  LATEST=$(grep -o '"latest":"[^"]*"' "$CACHE_FILE" | cut -d'"' -f4)
-  CURRENT=$(grep -o '"current":"[^"]*"' "$CACHE_FILE" | cut -d'"' -f4)
-  echo "Plastic update: $CURRENT → $LATEST — run /plastic:update"
+# --- Plastic status ---
+PLASTIC_PARTS=""
+
+# Active intent from INDEX.md
+INDEX="$HOME/.plastic/INDEX.md"
+if [ -f "$INDEX" ]; then
+  ACTIVE=$(sed -n '/^## Active$/,/^## /{/^- \[/p;}' "$INDEX" | head -1)
+  if [ -n "$ACTIVE" ]; then
+    INTENT=$(echo "$ACTIVE" | sed 's/^- \[\([^]]*\)\].*/\1/')
+    PLASTIC_PARTS="plastic: ${INTENT}"
+  fi
+fi
+
+# Update notification
+CACHE_FILE="$HOME/.plastic/.cache/update-check.json"
+if [ -f "$CACHE_FILE" ]; then
+  UPDATE_AVAILABLE=$(grep -o '"updateAvailable":true' "$CACHE_FILE" 2>/dev/null)
+  if [ -n "$UPDATE_AVAILABLE" ]; then
+    LATEST=$(grep -o '"latest":"[^"]*"' "$CACHE_FILE" 2>/dev/null | head -1 | cut -d'"' -f4)
+    CURRENT=$(grep -o '"current":"[^"]*"' "$CACHE_FILE" 2>/dev/null | head -1 | cut -d'"' -f4)
+    UPDATE_MSG="plastic update: $CURRENT -> $LATEST"
+    if [ -n "$PLASTIC_PARTS" ]; then
+      PLASTIC_PARTS="$PLASTIC_PARTS | $UPDATE_MSG"
+    else
+      PLASTIC_PARTS="$UPDATE_MSG"
+    fi
+  fi
+fi
+
+# --- Combine output ---
+if [ -n "$ORIGINAL_OUTPUT" ] && [ -n "$PLASTIC_PARTS" ]; then
+  echo "$ORIGINAL_OUTPUT | $PLASTIC_PARTS"
+elif [ -n "$ORIGINAL_OUTPUT" ]; then
+  echo "$ORIGINAL_OUTPUT"
+elif [ -n "$PLASTIC_PARTS" ]; then
+  echo "$PLASTIC_PARTS"
 fi

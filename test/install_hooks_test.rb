@@ -5,20 +5,26 @@ require "fileutils"
 
 INSTALL_RB = File.expand_path("../../scripts/install.rb", __FILE__)
 
+PLASTIC_TEST_HOME = File.join(Dir.tmpdir, "plastic-test-home-#{Process.pid}")
+
 code = File.read(INSTALL_RB)
 code = code.sub(/^main$/, "# main (suppressed by test)")
 code = code.sub(/^PACKAGE_ROOT = .*$/, 'PACKAGE_ROOT = "/tmp/plastic-test-pkg"')
 code = code.sub(/^VERSION = .*$/, 'VERSION = "1.0.0-test"')
+code = code.sub(/^PLASTIC_HOME = .*$/, "PLASTIC_HOME = \"#{PLASTIC_TEST_HOME}\"")
 eval(code, TOPLEVEL_BINDING, INSTALL_RB)
 
 class MergeClaudeHooksTest < Minitest::Test
   def setup
     @dir = Dir.mktmpdir("hooks-test")
     @settings_path = File.join(@dir, "settings.json")
+    FileUtils.rm_rf(PLASTIC_TEST_HOME)
+    FileUtils.mkdir_p(PLASTIC_TEST_HOME)
   end
 
   def teardown
     FileUtils.rm_rf(@dir)
+    FileUtils.rm_rf(PLASTIC_TEST_HOME)
   end
 
   def test_merge_into_empty_settings
@@ -202,5 +208,63 @@ class MergeClaudeHooksTest < Minitest::Test
     settings = JSON.parse(File.read(@settings_path))
     assert_equal 1, settings["hooks"]["SessionStart"].size, "Only serena group should remain"
     assert_nil settings["statusLine"], "Plastic statusLine should be removed"
+  end
+
+  def test_merge_saves_original_statusline
+    original = { "type" => "command", "command" => "/Users/test/.claude/statusline.rb" }
+    File.write(@settings_path, JSON.pretty_generate({ "statusLine" => original }))
+
+    merge_claude_hooks(@settings_path)
+
+    backup_path = File.join(PLASTIC_HOME, ".cache", "original-statusline.json")
+    assert File.exist?(backup_path), "Original statusline should be backed up"
+
+    saved = JSON.parse(File.read(backup_path))
+    assert_equal "/Users/test/.claude/statusline.rb", saved["command"]
+
+    settings = JSON.parse(File.read(@settings_path))
+    assert settings["statusLine"]["command"].include?("plastic-statusline"), "statusLine should now point to plastic"
+  end
+
+  def test_merge_does_not_overwrite_backup_on_update
+    cache_dir = File.join(PLASTIC_HOME, ".cache")
+    FileUtils.mkdir_p(cache_dir)
+    backup_path = File.join(cache_dir, "original-statusline.json")
+    File.write(backup_path, JSON.pretty_generate({ "type" => "command", "command" => "/original/statusline.rb" }))
+
+    File.write(@settings_path, JSON.pretty_generate({
+      "statusLine" => { "type" => "command", "command" => "/old/plastic-statusline" },
+    }))
+
+    merge_claude_hooks(@settings_path)
+
+    saved = JSON.parse(File.read(backup_path))
+    assert_equal "/original/statusline.rb", saved["command"], "Backup should not be overwritten during update"
+  end
+
+  def test_remove_restores_original_statusline
+    cache_dir = File.join(PLASTIC_HOME, ".cache")
+    FileUtils.mkdir_p(cache_dir)
+    File.write(File.join(cache_dir, "original-statusline.json"),
+      JSON.pretty_generate({ "type" => "command", "command" => "/Users/test/.claude/statusline.rb" }))
+
+    File.write(@settings_path, JSON.pretty_generate({
+      "hooks" => {},
+      "statusLine" => { "type" => "command", "command" => "/path/plastic-statusline" },
+    }))
+
+    remove_claude_hooks(@settings_path)
+
+    settings = JSON.parse(File.read(@settings_path))
+    assert_equal "/Users/test/.claude/statusline.rb", settings.dig("statusLine", "command"),
+      "Original statusline should be restored on uninstall"
+  end
+
+  def test_merge_no_backup_when_no_existing_statusline
+    File.write(@settings_path, "{}")
+    merge_claude_hooks(@settings_path)
+
+    backup_path = File.join(PLASTIC_HOME, ".cache", "original-statusline.json")
+    refute File.exist?(backup_path), "No backup should be created when there was no existing statusline"
   end
 end

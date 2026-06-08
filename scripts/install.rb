@@ -359,6 +359,13 @@ def merge_claude_hooks(settings_path)
     end
   end
 
+  existing_status = settings["statusLine"]
+  if existing_status && !existing_status.dig("command").to_s.include?("plastic-")
+    cache_dir = File.join(PLASTIC_HOME, ".cache")
+    FileUtils.mkdir_p(cache_dir)
+    File.write(File.join(cache_dir, "original-statusline.json"), JSON.pretty_generate(existing_status))
+  end
+
   settings["statusLine"] = { "type" => "command", "command" => "#{hook_dir}/plastic-statusline" }
 
   write_json_atomic(settings_path, settings)
@@ -465,7 +472,14 @@ def remove_claude_hooks(settings_path)
 
   settings["hooks"].delete_if { |_, v| v.is_a?(Array) && v.empty? }
   settings.delete("hooks") if settings["hooks"]&.empty?
-  settings.delete("statusLine") if settings.dig("statusLine", "command").to_s.include?("plastic-")
+  if settings.dig("statusLine", "command").to_s.include?("plastic-")
+    settings.delete("statusLine")
+    original_path = File.join(PLASTIC_HOME, ".cache", "original-statusline.json")
+    if File.exist?(original_path)
+      original = JSON.parse(File.read(original_path)) rescue nil
+      settings["statusLine"] = original if original
+    end
+  end
 
   write_json_atomic(settings_path, settings)
 end
