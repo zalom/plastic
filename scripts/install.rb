@@ -141,13 +141,18 @@ def distribute(mode)
   puts "  \u{1f4e6} #{mode == :update ? "Updating" : "Installing"} core files to #{PLASTIC_HOME}"
 
   FileUtils.mkdir_p(PLASTIC_HOME)
-  FileUtils.mkdir_p(File.join(PLASTIC_HOME, "scripts"))
+  FileUtils.mkdir_p(File.join(PLASTIC_HOME, "scripts", "lib"))
 
   core_files = {
     "PLASTIC.md" => "PLASTIC.md",
     "deprecations.yml" => "deprecations.yml",
     "scripts/folgezettel-id" => "scripts/folgezettel-id",
     "scripts/read-config" => "scripts/read-config",
+    "scripts/hook-session-start" => "scripts/hook-session-start",
+    "scripts/hook-continue" => "scripts/hook-continue",
+    "scripts/hook-future-intent-check" => "scripts/hook-future-intent-check",
+    "scripts/hook-gate-check" => "scripts/hook-gate-check",
+    "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
   }
 
   core_files.each do |src, dest|
@@ -239,7 +244,7 @@ def install_claude(config, force)
 
   installed = []
 
-  # Copy hooks
+  # Copy hooks, rewriting script paths for the installed location
   hook_source = File.join(PACKAGE_ROOT, "hooks")
   Dir.glob(File.join(hook_source, "*")).each do |f|
     next unless File.file?(f)
@@ -247,7 +252,9 @@ def install_claude(config, force)
     next if %w[hooks.json run-hook].include?(basename)
     dest_name = basename.start_with?("plastic-") ? basename : "plastic-#{basename}"
     dest = File.join(hooks_dir, dest_name)
-    FileUtils.cp(f, dest)
+    content = File.read(f)
+    content = content.gsub('$SCRIPT_DIR/../scripts/', '$HOME/.plastic/scripts/')
+    File.write(dest, content)
     FileUtils.chmod(0o755, dest)
     installed << dest
   end

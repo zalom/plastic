@@ -146,6 +146,45 @@ class MergeClaudeHooksTest < Minitest::Test
     assert_nil settings["statusLine"], "statusLine should be removed"
   end
 
+  def test_hook_scripts_rewrite_relative_paths
+    # Simulate a hook source file with the relative $SCRIPT_DIR/../scripts/ path
+    pkg_root = Dir.mktmpdir("plastic-pkg")
+    hooks_src = File.join(pkg_root, "hooks")
+    FileUtils.mkdir_p(hooks_src)
+
+    File.write(File.join(hooks_src, "session-start"), <<~SH)
+      #!/bin/bash
+      SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+      ruby "$SCRIPT_DIR/../scripts/hook-session-start" "$@"
+    SH
+
+    File.write(File.join(hooks_src, "hooks.json"), "{}")
+    File.write(File.join(hooks_src, "run-hook"), "#!/bin/bash")
+
+    hooks_dest = File.join(@dir, "hooks")
+    FileUtils.mkdir_p(hooks_dest)
+
+    # Replicate the installer's copy-and-rewrite logic
+    Dir.glob(File.join(hooks_src, "*")).each do |f|
+      next unless File.file?(f)
+      basename = File.basename(f)
+      next if %w[hooks.json run-hook].include?(basename)
+      dest_name = basename.start_with?("plastic-") ? basename : "plastic-#{basename}"
+      dest = File.join(hooks_dest, dest_name)
+      content = File.read(f)
+      content = content.gsub('$SCRIPT_DIR/../scripts/', '$HOME/.plastic/scripts/')
+      File.write(dest, content)
+    end
+
+    installed_hook = File.read(File.join(hooks_dest, "plastic-session-start"))
+    assert_includes installed_hook, '$HOME/.plastic/scripts/hook-session-start',
+      "Installed hook should reference $HOME/.plastic/scripts/"
+    refute_includes installed_hook, '$SCRIPT_DIR/../scripts/',
+      "Installed hook should NOT contain relative $SCRIPT_DIR/../scripts/ path"
+  ensure
+    FileUtils.rm_rf(pkg_root)
+  end
+
   def test_remove_preserves_non_plastic
     mixed = {
       "hooks" => {
