@@ -54,13 +54,21 @@ Key changes in this version:
 Recommendation: run /clear for a clean session with all new conventions loaded.
 ```
 
-### Step 4: Commit
+### Step 4: Run health check
+
+Invoke `plastic:doctor` to verify the installation is healthy after the update.
+
+If all checks pass, show: **"Health check: all clear."**
+
+If issues are found, show the full doctor report and offer to fix any fixable items.
+
+### Step 5: Commit
 
 ```bash
 cd ~/.plastic && git add PLASTIC.md scripts/ AGENTS.md VERSION 2>/dev/null && git commit -m "chore: update Plastic core files" --allow-empty
 ```
 
-### Step 5: Clear update cache
+### Step 6: Clear update cache
 
 ```bash
 rm -f ~/.plastic/.cache/update-check.json

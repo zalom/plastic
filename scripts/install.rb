@@ -153,6 +153,7 @@ def distribute(mode)
     "scripts/hook-future-intent-check" => "scripts/hook-future-intent-check",
     "scripts/hook-gate-check" => "scripts/hook-gate-check",
     "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
+    "scripts/doctor.rb" => "scripts/doctor.rb",
   }
 
   core_files.each do |src, dest|
