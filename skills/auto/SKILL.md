@@ -111,12 +111,26 @@ During initial project creation, all decisions are non-destructive by definition
 1. Verify all checklist items are checked
 2. Write `outcome.md` with detailed results
 3. Write `## Outcome` summary in the intent file (1-2 sentences)
-4. Review `## Insights` for observations that should spawn future intents. If any:
+4. **Release (if configured)**
+   1. Detect project — match CWD against paths in `~/.plastic/projects.yml` to find the project slug. If no match, skip to step 5 (default commit-only behavior).
+   2. Read `~/.plastic/projects/{slug}/project.yml`. If the file doesn't exist or has no `release` key, skip to step 5.
+   3. Based on `release.on_complete`:
+      - `commit` — git add + commit (same as default, proceed to step 5)
+      - `commit_and_push` — git add + commit + push
+      - `manual` — skip auto-commit, notify user: "Release configured as manual — commit when ready."
+   4. If `release.verify` is set, run the verify command (e.g. `bundle exec rake test`):
+      - **Exit 0 (green):** proceed to sub-step 5
+      - **Non-zero (red):** check `release.on_red`:
+        - `fix_and_retry` — attempt to fix the failure, re-run verify (max 2 retries)
+        - `stop` — write `savepoint.md` with current state, notify user: "Verify failed — savepoint written.", **STOP**
+        - `manual` — notify user: "Verify failed: [summary]. Resolve manually."
+   5. If `release.on_green` has items, invoke `plastic:releasing` to handle them (tag, changelog, publish, etc.). Do NOT duplicate release logic — delegate entirely.
+5. Review `## Insights` for observations that should spawn future intents. If any:
    - Create them (using `plastic:creating-intent` conventions)
    - Update `chain` in the current intent's frontmatter
-5. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
-6. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: deliver intent <ID> — <name>"`
-7. Notify user: "Intent [ID] — [name] delivered. [1-2 sentence summary]. See outcome.md for details."
+6. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
+7. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: deliver intent <ID> — <name>"`
+8. Notify user: "Intent [ID] — [name] delivered. [1-2 sentence summary]. See outcome.md for details."
 
 ## Error Handling
 

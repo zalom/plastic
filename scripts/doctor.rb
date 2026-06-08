@@ -681,6 +681,49 @@ def check_project_stores
       )
     end
 
+    # project_yml_exists
+    project_yml_path = File.join(PLASTIC_HOME, "projects", slug, "project.yml")
+    project_yml_data = nil
+
+    if File.exist?(project_yml_path)
+      checks << check(
+        category: "project_stores", name: "project_yml_exists", status: "pass",
+        message: "project.yml exists for project '#{slug}'"
+      )
+      project_yml_data = load_yaml_safe(project_yml_path)
+    else
+      checks << check(
+        category: "project_stores", name: "project_yml_exists", status: "warn",
+        message: "project.yml missing for project '#{slug}'",
+        fixable: true, fix_hint: "Create project.yml from template — see plastic:creating-project"
+      )
+    end
+
+    # governing_docs_exist
+    if project_yml_data.is_a?(Hash) && project_yml_data["governing_docs"].is_a?(Array) && !project_yml_data["governing_docs"].empty?
+      project_path = project_info.is_a?(Hash) ? project_info["path"] : nil
+
+      if project_path
+        missing_docs = project_yml_data["governing_docs"].reject do |doc_path|
+          File.exist?(File.join(project_path, doc_path))
+        end
+
+        if missing_docs.empty?
+          checks << check(
+            category: "project_stores", name: "governing_docs_exist", status: "pass",
+            message: "All governing docs exist for project '#{slug}'"
+          )
+        else
+          checks << check(
+            category: "project_stores", name: "governing_docs_exist", status: "warn",
+            message: "#{missing_docs.size} governing doc(s) missing for project '#{slug}'",
+            details: missing_docs,
+            fixable: false
+          )
+        end
+      end
+    end
+
     # cross_references — if project has `parent` field, check global store intent tags
     parent_id = project_info.is_a?(Hash) ? project_info["parent"] : nil
     next unless parent_id

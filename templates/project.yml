@@ -1,0 +1,5 @@
+governing_docs:
+  - AGENTS.md
+
+release:
+  on_complete: commit

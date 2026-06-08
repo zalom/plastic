@@ -6,25 +6,62 @@ description: Use when merging a feature branch to main and tagging a release, bu
 # Releasing
 
 Merge, bump, tag, push. Annotated tags with changelogs. Semantic versioning.
+Project configuration drives the workflow — no hardcoded assumptions.
 
 ## Checklist
 
-- [ ] All tests pass
+- [ ] Read project config
+- [ ] All tests pass (or verification skipped per config)
 - [ ] Merge feature branch to main
-- [ ] Bump version in plugin.json and marketplace.json
+- [ ] Bump version in configured version files
 - [ ] Commit version bump
 - [ ] Create annotated tag
 - [ ] Push to remote with tags
+- [ ] Run post-push actions (GitHub release, npm publish, etc.)
+- [ ] Complete active intent
 
 ## Workflow
 
-### 1. Verify Tests Pass
+### 0. Read Project Config
 
-```bash
-ruby test/read_config_test.rb && ruby test/config_template_test.rb
+Before anything else, determine which project we are releasing and load its config.
+
+1. Read `~/.plastic/projects.yml` — find the project whose `path` matches the current working directory.
+2. Extract the project slug (the key under `projects:`).
+3. Read `~/.plastic/projects/{slug}/project.yml` — this contains the `release:` section.
+
+Expected `release:` keys in project.yml:
+
+```yaml
+release:
+  verify: "bin/rails test"              # command to run before release
+  version_file: package.json            # single file containing the version
+  version_files:                        # multiple files (overrides version_file)
+    - package.json
+    - .claude-plugin/plugin.json
+  tag_format: "v{{version}}"            # tag naming pattern ({{version}} is replaced)
+  on_green:                             # actions to run after push succeeds
+    - github_release
+    - npm_publish
+  on_complete: commit_and_push          # what to do with the version bump commit
+  on_red: stop                          # what to do if verification fails
 ```
 
-All tests must pass before release. Do not proceed if any fail.
+**Fallback:** If no project.yml exists or it has no `release:` section, fall back to asking the user for each step — verify command, version files, tag format, and post-push actions.
+
+### 1. Verify Tests Pass
+
+Run the verification command from `release.verify` in project.yml:
+
+```bash
+# Example: release.verify = "ruby -Itest test/*_test.rb"
+<verify-command-from-config>
+```
+
+- If `release.verify` is present: run it. All checks must pass before proceeding.
+- If `release.verify` is absent or empty: skip verification. Log that no verify command is configured.
+- If `release.on_red` is `stop`: abort the release on failure.
+- If `release.on_red` is `fix_and_retry`: ask the user to fix and re-run.
 
 ### 2. Determine Version Bump
 
@@ -47,17 +84,25 @@ Always `--no-ff` to preserve branch history in the merge commit.
 
 ### 4. Bump Version
 
-Update ALL THREE files — they must stay in sync:
-- `package.json` → `"version": "X.Y.Z"`
-- `.claude-plugin/plugin.json` → `"version": "X.Y.Z"`
-- `.claude-plugin/marketplace.json` → `"version": "X.Y.Z"`
+Determine which files to update from project.yml:
+
+- If `release.version_files` is set: update ALL listed files (they must stay in sync).
+- Else if `release.version_file` is set: update that single file.
+- Else: ask the user which files contain the version.
+
+Update the version string in each file, then commit:
 
 ```bash
-git add package.json .claude-plugin/plugin.json .claude-plugin/marketplace.json
+git add <version-files>
 git commit -m "chore: bump version to X.Y.Z — [one-line summary]"
 ```
 
 ### 5. Create Annotated Tag
+
+Read `release.tag_format` from project.yml to determine the tag name:
+
+- If set (e.g. `"v{{version}}"`): replace `{{version}}` with the new version string.
+- If not set: default to `vX.Y.Z`.
 
 Generate the changelog from commits since the last tag:
 
@@ -68,7 +113,7 @@ git log $(git describe --tags --abbrev=0)..HEAD --oneline --no-merges | grep -E 
 Create the tag with a multi-line message:
 
 ```bash
-git tag -a vX.Y.Z -m "vX.Y.Z — [release name]
+git tag -a <tag-name> -m "<tag-name> — [release name]
 
 - [changelog bullet points from feat/fix/refactor commits]"
 ```
@@ -79,15 +124,41 @@ git tag -a vX.Y.Z -m "vX.Y.Z — [release name]
 git push origin main --tags
 ```
 
-### 7. GitHub Release
+### 7. Post-Push Actions
 
-Create a GitHub release from the tag. Use `--generate-notes` to auto-generate changelog from commits since the previous tag:
+Read `release.on_green` from project.yml. This is a list of actions to run after a successful push. Execute each in order:
+
+#### `github_release`
+
+Create a GitHub release from the tag:
 
 ```bash
-gh release create vX.Y.Z --title "vX.Y.Z — [release name]" --generate-notes --notes-start-tag <previous-tag>
+gh release create <tag-name> --title "<tag-name> — [release name]" --generate-notes --notes-start-tag <previous-tag>
 ```
 
 For the first release (no previous tag), write notes manually with `--notes "..."` instead.
+
+#### `npm_publish`
+
+Publish the package to npm:
+
+```bash
+# For pre-release versions (0.x.y, or version contains -alpha/-beta/-rc):
+npm publish --access public --tag alpha
+
+# For stable versions (>= 1.0.0, no pre-release suffix):
+npm publish --access public
+```
+
+#### Other values
+
+If `on_green` contains an action not listed above, log it:
+
+```
+[releasing] Action "<action>" is configured but not yet implemented. Skipping.
+```
+
+If `on_green` is empty or absent: skip post-push actions entirely.
 
 ### 8. Complete Active Intent
 
@@ -100,17 +171,17 @@ A release IS a delivery. The active intent that drove this work must be complete
    c. Update `## Insights` with final observations
    d. Move from `## Active` to `## Completed` in INDEX.md (with today's date)
    e. Update clusters to show `_(completed)_`
-3. Auto-commit: `cd ~/.plastic && git add . && git commit -m "feat: complete intent <ID> — delivered in v<X.Y.Z>"`
+3. Auto-commit: `cd ~/.plastic && git add . && git commit -m "feat: complete intent <ID> — delivered in <tag-name>"`
 
 **If no active intent exists for this release**, that itself is a problem — work happened outside the intent system. Log it and move on, but flag it.
 
 ## Conventions
 
 - **Annotated tags only** — `git tag -a`, never lightweight tags
-- **Tag format** — `vX.Y.Z` (lowercase v prefix)
-- **Tag message** — first line: `vX.Y.Z — [short name]`, then blank line, then bullet changelog
+- **Tag format** — driven by `release.tag_format` in project.yml (default: `vX.Y.Z`)
+- **Tag message** — first line: `<tag> — [short name]`, then blank line, then bullet changelog
 - **Commit prefixes** — `feat:`, `fix:`, `refactor:`, `chore:`, `docs:` (conventional commits)
-- **Version files** — package.json, plugin.json, and marketplace.json always match
+- **Version files** — driven by project.yml; all listed files must always match
 - **Branch cleanup** — delete merged feature branches: `git branch -d <branch>`
 
 ## Retroactive Tagging

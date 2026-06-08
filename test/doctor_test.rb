@@ -499,20 +499,28 @@ class DoctorProjectStoresTest < Minitest::Test
 
   def teardown
     FileUtils.rm_rf(DOCTOR_TEST_HOME)
+    FileUtils.rm_rf(File.join(Dir.tmpdir, "my-app-src-#{Process.pid}"))
   end
 
   def test_valid_project_setup_passes
+    project_path = File.join(Dir.tmpdir, "my-app-src-#{Process.pid}")
     # Register a project
     File.write(File.join(DOCTOR_TEST_HOME, "projects.yml"), YAML.dump({
       "projects" => {
-        "my-app" => { "path" => "/tmp/my-app" },
+        "my-app" => { "path" => project_path },
       },
     }))
 
-    # Create the project directory with INDEX.md
+    # Create the project directory with INDEX.md and project.yml
     project_dir = File.join(@projects_dir, "my-app")
+    project_path = File.join(Dir.tmpdir, "my-app-src-#{Process.pid}")
     FileUtils.mkdir_p(project_dir)
+    FileUtils.mkdir_p(project_path)
     File.write(File.join(project_dir, "INDEX.md"), "# My App Index\n")
+    File.write(File.join(project_dir, "project.yml"), YAML.dump({
+      "governing_docs" => ["AGENTS.md"],
+    }))
+    File.write(File.join(project_path, "AGENTS.md"), "# Agents\n")
 
     checks = check_project_stores
     statuses = checks.map { |c| c[:status] }

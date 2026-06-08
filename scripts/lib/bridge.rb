@@ -2,6 +2,7 @@
 # encoding: UTF-8
 
 require "json"
+require "yaml"
 require "fileutils"
 require "tempfile"
 
@@ -135,5 +136,38 @@ module Bridge
     end
 
     nil # no gate violation
+  end
+
+  PROJECT_CONFIG_DEFAULTS = {
+    "governing_docs" => ["AGENTS.md"],
+    "release" => {
+      "on_complete" => "commit",
+    },
+  }.freeze
+
+  def self.read_project_config(slug)
+    path = File.join(Dir.home, ".plastic", "projects", slug, "project.yml")
+    config = if File.exist?(path)
+               YAML.safe_load(File.read(path)) || {}
+             else
+               {}
+             end
+
+    deep_merge(PROJECT_CONFIG_DEFAULTS, config)
+  rescue => e
+    $stderr.puts "Warning: failed to read project config for #{slug}: #{e.message}"
+    PROJECT_CONFIG_DEFAULTS.dup
+  end
+
+  def self.deep_merge(base, overlay)
+    result = base.dup
+    overlay.each do |key, value|
+      if value.is_a?(Hash) && result[key].is_a?(Hash)
+        result[key] = deep_merge(result[key], value)
+      else
+        result[key] = value
+      end
+    end
+    result
   end
 end
