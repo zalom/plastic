@@ -41,6 +41,22 @@ Active/Future/Completed placement is managed in INDEX.md, not in frontmatter.
 4. Set frontmatter: `id`, `intent`, `sources` (array — link to governing intent), `chain` (starts empty), `created`, `author`, `tags`
 5. Add `[[global:ID]]` backlink in `## Links`
 
+## Lifecycle Skills
+
+Plastic has its own lifecycle skills. When a Plastic skill exists for the current phase, use it instead of any external skill (superpowers, superpowers-ruby, etc.).
+
+| Phase | Skill | Produces |
+|-------|-------|----------|
+| What | `plastic:creating-intent` | Intent file |
+| Why | `plastic:brainstorming` | `spec.md` |
+| Why | `plastic:research` | `resources/*.md` |
+| Why | `plastic:brainstorming-grill-me` | Deep interrogation |
+| How | `plastic:writing-plans` | `plan.md`, `checklist.md`, `actions/` |
+| Exec | `plastic:executing-plan` | Code + `outcome.md` |
+| Done | `plastic:intent-curator` | Lifecycle transition |
+
+**Artifact convention:** ALL lifecycle artifacts go to the active intent directory (`store/{id}--{slug}/`). Never write specs to `docs/superpowers/specs/` or plans to `docs/superpowers/plans/`.
+
 ## When You're Done
 
 When this project satisfies the governing intent's goal, report back. The orchestrator will complete the strategic intent.

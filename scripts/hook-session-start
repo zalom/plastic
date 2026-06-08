@@ -172,7 +172,14 @@ exit 0 if all_active.empty? && stale.empty? && all_future.empty? && active_depre
 parts = []
 
 if current_project
-  parts << "PLASTIC — Global store | Project: #{current_project["slug"]} (#{current_project["path"]})\n"
+  slug = current_project["slug"]
+  banner = "Project: #{slug} | Store: ~/.plastic/projects/#{slug}/store/"
+  if project_active.any? && project_active.first =~ /\[([^\]]+)\].*store\/([\w-]+)\//
+    intent_name, dir_name = $1, $2
+    intent_id = dir_name.split("--").first
+    banner += "\nActive: [#{intent_id} — #{intent_name}] | Artifacts → store/#{dir_name}/"
+  end
+  parts << banner + "\n"
 else
   parts << "PLASTIC — Global store loaded from ~/.plastic/\n"
 end
