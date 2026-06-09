@@ -55,3 +55,7 @@ git commit -m "chore: savepoint — [active intent name]"
 
 ### 5. Notify User
 Tell the user: "Context is getting large. I've saved progress to intent [ID] — [name]. Please run `/clear` and say `continue` to resume."
+
+## References
+
+- Read `references/context-management.md` for the full save/continue protocol when the save flow needs debugging or you need to understand the full resume sequence

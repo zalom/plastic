@@ -70,3 +70,7 @@ Add a wikilink in the `## Links` section of **both** intents (bidirectional).
 
 ### 4. Update INDEX.md Clusters
 If both intents share a topic, ensure they're in the same cluster.
+
+## References
+
+- Read `references/zettelkasten.md` for the three Zettelkasten structures (Folgezettel, directed graph, tags), ID encoding rules, and dual-mode (Obsidian + programmatic) design

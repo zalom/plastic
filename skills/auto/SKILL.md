@@ -139,3 +139,7 @@ If the agent gets stuck (can't resolve a gap, dependency is missing, tests fail 
 2. Write `savepoint.md` with current state
 3. Notify user: "Blocked on intent [ID] — [name]: [description]. Savepoint written."
 4. **STOP.** Do not attempt workarounds that could leave the project in a broken state.
+
+## References
+
+- Read `references/agent-architecture.md` for the full agent hierarchy (Main Orchestrator, Project Orchestrators, coordination loop) when dispatching agents or understanding autonomous delivery scope

@@ -64,3 +64,7 @@ When 3+ intents share tags but aren't in a cluster, suggest a new cluster headin
 Intents with no links (empty `sources`, empty `chain`, no `## Links` entries, not in any cluster) should be flagged for curation.
 
 REQUIRED BACKGROUND: linking-intents (for understanding connection types and Zettelkasten theory)
+
+## References
+
+- Read `references/zettelkasten-linking.md` for the three structural layers (Folgezettel, directed graph, tags) and how they map to INDEX.md organization

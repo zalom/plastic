@@ -110,3 +110,7 @@ This keeps the update flow clean when nothing is wrong.
 - The script outputs JSON to stdout. Any diagnostic errors go to stderr.
 - Non-zero exit codes mean "issues found", not "script crashed".
   Always parse stdout regardless of exit code.
+
+## References
+
+- Read `references/gates-stuck-detection.md` for the full gate enforcement table, bridge file pattern, and stuck detection thresholds when diagnosing gate failures or stuck agents

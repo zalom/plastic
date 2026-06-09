@@ -164,3 +164,7 @@ Log in `## Insights` of each founding intent:
 
 Announce to user:
 > "Project `<slug>` created at `<path>`. AGENTS.md populated with [N] decisions from [founding intent IDs]. Tactical mirror `1` is now the active intent in the project store."
+
+## References
+
+- Read `references/hubs-projects.md` for the full hub/project relationship model, project creation flow, and cross-linking conventions

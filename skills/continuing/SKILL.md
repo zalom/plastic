@@ -102,3 +102,7 @@ Auto-commit all triage changes.
 2. **Project context** — if in a registered project, show governing intent + tactical intents
 3. **Stale future intents** — surface for triage
 4. **Fresh future intents** — offer as next work
+
+## References
+
+- Read `references/context-management.md` for the full save/continue protocol when resuming from a savepoint or when the resume flow needs debugging

@@ -120,3 +120,8 @@ cd <store-root> && git add . && git commit -m "feat: create intent ID — [name]
 ### 8. Announce
 
 "Created intent ID — [name]. Placed in: [Active|Future]. Store: [global|project:<slug>|local]."
+
+## References
+
+- Read `references/lifecycle.md` for the full What→Why→How→Exec stage detail, filesystem-as-schema conventions, and creating-intent step-by-step
+- Read `references/wikilinks.md` for the wikilink syntax table when adding `## Links` to intents

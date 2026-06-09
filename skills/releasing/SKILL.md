@@ -193,3 +193,7 @@ git tag -a v0.1.0 <commit-sha> -m "v0.1.0 — [description]"
 ```
 
 Use `git log --oneline` to find the right commits (look for version bump commits or major feature merges).
+
+## References
+
+- Read `references/deprecations.md` for the full deprecation process, severity levels, deprecations.yml schema, and dismissal rules when adding or managing deprecations
