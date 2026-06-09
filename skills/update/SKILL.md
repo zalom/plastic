@@ -1,6 +1,6 @@
 ---
-name: update
-description: Use when updating Plastic after a plugin update, or when the user says "update plastic". Runs the npx installer to sync core files and re-register agent adapters.
+name: plastic:update
+description: Use when updating Plastic. Queries npm for available versions across all channels, presents options interactively, or accepts --alpha/--beta/--latest flags for direct update.
 ---
 
 # Update Plastic
@@ -10,43 +10,98 @@ description: Use when updating Plastic after a plugin update, or when the user s
 - Statusline shows "Plastic update available"
 - After a version bump notification
 
+## Flags
+
+| Flag | Behavior |
+|------|----------|
+| `--alpha` | Update to latest alpha, skip interactive prompt |
+| `--beta` | Update to latest beta, skip interactive prompt |
+| `--latest` | Update to latest stable, skip interactive prompt |
+
+No flag = interactive mode (show all available versions).
+
 ## Prerequisites
 
 Global install must exist (`~/.plastic/INDEX.md` present). If not, tell the
-user to run `npx @zalom/plastic@latest` first.
+user to run `npx @zalom/plastic@alpha --claude` first.
 
 ## Procedure
 
-### Step 1: Verify global install exists
+### Step 1: Read current version
 
 ```bash
-if [ ! -f ~/.plastic/INDEX.md ]; then
-  echo "No global install found. Run: npx @zalom/plastic@latest"
-  exit
-fi
+cat ~/.plastic/VERSION
 ```
 
-### Step 2: Run the installer
+Parse the version string to determine the current channel:
+- Contains `-alpha` → alpha channel
+- Contains `-beta` → beta channel
+- No pre-release suffix → stable/latest channel
+
+### Step 2: Query npm for available versions
 
 ```bash
-npx @zalom/plastic@latest --claude
+npm view @zalom/plastic dist-tags --json
 ```
 
-This re-runs the installer which:
-- Downloads the latest version from npm
-- Syncs core files (PLASTIC.md, scripts, hooks) to ~/.plastic/
-- Re-registers hooks and skills into Claude Code's ~/.claude/
-- Preserves all user data (INDEX.md, config.yml, projects.yml, store/)
+This returns a JSON object like:
+```json
+{
+  "latest": "0.0.1",
+  "alpha": "1.0.0-alpha.14",
+  "beta": "1.0.0-beta.2"
+}
+```
 
-### Step 3: Announce key changes
+A missing dist-tag means no release exists on that channel.
+
+### Step 3: Present options or act on flag
+
+**If a channel flag was provided** (`--alpha`, `--beta`, `--latest`):
+
+Skip the interactive prompt. Install the flagged channel directly. Go to Step 4.
+
+**If no flag (interactive mode):**
+
+Present the available updates to the user:
+
+```
+Currently installed: 1.0.0-alpha.11 (alpha channel)
+
+Available updates:
+  alpha:  1.0.0-alpha.14  ← your channel
+  beta:   1.0.0-beta.2
+  stable: (no stable release yet)
+
+Which channel do you want to install?
+```
+
+Use AskUserQuestion with the available channels as options. Mark the user's
+current channel with "← your channel". If a dist-tag points to the same
+version as currently installed, show "(up to date)" instead of the version.
+If a dist-tag doesn't exist, show "(no release yet)".
+
+Wait for user selection.
+
+### Step 4: Run the installer
+
+```bash
+npx @zalom/plastic@{selected-tag} --claude
+```
+
+Replace `{selected-tag}` with `alpha`, `beta`, or `latest` based on the
+user's selection or the flag provided. Replace `--claude` with the appropriate
+agent flag(s) — detect current agents from `~/.claude/`, `~/.agents/`,
+`~/.hermes/` directories.
+
+### Step 5: Announce key changes
 
 After the installer completes, read `~/.plastic/PLASTIC.md` and announce any
-convention changes that affect the current session. This corrects the agent's
-in-context understanding without needing /clear.
+convention changes that affect the current session.
 
 Format:
 ```
-Plastic updated to vX.Y.Z.
+Plastic updated to vX.Y.Z (channel).
 
 Key changes in this version:
 - [list notable convention changes if any]
@@ -54,24 +109,22 @@ Key changes in this version:
 Recommendation: run /clear for a clean session with all new conventions loaded.
 ```
 
-### Step 4: Run health check
+### Step 6: Run health check
 
 Invoke `plastic:doctor` to verify the installation is healthy after the update.
 
 If all checks pass, show: **"Health check: all clear."**
 
-If issues are found, show the full doctor report and offer to fix any fixable items.
+If issues are found, show the full doctor report and offer to fix.
 
-### Step 5: Commit
+### Step 7: Commit
 
 ```bash
-cd ~/.plastic && git add PLASTIC.md scripts/ AGENTS.md VERSION 2>/dev/null && git commit -m "chore: update Plastic core files" --allow-empty
+cd ~/.plastic && git add PLASTIC.md scripts/ AGENTS.md VERSION 2>/dev/null && git commit -m "chore: update Plastic to $(cat ~/.plastic/VERSION)" --allow-empty
 ```
 
-### Step 6: Clear update cache
+### Step 8: Clear update cache
 
 ```bash
 rm -f ~/.plastic/.cache/update-check.json
 ```
-
-This removes the statusline warning since the update is now applied.

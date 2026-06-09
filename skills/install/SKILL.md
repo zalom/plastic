@@ -1,9 +1,33 @@
 ---
 name: plastic:install
-description: Use when initializing Plastic globally (~/.plastic/) or locally in a project. Global install is recommended — creates the global intent store as a git-backed repository. Local install creates .plastic/ in the current project for testing.
+description: Use when initializing Plastic globally (~/.plastic/) or locally in a project. Accepts channel flags (--alpha, --beta, --latest) to select release channel. Default is --latest (stable). Global install is recommended — creates the global intent store as a git-backed repository. Local install creates .plastic/ in the current project for testing.
 ---
 
 # Install Plastic
+
+## Channel Flags
+
+| Flag | Behavior |
+|------|----------|
+| `--latest` | Install from stable channel (default) |
+| `--beta` | Install from beta channel |
+| `--alpha` | Install from alpha channel |
+
+When invoked from within Claude Code (re-install or channel switch), the skill
+runs the appropriate npx command:
+
+```bash
+# Stable (default)
+npx @zalom/plastic --claude
+
+# Beta
+npx @zalom/plastic@beta --claude
+
+# Alpha
+npx @zalom/plastic@alpha --claude
+```
+
+The installed version and channel are recorded in `~/.plastic/VERSION`.
 
 ## Modes
 

@@ -1,87 +1,70 @@
 # Plastic
 
-> Intent-driven state management for AI coding sessions.
-> Named after **neuroplasticity** — adaptive, malleable, dynamic, resilient.
+> **Alpha software.** Expect breaking changes between releases.
+> Install: `npx @zalom/plastic@alpha --claude`
 
-## What Is This?
+Intent-driven idea development system for AI coding agents. Named after
+**neuroplasticity** — adaptive, malleable, dynamic, resilient.
 
-Plastic implements two nested processes: **Build → Observe → Repeat** (Coordinator's continuous loop) and **What → Why → How → Next** (intent's finite lifecycle). Zettelkasten-inspired linking connects intents. All project state lives in `.plastic/`. Everything is an intent.
+Plastic thinks in **intents**, not tasks. An intent is a desire — something
+you want to accomplish, explore, or understand. Intents are atomic thoughts
+that get developed through two nested processes.
 
-## Installation
+## The Two Cycles
 
-### 1. Register the marketplace
+**Coordinator loop (B→O→R):** Brainstorm → Organize → Review. The human and
+agent explore ideas, structure them into intents, and validate the results.
+This loop runs continuously across sessions.
 
-In Claude Code, run:
-```
-/plugin marketplace add zalom/plastic
-```
+**Intent lifecycle (W→W→H→E):** Why → What → How → Execute. Each intent moves
+from motivation through specification, planning, to delivery. Intents produce
+artifacts: `spec.md`, `plan.md`, `checklist.md`, `outcome.md`.
 
-### 2. Install the plugin
+## Install
 
-In Claude Code, run:
-```
-/plugin add plastic@plastic
-```
+Plastic requires Ruby (pre-installed on macOS/Linux) and Node.js 18+.
 
-### 3. Initialize in your project
+```bash
+# Alpha (current — active development)
+npx @zalom/plastic@alpha --claude
 
-In Claude Code, run:
-```
-/plastic:install
-```
+# Beta (when available — API-stable, bug hunting)
+npx @zalom/plastic@beta --claude
 
-## Global vs Local
-
-**Global (recommended):** Plastic stores all intents at `~/.plastic/`. Projects spawned by implementation intents get their own `.plastic/store/` for tactical intents.
-
-```
-/plastic:install
+# Stable (when available — general use)
+npx @zalom/plastic --claude
 ```
 
-**Local (testing):** Intents stored per-project in `.plastic/`. Useful for trying Plastic in a single project.
+Replace `--claude` with `--codex` for Codex CLI, `--hermes` for Hermes, or
+`--all` for all supported agents.
 
-```
-/plastic:install --local
-```
+### Updating
 
-## Prerequisites
+From within your agent, say "update plastic" or run:
 
-Plastic hooks use Ruby for intent ID generation. Ruby is pre-installed on macOS/Linux. On Windows, use WSL or install Ruby from https://rubyinstaller.org/.
-
-## Directory Structure
-
-```
-.plastic/
-├── AGENTS.md           # Conventions contract for all agents
-├── config.yml          # Plugin configuration
-├── INDEX.md            # Brain's entry point
-└── store/
-    └── ID--three-to-five-words/
-        ├── {ID}--{slug}.md         # Always present (e.g., 1a1--design-plastic.md)
-        ├── spec.md         # Optional (brainstorming output)
-        ├── plan.md         # Optional (implementation plan)
-        ├── checklist.md    # Optional (progress tracking)
-        └── savepoint.md    # Optional (session state)
+```bash
+npx @zalom/plastic@alpha --claude
 ```
 
-## Skills
+The `plastic:update` command shows available versions across all channels and
+lets you choose which to install.
 
-| Skill | Purpose |
-|-------|---------|
-| `install` | Initialize `.plastic/` in a new project |
-| `creating-intent` | Create a new intent with directory, hash, and INDEX.md entry |
-| `savepoint` | Save active intent state before context reset |
-| `continuing` | Resume from savepoint after `/clear` |
-| `linking-intents` | Connect intents via Zettelkasten links |
-| `managing-index` | Curate INDEX.md structure note |
-| `executing-plan` | Execute plans via subagent-driven (default) or inline mode |
+## Quick Start
 
-## Agents
+After installation, run `/clear` to load Plastic conventions, then:
 
-| Agent | Purpose |
-|-------|---------|
-| `intent-curator` | Maintains INDEX.md health, suggests links |
-| `future-intent-researcher` | Researches parked future intents |
+1. Say "new intent" or run `/plastic:creating-intent` to create your first intent
+2. Describe what you want to accomplish
+3. Use `/plastic:brainstorming` to explore the design
+4. Use `/plastic:writing-plans` to create an implementation plan
+5. Use `/plastic:executing-plan` to deliver it
+
+Or say "auto" to let the agent handle the full lifecycle autonomously.
+
+## Conventions
+
+All conventions live in `AGENTS.md`, distributed to `~/.plastic/AGENTS.md`
+during installation. Run `plastic:doctor` to check installation health.
 
 ## License
 

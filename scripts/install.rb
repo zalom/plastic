@@ -3,7 +3,7 @@
 # frozen_string_literal: true
 
 # Plastic installer — runs via npx shim or directly.
-# Usage: ruby scripts/install.rb [--claude] [--codex] [--hermes] [--all] [--uninstall] [--force] [--help]
+# Usage: ruby scripts/install.rb [--claude] [--codex] [--hermes] [--all] [--alpha] [--beta] [--latest] [--uninstall] [--force] [--help]
 
 require "json"
 require "yaml"
@@ -71,7 +71,7 @@ end
 # --- Flag parsing ---
 
 def parse_flags(argv)
-  flags = { agents: [], force: false, uninstall: false, help: false }
+  flags = { agents: [], force: false, uninstall: false, help: false, channel: "latest" }
 
   argv.each do |arg|
     case arg
@@ -79,6 +79,9 @@ def parse_flags(argv)
     when "--force" then flags[:force] = true
     when "--uninstall" then flags[:uninstall] = true
     when "--help", "-h" then flags[:help] = true
+    when "--alpha" then flags[:channel] = "alpha"
+    when "--beta" then flags[:channel] = "beta"
+    when "--latest" then flags[:channel] = "latest"
     else
       agent = AGENTS.find { |a| a[:flag] == arg }
       flags[:agents] << agent[:key] if agent
@@ -115,22 +118,30 @@ def show_help
     plastic - Intent-driven idea development system
 
     Usage:
-      npx @zalom/plastic@latest [options]
+      npx @zalom/plastic [options]
 
-    Options:
+    Agent options:
       --claude      Install for Claude Code
       --codex       Install for Codex CLI
       --hermes      Install for Hermes
       --all         Install for all supported agents
+
+    Channel options:
+      --latest      Install from stable channel (default)
+      --beta        Install from beta channel
+      --alpha       Install from alpha channel
+
+    Other options:
       --force       Overwrite existing files without prompting
       --uninstall   Remove Plastic from agent directories
       -h, --help    Show this help
 
     Examples:
-      npx @zalom/plastic@latest              Interactive agent selection
-      npx @zalom/plastic@latest --claude     Install for Claude Code only
-      npx @zalom/plastic@latest --all        Install for all agents
-      npx @zalom/plastic@latest --uninstall  Remove from agent directories
+      npx @zalom/plastic --claude            Install stable for Claude Code
+      npx @zalom/plastic@alpha --claude      Install alpha for Claude Code
+      npx @zalom/plastic@beta --claude       Install beta for Claude Code
+      npx @zalom/plastic --all               Install stable for all agents
+      npx @zalom/plastic --uninstall         Remove from agent directories
 
   HELP
 end
