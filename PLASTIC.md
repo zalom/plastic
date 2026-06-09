@@ -162,3 +162,4 @@ Detailed conventions live inside the skills that use them, not in this file.
 | Releases, deprecations | `plastic:releasing` | deprecation process |
 | Health diagnostics | `plastic:doctor` | gate enforcement, stuck detection |
 | Writing agent instructions | `plastic:writing-instructions` | agentskills.io spec |
+| Evaluating skills, evals | `plastic:evaluating-skills` | eval methodology, convention checks |

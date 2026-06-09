@@ -121,6 +121,9 @@ Run through this checklist:
 - [ ] References have conditional load triggers
 - [ ] No explaining what the agent already knows
 
+For structured evaluation beyond this checklist (paired evals, pass rate
+tracking, regression testing), use `plastic:evaluating-skills`.
+
 ## Gotchas
 
 - Hook `additionalContext` truncates at **10,000 characters**. If instructions
