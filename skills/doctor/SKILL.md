@@ -1,5 +1,5 @@
 ---
-name: doctor
+name: plastic:doctor
 description: Use when diagnosing Plastic installation health, after updates, or when something seems broken. Runs checks and reports findings with fix options.
 ---
 
