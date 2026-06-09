@@ -140,15 +140,23 @@ For the first release (no previous tag), write notes manually with `--notes "...
 
 #### `npm_publish`
 
-Publish the package to npm:
+Publish the package to npm with the appropriate dist-tag:
 
 ```bash
-# For pre-release versions (0.x.y, or version contains -alpha/-beta/-rc):
+# Alpha pre-release (version contains -alpha):
 npm publish --access public --tag alpha
 
-# For stable versions (>= 1.0.0, no pre-release suffix):
+# Beta pre-release (version contains -beta):
+npm publish --access public --tag beta
+
+# Stable release (no pre-release suffix, >= 1.0.0):
 npm publish --access public
 ```
+
+The dist-tag is derived from the version string in `package.json`:
+- Contains `-alpha` → `--tag alpha`
+- Contains `-beta` → `--tag beta`
+- No pre-release suffix → no `--tag` flag (publishes to `latest`)
 
 #### Other values
 
@@ -183,6 +191,24 @@ A release IS a delivery. The active intent that drove this work must be complete
 - **Commit prefixes** — `feat:`, `fix:`, `refactor:`, `chore:`, `docs:` (conventional commits)
 - **Version files** — driven by project.yml; all listed files must always match
 - **Branch cleanup** — delete merged feature branches: `git branch -d <branch>`
+
+## Promotion
+
+To promote a release across channels, use `--promote`:
+
+```bash
+plastic:releasing --promote beta    # promotes current alpha → beta
+plastic:releasing --promote stable  # promotes current beta → stable
+```
+
+**Promotion rules:**
+- Linear only: alpha → beta → stable. Cannot skip channels.
+- `--promote beta`: reads version from `package.json`, changes `-alpha.N` suffix
+  to `-beta.1`, publishes with `--tag beta`.
+- `--promote stable`: reads version from `package.json`, strips pre-release suffix
+  entirely (e.g., `1.0.0-beta.3` → `1.0.0`), publishes to `latest`.
+- Version files are bumped and committed as in a normal release.
+- An annotated tag is created for the promoted version.
 
 ## Retroactive Tagging
 
