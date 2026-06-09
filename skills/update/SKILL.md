@@ -1,5 +1,5 @@
 ---
-name: update
+name: plastic:update
 description: Use when updating Plastic after a plugin update, or when the user says "update plastic". Runs the npx installer to sync core files and re-register agent adapters.
 ---
 
