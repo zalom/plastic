@@ -1,0 +1,75 @@
+{
+  "skill_name": "evaluating-skills",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to evaluate whether my creating-intent skill follows Plastic conventions",
+      "expected_output": "The skill should activate and guide the user through convention compliance evaluation: choose eval scope, design test cases using convention-checks reference, run paired evals, write assertions after observing.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "prompt": "Run evals on the brainstorming skill to see if the description triggers correctly",
+      "expected_output": "The skill should activate and guide through description triggering evaluation: design ~20 queries with should-trigger and near-miss negatives, 60/40 train/validation split, compute trigger rates.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 3,
+      "prompt": "Create evals for a new skill I just wrote for database migrations",
+      "expected_output": "The skill should activate, help create evals/evals.json in the migration skill directory using the template, guide through choosing eval scope (likely output quality), and design initial test cases.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 4,
+      "prompt": "Check if my SKILL.md is under the token budget and follows progressive disclosure",
+      "expected_output": "The skill should activate and guide through convention compliance evaluation focused on progressive disclosure checks: body under 500 lines/5000 tokens, references have conditional triggers, description under 1024 chars.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 5,
+      "prompt": "My skill's description isn't triggering on the right prompts, how do I fix it?",
+      "expected_output": "The skill should activate and guide through description triggering evaluation: create should-trigger and should-not-trigger queries, run paired evals, measure trigger rate, iterate on description wording.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 6,
+      "prompt": "Write unit tests for my Ruby model that validates email addresses",
+      "expected_output": "The skill should NOT trigger. This is a code testing task, not a skill evaluation task. Near-miss negative — shares 'test' keyword but needs a different skill.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 7,
+      "prompt": "Fix the bug in my login controller where sessions aren't persisting",
+      "expected_output": "The skill should NOT trigger. This is a debugging task with no relation to skill evaluation.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 8,
+      "prompt": "Review this pull request for code quality issues",
+      "expected_output": "The skill should NOT trigger. Code review is different from skill evaluation. Near-miss negative — shares 'review/evaluate' concept.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 9,
+      "prompt": "I updated my skill and want to make sure it still works correctly",
+      "expected_output": "The skill should activate and guide through regression evaluation: run existing evals against the updated skill, compare pass rates with previous version, check for backsliding.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 10,
+      "prompt": "How do I know if a skill is still needed or if the model has learned the behavior?",
+      "expected_output": "The skill should activate and guide through skill retirement detection: monitor with/without delta over time, if delta approaches zero the model has internalized the skill.",
+      "files": [],
+      "assertions": []
+    }
+  ]
+}
