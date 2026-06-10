@@ -1,11 +1,15 @@
 #!/bin/bash
-# plastic-hook-version: 1.0.0
-# Runs on SessionStart — checks npm for newer version, writes cache
+# plastic-hook-version: 1.1.0
+# Runs on SessionStart — checks npm for a newer version on the installed
+# channel, writes cache. Channel-aware: queries dist-tags and picks the best
+# upgrade target instead of blindly trusting the `latest` tag.
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLASTIC_HOME="$HOME/.plastic"
 CACHE_DIR="$PLASTIC_HOME/.cache"
 CACHE_FILE="$CACHE_DIR/update-check.json"
 VERSION_FILE="$PLASTIC_HOME/VERSION"
+SELECTOR="$SCRIPT_DIR/../scripts/select-update-target"
 
 mkdir -p "$CACHE_DIR"
 
@@ -21,21 +25,21 @@ fi
 
 # Background check — don't block session start
 (
-  RAW=$(npm view @zalom/plastic version 2>/dev/null)
-  LATEST=$(echo "$RAW" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$')
+  TAGS=$(npm view @zalom/plastic dist-tags --json 2>/dev/null)
 
-  if [ -z "$LATEST" ]; then
+  if [ -z "$TAGS" ]; then
     exit 0
   fi
 
+  TARGET=$(printf '%s' "$TAGS" | ruby "$SELECTOR" "$CURRENT" 2>/dev/null)
   CHECKED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-  if [ "$LATEST" != "$CURRENT" ]; then
+  if [ -n "$TARGET" ]; then
     printf '{"current":"%s","latest":"%s","checked":"%s","updateAvailable":true}\n' \
-      "$CURRENT" "$LATEST" "$CHECKED" > "$CACHE_FILE"
+      "$CURRENT" "$TARGET" "$CHECKED" > "$CACHE_FILE"
   else
     printf '{"current":"%s","latest":"%s","checked":"%s","updateAvailable":false}\n' \
-      "$CURRENT" "$LATEST" "$CHECKED" > "$CACHE_FILE"
+      "$CURRENT" "$CURRENT" "$CHECKED" > "$CACHE_FILE"
   fi
 ) &
 
