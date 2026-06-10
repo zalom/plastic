@@ -18,8 +18,14 @@ store/
     checklist.md          # optional — execution registry (How deliverable)
     outcome.md            # optional — detailed result (Exec deliverable)
     actions/              # optional — individual work items
+    resources/            # optional — research, references, screenshots, diagrams
     savepoint.md          # optional — session state for resume
 ```
+
+Lifecycle files (`spec.md`, `plan.md`, `checklist.md`, `outcome.md`) have defined
+roles. Supporting artifacts that aren't lifecycle deliverables — research reports,
+reference docs, external API snapshots, screenshots, diagrams — go in `resources/`.
+Name files inside as `{type}--{description}.md` (e.g., `deep-research--gsd-core.md`).
 
 ## Frontmatter
 
@@ -114,6 +120,15 @@ Format: `ID--three-to-five-words` (all stores).
 - Branches alternate: `1` → `1a` → `1a1` → `1a1a`
 - Intent file matches directory: `1a1--slug/1a1--slug.md`
 - Next ID: `"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" <parent_id> <store_path>`
+
+**Branch vs root — the semantic decision.** The numbering is mechanics; choosing
+*whether* to branch is meaning:
+
+- **Branch (`14a`, `14b`)** — a sub-task, refinement, or direct continuation of the
+  parent. It cannot stand on its own; it only makes sense as part of the parent's work.
+- **Root (`15`, `16`)** — an independent thought, even if inspired by another intent.
+  Record provenance with `sources: ["14"]`, not by branching.
+- **Rule of thumb:** if the intent could exist without its parent, it's a root.
 
 ## INDEX.md
 

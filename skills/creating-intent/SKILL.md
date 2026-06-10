@@ -60,6 +60,16 @@ IDs are scoped to the store they live in. Use the correct store path:
 "${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" "<STORE>" "<parent_id>"
 ```
 
+**Branch vs root — decide before assigning the ID.** Having a "parent" in mind does
+NOT automatically mean branch. Choose by meaning:
+
+- **Branch (`14a`, `14b`)** — a sub-task, refinement, or direct continuation. It only
+  makes sense as part of the parent's work.
+- **Root (`15`, `16`)** — an independent thought, even if inspired by another intent.
+  Capture the inspiration in `sources` (e.g., `sources: ["14"]`), not in the ID.
+- **Rule of thumb:** if the intent could exist without its parent, make it a root and
+  set `sources`. Only branch when it genuinely cannot stand alone.
+
 ### 3. Determine Intent Properties
 
 Ask or infer from context:
