@@ -12,6 +12,7 @@
 require "json"
 require "yaml"
 require "time"
+require "date"
 
 PLASTIC_HOME = File.join(Dir.home, ".plastic")
 
@@ -150,7 +151,9 @@ def parse_frontmatter(path)
   parts = content.split("---", 3)
   return nil if parts.length < 3
 
-  YAML.safe_load(parts[1]) || {}
+  # created: dates parse as Date objects, which safe_load rejects by default —
+  # permit Date/Time so valid frontmatter isn't misreported as missing.
+  YAML.safe_load(parts[1], permitted_classes: [Date, Time]) || {}
 rescue
   nil
 end
