@@ -1,0 +1,93 @@
+#!/usr/bin/env ruby
+# plastic-script-version: 1.0.0
+# Channel-aware update target selector.
+#
+# Usage: npm view @zalom/plastic dist-tags --json | select-update-target <current-version>
+#
+# Prints the best update target to stdout, or nothing if already up to date.
+#
+# Rule: target = the highest version, among the dist-tags reachable from the
+# installed channel, that is strictly greater than the installed version (semver).
+#   alpha installed  -> reachable: alpha, beta, latest
+#   beta installed   -> reachable: beta, latest   (never downgrade to alpha)
+#   stable installed -> reachable: latest         (stable only)
+# A prerelease (1.1.0-alpha.1) is LOWER than its release (1.1.0); the `latest`
+# placeholder (0.0.1) is naturally excluded as lower than any 1.0.0-alpha.N.
+
+require "json"
+
+# Parse "MAJOR.MINOR.PATCH[-prerelease]" into a comparable structure.
+# Returns nil for anything that isn't a clean semver string.
+def parse(version)
+  m = /\A(\d+)\.(\d+)\.(\d+)(?:-(.+))?\z/.match(version.to_s.strip)
+  return nil unless m
+  { maj: m[1].to_i, min: m[2].to_i, pat: m[3].to_i,
+    pre: m[4] ? m[4].split(".") : nil }
+end
+
+# Semver precedence (§11). Returns -1, 0, or 1.
+def compare(a, b)
+  %i[maj min pat].each do |k|
+    return a[k] <=> b[k] unless a[k] == b[k]
+  end
+  # A version with no prerelease is greater than one with a prerelease.
+  return 0 if a[:pre].nil? && b[:pre].nil?
+  return 1 if a[:pre].nil?
+  return -1 if b[:pre].nil?
+  [a[:pre].length, b[:pre].length].max.times do |i|
+    x = a[:pre][i]
+    y = b[:pre][i]
+    return -1 if x.nil?
+    return 1 if y.nil?
+    xn = x.match?(/\A\d+\z/)
+    yn = y.match?(/\A\d+\z/)
+    if xn && yn
+      return x.to_i <=> y.to_i unless x.to_i == y.to_i
+    elsif xn
+      return -1 # numeric identifiers rank lower than alphanumeric
+    elsif yn
+      return 1
+    elsif x != y
+      return x <=> y
+    end
+  end
+  0
+end
+
+def channel(version)
+  return "alpha" if version.include?("-alpha")
+  return "beta" if version.include?("-beta")
+  "stable"
+end
+
+REACH = {
+  "alpha"  => %w[alpha beta latest],
+  "beta"   => %w[beta latest],
+  "stable" => %w[latest],
+}.freeze
+
+current = ARGV[0]
+cur = parse(current)
+exit 0 unless cur
+
+begin
+  tags = JSON.parse($stdin.read)
+rescue JSON::ParserError, StandardError
+  exit 0
+end
+exit 0 unless tags.is_a?(Hash)
+
+best = nil
+best_parsed = nil
+REACH[channel(current)].each do |tag|
+  raw = tags[tag]
+  next unless raw
+  parsed = parse(raw)
+  next unless parsed
+  if compare(parsed, cur) > 0 && (best_parsed.nil? || compare(parsed, best_parsed) > 0)
+    best = raw
+    best_parsed = parsed
+  end
+end
+
+print best if best

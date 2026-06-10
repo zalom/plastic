@@ -159,6 +159,7 @@ def distribute(mode)
     "deprecations.yml" => "deprecations.yml",
     "scripts/folgezettel-id" => "scripts/folgezettel-id",
     "scripts/read-config" => "scripts/read-config",
+    "scripts/select-update-target" => "scripts/select-update-target",
     "scripts/hook-session-start" => "scripts/hook-session-start",
     "scripts/hook-continue" => "scripts/hook-continue",
     "scripts/hook-future-intent-check" => "scripts/hook-future-intent-check",
