@@ -16,6 +16,25 @@ An active intent MUST exist in INDEX.md. If none exists, refuse: "No active inte
 
 If multiple active intents exist, ask the user which one to deliver (this is the only question auto asks).
 
+## Arm the Lifecycle Gate (do this FIRST)
+
+Immediately after selecting the intent — before any other work — arm auto mode. This
+writes the session bridge that makes the code-edit gate live, so project code cannot be
+edited before the plan exists (the gate applies to YOU, the orchestrator):
+
+```bash
+ruby -r ~/.plastic/scripts/lib/bridge -e \
+  'Bridge.arm_auto(ENV["CLAUDE_SESSION_ID"], intent_id: "<ID>", intent_dir: "<STORE>/<dir>", store: "<STORE>", name: "<name>")'
+```
+
+Replace `<ID>`, `<STORE>` (e.g. `~/.plastic/projects/<slug>/store` or `~/.plastic/store`),
+`<dir>` (the `ID--slug` directory), and `<name>`. If `CLAUDE_SESSION_ID` is unset, arming
+is best-effort — proceed regardless; the gate simply won't engage.
+
+**Hard rule for the rest of this run:** do NOT edit project code (anything outside the
+intent directory / `~/.plastic/`) until `plan.md` AND `checklist.md` exist for the intent.
+Honor the cycle: What → Why (spec.md) → How (plan.md + actions/ + checklist.md) → Exec.
+
 ## Flags
 
 - `--skip-permissions` — bypass hard stops on destructive actions on existing projects. Full trust mode. Default: off.
@@ -130,7 +149,11 @@ During initial project creation, all decisions are non-destructive by definition
    - Update `chain` in the current intent's frontmatter
 6. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
 7. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: deliver intent <ID> — <name>"`
-8. Notify user: "Intent [ID] — [name] delivered. [1-2 sentence summary]. See outcome.md for details."
+8. Disarm the lifecycle gate (auto delivery is finished):
+   ```bash
+   ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.disarm_auto(ENV["CLAUDE_SESSION_ID"])'
+   ```
+9. Notify user: "Intent [ID] — [name] delivered. [1-2 sentence summary]. See outcome.md for details."
 
 ## Error Handling
 

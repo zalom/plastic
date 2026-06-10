@@ -164,6 +164,7 @@ def distribute(mode)
     "scripts/hook-continue" => "scripts/hook-continue",
     "scripts/hook-future-intent-check" => "scripts/hook-future-intent-check",
     "scripts/hook-gate-check" => "scripts/hook-gate-check",
+    "scripts/hook-code-gate" => "scripts/hook-code-gate",
     "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
     "scripts/doctor.rb" => "scripts/doctor.rb",
   }
@@ -441,6 +442,12 @@ def merge_claude_hooks(settings_path)
         { "type" => "command", "command" => "#{hook_dir}/plastic-savepoint", "statusMessage" => "Saving Plastic intent state..." },
       ],
     },
+    "PreToolUse" => {
+      "matcher" => "Write|Edit|NotebookEdit",
+      "hooks" => [
+        { "type" => "command", "command" => "#{hook_dir}/plastic-code-gate", "statusMessage" => "Checking lifecycle gate..." },
+      ],
+    },
     "PostToolUse" => {
       "matcher" => "Write|Edit",
       "hooks" => [
@@ -452,6 +459,7 @@ def merge_claude_hooks(settings_path)
       "hooks" => [
         { "type" => "command", "command" => "#{hook_dir}/plastic-continue", "statusMessage" => "Checking for continue..." },
         { "type" => "command", "command" => "#{hook_dir}/plastic-future-intent-check", "statusMessage" => "Checking future intents..." },
+        { "type" => "command", "command" => "#{hook_dir}/plastic-auto-arm", "statusMessage" => "Checking auto mode..." },
       ],
     },
   }

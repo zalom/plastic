@@ -1,0 +1,52 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# Usage: hook-auto-arm <message>
+# UserPromptSubmit arming (intent 27). Two jobs, both additive context — never blocks:
+#   1. Detect auto-trigger phrases -> steer the agent to invoke plastic:auto.
+#   2. If auto mode is armed and the active intent hasn't reached How -> remind the agent
+#      that project-code edits are gate-blocked until plan.md + checklist.md exist.
+# Outputs UserPromptSubmit hookSpecificOutput JSON, or exits silently.
+
+require "json"
+require_relative "lib/bridge"
+
+message = (ARGV[0] || "").downcase
+parts = []
+
+# --- 1. Auto-trigger steering ---
+AUTO_TRIGGERS = ["take it from here", "deliver this", "/plastic:auto", "auto mode"].freeze
+# bare "auto" only as a standalone word to avoid matching "automatic", "automation", etc.
+triggered = AUTO_TRIGGERS.any? { |p| message.include?(p) } || message.match?(/\bauto\b/)
+if triggered
+  parts << "Auto-mode request detected. Invoke the plastic:auto skill to deliver the " \
+           "active intent autonomously — it arms the lifecycle gate so project code " \
+           "cannot be edited before plan.md + checklist.md exist."
+end
+
+# --- 2. Standing gate reminder when armed and pre-How ---
+session = ENV["CLAUDE_SESSION_ID"]
+bridge_data = (session && !session.empty? && File.exist?(Bridge.path(session))) ? Bridge.read(session) : nil
+if bridge_data && bridge_data.dig("build", "auto") == true
+  intent = bridge_data["intent"] || {}
+  store = intent["store"]; dir = intent["dir"]
+  if store && dir
+    intent_dir = File.expand_path("#{store}/#{dir}")
+    reached_how = File.exist?("#{intent_dir}/plan.md") && File.exist?("#{intent_dir}/checklist.md")
+    unless reached_how
+      parts << "Auto mode armed on intent #{intent["id"]} — produce spec -> plan -> " \
+               "checklist before editing project code. Code edits are gate-blocked until then."
+    end
+  end
+end
+
+exit 0 if parts.empty?
+
+payload = {
+  "hookSpecificOutput" => {
+    "hookEventName" => "UserPromptSubmit",
+    "additionalContext" => parts.join("\n")
+  }
+}
+puts JSON.generate(payload)
