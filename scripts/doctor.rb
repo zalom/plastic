@@ -157,14 +157,22 @@ end
 
 # --- Collect all intent directories (global + project stores) ---
 
+# Child directories of a store, excluding dotfiles/dot-directories
+# (e.g. .obsidian, .git) which are tooling artifacts, not intents.
+def store_intent_dirs(store)
+  Dir.children(store).reject { |e| e.start_with?(".") }.select do |e|
+    File.directory?(File.join(store, e))
+  end
+end
+
 def all_intent_dirs
   dirs = []
 
   global_store = File.join(PLASTIC_HOME, "store")
   if File.directory?(global_store)
-    Dir.children(global_store).each do |entry|
+    store_intent_dirs(global_store).each do |entry|
       full = File.join(global_store, entry)
-      dirs << { path: full, name: entry, scope: "global" } if File.directory?(full)
+      dirs << { path: full, name: entry, scope: "global" }
     end
   end
 
@@ -174,9 +182,9 @@ def all_intent_dirs
       project_store = File.join(projects_root, project, "store")
       next unless File.directory?(project_store)
 
-      Dir.children(project_store).each do |entry|
+      store_intent_dirs(project_store).each do |entry|
         full = File.join(project_store, entry)
-        dirs << { path: full, name: entry, scope: "project:#{project}" } if File.directory?(full)
+        dirs << { path: full, name: entry, scope: "project:#{project}" }
       end
     end
   end
@@ -227,7 +235,7 @@ def check_global_store
   # orphaned_intents — directories in store/ not referenced in INDEX.md
   store_dir = File.join(PLASTIC_HOME, "store")
   if File.directory?(store_dir)
-    intent_dirs = Dir.children(store_dir).select { |e| File.directory?(File.join(store_dir, e)) }
+    intent_dirs = store_intent_dirs(store_dir)
     orphans = intent_dirs.reject { |d| content.include?("store/#{d}") }
 
     if orphans.empty?
