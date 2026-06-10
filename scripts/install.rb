@@ -165,6 +165,7 @@ def distribute(mode)
     "scripts/hook-future-intent-check" => "scripts/hook-future-intent-check",
     "scripts/hook-gate-check" => "scripts/hook-gate-check",
     "scripts/hook-code-gate" => "scripts/hook-code-gate",
+    "scripts/hook-auto-arm" => "scripts/hook-auto-arm",
     "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
     "scripts/doctor.rb" => "scripts/doctor.rb",
   }
