@@ -1,0 +1,5 @@
+#!/bin/bash
+INPUT=$(cat)
+MESSAGE=$(echo "$INPUT" | ruby -rjson -e 'puts JSON.parse(STDIN.read)["user_prompt"].to_s' 2>/dev/null || echo "")
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ruby "$SCRIPT_DIR/../scripts/hook-auto-arm" "$MESSAGE"

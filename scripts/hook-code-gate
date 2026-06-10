@@ -1,0 +1,39 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# Usage: hook-code-gate <file_path>
+# PreToolUse gate (intent 27): when auto mode is armed and the active intent has not
+# reached How (plan.md + checklist.md), block edits to project code outside the store.
+#
+# Exit 0 = allow. Exit 2 = block (reason on stderr, shown to the agent).
+# No bridge / auto not armed / How reached / path under ~/.plastic or the intent dir = allow.
+
+require_relative "lib/bridge"
+
+file_path = ARGV[0]
+exit 0 unless file_path && !file_path.empty?
+
+# --- Load bridge (mirror hook-gate-check resolution) ---
+session = ENV["CLAUDE_SESSION_ID"]
+bridge_data = nil
+
+if session && !session.empty?
+  bridge_data = Bridge.read(session) if File.exist?(Bridge.path(session))
+end
+
+unless bridge_data
+  candidates = Dir.glob("/tmp/plastic-*.json").reject { |f| f.end_with?(".tmp") }
+  if candidates.any?
+    newest = candidates.max_by { |f| File.mtime(f) }
+    bridge_data = JSON.parse(File.read(newest)) rescue nil
+  end
+end
+
+exit 0 unless bridge_data
+
+reason = Bridge.code_gate_decision(bridge_data, file_path)
+exit 0 unless reason
+
+$stderr.puts "PLASTIC GATE — #{reason}"
+exit 2

@@ -88,6 +88,7 @@ module Bridge
         "has" => has,
         "missing" => missing,
         "gate_failures" => 0,
+        "auto" => false,
         "last_activity" => Time.now.utc.iso8601
       },
       "observe" => {
@@ -157,6 +158,61 @@ module Bridge
   rescue => e
     $stderr.puts "Warning: failed to read project config for #{slug}: #{e.message}"
     PROJECT_CONFIG_DEFAULTS.dup
+  end
+
+  # --- Auto mode (intent 27) ---
+
+  # Arm auto mode for a session+intent. Works even when no bridge exists yet
+  # (mid-session intent creation). Re-derives intent state, then sets build.auto.
+  def self.arm_auto(session, intent_id:, intent_dir:, store:, name:)
+    data = derive(session, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name)
+    data["build"]["auto"] = true
+    write(session, data)
+    data
+  end
+
+  # Disarm auto mode. No-op if no bridge exists for the session.
+  def self.disarm_auto(session)
+    data = read(session)
+    return nil unless data
+    data["build"] ||= {}
+    data["build"]["auto"] = false
+    write(session, data)
+    data
+  end
+
+  # Decide whether a code edit should be blocked while auto mode is armed.
+  # Returns a reason string to BLOCK, or nil to ALLOW.
+  #
+  # Blocks iff: auto armed AND intent hasn't reached How (stage what/why) AND the
+  # target is project code — i.e. NOT under ~/.plastic and NOT inside the intent dir.
+  def self.code_gate_decision(bridge_data, file_path, home: Dir.home)
+    return nil unless bridge_data.is_a?(Hash)
+    build = bridge_data["build"] || {}
+    return nil unless build["auto"] == true
+
+    intent_info = bridge_data["intent"] || {}
+    store = intent_info["store"]
+    dir = intent_info["dir"]
+    return nil unless store && dir
+    intent_dir_abs = File.expand_path("#{store}/#{dir}")
+
+    # "How reached" = the plan triplet exists. Gate by artifact presence, not the
+    # stage label (derive_stage returns "how" as soon as spec.md exists, before any
+    # plan). Code edits stay blocked until plan.md + checklist.md are both present.
+    reached_how = File.exist?("#{intent_dir_abs}/plan.md") &&
+                  File.exist?("#{intent_dir_abs}/checklist.md")
+    return nil if reached_how
+
+    file_abs = File.expand_path(file_path.to_s)
+    plastic_home = File.expand_path(File.join(home, ".plastic"))
+    return nil if file_abs == plastic_home || file_abs.start_with?("#{plastic_home}/")
+    return nil if file_abs == intent_dir_abs || file_abs.start_with?("#{intent_dir_abs}/")
+
+    id = intent_info["id"]
+    "intent #{id} has not reached How — write plan.md + checklist.md before " \
+      "editing project code. Run plastic:auto or plastic:writing-plans first. " \
+      "(blocked edit: #{file_abs})"
   end
 
   def self.deep_merge(base, overlay)
