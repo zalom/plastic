@@ -61,10 +61,10 @@ The connection: an intent's `## Insights` feeds the Coordinator's Observe phase.
 
 | Stage | Section | Deliverable | Detail |
 |-------|---------|-------------|--------|
-| **What** | `## Intent` | `{ID}--{slug}.md` | `plastic:creating-intent` |
-| **Why** | `## Context` + Decisions | `spec.md` | `plastic:brainstorming` |
-| **How** | Planning | `plan.md` + `actions/` + `checklist.md` | `plastic:writing-plans` |
-| **Exec** | Execution | `outcome.md` | `plastic:executing-plan` |
+| **What** | `## Intent` | `{ID}--{slug}.md` | `plastic-creating-intent` |
+| **Why** | `## Context` + Decisions | `spec.md` | `plastic-brainstorming` |
+| **How** | Planning | `plan.md` + `actions/` + `checklist.md` | `plastic-writing-plans` |
+| **Exec** | Execution | `outcome.md` | `plastic-executing-plan` |
 
 `## Insights` — append-only work log captured throughout ALL stages.
 For full lifecycle detail, the skills in the Detail column have references/.
@@ -136,7 +136,7 @@ A Zettelkasten structure note, not a table of contents. Clusters by meaning.
 
 Sections: `## Active`, `## Future`, `## Clusters`, `## Abandoned`, `## Completed`.
 
-For index maintenance, use `plastic:managing-index`.
+For index maintenance, use `plastic-managing-index`.
 
 ## Rules for Skills
 
@@ -165,16 +165,16 @@ Detailed conventions live inside the skills that use them, not in this file.
 
 | Topic | Skill | References in skill |
 |-------|-------|-------------------|
-| Creating intents, lifecycle | `plastic:creating-intent` | lifecycle, wikilinks |
-| Brainstorming, spec writing | `plastic:brainstorming` | — |
-| Planning, actions | `plastic:writing-plans` | — |
-| Execution, delivery | `plastic:executing-plan` | — |
-| Autonomous delivery | `plastic:auto` | agent architecture |
-| Save/restore state | `plastic:savepoint`, `plastic:continuing` | context management |
-| Knowledge graph, linking | `plastic:linking-intents` | zettelkasten, wikilinks |
-| Projects, hubs | `plastic:creating-project` | hubs, project stores |
-| Index maintenance | `plastic:managing-index` | — |
-| Releases, deprecations | `plastic:releasing` | deprecation process |
-| Health diagnostics | `plastic:doctor` | gate enforcement, stuck detection |
-| Writing agent instructions | `plastic:writing-instructions` | agentskills.io spec |
-| Evaluating skills, evals | `plastic:evaluating-skills` | eval methodology, convention checks |
+| Creating intents, lifecycle | `plastic-creating-intent` | lifecycle, wikilinks |
+| Brainstorming, spec writing | `plastic-brainstorming` | — |
+| Planning, actions | `plastic-writing-plans` | — |
+| Execution, delivery | `plastic-executing-plan` | — |
+| Autonomous delivery | `plastic-auto` | agent architecture |
+| Save/restore state | `plastic-savepoint`, `plastic-continuing` | context management |
+| Knowledge graph, linking | `plastic-linking-intents` | zettelkasten, wikilinks |
+| Projects, hubs | `plastic-creating-project` | hubs, project stores |
+| Index maintenance | `plastic-managing-index` | — |
+| Releases, deprecations | `plastic-releasing` | deprecation process |
+| Health diagnostics | `plastic-doctor` | gate enforcement, stuck detection |
+| Writing agent instructions | `plastic-writing-instructions` | agentskills.io spec |
+| Evaluating skills, evals | `plastic-evaluating-skills` | eval methodology, convention checks |

@@ -1,5 +1,5 @@
 ---
-name: plastic:continuing
+name: plastic-continuing
 description: Use when the user says "continue" after a /clear, or when resuming work in a new session. Reads intent state from global store (~/.plastic/) or local store, offers active intents first, then future intents, and surfaces stale intents for triage.
 ---
 
@@ -14,7 +14,7 @@ description: Use when the user says "continue" after a /clear, or when resuming 
 
 1. Check `~/.plastic/INDEX.md` → global mode
 2. 
-3. If neither exists → announce "No Plastic store found. Run /plastic:install."
+3. If neither exists → announce "No Plastic store found. Run /plastic-install."
 
 ## Workflow
 
@@ -68,7 +68,7 @@ Last autonomous action: [last (autonomous) insight entry]
 Next step: [from checklist or savepoint]
 ```
 
-**Then:** Continue autonomous execution by invoking `plastic:auto`. The auto skill will pick up from the current lifecycle stage (it reads filesystem state to determine where to resume).
+**Then:** Continue autonomous execution by invoking `plastic-auto`. The auto skill will pick up from the current lifecycle stage (it reads filesystem state to determine where to resume).
 
 If NOT found — resume normally as described in step 3.
 
@@ -91,7 +91,7 @@ Stale future intents (no action taken):
      - implement: agent builds it
      - research: agent investigates feasibility
      - ideate: agent explores the problem space
-  d) Auto — go fully autonomous (invokes plastic:auto — agent delivers the intent end-to-end)
+  d) Auto — go fully autonomous (invokes plastic-auto — agent delivers the intent end-to-end)
 ```
 
 Auto-commit all triage changes.

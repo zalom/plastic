@@ -1,5 +1,5 @@
 ---
-name: plastic:savepoint
+name: plastic-savepoint
 description: Use when context is being compacted (PreCompact hook), user says "save" or "savepoint", or before ending a session. Saves the active intent's state so work can resume after /clear.
 ---
 

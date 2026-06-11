@@ -17,7 +17,7 @@ GLOBAL_ROOT="$HOME/.plastic"
 LOCAL_PLASTIC="$PROJECT_PATH/.plastic"
 
 if [ ! -d "$GLOBAL_ROOT" ]; then
-  echo "Error: Global Plastic not installed. Run /plastic:install first." >&2
+  echo "Error: Global Plastic not installed. Run /plastic-install first." >&2
   exit 1
 fi
 

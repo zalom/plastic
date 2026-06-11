@@ -116,7 +116,7 @@ if stale.any?
   parts << ""
 end
 
-parts << "Follow the plastic:continuing skill workflow.\n"
+parts << "Follow the plastic-continuing skill workflow.\n"
 parts << "1. If active intents exist: read their state and resume\n"
 parts << "2. If no active intents: present future intents as options\n"
 parts << "3. If stale intents exist: surface them and ask user to decide"

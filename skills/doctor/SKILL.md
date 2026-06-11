@@ -1,5 +1,5 @@
 ---
-name: plastic:doctor
+name: plastic-doctor
 description: Use when diagnosing Plastic installation health, after updates, or when something seems broken. Runs checks and reports findings with fix options.
 ---
 
@@ -7,8 +7,8 @@ description: Use when diagnosing Plastic installation health, after updates, or 
 
 ## When to Use
 
-- User invokes `/plastic:doctor`
-- After `plastic:update` completes (automatically)
+- User invokes `/plastic-doctor`
+- After `plastic-update` completes (automatically)
 - When hooks aren't firing, skills aren't loading, or something seems broken
 - When the user says "check plastic", "diagnose", "what's wrong with plastic"
 
@@ -95,7 +95,7 @@ Show the updated results.
 
 ## Post-Update Mode
 
-When invoked from `plastic:update` (not directly by the user):
+When invoked from `plastic-update` (not directly by the user):
 
 1. Run the diagnostic script as in Step 1.
 2. If all checks pass: show a single line — **"Health check: all clear."**

@@ -1,5 +1,5 @@
 ---
-name: plastic:update
+name: plastic-update
 description: Use when updating Plastic. Queries npm for available versions across all channels, presents options interactively, or accepts --alpha/--beta/--latest flags for direct update.
 ---
 
@@ -111,7 +111,7 @@ Recommendation: run /clear for a clean session with all new conventions loaded.
 
 ### Step 6: Run health check
 
-Invoke `plastic:doctor` to verify the installation is healthy after the update.
+Invoke `plastic-doctor` to verify the installation is healthy after the update.
 
 If all checks pass, show: **"Health check: all clear."**
 

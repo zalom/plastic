@@ -1,5 +1,5 @@
 ---
-name: writing-instructions
+name: plastic-writing-instructions
 description: >
   Write or restructure agent instructions, conventions files, and SKILL.md
   content using progressive disclosure and the agentskills.io specification.
@@ -122,7 +122,7 @@ Run through this checklist:
 - [ ] No explaining what the agent already knows
 
 For structured evaluation beyond this checklist (paired evals, pass rate
-tracking, regression testing), use `plastic:evaluating-skills`.
+tracking, regression testing), use `plastic-evaluating-skills`.
 
 ## Gotchas
 

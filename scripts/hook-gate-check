@@ -102,9 +102,9 @@ if is_stage_file || is_action_file
   stage_labels = { "what" => "What", "why" => "Why", "how" => "How", "exec" => "Exec", "done" => "Done" }
   next_hints = {
     "why" => "write spec.md",
-    "how" => "Why complete. Invoke plastic:auto to deliver autonomously, or write plan.md manually.",
-    "exec" => "How complete. Invoke plastic:auto or plastic:executing-plan to execute, or work through the checklist manually.",
-    "done" => "Exec complete. Intent must be completed now — write outcome.md, update INDEX.md, auto-commit. Use plastic:auto or do it manually."
+    "how" => "Why complete. Invoke plastic-auto to deliver autonomously, or write plan.md manually.",
+    "exec" => "How complete. Invoke plastic-auto or plastic-executing-plan to execute, or work through the checklist manually.",
+    "done" => "Exec complete. Intent must be completed now — write outcome.md, update INDEX.md, auto-commit. Use plastic-auto or do it manually."
   }
 
   context_parts = ["PLASTIC"]

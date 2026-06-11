@@ -1,5 +1,5 @@
 {
-  "skill_name": "plastic:auto",
+  "skill_name": "plastic-auto",
   "notes": "Intent 27. Scopes: description triggering (1-8) and behavior/output quality (9). Assertions written after observing Step-3 runs (one clean subagent router per case).",
   "results": {
     "triggering": { "cases": 8, "passed": 8, "pass_at_1": 1.0, "run": "2026-06-10, one subagent per case" },
@@ -9,73 +9,73 @@
     {
       "id": 1, "scope": "triggering", "set": "train",
       "prompt": "auto",
-      "expected_output": "Activates plastic:auto (the bare 'auto' keyword is the documented trigger).",
+      "expected_output": "Activates plastic-auto (the bare 'auto' keyword is the documented trigger).",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE == plastic:auto", "observed": "plastic:auto", "result": "pass" }
+        { "type": "code", "check": "router CHOICE == plastic-auto", "observed": "plastic-auto", "result": "pass" }
       ]
     },
     {
       "id": 2, "scope": "triggering", "set": "train",
       "prompt": "take it from here and deliver intent 27 end to end",
-      "expected_output": "Activates plastic:auto (autonomous delivery of an active intent).",
+      "expected_output": "Activates plastic-auto (autonomous delivery of an active intent).",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE == plastic:auto", "observed": "plastic:auto", "result": "pass" }
+        { "type": "code", "check": "router CHOICE == plastic-auto", "observed": "plastic-auto", "result": "pass" }
       ]
     },
     {
       "id": 3, "scope": "triggering", "set": "validation",
       "prompt": "go fully autonomous on the active intent, don't ask me questions",
-      "expected_output": "Activates plastic:auto.",
+      "expected_output": "Activates plastic-auto.",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE == plastic:auto", "observed": "plastic:auto", "result": "pass" }
+        { "type": "code", "check": "router CHOICE == plastic-auto", "observed": "plastic-auto", "result": "pass" }
       ]
     },
     {
       "id": 4, "scope": "triggering", "set": "train",
       "prompt": "deliver this intent for me",
-      "expected_output": "Activates plastic:auto.",
+      "expected_output": "Activates plastic-auto.",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE == plastic:auto", "observed": "plastic:auto", "result": "pass" }
+        { "type": "code", "check": "router CHOICE == plastic-auto", "observed": "plastic-auto", "result": "pass" }
       ]
     },
     {
       "id": 5, "scope": "triggering", "set": "train",
       "prompt": "set up a hook to automatically format the file on every save",
-      "expected_output": "Does NOT activate plastic:auto. Near-miss: shares 'auto*' but is a settings/hooks task (update-config).",
+      "expected_output": "Does NOT activate plastic-auto. Near-miss: shares 'auto*' but is a settings/hooks task (update-config).",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE != plastic:auto", "observed": "update-config", "result": "pass" }
+        { "type": "code", "check": "router CHOICE != plastic-auto", "observed": "update-config", "result": "pass" }
       ]
     },
     {
       "id": 6, "scope": "triggering", "set": "validation",
       "prompt": "deliver the built package to the dist directory",
-      "expected_output": "Does NOT activate plastic:auto. Near-miss: shares 'deliver' but is a build/file task.",
+      "expected_output": "Does NOT activate plastic-auto. Near-miss: shares 'deliver' but is a build/file task.",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE != plastic:auto", "observed": "none", "result": "pass" }
+        { "type": "code", "check": "router CHOICE != plastic-auto", "observed": "none", "result": "pass" }
       ]
     },
     {
       "id": 7, "scope": "triggering", "set": "train",
       "prompt": "create a new intent for the dashboard idea",
-      "expected_output": "Does NOT activate plastic:auto; activates plastic:creating-intent.",
+      "expected_output": "Does NOT activate plastic-auto; activates plastic-creating-intent.",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE != plastic:auto", "observed": "plastic:creating-intent", "result": "pass" }
+        { "type": "code", "check": "router CHOICE != plastic-auto", "observed": "plastic-creating-intent", "result": "pass" }
       ]
     },
     {
       "id": 8, "scope": "triggering", "set": "validation",
       "prompt": "what's the status of my active intents?",
-      "expected_output": "Does NOT activate plastic:auto; this is a read/continuing/managing-index query.",
+      "expected_output": "Does NOT activate plastic-auto; this is a read/continuing/managing-index query.",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE != plastic:auto", "observed": "plastic:managing-index", "result": "pass" }
+        { "type": "code", "check": "router CHOICE != plastic-auto", "observed": "plastic-managing-index", "result": "pass" }
       ]
     },
     {

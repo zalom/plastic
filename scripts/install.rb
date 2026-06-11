@@ -258,6 +258,19 @@ end
 
 # --- Agent adapters ---
 
+def manifest_path_for(key, config)
+  case key
+  when "claude" then File.join(config[:dir], "plastic", "manifest.json")
+  else File.join(config[:dir], "plastic-manifest.json")
+  end
+end
+
+def manifest_files(manifest_path)
+  return [] unless File.exist?(manifest_path)
+  data = JSON.parse(File.read(manifest_path)) rescue {}
+  (data["files"] || {}).keys
+end
+
 def install_for_agent(key, force)
   config = agent_config(key)
   return { agent: config[:name], success: false, reason: "Unknown agent" } unless config
@@ -266,20 +279,47 @@ def install_for_agent(key, force)
     return { agent: config[:name], success: false, reason: "#{config[:dir]} not found \u{2014} #{config[:name]} not installed?" }
   end
 
-  case key
-  when "claude" then install_claude(config, force)
-  when "codex" then install_codex(config, force)
-  when "hermes" then install_hermes(config, force)
+  # Capture the prior manifest so we can prune files that no longer ship
+  # (renamed/removed skills) after a re-copy. This gives leftover-free updates.
+  old_files = manifest_files(manifest_path_for(key, config))
+
+  result = case key
+           when "claude" then install_claude(config, force)
+           when "codex" then install_codex(config, force)
+           when "hermes" then install_hermes(config, force)
+           end
+
+  new_files = manifest_files(manifest_path_for(key, config))
+  pruned = prune_removed_files(old_files - new_files)
+  result[:pruned] = pruned if pruned.positive?
+  result
+end
+
+# Delete tracked files present in the old manifest but absent from the new one,
+# then remove any now-empty skill directories they lived in.
+def prune_removed_files(stale_files)
+  removed = 0
+  dirs = []
+  stale_files.each do |f|
+    if File.exist?(f)
+      File.delete(f)
+      removed += 1
+    end
+    dirs << File.dirname(f)
   end
+  dirs.uniq.sort_by { |d| -d.length }.each do |d|
+    FileUtils.rmdir(d) if File.directory?(d) && Dir.empty?(d)
+  end
+  removed
 end
 
 def install_claude(config, force)
   hooks_dir = File.join(config[:dir], "hooks")
-  skills_dir = File.join(config[:dir], "skills", "plastic")
+  skills_root = File.join(config[:dir], "skills")
   plastic_dir = File.join(config[:dir], "plastic")
 
   FileUtils.mkdir_p(hooks_dir)
-  FileUtils.mkdir_p(skills_dir)
+  FileUtils.mkdir_p(skills_root)
   FileUtils.mkdir_p(plastic_dir)
 
   installed = []
@@ -299,19 +339,19 @@ def install_claude(config, force)
     installed << dest
   end
 
-  # Copy skills recursively
+  # Copy skills as flat, hyphen-namespaced personal skills (plastic-<name>/)
   skills_source = File.join(PACKAGE_ROOT, "skills")
-  installed += copy_dir_recursive(skills_source, skills_dir) if File.directory?(skills_source)
+  installed += install_skills_flat(skills_source, skills_root) if File.directory?(skills_source)
 
   # Write VERSION
   version_file = File.join(plastic_dir, "VERSION")
   File.write(version_file, "#{VERSION}\n")
   installed << version_file
 
-  # Sync marketplace plugin so Claude Code discovers skills
-  sync_marketplace_plugin(config[:dir])
+  # Remove any prior plugin/marketplace install so the layouts don't coexist
+  migrate_legacy_plugin(config[:dir])
 
-  # Merge hooks + enabledPlugins into settings.json
+  # Merge hooks + statusline into settings.json (no plugin registration)
   settings_path = File.join(config[:dir], "settings.json")
   merge_claude_hooks(settings_path)
 
@@ -323,99 +363,106 @@ def install_claude(config, force)
 end
 
 def install_codex(config, force)
-  skills_dir = File.join(config[:dir], "skills", "plastic")
-  FileUtils.mkdir_p(skills_dir)
-
   installed = []
   skills_source = File.join(PACKAGE_ROOT, "skills")
-  installed += copy_dir_recursive(skills_source, skills_dir) if File.directory?(skills_source)
+  installed += install_skills_flat(skills_source, File.join(config[:dir], "skills")) if File.directory?(skills_source)
 
-  manifest_path = File.join(config[:dir], "plastic-manifest.json")
-  write_manifest(installed, manifest_path)
-
+  write_manifest(installed, File.join(config[:dir], "plastic-manifest.json"))
   { agent: config[:name], success: true, files: installed.size }
 end
 
 def install_hermes(config, force)
-  skills_dir = File.join(config[:dir], "skills", "plastic")
-  FileUtils.mkdir_p(skills_dir)
-
   installed = []
   skills_source = File.join(PACKAGE_ROOT, "skills")
-  installed += copy_dir_recursive(skills_source, skills_dir) if File.directory?(skills_source)
+  installed += install_skills_flat(skills_source, File.join(config[:dir], "skills")) if File.directory?(skills_source)
 
-  manifest_path = File.join(config[:dir], "plastic-manifest.json")
-  write_manifest(installed, manifest_path)
-
+  write_manifest(installed, File.join(config[:dir], "plastic-manifest.json"))
   { agent: config[:name], success: true, files: installed.size }
 end
 
-# --- Marketplace plugin sync ---
+# Copy each skills/<name>/ to <skills_root>/plastic-<name>/ (flat, namespaced by
+# directory name — the only personal-skill namespacing Claude Code supports).
+# The non-skill `_active-intent-gate.md` is relocated to ~/.plastic/ instead.
+def install_skills_flat(skills_source, skills_root)
+  installed = []
+  FileUtils.mkdir_p(skills_root)
 
-def sync_marketplace_plugin(claude_dir)
-  marketplace_dir = File.join(claude_dir, "plugins", "marketplaces", "plastic")
-  plugin_meta_dir = File.join(marketplace_dir, ".claude-plugin")
-
-  FileUtils.mkdir_p(plugin_meta_dir)
-
-  plugin_json = {
-    "name" => "plastic",
-    "description" => "Intent-driven state management for AI coding sessions. Neuroplasticity for your codebase.",
-    "version" => VERSION,
-    "author" => { "name" => "Zlatko Alomerovic", "email" => "zlatko.alomerovic@gmail.com" },
-    "homepage" => "https://github.com/zalom/plastic",
-    "repository" => "https://github.com/zalom/plastic",
-    "license" => "MIT",
-    "keywords" => %w[intent-driven state-management zettelkasten ai-agent]
-  }
-  write_json_atomic(File.join(plugin_meta_dir, "plugin.json"), plugin_json)
-
-  marketplace_json = {
-    "name" => "plastic",
-    "description" => "Marketplace for Plastic — intent-driven state management",
-    "owner" => { "name" => "Zlatko Alomerovic", "email" => "zlatko.alomerovic@gmail.com" },
-    "plugins" => [{
-      "name" => "plastic",
-      "description" => "Intent-driven state management for AI coding sessions",
-      "version" => VERSION,
-      "source" => "./",
-      "author" => { "name" => "Zlatko Alomerovic", "email" => "zlatko.alomerovic@gmail.com" }
-    }]
-  }
-  write_json_atomic(File.join(plugin_meta_dir, "marketplace.json"), marketplace_json)
-
-  # Sync skills
-  skills_source = File.join(PACKAGE_ROOT, "skills")
-  skills_dest = File.join(marketplace_dir, "skills")
-  if File.directory?(skills_source)
-    FileUtils.rm_rf(skills_dest)
-    copy_dir_recursive(skills_source, skills_dest)
+  Dir.children(skills_source).reject { |e| e.start_with?(".") }.each do |entry|
+    src = File.join(skills_source, entry)
+    if File.directory?(src)
+      installed += copy_dir_recursive(src, File.join(skills_root, "plastic-#{entry}"))
+    elsif entry == "_active-intent-gate.md"
+      FileUtils.mkdir_p(PLASTIC_HOME)
+      dest = File.join(PLASTIC_HOME, entry)
+      FileUtils.cp(src, dest)
+      installed << dest
+    end
   end
 
-  # Sync agents
-  agents_source = File.join(PACKAGE_ROOT, "agents")
-  agents_dest = File.join(marketplace_dir, "agents")
-  if File.directory?(agents_source)
-    FileUtils.rm_rf(agents_dest)
-    copy_dir_recursive(agents_source, agents_dest)
+  installed
+end
+
+# --- Legacy plugin migration ---
+
+# Earlier versions registered Plastic as a local marketplace plugin
+# (plastic@plastic) for skill discovery. The current model uses flat,
+# hyphen-namespaced personal skills, so any prior plugin layout is removed here
+# to stop the two coexisting. Returns a list of what was migrated.
+def migrate_legacy_plugin(claude_dir)
+  removed = []
+
+  legacy_dirs = [
+    File.join(claude_dir, "plugins", "marketplaces", "plastic"),
+    File.join(claude_dir, "plugins", "cache", "plastic"),
+    File.join(claude_dir, "skills", "plastic"), # old nested skills layout
+  ]
+  legacy_dirs.each do |d|
+    if File.directory?(d)
+      FileUtils.rm_rf(d)
+      removed << d
+    end
   end
 
-  # Write .claude/settings.json (permissions)
-  claude_settings_dir = File.join(marketplace_dir, ".claude")
-  FileUtils.mkdir_p(claude_settings_dir)
-  write_json_atomic(File.join(claude_settings_dir, "settings.json"), {
-    "permissions" => {
-      "allow" => [
-        "Bash(ruby *)",
-        "Bash(ls *)",
-        "Bash(find *)",
-        "Bash(git *)",
-        "Bash(mkdir *)",
-        "Bash(chmod *)",
-        "mcp__serena__*"
-      ]
-    }
-  })
+  # settings.json: drop enabledPlugins + extraKnownMarketplaces entries
+  settings_path = File.join(claude_dir, "settings.json")
+  settings = read_json_safe(settings_path)
+  if settings
+    changed = false
+    if settings.dig("enabledPlugins", "plastic@plastic")
+      settings["enabledPlugins"].delete("plastic@plastic")
+      settings.delete("enabledPlugins") if settings["enabledPlugins"].empty?
+      changed = true
+    end
+    if settings.dig("extraKnownMarketplaces", "plastic")
+      settings["extraKnownMarketplaces"].delete("plastic")
+      settings.delete("extraKnownMarketplaces") if settings["extraKnownMarketplaces"].empty?
+      changed = true
+    end
+    if changed
+      write_json_atomic(settings_path, settings)
+      removed << "settings.json: plastic@plastic plugin registration"
+    end
+  end
+
+  # plugins/known_marketplaces.json: drop the plastic entry
+  known_path = File.join(claude_dir, "plugins", "known_marketplaces.json")
+  known = read_json_safe(known_path)
+  if known.is_a?(Hash) && known.key?("plastic")
+    known.delete("plastic")
+    write_json_atomic(known_path, known)
+    removed << "known_marketplaces.json: plastic"
+  end
+
+  unless removed.empty?
+    puts "  \u{1f9f9} Migrated legacy plugin install:"
+    removed.each { |r| puts "     - #{tilde(r)}" }
+  end
+
+  removed
+end
+
+def tilde(path)
+  path.sub(Dir.home, "~")
 end
 
 # --- settings.json merge (read-modify-write, never clobber) ---
@@ -486,13 +533,8 @@ def merge_claude_hooks(settings_path)
 
   settings["statusLine"] = { "type" => "command", "command" => "#{hook_dir}/plastic-statusline" }
 
-  # Register Plastic as an enabled plugin for skill discovery
-  plugins = settings["enabledPlugins"] ||= {}
-  plugins["plastic@plastic"] = true
-
-  # Register the marketplace source
-  marketplaces = settings["extraKnownMarketplaces"] ||= {}
-  marketplaces["plastic"] ||= { "source" => { "source" => "github", "repo" => "zalom/plastic" } }
+  # No plugin/marketplace registration: skills are flat personal skills
+  # (plastic-<name>/) discovered directly from ~/.claude/skills.
 
   write_json_atomic(settings_path, settings)
 end
@@ -526,14 +568,25 @@ def handle_uninstall(agents)
     next unless config
 
     result = uninstall_agent(key, config)
-    if result[:success]
-      puts "  \u{2705} #{config[:name]}: uninstalled (#{result[:files]} files removed)"
-    else
+    unless result[:success]
       puts "  \u{26a0}\u{fe0f}  #{config[:name]}: #{result[:reason]}"
+      next
     end
+
+    puts "  \u{2705} #{config[:name]}: uninstalled (#{result[:files]} files removed)"
+    result[:removed].each { |r| puts "     removed: #{tilde(r)}" }
   end
 
-  puts "\n  Note: ~/.plastic/ (your intent store) is preserved.\n\n"
+  # What was deliberately left behind
+  puts "\n  Left in place (not removed):"
+  puts "     - #{tilde(PLASTIC_HOME)} (your intent store, history, and projects)"
+  puts "     - any non-Plastic entries in settings.json"
+
+  puts "\n  Verify removal:"
+  puts "     ls ~/.claude/skills | grep '^plastic-'      # → no output"
+  puts "     ls ~/.claude/hooks | grep '^plastic-'       # → no output"
+  puts "     grep -c plastic ~/.claude/settings.json     # → only hook refs gone"
+  puts "\n  To also delete your intent store: rm -rf #{tilde(PLASTIC_HOME)}\n\n"
 end
 
 def uninstall_agent(key, config)
@@ -541,45 +594,47 @@ def uninstall_agent(key, config)
     return { success: false, reason: "#{config[:dir]} not found" }
   end
 
-  manifest_path = case key
-                  when "claude" then File.join(config[:dir], "plastic", "manifest.json")
-                  else File.join(config[:dir], "plastic-manifest.json")
-                  end
-
-  files_removed = 0
+  removed = []
+  manifest_path = manifest_path_for(key, config)
 
   if File.exist?(manifest_path)
     manifest = JSON.parse(File.read(manifest_path)) rescue {}
     (manifest["files"] || {}).each_key do |f|
       if File.exist?(f)
         File.delete(f)
-        files_removed += 1
+        removed << f
       end
     end
     File.delete(manifest_path)
-    files_removed += 1
+    removed << manifest_path
   end
 
-  # Clean known directories
-  dirs_to_clean = case key
-                  when "claude"
-                    [
-                      File.join(config[:dir], "plastic"),
-                      File.join(config[:dir], "skills", "plastic"),
-                      File.join(config[:dir], "plugins", "marketplaces", "plastic"),
-                    ]
-                  else [File.join(config[:dir], "skills", "plastic")]
-                  end
+  # Remove flat plastic-<name>/ skill dirs (now-empty after manifest deletion,
+  # plus any the manifest missed) and the plastic state dir.
+  skills_root = File.join(config[:dir], "skills")
+  if File.directory?(skills_root)
+    Dir.children(skills_root).select { |e| e.start_with?("plastic-") }.each do |d|
+      full = File.join(skills_root, d)
+      FileUtils.rm_rf(full)
+      removed << full
+    end
+  end
 
-  dirs_to_clean.each { |d| FileUtils.rm_rf(d) if File.directory?(d) }
+  [File.join(config[:dir], "plastic")].each do |d|
+    if File.directory?(d)
+      FileUtils.rm_rf(d)
+      removed << d
+    end
+  end
 
-  # Clean hooks from settings.json (Claude Code only)
+  # Claude Code: clean hooks/statusline and any legacy plugin registration
   if key == "claude"
     settings_path = File.join(config[:dir], "settings.json")
     remove_claude_hooks(settings_path) if File.exist?(settings_path)
+    removed.concat(migrate_legacy_plugin(config[:dir]))
   end
 
-  { success: true, files: files_removed }
+  { success: true, files: removed.size, removed: removed }
 end
 
 def remove_claude_hooks(settings_path)

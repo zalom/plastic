@@ -470,22 +470,30 @@ def check_claude_registration(agent_dir)
     end
   end
 
-  # skills_exist
-  skills_dir = File.join(agent_dir, "skills", "plastic")
-  if File.directory?(skills_dir) && !Dir.empty?(skills_dir)
-    checks << check(
-      category: "agent_registration", name: "skills_exist", status: "pass",
-      message: "Skills directory exists at #{tilde(skills_dir)}"
-    )
-  else
-    checks << check(
-      category: "agent_registration", name: "skills_exist", status: "fail",
-      message: "Skills directory missing or empty at #{tilde(skills_dir)}",
-      fixable: true, fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest --claude"
-    )
-  end
+  # skills_exist — flat, hyphen-namespaced personal skills (plastic-<name>/)
+  checks << flat_skills_check(agent_dir, "--claude")
 
   checks
+end
+
+# Plastic skills install as ~/.claude/skills/plastic-<name>/SKILL.md. Pass if at
+# least one such skill is present.
+def flat_skills_check(agent_dir, installer_flag)
+  skills_root = File.join(agent_dir, "skills")
+  found = Dir.glob(File.join(skills_root, "plastic-*", "SKILL.md"))
+
+  if !found.empty?
+    check(
+      category: "agent_registration", name: "skills_exist", status: "pass",
+      message: "#{found.size} plastic-* skill(s) installed in #{tilde(skills_root)}"
+    )
+  else
+    check(
+      category: "agent_registration", name: "skills_exist", status: "fail",
+      message: "No plastic-* skills found in #{tilde(skills_root)}",
+      fixable: true, fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest #{installer_flag}"
+    )
+  end
 end
 
 def check_generic_agent_registration(agent_key, agent_dir)
@@ -493,19 +501,7 @@ def check_generic_agent_registration(agent_key, agent_dir)
   config = AGENTS[agent_key]
 
   # For codex/hermes: just check skills exist (no settings.json hooks)
-  skills_dir = File.join(agent_dir, "skills", "plastic")
-  if File.directory?(skills_dir) && !Dir.empty?(skills_dir)
-    checks << check(
-      category: "agent_registration", name: "skills_exist", status: "pass",
-      message: "Skills directory exists at #{tilde(skills_dir)}"
-    )
-  else
-    checks << check(
-      category: "agent_registration", name: "skills_exist", status: "fail",
-      message: "Skills directory missing or empty at #{tilde(skills_dir)}",
-      fixable: true, fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest --#{agent_key}"
-    )
-  end
+  checks << flat_skills_check(agent_dir, "--#{agent_key}")
 
   checks
 end
@@ -706,7 +702,7 @@ def check_project_stores
       checks << check(
         category: "project_stores", name: "project_yml_exists", status: "warn",
         message: "project.yml missing for project '#{slug}'",
-        fixable: true, fix_hint: "Create project.yml from template — see plastic:creating-project"
+        fixable: true, fix_hint: "Create project.yml from template — see plastic-creating-project"
       )
     end
 

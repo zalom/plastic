@@ -1,5 +1,5 @@
 ---
-name: plastic:brainstorming
+name: plastic-brainstorming
 description: "Explore intent requirements and design before implementation. Produces spec.md in the active intent directory."
 ---
 
@@ -20,7 +20,7 @@ Do NOT invoke any implementation skill, write any code, scaffold any project, or
 Before proceeding, resolve the active intent:
 
 1. **Detect store:** Read `~/.plastic/projects.yml`, match CWD against registered project paths. If match → project store at `~/.plastic/projects/{slug}/store/`. If no match → global store at `~/.plastic/store/`.
-2. **Find active intent:** Read `INDEX.md` from the detected store. Look under `## Active`. If exactly one → use it. If multiple → ask which. If none → refuse: "No active intent. Create one first with /plastic:creating-intent"
+2. **Find active intent:** Read `INDEX.md` from the detected store. Look under `## Active`. If exactly one → use it. If multiple → ask which. If none → refuse: "No active intent. Create one first with /plastic-creating-intent"
 3. **Resolve intent directory:** `{store}/store/{id}--{slug}/`
 
 All artifacts go to the intent directory. Never write to external paths.
@@ -40,7 +40,7 @@ You MUST create a task for each of these items and complete them in order:
 5. **Write spec** — save to `{intent_dir}/spec.md` and commit to store repo
 6. **Spec self-review** — placeholder scan, consistency, scope, ambiguity
 7. **User reviews written spec** — ask user to review before proceeding
-8. **Transition to planning** — invoke `plastic:writing-plans`
+8. **Transition to planning** — invoke `plastic-writing-plans`
 
 ## Process Flow
 
@@ -54,7 +54,7 @@ digraph brainstorming {
     "Write spec" [shape=box];
     "Spec self-review\n(fix inline)" [shape=box];
     "User reviews spec?" [shape=diamond];
-    "Invoke plastic:writing-plans" [shape=doublecircle];
+    "Invoke plastic-writing-plans" [shape=doublecircle];
 
     "Explore project context" -> "Ask clarifying questions";
     "Ask clarifying questions" -> "Propose 2-3 approaches";
@@ -65,11 +65,11 @@ digraph brainstorming {
     "Write spec" -> "Spec self-review\n(fix inline)";
     "Spec self-review\n(fix inline)" -> "User reviews spec?";
     "User reviews spec?" -> "Write spec" [label="changes requested"];
-    "User reviews spec?" -> "Invoke plastic:writing-plans" [label="approved"];
+    "User reviews spec?" -> "Invoke plastic-writing-plans" [label="approved"];
 }
 ```
 
-**The terminal state is invoking `plastic:writing-plans`.** Do NOT invoke any other implementation skill. The ONLY skill you invoke after brainstorming is `plastic:writing-plans`.
+**The terminal state is invoking `plastic-writing-plans`.** Do NOT invoke any other implementation skill. The ONLY skill you invoke after brainstorming is `plastic-writing-plans`.
 
 ## The Process
 
@@ -130,8 +130,8 @@ After the spec review loop passes, ask the user to review the written spec befor
 Wait for the user's response. If they request changes, make them and re-run the spec review loop. Only proceed once the user approves.
 
 **Implementation:**
-- Invoke `plastic:writing-plans` to create the implementation plan
-- Do NOT invoke any other skill. `plastic:writing-plans` is the next step.
+- Invoke `plastic-writing-plans` to create the implementation plan
+- Do NOT invoke any other skill. `plastic-writing-plans` is the next step.
 
 ## Key Principles
 

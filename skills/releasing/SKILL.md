@@ -1,5 +1,5 @@
 ---
-name: plastic:releasing
+name: plastic-releasing
 description: Use when merging a feature branch to main and tagging a release, bumping the version, or when the user says "release", "tag", or "ship it"
 ---
 
@@ -197,8 +197,8 @@ A release IS a delivery. The active intent that drove this work must be complete
 To promote a release across channels, use `--promote`:
 
 ```bash
-plastic:releasing --promote beta    # promotes current alpha → beta
-plastic:releasing --promote stable  # promotes current beta → stable
+plastic-releasing --promote beta    # promotes current alpha → beta
+plastic-releasing --promote stable  # promotes current beta → stable
 ```
 
 **Promotion rules:**

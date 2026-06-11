@@ -1,5 +1,5 @@
 ---
-name: plastic:brainstorming-grill-me
+name: plastic-brainstorming-grill-me
 description: >-
   Deep brainstorming that interviews the user relentlessly about a plan or design until reaching shared understanding.
   Use when user wants to stress-test a plan, get grilled on their design, or mentions "grill me".
@@ -83,18 +83,18 @@ If ALL items pass, offer autonomous delivery:
 >
 > Want to grill more, or should I go autonomous?"
 
-- If human says go → invoke `plastic:auto`
+- If human says go → invoke `plastic-auto`
 - If human says grill more → continue grilling (reset to step 2)
 - If human says neither (wants to drive manually) → proceed as before (offer planning)
 
 This offer replaces the final question in Close Out ("Ready to plan implementation, or do you want another pass?"). The new options are:
-1. Go autonomous (`plastic:auto`)
+1. Go autonomous (`plastic-auto`)
 2. Grill more (continue interrogation)
 3. Plan manually (invoke `superpowers:writing-plans` or proceed with human-driven planning)
 
 ## Relationship to superpowers:brainstorming
 
-| | superpowers:brainstorming | plastic:brainstorming-grill-me |
+| | superpowers:brainstorming | plastic-brainstorming-grill-me |
 |---|---|---|
 | Speed | Quick (5-10 min) | Thorough (20-45 min) |
 | Depth | Surface-level exploration | Exhaustive decision tree |
@@ -102,4 +102,4 @@ This offer replaces the final question in Close Out ("Ready to plan implementati
 | Output | Initial spec | Battle-tested spec with all branches resolved |
 | Style | Collaborative, exploratory | Interrogative, relentless |
 
-Use `superpowers:brainstorming` to generate ideas. Use `plastic:brainstorming-grill-me` to pressure-test them.
+Use `superpowers:brainstorming` to generate ideas. Use `plastic-brainstorming-grill-me` to pressure-test them.

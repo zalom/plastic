@@ -1,5 +1,5 @@
 ---
-name: evaluating-skills
+name: plastic-evaluating-skills
 description: >
   Evaluate Plastic skills for correctness, convention compliance, and
   progressive disclosure. Use when testing whether a skill produces good

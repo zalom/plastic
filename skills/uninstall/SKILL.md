@@ -1,48 +1,59 @@
 ---
-name: plastic:uninstall
-description: Use when the user wants to remove Plastic. Deregisters the plugin from the current agent (Claude Code, Cursor, etc.) and optionally deletes all data.
+name: plastic-uninstall
+description: Use when the user wants to remove Plastic from an agent. Runs the manifest-driven uninstaller (removes skills, hooks, statusline, and any legacy plugin layout), reports exactly what was removed and what was left behind, then gives verification steps. Optionally deletes the intent store.
 ---
 
 # Uninstall Plastic
 
+The installer tracks every file it writes in a manifest, so uninstall is exact and
+leaves no orphans. Prefer running it through the CLI; this skill wraps the same
+underlying uninstaller and adds reporting + verification.
+
 ## Procedure
 
-### Step 1: Detect the current agent
+### Step 1: Run the uninstaller
 
-Check environment variables to determine which agent is running:
-- `$CLAUDE_PLUGIN_ROOT` → Claude Code
-- `$CURSOR_PLUGIN_ROOT` → Cursor
-- Otherwise → unknown agent
+```bash
+npx @zalom/plastic@latest --uninstall --claude
+```
 
-### Step 2: Deregister from the agent
+(Use `--codex` / `--hermes` / `--all` to target other agents. `bunx` works too.)
 
-**Claude Code:**
-- Remove `"plastic"` from `extraKnownMarketplaces` in `~/.claude/settings.json`
-- Remove `"plastic@plastic"` from `enabledPlugins` in `~/.claude/settings.json`
-- Announce: "Plastic deregistered from Claude Code."
+This removes, for the targeted agent:
+- all `~/.claude/skills/plastic-*/` skills
+- all `~/.claude/hooks/plastic-*` hooks (and restores any saved original statusline)
+- the `~/.claude/plastic/` state dir + manifest
+- any **legacy** plugin layout: `plugins/marketplaces/plastic`, `plugins/cache/plastic`,
+  the old nested `skills/plastic/`, and the `plastic@plastic` /
+  `extraKnownMarketplaces.plastic` / `known_marketplaces.json` registrations
 
-**Other agents:** Provide manual instructions for their deregistration process.
+### Step 2: Report removed vs left
 
-### Step 3: Offer the data decision
+Relay the uninstaller's output to the user — what was **removed** and what was
+**left in place**:
+- **Left:** `~/.plastic/` (intent store, history, projects) and any non-Plastic
+  settings.json entries.
 
-Present clearly:
+### Step 3: Verify removal
+
+Tell the user to confirm:
+
+```bash
+ls ~/.claude/skills | grep '^plastic-'    # → no output
+ls ~/.claude/hooks  | grep '^plastic-'    # → no output
+grep -n plastic ~/.claude/settings.json   # → no plastic hook/plugin refs
+```
+
+### Step 4: Offer the data decision
 
 ```
-Plastic is deregistered from [agent name].
-
+Plastic is uninstalled from [agent].
 Your intent store at ~/.plastic/ is untouched.
 
-Would you like to delete your Plastic data now?
-
-⚠️  WARNING: This permanently removes ALL intents, history,
-and any projects in ~/.plastic/projects/.
-This is irreversible.
-
-a) Keep everything (recommended) — you can re-install Plastic later
-b) Delete everything now — removes ~/.plastic/ entirely
+Delete it too?
+  a) Keep everything (recommended) — re-install anytime with npx
+  b) Delete everything now — removes ~/.plastic/ entirely (irreversible)
 ```
 
-### Step 4: Execute user's choice
-
-- **Keep:** Done. Tell the user: "Your data is at ~/.plastic/. Re-install anytime with `/plastic:install`."
-- **Delete:** Run `rm -rf ~/.plastic/` and confirm: "Plastic data deleted."
+- **Keep:** "Your data is at ~/.plastic/. Re-install anytime with `npx @zalom/plastic@latest --claude`."
+- **Delete:** run `rm -rf ~/.plastic/` and confirm.

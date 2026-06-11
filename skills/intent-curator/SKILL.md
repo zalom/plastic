@@ -1,5 +1,5 @@
 ---
-name: plastic:intent-curator
+name: plastic-intent-curator
 description: |
   Use when completing or reviewing intents, reorganizing the index,
   or when the intent store needs maintenance. Examples:
@@ -15,7 +15,7 @@ description: |
 
 # Intent Curator
 
-Dispatches to the `plastic:intent-curator` agent for intent store maintenance.
+Dispatches to the `plastic-intent-curator` agent for intent store maintenance.
 
 ## When to Use
 - Completing or reviewing intents
@@ -25,7 +25,7 @@ Dispatches to the `plastic:intent-curator` agent for intent store maintenance.
 
 ## Workflow
 
-Invoke the `plastic:intent-curator` agent via the Agent tool with `subagent_type: "plastic:intent-curator"`. Pass the user's request as the prompt, including:
+Invoke the `plastic-intent-curator` agent via the Agent tool with `subagent_type: "plastic-intent-curator"`. Pass the user's request as the prompt, including:
 
 1. **What to do** — complete intent, reorganize, triage stale, etc.
 2. **Which store** — global (`~/.plastic/`) or project (`.plastic/store/`)
