@@ -211,7 +211,7 @@ module Bridge
 
     id = intent_info["id"]
     "intent #{id} has not reached How — write plan.md + checklist.md before " \
-      "editing project code. Run plastic:auto or plastic:writing-plans first. " \
+      "editing project code. Run plastic-auto or plastic-writing-plans first. " \
       "(blocked edit: #{file_abs})"
   end
 

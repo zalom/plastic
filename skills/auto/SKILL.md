@@ -1,5 +1,5 @@
 ---
-name: plastic:auto
+name: plastic-auto
 description: >-
   Autonomous intent delivery — agent takes over How and Exec. Use when user says
   "auto", "take it from here", "deliver this", or when brainstorming-grill-me concludes
@@ -12,7 +12,7 @@ Announce: "Taking over intent [ID] — [name] for autonomous delivery."
 
 ## Precondition
 
-An active intent MUST exist in INDEX.md. If none exists, refuse: "No active intent found. Create one first with /plastic:creating-intent."
+An active intent MUST exist in INDEX.md. If none exists, refuse: "No active intent found. Create one first with /plastic-creating-intent."
 
 If multiple active intents exist, ask the user which one to deliver (this is the only question auto asks).
 
@@ -86,7 +86,7 @@ If the plan calls for creating a new project (the intent is an implementation in
 1. Determine project path from `~/.plastic/config.yml` `project_roots` or from intent context
 2. **Confirm path with user** — this is the ONE human interaction during auto delivery:
    > "Creating project `<slug>` at `<path>`. Confirm path, or provide alternative."
-3. Invoke `plastic:creating-project` skill
+3. Invoke `plastic-creating-project` skill
 4. The global intent is now Completed (creating-project handles this)
 5. The tactical mirror in the project store becomes the active intent
 6. Continue execution from the project directory using the tactical intent
@@ -94,7 +94,7 @@ If the plan calls for creating a new project (the intent is an implementation in
 ## Exec Phase
 
 1. If `superpowers:subagent-driven-development` or `superpowers:executing-plans` is available, delegate execution to it
-2. Otherwise invoke `plastic:executing-plan`
+2. Otherwise invoke `plastic-executing-plan`
 3. Execute actions from checklist sequentially
 4. Check off items in `checklist.md` as completed
 5. Append observations to `## Insights` with `(autonomous)` marker
@@ -143,9 +143,9 @@ During initial project creation, all decisions are non-destructive by definition
         - `fix_and_retry` — attempt to fix the failure, re-run verify (max 2 retries)
         - `stop` — write `savepoint.md` with current state, notify user: "Verify failed — savepoint written.", **STOP**
         - `manual` — notify user: "Verify failed: [summary]. Resolve manually."
-   5. If `release.on_green` has items, invoke `plastic:releasing` to handle them (tag, changelog, publish, etc.). Do NOT duplicate release logic — delegate entirely.
+   5. If `release.on_green` has items, invoke `plastic-releasing` to handle them (tag, changelog, publish, etc.). Do NOT duplicate release logic — delegate entirely.
 5. Review `## Insights` for observations that should spawn future intents. If any:
-   - Create them (using `plastic:creating-intent` conventions)
+   - Create them (using `plastic-creating-intent` conventions)
    - Update `chain` in the current intent's frontmatter
 6. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
 7. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: deliver intent <ID> — <name>"`

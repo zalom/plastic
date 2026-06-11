@@ -1,5 +1,5 @@
 ---
-name: plastic:research
+name: plastic-research
 description: "Research a topic for the active intent. Agent decides shallow vs deep based on scope. Produces reports in the intent's resources/ directory."
 ---
 
@@ -14,7 +14,7 @@ Investigate a topic related to the active intent. Choose the right depth, produc
 Before proceeding, resolve the active intent:
 
 1. **Detect store:** Read `~/.plastic/projects.yml`, match CWD against registered project paths. If match → project store at `~/.plastic/projects/{slug}/store/`. If no match → global store at `~/.plastic/store/`.
-2. **Find active intent:** Read `INDEX.md` from the detected store. Look under `## Active`. If exactly one → use it. If multiple → ask which. If none → refuse: "No active intent. Create one first with /plastic:creating-intent"
+2. **Find active intent:** Read `INDEX.md` from the detected store. Look under `## Active`. If exactly one → use it. If multiple → ask which. If none → refuse: "No active intent. Create one first with /plastic-creating-intent"
 3. **Resolve intent directory:** `{store}/store/{id}--{slug}/`
 
 ## Depth Decision

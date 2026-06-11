@@ -1,9 +1,27 @@
 ---
-name: plastic:install
-description: Use when initializing Plastic globally (~/.plastic/) or locally in a project. Accepts channel flags (--alpha, --beta, --latest) to select release channel. Default is --latest (stable). Global install is recommended — creates the global intent store as a git-backed repository. Local install creates .plastic/ in the current project for testing.
+name: plastic-install
+description: Use when initializing Plastic globally (~/.plastic/) or locally in a project, or to re-install/repair a broken installation. Accepts channel flags (--alpha, --beta, --latest) to select release channel. Default is --latest (stable). Global install is recommended — creates the global intent store as a git-backed repository. Local install creates .plastic/ in the current project for testing.
 ---
 
 # Install Plastic
+
+> **Recommended path:** for a first install, run `npx @zalom/plastic@latest --claude`
+> in your shell (or `bunx @zalom/plastic@latest --claude` if you use Bun). This skill
+> exists to **re-install or repair** an existing setup from inside the agent, and to
+> drive interactive global configuration. Whenever this skill performs an install or
+> re-install, it **runs `/plastic-doctor` afterward** and reports the result.
+
+## Re-install / repair
+
+If Plastic is already installed but something is broken (skills missing, hooks not
+firing, leftover legacy plugin), re-run the installer — it is idempotent, prunes
+files that no longer ship, and removes any legacy plugin/marketplace layout:
+
+```bash
+npx @zalom/plastic@latest --claude     # or @beta / @alpha to match your channel
+```
+
+Then **run `/plastic-doctor`** and report what it found.
 
 ## Channel Flags
 
@@ -33,14 +51,14 @@ The installed version and channel are recorded in `~/.plastic/VERSION`.
 
 ### Global Install (default, recommended)
 
-Run `/plastic:install` with no arguments.
+Run `/plastic-install` with no arguments.
 
 #### Procedure
 
 **Step 1: Check for existing installation**
 
 Check if `~/.plastic/INDEX.md` exists.
-- If yes: announce "Plastic is already installed at ~/.plastic/. Run `/plastic:update` to sync core files."
+- If yes: announce "Plastic is already installed at ~/.plastic/. Run `/plastic-update` to sync core files."
 - If no: proceed with fresh install.
 
 **Step 2: Create ~/.plastic/ as a git repo**
@@ -130,13 +148,19 @@ Update `config.yml` with any additional roots.
 
 Auto-commit the config change.
 
-**Step 4: Announce**
+**Step 4: Verify with doctor**
 
-> "Plastic installed globally at ~/.plastic/. Create your first intent with `/plastic:creating-intent`."
+Run `/plastic-doctor` and report the result. Resolve any fixable findings before
+announcing success.
+
+**Step 5: Announce**
+
+> "Plastic installed globally at ~/.plastic/. Health check: [doctor summary].
+> Create your first intent with `/plastic-creating-intent`."
 
 ### Local Install (testing/legacy)
 
-Run `/plastic:install --local`.
+Run `/plastic-install --local`.
 
 #### Procedure
 
@@ -155,4 +179,4 @@ Run `/plastic:install --local`.
 
 **Step 4:** Commit in project: `git add .plastic/ && git commit -m "chore: initialize Plastic local store"`
 
-**Step 5:** Announce: "Plastic initialized locally. This is a testing/legacy mode. Consider `/plastic:install` for global mode."
+**Step 5:** Announce: "Plastic initialized locally. This is a testing/legacy mode. Consider `/plastic-install` for global mode."

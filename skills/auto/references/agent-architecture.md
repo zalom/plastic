@@ -37,7 +37,7 @@ Rules:
 
 Human owns What and Why for human-initiated intents. Agent assists (research,
 exploration) but human drives until handoff. When Why is complete — or human
-triggers `plastic:auto` — the agent takes over How and Exec autonomously.
+triggers `plastic-auto` — the agent takes over How and Exec autonomously.
 
 - **Safe-by-default:** Agent always prefers non-destructive routes (rename vs
   delete, additive migrations, backups before changes). Destructive actions on

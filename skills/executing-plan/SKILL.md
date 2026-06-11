@@ -1,5 +1,5 @@
 ---
-name: plastic:executing-plan
+name: plastic-executing-plan
 description: Use when you have a written implementation plan to execute. Default mode is subagent-driven (dispatches fresh subagent per task with two-stage review). Fallback mode is inline execution for environments without subagent support. If superpowers:subagent-driven-development or superpowers:executing-plans are available, delegates to them.
 ---
 

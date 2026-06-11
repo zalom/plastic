@@ -13,7 +13,7 @@ Before proceeding, resolve the active intent:
    - Look under `## Active` for intent entries
    - If exactly one active intent → use it
    - If multiple active intents → ask user which one
-   - If no active intent → refuse: "No active intent. Create one first with /plastic:creating-intent"
+   - If no active intent → refuse: "No active intent. Create one first with /plastic-creating-intent"
 
 3. **Resolve paths:**
    - Intent directory: `{store}/store/{id}--{slug}/`

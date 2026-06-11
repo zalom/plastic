@@ -1,5 +1,5 @@
 ---
-name: plastic:managing-index
+name: plastic-managing-index
 description: Use after creating, completing, or abandoning intents, when the user says "index" or "organize", or when INDEX.md needs maintenance. Curates the INDEX.md structure note.
 ---
 

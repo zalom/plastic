@@ -1,5 +1,5 @@
 ---
-name: plastic:writing-plans
+name: plastic-writing-plans
 description: "Write implementation plans from a spec. Produces plan.md, checklist.md, and actions/ in the active intent directory."
 ---
 
@@ -18,9 +18,9 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 Before proceeding, resolve the active intent:
 
 1. **Detect store:** Read `~/.plastic/projects.yml`, match CWD against registered project paths. If match → project store at `~/.plastic/projects/{slug}/store/`. If no match → global store at `~/.plastic/store/`.
-2. **Find active intent:** Read `INDEX.md` from the detected store. Look under `## Active`. If exactly one → use it. If multiple → ask which. If none → refuse: "No active intent. Create one first with /plastic:creating-intent"
+2. **Find active intent:** Read `INDEX.md` from the detected store. Look under `## Active`. If exactly one → use it. If multiple → ask which. If none → refuse: "No active intent. Create one first with /plastic-creating-intent"
 3. **Resolve intent directory:** `{store}/store/{id}--{slug}/`
-4. **Read spec:** Load `{intent_dir}/spec.md`. If no spec exists → refuse: "No spec found. Run /plastic:brainstorming first."
+4. **Read spec:** Load `{intent_dir}/spec.md`. If no spec exists → refuse: "No spec found. Run /plastic-brainstorming first."
 
 All artifacts go to the intent directory. Never write to external paths.
 
@@ -55,7 +55,7 @@ This structure informs the task decomposition. Each task should produce self-con
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** Use `plastic:executing-plan` to implement this plan task-by-task.
+> **For agentic workers:** Use `plastic-executing-plan` to implement this plan task-by-task.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -180,4 +180,4 @@ cd {store_root} && git add . && git commit -m "docs: plan for intent {id} — {n
 
 ## Execution Handoff
 
-Plan complete. Invoke `plastic:executing-plan` to begin execution.
+Plan complete. Invoke `plastic-executing-plan` to begin execution.

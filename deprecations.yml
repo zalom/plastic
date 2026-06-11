@@ -12,12 +12,13 @@
 #   link: optional URL to migration guide
 
 deprecations:
-  - id: cc-plugin-to-npx
+  - id: cc-plugin-to-hyphen-skills
     severity: warning
-    summary: "Plastic distribution is moving from Claude Code plugin to npx install"
+    summary: "Plastic now ships as flat hyphen-named personal skills (plastic-doctor), not a Claude Code plugin. Invocation changed from plastic:<name> to plastic-<name>."
     migration_steps:
-      - "Install new distribution: npx @zalom/plastic@alpha --claude"
-      - "Verify: check that ~/.plastic/ is intact and hooks work"
-      - "Remove old plugin: /plugin remove plastic"
+      - "Re-run the installer: npx @zalom/plastic@latest --claude (bunx also works)"
+      - "It auto-removes the old plugin/marketplace registration — no /plugin step needed"
+      - "Invoke skills with a hyphen now: /plastic-doctor, /plastic-auto, etc."
+      - "Run /plastic-doctor to verify"
     introduced: "1.0.0"
     removal: "2.0.0"

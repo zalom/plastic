@@ -106,11 +106,11 @@ module DoctorTestHelpers
     File.write(settings_path, JSON.pretty_generate({ "hooks" => hooks }))
   end
 
-  # Build the skills directory with at least one file
+  # Build flat, hyphen-namespaced personal skills (plastic-<name>/SKILL.md)
   def write_skills(agent_dir)
-    skills_dir = File.join(agent_dir, "skills", "plastic")
-    FileUtils.mkdir_p(skills_dir)
-    File.write(File.join(skills_dir, "test-skill.md"), "# skill")
+    skill_dir = File.join(agent_dir, "skills", "plastic-doctor")
+    FileUtils.mkdir_p(skill_dir)
+    File.write(File.join(skill_dir, "SKILL.md"), "# skill")
   end
 
   # Build all required core scripts
