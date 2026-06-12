@@ -168,6 +168,7 @@ def distribute(mode)
     "scripts/hook-auto-arm" => "scripts/hook-auto-arm",
     "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
     "scripts/doctor.rb" => "scripts/doctor.rb",
+    "scripts/dashboard.rb" => "scripts/dashboard.rb",
   }
 
   core_files.each do |src, dest|

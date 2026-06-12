@@ -1,0 +1,24 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║  PLASTIC · continue                                      2026-06-12  ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+WHERE WE ARE  ·  active + last touched
+──────────────────────────────────────────────────────────────────────
+  ◕ 6     Work in flight                          demo      ⇢ defer
+  ● 7     Completed dependency                    demo      done
+  ● 1     Global completed thing                  global    done
+
+WHERE WE GO NEXT  ·  value × effort  (all scopes)
+                      EFFORT →   small                 big
+        ┌──────────────────────────────┬──────────────────────────────┐
+  value │ QUICK WIN                    │ ★ NEXT BIG THING             │
+        │ 2  Quick high-value win (dem…│ 1  Big strategic idea (demo) │
+        ├──────────────────────────────┼──────────────────────────────┤
+   low  │ DEFER → agent          ⇢     │ TRIAGE / question      ⚑     │
+        │ 8  Stale unblocked follow-up…│ 4  Questionable big thing (d…│
+        │ 3  Small bug to squash (demo)│                              │
+        └──────────────────────────────┴──────────────────────────────┘
+  RESEARCH → agent  ⊙   5 Research a thing
+
+legend  ○ What ◔ Why ◑ How ◕ Exec ● Done │ ▸drive ⇢defer ⊙research ⚑triage │ ⇡unblocked
+run     plastic-dashboard project <slug>  ·  plastic-auto  (works the dispatchable queue)
