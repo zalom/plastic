@@ -1,0 +1,19 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║  PLASTIC · project:demo               8 intents · 1 active · 6 next  ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+ACTIVE   ◕ 6     Work in flight                  ⇢ defer
+
+WHERE WE GO NEXT  ·  value × effort
+                      EFFORT →   small                 big
+        ┌──────────────────────────────┬──────────────────────────────┐
+  value │ QUICK WIN                    │ ★ NEXT BIG THING             │
+        │ 2  Quick high-value win      │ 1  Big strategic idea        │
+        ├──────────────────────────────┼──────────────────────────────┤
+   low  │ DEFER → agent          ⇢     │ TRIAGE / question      ⚑     │
+        │ 8  Stale unblocked follow-up…│ 4  Questionable big thing    │
+        │ 3  Small bug to squash       │                              │
+        └──────────────────────────────┴──────────────────────────────┘
+  RESEARCH → agent  ⊙   5 Research a thing
+
+legend  ○ What ◔ Why ◑ How ◕ Exec ● Done │ ▸drive ⇢defer ⊙research ⚑triage │ ⇡unblocked

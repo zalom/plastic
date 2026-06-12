@@ -16,6 +16,18 @@ An active intent MUST exist in INDEX.md. If none exists, refuse: "No active inte
 
 If multiple active intents exist, ask the user which one to deliver (this is the only question auto asks).
 
+**Picking work when no intent is specified.** If the user says "auto" without naming an
+intent and none is active, consult the dashboard's machine-readable queue to choose the
+next dispatchable intent:
+
+```bash
+ruby ~/.plastic/scripts/dashboard.rb all --json
+```
+
+Work `dispatchable_queue` in `rank` order (these are `defer`/`research` dispositions —
+safe to deliver autonomously). Leave `human_only` and `next_big_thing` for the user — those
+are `drive`/`triage` items the human should lead. See the `plastic-dashboard` skill.
+
 ## Arm the Lifecycle Gate (do this FIRST)
 
 Immediately after selecting the intent — before any other work — arm auto mode. This

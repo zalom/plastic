@@ -18,6 +18,18 @@ description: Use when the user says "continue" after a /clear, or when resuming 
 
 ## Workflow
 
+### 0. Render the dashboard (overview)
+For the "where are we / what's next" overview, run the deterministic dashboard and show
+its output verbatim instead of hand-summarizing intents:
+
+```bash
+ruby ~/.plastic/scripts/dashboard.rb continue
+```
+
+This is the uniform, model-agnostic cockpit (active + last touched, then the Value×Effort
+matrix). Then continue with the steps below to actually resume a specific intent. See the
+`plastic-dashboard` skill for how to read the matrix.
+
 ### 1. Read INDEX.md
 Read the INDEX.md from the active store. Extract intents under `## Active` and `## Future`.
 

@@ -1,0 +1,66 @@
+{
+  "generated_for": "auto-mode",
+  "scope": "all",
+  "next_big_thing": "1",
+  "dispatchable_queue": [
+    {
+      "id": "2",
+      "scope": "project:demo",
+      "disposition": "defer",
+      "type": "implementation",
+      "value": "high",
+      "effort": "small",
+      "flags": [],
+      "rank": 1
+    },
+    {
+      "id": "6",
+      "scope": "project:demo",
+      "disposition": "defer",
+      "type": "implementation",
+      "value": "low",
+      "effort": "small",
+      "flags": [
+        "in-progress"
+      ],
+      "rank": 2
+    },
+    {
+      "id": "8",
+      "scope": "project:demo",
+      "disposition": "defer",
+      "type": "bugfix",
+      "value": "low",
+      "effort": "small",
+      "flags": [
+        "unblocked",
+        "stale"
+      ],
+      "rank": 3
+    },
+    {
+      "id": "3",
+      "scope": "project:demo",
+      "disposition": "defer",
+      "type": "bugfix",
+      "value": "low",
+      "effort": "small",
+      "flags": [],
+      "rank": 4
+    },
+    {
+      "id": "5",
+      "scope": "project:demo",
+      "disposition": "research",
+      "type": "research",
+      "value": "low",
+      "effort": "small",
+      "flags": [],
+      "rank": 5
+    }
+  ],
+  "human_only": [
+    "1",
+    "4"
+  ]
+}
