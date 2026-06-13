@@ -1,130 +1,31 @@
 #!/usr/bin/env ruby
 # encoding: UTF-8
 # Usage: hook-continue <index_path> <store_root> <mode>
-# Outputs hook JSON for the continue hook. Exits silently if nothing to show.
+# Renders the dashboard `continue` cockpit as UserPromptSubmit additionalContext.
+# Exits silently (no output) if the dashboard produces nothing — the bash caller
+# then falls back to a minimal notice.
 
 require "json"
-require "date"
-require "yaml"
+require "open3"
 
-index_path, store_root, mode = ARGV
-exit 0 unless index_path && store_root && mode
+index_path, _store_root, _mode = ARGV
+exit 0 unless index_path && File.exist?(index_path)
 
-# --- Parse INDEX.md ---
+dashboard = File.expand_path("dashboard.rb", __dir__)
+exit 0 unless File.exist?(dashboard)
 
-lines = File.readlines(index_path)
-active = []
-future = []
-section = nil
+cockpit, _err, status = Open3.capture3("ruby", dashboard, "continue")
+exit 0 unless status.success? && !cockpit.strip.empty?
 
-lines.each do |line|
-  if line.start_with?("## Active")
-    section = :active
-    next
-  elsif line.start_with?("## Future")
-    section = :future
-    next
-  elsif line.start_with?("## ")
-    section = nil
-    next
-  end
-
-  next unless section && line.strip.start_with?("- [")
-
-  if section == :active
-    active << line.strip
-  elsif section == :future
-    future << line.strip
-  end
-end
-
-# --- Detect stale future intents ---
-
-stale = []
-stale_days = 3
-config_path = "#{store_root}/config.yml"
-if File.exist?(config_path)
-  config = YAML.safe_load(File.read(config_path)) rescue {}
-  stale_days = config["stale_threshold_days"] || 3
-end
-
-future.each do |f|
-  if f =~ /store\/([\w-]+)\//
-    dir_name = $1
-    intent_file = "#{store_root}/store/#{dir_name}/#{dir_name}.md"
-    next unless File.exist?(intent_file)
-
-    content = File.read(intent_file)
-    if content =~ /^created:\s*['"]?(\d{4}-\d{2}-\d{2})/
-      age = (Date.today - Date.parse($1)).to_i
-      if age >= stale_days
-        name = f[/\[([^\]]+)\]/, 1] || "unknown"
-        stale << { name: name, age: age, entry: f }
-      end
-    end
-  end
-end
-
-# --- Detect current project ---
-
-current_project = nil
-if mode == "global"
-  projects_path = "#{store_root}/projects.yml"
-  if File.exist?(projects_path)
-    projects = YAML.safe_load(File.read(projects_path)) rescue {}
-    cwd = Dir.pwd
-    (projects["projects"] || {}).each do |slug, info|
-      project_path = File.expand_path(info["path"])
-      if cwd.start_with?(project_path)
-        current_project = { "slug" => slug, "parent" => info["parent"], "path" => project_path }
-        break
-      end
-    end
-  end
-end
-
-# --- Build context ---
-
-parts = []
-parts << "PLASTIC CONTINUE — The user wants to resume work.\n"
-
-if mode == "global" && current_project
-  parts << "Project: #{current_project["slug"]} (#{current_project["path"]})\n"
-  parts << "Governing intent: #{current_project["parent"]}\n" if current_project["parent"]
-end
-
-if active.any?
-  parts << "## Active Intents (work on these first)\n"
-  active.each { |a| parts << a }
-  parts << ""
-else
-  parts << "## No Active Intents\n"
-end
-
-if future.any?
-  parts << "## Future Intents (offer as next work)\n"
-  future.each { |f| parts << f }
-  parts << ""
-end
-
-if stale.any?
-  parts << "## Stale Future Intents\n"
-  parts << "These future intents have not been actioned. Ask the user what to do with each:\n"
-  stale.each do |s|
-    parts << "- #{s[:name]} (#{s[:age]} days old) — options: activate, abandon, or defer to agent (implement / research / ideate)"
-  end
-  parts << ""
-end
-
-parts << "Follow the plastic-continuing skill workflow.\n"
-parts << "1. If active intents exist: read their state and resume\n"
-parts << "2. If no active intents: present future intents as options\n"
-parts << "3. If stale intents exist: surface them and ask user to decide"
+context = cockpit.rstrip +
+  "\n\nFollow the plastic-continuing skill workflow to resume: " \
+  "if active intents exist, read their state and resume; otherwise offer the " \
+  "Value×Effort matrix items above, surfacing any stale (Nd) / ⚑ triage intents."
 
 payload = {
   "hookSpecificOutput" => {
     "hookEventName" => "UserPromptSubmit",
-    "additionalContext" => parts.join("\n")
+    "additionalContext" => context
   }
 }
 puts JSON.generate(payload)
