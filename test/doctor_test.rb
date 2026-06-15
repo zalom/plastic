@@ -4,33 +4,31 @@ require "json"
 require "yaml"
 require "fileutils"
 
-DOCTOR_RB = File.expand_path("../../scripts/doctor.rb", __FILE__)
+require_relative "../scripts/doctor"
 
 DOCTOR_TEST_HOME = File.join(Dir.tmpdir, "plastic-doctor-test-#{Process.pid}")
 DOCTOR_TEST_CLAUDE = File.join(Dir.tmpdir, "plastic-doctor-claude-#{Process.pid}")
 DOCTOR_TEST_CODEX = File.join(Dir.tmpdir, "plastic-doctor-codex-#{Process.pid}")
 DOCTOR_TEST_HERMES = File.join(Dir.tmpdir, "plastic-doctor-hermes-#{Process.pid}")
 
-code = File.read(DOCTOR_RB)
-code = code.sub(/^main$/, "# main (suppressed by test)")
-code = code.sub(/^PLASTIC_HOME = .*$/, "PLASTIC_HOME = \"#{DOCTOR_TEST_HOME}\"")
-code = code.sub(
-  /^AGENTS = \{.*?\}\.freeze$/m,
-  <<~RUBY.chomp
-    AGENTS = {
-      "claude" => { name: "Claude Code", dir: "#{DOCTOR_TEST_CLAUDE}" },
-      "codex"  => { name: "Codex CLI",   dir: "#{DOCTOR_TEST_CODEX}" },
-      "hermes" => { name: "Hermes",      dir: "#{DOCTOR_TEST_HERMES}" },
-    }.freeze
-  RUBY
-)
-eval(code, TOPLEVEL_BINDING, DOCTOR_RB)
+# Agent map pointing at throwaway tmpdirs — injected into Doctor per test.
+DOCTOR_TEST_AGENTS = {
+  "claude" => { name: "Claude Code", dir: DOCTOR_TEST_CLAUDE },
+  "codex"  => { name: "Codex CLI",   dir: DOCTOR_TEST_CODEX },
+  "hermes" => { name: "Hermes",      dir: DOCTOR_TEST_HERMES },
+}.freeze
 
 # ---------------------------------------------------------------------------
 # Helpers shared across test classes
 # ---------------------------------------------------------------------------
 
 module DoctorTestHelpers
+  # Fresh Doctor pointed at the test home/agents. Checks are stateless
+  # (they read the filesystem), so a new instance per call is fine.
+  def doctor(plastic_home: DOCTOR_TEST_HOME, agents: DOCTOR_TEST_AGENTS)
+    Doctor.new(plastic_home: plastic_home, agents: agents)
+  end
+
   # Build a minimal valid INDEX.md with all required sections
   def write_index(path, extras: "", store_refs: [])
     refs = store_refs.map { |r| "- [intent](#{r})" }.join("\n")
@@ -83,7 +81,7 @@ module DoctorTestHelpers
   # Build Claude hook scripts (thin wrappers)
   def write_claude_hooks(hooks_dir)
     FileUtils.mkdir_p(hooks_dir)
-    CLAUDE_HOOK_SCRIPTS.each do |hook|
+    Doctor::CLAUDE_HOOK_SCRIPTS.each do |hook|
       path = File.join(hooks_dir, hook)
       File.write(path, "#!/bin/bash\nexit 0\n")
       File.chmod(0o755, path)
@@ -93,7 +91,7 @@ module DoctorTestHelpers
   # Build a valid Claude settings.json with all required hook events
   def write_claude_settings(settings_path)
     hooks = {}
-    CLAUDE_HOOK_EVENTS.each do |event|
+    Doctor::CLAUDE_HOOK_EVENTS.each do |event|
       hooks[event] = [
         {
           "matcher" => "",
@@ -116,7 +114,7 @@ module DoctorTestHelpers
   # Build all required core scripts
   def write_core_scripts(scripts_dir)
     FileUtils.mkdir_p(scripts_dir)
-    REQUIRED_SCRIPTS.each do |script|
+    Doctor::REQUIRED_SCRIPTS.each do |script|
       path = File.join(scripts_dir, script)
       File.write(path, "#!/usr/bin/env ruby\n")
       File.chmod(0o755, path)
@@ -146,7 +144,7 @@ class DoctorGlobalStoreTest < Minitest::Test
     write_intent(@store_dir, "1a--test-intent")
     write_index(File.join(DOCTOR_TEST_HOME, "INDEX.md"), store_refs: ["store/1a--test-intent"])
 
-    checks = check_global_store
+    checks = doctor.check_global_store
     statuses = checks.map { |c| c[:status] }
 
     assert statuses.all? { |s| s == "pass" }, "All checks should pass, got: #{checks.map { |c| [c[:name], c[:status]] }}"
@@ -154,7 +152,7 @@ class DoctorGlobalStoreTest < Minitest::Test
   end
 
   def test_missing_index_fails
-    checks = check_global_store
+    checks = doctor.check_global_store
 
     assert_equal 1, checks.size, "Should return early with one check"
     assert_equal "index_exists", checks[0][:name]
@@ -165,7 +163,7 @@ class DoctorGlobalStoreTest < Minitest::Test
   def test_index_missing_sections_fails
     File.write(File.join(DOCTOR_TEST_HOME, "INDEX.md"), "# Plastic\n\n## Active\n\n## Future\n")
 
-    checks = check_global_store
+    checks = doctor.check_global_store
     sections_check = checks.find { |c| c[:name] == "index_sections" }
 
     assert sections_check, "index_sections check should be present"
@@ -177,7 +175,7 @@ class DoctorGlobalStoreTest < Minitest::Test
     write_intent(@store_dir, "1a--orphan")
     write_index(File.join(DOCTOR_TEST_HOME, "INDEX.md"))
 
-    checks = check_global_store
+    checks = doctor.check_global_store
     orphan_check = checks.find { |c| c[:name] == "orphaned_intents" }
 
     assert orphan_check, "orphaned_intents check should be present"
@@ -191,7 +189,7 @@ class DoctorGlobalStoreTest < Minitest::Test
       store_refs: ["store/99z--nonexistent"]
     )
 
-    checks = check_global_store
+    checks = doctor.check_global_store
     ghost_check = checks.find { |c| c[:name] == "ghost_references" }
 
     assert ghost_check, "ghost_references check should be present"
@@ -222,7 +220,7 @@ class DoctorConventionsTest < Minitest::Test
     write_intent(@store_dir, "1a--valid-intent")
     write_intent(@store_dir, "2b--another-intent")
 
-    checks = check_conventions
+    checks = doctor.check_conventions
     statuses = checks.map { |c| c[:status] }
 
     assert statuses.all? { |s| s == "pass" }, "All convention checks should pass, got: #{checks.map { |c| [c[:name], c[:status]] }}"
@@ -234,7 +232,7 @@ class DoctorConventionsTest < Minitest::Test
     FileUtils.mkdir_p(bad_dir)
     File.write(File.join(bad_dir, "no-separator.md"), "# test\n")
 
-    checks = check_conventions
+    checks = doctor.check_conventions
     dirname_check = checks.find { |c| c[:name] == "intent_dirname" }
 
     assert_equal "warn", dirname_check[:status]
@@ -247,7 +245,7 @@ class DoctorConventionsTest < Minitest::Test
     # Write a file with a non-matching name
     File.write(File.join(dir, "wrong-name.md"), "# wrong\n")
 
-    checks = check_conventions
+    checks = doctor.check_conventions
     filename_check = checks.find { |c| c[:name] == "intent_filename" }
 
     assert_equal "warn", filename_check[:status]
@@ -262,7 +260,7 @@ class DoctorConventionsTest < Minitest::Test
     }
     write_intent(@store_dir, "1a--incomplete", frontmatter: incomplete_fm)
 
-    checks = check_conventions
+    checks = doctor.check_conventions
     fm_check = checks.find { |c| c[:name] == "frontmatter_fields" }
 
     assert_equal "warn", fm_check[:status]
@@ -295,7 +293,7 @@ class DoctorAgentRegistrationTest < Minitest::Test
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
 
-    checks = check_agent_registration("claude")
+    checks = doctor.check_agent_registration("claude")
     statuses = checks.map { |c| c[:status] }
 
     assert statuses.all? { |s| s == "pass" }, "All checks should pass, got: #{checks.map { |c| [c[:name], c[:status]] }}"
@@ -308,18 +306,18 @@ class DoctorAgentRegistrationTest < Minitest::Test
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
 
-    checks = check_agent_registration("claude")
+    checks = doctor.check_agent_registration("claude")
     hooks_check = checks.find { |c| c[:name] == "hooks_exist" }
 
     assert_equal "fail", hooks_check[:status]
-    assert_equal CLAUDE_HOOK_SCRIPTS.size, hooks_check[:details].size
+    assert_equal Doctor::CLAUDE_HOOK_SCRIPTS.size, hooks_check[:details].size
   end
 
   def test_non_executable_hooks_fails
     hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
     FileUtils.mkdir_p(hooks_dir)
     # Write hooks but don't make them executable
-    CLAUDE_HOOK_SCRIPTS.each do |hook|
+    Doctor::CLAUDE_HOOK_SCRIPTS.each do |hook|
       path = File.join(hooks_dir, hook)
       File.write(path, "#!/bin/bash\nexit 0\n")
       File.chmod(0o644, path)
@@ -327,11 +325,11 @@ class DoctorAgentRegistrationTest < Minitest::Test
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
 
-    checks = check_agent_registration("claude")
+    checks = doctor.check_agent_registration("claude")
     exec_check = checks.find { |c| c[:name] == "hooks_executable" }
 
     assert_equal "fail", exec_check[:status]
-    assert_equal CLAUDE_HOOK_SCRIPTS.size, exec_check[:details].size
+    assert_equal Doctor::CLAUDE_HOOK_SCRIPTS.size, exec_check[:details].size
   end
 
   def test_missing_settings_entries_fails
@@ -341,11 +339,11 @@ class DoctorAgentRegistrationTest < Minitest::Test
     # Write settings without any hooks
     File.write(File.join(DOCTOR_TEST_CLAUDE, "settings.json"), JSON.pretty_generate({ "hooks" => {} }))
 
-    checks = check_agent_registration("claude")
+    checks = doctor.check_agent_registration("claude")
     registered_check = checks.find { |c| c[:name] == "hooks_registered" }
 
     assert_equal "fail", registered_check[:status]
-    assert_equal CLAUDE_HOOK_EVENTS.size, registered_check[:details].size
+    assert_equal Doctor::CLAUDE_HOOK_EVENTS.size, registered_check[:details].size
   end
 
   def test_missing_settings_json_fails
@@ -354,7 +352,7 @@ class DoctorAgentRegistrationTest < Minitest::Test
     write_skills(DOCTOR_TEST_CLAUDE)
     # No settings.json at all
 
-    checks = check_agent_registration("claude")
+    checks = doctor.check_agent_registration("claude")
     registered_check = checks.find { |c| c[:name] == "hooks_registered" }
 
     assert_equal "fail", registered_check[:status]
@@ -366,7 +364,7 @@ class DoctorAgentRegistrationTest < Minitest::Test
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     # No skills directory
 
-    checks = check_agent_registration("claude")
+    checks = doctor.check_agent_registration("claude")
     skills_check = checks.find { |c| c[:name] == "skills_exist" }
 
     assert_equal "fail", skills_check[:status]
@@ -375,7 +373,7 @@ class DoctorAgentRegistrationTest < Minitest::Test
   def test_missing_agent_dir_fails
     FileUtils.rm_rf(DOCTOR_TEST_CLAUDE)
 
-    checks = check_agent_registration("claude")
+    checks = doctor.check_agent_registration("claude")
 
     assert_equal 1, checks.size
     assert_equal "agent_dir_exists", checks[0][:name]
@@ -416,7 +414,7 @@ class DoctorCoreFilesTest < Minitest::Test
   def test_all_core_files_present_pass
     build_core_files
 
-    checks = check_core_files("claude")
+    checks = doctor.check_core_files("claude")
     statuses = checks.map { |c| c[:status] }
 
     assert statuses.all? { |s| s == "pass" }, "All checks should pass, got: #{checks.map { |c| [c[:name], c[:status]] }}"
@@ -426,7 +424,7 @@ class DoctorCoreFilesTest < Minitest::Test
     build_core_files
     File.delete(File.join(DOCTOR_TEST_HOME, "PLASTIC.md"))
 
-    checks = check_core_files("claude")
+    checks = doctor.check_core_files("claude")
     md_check = checks.find { |c| c[:name] == "plastic_md" }
 
     assert_equal "fail", md_check[:status]
@@ -438,7 +436,7 @@ class DoctorCoreFilesTest < Minitest::Test
     File.delete(File.join(DOCTOR_TEST_HOME, "scripts", "folgezettel-id"))
     File.delete(File.join(DOCTOR_TEST_HOME, "scripts", "read-config"))
 
-    checks = check_core_files("claude")
+    checks = doctor.check_core_files("claude")
     scripts_check = checks.find { |c| c[:name] == "scripts_present" }
 
     assert_equal "fail", scripts_check[:status]
@@ -450,7 +448,7 @@ class DoctorCoreFilesTest < Minitest::Test
     File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "2.0.0")
     # Agent side stays at 1.0.0
 
-    checks = check_core_files("claude")
+    checks = doctor.check_core_files("claude")
     version_check = checks.find { |c| c[:name] == "version_match" }
 
     assert_equal "warn", version_check[:status]
@@ -462,7 +460,7 @@ class DoctorCoreFilesTest < Minitest::Test
     build_core_files
     File.delete(File.join(DOCTOR_TEST_HOME, "VERSION"))
 
-    checks = check_core_files("claude")
+    checks = doctor.check_core_files("claude")
     version_check = checks.find { |c| c[:name] == "version_file" }
 
     assert_equal "fail", version_check[:status]
@@ -473,7 +471,7 @@ class DoctorCoreFilesTest < Minitest::Test
     # Make one script non-executable
     File.chmod(0o644, File.join(DOCTOR_TEST_HOME, "scripts", "folgezettel-id"))
 
-    checks = check_core_files("claude")
+    checks = doctor.check_core_files("claude")
     exec_check = checks.find { |c| c[:name] == "scripts_executable" }
 
     assert_equal "fail", exec_check[:status]
@@ -522,7 +520,7 @@ class DoctorProjectStoresTest < Minitest::Test
     }))
     File.write(File.join(project_path, "AGENTS.md"), "# Agents\n")
 
-    checks = check_project_stores
+    checks = doctor.check_project_stores
     statuses = checks.map { |c| c[:status] }
 
     assert statuses.all? { |s| s == "pass" }, "All checks should pass, got: #{checks.map { |c| [c[:name], c[:status]] }}"
@@ -535,7 +533,7 @@ class DoctorProjectStoresTest < Minitest::Test
       },
     }))
 
-    checks = check_project_stores
+    checks = doctor.check_project_stores
     dir_check = checks.find { |c| c[:name] == "project_dir_exists" }
 
     assert_equal "warn", dir_check[:status]
@@ -552,7 +550,7 @@ class DoctorProjectStoresTest < Minitest::Test
     # Create directory but no INDEX.md
     FileUtils.mkdir_p(File.join(@projects_dir, "no-index"))
 
-    checks = check_project_stores
+    checks = doctor.check_project_stores
     index_check = checks.find { |c| c[:name] == "project_index" }
 
     assert_equal "warn", index_check[:status]
@@ -561,7 +559,7 @@ class DoctorProjectStoresTest < Minitest::Test
 
   def test_missing_projects_yml_warns
     # No projects.yml at all
-    checks = check_project_stores
+    checks = doctor.check_project_stores
 
     assert_equal 1, checks.size
     assert_equal "projects_yml", checks[0][:name]
@@ -573,7 +571,7 @@ class DoctorProjectStoresTest < Minitest::Test
       "projects" => {},
     }))
 
-    checks = check_project_stores
+    checks = doctor.check_project_stores
 
     assert_equal 1, checks.size
     assert_equal "projects_yml", checks[0][:name]
@@ -598,7 +596,7 @@ class DoctorDeprecationsTest < Minitest::Test
   end
 
   def test_no_deprecations_file_passes
-    checks = check_deprecations
+    checks = doctor.check_deprecations
 
     assert_equal 1, checks.size
     assert_equal "pass", checks[0][:status]
@@ -612,7 +610,7 @@ class DoctorDeprecationsTest < Minitest::Test
       ],
     }))
 
-    checks = check_deprecations
+    checks = doctor.check_deprecations
     active_check = checks.find { |c| c[:name] == "active_deprecations" }
 
     assert_equal "pass", active_check[:status]
@@ -631,7 +629,7 @@ class DoctorDeprecationsTest < Minitest::Test
       ],
     }))
 
-    checks = check_deprecations
+    checks = doctor.check_deprecations
     active_check = checks.find { |c| c[:name] == "active_deprecations" }
 
     assert_equal "warn", active_check[:status]
@@ -645,7 +643,7 @@ class DoctorDeprecationsTest < Minitest::Test
       ],
     }))
 
-    checks = check_deprecations
+    checks = doctor.check_deprecations
     active_check = checks.find { |c| c[:name] == "active_deprecations" }
 
     assert_equal "warn", active_check[:status]
@@ -654,7 +652,7 @@ class DoctorDeprecationsTest < Minitest::Test
 end
 
 # ===========================================================================
-# 7. Integration — run_checks
+# 7. Integration — doctor.run_checks
 # ===========================================================================
 
 class DoctorIntegrationTest < Minitest::Test
@@ -701,7 +699,7 @@ class DoctorIntegrationTest < Minitest::Test
   def test_run_checks_returns_valid_json_structure
     build_healthy_installation
 
-    result = run_checks("claude")
+    result = doctor.run_checks("claude")
 
     assert_equal "1.0.0", result[:version]
     assert result[:timestamp]
@@ -714,7 +712,7 @@ class DoctorIntegrationTest < Minitest::Test
   def test_summary_counts_match_actual_statuses
     build_healthy_installation
 
-    result = run_checks("claude")
+    result = doctor.run_checks("claude")
     summary = result[:summary]
 
     actual_pass = result[:checks].count { |c| c[:status] == "pass" }
@@ -730,7 +728,7 @@ class DoctorIntegrationTest < Minitest::Test
   def test_healthy_installation_status_is_pass
     build_healthy_installation
 
-    result = run_checks("claude")
+    result = doctor.run_checks("claude")
 
     assert_equal "pass", result[:status], "Healthy installation should have pass status, failures: #{
       result[:checks].reject { |c| c[:status] == "pass" }.map { |c| [c[:name], c[:status], c[:message]] }
@@ -739,7 +737,7 @@ class DoctorIntegrationTest < Minitest::Test
 
   def test_status_fail_when_failures_present
     # Missing everything — will produce failures
-    result = run_checks("claude")
+    result = doctor.run_checks("claude")
 
     assert_equal "fail", result[:status]
     assert result[:summary][:fail] > 0
@@ -751,7 +749,7 @@ class DoctorIntegrationTest < Minitest::Test
     store_dir = File.join(DOCTOR_TEST_HOME, "store")
     write_intent(store_dir, "2b--orphan")
 
-    result = run_checks("claude")
+    result = doctor.run_checks("claude")
 
     # Should have at least one warning from the orphan
     assert result[:summary][:warn] > 0, "Should have warnings"
@@ -765,7 +763,7 @@ class DoctorIntegrationTest < Minitest::Test
   def test_each_check_has_required_fields
     build_healthy_installation
 
-    result = run_checks("claude")
+    result = doctor.run_checks("claude")
     required_keys = %i[category name status message details fixable]
 
     result[:checks].each do |c|
@@ -782,39 +780,40 @@ end
 # ===========================================================================
 
 class DoctorVersionCompareTest < Minitest::Test
+  include DoctorTestHelpers
   def test_equal_versions
-    assert_equal 0, compare_versions("1.0.0", "1.0.0")
+    assert_equal 0, doctor.compare_versions("1.0.0", "1.0.0")
   end
 
   def test_greater_version
-    assert_equal 1, compare_versions("2.0.0", "1.0.0")
+    assert_equal 1, doctor.compare_versions("2.0.0", "1.0.0")
   end
 
   def test_lesser_version
-    assert_equal(-1, compare_versions("1.0.0", "2.0.0"))
+    assert_equal(-1, doctor.compare_versions("1.0.0", "2.0.0"))
   end
 
   def test_minor_version_comparison
-    assert_equal(-1, compare_versions("1.1.0", "1.2.0"))
+    assert_equal(-1, doctor.compare_versions("1.1.0", "1.2.0"))
   end
 
   def test_patch_version_comparison
-    assert_equal 1, compare_versions("1.0.2", "1.0.1")
+    assert_equal 1, doctor.compare_versions("1.0.2", "1.0.1")
   end
 
   def test_prerelease_less_than_release
-    assert_equal(-1, compare_versions("1.0.0-alpha", "1.0.0"))
+    assert_equal(-1, doctor.compare_versions("1.0.0-alpha", "1.0.0"))
   end
 
   def test_release_greater_than_prerelease
-    assert_equal 1, compare_versions("1.0.0", "1.0.0-beta")
+    assert_equal 1, doctor.compare_versions("1.0.0", "1.0.0-beta")
   end
 
   def test_prerelease_lexical_comparison
-    assert_equal(-1, compare_versions("1.0.0-alpha", "1.0.0-beta"))
+    assert_equal(-1, doctor.compare_versions("1.0.0-alpha", "1.0.0-beta"))
   end
 
   def test_different_length_versions
-    assert_equal 0, compare_versions("1.0", "1.0.0")
+    assert_equal 0, doctor.compare_versions("1.0", "1.0.0")
   end
 end
