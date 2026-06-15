@@ -7,18 +7,30 @@ require "minitest/autorun"
 class InstallSyncTest < Minitest::Test
   REPO = File.expand_path("../../", __FILE__)
 
-  def install_rb
-    @install_rb ||= File.read(File.join(REPO, "scripts", "install.rb"))
+  # core_files now lives in the shared lib (intent 30a1a).
+  def core_lib
+    @core_lib ||= File.read(File.join(REPO, "scripts", "lib", "installer_core.rb"))
   end
 
-  # Every scripts/hook-* must be registered in install.rb's core_files map,
-  # otherwise it never reaches ~/.plastic/scripts.
+  # Every scripts/hook-* must be registered in core_files, otherwise it never
+  # reaches ~/.plastic/scripts.
   def test_every_hook_script_is_registered_for_install
     scripts = Dir.glob(File.join(REPO, "scripts", "hook-*")).map { |p| File.basename(p) }
     refute_empty scripts, "expected hook-* scripts to exist"
-    missing = scripts.reject { |s| install_rb.include?("scripts/#{s}") }
+    missing = scripts.reject { |s| core_lib.include?("scripts/#{s}") }
     assert_empty missing,
-      "hook scripts missing from install.rb core_files (installed wrappers would point at nothing): #{missing.join(", ")}"
+      "hook scripts missing from core_files (installed wrappers would point at nothing): #{missing.join(", ")}"
+  end
+
+  # Every verb script + the shared lib must be distributed, so the installed
+  # ~/.plastic/scripts copy is self-complete (update/uninstall/versions run from there).
+  def test_every_verb_script_is_distributed
+    expected = %w[
+      scripts/install.rb scripts/update.rb scripts/uninstall.rb scripts/versions.rb
+      scripts/lib/installer_core.rb
+    ]
+    missing = expected.reject { |s| core_lib.include?(%("#{s}")) }
+    assert_empty missing, "verb scripts/lib missing from core_files: #{missing.join(", ")}"
   end
 
   # Every hook wrapper that delegates to ../scripts/hook-<name> must reference a

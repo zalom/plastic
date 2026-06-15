@@ -14,7 +14,7 @@ underlying uninstaller and adds reporting + verification.
 ### Step 1: Run the uninstaller
 
 ```bash
-npx @zalom/plastic@latest --uninstall --claude
+npx @zalom/plastic@latest uninstall --claude
 ```
 
 (Use `--codex` / `--hermes` / `--all` to target other agents. `bunx` works too.)
@@ -55,5 +55,5 @@ Delete it too?
   b) Delete everything now — removes ~/.plastic/ entirely (irreversible)
 ```
 
-- **Keep:** "Your data is at ~/.plastic/. Re-install anytime with `npx @zalom/plastic@latest --claude`."
+- **Keep:** "Your data is at ~/.plastic/. Re-install anytime with `npx @zalom/plastic@latest install --claude`."
 - **Delete:** run `rm -rf ~/.plastic/` and confirm.

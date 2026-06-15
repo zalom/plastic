@@ -8,14 +8,14 @@ require "fileutils"
 # manifest-driven update that prunes removed files, and migration that removes
 # any legacy plugin layout.
 
-require_relative "../scripts/install.rb"
+require_relative "../scripts/lib/installer_core"
 
 PKG_TEST_HOME = File.join(Dir.tmpdir, "plastic-pkg-home-#{Process.pid}")
 
 class InstallPackagingTest < Minitest::Test
   def setup
     @dir = Dir.mktmpdir("pkg-test")
-    @installer = Installer.new(
+    @installer = InstallerCore.new(
       package_root: "/tmp/plastic-test-pkg",
       plastic_home: PKG_TEST_HOME,
       version: "1.0.0-test",

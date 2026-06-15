@@ -5,7 +5,7 @@ description: Use when initializing Plastic globally (~/.plastic/) or locally in 
 
 # Install Plastic
 
-> **Recommended path:** for a first install, run `npx @zalom/plastic@latest --claude`
+> **Recommended path:** for a first install, run `npx @zalom/plastic@latest install --claude`
 > in your shell (or `bunx @zalom/plastic@latest --claude` if you use Bun). This skill
 > exists to **re-install or repair** an existing setup from inside the agent, and to
 > drive interactive global configuration. Whenever this skill performs an install or
@@ -18,7 +18,7 @@ firing, leftover legacy plugin), re-run the installer — it is idempotent, prun
 files that no longer ship, and removes any legacy plugin/marketplace layout:
 
 ```bash
-npx @zalom/plastic@latest --claude     # or @beta / @alpha to match your channel
+npx @zalom/plastic@latest install --reinstall --claude   # or @beta / @alpha to match your channel
 ```
 
 Then **run `/plastic-doctor`** and report what it found.
@@ -36,13 +36,13 @@ runs the appropriate npx command:
 
 ```bash
 # Stable (default)
-npx @zalom/plastic --claude
+npx @zalom/plastic install --claude
 
 # Beta
-npx @zalom/plastic@beta --claude
+npx @zalom/plastic@beta install --claude
 
 # Alpha
-npx @zalom/plastic@alpha --claude
+npx @zalom/plastic@alpha install --claude
 ```
 
 The installed version and channel are recorded in `~/.plastic/VERSION`.

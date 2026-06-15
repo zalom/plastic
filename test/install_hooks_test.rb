@@ -3,7 +3,7 @@ require "tmpdir"
 require "json"
 require "fileutils"
 
-require_relative "../scripts/install.rb"
+require_relative "../scripts/lib/installer_core"
 
 PLASTIC_TEST_HOME = File.join(Dir.tmpdir, "plastic-test-home-#{Process.pid}")
 
@@ -11,7 +11,7 @@ class MergeClaudeHooksTest < Minitest::Test
   def setup
     @dir = Dir.mktmpdir("hooks-test")
     @settings_path = File.join(@dir, "settings.json")
-    @installer = Installer.new(
+    @installer = InstallerCore.new(
       package_root: "/tmp/plastic-test-pkg",
       plastic_home: PLASTIC_TEST_HOME,
       version: "1.0.0-test",
