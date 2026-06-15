@@ -1,0 +1,28 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# Runs the FULL Minitest suite in a single process.
+#
+# `release.verify` used to be `ruby -Itest test/*_test.rb`, but Ruby runs only
+# the first glob-expanded file as the program — the rest land in ARGV and are
+# never required. The release gate exercised one test file, reported green, and
+# let releases ship over real failures (intent 30). Pointing verify at this
+# script keeps the runner in version control and guarantees every test file is
+# loaded.
+
+root = File.expand_path("..", __dir__)
+
+files = Dir.glob(File.join(root, "test", "**", "*_test.rb")).sort
+abort "No test files found under #{File.join(root, "test")}" if files.empty?
+
+# `bin/test --list` prints the discovered files without running them, so the
+# discovery logic can be tested cheaply (no full-suite execution).
+if ARGV.delete("--list")
+  puts files.map { |f| f.sub("#{root}/", "") }
+  exit 0
+end
+
+$LOAD_PATH.unshift File.join(root, "test")
+require "minitest/autorun"
+files.each { |f| require f }
