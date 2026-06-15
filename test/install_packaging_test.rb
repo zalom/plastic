@@ -8,19 +8,18 @@ require "fileutils"
 # manifest-driven update that prunes removed files, and migration that removes
 # any legacy plugin layout.
 
-INSTALL_RB_PKG = File.expand_path("../../scripts/install.rb", __FILE__)
-PKG_TEST_HOME = File.join(Dir.tmpdir, "plastic-pkg-home-#{Process.pid}")
+require_relative "../scripts/install.rb"
 
-pkg_code = File.read(INSTALL_RB_PKG)
-pkg_code = pkg_code.sub(/^main$/, "# main (suppressed by test)")
-pkg_code = pkg_code.sub(/^PACKAGE_ROOT = .*$/, 'PACKAGE_ROOT = "/tmp/plastic-test-pkg"')
-pkg_code = pkg_code.sub(/^VERSION = .*$/, 'VERSION = "1.0.0-test"')
-pkg_code = pkg_code.sub(/^PLASTIC_HOME = .*$/, "PLASTIC_HOME = \"#{PKG_TEST_HOME}\"")
-eval(pkg_code, TOPLEVEL_BINDING, INSTALL_RB_PKG)
+PKG_TEST_HOME = File.join(Dir.tmpdir, "plastic-pkg-home-#{Process.pid}")
 
 class InstallPackagingTest < Minitest::Test
   def setup
     @dir = Dir.mktmpdir("pkg-test")
+    @installer = Installer.new(
+      package_root: "/tmp/plastic-test-pkg",
+      plastic_home: PKG_TEST_HOME,
+      version: "1.0.0-test",
+    )
     FileUtils.rm_rf(PKG_TEST_HOME)
     FileUtils.mkdir_p(PKG_TEST_HOME)
   end
@@ -35,7 +34,7 @@ class InstallPackagingTest < Minitest::Test
   def test_merge_hooks_does_not_register_plugin
     settings_path = File.join(@dir, "settings.json")
     File.write(settings_path, "{}")
-    merge_claude_hooks(settings_path)
+    @installer.merge_claude_hooks(settings_path)
     settings = JSON.parse(File.read(settings_path))
 
     assert_nil settings["enabledPlugins"], "must not write enabledPlugins"
@@ -53,7 +52,7 @@ class InstallPackagingTest < Minitest::Test
     File.write(File.join(src, "_active-intent-gate.md"), "gate")
 
     skills_root = File.join(@dir, "skills")
-    installed = install_skills_flat(src, skills_root)
+    installed = @installer.install_skills_flat(src, skills_root)
 
     assert File.file?(File.join(skills_root, "plastic-doctor", "SKILL.md"))
     assert File.file?(File.join(skills_root, "plastic-auto", "SKILL.md"))
@@ -72,7 +71,7 @@ class InstallPackagingTest < Minitest::Test
     stale = File.join(skill_dir, "SKILL.md")
     File.write(stale, "x")
 
-    removed = prune_removed_files([stale])
+    removed = @installer.prune_removed_files([stale])
 
     assert_equal 1, removed
     refute File.exist?(stale)
@@ -96,7 +95,7 @@ class InstallPackagingTest < Minitest::Test
     known_path = File.join(claude, "plugins", "known_marketplaces.json")
     File.write(known_path, JSON.generate({ "plastic" => { "source" => "z" }, "keep" => { "source" => "w" } }))
 
-    removed = migrate_legacy_plugin(claude)
+    removed = @installer.migrate_legacy_plugin(claude)
 
     refute File.directory?(File.join(claude, "plugins", "marketplaces", "plastic"))
     refute File.directory?(File.join(claude, "plugins", "cache", "plastic"))
@@ -119,6 +118,6 @@ class InstallPackagingTest < Minitest::Test
     claude = File.join(@dir, ".claude")
     FileUtils.mkdir_p(claude)
     File.write(File.join(claude, "settings.json"), "{}")
-    assert_empty migrate_legacy_plugin(claude)
+    assert_empty @installer.migrate_legacy_plugin(claude)
   end
 end
