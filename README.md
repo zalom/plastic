@@ -103,6 +103,13 @@ After installation, run `/clear` to load Plastic conventions, then:
 
 Or say "auto" to let the agent handle the full lifecycle autonomously.
 
+## Documentation
+
+- [`docs/architecture.md`](docs/architecture.md): system structure, the two
+  processes, the store layout, and the component map.
+- [`docs/internals.md`](docs/internals.md): how Plastic stays deterministic, the
+  determinism breakdown, and the harness system.
+
 ## Conventions
 
 All conventions live in `AGENTS.md`, distributed to `~/.plastic/AGENTS.md`
