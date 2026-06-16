@@ -98,6 +98,14 @@ if is_stage_file || is_action_file
 
   Bridge.write(session, bridge_data)
 
+  # Cycle-step savepoint ledger (intent 34) — record this stage-file milestone.
+  # Best-effort: the ledger is derived sugar, so a failure must never block.
+  begin
+    Bridge.append_savepoint(intent_dir_abs, file_path_abs)
+  rescue StandardError
+    # ignore — rebuildable from disk
+  end
+
   # Build transition context
   stage_labels = { "what" => "What", "why" => "Why", "how" => "How", "exec" => "Exec", "done" => "Done" }
   next_hints = {
@@ -129,7 +137,14 @@ if is_stage_file || is_action_file
   puts JSON.generate(payload)
   exit 0
 else
-  # Regular file in intent dir — just update last_activity
+  # Regular file in intent dir — just update last_activity. The intent file
+  # (What milestone) lands here, so still offer it to the savepoint ledger;
+  # non-milestone files self-filter to a no-op (intent 34).
+  begin
+    Bridge.append_savepoint(intent_dir_abs, file_path_abs)
+  rescue StandardError
+    # ignore — rebuildable from disk
+  end
   bridge_data["build"]["last_activity"] = Time.now.utc.iso8601
   Bridge.write(session, bridge_data)
   exit 0

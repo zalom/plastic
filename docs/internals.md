@@ -126,6 +126,15 @@ three-mechanism agent-extra set (eval, hook + instruction, template) is
 (the context-full savepoint is the felt-savepoint behaviour bound to a second
 trigger, not a new mechanism).
 
+The cycle-step savepoint ledger (intent 34) is a clear instance of this. `savepoint.md`
+is no longer a hand-written prose note; it is a deterministic, append-only, one-line-per-
+milestone ledger (newest at the bottom) that the `gate-check` hook writes automatically at
+each lifecycle boundary. That is the existing hook mechanism bound to the artifact-write
+trigger, with the ledger as a derived form-fix on top. It is sugar over the conventions,
+never a source of truth: state stays derivable from files-on-disk and the ledger is
+rebuildable via `Bridge.rebuild_savepoint`. The `plastic-savepoint` skill is now a thin
+reader/verifier, not a writer.
+
 ## what-exists-today-vs-what-is-missing
 
 Plastic ships **23** harness entries today. By strength on the form-determinism

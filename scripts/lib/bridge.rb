@@ -70,6 +70,68 @@ module Bridge
     end
   end
 
+  # --- Cycle-step savepoint ledger (intent 34) ------------------------------
+  #
+  # savepoint.md is a deterministic, append-only, one-line-per-milestone ledger
+  # (newest at the bottom). It is sugar on top of the conventions: derived from
+  # files-on-disk, rebuildable, never a source of truth. Milestones are
+  # file-event boundaries only; action/resource files record nothing.
+
+  SAVEPOINT_FILE = "savepoint.md"
+
+  # Map a written filename to [stage_label, milestone_text], or nil if the file
+  # is not a lifecycle milestone.
+  def self.savepoint_milestone(intent_dir, basename)
+    return ["What", basename] if basename == File.basename(intent_file(intent_dir))
+
+    case basename
+    when "spec.md"      then ["Why", "spec.md created"]
+    when "plan.md"      then ["How", "plan.md created"]
+    when "checklist.md" then ["How", "checklist.md created"]
+    when "outcome.md"   then ["Exec", "outcome.md created"]
+    end
+  end
+
+  # Milestones already recorded in the ledger (field 3 of each line).
+  def self.savepoint_recorded_milestones(intent_dir)
+    f = File.join(intent_dir, SAVEPOINT_FILE)
+    return [] unless File.exist?(f)
+    File.read(f).each_line.map do |line|
+      parts = line.strip.split(/\s{2,}/)
+      parts.length >= 3 ? parts[2] : nil
+    end.compact
+  end
+
+  # Append a milestone line for file_path if (and only if) it is a milestone
+  # not already recorded. Returns true when a line was written, false otherwise.
+  def self.append_savepoint(intent_dir, file_path, now: Time.now)
+    stage, milestone = savepoint_milestone(intent_dir, File.basename(file_path))
+    return false unless milestone
+    return false if savepoint_recorded_milestones(intent_dir).include?(milestone)
+
+    line = "#{now.utc.iso8601}  #{stage}  #{milestone}\n"
+    File.open(File.join(intent_dir, SAVEPOINT_FILE), "a") { |io| io.write(line) }
+    true
+  end
+
+  # Reconstruct the ledger from files on disk (timestamps from mtimes), in
+  # stage order, overwriting savepoint.md. Returns the number of lines written.
+  def self.rebuild_savepoint(intent_dir)
+    ordered = [
+      File.basename(intent_file(intent_dir)),
+      "spec.md", "plan.md", "checklist.md", "outcome.md",
+    ]
+    lines = ordered.filter_map do |basename|
+      path = File.join(intent_dir, basename)
+      next unless File.exist?(path)
+      stage, milestone = savepoint_milestone(intent_dir, basename)
+      next unless milestone
+      "#{File.mtime(path).utc.iso8601}  #{stage}  #{milestone}\n"
+    end
+    File.write(File.join(intent_dir, SAVEPOINT_FILE), lines.join)
+    lines.length
+  end
+
   def self.derive(session, intent_id:, intent_dir:, store:, name:)
     stage = derive_stage(intent_dir)
     has = has_files(intent_dir)
