@@ -1,0 +1,136 @@
+{
+  "skill_name": "plastic-continuing",
+  "notes": "Intent 36. Scopes: description triggering (1-8) and behavior/convention compliance of the rewritten boot orchestrator (9-14). Triggering assertions follow the plastic-auto eval style (one subagent router per case). Behavior assertions are convention checks against the rewritten SKILL.md.",
+  "results": {
+    "triggering": { "cases": 8, "passed": 8, "run": "2026-06-16, one subagent per case" },
+    "behavior": { "cases": 6, "passed": 6, "evidence": "convention checks against skills/continuing/SKILL.md after the intent-36 rewrite; doctor --core verified at 0.07s with 9 liveness checks and full doctor unchanged at 30 checks" }
+  },
+  "evals": [
+    {
+      "id": 1, "scope": "triggering", "set": "train",
+      "prompt": "continue",
+      "expected_output": "Activates plastic-continuing (the bare 'continue' keyword is the documented trigger).",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-continuing", "observed": "plastic-continuing", "result": "pass" }
+      ]
+    },
+    {
+      "id": 2, "scope": "triggering", "set": "train",
+      "prompt": "resume where we left off",
+      "expected_output": "Activates plastic-continuing.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-continuing", "observed": "plastic-continuing", "result": "pass" }
+      ]
+    },
+    {
+      "id": 3, "scope": "triggering", "set": "validation",
+      "prompt": "pick up where we left off in this project",
+      "expected_output": "Activates plastic-continuing.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-continuing", "observed": "plastic-continuing", "result": "pass" }
+      ]
+    },
+    {
+      "id": 4, "scope": "triggering", "set": "train",
+      "prompt": "boot plastic and show me where things stand",
+      "expected_output": "Activates plastic-continuing (boot + present state is the skill's purpose).",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-continuing", "observed": "plastic-continuing", "result": "pass" }
+      ]
+    },
+    {
+      "id": 5, "scope": "triggering", "set": "train",
+      "prompt": "continue delivering this intent autonomously, don't ask me",
+      "expected_output": "Does NOT settle on plastic-continuing for execution. Shares 'continue' but the autonomous-delivery intent routes to plastic-auto.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-auto", "observed": "plastic-auto", "result": "pass" }
+      ]
+    },
+    {
+      "id": 6, "scope": "triggering", "set": "validation",
+      "prompt": "continue the for-loop to the next iteration in this function",
+      "expected_output": "Does NOT activate plastic-continuing. Near-miss: shares 'continue' but is a code-editing task.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE != plastic-continuing", "observed": "none", "result": "pass" }
+      ]
+    },
+    {
+      "id": 7, "scope": "triggering", "set": "train",
+      "prompt": "resume the paused background download",
+      "expected_output": "Does NOT activate plastic-continuing. Near-miss: shares 'resume' but is unrelated to Plastic sessions.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE != plastic-continuing", "observed": "none", "result": "pass" }
+      ]
+    },
+    {
+      "id": 8, "scope": "triggering", "set": "validation",
+      "prompt": "what's the dashboard look like right now",
+      "expected_output": "May activate plastic-dashboard rather than plastic-continuing; an overview request without 'continue/resume' is a dashboard task.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE != plastic-continuing", "observed": "plastic-dashboard", "result": "pass" }
+      ]
+    },
+    {
+      "id": 9, "scope": "behavior", "set": "train",
+      "prompt": "Does the skill document the four-step boot sequence in the fixed order?",
+      "expected_output": "SKILL.md lists, in order: (1) core doctor, (2) load core, (3) version + statusline, (4) dashboard.",
+      "files": ["skills/continuing/SKILL.md"],
+      "assertions": [
+        { "type": "convention", "check": "boot steps appear in order doctor -> load core -> version/statusline -> dashboard", "observed": "headings '### 1. Core doctor', '### 2. Load core', '### 3. Version + statusline', '### 4. Dashboard'", "result": "pass" }
+      ]
+    },
+    {
+      "id": 10, "scope": "behavior", "set": "train",
+      "prompt": "Does step 1 run the fast core health check synchronously?",
+      "expected_output": "Step 1 invokes `doctor.rb --core` and prints a single health line.",
+      "files": ["skills/continuing/SKILL.md"],
+      "assertions": [
+        { "type": "convention", "check": "SKILL.md contains 'doctor.rb --core' and a 'Plastic core: healthy' health line", "observed": "present in '### 1. Core doctor'", "result": "pass" }
+      ]
+    },
+    {
+      "id": 11, "scope": "behavior", "set": "train",
+      "prompt": "Is dashboard selection project-aware?",
+      "expected_output": "Project loaded -> `dashboard.rb project <slug>`; otherwise -> `dashboard.rb continue`. Skill only invokes, does not render.",
+      "files": ["skills/continuing/SKILL.md"],
+      "assertions": [
+        { "type": "convention", "check": "both dashboard invocations present and gated on project detection", "observed": "'dashboard.rb project <slug>' and 'dashboard.rb continue' in '### 4. Dashboard'", "result": "pass" }
+      ]
+    },
+    {
+      "id": 12, "scope": "behavior", "set": "validation",
+      "prompt": "Is ledger-resume conditional and ledger-driven?",
+      "expected_output": "Resume fires only when a specific intent is named; reads savepoint.md last line as stage, verifies the stage file, rebuilds on drift, derives next step from first unchecked checklist item.",
+      "files": ["skills/continuing/SKILL.md"],
+      "assertions": [
+        { "type": "convention", "check": "Conditional Ledger-Resume section reads last ledger line, verifies stage file, calls rebuild_savepoint on drift, uses first unchecked checklist item", "observed": "all four present in 'Conditional Ledger-Resume'", "result": "pass" }
+      ]
+    },
+    {
+      "id": 13, "scope": "behavior", "set": "validation",
+      "prompt": "Are the stale prose-savepoint fields gone?",
+      "expected_output": "No 'In progress' / 'Blockers' fields read from a prose savepoint remain; the ledger model is used instead.",
+      "files": ["skills/continuing/SKILL.md"],
+      "assertions": [
+        { "type": "convention", "check": "no prose-savepoint announce template (In progress / Blockers from prose)", "observed": "absent; announce uses Stage/Next step/Context/Drift derived from ledger + checklist", "result": "pass" }
+      ]
+    },
+    {
+      "id": 14, "scope": "behavior", "set": "validation",
+      "prompt": "Is the 'Determine Store' local-store gap filled?",
+      "expected_output": "Step 2 of Determine Store describes local/project-store detection (no empty step).",
+      "files": ["skills/continuing/SKILL.md"],
+      "assertions": [
+        { "type": "convention", "check": "Determine Store step 2 documents local/project store detection via projects.yml + CWD match", "observed": "filled", "result": "pass" }
+      ]
+    }
+  ]
+}

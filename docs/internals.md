@@ -135,6 +135,21 @@ never a source of truth: state stays derivable from files-on-disk and the ledger
 rebuildable via `Bridge.rebuild_savepoint`. The `plastic-savepoint` skill is now a thin
 reader/verifier, not a writer.
 
+The `plastic-continuing` skill consumes that ledger on the resume path (intent 36): when the
+user or an agent asks to continue a specific intent, the skill reads the last ledger line as
+the current stage, confirms the named stage file is present and non-empty, calls
+`Bridge.rebuild_savepoint` when the ledger and the filesystem disagree, and derives the next
+step from the first unchecked checklist item. Continue runs this only on demand, not on every
+boot, since continue is about loading and presenting choices while `plastic-auto` owns
+autonomous execution.
+
+`doctor.rb` has two modes. The default run walks every check category (global store,
+conventions across all intents, agent registration, core files, project stores,
+deprecations). The `--core` flag runs only the runtime-liveness subset (agent registration
+and core files: hooks, skills, scripts, PLASTIC.md, VERSION, version match) and skips the
+slow inventory walks, so it returns in well under a second. The continue boot sequence uses
+`--core` for its up-front health line; `/plastic-doctor` uses the full run.
+
 ## what-exists-today-vs-what-is-missing
 
 Plastic ships **23** harness entries today. By strength on the form-determinism
