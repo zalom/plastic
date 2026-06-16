@@ -120,4 +120,23 @@ class InstallPackagingTest < Minitest::Test
     File.write(File.join(claude, "settings.json"), "{}")
     assert_empty @installer.migrate_legacy_plugin(claude)
   end
+
+  # --- Templates are distributed via the templates/ directory (npm `files`) ---
+  # Templates ship by directory inclusion: package.json lists "templates/" and the
+  # whole dir is read from ${CLAUDE_PLUGIN_ROOT}/templates/. These guards fail loudly
+  # if a canonical FORM is dropped from the repo or the dir stops being packaged.
+
+  REPO = File.expand_path("../../", __FILE__)
+
+  def test_canonical_templates_exist_in_repo
+    expected = %w[intent.md plan.md checklist.md savepoint.md index.md spec.md outcome.md]
+    missing = expected.reject { |t| File.file?(File.join(REPO, "templates", t)) }
+    assert_empty missing, "canonical templates missing from templates/: #{missing.join(", ")}"
+  end
+
+  def test_templates_dir_is_packaged_for_distribution
+    pkg = JSON.parse(File.read(File.join(REPO, "package.json")))
+    assert_includes pkg["files"], "templates/",
+      "templates/ must be in package.json `files` so it ships to consumers"
+  end
 end

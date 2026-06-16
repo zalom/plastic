@@ -107,7 +107,7 @@ digraph brainstorming {
 
 ## After the Design
 **Documentation:**
-- Write the validated design (spec) to `{intent_dir}/spec.md`
+- Write the validated design (spec) to `{intent_dir}/spec.md` using the `${CLAUDE_PLUGIN_ROOT}/templates/spec.md` form
 - Use elements-of-style:writing-clearly-and-concisely skill if available
 - Commit to the store repo:
   ```
