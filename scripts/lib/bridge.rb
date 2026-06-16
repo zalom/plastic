@@ -215,6 +215,109 @@ module Bridge
       "(blocked edit: #{file_abs})"
   end
 
+  # --- Bash-edit gate (intent 27a) ---
+
+  # Extract the set of file paths a Bash command writes to. Conservative by
+  # design: it is acceptable to miss exotic forms, but it must NOT flag reads
+  # or /dev/null. Returns an Array of path strings (possibly relative).
+  #
+  # Covered write vectors: redirection (>, >>, including heredoc `cat > f <<EOF`),
+  # tee / tee -a, sed -i / sed -i.bak, cp/mv (last non-flag arg), dd of=.
+  def self.bash_write_targets(command)
+    return [] unless command.is_a?(String)
+
+    targets = []
+    targets.concat(bash_redirect_targets(command))
+    # Split on command separators for per-segment utility parsing.
+    command.split(/[;\n]|&&|\|\||\|/).each do |segment|
+      targets.concat(bash_utility_targets(segment))
+    end
+    targets.uniq
+  end
+
+  # Redirections: `> path` / `>> path`, but not fd dups (`2>&1`) or /dev/null.
+  # A leading digit (fd number) before > is fine; `>&` is a dup and excluded.
+  def self.bash_redirect_targets(command)
+    targets = []
+    # Match optional leading fd digits, then > or >>, not followed by & , then path.
+    command.scan(/\d*>>?(?!&)\s*([^\s;|&<>]+)/) do |m|
+      path = m[0]
+      next if path.nil? || path.empty?
+      next if dev_null?(path)
+      targets << path
+    end
+    targets
+  end
+
+  def self.bash_utility_targets(segment)
+    tokens = segment.strip.split(/\s+/)
+    return [] if tokens.empty?
+
+    # Find the utility name, skipping env-style assignments.
+    idx = 0
+    idx += 1 while tokens[idx] && tokens[idx].include?("=") && tokens[idx] !~ /^-/ && !tokens[idx].start_with?("of=")
+    util = File.basename(tokens[idx].to_s)
+    args = tokens[(idx + 1)..] || []
+
+    case util
+    when "tee"
+      tee_targets(args)
+    when "sed"
+      sed_targets(args)
+    when "cp", "mv"
+      copy_move_targets(args)
+    when "dd"
+      dd_targets(tokens)
+    else
+      []
+    end
+  end
+
+  def self.tee_targets(args)
+    args.reject { |a| a.start_with?("-") || dev_null?(a) }
+  end
+
+  def self.sed_targets(args)
+    # In-place only: -i or -i.bak (suffix attached). Otherwise sed reads.
+    inplace = args.any? { |a| a == "-i" || a.start_with?("-i") }
+    return [] unless inplace
+    files = args.reject { |a| a.start_with?("-") }
+    # sed args: script then file(s). First non-flag is the script expression
+    # unless an -e/-f was used; conservatively treat the LAST non-flag as file.
+    files.empty? ? [] : [files.last].reject { |f| dev_null?(f) }
+  end
+
+  def self.copy_move_targets(args)
+    files = args.reject { |a| a.start_with?("-") }
+    return [] if files.length < 2
+    dest = files.last
+    dev_null?(dest) ? [] : [dest]
+  end
+
+  def self.dd_targets(tokens)
+    tokens.each_with_object([]) do |t, acc|
+      next unless t.start_with?("of=")
+      path = t.sub("of=", "")
+      acc << path unless path.empty? || dev_null?(path)
+    end
+  end
+
+  def self.dev_null?(path)
+    path == "/dev/null" || path.start_with?("/dev/")
+  end
+
+  # Decide whether a Bash command should be blocked under the auto-mode code
+  # gate. Resolves each write target against cwd and applies the SAME policy as
+  # code_gate_decision. Returns the first block reason, or nil to allow.
+  def self.bash_gate_decision(bridge_data, command, cwd:, home: Dir.home)
+    bash_write_targets(command).each do |target|
+      abs = File.absolute_path?(target) ? target : File.join(cwd, target)
+      reason = code_gate_decision(bridge_data, abs, home: home)
+      return reason if reason
+    end
+    nil
+  end
+
   def self.deep_merge(base, overlay)
     result = base.dup
     overlay.each do |key, value|

@@ -1,0 +1,53 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# PreToolUse gate for Bash (intent 27a): close the Bash-edit bypass. When auto
+# mode is armed and the active intent has not reached How (plan.md + checklist.md),
+# block Bash commands that WRITE project code outside the store.
+#
+# Reads the Claude Code PreToolUse payload as JSON on STDIN:
+#   { "tool_input": { "command": "..." }, "cwd": "..." }
+# Empty / unparseable / no command => exit 0 (allow). Conservatism is the prime
+# directive: when a command's write intent is ambiguous, ALLOW.
+#
+# Exit 0 = allow. Exit 2 = block (reason on stderr, shown to the agent).
+
+require "json"
+require_relative "lib/bridge"
+
+raw = $stdin.read rescue nil
+exit 0 if raw.nil? || raw.strip.empty?
+
+payload = JSON.parse(raw) rescue nil
+exit 0 unless payload.is_a?(Hash)
+
+command = payload.dig("tool_input", "command") || payload.dig("tool_params", "command")
+exit 0 if command.nil? || command.to_s.strip.empty?
+
+cwd = payload["cwd"]
+cwd = Dir.pwd if cwd.nil? || cwd.to_s.empty?
+
+# --- Load bridge (mirror hook-code-gate resolution) ---
+session = ENV["CLAUDE_SESSION_ID"]
+bridge_data = nil
+
+if session && !session.empty?
+  bridge_data = Bridge.read(session) if File.exist?(Bridge.path(session))
+end
+
+unless bridge_data
+  candidates = Dir.glob("/tmp/plastic-*.json").reject { |f| f.end_with?(".tmp") }
+  if candidates.any?
+    newest = candidates.max_by { |f| File.mtime(f) }
+    bridge_data = JSON.parse(File.read(newest)) rescue nil
+  end
+end
+
+exit 0 unless bridge_data
+
+reason = Bridge.bash_gate_decision(bridge_data, command, cwd: cwd)
+exit 0 unless reason
+
+$stderr.puts "PLASTIC GATE — #{reason}"
+exit 2

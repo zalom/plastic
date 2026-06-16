@@ -195,6 +195,7 @@ class InstallerCore
       "scripts/hook-future-intent-check" => "scripts/hook-future-intent-check",
       "scripts/hook-gate-check" => "scripts/hook-gate-check",
       "scripts/hook-code-gate" => "scripts/hook-code-gate",
+      "scripts/hook-bash-gate" => "scripts/hook-bash-gate",
       "scripts/hook-auto-arm" => "scripts/hook-auto-arm",
       "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
       "scripts/lib/installer_core.rb" => "scripts/lib/installer_core.rb",

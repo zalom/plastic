@@ -39,6 +39,16 @@
             "statusMessage": "Checking lifecycle gate..."
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" bash-gate",
+            "statusMessage": "Checking lifecycle gate..."
+          }
+        ]
       }
     ],
     "PostToolUse": [
