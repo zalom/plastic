@@ -172,53 +172,57 @@ if File.exist?(cache_file)
   end
 end
 
-# --- Early exit only if no PLASTIC.md ---
+# --- Assemble session context ---
 
 all_active = active + project_active
 all_future = future + project_future
-exit 0 unless plastic_md
 
 # --- Build context ---
+# PLASTIC.md conventions and intent context render only when conventions are
+# installed. Deprecation warnings and update notices render regardless, so a
+# partial install (or a missing PLASTIC.md) still surfaces critical warnings.
 
 parts = []
 
-# Conventions always loaded first
-parts << plastic_md
-parts << "\n---\n"
+if plastic_md
+  # Conventions always loaded first
+  parts << plastic_md
+  parts << "\n---\n"
 
-if current_project
-  slug = current_project["slug"]
-  banner = "Project: #{slug} | Store: ~/.plastic/projects/#{slug}/store/"
-  if project_active.any? && project_active.first =~ /\[([^\]]+)\].*store\/([\w-]+)\//
-    intent_name, dir_name = $1, $2
-    intent_id = dir_name.split("--").first
-    banner += "\nActive: [#{intent_id} — #{intent_name}] | Artifacts → store/#{dir_name}/"
+  if current_project
+    slug = current_project["slug"]
+    banner = "Project: #{slug} | Store: ~/.plastic/projects/#{slug}/store/"
+    if project_active.any? && project_active.first =~ /\[([^\]]+)\].*store\/([\w-]+)\//
+      intent_name, dir_name = $1, $2
+      intent_id = dir_name.split("--").first
+      banner += "\nActive: [#{intent_id} — #{intent_name}] | Artifacts → store/#{dir_name}/"
+    end
+    parts << banner + "\n"
+  else
+    parts << "PLASTIC — Global store loaded from ~/.plastic/\n"
   end
-  parts << banner + "\n"
-else
-  parts << "PLASTIC — Global store loaded from ~/.plastic/\n"
-end
 
-if all_active.any?
-  parts << "Active intents:\n"
-  all_active.each { |a| parts << a }
-  if bridge_data
-    stage = bridge_data["build"]["stage"]
-    missing = bridge_data["build"]["missing"]
-    missing_str = missing.empty? ? "none" : missing.join(", ")
-    parts << "Stage: #{stage} | Next: #{missing_str}"
+  if all_active.any?
+    parts << "Active intents:\n"
+    all_active.each { |a| parts << a }
+    if bridge_data
+      stage = bridge_data["build"]["stage"]
+      missing = bridge_data["build"]["missing"]
+      missing_str = missing.empty? ? "none" : missing.join(", ")
+      parts << "Stage: #{stage} | Next: #{missing_str}"
+    end
+    parts << ""
+  else
+    parts << "No active intents. #{future.length} future intents available.\n"
   end
-  parts << ""
-else
-  parts << "No active intents. #{future.length} future intents available.\n"
-end
 
-if stale.any?
-  parts << "\nStale future intents (untouched for days):\n"
-  stale.each do |s|
-    parts << "- #{s[:name]} (#{s[:age]} days) — consider: activate, abandon, or defer to agent"
+  if stale.any?
+    parts << "\nStale future intents (untouched for days):\n"
+    stale.each do |s|
+      parts << "- #{s[:name]} (#{s[:age]} days) — consider: activate, abandon, or defer to agent"
+    end
+    parts << "\nWhen appropriate, ask the user what to do with stale intents."
   end
-  parts << "\nWhen appropriate, ask the user what to do with stale intents."
 end
 
 if active_deprecations.any?
@@ -251,6 +255,10 @@ end
 if update_notice
   parts.unshift("! #{update_notice}\n")
 end
+
+# Emit nothing when there is genuinely nothing to surface (no conventions,
+# no deprecations, no update notice).
+exit 0 if parts.join.strip.empty?
 
 payload = {
   "hookSpecificOutput" => {
