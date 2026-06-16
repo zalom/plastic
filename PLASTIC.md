@@ -19,7 +19,7 @@ store/
     outcome.md            # optional — detailed result (Exec deliverable)
     actions/              # optional — individual work items
     resources/            # optional — research, references, screenshots, diagrams
-    savepoint.md          # optional — session state for resume
+    savepoint.md          # optional — deterministic cycle-step ledger (auto-written)
 ```
 
 Lifecycle files (`spec.md`, `plan.md`, `checklist.md`, `outcome.md`) have defined
@@ -66,8 +66,17 @@ The connection: an intent's `## Insights` feeds the Coordinator's Observe phase.
 | **How** | Planning | `plan.md` + `actions/` + `checklist.md` | `plastic-writing-plans` |
 | **Exec** | Execution | `outcome.md` | `plastic-executing-plan` |
 
-`## Insights` — append-only work log captured throughout ALL stages.
+`## Insights` — append-only work log captured throughout ALL stages. **Append-only means
+newest entry at the bottom; never prepend.** This ordering is a hard convention: Insights
+are the semantic trace of an intent, and a consistent newest-last order keeps that trace
+readable across every intent.
 For full lifecycle detail, the skills in the Detail column have references/.
+
+`savepoint.md` — a deterministic, append-only ledger of cycle-step milestones (one line per
+lifecycle boundary, newest at the bottom), written automatically by the gate hook. It is
+sugar on top of the conventions, not a source of truth: state is always derivable from
+files-on-disk, and the ledger is rebuildable. It exists so a resuming agent reads the cycle's
+succession at a glance (last line = where we are).
 
 ## Gotchas
 
