@@ -54,11 +54,13 @@ state is loaded on top of it. For a full diagnosis, point the user at `/plastic-
 - Set the statusline.
 
 ### 4. Dashboard
-Invoke the dashboard. Rendering belongs to the dashboard skill, not here — only invoke:
-- Project loaded → `ruby ~/.plastic/scripts/dashboard.rb project <slug>`
-- Otherwise → `ruby ~/.plastic/scripts/dashboard.rb continue`
+Land on the Markdown board via the `plastic-dashboard` skill. Rendering belongs there, not
+here — run the data payload and fill + present the matching template:
+- Project loaded → `ruby ~/.plastic/scripts/dashboard.rb project <slug> --data`
+- Otherwise → `ruby ~/.plastic/scripts/dashboard.rb continue --data`
 
-Show its output verbatim. See `plastic-dashboard` for how to read the matrix.
+Fill the matching template from this skill's `templates/` and **present the filled Markdown
+in your reply** (every time). See `plastic-dashboard` for the fill rules and entry flow.
 
 ### Then stop
 Present "here is the state, what next?" and wait. Offer active intents first, then future

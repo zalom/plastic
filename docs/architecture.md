@@ -115,6 +115,16 @@ Resuming a session is a fixed sequence run by the `plastic-continuing` skill, in
 1. **Core doctor**: a fast runtime-liveness check (`doctor.rb --core`) runs first and prints one health line, so a broken runtime surfaces before any state is loaded on top of it.
 2. **Load core**: prime the conventions (PLASTIC.md and the harness docs), read the store INDEX.md and projects.yml, detect the current project by matching the working directory, and load that project's state.
 3. **Version and statusline**: print the installed version and set the statusline.
-4. **Dashboard**: invoke the project dashboard when a project is loaded, otherwise the global dashboard. The skill only invokes the renderer, it does not render.
+4. **Dashboard**: land on the project board when a project is loaded, otherwise the global board. The continuing skill only invokes the dashboard, it does not render.
 
 The skill then stops and presents choices. It does not drive work autonomously (that is `plastic-auto`). When the user or an agent asks to continue a specific intent, the skill reads that intent's `savepoint.md` ledger (last line is the current stage), verifies the named stage file exists, rebuilds the ledger on drift, and derives the next step from the first unchecked checklist item.
+
+## dashboard
+
+The dashboard is the work cockpit. It answers three questions: where we are (recently worked), where we go next (a Value by Effort matrix), and how to conduct each item (a disposition). The split keeps determinism while reaching a Markdown UI:
+
+- **Heavy script, mechanical fill**: `dashboard.rb --data [continue|project <slug>]` emits one complete JSON payload (recently worked, the full matrix with per line glyphs, counts, project summaries). The `plastic-dashboard` skill fills a Markdown template from that payload with near zero reasoning and presents the filled board in its reply. Same store state gives the same payload regardless of model.
+- **Markdown surface**: the board is Markdown because the user's UI renders Markdown natively but collapses raw tool-call stdout. Templates live in the skill's `templates/` directory (`dashboard-global.md`, `dashboard-project.md`). The matrix is a small table holding only the quadrant signature and count, with each quadrant's intents printed below it as glyph led lines (the glyph is the bullet, never a Markdown dash, never an HTML break).
+- **Entry flow**: the global board lists recently worked across all scopes, a matrix of global intents only, and a summary of the last five projects (counts plus last accessed). The board is the menu: the user replies in free prose with an intent id, a project name (which re-runs the script for that project), or a request to start something new. No capped multiple choice picker.
+- **Heuristics**: value is high for an explicit `value: high` field, a human authored root, an intent with a non-empty chain, or an intent that is a source of another. The `unblocked` flag fires only when a future intent has all of its sources done, and `stale` only on aging future intents, so flags stay low noise.
+- **Auto-mode contract**: `--json` still emits the machine readable manifest (`dispatchable_queue`, `human_only`, `next_big_thing`) that `plastic-auto` consumes. The plain text modes remain for a raw terminal.
