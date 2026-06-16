@@ -4,9 +4,9 @@
 > Install: `npx @zalom/plastic@alpha --claude`
 
 Intent-driven idea development system for AI coding agents. Named after
-**neuroplasticity** — adaptive, malleable, dynamic, resilient.
+**neuroplasticity**: adaptive, malleable, dynamic, resilient.
 
-Plastic thinks in **intents**, not tasks. An intent is a desire — something
+Plastic thinks in **intents**, not tasks. An intent is a desire, something
 you want to accomplish, explore, or understand. Intents are atomic thoughts
 that get developed through two nested processes.
 
@@ -20,18 +20,53 @@ This loop runs continuously across sessions.
 from motivation through specification, planning, to delivery. Intents produce
 artifacts: `spec.md`, `plan.md`, `checklist.md`, `outcome.md`.
 
+## How Plastic Works
+
+Plastic is a **thinking system**, a blueprint for taking a desire from intent to
+delivery. It splits the work in two:
+
+- **The blueprint (deterministic).** The conventions, templates, directory structure,
+  lifecycle, and linking rules. This is *how to fill in the work*, and it comes out
+  identically no matter who or what is working.
+- **The brain (non-deterministic).** The human or LLM that does the actual thinking.
+  Plastic never replaces it. It only **steers and validates** it.
+
+Determinism lives in the **form** of the work (section sets, ordering, schemas, naming,
+IDs, file layout), never in the brain's reasoning. The framework stays constant while the
+thinking varies. Run Plastic on Claude Code, Codex, Hermes, OpenClaw, or by hand on paper
+in Obsidian or Word, and the only thing that changes is the *quality of thought*. The
+proof is the paper test: if a person with no tooling and no AI can reproduce a
+correctly-shaped intent, the determinism is in the form, not the agent.
+
+**Deterministic by design, free by intent.** The rigid part is rigid on purpose. It is
+what makes work portable, reviewable, and resumable across any agent. The free part is
+free on purpose. It is where the brain's creativity lives. Plastic draws the line between
+the two and holds it.
+
+**Harnesses are how it holds the line.** Shared harnesses (conventions, templates, and
+directory structure) constrain humans and agents alike. Agent-extra harnesses (evals that
+check a skill's output, plus hooks and instructions that steer reasoning) give an agent
+the instincts a careful person already has: stop and save state, leave a note when the
+context runs out, never plan before specifying.
+
+This is **intent-driven delivery**, a new shape for the software lifecycle in the age of
+agentic engineering. The unit of work is an *intent*, not a ticket, and every intent
+carries its own spec, plan, checklist, and outcome as it moves through Why, What, How, and
+Execute. What you get is agent-agnostic, auditable, and additive: a knowledge graph of
+*why* things were built, not just what.
+
 ## Install
 
 Plastic requires Ruby (pre-installed on macOS/Linux) and Node.js 18+.
 
 ```bash
-# Alpha (current — active development)
+# Alpha (current, active development)
 npx @zalom/plastic@alpha --claude
 
-# Beta (when available — API-stable, bug hunting)
+# Beta (when available, API-stable, bug hunting)
 npx @zalom/plastic@beta --claude
 
-# Stable (when available — general use)
+# Stable (when available, general use)
 npx @zalom/plastic --claude
 ```
 
@@ -42,7 +77,7 @@ Bun users can substitute `bunx` for `npx` (e.g. `bunx @zalom/plastic@alpha --cla
 Bun is never required.
 
 Skills install as flat, hyphen-namespaced personal skills (`plastic-doctor`,
-`plastic-auto`, …) — invoke them with a hyphen. Plastic is **not** a Claude Code
+`plastic-auto`, and so on). Invoke them with a hyphen. Plastic is **not** a Claude Code
 plugin; re-running the installer auto-removes any legacy plugin registration.
 
 ### Updating
