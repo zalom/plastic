@@ -107,3 +107,14 @@ The tooling layer is thin and sits on top of the store. The parts that supply de
 - **Evals**: checks that verify skills produce convention-compliant output and that descriptions trigger correctly.
 
 For the operational detail behind these parts (determinism coverage, harness taxonomy, upgrade backlog), see [internals](internals.md).
+
+## session boot
+
+Resuming a session is a fixed sequence run by the `plastic-continuing` skill, in this order:
+
+1. **Core doctor**: a fast runtime-liveness check (`doctor.rb --core`) runs first and prints one health line, so a broken runtime surfaces before any state is loaded on top of it.
+2. **Load core**: prime the conventions (PLASTIC.md and the harness docs), read the store INDEX.md and projects.yml, detect the current project by matching the working directory, and load that project's state.
+3. **Version and statusline**: print the installed version and set the statusline.
+4. **Dashboard**: invoke the project dashboard when a project is loaded, otherwise the global dashboard. The skill only invokes the renderer, it does not render.
+
+The skill then stops and presents choices. It does not drive work autonomously (that is `plastic-auto`). When the user or an agent asks to continue a specific intent, the skill reads that intent's `savepoint.md` ledger (last line is the current stage), verifies the named stage file exists, rebuilds the ledger on drift, and derives the next step from the first unchecked checklist item.

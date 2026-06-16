@@ -1,120 +1,129 @@
 ---
 name: plastic-continuing
-description: Use when the user says "continue" after a /clear, or when resuming work in a new session. Reads intent state from global store (~/.plastic/) or local store, offers active intents first, then future intents, and surfaces stale intents for triage.
+description: Use when the user says "continue", "resume", or "pick up where we left off", or when starting a new session. Boots Plastic — runtime health check, loads core context + store/project state, prints version + statusline, and lands on the right dashboard — then presents choices. Does not drive work autonomously (that is plastic-auto).
 ---
 
 # Continuing
 
+`plastic-continuing` is a deterministic **boot orchestrator**. It loads and presents choices,
+then stops. It does NOT execute work autonomously (that is `plastic-auto`) and does NOT render
+the dashboard itself (it only invokes it).
+
 ## When to Use
 - UserPromptSubmit hook detects "continue" (automatic)
 - User says "continue", "resume", or "pick up where we left off"
-- Starting a new session with existing active intents
+- Starting a new session with an existing Plastic store
 
 ## Determine Store
 
-1. Check `~/.plastic/INDEX.md` → global mode
-2. 
+1. **Global store** — `~/.plastic/INDEX.md` exists → global mode.
+2. **Local store** — a project store under `~/.plastic/projects/{slug}/` whose registered
+   path (in `~/.plastic/projects.yml`) matches the current working directory → project mode.
+   Project detection happens in boot step 2 below; this just records that a local store is
+   in play.
 3. If neither exists → announce "No Plastic store found. Run /plastic-install."
 
-## Workflow
+## Boot Sequence (run in this fixed order)
 
-### 0. Render the dashboard (overview)
-For the "where are we / what's next" overview, run the deterministic dashboard and show
-its output verbatim instead of hand-summarizing intents:
+### 1. Core doctor (health first)
+Run the fast runtime-liveness check synchronously (it returns in well under a second):
 
 ```bash
-ruby ~/.plastic/scripts/dashboard.rb continue
+ruby ~/.plastic/scripts/doctor.rb --core
 ```
 
-This is the uniform, model-agnostic cockpit (active + last touched, then the Value×Effort
-matrix). Then continue with the steps below to actually resume a specific intent. See the
-`plastic-dashboard` skill for how to read the matrix.
+Print one compact health line:
+- All pass → `Plastic core: healthy`
+- Otherwise → `Plastic core: issues` followed by the failing checks (name + message).
 
-### 1. Read INDEX.md
-Read the INDEX.md from the active store. Extract intents under `## Active` and `## Future`.
+This runs first so a broken runtime (missing hooks, scripts, core files) surfaces before any
+state is loaded on top of it. For a full diagnosis, point the user at `/plastic-doctor`.
 
-### 2. Detect Current Project (global mode only)
-Read `~/.plastic/projects.yml`, match CWD against registered project paths. If in a project:
-- Load the governing intent (from `parent` in projects.yml)
-- Load tactical intents from `~/.plastic/projects/{slug}/store/`
+### 2. Load core (context + state)
+- Prime `PLASTIC.md` and the harness docs so the conventions are in mind.
+- Load live state:
+  - Read the active store `INDEX.md` (`## Active`, `## Future`).
+  - Read `~/.plastic/projects.yml`.
+  - **Detect the current project** by matching CWD against registered project paths.
+  - If in a project: load that project's `INDEX.md`; load the governing intent (from
+    `parent` in projects.yml) and the tactical intents from
+    `~/.plastic/projects/{slug}/store/`.
 
-### 3. If Active Intents Exist → Resume
+### 3. Version + statusline
+- Print the current Plastic version (from `~/.plastic/VERSION`).
+- Set the statusline.
 
-For each active intent in the store:
+### 4. Dashboard
+Invoke the dashboard. Rendering belongs to the dashboard skill, not here — only invoke:
+- Project loaded → `ruby ~/.plastic/scripts/dashboard.rb project <slug>`
+- Otherwise → `ruby ~/.plastic/scripts/dashboard.rb continue`
 
-**a. Read `{ID}--{slug}.md`:**
-- What we're doing (`## Intent`)
-- Why (`## Context`)
-- What insights have emerged (`## Insights`)
+Show its output verbatim. See `plastic-dashboard` for how to read the matrix.
 
-**b. Read savepoint.md** (if exists):
-- What was in progress, what's next, blockers
+### Then stop
+Present "here is the state, what next?" and wait. Offer active intents first, then future
+intents. Do not start executing work. The branches below are the only follow-ups:
+- User/agent names a specific intent to continue → **Conditional ledger-resume** (below).
+- User says "auto" / an agent is instructed to deliver → hand to `plastic-auto`.
 
-**c. Read checklist.md** (if exists):
-- What's completed, what's next
+## Conditional Ledger-Resume
 
-**d. Announce:**
-```
-Resuming intent [ID] — [name]
-Store: [global | project:<slug> | local]
-Status: active
-Last session: [date from savepoint]
-In progress: [from savepoint]
-Next step: [from checklist or savepoint]
-Blockers: [from savepoint, or "none"]
-```
+Fires ONLY when the user explicitly asks to continue a SPECIFIC intent, or an agent is
+instructed to continue one. It is not part of every boot. For that intent's directory:
 
-**e. Resume** — proceed with the next step.
+1. **Read `savepoint.md`.** It is a deterministic, append-only stage ledger (one line per
+   milestone, newest at the bottom): `{utc-iso8601}  {Stage}  {milestone}`. The **last line =
+   current stage**.
+2. **Verify the stage file.** Confirm the file the ledger names exists and is non-empty
+   (ledger `How  plan.md created` → `plan.md` must be present and non-empty).
+3. **Drift handling.** If the ledger's last line disagrees with files-on-disk, rebuild the
+   ledger from filesystem state and note the correction:
+   ```bash
+   ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.rebuild_savepoint("<intent_dir>")'
+   ```
+4. **Derive the next step:**
+   - First unchecked item in `checklist.md` if it exists, else
+   - "advance to the next lifecycle stage" (e.g. ledger shows Why/spec.md → next is How).
+   - The newest `## Insights` entry supplies human-readable context (Insights are
+     append-only, newest at the bottom).
+5. **Announce and stop:**
+   ```
+   Resuming intent [ID] — [name]
+   Store: [global | project:<slug> | local]
+   Stage: [from ledger last line]
+   Next step: [first unchecked checklist item | advance to <stage>]
+   Context: [newest ## Insights entry]
+   Drift: [none | ledger rebuilt from filesystem]
+   ```
+   Then proceed with the next step. Autonomy is `plastic-auto`'s job — if the intent's
+   `## Insights` contains `(autonomous)` entries, it was being delivered autonomously; hand
+   to `plastic-auto` to continue from the current stage.
 
-### 3b. Detect Autonomous Resume
+## Priority Order
 
-When resuming an active intent, check `## Insights` for entries containing `(autonomous)`.
+1. **Active intents first** — surface work in progress.
+2. **Project context** — if in a registered project, show governing + tactical intents.
+3. **Stale future intents** — surface for triage (see below).
+4. **Fresh future intents** — offer as next work.
 
-If found — this intent was being delivered autonomously:
+## Stale Future Intents
 
-**Announce:**
-```
-Resuming autonomous delivery of intent [ID] — [name]
-Store: [global | project:<slug> | local]
-Last autonomous action: [last (autonomous) insight entry]
-Next step: [from checklist or savepoint]
-```
-
-**Then:** Continue autonomous execution by invoking `plastic-auto`. The auto skill will pick up from the current lifecycle stage (it reads filesystem state to determine where to resume).
-
-If NOT found — resume normally as described in step 3.
-
-### 4. If No Active Intents → Offer Future Intents
-
-Present future intents as options. When user picks one, move to Active in INDEX.md. Auto-commit.
-
-### 5. Surface Stale Future Intents
-
-If any future intent has `created` date older than the configured `stale_threshold_days` (default 3):
+If a future intent's `created` date is older than the configured `stale_threshold_days`
+(default 3), surface it for triage without taking action:
 
 ```
 Stale future intents (no action taken):
 
 - [ID — name] (X days old)
-  Options:
   a) Activate — start working on it now
   b) Abandon — mark as abandoned
-  c) Defer to agent:
-     - implement: agent builds it
-     - research: agent investigates feasibility
-     - ideate: agent explores the problem space
-  d) Auto — go fully autonomous (invokes plastic-auto — agent delivers the intent end-to-end)
+  c) Defer to agent: implement | research | ideate
+  d) Auto — go fully autonomous (invokes plastic-auto)
 ```
 
-Auto-commit all triage changes.
-
-### 6. Priority Order
-
-1. **Active intents first** — resume work in progress
-2. **Project context** — if in a registered project, show governing intent + tactical intents
-3. **Stale future intents** — surface for triage
-4. **Fresh future intents** — offer as next work
+When the user activates a future intent, move it to `## Active` in INDEX.md and auto-commit.
 
 ## References
 
-- Read `references/context-management.md` for the full save/continue protocol when resuming from a savepoint or when the resume flow needs debugging
+- Read `references/context-management.md` for the full save/continue protocol and for
+  debugging the resume flow.

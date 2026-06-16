@@ -62,6 +62,7 @@ class Doctor
   def parse_args(argv)
     agent = "claude"
     help = false
+    core = false
 
     i = 0
     while i < argv.length
@@ -74,6 +75,9 @@ class Doctor
           $stderr.puts "Error: --agent requires one of: #{agents.keys.join(", ")}"
           exit 2
         end
+      when "--core"
+        core = true
+        i += 1
       when "--help", "-h"
         help = true
         i += 1
@@ -82,7 +86,7 @@ class Doctor
       end
     end
 
-    { agent: agent, help: help }
+    { agent: agent, help: help, core: core }
   end
 
   def show_help
@@ -95,6 +99,8 @@ class Doctor
 
       Options:
         --agent NAME    Agent to check: claude (default), codex, hermes
+        --core          Fast runtime-liveness check only (hooks, scripts, core files);
+                        skips the slow store/conventions/project inventory walks.
         -h, --help      Show this help
 
       Output:
@@ -903,6 +909,23 @@ class Doctor
     all_checks += check_project_stores
     all_checks += check_deprecations
 
+    summarize(all_checks, agent_key)
+  end
+
+  # Fast runtime-liveness check: only the plumbing that proves Plastic can
+  # operate (hooks, skills, scripts, core files). Skips the slow inventory
+  # walks (global store refs, per-intent conventions, project stores,
+  # deprecations) so it returns near-instantly. Used by `doctor.rb --core`.
+  def run_core_checks(agent_key)
+    all_checks = []
+    all_checks += check_agent_registration(agent_key)
+    all_checks += check_core_files(agent_key)
+
+    summarize(all_checks, agent_key)
+  end
+
+  # Roll a list of checks up into the standard result envelope.
+  def summarize(all_checks, agent_key)
     summary = { pass: 0, warn: 0, fail: 0, total: all_checks.size }
     all_checks.each { |c| summary[c[:status].to_sym] += 1 }
 
@@ -934,7 +957,7 @@ class Doctor
       exit 0
     end
 
-    result = run_checks(flags[:agent])
+    result = flags[:core] ? run_core_checks(flags[:agent]) : run_checks(flags[:agent])
 
     puts JSON.pretty_generate(result)
 
