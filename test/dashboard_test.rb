@@ -86,17 +86,21 @@ class DashboardTest < Minitest::Test
     # RESEARCH band: research type
     write_intent(demo, "5", "research-it",
                  { id: 5, intent: "Research a thing", author: "human", tags: %w[demo research], created: "2026-06-10" })
-    # ACTIVE + in-progress: partial checklist
+    # ACTIVE + in-progress: partial checklist, ledger stamp within 24h of TODAY.
     write_intent(demo, "6", "in-flight",
                  { id: 6, intent: "Work in flight", author: "human", tags: %w[demo], created: "2026-06-10" },
-                 files: { "spec.md" => "s", "plan.md" => "p", "checklist.md" => "- [x] done\n- [ ] todo\n" })
+                 files: { "spec.md" => "s", "plan.md" => "p", "checklist.md" => "- [x] done\n- [ ] todo\n",
+                          "savepoint.md" => "2026-06-12T08:00:00Z  How  plan.md created\n" })
     # STALE + UNBLOCKED: old future, source is the completed global... use demo source 3? completed needed.
     # Make a completed demo intent and a future intent sourced from it (unblocked).
     write_intent(demo, "7", "done-dep",
                  { id: 7, intent: "Completed dependency", author: "human", tags: %w[demo], created: "2026-05-01" },
-                 files: { "outcome.md" => "done" })
+                 files: { "outcome.md" => "done", "savepoint.md" => "2026-06-11T09:00:00Z  Exec  outcome.md created\n" })
     write_intent(demo, "8", "stale-unblocked",
                  { id: 8, intent: "Stale unblocked follow-up", author: "agent", tags: %w[demo bugfix], sources: %w[7], created: "2026-05-01" })
+    # NOT unblocked: future with two sources, only one done (7 done, 99 absent/undone).
+    write_intent(demo, "9", "partly-blocked",
+                 { id: 9, intent: "Partly blocked follow-up", author: "agent", tags: %w[demo bugfix], sources: %w[7 99], created: "2026-05-01" })
 
     File.write(File.join(home, "projects", "demo", "INDEX.md"), <<~IDX)
       # Index
@@ -109,6 +113,7 @@ class DashboardTest < Minitest::Test
       - [4 — Questionable big thing](store/4--questionable/4--questionable.md)
       - [5 — Research a thing](store/5--research-it/5--research-it.md)
       - [8 — Stale unblocked follow-up](store/8--stale-unblocked/8--stale-unblocked.md)
+      - [9 — Partly blocked follow-up](store/9--partly-blocked/9--partly-blocked.md)
       ## Clusters
       ## Abandoned
       ## Completed
@@ -162,6 +167,81 @@ class DashboardTest < Minitest::Test
     ranks = JSON.parse(out)["dispatchable_queue"].map { |r| r["rank"] }
     assert_equal ranks.sort, ranks
     assert_equal (1..ranks.size).to_a, ranks
+  end
+
+  # --- markdown-board data payload (intent 37) -------------------------------
+
+  def test_data_global_shape
+    out, status = run_dash("continue", "--data")
+    assert_equal 0, status
+    data = JSON.parse(out)
+    assert_equal "global", data["mode"]
+    %w[date recently_worked matrix counts projects project_totals].each { |k| assert data.key?(k), "missing #{k}" }
+    # Global matrix is global-store intents only (no project intents folded in).
+    scopes = data["matrix"].values.flatten.map { |r| r["scope"] }
+    assert(scopes.all? { |s| s == "global" }, "global matrix leaked non-global scope: #{scopes.uniq}")
+  end
+
+  def test_data_project_shape
+    out, status = run_dash("project", "demo", "--data")
+    assert_equal 0, status
+    data = JSON.parse(out)
+    assert_equal "project", data["mode"]
+    assert_equal "demo", data["slug"]
+    %w[recently_worked matrix counts active future].each { |k| assert data.key?(k), "missing #{k}" }
+  end
+
+  def test_data_last_accessed_prefers_ledger_over_created
+    out, = run_dash("project", "demo", "--data")
+    data = JSON.parse(out)
+    active = data["active"].find { |r| r["id"] == "6" }
+    refute_nil active
+    worked = data["recently_worked"].find { |r| r["id"] == "6" }
+    assert_equal "2026-06-12T08:00:00Z", worked["last_accessed_at"]
+  end
+
+  def test_value_high_for_human_root
+    out, = run_dash("project", "demo", "--data")
+    data = JSON.parse(out)
+    hi = (data["matrix"]["quick_win"] + data["matrix"]["next_big"]).map { |r| r["id"] }
+    assert_includes hi, "1" # human-authored root (high value)
+  end
+
+  def test_unblocked_requires_all_sources_done
+    out, = run_dash("project", "demo", "--json")
+    by_id = {}
+    JSON.parse(out)["dispatchable_queue"].each { |r| by_id[r["id"]] = r }
+    assert_includes by_id["8"]["flags"], "unblocked"      # all sources done
+    refute_includes (by_id["9"]&.dig("flags") || []), "unblocked" # one source still open
+  end
+
+  def test_recently_worked_sorted_and_capped
+    out, = run_dash("project", "demo", "--data")
+    rows = JSON.parse(out)["recently_worked"]
+    refute_empty rows
+    keyed = rows.map { |r| r["status"] == "active" ? 0 : 1 }
+    assert_equal keyed.sort, keyed, "active rows must precede done rows"
+    assert_operator rows.size, :<=, 15
+    rows.each { |r| assert r["line"].start_with?(r["glyph"]), "line not glyph-led: #{r["line"]}" }
+  end
+
+  def test_matrix_lists_are_glyph_led_with_bullets
+    out, = run_dash("project", "demo", "--data")
+    matrix = JSON.parse(out)["matrix"]
+    bullets = { "quick_win" => "⚡", "next_big" => "★", "defer" => "→", "triage" => "⚑", "research" => "🔬" }
+    matrix.each do |quad, list|
+      list.each do |r|
+        assert_equal bullets[quad], r["bullet"]
+        assert r["line"].start_with?(bullets[quad]), "#{quad} line not glyph-led: #{r["line"]}"
+        refute_includes r["line"], "<br>"
+      end
+    end
+  end
+
+  def test_future_sorted_created_desc
+    out, = run_dash("project", "demo", "--data")
+    created = JSON.parse(out)["future"].map { |r| r["created"] }
+    assert_equal created.sort.reverse, created
   end
 
   # --- determinism -----------------------------------------------------------

@@ -4,6 +4,18 @@
   "next_big_thing": "1",
   "dispatchable_queue": [
     {
+      "id": "6",
+      "scope": "project:demo",
+      "disposition": "defer",
+      "type": "implementation",
+      "value": "high",
+      "effort": "small",
+      "flags": [
+        "in-progress"
+      ],
+      "rank": 1
+    },
+    {
       "id": "2",
       "scope": "project:demo",
       "disposition": "defer",
@@ -11,19 +23,17 @@
       "value": "high",
       "effort": "small",
       "flags": [],
-      "rank": 1
+      "rank": 2
     },
     {
-      "id": "6",
+      "id": "5",
       "scope": "project:demo",
-      "disposition": "defer",
-      "type": "implementation",
-      "value": "low",
+      "disposition": "research",
+      "type": "research",
+      "value": "high",
       "effort": "small",
-      "flags": [
-        "in-progress"
-      ],
-      "rank": 2
+      "flags": [],
+      "rank": 3
     },
     {
       "id": "8",
@@ -36,7 +46,7 @@
         "unblocked",
         "stale"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "id": "3",
@@ -46,17 +56,19 @@
       "value": "low",
       "effort": "small",
       "flags": [],
-      "rank": 4
+      "rank": 5
     },
     {
-      "id": "5",
+      "id": "9",
       "scope": "project:demo",
-      "disposition": "research",
-      "type": "research",
+      "disposition": "defer",
+      "type": "bugfix",
       "value": "low",
       "effort": "small",
-      "flags": [],
-      "rank": 5
+      "flags": [
+        "stale"
+      ],
+      "rank": 6
     }
   ],
   "human_only": [

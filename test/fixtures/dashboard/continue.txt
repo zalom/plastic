@@ -17,6 +17,7 @@ WHERE WE GO NEXT  ·  value × effort  (all scopes)
    low  │ DEFER → agent          ⇢     │ TRIAGE / question      ⚑     │
         │ 8  Stale unblocked follow-up…│ 4  Questionable big thing (d…│
         │ 3  Small bug to squash (demo)│                              │
+        │ 9  Partly blocked follow-up …│                              │
         └──────────────────────────────┴──────────────────────────────┘
   RESEARCH → agent  ⊙   5 Research a thing
 
