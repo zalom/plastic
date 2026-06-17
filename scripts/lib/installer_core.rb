@@ -198,6 +198,7 @@ class InstallerCore
       "scripts/hook-bash-gate" => "scripts/hook-bash-gate",
       "scripts/hook-auto-arm" => "scripts/hook-auto-arm",
       "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
+      "scripts/lib/boot_banner.rb" => "scripts/lib/boot_banner.rb",
       "scripts/lib/installer_core.rb" => "scripts/lib/installer_core.rb",
       "scripts/install.rb" => "scripts/install.rb",
       "scripts/update.rb" => "scripts/update.rb",

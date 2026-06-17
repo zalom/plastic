@@ -33,6 +33,24 @@ class InstallSyncTest < Minitest::Test
     assert_empty missing, "verb scripts/lib missing from core_files: #{missing.join(", ")}"
   end
 
+  # Every lib file a shipped scripts/* file require_relatives must itself be
+  # distributed (intent 36a1 hotfix): hook-session-start added
+  # `require_relative "lib/boot_banner"` but boot_banner.rb was not in core_files,
+  # so the installed hook raised LoadError on session start. This fails loudly if
+  # any scripts/* requires a lib/*.rb that core_files does not register.
+  def test_every_required_lib_is_distributed
+    missing = []
+    Dir.glob(File.join(REPO, "scripts", "*")).each do |path|
+      next unless File.file?(path)
+      File.read(path).scan(/require_relative\s+["']lib\/(\w+)["']/).flatten.uniq.each do |libname|
+        rel = "scripts/lib/#{libname}.rb"
+        missing << "#{File.basename(path)} -> #{rel}" unless core_lib.include?(%("#{rel}"))
+      end
+    end
+    assert_empty missing,
+      "scripts require_relative lib files missing from core_files (installed boot would LoadError): #{missing.join(", ")}"
+  end
+
   # Every hook wrapper that delegates to ../scripts/hook-<name> must reference a
   # script that actually exists in the repo.
   def test_every_wrapper_references_an_existing_script
