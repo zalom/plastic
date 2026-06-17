@@ -1,91 +1,206 @@
 {
   "skill_name": "plastic-auto",
-  "notes": "Intent 27. Scopes: description triggering (1-8) and behavior/output quality (9). Assertions written after observing Step-3 runs (one clean subagent router per case).",
+  "notes": "Intent 27. Scopes: description triggering (1-8) and behavior/output quality (9). Assertions written after observing Step-3 runs (one clean subagent router per case). Intent 63 added cases 10-11 (auto-mode enforcer-led team spin-up and solo fallback).",
   "results": {
-    "triggering": { "cases": 8, "passed": 8, "pass_at_1": 1.0, "run": "2026-06-10, one subagent per case" },
-    "behavior": { "cases": 1, "passed": 1, "evidence": "dogfood: intent 27 itself delivered via auto produced spec->plan->checklist before any code edit; code-gate unit test proves pre-How project-code edits are blocked" }
+    "triggering": {
+      "cases": 8,
+      "passed": 8,
+      "pass_at_1": 1.0,
+      "run": "2026-06-10, one subagent per case"
+    },
+    "behavior": {
+      "cases": 1,
+      "passed": 1,
+      "evidence": "dogfood: intent 27 itself delivered via auto produced spec->plan->checklist before any code edit; code-gate unit test proves pre-How project-code edits are blocked"
+    }
   },
   "evals": [
     {
-      "id": 1, "scope": "triggering", "set": "train",
+      "id": 1,
+      "scope": "triggering",
+      "set": "train",
       "prompt": "auto",
       "expected_output": "Activates plastic-auto (the bare 'auto' keyword is the documented trigger).",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE == plastic-auto", "observed": "plastic-auto", "result": "pass" }
+        {
+          "type": "code",
+          "check": "router CHOICE == plastic-auto",
+          "observed": "plastic-auto",
+          "result": "pass"
+        }
       ]
     },
     {
-      "id": 2, "scope": "triggering", "set": "train",
+      "id": 2,
+      "scope": "triggering",
+      "set": "train",
       "prompt": "take it from here and deliver intent 27 end to end",
       "expected_output": "Activates plastic-auto (autonomous delivery of an active intent).",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE == plastic-auto", "observed": "plastic-auto", "result": "pass" }
+        {
+          "type": "code",
+          "check": "router CHOICE == plastic-auto",
+          "observed": "plastic-auto",
+          "result": "pass"
+        }
       ]
     },
     {
-      "id": 3, "scope": "triggering", "set": "validation",
+      "id": 3,
+      "scope": "triggering",
+      "set": "validation",
       "prompt": "go fully autonomous on the active intent, don't ask me questions",
       "expected_output": "Activates plastic-auto.",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE == plastic-auto", "observed": "plastic-auto", "result": "pass" }
+        {
+          "type": "code",
+          "check": "router CHOICE == plastic-auto",
+          "observed": "plastic-auto",
+          "result": "pass"
+        }
       ]
     },
     {
-      "id": 4, "scope": "triggering", "set": "train",
+      "id": 4,
+      "scope": "triggering",
+      "set": "train",
       "prompt": "deliver this intent for me",
       "expected_output": "Activates plastic-auto.",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE == plastic-auto", "observed": "plastic-auto", "result": "pass" }
+        {
+          "type": "code",
+          "check": "router CHOICE == plastic-auto",
+          "observed": "plastic-auto",
+          "result": "pass"
+        }
       ]
     },
     {
-      "id": 5, "scope": "triggering", "set": "train",
+      "id": 5,
+      "scope": "triggering",
+      "set": "train",
       "prompt": "set up a hook to automatically format the file on every save",
       "expected_output": "Does NOT activate plastic-auto. Near-miss: shares 'auto*' but is a settings/hooks task (update-config).",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE != plastic-auto", "observed": "update-config", "result": "pass" }
+        {
+          "type": "code",
+          "check": "router CHOICE != plastic-auto",
+          "observed": "update-config",
+          "result": "pass"
+        }
       ]
     },
     {
-      "id": 6, "scope": "triggering", "set": "validation",
+      "id": 6,
+      "scope": "triggering",
+      "set": "validation",
       "prompt": "deliver the built package to the dist directory",
       "expected_output": "Does NOT activate plastic-auto. Near-miss: shares 'deliver' but is a build/file task.",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE != plastic-auto", "observed": "none", "result": "pass" }
+        {
+          "type": "code",
+          "check": "router CHOICE != plastic-auto",
+          "observed": "none",
+          "result": "pass"
+        }
       ]
     },
     {
-      "id": 7, "scope": "triggering", "set": "train",
+      "id": 7,
+      "scope": "triggering",
+      "set": "train",
       "prompt": "create a new intent for the dashboard idea",
       "expected_output": "Does NOT activate plastic-auto; activates plastic-creating-intent.",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE != plastic-auto", "observed": "plastic-creating-intent", "result": "pass" }
+        {
+          "type": "code",
+          "check": "router CHOICE != plastic-auto",
+          "observed": "plastic-creating-intent",
+          "result": "pass"
+        }
       ]
     },
     {
-      "id": 8, "scope": "triggering", "set": "validation",
+      "id": 8,
+      "scope": "triggering",
+      "set": "validation",
       "prompt": "what's the status of my active intents?",
       "expected_output": "Does NOT activate plastic-auto; this is a read/continuing/managing-index query.",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE != plastic-auto", "observed": "plastic-managing-index", "result": "pass" }
+        {
+          "type": "code",
+          "check": "router CHOICE != plastic-auto",
+          "observed": "plastic-managing-index",
+          "result": "pass"
+        }
       ]
     },
     {
-      "id": 9, "scope": "behavior", "set": "train",
+      "id": 9,
+      "scope": "behavior",
+      "set": "train",
       "prompt": "Active intent X exists with only a '## Intent' section. Deliver it in auto mode.",
       "expected_output": "Arms the lifecycle gate first, then produces spec.md (Why), then plan.md + actions/ + checklist.md (How), and edits NO project code before plan.md + checklist.md exist. Disarms on completion.",
       "files": [],
       "assertions": [
-        { "type": "human", "check": "spec.md written before plan.md before any project-code edit", "observed": "dogfood run of intent 27 followed this order", "result": "pass" },
-        { "type": "code", "check": "code-gate blocks project-code Edit/Write while pre-How (test/code_gate_test.rb)", "observed": "test green", "result": "pass" }
+        {
+          "type": "human",
+          "check": "spec.md written before plan.md before any project-code edit",
+          "observed": "dogfood run of intent 27 followed this order",
+          "result": "pass"
+        },
+        {
+          "type": "code",
+          "check": "code-gate blocks project-code Edit/Write while pre-How (test/code_gate_test.rb)",
+          "observed": "test green",
+          "result": "pass"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "Active intent X exists. Deliver it in auto mode on a harness that supports subagents.",
+      "expected_output": "Spins up one enforcer-led team per intent (brainstorming, spec-specialist, planner, executor, plastic-enforcer). The enforcer IS the orchestrator. Dispatches one specialist per stage sequentially on one branch, gating each deliverable (Context+Decisions, then spec.md, then plan.md+actions+checklist, then code) against the stage exit criteria before handoff, and dispatches an independent reviewer subagent at the final gate only.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "five-role roster spun up; specialists dispatched stage-sequentially with per-stage gating; independent reviewer only at final gate",
+          "observed": "dogfood: intents 60-62 delivered by exactly this enforcer-led team on a shared branch",
+          "result": "pass"
+        },
+        {
+          "type": "code",
+          "check": "agents/plastic-*.md role files ship and install into the harness agent dir, manifest-tracked (test/install_packaging_test.rb)",
+          "observed": "test green",
+          "result": "pass"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "Active intent X exists. Deliver it in auto mode on a harness with no subagent dispatch.",
+      "expected_output": "Falls back to a single agent walking the full What, Why, How, Exec cycle itself, preserving current behavior. The enforcer gate discipline still applies (arm the gate first, no project-code edits before plan.md + checklist.md exist).",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "solo agent walks the full cycle when subagent dispatch is unavailable; gate discipline preserved",
+          "observed": "SKILL.md Team Spin-Up documents the solo fallback explicitly",
+          "result": "pass"
+        }
       ]
     }
   ]

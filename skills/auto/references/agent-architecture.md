@@ -6,55 +6,112 @@ The Main Orchestrator manages the global store (Main Knowledge Base). It:
 - Recognizes, creates, updates, and groups intents
 - Spawns Project Orchestrators for registered projects
 - Receives contributions back from Project Orchestrators
-- Is the only agent that runs in a loop (continuous Build→Observe→Repeat)
+- Is the only agent that runs in a loop (continuous Build, Observe, Repeat)
 
 ## Project Orchestrators
 
 Project Orchestrators manage project stores (Project Knowledge Bases). They:
 - Care about intents and execution within their project
-- Spawn teams to develop and execute intents
+- Spin up an enforcer-led team to deliver an intent
 - Contribute back to the Main Orchestrator when new intents are born
   that could enrich the Main Knowledge Base
 
-Rules:
-- 1 Main Orchestrator : 1 Global Store (`~/.plastic/`)
-- 1 Main Orchestrator : N Project Orchestrators
-- 1 Project Orchestrator : 1 Project Store
-- 1 Agent : 1 Intent (exclusive assignment)
-- 1 Agent : N Sub-agents (for parallel Actions within an intent)
+## The Auto-Mode Team
+
+Auto mode spins up exactly ONE enforcer-led team per intent. The plastic-enforcer
+IS the auto orchestrator itself, not a separately dispatched agent. Making the
+orchestrator the enforcer avoids the who-gates-the-gater regress (the gate-keeper
+can never be ungated).
+
+The team has five roles, one per place in the What, Why, How, Exec cycle:
+
+- **plastic-brainstorming** (Why exploration): enriches `## Context` and records
+  `### Decisions` with rationale.
+- **plastic-spec-specialist** (Why-to-How boundary): consolidates the Why into
+  `spec.md` (Problem, Goals, Non-Goals, Approach, Decisions, Acceptance Criteria).
+- **plastic-planner** (How): produces `plan.md`, `actions/ACTION_N.md`, and
+  `checklist.md`.
+- **plastic-executor** (Exec): writes the code, checks off `checklist.md`, appends
+  `## Insights`, and drives the suite green.
+- **plastic-enforcer** (spans the whole cycle): orchestrates and gates.
+
+### Handoff Contracts
+
+Each specialist receives the prior stage's deliverable and produces the next stage's
+input. The enforcer dispatches one specialist per stage with a constructed context
+bundle, gates that deliverable against the stage's exit criteria, and only then hands
+off to the next stage. Dispatch is sequential on a single branch, because the stage
+deliverables share files (a parked spec, plan, and checklist all live in the same
+intent directory).
+
+The chain: intent `## Intent` / `## Context`, then enriched `## Context` plus
+`### Decisions`, then `spec.md`, then `plan.md` plus `actions/` plus `checklist.md`,
+then the code changes plus a checked-off checklist plus `## Insights`.
+
+### Gate Ownership
+
+The enforcer arms and verifies the lifecycle gate, then gates every stage transition.
+It never delegates gate ownership. At the final gate only, it dispatches an
+INDEPENDENT reviewer subagent to review the delivered work. That reviewer is not a
+permanent sixth role, it exists only for the final review.
+
+### Headless Manual Gate
+
+When running headless or in the background, the enforcer enforces gates manually and
+does not rely on hooks, because `CLAUDE_SESSION_ID` may be unset in those runs (the
+gate-check and savepoint hooks no-op without it). The enforcer arms via the bridge's
+derived-key fallback and verifies state itself.
+
+### Delegation
+
+The roles are thin handoff contracts, not a spawning engine. Real parallelism and
+dispatch are delegated to `superpowers:subagent-driven-development` and
+`superpowers:dispatching-parallel-agents`. The team model defines who hands what to
+whom and where the gates sit, the superpowers skills do the actual dispatching.
+
+### Solo Fallback
+
+If the harness has no subagent dispatch, auto mode falls back to a single agent
+walking the full What, Why, How, Exec cycle itself. This preserves the original
+behavior on harnesses without teams. The enforcer's gate discipline still applies.
+
+### Dogfood Proof
+
+Intents 60, 61, and 62 were delivered by exactly this enforcer-led team on a shared
+branch, which is the dogfooded proof that the model works end to end.
 
 ## Two Modes
 
-- **Human-driven:** Human chats with Main Orchestrator, creates intents,
-  brainstorms, then Main Orchestrator dispatches Project Orchestrators and
-  Agents for execution.
-- **Autonomous:** Human gives Main Orchestrator a starting intent with defined
-  outcomes. Main Orchestrator runs the full cycle — Agents do the lifecycle
-  (What→Why→How→Exec), Main Orchestrator reviews Insights, spawns next intents,
-  dispatches again.
+- **Human-driven:** Human chats with the Main Orchestrator, creates intents,
+  brainstorms, then the Main Orchestrator dispatches Project Orchestrators and teams
+  for execution.
+- **Autonomous:** Human gives the Main Orchestrator a starting intent with defined
+  outcomes. The enforcer-led team runs the full cycle (the specialists do the
+  lifecycle, the enforcer reviews Insights and gates), then the orchestrator spawns
+  next intents and dispatches again.
 
 ## Autonomous Delivery
 
-Human owns What and Why for human-initiated intents. Agent assists (research,
-exploration) but human drives until handoff. When Why is complete — or human
-triggers `plastic-auto` — the agent takes over How and Exec autonomously.
+Human owns What and Why for human-initiated intents. The team assists (research,
+exploration) but the human drives until handoff. When Why is complete, or the human
+triggers `plastic-auto`, the enforcer-led team takes over How and Exec autonomously.
 
-- **Safe-by-default:** Agent always prefers non-destructive routes (rename vs
+- **Safe-by-default:** the executor always prefers non-destructive routes (rename vs
   delete, additive migrations, backups before changes). Destructive actions on
   existing projects require human approval unless `--skip-permissions` is set.
-- **One agent per intent.** Agent follows the full W→W→H→E lifecycle.
 - **Notification only on:** finish or hard stop (blocked on destructive action,
-  unresolvable error). No progress reports — `## Insights` tracks everything.
-- **Greenfield autonomy:** During initial project creation, all decisions are
-  non-destructive (nothing to destroy). Agent has full autonomy for greenfield choices.
-- **Autonomous decisions** are logged in `## Insights` with `(autonomous)` marker.
+  unresolvable error). No progress reports, `## Insights` tracks everything.
+- **Greenfield autonomy:** during initial project creation, all decisions are
+  non-destructive (nothing to destroy), so the team has full autonomy for greenfield
+  choices.
+- **Autonomous decisions** are logged in `## Insights` with the `(autonomous)` marker.
 
 ## Coordinator Loop
 
 When "work on Project X":
-1. Read `projects.yml` → find project path
+1. Read `projects.yml`, find the project path
 2. Load global config (defaults)
 3. Load project config (overrides)
-4. Load global INDEX.md → find hub intents tagged `project-<name>`
-5. Load project INDEX.md → tactical intents
-6. Coordinator has full picture, dispatches Agent teams
+4. Load global INDEX.md, find hub intents tagged `project-<name>`
+5. Load project INDEX.md, find tactical intents
+6. The coordinator has the full picture, spins up an enforcer-led team per intent

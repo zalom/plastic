@@ -549,6 +549,9 @@ class Doctor
     # skills_exist — flat, hyphen-namespaced personal skills (plastic-<name>/)
     checks << flat_skills_check(agent_dir, "--claude")
 
+    # agents_exist — auto-mode role files (plastic-*.md) synced into <dir>/agents
+    checks << flat_agents_check(agent_dir, "--claude")
+
     checks
   end
 
@@ -572,12 +575,33 @@ class Doctor
     end
   end
 
+  # Auto-mode role agents install as <dir>/agents/plastic-*.md. Pass if at least
+  # one such role file is present (the installer syncs agents/ on every install).
+  def flat_agents_check(agent_dir, installer_flag)
+    agents_root = File.join(agent_dir, "agents")
+    found = Dir.glob(File.join(agents_root, "plastic-*.md"))
+
+    if !found.empty?
+      check(
+        category: "agent_registration", name: "agents_exist", status: "pass",
+        message: "#{found.size} plastic-* agent(s) installed in #{tilde(agents_root)}"
+      )
+    else
+      check(
+        category: "agent_registration", name: "agents_exist", status: "fail",
+        message: "No plastic-* agents found in #{tilde(agents_root)}",
+        fixable: true, fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest #{installer_flag}"
+      )
+    end
+  end
+
   def check_generic_agent_registration(agent_key, agent_dir)
     checks = []
     config = agents[agent_key]
 
     # For codex/hermes: just check skills exist (no settings.json hooks)
     checks << flat_skills_check(agent_dir, "--#{agent_key}")
+    checks << flat_agents_check(agent_dir, "--#{agent_key}")
 
     checks
   end

@@ -74,6 +74,15 @@ template at all: section set, ordering, depth, cluster naming, and orphan
 thresholds all drift. **`spec.md` is the single least-constrained artifact in the
 framework**, because historically no template existed for it.
 
+Auto mode adds five more agent surfaces, the role files that ship in `agents/`:
+`plastic-brainstorming`, `plastic-spec-specialist`, `plastic-planner`,
+`plastic-executor`, and `plastic-enforcer`. They are thin handoff contracts (one
+role per cycle stage) rather than free-prose producers: each names what it consumes
+and produces, and the enforcer (which is the auto orchestrator itself) sequences and
+gates them. The installer syncs `agents/` into each harness agent directory and
+tracks the role files in the manifest, so they prune on update and uninstall with the
+skills and hooks. The team model lives in `skills/auto/references/agent-architecture.md`.
+
 The mixed 18 are template- or script-backed skills with free-prose content
 pockets: the lifecycle producers, the execution skills, the maintenance skills,
 the `intent.md` template (fixed skeleton, free prose sections), and the two
@@ -174,7 +183,10 @@ autonomous execution.
   (hooks, skills, scripts, PLASTIC.md, VERSION, version match) and compares each
   file's content against its SHA256 in the install manifests. The global manifest
   (`~/.plastic/manifest.json`) covers PLASTIC.md and global scripts; the agent-side
-  manifest (`~/.claude/plastic/manifest.json`) covers agent scripts and hooks. The
+  manifest (`~/.claude/plastic/manifest.json`) covers agent scripts, hooks, skills,
+  and the installed `agents/` role files, so `--core` SHA-verifies the role files too.
+  Agent registration also runs an `agents_exist` check that passes when at least one
+  `plastic-*.md` role file is present in the harness agent directory. The
   installer writes both manifests on every install or update. `--core` skips all
   store inventory walks so it returns in well under a second. Result is binary: exit 0
   on pass, non-zero on error, never a warning.

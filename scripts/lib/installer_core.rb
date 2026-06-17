@@ -355,6 +355,9 @@ class InstallerCore
     skills_source = File.join(package_root, "skills")
     installed += install_skills_flat(skills_source, skills_root) if File.directory?(skills_source)
 
+    # Copy agent role files into <dir>/agents (manifest-tracked, pruned on update)
+    installed += install_agents(File.join(config[:dir], "agents"))
+
     # Write VERSION
     version_file = File.join(plastic_dir, "VERSION")
     File.write(version_file, "#{version}\n")
@@ -378,6 +381,7 @@ class InstallerCore
     installed = []
     skills_source = File.join(package_root, "skills")
     installed += install_skills_flat(skills_source, File.join(config[:dir], "skills")) if File.directory?(skills_source)
+    installed += install_agents(File.join(config[:dir], "agents"))
 
     write_manifest(installed, File.join(config[:dir], "plastic-manifest.json"))
     { agent: config[:name], success: true, files: installed.size }
@@ -387,6 +391,7 @@ class InstallerCore
     installed = []
     skills_source = File.join(package_root, "skills")
     installed += install_skills_flat(skills_source, File.join(config[:dir], "skills")) if File.directory?(skills_source)
+    installed += install_agents(File.join(config[:dir], "agents"))
 
     write_manifest(installed, File.join(config[:dir], "plastic-manifest.json"))
     { agent: config[:name], success: true, files: installed.size }
@@ -412,6 +417,23 @@ class InstallerCore
     end
 
     installed
+  end
+
+  # Copy every repo agents/*.md into <agents_root> (flat, basename preserved), so
+  # the role files install as ~/.claude/agents/<name>.md (and the codex/hermes
+  # equivalents). Returns the installed destination paths so callers can append
+  # them to `installed` before write_manifest (manifest + prune are then automatic).
+  # No-op safe: returns [] when the package has no agents dir or it is empty.
+  def install_agents(agents_root)
+    sources = Dir.glob(File.join(package_root, "agents", "*.md"))
+    return [] if sources.empty?
+
+    FileUtils.mkdir_p(agents_root)
+    sources.map do |src|
+      dest = File.join(agents_root, File.basename(src))
+      FileUtils.cp(src, dest)
+      dest
+    end
   end
 
   # --- Legacy plugin migration ---

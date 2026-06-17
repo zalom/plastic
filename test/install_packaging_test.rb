@@ -2,6 +2,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "json"
 require "fileutils"
+require "digest"
 
 # Intent 29: Plastic ships as flat, hyphen-namespaced personal skills
 # (plastic-<name>/) with NO Claude Code plugin/marketplace registration, a
@@ -138,5 +139,76 @@ class InstallPackagingTest < Minitest::Test
     pkg = JSON.parse(File.read(File.join(REPO, "package.json")))
     assert_includes pkg["files"], "templates/",
       "templates/ must be in package.json `files` so it ships to consumers"
+  end
+
+  # --- Agents are synced into each harness agent dir under the manifest (intent 63) ---
+  # Role files in agents/ form the auto-mode team. The installer must copy every
+  # shipped agents/*.md into <dir>/agents/ and track each in the harness manifest,
+  # so prune-on-update and uninstall cover them for free. These guards fail loudly
+  # if install_agents is removed or a role file stops being tracked.
+
+  def test_install_agents_copies_and_returns_every_agent
+    pkg_root = File.join(@dir, "pkg")
+    FileUtils.mkdir_p(File.join(pkg_root, "agents"))
+    %w[plastic-planner.md plastic-enforcer.md].each do |name|
+      File.write(File.join(pkg_root, "agents", name), "# #{name}")
+    end
+    installer = InstallerCore.new(package_root: pkg_root, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
+
+    agents_root = File.join(@dir, "agents")
+    installed = installer.install_agents(agents_root)
+
+    %w[plastic-planner.md plastic-enforcer.md].each do |name|
+      dest = File.join(agents_root, name)
+      assert File.file?(dest), "#{name} must be copied into the agent dir"
+      assert_includes installed, dest, "returned paths must include #{name}"
+    end
+  end
+
+  def test_install_agents_is_noop_without_an_agents_dir
+    pkg_root = File.join(@dir, "pkg-noagents")
+    FileUtils.mkdir_p(pkg_root)
+    installer = InstallerCore.new(package_root: pkg_root, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
+
+    assert_empty installer.install_agents(File.join(@dir, "agents"))
+  end
+
+  def test_every_repo_agent_installs_and_is_manifest_tracked_for_each_harness
+    agent_names = Dir.glob(File.join(REPO, "agents", "*.md")).map { |p| File.basename(p) }
+    refute_empty agent_names, "expected agents/*.md role files to ship"
+
+    installer = InstallerCore.new(package_root: REPO, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
+
+    harnesses = [
+      ["claude", ->(dir) { installer.install_claude({ name: "Claude Code", dir: dir }, false) },
+       ->(dir) { File.join(dir, "plastic", "manifest.json") }],
+      ["codex", ->(dir) { installer.install_codex({ name: "Codex CLI", dir: dir }, false) },
+       ->(dir) { File.join(dir, "plastic-manifest.json") }],
+      ["hermes", ->(dir) { installer.install_hermes({ name: "Hermes", dir: dir }, false) },
+       ->(dir) { File.join(dir, "plastic-manifest.json") }],
+    ]
+
+    harnesses.each do |key, run_install, manifest_for|
+      agent_home = File.join(@dir, key)
+      FileUtils.mkdir_p(agent_home)
+      run_install.call(agent_home)
+
+      agents_root = File.join(agent_home, "agents")
+      manifest = JSON.parse(File.read(manifest_for.call(agent_home)))["files"]
+
+      agent_names.each do |name|
+        dest = File.join(agents_root, name)
+        assert File.file?(dest), "#{key}: #{name} must install into #{agents_root}"
+        assert manifest.key?(dest), "#{key}: manifest must track #{dest}"
+        assert_equal Digest::SHA256.file(dest).hexdigest, manifest[dest],
+          "#{key}: manifest sha256 for #{name} must match on-disk digest"
+      end
+    end
+  end
+
+  def test_agents_dir_is_packaged_for_distribution
+    pkg = JSON.parse(File.read(File.join(REPO, "package.json")))
+    assert_includes pkg["files"], "agents/",
+      "agents/ must be in package.json `files` so role files ship to consumers"
   end
 end

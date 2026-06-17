@@ -184,6 +184,7 @@ class DoctorManifestSyncTest < Minitest::Test
     write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
+    write_agents(DOCTOR_TEST_CLAUDE)
     File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "1.0.0")
     write_core_scripts(File.join(DOCTOR_TEST_HOME, "scripts"))
 
@@ -269,6 +270,7 @@ class DoctorManifestSyncTest < Minitest::Test
     write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
+    write_agents(DOCTOR_TEST_CLAUDE)
     write_core_scripts(File.join(DOCTOR_TEST_HOME, "scripts"))
     # global VERSION 2.0.0 vs agent-side plastic/VERSION 1.0.0 (from build_intact_install)
     File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "2.0.0")

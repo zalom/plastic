@@ -111,6 +111,12 @@ module DoctorTestHelpers
     File.write(File.join(skill_dir, "SKILL.md"), "# skill")
   end
 
+  def write_agents(agent_dir)
+    agents_dir = File.join(agent_dir, "agents")
+    FileUtils.mkdir_p(agents_dir)
+    File.write(File.join(agents_dir, "plastic-enforcer.md"), "# agent")
+  end
+
   # Build all required core scripts
   def write_core_scripts(scripts_dir)
     FileUtils.mkdir_p(scripts_dir)
@@ -392,6 +398,7 @@ class DoctorAgentRegistrationTest < Minitest::Test
     write_claude_hooks(hooks_dir)
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
+    write_agents(DOCTOR_TEST_CLAUDE)
 
     checks = doctor.check_agent_registration("claude")
     statuses = checks.map { |c| c[:status] }
@@ -468,6 +475,33 @@ class DoctorAgentRegistrationTest < Minitest::Test
     skills_check = checks.find { |c| c[:name] == "skills_exist" }
 
     assert_equal "fail", skills_check[:status]
+  end
+
+  def test_missing_agents_directory_fails
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    write_claude_hooks(hooks_dir)
+    write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+    # No agents directory
+
+    checks = doctor.check_agent_registration("claude")
+    agents_check = checks.find { |c| c[:name] == "agents_exist" }
+
+    refute_nil agents_check, "agent_registration must include an agents_exist check"
+    assert_equal "fail", agents_check[:status]
+  end
+
+  def test_installed_agents_pass
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    write_claude_hooks(hooks_dir)
+    write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+    write_agents(DOCTOR_TEST_CLAUDE)
+
+    checks = doctor.check_agent_registration("claude")
+    agents_check = checks.find { |c| c[:name] == "agents_exist" }
+
+    assert_equal "pass", agents_check[:status]
   end
 
   def test_missing_agent_dir_fails
@@ -840,6 +874,7 @@ class DoctorIntegrationTest < Minitest::Test
     write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
+    write_agents(DOCTOR_TEST_CLAUDE)
 
     # Agent-side VERSION
     agent_plastic = File.join(DOCTOR_TEST_CLAUDE, "plastic")

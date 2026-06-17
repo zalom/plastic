@@ -52,6 +52,26 @@ Honor the cycle: What → Why (spec.md) → How (plan.md + actions/ + checklist.
 
 - `--skip-permissions` — bypass hard stops on destructive actions on existing projects. Full trust mode. Default: off.
 
+## Team Spin-Up
+
+Auto mode spins up exactly ONE enforcer-led team per intent. The plastic-enforcer IS this orchestrator (you), not a separately dispatched agent, which avoids the who-gates-the-gater regress.
+
+Roster (one role per cycle stage):
+
+- **plastic-brainstorming** (Why exploration): enriches `## Context` + `### Decisions`
+- **plastic-spec-specialist** (`spec.md`)
+- **plastic-planner** (`plan.md` + `actions/` + `checklist.md`)
+- **plastic-executor** (code + checklist + `## Insights`)
+- **plastic-enforcer** (orchestrates + gates; that is YOU)
+
+Dispatch rule: sequential, one specialist per stage on one branch (the deliverables share files). Gate each deliverable against the stage's exit criteria before handing off. Delegate the actual How and Exec dispatch to `superpowers:subagent-driven-development` and `superpowers:dispatching-parallel-agents` (see the How and Exec phases below); do not restate them.
+
+Final-gate review: dispatch an independent reviewer subagent at the final gate only, not as a standing role.
+
+Headless manual gate: when running headless or in the background, enforce gates manually and do not rely on hooks, because `CLAUDE_SESSION_ID` may be unset (this ties to the arm-gate fallback above).
+
+Solo fallback: if the harness has no subagent dispatch, fall back to a single agent walking the full What, Why, How, Exec cycle yourself. This preserves current behavior.
+
 ## Stage-Aware Entry
 
 Read the active intent's directory. Determine current lifecycle stage from filesystem state:
@@ -184,4 +204,4 @@ If the agent gets stuck (can't resolve a gap, dependency is missing, tests fail 
 
 ## References
 
-- Read `references/agent-architecture.md` for the full agent hierarchy (Main Orchestrator, Project Orchestrators, coordination loop) when dispatching agents or understanding autonomous delivery scope
+- Read `references/agent-architecture.md` for the full team model (the 5-role enforcer-led team, per-stage handoffs, gate ownership, headless note, solo fallback) and the orchestrator hierarchy (Main Orchestrator, Project Orchestrators, coordination loop) when spinning up the team or understanding autonomous delivery scope
