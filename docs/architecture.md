@@ -116,6 +116,10 @@ QMD is an optional, recommended local markdown search engine layered over the st
 
 A single validator library, `scripts/lib/intent_validator.rb`, defines whether an intent is born complete (every required frontmatter field present, and `sources` and `chain` well-formed arrays of id strings). It is the only definition of that contract. It is exposed as the `scripts/validate-intent` CLI (exit 0 when complete, non-zero with a report otherwise) and consulted by both the `plastic-creating-intent` skill (a self-verify step after the write) and doctor (the `frontmatter_fields` and `frontmatter_valid` conventions checks). Intents are created only through `plastic-creating-intent` and never hand-authored, so completeness rests on machinery rather than on agent discipline.
 
+### project store provisioning
+
+Project store creation has a single source of truth: the `scripts/provision-project-store` verb, backed by `scripts/lib/store_provisioning.rb`. It is pure filesystem and idempotent: it makes the store directory at `~/.plastic/projects/{slug}/store`, then writes, only if missing, `.gitkeep`, `INDEX.md` (from `templates/index.md`), and `project.yml` (from `templates/project.yml`). It requires the project to already be registered in `projects.yml` (an unregistered slug exits non-zero and creates nothing) and performs no qmd mutation, so any caller (including a doctor fix) stays deterministic. The `plastic-creating-intent` and `plastic-creating-project` skills call it instead of an inline `mkdir`, and `plastic-add-project-store` adds a store to an already-registered project and then runs the separate optional `qmd-sync register` step. Doctor's additive `project_store_dir` check warns (fixable) when a registered project's store directory is missing, naming `provision-project-store {slug}` as the fix.
+
 ## session boot
 
 Boot is owned by hooks, so it runs by construction on every session start, not as prose a skill follows (intent 36a):

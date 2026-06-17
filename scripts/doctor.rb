@@ -832,6 +832,22 @@ class Doctor
       )
     end
 
+    # project_store_dir
+    store_dir = File.join(project_dir, "store")
+    if File.directory?(store_dir)
+      checks << check(
+        category: "project_stores", name: "project_store_dir", status: "pass",
+        message: "Store directory exists for '#{slug}'"
+      )
+    else
+      checks << check(
+        category: "project_stores", name: "project_store_dir", status: "warn",
+        message: "Store directory missing for '#{slug}'",
+        details: [tilde(store_dir)],
+        fixable: true, fix_hint: "Run: provision-project-store #{slug}"
+      )
+    end
+
     # project_index
     project_index = File.join(project_dir, "INDEX.md")
     if File.exist?(project_index)

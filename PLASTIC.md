@@ -183,6 +183,7 @@ Detailed conventions live inside the skills that use them, not in this file.
 | Save/restore state | `plastic-savepoint`, `plastic-continuing` | context management |
 | Knowledge graph, linking | `plastic-linking-intents` | zettelkasten, wikilinks |
 | Projects, hubs | `plastic-creating-project` | hubs, project stores |
+| Provision a project store | `plastic-add-project-store` | project stores |
 | Index maintenance | `plastic-managing-index` | — |
 | Releases, deprecations | `plastic-releasing` | deprecation process |
 | Health diagnostics | `plastic-doctor` | three scopes: `--core` (binary install-integrity check, runs on SessionStart), `--store [global\|<slug>]` (per-store check, runs on dashboard load), no flag = full check (runs after every update); gate enforcement, stuck detection |

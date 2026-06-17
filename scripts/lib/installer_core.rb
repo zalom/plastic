@@ -208,6 +208,8 @@ class InstallerCore
       "scripts/qmd-sync" => "scripts/qmd-sync",
       "scripts/lib/intent_validator.rb" => "scripts/lib/intent_validator.rb",
       "scripts/validate-intent" => "scripts/validate-intent",
+      "scripts/lib/store_provisioning.rb" => "scripts/lib/store_provisioning.rb",
+      "scripts/provision-project-store" => "scripts/provision-project-store",
       "scripts/lib/installer_core.rb" => "scripts/lib/installer_core.rb",
       "scripts/install.rb" => "scripts/install.rb",
       "scripts/update.rb" => "scripts/update.rb",
@@ -264,31 +266,6 @@ class InstallerCore
     MD
 
     puts "  \u{2705} Store bootstrapped"
-  end
-
-  def bootstrap_project_store(slug)
-    project_dir = File.join(plastic_home, "projects", slug)
-    store_dir = File.join(project_dir, "store")
-
-    FileUtils.mkdir_p(store_dir)
-
-    template = File.join(package_root, "templates", "project.yml")
-    dest = File.join(project_dir, "project.yml")
-    write_if_missing(dest, File.read(template)) if File.exist?(template)
-
-    write_if_missing(File.join(project_dir, "INDEX.md"), <<~MD)
-      # Index
-
-      ## Active
-
-      ## Future
-
-      ## Clusters
-
-      ## Abandoned
-
-      ## Completed
-    MD
   end
 
   # --- Agent adapters ---

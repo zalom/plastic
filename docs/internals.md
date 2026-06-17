@@ -192,6 +192,11 @@ autonomous execution.
   after every `plastic-update` (informational: prints the report but does not block
   or revert the update).
 
+The project-stores category includes an additive `project_store_dir` check
+(intent 61): when a registered project's `store/` directory is missing, it warns
+and is fixable, with the fix `provision-project-store {slug}`. Doctor stays
+read-only; the doctor skill applies the fix by running the verb.
+
 `hook-session-start` calls `--core` in-process (reusing the `Doctor` class, no second
 process spawn) to drive the boot banner on every session start (intent 36a).
 
@@ -287,6 +292,32 @@ one shared definition of "born complete" that creation and diagnosis both consul
   malformed `sources` or `chain`. There is no `--fix` flag on `doctor.rb`.
 - **Scope boundary**: this is per-intent frontmatter validity only. Store-wide
   `sources`/`chain` symmetry across intents is out of scope and owned by intent 49.
+
+## project store provisioning
+
+A project could be registered in `projects.yml` yet have no store on disk, which
+left a store-less project that qmd could not register and doctor could only warn
+about. Store creation was an inline `mkdir` duplicated across skills. The fix is
+one shared definition of store creation that creation and repair both consult.
+
+- **Single source of truth**: `scripts/lib/store_provisioning.rb` is the only
+  definition of how a project store is made (mkdir the store at
+  `~/.plastic/projects/{slug}/store`, then write-if-missing `.gitkeep`, `INDEX.md`
+  from `templates/index.md`, and `project.yml` from `templates/project.yml`). It
+  is injectable (`plastic_home`, `package_root`), hermetic, idempotent, uses no
+  eval, does no global-constant injection, and performs no qmd mutation, mirroring
+  `intent_validator.rb`. The logic was migrated from the orphaned
+  `InstallerCore#bootstrap_project_store`, which is now removed.
+- **Consumers sit on top of it**: the `scripts/provision-project-store` CLI (exit
+  0 on success, non-zero with a report when the slug is unregistered or on usage
+  error); the `plastic-creating-intent` and `plastic-creating-project` skills (each
+  calls the verb after `projects.yml` registration instead of an inline `mkdir`);
+  the `plastic-add-project-store` skill (resolve slug, run the verb, then the
+  separate optional `qmd-sync register --store` step); and doctor's read-only
+  `project_store_dir` check (warns and is fixable via the verb).
+- **Scope boundary**: the provisioner is pure filesystem. It never mutates qmd,
+  never edits `projects.yml`, and registration with qmd stays a separate skill
+  step that no-ops when qmd is absent.
 
 ## living-document
 

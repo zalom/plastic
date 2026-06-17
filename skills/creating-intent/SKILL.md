@@ -109,8 +109,6 @@ When the user says "start building" or the plan calls for a new project:
    mkdir -p <project_root>/<slug>
    cd <project_root>/<slug>
    git init
-   mkdir -p ~/.plastic/projects/{slug}/store
-   touch ~/.plastic/projects/{slug}/store/.gitkeep
    ```
 3. Copy `AGENTS.md` template from `${CLAUDE_PLUGIN_ROOT}/templates/agents.md`
 4. Register in `~/.plastic/projects.yml`:
@@ -121,8 +119,14 @@ When the user says "start building" or the plan calls for a new project:
      registered: <today>
      status: active
    ```
-5. Add `project-<slug>` to the intent's `tags` array
-6. Auto-commit in both `~/.plastic/` and the new project
+5. Provision the project store (the single source of truth for store creation;
+   runs after step 4 because the provisioner requires the project to be
+   registered):
+   ```bash
+   ruby ~/.plastic/scripts/provision-project-store <slug>
+   ```
+6. Add `project-<slug>` to the intent's `tags` array
+7. Auto-commit in both `~/.plastic/` and the new project
 
 ### 7. Update INDEX.md
 

@@ -613,6 +613,7 @@ class DoctorProjectStoresTest < Minitest::Test
     project_dir = File.join(@projects_dir, "my-app")
     project_path = File.join(Dir.tmpdir, "my-app-src-#{Process.pid}")
     FileUtils.mkdir_p(project_dir)
+    FileUtils.mkdir_p(File.join(project_dir, "store"))
     FileUtils.mkdir_p(project_path)
     File.write(File.join(project_dir, "INDEX.md"), "# My App Index\n")
     File.write(File.join(project_dir, "project.yml"), YAML.dump({
@@ -655,6 +656,47 @@ class DoctorProjectStoresTest < Minitest::Test
 
     assert_equal "warn", index_check[:status]
     assert index_check[:message].include?("no-index")
+  end
+
+  # intent 61: additive project_store_dir check
+  def test_missing_store_dir_warns_and_is_fixable
+    File.write(File.join(DOCTOR_TEST_HOME, "projects.yml"), YAML.dump({
+      "projects" => {
+        "no-store" => { "path" => "/tmp/no-store" },
+      },
+    }))
+
+    # Create the project dir + INDEX.md + project.yml but NOT store/
+    project_dir = File.join(@projects_dir, "no-store")
+    FileUtils.mkdir_p(project_dir)
+    File.write(File.join(project_dir, "INDEX.md"), "# Index\n")
+    File.write(File.join(project_dir, "project.yml"), YAML.dump({ "governing_docs" => ["AGENTS.md"] }))
+
+    checks = doctor.check_project_stores
+    store_check = checks.find { |c| c[:name] == "project_store_dir" }
+
+    refute_nil store_check, "project_store_dir check should be present"
+    assert_equal "warn", store_check[:status]
+    assert_equal true, store_check[:fixable]
+    assert_includes store_check[:fix_hint], "provision-project-store"
+    assert store_check[:message].include?("no-store")
+  end
+
+  def test_present_store_dir_passes
+    File.write(File.join(DOCTOR_TEST_HOME, "projects.yml"), YAML.dump({
+      "projects" => {
+        "has-store" => { "path" => "/tmp/has-store" },
+      },
+    }))
+
+    project_dir = File.join(@projects_dir, "has-store")
+    FileUtils.mkdir_p(File.join(project_dir, "store"))
+
+    checks = doctor.check_project_stores
+    store_check = checks.find { |c| c[:name] == "project_store_dir" }
+
+    refute_nil store_check
+    assert_equal "pass", store_check[:status]
   end
 
   def test_missing_projects_yml_warns
@@ -972,6 +1014,15 @@ class DoctorStoreScopingTest < Minitest::Test
     assert_includes categories, "conventions"
     # global store category should not be present
     refute_includes categories, "global_store"
+  end
+
+  # intent 61: the --store <slug> path includes the additive project_store_dir
+  # check, and it passes because setup already created @project_store.
+  def test_store_slug_includes_passing_project_store_dir
+    result = doctor.run_store_checks(@project_slug)
+    store_check = result[:checks].find { |c| c[:name] == "project_store_dir" }
+    refute_nil store_check, "project_store_dir should be in the --store <slug> result"
+    assert_equal "pass", store_check[:status]
   end
 
   def test_store_all_covers_both

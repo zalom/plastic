@@ -1,0 +1,53 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# provision-project-store — deterministic CLI over StoreProvisioning (intent 61).
+#
+# Creates a registered project's store at ~/.plastic/projects/{slug}/store: it
+# makes the store directory, then writes, only if missing, .gitkeep, INDEX.md,
+# and project.yml. It is pure filesystem and idempotent, so re-running never
+# clobbers existing files and performs no qmd mutation. The project must already
+# be registered in projects.yml; an unregistered slug exits non-zero and creates
+# nothing.
+#
+# Usage:
+#   provision-project-store <slug> [--home <path>]
+#
+# Exit codes: 0 (store provisioned), 1 (unregistered slug / error on stderr),
+# 2 (usage). --home <path> overrides the Plastic home (default: ~/.plastic).
+
+require_relative "lib/store_provisioning"
+
+def plastic_home(args)
+  if (i = args.index("--home")) && args[i + 1]
+    File.expand_path(args[i + 1])
+  else
+    File.expand_path(ENV["PLASTIC_HOME"] || "~/.plastic")
+  end
+end
+
+home = plastic_home(ARGV)
+
+# First positional arg, skipping any flag and the value that follows --home.
+home_value_index = (i = ARGV.index("--home")) ? i + 1 : nil
+slug_index = ARGV.each_index.find do |idx|
+  arg = ARGV[idx]
+  !arg.start_with?("--") && idx != home_value_index
+end
+slug = slug_index && ARGV[slug_index]
+
+if slug.nil?
+  warn "usage: provision-project-store <slug> [--home <path>]"
+  exit 2
+end
+
+result = StoreProvisioning.provision(slug, plastic_home: home)
+
+if result[:ok]
+  puts "OK: #{result[:store_dir]}"
+  exit 0
+end
+
+warn result[:error]
+exit 1

@@ -117,6 +117,7 @@ Use the `fix_hint` value to determine the correct action:
 | "Add missing entries to INDEX.md" | Add orphaned intents to the appropriate INDEX.md section |
 | "Remove stale references from INDEX.md" | Edit INDEX.md to remove ghost references |
 | "Inject the missing required frontmatter field(s)" | Edit the intent's `{ID}--{slug}.md` frontmatter to add the missing key (e.g. `chain: []`) without touching other keys |
+| "Run: provision-project-store {slug}" | Run `provision-project-store <slug>` (or invoke the `plastic-add-project-store` skill) to create the missing store |
 | "Re-run installer" | Run `npx @zalom/plastic@latest --agent` |
 
 For fixes the agent cannot handle automatically, explain what the user needs
