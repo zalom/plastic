@@ -779,6 +779,123 @@ end
 # 8. Version comparison helper
 # ===========================================================================
 
+# ===========================================================================
+# 9. Task C — `--store [global|<project>]` scoping
+# ===========================================================================
+
+class DoctorStoreScopingTest < Minitest::Test
+  include DoctorTestHelpers
+
+  def setup
+    FileUtils.rm_rf(DOCTOR_TEST_HOME)
+    FileUtils.mkdir_p(DOCTOR_TEST_HOME)
+
+    # Global store with one intent + INDEX referencing it.
+    @global_store = File.join(DOCTOR_TEST_HOME, "store")
+    FileUtils.mkdir_p(@global_store)
+    write_intent(@global_store, "1a--global-intent")
+    write_index(File.join(DOCTOR_TEST_HOME, "INDEX.md"), store_refs: ["store/1a--global-intent"])
+
+    # One registered project with its own store + one intent.
+    @project_slug = "plastic"
+    project_dir = File.join(DOCTOR_TEST_HOME, "projects", @project_slug)
+    @project_store = File.join(project_dir, "store")
+    FileUtils.mkdir_p(@project_store)
+    write_intent(@project_store, "2b--project-intent")
+    File.write(File.join(project_dir, "INDEX.md"), "# Project Index\n")
+
+    File.write(File.join(DOCTOR_TEST_HOME, "projects.yml"), YAML.dump({
+      "projects" => { @project_slug => { "path" => File.join(Dir.tmpdir, "plastic-src-#{Process.pid}") } },
+    }))
+  end
+
+  def teardown
+    FileUtils.rm_rf(DOCTOR_TEST_HOME)
+  end
+
+  # --- parse_args ---
+
+  def test_parse_store_no_value_is_all
+    flags = doctor.parse_args(["--store"])
+    assert_equal :all, flags[:store]
+  end
+
+  def test_parse_store_global
+    flags = doctor.parse_args(["--store", "global"])
+    assert_equal :global, flags[:store]
+  end
+
+  def test_parse_store_slug
+    flags = doctor.parse_args(["--store", "plastic"])
+    assert_equal "plastic", flags[:store]
+  end
+
+  def test_parse_store_absent
+    flags = doctor.parse_args([])
+    assert_nil flags[:store]
+  end
+
+  def test_parse_store_followed_by_flag_is_all
+    flags = doctor.parse_args(["--store", "--agent", "codex"])
+    assert_equal :all, flags[:store]
+    assert_equal "codex", flags[:agent]
+  end
+
+  # --- check_conventions scoping ---
+
+  def test_conventions_scoped_to_global_excludes_project
+    checks = doctor.check_conventions(scopes: ["global"])
+    dirname = checks.find { |c| c[:name] == "intent_dirname" }
+    assert_includes dirname[:message], "1", "should count the single global intent"
+    # The project intent name should not appear anywhere in details.
+    assert checks.none? { |c| (c[:details] || []).any? { |d| d.include?("2b--project-intent") } }
+  end
+
+  def test_conventions_nil_scope_covers_all
+    checks = doctor.check_conventions
+    dirname = checks.find { |c| c[:name] == "intent_dirname" }
+    assert_includes dirname[:message], "2", "nil scope should count both intents"
+  end
+
+  # --- run_store_checks ---
+
+  def test_store_global_excludes_project_intent
+    result = doctor.run_store_checks(:global)
+    all_text = result[:checks].to_json
+    refute_includes all_text, "2b--project-intent", "global scope must not touch project intent"
+  end
+
+  def test_store_slug_covers_only_that_project
+    result = doctor.run_store_checks(@project_slug)
+    categories = result[:checks].map { |c| c[:category] }.uniq
+    assert_includes categories, "project_stores"
+    assert_includes categories, "conventions"
+    # global store category should not be present
+    refute_includes categories, "global_store"
+  end
+
+  def test_store_all_covers_both
+    result = doctor.run_store_checks(:all)
+    categories = result[:checks].map { |c| c[:category] }.uniq
+    assert_includes categories, "global_store"
+    assert_includes categories, "project_stores"
+    assert_includes categories, "conventions"
+  end
+
+  def test_store_unknown_slug_is_fail
+    result = doctor.run_store_checks("does-not-exist")
+    assert_equal "fail", result[:status]
+    assert result[:checks].any? { |c| c[:message].include?("does-not-exist") }
+  end
+
+  def test_store_global_has_three_state_envelope
+    result = doctor.run_store_checks(:global)
+    %i[version timestamp status agent checks summary].each do |key|
+      assert result.key?(key), "store result missing envelope key #{key}"
+    end
+  end
+end
+
 class DoctorVersionCompareTest < Minitest::Test
   include DoctorTestHelpers
   def test_equal_versions

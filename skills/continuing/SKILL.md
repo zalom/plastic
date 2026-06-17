@@ -40,6 +40,11 @@ here — run the data payload and fill + present the matching template:
 Fill the matching template from this skill's `templates/` and **present the filled Markdown
 in your reply** (every time). See `plastic-dashboard` for the fill rules and entry flow.
 
+The board load runs the scoped store check on every load (`doctor --store <scope>`): the
+global board runs `--store global` and a project board runs `--store <slug>`. The result
+arrives in the payload as `store_health`; surface it as a one-line store-health note. It is
+non-fatal (a warn or fail is shown as data, it does not block continuing).
+
 ### Then stop
 Present "here is the state, what next?" and wait. Offer active intents first, then future
 intents. Do not start executing work. The branches below are the only follow-ups:

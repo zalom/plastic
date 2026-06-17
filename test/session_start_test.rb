@@ -11,42 +11,40 @@ require_relative "../scripts/lib/boot_banner"
 class BootBannerTest < Minitest::Test
   def test_pass_renders_loaded_with_version
     health = { status: "pass", checks: [{ name: "hooks_exist", status: "pass", message: "ok" }] }
-    assert_equal "Plastic Core loaded — v1.2.3", BootBanner.render(health: health, version: "1.2.3")
+    assert_equal "Plastic Core loaded — v1.2.3 | doctor --core run: success",
+                 BootBanner.render(health: health, version: "1.2.3")
   end
 
   def test_pass_without_version_says_unknown
     health = { status: "pass", checks: [] }
-    assert_equal "Plastic Core loaded — vunknown", BootBanner.render(health: health, version: nil)
+    assert_equal "Plastic Core loaded — vunknown | doctor --core run: success",
+                 BootBanner.render(health: health, version: nil)
   end
 
-  def test_fail_names_first_failing_check
+  def test_fail_yields_binary_error_line
     health = { status: "fail", checks: [
       { name: "hooks_exist", status: "pass", message: "ok" },
       { name: "scripts_present", status: "fail", message: "missing folgezettel-id" },
     ] }
     out = BootBanner.render(health: health, version: "1.2.3")
-    assert_includes out, "Plastic Core loaded with issues"
-    assert_includes out, "scripts_present: missing folgezettel-id"
-    assert_includes out, "run /plastic-doctor"
+    assert_equal "Plastic Core loaded — v1.2.3 | doctor --core run: error — run /plastic-doctor", out
   end
 
-  def test_warn_used_when_no_fail_present
+  def test_warn_yields_binary_error_line
     health = { status: "warn", checks: [{ name: "version_match", status: "warn", message: "mismatch" }] }
     out = BootBanner.render(health: health, version: "1.2.3")
-    assert_includes out, "version_match: mismatch"
+    assert_equal "Plastic Core loaded — v1.2.3 | doctor --core run: error — run /plastic-doctor", out
   end
 
-  def test_non_pass_with_no_problem_check_uses_generic_issue_line
+  def test_non_pass_with_no_checks_yields_binary_error_line
     health = { status: "fail", checks: [] }
     out = BootBanner.render(health: health, version: "1.2.3")
-    assert_includes out, "Plastic Core loaded with issues"
-    assert_includes out, "run /plastic-doctor"
+    assert_equal "Plastic Core loaded — v1.2.3 | doctor --core run: error — run /plastic-doctor", out
   end
 
-  def test_nil_health_is_error_banner
+  def test_nil_health_yields_binary_error_line
     out = BootBanner.render(health: nil, version: "1.2.3")
-    assert_includes out, "Plastic Core: health check error"
-    assert_includes out, "run /plastic-doctor"
+    assert_equal "Plastic Core loaded — v1.2.3 | doctor --core run: error — run /plastic-doctor", out
   end
 end
 
@@ -86,7 +84,7 @@ class SessionStartHookTest < Minitest::Test
     out, _err, status = run_hook
     assert_equal 0, status.exitstatus, "session start must never block"
     ctx = context_from(out)
-    assert_includes ctx, "with issues"
+    assert_includes ctx, "doctor --core run:"
     assert_includes ctx, "run /plastic-doctor"
   end
 

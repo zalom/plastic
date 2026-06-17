@@ -2,14 +2,17 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "json"
+require "digest"
 
 require_relative "../scripts/lib/installer_core"
 
 # Channel derivation, semver, and the append-only versions.json ledger (intent 30a1a).
 class InstallerCoreTest < Minitest::Test
+  WORKTREE = File.expand_path("../../", __FILE__)
+
   def setup
     @home = Dir.mktmpdir("core-test")
-    @core = InstallerCore.new(package_root: ".", plastic_home: @home, version: "1.0.0-alpha.18")
+    @core = InstallerCore.new(package_root: WORKTREE, plastic_home: @home, version: "1.0.0-alpha.18")
   end
 
   def teardown
@@ -74,5 +77,42 @@ class InstallerCoreTest < Minitest::Test
     entry = @core.ledger_current
     refute entry.key?("channel"), "channel is derived from version, never stored"
     assert entry.key?("at")
+  end
+
+  # --- distribute: global manifest ---
+
+  def test_distribute_writes_global_manifest
+    @core.distribute(:install)
+
+    manifest_path = File.join(@home, "manifest.json")
+    assert File.exist?(manifest_path), "distribute must write #{manifest_path}"
+
+    data = JSON.parse(File.read(manifest_path))
+    files = data["files"]
+    assert_kind_of Hash, files, "manifest must have a 'files' hash"
+
+    # VERSION file must be present and hash must match on-disk content
+    version_path = File.join(@home, "VERSION")
+    assert files.key?(version_path), "manifest must list VERSION (#{version_path})"
+    assert_equal Digest::SHA256.file(version_path).hexdigest, files[version_path],
+                 "manifest sha256 for VERSION must match on-disk digest"
+
+    # Every core_files dest that exists must be in the manifest with correct hash
+    @core.core_files.each_value do |dest|
+      abs = File.join(@home, dest)
+      next unless File.exist?(abs)
+      assert files.key?(abs), "manifest must list #{abs}"
+      assert_equal Digest::SHA256.file(abs).hexdigest, files[abs],
+                   "manifest sha256 for #{abs} must match on-disk digest"
+    end
+
+    # manifest.json itself must NOT be listed
+    refute files.key?(manifest_path), "manifest must not list itself"
+  end
+
+  def test_distribute_update_mode_also_writes_manifest
+    @core.distribute(:update)
+    assert File.exist?(File.join(@home, "manifest.json")),
+           "distribute(:update) must also write the global manifest"
   end
 end

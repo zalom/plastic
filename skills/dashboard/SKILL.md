@@ -32,10 +32,17 @@ ruby ~/.plastic/scripts/dashboard.rb [continue|project <slug>] --data
 - `continue` (default) → the **global** board payload (`mode: "global"`).
 - `project <slug>` → that **project** board payload (`mode: "project"`).
 
-The payload is read-only JSON. Global-board fields: `date`, `recently_worked`, `matrix`
-(`quick_win`/`next_big`/`defer`/`triage`/`research`, each a list of `{line, bullet, ...}`),
-`counts`, `projects`, `project_totals`. Project-board fields: `slug`, `description`,
-`recently_worked`, `matrix`, `counts`, `active`, `future`.
+The payload is read-only JSON. Global-board fields: `date`, `store_health`, `recently_worked`,
+`matrix` (`quick_win`/`next_big`/`defer`/`triage`/`research`, each a list of `{line, bullet, ...}`),
+`counts`, `projects`, `project_totals`. Project-board fields: `slug`, `store_health`,
+`description`, `recently_worked`, `matrix`, `counts`, `active`, `future`.
+
+Each board load runs the scoped store check (`doctor --store <scope>`): the global board runs
+`--store global` and a project board runs `--store <slug>`. The result rides in the payload as
+`store_health` (`{scope, status, summary, failing_checks}`). Surface it as a one-line
+store-health note on the board (for example `store health: pass (3/3)` or
+`store health: warn (orphaned_intents)`). It is non-fatal: a warn or fail is shown as data and
+never blocks the board.
 
 ### Step 2 — Fill the matching template
 

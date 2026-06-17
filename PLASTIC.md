@@ -184,6 +184,6 @@ Detailed conventions live inside the skills that use them, not in this file.
 | Projects, hubs | `plastic-creating-project` | hubs, project stores |
 | Index maintenance | `plastic-managing-index` | — |
 | Releases, deprecations | `plastic-releasing` | deprecation process |
-| Health diagnostics | `plastic-doctor` | gate enforcement, stuck detection |
+| Health diagnostics | `plastic-doctor` | three scopes: `--core` (binary install-integrity check, runs on SessionStart), `--store [global\|<slug>]` (per-store check, runs on dashboard load), no flag = full check (runs after every update); gate enforcement, stuck detection |
 | Writing agent instructions | `plastic-writing-instructions` | agentskills.io spec |
 | Evaluating skills, evals | `plastic-evaluating-skills` | eval methodology, convention checks |

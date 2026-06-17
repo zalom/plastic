@@ -7,6 +7,10 @@
   2. Replace every {{placeholder}} below with the corresponding JSON value.
   3. For the category sections: the template shows ONE example section.
      Repeat that pattern for each unique category in the checks array.
+     The scope determines which categories appear:
+       --core scope:      agent_registration, core_files (binary pass/error only)
+       --store scope:     global_store, conventions, project_stores
+       full (no flag):    all six categories below
      The six known categories and their display names are:
        global_store       -> "Global Store"
        conventions        -> "Conventions"

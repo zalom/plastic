@@ -5,10 +5,51 @@ description: Use when diagnosing Plastic installation health, after updates, or 
 
 # Doctor — Plastic Health Check
 
+## Scopes
+
+Doctor has three scopes. Pick the right one for the situation:
+
+| Scope | Flag | When it runs | States |
+|-------|------|--------------|--------|
+| Core check | `--core` | SessionStart hook (automatic), also available on demand | Binary: pass or error |
+| Store check | `--store [global\|<slug>]` | Dashboard load, `plastic-continuing` | Three-state: pass / warn / fail |
+| Full check | (no flag) | After every update (automatic), or `/plastic-doctor` | Three-state: pass / warn / fail |
+
+### `--core` (binary, manifest-backed)
+
+Verifies that every core file is present and content-matches what the installed
+version shipped. It checks two install manifests:
+
+- `~/.plastic/manifest.json` (global manifest, covers PLASTIC.md and global scripts)
+- `~/.claude/plastic/manifest.json` (agent-side manifest, covers agent scripts and hooks)
+
+Each manifest maps a file path to its SHA256. The core check also confirms hooks
+are registered, scripts are present and executable, and the installed version
+matches. Result is binary: exit 0 on pass, non-zero on error. It never produces
+warnings.
+
+### `--store [global|<slug>]`
+
+Checks store state: intents are well-formed, INDEX sections are present, conventions
+are followed, and links are valid. Scope options:
+
+- No argument: checks all stores (global and all projects)
+- `global`: checks only the global store
+- A project slug (e.g. `--store plastic`): checks only that project's store
+
+Produces three-state results (pass / warn / fail) and is run per-scope at dashboard
+load time: the global board uses `--store global`, a project board uses `--store <slug>`.
+
+### Full doctor (no flag)
+
+Runs core plus all store checks plus deprecation checks. This is what `/plastic-doctor`
+invokes. It also runs automatically after every `plastic-update` (informational,
+does not block or revert the update).
+
 ## When to Use
 
-- User invokes `/plastic-doctor`
-- After `plastic-update` completes (automatically)
+- User invokes `/plastic-doctor` (full check)
+- After `plastic-update` completes (automatically, full check)
 - When hooks aren't firing, skills aren't loading, or something seems broken
 - When the user says "check plastic", "diagnose", "what's wrong with plastic"
 

@@ -114,6 +114,11 @@ Or say "auto" to let the agent handle the full lifecycle autonomously.
 
 All conventions live in `AGENTS.md`, distributed to `~/.plastic/AGENTS.md`
 during installation. Run `plastic-doctor` to check installation health.
+`plastic-doctor --core` runs a binary install-integrity check (compares files
+against the install manifests; pass or error). `plastic-doctor --store` checks
+store state (intents, INDEX sections, conventions) and can be scoped to
+`global` or a project slug. The full `plastic-doctor` runs all checks and is
+run automatically after every update.
 
 ## License
 
