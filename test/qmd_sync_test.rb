@@ -61,14 +61,25 @@ class QmdSyncTest < Minitest::Test
     assert_includes names, "plastic-dealintell"
   end
 
-  def test_register_issues_collection_add_and_context_add
+  def test_register_adds_when_not_present
+    # default fake returns empty listing, so collection is absent -> add issued
     runner, calls = fake_runner
     res = QmdSync.register(collection: "plastic-global", dir: "/x/store",
                            runner: runner, detector: present)
     assert res[:ran]
-    assert_equal ["collection", "add", "/x/store", "--name", "plastic-global"], calls[0]
-    assert_equal ["context", "add"], calls[1][0, 2]
-    assert_equal "plastic-global", calls[1][2]
+    add = calls.find { |c| c[0, 2] == ["collection", "add"] }
+    assert_equal ["collection", "add", "/x/store", "--name", "plastic-global"], add
+  end
+
+  def test_register_is_idempotent_when_collection_exists
+    listing = "Collections (1):\n\nplastic-global (qmd://plastic-global/)\n"
+    runner, calls = fake_runner("collection" => [listing, true])
+    res = QmdSync.register(collection: "plastic-global", dir: "/x/store",
+                           runner: runner, detector: present)
+    assert res[:ok]
+    assert_equal "exists", res[:output]
+    refute calls.any? { |c| c[0, 2] == ["collection", "add"] },
+           "no collection add when it already exists"
   end
 
   def test_reindex_issues_update_then_scoped_embed
