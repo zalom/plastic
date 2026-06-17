@@ -1,59 +1,37 @@
 ---
 name: plastic-continuing
-description: Use when the user says "continue", "resume", or "pick up where we left off", or when starting a new session. Boots Plastic — runtime health check, loads core context + store/project state, prints version + statusline, and lands on the right dashboard — then presents choices. Does not drive work autonomously (that is plastic-auto).
+description: Use when the user says "continue", "resume", or "pick up where we left off", or when starting a new session. Continues work with the latest project context: lands on the right dashboard, then presents choices. Boot (health check, core context, version, statusline) is owned by the SessionStart hook, not this skill. Does not drive work autonomously (that is plastic-auto).
 ---
 
 # Continuing
 
-`plastic-continuing` is a deterministic **boot orchestrator**. It loads and presents choices,
-then stops. It does NOT execute work autonomously (that is `plastic-auto`) and does NOT render
-the dashboard itself (it only invokes it).
+`plastic-continuing` continues work. It presents the latest state via the dashboard and offers
+choices, then stops. It does NOT execute work autonomously (that is `plastic-auto`) and does
+NOT render the dashboard itself (it only invokes it).
+
+**Boot is not this skill's job.** The `hook-session-start` hook already runs by construction on
+every session start: it runs the core health check (`doctor --core`), primes `PLASTIC.md` +
+store/project state, and prints the `Plastic Core loaded — v{version}` banner. The
+`plastic-statusline` hook sets the statusline. So by the time this skill runs, core is loaded
+and healthy (or the banner already warned otherwise). This skill picks up from there and
+continues work. This is the seam future continue-flags build on (see [[39]]).
 
 ## When to Use
 - UserPromptSubmit hook detects "continue" (automatic)
 - User says "continue", "resume", or "pick up where we left off"
-- Starting a new session with an existing Plastic store
+- Starting a new session and you want to resume work with the latest context
 
 ## Determine Store
 
 1. **Global store** — `~/.plastic/INDEX.md` exists → global mode.
 2. **Local store** — a project store under `~/.plastic/projects/{slug}/` whose registered
    path (in `~/.plastic/projects.yml`) matches the current working directory → project mode.
-   Project detection happens in boot step 2 below; this just records that a local store is
-   in play.
+   The SessionStart hook already detects this; here you only need the slug to scope the
+   dashboard.
 3. If neither exists → announce "No Plastic store found. Run /plastic-install."
 
-## Boot Sequence (run in this fixed order)
+## Continue (present the dashboard)
 
-### 1. Core doctor (health first)
-Run the fast runtime-liveness check synchronously (it returns in well under a second):
-
-```bash
-ruby ~/.plastic/scripts/doctor.rb --core
-```
-
-Print one compact health line:
-- All pass → `Plastic core: healthy`
-- Otherwise → `Plastic core: issues` followed by the failing checks (name + message).
-
-This runs first so a broken runtime (missing hooks, scripts, core files) surfaces before any
-state is loaded on top of it. For a full diagnosis, point the user at `/plastic-doctor`.
-
-### 2. Load core (context + state)
-- Prime `PLASTIC.md` and the harness docs so the conventions are in mind.
-- Load live state:
-  - Read the active store `INDEX.md` (`## Active`, `## Future`).
-  - Read `~/.plastic/projects.yml`.
-  - **Detect the current project** by matching CWD against registered project paths.
-  - If in a project: load that project's `INDEX.md`; load the governing intent (from
-    `parent` in projects.yml) and the tactical intents from
-    `~/.plastic/projects/{slug}/store/`.
-
-### 3. Version + statusline
-- Print the current Plastic version (from `~/.plastic/VERSION`).
-- Set the statusline.
-
-### 4. Dashboard
 Land on the Markdown board via the `plastic-dashboard` skill. Rendering belongs there, not
 here — run the data payload and fill + present the matching template:
 - Project loaded → `ruby ~/.plastic/scripts/dashboard.rb project <slug> --data`
