@@ -161,11 +161,17 @@ During initial project creation, all decisions are non-destructive by definition
    - Update `chain` in the current intent's frontmatter
 6. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
 7. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: deliver intent <ID> — <name>"`
-8. Disarm the lifecycle gate (auto delivery is finished):
+8. Refresh the QMD search index for this store (optional, no-op when QMD is absent):
+   ```bash
+   ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root>
+   ```
+   Delivery is the lifecycle event that keeps the search index fresh. `<store-root>` is the
+   store that holds this intent (the global store or the project store).
+9. Disarm the lifecycle gate (auto delivery is finished):
    ```bash
    ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.disarm_auto(ENV["CLAUDE_SESSION_ID"])'
    ```
-9. Notify user: "Intent [ID] — [name] delivered. [1-2 sentence summary]. See outcome.md for details."
+10. Notify user: "Intent [ID] — [name] delivered. [1-2 sentence summary]. See outcome.md for details."
 
 ## Error Handling
 

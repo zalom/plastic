@@ -157,7 +157,18 @@ cd ~/.plastic && git add . && git commit -m "feat: spawn project <slug> from int
 cd <project> && git add . && git commit -m "feat: initialize project from intent <ID>"
 ```
 
-### 10. Announce
+### 10. Register the project store with QMD (optional)
+
+If QMD is installed, register the new project's store as a search collection:
+
+```bash
+ruby ~/.plastic/scripts/qmd-sync register --store ~/.plastic/projects/<slug>/store
+```
+
+`qmd-sync` no-ops when QMD is absent, so run it unconditionally. This adds the
+`plastic-<slug>` collection and indexes it.
+
+### 11. Announce
 
 Log in `## Insights` of each founding intent:
 > "Project `<slug>` created at `<path>`. Tactical mirror: `project-<slug>:1` (autonomous)"

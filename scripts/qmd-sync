@@ -1,0 +1,92 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# qmd-sync — deterministic CLI over QmdSync (intent 45a).
+#
+# Plastic skills and hooks call these verbs instead of assembling `qmd` commands
+# themselves. QMD is optional: when `qmd` is absent every verb exits 0 and prints
+# a skip notice, so callers can invoke unconditionally.
+#
+# Usage:
+#   qmd-sync detect                     # exit 0 if qmd present, 1 if absent
+#   qmd-sync register --store <dir>     # register one store as a collection
+#   qmd-sync register --all             # register the global store + all projects
+#   qmd-sync reindex --store <dir>      # update + embed that store's collection
+#   qmd-sync status [--format json]     # read-only status
+#
+# --home <path> overrides the Plastic home (default: ~/.plastic).
+
+require "json"
+require_relative "lib/qmd_sync"
+
+def plastic_home(args)
+  if (i = args.index("--home")) && args[i + 1]
+    File.expand_path(args[i + 1])
+  else
+    File.expand_path(ENV["PLASTIC_HOME"] || "~/.plastic")
+  end
+end
+
+def opt(args, name)
+  (i = args.index(name)) && args[i + 1]
+end
+
+verb = ARGV.shift
+home = plastic_home(ARGV)
+
+unless QmdSync.detect
+  case verb
+  when "detect"
+    warn "QMD not detected on PATH."
+    exit 1
+  else
+    puts "QMD not detected; skipped (#{verb})."
+    exit 0
+  end
+end
+
+case verb
+when "detect"
+  puts "QMD detected."
+  exit 0
+
+when "register"
+  stores =
+    if ARGV.include?("--all")
+      QmdSync.enumerate_stores(plastic_home: home)
+    elsif (dir = opt(ARGV, "--store"))
+      [{ collection: QmdSync.collection_name(dir, plastic_home: home), dir: File.expand_path(dir) }]
+    else
+      warn "register: pass --store <dir> or --all"
+      exit 2
+    end
+  stores.each do |s|
+    next unless Dir.exist?(s[:dir])
+    res = QmdSync.register(collection: s[:collection], dir: s[:dir])
+    puts "registered #{s[:collection]} -> #{s[:dir]} (#{res[:ok] ? "ok" : "warn"})"
+  end
+  exit 0
+
+when "reindex"
+  dir = opt(ARGV, "--store") or (warn("reindex: pass --store <dir>"); exit 2)
+  collection = QmdSync.collection_name(dir, plastic_home: home)
+  res = QmdSync.reindex(collection: collection)
+  puts "reindexed #{collection} (#{res[:ok] ? "ok" : "warn"})"
+  exit 0
+
+when "status"
+  st = QmdSync.status(plastic_home: home)
+  if opt(ARGV, "--format") == "json"
+    puts JSON.generate(st)
+  else
+    puts "QMD present: #{st[:present]}"
+    puts "registered: #{Array(st[:registered]).join(", ")}"
+    puts "missing: #{Array(st[:missing]).join(", ")}" unless Array(st[:missing]).empty?
+  end
+  exit 0
+
+else
+  warn "qmd-sync: unknown verb #{verb.inspect}. Use detect|register|reindex|status."
+  exit 2
+end
