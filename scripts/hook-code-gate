@@ -14,22 +14,10 @@ require_relative "lib/bridge"
 file_path = ARGV[0]
 exit 0 unless file_path && !file_path.empty?
 
-# --- Load bridge (mirror hook-gate-check resolution) ---
-session = ENV["CLAUDE_SESSION_ID"]
-bridge_data = nil
+session = (ARGV[1] unless ARGV[1].to_s.empty?) || ENV["CLAUDE_SESSION_ID"]
 
-if session && !session.empty?
-  bridge_data = Bridge.read(session) if File.exist?(Bridge.path(session))
-end
-
-unless bridge_data
-  candidates = Dir.glob("/tmp/plastic-*.json").reject { |f| f.end_with?(".tmp") }
-  if candidates.any?
-    newest = candidates.max_by { |f| File.mtime(f) }
-    bridge_data = JSON.parse(File.read(newest)) rescue nil
-  end
-end
-
+# --- Load bridge (shared resolution; stdin session_id -> env -> /tmp scan) ---
+bridge_data = Bridge.discover_bridge(session: session, cwd: Dir.pwd)
 exit 0 unless bridge_data
 
 reason = Bridge.code_gate_decision(bridge_data, file_path)

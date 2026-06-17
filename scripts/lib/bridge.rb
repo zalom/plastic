@@ -5,6 +5,7 @@ require "json"
 require "yaml"
 require "fileutils"
 require "tempfile"
+require "digest"
 
 module Bridge
   STAGES = %w[what why how exec done].freeze
@@ -14,26 +15,114 @@ module Bridge
     "#{intent_dir}/#{dir_name}.md"
   end
 
-  def self.path(session)
-    "/tmp/plastic-#{session}.json"
+  # Single source for the OS temp location holding bridge files. Lets every
+  # process (arm_auto, the gate hooks) agree, and lets tests fully isolate by
+  # pointing PLASTIC_TMP at a Dir.mktmpdir. This is OS-temp-location resolution,
+  # not a logic-config injection seam.
+  def self.tmp_dir
+    t = ENV["PLASTIC_TMP"]
+    (t.nil? || t.strip.empty?) ? "/tmp" : t
   end
 
-  def self.read(session)
-    p = path(session)
+  def self.path(session, tmp: tmp_dir)
+    "#{tmp}/plastic-#{session}.json"
+  end
+
+  # --- Session resolution (intent 52) ----------------------------------------
+
+  def self.blank?(value)
+    value.nil? || value.to_s.strip.empty?
+  end
+
+  # Deterministic, session-id-less bridge key derived from store + intent id.
+  # Stable across processes so a session-less arm and a later session-less
+  # gate-check resolve to the same bridge file.
+  def self.derive_key(store, intent_id)
+    "auto-" + Digest::SHA256.hexdigest("#{store}/#{intent_id}")[0, 10]
+  end
+
+  # Resolve a bridge session: first non-empty of explicit, CLAUDE_SESSION_ID,
+  # then a derived key. Never returns nil/empty. Whitespace-only counts as empty.
+  def self.resolve_session(explicit, intent_id:, store:)
+    return explicit.to_s.strip unless blank?(explicit)
+    env = ENV["CLAUDE_SESSION_ID"]
+    return env.to_s.strip unless blank?(env)
+    derive_key(store, intent_id)
+  end
+
+  # Walk up from file_path; return the first ancestor that looks like an intent
+  # directory (`.../store/<id>--<slug>`), else nil. Used to derive the savepoint
+  # target without needing a bridge. The input is always a file inside the intent
+  # dir (never the dir itself), so the walk-up starts at its parent.
+  def self.intent_dir_for(file_path)
+    dir = File.expand_path(file_path)
+    loop do
+      parent = File.dirname(dir)
+      break if parent == dir # reached filesystem root
+      dir = parent
+      return dir if dir.match?(%r{/store/[^/]+--[^/]+\z})
+    end
+    nil
+  end
+
+  # A bridge hash is usable iff it has a non-empty session and an intent Hash.
+  def self.bridge_valid?(data)
+    data.is_a?(Hash) && !blank?(data["session"]) && data["intent"].is_a?(Hash)
+  end
+
+  # Resolve the active bridge. Exact-session lookup first; otherwise scan tmp:
+  # for plastic-*.json, keep only valid bridges, prefer auto-armed, then prefer
+  # the one whose intent.store matches cwd, tie-break by newest mtime.
+  def self.discover_bridge(session:, cwd: Dir.pwd, tmp: tmp_dir)
+    if !blank?(session) && File.exist?(path(session, tmp: tmp))
+      exact = read(session, tmp: tmp)
+      return exact if bridge_valid?(exact)
+    end
+
+    candidates = Dir.glob(File.join(tmp, "plastic-*.json")).reject { |f| f.end_with?(".tmp") }
+    parsed = candidates.filter_map do |f|
+      data = (JSON.parse(File.read(f)) rescue nil)
+      next unless data && bridge_valid?(data)
+      { file: f, data: data, mtime: File.mtime(f) }
+    end
+    return nil if parsed.empty?
+
+    auto = parsed.select { |c| c[:data].dig("build", "auto") == true }
+    pool = auto.empty? ? parsed : auto
+
+    unless blank?(cwd)
+      cwd_abs = File.expand_path(cwd)
+      matching = pool.select do |c|
+        store = c[:data].dig("intent", "store").to_s
+        next false if store.empty?
+        store_abs = File.expand_path(store)
+        cwd_abs == store_abs ||
+          cwd_abs.start_with?("#{store_abs}/") ||
+          store_abs.start_with?("#{cwd_abs}/")
+      end
+      pool = matching unless matching.empty?
+    end
+
+    pool.max_by { |c| c[:mtime] }&.fetch(:data)
+  end
+
+  def self.read(session, tmp: tmp_dir)
+    p = path(session, tmp: tmp)
     return nil unless File.exist?(p)
     JSON.parse(File.read(p))
   rescue JSON::ParserError
     nil
   end
 
-  def self.write(session, data)
-    p = path(session)
+  def self.write(session, data, tmp: tmp_dir)
+    raise ArgumentError, "bridge session must be present" if blank?(session)
+    p = path(session, tmp: tmp)
     # Atomic write: tmp file + rename to prevent partial reads
-    tmp = "#{p}.tmp.#{Process.pid}"
-    File.write(tmp, JSON.pretty_generate(data.merge("updated_at" => Time.now.utc.iso8601)))
-    File.rename(tmp, p)
+    tmp_file = "#{p}.tmp.#{Process.pid}"
+    File.write(tmp_file, JSON.pretty_generate(data.merge("updated_at" => Time.now.utc.iso8601)))
+    File.rename(tmp_file, p)
   rescue => e
-    File.delete(tmp) if tmp && File.exist?(tmp)
+    File.delete(tmp_file) if tmp_file && File.exist?(tmp_file)
     raise e
   end
 
@@ -227,9 +316,13 @@ module Bridge
   # Arm auto mode for a session+intent. Works even when no bridge exists yet
   # (mid-session intent creation). Re-derives intent state, then sets build.auto.
   def self.arm_auto(session, intent_id:, intent_dir:, store:, name:)
-    data = derive(session, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name)
+    key = resolve_session(session, intent_id: intent_id, store: store)
+    if blank?(session) && blank?(ENV["CLAUDE_SESSION_ID"])
+      $stderr.puts "plastic: no session id available; arming auto with derived bridge key #{key}"
+    end
+    data = derive(key, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name)
     data["build"]["auto"] = true
-    write(session, data)
+    write(key, data)
     data
   end
 

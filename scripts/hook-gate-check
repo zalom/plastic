@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # encoding: UTF-8
-# Usage: hook-gate-check <file_path>
+# Usage: hook-gate-check <file_path> [session_id]
 # PostToolUse gate enforcement for Plastic intent lifecycle.
 # Checks if a written file triggers a stage-transition gate.
 # Exit 0 = allow (optionally with transition context)
@@ -12,32 +12,28 @@ require_relative "lib/bridge"
 file_path = ARGV[0]
 exit 0 unless file_path && !file_path.empty?
 
-# --- Find bridge file ---
+session = (ARGV[1] unless ARGV[1].to_s.empty?) || ENV["CLAUDE_SESSION_ID"]
 
-session = ENV["CLAUDE_SESSION_ID"]
-bridge_path = nil
-bridge_data = nil
+file_path_abs = File.expand_path(file_path)
 
-if session && !session.empty?
-  bridge_path = Bridge.path(session)
-  bridge_data = Bridge.read(session) if File.exist?(bridge_path)
-end
-
-# Fallback: scan /tmp for most recent plastic bridge file
-unless bridge_data
-  candidates = Dir.glob("/tmp/plastic-*.json").reject { |f| f.end_with?(".tmp") }
-  if candidates.any?
-    bridge_path = candidates.max_by { |f| File.mtime(f) }
-    raw = JSON.parse(File.read(bridge_path)) rescue nil
-    if raw
-      session = raw["session"]
-      bridge_data = raw
-    end
+# --- Decoupled savepoint ledger (intent 34, hardened in intent 52) ---
+# The savepoint is derived purely from the file path's intent directory, BEFORE
+# any bridge resolution. A missing bridge must never skip the savepoint.
+intent_dir_abs = Bridge.intent_dir_for(file_path_abs)
+if intent_dir_abs
+  begin
+    Bridge.append_savepoint(intent_dir_abs, file_path_abs)
+  rescue StandardError
+    # ignore — rebuildable from disk
   end
 end
 
-# No bridge = no active intent = no enforcement
-exit 0 unless bridge_data && session
+# --- Find bridge file ---
+bridge_data = Bridge.discover_bridge(session: session, cwd: Dir.pwd)
+
+# No bridge = no active intent = no stage enforcement. Savepoint already handled.
+exit 0 unless bridge_data
+session = bridge_data["session"]
 
 # --- Resolve intent directory ---
 
@@ -49,15 +45,14 @@ dir = intent_info["dir"]
 intent_dir = "#{store}/#{dir}"
 
 # Normalize both paths for comparison
-intent_dir_abs = File.expand_path(intent_dir)
-file_path_abs = File.expand_path(file_path)
+bridge_intent_dir_abs = File.expand_path(intent_dir)
 
 # Not inside intent dir = not our business
-exit 0 unless file_path_abs.start_with?("#{intent_dir_abs}/")
+exit 0 unless file_path_abs.start_with?("#{bridge_intent_dir_abs}/")
 
 # --- Determine if this is a stage-transition file ---
 
-relative = file_path_abs.sub("#{intent_dir_abs}/", "")
+relative = file_path_abs.sub("#{bridge_intent_dir_abs}/", "")
 basename = File.basename(file_path)
 
 stage_files = %w[spec.md plan.md checklist.md outcome.md]
@@ -66,7 +61,7 @@ is_action_file = relative.start_with?("actions/")
 
 if is_stage_file || is_action_file
   # Run gate check
-  error = Bridge.check_gate(intent_dir_abs, file_path_abs)
+  error = Bridge.check_gate(bridge_intent_dir_abs, file_path_abs)
 
   if error
     # Gate violation — block the write
@@ -83,11 +78,11 @@ if is_stage_file || is_action_file
 
   # Gate passed — update bridge with new stage
   old_stage = bridge_data["build"]["stage"]
-  new_stage = Bridge.derive_stage(intent_dir_abs)
-  new_missing = Bridge.missing_for_stage(new_stage) - Bridge.has_files(intent_dir_abs)
+  new_stage = Bridge.derive_stage(bridge_intent_dir_abs)
+  new_missing = Bridge.missing_for_stage(new_stage) - Bridge.has_files(bridge_intent_dir_abs)
 
   bridge_data["build"]["stage"] = new_stage
-  bridge_data["build"]["has"] = Bridge.has_files(intent_dir_abs)
+  bridge_data["build"]["has"] = Bridge.has_files(bridge_intent_dir_abs)
   bridge_data["build"]["missing"] = new_missing
   bridge_data["build"]["gate_failures"] = 0
   bridge_data["build"]["last_activity"] = Time.now.utc.iso8601
@@ -97,14 +92,6 @@ if is_stage_file || is_action_file
   end
 
   Bridge.write(session, bridge_data)
-
-  # Cycle-step savepoint ledger (intent 34) — record this stage-file milestone.
-  # Best-effort: the ledger is derived sugar, so a failure must never block.
-  begin
-    Bridge.append_savepoint(intent_dir_abs, file_path_abs)
-  rescue StandardError
-    # ignore — rebuildable from disk
-  end
 
   # Build transition context
   stage_labels = { "what" => "What", "why" => "Why", "how" => "How", "exec" => "Exec", "done" => "Done" }
@@ -137,14 +124,8 @@ if is_stage_file || is_action_file
   puts JSON.generate(payload)
   exit 0
 else
-  # Regular file in intent dir — just update last_activity. The intent file
-  # (What milestone) lands here, so still offer it to the savepoint ledger;
-  # non-milestone files self-filter to a no-op (intent 34).
-  begin
-    Bridge.append_savepoint(intent_dir_abs, file_path_abs)
-  rescue StandardError
-    # ignore — rebuildable from disk
-  end
+  # Regular file in intent dir — just update last_activity. The savepoint for
+  # the What milestone was already handled above by the decoupled ledger write.
   bridge_data["build"]["last_activity"] = Time.now.utc.iso8601
   Bridge.write(session, bridge_data)
   exit 0

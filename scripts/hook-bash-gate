@@ -28,22 +28,10 @@ exit 0 if command.nil? || command.to_s.strip.empty?
 cwd = payload["cwd"]
 cwd = Dir.pwd if cwd.nil? || cwd.to_s.empty?
 
-# --- Load bridge (mirror hook-code-gate resolution) ---
-session = ENV["CLAUDE_SESSION_ID"]
-bridge_data = nil
-
-if session && !session.empty?
-  bridge_data = Bridge.read(session) if File.exist?(Bridge.path(session))
-end
-
-unless bridge_data
-  candidates = Dir.glob("/tmp/plastic-*.json").reject { |f| f.end_with?(".tmp") }
-  if candidates.any?
-    newest = candidates.max_by { |f| File.mtime(f) }
-    bridge_data = JSON.parse(File.read(newest)) rescue nil
-  end
-end
-
+# --- Load bridge (shared resolution; stdin session_id -> env -> /tmp scan) ---
+session = payload["session_id"]
+session = ENV["CLAUDE_SESSION_ID"] if session.nil? || session.to_s.empty?
+bridge_data = Bridge.discover_bridge(session: session, cwd: cwd)
 exit 0 unless bridge_data
 
 reason = Bridge.bash_gate_decision(bridge_data, command, cwd: cwd)

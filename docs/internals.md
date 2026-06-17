@@ -139,6 +139,27 @@ never a source of truth: state stays derivable from files-on-disk and the ledger
 rebuildable via `Bridge.rebuild_savepoint`. The `plastic-savepoint` skill is now a thin
 reader/verifier, not a writer.
 
+Session resolution feeds the bridge that the gate hooks read (intent 52). Claude Code does
+not export `CLAUDE_SESSION_ID` into the hook environment; it passes `session_id` on the hook
+stdin JSON. So the bash wrappers parse `session_id` out of stdin (in Ruby, never in bash) and
+hand it to the gate scripts as a second argument. `Bridge.resolve_session` then takes the
+first non-empty of three sources, in precedence order: the explicit stdin `session_id`, the
+`CLAUDE_SESSION_ID` environment variable, and a derived `auto-<digest>` key
+(`Bridge.derive_key`, a short SHA256 of `store/intent_id`). The derived key is deterministic,
+so a session-less arm and a later session-less gate-check resolve to the same bridge file
+instead of writing `plastic-.json` with a null session. `Bridge.write` now refuses an empty
+session, so a null-session bridge can never be persisted.
+
+The savepoint write is decoupled from bridge resolution (intent 52). `hook-gate-check` derives
+the intent directory straight from the written file path via `Bridge.intent_dir_for` (it walks
+up to the first ancestor matching `.../store/<id>--<slug>`) and appends the savepoint there
+BEFORE any bridge lookup. A missing bridge, an unset session, or a headless background run can
+no longer skip the ledger. Bridge discovery itself is also tighter: `Bridge.discover_bridge`
+prefers an exact-session match, then scans `/tmp/plastic-*.json` keeping only valid bridges,
+preferring auto-armed ones, then those whose `intent.store` matches the current working
+directory, breaking ties by newest mtime. The `/tmp` directory is injectable so the scan is
+testable against a fake directory.
+
 The `plastic-continuing` skill consumes that ledger on the resume path (intent 36): when the
 user or an agent asks to continue a specific intent, the skill reads the last ledger line as
 the current stage, confirms the named stage file is present and non-empty, calls

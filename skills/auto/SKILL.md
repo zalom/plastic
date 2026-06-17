@@ -40,8 +40,9 @@ ruby -r ~/.plastic/scripts/lib/bridge -e \
 ```
 
 Replace `<ID>`, `<STORE>` (e.g. `~/.plastic/projects/<slug>/store` or `~/.plastic/store`),
-`<dir>` (the `ID--slug` directory), and `<name>`. If `CLAUDE_SESSION_ID` is unset, arming
-is best-effort — proceed regardless; the gate simply won't engage.
+`<dir>` (the `ID--slug` directory), and `<name>`. If `CLAUDE_SESSION_ID` is unset, `arm_auto`
+falls back to a deterministic derived bridge key (a hash of the store and intent id), so the
+gate still engages; arming prints a one-line notice to stderr in that case.
 
 **Hard rule for the rest of this run:** do NOT edit project code (anything outside the
 intent directory / `~/.plastic/`) until `plan.md` AND `checklist.md` exist for the intent.

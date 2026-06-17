@@ -5,7 +5,7 @@ Intent-driven state management for AI coding sessions.
 ## Stack
 - Language: Ruby (scripts), JavaScript/Node.js (npm package, installer)
 - Framework: npm package (CLI installer), flat personal skills
-- Testing: `ruby -Itest test/*_test.rb` (Minitest)
+- Testing: Minitest. See the Testing section below for the correct full-suite command.
 - Source: /Users/zlatko/apps/personal/plastic
 - Remote: git@github.com:zalom/plastic.git
 
@@ -57,9 +57,27 @@ Rules for any agent (or human) contributing to this repository.
 - Plans, specs, checklists, and outcomes live in the intent directory under `~/.plastic/`,
   never in the project tree.
 
+### Testing
+- Run the full suite with:
+  ```
+  ruby -Itest -e 'Dir["test/*_test.rb"].each { |f| require File.expand_path(f) }'
+  ```
+- Do NOT use `ruby -Itest test/*_test.rb`. The shell expands the glob into many arguments,
+  and Ruby runs only the FIRST file as the program (the rest land in `ARGV`, unloaded), so
+  Minitest reports just that one file's tests and you get a falsely small green run. The
+  loader command above requires every `test/*_test.rb` file, so the whole suite runs.
+- Confirm green before committing code changes.
+
+### Worktrees
+- Do isolated feature work in a git worktree, not the shared checkout, so parallel sessions
+  and the main working copy stay clean. Create one with the agent's worktree tool (or
+  `git worktree add`), run and test inside it, then merge the branch back.
+- Clean up when done: remove the worktree after the branch is merged. Never leave an orphaned
+  worktree, and run `git worktree prune` if you hit a stale reference.
+
 ### Commits and releases
 - Use Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`).
 - Bump all version files listed in Defaults on every fix or feature release.
 - Release through the `plastic-releasing` workflow (tag, GitHub release, npm publish).
-- Run `ruby -Itest test/*_test.rb` and confirm green before committing code changes.
+- Run the full test suite (see the Testing section) and confirm green before committing code changes.
 - Never push `~/.plastic/`. The global store is local-only and may contain private data.

@@ -6,5 +6,7 @@ if [ -z "$FILE_PATH" ]; then
   exit 0
 fi
 
+SESSION_ID=$(echo "$INPUT" | ruby -rjson -e 'data = JSON.parse(STDIN.read); puts data.dig("session_id") || ""' 2>/dev/null)
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ruby "$SCRIPT_DIR/../scripts/hook-code-gate" "$FILE_PATH"
+ruby "$SCRIPT_DIR/../scripts/hook-code-gate" "$FILE_PATH" "$SESSION_ID"
