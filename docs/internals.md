@@ -226,6 +226,26 @@ gate-precondition rule spec. Agent-implementation work (every eval, every runtim
 hook, and the eval runner) depends on a specific agent's runtime and is deferred
 to intent 33a.
 
+### qmd registration and reindex flow
+
+The optional qmd search integration mutates its index only on Plastic lifecycle
+events, and one helper (`scripts/lib/qmd_sync.rb`, exposed as `scripts/qmd-sync`
+with verbs `detect`, `register`, `reindex`, `status`) does all the work by
+delegating to the qmd CLI. Each trigger lives at a fixed point:
+
+- **install**: the install skill registers every store as a `plastic-`
+  prefixed collection (`register --all`).
+- **project creation**: the creating-project skill registers the new project
+  store's collection (`register --store <dir>`).
+- **intent delivery**: the delivery/completion path reindexes the delivering
+  store's collection (`reindex --store <dir>`, which runs `qmd update` then
+  `qmd embed -c plastic-<slug>`).
+- **session start**: report-only. The boot path may report index status but
+  never mutates it.
+- **doctor**: a qmd check verifies the integration is healthy, including that the
+  ~2GB of models qmd lazily downloads on first embed/rerank are present. The index
+  itself lives under `~/.cache` and is never committed to the `~/.plastic` git.
+
 ## living-document
 
 This is a living document. When Plastic's architecture, lifecycle, conventions,

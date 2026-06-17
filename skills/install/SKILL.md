@@ -153,7 +153,20 @@ Auto-commit the config change.
 Run `/plastic-doctor` and report the result. Resolve any fixable findings before
 announcing success.
 
-**Step 5: Announce**
+**Step 5: Register stores with QMD (optional)**
+
+QMD is an optional search layer. If it is installed, register the Plastic stores so
+they are searchable:
+
+```bash
+ruby ~/.plastic/scripts/qmd-sync detect && ruby ~/.plastic/scripts/qmd-sync register --all
+```
+
+`qmd-sync` no-ops cleanly when QMD is absent, so this is safe to run unconditionally.
+It registers `plastic-global` and every project store from `projects.yml`, then indexes
+them. Report what was registered, or that QMD was not detected and the step was skipped.
+
+**Step 6: Announce**
 
 > "Plastic installed globally at ~/.plastic/. Health check: [doctor summary].
 > Create your first intent with `/plastic-creating-intent`."

@@ -75,6 +75,7 @@ Capture observations in `## Insights`. When ALL checklist items are checked:
 3. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
 4. Update cluster entries to show `_(completed)_`
 5. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: complete intent <ID> — <name>"`
+6. Refresh the QMD search index for this store (optional, no-op when QMD is absent): `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root>`. Delivery is the lifecycle event that keeps the search index fresh.
 
 **This is NOT optional.** An intent with all checklist items done but no Outcome is a broken state. Complete the intent immediately — do not leave it for later.
 
@@ -100,6 +101,7 @@ Capture observations in `## Insights`. When ALL checklist items are checked:
 3. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
 4. Update cluster entries to show `_(completed)_`
 5. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: complete intent <ID> — <name>"`
+6. Refresh the QMD search index for this store (optional, no-op when QMD is absent): `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root>`. Delivery is the lifecycle event that keeps the search index fresh.
 
 **This is NOT optional.** Complete the intent immediately when work is done.
 

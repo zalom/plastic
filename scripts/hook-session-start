@@ -8,6 +8,7 @@ require "date"
 require "yaml"
 require_relative "lib/bridge"
 require_relative "lib/boot_banner"
+require_relative "lib/qmd_sync"
 require_relative "doctor"
 
 index_path, store_root, mode, plugin_root = ARGV
@@ -203,6 +204,25 @@ parts = []
 # so it runs by construction — the plastic-continuing skill no longer does this.
 parts << core_banner
 parts << ""
+
+# --- QMD search status (intent 45a, READ-ONLY) ---
+# Report-only line for the model (additionalContext), never systemMessage and
+# never the exit code. QmdSync.status shells out to `qmd collection list`, so the
+# whole block is guarded: a 2s timeout caps any hang, and rescue-all guarantees a
+# slow/broken/missing qmd appends nothing and the hook continues cleanly.
+begin
+  require "timeout"
+  qmd_status = Timeout.timeout(2) { QmdSync.status(plastic_home: store_root) }
+  if qmd_status[:present]
+    if qmd_status[:all_registered]
+      parts << "QMD: #{qmd_status[:registered].size} Plastic collections indexed (search with the qmd skill)."
+    else
+      parts << "QMD detected — run `qmd-sync register --all` to index your Plastic stores for search."
+    end
+  end
+rescue Exception
+  # Any failure (timeout, missing binary, parse error) — stay silent, never crash.
+end
 
 if plastic_md
   # Conventions always loaded first

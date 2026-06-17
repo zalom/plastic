@@ -15,6 +15,8 @@ require "time"
 require "date"
 require "digest"
 
+require_relative "lib/qmd_sync"
+
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
 class Doctor
@@ -1005,6 +1007,48 @@ class Doctor
     a_pre <=> b_pre
   end
 
+  # --- Check category: QMD integration (read-only, optional) ---
+  #
+  # QMD is an optional integration. When `qmd` is not on PATH we emit a single
+  # passing check and never fail — its absence is not a Plastic health problem.
+  # When present, we report whether every Plastic store is registered as a QMD
+  # collection. Everything here is read-only; we never invoke a mutating qmd
+  # subcommand. detector/runner are injectable so tests stay hermetic.
+  def check_qmd(detector: QmdSync.method(:detect), runner: QmdSync.default_runner)
+    return [absent_qmd_check] unless detector.call
+
+    checks = [check(
+      category: "qmd", name: "present", status: "pass",
+      message: "QMD installed"
+    )]
+
+    status = QmdSync.status(plastic_home: plastic_home, runner: runner, detector: detector)
+    missing = status[:missing] || []
+
+    if status[:all_registered]
+      checks << check(
+        category: "qmd", name: "collections", status: "pass",
+        message: "All #{status[:expected].size} Plastic store(s) registered as QMD collections"
+      )
+    else
+      checks << check(
+        category: "qmd", name: "collections", status: "warn",
+        message: "#{missing.size} Plastic store(s) not registered as QMD collections",
+        details: missing,
+        fixable: true, fix_hint: "Run: qmd-sync register --all"
+      )
+    end
+
+    checks
+  end
+
+  def absent_qmd_check
+    check(
+      category: "qmd", name: "present", status: "pass",
+      message: "QMD not installed (optional integration)"
+    )
+  end
+
   # --- Run all checks ---
 
   def run_checks(agent_key)
@@ -1015,6 +1059,7 @@ class Doctor
     all_checks += check_core_files(agent_key)
     all_checks += check_project_stores
     all_checks += check_deprecations
+    all_checks += check_qmd
 
     summarize(all_checks, agent_key)
   end
