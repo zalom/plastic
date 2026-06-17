@@ -7,6 +7,8 @@ require "json"
 require "date"
 require "yaml"
 require_relative "lib/bridge"
+require_relative "lib/boot_banner"
+require_relative "doctor"
 
 index_path, store_root, mode, plugin_root = ARGV
 exit 0 unless index_path && store_root && mode
@@ -172,6 +174,18 @@ if File.exist?(cache_file)
   end
 end
 
+# --- Run core health in-process (intent 36a) ---
+# Reuse Doctor's own --core checks so there is one source of truth for "core
+# health" (no second process spawn, no duplicated check list). Never blocks the
+# session: any failure or exception degrades to a banner and we continue.
+
+core_health = begin
+  Doctor.new(plastic_home: store_root).run_core_checks("claude")
+rescue
+  nil
+end
+core_banner = BootBanner.render(health: core_health, version: current_version)
+
 # --- Assemble session context ---
 
 all_active = active + project_active
@@ -183,6 +197,12 @@ all_future = future + project_future
 # partial install (or a missing PLASTIC.md) still surfaces critical warnings.
 
 parts = []
+
+# Boot banner first: every session start surfaces that Plastic loaded, with the
+# version (clean) or the first failing core check (degraded). Owned by the hook
+# so it runs by construction — the plastic-continuing skill no longer does this.
+parts << core_banner
+parts << ""
 
 if plastic_md
   # Conventions always loaded first

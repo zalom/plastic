@@ -1,6 +1,6 @@
 {
   "skill_name": "plastic-continuing",
-  "notes": "Intent 36. Scopes: description triggering (1-8) and behavior/convention compliance of the rewritten boot orchestrator (9-14). Triggering assertions follow the plastic-auto eval style (one subagent router per case). Behavior assertions are convention checks against the rewritten SKILL.md.",
+  "notes": "Intent 36, updated for 36a (boot moved into hook-session-start; the skill is now work-continuation only). Scopes: description triggering (1-8) and behavior/convention compliance of the work-continuation skill (9-14). Triggering assertions follow the plastic-auto eval style (one subagent router per case). Behavior assertions are convention checks against the SKILL.md.",
   "results": {
     "triggering": { "cases": 8, "passed": 8, "run": "2026-06-16, one subagent per case" },
     "behavior": { "cases": 6, "passed": 6, "evidence": "convention checks against skills/continuing/SKILL.md after the intent-36 rewrite; doctor --core verified at 0.07s with 9 liveness checks and full doctor unchanged at 30 checks" }
@@ -36,7 +36,7 @@
     {
       "id": 4, "scope": "triggering", "set": "train",
       "prompt": "boot plastic and show me where things stand",
-      "expected_output": "Activates plastic-continuing (boot + present state is the skill's purpose).",
+      "expected_output": "Activates plastic-continuing (continuing work + presenting state is the skill's purpose; boot itself is hook-owned).",
       "files": [],
       "assertions": [
         { "type": "code", "check": "router CHOICE == plastic-continuing", "observed": "plastic-continuing", "result": "pass" }
@@ -80,20 +80,20 @@
     },
     {
       "id": 9, "scope": "behavior", "set": "train",
-      "prompt": "Does the skill document the four-step boot sequence in the fixed order?",
-      "expected_output": "SKILL.md lists, in order: (1) core doctor, (2) load core, (3) version + statusline, (4) dashboard.",
+      "prompt": "Does the skill defer boot to the SessionStart hook rather than running it itself?",
+      "expected_output": "SKILL.md states boot (health check, core context, version banner, statusline) is owned by hook-session-start / plastic-statusline, not this skill.",
       "files": ["skills/continuing/SKILL.md"],
       "assertions": [
-        { "type": "convention", "check": "boot steps appear in order doctor -> load core -> version/statusline -> dashboard", "observed": "headings '### 1. Core doctor', '### 2. Load core', '### 3. Version + statusline', '### 4. Dashboard'", "result": "pass" }
+        { "type": "convention", "check": "SKILL.md says boot is owned by the SessionStart hook and the skill does not run it", "observed": "'Boot is not this skill's job.' paragraph naming hook-session-start and plastic-statusline", "result": "pass" }
       ]
     },
     {
       "id": 10, "scope": "behavior", "set": "train",
-      "prompt": "Does step 1 run the fast core health check synchronously?",
-      "expected_output": "Step 1 invokes `doctor.rb --core` and prints a single health line.",
+      "prompt": "Does the skill avoid running doctor / setting the statusline itself?",
+      "expected_output": "SKILL.md does NOT instruct running doctor.rb --core or setting the statusline; it attributes those to the hooks.",
       "files": ["skills/continuing/SKILL.md"],
       "assertions": [
-        { "type": "convention", "check": "SKILL.md contains 'doctor.rb --core' and a 'Plastic core: healthy' health line", "observed": "present in '### 1. Core doctor'", "result": "pass" }
+        { "type": "convention", "check": "no in-skill boot step invokes doctor.rb --core or sets the statusline; both are attributed to hooks", "observed": "doctor --core and statusline mentioned only as hook-owned in the 'Boot is not this skill's job' note", "result": "pass" }
       ]
     },
     {
@@ -102,7 +102,7 @@
       "expected_output": "Project loaded -> `dashboard.rb project <slug>`; otherwise -> `dashboard.rb continue`. Skill only invokes, does not render.",
       "files": ["skills/continuing/SKILL.md"],
       "assertions": [
-        { "type": "convention", "check": "both dashboard invocations present and gated on project detection", "observed": "'dashboard.rb project <slug>' and 'dashboard.rb continue' in '### 4. Dashboard'", "result": "pass" }
+        { "type": "convention", "check": "both dashboard invocations present and gated on project detection", "observed": "'dashboard.rb project <slug>' and 'dashboard.rb continue' in the 'Continue (present the dashboard)' section", "result": "pass" }
       ]
     },
     {

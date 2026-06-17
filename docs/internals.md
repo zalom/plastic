@@ -151,8 +151,9 @@ autonomous execution.
 conventions across all intents, agent registration, core files, project stores,
 deprecations). The `--core` flag runs only the runtime-liveness subset (agent registration
 and core files: hooks, skills, scripts, PLASTIC.md, VERSION, version match) and skips the
-slow inventory walks, so it returns in well under a second. The continue boot sequence uses
-`--core` for its up-front health line; `/plastic-doctor` uses the full run.
+slow inventory walks, so it returns in well under a second. `hook-session-start` calls the
+same `--core` checks in-process (reusing the `Doctor` class, no second process spawn) to print
+the boot banner on every session start (intent 36a); `/plastic-doctor` uses the full run.
 
 ## what-exists-today-vs-what-is-missing
 

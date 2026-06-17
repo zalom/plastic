@@ -110,14 +110,14 @@ For the operational detail behind these parts (determinism coverage, harness tax
 
 ## session boot
 
-Resuming a session is a fixed sequence run by the `plastic-continuing` skill, in this order:
+Boot is owned by hooks, so it runs by construction on every session start, not as prose a skill follows (intent 36a):
 
-1. **Core doctor**: a fast runtime-liveness check (`doctor.rb --core`) runs first and prints one health line, so a broken runtime surfaces before any state is loaded on top of it.
-2. **Load core**: prime the conventions (PLASTIC.md and the harness docs), read the store INDEX.md and projects.yml, detect the current project by matching the working directory, and load that project's state.
-3. **Version and statusline**: print the installed version and set the statusline.
-4. **Dashboard**: land on the project board when a project is loaded, otherwise the global board. The continuing skill only invokes the dashboard, it does not render.
+1. **Core doctor**: `hook-session-start` runs the fast runtime-liveness check (`doctor.rb --core`) in-process, reusing the `Doctor` class so there is one source of truth for core health.
+2. **Load core**: the same hook primes the conventions (PLASTIC.md), reads the store INDEX.md and projects.yml, detects the current project by matching the working directory, and loads that project's state.
+3. **Boot banner and version**: the hook prepends `Plastic Core loaded — v{version}` to the session context on a clean boot, or `Plastic Core loaded with issues — {check}: {message} — run /plastic-doctor` when a core check fails. The hook never blocks (always exits 0).
+4. **Statusline**: the always-on `plastic-statusline` StatusLine hook sets the statusline (a distinct hook event that cannot be set from SessionStart).
 
-The skill then stops and presents choices. It does not drive work autonomously (that is `plastic-auto`). When the user or an agent asks to continue a specific intent, the skill reads that intent's `savepoint.md` ledger (last line is the current stage), verifies the named stage file exists, rebuilds the ledger on drift, and derives the next step from the first unchecked checklist item.
+The `plastic-continuing` skill then continues work: it lands on the dashboard (the project board when a project is loaded, otherwise the global board, invoking the renderer rather than rendering itself), presents choices, and stops. It does not run the health check, load core, or set the statusline, all of which the hooks already did. It does not drive work autonomously (that is `plastic-auto`). When the user or an agent asks to continue a specific intent, the skill reads that intent's `savepoint.md` ledger (last line is the current stage), verifies the named stage file exists, rebuilds the ledger on drift, and derives the next step from the first unchecked checklist item.
 
 ## dashboard
 
