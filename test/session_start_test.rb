@@ -89,4 +89,17 @@ class SessionStartHookTest < Minitest::Test
     assert_includes ctx, "with issues"
     assert_includes ctx, "run /plastic-doctor"
   end
+
+  # Intent 54: the boot banner must be user-visible, carried on the top-level
+  # systemMessage channel (additionalContext is model-only). It must match the
+  # first line of additionalContext so the two channels cannot drift.
+  def test_emits_visible_system_message_matching_banner
+    out, _err, status = run_hook
+    assert_equal 0, status.exitstatus
+    msg = JSON.parse(out)["systemMessage"]
+    refute_nil msg, "hook must emit a top-level systemMessage banner"
+    assert_includes msg, "Plastic Core loaded"
+    first_line = context_from(out).lines.first.strip
+    assert_equal first_line, msg.strip, "systemMessage must match additionalContext banner line"
+  end
 end
