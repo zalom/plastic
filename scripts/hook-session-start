@@ -284,6 +284,11 @@ payload = {
   "hookSpecificOutput" => {
     "hookEventName" => "SessionStart",
     "additionalContext" => parts.join("\n")
-  }
+  },
+  # Intent 54: additionalContext is model-only, so the banner stays invisible to
+  # the human. The top-level systemMessage channel is rendered in the user's
+  # terminal (and re-fires on /clear). Reuse the same BootBanner line so the
+  # visible banner and the model-facing banner cannot drift.
+  "systemMessage" => core_banner
 }
 puts JSON.generate(payload)

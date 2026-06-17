@@ -155,6 +155,11 @@ slow inventory walks, so it returns in well under a second. `hook-session-start`
 same `--core` checks in-process (reusing the `Doctor` class, no second process spawn) to print
 the boot banner on every session start (intent 36a); `/plastic-doctor` uses the full run.
 
+The hook surfaces that banner on two channels from a single `BootBanner` renderer (intent 54):
+`hookSpecificOutput.additionalContext` (added to the model's context) and the top-level
+`systemMessage` (rendered in the user's terminal, and re-fired on `/clear`). Sharing one
+renderer means the visible line and the model-facing line cannot drift.
+
 ## what-exists-today-vs-what-is-missing
 
 Plastic ships **23** harness entries today. By strength on the form-determinism
