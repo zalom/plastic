@@ -266,6 +266,106 @@ class DoctorConventionsTest < Minitest::Test
     assert_equal "warn", fm_check[:status]
     assert fm_check[:details].any? { |d| d.include?("sources") }
   end
+
+  def test_frontmatter_fields_warn_is_fixable
+    write_intent(@store_dir, "1a--incomplete", frontmatter: { "id" => "1a", "intent" => "x" })
+
+    checks = doctor.check_conventions
+    fm_check = checks.find { |c| c[:name] == "frontmatter_fields" }
+
+    assert_equal "warn", fm_check[:status]
+    assert_equal true, fm_check[:fixable]
+    assert fm_check[:fix_hint]
+    assert fm_check[:fix_hint].start_with?("Inject the missing required")
+  end
+
+  def test_frontmatter_valid_warns_on_malformed_chain
+    write_intent(@store_dir, "1a--bad-chain", frontmatter: {
+      "id" => "1a",
+      "intent" => "x",
+      "sources" => [],
+      "chain" => "nope",
+      "created" => "2026-06-01",
+      "author" => "test",
+      "tags" => [],
+    })
+
+    checks = doctor.check_conventions
+    valid_check = checks.find { |c| c[:name] == "frontmatter_valid" }
+
+    assert_equal "warn", valid_check[:status]
+    assert valid_check[:details].any? { |d| d.include?("1a--bad-chain") }
+    assert_equal false, valid_check[:fixable]
+  end
+
+  def test_frontmatter_valid_passes_when_well_formed
+    write_intent(@store_dir, "1a--valid-intent")
+
+    checks = doctor.check_conventions
+    valid_check = checks.find { |c| c[:name] == "frontmatter_valid" }
+
+    assert_equal "pass", valid_check[:status]
+  end
+
+  def test_required_fields_are_a_single_source
+    # Doctor must not keep its own copy of the required-field list; it aliases
+    # IntentValidator::REQUIRED_FIELDS so the two can never drift (intent 60).
+    assert_equal IntentValidator::REQUIRED_FIELDS, Doctor::REQUIRED_FRONTMATTER_FIELDS
+  end
+end
+
+# ===========================================================================
+# Intent-51 regression: an intent born without `chain` (intent 60).
+# Intent 51 was created with no `chain` key and nothing caught it at birth.
+# This reproduces that case across all three detection paths: the library, the
+# validate-intent CLI, and doctor (which marks it repairable via fix_hint).
+# ===========================================================================
+
+class Intent51RegressionTest < Minitest::Test
+  include DoctorTestHelpers
+
+  def setup
+    FileUtils.rm_rf(DOCTOR_TEST_HOME)
+    @store_dir = File.join(DOCTOR_TEST_HOME, "store")
+    FileUtils.mkdir_p(@store_dir)
+    # An intent written WITHOUT a chain key, exactly the intent-51 failure.
+    write_intent(@store_dir, "51--chainless", frontmatter: {
+      "id" => "51",
+      "intent" => "born without chain",
+      "sources" => [],
+      "created" => "2026-06-01",
+      "author" => "test",
+      "tags" => [],
+    })
+    @intent_dir = File.join(@store_dir, "51--chainless")
+  end
+
+  def teardown
+    FileUtils.rm_rf(DOCTOR_TEST_HOME)
+  end
+
+  def test_library_flags_chainless_intent
+    result = IntentValidator.validate(@intent_dir)
+
+    refute result[:ok]
+    assert_includes result[:missing], "chain"
+  end
+
+  def test_cli_exits_non_zero_for_chainless_intent
+    cli = File.expand_path("../scripts/validate-intent", __dir__)
+    ok = system(cli, @intent_dir, out: File::NULL, err: File::NULL)
+
+    refute ok, "validate-intent must exit non-zero for an intent missing chain"
+  end
+
+  def test_doctor_flags_chainless_intent_as_fixable
+    checks = doctor.check_conventions
+    fm_check = checks.find { |c| c[:name] == "frontmatter_fields" }
+
+    assert_equal "warn", fm_check[:status]
+    assert_equal true, fm_check[:fixable]
+    assert fm_check[:details].any? { |d| d.include?("51--chainless") && d.include?("chain") }
+  end
 end
 
 # ===========================================================================

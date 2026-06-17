@@ -112,6 +112,10 @@ For the operational detail behind these parts (determinism coverage, harness tax
 
 QMD is an optional, recommended local markdown search engine layered over the stores. Plastic functions without it (ripgrep over the store files is the fallback), so the integration adds search without becoming a dependency. The topology is one collection per store in the default qmd index, all `plastic-` prefixed: `plastic-global` for the global store and `plastic-<slug>` for each project store (slugs from `projects.yml`). Plastic delegates all index mechanics to the qmd CLI through a single helper (`scripts/lib/qmd_sync.rb`, exposed as the `scripts/qmd-sync` CLI) and never reimplements qmd commands. Index mutation is tied to lifecycle events only, never ad-hoc: install registers all stores, project creation registers the new project store, and intent delivery reindexes the delivering store's collection. Session start is report-only and never mutates the index. Query craft itself is owned by the installed `qmd` skill, not by Plastic.
 
+### intent born-complete validation
+
+A single validator library, `scripts/lib/intent_validator.rb`, defines whether an intent is born complete (every required frontmatter field present, and `sources` and `chain` well-formed arrays of id strings). It is the only definition of that contract. It is exposed as the `scripts/validate-intent` CLI (exit 0 when complete, non-zero with a report otherwise) and consulted by both the `plastic-creating-intent` skill (a self-verify step after the write) and doctor (the `frontmatter_fields` and `frontmatter_valid` conventions checks). Intents are created only through `plastic-creating-intent` and never hand-authored, so completeness rests on machinery rather than on agent discipline.
+
 ## session boot
 
 Boot is owned by hooks, so it runs by construction on every session start, not as prose a skill follows (intent 36a):

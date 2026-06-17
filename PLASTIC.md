@@ -156,6 +156,7 @@ ALL work flows through intents.
 3. On completion, capture observations in `## Insights`.
 4. When done, write `outcome.md` + `## Outcome` summary. Update INDEX.md.
 5. Researches are intents. No separate folder.
+6. Intents are created only via `plastic-creating-intent`. Never hand-author an intent file. The skill self-verifies the written intent with `scripts/validate-intent` before announcing or committing, so every intent is born complete.
 
 ## Transition Gates
 

@@ -116,6 +116,7 @@ Use the `fix_hint` value to determine the correct action:
 | "Create INDEX.md with required sections" | Write INDEX.md with the 5 sections: Active, Future, Clusters, Abandoned, Completed |
 | "Add missing entries to INDEX.md" | Add orphaned intents to the appropriate INDEX.md section |
 | "Remove stale references from INDEX.md" | Edit INDEX.md to remove ghost references |
+| "Inject the missing required frontmatter field(s)" | Edit the intent's `{ID}--{slug}.md` frontmatter to add the missing key (e.g. `chain: []`) without touching other keys |
 | "Re-run installer" | Run `npx @zalom/plastic@latest --agent` |
 
 For fixes the agent cannot handle automatically, explain what the user needs

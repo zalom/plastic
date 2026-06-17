@@ -206,6 +206,8 @@ class InstallerCore
       "scripts/lib/boot_banner.rb" => "scripts/lib/boot_banner.rb",
       "scripts/lib/qmd_sync.rb" => "scripts/lib/qmd_sync.rb",
       "scripts/qmd-sync" => "scripts/qmd-sync",
+      "scripts/lib/intent_validator.rb" => "scripts/lib/intent_validator.rb",
+      "scripts/validate-intent" => "scripts/validate-intent",
       "scripts/lib/installer_core.rb" => "scripts/lib/installer_core.rb",
       "scripts/install.rb" => "scripts/install.rb",
       "scripts/update.rb" => "scripts/update.rb",

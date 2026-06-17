@@ -16,6 +16,7 @@ require "date"
 require "digest"
 
 require_relative "lib/qmd_sync"
+require_relative "lib/intent_validator"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -30,7 +31,9 @@ class Doctor
 
   REQUIRED_INDEX_SECTIONS = ["## Active", "## Future", "## Clusters", "## Abandoned", "## Completed"].freeze
 
-  REQUIRED_FRONTMATTER_FIELDS = %w[id intent sources chain created author tags].freeze
+  # Single source of truth for the required-field list lives in IntentValidator
+  # (intent 60). Alias it here so the two can never drift.
+  REQUIRED_FRONTMATTER_FIELDS = IntentValidator::REQUIRED_FIELDS
 
   CLAUDE_HOOK_SCRIPTS = %w[
     plastic-session-start
@@ -50,6 +53,7 @@ class Doctor
     hook-continue
     hook-future-intent-check
     hook-gate-check
+    validate-intent
     doctor.rb
   ].freeze
 
@@ -386,7 +390,8 @@ class Doctor
         next
       end
 
-      missing = REQUIRED_FRONTMATTER_FIELDS.reject { |f| fm.key?(f) }
+      # Delegate missing-field detection to the single source of truth.
+      missing = IntentValidator.validate_frontmatter(fm)[:missing]
       bad_frontmatter << { dir: tilde(d[:path]), missing: missing } unless missing.empty?
     end
 
@@ -400,6 +405,35 @@ class Doctor
         category: "conventions", name: "frontmatter_fields", status: "warn",
         message: "#{bad_frontmatter.size} intent file(s) missing required frontmatter fields",
         details: bad_frontmatter.map { |b| "#{b[:dir]}: missing #{b[:missing].join(", ")}" },
+        fixable: true,
+        fix_hint: "Inject the missing required frontmatter field(s) (e.g. chain: []) without disturbing other keys"
+      )
+    end
+
+    # frontmatter_valid — per-intent frontmatter shape (sources/chain are
+    # well-formed arrays of id strings). Delegates to IntentValidator so the
+    # born-complete contract is defined in exactly one place. Read-only: shape
+    # repair is not a single-field inject, so this check is not fixable here.
+    malformed = []
+    intent_dirs.each do |d|
+      md_path = File.join(d[:path], "#{d[:name]}.md")
+      next unless File.exist?(md_path)
+
+      result = IntentValidator.validate_frontmatter(parse_frontmatter(md_path))
+      shape_errors = result[:errors].select { |e| e.include?("must be an array") || e.include?("invalid id") }
+      malformed << { dir: tilde(d[:path]), errors: shape_errors } unless shape_errors.empty?
+    end
+
+    if malformed.empty?
+      checks << check(
+        category: "conventions", name: "frontmatter_valid", status: "pass",
+        message: "All intent frontmatter is well-formed"
+      )
+    else
+      checks << check(
+        category: "conventions", name: "frontmatter_valid", status: "warn",
+        message: "#{malformed.size} intent file(s) have malformed sources/chain",
+        details: malformed.map { |m| "#{m[:dir]}: #{m[:errors].join(", ")}" },
         fixable: false
       )
     end

@@ -89,7 +89,17 @@ mkdir -p <STORE>/ID--slug
 
 Write `{ID}--{slug}.md` using the intent template. For project intents, add the governing intent's ID to `sources` and add `[[global:ID]]` backlink in `## Links`.
 
-### 5. If Implementation Intent Spawns a Project
+### 5. Self-Verify the Written Intent
+
+Before announcing or committing, verify the just-written intent is born complete:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/validate-intent" "<STORE>/ID--slug"
+```
+
+If it exits non-zero, read the stderr report, inject the missing field(s) into the `{ID}--{slug}.md` frontmatter (for example add `chain: []`) WITHOUT disturbing other frontmatter keys, and re-run `validate-intent` until it exits 0. Only then proceed to the remaining steps (project spawn, INDEX.md, commit, announce).
+
+### 6. If Implementation Intent Spawns a Project
 
 When the user says "start building" or the plan calls for a new project:
 
@@ -114,20 +124,20 @@ When the user says "start building" or the plan calls for a new project:
 5. Add `project-<slug>` to the intent's `tags` array
 6. Auto-commit in both `~/.plastic/` and the new project
 
-### 6. Update INDEX.md
+### 7. Update INDEX.md
 
 - **Global intents:** update `~/.plastic/INDEX.md`
 - **Project intents:** no global INDEX.md change (tactical intents are project-scoped)
 
 Add to `## Active` (or `## Future`) and appropriate cluster.
 
-### 7. Auto-commit
+### 8. Auto-commit
 
 ```bash
 cd <store-root> && git add . && git commit -m "feat: create intent ID — [name]"
 ```
 
-### 8. Announce
+### 9. Announce
 
 "Created intent ID — [name]. Placed in: [Active|Future]. Store: [global|project:<slug>|local]."
 

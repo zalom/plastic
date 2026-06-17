@@ -267,6 +267,27 @@ delegating to the qmd CLI. Each trigger lives at a fixed point:
   ~2GB of models qmd lazily downloads on first embed/rerank are present. The index
   itself lives under `~/.cache` and is never committed to the `~/.plastic` git.
 
+### intent born-complete validation
+
+An intent can be born missing a required frontmatter field (intent 51 was created
+with no `chain` key, and nothing caught it until a later doctor run). The fix is
+one shared definition of "born complete" that creation and diagnosis both consult.
+
+- **Single source of truth**: `scripts/lib/intent_validator.rb` is the only
+  definition of born-complete (required fields present, `sources` and `chain`
+  well-formed arrays of id strings). It is injectable (`plastic_home`), hermetic,
+  uses no eval, and does no global-constant injection, mirroring `qmd_sync.rb`.
+- **Three consumers sit on top of it**: the `validate-intent` CLI (exit 0 when
+  complete, non-zero with a report otherwise); the `plastic-creating-intent`
+  self-verify step (run the CLI on the just-written file, inject any missing field
+  such as `chain: []`, then re-run before announcing or committing); and doctor's
+  read-only conventions checks. Doctor's `frontmatter_fields` check is now
+  repairable through its `fix_hint` (the intent-19a pattern: doctor never writes,
+  the doctor skill applies the fix), and a new `frontmatter_valid` check flags
+  malformed `sources` or `chain`. There is no `--fix` flag on `doctor.rb`.
+- **Scope boundary**: this is per-intent frontmatter validity only. Store-wide
+  `sources`/`chain` symmetry across intents is out of scope and owned by intent 49.
+
 ## living-document
 
 This is a living document. When Plastic's architecture, lifecycle, conventions,
