@@ -744,6 +744,18 @@ class DoctorDeprecationsTest < Minitest::Test
     assert_equal "pass", checks[0][:status]
   end
 
+  def test_empty_deprecations_list_passes
+    File.write(File.join(DOCTOR_TEST_HOME, "deprecations.yml"), YAML.dump({
+      "deprecations" => [],
+    }))
+
+    checks = doctor.check_deprecations
+    active_check = checks.find { |c| c[:name] == "active_deprecations" }
+
+    refute_nil active_check, "active_deprecations check should be present for an empty list"
+    assert_equal "pass", active_check[:status]
+  end
+
   def test_no_active_deprecations_passes
     File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "2.0.0")
     File.write(File.join(DOCTOR_TEST_HOME, "deprecations.yml"), YAML.dump({

@@ -169,6 +169,14 @@ ALL work flows through intents.
 
 Hard blocking — hooks exit code 2 on gate failure.
 
+## Deprecation Process
+
+Deprecations live in `deprecations.yml` and are shown at SessionStart. While Plastic is
+pre-1.0, a satisfied deprecation (its migration is already done on installed machines) may be
+removed immediately instead of waiting for its declared `removal` version. From `1.0.0` on,
+the steady-state grace rule applies (removal at least two minors ahead). For the full process,
+severity levels, and the pre-1.0 exception, see the `plastic-releasing` skill.
+
 ## Skills Reference
 
 Detailed conventions live inside the skills that use them, not in this file.
