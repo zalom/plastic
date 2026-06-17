@@ -13,6 +13,7 @@
 # `install --reinstall --ledger-action update` for the chosen version via npx.
 
 require_relative "lib/installer_core"
+require_relative "doctor"
 
 class Update < InstallerCore
   PKG = "@zalom/plastic"
@@ -51,8 +52,29 @@ class Update < InstallerCore
         return 1
       end
       puts "\u{2b06}\u{fe0f}  Updating Plastic #{iv} \u{2192} #{res[:target]}"
-      perform_switch(res[:target], agent_args(argv))
+      exit_code = perform_switch(res[:target], agent_args(argv))
+      run_post_update_doctor if exit_code == 0
+      exit_code
     end
+  end
+
+  # Run the full doctor after a successful update and print a human-readable
+  # summary. Informational only: does not raise and does not affect the update's
+  # exit code. Accepts injected `doctor` and `out` for hermetic unit tests.
+  def run_post_update_doctor(doctor: nil, out: $stdout)
+    doctor ||= Doctor.new
+    out.puts "\nRunning full doctor after update..."
+    result = doctor.run_checks("claude")
+    s = result[:summary]
+    out.puts "  Doctor status: #{result[:status]} " \
+             "(pass: #{s[:pass]}, warn: #{s[:warn]}, fail: #{s[:fail]}, total: #{s[:total]})"
+    out.puts "  Run /plastic-doctor for details." unless result[:status] == "pass"
+    result
+  rescue StandardError => e
+    # Non-blocking: a crash here (e.g. malformed file in the real store) must not
+    # undo or fail an update that already succeeded. Report and move on.
+    out.puts "  doctor could not run: #{e.message} — run /plastic-doctor"
+    nil
   end
 
   # Pure decision logic (hermetically testable). Returns a status hash.

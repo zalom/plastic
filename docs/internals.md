@@ -147,18 +147,39 @@ step from the first unchecked checklist item. Continue runs this only on demand,
 boot, since continue is about loading and presenting choices while `plastic-auto` owns
 autonomous execution.
 
-`doctor.rb` has two modes. The default run walks every check category (global store,
-conventions across all intents, agent registration, core files, project stores,
-deprecations). The `--core` flag runs only the runtime-liveness subset (agent registration
-and core files: hooks, skills, scripts, PLASTIC.md, VERSION, version match) and skips the
-slow inventory walks, so it returns in well under a second. `hook-session-start` calls the
-same `--core` checks in-process (reusing the `Doctor` class, no second process spawn) to print
-the boot banner on every session start (intent 36a); `/plastic-doctor` uses the full run.
+`doctor.rb` has three scopes:
+
+- **`--core`**: binary pass/error only. Walks agent registration and core files
+  (hooks, skills, scripts, PLASTIC.md, VERSION, version match) and compares each
+  file's content against its SHA256 in the install manifests. The global manifest
+  (`~/.plastic/manifest.json`) covers PLASTIC.md and global scripts; the agent-side
+  manifest (`~/.claude/plastic/manifest.json`) covers agent scripts and hooks. The
+  installer writes both manifests on every install or update. `--core` skips all
+  store inventory walks so it returns in well under a second. Result is binary: exit 0
+  on pass, non-zero on error, never a warning.
+
+- **`--store [global|<slug>]`**: three-state (pass / warn / fail). Walks store state:
+  intent well-formedness, INDEX sections, conventions, and link validity. Without an
+  argument it checks all stores; `global` checks only the global store; a project slug
+  checks only that project's store. The dashboard load triggers this automatically: the
+  global board runs `--store global`, a project board runs `--store <slug>`. The
+  `plastic-continuing` skill also calls it on resume.
+
+- **Full run (no flag)**: three-state. Walks every check category (global store,
+  conventions across all intents, agent registration, core files, project stores,
+  deprecations). This is what `/plastic-doctor` invokes. It also runs automatically
+  after every `plastic-update` (informational: prints the report but does not block
+  or revert the update).
+
+`hook-session-start` calls `--core` in-process (reusing the `Doctor` class, no second
+process spawn) to drive the boot banner on every session start (intent 36a).
 
 The hook surfaces that banner on two channels from a single `BootBanner` renderer (intent 54):
 `hookSpecificOutput.additionalContext` (added to the model's context) and the top-level
-`systemMessage` (rendered in the user's terminal, and re-fired on `/clear`). Sharing one
-renderer means the visible line and the model-facing line cannot drift.
+`systemMessage` (rendered in the user's terminal, and re-fired on `/clear`). The banner is
+binary: success produces one line, error produces one line with a prompt to run
+`/plastic-doctor`. Sharing one renderer means the visible line and the model-facing line
+cannot drift.
 
 ## what-exists-today-vs-what-is-missing
 

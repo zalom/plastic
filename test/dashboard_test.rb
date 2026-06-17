@@ -244,6 +244,55 @@ class DashboardTest < Minitest::Test
     assert_equal created.sort.reverse, created
   end
 
+  # --- store health (doctor --store per board) -------------------------------
+
+  def test_global_board_includes_store_health_scoped_global
+    out, status = run_dash("continue", "--data")
+    assert_equal 0, status
+    data = JSON.parse(out)
+    sh = data["store_health"]
+    refute_nil sh, "global --data payload missing store_health"
+    assert_equal "global", sh["scope"]
+    assert_includes %w[pass warn fail], sh["status"]
+    %w[pass warn fail total].each { |k| assert sh["summary"].key?(k), "summary missing #{k}" }
+  end
+
+  def test_project_board_includes_store_health_scoped_slug
+    out, status = run_dash("project", "demo", "--data")
+    assert_equal 0, status
+    data = JSON.parse(out)
+    sh = data["store_health"]
+    refute_nil sh, "project --data payload missing store_health"
+    assert_equal "demo", sh["scope"]
+    assert_includes %w[pass warn fail], sh["status"]
+    %w[pass warn fail total].each { |k| assert sh["summary"].key?(k), "summary missing #{k}" }
+  end
+
+  def test_json_payload_includes_store_health
+    out, status = run_dash("project", "demo", "--json")
+    assert_equal 0, status
+    data = JSON.parse(out)
+    sh = data["store_health"]
+    refute_nil sh, "--json payload missing store_health"
+    assert_equal "demo", sh["scope"]
+  end
+
+  def test_problem_store_surfaces_warn_or_fail_without_raising
+    # Register a project whose store directory does not exist on disk. The doctor
+    # store check should surface this as warn/fail, and the dashboard must not crash.
+    File.write(File.join(@home, "projects.yml"),
+               "---\nprojects:\n  demo:\n    path: \"/tmp/demo\"\n    status: active\n" \
+               "  broken:\n    path: \"/tmp/broken-missing\"\n    status: active\n")
+
+    out, status = run_dash("project", "broken", "--data")
+    assert_equal 0, status, "problem store must not change the dashboard exit code"
+    data = JSON.parse(out)
+    sh = data["store_health"]
+    refute_nil sh
+    assert_equal "broken", sh["scope"]
+    assert_includes %w[warn fail], sh["status"], "missing project store should surface warn/fail"
+  end
+
   # --- determinism -----------------------------------------------------------
 
   def test_render_is_deterministic

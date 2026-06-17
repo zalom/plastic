@@ -13,6 +13,7 @@ require "json"
 require "yaml"
 require "time"
 require "date"
+require "digest"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -63,6 +64,12 @@ class Doctor
     agent = "claude"
     help = false
     core = false
+    # store flag representation:
+    #   nil        — --store not given
+    #   :all       — --store with no value (check every store)
+    #   :global    — --store global
+    #   "<slug>"   — --store <slug> (a single project)
+    store = nil
 
     i = 0
     while i < argv.length
@@ -78,6 +85,15 @@ class Doctor
       when "--core"
         core = true
         i += 1
+      when "--store"
+        nxt = argv[i + 1]
+        if nxt && !nxt.start_with?("-")
+          store = (nxt == "global") ? :global : nxt
+          i += 2
+        else
+          store = :all
+          i += 1
+        end
       when "--help", "-h"
         help = true
         i += 1
@@ -86,7 +102,7 @@ class Doctor
       end
     end
 
-    { agent: agent, help: help, core: core }
+    { agent: agent, help: help, core: core, store: store }
   end
 
   def show_help
@@ -99,8 +115,12 @@ class Doctor
 
       Options:
         --agent NAME    Agent to check: claude (default), codex, hermes
-        --core          Fast runtime-liveness check only (hooks, scripts, core files);
-                        skips the slow store/conventions/project inventory walks.
+        --core          Binary core sync check: verifies agent registration, core
+                        files, and that every manifest-tracked file matches its
+                        recorded SHA256. Exits 0 (pass) or 2 (fail); never warn.
+        --store [WHICH] Run only the store/conventions checks. WHICH may be:
+                        global (global store only), a project slug (that project
+                        only), or omitted (all stores). 3-state pass/warn/fail.
         -h, --help      Show this help
 
       Output:
@@ -301,10 +321,14 @@ class Doctor
 
   # --- Check category 2: Conventions ---
 
-  def check_conventions
+  # When `scopes` is a non-nil Array of scope strings (e.g. ["global"] or
+  # ["project:plastic"]), only intents whose :scope is in that list are checked.
+  # When nil (the default, used by the full run), every intent is checked.
+  def check_conventions(scopes: nil)
     checks = []
 
     intent_dirs = all_intent_dirs
+    intent_dirs = intent_dirs.select { |d| scopes.include?(d[:scope]) } unless scopes.nil?
     dirname_pattern = /^\w+--[\w-]+$/
 
     # intent_dirname
@@ -639,6 +663,84 @@ class Doctor
     checks
   end
 
+  # --- Check category: manifest sync (binary core integrity) ---
+
+  # Verify, for BOTH the global manifest and the agent-side manifest, that every
+  # file listed exists and its current SHA256 matches the recorded hash.
+  #   - GLOBAL manifest:    <plastic_home>/manifest.json
+  #   - AGENT-side manifest: claude -> <dir>/plastic/manifest.json
+  #                          other  -> <dir>/plastic-manifest.json
+  # Manifest format: { "version", "created", "files": { abs_path => sha256 } }.
+  # A missing manifest is a fail; any missing/mismatched listed file is a fail;
+  # otherwise a single pass per manifest.
+  def check_manifest_sync(agent_key)
+    checks = []
+
+    global_manifest = File.join(plastic_home, "manifest.json")
+    checks << verify_manifest(global_manifest, "global")
+
+    agent_dir = agents[agent_key][:dir]
+    agent_manifest = if agent_key == "claude"
+                       File.join(agent_dir, "plastic", "manifest.json")
+                     else
+                       File.join(agent_dir, "plastic-manifest.json")
+                     end
+    checks << verify_manifest(agent_manifest, "agent")
+
+    checks
+  end
+
+  # Check one manifest file. Returns a single check (pass or fail).
+  def verify_manifest(manifest_path, label)
+    unless File.exist?(manifest_path)
+      return check(
+        category: "manifest_sync", name: "#{label}_manifest", status: "fail",
+        message: "#{label} core manifest missing — re-run the Plastic installer",
+        details: [tilde(manifest_path)],
+        fixable: true, fix_hint: "Re-run the Plastic installer"
+      )
+    end
+
+    data = read_json_safe(manifest_path)
+    files = data.is_a?(Hash) ? data["files"] : nil
+    unless files.is_a?(Hash)
+      return check(
+        category: "manifest_sync", name: "#{label}_manifest", status: "fail",
+        message: "#{label} core manifest unreadable or malformed — re-run the Plastic installer",
+        details: [tilde(manifest_path)],
+        fixable: true, fix_hint: "Re-run the Plastic installer"
+      )
+    end
+
+    missing = []
+    mismatched = []
+    files.each do |path, recorded|
+      unless File.exist?(path)
+        missing << tilde(path)
+        next
+      end
+      actual = Digest::SHA256.file(path).hexdigest
+      mismatched << tilde(path) if actual != recorded
+    end
+
+    if missing.empty? && mismatched.empty?
+      check(
+        category: "manifest_sync", name: "#{label}_manifest", status: "pass",
+        message: "#{label} manifest: all #{files.size} tracked file(s) present and matching"
+      )
+    else
+      details = []
+      details += missing.map { |p| "missing: #{p}" }
+      details += mismatched.map { |p| "modified: #{p}" }
+      check(
+        category: "manifest_sync", name: "#{label}_manifest", status: "fail",
+        message: "#{label} manifest out of sync: #{missing.size} missing, #{mismatched.size} modified",
+        details: details,
+        fixable: true, fix_hint: "Re-run the Plastic installer to restore tracked files"
+      )
+    end
+  end
+
   # --- Check category 5: Project stores ---
 
   def check_project_stores
@@ -666,135 +768,140 @@ class Doctor
       return checks
     end
 
-    # Load INDEX.md content for cross-reference checks
-    index_path = File.join(plastic_home, "INDEX.md")
-    index_content = File.exist?(index_path) ? File.read(index_path) : ""
-
     projects.each do |slug, project_info|
-      project_dir = File.join(plastic_home, "projects", slug)
+      checks += check_project_store(slug, project_info)
+    end
 
-      # project_dir_exists
-      if File.directory?(project_dir)
-        checks << check(
-          category: "project_stores", name: "project_dir_exists", status: "pass",
-          message: "Project directory exists for '#{slug}'"
-        )
-      else
-        checks << check(
-          category: "project_stores", name: "project_dir_exists", status: "warn",
-          message: "Project directory missing for '#{slug}'",
-          details: [tilde(project_dir)],
-          fixable: true, fix_hint: "Create the project store directory: mkdir -p #{tilde(project_dir)}"
-        )
-      end
+    checks
+  end
 
-      # project_index
-      project_index = File.join(project_dir, "INDEX.md")
-      if File.exist?(project_index)
-        checks << check(
-          category: "project_stores", name: "project_index", status: "pass",
-          message: "INDEX.md exists for project '#{slug}'"
-        )
-      else
-        checks << check(
-          category: "project_stores", name: "project_index", status: "warn",
-          message: "INDEX.md missing for project '#{slug}'",
-          details: [tilde(project_index)],
-          fixable: true, fix_hint: "Create INDEX.md in the project store directory"
-        )
-      end
+  # Per-project validation extracted from check_project_stores so a single
+  # project can be checked in isolation (used by `--store <slug>`).
+  def check_project_store(slug, project_info)
+    checks = []
+    project_dir = File.join(plastic_home, "projects", slug)
 
-      # project_yml_exists
-      project_yml_path = File.join(plastic_home, "projects", slug, "project.yml")
-      project_yml_data = nil
+    # project_dir_exists
+    if File.directory?(project_dir)
+      checks << check(
+        category: "project_stores", name: "project_dir_exists", status: "pass",
+        message: "Project directory exists for '#{slug}'"
+      )
+    else
+      checks << check(
+        category: "project_stores", name: "project_dir_exists", status: "warn",
+        message: "Project directory missing for '#{slug}'",
+        details: [tilde(project_dir)],
+        fixable: true, fix_hint: "Create the project store directory: mkdir -p #{tilde(project_dir)}"
+      )
+    end
 
-      if File.exist?(project_yml_path)
-        checks << check(
-          category: "project_stores", name: "project_yml_exists", status: "pass",
-          message: "project.yml exists for project '#{slug}'"
-        )
-        project_yml_data = load_yaml_safe(project_yml_path)
-      else
-        checks << check(
-          category: "project_stores", name: "project_yml_exists", status: "warn",
-          message: "project.yml missing for project '#{slug}'",
-          fixable: true, fix_hint: "Create project.yml from template — see plastic-creating-project"
-        )
-      end
+    # project_index
+    project_index = File.join(project_dir, "INDEX.md")
+    if File.exist?(project_index)
+      checks << check(
+        category: "project_stores", name: "project_index", status: "pass",
+        message: "INDEX.md exists for project '#{slug}'"
+      )
+    else
+      checks << check(
+        category: "project_stores", name: "project_index", status: "warn",
+        message: "INDEX.md missing for project '#{slug}'",
+        details: [tilde(project_index)],
+        fixable: true, fix_hint: "Create INDEX.md in the project store directory"
+      )
+    end
 
-      # governing_docs_exist
-      if project_yml_data.is_a?(Hash) && project_yml_data["governing_docs"].is_a?(Array) && !project_yml_data["governing_docs"].empty?
-        project_path = project_info.is_a?(Hash) ? project_info["path"] : nil
+    # project_yml_exists
+    project_yml_path = File.join(plastic_home, "projects", slug, "project.yml")
+    project_yml_data = nil
 
-        if project_path
-          missing_docs = project_yml_data["governing_docs"].reject do |doc_path|
-            File.exist?(File.join(project_path, doc_path))
-          end
+    if File.exist?(project_yml_path)
+      checks << check(
+        category: "project_stores", name: "project_yml_exists", status: "pass",
+        message: "project.yml exists for project '#{slug}'"
+      )
+      project_yml_data = load_yaml_safe(project_yml_path)
+    else
+      checks << check(
+        category: "project_stores", name: "project_yml_exists", status: "warn",
+        message: "project.yml missing for project '#{slug}'",
+        fixable: true, fix_hint: "Create project.yml from template — see plastic-creating-project"
+      )
+    end
 
-          if missing_docs.empty?
-            checks << check(
-              category: "project_stores", name: "governing_docs_exist", status: "pass",
-              message: "All governing docs exist for project '#{slug}'"
-            )
-          else
-            checks << check(
-              category: "project_stores", name: "governing_docs_exist", status: "warn",
-              message: "#{missing_docs.size} governing doc(s) missing for project '#{slug}'",
-              details: missing_docs,
-              fixable: false
-            )
-          end
+    # governing_docs_exist
+    if project_yml_data.is_a?(Hash) && project_yml_data["governing_docs"].is_a?(Array) && !project_yml_data["governing_docs"].empty?
+      project_path = project_info.is_a?(Hash) ? project_info["path"] : nil
+
+      if project_path
+        missing_docs = project_yml_data["governing_docs"].reject do |doc_path|
+          File.exist?(File.join(project_path, doc_path))
+        end
+
+        if missing_docs.empty?
+          checks << check(
+            category: "project_stores", name: "governing_docs_exist", status: "pass",
+            message: "All governing docs exist for project '#{slug}'"
+          )
+        else
+          checks << check(
+            category: "project_stores", name: "governing_docs_exist", status: "warn",
+            message: "#{missing_docs.size} governing doc(s) missing for project '#{slug}'",
+            details: missing_docs,
+            fixable: false
+          )
         end
       end
+    end
 
-      # cross_references — if project has `parent` field, check global store intent tags
-      parent_id = project_info.is_a?(Hash) ? project_info["parent"] : nil
-      next unless parent_id
+    # cross_references — if project has `parent` field, check global store intent tags
+    parent_id = project_info.is_a?(Hash) ? project_info["parent"] : nil
+    return checks unless parent_id
 
-      # Find the intent directory for the parent ID
-      store_dir = File.join(plastic_home, "store")
-      parent_dir = nil
-      if File.directory?(store_dir)
-        parent_dir = Dir.children(store_dir).find { |d| d.start_with?("#{parent_id}--") }
-      end
+    # Find the intent directory for the parent ID
+    store_dir = File.join(plastic_home, "store")
+    parent_dir = nil
+    if File.directory?(store_dir)
+      parent_dir = Dir.children(store_dir).find { |d| d.start_with?("#{parent_id}--") }
+    end
 
-      if parent_dir.nil?
-        checks << check(
-          category: "project_stores", name: "cross_references", status: "warn",
-          message: "Parent intent '#{parent_id}' for project '#{slug}' not found in global store",
-          fixable: false
-        )
-        next
-      end
+    if parent_dir.nil?
+      checks << check(
+        category: "project_stores", name: "cross_references", status: "warn",
+        message: "Parent intent '#{parent_id}' for project '#{slug}' not found in global store",
+        fixable: false
+      )
+      return checks
+    end
 
-      intent_md = File.join(store_dir, parent_dir, "#{parent_dir}.md")
-      fm = parse_frontmatter(intent_md)
+    intent_md = File.join(store_dir, parent_dir, "#{parent_dir}.md")
+    fm = parse_frontmatter(intent_md)
 
-      if fm.nil?
-        checks << check(
-          category: "project_stores", name: "cross_references", status: "warn",
-          message: "Cannot read frontmatter of parent intent '#{parent_id}' for project '#{slug}'",
-          fixable: false
-        )
-        next
-      end
+    if fm.nil?
+      checks << check(
+        category: "project_stores", name: "cross_references", status: "warn",
+        message: "Cannot read frontmatter of parent intent '#{parent_id}' for project '#{slug}'",
+        fixable: false
+      )
+      return checks
+    end
 
-      tags = fm["tags"]
-      expected_tag = "project-#{slug}"
+    tags = fm["tags"]
+    expected_tag = "project-#{slug}"
 
-      if tags.is_a?(Array) && tags.include?(expected_tag)
-        checks << check(
-          category: "project_stores", name: "cross_references", status: "pass",
-          message: "Parent intent '#{parent_id}' has '#{expected_tag}' tag for project '#{slug}'"
-        )
-      else
-        checks << check(
-          category: "project_stores", name: "cross_references", status: "warn",
-          message: "Parent intent '#{parent_id}' missing '#{expected_tag}' tag",
-          details: ["Intent: store/#{parent_dir}", "Expected tag: #{expected_tag}", "Current tags: #{(tags || []).inspect}"],
-          fixable: false
-        )
-      end
+    if tags.is_a?(Array) && tags.include?(expected_tag)
+      checks << check(
+        category: "project_stores", name: "cross_references", status: "pass",
+        message: "Parent intent '#{parent_id}' has '#{expected_tag}' tag for project '#{slug}'"
+      )
+    else
+      checks << check(
+        category: "project_stores", name: "cross_references", status: "warn",
+        message: "Parent intent '#{parent_id}' missing '#{expected_tag}' tag",
+        details: ["Intent: store/#{parent_dir}", "Expected tag: #{expected_tag}", "Current tags: #{(tags || []).inspect}"],
+        fixable: false
+      )
     end
 
     checks
@@ -912,24 +1019,67 @@ class Doctor
     summarize(all_checks, agent_key)
   end
 
-  # Fast runtime-liveness check: only the plumbing that proves Plastic can
-  # operate (hooks, skills, scripts, core files). Skips the slow inventory
-  # walks (global store refs, per-intent conventions, project stores,
-  # deprecations) so it returns near-instantly. Used by `doctor.rb --core`.
+  # Binary core sync check: agent registration + core files + manifest sync,
+  # rolled up with binary: true so ANY warn or fail makes the overall status
+  # "fail" (and "warn" is never emitted). Used by `doctor.rb --core`.
   def run_core_checks(agent_key)
     all_checks = []
     all_checks += check_agent_registration(agent_key)
     all_checks += check_core_files(agent_key)
+    all_checks += check_manifest_sync(agent_key)
 
-    summarize(all_checks, agent_key)
+    summarize(all_checks, agent_key, binary: true)
+  end
+
+  # Store-scoped checks for `doctor.rb --store [global|<slug>]`.
+  #   :all     -> global store + all project stores + all conventions
+  #   :global  -> global store + conventions scoped to ["global"]
+  #   "<slug>" -> that project only + conventions scoped to ["project:<slug>"]
+  #               (fail if the slug is not registered in projects.yml)
+  # 3-state roll-up (pass/warn/fail), like the full run.
+  def run_store_checks(store)
+    all_checks =
+      case store
+      when :all
+        check_global_store + check_project_stores + check_conventions
+      when :global
+        check_global_store + check_conventions(scopes: ["global"])
+      else
+        all_checks_for_project_slug(store)
+      end
+
+    summarize(all_checks, "claude", binary: false)
+  end
+
+  # Build the checks for a single project slug, or a lone fail check when the
+  # slug is unknown.
+  def all_checks_for_project_slug(slug)
+    projects_data = load_yaml_safe(File.join(plastic_home, "projects.yml"))
+    projects = projects_data.is_a?(Hash) ? projects_data["projects"] : nil
+
+    unless projects.is_a?(Hash) && projects.key?(slug)
+      return [check(
+        category: "project_stores", name: "unknown_project", status: "fail",
+        message: "unknown project '#{slug}'",
+        fixable: false
+      )]
+    end
+
+    check_project_store(slug, projects[slug]) +
+      check_conventions(scopes: ["project:#{slug}"])
   end
 
   # Roll a list of checks up into the standard result envelope.
-  def summarize(all_checks, agent_key)
+  # When binary: true, the overall status is "pass" only if there are zero warn
+  # AND zero fail; any warn or fail yields "fail" (never "warn"). When false
+  # (the default) the classic 3-state pass/warn/fail roll-up is used.
+  def summarize(all_checks, agent_key, binary: false)
     summary = { pass: 0, warn: 0, fail: 0, total: all_checks.size }
     all_checks.each { |c| summary[c[:status].to_sym] += 1 }
 
-    overall = if summary[:fail] > 0
+    overall = if binary
+                (summary[:fail] > 0 || summary[:warn] > 0) ? "fail" : "pass"
+              elsif summary[:fail] > 0
                 "fail"
               elsif summary[:warn] > 0
                 "warn"
@@ -957,10 +1107,19 @@ class Doctor
       exit 0
     end
 
-    result = flags[:core] ? run_core_checks(flags[:agent]) : run_checks(flags[:agent])
+    result =
+      if !flags[:store].nil?
+        run_store_checks(flags[:store])
+      elsif flags[:core]
+        run_core_checks(flags[:agent])
+      else
+        run_checks(flags[:agent])
+      end
 
     puts JSON.pretty_generate(result)
 
+    # --core is binary: status is only ever pass|fail, so this maps to 0|2.
+    # --store and the full run keep the 3-state 0/1/2 mapping.
     case result[:status]
     when "fail" then exit 2
     when "warn" then exit 1

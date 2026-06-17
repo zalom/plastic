@@ -13,24 +13,16 @@ module BootBanner
   # health: the Hash returned by Doctor#run_core_checks, or nil if the check
   #         itself raised (degraded to an error banner).
   # version: the installed Plastic version string, or nil.
+  #
+  # Returns one of two binary lines:
+  #   "Plastic Core loaded — v{VER} | doctor --core run: success"
+  #   "Plastic Core loaded — v{VER} | doctor --core run: error — run /plastic-doctor"
   def render(health:, version:)
-    return "Plastic Core: health check error — run /plastic-doctor" if health.nil?
-
-    if health[:status] == "pass"
-      "Plastic Core loaded — v#{version || "unknown"}"
+    ver = version || "unknown"
+    if !health.nil? && health[:status] == "pass"
+      "Plastic Core loaded — v#{ver} | doctor --core run: success"
     else
-      bad = first_problem(health[:checks])
-      if bad
-        "Plastic Core loaded with issues — #{bad[:name]}: #{bad[:message]} — run /plastic-doctor"
-      else
-        "Plastic Core loaded with issues — run /plastic-doctor"
-      end
+      "Plastic Core loaded — v#{ver} | doctor --core run: error — run /plastic-doctor"
     end
-  end
-
-  # First failing check, else first warning, else nil.
-  def first_problem(checks)
-    checks = checks || []
-    checks.find { |c| c[:status] == "fail" } || checks.find { |c| c[:status] == "warn" }
   end
 end

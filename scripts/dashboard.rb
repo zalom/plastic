@@ -22,6 +22,7 @@
 require "json"
 require "yaml"
 require "date"
+require_relative "doctor"
 
 PLASTIC_HOME = ENV.fetch("PLASTIC_HOME") { File.join(Dir.home, ".plastic") }
 
@@ -450,6 +451,34 @@ def render_all(records)
 end
 
 # ---------------------------------------------------------------------------
+# Store health — runs doctor's scoped store check on dashboard load.
+#
+# Each board load runs `doctor --store <scope>` (global board -> :global,
+# project board -> the slug) and surfaces a compact store-health line in the
+# payload. Invoked IN-PROCESS (Doctor.new + run_store_checks) rather than
+# shelling out: it is hermetic for tests (same PLASTIC_HOME), faster (no second
+# Ruby boot), and avoids parsing a subprocess's JSON. Non-fatal by contract: a
+# warn/fail result is data only and never crashes the board or changes its exit.
+# ---------------------------------------------------------------------------
+
+def store_health(scope)
+  result = Doctor.new(plastic_home: PLASTIC_HOME).run_store_checks(scope)
+  failing = (result[:checks] || []).reject { |c| c[:status] == "pass" }
+                                   .map { |c| c[:name] }
+  {
+    scope: scope.is_a?(Symbol) ? scope.to_s : scope,
+    status: result[:status],
+    summary: result[:summary],
+    failing_checks: failing,
+  }
+rescue StandardError => e
+  # Never let a store-health probe take down the dashboard.
+  { scope: scope.is_a?(Symbol) ? scope.to_s : scope,
+    status: "warn", summary: { pass: 0, warn: 1, fail: 0, total: 1 },
+    failing_checks: ["store_health_probe_error"], error: e.message }
+end
+
+# ---------------------------------------------------------------------------
 # Markdown-board data payload (intent 37) — heavy side; the skill fills a
 # Markdown template from this and presents it. Deterministic, golden-tested.
 # ---------------------------------------------------------------------------
@@ -549,6 +578,7 @@ def render_data_global(records)
   matrix_pool = global.select { |r| actionable?(r) && r[:status] != "active" }
   projs = project_summaries(records)
   { mode: "global", date: today.to_s,
+    store_health: store_health(:global),
     recently_worked: recently_worked(records),
     matrix: matrix_data(matrix_pool),
     counts: counts_of(global),
@@ -564,6 +594,7 @@ def render_data_project(records, slug)
   scoped = records.select { |r| r[:scope] == scope }
   matrix_pool = scoped.select { |r| r[:status] == "future" }
   { mode: "project", date: today.to_s, slug: slug,
+    store_health: store_health(slug),
     description: short_description(scope),
     recently_worked: recently_worked(records, project_scope: scope),
     matrix: matrix_data(matrix_pool),
@@ -619,7 +650,14 @@ def main(argv)
   if json
     subset = mode == "project" ? records.select { |r| r[:scope] == "project:#{slug}" } : records
     label = mode == "project" ? "project:#{slug}" : "all"
-    puts JSON.pretty_generate(render_json(subset, label))
+    payload = render_json(subset, label)
+    # Run the scoped store check on load, mirroring the --data board path:
+    # project board -> the slug; global/continue board -> :global. The `all`
+    # manifest spans every store, so its store-health probe is left to the
+    # per-scope boards (keeping the all-scopes auto-mode contract stable).
+    payload[:store_health] = store_health(slug) if mode == "project"
+    payload[:store_health] = store_health(:global) if mode == "continue"
+    puts JSON.pretty_generate(payload)
     return 0
   end
 

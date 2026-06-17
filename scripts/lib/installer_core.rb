@@ -177,6 +177,11 @@ class InstallerCore
 
     Dir.glob(File.join(plastic_home, "scripts", "*")).each { |f| FileUtils.chmod(0o755, f) if File.file?(f) }
 
+    global_files = core_files.values.map { |d| File.join(plastic_home, d) }
+    global_files << File.join(plastic_home, "VERSION")
+    global_files = global_files.select { |p| File.exist?(p) }
+    write_manifest(global_files, File.join(plastic_home, "manifest.json"))
+
     puts "  \u{2705} Core files synced (v#{version})"
   end
 
