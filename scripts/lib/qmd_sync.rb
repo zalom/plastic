@@ -17,10 +17,6 @@ require "yaml"
 module QmdSync
   module_function
 
-  CONTEXT_DESCRIPTION =
-    "Plastic intent store: intents, specs, plans, checklists, outcomes, and insights " \
-    "for the What/Why/How/Exec lifecycle. Search here for past decisions and work."
-
   # A runner is `->(args_array) { [stdout_string, success_boolean] }`.
   # The default invokes the real `qmd` binary.
   def default_runner
@@ -81,13 +77,16 @@ module QmdSync
     stores
   end
 
-  # Register a store directory as a collection and attach the Plastic context
-  # description. Idempotent: re-running is safe. No-op when qmd is absent.
-  def register(collection:, dir:, runner: default_runner, context: CONTEXT_DESCRIPTION, detector: method(:detect))
+  # Register a store directory as a collection. Idempotent: re-running is safe.
+  # `qmd collection add` exits non-zero when the collection already exists, so we
+  # check the collection list first and treat an existing collection as success.
+  # No-op when qmd is absent. (`qmd context add` attaches a summary to a document
+  # path, not a collection-level description, so it is not used here.)
+  def register(collection:, dir:, runner: default_runner, detector: method(:detect))
     return skip_result unless detector.call
-    out1, ok1 = runner.call(["collection", "add", dir, "--name", collection])
-    _out2, ok2 = runner.call(["context", "add", collection, context])
-    { ran: true, ok: (ok1 && ok2), output: out1.to_s.strip }
+    return { ran: true, ok: true, output: "exists" } if list_collections(runner).include?(collection)
+    out, ok = runner.call(["collection", "add", dir, "--name", collection])
+    { ran: true, ok: ok, output: out.to_s.strip }
   end
 
   # Re-index a single collection: refresh the corpus then its embeddings.
