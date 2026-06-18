@@ -1,6 +1,6 @@
 {
   "name": "@zalom/plastic",
-  "version": "1.0.0-alpha.37",
+  "version": "1.0.0-alpha.38",
   "description": "Intent-driven idea development system for AI coding agents",
   "type": "module",
   "bin": {
