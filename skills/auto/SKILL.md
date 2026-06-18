@@ -66,6 +66,8 @@ Roster (one role per cycle stage):
 
 Dispatch rule: sequential, one specialist per stage on one branch (the deliverables share files). Gate each deliverable against the stage's exit criteria before handing off. The How and Exec phases below default to Plastic's native dispatch (`plastic-executing-plan`) and delegate to the superpowers skills only when they are available or the user asks; do not restate the phase mechanics here.
 
+Spawn preamble (live-state injection): before dispatching any specialist, run `scripts/spawn-preamble <intent_dir> --role <role>` and PREPEND its output to that specialist's prompt. The preamble is a deterministic, filesystem-only snapshot of the active intent (id, intent line, current stage) plus the honoring instruction, so every spawned agent boots with accurate live state instead of guessing. This is the authoritative L2 mechanism for harnesses whose sub-agents do not inherit a top-level session event (see `docs/reference/harness-adapters.md`).
+
 Final-gate review: dispatch an independent reviewer subagent at the final gate only, not as a standing role.
 
 Headless manual gate: when running headless or in the background, enforce gates manually and do not rely on hooks, because `CLAUDE_SESSION_ID` may be unset (this ties to the arm-gate fallback above).

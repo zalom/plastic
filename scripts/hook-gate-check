@@ -8,6 +8,7 @@
 
 require "json"
 require_relative "lib/bridge"
+require_relative "lib/intent_validator"
 
 file_path = ARGV[0]
 exit 0 unless file_path && !file_path.empty?
@@ -25,6 +26,24 @@ if intent_dir_abs
     Bridge.append_savepoint(intent_dir_abs, file_path_abs)
   rescue StandardError
     # ignore — rebuildable from disk
+  end
+end
+
+# --- Artifact-validity backstop (intent 4a1c1) ---
+# When the written file IS the intent file itself (the `<id>--<slug>.md` directly
+# inside `store/<id>--<slug>/`), run IntentValidator on it. This is headless-safe:
+# it depends only on the file path and disk, never on a bridge or session. In the
+# PostToolUse model the write has already happened, so we cannot prevent it; the
+# loud non-zero exit + stderr is the rejection signal. NOT for spec.md/plan.md/
+# checklist.md/outcome.md/savepoint.md — those are validated by the stage gates.
+if intent_dir_abs && File.basename(file_path_abs) == File.basename(Bridge.intent_file(intent_dir_abs))
+  result = IntentValidator.validate(intent_dir_abs)
+  unless result[:ok]
+    warn "PLASTIC ARTIFACT INVALID — #{File.basename(file_path_abs)} is not born complete:"
+    result[:missing].each { |field| warn "  missing required field: #{field}" }
+    result[:errors].each { |error| warn "  #{error}" }
+    warn "Fix the frontmatter; the intent is not valid until every required field is present and sources/chain are well-formed."
+    exit 1
   end
 end
 

@@ -1,0 +1,133 @@
+# Harness Adapters
+
+How a reasoning agent harness loads, honors, and enforces Plastic. This is the
+contract every adapter fills in, the capability tiers an adapter can claim, and one
+fully worked example (Claude Code, interactive).
+
+## Purpose and use model
+
+Plastic is for reasoning agents, in two shapes:
+
+1. A user working directly inside a reasoning agent, using Plastic as the operating
+   scaffold for their own thinking and delivery.
+2. A user instructing a reasoning agent to use Plastic to deliver the user's intents,
+   producing a human-legible system of intents, specs, plans, and outcomes.
+
+Both shapes assume a reasoning agent on the other side. Plastic targets reasoning
+agents only. It is not a library you call from ordinary application code, and it does
+not target non-reasoning automation. A harness adapter is the glue that makes one
+specific agent harness load Plastic's conventions, honor its decisions, and enforce
+its gates.
+
+## The contract
+
+Plastic reaches an agent across three layers. An adapter is judged on how each layer
+arrives and how strongly it is honored. "Honor" splits in two: decision-shaping makes
+the agent CHOOSE to follow, hard-enforcement BLOCKS the agent when it does not (and
+includes artifact validity).
+
+| Layer | Load (does it arrive) | Honor: decision-shaping (agent chooses to follow) | Honor: hard-enforcement (block when it doesn't) |
+|---|---|---|---|
+| L1 standing conventions | Convention docs (PLASTIC.md, AGENTS.md, CLAUDE.md) auto-inject into the agent's context at start | The conventions frame every decision; the agent reads them as standing rules | None at this layer: conventions persuade, they do not block |
+| L2 live state | The active intent's id, stage, and role arrive at the point of work (session event and/or spawn preamble) | The live snapshot tells the agent where it is in the cycle so it acts in-stage | None directly; feeds the L3 gates that do block |
+| L3 lifecycle gates + savepoints | Gate and savepoint hooks fire on file writes within the intent dir | Gate context nudges the next correct lifecycle move | Stage gates block out-of-order writes; the artifact-validity backstop rejects an intent file that is not born complete; savepoints record each milestone |
+
+## Capability tiers
+
+An adapter declares the strongest tier it can honestly support.
+
+- **Tier A (full parity).** All three layers load AND hard-enforcement is real at L3:
+  out-of-order writes are blocked, artifact validity is enforced, child and parent
+  agents are distinguished, and the gates cannot be silently bypassed.
+- **Tier B (parity-with-caveat).** All three layers load and shape decisions, but at
+  least one hard-enforcement edge has a structural caveat (for example, enforcement
+  fires after the write rather than preventing it, so the block is a loud signal
+  rather than a true veto). Conventions and live-state are reliable; gates work but
+  carry a documented asterisk.
+- **Tier C (conventions reliable, child gates best-effort).** L1 conventions load
+  reliably and shape decisions, but L2/L3 for spawned child agents are best-effort:
+  live state and gates may not reach every child, so child-agent enforcement cannot
+  be relied upon.
+
+## Per-agent layer x mechanism table
+
+Each adapter fills this shape with the concrete mechanism it uses at each layer.
+Empty here; adapters populate their own copy.
+
+| Layer | Load mechanism | Decision-shaping mechanism | Hard-enforcement mechanism |
+|---|---|---|---|
+| L1 standing conventions | | | |
+| L2 live state | | | |
+| L3 lifecycle gates + savepoints | | | |
+
+## Worked example: Claude Code (interactive only)
+
+This example covers Claude Code used INTERACTIVELY. The `--bare`, headless, and CI
+runs are explicitly out of scope (see the scope note below).
+
+### L1 standing conventions
+
+`CLAUDE.md` and `PLASTIC.md` auto-inject into the top-level agent and into
+general-purpose and custom sub-agents, so the standing conventions arrive without any
+per-call wiring. Exception: the built-in Explore and Plan sub-agents skip `CLAUDE.md`,
+so they do not receive the conventions. Do not route Plastic-bound work to Explore or
+Plan; they will act without the standing rules.
+
+### L2 live state
+
+`SessionStart` is a top-level-only event: it fires for the main session, not for
+sub-agents. Sub-agents fire `SubagentStart`, which Plastic does not use. So the
+session event alone cannot carry live state into a spawned agent. The authoritative
+live-state mechanism for spawned agents is the spawn preamble, `scripts/spawn-preamble`
+(built in intent 4a1c1).
+
+`scripts/spawn-preamble <intent_dir> [--role ROLE] [--step STEP]` emits a deterministic
+block built purely from the intent directory on disk: no network, no randomness, no
+clock read, so two runs over the same state are byte-identical. It reports the active
+intent id and intent line (read from the intent file frontmatter), the current stage
+(the last non-empty line of `savepoint.md` when present, else the stage derived from
+which lifecycle files exist), the cycle role or step (from `--role`/`--step`, else the
+derived stage), and the verbatim honoring instruction: the agent must emit valid
+lifecycle artifacts and must not hallucinate intents or stages, and its output is a
+deliverable, not a message. The auto-mode enforcer prepends this preamble to every
+dispatched specialist's prompt, so each spawned agent boots with accurate live state.
+
+### L3 lifecycle gates and savepoints
+
+The gate and savepoint hooks key off the stdin `session_id`. The savepoint ledger is
+decoupled from bridge resolution: it is derived from the written file's intent
+directory before any bridge lookup, so a milestone is recorded even when no bridge or
+session exists. The stage gates (Why needs the What complete, How needs `spec.md`, and
+so on) block out-of-order writes.
+
+`IntentValidator` is the artifact-validity backstop, run inside `hook-gate-check`
+(built in intent 4a1c1). When the written file IS the intent file itself (the
+`<id>--<slug>.md` directly inside `store/<id>--<slug>/`, NOT `spec.md`, `plan.md`,
+`checklist.md`, `outcome.md`, or `savepoint.md`), the hook validates its frontmatter.
+An invalid intent file produces a loud stderr warning that names the failing field(s)
+and a non-zero exit. PostToolUse caveat: the hook runs AFTER the write, so it cannot
+prevent the file from landing on disk. The non-zero exit is the rejection signal, not
+a true veto. A valid intent file (or any non-intent lifecycle file) preserves the
+existing behavior exactly: the savepoint is appended and the hook exits 0.
+
+Child versus parent agents are distinguished via `agent_id`.
+
+### Tier
+
+Claude Code interactive is **Tier B (parity-with-caveat)**. All three layers load and
+shape decisions, but the L3 artifact-validity enforcement is a PostToolUse backstop: it
+fires after the write and signals loudly rather than preventing the write.
+
+### Scope note
+
+This worked example is interactive only. The `--bare`, headless, and CI execution
+paths are explicitly OUT of scope here: `CLAUDE_SESSION_ID` may be unset in those runs,
+so the session-keyed gate and savepoint hooks no-op, and the enforcer falls back to
+manual gating. Those paths get their own treatment elsewhere.
+
+## Roadmap
+
+Later adapters extend this contract to other harnesses. They arrive as new ROOT
+intents (not children of this one) with `sources: ["4a1c1", "7"]`, where intent 7 is
+the harness-adapters umbrella and 4a1c1 is this foundation. The current line of sight
+is Hermes, then OpenClaw, then Codex. All of them target reasoning agents only.

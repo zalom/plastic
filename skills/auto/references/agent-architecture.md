@@ -48,6 +48,19 @@ The chain: intent `## Intent` / `## Context`, then enriched `## Context` plus
 `### Decisions`, then `spec.md`, then `plan.md` plus `actions/` plus `checklist.md`,
 then the code changes plus a checked-off checklist plus `## Insights`.
 
+### Spawn Preamble (L2 live-state injection)
+
+Every dispatched specialist is booted with a spawn preamble: the enforcer runs
+`scripts/spawn-preamble <intent_dir> --role <role>` and prepends its output to the
+specialist's prompt. The preamble is a pure function of the intent directory on disk
+(no network, no clock, no randomness), so it is deterministic and rebuildable. It
+carries the active intent id and intent line, the current lifecycle stage (the last
+savepoint line, else stage derived from which lifecycle files exist), the cycle
+role, and the honoring instruction that the agent must emit valid lifecycle artifacts
+and not hallucinate intents or stages. This is the standard L2 live-state mechanism
+for harnesses whose spawned sub-agents do not inherit the top-level session event. See
+`docs/reference/harness-adapters.md` for how it slots into the per-harness contract.
+
 ### Gate Ownership
 
 The enforcer arms and verifies the lifecycle gate, then gates every stage transition.
