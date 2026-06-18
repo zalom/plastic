@@ -265,4 +265,14 @@ class MergeClaudeHooksTest < Minitest::Test
     backup_path = File.join(PLASTIC_TEST_HOME, ".cache", "original-statusline.json")
     refute File.exist?(backup_path), "No backup should be created when there was no existing statusline"
   end
+
+  def test_user_prompt_submit_includes_qmd_search
+    File.write(@settings_path, "{}")
+    @installer.merge_claude_hooks(@settings_path)
+    settings = JSON.parse(File.read(@settings_path))
+    group = settings["hooks"]["UserPromptSubmit"].first
+    commands = group["hooks"].map { |h| h["command"] }
+    assert commands.any? { |c| c.include?("plastic-qmd-search") },
+           "UserPromptSubmit must register plastic-qmd-search: #{commands.inspect}"
+  end
 end

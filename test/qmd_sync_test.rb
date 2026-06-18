@@ -113,4 +113,57 @@ class QmdSyncTest < Minitest::Test
     assert_includes st[:missing], "plastic-dealintell"
     assert_equal false, st[:all_registered]
   end
+
+  SEARCH_JSON = <<~JSON
+    [
+      {"docid":"#a1","score":0.81,"file":"qmd://plastic-plastic/15--enforce/15.md","line":1,"title":"Enforce Plastic supremacy","snippet":"@@ ..."},
+      {"docid":"#b2","score":0.62,"file":"qmd://plastic-global/9--org/9.md","line":3,"title":"GitHub org migration","snippet":"@@ ..."},
+      {"docid":"#c3","score":0.40,"file":"qmd://plastic-plastic/3--obs/3.md","line":2,"title":"Store observer","snippet":"@@ ..."}
+    ]
+  JSON
+
+  def test_search_returns_scored_hits_above_min_score
+    runner, calls = fake_runner("search" => [SEARCH_JSON, true])
+    hits = QmdSync.search("supremacy", collections: ["plastic-plastic", "plastic-global"],
+                          min_score: 0.5, limit: 3, runner: runner, detector: present)
+    assert_equal 2, hits.size, "0.40 hit is below min_score and must be dropped"
+    assert_equal 0.81, hits.first[:score]
+    assert_equal "Enforce Plastic supremacy", hits.first[:title]
+    assert_includes calls.first, "--json"
+    assert_includes calls.first, "-c"
+    assert_includes calls.first, "plastic-global"
+  end
+
+  def test_search_respects_limit
+    runner, _ = fake_runner("search" => [SEARCH_JSON, true])
+    hits = QmdSync.search("x", collections: ["plastic-plastic"], min_score: 0.0, limit: 1, runner: runner, detector: present)
+    assert_equal 1, hits.size
+  end
+
+  def test_search_noops_when_qmd_absent
+    runner, calls = fake_runner("search" => [SEARCH_JSON, true])
+    hits = QmdSync.search("x", collections: ["plastic-plastic"], runner: runner, detector: ->(*) { false })
+    assert_equal [], hits
+    assert_empty calls, "must not shell out when qmd is absent"
+  end
+
+  def test_search_survives_bad_json
+    runner, _ = fake_runner("search" => ["not json", true])
+    assert_equal [], QmdSync.search("x", collections: ["plastic-plastic"], runner: runner, detector: present)
+  end
+
+  def test_collections_for_cwd_matches_project_plus_global
+    cols = QmdSync.collections_for_cwd("/Users/zlatko/apps/personal/dealintell", plastic_home: @home)
+    assert_equal ["plastic-dealintell", "plastic-global"], cols
+  end
+
+  def test_collections_for_cwd_matches_subdir_of_project
+    cols = QmdSync.collections_for_cwd("/Users/zlatko/apps/personal/dealintell/lib/x", plastic_home: @home)
+    assert_equal ["plastic-dealintell", "plastic-global"], cols
+  end
+
+  def test_collections_for_cwd_falls_back_to_global_only
+    cols = QmdSync.collections_for_cwd("/tmp/somewhere-else", plastic_home: @home)
+    assert_equal ["plastic-global"], cols
+  end
 end

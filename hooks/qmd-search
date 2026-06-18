@@ -1,0 +1,8 @@
+#!/bin/bash
+# qmd-first search hook launcher (intent 66). No-op when there is no global store.
+GLOBAL_INDEX="$HOME/.plastic/INDEX.md"
+if [ ! -f "$GLOBAL_INDEX" ]; then
+  exit 0
+fi
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec ruby "$SCRIPT_DIR/../scripts/hook-qmd-search" "$HOME/.plastic"
