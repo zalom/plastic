@@ -6,7 +6,7 @@ description: Use when merging a feature branch to main and tagging a release, bu
 # Releasing
 
 Merge, bump, tag, push. Annotated tags with changelogs. Semantic versioning.
-Project configuration drives the workflow — no hardcoded assumptions.
+Project configuration drives the workflow - no hardcoded assumptions.
 
 ## Checklist
 
@@ -18,6 +18,7 @@ Project configuration drives the workflow — no hardcoded assumptions.
 - [ ] Create annotated tag
 - [ ] Push to remote with tags
 - [ ] Run post-push actions (GitHub release, npm publish, etc.)
+- [ ] Verify release sync (npm dist-tag, GitHub "Latest", git tag all show the new version)
 - [ ] Complete active intent
 
 ## Workflow
@@ -26,9 +27,9 @@ Project configuration drives the workflow — no hardcoded assumptions.
 
 Before anything else, determine which project we are releasing and load its config.
 
-1. Read `~/.plastic/projects.yml` — find the project whose `path` matches the current working directory.
+1. Read `~/.plastic/projects.yml` - find the project whose `path` matches the current working directory.
 2. Extract the project slug (the key under `projects:`).
-3. Read `~/.plastic/projects/{slug}/project.yml` — this contains the `release:` section.
+3. Read `~/.plastic/projects/{slug}/project.yml` - this contains the `release:` section.
 
 Expected `release:` keys in project.yml:
 
@@ -37,8 +38,9 @@ release:
   verify: "bin/rails test"              # command to run before release
   version_file: package.json            # single file containing the version
   version_files:                        # multiple files (overrides version_file)
-    - package.json
-    - .claude-plugin/plugin.json
+    - package.json                      # list EVERY file carrying the version;
+    - .claude-plugin/plugin.json        # they must all be bumped together or they drift
+    - .claude-plugin/marketplace.json
   tag_format: "v{{version}}"            # tag naming pattern ({{version}} is replaced)
   on_green:                             # actions to run after push succeeds
     - github_release
@@ -47,7 +49,7 @@ release:
   on_red: stop                          # what to do if verification fails
 ```
 
-**Fallback:** If no project.yml exists or it has no `release:` section, fall back to asking the user for each step — verify command, version files, tag format, and post-push actions.
+**Fallback:** If no project.yml exists or it has no `release:` section, fall back to asking the user for each step - verify command, version files, tag format, and post-push actions.
 
 ### 1. Verify Tests Pass
 
@@ -77,7 +79,7 @@ Pre-1.0: minor bumps for features, patch for fixes. No major until stable.
 
 ```bash
 git checkout main
-git merge <branch-name> --no-ff -m "feat: merge intent [ID] — [description]"
+git merge <branch-name> --no-ff -m "feat: merge intent [ID] - [description]"
 ```
 
 Always `--no-ff` to preserve branch history in the merge commit.
@@ -94,7 +96,7 @@ Update the version string in each file, then commit:
 
 ```bash
 git add <version-files>
-git commit -m "chore: bump version to X.Y.Z — [one-line summary]"
+git commit -m "chore: bump version to X.Y.Z - [one-line summary]"
 ```
 
 ### 5. Create Annotated Tag
@@ -113,7 +115,7 @@ git log $(git describe --tags --abbrev=0)..HEAD --oneline --no-merges | grep -E 
 Create the tag with a multi-line message:
 
 ```bash
-git tag -a <tag-name> -m "<tag-name> — [release name]
+git tag -a <tag-name> -m "<tag-name> - [release name]
 
 - [changelog bullet points from feat/fix/refactor commits]"
 ```
@@ -133,8 +135,14 @@ Read `release.on_green` from project.yml. This is a list of actions to run after
 Create a GitHub release from the tag:
 
 ```bash
-gh release create <tag-name> --title "<tag-name> — [release name]" --generate-notes --notes-start-tag <previous-tag>
+gh release create <tag-name> --title "<tag-name> - [release name]" --latest --generate-notes --notes-start-tag <previous-tag>
 ```
+
+`--latest` is REQUIRED. Pre-release (alpha/beta) tags are NOT auto-promoted to the "Latest"
+badge by GitHub, so without it the Releases page keeps showing an older version as Latest while
+the newest tag sits below it (a real sync drift we hit on the alpha line). Pass `--latest` on
+every release so the newest one always carries the badge. Do NOT pass `--prerelease` unless you
+specifically want the release hidden from Latest.
 
 For the first release (no previous tag), write notes manually with `--notes "..."` instead.
 
@@ -168,6 +176,22 @@ If `on_green` contains an action not listed above, log it:
 
 If `on_green` is empty or absent: skip post-push actions entirely.
 
+#### Verify sync (always, after the post-push actions)
+
+A release is not done until all three surfaces show the SAME newest version. Confirm:
+
+```bash
+npm view <package> dist-tags                      # channel tag (alpha/beta/latest) -> new version
+gh release list --limit 1                         # newest release is the new tag AND marked "Latest"
+git ls-remote --tags origin | grep <tag-name>     # the tag reached the remote
+```
+
+If the GitHub "Latest" badge is on an older tag (the common drift), fix it without re-releasing:
+
+```bash
+gh release edit <tag-name> --latest
+```
+
 ### 8. Complete Active Intent
 
 A release IS a delivery. The active intent that drove this work must be completed as part of the release process. This is NOT optional.
@@ -179,18 +203,21 @@ A release IS a delivery. The active intent that drove this work must be complete
    c. Update `## Insights` with final observations
    d. Move from `## Active` to `## Completed` in INDEX.md (with today's date)
    e. Update clusters to show `_(completed)_`
-3. Auto-commit: `cd ~/.plastic && git add . && git commit -m "feat: complete intent <ID> — delivered in <tag-name>"`
+3. Auto-commit: `cd ~/.plastic && git add . && git commit -m "feat: complete intent <ID> - delivered in <tag-name>"`
 
-**If no active intent exists for this release**, that itself is a problem — work happened outside the intent system. Log it and move on, but flag it.
+**If no active intent exists for this release**, that itself is a problem - work happened outside the intent system. Log it and move on, but flag it.
 
 ## Conventions
 
-- **Annotated tags only** — `git tag -a`, never lightweight tags
-- **Tag format** — driven by `release.tag_format` in project.yml (default: `vX.Y.Z`)
-- **Tag message** — first line: `<tag> — [short name]`, then blank line, then bullet changelog
-- **Commit prefixes** — `feat:`, `fix:`, `refactor:`, `chore:`, `docs:` (conventional commits)
-- **Version files** — driven by project.yml; all listed files must always match
-- **Branch cleanup** — delete merged feature branches: `git branch -d <branch>`
+- **Annotated tags only** - `git tag -a`, never lightweight tags
+- **Tag format** - driven by `release.tag_format` in project.yml (default: `vX.Y.Z`)
+- **Tag message** - first line: `<tag> - [short name]`, then blank line, then bullet changelog
+- **Commit prefixes** - `feat:`, `fix:`, `refactor:`, `chore:`, `docs:` (conventional commits)
+- **Hyphens, never em-dashes** - in tag names, release titles, and commit messages, use a hyphen (`-`). Never an em-dash.
+- **Latest badge** - always `gh release create --latest`; the newest release must carry GitHub's "Latest" badge.
+- **Version files** - driven by project.yml; list and bump EVERY file carrying the version (they drift otherwise)
+- **Verify sync** - after pushing, confirm npm dist-tag, GitHub "Latest", and the git tag all show the new version
+- **Branch cleanup** - delete merged feature branches: `git branch -d <branch>`
 
 ## Promotion
 
@@ -215,7 +242,7 @@ plastic-releasing --promote stable  # promotes current beta → stable
 For repos without prior tags, tag historical releases:
 
 ```bash
-git tag -a v0.1.0 <commit-sha> -m "v0.1.0 — [description]"
+git tag -a v0.1.0 <commit-sha> -m "v0.1.0 - [description]"
 ```
 
 Use `git log --oneline` to find the right commits (look for version bump commits or major feature merges).
