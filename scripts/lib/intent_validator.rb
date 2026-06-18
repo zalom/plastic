@@ -9,7 +9,8 @@ require "time"
 # (intent 60).
 #
 # An intent is born complete when its frontmatter carries every required field
-# and its `sources` and `chain` are well-formed arrays of Folgezettel id strings.
+# and its `sources` and `chain` are well-formed arrays of Folgezettel id references
+# (bare ids like `1a2`, or cross-store refs like `global:1a2`; integer ids are coerced).
 # This module is the only definition of that contract; the `validate-intent` CLI,
 # the doctor diagnostics, and the creating-intent skill all consult it so the
 # definition never drifts across copies.
@@ -28,11 +29,11 @@ module IntentValidator
 
   # Folgezettel id form: digits then an optional lowercase-letter/digit suffix
   # (for example "14", "14a", "4a1"). Mirrors scripts/folgezettel-id.
-  ID_PATTERN = /\A\d+[a-z0-9]*\z/
+  ID_PATTERN = /\A([a-z0-9-]+:)?\d+[a-z0-9]*\z/
 
   # True iff `value` is a String matching the Folgezettel id form.
   def valid_id?(value)
-    value.is_a?(String) && value.match?(ID_PATTERN)
+    value.to_s.match?(ID_PATTERN)
   end
 
   # Read a file's YAML frontmatter, returning the parsed Hash (or {} when the

@@ -280,7 +280,7 @@ one shared definition of "born complete" that creation and diagnosis both consul
 
 - **Single source of truth**: `scripts/lib/intent_validator.rb` is the only
   definition of born-complete (required fields present, `sources` and `chain`
-  well-formed arrays of id strings). It is injectable (`plastic_home`), hermetic,
+  well-formed arrays of id references (bare ids, or cross-store references like global:1a2)). It is injectable (`plastic_home`), hermetic,
   uses no eval, and does no global-constant injection, mirroring `qmd_sync.rb`.
 - **Three consumers sit on top of it**: the `validate-intent` CLI (exit 0 when
   complete, non-zero with a report otherwise); the `plastic-creating-intent`

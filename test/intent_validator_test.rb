@@ -33,7 +33,18 @@ class IntentValidatorTest < Minitest::Test
     refute IntentValidator.valid_id?("a")
     refute IntentValidator.valid_id?("14-x")
     refute IntentValidator.valid_id?(nil)
-    refute IntentValidator.valid_id?(14)
+    refute IntentValidator.valid_id?("global:")
+    refute IntentValidator.valid_id?("global:abc")
+  end
+
+  # Regression (intent 60a): alpha.30 false-flagged legitimate cross-store
+  # references (the [[global:ID]] link form) and integer-typed ids. Both are valid.
+  def test_valid_id_accepts_cross_store_and_integer_ids
+    assert IntentValidator.valid_id?("global:1a2")
+    assert IntentValidator.valid_id?("knowdb:1")
+    assert IntentValidator.valid_id?("global:14a")
+    assert IntentValidator.valid_id?(17)
+    assert IntentValidator.valid_id?(14)
   end
 
   # --- validate_frontmatter: missing fields ---
