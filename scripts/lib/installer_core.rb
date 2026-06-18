@@ -208,6 +208,7 @@ class InstallerCore
       "scripts/qmd-sync" => "scripts/qmd-sync",
       "scripts/lib/intent_validator.rb" => "scripts/lib/intent_validator.rb",
       "scripts/validate-intent" => "scripts/validate-intent",
+      "scripts/spawn-preamble" => "scripts/spawn-preamble",
       "scripts/lib/store_provisioning.rb" => "scripts/lib/store_provisioning.rb",
       "scripts/provision-project-store" => "scripts/provision-project-store",
       "scripts/lib/installer_core.rb" => "scripts/lib/installer_core.rb",

@@ -1,0 +1,121 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# spawn-preamble — deterministic live-state injection for spawned agents
+# (intent 4a1c1, agent harness foundation).
+#
+# Emits a preamble block built ONLY from filesystem state for a single intent
+# directory. It is a PURE function of the intent dir: no network, no randomness,
+# no wall-clock reads. Two runs over the same on-disk state produce byte-identical
+# output. This is the authoritative L2 (live-state) mechanism for harnesses whose
+# spawned sub-agents do not inherit a top-level session event (see
+# docs/reference/harness-adapters.md).
+#
+# Usage:
+#   spawn-preamble <intent_dir> [--role ROLE] [--step STEP]
+#
+# The preamble reports the active intent (id + intent line from frontmatter), the
+# current lifecycle stage (last savepoint line if present, else derived from which
+# lifecycle files exist), the cycle role/step (from --role/--step, else the
+# derived stage), and an imperative honoring instruction.
+#
+# Exit codes: 0 (preamble emitted), 2 (usage).
+
+require_relative "lib/bridge"
+
+# Verbatim honoring instruction. Kept as one constant so the contract doc and the
+# test assert against the exact same string.
+HONOR_INSTRUCTION =
+  "You are operating inside Plastic. Use it as your operating scaffold. " \
+  "Emit VALID lifecycle artifacts; do not hallucinate intents or stages. " \
+  "Your output is a deliverable, not a message."
+
+def parse_args(argv)
+  role = nil
+  step = nil
+  positional = []
+  i = 0
+  while i < argv.length
+    case argv[i]
+    when "--role"
+      role = argv[i + 1]
+      i += 2
+    when "--step"
+      step = argv[i + 1]
+      i += 2
+    else
+      positional << argv[i]
+      i += 1
+    end
+  end
+  [positional.first, role, step]
+end
+
+# Read the intent file frontmatter via the same parser the validator uses, so the
+# id/intent we report match what the rest of Plastic sees. Returns a Hash (possibly
+# empty) — never raises.
+def frontmatter_for(intent_dir)
+  ifile = Bridge.intent_file(intent_dir)
+  return {} unless File.exist?(ifile)
+
+  content = File.read(ifile)
+  return {} unless content.start_with?("---")
+
+  parts = content.split("---", 3)
+  return {} if parts.length < 3
+
+  require "yaml"
+  require "date"
+  require "time"
+  YAML.safe_load(parts[1], permitted_classes: [Date, Time]) || {}
+rescue StandardError
+  {}
+end
+
+# Current stage label. Prefer the last non-empty line of savepoint.md (the ledger
+# already encodes the furthest-reached milestone). Fall back to the file-derived
+# stage when there is no ledger.
+STAGE_LABELS = {
+  "what" => "What", "why" => "Why", "how" => "How",
+  "exec" => "Exec", "done" => "Done"
+}.freeze
+
+def current_stage(intent_dir)
+  ledger = File.join(intent_dir, Bridge::SAVEPOINT_FILE)
+  if File.exist?(ledger)
+    last = File.read(ledger).each_line.map(&:strip).reject(&:empty?).last
+    return last if last
+  end
+  STAGE_LABELS.fetch(Bridge.derive_stage(intent_dir), Bridge.derive_stage(intent_dir))
+end
+
+intent_dir_arg, role, step = parse_args(ARGV)
+
+if intent_dir_arg.nil? || intent_dir_arg.empty?
+  warn "usage: spawn-preamble <intent_dir> [--role ROLE] [--step STEP]"
+  exit 2
+end
+
+intent_dir = File.expand_path(intent_dir_arg)
+
+fm = frontmatter_for(intent_dir)
+id = fm["id"].to_s.strip
+intent_name = fm["intent"].to_s.strip
+id = "(unknown)" if id.empty?
+intent_name = "(unknown)" if intent_name.empty?
+
+stage = current_stage(intent_dir)
+cycle = role || step || stage
+
+lines = []
+lines << "=== Plastic spawn preamble ==="
+lines << "Store: #{intent_dir}"
+lines << "Active intent: #{id} - #{intent_name}"
+lines << "Current stage: #{stage}"
+lines << "Cycle step / role: #{cycle}"
+lines << ""
+lines << HONOR_INSTRUCTION
+lines << "=== end preamble ==="
+
+puts lines.join("\n")
