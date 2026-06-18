@@ -3,7 +3,7 @@ name: plastic-brainstorming-grill-me
 description: >-
   Deep brainstorming that interviews the user relentlessly about a plan or design until reaching shared understanding.
   Use when user wants to stress-test a plan, get grilled on their design, or mentions "grill me".
-  Complements superpowers:brainstorming — use brainstorming for quick ideation, grill-me for thorough interrogation.
+  Pair with plastic-brainstorming for quick ideation and use grill-me for thorough interrogation. If superpowers:brainstorming is installed it complements this skill, but it is not required.
 ---
 
 # Grill Me — Deep Brainstorming

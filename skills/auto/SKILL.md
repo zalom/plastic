@@ -64,7 +64,7 @@ Roster (one role per cycle stage):
 - **plastic-executor** (code + checklist + `## Insights`)
 - **plastic-enforcer** (orchestrates + gates; that is YOU)
 
-Dispatch rule: sequential, one specialist per stage on one branch (the deliverables share files). Gate each deliverable against the stage's exit criteria before handing off. Delegate the actual How and Exec dispatch to `superpowers:subagent-driven-development` and `superpowers:dispatching-parallel-agents` (see the How and Exec phases below); do not restate them.
+Dispatch rule: sequential, one specialist per stage on one branch (the deliverables share files). Gate each deliverable against the stage's exit criteria before handing off. The How and Exec phases below default to Plastic's native dispatch (`plastic-executing-plan`) and delegate to the superpowers skills only when they are available or the user asks; do not restate the phase mechanics here.
 
 Final-gate review: dispatch an independent reviewer subagent at the final gate only, not as a standing role.
 
