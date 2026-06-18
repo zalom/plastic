@@ -199,6 +199,8 @@ class InstallerCore
       "scripts/hook-continue" => "scripts/hook-continue",
       "scripts/hook-future-intent-check" => "scripts/hook-future-intent-check",
       "scripts/hook-gate-check" => "scripts/hook-gate-check",
+      "scripts/hook-qmd-search" => "scripts/hook-qmd-search",
+      "scripts/lib/qmd_hook.rb" => "scripts/lib/qmd_hook.rb",
       "scripts/hook-code-gate" => "scripts/hook-code-gate",
       "scripts/hook-bash-gate" => "scripts/hook-bash-gate",
       "scripts/hook-auto-arm" => "scripts/hook-auto-arm",
@@ -543,6 +545,7 @@ class InstallerCore
           { "type" => "command", "command" => "#{hook_dir}/plastic-continue", "statusMessage" => "Checking for continue..." },
           { "type" => "command", "command" => "#{hook_dir}/plastic-future-intent-check", "statusMessage" => "Checking future intents..." },
           { "type" => "command", "command" => "#{hook_dir}/plastic-auto-arm", "statusMessage" => "Checking auto mode..." },
+          { "type" => "command", "command" => "#{hook_dir}/plastic-qmd-search", "statusMessage" => "Searching QMD..." },
         ],
       },
     }

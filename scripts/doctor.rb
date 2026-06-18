@@ -42,6 +42,7 @@ class Doctor
     plastic-gate-check
     plastic-continue
     plastic-future-intent-check
+    plastic-qmd-search
   ].freeze
 
   CLAUDE_HOOK_EVENTS = %w[SessionStart PreCompact PostToolUse UserPromptSubmit].freeze

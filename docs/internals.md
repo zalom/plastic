@@ -284,6 +284,19 @@ delegating to the qmd CLI. Each trigger lives at a fixed point:
   ~2GB of models qmd lazily downloads on first embed/rerank are present. The index
   itself lives under `~/.cache` and is never committed to the `~/.plastic` git.
 
+The search side (read-only, never mutates the index) is exercised on every turn by
+the `qmd-search` `UserPromptSubmit` hook (`hooks/qmd-search` ->
+`scripts/hook-qmd-search`, decision logic in `scripts/lib/qmd_hook.rb`,
+search in `QmdSync.search`). Gated on qmd being on PATH and a substantive prompt
+(the `< 10` char and bare-`continue` guards mirror `future-intent-check`), it runs
+`qmd search --json` (BM25, no model downloads) over the CWD's project collection
+plus `plastic-global`, injects only hits above `min_score` (default 0.5, capped at
+3) framed as related or prior intents, and always appends a reminder to query qmd
+before grep/Read when gathering intent context. A 2s timeout plus rescue-all keeps
+a slow or broken qmd from ever blocking the turn; absent qmd is a silent no-op. The
+hook registers as a fourth `UserPromptSubmit` entry in `merge_claude_hooks`, ships
+via `core_files`, and is listed in doctor's `CLAUDE_HOOK_SCRIPTS`.
+
 ### intent born-complete validation
 
 An intent can be born missing a required frontmatter field (intent 51 was created
