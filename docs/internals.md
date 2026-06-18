@@ -169,6 +169,17 @@ preferring auto-armed ones, then those whose `intent.store` matches the current 
 directory, breaking ties by newest mtime. The `/tmp` directory is injectable so the scan is
 testable against a fake directory.
 
+Because that scan parses every `plastic-*.json` on each fire, the temp directory has to stay
+small or the per-fire cost grows without bound (intent 67). `Bridge.purge_stale_bridges` runs
+on `arm_auto` and on `disarm_auto`, so every auto run cleans up dead bridges at its start and
+at delivery. The predicate keeps the current session's own bridge (so the `disarm_auto`
+contract that the bridge stays readable holds), keeps live auto-armed runs, and keeps any
+bridge written within the grace window (6 hours); it removes everything else, plus auto-armed
+bridges older than the abandon window (7 days) as dead runs. The sweep is best-effort and
+never raises (a file that another job already deleted, or any other error, is swallowed), so
+it can never break arming or delivery. The thresholds are method arguments with constant
+defaults, and the temp directory is injectable, so the whole predicate is testable hermetically.
+
 The `plastic-continuing` skill consumes that ledger on the resume path (intent 36): when the
 user or an agent asks to continue a specific intent, the skill reads the last ledger line as
 the current stage, confirms the named stage file is present and non-empty, calls

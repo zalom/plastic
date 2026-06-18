@@ -10,6 +10,12 @@ require "digest"
 module Bridge
   STAGES = %w[what why how exec done].freeze
 
+  # Stale-bridge purge windows (intent 67). A non-current bridge within GRACE
+  # is kept (it may be a live run); an auto-armed bridge older than ABANDON is
+  # treated as an abandoned run and removed.
+  GRACE_SECONDS   = 6 * 3600        # 6 hours
+  ABANDON_SECONDS = 7 * 24 * 3600   # 7 days
+
   def self.intent_file(intent_dir)
     dir_name = File.basename(intent_dir)
     "#{intent_dir}/#{dir_name}.md"
@@ -104,6 +110,47 @@ module Bridge
     end
 
     pool.max_by { |c| c[:mtime] }&.fetch(:data)
+  end
+
+  # --- Stale-bridge purge (intent 67) ---------------------------------------
+  #
+  # Remove stale tmp/plastic-*.json bridge files so discover_bridge's per-fire
+  # scan stays bounded. Best-effort and non-raising: returns the array of removed
+  # paths. Never deletes the current session's own bridge (preserves the
+  # disarm_auto contract that the bridge stays readable), never deletes a live
+  # auto-armed run (unless older than abandon_seconds), and never deletes a
+  # recently-active bridge (within grace_seconds). Wired into arm_auto and
+  # disarm_auto so both manual and auto delivery keep the temp dir clean.
+  def self.purge_stale_bridges(session:, now: Time.now, grace_seconds: GRACE_SECONDS,
+                               abandon_seconds: ABANDON_SECONDS, tmp: tmp_dir)
+    current = path(session, tmp: tmp)
+    removed = []
+    Dir.glob(File.join(tmp, "plastic-*.json")).each do |f|
+      next if f == current
+      begin
+        age = now - File.mtime(f)
+        data = (JSON.parse(File.read(f)) rescue nil)
+        auto = data.is_a?(Hash) && data.dig("build", "auto") == true
+        purge =
+          if age >= abandon_seconds then true
+          elsif auto                then false
+          elsif age < grace_seconds then false
+          else                           true
+          end
+        next unless purge
+        File.delete(f)
+        removed << f
+      rescue Errno::ENOENT
+        # Raced with another job that already removed it; count as purged.
+        removed << f
+      rescue => e
+        $stderr.puts "plastic: purge skipped #{f}: #{e.message}"
+      end
+    end
+    removed
+  rescue => e
+    $stderr.puts "plastic: purge_stale_bridges failed: #{e.message}"
+    removed || []
   end
 
   def self.read(session, tmp: tmp_dir)
@@ -323,6 +370,7 @@ module Bridge
     data = derive(key, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name)
     data["build"]["auto"] = true
     write(key, data)
+    purge_stale_bridges(session: key)
     data
   end
 
@@ -333,6 +381,7 @@ module Bridge
     data["build"] ||= {}
     data["build"]["auto"] = false
     write(session, data)
+    purge_stale_bridges(session: session)
     data
   end
 

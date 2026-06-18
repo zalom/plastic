@@ -194,6 +194,8 @@ During initial project creation, all decisions are non-destructive by definition
    ```bash
    ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.disarm_auto(ENV["CLAUDE_SESSION_ID"])'
    ```
+   Disarming also purges stale bridge files from the temp directory automatically (it keeps the
+   current bridge and any live run), so no manual `/tmp` cleanup is needed.
 10. Notify user: "Intent [ID] — [name] delivered. [1-2 sentence summary]. See outcome.md for details."
 
 ## Error Handling
