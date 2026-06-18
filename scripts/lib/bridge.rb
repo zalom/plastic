@@ -10,11 +10,13 @@ require "digest"
 module Bridge
   STAGES = %w[what why how exec done].freeze
 
-  # Stale-bridge purge windows (intent 67). A non-current bridge within GRACE
-  # is kept (it may be a live run); an auto-armed bridge older than ABANDON is
-  # treated as an abandoned run and removed.
-  GRACE_SECONDS   = 6 * 3600        # 6 hours
-  ABANDON_SECONDS = 7 * 24 * 3600   # 7 days
+  # Stale-bridge purge window (intent 67). The bridge file is ephemeral
+  # live-session gate state, NOT a continuation source: an intent is resumed from
+  # its savepoint.md ledger, never from a /tmp bridge. So any bridge older than
+  # this window is dead weight and safe to purge, regardless of arm state. No
+  # real session stays live for two days, so a 48h cutoff never removes a bridge
+  # an active run depends on.
+  PURGE_AGE_SECONDS = 48 * 3600   # 48 hours
 
   def self.intent_file(intent_dir)
     dir_name = File.basename(intent_dir)
@@ -116,28 +118,21 @@ module Bridge
   #
   # Remove stale tmp/plastic-*.json bridge files so discover_bridge's per-fire
   # scan stays bounded. Best-effort and non-raising: returns the array of removed
-  # paths. Never deletes the current session's own bridge (preserves the
-  # disarm_auto contract that the bridge stays readable), never deletes a live
-  # auto-armed run (unless older than abandon_seconds), and never deletes a
-  # recently-active bridge (within grace_seconds). Wired into arm_auto and
-  # disarm_auto so both manual and auto delivery keep the temp dir clean.
-  def self.purge_stale_bridges(session:, now: Time.now, grace_seconds: GRACE_SECONDS,
-                               abandon_seconds: ABANDON_SECONDS, tmp: tmp_dir)
+  # paths. Continuation does not depend on these files (an intent resumes from its
+  # savepoint.md ledger), so the only safety rule is age: a bridge older than
+  # max_age_seconds is purged regardless of arm state, while anything newer is kept
+  # (it may be a live run). The current session's own bridge is never purged
+  # (preserves the disarm_auto contract that it stays readable). Wired into
+  # arm_auto and disarm_auto so both manual and auto delivery keep the temp dir
+  # clean.
+  def self.purge_stale_bridges(session:, now: Time.now, max_age_seconds: PURGE_AGE_SECONDS,
+                               tmp: tmp_dir)
     current = path(session, tmp: tmp)
     removed = []
     Dir.glob(File.join(tmp, "plastic-*.json")).each do |f|
       next if f == current
       begin
-        age = now - File.mtime(f)
-        data = (JSON.parse(File.read(f)) rescue nil)
-        auto = data.is_a?(Hash) && data.dig("build", "auto") == true
-        purge =
-          if age >= abandon_seconds then true
-          elsif auto                then false
-          elsif age < grace_seconds then false
-          else                           true
-          end
-        next unless purge
+        next if (now - File.mtime(f)) < max_age_seconds
         File.delete(f)
         removed << f
       rescue Errno::ENOENT
