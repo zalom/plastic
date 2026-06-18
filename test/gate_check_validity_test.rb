@@ -50,6 +50,18 @@ class GateCheckValidityTest < Minitest::Test
 
       ## Intent
       Build the harness.
+
+      ## Context
+      Why this exists.
+
+      ## Outcome
+      The result.
+
+      ## Insights
+      Observations.
+
+      ## Links
+      - none
     MD
   end
 

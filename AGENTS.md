@@ -54,6 +54,10 @@ Rules for any agent (or human) contributing to this repository.
 ### Work
 - All work flows through an intent. Move it through What, Why, How, Exec. Do not jump
   straight to code.
+- Create intents through `scripts/new-intent` (or the `plastic-creating-intent` skill that
+  wraps it), never by hand-authoring the files. One call scaffolds a born-complete intent
+  plus sentinel placeholder lifecycle files. The write-time create gate blocks an incomplete
+  or malformed intent file, so hand-authoring is both rejected and unnecessary.
 - Plans, specs, checklists, and outcomes live in the intent directory under `~/.plastic/`,
   never in the project tree.
 

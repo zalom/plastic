@@ -110,13 +110,27 @@ prevent the file from landing on disk. The non-zero exit is the rejection signal
 a true veto. A valid intent file (or any non-intent lifecycle file) preserves the
 existing behavior exactly: the savepoint is appended and the hook exits 0.
 
+The create gate (`hook-create-gate`, PreToolUse, matcher Write, intent 60b) is the
+defense-in-depth complement on the create path. When the target path is an intent file
+inside its own equally-named dir (`store/**/<id>--<slug>/<id>--<slug>.md`), it validates
+the PROPOSED content from the hook stdin payload (`tool_input.content`) before the write
+lands, using `IntentValidator` for born-complete frontmatter plus the sanctioned `##`
+section set, and blocks with exit 2 on failure. It depends only on the stdin path plus
+content, never on the session bridge or `CLAUDE_SESSION_ID`, so it enforces even in
+headless and background runs. It is Claude-Code-only defense-in-depth: the `new-intent`
+CLI plus the creating-intent instruction are the portable lever that works on any harness
+(intent 60b D9). The PreToolUse block makes the PostToolUse backstop a no-op for the
+create case, so the two never double-report.
+
 Child versus parent agents are distinguished via `agent_id`.
 
 ### Tier
 
 Claude Code interactive is **Tier B (parity-with-caveat)**. All three layers load and
-shape decisions, but the L3 artifact-validity enforcement is a PostToolUse backstop: it
-fires after the write and signals loudly rather than preventing the write.
+shape decisions. For an intent-file create the PreToolUse create gate is a true veto
+(it blocks before the write); for in-place edits the L3 artifact-validity enforcement
+stays a PostToolUse backstop that fires after the write and signals loudly rather than
+preventing it.
 
 ### Scope note
 

@@ -1,0 +1,59 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# PreToolUse create gate (intent 60b): validate the PROPOSED content of a Write
+# to an intent file before it lands. Fires when the target path is an intent file
+# inside its own equally-named directory (store/<id>--<slug>/<id>--<slug>.md). It
+# validates the proposed content from the hook payload (tool_input.content), NOT
+# the on-disk file (which does not exist yet at PreToolUse), using IntentValidator
+# for born-complete frontmatter plus the sanctioned section structure.
+#
+# It depends ONLY on the stdin path + content, never on the auto-bridge or
+# CLAUDE_SESSION_ID, so it runs unconditionally (headless / background sessions).
+# It validates ONLY the intent file, never sentinel placeholder lifecycle files
+# (spec.md/plan.md/etc.); the path matcher excludes them.
+#
+# Exit 0 = allow. Exit 2 = block (reason on stderr, shown to the agent).
+#
+# Reads the Claude Code PreToolUse payload as JSON on STDIN:
+#   { "tool_input": { "file_path": "...", "content": "..." } }
+# Empty / unparseable / non-matching path => exit 0 (cannot judge, allow).
+# Matching path but missing content => exit 2 (fail-safe: refuse to allow an
+# unvalidated intent write).
+
+require "json"
+require_relative "lib/intent_validator"
+
+raw = $stdin.read rescue nil
+exit 0 if raw.nil? || raw.strip.empty?
+
+payload = JSON.parse(raw) rescue nil
+exit 0 unless payload.is_a?(Hash)
+
+path = payload.dig("tool_input", "file_path") || payload.dig("tool_params", "file_path")
+exit 0 if path.nil? || path.to_s.strip.empty?
+
+# Precise path matcher: the target must be an intent file inside its own
+# equally-named dir. Never matches sibling lifecycle files (spec.md, etc.) or
+# unrelated store files.
+abs = File.expand_path(path)
+dir = File.dirname(abs)
+is_intent_file = dir.match?(%r{/store/[^/]+--[^/]+\z}) &&
+                 File.basename(abs) == "#{File.basename(dir)}.md"
+exit 0 unless is_intent_file
+
+content = payload.dig("tool_input", "content") || payload.dig("tool_params", "content")
+if content.nil?
+  $stderr.puts "PLASTIC CREATE GATE — #{File.basename(abs)}: cannot read proposed content; " \
+               "refusing to allow an unvalidated intent write."
+  exit 2
+end
+
+result = IntentValidator.validate_content(content)
+exit 0 if result[:ok]
+
+$stderr.puts "PLASTIC CREATE GATE — #{File.basename(abs)} is not a valid intent:"
+result[:errors].each { |e| $stderr.puts "  #{e}" }
+$stderr.puts "Create intents via new-intent / plastic-creating-intent; do not hand-author them."
+exit 2

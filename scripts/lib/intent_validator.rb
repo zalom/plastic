@@ -27,6 +27,12 @@ module IntentValidator
   # Fields whose value must be a well-formed array of valid id strings.
   ARRAY_ID_FIELDS = %w[sources chain].freeze
 
+  # Sanctioned top-level intent sections, in order (intent 60b). The only
+  # sanctioned `###` subsection is `### Decisions`, which is OPTIONAL (added after
+  # brainstorming) and therefore never flagged as missing. This is the single
+  # definition shared by the create gate, the validate-intent CLI, and doctor.
+  SANCTIONED_SECTIONS = ["## Intent", "## Context", "## Outcome", "## Insights", "## Links"].freeze
+
   # Folgezettel id form: digits then an optional lowercase-letter/digit suffix
   # (for example "14", "14a", "4a1"). Mirrors scripts/folgezettel-id.
   ID_PATTERN = /\A([a-z0-9-]+:)?\d+[a-z0-9]*\z/
@@ -42,8 +48,15 @@ module IntentValidator
   def parse_frontmatter(path)
     return nil unless File.exist?(path)
 
-    content = File.read(path)
-    return nil unless content.start_with?("---")
+    parse_frontmatter_text(File.read(path))
+  rescue StandardError
+    nil
+  end
+
+  # PURE: parse YAML frontmatter from a content STRING (no file IO). Returns the
+  # parsed Hash, {} for an empty block, or nil when there is no parseable block.
+  def parse_frontmatter_text(content)
+    return nil unless content.is_a?(String) && content.start_with?("---")
 
     parts = content.split("---", 3)
     return nil if parts.length < 3
@@ -51,6 +64,32 @@ module IntentValidator
     YAML.safe_load(parts[1], permitted_classes: [Date, Time]) || {}
   rescue StandardError
     nil
+  end
+
+  # PURE: strip the leading YAML frontmatter block from a content STRING,
+  # returning the body text (everything after the closing `---`). When there is
+  # no frontmatter block, the whole content is the body.
+  def body_of(content)
+    return "" unless content.is_a?(String)
+    return content unless content.start_with?("---")
+
+    parts = content.split("---", 3)
+    parts.length < 3 ? content : parts[2]
+  end
+
+  # PURE: given the intent file body text, return sanctioned-section findings.
+  # Flags any unknown top-level `## ` heading and any missing sanctioned section.
+  # Ignores `### ` subsections entirely (Decisions is optional and lives under
+  # Context). Returns { ok:, missing: [section names], unknown: [heading strings] }.
+  def validate_sections(body)
+    headings = body.to_s.lines.filter_map do |l|
+      s = l.strip
+      s if s.start_with?("## ") && !s.start_with?("### ")
+    end
+    present = headings & SANCTIONED_SECTIONS
+    missing = SANCTIONED_SECTIONS - present
+    unknown = headings - SANCTIONED_SECTIONS
+    { ok: missing.empty? && unknown.empty?, missing: missing, unknown: unknown }
   end
 
   # PURE: given a parsed frontmatter Hash (or nil), return
@@ -80,11 +119,38 @@ module IntentValidator
     { ok: missing.empty? && errors.empty?, missing: missing, errors: errors }
   end
 
-  # Resolve an intent directory's primary md file and validate its frontmatter.
-  # `plastic_home` is accepted for house-style parity (injectable) even though
-  # validation reads the intent dir directly.
+  # PURE: combine the frontmatter result with section-structure findings for a
+  # content STRING. Returns the frontmatter result hash extended with
+  # :section_missing, :section_unknown, and folded section errors; :ok is the AND
+  # of frontmatter and sections. Lets the create gate validate proposed content
+  # (no file on disk) with the same definition as the CLI and doctor.
+  def validate_content(content)
+    fm_result = validate_frontmatter(parse_frontmatter_text(content))
+    sections = validate_sections(body_of(content))
+    merge_sections(fm_result, sections)
+  end
+
+  # Fold section findings into a frontmatter result hash (shared by validate and
+  # validate_content). Does not mutate the input.
+  def merge_sections(fm_result, sections)
+    errors = fm_result[:errors].dup
+    sections[:unknown].each { |h| errors << "unknown section: #{h}" }
+    sections[:missing].each { |s| errors << "missing required section: #{s}" }
+    {
+      ok: fm_result[:ok] && sections[:ok],
+      missing: fm_result[:missing],
+      errors: errors,
+      section_missing: sections[:missing],
+      section_unknown: sections[:unknown],
+    }
+  end
+
+  # Resolve an intent directory's primary md file and validate its frontmatter
+  # AND its sanctioned section structure. `plastic_home` is accepted for
+  # house-style parity (injectable) even though validation reads the dir directly.
   def validate(intent_dir, plastic_home: File.join(Dir.home, ".plastic"))
     md_path = File.join(intent_dir, "#{File.basename(intent_dir)}.md")
-    validate_frontmatter(parse_frontmatter(md_path))
+    content = File.exist?(md_path) ? File.read(md_path) : nil
+    validate_content(content)
   end
 end
