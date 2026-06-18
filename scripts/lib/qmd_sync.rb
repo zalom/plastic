@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "yaml"
+require "json"
 
 # QmdSync — the single place Plastic talks to QMD (intent 45a).
 #
@@ -109,6 +110,55 @@ module QmdSync
 
     { present: true, expected: expected, registered: listed,
       missing: missing, all_registered: missing.empty? }
+  end
+
+  # Read-only BM25 search over one or more collections. Returns hits sorted by
+  # score (desc), filtered by min_score, capped at limit:
+  #   [{ score: Float, file: String, line: Integer|nil, title: String, snippet: String }, ...]
+  # No-ops to [] when qmd is absent or the query is blank. Uses `qmd search --json`
+  # (BM25, no embeddings / no model downloads). Pure via the injected runner.
+  def search(query, collections:, limit: 3, min_score: 0.5, runner: default_runner, detector: method(:detect))
+    return [] unless detector.call
+    q = query.to_s.strip
+    return [] if q.empty? || Array(collections).empty?
+
+    args = ["search", q]
+    Array(collections).each { |c| args.concat(["-c", c]) }
+    args << "--json"
+
+    out, ok = runner.call(args)
+    return [] unless ok && out && !out.strip.empty?
+
+    parsed = begin
+      JSON.parse(out)
+    rescue StandardError
+      return []
+    end
+    return [] unless parsed.is_a?(Array)
+
+    parsed.filter_map do |h|
+      next unless h.is_a?(Hash)
+      score = h["score"].to_f
+      next if score < min_score
+      { score: score, file: h["file"].to_s, line: h["line"],
+        title: h["title"].to_s, snippet: h["snippet"].to_s }
+    end.sort_by { |h| -h[:score] }.first(limit)
+  end
+
+  # Which collections to search for a given working directory: the matched
+  # project's collection plus plastic-global, or just plastic-global when the
+  # CWD is not inside any registered project. Project match = CWD equals the
+  # registered path or is nested under it.
+  def collections_for_cwd(cwd, plastic_home:)
+    cwd = File.expand_path(cwd)
+    projects = load_projects(plastic_home)
+    slug, = projects.find do |_s, info|
+      path = info.is_a?(Hash) ? info["path"] : nil
+      next false unless path
+      root = File.expand_path(path)
+      cwd == root || cwd.start_with?(root + File::SEPARATOR)
+    end
+    slug ? ["plastic-#{slug}", "plastic-global"] : ["plastic-global"]
   end
 
   # --- internals ---
