@@ -247,11 +247,15 @@ axis (hard-block beats soft-steer beats advisory):
 
 Two honest caveats about the existing harnesses:
 
-- **The lifecycle gate runs after the write lands.** The strongest mechanism in
-  the framework, `gate-check`, is wired as a PostToolUse hook: it rejects the
-  write *after* the file already exists on disk, so a brain that ignores the
-  block leaves a half-written artifact behind. It also checks file *presence*,
-  never *section form*, so a `spec.md` with the wrong sections passes the gate.
+- **The lifecycle gate runs after the write lands.** The strongest stage-gate
+  mechanism in the framework, `gate-check`, is wired as a PostToolUse hook: it
+  rejects the write *after* the file already exists on disk, so a brain that
+  ignores the block leaves a half-written artifact behind. It checks lifecycle file
+  *presence* (sentinel-aware since intent 60b), not the section form of those
+  files. For the intent file specifically, the intent-60b create gate
+  (`hook-create-gate`) closes this gap on the create path: it is a PreToolUse hook
+  that blocks *before* the write and validates frontmatter plus the sanctioned `##`
+  section set (see the sanctioned-creation-path section below).
 - **The eval suites do not run.** Both `evals.json` files are advisory records.
   One carries triggering and one sequencing case; the other has empty assertion
   arrays (`assertions: []`) on every case. There is no runner that asserts
@@ -330,8 +334,80 @@ one shared definition of "born complete" that creation and diagnosis both consul
   repairable through its `fix_hint` (the intent-19a pattern: doctor never writes,
   the doctor skill applies the fix), and a new `frontmatter_valid` check flags
   malformed `sources` or `chain`. There is no `--fix` flag on `doctor.rb`.
-- **Scope boundary**: this is per-intent frontmatter validity only. Store-wide
-  `sources`/`chain` symmetry across intents is out of scope and owned by intent 49.
+- **Section structure (intent 60b)**: the validator also carries
+  `SANCTIONED_SECTIONS` plus a pure `validate_sections`, folded into `validate`, so
+  born-complete now means frontmatter complete AND the sanctioned `##` section set
+  present with no unknown sections. The same three consumers (CLI, gate, doctor)
+  plus the create gate share this one definition. See the sanctioned-creation-path
+  section below.
+- **Scope boundary**: this is per-intent frontmatter and section validity only.
+  Store-wide `sources`/`chain` symmetry across intents is out of scope and owned by
+  intent 49.
+
+## sanctioned creation path (intent 60b)
+
+Intent 60 enforced the born-complete OUTCOME but not the PROCESS: an agent could
+bypass `plastic-creating-intent` and hand-author intent files with the same Write
+primitive the skill uses. Process-purity is unprovable (the skill and a
+hand-author look identical at the tool layer), so the achievable targets are the
+INVARIANT (every intent file is born complete and structurally sanctioned) plus
+the ERGONOMICS (the sanctioned path is the cheapest action an agent can take).
+Four coordinated pieces deliver that.
+
+- **Placeholder sentinel plus one shared predicate.** A scaffolded lifecycle file
+  (`spec.md`/`plan.md`/`checklist.md`/`outcome.md`) carries the exact first line
+  `<!-- plastic:placeholder -->` until an agent fills it and deletes the sentinel.
+  `Bridge.stage_file_present?(path)` is the single present-and-real predicate: it
+  returns false when the file is missing OR its head carries the sentinel, and it
+  reads only the file head (never the whole file) so the dashboard stays fast
+  across many intents. It replaced every bare lifecycle-file `File.exist?` in stage
+  detection (`derive_stage`, `has_files`), the gates (`check_gate`,
+  `code_gate_decision`), and the savepoint trio (`append_savepoint`,
+  `rebuild_savepoint`), plus `dashboard.rb` (`parse_intent` flags and the
+  completed-on-`outcome.md` status, `lifecycle_stage`) and doctor via the loader.
+  This solves the crux: a script can pre-create all lifecycle files at once without
+  any stage detector, gate, or savepoint consumer reading a brand-new intent as
+  advanced or finished. The intent file (`<id>--<slug>.md`) is never sentineled; it
+  is born complete. The match is exact first-line only, so a real file that merely
+  contains an HTML comment later is unaffected and a partially-edited sentinel reads
+  as real rather than sticking as a placeholder.
+- **`scripts/new-intent` (the one-call scaffolding contract).** A single invocation
+  allocates the id via `folgezettel-id` (root, or a branch of `--parent`), creates
+  `<store>/<id>--<slug>/` plus `actions/` and `resources/`, renders the
+  born-complete intent file from `templates/intent.md`, writes the sentinel
+  placeholder lifecycle files, wires the reciprocal `[[id]]` links, and
+  self-validates with `IntentValidator` (exit non-zero if not born complete). It
+  does NOT touch INDEX.md, git, or project creation: those stay in
+  `plastic-creating-intent`, which is now a thin wrapper that keeps tier/store
+  detection and the branch-vs-root judgement and delegates scaffolding to one
+  `new-intent` call.
+- **`scripts/hook-create-gate` (PreToolUse, matcher `Write`).** When the target
+  path is an intent file inside its own equally-named dir
+  (`store/**/<id>--<slug>/<id>--<slug>.md`), it validates the PROPOSED content from
+  the hook stdin payload (`tool_input.content`), not the on-disk file (which does
+  not exist yet at PreToolUse), using `IntentValidator.validate_content`
+  (born-complete frontmatter plus the section structure). It blocks with exit 2 on
+  failure. It depends only on the stdin path plus content, never on the auto-bridge
+  or `CLAUDE_SESSION_ID`, so it runs unconditionally including in headless and
+  background sessions, which dissolves intent 60's D6 objection (the 60-era design
+  no-opped without a bridge). If `content` is absent it fails safe and blocks rather
+  than allowing a write it cannot validate. It validates only the intent file, never
+  the sentinel placeholder lifecycle files. It coexists with the PostToolUse 4a1c1
+  backstop in `hook-gate-check`: the PreToolUse block makes the PostToolUse path a
+  no-op for the create case, so they never double-report.
+- **Section-structure arm on `IntentValidator`.** `SANCTIONED_SECTIONS`
+  (`## Intent`, `## Context`, `## Outcome`, `## Insights`, `## Links`, in order)
+  plus a pure `validate_sections(body)` flag any unknown top-level `##` heading and
+  any missing sanctioned section. `### Decisions` is the only sanctioned `###`
+  subsection and is OPTIONAL (added after brainstorming), so its absence is never
+  flagged. `validate` folds the section findings into the frontmatter result so the
+  CLI and the gate get both checks from one call; the gate, the `validate-intent`
+  CLI, and doctor's read-only `section_structure` check all share this one
+  definition so it cannot drift.
+
+Portability split (D9): the `new-intent` CLI plus the skill instruction are the
+portable lever that works on any harness; the PreToolUse create gate is
+Claude-Code-only defense-in-depth, not the primary lock.
 
 ## project store provisioning
 

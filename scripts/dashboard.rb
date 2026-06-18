@@ -23,6 +23,7 @@ require "json"
 require "yaml"
 require "date"
 require_relative "doctor"
+require_relative "lib/bridge"
 
 PLASTIC_HOME = ENV.fetch("PLASTIC_HOME") { File.join(Dir.home, ".plastic") }
 
@@ -113,10 +114,14 @@ def parse_intent(store_info, dir_name, status_index)
 
   id = fm["id"].to_s
   has = ->(f) { File.exist?(File.join(dir, f)) }
+  # Sentinel-aware presence for lifecycle files (intent 60b): a scaffolded
+  # placeholder spec/plan/checklist/outcome reads as absent, so a freshly
+  # scaffolded intent reports What/Why and is never marked completed/advanced.
+  real = ->(f) { Bridge.stage_file_present?(File.join(dir, f)) }
   body = File.exist?(md) ? File.read(md) : ""
 
   status =
-    if has.("outcome.md") then "completed"
+    if real.("outcome.md") then "completed"
     elsif status_index[:active].include?(id) then "active"
     elsif status_index[:abandoned].include?(id) then "abandoned"
     elsif status_index[:completed].include?(id) then "completed"
@@ -134,12 +139,12 @@ def parse_intent(store_info, dir_name, status_index)
     created: (fm["created"].to_s rescue ""),
     value_field: fm["value"] && fm["value"].to_s,
     status: status,
-    spec: has.("spec.md"),
-    plan: has.("plan.md"),
-    checklist: has.("checklist.md"),
-    outcome: has.("outcome.md"),
+    spec: real.("spec.md"),
+    plan: real.("plan.md"),
+    checklist: real.("checklist.md"),
+    outcome: real.("outcome.md"),
     savepoint: has.("savepoint.md"),
-    checklist_partial: has.("checklist.md") && checklist_partially_done?(File.join(dir, "checklist.md")),
+    checklist_partial: real.("checklist.md") && checklist_partially_done?(File.join(dir, "checklist.md")),
     body_has_context: body.include?("## Context"),
     last_accessed_at: last_accessed_at(dir, (fm["created"].to_s rescue "")),
   }

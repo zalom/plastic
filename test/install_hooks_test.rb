@@ -266,6 +266,37 @@ class MergeClaudeHooksTest < Minitest::Test
     refute File.exist?(backup_path), "No backup should be created when there was no existing statusline"
   end
 
+  def pretooluse_commands(settings)
+    settings["hooks"]["PreToolUse"].flat_map { |g| (g["hooks"] || []).map { |h| h["command"] } }
+  end
+
+  def test_pretooluse_has_both_code_gate_and_create_gate
+    File.write(@settings_path, "{}")
+    @installer.merge_claude_hooks(@settings_path)
+    settings = JSON.parse(File.read(@settings_path))
+
+    commands = pretooluse_commands(settings)
+    assert commands.any? { |c| c.include?("plastic-code-gate") }, "code-gate must be registered"
+    assert commands.any? { |c| c.include?("plastic-create-gate") }, "create-gate must be registered"
+
+    code_group = settings["hooks"]["PreToolUse"].find { |g| g["hooks"].any? { |h| h["command"].include?("plastic-code-gate") } }
+    create_group = settings["hooks"]["PreToolUse"].find { |g| g["hooks"].any? { |h| h["command"].include?("plastic-create-gate") } }
+    assert_equal "Write|Edit|NotebookEdit", code_group["matcher"]
+    assert_equal "Write", create_group["matcher"]
+  end
+
+  def test_pretooluse_create_gate_is_idempotent_across_two_merges
+    File.write(@settings_path, "{}")
+    @installer.merge_claude_hooks(@settings_path)
+    @installer.merge_claude_hooks(@settings_path)
+    settings = JSON.parse(File.read(@settings_path))
+
+    create_commands = pretooluse_commands(settings).select { |c| c.include?("plastic-create-gate") }
+    code_commands = pretooluse_commands(settings).select { |c| c.include?("plastic-code-gate") }
+    assert_equal 1, create_commands.size, "create-gate must not duplicate across merges"
+    assert_equal 1, code_commands.size, "code-gate must not duplicate across merges"
+  end
+
   def test_user_prompt_submit_includes_qmd_search
     File.write(@settings_path, "{}")
     @installer.merge_claude_hooks(@settings_path)

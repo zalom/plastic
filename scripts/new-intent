@@ -1,0 +1,177 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# new-intent (intent 60b) - the one-call scaffolding contract.
+#
+# A single invocation scaffolds a COMPLETE intent: it allocates the Folgezettel
+# id (root vs branch by --parent), creates the directory tree (<id>--<slug>/ plus
+# actions/ and resources/), renders the born-complete intent file from
+# templates/intent.md, writes sentinel placeholder lifecycle files (spec.md,
+# plan.md, checklist.md, outcome.md, each carrying <!-- plastic:placeholder -->
+# as its first line), wires reciprocal file links, and self-validates with
+# IntentValidator (exit non-zero if not born complete).
+#
+# It does NOT touch INDEX.md, git, or project creation: those remain skill/agent
+# responsibilities (see plastic-creating-intent).
+#
+# Usage:
+#   new-intent --store <store_path> --intent "<one-line>" --slug <slug> \
+#              [--parent <id>] [--author <name>] [--sources id,id] \
+#              [--tags tag,tag] [--templates <dir>]
+#
+# Exit codes: 0 (born complete), 1 (scaffold failed self-validation or bad input).
+
+require "fileutils"
+require "date"
+require_relative "lib/bridge"
+require_relative "lib/intent_validator"
+
+# --- Explicit flag parsing (no eval, no global injection) ------------------
+
+def parse_args(argv)
+  opts = {
+    store: nil, intent: nil, slug: nil, parent: nil,
+    author: "claude-code", sources: [], tags: [], templates: nil
+  }
+  i = 0
+  while i < argv.length
+    arg = argv[i]
+    case arg
+    when "--store"     then opts[:store] = argv[i += 1]
+    when "--intent"    then opts[:intent] = argv[i += 1]
+    when "--slug"      then opts[:slug] = argv[i += 1]
+    when "--parent"    then opts[:parent] = argv[i += 1]
+    when "--author"    then opts[:author] = argv[i += 1]
+    when "--sources"   then opts[:sources] = split_list(argv[i += 1])
+    when "--tags"      then opts[:tags] = split_list(argv[i += 1])
+    when "--templates" then opts[:templates] = argv[i += 1]
+    else
+      abort "new-intent: unknown argument #{arg.inspect}"
+    end
+    i += 1
+  end
+  opts
+end
+
+def split_list(value)
+  value.to_s.split(",").map(&:strip).reject(&:empty?)
+end
+
+def expand(path)
+  File.expand_path(path.to_s.sub(/\A~/, Dir.home))
+end
+
+# Default templates dir: sibling of this script's dir. Works in-repo
+# (<repo>/scripts/new-intent -> <repo>/templates) and installed
+# (~/.plastic/scripts/new-intent -> ~/.plastic/templates when present).
+def default_templates_dir
+  File.expand_path("../templates", __dir__)
+end
+
+def render_tokens(text, tokens)
+  tokens.reduce(text) { |acc, (k, v)| acc.gsub("{{#{k}}}", v.to_s) }
+end
+
+# Append a wikilink line under the file's `## Links` section, idempotently.
+def append_link(file_path, link_line)
+  return unless File.exist?(file_path)
+  content = File.read(file_path)
+  return if content.include?(link_line)
+
+  lines = content.lines
+  idx = lines.index { |l| l.strip == "## Links" }
+  return unless idx
+
+  insert_at = lines.length
+  ((idx + 1)...lines.length).each do |j|
+    if lines[j].strip.start_with?("## ")
+      insert_at = j
+      break
+    end
+  end
+  lines.insert(insert_at, "#{link_line}\n")
+  File.write(file_path, lines.join)
+end
+
+def main(argv)
+  opts = parse_args(argv)
+  abort "new-intent: --store is required" if opts[:store].nil? || opts[:store].empty?
+  abort "new-intent: --intent is required" if opts[:intent].nil? || opts[:intent].empty?
+  abort "new-intent: --slug is required" if opts[:slug].nil? || opts[:slug].empty?
+
+  store = expand(opts[:store])
+  abort "new-intent: store dir does not exist: #{store}" unless Dir.exist?(store)
+
+  templates = opts[:templates] ? expand(opts[:templates]) : default_templates_dir
+  abort "new-intent: templates dir not found: #{templates}" unless Dir.exist?(templates)
+
+  # 1. Allocate id via the existing folgezettel-id logic (root vs branch).
+  folg = File.expand_path("folgezettel-id", __dir__)
+  cmd = [folg, store]
+  cmd << opts[:parent] if opts[:parent] && !opts[:parent].empty?
+  id = `#{cmd.map { |c| "'#{c}'" }.join(" ")}`.strip
+  abort "new-intent: id allocation failed" if id.empty?
+
+  slug = opts[:slug]
+  intent_dir = File.join(store, "#{id}--#{slug}")
+  abort "new-intent: #{intent_dir} already exists" if File.exist?(intent_dir)
+
+  # 2. Create dirs.
+  FileUtils.mkdir_p(File.join(intent_dir, "actions"))
+  FileUtils.mkdir_p(File.join(intent_dir, "resources"))
+
+  # 3. Render the born-complete intent file from templates/intent.md.
+  sources = opts[:sources]
+  sources = sources | [opts[:parent]] if opts[:parent] && !opts[:parent].empty? && !sources.include?(opts[:parent])
+  sources_str = sources.map { |s| "\"#{s}\"" }.join(", ")
+  tags_str = opts[:tags].map { |t| "\"#{t}\"" }.join(", ")
+
+  intent_template = File.read(File.join(templates, "intent.md"))
+  intent_body = render_tokens(intent_template, {
+    "ID" => id,
+    "INTENT" => opts[:intent],
+    "SOURCES" => sources_str,
+    "DATE" => Date.today.iso8601,
+    "AUTHOR" => opts[:author],
+    "TAGS" => tags_str,
+    "DESCRIPTION" => opts[:intent],
+  })
+  intent_file = File.join(intent_dir, "#{id}--#{slug}.md")
+  File.write(intent_file, intent_body)
+
+  # 4. Reciprocal links: forward link to parent + back-reference in the parent.
+  if opts[:parent] && !opts[:parent].empty?
+    parent_id = opts[:parent]
+    append_link(intent_file, "- [[#{parent_id}]]")
+    parent_dir = Dir.glob(File.join(store, "#{parent_id}--*")).find { |d| File.directory?(d) }
+    if parent_dir
+      parent_file = File.join(parent_dir, "#{File.basename(parent_dir)}.md")
+      append_link(parent_file, "- [[#{id}]]")
+    end
+  end
+
+  # 5. Sentinel placeholders for each lifecycle file. The sentinel is the FIRST
+  # line; the rendered template body follows so the file is a usable starting
+  # point once an agent deletes the sentinel.
+  %w[spec.md plan.md checklist.md outcome.md].each do |name|
+    template_path = File.join(templates, name)
+    body = File.exist?(template_path) ? File.read(template_path) : ""
+    body = render_tokens(body, { "INTENT_NAME" => opts[:intent] })
+    File.write(File.join(intent_dir, name), "#{Bridge::PLACEHOLDER_SENTINEL}\n#{body}")
+  end
+
+  # 6. Self-validate (frontmatter + sanctioned sections).
+  result = IntentValidator.validate(intent_dir)
+  unless result[:ok]
+    warn "new-intent: scaffolded intent is NOT born complete:"
+    result[:missing].each { |f| warn "  missing field: #{f}" }
+    result[:errors].each { |e| warn "  #{e}" }
+    exit 1
+  end
+
+  puts intent_dir
+  exit 0
+end
+
+main(ARGV) if $PROGRAM_NAME == __FILE__

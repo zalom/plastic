@@ -52,17 +52,25 @@ class SavepointLedgerTest < Minitest::Test
   # --- Task 2: append_savepoint ----------------------------------------------
 
   def test_append_creates_formatted_line
+    write("spec.md", "# Spec\nreal\n")
     t = Time.utc(2026, 6, 16, 14, 20, 0)
     assert_equal true, Bridge.append_savepoint(@dir, File.join(@dir, "spec.md"), now: t)
     assert_equal ["2026-06-16T14:20:00Z  Why  spec.md created"], ledger_lines
   end
 
   def test_append_is_idempotent_per_milestone
+    write("spec.md", "# Spec\nreal\n")
     t1 = Time.utc(2026, 6, 16, 14, 20, 0)
     t2 = Time.utc(2026, 6, 16, 15, 0, 0)
     assert_equal true, Bridge.append_savepoint(@dir, File.join(@dir, "spec.md"), now: t1)
     assert_equal false, Bridge.append_savepoint(@dir, File.join(@dir, "spec.md"), now: t2)
     assert_equal 1, ledger_lines.length
+  end
+
+  def test_append_skips_sentinel_placeholder_lifecycle_file
+    write("spec.md", "<!-- plastic:placeholder -->\n\nplaceholder\n")
+    assert_equal false, Bridge.append_savepoint(@dir, File.join(@dir, "spec.md"), now: Time.now)
+    assert_equal "", ledger
   end
 
   def test_append_ignores_non_milestone_files
@@ -79,7 +87,10 @@ class SavepointLedgerTest < Minitest::Test
       ["checklist.md", Time.utc(2026, 6, 16, 15, 11, 0)],
       ["outcome.md", Time.utc(2026, 6, 16, 16, 40, 0)],
     ]
-    seq.each { |name, t| Bridge.append_savepoint(@dir, File.join(@dir, name), now: t) }
+    seq.each do |name, t|
+      write(name, "real #{name}\n") unless name == @intent_basename
+      Bridge.append_savepoint(@dir, File.join(@dir, name), now: t)
+    end
     assert_equal [
       "2026-06-16T14:00:00Z  What  #{@intent_basename}",
       "2026-06-16T14:20:00Z  Why  spec.md created",

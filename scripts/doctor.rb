@@ -439,6 +439,40 @@ class Doctor
       )
     end
 
+    # section_structure — per-intent top-level `##` section set. Reuses
+    # IntentValidator::SANCTIONED_SECTIONS / validate_sections so the sanctioned
+    # set is defined in exactly one place (shared with the create gate and the
+    # validate-intent CLI). Read-only diagnostic: unknown or missing sections are
+    # not auto-fixable here.
+    bad_sections = []
+    intent_dirs.each do |d|
+      md_path = File.join(d[:path], "#{d[:name]}.md")
+      next unless File.exist?(md_path)
+
+      body = IntentValidator.body_of(File.read(md_path))
+      result = IntentValidator.validate_sections(body)
+      next if result[:ok]
+
+      issues = []
+      issues.concat(result[:unknown].map { |h| "unknown #{h}" })
+      issues.concat(result[:missing].map { |s| "missing #{s}" })
+      bad_sections << { dir: tilde(d[:path]), issues: issues }
+    end
+
+    if bad_sections.empty?
+      checks << check(
+        category: "conventions", name: "section_structure", status: "pass",
+        message: "All intent files have the sanctioned ## section structure"
+      )
+    else
+      checks << check(
+        category: "conventions", name: "section_structure", status: "warn",
+        message: "#{bad_sections.size} intent file(s) have non-sanctioned ## sections",
+        details: bad_sections.map { |b| "#{b[:dir]}: #{b[:issues].join(", ")}" },
+        fixable: false
+      )
+    end
+
     checks
   end
 

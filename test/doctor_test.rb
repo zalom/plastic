@@ -73,7 +73,8 @@ module DoctorTestHelpers
                   end
       "#{k}: #{formatted}"
     end.join("\n")
-    content = "---\n#{yaml_str}\n---\n\n# #{name}\n"
+    body = "## Intent\n#{name}\n\n## Context\nWhy\n\n## Outcome\nResult\n\n## Insights\nNotes\n\n## Links\n- none\n"
+    content = "---\n#{yaml_str}\n---\n\n#{body}"
     File.write(File.join(dir, "#{name}.md"), content)
     dir
   end

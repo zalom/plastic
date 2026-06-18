@@ -64,11 +64,10 @@ State is derived from what exists, not from what's declared.
 ## Creating an Intent — Full Steps
 
 1. Determine the target store: `~/.plastic/store/` for global intents (default), `~/.plastic/projects/{slug}/store/` for project intents
-2. Determine the Folgezettel ID: If root (no parent), find highest root number +1. If branch, run `"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" <parent_id> <store_path>`
-3. Create the intent directory in the chosen store (e.g., `ID--three-to-five-words`)
-4. Create `{ID}--{slug}.md` with frontmatter (id, intent, sources, chain, created, author, tags)
-5. Write `## Intent` — the What
-6. Add remaining sections: `## Context`, `## Outcome`, `## Insights`, `## Links`
-7. Update the appropriate `INDEX.md` — add to Active section and appropriate cluster
+2. Decide branch vs root (this sets whether you pass `--parent`)
+3. Scaffold with one call: `"${CLAUDE_PLUGIN_ROOT}/scripts/new-intent" --store <store> --intent "<one-line>" --slug <slug> [--parent <id>] [--sources id,id] [--tags ...]`. This allocates the id, creates the directory plus `actions/` and `resources/`, renders the born-complete intent file (frontmatter plus `## Intent`, `## Context`, `## Outcome`, `## Insights`, `## Links`), writes the sentinel placeholder lifecycle files, wires the reciprocal links, and self-validates.
+4. Update the appropriate `INDEX.md` — add to Active section and appropriate cluster
 
-A fleeting intent can skip `## Context` — just `## Intent` and empty sections.
+The intent file is born complete with all five sanctioned `##` sections; the lifecycle files (`spec.md`/`plan.md`/`checklist.md`/`outcome.md`) are sentinel placeholders that read as "stage not reached" until an agent fills them and deletes the `<!-- plastic:placeholder -->` first line.
+
+Always scaffold through `new-intent` (or this skill). Never hand-author intent files: the write-time create gate blocks an incomplete or malformed intent file, and hand-authoring is the bypass this contract is designed to remove.

@@ -41,63 +41,60 @@ When creating a tactical intent in a project store:
 - **Global:** `~/.plastic/store/`
 - **Project:** `~/.plastic/projects/{slug}/store/`
 
-### 2. Determine Folgezettel ID
+### 2. Decide Branch vs Root
 
-IDs are scoped to the store they live in. Use the correct store path:
+Decide this BEFORE scaffolding, because it sets whether you pass `--parent`.
+Having a "parent" in mind does NOT automatically mean branch. Choose by meaning:
 
-**Global store:**
-```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" "~/.plastic/store"
-```
-
-**Project store:**
-```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" "~/.plastic/projects/{slug}/store"
-```
-
-**Branch intent (has parent, either store):**
-```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" "<STORE>" "<parent_id>"
-```
-
-**Branch vs root — decide before assigning the ID.** Having a "parent" in mind does
-NOT automatically mean branch. Choose by meaning:
-
-- **Branch (`14a`, `14b`)** — a sub-task, refinement, or direct continuation. It only
-  makes sense as part of the parent's work.
-- **Root (`15`, `16`)** — an independent thought, even if inspired by another intent.
-  Capture the inspiration in `sources` (e.g., `sources: ["14"]`), not in the ID.
+- **Branch (`14a`, `14b`)**: a sub-task, refinement, or direct continuation. It only
+  makes sense as part of the parent's work. Pass `--parent <parent_id>`.
+- **Root (`15`, `16`)**: an independent thought, even if inspired by another intent.
+  Capture the inspiration in `--sources`, not in the id. Omit `--parent`.
 - **Rule of thumb:** if the intent could exist without its parent, make it a root and
-  set `sources`. Only branch when it genuinely cannot stand alone.
+  set `--sources`. Only branch when it genuinely cannot stand alone.
 
 ### 3. Determine Intent Properties
 
 Ask or infer from context:
 - **intent**: one-line description
+- **slug**: short hyphenated handle for the directory name
 - **author**: `human` | `claude-code` | other agent name
-- **sources**: array of Folgezettel IDs that influenced this intent (e.g., `["4a1"]`)
-- **chain**: starts empty `[]`, populated when this intent spawns others
+- **sources**: Folgezettel ids that influenced this intent (e.g., `4a1`). For a
+  project intent, include the governing intent's id.
 - **tags**: freeform list (use `project-<name>` for project membership)
 
-Place in `## Active` or `## Future` in INDEX.md (status is convention-derived, not a frontmatter field).
+`chain` starts empty and is populated later when this intent spawns others.
+Place the intent in `## Active` or `## Future` in INDEX.md (status is
+convention-derived, not a frontmatter field).
 
-### 4. Create Directory and Files
+### 4. Scaffold via new-intent (single call)
 
-```bash
-mkdir -p <STORE>/ID--slug
-```
-
-Write `{ID}--{slug}.md` using the intent template. For project intents, add the governing intent's ID to `sources` and add `[[global:ID]]` backlink in `## Links`.
-
-### 5. Self-Verify the Written Intent
-
-Before announcing or committing, verify the just-written intent is born complete:
+Delegate id allocation, directory and file creation, the born-complete intent
+file, the sentinel placeholder lifecycle files, the reciprocal file links, and
+self-validation to one `new-intent` invocation. Do NOT hand-author any of these
+files.
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/validate-intent" "<STORE>/ID--slug"
+"${CLAUDE_PLUGIN_ROOT}/scripts/new-intent" \
+  --store "<STORE>" --intent "<one-line>" --slug "<slug>" \
+  [--parent "<parent_id>"] [--author "<author>"] \
+  [--sources "id,id"] [--tags "project-<slug>,tag"]
 ```
 
-If it exits non-zero, read the stderr report, inject the missing field(s) into the `{ID}--{slug}.md` frontmatter (for example add `chain: []`) WITHOUT disturbing other frontmatter keys, and re-run `validate-intent` until it exits 0. Only then proceed to the remaining steps (project spawn, INDEX.md, commit, announce).
+`new-intent` allocates the Folgezettel id (root, or a branch of `--parent`),
+creates `<STORE>/<id>--<slug>/` plus `actions/` and `resources/`, renders the
+born-complete `<id>--<slug>.md` from the intent template, writes the sentinel
+placeholder `spec.md`/`plan.md`/`checklist.md`/`outcome.md` (each marked
+`<!-- plastic:placeholder -->` so no stage detector reads them as reached), wires
+the reciprocal `[[id]]` links, and self-validates (frontmatter plus the sanctioned
+`##` sections). It prints the created directory path and exits 0.
+
+It does NOT touch INDEX.md, git, or project creation: those stay in this skill
+(steps 6 to 9 below).
+
+If `new-intent` exits non-zero, read the stderr report and fix the inputs (slug,
+intent, sources). Do not commit or announce an intent that did not scaffold
+cleanly, and do not work around the failure by hand-writing the files.
 
 ### 6. If Implementation Intent Spawns a Project
 
@@ -138,12 +135,12 @@ Add to `## Active` (or `## Future`) and appropriate cluster.
 ### 8. Auto-commit
 
 ```bash
-cd <store-root> && git add . && git commit -m "feat: create intent ID — [name]"
+cd <store-root> && git add . && git commit -m "feat: create intent ID - [name]"
 ```
 
 ### 9. Announce
 
-"Created intent ID — [name]. Placed in: [Active|Future]. Store: [global|project:<slug>|local]."
+"Created intent ID - [name]. Placed in: [Active|Future]. Store: [global|project:<slug>|local]."
 
 ## References
 

@@ -10,6 +10,14 @@ require "digest"
 module Bridge
   STAGES = %w[what why how exec done].freeze
 
+  # Placeholder sentinel (intent 60b). A scaffolded lifecycle file
+  # (spec.md/plan.md/checklist.md/outcome.md) carries this exact string as its
+  # first line until an agent fills the file and deletes the sentinel. The
+  # sentinel is the "stage not reached yet" marker, so stage detection treats a
+  # sentinel-marked file as absent (see stage_file_present?). The intent file
+  # (<id>--<slug>.md) is never sentineled; it is born complete.
+  PLACEHOLDER_SENTINEL = "<!-- plastic:placeholder -->"
+
   # Stale-bridge purge window (intent 67). The bridge file is ephemeral
   # live-session gate state, NOT a continuation source: an intent is resumed from
   # its savepoint.md ledger, never from a /tmp bridge. So any bridge older than
@@ -168,14 +176,28 @@ module Bridge
     raise e
   end
 
+  # True iff a lifecycle file is PRESENT AND REAL: it exists and its first line is
+  # not the placeholder sentinel. Reads only the file head (never the whole file)
+  # so the dashboard stays fast across many intents. Exact first-line match only,
+  # so a real file that merely contains an HTML comment later is unaffected, and a
+  # partially-edited sentinel reads as real rather than sticking as a placeholder.
+  def self.stage_file_present?(path)
+    return false unless File.exist?(path)
+    first = File.open(path, &:gets)
+    return true if first.nil? # empty file: present, not a sentinel
+    first.chomp != PLACEHOLDER_SENTINEL
+  rescue StandardError
+    File.exist?(path)
+  end
+
   def self.derive_stage(intent_dir)
-    return "done" if File.exist?("#{intent_dir}/outcome.md")
-    if File.exist?("#{intent_dir}/plan.md") &&
+    return "done" if stage_file_present?("#{intent_dir}/outcome.md")
+    if stage_file_present?("#{intent_dir}/plan.md") &&
        File.directory?("#{intent_dir}/actions") &&
-       File.exist?("#{intent_dir}/checklist.md")
+       stage_file_present?("#{intent_dir}/checklist.md")
       return "exec"
     end
-    return "how" if File.exist?("#{intent_dir}/spec.md")
+    return "how" if stage_file_present?("#{intent_dir}/spec.md")
     return "why" if File.exist?(intent_file(intent_dir))
     "what"
   end
@@ -183,8 +205,9 @@ module Bridge
   def self.has_files(intent_dir)
     files = []
     ifile = File.basename(intent_file(intent_dir))
-    [ifile, "spec.md", "plan.md", "checklist.md", "outcome.md"].each do |f|
-      files << f if File.exist?("#{intent_dir}/#{f}")
+    files << ifile if File.exist?("#{intent_dir}/#{ifile}")
+    ["spec.md", "plan.md", "checklist.md", "outcome.md"].each do |f|
+      files << f if stage_file_present?("#{intent_dir}/#{f}")
     end
     files << "actions/" if File.directory?("#{intent_dir}/actions")
     files
@@ -236,8 +259,12 @@ module Bridge
   # Append a milestone line for file_path if (and only if) it is a milestone
   # not already recorded. Returns true when a line was written, false otherwise.
   def self.append_savepoint(intent_dir, file_path, now: Time.now)
-    stage, milestone = savepoint_milestone(intent_dir, File.basename(file_path))
+    basename = File.basename(file_path)
+    stage, milestone = savepoint_milestone(intent_dir, basename)
     return false unless milestone
+    # A sentinel-marked lifecycle file logs NO milestone (the stage is not real
+    # yet). The intent file is never sentineled, so it still logs its What line.
+    return false unless stage_file_present?(File.join(intent_dir, basename))
     return false if savepoint_recorded_milestones(intent_dir).include?(milestone)
 
     line = "#{now.utc.iso8601}  #{stage}  #{milestone}\n"
@@ -254,7 +281,7 @@ module Bridge
     ]
     lines = ordered.filter_map do |basename|
       path = File.join(intent_dir, basename)
-      next unless File.exist?(path)
+      next unless stage_file_present?(path)
       stage, milestone = savepoint_milestone(intent_dir, basename)
       next unless milestone
       "#{File.mtime(path).utc.iso8601}  #{stage}  #{milestone}\n"
@@ -311,16 +338,16 @@ module Bridge
         return "Cannot start Why — What is incomplete (#{File.basename(ifile)} missing or no ## Intent)"
       end
     when "plan.md"
-      unless File.exist?("#{intent_dir}/spec.md")
+      unless stage_file_present?("#{intent_dir}/spec.md")
         return "Cannot start How — Why is incomplete (spec.md missing)"
       end
     when "checklist.md"
-      unless File.exist?("#{intent_dir}/plan.md") && File.directory?("#{intent_dir}/actions")
+      unless stage_file_present?("#{intent_dir}/plan.md") && File.directory?("#{intent_dir}/actions")
         return "Cannot complete How — plan.md or actions/ missing"
       end
     when "outcome.md"
       checklist = "#{intent_dir}/checklist.md"
-      if File.exist?(checklist)
+      if stage_file_present?(checklist)
         content = File.read(checklist)
         unchecked = content.scan(/^- \[ \]/).length
         if unchecked > 0
@@ -399,8 +426,8 @@ module Bridge
     # "How reached" = the plan triplet exists. Gate by artifact presence, not the
     # stage label (derive_stage returns "how" as soon as spec.md exists, before any
     # plan). Code edits stay blocked until plan.md + checklist.md are both present.
-    reached_how = File.exist?("#{intent_dir_abs}/plan.md") &&
-                  File.exist?("#{intent_dir_abs}/checklist.md")
+    reached_how = stage_file_present?("#{intent_dir_abs}/plan.md") &&
+                  stage_file_present?("#{intent_dir_abs}/checklist.md")
     return nil if reached_how
 
     file_abs = File.expand_path(file_path.to_s)

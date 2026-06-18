@@ -166,11 +166,15 @@ class InstallerCore
 
     FileUtils.mkdir_p(plastic_home)
     FileUtils.mkdir_p(File.join(plastic_home, "scripts", "lib"))
+    FileUtils.mkdir_p(File.join(plastic_home, "templates"))
 
     core_files.each do |src, dest|
       src_path = File.join(package_root, src)
       dest_path = File.join(plastic_home, dest)
-      FileUtils.cp(src_path, dest_path) if File.exist?(src_path)
+      next unless File.exist?(src_path)
+
+      FileUtils.mkdir_p(File.dirname(dest_path))
+      FileUtils.cp(src_path, dest_path)
     end
 
     File.write(File.join(plastic_home, "VERSION"), "#{version}\n")
@@ -210,6 +214,13 @@ class InstallerCore
       "scripts/qmd-sync" => "scripts/qmd-sync",
       "scripts/lib/intent_validator.rb" => "scripts/lib/intent_validator.rb",
       "scripts/validate-intent" => "scripts/validate-intent",
+      "scripts/new-intent" => "scripts/new-intent",
+      "scripts/hook-create-gate" => "scripts/hook-create-gate",
+      "templates/intent.md" => "templates/intent.md",
+      "templates/spec.md" => "templates/spec.md",
+      "templates/plan.md" => "templates/plan.md",
+      "templates/checklist.md" => "templates/checklist.md",
+      "templates/outcome.md" => "templates/outcome.md",
       "scripts/spawn-preamble" => "scripts/spawn-preamble",
       "scripts/lib/store_provisioning.rb" => "scripts/lib/store_provisioning.rb",
       "scripts/provision-project-store" => "scripts/provision-project-store",
@@ -527,12 +538,25 @@ class InstallerCore
           { "type" => "command", "command" => "#{hook_dir}/plastic-savepoint", "statusMessage" => "Saving Plastic intent state..." },
         ],
       },
-      "PreToolUse" => {
-        "matcher" => "Write|Edit|NotebookEdit",
-        "hooks" => [
-          { "type" => "command", "command" => "#{hook_dir}/plastic-code-gate", "statusMessage" => "Checking lifecycle gate..." },
-        ],
-      },
+      # PreToolUse carries TWO plastic groups with distinct matchers: the
+      # code-gate (Write|Edit|NotebookEdit) and the create-gate (Write only, intent
+      # 60b). A single group cannot carry two matchers, so this event maps to a
+      # LIST of groups; the merge loop appends each (idempotent because the purge
+      # pass removes all prior plastic groups first).
+      "PreToolUse" => [
+        {
+          "matcher" => "Write|Edit|NotebookEdit",
+          "hooks" => [
+            { "type" => "command", "command" => "#{hook_dir}/plastic-code-gate", "statusMessage" => "Checking lifecycle gate..." },
+          ],
+        },
+        {
+          "matcher" => "Write",
+          "hooks" => [
+            { "type" => "command", "command" => "#{hook_dir}/plastic-create-gate", "statusMessage" => "Checking create gate..." },
+          ],
+        },
+      ],
       "PostToolUse" => {
         "matcher" => "Write|Edit",
         "hooks" => [
@@ -552,13 +576,23 @@ class InstallerCore
 
     plastic_hooks.each do |event, group|
       hooks[event] ||= []
-      existing = hooks[event].find { |g| g.is_a?(Hash) && g["hooks"].is_a?(Array) && g["hooks"].any? { |h| h["command"].to_s.include?("plastic-") } }
 
-      if existing
-        existing["matcher"] = group["matcher"]
-        existing["hooks"] = group["hooks"]
-      else
-        hooks[event] << group
+      # An event may map to a LIST of plastic groups (PreToolUse carries the
+      # code-gate AND the create-gate). The purge pass above already removed all
+      # prior plastic groups, so appending each desired group fresh is idempotent
+      # across re-runs and never collapses two matchers into one group.
+      groups = group.is_a?(Array) ? group : [group]
+      groups.each do |g|
+        existing = hooks[event].find do |h|
+          h.is_a?(Hash) && h["matcher"] == g["matcher"] &&
+            h["hooks"].is_a?(Array) && h["hooks"].any? { |x| x["command"].to_s.include?("plastic-") }
+        end
+
+        if existing
+          existing["hooks"] = g["hooks"]
+        else
+          hooks[event] << g
+        end
       end
     end
 

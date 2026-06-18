@@ -20,6 +20,25 @@ class IntentValidatorTest < Minitest::Test
     }.merge(overrides)
   end
 
+  # The five sanctioned `##` sections (intent 60b), for building born-complete
+  # intent file bodies in tests that exercise `validate`/`validate_content`.
+  SANCTIONED_BODY = <<~BODY
+    ## Intent
+    Test intent
+
+    ## Context
+    Why
+
+    ## Outcome
+    Result
+
+    ## Insights
+    Notes
+
+    ## Links
+    - none
+  BODY
+
   # --- valid_id? ---
 
   def test_valid_id_accepts_folgezettel_forms
@@ -107,10 +126,10 @@ class IntentValidatorTest < Minitest::Test
       FileUtils.mkdir_p(intent_dir)
       md = File.join(intent_dir, "#{id}.md")
 
-      File.write(md, "---\nid: 9z\nintent: x\nsources: []\nchain: []\ncreated: 2026-01-01\nauthor: x\ntags: []\n---\n")
+      File.write(md, "---\nid: 9z\nintent: x\nsources: []\nchain: []\ncreated: 2026-01-01\nauthor: x\ntags: []\n---\n\n#{SANCTIONED_BODY}")
       assert IntentValidator.validate(intent_dir)[:ok]
 
-      File.write(md, "---\nid: 9z\nintent: x\nsources: []\ncreated: 2026-01-01\nauthor: x\ntags: []\n---\n")
+      File.write(md, "---\nid: 9z\nintent: x\nsources: []\ncreated: 2026-01-01\nauthor: x\ntags: []\n---\n\n#{SANCTIONED_BODY}")
       result = IntentValidator.validate(intent_dir)
       refute result[:ok]
       assert_includes result[:missing], "chain"
@@ -147,6 +166,67 @@ class IntentValidatorTest < Minitest::Test
       cli = File.expand_path("../scripts/validate-intent", __dir__)
       ok = system(cli, intent_dir, out: File::NULL, err: File::NULL)
       refute ok, "validate-intent must exit non-zero for an intent missing chain"
+    end
+  end
+
+  # --- validate_sections (intent 60b) ---
+
+  def test_validate_sections_flags_unknown_heading
+    body = SANCTIONED_BODY + "\n## Foo\nbogus\n"
+    result = IntentValidator.validate_sections(body)
+    refute result[:ok]
+    assert_includes result[:unknown], "## Foo"
+  end
+
+  def test_validate_sections_flags_missing_links
+    body = SANCTIONED_BODY.sub(/## Links.*\z/m, "")
+    result = IntentValidator.validate_sections(body)
+    refute result[:ok]
+    assert_includes result[:missing], "## Links"
+  end
+
+  def test_validate_sections_does_not_flag_missing_decisions
+    # All five sanctioned sections, no ### Decisions subsection: ok.
+    result = IntentValidator.validate_sections(SANCTIONED_BODY)
+    assert result[:ok], "missing optional ### Decisions must not be flagged: #{result.inspect}"
+    assert_empty result[:missing]
+    assert_empty result[:unknown]
+  end
+
+  def test_validate_sections_ignores_present_decisions_subsection
+    body = SANCTIONED_BODY.sub("## Context\nWhy\n", "## Context\nWhy\n\n### Decisions\n- D1\n")
+    result = IntentValidator.validate_sections(body)
+    assert result[:ok], "### Decisions under Context must not be flagged: #{result.inspect}"
+  end
+
+  # --- validate / validate_content merge (intent 60b) ---
+
+  def test_validate_content_fails_on_bad_sections_with_complete_frontmatter
+    fm = "---\nid: 1\nintent: x\nsources: []\nchain: []\ncreated: 2026-01-01\nauthor: x\ntags: []\n---\n\n"
+    content = fm + SANCTIONED_BODY + "\n## Foo\nbogus\n"
+    result = IntentValidator.validate_content(content)
+    refute result[:ok]
+    assert result[:errors].any? { |e| e.include?("unknown section: ## Foo") }
+  end
+
+  def test_validate_content_ok_for_born_complete_intent
+    fm = "---\nid: 1\nintent: x\nsources: []\nchain: []\ncreated: 2026-01-01\nauthor: x\ntags: []\n---\n\n"
+    content = fm + SANCTIONED_BODY
+    result = IntentValidator.validate_content(content)
+    assert result[:ok], "born-complete + sanctioned content must pass: #{result[:errors].inspect}"
+  end
+
+  def test_validate_surfaces_missing_section_in_errors
+    Dir.mktmpdir do |dir|
+      id = "7--nolinks"
+      intent_dir = File.join(dir, id)
+      FileUtils.mkdir_p(intent_dir)
+      body = SANCTIONED_BODY.sub(/## Links.*\z/m, "")
+      File.write(File.join(intent_dir, "#{id}.md"),
+                 "---\nid: 7\nintent: x\nsources: []\nchain: []\ncreated: 2026-01-01\nauthor: x\ntags: []\n---\n\n#{body}")
+      result = IntentValidator.validate(intent_dir)
+      refute result[:ok]
+      assert result[:errors].any? { |e| e.include?("missing required section: ## Links") }
     end
   end
 end
