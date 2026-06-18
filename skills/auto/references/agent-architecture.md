@@ -64,16 +64,21 @@ derived-key fallback and verifies state itself.
 
 ### Delegation
 
-The roles are thin handoff contracts, not a spawning engine. Real parallelism and
-dispatch are delegated to `superpowers:subagent-driven-development` and
-`superpowers:dispatching-parallel-agents`. The team model defines who hands what to
-whom and where the gates sit, the superpowers skills do the actual dispatching.
+The roles are thin handoff contracts, not a spawning engine. Dispatch and review run
+by default through Plastic's own engine, `plastic-executing-plan` (implementer plus
+two-stage review, no external plugin). When `superpowers:subagent-driven-development`
+and `superpowers:dispatching-parallel-agents` are available, or the user asks for them,
+they delegate to those as an enhancement. The team model defines who hands what to whom
+and where the gates sit; the dispatch engine, native or superpowers, does the actual
+spawning.
 
-### Solo Fallback
+### Fallback by Case
 
-If the harness has no subagent dispatch, auto mode falls back to a single agent
-walking the full What, Why, How, Exec cycle itself. This preserves the original
-behavior on harnesses without teams. The enforcer's gate discipline still applies.
+The default is always Plastic's native engine, so a user without superpowers still gets
+the full behavior. If the harness supports subagents but superpowers is absent, auto
+mode dispatches through `plastic-executing-plan`. If the harness has no subagent dispatch
+at all, auto mode falls back to a single agent walking the full What, Why, How, Exec
+cycle itself. The enforcer's gate discipline still applies in every case.
 
 ### Dogfood Proof
 
