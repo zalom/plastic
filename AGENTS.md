@@ -85,3 +85,16 @@ Rules for any agent (or human) contributing to this repository.
 - Release through the `plastic-releasing` workflow (tag, GitHub release, npm publish).
 - Run the full test suite (see the Testing section) and confirm green before committing code changes.
 - Never push `~/.plastic/`. The global store is local-only and may contain private data.
+
+### Release planning (Plastic project only)
+Core Plastic intents carry no release numbers; the intent schema stays release-agnostic.
+Which release an intent lands in is a Plastic-project decision recorded here, not in the intent
+file and not in PLASTIC.md. A release is a collection of intents: a cut (tag) bundles whichever
+intents have landed since the previous cut and completes them. Update this plan when an intent
+is slated for a cut or when a cut ships.
+
+Release plan:
+- `1.0.0-beta.1` - shipped 2026-06-19. Promoted the alpha line; feature-complete core.
+- `1.0.0-beta.2` - collects the beta-blockers: 68, 59, 58, 49, 39, 66a.
+- `1.0.0` (first stable) - strips the prerelease suffix and takes the `latest` dist-tag; contents beyond the beta line are TBD.
+- `1.1.0` - loop engineering (intent 69 and its cluster); ships after 1.0.0 on a fresh alpha line.
