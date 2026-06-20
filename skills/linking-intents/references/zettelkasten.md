@@ -20,9 +20,14 @@ IDs encode lineage using Luhmann's alternating convention:
 
 ## Knowledge Graph
 
-`sources` + `chain` form the double-linked knowledge graph:
-- `sources` = what fed into this intent (parents, inspirations, prerequisites)
-- `chain` = what this intent produced (children, follow-ups, spin-offs)
+`sources` and `chain` form the directed knowledge graph:
+- `sources` = the direct ascendant(s) this intent was created from / emerged from the
+  lifecycle of (formation, not topic similarity); a DAG (acyclic), strong must-load context.
+- `chain` = forward continuations AND related-but-not-spawned successors it leads to; a
+  directed graph that may cycle, lighter contributory context.
+- Reciprocity is one-directional: every `sources` edge has a reciprocal `chain` entry (I1),
+  but `chain` may carry relational entries with no reciprocal `sources` (I2), so the graph is
+  NOT strictly double-linked.
 
 ## Dual-Mode
 

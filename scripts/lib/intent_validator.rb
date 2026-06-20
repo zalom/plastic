@@ -153,4 +153,83 @@ module IntentValidator
     content = File.exist?(md_path) ? File.read(md_path) : nil
     validate_content(content)
   end
+
+  # PURE: cross-intent graph-shape invariants (intent 68). These need visibility
+  # over the whole intent set, so they live apart from the single-file born-complete
+  # helpers above (which must not drift). No file IO: the caller builds `nodes`.
+  #
+  # `nodes` is a Hash { id(String) => { sources: [ids], chain: [ids] } } for every
+  # intent in ONE store's id space. Returns { i1: [...], i3: [...], i4: [...] },
+  # each an array of human-readable finding strings.
+  #
+  # I2 (no false symmetry) is INTENTIONALLY not computed: a relational `chain` entry
+  # with no reciprocal `sources` is valid and must never be flagged.
+  def validate_graph(nodes)
+    nodes = normalize_nodes(nodes)
+    { i1: graph_i1(nodes), i3: graph_i3(nodes), i4: graph_i4(nodes) }
+  end
+
+  # Coerce node arrays to deduped String id lists; tolerate missing keys.
+  def normalize_nodes(nodes)
+    return {} unless nodes.is_a?(Hash)
+
+    nodes.each_with_object({}) do |(id, edges), acc|
+      edges = {} unless edges.is_a?(Hash)
+      acc[id.to_s] = {
+        sources: Array(edges[:sources] || edges["sources"]).map(&:to_s).uniq,
+        chain: Array(edges[:chain] || edges["chain"]).map(&:to_s).uniq,
+      }
+    end
+  end
+
+  # An id is a cross-store reference (out of this store's scope) when it carries a
+  # `<store>:` prefix, mirroring how `valid_id?` accepts the prefix. Such refs are
+  # resolved outside this node set, so they are never danglers here.
+  def cross_store_ref?(id)
+    id.to_s.include?(":")
+  end
+
+  # I1 (formative reciprocity): for every B and every `s` in B.sources that resolves
+  # in this store, B must appear in s.chain. A `s` that does not resolve is an I4
+  # dangler, not an I1 violation, so it is skipped here.
+  def graph_i1(nodes)
+    findings = []
+    nodes.each do |b_id, edges|
+      edges[:sources].each do |s|
+        next if cross_store_ref?(s)
+        next unless nodes.key?(s)
+
+        findings << "#{b_id}.sources lists #{s} but #{s}.chain is missing #{b_id}" unless nodes[s][:chain].include?(b_id)
+      end
+    end
+    findings
+  end
+
+  # I3 (per-node disjoint): X.sources and X.chain must not overlap.
+  def graph_i3(nodes)
+    findings = []
+    nodes.each do |x_id, edges|
+      (edges[:sources] & edges[:chain]).each do |overlap|
+        findings << "#{x_id} lists #{overlap} in BOTH sources and chain"
+      end
+    end
+    findings
+  end
+
+  # I4 (no danglers): every bare (same-store) id in any sources/chain must resolve
+  # to a node. Cross-store `<store>:<id>` refs resolve elsewhere and are not flagged.
+  def graph_i4(nodes)
+    findings = []
+    nodes.each do |id, edges|
+      %i[sources chain].each do |field|
+        edges[field].each do |ref|
+          next if cross_store_ref?(ref)
+          next if nodes.key?(ref)
+
+          findings << "#{id}.#{field} references #{ref} which resolves to no intent"
+        end
+      end
+    end
+    findings
+  end
 end

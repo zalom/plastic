@@ -30,7 +30,7 @@ description: Use when new work begins, the user expresses a new goal, says "new 
 
 When creating a tactical intent in a project store:
 - Read the project's `AGENTS.md` for project context and decisions
-- Link back to the project's governing intent (from `projects.yml` `parent` field) via `sources`
+- Link back to the project's governing intent (from `projects.yml` `parent` field) via `sources` (the project genuinely is formed from its founding intent, a true formative edge, reciprocated on the founding intent's `chain`)
 - Add `[[global:<parent_ID>]]` backlink in `## Links`
 - The intent's Folgezettel ID is scoped to the project store (run `folgezettel-id` against the project's store at `~/.plastic/projects/{slug}/store/`)
 
@@ -48,10 +48,17 @@ Having a "parent" in mind does NOT automatically mean branch. Choose by meaning:
 
 - **Branch (`14a`, `14b`)**: a sub-task, refinement, or direct continuation. It only
   makes sense as part of the parent's work. Pass `--parent <parent_id>`.
-- **Root (`15`, `16`)**: an independent thought, even if inspired by another intent.
-  Capture the inspiration in `--sources`, not in the id. Omit `--parent`.
-- **Rule of thumb:** if the intent could exist without its parent, make it a root and
-  set `--sources`. Only branch when it genuinely cannot stand alone.
+- **Root (`15`, `16`)**: an independent thought. Two cases, decided by ORIGIN:
+  - **Created from another intent** (it emerged from that intent's lifecycle): make it a
+    root and set `--sources <ascendant_id>`. `sources` is reserved for true created-from /
+    direct-ascendant provenance (D1).
+  - **Merely related to / inspired by another intent** (it did NOT come out of that
+    intent's lifecycle): carry NO `--sources`. Record the relation on the PREDECESSOR's
+    `chain` instead, and mirror it as a `[[id]]` wikilink in `## Links` (the
+    related-but-not-spawned rule).
+- **Rule of thumb:** if the intent could exist without its parent, make it a root; only set
+  `--sources` when it was genuinely created from / emerged from that intent's lifecycle.
+  Topic similarity alone is not a `sources` edge.
 
 ### 3. Determine Intent Properties
 
@@ -59,11 +66,16 @@ Ask or infer from context:
 - **intent**: one-line description
 - **slug**: short hyphenated handle for the directory name
 - **author**: `human` | `claude-code` | other agent name
-- **sources**: Folgezettel ids that influenced this intent (e.g., `4a1`). For a
-  project intent, include the governing intent's id.
+- **sources**: the direct ascendant(s) this intent was created from / emerged from the
+  lifecycle of (formation, not topic similarity), e.g., `4a1`. For a project intent,
+  include the governing intent's id. A branch's structural parent is ALSO recorded in
+  `sources` (the ID carries it for the human/paper tree, `sources` carries it for
+  software), which `new-intent` does automatically (see `new-intent:126`).
 - **tags**: freeform list (use `project-<name>` for project membership)
 
-`chain` starts empty and is populated later when this intent spawns others.
+`chain` carries what this intent spawns AND related-but-not-spawned successors it leads to;
+it starts empty and is populated later. See
+`docs/concepts/how-plastic-sources-and-chains-intents.md` for the full model.
 Place the intent in `## Active` or `## Future` in INDEX.md (status is
 convention-derived, not a frontmatter field).
 

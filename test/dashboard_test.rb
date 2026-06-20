@@ -102,6 +102,18 @@ class DashboardTest < Minitest::Test
     write_intent(demo, "9", "partly-blocked",
                  { id: 9, intent: "Partly blocked follow-up", author: "agent", tags: %w[demo bugfix], sources: %w[7 99], created: "2026-05-01" })
 
+    # SPAWNED vs RELATIONAL chain (intent 68). Both are agent-authored BRANCH ids so the
+    # human-root rule does not apply; the only difference is whether the chain entry is
+    # reciprocated by a sources edge (spawned) or purely relational.
+    # 4a SPAWNED: 4a1 lists 4a in its sources, so 4a "has spawned follow-on work" -> high.
+    write_intent(demo, "4a", "spawned-parent",
+                 { id: "4a", intent: "Spawned-from parent", author: "agent", tags: %w[demo], chain: %w[4a1], created: "2026-06-10" })
+    write_intent(demo, "4a1", "spawned-child",
+                 { id: "4a1", intent: "Child created from 4a", author: "agent", tags: %w[demo], sources: %w[4a], created: "2026-06-10" })
+    # 4b RELATIONAL: chain entry to 9, but NO intent lists 4b in its sources -> NOT high.
+    write_intent(demo, "4b", "relational-only",
+                 { id: "4b", intent: "Relational not-spawned chain", author: "agent", tags: %w[demo], chain: %w[9], created: "2026-06-10" })
+
     File.write(File.join(home, "projects", "demo", "INDEX.md"), <<~IDX)
       # Index
       ## Active
@@ -114,6 +126,9 @@ class DashboardTest < Minitest::Test
       - [5 — Research a thing](store/5--research-it/5--research-it.md)
       - [8 — Stale unblocked follow-up](store/8--stale-unblocked/8--stale-unblocked.md)
       - [9 — Partly blocked follow-up](store/9--partly-blocked/9--partly-blocked.md)
+      - [4a — Spawned-from parent](store/4a--spawned-parent/4a--spawned-parent.md)
+      - [4a1 — Child created from 4a](store/4a1--spawned-child/4a1--spawned-child.md)
+      - [4b — Relational not-spawned chain](store/4b--relational-only/4b--relational-only.md)
       ## Clusters
       ## Abandoned
       ## Completed
@@ -205,6 +220,16 @@ class DashboardTest < Minitest::Test
     data = JSON.parse(out)
     hi = (data["matrix"]["quick_win"] + data["matrix"]["next_big"]).map { |r| r["id"] }
     assert_includes hi, "1" # human-authored root (high value)
+  end
+
+  # intent 68: a SPAWNED chain (reciprocal sources edge) is high; a purely RELATIONAL
+  # chain (no reciprocal sources) is NOT high on the chain signal alone.
+  def test_spawned_chain_is_high_relational_chain_is_not
+    out, = run_dash("project", "demo", "--data")
+    data = JSON.parse(out)
+    high_ids = (data["matrix"]["quick_win"] + data["matrix"]["next_big"]).map { |r| r["id"] }
+    assert_includes high_ids, "4a", "spawned intent (4a1 lists it in sources) must be high"
+    refute_includes high_ids, "4b", "purely relational chain must NOT be high"
   end
 
   def test_unblocked_requires_all_sources_done

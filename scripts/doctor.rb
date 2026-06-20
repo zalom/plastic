@@ -473,7 +473,78 @@ class Doctor
       )
     end
 
+    # graph_invariants — cross-intent I1/I3/I4 checks (intent 68). I1/I3/I4 are
+    # defined within a single store's id space (bare ids resolve within the same
+    # store), so build the `nodes` map per scope and run validate_graph per scope.
+    # I2 asymmetry (a relational chain entry with no reciprocal sources) is NEVER
+    # flagged: validate_graph does not compute it.
+    checks.concat(graph_invariant_checks(intent_dirs))
+
     checks
+  end
+
+  # Build a per-scope `nodes` map and surface IntentValidator.validate_graph
+  # findings as warn-level checks. Scope-aware (the caller already filtered
+  # `intent_dirs` by scope), so a `global` id is not falsely flagged as a dangler
+  # when only a `project:` store is loaded, and vice versa.
+  def graph_invariant_checks(intent_dirs)
+    nodes_by_scope = Hash.new { |h, k| h[k] = {} }
+    intent_dirs.each do |d|
+      md_path = File.join(d[:path], "#{d[:name]}.md")
+      next unless File.exist?(md_path)
+
+      fm = parse_frontmatter(md_path)
+      next unless fm.is_a?(Hash) && fm["id"]
+
+      nodes_by_scope[d[:scope]][fm["id"].to_s] = {
+        sources: Array(fm["sources"]).map(&:to_s),
+        chain: Array(fm["chain"]).map(&:to_s),
+      }
+    end
+
+    i1 = []
+    i3 = []
+    i4 = []
+    nodes_by_scope.each_value do |nodes|
+      findings = IntentValidator.validate_graph(nodes)
+      i1.concat(findings[:i1])
+      i3.concat(findings[:i3])
+      i4.concat(findings[:i4])
+    end
+
+    checks = []
+    checks << graph_finding_check(
+      "graph_i1_reciprocity", i1,
+      "Every sources edge has its reciprocal chain entry (I1)",
+      "Run new-intent / the rebuild so each source intent's chain backlinks the child"
+    )
+    checks << graph_finding_check(
+      "graph_i3_disjoint", i3,
+      "No intent lists the same id in both sources and chain (I3)",
+      "Remove the overlapping id from either sources or chain"
+    )
+    checks << graph_finding_check(
+      "graph_i4_danglers", i4,
+      "Every sources/chain id resolves to a real intent (I4)",
+      "Fix or remove the dangling id reference"
+    )
+    checks
+  end
+
+  # One graph check: pass when `findings` is empty, otherwise warn (never fail, so
+  # an existing store does not turn red on a graph finding). I1/I4 are auto-fixable.
+  def graph_finding_check(name, findings, pass_message, fix_hint)
+    if findings.empty?
+      check(category: "conventions", name: name, status: "pass", message: pass_message)
+    else
+      check(
+        category: "conventions", name: name, status: "warn",
+        message: "#{findings.size} #{name} violation(s)",
+        details: findings,
+        fixable: name != "graph_i3_disjoint",
+        fix_hint: fix_hint
+      )
+    end
   end
 
   # --- Check category 3: Agent registration ---
