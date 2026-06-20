@@ -36,13 +36,16 @@ Never modified, only appended.
 
 Tracks: stage transitions, decisions, shifts, blocks, cancellations, material for future intents.
 This is how execution is tracked. When this intent completes, Insights
-is where to look for what comes next. New intents spawned from Insights
-appear in the `chain` field.
+is where to look for what comes next. New intents spawned from this one,
+plus related-but-not-spawned successors it leads to, appear in the `chain`
+field.
 
 ## `## Links`
 
-Wikilinks for Obsidian graph navigation. Human-facing counterpart to the
-frontmatter knowledge graph.
+The human-readable projection of the local knowledge graph: all `sources`
+first (top, named), then all `chain` (named), as `[[id]]` wikilinks plus a
+short label. Counterpart to the frontmatter `sources` / `chain` edges, for
+Obsidian graph navigation.
 
 ## Conventions — Filesystem as Schema
 

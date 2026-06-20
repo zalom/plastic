@@ -13,11 +13,12 @@ WHERE WE GO NEXT  ·  value × effort  (all scopes)
         ┌──────────────────────────────┬──────────────────────────────┐
   value │ QUICK WIN                    │ ★ NEXT BIG THING             │
         │ 2  Quick high-value win (dem…│ 1  Big strategic idea (demo) │
+        │                              │ 4a  Spawned-from parent (dem…│
         ├──────────────────────────────┼──────────────────────────────┤
    low  │ DEFER → agent          ⇢     │ TRIAGE / question      ⚑     │
         │ 8  Stale unblocked follow-up…│ 4  Questionable big thing (d…│
-        │ 3  Small bug to squash (demo)│                              │
-        │ 9  Partly blocked follow-up …│                              │
+        │ 3  Small bug to squash (demo)│ 4a1  Child created from 4a (…│
+        │ 9  Partly blocked follow-up …│ 4b  Relational not-spawned c…│
         └──────────────────────────────┴──────────────────────────────┘
   RESEARCH → agent  ⊙   5 Research a thing
 

@@ -21,13 +21,13 @@ Explicit wikilinks in the `## Links` section. Bidirectional — add to both inte
 ```
 
 ### 2. Sources (Backward)
-The `sources` array in frontmatter. What influenced this intent — backward links to parent/prior work:
+The `sources` array in frontmatter. The direct ascendant(s) this intent was created from / emerged from the lifecycle of (formation, not topic similarity), backward links to the work it was built out of:
 ```yaml
 sources: ["1a", "1a2"]
 ```
 
 ### 3. Chain (Forward)
-The `chain` array in frontmatter. What this intent spawned — forward links to children/follow-on work:
+The `chain` array in frontmatter. What this intent spawned AND related-but-not-spawned successors it leads to, forward links to children, follow-on, and related work:
 ```yaml
 chain: ["1b1", "1b2"]
 ```
@@ -55,15 +55,20 @@ done
 
 ### 2. Choose Connection Type
 Ask the user which type of connection:
-- **source** — "this was influenced by that" (add to `sources[]`, update `chain[]` on the target)
-- **cross-reference** — "these are related" (add wikilink in `## Links` of both intents)
+- **source**: "this was CREATED FROM that" (D1). The reciprocal update is one-directional (I1): add the ascendant id to this intent's `sources[]` AND add this intent's id to the ascendant's `chain[]`. A merely-related (not-created-from) connection is NOT a source: record it on the predecessor's `chain[]` only, plus a `## Links` wikilink, with NO `sources` (the related-but-not-spawned rule).
+- **cross-reference**: "these are related" (add wikilink in `## Links` of both intents)
 
 ### 3. Apply Connection
 
-**For sources:**
-Update frontmatter arrays on both intents:
+**For sources (a true created-from edge only):**
+Update frontmatter arrays on both intents (I1, two-sided):
 - Add the parent's ID to the child's `sources` array
 - Add the child's ID to the parent's `chain` array
+
+For the merely-related case, only the predecessor's `chain` (and both sides' `## Links`)
+get the link, never `sources`. `chain` is NOT strictly the reverse of `sources` (I2):
+relational `chain` entries are valid and must never be "corrected" by adding a reciprocal
+`sources`.
 
 **For cross-references:**
 Add a wikilink in the `## Links` section of **both** intents (bidirectional).

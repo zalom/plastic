@@ -229,4 +229,49 @@ class IntentValidatorTest < Minitest::Test
       assert result[:errors].any? { |e| e.include?("missing required section: ## Links") }
     end
   end
+
+  # --- validate_graph: cross-intent graph-shape invariants (intent 68) ---
+  # Pure helper, so no tmpdir: pass a `nodes` Hash directly.
+
+  def test_validate_graph_warns_on_i1_violation
+    nodes = {
+      "A" => { sources: [], chain: [] },
+      "B" => { sources: ["A"], chain: [] },
+    }
+    result = IntentValidator.validate_graph(nodes)
+    refute_empty result[:i1]
+    assert result[:i1].any? { |f| f.include?("A") && f.include?("B") }
+  end
+
+  def test_validate_graph_no_warn_on_i2_asymmetry
+    # A relational chain entry (A.chain lists B) with no reciprocal B.sources is
+    # valid (I2) and must NOT be flagged by any invariant.
+    nodes = {
+      "A" => { sources: [], chain: ["B"] },
+      "B" => { sources: [], chain: [] },
+    }
+    result = IntentValidator.validate_graph(nodes)
+    assert_empty result[:i1]
+    assert_empty result[:i3]
+    assert_empty result[:i4]
+  end
+
+  def test_validate_graph_flags_i3_overlap
+    nodes = {
+      "X" => { sources: ["A"], chain: ["A"] },
+      "A" => { sources: [], chain: ["X"] },
+    }
+    result = IntentValidator.validate_graph(nodes)
+    refute_empty result[:i3]
+    assert result[:i3].any? { |f| f.include?("A") }
+  end
+
+  def test_validate_graph_flags_i4_dangler_but_not_cross_store_ref
+    nodes = {
+      "X" => { sources: [], chain: ["zzz", "global:1a"] },
+    }
+    result = IntentValidator.validate_graph(nodes)
+    assert result[:i4].any? { |f| f.include?("zzz") }
+    refute result[:i4].any? { |f| f.include?("global:1a") }
+  end
 end

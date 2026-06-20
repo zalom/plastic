@@ -35,15 +35,21 @@ Identity and knowledge graph only. Nothing operational.
 ---
 id: "4a1"
 intent: "Short description of the desire"
-sources: ["4a"]        # backward links — what influenced this
-chain: ["4a1a"]        # forward links — what this spawned
+sources: ["4a"]        # direct ascendants: intents this was created from
+chain: ["4a1a"]        # forward: what this spawned and related successors
 created: 2026-05-29
 author: human          # human | agent-name
 tags: [plastic, architecture]
 ---
 ```
 
-- `sources` + `chain` form the double-linked knowledge graph (Folgezettel)
+- `sources` (formative, must-load, acyclic) and `chain` (forward + relational, lighter,
+  may cycle) form the directed knowledge graph. Reciprocity is one-directional: every
+  `sources` edge has a reciprocal `chain` entry (I1), but `chain` may carry relational
+  entries with no reciprocal `sources` (I2), so the graph is not strictly symmetric.
+- Context contract: load `sources` strongly (they are what the intent was built from);
+  traverse `chain` lightly for discovery. See
+  docs/concepts/how-plastic-sources-and-chains-intents.md for the full model.
 - IDs use Luhmann's alternating convention: `1` → `1a` → `1a1` → `1a1a`
 - Multiple branches increment: `1a`, `1b`, `1c`
 
@@ -155,8 +161,11 @@ Format: `ID--three-to-five-words` (all stores).
 
 - **Branch (`14a`, `14b`)** — a sub-task, refinement, or direct continuation of the
   parent. It cannot stand on its own; it only makes sense as part of the parent's work.
-- **Root (`15`, `16`)** — an independent thought, even if inspired by another intent.
-  Record provenance with `sources: ["14"]`, not by branching.
+- **Root (`15`, `16`)**: an independent thought, even if inspired by another intent.
+  Reserve `sources` for true created-from provenance (intents this was built out of). An
+  independent intent merely related to or inspired by another carries NO `sources`; record
+  the relation on the PREDECESSOR's `chain` (and mirror it as a `[[id]]` wikilink in
+  `## Links`).
 - **Rule of thumb:** if the intent could exist without its parent, it's a root.
 
 ## INDEX.md

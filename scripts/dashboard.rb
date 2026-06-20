@@ -223,15 +223,17 @@ def effort_of(rec, type)
 end
 
 # Value -> :high | :low (explicit frontmatter field wins).
-# High is deliberately rare: an explicit stamp, or a human-authored root idea that has
-# already spawned follow-on work (chain non-empty) — i.e. a strategic theme the user owns.
+# High is deliberately rare: an explicit stamp, a human-authored root idea, or an intent
+# that has SPAWNED follow-on work, i.e. a strategic theme the user owns. "Has spawned work"
+# means a reciprocal (I1) edge: another intent lists this one in its `sources`, captured by
+# `referenced`. A purely relational `chain` entry (D2, no reciprocal `sources`) does NOT
+# count as spawned, so bare `chain` membership is not a high-value signal (intent 68).
 def value_of(rec, referenced = {})
   case rec[:value_field]
   when "high" then return :high
   when "low"  then return :low
   end
   return :high if rec[:author] == "human" && root_intent?(rec[:id])
-  return :high unless rec[:chain].empty?
   return :high if referenced[[rec[:scope], rec[:id]]]
   :low
 end

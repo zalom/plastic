@@ -1,5 +1,5 @@
 ╔══════════════════════════════════════════════════════════════════════╗
-║  PLASTIC · project:demo               9 intents · 1 active · 7 next  ║
+║  PLASTIC · project:demo             12 intents · 1 active · 10 next  ║
 ╚══════════════════════════════════════════════════════════════════════╝
 
 ACTIVE   ◕ 6     Work in flight                  ⇢ defer
@@ -9,11 +9,12 @@ WHERE WE GO NEXT  ·  value × effort
         ┌──────────────────────────────┬──────────────────────────────┐
   value │ QUICK WIN                    │ ★ NEXT BIG THING             │
         │ 2  Quick high-value win      │ 1  Big strategic idea        │
+        │                              │ 4a  Spawned-from parent      │
         ├──────────────────────────────┼──────────────────────────────┤
    low  │ DEFER → agent          ⇢     │ TRIAGE / question      ⚑     │
         │ 8  Stale unblocked follow-up…│ 4  Questionable big thing    │
-        │ 3  Small bug to squash       │                              │
-        │ 9  Partly blocked follow-up  │                              │
+        │ 3  Small bug to squash       │ 4a1  Child created from 4a   │
+        │ 9  Partly blocked follow-up  │ 4b  Relational not-spawned c…│
         └──────────────────────────────┴──────────────────────────────┘
   RESEARCH → agent  ⊙   5 Research a thing
 

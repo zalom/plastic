@@ -73,6 +73,39 @@ def render_tokens(text, tokens)
   tokens.reduce(text) { |acc, (k, v)| acc.gsub("{{#{k}}}", v.to_s) }
 end
 
+# Add an id to a source intent's frontmatter `chain` array, idempotently (I1
+# reciprocity: `child in parent.sources` => `parent.chain` gains `child`). A
+# targeted edit of the `chain:` line only; the body (including `## Links`) is
+# preserved byte-for-byte and no other frontmatter key is touched, so the file
+# stays born-complete. Renders the array in flow style (`["a", "b"]`) to match
+# templates/intent.md. No-op when the id is already present.
+def add_to_chain(file_path, new_id)
+  return unless File.exist?(file_path)
+  content = File.read(file_path)
+  return unless content.start_with?("---")
+
+  parts = content.split("---", 3)
+  return unless parts.length >= 3
+
+  fm = parts[1]
+  chain_line = fm.lines.find { |l| l.match?(/\A\s*chain\s*:/) }
+  return unless chain_line
+
+  existing = fm.match(/\bchain\s*:\s*\[(.*?)\]/m)
+  ids =
+    if existing
+      existing[1].scan(/"([^"]*)"|'([^']*)'/).flatten.compact
+    else
+      []
+    end
+  return if ids.include?(new_id)
+
+  ids << new_id
+  rendered = "chain: [#{ids.map { |i| "\"#{i}\"" }.join(", ")}]"
+  new_fm = fm.sub(/^\s*chain\s*:.*$/, rendered)
+  File.write(file_path, ["", new_fm, parts[2]].join("---"))
+end
+
 # Append a wikilink line under the file's `## Links` section, idempotently.
 def append_link(file_path, link_line)
   return unless File.exist?(file_path)
@@ -140,7 +173,23 @@ def main(argv)
   intent_file = File.join(intent_dir, "#{id}--#{slug}.md")
   File.write(intent_file, intent_body)
 
-  # 4. Reciprocal links: forward link to parent + back-reference in the parent.
+  # 4a. I1 reciprocity: write the child's id into EACH source intent's frontmatter
+  # `chain` (the formative-reciprocity backlink), for BOTH the `--parent` and the
+  # `--sources` path. `sources` is the redundant-explicit set from step 3 (it already
+  # folds in `--parent`). Scope boundary: 68 fixes ONLY the frontmatter `chain`
+  # backlink; the `## Links` wikilink projection for the `--sources` path is intent 72.
+  sources.each do |src_id|
+    next if src_id.nil? || src_id.empty?
+
+    src_dir = Dir.glob(File.join(store, "#{src_id}--*")).find { |d| File.directory?(d) }
+    next unless src_dir
+
+    src_file = File.join(src_dir, "#{File.basename(src_dir)}.md")
+    add_to_chain(src_file, id)
+  end
+
+  # 4b. Reciprocal `## Links` wikilinks: forward link to parent + back-reference in
+  # the parent (kept parent-only; the `--sources` path's wikilink is intent 72's scope).
   if opts[:parent] && !opts[:parent].empty?
     parent_id = opts[:parent]
     append_link(intent_file, "- [[#{parent_id}]]")

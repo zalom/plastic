@@ -101,4 +101,44 @@ class NewIntentTest < Minitest::Test
     _out, status = run_new_intent("--intent", "x", "--slug", "y")
     refute_equal 0, status
   end
+
+  # --- I1 frontmatter chain backlink (intent 68, ACTION_6) ---
+
+  def chain_of(intent_dir)
+    file = File.join(intent_dir, "#{File.basename(intent_dir)}.md")
+    Array(IntentValidator.parse_frontmatter(file)["chain"]).map(&:to_s)
+  end
+
+  def sources_of(intent_dir)
+    file = File.join(intent_dir, "#{File.basename(intent_dir)}.md")
+    Array(IntentValidator.parse_frontmatter(file)["sources"]).map(&:to_s)
+  end
+
+  def test_parent_gets_child_in_chain_frontmatter
+    parent, = run_new_intent("--store", @store, "--intent", "Parent", "--slug", "parent")
+    pid = File.basename(parent).split("--").first
+
+    child, = run_new_intent("--store", @store, "--intent", "Child", "--slug", "child", "--parent", pid)
+    cid = File.basename(child).split("--").first
+
+    # The I1 reciprocal backlink lands in the PARENT's frontmatter chain (distinct
+    # from the `## Links` wikilink), and the parent stays born-complete.
+    assert_includes chain_of(parent), cid
+    assert IntentValidator.validate(parent)[:ok], "parent must stay born-complete"
+  end
+
+  def test_sources_path_gets_child_in_chain_frontmatter
+    # The related-but-not-spawned / created-from scenario: B is created with
+    # --sources A (no --parent). A's frontmatter chain must gain B (I1), and B's
+    # sources must include A (the line-126 redundant-explicit fold).
+    a, = run_new_intent("--store", @store, "--intent", "Root A", "--slug", "root-a")
+    a_id = File.basename(a).split("--").first
+
+    b, = run_new_intent("--store", @store, "--intent", "Root B", "--slug", "root-b", "--sources", a_id)
+    b_id = File.basename(b).split("--").first
+
+    assert_includes chain_of(a), b_id, "source intent A must backlink B in its chain"
+    assert_includes sources_of(b), a_id, "B's sources must include A"
+    assert IntentValidator.validate(a)[:ok], "source intent must stay born-complete"
+  end
 end
