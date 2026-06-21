@@ -33,11 +33,11 @@ Invoke the `plastic-intent-curator` agent via the Agent tool with `subagent_type
 
 The agent handles:
 - Intent lifecycle management (status transitions, Outcome sections)
-- INDEX.md maintenance (Active/Future/Clusters/Completed sections)
+- INDEX.md maintenance (Active/Future/Clusters/Completed/Abandoned sections)
 - Link discovery between related intents
 - Cluster management (create, merge, rename)
 - Orphan detection
 
-When an intent is moved to Completed, refresh the QMD index for the affected store (no-op when QMD absent), running in the background so it never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`.
+When an intent reaches a terminal state — moved to Completed OR Abandoned — refresh the QMD index for the affected store (no-op when QMD absent), running in the background so it never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`.
 
 After the agent completes, report what changed.
