@@ -95,7 +95,9 @@ is slated for a cut or when a cut ships.
 
 Release plan:
 - `1.0.0-beta.1` - shipped 2026-06-19. Promoted the alpha line; feature-complete core.
-- `1.0.0-beta.2` - collects the beta-blockers: 68, 59, 58, 49, 39, 66a.
-- `1.0.0-beta.3` - collects 74 (mandatory structured agent completion reports + deterministic fallback).
+- `1.0.0-beta.2` - shipped; collected 68 (sources-vs-chain semantics). The other planned blockers (58, 49, 39, 66a) slipped to later cuts.
+- `1.0.0-beta.3` - shipped; collected 74 (mandatory structured agent completion reports + deterministic fallback).
+- `1.0.0-beta.4` - shipped 2026-06-21; collected 59 (Plastic owns the statusline: project-aware, colored, version+path last). Spawned 77 (guided-install statusline choice).
+- Remaining beta-blockers still open for a future cut: 58, 49, 39, 66a.
 - `1.0.0` (first stable) - strips the prerelease suffix and takes the `latest` dist-tag; contents beyond the beta line are TBD.
 - `1.1.0` - loop engineering (intent 69 and its cluster); ships after 1.0.0 on a fresh alpha line.
