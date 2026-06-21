@@ -67,6 +67,11 @@ instead of showing it.
 
 ### Step 4 — Entry flow (the board is the menu)
 
+QMD-first (when available): when the user navigates by describing an intent rather than giving its
+id, before scanning the store with grep/Read run `ruby ~/.plastic/scripts/qmd-sync search "<terms>"`
+to surface the candidate intent, then open the authoritative intent file for the hit. The command is
+a no-op when QMD is absent, so fall back to the existing INDEX.md / file scan.
+
 The board lists everything; the user navigates by free prose (no capped picker):
 - On the **global** board, the user replies with an **intent id** (work it), a **project
   name** (re-run `project <slug> --data` and present that board), or **"new"** (start a new

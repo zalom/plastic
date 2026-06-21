@@ -43,6 +43,12 @@ All completed intents with dates. Links preserved, never deleted.
 
 ## Workflow
 
+QMD-first (when available): when you need to locate a specific intent (to reclassify, flag, or
+cluster it) rather than rebuild every section, before scanning the store with grep/Read run
+`ruby ~/.plastic/scripts/qmd-sync search "<terms>"` to surface candidate or related intents, then
+open the authoritative intent file for any hit you act on. The command is a no-op when QMD is
+absent, so fall back to the directory scan below.
+
 ### Rebuild Sections
 Scan the active store's `store/` directory for intent files and rebuild each section:
 

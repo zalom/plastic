@@ -287,16 +287,26 @@ to intent 33a.
 
 The optional qmd search integration mutates its index only on Plastic lifecycle
 events, and one helper (`scripts/lib/qmd_sync.rb`, exposed as `scripts/qmd-sync`
-with verbs `detect`, `register`, `reindex`, `status`) does all the work by
-delegating to the qmd CLI. Each trigger lives at a fixed point:
+with verbs `detect`, `register`, `reindex` (with an `--async` variant), `status`,
+and a read-only `search`) does all the work by delegating to the qmd CLI. Each
+trigger lives at a fixed point:
 
 - **install**: the install skill registers every store as a `plastic-`
   prefixed collection (`register --all`).
 - **project creation**: the creating-project skill registers the new project
   store's collection (`register --store <dir>`).
 - **intent delivery**: the delivery/completion path reindexes the delivering
-  store's collection (`reindex --store <dir>`, which runs `qmd update` then
-  `qmd embed -c plastic-<slug>`).
+  store's collection. This is mandatory on completion and runs async
+  (`reindex --store <dir> --async`) so it never blocks the turn. The sync
+  `reindex` runs `qmd update` then `qmd embed -c plastic-<slug>` inline;
+  `QmdSync.reindex_async` runs the same work detached via `Process.spawn` plus
+  `Process.detach`, with output discarded, returning immediately. Both no-op when
+  qmd is absent.
+- **search**: the read-only `search "<terms>" [--store <dir>]` verb wraps
+  `QmdSync.search`, scoping collections by `--store` (that store's collection plus
+  `plastic-global`) or by CWD (`collections_for_cwd`), and prints ranked hits as
+  `[<pct>%] <path> - <title>`. The per-skill QMD-first steps call it before
+  grep/Read; it no-ops cleanly (exit 0) when qmd is absent.
 - **session start**: report-only. The boot path may report index status but
   never mutates it.
 - **doctor**: a qmd check verifies the integration is healthy, including that the
@@ -304,17 +314,23 @@ delegating to the qmd CLI. Each trigger lives at a fixed point:
   itself lives under `~/.cache` and is never committed to the `~/.plastic` git.
 
 The search side (read-only, never mutates the index) is exercised on every turn by
-the `qmd-search` `UserPromptSubmit` hook (`hooks/qmd-search` ->
+the power-tools `UserPromptSubmit` hook (`hooks/qmd-search` ->
 `scripts/hook-qmd-search`, decision logic in `scripts/lib/qmd_hook.rb`,
-search in `QmdSync.search`). Gated on qmd being on PATH and a substantive prompt
-(the `< 10` char and bare-`continue` guards mirror `future-intent-check`), it runs
-`qmd search --json` (BM25, no model downloads) over the CWD's project collection
-plus `plastic-global`, injects only hits above `min_score` (default 0.5, capped at
-3) framed as related or prior intents, and always appends a reminder to query qmd
-before grep/Read when gathering intent context. A 2s timeout plus rescue-all keeps
-a slow or broken qmd from ever blocking the turn; absent qmd is a silent no-op. The
-hook registers as a fourth `UserPromptSubmit` entry in `merge_claude_hooks`, ships
-via `core_files`, and is listed in doctor's `CLAUDE_HOOK_SCRIPTS`.
+search in `QmdSync.search`). Gated on a substantive prompt (the `< 10` char and
+bare-`continue` guards mirror `future-intent-check`), its output is composed of two
+parts. When qmd is on PATH it runs `qmd search --json` (BM25, no model downloads)
+over the CWD's project collection plus `plastic-global` and injects only hits above
+`min_score` (default 0.5, capped at 3) framed as related or prior intents. It then
+appends the power-tools mandate from `scripts/lib/power_tools.rb`
+(`PowerTools.mandate`): an always-on "MUST use QMD" obligation when qmd is present
+and a "MUST use Serena" obligation when Serena is present (symbolic code navigation
+before grep/Read). Serena presence is detected by a `.serena` marker in the working
+directory or an ancestor, or `serena` on PATH (`PowerTools.serena?`); qmd presence
+by `PowerTools.qmd?`. These are mandates, not soft reminders. A 2s timeout plus
+rescue-all keeps a slow or broken qmd from ever blocking the turn; when neither tool
+is present the hook is a silent no-op. The hook registers as a fourth
+`UserPromptSubmit` entry in `merge_claude_hooks`, ships via `core_files`, and is
+listed in doctor's `CLAUDE_HOOK_SCRIPTS`.
 
 ### intent born-complete validation
 

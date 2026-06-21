@@ -1,0 +1,22 @@
+{
+  "skill_name": "plastic-dashboard",
+  "notes": "Intent 66a. Spec for the QMD-first step in the entry flow (resolve a free-prose intent reference before grep/Read). Runner is intent 76; spec only.",
+  "evals": [
+    {
+      "id": 1,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "QMD is present. On the board, the user navigates by describing an intent (the search verb work) instead of giving its id.",
+      "expected_output": "Before scanning the store with grep/Read to resolve the free-prose reference, runs `ruby ~/.plastic/scripts/qmd-sync search \"search verb\"` to surface the candidate intent, then opens the authoritative intent file for the hit. No-op fallback to INDEX.md / file scan when QMD is absent.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "qmd-sync search is run before grep/Read when the user navigates by description; authoritative file opened for the hit",
+          "observed": "SKILL.md (or agent file) carries the QMD-first step: run qmd-sync search before grep/Read, then open the authoritative file; no-op fallback when QMD is absent",
+          "result": "pass"
+        }
+      ]
+    }
+  ]
+}

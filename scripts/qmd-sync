@@ -13,7 +13,10 @@
 #   qmd-sync register --store <dir>     # register one store as a collection
 #   qmd-sync register --all             # register the global store + all projects
 #   qmd-sync reindex --store <dir>      # update + embed that store's collection
+#   qmd-sync reindex --store <dir> --async  # same, detached/non-blocking
 #   qmd-sync status [--format json]     # read-only status
+#   qmd-sync search "<terms>" [--store <dir>] [--limit N] [--min-score F]
+#                                       # ranked store search; scope by --store or CWD
 #
 # --home <path> overrides the Plastic home (default: ~/.plastic).
 
@@ -71,8 +74,13 @@ when "register"
 when "reindex"
   dir = opt(ARGV, "--store") or (warn("reindex: pass --store <dir>"); exit 2)
   collection = QmdSync.collection_name(dir, plastic_home: home)
-  res = QmdSync.reindex(collection: collection)
-  puts "reindexed #{collection} (#{res[:ok] ? "ok" : "warn"})"
+  if ARGV.include?("--async")
+    QmdSync.reindex_async(collection: collection)
+    puts "reindex (async) #{collection} (started)"
+  else
+    res = QmdSync.reindex(collection: collection)
+    puts "reindexed #{collection} (#{res[:ok] ? "ok" : "warn"})"
+  end
   exit 0
 
 when "status"
@@ -86,7 +94,46 @@ when "status"
   end
   exit 0
 
+when "search"
+  # The query is the first bareword that is NOT the value of a known value-taking
+  # flag. Walk ARGV, skipping each such flag and the token right after it, then
+  # take the first remaining token that does not start with "--".
+  value_flags = %w[--store --limit --min-score --home]
+  query = nil
+  i = 0
+  while i < ARGV.length
+    tok = ARGV[i]
+    if value_flags.include?(tok)
+      i += 2
+      next
+    end
+    unless tok.start_with?("--")
+      query = tok
+      break
+    end
+    i += 1
+  end
+  collections =
+    if (dir = opt(ARGV, "--store"))
+      [QmdSync.collection_name(dir, plastic_home: home), "plastic-global"].uniq
+    else
+      QmdSync.collections_for_cwd(Dir.pwd, plastic_home: home)
+    end
+  limit = (opt(ARGV, "--limit") || "5").to_i
+  min_score = (opt(ARGV, "--min-score") || "0.5").to_f
+  hits = QmdSync.search(query, collections: collections, limit: limit, min_score: min_score)
+  if hits.empty?
+    puts "no qmd hits"
+  else
+    hits.each do |h|
+      pct = (h[:score] * 100).round
+      path = h[:file].to_s.sub(%r{\Aqmd://}, "")
+      puts "[#{pct}%] #{path} - #{h[:title]}"
+    end
+  end
+  exit 0
+
 else
-  warn "qmd-sync: unknown verb #{verb.inspect}. Use detect|register|reindex|status."
+  warn "qmd-sync: unknown verb #{verb.inspect}. Use detect|register|reindex|status|search."
   exit 2
 end

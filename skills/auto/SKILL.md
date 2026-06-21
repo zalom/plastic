@@ -28,6 +28,13 @@ Work `dispatchable_queue` in `rank` order (these are `defer`/`research` disposit
 safe to deliver autonomously). Leave `human_only` and `next_big_thing` for the user — those
 are `drive`/`triage` items the human should lead. See the `plastic-dashboard` skill.
 
+QMD-first (when available): when the user describes the work to deliver rather than naming an
+intent, before scanning the store with grep/Read run
+`ruby ~/.plastic/scripts/qmd-sync search "<terms>"` to surface candidate, prior, or duplicate
+intents, then open the authoritative intent file for the hit you take over. The command is a no-op
+when QMD is absent, so fall back to the existing INDEX.md / file scan. (This is discovery; the
+reindex step under Completion is separate.)
+
 ## Arm the Lifecycle Gate (do this FIRST)
 
 Immediately after selecting the intent — before any other work — arm auto mode. This
@@ -186,11 +193,12 @@ During initial project creation, all decisions are non-destructive by definition
    - Update `chain` in the current intent's frontmatter
 6. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
 7. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: deliver intent <ID> — <name>"`
-8. Refresh the QMD search index for this store (optional, no-op when QMD is absent):
+8. On completion, ALWAYS refresh the QMD search index for this store (no-op when QMD is absent).
+   It runs in the background so it never blocks the turn:
    ```bash
-   ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root>
+   ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async
    ```
-   Delivery is the lifecycle event that keeps the search index fresh. `<store-root>` is the
+   Completion is the lifecycle event that keeps the search index fresh. `<store-root>` is the
    store that holds this intent (the global store or the project store).
 9. Disarm the lifecycle gate (auto delivery is finished):
    ```bash

@@ -90,6 +90,22 @@ class QmdSyncTest < Minitest::Test
     assert_equal ["embed", "-c", "plastic-dealintell"], calls[1]
   end
 
+  def test_reindex_async_noop_when_absent
+    spawned = []
+    spawner = ->(c) { spawned << c; 99 }
+    res = QmdSync.reindex_async(collection: "plastic-dealintell", detector: absent, spawner: spawner)
+    assert res[:skipped]
+    assert_empty spawned, "spawner must not run when qmd is absent"
+  end
+
+  def test_reindex_async_spawns_via_injected_spawner
+    spawned = []
+    spawner = ->(c) { spawned << c; 4242 }
+    res = QmdSync.reindex_async(collection: "plastic-dealintell", detector: present, spawner: spawner)
+    assert_equal({ ran: true, async: true, pid: 4242 }, res)
+    assert_equal ["plastic-dealintell"], spawned, "spawner received the collection name"
+  end
+
   def test_register_and_reindex_noop_when_absent
     runner, calls = fake_runner
     r1 = QmdSync.register(collection: "c", dir: "/x", runner: runner, detector: absent)

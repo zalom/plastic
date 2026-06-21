@@ -29,6 +29,15 @@ present, search it before re-deriving an existing decision, spec, or outcome.
   `plastic-*` collections. Pick the narrowest scope that answers the question.
 - **Search before re-deriving.** Look in the stores for prior decisions, specs, and
   outcomes before re-deriving them. The stores are the memory.
+- **Power tools are mandated when present.** When QMD (for intents) or Serena (for code
+  navigation) is present, using them is mandatory, not just recommended: the
+  UserPromptSubmit hook appends a MUST-use obligation per present tool, and the per-skill
+  QMD-first steps run `qmd-sync search` before grep/Read, then open the authoritative
+  intent file. Use the deterministic `scripts/qmd-sync search "<terms>"` helper, which
+  scopes collections for you and is a clean no-op when QMD is absent.
+- **Completion fires an async reindex.** Intent delivery reindexes the delivering store's
+  collection in the background (non-blocking), so the index stays fresh while
+  "index mutation is lifecycle-only" stays true. Never reindex ad-hoc.
 - **Index mutation is lifecycle-only.** The index changes only on Plastic lifecycle events
   (install registers all stores, project creation registers the new project store, intent
   delivery reindexes the delivering store's collection). Never reindex ad-hoc.

@@ -41,6 +41,12 @@ tags: [plastic, project-reddit-kb]
 ## Workflow
 
 ### 1. Identify Intents to Connect
+
+QMD-first (when available): before scanning the store with grep/Read, run
+`ruby ~/.plastic/scripts/qmd-sync search "<terms>"` to surface candidate, prior, or related
+intents to propose as sources/chain, then open the authoritative intent file for any hit you act
+on. The command is a no-op when QMD is absent, so fall back to the directory scan below.
+
 Show existing intents by scanning the store's directory for intent files:
 ```bash
 for dir in $STORE_ROOT/store/*/; do

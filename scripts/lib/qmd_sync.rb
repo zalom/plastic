@@ -99,6 +99,27 @@ module QmdSync
     { ran: true, ok: (ok1 && ok2) }
   end
 
+  # Non-blocking reindex for the completion path. QMD has no incremental reindex
+  # (`qmd update` is a full rescan, `qmd embed -c` re-embeds the whole collection,
+  # ~2 min), so running it inline would block the agent's turn; spawning detached
+  # returns immediately. No-op when qmd absent. Spawner/detector are injected so
+  # tests assert behavior with no real qmd and no real spawned process.
+  def reindex_async(collection:, detector: method(:detect), spawner: method(:default_async_spawner))
+    return skip_result unless detector.call
+    pid = spawner.call(collection)
+    { ran: true, async: true, pid: pid }
+  end
+
+  # Default spawner: launch `qmd update && qmd embed -c <collection>` detached and
+  # non-blocking, discarding output, then detach so it never blocks the turn.
+  def default_async_spawner(collection)
+    require "shellwords"
+    cmd = "qmd update && qmd embed -c #{Shellwords.escape(collection)}"
+    pid = Process.spawn(cmd, out: File::NULL, err: File::NULL, pgroup: true)
+    Process.detach(pid)
+    pid
+  end
+
   # Read-only status used by doctor and the session-start report line.
   # Returns a structured hash; never mutates the index.
   def status(plastic_home:, runner: default_runner, detector: method(:detect))
