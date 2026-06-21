@@ -13,7 +13,8 @@ C_NEXT=$'\033[33m'                 # yellow    - next version
 C_PATH=$'\033[38;2;128;134;144m'   # gray      - path (matches dim UI text)
 C_BRACK=$'\033[33m'                # yellow    - work-unit brackets
 C_PROJ=$'\033[38;2;249;140;30m'    # orange    - project name
-C_INTENT=$'\033[33m'               # yellow    - intent id + title
+C_ID=$'\033[38;2;45;212;191m'      # teal      - intent id (accent between orange + yellow)
+C_INTENT=$'\033[33m'               # yellow    - intent title
 C_SEP=$'\033[38;2;128;134;144m'    # gray      - separators
 RST=$'\033[0m'
 SEP="${C_SEP} "$'\302\267'" ${RST}"   # " . " middot, dim
@@ -118,20 +119,22 @@ if [ -n "$WORK" ]; then
   if [ "$id" = "$WORK" ]; then id=${WORK%% *}; title=${WORK#* }; fi
   # Truncate long titles (~40 chars).
   if [ ${#title} -gt 40 ]; then title="$(printf '%.40s' "$title")..."; fi
-  WORK_SEG="${C_BRACK}[${RST}${C_PROJ}${PROJ_LABEL}${RST}${C_INTENT}: ${RST}${C_PROJ}${id}${RST}${C_INTENT} ${title}${RST}${C_BRACK}]${RST}"
+  WORK_SEG="${C_BRACK}[${RST}${C_PROJ}${PROJ_LABEL}${RST}${C_INTENT}: ${RST}${C_ID}${id}${RST}${C_INTENT} ${title}${RST}${C_BRACK}]${RST}"
 fi
 
 # --- Assemble segments in order, joined by " . " ---
 PARTS=""
 add() { [ -z "$1" ] && return; if [ -z "$PARTS" ]; then PARTS="$1"; else PARTS="$PARTS$SEP$1"; fi; }
 
+# Order: stable values first (model, work-unit), then the volatile-length
+# values last (version, path) so the line does not visually jump as they change.
 [ -n "$MODEL" ] && add "${C_MODEL}${MODEL}${RST}"
+[ -n "$WORK_SEG" ] && add "$WORK_SEG"
 if [ -n "$VERSION" ]; then
   vseg="${C_VER}Plastic ${VERSION}${RST}"
   [ -n "$NEXT" ] && vseg="${vseg}${C_VER} "$'\342\206\222'" ${RST}${C_NEXT}${NEXT}${RST}"
   add "$vseg"
 fi
 [ -n "$CWD" ] && add "${C_PATH}${CWD}${RST}"
-[ -n "$WORK_SEG" ] && add "$WORK_SEG"
 
 printf '%s\n' "$PARTS"
