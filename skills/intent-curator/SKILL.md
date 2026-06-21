@@ -38,4 +38,6 @@ The agent handles:
 - Cluster management (create, merge, rename)
 - Orphan detection
 
+When an intent is moved to Completed, refresh the QMD index for the affected store (no-op when QMD absent), running in the background so it never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`.
+
 After the agent completes, report what changed.

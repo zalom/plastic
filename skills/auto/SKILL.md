@@ -186,11 +186,12 @@ During initial project creation, all decisions are non-destructive by definition
    - Update `chain` in the current intent's frontmatter
 6. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
 7. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: deliver intent <ID> — <name>"`
-8. Refresh the QMD search index for this store (optional, no-op when QMD is absent):
+8. On completion, ALWAYS refresh the QMD search index for this store (no-op when QMD is absent).
+   It runs in the background so it never blocks the turn:
    ```bash
-   ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root>
+   ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async
    ```
-   Delivery is the lifecycle event that keeps the search index fresh. `<store-root>` is the
+   Completion is the lifecycle event that keeps the search index fresh. `<store-root>` is the
    store that holds this intent (the global store or the project store).
 9. Disarm the lifecycle gate (auto delivery is finished):
    ```bash
