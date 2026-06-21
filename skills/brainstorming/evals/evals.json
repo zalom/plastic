@@ -1,0 +1,22 @@
+{
+  "skill_name": "plastic-brainstorming",
+  "notes": "Intent 66a. Spec for the QMD-first step in the Why/explore-context phase (surface prior decisions/specs/outcomes before grep/Read). Runner is intent 76; spec only.",
+  "evals": [
+    {
+      "id": 1,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "QMD is present. Brainstorming the active intent during the Why phase, the agent needs prior decisions and specs on caching.",
+      "expected_output": "In the explore-project-context (Why) step, before scanning the store with grep/Read, runs `ruby ~/.plastic/scripts/qmd-sync search \"caching decisions\"` to surface prior decisions, specs, or outcomes, then opens the authoritative intent file for any hit it acts on. No-op fallback to INDEX.md / file scan when QMD is absent.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "qmd-sync search is run during Why before grep/Read; authoritative file opened for any hit",
+          "observed": "SKILL.md (or agent file) carries the QMD-first step: run qmd-sync search before grep/Read, then open the authoritative file; no-op fallback when QMD is absent",
+          "result": "pass"
+        }
+      ]
+    }
+  ]
+}

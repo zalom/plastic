@@ -54,7 +54,14 @@ intents. Do not start executing work. The branches below are the only follow-ups
 ## Conditional Ledger-Resume
 
 Fires ONLY when the user explicitly asks to continue a SPECIFIC intent, or an agent is
-instructed to continue one. It is not part of every boot. For that intent's directory:
+instructed to continue one. It is not part of every boot.
+
+QMD-first (when available): when the user names the intent by description rather than id, before
+scanning the store with grep/Read run `ruby ~/.plastic/scripts/qmd-sync search "<terms>"` to
+surface the candidate intent, then open the authoritative intent file for the hit you resume. The
+command is a no-op when QMD is absent, so fall back to the existing INDEX.md / file scan.
+
+For that intent's directory:
 
 1. **Read `savepoint.md`.** It is a deterministic, append-only stage ledger (one line per
    milestone, newest at the bottom): `{utc-iso8601}  {Stage}  {milestone}`. The **last line =

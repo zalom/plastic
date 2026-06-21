@@ -74,6 +74,7 @@ digraph brainstorming {
 ## The Process
 
 **Understanding the idea:**
+- QMD-first (when available): before scanning the store with grep/Read for prior decisions, specs, or outcomes, run `ruby ~/.plastic/scripts/qmd-sync search "<terms>"` to surface candidate, prior, or related intents, then open the authoritative intent file for any hit you act on. The command is a no-op when QMD is absent, so fall back to the existing INDEX.md / file scan.
 - Check out the current project state first (files, docs, recent commits)
 - Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
 - If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.

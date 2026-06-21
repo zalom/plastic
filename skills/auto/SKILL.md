@@ -28,6 +28,13 @@ Work `dispatchable_queue` in `rank` order (these are `defer`/`research` disposit
 safe to deliver autonomously). Leave `human_only` and `next_big_thing` for the user — those
 are `drive`/`triage` items the human should lead. See the `plastic-dashboard` skill.
 
+QMD-first (when available): when the user describes the work to deliver rather than naming an
+intent, before scanning the store with grep/Read run
+`ruby ~/.plastic/scripts/qmd-sync search "<terms>"` to surface candidate, prior, or duplicate
+intents, then open the authoritative intent file for the hit you take over. The command is a no-op
+when QMD is absent, so fall back to the existing INDEX.md / file scan. (This is discovery; the
+reindex step under Completion is separate.)
+
 ## Arm the Lifecycle Gate (do this FIRST)
 
 Immediately after selecting the intent — before any other work — arm auto mode. This

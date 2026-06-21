@@ -131,6 +131,15 @@
       "assertions": [
         { "type": "convention", "check": "Determine Store step 2 documents local/project store detection via projects.yml + CWD match", "observed": "filled", "result": "pass" }
       ]
+    },
+    {
+      "id": 15, "scope": "behavior", "set": "validation",
+      "prompt": "QMD is present. The user says: continue the work on the statusline coloring (names the intent by description, not id).",
+      "expected_output": "Before scanning the store with grep/Read to locate the named intent, runs `ruby ~/.plastic/scripts/qmd-sync search \"statusline coloring\"` to surface the candidate intent, then opens the authoritative intent file for the hit it resumes. No-op fallback to INDEX.md / file scan when QMD is absent.",
+      "files": ["skills/continuing/SKILL.md"],
+      "assertions": [
+        { "type": "human", "check": "qmd-sync search is run before grep/Read when the intent is named by description; authoritative file opened for the hit", "observed": "Conditional Ledger-Resume carries the QMD-first step: run qmd-sync search before grep/Read, then open the authoritative file; no-op fallback when QMD is absent", "result": "pass" }
+      ]
     }
   ]
 }

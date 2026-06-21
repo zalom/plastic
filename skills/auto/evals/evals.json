@@ -234,6 +234,22 @@
           "result": "pass"
         }
       ]
+    },
+    {
+      "id": 14,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "QMD is present. In auto mode the user says: deliver the work on the uploader retry policy (no intent id given).",
+      "expected_output": "Before scanning the store with grep/Read to find the matching intent, runs `ruby ~/.plastic/scripts/qmd-sync search \"uploader retry policy\"` to surface the candidate intent, then opens the authoritative intent file for the hit it takes over. This discovery step is distinct from the completion-time reindex step. No-op fallback to INDEX.md / file scan when QMD is absent.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "qmd-sync search is run before grep/Read during discovery; authoritative file opened for the hit; reindex step stays separate",
+          "observed": "SKILL.md (or agent file) carries the QMD-first step: run qmd-sync search before grep/Read, then open the authoritative file; no-op fallback when QMD is absent",
+          "result": "pass"
+        }
+      ]
     }
   ]
 }

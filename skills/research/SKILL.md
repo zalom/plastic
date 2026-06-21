@@ -17,6 +17,14 @@ Before proceeding, resolve the active intent:
 2. **Find active intent:** Read `INDEX.md` from the detected store. Look under `## Active`. If exactly one → use it. If multiple → ask which. If none → refuse: "No active intent. Create one first with /plastic-creating-intent"
 3. **Resolve intent directory:** `{store}/store/{id}--{slug}/`
 
+## Check Prior Work First
+
+QMD-first (when available): before scanning the store with grep/Read or searching the web, run
+`ruby ~/.plastic/scripts/qmd-sync search "<terms>"` to surface candidate, prior, or related intents
+and existing research, then open the authoritative intent file for any hit you act on. Reusing a
+prior report beats re-deriving it. The command is a no-op when QMD is absent, so fall back to the
+existing INDEX.md / file scan.
+
 ## Depth Decision
 
 Before starting research, assess the question against these criteria:

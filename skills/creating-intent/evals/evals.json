@@ -51,6 +51,22 @@
           "result": "pass"
         }
       ]
+    },
+    {
+      "id": 3,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "QMD is present. The user says: create an intent to add retry to the uploader.",
+      "expected_output": "Before allocating the id / scaffolding, runs `ruby ~/.plastic/scripts/qmd-sync search \"add retry to the uploader\"` to surface a near-duplicate or true predecessor, then opens the authoritative intent file for any hit (reusing a near-duplicate or setting a real predecessor in --sources). No-op fallback to INDEX.md / file scan when QMD is absent.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "qmd-sync search is run before id allocation; authoritative file opened for any hit; informs reuse / --sources",
+          "observed": "SKILL.md (or agent file) carries the QMD-first step: run qmd-sync search before grep/Read, then open the authoritative file; no-op fallback when QMD is absent",
+          "result": "pass"
+        }
+      ]
     }
   ]
 }
