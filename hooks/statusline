@@ -1,56 +1,137 @@
 #!/bin/bash
-# plastic-hook-version: 2.0.0
-# StatusLine hook — chains user's original statusline, adds Plastic info
+# plastic-hook-version: 3.0.0
+# StatusLine hook - Plastic owns the full statusline (no chaining).
+# Renders: {model} - Plastic {version}[ -> {next}] - {path} - [{project}: {id} {title}]
+# Pure bash (macOS 3.2 compatible). No ruby, no jq. Reads stdin once; small file reads only.
 
 INPUT=$(cat)
 
-# --- Chain original statusline ---
-ORIGINAL_CONFIG="$HOME/.plastic/.cache/original-statusline.json"
-ORIGINAL_OUTPUT=""
-if [ -f "$ORIGINAL_CONFIG" ]; then
-  ORIGINAL_CMD=$(grep -o '"command":"[^"]*"' "$ORIGINAL_CONFIG" 2>/dev/null | head -1 | cut -d'"' -f4)
-  if [ -z "$ORIGINAL_CMD" ]; then
-    ORIGINAL_CMD=$(grep -o '"command": "[^"]*"' "$ORIGINAL_CONFIG" 2>/dev/null | head -1 | sed 's/.*"command": "//;s/".*//')
-  fi
-  if [ -n "$ORIGINAL_CMD" ] && [ -x "$ORIGINAL_CMD" ]; then
-    ORIGINAL_OUTPUT=$(echo "$INPUT" | "$ORIGINAL_CMD" 2>/dev/null)
-  fi
-fi
+# --- Colors (ANSI-C quoting; bash 3.2 supports $'\033') ---
+C_MODEL=$'\033[32m'   # green   - model
+C_VER=$'\033[37m'     # white   - "Plastic {version}" and update arrow
+C_NEXT=$'\033[33m'    # yellow  - next version
+C_PATH=$'\033[90m'    # gray    - path
+C_BRACK=$'\033[33m'   # yellow  - work-unit brackets
+C_PROJ=$'\033[34m'    # blue    - project name
+C_INTENT=$'\033[33m'  # yellow  - intent id + title
+C_SEP=$'\033[90m'     # gray    - separators
+RST=$'\033[0m'
+SEP="${C_SEP} "$'\302\267'" ${RST}"   # " . " middot, dim
 
-# --- Plastic status ---
-PLASTIC_PARTS=""
+# --- Extract a flat JSON string field from stdin: json_str <key> ---
+json_str() {
+  printf '%s' "$INPUT" \
+    | grep -o "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" \
+    | head -1 \
+    | sed "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"//;s/\"$//"
+}
 
-# Active intent from INDEX.md
-INDEX="$HOME/.plastic/INDEX.md"
-if [ -f "$INDEX" ]; then
-  ACTIVE=$(sed -n '/^## Active$/,/^## /{/^- \[/p;}' "$INDEX" | head -1)
-  if [ -n "$ACTIVE" ]; then
-    INTENT=$(echo "$ACTIVE" | sed 's/^- \[\([^]]*\)\].*/\1/')
-    PLASTIC_PARTS="plastic: ${INTENT}"
-  fi
-fi
+# --- Model (model.display_name) ---
+MODEL=$(json_str "display_name")
 
-# Update notification
+# --- Path (workspace.current_dir, fallback top-level cwd) ---
+REAL_CWD=$(json_str "current_dir")
+[ -z "$REAL_CWD" ] && REAL_CWD=$(json_str "cwd")
+# Abbreviate $HOME -> ~
+CWD="$REAL_CWD"
+case "$CWD" in
+  "$HOME") CWD="~" ;;
+  "$HOME"/*) CWD="~${CWD#"$HOME"}" ;;
+esac
+
+# --- Plastic version ---
+VERSION=""
+[ -f "$HOME/.plastic/VERSION" ] && VERSION=$(tr -d ' \t\n' < "$HOME/.plastic/VERSION")
+
+# --- Update (next version when one is available) ---
+NEXT=""
 CACHE_FILE="$HOME/.plastic/.cache/update-check.json"
 if [ -f "$CACHE_FILE" ]; then
-  UPDATE_AVAILABLE=$(grep -o '"updateAvailable":true' "$CACHE_FILE" 2>/dev/null)
-  if [ -n "$UPDATE_AVAILABLE" ]; then
-    LATEST=$(grep -o '"latest":"[^"]*"' "$CACHE_FILE" 2>/dev/null | head -1 | cut -d'"' -f4)
-    CURRENT=$(grep -o '"current":"[^"]*"' "$CACHE_FILE" 2>/dev/null | head -1 | cut -d'"' -f4)
-    UPDATE_MSG="plastic update: $CURRENT -> $LATEST"
-    if [ -n "$PLASTIC_PARTS" ]; then
-      PLASTIC_PARTS="$PLASTIC_PARTS | $UPDATE_MSG"
-    else
-      PLASTIC_PARTS="$UPDATE_MSG"
+  if grep -q '"updateAvailable"[[:space:]]*:[[:space:]]*true' "$CACHE_FILE" 2>/dev/null; then
+    LATEST=$(grep -o '"latest"[[:space:]]*:[[:space:]]*"[^"]*"' "$CACHE_FILE" 2>/dev/null \
+      | head -1 | sed 's/.*"latest"[[:space:]]*:[[:space:]]*"//;s/"$//')
+    if [ -n "$LATEST" ]; then
+      case "$LATEST" in
+        *-*) NEXT="${LATEST##*-}" ;;   # 1.0.0-beta.3 -> beta.3
+        *)   NEXT="$LATEST" ;;
+      esac
     fi
   fi
 fi
 
-# --- Combine output ---
-if [ -n "$ORIGINAL_OUTPUT" ] && [ -n "$PLASTIC_PARTS" ]; then
-  echo "$ORIGINAL_OUTPUT | $PLASTIC_PARTS"
-elif [ -n "$ORIGINAL_OUTPUT" ]; then
-  echo "$ORIGINAL_OUTPUT"
-elif [ -n "$PLASTIC_PARTS" ]; then
-  echo "$PLASTIC_PARTS"
+# --- Scope resolution: cwd -> registered project store, else global ---
+# Match the longest registered project path that prefixes the real cwd.
+PROJECTS_YML="$HOME/.plastic/projects.yml"
+SLUG=""
+if [ -n "$REAL_CWD" ] && [ -f "$PROJECTS_YML" ]; then
+  SLUG=$(awk -v cwd="$REAL_CWD" '
+    /^  [A-Za-z0-9_.-]+:[[:space:]]*$/ { s=$1; sub(/:$/,"",s); next }
+    /^    path:/ {
+      p=$0; sub(/^[[:space:]]*path:[[:space:]]*/,"",p); gsub(/"/,"",p);
+      if (length(p)>0 && (cwd==p || index(cwd, p"/")==1) && length(p)>best) { best=length(p); win=s }
+    }
+    END { if (win!="") print win }
+  ' "$PROJECTS_YML")
 fi
+
+if [ -n "$SLUG" ]; then
+  INDEX="$HOME/.plastic/projects/$SLUG/INDEX.md"
+  PROJ_LABEL="$SLUG"
+else
+  INDEX="$HOME/.plastic/INDEX.md"
+  PROJ_LABEL="global"
+fi
+INDEX_DIR=$(dirname "$INDEX")
+
+# --- Most-recently-accessed active intent (mirror dashboard: last savepoint ts) ---
+WORK=""
+if [ -f "$INDEX" ]; then
+  BEST_TS=""
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    inside=${line#*[}; inside=${inside%%]*}             # "{id} - {title}"
+    dir=${line#*](store/}; dir=${dir%%/*}              # intent directory name
+    [ -z "$dir" ] && continue
+    sp="$INDEX_DIR/store/$dir/savepoint.md"
+    ts=""
+    if [ -f "$sp" ]; then
+      ts=$(grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z' "$sp" 2>/dev/null | tail -1)
+    fi
+    # ISO8601 sorts lexicographically; keep the newest. Empty ts sorts lowest.
+    if [ -z "$BEST_TS" ] || { [ -n "$ts" ] && [ "$ts" \> "$BEST_TS" ]; }; then
+      BEST_TS="$ts"
+      WORK="$inside"
+    fi
+  done <<EOF
+$(sed -n '/^## Active$/,/^## /{/^- \[/p;}' "$INDEX")
+EOF
+fi
+
+# --- Build the work-unit "[{project}: {id} {title}]" with title truncation ---
+WORK_SEG=""
+if [ -n "$WORK" ]; then
+  # Split "{id} - {title}" on the em-dash (U+2014).
+  EMDASH=$'\342\200\224'
+  id=${WORK%% $EMDASH *}
+  title=${WORK#* $EMDASH }
+  # Fallback if the em-dash form is absent: split on first space.
+  if [ "$id" = "$WORK" ]; then id=${WORK%% *}; title=${WORK#* }; fi
+  # Truncate long titles (~40 chars).
+  if [ ${#title} -gt 40 ]; then title="$(printf '%.40s' "$title")..."; fi
+  WORK_SEG="${C_BRACK}[${RST}${C_PROJ}${PROJ_LABEL}${RST}${C_INTENT}: ${id} ${title}${RST}${C_BRACK}]${RST}"
+fi
+
+# --- Assemble segments in order, joined by " . " ---
+PARTS=""
+add() { [ -z "$1" ] && return; if [ -z "$PARTS" ]; then PARTS="$1"; else PARTS="$PARTS$SEP$1"; fi; }
+
+[ -n "$MODEL" ] && add "${C_MODEL}${MODEL}${RST}"
+if [ -n "$VERSION" ]; then
+  vseg="${C_VER}Plastic ${VERSION}${RST}"
+  [ -n "$NEXT" ] && vseg="${vseg}${C_VER} "$'\342\206\222'" ${RST}${C_NEXT}${NEXT}${RST}"
+  add "$vseg"
+fi
+[ -n "$CWD" ] && add "${C_PATH}${CWD}${RST}"
+[ -n "$WORK_SEG" ] && add "$WORK_SEG"
+
+printf '%s\n' "$PARTS"
