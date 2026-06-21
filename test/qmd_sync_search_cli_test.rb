@@ -33,12 +33,27 @@ class QmdSyncSearchCliTest < Minitest::Test
   end
 
   # Write a fake `qmd` executable that prints `output` and exits 0, place it on a
-  # PATH-only directory, and return that PATH string.
+  # PATH-only directory, and return that PATH string. The fake also records the
+  # `qmd search` query it received to @argfile, so tests can assert what was
+  # actually searched for (query-parsing robustness).
   def path_with_fake_qmd(output)
+    @argfile = File.join(@bindir, "qmd-args.txt")
     fake = File.join(@bindir, "qmd")
-    File.write(fake, "#!/usr/bin/env ruby\nputs #{output.inspect}\n")
+    body = <<~RUBY
+      #!/usr/bin/env ruby
+      if ARGV[0] == "search"
+        File.write(#{@argfile.inspect}, ARGV[1].to_s)
+      end
+      puts #{output.inspect}
+    RUBY
+    File.write(fake, body)
     File.chmod(0o755, fake)
     @bindir
+  end
+
+  # The query argument the fake qmd received on its last `search` call.
+  def searched_query
+    File.exist?(@argfile.to_s) ? File.read(@argfile) : nil
   end
 
   # Run the CLI with PATH set to exactly `path` (no inherited PATH), so qmd is
@@ -83,5 +98,35 @@ class QmdSyncSearchCliTest < Minitest::Test
     lines = out.lines.map(&:chomp).reject(&:empty?)
     assert_equal 1, lines.size, "limit caps the printed hits"
     assert_equal "[81%] plastic-global/15--enforce/15.md - Enforce Plastic supremacy", lines[0]
+  end
+
+  def test_search_query_is_not_the_value_of_a_preceding_store_flag
+    path = path_with_fake_qmd(HITS_JSON)
+    _out, _err, status = run_cli(["search", "--store", @home, "real terms"], path: path)
+    assert status.success?
+    assert_equal "real terms", searched_query,
+      "query must be 'real terms', not the --store value"
+  end
+
+  def test_search_query_is_not_the_value_of_a_preceding_limit_flag
+    path = path_with_fake_qmd(HITS_JSON)
+    _out, _err, status = run_cli(["search", "--limit", "5", "real terms"], path: path)
+    assert status.success?
+    assert_equal "real terms", searched_query,
+      "query must be 'real terms', not the --limit value '5'"
+  end
+
+  def test_search_query_first_usage_still_works
+    path = path_with_fake_qmd(HITS_JSON)
+    _out, _err, status = run_cli(["search", "supremacy", "--limit", "3"], path: path)
+    assert status.success?
+    assert_equal "supremacy", searched_query
+  end
+
+  def test_reindex_async_prints_started_and_does_not_block
+    path = path_with_fake_qmd("")
+    out, _err, status = run_cli(["reindex", "--store", File.join(@home, "store"), "--async"], path: path)
+    assert status.success?
+    assert_equal "reindex (async) plastic-global (started)", out.strip
   end
 end

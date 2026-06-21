@@ -95,7 +95,24 @@ when "status"
   exit 0
 
 when "search"
-  query = ARGV.find { |a| !a.start_with?("--") }
+  # The query is the first bareword that is NOT the value of a known value-taking
+  # flag. Walk ARGV, skipping each such flag and the token right after it, then
+  # take the first remaining token that does not start with "--".
+  value_flags = %w[--store --limit --min-score --home]
+  query = nil
+  i = 0
+  while i < ARGV.length
+    tok = ARGV[i]
+    if value_flags.include?(tok)
+      i += 2
+      next
+    end
+    unless tok.start_with?("--")
+      query = tok
+      break
+    end
+    i += 1
+  end
   collections =
     if (dir = opt(ARGV, "--store"))
       [QmdSync.collection_name(dir, plastic_home: home), "plastic-global"].uniq
