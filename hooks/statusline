@@ -7,7 +7,7 @@
 INPUT=$(cat)
 
 # --- Colors (ANSI-C quoting; bash 3.2 supports $'\033') ---
-C_MODEL=$'\033[38;2;40;80;170m'    # navy blue - model
+C_MODEL=$'\033[38;2;90;140;220m'   # navy blue - model (lightened for legibility)
 C_VER=$'\033[37m'                  # white     - "Plastic {version}" and update arrow
 C_NEXT=$'\033[33m'                 # yellow    - next version
 C_PATH=$'\033[38;2;128;134;144m'   # gray      - path (matches dim UI text)
@@ -118,7 +118,7 @@ if [ -n "$WORK" ]; then
   if [ "$id" = "$WORK" ]; then id=${WORK%% *}; title=${WORK#* }; fi
   # Truncate long titles (~40 chars).
   if [ ${#title} -gt 40 ]; then title="$(printf '%.40s' "$title")..."; fi
-  WORK_SEG="${C_BRACK}[${RST}${C_PROJ}${PROJ_LABEL}${RST}${C_INTENT}: ${id} ${title}${RST}${C_BRACK}]${RST}"
+  WORK_SEG="${C_BRACK}[${RST}${C_PROJ}${PROJ_LABEL}${RST}${C_INTENT}: ${RST}${C_PROJ}${id}${RST}${C_INTENT} ${title}${RST}${C_BRACK}]${RST}"
 fi
 
 # --- Assemble segments in order, joined by " . " ---
