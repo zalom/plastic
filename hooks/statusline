@@ -7,14 +7,14 @@
 INPUT=$(cat)
 
 # --- Colors (ANSI-C quoting; bash 3.2 supports $'\033') ---
-C_MODEL=$'\033[32m'   # green   - model
-C_VER=$'\033[37m'     # white   - "Plastic {version}" and update arrow
-C_NEXT=$'\033[33m'    # yellow  - next version
-C_PATH=$'\033[90m'    # gray    - path
-C_BRACK=$'\033[33m'   # yellow  - work-unit brackets
-C_PROJ=$'\033[34m'    # blue    - project name
-C_INTENT=$'\033[33m'  # yellow  - intent id + title
-C_SEP=$'\033[90m'     # gray    - separators
+C_MODEL=$'\033[38;2;40;80;170m'    # navy blue - model
+C_VER=$'\033[37m'                  # white     - "Plastic {version}" and update arrow
+C_NEXT=$'\033[33m'                 # yellow    - next version
+C_PATH=$'\033[38;2;128;134;144m'   # gray      - path (matches dim UI text)
+C_BRACK=$'\033[33m'                # yellow    - work-unit brackets
+C_PROJ=$'\033[38;2;249;140;30m'    # orange    - project name
+C_INTENT=$'\033[33m'               # yellow    - intent id + title
+C_SEP=$'\033[38;2;128;134;144m'    # gray      - separators
 RST=$'\033[0m'
 SEP="${C_SEP} "$'\302\267'" ${RST}"   # " . " middot, dim
 
