@@ -61,6 +61,26 @@ and not hallucinate intents or stages. This is the standard L2 live-state mechan
 for harnesses whose spawned sub-agents do not inherit the top-level session event. See
 `docs/reference/harness-adapters.md` for how it slots into the per-harness contract.
 
+### Completion Reports
+
+Every dispatched specialist ends its turn with a structured completion report as its final
+message (its return value), so the agent that did the work is the one that accounts for it. The
+report carries a common envelope plus a role-specific payload that fulfils the agent's place in
+the cycle; the planner explains the plan back to the orchestrator, the executor reports what was
+built and the test result, and so on. The format lives in `references/agent-report-contract.md`,
+and the verbatim instruction is injected once via the spawn preamble's `REPORT_CONTRACT`
+constant, which the role prompts reproduce.
+
+Enforcement is require-report then synthesize-fallback. The preamble and prompts make the report
+mandatory (decision-shaping), but child-agent honor is best-effort across harnesses (Tier B/C),
+so it is never a hard block. When a specialist returns no usable report, the enforcer runs
+`scripts/agent-report <intent_dir> --role <role>`, a pure function of the intent dir (no network,
+clock, or randomness, mirroring `spawn-preamble`) that emits a filesystem-derived report from the
+savepoint, the artifacts present, the checklist checked/total, and the outcome line. A handoff
+account therefore always exists: agent-authored when present, deterministically reconstructed
+otherwise. This structures the finish notification only; in-flight observations stay in
+`## Insights`, no progress chatter is added.
+
 ### Gate Ownership
 
 The enforcer arms and verifies the lifecycle gate, then gates every stage transition.

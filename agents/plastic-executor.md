@@ -28,6 +28,16 @@ When dispatched in auto mode you receive the standard Plastic spawn preamble (fr
 3. Edit project code (the gate is open now that plan and checklist exist)
 4. Run the full suite, iterate to zero failures and zero errors
 5. Produce (output handoff): the code changes, a checked-off `checklist.md`, and `## Insights`
+6. Report for gating (see `## Completion Report`); the enforcer reviews the work at the final gate
+
+## Completion Report
+
+END your turn with a structured completion report as your final message, per the spawn preamble's `REPORT_CONTRACT` and `skills/auto/references/agent-report-contract.md`. Do not finish silently. Carry the common envelope (role, intent id, stage, status, artifacts written, verification, checklist deltas, deviations, blockers) plus the executor payload:
+
+- Actions implemented this turn, mapped to checklist items checked off (checked / total)
+- A summary of the code changed (files and the shape of the change)
+- Test result: the full-suite command and its pass / fail counts
+- Insights appended, with the `(autonomous)` marker
 
 ## Constraints
 

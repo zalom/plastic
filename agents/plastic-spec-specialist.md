@@ -27,7 +27,15 @@ When dispatched in auto mode you receive the standard Plastic spawn preamble (fr
 2. Read the spec template (`templates/spec.md`) and match its FORM exactly
 3. Write `spec.md` into the intent directory, resolving the decisions into a coherent approach
 4. Produce (output handoff): a complete `spec.md`
-5. Report for gating; the enforcer checks the spec against its exit criteria before How begins
+5. Report for gating (see `## Completion Report`); the enforcer checks the spec against its exit criteria before How begins
+
+## Completion Report
+
+END your turn with a structured completion report as your final message, per the spawn preamble's `REPORT_CONTRACT` and `skills/auto/references/agent-report-contract.md`. Do not finish silently. Carry the common envelope (role, intent id, stage, status, artifacts written, verification, checklist deltas, deviations, blockers) plus the spec payload:
+
+- The spec sections produced (Problem, Goals, Non-Goals, Approach, Decisions, Acceptance Criteria)
+- How the recorded decisions resolved into the chosen approach
+- The acceptance-criteria count, so the planner knows the surface to cover
 
 ## Constraints
 
