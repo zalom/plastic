@@ -29,7 +29,7 @@ require_relative "lib/bridge"
 HONOR_INSTRUCTION =
   "You are operating inside Plastic. Use it as your operating scaffold. " \
   "Emit VALID lifecycle artifacts; do not hallucinate intents or stages. " \
-  "Your output is a deliverable, not a message."
+  "Your primary output is valid lifecycle artifacts; you close with a structured report about them."
 
 # Verbatim completion-report contract (intent 74). Kept as one constant so the
 # contract doc (skills/auto/references/agent-report-contract.md), the role prompts,

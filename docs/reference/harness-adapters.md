@@ -87,9 +87,11 @@ clock read, so two runs over the same state are byte-identical. It reports the a
 intent id and intent line (read from the intent file frontmatter), the current stage
 (the last non-empty line of `savepoint.md` when present, else the stage derived from
 which lifecycle files exist), the cycle role or step (from `--role`/`--step`, else the
-derived stage), and the verbatim honoring instruction: the agent must emit valid
-lifecycle artifacts and must not hallucinate intents or stages, and its output is a
-deliverable, not a message. The auto-mode enforcer prepends this preamble to every
+derived stage), the verbatim honoring instruction (the agent must emit valid
+lifecycle artifacts, must not hallucinate intents or stages, and its primary output is
+valid lifecycle artifacts which it closes with a structured report about), and the
+verbatim report contract (intent 74: the agent must end with a structured completion
+report as its final message). The auto-mode enforcer prepends this preamble to every
 dispatched specialist's prompt, so each spawned agent boots with accurate live state.
 
 ### L3 lifecycle gates and savepoints
