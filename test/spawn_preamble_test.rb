@@ -52,6 +52,20 @@ class SpawnPreambleTest < Minitest::Test
       "preamble must carry the no-hallucinate honoring instruction"
   end
 
+  # intent 74: every dispatched agent must be told to end with a structured
+  # completion report. Assert the verbatim REPORT_CONTRACT wording is emitted, so
+  # the contract doc and role prompts have a single source of truth to agree with.
+  def test_preamble_carries_report_contract
+    out = run_script("--role", "plastic-planner")
+
+    assert_includes out,
+      "END your turn with a structured completion report as your FINAL MESSAGE",
+      "preamble must carry the mandatory completion-report contract"
+    assert_includes out,
+      "the planner explains the plan back to the orchestrator",
+      "report contract must name the per-role payload exemplar"
+  end
+
   def test_stage_derived_from_files_when_no_savepoint
     FileUtils.rm_f(File.join(@intent_dir, "savepoint.md"))
     File.write(File.join(@intent_dir, "spec.md"), "spec\n")

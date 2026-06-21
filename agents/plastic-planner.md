@@ -27,7 +27,17 @@ When dispatched in auto mode you receive the standard Plastic spawn preamble (fr
 2. Read `spec.md` and the plan/checklist templates; match their FORM
 3. Write `plan.md`, the `actions/` directory, and `checklist.md` into the intent directory
 4. Produce (output handoff): `plan.md` plus `actions/` plus `checklist.md`
-5. Report for gating; the enforcer verifies plan and checklist exist before Exec is allowed
+5. Report for gating (see `## Completion Report`); the enforcer verifies plan and checklist exist before Exec is allowed
+
+## Completion Report
+
+END your turn with a structured completion report as your final message, per the spawn preamble's `REPORT_CONTRACT` and `skills/auto/references/agent-report-contract.md`. Do not finish silently. Carry the common envelope (role, intent id, stage, status, artifacts written, verification, checklist deltas, deviations, blockers) plus the planner payload, which EXPLAINS THE PLAN BACK TO THE ORCHESTRATOR:
+
+- The ordered actions, one line each: what the action does and how it is verified
+- Decomposition rationale: why this order, and why the actions are independent
+- Checklist coverage: the item count, and that every action plus suite-green is covered
+
+The plan is an argument; the orchestrator gates on whether that argument is sound before any code is written, so make the report make that case.
 
 ## Constraints
 

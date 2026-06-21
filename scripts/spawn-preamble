@@ -31,6 +31,21 @@ HONOR_INSTRUCTION =
   "Emit VALID lifecycle artifacts; do not hallucinate intents or stages. " \
   "Your output is a deliverable, not a message."
 
+# Verbatim completion-report contract (intent 74). Kept as one constant so the
+# contract doc (skills/auto/references/agent-report-contract.md), the role prompts,
+# and the test assert against the exact same string. SINGLE SOURCE OF TRUTH for the
+# report wording: the work output is lifecycle artifacts, the final message is a
+# structured report about them. Both are required and they do not contradict.
+REPORT_CONTRACT =
+  "Before you finish, END your turn with a structured completion report as your " \
+  "FINAL MESSAGE (your return value), not a side-channel file. Do not go idle or " \
+  "finish silently. The report carries a common envelope: role, intent id, stage, " \
+  "status (delivered or blocked), artifacts written, verification or tests run, " \
+  "checklist deltas, deviations from spec, and blockers or handoff notes; plus a " \
+  "role-specific payload that fulfils your place in the What, Why, How, Exec cycle " \
+  "(for example the planner explains the plan back to the orchestrator). See " \
+  "skills/auto/references/agent-report-contract.md for the per-role format."
+
 def parse_args(argv)
   role = nil
   step = nil
@@ -116,6 +131,8 @@ lines << "Current stage: #{stage}"
 lines << "Cycle step / role: #{cycle}"
 lines << ""
 lines << HONOR_INSTRUCTION
+lines << ""
+lines << REPORT_CONTRACT
 lines << "=== end preamble ==="
 
 puts lines.join("\n")

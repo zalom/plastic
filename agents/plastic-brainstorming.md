@@ -27,7 +27,15 @@ When dispatched in auto mode you receive the standard Plastic spawn preamble (fr
 2. Read the intent file, its `## Links`, and related code or docs
 3. Research with the adaptive budget the enforcer set (simple 2-3, medium 5-8, complex 10-15 steps)
 4. Produce (output handoff): an enriched `## Context` plus `### Decisions` with rationale
-5. Log autonomous calls in `## Insights` with the `(autonomous)` marker, then report for gating
+5. Log autonomous calls in `## Insights` with the `(autonomous)` marker, then report for gating (see `## Completion Report`)
+
+## Completion Report
+
+END your turn with a structured completion report as your final message, per the spawn preamble's `REPORT_CONTRACT` and `skills/auto/references/agent-report-contract.md`. Do not finish silently. Carry the common envelope (role, intent id, stage, status, artifacts written, verification, checklist deltas, deviations, blockers) plus the brainstorming payload:
+
+- Decisions recorded in `### Decisions`, each with its one-line rationale
+- Context enriched: what was researched and the key findings
+- Open questions resolved, and any deliberately left for the spec
 
 ## Constraints
 

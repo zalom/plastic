@@ -1,0 +1,142 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# agent-report - deterministic filesystem-derived completion report (intent 74).
+#
+# The auto-mode report contract is decision-shaped (the spawn preamble's
+# REPORT_CONTRACT plus the role prompts ask every dispatched agent to END with a
+# structured completion report). Because child-agent honor is best-effort across
+# harnesses (Tier B/C, docs/reference/harness-adapters.md), the contract is never a
+# hard block. This script is the always-a-report fallback: when a dispatched agent
+# returns no usable report, the enforcer runs it to synthesize one from the intent
+# directory, so the handoff account always exists.
+#
+# Like scripts/spawn-preamble, it is a PURE function of the intent dir: no network,
+# no randomness, no wall-clock reads. Two runs over the same on-disk state produce
+# byte-identical output.
+#
+# Usage:
+#   agent-report <intent_dir> [--role ROLE]
+#
+# Exit codes: 0 (report emitted), 2 (usage).
+
+require_relative "lib/bridge"
+
+def parse_args(argv)
+  role = nil
+  positional = []
+  i = 0
+  while i < argv.length
+    case argv[i]
+    when "--role"
+      role = argv[i + 1]
+      i += 2
+    else
+      positional << argv[i]
+      i += 1
+    end
+  end
+  [positional.first, role]
+end
+
+# Read the intent file frontmatter via the same path spawn-preamble uses, so the
+# id/intent we report match what the rest of Plastic sees. Never raises.
+def frontmatter_for(intent_dir)
+  ifile = Bridge.intent_file(intent_dir)
+  return {} unless File.exist?(ifile)
+
+  content = File.read(ifile)
+  return {} unless content.start_with?("---")
+
+  parts = content.split("---", 3)
+  return {} if parts.length < 3
+
+  require "yaml"
+  require "date"
+  require "time"
+  YAML.safe_load(parts[1], permitted_classes: [Date, Time]) || {}
+rescue StandardError
+  {}
+end
+
+# Current stage: prefer the last non-empty savepoint line (the ledger encodes the
+# furthest-reached milestone), else the file-derived stage. Same logic as
+# spawn-preamble's current_stage.
+STAGE_LABELS = {
+  "what" => "What", "why" => "Why", "how" => "How",
+  "exec" => "Exec", "done" => "Done"
+}.freeze
+
+def current_stage(intent_dir)
+  ledger = File.join(intent_dir, Bridge::SAVEPOINT_FILE)
+  if File.exist?(ledger)
+    last = File.read(ledger).each_line.map(&:strip).reject(&:empty?).last
+    return last if last
+  end
+  STAGE_LABELS.fetch(Bridge.derive_stage(intent_dir), Bridge.derive_stage(intent_dir))
+end
+
+# checklist.md checked/total: count GFM task-list items. Returns "n/a" when there
+# is no checklist (a checklist is only meaningful from How onward).
+def checklist_progress(intent_dir)
+  path = File.join(intent_dir, "checklist.md")
+  return "n/a" unless Bridge.stage_file_present?(path)
+
+  lines = File.readlines(path)
+  total = lines.count { |l| l =~ /^\s*- \[[ xX]\]/ }
+  checked = lines.count { |l| l =~ /^\s*- \[[xX]\]/ }
+  return "n/a" if total.zero?
+
+  "#{checked}/#{total}"
+end
+
+# The outcome line: first content line under outcome.md's "## Summary" (or the first
+# non-heading content line), else a placeholder. Pure read of the intent dir.
+def outcome_line(intent_dir)
+  path = File.join(intent_dir, "outcome.md")
+  return "(no outcome yet)" unless Bridge.stage_file_present?(path)
+
+  lines = File.readlines(path).map(&:rstrip)
+  start = lines.index { |l| l.strip.downcase == "## summary" }
+  scan = start ? lines[(start + 1)..] : lines
+  (scan || []).each do |l|
+    s = l.strip
+    next if s.empty? || s.start_with?("#") || s.start_with?("<!--")
+    return s
+  end
+  "(no outcome yet)"
+end
+
+intent_dir_arg, role = parse_args(ARGV)
+
+if intent_dir_arg.nil? || intent_dir_arg.empty?
+  warn "usage: agent-report <intent_dir> [--role ROLE]"
+  exit 2
+end
+
+intent_dir = File.expand_path(intent_dir_arg)
+
+fm = frontmatter_for(intent_dir)
+id = fm["id"].to_s.strip
+intent_name = fm["intent"].to_s.strip
+id = "(unknown)" if id.empty?
+intent_name = "(unknown)" if intent_name.empty?
+
+stage = current_stage(intent_dir)
+role_label = (role && !role.empty?) ? role : stage
+artifacts = Bridge.has_files(intent_dir)
+artifacts_str = artifacts.empty? ? "(none)" : artifacts.join(", ")
+
+lines = []
+lines << "=== Plastic agent report (synthesized) ==="
+lines << "Intent: #{id} - #{intent_name}"
+lines << "Stage: #{stage}"
+lines << "Role: #{role_label}"
+lines << "Status: synthesized (filesystem-derived; no agent-authored report)"
+lines << "Artifacts present: #{artifacts_str}"
+lines << "Checklist: #{checklist_progress(intent_dir)}"
+lines << "Outcome: #{outcome_line(intent_dir)}"
+lines << "=== end report ==="
+
+puts lines.join("\n")
