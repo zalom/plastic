@@ -202,6 +202,38 @@
           "result": "pass"
         }
       ]
+    },
+    {
+      "id": 12,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "A power-tool is present (qmd on PATH, or a .serena marker / serena on PATH). A substantive prompt arrives in auto mode.",
+      "expected_output": "The UserPromptSubmit power-tools hook appends a MANDATORY obligation per present tool: a MUST-use-QMD line when qmd is present (to check for an existing or related intent before treating work as new), and a MUST-use-Serena line when serena is present (symbolic tools before grep/Read). QMD hits are still injected when above threshold.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "PowerTools.mandate returns MUST/MANDATORY lines for each present tool; QmdHook.run appends the mandate",
+          "observed": "power_tools_test.rb + qmd_hook_test.rb assert MUST wording; serena line gated on the serena detector",
+          "result": "pass"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "Neither qmd nor serena is present (no qmd on PATH, no .serena marker, no serena on PATH). A substantive prompt arrives.",
+      "expected_output": "Detect-then-degrade: the hook emits nothing (silent no-op, exit 0). No mandate text appears. Nothing is required to install.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "PowerTools.mandate returns nil and QmdHook.run returns nil when neither tool is present",
+          "observed": "power_tools_test.rb test_mandate_neither_is_nil + qmd_hook_test.rb test_nil_when_neither_tool_present",
+          "result": "pass"
+        }
+      ]
     }
   ]
 }
