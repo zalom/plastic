@@ -109,6 +109,7 @@ Release plan:
 - `1.0.0-beta.4` - shipped 2026-06-21; collected 59 (Plastic owns the statusline: project-aware, colored, version+path last). Spawned 77 (guided-install statusline choice).
 - `1.0.0-beta.5` - shipped 2026-06-21; collected the QMD/Serena power-tools mandate cluster: 66b (mandated QMD+Serena harness, detect-then-degrade), 66c (async reindex on completion), 66a (QMD-first search step across 9 store-searching skills + qmd-sync search verb).
 - `1.0.0-beta.6` - shipped 2026-06-22; collected 78 (fix the installer manifest gap from 66b: power_tools.rb was never added to InstallerCore#core_files, so it never installed into ~/.plastic and the UserPromptSubmit qmd hook raised a LoadError on every prompt; adds the manifest entry plus a regression-guard test asserting every scripts/lib/*.rb is in the manifest).
-- Remaining beta-blockers still open for a future cut: 58, 49, 39.
+- `1.0.0-beta.7` - shipped 2026-06-22; collected 66c1 (extends 66c: the plastic-intent-curator async QMD reindex now fires on any terminal-state transition - move to Completed OR Abandoned - not completion only; prose-wiring, no new Ruby).
+- Remaining beta-blockers still open for a future cut: 49, 39. (58 abandoned 2026-06-22: out of scope - Plastic targets agents-that-report-to-humans, never headless/CI; rationale folded into 73.)
 - `1.0.0` (first stable) - strips the prerelease suffix and takes the `latest` dist-tag; contents beyond the beta line are TBD.
 - `1.1.0` - loop engineering (intent 69 and its cluster); ships after 1.0.0 on a fresh alpha line.
