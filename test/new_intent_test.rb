@@ -6,6 +6,8 @@ require "tmpdir"
 require "fileutils"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/intent_validator"
+require_relative "../scripts/lib/links_section"
+require_relative "../scripts/doctor"
 
 # ACTION_4 (intent 60b): the new-intent scaffolding CLI. Drive the real script as
 # a subprocess (hermetic tmp store, repo templates) and assert it scaffolds a
@@ -81,20 +83,21 @@ class NewIntentTest < Minitest::Test
   def test_reciprocal_link_is_wired_and_idempotent
     parent, = run_new_intent("--store", @store, "--intent", "Parent", "--slug", "parent")
     pid = File.basename(parent).split("--").first
-    parent_file = File.join(parent, "#{File.basename(parent)}.md")
+    parent_base = File.basename(parent)
+    parent_file = File.join(parent, "#{parent_base}.md")
 
     child, = run_new_intent("--store", @store, "--intent", "Child", "--slug", "child", "--parent", pid)
     cid = File.basename(child).split("--").first
-    child_file = File.join(child, "#{File.basename(child)}.md")
+    child_base = File.basename(child)
+    child_file = File.join(child, "#{child_base}.md")
 
-    assert_includes File.read(child_file), "[[#{pid}]]"
-    assert_includes File.read(parent_file), "[[#{cid}]]"
+    # Canonical I5 projection (intent 72): clickable id--slug target + full intent
+    # label, NOT the legacy bare [[id]] form.
+    assert_includes File.read(child_file), "- [[#{parent_base}|Parent]]"
+    assert_includes File.read(parent_file), "- [[#{child_base}|Child]]"
 
-    # Idempotent: a second back-reference is not duplicated.
-    before = File.read(parent_file).scan("[[#{cid}]]").length
-    # Re-run append by scaffolding another child of the same parent and verifying
-    # the original back-reference count is unchanged for the first child.
-    assert_equal 1, before
+    # Idempotent: the canonical back-reference appears exactly once in the parent.
+    assert_equal 1, File.read(parent_file).scan("[[#{child_base}|Child]]").length
   end
 
   def test_requires_store_intent_and_slug
@@ -125,6 +128,95 @@ class NewIntentTest < Minitest::Test
     # from the `## Links` wikilink), and the parent stays born-complete.
     assert_includes chain_of(parent), cid
     assert IntentValidator.validate(parent)[:ok], "parent must stay born-complete"
+  end
+
+  # --- Born-canonical ## Links projection (intent 72) ---
+
+  def links_section_of(intent_dir)
+    file = File.join(intent_dir, "#{File.basename(intent_dir)}.md")
+    body = IntentValidator.body_of(File.read(file))
+    LinksSection.extract_section(body)
+  end
+
+  def test_root_with_no_sources_is_born_with_empty_state_links
+    dir, = run_new_intent("--store", @store, "--intent", "Lonely root", "--slug", "lonely")
+    assert_equal(
+      "## Links\n<!-- No sources or chain; this intent has no graph edges to project. -->\n",
+      links_section_of(dir),
+      "a root with no sources/chain must be born with the canonical empty-state ## Links"
+    )
+  end
+
+  def test_child_links_are_canonical_sources_first
+    parent, = run_new_intent("--store", @store, "--intent", "Parent", "--slug", "parent")
+    pbase = File.basename(parent)
+    child, = run_new_intent("--store", @store, "--intent", "Child", "--slug", "child",
+                            "--parent", pbase.split("--").first)
+    assert_equal(
+      "## Links\n- [[#{pbase}|Parent]]\n",
+      links_section_of(child),
+      "a --parent child must be born with the canonical sources-first ## Links"
+    )
+  end
+
+  def test_sources_path_links_are_canonical
+    a, = run_new_intent("--store", @store, "--intent", "Root A", "--slug", "root-a")
+    abase = File.basename(a)
+    b, = run_new_intent("--store", @store, "--intent", "Root B", "--slug", "root-b",
+                        "--sources", abase.split("--").first)
+    assert_equal "## Links\n- [[#{abase}|Root A]]\n", links_section_of(b),
+                 "a --sources intent must be born with a canonical sources-first ## Links"
+    # The source A gained B in its chain; its ## Links was re-projected canonically.
+    bbase = File.basename(b)
+    assert_equal "## Links\n- [[#{bbase}|Root B]]\n", links_section_of(a),
+                 "the source intent's ## Links must be re-projected canonically (chain entry)"
+  end
+
+  # Cross-store source: a project intent created with a cross-store --sources ref
+  # (global:<id>) must be born with a canonical cross-store link
+  # [[store:id--slug|<full intent text>]], slug + label resolved from the target
+  # store. Build a real <home>/store + <home>/projects/<slug>/store family.
+  def test_cross_store_source_renders_canonical_cross_store_link
+    home = Dir.mktmpdir("new-intent-xstore")
+    global = File.join(home, "store")
+    proj = File.join(home, "projects", "plastic", "store")
+    [global, proj].each { |d| FileUtils.mkdir_p(d) }
+    File.write(File.join(home, "INDEX.md"), "# Index\n\n## Relocated\n(none)\n")
+    File.write(File.join(home, "projects", "plastic", "INDEX.md"), "# Index\n\n## Relocated\n(none)\n")
+
+    gov, = run_new_intent("--store", global, "--intent", "Governing intent", "--slug", "governing")
+    gov_base = File.basename(gov)
+    gov_id = gov_base.split("--").first
+
+    child, status = run_new_intent("--store", proj, "--intent", "Sourced child", "--slug",
+                                   "sourced-child", "--sources", "global:#{gov_id}")
+    assert_equal 0, status, "cross-store --sources create must succeed: #{child}"
+    assert_equal "## Links\n- [[global:#{gov_base}|Governing intent]]\n", links_section_of(child),
+                 "cross-store source must render [[global:id--slug|label]]"
+  ensure
+    FileUtils.rm_rf(home) if home
+  end
+
+  # The decisive guarantee: a freshly created intent AND its parent are both
+  # canonical, i.e. the doctor graph_links_projection check passes with no drift.
+  # Build a real <home>/store layout so the doctor resolves the store family.
+  def test_created_intents_pass_graph_links_projection_no_drift
+    home = Dir.mktmpdir("new-intent-home")
+    store = File.join(home, "store")
+    FileUtils.mkdir_p(store)
+    File.write(File.join(home, "INDEX.md"), "# Index\n\n## Relocated\n(none)\n\n## Completed\n")
+
+    parent, = run_new_intent("--store", store, "--intent", "Parent", "--slug", "parent")
+    pid = File.basename(parent).split("--").first
+    run_new_intent("--store", store, "--intent", "Child", "--slug", "child", "--parent", pid)
+    run_new_intent("--store", store, "--intent", "Lonely", "--slug", "lonely")
+
+    doctor = Doctor.new(plastic_home: home)
+    check = doctor.check_conventions.find { |c| c[:name] == "graph_links_projection" }
+    assert_equal "pass", check[:status],
+                 "freshly created intents must be born canonical (no drift): #{check[:details].inspect}"
+  ensure
+    FileUtils.rm_rf(home) if home
   end
 
   def test_sources_path_gets_child_in_chain_frontmatter
