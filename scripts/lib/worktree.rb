@@ -118,6 +118,11 @@ module Worktree
 
     plastic_home = File.expand_path(File.join(home, ".plastic"))
 
+    # Gitignore safety (intent 73c3): the store worktrees live under the store git
+    # repo, so without ignoring `.worktrees/` a `git add -A` sweeps their gitlinks
+    # into the store commit. Ensure both ignore entries before any worktree add.
+    ensure_gitignored(plastic_home, ".worktrees/", runner: runner)
+
     # Store worktree: created against the plastic home git repo. Fail-open if the
     # store repo is not a git repo (a fresh global store may be ungit'd).
     store_ok = add_worktree(runner, repo: plastic_home,
@@ -129,6 +134,7 @@ module Worktree
     repo = repo_for(slug, home: home)
     code_ok = false
     if repo && git_repo?(runner, repo)
+      ensure_gitignored(repo, ".claude/worktrees/", runner: runner)
       code_ok = add_worktree(runner, repo: repo,
                              worktree: p["code"], branch: p["code_branch"],
                              label: "code")
@@ -153,8 +159,10 @@ module Worktree
   end
 
   # Remove both worktrees (then `git worktree prune`), clear the worktree block.
-  # No-op when nothing was provisioned. CLEANUP (73c3) owns the merge-vs-remove
-  # policy; this is the plain remove.
+  # No-op when nothing was provisioned. CLEANUP (73c3) layers the merge-vs-remove
+  # policy on top via `finish`; this is the plain remove. Pass `remove: false` to
+  # clear the block WITHOUT touching git (so `finish` can merge first, then call
+  # release to drop the worktrees once the code branch is integrated).
   def release(bridge_data, home: Dir.home, runner: ShellRunner.new, remove: true)
     return bridge_data unless bridge_data.is_a?(Hash)
     block = bridge_data["worktree"]
@@ -174,6 +182,95 @@ module Worktree
 
     bridge_data.delete("worktree")
     bridge_data
+  end
+
+  # --- cleanup policy (merge-vs-remove) -------------------------------------
+
+  # Finish an intent's delivery by tearing down its worktrees, optionally merging
+  # the code branch back first (intent 73c3). The merge-vs-remove decision is the
+  # one piece of policy on top of the plain `release`:
+  #
+  #   merge: true  -> the releasing path. Merge the intent's code branch
+  #                   (`plastic/{id}--{slug}`) into the repo's default branch
+  #                   BEFORE removing the worktrees, so the work is integrated and
+  #                   not lost when the worktree disappears. Then `release`.
+  #   merge: false -> the disarm / abandon path. Just `release` (plain remove);
+  #                   the branch survives and can be reclaimed.
+  #
+  # Fail-open and idempotent throughout: a missing block, missing branch, or any
+  # git failure never raises and never blocks teardown. All git ops use
+  # `git -C <path>`, never cwd (decision D6). No-op when nothing was provisioned.
+  def finish(bridge_data, home: Dir.home, runner: ShellRunner.new, merge: false)
+    return bridge_data unless bridge_data.is_a?(Hash)
+    block = bridge_data["worktree"]
+    return bridge_data unless block.is_a?(Hash)
+
+    if merge
+      slug = slug_for_store(bridge_data.dig("intent", "store").to_s, home: home)
+      repo = repo_for(slug, home: home)
+      branch = block["code_branch"]
+      merge_branch(runner, repo: repo, branch: branch) if repo && !blank?(branch)
+    end
+
+    release(bridge_data, home: home, runner: runner, remove: true)
+  end
+
+  # Merge `branch` into the repo's default branch from the main checkout. The
+  # worktree the branch is checked out in stays put; we merge in the repo dir
+  # itself (its own current branch is the integration target). Idempotent: a
+  # no-op merge ("Already up to date") still succeeds. Fail-open: a conflicting
+  # or otherwise failing merge is aborted and logged, never raised, so teardown
+  # still proceeds (CLEANUP must not strand a worktree).
+  def merge_branch(runner, repo:, branch:)
+    return false if blank?(repo) || blank?(branch)
+    target = current_branch(runner, repo: repo)
+    return false if blank?(target) || target == branch
+
+    res = runner.run("-C", repo, "merge", "--no-ff", "--no-edit", branch)
+    return true if res.success?
+
+    # Leave the integration branch clean: abort a half-applied/conflicted merge.
+    runner.run("-C", repo, "merge", "--abort")
+    warn "plastic: worktree finish could not merge #{branch.inspect} into " \
+         "#{target.inspect}: #{res.stderr.to_s.strip}; removing worktree without merge"
+    false
+  end
+
+  # The repo's current branch (the integration target), or nil when detached /
+  # unresolvable.
+  def current_branch(runner, repo:)
+    return nil if blank?(repo)
+    res = runner.run("-C", repo, "rev-parse", "--abbrev-ref", "HEAD")
+    return nil unless res.success?
+    name = res.stdout.to_s.strip
+    (name.empty? || name == "HEAD") ? nil : name
+  end
+
+  # --- gitignore safety ------------------------------------------------------
+
+  # Ensure `entry` is present in `<repo>/.gitignore`, appending it once if absent
+  # (idempotent). Without this, the store worktrees that live UNDER the store git
+  # repo (~/.plastic/.worktrees/) get swept into the store commit by a `git add
+  # -A`, polluting the index with worktree gitlinks (observed during 73c1
+  # integration). Provisioning and cleanup both call this so the repos' indexes
+  # stay clean. Best-effort and non-raising: any failure is logged, never raised.
+  def ensure_gitignored(repo, entry, runner: ShellRunner.new)
+    return false if blank?(repo) || blank?(entry) || !Dir.exist?(repo)
+    gitignore = File.join(File.expand_path(repo), ".gitignore")
+    want = entry.to_s.strip
+
+    existing = File.exist?(gitignore) ? File.read(gitignore) : ""
+    present = existing.each_line.any? { |line| line.strip == want }
+    return true if present
+
+    File.open(gitignore, "a") do |io|
+      io.write("\n") unless existing.empty? || existing.end_with?("\n")
+      io.write("#{want}\n")
+    end
+    true
+  rescue StandardError => e
+    warn "plastic: ensure_gitignored(#{entry.inspect}) failed for #{repo.inspect}: #{e.message}"
+    false
   end
 
   # --- lock ------------------------------------------------------------------
