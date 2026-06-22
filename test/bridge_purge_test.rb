@@ -4,130 +4,178 @@ require "fileutils"
 require "json"
 require_relative "../scripts/lib/bridge"
 
-# Tests for the stale-bridge purge added in intent 67.
+# Tests for the terminal-state bridge purge (intent 80, replacing intent 67's
+# age window).
 #
-# The bridge file is ephemeral live-session state, not a continuation source
-# (an intent resumes from savepoint.md), so the purge rule is purely age-based:
-# a bridge older than PURGE_AGE_SECONDS (48h) is removed regardless of arm state;
-# anything newer is kept; the current session's own bridge is never removed.
+# A bridge is purged ONLY when its intent is terminal: its id is not in its
+# store's INDEX.md `## Active` block. An Active intent's bridge is kept (it is the
+# continuation signal and the anti-collision lock), and the current session's own
+# bridge is never purged. Malformed or store-less bridges are junk and purged.
 class BridgePurgeTest < Minitest::Test
-  AGE    = Bridge::PURGE_AGE_SECONDS
-  OLD    = AGE + 3600   # past the cutoff
-  RECENT = 60           # well within the cutoff
-
   def setup
     @store = Dir.mktmpdir("bridge-purge-store")
-    @intent_dir = File.join(@store, "67--demo")
+    @store = File.join(@store, "store")
+    FileUtils.mkdir_p(@store)
+    @intent_dir = File.join(@store, "80--demo")
     FileUtils.mkdir_p(@intent_dir)
-    File.write(File.join(@intent_dir, "67--demo.md"), "## Intent\nDemo\n")
+    File.write(File.join(@intent_dir, "80--demo.md"), "## Intent\nDemo\n")
     @tmp = Dir.mktmpdir("bridge-purge-tmp")
     @saved_plastic_tmp = ENV["PLASTIC_TMP"]
     ENV["PLASTIC_TMP"] = @tmp
   end
 
   def teardown
-    FileUtils.rm_rf(@store)
+    FileUtils.rm_rf(File.dirname(@store))
     FileUtils.rm_rf(@tmp)
     @saved_plastic_tmp.nil? ? ENV.delete("PLASTIC_TMP") : ENV["PLASTIC_TMP"] = @saved_plastic_tmp
   end
 
-  # Write a minimal valid bridge for `session`, backdated by `age_seconds`.
-  def seed_bridge(session, auto:, age_seconds:)
+  # Write a minimal valid bridge for `session` pointing at intent `id` in `store`.
+  def seed_bridge(session, id: "80", store: @store)
     data = {
       "session" => session,
-      "intent" => { "id" => "67", "dir" => "67--demo", "store" => @store, "name" => "demo" },
-      "build" => { "auto" => auto },
+      "intent" => { "id" => id, "dir" => "#{id}--demo", "store" => store, "name" => "demo" },
+      "build" => { "auto" => false },
     }
     Bridge.write(session, data)
-    age_file(Bridge.path(session), age_seconds)
     Bridge.path(session)
   end
 
-  def seed_raw(session, contents, age_seconds:)
+  def seed_raw(session, contents)
     p = Bridge.path(session)
     File.write(p, contents)
-    age_file(p, age_seconds)
     p
   end
 
-  def age_file(path, age_seconds)
-    t = Time.now - age_seconds
-    File.utime(t, t, path)
+  # Write an INDEX.md at the parent of @store with `ids` listed under ## Active.
+  def write_index_active(*ids)
+    lines = ["## Active"]
+    ids.each { |i| lines << "- [#{i} — Demo intent #{i}](store/#{i}--demo/#{i}--demo.md) — note" }
+    lines << ""
+    lines << "## Future"
+    lines << "_(none)_"
+    File.write(File.join(File.dirname(@store), "INDEX.md"), lines.join("\n") + "\n")
   end
 
-  def test_removes_old_disarmed
-    f = seed_bridge("stale", auto: false, age_seconds: OLD)
-    Bridge.purge_stale_bridges(session: "current")
+  # --- intent_active? --------------------------------------------------------
+
+  def test_intent_active_via_index_active_ids_seam
+    assert Bridge.intent_active?("80", store: @store, index_active_ids: ["80", "69"])
+    refute Bridge.intent_active?("80", store: @store, index_active_ids: ["69"])
+  end
+
+  def test_intent_active_reads_index_active_block
+    write_index_active("80")
+    assert Bridge.intent_active?("80", store: @store)
+    refute Bridge.intent_active?("99", store: @store)
+  end
+
+  def test_intent_active_false_when_index_missing
+    refute Bridge.intent_active?("80", store: @store)
+  end
+
+  def test_intent_active_only_scans_active_block
+    # An id in a later section (## Future) must NOT count as Active.
+    File.write(File.join(File.dirname(@store), "INDEX.md"), <<~IDX)
+      ## Active
+      _(none)_
+
+      ## Future
+      - [80 — parked](store/80--demo/80--demo.md) — note
+    IDX
+    refute Bridge.intent_active?("80", store: @store)
+  end
+
+  # --- purge_done_bridges ----------------------------------------------------
+
+  def test_purges_terminal_intent
+    write_index_active # nothing active
+    f = seed_bridge("terminal", id: "80")
+    Bridge.purge_done_bridges(session: "current")
     refute File.exist?(f)
   end
 
-  def test_removes_old_auto_armed
-    # Age wins over arm state: a 48h-old auto-armed bridge is an abandoned run,
-    # and continuation never relies on it, so it is purged.
-    f = seed_bridge("old-auto", auto: true, age_seconds: OLD)
-    Bridge.purge_stale_bridges(session: "current")
-    refute File.exist?(f)
-  end
-
-  def test_keeps_recent_auto_armed
-    f = seed_bridge("live", auto: true, age_seconds: RECENT)
-    Bridge.purge_stale_bridges(session: "current")
-    assert File.exist?(f)
-  end
-
-  def test_keeps_recent_non_auto
-    f = seed_bridge("recent", auto: false, age_seconds: RECENT)
-    Bridge.purge_stale_bridges(session: "current")
-    assert File.exist?(f)
+  def test_keeps_active_intent_via_index
+    write_index_active("80")
+    f = seed_bridge("live", id: "80")
+    Bridge.purge_done_bridges(session: "current")
+    assert File.exist?(f), "an Active intent's bridge must be kept"
   end
 
   def test_never_removes_current_session
-    f = seed_bridge("current", auto: false, age_seconds: OLD)
-    Bridge.purge_stale_bridges(session: "current")
+    write_index_active # nothing active, so the only safety left is current-session
+    f = seed_bridge("current", id: "80")
+    Bridge.purge_done_bridges(session: "current")
     assert File.exist?(f), "current session bridge must never be purged"
   end
 
-  def test_removes_unparseable_old
-    f = seed_raw("garbage-old", "}{not json", age_seconds: OLD)
-    Bridge.purge_stale_bridges(session: "current")
+  def test_purges_malformed_json
+    f = seed_raw("garbage", "}{not json")
+    Bridge.purge_done_bridges(session: "current")
     refute File.exist?(f)
   end
 
-  def test_keeps_unparseable_recent
-    f = seed_raw("garbage-new", "}{not json", age_seconds: RECENT)
-    Bridge.purge_stale_bridges(session: "current")
-    assert File.exist?(f)
+  def test_purges_bridge_missing_store
+    f = seed_raw("nostore", JSON.generate("session" => "nostore",
+                                          "intent" => { "id" => "80", "name" => "demo" }))
+    Bridge.purge_done_bridges(session: "current")
+    refute File.exist?(f), "a bridge with no intent.store is junk and purged"
   end
 
-  def test_enoent_midsweep_does_not_raise
-    seed_bridge("stale-a", auto: false, age_seconds: OLD)
-    seed_bridge("stale-b", auto: false, age_seconds: OLD)
-    Bridge.purge_stale_bridges(session: "current")
-    removed = nil
-    assert_silent { removed = Bridge.purge_stale_bridges(session: "current") }
-    assert_kind_of Array, removed
+  def test_purges_bridge_blank_id
+    f = seed_raw("noid", JSON.generate("session" => "noid",
+                                       "intent" => { "id" => "", "store" => @store }))
+    Bridge.purge_done_bridges(session: "current")
+    refute File.exist?(f), "a bridge with a blank intent.id is junk and purged"
   end
 
   def test_returns_removed_paths
-    f = seed_bridge("stale", auto: false, age_seconds: OLD)
-    keep = seed_bridge("live", auto: true, age_seconds: RECENT)
-    removed = Bridge.purge_stale_bridges(session: "current")
-    assert_includes removed, f
+    write_index_active("80")
+    keep = seed_bridge("live", id: "80")
+    gone = seed_bridge("terminal", id: "99")
+    removed = Bridge.purge_done_bridges(session: "current")
+    assert_includes removed, gone
     refute_includes removed, keep
   end
 
-  def test_arm_auto_purges_siblings
-    stale = seed_bridge("old-sibling", auto: false, age_seconds: OLD)
-    data = Bridge.arm_auto("armer", intent_id: "67", intent_dir: @intent_dir, store: @store, name: "demo")
-    refute File.exist?(stale), "arm_auto should purge stale siblings"
+  def test_enoent_midsweep_does_not_raise
+    write_index_active # nothing active
+    seed_bridge("stale-a", id: "80")
+    seed_bridge("stale-b", id: "80")
+    Bridge.purge_done_bridges(session: "current")
+    removed = nil
+    assert_silent { removed = Bridge.purge_done_bridges(session: "current") }
+    assert_kind_of Array, removed
+  end
+
+  def test_non_raising_on_bad_tmp
+    removed = nil
+    assert_silent do
+      removed = Bridge.purge_done_bridges(session: "current",
+                                          tmp: "/no/such/dir/at/all")
+    end
+    assert_kind_of Array, removed
+    assert_empty removed
+  end
+
+  # --- arm_auto / disarm_auto wiring -----------------------------------------
+
+  def test_arm_auto_purges_terminal_siblings
+    write_index_active # the sibling intent 99 is NOT active
+    stale = seed_bridge("old-sibling", id: "99")
+    data = Bridge.arm_auto("armer", intent_id: "80", intent_dir: @intent_dir,
+                           store: @store, name: "demo")
+    refute File.exist?(stale), "arm_auto should purge terminal siblings"
     assert File.exist?(Bridge.path(data["session"])), "armed bridge must survive"
   end
 
-  def test_disarm_auto_purges_siblings_and_keeps_self
-    Bridge.arm_auto("delivering", intent_id: "67", intent_dir: @intent_dir, store: @store, name: "demo")
-    stale = seed_bridge("old-sibling", auto: false, age_seconds: OLD)
+  def test_disarm_auto_purges_terminal_siblings_and_keeps_self
+    Bridge.arm_auto("delivering", intent_id: "80", intent_dir: @intent_dir,
+                    store: @store, name: "demo")
+    write_index_active # sibling 99 not active
+    stale = seed_bridge("old-sibling", id: "99")
     Bridge.disarm_auto("delivering")
-    refute File.exist?(stale), "disarm_auto should purge stale siblings"
+    refute File.exist?(stale), "disarm_auto should purge terminal siblings"
     self_bridge = Bridge.read("delivering")
     refute_nil self_bridge, "current bridge must remain readable after disarm"
     assert_equal false, self_bridge["build"]["auto"]

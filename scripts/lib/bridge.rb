@@ -18,13 +18,15 @@ module Bridge
   # (<id>--<slug>.md) is never sentineled; it is born complete.
   PLACEHOLDER_SENTINEL = "<!-- plastic:placeholder -->"
 
-  # Stale-bridge purge window (intent 67). The bridge file is ephemeral
-  # live-session gate state, NOT a continuation source: an intent is resumed from
-  # its savepoint.md ledger, never from a /tmp bridge. So any bridge older than
-  # this window is dead weight and safe to purge, regardless of arm state. No
-  # real session stays live for two days, so a 48h cutoff never removes a bridge
-  # an active run depends on.
-  PURGE_AGE_SECONDS = 48 * 3600   # 48 hours
+  # Bridge cleanup is terminal-state, not age-based (intent 80). A bridge is dead
+  # weight ONLY once its intent is terminal (no longer in its store's INDEX.md
+  # `## Active` block); such bridges are purged. An Active intent's bridge is kept
+  # unconditionally, because while the intent is live the bridge is still load-
+  # bearing: it is the continuation signal (a parked or interrupted run resumes
+  # from it) and the anti-collision lock (it keys the per-session statusline so
+  # parallel sessions do not overwrite each other). An age window was the wrong
+  # axis: it left dead bridges resident for ~2 days AND could reap bridges of
+  # interrupted-but-still-active intents, which are exactly the ones to preserve.
 
   def self.intent_file(intent_dir)
     dir_name = File.basename(intent_dir)
@@ -131,25 +133,62 @@ module Bridge
     pool.max_by { |c| c[:mtime] }&.fetch(:data)
   end
 
-  # --- Stale-bridge purge (intent 67) ---------------------------------------
-  #
-  # Remove stale tmp/plastic-*.json bridge files so discover_bridge's per-fire
-  # scan stays bounded. Best-effort and non-raising: returns the array of removed
-  # paths. Continuation does not depend on these files (an intent resumes from its
-  # savepoint.md ledger), so the only safety rule is age: a bridge older than
-  # max_age_seconds is purged regardless of arm state, while anything newer is kept
-  # (it may be a live run). The current session's own bridge is never purged
+  # --- Terminal-state bridge purge (intent 80) -------------------------------
+
+  # True iff the intent is Active in its store's INDEX.md. An INDEX.md lives at
+  # the PARENT of the store/ dir the bridge records, so we resolve it from the
+  # bridge's intent.store. Non-raising: any failure (missing/unreadable INDEX,
+  # bad arg) returns false, which means "not active" so the caller treats the
+  # bridge as purgeable. `index_active_ids` is a pure-data test seam: when an
+  # Array of id strings is supplied, membership is checked against it directly
+  # with no file read.
+  def self.intent_active?(intent_id, store:, index_active_ids: nil)
+    target = intent_id.to_s
+    return index_active_ids.include?(target) if index_active_ids.is_a?(Array)
+
+    index = File.join(File.dirname(store.to_s), "INDEX.md")
+    return false unless File.exist?(index)
+
+    in_active = false
+    File.foreach(index) do |line|
+      stripped = line.chomp
+      if stripped == "## Active"
+        in_active = true
+        next
+      end
+      next unless in_active
+      break if stripped.start_with?("## ") # next section ends the Active block
+      m = stripped.match(/^- \[(\S+) +—/)
+      return true if m && m[1] == target
+    end
+    false
+  rescue StandardError
+    false
+  end
+
+  # Remove tmp/plastic-*.json bridge files whose intent is terminal, so
+  # discover_bridge's per-fire scan stays bounded. Best-effort and non-raising:
+  # returns the array of removed paths. A bridge is purged when it cannot be
+  # parsed, has no intent.id, has no intent.store, or its intent is not Active in
+  # its store's INDEX.md. An Active intent's bridge is kept (continuation signal +
+  # anti-collision lock), and the current session's own bridge is never purged
   # (preserves the disarm_auto contract that it stays readable). Wired into
   # arm_auto and disarm_auto so both manual and auto delivery keep the temp dir
-  # clean.
-  def self.purge_stale_bridges(session:, now: Time.now, max_age_seconds: PURGE_AGE_SECONDS,
-                               tmp: tmp_dir)
+  # clean at deterministic work boundaries.
+  def self.purge_done_bridges(session:, tmp: tmp_dir)
     current = path(session, tmp: tmp)
     removed = []
     Dir.glob(File.join(tmp, "plastic-*.json")).each do |f|
       next if f == current
       begin
-        next if (now - File.mtime(f)) < max_age_seconds
+        data = JSON.parse(File.read(f)) rescue nil
+        keep = false
+        if data
+          id = data.dig("intent", "id")
+          store = data.dig("intent", "store")
+          keep = !blank?(id) && !blank?(store) && intent_active?(id, store: store)
+        end
+        next if keep
         File.delete(f)
         removed << f
       rescue Errno::ENOENT
@@ -161,7 +200,7 @@ module Bridge
     end
     removed
   rescue => e
-    $stderr.puts "plastic: purge_stale_bridges failed: #{e.message}"
+    $stderr.puts "plastic: purge_done_bridges failed: #{e.message}"
     removed || []
   end
 
@@ -401,7 +440,7 @@ module Bridge
     data = derive(key, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name)
     data["build"]["auto"] = true
     write(key, data)
-    purge_stale_bridges(session: key)
+    purge_done_bridges(session: key)
     data
   end
 
@@ -412,7 +451,7 @@ module Bridge
     data["build"] ||= {}
     data["build"]["auto"] = false
     write(session, data)
-    purge_stale_bridges(session: session)
+    purge_done_bridges(session: session)
     data
   end
 

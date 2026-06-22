@@ -170,19 +170,23 @@ directory, breaking ties by newest mtime. The `/tmp` directory is injectable so 
 testable against a fake directory.
 
 Because that scan parses every `plastic-*.json` on each fire, the temp directory has to stay
-small or the per-fire cost grows without bound (intent 67). `Bridge.purge_stale_bridges` runs
+small or the per-fire cost grows without bound (intent 67). `Bridge.purge_done_bridges` runs
 on `arm_auto` and on `disarm_auto`, so every auto run cleans up dead bridges at its start and
-at delivery. The rule is purely age-based, and it can be that simple because the bridge file is
-not a continuation source: a paused intent is resumed from its `savepoint.md` ledger (see the
-continue path below), never from a `/tmp` bridge. So the purge keeps the current session's own
-bridge (preserving the `disarm_auto` contract that it stays readable) and any bridge written
-within the last 48 hours (it may belong to a live run), and removes everything older regardless
-of arm state. No real session stays live for two days, so the cutoff never deletes a bridge an
-active run depends on, and an abandoned auto run leaves nothing behind. The sweep is best-effort
-and never raises (a file that another job already deleted, or any other error, is swallowed), so
-it can never break arming or delivery. The age cutoff is a method argument with a constant
-default (`PURGE_AGE_SECONDS`), and the temp directory is injectable, so the rule is testable
-hermetically.
+at delivery. The rule is terminal-state, not age-based (intent 80). A bridge is purged only when
+its intent is terminal: its id is no longer in its store's `INDEX.md` `## Active` block.
+`Bridge.intent_active?` resolves that INDEX from the bridge's own `intent.store` (the INDEX lives
+at the parent of the `store/` directory), scans only the `## Active` section, and reports whether
+the bridge's `intent.id` is listed. An Active intent's bridge is kept unconditionally, because
+while the intent is live the bridge is load-bearing: it is the continuation signal (a parked or
+interrupted run resumes from it) and the anti-collision lock that keys the per-session statusline.
+The current session's own bridge is never purged (preserving the `disarm_auto` contract that it
+stays readable), and a bridge that cannot be parsed or that carries no `intent.id` or
+`intent.store` is treated as junk and removed. An age window was the wrong axis: it left dead
+bridges resident for up to two days and could reap bridges of interrupted-but-still-active
+intents, which are exactly the ones to preserve. The sweep is best-effort and never raises (a
+file that another job already deleted, or any other error, is swallowed), so it can never break
+arming or delivery. `intent_active?` accepts an injectable `index_active_ids:` array and the temp
+directory is injectable, so the rule is testable hermetically.
 
 The `plastic-continuing` skill consumes that ledger on the resume path (intent 36): when the
 user or an agent asks to continue a specific intent, the skill reads the last ledger line as
