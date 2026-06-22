@@ -537,6 +537,114 @@ module Bridge
       "(blocked edit: #{file_abs})"
   end
 
+  # --- Worktree isolation gate (intent 73c2) ---
+
+  # Returns a reason String to BLOCK, or nil to ALLOW. Two independent rules,
+  # both fail-open by construction:
+  #
+  #   1. When the bridge has a provisioned code worktree, a code edit (a target
+  #      outside ~/.plastic and outside this intent's store dir) MUST land inside
+  #      worktree["code"]; otherwise BLOCK and name the expected worktree path.
+  #   2. When the target lives inside ANOTHER intent's store dir whose bridge lock
+  #      is held by a LIVE non-owner session, BLOCK (non-owner edit to an active
+  #      intent).
+  #
+  # Fails open (returns nil) when provisioned is false (non-git / global-only) or
+  # the bridge carries no worktree/lock blocks. Logs nothing on the allow path.
+  def self.worktree_gate_decision(bridge_data, file_path, home: Dir.home, current_session: nil)
+    return nil unless bridge_data.is_a?(Hash)
+    return nil if blank?(file_path)
+
+    file_abs = File.expand_path(file_path.to_s)
+    plastic_home = File.expand_path(File.join(home, ".plastic"))
+    under_plastic = file_abs == plastic_home || file_abs.start_with?("#{plastic_home}/")
+
+    intent_info = bridge_data["intent"] || {}
+    store = intent_info["store"]
+    dir = intent_info["dir"]
+    intent_dir_abs = (store && dir) ? File.expand_path("#{store}/#{dir}") : nil
+    under_own_intent = intent_dir_abs &&
+                       (file_abs == intent_dir_abs || file_abs.start_with?("#{intent_dir_abs}/"))
+
+    # Rule 1: provisioned code worktree confines project-code edits.
+    worktree = bridge_data["worktree"] || {}
+    if worktree["provisioned"] == true
+      code = worktree["code"].to_s
+      # Project code = outside ~/.plastic and outside this intent's store dir.
+      is_project_code = !under_plastic && !under_own_intent
+      if is_project_code && !blank?(code)
+        code_abs = File.expand_path(code)
+        inside_code = file_abs == code_abs || file_abs.start_with?("#{code_abs}/")
+        unless inside_code
+          id = intent_info["id"]
+          return "intent #{id} is isolated to its worktree — edit project code " \
+                 "inside #{code_abs}, not the shared checkout. (blocked edit: #{file_abs})"
+        end
+      end
+    end
+
+    # Rule 2: do not edit another intent's locked, live store dir.
+    if under_plastic
+      reason = non_owner_store_edit_reason(file_abs, plastic_home, intent_dir_abs,
+                                           home: home, current_session: current_session,
+                                           own_session: bridge_data["session"])
+      return reason if reason
+    end
+
+    nil
+  end
+
+  # Helper for rule 2. A store dir is `<plastic_home>/store/{id}--{slug}` (global)
+  # or `<plastic_home>/projects/{slug}/store/{id}--{slug}` (project). When the
+  # edit target sits inside such a dir that is NOT this intent's own dir, and a
+  # live non-owner session holds that intent's bridge lock, BLOCK.
+  def self.non_owner_store_edit_reason(file_abs, plastic_home, own_intent_dir_abs,
+                                       home:, current_session:, own_session:)
+    return nil if own_intent_dir_abs &&
+                  (file_abs == own_intent_dir_abs || file_abs.start_with?("#{own_intent_dir_abs}/"))
+
+    parsed = parse_store_target(file_abs, plastic_home)
+    return nil unless parsed
+
+    session = blank?(current_session) ? own_session : current_session
+    held = Worktree.lock_held_by_other?(
+      intent_id: parsed[:id], store: parsed[:store],
+      current_session: session, home: home,
+    )
+    return nil unless held
+
+    "intent #{parsed[:id]} is owned by another live session — its delivery lock " \
+      "is held elsewhere. Back off; do not edit #{file_abs}."
+  end
+
+  # Resolve an edit target inside a store to {id:, store:} for the intent dir it
+  # belongs to, or nil if the path is not inside an `{id}--{slug}` intent dir.
+  def self.parse_store_target(file_abs, plastic_home)
+    rels = []
+    global_store = File.join(plastic_home, "store")
+    if file_abs.start_with?("#{global_store}/")
+      rels << [file_abs[(global_store.length + 1)..], global_store]
+    end
+    projects = File.join(plastic_home, "projects")
+    if file_abs.start_with?("#{projects}/")
+      tail = file_abs[(projects.length + 1)..].to_s
+      parts = tail.split(File::SEPARATOR)
+      if parts.length >= 2 && parts[1] == "store"
+        pstore = File.join(projects, parts[0], "store")
+        rels << [file_abs[(pstore.length + 1)..], pstore]
+      end
+    end
+
+    rels.each do |rel, store_dir|
+      next if blank?(rel)
+      first = rel.split(File::SEPARATOR).first.to_s
+      idx = first.index("--")
+      next unless idx && idx > 0
+      return { id: first[0...idx], store: store_dir }
+    end
+    nil
+  end
+
   # --- Bash-edit gate (intent 27a) ---
 
   # Extract the set of file paths a Bash command writes to. Conservative by
