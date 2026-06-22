@@ -46,7 +46,21 @@ class RebuildGraph
   def initialize(plastic_home: DEFAULT_HOME, dry_run: false, audit_path: nil)
     @plastic_home = plastic_home
     @dry_run = dry_run
-    @audit_path = audit_path || File.join(plastic_home, DEFAULT_AUDIT_REL)
+
+    # A dry run must NOT stomp the canonical audit (the spec/checklist tell humans
+    # to run --dry-run to review the plan). When no explicit --audit-path is given,
+    # a dry run writes to a distinct `.dry-run.md` sibling, leaving the canonical
+    # real-run audit untouched. An explicit --audit-path is always honored verbatim
+    # (it is the caller's responsibility, and tests inject it).
+    canonical = File.join(plastic_home, DEFAULT_AUDIT_REL)
+    @audit_path =
+      if audit_path
+        audit_path
+      elsif dry_run
+        canonical.sub(/\.md\z/, ".dry-run.md")
+      else
+        canonical
+      end
   end
 
   attr_reader :plastic_home, :dry_run, :audit_path

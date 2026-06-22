@@ -172,6 +172,46 @@ class RebuildGraphTest < Minitest::Test
     assert_includes File.read(@audit), "(DRY RUN)"
   end
 
+  # Regression (final-gate review): --dry-run must NOT overwrite the canonical
+  # audit. With no explicit --audit-path, a real run writes the canonical
+  # resources/audit--graph-rebuild.md; a dry run writes a .dry-run.md sibling and
+  # leaves the canonical file byte-identical (or absent if never run for real).
+  def canonical_audit
+    File.join(@home, RebuildGraph::DEFAULT_AUDIT_REL)
+  end
+
+  def dry_run_audit
+    canonical_audit.sub(/\.md\z/, ".dry-run.md")
+  end
+
+  def run_tool_default_audit(dry_run: false)
+    # No audit_path injected → exercises the default canonical/.dry-run routing.
+    RebuildGraph.new(plastic_home: @home, dry_run: dry_run).run
+  end
+
+  def test_dry_run_does_not_overwrite_canonical_audit
+    # Real run first: establishes the canonical audit with the 4 changes.
+    run_tool_default_audit
+    assert File.exist?(canonical_audit), "real run writes the canonical audit"
+    canonical_before = File.read(canonical_audit)
+    assert_includes canonical_before, "11.sources: global:24 → 22c"
+    refute_includes canonical_before, "(DRY RUN)", "canonical is a real-run audit"
+
+    # Now a dry run must leave the canonical file untouched and write the sibling.
+    run_tool_default_audit(dry_run: true)
+    assert_equal canonical_before, File.read(canonical_audit),
+                 "dry run must not modify the canonical audit"
+    assert File.exist?(dry_run_audit), "dry run writes the .dry-run.md sibling"
+    assert_includes File.read(dry_run_audit), "(DRY RUN)"
+  end
+
+  def test_explicit_audit_path_honored_even_in_dry_run
+    # An explicit --audit-path always wins (the existing tests rely on this).
+    RebuildGraph.new(plastic_home: @home, dry_run: true, audit_path: @audit).run
+    assert File.exist?(@audit)
+    refute File.exist?(dry_run_audit), "explicit path is used verbatim, no sibling"
+  end
+
   def test_idempotent_second_run_is_noop
     run_tool
     snapshot = file_snapshot
