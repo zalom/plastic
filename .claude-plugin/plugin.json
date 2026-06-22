@@ -1,7 +1,7 @@
 {
   "name": "plastic",
   "description": "Intent-driven state management for AI coding sessions. Neuroplasticity for your codebase.",
-  "version": "1.0.0-beta.7",
+  "version": "1.0.0-beta.8",
   "author": {
     "name": "Zlatko Alomerovic",
     "email": "zlatko.alomerovic@gmail.com"
