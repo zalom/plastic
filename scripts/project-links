@@ -143,18 +143,18 @@ class ProjectLinks
       end
 
       content = File.read(node[:path])
-      had_links = LinksSection.links_heading?(IntentValidator.body_of(content))
 
       begin
+        had_links = LinksSection.links_heading?(IntentValidator.body_of(content))
         section_text = LinksProjection.section(
           sources: node[:sources], chain: node[:chain], resolve: resolve
         )
-      rescue LinksProjection::UnresolvedRef => e
+        updated = LinksSection.rewrite(content, section_text)
+      rescue LinksProjection::UnresolvedRef, LinksSection::AmbiguousLinks => e
         entries << { id: id, status: :failed, error: e.message }
         next
       end
 
-      updated = LinksSection.rewrite(content, section_text)
       if updated == content
         entries << { id: id, status: :unchanged }
         next
@@ -170,17 +170,15 @@ class ProjectLinks
     { entries: entries, counts: counts }
   end
 
-  # Pull the current `## Links` section text (heading to next `## ` or EOF) from a
-  # file's content, for the audit sample. Returns "" when absent.
+  # Pull the current REAL `## Links` section text (fence-aware) from a file's
+  # content, for the audit sample. Returns "" when absent. Delegates to the shared
+  # LinksSection.extract_section so the audit, the rewriter, and the doctor check
+  # all agree on the section location (and never match a heading inside an example
+  # code fence).
   def extract_links(content)
-    body = IntentValidator.body_of(content)
-    lines = body.lines
-    start = lines.index { |l| l.rstrip == LinksSection::HEADING }
-    return "" if start.nil?
-
-    rest = lines[(start + 1)..] || []
-    stop = rest.index { |l| l.start_with?("## ") }
-    LinksSection::HEADING + "\n" + (stop ? rest[0...stop] : rest).join
+    LinksSection.extract_section(IntentValidator.body_of(content))
+  rescue LinksSection::AmbiguousLinks
+    "(ambiguous: multiple ## Links headings)"
   end
 
   # Always write the audit (even in dry-run, so the human reviews the plan).

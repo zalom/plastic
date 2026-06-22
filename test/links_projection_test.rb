@@ -97,4 +97,21 @@ class LinksProjectionTest < Minitest::Test
     text = LinksProjection.section(sources: ["40"], chain: ["40"], resolve: resolver)
     assert_equal 1, text.scan("40--store-graph").size
   end
+
+  # REGRESSION (intent 72): dedup must be by RESOLVED target, not the raw ref
+  # string. The same intent referenced as a bare id in sources AND as `store:id` in
+  # chain (e.g. via a relocation) resolves to the SAME target and must render once.
+  def test_dedup_by_resolved_target_not_raw_ref
+    aliased = ->(ref) do
+      case ref
+      when "40", "plastic:40"
+        { target: "40--store-graph", label: "Build the store graph" }
+      end
+    end
+    text = LinksProjection.section(sources: ["40"], chain: ["plastic:40"], resolve: aliased)
+    assert_equal 1, text.scan("40--store-graph").size,
+                 "the same resolved target must render exactly once"
+    # Sources win: it appears once, with no duplicate chain entry.
+    assert_equal "## Links\n- [[40--store-graph|Build the store graph]]\n", text
+  end
 end

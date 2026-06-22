@@ -545,12 +545,15 @@ class Doctor
 
       begin
         expected = LinksProjection.section(sources: node[:sources], chain: node[:chain], resolve: resolve)
+        actual = actual_links_section(node[:path])
       rescue LinksProjection::UnresolvedRef => e
         findings << "#{node[:id]} ## Links projection failed: #{e.message}"
         next
+      rescue LinksSection::AmbiguousLinks => e
+        findings << "#{node[:id]} ## Links ambiguous: #{e.message}"
+        next
       end
 
-      actual = actual_links_section(node[:path])
       next if actual == expected
 
       findings << "#{node[:id]} ## Links does not match its frontmatter projection (membership/ordering drift)"
@@ -563,25 +566,14 @@ class Doctor
     )
   end
 
-  # Extract a file's ACTUAL `## Links` section text (heading through the next
-  # top-level `## ` heading or EOF), normalized to the canonical block shape the
-  # projection emits: heading line + entry lines + a single trailing newline.
-  # Returns "" when the section is absent (which differs from any real projection,
-  # so a missing section is a finding).
+  # Extract a file's ACTUAL REAL `## Links` section text (FENCE-AWARE), normalized
+  # to the canonical block shape the projection emits. Delegates to the shared
+  # LinksSection.extract_section so the doctor check and the project-links tool
+  # agree on the section location and never match a `## Links` heading inside an
+  # example code fence. Returns "" when the section is absent (which differs from
+  # any real projection, so a missing section is a finding).
   def actual_links_section(path)
-    body = IntentValidator.body_of(File.read(path))
-    lines = body.lines
-    start = lines.index { |l| l.rstrip == LinksSection::HEADING }
-    return "" if start.nil?
-
-    rest = lines[(start + 1)..] || []
-    stop = rest.index { |l| l.start_with?("## ") }
-    section = rest[0...(stop || rest.length)]
-    # Drop trailing blank lines (the separator before a following section) so the
-    # comparison matches the projection's single-trailing-newline shape.
-    section = section.join.sub(/\n+\z/, "\n")
-    section = "" if section.strip.empty?
-    "#{LinksSection::HEADING}\n#{section}"
+    LinksSection.extract_section(IntentValidator.body_of(File.read(path)))
   end
 
   # Build the relocation map + cross-store store_index from ALL stores, then for

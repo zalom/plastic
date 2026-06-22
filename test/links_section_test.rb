@@ -110,4 +110,78 @@ class LinksSectionTest < Minitest::Test
     out = LinksSection.rewrite(content, SECTION)
     assert out.end_with?(SECTION), "Links section ends the body when it is last"
   end
+
+  # REGRESSION (intent 72 corruption fix): a ```markdown fence that CONTAINS a
+  # `## Links` heading and example links, followed by the REAL `## Links` section.
+  # The fence and its contents must stay byte-identical, surrounding prose must be
+  # intact, and ONLY the real `## Links` section may be rewritten. This is the exact
+  # shape that corrupted plastic:4 (the example heading was matched and the real
+  # section was left stale, deleting the closing fence + prose).
+  FENCED_EXAMPLE = <<~CTX
+    Current links use relative markdown paths in `## Links`:
+    ```markdown
+    ## Links
+    - [[1b1a]] Extract Plastic plugin — parent intent
+    ```
+
+    Options under evaluation: A, B, C.
+  CTX
+
+  def fenced_file(real_links)
+    FM + "\n" \
+      "# Title\n\n" \
+      "## Context\n\n#{FENCED_EXAMPLE}\n" \
+      "## Insights\nThe insights body.\n\n" \
+      "#{real_links}"
+  end
+
+  def test_fenced_example_links_heading_is_ignored
+    content = fenced_file("## Links\n- [[9--nine]] stale real link\n")
+    out = LinksSection.rewrite(content, SECTION)
+
+    # The fenced example block is byte-identical (closing ``` intact, example
+    # heading + example link untouched).
+    assert_includes out, "```markdown\n## Links\n- [[1b1a]] Extract Plastic plugin — parent intent\n```\n"
+    # The surrounding Context prose survives verbatim.
+    assert_includes out, "Options under evaluation: A, B, C.\n"
+    # The REAL `## Links` section was rewritten to the canonical projection.
+    assert_includes out, SECTION
+    refute_includes out, "stale real link"
+    # Exactly one REAL (out-of-fence) `## Links` heading remains.
+    assert_equal 1, LinksSection.real_links_heading_indices(IntentValidator.body_of(out)).size
+  end
+
+  def test_fenced_only_no_real_links_inserts_canonical_section
+    # An example fence with a `## Links` heading but NO real section: the rewriter
+    # must INSERT a real section at end-of-body, leaving the fence byte-identical.
+    no_real = FM + "\n# Title\n\n## Context\n\n#{FENCED_EXAMPLE}\n## Insights\nx.\n"
+    out = LinksSection.rewrite(no_real, SECTION)
+    assert_includes out, "```markdown\n## Links\n- [[1b1a]] Extract Plastic plugin — parent intent\n```\n"
+    assert out.rstrip.end_with?(SECTION.rstrip), "real ## Links inserted at end-of-body"
+    assert_equal 1, LinksSection.real_links_heading_indices(IntentValidator.body_of(out)).size
+  end
+
+  def test_fenced_example_is_idempotent
+    content = fenced_file("## Links\n- [[9--nine]] stale\n")
+    once = LinksSection.rewrite(content, SECTION)
+    twice = LinksSection.rewrite(once, SECTION)
+    assert_equal once, twice, "second rewrite over a fenced-example file is a no-op"
+  end
+
+  def test_multiple_real_links_headings_fail_loud
+    # Two REAL `## Links` headings (outside any fence) must raise rather than guess.
+    body = FM + "\n## Links\n- [[2]] a\n\n## Context\nx\n\n## Links\n- [[3]] b\n"
+    assert_raises(LinksSection::AmbiguousLinks) do
+      LinksSection.rewrite(body, SECTION)
+    end
+  end
+
+  def test_extract_section_is_fence_aware
+    content = fenced_file("## Links\n- [[9--nine]] stale\n")
+    body = IntentValidator.body_of(content)
+    extracted = LinksSection.extract_section(body)
+    # Extracts the REAL section, not the fenced example.
+    assert_includes extracted, "[[9--nine]] stale"
+    refute_includes extracted, "1b1a"
+  end
 end

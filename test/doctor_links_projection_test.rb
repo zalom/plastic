@@ -113,4 +113,49 @@ class DoctorLinksProjectionTest < Minitest::Test
     scoped = links_check(scopes: ["global"])
     assert_equal "pass", scoped[:status]
   end
+
+  # Write an intent whose Context carries a ```markdown fence CONTAINING a
+  # `## Links` heading, with the REAL `## Links` as the final section.
+  def write_fenced_intent(basename, id:, intent:, sources:, chain:, real_links:)
+    dir = File.join(plastic_store, basename)
+    FileUtils.mkdir_p(dir)
+    fm = +"---\nid: \"#{id}\"\nintent: \"#{intent}\"\n"
+    fm << "sources: #{sources.inspect}\nchain: #{chain.inspect}\n"
+    fm << "created: 2026-06-01\nauthor: t\ntags: [t]\n---\n\n"
+    fm << "## Intent\nb\n\n## Context\n\nExample:\n```markdown\n## Links\n- [[1b1a]] old example\n```\n\n"
+    fm << real_links
+    File.write(File.join(dir, "#{basename}.md"), fm)
+  end
+
+  # REGRESSION (intent 72 corruption fix): the check must compare against the REAL
+  # `## Links` section, not the heading inside the fenced example. With a CORRECTLY
+  # projected real section, the check is GREEN despite the fenced example heading.
+  def test_fenced_example_heading_does_not_create_false_finding
+    correct = "## Links\n- [[40--store-graph|Build the store graph]]\n"
+    # Seed the target referenced by the real section.
+    write_intent(plastic_store, "40--store-graph", id: "40", intent: "Build the store graph",
+                 sources: [], chain: [],
+                 links: "## Links\n<!-- No sources or chain; this intent has no graph edges to project. -->\n")
+    write_fenced_intent("7--fenced", id: "7", intent: "Fenced",
+                        sources: ["40"], chain: [], real_links: correct)
+
+    check = links_check
+    assert_equal "pass", check[:status],
+                 "the fenced example heading must not be treated as the real section"
+  end
+
+  # When the REAL section under the fence is stale, the check still flags it (the
+  # fence does not hide a genuinely-drifted real section).
+  def test_fenced_file_with_stale_real_section_is_flagged
+    write_intent(plastic_store, "40--store-graph", id: "40", intent: "Build the store graph",
+                 sources: [], chain: [],
+                 links: "## Links\n<!-- No sources or chain; this intent has no graph edges to project. -->\n")
+    write_fenced_intent("7--fenced", id: "7", intent: "Fenced",
+                        sources: ["40"], chain: [],
+                        real_links: "## Links\n- [[9--nine]] stale\n")
+
+    check = links_check
+    assert_equal "warn", check[:status]
+    assert(check[:details].any? { |d| d.start_with?("7 ## Links") })
+  end
 end

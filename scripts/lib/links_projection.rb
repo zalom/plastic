@@ -56,15 +56,19 @@ module LinksProjection
     src = Array(sources).map(&:to_s)
     chn = Array(chain).map(&:to_s)
 
-    # Defensive: I3 keeps an id in sources only, but never let a ref appear in both
-    # groups in the projection. Sources win (formative edge), order preserved.
-    chn -= src
+    # Resolve EVERY ref to its { target:, label: } first, then dedup by the RESOLVED
+    # target (not the raw ref string). This is load-bearing: the same intent may be
+    # referenced as a bare id in one group and as `store:id` in another (or via a
+    # relocation), which dedups identically only AFTER resolution. Sources win
+    # (formative edge), and frontmatter order is preserved within each group.
+    seen = {}
+    rendered = []
+    src.each { |ref| add_entry(ref, resolve, seen, rendered) }
+    chn.each { |ref| add_entry(ref, resolve, seen, rendered) }
 
-    return empty_section if src.empty? && chn.empty?
+    return empty_section if rendered.empty?
 
-    lines = ["#{HEADING}\n"]
-    (src + chn).each { |ref| lines << "#{entry(ref, resolve)}\n" }
-    lines.join
+    (["#{HEADING}\n"] + rendered.map { |line| "#{line}\n" }).join
   end
 
   # PURE. The canonical empty-state section: heading + the single comment line.
@@ -72,14 +76,32 @@ module LinksProjection
     "#{HEADING}\n#{EMPTY_COMMENT}\n"
   end
 
-  # PURE. Render one entry line `- [[<target>|<label>]]` from a resolved ref.
-  # Raises UnresolvedRef when the resolver returns nothing usable.
-  def entry(ref, resolve)
+  # Resolve `ref`, render its entry, and append it to `rendered` UNLESS its resolved
+  # target was already emitted (dedup by resolved target, first-seen wins so sources
+  # precede chain). Mutates `seen` and `rendered`. Raises UnresolvedRef on a miss.
+  def add_entry(ref, resolve, seen, rendered)
+    target, label = resolve_entry(ref, resolve)
+    return if seen.key?(target)
+
+    seen[target] = true
+    rendered << "- [[#{target}|#{label}]]"
+  end
+
+  # PURE. Resolve one ref to [target, label]. Raises UnresolvedRef when the
+  # resolver returns nothing usable.
+  def resolve_entry(ref, resolve)
     resolved = resolve.call(ref)
     target = resolved.is_a?(Hash) ? resolved[:target] || resolved["target"] : nil
     raise UnresolvedRef, ref if target.nil? || target.to_s.strip.empty?
 
     label = (resolved[:label] || resolved["label"]).to_s.strip
+    [target.to_s, label]
+  end
+
+  # PURE. Render one entry line `- [[<target>|<label>]]` from a single ref. Kept for
+  # callers/tests that render one entry; #section uses add_entry for dedup.
+  def entry(ref, resolve)
+    target, label = resolve_entry(ref, resolve)
     "- [[#{target}|#{label}]]"
   end
 
