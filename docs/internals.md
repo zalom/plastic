@@ -357,8 +357,47 @@ one shared definition of "born complete" that creation and diagnosis both consul
   plus the create gate share this one definition. See the sanctioned-creation-path
   section below.
 - **Scope boundary**: this is per-intent frontmatter and section validity only.
-  Store-wide `sources`/`chain` symmetry across intents is out of scope and owned by
-  intent 49.
+  Store-wide `sources`/`chain` symmetry across intents is owned by intent 49 (below).
+
+### store-wide graph rebuild (intent 49)
+
+Per-intent validation cannot see asymmetry between intents, so the cross-intent
+`sources`/`chain` graph is maintained by a separate, pure-logic-plus-IO pair:
+
+- **`scripts/lib/graph_rebuild.rb`** (pure `GraphRebuild`): a relocation-map builder
+  + cross-store resolver, and the per-store rebuild transform. `build_relocation_map`
+  parses every store's `## Relocated` log (both the `global:24 → project:22c` form
+  and the backtick bare-id `1b1a1 → 41` form), collapses multi-hop chains to their
+  final hop, and is cycle-guarded. `resolve_ref` consults that map BEFORE direct id
+  resolution, so a recorded relocation always wins over a coincidentally-reused id.
+  This is the **named id-reuse hazard**: `plastic:11.sources` carried `global:24`,
+  whose target was relocated to `22c`, but a brand-new unrelated `global:24`
+  (visual-ui-layer) was later created. Direct resolution would silently accept the
+  impostor; relocation-first repoints it to bare `22c`. `rebuild_store` applies the
+  load-bearing order dedupe -> I3 (formative edge wins, dropped from chain) ->
+  cross-store resolve (repoint / collapse-to-bare-same-store / drop-dead) -> I1
+  in-store backlinks, while I2 relational forward links are never stripped and no
+  reciprocal source is ever synthesized. It is a deterministic fixpoint: a second
+  pass yields zero changes.
+- **`scripts/lib/frontmatter_writer.rb`** (pure `FrontmatterWriter`): a minimal,
+  style-preserving rewrite of just the `sources:`/`chain:` arrays in a content
+  string. It detects flow (`["40"]`) vs block (`- '1a'`) style per array and
+  preserves it, leaves every other key and the whole body byte-identical, never
+  touches `## Links` (that projection is intent 72), and is a no-op when the arrays
+  are unchanged.
+- **`scripts/rebuild-graph`** (executable IO shell, DI `--plastic-home`/`--dry-run`/
+  `--audit-path`): loads the three stores, builds the maps, runs the transform per
+  store, emits a per-store before/after audit grouped by kind (dedupes, I3
+  resolutions, I1 backlinks, cross-store repoints/collapses, drops), then writes the
+  changed frontmatter back. Pure Ruby (no bash). Never runs git; `~/.plastic` is
+  committed by hand and never pushed.
+- **Doctor's `graph_cross_store_resolution` check**: the i1/i3/i4 checks
+  (`graph_invariant_checks`) deliberately treat a `store:id` ref as out-of-scope and
+  validate only its shape, so a well-formed ref at a relocated or deleted target was
+  invisible. The new check RESOLVES every cross-store ref against the full store
+  family (relocation-first) even under `--store` scoping (only the REPORTED findings
+  are filtered to the scoped origin), flagging dead and relocated-stale refs
+  alongside i1/i3/i4. Its fix hint points at `scripts/rebuild-graph`.
 
 ## sanctioned creation path (intent 60b)
 

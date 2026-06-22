@@ -26,6 +26,9 @@ require "fileutils"
 require "date"
 require_relative "lib/bridge"
 require_relative "lib/intent_validator"
+require_relative "lib/graph_rebuild"
+require_relative "lib/links_projection"
+require_relative "lib/links_section"
 
 # --- Explicit flag parsing (no eval, no global injection) ------------------
 
@@ -106,25 +109,119 @@ def add_to_chain(file_path, new_id)
   File.write(file_path, ["", new_fm, parts[2]].join("---"))
 end
 
-# Append a wikilink line under the file's `## Links` section, idempotently.
-def append_link(file_path, link_line)
-  return unless File.exist?(file_path)
-  content = File.read(file_path)
-  return if content.include?(link_line)
-
-  lines = content.lines
-  idx = lines.index { |l| l.strip == "## Links" }
-  return unless idx
-
-  insert_at = lines.length
-  ((idx + 1)...lines.length).each do |j|
-    if lines[j].strip.start_with?("## ")
-      insert_at = j
-      break
-    end
+# Derive [plastic_home, referer_store_key] from a store directory path so the
+# cross-store resolver (shared with project-links and the doctor check) can be
+# built. A global store is `<home>/store` (key "global"); a project store is
+# `<home>/projects/<slug>/store` (key "project:<slug>"). Returns
+# [nil, "global"] only if the layout is unrecognized, in which case Links
+# projection falls back to single-store resolution rooted at this store.
+def store_context(store)
+  store = File.expand_path(store)
+  parent = File.dirname(store)               # `<home>` or `<home>/projects/<slug>`
+  if File.basename(store) == "store" && File.basename(File.dirname(parent)) == "projects"
+    slug = File.basename(parent)
+    home = File.dirname(File.dirname(parent)) # strip projects/<slug>
+    [home, "project:#{slug}"]
+  elsif File.basename(store) == "store"
+    [parent, "global"]                        # `<home>/store`
+  else
+    [parent, "global"]
   end
-  lines.insert(insert_at, "#{link_line}\n")
-  File.write(file_path, lines.join)
+end
+
+# The in-scope stores under `plastic_home`, each { key:, store: }. Mirrors
+# project-links/RebuildGraph#stores so cross-store resolution spans the family.
+def family_stores(plastic_home)
+  list = []
+  global_store = File.join(plastic_home, "store")
+  list << { key: "global", store: global_store } if File.directory?(global_store)
+  %w[plastic knowdb].each do |slug|
+    store = File.join(plastic_home, "projects", slug, "store")
+    list << { key: "project:#{slug}", store: store } if File.directory?(store)
+  end
+  list
+end
+
+# Build the cross-store maps the LinksProjection resolver needs:
+#   store_index    => { store_key => [bare ids] }
+#   node_index     => { store_key => { id => { basename:, label: } } }
+#   relocation_map => from GraphRebuild.build_relocation_map over every INDEX.md
+# `fallback_store` is the store the new intent lives in; it is always included so
+# resolution works even for a brand-new store with no INDEX.md yet.
+def build_cross_store_maps(plastic_home, fallback_store_key, fallback_store_dir)
+  stores = family_stores(plastic_home)
+  # Ensure the fallback store is represented even if family discovery missed it.
+  unless stores.any? { |s| s[:key] == fallback_store_key }
+    stores << { key: fallback_store_key, store: fallback_store_dir }
+  end
+
+  store_index = Hash.new { |h, k| h[k] = [] }
+  node_index = Hash.new { |h, k| h[k] = {} }
+  index_texts = {}
+
+  stores.each do |s|
+    next unless File.directory?(s[:store])
+
+    Dir.children(s[:store]).reject { |e| e.start_with?(".") }.sort.each do |entry|
+      dir = File.join(s[:store], entry)
+      next unless File.directory?(dir)
+
+      md = File.join(dir, "#{entry}.md")
+      next unless File.exist?(md)
+
+      fm = IntentValidator.parse_frontmatter(md)
+      next unless fm.is_a?(Hash) && fm["id"]
+
+      id = fm["id"].to_s
+      store_index[s[:key]] << id
+      node_index[s[:key]][id] = { basename: entry, label: fm["intent"].to_s.strip }
+    end
+
+    idx = File.join(File.dirname(s[:store]), "INDEX.md")
+    index_texts[s[:key]] = File.read(idx) if File.exist?(idx)
+  end
+
+  relocation_map = GraphRebuild.build_relocation_map(index_texts)
+  { store_index: store_index, node_index: node_index, relocation_map: relocation_map }
+end
+
+# Re-project ONE intent file's `## Links` as the canonical I5 projection of its
+# OWN frontmatter sources+chain, using the shared cross-store resolver. Writes the
+# file only if the section changed (idempotent). Born-canonical: a fresh root with
+# no edges gets the empty-state comment; the fence-aware rewriter touches only the
+# real `## Links` section. Returns true on success, false when the intent could
+# not be read or a ref was unresolvable (left unwritten, never a guessed link).
+def project_links_for(file_path, referer_store_key, maps)
+  return false unless File.exist?(file_path)
+
+  content = File.read(file_path)
+  fm = IntentValidator.parse_frontmatter_text(content)
+  return false unless fm.is_a?(Hash)
+
+  resolve = lambda do |ref|
+    LinksProjection.resolve_ref_projection(
+      ref,
+      referer_store: referer_store_key,
+      relocation_map: maps[:relocation_map],
+      store_index: maps[:store_index],
+      node_index: maps[:node_index]
+    )
+  end
+
+  begin
+    section_text = LinksProjection.section(
+      sources: Array(fm["sources"]).map(&:to_s),
+      chain: Array(fm["chain"]).map(&:to_s),
+      resolve: resolve
+    )
+    updated = LinksSection.rewrite(content, section_text)
+  rescue LinksProjection::UnresolvedRef, LinksSection::AmbiguousLinks => e
+    warn "new-intent: could not project ## Links for #{File.basename(file_path)}: #{e.message}"
+    return false
+  end
+
+  File.write(file_path, updated) if updated != content
+  true
 end
 
 def main(argv)
@@ -176,8 +273,9 @@ def main(argv)
   # 4a. I1 reciprocity: write the child's id into EACH source intent's frontmatter
   # `chain` (the formative-reciprocity backlink), for BOTH the `--parent` and the
   # `--sources` path. `sources` is the redundant-explicit set from step 3 (it already
-  # folds in `--parent`). Scope boundary: 68 fixes ONLY the frontmatter `chain`
-  # backlink; the `## Links` wikilink projection for the `--sources` path is intent 72.
+  # folds in `--parent`). Collect the touched source files so their `## Links` can be
+  # re-projected once the chain edges are on disk.
+  source_files = []
   sources.each do |src_id|
     next if src_id.nil? || src_id.empty?
 
@@ -186,19 +284,22 @@ def main(argv)
 
     src_file = File.join(src_dir, "#{File.basename(src_dir)}.md")
     add_to_chain(src_file, id)
+    source_files << src_file
   end
 
-  # 4b. Reciprocal `## Links` wikilinks: forward link to parent + back-reference in
-  # the parent (kept parent-only; the `--sources` path's wikilink is intent 72's scope).
-  if opts[:parent] && !opts[:parent].empty?
-    parent_id = opts[:parent]
-    append_link(intent_file, "- [[#{parent_id}]]")
-    parent_dir = Dir.glob(File.join(store, "#{parent_id}--*")).find { |d| File.directory?(d) }
-    if parent_dir
-      parent_file = File.join(parent_dir, "#{File.basename(parent_dir)}.md")
-      append_link(parent_file, "- [[#{id}]]")
-    end
-  end
+  # 4b. Canonical `## Links` projection (intent 72): born-canonical, drift PREVENTED
+  # at the source. Build the cross-store resolver maps AFTER the chain backlinks are
+  # written, then project the NEW intent's Links from its own frontmatter (sources at
+  # birth, chain empty) and RE-project each source/parent's Links (it just gained the
+  # new id in its chain). The fence-aware rewriter and the resolved-target dedup are
+  # the same ones project-links and the doctor check use, so a freshly created intent
+  # and its sources both PASS graph_links_projection. A no-source root gets the
+  # canonical empty-state comment.
+  plastic_home, referer_store_key = store_context(store)
+  maps = build_cross_store_maps(plastic_home, referer_store_key, store)
+
+  project_links_for(intent_file, referer_store_key, maps)
+  source_files.uniq.each { |sf| project_links_for(sf, referer_store_key, maps) }
 
   # 5. Sentinel placeholders for each lifecycle file. The sentinel is the FIRST
   # line; the rendered template body follows so the file is a usable starting

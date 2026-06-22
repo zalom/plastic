@@ -26,7 +26,7 @@ Zettelkasten on paper (the ID tree) AND a graph in code (the `sources` / `chain`
 | ID | single-parent tree (Folgezettel address) | acyclic tree | human/paper lineage, "where it has been" |
 | `sources` | formative in-edges | DAG (multi-parent, cross-branch), acyclic | "how it was formed", strong creational/foundational context (must-load) |
 | `chain` | forward out-edges | general directed graph, cycles allowed | "what it leads to / could contribute", lighter contributory context |
-| `## Links` | human-readable projection of the local graph | rendered section | all `sources` first (top, named), then all `chain` (named), as `[[id]]` wikilinks plus a short label |
+| `## Links` | human-readable projection of the local graph | rendered section | all `sources` first (top), then all `chain`, each as `- [[id--slug\|<target's full intent: text>]]` (cross-store: `- [[store:id--slug\|...]]`); no tags, no sub-grouping |
 | tags + INDEX.md | register / entry points | inverted index, hubs | how you find a cluster without walking edges |
 
 The ID and `sources` are both about lineage, but they answer different questions. The ID is
@@ -52,8 +52,13 @@ similarity is not a `sources` edge.
 - I3 (per-node disjoint): for any node `X`, `X.sources` and `X.chain` share no id.
 - I4 (no danglers): every id in any `sources` or `chain` resolves to a real intent.
 - I5 (`## Links` projection): `## Links` is the human-readable projection of the local
-  graph, all `sources` first (top, named), then all `chain` (named), as `[[id]]` wikilinks
-  plus a short label.
+  graph and mirrors the frontmatter exactly. Every entry is
+  `- [[id--slug|<target's full intent: text>]]`, a clickable `id--slug` wikilink target with
+  the target intent's full `intent:` text as the label (cross-store targets render
+  `- [[store:id--slug|<target's full intent: text>]]`). Ordering is mandatory: all `sources`
+  first (top), then all `chain`, frontmatter order preserved within each group. Sources never
+  appear at the end. No source/chain tags, no sub-grouping. An intent with empty `sources` and
+  `chain` carries the empty-state comment instead of entries.
 
 ## Construction rules
 
@@ -65,7 +70,7 @@ similarity is not a `sources` edge.
   relations.
 - Related-but-not-spawned: a new intent merely related to (or inspired by) another, but not
   created from it, carries NO `sources`. Record the relation on the PREDECESSOR's `chain`,
-  and mirror it as a `[[id]]` wikilink in `## Links`.
+  and mirror it as a `[[id--slug|<target's full intent: text>]]` wikilink in `## Links`.
 - Cycles: `sources` is acyclic (a creational DAG); `chain` may cycle (mutual contribution is
   natural).
 - Governing-intent exception: KEEP `sources` for a project's governing intent. A project
@@ -98,7 +103,8 @@ lifecycle of intent 60; it is related work that intent 60 leads to. So:
 
 - Intent 68 carries NO `sources` pointing at 60 (it was not created from 60).
 - Intent 60's `chain` lists 68 (the relation lives on the predecessor's forward edge).
-- A `[[68]]` wikilink mirrors the relation in intent 60's `## Links`.
+- A `[[68--<slug>|<intent 68's full intent: text>]]` wikilink mirrors the relation in intent
+  60's `## Links`.
 
 Contrast the created-from case: a branch `14a` or a root genuinely created from intent 14
 DOES carry `14` in its `sources`, and intent 14's `chain` gains the new id (I1). The

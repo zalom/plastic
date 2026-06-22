@@ -8,7 +8,12 @@
 
 ## Three Connection Types (Ranked)
 
-1. **Direct links** (strongest) — wikilinks in `## Links` section
+1. **Direct links** (strongest): wikilinks in the `## Links` section, the projection of the
+   frontmatter graph. Each entry is `- [[id--slug|<target's full intent: text>]]` (cross-store:
+   `- [[store:id--slug|...]]`), a clickable `id--slug` target labeled with the target's full
+   `intent:` text. Ordering is mandatory: all `sources` first (top), then all `chain`,
+   frontmatter order preserved within each group. Sources never appear at the end. No
+   source/chain tags, no sub-grouping.
 2. **Sources/Chain** (knowledge graph): `sources` = direct ascendants this was created from (formation, acyclic, must-load); `chain` = forward continuations and related successors (may cycle, lighter context). See `docs/concepts/how-plastic-sources-and-chains-intents.md` for the full model.
 3. **Tags** (weakest) — shared tags, `project-<name>` for project membership
 

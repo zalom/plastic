@@ -17,6 +17,9 @@ require "digest"
 
 require_relative "lib/qmd_sync"
 require_relative "lib/intent_validator"
+require_relative "lib/graph_rebuild"
+require_relative "lib/links_projection"
+require_relative "lib/links_section"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -480,7 +483,176 @@ class Doctor
     # flagged: validate_graph does not compute it.
     checks.concat(graph_invariant_checks(intent_dirs))
 
+    # cross_store_resolution — RESOLVES (not just shape-checks) every cross-store
+    # `store:id` ref against the FULL store family via the relocation map
+    # (relocation consulted first), closing the shape-only gap i1/i3/i4 leave open.
+    # Resolution always spans all stores even under `--store` scoping; only the
+    # REPORTED findings are filtered to refs originating in the scoped store(s).
+    checks << cross_store_resolution_check(scopes: scopes)
+
+    # graph_links_projection — the `## Links` section of every intent must EQUAL its
+    # canonical I5 frontmatter projection (intent 72), in BOTH set membership AND
+    # ordering (sources first, then chain). Recomputes the projection from each
+    # intent's sources/chain + the on-disk basenames using the SAME resolver the
+    # scripts/project-links tool uses, so the two can never diverge. Resolution
+    # spans all stores; only the REPORTED findings are filtered to the scoped store.
+    checks << links_projection_check(scopes: scopes)
+
     checks
+  end
+
+  # Build the cross-store node maps (basename + label per store) + relocation map
+  # from ALL stores, then for every intent compute its canonical `## Links`
+  # projection and flag any whose ACTUAL `## Links` section differs (membership or
+  # ordering drift), or whose projection raises UnresolvedRef. `scopes` (nil = full
+  # run) filters only the REPORTED findings by origin scope.
+  def links_projection_check(scopes: nil)
+    all_dirs = all_intent_dirs
+
+    store_index = Hash.new { |h, k| h[k] = [] }
+    node_index = Hash.new { |h, k| h[k] = {} }
+    intents = [] # { scope:, id:, sources:, chain:, path: }
+
+    all_dirs.each do |d|
+      md = File.join(d[:path], "#{d[:name]}.md")
+      next unless File.exist?(md)
+
+      fm = parse_frontmatter(md)
+      next unless fm.is_a?(Hash) && fm["id"]
+
+      id = fm["id"].to_s
+      store_index[d[:scope]] << id
+      node_index[d[:scope]][id] = { basename: d[:name], label: fm["intent"].to_s.strip }
+      intents << {
+        scope: d[:scope], id: id, path: md,
+        sources: Array(fm["sources"]).map(&:to_s),
+        chain: Array(fm["chain"]).map(&:to_s),
+      }
+    end
+
+    relocation_map = GraphRebuild.build_relocation_map(cross_store_index_texts)
+
+    findings = []
+    intents.each do |node|
+      next if scopes && !scopes.include?(node[:scope])
+
+      resolve = ->(ref) do
+        LinksProjection.resolve_ref_projection(
+          ref, referer_store: node[:scope],
+               relocation_map: relocation_map, store_index: store_index, node_index: node_index
+        )
+      end
+
+      begin
+        expected = LinksProjection.section(sources: node[:sources], chain: node[:chain], resolve: resolve)
+        actual = actual_links_section(node[:path])
+      rescue LinksProjection::UnresolvedRef => e
+        findings << "#{node[:id]} ## Links projection failed: #{e.message}"
+        next
+      rescue LinksSection::AmbiguousLinks => e
+        findings << "#{node[:id]} ## Links ambiguous: #{e.message}"
+        next
+      end
+
+      next if actual == expected
+
+      findings << "#{node[:id]} ## Links does not match its frontmatter projection (membership/ordering drift)"
+    end
+
+    graph_finding_check(
+      "graph_links_projection", findings,
+      "Every intent's ## Links equals its frontmatter projection (membership and ordering)",
+      "Run scripts/project-links to regenerate the canonical ## Links sections"
+    )
+  end
+
+  # Extract a file's ACTUAL REAL `## Links` section text (FENCE-AWARE), normalized
+  # to the canonical block shape the projection emits. Delegates to the shared
+  # LinksSection.extract_section so the doctor check and the project-links tool
+  # agree on the section location and never match a `## Links` heading inside an
+  # example code fence. Returns "" when the section is absent (which differs from
+  # any real projection, so a missing section is a finding).
+  def actual_links_section(path)
+    LinksSection.extract_section(IntentValidator.body_of(File.read(path)))
+  end
+
+  # Build the relocation map + cross-store store_index from ALL stores, then for
+  # every intent's cross-store `sources`/`chain` ref resolve it and flag:
+  #   - DEAD: the target resolves nowhere
+  #   - RELOCATED-STALE: the ref points at an old location the relocation log has
+  #     moved (the resolved location differs from the literal ref), e.g. the
+  #     `global:24` id-reuse hazard that direct resolution would silently accept.
+  # `scopes` (nil = full run) filters only the REPORTED findings by origin scope.
+  def cross_store_resolution_check(scopes: nil)
+    all_dirs = all_intent_dirs
+
+    # Per-scope node maps + store_index over the WHOLE family.
+    nodes_by_scope = Hash.new { |h, k| h[k] = {} }
+    store_index = Hash.new { |h, k| h[k] = [] }
+    all_dirs.each do |d|
+      md = File.join(d[:path], "#{d[:name]}.md")
+      next unless File.exist?(md)
+
+      fm = parse_frontmatter(md)
+      next unless fm.is_a?(Hash) && fm["id"]
+
+      id = fm["id"].to_s
+      store_index[d[:scope]] << id
+      nodes_by_scope[d[:scope]][id] = {
+        sources: Array(fm["sources"]).map(&:to_s),
+        chain: Array(fm["chain"]).map(&:to_s),
+      }
+    end
+
+    relocation_map = GraphRebuild.build_relocation_map(cross_store_index_texts)
+
+    findings = []
+    nodes_by_scope.each do |scope, nodes|
+      next if scopes && !scopes.include?(scope)
+
+      nodes.each do |id, edges|
+        %i[sources chain].each do |field|
+          edges[field].each do |ref|
+            next unless ref.include?(":") # only cross-store refs are resolved here
+
+            res = GraphRebuild.resolve_ref(ref, referer_store: scope,
+                                                relocation_map: relocation_map,
+                                                store_index: store_index)
+            case res[:status]
+            when :dead
+              findings << "#{id}.#{field} cross-store ref #{ref} resolves to no intent (dead)"
+            when :same_store
+              findings << "#{id}.#{field} cross-store ref #{ref} is relocated-stale (now same-store #{res[:id]})"
+            when :cross_store
+              findings << "#{id}.#{field} cross-store ref #{ref} is relocated-stale (now #{res[:ref]})" if res[:ref] != ref
+            end
+          end
+        end
+      end
+    end
+
+    graph_finding_check(
+      "graph_cross_store_resolution", findings,
+      "Every cross-store sources/chain ref resolves to a live, current intent",
+      "Run scripts/rebuild-graph to repoint/collapse/drop stale cross-store refs"
+    )
+  end
+
+  # { store_key => INDEX.md text } for every store (global + all projects), for the
+  # relocation-map builder. Reads INDEX.md one level above each store dir.
+  def cross_store_index_texts
+    texts = {}
+    global_index = File.join(plastic_home, "INDEX.md")
+    texts["global"] = File.read(global_index) if File.exist?(global_index)
+
+    projects_root = File.join(plastic_home, "projects")
+    if File.directory?(projects_root)
+      Dir.children(projects_root).each do |project|
+        idx = File.join(projects_root, project, "INDEX.md")
+        texts["project:#{project}"] = File.read(idx) if File.exist?(idx)
+      end
+    end
+    texts
   end
 
   # Build a per-scope `nodes` map and surface IntentValidator.validate_graph
