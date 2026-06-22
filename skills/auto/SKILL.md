@@ -43,13 +43,18 @@ edited before the plan exists (the gate applies to YOU, the orchestrator):
 
 ```bash
 ruby -r ~/.plastic/scripts/lib/bridge -e \
-  'Bridge.arm_auto(ENV["CLAUDE_SESSION_ID"], intent_id: "<ID>", intent_dir: "<STORE>/<dir>", store: "<STORE>", name: "<name>")'
+  'Bridge.arm_auto(ENV["CLAUDE_CODE_SESSION_ID"], intent_id: "<ID>", intent_dir: "<STORE>/<dir>", store: "<STORE>", name: "<name>")'
 ```
 
 Replace `<ID>`, `<STORE>` (e.g. `~/.plastic/projects/<slug>/store` or `~/.plastic/store`),
-`<dir>` (the `ID--slug` directory), and `<name>`. If `CLAUDE_SESSION_ID` is unset, `arm_auto`
-falls back to a deterministic derived bridge key (a hash of the store and intent id), so the
-gate still engages; arming prints a one-line notice to stderr in that case.
+`<dir>` (the `ID--slug` directory), and `<name>`. The first argument is the session id you
+want the bridge keyed by: pass the hook stdin `session_id` when you have it, otherwise
+`ENV["CLAUDE_CODE_SESSION_ID"]`, otherwise `nil`. `arm_auto` calls `resolve_session`, which
+picks the first non-empty of: the explicit id you pass -> `CLAUDE_SESSION_ID` ->
+`CLAUDE_CODE_SESSION_ID` -> a deterministic derived key (a hash of the store and intent id).
+It never returns nil, so the gate engages even when every session env var is empty; the call
+never needs a non-empty `CLAUDE_SESSION_ID` to function. Arming prints a one-line notice to
+stderr when it falls through to the derived key.
 
 **Hard rule for the rest of this run:** do NOT edit project code (anything outside the
 intent directory / `~/.plastic/`) until `plan.md` AND `checklist.md` exist for the intent.
@@ -79,7 +84,7 @@ Completion report (require-then-synthesize): every dispatched specialist MUST en
 
 Final-gate review: dispatch an independent reviewer subagent at the final gate only, not as a standing role.
 
-Headless manual gate: when running headless or in the background, enforce gates manually and do not rely on hooks, because `CLAUDE_SESSION_ID` may be unset (this ties to the arm-gate fallback above).
+Headless manual gate: when running headless or in the background, still enforce gates manually rather than relying on hooks alone. The PostToolUse gate hook reads `session_id` from hook stdin, and the savepoint ledger write is decoupled from the bridge (derived from the file path, so it fires even with no session id) - these do NOT no-op. What can degrade is the bridge-keyed stage enforcement: if no session id reaches the bridge and no matching bridge is discovered, the stage-gate enforcement step exits without acting, so verify state yourself. The bridge still resolves arming via `CLAUDE_CODE_SESSION_ID` or the derived-key fallback (see the arm-gate note above).
 
 Solo fallback: if the harness has no subagent dispatch, fall back to a single agent walking the full What, Why, How, Exec cycle yourself. This preserves current behavior.
 
@@ -202,7 +207,7 @@ During initial project creation, all decisions are non-destructive by definition
    store that holds this intent (the global store or the project store).
 9. Disarm the lifecycle gate (auto delivery is finished):
    ```bash
-   ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.disarm_auto(ENV["CLAUDE_SESSION_ID"])'
+   ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.disarm_auto(ENV["CLAUDE_CODE_SESSION_ID"])'
    ```
    Disarming also purges stale bridge files from the temp directory automatically (it keeps the
    current bridge and any live run), so no manual `/tmp` cleanup is needed.

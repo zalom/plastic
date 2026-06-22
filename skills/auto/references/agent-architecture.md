@@ -90,10 +90,13 @@ permanent sixth role, it exists only for the final review.
 
 ### Headless Manual Gate
 
-When running headless or in the background, the enforcer enforces gates manually and
-does not rely on hooks, because `CLAUDE_SESSION_ID` may be unset in those runs (the
-gate-check and savepoint hooks no-op without it). The enforcer arms via the bridge's
-derived-key fallback and verifies state itself.
+When running headless or in the background, the enforcer enforces gates manually rather
+than relying on hooks alone. The savepoint ledger and PostToolUse gate hook still fire
+(the gate hook reads `session_id` from stdin; the savepoint write is path-derived and
+bridge-independent), so they do not blanket no-op. Only the bridge-keyed stage-enforcement
+step degrades when no session id reaches the bridge and no bridge is discovered. The
+enforcer arms via `CLAUDE_CODE_SESSION_ID` or the bridge's derived-key fallback and
+verifies state itself.
 
 ### Delegation
 
