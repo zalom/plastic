@@ -84,9 +84,34 @@ else
 fi
 INDEX_DIR=$(dirname "$INDEX")
 
-# --- Most-recently-accessed active intent (mirror dashboard: last savepoint ts) ---
+# --- Current-session work-unit: the live bridge wins over savepoint recency ---
+# The statusline receives the real session_id on stdin; the session's bridge
+# (plastic-{session_id}.json) is the authoritative "what THIS session is driving".
+# This beats the shared, savepoint-recency heuristic so parallel sessions on one
+# store no longer overwrite each other's line. grep/sed only - no jq, no ruby.
 WORK=""
-if [ -f "$INDEX" ]; then
+SID=$(json_str "session_id")
+if [ -n "$SID" ]; then
+  BRIDGE="${PLASTIC_TMP:-/tmp}/plastic-${SID}.json"
+  if [ -f "$BRIDGE" ]; then
+    # Bridge JSON is pretty-printed (one field per line). Scope extraction to the
+    # "intent" object so a sibling top-level "id"/"name" can never win (the intent
+    # object holds only string fields, so the first "}" closes it). grep/sed only.
+    INTENT_BLOCK=$(sed -n '/"intent"[[:space:]]*:[[:space:]]*{/,/}/p' "$BRIDGE" 2>/dev/null)
+    B_ID=$(printf '%s\n' "$INTENT_BLOCK" | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 \
+      | sed 's/.*"id"[[:space:]]*:[[:space:]]*"//;s/"$//')
+    B_NAME=$(printf '%s\n' "$INTENT_BLOCK" | grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 \
+      | sed 's/.*"name"[[:space:]]*:[[:space:]]*"//;s/"$//')
+    if [ -n "$B_ID" ] && [ -n "$B_NAME" ]; then
+      EMDASH=$'\342\200\224'
+      WORK="${B_ID} ${EMDASH} ${B_NAME}"
+    fi
+  fi
+fi
+
+# --- Most-recently-accessed active intent (mirror dashboard: last savepoint ts) ---
+# Fallback only: runs when no session bridge resolved a work-unit above.
+if [ -z "$WORK" ] && [ -f "$INDEX" ]; then
   BEST_TS=""
   while IFS= read -r line; do
     [ -z "$line" ] && continue

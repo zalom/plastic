@@ -63,7 +63,11 @@ class BridgeAutoTest < Minitest::Test
 
   def test_arm_auto_derives_key_and_warns_when_no_session
     saved = ENV["CLAUDE_SESSION_ID"]
+    saved_code = ENV["CLAUDE_CODE_SESSION_ID"]
     ENV.delete("CLAUDE_SESSION_ID")
+    # "No session available" now means BOTH env vars blank (intent 79): the
+    # CLAUDE_CODE_SESSION_ID fallback must also be absent to reach the derive path.
+    ENV.delete("CLAUDE_CODE_SESSION_ID")
     derived = Bridge.derive_key(@store, "27")
     out = capture_stderr do
       data = Bridge.arm_auto(nil, intent_id: "27", intent_dir: @intent_dir, store: @store, name: "demo")
@@ -74,6 +78,7 @@ class BridgeAutoTest < Minitest::Test
     File.delete(Bridge.path(derived)) if File.exist?(Bridge.path(derived))
   ensure
     ENV["CLAUDE_SESSION_ID"] = saved unless saved.nil?
+    ENV["CLAUDE_CODE_SESSION_ID"] = saved_code unless saved_code.nil?
   end
 
   def test_arm_auto_does_not_warn_when_env_session_present
