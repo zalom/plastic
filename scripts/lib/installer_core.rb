@@ -216,6 +216,8 @@ class InstallerCore
       "scripts/lib/intent_validator.rb" => "scripts/lib/intent_validator.rb",
       "scripts/lib/graph_rebuild.rb" => "scripts/lib/graph_rebuild.rb",
       "scripts/lib/frontmatter_writer.rb" => "scripts/lib/frontmatter_writer.rb",
+      "scripts/lib/links_projection.rb" => "scripts/lib/links_projection.rb",
+      "scripts/lib/links_section.rb" => "scripts/lib/links_section.rb",
       "scripts/validate-intent" => "scripts/validate-intent",
       "scripts/new-intent" => "scripts/new-intent",
       "scripts/hook-create-gate" => "scripts/hook-create-gate",

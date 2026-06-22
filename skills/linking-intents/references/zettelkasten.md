@@ -10,6 +10,13 @@ Plastic implements three Zettelkasten structures:
 
 INDEX.md is a structure note (hub), not a table of contents.
 
+`## Links` mirrors the frontmatter graph exactly. Each entry is
+`- [[id--slug|<target's full intent: text>]]` (cross-store: `- [[store:id--slug|...]]`),
+a clickable `id--slug` target with the target's full `intent:` text as the label.
+Ordering is mandatory: all `sources` first (top), then all `chain`, frontmatter order
+preserved within each group. Sources never appear at the end. No source/chain tags, no
+sub-grouping. An intent with empty `sources` and `chain` carries the empty-state comment.
+
 ## Folgezettel IDs
 
 IDs encode lineage using Luhmann's alternating convention:

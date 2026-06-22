@@ -42,10 +42,15 @@ field.
 
 ## `## Links`
 
-The human-readable projection of the local knowledge graph: all `sources`
-first (top, named), then all `chain` (named), as `[[id]]` wikilinks plus a
-short label. Counterpart to the frontmatter `sources` / `chain` edges, for
-Obsidian graph navigation.
+The human-readable projection of the local knowledge graph, mirroring the
+frontmatter exactly. Each entry is `- [[id--slug|<target's full intent: text>]]`,
+a clickable `id--slug` wikilink target with the target intent's full `intent:`
+text as the label (cross-store targets render
+`- [[store:id--slug|<target's full intent: text>]]`). Ordering is mandatory: all
+`sources` first (top), then all `chain`, frontmatter order preserved within each
+group. Sources never appear at the end. No source/chain tags, no sub-grouping. An
+intent with empty `sources` and `chain` carries the empty-state comment. Counterpart
+to the frontmatter `sources` / `chain` edges, for Obsidian graph navigation.
 
 ## Conventions — Filesystem as Schema
 

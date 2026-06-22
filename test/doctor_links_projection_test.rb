@@ -1,0 +1,116 @@
+# encoding: UTF-8
+# frozen_string_literal: true
+
+require "minitest/autorun"
+require "tmpdir"
+require "fileutils"
+
+require_relative "../scripts/doctor"
+
+# ACTION 5 — the new graph_links_projection doctor drift check. Hermetic temp
+# homes. The check must flag any `## Links` section that does not EQUAL its
+# frontmatter projection in BOTH membership AND ordering, and pass on a correctly
+# projected store.
+class DoctorLinksProjectionTest < Minitest::Test
+  def setup
+    @home = Dir.mktmpdir("plastic-doctor-links")
+    [global_store, plastic_store].each { |d| FileUtils.mkdir_p(d) }
+    write_index(File.join(@home, "INDEX.md"))
+    write_index(File.join(@home, "projects", "plastic", "INDEX.md"))
+  end
+
+  def teardown
+    FileUtils.remove_entry(@home) if @home && Dir.exist?(@home)
+  end
+
+  def global_store = File.join(@home, "store")
+  def plastic_store = File.join(@home, "projects", "plastic", "store")
+
+  def write_intent(scope_dir, basename, id:, intent:, sources:, chain:, links:)
+    dir = File.join(scope_dir, basename)
+    FileUtils.mkdir_p(dir)
+    fm = +"---\nid: \"#{id}\"\nintent: \"#{intent}\"\n"
+    fm << "sources: #{sources.inspect}\nchain: #{chain.inspect}\n"
+    fm << "created: 2026-06-01\nauthor: t\ntags: [t]\n---\n\n"
+    fm << "## Intent\nb\n\n#{links}"
+    File.write(File.join(dir, "#{basename}.md"), fm)
+  end
+
+  def write_index(path, relocated: "(none)")
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, "# Index\n\n## Relocated\n#{relocated}\n\n## Completed\n")
+  end
+
+  def doctor = Doctor.new(plastic_home: @home)
+
+  def links_check(scopes: nil)
+    doctor.check_conventions(scopes: scopes).find { |c| c[:name] == "graph_links_projection" }
+  end
+
+  # Targets used by the references below.
+  def seed_targets
+    write_intent(plastic_store, "40--store-graph", id: "40", intent: "Build the store graph",
+                 sources: [], chain: [],
+                 links: "## Links\n<!-- No sources or chain; this intent has no graph edges to project. -->\n")
+    write_intent(plastic_store, "60--bypass", id: "60", intent: "Block the bypass",
+                 sources: [], chain: [],
+                 links: "## Links\n<!-- No sources or chain; this intent has no graph edges to project. -->\n")
+  end
+
+  def test_legacy_placeholder_is_flagged
+    seed_targets
+    write_intent(plastic_store, "5--child", id: "5", intent: "Child",
+                 sources: ["40"], chain: [],
+                 links: "## Links\n<!-- Retroactive (intent 60b): heading only. -->\n")
+
+    check = links_check
+    assert_equal "warn", check[:status]
+    assert(check[:details].any? { |d| d.start_with?("5 ## Links") })
+  end
+
+  def test_ordering_drift_flagged_even_with_correct_membership
+    seed_targets
+    # 5 has source 40 and chain 60. The CORRECT projection is 40 then 60. Here the
+    # file lists chain (60) BEFORE source (40): correct membership, wrong order.
+    misordered = "## Links\n" \
+                 "- [[60--bypass|Block the bypass]]\n" \
+                 "- [[40--store-graph|Build the store graph]]\n"
+    write_intent(plastic_store, "5--child", id: "5", intent: "Child",
+                 sources: ["40"], chain: ["60"], links: misordered)
+
+    check = links_check
+    assert_equal "warn", check[:status]
+    assert(check[:details].any? { |d| d.start_with?("5 ## Links") },
+           "a chain-before-source ordering must be flagged")
+  end
+
+  def test_empty_state_is_green
+    write_intent(plastic_store, "13--lonely", id: "13", intent: "Lonely",
+                 sources: [], chain: [],
+                 links: "## Links\n<!-- No sources or chain; this intent has no graph edges to project. -->\n")
+    check = links_check
+    assert_equal "pass", check[:status]
+  end
+
+  def test_green_when_correctly_projected
+    seed_targets
+    correct = "## Links\n" \
+              "- [[40--store-graph|Build the store graph]]\n" \
+              "- [[60--bypass|Block the bypass]]\n"
+    write_intent(plastic_store, "5--child", id: "5", intent: "Child",
+                 sources: ["40"], chain: ["60"], links: correct)
+
+    check = links_check
+    assert_equal "pass", check[:status]
+  end
+
+  def test_scope_filtering_hides_other_store_findings
+    seed_targets
+    write_intent(plastic_store, "5--child", id: "5", intent: "Child",
+                 sources: ["40"], chain: [],
+                 links: "## Links\n<!-- stale -->\n")
+    # Scoping to global hides the plastic-origin drift finding.
+    scoped = links_check(scopes: ["global"])
+    assert_equal "pass", scoped[:status]
+  end
+end

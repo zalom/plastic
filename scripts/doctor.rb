@@ -18,6 +18,8 @@ require "digest"
 require_relative "lib/qmd_sync"
 require_relative "lib/intent_validator"
 require_relative "lib/graph_rebuild"
+require_relative "lib/links_projection"
+require_relative "lib/links_section"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -488,7 +490,98 @@ class Doctor
     # REPORTED findings are filtered to refs originating in the scoped store(s).
     checks << cross_store_resolution_check(scopes: scopes)
 
+    # graph_links_projection — the `## Links` section of every intent must EQUAL its
+    # canonical I5 frontmatter projection (intent 72), in BOTH set membership AND
+    # ordering (sources first, then chain). Recomputes the projection from each
+    # intent's sources/chain + the on-disk basenames using the SAME resolver the
+    # scripts/project-links tool uses, so the two can never diverge. Resolution
+    # spans all stores; only the REPORTED findings are filtered to the scoped store.
+    checks << links_projection_check(scopes: scopes)
+
     checks
+  end
+
+  # Build the cross-store node maps (basename + label per store) + relocation map
+  # from ALL stores, then for every intent compute its canonical `## Links`
+  # projection and flag any whose ACTUAL `## Links` section differs (membership or
+  # ordering drift), or whose projection raises UnresolvedRef. `scopes` (nil = full
+  # run) filters only the REPORTED findings by origin scope.
+  def links_projection_check(scopes: nil)
+    all_dirs = all_intent_dirs
+
+    store_index = Hash.new { |h, k| h[k] = [] }
+    node_index = Hash.new { |h, k| h[k] = {} }
+    intents = [] # { scope:, id:, sources:, chain:, path: }
+
+    all_dirs.each do |d|
+      md = File.join(d[:path], "#{d[:name]}.md")
+      next unless File.exist?(md)
+
+      fm = parse_frontmatter(md)
+      next unless fm.is_a?(Hash) && fm["id"]
+
+      id = fm["id"].to_s
+      store_index[d[:scope]] << id
+      node_index[d[:scope]][id] = { basename: d[:name], label: fm["intent"].to_s.strip }
+      intents << {
+        scope: d[:scope], id: id, path: md,
+        sources: Array(fm["sources"]).map(&:to_s),
+        chain: Array(fm["chain"]).map(&:to_s),
+      }
+    end
+
+    relocation_map = GraphRebuild.build_relocation_map(cross_store_index_texts)
+
+    findings = []
+    intents.each do |node|
+      next if scopes && !scopes.include?(node[:scope])
+
+      resolve = ->(ref) do
+        LinksProjection.resolve_ref_projection(
+          ref, referer_store: node[:scope],
+               relocation_map: relocation_map, store_index: store_index, node_index: node_index
+        )
+      end
+
+      begin
+        expected = LinksProjection.section(sources: node[:sources], chain: node[:chain], resolve: resolve)
+      rescue LinksProjection::UnresolvedRef => e
+        findings << "#{node[:id]} ## Links projection failed: #{e.message}"
+        next
+      end
+
+      actual = actual_links_section(node[:path])
+      next if actual == expected
+
+      findings << "#{node[:id]} ## Links does not match its frontmatter projection (membership/ordering drift)"
+    end
+
+    graph_finding_check(
+      "graph_links_projection", findings,
+      "Every intent's ## Links equals its frontmatter projection (membership and ordering)",
+      "Run scripts/project-links to regenerate the canonical ## Links sections"
+    )
+  end
+
+  # Extract a file's ACTUAL `## Links` section text (heading through the next
+  # top-level `## ` heading or EOF), normalized to the canonical block shape the
+  # projection emits: heading line + entry lines + a single trailing newline.
+  # Returns "" when the section is absent (which differs from any real projection,
+  # so a missing section is a finding).
+  def actual_links_section(path)
+    body = IntentValidator.body_of(File.read(path))
+    lines = body.lines
+    start = lines.index { |l| l.rstrip == LinksSection::HEADING }
+    return "" if start.nil?
+
+    rest = lines[(start + 1)..] || []
+    stop = rest.index { |l| l.start_with?("## ") }
+    section = rest[0...(stop || rest.length)]
+    # Drop trailing blank lines (the separator before a following section) so the
+    # comparison matches the projection's single-trailing-newline shape.
+    section = section.join.sub(/\n+\z/, "\n")
+    section = "" if section.strip.empty?
+    "#{LinksSection::HEADING}\n#{section}"
   end
 
   # Build the relocation map + cross-store store_index from ALL stores, then for

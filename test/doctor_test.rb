@@ -73,7 +73,11 @@ module DoctorTestHelpers
                   end
       "#{k}: #{formatted}"
     end.join("\n")
-    body = "## Intent\n#{name}\n\n## Context\nWhy\n\n## Outcome\nResult\n\n## Insights\nNotes\n\n## Links\n- none\n"
+    # Default fixtures have empty sources/chain, so the canonical I5 ## Links
+    # projection (intent 72) is the empty-state block. Using it keeps "healthy"
+    # fixtures green under the graph_links_projection drift check.
+    links = "## Links\n<!-- No sources or chain; this intent has no graph edges to project. -->\n"
+    body = "## Intent\n#{name}\n\n## Context\nWhy\n\n## Outcome\nResult\n\n## Insights\nNotes\n\n#{links}"
     content = "---\n#{yaml_str}\n---\n\n#{body}"
     File.write(File.join(dir, "#{name}.md"), content)
     dir

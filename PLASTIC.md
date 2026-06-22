@@ -50,6 +50,13 @@ tags: [plastic, architecture]
 - Context contract: load `sources` strongly (they are what the intent was built from);
   traverse `chain` lightly for discovery. See
   docs/concepts/how-plastic-sources-and-chains-intents.md for the full model.
+- `## Links` (I5) is the human-readable projection of the graph. It mirrors the
+  frontmatter exactly: every entry is `- [[id--slug|<target's full intent: text>]]`, a
+  clickable `id--slug` wikilink target with the target intent's full `intent:` text as the
+  label (cross-store targets render `- [[store:id--slug|<target's full intent: text>]]`).
+  Ordering is mandatory: all `sources` first (top), then all `chain`, frontmatter order
+  preserved within each group. Sources never appear at the end. No source/chain tags, no
+  sub-grouping. An intent with empty `sources` and `chain` carries the empty-state comment.
 - IDs use Luhmann's alternating convention: `1` → `1a` → `1a1` → `1a1a`
 - Multiple branches increment: `1a`, `1b`, `1c`
 
@@ -164,8 +171,8 @@ Format: `ID--three-to-five-words` (all stores).
 - **Root (`15`, `16`)**: an independent thought, even if inspired by another intent.
   Reserve `sources` for true created-from provenance (intents this was built out of). An
   independent intent merely related to or inspired by another carries NO `sources`; record
-  the relation on the PREDECESSOR's `chain` (and mirror it as a `[[id]]` wikilink in
-  `## Links`).
+  the relation on the PREDECESSOR's `chain` (and mirror it as a
+  `[[id--slug|<target's full intent: text>]]` wikilink in `## Links`).
 - **Rule of thumb:** if the intent could exist without its parent, it's a root.
 
 ## INDEX.md

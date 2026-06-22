@@ -1,0 +1,289 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# project-links — project each intent's corrected sources/chain graph into its
+# canonical I5 `## Links` section, store-wide across the global, plastic, and
+# knowdb stores (intent 72). Deterministic and idempotent: a second run over a
+# projected store changes zero files. Touches ONLY the `## Links` section of each
+# intent file; frontmatter and every other section stay byte-identical.
+#
+# Usage:
+#   project-links [--plastic-home PATH] [--dry-run] [--audit-path PATH]
+#
+# Pure-Ruby (no bash). The pure logic lives in lib/links_projection.rb and
+# lib/links_section.rb; this shell does only discovery, IO, and reporting. It reads
+# frontmatter (it NEVER writes frontmatter, that is intent 49's domain) and the
+# on-disk `id--slug` directory basenames to build the cross-store resolver.
+# Never pushes ~/.plastic (no git ops here).
+
+require "time"
+require "fileutils"
+
+require_relative "lib/intent_validator"
+require_relative "lib/graph_rebuild"
+require_relative "lib/links_projection"
+require_relative "lib/links_section"
+
+class ProjectLinks
+  DEFAULT_HOME = File.join(Dir.home, ".plastic")
+
+  # The 72 intent dir audit destination (relative to plastic_home).
+  DEFAULT_AUDIT_REL =
+    "projects/plastic/store/72--links-graph-projection/resources/audit--links-projection.md"
+
+  def initialize(plastic_home: DEFAULT_HOME, dry_run: false, audit_path: nil)
+    @plastic_home = plastic_home
+    @dry_run = dry_run
+
+    # A dry run must NOT stomp the canonical audit (humans run --dry-run to review
+    # the plan). With no explicit --audit-path, a dry run writes a `.dry-run.md`
+    # sibling, leaving the canonical real-run audit untouched. An explicit
+    # --audit-path is always honored verbatim (tests inject it). Mirrors
+    # RebuildGraph's discipline exactly.
+    canonical = File.join(plastic_home, DEFAULT_AUDIT_REL)
+    @audit_path =
+      if audit_path
+        audit_path
+      elsif dry_run
+        canonical.sub(/\.md\z/, ".dry-run.md")
+      else
+        canonical
+      end
+  end
+
+  attr_reader :plastic_home, :dry_run, :audit_path
+
+  # The three in-scope stores, each as { key:, root:, store:, index: }.
+  def stores
+    list = []
+    global_store = File.join(plastic_home, "store")
+    if File.directory?(global_store)
+      list << { key: "global", root: plastic_home, store: global_store,
+                index: File.join(plastic_home, "INDEX.md") }
+    end
+
+    %w[plastic knowdb].each do |slug|
+      root = File.join(plastic_home, "projects", slug)
+      store = File.join(root, "store")
+      next unless File.directory?(store)
+
+      list << { key: "project:#{slug}", root: root, store: store,
+                index: File.join(root, "INDEX.md") }
+    end
+    list
+  end
+
+  # { id => { sources:, chain:, basename:, label:, path: } } for one store.
+  def load_nodes(store_dir)
+    nodes = {}
+    Dir.children(store_dir).reject { |e| e.start_with?(".") }.sort.each do |entry|
+      dir = File.join(store_dir, entry)
+      next unless File.directory?(dir)
+
+      md = File.join(dir, "#{entry}.md")
+      next unless File.exist?(md)
+
+      fm = IntentValidator.parse_frontmatter(md)
+      next unless fm.is_a?(Hash) && fm["id"]
+
+      nodes[fm["id"].to_s] = {
+        sources: Array(fm["sources"]).map(&:to_s),
+        chain: Array(fm["chain"]).map(&:to_s),
+        basename: entry, # the on-disk `id--slug` directory name
+        label: fm["intent"].to_s.strip,
+        path: md,
+      }
+    end
+    nodes
+  end
+
+  def run
+    store_list = stores
+    nodes_by_store = {}
+    index_texts = {}
+    store_index = {}
+    node_index = {}
+
+    store_list.each do |s|
+      key = s[:key]
+      nodes_by_store[key] = load_nodes(s[:store])
+      index_texts[key] = File.exist?(s[:index]) ? File.read(s[:index]) : ""
+      store_index[key] = nodes_by_store[key].keys
+      node_index[key] = nodes_by_store[key].transform_values do |v|
+        { basename: v[:basename], label: v[:label] }
+      end
+    end
+
+    relocation_map = GraphRebuild.build_relocation_map(index_texts)
+
+    results = {}
+    store_list.each do |s|
+      key = s[:key]
+      results[key] = project_store(
+        key, nodes_by_store[key],
+        relocation_map: relocation_map, store_index: store_index, node_index: node_index
+      )
+    end
+
+    emit_audit(store_list, results)
+    results
+  end
+
+  # Project every intent in ONE store. Returns
+  # { entries: [ {id:, status:, before:, after:, error:} ], counts: {...} }.
+  def project_store(referer_store, nodes, relocation_map:, store_index:, node_index:)
+    entries = []
+    nodes.each do |id, node|
+      resolve = ->(ref) do
+        LinksProjection.resolve_ref_projection(
+          ref, referer_store: referer_store,
+               relocation_map: relocation_map, store_index: store_index, node_index: node_index
+        )
+      end
+
+      content = File.read(node[:path])
+      had_links = LinksSection.links_heading?(IntentValidator.body_of(content))
+
+      begin
+        section_text = LinksProjection.section(
+          sources: node[:sources], chain: node[:chain], resolve: resolve
+        )
+      rescue LinksProjection::UnresolvedRef => e
+        entries << { id: id, status: :failed, error: e.message }
+        next
+      end
+
+      updated = LinksSection.rewrite(content, section_text)
+      if updated == content
+        entries << { id: id, status: :unchanged }
+        next
+      end
+
+      status = had_links ? :regenerated : :added
+      File.write(node[:path], updated) unless dry_run
+      entries << { id: id, status: status,
+                   before: extract_links(content), after: section_text }
+    end
+
+    counts = entries.each_with_object(Hash.new(0)) { |e, h| h[e[:status]] += 1 }
+    { entries: entries, counts: counts }
+  end
+
+  # Pull the current `## Links` section text (heading to next `## ` or EOF) from a
+  # file's content, for the audit sample. Returns "" when absent.
+  def extract_links(content)
+    body = IntentValidator.body_of(content)
+    lines = body.lines
+    start = lines.index { |l| l.rstrip == LinksSection::HEADING }
+    return "" if start.nil?
+
+    rest = lines[(start + 1)..] || []
+    stop = rest.index { |l| l.start_with?("## ") }
+    LinksSection::HEADING + "\n" + (stop ? rest[0...stop] : rest).join
+  end
+
+  # Always write the audit (even in dry-run, so the human reviews the plan).
+  def emit_audit(store_list, results)
+    text = render_audit(store_list, results)
+    FileUtils.mkdir_p(File.dirname(audit_path))
+    File.write(audit_path, text)
+    text
+  end
+
+  STATUS_ORDER = %i[regenerated added unchanged failed].freeze
+  STATUS_LABELS = {
+    regenerated: "Regenerated (had a ## Links, content changed)",
+    added: "Added (no ## Links section, one inserted)",
+    unchanged: "Unchanged (already canonical)",
+    failed: "FAILED (resolver miss, NOT written)",
+  }.freeze
+
+  def render_audit(store_list, results)
+    lines = []
+    lines << "# Audit: store-wide ## Links projection (intent 72)"
+    lines << ""
+    lines << "Generated: #{Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ")}#{dry_run ? " (DRY RUN)" : ""}"
+    lines << ""
+
+    total = STATUS_ORDER.to_h do |st|
+      [st, store_list.sum { |s| results[s[:key]][:counts][st] }]
+    end
+    lines << "Totals across all stores: " \
+             "regenerated #{total[:regenerated]}, added #{total[:added]}, " \
+             "unchanged #{total[:unchanged]}, failed #{total[:failed]}."
+    lines << ""
+
+    store_list.each do |s|
+      key = s[:key]
+      res = results[key]
+      counts = res[:counts]
+      lines << "## #{key}"
+      lines << ""
+      lines << "Regenerated #{counts[:regenerated]}, added #{counts[:added]}, " \
+               "unchanged #{counts[:unchanged]}, failed #{counts[:failed]}."
+      lines << ""
+
+      failed = res[:entries].select { |e| e[:status] == :failed }
+      unless failed.empty?
+        lines << "### FAILED (#{failed.size})"
+        failed.each { |e| lines << "- #{e[:id]}: #{e[:error]}" }
+        lines << ""
+      end
+
+      sample = res[:entries].select { |e| %i[regenerated added].include?(e[:status]) }.first(5)
+      next if sample.empty?
+
+      lines << "### Sample before/after (first #{sample.size})"
+      sample.each do |e|
+        lines << "- #{e[:id]} (#{e[:status]}):"
+        lines << "  - BEFORE:"
+        block_lines(e[:before]).each { |l| lines << "    #{l}" }
+        lines << "  - AFTER:"
+        block_lines(e[:after]).each { |l| lines << "    #{l}" }
+      end
+      lines << ""
+    end
+
+    lines.join("\n") + "\n"
+  end
+
+  def block_lines(text)
+    s = text.to_s.strip
+    return ["(none)"] if s.empty?
+
+    s.lines.map(&:rstrip)
+  end
+
+  # True iff any intent failed (resolver miss).
+  def any_failed?(results)
+    results.values.any? { |r| r[:counts][:failed].to_i.positive? }
+  end
+end
+
+if $PROGRAM_NAME == __FILE__
+  home = ProjectLinks::DEFAULT_HOME
+  dry = false
+  audit = nil
+  i = 0
+  while i < ARGV.length
+    case ARGV[i]
+    when "--plastic-home" then home = ARGV[i + 1]; i += 2
+    when "--dry-run" then dry = true; i += 1
+    when "--audit-path" then audit = ARGV[i + 1]; i += 2
+    else i += 1
+    end
+  end
+
+  tool = ProjectLinks.new(plastic_home: home, dry_run: dry, audit_path: audit)
+  results = tool.run
+  totals = ProjectLinks::STATUS_ORDER.to_h do |st|
+    [st, results.values.sum { |r| r[:counts][st] }]
+  end
+  puts "project-links #{dry ? "DRY RUN" : "applied"}: " \
+       "regenerated #{totals[:regenerated]}, added #{totals[:added]}, " \
+       "unchanged #{totals[:unchanged]}, failed #{totals[:failed]} " \
+       "across #{results.size} store(s)."
+  puts "Audit: #{tool.audit_path}"
+  exit 1 if tool.any_failed?(results)
+end
