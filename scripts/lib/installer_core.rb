@@ -214,6 +214,8 @@ class InstallerCore
       "scripts/lib/qmd_sync.rb" => "scripts/lib/qmd_sync.rb",
       "scripts/qmd-sync" => "scripts/qmd-sync",
       "scripts/lib/intent_validator.rb" => "scripts/lib/intent_validator.rb",
+      "scripts/lib/graph_rebuild.rb" => "scripts/lib/graph_rebuild.rb",
+      "scripts/lib/frontmatter_writer.rb" => "scripts/lib/frontmatter_writer.rb",
       "scripts/validate-intent" => "scripts/validate-intent",
       "scripts/new-intent" => "scripts/new-intent",
       "scripts/hook-create-gate" => "scripts/hook-create-gate",

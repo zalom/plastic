@@ -1,0 +1,230 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# rebuild-graph — repair the store-wide sources/chain frontmatter graph across the
+# global, plastic, and knowdb stores (intent 49). Deterministic, idempotent, and
+# one-directional (intent 68 I-invariants): dedupe, I3 (formative edge wins), I1
+# in-store backlinks, I2 preserved; cross-store refs resolved via a multi-hop
+# relocation map (relocation wins over coincidental id reuse). Emits a
+# before/after audit, then writes minimal style-preserving frontmatter.
+#
+# Usage:
+#   rebuild-graph [--plastic-home PATH] [--dry-run] [--audit-path PATH]
+#
+# Pure-Ruby (no bash). The pure logic lives in lib/graph_rebuild.rb and
+# lib/frontmatter_writer.rb; this shell does only discovery, IO, and reporting.
+# Never pushes ~/.plastic (no git ops here).
+
+require "yaml"
+require "date"
+require "time"
+require "fileutils"
+
+require_relative "lib/graph_rebuild"
+require_relative "lib/frontmatter_writer"
+require_relative "lib/intent_validator"
+
+class RebuildGraph
+  DEFAULT_HOME = File.join(Dir.home, ".plastic")
+
+  # The 49 intent dir audit destination (relative to plastic_home).
+  DEFAULT_AUDIT_REL =
+    "projects/plastic/store/49--store-wide-double-link-symmetry/resources/audit--graph-rebuild.md"
+
+  KIND_LABELS = {
+    dedupe: "Dedupes",
+    i3: "I3 resolutions (kept in sources, dropped from chain)",
+    repoint: "Cross-store repoints",
+    collapse: "Cross-store collapses (to bare same-store id)",
+    drop: "Dropped dead refs",
+    i1_backlink: "I1 backlinks added",
+  }.freeze
+
+  KIND_ORDER = %i[dedupe i3 repoint collapse drop i1_backlink].freeze
+
+  def initialize(plastic_home: DEFAULT_HOME, dry_run: false, audit_path: nil)
+    @plastic_home = plastic_home
+    @dry_run = dry_run
+    @audit_path = audit_path || File.join(plastic_home, DEFAULT_AUDIT_REL)
+  end
+
+  attr_reader :plastic_home, :dry_run, :audit_path
+
+  # The three in-scope stores, each as { key:, root:, store:, index: }.
+  # `root` is the dir holding INDEX.md; `store` is the intents dir.
+  def stores
+    list = []
+    global_store = File.join(plastic_home, "store")
+    list << { key: "global", root: plastic_home, store: global_store,
+              index: File.join(plastic_home, "INDEX.md") } if File.directory?(global_store)
+
+    %w[plastic knowdb].each do |slug|
+      root = File.join(plastic_home, "projects", slug)
+      store = File.join(root, "store")
+      next unless File.directory?(store)
+
+      list << { key: "project:#{slug}", root: root, store: store,
+                index: File.join(root, "INDEX.md") }
+    end
+    list
+  end
+
+  # { id => { sources:, chain:, path: } } for one store.
+  def load_nodes(store_dir)
+    nodes = {}
+    Dir.children(store_dir).reject { |e| e.start_with?(".") }.sort.each do |entry|
+      dir = File.join(store_dir, entry)
+      next unless File.directory?(dir)
+
+      md = File.join(dir, "#{entry}.md")
+      next unless File.exist?(md)
+
+      fm = IntentValidator.parse_frontmatter(md)
+      next unless fm.is_a?(Hash) && fm["id"]
+
+      nodes[fm["id"].to_s] = {
+        sources: Array(fm["sources"]).map(&:to_s),
+        chain: Array(fm["chain"]).map(&:to_s),
+        path: md,
+      }
+    end
+    nodes
+  end
+
+  def run
+    store_list = stores
+    nodes_by_store = {}
+    index_texts = {}
+    store_index = {}
+
+    store_list.each do |s|
+      nodes_by_store[s[:key]] = load_nodes(s[:store])
+      index_texts[s[:key]] = File.exist?(s[:index]) ? File.read(s[:index]) : ""
+      store_index[s[:key]] = nodes_by_store[s[:key]].keys
+    end
+
+    relocation_map = GraphRebuild.build_relocation_map(index_texts)
+
+    results = {}
+    store_list.each do |s|
+      key = s[:key]
+      input = nodes_by_store[key].transform_values { |v| { sources: v[:sources], chain: v[:chain] } }
+      results[key] = GraphRebuild.rebuild_store(
+        input,
+        referer_store: key,
+        relocation_map: relocation_map,
+        store_index: store_index
+      )
+    end
+
+    write_back(store_list, nodes_by_store, results) unless dry_run
+    emit_audit(store_list, nodes_by_store, results)
+
+    results
+  end
+
+  # Write changed frontmatter back via the minimal style-preserving writer.
+  def write_back(store_list, nodes_by_store, results)
+    store_list.each do |s|
+      key = s[:key]
+      new_nodes = results[key][:nodes]
+      nodes_by_store[key].each do |id, original|
+        rebuilt = new_nodes[id]
+        next if rebuilt.nil?
+        next if rebuilt[:sources] == original[:sources] && rebuilt[:chain] == original[:chain]
+
+        content = File.read(original[:path])
+        updated = FrontmatterWriter.rewrite_arrays(content,
+                                                   sources: rebuilt[:sources],
+                                                   chain: rebuilt[:chain])
+        File.write(original[:path], updated) if updated != content
+      end
+    end
+  end
+
+  # Render the audit and write it (always, even in dry-run, so the human reviews
+  # the dry-run plan). Returns the rendered string.
+  def emit_audit(store_list, _nodes_by_store, results)
+    text = render_audit(store_list, results)
+    FileUtils.mkdir_p(File.dirname(audit_path))
+    File.write(audit_path, text)
+    text
+  end
+
+  # PURE-ish formatter (string from results). Per-store, grouped by kind.
+  def render_audit(store_list, results)
+    total = store_list.sum { |s| results[s[:key]][:changes].size }
+    lines = []
+    lines << "# Audit: store-wide sources/chain graph rebuild (intent 49)"
+    lines << ""
+    lines << "Generated: #{Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ")}#{dry_run ? " (DRY RUN)" : ""}"
+    lines << ""
+    lines << "Total changes across all stores: #{total}"
+    lines << ""
+
+    store_list.each do |s|
+      key = s[:key]
+      changes = results[key][:changes]
+      lines << "## #{key}"
+      lines << ""
+      if changes.empty?
+        lines << "No changes."
+        lines << ""
+        next
+      end
+
+      KIND_ORDER.each do |kind|
+        group = changes.select { |c| c[:kind] == kind }
+        next if group.empty?
+
+        lines << "### #{KIND_LABELS[kind]} (#{group.size})"
+        group.each { |c| lines << "- #{format_change(c)}" }
+        lines << ""
+      end
+    end
+
+    lines.join("\n") + "\n"
+  end
+
+  def format_change(c)
+    case c[:kind]
+    when :dedupe
+      "#{c[:intent]}: sources #{c[:before][:sources].inspect} → #{c[:after][:sources].inspect}, " \
+        "chain #{c[:before][:chain].inspect} → #{c[:after][:chain].inspect}"
+    when :i3
+      "#{c[:intent]}: #{c[:before]} kept in sources, dropped from chain"
+    when :repoint
+      "#{c[:intent]}.#{c[:field]}: #{c[:before]} → #{c[:after]} (relocated cross-store)"
+    when :collapse
+      "#{c[:intent]}.#{c[:field]}: #{c[:before]} → #{c[:after]} (collapsed to bare same-store id)"
+    when :drop
+      "#{c[:intent]}.#{c[:field]}: #{c[:before]} dropped (resolves nowhere)"
+    when :i1_backlink
+      "#{c[:intent]}.chain += #{c[:backlink]} (formative backlink)"
+    else
+      c.inspect
+    end
+  end
+end
+
+if $PROGRAM_NAME == __FILE__
+  home = RebuildGraph::DEFAULT_HOME
+  dry = false
+  audit = nil
+  i = 0
+  while i < ARGV.length
+    case ARGV[i]
+    when "--plastic-home" then home = ARGV[i + 1]; i += 2
+    when "--dry-run" then dry = true; i += 1
+    when "--audit-path" then audit = ARGV[i + 1]; i += 2
+    else i += 1
+    end
+  end
+
+  tool = RebuildGraph.new(plastic_home: home, dry_run: dry, audit_path: audit)
+  results = tool.run
+  total = results.values.sum { |r| r[:changes].size }
+  puts "rebuild-graph #{dry ? "DRY RUN" : "applied"}: #{total} change(s) across #{results.size} store(s)."
+  puts "Audit: #{tool.audit_path}"
+end

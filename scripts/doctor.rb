@@ -17,6 +17,7 @@ require "digest"
 
 require_relative "lib/qmd_sync"
 require_relative "lib/intent_validator"
+require_relative "lib/graph_rebuild"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -480,7 +481,93 @@ class Doctor
     # flagged: validate_graph does not compute it.
     checks.concat(graph_invariant_checks(intent_dirs))
 
+    # cross_store_resolution — RESOLVES (not just shape-checks) every cross-store
+    # `store:id` ref against the FULL store family via the relocation map
+    # (relocation consulted first), closing the shape-only gap i1/i3/i4 leave open.
+    # Resolution always spans all stores even under `--store` scoping; only the
+    # REPORTED findings are filtered to refs originating in the scoped store(s).
+    checks << cross_store_resolution_check(scopes: scopes)
+
     checks
+  end
+
+  # Build the relocation map + cross-store store_index from ALL stores, then for
+  # every intent's cross-store `sources`/`chain` ref resolve it and flag:
+  #   - DEAD: the target resolves nowhere
+  #   - RELOCATED-STALE: the ref points at an old location the relocation log has
+  #     moved (the resolved location differs from the literal ref), e.g. the
+  #     `global:24` id-reuse hazard that direct resolution would silently accept.
+  # `scopes` (nil = full run) filters only the REPORTED findings by origin scope.
+  def cross_store_resolution_check(scopes: nil)
+    all_dirs = all_intent_dirs
+
+    # Per-scope node maps + store_index over the WHOLE family.
+    nodes_by_scope = Hash.new { |h, k| h[k] = {} }
+    store_index = Hash.new { |h, k| h[k] = [] }
+    all_dirs.each do |d|
+      md = File.join(d[:path], "#{d[:name]}.md")
+      next unless File.exist?(md)
+
+      fm = parse_frontmatter(md)
+      next unless fm.is_a?(Hash) && fm["id"]
+
+      id = fm["id"].to_s
+      store_index[d[:scope]] << id
+      nodes_by_scope[d[:scope]][id] = {
+        sources: Array(fm["sources"]).map(&:to_s),
+        chain: Array(fm["chain"]).map(&:to_s),
+      }
+    end
+
+    relocation_map = GraphRebuild.build_relocation_map(cross_store_index_texts)
+
+    findings = []
+    nodes_by_scope.each do |scope, nodes|
+      next if scopes && !scopes.include?(scope)
+
+      nodes.each do |id, edges|
+        %i[sources chain].each do |field|
+          edges[field].each do |ref|
+            next unless ref.include?(":") # only cross-store refs are resolved here
+
+            res = GraphRebuild.resolve_ref(ref, referer_store: scope,
+                                                relocation_map: relocation_map,
+                                                store_index: store_index)
+            case res[:status]
+            when :dead
+              findings << "#{id}.#{field} cross-store ref #{ref} resolves to no intent (dead)"
+            when :same_store
+              findings << "#{id}.#{field} cross-store ref #{ref} is relocated-stale (now same-store #{res[:id]})"
+            when :cross_store
+              findings << "#{id}.#{field} cross-store ref #{ref} is relocated-stale (now #{res[:ref]})" if res[:ref] != ref
+            end
+          end
+        end
+      end
+    end
+
+    graph_finding_check(
+      "graph_cross_store_resolution", findings,
+      "Every cross-store sources/chain ref resolves to a live, current intent",
+      "Run scripts/rebuild-graph to repoint/collapse/drop stale cross-store refs"
+    )
+  end
+
+  # { store_key => INDEX.md text } for every store (global + all projects), for the
+  # relocation-map builder. Reads INDEX.md one level above each store dir.
+  def cross_store_index_texts
+    texts = {}
+    global_index = File.join(plastic_home, "INDEX.md")
+    texts["global"] = File.read(global_index) if File.exist?(global_index)
+
+    projects_root = File.join(plastic_home, "projects")
+    if File.directory?(projects_root)
+      Dir.children(projects_root).each do |project|
+        idx = File.join(projects_root, project, "INDEX.md")
+        texts["project:#{project}"] = File.read(idx) if File.exist?(idx)
+      end
+    end
+    texts
   end
 
   # Build a per-scope `nodes` map and surface IntentValidator.validate_graph
