@@ -211,6 +211,20 @@ During initial project creation, all decisions are non-destructive by definition
    ```
    Disarming also purges stale bridge files from the temp directory automatically (it keeps the
    current bridge and any live run), so no manual `/tmp` cleanup is needed.
+
+   **Worktree cleanup (mandatory, intent 73c3).** Disarming performs the worktree release:
+   `disarm_auto` calls `Worktree.release`, which removes both per-intent worktrees (the code
+   worktree under `<repo>/.claude/worktrees/{id}--{slug}` and the paired store worktree under
+   `<plastic_home>/.worktrees/{id}--{slug}`), prunes both repos, and clears the worktree block
+   from the bridge. This is the plain remove path: the disarm route does NOT merge, so use it
+   only when no release merges the branch (the branch survives and can be reclaimed).
+
+   When the work is being shipped through a release, do NOT rely on this plain remove. The
+   release path (step 4 above, via `plastic-releasing`) is responsible for merging the intent's
+   code branch (`plastic/{id}--{slug}`) back to the repo's default branch BEFORE the worktree is
+   removed, so the integrated work is not lost. It does this with `Worktree.finish(bridge_data,
+   merge: true)` (merge-then-remove). Never leave an orphaned worktree, and run `git worktree
+   prune` if you hit a stale reference.
 10. Notify user: "Intent [ID] — [name] delivered. [1-2 sentence summary]. See outcome.md for details."
 
 ## Error Handling

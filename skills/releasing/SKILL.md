@@ -20,6 +20,7 @@ Project configuration drives the workflow - no hardcoded assumptions.
 - [ ] Run post-push actions (GitHub release, npm publish, etc.)
 - [ ] Verify release sync (npm dist-tag, GitHub "Latest", git tag all show the new version)
 - [ ] Complete active intent
+- [ ] Clean up the intent's worktrees (merge-then-remove)
 
 ## Workflow
 
@@ -83,6 +84,15 @@ git merge <branch-name> --no-ff -m "feat: merge intent [ID] - [description]"
 ```
 
 Always `--no-ff` to preserve branch history in the merge commit.
+
+**Worktree-isolated intents (intent 73c3).** When the intent was delivered in a Plastic
+worktree (the bridge has a provisioned `worktree` block), its code lives on the branch
+`plastic/{id}--{slug}` inside `<repo>/.claude/worktrees/{id}--{slug}`, not on a hand-made
+feature branch. The merge-then-remove of that worktree is handled together with cleanup in
+step 9, which merges `plastic/{id}--{slug}` into the default branch BEFORE removing the
+worktree. If you already merged here by hand, step 9 is a clean no-op merge ("Already up to
+date") and proceeds straight to removal. Do not delete the worktree before its branch is
+merged, or the work is lost.
 
 ### 4. Bump Version
 
@@ -206,6 +216,28 @@ A release IS a delivery. The active intent that drove this work must be complete
 3. Auto-commit: `cd ~/.plastic && git add . && git commit -m "feat: complete intent <ID> - delivered in <tag-name>"`
 
 **If no active intent exists for this release**, that itself is a problem - work happened outside the intent system. Log it and move on, but flag it.
+
+### 9. Clean Up the Intent's Worktrees (merge-then-remove)
+
+A release is the merge-then-remove path for the intent's worktrees (intent 73c3). This is the
+one place the merge-vs-remove policy lands on "merge": the intent's code branch
+(`plastic/{id}--{slug}`) is merged back into the repo's default branch BEFORE the worktree is
+removed, so the integrated work is never lost. (The disarm path in `plastic-auto`, by contrast,
+is a plain remove because no release is merging the branch.)
+
+Drive it through `Worktree.finish` with `merge: true`, which merges the code branch, then
+removes both worktrees (code + paired store), prunes both repos, and clears the worktree block
+from the bridge:
+
+```bash
+ruby -r ~/.plastic/scripts/lib/worktree -r ~/.plastic/scripts/lib/bridge -e \
+  'b = Bridge.read(ENV["CLAUDE_CODE_SESSION_ID"]); Worktree.finish(b, merge: true) if b'
+```
+
+`finish` is fail-open and idempotent: a conflicting merge is aborted and logged (the worktree
+is still removed rather than stranded), and a second call with the block already cleared is a
+no-op. Honor the worktree-cleanup rule: never leave an orphaned worktree, and run `git worktree
+prune` in the affected repo if you hit a stale reference.
 
 ## Conventions
 
