@@ -205,6 +205,26 @@ ALL work flows through intents.
 
 Hard blocking — hooks exit code 2 on gate failure.
 
+## Delivery Isolation and the Single-Owner Lock
+
+Exactly one session or agent develops an intent's delivery at a time. Ownership is the armed
+session bridge, which doubles as the delivery lock: arming records the owning session, the
+owner pid, an acquired-at timestamp, and the host. Another session that finds an armed bridge
+for the same intent with a live owner backs off; if the owner pid is dead the lock is
+reclaimable. This is mandatory, not a convention.
+
+Every code-touching intent gets its own git worktree named `{id}--{slug}`, and all code edits
+for that intent happen only inside it. Plastic provisions the worktree deterministically: it
+resolves the project repo from `projects.yml` and runs `git -C <repo> worktree add`, so
+isolation never depends on the current working directory. There are two worktrees per project
+intent: a code worktree at `<repo>/.claude/worktrees/{id}--{slug}` (branch `plastic/{id}--{slug}`)
+and a store worktree at `<plastic_home>/.worktrees/{id}--{slug}` (branch
+`plastic-store/{id}--{slug}`), so lifecycle-doc commits and code commits move as one unit.
+
+Provisioning fails open for intents that touch no project code (pure research or decision
+intents in the global store, or a non-git repo): those get the lock only, and the worktree
+block stays unprovisioned. The fail-open path is always logged, never silent.
+
 ## Deprecation Process
 
 Deprecations live in `deprecations.yml` and are shown at SessionStart. While Plastic is

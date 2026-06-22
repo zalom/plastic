@@ -210,6 +210,7 @@ class InstallerCore
       "scripts/hook-bash-gate" => "scripts/hook-bash-gate",
       "scripts/hook-auto-arm" => "scripts/hook-auto-arm",
       "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
+      "scripts/lib/worktree.rb" => "scripts/lib/worktree.rb",
       "scripts/lib/boot_banner.rb" => "scripts/lib/boot_banner.rb",
       "scripts/lib/qmd_sync.rb" => "scripts/lib/qmd_sync.rb",
       "scripts/qmd-sync" => "scripts/qmd-sync",

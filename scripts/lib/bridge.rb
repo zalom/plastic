@@ -6,6 +6,8 @@ require "yaml"
 require "fileutils"
 require "tempfile"
 require "digest"
+require "socket"
+require_relative "worktree"
 
 module Bridge
   STAGES = %w[what why how exec done].freeze
@@ -368,6 +370,23 @@ module Bridge
         "context_pct" => 0,
         "warning_at" => 80,
         "critical_at" => 90
+      },
+      # Worktree isolation block (intent 73c). Born unprovisioned; arm_auto calls
+      # Worktree.provision to fill it. code/store are abs paths or null.
+      "worktree" => {
+        "code" => nil,
+        "code_branch" => nil,
+        "store" => nil,
+        "store_branch" => nil,
+        "provisioned" => false
+      },
+      # Delivery lock block (intent 73c). The bridge IS the lock; the owner is
+      # whoever armed it. Born unowned; arm_auto stamps owner_session/pid/etc.
+      "lock" => {
+        "owner_session" => nil,
+        "pid" => nil,
+        "acquired_at" => nil,
+        "host" => nil
       }
     }
 
@@ -439,6 +458,25 @@ module Bridge
     end
     data = derive(key, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name)
     data["build"]["auto"] = true
+
+    # Acquire the delivery lock: this armed bridge is now the single owner of the
+    # intent's delivery (intent 73c). Stamp owner + pid liveness fields.
+    data["lock"] = {
+      "owner_session" => key,
+      "pid" => Process.pid,
+      "acquired_at" => Time.now.utc.iso8601,
+      "host" => (Socket.gethostname rescue nil)
+    }
+
+    # Provision the per-intent worktrees (mandatory code worktree for project
+    # intents; fail-open for non-git / global-only). Never let a provision error
+    # break arming: the lock and auto flag still matter.
+    begin
+      Worktree.provision(data)
+    rescue => e
+      $stderr.puts "plastic: worktree provision raised, continuing unprovisioned: #{e.message}"
+    end
+
     write(key, data)
     purge_done_bridges(session: key)
     data
@@ -450,6 +488,16 @@ module Bridge
     return nil unless data
     data["build"] ||= {}
     data["build"]["auto"] = false
+
+    # Release the worktrees the matching arm provisioned (intent 73c). Non-fatal:
+    # a release error must not block disarming. CLEANUP (73c3) refines the
+    # merge-vs-remove policy on the completion/release path.
+    begin
+      Worktree.release(data)
+    rescue => e
+      $stderr.puts "plastic: worktree release raised, continuing: #{e.message}"
+    end
+
     write(session, data)
     purge_done_bridges(session: session)
     data

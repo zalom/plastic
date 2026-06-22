@@ -494,6 +494,49 @@ one shared definition of store creation that creation and repair both consult.
   never edits `projects.yml`, and registration with qmd stays a separate skill
   step that no-ops when qmd is absent.
 
+## worktree provisioning and the delivery lock (intent 73c)
+
+The harness worktree tool assumes the current directory IS the repo root, which
+is false for Plastic (cwd is often the parent of the repo subdir). When that
+mismatch occurred the tool silently degraded to a feature branch on the shared
+checkout, so parallel intent deliveries were not isolated. Plastic supplies its
+own isolation instead, deterministic and cwd-independent.
+
+- **Single source of truth**: `scripts/lib/worktree.rb` (module `Worktree`) is
+  the only definition of how an intent's worktrees and lock are made. It is
+  dependency-injected (a `ShellRunner` runs `git`, a `home` argument resolves
+  `projects.yml`), hermetic, idempotent, uses no eval, and does no
+  global-constant injection, mirroring `intent_validator.rb` and
+  `store_provisioning.rb`. Every git call uses `git -C <resolved path>`, never
+  cwd: that is the actual fix for the cwd-not-repo-root gap.
+- **Two worktrees, id-first names**: `Worktree.paths` is pure and returns the
+  code worktree (`<repo>/.claude/worktrees/{id}--{slug}`, branch
+  `plastic/{id}--{slug}`) and the store worktree
+  (`<plastic_home>/.worktrees/{id}--{slug}`, branch `plastic-store/{id}--{slug}`).
+  `Worktree.repo_for` resolves the abs repo path from `projects.yml` (reusing the
+  qmd_sync safe-loader pattern), or nil.
+- **Provision and release**: `Worktree.provision(bridge_data)` resolves the slug
+  from `bridge_data["intent"]["store"]`, creates both worktrees idempotently (an
+  existing worktree path is reused, never re-created or errored), and writes the
+  `worktree` block plus `provisioned: true`. It fails open with a stderr log when
+  the repo is unresolvable or not a git work tree, setting `provisioned: false`
+  and leaving `code: null`. `Worktree.release(bridge_data)` removes both
+  worktrees, prunes, and clears the block; it is a no-op when nothing was
+  provisioned.
+- **The bridge is the lock**: `Bridge.derive` now emits a `worktree` block and a
+  `lock` block (both born empty). `arm_auto` stamps the `lock` (owner session,
+  `Process.pid`, an acquired-at timestamp, the host) and calls
+  `Worktree.provision`; `disarm_auto` calls `Worktree.release`. Both wrap the
+  worktree call so a provision or release error never breaks arming or disarming.
+  `Worktree.session_live?(pid)` probes liveness with `Process.kill(0, pid)`, and
+  `Worktree.lock_held_by_other?` returns true only when another `/tmp/plastic-*`
+  bridge for the same intent has a live owner pid that is not the current session
+  (a dead owner makes the lock reclaimable).
+- **Scope boundary**: `worktree.rb` is pure provisioning and lock-state logic. It
+  never edits `projects.yml` and never mutates qmd. The PreToolUse gate that
+  blocks edits outside the active worktree, and the cleanup policy that decides
+  merge-vs-remove on the completion path, are layered on top by sibling intents.
+
 ## living-document
 
 This is a living document. When Plastic's architecture, lifecycle, conventions,

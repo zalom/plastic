@@ -81,10 +81,19 @@ Rules for any agent (or human) contributing to this repository.
   loader command above requires every `test/*_test.rb` file, so the whole suite runs.
 - Confirm green before committing code changes.
 
-### Worktrees
-- Do isolated feature work in a git worktree, not the shared checkout, so parallel sessions
-  and the main working copy stay clean. Create one with the agent's worktree tool (or
-  `git worktree add`), run and test inside it, then merge the branch back.
+### Worktrees and the single-owner lock
+- Single owner, mandatory. Exactly one session or agent develops an intent's delivery at a
+  time. Ownership is the armed session bridge, which acts as the delivery lock (it records the
+  owning session, the owner pid, the acquired-at time, and the host). If you find an armed
+  bridge for an intent whose owner pid is still live, back off; you may reclaim it only when
+  the owner is dead.
+- Every code-touching intent gets its own worktree named `{id}--{slug}`, and code edits happen
+  only inside it. Plastic provisions this automatically at arm time by resolving the repo from
+  `projects.yml` and running `git -C <repo> worktree add`, so isolation does not depend on the
+  current directory. The code worktree lives at `<repo>/.claude/worktrees/{id}--{slug}`; the
+  paired store worktree lives at `<plastic_home>/.worktrees/{id}--{slug}`.
+- Do isolated feature work in that worktree, not the shared checkout, so parallel sessions and
+  the main working copy stay clean. Run and test inside it, then merge the branch back.
 - Clean up when done: remove the worktree after the branch is merged. Never leave an orphaned
   worktree, and run `git worktree prune` if you hit a stale reference.
 
