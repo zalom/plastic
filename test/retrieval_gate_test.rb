@@ -150,14 +150,34 @@ class RetrievalGateTest < Minitest::Test
     refute_match(/Serena/i, reason)
   end
 
-  def test_non_store_markdown_is_serena_class
+  def test_non_store_markdown_is_allowed
     doc = File.join(@home, "code", "README.md")
     reason = decide(
       tool_name: "Read", tool_input: { "file_path" => doc },
       capabilities: caps(qmd: false, qmd_fresh: false, serena: true)
     )
+    assert_nil reason
+  end
+
+  def test_memory_md_non_store_is_allowed
+    doc = File.join(@home, "memory", "MEMORY.md")
+    reason = decide(
+      tool_name: "Read", tool_input: { "file_path" => doc },
+      capabilities: caps(qmd: false, qmd_fresh: false, serena: true)
+    )
+    assert_nil reason
+  end
+
+  def test_project_store_markdown_classified_qmd
+    dir = File.join(@home, "projects", "plastic", "store", "84--x")
+    FileUtils.mkdir_p(dir)
+    md = File.join(dir, "spec.md")
+    reason = decide(
+      tool_name: "Read", tool_input: { "file_path" => md },
+      capabilities: caps(qmd: true, qmd_fresh: true, serena: true)
+    )
     refute_nil reason
-    assert_match(/Serena/i, reason)
+    assert_match(/QMD/i, reason)
   end
 
   def test_grep_pattern_not_treated_as_path
