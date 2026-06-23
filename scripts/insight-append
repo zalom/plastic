@@ -1,0 +1,51 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# insight-append - the blessed write path for an intent's `## Insights` section
+# (intent 82). A thin CLI wrapper over Insights.append_insight: it formats the
+# `{utc-iso8601} · {stage} · {author}` prefix, validates it, and appends one
+# entry at the bottom of the section (creating the section or file if absent).
+#
+# Sibling to scripts/spawn-preamble and scripts/agent-report. The library's
+# `now:` seam is the test seam; the CLI uses the default Time.now, which is fine
+# because determinism is covered at the library level (test/insights_test.rb).
+#
+# Usage:
+#   insight-append <intent_dir> <text> --stage S --author A
+#
+# Exit codes: 0 (entry appended), 2 (usage).
+
+require_relative "lib/insights"
+
+def parse_args(argv)
+  stage = nil
+  author = nil
+  positional = []
+  i = 0
+  while i < argv.length
+    case argv[i]
+    when "--stage"
+      stage = argv[i + 1]
+      i += 2
+    when "--author"
+      author = argv[i + 1]
+      i += 2
+    else
+      positional << argv[i]
+      i += 1
+    end
+  end
+  [positional[0], positional[1], stage, author]
+end
+
+intent_dir, text, stage, author = parse_args(ARGV)
+
+if [intent_dir, text, stage, author].any? { |v| v.nil? || v.to_s.empty? }
+  warn "usage: insight-append <intent_dir> <text> --stage S --author A"
+  exit 2
+end
+
+entry = Insights.append_insight(File.expand_path(intent_dir), text,
+                                stage: stage, author: author)
+puts "appended: #{entry}"

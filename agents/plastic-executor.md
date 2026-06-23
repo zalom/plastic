@@ -18,7 +18,7 @@ When dispatched in auto mode you receive the standard Plastic spawn preamble (fr
 
 1. **Implement the actions** — make the code changes for each action in order
 2. **Track progress** — check off `checklist.md` items as they complete
-3. **Record insights** — append observations to `## Insights` with the `(autonomous)` marker
+3. **Record insights** — capture durable discoveries and report them in the `insights:` field; persist each to `## Insights` via the `insight-append` helper (`scripts/insight-append <intent_dir> <text> --stage Exec --author "plastic-executor (autonomous)"`), the blessed write path that stamps the `{utc-iso8601} · {stage} · {author}` prefix
 4. **Prove it green** — run the full test suite and reach zero failures before reporting done
 
 ## How You Work
@@ -32,7 +32,7 @@ When dispatched in auto mode you receive the standard Plastic spawn preamble (fr
 
 ## Completion Report
 
-END your turn with a structured completion report as your final message, per the spawn preamble's `REPORT_CONTRACT` and `skills/auto/references/agent-report-contract.md`. Do not finish silently. Carry the common envelope (role, intent id, stage, status, artifacts written, verification, checklist deltas, deviations, blockers) plus the executor payload:
+END your turn with a structured completion report as your final message, per the spawn preamble's `REPORT_CONTRACT` and `skills/auto/references/agent-report-contract.md`. Do not finish silently. Carry the common envelope (role, intent id, stage, status, artifacts written, verification, checklist deltas, deviations, blockers, insights) plus the executor payload:
 
 - Actions implemented this turn, mapped to checklist items checked off (checked / total)
 - A summary of the code changed (files and the shape of the change)

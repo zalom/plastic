@@ -39,6 +39,11 @@ Every role report, whatever the stage, carries these fields:
 - **Checklist deltas**: which checklist items this turn checked off (executor), or `n/a`.
 - **Deviations from spec**: anything done differently from the spec or plan, and why, or `none`.
 - **Blockers / handoff notes**: what the next stage must watch for, or `none`.
+- **Insights**: 0..N durable nuggets discovered this turn (the most interesting residue),
+  each one a `## Insights`-worthy line; `none` if there were none. Background and dispatched
+  agents MUST populate this: they carry each nugget home in the report and the orchestrator
+  persists it (see Insights delivery below), so an insight never depends on the discovering
+  session having file-write access.
 
 ## Per-role payload
 
@@ -49,11 +54,13 @@ D2). The payload is what makes the report useful to the orchestrator beyond the 
 - Decisions recorded in `### Decisions`, each with its one-line rationale.
 - Context enriched: what was researched and the key findings.
 - Open questions resolved, and any deliberately left for the spec.
+- Insights: durable discoveries from the Why exploration, reported in the `insights:` field.
 
 ### spec-specialist (Why to How boundary)
 - Spec sections produced (Problem, Goals, Non-Goals, Approach, Decisions, Acceptance Criteria).
 - How the recorded decisions resolved into the chosen approach.
 - Acceptance-criteria count, so the planner knows the surface to cover.
+- Insights: durable discoveries from consolidating the spec, reported in the `insights:` field.
 
 ### planner (How): worked exemplar
 The planner report EXPLAINS THE PLAN BACK TO THE ORCHESTRATOR. It carries:
@@ -62,17 +69,20 @@ The planner report EXPLAINS THE PLAN BACK TO THE ORCHESTRATOR. It carries:
 - Checklist coverage: item count and that every action plus suite-green is covered.
 This is the exemplar because the plan is an argument, and the orchestrator gates on whether that
 argument is sound before any code is written.
+- Insights: durable discoveries from planning, reported in the `insights:` field.
 
 ### executor (Exec)
 - Actions implemented this turn, mapped to checklist items checked off (checked / total).
 - A summary of the code changed (files and the shape of the change).
 - Test result: the full-suite command and its pass / fail counts.
-- Insights appended, with the `(autonomous)` marker.
+- Insights reported in the `insights:` field (each with the `(autonomous)` marker); the
+  executor or the orchestrator persists them to `## Insights` via the `insight-append` helper.
 
 ### final reviewer (final gate)
 - Verdict: `pass` or `blockers found`.
 - Each acceptance criterion checked, with the evidence that confirms or refutes it.
 - Gaps or risks found, ranked, with a recommended disposition.
+- Insights: durable discoveries from the review, reported in the `insights:` field.
 
 ## Fallback: always a report
 
@@ -92,3 +102,20 @@ ledger, the lifecycle artifacts present, the checklist checked / total, and the 
 line, and emits a filesystem-derived report labelled `synthesized`. So a handoff account always
 exists: authored by the agent when possible, reconstructed deterministically when not. This
 formalizes the by-hand reconstruction the orchestrator did while delivering intent 68.
+
+## Insights delivery
+
+Insights ride home in the completion report. Every agent reports its durable nuggets in the
+`insights:` field; the orchestrator (or any agent that can write the intent file) then persists
+each one via the helper:
+
+```
+scripts/insight-append <intent_dir> <text> --stage S --author A
+```
+
+The helper formats the `{utc-iso8601} · {stage} · {author}` prefix (the same timestamp
+convention as the savepoint ledger), validates it, and appends the entry at the bottom of the
+`## Insights` section, newest last. This is the fix for dropped background and sub-agent
+insights: a session that cannot write the intent file still returns its report, so the insight
+survives and the orchestrator writes it on receipt. Hand-editing `## Insights` is an escape
+hatch; the helper is the default so the prefix format cannot drift.

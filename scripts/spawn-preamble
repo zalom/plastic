@@ -41,10 +41,16 @@ REPORT_CONTRACT =
   "FINAL MESSAGE (your return value), not a side-channel file. Do not go idle or " \
   "finish silently. The report carries a common envelope: role, intent id, stage, " \
   "status (delivered or blocked), artifacts written, verification or tests run, " \
-  "checklist deltas, deviations from spec, and blockers or handoff notes; plus a " \
+  "checklist deltas, deviations from spec, blockers or handoff notes, and an " \
+  "insights field carrying 0..N durable nuggets (what I discovered worth keeping, " \
+  "the most interesting residue of this turn; none if there were none); plus a " \
   "role-specific payload that fulfils your place in the What, Why, How, Exec cycle " \
-  "(for example the planner explains the plan back to the orchestrator). Keep the " \
-  "report prose-stripped: the envelope and payload only, no greeting, no preamble, " \
+  "(for example the planner explains the plan back to the orchestrator). Populate " \
+  "the insights field even when you cannot write the intent file yourself: a " \
+  "background or dispatched agent carries each nugget home in the report and the " \
+  "orchestrator persists it via scripts/insight-append, so an insight never " \
+  "depends on the discovering session's file-write access. Keep the report " \
+  "prose-stripped: the envelope and payload only, no greeting, no preamble, " \
   "no end-recap, no restating of the task; reasoning stays in the thinking channel. " \
   "See skills/auto/references/agent-report-contract.md for the per-role format."
 
