@@ -36,7 +36,7 @@ module RetrievalGate
   SERENA_EXTENSIONS = %w[
     rb js jsx ts tsx mjs cjs py go rs java kt scala c h cpp hpp cc
     cs php rb swift sh bash zsh lua ex exs erl clj sql
-    json yaml yml toml md markdown
+    json yaml yml toml
   ].freeze
 
   # Image / binary extensions that are always allowed (plain read is fine).
