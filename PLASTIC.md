@@ -183,6 +183,10 @@ Sections: `## Active`, `## Future`, `## Clusters`, `## Abandoned`, `## Completed
 
 For index maintenance, use `plastic-managing-index`.
 
+One-line entry convention. Each index entry is ONE line: `- [<id> <terse title>](<dir>) <tags>`.
+The title is the title, not a summary: aim for about 80 characters, no multi-sentence
+descriptions. This is a self-check, not a gate.
+
 ## Rules for Skills
 
 ALL work flows through intents.
@@ -193,6 +197,53 @@ ALL work flows through intents.
 4. When done, write `outcome.md` + `## Outcome` summary. Update INDEX.md.
 5. Researches are intents. No separate folder.
 6. Intents are created only via `plastic-creating-intent`. Never hand-author an intent file. The skill self-verifies the written intent with `scripts/validate-intent` before announcing or committing, so every intent is born complete.
+
+## House Style (self-check)
+
+The agent is the heaviest contributor to the transcript, so terseness pays every turn. These
+are pre-send self-checks the agent applies to its own output. They are not gated.
+
+- Answer or decision first. Lead with the result, then support it.
+- Bullets over paragraphs.
+- No preamble, no end-recap. Do not restate the question or summarize what you just said.
+- One question-cluster at a time when asking the human.
+- Reasoning goes in the thinking channel, not duplicated into the visible reply. This keeps
+  the human's visibility into your reasoning without paying for it twice in the transcript.
+
+Active-intent cache rule. For the intent under active development you already hold its
+delivered artifacts in your own context: prefer revisiting that in-context memory (hit the
+cache) over re-reading them from disk, which only widens context. QMD is for OTHER or indexed
+intents, not for re-reading what you just wrote. Pairs with `/clear` plus savepoint-resume
+hygiene after each intent. Advisory self-check, not hard-verifiable.
+
+## Retrieval Gate
+
+A single capability-aware PreToolUse gate enforces retrieval-first routing on the agent's own
+Bash/Read/Grep/Glob calls (and on subagents, since PreToolUse binds them). Detection is binary:
+present means enforce, absent or down means off, with no warning and no advisory tier.
+
+- Store markdown (under a Plastic store) routes to QMD when QMD is present and the index is
+  fresh: the raw grep/find/Read is blocked and you use `qmd search`/`qmd query` (or
+  `scripts/qmd-sync search`) instead. When QMD is present but stale, the read is allowed this
+  turn and a background reindex is fired so the next turn enforces against a fresh index;
+  reindex is never synchronous. When QMD is absent or down, raw reads are allowed.
+- Serena-supported code and data files route to Serena symbolic tools when Serena is present;
+  absent means allowed.
+- Images, binaries, and everything else are allowed.
+- Bypass: append a trailing `# qmd-ok` shell comment to a Bash command for the rare case where
+  QMD is healthy but you genuinely need the raw read. A quoted or echoed occurrence does not
+  bypass. Bypasses are logged.
+- Scope: only the agent's tool calls. Ruby `File.read` inside a script is invisible to the gate
+  and is out of scope by design.
+
+## Context-economy measurement buckets (84a)
+
+Intent 84 defines three buckets for sibling 84a to audit against; 84 does not run the audit.
+
+- (a) gate-hook prose tokens: the per-transition narration emitted by the gate hook.
+- (b) main-loop store-read tokens: tokens the main agent spends reading or grepping the store
+  in the transcript.
+- (c) authored-section sizes: sizes of authored artifacts (INDEX entries and the like).
 
 ## Transition Gates
 

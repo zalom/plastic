@@ -64,6 +64,9 @@ class SpawnPreambleTest < Minitest::Test
     assert_includes out,
       "the planner explains the plan back to the orchestrator",
       "report contract must name the per-role payload exemplar"
+    # Intent 84: reports are prose-stripped (envelope + payload only).
+    assert_includes out, "prose-stripped",
+      "report contract must instruct subagents to strip conversational prose"
   end
 
   def test_stage_derived_from_files_when_no_savepoint

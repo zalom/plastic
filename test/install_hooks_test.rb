@@ -285,6 +285,40 @@ class MergeClaudeHooksTest < Minitest::Test
     assert_equal "Write", create_group["matcher"]
   end
 
+  # Intent 84, Lever 2: the retrieval gate is wired as a third PreToolUse group
+  # matching Bash|Read|Grep|Glob. PreToolUse hooks apply to subagent tool calls
+  # too, so registering here binds subagents with no extra wiring.
+  def test_pretooluse_registers_retrieval_gate
+    File.write(@settings_path, "{}")
+    @installer.merge_claude_hooks(@settings_path)
+    settings = JSON.parse(File.read(@settings_path))
+
+    commands = pretooluse_commands(settings)
+    assert commands.any? { |c| c.end_with?("plastic-retrieval-gate") },
+      "retrieval-gate must be registered"
+
+    group = settings["hooks"]["PreToolUse"].find do |g|
+      g["hooks"].any? { |h| h["command"].include?("plastic-retrieval-gate") }
+    end
+    assert_equal "Bash|Read|Grep|Glob", group["matcher"]
+  end
+
+  def test_pretooluse_retrieval_gate_is_idempotent_across_two_merges
+    File.write(@settings_path, "{}")
+    @installer.merge_claude_hooks(@settings_path)
+    @installer.merge_claude_hooks(@settings_path)
+    settings = JSON.parse(File.read(@settings_path))
+
+    rg_commands = pretooluse_commands(settings).select { |c| c.include?("plastic-retrieval-gate") }
+    assert_equal 1, rg_commands.size, "retrieval-gate must not duplicate across merges"
+
+    # The whole PreToolUse list carries exactly three plastic groups.
+    plastic_groups = settings["hooks"]["PreToolUse"].select do |g|
+      g["hooks"].any? { |h| h["command"].to_s.include?("plastic-") }
+    end
+    assert_equal 3, plastic_groups.size, "PreToolUse must carry code-gate, create-gate, retrieval-gate"
+  end
+
   def test_pretooluse_create_gate_is_idempotent_across_two_merges
     File.write(@settings_path, "{}")
     @installer.merge_claude_hooks(@settings_path)

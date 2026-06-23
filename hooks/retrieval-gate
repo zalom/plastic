@@ -1,0 +1,10 @@
+#!/bin/bash
+# Retrieval-gate hook launcher (intent 84, Lever 2). No-op when there is no
+# global store. Passes the PreToolUse JSON through on stdin (exec inherits it)
+# and the plastic_home as ARGV[0], mirroring the qmd-search launcher.
+GLOBAL_INDEX="$HOME/.plastic/INDEX.md"
+if [ ! -f "$GLOBAL_INDEX" ]; then
+  exit 0
+fi
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec ruby "$SCRIPT_DIR/../scripts/hook-retrieval-gate" "$HOME/.plastic"

@@ -112,32 +112,17 @@ if is_stage_file || is_action_file
 
   Bridge.write(session, bridge_data)
 
-  # Build transition context
-  stage_labels = { "what" => "What", "why" => "Why", "how" => "How", "exec" => "Exec", "done" => "Done" }
-  next_hints = {
-    "why" => "write spec.md",
-    "how" => "Why complete. Invoke plastic-auto to deliver autonomously, or write plan.md manually.",
-    "exec" => "How complete. Invoke plastic-auto or plastic-executing-plan to execute, or work through the checklist manually.",
-    "done" => "Exec complete. Intent must be completed now — write outcome.md, update INDEX.md, auto-commit. Use plastic-auto or do it manually."
-  }
-
-  context_parts = ["PLASTIC"]
-  if old_stage != new_stage
-    context_parts[0] = "PLASTIC — Stage transition: #{stage_labels[old_stage] || old_stage} → #{stage_labels[new_stage] || new_stage}."
-  else
-    context_parts[0] = "PLASTIC — #{basename} written (stage: #{stage_labels[new_stage] || new_stage})."
-  end
-  context_parts << "#{basename} written."  if old_stage != new_stage
-  if new_missing.any?
-    context_parts << "Next: #{new_missing.join(", ")}"
-  elsif next_hints[new_stage]
-    context_parts << "Next: #{next_hints[new_stage]}"
-  end
+  # Build transition context — ONE concise sentence (intent 84, Lever 1),
+  # preserving the `Next: ...` hint. Formatting is pure in Bridge.gate_narration.
+  context = Bridge.gate_narration(
+    old_stage: old_stage, new_stage: new_stage,
+    basename: basename, new_missing: new_missing
+  )
 
   payload = {
     "hookSpecificOutput" => {
       "hookEventName" => "PostToolUse",
-      "additionalContext" => context_parts.join(" ")
+      "additionalContext" => context
     }
   }
   puts JSON.generate(payload)

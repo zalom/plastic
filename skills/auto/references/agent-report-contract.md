@@ -17,6 +17,14 @@ only. In-flight observations still go in `## Insights`; the report does not add 
 completed its handoff: the agent that did the work is the cheapest, most accurate source of the
 account.
 
+## Prose-stripped (intent 84)
+
+The report is the envelope and the per-role payload, nothing else. Dispatched and background
+subagents report and do their job; they do not narrate. Strip conversational prose: no
+greeting, no preamble, no "Here is what I did" framing, no end-recap, no restating of the task.
+Reasoning belongs in the thinking channel, not the report body. This tightens the FORM (the
+fields stay exactly as below); it does not remove any required field.
+
 ## Common envelope
 
 Every role report, whatever the stage, carries these fields:
