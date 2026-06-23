@@ -222,6 +222,8 @@ class InstallerCore
       "scripts/lib/frontmatter_writer.rb" => "scripts/lib/frontmatter_writer.rb",
       "scripts/lib/links_projection.rb" => "scripts/lib/links_projection.rb",
       "scripts/lib/links_section.rb" => "scripts/lib/links_section.rb",
+      "scripts/project-links" => "scripts/project-links",
+      "scripts/rebuild-graph" => "scripts/rebuild-graph",
       "scripts/validate-intent" => "scripts/validate-intent",
       "scripts/new-intent" => "scripts/new-intent",
       "scripts/hook-create-gate" => "scripts/hook-create-gate",
