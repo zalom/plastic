@@ -130,4 +130,28 @@ class InstallerCoreTest < Minitest::Test
                  "scripts/lib files missing from InstallerCore#core_files manifest " \
                  "(they will not be installed): #{missing.join(', ')}"
   end
+
+  # Regression guard (intent 86): every `scripts/<x>` command named in a scripts/doctor.rb
+  # fix_hint must be a key in the core_files manifest, so doctor never tells a user to run a
+  # tool the installer does not ship. Mirrors test_every_lib_file_is_in_the_manifest (intent 78).
+  def test_every_fix_hint_script_is_in_the_manifest
+    manifest = @core.core_files
+    doctor_src = File.read(File.join(WORKTREE, "scripts/doctor.rb"))
+
+    # fix_hint literals follow the convention `"Run scripts/<token> ..."`. Extract every
+    # scripts/<token> mentioned in those "Run ..." string literals.
+    scripts = doctor_src
+      .scan(/"Run (scripts\/[A-Za-z0-9._-]+)[^"]*"/)
+      .flatten
+      .uniq
+
+    refute_empty scripts,
+                 "expected scripts/doctor.rb fix_hints to name at least one scripts/<x> command; " \
+                 "if this is empty the guard is vacuous"
+
+    missing = scripts.reject { |rel| manifest.key?(rel) }
+    assert_empty missing,
+                 "scripts/doctor.rb fix_hints name commands missing from InstallerCore#core_files " \
+                 "(doctor would tell users to run an unshipped tool): #{missing.join(', ')}"
+  end
 end
