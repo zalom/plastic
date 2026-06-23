@@ -274,6 +274,51 @@ module Bridge
     end
   end
 
+  # --- Gate-boundary narration (intent 84, Lever 1) -------------------------
+  #
+  # ONE concise sentence that states what happened AND what's next, preserving
+  # the `Next: ...` hint the agent consumes. Pure and side-effect-free so the
+  # hook stays a thin caller and the formatter is unit-testable in isolation.
+  # No "Stage transition: X -> Y" prose, no arrow; a colon/parentheses carry the
+  # stage word. Returns a single line (no embedded newlines).
+  STAGE_LABELS = {
+    "what" => "What", "why" => "Why", "how" => "How",
+    "exec" => "Exec", "done" => "Done"
+  }.freeze
+
+  NEXT_HINTS = {
+    "why" => "write spec.md",
+    "how" => "Why complete. Invoke plastic-auto to deliver autonomously, or write plan.md manually.",
+    "exec" => "How complete. Invoke plastic-auto or plastic-executing-plan to execute, or work through the checklist manually.",
+    "done" => "Exec complete. Intent must be completed now — write outcome.md, update INDEX.md, auto-commit. Use plastic-auto or do it manually."
+  }.freeze
+
+  def self.stage_label(stage)
+    STAGE_LABELS[stage] || stage.to_s
+  end
+
+  # Build the gate-hook `additionalContext` sentence.
+  #   transition:      "PLASTIC: How reached (plan.md written). Next: <hint>"
+  #   same-stage write: "PLASTIC: plan.md written (How). Next: <hint>"
+  # `new_missing` (missing files for the new stage) takes precedence over the
+  # stage hint, exactly as before, so the `Next:` content is unchanged.
+  def self.gate_narration(old_stage:, new_stage:, basename:, new_missing:, next_hints: NEXT_HINTS)
+    head = if old_stage != new_stage
+             "PLASTIC: #{stage_label(new_stage)} reached (#{basename} written)."
+           else
+             "PLASTIC: #{basename} written (#{stage_label(new_stage)})."
+           end
+
+    nxt =
+      if Array(new_missing).any?
+        "Next: #{Array(new_missing).join(", ")}"
+      elsif next_hints[new_stage]
+        "Next: #{next_hints[new_stage]}"
+      end
+
+    nxt ? "#{head} #{nxt}" : head
+  end
+
   # --- Cycle-step savepoint ledger (intent 34) ------------------------------
   #
   # savepoint.md is a deterministic, append-only, one-line-per-milestone ledger

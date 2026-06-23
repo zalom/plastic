@@ -208,6 +208,8 @@ class InstallerCore
       "scripts/lib/power_tools.rb" => "scripts/lib/power_tools.rb",
       "scripts/hook-code-gate" => "scripts/hook-code-gate",
       "scripts/hook-bash-gate" => "scripts/hook-bash-gate",
+      "scripts/hook-retrieval-gate" => "scripts/hook-retrieval-gate",
+      "scripts/lib/retrieval_gate.rb" => "scripts/lib/retrieval_gate.rb",
       "scripts/hook-auto-arm" => "scripts/hook-auto-arm",
       "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
       "scripts/lib/worktree.rb" => "scripts/lib/worktree.rb",
@@ -560,6 +562,15 @@ class InstallerCore
           "matcher" => "Write",
           "hooks" => [
             { "type" => "command", "command" => "#{hook_dir}/plastic-create-gate", "statusMessage" => "Checking create gate..." },
+          ],
+        },
+        # Retrieval gate (intent 84, Lever 2): redirects store-markdown reads to
+        # QMD and code reads to Serena when those tools are present. Binds the
+        # main agent AND subagents (PreToolUse applies to subagent tool calls).
+        {
+          "matcher" => "Bash|Read|Grep|Glob",
+          "hooks" => [
+            { "type" => "command", "command" => "#{hook_dir}/plastic-retrieval-gate", "statusMessage" => "Checking retrieval gate..." },
           ],
         },
       ],

@@ -43,8 +43,10 @@ REPORT_CONTRACT =
   "status (delivered or blocked), artifacts written, verification or tests run, " \
   "checklist deltas, deviations from spec, and blockers or handoff notes; plus a " \
   "role-specific payload that fulfils your place in the What, Why, How, Exec cycle " \
-  "(for example the planner explains the plan back to the orchestrator). See " \
-  "skills/auto/references/agent-report-contract.md for the per-role format."
+  "(for example the planner explains the plan back to the orchestrator). Keep the " \
+  "report prose-stripped: the envelope and payload only, no greeting, no preamble, " \
+  "no end-recap, no restating of the task; reasoning stays in the thinking channel. " \
+  "See skills/auto/references/agent-report-contract.md for the per-role format."
 
 def parse_args(argv)
   role = nil
