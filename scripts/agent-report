@@ -108,6 +108,26 @@ def outcome_line(intent_dir)
   "(no outcome yet)"
 end
 
+# The insights line: the LAST line of the intent file's `## Insights` section
+# (the newest nugget, since entries are append-only newest-at-bottom), else
+# `(none)`. Pure read of the intent dir, no clock.
+def insights_line(intent_dir)
+  ifile = Bridge.intent_file(intent_dir)
+  return "(none)" unless File.exist?(ifile)
+
+  lines = File.read(ifile).split("\n", -1)
+  idx = lines.index { |l| l.strip == "## Insights" }
+  return "(none)" if idx.nil?
+
+  last = nil
+  (idx + 1).upto(lines.length - 1) do |i|
+    break if lines[i].start_with?("## ")
+
+    last = lines[i] unless lines[i].strip.empty?
+  end
+  last || "(none)"
+end
+
 intent_dir_arg, role = parse_args(ARGV)
 
 if intent_dir_arg.nil? || intent_dir_arg.empty?
@@ -137,6 +157,7 @@ lines << "Status: synthesized (filesystem-derived; no agent-authored report)"
 lines << "Artifacts present: #{artifacts_str}"
 lines << "Checklist: #{checklist_progress(intent_dir)}"
 lines << "Outcome: #{outcome_line(intent_dir)}"
+lines << "Insights: #{insights_line(intent_dir)}"
 lines << "=== end report ==="
 
 puts lines.join("\n")

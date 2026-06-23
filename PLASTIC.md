@@ -79,10 +79,29 @@ The connection: an intent's `## Insights` feeds the Coordinator's Observe phase.
 | **How** | Planning | `plan.md` + `actions/` + `checklist.md` | `plastic-writing-plans` |
 | **Exec** | Execution | `outcome.md` | `plastic-executing-plan` |
 
-`## Insights` — append-only work log captured throughout ALL stages. **Append-only means
-newest entry at the bottom; never prepend.** This ordering is a hard convention: Insights
-are the semantic trace of an intent, and a consistent newest-last order keeps that trace
-readable across every intent.
+`## Insights` is the append-only log of durable discoveries captured throughout ALL stages.
+An insight is a discovery worth keeping for later reads: novel, or old but newly relevant,
+surfaced at any stage (What, Why, How, Exec). It is the most interesting residue of an
+intent, the part a future reader most wants. **Append-only means newest entry at the bottom;
+never prepend.** This ordering is a hard convention: Insights are the semantic trace of an
+intent, and a consistent newest-last order keeps that trace readable across every intent.
+
+Every entry leads with a fixed, machine-parseable prefix `{utc-iso8601} · {stage} · {author}`,
+for example `2026-06-24T08:13:05Z · Why · plastic-brainstorming (autonomous)`. The UTC ISO8601
+timestamp (to the second, trailing `Z`) is the same convention the savepoint ledger uses, so
+the store has one timestamp convention. This per-entry prefix is not prepending the entry:
+entries stay append-only, newest at the bottom; the prefix only stamps each line with when,
+which stage, and who.
+
+The blessed write path is the `insight-append` helper
+(`scripts/insight-append <intent_dir> <text> --stage S --author A`), which formats the prefix,
+validates it, and appends at the bottom. Hand-editing `## Insights` is an escape hatch; the
+helper is the default so the format cannot drift.
+
+Background sessions and dispatched sub-agents do not write the insight themselves. They carry
+each nugget home in the completion report's `insights:` field, and the orchestrator (or any
+agent that can write the file) persists it via the helper. A session that cannot write the
+intent file still returns its report, so the insight survives.
 For full lifecycle detail, the skills in the Detail column have references/.
 
 `savepoint.md` — a deterministic, append-only ledger of cycle-step milestones (one line per

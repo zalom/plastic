@@ -31,7 +31,7 @@ When dispatched in auto mode you receive the standard Plastic spawn preamble (fr
 
 ## Completion Report
 
-END your turn with a structured completion report as your final message, per the spawn preamble's `REPORT_CONTRACT` and `skills/auto/references/agent-report-contract.md`. Do not finish silently. Carry the common envelope (role, intent id, stage, status, artifacts written, verification, checklist deltas, deviations, blockers) plus the brainstorming payload:
+END your turn with a structured completion report as your final message, per the spawn preamble's `REPORT_CONTRACT` and `skills/auto/references/agent-report-contract.md`. Do not finish silently. Carry the common envelope (role, intent id, stage, status, artifacts written, verification, checklist deltas, deviations, blockers, insights) plus the brainstorming payload:
 
 - Decisions recorded in `### Decisions`, each with its one-line rationale
 - Context enriched: what was researched and the key findings

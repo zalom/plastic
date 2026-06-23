@@ -67,6 +67,12 @@ class SpawnPreambleTest < Minitest::Test
     # Intent 84: reports are prose-stripped (envelope + payload only).
     assert_includes out, "prose-stripped",
       "report contract must instruct subagents to strip conversational prose"
+    # Intent 82: the report carries an insights field; bg/dispatched agents
+    # populate it and the orchestrator persists via insight-append.
+    assert_includes out, "insights field",
+      "report contract must name the insights field"
+    assert_includes out, "scripts/insight-append",
+      "report contract must name insight-append as the persist path"
   end
 
   def test_stage_derived_from_files_when_no_savepoint
