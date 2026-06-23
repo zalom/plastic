@@ -233,4 +233,27 @@ class NewIntentTest < Minitest::Test
     assert_includes sources_of(b), a_id, "B's sources must include A"
     assert IntentValidator.validate(a)[:ok], "source intent must stay born-complete"
   end
+
+  # --- Intent 81: born savepoint line stamped at creation --------------------
+
+  def test_scaffold_stamps_born_savepoint_line
+    dir, status = run_new_intent("--store", @store, "--intent", "Demo", "--slug", "demo")
+    assert_equal 0, status, "expected exit 0, got: #{dir}"
+    ledger = File.join(dir, "savepoint.md")
+    assert File.exist?(ledger), "new-intent must stamp savepoint.md at birth"
+    lines = File.read(ledger).split("\n").reject(&:empty?)
+    assert_equal 1, lines.length, "born ledger has exactly one line"
+    stage, milestone = lines.first.split(/\s{2,}/)[1, 2]
+    assert_equal "What", stage
+    assert_equal "#{File.basename(dir)}.md", milestone
+  end
+
+  def test_born_savepoint_is_idempotent_with_later_append
+    dir, = run_new_intent("--store", @store, "--intent", "Demo", "--slug", "demo")
+    intent_file = File.join(dir, "#{File.basename(dir)}.md")
+    # A later gate fire on the same intent file must not add a duplicate What line.
+    Bridge.append_savepoint(dir, intent_file)
+    lines = File.read(File.join(dir, "savepoint.md")).split("\n").reject(&:empty?)
+    assert_equal 1, lines.length
+  end
 end

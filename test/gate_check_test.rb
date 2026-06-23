@@ -65,4 +65,32 @@ class GateCheckTest < Minitest::Test
     ledger = File.read(File.join(@intent_dir, "savepoint.md"))
     assert_equal 1, ledger.lines.count { |l| l.include?("spec.md created") }
   end
+
+  # --- Intent 81: checklist.md landing emits the Exec-started companion -------
+
+  def test_checklist_landing_emits_exec_started
+    File.write(File.join(@intent_dir, "52--x.md"), "## Intent\nx\n")
+    checklist = File.join(@intent_dir, "checklist.md")
+    File.write(checklist, "# Checklist\nreal\n")
+    ENV.delete("CLAUDE_SESSION_ID")
+
+    out, status = run_hook(checklist)
+    assert_equal 0, status.exitstatus, "hook should exit 0, got: #{out}"
+
+    ledger = File.read(File.join(@intent_dir, "savepoint.md"))
+    assert_includes ledger, "checklist.md created"
+    assert_includes ledger, "Exec  started", "checklist landing must emit the Exec-started companion"
+  end
+
+  def test_exec_started_not_emitted_for_placeholder_checklist
+    File.write(File.join(@intent_dir, "52--x.md"), "## Intent\nx\n")
+    checklist = File.join(@intent_dir, "checklist.md")
+    File.write(checklist, "<!-- plastic:placeholder -->\n\nplaceholder\n")
+    ENV.delete("CLAUDE_SESSION_ID")
+
+    run_hook(checklist)
+    ledger_path = File.join(@intent_dir, "savepoint.md")
+    ledger = File.exist?(ledger_path) ? File.read(ledger_path) : ""
+    refute_includes ledger, "Exec  started", "a sentinel checklist must not emit Exec started"
+  end
 end

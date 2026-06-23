@@ -38,6 +38,9 @@ The agent handles:
 - Cluster management (create, merge, rename)
 - Orphan detection
 
-When an intent reaches a terminal state — moved to Completed OR Abandoned — refresh the QMD index for the affected store (no-op when QMD absent), running in the background so it never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`.
+When an intent reaches a terminal state — moved to Completed OR Abandoned — do two things as the closing act of the transfer:
+
+1. Stamp the terminal savepoint bookend (intent 81), so the ledger's last line records the disposition: `ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.append_terminal_savepoint("<intent_dir>", "delivered")'` (use `"abandoned"` for an abandoned intent). Idempotent.
+2. Refresh the QMD index for the affected store (no-op when QMD absent), running in the background so it never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`.
 
 After the agent completes, report what changed.

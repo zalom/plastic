@@ -24,6 +24,12 @@ intent_dir_abs = Bridge.intent_dir_for(file_path_abs)
 if intent_dir_abs
   begin
     Bridge.append_savepoint(intent_dir_abs, file_path_abs)
+    # When checklist.md lands, How ends and Exec begins: emit the `Exec started`
+    # companion in the same event (intent 81). Guard on a real (non-placeholder)
+    # checklist so a scaffold sentinel does not trip it.
+    if File.basename(file_path_abs) == "checklist.md" && Bridge.stage_file_present?(file_path_abs)
+      Bridge.append_exec_started(intent_dir_abs)
+    end
   rescue StandardError
     # ignore — rebuildable from disk
   end
