@@ -63,13 +63,28 @@ command is a no-op when QMD is absent, so fall back to the existing INDEX.md / f
 
 For that intent's directory:
 
-1. **Read `savepoint.md`.** It is a deterministic, append-only stage ledger (one line per
-   milestone, newest at the bottom): `{utc-iso8601}  {Stage}  {milestone}`. The **last line =
-   current stage**.
-2. **Verify the stage file.** Confirm the file the ledger names exists and is non-empty
-   (ledger `How  plan.md created` → `plan.md` must be present and non-empty).
+1. **Read `savepoint.md` FIRST (intent 81).** It is a deterministic, append-only ledger
+   (one line per event, newest at the bottom): `{utc-iso8601}  {Stage}  {milestone}`. Classify
+   the state from the **last line** alone, then verify ONLY that line's artifact. The bookends
+   are fixed: first line `What  created`, last line either a cycle position or
+   `Done  delivered|abandoned`.
+
+   | Last line | State | Verify only |
+   |---|---|---|
+   | `What  {id}--{slug}.md` | born / parked | intent file exists |
+   | `Why  started` | Why entered, no spec yet | spec.md not yet real; continue Why |
+   | `Why  spec.md created` | Why done | spec.md present; continue to How |
+   | `How  started` / `How  plan.md created` | How in progress | plan.md; continue How |
+   | `How  checklist.md created` / `Exec  started` | ready for / in Exec | plan.md + checklist.md present; continue Exec |
+   | `Exec  outcome.md created` | Exec done | outcome.md present; ready to complete |
+   | `Done  delivered` / `Done  abandoned` | terminal | do NOT cycle-resume; INDEX is authoritative |
+
+2. **Verify the stage file.** Confirm only the last line's artifact exists and is non-empty
+   (ledger `How  plan.md created` → `plan.md` must be present and non-empty). Do not re-probe
+   every lifecycle file.
 3. **Drift handling.** If the ledger's last line disagrees with files-on-disk, rebuild the
-   ledger from filesystem state and note the correction:
+   ledger from filesystem state and note the correction. A rebuilt ledger is the file-landing
+   skeleton (no `started`/`Done` lines), which still pins cycle position:
    ```bash
    ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.rebuild_savepoint("<intent_dir>")'
    ```

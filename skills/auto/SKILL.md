@@ -90,7 +90,19 @@ Solo fallback: if the harness has no subagent dispatch, fall back to a single ag
 
 ## Stage-Aware Entry
 
-Read the active intent's directory. Determine current lifecycle stage from filesystem state:
+Read the active intent's `savepoint.md` FIRST (intent 81): the last line classifies the stage,
+and you then verify only that line's artifact before entering. Fall back to the filesystem probe
+below only when the ledger is missing (then rebuild it with `Bridge.rebuild_savepoint`).
+
+| Ledger last line | Enter |
+|---|---|
+| `What  {id}--{slug}.md` (born) or no spec | Start / complete Why (write spec.md) |
+| `Why  spec.md created` | Enter How |
+| `How  plan.md created` / `How  checklist.md created` / `Exec  started` | Enter Exec (verify plan + checklist) |
+| `Exec  outcome.md created` | Exec done; complete the intent |
+| `Done  delivered|abandoned` | Terminal; do not resume |
+
+Filesystem fallback (ledger missing only):
 
 | Check (in order) | Stage |
 |---|---|
@@ -196,7 +208,13 @@ During initial project creation, all decisions are non-destructive by definition
 5. Review `## Insights` for observations that should spawn future intents. If any:
    - Create them (using `plastic-creating-intent` conventions)
    - Update `chain` in the current intent's frontmatter
-6. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
+6. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date). As the
+   closing act of the transfer, stamp the terminal ledger bookend (intent 81) so the savepoint's
+   last line records delivery:
+   ```bash
+   ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.append_terminal_savepoint("<intent_dir>", "delivered")'
+   ```
+   (Use `"abandoned"` instead when the intent is being moved to `## Abandoned`.) Idempotent.
 7. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: deliver intent <ID> — <name>"`
 8. On completion, ALWAYS refresh the QMD search index for this store (no-op when QMD is absent).
    It runs in the background so it never blocks the turn:

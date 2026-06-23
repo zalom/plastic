@@ -41,6 +41,8 @@ Topic-based groupings. Manually curated. Create a new cluster when 3+ intents sh
 ### Completed
 All completed intents with dates. Links preserved, never deleted.
 
+When you move an intent INTO Completed or Abandoned, stamp the terminal savepoint bookend as the closing act of the transfer (intent 81), so the ledger's last line records the disposition: `ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.append_terminal_savepoint("<intent_dir>", "delivered")'` (use `"abandoned"` for an abandoned intent). Idempotent.
+
 ## Workflow
 
 QMD-first (when available): when you need to locate a specific intent (to reclassify, flag, or

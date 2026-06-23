@@ -148,6 +148,29 @@ never a source of truth: state stays derivable from files-on-disk and the ledger
 rebuildable via `Bridge.rebuild_savepoint`. The `plastic-savepoint` skill is now a thin
 reader/verifier, not a writer.
 
+State-from-ledger (intent 81) makes the ledger the read-once answer to "what stage, and is it
+done", so a resuming agent reads `savepoint.md` first instead of probing which files exist. The
+grammar gains three line classes on top of intent 34's artifact-landing milestones, all keyed by
+a `(stage, milestone)` pair for idempotency (`Bridge.savepoint_recorded_pairs`):
+
+- a **born `What` line**, stamped by `new-intent` at creation (not left to a gate firing), so
+  even a freshly parked future intent carries the first bookend deterministically;
+- **`started` pre-stage lines** (`Why started`, `How started`), appended by the PreToolUse
+  `hook-savepoint-pre` the moment a stage's artifact is first written, plus an `Exec started`
+  companion emitted by `gate-check` when `checklist.md` lands (How ends, Exec begins, one event);
+- a **terminal `Done delivered|abandoned` line**, written by the completion path
+  (`Bridge.append_terminal_savepoint`) as the intent transfers into INDEX's Completed/Abandoned
+  section. Disposition lives in INDEX (no frontmatter status); the ledger echoes it.
+
+The bookends are fixed and recognizable: the first line is `What created`, the last line is
+either the current cycle position or `Done <disposition>`. A consumer classifies from the last
+line and then verifies only that line's artifact before continuing. The `started`, `Exec
+started`, and `Done` lines are not derivable from files on disk, so `rebuild_savepoint`
+deliberately does not regenerate them: a rebuilt ledger is the file-landing skeleton (`created`,
+spec, plan, checklist, outcome), which still pins cycle position, while the live ledger carries
+the full pre/post detail. The born timestamp is only accurate live, because the intent file's
+mtime drifts forward as `## Insights` are appended through the lifecycle.
+
 Session resolution feeds the bridge that the gate hooks read (intent 52). Claude Code does
 not export `CLAUDE_SESSION_ID` into the hook environment; it passes `session_id` on the hook
 stdin JSON. So the bash wrappers parse `session_id` out of stdin (in Ruby, never in bash) and

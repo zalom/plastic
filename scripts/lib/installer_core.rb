@@ -203,6 +203,7 @@ class InstallerCore
       "scripts/hook-continue" => "scripts/hook-continue",
       "scripts/hook-future-intent-check" => "scripts/hook-future-intent-check",
       "scripts/hook-gate-check" => "scripts/hook-gate-check",
+      "scripts/hook-savepoint-pre" => "scripts/hook-savepoint-pre",
       "scripts/hook-qmd-search" => "scripts/hook-qmd-search",
       "scripts/lib/qmd_hook.rb" => "scripts/lib/qmd_hook.rb",
       "scripts/lib/power_tools.rb" => "scripts/lib/power_tools.rb",

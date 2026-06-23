@@ -311,7 +311,15 @@ def main(argv)
     File.write(File.join(intent_dir, name), "#{Bridge::PLACEHOLDER_SENTINEL}\n#{body}")
   end
 
-  # 6. Self-validate (frontmatter + sanctioned sections).
+  # 6. Stamp the born savepoint line (intent 81). The first ledger line is the
+  # `What` bookend, written deterministically at creation rather than relying on
+  # a PostToolUse gate firing on the intent-file write (which is missed in some
+  # sessions / harnesses). The intent file is never a sentinel placeholder, so
+  # append_savepoint records `What  {id}--{slug}.md`. Idempotent: a later gate
+  # fire adds nothing.
+  Bridge.append_savepoint(intent_dir, intent_file)
+
+  # 7. Self-validate (frontmatter + sanctioned sections).
   result = IntentValidator.validate(intent_dir)
   unless result[:ok]
     warn "new-intent: scaffolded intent is NOT born complete:"

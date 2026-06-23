@@ -123,4 +123,130 @@ class SavepointLedgerTest < Minitest::Test
     stamps = ledger_lines.map { |l| Time.parse(l.split(/\s{2,}/)[0]) }
     assert_equal stamps.sort, stamps
   end
+
+  # === Intent 81: state-from-ledger extensions ===============================
+
+  def stages_milestones
+    ledger_lines.map { |l| p = l.split(/\s{2,}/); [p[1], p[2]] }
+  end
+
+  # --- Pair-based idempotency -------------------------------------------------
+
+  def test_recorded_pairs_parses_stage_and_milestone
+    write("spec.md", "real\n")
+    Bridge.append_savepoint(@dir, File.join(@dir, "spec.md"), now: Time.utc(2026, 6, 16))
+    assert_equal [["Why", "spec.md created"]], Bridge.savepoint_recorded_pairs(@dir)
+  end
+
+  def test_started_lines_for_distinct_stages_coexist
+    # Both milestones are the literal text "started"; pair dedup must keep both.
+    t = Time.utc(2026, 6, 16, 10, 0, 0)
+    assert_equal true, Bridge.append_started_savepoint(@dir, File.join(@dir, "spec.md"), now: t)
+    assert_equal true, Bridge.append_started_savepoint(@dir, File.join(@dir, "plan.md"), now: t + 60)
+    assert_equal [["Why", "started"], ["How", "started"]], stages_milestones
+  end
+
+  # --- started milestones -----------------------------------------------------
+
+  def test_started_milestone_map
+    assert_equal ["Why", "started"], Bridge.savepoint_started_milestone("spec.md")
+    assert_equal ["How", "started"], Bridge.savepoint_started_milestone("plan.md")
+    assert_nil Bridge.savepoint_started_milestone("checklist.md")
+    assert_nil Bridge.savepoint_started_milestone("outcome.md")
+    assert_nil Bridge.savepoint_started_milestone(@intent_basename)
+  end
+
+  def test_append_started_writes_before_artifact_exists
+    # No real spec.md yet (the pre-write moment).
+    t = Time.utc(2026, 6, 16, 11, 40, 0)
+    assert_equal true, Bridge.append_started_savepoint(@dir, File.join(@dir, "spec.md"), now: t)
+    assert_equal ["2026-06-16T11:40:00Z  Why  started"], ledger_lines
+  end
+
+  def test_append_started_noop_once_artifact_is_real
+    write("spec.md", "real spec\n")
+    assert_equal false, Bridge.append_started_savepoint(@dir, File.join(@dir, "spec.md"), now: Time.now)
+    assert_equal "", ledger
+  end
+
+  def test_append_started_fires_for_placeholder_artifact
+    # A sentinel placeholder is NOT a real stage file, so the stage is starting.
+    write("plan.md", "#{Bridge::PLACEHOLDER_SENTINEL}\n\nplaceholder\n")
+    assert_equal true, Bridge.append_started_savepoint(@dir, File.join(@dir, "plan.md"), now: Time.now)
+    assert_equal [["How", "started"]], stages_milestones
+  end
+
+  def test_append_started_idempotent
+    t = Time.utc(2026, 6, 16, 11, 40, 0)
+    assert_equal true, Bridge.append_started_savepoint(@dir, File.join(@dir, "spec.md"), now: t)
+    assert_equal false, Bridge.append_started_savepoint(@dir, File.join(@dir, "spec.md"), now: t + 100)
+    assert_equal 1, ledger_lines.length
+  end
+
+  def test_append_started_nil_for_non_started_file
+    assert_equal false, Bridge.append_started_savepoint(@dir, File.join(@dir, "outcome.md"), now: Time.now)
+    assert_equal "", ledger
+  end
+
+  # --- Exec started companion -------------------------------------------------
+
+  def test_append_exec_started
+    t = Time.utc(2026, 6, 16, 12, 21, 0)
+    assert_equal true, Bridge.append_exec_started(@dir, now: t)
+    assert_equal ["2026-06-16T12:21:00Z  Exec  started"], ledger_lines
+  end
+
+  def test_append_exec_started_idempotent
+    assert_equal true, Bridge.append_exec_started(@dir, now: Time.now)
+    assert_equal false, Bridge.append_exec_started(@dir, now: Time.now)
+    assert_equal 1, ledger_lines.length
+  end
+
+  # --- terminal line ----------------------------------------------------------
+
+  def test_append_terminal_delivered
+    t = Time.utc(2026, 6, 16, 16, 45, 0)
+    assert_equal true, Bridge.append_terminal_savepoint(@dir, "delivered", now: t)
+    assert_equal ["2026-06-16T16:45:00Z  Done  delivered"], ledger_lines
+  end
+
+  def test_append_terminal_abandoned
+    assert_equal true, Bridge.append_terminal_savepoint(@dir, "abandoned", now: Time.now)
+    assert_equal [["Done", "abandoned"]], stages_milestones
+  end
+
+  def test_append_terminal_rejects_bad_disposition
+    assert_raises(ArgumentError) { Bridge.append_terminal_savepoint(@dir, "done", now: Time.now) }
+    assert_equal "", ledger
+  end
+
+  def test_append_terminal_idempotent_per_disposition
+    assert_equal true, Bridge.append_terminal_savepoint(@dir, "delivered", now: Time.now)
+    assert_equal false, Bridge.append_terminal_savepoint(@dir, "delivered", now: Time.now)
+    assert_equal 1, ledger_lines.length
+  end
+
+  # --- rebuild stays a pure file-landing skeleton -----------------------------
+
+  def test_rebuild_drops_started_and_terminal_lines
+    # A live ledger with started + exec-started + Done lines, built in event order:
+    # the `started` line is written while spec.md is still absent (the pre moment).
+    Bridge.append_started_savepoint(@dir, File.join(@dir, "spec.md"), now: Time.utc(2026, 6, 16, 1))
+    write("spec.md", "real\n")
+    write("plan.md", "real\n")
+    write("checklist.md", "real\n")
+    Bridge.append_savepoint(@dir, File.join(@dir, "spec.md"), now: Time.utc(2026, 6, 16, 2))
+    Bridge.append_exec_started(@dir, now: Time.utc(2026, 6, 16, 3))
+    Bridge.append_terminal_savepoint(@dir, "delivered", now: Time.utc(2026, 6, 16, 4))
+    assert_includes stages_milestones, ["Why", "started"]
+
+    Bridge.rebuild_savepoint(@dir)
+    stages = stages_milestones.map(&:first).uniq
+    refute_includes stages_milestones, ["Why", "started"]
+    refute_includes stages_milestones, ["Exec", "started"]
+    refute_includes stages_milestones, ["Done", "delivered"]
+    # Only the file-landing skeleton survives (What from intent file + spec/plan/checklist).
+    assert_equal [@intent_basename, "spec.md created", "plan.md created", "checklist.md created"],
+                 stages_milestones.map(&:last)
+  end
 end
