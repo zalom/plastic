@@ -116,6 +116,22 @@ module Bridge
     end
     return nil if parsed.empty?
 
+    has_session = !blank?(session)
+
+    # Strict per-session ownership (intent 90): when the caller HAS a session, a foreign
+    # session's bridge is NEVER a valid resolution. Own-session and the derived-key case both
+    # reduce to candidate["session"] == session (the derived key IS the session that armed the
+    # bridge). A caller that owns no bridge resolves to nil, so its gates fail open instead of
+    # inheriting another session's armed intent.
+    #
+    # When the caller has NO session (truly headless, intent 52), keep the legacy degraded
+    # selection below so a single armed derived-key bridge is still discoverable - the hook
+    # cannot know the session there, and a lone armed intent must still gate.
+    if has_session
+      parsed = parsed.select { |c| c[:data]["session"].to_s == session.to_s }
+      return nil if parsed.empty?
+    end
+
     auto = parsed.select { |c| c[:data].dig("build", "auto") == true }
     pool = auto.empty? ? parsed : auto
 
@@ -129,7 +145,10 @@ module Bridge
           cwd_abs.start_with?("#{store_abs}/") ||
           store_abs.start_with?("#{cwd_abs}/")
       end
-      pool = matching unless matching.empty?
+      # Hard cwd filter when the caller has a session (intent 90): a non-matching store
+      # excludes the candidate outright. Without a session, keep the best-effort revert
+      # (intent 52) so a lone armed bridge is still found when cwd does not overlap its store.
+      pool = has_session ? matching : (matching.empty? ? pool : matching)
     end
 
     pool.max_by { |c| c[:mtime] }&.fetch(:data)
