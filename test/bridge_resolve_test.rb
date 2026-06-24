@@ -231,4 +231,66 @@ class BridgeResolveTest < Minitest::Test
       assert_equal "new", found["session"]
     end
   end
+
+  # --- discover_bridge: strict per-session resolution (intent 90) -------------
+
+  def test_discover_returns_nil_for_foreign_session_when_caller_has_session
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      # Foreign session B owns an armed auto bridge; caller A owns none.
+      write_tmp_bridge(tmp, "plastic-B.json", valid_bridge(session: "B", store: @store, auto: true))
+      found = Bridge.discover_bridge(session: "A", cwd: @store, tmp: tmp)
+      assert_nil found, "a session with no own bridge must not inherit a foreign session's bridge"
+    end
+  end
+
+  def test_discover_never_returns_newer_foreign_over_own_session
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      write_tmp_bridge(tmp, "plastic-A.json", valid_bridge(session: "A", store: @store, auto: true))
+      sleep 0.02
+      # Newer foreign bridge must NOT shadow the caller's own bridge.
+      write_tmp_bridge(tmp, "plastic-B.json", valid_bridge(session: "B", store: @store, auto: true))
+      found = Bridge.discover_bridge(session: "A", cwd: @store, tmp: tmp)
+      assert_equal "A", found["session"]
+    end
+  end
+
+  def test_discover_derived_key_headless_resolves_own
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      key = Bridge.derive_key(@store, "52")
+      write_tmp_bridge(tmp, "plastic-#{key}.json", valid_bridge(session: key, store: @store, auto: true))
+      found = Bridge.discover_bridge(session: key, cwd: @store, tmp: tmp)
+      assert_equal key, found["session"]
+    end
+  end
+
+  def test_discover_foreign_session_not_rescued_by_cwd_match
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      # Foreign bridge B's store matches cwd exactly, yet a caller with session A must still
+      # get nil: session ownership beats cwd, never inherits a foreign armed intent.
+      write_tmp_bridge(tmp, "plastic-B.json", valid_bridge(session: "B", store: @store, auto: true))
+      found = Bridge.discover_bridge(session: "A", cwd: @store, tmp: tmp)
+      assert_nil found, "cwd match must not rescue a foreign session's bridge"
+    end
+  end
+
+  def test_discover_headless_blank_session_still_finds_lone_bridge_off_cwd
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      Dir.mktmpdir("unrelated-cwd") do |elsewhere|
+        # Intent 52 degraded path preserved: no session, a single armed bridge is still found
+        # even when cwd does not overlap its store (best-effort revert retained).
+        write_tmp_bridge(tmp, "plastic-x.json", valid_bridge(session: "x", store: @store, auto: true))
+        found = Bridge.discover_bridge(session: nil, cwd: elsewhere, tmp: tmp)
+        assert_equal "x", found["session"]
+      end
+    end
+  end
+
+  def test_discover_single_own_session_bridge_still_resolves
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      write_tmp_bridge(tmp, "plastic-solo.json", valid_bridge(session: "solo", store: @store, auto: true))
+      found = Bridge.discover_bridge(session: "solo", cwd: @store, tmp: tmp)
+      assert_equal "solo", found["session"]
+    end
+  end
+
 end

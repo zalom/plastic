@@ -186,11 +186,21 @@ The savepoint write is decoupled from bridge resolution (intent 52). `hook-gate-
 the intent directory straight from the written file path via `Bridge.intent_dir_for` (it walks
 up to the first ancestor matching `.../store/<id>--<slug>`) and appends the savepoint there
 BEFORE any bridge lookup. A missing bridge, an unset session, or a headless background run can
-no longer skip the ledger. Bridge discovery itself is also tighter: `Bridge.discover_bridge`
-prefers an exact-session match, then scans `/tmp/plastic-*.json` keeping only valid bridges,
-preferring auto-armed ones, then those whose `intent.store` matches the current working
-directory, breaking ties by newest mtime. The `/tmp` directory is injectable so the scan is
-testable against a fake directory.
+no longer skip the ledger. Bridge discovery is strictly per-session (intent 90): `Bridge.discover_bridge`
+prefers an exact-session match, and when the caller `session` is present it keeps ONLY
+candidates whose own `session` equals the caller (own-session, and the derived-key headless
+case reduces to the same equality). A foreign session's bridge is never resolved; when the
+caller has a session and owns no bridge, discovery returns `nil` so every gate fails open
+(no-op) for that session instead of inheriting another session's armed intent. With a session
+present, cwd/store narrowing is a hard filter (a non-matching store excludes the candidate,
+never reverting to the unfiltered pool). Only when the caller has NO session at all (the
+intent 52 headless / derived-key path) does it keep the degraded scan of `/tmp/plastic-*.json`:
+valid bridges only, preferring auto-armed ones, then those whose `intent.store` matches the
+current working directory, breaking ties by newest mtime, with the best-effort cwd revert
+retained so a lone armed bridge is still found. This fixes the cross-session freeze (intents
+49, 66) that intent 79 (exact-match keying) and intent 80 (terminal cleanup) deliberately left
+in the fallback. The `/tmp` directory is injectable so the scan is testable against a fake
+directory.
 
 Because that scan parses every `plastic-*.json` on each fire, the temp directory has to stay
 small or the per-fire cost grows without bound (intent 67). `Bridge.purge_done_bridges` runs
