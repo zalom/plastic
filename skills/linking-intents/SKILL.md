@@ -6,34 +6,70 @@ description: Use when creating connections between intents, the user says "link"
 # Linking Intents
 
 ## When to Use
-- During intent creation (automatic — ask about related intents)
+- During intent creation (automatic: ask about related intents)
 - User says "link", "connect", "relates to"
 - Agent discovers a relationship between intents during work
 
-## Connection Types (Ranked by Strength)
+## Discovery and ranking are separate
 
-### 1. Direct Links (Strongest)
-Explicit wikilinks in the `## Links` section. Bidirectional — add to both intents.
+Two distinct steps, do not conflate them:
 
-```markdown
-## Links
-- [[1a]] — research this plan is based on
-```
+1. **Discovery** (finding candidate related intents) may use any tool: grep, find, ripgrep,
+   or QMD/Serena when present (QMD-first per the project rule). Discovery casts a wide net.
+2. **Ranking** the candidates is a CONTEXT-INFLUENCE judgement: read each candidate's `## Intent`
+   and `## Context` and ask whether that context actually informed this intent. Ranking is NOT a
+   structural metric (no shared-file or shared-symbol grading: on intent 90, matching whole files
+   flagged 35 intents because ~20 touch `bridge.rb`). It is NOT a similarity score either (QMD
+   relevance measures topic proximity, not influence). A script cannot make this call; an agent
+   does.
 
-### 2. Sources (Backward)
+## The three tiers (by context influence)
+
+- **sources:** the foundational context that shaped this intent's CREATION (a split, an idea born
+  during development, a merge). Earns an edge. Decided by origin, never inferred.
+- **chain:** the context that materially helps DELIVER this intent. HIGH bar: only the genuinely
+  delivery-moving intents, not everything in the same area. Earns an edge, reflected in `## Links`.
+  Worked example (intent 90): 79 created it so 79 is a source; 80 deferred the exact fix 90 makes,
+  so its context directly helps delivery and 80 is chain; 49/66/73 are same-area background, so
+  they get a shared tag and no link.
+- **tags:** loose theme grouping for search. NOT a link.
+
+**Timing.** The influence judgement happens at What/Why (and during upkeep), guided by this rule.
+It does not wait for code to exist; it is reasoning over the candidate's context, not over a diff.
+
+**Record the call.** For every edge an agent adds, store a rating (high / medium / low) plus a
+one-line reason in `link-decisions.md` in the intent dir. Keep it out of frontmatter (graph only)
+and out of the `## Links` label (which is projected), so the audit trail never breaks the
+projection identity.
+
+## `## Links` is derived (never author it by hand)
+
+`## Links` is a DERIVED view of `sources` then `chain`, not a place to write links. Never
+hand-write a `## Links` line, and never auto-delete one. To add a link, add the frontmatter
+edge (below), then let the projection regenerate the section (`scripts/project-links`).
+
+Run `scripts/link-suggest <id>` to gather candidate intents WITH each one's Intent and Context (the
+evidence you judge influence on) and to flag drift (a `## Links` line with no frontmatter edge
+behind it). To record a confirmed edge plus its rating and reason, run it with
+`--record <id> --edge <sources|chain> --rating <high|medium|low> --reason "..." --confirm`. It never
+grades influence itself, never writes an edge without `--confirm`, and never deletes.
+
+## Connection Types (the frontmatter edges)
+
+### 1. Sources (Backward)
 The `sources` array in frontmatter. The direct ascendant(s) this intent was created from / emerged from the lifecycle of (formation, not topic similarity), backward links to the work it was built out of:
 ```yaml
 sources: ["1a", "1a2"]
 ```
 
-### 3. Chain (Forward)
+### 2. Chain (Forward)
 The `chain` array in frontmatter. What this intent spawned AND related-but-not-spawned successors it leads to, forward links to children, follow-on, and related work:
 ```yaml
 chain: ["1b1", "1b2"]
 ```
 
-### 4. Tags (Weakest)
-Shared tags in frontmatter enable filtered discovery. Use `project-<name>` tags for project membership.
+### 3. Tags (for discovery, not links)
+Shared tags in frontmatter enable filtered discovery. Use `project-<name>` tags for project membership. A shared tag is a loose theme grouping: it earns NO edge.
 ```yaml
 tags: [plastic, project-reddit-kb]
 ```

@@ -62,11 +62,17 @@ Having a "parent" in mind does NOT automatically mean branch. Choose by meaning:
     direct-ascendant provenance (D1).
   - **Merely related to / inspired by another intent** (it did NOT come out of that
     intent's lifecycle): carry NO `--sources`. Record the relation on the PREDECESSOR's
-    `chain` instead, and mirror it as a `[[id]]` wikilink in `## Links` (the
-    related-but-not-spawned rule).
+    `chain` instead (the related-but-not-spawned rule); the `## Links` section follows
+    from that edge, you do not write it by hand.
 - **Rule of thumb:** if the intent could exist without its parent, make it a root; only set
   `--sources` when it was genuinely created from / emerged from that intent's lifecycle.
   Topic similarity alone is not a `sources` edge.
+
+`## Links` is a DERIVED view of `sources`/`chain`. Never hand-write a `## Links` line; add the
+frontmatter edge and reproject. Links are decided by context influence (a `chain` edge has a high
+bar: the candidate's context must materially help deliver this intent), not by shared files or a
+similarity score. To gather candidates with their context and record an edge, use the
+`plastic-linking-intents` skill and `scripts/link-suggest`.
 
 ### 3. Determine Intent Properties
 
