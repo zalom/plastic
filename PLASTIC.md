@@ -57,6 +57,24 @@ tags: [plastic, architecture]
   Ordering is mandatory: all `sources` first (top), then all `chain`, frontmatter order
   preserved within each group. Sources never appear at the end. No source/chain tags, no
   sub-grouping. An intent with empty `sources` and `chain` carries the empty-state comment.
+- `## Links` is a DERIVED view, not a place to author links (Convention over Configuration).
+  It equals the projection of `sources` (first) then `chain`. Never hand-write or hand-edit a
+  `## Links` line, and never auto-delete one. The edge lives in the frontmatter graph; the
+  section is regenerated from it (doctor `graph_links_projection` enforces this identity). To
+  add a link, add the frontmatter edge, then reproject.
+- Links are decided by CONTEXT INFLUENCE, not by shared files, shared symbols, or a topic
+  similarity score. The question is whether one intent's context actually informed another.
+  Three tiers:
+  - **sources:** the foundational context that shaped this intent's creation (a split, an idea
+    born during development, a merge). Earns an edge.
+  - **chain:** the context that materially helps DELIVER this intent. This is a HIGH bar: only
+    the genuinely delivery-moving intents, not everything in the same area. Earns an edge,
+    reflected in `## Links`.
+  - **tags:** a loose theme grouping for search. NOT a link. A shared tag is a door INTO the
+    store (filtered discovery), not a pathway BETWEEN two notes.
+  Judging influence is an agent's call, made by reading the candidate's Intent and Context. A
+  script cannot grade it, so `scripts/link-suggest` only gathers candidates with that evidence,
+  records a confirmed edge with a rating and reason, and flags drift.
 - IDs use Luhmann's alternating convention: `1` → `1a` → `1a1` → `1a1a`
 - Multiple branches increment: `1a`, `1b`, `1c`
 

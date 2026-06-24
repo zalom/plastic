@@ -1,0 +1,211 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# link-suggest - support links decided by CONTEXT INFLUENCE (intent 91, D7). Links are
+# NOT graded by a script: whether one intent's context influenced another is a
+# judgement an agent makes by reading the candidate's Intent + Context. This tool
+# gathers candidates with that evidence, records a CONFIRMED edge plus its rating and
+# reason in `link-decisions.md`, and flags drift. It never writes a `## Links` line and
+# never deletes.
+#
+# `## Links` is a DERIVED view of `sources`/`chain` (Convention over Configuration).
+# Tiers, by context influence:
+#   sources - the foundational context that shaped this intent's creation.
+#   chain   - the context that materially helps DELIVER this intent. HIGH bar.
+#   tags    - loose theme grouping for search. Not a link.
+#
+# Usage:
+#   link-suggest <subject_id> [--store-dir PATH] [--plastic-home PATH]
+#   link-suggest <subject_id> --record <target_id> --edge <sources|chain>
+#                --rating <high|medium|low> --reason "..." --confirm
+#   link-suggest --help
+#
+# Default (no --record) prints candidates WITH their Intent+Context plus any drift, and
+# writes nothing. --record without --confirm prints what would happen and writes
+# nothing. --edge is explicit and required (sources is decided by origin, never
+# inferred); --rating is required when --edge is chain.
+
+require_relative "lib/link_suggestions"
+
+module LinkSuggestCLI
+  module_function
+
+  DEFAULT_HOME = File.join(Dir.home, ".plastic")
+
+  USAGE = <<~TXT
+    Usage:
+      link-suggest <subject_id> [--store-dir PATH] [--plastic-home PATH]
+      link-suggest <subject_id> --record <target_id> --edge <sources|chain> \\
+                   --rating <high|medium|low> --reason "..." --confirm
+      link-suggest --help
+
+    Links are decided by context influence, judged by an agent reading each
+    candidate's Intent + Context. This tool only gathers candidates with that
+    evidence, records a confirmed edge plus its rating/reason in link-decisions.md,
+    and flags drift. It never writes a ## Links line and never deletes.
+
+    --edge is explicit and required (sources is decided by origin, never inferred).
+    --rating is required when --edge is chain. Without --confirm, nothing is written.
+  TXT
+
+  def parse(argv)
+    opts = { home: DEFAULT_HOME, store_dir: nil, subject: nil, help: false,
+             record: nil, edge: nil, rating: nil, reason: nil, confirm: false }
+    i = 0
+    while i < argv.length
+      case argv[i]
+      when "--help", "-h" then opts[:help] = true; i += 1
+      when "--plastic-home" then opts[:home] = argv[i + 1]; i += 2
+      when "--store-dir" then opts[:store_dir] = argv[i + 1]; i += 2
+      when "--record" then opts[:record] = argv[i + 1]; i += 2
+      when "--edge" then opts[:edge] = (argv[i + 1] || "").to_sym; i += 2
+      when "--rating" then opts[:rating] = argv[i + 1]; i += 2
+      when "--reason" then opts[:reason] = argv[i + 1]; i += 2
+      when "--confirm" then opts[:confirm] = true; i += 1
+      else
+        opts[:subject] ||= argv[i]
+        i += 1
+      end
+    end
+    opts[:store_dir] ||= File.join(opts[:home], "store")
+    opts
+  end
+
+  # Print the discovery candidates with their Intent + Context evidence, plus drift.
+  def report(tool, subject, out: $stdout)
+    nodes = tool.load_nodes
+    unless nodes.key?(subject)
+      out.puts "link-suggest: no intent #{subject.inspect} in #{tool.store_dir}"
+      return 1
+    end
+
+    cands = tool.gather(subject, nodes: nodes)
+    out.puts "Candidates for #{subject} (discovery only; judge influence by reading context):"
+    if cands.empty?
+      out.puts "  (none)"
+    else
+      cands.each { |c| print_candidate(c, out) }
+    end
+
+    flaws = tool.drift(subject, nodes: nodes)
+    out.puts "Drift for #{subject}:"
+    if flaws.empty?
+      out.puts "  (none)"
+    else
+      flaws.each { |f| out.puts "  [drift] #{f.detail}" }
+    end
+    0
+  end
+
+  def print_candidate(cand, out)
+    out.puts "  - #{cand.id}  #{cand.label}"
+    out.puts "    Intent:  #{excerpt(cand.intent)}" unless cand.intent.empty?
+    out.puts "    Context: #{excerpt(cand.context)}" unless cand.context.empty?
+  end
+
+  # A one-paragraph excerpt of a section, for scannable evidence.
+  def excerpt(text, limit: 280)
+    flat = text.to_s.gsub(/\s+/, " ").strip
+    flat.length > limit ? "#{flat[0, limit]}..." : flat
+  end
+
+  def do_record(tool, opts, out: $stdout)
+    if opts[:edge].nil? || !%i[sources chain].include?(opts[:edge])
+      out.puts "link-suggest: --record requires --edge sources|chain (explicit, never inferred)."
+      return 1
+    end
+    if opts[:edge] == :chain && (opts[:rating].nil? || !LinkSuggestions::RATINGS.include?(opts[:rating]))
+      out.puts "link-suggest: --rating high|medium|low is required for a chain edge."
+      return 1
+    end
+
+    unless opts[:confirm]
+      out.puts "Would record #{opts[:edge]} edge #{opts[:subject]} -> #{opts[:record]} " \
+               "(rating #{opts[:rating] || "-"}, reason: #{opts[:reason] || "-"}). " \
+               "Re-run with --confirm to write. Nothing written."
+      return 0
+    end
+
+    wrote = tool.record_edge(opts[:subject], opts[:record],
+                             edge: opts[:edge], rating: opts[:rating],
+                             reason: opts[:reason], confirm: true)
+    if wrote
+      out.puts "Recorded #{opts[:edge]} edge #{opts[:subject]} -> #{opts[:record]} " \
+               "and appended to link-decisions.md. Reproject with scripts/project-links."
+      return 0
+    end
+    out.puts "No edge written (edge may already exist, or intent missing)."
+    0
+  end
+
+  def run(argv, out: $stdout)
+    opts = parse(argv)
+    if opts[:help]
+      out.puts USAGE
+      return 0
+    end
+    unless opts[:subject]
+      out.puts USAGE
+      return 1
+    end
+
+    tool = LinkSuggestions.new(store_dir: opts[:store_dir], finder: build_finder(opts[:store_dir]))
+
+    return do_record(tool, opts, out: out) if opts[:record]
+
+    report(tool, opts[:subject], out: out)
+  end
+
+  # The real candidate-finder, wired here (not in the lib): use QMD when available,
+  # else fall back to the lib's cheap family/tag/adjacent net. Discovery only.
+  def build_finder(store_dir)
+    qmd = qmd_finder(store_dir)
+    qmd || LinkSuggestions::FamilyTagFinder.new
+  end
+
+  # A QMD-backed finder when the `qmd` (or qmd-sync) CLI is on PATH. It seeds discovery
+  # from the subject's intent line, unions the hits with the cheap fallback net, and
+  # returns ids present in the store. Any failure falls back silently. Discovery only,
+  # never a grade.
+  def qmd_finder(_store_dir)
+    return nil unless qmd_available?
+
+    fallback = LinkSuggestions::FamilyTagFinder.new
+    lambda do |subject_id, nodes|
+      base = fallback.call(subject_id, nodes)
+      subject = nodes[subject_id]
+      return base unless subject
+
+      hits = qmd_search_ids(subject[:label], nodes)
+      (base + hits).uniq.reject { |id| id == subject_id }
+    end
+  end
+
+  def qmd_available?
+    %w[qmd qmd-sync].any? { |c| system("command -v #{c} >/dev/null 2>&1") }
+  rescue StandardError
+    false
+  end
+
+  # Best-effort: ask qmd-sync for related text and map any id-shaped tokens back to
+  # store ids. Never raises; returns [] on any trouble.
+  def qmd_search_ids(query, nodes)
+    return [] if query.to_s.strip.empty?
+
+    out = `ruby #{File.join(Dir.home, ".plastic", "scripts", "qmd-sync")} search #{shell_quote(query)} 2>/dev/null`
+    return [] if out.nil? || out.empty?
+
+    out.scan(/\b([0-9]+[a-z0-9]*)\b/).flatten.uniq.select { |id| nodes.key?(id) }
+  rescue StandardError
+    []
+  end
+
+  def shell_quote(str)
+    "'#{str.to_s.gsub("'", "'\\\\''")}'"
+  end
+end
+
+if $PROGRAM_NAME == __FILE__
+  exit LinkSuggestCLI.run(ARGV)
+end
