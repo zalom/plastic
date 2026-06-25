@@ -256,20 +256,29 @@ hygiene after each intent. Advisory self-check, not hard-verifiable.
 ## Retrieval Gate
 
 A single capability-aware PreToolUse gate enforces retrieval-first routing on the agent's own
-Bash/Read/Grep/Glob calls (and on subagents, since PreToolUse binds them). Detection is binary:
-present means enforce, absent or down means off, with no warning and no advisory tier.
+Bash/Read/Grep/Glob calls (and on subagents, since PreToolUse binds them). The gate is
+OPERATION-based: it separates searching from reading, and it never stands between you and
+reading something you have already located.
 
-- Store markdown (under a Plastic store) routes to QMD when QMD is present and the index is
-  fresh: the raw grep/find/Read is blocked and you use `qmd search`/`qmd query` (or
-  `scripts/qmd-sync search`) instead. When QMD is present but stale, the read is allowed this
-  turn and a background reindex is fired so the next turn enforces against a fresh index;
-  reindex is never synchronous. When QMD is absent or down, raw reads are allowed.
-- Serena-supported code and data files route to Serena symbolic tools when Serena is present;
-  absent means allowed.
-- Images, binaries, and everything else are allowed.
-- Bypass: append a trailing `# qmd-ok` shell comment to a Bash command for the rare case where
-  QMD is healthy but you genuinely need the raw read. A quoted or echoed occurrence does not
-  bypass. Bypasses are logged.
+- Only CONTENT SEARCH over a Plastic store is gated. The Grep tool and bash `grep`/`rg`/`ag`
+  whose target is at or under a store route to QMD when QMD is present and the index is fresh:
+  the raw scan is blocked and you use `qmd search`/`qmd query` (or `scripts/qmd-sync search`)
+  instead. When QMD is present but stale, the search is allowed this turn and a background
+  reindex is fired so the next turn enforces against a fresh index; reindex is never
+  synchronous. When QMD is absent, the search is allowed.
+- Reading a known target (the Read tool, bash `cat`/`head`/`tail`) and structural discovery
+  (the Glob tool, bash `find`/`ls`) are always allowed, including over the store. QMD cannot
+  list directories or hand back one specific file, so these are never gated.
+- Code is never hard-gated here. Symbolic code navigation via Serena is a soft prompt mandate
+  (the UserPromptSubmit power-tools hook), not a block: content grep over code is allowed,
+  because Serena navigates symbols and cannot grep arbitrary strings.
+- QMD failure model. Absent or stale degrades to allow (stale also fires the background
+  reindex). A broken QMD, where the freshness probe errors or times out, also fails open, and
+  the hook emits a one-line warning so a degraded QMD is visible rather than silent.
+- Bypass: append a trailing `# qmd-ok` shell comment to a Bash command when you attempted
+  discovery and it did not serve you (no hits, or results that do not answer your need by your
+  reading of the snippets, not their score). A quoted or echoed occurrence does not bypass.
+  Bypasses are logged. The gate enforces that discovery was attempted, never that it succeeded.
 - Scope: only the agent's tool calls. Ruby `File.read` inside a script is invisible to the gate
   and is out of scope by design.
 
