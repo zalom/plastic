@@ -6,10 +6,11 @@ require "json"
 # module is defined (the `$PROGRAM_NAME == __FILE__` guard skips the main block).
 load File.expand_path("../scripts/hook-retrieval-gate", __dir__)
 
-# Intent 84, Lever 2: the thin executable. Capability-driven branches are tested
-# via the extracted RetrievalGateHook.run (DI capabilities + reindex spy), so no
-# real qmd/serena is needed. The fail-open and exit-code wiring of the binary
-# itself is tested as a subprocess with a controlled (qmd-absent) PATH.
+# Intent 84 Lever 2, redesigned operation-based (89a). Capability-driven branches
+# are tested via the extracted RetrievalGateHook.run (DI capabilities + reindex
+# spy). detect_capabilities' three-tier QMD failure model (absent / broken-warn /
+# fresh) is tested with injected probes. The fail-open and exit-code wiring of the
+# binary itself is tested as a subprocess with a controlled (qmd-absent) PATH.
 class RetrievalGateHookTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/hook-retrieval-gate", __dir__)
 
@@ -25,31 +26,45 @@ class RetrievalGateHookTest < Minitest::Test
     FileUtils.rm_rf(@home)
   end
 
-  def caps(qmd:, qmd_fresh:, serena:)
-    { qmd: qmd, qmd_fresh: qmd_fresh, serena: serena }
+  def caps(qmd:, qmd_fresh:)
+    { qmd: qmd, qmd_fresh: qmd_fresh }
   end
 
   def payload(tool_name, tool_input)
     JSON.generate("tool_name" => tool_name, "tool_input" => tool_input)
   end
 
+  def search_cmd
+    "grep needle #{@store_md}"
+  end
+
   # --- run() unit branches ---
 
-  def test_run_blocks_store_md_when_qmd_fresh
+  def test_run_blocks_store_md_search_when_qmd_fresh
     code, err = RetrievalGateHook.run(
-      stdin: payload("Read", { "file_path" => @store_md }),
+      stdin: payload("Bash", { "command" => search_cmd }),
       plastic_home: @home, cwd: @home,
-      capabilities: caps(qmd: true, qmd_fresh: true, serena: false)
+      capabilities: caps(qmd: true, qmd_fresh: true)
     )
     assert_equal 2, code
     assert_includes err, "PLASTIC GATE"
   end
 
-  def test_run_allows_when_qmd_absent
+  def test_run_allows_read_of_store_md
     code, err = RetrievalGateHook.run(
       stdin: payload("Read", { "file_path" => @store_md }),
       plastic_home: @home, cwd: @home,
-      capabilities: caps(qmd: false, qmd_fresh: false, serena: false)
+      capabilities: caps(qmd: true, qmd_fresh: true)
+    )
+    assert_equal 0, code
+    assert_nil err
+  end
+
+  def test_run_allows_search_when_qmd_absent
+    code, err = RetrievalGateHook.run(
+      stdin: payload("Bash", { "command" => search_cmd }),
+      plastic_home: @home, cwd: @home,
+      capabilities: caps(qmd: false, qmd_fresh: false)
     )
     assert_equal 0, code
     assert_nil err
@@ -58,9 +73,9 @@ class RetrievalGateHookTest < Minitest::Test
   def test_run_stale_allows_and_fires_reindex
     fired = []
     code, err = RetrievalGateHook.run(
-      stdin: payload("Read", { "file_path" => @store_md }),
+      stdin: payload("Bash", { "command" => search_cmd }),
       plastic_home: @home, cwd: @home,
-      capabilities: caps(qmd: true, qmd_fresh: false, serena: false),
+      capabilities: caps(qmd: true, qmd_fresh: false),
       reindex: -> { fired << :hit }
     )
     assert_equal 0, code
@@ -72,7 +87,7 @@ class RetrievalGateHookTest < Minitest::Test
     code, err = RetrievalGateHook.run(
       stdin: payload("Bash", { "command" => "grep x #{@store_md} # qmd-ok" }),
       plastic_home: @home, cwd: @home,
-      capabilities: caps(qmd: true, qmd_fresh: true, serena: false)
+      capabilities: caps(qmd: true, qmd_fresh: true)
     )
     assert_equal 0, code
     assert_includes err, "bypassed via # qmd-ok"
@@ -82,17 +97,51 @@ class RetrievalGateHookTest < Minitest::Test
     code, err = RetrievalGateHook.run(
       stdin: "not json{{",
       plastic_home: @home, cwd: @home,
-      capabilities: caps(qmd: true, qmd_fresh: true, serena: false)
+      capabilities: caps(qmd: true, qmd_fresh: true)
     )
     assert_equal 0, code
     assert_nil err
   end
 
+  # --- detect_capabilities: three-tier QMD failure model ---
+
+  def test_detect_warns_when_qmd_present_but_probe_breaks
+    warned = []
+    result = RetrievalGateHook.detect_capabilities(
+      cwd: @home,
+      detect: -> { true },
+      fresh: -> { raise "boom" },
+      warn: ->(m) { warned << m }
+    )
+    assert_equal({ qmd: false, qmd_fresh: false }, result,
+                 "a broken probe degrades to allow this turn")
+    assert_equal 1, warned.length, "tier-b emits exactly one warn"
+    assert_match(/QMD/i, warned.first)
+  end
+
+  def test_detect_does_not_warn_when_qmd_absent
+    warned = []
+    result = RetrievalGateHook.detect_capabilities(
+      cwd: @home,
+      detect: -> { false },
+      fresh: -> { raise "fresh must not be probed when qmd is absent" },
+      warn: ->(m) { warned << m }
+    )
+    assert_equal({ qmd: false, qmd_fresh: false }, result)
+    assert_empty warned, "absent QMD is not a tier-b breakage"
+  end
+
+  def test_detect_reports_fresh_when_probe_succeeds
+    result = RetrievalGateHook.detect_capabilities(
+      cwd: @home, detect: -> { true }, fresh: -> { true }, warn: ->(_m) {}
+    )
+    assert_equal({ qmd: true, qmd_fresh: true }, result)
+  end
+
   # --- subprocess: binary wiring + fail-open ---
 
-  # Empty PATH so QmdSync.detect / PowerTools.serena? both report absent: the
-  # store .md read is allowed (exit 0). Proves the binary reads stdin, computes
-  # real capabilities, and exits cleanly.
+  # Empty PATH so QmdSync.detect reports absent: the store .md search is allowed
+  # (exit 0). Proves the binary reads stdin, computes real capabilities, exits clean.
   def run_subprocess(stdin, path: "")
     env = { "PATH" => path }
     out = IO.popen(env, ["ruby", SCRIPT, @home], "r+", err: [:child, :out]) do |io|
@@ -105,7 +154,7 @@ class RetrievalGateHookTest < Minitest::Test
 
   def test_subprocess_allows_when_capabilities_absent
     _out, status = run_subprocess(
-      payload("Read", { "file_path" => @store_md })
+      payload("Bash", { "command" => search_cmd })
     )
     assert_equal 0, status.exitstatus
   end

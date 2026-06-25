@@ -3,62 +3,57 @@
 
 require_relative "bridge"
 
-# RetrievalGate — the single, pure decision for Lever 2 of intent 84.
+# RetrievalGate — the single, pure decision for Lever 2 of intent 84, redesigned
+# operation-based in intent 89a.
 #
 # Given an agent tool call (Bash/Read/Grep/Glob) and injected capability signals,
-# it decides whether to BLOCK the call (returning a redirect-to-QMD/Serena reason
-# String) or ALLOW it (returning nil). All capability and freshness signals are
-# injected by the caller (the hook); this module shells out to nothing, reads no
-# globals, and runs no binaries. Mirrors bridge.rb's decision-fn convention
-# (reason String to block, nil to allow).
+# it decides whether to BLOCK the call (returning a redirect-to-QMD reason String)
+# or ALLOW it (returning nil). All capability/freshness signals are injected by the
+# caller (the hook); this module shells out to nothing, reads no globals, and runs
+# no binaries. Mirrors bridge.rb's decision-fn convention (reason String to block,
+# nil to allow).
 #
-# Classification (per target path):
-#   - store `*.md` (under <plastic_home>/store or .../projects/<slug>/store) -> QMD
-#   - Serena-supported code/data file (NOT a store markdown) -> SERENA
-#   - images / binary / other -> ALLOWED
+# Operation-based policy (intent 89, ## Redesign):
+#   - The gate distinguishes DISCOVERY (content search) from READING a known target.
+#   - Only CONTENT SEARCH over store markdown is hard-gated -> QMD.
+#   - Reading a known target (Read, cat/head/tail) and structural discovery (Glob,
+#     find, ls) are ALWAYS allowed, including over the store.
+#   - Code navigation is a soft prompt MANDATE (PowerTools / UserPromptSubmit), not a
+#     hard gate here. Content grep over code is allowed (Serena cannot grep strings).
 #
-# Capability enforcement is BINARY (no advisory tier):
-#   - QMD class: detected+fresh -> BLOCK; detected+stale -> fire reindex, ALLOW
-#     this turn; absent/down -> ALLOW (no warning).
-#   - SERENA class: detected -> BLOCK; absent -> ALLOW.
+# Content-search vectors (the only ones that can be gated):
+#   - the Grep tool (its `path` search root)
+#   - bash `grep`/`rg`/`ag` (their path args; the first bareword is the PATTERN)
 #
-# Bypass: a TRAILING `# qmd-ok` shell comment on a Bash command (not a substring;
-# a quoted/echoed occurrence does not bypass).
+# QMD enforcement is BINARY (no advisory tier):
+#   - store-md content search: QMD detected+fresh -> BLOCK; detected+stale -> fire
+#     reindex, ALLOW this turn; absent/broken -> ALLOW (the hook warns on broken).
 #
-# Scope: only the agent's own tool calls. Ruby `File.read` inside scripts is
-# invisible to a PreToolUse hook and is explicitly out of scope (no exemptions).
+# Bypass: a TRAILING `# qmd-ok` shell comment on a Bash command (not a substring; a
+# quoted/echoed occurrence does not bypass). It is the auditable seam for "I tried
+# discovery and it did not serve me" (empty, low, or wrongly-scored results).
+#
+# Scope: only the agent's own tool calls. Ruby `File.read` inside scripts is invisible
+# to a PreToolUse hook and is explicitly out of scope (no exemptions).
 module RetrievalGate
   module_function
 
-  # Serena LSP covers many languages incl. JSON/YAML/TOML/Markdown/Ruby. Keep a
-  # small, conservative allowlist of code/data extensions. Markdown is listed but
-  # store markdown is reclassified to QMD before Serena ever sees it.
-  SERENA_EXTENSIONS = %w[
-    rb js jsx ts tsx mjs cjs py go rs java kt scala c h cpp hpp cc
-    cs php rb swift sh bash zsh lua ex exs erl clj sql
-    json yaml yml toml
-  ].freeze
-
-  # Image / binary extensions that are always allowed (plain read is fine).
-  BINARY_EXTENSIONS = %w[
-    png jpg jpeg gif webp svg ico bmp tiff pdf
-    zip gz tar tgz bz2 xz 7z
-    mp3 mp4 mov avi wav flac ogg
-    woff woff2 ttf otf eot
-    bin exe dll so dylib o a class jar wasm
-  ].freeze
-
   # A `# qmd-ok` token that is a real TRAILING shell comment, after stripping a
   # trailing newline. The token must be preceded by whitespace (or start the
-  # command) and run to end-of-string. `echo "# qmd-ok"` does NOT match: the
-  # token there is followed by a closing quote, not end-of-string.
+  # command) and run to end-of-string. `echo "# qmd-ok"` does NOT match: the token
+  # there is followed by a closing quote, not end-of-string.
   BYPASS_RE = /(?:\A|\s)#\s*qmd-ok\s*\z/.freeze
 
+  # Bash utilities that perform CONTENT SEARCH (scan file CONTENT for a pattern).
+  # These are the only bash read-vectors that can be gated; readers (cat/head/tail)
+  # and structural tools (find/ls) are never gated.
+  CONTENT_SEARCH_UTILS = %w[grep rg ag].freeze
+
   # Decide. Returns nil to ALLOW, or a reason String to BLOCK.
-  #   capabilities: { qmd:, qmd_fresh:, serena: } (booleans).
+  #   capabilities: { qmd:, qmd_fresh: } (booleans).
   #   reindex: no-arg callable fired once when a QMD-class target is STALE.
-  # When bypassed, returns nil and (if given) yields :bypass to the optional
-  # block so the caller can log it.
+  # When bypassed, returns nil and (if given) yields :bypass to the optional block
+  # so the caller can log it.
   def decision(tool_name:, tool_input:, plastic_home:, cwd:,
                capabilities:, reindex: -> {})
     targets = extract_targets(tool_name, tool_input, cwd: cwd)
@@ -71,17 +66,14 @@ module RetrievalGate
 
     stale_seen = false
     targets.each do |path|
-      case classify(path, plastic_home: plastic_home)
-      when :qmd
-        if capabilities[:qmd] && capabilities[:qmd_fresh]
-          return qmd_reason(path)
-        elsif capabilities[:qmd] # present but stale
-          stale_seen = true
-        end
-        # absent/down -> allow this target
-      when :serena
-        return serena_reason(path) if capabilities[:serena]
+      next unless classify(path, plastic_home: plastic_home) == :qmd
+
+      if capabilities[:qmd] && capabilities[:qmd_fresh]
+        return qmd_reason(path)
+      elsif capabilities[:qmd] # present but stale
+        stale_seen = true
       end
+      # absent/broken -> allow this target
     end
 
     reindex.call if stale_seen
@@ -90,36 +82,26 @@ module RetrievalGate
 
   # --- classification ---
 
+  # Operation-based: the store tree is the only gated class (content search whose
+  # target is at/under a store routes to QMD). Everything else is allowed.
   def classify(path, plastic_home:)
     return :allow if path.nil? || path.empty?
-    ext = extension(path)
-
-    if store_markdown?(path, plastic_home: plastic_home)
-      return :qmd
-    end
-    return :allow if BINARY_EXTENSIONS.include?(ext)
-    return :serena if SERENA_EXTENSIONS.include?(ext)
-
-    :allow
+    store_path?(path, plastic_home: plastic_home) ? :qmd : :allow
   end
 
-  # A markdown file under the global store or a project store. QMD owns store
-  # markdown even though Serena could also read markdown (QMD wins for the store).
-  def store_markdown?(path, plastic_home:)
-    return false unless %w[md markdown].include?(extension(path))
+  # A path AT or UNDER the global store or a project store. We gate the whole store
+  # tree (not just `*.md`) because a content search root is usually a directory:
+  # grepping the store scans its markdown, which is exactly what QMD should serve.
+  def store_path?(path, plastic_home:)
     abs = absolutize(path)
     home = File.expand_path(plastic_home)
     global = File.join(home, "store")
-    return true if abs.start_with?("#{global}/")
+    return true if abs == global || abs.start_with?("#{global}/")
 
     projects = File.join(home, "projects")
     return false unless abs.start_with?("#{projects}/")
     tail = abs[(projects.length + 1)..].to_s.split(File::SEPARATOR)
     tail.length >= 2 && tail[1] == "store"
-  end
-
-  def extension(path)
-    File.extname(path.to_s).sub(/\A\./, "").downcase
   end
 
   def absolutize(path)
@@ -128,9 +110,8 @@ module RetrievalGate
 
   # --- bypass ---
 
-  # Only Bash commands carry a trailing `# qmd-ok` comment. The token must be a
-  # real trailing comment (BYPASS_RE), so a quoted/echoed occurrence does not
-  # bypass.
+  # Only Bash commands carry a trailing `# qmd-ok` comment. The token must be a real
+  # trailing comment (BYPASS_RE), so a quoted/echoed occurrence does not bypass.
   def bypass?(tool_name, tool_input)
     return false unless tool_name.to_s == "Bash"
     cmd = tool_input.is_a?(Hash) ? tool_input["command"].to_s : ""
@@ -139,40 +120,36 @@ module RetrievalGate
 
   # --- target extraction ---
 
-  # Paths the call reads/scans. Conservative: missing an exotic form is fine;
-  # never flag /dev/null or pure pipes. Read vectors only (this is a READ gate),
-  # not the write vectors bridge.rb already covers.
+  # Paths a CONTENT-SEARCH operation scans. Reads (Read, cat/head/tail) and
+  # structural discovery (Glob, find, ls) are NOT content search -> no targets ->
+  # always allowed. Only the Grep tool and bash grep/rg/ag can be gated. Read
+  # vectors only (this is a READ gate); write vectors are bridge.rb's job.
   def extract_targets(tool_name, tool_input, cwd:)
     input = tool_input.is_a?(Hash) ? tool_input : {}
     case tool_name.to_s
-    when "Read"
-      [input["file_path"]].compact.reject(&:empty?)
-    when "Glob"
-      [input["path"], input["pattern"]].compact.reject { |s| s.to_s.empty? }
     when "Grep"
       # The search root is the target; the query text is not a path.
       [input["path"]].compact.reject { |s| s.to_s.empty? }
     when "Bash"
-      bash_read_targets(input["command"].to_s)
+      bash_search_targets(input["command"].to_s)
     else
+      # Read, Glob, and every other tool: read / structural op -> never gated.
       []
     end
   end
 
-  # READ utilities that take file/dir path arguments. Conservative parse: split
-  # on shell separators, identify the utility, collect its non-flag path args.
-  READ_UTILS = %w[grep rg ag find cat head tail less more bat ls wc nl sort uniq].freeze
-
-  def bash_read_targets(command)
+  # CONTENT-SEARCH path args across a compound command. Conservative: missing an
+  # exotic form is fine; never flag /dev/null or pure pipes.
+  def bash_search_targets(command)
     return [] unless command.is_a?(String) && !command.empty?
     targets = []
     command.split(/[;\n]|&&|\|\||\|/).each do |segment|
-      targets.concat(segment_read_targets(segment))
+      targets.concat(segment_search_targets(segment))
     end
     targets.reject { |t| t.nil? || t.empty? || dev_path?(t) }.uniq
   end
 
-  def segment_read_targets(segment)
+  def segment_search_targets(segment)
     tokens = tokenize(segment)
     return [] if tokens.empty?
 
@@ -180,21 +157,20 @@ module RetrievalGate
     idx = 0
     idx += 1 while tokens[idx] && tokens[idx].include?("=") && tokens[idx] !~ /\A-/
     util = File.basename(tokens[idx].to_s)
-    return [] unless READ_UTILS.include?(util)
+    return [] unless CONTENT_SEARCH_UTILS.include?(util)
 
     args = tokens[(idx + 1)..] || []
-    path_args_for(util, args)
+    path_args_for(args)
   end
 
-  # Collect path-shaped arguments for a read utility. Flags and flag-values are
-  # skipped; for grep/rg the first non-flag bareword is the PATTERN, not a path.
-  def path_args_for(util, args)
-    skip_pattern = %w[grep rg ag].include?(util)
+  # Collect path-shaped arguments for a content-search util. Flags are skipped; the
+  # first non-flag bareword is the PATTERN, not a path.
+  def path_args_for(args)
     paths = []
     pattern_consumed = false
     args.each do |a|
       next if a.start_with?("-")
-      if skip_pattern && !pattern_consumed
+      unless pattern_consumed
         pattern_consumed = true
         next
       end
@@ -225,14 +201,11 @@ module RetrievalGate
   # --- reasons ---
 
   def qmd_reason(path)
-    "retrieval gate: search the store via QMD, not raw grep/Read. " \
-      "Use `qmd search`/`qmd query` over the `plastic-*` collections (or " \
-      "`scripts/qmd-sync search`) instead of reading #{path}. " \
-      "If you genuinely need the raw read, append a trailing `# qmd-ok` to a Bash command."
-  end
-
-  def serena_reason(path)
-    "retrieval gate: navigate code via Serena's symbolic tools (find_symbol / " \
-      "get_symbols_overview / find_referencing_symbols), not raw grep/Read of #{path}."
+    "retrieval gate: search the store via QMD, not a raw content scan. Reading a " \
+      "known file and listing/globbing the store are fine; only CONTENT SEARCH over " \
+      "store markdown routes through QMD. Use `qmd search`/`qmd query` over the " \
+      "`plastic-*` collections (or `scripts/qmd-sync search`) instead of scanning " \
+      "#{path}. If QMD's results do not answer your need (your reading of the " \
+      "snippets, not their score), append a trailing `# qmd-ok` to a Bash command."
   end
 end
