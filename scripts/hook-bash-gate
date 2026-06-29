@@ -28,9 +28,9 @@ exit 0 if command.nil? || command.to_s.strip.empty?
 cwd = payload["cwd"]
 cwd = Dir.pwd if cwd.nil? || cwd.to_s.empty?
 
-# --- Load bridge (shared resolution; stdin session_id -> env -> /tmp scan) ---
+# --- Load bridge (shared resolution; stdin session_id -> CLAUDE_CODE_SESSION_ID -> /tmp scan) ---
 session = payload["session_id"]
-session = ENV["CLAUDE_SESSION_ID"] if session.nil? || session.to_s.empty?
+session = ENV["CLAUDE_CODE_SESSION_ID"] if session.nil? || session.to_s.empty?
 bridge_data = Bridge.discover_bridge(session: session, cwd: cwd)
 exit 0 unless bridge_data
 

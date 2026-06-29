@@ -8,7 +8,7 @@ require "json"
 
 # ACTION_5 (intent 60b): drive the real scripts/hook-create-gate as a subprocess
 # with a JSON PreToolUse payload on stdin. The gate validates the PROPOSED content
-# of a Write to an intent file, independent of any bridge or CLAUDE_SESSION_ID.
+# of a Write to an intent file, independent of any bridge or session id.
 class CreateGateHookTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/hook-create-gate", __dir__)
   NEW_INTENT = File.expand_path("../scripts/new-intent", __dir__)
@@ -34,7 +34,7 @@ class CreateGateHookTest < Minitest::Test
 
   # Run the gate with no bridge env at all (proves bridge-independence).
   def run_gate(payload, env: {})
-    base = { "CLAUDE_SESSION_ID" => nil, "PLASTIC_TMP" => nil }
+    base = { "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_TMP" => nil }
     full = base.merge(env)
     out = IO.popen(full, [RbConfig.ruby, SCRIPT], "r+", err: [:child, :out]) do |io|
       io.write(JSON.generate(payload))
@@ -76,7 +76,7 @@ class CreateGateHookTest < Minitest::Test
   end
 
   def test_enforces_with_no_bridge
-    # CLAUDE_SESSION_ID unset (default in run_gate) and PLASTIC_TMP empty:
+    # no session id present (default in run_gate) and PLASTIC_TMP empty:
     # the gate still blocks bad and passes good.
     _bad_out, bad_status = run_gate(write_payload(@intent_file, @born_complete.sub(/^chain:.*\n/, "")))
     assert_equal 2, bad_status
@@ -102,7 +102,7 @@ class CreateGateHookTest < Minitest::Test
   end
 
   def test_unparseable_payload_allowed
-    out = IO.popen({ "CLAUDE_SESSION_ID" => nil }, [RbConfig.ruby, SCRIPT], "r+", err: [:child, :out]) do |io|
+    out = IO.popen({ "CLAUDE_CODE_SESSION_ID" => nil }, [RbConfig.ruby, SCRIPT], "r+", err: [:child, :out]) do |io|
       io.write("not json at all")
       io.close_write
       io.read

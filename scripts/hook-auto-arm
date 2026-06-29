@@ -26,7 +26,7 @@ if triggered
 end
 
 # --- 2. Standing gate reminder when armed and pre-How ---
-bridge_data = Bridge.discover_bridge(session: ENV["CLAUDE_SESSION_ID"], cwd: Dir.pwd)
+bridge_data = Bridge.discover_bridge(session: ENV["CLAUDE_CODE_SESSION_ID"], cwd: Dir.pwd)
 if bridge_data && bridge_data.dig("build", "auto") == true
   intent = bridge_data["intent"] || {}
   store = intent["store"]; dir = intent["dir"]

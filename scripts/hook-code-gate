@@ -18,9 +18,9 @@ require_relative "lib/bridge"
 file_path = ARGV[0]
 exit 0 unless file_path && !file_path.empty?
 
-session = (ARGV[1] unless ARGV[1].to_s.empty?) || ENV["CLAUDE_SESSION_ID"]
+session = (ARGV[1] unless ARGV[1].to_s.empty?) || ENV["CLAUDE_CODE_SESSION_ID"]
 
-# --- Load bridge (shared resolution; stdin session_id -> env -> /tmp scan) ---
+# --- Load bridge (shared resolution; stdin session_id -> CLAUDE_CODE_SESSION_ID -> /tmp scan) ---
 bridge_data = Bridge.discover_bridge(session: session, cwd: Dir.pwd)
 exit 0 unless bridge_data
 

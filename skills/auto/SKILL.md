@@ -50,10 +50,10 @@ Replace `<ID>`, `<STORE>` (e.g. `~/.plastic/projects/<slug>/store` or `~/.plasti
 `<dir>` (the `ID--slug` directory), and `<name>`. The first argument is the session id you
 want the bridge keyed by: pass the hook stdin `session_id` when you have it, otherwise
 `ENV["CLAUDE_CODE_SESSION_ID"]`, otherwise `nil`. `arm_auto` calls `resolve_session`, which
-picks the first non-empty of: the explicit id you pass -> `CLAUDE_SESSION_ID` ->
-`CLAUDE_CODE_SESSION_ID` -> a deterministic derived key (a hash of the store and intent id).
+picks the first non-empty of: the explicit id you pass -> `CLAUDE_CODE_SESSION_ID` -> a
+deterministic derived key (a hash of the store and intent id).
 It never returns nil, so the gate engages even when every session env var is empty; the call
-never needs a non-empty `CLAUDE_SESSION_ID` to function. Arming prints a one-line notice to
+never needs a non-empty session env var to function. Arming prints a one-line notice to
 stderr when it falls through to the derived key.
 
 **Hard rule for the rest of this run:** do NOT edit project code (anything outside the

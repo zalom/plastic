@@ -61,19 +61,17 @@ module Bridge
     "auto-" + Digest::SHA256.hexdigest("#{store}/#{intent_id}")[0, 10]
   end
 
-  # Resolve a bridge session: first non-empty of explicit, CLAUDE_SESSION_ID,
+  # Resolve a bridge session: first non-empty of explicit (the stdin session_id),
   # CLAUDE_CODE_SESSION_ID, then a derived key. Never returns nil/empty.
   # Whitespace-only counts as empty.
   #
-  # The CLAUDE_CODE_SESSION_ID fallback (intent 79) is additive: it only changes
-  # behavior when CLAUDE_SESSION_ID is blank but CLAUDE_CODE_SESSION_ID is set —
-  # the bg/headless case where the real session id lives in CLAUDE_CODE_SESSION_ID.
-  # Keying by the real id (instead of a derived hash) lets the statusline, which
-  # receives that same id on stdin, find the bridge by direct filename lookup.
+  # The CLAUDE_CODE_SESSION_ID fallback (intent 79) carries the bg/headless real
+  # session id (Claude Code passes session_id on stdin, not via an env var; the
+  # headless id lives in CLAUDE_CODE_SESSION_ID). Keying by the real id (instead of
+  # a derived hash) lets the statusline, which receives that same id on stdin, find
+  # the bridge by direct filename lookup.
   def self.resolve_session(explicit, intent_id:, store:)
     return explicit.to_s.strip unless blank?(explicit)
-    env = ENV["CLAUDE_SESSION_ID"]
-    return env.to_s.strip unless blank?(env)
     code_env = ENV["CLAUDE_CODE_SESSION_ID"]
     return code_env.to_s.strip unless blank?(code_env)
     derive_key(store, intent_id)
@@ -591,7 +589,7 @@ module Bridge
   # (mid-session intent creation). Re-derives intent state, then sets build.auto.
   def self.arm_auto(session, intent_id:, intent_dir:, store:, name:)
     key = resolve_session(session, intent_id: intent_id, store: store)
-    if blank?(session) && blank?(ENV["CLAUDE_SESSION_ID"]) && blank?(ENV["CLAUDE_CODE_SESSION_ID"])
+    if blank?(session) && blank?(ENV["CLAUDE_CODE_SESSION_ID"])
       $stderr.puts "plastic: no session id available; arming auto with derived bridge key #{key}"
     end
     data = derive(key, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name)

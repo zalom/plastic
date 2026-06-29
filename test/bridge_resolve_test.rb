@@ -13,17 +13,13 @@ class BridgeResolveTest < Minitest::Test
     @intent_dir = File.join(@store, "52--demo")
     FileUtils.mkdir_p(@intent_dir)
     File.write(File.join(@intent_dir, "52--demo.md"), "## Intent\nDemo\n")
-    @saved_env = ENV["CLAUDE_SESSION_ID"]
     @saved_code_env = ENV["CLAUDE_CODE_SESSION_ID"]
+    # Clear so a real ambient session id cannot leak into a "no id" case.
+    ENV.delete("CLAUDE_CODE_SESSION_ID")
   end
 
   def teardown
     FileUtils.rm_rf(@store)
-    if @saved_env.nil?
-      ENV.delete("CLAUDE_SESSION_ID")
-    else
-      ENV["CLAUDE_SESSION_ID"] = @saved_env
-    end
     if @saved_code_env.nil?
       ENV.delete("CLAUDE_CODE_SESSION_ID")
     else
@@ -49,31 +45,28 @@ class BridgeResolveTest < Minitest::Test
   # --- resolve_session -------------------------------------------------------
 
   def test_resolve_session_prefers_explicit
-    ENV["CLAUDE_SESSION_ID"] = "from-env"
+    ENV["CLAUDE_CODE_SESSION_ID"] = "from-env"
     assert_equal "explicit-id", Bridge.resolve_session("explicit-id", intent_id: "52", store: @store)
   end
 
   def test_resolve_session_falls_back_to_env
-    ENV["CLAUDE_SESSION_ID"] = "from-env"
+    ENV["CLAUDE_CODE_SESSION_ID"] = "from-env"
     assert_equal "from-env", Bridge.resolve_session(nil, intent_id: "52", store: @store)
   end
 
   def test_resolve_session_falls_back_to_derived_key
-    ENV.delete("CLAUDE_SESSION_ID")
     ENV.delete("CLAUDE_CODE_SESSION_ID")
     assert_equal Bridge.derive_key(@store, "52"),
                  Bridge.resolve_session(nil, intent_id: "52", store: @store)
   end
 
   def test_resolve_session_treats_whitespace_as_empty
-    ENV["CLAUDE_SESSION_ID"] = "   "
-    ENV.delete("CLAUDE_CODE_SESSION_ID")
+    ENV["CLAUDE_CODE_SESSION_ID"] = "   "
     assert_equal Bridge.derive_key(@store, "52"),
                  Bridge.resolve_session("  ", intent_id: "52", store: @store)
   end
 
   def test_resolve_session_never_empty
-    ENV.delete("CLAUDE_SESSION_ID")
     ENV.delete("CLAUDE_CODE_SESSION_ID")
     refute_nil Bridge.resolve_session(nil, intent_id: "52", store: @store)
     refute_empty Bridge.resolve_session("", intent_id: "52", store: @store)
@@ -82,26 +75,17 @@ class BridgeResolveTest < Minitest::Test
   # --- CLAUDE_CODE_SESSION_ID fallback (intent 79) ---------------------------
 
   def test_resolve_session_falls_back_to_code_session_id
-    ENV.delete("CLAUDE_SESSION_ID")
     ENV["CLAUDE_CODE_SESSION_ID"] = "real-id"
     assert_equal "real-id", Bridge.resolve_session(nil, intent_id: "52", store: @store)
   end
 
-  def test_resolve_session_prefers_legacy_env_over_code
-    ENV["CLAUDE_SESSION_ID"] = "from-env"
-    ENV["CLAUDE_CODE_SESSION_ID"] = "real-id"
-    assert_equal "from-env", Bridge.resolve_session(nil, intent_id: "52", store: @store)
-  end
-
   def test_resolve_session_derives_only_when_both_blank
-    ENV.delete("CLAUDE_SESSION_ID")
     ENV.delete("CLAUDE_CODE_SESSION_ID")
     assert_equal Bridge.derive_key(@store, "52"),
                  Bridge.resolve_session(nil, intent_id: "52", store: @store)
   end
 
   def test_resolve_session_code_session_treats_whitespace_as_empty
-    ENV.delete("CLAUDE_SESSION_ID")
     ENV["CLAUDE_CODE_SESSION_ID"] = "   "
     assert_equal Bridge.derive_key(@store, "52"),
                  Bridge.resolve_session(nil, intent_id: "52", store: @store)
@@ -111,7 +95,6 @@ class BridgeResolveTest < Minitest::Test
     Dir.mktmpdir("arm-code-session") do |tmp|
       saved_tmp = ENV["PLASTIC_TMP"]
       ENV["PLASTIC_TMP"] = tmp
-      ENV.delete("CLAUDE_SESSION_ID")
       ENV["CLAUDE_CODE_SESSION_ID"] = "real-id"
       begin
         data = Bridge.arm_auto(nil, intent_id: "52", intent_dir: @intent_dir,

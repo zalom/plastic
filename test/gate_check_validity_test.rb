@@ -15,16 +15,16 @@ class GateCheckValidityTest < Minitest::Test
     @intent_dir = File.join(@root, "store", "4a1c1--agent-harness")
     FileUtils.mkdir_p(@intent_dir)
     @bridge_tmp = Dir.mktmpdir("gate-validity-tmp")
-    @saved_session = ENV["CLAUDE_SESSION_ID"]
+    @saved_session = ENV["CLAUDE_CODE_SESSION_ID"]
     @saved_plastic_tmp = ENV["PLASTIC_TMP"]
     ENV["PLASTIC_TMP"] = @bridge_tmp
-    ENV.delete("CLAUDE_SESSION_ID")
+    ENV.delete("CLAUDE_CODE_SESSION_ID")
   end
 
   def teardown
     FileUtils.rm_rf(@root)
     FileUtils.rm_rf(@bridge_tmp)
-    restore_env("CLAUDE_SESSION_ID", @saved_session)
+    restore_env("CLAUDE_CODE_SESSION_ID", @saved_session)
     restore_env("PLASTIC_TMP", @saved_plastic_tmp)
   end
 
@@ -67,7 +67,7 @@ class GateCheckValidityTest < Minitest::Test
 
   def run_hook(file_path)
     # Capture stdout+stderr together; bridge tmp is isolated so discovery is hermetic.
-    env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_SESSION_ID" => nil }
+    env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_CODE_SESSION_ID" => nil }
     out = IO.popen(env, ["ruby", SCRIPT, file_path], err: [:child, :out], &:read)
     [out, $?]
   end
