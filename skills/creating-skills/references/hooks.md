@@ -202,6 +202,11 @@ The first lever trims output already produced; the second avoids producing the c
 all. Pair either with sub-agent isolation (see `agents.md`) when a whole noisy sub-task can
 run off to the side and return only its conclusion. [E7]
 
+Both levers cut the CONTEXT axis (the input the model reads). The model's own OUTPUT tokens
+(what it writes) are a separate axis with no hook: cut them with terse instructions, tool
+responses that offer a concise mode, and sub-agent offloading that returns a short summary
+instead of the full trace. [E7]
+
 ## Propose-only self-improving loop (E8)
 
 A skill can learn from its own real runs without ever editing itself unattended. Reach for
