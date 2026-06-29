@@ -6,70 +6,103 @@
       "prompt": "I want to author a new Plastic skill, how should I structure it?",
       "expected_output": "The skill should activate. This is a direct authoring request that names the domain. Guide the user through progressive disclosure: metadata around 100 tokens, a slim body under 5000 tokens and 500 lines that routes, and references on demand. Point to references/skills.md for frontmatter, description, and voice, and route load-level questions through references/progressive-disclosure.md first.",
       "files": [],
-      "assertions": []
+      "assertions": [
+        "The skill activates (direct authoring request that names the domain).",
+        "The response routes to references rather than dumping deep how-to inline.",
+        "The response states the load-level budgets (around 100 token metadata, body under 5000 tokens and 500 lines)."
+      ]
     },
     {
       "id": 2,
       "prompt": "The agent keeps ignoring my instructions and the file is huge, help me restructure it",
       "expected_output": "The skill should activate. This is an indirect trigger that never names skills or progressive disclosure, but the symptoms (bloated file, agent missing or skipping steps) are exactly the over-budget body case the skill covers. Guide toward splitting the body into references, keeping the body a thin router, and binding each reference to an observable trigger condition.",
       "files": [],
-      "assertions": []
+      "assertions": [
+        "The skill activates on the indirect trigger (no skill or progressive-disclosure keyword in the prompt).",
+        "The response guides toward splitting the body into references and keeping a thin router."
+      ]
     },
     {
       "id": 3,
       "prompt": "Scaffold a new lifecycle hook for Plastic",
       "expected_output": "The skill should activate. Authoring a lifecycle hook is in scope. Route to references/hooks.md and offer scripts/scaffold.rb to start the hook from a born-slim file.",
       "files": [],
-      "assertions": []
+      "assertions": [
+        "The skill activates (authoring a lifecycle hook is in scope).",
+        "The response routes to references/hooks.md and offers scripts/scaffold.rb."
+      ]
     },
     {
       "id": 4,
       "prompt": "Our prompts are bloated and we keep blowing the context budget",
       "expected_output": "The skill should activate. This is an indirect trigger: the user describes bloated prompts and a context budget problem without naming skills. The skill restructures instructions into a thin router over deep references with hard load-level budgets, which is the fix for this symptom.",
       "files": [],
-      "assertions": []
+      "assertions": [
+        "The skill activates on the indirect context-budget trigger (no skill keyword in the prompt).",
+        "The response treats the fix as a thin router over deep references with hard load-level budgets."
+      ]
     },
     {
       "id": 5,
       "prompt": "Run the evals on my skill and check the pass rate",
       "expected_output": "The skill should NOT trigger. Running evals and reading pass rates is the job of plastic-evaluating-skills, not authoring. Near-miss negative: shares the words 'skill' and 'evals' but the operation is grading an existing skill, not creating or revising one.",
       "files": [],
-      "assertions": []
+      "assertions": [
+        "The skill does not activate (running and grading evals is plastic-evaluating-skills, not authoring)."
+      ]
     },
     {
       "id": 6,
       "prompt": "Create a new intent for the dashboard work",
       "expected_output": "The skill should NOT trigger. Creating an intent is plastic-creating-intent. Near-miss negative: shares the verb 'create' but the object is an intent, not a skill, agent, or hook.",
       "files": [],
-      "assertions": []
+      "assertions": [
+        "The skill does not activate (creating an intent is plastic-creating-intent)."
+      ]
     },
     {
       "id": 7,
       "prompt": "I keep losing every team fight because of a skill issue in this game, any tips?",
       "expected_output": "The skill should NOT trigger. This is a gaming question with no relation to authoring instructions. Near-miss negative: shares the word 'skill' in an unrelated sense.",
       "files": [],
-      "assertions": []
+      "assertions": [
+        "The skill does not activate (gaming question, unrelated sense of 'skill')."
+      ]
     },
     {
       "id": 8,
       "prompt": "Write unit tests for my Ruby model that validates email addresses",
       "expected_output": "The skill should NOT trigger. Writing test code is a Ruby testing task. Near-miss negative: shares 'write' and 'test' but has nothing to do with authoring a skill, agent, or hook.",
       "files": [],
-      "assertions": []
+      "assertions": [
+        "The skill does not activate (writing test code is a Ruby testing task, not authoring a skill)."
+      ]
     },
     {
       "id": 9,
       "prompt": "Author a slim SKILL.md for a PDF-extraction skill",
       "expected_output": "Activation is assumed for this output-quality case. Correct output is a SKILL.md whose frontmatter description is third person, front-loads concrete trigger keywords, states WHEN to use rather than the workflow, and includes at least one indirect trigger. The body stays under 5000 tokens and under 500 lines and routes to references rather than carrying deep how-to. Each reference link names an observable trigger condition with no bare pointer like 'see references/'. References stay one level deep, and no string contains an em-dash or en-dash.",
       "files": [],
-      "assertions": []
+      "assertions": [
+        "The frontmatter description is written in the third person (no 'you' or 'I').",
+        "The description front-loads concrete trigger keywords in its opening clause.",
+        "The description includes at least one indirect trigger (a symptom phrasing that never names PDF extraction or skills).",
+        "The body is under 5000 tokens and under 500 lines.",
+        "Every reference link is bound to an observable trigger condition (no bare pointer such as 'see references/').",
+        "References stay one level deep (no reference points to a deeper reference).",
+        "No string in the SKILL.md or its references contains an em-dash or en-dash."
+      ]
     },
     {
       "id": 10,
       "prompt": "Make this subagent role file slim, the description is vague and the body is too long",
       "expected_output": "The skill should activate. Authoring or revising a subagent or Agent role file is in scope, and the symptoms (vague description, over-long body) are the progressive-disclosure case. Route to references/agents.md, tighten the description to state WHEN, and move depth into references. Output should keep the body under budget and use no em-dashes.",
       "files": [],
-      "assertions": []
+      "assertions": [
+        "The skill activates (revising a subagent or Agent role file is in scope).",
+        "The response routes to references/agents.md and tightens the description to state WHEN.",
+        "The proposed output keeps the body under budget and uses no em-dash or en-dash."
+      ]
     }
   ]
 }

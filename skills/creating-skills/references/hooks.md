@@ -17,6 +17,8 @@ handler grows past a few lines. This file covers only hook authoring.
 - No-op by default, opt-in (E4)
 - Exit codes and output channels (E5)
 - Verify the harness engaged (E6)
+- Token levers: global hooks that shrink context (E7)
+- Propose-only self-improving loop (E8)
 - Authoring checklist
 
 ## When to reach for a hook (E1)
@@ -176,6 +178,59 @@ Verify by observation, not assumption: [E6]
   if it is unset, session-scoped hooks no-op.
 - For a gate, attempt the action the gate should block and confirm it is refused. A gate that
   never refuses in testing is a gate that is not engaged.
+
+## Token levers: global hooks that shrink context (E7)
+
+Progressive disclosure trims what a skill loads. Two GLOBAL hooks trim what tool traffic
+costs at runtime, independent of any skill body. Both are token-reduction levers. Reach for
+them when prompts or tool output blow the context budget. [E7]
+
+- PostToolUse output preprocessing. Register a GLOBAL PostToolUse hook that trims noisy tool
+  output before it enters context: collapse repeated lines, cut a thousand-line log to its
+  head and tail, strip ANSI control codes, drop progress chatter. The model never sees the
+  noise, so it never pays tokens for it. Scope the hook with a matcher over the loud tools
+  (for example `Bash`), keep it lossless on signal (trim volume, never the line that carries
+  the answer), and make it no-op by default per E4. This is one GLOBAL hook, not a per-skill
+  or frontmatter hook. [E7]
+- Programmatic Tool Calling. When a tool runs in a loop and only the final result matters,
+  keep the intermediate results in code and return just the answer, instead of letting every
+  call land in context. Reach for it when a skill drives a tool in a loop and the per-call
+  output is throwaway. Pointer only: this is a Claude Code runtime feature, not a hook you
+  author here. [E7]
+
+The first lever trims output already produced; the second avoids producing the context at
+all. Pair either with sub-agent isolation (see `agents.md`) when a whole noisy sub-task can
+run off to the side and return only its conclusion. [E7]
+
+Both levers cut the CONTEXT axis (the input the model reads). The model's own OUTPUT tokens
+(what it writes) are a separate axis with no hook: cut them with terse instructions, tool
+responses that offer a concise mode, and sub-agent offloading that returns a short summary
+instead of the full trace. [E7]
+
+## Propose-only self-improving loop (E8)
+
+A skill can learn from its own real runs without ever editing itself unattended. Reach for
+this shape when a skill should improve from what actually happened in its runs. [E8]
+
+Wire a GLOBAL Stop or SubagentStop hook that, once an effort threshold is met, reads the
+just-finished transcript, drafts proposed edits to the skill, and stops. A human reviews the
+proposal, approves it, and the approved change lands in git. The hook never writes the skill
+directly. [E8]
+
+The guardrails that make this safe: [E8]
+
+- Propose only. The hook emits a diff or a suggestion, never an applied edit. Approval is a
+  human step, so a bad proposal costs a review, not a regression.
+- Effort-gated. Run the analysis only past a threshold (a long enough transcript, a real
+  failure observed), so cheap runs spend nothing.
+- Git-landed. The approved edit goes through the normal commit path, so every
+  self-improvement is reviewable and revertible.
+- Global, not scoped. This is one GLOBAL Stop or SubagentStop hook, not a per-skill
+  frontmatter hook.
+
+Pointer only. The real self-improving skill is the future `improving-skills` skill; this
+section records the safe shape so a skill author knows the loop exists and keeps it
+propose-only. [E8]
 
 ## Authoring checklist
 

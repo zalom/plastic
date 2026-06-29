@@ -48,6 +48,15 @@ routes each authoring task to the reference that holds the depth.
 | Deciding script versus prose, or writing a script | `references/scripts.md` |
 | Building evals for a skill | `references/evals.md` |
 
+## Shrink context, or let a skill self-improve
+
+- When prompts or tool output blow the context budget, open `references/hooks.md` (E7) for
+  the global token levers: a PostToolUse hook that trims noisy tool output before it enters
+  context, and Programmatic Tool Calling that keeps looped tool results in code, not context.
+- When a skill should learn from its own real runs, open `references/hooks.md` (E8) for the
+  propose-only Stop or SubagentStop loop (transcript to proposed edits to human approval to
+  git, effort-gated). The dedicated skill is the future `improving-skills` skill.
+
 ## Scaffolder and evals
 
 - To start a new skill, agent, or hook from a born-slim file, run
