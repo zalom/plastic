@@ -48,7 +48,7 @@ bridge_data = nil
 if active.length == 1 && active.first =~ /store\/([\w-]+)\//
   dir_name = $1
   intent_dir = "#{store_root}/store/#{dir_name}"
-  session = ENV["CLAUDE_SESSION_ID"] || Process.pid.to_s
+  session = ENV["CLAUDE_CODE_SESSION_ID"] || Process.pid.to_s
   intent_id = dir_name.split("--").first
   intent_name = active.first[/\[([^\]]+)\]/, 1] || "unknown"
   bridge_data = Bridge.derive(session, intent_id: intent_id, intent_dir: intent_dir, store: store_root, name: intent_name)

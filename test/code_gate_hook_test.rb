@@ -6,7 +6,7 @@ require "stringio"
 require_relative "../scripts/lib/bridge"
 
 # End-to-end test (intent 52): drives the real scripts/hook-code-gate with a
-# DERIVED-KEY armed bridge present in an isolated PLASTIC_TMP, no CLAUDE_SESSION_ID.
+# DERIVED-KEY armed bridge present in an isolated PLASTIC_TMP, no session id present.
 # Proves the gate engages off a session-less bridge and that a malformed
 # session:null bridge in the same dir is ignored.
 class CodeGateHookTest < Minitest::Test
@@ -25,10 +25,10 @@ class CodeGateHookTest < Minitest::Test
     File.write(@project_file, "puts 1\n")
 
     @bridge_tmp = Dir.mktmpdir("code-gate-hook-tmp")
-    @saved_session = ENV["CLAUDE_SESSION_ID"]
+    @saved_session = ENV["CLAUDE_CODE_SESSION_ID"]
     @saved_plastic_tmp = ENV["PLASTIC_TMP"]
     ENV["PLASTIC_TMP"] = @bridge_tmp
-    ENV.delete("CLAUDE_SESSION_ID")
+    ENV.delete("CLAUDE_CODE_SESSION_ID")
 
     # Arm via the derived key (no session). This writes the bridge into PLASTIC_TMP.
     # arm_auto prints a derived-key notice to stderr; silence it for clean output.
@@ -46,12 +46,12 @@ class CodeGateHookTest < Minitest::Test
   def teardown
     FileUtils.rm_rf(@root)
     FileUtils.rm_rf(@bridge_tmp)
-    @saved_session.nil? ? ENV.delete("CLAUDE_SESSION_ID") : ENV["CLAUDE_SESSION_ID"] = @saved_session
+    @saved_session.nil? ? ENV.delete("CLAUDE_CODE_SESSION_ID") : ENV["CLAUDE_CODE_SESSION_ID"] = @saved_session
     @saved_plastic_tmp.nil? ? ENV.delete("PLASTIC_TMP") : ENV["PLASTIC_TMP"] = @saved_plastic_tmp
   end
 
   def run_hook(file_path)
-    env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_SESSION_ID" => nil }
+    env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_CODE_SESSION_ID" => nil }
     out = IO.popen(env, ["ruby", SCRIPT, file_path], err: [:child, :out], &:read)
     [out, $?]
   end

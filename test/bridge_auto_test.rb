@@ -73,10 +73,8 @@ class BridgeAutoTest < Minitest::Test
   end
 
   def test_arm_auto_derives_key_and_warns_when_no_session
-    saved = ENV["CLAUDE_SESSION_ID"]
     saved_code = ENV["CLAUDE_CODE_SESSION_ID"]
-    ENV.delete("CLAUDE_SESSION_ID")
-    # "No session available" now means BOTH env vars blank (intent 79): the
+    # "No session available" means the session env var is blank (intent 79): the
     # CLAUDE_CODE_SESSION_ID fallback must also be absent to reach the derive path.
     ENV.delete("CLAUDE_CODE_SESSION_ID")
     derived = Bridge.derive_key(@store, "27")
@@ -88,25 +86,24 @@ class BridgeAutoTest < Minitest::Test
     refute_empty out
     File.delete(Bridge.path(derived)) if File.exist?(Bridge.path(derived))
   ensure
-    ENV["CLAUDE_SESSION_ID"] = saved unless saved.nil?
     ENV["CLAUDE_CODE_SESSION_ID"] = saved_code unless saved_code.nil?
   end
 
   def test_arm_auto_does_not_warn_when_env_session_present
-    saved = ENV["CLAUDE_SESSION_ID"]
-    ENV["CLAUDE_SESSION_ID"] = "env-#{Process.pid}"
+    saved = ENV["CLAUDE_CODE_SESSION_ID"]
+    ENV["CLAUDE_CODE_SESSION_ID"] = "env-#{Process.pid}"
     out = capture_stderr do
       data = Bridge.arm_auto(nil, intent_id: "27", intent_dir: @intent_dir, store: @store, name: "demo")
-      assert_equal ENV["CLAUDE_SESSION_ID"], data["session"]
+      assert_equal ENV["CLAUDE_CODE_SESSION_ID"], data["session"]
     end
     assert_empty out.strip
     p = Bridge.path("env-#{Process.pid}")
     File.delete(p) if File.exist?(p)
   ensure
     if saved.nil?
-      ENV.delete("CLAUDE_SESSION_ID")
+      ENV.delete("CLAUDE_CODE_SESSION_ID")
     else
-      ENV["CLAUDE_SESSION_ID"] = saved
+      ENV["CLAUDE_CODE_SESSION_ID"] = saved
     end
   end
 

@@ -172,11 +172,11 @@ the full pre/post detail. The born timestamp is only accurate live, because the 
 mtime drifts forward as `## Insights` are appended through the lifecycle.
 
 Session resolution feeds the bridge that the gate hooks read (intent 52). Claude Code does
-not export `CLAUDE_SESSION_ID` into the hook environment; it passes `session_id` on the hook
+not export a session id env var into the hook environment; it passes `session_id` on the hook
 stdin JSON. So the bash wrappers parse `session_id` out of stdin (in Ruby, never in bash) and
 hand it to the gate scripts as a second argument. `Bridge.resolve_session` then takes the
 first non-empty of three sources, in precedence order: the explicit stdin `session_id`, the
-`CLAUDE_SESSION_ID` environment variable, and a derived `auto-<digest>` key
+`CLAUDE_CODE_SESSION_ID` environment variable, and a derived `auto-<digest>` key
 (`Bridge.derive_key`, a short SHA256 of `store/intent_id`). The derived key is deterministic,
 so a session-less arm and a later session-less gate-check resolve to the same bridge file
 instead of writing `plastic-.json` with a null session. `Bridge.write` now refuses an empty
@@ -480,7 +480,7 @@ Four coordinated pieces deliver that.
   not exist yet at PreToolUse), using `IntentValidator.validate_content`
   (born-complete frontmatter plus the section structure). It blocks with exit 2 on
   failure. It depends only on the stdin path plus content, never on the auto-bridge
-  or `CLAUDE_SESSION_ID`, so it runs unconditionally including in headless and
+  or any session id, so it runs unconditionally including in headless and
   background sessions, which dissolves intent 60's D6 objection (the 60-era design
   no-opped without a bridge). If `content` is absent it fails safe and blocks rather
   than allowing a write it cannot validate. It validates only the intent file, never

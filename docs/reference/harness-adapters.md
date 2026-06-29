@@ -118,7 +118,7 @@ inside its own equally-named dir (`store/**/<id>--<slug>/<id>--<slug>.md`), it v
 the PROPOSED content from the hook stdin payload (`tool_input.content`) before the write
 lands, using `IntentValidator` for born-complete frontmatter plus the sanctioned `##`
 section set, and blocks with exit 2 on failure. It depends only on the stdin path plus
-content, never on the session bridge or `CLAUDE_SESSION_ID`, so it enforces even in
+content, never on the session bridge or any session id, so it enforces even in
 headless and background runs. It is Claude-Code-only defense-in-depth: the `new-intent`
 CLI plus the creating-intent instruction are the portable lever that works on any harness
 (intent 60b D9). The PreToolUse block makes the PostToolUse backstop a no-op for the
@@ -137,8 +137,8 @@ preventing it.
 ### Scope note
 
 This worked example is interactive only. The `--bare`, headless, and CI execution
-paths are explicitly OUT of scope here: `CLAUDE_SESSION_ID` may be unset in those runs,
-so the session-keyed gate and savepoint hooks no-op, and the enforcer falls back to
+paths are explicitly OUT of scope here: the session id may be unset in those runs,
+so the session-keyed gate falls back to the derived key, and the enforcer falls back to
 manual gating. Those paths get their own treatment elsewhere.
 
 ## Roadmap

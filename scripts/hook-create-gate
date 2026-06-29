@@ -9,8 +9,8 @@
 # the on-disk file (which does not exist yet at PreToolUse), using IntentValidator
 # for born-complete frontmatter plus the sanctioned section structure.
 #
-# It depends ONLY on the stdin path + content, never on the auto-bridge or
-# CLAUDE_SESSION_ID, so it runs unconditionally (headless / background sessions).
+# It depends ONLY on the stdin path + content, never on the auto-bridge or any
+# session id, so it runs unconditionally (headless / background sessions).
 # It validates ONLY the intent file, never sentinel placeholder lifecycle files
 # (spec.md/plan.md/etc.); the path matcher excludes them.
 #
