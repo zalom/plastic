@@ -1,0 +1,37 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+#
+# Usage: hook-lock-gate <file_path> [session_id]
+# Fail-CLOSED PreToolUse gate (intent 96). Blocks a mutating write to an active
+# intent's lifecycle dir when THIS session holds no live lock. Project code is NOT
+# gated here (D2). Emits the PreToolUse JSON deny contract at exit 0; reserves
+# non-zero exit for hook-internal errors only. Matcher Write|Edit|NotebookEdit, so
+# reads never reach here.
+require "json"
+require_relative "lib/bridge"
+
+begin
+  file_path = ARGV[0]
+  exit 0 unless file_path && !file_path.empty?
+  session = (ARGV[1] unless ARGV[1].to_s.empty?) || ENV["CLAUDE_CODE_SESSION_ID"]
+
+  bridge_data = Bridge.discover_bridge(session: session, cwd: Dir.pwd)   # nil = no lock held
+  reason = Bridge.lock_gate_decision(bridge_data, file_path)
+  exit 0 unless reason
+
+  print JSON.generate(
+    "hookSpecificOutput" => {
+      "hookEventName" => "PreToolUse",
+      "permissionDecision" => "deny",
+      "permissionDecisionReason" => reason   # "run /plastic-intent-starting to lock and begin"
+    }
+  )
+  exit 0
+rescue => e
+  # Hook-internal failure only: do NOT impersonate a user-deny. Log and fail open
+  # here so a gate bug never bricks editing; the fail-CLOSED intent is about MISSING
+  # locks, not crashes.
+  $stderr.puts "plastic lock-gate error: #{e.message}"
+  exit 0
+end

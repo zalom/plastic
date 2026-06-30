@@ -585,15 +585,19 @@ module Bridge
 
   # --- Auto mode (intent 27) ---
 
-  # Arm auto mode for a session+intent. Works even when no bridge exists yet
-  # (mid-session intent creation). Re-derives intent state, then sets build.auto.
-  def self.arm_auto(session, intent_id:, intent_dir:, store:, name:)
+  # Shared arming spine (intent 96): resolve the session key, derive intent state,
+  # set the caller-controlled auto flag, acquire the delivery lock, provision the
+  # per-intent worktrees, persist, and purge terminal bridges. arm_auto (auto: true)
+  # and arm_guided (auto: false) are thin delegators so the lock-stamp + provision
+  # behaviour stays identical across both modes. Works even when no bridge exists
+  # yet (mid-session intent creation).
+  def self.arm(session, intent_id:, intent_dir:, store:, name:, auto:)
     key = resolve_session(session, intent_id: intent_id, store: store)
     if blank?(session) && blank?(ENV["CLAUDE_CODE_SESSION_ID"])
-      $stderr.puts "plastic: no session id available; arming auto with derived bridge key #{key}"
+      $stderr.puts "plastic: no session id available; arming with derived bridge key #{key}"
     end
     data = derive(key, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name)
-    data["build"]["auto"] = true
+    data["build"]["auto"] = auto
 
     # Acquire the delivery lock: this armed bridge is now the single owner of the
     # intent's delivery (intent 73c). Stamp owner + pid liveness fields.
@@ -616,6 +620,20 @@ module Bridge
     write(key, data)
     purge_done_bridges(session: key)
     data
+  end
+  private_class_method :arm
+
+  # Arm auto mode for a session+intent. Works even when no bridge exists yet
+  # (mid-session intent creation). Re-derives intent state, then sets build.auto.
+  def self.arm_auto(session, intent_id:, intent_dir:, store:, name:)
+    arm(session, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name, auto: true)
+  end
+
+  # Acquire the delivery lock WITHOUT auto mode (intent 96 / Start guided branch).
+  # Mirrors arm_auto's lock-stamp + worktree provision but leaves build.auto = false.
+  # Same signature as arm_auto; disarm_auto (mode-agnostic) releases a guided lock.
+  def self.arm_guided(session, intent_id:, intent_dir:, store:, name:)
+    arm(session, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name, auto: false)
   end
 
   # Disarm auto mode. No-op if no bridge exists for the session.
@@ -671,6 +689,68 @@ module Bridge
     "intent #{id} has not reached How — write plan.md + checklist.md before " \
       "editing project code. Run plastic-auto or plastic-writing-plans first. " \
       "(blocked edit: #{file_abs})"
+  end
+
+  # --- Fail-closed lock gate (intent 96) -------------------------------------
+
+  # Returns a reason String to BLOCK, or nil to ALLOW. bridge_data is whatever
+  # discover_bridge(session:, cwd:) resolved for THIS session (own-session strict,
+  # or the lone headless/derived-key bridge), or nil = no lock held.
+  #
+  # BLOCK iff the target is an ACTIVE intent's lifecycle dir AND this session does
+  # NOT hold a LIVE lock FOR THAT SAME INTENT. ALLOW otherwise: a lock held for the
+  # target intent; a not-yet-active intent (creation, What); project code; anything
+  # that is not an active intent dir. The lock must match the TARGET intent: holding
+  # a live lock on intent A never green-lights a mutating write into intent B's dir.
+  # Project code is NOT gated here (D2) - it is isolated per-intent by worktree +
+  # branch, not by a write-time lock.
+  def self.lock_gate_decision(bridge_data, file_path)
+    return nil if blank?(file_path)
+
+    # Resolve the TARGET intent first so allow-by-lock is scoped to that intent.
+    target_dir = intent_dir_for(file_path)
+    return nil unless target_dir                  # not an intent dir (project code, scratch) -> ALLOW
+    id = intent_id_from_dir(target_dir)           # "<id>" from "<id>--<slug>"
+    store = File.dirname(target_dir)              # the store/ dir holding the intent
+    return nil unless id && intent_active?(id, store: store)  # not-yet-active (creation/What) -> ALLOW
+
+    # ALLOW only when this session holds a live lock for THIS SAME intent. A live
+    # lock on a different intent does not authorize writing into this intent's dir.
+    return nil if holds_live_lock?(bridge_data) &&
+                  bridge_data.is_a?(Hash) &&
+                  bridge_data.dig("intent", "id").to_s == id.to_s
+
+    "run /plastic-intent-starting to lock and begin"
+  end
+
+  # A discovered bridge counts as a held lock only if its lock is stamped AND the
+  # owner process is live on THIS host. Staleness/identity lives HERE (gate read
+  # path), never in arm_auto's write path. On host-mismatch we cannot probe the
+  # pid, so fall back to "held" (a remote live owner should still block).
+  def self.holds_live_lock?(bridge_data)
+    return false unless bridge_data.is_a?(Hash)
+    lock = bridge_data["lock"] || {}
+    return false if blank?(lock["owner_session"])
+    pid = lock["pid"]
+    host = lock["host"]
+    this_host = (Socket.gethostname rescue nil)
+    if host && this_host && host == this_host && pid.is_a?(Integer)
+      begin
+        Process.kill(0, pid)   # raises Errno::ESRCH if dead
+        return true
+      rescue Errno::ESRCH
+        return false           # dead owner -> not a held lock -> gate blocks (re-lock)
+      rescue Errno::EPERM
+        return true            # exists, not ours to signal -> live
+      end
+    end
+    true                       # different/unknown host: treat the stamped lock as held
+  end
+
+  # "<id>" from a ".../store/<id>--<slug>" dir, else nil.
+  def self.intent_id_from_dir(dir)
+    base = File.basename(dir.to_s)
+    base.include?("--") ? base.split("--", 2).first : nil
   end
 
   # --- Worktree isolation gate (intent 73c2) ---

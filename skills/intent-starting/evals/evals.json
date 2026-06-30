@@ -1,0 +1,117 @@
+{
+  "skill_name": "plastic-intent-starting",
+  "notes": "Intent 96. Scopes: description triggering (1-5) and behavior (6-10: lock-first spine, ask-mode-once, terminal report-only, mode->arm mapping, boarding matrix). The lock-first and gate behaviors are also proven by Ruby tests (test/bridge_guided_test.rb, test/lock_gate_test.rb, test/lock_gate_hook_test.rb).",
+  "evals": [
+    {
+      "id": 1,
+      "scope": "triggering",
+      "set": "train",
+      "prompt": "start work on intent 96",
+      "expected_output": "Activates plastic-intent-starting (board a session onto the named intent).",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-intent-starting", "result": "expect-pass" }
+      ]
+    },
+    {
+      "id": 2,
+      "scope": "triggering",
+      "set": "train",
+      "prompt": "continuing --intent 96",
+      "expected_output": "Activates plastic-intent-starting (the --intent form boards a specific intent).",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-intent-starting", "result": "expect-pass" }
+      ]
+    },
+    {
+      "id": 3,
+      "scope": "triggering",
+      "set": "validation",
+      "prompt": "work this intent",
+      "expected_output": "Activates plastic-intent-starting when an intent is in context to be worked.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-intent-starting", "result": "expect-pass" }
+      ]
+    },
+    {
+      "id": 4,
+      "scope": "triggering",
+      "set": "validation",
+      "prompt": "continue",
+      "expected_output": "Does NOT activate plastic-intent-starting; bare 'continue' is plastic-continuing (no specific intent named).",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE != plastic-intent-starting", "result": "expect-pass" }
+      ]
+    },
+    {
+      "id": 5,
+      "scope": "triggering",
+      "set": "validation",
+      "prompt": "create a new intent for the uploader retry policy",
+      "expected_output": "Does NOT activate plastic-intent-starting; activates plastic-creating-intent.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE != plastic-intent-starting", "result": "expect-pass" }
+      ]
+    },
+    {
+      "id": 6,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "Active intent X exists at the Why station. Start work on it (guided).",
+      "expected_output": "Takes the lock FIRST via Bridge.arm_guided (auto stays false) before any mutating work, confirms savepoint, then boards at Why and continues brainstorming toward spec.md.",
+      "files": [],
+      "assertions": [
+        { "type": "human", "check": "lock acquired before any mutating write; SKILL.md 'Lock FIRST' section precedes station work", "result": "expect-pass" },
+        { "type": "code", "check": "Bridge.arm_guided stamps the lock with auto=false (test/bridge_guided_test.rb green); lock-gate denies a no-lock write to the active intent dir (test/lock_gate_hook_test.rb green)", "result": "pass" }
+      ]
+    },
+    {
+      "id": 7,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "Start work on an active intent without saying auto or guided.",
+      "expected_output": "Asks 'auto or guided?' exactly once after reporting the station; never re-asks at later stations.",
+      "files": [],
+      "assertions": [
+        { "type": "human", "check": "SKILL.md asks the mode exactly once and states 'never re-asked at a later station'", "result": "expect-pass" }
+      ]
+    },
+    {
+      "id": 8,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "Start work on an intent that is Done in INDEX.",
+      "expected_output": "Reports only: no lock, no resume, no reopen. Summarizes the outcome and asks what is next.",
+      "files": [],
+      "assertions": [
+        { "type": "human", "check": "terminal intent -> report only, no arm call", "result": "expect-pass" }
+      ]
+    },
+    {
+      "id": 9,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "Start work and choose auto.",
+      "expected_output": "guided -> Bridge.arm_guided; auto -> Bridge.arm_auto then hand off to plastic-auto (auto branch's only remaining job is the handoff).",
+      "files": [],
+      "assertions": [
+        { "type": "human", "check": "SKILL.md maps guided->arm_guided and auto->arm_auto+handoff to plastic-auto", "result": "expect-pass" }
+      ]
+    },
+    {
+      "id": 10,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "Start an intent whose savepoint last line is 'How  checklist.md created'.",
+      "expected_output": "Boards at Exec (verify plan + checklist real), per references/boarding-matrix.md, and continues delivery/ticks the checklist.",
+      "files": [],
+      "assertions": [
+        { "type": "human", "check": "boarding matrix lands 'How checklist.md created' / 'Exec started' at Exec", "result": "expect-pass" }
+      ]
+    }
+  ]
+}

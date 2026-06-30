@@ -37,6 +37,11 @@
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" code-gate",
             "statusMessage": "Checking lifecycle gate..."
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" lock-gate",
+            "statusMessage": "Checking lock gate..."
           }
         ]
       },
