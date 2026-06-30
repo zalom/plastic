@@ -331,6 +331,37 @@ class MergeClaudeHooksTest < Minitest::Test
     assert_equal 1, code_commands.size, "code-gate must not duplicate across merges"
   end
 
+  # Intent 96: the fail-closed lock-gate is registered as a 2nd ordered command
+  # INSIDE the existing Write|Edit|NotebookEdit code-gate group (NOT a new
+  # same-matcher group, which the merge loop would collapse). code-gate survives.
+  def test_pretooluse_registers_lock_gate_inside_code_gate_group
+    File.write(@settings_path, "{}")
+    @installer.merge_claude_hooks(@settings_path)
+    settings = JSON.parse(File.read(@settings_path))
+
+    commands = pretooluse_commands(settings)
+    assert commands.any? { |c| c.include?("plastic-lock-gate") }, "lock-gate must be registered"
+    assert commands.any? { |c| c.include?("plastic-code-gate") }, "code-gate must survive"
+
+    wen_groups = settings["hooks"]["PreToolUse"].select { |g| g["matcher"] == "Write|Edit|NotebookEdit" }
+    assert_equal 1, wen_groups.size, "exactly ONE Write|Edit|NotebookEdit group (no matcher collision)"
+    group_commands = wen_groups.first["hooks"].map { |h| h["command"] }
+    assert group_commands.any? { |c| c.include?("plastic-code-gate") }, "code-gate in the W|E|N group"
+    assert group_commands.any? { |c| c.include?("plastic-lock-gate") }, "lock-gate in the W|E|N group"
+  end
+
+  def test_pretooluse_lock_gate_is_idempotent_across_two_merges
+    File.write(@settings_path, "{}")
+    @installer.merge_claude_hooks(@settings_path)
+    @installer.merge_claude_hooks(@settings_path)
+    settings = JSON.parse(File.read(@settings_path))
+
+    lock_commands = pretooluse_commands(settings).select { |c| c.include?("plastic-lock-gate") }
+    assert_equal 1, lock_commands.size, "lock-gate must not duplicate across merges"
+    wen_groups = settings["hooks"]["PreToolUse"].select { |g| g["matcher"] == "Write|Edit|NotebookEdit" }
+    assert_equal 1, wen_groups.size, "still exactly ONE W|E|N group after re-merge"
+  end
+
   def test_user_prompt_submit_includes_qmd_search
     File.write(@settings_path, "{}")
     @installer.merge_claude_hooks(@settings_path)

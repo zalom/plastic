@@ -208,6 +208,7 @@ class InstallerCore
       "scripts/lib/qmd_hook.rb" => "scripts/lib/qmd_hook.rb",
       "scripts/lib/power_tools.rb" => "scripts/lib/power_tools.rb",
       "scripts/hook-code-gate" => "scripts/hook-code-gate",
+      "scripts/hook-lock-gate" => "scripts/hook-lock-gate",
       "scripts/hook-bash-gate" => "scripts/hook-bash-gate",
       "scripts/hook-retrieval-gate" => "scripts/hook-retrieval-gate",
       "scripts/lib/retrieval_gate.rb" => "scripts/lib/retrieval_gate.rb",
@@ -562,6 +563,10 @@ class InstallerCore
           "matcher" => "Write|Edit|NotebookEdit",
           "hooks" => [
             { "type" => "command", "command" => "#{hook_dir}/plastic-code-gate", "statusMessage" => "Checking lifecycle gate..." },
+            # Fail-closed lock gate (intent 96): a 2nd ordered command INSIDE the
+            # code-gate group (NOT a new same-matcher group, which the merge loop
+            # below would collapse). Blocks no-lock writes to an active intent's dir.
+            { "type" => "command", "command" => "#{hook_dir}/plastic-lock-gate", "statusMessage" => "Checking lock gate..." },
           ],
         },
         {
