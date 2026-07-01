@@ -472,7 +472,10 @@ class Doctor
         category: "conventions", name: "section_structure", status: "warn",
         message: "#{bad_sections.size} intent file(s) have non-sanctioned ## sections",
         details: bad_sections.map { |b| "#{b[:dir]}: #{b[:issues].join(", ")}" },
-        fixable: false
+        fixable: true,
+        fix_hint: "Dispatch plastic-intent-curator to relocate each unsanctioned section into the " \
+                  "intent's revisions.md via move-and-record (a missing required section is restored " \
+                  "or reprojected instead); see PLASTIC.md > Structural maintenance and revisions.md"
       )
     end
 
@@ -698,7 +701,9 @@ class Doctor
     checks << graph_finding_check(
       "graph_i4_danglers", i4,
       "Every sources/chain id resolves to a real intent (I4)",
-      "Fix or remove the dangling id reference"
+      "Dispatch plastic-intent-curator to record the dangling sources/chain edge as a " \
+      "broken-source/broken-chain move-and-record entry in the intent's revisions.md (see " \
+      "PLASTIC.md > Structural maintenance and revisions.md), or restore the missing intent"
     )
     checks
   end

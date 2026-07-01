@@ -119,9 +119,12 @@ Use the `fix_hint` value to determine the correct action:
 | "Inject the missing required frontmatter field(s)" | Edit the intent's `{ID}--{slug}.md` frontmatter to add the missing key (e.g. `chain: []`) without touching other keys |
 | "Run: provision-project-store {slug}" | Run `provision-project-store <slug>` (or invoke the `plastic-add-project-store` skill) to create the missing store |
 | "Re-run installer" | Run `npx @zalom/plastic@latest --agent` |
+| "Dispatch plastic-intent-curator ... revisions.md ..." | Invoke the `plastic-intent-curator` (or the agent) to relocate the flagged section or ref into the intent's `revisions.md` via move-and-record (one dated, `[rule: <tag>]`-tagged entry per item), per PLASTIC.md > Structural maintenance and revisions.md. For a missing required section, restore or reproject it instead. |
 
 For fixes the agent cannot handle automatically, explain what the user needs
-to do manually.
+to do manually. The `revisions.md` remedy is curator-applied (a move-and-record
+relocation, not a mechanical edit) and stays human-gated by the Step 4
+Fix / Select / Skip prompt.
 
 ### Step 6: Verify
 
