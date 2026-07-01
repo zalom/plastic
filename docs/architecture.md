@@ -73,11 +73,12 @@ ID--slug/
   checklist.md    # the How deliverable (execution registry)
   outcome.md      # the Exec deliverable (its existence signals completion)
   savepoint.md    # deterministic cycle-step ledger, written automatically
+  revisions.md    # optional structural-maintenance audit trail (present only after maintenance)
   actions/        # individual work items, when work splits into parallel pieces
   resources/      # research, references, snapshots, diagrams
 ```
 
-Lifecycle artifacts use those exact reserved names and live directly in the intent folder, never in subfolders and never renamed. All other supporting material goes in `resources/`. State is not stored in a status field; it is derived from which files and sections exist (for example, an empty `## Context` means the intent is still fleeting, and the presence of `outcome.md` means it is done).
+Lifecycle artifacts use those exact reserved names and live directly in the intent folder, never in subfolders and never renamed. All other supporting material goes in `resources/`. State is not stored in a status field; it is derived from which files and sections exist (for example, an empty `## Context` means the intent is still fleeting, and the presence of `outcome.md` means it is done). `revisions.md` is not a lifecycle artifact: it appears only when structural maintenance relocated a misplaced section, file, or ref out of a delivered intent, so its existence signals structural (not conceptual) change.
 
 ## identity and the knowledge graph
 

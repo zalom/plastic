@@ -171,6 +171,13 @@ spec, plan, checklist, outcome), which still pins cycle position, while the live
 the full pre/post detail. The born timestamp is only accurate live, because the intent file's
 mtime drifts forward as `## Insights` are appended through the lifecycle.
 
+`revisions.md` is a sibling per-intent ledger, but unlike `savepoint.md` it is neither
+auto-written nor part of the deterministic form. The intent-curator authors it by hand during
+structural maintenance, recording each move-and-record relocation (the misplaced section, file,
+or ref, where it came from, the rule it broke, and its verbatim prior content). It exists only
+when maintenance happened, so its presence is itself the signal, and no tool reads or validates
+it: it is convention, not enforcement.
+
 Session resolution feeds the bridge that the gate hooks read (intent 52). Claude Code does
 not export a session id env var into the hook environment; it passes `session_id` on the hook
 stdin JSON. So the bash wrappers parse `session_id` out of stdin (in Ruby, never in bash) and
