@@ -47,6 +47,13 @@ class NewIntentTest < Minitest::Test
     end
   end
 
+  def test_fresh_intent_has_no_revisions_file
+    dir, status = run_new_intent("--store", @store, "--intent", "Fresh", "--slug", "fresh")
+    assert_equal 0, status, "expected exit 0, got: #{dir}"
+    refute File.exist?(File.join(dir, "revisions.md")),
+      "a freshly scaffolded intent must not carry a revisions.md placeholder"
+  end
+
   def test_lifecycle_files_first_line_is_sentinel
     dir, = run_new_intent("--store", @store, "--intent", "Demo", "--slug", "demo")
     %w[spec.md plan.md checklist.md outcome.md].each do |f|

@@ -130,9 +130,16 @@ class InstallPackagingTest < Minitest::Test
   REPO = File.expand_path("../../", __FILE__)
 
   def test_canonical_templates_exist_in_repo
-    expected = %w[intent.md plan.md checklist.md savepoint.md index.md spec.md outcome.md]
+    expected = %w[intent.md plan.md checklist.md savepoint.md index.md spec.md outcome.md revisions.md]
     missing = expected.reject { |t| File.file?(File.join(REPO, "templates", t)) }
     assert_empty missing, "canonical templates missing from templates/: #{missing.join(", ")}"
+  end
+
+  def test_revisions_template_is_in_core_files
+    installer = InstallerCore.new(package_root: REPO, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
+    assert installer.core_files.key?("templates/revisions.md"),
+      "templates/revisions.md must be registered in core_files so it installs to ~/.plastic/templates/"
+    assert_equal "templates/revisions.md", installer.core_files["templates/revisions.md"]
   end
 
   def test_templates_dir_is_packaged_for_distribution

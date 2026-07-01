@@ -236,6 +236,7 @@ class InstallerCore
       "templates/plan.md" => "templates/plan.md",
       "templates/checklist.md" => "templates/checklist.md",
       "templates/outcome.md" => "templates/outcome.md",
+      "templates/revisions.md" => "templates/revisions.md",
       "scripts/spawn-preamble" => "scripts/spawn-preamble",
       "scripts/lib/store_provisioning.rb" => "scripts/lib/store_provisioning.rb",
       "scripts/provision-project-store" => "scripts/provision-project-store",

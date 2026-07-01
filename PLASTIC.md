@@ -20,12 +20,40 @@ store/
     actions/              # optional — individual work items
     resources/            # optional — research, references, screenshots, diagrams
     savepoint.md          # optional — deterministic cycle-step ledger (auto-written)
+    revisions.md          # optional - append-only structural-maintenance audit trail
 ```
 
 Lifecycle files (`spec.md`, `plan.md`, `checklist.md`, `outcome.md`) have defined
 roles. Supporting artifacts that aren't lifecycle deliverables — research reports,
 reference docs, external API snapshots, screenshots, diagrams — go in `resources/`.
 Name files inside as `{type}--{description}.md` (e.g., `deep-research--gsd-core.md`).
+
+`revisions.md` is an optional, append-only structural-maintenance audit trail. It is not a
+lifecycle deliverable and is never scaffolded at intent birth. Its mere existence signals that
+the intent underwent structural (not conceptual) change. Structural maintenance is move-and-record:
+it removes a misplaced section, file, or ref from its artifact and preserves that content in full
+inside `revisions.md` (newest entry at the bottom, one entry per relocated item), so no record is
+lost and the delivered meaning is never altered. Changing what an intent delivered is a new intent,
+not a revision.
+
+### Structural maintenance and revisions.md
+
+When a delivered intent accumulates structural junk (an unsanctioned section, a stray file, a
+frontmatter edge to an intent that no longer exists), the intent-curator relocates it into
+`revisions.md` instead of reopening the work. Each entry is a versioned, dated header
+(`## Revision vN - YYYY-MM-DD-HH:MM`) plus `Why` (one sentence naming the broken rule, ending
+with `[rule: <tag>]`), `Prior location`, and either `Content held` (the verbatim removed
+content) or, for a frontmatter edit, a one-line `Change` (before and after). A stray file has
+its full content embedded and the original is deleted.
+
+Violation tags (starter set, free-text tags allowed):
+- `unsanctioned-section`: a top-level section the sanctioned-section rule now rejects
+- `phantom-section`: a section referenced but not present or not sanctioned
+- `stray-file`: a file that does not belong in the intent directory
+- `dangling-ref`: a link or reference to something that no longer exists
+- `broken-chain`: a chain frontmatter edge to an intent that no longer exists
+- `broken-source`: a sources frontmatter edge to an intent that no longer exists
+- `misplaced-content`: content that belongs in a different artifact or section
 
 ## Frontmatter
 
