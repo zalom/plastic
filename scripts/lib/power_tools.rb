@@ -4,10 +4,10 @@
 require_relative "qmd_sync"
 
 # PowerTools — detect-then-degrade harness for Plastic's optional power-tools
-# (intent 66b). It owns deterministic detection of each tool and builds an
-# obligation ("mandate") string for whichever tools are present, so the agent is
-# obliged (not merely reminded) to use them: QMD for finding intents, Serena for
-# code navigation.
+# (intent 66b; demoted to recommendations in intent 108, D8). It owns
+# deterministic detection of each tool and builds a RECOMMENDATION string for
+# whichever tools are present, so the agent is reminded (not obliged) to prefer
+# them: QMD for finding intents, Serena for code navigation.
 #
 # Strictly detect-then-degrade: a tool that is absent contributes nothing, and
 # `mandate` returns nil when no tool is present. Nothing here installs anything.
@@ -52,22 +52,21 @@ module PowerTools
     false
   end
 
-  # Obligation text for whichever tools are present, joined by newlines, or nil
-  # when none are. One MANDATORY line per present tool.
+  # Recommendation text for whichever tools are present, joined by newlines, or
+  # nil when none are. One recommendation line per present tool.
   def mandate(cwd:, qmd_detector: QmdSync.method(:detect), serena_detector: nil)
     lines = []
 
     if qmd?(detector: qmd_detector)
-      lines << "MANDATORY: you MUST use QMD (`qmd search` / `qmd query` over the " \
-               "`plastic-*` collections) to check for an existing or related intent " \
-               "before treating this as new work; do not grep/Read the store first."
+      lines << "QMD is available: prefer `qmd search` / `qmd query` over the " \
+               "`plastic-*` collections to check for existing or related intents " \
+               "before treating work as new."
     end
 
     serena_present = serena_detector ? !!serena_detector.call : serena?(cwd: cwd)
     if serena_present
-      lines << "MANDATORY: you MUST use Serena's symbolic tools (find_symbol / " \
-               "get_symbols_overview / find_referencing_symbols) for code navigation " \
-               "before grep/Read."
+      lines << "Serena is available: prefer its symbolic tools (find_symbol / " \
+               "get_symbols_overview / find_referencing_symbols) for code navigation."
     end
 
     return nil if lines.empty?

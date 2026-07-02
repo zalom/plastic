@@ -19,8 +19,13 @@
 # Reads the Claude Code PreToolUse payload as JSON on STDIN:
 #   { "tool_input": { "file_path": "...", "content": "..." } }
 # Empty / unparseable / non-matching path => exit 0 (cannot judge, allow).
-# Matching path but missing content => exit 2 (fail-safe: refuse to allow an
-# unvalidated intent write).
+# Three payload shapes on a matching path (intent 108, D7):
+#   Write (content):        validate the proposed content.
+#   Edit (old_string):      simulate the replacement on the on-disk file and
+#                           validate the RESULT; a missing file blocks.
+#   Pathless MCP mutation:  validate the CURRENT on-disk file (the PostToolUse
+#                           gate-check backstop validates the result); a
+#                           missing file blocks (fail-safe).
 
 require "json"
 require_relative "lib/intent_validator"
@@ -43,14 +48,45 @@ is_intent_file = dir.match?(%r{/store/[^/]+--[^/]+\z}) &&
                  File.basename(abs) == "#{File.basename(dir)}.md"
 exit 0 unless is_intent_file
 
-content = payload.dig("tool_input", "content") || payload.dig("tool_params", "content")
-if content.nil?
-  $stderr.puts "PLASTIC CREATE GATE — #{File.basename(abs)}: cannot read proposed content; " \
-               "refusing to allow an unvalidated intent write."
+input = payload["tool_input"] || payload["tool_params"] || {}
+content = input["content"]
+old_string = input["old_string"]
+
+def block!(lines)
+  Array(lines).each { |l| $stderr.puts l }
   exit 2
 end
 
-result = IntentValidator.validate_content(content)
+result =
+  if !content.nil?
+    # Write: validate the proposed content (intent 60b, unchanged).
+    IntentValidator.validate_content(content)
+  elsif !old_string.nil?
+    # Edit (intent 108, D7): simulate the replacement on the on-disk file and
+    # validate the RESULT, so an Edit can no longer sneak an intent file past
+    # the validator.
+    unless File.exist?(abs)
+      block!("PLASTIC CREATE GATE — #{File.basename(abs)} does not exist; " \
+             "create intents via new-intent / plastic-creating-intent.")
+    end
+    current = File.read(abs)
+    unless current.include?(old_string)
+      exit 0 # the Edit tool itself will fail; nothing lands, nothing to judge
+    end
+    simulated = input["replace_all"] ? current.gsub(old_string, input["new_string"].to_s)
+                                     : current.sub(old_string, input["new_string"].to_s)
+    IntentValidator.validate_content(simulated)
+  else
+    # Pathless mutation (MCP symbolic edits): the proposal is not visible at
+    # PreToolUse. Judge the CURRENT file: valid -> allow (the PostToolUse
+    # gate-check backstop validates the result), invalid/missing -> block.
+    unless File.exist?(abs)
+      block!("PLASTIC CREATE GATE — #{File.basename(abs)}: cannot read proposed " \
+             "content and no file exists; refusing to allow an unvalidated intent write.")
+    end
+    IntentValidator.validate_content(File.read(abs))
+  end
+
 exit 0 if result[:ok]
 
 $stderr.puts "PLASTIC CREATE GATE — #{File.basename(abs)} is not a valid intent:"

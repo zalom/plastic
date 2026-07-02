@@ -56,6 +56,11 @@ It never returns nil, so the gate engages even when every session env var is emp
 never needs a non-empty session env var to function. Arming prints a one-line notice to
 stderr when it falls through to the derived key.
 
+Arming acquires the durable `delivery.lock` in the intent dir, keyed by that resolved
+session. Ownership is session-keyed, not process-keyed, so the arm one-liner exiting
+immediately is fine by construction: the lock stays yours for every later tool call in this
+session. A failed arm raises with a message naming the resolving `plastic-lock` verb.
+
 **Hard rule for the rest of this run:** do NOT edit project code (anything outside the
 intent directory / `~/.plastic/`) until `plan.md` AND `checklist.md` exist for the intent.
 Honor the cycle: What → Why (spec.md) → How (plan.md + actions/ + checklist.md) → Exec.
@@ -83,6 +88,21 @@ Spawn preamble (live-state injection): before dispatching any specialist, run `s
 Completion report (require-then-synthesize): every dispatched specialist MUST end with a structured completion report as its final message. The preamble's `REPORT_CONTRACT` injects this and the role prompts carry the per-role format (see `references/agent-report-contract.md`). Because child-agent honor is best-effort across harnesses, this is decision-shaping, not a hard block. When a specialist returns no usable report (it went idle, emitted only a bare ping, or its message was lost to a mid-run interjection), run `scripts/agent-report <intent_dir> --role <role>` to synthesize a deterministic filesystem-derived report so the handoff account always exists. Use the agent-authored report when present, the synthesized one otherwise.
 
 Final-gate review: dispatch an independent reviewer subagent at the final gate only, not as a standing role.
+
+### Delegation (subagents writing under the owner's lock)
+
+The enforcer's session owns the delivery lock. Per-stage specialists run in
+their own sessions and would be denied by the lock gate, so register each one
+as a delegate before (or when) it needs to write into the intent dir:
+
+1. Instruct each spawned specialist to report its session id
+   (`CLAUDE_CODE_SESSION_ID`) in its first message.
+2. As the lock owner, run:
+   `ruby ~/.plastic/scripts/plastic-lock delegate --delegate <specialist-session-id>`
+3. If a specialist hits a lock-gate deny, the deny message names this exact
+   command; run it and have the specialist retry.
+
+Only the owner can delegate. Delegates cannot re-delegate or release.
 
 Headless manual gate: when running headless or in the background, still enforce gates manually rather than relying on hooks alone. The PostToolUse gate hook reads `session_id` from hook stdin, and the savepoint ledger write is decoupled from the bridge (derived from the file path, so it fires even with no session id) - these do NOT no-op. What can degrade is the bridge-keyed stage enforcement: if no session id reaches the bridge and no matching bridge is discovered, the stage-gate enforcement step exits without acting, so verify state yourself. The bridge still resolves arming via `CLAUDE_CODE_SESSION_ID` or the derived-key fallback (see the arm-gate note above).
 
@@ -227,8 +247,11 @@ During initial project creation, all decisions are non-destructive by definition
    ```bash
    ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.disarm_auto(ENV["CLAUDE_CODE_SESSION_ID"])'
    ```
-   Disarming also purges stale bridge files from the temp directory automatically (it keeps the
-   current bridge and any live run), so no manual `/tmp` cleanup is needed.
+   Disarm runs the ordered End tail: it releases the worktrees first, then clears the
+   intent's `delivery.lock` (and the bridge's lock cache), and only then is the bridge
+   purge-eligible. Disarming also purges stale bridge files from the temp directory
+   automatically (it keeps the current bridge, any live run, and any bridge whose intent
+   still holds a delivery lock), so no manual `/tmp` cleanup is needed.
 
    **Worktree cleanup (mandatory, intent 73c3).** Disarming performs the worktree release:
    `disarm_auto` calls `Worktree.release`, which removes both per-intent worktrees (the code

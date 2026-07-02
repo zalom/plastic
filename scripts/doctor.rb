@@ -20,6 +20,7 @@ require_relative "lib/intent_validator"
 require_relative "lib/graph_rebuild"
 require_relative "lib/links_projection"
 require_relative "lib/links_section"
+require_relative "lib/hook_registry"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -826,6 +827,45 @@ class Doctor
           details: missing_events,
           fixable: true, fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest --claude"
         )
+      end
+
+      # hooks_match_registry (intent 108, D7): the live settings must carry
+      # EXACTLY the registrations HookRegistry defines; any drift (a missing
+      # gate, a stray plastic hook, a stale matcher) is how bash-gate shipped
+      # dead once already.
+      expected = HookRegistry.claude_settings_hooks(hook_dir: hooks_dir)
+      diffs = []
+      expected.each do |event, group|
+        groups = group.is_a?(Array) ? group : [group]
+        live = settings.dig("hooks", event) || []
+        groups.each do |g|
+          match = live.find { |h| h.is_a?(Hash) && h["matcher"] == g["matcher"] }
+          wanted = g["hooks"].map { |h| h["command"] }
+          got = match ? Array(match["hooks"]).map { |h| h["command"] } : []
+          missing = wanted - got
+          diffs << "#{event}[#{g['matcher']}] missing: #{missing.join(', ')}" unless missing.empty?
+        end
+      end
+      live_plastic = (settings["hooks"] || {}).flat_map do |event, groups|
+        Array(groups).flat_map do |g|
+          next [] unless g.is_a?(Hash) && g["hooks"].is_a?(Array)
+          g["hooks"].map { |h| h["command"].to_s }.select { |c| c.include?("plastic-") }
+                    .map { |c| "#{event}: #{c}" }
+        end
+      end
+      expected_cmds = expected.values.flat_map { |g| g.is_a?(Array) ? g : [g] }
+                              .flat_map { |g| g["hooks"].map { |h| h["command"] } }
+      strays = live_plastic.reject { |lp| expected_cmds.any? { |c| lp.end_with?(c) } }
+      diffs.concat(strays.map { |s| "stray: #{s}" })
+
+      checks << if diffs.empty?
+        check(category: "agent_registration", name: "hooks_match_registry",
+              status: "pass", message: "settings.json hooks match HookRegistry")
+      else
+        check(category: "agent_registration", name: "hooks_match_registry",
+              status: "fail", message: "#{diffs.size} hook registration(s) diverge from HookRegistry",
+              details: diffs, fixable: true,
+              fix_hint: "Re-run the installer merge: npx @zalom/plastic update (or ruby ~/.plastic/scripts/install.rb)")
       end
     end
 

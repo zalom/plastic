@@ -134,7 +134,12 @@ class DeprecationDisplayTest < Minitest::Test
 
   def run_hook
     index_path = "#{@store_root}/INDEX.md"
-    env = { "PLASTIC_GLOBAL_ROOT" => @store_root }
+    # PLASTIC_TMP + session isolation (intent 108): with one active intent in
+    # the fixture INDEX, hook-session-start DERIVES a bridge; unisolated it
+    # wrote /tmp/plastic-<live session id>.json with intent "1" test data
+    # (the 107/110 live-bridge clobber, reproduced by this very test).
+    env = { "PLASTIC_GLOBAL_ROOT" => @store_root,
+            "PLASTIC_TMP" => @plugin_root, "CLAUDE_CODE_SESSION_ID" => nil }
     cmd = ["ruby", SCRIPT, index_path, @store_root, "global", @plugin_root]
     stdout, _stderr, _status = Open3.capture3(env, *cmd)
     return "" if stdout.strip.empty?

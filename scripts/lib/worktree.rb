@@ -5,6 +5,7 @@ require "json"
 require "yaml"
 require "socket"
 require "time"
+require_relative "lock"
 
 # Worktree -- Plastic-supplied git worktree isolation and the delivery lock
 # (intent 73c / 73c1).
@@ -21,8 +22,8 @@ require "time"
 #   code  worktree  <repo>/.claude/worktrees/{id}--{slug}  branch plastic/{id}--{slug}
 #   store worktree  <plastic_home>/.worktrees/{id}--{slug} branch plastic-store/{id}--{slug}
 #
-# The bridge file doubles as the delivery lock (decision D3): single-owner,
-# stale-lock reclaim via pid liveness.
+# The durable delivery.lock file in the intent dir is the single-owner
+# delivery lock (intent 108): session-keyed, lease-based, explicit takeover.
 #
 # Pure and dependency-injected: every git call goes through an injected
 # `ShellRunner`, so unit tests are hermetic (no real git; inject a fake runner).
@@ -122,6 +123,10 @@ module Worktree
     # repo, so without ignoring `.worktrees/` a `git add -A` sweeps their gitlinks
     # into the store commit. Ensure both ignore entries before any worktree add.
     ensure_gitignored(plastic_home, ".worktrees/", runner: runner)
+
+    # The durable lock files live inside intent dirs under the store git repo
+    # (intent 108, D2): transient state, never committed.
+    ensure_gitignored(plastic_home, "*.lock", runner: runner)
 
     # Store worktree: created against the plastic home git repo. Fail-open if the
     # store repo is not a git repo (a fresh global store may be ungit'd).
@@ -275,46 +280,20 @@ module Worktree
 
   # --- lock ------------------------------------------------------------------
 
-  # pid liveness: signal 0 probes without sending. Any error (no such process,
-  # not ours) means not live.
-  def session_live?(pid)
-    n = Integer(pid) rescue nil
-    return false if n.nil? || n <= 0
-    Process.kill(0, n)
-    true
-  rescue StandardError
-    false
-  end
-
-  # True iff ANOTHER bridge for this intent has a LIVE owner pid that is not
-  # current_session. Scans /tmp/plastic-*.json (or `tmp`). The current session's
-  # own bridge never counts as "other". A dead owner does not hold the lock
-  # (stale-lock reclaim).
-  def lock_held_by_other?(intent_id:, store:, current_session:, home: Dir.home, tmp: nil)
-    tmp ||= default_tmp
-    id = intent_id.to_s
-    st = File.expand_path(store.to_s) unless blank?(store)
-
-    Dir.glob(File.join(tmp, "plastic-*.json")).each do |f|
-      next if f.end_with?(".tmp")
-      data = (JSON.parse(File.read(f)) rescue nil)
-      next unless data.is_a?(Hash)
-
-      intent = data["intent"] || {}
-      next unless intent["id"].to_s == id
-      unless st.nil?
-        bstore = intent["store"].to_s
-        next unless bstore.empty? || File.expand_path(bstore) == st
-      end
-
-      session = data["session"].to_s
-      next if !blank?(current_session) && session == current_session.to_s
-
-      lock = data["lock"] || {}
-      owner_pid = lock["pid"]
-      return true if session_live?(owner_pid)
-    end
-    false
+  # True iff ANOTHER session's delivery.lock is FRESH on this intent's dir
+  # (intent 108, D2): the durable lock file decides; /tmp bridges are not
+  # consulted and no pid is probed. current_session being the owner or a
+  # delegate does not count as "other". A stale lock does not hold (explicit
+  # takeover reclaims it).
+  def lock_held_by_other?(intent_id:, store:, current_session:, home: Dir.home,
+                          ttl: Lock::TTL_SECONDS, now: Time.now)
+    return false if blank?(store)
+    dir = Dir.glob(File.join(File.expand_path(store), "#{intent_id}--*")).first
+    return false unless dir
+    data = Lock.read(dir)
+    return false unless data
+    return false if Lock.authorized?(data, current_session)
+    Lock.fresh?(dir, ttl: ttl, now: now)
   rescue StandardError
     false
   end
@@ -402,8 +381,4 @@ module Worktree
     base[(idx + 2)..]
   end
 
-  def default_tmp
-    t = ENV["PLASTIC_TMP"]
-    (t.nil? || t.strip.empty?) ? "/tmp" : t
-  end
 end

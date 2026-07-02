@@ -9,6 +9,7 @@
 require "json"
 require_relative "lib/bridge"
 require_relative "lib/intent_validator"
+require_relative "lib/lock"
 
 file_path = ARGV[0]
 exit 0 unless file_path && !file_path.empty?
@@ -71,6 +72,15 @@ intent_dir = "#{store}/#{dir}"
 
 # Normalize both paths for comparison
 bridge_intent_dir_abs = File.expand_path(intent_dir)
+
+# Lease heartbeat (intent 108, D1): every write by the session that owns (or
+# delegates under) the lock refreshes the delivery.lock mtime. Best-effort:
+# a heartbeat failure must never break the gate hook.
+begin
+  Lock.heartbeat(bridge_intent_dir_abs, session: session)
+rescue StandardError
+  # ignore
+end
 
 # Not inside intent dir = not our business
 exit 0 unless file_path_abs.start_with?("#{bridge_intent_dir_abs}/")

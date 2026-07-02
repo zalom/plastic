@@ -40,18 +40,18 @@ class QmdHookTest < Minitest::Test
     assert_nil out
   end
 
-  def test_serena_only_emits_serena_mandate_without_qmd
+  def test_serena_only_emits_serena_line_without_qmd
     out = QmdHook.run(prompt: "navigate the codebase for a symbol", cwd: "/tmp", plastic_home: @home,
                       runner: runner_returning(HITS_JSON), detector: absent, serena_detector: present)
-    assert_includes out, "MUST use Serena"
-    refute_includes out, "MUST use QMD"
+    assert_includes out, "Serena is available"
+    refute_includes out, "QMD is available"
     refute_includes out, "Related / prior Plastic intents"
   end
 
   def test_qmd_mandate_on_short_prompt_skips_hit_search
     out = QmdHook.run(prompt: "yes", cwd: "/tmp", plastic_home: @home,
                       runner: runner_returning(EMPTY_JSON), detector: present, serena_detector: absent)
-    assert_includes out, "MUST use QMD"
+    assert_includes out, "QMD is available"
     refute_includes out, "Related / prior Plastic intents"
   end
 
@@ -61,24 +61,24 @@ class QmdHookTest < Minitest::Test
     assert_includes out, "Related / prior Plastic intents"
     assert_includes out, "Enforce Plastic supremacy"
     assert_includes out, "81%"
-    assert_includes out, "MUST use QMD", "qmd mandate line must be present"
+    assert_includes out, "QMD is available", "qmd mandate line must be present"
   end
 
   def test_mandate_only_when_no_hits
     out = QmdHook.run(prompt: "some unrelated substantive prompt here", cwd: "/tmp", plastic_home: @home,
                       runner: runner_returning(EMPTY_JSON), detector: present, serena_detector: absent)
     refute_includes out, "Related / prior Plastic intents"
-    assert_includes out, "MUST use QMD"
+    assert_includes out, "QMD is available"
   end
 
   def test_serena_line_only_when_serena_detector_true
     with_serena = QmdHook.run(prompt: "some unrelated substantive prompt here", cwd: "/tmp", plastic_home: @home,
                               runner: runner_returning(EMPTY_JSON), detector: present, serena_detector: present)
-    assert_includes with_serena, "MUST use Serena"
+    assert_includes with_serena, "Serena is available"
 
     without_serena = QmdHook.run(prompt: "some unrelated substantive prompt here", cwd: "/tmp", plastic_home: @home,
                                  runner: runner_returning(EMPTY_JSON), detector: present, serena_detector: absent)
-    refute_includes without_serena, "MUST use Serena"
+    refute_includes without_serena, "Serena is available"
   end
 
   def test_nil_when_neither_tool_present

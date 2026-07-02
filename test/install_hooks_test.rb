@@ -4,6 +4,7 @@ require "json"
 require "fileutils"
 
 require_relative "../scripts/lib/installer_core"
+require_relative "../scripts/lib/hook_registry"
 
 PLASTIC_TEST_HOME = File.join(Dir.tmpdir, "plastic-test-home-#{Process.pid}")
 
@@ -270,10 +271,14 @@ class MergeClaudeHooksTest < Minitest::Test
     settings["hooks"]["PreToolUse"].flat_map { |g| (g["hooks"] || []).map { |h| h["command"] } }
   end
 
-  def test_pretooluse_has_both_code_gate_and_create_gate
+  def merged_settings
     File.write(@settings_path, "{}")
     @installer.merge_claude_hooks(@settings_path)
-    settings = JSON.parse(File.read(@settings_path))
+    JSON.parse(File.read(@settings_path))
+  end
+
+  def test_pretooluse_has_both_code_gate_and_create_gate
+    settings = merged_settings
 
     commands = pretooluse_commands(settings)
     assert commands.any? { |c| c.include?("plastic-code-gate") }, "code-gate must be registered"
@@ -281,8 +286,25 @@ class MergeClaudeHooksTest < Minitest::Test
 
     code_group = settings["hooks"]["PreToolUse"].find { |g| g["hooks"].any? { |h| h["command"].include?("plastic-code-gate") } }
     create_group = settings["hooks"]["PreToolUse"].find { |g| g["hooks"].any? { |h| h["command"].include?("plastic-create-gate") } }
-    assert_equal "Write|Edit|NotebookEdit", code_group["matcher"]
-    assert_equal "Write", create_group["matcher"]
+    assert_equal HookRegistry::WRITE_MATCHER, code_group["matcher"]
+    assert_equal HookRegistry::CREATE_MATCHER, create_group["matcher"]
+  end
+
+  # Intent 108, D7: the merge consumes HookRegistry, so the two hooks that the
+  # old hand-rolled literal dropped (bash-gate shipped dead) are now wired.
+  def test_merge_registers_bash_gate_and_savepoint_pre
+    settings = merged_settings
+    cmds = pretooluse_commands(settings)
+    assert cmds.any? { |c| c.include?("plastic-bash-gate") }, "bash-gate must ship wired (D7)"
+    assert cmds.any? { |c| c.include?("plastic-savepoint-pre") }
+  end
+
+  def test_merge_write_matcher_includes_mcp_edit_tools
+    settings = merged_settings
+    gate_group = settings["hooks"]["PreToolUse"].find do |g|
+      g["hooks"].any? { |h| h["command"].include?("plastic-code-gate") }
+    end
+    assert_includes gate_group["matcher"], "mcp__serena__replace_content"
   end
 
   # Intent 84, Lever 2: the retrieval gate is wired as a third PreToolUse group
@@ -312,11 +334,12 @@ class MergeClaudeHooksTest < Minitest::Test
     rg_commands = pretooluse_commands(settings).select { |c| c.include?("plastic-retrieval-gate") }
     assert_equal 1, rg_commands.size, "retrieval-gate must not duplicate across merges"
 
-    # The whole PreToolUse list carries exactly three plastic groups.
+    # The whole PreToolUse list carries exactly the registry's five groups.
     plastic_groups = settings["hooks"]["PreToolUse"].select do |g|
       g["hooks"].any? { |h| h["command"].to_s.include?("plastic-") }
     end
-    assert_equal 3, plastic_groups.size, "PreToolUse must carry code-gate, create-gate, retrieval-gate"
+    assert_equal HookRegistry.events["PreToolUse"].size, plastic_groups.size,
+                 "PreToolUse must carry exactly the registry's groups"
   end
 
   def test_pretooluse_create_gate_is_idempotent_across_two_merges
@@ -332,22 +355,20 @@ class MergeClaudeHooksTest < Minitest::Test
   end
 
   # Intent 96: the fail-closed lock-gate is registered as a 2nd ordered command
-  # INSIDE the existing Write|Edit|NotebookEdit code-gate group (NOT a new
-  # same-matcher group, which the merge loop would collapse). code-gate survives.
+  # INSIDE the write-matcher code-gate group (NOT a new same-matcher group,
+  # which the merge loop would collapse). code-gate survives.
   def test_pretooluse_registers_lock_gate_inside_code_gate_group
-    File.write(@settings_path, "{}")
-    @installer.merge_claude_hooks(@settings_path)
-    settings = JSON.parse(File.read(@settings_path))
+    settings = merged_settings
 
     commands = pretooluse_commands(settings)
     assert commands.any? { |c| c.include?("plastic-lock-gate") }, "lock-gate must be registered"
     assert commands.any? { |c| c.include?("plastic-code-gate") }, "code-gate must survive"
 
-    wen_groups = settings["hooks"]["PreToolUse"].select { |g| g["matcher"] == "Write|Edit|NotebookEdit" }
-    assert_equal 1, wen_groups.size, "exactly ONE Write|Edit|NotebookEdit group (no matcher collision)"
+    wen_groups = settings["hooks"]["PreToolUse"].select { |g| g["matcher"] == HookRegistry::WRITE_MATCHER }
+    assert_equal 1, wen_groups.size, "exactly ONE write-matcher group (no matcher collision)"
     group_commands = wen_groups.first["hooks"].map { |h| h["command"] }
-    assert group_commands.any? { |c| c.include?("plastic-code-gate") }, "code-gate in the W|E|N group"
-    assert group_commands.any? { |c| c.include?("plastic-lock-gate") }, "lock-gate in the W|E|N group"
+    assert group_commands.any? { |c| c.include?("plastic-code-gate") }, "code-gate in the write group"
+    assert group_commands.any? { |c| c.include?("plastic-lock-gate") }, "lock-gate in the write group"
   end
 
   def test_pretooluse_lock_gate_is_idempotent_across_two_merges
@@ -358,8 +379,8 @@ class MergeClaudeHooksTest < Minitest::Test
 
     lock_commands = pretooluse_commands(settings).select { |c| c.include?("plastic-lock-gate") }
     assert_equal 1, lock_commands.size, "lock-gate must not duplicate across merges"
-    wen_groups = settings["hooks"]["PreToolUse"].select { |g| g["matcher"] == "Write|Edit|NotebookEdit" }
-    assert_equal 1, wen_groups.size, "still exactly ONE W|E|N group after re-merge"
+    wen_groups = settings["hooks"]["PreToolUse"].select { |g| g["matcher"] == HookRegistry::WRITE_MATCHER }
+    assert_equal 1, wen_groups.size, "still exactly ONE write-matcher group after re-merge"
   end
 
   def test_user_prompt_submit_includes_qmd_search

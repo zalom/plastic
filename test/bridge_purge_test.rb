@@ -3,6 +3,8 @@ require "tmpdir"
 require "fileutils"
 require "json"
 require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/worktree"
+require_relative "../scripts/lib/lock"
 
 # Tests for the terminal-state bridge purge (intent 80, replacing intent 67's
 # age window).
@@ -22,12 +24,27 @@ class BridgePurgeTest < Minitest::Test
     @tmp = Dir.mktmpdir("bridge-purge-tmp")
     @saved_plastic_tmp = ENV["PLASTIC_TMP"]
     ENV["PLASTIC_TMP"] = @tmp
+    # Ambient-clear (intent 98 pattern): the arm tests below pass explicit
+    # sessions, but a leaked CLAUDE_CODE_SESSION_ID must never reach a write.
+    @saved_session = ENV["CLAUDE_CODE_SESSION_ID"]
+    ENV.delete("CLAUDE_CODE_SESSION_ID")
+
+    # Neutralize real worktree git ops (intent 108 hermeticity fix): the arm
+    # wiring tests below used to run the REAL provision, which planted store
+    # worktrees like ~/.plastic/.worktrees/80--demo in the LIVE global store.
+    @real_provision = Worktree.method(:provision)
+    @real_release = Worktree.method(:release)
+    Worktree.define_singleton_method(:provision) { |d, *_a, **_kw| d }
+    Worktree.define_singleton_method(:release) { |d, *_a, **_kw| d }
   end
 
   def teardown
     FileUtils.rm_rf(File.dirname(@store))
     FileUtils.rm_rf(@tmp)
     @saved_plastic_tmp.nil? ? ENV.delete("PLASTIC_TMP") : ENV["PLASTIC_TMP"] = @saved_plastic_tmp
+    @saved_session.nil? ? ENV.delete("CLAUDE_CODE_SESSION_ID") : ENV["CLAUDE_CODE_SESSION_ID"] = @saved_session
+    Worktree.define_singleton_method(:provision, @real_provision) if @real_provision
+    Worktree.define_singleton_method(:release, @real_release) if @real_release
   end
 
   # Write a minimal valid bridge for `session` pointing at intent `id` in `store`.
@@ -127,6 +144,16 @@ class BridgePurgeTest < Minitest::Test
                                        "intent" => { "id" => "", "store" => @store }))
     Bridge.purge_done_bridges(session: "current")
     refute File.exist?(f), "a bridge with a blank intent.id is junk and purged"
+  end
+
+  def test_never_purges_a_bridge_whose_intent_still_holds_a_delivery_lock
+    write_index_active # 80 is TERMINAL, so the bridge would normally purge
+    f = seed_bridge("other-sess", id: "80")
+    Lock.acquire(@intent_dir, session: "other-sess")
+    removed = Bridge.purge_done_bridges(session: "current", tmp: @tmp)
+    refute_includes removed, f,
+                    "a held delivery lock makes the bridge purge-ineligible (D6)"
+    assert File.exist?(f)
   end
 
   def test_returns_removed_paths

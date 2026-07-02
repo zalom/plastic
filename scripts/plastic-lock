@@ -1,0 +1,120 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+#
+# plastic-lock: inspect and repair the durable delivery lock (intent 108, D5).
+#
+# Usage: plastic-lock <status|fix|release|reclaim|delegate>
+#          [--intent-dir DIR] [--session SID] [--delegate SID]
+#
+# Verbs:
+#   status   report the lock file, the bridge cache, and their agreement
+#   fix      idempotent repair: rebuild lock + bridge from disk truth for the
+#            current session; never touches a fresh foreign lock
+#   release  owner clears the lock (End tail / abandoning a boarding)
+#   reclaim  explicit takeover of a stale lock, audited in savepoint.md
+#   delegate owner registers a subagent session under the lock (D4)
+#
+# Without --intent-dir the intent is resolved from this session's bridge.
+# Exit 0 on success/report; exit 1 when the verb is blocked (held elsewhere).
+
+require "json"
+require_relative "lib/bridge"
+require_relative "lib/lock"
+
+def usage!
+  warn "usage: plastic-lock <status|fix|release|reclaim|delegate> " \
+       "[--intent-dir DIR] [--session SID] [--delegate SID]"
+  exit 1
+end
+
+verb = ARGV.shift
+usage! unless %w[status fix release reclaim delegate].include?(verb)
+
+opts = {}
+until ARGV.empty?
+  case (flag = ARGV.shift)
+  when "--intent-dir" then opts[:dir] = ARGV.shift
+  when "--session" then opts[:session] = ARGV.shift
+  when "--delegate" then opts[:delegate] = ARGV.shift
+  else
+    warn "unknown flag #{flag}"
+    usage!
+  end
+end
+
+session = opts[:session]
+session = ENV["CLAUDE_CODE_SESSION_ID"] if session.nil? || session.strip.empty?
+
+dir = opts[:dir]
+if dir.nil? || dir.strip.empty?
+  bridge = Bridge.discover_bridge(session: session, cwd: Dir.pwd)
+  dir = Bridge.bridge_intent_dir(bridge)
+end
+if dir.nil?
+  warn "plastic-lock: no intent resolved; pass --intent-dir <intent dir>"
+  exit 1
+end
+dir = File.expand_path(dir)
+
+intent_id = Bridge.intent_id_from_dir(dir)
+store = File.dirname(dir)
+name = File.basename(dir)
+key = Bridge.resolve_session(session, intent_id: intent_id, store: store)
+
+case verb
+when "status"
+  lock = Lock.read(dir)
+  bridge = Bridge.read(key)
+  report = {
+    "intent_dir" => dir,
+    "session" => key,
+    "lock" => lock,
+    "lock_fresh" => Lock.fresh?(dir),
+    "lock_corrupt" => Lock.corrupt?(dir),
+    "bridge_present" => !bridge.nil?,
+    "agreement" => (lock && bridge) ?
+      (lock["owner_session"] == bridge.dig("lock", "owner_session")) : nil,
+  }
+  puts JSON.pretty_generate(report)
+when "fix"
+  report = Bridge.repair_lock(key, intent_id: intent_id, intent_dir: dir,
+                              store: store, name: name)
+  puts JSON.pretty_generate(report)
+  unless report["status"] == "repaired"
+    warn "plastic-lock: #{report['status']} by #{report['owner']}" \
+         "#{report['hint'] ? " (#{report['hint']})" : ''}"
+    exit 1
+  end
+when "release"
+  result = Lock.release(dir, session: key)
+  if result == :not_owner
+    warn "plastic-lock: not the owner; run plastic-lock status"
+    exit 1
+  end
+  data = Bridge.read(key)
+  if data
+    data["lock"] = { "owner_session" => nil, "acquired_at" => nil,
+                     "host" => nil, "type" => nil, "delegates" => [] }
+    Bridge.write(key, data)
+  end
+  puts "released (#{result})"
+when "reclaim"
+  status, lock_data = Lock.takeover(dir, session: key)
+  if status == :fresh
+    warn "plastic-lock: lock is FRESH and held by #{lock_data['owner_session']}; " \
+         "back off (no silent reclaim)"
+    exit 1
+  end
+  report = Bridge.repair_lock(key, intent_id: intent_id, intent_dir: dir,
+                              store: store, name: name)
+  puts JSON.pretty_generate(report)
+when "delegate"
+  usage! if opts[:delegate].nil?
+  ok = Lock.add_delegate(dir, delegate: opts[:delegate], session: key)
+  unless ok
+    warn "plastic-lock: only the lock owner may delegate; run plastic-lock status"
+    exit 1
+  end
+  puts "delegated #{opts[:delegate]} under #{key}"
+end

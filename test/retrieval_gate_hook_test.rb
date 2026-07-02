@@ -40,14 +40,30 @@ class RetrievalGateHookTest < Minitest::Test
 
   # --- run() unit branches ---
 
-  def test_run_blocks_store_md_search_when_qmd_fresh
-    code, err = RetrievalGateHook.run(
+  # Intent 108, D8: the retrieval gate is ADVISORY. A gated store search is
+  # never denied; the would-block reason ships as additionalContext at exit 0.
+  def test_store_content_search_is_advisory_never_denied
+    code, err, out = RetrievalGateHook.run(
       stdin: payload("Bash", { "command" => search_cmd }),
       plastic_home: @home, cwd: @home,
       capabilities: caps(qmd: true, qmd_fresh: true)
     )
-    assert_equal 2, code
-    assert_includes err, "PLASTIC GATE"
+    assert_equal 0, code, "the retrieval gate never denies a read or search (D8)"
+    assert_nil err
+    parsed = JSON.parse(out)
+    context = parsed.dig("hookSpecificOutput", "additionalContext")
+    assert_includes context, "qmd"
+    assert_includes context.downcase, "advisory"
+  end
+
+  def test_non_store_search_stays_silent
+    code, _err, out = RetrievalGateHook.run(
+      stdin: payload("Bash", { "command" => "grep needle #{File.join(@home, 'code', 'app.rb')}" }),
+      plastic_home: @home, cwd: @home,
+      capabilities: caps(qmd: true, qmd_fresh: true)
+    )
+    assert_equal 0, code
+    assert_nil out
   end
 
   def test_run_allows_read_of_store_md
@@ -83,14 +99,17 @@ class RetrievalGateHookTest < Minitest::Test
     assert_equal [:hit], fired
   end
 
-  def test_run_bypass_allows_with_log
-    code, err = RetrievalGateHook.run(
+  def test_run_bypass_token_still_accepted_silently
+    # Backward compatibility: `# qmd-ok` is still accepted, but with nothing to
+    # bypass (the gate is advisory) it no longer announces itself.
+    code, err, out = RetrievalGateHook.run(
       stdin: payload("Bash", { "command" => "grep x #{@store_md} # qmd-ok" }),
       plastic_home: @home, cwd: @home,
       capabilities: caps(qmd: true, qmd_fresh: true)
     )
     assert_equal 0, code
-    assert_includes err, "bypassed via # qmd-ok"
+    assert_nil err
+    assert_nil out
   end
 
   def test_run_malformed_stdin_fails_open

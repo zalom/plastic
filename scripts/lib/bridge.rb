@@ -8,6 +8,7 @@ require "tempfile"
 require "digest"
 require "socket"
 require_relative "worktree"
+require_relative "lock"
 
 module Bridge
   STAGES = %w[what why how exec done].freeze
@@ -52,6 +53,31 @@ module Bridge
 
   def self.blank?(value)
     value.nil? || value.to_s.strip.empty?
+  end
+
+  # Raised by arm when the delivery lock cannot be acquired (held elsewhere,
+  # stale, excluded, or corrupt). The message names the resolving command.
+  class LockHeldError < StandardError; end
+
+  # The absolute intent dir a bridge points at, or nil.
+  def self.bridge_intent_dir(bridge_data)
+    return nil unless bridge_data.is_a?(Hash)
+    info = bridge_data["intent"] || {}
+    store = info["store"]
+    dir = info["dir"]
+    (store && dir) ? File.expand_path("#{store}/#{dir}") : nil
+  end
+
+  # Bridge-cache copy of the durable lock file's fields (D2: the bridge is a
+  # CACHE; the file is the truth). Never carries a pid.
+  def self.lock_cache(lock_data)
+    {
+      "owner_session" => lock_data["owner_session"],
+      "acquired_at" => lock_data["acquired_at"],
+      "host" => lock_data["host"],
+      "type" => lock_data["type"],
+      "delegates" => Array(lock_data["delegates"]),
+    }
   end
 
   # Deterministic, session-id-less bridge key derived from store + intent id.
@@ -206,6 +232,13 @@ module Bridge
           id = data.dig("intent", "id")
           store = data.dig("intent", "store")
           keep = !blank?(id) && !blank?(store) && intent_active?(id, store: store)
+          # Never purge a bridge whose intent still holds a delivery lock
+          # (intent 108, D6): the End tail clears the lock BEFORE the bridge
+          # becomes purge-eligible, so a held lock means the tail is not done.
+          unless keep
+            dir = bridge_intent_dir(data)
+            keep = !dir.nil? && File.exist?(Lock.path(dir))
+          end
         end
         next if keep
         File.delete(f)
@@ -476,7 +509,7 @@ module Bridge
     lines.length
   end
 
-  def self.derive(session, intent_id:, intent_dir:, store:, name:)
+  def self.derive(session, intent_id:, intent_dir:, store:, name:, tmp: tmp_dir)
     stage = derive_stage(intent_dir)
     has = has_files(intent_dir)
     missing = missing_for_stage(stage, intent_dir) - has
@@ -516,17 +549,18 @@ module Bridge
         "store_branch" => nil,
         "provisioned" => false
       },
-      # Delivery lock block (intent 73c). The bridge IS the lock; the owner is
-      # whoever armed it. Born unowned; arm_auto stamps owner_session/pid/etc.
+      # Delivery-lock CACHE block (intent 108, D2). The durable truth is the
+      # delivery.lock file in the intent dir; arm fills this cache from it.
       "lock" => {
         "owner_session" => nil,
-        "pid" => nil,
         "acquired_at" => nil,
-        "host" => nil
+        "host" => nil,
+        "type" => nil,
+        "delegates" => []
       }
     }
 
-    write(session, data)
+    write(session, data, tmp: tmp)
     data
   end
 
@@ -599,14 +633,27 @@ module Bridge
     data = derive(key, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name)
     data["build"]["auto"] = auto
 
-    # Acquire the delivery lock: this armed bridge is now the single owner of the
-    # intent's delivery (intent 73c). Stamp owner + pid liveness fields.
-    data["lock"] = {
-      "owner_session" => key,
-      "pid" => Process.pid,
-      "acquired_at" => Time.now.utc.iso8601,
-      "host" => (Socket.gethostname rescue nil)
-    }
+    # Acquire the durable delivery lock (D1/D2): session-keyed, O_EXCL, in the
+    # intent dir. The bridge lock block is a cache of the file.
+    intent_dir_abs = File.expand_path(intent_dir)
+    status, lock_data = Lock.acquire(intent_dir_abs, session: key)
+    case status
+    when :acquired, :owned
+      data["lock"] = lock_cache(lock_data)
+    when :held
+      raise LockHeldError, "delivery lock for intent #{intent_id} is held by " \
+        "session #{lock_data && lock_data['owner_session']}; run /plastic-lock status"
+    when :stale
+      raise LockHeldError, "delivery lock for intent #{intent_id} is stale " \
+        "(owner #{lock_data && lock_data['owner_session']}); run /plastic-lock " \
+        "reclaim to take it over with an audit"
+    when :excluded
+      raise LockHeldError, "a #{lock_data && lock_data['type']} lock is active on " \
+        "intent #{intent_id}; run /plastic-lock status"
+    when :corrupt
+      raise LockHeldError, "delivery.lock for intent #{intent_id} is unreadable; " \
+        "run /plastic-lock fix"
+    end
 
     # Provision the per-intent worktrees (mandatory code worktree for project
     # intents; fail-open for non-git / global-only). Never let a provision error
@@ -636,7 +683,11 @@ module Bridge
     arm(session, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name, auto: false)
   end
 
-  # Disarm auto mode. No-op if no bridge exists for the session.
+  # Disarm. No-op if no bridge exists for the session. End-tail order (D6):
+  # worktrees are merged/removed FIRST (the verify step is the caller's,
+  # before disarm), then the delivery lock is cleared, and only then does the
+  # bridge become purge-eligible. purge_done_bridges enforces the same order
+  # defensively by skipping any bridge whose intent still holds a lock.
   def self.disarm_auto(session)
     data = read(session)
     return nil unless data
@@ -652,9 +703,71 @@ module Bridge
       $stderr.puts "plastic: worktree release raised, continuing: #{e.message}"
     end
 
+    dir = bridge_intent_dir(data)
+    if dir
+      owner = data.dig("lock", "owner_session")
+      owner = session if blank?(owner)
+      Lock.release(dir, session: owner)
+    end
+    data["lock"] = { "owner_session" => nil, "acquired_at" => nil,
+                     "host" => nil, "type" => nil, "delegates" => [] }
+
     write(session, data)
     purge_done_bridges(session: session)
     data
+  end
+
+  # One deterministic, idempotent repair (intent 108, D5): diagnose, remove
+  # faulty own-side state, rebuild the durable lock AND the bridge cache from
+  # disk truth for the current session. Legacy /tmp-only pid locks are
+  # migrated here: the delivery.lock file is created and the cache rebuilt
+  # without a pid. NEVER touches a fresh foreign lock (reports "held"); a
+  # stale foreign lock reports "stale" and is taken only by the explicit
+  # reclaim verb (Lock.takeover). Two entry points call this: the
+  # plastic-lock CLI and /plastic-intent-starting (self-healing boarding).
+  def self.repair_lock(session, intent_id:, intent_dir:, store:, name:,
+                       now: Time.now, tmp: tmp_dir)
+    key = resolve_session(session, intent_id: intent_id, store: store)
+    dir = File.expand_path(intent_dir)
+    actions = []
+
+    if Lock.corrupt?(dir)
+      File.delete(Lock.path(dir))
+      actions << "removed corrupt delivery.lock"
+    end
+
+    lock = Lock.read(dir)
+    if lock && !Lock.authorized?(lock, key)
+      if Lock.fresh?(dir, now: now)
+        return { "status" => "held", "owner" => lock["owner_session"],
+                 "actions" => actions, "session" => key }
+      end
+      return { "status" => "stale", "owner" => lock["owner_session"],
+               "actions" => actions, "session" => key,
+               "hint" => "run /plastic-lock reclaim to take over with an audit" }
+    end
+
+    if lock
+      Lock.heartbeat(dir, session: key, now: now)
+      lock_data = Lock.read(dir)
+      role = lock_data["owner_session"].to_s == key ? "owner" : "delegate"
+      actions << "lock kept (#{role})"
+    else
+      status, lock_data = Lock.acquire(dir, session: key, now: now)
+      actions << "lock #{status}"
+    end
+
+    previous = read(key, tmp: tmp)
+    auto = !!(previous && previous.dig("build", "auto"))
+    data = derive(key, intent_id: intent_id, intent_dir: dir, store: store,
+                  name: name, tmp: tmp)
+    data["build"]["auto"] = auto
+    data["lock"] = lock_cache(lock_data)
+    write(key, data, tmp: tmp)
+    actions << "bridge rebuilt from disk (stage #{data['build']['stage']})"
+
+    { "status" => "repaired", "actions" => actions,
+      "lock" => lock_data, "session" => key }
   end
 
   # Decide whether a code edit should be blocked while auto mode is armed.
@@ -693,58 +806,58 @@ module Bridge
 
   # --- Fail-closed lock gate (intent 96) -------------------------------------
 
-  # Returns a reason String to BLOCK, or nil to ALLOW. bridge_data is whatever
-  # discover_bridge(session:, cwd:) resolved for THIS session (own-session strict,
-  # or the lone headless/derived-key bridge), or nil = no lock held.
-  #
-  # BLOCK iff the target is an ACTIVE intent's lifecycle dir AND this session does
-  # NOT hold a LIVE lock FOR THAT SAME INTENT. ALLOW otherwise: a lock held for the
-  # target intent; a not-yet-active intent (creation, What); project code; anything
-  # that is not an active intent dir. The lock must match the TARGET intent: holding
-  # a live lock on intent A never green-lights a mutating write into intent B's dir.
-  # Project code is NOT gated here (D2) - it is isolated per-intent by worktree +
-  # branch, not by a write-time lock.
-  def self.lock_gate_decision(bridge_data, file_path)
+  # Returns a reason String to BLOCK, or nil to ALLOW. Decides from the
+  # durable delivery.lock in the TARGET intent dir (D2): the bridge argument
+  # only supplies a fallback session id, so a missing or disagreeing bridge
+  # never changes the verdict. Every deny names the exact resolving command
+  # (D5). ALLOW: non-intent paths, not-yet-active intents, and any session the
+  # target's lock names as owner or delegate (even when stale: a stale lock is
+  # still its owner's until an explicit takeover).
+  def self.lock_gate_decision(bridge_data, file_path, session: nil,
+                              ttl: Lock::TTL_SECONDS, now: Time.now)
     return nil if blank?(file_path)
 
-    # Resolve the TARGET intent first so allow-by-lock is scoped to that intent.
     target_dir = intent_dir_for(file_path)
-    return nil unless target_dir                  # not an intent dir (project code, scratch) -> ALLOW
-    id = intent_id_from_dir(target_dir)           # "<id>" from "<id>--<slug>"
-    store = File.dirname(target_dir)              # the store/ dir holding the intent
-    return nil unless id && intent_active?(id, store: store)  # not-yet-active (creation/What) -> ALLOW
+    return nil unless target_dir
+    id = intent_id_from_dir(target_dir)
+    store = File.dirname(target_dir)
+    return nil unless id && intent_active?(id, store: store)
 
-    # ALLOW only when this session holds a live lock for THIS SAME intent. A live
-    # lock on a different intent does not authorize writing into this intent's dir.
-    return nil if holds_live_lock?(bridge_data) &&
-                  bridge_data.is_a?(Hash) &&
-                  bridge_data.dig("intent", "id").to_s == id.to_s
+    sess = session
+    sess = bridge_data["session"] if blank?(sess) && bridge_data.is_a?(Hash)
 
-    "run /plastic-intent-starting to lock and begin"
+    lock = Lock.read(target_dir)
+    if lock
+      return nil if Lock.authorized?(lock, sess)
+      if Lock.fresh?(target_dir, ttl: ttl, now: now)
+        return "intent #{id} delivery lock is held by session " \
+               "#{lock['owner_session']}. Back off; if you are the owner's " \
+               "subagent, the owner must run: plastic-lock delegate " \
+               "--intent-dir #{target_dir} --session <your-session-id>. " \
+               "Inspect with /plastic-lock status"
+      end
+      return "intent #{id} has a stale delivery lock (owner " \
+             "#{lock['owner_session']}); run /plastic-lock reclaim to take " \
+             "it over, or /plastic-lock fix"
+    end
+    if Lock.corrupt?(target_dir)
+      return "delivery.lock for intent #{id} is unreadable; run /plastic-lock fix"
+    end
+    "no delivery lock held for intent #{id}; run /plastic-intent-starting " \
+      "to lock and begin"
   end
 
-  # A discovered bridge counts as a held lock only if its lock is stamped AND the
-  # owner process is live on THIS host. Staleness/identity lives HERE (gate read
-  # path), never in arm_auto's write path. On host-mismatch we cannot probe the
-  # pid, so fall back to "held" (a remote live owner should still block).
-  def self.holds_live_lock?(bridge_data)
-    return false unless bridge_data.is_a?(Hash)
-    lock = bridge_data["lock"] || {}
-    return false if blank?(lock["owner_session"])
-    pid = lock["pid"]
-    host = lock["host"]
-    this_host = (Socket.gethostname rescue nil)
-    if host && this_host && host == this_host && pid.is_a?(Integer)
-      begin
-        Process.kill(0, pid)   # raises Errno::ESRCH if dead
-        return true
-      rescue Errno::ESRCH
-        return false           # dead owner -> not a held lock -> gate blocks (re-lock)
-      rescue Errno::EPERM
-        return true            # exists, not ours to signal -> live
-      end
-    end
-    true                       # different/unknown host: treat the stamped lock as held
+  # A session holds an intent's lock iff the durable delivery.lock in the
+  # intent dir names it as owner or delegate (D1/D4). The bridge is only a
+  # cache: the lock FILE decides, so a wiped /tmp or a clobbered bridge never
+  # strands the owner. No pid is consulted anywhere.
+  def self.holds_live_lock?(bridge_data, session: nil)
+    sess = session
+    sess = bridge_data["session"] if blank?(sess) && bridge_data.is_a?(Hash)
+    return false if blank?(sess)
+    dir = bridge_intent_dir(bridge_data)
+    return false unless dir
+    Lock.holds?(dir, session: sess)
   end
 
   # "<id>" from a ".../store/<id>--<slug>" dir, else nil.
@@ -782,18 +895,24 @@ module Bridge
     under_own_intent = intent_dir_abs &&
                        (file_abs == intent_dir_abs || file_abs.start_with?("#{intent_dir_abs}/"))
 
-    # Rule 1: provisioned code worktree confines project-code edits.
+    # Rule 1 (fixed in intent 108, D7): confinement applies ONLY to paths
+    # inside the project repo. The repo root is derived from the provisioned
+    # code worktree path, which is <repo>/.claude/worktrees/{id}--{slug} by
+    # construction, so no git call is needed. Paths outside the repo (agent
+    # memory dirs, scratch files, unrelated checkouts) are not this gate's
+    # business; the 2026-07-02 memory-dir denial came from treating everything
+    # outside the worktree as the shared checkout.
     worktree = bridge_data["worktree"] || {}
     if worktree["provisioned"] == true
       code = worktree["code"].to_s
-      # Project code = outside ~/.plastic and outside this intent's store dir.
-      is_project_code = !under_plastic && !under_own_intent
-      if is_project_code && !blank?(code)
+      if !blank?(code) && !under_plastic && !under_own_intent
         code_abs = File.expand_path(code)
+        repo_abs = File.expand_path(File.join(code_abs, "..", "..", ".."))
+        inside_repo = file_abs == repo_abs || file_abs.start_with?("#{repo_abs}/")
         inside_code = file_abs == code_abs || file_abs.start_with?("#{code_abs}/")
-        unless inside_code
+        if inside_repo && !inside_code
           id = intent_info["id"]
-          return "intent #{id} is isolated to its worktree — edit project code " \
+          return "intent #{id} is isolated to its worktree - edit project code " \
                  "inside #{code_abs}, not the shared checkout. (blocked edit: #{file_abs})"
         end
       end
@@ -877,6 +996,7 @@ module Bridge
     # Split on command separators for per-segment utility parsing.
     command.split(/[;\n]|&&|\|\||\|/).each do |segment|
       targets.concat(bash_utility_targets(segment))
+      targets.concat(interpreter_write_targets(segment))
     end
     targets.uniq
   end
@@ -952,16 +1072,54 @@ module Bridge
     path == "/dev/null" || path.start_with?("/dev/")
   end
 
-  # Decide whether a Bash command should be blocked under the auto-mode code
-  # gate. Resolves each write target against cwd and applies the SAME policy as
-  # code_gate_decision. Returns the first block reason, or nil to allow.
-  def self.bash_gate_decision(bridge_data, command, cwd:, home: Dir.home)
+  # --- Interpreter inline-code writes (intent 108, D7) ---
+
+  INTERPRETER_RE = /\b(ruby|python3?|perl|node)\b(?:\s+\S+)*?\s+(-e|-c)\s+(.+)\z/m.freeze
+
+  # Write verbs that mark inline code as file-mutating. Conservative: reads
+  # (File.read, puts) never match.
+  WRITE_VERB_RE = /File\.(?:write|binwrite|open)|IO\.write|FileUtils\.|
+                   open\s*\([^)]*["'][wa]|writeFileSync|fs\.write/x.freeze
+
+  # Quoted absolute or ~/ paths inside the inline code.
+  INLINE_PATH_RE = %r{["']((?:/|~/)[^"']+)["']}.freeze
+
+  # Paths an interpreter one-liner writes. Flagged only when the inline code
+  # has BOTH a write verb AND a quoted absolute path; everything else (reads,
+  # ARGV-driven paths, the sanctioned arm one-liners) yields no targets.
+  def self.interpreter_write_targets(segment)
+    m = INTERPRETER_RE.match(segment.to_s)
+    return [] unless m
+    util, flag, code = m[1], m[2], m[3]
+    expected = { "ruby" => "-e", "python" => "-c", "python3" => "-c",
+                 "perl" => "-e", "node" => "-e" }[util]
+    return [] unless flag == expected
+    return [] unless WRITE_VERB_RE.match?(code)
+    code.scan(INLINE_PATH_RE).flatten.map { |p| File.expand_path(p) }
+  end
+
+  # Decide whether a Bash command should be blocked. Every write target runs
+  # through the SAME policy stack as a direct tool write: the auto-mode code
+  # gate AND the delivery-lock gate (intent 108, D7), so bash and interpreter
+  # writes cannot bypass the lock. Returns the first block reason, or nil.
+  def self.bash_gate_decision(bridge_data, command, cwd:, home: Dir.home, session: nil)
     bash_write_targets(command).each do |target|
       abs = File.absolute_path?(target) ? target : File.join(cwd, target)
-      reason = code_gate_decision(bridge_data, abs, home: home)
+      abs = File.expand_path(abs)
+      reason = code_gate_decision(bridge_data, abs, home: home) ||
+               lock_gate_decision(bridge_data, abs, session: session)
       return reason if reason
     end
     nil
+  end
+
+  # A TRAILING `# plastic-ok` shell comment: the auditable escape for
+  # sanctioned bash/interpreter writes (mirrors the retrieval gate's
+  # `# qmd-ok`). The hook logs every use to ~/.plastic/.cache/gate-escapes.log.
+  PLASTIC_OK_RE = /(?:\A|\s)#\s*plastic-ok\s*\z/.freeze
+
+  def self.bash_escape?(command)
+    PLASTIC_OK_RE.match?(command.to_s.chomp)
   end
 
   def self.deep_merge(base, overlay)

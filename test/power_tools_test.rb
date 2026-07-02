@@ -11,23 +11,30 @@ class PowerToolsTest < Minitest::Test
 
   def test_mandate_qmd_only
     out = PowerTools.mandate(cwd: "/tmp", qmd_detector: present, serena_detector: absent)
-    assert_includes out, "MANDATORY"
-    assert_includes out, "MUST use QMD"
+    assert_includes out, "QMD is available"
     refute_includes out, "Serena"
   end
 
   def test_mandate_serena_only
     out = PowerTools.mandate(cwd: "/tmp", qmd_detector: absent, serena_detector: present)
-    assert_includes out, "MANDATORY"
-    assert_includes out, "MUST use Serena"
-    refute_includes out, "use QMD"
+    assert_includes out, "Serena is available"
+    refute_includes out, "QMD is available"
   end
 
   def test_mandate_both
     out = PowerTools.mandate(cwd: "/tmp", qmd_detector: present, serena_detector: present)
-    assert_includes out, "MUST use QMD"
-    assert_includes out, "MUST use Serena"
+    assert_includes out, "QMD is available"
+    assert_includes out, "Serena is available"
     assert_equal 2, out.lines.count
+  end
+
+  # Intent 108, D8: the injections are recommendations, not obligations.
+  def test_mandate_is_a_recommendation_not_an_obligation
+    out = PowerTools.mandate(cwd: "/tmp", qmd_detector: present, serena_detector: present)
+    refute_includes out, "MANDATORY"
+    refute_includes out, "MUST"
+    assert_includes out, "qmd"
+    assert_includes out, "Serena"
   end
 
   def test_mandate_neither_is_nil

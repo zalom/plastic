@@ -4,6 +4,7 @@ require "fileutils"
 require "json"
 require "stringio"
 require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/worktree"
 
 # End-to-end test (intent 52): drives the real scripts/hook-code-gate with a
 # DERIVED-KEY armed bridge present in an isolated PLASTIC_TMP, no session id present.
@@ -30,6 +31,11 @@ class CodeGateHookTest < Minitest::Test
     ENV["PLASTIC_TMP"] = @bridge_tmp
     ENV.delete("CLAUDE_CODE_SESSION_ID")
 
+    # Neutralize the real provision (intent 108 hermeticity fix): unstubbed,
+    # arm's provision would plant a store worktree in the LIVE ~/.plastic.
+    @real_provision = Worktree.method(:provision)
+    Worktree.define_singleton_method(:provision) { |d, *_a, **_kw| d }
+
     # Arm via the derived key (no session). This writes the bridge into PLASTIC_TMP.
     # arm_auto prints a derived-key notice to stderr; silence it for clean output.
     silence_stderr { Bridge.arm_auto(nil, intent_id: "52", intent_dir: @intent_dir, store: @store, name: "demo") }
@@ -48,6 +54,7 @@ class CodeGateHookTest < Minitest::Test
     FileUtils.rm_rf(@bridge_tmp)
     @saved_session.nil? ? ENV.delete("CLAUDE_CODE_SESSION_ID") : ENV["CLAUDE_CODE_SESSION_ID"] = @saved_session
     @saved_plastic_tmp.nil? ? ENV.delete("PLASTIC_TMP") : ENV["PLASTIC_TMP"] = @saved_plastic_tmp
+    Worktree.define_singleton_method(:provision, @real_provision) if @real_provision
   end
 
   def run_hook(file_path)

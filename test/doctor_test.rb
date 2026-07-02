@@ -93,19 +93,13 @@ module DoctorTestHelpers
     end
   end
 
-  # Build a valid Claude settings.json with all required hook events
+  # Build a valid Claude settings.json carrying exactly the HookRegistry
+  # registrations (intent 108, D7): the hooks_match_registry check compares
+  # live settings against the registry, so "healthy" fixtures mirror it.
   def write_claude_settings(settings_path)
-    hooks = {}
-    Doctor::CLAUDE_HOOK_EVENTS.each do |event|
-      hooks[event] = [
-        {
-          "matcher" => "",
-          "hooks" => [
-            { "type" => "command", "command" => "plastic-session-start" },
-          ],
-        },
-      ]
-    end
+    hook_dir = File.join(File.dirname(settings_path), "hooks")
+    hooks = HookRegistry.claude_settings_hooks(hook_dir: hook_dir)
+                        .transform_values { |g| g.is_a?(Array) ? g : [g] }
     File.write(settings_path, JSON.pretty_generate({ "hooks" => hooks }))
   end
 
@@ -468,6 +462,39 @@ class DoctorAgentRegistrationTest < Minitest::Test
     registered_check = checks.find { |c| c[:name] == "hooks_registered" }
 
     assert_equal "fail", registered_check[:status]
+  end
+
+  # --- hooks_match_registry (intent 108, D7) ---------------------------------
+
+  def test_registry_shaped_settings_pass_hooks_match_registry
+    write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    checks = doctor.check_agent_registration("claude")
+    registry_check = checks.find { |c| c[:name] == "hooks_match_registry" }
+
+    refute_nil registry_check, "agent_registration must include hooks_match_registry"
+    assert_equal "pass", registry_check[:status]
+  end
+
+  def test_settings_missing_the_bash_group_fail_hooks_match_registry
+    write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    # Drop the bash-gate group: the exact divergence that shipped it dead.
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"]["PreToolUse"].reject! { |g| g["matcher"] == "Bash" }
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    registry_check = checks.find { |c| c[:name] == "hooks_match_registry" }
+
+    assert_equal "fail", registry_check[:status]
+    assert registry_check[:details].any? { |d| d.include?("bash-gate") },
+           "the diff must name the missing bash-gate: #{registry_check[:details].inspect}"
   end
 
   def test_missing_skills_directory_fails

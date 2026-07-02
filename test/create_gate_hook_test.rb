@@ -94,11 +94,64 @@ class CreateGateHookTest < Minitest::Test
     assert_equal 0, status2, "non-intent store file must not be gated"
   end
 
-  def test_missing_content_is_fail_safe_block
+  def test_missing_content_on_a_missing_file_is_fail_safe_block
+    ghost = File.join(@store, "99--ghost", "99--ghost.md")
+    payload = { "tool_input" => { "file_path" => ghost } }
+    out, status = run_gate(payload)
+    assert_equal 2, status, "no proposal and no file must fail safe (block)"
+    assert_includes out, "cannot read proposed content"
+  end
+
+  # --- Edit payloads (intent 108, D7): simulate the replacement ---------------
+
+  def edit_payload(path, old_string, new_string, replace_all: nil)
+    input = { "file_path" => path, "old_string" => old_string, "new_string" => new_string }
+    input["replace_all"] = replace_all unless replace_all.nil?
+    { "tool_input" => input }
+  end
+
+  def test_edit_that_keeps_the_intent_valid_is_allowed
+    out, status = run_gate(edit_payload(@intent_file, "## Intent", "## Intent"))
+    assert_equal 0, status, "an Edit whose result stays valid must pass: #{out}"
+  end
+
+  def test_edit_that_breaks_the_intent_blocks
+    out, status = run_gate(edit_payload(@intent_file, "## Intent", "## Wrecked"))
+    assert_equal 2, status
+    assert_includes out, "not a valid intent"
+  end
+
+  def test_edit_to_a_missing_intent_file_blocks
+    ghost = File.join(@store, "99--ghost", "99--ghost.md")
+    out, status = run_gate(edit_payload(ghost, "a", "b"))
+    assert_equal 2, status
+    assert_includes out, "does not exist"
+  end
+
+  def test_edit_whose_old_string_does_not_occur_is_allowed
+    out, status = run_gate(edit_payload(@intent_file, "no-such-text-anywhere", "x"))
+    assert_equal 0, status, "the Edit tool itself will fail; nothing to judge: #{out}"
+  end
+
+  def test_edit_with_replace_all_simulates_gsub
+    _out, status = run_gate(edit_payload(@intent_file, "## Intent", "## Broken",
+                                         replace_all: true))
+    assert_equal 2, status
+  end
+
+  # --- pathless MCP mutations (no content, no old_string) ---------------------
+
+  def test_pathless_mcp_edit_on_a_valid_file_is_allowed
     payload = { "tool_input" => { "file_path" => @intent_file } }
     out, status = run_gate(payload)
-    assert_equal 2, status, "missing content must fail safe (block)"
-    assert_includes out, "cannot read proposed content"
+    assert_equal 0, status, "cannot judge the proposal; a valid on-disk file passes " \
+                            "(PostToolUse backstop still validates the result): #{out}"
+  end
+
+  def test_pathless_mcp_edit_on_an_invalid_file_blocks
+    File.write(@intent_file, "not an intent")
+    _out, status = run_gate({ "tool_input" => { "file_path" => @intent_file } })
+    assert_equal 2, status
   end
 
   def test_unparseable_payload_allowed

@@ -4,6 +4,7 @@ require "fileutils"
 require "stringio"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/worktree"
+require_relative "../scripts/lib/lock"
 
 # Tests for the auto-mode flag added in intent 27.
 class BridgeAutoTest < Minitest::Test
@@ -120,22 +121,30 @@ class BridgeAutoTest < Minitest::Test
     Worktree.define_singleton_method(method_name, original)
   end
 
-  # arm_auto must acquire the delivery lock (owner=key, live pid, timestamp,
-  # host) and call Worktree.provision. We swap provision so no real git runs;
-  # the swap records the call and stamps a marker we can assert on.
+  # arm_auto must acquire the durable delivery lock (owner=key, timestamp, host,
+  # never a pid) and call Worktree.provision. We swap provision so no real git
+  # runs; the swap records the call and stamps a marker we can assert on.
   def test_arm_auto_sets_lock_and_calls_provision
     seen = []
     with_worktree(:provision, ->(d, *_a, **_kw) { seen << d; d["worktree"]["provisioned"] = true; d }) do
       data = arm
       assert_equal data["session"], data["lock"]["owner_session"]
-      assert_equal Process.pid, data["lock"]["pid"]
+      refute data["lock"].key?("pid"), "the lock cache never carries a pid (108 D1)"
       refute_nil data["lock"]["acquired_at"]
       refute_nil data["lock"]["host"]
       assert_equal true, data["worktree"]["provisioned"]
     end
     assert_equal 1, seen.length, "arm_auto must call Worktree.provision exactly once"
-    # lock persisted to disk
-    assert_equal Process.pid, Bridge.read(@session)["lock"]["pid"]
+    # lock cache persisted to disk, and the durable lock file exists in the
+    # intent dir with the same owner (the file is the truth, D2)
+    assert_equal @session, Bridge.read(@session)["lock"]["owner_session"]
+    assert_equal @session, Lock.read(@intent_dir)["owner_session"]
+  end
+
+  def test_arm_auto_raises_lock_held_when_another_session_owns_the_lock
+    Lock.acquire(@intent_dir, session: "someone-else")
+    err = assert_raises(Bridge::LockHeldError) { arm }
+    assert_includes err.message, "plastic-lock"
   end
 
   def test_arm_auto_survives_provision_raise
@@ -147,6 +156,29 @@ class BridgeAutoTest < Minitest::Test
       end
     end
     refute_empty out
+  end
+
+  def test_disarm_clears_the_delivery_lock
+    arm
+    assert File.exist?(Lock.path(@intent_dir))
+    Bridge.disarm_auto(@session)
+    refute File.exist?(Lock.path(@intent_dir)), "disarm must clear delivery.lock (D6)"
+    data = Bridge.read(@session)
+    assert_nil data.dig("lock", "owner_session"), "the bridge cache is cleared too"
+  end
+
+  def test_disarm_orders_worktree_release_before_lock_clear
+    arm
+    events = []
+    # Capture as a local: define_singleton_method rebinds self, so instance
+    # variables would resolve against Worktree inside the recorder.
+    lock_path = Lock.path(@intent_dir)
+    recorder = ->(d, *_a, **_kw) { events << [:release, File.exist?(lock_path)]; d }
+    with_worktree(:release, recorder) do
+      Bridge.disarm_auto(@session)
+    end
+    assert_equal [[:release, true]], events,
+                 "worktrees are released while the lock is STILL held (End-tail order, D6)"
   end
 
   def test_disarm_auto_calls_release
