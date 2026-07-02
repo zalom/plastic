@@ -67,7 +67,11 @@ class SessionStartHookTest < Minitest::Test
   end
 
   def run_hook
-    Open3.capture3("ruby", HOOK, @index, @dir, "global")
+    # PLASTIC_TMP + session isolation (intent 108): with an active intent in
+    # INDEX the hook derives (writes) a bridge; keep even the empty-INDEX
+    # smoke run away from the live /tmp and session id.
+    Open3.capture3({ "PLASTIC_TMP" => @dir, "CLAUDE_CODE_SESSION_ID" => nil },
+                   "ruby", HOOK, @index, @dir, "global")
   end
 
   def context_from(stdout)
