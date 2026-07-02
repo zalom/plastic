@@ -214,6 +214,7 @@ class InstallerCore
       "scripts/lib/retrieval_gate.rb" => "scripts/lib/retrieval_gate.rb",
       "scripts/hook-auto-arm" => "scripts/hook-auto-arm",
       "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
+      "scripts/lib/lock.rb" => "scripts/lib/lock.rb",
       "scripts/lib/insights.rb" => "scripts/lib/insights.rb",
       "scripts/lib/worktree.rb" => "scripts/lib/worktree.rb",
       "scripts/lib/boot_banner.rb" => "scripts/lib/boot_banner.rb",
