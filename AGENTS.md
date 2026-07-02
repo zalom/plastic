@@ -29,12 +29,13 @@ present, search it before re-deriving an existing decision, spec, or outcome.
   `plastic-*` collections. Pick the narrowest scope that answers the question.
 - **Search before re-deriving.** Look in the stores for prior decisions, specs, and
   outcomes before re-deriving them. The stores are the memory.
-- **Power tools are mandated when present.** When QMD (for intents) or Serena (for code
-  navigation) is present, using them is mandatory, not just recommended: the
-  UserPromptSubmit hook appends a MUST-use obligation per present tool, and the per-skill
-  QMD-first steps run `qmd-sync search` before grep/Read, then open the authoritative
-  intent file. Use the deterministic `scripts/qmd-sync search "<terms>"` helper, which
-  scopes collections for you and is a clean no-op when QMD is absent.
+- **Power tools are recommended when present.** When QMD (for intents) or Serena (for code
+  navigation) is present, prefer them: the UserPromptSubmit hook appends one
+  recommendation line per present tool, and the per-skill QMD-first steps run
+  `qmd-sync search` before grep/Read, then open the authoritative intent file. The
+  retrieval gate is advisory and never blocks a read or search. Use the deterministic
+  `scripts/qmd-sync search "<terms>"` helper, which scopes collections for you and is a
+  clean no-op when QMD is absent.
 - **Completion fires an async reindex.** Intent delivery reindexes the delivering store's
   collection in the background (non-blocking), so the index stays fresh while
   "index mutation is lifecycle-only" stays true. Never reindex ad-hoc.
@@ -80,13 +81,18 @@ Rules for any agent (or human) contributing to this repository.
   Minitest reports just that one file's tests and you get a falsely small green run. The
   loader command above requires every `test/*_test.rb` file, so the whole suite runs.
 - Confirm green before committing code changes.
+- Lock and bridge tests must stay hermetic: inject `PLASTIC_TMP` plus explicit paths and
+  never write with the ambient session id (`test/hermeticity_guard_test.rb` enforces this).
 
 ### Worktrees and the single-owner lock
 - Single owner, mandatory. Exactly one session or agent develops an intent's delivery at a
-  time. Ownership is the armed session bridge, which acts as the delivery lock (it records the
-  owning session, the owner pid, the acquired-at time, and the host). If you find an armed
-  bridge for an intent whose owner pid is still live, back off; you may reclaim it only when
-  the owner is dead.
+  time. Ownership is a session-keyed `delivery.lock` file in the intent directory; liveness
+  is a lease (the owner's hooks refresh the file mtime on tool activity, stale means the
+  heartbeat is older than the TTL). The /tmp session bridge is only a cache: on any
+  disagreement the lock file wins. If you find a fresh lock owned by another session, back
+  off. A stale lock is reclaimed only through `plastic-lock reclaim` (audited in
+  savepoint.md); disarm clears the lock, and `plastic-lock fix` is the repair path for
+  corrupt or legacy state.
 - Every code-touching intent gets its own worktree named `{id}--{slug}`, and code edits happen
   only inside it. Plastic provisions this automatically at arm time by resolving the repo from
   `projects.yml` and running `git -C <repo> worktree add`, so isolation does not depend on the
@@ -123,7 +129,7 @@ Release plan:
 - `1.0.0-beta.9` - shipped 2026-06-22; collected 49 and 72 (store-wide knowledge-graph consistency). 49: deterministic rebuild-graph tool plus a graph_cross_store_resolution doctor check (one-directional I1/I3/I4, preserve I2, cross-store relocation resolution that fixed the global:24 id-reuse hazard). 72: fence-aware project-links tool plus a graph_links_projection doctor check; canonical ## Links projection store-wide (id--slug target, full intent label, sources-first mandatory ordering); the I5 rule codified in PLASTIC.md, the concept doc, and the references; new-intent now emits canonical Links at creation so drift is prevented at the source. Spawned 82 (improve Insights: exact timestamps plus tightened background-agent delivery).
 - `1.0.0-beta.10` - shipped 2026-06-22; collected 80 (bridge cleanup on work-done). Replaced intent 67's 48h age-window purge with terminal-state cleanup in core bridge.rb: purge_done_bridges removes a /tmp/plastic-*.json bridge only when its intent is no longer Active in its store's INDEX (keyed by intent.id plus intent.store via new intent_active?); active intents' and the current session's bridges are never purged (continuation signal plus anti-collision lock); removed PURGE_AGE_SECONDS; arm/disarm repointed. Bridge and savepoint are independent mechanisms (not dependent on 81). One-time live clean slate took /tmp from 451 to 1. Folds in 73 follow-up #2; 73 follow-up #1 is owned by sibling 73b.
 - `1.0.0-beta.11` - shipped 2026-06-22; collected 73b (fix skill session-id resolution prose: plastic-auto arm/disarm examples pass CLAUDE_CODE_SESSION_ID, not the always-empty CLAUDE_SESSION_ID; headless notes corrected). Owns 73 follow-up #1.
-- `1.0.0-beta.12` - shipped 2026-06-23; collected the 73c worktree-isolation chain (73c decision + 73c1/73c2/73c3). Plastic-supplied per-intent isolation: new scripts/lib/worktree.rb provisions a mandatory code worktree plus a consistency store worktree at arm time via `git -C <repo-from-projects.yml>` (cwd-independent, closing the one genuine harness GAP from 73 matrix); the session bridge becomes a single-owner delivery lock (owner_session/pid/acquired_at/host) with stale-lock reclaim via pid liveness; Bridge.worktree_gate_decision hard-blocks code edits outside the intent worktree and non-owner edits to live-locked active intents, composed into hook-code-gate with a logged fail-open matrix; Worktree.finish merges-then-removes on the release path and ensure_gitignored keeps .worktrees/ and .claude/worktrees/ out of the git index; single-owner plus mandatory-worktree doctrine added to PLASTIC.md and AGENTS.md. Suite 606/0/0. Spawned 73c1a (isolate bridge writes in tests).
+- `1.0.0-beta.12` - shipped 2026-06-23; collected the 73c worktree-isolation chain (73c decision + 73c1/73c2/73c3). Plastic-supplied per-intent isolation: new scripts/lib/worktree.rb provisions a mandatory code worktree plus a consistency store worktree at arm time via `git -C <repo-from-projects.yml>` (cwd-independent, closing the one genuine harness GAP from 73 matrix); the session bridge becomes a single-owner delivery lock (owner_session/pid/acquired_at/host) with stale-lock reclaim via process liveness (superseded by intent 108's session-keyed lease lock); Bridge.worktree_gate_decision hard-blocks code edits outside the intent worktree and non-owner edits to live-locked active intents, composed into hook-code-gate with a logged fail-open matrix; Worktree.finish merges-then-removes on the release path and ensure_gitignored keeps .worktrees/ and .claude/worktrees/ out of the git index; single-owner plus mandatory-worktree doctrine added to PLASTIC.md and AGENTS.md. Suite 606/0/0. Spawned 73c1a (isolate bridge writes in tests).
 - `1.0.0-beta.18` - shipped 2026-06-25; collected 89a (operation-based retrieval gate: only CONTENT SEARCH over a store is hard-gated to QMD; reads and structural ops like Read/cat/find/ls/Glob are always allowed, including over the store; the Serena hard-gate is removed and code navigation stays a soft UserPromptSubmit mandate with content grep over code allowed; a tier-b warn fires when QMD is present but its freshness probe breaks; block reason teaches the semantic not score-based # qmd-ok fallback. Suite 712/0. Spec in intent 89a, policy map in intent 89, from grill-me brainstorm).
 - `1.0.0-beta.19` - shipped 2026-06-25; collected 92 (plastic-humanizer skill: clean authored prose, remove AI tells and slop from docs/specs/outcomes/READMEs).
 - `1.0.0-beta.20` - shipped 2026-06-29; collected 98 (scrub the phantom CLAUDE_SESSION_ID from the whole repo: resolve_session drops its dead env fallback so the chain is explicit-stdin then CLAUDE_CODE_SESSION_ID then derived key; the five hooks that read the phantom as a live fallback swap to CLAUDE_CODE_SESSION_ID, preserving the background/headless real-id path; comment, doc, agent, and skill prose reworded to stop naming the phantom while keeping the rationale; six test files rewired to inject via CLAUDE_CODE_SESSION_ID with ambient-clear. Suite 711/0). Also carried 85 already-landed creating-skills code (b74bf43), completed but not yet cut.

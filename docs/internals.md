@@ -480,17 +480,21 @@ Four coordinated pieces deliver that.
   `plastic-creating-intent`, which is now a thin wrapper that keeps tier/store
   detection and the branch-vs-root judgement and delegates scaffolding to one
   `new-intent` call.
-- **`scripts/hook-create-gate` (PreToolUse, matcher `Write`).** When the target
+- **`scripts/hook-create-gate` (PreToolUse, matcher Write plus Edit plus the
+  Serena MCP edit tools, from `HookRegistry::CREATE_MATCHER`).** When the target
   path is an intent file inside its own equally-named dir
-  (`store/**/<id>--<slug>/<id>--<slug>.md`), it validates the PROPOSED content from
-  the hook stdin payload (`tool_input.content`), not the on-disk file (which does
-  not exist yet at PreToolUse), using `IntentValidator.validate_content`
-  (born-complete frontmatter plus the section structure). It blocks with exit 2 on
-  failure. It depends only on the stdin path plus content, never on the auto-bridge
+  (`store/**/<id>--<slug>/<id>--<slug>.md`), it judges the payload with
+  `IntentValidator.validate_content` and blocks with exit 2 on failure. Three
+  payload shapes (intent 108): a Write validates the PROPOSED
+  `tool_input.content`; an Edit simulates the replacement (`old_string` to
+  `new_string`, `sub` or `gsub` per `replace_all`) against the on-disk file and
+  validates the RESULT, blocking when the file does not exist; a pathless MCP
+  mutation validates the CURRENT on-disk file (a valid file passes, since the
+  PostToolUse backstop validates the result; a missing or invalid one blocks).
+  It depends only on the stdin path plus payload, never on the auto-bridge
   or any session id, so it runs unconditionally including in headless and
   background sessions, which dissolves intent 60's D6 objection (the 60-era design
-  no-opped without a bridge). If `content` is absent it fails safe and blocks rather
-  than allowing a write it cannot validate. It validates only the intent file, never
+  no-opped without a bridge). It validates only the intent file, never
   the sentinel placeholder lifecycle files. It coexists with the PostToolUse 4a1c1
   backstop in `hook-gate-check`: the PreToolUse block makes the PostToolUse path a
   no-op for the create case, so they never double-report.
@@ -563,15 +567,47 @@ own isolation instead, deterministic and cwd-independent.
   and leaving `code: null`. `Worktree.release(bridge_data)` removes both
   worktrees, prunes, and clears the block; it is a no-op when nothing was
   provisioned.
-- **The bridge is the lock**: `Bridge.derive` now emits a `worktree` block and a
-  `lock` block (both born empty). `arm_auto` stamps the `lock` (owner session,
-  `Process.pid`, an acquired-at timestamp, the host) and calls
-  `Worktree.provision`; `disarm_auto` calls `Worktree.release`. Both wrap the
-  worktree call so a provision or release error never breaks arming or disarming.
-  `Worktree.session_live?(pid)` probes liveness with `Process.kill(0, pid)`, and
-  `Worktree.lock_held_by_other?` returns true only when another `/tmp/plastic-*`
-  bridge for the same intent has a live owner pid that is not the current session
-  (a dead owner makes the lock reclaimable).
+- **The lock file is the truth, the bridge is a cache** (intent 108):
+  `scripts/lib/lock.rb` owns the durable `delivery.lock` JSON file inside the
+  intent directory: `{ type, owner_session, host, acquired_at, delegates }`,
+  never a pid. `Lock.acquire` is atomic (O_EXCL) and returns
+  `:acquired/:owned/:held/:stale/:excluded/:corrupt`; freshness is the file
+  mtime against `Lock::TTL_SECONDS` (1800 seconds), refreshed by
+  `Lock.heartbeat` from the write-path hooks (`hook-gate-check` and the
+  lock-gate allow path). `arm` acquires the lock, raising
+  `Bridge::LockHeldError` with the resolving `plastic-lock` verb when it
+  cannot, and fills the bridge's `lock` block as a cache; `disarm_auto`
+  releases the worktrees, clears the lock, and only then is the bridge
+  purge-eligible (`purge_done_bridges` also skips any bridge whose intent dir
+  still holds a `delivery.lock`). Gates decide from the lock file:
+  `Bridge.lock_gate_decision` reads the TARGET intent dir's lock, admits the
+  owner or a registered delegate (even on a stale lock, which stays its
+  owner's until an explicit takeover), and every deny names the resolving
+  command. A stale foreign lock is taken only by `Lock.takeover`, which
+  appends an audit line to the intent's savepoint.md.
+  `Worktree.lock_held_by_other?` asks the same file, so `/tmp` bridges are
+  never consulted for ownership and no code probes a pid.
+  `Bridge.repair_lock` is the one idempotent repair: it rebuilds the lock and
+  the bridge cache from disk, migrates legacy pid-stamped bridges, and never
+  touches a fresh foreign lock. The `plastic-lock` CLI exposes it (verbs:
+  status, fix, release, reclaim, delegate).
+- **Hook registration single source of truth** (intent 108, D7):
+  `scripts/lib/hook_registry.rb` defines every event, matcher, and hook name.
+  `InstallerCore#merge_claude_hooks` translates it into settings.json,
+  `hooks/hooks.json` is pinned to it by test, and doctor's
+  `hooks_match_registry` check flags any drift (a missing gate, a stray
+  plastic hook, a stale matcher). The write matcher covers Write, Edit,
+  NotebookEdit, and the Serena MCP edit tools; the create-gate matcher covers
+  Write, Edit, and the same MCP tools; bash-gate and savepoint-pre are
+  registered (the old hand-rolled merge literal had dropped bash-gate, so it
+  shipped dead). The bash gate composes the code gate AND the lock gate over
+  every write target, including interpreter one-liners (`ruby -e`,
+  `python -c`, `perl -e`, `node -e` carrying a write verb plus a quoted
+  absolute path); a trailing `# plastic-ok` comment allows a sanctioned
+  command and logs it to `~/.plastic/.cache/gate-escapes.log`. The worktree
+  gate confines only paths inside the project repo (derived from the code
+  worktree path); the retrieval gate is advisory and never blocks a read or
+  search.
 - **Scope boundary**: `worktree.rb` is pure provisioning and lock-state logic. It
   never edits `projects.yml` and never mutates qmd. The PreToolUse gate that
   blocks edits outside the active worktree, and the cleanup policy that decides

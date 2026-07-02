@@ -283,32 +283,15 @@ hygiene after each intent. Advisory self-check, not hard-verifiable.
 
 ## Retrieval Gate
 
-A single capability-aware PreToolUse gate enforces retrieval-first routing on the agent's own
-Bash/Read/Grep/Glob calls (and on subagents, since PreToolUse binds them). The gate is
-OPERATION-based: it separates searching from reading, and it never stands between you and
-reading something you have already located.
-
-- Only CONTENT SEARCH over a Plastic store is gated. The Grep tool and bash `grep`/`rg`/`ag`
-  whose target is at or under a store route to QMD when QMD is present and the index is fresh:
-  the raw scan is blocked and you use `qmd search`/`qmd query` (or `scripts/qmd-sync search`)
-  instead. When QMD is present but stale, the search is allowed this turn and a background
-  reindex is fired so the next turn enforces against a fresh index; reindex is never
-  synchronous. When QMD is absent, the search is allowed.
-- Reading a known target (the Read tool, bash `cat`/`head`/`tail`) and structural discovery
-  (the Glob tool, bash `find`/`ls`) are always allowed, including over the store. QMD cannot
-  list directories or hand back one specific file, so these are never gated.
-- Code is never hard-gated here. Symbolic code navigation via Serena is a soft prompt mandate
-  (the UserPromptSubmit power-tools hook), not a block: content grep over code is allowed,
-  because Serena navigates symbols and cannot grep arbitrary strings.
-- QMD failure model. Absent or stale degrades to allow (stale also fires the background
-  reindex). A broken QMD, where the freshness probe errors or times out, also fails open, and
-  the hook emits a one-line warning so a degraded QMD is visible rather than silent.
-- Bypass: append a trailing `# qmd-ok` shell comment to a Bash command when you attempted
-  discovery and it did not serve you (no hits, or results that do not answer your need by your
-  reading of the snippets, not their score). A quoted or echoed occurrence does not bypass.
-  Bypasses are logged. The gate enforces that discovery was attempted, never that it succeeded.
-- Scope: only the agent's tool calls. Ruby `File.read` inside a script is invisible to the gate
-  and is out of scope by design.
+Advisory. Hard gates guard writes, locks, and structure, never reads or searches. Read,
+Grep, Glob, and bash search are always allowed, including over the stores. When QMD is
+present and fresh, a content search over store markdown receives an advisory hint pointing
+at `qmd search` alongside its result; when QMD is present but stale, a background reindex
+fires so the next turn's hint runs against a fresh index (never synchronous). QMD and
+Serena are recommendations, not obligations: the UserPromptSubmit power-tools hook appends
+one recommendation line per present tool. The legacy trailing `# qmd-ok` token is still
+accepted on Bash commands and simply silences the hint. Scope stays the agent's own tool
+calls; Ruby `File.read` inside a script is invisible to the hook by design.
 
 ## Context-economy measurement buckets (84a)
 
@@ -332,11 +315,28 @@ Hard blocking — hooks exit code 2 on gate failure.
 
 ## Delivery Isolation and the Single-Owner Lock
 
-Exactly one session or agent develops an intent's delivery at a time. Ownership is the armed
-session bridge, which doubles as the delivery lock: arming records the owning session, the
-owner pid, an acquired-at timestamp, and the host. Another session that finds an armed bridge
-for the same intent with a live owner backs off; if the owner pid is dead the lock is
-reclaimable. This is mandatory, not a convention.
+Exactly one session or agent develops an intent's delivery at a time. Ownership is
+session-keyed and durable: arming acquires `delivery.lock` inside the intent directory
+(atomically, O_EXCL), recording the owner session, the host, the acquired-at time, a
+delegates list, and the lock type. Liveness is a lease: the owner's hooks refresh the lock
+file's mtime on tool activity, and the lock counts as stale only when that heartbeat is
+older than the TTL. No process id is consulted anywhere. The /tmp session bridge is a cache
+of this state; on any disagreement, or when the bridge is missing, the lock file wins.
+Another session that finds a fresh lock backs off; a stale lock is reclaimed only by
+explicit takeover, which replaces the lock and appends an audit line to the intent's
+savepoint.md. Subagents spawned by the owner write under the owner's lock once registered
+as delegates. Disarm clears the lock; the End tail is ordered: verify, merge and remove
+worktrees, clear the lock, and only then is the bridge purge-eligible. Repair is one
+idempotent function with two entry points: the `plastic-lock` command (status, fix,
+release, reclaim, delegate) and `/plastic-intent-starting`, so boarding self-heals. This is
+mandatory, not a convention.
+
+Two locks share this schema (the two-lock doctrine): `delivery.lock` (exclusive, one owner
+plus delegates) and the future `maintenance.lock` (short TTL, structural move-and-record
+only). They are mutually exclusive in either direction; maintenance is allowed at any
+lifecycle stage provided no delivery lock is held. Intent 108 ships the delivery lock and
+the mutual-exclusion seam; the maintenance lock implementation follows intent 93 in a
+chained intent.
 
 Every code-touching intent gets its own git worktree named `{id}--{slug}`, and all code edits
 for that intent happen only inside it. Plastic provisions the worktree deterministically: it
@@ -349,6 +349,21 @@ and a store worktree at `<plastic_home>/.worktrees/{id}--{slug}` (branch
 Provisioning fails open for intents that touch no project code (pure research or decision
 intents in the global store, or a non-git repo): those get the lock only, and the worktree
 block stays unprovisioned. The fail-open path is always logged, never silent.
+
+### Intent delivery, station by station
+
+How one intent travels from boarding to Done, and what the lock, bridge, and gates do at
+each station.
+
+| Station | Delivered artifact | Lock and bridge steps | Pre-stage gate | Post-stage record |
+|---|---|---|---|---|
+| Start (board) | none (a procedure, not a stage) | `plastic-lock fix` self-heals stale, corrupt, or legacy state; arm acquires `delivery.lock` (O_EXCL, session-keyed), provisions the code worktree, writes the bridge cache | lock-gate denies any write into an active intent dir without this intent's lock; every deny names the resolving command | savepoint confirms the boarding station |
+| What (create) | `<id>--<slug>.md`, born complete | no lock yet; no bridge | create-gate validates the proposed intent content (Write, Edit, and MCP edits) | savepoint `What` line; intent listed in INDEX `## Active` |
+| Why | `spec.md` | owner writes refresh the lease (lock file mtime heartbeat) | gate-check requires the intent file with `## Intent` before spec.md; lock-gate admits only the owner or a delegate | savepoint `Why started`, `Why spec.md created` |
+| How | `plan.md`, `actions/`, `checklist.md` | heartbeat on writes; the code gate stays closed until plan.md plus checklist.md exist | gate-check requires spec.md before plan.md, and plan.md plus actions/ before checklist.md | savepoint `How started`, `How plan.md created`, `How checklist.md created`, `Exec started` |
+| Exec | code on the intent branch, checklist checked off | heartbeat; code edits confined to the provisioned worktree; delegates write under the owner's lock; bash, interpreter, and MCP writes gated the same way | code-gate, worktree-gate, bash-gate, lock-gate | checklist boxes; savepoint milestones |
+| End (done) | `outcome.md`, INDEX moves to Completed | ordered End tail: verify, merge and remove worktrees, disarm clears `delivery.lock`, only then is the bridge purge-eligible | gate-check blocks outcome.md while checklist items are unchecked | savepoint `Done delivered` (or `abandoned`); takeover audits, if any, remain in savepoint.md |
+| Maintenance (any stage) | `revisions.md` move-and-record entries | future `maintenance.lock` (short TTL), mutually exclusive with `delivery.lock` in either direction; 108 ships the schema seam only, the implementation follows intent 93 in a chained intent | acquisition refuses while the other lock type is fresh; a terminal intent with no lock held is read-only | dated, rule-tagged `revisions.md` entry; savepoint untouched |
 
 ## Deprecation Process
 
