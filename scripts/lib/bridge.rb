@@ -990,6 +990,7 @@ module Bridge
     # Split on command separators for per-segment utility parsing.
     command.split(/[;\n]|&&|\|\||\|/).each do |segment|
       targets.concat(bash_utility_targets(segment))
+      targets.concat(interpreter_write_targets(segment))
     end
     targets.uniq
   end
@@ -1065,16 +1066,54 @@ module Bridge
     path == "/dev/null" || path.start_with?("/dev/")
   end
 
-  # Decide whether a Bash command should be blocked under the auto-mode code
-  # gate. Resolves each write target against cwd and applies the SAME policy as
-  # code_gate_decision. Returns the first block reason, or nil to allow.
-  def self.bash_gate_decision(bridge_data, command, cwd:, home: Dir.home)
+  # --- Interpreter inline-code writes (intent 108, D7) ---
+
+  INTERPRETER_RE = /\b(ruby|python3?|perl|node)\b(?:\s+\S+)*?\s+(-e|-c)\s+(.+)\z/m.freeze
+
+  # Write verbs that mark inline code as file-mutating. Conservative: reads
+  # (File.read, puts) never match.
+  WRITE_VERB_RE = /File\.(?:write|binwrite|open)|IO\.write|FileUtils\.|
+                   open\s*\([^)]*["'][wa]|writeFileSync|fs\.write/x.freeze
+
+  # Quoted absolute or ~/ paths inside the inline code.
+  INLINE_PATH_RE = %r{["']((?:/|~/)[^"']+)["']}.freeze
+
+  # Paths an interpreter one-liner writes. Flagged only when the inline code
+  # has BOTH a write verb AND a quoted absolute path; everything else (reads,
+  # ARGV-driven paths, the sanctioned arm one-liners) yields no targets.
+  def self.interpreter_write_targets(segment)
+    m = INTERPRETER_RE.match(segment.to_s)
+    return [] unless m
+    util, flag, code = m[1], m[2], m[3]
+    expected = { "ruby" => "-e", "python" => "-c", "python3" => "-c",
+                 "perl" => "-e", "node" => "-e" }[util]
+    return [] unless flag == expected
+    return [] unless WRITE_VERB_RE.match?(code)
+    code.scan(INLINE_PATH_RE).flatten.map { |p| File.expand_path(p) }
+  end
+
+  # Decide whether a Bash command should be blocked. Every write target runs
+  # through the SAME policy stack as a direct tool write: the auto-mode code
+  # gate AND the delivery-lock gate (intent 108, D7), so bash and interpreter
+  # writes cannot bypass the lock. Returns the first block reason, or nil.
+  def self.bash_gate_decision(bridge_data, command, cwd:, home: Dir.home, session: nil)
     bash_write_targets(command).each do |target|
       abs = File.absolute_path?(target) ? target : File.join(cwd, target)
-      reason = code_gate_decision(bridge_data, abs, home: home)
+      abs = File.expand_path(abs)
+      reason = code_gate_decision(bridge_data, abs, home: home) ||
+               lock_gate_decision(bridge_data, abs, session: session)
       return reason if reason
     end
     nil
+  end
+
+  # A TRAILING `# plastic-ok` shell comment: the auditable escape for
+  # sanctioned bash/interpreter writes (mirrors the retrieval gate's
+  # `# qmd-ok`). The hook logs every use to ~/.plastic/.cache/gate-escapes.log.
+  PLASTIC_OK_RE = /(?:\A|\s)#\s*plastic-ok\s*\z/.freeze
+
+  def self.bash_escape?(command)
+    PLASTIC_OK_RE.match?(command.to_s.chomp)
   end
 
   def self.deep_merge(base, overlay)

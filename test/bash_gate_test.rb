@@ -1,9 +1,14 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
+require "json"
+require "open3"
+require "rbconfig"
 require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/lock"
 
-# Tests for the Bash-edit gate (intent 27a). Mirrors code_gate_test.rb.
+# Tests for the Bash-edit gate (intent 27a; interpreter writes, lock
+# composition, and the plastic-ok escape from intent 108 D7).
 class BashGateTest < Minitest::Test
   # --- Task 1: bash_write_targets ---
 
@@ -158,5 +163,85 @@ class BashGateTest < Minitest::Test
 
   def test_allows_read_only_command
     assert_nil decide(bridge(auto: true), "cat app.rb")
+  end
+
+  # --- interpreter writes (intent 108, D7) -----------------------------------
+
+  def test_ruby_e_file_write_to_an_absolute_path_is_a_target
+    cmd = %q{ruby -e 'File.write("/Users/x/proj/app.rb", "code")'}
+    assert_includes targets(cmd), "/Users/x/proj/app.rb"
+  end
+
+  def test_python_c_open_write_is_a_target
+    cmd = %q{python3 -c 'open("/Users/x/proj/app.py", "w").write("x")'}
+    assert_includes targets(cmd), "/Users/x/proj/app.py"
+  end
+
+  def test_interpreter_without_write_verb_is_not_flagged
+    cmd = %q{ruby -e 'puts File.read("/Users/x/proj/app.rb")'}
+    assert_empty targets(cmd)
+  end
+
+  def test_sanctioned_arm_one_liner_is_not_flagged
+    cmd = %q{ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.arm_guided(ENV["CLAUDE_CODE_SESSION_ID"], intent_id: "96", intent_dir: "/s/96--demo", store: "/s", name: "demo")'}
+    assert_empty targets(cmd)
+  end
+
+  def test_interpreter_write_without_a_quoted_path_is_not_flagged
+    cmd = %q{ruby -e 'File.write(ARGV[0], "x")' some_file}
+    assert_empty targets(cmd)
+  end
+
+  # --- lock-gate composition (intent 108, D7) --------------------------------
+
+  def activate_intent_27
+    File.write(File.join(File.dirname(@store), "INDEX.md"),
+               "## Active\n- [27 — demo](27--demo/27--demo.md)\n\n## Future\n")
+  end
+
+  def test_bash_gate_blocks_an_interpreter_write_into_a_locked_active_intent_dir
+    activate_intent_27
+    Lock.acquire(@intent_dir, session: "other")
+    cmd = "ruby -e 'File.write(#{File.join(@intent_dir, 'spec.md').inspect}, \"x\")'"
+    reason = Bridge.bash_gate_decision(nil, cmd, cwd: "/", session: "sess-1")
+    refute_nil reason
+    assert_includes reason, "plastic-lock"
+  end
+
+  def test_bash_gate_allows_the_lock_owner
+    activate_intent_27
+    Lock.acquire(@intent_dir, session: "sess-1")
+    cmd = "ruby -e 'File.write(#{File.join(@intent_dir, 'spec.md').inspect}, \"x\")'"
+    assert_nil Bridge.bash_gate_decision(nil, cmd, cwd: "/", session: "sess-1")
+  end
+
+  # --- escape tag -------------------------------------------------------------
+
+  def test_trailing_plastic_ok_is_an_escape
+    assert Bridge.bash_escape?("ruby -e 'File.write(\"/x\", 1)' # plastic-ok")
+    refute Bridge.bash_escape?("echo '# plastic-ok'"),
+           "a quoted occurrence is not a trailing comment"
+    refute Bridge.bash_escape?("ruby -e 'x' # plastic-ok && rm x"),
+           "the tag must END the command"
+  end
+
+  # --- hook-level escape audit (spawns the real hook) --------------------------
+
+  HOOK = File.expand_path("../scripts/hook-bash-gate", __dir__)
+
+  def test_hook_escape_allows_and_audits
+    tmp = Dir.mktmpdir("bash-gate-hook-tmp")
+    payload = { "tool_input" => { "command" => "echo x > /etc/motd # plastic-ok" },
+                "cwd" => @cwd, "session_id" => "sess-esc" }
+    _out, _err, status = Open3.capture3(
+      { "HOME" => @home, "PLASTIC_TMP" => tmp, "CLAUDE_CODE_SESSION_ID" => nil },
+      RbConfig.ruby, HOOK, stdin_data: JSON.generate(payload)
+    )
+    assert status.success?, "a plastic-ok command must be allowed"
+    log = File.join(@home, ".plastic", ".cache", "gate-escapes.log")
+    assert File.exist?(log), "the escape must be audited"
+    assert_includes File.read(log), "sess-esc"
+  ensure
+    FileUtils.rm_rf(tmp)
   end
 end

@@ -28,13 +28,31 @@ exit 0 if command.nil? || command.to_s.strip.empty?
 cwd = payload["cwd"]
 cwd = Dir.pwd if cwd.nil? || cwd.to_s.empty?
 
-# --- Load bridge (shared resolution; stdin session_id -> CLAUDE_CODE_SESSION_ID -> /tmp scan) ---
 session = payload["session_id"]
 session = ENV["CLAUDE_CODE_SESSION_ID"] if session.nil? || session.to_s.empty?
-bridge_data = Bridge.discover_bridge(session: session, cwd: cwd)
-exit 0 unless bridge_data
 
-reason = Bridge.bash_gate_decision(bridge_data, command, cwd: cwd)
+# Auditable escape (intent 108, D7): a trailing `# plastic-ok` allows the
+# command and logs it, so sanctioned writes are visible, not silent.
+if Bridge.bash_escape?(command)
+  begin
+    require "fileutils"
+    log = File.join(Dir.home, ".plastic", ".cache", "gate-escapes.log")
+    FileUtils.mkdir_p(File.dirname(log))
+    File.open(log, "a") do |io|
+      io.puts("#{Time.now.utc.iso8601}\t#{session}\t#{command.gsub(/\s+/, ' ').strip}")
+    end
+  rescue StandardError
+    # the escape still applies; logging is best-effort
+  end
+  exit 0
+end
+
+# --- Load bridge (shared resolution; stdin session_id -> CLAUDE_CODE_SESSION_ID -> /tmp scan) ---
+# A nil bridge does NOT short-circuit (intent 108): the lock gate decides from
+# the durable delivery.lock file, so it must run even without a bridge cache.
+bridge_data = Bridge.discover_bridge(session: session, cwd: cwd)
+
+reason = Bridge.bash_gate_decision(bridge_data, command, cwd: cwd, session: session)
 exit 0 unless reason
 
 $stderr.puts "PLASTIC GATE — #{reason}"
