@@ -6,6 +6,7 @@ require "yaml"
 require "fileutils"
 require "digest"
 require "time"
+require_relative "hook_registry"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/versions) and their tests can run
@@ -216,6 +217,8 @@ class InstallerCore
       "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
       "scripts/lib/lock.rb" => "scripts/lib/lock.rb",
       "scripts/plastic-lock" => "scripts/plastic-lock",
+      "scripts/lib/hook_registry.rb" => "scripts/lib/hook_registry.rb",
+      "scripts/agent-report" => "scripts/agent-report",
       "scripts/lib/insights.rb" => "scripts/lib/insights.rb",
       "scripts/lib/worktree.rb" => "scripts/lib/worktree.rb",
       "scripts/lib/boot_banner.rb" => "scripts/lib/boot_banner.rb",
@@ -542,68 +545,9 @@ class InstallerCore
 
     purge_stale_plastic_hooks(hooks)
 
-    plastic_hooks = {
-      "SessionStart" => {
-        "matcher" => "",
-        "hooks" => [
-          { "type" => "command", "command" => "#{hook_dir}/plastic-session-start", "statusMessage" => "Loading Plastic context..." },
-          { "type" => "command", "command" => "#{hook_dir}/plastic-check-update", "statusMessage" => "" },
-        ],
-      },
-      "PreCompact" => {
-        "matcher" => "",
-        "hooks" => [
-          { "type" => "command", "command" => "#{hook_dir}/plastic-savepoint", "statusMessage" => "Saving Plastic intent state..." },
-        ],
-      },
-      # PreToolUse carries TWO plastic groups with distinct matchers: the
-      # code-gate (Write|Edit|NotebookEdit) and the create-gate (Write only, intent
-      # 60b). A single group cannot carry two matchers, so this event maps to a
-      # LIST of groups; the merge loop appends each (idempotent because the purge
-      # pass removes all prior plastic groups first).
-      "PreToolUse" => [
-        {
-          "matcher" => "Write|Edit|NotebookEdit",
-          "hooks" => [
-            { "type" => "command", "command" => "#{hook_dir}/plastic-code-gate", "statusMessage" => "Checking lifecycle gate..." },
-            # Fail-closed lock gate (intent 96): a 2nd ordered command INSIDE the
-            # code-gate group (NOT a new same-matcher group, which the merge loop
-            # below would collapse). Blocks no-lock writes to an active intent's dir.
-            { "type" => "command", "command" => "#{hook_dir}/plastic-lock-gate", "statusMessage" => "Checking lock gate..." },
-          ],
-        },
-        {
-          "matcher" => "Write",
-          "hooks" => [
-            { "type" => "command", "command" => "#{hook_dir}/plastic-create-gate", "statusMessage" => "Checking create gate..." },
-          ],
-        },
-        # Retrieval gate (intent 84, Lever 2): redirects store-markdown reads to
-        # QMD and code reads to Serena when those tools are present. Binds the
-        # main agent AND subagents (PreToolUse applies to subagent tool calls).
-        {
-          "matcher" => "Bash|Read|Grep|Glob",
-          "hooks" => [
-            { "type" => "command", "command" => "#{hook_dir}/plastic-retrieval-gate", "statusMessage" => "Checking retrieval gate..." },
-          ],
-        },
-      ],
-      "PostToolUse" => {
-        "matcher" => "Write|Edit",
-        "hooks" => [
-          { "type" => "command", "command" => "#{hook_dir}/plastic-gate-check", "statusMessage" => "Checking lifecycle gates..." },
-        ],
-      },
-      "UserPromptSubmit" => {
-        "matcher" => "",
-        "hooks" => [
-          { "type" => "command", "command" => "#{hook_dir}/plastic-continue", "statusMessage" => "Checking for continue..." },
-          { "type" => "command", "command" => "#{hook_dir}/plastic-future-intent-check", "statusMessage" => "Checking future intents..." },
-          { "type" => "command", "command" => "#{hook_dir}/plastic-auto-arm", "statusMessage" => "Checking auto mode..." },
-          { "type" => "command", "command" => "#{hook_dir}/plastic-qmd-search", "statusMessage" => "Searching QMD..." },
-        ],
-      },
-    }
+    # Single source of truth (intent 108, D7): registrations live in
+    # HookRegistry; this merge only translates them into settings.json.
+    plastic_hooks = HookRegistry.claude_settings_hooks(hook_dir: hook_dir)
 
     plastic_hooks.each do |event, group|
       hooks[event] ||= []

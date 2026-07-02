@@ -19,7 +19,7 @@
     ],
     "PreCompact": [
       {
-        "matcher": "manual|auto",
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
@@ -31,7 +31,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|NotebookEdit",
+        "matcher": "Write|Edit|NotebookEdit|mcp__serena__replace_content|mcp__serena__replace_symbol_body|mcp__serena__insert_after_symbol|mcp__serena__insert_before_symbol|mcp__serena__safe_delete_symbol|mcp__serena__rename_symbol",
         "hooks": [
           {
             "type": "command",
@@ -56,7 +56,7 @@
         ]
       },
       {
-        "matcher": "Write",
+        "matcher": "Write|Edit|mcp__serena__replace_content|mcp__serena__replace_symbol_body|mcp__serena__insert_after_symbol|mcp__serena__insert_before_symbol|mcp__serena__safe_delete_symbol|mcp__serena__rename_symbol",
         "hooks": [
           {
             "type": "command",
