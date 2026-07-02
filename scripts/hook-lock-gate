@@ -10,6 +10,7 @@
 # reads never reach here.
 require "json"
 require_relative "lib/bridge"
+require_relative "lib/lock"
 
 begin
   file_path = ARGV[0]
@@ -18,7 +19,17 @@ begin
 
   bridge_data = Bridge.discover_bridge(session: session, cwd: Dir.pwd)   # nil = no bridge cache
   reason = Bridge.lock_gate_decision(bridge_data, file_path, session: session)
-  exit 0 unless reason
+  unless reason
+    # Allow path: refresh the lease for the session that holds this target's
+    # lock (owner or delegate). Best-effort, never blocks.
+    begin
+      dir = Bridge.intent_dir_for(file_path)
+      Lock.heartbeat(dir, session: session) if dir && !session.to_s.empty?
+    rescue StandardError
+      # ignore
+    end
+    exit 0
+  end
 
   print JSON.generate(
     "hookSpecificOutput" => {
