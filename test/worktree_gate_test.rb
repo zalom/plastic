@@ -69,6 +69,24 @@ class WorktreeGateTest < Minitest::Test
     assert_nil decision(provisioned_bridge, File.join(@code_wt, "lib", "app.rb"))
   end
 
+  # Regression (2026-07-02): the agent's own memory dir, outside any repo,
+  # was denied by rule 1. Paths outside the project repo are never confined.
+  def test_write_outside_the_project_repo_is_allowed
+    memory_file = File.join(@home, ".claude", "projects", "x", "memory", "note.md")
+    assert_nil decision(provisioned_bridge, memory_file)
+  end
+
+  def test_write_in_an_unrelated_checkout_is_allowed
+    other_repo_file = File.join(@home, "code", "other-project", "app.rb")
+    assert_nil decision(provisioned_bridge, other_repo_file)
+  end
+
+  def test_another_intents_worktree_in_the_same_repo_is_blocked
+    foreign = File.join(@repo, ".claude", "worktrees", "999--other", "lib", "app.rb")
+    refute_nil decision(provisioned_bridge, foreign),
+               "a foreign intent's worktree is still inside the repo: confined"
+  end
+
   def test_allows_when_provisioned_false_fail_open
     bridge = provisioned_bridge
     bridge["worktree"]["provisioned"] = false

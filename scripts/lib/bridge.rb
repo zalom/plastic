@@ -895,18 +895,24 @@ module Bridge
     under_own_intent = intent_dir_abs &&
                        (file_abs == intent_dir_abs || file_abs.start_with?("#{intent_dir_abs}/"))
 
-    # Rule 1: provisioned code worktree confines project-code edits.
+    # Rule 1 (fixed in intent 108, D7): confinement applies ONLY to paths
+    # inside the project repo. The repo root is derived from the provisioned
+    # code worktree path, which is <repo>/.claude/worktrees/{id}--{slug} by
+    # construction, so no git call is needed. Paths outside the repo (agent
+    # memory dirs, scratch files, unrelated checkouts) are not this gate's
+    # business; the 2026-07-02 memory-dir denial came from treating everything
+    # outside the worktree as the shared checkout.
     worktree = bridge_data["worktree"] || {}
     if worktree["provisioned"] == true
       code = worktree["code"].to_s
-      # Project code = outside ~/.plastic and outside this intent's store dir.
-      is_project_code = !under_plastic && !under_own_intent
-      if is_project_code && !blank?(code)
+      if !blank?(code) && !under_plastic && !under_own_intent
         code_abs = File.expand_path(code)
+        repo_abs = File.expand_path(File.join(code_abs, "..", "..", ".."))
+        inside_repo = file_abs == repo_abs || file_abs.start_with?("#{repo_abs}/")
         inside_code = file_abs == code_abs || file_abs.start_with?("#{code_abs}/")
-        unless inside_code
+        if inside_repo && !inside_code
           id = intent_info["id"]
-          return "intent #{id} is isolated to its worktree — edit project code " \
+          return "intent #{id} is isolated to its worktree - edit project code " \
                  "inside #{code_abs}, not the shared checkout. (blocked edit: #{file_abs})"
         end
       end
