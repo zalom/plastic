@@ -124,6 +124,10 @@ module Worktree
     # into the store commit. Ensure both ignore entries before any worktree add.
     ensure_gitignored(plastic_home, ".worktrees/", runner: runner)
 
+    # The durable lock files live inside intent dirs under the store git repo
+    # (intent 108, D2): transient state, never committed.
+    ensure_gitignored(plastic_home, "*.lock", runner: runner)
+
     # Store worktree: created against the plastic home git repo. Fail-open if the
     # store repo is not a git repo (a fresh global store may be ungit'd).
     store_ok = add_worktree(runner, repo: plastic_home,

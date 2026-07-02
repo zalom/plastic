@@ -195,6 +195,19 @@ class WorktreeTest < Minitest::Test
     refute_empty out
   end
 
+  def test_provision_gitignores_lock_files_in_the_store_repo
+    runner = FakeRunner.new do |args|
+      if args[2] == "rev-parse"
+        next Worktree::ShellRunner::Result.new(0, "true\n", "")
+      end
+      Worktree::ShellRunner::Result.new(0, "", "")
+    end
+    Worktree.provision(bridge_data, home: @home, runner: runner)
+    gitignore = File.read(File.join(@plastic_home, ".gitignore"))
+    assert_includes gitignore.lines.map(&:strip), "*.lock",
+                    "delivery.lock files must never be committed to the store repo"
+  end
+
   # --- release ---------------------------------------------------------------
 
   def test_release_removes_both_and_prunes_then_clears_block

@@ -158,6 +158,29 @@ class BridgeAutoTest < Minitest::Test
     refute_empty out
   end
 
+  def test_disarm_clears_the_delivery_lock
+    arm
+    assert File.exist?(Lock.path(@intent_dir))
+    Bridge.disarm_auto(@session)
+    refute File.exist?(Lock.path(@intent_dir)), "disarm must clear delivery.lock (D6)"
+    data = Bridge.read(@session)
+    assert_nil data.dig("lock", "owner_session"), "the bridge cache is cleared too"
+  end
+
+  def test_disarm_orders_worktree_release_before_lock_clear
+    arm
+    events = []
+    # Capture as a local: define_singleton_method rebinds self, so instance
+    # variables would resolve against Worktree inside the recorder.
+    lock_path = Lock.path(@intent_dir)
+    recorder = ->(d, *_a, **_kw) { events << [:release, File.exist?(lock_path)]; d }
+    with_worktree(:release, recorder) do
+      Bridge.disarm_auto(@session)
+    end
+    assert_equal [[:release, true]], events,
+                 "worktrees are released while the lock is STILL held (End-tail order, D6)"
+  end
+
   def test_disarm_auto_calls_release
     arm
     seen = []

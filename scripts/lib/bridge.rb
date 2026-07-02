@@ -232,6 +232,13 @@ module Bridge
           id = data.dig("intent", "id")
           store = data.dig("intent", "store")
           keep = !blank?(id) && !blank?(store) && intent_active?(id, store: store)
+          # Never purge a bridge whose intent still holds a delivery lock
+          # (intent 108, D6): the End tail clears the lock BEFORE the bridge
+          # becomes purge-eligible, so a held lock means the tail is not done.
+          unless keep
+            dir = bridge_intent_dir(data)
+            keep = !dir.nil? && File.exist?(Lock.path(dir))
+          end
         end
         next if keep
         File.delete(f)
@@ -676,7 +683,11 @@ module Bridge
     arm(session, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name, auto: false)
   end
 
-  # Disarm auto mode. No-op if no bridge exists for the session.
+  # Disarm. No-op if no bridge exists for the session. End-tail order (D6):
+  # worktrees are merged/removed FIRST (the verify step is the caller's,
+  # before disarm), then the delivery lock is cleared, and only then does the
+  # bridge become purge-eligible. purge_done_bridges enforces the same order
+  # defensively by skipping any bridge whose intent still holds a lock.
   def self.disarm_auto(session)
     data = read(session)
     return nil unless data
@@ -691,6 +702,15 @@ module Bridge
     rescue => e
       $stderr.puts "plastic: worktree release raised, continuing: #{e.message}"
     end
+
+    dir = bridge_intent_dir(data)
+    if dir
+      owner = data.dig("lock", "owner_session")
+      owner = session if blank?(owner)
+      Lock.release(dir, session: owner)
+    end
+    data["lock"] = { "owner_session" => nil, "acquired_at" => nil,
+                     "host" => nil, "type" => nil, "delegates" => [] }
 
     write(session, data)
     purge_done_bridges(session: session)

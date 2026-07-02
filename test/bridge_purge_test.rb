@@ -3,6 +3,7 @@ require "tmpdir"
 require "fileutils"
 require "json"
 require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/lock"
 
 # Tests for the terminal-state bridge purge (intent 80, replacing intent 67's
 # age window).
@@ -127,6 +128,16 @@ class BridgePurgeTest < Minitest::Test
                                        "intent" => { "id" => "", "store" => @store }))
     Bridge.purge_done_bridges(session: "current")
     refute File.exist?(f), "a bridge with a blank intent.id is junk and purged"
+  end
+
+  def test_never_purges_a_bridge_whose_intent_still_holds_a_delivery_lock
+    write_index_active # 80 is TERMINAL, so the bridge would normally purge
+    f = seed_bridge("other-sess", id: "80")
+    Lock.acquire(@intent_dir, session: "other-sess")
+    removed = Bridge.purge_done_bridges(session: "current", tmp: @tmp)
+    refute_includes removed, f,
+                    "a held delivery lock makes the bridge purge-ineligible (D6)"
+    assert File.exist?(f)
   end
 
   def test_returns_removed_paths
