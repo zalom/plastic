@@ -34,7 +34,14 @@ enforces it: without a held lock, mutating writes to this active intent's dir ar
 1. **Ensure the intent is in INDEX `## Active`.** If it sits in `## Future`, activate it
    (move it to `## Active`, auto-commit) before arming. Creation precedes activation, so a
    brand-new What intent is activated here, then locked.
-2. **Arm the bridge.** Which arm is chosen by the mode answer (below), but the lock itself is
+2. **Self-heal the lock state first.** Run:
+   `ruby ~/.plastic/scripts/plastic-lock fix --intent-dir <STORE>/<dir>`
+   This is the one repair function (same one /plastic-lock exposes): it removes
+   corrupt or legacy lock state and rebuilds the lock and bridge from disk for
+   this session. If it reports `held`, another session owns the intent: STOP
+   and tell the user who holds it. If it reports `stale`, ask the user before
+   running `plastic-lock reclaim` (takeover is audited).
+3. **Arm the bridge.** Which arm is chosen by the mode answer (below), but the lock itself is
    taken first. Reuse the arm one-liner shape from `plastic-auto`:
    ```bash
    # guided (lock only):
@@ -55,8 +62,14 @@ deterministic derived key (a hash of the store and intent id). It never returns 
 lock is taken even when every session env var is empty; arming prints a one-line stderr
 notice when it falls through to the derived key.
 
-Idempotent re-arm: arming again with the same owner just refreshes the lock (re-derives and
-rewrites the bridge); it is not an error to re-board an intent this session already owns.
+**What the lock IS.** Ownership is session-keyed and lease-based: arming writes a durable
+`delivery.lock` file in the intent dir naming this session as owner, and the owner's hooks
+refresh the file mtime on tool activity (the lease heartbeat). The /tmp bridge is only a
+cache of that file; on any disagreement the lock file wins, so a wiped /tmp never strands
+the owner. Idempotent re-arm: arming again with the same owner just refreshes the lock; it
+is not an error to re-board an intent this session already owns. A failed arm raises with
+a message naming the resolving `plastic-lock` verb (`status`, `reclaim`, or `fix`): follow
+that message, never delete a lock file by hand.
 
 ## Confirm delivery state
 
