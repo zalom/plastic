@@ -509,7 +509,7 @@ module Bridge
     lines.length
   end
 
-  def self.derive(session, intent_id:, intent_dir:, store:, name:)
+  def self.derive(session, intent_id:, intent_dir:, store:, name:, tmp: tmp_dir)
     stage = derive_stage(intent_dir)
     has = has_files(intent_dir)
     missing = missing_for_stage(stage, intent_dir) - has
@@ -560,7 +560,7 @@ module Bridge
       }
     }
 
-    write(session, data)
+    write(session, data, tmp: tmp)
     data
   end
 
@@ -715,6 +715,59 @@ module Bridge
     write(session, data)
     purge_done_bridges(session: session)
     data
+  end
+
+  # One deterministic, idempotent repair (intent 108, D5): diagnose, remove
+  # faulty own-side state, rebuild the durable lock AND the bridge cache from
+  # disk truth for the current session. Legacy /tmp-only pid locks are
+  # migrated here: the delivery.lock file is created and the cache rebuilt
+  # without a pid. NEVER touches a fresh foreign lock (reports "held"); a
+  # stale foreign lock reports "stale" and is taken only by the explicit
+  # reclaim verb (Lock.takeover). Two entry points call this: the
+  # plastic-lock CLI and /plastic-intent-starting (self-healing boarding).
+  def self.repair_lock(session, intent_id:, intent_dir:, store:, name:,
+                       now: Time.now, tmp: tmp_dir)
+    key = resolve_session(session, intent_id: intent_id, store: store)
+    dir = File.expand_path(intent_dir)
+    actions = []
+
+    if Lock.corrupt?(dir)
+      File.delete(Lock.path(dir))
+      actions << "removed corrupt delivery.lock"
+    end
+
+    lock = Lock.read(dir)
+    if lock && !Lock.authorized?(lock, key)
+      if Lock.fresh?(dir, now: now)
+        return { "status" => "held", "owner" => lock["owner_session"],
+                 "actions" => actions, "session" => key }
+      end
+      return { "status" => "stale", "owner" => lock["owner_session"],
+               "actions" => actions, "session" => key,
+               "hint" => "run /plastic-lock reclaim to take over with an audit" }
+    end
+
+    if lock
+      Lock.heartbeat(dir, session: key, now: now)
+      lock_data = Lock.read(dir)
+      role = lock_data["owner_session"].to_s == key ? "owner" : "delegate"
+      actions << "lock kept (#{role})"
+    else
+      status, lock_data = Lock.acquire(dir, session: key, now: now)
+      actions << "lock #{status}"
+    end
+
+    previous = read(key, tmp: tmp)
+    auto = !!(previous && previous.dig("build", "auto"))
+    data = derive(key, intent_id: intent_id, intent_dir: dir, store: store,
+                  name: name, tmp: tmp)
+    data["build"]["auto"] = auto
+    data["lock"] = lock_cache(lock_data)
+    write(key, data, tmp: tmp)
+    actions << "bridge rebuilt from disk (stage #{data['build']['stage']})"
+
+    { "status" => "repaired", "actions" => actions,
+      "lock" => lock_data, "session" => key }
   end
 
   # Decide whether a code edit should be blocked while auto mode is armed.

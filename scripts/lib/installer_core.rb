@@ -215,6 +215,7 @@ class InstallerCore
       "scripts/hook-auto-arm" => "scripts/hook-auto-arm",
       "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
       "scripts/lib/lock.rb" => "scripts/lib/lock.rb",
+      "scripts/plastic-lock" => "scripts/plastic-lock",
       "scripts/lib/insights.rb" => "scripts/lib/insights.rb",
       "scripts/lib/worktree.rb" => "scripts/lib/worktree.rb",
       "scripts/lib/boot_banner.rb" => "scripts/lib/boot_banner.rb",
