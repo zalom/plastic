@@ -4,6 +4,7 @@ require "fileutils"
 require "stringio"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/worktree"
+require_relative "../scripts/lib/lock"
 
 # Tests for arm_guided: acquire the delivery lock WITHOUT auto mode (intent 96).
 # Mirrors bridge_auto_test.rb's hermetic setup exactly.
@@ -60,14 +61,22 @@ class BridgeGuidedTest < Minitest::Test
     with_worktree(:provision, ->(d, *_a, **_kw) { seen << d; d["worktree"]["provisioned"] = true; d }) do
       data = arm_guided
       assert_equal data["session"], data["lock"]["owner_session"]
-      assert_equal Process.pid, data["lock"]["pid"]
+      refute data["lock"].key?("pid"), "the lock cache never carries a pid (108 D1)"
       refute_nil data["lock"]["acquired_at"]
       refute_nil data["lock"]["host"]
       assert_equal true, data["worktree"]["provisioned"]
     end
     assert_equal 1, seen.length, "arm_guided must call Worktree.provision exactly once"
-    # lock persisted to disk
-    assert_equal Process.pid, Bridge.read(@session)["lock"]["pid"]
+    # lock cache persisted to disk, and the durable lock file exists in the
+    # intent dir with the same owner (the file is the truth, D2)
+    assert_equal @session, Bridge.read(@session)["lock"]["owner_session"]
+    assert_equal @session, Lock.read(@intent_dir)["owner_session"]
+  end
+
+  def test_arm_guided_raises_lock_held_when_another_session_owns_the_lock
+    Lock.acquire(@intent_dir, session: "someone-else")
+    err = assert_raises(Bridge::LockHeldError) { arm_guided }
+    assert_includes err.message, "plastic-lock"
   end
 
   def test_arm_guided_survives_provision_raise
@@ -86,7 +95,7 @@ class BridgeGuidedTest < Minitest::Test
     data = Bridge.arm_auto(@session, intent_id: "96", intent_dir: @intent_dir, store: @store, name: "demo")
     assert_equal true, data["build"]["auto"]
     assert_equal data["session"], data["lock"]["owner_session"]
-    assert_equal Process.pid, data["lock"]["pid"]
+    assert_equal @session, Lock.read(@intent_dir)["owner_session"]
     assert_equal true, Bridge.read(@session)["build"]["auto"]
   end
 

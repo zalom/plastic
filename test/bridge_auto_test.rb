@@ -4,6 +4,7 @@ require "fileutils"
 require "stringio"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/worktree"
+require_relative "../scripts/lib/lock"
 
 # Tests for the auto-mode flag added in intent 27.
 class BridgeAutoTest < Minitest::Test
@@ -120,22 +121,30 @@ class BridgeAutoTest < Minitest::Test
     Worktree.define_singleton_method(method_name, original)
   end
 
-  # arm_auto must acquire the delivery lock (owner=key, live pid, timestamp,
-  # host) and call Worktree.provision. We swap provision so no real git runs;
-  # the swap records the call and stamps a marker we can assert on.
+  # arm_auto must acquire the durable delivery lock (owner=key, timestamp, host,
+  # never a pid) and call Worktree.provision. We swap provision so no real git
+  # runs; the swap records the call and stamps a marker we can assert on.
   def test_arm_auto_sets_lock_and_calls_provision
     seen = []
     with_worktree(:provision, ->(d, *_a, **_kw) { seen << d; d["worktree"]["provisioned"] = true; d }) do
       data = arm
       assert_equal data["session"], data["lock"]["owner_session"]
-      assert_equal Process.pid, data["lock"]["pid"]
+      refute data["lock"].key?("pid"), "the lock cache never carries a pid (108 D1)"
       refute_nil data["lock"]["acquired_at"]
       refute_nil data["lock"]["host"]
       assert_equal true, data["worktree"]["provisioned"]
     end
     assert_equal 1, seen.length, "arm_auto must call Worktree.provision exactly once"
-    # lock persisted to disk
-    assert_equal Process.pid, Bridge.read(@session)["lock"]["pid"]
+    # lock cache persisted to disk, and the durable lock file exists in the
+    # intent dir with the same owner (the file is the truth, D2)
+    assert_equal @session, Bridge.read(@session)["lock"]["owner_session"]
+    assert_equal @session, Lock.read(@intent_dir)["owner_session"]
+  end
+
+  def test_arm_auto_raises_lock_held_when_another_session_owns_the_lock
+    Lock.acquire(@intent_dir, session: "someone-else")
+    err = assert_raises(Bridge::LockHeldError) { arm }
+    assert_includes err.message, "plastic-lock"
   end
 
   def test_arm_auto_survives_provision_raise

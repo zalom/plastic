@@ -39,8 +39,9 @@ class BridgeWorktreeDeriveTest < Minitest::Test
 
   def test_derive_emits_lock_block
     lock = derive["lock"]
-    assert_equal({ "owner_session" => nil, "pid" => nil,
-                   "acquired_at" => nil, "host" => nil }, lock)
+    assert_equal({ "owner_session" => nil, "acquired_at" => nil, "host" => nil,
+                   "type" => nil, "delegates" => [] }, lock)
+    refute lock.key?("pid"), "the lock cache never carries a pid (108 D1)"
   end
 
   def test_derive_blocks_persist_to_disk

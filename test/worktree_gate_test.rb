@@ -3,13 +3,15 @@ require "tmpdir"
 require "fileutils"
 require "json"
 require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/lock"
 
-# Hermetic unit tests (intent 73c2) for Bridge.worktree_gate_decision.
+# Hermetic unit tests (intent 73c2, rewired in 108) for
+# Bridge.worktree_gate_decision.
 #
-# No real git, no real ~/.plastic: a fake $HOME tmpdir is the plastic home, the
-# code worktree is a tmpdir, and the cross-intent lock scan reads bridges from an
-# injected PLASTIC_TMP. Process.kill(0, $$) makes the current process a reliable
-# LIVE owner; a never-allocated high pid is the reliable DEAD owner.
+# No real git, no real ~/.plastic: a fake $HOME tmpdir is the plastic home and
+# the code worktree is a tmpdir. Cross-intent ownership is decided by the
+# durable delivery.lock file in the other intent's dir: a FRESH foreign lock
+# is a live owner; a STALE one (old mtime) is a dead owner.
 class WorktreeGateTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("wt-gate-home")
@@ -46,7 +48,8 @@ class WorktreeGateTest < Minitest::Test
         "store_branch" => "plastic-store/73c2--worktree-enforcement-gate",
         "provisioned" => true,
       },
-      "lock" => { "owner_session" => session, "pid" => $$, "acquired_at" => nil, "host" => nil },
+      "lock" => { "owner_session" => session, "acquired_at" => nil, "host" => nil,
+                  "type" => "delivery", "delegates" => [] },
     }
   end
 
@@ -89,19 +92,6 @@ class WorktreeGateTest < Minitest::Test
 
   # --- Rule 2: non-owner edit to another intent's locked store dir ------------
 
-  # Write a bridge into PLASTIC_TMP for another intent with the given pid/session.
-  def write_other_bridge(id:, store:, session:, pid:)
-    File.write(
-      File.join(@tmp, "plastic-#{session}.json"),
-      JSON.generate(
-        "session" => session,
-        "intent" => { "id" => id, "store" => store },
-        "build" => { "auto" => true },
-        "lock" => { "owner_session" => session, "pid" => pid },
-      ),
-    )
-  end
-
   def other_intent_dir(id, slug)
     d = File.join(@store, "#{id}--#{slug}")
     FileUtils.mkdir_p(d)
@@ -110,7 +100,7 @@ class WorktreeGateTest < Minitest::Test
 
   def test_blocks_non_owner_edit_to_locked_active_intent_store
     other = other_intent_dir("99", "other-thing")
-    write_other_bridge(id: "99", store: @store, session: "owner99", pid: $$) # live owner
+    Lock.acquire(other, session: "owner99") # fresh foreign lock = live owner
     # An unprovisioned bridge for "me": rule 1 is inert, rule 2 fires.
     bridge = provisioned_bridge(session: "me")
     bridge["worktree"]["provisioned"] = false
@@ -120,21 +110,22 @@ class WorktreeGateTest < Minitest::Test
   end
 
   def test_allows_owner_edit_to_own_locked_intent_store
-    # The other bridge is owned by the SAME session doing the edit -> not "other".
+    # The other intent's lock is owned by the SAME session doing the edit.
     other = other_intent_dir("99", "other-thing")
-    write_other_bridge(id: "99", store: @store, session: "me", pid: $$)
+    Lock.acquire(other, session: "me")
     bridge = provisioned_bridge(session: "me")
     bridge["worktree"]["provisioned"] = false
     assert_nil decision(bridge, File.join(other, "spec.md"), session: "me")
   end
 
-  def test_allows_edit_to_intent_store_with_dead_owner
+  def test_allows_edit_to_intent_store_with_stale_lock
     other = other_intent_dir("99", "other-thing")
-    write_other_bridge(id: "99", store: @store, session: "owner99", pid: 2_147_483_000) # dead
+    Lock.acquire(other, session: "owner99")
+    FileUtils.touch(Lock.path(other), mtime: Time.now - 4000) # stale = dead owner
     bridge = provisioned_bridge(session: "me")
     bridge["worktree"]["provisioned"] = false
     assert_nil decision(bridge, File.join(other, "spec.md"), session: "me"),
-               "a dead owner does not hold the lock (stale reclaim)"
+               "a stale lock does not hold (explicit takeover reclaims it)"
   end
 
   def test_allows_edit_under_plastic_home_outside_any_intent_dir

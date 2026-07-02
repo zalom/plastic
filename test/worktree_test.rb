@@ -7,6 +7,7 @@ require "fileutils"
 require "json"
 require "stringio"
 require_relative "../scripts/lib/worktree"
+require_relative "../scripts/lib/lock"
 
 # Hermetic tests for the Worktree module (intent 73c1). No real git runs: a
 # FakeRunner records calls and returns scripted results. projects.yml is built
@@ -224,70 +225,58 @@ class WorktreeTest < Minitest::Test
     assert_nil result["worktree"]
   end
 
-  # --- session_live? ---------------------------------------------------------
+  # --- lock_held_by_other? (intent 108: the delivery.lock file decides) -------
 
-  def test_session_live_true_for_self
-    assert Worktree.session_live?(Process.pid)
+  def intent_dir_with_lock(store, id, slug, session:, mtime: nil)
+    dir = File.join(store, "#{id}--#{slug}")
+    FileUtils.mkdir_p(dir)
+    Lock.acquire(dir, session: session)
+    FileUtils.touch(Lock.path(dir), mtime: mtime) if mtime
+    dir
   end
 
-  def test_session_live_false_for_dead_or_invalid
-    refute Worktree.session_live?(nil)
-    refute Worktree.session_live?(0)
-    refute Worktree.session_live?(-1)
-    refute Worktree.session_live?("not-a-pid")
-    # A pid extremely unlikely to exist.
-    refute Worktree.session_live?(2_000_000_000)
-  end
-
-  # --- lock_held_by_other? ---------------------------------------------------
-
-  def write_bridge(session, intent_id:, store:, pid:)
-    data = {
-      "session" => session,
-      "intent" => { "id" => intent_id, "store" => store },
-      "lock" => { "owner_session" => session, "pid" => pid },
-    }
-    File.write(File.join(@tmp, "plastic-#{session}.json"), JSON.pretty_generate(data))
-  end
-
-  def test_lock_held_by_other_true_for_live_other_owner
-    write_bridge("other", intent_id: "73c1", store: @store, pid: Process.pid)
+  def test_lock_held_by_other_true_for_fresh_foreign_lock
+    intent_dir_with_lock(@store, "73c1", "worktree-x", session: "other")
     assert Worktree.lock_held_by_other?(
-      intent_id: "73c1", store: @store, current_session: "me",
-      home: @home, tmp: @tmp
+      intent_id: "73c1", store: @store, current_session: "me", home: @home
     )
   end
 
   def test_lock_not_held_by_self
-    write_bridge("me", intent_id: "73c1", store: @store, pid: Process.pid)
+    intent_dir_with_lock(@store, "73c1", "worktree-x", session: "me")
     refute Worktree.lock_held_by_other?(
-      intent_id: "73c1", store: @store, current_session: "me",
-      home: @home, tmp: @tmp
+      intent_id: "73c1", store: @store, current_session: "me", home: @home
     )
   end
 
-  def test_lock_not_held_when_owner_dead
-    write_bridge("other", intent_id: "73c1", store: @store, pid: 2_000_000_000)
+  def test_lock_not_held_by_other_for_a_delegate
+    dir = intent_dir_with_lock(@store, "73c1", "worktree-x", session: "other")
+    Lock.add_delegate(dir, delegate: "me", session: "other")
     refute Worktree.lock_held_by_other?(
-      intent_id: "73c1", store: @store, current_session: "me",
-      home: @home, tmp: @tmp
-    )
+      intent_id: "73c1", store: @store, current_session: "me", home: @home
+    ), "a delegate of the owner does not count as 'other' (D4)"
+  end
+
+  def test_lock_not_held_when_stale
+    intent_dir_with_lock(@store, "73c1", "worktree-x", session: "other",
+                         mtime: Time.now - 4000)
+    refute Worktree.lock_held_by_other?(
+      intent_id: "73c1", store: @store, current_session: "me", home: @home
+    ), "a stale lock does not hold (explicit takeover reclaims it)"
   end
 
   def test_lock_not_held_for_different_intent
-    write_bridge("other", intent_id: "99", store: @store, pid: Process.pid)
+    intent_dir_with_lock(@store, "99", "other-thing", session: "other")
     refute Worktree.lock_held_by_other?(
-      intent_id: "73c1", store: @store, current_session: "me",
-      home: @home, tmp: @tmp
+      intent_id: "73c1", store: @store, current_session: "me", home: @home
     )
   end
 
   def test_lock_scoped_by_store_when_provided
     other_store = File.join(@plastic_home, "projects", "elsewhere", "store")
-    write_bridge("other", intent_id: "73c1", store: other_store, pid: Process.pid)
+    intent_dir_with_lock(other_store, "73c1", "worktree-x", session: "other")
     refute Worktree.lock_held_by_other?(
-      intent_id: "73c1", store: @store, current_session: "me",
-      home: @home, tmp: @tmp
+      intent_id: "73c1", store: @store, current_session: "me", home: @home
     )
   end
 
