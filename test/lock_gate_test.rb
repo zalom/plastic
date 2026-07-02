@@ -184,7 +184,10 @@ class LockGateTest < Minitest::Test
     lib = File.expand_path("../scripts/lib/bridge", __dir__)
     code = "Bridge.arm_guided(%q{sess-1}, intent_id: %q{96}, " \
            "intent_dir: %q{#{@intent_dir}}, store: %q{#{@store}}, name: %q{demo})"
-    system({ "PLASTIC_TMP" => tmp, "CLAUDE_CODE_SESSION_ID" => nil },
+    # HOME is isolated too: arm's real Worktree.provision derives plastic_home
+    # from HOME, and a real HOME would plant a store worktree in the LIVE
+    # ~/.plastic (observed before this guard existed).
+    system({ "PLASTIC_TMP" => tmp, "CLAUDE_CODE_SESSION_ID" => nil, "HOME" => @home },
            RbConfig.ruby, "-r", lib, "-e", code, exception: true)
 
     bridge = Bridge.read("sess-1", tmp: tmp)

@@ -96,6 +96,10 @@ class BridgeResolveTest < Minitest::Test
       saved_tmp = ENV["PLASTIC_TMP"]
       ENV["PLASTIC_TMP"] = tmp
       ENV["CLAUDE_CODE_SESSION_ID"] = "real-id"
+      # Neutralize the real provision (intent 108 hermeticity fix): unstubbed,
+      # arm's provision would plant a store worktree in the LIVE ~/.plastic.
+      real_provision = Worktree.method(:provision)
+      Worktree.define_singleton_method(:provision) { |d, *_a, **_kw| d }
       begin
         data = Bridge.arm_auto(nil, intent_id: "52", intent_dir: @intent_dir,
                                store: @store, name: "demo")
@@ -103,6 +107,7 @@ class BridgeResolveTest < Minitest::Test
         assert File.exist?(File.join(tmp, "plastic-real-id.json")),
                "expected bridge file keyed by the real code session id"
       ensure
+        Worktree.define_singleton_method(:provision, real_provision)
         if saved_tmp.nil?
           ENV.delete("PLASTIC_TMP")
         else
