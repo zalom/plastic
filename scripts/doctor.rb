@@ -1019,9 +1019,9 @@ class Doctor
         groups = group.is_a?(Array) ? group : [group]
         live = settings.dig("hooks", event) || []
         groups.each do |g|
-          match = live.find { |h| h.is_a?(Hash) && h["matcher"] == g["matcher"] }
+          matches = live.select { |h| h.is_a?(Hash) && h["matcher"] == g["matcher"] }
           wanted = g["hooks"].map { |h| h["command"] }
-          got = match ? Array(match["hooks"]).map { |h| h["command"] } : []
+          got = matches.flat_map { |m| Array(m["hooks"]).map { |h| h["command"] } }
           missing = wanted - got
           diffs << "#{event}[#{g['matcher']}] missing: #{missing.join(', ')}" unless missing.empty?
         end

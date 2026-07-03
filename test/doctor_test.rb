@@ -497,6 +497,82 @@ class DoctorAgentRegistrationTest < Minitest::Test
            "the diff must name the missing bash-gate: #{registry_check[:details].inspect}"
   end
 
+  # intent 115 (AC1): a foreign tool (Serena) occupies the FIRST SessionStart
+  # matcher-"" group and the Plastic hooks live in a SECOND matcher-"" group.
+  # A single-group Array#find masks the real hooks; aggregation across ALL
+  # same-matcher groups must PASS. RED before the fix, GREEN after.
+  def test_shared_matcher_foreign_first_group_passes
+    write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    # Prepend a foreign matcher-"" group whose command is NOT plastic- (so it
+    # is not mistaken for a stray); the Plastic hooks stay in the second group.
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"]["SessionStart"].unshift({
+      "matcher" => "",
+      "hooks" => [{ "type" => "command", "command" => "/opt/serena/hooks/serena-session-start" }],
+    })
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    registry_check = checks.find { |c| c[:name] == "hooks_match_registry" }
+
+    assert_equal "pass", registry_check[:status],
+                 "shared matcher with a foreign first group must pass: #{registry_check[:details].inspect}"
+  end
+
+  # intent 115 (AC2): when a Plastic hook is absent from EVERY live group with
+  # that matcher, the check must still FAIL and name the missing command.
+  def test_shared_matcher_all_groups_missing_plastic_hook_fails
+    write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    # Remove plastic-check-update from every SessionStart group, then prepend a
+    # foreign group: the hook is now missing from all same-matcher groups.
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"]["SessionStart"].each do |g|
+      g["hooks"].reject! { |h| h["command"].to_s.end_with?("plastic-check-update") }
+    end
+    settings["hooks"]["SessionStart"].unshift({
+      "matcher" => "",
+      "hooks" => [{ "type" => "command", "command" => "/opt/serena/hooks/serena-session-start" }],
+    })
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    registry_check = checks.find { |c| c[:name] == "hooks_match_registry" }
+
+    assert_equal "fail", registry_check[:status]
+    assert registry_check[:details].any? { |d| d.include?("plastic-check-update") },
+           "the diff must name the missing plastic-check-update: #{registry_check[:details].inspect}"
+  end
+
+  # intent 115 (AC3): a stray Plastic hook the registry does not define must
+  # still be reported. Stray detection is untouched by the aggregation fix.
+  def test_stray_plastic_hook_still_reported
+    write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"]["SessionStart"].first["hooks"] << {
+      "type" => "command", "command" => "/opt/plastic/hooks/plastic-bogus-hook"
+    }
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    registry_check = checks.find { |c| c[:name] == "hooks_match_registry" }
+
+    assert_equal "fail", registry_check[:status]
+    assert registry_check[:details].any? { |d| d.include?("stray") && d.include?("plastic-bogus-hook") },
+           "the diff must report the stray plastic hook: #{registry_check[:details].inspect}"
+  end
+
   def test_missing_skills_directory_fails
     hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
     write_claude_hooks(hooks_dir)
