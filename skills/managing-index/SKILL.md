@@ -41,7 +41,11 @@ Topic-based groupings. Manually curated. Create a new cluster when 3+ intents sh
 ### Completed
 All completed intents with dates. Links preserved, never deleted.
 
-When you move an intent INTO Completed or Abandoned, stamp the terminal savepoint bookend as the closing act of the transfer (intent 81), so the ledger's last line records the disposition: `ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.append_terminal_savepoint("<intent_dir>", "delivered")'` (use `"abandoned"` for an abandoned intent). Idempotent.
+When you move an intent INTO Completed or Abandoned, run the closing acts of the transfer in the canonical End-tail order (see PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`):
+
+1. Author a real `outcome.md` in the intent directory from `~/.plastic/templates/outcome.md`, with the frontmatter `disposition: delivered` for a completed intent or `disposition: abandoned` for an abandoned one. `outcome.md` is MANDATORY at every terminal, delivered and abandoned alike: on abandon it records the abandonment reason and replaces the scaffolded placeholder sentinel (never leave `outcome.md` a placeholder at a terminal).
+2. Stamp the terminal savepoint bookend (intent 81), so the ledger's last line records the disposition: `ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.append_terminal_savepoint("<intent_dir>", "delivered")'` (use `"abandoned"` for an abandoned intent). Idempotent.
+3. Refresh the QMD index for that store LAST, after the terminal move and savepoint (no-op when QMD is absent), in the background so it never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`.
 
 ## Workflow
 

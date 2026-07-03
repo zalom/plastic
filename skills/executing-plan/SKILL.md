@@ -70,12 +70,12 @@ After all tasks complete, dispatch a final reviewer for the entire implementatio
 ### Step 4: Update Intent and Complete
 Capture observations in `## Insights`. When ALL checklist items are checked:
 
-1. Write `outcome.md` with detailed results in the intent directory, using the `${CLAUDE_PLUGIN_ROOT}/templates/outcome.md` form
+1. Write `outcome.md` with detailed results in the intent directory, using the `${CLAUDE_PLUGIN_ROOT}/templates/outcome.md` form. Set the frontmatter `disposition: delivered` (the delivered terminal). `outcome.md` is mandatory at every terminal and self-declares its disposition (canonical done-marker in PLASTIC.md).
 2. Write `## Outcome` summary in the intent file (1-2 sentences)
 3. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
 4. Update cluster entries to show `_(completed)_`
 5. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: complete intent <ID> — <name>"`
-6. On completion, ALWAYS refresh the QMD search index for this store (no-op when QMD is absent), running in the background so it never blocks the turn: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`. Completion is the lifecycle event that keeps the search index fresh.
+6. QMD reindex LAST (canonical End tail). As the final End-tail step, after the terminal move and any disarm, ALWAYS refresh the QMD search index for this store (no-op when QMD is absent), running in the background so it never blocks the turn: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`. Completion is the lifecycle event that keeps the search index fresh, and the reindex runs last so the index never references a bridge or lock that is about to disappear (see PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`).
 
 **This is NOT optional.** An intent with all checklist items done but no Outcome is a broken state. Complete the intent immediately — do not leave it for later.
 
@@ -96,12 +96,12 @@ For each task:
 ### Step 3: Update Intent and Complete
 Capture observations in `## Insights`. When ALL checklist items are checked:
 
-1. Write `outcome.md` with detailed results in the intent directory, using the `${CLAUDE_PLUGIN_ROOT}/templates/outcome.md` form
+1. Write `outcome.md` with detailed results in the intent directory, using the `${CLAUDE_PLUGIN_ROOT}/templates/outcome.md` form. Set the frontmatter `disposition: delivered` (the delivered terminal). `outcome.md` is mandatory at every terminal and self-declares its disposition (canonical done-marker in PLASTIC.md).
 2. Write `## Outcome` summary in the intent file (1-2 sentences)
 3. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
 4. Update cluster entries to show `_(completed)_`
 5. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: complete intent <ID> — <name>"`
-6. On completion, ALWAYS refresh the QMD search index for this store (no-op when QMD is absent), running in the background so it never blocks the turn: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`. Completion is the lifecycle event that keeps the search index fresh.
+6. QMD reindex LAST (canonical End tail). As the final End-tail step, after the terminal move and any disarm, ALWAYS refresh the QMD search index for this store (no-op when QMD is absent), running in the background so it never blocks the turn: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`. Completion is the lifecycle event that keeps the search index fresh, and the reindex runs last so the index never references a bridge or lock that is about to disappear (see PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`).
 
 **This is NOT optional.** Complete the intent immediately when work is done.
 

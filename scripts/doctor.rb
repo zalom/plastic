@@ -21,6 +21,8 @@ require_relative "lib/graph_rebuild"
 require_relative "lib/links_projection"
 require_relative "lib/links_section"
 require_relative "lib/hook_registry"
+require_relative "lib/lock"
+require_relative "lib/bridge"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -501,6 +503,184 @@ class Doctor
     # scripts/project-links tool uses, so the two can never diverge. Resolution
     # spans all stores; only the REPORTED findings are filtered to the scoped store.
     checks << links_projection_check(scopes: scopes)
+
+    checks
+  end
+
+  # --- Check: the three done-signals agree + stalled completion (intent 93) ---
+  #
+  # "Done" is one law with three signals that MUST agree: INDEX
+  # `## Completed`/`## Abandoned` is the single canonical terminal marker;
+  # `outcome.md` is the "deliverable exists" signal (real, non-placeholder, with a
+  # `disposition:` header); the savepoint `Done` line is the audit echo. INDEX
+  # wins on conflict. This check flags any disagreement, and separately surfaces a
+  # "stalled completion": an intent that is terminal in INDEX but whose End tail
+  # never released its `delivery.lock` (the post-done window never closed). Read
+  # only, dependency-light: it uses INDEX parsing, file presence, the placeholder
+  # sentinel, and `Lock.fresh?` — no new lock, no 111 lock-liveness surface.
+
+  # For one store's INDEX.md, map each referenced intent directory name to the
+  # `## ...` section(s) it appears under: { "<id>--<slug>" => ["Active", ...] }.
+  def index_sections_by_dir(index_path)
+    sections = Hash.new { |h, k| h[k] = [] }
+    return sections unless File.exist?(index_path)
+
+    current = nil
+    File.foreach(index_path) do |line|
+      if (m = line.match(/^##\s+(.+?)\s*$/))
+        current = m[1]
+        next
+      end
+      next unless current
+
+      line.scan(%r{store/([\w][\w.-]*?)(?:/|\))}) do |(dirname)|
+        sections[dirname] << current unless sections[dirname].include?(current)
+      end
+    end
+    sections
+  end
+
+  # Stores to reconcile: the global store plus each project store, filtered by
+  # `scopes` (nil = all) exactly like check_conventions.
+  def done_signal_stores(scopes)
+    stores = []
+
+    if scopes.nil? || scopes.include?("global")
+      stores << {
+        scope: "global",
+        index: File.join(plastic_home, "INDEX.md"),
+        store_dir: File.join(plastic_home, "store"),
+      }
+    end
+
+    projects_root = File.join(plastic_home, "projects")
+    if File.directory?(projects_root)
+      Dir.children(projects_root).sort.each do |project|
+        scope = "project:#{project}"
+        next unless scopes.nil? || scopes.include?(scope)
+
+        store_dir = File.join(projects_root, project, "store")
+        next unless File.directory?(store_dir)
+
+        stores << {
+          scope: scope,
+          index: File.join(projects_root, project, "INDEX.md"),
+          store_dir: store_dir,
+        }
+      end
+    end
+
+    stores
+  end
+
+  def check_done_signals(scopes: nil)
+    conflicts = [] # canonical INDEX-wins disagreement (fail)
+    gaps = []      # terminal completeness gaps on immutable/legacy history (warn)
+    stalled = []   # terminal but End tail unfinished (warn)
+
+    done_signal_stores(scopes).each do |store|
+      index_sections_by_dir(store[:index]).each do |dirname, in_sections|
+        dir = File.join(store[:store_dir], dirname)
+        next unless File.directory?(dir)
+
+        terminal = (in_sections & ["Completed", "Abandoned"]).any?
+        active = in_sections.include?("Active") && !terminal
+        outcome = File.join(dir, "outcome.md")
+        outcome_real = Bridge.stage_file_present?(outcome)
+        label = "#{store[:scope]} store/#{dirname}"
+
+        # HARD conflict: the deliverable exists but INDEX still says Active. This
+        # is the one true INDEX-wins disagreement, so it stays a fail.
+        if active && outcome_real
+          conflicts << "#{label}: outcome.md is real but the intent is still under ## Active " \
+                       "(INDEX is canonical — move it to its terminal section or revert outcome.md)"
+        end
+
+        # Completeness gap (warn, not fail): a terminal intent whose outcome.md is
+        # missing/placeholder. Legacy terminal intents predate this convention and
+        # are immutable, so this is advisory, never breakage.
+        if terminal && !outcome_real
+          state = File.exist?(outcome) ? "still a placeholder" : "missing"
+          gaps << "#{label}: terminal in INDEX but outcome.md is #{state} " \
+                  "(author outcome.md with the disposition header)"
+        end
+
+        next unless terminal
+
+        # Audit echo (weakest signal, D1): the savepoint should carry a
+        # `Done delivered|abandoned` line. Missing on legacy history -> advisory gap.
+        savepoint = File.join(dir, "savepoint.md")
+        if File.exist?(savepoint) && File.read(savepoint) !~ /\bDone\b.*\b(delivered|abandoned)\b/
+          gaps << "#{label}: terminal in INDEX but savepoint.md has no " \
+                  "`Done delivered|abandoned` line (audit echo missing)"
+        end
+
+        # Stalled completion: the End tail never released the delivery lock, so the
+        # post-done window `[INDEX terminal -> Lock.release]` never closed.
+        if File.exist?(Lock.path(dir))
+          note = Lock.fresh?(dir) ? "delivery.lock still present (post-done window not closed)"
+                                  : "delivery.lock is present and STALE"
+          stalled << "#{label}: #{note} — the End tail did not finish"
+        end
+      end
+    end
+
+    checks = []
+
+    # signals_agree: only the canonical INDEX-wins conflict is a hard fail, so
+    # `doctor` never goes red on immutable legacy terminal intents.
+    if conflicts.empty?
+      checks << check(
+        category: "done_signals", name: "signals_agree", status: "pass",
+        message: "No done-signal conflicts (no intent has a real outcome.md while still Active)"
+      )
+    else
+      checks << check(
+        category: "done_signals", name: "signals_agree", status: "fail",
+        message: "#{conflicts.size} done-signal conflict#{conflicts.size == 1 ? "" : "s"} " \
+                 "(INDEX ## Completed/## Abandoned is canonical; a real outcome.md must not stay Active)",
+        details: conflicts, fixable: true,
+        fix_hint: "Reconcile to INDEX (canonical): move the intent to its terminal section, or revert " \
+                  "outcome.md to a placeholder. Deliverable-exists but still-Active is the one done-signal " \
+                  "state that must never persist."
+      )
+    end
+
+    # signals_complete: terminal completeness gaps are advisory (warn), because
+    # completed intents are immutable and legacy history predates this convention.
+    if gaps.empty?
+      checks << check(
+        category: "done_signals", name: "signals_complete", status: "pass",
+        message: "Every terminal intent carries a real outcome.md and a Done savepoint echo"
+      )
+    else
+      checks << check(
+        category: "done_signals", name: "signals_complete", status: "warn",
+        message: "#{gaps.size} terminal completeness gap#{gaps.size == 1 ? "" : "s"} " \
+                 "(outcome.md or the savepoint Done echo is missing; advisory on immutable history)",
+        details: gaps, fixable: true,
+        fix_hint: "For live terminals, author a real outcome.md with the `disposition:` header via the " \
+                  "completion/abandon path (plastic-auto or plastic-intent-curator) and stamp the terminal " \
+                  "savepoint. Legacy terminal intents are immutable, so pre-convention gaps stay advisory."
+      )
+    end
+
+    if stalled.empty?
+      checks << check(
+        category: "done_signals", name: "stalled_completion", status: "pass",
+        message: "No stalled completions (every terminal intent released its delivery lock)"
+      )
+    else
+      checks << check(
+        category: "done_signals", name: "stalled_completion", status: "warn",
+        message: "#{stalled.size} stalled completion#{stalled.size == 1 ? "" : "s"} " \
+                 "(terminal in INDEX but the End tail did not finish)",
+        details: stalled, fixable: true,
+        fix_hint: "Finish the End tail via stale-lock reclaim: `plastic-lock reclaim`, then complete the " \
+                  "tail (Worktree.release -> Lock.release -> purge -> QMD reindex last). This FINISHES a " \
+                  "completion; it is NOT a reactivation of a done intent."
+      )
+    end
 
     checks
   end
@@ -1457,6 +1637,7 @@ class Doctor
     all_checks += check_project_stores
     all_checks += check_deprecations
     all_checks += check_qmd
+    all_checks += check_done_signals
 
     summarize(all_checks, agent_key)
   end
@@ -1483,9 +1664,9 @@ class Doctor
     all_checks =
       case store
       when :all
-        check_global_store + check_project_stores + check_conventions
+        check_global_store + check_project_stores + check_conventions + check_done_signals
       when :global
-        check_global_store + check_conventions(scopes: ["global"])
+        check_global_store + check_conventions(scopes: ["global"]) + check_done_signals(scopes: ["global"])
       else
         all_checks_for_project_slug(store)
       end
@@ -1508,7 +1689,8 @@ class Doctor
     end
 
     check_project_store(slug, projects[slug]) +
-      check_conventions(scopes: ["project:#{slug}"])
+      check_conventions(scopes: ["project:#{slug}"]) +
+      check_done_signals(scopes: ["project:#{slug}"])
   end
 
   # Roll a list of checks up into the standard result envelope.

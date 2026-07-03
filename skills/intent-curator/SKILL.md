@@ -38,9 +38,10 @@ The agent handles:
 - Cluster management (create, merge, rename)
 - Orphan detection
 
-When an intent reaches a terminal state — moved to Completed OR Abandoned — do two things as the closing act of the transfer:
+When an intent reaches a terminal state — moved to Completed OR Abandoned — do these things as the closing act of the transfer, in the canonical End-tail order (see PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`):
 
-1. Stamp the terminal savepoint bookend (intent 81), so the ledger's last line records the disposition: `ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.append_terminal_savepoint("<intent_dir>", "delivered")'` (use `"abandoned"` for an abandoned intent). Idempotent.
-2. Refresh the QMD index for the affected store (no-op when QMD absent), running in the background so it never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`.
+1. Author a real `outcome.md` in the intent directory from `~/.plastic/templates/outcome.md`, with the frontmatter `disposition: delivered` for a completed intent or `disposition: abandoned` for an abandoned one. `outcome.md` is MANDATORY at every terminal, delivered and abandoned alike: on abandon it records the abandonment reason and replaces the scaffolded placeholder sentinel (never leave `outcome.md` a placeholder at a terminal).
+2. Stamp the terminal savepoint bookend (intent 81), so the ledger's last line records the disposition: `ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.append_terminal_savepoint("<intent_dir>", "delivered")'` (use `"abandoned"` for an abandoned intent). Idempotent.
+3. Refresh the QMD index for the affected store LAST, after the terminal move and savepoint (no-op when QMD absent), running in the background so it never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`.
 
 After the agent completes, report what changed.

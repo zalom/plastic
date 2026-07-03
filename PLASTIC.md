@@ -362,8 +362,63 @@ each station.
 | Why | `spec.md` | owner writes refresh the lease (lock file mtime heartbeat) | gate-check requires the intent file with `## Intent` before spec.md; lock-gate admits only the owner or a delegate | savepoint `Why started`, `Why spec.md created` |
 | How | `plan.md`, `actions/`, `checklist.md` | heartbeat on writes; the code gate stays closed until plan.md plus checklist.md exist | gate-check requires spec.md before plan.md, and plan.md plus actions/ before checklist.md | savepoint `How started`, `How plan.md created`, `How checklist.md created`, `Exec started` |
 | Exec | code on the intent branch, checklist checked off | heartbeat; code edits confined to the provisioned worktree; delegates write under the owner's lock; bash, interpreter, and MCP writes gated the same way | code-gate, worktree-gate, bash-gate, lock-gate | checklist boxes; savepoint milestones |
-| End (done) | `outcome.md`, INDEX moves to Completed | ordered End tail: verify, merge and remove worktrees, disarm clears `delivery.lock`, only then is the bridge purge-eligible | gate-check blocks outcome.md while checklist items are unchecked | savepoint `Done delivered` (or `abandoned`); takeover audits, if any, remain in savepoint.md |
+| End (done) | mandatory `outcome.md` (`disposition: delivered\|abandoned`), INDEX moves to Completed or Abandoned | ordered End tail: verify, merge and remove worktrees, disarm clears `delivery.lock`, then the bridge is purge-eligible, and the QMD reindex runs LAST (after purge) | gate-check blocks outcome.md while checklist items are unchecked | savepoint `Done delivered` (or `abandoned`); takeover audits, if any, remain in savepoint.md |
 | Maintenance (any stage) | `revisions.md` move-and-record entries | future `maintenance.lock` (short TTL), mutually exclusive with `delivery.lock` in either direction; 108 ships the schema seam only, the implementation follows intent 93 in a chained intent | acquisition refuses while the other lock type is fresh; a terminal intent with no lock held is read-only | dated, rule-tagged `revisions.md` entry; savepoint untouched |
+
+### What "intent done" means (intent 93)
+
+Done is one law with three signals, and they must agree. INDEX `## Completed` /
+`## Abandoned` is the single canonical terminal marker: it is the store-wide ledger a fresh
+session reads first, so it wins on any conflict. `outcome.md` is the "deliverable exists"
+signal, and the savepoint `Done delivered|abandoned` line is the audit echo. All three must
+agree; when they disagree, INDEX is authoritative and `doctor` flags the mismatch (the
+`done_signals` check: `outcome.md` real but still under `## Active`, or terminal without a
+real `outcome.md`, or a terminal intent whose savepoint carries no `Done` line).
+
+`outcome.md` is mandatory at every terminal transition, delivered and abandoned alike. It
+self-declares its disposition through a `disposition: delivered|abandoned` frontmatter
+header. The delivered path authors it with the result; the abandoned path authors it with
+the abandonment reason and no longer leaves the scaffolded placeholder sentinel in place.
+
+The canonical End tail runs in this order, and the QMD reindex is always LAST, after the
+purge: `outcome.md -> INDEX terminal -> savepoint Done -> commit -> disarm (Worktree.release
+-> Lock.release -> purge) -> QMD reindex`. Running the reindex last keeps the index from
+ever referencing a bridge or lock that disarm is about to remove.
+
+The post-done access window is lock-bounded: `[INDEX terminal -> Lock.release]`. Through it
+the completing session keeps full read and write access to the terminal directory and no
+purge can fire (108's lock-held keep-guard keeps the bridge while `delivery.lock` exists).
+Once the lock is released the window closes: the bridge becomes purge-eligible and the
+directory is frozen. A crash mid-tail is recovered by stale-lock reclaim plus finishing the
+tail; `doctor` surfaces this as a "stalled completion" (terminal in INDEX but the lock is
+still present or stale). Finishing the tail is FINISHING a completion, never a reactivation:
+a done intent is never moved back to `## Active`.
+
+Terminal immutability (the contract intent 112 enforces): a terminal directory is writable
+ONLY while a lock is held. The delivery lock covers the completing session's End tail up to
+`Lock.release`; the maintenance lock covers sanctioned structural move-and-record edits
+after. Terminal with no lock held is frozen. There are only two locks in the system,
+delivery and maintenance (108 D11). This governs WRITES only: reads of a terminal intent are
+always allowed and unbounded (curator reindex, dashboards, and future intents that reference
+its id or chain), so a done intent stays fully readable forever. Intent 93 states this rule;
+intent 112 builds the gate that enforces it.
+
+Fail-safe lock doctrine (the contract intent 111 implements): the lock system never traps a
+session or burns credits. When a gate cannot verify lock integrity it fails open, degrading
+to advisory (warn) rather than hard-blocking. Repair is orchestrator-driven: on a lock-issue
+signal the orchestrator inspects and repairs the lock automatically, and the human
+`plastic-lock` command is a fallback path, not the trigger. Intent 93 states this doctrine;
+intent 111 builds the fail-open behavior, the lock-liveness surface, the lock-issue message,
+and the auto-repair.
+
+Scope split. Intent 93 ships doctrine plus the low-risk reconciliation that needs no new
+lock: the canonical done-marker and three-signal reconciliation, the mandatory `outcome.md`
+plus `disposition` header at both terminals, the End tail with the reindex moved last, the
+`done_signals` doctor check (three-signal agreement plus stalled-completion detection), and
+the lock-bounded post-done window with its keep-guard test. Intent 111 owns the lock
+liveness surface, the lock-issue message, orchestrator auto-repair, and the fail-open
+behavior itself. Intent 112 owns the maintenance lock and the immutability gate (it inherits
+fail-open from 111). Intent 4a1b1 owns deep agent stuck-detection and is not superseded.
 
 ## Deprecation Process
 
