@@ -1,3 +1,6 @@
+---
+disposition: delivered|abandoned
+---
 # Outcome: <intent name>
 
 ## Summary

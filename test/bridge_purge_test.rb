@@ -156,6 +156,27 @@ class BridgePurgeTest < Minitest::Test
     assert File.exist?(f)
   end
 
+  # Intent 93 D4/AC5: the post-done window is bounded by the delivery lock,
+  # `[INDEX terminal -> Lock.release]`. The OPEN edge (above) keeps the terminal
+  # bridge while the lock is held; the CLOSE edge (here) proves that once the
+  # owner releases the lock the terminal bridge becomes purge-eligible again.
+  def test_purges_a_terminal_bridge_once_the_delivery_lock_is_released
+    write_index_active # 80 is TERMINAL (not Active)
+    f = seed_bridge("other-sess", id: "80")
+
+    # Window OPEN: lock held -> no purge.
+    Lock.acquire(@intent_dir, session: "other-sess")
+    removed = Bridge.purge_done_bridges(session: "current", tmp: @tmp)
+    refute_includes removed, f, "window open: a held lock keeps the terminal bridge"
+    assert File.exist?(f)
+
+    # Window CLOSES on Lock.release -> the terminal bridge is now purged.
+    assert_equal :released, Lock.release(@intent_dir, session: "other-sess")
+    removed = Bridge.purge_done_bridges(session: "current", tmp: @tmp)
+    assert_includes removed, f, "window closed: after Lock.release the bridge is purge-eligible"
+    refute File.exist?(f)
+  end
+
   def test_returns_removed_paths
     write_index_active("80")
     keep = seed_bridge("live", id: "80")

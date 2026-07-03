@@ -340,7 +340,11 @@ trigger lives at a fixed point:
 - **project creation**: the creating-project skill registers the new project
   store's collection (`register --store <dir>`).
 - **intent delivery**: the delivery/completion path reindexes the delivering
-  store's collection. This is mandatory on completion and runs async
+  store's collection. This is the LAST step of the canonical End tail (intent
+  93): it runs after the INDEX terminal move, the savepoint `Done` line, the
+  commit, and disarm (worktree release, `Lock.release`, then the bridge purge),
+  so the index never references a bridge or lock that disarm is about to remove.
+  It is mandatory on completion and runs async
   (`reindex --store <dir> --async`) so it never blocks the turn. The sync
   `reindex` runs `qmd update` then `qmd embed -c plastic-<slug>` inline;
   `QmdSync.reindex_async` runs the same work detached via `Process.spawn` plus
@@ -579,7 +583,16 @@ own isolation instead, deterministic and cwd-independent.
   cannot, and fills the bridge's `lock` block as a cache; `disarm_auto`
   releases the worktrees, clears the lock, and only then is the bridge
   purge-eligible (`purge_done_bridges` also skips any bridge whose intent dir
-  still holds a `delivery.lock`). Gates decide from the lock file:
+  still holds a `delivery.lock`). This makes the post-done access window
+  lock-bounded, `[INDEX terminal to Lock.release]` (intent 93): while the lock
+  is held the completing session keeps full read and write access to the
+  terminal directory and no purge can fire, and once `Lock.release` runs the
+  window closes, the bridge is purged, and the directory is frozen. A crash
+  mid-tail is recovered by reclaiming the stale lock and finishing the tail;
+  `doctor` (the `done_signals` check) surfaces this as a stalled completion
+  (terminal in INDEX but the lock is still present or stale). Finishing the tail
+  is finishing a completion, never a reactivation: a done intent is never moved
+  back to `## Active`. Gates decide from the lock file:
   `Bridge.lock_gate_decision` reads the TARGET intent dir's lock, admits the
   owner or a registered delegate (even on a stale lock, which stays its
   owner's until an explicit takeover), and every deny names the resolving

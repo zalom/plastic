@@ -71,7 +71,7 @@ ID--slug/
   spec.md         # the Why deliverable
   plan.md         # the How deliverable (planning)
   checklist.md    # the How deliverable (execution registry)
-  outcome.md      # the Exec deliverable (its existence signals completion)
+  outcome.md      # the Exec deliverable (mandatory at every terminal; a disposition: delivered|abandoned header)
   savepoint.md    # deterministic cycle-step ledger, written automatically
   revisions.md    # optional structural-maintenance audit trail (present only after maintenance)
   actions/        # individual work items, when work splits into parallel pieces
@@ -150,6 +150,12 @@ An intent whose delivery touches code runs in its own git worktree, and an inten
 Provisioning is deterministic and cwd-independent. Plastic resolves the project repo from `projects.yml` and runs `git -C <repo> worktree add`, so it never relies on the current directory (this is the fix for the cwd-not-repo-root gap that silently degraded the harness worktree tool). Two worktrees are created per project intent, both named `{id}--{slug}`: a code worktree at `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`, where all code edits happen, and a store worktree at `<plastic_home>/.worktrees/{id}--{slug}` on branch `plastic-store/{id}--{slug}`, so lifecycle-doc commits travel in lockstep with code commits. Creation is idempotent: an existing worktree path is reused, not re-created. Disarming releases both worktrees (`git worktree remove` then `git worktree prune`) and clears the block.
 
 Provisioning fails open: for a pure research or decision intent in the global store, or a repo that is not a git work tree, the code worktree is skipped, `provisioned` stays false, and the fall-back is logged to stderr (never silent). Such intents still get the lock.
+
+### intent done and the end tail (intent 93)
+
+Done is one law with three signals that must agree. The INDEX `## Completed` or `## Abandoned` section is the single canonical terminal marker (the store-wide ledger a fresh session reads first), so it wins on any conflict. `outcome.md` is the deliverable-exists signal, mandatory at every terminal (delivered and abandoned alike) and self-declaring through a `disposition: delivered|abandoned` frontmatter header. The savepoint `Done delivered|abandoned` line is the audit echo. When the three disagree, INDEX is authoritative and `doctor` (the `done_signals` check) reports the mismatch.
+
+The End tail runs in a fixed order, and the QMD reindex is always last, after the purge: `outcome.md`, then the INDEX terminal move, then the savepoint `Done` line, then the commit, then disarm (worktree release, then `Lock.release`, then the bridge purge), and finally the QMD reindex. Running the reindex after disarm keeps the search index from referencing a bridge or lock that is about to disappear. The post-done access window is bounded by the delivery lock, `[INDEX terminal to Lock.release]`: while the lock is held the completing session keeps full access and no purge fires, and once the lock is released the bridge is purged and the directory is frozen (writable again only under the future maintenance lock, the contract intent 112 enforces).
 
 ## dashboard
 

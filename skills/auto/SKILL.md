@@ -209,7 +209,10 @@ During initial project creation, all decisions are non-destructive by definition
 ## Completion
 
 1. Verify all checklist items are checked
-2. Write `outcome.md` with detailed results
+2. Write `outcome.md` with detailed results, from `${CLAUDE_PLUGIN_ROOT}/templates/outcome.md`.
+   Set the frontmatter `disposition: delivered` (this is the delivered terminal). `outcome.md`
+   is mandatory at every terminal and self-declares its disposition (see the canonical done-marker
+   and End tail in PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`).
 3. Write `## Outcome` summary in the intent file (1-2 sentences)
 4. **Release (if configured)**
    1. Detect project — match CWD against paths in `~/.plastic/projects.yml` to find the project slug. If no match, skip to step 5 (default commit-only behavior).
@@ -236,14 +239,7 @@ During initial project creation, all decisions are non-destructive by definition
    ```
    (Use `"abandoned"` instead when the intent is being moved to `## Abandoned`.) Idempotent.
 7. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: deliver intent <ID> — <name>"`
-8. On completion, ALWAYS refresh the QMD search index for this store (no-op when QMD is absent).
-   It runs in the background so it never blocks the turn:
-   ```bash
-   ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async
-   ```
-   Completion is the lifecycle event that keeps the search index fresh. `<store-root>` is the
-   store that holds this intent (the global store or the project store).
-9. Disarm the lifecycle gate (auto delivery is finished):
+8. Disarm the lifecycle gate (auto delivery is finished):
    ```bash
    ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.disarm_auto(ENV["CLAUDE_CODE_SESSION_ID"])'
    ```
@@ -266,6 +262,16 @@ During initial project creation, all decisions are non-destructive by definition
    removed, so the integrated work is not lost. It does this with `Worktree.finish(bridge_data,
    merge: true)` (merge-then-remove). Never leave an orphaned worktree, and run `git worktree
    prune` if you hit a stale reference.
+9. QMD reindex LAST (canonical End tail). AFTER disarm has released the worktrees, cleared the
+   `delivery.lock`, and purged the bridge, refresh the QMD search index for this store (no-op when
+   QMD is absent). It runs in the background so it never blocks the turn:
+   ```bash
+   ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async
+   ```
+   Completion is the lifecycle event that keeps the search index fresh. `<store-root>` is the store
+   that holds this intent (the global store or the project store). The reindex is the LAST End-tail
+   step, run after purge, so the index never references a bridge or lock that is about to disappear
+   (see PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`).
 10. Notify user: "Intent [ID] — [name] delivered. [1-2 sentence summary]. See outcome.md for details."
 
 ## Error Handling
