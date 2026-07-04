@@ -103,6 +103,16 @@ After installation, run `/clear` to load Plastic conventions, then:
 
 Or say "auto" to let the agent handle the full lifecycle autonomously.
 
+## Agents
+
+Each lifecycle stage has one dispatchable background agent: `plastic-intent-discovery` for
+What, `plastic-brainstorming` and `plastic-spec-specialist` for Why, `plastic-planner` for
+How, `plastic-executor` for Exec, `plastic-intent-curator` for Done, plus `plastic-enforcer`
+as the auto-mode orchestrator. Every agent pins an explicit Claude Code model alias (opus or
+sonnet) in its frontmatter: never `inherit`, never Fable. See `docs/architecture.md` for the
+stage table and `docs/internals.md` for how the model is configured, resolved, and applied at
+install time.
+
 ## Documentation
 
 - [`docs/architecture.md`](docs/architecture.md): system structure, the two

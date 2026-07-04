@@ -112,6 +112,31 @@ The tooling layer is thin and sits on top of the store. The parts that supply de
 
 For the operational detail behind these parts (determinism coverage, harness taxonomy, upgrade backlog), see [internals](internals.md).
 
+### per-agent models and stage coverage
+
+Every stage of the intent lifecycle has exactly one dispatchable background agent, plus the enforcer that orchestrates them:
+
+| Stage | Agent |
+|---|---|
+| What | `plastic-intent-discovery` |
+| Why | `plastic-brainstorming` + `plastic-spec-specialist` |
+| How | `plastic-planner` |
+| Exec | `plastic-executor` |
+| Done | `plastic-intent-curator` |
+
+Final-gate code review stays an ad-hoc subagent the enforcer dispatches at the final gate, not a standing role.
+
+`plastic-intent-discovery` is the What-stage agent (see the `plastic-intent-discovery` skill): it fires at intent activation, before the delivery lock is armed and Why begins, runs QMD discovery over the intent's `chain`/`sources` and related parked intents, and deposits its findings to `resources/discovery--<slug>.md` only. It never writes the intent file; the Why-stage `plastic-brainstorming` agent reads its deposit and enriches `## Context`.
+
+Every agent in `agents/*.md` pins an explicit Claude Code model alias (`opus` or `sonnet`) in its frontmatter: never `inherit`, never Fable. The tier is by role weight, not by stage:
+
+| Agent | Model |
+|---|---|
+| `plastic-enforcer`, `plastic-brainstorming`, `plastic-planner` | `opus` |
+| `plastic-spec-specialist`, `plastic-executor`, `plastic-intent-curator`, `plastic-future-intent-researcher`, `plastic-intent-discovery` | `sonnet` |
+
+A project or the global store can override any agent's tier through `agents.models.<basename>` config; see [internals](internals.md) for the config precedence and the installer mechanism that applies it. Every dispatch site also resolves and passes the target agent's model explicitly at dispatch time, belt-and-braces on top of the frontmatter pin, since reading frontmatter at dispatch is a harness detail rather than a Plastic-owned contract. At auto-mode start, the orchestrator advises (never gates) that the user run the main session on the best available thinking model for the sharpest synthesis; this is the one context where Fable is named as an acceptable choice, since it concerns the human's session, not a subagent.
+
 ### qmd search integration
 
 QMD is an optional, recommended local markdown search engine layered over the stores. Plastic functions without it (ripgrep over the store files is the fallback), so the integration adds search without becoming a dependency. The topology is one collection per store in the default qmd index, all `plastic-` prefixed: `plastic-global` for the global store and `plastic-<slug>` for each project store (slugs from `projects.yml`). Plastic delegates all index mechanics to the qmd CLI through a single helper (`scripts/lib/qmd_sync.rb`, exposed as the `scripts/qmd-sync` CLI, with verbs for detect, register, reindex, status, and a read-only `search`) and never reimplements qmd commands. Index mutation is tied to lifecycle events only, never ad-hoc: install registers all stores, project creation registers the new project store, and intent delivery reindexes the delivering store's collection. That delivery reindex is mandatory on completion and runs async (detached, non-blocking) so it never holds up the turn. Session start is report-only and never mutates the index. Query craft itself is owned by the installed `qmd` skill, not by Plastic.

@@ -542,6 +542,74 @@ one shared definition of store creation that creation and repair both consult.
   never edits `projects.yml`, and registration with qmd stays a separate skill
   step that no-ops when qmd is absent.
 
+## per-agent model resolution and installer application (intent 116)
+
+Every subagent in `agents/*.md` pins an explicit Claude Code model alias (`opus`,
+`sonnet`, or `haiku`) in its own frontmatter, tiered by role: `plastic-enforcer`,
+`plastic-brainstorming`, and `plastic-planner` are `opus`; `plastic-spec-specialist`,
+`plastic-executor`, `plastic-intent-curator`, `plastic-future-intent-researcher`, and
+`plastic-intent-discovery` are `sonnet`. None is ever `inherit` and none is ever
+Fable (Fable is named only in the auto-mode advisory notice below, which is about
+the human's main session, never a dispatched subagent).
+
+- **Single source of truth for the tier table**: `scripts/lib/agent_models.rb` holds
+  `AgentModels::TIER_DEFAULTS`, a pure Ruby hash mirroring the shipped frontmatter
+  (basename without `.md` to alias). It has no file IO, no `ENV`, no `eval`. It also
+  exposes `AgentModels.override_map(project_config:, global_config:)`, a pure resolver
+  that merges `agents.models.*` out of a global config hash overlaid by a project
+  config hash (project wins), returning ONLY the configured overrides. It deliberately
+  excludes the tier defaults, because a rewrite to a value the shipped file already
+  has would violate "no override configured leaves the frontmatter untouched."
+- **Config key and precedence**: `agents.models.<basename>` in a project's
+  `<dir>/.plastic_store/config.yml` or the global `~/.plastic/config.yml` overrides
+  one agent's tier, honoring the same `project -> global -> built-in default`
+  precedence `read-config` already applies to every other key.
+  `scripts/read-config` seeds `DEFAULTS["agents"]["models"]` from
+  `AgentModels::TIER_DEFAULTS` (requiring `lib/agent_models` rather than re-typing the
+  table), so `read-config agents.models.plastic-executor` answers `sonnet` out of the
+  box and honors an override the same way any other dotted key does.
+  `templates/config.yml` documents the key as a commented example so a user does not
+  need to read source to find it.
+- **Installer applies the override at copy time**: `InstallerCore#install_agents`
+  takes an injected `models: {}` map (`{ "plastic-executor" => "sonnet" }`, keyed by
+  basename without `.md`) and, per copied file, checks for an override. With one, it
+  rewrites the single frontmatter `model:` line via a targeted regex substitution
+  (`rewrite_model_line`, the same `content.gsub`-style idiom `install_claude` already
+  uses for its hook path rewrite, not the array-only `FrontmatterWriter`); with none,
+  it plain-copies the file so the shipped value passes through unchanged. The new
+  `agent_model_overrides(project_dir = nil)` helper resolves project-then-global
+  config into an `AgentModels.override_map` (loading YAML defensively via
+  `load_config_yaml`, tolerating a missing or malformed file). All three install
+  paths (`install_claude`, `install_codex`, `install_hermes`) call `install_agents`
+  with `models: agent_model_overrides`, so the override lands identically across
+  every harness target on install, update, and repair.
+- **Dispatch-time contract (belt-and-braces)**: because Claude Code reading
+  frontmatter at dispatch time is a harness implementation detail rather than a
+  contract Plastic controls, every dispatch site (the enforcer's per-stage
+  dispatches, `skills/auto/SKILL.md`'s dispatch mechanics, the
+  `plastic-intent-discovery` dispatch inside `plastic-intent-starting`, and
+  `plastic-future-intent-researcher`'s own spawns) also resolves the target agent's
+  model through the same chain (`read-config agents.models.<basename> --project
+  <repo>`) and passes it explicitly as the dispatch call's model parameter, never
+  relying on the dispatched role's frontmatter alone.
+- **Orchestrator advisory (not a gate)**: at auto-mode start, the enforcer and the
+  `plastic-auto` skill each recommend once that the user run the orchestrating main
+  session on the best available thinking model (Fable, Opus, or whatever supersedes
+  them), for the sharpest gating and synthesis. This changes no behavior and blocks
+  nothing if ignored; it concerns only the human's main session, since dispatched
+  subagents keep their pinned tier and never resolve to Fable.
+- **What-stage discovery agent**: `plastic-intent-discovery` (paired with the
+  `skills/intent-discovery/SKILL.md` workflow) closes the What-stage gap in the
+  one-agent-per-stage table. It fires inside `plastic-intent-starting`, right after
+  an intent is activated (moved from `## Future` to `## Active`) and before the
+  bridge is armed: it reads the intent's `chain`/`sources` frontmatter, runs QMD-first
+  discovery across completed predecessor work and related parked or future intents,
+  and deposits its findings to `resources/discovery--<slug>.md` in the intent
+  directory ONLY. It never writes the intent file, `spec.md`, or any other lifecycle
+  deliverable, so the lock-owner-only write rule stays intact; the Why-stage
+  `plastic-brainstorming` agent is the one that reads the deposit and enriches
+  `## Context`.
+
 ## worktree provisioning and the delivery lock (intent 73c)
 
 The harness worktree tool assumes the current directory IS the repo root, which

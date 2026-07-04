@@ -9,6 +9,7 @@
 
 require "yaml"
 require "json"
+require_relative "lib/agent_models"
 
 DEFAULTS = {
   "version" => 3,
@@ -22,6 +23,9 @@ DEFAULTS = {
   "agent" => {
     "type" => "claude-code",
     "parallel_mode" => "linear"
+  },
+  "agents" => {
+    "models" => AgentModels::TIER_DEFAULTS
   },
   "architect" => {
     "style" => nil

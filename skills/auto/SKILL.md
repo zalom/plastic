@@ -10,6 +10,12 @@ description: >-
 
 Announce: "Taking over intent [ID] — [name] for autonomous delivery."
 
+**Advisory (not a gate).** At auto-mode start, recommend once that the user run this
+orchestrating main session on the best available thinking model (Fable, Opus, or whatever
+supersedes them) for the sharpest gating and synthesis. This is advice only: it changes no
+behavior and blocks nothing if ignored. It concerns the human's MAIN session; dispatched
+subagents keep their pinned tier and never resolve to Fable.
+
 ## Precondition
 
 An active intent MUST exist in INDEX.md. If none exists, refuse: "No active intent found. Create one first with /plastic-creating-intent."
@@ -84,6 +90,8 @@ Roster (one role per cycle stage):
 Dispatch rule: sequential, one specialist per stage on one branch (the deliverables share files). Gate each deliverable against the stage's exit criteria before handing off. The How and Exec phases below default to Plastic's native dispatch (`plastic-executing-plan`) and delegate to the superpowers skills only when they are available or the user asks; do not restate the phase mechanics here.
 
 Spawn preamble (live-state injection): before dispatching any specialist, run `scripts/spawn-preamble <intent_dir> --role <role>` and PREPEND its output to that specialist's prompt. The preamble is a deterministic, filesystem-only snapshot of the active intent (id, intent line, current stage) plus the honoring instruction, so every spawned agent boots with accurate live state instead of guessing. This is the authoritative L2 mechanism for harnesses whose sub-agents do not inherit a top-level session event (see `docs/reference/harness-adapters.md`).
+
+Dispatch-time model contract (belt-and-braces): alongside the preamble, resolve each specialist's model through the config chain (`read-config agents.models.<basename> --project <repo>`: project override, then global, then the shipped tier default) and pass it explicitly at dispatch. Never rely on the dispatched role's frontmatter alone; a resolved subagent model is never Fable.
 
 Completion report (require-then-synthesize): every dispatched specialist MUST end with a structured completion report as its final message. The preamble's `REPORT_CONTRACT` injects this and the role prompts carry the per-role format (see `references/agent-report-contract.md`). Because child-agent honor is best-effort across harnesses, this is decision-shaping, not a hard block. When a specialist returns no usable report (it went idle, emitted only a bare ping, or its message was lost to a mid-run interjection), run `scripts/agent-report <intent_dir> --role <role>` to synthesize a deterministic filesystem-derived report so the handoff account always exists. Use the agent-authored report when present, the synthesized one otherwise.
 

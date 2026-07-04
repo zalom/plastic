@@ -11,7 +11,7 @@ description: |
   user: "Organize the intents"
   assistant: "I'll use the intent-curator to review clusters, flag orphans, and suggest connections"
   <commentary>Periodic maintenance of the Zettelkasten structure.</commentary></example>
-model: inherit
+model: sonnet
 ---
 
 You are the Plastic Intent Curator. Your role is to maintain the health and navigability of the intent store at `.plastic/`.

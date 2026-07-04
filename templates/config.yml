@@ -11,3 +11,11 @@ agent:
   parallel_mode: linear
 architect:
   style:
+
+# Per-agent model override (intent 116). Uncomment and set to a Claude Code
+# alias (opus, sonnet, haiku) to override the shipped tier for one agent. With
+# no entry, the shipped default applies. Never resolves to Fable.
+# agents:
+#   models:
+#     plastic-executor: sonnet
+#     plastic-enforcer: opus
