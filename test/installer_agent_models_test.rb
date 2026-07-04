@@ -1,0 +1,66 @@
+# frozen_string_literal: true
+
+require "minitest/autorun"
+require "tmpdir"
+require "fileutils"
+
+require_relative "../scripts/lib/agent_models"
+require_relative "../scripts/lib/installer_core"
+
+# Per-agent model resolution + installer frontmatter rewrite (intent 116).
+class InstallerAgentModelsTest < Minitest::Test
+  WORKTREE = File.expand_path("../../", __FILE__)
+
+  def setup
+    @home = Dir.mktmpdir("agent-models")
+    @core = InstallerCore.new(package_root: WORKTREE, plastic_home: @home, version: "0.0.0")
+    @dest = File.join(@home, "agents")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+  end
+
+  def model_line(basename)
+    File.read(File.join(@dest, "#{basename}.md"))[/^model:.*$/]
+  end
+
+  # --- pure resolver ---
+
+  def test_project_override_wins_over_global
+    g = { "agents" => { "models" => { "plastic-executor" => "opus" } } }
+    p = { "agents" => { "models" => { "plastic-executor" => "sonnet" } } }
+    map = AgentModels.override_map(project_config: p, global_config: g)
+    assert_equal "sonnet", map["plastic-executor"]
+  end
+
+  def test_global_override_applies_absent_project
+    g = { "agents" => { "models" => { "plastic-planner" => "haiku" } } }
+    map = AgentModels.override_map(project_config: {}, global_config: g)
+    assert_equal "haiku", map["plastic-planner"]
+  end
+
+  def test_unknown_agent_key_is_ignored_without_raising
+    g = { "agents" => { "models" => { "plastic-does-not-exist" => "opus" } } }
+    map = AgentModels.override_map(global_config: g)
+    # resolver does not raise; installer never matches it to a copied file
+    @core.install_agents(@dest, models: map)
+    refute File.exist?(File.join(@dest, "plastic-does-not-exist.md"))
+    assert_equal "model: sonnet", model_line("plastic-executor")
+  end
+
+  # --- installer rewrite ---
+
+  def test_no_override_passthrough_preserves_shipped_default
+    @core.install_agents(@dest)
+    assert_equal "model: sonnet", model_line("plastic-executor")
+    assert_equal "model: opus", model_line("plastic-enforcer")
+  end
+
+  def test_override_rewrites_model_line
+    @core.install_agents(@dest, models: { "plastic-executor" => "opus" })
+    assert_equal "model: opus", model_line("plastic-executor")
+    # unlisted agent still passes through
+    assert_equal "model: opus", model_line("plastic-enforcer")
+  end
+end
