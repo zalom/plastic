@@ -150,6 +150,54 @@ agent that can write the file) persists it via the helper. A session that cannot
 intent file still returns its report, so the insight survives.
 For full lifecycle detail, the skills in the Detail column have references/.
 
+## Agent Models and Dispatch (intent 116)
+
+Every lifecycle stage has exactly one dispatchable background agent, plus the enforcer that
+orchestrates them:
+
+| Stage | Agent |
+|---|---|
+| What | `plastic-intent-discovery` |
+| Why | `plastic-brainstorming` + `plastic-spec-specialist` |
+| How | `plastic-planner` |
+| Exec | `plastic-executor` |
+| Done | `plastic-intent-curator` |
+
+Final-gate code review stays an ad-hoc subagent the enforcer dispatches at the final gate, not
+a standing role.
+
+**Model contract.** Every agent in `agents/*.md` pins an explicit Claude Code model alias in
+its own frontmatter: `opus`, `sonnet`, or `haiku`. Never `inherit`, never Fable. Aliases track
+"latest per tier" so no Plastic release is required to advance a tier. The tier by role:
+`plastic-enforcer`, `plastic-brainstorming`, `plastic-planner` are `opus`;
+`plastic-spec-specialist`, `plastic-executor`, `plastic-intent-curator`,
+`plastic-future-intent-researcher`, `plastic-intent-discovery` are `sonnet`.
+
+**Config and installer mechanism.** `agents.models.<basename>` in a project's
+`<dir>/.plastic_store/config.yml` or the global `~/.plastic/config.yml` overrides one agent's
+tier. Precedence is project, then global, then the shipped default, matching every other
+`read-config` key. The installer applies the resolved override to each agent file's `model:`
+line at copy time (install, update, and repair, across every harness target). With no override
+configured, the shipped frontmatter passes through unchanged.
+
+**Dispatch-time contract.** Frontmatter is primary, and Claude Code reads it at dispatch, but
+because that read is a harness implementation detail rather than a contract Plastic controls,
+every dispatch site also resolves the target agent's model through the config chain
+(`read-config agents.models.<basename> --project <repo>`) and passes it explicitly at dispatch,
+belt-and-braces on top of the frontmatter pin.
+
+**Orchestrator advisory.** At auto-mode start, the orchestrator recommends once that the user
+run the main session on the best available thinking model (Fable, Opus, or whatever supersedes
+them). This is advisory only: it changes no behavior and blocks nothing if ignored, and it
+concerns the human's main session, never a dispatched subagent.
+
+**`plastic-intent-discovery`.** The What-stage agent. It fires at intent activation, before the
+delivery lock is armed and Why begins: it reads the intent's `chain`/`sources` frontmatter,
+runs QMD-first discovery over completed predecessor work and related parked or future intents,
+and deposits findings to `resources/discovery--<slug>.md` in the intent directory ONLY. It
+never writes the intent file, `spec.md`, or any other lifecycle deliverable; the Why-stage
+`plastic-brainstorming` agent reads its deposit and enriches `## Context`.
+
 `savepoint.md` — a deterministic, append-only ledger of cycle-step milestones (one line per
 lifecycle boundary, newest at the bottom), written automatically by the gate hook. It is
 sugar on top of the conventions, not a source of truth: state is always derivable from
