@@ -208,6 +208,7 @@ class InstallerCore
       "scripts/hook-qmd-search" => "scripts/hook-qmd-search",
       "scripts/lib/qmd_hook.rb" => "scripts/lib/qmd_hook.rb",
       "scripts/lib/power_tools.rb" => "scripts/lib/power_tools.rb",
+      "scripts/lib/agent_models.rb" => "scripts/lib/agent_models.rb",
       "scripts/hook-code-gate" => "scripts/hook-code-gate",
       "scripts/hook-lock-gate" => "scripts/hook-lock-gate",
       "scripts/hook-bash-gate" => "scripts/hook-bash-gate",
