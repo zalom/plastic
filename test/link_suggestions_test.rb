@@ -12,7 +12,7 @@ load File.expand_path("../scripts/link-suggest", __dir__)
 # Hermetic tests for the link-suggest helper (intent 91, D7). Links are decided by
 # CONTEXT INFLUENCE (an agent judgement), so the helper does NOT grade. These tests
 # cover what it DOES do: gather candidates with their Intent+Context (discovery via an
-# injected finder), record a confirmed frontmatter edge plus a link-decisions.md line,
+# injected finder), record a confirmed frontmatter edge plus a dated `## Insights` line,
 # the no-write / no-delete guarantee, and drift detection (with fence-skipping). Temp
 # store under Dir.mktmpdir; constructor dependency injection only; single process; no
 # eval and no ENV / global-constant seam.
@@ -30,7 +30,7 @@ class LinkSuggestionsTest < Minitest::Test
   # --- fixture builder ---
 
   def write_intent(basename, id:, intent:, sources: [], chain: [], tags: [],
-                   context: nil, links: nil)
+                   context: nil, links: nil, insights: "(observations captured throughout)")
     dir = File.join(@store, basename)
     FileUtils.mkdir_p(dir)
     content = +"---\n"
@@ -42,6 +42,7 @@ class LinkSuggestionsTest < Minitest::Test
     content << "created: 2026-06-01\n"
     content << "---\n\n# #{intent}\n\n## Intent\n#{intent}.\n"
     content << "\n## Context\n#{context}\n" if context
+    content << "\n## Insights\n#{insights}\n"
     content << "\n## Links\n#{links}\n" if links
     File.write(File.join(dir, "#{basename}.md"), content)
   end
@@ -120,14 +121,13 @@ class LinkSuggestionsTest < Minitest::Test
     refute_includes ids, "12"
   end
 
-  # --- record_edge: frontmatter edge + decision ledger ---
+  # --- record_edge: frontmatter edge + Insights entry ---
 
   def test_record_edge_appends_frontmatter_and_ledger
     write_intent("90--a", id: "90", intent: "Ninety",
                  links: "## Links\n<!-- derived -->\n")
     write_intent("80--b", id: "80", intent: "Eighty")
 
-    body_before = File.read(File.join(@store, "90--a", "90--a.md")).split("---", 3).last
     fixed_now = Time.utc(2026, 6, 24, 12, 0, 0)
 
     wrote = tool.record_edge("90", "80", edge: :chain, rating: "high",
@@ -138,12 +138,14 @@ class LinkSuggestionsTest < Minitest::Test
     content = File.read(File.join(@store, "90--a", "90--a.md"))
     fm = content.split("---", 3)[1]
     assert_match(/chain:.*"80"/, fm, "the chain edge must be recorded in frontmatter")
-    assert_equal body_before, content.split("---", 3).last,
-                 "the body (## Links and all) must stay byte-identical"
+    assert_includes content, "## Links\n<!-- derived -->", "## Links content preserved"
 
-    ledger = File.read(File.join(@store, "90--a", "link-decisions.md"))
-    assert_includes ledger, "2026-06-24T12:00:00Z"
-    assert_includes ledger, "| 80 | chain | high | 80 deferred the exact fix 90 delivers"
+    insights = content[/## Insights\n(.*)/m, 1]
+    assert_includes insights, "2026-06-24T12:00:00Z"
+    assert_includes insights, "chain edge to 80 (rating high): 80 deferred the exact fix 90 delivers"
+
+    refute File.exist?(File.join(@store, "90--a", "link-decisions.md")),
+           "record_edge must never write a link-decisions.md side file"
   end
 
   def test_record_edge_appends_to_existing_ledger
@@ -156,10 +158,17 @@ class LinkSuggestionsTest < Minitest::Test
     tool.record_edge("90", "70", edge: :chain, rating: "medium", reason: "second",
                      confirm: true, now: Time.utc(2026, 6, 24, 13, 0, 0))
 
-    ledger = File.read(File.join(@store, "90--a", "link-decisions.md"))
-    assert_includes ledger, "| 80 | chain | high | first"
-    assert_includes ledger, "| 70 | chain | medium | second"
-    assert_equal 1, ledger.scan(/# Link decisions/).size, "header written once"
+    content = File.read(File.join(@store, "90--a", "90--a.md"))
+    assert_equal 1, content.scan(/^## Insights$/).size, "exactly one ## Insights heading"
+
+    insights = content[/## Insights\n(.*)/m, 1]
+    first_idx = insights.index("chain edge to 80 (rating high): first")
+    second_idx = insights.index("chain edge to 70 (rating medium): second")
+    refute_nil first_idx, "the 12:00 entry must be present"
+    refute_nil second_idx, "the 13:00 entry must be present"
+    assert first_idx < second_idx, "newest entry lands at the bottom"
+
+    refute File.exist?(File.join(@store, "90--a", "link-decisions.md"))
   end
 
   def test_record_edge_is_a_noop_without_confirm
@@ -191,7 +200,6 @@ class LinkSuggestionsTest < Minitest::Test
     write_intent("70--c", id: "70", intent: "Seventy")
 
     file = File.join(@store, "90--a", "90--a.md")
-    before = File.read(file)
 
     tool.record_edge("90", "70", edge: :chain, rating: "low", reason: "added",
                      confirm: true, now: Time.utc(2026, 6, 24, 12, 0, 0))
@@ -200,8 +208,7 @@ class LinkSuggestionsTest < Minitest::Test
     assert_includes after.split("---", 3)[1], '"79"', "existing sources edge preserved"
     assert_includes after.split("---", 3)[1], '"80"', "existing chain edge preserved"
     assert_includes after.split("---", 3)[1], '"70"', "new chain edge appended"
-    assert_equal before.split("---", 3).last, after.split("---", 3).last,
-                 "body (including ## Links) untouched: nothing deleted"
+    assert_includes after, "- [[80--b|Eighty]]", "existing ## Links line preserved"
   end
 
   # --- drift detection ---

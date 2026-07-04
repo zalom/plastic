@@ -38,9 +38,9 @@ Two distinct steps, do not conflate them:
 It does not wait for code to exist; it is reasoning over the candidate's context, not over a diff.
 
 **Record the call.** For every edge an agent adds, store a rating (high / medium / low) plus a
-one-line reason in `link-decisions.md` in the intent dir. Keep it out of frontmatter (graph only)
-and out of the `## Links` label (which is projected), so the audit trail never breaks the
-projection identity.
+one-line reason as a dated line under the intent file's `## Insights` section (per 96 D3, link
+rationale lives in the intent file, not a side file). It stays out of frontmatter (graph only) and
+out of the projected `## Links` label, so the audit trail never breaks the projection identity.
 
 ## `## Links` is derived (never author it by hand)
 
