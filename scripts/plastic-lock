@@ -2,18 +2,24 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 #
-# plastic-lock: inspect and repair the durable delivery lock (intent 108, D5).
+# plastic-lock: inspect and repair the durable delivery lock (intent 108, D5),
+# and take/free per-artifact claim tokens (intent 111 D1/D5).
 #
-# Usage: plastic-lock <status|fix|release|reclaim|delegate>
-#          [--intent-dir DIR] [--session SID] [--delegate SID]
+# Usage: plastic-lock <status|fix|release|reclaim|delegate|claim|release-claim>
+#          [--intent-dir DIR] [--session SID] [--delegate SID] [--artifact NAME]
 #
 # Verbs:
-#   status   report the lock file, the bridge cache, and their agreement
-#   fix      idempotent repair: rebuild lock + bridge from disk truth for the
-#            current session; never touches a fresh foreign lock
-#   release  owner clears the lock (End tail / abandoning a boarding)
-#   reclaim  explicit takeover of a stale lock, audited in savepoint.md
-#   delegate owner registers a subagent session under the lock (D4)
+#   status        report the lock file, the bridge cache, their agreement,
+#                 and any live per-artifact claims
+#   fix           idempotent repair: rebuild lock + bridge from disk truth for
+#                 the current session; never touches a fresh foreign lock
+#   release       owner clears the lock (End tail / abandoning a boarding)
+#   reclaim       explicit takeover of a stale lock, audited in savepoint.md
+#   delegate      owner registers a subagent session under the lock (D4)
+#   claim         acquire the named --artifact's claim token (intent 111);
+#                 rejected (exit 1) while a fresh claim is held by anyone,
+#                 including this same session; takes over a stale claim
+#   release-claim free the named --artifact's claim token
 #
 # Without --intent-dir the intent is resolved from this session's bridge.
 # Exit 0 on success/report; exit 1 when the verb is blocked (held elsewhere).
@@ -23,13 +29,13 @@ require_relative "lib/bridge"
 require_relative "lib/lock"
 
 def usage!
-  warn "usage: plastic-lock <status|fix|release|reclaim|delegate> " \
-       "[--intent-dir DIR] [--session SID] [--delegate SID]"
+  warn "usage: plastic-lock <status|fix|release|reclaim|delegate|claim|release-claim> " \
+       "[--intent-dir DIR] [--session SID] [--delegate SID] [--artifact NAME]"
   exit 1
 end
 
 verb = ARGV.shift
-usage! unless %w[status fix release reclaim delegate].include?(verb)
+usage! unless %w[status fix release reclaim delegate claim release-claim].include?(verb)
 
 opts = {}
 until ARGV.empty?
@@ -37,6 +43,7 @@ until ARGV.empty?
   when "--intent-dir" then opts[:dir] = ARGV.shift
   when "--session" then opts[:session] = ARGV.shift
   when "--delegate" then opts[:delegate] = ARGV.shift
+  when "--artifact" then opts[:artifact] = ARGV.shift
   else
     warn "unknown flag #{flag}"
     usage!
@@ -75,6 +82,7 @@ when "status"
     "bridge_present" => !bridge.nil?,
     "agreement" => (lock && bridge) ?
       (lock["owner_session"] == bridge.dig("lock", "owner_session")) : nil,
+    "claims" => Claim.claims_status(dir),
   }
   puts JSON.pretty_generate(report)
 when "fix"
@@ -117,4 +125,40 @@ when "delegate"
     exit 1
   end
   puts "delegated #{opts[:delegate]} under #{key}"
+when "claim"
+  usage! if opts[:artifact].nil?
+  status, data = Claim.acquire_claim(dir, opts[:artifact], session: key,
+                                     delegate: opts[:delegate])
+  case status
+  when :acquired
+    puts "claimed #{opts[:artifact]} under #{key}"
+  when :held
+    warn "plastic-lock: #{opts[:artifact]} is claimed by " \
+         "#{data['owner_session']} since #{data['acquired_at']}; back off"
+    exit 1
+  when :stale
+    old = data && data["owner_session"]
+    Claim.release_claim(dir, opts[:artifact], session: key, force: true)
+    status2, = Claim.acquire_claim(dir, opts[:artifact], session: key,
+                                   delegate: opts[:delegate])
+    if status2 == :acquired
+      warn "plastic-lock: took over stale claim on #{opts[:artifact]} from #{old}"
+      puts "claimed #{opts[:artifact]} under #{key}"
+    else
+      warn "plastic-lock: could not take over #{opts[:artifact]} (#{status2})"
+      exit 1
+    end
+  when :corrupt
+    Claim.release_claim(dir, opts[:artifact], session: key, force: true)
+    Claim.acquire_claim(dir, opts[:artifact], session: key, delegate: opts[:delegate])
+    puts "claimed #{opts[:artifact]} under #{key} (repaired corrupt claim)"
+  end
+when "release-claim"
+  usage! if opts[:artifact].nil?
+  result = Claim.release_claim(dir, opts[:artifact], session: key)
+  if result == :not_owner
+    warn "plastic-lock: not the claim owner; run plastic-lock status"
+    exit 1
+  end
+  puts "released-claim #{opts[:artifact]} (#{result})"
 end

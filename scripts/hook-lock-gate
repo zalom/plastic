@@ -28,6 +28,41 @@ begin
     rescue StandardError
       # ignore
     end
+
+    # Second, independent gate (intent 111 D7): the artifact-grain claim.
+    # Composes UNDER the delivery lock above; only reached once the delivery
+    # lock already allows. Dormant (nil) unless a claim file exists for this
+    # artifact, so AC7 (existing single-owner flows) is unaffected.
+    begin
+      dir = Bridge.intent_dir_for(file_path)
+      artifact = File.basename(file_path) if dir
+      if dir && artifact
+        claim_reason = Claim.claim_gate_reason(dir, artifact, session: session)
+        if claim_reason
+          print JSON.generate(
+            "hookSpecificOutput" => {
+              "hookEventName" => "PreToolUse",
+              "permissionDecision" => "deny",
+              "permissionDecisionReason" => claim_reason,
+            }
+          )
+          exit 0
+        end
+
+        # Fail-open surface (AC3): allow, but make the yielded/stale claim visible.
+        if Claim.fail_open?(dir, artifact)
+          $stderr.puts "plastic claim gate: unresolvable claim on #{artifact} in " \
+                       "intent #{Bridge.intent_id_from_dir(dir)} yielded; write " \
+                       "proceeds (see /plastic-lock status)"
+        end
+
+        # Heartbeat the session's own claim on the allow path (best-effort).
+        Claim.heartbeat(dir, artifact, session: session) rescue nil
+      end
+    rescue StandardError
+      # ignore: a claim-gate bug must never block a write (fail open)
+    end
+
     exit 0
   end
 

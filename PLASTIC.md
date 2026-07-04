@@ -379,6 +379,22 @@ idempotent function with two entry points: the `plastic-lock` command (status, f
 release, reclaim, delegate) and `/plastic-intent-starting`, so boarding self-heals. This is
 mandatory, not a convention.
 
+The delivery lock arbitrates at the whole-intent grain: it decides who may work
+an intent at all. Underneath it, a per-artifact claim token (intent 111)
+arbitrates at the file grain: it decides who, among those already holding the
+delivery lock, is the one writer for one lifecycle file right now. A write to
+`spec.md`, `plan.md`, `checklist.md`, or the intent file must hold both the
+delivery lock and that file's claim. Claims live in `.claims/<artifact>.claim`
+inside the intent directory, one small JSON file per artifact, scoped strictly
+per-intent-per-artifact, never session-global. The claim gate is dormant
+(allows) when no claim file exists for an artifact, so ordinary single-owner
+work is unaffected; it engages, and denies, only when a second writer tries to
+take a fresh claim someone else already holds. A stale or corrupt claim fails
+open (the write proceeds, the claim yields) and the condition is surfaced in
+`plastic-lock status`, which lists any live claims alongside the delivery
+lock. See `plastic-lock claim`/`release-claim` and `docs/internals.md` for the
+full mechanism.
+
 Two locks share this schema (the two-lock doctrine): `delivery.lock` (exclusive, one owner
 plus delegates) and the future `maintenance.lock` (short TTL, structural move-and-record
 only). They are mutually exclusive in either direction; maintenance is allowed at any
