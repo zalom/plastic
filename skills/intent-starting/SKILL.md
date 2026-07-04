@@ -34,6 +34,14 @@ enforces it: without a held lock, mutating writes to this active intent's dir ar
 1. **Ensure the intent is in INDEX `## Active`.** If it sits in `## Future`, activate it
    (move it to `## Active`, auto-commit) before arming. Creation precedes activation, so a
    brand-new What intent is activated here, then locked.
+1a. **Dispatch What-stage discovery (before the lock).** Right after activation and before
+   arming the bridge, dispatch the `plastic-intent-discovery` agent (see the
+   `plastic-intent-discovery` skill). Resolve its model explicitly and pass it at dispatch
+   time (belt-and-braces): `read-config agents.models.plastic-intent-discovery --project
+   <repo>`. The agent runs QMD discovery over the intent's `chain`/`sources` and deposits
+   findings to `resources/discovery--<slug>.md` only; it never writes the intent file, so the
+   lock-owner-only rule is untouched. This is advisory context for Why, not a gate: if
+   discovery yields nothing, proceed to the lock normally.
 2. **Self-heal the lock state first.** Run:
    `ruby ~/.plastic/scripts/plastic-lock fix --intent-dir <STORE>/<dir>`
    This is the one repair function (same one /plastic-lock exposes): it removes
