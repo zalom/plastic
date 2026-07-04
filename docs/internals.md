@@ -672,6 +672,69 @@ own isolation instead, deterministic and cwd-independent.
   the bridge cache from disk, migrates legacy pid-stamped bridges, and never
   touches a fresh foreign lock. The `plastic-lock` CLI exposes it (verbs:
   status, fix, release, reclaim, delegate).
+
+## per-artifact claim tokens (intent 111)
+
+The delivery lock above resolves ownership at the whole-intent grain: it answers
+who may work an intent at all, not who may write one specific lifecycle file
+right now. Two writers that both hold the lock, whether two registered
+delegates or two subagents that inherited one `CLAUDE_CODE_SESSION_ID`, both
+pass the delivery-lock check on the same file, so nothing arbitrates a
+same-time write to `spec.md`, `plan.md`, `checklist.md`, or the intent file
+itself. Intent 111 adds a second, lighter layer underneath the delivery lock to
+close that gap.
+
+- **Storage.** `module Claim` lives in `scripts/lib/lock.rb`, sibling to
+  `module Lock`, and never touches `Lock`'s functions. Each claim is one small
+  JSON file, `.claims/<artifact>.claim`, inside the intent directory (for
+  example `spec.md.claim`, `plan.md.claim`), carrying `artifact`,
+  `owner_session`, `acquired_at`, and `delegate` (nil unless set). Keeping one
+  file per artifact means acquiring one artifact's claim never contends on
+  another, and a corrupt or stale claim on one file cannot wedge the others.
+- **Scope, per-intent-per-artifact, never session-global.** A claim's on-disk
+  path is always `<intent_dir>/.claims/<artifact>.claim`, so it can only ever
+  affect one artifact of one intent. This is the hard guard against recreating
+  the collision-90 failure mode, where an over-armed bridge froze unrelated
+  sessions.
+- **Exclusivity is O_EXCL at acquire, not session-equality.**
+  `Claim.acquire_claim` creates the file with `File::EXCL`; the first writer
+  wins (`:acquired`). Any later acquire against a FRESH existing claim returns
+  `:held` and names the holder, even when the caller shares the holder's
+  session id. A fresh claim is never idempotently re-granted; a genuine sole
+  writer acquires once and keeps the claim alive with `Claim.heartbeat`.
+- **Composition, not replacement.** A lifecycle write must hold BOTH the
+  intent's delivery lock (owner or delegate, `Lock.holds?`, unchanged) AND the
+  specific artifact's claim. `Claim.claim_gate_reason` is the second,
+  independent gate: it is DORMANT (returns nil, allow) when no claim file
+  exists for the artifact, so every existing single-owner flow and the prior
+  lock/bridge suite stay green unless two writers actually contend for the
+  same file. `scripts/hook-lock-gate` runs the claim gate only after the
+  existing `Bridge.lock_gate_decision` already allows, refreshes the caller's
+  own claim heartbeat on the allow path, and denies with the holder's session
+  and the artifact name when a fresh foreign claim is found.
+- **Fail open, always, as a named contract.** `Claim.fail_open?(intent_dir,
+  artifact, ttl:, now:)` is the one place this behavior is defined and tested:
+  true only when a claim FILE exists but is unresolvable (stale past the TTL,
+  or corrupt). On a true result, the write proceeds (the claim is yielded to
+  the current writer) rather than being blocked, and the condition is
+  surfaced on stderr from the gate and in `plastic-lock status`. Absence of a
+  claim is plain dormancy, not a fail-open condition. Intent 112's maintenance
+  lock gates its own Exec on this test and re-runs it as a regression check on
+  every edit it makes to `lock.rb`.
+- **CLI and visibility.** `plastic-lock claim --artifact <name>` acquires a
+  claim (exit 1 and names the holder when one is already held, even by the
+  same session; takes over a stale claim automatically); `plastic-lock
+  release-claim --artifact <name>` frees it. `plastic-lock status` now
+  includes a `claims` array, one entry per live claim, each with its artifact,
+  owner session or delegate, acquired-at time, and whether it is still fresh,
+  so an orchestrator checking status before respawning a helper can see a live
+  writer on an artifact and skip the respawn.
+- **Scope of this pass.** The claim gate wires into `hook-lock-gate`, the
+  Write/Edit/NotebookEdit lifecycle-write surface (the exact path of the 108
+  collision this closes). The bash-write path is a deliberate follow-up, kept
+  out to hold this change to a tight, low-risk surface. Contention is
+  reject-with-surface only; queuing a second writer behind the first is a
+  possible future option, not built here.
 - **Hook registration single source of truth** (intent 108, D7):
   `scripts/lib/hook_registry.rb` defines every event, matcher, and hook name.
   `InstallerCore#merge_claude_hooks` translates it into settings.json,

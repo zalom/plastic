@@ -176,6 +176,8 @@ Provisioning is deterministic and cwd-independent. Plastic resolves the project 
 
 Provisioning fails open: for a pure research or decision intent in the global store, or a repo that is not a git work tree, the code worktree is skipped, `provisioned` stays false, and the fall-back is logged to stderr (never silent). Such intents still get the lock.
 
+The delivery lock arbitrates at the whole-intent grain only: two writers that both hold it, whether two delegates or two subagents sharing one session id, both pass this check on the same lifecycle file. Intent 111 adds a per-artifact claim token underneath it (`.claims/<artifact>.claim`, one small JSON file per artifact, scoped strictly to that intent's own artifact) so a write must hold both the delivery lock and the specific file's claim. The claim gate is dormant unless a claim file exists, fails open on a stale or corrupt claim, and is visible in `plastic-lock status`. See `docs/internals.md` for the full mechanism.
+
 ### intent done and the end tail (intent 93)
 
 Done is one law with three signals that must agree. The INDEX `## Completed` or `## Abandoned` section is the single canonical terminal marker (the store-wide ledger a fresh session reads first), so it wins on any conflict. `outcome.md` is the deliverable-exists signal, mandatory at every terminal (delivered and abandoned alike) and self-declaring through a `disposition: delivered|abandoned` frontmatter header. The savepoint `Done delivered|abandoned` line is the audit echo. When the three disagree, INDEX is authoritative and `doctor` (the `done_signals` check) reports the mismatch.
