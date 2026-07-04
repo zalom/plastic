@@ -7,6 +7,7 @@ require "fileutils"
 require "digest"
 require "time"
 require_relative "hook_registry"
+require_relative "agent_models"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/versions) and their tests can run
@@ -392,7 +393,7 @@ class InstallerCore
     installed += install_skills_flat(skills_source, skills_root) if File.directory?(skills_source)
 
     # Copy agent role files into <dir>/agents (manifest-tracked, pruned on update)
-    installed += install_agents(File.join(config[:dir], "agents"))
+    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides)
 
     # Write VERSION
     version_file = File.join(plastic_dir, "VERSION")
@@ -417,7 +418,7 @@ class InstallerCore
     installed = []
     skills_source = File.join(package_root, "skills")
     installed += install_skills_flat(skills_source, File.join(config[:dir], "skills")) if File.directory?(skills_source)
-    installed += install_agents(File.join(config[:dir], "agents"))
+    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides)
 
     write_manifest(installed, File.join(config[:dir], "plastic-manifest.json"))
     { agent: config[:name], success: true, files: installed.size }
@@ -427,7 +428,7 @@ class InstallerCore
     installed = []
     skills_source = File.join(package_root, "skills")
     installed += install_skills_flat(skills_source, File.join(config[:dir], "skills")) if File.directory?(skills_source)
-    installed += install_agents(File.join(config[:dir], "agents"))
+    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides)
 
     write_manifest(installed, File.join(config[:dir], "plastic-manifest.json"))
     { agent: config[:name], success: true, files: installed.size }
@@ -460,16 +461,49 @@ class InstallerCore
   # equivalents). Returns the installed destination paths so callers can append
   # them to `installed` before write_manifest (manifest + prune are then automatic).
   # No-op safe: returns [] when the package has no agents dir or it is empty.
-  def install_agents(agents_root)
+  def install_agents(agents_root, models: {})
     sources = Dir.glob(File.join(package_root, "agents", "*.md"))
     return [] if sources.empty?
 
     FileUtils.mkdir_p(agents_root)
     sources.map do |src|
       dest = File.join(agents_root, File.basename(src))
-      FileUtils.cp(src, dest)
+      basename = File.basename(src, ".md")
+      override = models[basename]
+      if override
+        File.write(dest, rewrite_model_line(File.read(src), override))
+      else
+        FileUtils.cp(src, dest)
+      end
       dest
     end
+  end
+
+  # Rewrite the single top-level `model:` line in a YAML frontmatter block.
+  # Only the frontmatter (between the first two `---` fences) is touched.
+  def rewrite_model_line(content, model)
+    content.sub(/^model:[^\n]*$/, "model: #{model}")
+  end
+
+  # Resolve per-agent model overrides for this install: project config (when a
+  # project dir is known) overlaid on global config. Defaults are NOT included,
+  # so unconfigured agents keep their shipped frontmatter.
+  def agent_model_overrides(project_dir = nil)
+    global_config = load_config_yaml(File.join(plastic_home, "config.yml"))
+    project_config =
+      if project_dir
+        load_config_yaml(File.join(project_dir, ".plastic_store", "config.yml"))
+      else
+        {}
+      end
+    AgentModels.override_map(project_config: project_config, global_config: global_config)
+  end
+
+  def load_config_yaml(path)
+    return {} unless File.exist?(path)
+    YAML.safe_load(File.read(path)) || {}
+  rescue StandardError
+    {}
   end
 
   # --- Legacy plugin migration ---
