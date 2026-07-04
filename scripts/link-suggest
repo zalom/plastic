@@ -5,9 +5,9 @@
 # link-suggest - support links decided by CONTEXT INFLUENCE (intent 91, D7). Links are
 # NOT graded by a script: whether one intent's context influenced another is a
 # judgement an agent makes by reading the candidate's Intent + Context. This tool
-# gathers candidates with that evidence, records a CONFIRMED edge plus its rating and
-# reason in `link-decisions.md`, and flags drift. It never writes a `## Links` line and
-# never deletes.
+# gathers candidates with that evidence, records a CONFIRMED edge in frontmatter plus a
+# dated rating/reason line in the intent's `## Insights` section, and flags drift. It
+# never writes a `## Links` line and never deletes.
 #
 # `## Links` is a DERIVED view of `sources`/`chain` (Convention over Configuration).
 # Tiers, by context influence:
@@ -42,8 +42,9 @@ module LinkSuggestCLI
 
     Links are decided by context influence, judged by an agent reading each
     candidate's Intent + Context. This tool only gathers candidates with that
-    evidence, records a confirmed edge plus its rating/reason in link-decisions.md,
-    and flags drift. It never writes a ## Links line and never deletes.
+    evidence, records a confirmed edge plus its rating/reason in the intent's
+    ## Insights section, and flags drift. It never writes a ## Links line and
+    never deletes.
 
     --edge is explicit and required (sources is decided by origin, never inferred).
     --rating is required when --edge is chain. Without --confirm, nothing is written.
@@ -132,7 +133,8 @@ module LinkSuggestCLI
                              reason: opts[:reason], confirm: true)
     if wrote
       out.puts "Recorded #{opts[:edge]} edge #{opts[:subject]} -> #{opts[:record]} " \
-               "and appended to link-decisions.md. Reproject with scripts/project-links."
+               "and appended a rating/reason line to the intent's ## Insights. " \
+               "Reproject ## Links with scripts/project-links."
       return 0
     end
     out.puts "No edge written (edge may already exist, or intent missing)."

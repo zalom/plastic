@@ -10,7 +10,8 @@
 #                  and surface each candidate's `## Intent` + `## Context` as the
 #                  EVIDENCE an agent reads to judge influence.
 #   - record_edge: record a CONFIRMED `sources`/`chain` frontmatter edge AND append a
-#                  line to `link-decisions.md` (utc, target, edge, rating, reason).
+#                  dated line to the subject intent file's `## Insights` section
+#                  carrying (utc, target, edge, rating, reason).
 #                  Append-only, frontmatter block only, never a `## Links` line,
 #                  never a delete. A no-op without confirm: true.
 #   - drift:       flag any `## Links` wikilink with no matching frontmatter edge.
@@ -30,6 +31,7 @@
 
 require "time"
 require_relative "intent_validator"
+require_relative "insights"
 
 class LinkSuggestions
   # One discovery candidate plus the evidence an agent reads to judge influence.
@@ -181,7 +183,7 @@ class LinkSuggestions
 
   # Record a single CONFIRMED edge from `subject_id` to `target_id`:
   #   1. append `target_id` to the subject's frontmatter `sources` or `chain`;
-  #   2. append a line to `link-decisions.md` in the subject dir capturing
+  #   2. append a dated line to the subject's `## Insights` section capturing
   #      {utc, target, edge, rating, reason}.
   # Append-only, frontmatter block only. NEVER writes a `## Links` line, NEVER
   # deletes. A no-op (returns false) without confirm: true, so a default run mutates
@@ -199,8 +201,8 @@ class LinkSuggestions
     updated = add_frontmatter_ref(content, edge.to_s, target_id)
     return false if updated == content
 
-    reader.write(subject[:path], updated)
-    append_decision(subject, target_id, edge, rating, reason, now)
+    final = append_link_insight(updated, target_id, edge, rating, reason, now)
+    reader.write(subject[:path], final)
     true
   end
 
@@ -220,20 +222,15 @@ class LinkSuggestions
 
   private
 
-  # Append one decision line to `link-decisions.md` in the subject's dir, creating the
-  # ledger with a header when absent. Append-only; never rewrites prior lines.
-  def append_decision(subject, target_id, edge, rating, reason, now)
-    ledger = File.join(subject[:dir], "link-decisions.md")
-    stamp = now.utc.strftime("%Y-%m-%dT%H:%M:%SZ")
-    line = "#{stamp} | #{target_id} | #{edge} | #{rating || "-"} | #{reason || "-"}"
-
-    if reader.exist?(ledger)
-      existing = reader.read(ledger)
-      reader.write(ledger, existing.rstrip + "\n" + line + "\n")
-    else
-      header = "# Link decisions (intent 91 D6): utc | target | edge | rating | reason\n\n"
-      reader.write(ledger, header + line + "\n")
-    end
+  # Insert one dated link-decision line at the bottom of the subject intent file's
+  # `## Insights` section (96 D3: link rationale lives IN the intent file, never a side
+  # file). Reuses the blessed Insights writer (intent 82) for section insertion; carries
+  # the five fields (utc, target, edge, rating, reason) as a readable line under the 82
+  # exact-timestamp prefix. Returns the augmented content for the single caller write.
+  def append_link_insight(content, target_id, edge, rating, reason, now)
+    prefix = "#{now.utc.iso8601} · Link · link-suggest"
+    text = "#{edge} edge to #{target_id} (rating #{rating || "-"}): #{reason || "-"}"
+    Insights.with_entry(content, "#{prefix} — #{text}")
   end
 
   # Natural sort key for ids so 2 sorts before 10 and 14a groups with 14.
