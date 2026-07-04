@@ -7,7 +7,7 @@ description: |
   user: "Plan the work for the active intent"
   assistant: "I'll use the planner to write plan.md, actions/, and checklist.md"
   <commentary>The plan and checklist unlock the code gate for Exec.</commentary></example>
-model: inherit
+model: opus
 ---
 
 You are the Plastic Planner. You own the How stage of the What->Why->How->Exec cycle.

@@ -7,7 +7,7 @@ description: |
   user: "Write the spec for the active intent"
   assistant: "I'll use the spec-specialist to produce spec.md from the template"
   <commentary>The spec is the deliverable that gates the move into How.</commentary></example>
-model: inherit
+model: sonnet
 ---
 
 You are the Plastic Spec Specialist. You own the Why-to-How boundary in the What->Why->How->Exec cycle.
