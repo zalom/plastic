@@ -104,8 +104,20 @@ Determine which files to update from project.yml:
 
 Update the version string in each file, then commit:
 
+**Cut the CHANGELOG entry.** Before committing, edit `CHANGELOG.md` at the repo root so
+the changelog change rides this same version-bump commit and reaches the tag. Write one
+line in the existing shape:
+
+`` `<version>` - shipped <date>; collected <intent-id> (<one-line summary>) ``
+
+Prepend it as the first bullet under `## Released` (newest-first). If this version was
+sitting under `## Unreleased`, move it out of that section and into `## Released`. Keep
+the line intent-centric narrative (which intents the cut collected and why), NOT commit
+detail: step 5's tag-message changelog and step 7's `gh release create --generate-notes`
+already own the commit-level detail, so do not duplicate it here.
+
 ```bash
-git add <version-files>
+git add <version-files> CHANGELOG.md
 git commit -m "chore: bump version to X.Y.Z - [one-line summary]"
 ```
 
