@@ -114,6 +114,31 @@ class DashboardTest < Minitest::Test
     write_intent(demo, "4b", "relational-only",
                  { id: "4b", intent: "Relational not-spawned chain", author: "agent", tags: %w[demo], chain: %w[9], created: "2026-06-10" })
 
+    # Task 9 fixtures (intent 125) -------------------------------------------
+
+    # Birth-only savepoint: only the creation stamp ("What  created"), no other file and
+    # no partial checklist -> must NOT be flagged "in-progress" (D3).
+    write_intent(demo, "10", "birth-only",
+                 { id: 10, intent: "Born but untouched", author: "agent", tags: %w[demo], created: "2026-06-05" },
+                 files: { "savepoint.md" => "2026-06-05T09:00:00Z  What  created\n" })
+
+    # Trivially unblocked at birth: its one source (7) completed BEFORE this intent was
+    # even created, so "all sources done" is the birth default, not a genuine wait ->
+    # must NOT be flagged "unblocked" (D4).
+    write_intent(demo, "11", "trivially-unblocked",
+                 { id: 11, intent: "Trivially unblocked at birth", author: "agent", tags: %w[demo], sources: %w[7], created: "2026-06-01" })
+
+    # Over-long intent text: exercises the 120-char truncation + ellipsis on `.line`.
+    write_intent(demo, "12", "long-text",
+                 { id: 12, intent: "A" * 150, author: "agent", tags: %w[demo], created: "2026-06-04" })
+
+    # Six extra bugfix (low+small -> defer) intents: pushes the defer quadrant (already
+    # holding 3/4/8/9) past MATRIX_DATA_CAP so matrix_data must cap it with "+N more".
+    (1..6).each do |i|
+      write_intent(demo, "d#{i}", "bugfix-filler-#{i}",
+                   { id: "d#{i}", intent: "Bugfix filler #{i}", author: "agent", tags: %w[demo bugfix], created: "2026-06-0#{i}" })
+    end
+
     File.write(File.join(home, "projects", "demo", "INDEX.md"), <<~IDX)
       # Index
       ## Active
@@ -129,6 +154,15 @@ class DashboardTest < Minitest::Test
       - [4a — Spawned-from parent](store/4a--spawned-parent/4a--spawned-parent.md)
       - [4a1 — Child created from 4a](store/4a1--spawned-child/4a1--spawned-child.md)
       - [4b — Relational not-spawned chain](store/4b--relational-only/4b--relational-only.md)
+      - [10 — Born but untouched](store/10--birth-only/10--birth-only.md)
+      - [11 — Trivially unblocked at birth](store/11--trivially-unblocked/11--trivially-unblocked.md)
+      - [12 — A very long intent line](store/12--long-text/12--long-text.md)
+      - [d1 — Bugfix filler 1](store/d1--bugfix-filler-1/d1--bugfix-filler-1.md)
+      - [d2 — Bugfix filler 2](store/d2--bugfix-filler-2/d2--bugfix-filler-2.md)
+      - [d3 — Bugfix filler 3](store/d3--bugfix-filler-3/d3--bugfix-filler-3.md)
+      - [d4 — Bugfix filler 4](store/d4--bugfix-filler-4/d4--bugfix-filler-4.md)
+      - [d5 — Bugfix filler 5](store/d5--bugfix-filler-5/d5--bugfix-filler-5.md)
+      - [d6 — Bugfix filler 6](store/d6--bugfix-filler-6/d6--bugfix-filler-6.md)
       ## Clusters
       ## Abandoned
       ## Completed
@@ -238,6 +272,48 @@ class DashboardTest < Minitest::Test
     JSON.parse(out)["dispatchable_queue"].each { |r| by_id[r["id"]] = r }
     assert_includes by_id["8"]["flags"], "unblocked"      # all sources done
     refute_includes (by_id["9"]&.dig("flags") || []), "unblocked" # one source still open
+  end
+
+  # --- Task 9: birth-only savepoint / trivial-unblock / caps / truncation ---
+
+  def test_birth_only_savepoint_is_not_in_progress
+    out, = run_dash("project", "demo", "--json")
+    by_id = {}
+    JSON.parse(out)["dispatchable_queue"].each { |r| by_id[r["id"]] = r }
+    refute_includes (by_id["10"]&.dig("flags") || []), "in-progress"
+  end
+
+  def test_source_completed_before_created_is_not_unblocked
+    out, = run_dash("project", "demo", "--json")
+    by_id = {}
+    JSON.parse(out)["dispatchable_queue"].each { |r| by_id[r["id"]] = r }
+    refute_includes (by_id["11"]&.dig("flags") || []), "unblocked"
+    # Confirm the pre-existing genuine-wait cases still behave (id 8: genuine wait
+    # present; id 9: sources incomplete).
+    assert_includes by_id["8"]["flags"], "unblocked"
+    refute_includes (by_id["9"]&.dig("flags") || []), "unblocked"
+  end
+
+  def test_matrix_quadrant_over_cap_is_capped_with_more_marker
+    out, = run_dash("project", "demo", "--data")
+    defer = JSON.parse(out)["matrix"]["defer"]
+    # 3, 4a1, 4b, 8, 9 (bugfix or branch-id small effort, low value) + d1..d6 = 11
+    # total, over MATRIX_DATA_CAP (8): capped to 8 real entries + one "+N more".
+    assert_equal 9, defer.size
+    more = defer.last
+    assert_equal "", more["id"]
+    assert_equal "→ +3 more", more["line"]
+  end
+
+  def test_intent_line_truncated_over_120_chars
+    out, = run_dash("project", "demo", "--data")
+    rec = JSON.parse(out)["matrix"]["triage"].find { |r| r["id"] == "12" }
+    refute_nil rec, "expected id 12 in the triage quadrant"
+    prefix = "⚑ 12 "
+    assert rec["line"].start_with?(prefix), "unexpected line shape: #{rec["line"]}"
+    text = rec["line"][prefix.length..-1]
+    assert text.end_with?("…"), "expected ellipsis truncation: #{text}"
+    assert_operator text.length, :<=, 121
   end
 
   def test_recently_worked_sorted_and_capped

@@ -38,7 +38,11 @@ here — run the data payload and fill + present the matching template:
 - Otherwise → `ruby ~/.plastic/scripts/dashboard.rb continue --data`
 
 Fill the matching template from this skill's `templates/` and **present the filled Markdown
-in your reply** (every time). See `plastic-dashboard` for the fill rules and entry flow.
+in your reply** (every time, non-optional). If the reply does not contain the filled Markdown,
+the user sees nothing — tool-call stdout and hook `additionalContext` are both invisible to
+them. `hook-continue` also emits a one-line `systemMessage` summary as a hook-owned fallback;
+treat it as a floor only, never as a substitute for presenting the full board here. See
+`plastic-dashboard` for the fill rules and entry flow.
 
 The board load runs the scoped store check on every load (`doctor --store <scope>`): the
 global board runs `--store global` and a project board runs `--store <slug>`. The result

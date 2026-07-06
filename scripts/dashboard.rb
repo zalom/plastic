@@ -32,7 +32,11 @@ def today
   s && !s.empty? ? Date.parse(s) : Date.today
 end
 
-STALE_DAYS = 14
+# A generic "about a month" threshold, not tuned to any one store's item count.
+# Deliberately independent from plastic-continuing's separate stale_threshold_days
+# config: that one is a proactive boot-time triage nudge, this is a board annotation.
+# Unifying the two is a follow-up, not this intent.
+STALE_DAYS = 30
 
 # ---------------------------------------------------------------------------
 # Parsing — reuses the conventions in scripts/doctor.rb
@@ -105,6 +109,26 @@ def last_accessed_at(dir, created)
   ""
 end
 
+# True iff the savepoint ledger's last non-blank line shows real post-birth
+# activity, not just the one-line birth stamp every intent gets at creation
+# (scripts/new-intent's Bridge.append_savepoint call, stage "What"). Reads the
+# last line, extracts the stage token (second whitespace-separated field, same
+# ledger shape last_accessed_at already parses), and treats any stage other
+# than "What" as progress. Returns false when the file is missing/empty.
+def savepoint_shows_progress?(path)
+  return false unless File.exist?(path)
+  last_line = nil
+  File.readlines(path).reverse_each do |line|
+    stripped = line.strip
+    next if stripped.empty?
+    last_line = stripped
+    break
+  end
+  return false unless last_line
+  stage = last_line.split(/\s+/)[1]
+  !stage.nil? && stage != "What"
+end
+
 # Parse one intent directory into a raw record.
 def parse_intent(store_info, dir_name, status_index)
   dir = File.join(store_info[:store], dir_name)
@@ -113,7 +137,6 @@ def parse_intent(store_info, dir_name, status_index)
   return nil unless fm && fm["id"]
 
   id = fm["id"].to_s
-  has = ->(f) { File.exist?(File.join(dir, f)) }
   # Sentinel-aware presence for lifecycle files (intent 60b): a scaffolded
   # placeholder spec/plan/checklist/outcome reads as absent, so a freshly
   # scaffolded intent reports What/Why and is never marked completed/advanced.
@@ -143,7 +166,7 @@ def parse_intent(store_info, dir_name, status_index)
     plan: real.("plan.md"),
     checklist: real.("checklist.md"),
     outcome: real.("outcome.md"),
-    savepoint: has.("savepoint.md"),
+    savepoint: savepoint_shows_progress?(File.join(dir, "savepoint.md")),
     checklist_partial: real.("checklist.md") && checklist_partially_done?(File.join(dir, "checklist.md")),
     body_has_context: body.include?("## Context"),
     last_accessed_at: last_accessed_at(dir, (fm["created"].to_s rescue "")),
@@ -163,6 +186,7 @@ end
 def load_all
   all = []
   done_ids = {}
+  completed_on_map = {}
   stores.each do |si|
     idx = {
       active: index_section_ids(si[:index], "## Active"),
@@ -176,11 +200,12 @@ def load_all
       rec[:completed_on] = comp[rec[:id]] || ""
       all << rec
       done_ids[[rec[:scope], rec[:id]]] = true if rec[:status] == "completed"
+      completed_on_map[[rec[:scope], rec[:id]]] = comp[rec[:id]] if comp[rec[:id]] && !comp[rec[:id]].empty?
     end
   end
   referenced = {}
   all.each { |r| r[:sources].each { |s| referenced[[r[:scope], s]] = true } }
-  [all, done_ids, referenced]
+  [all, done_ids, referenced, completed_on_map]
 end
 
 # ---------------------------------------------------------------------------
@@ -214,11 +239,14 @@ end
 
 # Effort -> :small | :big
 # Small when the work is bounded: a non-implementation type, an already-scoped intent
-# (plan/checklist exists), or a deep refinement branch. Otherwise big.
+# (plan/checklist exists), or a branch id. By Plastic's own Zettelkasten convention, a
+# branch id is a narrower refinement of its parent, so any branch (not only deep
+# sub-branches) defaults to smaller effort than an untouched root idea; root ids
+# (`root_intent?`) are unaffected since `folgezettel_depth` on a bare number is always 1.
 def effort_of(rec, type)
   return :small if %w[research exploration bugfix].include?(type)
   return :small if rec[:plan] || rec[:checklist]
-  return :small if folgezettel_depth(rec[:id]) >= 4
+  return :small if folgezettel_depth(rec[:id]) >= 2
   :big
 end
 
@@ -238,16 +266,33 @@ def value_of(rec, referenced = {})
   :low
 end
 
-def flags_of(rec, done_ids)
+def flags_of(rec, done_ids, completed_on_map = {})
   flags = []
   flags << "in-progress" if rec[:savepoint] || rec[:checklist_partial]
   if rec[:status] == "future" && !rec[:sources].empty? &&
-     rec[:sources].all? { |s| done_ids[[rec[:scope], s]] }
+     rec[:sources].all? { |s| done_ids[[rec[:scope], s]] } &&
+     genuine_wait?(rec, completed_on_map)
     flags << "unblocked"
   end
   age = stale_age(rec)
   flags << "stale" if rec[:status] == "future" && age && age >= STALE_DAYS
   flags
+end
+
+# True iff at least one declared source's completion date is strictly later
+# than this intent's own `created` date — i.e. the intent actually waited on
+# something, rather than being born already-satisfied (the common case: a
+# branch's declared source is almost always finished before the branch exists,
+# since the child is created from the parent's own lifecycle).
+def genuine_wait?(rec, completed_on_map)
+  created_date = (Date.parse(rec[:created]) rescue nil)
+  return false unless created_date
+  rec[:sources].any? do |s|
+    source_date_str = completed_on_map[[rec[:scope], s]]
+    next false unless source_date_str
+    source_date = (Date.parse(source_date_str) rescue nil)
+    source_date && source_date > created_date
+  end
 end
 
 def stale_age(rec)
@@ -274,13 +319,13 @@ def disposition_of(type, quadrant)
   end
 end
 
-def classify(rec, done_ids, referenced = {})
+def classify(rec, done_ids, referenced = {}, completed_on_map = {})
   type = intent_type(rec)
   value = value_of(rec, referenced)
   effort = effort_of(rec, type)
   quadrant = QUADRANTS[[value, effort]]
   disposition = disposition_of(type, quadrant)
-  flags = flags_of(rec, done_ids)
+  flags = flags_of(rec, done_ids, completed_on_map)
   rec.merge(
     type: type, value: value, effort: effort, quadrant: quadrant,
     lifecycle: lifecycle_stage(rec), flags: flags, disposition: disposition,
@@ -328,6 +373,13 @@ def pad(str, width)
 end
 
 CELL_CAP = 6
+
+# Markdown-board caps (Task 5, D6/D7): the ASCII renderer already caps via CELL_CAP/
+# cap_cell, but the Markdown board's matrix_data quadrants and the project board's
+# active/future lists had no cap and no per-line truncation, so a large store printed
+# hundreds of full-length lines. These two constants fix that on the Markdown side only.
+MATRIX_DATA_CAP = 8
+INTENT_LINE_MAX_CHARS = 120
 
 def matrix(records, scope_tag: false)
   cells = { "quick_win" => [], "next_big" => [], "defer" => [], "triage" => [] }
@@ -526,8 +578,23 @@ end
 
 def intent_line(rec, bullet)
   note = rec[:status] == "active" ? " (#{rec[:lifecycle].to_s.capitalize})" : ""
+  text = rec[:intent].to_s
+  text = "#{text[0, INTENT_LINE_MAX_CHARS]}…" if text.length > INTENT_LINE_MAX_CHARS
   { id: rec[:id], intent: rec[:intent], created: rec[:created], bullet: bullet,
-    scope: rec[:scope], line: "#{bullet} #{rec[:id]} #{rec[:intent]}#{note}".rstrip }
+    scope: rec[:scope], line: "#{bullet} #{rec[:id]} #{text}#{note}".rstrip }
+end
+
+# Cap a raw record list to MATRIX_DATA_CAP entries, then map to intent_line-shaped
+# hashes, appending a plain "+N more" line (no id, not a real record) when truncated.
+# Caps the record list first so the "+N more" entry never goes through intent_line.
+def cap_lines(list, bullet)
+  capped = list.first(MATRIX_DATA_CAP)
+  lines = capped.map { |r| intent_line(r, bullet) }
+  if list.size > MATRIX_DATA_CAP
+    lines << { id: "", intent: "", created: "", bullet: bullet, scope: "",
+               line: "#{bullet} +#{list.size - MATRIX_DATA_CAP} more" }
+  end
+  lines
 end
 
 def matrix_data(records)
@@ -539,8 +606,8 @@ def matrix_data(records)
   end
   by_created_desc = ->(list) { list.sort_by { |r| invert_ts(r[:created]) } }
   out = {}
-  cells.each { |q, list| out[q] = by_created_desc.call(list).map { |r| intent_line(r, QUADRANT_BULLET[q]) } }
-  out["research"] = by_created_desc.call(research).map { |r| intent_line(r, "🔬") }
+  cells.each { |q, list| out[q] = cap_lines(by_created_desc.call(list), QUADRANT_BULLET[q]) }
+  out["research"] = cap_lines(by_created_desc.call(research), "🔬")
   out
 end
 
@@ -606,12 +673,10 @@ def render_data_project(records, slug)
     recently_worked: recently_worked(records, project_scope: scope),
     matrix: matrix_data(matrix_pool),
     counts: counts_of(scoped),
-    active: scoped.select { |r| r[:status] == "active" }
-                  .sort_by { |r| invert_ts(r[:last_accessed_at]) }
-                  .map { |r| intent_line(r, STATUS_GLYPH["active"]) },
-    future: scoped.select { |r| r[:status] == "future" }
-                  .sort_by { |r| invert_ts(r[:created]) }
-                  .map { |r| intent_line(r, STATUS_GLYPH["future"]) } }
+    active: cap_lines(scoped.select { |r| r[:status] == "active" }
+                            .sort_by { |r| invert_ts(r[:last_accessed_at]) }, STATUS_GLYPH["active"]),
+    future: cap_lines(scoped.select { |r| r[:status] == "future" }
+                            .sort_by { |r| invert_ts(r[:created]) }, STATUS_GLYPH["future"]) }
 end
 
 # ---------------------------------------------------------------------------
@@ -645,8 +710,8 @@ def main(argv)
   mode = argv.shift || "continue"
   slug = argv.shift
 
-  raw, done_ids, referenced = load_all
-  records = raw.map { |r| classify(r, done_ids, referenced) }
+  raw, done_ids, referenced, completed_on_map = load_all
+  records = raw.map { |r| classify(r, done_ids, referenced, completed_on_map) }
 
   if data
     payload = mode == "project" ? render_data_project(records, slug) : render_data_global(records)
