@@ -29,14 +29,20 @@ The skill operates on the file directly via Read/Edit; no helper script.
 | Sync status mirror | an entry's status may be stale against INDEX | `references/operations.md#sync-status-mirror` |
 | Append log line | a roadmap event just happened (created, wave done, closed) | `references/operations.md#append-a-log-line` |
 | Read / consume | a human or a coordinator needs the roadmap's current state | `references/operations.md#read--consume` |
+| Close / archive | the roadmap's `## Goal` is reached | `references/operations.md#close--archive` |
 
-See `references/file-format.md` for the exact entry-line shape, status vocabulary, and a worked
-example. See `references/operations.md` for step-by-step mechanics of each verb above.
+See `references/file-format.md` for the exact entry-line shape, status vocabulary, checkbox/log
+format, and a worked example. See `references/operations.md` for step-by-step mechanics of each
+verb above.
 
 ## Notes
 
 - File location and the four-section shape are identical across stores; do not invent a different
   layout per project.
 - `## Goal` is a checkable prose condition read by a human or agent, not an executable checker.
+- Wave entries render as checkboxes (`- [x] ... — delivered` / `- [ ] ... — <status>`); a human
+  reading cold should see shipped/running/next within a minute. `## Log` lines are one-sentence,
+  EM-to-CTO-voice, dated, and link each entry-intent's `outcome.md` (lossless-by-reference).
 - Additive: this skill introduces no gate, lock, or hook, and does not change `INDEX.md`'s section
   list or the intent frontmatter schema.
+- Closing a roadmap moves it to `roadmaps/archived/{slug}.md` so `roadmaps/` lists only live ones.

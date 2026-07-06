@@ -13,6 +13,8 @@ class RoadmapTest < Minitest::Test
   TEMPLATE = File.join(ROOT, "templates", "roadmap.md")
   SKILL = File.join(ROOT, "skills", "roadmap", "SKILL.md")
   REFERENCES_DIR = File.join(ROOT, "skills", "roadmap", "references")
+  FILE_FORMAT = File.join(REFERENCES_DIR, "file-format.md")
+  OPERATIONS = File.join(REFERENCES_DIR, "operations.md")
   PLASTIC_MD = File.join(ROOT, "PLASTIC.md")
   STATUS_TOKENS = %w[queued delivering delivered abandoned blocked].freeze
   LINE_BUDGET = 500
@@ -42,6 +44,31 @@ class RoadmapTest < Minitest::Test
     body = File.read(TEMPLATE)
     assert_match(/^- \d{4}-\d{2}-\d{2} /, body,
                  "## Log must show a dated example line")
+  end
+
+  # --- amendment (2026-07-06 human rulings): checkboxes, EM-to-CTO log, archive ---
+
+  def test_template_wave_entries_use_checkbox_syntax
+    body = File.read(TEMPLATE)
+    assert_match(/^- \[ \] .+ — \w+\s*$/, body,
+                 "## Waves must show an unchecked '- [ ] <id> <title> — <status>' entry")
+    assert_match(/^- \[x\] .+ — delivered\s*$/, body,
+                 "## Waves must show a checked '- [x] <id> <title> — delivered' entry")
+  end
+
+  def test_template_log_documents_outcome_link_and_lossless_rule
+    body = File.read(TEMPLATE)
+    assert_match(/outcome\.md/, body, "## Log docs must mention linking to outcome.md")
+    assert_match(/lossless-by-reference|never restate/i, body,
+                 "## Log docs must state the lossless-by-reference / never-restate rule")
+    assert_match(/plain-language|EM-to-CTO/i, body,
+                 "## Log docs must state the plain-language / EM-to-CTO voice rule")
+  end
+
+  def test_template_notes_archive_on_close
+    body = File.read(TEMPLATE)
+    assert_match(%r{roadmaps/archived/}, body,
+                 "template header must note the archived/ destination on close")
   end
 
   # --- skills/roadmap/SKILL.md ----------------------------------------------
@@ -76,6 +103,32 @@ class RoadmapTest < Minitest::Test
     assert_empty nested, "references/ must stay one level deep"
   end
 
+  def test_skill_documents_close_archive_verb
+    body = File.read(SKILL)
+    assert_match(/Close.*archive|Close \/ archive/i, body,
+                 "SKILL.md must list a Close/archive verb")
+    assert_match(%r{roadmaps/archived/}, body,
+                 "SKILL.md must name the roadmaps/archived/ destination")
+  end
+
+  def test_references_document_close_archive_checkbox_and_log_formats
+    file_format = File.read(FILE_FORMAT)
+    operations = File.read(OPERATIONS)
+    assert_match(/\[x\]/, file_format, "file-format.md must document the checkbox syntax")
+    assert_match(/\[ \]/, file_format, "file-format.md must document the unchecked checkbox")
+    assert_match(/outcome\.md/, file_format, "file-format.md must document the outcome.md link")
+    assert_match(/EM-to-CTO|plain-language/i, file_format,
+                 "file-format.md must document the EM-to-CTO / plain-language log rule")
+    assert_match(%r{roadmaps/archived/}, file_format,
+                 "file-format.md must document the archived/ location")
+    assert_match(/close.*archive|archive/i, operations,
+                 "operations.md must document the close/archive operation")
+    assert_match(%r{roadmaps/archived/}, operations,
+                 "operations.md must document the move to roadmaps/archived/")
+    assert_match(/under a minute|human-comprehension/i, operations,
+                 "operations.md must state the human-comprehension goal")
+  end
+
   # --- PLASTIC.md contract ---------------------------------------------------
 
   def test_plastic_md_states_file_location
@@ -108,6 +161,31 @@ class RoadmapTest < Minitest::Test
   def test_plastic_md_has_skills_reference_row
     body = File.read(PLASTIC_MD)
     assert_match(/plastic-roadmap/, body, "must list plastic-roadmap in Skills Reference")
+  end
+
+  def test_plastic_md_states_archived_rule
+    body = File.read(PLASTIC_MD)
+    assert_match(%r{roadmaps/archived/}, body,
+                 "must state the roadmaps/archived/ subdirectory and its move-on-close rule")
+  end
+
+  def test_plastic_md_states_purpose_line_verbatim
+    body = File.read(PLASTIC_MD)
+    assert_includes body,
+                     "planned parallel delivery of intents in a coherent and organized way",
+                     "must state the verbatim purpose line"
+  end
+
+  def test_plastic_md_states_loop_relationship
+    body = File.read(PLASTIC_MD)
+    assert_match(/intent 69/, body, "must name intent 69 as the loop-engineering consumer")
+    assert_match(/planning half/i, body, "must state roadmap = planning half, loop = runtime")
+  end
+
+  def test_plastic_md_states_checkbox_and_em_to_cto_log_format
+    body = File.read(PLASTIC_MD)
+    assert_match(/checkbox/i, body, "must mention the checkbox wave-entry rendering")
+    assert_match(/outcome\.md/, body, "must mention linking log lines to outcome.md")
   end
 
 end
