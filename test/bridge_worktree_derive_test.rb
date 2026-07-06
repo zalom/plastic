@@ -46,7 +46,7 @@ class BridgeWorktreeDeriveTest < Minitest::Test
 
   def test_derive_blocks_persist_to_disk
     derive
-    data = Bridge.read(@session)
+    data = Bridge.read(@session, intent_id: "73c1")
     assert data.key?("worktree")
     assert data.key?("lock")
     assert_equal false, data["worktree"]["provisioned"]

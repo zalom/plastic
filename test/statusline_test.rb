@@ -53,11 +53,11 @@ class StatuslineTest < Minitest::Test
     out.gsub(/\e\[[0-9;]*m/, "") # strip ANSI
   end
 
-  def stdin_json(session_id: nil)
+  def stdin_json(session_id: nil, cwd: @cwd)
     payload = {
       "model" => { "display_name" => "Opus" },
-      "workspace" => { "current_dir" => @cwd },
-      "cwd" => @cwd,
+      "workspace" => { "current_dir" => cwd },
+      "cwd" => cwd,
     }
     payload["session_id"] = session_id if session_id
     JSON.generate(payload)
@@ -86,6 +86,22 @@ class StatuslineTest < Minitest::Test
       "build" => { "auto" => true, "stage" => "exec" },
     }
     File.write(File.join(@tmp, "plastic-#{session_id}.json"), JSON.pretty_generate(data))
+  end
+
+  # Per-intent bridge (intent 131): plastic-<session>--<id>.json, optionally
+  # carrying a worktree.code and an explicit mtime (so mtime ordering is
+  # deterministic, independent of write order and clock resolution).
+  def write_bridge_per_intent(session_id:, id:, name:, code: nil, store: @store, mtime: nil)
+    data = {
+      "session" => session_id,
+      "intent" => { "id" => id, "dir" => "#{id}--x", "store" => store, "name" => name },
+      "build" => { "auto" => true, "stage" => "exec" },
+      "worktree" => { "code" => code, "provisioned" => !code.nil? },
+    }
+    path = File.join(@tmp, "plastic-#{session_id}--#{id}.json")
+    File.write(path, JSON.pretty_generate(data))
+    File.utime(mtime, mtime, path) if mtime
+    path
   end
 
   # --- cases -----------------------------------------------------------------
@@ -137,6 +153,56 @@ class StatuslineTest < Minitest::Test
     assert_includes out, "79"
     assert_includes out, "Newest savepoint"
     refute_includes out, "Older intent"
+  end
+
+  def test_glob_picks_per_intent_bridge_by_cwd_worktree
+    # Intent 131: a session owns SEVERAL per-intent bridges. cwd inside
+    # worktree A must select A's bridge over a NEWER sibling B (worktree beats
+    # mtime), exercising the new plastic-<sid>--*.json glob-pick branch.
+    wt_a = File.join(@home, "repo", ".claude", "worktrees", "79--a")
+    wt_b = File.join(@home, "repo", ".claude", "worktrees", "80--b")
+    sid = "sess-C"
+    write_bridge_per_intent(session_id: sid, id: "79", name: "Alpha work",
+                            code: wt_a, mtime: Time.now - 100)
+    write_bridge_per_intent(session_id: sid, id: "80", name: "Beta work",
+                            code: wt_b, mtime: Time.now) # newer, must NOT win from cwd A
+
+    out = render(stdin_json(session_id: sid, cwd: wt_a))
+    assert_includes out, "79"
+    assert_includes out, "Alpha work"
+    refute_includes out, "Beta work"
+
+    out_b = render(stdin_json(session_id: sid, cwd: wt_b))
+    assert_includes out_b, "80"
+    assert_includes out_b, "Beta work"
+    refute_includes out_b, "Alpha work"
+  end
+
+  def test_glob_falls_back_to_newest_without_cwd_signal
+    # No candidate's worktree/intent dir prefixes cwd: newest per-intent bridge
+    # wins (ls -1t order), still exercising the glob branch (not the legacy one).
+    sid = "sess-D"
+    unrelated = File.join(@home, "somewhere", "unrelated")
+    write_bridge_per_intent(session_id: sid, id: "79", name: "Older work",
+                            code: File.join(@home, "repo", "wt79"), mtime: Time.now - 100)
+    write_bridge_per_intent(session_id: sid, id: "80", name: "Newer work",
+                            code: File.join(@home, "repo", "wt80"), mtime: Time.now)
+
+    out = render(stdin_json(session_id: sid, cwd: unrelated))
+    assert_includes out, "80"
+    assert_includes out, "Newer work"
+    refute_includes out, "Older work"
+  end
+
+  def test_legacy_single_key_bridge_still_renders
+    # No per-intent bridge for the session, only a legacy plastic-<sid>.json:
+    # the legacy tolerance branch must still render the work-unit.
+    sid = "sess-E"
+    write_bridge(session_id: sid, id: "79", name: "Legacy work")
+
+    out = render(stdin_json(session_id: sid))
+    assert_includes out, "79"
+    assert_includes out, "Legacy work"
   end
 
   def test_no_ruby_or_jq_invoked

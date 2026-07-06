@@ -52,8 +52,8 @@ class BridgeGuidedTest < Minitest::Test
     data = arm_guided
     assert_equal false, data["build"]["auto"]
     assert_equal "96", data["intent"]["id"]
-    assert File.exist?(Bridge.path(@session))
-    assert_equal false, Bridge.read(@session)["build"]["auto"]
+    assert File.exist?(Bridge.path(@session, intent_id: "96"))
+    assert_equal false, Bridge.read(@session, intent_id: "96")["build"]["auto"]
   end
 
   def test_arm_guided_stamps_lock_and_calls_provision
@@ -69,7 +69,7 @@ class BridgeGuidedTest < Minitest::Test
     assert_equal 1, seen.length, "arm_guided must call Worktree.provision exactly once"
     # lock cache persisted to disk, and the durable lock file exists in the
     # intent dir with the same owner (the file is the truth, D2)
-    assert_equal @session, Bridge.read(@session)["lock"]["owner_session"]
+    assert_equal @session, Bridge.read(@session, intent_id: "96")["lock"]["owner_session"]
     assert_equal @session, Lock.read(@intent_dir)["owner_session"]
   end
 
@@ -96,7 +96,7 @@ class BridgeGuidedTest < Minitest::Test
     assert_equal true, data["build"]["auto"]
     assert_equal data["session"], data["lock"]["owner_session"]
     assert_equal @session, Lock.read(@intent_dir)["owner_session"]
-    assert_equal true, Bridge.read(@session)["build"]["auto"]
+    assert_equal true, Bridge.read(@session, intent_id: "96")["build"]["auto"]
   end
 
   # Session-less arming derives the key, writes the bridge, warns on stderr.
@@ -109,9 +109,9 @@ class BridgeGuidedTest < Minitest::Test
       assert_equal derived, data["session"]
       assert_equal false, data["build"]["auto"]
     end
-    assert File.exist?(Bridge.path(derived))
+    assert File.exist?(Bridge.path(derived, intent_id: "96"))
     refute_empty out
-    File.delete(Bridge.path(derived)) if File.exist?(Bridge.path(derived))
+    File.delete(Bridge.path(derived, intent_id: "96")) if File.exist?(Bridge.path(derived, intent_id: "96"))
   ensure
     ENV["CLAUDE_CODE_SESSION_ID"] = saved_code unless saved_code.nil?
   end

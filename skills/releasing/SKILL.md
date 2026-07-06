@@ -243,8 +243,11 @@ from the bridge:
 
 ```bash
 ruby -r ~/.plastic/scripts/lib/worktree -r ~/.plastic/scripts/lib/bridge -e \
-  'b = Bridge.read(ENV["CLAUDE_CODE_SESSION_ID"]); Worktree.finish(b, merge: true) if b'
+  'b = Bridge.discover_bridge(session: ENV["CLAUDE_CODE_SESSION_ID"], cwd: Dir.pwd); Worktree.finish(b, merge: true) if b'
 ```
+
+(Uses `discover_bridge`, not a bare session-keyed `Bridge.read`, because a session can own more
+than one live bridge now — intent 131 — and `discover_bridge` resolves the right one for this cwd.)
 
 `finish` is fail-open and idempotent: a conflicting merge is aborted and logged (the worktree
 is still removed rather than stranded), and a second call with the block already cleared is a

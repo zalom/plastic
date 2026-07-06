@@ -49,7 +49,7 @@ class PlasticLockCliTest < Minitest::Test
     end
     lock = Lock.read(@intent_dir)
     assert_equal "sess-1", lock["owner_session"]
-    bridge = Bridge.read("sess-1", tmp: @tmp)
+    bridge = Bridge.read("sess-1", intent_id: "96", tmp: @tmp)
     refute_nil bridge
     assert_equal "96", bridge.dig("intent", "id")
     assert_equal "sess-1", bridge.dig("lock", "owner_session")
@@ -94,7 +94,7 @@ class PlasticLockCliTest < Minitest::Test
     report = repair
     assert_equal "repaired", report["status"]
     assert File.exist?(Lock.path(@intent_dir))
-    bridge = Bridge.read("sess-1", tmp: @tmp)
+    bridge = Bridge.read("sess-1", intent_id: "96", tmp: @tmp)
     refute bridge["lock"].key?("pid"), "migration strips the legacy pid"
   end
 
@@ -107,7 +107,7 @@ class PlasticLockCliTest < Minitest::Test
     }
     Bridge.write("sess-1", legacy, tmp: @tmp)
     repair
-    assert_equal true, Bridge.read("sess-1", tmp: @tmp).dig("build", "auto")
+    assert_equal true, Bridge.read("sess-1", intent_id: "96", tmp: @tmp).dig("build", "auto")
   end
 
   # --- CLI verbs ---------------------------------------------------------------

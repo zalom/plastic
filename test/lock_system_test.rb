@@ -144,14 +144,14 @@ class LockSystemTest < Minitest::Test
 
   def test_explicit_session_keys_the_bridge
     arm("explicit-sid")
-    assert File.exist?(File.join(@tmp, "plastic-explicit-sid.json"))
+    assert File.exist?(File.join(@tmp, "plastic-explicit-sid--96.json"))
     assert_equal "explicit-sid", Lock.read(@dir96)["owner_session"]
   end
 
   def test_env_session_keys_the_bridge_when_no_explicit
     ENV["CLAUDE_CODE_SESSION_ID"] = "env-sid"
     arm(nil)
-    assert File.exist?(File.join(@tmp, "plastic-env-sid.json"))
+    assert File.exist?(File.join(@tmp, "plastic-env-sid--96.json"))
     assert_equal "env-sid", Lock.read(@dir96)["owner_session"]
   ensure
     ENV["CLAUDE_CODE_SESSION_ID"] = nil
@@ -160,7 +160,7 @@ class LockSystemTest < Minitest::Test
   def test_derived_key_when_both_blank_and_warns
     derived = Bridge.derive_key(@store, "96")
     _out, err = capture_io { arm(nil) }
-    assert File.exist?(File.join(@tmp, "plastic-#{derived}.json"))
+    assert File.exist?(File.join(@tmp, "plastic-#{derived}--96.json"))
     assert_equal derived, Lock.read(@dir96)["owner_session"]
     assert_match(/derived bridge key/, err)
   end
@@ -232,7 +232,7 @@ class LockSystemTest < Minitest::Test
                               "intent" => { "id" => id, "dir" => File.basename(dir),
                                             "store" => @store, "name" => "demo" },
                               "build" => { "auto" => false } }, tmp: @tmp)
-      Bridge.path(session, tmp: @tmp)
+      Bridge.path(session, intent_id: id, tmp: @tmp)
     end
 
     terminal = seed.call("t-sess", "96", @dir96) # terminal, no lock -> purges
@@ -280,12 +280,12 @@ class LockSystemTest < Minitest::Test
 
   def test_corrupted_bridge_recovery
     arm("a")
-    File.write(Bridge.path("a", tmp: @tmp), "}{ not json")
+    File.write(Bridge.path("a", intent_id: "96", tmp: @tmp), "}{ not json")
     assert_nil gate("#{@dir96}/plan.md", session: "a"),
                "a clobbered bridge cannot strand the owner: the lock file wins (D2)"
     report = repair("a")
     assert_equal "repaired", report["status"]
-    bridge = Bridge.read("a", tmp: @tmp)
+    bridge = Bridge.read("a", intent_id: "96", tmp: @tmp)
     assert_equal "96", bridge.dig("intent", "id")
     assert_equal "a", bridge.dig("lock", "owner_session")
   end
@@ -302,12 +302,12 @@ class LockSystemTest < Minitest::Test
 
   def test_missing_bridge_tmp_wiped_recovery
     arm("a")
-    File.delete(Bridge.path("a", tmp: @tmp))
+    File.delete(Bridge.path("a", intent_id: "96", tmp: @tmp))
     assert_nil gate("#{@dir96}/plan.md", session: "a"),
                "a wiped /tmp cannot strand the owner"
     report = repair("a")
     assert_equal "repaired", report["status"]
-    refute_nil Bridge.read("a", tmp: @tmp), "repair rebuilds the bridge cache"
+    refute_nil Bridge.read("a", intent_id: "96", tmp: @tmp), "repair rebuilds the bridge cache"
   end
 
   # --- 12. D9: lifecycle writes read only the MAIN store dir -----------------------

@@ -190,7 +190,7 @@ class LockGateTest < Minitest::Test
     system({ "PLASTIC_TMP" => tmp, "CLAUDE_CODE_SESSION_ID" => nil, "HOME" => @home },
            RbConfig.ruby, "-r", lib, "-e", code, exception: true)
 
-    bridge = Bridge.read("sess-1", tmp: tmp)
+    bridge = Bridge.read("sess-1", intent_id: "96", tmp: tmp)
     assert_nil Bridge.lock_gate_decision(bridge, @intent_file, session: "sess-1"),
                "the owner who just armed must pass the lock gate immediately"
   ensure

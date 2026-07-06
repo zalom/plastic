@@ -275,9 +275,11 @@ During initial project creation, all decisions are non-destructive by definition
    ```
    (Use `"abandoned"` instead when the intent is being moved to `## Abandoned`.) Idempotent.
 7. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: deliver intent <ID> — <name>"`
-8. Disarm the lifecycle gate (auto delivery is finished):
+8. Disarm the lifecycle gate (auto delivery is finished). Substitute the intent's own id for
+   `<ID>` (a session can be delivering more than one intent at once, intent 131, so disarm must
+   name which of the session's bridges to clear):
    ```bash
-   ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.disarm_auto(ENV["CLAUDE_CODE_SESSION_ID"])'
+   ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.disarm_auto(ENV["CLAUDE_CODE_SESSION_ID"], intent_id: "<ID>")'
    ```
    Disarm runs the ordered End tail: it releases the worktrees first, then clears the
    intent's `delivery.lock` (and the bridge's lock cache), and only then is the bridge
