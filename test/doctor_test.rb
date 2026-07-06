@@ -320,6 +320,100 @@ class DoctorConventionsTest < Minitest::Test
 end
 
 # ===========================================================================
+# Intent-126 regressions: lock in two already-shipped first-run fixes so they
+# cannot silently regress. Neither test reuses write_intent's date-quoting or
+# a pre-filtered directory listing; each drives the real code path.
+# ===========================================================================
+
+class Doctor126RegressionTest < Minitest::Test
+  include DoctorTestHelpers
+
+  def setup
+    FileUtils.rm_rf(DOCTOR_TEST_HOME)
+    FileUtils.mkdir_p(DOCTOR_TEST_HOME)
+    @store_dir = File.join(DOCTOR_TEST_HOME, "store")
+    FileUtils.mkdir_p(@store_dir)
+  end
+
+  def teardown
+    FileUtils.rm_rf(DOCTOR_TEST_HOME)
+  end
+
+  # Ruby 4 Psych raises DisallowedClass on an unquoted `created:` date unless
+  # parse_frontmatter passes `permitted_classes: [Date, Time]` to safe_load.
+  # write_intent quotes the date (see the helper above), which would hide this
+  # regression, so this test writes the frontmatter by hand instead.
+  def test_unquoted_created_date_parses_to_a_date_and_is_not_missing_frontmatter
+    dir = File.join(@store_dir, "1a--unquoted-date")
+    FileUtils.mkdir_p(dir)
+    content = <<~MD
+      ---
+      id: 1a
+      intent: Test intent
+      sources: []
+      chain: []
+      created: 2026-06-01
+      author: test
+      tags: []
+      ---
+
+      ## Intent
+      1a--unquoted-date
+
+      ## Context
+      Why
+
+      ## Outcome
+      Result
+
+      ## Insights
+      Notes
+
+      ## Links
+      <!-- No sources or chain; this intent has no graph edges to project. -->
+    MD
+    md_path = File.join(dir, "1a--unquoted-date.md")
+    File.write(md_path, content)
+
+    fm = doctor.parse_frontmatter(md_path)
+
+    refute_nil fm, "parse_frontmatter must not return nil for valid unquoted-date frontmatter"
+    assert_kind_of Date, fm["created"], "created: should parse as a real Date, not a String or nil"
+
+    checks = doctor.check_conventions
+    fm_check = checks.find { |c| c[:name] == "frontmatter_fields" }
+    assert_equal "pass", fm_check[:status],
+      "frontmatter must not be misreported as missing: #{fm_check[:details]}"
+  end
+
+  # .obsidian / .git dot-directories alongside real intents used to be walked
+  # as intents, producing false orphaned/malformed-frontmatter noise for
+  # newcomers. store_intent_dirs must reject dot-entries.
+  def test_dot_directories_excluded_from_intent_scanning
+    write_intent(@store_dir, "1a--valid-intent")
+    FileUtils.mkdir_p(File.join(@store_dir, ".obsidian"))
+    File.write(File.join(@store_dir, ".obsidian", "workspace.json"), "{}")
+    FileUtils.mkdir_p(File.join(@store_dir, ".git"))
+    File.write(File.join(@store_dir, ".git", "HEAD"), "ref: refs/heads/main\n")
+
+    entries = doctor.store_intent_dirs(@store_dir)
+    assert_equal ["1a--valid-intent"], entries
+
+    write_index(File.join(DOCTOR_TEST_HOME, "INDEX.md"), store_refs: ["store/1a--valid-intent"])
+
+    global_checks = doctor.check_global_store
+    orphan_check = global_checks.find { |c| c[:name] == "orphaned_intents" }
+    assert_equal "pass", orphan_check[:status]
+    assert orphan_check[:details].none? { |d| d.include?(".obsidian") || d.include?(".git") }
+
+    convention_checks = doctor.check_conventions
+    dirname_check = convention_checks.find { |c| c[:name] == "intent_dirname" }
+    assert_equal "pass", dirname_check[:status]
+    assert dirname_check[:details].none? { |d| d.include?(".obsidian") || d.include?(".git") }
+  end
+end
+
+# ===========================================================================
 # Intent-51 regression: an intent born without `chain` (intent 60).
 # Intent 51 was created with no `chain` key and nothing caught it at birth.
 # This reproduces that case across all three detection paths: the library, the
