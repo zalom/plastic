@@ -49,30 +49,54 @@ class UpdateVerbTest < Minitest::Test
     assert_equal :unknown_channel, r[:status]
   end
 
-  # --- Post-update doctor (intent 56, task D) ---
+  # --- Post-update doctor (intent 56 introduced the full run; intent 126
+  # defaults it to the fast core tier with `full:` as an explicit opt-in) ---
 
-  # Fake doctor stub for hermetic tests: records calls and returns a canned result.
+  # Fake doctor stub for hermetic tests: records calls to both the core tier
+  # (the default post-update run) and the full tier (the `full: true` opt-in),
+  # each returning its own canned result.
   class FakeDoctor
-    attr_reader :called_with
+    attr_reader :core_called_with, :full_called_with
+
+    CANNED_CORE_RESULT = {
+      status: "fail",
+      summary: { pass: 2, warn: 0, fail: 1, total: 3 },
+    }.freeze
 
     CANNED_RESULT = {
       status: "warn",
       summary: { pass: 3, warn: 1, fail: 0, total: 4 },
     }.freeze
 
+    def run_core_checks(agent_key)
+      @core_called_with = agent_key
+      CANNED_CORE_RESULT
+    end
+
     def run_checks(agent_key)
-      @called_with = agent_key
+      @full_called_with = agent_key
       CANNED_RESULT
     end
   end
 
-  def test_run_post_update_doctor_calls_run_checks_and_returns_result
+  def test_run_post_update_doctor_defaults_to_core_tier
     fake = FakeDoctor.new
     out = StringIO.new
     result = @u.run_post_update_doctor(doctor: fake, out: out)
 
-    assert_equal "claude", fake.called_with, "run_checks should be called with 'claude'"
-    assert_equal FakeDoctor::CANNED_RESULT, result, "should return the doctor result hash"
+    assert_equal "claude", fake.core_called_with, "run_core_checks should be called with 'claude' by default"
+    assert_nil fake.full_called_with, "run_checks should NOT be called on the default (core) path"
+    assert_equal FakeDoctor::CANNED_CORE_RESULT, result, "should return the core doctor result hash"
+  end
+
+  def test_run_post_update_doctor_full_flag_runs_full
+    fake = FakeDoctor.new
+    out = StringIO.new
+    result = @u.run_post_update_doctor(doctor: fake, out: out, full: true)
+
+    assert_equal "claude", fake.full_called_with, "full: true should reach run_checks with 'claude'"
+    assert_nil fake.core_called_with, "run_core_checks should NOT be called when full: true"
+    assert_equal FakeDoctor::CANNED_RESULT, result, "should return the full doctor result hash"
   end
 
   def test_run_post_update_doctor_writes_summary_to_out
@@ -82,14 +106,14 @@ class UpdateVerbTest < Minitest::Test
 
     output = out.string
     assert_match(/doctor/i, output, "output should mention 'doctor'")
-    assert_match(/warn/, output, "output should include the overall status")
-    assert_match(/pass.*3|3.*pass/i, output, "output should include pass count")
-    assert_match(/warn.*1|1.*warn/i, output, "output should include warn count")
+    assert_match(/fail/, output, "output should include the overall status")
+    assert_match(/pass.*2|2.*pass/i, output, "output should include pass count")
+    assert_match(/fail.*1|1.*fail/i, output, "output should include fail count")
   end
 
   def test_run_post_update_doctor_does_not_raise_on_fail_status
     fake_fail = Class.new do
-      def run_checks(_)
+      def run_core_checks(_)
         { status: "fail", summary: { pass: 0, warn: 0, fail: 2, total: 2 } }
       end
     end.new
@@ -103,13 +127,13 @@ class UpdateVerbTest < Minitest::Test
 
   def test_run_post_update_doctor_swallows_exception
     raising = Class.new do
-      def run_checks(_)
+      def run_core_checks(_)
         raise RuntimeError, "malformed store file"
       end
     end.new
 
     out = StringIO.new
-    # An exception from run_checks must NOT propagate — the update already succeeded.
+    # An exception from run_core_checks must NOT propagate — the update already succeeded.
     result = @u.run_post_update_doctor(doctor: raising, out: out)
 
     assert_nil result, "should return nil when the doctor raises"
@@ -128,7 +152,7 @@ class UpdateVerbTest < Minitest::Test
     u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
     u.define_singleton_method(:fetch_dist_tags) { TAGS }
     u.define_singleton_method(:perform_switch) { |_target, _flags| 0 }
-    u.define_singleton_method(:run_post_update_doctor) { doctor_called = true; nil }
+    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| doctor_called = true; nil }
 
     u.cli([])
 
@@ -142,7 +166,7 @@ class UpdateVerbTest < Minitest::Test
     u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
     u.define_singleton_method(:fetch_dist_tags) { TAGS }
     u.define_singleton_method(:perform_switch) { |_target, _flags| 1 }
-    u.define_singleton_method(:run_post_update_doctor) { doctor_called = true; nil }
+    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| doctor_called = true; nil }
 
     u.cli([])
 

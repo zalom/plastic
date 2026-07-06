@@ -53,18 +53,22 @@ class Update < InstallerCore
       end
       puts "\u{2b06}\u{fe0f}  Updating Plastic #{iv} \u{2192} #{res[:target]}"
       exit_code = perform_switch(res[:target], agent_args(argv))
-      run_post_update_doctor if exit_code == 0
+      run_post_update_doctor(full: argv.include?("--full-doctor")) if exit_code == 0
       exit_code
     end
   end
 
-  # Run the full doctor after a successful update and print a human-readable
-  # summary. Informational only: does not raise and does not affect the update's
-  # exit code. Accepts injected `doctor` and `out` for hermetic unit tests.
-  def run_post_update_doctor(doctor: nil, out: $stdout)
+  # Run doctor after a successful update and print a human-readable summary.
+  # Defaults to the fast core tier (agent registration + core files + manifest
+  # sync, binary pass|fail, no store walk) so a newcomer's first post-update
+  # run is not buried in convention warns they cannot act on. `full: true`
+  # (via `--full-doctor`) runs the complete store walk instead. Informational
+  # only: does not raise and does not affect the update's exit code. Accepts
+  # injected `doctor` and `out` for hermetic unit tests.
+  def run_post_update_doctor(doctor: nil, out: $stdout, full: false)
     doctor ||= Doctor.new
-    out.puts "\nRunning full doctor after update..."
-    result = doctor.run_checks("claude")
+    out.puts full ? "\nRunning full doctor after update..." : "\nRunning core doctor after update..."
+    result = full ? doctor.run_checks("claude") : doctor.run_core_checks("claude")
     s = result[:summary]
     out.puts "  Doctor status: #{result[:status]} " \
              "(pass: #{s[:pass]}, warn: #{s[:warn]}, fail: #{s[:fail]}, total: #{s[:total]})"
@@ -151,6 +155,11 @@ class Update < InstallerCore
 
       Agent options (default: --claude):
         --claude --codex --hermes --all
+
+      Post-update doctor:
+        By default, a successful update runs the fast core doctor sync (agent
+        registration, core files, manifest — binary pass|fail, no store walk).
+        --full-doctor   Run the full doctor (complete store walk) after updating.
 
       Behaviour:
         No flag advances to the next version on your current channel. Switching toward a
