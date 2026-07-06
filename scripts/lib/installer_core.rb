@@ -224,6 +224,7 @@ class InstallerCore
       "scripts/lib/insights.rb" => "scripts/lib/insights.rb",
       "scripts/lib/worktree.rb" => "scripts/lib/worktree.rb",
       "scripts/lib/boot_banner.rb" => "scripts/lib/boot_banner.rb",
+      "scripts/lib/dashboard_banner.rb" => "scripts/lib/dashboard_banner.rb",
       "scripts/lib/qmd_sync.rb" => "scripts/lib/qmd_sync.rb",
       "scripts/qmd-sync" => "scripts/qmd-sync",
       "scripts/lib/intent_validator.rb" => "scripts/lib/intent_validator.rb",

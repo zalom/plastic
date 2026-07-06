@@ -61,9 +61,17 @@ Fill mechanically — no rewriting, no re-sorting:
 
 ### Step 3 — Present it (mandatory, every invocation)
 
-**Paste the filled Markdown into your reply.** This is non-optional: the board only reaches
-the user when it is in the chat reply, not in tool-call stdout. Never describe the board
-instead of showing it.
+**Paste the filled Markdown into your reply.** This is non-optional: if the reply does not
+contain the filled Markdown, the user sees nothing — tool-call stdout and hook
+`additionalContext` are both invisible to them. Never describe the board instead of showing
+it, and never assume a hook already showed it for you.
+
+`hook-continue` also emits a one-line `systemMessage` summary (counts, and the next big thing
+when there is one) as a hook-owned fallback, independent of the agent's reply. Treat that line
+as a floor only, not a substitute for this step: it carries no matrix, no recently-worked
+section, and no entry-flow prompt. Presenting the full board here remains mandatory regardless
+of whether the summary line fired. This stays a soft, agent-followed mechanism — there is no
+stronger enforcement for a full multi-section Markdown document in this harness today.
 
 ### Step 4 — Entry flow (the board is the menu)
 
@@ -103,13 +111,22 @@ a raw terminal. The Markdown board (`--data` + template) is the surface for the 
 ## How classification works (deterministic)
 
 - **Effort** — small for `research`/`exploration`/`bugfix`, for already-scoped intents
-  (plan/checklist exists), or deep refinement branches; big otherwise.
-- **Value → high** when any of: explicit `value: high`; a human-authored **root** intent; an
-  intent with a non-empty `chain`; or an intent that is a `source` of ≥1 other intent. Else low.
-- **Flags** — `unblocked` only when a **future** intent has **all** its `sources` done;
-  `stale` only on future intents past the staleness threshold. Both kept low-noise by design.
+  (plan/checklist exists), or a **branch id** (folgezettel depth ≥ 2, e.g. `4a`, `12b3`); big
+  otherwise. A root id (a bare number) is always depth 1, so it is never demoted by this rule.
+- **Value → high** when any of: explicit `value: high`; a human-authored **root** intent; or
+  an intent that is a `source` of ≥1 other intent (it has spawned follow-on work). A purely
+  relational `chain` entry alone is **not** a value signal (intent 68) — else low.
+- **Flags** — `unblocked` only when a **future** intent has **all** its `sources` done AND at
+  least one source's completion date is strictly later than the intent's own `created` date (a
+  genuine wait, not a birth-time default); `in-progress` only when the savepoint ledger shows
+  real post-birth activity, not just the creation stamp; `stale` only on future intents past
+  the staleness threshold. All three kept low-noise by design.
 - **Override** — a `value: high|low` frontmatter field always wins (pre-stamped data, never
   model judgment at render time).
+- **Caps** — quadrant lists and the project board's `active`/`future` lists are capped at 8
+  entries plus a trailing "+N more" line; each entry's text is truncated to 120 characters
+  with a trailing ellipsis. Applies to the Markdown board only (the ASCII renderer has its own
+  separate `CELL_CAP`).
 
 ## Eval
 

@@ -278,6 +278,12 @@ binary: success produces one line, error produces one line with a prompt to run
 `/plastic-doctor`. Sharing one renderer means the visible line and the model-facing line
 cannot drift.
 
+`hook-continue` follows the same two-channel shape for the dashboard (intent 125): it keeps
+its existing `additionalContext` cockpit dump unchanged, and now also emits a top-level
+`systemMessage` one-line summary (counts, and the next big thing when there is one) from a
+pure `DashboardBanner` renderer. It degrades silently on any failure (subprocess, JSON,
+renderer), so a broken or slow dashboard call never crashes `UserPromptSubmit`.
+
 ## what-exists-today-vs-what-is-missing
 
 Plastic ships **23** harness entries today. By strength on the form-determinism

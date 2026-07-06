@@ -26,6 +26,16 @@
       "rank": 2
     },
     {
+      "id": "4a",
+      "scope": "project:demo",
+      "disposition": "defer",
+      "type": "implementation",
+      "value": "high",
+      "effort": "small",
+      "flags": [],
+      "rank": 3
+    },
+    {
       "id": "5",
       "scope": "project:demo",
       "disposition": "research",
@@ -33,7 +43,7 @@
       "value": "high",
       "effort": "small",
       "flags": [],
-      "rank": 3
+      "rank": 4
     },
     {
       "id": "8",
@@ -46,7 +56,7 @@
         "unblocked",
         "stale"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "id": "3",
@@ -56,7 +66,27 @@
       "value": "low",
       "effort": "small",
       "flags": [],
-      "rank": 5
+      "rank": 6
+    },
+    {
+      "id": "4a1",
+      "scope": "project:demo",
+      "disposition": "defer",
+      "type": "implementation",
+      "value": "low",
+      "effort": "small",
+      "flags": [],
+      "rank": 7
+    },
+    {
+      "id": "4b",
+      "scope": "project:demo",
+      "disposition": "defer",
+      "type": "implementation",
+      "value": "low",
+      "effort": "small",
+      "flags": [],
+      "rank": 8
     },
     {
       "id": "9",
@@ -68,14 +98,74 @@
       "flags": [
         "stale"
       ],
-      "rank": 6
+      "rank": 9
+    },
+    {
+      "id": "d1",
+      "scope": "project:demo",
+      "disposition": "defer",
+      "type": "bugfix",
+      "value": "low",
+      "effort": "small",
+      "flags": [],
+      "rank": 10
+    },
+    {
+      "id": "d2",
+      "scope": "project:demo",
+      "disposition": "defer",
+      "type": "bugfix",
+      "value": "low",
+      "effort": "small",
+      "flags": [],
+      "rank": 11
+    },
+    {
+      "id": "d3",
+      "scope": "project:demo",
+      "disposition": "defer",
+      "type": "bugfix",
+      "value": "low",
+      "effort": "small",
+      "flags": [],
+      "rank": 12
+    },
+    {
+      "id": "d4",
+      "scope": "project:demo",
+      "disposition": "defer",
+      "type": "bugfix",
+      "value": "low",
+      "effort": "small",
+      "flags": [],
+      "rank": 13
+    },
+    {
+      "id": "d5",
+      "scope": "project:demo",
+      "disposition": "defer",
+      "type": "bugfix",
+      "value": "low",
+      "effort": "small",
+      "flags": [],
+      "rank": 14
+    },
+    {
+      "id": "d6",
+      "scope": "project:demo",
+      "disposition": "defer",
+      "type": "bugfix",
+      "value": "low",
+      "effort": "small",
+      "flags": [],
+      "rank": 15
     }
   ],
   "human_only": [
     "1",
-    "4a",
-    "4",
-    "4a1",
-    "4b"
+    "10",
+    "11",
+    "12",
+    "4"
   ]
 }

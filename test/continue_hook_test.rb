@@ -67,4 +67,17 @@ class ContinueHookTest < Minitest::Test
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
     assert_includes ctx, "╔", "box-drawing characters must survive JSON encoding"
   end
+
+  # Task 6 (intent 125): hook-continue now also emits a top-level systemMessage
+  # floor, independent of additionalContext, mirroring the boot banner's two
+  # channel pattern (see BootBanner). The fixture has zero active/future intents.
+  def test_system_message_present_single_line_reflects_counts
+    out, _ = run_hook
+    data = JSON.parse(out)
+    assert data.key?("systemMessage"), "top-level systemMessage key missing"
+    msg = data["systemMessage"]
+    refute_includes msg, "\n", "systemMessage must be a single line"
+    assert_includes msg, "0 active", "expected fixture counts (0 active) reflected"
+    assert_includes msg, "0 next", "expected fixture counts (0 next) reflected"
+  end
 end
