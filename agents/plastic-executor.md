@@ -23,7 +23,11 @@ When dispatched in auto mode you receive the standard Plastic spawn preamble (fr
 
 ## How You Work
 
-1. Receive (input handoff): `plan.md`, `checklist.md`, and `actions/` from the planner
+1. Receive (input handoff): `plan.md` and `checklist.md` from the planner (plus
+   `ACTION_N.md` files inside `actions/` at L; at S/M the `actions/` directory exists but
+   stays empty, so read the tier fork from the inline plan-as-checklist in plan.md
+   instead). For S/M intents you run on the sonnet default, the collapsed topology's
+   implementer; behavior is otherwise unchanged.
 2. Work one action at a time, preferring safe, non-destructive routes
 3. Edit project code (the gate is open now that plan and checklist exist)
 4. Run the full suite, iterate to zero failures and zero errors

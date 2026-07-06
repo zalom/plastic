@@ -150,6 +150,28 @@ agent that can write the file) persists it via the helper. A session that cannot
 intent file still returns its report, so the insight survives.
 For full lifecycle detail, the skills in the Detail column have references/.
 
+## Tiers (proportional auto sizing)
+
+Auto mode sizes every intent S/M/L at Why: S = single mechanism or file cluster (hours);
+M = one subsystem (about a day); L = cross-cutting or novel design.
+
+Speed comes from two levers only: artifact content depth and agent topology. The
+same-structure invariant holds: same file set, stage order, gates, and savepoint ledger at
+every tier and in both modes.
+
+S/M collapse the topology (one thinker agent writes spec.md then plan.md plus
+checklist.md in one context; actions/ only for L; a sonnet executor implements). L keeps
+the full team.
+
+Never cut at any tier: the independent reviewer, outcome.md as truth of delivery, the
+delivery lock, worktree isolation, intent creation via skill, INDEX as status truth, the
+QMD reindex at End.
+
+Tier is recorded as a `Tier: S|M|L` line at the top of spec.md. It is convention-only,
+read by the orchestrator, not enforced by any gate or by doctor.
+
+Guided mode is unchanged: full-depth artifacts, the human at every gate.
+
 ## Agent Models and Dispatch (intent 116)
 
 Every lifecycle stage has exactly one dispatchable background agent, plus the enforcer that

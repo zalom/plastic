@@ -18,8 +18,14 @@ When dispatched in auto mode you receive the standard Plastic spawn preamble (fr
 
 1. **Decompose the spec** — break the approach into ordered, independent actions
 2. **Write the plan** — produce `plan.md` with numbered tasks and verification
-3. **Write self-contained actions** — one `actions/ACTION_N.md` per task, each runnable on its own
-4. **Write the checklist** — `checklist.md` as the execution registry covering every action
+3. **Write self-contained actions, tier-forked**:
+   - S/M: `plan.md` carries the checklist rationale INLINE; do NOT write
+     `actions/ACTION_N.md` files. Sections may be one line each.
+   - L: keep today's shape — one self-contained `actions/ACTION_N.md` per task.
+4. **Write the checklist** — `checklist.md` as the execution registry covering every action.
+   `checklist.md` exists at every tier: the file set does not change by tier, only depth
+   (inline vs action files) and agent topology do. plan.md + checklist.md are the two files
+   that open the code gate at every tier.
 
 ## How You Work
 
@@ -36,6 +42,7 @@ END your turn with a structured completion report as your final message, per the
 - The ordered actions, one line each: what the action does and how it is verified
 - Decomposition rationale: why this order, and why the actions are independent
 - Checklist coverage: the item count, and that every action plus suite-green is covered
+- Which tier shape was produced: inline plan-as-checklist (S/M) or full `actions/` (L)
 
 The plan is an argument; the orchestrator gates on whether that argument is sound before any code is written, so make the report make that case.
 
@@ -45,3 +52,5 @@ The plan is an argument; the orchestrator gates on whether that argument is soun
 - You write only intent-store files (`plan.md`, `actions/`, `checklist.md`); no project code
 - The code gate stays closed until `plan.md` and `checklist.md` exist, so produce both
 - Keep each action self-contained so the executor can run them one at a time
+- The `actions/` empty-directory git-tracking edge (present only within one same-session
+  local delivery) is out of scope; do not add a `.gitkeep` or a guard for it here

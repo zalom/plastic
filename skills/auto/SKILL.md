@@ -41,6 +41,27 @@ intents, then open the authoritative intent file for the hit you take over. The 
 when QMD is absent, so fall back to the existing INDEX.md / file scan. (This is discovery; the
 reindex step under Completion is separate.)
 
+## Tiers (proportional auto sizing)
+
+Auto mode sizes every intent S/M/L at Why, deterministically, then matches agent topology
+and artifact depth to that size. Extended walkthrough: `references/tiers.md`.
+
+1. **Sizing rule.** S = single mechanism or file cluster (hours). M = one subsystem (a
+   day). L = cross-cutting or novel design.
+2. **Two levers.** Speed comes only from artifact content DEPTH and agent TOPOLOGY. The
+   same-structure invariant (same file set, stage order, gates, savepoint ledger) holds at
+   every tier and in both modes. A three-line spec.md is still a spec.md, in the same
+   place, under the same gate.
+3. **Per-tier topology.** S/M: one thinker agent, one boot, two stations, sonnet
+   executor, `actions/` skipped; S may also skip the QMD discovery deposit when chain and
+   sources are both empty. L: today's full team (`## Team Spin-Up` below).
+4. **Never-cut list**, any tier or mode: the independent reviewer (separate agent, fresh
+   context, never the maker), `outcome.md` as truth of delivery, the delivery lock,
+   worktree isolation, intent creation via skill, INDEX as status truth, the QMD reindex
+   at End. Lightness is about ceremony, never about these guarantees.
+5. **Tier record.** `Tier: S|M|L` at the top of spec.md. Convention-only: read by the
+   orchestrator, never validated by any gate or by doctor.
+
 ## Arm the Lifecycle Gate (do this FIRST)
 
 Immediately after selecting the intent — before any other work — arm auto mode. This
@@ -76,6 +97,8 @@ Honor the cycle: What → Why (spec.md) → How (plan.md + actions/ + checklist.
 - `--skip-permissions` — bypass hard stops on destructive actions on existing projects. Full trust mode. Default: off.
 
 ## Team Spin-Up
+
+This is the L-tier shape (see `## Tiers` above); S/M collapse it to one thinker agent.
 
 Auto mode spins up exactly ONE enforcer-led team per intent. The plastic-enforcer IS this orchestrator (you), not a separately dispatched agent, which avoids the who-gates-the-gater regress.
 
@@ -161,9 +184,14 @@ Then proceed to How.
 
 ## How Phase
 
+This is the L-tier shape (see `## Tiers` above); S/M skip step 3 and fold the checklist
+rationale into plan.md inline. The `actions/` directory itself is scaffolded empty at
+intent birth and persists at every tier; only writing `ACTION_N.md` files into it is L
+only (S/M leave the directory empty).
+
 1. If `superpowers:writing-plans` is available as a skill, delegate plan creation to it. Tell it the plan saves to the active intent's directory (not `docs/superpowers/plans/`).
 2. Otherwise, write `plan.md` directly — implementation plan with numbered tasks
-3. Create `actions/` directory with `ACTION_N.md` files (one per task, self-contained)
+3. Write `ACTION_N.md` files into the existing `actions/` directory (one per task, self-contained) — L only
 4. Write `checklist.md` — execution registry with checkboxes covering all actions
 
 Then proceed to Exec.
@@ -293,3 +321,4 @@ If the agent gets stuck (can't resolve a gap, dependency is missing, tests fail 
 ## References
 
 - Read `references/agent-architecture.md` for the full team model (the 5-role enforcer-led team, per-stage handoffs, gate ownership, headless note, solo fallback) and the orchestrator hierarchy (Main Orchestrator, Project Orchestrators, coordination loop) when spinning up the team or understanding autonomous delivery scope
+- Read `references/tiers.md` for the extended per-tier walkthrough (S/M/L worked examples, the collapsed one-thinker flow, the QMD-skip case for S) and rationale
