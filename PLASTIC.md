@@ -300,6 +300,24 @@ One-line entry convention. Each index entry is ONE line: `- [<id> <terse title>]
 The title is the title, not a summary: aim for about 80 characters, no multi-sentence
 descriptions. This is a self-check, not a gate.
 
+## Roadmaps
+
+A roadmap is a named, ordered, delivery-side collection of intents: the delivery-side counterpart
+to a release (completion-side, tracked in `CHANGELOG.md`). Use `plastic-roadmap` to create, order,
+and consume one.
+
+File location: `roadmaps/{slug}.md`, a store-root sibling of `INDEX.md`, identical in the global
+store (`~/.plastic/store/`) and any project store (`~/.plastic/projects/{slug}/store/`).
+
+A roadmap file has four sections, in order: a title/meta header, `## Goal`, `## Waves`, and an
+append-only dated `## Log`. `## Goal` is a checkable prose condition read by a human or agent, not
+an executable checker. `## Waves` holds ordered waves; entries inside a wave are parallel-safe,
+waves run sequentially, top to bottom.
+
+Each wave entry carries a status token (`queued`/`delivering`/`delivered`/`abandoned`/`blocked`)
+that mirrors that intent's status in `INDEX.md`. `INDEX.md` is the single writer of intent status;
+on any conflict INDEX wins and the roadmap entry is corrected to match.
+
 ## Rules for Skills
 
 ALL work flows through intents.
@@ -512,3 +530,4 @@ Detailed conventions live inside the skills that use them, not in this file.
 | Health diagnostics | `plastic-doctor` | three scopes: `--core` (binary install-integrity check, runs on SessionStart), `--store [global\|<slug>]` (per-store check, runs on dashboard load), no flag = full check (runs after every update); gate enforcement, stuck detection |
 | Authoring skills, agents, hooks | `plastic-creating-skills` | progressive disclosure, agentskills.io spec |
 | Evaluating skills, evals | `plastic-evaluating-skills` | eval methodology, convention checks |
+| Create, order, and consume a roadmap of intents | `plastic-roadmap` | file format, operations |

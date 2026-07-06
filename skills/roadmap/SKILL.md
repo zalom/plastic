@@ -1,0 +1,42 @@
+---
+name: plastic-roadmap
+description: Use when the user wants to plan a delivery batch, order waves of intents, ship a batch of tickets in one go, track a named collection of intents toward a goal, or asks for a "roadmap". Creates and maintains a roadmap file, a delivery-side collection of intents (the counterpart to a release), separate from INDEX.md status tracking.
+---
+
+# Roadmap
+
+A roadmap is a named, ordered, delivery-side collection of intents: the delivery-side counterpart
+to a release (completion-side, `CHANGELOG.md`). It lives at `roadmaps/{slug}.md`, a store-root
+sibling of `INDEX.md`, in both the global store (`~/.plastic/store/`) and any project store
+(`~/.plastic/projects/{slug}/store/`).
+
+A roadmap file has four parts: a title/meta header, `## Goal` (prose), `## Waves` (ordered; entries
+inside a wave are parallel-safe, waves run sequentially), and an append-only dated `## Log`. Each
+wave entry mirrors that intent's status in `INDEX.md` (`queued`/`delivering`/`delivered`/
+`abandoned`/`blocked`).
+
+**`INDEX.md` is the single writer of intent status; on any conflict INDEX wins and the roadmap
+entry is corrected to match.**
+
+The skill operates on the file directly via Read/Edit; no helper script.
+
+## Verbs
+
+| Verb | When | Mechanics |
+|------|------|-----------|
+| Create | user wants to start a new roadmap / plan a delivery batch | `references/operations.md#create` |
+| Add / reorder entries | user wants to add intents to a wave or resequence waves | `references/operations.md#add--reorder-entries` |
+| Sync status mirror | an entry's status may be stale against INDEX | `references/operations.md#sync-status-mirror` |
+| Append log line | a roadmap event just happened (created, wave done, closed) | `references/operations.md#append-a-log-line` |
+| Read / consume | a human or a coordinator needs the roadmap's current state | `references/operations.md#read--consume` |
+
+See `references/file-format.md` for the exact entry-line shape, status vocabulary, and a worked
+example. See `references/operations.md` for step-by-step mechanics of each verb above.
+
+## Notes
+
+- File location and the four-section shape are identical across stores; do not invent a different
+  layout per project.
+- `## Goal` is a checkable prose condition read by a human or agent, not an executable checker.
+- Additive: this skill introduces no gate, lock, or hook, and does not change `INDEX.md`'s section
+  list or the intent frontmatter schema.
