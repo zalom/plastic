@@ -1003,16 +1003,91 @@ module Bridge
 
   # Redirections: `> path` / `>> path`, but not fd dups (`2>&1`) or /dev/null.
   # A leading digit (fd number) before > is fine; `>&` is a dup and excluded.
+  # Quote- and heredoc-aware: a `>` inside a single/double-quoted span or inside a
+  # heredoc body is NOT a redirect. Fails OPEN (returns []) on an ambiguous parse
+  # (unbalanced quote or unterminated heredoc) rather than guessing a target.
   def self.bash_redirect_targets(command)
+    return [] unless command.is_a?(String)
+    scannable = scannable_redirect_text(command)
+    return [] if scannable.nil? # ambiguous parse -> fail open
     targets = []
-    # Match optional leading fd digits, then > or >>, not followed by & , then path.
-    command.scan(/\d*>>?(?!&)\s*([^\s;|&<>]+)/) do |m|
+    scannable.scan(/\d*>>?(?!&)\s*([^\s;|&<>]+)/) do |m|
       path = m[0]
       next if path.nil? || path.empty?
       next if dev_null?(path)
       targets << path
     end
     targets
+  end
+
+  # Return a copy of `command` in which single-quoted spans, double-quoted spans,
+  # and heredoc bodies are blanked to spaces, so the redirect regex only ever sees
+  # operators that are genuinely outside quotes and heredoc bodies. Returns nil on
+  # an ambiguous parse (a line ends inside a quote, or a heredoc is never closed).
+  def self.scannable_redirect_text(command)
+    out = +""
+    pending = [] # queue of {word:, dash:} heredoc terminators awaiting bodies
+    command.split("\n", -1).each do |line|
+      if pending.any?
+        term = pending.first
+        probe = term[:dash] ? line.sub(/\A\t+/, "") : line
+        pending.shift if probe == term[:word]
+        out << "\n" # heredoc body/terminator line contributes nothing scannable
+        next
+      end
+      masked, openers, balanced = mask_redirect_line(line)
+      return nil unless balanced # unbalanced quote on this line -> ambiguous
+      out << masked << "\n"
+      pending.concat(openers)
+    end
+    return nil if pending.any? # unterminated heredoc -> ambiguous
+    out
+  end
+
+  # Walk one normal (non-heredoc-body) line, masking quoted spans to spaces and
+  # recognizing heredoc openers. Returns [masked_line, [heredoc_openers], balanced?].
+  def self.mask_redirect_line(line)
+    out = +""
+    openers = []
+    state = :normal
+    i = 0
+    n = line.length
+    while i < n
+      c = line[i]
+      case state
+      when :single
+        out << " "
+        state = :normal if c == "'"
+        i += 1
+      when :double
+        if c == "\\" && i + 1 < n
+          out << "  "
+          i += 2
+        else
+          out << " "
+          state = :normal if c == '"'
+          i += 1
+        end
+      else # :normal
+        if c == "'"
+          out << " "; state = :single; i += 1
+        elsif c == '"'
+          out << " "; state = :double; i += 1
+        elsif c == "<" && line[i + 1] == "<"
+          m = line[i..].match(/\A<<(-?)\s*("|')?([A-Za-z_][A-Za-z0-9_]*)\2?/)
+          if m
+            openers << { word: m[3], dash: m[1] == "-" }
+            out << (" " * m[0].length)
+            i += m[0].length
+          else
+            out << "<<"; i += 2 # here-string / no valid word: leave as-is
+          end
+        else
+          out << c; i += 1
+        end
+      end
+    end
+    [out, openers, state == :normal]
   end
 
   def self.bash_utility_targets(segment)

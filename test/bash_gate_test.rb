@@ -94,6 +94,39 @@ class BashGateTest < Minitest::Test
     assert_equal [], targets("cat somefile")
   end
 
+  # --- Task 1: quote/heredoc-aware redirect parsing (intent 121) ---
+
+  # False positive #1: the `>` inside a quoted `-> ` arrow is not a redirect.
+  def test_quoted_arrow_is_not_a_redirect
+    assert_equal [], targets(%q{git commit -m "Future -> Active"})
+  end
+
+  # A real redirect OUTSIDE the quote is still caught alongside the quoted arrow.
+  def test_real_redirect_survives_quoted_arrow
+    assert_equal ["out.txt"], targets(%q{git commit -m "a -> b" > out.txt})
+  end
+
+  # False positive #2: the closing `>` of a `<email>` trailer in a heredoc body
+  # is not a redirect.
+  def test_heredoc_body_email_trailer_is_not_a_redirect
+    cmd = "git commit -F- <<EOF\n" \
+          "message\n" \
+          "Co-Authored-By: Name <noreply@example.com>\n" \
+          "EOF"
+    assert_equal [], targets(cmd)
+  end
+
+  # Fail OPEN: an unbalanced quote yields no target and does not raise.
+  def test_unbalanced_quote_fails_open
+    assert_equal [], targets(%q{echo "oops > file})
+  end
+
+  # Fail OPEN: an unterminated heredoc yields no target (even with a real `>`
+  # on the opener line) and does not raise.
+  def test_unterminated_heredoc_fails_open
+    assert_equal [], targets("foo > out.txt <<EOF\nunterminated body")
+  end
+
   # --- Task 2: bash_gate_decision ---
 
   def setup
