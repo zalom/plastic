@@ -10,14 +10,16 @@ next" in under a minute, just from this one file.
 ## Create
 
 1. Pick a `slug` (kebab-case, descriptive) and a `title`.
-2. Resolve the store root (global `~/.plastic/store/` or the current project's
-   `~/.plastic/projects/{slug}/store/`); create `roadmaps/` inside it if it does not exist yet.
+2. Resolve the tier root: the directory that holds `INDEX.md` (a project's root, beside
+   `project.yml`, or `~/.plastic/` for the global tier). `roadmaps/` is always a sibling of
+   `INDEX.md`, never inside `store/`. Create `roadmaps/` there if it does not exist yet.
 3. Copy `templates/roadmap.md` to `roadmaps/{slug}.md`.
 4. Fill the header (`# Roadmap: <title>` + the one-line meta) and write a real `## Goal` prose
    condition.
 5. Add at least one `## Waves` wave with real entries (see Add / reorder below), each entry's
    status mirroring that intent's current `INDEX.md` status.
-6. Append the first `## Log` line, a short dated plain-language note that the roadmap was created.
+6. Append the first `## Log` line, a short `YYYY-MM-DD HH:MM UTC`-prefixed plain-language note
+   that the roadmap was created.
 
 ## Add / reorder entries
 
@@ -29,7 +31,7 @@ next" in under a minute, just from this one file.
   entries) earlier or later. Reordering never changes an entry's status; it only changes when the
   entry is eligible to run.
 - After any add/reorder, append a `## Log` line describing the change (e.g.
-  `- <YYYY-MM-DD> added 132 to wave 2`).
+  `- <YYYY-MM-DD HH:MM UTC> added 132 to wave 2`).
 
 ## Sync status mirror
 
@@ -46,8 +48,8 @@ next" in under a minute, just from this one file.
 
 ## Append a log line
 
-- One line per event, dated `YYYY-MM-DD`, appended at the bottom of `## Log`. Never edit or delete
-  an existing line (append-only).
+- One line per event, starting `YYYY-MM-DD HH:MM UTC`, appended at the bottom of `## Log`. Never
+  edit or delete an existing line (append-only).
 - Every line is plain language a non-expert can read, never a codename or a raw `field -> value`.
   A delivery event follows the EM-to-CTO one-line shape with an `outcome.md` link (see
   `file-format.md`); bookkeeping events (created, an intent added to a wave, a wave completed, a
@@ -68,7 +70,9 @@ next" in under a minute, just from this one file.
 
 1. Confirm the roadmap's `## Goal` prose condition is met (every entry `delivered` or explicitly
    `abandoned` with a recorded reason, plus whatever else the goal states).
-2. Create `roadmaps/archived/` in the store root if it does not exist yet.
+2. Create `roadmaps/archived/` beside `roadmaps/` (both siblings of `INDEX.md`) if it does not
+   exist yet.
 3. Move the file: `roadmaps/{slug}.md` -> `roadmaps/archived/{slug}.md`. `roadmaps/` itself then
    lists only live (open or in-flight) roadmaps.
-4. Append the final `## Log` line before or as part of the move: `- <YYYY-MM-DD> roadmap closed`.
+4. Append the final `## Log` line before or as part of the move:
+   `- <YYYY-MM-DD HH:MM UTC> roadmap closed`.

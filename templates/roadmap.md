@@ -1,8 +1,9 @@
 # Roadmap: <name>
 
-(one-line meta: what this roadmap delivers, and which store it lives in. When this roadmap's goal
-is reached, move this file from `roadmaps/{slug}.md` to `roadmaps/archived/{slug}.md`; `roadmaps/`
-itself lists only live roadmaps.)
+(one-line meta: what this roadmap delivers, and which tier it lives in. `roadmaps/` is a sibling
+of `INDEX.md` — a project's root or the global `~/.plastic/`, never inside `store/`. When this
+roadmap's goal is reached, move this file from `roadmaps/{slug}.md` to
+`roadmaps/archived/{slug}.md`; `roadmaps/` itself lists only live roadmaps.)
 
 ## Goal
 (a checkable prose condition — one or a few sentences a human or coordinator reads to decide the
@@ -26,4 +27,4 @@ any conflict between the checkbox/token here and INDEX's real status.
 what shipped and its impact for a non-expert reader, no jargon or internal codenames, ending with a
 link to that entry-intent's `outcome.md`. Never restate outcome detail here; link to it instead.
 Newest at the bottom.)
-- 2026-01-01 Shipped the first wave of this roadmap; see store/<intent-id>--<slug>/outcome.md.
+- 2026-01-01 00:00 UTC Shipped the first wave of this roadmap; see store/<intent-id>--<slug>/outcome.md.

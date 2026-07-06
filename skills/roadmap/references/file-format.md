@@ -2,10 +2,12 @@
 
 ## Location
 
-`roadmaps/{slug}.md`, a store-root sibling of `INDEX.md`. Same layout in the global store
-(`~/.plastic/store/roadmaps/{slug}.md`) and any project store
-(`~/.plastic/projects/{slug}/store/roadmaps/{slug}.md`). Create the `roadmaps/` directory the
-first time a store gets a roadmap.
+`roadmaps/{slug}.md`, a sibling of `INDEX.md`, wherever `INDEX.md` lives. For the global tier
+that is `~/.plastic/roadmaps/{slug}.md` (beside `~/.plastic/INDEX.md`); for any project it is
+that project's root, `~/.plastic/projects/{slug}/roadmaps/{slug}.md` (beside that project's
+`INDEX.md` and `project.yml`). `roadmaps/` never sits inside `store/`: `store/` holds intent
+directories, not project artifacts. Create the `roadmaps/` directory the first time a tier gets a
+roadmap.
 
 `roadmaps/` lists only live (open or in-flight) roadmaps. Once a roadmap's `## Goal` is reached,
 its file moves to `roadmaps/archived/{slug}.md` (see Close/archive in `operations.md`); the
@@ -14,7 +16,7 @@ its file moves to `roadmaps/archived/{slug}.md` (see Close/archive in `operation
 ## The four sections (in order)
 
 1. **Title/meta header** — `# Roadmap: <name>` plus a one-line meta sentence naming what the
-   roadmap delivers and which store it lives in.
+   roadmap delivers and which tier (project or global) it lives in.
 2. **`## Goal`** — a checkable prose condition: one or a few sentences a human or coordinator reads
    to decide the roadmap is done. Not an executable checker, not a list of tasks.
 3. **`## Waves`** — ordered waves (`### Wave 1`, `### Wave 2`, ...). Entries inside a wave are
@@ -49,12 +51,13 @@ it. The roadmap never sets a status that INDEX does not already reflect.
 
 ## Log line shape
 
-One line per event, dated, in plain-language EM-to-CTO voice: what shipped and why it matters to a
-non-expert reader, no jargon or internal codenames, ending with a link to that entry-intent's
-`outcome.md`:
+One line per event, starting `YYYY-MM-DD HH:MM UTC` (human-readable, sortable, zone-explicit so
+same-day parallel deliveries can still be ordered), in plain-language EM-to-CTO voice: what shipped
+and why it matters to a non-expert reader, no jargon or internal codenames, ending with a link to
+that entry-intent's `outcome.md`:
 
 ```
-- <YYYY-MM-DD> <one plain-language sentence: what shipped, its impact> — see store/<id>--<slug>/outcome.md
+- <YYYY-MM-DD HH:MM UTC> <one plain-language sentence: what shipped, its impact> — see store/<id>--<slug>/outcome.md
 ```
 
 The log line never restates `outcome.md` detail; it points at it (lossless-by-reference). This
@@ -83,6 +86,6 @@ abandoned | blocked); INDEX wins on any conflict.
 - [x] 124 Roadmap feature — delivered
 
 ## Log
-- 2026-07-06 Shipped the bash-gate redirect fix so quoted arrows and heredoc trailers stop
-  blocking legitimate commits — see store/121--fix-bash-gate-redirect-parsing/outcome.md.
+- 2026-07-06 14:32 UTC Shipped the bash-gate redirect fix so quoted arrows and heredoc trailers
+  stop blocking legitimate commits — see store/121--fix-bash-gate-redirect-parsing/outcome.md.
 ```

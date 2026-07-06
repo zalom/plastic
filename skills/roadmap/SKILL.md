@@ -6,9 +6,11 @@ description: Use when the user wants to plan a delivery batch, order waves of in
 # Roadmap
 
 A roadmap is a named, ordered, delivery-side collection of intents: the delivery-side counterpart
-to a release (completion-side, `CHANGELOG.md`). It lives at `roadmaps/{slug}.md`, a store-root
-sibling of `INDEX.md`, in both the global store (`~/.plastic/store/`) and any project store
-(`~/.plastic/projects/{slug}/store/`).
+to a release (completion-side, `CHANGELOG.md`). It lives at `roadmaps/{slug}.md`, a sibling of
+`INDEX.md` wherever `INDEX.md` lives: the global tier's `~/.plastic/roadmaps/` (beside
+`~/.plastic/INDEX.md`), or a project's root, `~/.plastic/projects/{slug}/roadmaps/` (beside that
+project's `INDEX.md` and `project.yml`). It never sits inside `store/`, which holds intent
+directories, not project artifacts.
 
 A roadmap file has four parts: a title/meta header, `## Goal` (prose), `## Waves` (ordered; entries
 inside a wave are parallel-safe, waves run sequentially), and an append-only dated `## Log`. Each
@@ -37,8 +39,9 @@ verb above.
 
 ## Notes
 
-- File location and the four-section shape are identical across stores; do not invent a different
-  layout per project.
+- File location and the four-section shape are identical across tiers; do not invent a different
+  layout per project. The general rule: `roadmaps/` is a sibling of `INDEX.md`, wherever `INDEX.md`
+  lives.
 - `## Goal` is a checkable prose condition read by a human or agent, not an executable checker.
 - Wave entries render as checkboxes (`- [x] ... — delivered` / `- [ ] ... — <status>`); a human
   reading cold should see shipped/running/next within a minute. `## Log` lines are one-sentence,
