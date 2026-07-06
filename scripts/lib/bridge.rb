@@ -197,22 +197,34 @@ module Bridge
       return nil if parsed.empty?
     end
 
+    # Auto-preference pool: a build-armed bridge is preferred over a merely
+    # derived one, but ONLY as a fallback when cwd cannot decide (below). cwd
+    # must win over auto-preference, so this pool is not applied before the
+    # cwd tiering (intent 131: a guided sibling in the caller's own worktree
+    # must beat an auto sibling in another worktree).
     auto = parsed.select { |c| c[:data].dig("build", "auto") == true }
-    pool = auto.empty? ? parsed : auto
+    auto_pool = auto.empty? ? parsed : auto
 
     unless blank?(cwd)
       cwd_abs = File.expand_path(cwd)
-      tiered = pool.map { |c| [bridge_cwd_tier(c[:data], cwd_abs), c] }
+      # Tier the FULL session pool by cwd BEFORE the auto-preference filter.
+      # When cwd overlaps ANY candidate (tier >= 0) it decides outright, even
+      # against a newer or auto-armed sibling: worktree.code (tier 2) and the
+      # intent dir (tier 1) disambiguate same-store siblings (intent 131), and
+      # a store overlap (tier 0) still selects the overlapping bridge over an
+      # off-cwd one in another store (the intent 90/52 store filter, preserved).
+      # Only when NO candidate overlaps cwd (max tier -1) do we fall through to
+      # the auto-preference pool and newest mtime, so a lone armed bridge
+      # off-cwd still resolves (intent 52 headless).
+      tiered = parsed.map { |c| [bridge_cwd_tier(c[:data], cwd_abs), c] }
       max_tier = tiered.map(&:first).max
-      # A tier >= 1 (worktree or intent-dir match) disambiguates siblings that
-      # share one store, so it filters the pool outright. Below that (tier 0
-      # or no signal), every sibling looks the same, so fall through to the
-      # fail-open newest-mtime pick over the WHOLE pool (intent 52 revert,
-      # preserved for both the headless case and the no-signal case).
-      pool = tiered.select { |tier, _| tier == max_tier }.map { |_, c| c } if max_tier && max_tier >= 1
+      if max_tier && max_tier >= 0
+        winners = tiered.select { |tier, _| tier == max_tier }.map { |_, c| c }
+        return winners.max_by { |c| c[:mtime] }&.fetch(:data)
+      end
     end
 
-    pool.max_by { |c| c[:mtime] }&.fetch(:data)
+    auto_pool.max_by { |c| c[:mtime] }&.fetch(:data)
   end
 
   # --- Terminal-state bridge purge (intent 80) -------------------------------
@@ -302,12 +314,19 @@ module Bridge
   # Try the per-intent path first; when it is absent and an intent_id was
   # given, fall back to the legacy single-key path (migration + legacy
   # tolerance, intent 131): a live `plastic-<session>.json` from before this
-  # intent keeps resolving during the transition.
+  # intent keeps resolving during the transition. The legacy fallback is
+  # honored for a specific intent_id ONLY when the legacy file actually carries
+  # that intent (or carries none), so a caller asking for intent A never acts
+  # on a legacy file that still holds sibling B.
   def self.read(session, intent_id: nil, tmp: tmp_dir)
     p = path(session, intent_id: intent_id, tmp: tmp)
-    p = path(session, tmp: tmp) if !File.exist?(p) && !blank?(intent_id)
-    return nil unless File.exist?(p)
-    JSON.parse(File.read(p))
+    return JSON.parse(File.read(p)) if File.exist?(p)
+    return nil if blank?(intent_id)
+    legacy = path(session, tmp: tmp)
+    return nil unless File.exist?(legacy)
+    data = JSON.parse(File.read(legacy))
+    id = data.is_a?(Hash) ? data.dig("intent", "id") : nil
+    (blank?(id) || id.to_s == intent_id.to_s) ? data : nil
   rescue JSON::ParserError
     nil
   end

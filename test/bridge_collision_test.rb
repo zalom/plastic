@@ -201,4 +201,76 @@ class BridgeCollisionTest < Minitest::Test
     refute_nil found, "discover_bridge must not crash on a legacy single-key file"
     assert_equal "201", found.dig("intent", "id")
   end
+
+  # --- 7. cwd wins over the auto-preference for a guided sibling --------------
+  # The spec criterion "cwd inside worktree A resolves bridge A" is
+  # unconditional: it must hold even when A is a GUIDED delivery and a sibling B
+  # is auto-armed. If the auto-preference pool were applied before cwd tiering,
+  # cwd inside A's worktree would still resolve the auto sibling B (the exact
+  # wrong-sibling class this intent fixes), so tiering runs on the full pool
+  # first and cwd wins.
+
+  def test_cwd_worktree_beats_auto_preference_for_guided_sibling
+    session = "mixed-session"
+    code_a = File.join(@home, "repo", ".claude", "worktrees", "201--demo-a")
+    code_b = File.join(@home, "repo", ".claude", "worktrees", "202--demo-b")
+    FileUtils.mkdir_p(code_a)
+    FileUtils.mkdir_p(code_b)
+
+    File.write(File.join(@tmp, "plastic-#{session}--201.json"),
+               JSON.generate(valid_bridge(session: session, id: "201", dir: @dirA, code: code_a, auto: false)))
+    File.write(File.join(@tmp, "plastic-#{session}--202.json"),
+               JSON.generate(valid_bridge(session: session, id: "202", dir: @dirB, code: code_b, auto: true)))
+
+    found = Bridge.discover_bridge(session: session, cwd: code_a, tmp: @tmp)
+    assert_equal "201", found.dig("intent", "id"),
+                 "cwd inside guided sibling A's worktree must resolve A, not the auto sibling B"
+  end
+
+  # --- 8. headless: a cwd store overlap still filters (tier 0 not inert) ------
+  # No session (intent 52/90 degraded scan across sessions): two bridges in
+  # DISJOINT stores. cwd inside store A must resolve A even when B (another
+  # store) is newer, so a cwd store overlap keeps disambiguating off-cwd
+  # foreign-store bridges rather than falling straight through to newest-mtime.
+
+  def test_headless_cwd_store_beats_newer_foreign_store_bridge
+    store_b = File.join(@home, ".plastic", "projects", "other", "store")
+    FileUtils.mkdir_p(File.join(store_b, "301--other"))
+
+    a = File.join(@tmp, "plastic-headA--201.json")
+    b = File.join(@tmp, "plastic-headB--301.json")
+    File.write(a, JSON.generate(valid_bridge(session: "headA", id: "201", dir: @dirA)))
+    File.write(b, JSON.generate(
+      "session" => "headB",
+      "intent" => { "id" => "301", "dir" => "301--other", "store" => store_b, "name" => "other" },
+      "build" => { "auto" => true },
+      "worktree" => { "code" => nil, "provisioned" => false },
+    ))
+    File.utime(Time.now - 100, Time.now - 100, a)
+    File.utime(Time.now, Time.now, b) # B newer: mtime alone would pick it
+
+    found = Bridge.discover_bridge(session: nil, cwd: @store, tmp: @tmp)
+    assert_equal "201", found.dig("intent", "id"),
+                 "headless: cwd inside store A resolves A over a newer foreign-store bridge"
+  end
+
+  # --- 9. the legacy read fallback is intent-identity guarded -----------------
+  # read(session, intent_id: A) may fall back to a legacy plastic-<session>.json
+  # during the transition, but only when that file actually carries A. A caller
+  # asking for A must never be handed a legacy file still holding sibling B,
+  # since disarm_auto / plastic-lock release act on the returned bridge's
+  # worktrees and lock.
+
+  def test_legacy_read_fallback_guarded_by_intent_id
+    session = "guard-session"
+    File.write(File.join(@tmp, "plastic-#{session}.json"),
+               JSON.generate(valid_bridge(session: session, id: "202", dir: @dirB)))
+
+    assert_nil Bridge.read(session, intent_id: "201", tmp: @tmp),
+               "read for 201 must not return a legacy file holding sibling 202"
+    assert_equal "202", Bridge.read(session, intent_id: "202", tmp: @tmp)&.dig("intent", "id"),
+                 "read for 202 still resolves the matching legacy file"
+    assert_equal "202", Bridge.read(session, tmp: @tmp)&.dig("intent", "id"),
+                 "read with no intent_id still tolerates the legacy file"
+  end
 end
