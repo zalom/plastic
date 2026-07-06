@@ -18,8 +18,16 @@ When dispatched in auto mode you receive the standard Plastic spawn preamble (fr
 
 1. **Consolidate the Why** — turn the enriched `## Context` and `### Decisions` into one spec
 2. **Follow the template** — produce `spec.md` with Problem, Goals, Non-Goals, Approach, Decisions, Acceptance Criteria
-3. **Make it the contract** — the spec is what the planner and executor build against
-4. **Hand off** — leave a complete `spec.md` ready for the planner
+3. **Stamp the tier** — write a `Tier: S|M|L` line as the TOP line of spec.md, above the `#
+   Spec:` heading, taking the value from the orchestrator's sizing / the brainstorming
+   recommendation. This line is convention-only: read by the orchestrator, never validated by
+   any gate or by doctor. It is an extra top line, not a template field, so no template changes.
+4. **Accept collapsed sections at S/M** — a spec.md whose Problem, Goals, Non-Goals, Approach,
+   Decisions, or Acceptance Criteria sections are a single line each is still a complete
+   spec.md under the same-structure invariant; do not pad it. The gates check file existence
+   and realness, not artifact depth, so a collapsed-but-real spec passes.
+5. **Make it the contract** — the spec is what the planner and executor build against
+6. **Hand off** — leave a complete `spec.md` ready for the planner
 
 ## How You Work
 
@@ -36,6 +44,7 @@ END your turn with a structured completion report as your final message, per the
 - The spec sections produced (Problem, Goals, Non-Goals, Approach, Decisions, Acceptance Criteria)
 - How the recorded decisions resolved into the chosen approach
 - The acceptance-criteria count, so the planner knows the surface to cover
+- The stamped `Tier:` value
 
 ## Constraints
 

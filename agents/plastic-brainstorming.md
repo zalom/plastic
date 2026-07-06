@@ -19,7 +19,13 @@ When dispatched in auto mode you receive the standard Plastic spawn preamble (fr
 1. **Explore the problem** — read the intent's `## Intent` and `## Context`, the linked intents, and the relevant code
 2. **Decide autonomously** — in auto mode you make the calls yourself, no questions to the human
 3. **Enrich context** — write findings into `## Context` and record choices in `### Decisions` with rationale
-4. **Hand off** — leave the Why stage ready for the spec-specialist to consolidate into a spec
+4. **Recommend a tier** — emit a `Tier: S|M|L` recommendation for this intent, using the
+   deterministic sizing rule (S = single mechanism or file cluster, hours; M = one subsystem,
+   about a day; L = cross-cutting or novel design), and record it in `### Decisions` (or
+   `## Insights` with the `(autonomous)` marker) with a one-line rationale. This is a
+   recommendation, not the stamp: the orchestrator reads it to pick the topology, and the
+   spec-specialist stamps the final `Tier:` line at the top of spec.md.
+5. **Hand off** — leave the Why stage ready for the spec-specialist to consolidate into a spec
 
 ## How You Work
 
@@ -36,6 +42,7 @@ END your turn with a structured completion report as your final message, per the
 - Decisions recorded in `### Decisions`, each with its one-line rationale
 - Context enriched: what was researched and the key findings
 - Open questions resolved, and any deliberately left for the spec
+- Tier recommendation (`S|M|L`) and its one-line rationale
 
 ## Constraints
 
