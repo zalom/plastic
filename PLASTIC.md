@@ -329,10 +329,12 @@ is a named, ordered, delivery-side collection of intents: the delivery-side coun
 release (completion-side, tracked in `CHANGELOG.md`). Use `plastic-roadmap` to create, order,
 close, and consume one.
 
-File location: `roadmaps/{slug}.md`, a store-root sibling of `INDEX.md`, identical in the global
-store (`~/.plastic/store/`) and any project store (`~/.plastic/projects/{slug}/store/`).
-`roadmaps/` lists only live (open or in-flight) roadmaps: once a roadmap's goal is reached, it
-moves to `roadmaps/archived/{slug}.md`, a sibling subdirectory scaffolded once with a `.gitkeep`.
+File location: `roadmaps/{slug}.md`, a sibling of `INDEX.md`, wherever `INDEX.md` lives, never
+inside `store/` (store holds intent directories, not project artifacts). For a project that is its
+root, `~/.plastic/projects/{slug}/roadmaps/`, beside `project.yml`; for the global tier it is
+`~/.plastic/roadmaps/`, beside `~/.plastic/INDEX.md`. `roadmaps/` lists only live (open or
+in-flight) roadmaps: once a roadmap's goal is reached, it moves to `roadmaps/archived/{slug}.md`,
+a sibling subdirectory scaffolded once with a `.gitkeep`.
 
 A roadmap file has four sections, in order: a title/meta header, `## Goal`, `## Waves`, and an
 append-only dated `## Log`. `## Goal` is a checkable prose condition read by a human or agent, not
@@ -345,8 +347,9 @@ on any conflict INDEX wins and the roadmap entry is corrected to match.
 
 **Human-comprehension surface.** A roadmap is also written to be read cold. Wave entries render as
 checkboxes (checked once delivered, unchecked otherwise) next to the status token, and each `## Log`
-line is one plain-language sentence, dated, written the way an engineering manager would brief a
-non-expert executive: what shipped and why it matters, no jargon or codenames, ending with a link
+line is one plain-language sentence, starting `YYYY-MM-DD HH:MM UTC`, written the way an
+engineering manager would brief a non-expert executive: what shipped and why it matters, no jargon
+or codenames, ending with a link
 to that intent's `outcome.md`. The log points at the detail instead of repeating it, so a person
 opening the file with no other context can tell what shipped, what is running now, and what is
 next in under a minute.

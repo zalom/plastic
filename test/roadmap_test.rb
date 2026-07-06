@@ -42,8 +42,8 @@ class RoadmapTest < Minitest::Test
 
   def test_template_log_has_a_dated_line
     body = File.read(TEMPLATE)
-    assert_match(/^- \d{4}-\d{2}-\d{2} /, body,
-                 "## Log must show a dated example line")
+    assert_match(/^- \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC /, body,
+                 "## Log must show a 'YYYY-MM-DD HH:MM UTC'-prefixed example line")
   end
 
   # --- amendment (2026-07-06 human rulings): checkboxes, EM-to-CTO log, archive ---
@@ -69,6 +69,26 @@ class RoadmapTest < Minitest::Test
     body = File.read(TEMPLATE)
     assert_match(%r{roadmaps/archived/}, body,
                  "template header must note the archived/ destination on close")
+  end
+
+  # --- amendment (2026-07-06 human rulings 5+6): project-root location, HH:MM UTC log ---
+
+  def test_docs_do_not_place_roadmaps_under_store
+    [SKILL, FILE_FORMAT, OPERATIONS, PLASTIC_MD].each do |path|
+      body = File.read(path)
+      refute_match(%r{store/roadmaps}, body,
+                   "#{path} must not place roadmaps/ under store/")
+      refute_match(/store[- ]root/i, body,
+                   "#{path} must not describe roadmaps/ location as store-root")
+    end
+  end
+
+  def test_docs_state_sibling_of_index_rule
+    [SKILL, FILE_FORMAT, OPERATIONS, PLASTIC_MD].each do |path|
+      body = File.read(path)
+      assert_match(/sibling of\s+`?INDEX\.md`?/, body,
+                   "#{path} must state roadmaps/ is a sibling of INDEX.md")
+    end
   end
 
   # --- skills/roadmap/SKILL.md ----------------------------------------------
