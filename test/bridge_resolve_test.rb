@@ -104,8 +104,8 @@ class BridgeResolveTest < Minitest::Test
         data = Bridge.arm_auto(nil, intent_id: "52", intent_dir: @intent_dir,
                                store: @store, name: "demo")
         assert_equal "real-id", data["session"]
-        assert File.exist?(File.join(tmp, "plastic-real-id.json")),
-               "expected bridge file keyed by the real code session id"
+        assert File.exist?(File.join(tmp, "plastic-real-id--52.json")),
+               "expected bridge file keyed by the real code session id AND intent id"
       ensure
         Worktree.define_singleton_method(:provision, real_provision)
         if saved_tmp.nil?

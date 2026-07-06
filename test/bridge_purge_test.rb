@@ -55,7 +55,7 @@ class BridgePurgeTest < Minitest::Test
       "build" => { "auto" => false },
     }
     Bridge.write(session, data)
-    Bridge.path(session)
+    Bridge.path(session, intent_id: id)
   end
 
   def seed_raw(session, contents)
@@ -214,7 +214,8 @@ class BridgePurgeTest < Minitest::Test
     data = Bridge.arm_auto("armer", intent_id: "80", intent_dir: @intent_dir,
                            store: @store, name: "demo")
     refute File.exist?(stale), "arm_auto should purge terminal siblings"
-    assert File.exist?(Bridge.path(data["session"])), "armed bridge must survive"
+    assert File.exist?(Bridge.path(data["session"], intent_id: data["intent"]["id"])),
+           "armed bridge must survive"
   end
 
   def test_disarm_auto_purges_terminal_siblings_and_keeps_self
@@ -222,9 +223,9 @@ class BridgePurgeTest < Minitest::Test
                     store: @store, name: "demo")
     write_index_active # sibling 99 not active
     stale = seed_bridge("old-sibling", id: "99")
-    Bridge.disarm_auto("delivering")
+    Bridge.disarm_auto("delivering", intent_id: "80")
     refute File.exist?(stale), "disarm_auto should purge terminal siblings"
-    self_bridge = Bridge.read("delivering")
+    self_bridge = Bridge.read("delivering", intent_id: "80")
     refute_nil self_bridge, "current bridge must remain readable after disarm"
     assert_equal false, self_bridge["build"]["auto"]
   end

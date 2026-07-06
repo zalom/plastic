@@ -45,20 +45,20 @@ class BridgeAutoTest < Minitest::Test
   end
 
   def test_arm_auto_with_no_prior_bridge
-    refute File.exist?(Bridge.path(@session))
+    refute File.exist?(Bridge.path(@session, intent_id: "27"))
     data = arm
     assert_equal true, data["build"]["auto"]
     assert_equal "27", data["intent"]["id"]
-    assert File.exist?(Bridge.path(@session))
+    assert File.exist?(Bridge.path(@session, intent_id: "27"))
     # persisted
-    assert_equal true, Bridge.read(@session)["build"]["auto"]
+    assert_equal true, Bridge.read(@session, intent_id: "27")["build"]["auto"]
   end
 
   def test_disarm_auto
     arm
-    data = Bridge.disarm_auto(@session)
+    data = Bridge.disarm_auto(@session, intent_id: "27")
     assert_equal false, data["build"]["auto"]
-    assert_equal false, Bridge.read(@session)["build"]["auto"]
+    assert_equal false, Bridge.read(@session, intent_id: "27")["build"]["auto"]
   end
 
   def test_disarm_auto_no_bridge_is_noop
@@ -70,7 +70,7 @@ class BridgeAutoTest < Minitest::Test
   def test_arm_auto_uses_explicit_session
     data = Bridge.arm_auto(@session, intent_id: "27", intent_dir: @intent_dir, store: @store, name: "demo")
     assert_equal @session, data["session"]
-    assert File.exist?(Bridge.path(@session))
+    assert File.exist?(Bridge.path(@session, intent_id: "27"))
   end
 
   def test_arm_auto_derives_key_and_warns_when_no_session
@@ -83,9 +83,9 @@ class BridgeAutoTest < Minitest::Test
       data = Bridge.arm_auto(nil, intent_id: "27", intent_dir: @intent_dir, store: @store, name: "demo")
       assert_equal derived, data["session"]
     end
-    assert File.exist?(Bridge.path(derived))
+    assert File.exist?(Bridge.path(derived, intent_id: "27"))
     refute_empty out
-    File.delete(Bridge.path(derived)) if File.exist?(Bridge.path(derived))
+    File.delete(Bridge.path(derived, intent_id: "27")) if File.exist?(Bridge.path(derived, intent_id: "27"))
   ensure
     ENV["CLAUDE_CODE_SESSION_ID"] = saved_code unless saved_code.nil?
   end
@@ -98,7 +98,7 @@ class BridgeAutoTest < Minitest::Test
       assert_equal ENV["CLAUDE_CODE_SESSION_ID"], data["session"]
     end
     assert_empty out.strip
-    p = Bridge.path("env-#{Process.pid}")
+    p = Bridge.path("env-#{Process.pid}", intent_id: "27")
     File.delete(p) if File.exist?(p)
   ensure
     if saved.nil?
@@ -137,7 +137,7 @@ class BridgeAutoTest < Minitest::Test
     assert_equal 1, seen.length, "arm_auto must call Worktree.provision exactly once"
     # lock cache persisted to disk, and the durable lock file exists in the
     # intent dir with the same owner (the file is the truth, D2)
-    assert_equal @session, Bridge.read(@session)["lock"]["owner_session"]
+    assert_equal @session, Bridge.read(@session, intent_id: "27")["lock"]["owner_session"]
     assert_equal @session, Lock.read(@intent_dir)["owner_session"]
   end
 
@@ -161,9 +161,9 @@ class BridgeAutoTest < Minitest::Test
   def test_disarm_clears_the_delivery_lock
     arm
     assert File.exist?(Lock.path(@intent_dir))
-    Bridge.disarm_auto(@session)
+    Bridge.disarm_auto(@session, intent_id: "27")
     refute File.exist?(Lock.path(@intent_dir)), "disarm must clear delivery.lock (D6)"
-    data = Bridge.read(@session)
+    data = Bridge.read(@session, intent_id: "27")
     assert_nil data.dig("lock", "owner_session"), "the bridge cache is cleared too"
   end
 
@@ -175,7 +175,7 @@ class BridgeAutoTest < Minitest::Test
     lock_path = Lock.path(@intent_dir)
     recorder = ->(d, *_a, **_kw) { events << [:release, File.exist?(lock_path)]; d }
     with_worktree(:release, recorder) do
-      Bridge.disarm_auto(@session)
+      Bridge.disarm_auto(@session, intent_id: "27")
     end
     assert_equal [[:release, true]], events,
                  "worktrees are released while the lock is STILL held (End-tail order, D6)"

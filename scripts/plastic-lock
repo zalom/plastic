@@ -72,7 +72,7 @@ key = Bridge.resolve_session(session, intent_id: intent_id, store: store)
 case verb
 when "status"
   lock = Lock.read(dir)
-  bridge = Bridge.read(key)
+  bridge = Bridge.read(key, intent_id: intent_id)
   report = {
     "intent_dir" => dir,
     "session" => key,
@@ -100,7 +100,7 @@ when "release"
     warn "plastic-lock: not the owner; run plastic-lock status"
     exit 1
   end
-  data = Bridge.read(key)
+  data = Bridge.read(key, intent_id: intent_id)
   if data
     data["lock"] = { "owner_session" => nil, "acquired_at" => nil,
                      "host" => nil, "type" => nil, "delegates" => [] }
