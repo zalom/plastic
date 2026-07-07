@@ -5,13 +5,13 @@
 [![license](https://img.shields.io/npm/l/@zalom/plastic)](LICENSE)
 [![CI](https://github.com/zalom/plastic/actions/workflows/test.yml/badge.svg)](https://github.com/zalom/plastic/actions/workflows/test.yml)
 
-**Plastic is an intent-based idea development system for AI-assisted work.**
+## Intent-based idea development for AI-assisted work.
 
-It turns an intent into a durable, linked record of discovery, decisions,
-delivery, and outcomes, so work can keep moving even when the model, agent,
-session, or implementation changes. Read [why I built it](MANIFESTO.md).
+Turn an idea into a durable intent: explore it, make decisions,
+plan it, deliver it, and keep the reasoning, even when the model,
+agent, session, or your own thinking changes.
 
-**Fixed rails. Flexible thinking.**
+[Install](#start-in-60-seconds) [See it work](#the-work-survives-change) [Read the manifesto](MANIFESTO.md)
 
 **Develop ideas with intent. Build with any brain.**
 
@@ -93,7 +93,7 @@ a durable artifact behind.
 | How | What is the plan? | Plan and checklist |
 | Exec | What was actually delivered? | Outcome |
 
-## Fixed rails. Flexible thinking.
+## Your thinking changes. The work should not reset.
 
 New information changes the problem. A better model changes the approach. A
 different agent changes the way work gets done. You may change your mind
