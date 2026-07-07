@@ -12,12 +12,12 @@ that get developed through two nested processes.
 
 ## The Two Cycles
 
-**Coordinator loop (B→O→R):** Brainstorm → Organize → Review. The human and
-agent explore ideas, structure them into intents, and validate the results.
+**Coordinator loop (B→O→R):** Build → Observe → Repeat. The agent advances the
+active intent, observes what the work surfaced, and repeats with the next one.
 This loop runs continuously across sessions.
 
-**Intent lifecycle (W→W→H→E):** Why → What → How → Execute. Each intent moves
-from motivation through specification, planning, to delivery. Intents produce
+**Intent lifecycle (W→W→H→E):** What → Why → How → Execute. Each intent moves
+from capture through justification and planning to delivery. Intents produce
 artifacts: `spec.md`, `plan.md`, `checklist.md`, `outcome.md`.
 
 ## How Plastic Works
@@ -51,7 +51,7 @@ context runs out, never plan before specifying.
 
 This is **intent-driven delivery**, a new shape for the software lifecycle in the age of
 agentic engineering. The unit of work is an *intent*, not a ticket, and every intent
-carries its own spec, plan, checklist, and outcome as it moves through Why, What, How, and
+carries its own spec, plan, checklist, and outcome as it moves through What, Why, How, and
 Execute. What you get is agent-agnostic, auditable, and additive: a knowledge graph of
 *why* things were built, not just what.
 
@@ -122,8 +122,10 @@ install time.
 
 ## Conventions
 
-All conventions live in `AGENTS.md`, distributed to `~/.plastic/AGENTS.md`
-during installation. Run `plastic-doctor` to check installation health.
+Plastic conventions live in `PLASTIC.md`, distributed to `~/.plastic/PLASTIC.md`
+and overwritten on every update. Project-specific rules live in `AGENTS.md`,
+scaffolded once at `~/.plastic/AGENTS.md`. Run `plastic-doctor` to check
+installation health.
 `plastic-doctor --core` runs a binary install-integrity check (compares files
 against the install manifests; pass or error). `plastic-doctor --store` checks
 store state (intents, INDEX sections, conventions) and can be scoped to

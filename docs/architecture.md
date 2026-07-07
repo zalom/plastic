@@ -33,8 +33,6 @@ Once Exec completes, the intent is done.
 
 Each intent keeps an append-only work log in the `## Insights` section of its intent file. Append-only means newest entry at the bottom, never prepended, so the trace reads in order across every intent. Those insights are exactly what the coordinator reads in its Observe phase to decide what to Build next. The inner lifecycle feeds the outer loop through Insights.
 
-(Footnote: PLASTIC.md is the authority on this wording and defines the outer loop as Build, Observe, Repeat. The README currently labels it "Brainstorm, Organize, Review", which is inconsistent and should be reconciled to match PLASTIC.md.)
-
 ## the store layout
 
 A store is a folder of intents. There are two scopes, structurally identical, differing only in location and purpose.
