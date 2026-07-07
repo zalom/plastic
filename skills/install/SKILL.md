@@ -79,6 +79,14 @@ and copies the utility scripts (`folgezettel-id`, `read-config`, and the rest of
 `scripts/`). This skill does none of that itself; it wraps the command with the
 interactive steps the CLI does not yet own, plus reporting and a doctor pass.
 
+**Statusline**
+
+On install, if an existing statusline is already configured, Plastic asks whether to
+keep it or switch to Plastic's (interactive sessions only). The choice is honored via
+`--statusline keep` or `--statusline plastic`, which skips the prompt. Non-interactive
+sessions (no tty) default to keeping the user's line: nothing is silently overwritten.
+A fresh system with no statusline configured gets Plastic's line with no prompt.
+
 **Step 2: Initialize git (retained)**
 
 Only if `~/.plastic/.git` is absent (a fresh bootstrap does not init git):

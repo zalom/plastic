@@ -748,7 +748,15 @@ close that gap.
   `InstallerCore#merge_claude_hooks` translates it into settings.json,
   `hooks/hooks.json` is pinned to it by test, and doctor's
   `hooks_match_registry` check flags any drift (a missing gate, a stray
-  plastic hook, a stale matcher). The write matcher covers Write, Edit,
+  plastic hook, a stale matcher). `merge_claude_hooks` also takes a `choice:`
+  kwarg (`:plastic` or `:keep`) that gates only the `statusLine` overwrite;
+  hook merging itself is unaffected by the choice. `InstallerCore#statusline_choice`
+  computes that choice as a pure function of the settings file, `argv`,
+  `input`, and `reinstall`: no existing line or an already-Plastic line always
+  resolves to `:plastic`; otherwise it reads a `--statusline keep|plastic`
+  flag, then falls back to `:keep` on `--reinstall`, an interactive prompt
+  (`prompt_statusline`) on a tty, or `:keep` as the safe non-interactive
+  default. The write matcher covers Write, Edit,
   NotebookEdit, and the Serena MCP edit tools; the create-gate matcher covers
   Write, Edit, and the same MCP tools; bash-gate and savepoint-pre are
   registered (the old hand-rolled merge literal had dropped bash-gate, so it

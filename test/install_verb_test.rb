@@ -12,7 +12,7 @@ class InstallVerbTest < Minitest::Test
     attr_reader :distributed, :bootstrapped
     def distribute(mode) = (@distributed = mode)
     def bootstrap = (@bootstrapped = true)
-    def install_for_agent(key, _force) = { agent: key, success: true, files: 1 }
+    def install_for_agent(key, _force, **) = { agent: key, success: true, files: 1 }
   end
 
   def setup
