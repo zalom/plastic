@@ -11,6 +11,19 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   human-approved act.
 
 ## Released
+- `1.0.0-beta.37` - shipped 2026-07-07; collected 129 (six first-run user guides under
+  docs/guides/ with a real TOC, the installer's last line and the install skill's closing line
+  pointing at guide 1, pinned by a hermetic test; chained at landing to future intent 137, the
+  LLM-guided tutorial), 109 (README reconciled with the shipped PLASTIC contract: the
+  coordinator loop reads Build/Observe/Repeat, the lifecycle reads What/Why/How/Execute at both
+  occurrences, conventions attribution names PLASTIC.md, and the resolved architecture.md
+  footnote is gone; the coverage map of what a first-time reader needs in the README vs docs/
+  was written at Why and consumed by 97), and 97 (the first-sight positioning: README rewritten
+  around project-and-person memory - "Where you were, where you are, where you are heading" -
+  the two founding systems, an honest mem0/beads contrast, a beta-only install section grounded
+  in live npm dist-tags with zero @alpha left, verbatim acronyms, and the GitHub About/homepage/
+  8 topics set to match; the demo GIF deferred to new intent 138). Closes Wave 4 (guides and
+  first sight) of roadmaps/stable-1-0.md.
 - `1.0.0-beta.36` - shipped 2026-07-07; collected 92 (the per-stage human report contract: the
   auto-mode orchestrator now briefs the human at every lifecycle stage boundary in EM-to-CTO
   voice, State/Risk/Call, impact first with one risk named and the decision left to the human;
