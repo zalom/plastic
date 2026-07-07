@@ -13,58 +13,69 @@ description: Use when updating Plastic. Runs the `update` verb, which reads the 
 ## What it does
 
 `update` is a single deterministic command. It reads `~/.plastic/VERSION`, derives the
-channel from the version string (`-alpha`/`-beta`/none → stable), queries `npm` dist-tags,
+channel from the version string (`-alpha`/`-beta`/none -> stable), queries `npm` dist-tags,
 and advances to the **next version on the current channel**. "Already up to date" is a
-clean no-op. You do not compute the target yourself — the script does.
+clean no-op. You do not compute the target yourself, the script does.
+
+## Channel rule
+
+If Plastic is installed, derive `<channel>` from `~/.plastic/VERSION`: a version ending
+`-alpha` means `@alpha`, `-beta` means `@beta`, otherwise `@latest`. If not installed
+(first install), default to `@beta`. The user can always override with
+`--alpha` / `--beta` / `--latest`.
 
 ## Flags
 
 | Flag | Behaviour |
 |------|-----------|
 | (none) | Advance to the next version on the **current** channel |
-| `--latest` | Switch to / advance the **stable** channel (toward stability — frictionless) |
+| `--latest` | Switch to / advance the **stable** channel (toward stability, frictionless) |
 | `--beta` | Switch to / advance the **beta** channel |
-| `--alpha` | Switch to / advance the **alpha** channel (bleeding edge — confirmed if moving down in stability) |
+| `--alpha` | Switch to / advance the **alpha** channel (bleeding edge, confirmed if moving down in stability) |
 
 Switching toward a more stable channel is frictionless; switching toward bleeding edge is
 confirmed. To roll **back** to a previously-installed version, use `plastic-versions`.
 
 ## Prerequisites
 
-Plastic must be installed (`~/.plastic/VERSION` present). If not, run
-`npx @zalom/plastic install --claude` first.
+Plastic must be installed (`~/.plastic/VERSION` present). If not, run `plastic-install`
+first (or `npx -y @zalom/plastic@beta install --claude` directly).
 
 ## Procedure
 
 ### Step 1: Run the update
 
 ```bash
-npx @zalom/plastic update            # next version on the current channel
-# or: npx @zalom/plastic update --beta   /   --latest   /   --alpha
+npx -y @zalom/plastic@<channel> update --claude
+# channel switch: append --beta / --latest / --alpha
+# other agents: append --codex / --hermes / --all
 ```
 
-Append the agent flag(s) if not just Claude (`--codex`, `--hermes`, `--all`).
-The command prints the transition (`vX → vY`) or "already up to date", and records the
-move in the append-only `~/.plastic/versions.json` ledger.
+`bunx -y @zalom/plastic@<channel> update --claude` works as a fallback if `npx` is
+unavailable. The command prints the transition (`vX -> vY`) or "already up to date", runs
+a post-update doctor summary, and records the move in the append-only
+`~/.plastic/versions.json` ledger.
 
-### Step 2: Announce key changes
+### Step 2: Relay the result, announce convention changes
 
-After it completes, read `~/.plastic/PLASTIC.md` and announce convention changes that
-affect the current session:
+Relay what `update` printed, do not recompute the version transition or the doctor
+summary:
 
 ```
-Plastic updated to vX.Y.Z (channel).
-
-Key changes:
-- [notable convention changes, if any]
-
-Recommendation: run /clear for a clean session with all new conventions loaded.
+Plastic update (<channel>)
+Command:  npx -y @zalom/plastic@<channel> update --claude <flags>
+Version:  <before> -> <after>
+Doctor:   <relayed summary, or "all clear">
 ```
 
-### Step 3: Health check
+Then read `~/.plastic/PLASTIC.md` and announce convention changes that affect the
+current session, and recommend `/clear` for a clean session with all new conventions
+loaded.
 
-Invoke `plastic-doctor`. If all checks pass: **"Health check: all clear."** Otherwise show
-the report and offer to fix.
+### Step 3: Health check only on a relayed failure
+
+If the relayed doctor summary shows a failure, invoke `plastic-doctor` for the full
+report and offer to fix. If it already reads clean, do not re-run doctor.
 
 ### Step 4: Commit + clear update cache
 

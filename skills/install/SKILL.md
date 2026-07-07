@@ -1,24 +1,31 @@
 ---
 name: plastic-install
-description: Use when initializing Plastic globally (~/.plastic/) or locally in a project, or to re-install/repair a broken installation. Accepts channel flags (--alpha, --beta, --latest) to select release channel. Default is --latest (stable). Global install is recommended — creates the global intent store as a git-backed repository. Local install creates .plastic/ in the current project for testing.
+description: Use when initializing Plastic globally (~/.plastic/) or locally in a project, or to re-install/repair a broken installation. Accepts channel flags (--alpha, --beta, --latest) to select release channel. First install defaults to --beta; reinstalls match the already-installed channel. Global install is recommended: it creates the global intent store as a git-backed repository. Local install creates .plastic/ in the current project for testing.
 ---
 
 # Install Plastic
 
-> **Recommended path:** for a first install, run `npx @zalom/plastic@latest install --claude`
-> in your shell (or `bunx @zalom/plastic@latest --claude` if you use Bun). This skill
+> **Recommended path:** for a first install, run `npx -y @zalom/plastic@beta install --claude`
+> in your shell (or `bunx -y @zalom/plastic@beta install --claude` if you use Bun). This skill
 > exists to **re-install or repair** an existing setup from inside the agent, and to
 > drive interactive global configuration. Whenever this skill performs an install or
 > re-install, it **runs `/plastic-doctor` afterward** and reports the result.
 
+## Channel rule
+
+If Plastic is installed, derive `<channel>` from `~/.plastic/VERSION`: a version ending
+`-alpha` means `@alpha`, `-beta` means `@beta`, otherwise `@latest`. If not installed
+(first install), default to `@beta`. The user can always override with
+`--alpha` / `--beta` / `--latest`.
+
 ## Re-install / repair
 
 If Plastic is already installed but something is broken (skills missing, hooks not
-firing, leftover legacy plugin), re-run the installer — it is idempotent, prunes
+firing, leftover legacy plugin), re-run the installer, it is idempotent, prunes
 files that no longer ship, and removes any legacy plugin/marketplace layout:
 
 ```bash
-npx @zalom/plastic@latest install --reinstall --claude   # or @beta / @alpha to match your channel
+npx -y @zalom/plastic@<channel> install --reinstall --claude
 ```
 
 Then **run `/plastic-doctor`** and report what it found.
@@ -27,22 +34,22 @@ Then **run `/plastic-doctor`** and report what it found.
 
 | Flag | Behavior |
 |------|----------|
-| `--latest` | Install from stable channel (default) |
-| `--beta` | Install from beta channel |
-| `--alpha` | Install from alpha channel |
+| `--latest` | Install from the stable channel |
+| `--beta` | Install from the beta channel (default on a first install) |
+| `--alpha` | Install from the alpha channel |
 
 When invoked from within Claude Code (re-install or channel switch), the skill
 runs the appropriate npx command:
 
 ```bash
-# Stable (default)
-npx @zalom/plastic install --claude
+# Stable
+npx -y @zalom/plastic@latest install --claude
 
-# Beta
-npx @zalom/plastic@beta install --claude
+# Beta (default on a first install)
+npx -y @zalom/plastic@beta install --claude
 
 # Alpha
-npx @zalom/plastic@alpha install --claude
+npx -y @zalom/plastic@alpha install --claude
 ```
 
 The installed version and channel are recorded in `~/.plastic/VERSION`.
@@ -55,105 +62,72 @@ Run `/plastic-install` with no arguments.
 
 #### Procedure
 
-**Step 1: Check for existing installation**
+**Step 1: Run the installer**
 
-Check if `~/.plastic/INDEX.md` exists.
-- If yes: announce "Plastic is already installed at ~/.plastic/. Run `/plastic-update` to sync core files."
-- If no: proceed with fresh install.
-
-**Step 2: Create ~/.plastic/ as a git repo**
+Check if `~/.plastic/VERSION` exists.
+- If yes: announce "Plastic is already installed at ~/.plastic/. Run `/plastic-update` to
+  sync core files, or use the re-install command above to repair in place."
+- If no: run the fresh install command (default `@beta`, or the channel the user named):
 
 ```bash
-mkdir -p ~/.plastic/store ~/.plastic/projects
+npx -y @zalom/plastic@beta install --claude
 ```
 
-Copy templates from the plugin:
-- `config.yml` from `${CLAUDE_PLUGIN_ROOT}/templates/config.yml`
-- `projects.yml` from `${CLAUDE_PLUGIN_ROOT}/templates/projects.yml`
-- `INDEX.md` from `${CLAUDE_PLUGIN_ROOT}/templates/index.md`
-- `PLASTIC.md` from `${CLAUDE_PLUGIN_ROOT}/PLASTIC.md`
+This single command, via `install.rb` (`bootstrap` + `distribute`), creates `store/`,
+`projects/`, `config.yml`, `projects.yml`, `INDEX.md`, and `AGENTS.md` under `~/.plastic/`,
+and copies the utility scripts (`folgezettel-id`, `read-config`, and the rest of
+`scripts/`). This skill does none of that itself; it wraps the command with the
+interactive steps the CLI does not yet own, plus reporting and a doctor pass.
 
-Create `AGENTS.md` (user-editable, not overwritten on updates):
-```markdown
-# Plastic — Agent Instructions
+**Step 2: Initialize git (retained)**
 
-Read `PLASTIC.md` in this directory. It contains all Plastic conventions.
-Follow it exactly. Never modify it — it is overwritten on plugin updates.
+Only if `~/.plastic/.git` is absent (a fresh bootstrap does not init git):
 
-This file (`AGENTS.md`) is where project-specific rules live. Users and agents
-may add content below.
-
----
-```
-
-Add `.gitkeep` to `store/` and `projects/`.
-
-Initialize git:
 ```bash
 cd ~/.plastic && git init && git add . && git commit -m "chore: initialize Plastic global intent store"
 ```
 
-**Step 2b: Copy utility scripts**
+Retained here because the CLI does not git-init the store yet (follow-up).
 
-```bash
-mkdir -p ~/.plastic/scripts
-cp "${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" ~/.plastic/scripts/folgezettel-id
-cp "${CLAUDE_PLUGIN_ROOT}/scripts/read-config" ~/.plastic/scripts/read-config
-chmod +x ~/.plastic/scripts/folgezettel-id ~/.plastic/scripts/read-config
-```
-
-This ensures project agents can generate hashes via `~/.plastic/scripts/folgezettel-id` without depending on a specific agent's plugin cache path.
-
-**Step 2c: Detect agent type and set preferences**
+**Step 3: Personalize config (retained)**
 
 Detect which agent is running:
-- If `CLAUDE_CODE` env var is set or we're running inside Claude Code → `agent.type: claude-code`
-- If `HERMES_HOME` env var is set → `agent.type: hermes`
-- Otherwise → ask the user: "Which AI agent are you using? (claude-code / hermes / other)"
+- If `CLAUDE_CODE` env var is set or we're running inside Claude Code -> `agent.type: claude-code`
+- If `HERMES_HOME` env var is set -> `agent.type: hermes`
+- Otherwise -> ask the user: "Which AI agent are you using? (claude-code / hermes / other)"
 
 Ask the user:
-> "Enable Agent Teams? (experimental — parallel project work with teammates)"
-> - Yes → set `parallel_mode: agent-teams`
-> - No → set `parallel_mode: linear` (subagents only)
-
-Update `~/.plastic/config.yml` with detected/chosen values using `read-config --migrate` first to ensure v3 schema, then write the agent-specific values.
-
-Auto-commit the config change.
-
-**Step 2d: Configure GitHub and push preferences**
+> "Enable Agent Teams? (experimental: parallel project work with teammates)"
+> - Yes -> set `parallel_mode: agent-teams`
+> - No -> set `parallel_mode: linear` (subagents only)
 
 Inform the user:
-> "Plastic agents can create GitHub repositories for new projects.
-> By default, all agent-created repos are **private**. Your global
-> intent store (~/.plastic/) is never pushed — it stays local-only."
+> "Plastic agents can create GitHub repositories for new projects. By default, all
+> agent-created repos are **private**. Your global intent store (~/.plastic/) is never
+> pushed, it stays local-only."
 
 Ask the user:
 > "Default visibility for agent-created repos?"
-> - Private (recommended) → set `github.default_visibility: private`
-> - Public → set `github.default_visibility: public`
-
+> - Private (recommended) -> set `github.default_visibility: private`
+> - Public -> set `github.default_visibility: public`
+>
 > "Allow agents to push to GitHub without asking?"
-> - No (recommended) → set `github.auto_push: false`
-> - Yes → set `github.auto_push: true`
-
-Update `config.yml` with chosen values. Auto-commit.
-
-**Step 3: Configure project roots**
-
-Ask the user:
+> - No (recommended) -> set `github.auto_push: false`
+> - Yes -> set `github.auto_push: true`
+>
 > "Where do you keep your projects? Default: ~/.plastic/projects/"
 > "Add additional roots? (e.g., ~/apps/personal/, ~/apps/companies/)"
 
-Update `config.yml` with any additional roots.
-
-Auto-commit the config change.
+Write each answer via `read-config --migrate` first (ensures the v3 schema), then the
+chosen values; auto-commit each change. Retained here because the CLI writes only
+hardcoded defaults, so these interactive choices stay in the skill.
 
 **Step 4: Verify with doctor**
 
 Run `/plastic-doctor` and report the result. Resolve any fixable findings before
 announcing success.
 
-**Step 5: Register stores with QMD (optional)**
+**Step 5: Register stores with QMD (retained)**
 
 QMD is an optional search layer. If it is installed, register the Plastic stores so
 they are searchable:
@@ -165,19 +139,27 @@ ruby ~/.plastic/scripts/qmd-sync detect && ruby ~/.plastic/scripts/qmd-sync regi
 `qmd-sync` no-ops cleanly when QMD is absent, so this is safe to run unconditionally.
 It registers `plastic-global` and every project store from `projects.yml`, then indexes
 them. Report what was registered, or that QMD was not detected and the step was skipped.
+Retained here because the CLI does not register at install time (follow-up).
 
-**Step 6: Announce**
+**Step 6: Report + announce**
 
-> "Plastic installed globally at ~/.plastic/. Health check: [doctor summary].
-> Create your first intent with `/plastic-creating-intent`."
+```
+Plastic install (<channel>)
+Command:  npx -y @zalom/plastic@<channel> install --claude <flags>
+Version:  none -> <installed>
+Doctor:   <summary or "all clear">
+```
+
+Then: "Create your first intent with `/plastic-creating-intent`."
 
 ### Local Install (testing/legacy)
 
-Run `/plastic-install --local`.
+Run `/plastic-install --local`. `install.rb` has no `--local` verb, so this mode is
+genuinely skill-owned.
 
 #### Procedure
 
-**Step 1:** Check if `.plastic/` exists in CWD — if so, warn and exit.
+**Step 1:** Check if `.plastic/` exists in CWD, if so, warn and exit.
 
 **Step 2:** Create `.plastic/` in CWD:
 - `config.yml` from templates
@@ -192,4 +174,5 @@ Run `/plastic-install --local`.
 
 **Step 4:** Commit in project: `git add .plastic/ && git commit -m "chore: initialize Plastic local store"`
 
-**Step 5:** Announce: "Plastic initialized locally. This is a testing/legacy mode. Consider `/plastic-install` for global mode."
+**Step 5:** Announce: "Plastic initialized locally. This is a testing/legacy mode. Consider
+`/plastic-install` for global mode."
