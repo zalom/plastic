@@ -20,7 +20,7 @@ You start with an intent, something like:
 
 > “I want users who are locked out to recover access safely.”
 
-Plastic delivers this intent in with successive stages: What -> Why -> How -> Exec.
+Plastic delivers this intent in successive stages: What -> Why -> How -> Exec.
 
 The result is a readable, linked record of how an idea became real.
 
@@ -51,7 +51,7 @@ contexts, and days.**
 
 It solves problems that builder already feels:
 
-- "I want to keep record of my work - what I worked on, why I worked on it, how it was built"
+- "I want to keep a record of my work - what I worked on, why I worked on it, how it was built"
 - "I do not need another TODO list."
 - "I do not want my work trapped inside a chat."
 - "I want to explore without losing the decision trail."
@@ -96,7 +96,7 @@ Plastic delivers all work through successive stages ->
 | ----- | ----------------------------------------------- | ------------------ | ---------------------------------------------- |
 | What  | What is the intention?                          | Intent             | {id}--slug.md                                  |
 | Why   | What context, evidence, and decisions shape it? | Specification      | spec.md                                        |
-| How   | What is the plan?                               | Plan and checklist | plan.md, checklist.md, actions/{n+1}_action.md |
+| How   | What is the plan?                               | Plan and checklist | plan.md, checklist.md, actions/ACTION_1.md ... ACTION_N.md |
 | Exec  | What was actually delivered?                    | Outcome            | outcome.md                                     |
 
 
