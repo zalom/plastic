@@ -129,7 +129,8 @@ class Install < InstallerCore
     verb = mode == :reinstall ? "re-synced" : "installed"
     puts "\n\u{2705} Plastic v#{version} #{verb}."
     puts "   Registered for: #{installed.map { |r| r[:agent] }.join(", ")}"
-    puts "   Run /clear (or restart your agent) to pick up new conventions.\n\n"
+    puts "   Run /clear (or restart your agent) to pick up new conventions."
+    puts "   Next: read docs/guides/your-first-intent-in-10-minutes.md\n\n"
   end
 
   def show_help

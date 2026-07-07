@@ -158,7 +158,7 @@ Version:  none -> <installed>
 Doctor:   <summary or "all clear">
 ```
 
-Then: "Create your first intent with `/plastic-creating-intent`."
+Then: "Read `docs/guides/your-first-intent-in-10-minutes.md` for your first intent, start to finish."
 
 ### Local Install (testing/legacy)
 

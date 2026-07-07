@@ -69,4 +69,11 @@ class InstallVerbTest < Minitest::Test
     assert_equal "update", i.ledger_current["action"],
       "update/versions delegate here and override the recorded action"
   end
+
+  def test_results_point_at_first_guide
+    i = build
+    out, _err = capture_io { i.run(selected: ["claude"]) }
+    assert_match "docs/guides/your-first-intent-in-10-minutes.md", out,
+      "the install results must point a first-time user at guide 1"
+  end
 end
