@@ -48,7 +48,22 @@ Where you were. Where you are. Where the idea is going.
 
 ## Start with an intent, not a ticket
 
-A task assumes you already know the work.
+You do not always start with a task. A task assumes you already know the
+work.
+
+You start with something like:
+
+> "I want users who are locked out to recover access safely."
+
+Plastic develops that intent into:
+
+```text
+What   → Why                  → How  → Exec
+Intent → Context & decisions  → Plan → Outcome
+```
+
+The result is not another chat log or markdown TODO. It is a readable,
+linked record of how an idea became real.
 
 An intent begins earlier: something you want to accomplish, explore, or
 understand. Plastic helps you develop it until it becomes a decision, a plan,
