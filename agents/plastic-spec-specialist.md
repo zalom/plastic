@@ -1,12 +1,8 @@
 ---
 name: plastic-spec-specialist
 description: |
-  Use this agent at the Why-to-How boundary in auto mode: it consolidates an
-  enriched Why into a spec.md from the spec template. Examples:
-  <example>Context: Why exploration is complete and decisions are recorded.
-  user: "Write the spec for the active intent"
-  assistant: "I'll use the spec-specialist to produce spec.md from the template"
-  <commentary>The spec is the deliverable that gates the move into How.</commentary></example>
+  Use at the Why-to-How boundary in auto mode: consolidate the enriched Why into
+  spec.md from the spec template.
 model: sonnet
 ---
 

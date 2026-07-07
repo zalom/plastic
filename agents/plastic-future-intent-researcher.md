@@ -1,13 +1,8 @@
 ---
 name: plastic-future-intent-researcher
 description: |
-  Use this agent to research future intents autonomously. Picks up parked
-  intents from INDEX.md, investigates them via web search and codebase analysis,
-  and writes findings into the intent. Examples:
-  <example>Context: There are future intents parked in the index.
-  user: "Research my future intents"
-  assistant: "I'll use the future-intent-researcher to pick up a parked intent and investigate it"
-  <commentary>Agent autonomously researches a future intent and writes findings.</commentary></example>
+  Use to research a parked future intent autonomously via web search and codebase
+  analysis, writing the findings into the intent.
 model: sonnet
 ---
 

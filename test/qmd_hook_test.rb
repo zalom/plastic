@@ -74,11 +74,11 @@ class QmdHookTest < Minitest::Test
   def test_serena_line_only_when_serena_detector_true
     with_serena = QmdHook.run(prompt: "some unrelated substantive prompt here", cwd: "/tmp", plastic_home: @home,
                               runner: runner_returning(EMPTY_JSON), detector: present, serena_detector: present)
-    assert_includes with_serena, "Serena is available"
+    assert_includes with_serena, "Serena"
 
     without_serena = QmdHook.run(prompt: "some unrelated substantive prompt here", cwd: "/tmp", plastic_home: @home,
                                  runner: runner_returning(EMPTY_JSON), detector: present, serena_detector: absent)
-    refute_includes without_serena, "Serena is available"
+    refute_includes without_serena, "Serena"
   end
 
   def test_nil_when_neither_tool_present
