@@ -5,61 +5,53 @@
 [![license](https://img.shields.io/npm/l/@zalom/plastic)](LICENSE)
 [![CI](https://github.com/zalom/plastic/actions/workflows/test.yml/badge.svg)](https://github.com/zalom/plastic/actions/workflows/test.yml)
 
-## Intent-based idea development for AI-assisted work.
+## Intent-based idea development system for AI-assisted work.
 
-Turn an idea into a durable intent: explore it, make decisions,
-plan it, deliver it, and keep the reasoning, even when the model,
-agent, session, or your own thinking changes.
+> Plastic is a system that turns an intent, a vague goal or idea into a durable, linked record of discovery, decisions, delivery, and outcomes - it serves as a physical brain for your intents.
 
-[Install](#start-in-60-seconds) [See it work](#built-in-plastic) [Read the manifesto](MANIFESTO.md)
+[[Install]](#start-in-60-seconds) [[See it work]](#built-with-plastic) [[Read the manifesto]](MANIFESTO.md)
 
-**Develop ideas with intent. Build with any brain.**
-
-Install Plastic (beta):
-
-```bash
-npx @zalom/plastic@beta --claude
-```
-
-Paste this to your coding agent to start:
-
-```
-Install Plastic: run `npx @zalom/plastic@beta --claude`.
-Then run `/clear` and say "new intent" to begin.
-Drive the work through What, Why, How, and Exec, and let Plastic
-keep the record as we go.
-```
 
 ## Why Plastic?
 
+You do not always start with a task.
+
+You start with an intent, something like:
+
+> “I want users who are locked out to recover access safely.”
+
+Plastic delivers this intent in with successive stages: What -> Why -> How -> Exec.
+
+The result is a readable, linked record of how an idea became real.
+
 **Plastic gives changing minds a durable way to develop ideas into work.**
 
-Your thinking changes. The work should not reset.
-New information changes the problem.
-A better model changes the approach.
-A different agent changes the way work gets done.
-You may change your mind entirely.
+Plastic is named after neuroplasticity: the brain's amazing ability to change and adapt. It rewires itself as you learn new things, form memories, or heal from injuries. Instead of being fixed like a computer, your brain is more like clay. It constantly reshapes itself based on your experiences.
 
-Plastic is named after neuroplasticity: the ability to adapt
-without starting from nothing.
+### What Plastic does?
 
-Plastic keeps the shape of the work stable:
-
+Plastic keeps the shape of the work stable - **deterministic** work system:
 - one durable intent
 - one visible lifecycle
 - one place for context, decisions, plans, and outcomes
 - links between the ideas that shaped the work and the ideas it creates
 
-The human or model is free to think.
+Plastic leaves the human or AI model free to think - **non-deterministic** thinking system.
+
 Plastic makes that thinking legible, resumable, and useful later.
 
-Plastic is built for an AI-native developer, technical founder, or
+## Who is Plastic for?
+
+**Plastic is built for an AI-native developer, technical founder, or
 independent builder who works across multiple sessions, has ideas before
 they have tickets, and feels the cost of losing reasoning between agents,
-contexts, and days.
+contexts, and days.**
+
+## What it solves?
 
 It solves problems that builder already feels:
 
+- "I want to keep record of my work - what I worked on, why I worked on it, how it was built"
 - "I do not need another TODO list."
 - "I do not want my work trapped inside a chat."
 - "I want to explore without losing the decision trail."
@@ -76,16 +68,17 @@ npx @zalom/plastic@beta --claude
 
 Then load the conventions and begin:
 
-```text
+```bash
 /clear
-new intent
+
+I would like to learn more about Plastic and how it works.
 ```
 
 Describe what you want in plain words, like "add a `--version` flag." Plastic
 scaffolds the intent and walks it through What, Why, How, and Exec. For the
 full path, read [your first intent in 10 minutes](docs/guides/your-first-intent-in-10-minutes.md).
 
-## Intent is the main unit of work in Plastic
+## How Plastic works?
 
 A task assumes you already know the work.
 
@@ -95,29 +88,17 @@ something you want to accomplish, explore, or understand.
 Plastic helps you develop it until it becomes a decision,
 a plan, a delivery, and a reusable piece of project history.
 
-## Plastic is not just
+### Register What and start with Why
 
-Agent memory that remembers facts.
-Task tracker that remembers work items.
-Spec that remembers what to build.
+Plastic delivers all work through successive stages ->
 
-## Plastic is all of that
+| Stage | Meaning                                         | Developed concept  | On-disk artifact (evidence)                    |
+| ----- | ----------------------------------------------- | ------------------ | ---------------------------------------------- |
+| What  | What is the intention?                          | Intent             | {id}--slug.md                                  |
+| Why   | What context, evidence, and decisions shape it? | Specification      | spec.md                                        |
+| How   | What is the plan?                               | Plan and checklist | plan.md, checklist.md, actions/{n+1}_action.md |
+| Exec  | What was actually delivered?                    | Outcome            | outcome.md                                     |
 
-Plastic remembers how an idea developed:
-what you wanted, why it mattered, what changed,
-what you decided, and what happened next.
-
-## How an intent develops
-
-An intent moves through four stages. Each one has a plain question and leaves
-a durable artifact behind.
-
-| Stage | Plain meaning | Durable artifact |
-|---|---|---|
-| What | What are we trying to make, learn, or change? | Intent |
-| Why | What context, evidence, and decisions shape it? | Specification |
-| How | What is the plan? | Plan and checklist |
-| Exec | What was actually delivered? | Outcome |
 
 ## Compatibility and ownership
 
@@ -136,7 +117,7 @@ A stable channel will follow. The bare `npx @zalom/plastic` command is not a
 working install yet. It resolves to an early stub release, so keep `@beta`
 for now.
 
-## Built in Plastic
+## Built with Plastic
 
 Plastic is developed through Plastic.
 
