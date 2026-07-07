@@ -127,6 +127,40 @@ class BashGateTest < Minitest::Test
     assert_equal [], targets("foo > out.txt <<EOF\nunterminated body")
   end
 
+  # --- intent 121a: quoted-redirect-target regression ---
+
+  # A double-quoted redirect target is unwrapped and captured, not blanked away.
+  # RED on current main (pre-121a fix).
+  def test_quoted_redirect_target_double
+    assert_equal ["app.rb"], targets(%q{echo x > "app.rb"})
+  end
+
+  # Same, single-quoted.
+  def test_quoted_redirect_target_single
+    assert_equal ["app.rb"], targets(%q{echo x > 'app.rb'})
+  end
+
+  # Over-fix guard: the unquoted case must still work exactly as before.
+  def test_unquoted_redirect_target_still_captured
+    assert_equal ["app.rb"], targets("echo x > app.rb")
+  end
+
+  # Heredoc opener with a digit-leading delimiter (`<<1EOF`) is recognized, so
+  # a `>` inside its body (an email trailer) still yields no phantom target.
+  def test_digit_leading_heredoc_body_masked
+    cmd = "git commit -F- <<1EOF\n" \
+          "message\n" \
+          "Co-Authored-By: Name <noreply@example.com>\n" \
+          "1EOF"
+    assert_equal [], targets(cmd)
+  end
+
+  # A real redirect on a `<<1EOF` opener line is still parsed.
+  def test_digit_leading_heredoc_real_redirect
+    cmd = "cat > out.txt <<1EOF\nbody\n1EOF"
+    assert_equal ["out.txt"], targets(cmd)
+  end
+
   # --- Task 2: bash_gate_decision ---
 
   def setup
