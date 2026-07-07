@@ -249,6 +249,7 @@ class InstallerCore
       "scripts/lib/store_provisioning.rb" => "scripts/lib/store_provisioning.rb",
       "scripts/provision-project-store" => "scripts/provision-project-store",
       "scripts/lib/installer_core.rb" => "scripts/lib/installer_core.rb",
+      "scripts/lib/preflight.rb" => "scripts/lib/preflight.rb",
       "scripts/install.rb" => "scripts/install.rb",
       "scripts/update.rb" => "scripts/update.rb",
       "scripts/uninstall.rb" => "scripts/uninstall.rb",

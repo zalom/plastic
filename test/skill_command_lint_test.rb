@@ -57,4 +57,36 @@ class SkillCommandLintTest < Minitest::Test
       end
     end
   end
+
+  # --- doctor skill (intent 38) ---
+  #
+  # The doctor skill's re-run-installer command lives inline in a table cell
+  # backtick span, not inside a ```bash fenced block, so it needs its own
+  # extraction: every inline `...` span whose first token is npx/bunx.
+
+  def doctor_skill_path
+    File.join(skills_root, "skills", "doctor", "SKILL.md")
+  end
+
+  def inline_backtick_spans(content)
+    content.scan(/`([^`]*)`/).flatten
+  end
+
+  def test_doctor_skill_has_no_em_or_en_dash
+    content = File.read(doctor_skill_path)
+    refute_includes content, EM_DASH, "doctor/SKILL.md contains an em-dash"
+    refute_includes content, EN_DASH, "doctor/SKILL.md contains an en-dash"
+  end
+
+  def test_doctor_skill_npx_and_bunx_commands_are_confirmed_and_pinned
+    content = File.read(doctor_skill_path)
+    command_spans = inline_backtick_spans(content).select { |span| %w[npx bunx].include?(first_token(span)) }
+    refute_empty command_spans, "doctor/SKILL.md has no npx/bunx command spans to check"
+
+    command_spans.each do |span|
+      assert_includes span, " -y ", "doctor/SKILL.md command missing -y: #{span.strip}"
+      assert_includes span, "@zalom/plastic@",
+                       "doctor/SKILL.md command missing a pinned channel: #{span.strip}"
+    end
+  end
 end
