@@ -704,6 +704,16 @@ end
 # CLI
 # ---------------------------------------------------------------------------
 
+# JSON.pretty_generate renders empty arrays/objects as multi-line ("[\n\n  ]") on
+# some json gem versions and single-line ("[]") on others, so the same payload
+# serializes differently across environments. Collapse both to the single-line
+# form so dashboard JSON output is byte-identical everywhere. The \n requirement
+# in each pattern is what makes this safe: a raw newline is illegal inside a JSON
+# string, so neither pattern can ever match inside string content.
+def canonical_pretty_json(payload)
+  JSON.pretty_generate(payload).gsub(/\[\s*\n\s*\]/, "[]").gsub(/\{\s*\n\s*\}/, "{}")
+end
+
 def main(argv)
   json = argv.delete("--json")
   data = argv.delete("--data")
@@ -715,7 +725,7 @@ def main(argv)
 
   if data
     payload = mode == "project" ? render_data_project(records, slug) : render_data_global(records)
-    puts JSON.pretty_generate(payload)
+    puts canonical_pretty_json(payload)
     return 0
   end
 
@@ -729,7 +739,7 @@ def main(argv)
     # per-scope boards (keeping the all-scopes auto-mode contract stable).
     payload[:store_health] = store_health(slug) if mode == "project"
     payload[:store_health] = store_health(:global) if mode == "continue"
-    puts JSON.pretty_generate(payload)
+    puts canonical_pretty_json(payload)
     return 0
   end
 
