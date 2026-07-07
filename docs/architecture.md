@@ -126,7 +126,7 @@ Every stage of the intent lifecycle has exactly one dispatchable background agen
 
 Final-gate code review stays an ad-hoc subagent the enforcer dispatches at the final gate, not a standing role.
 
-`plastic-intent-discovery` is the What-stage agent (see the `plastic-intent-discovery` skill): it fires at intent activation, before the delivery lock is armed and Why begins, runs QMD discovery over the intent's `chain`/`sources` and related parked intents, and deposits its findings to `resources/discovery--<slug>.md` only. It never writes the intent file; the Why-stage `plastic-brainstorming` agent reads its deposit and enriches `## Context`.
+`plastic-intent-discovery` is the What-stage agent (see the `plastic-intent-discovery` skill): it fires at intent activation, after the delivery lock is armed and before Why begins, running under that lock as the owner session, runs QMD discovery over the intent's `chain`/`sources` and related parked intents, and deposits its findings to `resources/discovery--<slug>.md` only. It never writes the intent file; the Why-stage `plastic-brainstorming` agent reads its deposit and enriches `## Context`.
 
 Every agent in `agents/*.md` pins an explicit Claude Code model alias (`opus` or `sonnet`) in its frontmatter: never `inherit`, never Fable. The tier is by role weight, not by stage:
 
