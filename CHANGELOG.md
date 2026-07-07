@@ -11,6 +11,20 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   human-approved act.
 
 ## Released
+- `1.0.0-beta.36` - shipped 2026-07-07; collected 92 (the per-stage human report contract: the
+  auto-mode orchestrator now briefs the human at every lifecycle stage boundary in EM-to-CTO
+  voice, State/Risk/Call, impact first with one risk named and the decision left to the human;
+  also carries the earlier plastic-humanizer skill from the same intent's first part), 127 (boot
+  context cuts: `PLASTIC.md` split into a lighter boot-core plus an on-demand
+  `PLASTIC-reference.md`, the per-prompt QMD/Serena power-tools line condensed to one line, and
+  the eight auto-mode agent descriptions tightened to one sentence each, closing out intent 83's
+  audit), 128 (solo-mode gate defaults: a solo user working alone no longer hits the lock and
+  worktree arbitration gates as hard blocks; both relax to advisory the moment a positive,
+  lock-file-based solo determination holds, and fall back to today's fail-closed behavior the
+  instant any sign of parallel or team delivery appears), and 85a (seven of the heaviest skill
+  bodies slimmed via progressive disclosure, each with a new reference file holding the moved
+  detail, plus an em-dash cleanup in `PLASTIC.md` and `docs/architecture.md`). Suite 1023/0/0.
+  Fifth cut of the stable-1.0 roadmap run.
 - `1.0.0-beta.35` - shipped 2026-07-07; collected 121a (fix a quoted-redirect-target regression from 121: a quoted target like `> "app.rb"` now unwraps and is captured instead of being blanked, so the pre-How code gate blocks it the same as the unquoted form; also broadens heredoc delimiter recognition to accept a leading digit), 55 (the four lifecycle skills, install/update/uninstall/versions, now wrap a single pinned `npx -y @zalom/plastic@<channel> <verb>` call instead of re-implementing scaffolding, closing the drift-to-a-bare-npx failure mode), 118 (reconciled the What-stage activation order: the delivery lock arms first, then discovery runs under it, resolving a collision with the write-gate), 38 (a newcomer with no Ruby, or a too-old one, now gets a branded offer with the exact mise command to fix it, instead of a raw error), and 77 (guided install now asks whether to keep an existing statusline or switch to Plastic's statusline, instead of silently overwriting it). Fourth cut of the stable-1.0 roadmap run.
 - `1.0.0-beta.34` - shipped 2026-07-07; collected 131 (per-intent bridge cache keying so parallel deliveries in one session stop clobbering each other s /tmp bridge and misfiring gates against the wrong intent; the six live collisions from the 2026-07-06 roadmap run, including a wrong-actor delivery, are the motivating evidence) and 125 (calmer dashboard first render: effort threshold and flag logic tuned so a real store spreads across the matrix instead of collapsing into DEFER/TRIAGE, list caps with +N more, and a hook-owned one-line systemMessage floor so the board reliably reaches the user). Third cut of the stable-1.0 roadmap run.
 - `1.0.0-beta.33` - shipped 2026-07-07; collected 124a (roadmaps/ relocated out of store/ to the project root as a sibling of INDEX.md wherever INDEX.md lives, the live stable-1-0 roadmap and archived/ moved along, skill/references/template/PLASTIC.md repointed, and every roadmap log line now opens YYYY-MM-DD HH:MM UTC with existing lines retrofitted from git history; also clears the doctor warns from store/roadmaps/ being scanned as an intent dir) and 126 (doctor first-run trust: post-update doctor defaults to the fast core-sync result with the full 47-check walk behind a --full-doctor flag, reversing 56s mandatory full run; the already-shipped Ruby 4 Psych date fix and dot-dir exclusion locked in with proven regression tests). Second cut of the stable-1.0 roadmap run.
