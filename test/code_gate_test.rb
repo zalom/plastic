@@ -2,6 +2,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/lock"
 
 # Tests the PreToolUse code-edit gate decision (intent 27, R1).
 class CodeGateTest < Minitest::Test
@@ -62,5 +63,17 @@ class CodeGateTest < Minitest::Test
   def test_allows_once_how_reached
     reach_how
     assert_nil decide(bridge(auto: true), @project_file)
+  end
+
+  # --- AC5 (intent 128): solo delivery does NOT relax the stage-ordering gate -
+
+  def test_solo_confirmed_lock_does_not_relax_the_stage_gate
+    # A fresh, own delivery lock (the exact condition that relaxes the two
+    # ARBITRATION gates) must have ZERO effect here: code_gate_decision does
+    # not accept a session/lock/home argument at all and must stay
+    # byte-for-byte unchanged. A pre-How project-code edit is still blocked.
+    Lock.acquire(@intent_dir, session: "sess-1")
+    refute_nil decide(bridge(auto: true), @project_file),
+               "solo delivery must never relax the stage-ordering gate"
   end
 end

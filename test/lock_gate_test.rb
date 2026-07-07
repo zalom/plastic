@@ -8,6 +8,11 @@ require_relative "../scripts/lib/lock"
 # Pure tests for the fail-closed lock gate decision (intents 96 + 108).
 # The gate decides from the durable delivery.lock in the TARGET intent dir;
 # bridges only supply a fallback session id. No pid is consulted anywhere.
+#
+# Every call here passes `home: @home` explicitly (a tmpdir): the gate now
+# also scans a global store under `home` for solo-delivery detection (intent
+# 128), so tests must inject it to stay hermetic and never touch the real
+# ~/.plastic.
 class LockGateTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("lock-gate-home")
@@ -41,17 +46,21 @@ class LockGateTest < Minitest::Test
     File.write(@index, lines.join("\n") + "\n")
   end
 
+  def gate(bridge, file, session: nil)
+    Bridge.lock_gate_decision(bridge, file, session: session, home: @home)
+  end
+
   # --- ALLOW: the lock FILE decides (D2) --------------------------------------
 
   def test_owner_session_with_lock_file_is_allowed
     Lock.acquire(@intent_dir, session: "sess-1")
     bridge = { "session" => "sess-1", "intent" => { "id" => "96" } }
-    assert_nil Bridge.lock_gate_decision(bridge, @intent_file, session: "sess-1")
+    assert_nil gate(bridge, @intent_file, session: "sess-1")
   end
 
   def test_allowed_even_when_bridge_is_missing_lock_file_wins
     Lock.acquire(@intent_dir, session: "sess-1")
-    assert_nil Bridge.lock_gate_decision(nil, @intent_file, session: "sess-1"),
+    assert_nil gate(nil, @intent_file, session: "sess-1"),
                "a wiped /tmp must not strand the owner: the lock FILE decides (D2)"
   end
 
@@ -59,20 +68,20 @@ class LockGateTest < Minitest::Test
     Lock.acquire(@intent_dir, session: "sess-1")
     stale_bridge = { "session" => "sess-1", "intent" => { "id" => "1" },
                      "lock" => { "owner_session" => "someone-else" } }
-    assert_nil Bridge.lock_gate_decision(stale_bridge, @intent_file, session: "sess-1")
+    assert_nil gate(stale_bridge, @intent_file, session: "sess-1")
   end
 
   def test_owner_allowed_on_its_own_stale_lock
     Lock.acquire(@intent_dir, session: "sess-1")
     FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
-    assert_nil Bridge.lock_gate_decision(nil, @intent_file, session: "sess-1"),
+    assert_nil gate(nil, @intent_file, session: "sess-1"),
                "a stale lock is still the owner's until an explicit takeover"
   end
 
   def test_session_falls_back_to_the_bridge_session
     Lock.acquire(@intent_dir, session: "sess-1")
     bridge = { "session" => "sess-1", "intent" => { "id" => "96" } }
-    assert_nil Bridge.lock_gate_decision(bridge, @intent_file),
+    assert_nil gate(bridge, @intent_file),
                "with no explicit session the bridge supplies the session id"
   end
 
@@ -81,69 +90,139 @@ class LockGateTest < Minitest::Test
   def test_delegate_is_allowed_non_delegate_denied
     Lock.acquire(@intent_dir, session: "owner")
     Lock.add_delegate(@intent_dir, delegate: "sub-1", session: "owner")
-    assert_nil Bridge.lock_gate_decision(nil, @intent_file, session: "sub-1")
-    reason = Bridge.lock_gate_decision(nil, @intent_file, session: "stranger")
+    assert_nil gate(nil, @intent_file, session: "sub-1")
+    reason = gate(nil, @intent_file, session: "stranger")
     refute_nil reason
     assert_includes reason, "plastic-lock delegate"
+  end
+
+  # --- AC3 team: a non-empty delegates array keeps the gate fail-closed -------
+
+  def test_team_delegate_present_keeps_a_different_active_intent_denied
+    # sess-1 is the sole fresh lock owner on 96, but it has registered a
+    # delegate (a team, not a lone session): AC3 says both gates stay
+    # fail-closed even though there is only one fresh lock.
+    other_dir = File.join(@store, "97--demo")
+    FileUtils.mkdir_p(other_dir)
+    write_index_active(["96", "97"])
+    Lock.acquire(@intent_dir, session: "sess-1")
+    Lock.add_delegate(@intent_dir, delegate: "sub-1", session: "sess-1")
+    refute_nil gate(nil, File.join(other_dir, "plan.md"), session: "sess-1"),
+               "a non-empty delegates array is a team, not solo (AC3): stays denied"
   end
 
   # --- deny routing (D5): every deny names the resolving command ---------------
 
   def test_no_lock_deny_names_intent_starting
-    assert_includes Bridge.lock_gate_decision(nil, @intent_file, session: "s"),
+    assert_includes gate(nil, @intent_file, session: "s"),
                     "/plastic-intent-starting"
   end
 
   def test_stale_lock_deny_names_reclaim
     Lock.acquire(@intent_dir, session: "other")
     FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
-    reason = Bridge.lock_gate_decision(nil, @intent_file, session: "sess-1")
+    reason = gate(nil, @intent_file, session: "sess-1")
     assert_includes reason, "/plastic-lock reclaim"
   end
 
   def test_corrupt_lock_deny_names_fix
     File.write(Lock.path(@intent_dir), "{ nope")
-    reason = Bridge.lock_gate_decision(nil, @intent_file, session: "sess-1")
+    reason = gate(nil, @intent_file, session: "sess-1")
     assert_includes reason, "/plastic-lock fix"
   end
 
   def test_fresh_foreign_lock_denies_and_names_status
     Lock.acquire(@intent_dir, session: "other")
-    reason = Bridge.lock_gate_decision(nil, @intent_file, session: "sess-1")
+    reason = gate(nil, @intent_file, session: "sess-1")
     refute_nil reason
     assert_includes reason, "/plastic-lock status"
   end
 
-  # --- scope: allow-by-lock is per-intent --------------------------------------
+  # --- scope: allow-by-lock is per-intent (still true independent of solo) ----
 
-  def test_blocks_cross_intent_write_when_lock_is_for_a_different_intent
+  def test_blocks_cross_intent_write_when_a_rival_lock_exists_elsewhere
+    # A genuinely rival lock (foreign owner, elsewhere) means solo can never be
+    # confirmed, so the ordinary per-intent scoping stays denied: a lock on 96
+    # does NOT authorize a write into 97's active-but-unlocked dir.
     other_dir = File.join(@store, "97--demo")
     FileUtils.mkdir_p(other_dir)
     write_index_active(["96", "97"])
     Lock.acquire(@intent_dir, session: "sess-1")
-    refute_nil Bridge.lock_gate_decision(nil, File.join(other_dir, "plan.md"), session: "sess-1"),
-               "a lock on intent 96 must NOT allow a write into intent 97's active dir"
+    FileUtils.mkdir_p(File.join(@store, "99--rival"))
+    Lock.acquire(File.join(@store, "99--rival"), session: "rival-session")
+    refute_nil gate(nil, File.join(other_dir, "plan.md"), session: "sess-1"),
+               "a second live session anywhere in scope means solo is never confirmed"
+  end
+
+  # --- AC2: two fresh locks under the SAME owner_session is parallel-in-play --
+
+  def test_two_fresh_locks_same_owner_keeps_a_third_intent_denied
+    other_dir = File.join(@store, "97--demo")
+    third_dir = File.join(@store, "98--demo")
+    FileUtils.mkdir_p(other_dir)
+    FileUtils.mkdir_p(third_dir)
+    write_index_active(["96", "97", "98"])
+    Lock.acquire(@intent_dir, session: "sess-1")
+    Lock.acquire(other_dir, session: "sess-1")
+    refute_nil gate(nil, File.join(third_dir, "plan.md"), session: "sess-1"),
+               "two fresh locks under one owner_session is PARALLEL (AC2), not solo"
+  end
+
+  # --- AC1: exactly one fresh lock, owned by me, no delegates -> solo --------
+
+  def test_solo_single_fresh_lock_allows_a_different_unlocked_active_intent
+    other_dir = File.join(@store, "97--demo")
+    FileUtils.mkdir_p(other_dir)
+    write_index_active(["96", "97"])
+    Lock.acquire(@intent_dir, session: "sess-1") # the ONLY fresh lock in scope
+    assert_nil gate(nil, File.join(other_dir, "plan.md"), session: "sess-1"),
+               "solo confirmed (exactly one fresh lock, mine, no delegates): " \
+               "the no-lock deny on a different active intent relaxes to allow"
+  end
+
+  def test_solo_allows_a_stale_target_lock
+    # The TARGET (96) has a stale lock owned by someone else; the only FRESH
+    # lock in scope is elsewhere (97), owned by the acting session: solo
+    # confirmed, so the stale-lock deny on 96 relaxes to allow.
+    Lock.acquire(@intent_dir, session: "old-owner")
+    FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
+    elsewhere = File.join(@store, "97--demo")
+    FileUtils.mkdir_p(elsewhere)
+    write_index_active(["96", "97"])
+    Lock.acquire(elsewhere, session: "sess-1") # the ONLY fresh lock in scope
+    assert_nil gate(nil, @intent_file, session: "sess-1")
+  end
+
+  # --- AC4: blank/unresolvable session falls back to fail-closed -------------
+
+  def test_blank_session_stays_fail_closed_even_with_one_fresh_lock_elsewhere
+    other_dir = File.join(@store, "97--demo")
+    FileUtils.mkdir_p(other_dir)
+    write_index_active(["96", "97"])
+    Lock.acquire(@intent_dir, session: "sess-1")
+    refute_nil gate(nil, File.join(other_dir, "plan.md"), session: ""),
+               "a blank session can never be positively confirmed solo"
   end
 
   # --- ALLOW: paths the gate does not govern -----------------------------------
 
   def test_allows_creating_a_not_yet_active_intent
     write_index_active([]) # 96 is not yet in ## Active (pre-activation / What)
-    assert_nil Bridge.lock_gate_decision(nil, @intent_file, session: "s"),
+    assert_nil gate(nil, @intent_file, session: "s"),
                "creating a not-yet-active intent must ALLOW (no lockout)"
   end
 
   def test_allows_project_code_with_no_lock
-    assert_nil Bridge.lock_gate_decision(nil, @project_file, session: "s"),
+    assert_nil gate(nil, @project_file, session: "s"),
                "project code is NOT gated here (D2)"
   end
 
   def test_allows_scratch_path_with_no_lock
-    assert_nil Bridge.lock_gate_decision(nil, @scratch_file, session: "s")
+    assert_nil gate(nil, @scratch_file, session: "s")
   end
 
   def test_allows_blank_file_path
-    assert_nil Bridge.lock_gate_decision(nil, "", session: "s")
+    assert_nil gate(nil, "", session: "s")
   end
 
   # --- holds_live_lock? units --------------------------------------------------
@@ -191,7 +270,7 @@ class LockGateTest < Minitest::Test
            RbConfig.ruby, "-r", lib, "-e", code, exception: true)
 
     bridge = Bridge.read("sess-1", intent_id: "96", tmp: tmp)
-    assert_nil Bridge.lock_gate_decision(bridge, @intent_file, session: "sess-1"),
+    assert_nil gate(bridge, @intent_file, session: "sess-1"),
                "the owner who just armed must pass the lock gate immediately"
   ensure
     FileUtils.rm_rf(tmp)
