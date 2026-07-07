@@ -38,6 +38,7 @@
     "agents/",
     "templates/",
     "PLASTIC.md",
+    "PLASTIC-reference.md",
     "deprecations.yml"
   ]
 }

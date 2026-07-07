@@ -228,6 +228,7 @@ class InstallerCore
   def core_files
     {
       "PLASTIC.md" => "PLASTIC.md",
+      "PLASTIC-reference.md" => "PLASTIC-reference.md",
       "deprecations.yml" => "deprecations.yml",
       "scripts/folgezettel-id" => "scripts/folgezettel-id",
       "scripts/read-config" => "scripts/read-config",

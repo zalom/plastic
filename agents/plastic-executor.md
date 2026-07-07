@@ -1,12 +1,8 @@
 ---
 name: plastic-executor
 description: |
-  Use this agent for the Exec stage in auto mode: it implements the actions, checks
-  off the checklist, and drives the test suite green. Examples:
-  <example>Context: plan.md and checklist.md exist for the active intent.
-  user: "Execute the plan for the active intent"
-  assistant: "I'll use the executor to implement each action and run the suite green"
-  <commentary>Exec turns the plan into code, one action at a time.</commentary></example>
+  Use for the Exec stage in auto mode: implement the actions, check off the
+  checklist, and drive the test suite green.
 model: sonnet
 ---
 

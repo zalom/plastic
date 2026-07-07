@@ -1,16 +1,8 @@
 ---
 name: plastic-intent-curator
 description: |
-  Use this agent when completing or reviewing intents, reorganizing the index,
-  or when the intent store needs maintenance. Examples:
-  <example>Context: User has finished implementing a feature.
-  user: "This intent is done, clean up the index"
-  assistant: "I'll use the intent-curator agent to update the intent status and reorganize INDEX.md"
-  <commentary>Intent lifecycle change triggers curator for index maintenance.</commentary></example>
-  <example>Context: The intent store has grown and clusters need review.
-  user: "Organize the intents"
-  assistant: "I'll use the intent-curator to review clusters, flag orphans, and suggest connections"
-  <commentary>Periodic maintenance of the Zettelkasten structure.</commentary></example>
+  Use when completing or reviewing intents, reorganizing INDEX.md, or maintaining
+  the intent store.
 model: sonnet
 ---
 

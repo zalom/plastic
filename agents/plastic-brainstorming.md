@@ -1,12 +1,8 @@
 ---
 name: plastic-brainstorming
 description: |
-  Use this agent for the Why-stage exploration of an active intent in auto mode:
-  it enriches context and records decisions before a spec is written. Examples:
-  <example>Context: An intent has a What but a thin Why.
-  user: "Explore the requirements for the active intent"
-  assistant: "I'll use the brainstorming agent to enrich Context and record Decisions"
-  <commentary>Why-stage exploration runs before the spec-specialist.</commentary></example>
+  Use for the Why-stage exploration of an active intent in auto mode: enrich the
+  intent's Context and record its Decisions before the spec is written.
 model: opus
 ---
 

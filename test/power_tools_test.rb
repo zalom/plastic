@@ -21,11 +21,12 @@ class PowerToolsTest < Minitest::Test
     refute_includes out, "QMD is available"
   end
 
-  def test_mandate_both
+  def test_mandate_both_is_a_single_combined_line
     out = PowerTools.mandate(cwd: "/tmp", qmd_detector: present, serena_detector: present)
-    assert_includes out, "QMD is available"
-    assert_includes out, "Serena is available"
-    assert_equal 2, out.lines.count
+    assert_includes out, "QMD"
+    assert_includes out, "Serena"
+    refute_includes out, "\n"
+    assert_equal 1, out.lines.count
   end
 
   # Intent 108, D8: the injections are recommendations, not obligations.

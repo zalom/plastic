@@ -1,12 +1,8 @@
 ---
 name: plastic-planner
 description: |
-  Use this agent for the How stage in auto mode: it turns a spec.md into a plan,
-  self-contained action files, and a checklist. Examples:
-  <example>Context: spec.md exists and the intent is ready to plan.
-  user: "Plan the work for the active intent"
-  assistant: "I'll use the planner to write plan.md, actions/, and checklist.md"
-  <commentary>The plan and checklist unlock the code gate for Exec.</commentary></example>
+  Use for the How stage in auto mode: turn spec.md into plan.md, self-contained
+  action files, and checklist.md.
 model: opus
 ---
 

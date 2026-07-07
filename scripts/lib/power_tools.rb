@@ -52,24 +52,26 @@ module PowerTools
     false
   end
 
-  # Recommendation text for whichever tools are present, joined by newlines, or
-  # nil when none are. One recommendation line per present tool.
+  QMD_OBLIGATION = "prefer `qmd search` / `qmd query` over the `plastic-*` " \
+                   "collections to check for existing or related intents before " \
+                   "treating work as new"
+  SERENA_OBLIGATION = "prefer its symbolic tools (find_symbol / get_symbols_overview / " \
+                       "find_referencing_symbols) for code navigation"
+
+  # Recommendation text for whichever tools are present, or nil when none are.
+  # Both present collapse to ONE combined line naming both obligations (no
+  # embedded newline); one present returns that tool's own line; neither
+  # returns nil.
   def mandate(cwd:, qmd_detector: QmdSync.method(:detect), serena_detector: nil)
-    lines = []
-
-    if qmd?(detector: qmd_detector)
-      lines << "QMD is available: prefer `qmd search` / `qmd query` over the " \
-               "`plastic-*` collections to check for existing or related intents " \
-               "before treating work as new."
-    end
-
+    qmd_present = qmd?(detector: qmd_detector)
     serena_present = serena_detector ? !!serena_detector.call : serena?(cwd: cwd)
-    if serena_present
-      lines << "Serena is available: prefer its symbolic tools (find_symbol / " \
-               "get_symbols_overview / find_referencing_symbols) for code navigation."
-    end
 
-    return nil if lines.empty?
-    lines.join("\n")
+    if qmd_present && serena_present
+      "QMD and Serena are available: #{QMD_OBLIGATION}, and #{SERENA_OBLIGATION}."
+    elsif qmd_present
+      "QMD is available: #{QMD_OBLIGATION}."
+    elsif serena_present
+      "Serena is available: #{SERENA_OBLIGATION}."
+    end
   end
 end

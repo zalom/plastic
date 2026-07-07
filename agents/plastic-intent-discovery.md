@@ -1,13 +1,8 @@
 ---
 name: plastic-intent-discovery
 description: |
-  Use this agent for the What-stage context deposit when an intent is
-  activated: it primes Why with fresh QMD-sourced context before the spec is
-  written, and never writes the intent file itself. Examples:
-  <example>Context: An intent is being moved from Future to Active.
-  user: "Board this intent and gather what we already know"
-  assistant: "I'll use the intent-discovery agent to run QMD discovery and deposit findings to resources/"
-  <commentary>What-stage discovery runs at activation, after the lock is armed, under it.</commentary></example>
+  Use for the What-stage context deposit when an intent is activated: run QMD
+  discovery and write findings to resources/, never the intent file itself.
 model: sonnet
 ---
 

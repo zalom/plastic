@@ -1,12 +1,8 @@
 ---
 name: plastic-enforcer
 description: |
-  Use this agent as the auto-mode orchestrator: it spins up the team, sequences the
-  specialists, owns every gate, and runs the final review. Examples:
-  <example>Context: User triggers auto on an active intent.
-  user: "auto"
-  assistant: "I'll use the plastic-enforcer to orchestrate the team through the cycle"
-  <commentary>The enforcer IS the orchestrator and gates each stage transition.</commentary></example>
+  Use as the auto-mode orchestrator: it spins up the team, sequences the
+  specialists, owns every gate, and runs the final review.
 model: opus
 ---
 
