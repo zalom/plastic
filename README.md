@@ -1,72 +1,29 @@
 # Plastic
 
+[![npm version](https://img.shields.io/npm/v/@zalom/plastic/beta)](https://www.npmjs.com/package/@zalom/plastic)
+[![npm downloads](https://img.shields.io/npm/dm/@zalom/plastic)](https://www.npmjs.com/package/@zalom/plastic)
+[![license](https://img.shields.io/npm/l/@zalom/plastic)](LICENSE)
+[![CI](https://github.com/zalom/plastic/actions/workflows/test.yml/badge.svg)](https://github.com/zalom/plastic/actions/workflows/test.yml)
+
 **Where you were, where you are, where you are heading.**
 
-The everyday problem: losing the thread of your own work. You step away for a
-day and come back to find the reasoning behind a decision is gone. A session
-ends and the next one starts from nothing. Plastic keeps a durable, growing
-record of your work as you do it, so that thread never breaks.
+The everyday problem is losing the thread of your own work. You step away
+for a day, come back, and the reasoning behind a decision is gone. Plastic
+keeps a durable record of your work as you make it, so the thread never
+breaks. Read [why I built it](MANIFESTO.md).
 
-## Why Plastic
+Paste this to your coding agent to start:
 
-You do not write documentation about your work after the fact. You do the
-work as an intent (a short file that states what you want, why, how you plan
-to get there, and what happened). Because intents stay after you finish them,
-and because they link to the intents that shaped them and the ones they led
-to, they build into a queryable trace of your project over time. You can ask
-what happened, why a choice was made, or where an idea came from, and get an
-answer grounded in your own history. Memory is the result of working this
-way, not a feature bolted onto an agent afterward.
-
-## Two founding systems
-
-**System for the Brain.** Plastic is built on the Zettelkasten method: small,
-linked notes that add up to more than their sum. The name borrows from
-neuroplasticity, the brain's own way of adapting and rewiring itself. An
-intent is one such note. Its `sources` and `chain` links connect it to the
-intents that shaped it and the ones it led to, so the store grows into a
-graph you can actually navigate, not a pile of files.
-
-**System for the Work.** Plastic separates the deterministic part of work
-from the creative part. The blueprint (conventions, templates, directory
-layout, and the lifecycle stages) is fixed: it comes out the same shape no
-matter who or what is doing the work. The thinking (the actual reasoning
-about what to build and how) stays free: a human or an agent does it, and
-Plastic never replaces that judgment, only steers and checks it. This is
-convention over configuration: one readable shape for every intent, so any
-person or agent can pick up where another left off.
-
-## The Two Cycles
-
-**Coordinator loop (B→O→R):** Build → Observe → Repeat. The agent advances
-the active intent, observes what the work surfaced, and repeats with the
-next one. This loop runs continuously, across sessions.
-
-**Intent lifecycle (W→W→H→E):** What → Why → How → Exec. Each intent moves
-from capture through justification and planning to delivery. Intents produce
-artifacts: `spec.md`, `plan.md`, `checklist.md`, `outcome.md`.
-
-## How Plastic differs
-
-Plastic is not a memory service. Tools like mem0 give an agent a vector
-database to store and recall facts through an API; the memory lives in that
-service, apart from your project. Plastic instead keeps intents as plain,
-git-tracked Markdown files, moved through an enforced lifecycle (What, Why,
-How, Exec) that a person can read without any tooling. The result reads like
-the Zettelkasten linking model long used for personal notes, applied to
-software delivery.
-
-Projects like beads add persistent memory on top of an existing agent
-workflow. Plastic shares that goal, an agent should remember what it did and
-why, but gets there by making the intent itself, with its spec, plan, and
-delivered outcome, the actual unit of work. Plastic runs today with Claude
-Code, and works with Cursor and Cline through the same file-based
-conventions.
+```
+Install Plastic: run `npx @zalom/plastic@beta --claude`.
+Then run `/clear` and say "new intent" to begin.
+Drive the work through What, Why, How, and Exec, and let Plastic
+keep the record as we go.
+```
 
 ## Install
 
-Plastic requires Ruby (pre-installed on macOS and Linux) and Node.js 18 or
-later.
+Plastic needs Ruby (already on macOS and Linux) and Node.js 18 or later.
 
 Plastic is in beta. Install with:
 
@@ -74,85 +31,135 @@ Plastic is in beta. Install with:
 npx @zalom/plastic@beta --claude
 ```
 
-Replace `--claude` with `--codex` for Codex CLI, `--hermes` for Hermes, or
-`--all` for all supported agents.
+Swap `--claude` for `--codex`, `--hermes`, or `--all` to match your agent.
+Bun users can run `bunx` in place of `npx`; Bun is never required. To update
+later, say "update plastic" or run the same `@beta` command again.
 
-A stable channel will follow later:
+A stable channel will follow. The bare command below is not a working
+install yet. It resolves to an early stub release, so keep `@beta` for now.
 
 ```bash
-# Stable (when available, general use)
 npx @zalom/plastic --claude
 ```
 
-The bare command above is not a working install yet. It currently resolves
-to an early stub release, so use `@beta` for now.
-
-Bun users can substitute `bunx` for `npx` (for example, `bunx
-@zalom/plastic@beta --claude`). Bun is never required.
-
 Skills install as flat, hyphen-namespaced personal skills (`plastic-doctor`,
-`plastic-auto`, and so on). Invoke them with a hyphen. Plastic is **not** a
-Claude Code plugin; re-running the installer automatically removes any
-legacy plugin registration.
+`plastic-auto`, and so on). Invoke them with a hyphen. Plastic is not a
+Claude Code plugin; re-running the installer removes any legacy plugin
+registration.
 
-### Updating
+## The lost thread
 
-From within your agent, say "update plastic" or run:
+You do the work as an intent: a short file that states what you want, why,
+how you plan to get there, and what happened. Intents stay after you finish,
+and link to the ones that shaped them and the ones they led to, so your
+project builds into a record you can ask questions against.
 
-```bash
-npx @zalom/plastic@beta --claude
+Come back after a day and ask where you were:
+
+```
+You:   Where was I?
+Agent: Last intent: 140, "README round two". The plan is written and
+       approved. Next step is the ships-itself proof block. Want me to
+       pick it up in auto?
 ```
 
-The `plastic-update` command shows available versions across all channels
-and lets you choose which to install.
+Memory is the result of working this way, not a feature bolted onto an agent
+afterward.
 
 ## Quick Start
 
 After installation, run `/clear` to load Plastic conventions, then:
 
-1. Say "new intent" or run `/plastic-creating-intent` to create your first intent
-2. Describe what you want to accomplish
-3. Use `/plastic-brainstorming` to explore the design
-4. Use `/plastic-writing-plans` to create an implementation plan
-5. Use `/plastic-executing-plan` to deliver it
+1. Say "new intent" to create your first piece of work
+2. Describe what you want, in plain words
+3. Explore the design, write a plan, then deliver it, one stage at a time
 
-Guided delivery (a human at every gate) is the default. Say "auto" if you
-want the agent to run the full lifecycle on its own instead.
+Guided delivery (a human at every gate) is the default. Say "auto" to let
+the agent run the full lifecycle on its own. Run `/plastic-dashboard` any
+time for a Value x Effort view of every intent and what to do next.
 
-Run `/plastic-dashboard` any time for a Value x Effort view across every
-intent and what to work on next.
+<details>
+<summary>See the full 10-minute walkthrough</summary>
 
-## Agents
+1. Install once: `npx @zalom/plastic@beta --claude`.
+2. Describe a small first task, like "add a `--version` flag." Plastic
+   scaffolds the intent file for you; never write it by hand.
+3. Board it: say "continue." Plastic takes a lock, then asks "auto or guided?"
+4. Say "auto." The agent runs Why, then How, then Exec in one pass, then
+   writes `outcome.md` with exactly what was delivered and moves the intent
+   to Completed.
 
-Each lifecycle stage has one dispatchable background agent: `plastic-intent-discovery` for
-What, `plastic-brainstorming` and `plastic-spec-specialist` for Why, `plastic-planner` for
-How, `plastic-executor` for Exec, `plastic-intent-curator` for Done, plus `plastic-enforcer`
-as the auto-mode orchestrator. Every agent pins an explicit Claude Code model alias (opus or
-sonnet) in its frontmatter: never `inherit`, never Fable. See `docs/architecture.md` for the
-stage table and `docs/internals.md` for how the model is configured, resolved, and applied at
-install time.
+Full guide: [your first intent in 10 minutes](docs/guides/your-first-intent-in-10-minutes.md).
+</details>
+
+## Two founding systems
+
+**System for the Brain.** Plastic is built on the Zettelkasten method:
+small, linked notes that add up to more than their sum. The name borrows
+from neuroplasticity, the brain's own way of rewiring itself. An intent is
+one such note. Its `sources` and `chain` links connect it to the intents
+that shaped it and the ones it led to, so the store grows into a graph you
+can navigate, not a pile of files.
+
+**System for the Work.** Plastic separates the fixed part of work from the
+creative part. The blueprint (conventions, templates, layout, and the
+lifecycle stages) comes out the same shape no matter who does the work. The
+thinking (what to build and how) stays free: a human or an agent does it,
+and Plastic steers and checks that judgment without replacing it. One
+readable shape for every intent, so any person or agent can pick up where
+another left off.
+
+## Plastic ships itself
+
+Every release of Plastic is a set of intents that Plastic itself tracked,
+planned, and delivered. Over 2026-07-06 and 2026-07-07, the stable-1.0
+roadmap run cut six beta releases, beta.32 through beta.37, collecting 19
+intents. The evidence is public in `CHANGELOG.md` and the roadmap:
+
+```
+- `1.0.0-beta.19` - shipped 2026-06-25; collected 92 (plastic-humanizer skill: clean authored prose, remove AI tells and slop from docs/specs/outcomes/READMEs).
+- `1.0.0-beta.3` - shipped; collected 74 (mandatory structured agent completion reports + deterministic fallback).
+- [x] 129 First-run user guides — delivered
+- [x] 109 Audit README against the PLASTIC implementation — delivered
+- [x] 97 Implement the first-sight positioning (README + repo) — delivered
+```
+
+No other memory tool can paste this, because none is built with itself.
+
+## How Plastic differs
+
+Plastic is not a memory service. Tools like mem0 give an agent a vector
+database to store and recall facts through an API, and that memory lives in
+the service, apart from your project. Plastic keeps intents as plain,
+git-tracked Markdown files, moved through an enforced lifecycle (What, Why,
+How, Exec) that a person can read without any tooling.
+
+Projects like beads add persistent memory on top of an existing agent
+workflow. Plastic shares that goal but makes the intent itself, with its
+spec, plan, and delivered outcome, the unit of work. It runs today with
+Claude Code, and works with Cursor and Cline through the same conventions.
 
 ## Documentation
 
+Each lifecycle stage has one dispatchable background agent, from discovery
+through delivery, plus `plastic-enforcer` as the auto-mode orchestrator.
+
 - [`docs/architecture.md`](docs/architecture.md): system structure, the two
-  processes, the store layout, and the component map.
-- [`docs/internals.md`](docs/internals.md): how Plastic stays deterministic, the
-  determinism breakdown, and the harness system.
+  processes, the store layout, the component map, and the full stage table.
+- [`docs/internals.md`](docs/internals.md): how Plastic stays deterministic
+  and how the harness works.
 - [`docs/guides/`](docs/guides/index.md): task-oriented guides, from your
   first intent in 10 minutes to picking a delivery mode.
 
 ## Conventions
 
 Plastic conventions live in `PLASTIC.md`, distributed to `~/.plastic/PLASTIC.md`
-and overwritten on every update. Project-specific rules live in `AGENTS.md`,
-scaffolded once at `~/.plastic/AGENTS.md`. Run `plastic-doctor` to check
-installation health.
-`plastic-doctor --core` runs a binary install-integrity check (compares files
-against the install manifests; pass or error). `plastic-doctor --store` checks
-store state (intents, INDEX sections, conventions) and can be scoped to
-`global` or a project slug. The full `plastic-doctor` runs all checks and is
-run automatically after every update.
+and overwritten on every update. Project-specific rules live in `AGENTS.md`.
+Run `plastic-doctor` to check installation health; it compares files against
+the manifests, checks store state, and runs automatically after every update.
 
 ## License
 
 MIT
+
+Claude Code is powerful. Plastic makes it remember.
