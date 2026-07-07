@@ -1173,7 +1173,11 @@ module Bridge
       c = line[i]
       case state
       when :single
-        out << " "
+        if c == "'" || c == "<" || c == ">"
+          out << " "
+        else
+          out << c
+        end
         state = :normal if c == "'"
         i += 1
       when :double
@@ -1181,7 +1185,11 @@ module Bridge
           out << "  "
           i += 2
         else
-          out << " "
+          if c == '"' || c == "<" || c == ">"
+            out << " "
+          else
+            out << c
+          end
           state = :normal if c == '"'
           i += 1
         end
@@ -1191,7 +1199,7 @@ module Bridge
         elsif c == '"'
           out << " "; state = :double; i += 1
         elsif c == "<" && line[i + 1] == "<"
-          m = line[i..].match(/\A<<(-?)\s*("|')?([A-Za-z_][A-Za-z0-9_]*)\2?/)
+          m = line[i..].match(/\A<<(-?)\s*("|')?([A-Za-z0-9_][A-Za-z0-9_]*)\2?/)
           if m
             openers << { word: m[3], dash: m[1] == "-" }
             out << (" " * m[0].length)
