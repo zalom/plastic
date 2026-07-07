@@ -5,6 +5,7 @@ require "minitest/autorun"
 require "fileutils"
 require "tmpdir"
 require "json"
+require_relative "../scripts/dashboard"
 
 # Tests for scripts/dashboard.rb — the deterministic work cockpit.
 #
@@ -376,6 +377,18 @@ class DashboardTest < Minitest::Test
     sh = data["store_health"]
     refute_nil sh, "--json payload missing store_health"
     assert_equal "demo", sh["scope"]
+  end
+
+  # canonical_pretty_json exists because JSON.pretty_generate renders empty
+  # containers as multi-line on some json gem versions ("[\n\n  ]") and
+  # single-line on others ("[]"), which made the golden JSON test flake across
+  # environments. Assert the helper always collapses to the single-line form.
+  def test_canonical_pretty_json_collapses_empty_containers
+    out = canonical_pretty_json({ "a" => [], "b" => {} })
+    assert_includes out, "\"a\": []"
+    assert_includes out, "\"b\": {}"
+    refute_match(/\[\s*\n\s*\]/, out)
+    refute_match(/\{\s*\n\s*\}/, out)
   end
 
   def test_problem_store_surfaces_warn_or_fail_without_raising
