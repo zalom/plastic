@@ -681,6 +681,36 @@ own isolation instead, deterministic and cwd-independent.
   touches a fresh foreign lock. The `plastic-lock` CLI exposes it (verbs:
   status, fix, release, reclaim, delegate).
 
+- **Solo-mode advisory relaxation** (intent 128): `Bridge.lock_gate_decision`
+  and `Bridge.worktree_gate_decision` are ARBITRATION gates, not the
+  stage-ordering gate, so they only matter when a second writer might exist.
+  `Bridge.solo_delivery?(scan_roots:, session:, ttl:, now:)` scans the durable
+  `delivery.lock` files under the injected `scan_roots` (dependency-injected,
+  no ENV seam) and returns true only on a positive, confident solo
+  determination: exactly one fresh lock across the scan, owned by `session`,
+  with an empty `delegates` array. More than one fresh lock (even several
+  under the same `owner_session`, which still counts as parallel-in-play), a
+  foreign owner, a non-empty `delegates` array, a blank/unresolvable session,
+  or any scan error all return false, preserving today's fail-closed behavior.
+  Both gates compute this once (scan roots: the target intent's store plus the
+  global store under an injected `home:`) and, on a confirmed solo, return
+  `nil` (allow, with one terse stderr line) at every arbitration deny point
+  instead of the deny string. `code_gate_decision` (the stage-ordering gate)
+  and `Claim.claim_gate_reason` (the per-artifact claim gate) are never
+  touched by this: a solo context still enforces How before code edits, and
+  the claim gate's single-writer guarantee is unaffected.
+  Two hardenings keep the detection strictly conservative. First, a fresh
+  lock file that fails to parse (corrupt) is real ambiguity, not an absence:
+  `solo_delivery?` treats any unreadable-but-fresh lock as disqualifying,
+  never as a lock to silently drop from the count. Second,
+  `worktree_gate_decision`'s scan_roots always include the EDIT TARGET's own
+  store, not just the acting bridge's own store plus the global store, so a
+  live rival lock on an intent in a different project is never invisible to
+  the scan just because that project is not the acting session's own; this
+  makes rule 2 (non-owner store edit) fail-closed against cross-project
+  rivals too. Both changes only add scan coverage or narrow the true-case, so
+  they can only make solo detection stricter, never looser.
+
 ## per-artifact claim tokens (intent 111)
 
 The delivery lock above resolves ownership at the whole-intent grain: it answers

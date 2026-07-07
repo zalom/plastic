@@ -150,4 +150,68 @@ class WorktreeGateTest < Minitest::Test
     # A file directly under ~/.plastic/store but not inside an {id}--{slug} dir.
     assert_nil decision(provisioned_bridge, File.join(@store, "INDEX.md"))
   end
+
+  # --- Solo-mode detection (intent 128) --------------------------------------
+  # Positive-only confirmation from the durable delivery.lock files relaxes
+  # both rules to ALLOW when exactly one session is delivering.
+
+  def test_solo_relaxes_rule1_code_confinement
+    Lock.acquire(@intent_dir, session: "me") # the ONLY fresh lock in scope
+    assert_nil decision(provisioned_bridge, File.join(@repo, "lib", "app.rb")),
+               "solo confirmed: rule 1 (worktree confinement) relaxes to allow"
+  end
+
+  def test_solo_does_not_relax_rule1_under_two_fresh_locks_same_owner
+    Lock.acquire(@intent_dir, session: "me")
+    other = other_intent_dir("77", "other-parallel")
+    Lock.acquire(other, session: "me") # same owner, second fresh lock: PARALLEL (AC2)
+    refute_nil decision(provisioned_bridge, File.join(@repo, "lib", "app.rb")),
+               "two fresh locks under one owner_session is parallel-in-play, not solo"
+  end
+
+  def test_solo_does_not_relax_rule1_with_a_delegate
+    Lock.acquire(@intent_dir, session: "me")
+    Lock.add_delegate(@intent_dir, delegate: "sub-1", session: "me")
+    refute_nil decision(provisioned_bridge, File.join(@repo, "lib", "app.rb")),
+               "a non-empty delegates array is a team, not solo (AC3)"
+  end
+
+  def test_solo_does_not_relax_rule1_with_blank_session
+    Lock.acquire(@intent_dir, session: "me")
+    bridge = provisioned_bridge(session: "")
+    refute_nil decision(bridge, File.join(@repo, "lib", "app.rb")),
+               "a blank session can never be positively confirmed solo (AC4)"
+  end
+
+  def test_solo_never_relaxes_rule2_across_projects_review_finding_1
+    # Hardening (review finding 1): worktree-gate's scan_roots include the
+    # EDIT TARGET's own store (not just the acting bridge's own store plus
+    # the global store), so a live foreign lock on a DIFFERENT project's
+    # intent is never invisible to the scan just because that project isn't
+    # "mine". Solo can never be confirmed here, so rule 2 stays denied even
+    # though the rival lives in a completely different project store.
+    other_project_store = File.join(@plastic_home, "projects", "otherproj", "store")
+    other = File.join(other_project_store, "99--other-thing")
+    FileUtils.mkdir_p(other)
+    Lock.acquire(other, session: "owner99") # fresh, foreign, cross-project rival
+    Lock.acquire(@intent_dir, session: "me") # "me"'s own fresh lock, elsewhere
+    bridge = provisioned_bridge(session: "me")
+    bridge["worktree"]["provisioned"] = false
+    reason = decision(bridge, File.join(other, "spec.md"), session: "me")
+    refute_nil reason,
+               "the target's own store is now in scan_roots: a cross-project rival still defeats solo"
+  end
+
+  def test_solo_never_relaxes_rule2_when_the_rival_lock_is_in_scanned_roots
+    # The common case: the rival's store IS in solo's scan (same store as
+    # "me"'s own intent), so its fresh foreign lock is itself a second fresh
+    # lock in scope. Solo can never be confirmed, so rule 2 stays denied.
+    other = other_intent_dir("99", "other-thing")
+    Lock.acquire(other, session: "owner99")
+    Lock.acquire(@intent_dir, session: "me")
+    bridge = provisioned_bridge(session: "me")
+    bridge["worktree"]["provisioned"] = false
+    reason = decision(bridge, File.join(other, "spec.md"), session: "me")
+    refute_nil reason, "a live rival lock in the same scanned store defeats solo by construction"
+  end
 end

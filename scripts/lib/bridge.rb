@@ -921,6 +921,49 @@ module Bridge
       "(blocked edit: #{file_abs})"
   end
 
+  # --- Solo-mode detection (intent 128) ---------------------------------------
+  #
+  # Positive-only confirmation that exactly one session is delivering, from the
+  # durable delivery.lock files (never the /tmp bridge cache, D2). Used to relax
+  # the two ARBITRATION gates (lock_gate_decision, worktree_gate_decision) from
+  # a hard deny to an advisory allow when there is nothing to arbitrate.
+  #
+  # SOLO iff exactly ONE fresh delivery.lock exists across scan_roots, that
+  # lock's owner_session equals the resolved session, and its delegates array
+  # is empty. Any ambiguity (more than one fresh lock, including several under
+  # the SAME owner_session, which reads as parallel-in-play), a foreign owner,
+  # a non-empty delegates array, a blank/unresolvable session, or any error
+  # during the scan all return false (fail-closed direction preserved).
+  def self.solo_delivery?(scan_roots:, session:, ttl: Lock::TTL_SECONDS, now: Time.now)
+    return false if blank?(session)
+
+    lock_dirs = Array(scan_roots).compact.flat_map { |root|
+      Dir.glob(File.join(File.expand_path(root), "*", "delivery.lock"))
+    }.uniq.map { |lock_file| File.dirname(lock_file) }
+
+    fresh_dirs = lock_dirs.select { |dir| Lock.fresh?(dir, ttl: ttl, now: now) }
+    fresh_locks = fresh_dirs.map { |dir| Lock.read(dir) }
+
+    # A fresh-but-unreadable (corrupt) lock is real ambiguity, not an absence:
+    # dropping it via filter_map could leave exactly one READABLE lock and
+    # misconfirm solo while a second, unreadable-but-live lock is in play.
+    # Any unreadable fresh lock keeps this fail-closed (review finding 2).
+    return false if fresh_locks.any?(&:nil?)
+    return false unless fresh_locks.length == 1
+
+    lock = fresh_locks.first
+    lock["owner_session"].to_s == session.to_s && Array(lock["delegates"]).empty?
+  rescue StandardError
+    false
+  end
+
+  # One terse advisory line (no em-dashes), then ALLOW (nil). Shared by both
+  # arbitration gates so a relaxed deny always logs the same shape.
+  def self.solo_allow(id, reason)
+    $stderr.puts "plastic: solo delivery confirmed for intent #{id} (#{reason}); allowing"
+    nil
+  end
+
   # --- Fail-closed lock gate (intent 96) -------------------------------------
 
   # Returns a reason String to BLOCK, or nil to ALLOW. Decides from the
@@ -931,7 +974,7 @@ module Bridge
   # target's lock names as owner or delegate (even when stale: a stale lock is
   # still its owner's until an explicit takeover).
   def self.lock_gate_decision(bridge_data, file_path, session: nil,
-                              ttl: Lock::TTL_SECONDS, now: Time.now)
+                              ttl: Lock::TTL_SECONDS, now: Time.now, home: Dir.home)
     return nil if blank?(file_path)
 
     target_dir = intent_dir_for(file_path)
@@ -943,23 +986,34 @@ module Bridge
     sess = session
     sess = bridge_data["session"] if blank?(sess) && bridge_data.is_a?(Hash)
 
+    # Solo-mode detection (intent 128): scan this intent's store plus the
+    # global store under `home` for fresh delivery locks. Computed once; used
+    # at every arbitration deny below to relax a hard deny to an advisory
+    # allow when solo delivery is positively confirmed.
+    scan_roots = [store, File.join(File.expand_path(home), ".plastic", "store")]
+    solo = solo_delivery?(scan_roots: scan_roots, session: sess, ttl: ttl, now: now)
+
     lock = Lock.read(target_dir)
     if lock
       return nil if Lock.authorized?(lock, sess)
       if Lock.fresh?(target_dir, ttl: ttl, now: now)
+        return solo_allow(id, "fresh delivery lock") if solo
         return "intent #{id} delivery lock is held by session " \
                "#{lock['owner_session']}. Back off; if you are the owner's " \
                "subagent, the owner must run: plastic-lock delegate " \
                "--intent-dir #{target_dir} --session <your-session-id>. " \
                "Inspect with /plastic-lock status"
       end
+      return solo_allow(id, "stale delivery lock") if solo
       return "intent #{id} has a stale delivery lock (owner " \
              "#{lock['owner_session']}); run /plastic-lock reclaim to take " \
              "it over, or /plastic-lock fix"
     end
     if Lock.corrupt?(target_dir)
+      return solo_allow(id, "unreadable delivery.lock") if solo
       return "delivery.lock for intent #{id} is unreadable; run /plastic-lock fix"
     end
+    return solo_allow(id, "no delivery lock") if solo
     "no delivery lock held for intent #{id}; run /plastic-intent-starting " \
       "to lock and begin"
   end
@@ -1012,6 +1066,19 @@ module Bridge
     under_own_intent = intent_dir_abs &&
                        (file_abs == intent_dir_abs || file_abs.start_with?("#{intent_dir_abs}/"))
 
+    # Solo-mode detection (intent 128): current session first, else the
+    # bridge's own session; scan roots are this intent's store, the global
+    # store under `home`, AND the EDIT TARGET's own store (when the target
+    # lives inside a store dir), so a live foreign lock on the intent being
+    # edited is never invisible to the scan just because it belongs to a
+    # different project than the acting bridge's own store (review finding 1;
+    # duplicate roots are harmless, solo_delivery? dedupes). Computed once;
+    # used by both rules below.
+    sess = blank?(current_session) ? bridge_data["session"] : current_session
+    target_store = parse_store_target(file_abs, plastic_home)&.fetch(:store, nil)
+    scan_roots = [store, File.join(plastic_home, "store"), target_store]
+    solo = solo_delivery?(scan_roots: scan_roots, session: sess)
+
     # Rule 1 (fixed in intent 108, D7): confinement applies ONLY to paths
     # inside the project repo. The repo root is derived from the provisioned
     # code worktree path, which is <repo>/.claude/worktrees/{id}--{slug} by
@@ -1029,6 +1096,7 @@ module Bridge
         inside_code = file_abs == code_abs || file_abs.start_with?("#{code_abs}/")
         if inside_repo && !inside_code
           id = intent_info["id"]
+          return solo_allow(id, "worktree confinement") if solo
           return "intent #{id} is isolated to its worktree - edit project code " \
                  "inside #{code_abs}, not the shared checkout. (blocked edit: #{file_abs})"
         end
@@ -1040,7 +1108,10 @@ module Bridge
       reason = non_owner_store_edit_reason(file_abs, plastic_home, intent_dir_abs,
                                            home: home, current_session: current_session,
                                            own_session: bridge_data["session"])
-      return reason if reason
+      if reason
+        return solo_allow(intent_info["id"], "non-owner store edit") if solo
+        return reason
+      end
     end
 
     nil

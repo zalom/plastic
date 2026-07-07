@@ -94,7 +94,7 @@ class LockSystemTest < Minitest::Test
   end
 
   def gate(file, session:)
-    Bridge.lock_gate_decision(nil, file, session: session)
+    Bridge.lock_gate_decision(nil, file, session: session, home: @home)
   end
 
   def repair(session)

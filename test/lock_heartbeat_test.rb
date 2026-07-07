@@ -42,7 +42,7 @@ class LockHeartbeatTest < Minitest::Test
   end
 
   def run_hook(script, file)
-    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil },
+    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil, "HOME" => @home },
                    RbConfig.ruby, script, file, "sess-1")
   end
 
@@ -63,7 +63,7 @@ class LockHeartbeatTest < Minitest::Test
 
   def test_foreign_session_write_does_not_refresh_the_lease
     file = File.join(@intent_dir, "spec.md")
-    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil },
+    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil, "HOME" => @home },
                    RbConfig.ruby, LOCK_GATE, file, "stranger")
     assert_equal @old.to_i, File.mtime(Lock.path(@intent_dir)).to_i,
                  "a denied stranger must not touch the owner's heartbeat"
@@ -74,7 +74,7 @@ class LockHeartbeatTest < Minitest::Test
   def test_second_session_refused_while_fresh_reclaim_only_after_ttl
     t0 = Time.now
     refute_nil Bridge.lock_gate_decision(nil, File.join(@intent_dir, "spec.md"),
-                                         session: "sess-2", now: t0, ttl: 1800)
+                                         session: "sess-2", now: t0, ttl: 1800, home: @home)
     status, _ = Lock.takeover(@intent_dir, session: "sess-2", ttl: 1800, now: t0)
     assert_equal :fresh, status, "takeover refused while the lease is fresh"
 

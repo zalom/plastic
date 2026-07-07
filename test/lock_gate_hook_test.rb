@@ -32,6 +32,10 @@ class LockGateHookTest < Minitest::Test
                "## Active\n- [96 — demo](96--demo/96--demo.md)\n\n## Future\n")
 
     @bridge_tmp = Dir.mktmpdir("lock-gate-hook-tmp")
+    # A dedicated, empty $HOME for the child process (intent 128): the gate now
+    # also scans a global store under Dir.home for solo-delivery detection, so
+    # the child must never see the real ~/.plastic.
+    @fake_home = Dir.mktmpdir("lock-gate-hook-home")
     @session = "test-#{Process.pid}-#{object_id}"
     @saved_session = ENV["CLAUDE_CODE_SESSION_ID"]
     @saved_plastic_tmp = ENV["PLASTIC_TMP"]
@@ -46,6 +50,7 @@ class LockGateHookTest < Minitest::Test
   def teardown
     FileUtils.rm_rf(@root)
     FileUtils.rm_rf(@bridge_tmp)
+    FileUtils.rm_rf(@fake_home)
     @saved_session.nil? ? ENV.delete("CLAUDE_CODE_SESSION_ID") : ENV["CLAUDE_CODE_SESSION_ID"] = @saved_session
     @saved_plastic_tmp.nil? ? ENV.delete("PLASTIC_TMP") : ENV["PLASTIC_TMP"] = @saved_plastic_tmp
     Worktree.define_singleton_method(:provision, @real_provision) if @real_provision
@@ -63,7 +68,8 @@ class LockGateHookTest < Minitest::Test
   # session-strict discover_bridge cwd filter resolves a bridge whose intent.store
   # overlaps cwd. session => CLAUDE_CODE_SESSION_ID for the child (nil = headless).
   def run_hook(file_path, session: nil, chdir: @store)
-    env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_CODE_SESSION_ID" => session }
+    env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_CODE_SESSION_ID" => session,
+            "HOME" => @fake_home }
     out = IO.popen(env, ["ruby", SCRIPT, file_path], err: [:child, :out], chdir: chdir, &:read)
     [out, $?]
   end
@@ -122,6 +128,13 @@ class LockGateHookTest < Minitest::Test
     silence_stderr do
       Bridge.arm_guided(nil, intent_id: "96", intent_dir: @intent_dir, store: @store, name: "demo")
     end
+    # A genuine rival (intent 128): a second live session holds a FRESH lock
+    # elsewhere in scope, so solo can never be positively confirmed and the
+    # ordinary per-intent scoping (a lock on 96 does not authorize 98) stays
+    # fail-closed, exactly as before this session existed.
+    rival_dir = File.join(@store, "99--rival")
+    FileUtils.mkdir_p(rival_dir)
+    Lock.acquire(rival_dir, session: "rival-session")
     out, status = run_hook(File.join(other_dir, "plan.md"), session: nil)
     assert_equal 0, status.exitstatus, "gate must never exit non-zero to block"
     assert denied?(out), "a headless lock on 96 must deny writes to 98's dir: #{out.inspect}"
