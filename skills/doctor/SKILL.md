@@ -3,7 +3,7 @@ name: plastic-doctor
 description: Use when diagnosing Plastic installation health, after updates, or when something seems broken. Runs checks and reports findings with fix options.
 ---
 
-# Doctor — Plastic Health Check
+# Doctor: Plastic Health Check
 
 ## Scopes
 
@@ -67,9 +67,9 @@ Parse the JSON output from stdout. The script is read-only and never modifies
 files. Errors go to stderr.
 
 Exit codes indicate check results, not script failure:
-- `0` — all checks passed
-- `1` — warnings found
-- `2` — failures found
+- `0`: all checks passed
+- `1`: warnings found
+- `2`: failures found
 
 All three exit codes mean the script ran successfully. Do not treat non-zero
 as an error.
@@ -118,7 +118,7 @@ Use the `fix_hint` value to determine the correct action:
 | "Remove stale references from INDEX.md" | Edit INDEX.md to remove ghost references |
 | "Inject the missing required frontmatter field(s)" | Edit the intent's `{ID}--{slug}.md` frontmatter to add the missing key (e.g. `chain: []`) without touching other keys |
 | "Run: provision-project-store {slug}" | Run `provision-project-store <slug>` (or invoke the `plastic-add-project-store` skill) to create the missing store |
-| "Re-run installer" | Run `npx @zalom/plastic@latest --agent` |
+| "Re-run installer" | Run `npx -y @zalom/plastic@<channel> install --agent <agent>` (channel: -alpha->@alpha, -beta->@beta, else @latest) |
 | "Dispatch plastic-intent-curator ... revisions.md ..." | Invoke the `plastic-intent-curator` (or the agent) to relocate the flagged section or ref into the intent's `revisions.md` via move-and-record (one dated, `[rule: <tag>]`-tagged entry per item), per PLASTIC.md > Structural maintenance and revisions.md. For a missing required section, restore or reproject it instead. |
 
 For fixes the agent cannot handle automatically, explain what the user needs
@@ -144,7 +144,7 @@ Show the updated results.
 When invoked from `plastic-update` (not directly by the user):
 
 1. Run the diagnostic script as in Step 1.
-2. If all checks pass: show a single line — **"Health check: all clear."**
+2. If all checks pass, show a single line: **"Health check: all clear."**
 3. If issues are found: show the full report (Steps 3-6).
 
 This keeps the update flow clean when nothing is wrong.

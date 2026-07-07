@@ -14,6 +14,7 @@
 # so install.rb is the single file-syncer; the ledger action is contextual.
 
 require_relative "lib/installer_core"
+require_relative "lib/preflight"
 
 class Install < InstallerCore
   def cli(argv = ARGV)
@@ -21,6 +22,9 @@ class Install < InstallerCore
       show_help
       return 0
     end
+
+    gate = preflight_gate
+    return gate unless gate.zero?
 
     force = argv.include?("--force")
     reinstall = argv.include?("--reinstall")
@@ -72,7 +76,36 @@ class Install < InstallerCore
     File.exist?(path) ? File.read(path).strip : nil
   end
 
+  # Injectable pre-flight gate: real probes as default args, printing to an
+  # injectable `out:` IO so this is hermetically testable via StringIO. Returns
+  # 1 (stop the install) when Ruby is missing/too-old, else 0.
+  def preflight_gate(ruby_version: RUBY_VERSION, node_version: node_probe, git_present: git_probe,
+                      mise_present: mise_probe, out: $stderr)
+    result = Preflight.check(ruby_version: ruby_version, node_version: node_version,
+                              git_present: git_present, mise_present: mise_present)
+    result[:messages].each { |message| out.puts(message) }
+    result[:fatal] ? 1 : 0
+  end
+
   private
+
+  def node_probe
+    `node --version`.strip
+  rescue StandardError
+    ""
+  end
+
+  def git_probe
+    !`command -v git`.strip.empty?
+  rescue StandardError
+    false
+  end
+
+  def mise_probe
+    !`command -v mise`.strip.empty?
+  rescue StandardError
+    false
+  end
 
   def flag_value(argv, name)
     i = argv.index(name)

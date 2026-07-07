@@ -50,8 +50,12 @@ try {
   })
 } catch (err) {
   if (err.status) process.exit(err.status)
-  console.error('Error: Ruby is required to run Plastic.')
-  console.error('  macOS: Ruby is pre-installed')
-  console.error('  Linux: sudo apt install ruby / dnf install ruby')
+  // Ruby cannot run to print its own message when it is missing, so this
+  // mirrors scripts/lib/preflight.rb's FATAL block word for word.
+  console.error('Plastic needs Ruby 3.0.0 or newer to run its scripts (found not found).')
+  console.error('Install a pinned Ruby with mise:')
+  console.error('  curl https://mise.run | sh        # only if mise is not installed yet')
+  console.error('  mise use --global ruby@3.3')
+  console.error('Then re-run the Plastic installer.')
   process.exit(1)
 }
