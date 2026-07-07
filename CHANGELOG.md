@@ -11,6 +11,9 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   human-approved act.
 
 ## Released
+- `1.0.0-beta.39` - shipped 2026-07-07; collected 141 (dashboard JSON output made deterministic
+  across json gem versions by canonicalizing empty containers, fixing the red first run of the
+  new CI workflow so the README badge is green and honest). Fast-follow to beta.38.
 - `1.0.0-beta.38` - shipped 2026-07-07; collected 140 (README round two from 139's researched
   proposal: an agent-first quickstart 69 words into the file, a "Plastic ships itself" proof
   section quoting five verbatim CHANGELOG/roadmap lines, four functional badges backed by a new
