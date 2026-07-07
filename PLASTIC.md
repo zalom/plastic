@@ -1,7 +1,7 @@
-# Plastic — Conventions
+# Plastic: Conventions
 
 > **This file is maintained by Plastic.** It will be overwritten when the
-> plugin is updated. Do not modify — your changes will be lost.
+> plugin is updated. Do not modify it: your changes will be lost.
 > For project-specific rules, use `AGENTS.md` instead.
 
 See `PLASTIC-reference.md` for reference material: read it on demand, it is not injected at session start.
@@ -9,25 +9,25 @@ See `PLASTIC-reference.md` for reference material: read it on demand, it is not 
 ## What is an Intent
 
 A directory in the store containing `{ID}--{slug}.md` and optional supporting files.
-It represents a desire — something a human or agent wants to accomplish, explore, or understand.
+It represents a desire: something a human or agent wants to accomplish, explore, or understand.
 
 ```
 store/
   ID--three-to-five-words/
-    {ID}--{slug}.md       # required — the intent itself
-    spec.md               # optional — specification (Why deliverable)
-    plan.md               # optional — implementation plan (How deliverable)
-    checklist.md          # optional — execution registry (How deliverable)
-    outcome.md            # optional — detailed result (Exec deliverable)
-    actions/              # optional — individual work items
-    resources/            # optional — research, references, screenshots, diagrams
-    savepoint.md          # optional — deterministic cycle-step ledger (auto-written)
+    {ID}--{slug}.md       # required - the intent itself
+    spec.md               # optional - specification (Why deliverable)
+    plan.md               # optional - implementation plan (How deliverable)
+    checklist.md          # optional - execution registry (How deliverable)
+    outcome.md            # optional - detailed result (Exec deliverable)
+    actions/              # optional - individual work items
+    resources/            # optional - research, references, screenshots, diagrams
+    savepoint.md          # optional - deterministic cycle-step ledger (auto-written)
     revisions.md          # optional - append-only structural-maintenance audit trail
 ```
 
 Lifecycle files (`spec.md`, `plan.md`, `checklist.md`, `outcome.md`) have defined
-roles. Supporting artifacts that aren't lifecycle deliverables — research reports,
-reference docs, external API snapshots, screenshots, diagrams — go in `resources/`.
+roles. Supporting artifacts that aren't lifecycle deliverables (research reports,
+reference docs, external API snapshots, screenshots, diagrams) go in `resources/`.
 Name files inside as `{type}--{description}.md` (e.g., `deep-research--gsd-core.md`).
 
 `revisions.md` is an optional, append-only structural-maintenance audit trail. It is not a
@@ -195,7 +195,7 @@ the intent directory ONLY. It never writes the intent file, `spec.md`, or any ot
 deliverable; the Why-stage `plastic-brainstorming` agent reads its deposit and enriches
 `## Context`.
 
-`savepoint.md` — a deterministic, append-only ledger of cycle-step milestones (one line per
+`savepoint.md`: a deterministic, append-only ledger of cycle-step milestones (one line per
 lifecycle boundary, newest at the bottom), written automatically by the gate hook. It is
 sugar on top of the conventions, not a source of truth: state is always derivable from
 files-on-disk, and the ledger is rebuildable. It exists so a resuming agent reads the cycle's
@@ -207,7 +207,7 @@ succession at a glance (last line = where we are).
   `docs/specs/`, `researches/`, or similar. All meta-artifacts go in
   `~/.plastic/store/ID--slug/` or the project store equivalent.
 - **Code goes in the project. Everything else goes in the intent.**
-  Plans, specs, checklists, savepoints — all in the intent directory.
+  Plans, specs, checklists, savepoints: all in the intent directory.
 - **The global store is never pushed.** `~/.plastic/` is git-tracked locally
   but contains sensitive data. Never push to a remote.
 - **Agent-created repos are private by default.** Use `gh repo create --private`.
@@ -253,10 +253,10 @@ Format: `ID--three-to-five-words` (all stores).
 - Intent file matches directory: `1a1--slug/1a1--slug.md`
 - Next ID: `"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" <parent_id> <store_path>`
 
-**Branch vs root — the semantic decision.** The numbering is mechanics; choosing
+**Branch vs root: the semantic decision.** The numbering is mechanics; choosing
 *whether* to branch is meaning:
 
-- **Branch (`14a`, `14b`)** — a sub-task, refinement, or direct continuation of the
+- **Branch (`14a`, `14b`):** a sub-task, refinement, or direct continuation of the
   parent. It cannot stand on its own; it only makes sense as part of the parent's work.
 - **Root (`15`, `16`)**: an independent thought, even if inspired by another intent.
   Reserve `sources` for true created-from provenance (intents this was built out of). An
@@ -322,12 +322,12 @@ calls; Ruby `File.read` inside a script is invisible to the hook by design.
 
 | Transition | Trigger | Gate |
 |---|---|---|
-| What → Why | `spec.md` written | — |
+| What → Why | `spec.md` written | (none) |
 | Why → How | `plan.md` + `actions/` + `checklist.md` | `spec.md` must exist |
 | How → Exec | Checklist has items | Plan triplet must exist |
 | Exec → Done | `outcome.md` written | All checklist items checked |
 
-Hard blocking — hooks exit code 2 on gate failure.
+Hard blocking: hooks exit code 2 on gate failure.
 
 ## Delivery Isolation and the Single-Owner Lock
 

@@ -43,89 +43,25 @@ Invoke `plastic-install --local` in the project directory. This creates:
 
 ### 4. Populate AGENTS.md
 
-Create `AGENTS.md` in the project root with:
-
-```markdown
-# <Project Name> — Agent Instructions
-
-Read `PLASTIC.md` in `~/.plastic/`. It contains all Plastic conventions.
-Follow it exactly.
-
-This file is the operating contract for this project. Any agent entering
-this project reads this file first.
-
-## Global Store
-
-Location: `~/.plastic/`
-Governing intent(s): <list of founding intent IDs with descriptions>
-
-## Decisions
-
-<Copy ALL decisions from founding intent(s)' `## Context > ### Decisions`>
-
-Each decision should include:
-- The decision itself
-- The rationale (why this choice)
-- Date decided
-
-## Project-Specific Rules
-
-<Any rules derived from the decisions — e.g., "Use Minitest, not RSpec",
-"37signals methodology", "sqlite-vec for vector storage">
-```
+Create `AGENTS.md` in the project root from the skeleton in
+`references/project-scaffolding.md` ("AGENTS.md skeleton"): read it now and fill in
+the project name, governing intent IDs, decisions, and project-specific rules.
 
 ### 5. Create Tactical Mirror
 
-Create the first intent in the project's store at `~/.plastic/projects/{slug}/store/`:
+Create the first intent in the project's store at `~/.plastic/projects/{slug}/store/`
+using the frontmatter, sections, and INDEX.md line in `references/project-scaffolding.md`
+("Tactical mirror intent"), including the Hub multi-intent variant if there is more
+than one founding intent.
 
 **Directory:** `~/.plastic/projects/{slug}/store/1--{slug}/`
 **File:** `~/.plastic/projects/{slug}/store/1--{slug}/1--{slug}.md`
 
-```yaml
----
-id: '1'
-intent: "<same description as founding intent>"
-sources: ["global:<founding_intent_ID>"]
-chain: []
-created: <today>
-author: <same as founding intent author>
-tags: [<relevant tags>]
----
-```
-
-Sections:
-- `## Intent` — same as founding intent
-- `## Context` — carry forward relevant Context and Decisions
-- `## Outcome` — (pending)
-- `## Insights` — empty
-- `## Links` — `[[global:<founding_intent_ID>|<founding intent name>]]`
-
-Update the project's `~/.plastic/projects/{slug}/INDEX.md`:
-```markdown
-# Index
-
-## Active
-- [1 — <intent name>](store/1--<slug>/1.md) — implementation, from: global:<ID>
-```
-
-**For multi-intent spawning (Hub):**
-- `sources`: `["global:<id1>", "global:<id2>", ...]` — all founding intents
-- All founding intents' decisions merge into AGENTS.md
-- Context carries forward from all founding intents
-
 ### 6. Register in projects.yml
 
-Read `~/.plastic/projects.yml` and add:
-
-```yaml
-<slug>:
-  path: <full-path>
-  parent: "<founding_intent_ID>"
-  registered: <today>
-  status: active
-```
-
-For Hub-spawned projects, `parent` references the primary founding intent.
+Read `~/.plastic/projects.yml` and add the entry shown in
+`references/project-scaffolding.md` ("projects.yml registration block"). For
+Hub-spawned projects, `parent` references the primary founding intent.
 
 ### 7. Provision the Project Store
 
@@ -195,4 +131,5 @@ Announce to user:
 
 ## References
 
+- Read `references/project-scaffolding.md` before steps 4-6, for the AGENTS.md skeleton, the tactical mirror intent format, and the projects.yml registration block
 - Read `references/hubs-projects.md` for the full hub/project relationship model, project creation flow, and cross-linking conventions

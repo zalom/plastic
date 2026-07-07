@@ -76,17 +76,10 @@ ruby -r ~/.plastic/scripts/lib/bridge -e \
 Replace `<ID>`, `<STORE>` (e.g. `~/.plastic/projects/<slug>/store` or `~/.plastic/store`),
 `<dir>` (the `ID--slug` directory), and `<name>`. The first argument is the session id you
 want the bridge keyed by: pass the hook stdin `session_id` when you have it, otherwise
-`ENV["CLAUDE_CODE_SESSION_ID"]`, otherwise `nil`. `arm_auto` calls `resolve_session`, which
-picks the first non-empty of: the explicit id you pass -> `CLAUDE_CODE_SESSION_ID` -> a
-deterministic derived key (a hash of the store and intent id).
-It never returns nil, so the gate engages even when every session env var is empty; the call
-never needs a non-empty session env var to function. Arming prints a one-line notice to
-stderr when it falls through to the derived key.
-
-Arming acquires the durable `delivery.lock` in the intent dir, keyed by that resolved
-session. Ownership is session-keyed, not process-keyed, so the arm one-liner exiting
-immediately is fine by construction: the lock stays yours for every later tool call in this
-session. A failed arm raises with a message naming the resolving `plastic-lock` verb.
+`ENV["CLAUDE_CODE_SESSION_ID"]`, otherwise `nil`. Arming always succeeds and acquires the
+durable `delivery.lock` in the intent dir. For the `resolve_session` fallback chain
+(why arming never needs a non-empty session env var, and what the lock ownership model
+implies for later tool calls) read `references/end-tail.md`.
 
 **Hard rule for the rest of this run:** do NOT edit project code (anything outside the
 intent directory / `~/.plastic/`) until `plan.md` AND `checklist.md` exist for the intent.
@@ -294,35 +287,24 @@ During initial project creation, all decisions are non-destructive by definition
    ```bash
    ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.disarm_auto(ENV["CLAUDE_CODE_SESSION_ID"], intent_id: "<ID>")'
    ```
-   Disarm runs the ordered End tail: it releases the worktrees first, then clears the
-   intent's `delivery.lock` (and the bridge's lock cache), and only then is the bridge
-   purge-eligible. Disarming also purges stale bridge files from the temp directory
-   automatically (it keeps the current bridge, any live run, and any bridge whose intent
-   still holds a delivery lock), so no manual `/tmp` cleanup is needed.
-
-   **Worktree cleanup (mandatory, intent 73c3).** Disarming performs the worktree release:
-   `disarm_auto` calls `Worktree.release`, which removes both per-intent worktrees (the code
-   worktree under `<repo>/.claude/worktrees/{id}--{slug}` and the paired store worktree under
-   `<plastic_home>/.worktrees/{id}--{slug}`), prunes both repos, and clears the worktree block
-   from the bridge. This is the plain remove path: the disarm route does NOT merge, so use it
-   only when no release merges the branch (the branch survives and can be reclaimed).
-
-   When the work is being shipped through a release, do NOT rely on this plain remove. The
-   release path (step 4 above, via `plastic-releasing`) is responsible for merging the intent's
-   code branch (`plastic/{id}--{slug}`) back to the repo's default branch BEFORE the worktree is
-   removed, so the integrated work is not lost. It does this with `Worktree.finish(bridge_data,
-   merge: true)` (merge-then-remove). Never leave an orphaned worktree, and run `git worktree
-   prune` if you hit a stale reference.
-9. QMD reindex LAST (canonical End tail). AFTER disarm has released the worktrees, cleared the
-   `delivery.lock`, and purged the bridge, refresh the QMD search index for this store (no-op when
-   QMD is absent). It runs in the background so it never blocks the turn:
+   Disarm runs the ordered End tail (release worktrees, then clear the `delivery.lock`,
+   then the bridge becomes purge-eligible) and performs the mandatory worktree cleanup
+   (intent 73c3): both per-intent worktrees are removed and both repos pruned. This is
+   the plain remove path (no merge); when the work ships through a release, the release
+   path merges the branch BEFORE the worktree is removed instead of relying on this step.
+   Never leave an orphaned worktree, and run `git worktree prune` if you hit a stale
+   reference. For the full ordering rationale and the release-vs-plain-disarm
+   distinction, read `references/end-tail.md`.
+9. QMD reindex LAST (canonical End tail), run only after disarm has released the
+   worktrees, cleared the `delivery.lock`, and purged the bridge. It runs in the
+   background so it never blocks the turn:
    ```bash
    ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async
    ```
-   Completion is the lifecycle event that keeps the search index fresh. `<store-root>` is the store
-   that holds this intent (the global store or the project store). The reindex is the LAST End-tail
-   step, run after purge, so the index never references a bridge or lock that is about to disappear
-   (see PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`).
+   `<store-root>` is the store that holds this intent (the global store or the project
+   store); the command is a no-op when QMD is absent. For why the reindex must be last
+   (so the index never references a bridge or lock about to disappear), read
+   `references/end-tail.md`.
 10. Notify user (Done briefing): brief per `references/human-report-contract.md`
     (State: the delivered impact; Risk: residual risk; Call: the decision left to you, merge,
     release, or accept). See `outcome.md` for details.
@@ -342,3 +324,5 @@ If the agent gets stuck (can't resolve a gap, dependency is missing, tests fail 
 - Read `references/human-report-contract.md` for the human-facing per-stage briefing (the
   State/Risk/Call skeleton used at each "Notify user" step above, and how it differs from the
   internal `agent-report-contract.md`)
+- Read `references/end-tail.md` for the `resolve_session` fallback chain and the disarm
+  ordering / worktree cleanup / QMD reindex rationale referenced above

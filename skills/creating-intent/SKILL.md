@@ -124,32 +124,11 @@ cleanly, and do not work around the failure by hand-writing the files.
 
 ### 6. If Implementation Intent Spawns a Project
 
-When the user says "start building" or the plan calls for a new project:
-
-1. Determine project slug from intent name
-2. Create project directory in first `project_roots` path (from `~/.plastic/config.yml`):
-   ```bash
-   mkdir -p <project_root>/<slug>
-   cd <project_root>/<slug>
-   git init
-   ```
-3. Copy `AGENTS.md` template from `${CLAUDE_PLUGIN_ROOT}/templates/agents.md`
-4. Register in `~/.plastic/projects.yml`:
-   ```yaml
-   <slug>:
-     path: <full-path>
-     parent: "ID"
-     registered: <today>
-     status: active
-   ```
-5. Provision the project store (the single source of truth for store creation;
-   runs after step 4 because the provisioner requires the project to be
-   registered):
-   ```bash
-   ruby ~/.plastic/scripts/provision-project-store <slug>
-   ```
-6. Add `project-<slug>` to the intent's `tags` array
-7. Auto-commit in both `~/.plastic/` and the new project
+When the user says "start building" or the plan calls for a new project, invoke the
+`plastic-creating-project` skill; it owns project directory creation, AGENTS.md
+population, projects.yml registration, store provisioning, and the auto-commit of
+both stores. Add `project-<slug>` to this intent's `tags` array either before
+invoking it or as part of that skill's handoff.
 
 ### 7. Update INDEX.md
 
