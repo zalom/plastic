@@ -213,12 +213,14 @@ run the main session on the best available thinking model (Fable, Opus, or whate
 them). This is advisory only: it changes no behavior and blocks nothing if ignored, and it
 concerns the human's main session, never a dispatched subagent.
 
-**`plastic-intent-discovery`.** The What-stage agent. It fires at intent activation, before the
-delivery lock is armed and Why begins: it reads the intent's `chain`/`sources` frontmatter,
-runs QMD-first discovery over completed predecessor work and related parked or future intents,
-and deposits findings to `resources/discovery--<slug>.md` in the intent directory ONLY. It
-never writes the intent file, `spec.md`, or any other lifecycle deliverable; the Why-stage
-`plastic-brainstorming` agent reads its deposit and enriches `## Context`.
+**`plastic-intent-discovery`.** The What-stage agent. It fires at intent activation, after the
+delivery lock is armed and before Why begins, running under that lock as the owner session (it
+does not acquire the lock itself and is not blocked by it): it reads the intent's
+`chain`/`sources` frontmatter, runs QMD-first discovery over completed predecessor work and
+related parked or future intents, and deposits findings to `resources/discovery--<slug>.md` in
+the intent directory ONLY. It never writes the intent file, `spec.md`, or any other lifecycle
+deliverable; the Why-stage `plastic-brainstorming` agent reads its deposit and enriches
+`## Context`.
 
 `savepoint.md` — a deterministic, append-only ledger of cycle-step milestones (one line per
 lifecycle boundary, newest at the bottom), written automatically by the gate hook. It is

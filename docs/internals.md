@@ -607,8 +607,10 @@ the human's main session, never a dispatched subagent).
 - **What-stage discovery agent**: `plastic-intent-discovery` (paired with the
   `skills/intent-discovery/SKILL.md` workflow) closes the What-stage gap in the
   one-agent-per-stage table. It fires inside `plastic-intent-starting`, right after
-  an intent is activated (moved from `## Future` to `## Active`) and before the
-  bridge is armed: it reads the intent's `chain`/`sources` frontmatter, runs QMD-first
+  an intent is activated (moved from `## Future` to `## Active`) and the bridge is
+  armed, running under that lock as the owner session (it does not acquire the
+  lock itself and is not blocked by it): it reads the intent's `chain`/`sources`
+  frontmatter, runs QMD-first
   discovery across completed predecessor work and related parked or future intents,
   and deposits its findings to `resources/discovery--<slug>.md` in the intent
   directory ONLY. It never writes the intent file, `spec.md`, or any other lifecycle
