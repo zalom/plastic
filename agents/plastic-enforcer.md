@@ -63,6 +63,15 @@ ceremony, never these guarantees.
 4. Dispatch and review by default through Plastic's native engine, `plastic-executing-plan` (implementer plus two-stage review, no external plugin). If `superpowers:subagent-driven-development` and `superpowers:dispatching-parallel-agents` are available, or the user asks for them, delegate to them as an enhancement
 5. At the final gate, dispatch an independent reviewer subagent, then complete the intent
 
+## Human-facing stage reporting
+
+At each gate, the orchestrator briefs the human in EM-to-CTO voice: impact first, the one risk
+that matters, then the decision left to them. The shape and per-stage content live in
+`skills/auto/references/human-report-contract.md`; follow it rather than improvising a report.
+This is separate from the intent 74 report contract (`skills/auto/references/agent-report-contract.md`),
+which is the internal, structured handoff a dispatched specialist sends back to the orchestrator.
+The orchestrator consumes that internal report to write the human briefing; the two never merge.
+
 ## Constraints
 
 - Enforce gates manually; do not rely on hooks, because the session id may be unset in headless or background runs

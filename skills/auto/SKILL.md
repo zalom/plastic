@@ -165,6 +165,10 @@ Filesystem fallback (ledger missing only):
 
 Announce which stage you're entering and why.
 
+Notify user (What briefing): brief per `references/human-report-contract.md`
+(State: the work picked up and why it matters now; Risk: scope uncertainty; Call: confirm
+this is worth doing, or proceed).
+
 ## Why Completion (Autonomous)
 
 When entering at Why stage:
@@ -179,6 +183,9 @@ When entering at Why stage:
 5. Make decisions — pick best option, document in `## Context > ### Decisions` with rationale
 6. Log all autonomous decisions in `## Insights` with `(autonomous)` marker: "Decision: chose X because Y (autonomous)"
 7. Write `spec.md` — consolidated specification
+8. Notify user (Why briefing): brief per `references/human-report-contract.md`
+   (State: the approach chosen, one line; Risk: the main trade-off; Call: the one decision
+   needed, approve or pick an option).
 
 Then proceed to How.
 
@@ -193,6 +200,9 @@ only (S/M leave the directory empty).
 2. Otherwise, write `plan.md` directly — implementation plan with numbered tasks
 3. Write `ACTION_N.md` files into the existing `actions/` directory (one per task, self-contained) — L only
 4. Write `checklist.md` — execution registry with checkboxes covering all actions
+5. Notify user (How briefing): brief per `references/human-report-contract.md`
+   (State: the plan shape, task count and what it builds; Risk: the riskiest task or
+   dependency; Call: approve the plan to build).
 
 Then proceed to Exec.
 
@@ -216,6 +226,9 @@ If the plan calls for creating a new project (the intent is an implementation in
 4. Check off items in `checklist.md` as completed
 5. Append observations to `## Insights` with `(autonomous)` marker
 6. Sub-agents can be spawned for parallel actions (one agent per action)
+7. Notify user (Exec briefing): brief per `references/human-report-contract.md`
+   (State: what got built and the test result; Risk: residual failures or deviations;
+   Call: go to review, or done).
 
 ## Permission Model — Safe-by-Default
 
@@ -310,7 +323,9 @@ During initial project creation, all decisions are non-destructive by definition
    that holds this intent (the global store or the project store). The reindex is the LAST End-tail
    step, run after purge, so the index never references a bridge or lock that is about to disappear
    (see PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`).
-10. Notify user: "Intent [ID] — [name] delivered. [1-2 sentence summary]. See outcome.md for details."
+10. Notify user (Done briefing): brief per `references/human-report-contract.md`
+    (State: the delivered impact; Risk: residual risk; Call: the decision left to you, merge,
+    release, or accept). See `outcome.md` for details.
 
 ## Error Handling
 
@@ -324,3 +339,6 @@ If the agent gets stuck (can't resolve a gap, dependency is missing, tests fail 
 
 - Read `references/agent-architecture.md` for the full team model (the 5-role enforcer-led team, per-stage handoffs, gate ownership, headless note, solo fallback) and the orchestrator hierarchy (Main Orchestrator, Project Orchestrators, coordination loop) when spinning up the team or understanding autonomous delivery scope
 - Read `references/tiers.md` for the extended per-tier walkthrough (S/M/L worked examples, the collapsed one-thinker flow, the QMD-skip case for S) and rationale
+- Read `references/human-report-contract.md` for the human-facing per-stage briefing (the
+  State/Risk/Call skeleton used at each "Notify user" step above, and how it differs from the
+  internal `agent-report-contract.md`)
