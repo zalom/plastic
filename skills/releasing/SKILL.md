@@ -85,14 +85,11 @@ git merge <branch-name> --no-ff -m "feat: merge intent [ID] - [description]"
 
 Always `--no-ff` to preserve branch history in the merge commit.
 
-**Worktree-isolated intents (intent 73c3).** When the intent was delivered in a Plastic
-worktree (the bridge has a provisioned `worktree` block), its code lives on the branch
-`plastic/{id}--{slug}` inside `<repo>/.claude/worktrees/{id}--{slug}`, not on a hand-made
-feature branch. The merge-then-remove of that worktree is handled together with cleanup in
-step 9, which merges `plastic/{id}--{slug}` into the default branch BEFORE removing the
-worktree. If you already merged here by hand, step 9 is a clean no-op merge ("Already up to
-date") and proceeds straight to removal. Do not delete the worktree before its branch is
-merged, or the work is lost.
+**Worktree-isolated intents (intent 73c3).** A worktree-delivered intent's code lives on
+`plastic/{id}--{slug}`, merged together with cleanup in step 9, not on a hand-made feature
+branch. Do not delete the worktree before its branch is merged, or the work is lost. For
+the full rationale and the already-merged-by-hand no-op case, read
+`references/promotion-and-tagging.md`.
 
 ### 4. Bump Version
 
@@ -231,12 +228,8 @@ A release IS a delivery. The active intent that drove this work must be complete
 
 ### 9. Clean Up the Intent's Worktrees (merge-then-remove)
 
-A release is the merge-then-remove path for the intent's worktrees (intent 73c3). This is the
-one place the merge-vs-remove policy lands on "merge": the intent's code branch
-(`plastic/{id}--{slug}`) is merged back into the repo's default branch BEFORE the worktree is
-removed, so the integrated work is never lost. (The disarm path in `plastic-auto`, by contrast,
-is a plain remove because no release is merging the branch.)
-
+A release is the merge-then-remove path for the intent's worktrees (intent 73c3): the
+intent's code branch is merged back into the default branch BEFORE the worktree is removed.
 Drive it through `Worktree.finish` with `merge: true`, which merges the code branch, then
 removes both worktrees (code + paired store), prunes both repos, and clears the worktree block
 from the bridge:
@@ -249,10 +242,10 @@ ruby -r ~/.plastic/scripts/lib/worktree -r ~/.plastic/scripts/lib/bridge -e \
 (Uses `discover_bridge`, not a bare session-keyed `Bridge.read`, because a session can own more
 than one live bridge now — intent 131 — and `discover_bridge` resolves the right one for this cwd.)
 
-`finish` is fail-open and idempotent: a conflicting merge is aborted and logged (the worktree
-is still removed rather than stranded), and a second call with the block already cleared is a
-no-op. Honor the worktree-cleanup rule: never leave an orphaned worktree, and run `git worktree
-prune` in the affected repo if you hit a stale reference.
+Honor the worktree-cleanup rule: never leave an orphaned worktree, and run `git worktree
+prune` in the affected repo if you hit a stale reference. For why this is the one place the
+merge-vs-remove policy lands on merge, and the fail-open/idempotent guarantees of `finish`,
+read `references/promotion-and-tagging.md`.
 
 ## Conventions
 
@@ -266,34 +259,9 @@ prune` in the affected repo if you hit a stale reference.
 - **Verify sync** - after pushing, confirm npm dist-tag, GitHub "Latest", and the git tag all show the new version
 - **Branch cleanup** - delete merged feature branches: `git branch -d <branch>`
 
-## Promotion
-
-To promote a release across channels, use `--promote`:
-
-```bash
-plastic-releasing --promote beta    # promotes current alpha → beta
-plastic-releasing --promote stable  # promotes current beta → stable
-```
-
-**Promotion rules:**
-- Linear only: alpha → beta → stable. Cannot skip channels.
-- `--promote beta`: reads version from `package.json`, changes `-alpha.N` suffix
-  to `-beta.1`, publishes with `--tag beta`.
-- `--promote stable`: reads version from `package.json`, strips pre-release suffix
-  entirely (e.g., `1.0.0-beta.3` → `1.0.0`), publishes to `latest`.
-- Version files are bumped and committed as in a normal release.
-- An annotated tag is created for the promoted version.
-
-## Retroactive Tagging
-
-For repos without prior tags, tag historical releases:
-
-```bash
-git tag -a v0.1.0 <commit-sha> -m "v0.1.0 - [description]"
-```
-
-Use `git log --oneline` to find the right commits (look for version bump commits or major feature merges).
-
 ## References
 
+- When promoting a pre-release across channels (`--promote beta`/`--promote stable`) or
+  tagging a historical release retroactively, read `references/promotion-and-tagging.md`
+  for the exact commands and rules first
 - Read `references/deprecations.md` for the full deprecation process, severity levels, deprecations.yml schema, and dismissal rules when adding or managing deprecations

@@ -44,30 +44,8 @@ You MUST create a task for each of these items and complete them in order:
 
 ## Process Flow
 
-```dot
-digraph brainstorming {
-    "Explore project context" [shape=box];
-    "Ask clarifying questions" [shape=box];
-    "Propose 2-3 approaches" [shape=box];
-    "Present design sections" [shape=box];
-    "User approves design?" [shape=diamond];
-    "Write spec" [shape=box];
-    "Spec self-review\n(fix inline)" [shape=box];
-    "User reviews spec?" [shape=diamond];
-    "Invoke plastic-writing-plans" [shape=doublecircle];
-
-    "Explore project context" -> "Ask clarifying questions";
-    "Ask clarifying questions" -> "Propose 2-3 approaches";
-    "Propose 2-3 approaches" -> "Present design sections";
-    "Present design sections" -> "User approves design?";
-    "User approves design?" -> "Present design sections" [label="no, revise"];
-    "User approves design?" -> "Write spec" [label="yes"];
-    "Write spec" -> "Spec self-review\n(fix inline)";
-    "Spec self-review\n(fix inline)" -> "User reviews spec?";
-    "User reviews spec?" -> "Write spec" [label="changes requested"];
-    "User reviews spec?" -> "Invoke plastic-writing-plans" [label="approved"];
-}
-```
+The Checklist above states the ordered flow (steps 1-8). For the same flow as a
+diagram, read `references/design-principles.md`.
 
 **The terminal state is invoking `plastic-writing-plans`.** Do NOT invoke any other implementation skill. The ONLY skill you invoke after brainstorming is `plastic-writing-plans`.
 
@@ -95,16 +73,11 @@ digraph brainstorming {
 - Cover: architecture, components, data flow, error handling, testing
 - Be ready to go back and clarify if something doesn't make sense
 
-**Design for isolation and clarity:**
-- Break the system into smaller units that each have one clear purpose, communicate through well-defined interfaces, and can be understood and tested independently
-- For each unit, you should be able to answer: what does it do, how do you use it, and what does it depend on?
-- Can someone understand what a unit does without reading its internals? Can you change the internals without breaking consumers? If not, the boundaries need work.
-- Smaller, well-bounded units are also easier for you to work with - you reason better about code you can hold in context at once, and your edits are more reliable when files are focused. When a file grows large, that's often a signal that it's doing too much.
-
-**Working in existing codebases:**
-- Explore the current structure before proposing changes. Follow existing patterns.
-- Where existing code has problems that affect the work (e.g., a file that's grown too large, unclear boundaries, tangled responsibilities), include targeted improvements as part of the design - the way a good developer improves code they're working in.
-- Don't propose unrelated refactoring. Stay focused on what serves the current goal.
+**Design for isolation and clarity, and working in existing codebases:** before
+proposing a design, read `references/design-principles.md` for unit-boundary
+guidance (what makes a good interface, when a file has grown too large) and
+existing-codebase guidance (follow established patterns, fold in targeted
+improvements without unrelated refactoring).
 
 ## After the Design
 **Documentation:**

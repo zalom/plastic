@@ -48,70 +48,13 @@ This structure informs the task decomposition. Each task should produce self-con
 - "Run the tests and make sure they pass" - step
 - "Commit" - step
 
-## Plan Document Header
+## Plan Format
 
-**Every plan MUST start with this header:**
-
-```markdown
-# [Feature Name] Implementation Plan
-
-> **For agentic workers:** Use `plastic-executing-plan` to implement this plan task-by-task.
-
-**Goal:** [One sentence describing what this builds]
-
-**Architecture:** [2-3 sentences about approach]
-
-**Tech Stack:** [Key technologies/libraries]
-
-**Intent:** {id} — {name}
-
----
-```
-
-## Task Structure
-
-````markdown
-### Task N: [Component Name]
-
-**Files:**
-- Create: `exact/path/to/file.rb`
-- Modify: `exact/path/to/existing.rb:123-145`
-- Test: `test/exact/path/to/test.rb`
-
-- [ ] **Step 1: Write the failing test**
-
-```ruby
-def test_specific_behavior
-  result = function(input)
-  assert_equal expected, result
-end
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `ruby -Itest test/path/test.rb --name test_specific_behavior`
-Expected: FAIL with "undefined method"
-
-- [ ] **Step 3: Write minimal implementation**
-
-```ruby
-def function(input)
-  expected
-end
-```
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `ruby -Itest test/path/test.rb --name test_specific_behavior`
-Expected: PASS
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add test/path/test.rb lib/path/file.rb
-git commit -m "feat: add specific feature"
-```
-````
+For the exact plan/task/checklist/action format (the Plan Document Header
+template, the full Task Structure worked example, and the checklist.md /
+actions/ACTION_N.md templates), read `references/plan-format.md` before
+writing plan.md. Every plan starts with the header template and decomposes
+into tasks matching the Task Structure shape.
 
 ## No Placeholders
 
@@ -144,31 +87,10 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 ## Plastic Artifacts
 
 After writing `plan.md`, create two additional artifacts in the intent directory:
-
-### checklist.md
-
-Execution registry with one checkbox per task. Format:
-
-```markdown
-# Checklist — Intent {id}: {name}
-
-- [ ] Task 1: {task title}
-- [ ] Task 2: {task title}
-- [ ] Task 3: {task title}
-...
-```
-
-### actions/ACTION_N.md
-
-One file per task. Each action is self-contained — a subagent can execute it without reading the plan.
-
-```markdown
-# Action {N}: {task title}
-
-{Full task text copied from plan.md — all steps, all code, all commands. Nothing omitted.}
-```
-
-Create the `actions/` directory inside the intent directory: `{intent_dir}/actions/`
+`checklist.md` (execution registry with one checkbox per task) and
+`actions/ACTION_N.md` (one self-contained file per task, in an `actions/`
+directory inside the intent directory). For the exact format of both, read
+`references/plan-format.md`.
 
 ## Git Commit
 
