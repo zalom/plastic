@@ -11,6 +11,13 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   human-approved act.
 
 ## Released
+- `1.0.0-beta.38` - shipped 2026-07-07; collected 140 (README round two from 139's researched
+  proposal: an agent-first quickstart 69 words into the file, a "Plastic ships itself" proof
+  section quoting five verbatim CHANGELOG/roadmap lines, four functional badges backed by a new
+  GitHub Actions test workflow, "the lost thread" named problem section with a real where-was-I
+  exchange, a collapsed 10-minute walkthrough, MANIFESTO.md with the two founding systems, and
+  the closing line "Claude Code is powerful. Plastic makes it remember."; owner-voice pass over
+  all new prose). First entry of Wave 4b (sell surface) of roadmaps/stable-1-0.md.
 - `1.0.0-beta.37` - shipped 2026-07-07; collected 129 (six first-run user guides under
   docs/guides/ with a real TOC, the installer's last line and the install skill's closing line
   pointing at guide 1, pinned by a hermetic test; chained at landing to future intent 137, the
