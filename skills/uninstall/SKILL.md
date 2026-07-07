@@ -11,7 +11,7 @@ underlying uninstaller and adds reporting + verification.
 
 ## Channel rule
 
-If Plastic is installed, derive `<channel>` from `~/.plastic/VERSION`: a version ending
+If Plastic is installed, derive `<channel>` from `~/.plastic/VERSION`: a version containing
 `-alpha` means `@alpha`, `-beta` means `@beta`, otherwise `@latest`. If not installed,
 default to `@beta`. The user can always override with `--alpha` / `--beta` / `--latest`.
 

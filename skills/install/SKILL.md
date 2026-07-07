@@ -13,7 +13,7 @@ description: Use when initializing Plastic globally (~/.plastic/) or locally in 
 
 ## Channel rule
 
-If Plastic is installed, derive `<channel>` from `~/.plastic/VERSION`: a version ending
+If Plastic is installed, derive `<channel>` from `~/.plastic/VERSION`: a version containing
 `-alpha` means `@alpha`, `-beta` means `@beta`, otherwise `@latest`. If not installed
 (first install), default to `@beta`. The user can always override with
 `--alpha` / `--beta` / `--latest`.
