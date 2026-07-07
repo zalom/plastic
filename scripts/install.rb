@@ -46,19 +46,19 @@ class Install < InstallerCore
       return 1
     end
 
-    run(selected: selected, force: force, reinstall: reinstall, ledger_action: ledger_action)
+    run(selected: selected, force: force, reinstall: reinstall, ledger_action: ledger_action, argv: argv)
     0
   end
 
   # Hermetic entrypoint (no prompting / no exit). Returns the per-agent results array.
-  def run(selected:, force: false, reinstall: false, ledger_action: nil)
+  def run(selected:, force: false, reinstall: false, ledger_action: nil, argv: ARGV, input: $stdin)
     fresh = !installed?
     mode = fresh ? :install : :update # :update here means "re-sync, skip bootstrap"
 
     distribute(mode)
     bootstrap if fresh
 
-    results = selected.map { |key| install_for_agent(key, force) }
+    results = selected.map { |key| install_for_agent(key, force, argv: argv, input: input, reinstall: reinstall) }
 
     action = ledger_action || (fresh ? "install" : "reinstall")
     ledger_append(version, action)
@@ -152,9 +152,12 @@ class Install < InstallerCore
         --alpha       Alpha channel
 
       Other options:
-        --reinstall   Re-sync core files for the installed version (repair). Store untouched.
-        --force       Overwrite existing files without prompting
-        -h, --help    Show this help
+        --reinstall          Re-sync core files for the installed version (repair). Store untouched.
+        --force              Overwrite existing files without prompting
+        --statusline VALUE   keep or plastic. If an existing statusline is found, this
+                             skips the interactive prompt. Interactive sessions ask by
+                             default; non-interactive sessions default to keep.
+        -h, --help           Show this help
 
       Notes:
         Install is one-shot. If Plastic is already installed, use `update` to upgrade or

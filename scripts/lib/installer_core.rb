@@ -161,6 +161,37 @@ class InstallerCore
     nums.select { |n| n >= 1 && n <= agents.size }.map { |n| agents[n - 1][:key] }
   end
 
+  # Resolve whether install should keep the user's existing statusline or switch it
+  # to Plastic's. Pure function of (settings file, argv, input, reinstall): no writes,
+  # so it stays fully unit-testable apart from merge_claude_hooks.
+  def statusline_choice(settings_path, argv: [], input: $stdin, reinstall: false)
+    existing_command = read_json_safe(settings_path)&.dig("statusLine", "command").to_s
+    return :plastic if existing_command.empty?
+    return :plastic if existing_command.include?("plastic-")
+
+    idx = argv.index("--statusline")
+    flag = idx && argv[idx + 1]
+    return flag.to_sym if %w[keep plastic].include?(flag)
+
+    return :keep if reinstall
+    return prompt_statusline(input: input) if input.tty?
+
+    :keep
+  end
+
+  def prompt_statusline(input: $stdin)
+    return :keep unless input.tty?
+
+    puts "An existing statusline was found in your settings.\n\n"
+    puts "  1. Keep my statusline (Plastic will not change it)"
+    puts "  2. Switch to Plastic's statusline"
+    puts
+    print "Select (1 or 2, Enter to keep): "
+    answer = input.gets&.strip
+
+    answer == "2" ? :plastic : :keep
+  end
+
   # --- Distribution phase ---
 
   def distribute(mode)
@@ -322,7 +353,7 @@ class InstallerCore
     (data["files"] || {}).keys
   end
 
-  def install_for_agent(key, force)
+  def install_for_agent(key, force, argv: [], input: $stdin, reinstall: false)
     config = agent_config(key)
     return { agent: config[:name], success: false, reason: "Unknown agent" } unless config
 
@@ -335,7 +366,7 @@ class InstallerCore
     old_files = manifest_files(manifest_path_for(key, config))
 
     result = case key
-             when "claude" then install_claude(config, force)
+             when "claude" then install_claude(config, force, argv: argv, input: input, reinstall: reinstall)
              when "codex" then install_codex(config, force)
              when "hermes" then install_hermes(config, force)
              end
@@ -364,7 +395,7 @@ class InstallerCore
     removed
   end
 
-  def install_claude(config, force)
+  def install_claude(config, force, argv: [], input: $stdin, reinstall: false)
     hooks_dir = File.join(config[:dir], "hooks")
     skills_root = File.join(config[:dir], "skills")
     plastic_dir = File.join(config[:dir], "plastic")
@@ -407,7 +438,8 @@ class InstallerCore
 
     # Merge hooks + statusline into settings.json (no plugin registration)
     settings_path = File.join(config[:dir], "settings.json")
-    merge_claude_hooks(settings_path)
+    choice = statusline_choice(settings_path, argv: argv, input: input, reinstall: reinstall)
+    merge_claude_hooks(settings_path, choice: choice)
 
     # Write manifest
     manifest_path = File.join(plastic_dir, "manifest.json")
@@ -573,7 +605,7 @@ class InstallerCore
 
   # --- settings.json merge (read-modify-write, never clobber) ---
 
-  def merge_claude_hooks(settings_path)
+  def merge_claude_hooks(settings_path, choice: :plastic)
     settings = read_json_safe(settings_path) || {}
     return if settings.nil?
 
@@ -615,7 +647,7 @@ class InstallerCore
       File.write(File.join(cache_dir, "original-statusline.json"), JSON.pretty_generate(existing_status))
     end
 
-    settings["statusLine"] = { "type" => "command", "command" => "#{hook_dir}/plastic-statusline" }
+    settings["statusLine"] = { "type" => "command", "command" => "#{hook_dir}/plastic-statusline" } if choice == :plastic
 
     # No plugin/marketplace registration: skills are flat personal skills
     # (plastic-<name>/) discovered directly from ~/.claude/skills.

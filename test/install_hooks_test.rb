@@ -2,6 +2,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "json"
 require "fileutils"
+require "stringio"
 
 require_relative "../scripts/lib/installer_core"
 require_relative "../scripts/lib/hook_registry"
@@ -24,6 +25,14 @@ class MergeClaudeHooksTest < Minitest::Test
   def teardown
     FileUtils.rm_rf(@dir)
     FileUtils.rm_rf(PLASTIC_TEST_HOME)
+  end
+
+  def tty_input(str)
+    io = StringIO.new(str)
+    def io.tty?
+      true
+    end
+    io
   end
 
   def test_merge_into_empty_settings
@@ -391,5 +400,75 @@ class MergeClaudeHooksTest < Minitest::Test
     commands = group["hooks"].map { |h| h["command"] }
     assert commands.any? { |c| c.include?("plastic-qmd-search") },
            "UserPromptSubmit must register plastic-qmd-search: #{commands.inspect}"
+  end
+
+  def test_statusline_no_existing_line_installs_plastic_silently
+    File.write(@settings_path, "{}")
+    choice = @installer.statusline_choice(@settings_path)
+    assert_equal :plastic, choice
+
+    @installer.merge_claude_hooks(@settings_path, choice: choice)
+    settings = JSON.parse(File.read(@settings_path))
+    assert settings["statusLine"]["command"].include?("plastic-statusline")
+  end
+
+  def test_statusline_existing_nonplastic_tty_keep
+    original = { "type" => "command", "command" => "/Users/test/.claude/statusline.rb" }
+    File.write(@settings_path, JSON.pretty_generate({ "statusLine" => original }))
+
+    choice = @installer.statusline_choice(@settings_path, input: tty_input("1\n"))
+    assert_equal :keep, choice
+
+    @installer.merge_claude_hooks(@settings_path, choice: choice)
+    settings = JSON.parse(File.read(@settings_path))
+    assert_equal "/Users/test/.claude/statusline.rb", settings.dig("statusLine", "command"),
+      "Kept statusline should be untouched"
+
+    backup_path = File.join(PLASTIC_TEST_HOME, ".cache", "original-statusline.json")
+    assert File.exist?(backup_path), "Original statusline should still be backed up"
+  end
+
+  def test_statusline_existing_nonplastic_tty_switch
+    original = { "type" => "command", "command" => "/Users/test/.claude/statusline.rb" }
+    File.write(@settings_path, JSON.pretty_generate({ "statusLine" => original }))
+
+    choice = @installer.statusline_choice(@settings_path, input: tty_input("2\n"))
+    assert_equal :plastic, choice
+
+    @installer.merge_claude_hooks(@settings_path, choice: choice)
+    settings = JSON.parse(File.read(@settings_path))
+    assert settings["statusLine"]["command"].include?("plastic-statusline")
+
+    backup_path = File.join(PLASTIC_TEST_HOME, ".cache", "original-statusline.json")
+    assert File.exist?(backup_path), "Original statusline should be backed up"
+  end
+
+  def test_statusline_existing_nonplastic_non_tty_defaults_keep
+    original = { "type" => "command", "command" => "/Users/test/.claude/statusline.rb" }
+    File.write(@settings_path, JSON.pretty_generate({ "statusLine" => original }))
+
+    non_tty = StringIO.new("")
+    choice = @installer.statusline_choice(@settings_path, input: non_tty)
+    assert_equal :keep, choice
+  end
+
+  def test_statusline_flag_keep_and_plastic_deterministic
+    original = { "type" => "command", "command" => "/Users/test/.claude/statusline.rb" }
+    File.write(@settings_path, JSON.pretty_generate({ "statusLine" => original }))
+
+    keep_choice = @installer.statusline_choice(@settings_path, argv: ["--statusline", "keep"], input: tty_input("2\n"))
+    assert_equal :keep, keep_choice
+
+    plastic_choice = @installer.statusline_choice(@settings_path, argv: ["--statusline", "plastic"], input: tty_input("1\n"))
+    assert_equal :plastic, plastic_choice
+  end
+
+  def test_statusline_existing_plastic_reinstall_no_prompt
+    File.write(@settings_path, JSON.pretty_generate({
+      "statusLine" => { "type" => "command", "command" => "/path/plastic-statusline" },
+    }))
+
+    choice = @installer.statusline_choice(@settings_path, input: tty_input("1\n"), reinstall: true)
+    assert_equal :plastic, choice, "an already-plastic line must stay plastic without consuming the prompt"
   end
 end
