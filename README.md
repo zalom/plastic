@@ -69,6 +69,39 @@ An intent begins earlier: something you want to accomplish, explore, or
 understand. Plastic helps you develop it until it becomes a decision, a plan,
 a delivery, and a reusable piece of project history.
 
+## Your thinking changes. The work should not reset.
+
+New information changes the problem.
+A better model changes the approach.
+A different agent changes the way work gets done.
+You may change your mind entirely.
+
+Plastic is named after neuroplasticity: the ability to adapt
+without starting from nothing.
+
+Plastic keeps the shape of the work stable:
+- one durable intent
+- one visible lifecycle
+- one place for context, decisions, plans, and outcomes
+- links between the ideas that shaped the work and the ideas it creates
+
+The human or model is free to think.
+Plastic makes that thinking legible, resumable, and useful later.
+
+| Plastic keeps stable | Humans and models keep flexible |
+|---|---|
+| lifecycle | exploration |
+| file structure | reasoning |
+| links and provenance | decisions |
+| gates and savepoints | implementation choices |
+| outcome records | new insights |
+
+Plastic also borrows from the Zettelkasten method: small linked notes that
+add up to more than their sum. An intent is one such note. Its `sources` and
+`chain` links connect it to the intents that shaped it and the ones it led
+to, so the store grows into a graph you can navigate and ask questions
+against as ideas evolve over time.
+
 ## Plastic is not another memory layer
 
 Agent memory remembers facts. Task trackers remember work items. Specs
@@ -92,32 +125,6 @@ a durable artifact behind.
 | Why | What context, evidence, and decisions shape it? | Specification |
 | How | What is the plan? | Plan and checklist |
 | Exec | What was actually delivered? | Outcome |
-
-## Your thinking changes. The work should not reset.
-
-New information changes the problem. A better model changes the approach. A
-different agent changes the way work gets done. You may change your mind
-entirely. Plastic is named after neuroplasticity: the brain's ability to
-adapt without starting from nothing.
-
-Plastic keeps the shape of the work stable, and leaves the thinking free. A
-human or a model does the reasoning; Plastic steers and checks that judgment
-without replacing it, so the thinking stays legible, resumable, and useful
-later.
-
-| Plastic keeps stable | Humans and models keep flexible |
-|---|---|
-| lifecycle | exploration |
-| file structure | reasoning |
-| links and provenance | decisions |
-| gates and savepoints | implementation choices |
-| outcome records | new insights |
-
-Plastic also borrows from the Zettelkasten method: small linked notes that
-add up to more than their sum. An intent is one such note. Its `sources` and
-`chain` links connect it to the intents that shaped it and the ones it led
-to, so the store grows into a graph you can navigate and ask questions
-against as ideas evolve over time.
 
 ## The work survives change
 
