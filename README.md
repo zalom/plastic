@@ -1,6 +1,6 @@
 # Plastic
 
-[![npm version](https://img.shields.io/npm/v/@zalom/plastic/beta)](https://www.npmjs.com/package/@zalom/plastic)
+[![npm version](https://img.shields.io/npm/v/@zalom/plastic)](https://www.npmjs.com/package/@zalom/plastic)
 [![npm downloads](https://img.shields.io/npm/dm/@zalom/plastic)](https://www.npmjs.com/package/@zalom/plastic)
 [![license](https://img.shields.io/npm/l/@zalom/plastic)](LICENSE)
 [![CI](https://github.com/zalom/plastic/actions/workflows/test.yml/badge.svg)](https://github.com/zalom/plastic/actions/workflows/test.yml)
@@ -63,7 +63,7 @@ It solves problems that builder already feels:
 One command installs Plastic for your agent:
 
 ```bash
-npx @zalom/plastic@beta --claude
+npx @zalom/plastic --claude
 ```
 
 Then load the conventions and begin:
@@ -107,15 +107,10 @@ Plastic delivers all work through successive stages ->
 - Personal stores by default.
 - Guided delivery with a human at every gate, or autonomous delivery when you
   ask for it.
-- Beta status.
 
 Plastic needs Ruby (already on macOS and Linux) and Node.js 18 or later. Swap
 `--claude` for `--codex`, `--hermes`, or `--all` to match your agent. Bun
 users can run `bunx` in place of `npx`; Bun is never required.
-
-A stable channel will follow. The bare `npx @zalom/plastic` command is not a
-working install yet. It resolves to an early stub release, so keep `@beta`
-for now.
 
 ## Built with Plastic
 

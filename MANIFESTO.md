@@ -53,5 +53,5 @@ all of it.
 ## Honest about beta
 
 Plastic is in beta. It works, and I use it every day, but it is still
-moving. I would rather tell you that than pretend otherwise. Install with
-the `@beta` channel, and let the record grow with you.
+moving. I would rather tell you that than pretend otherwise. Install it, and
+let the record grow with you.
