@@ -161,6 +161,11 @@ orchestrates them:
 Final-gate code review stays an ad-hoc subagent the enforcer dispatches at the final gate, not
 a standing role.
 
+**Auto-mode entry.** `plastic-auto` is the entry skill for autonomous delivery: it takes over How
+and Exec, spins up the team above, and works the dashboard's dispatchable queue. The dashboard's
+`--data` output splits intents into a `dispatchable_queue` (work an agent can pick up) and
+`human_only` (intents that need a person); auto mode consumes the former.
+
 **Model contract.** Every agent in `agents/*.md` pins an explicit Claude Code model alias in
 its own frontmatter: `opus`, `sonnet`, or `haiku`. Never `inherit`, never Fable. Aliases track
 "latest per tier" so no Plastic release is required to advance a tier. The tier by role:
@@ -181,6 +186,11 @@ every dispatch site also resolves the target agent's model through the config ch
 (`read-config agents.models.<basename> --project <repo>`) and passes it explicitly at dispatch,
 belt-and-braces on top of the frontmatter pin.
 
+**Cross-harness portability.** The dispatch and model-tier contract above is harness-facing. The
+adapter layer that maps Plastic's hooks and model aliases onto each supported agent runtime
+(Claude, Codex, Hermes) is the cross-harness portability layer; see
+docs/reference/harness-adapters.md for the adapter contract.
+
 **Orchestrator advisory.** At auto-mode start, the orchestrator recommends once that the user
 run the main session on the best available thinking model (Fable, Opus, or whatever supersedes
 them). This is advisory only: it changes no behavior and blocks nothing if ignored, and it
@@ -200,6 +210,45 @@ lifecycle boundary, newest at the bottom), written automatically by the gate hoo
 sugar on top of the conventions, not a source of truth: state is always derivable from
 files-on-disk, and the ledger is rebuildable. It exists so a resuming agent reads the cycle's
 succession at a glance (last line = where we are).
+
+## Auto-Mode Human Reporting (intent 92)
+
+In auto mode the orchestrator briefs the human at every lifecycle stage boundary in a fixed,
+impact-first shape (the EM-to-CTO report contract): State, then Risk, then Call. It leads with
+what changed and why it matters, names one risk, and leaves the decision to the human. Separately,
+the `plastic-humanizer` skill cleans authored prose (specs, outcomes, READMEs, release notes) of
+AI tells and slop; it is for documents, not for every reply.
+
+## Operational Skills
+
+Beyond the lifecycle agents, Plastic ships thin skills for day-to-day operation:
+
+- **`plastic-dashboard`** renders a deterministic Value x Effort work cockpit across the global
+  store and every project, and emits a machine-readable queue (`scripts/dashboard.rb --data
+  [continue|project <slug>]`) that auto mode consumes.
+- **`plastic-doctor`** checks installation health. See the Skills Reference in PLASTIC-reference.md
+  for its three scopes (`--core` for the boot integrity check, `--store` per store on dashboard
+  load, and the full no-flag walk after an update).
+- **Lifecycle skills** (`plastic-install`, `plastic-update`, `plastic-uninstall`,
+  `plastic-versions`, intent 55) are thin wrappers over a single pinned
+  `npx -y @zalom/plastic@<channel> <verb>` call: initialize or repair an install, advance a
+  channel, remove Plastic, and step the local versions ledger.
+
+## Releases and Versioning
+
+Plastic ships as versioned releases. A release is a collection of intents: a cut bundles whichever
+intents landed since the previous cut and completes them, so the intent schema itself stays
+release-agnostic and carries no version number. Cutting a release bumps the three version files
+(`package.json`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`), tags
+`v{version}`, runs `gh release create --latest`, and publishes to npm. The npm dist-tag follows
+the version string: a `-alpha` suffix routes to the `alpha` tag, `-beta` to `beta`, and a plain
+version with no suffix routes to `latest`. Release history lives in `CHANGELOG.md` at the repo
+root, one line per cut. The `plastic-releasing` skill runs the whole flow.
+
+Deprecations are declared in `deprecations.yml` and shown at SessionStart. While Plastic is
+pre-1.0, a satisfied deprecation may be removed immediately; from `1.0.0` on the steady-state
+grace rule applies (removal at least two minors ahead). See PLASTIC-reference.md for the
+Deprecation Process.
 
 ## Gotchas
 
@@ -277,6 +326,14 @@ One-line entry convention. Each index entry is ONE line: `- [<id> <terse title>]
 The title is the title, not a summary: aim for about 80 characters, no multi-sentence
 descriptions. This is a self-check, not a gate.
 
+## Roadmaps
+
+A roadmap is a named, ordered, delivery-side collection of intents (waves of parallel-safe
+entries plus an append-only log), the delivery-side counterpart to a release and a sibling of
+`INDEX.md` (never inside `store/`). Create, order, close, and consume one with `plastic-roadmap`.
+`INDEX.md` stays the single writer of intent status; a roadmap entry mirrors it and yields on any
+conflict. See PLASTIC-reference.md for the full Roadmaps format.
+
 ## Rules for Skills
 
 ALL work flows through intents.
@@ -318,6 +375,12 @@ one recommendation line per present tool. The legacy trailing `# qmd-ok` token i
 accepted on Bash commands and simply silences the hint. Scope stays the agent's own tool
 calls; Ruby `File.read` inside a script is invisible to the hook by design.
 
+The deterministic entry point is the `scripts/qmd-sync` CLI (verbs: detect, register, reindex,
+status, search), a clean no-op when QMD is absent. Each store indexes into its own
+`plastic-<slug>` collection (`plastic-global` for the global store, `plastic-<slug>` per project).
+Index mutation is lifecycle-only, and the reindex runs LAST in the End tail, after the bridge
+purge. See `docs/internals.md` for depth.
+
 ## Transition Gates
 
 | Transition | Trigger | Gate |
@@ -328,6 +391,25 @@ calls; Ruby `File.read` inside a script is invisible to the hook by design.
 | Exec → Done | `outcome.md` written | All checklist items checked |
 
 Hard blocking: hooks exit code 2 on gate failure.
+
+### The gates by name
+
+Each gate guards one thing. All are hard except the retrieval gate:
+
+- **create-gate** validates the proposed intent file at What write-time (Write, Edit, and MCP
+  edits), so a malformed or incomplete intent never lands.
+- **gate-check** enforces lifecycle stage order (spec.md before plan.md, the plan triplet before
+  the checklist, all checklist items before outcome.md).
+- **lock-gate** arbitrates ownership and claims: it admits only the intent's lock owner or a
+  registered delegate to write into an active intent directory, and every deny names the
+  resolving `plastic-lock` command.
+- **bash-gate** intercepts a write attempted through a bash or interpreter one-liner (a heredoc, a
+  `>` redirect, a `ruby -e` or `python -c` write), so the same rules apply whether an edit goes
+  through the Write tool or a shell. A trailing `# plastic-ok` comment is an auditable escape that
+  lets a deliberate command through, and every use is logged to
+  `~/.plastic/.cache/gate-escapes.log`.
+- **retrieval-gate** is advisory only (see the Retrieval Gate section): it hints at QMD and never
+  blocks a read or search.
 
 ## Delivery Isolation and the Single-Owner Lock
 
@@ -346,6 +428,18 @@ worktrees, clear the lock, and only then is the bridge purge-eligible. Repair is
 idempotent function with two entry points: the `plastic-lock` command (status, fix,
 release, reclaim, delegate) and `/plastic-intent-starting`, so boarding self-heals. This is
 mandatory, not a convention.
+
+Solo-mode gate defaults (intent 128): on a confirmed positive solo determination
+(`Bridge.solo_delivery?`, a single owner working alone with no sign of parallel or team
+delivery), the lock and worktree arbitration gates relax from enforced to advisory. The moment
+any parallel or team activity appears they return to strictly enforced. This is a real behavior
+difference, not just a message change: a solo session is not hard-blocked by these gates, a
+shared one still is.
+
+The bridge resolves the current session in a fixed precedence: the stdin `session_id` first, then
+the `CLAUDE_CODE_SESSION_ID` environment variable, then a derived key when neither is present. A
+bridge is purge-eligible by terminal state, not by age: it is removed only once its intent is no
+longer active, never on a timer. See `docs/internals.md` for depth.
 
 The delivery lock arbitrates at the whole-intent grain: it decides who may work
 an intent at all. Underneath it, a per-artifact claim token (intent 111)
@@ -381,6 +475,9 @@ and a store worktree at `<plastic_home>/.worktrees/{id}--{slug}` (branch
 Provisioning fails open for intents that touch no project code (pure research or decision
 intents in the global store, or a non-git repo): those get the lock only, and the worktree
 block stays unprovisioned. The fail-open path is always logged, never silent.
+
+Cleanup is part of Done: the End tail merges the branch, then removes both worktrees. Never leave
+an orphaned worktree behind, and clear a stale worktree reference with `git worktree prune`.
 
 ### Intent delivery, station by station
 

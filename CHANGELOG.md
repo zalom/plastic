@@ -6,9 +6,10 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 ## Unreleased
 - `1.0.0` (first stable) - strips the prerelease suffix and takes the `latest`
   dist-tag; collects the stable-1.0 roadmap (trust fixes, process lightening, first-run
-  guides, README positioning) INCLUDING loop engineering (intent 69 and its cluster), per
-  the 2026-07-06 ruling that supersedes the earlier loop-as-1.1.0 plan. Cut is a
-  human-approved act.
+  guides, README positioning). Loop engineering (intent 69 and its cluster) and the
+  intelligence track do NOT ship in 1.0.0: the 2026-07-08 ruling reverses the earlier
+  loop-in-1.0.0 plan and moves that work to a later standalone-agent track
+  (roadmaps/standalone-agent.md). Cut is a human-approved act.
 
 ## Released
 - `1.0.0-beta.39` - shipped 2026-07-07; collected 141 (dashboard JSON output made deterministic
