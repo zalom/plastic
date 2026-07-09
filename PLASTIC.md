@@ -113,9 +113,9 @@ entries stay append-only, newest at the bottom; the prefix only stamps each line
 which stage, and who.
 
 The blessed write path is the `insight-append` helper
-(`scripts/insight-append <intent_dir> <text> --stage S --author A`), which formats the prefix,
-validates it, and appends at the bottom. Hand-editing `## Insights` is an escape hatch; the
-helper is the default so the format cannot drift.
+(`scripts/insight-append <intent_dir> <text> --stage S --author A`), which ships with every
+install and update, formats the prefix, validates it, and appends at the bottom. Hand-editing
+`## Insights` is an escape hatch; the helper is the default so the format cannot drift.
 
 Background sessions and dispatched sub-agents do not write the insight themselves. They carry
 each nugget home in the completion report's `insights:` field, and the orchestrator (or any
@@ -190,6 +190,13 @@ belt-and-braces on top of the frontmatter pin.
 adapter layer that maps Plastic's hooks and model aliases onto each supported agent runtime
 (Claude, Codex, Hermes) is the cross-harness portability layer; see
 docs/reference/harness-adapters.md for the adapter contract.
+
+**Spawn preamble (intent 152).** `scripts/spawn-preamble` emits a live-state block purely from
+filesystem state: the active intent, stage, role/cycle-step, the honor instruction, and the
+report contract. When the intent's code worktree is resolvable and exists on disk, it also
+appends the worktree's absolute path plus a verbatim instruction to `cd` there directly, for
+harnesses whose `EnterWorktree` cannot discover a nested repo from a non-repo launch directory.
+Output is byte-identical when no worktree resolves.
 
 **Orchestrator advisory.** At auto-mode start, the orchestrator recommends once that the user
 run the main session on the best available thinking model (Fable, Opus, or whatever supersedes
@@ -343,7 +350,7 @@ ALL work flows through intents.
 3. On completion, capture observations in `## Insights`.
 4. When done, write `outcome.md` + `## Outcome` summary. Update INDEX.md.
 5. Researches are intents. No separate folder.
-6. Intents are created only via `plastic-creating-intent`. Never hand-author an intent file. The skill self-verifies the written intent with `scripts/validate-intent` before announcing or committing, so every intent is born complete.
+6. Intents are created only via `plastic-creating-intent`. Never hand-author an intent file. The skill self-verifies the written intent with `scripts/validate-intent` before announcing or committing, so every intent is born complete. `--intent` text is escaped for double quotes and backslashes before it lands in frontmatter, so free-form text is safe to pass as-is, and a reciprocal `chain:` append preserves the target intent's existing flow- or block-style entries.
 
 ## House Style (self-check)
 
@@ -407,7 +414,9 @@ Each gate guards one thing. All are hard except the retrieval gate:
   `>` redirect, a `ruby -e` or `python -c` write), so the same rules apply whether an edit goes
   through the Write tool or a shell. A trailing `# plastic-ok` comment is an auditable escape that
   lets a deliberate command through, and every use is logged to
-  `~/.plastic/.cache/gate-escapes.log`.
+  `~/.plastic/.cache/gate-escapes.log`. The code gate (Write and Edit) carries the identical
+  audited `# plastic-ok` escape, logged to the same file. The escape does not extend to
+  `NotebookEdit` or MCP structural edits: they are still gated, just without an escape hatch.
 - **retrieval-gate** is advisory only (see the Retrieval Gate section): it hints at QMD and never
   blocks a read or search.
 
