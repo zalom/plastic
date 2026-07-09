@@ -25,14 +25,12 @@ file_path_abs = File.expand_path(file_path)
 intent_dir_abs = Bridge.intent_dir_for(file_path_abs)
 if intent_dir_abs
   begin
-    landed = Bridge.append_savepoint(intent_dir_abs, file_path_abs, session: session)
-    # A gate-milestone landing (spec.md/plan.md/checklist.md/outcome.md created,
+    # A gate-milestone stamp (spec.md/plan.md/checklist.md/outcome.md created,
     # or a terminal Done) exports the committed savepoint.jsonl snapshot and
-    # git-commits it in the store (D5/AC8). "started" events never trigger this.
-    if landed
-      stage, event_type = Bridge.savepoint_milestone(intent_dir_abs, File.basename(file_path_abs))
-      Bridge.export_and_commit_savepoint(intent_dir_abs, stage: stage, event_type: event_type) if stage
-    end
+    # git-commits it in the store (D5/AC8). That trigger now lives INSIDE
+    # Bridge.stamp_savepoint_event itself, so it fires uniformly for every
+    # gate stamp regardless of caller, not just a file landing seen here.
+    Bridge.append_savepoint(intent_dir_abs, file_path_abs, session: session)
     # When checklist.md lands, How ends and Exec begins: emit the `Exec started`
     # companion in the same event (intent 81). Guard on a real (non-placeholder)
     # checklist so a scaffold sentinel does not trip it.

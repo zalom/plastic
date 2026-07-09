@@ -402,8 +402,19 @@ module Bridge
     return false if blank?(intent_id)
     return false if savepoint_recorded_pairs(intent_dir).include?([stage, event_type])
 
-    !!Plastic::DB.stamp_event(store_home, intent_id, stage: stage, event_type: event_type,
-                              actor_session: session, payload: payload, occurred_at: now.utc.iso8601)
+    stamped = !!Plastic::DB.stamp_event(store_home, intent_id, stage: stage, event_type: event_type,
+                                         actor_session: session, payload: payload, occurred_at: now.utc.iso8601)
+    # Drive the gate export off the STAMP itself (D5/AC8), not off a file
+    # landing seen by some caller: every append_* helper funnels through here,
+    # so a gate milestone exports and commits savepoint.jsonl regardless of
+    # which caller stamped it -- including the terminal Done event, which
+    # append_terminal_savepoint stamps from the completion path, never from a
+    # PostToolUse file write. export_and_commit_savepoint is itself a no-op
+    # for a non-gate (stage, event_type) pair, so this call is safe on every
+    # stamp, and its own rescue keeps export/commit failures from ever
+    # invalidating a stamp that already landed.
+    export_and_commit_savepoint(intent_dir, stage: stage, event_type: event_type) if stamped
+    stamped
   rescue StandardError => e
     $stderr.puts "plastic: savepoint stamp failed (non-fatal): #{e.message}"
     false

@@ -6,6 +6,7 @@ require "sqlite3"
 
 require_relative "../scripts/lib/db"
 require_relative "../scripts/lib/db/savepoint_events"
+require_relative "../scripts/lib/bridge"
 
 # Hermetic unit tests for Plastic::DB::SavepointEvents (intent 41, ACTION_5):
 # the savepoint_events append-only ledger, milestone dedup, the JSONL export
@@ -13,16 +14,21 @@ require_relative "../scripts/lib/db/savepoint_events"
 # durable-recovery path -- including the AC8 full-lifecycle export test.
 # Dir.mktmpdir store + Dir.mktmpdir intent dir, injected occurred_at:, no
 # Time.now anywhere.
+#
+# @intent_dir is nested at <store_home>/store/41--full-lifecycle (not a bare
+# mktmpdir) so the AC8 test below can route its terminal Done stamp through
+# the REAL production path, Bridge.append_terminal_savepoint, which resolves
+# store_home/intent_id from the directory shape (Bridge.store_and_id_for).
 class DbSavepointEventsTest < Minitest::Test
   def setup
     @store_home = Dir.mktmpdir("plastic-db-savepoint-store")
-    @intent_dir = Dir.mktmpdir("plastic-db-savepoint-intent")
+    @intent_dir = File.join(@store_home, "store", "41--full-lifecycle")
+    FileUtils.mkdir_p(@intent_dir)
     @conn = Plastic::DB.connect(@store_home)
   end
 
   def teardown
     FileUtils.rm_rf(@store_home)
-    FileUtils.rm_rf(@intent_dir)
   end
 
   def seed_intent(intent_id, status: "active", quadrant: "quick_win", now: t(0))
@@ -45,6 +51,12 @@ class DbSavepointEventsTest < Minitest::Test
 
   def t(seconds)
     (Time.utc(2026, 7, 9) + seconds).strftime("%Y-%m-%dT%H:%M:%SZ")
+  end
+
+  # Same instant as t(seconds), as a Time (Bridge's now: wants an object that
+  # responds to .utc.iso8601, not the pre-formatted String t() returns).
+  def time_at(seconds)
+    Time.utc(2026, 7, 9) + seconds
   end
 
   def jsonl_lines(path)
@@ -218,10 +230,14 @@ class DbSavepointEventsTest < Minitest::Test
 
     # Done: terminal disposition. Flip the mirror's authoritative status/quadrant
     # too, exactly as the real completion path would, before the final export.
-    Plastic::DB::SavepointEvents.stamp(@conn, intent_id: "41", stage: "Done", event_type: "delivered",
-                                        actor_session: "s-1", occurred_at: t(5))
+    # This step goes through the PRODUCTION stamp path, Bridge.append_terminal_savepoint,
+    # instead of a hand call to SavepointEvents.stamp + SavepointEvents.export: the
+    # BLOCKER this test guards against was the Done gate export only firing from a
+    # hook's file-landing check, never from the stamp itself, so proving the export
+    # happens automatically here (no explicit .export call) is the point.
     @conn.execute("UPDATE intents SET status = 'done', quadrant = NULL WHERE intent_id = '41'")
-    final_path = Plastic::DB::SavepointEvents.export(@conn, intent_id: "41", intent_dir: @intent_dir)
+    assert Bridge.append_terminal_savepoint(@intent_dir, "delivered", session: "s-1", now: time_at(5))
+    final_path = File.join(@intent_dir, "savepoint.jsonl")
     sizes << File.size(final_path)
 
     assert_equal sizes.sort, sizes, "savepoint.jsonl must grow monotonically at every gate"
