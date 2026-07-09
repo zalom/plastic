@@ -5,7 +5,7 @@ require "json"
 require "yaml"
 require "socket"
 require "time"
-require_relative "db"
+require_relative "lock"
 
 # Worktree -- Plastic-supplied git worktree isolation and the delivery lock
 # (intent 73c / 73c1).
@@ -280,23 +280,20 @@ module Worktree
 
   # --- lock ------------------------------------------------------------------
 
-  # True iff ANOTHER session's delivery lease is FRESH on this intent (intent
-  # 108, D2; cutover intent 41 ACTION_10): the `lock_leases` row decides; /tmp
-  # bridges are not consulted and no pid is probed. current_session being the
-  # owner or a delegate does not count as "other". An expired lease does not
-  # hold (leases fail open on expiry by construction).
+  # True iff ANOTHER session's delivery.lock is FRESH on this intent's dir
+  # (intent 108, D2): the durable lock file decides; /tmp bridges are not
+  # consulted and no pid is probed. current_session being the owner or a
+  # delegate does not count as "other". A stale lock does not hold (explicit
+  # takeover reclaims it).
   def lock_held_by_other?(intent_id:, store:, current_session:, home: Dir.home,
-                          ttl: Plastic::DB::Leases::TTL_SECONDS, now: Time.now)
+                          ttl: Lock::TTL_SECONDS, now: Time.now)
     return false if blank?(store)
     dir = Dir.glob(File.join(File.expand_path(store), "#{intent_id}--*")).first
     return false unless dir
-    store_home = File.dirname(File.expand_path(store))
-    conn = Plastic::DB.connect(store_home)
-    return false if conn.nil?
-    row = Plastic::DB::Leases.current(conn, intent_id)
-    return false unless row
-    return false if Plastic::DB::Leases.authorized?(conn, intent_id, session: current_session)
-    Plastic::DB::Leases.fresh?(conn, intent_id, now: now)
+    data = Lock.read(dir)
+    return false unless data
+    return false if Lock.authorized?(data, current_session)
+    Lock.fresh?(dir, ttl: ttl, now: now)
   rescue StandardError
     false
   end

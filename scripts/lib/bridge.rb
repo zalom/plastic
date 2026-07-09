@@ -8,7 +8,7 @@ require "tempfile"
 require "digest"
 require "socket"
 require_relative "worktree"
-require_relative "db"
+require_relative "lock"
 
 module Bridge
   STAGES = %w[what why how exec done].freeze
@@ -36,23 +36,27 @@ module Bridge
     "#{intent_dir}/#{dir_name}.md"
   end
 
-  # Store-home resolution for the sessions/lock_leases/savepoint_events tables
-  # (intent 41 cutover, replacing the /tmp bridge dir). ENV["PLASTIC_STORE_HOME"]
-  # is the hermetic test seam (mirrors the retired PLASTIC_TMP): when set, it
-  # wins outright and no cwd/projects.yml lookup happens at all. The production
-  # default is the unchanged AC6 CWD-match/global-on-miss resolver.
-  def self.resolve_store_home(cwd: Dir.pwd)
-    override = ENV["PLASTIC_STORE_HOME"]
-    return override unless blank?(override)
-    Plastic::DB::StoreResolver.resolve(cwd: cwd)[:store_home]
+  # Single source for the OS temp location holding bridge files. Lets every
+  # process (arm_auto, the gate hooks) agree, and lets tests fully isolate by
+  # pointing PLASTIC_TMP at a Dir.mktmpdir. This is OS-temp-location resolution,
+  # not a logic-config injection seam.
+  def self.tmp_dir
+    t = ENV["PLASTIC_TMP"]
+    (t.nil? || t.strip.empty?) ? "/tmp" : t
   end
 
-  # The sessions.session_id key a bare `session` uses for `intent_id` (intent
-  # 131 convention, preserved across the cutover): a per-intent key, since a
-  # bare session can legitimately own several concurrently-armed intents and
-  # sessions.session_id is UNIQUE (one row per key).
-  def self.session_key(session, intent_id)
-    "#{session}--#{intent_id}"
+  # Per-intent bridge key (intent 131): `plastic-<session>--<intent_id>.json`
+  # when intent_id is present, else the legacy single-key
+  # `plastic-<session>.json`. The per-intent key is what lets two concurrent
+  # deliveries under ONE session id keep separate bridge files instead of
+  # clobbering a shared one; the legacy form is still produced (and read) when
+  # no intent_id is given, so old single-key files stay valid.
+  def self.path(session, intent_id: nil, tmp: tmp_dir)
+    if blank?(intent_id)
+      "#{tmp}/plastic-#{session}.json"
+    else
+      "#{tmp}/plastic-#{session}--#{intent_id}.json"
+    end
   end
 
   # --- Session resolution (intent 52) ----------------------------------------
@@ -74,24 +78,15 @@ module Bridge
     (store && dir) ? File.expand_path("#{store}/#{dir}") : nil
   end
 
-  # Bridge-cache copy of the delivery lease's fields (D2: the bridge is a
-  # CACHE; the lease row is the truth). Never carries a pid. `row` is a
-  # lock_leases row Hash (owner_session/host/acquired_at/artifact/id); nil
-  # yields the empty cache shape.
-  def self.lock_cache_from_lease(store_home, row)
-    if row.nil?
-      return { "owner_session" => nil, "acquired_at" => nil, "host" => nil,
-               "type" => nil, "delegates" => [] }
-    end
-
-    conn = Plastic::DB.connect(store_home)
-    delegates = conn ? Plastic::DB::Leases.delegates_for(conn, row["id"]) : []
+  # Bridge-cache copy of the durable lock file's fields (D2: the bridge is a
+  # CACHE; the file is the truth). Never carries a pid.
+  def self.lock_cache(lock_data)
     {
-      "owner_session" => row["owner_session"],
-      "acquired_at" => row["acquired_at"],
-      "host" => row["host"],
-      "type" => blank?(row["artifact"]) ? "delivery" : "artifact",
-      "delegates" => delegates,
+      "owner_session" => lock_data["owner_session"],
+      "acquired_at" => lock_data["acquired_at"],
+      "host" => lock_data["host"],
+      "type" => lock_data["type"],
+      "delegates" => Array(lock_data["delegates"]),
     }
   end
 
@@ -138,37 +133,98 @@ module Bridge
     data.is_a?(Hash) && !blank?(data["session"]) && data["intent"].is_a?(Hash)
   end
 
-  # Resolve the active bridge from the `sessions` table (intent 41 cutover,
-  # replacing the /tmp bridge scan). Opens the caller's store (ENV
-  # PLASTIC_STORE_HOME override, else CWD-match/global-on-miss, AC6 unchanged),
-  # lets Sessions.active_for pick the row (strict per-session ownership, then
-  # cwd tiering, then auto-preference, then newest last_seen_at -- intent
-  # 90/131 parity, ported to the DB layer in ACTION_4), resolves that row's
-  # intent dir, and adapts it into the SAME Hash shape the retired /tmp bridge
-  # produced (Sessions.to_bridge_data) so the gate-decision functions read it
-  # unchanged.
-  #
-  # A stale /tmp/plastic-*.json is NEVER read here (AC7 /tmp half): the
-  # sessions table is the only source. Fails open (nil) when the DB is
-  # unavailable, the store has no matching session row, or the row's intent
-  # dir cannot be found on disk -- exactly like "no bridge" did before.
-  def self.discover_bridge(session:, cwd: Dir.pwd, store_home: nil)
-    home = store_home || resolve_store_home(cwd: cwd)
-    conn = Plastic::DB.connect(home)
-    return nil if conn.nil?
+  # Tiered cwd discriminator for one bridge candidate (intent 131). A session
+  # now owns SEVERAL bridges (one per concurrent intent), so the discriminator
+  # that used to be "cwd overlaps intent.store" is too coarse: every sibling
+  # under the same store shares it. worktree.code is the only field that
+  # differs between siblings, so it is the strongest signal; the intent dir is
+  # next; the shared store is a last-resort coarse tie.
+  #   2 - cwd is the intent's provisioned code worktree (or under it)
+  #   1 - cwd is the intent's own dir (or under it)
+  #   0 - cwd merely overlaps the intent's store (shared by every sibling)
+  #  -1 - no signal at all
+  def self.bridge_cwd_tier(data, cwd_abs)
+    worktree_code = data.dig("worktree", "code")
+    if !blank?(worktree_code)
+      wc_abs = File.expand_path(worktree_code)
+      return 2 if cwd_abs == wc_abs || cwd_abs.start_with?("#{wc_abs}/")
+    end
 
-    row = Plastic::DB::Sessions.active_for(conn, session: session, cwd: cwd)
-    return nil if row.nil?
+    dir_abs = bridge_intent_dir(data)
+    if dir_abs
+      return 1 if cwd_abs == dir_abs || cwd_abs.start_with?("#{dir_abs}/")
+    end
 
-    intent_id = row["active_intent_id"]
-    return nil if blank?(intent_id)
-    intent_dir = Dir.glob(File.join(home, "store", "#{intent_id}--*")).first
-    return nil if intent_dir.nil?
+    store = data.dig("intent", "store").to_s
+    unless store.empty?
+      store_abs = File.expand_path(store)
+      return 0 if cwd_abs == store_abs || cwd_abs.start_with?("#{store_abs}/") ||
+                  store_abs.start_with?("#{cwd_abs}/")
+    end
 
-    lock_row = Plastic::DB::Sessions.current_lock_row(conn, intent_id)
-    Plastic::DB::Sessions.to_bridge_data(row, intent_dir: intent_dir, lock_row: lock_row)
-  rescue StandardError
-    nil
+    -1
+  end
+
+  # Resolve the active bridge: scan tmp for plastic-*.json (both per-intent and
+  # legacy-keyed files), keep only valid bridges, filter to the caller's own
+  # session when it has one, prefer auto-armed, then disambiguate by cwd tier
+  # (see bridge_cwd_tier), tie-break by newest mtime. No exact-session fast
+  # path: a session now legitimately owns several bridges (one per concurrent
+  # intent), so filename lookup alone cannot pick the right one; cwd must
+  # decide (intent 131).
+  def self.discover_bridge(session:, cwd: Dir.pwd, tmp: tmp_dir)
+    candidates = Dir.glob(File.join(tmp, "plastic-*.json")).reject { |f| f.end_with?(".tmp") }
+    parsed = candidates.filter_map do |f|
+      data = (JSON.parse(File.read(f)) rescue nil)
+      next unless data && bridge_valid?(data)
+      { file: f, data: data, mtime: File.mtime(f) }
+    end
+    return nil if parsed.empty?
+
+    has_session = !blank?(session)
+
+    # Strict per-session ownership (intent 90): when the caller HAS a session, a foreign
+    # session's bridge is NEVER a valid resolution. Own-session and the derived-key case both
+    # reduce to candidate["session"] == session (the derived key IS the session that armed the
+    # bridge). A caller that owns no bridge resolves to nil, so its gates fail open instead of
+    # inheriting another session's armed intent.
+    #
+    # When the caller has NO session (truly headless, intent 52), keep the legacy degraded
+    # selection below so a single armed derived-key bridge is still discoverable - the hook
+    # cannot know the session there, and a lone armed intent must still gate.
+    if has_session
+      parsed = parsed.select { |c| c[:data]["session"].to_s == session.to_s }
+      return nil if parsed.empty?
+    end
+
+    # Auto-preference pool: a build-armed bridge is preferred over a merely
+    # derived one, but ONLY as a fallback when cwd cannot decide (below). cwd
+    # must win over auto-preference, so this pool is not applied before the
+    # cwd tiering (intent 131: a guided sibling in the caller's own worktree
+    # must beat an auto sibling in another worktree).
+    auto = parsed.select { |c| c[:data].dig("build", "auto") == true }
+    auto_pool = auto.empty? ? parsed : auto
+
+    unless blank?(cwd)
+      cwd_abs = File.expand_path(cwd)
+      # Tier the FULL session pool by cwd BEFORE the auto-preference filter.
+      # When cwd overlaps ANY candidate (tier >= 0) it decides outright, even
+      # against a newer or auto-armed sibling: worktree.code (tier 2) and the
+      # intent dir (tier 1) disambiguate same-store siblings (intent 131), and
+      # a store overlap (tier 0) still selects the overlapping bridge over an
+      # off-cwd one in another store (the intent 90/52 store filter, preserved).
+      # Only when NO candidate overlaps cwd (max tier -1) do we fall through to
+      # the auto-preference pool and newest mtime, so a lone armed bridge
+      # off-cwd still resolves (intent 52 headless).
+      tiered = parsed.map { |c| [bridge_cwd_tier(c[:data], cwd_abs), c] }
+      max_tier = tiered.map(&:first).max
+      if max_tier && max_tier >= 0
+        winners = tiered.select { |tier, _| tier == max_tier }.map { |_, c| c }
+        return winners.max_by { |c| c[:mtime] }&.fetch(:data)
+      end
+    end
+
+    auto_pool.max_by { |c| c[:mtime] }&.fetch(:data)
   end
 
   # --- Terminal-state bridge purge (intent 80) -------------------------------
@@ -204,42 +260,93 @@ module Bridge
     false
   end
 
-  # Session GC (intent 41 cutover; was purge_done_bridges over /tmp files).
-  # Ends (deletes) every OTHER session row in `store`'s DB whose active intent
-  # is terminal (not in its store's INDEX.md `## Active` block -- the
-  # unchanged intent_active? read; 147 owns the INDEX-read cutover, not this
-  # one). `session` is the CALLER's BARE session id (intent 131): a session
-  # legitimately owns SEVERAL per-intent rows (one per concurrent intent), so
-  # every row in that whole family (bare key or `"#{session}--<intent_id>"`)
-  # is protected, never just one exact row -- mirroring the old own-prefix
-  # skip over /tmp files. Also never ends a row whose intent still holds a
-  # live delivery lock (D6): the End tail clears the lock BEFORE a session
-  # becomes GC-eligible. Best-effort and non-raising; returns the Array of
-  # ended session_ids.
-  def self.purge_done_bridges(session:, store:)
-    store_home = File.dirname(store)
-    conn = Plastic::DB.connect(store_home)
-    return [] if conn.nil?
-
+  # Remove tmp/plastic-*.json bridge files whose intent is terminal, so
+  # discover_bridge's per-fire scan stays bounded. Best-effort and non-raising:
+  # returns the array of removed paths. A bridge is purged when it cannot be
+  # parsed, has no intent.id, has no intent.store, or its intent is not Active in
+  # its store's INDEX.md. An Active intent's bridge is kept (continuation signal +
+  # anti-collision lock), and the current session's own bridge is never purged
+  # (preserves the disarm_auto contract that it stays readable). Wired into
+  # arm_auto and disarm_auto so both manual and auto delivery keep the temp dir
+  # clean at deterministic work boundaries.
+  def self.purge_done_bridges(session:, tmp: tmp_dir)
+    # Own-bridge predicate (intent 131): a session now legitimately owns
+    # SEVERAL bridges (one per concurrent intent), so "current" is no longer
+    # one filename. Skip the legacy single-key file for this session AND every
+    # per-intent-keyed file for this session; none of the session's own live
+    # bridges may be reaped mid-run.
+    own_legacy_name = File.basename(path(session, tmp: tmp))
+    own_prefix = "plastic-#{session}--"
     removed = []
-    Plastic::DB::Sessions.all(conn).each do |row|
-      sid = row["session_id"].to_s
-      next if sid == session.to_s || sid.start_with?("#{session}--")
-      id = row["active_intent_id"]
-      # A blank active_intent_id is junk (mirrors the old "missing intent.id"
-      # bridge purge): it can never be kept, since there is nothing to check
-      # liveness against.
-      keep = !blank?(id) && intent_active?(id, store: store)
-      keep ||= !blank?(id) && Plastic::DB::Leases.current(conn, id) != nil
-      next if keep
-
-      Plastic::DB::Sessions.end(conn, session_id: row["session_id"])
-      removed << row["session_id"]
+    Dir.glob(File.join(tmp, "plastic-*.json")).each do |f|
+      next if File.basename(f) == own_legacy_name || File.basename(f).start_with?(own_prefix)
+      begin
+        data = JSON.parse(File.read(f)) rescue nil
+        keep = false
+        if data
+          id = data.dig("intent", "id")
+          store = data.dig("intent", "store")
+          keep = !blank?(id) && !blank?(store) && intent_active?(id, store: store)
+          # Never purge a bridge whose intent still holds a delivery lock
+          # (intent 108, D6): the End tail clears the lock BEFORE the bridge
+          # becomes purge-eligible, so a held lock means the tail is not done.
+          unless keep
+            dir = bridge_intent_dir(data)
+            keep = !dir.nil? && File.exist?(Lock.path(dir))
+          end
+        end
+        next if keep
+        File.delete(f)
+        removed << f
+      rescue Errno::ENOENT
+        # Raced with another job that already removed it; count as purged.
+        removed << f
+      rescue => e
+        $stderr.puts "plastic: purge skipped #{f}: #{e.message}"
+      end
     end
     removed
   rescue => e
     $stderr.puts "plastic: purge_done_bridges failed: #{e.message}"
-    []
+    removed || []
+  end
+
+  # Try the per-intent path first; when it is absent and an intent_id was
+  # given, fall back to the legacy single-key path (migration + legacy
+  # tolerance, intent 131): a live `plastic-<session>.json` from before this
+  # intent keeps resolving during the transition. The legacy fallback is
+  # honored for a specific intent_id ONLY when the legacy file actually carries
+  # that intent (or carries none), so a caller asking for intent A never acts
+  # on a legacy file that still holds sibling B.
+  def self.read(session, intent_id: nil, tmp: tmp_dir)
+    p = path(session, intent_id: intent_id, tmp: tmp)
+    return JSON.parse(File.read(p)) if File.exist?(p)
+    return nil if blank?(intent_id)
+    legacy = path(session, tmp: tmp)
+    return nil unless File.exist?(legacy)
+    data = JSON.parse(File.read(legacy))
+    id = data.is_a?(Hash) ? data.dig("intent", "id") : nil
+    (blank?(id) || id.to_s == intent_id.to_s) ? data : nil
+  rescue JSON::ParserError
+    nil
+  end
+
+  # Self-keying (intent 131): the file `write` targets is derived from
+  # `data.dig("intent", "id")`, not a caller-supplied intent_id, so every
+  # existing `write(session, data)` call site keys itself correctly for free
+  # as long as `data["intent"]["id"]` is set (arm/derive/disarm_auto/
+  # repair_lock/hook-gate-check/plastic-lock all carry it).
+  def self.write(session, data, tmp: tmp_dir)
+    raise ArgumentError, "bridge session must be present" if blank?(session)
+    intent_id = data.is_a?(Hash) ? data.dig("intent", "id") : nil
+    p = path(session, intent_id: intent_id, tmp: tmp)
+    # Atomic write: tmp file + rename to prevent partial reads
+    tmp_file = "#{p}.tmp.#{Process.pid}"
+    File.write(tmp_file, JSON.pretty_generate(data.merge("updated_at" => Time.now.utc.iso8601)))
+    File.rename(tmp_file, p)
+  rescue => e
+    File.delete(tmp_file) if tmp_file && File.exist?(tmp_file)
+    raise e
   end
 
   # True iff a lifecycle file is PRESENT AND REAL: it exists and its first line is
@@ -335,18 +442,14 @@ module Bridge
     nxt ? "#{head} #{nxt}" : head
   end
 
-  # --- Cycle-step savepoint ledger (intent 34; cutover intent 41 ACTION_11) --
+  # --- Cycle-step savepoint ledger (intent 34) ------------------------------
   #
-  # The durable ledger now lives in `savepoint_events` (DB, authoritative) plus
-  # the git-committed `savepoint.jsonl` export at each delivery gate
-  # (ACTION_5/11). Per-intent savepoint.md retires from the LIVE flow: nothing
-  # here writes it anymore. Existing savepoint.md files are left in place
-  # (completed intents are immutable); rebuild_savepoint reconstructs the DB
-  # ledger from the JSONL export instead of regenerating the file. Milestones
-  # are still file-event boundaries only; action/resource files record
-  # nothing.
+  # savepoint.md is a deterministic, append-only, one-line-per-milestone ledger
+  # (newest at the bottom). It is sugar on top of the conventions: derived from
+  # files-on-disk, rebuildable, never a source of truth. Milestones are
+  # file-event boundaries only; action/resource files record nothing.
 
-  SAVEPOINT_FILE = "savepoint.md" # retired live-flow filename; kept as a legacy read target only (doctor, immutable history)
+  SAVEPOINT_FILE = "savepoint.md"
 
   # Map a written filename to [stage_label, milestone_text], or nil if the file
   # is not a lifecycle milestone.
@@ -361,69 +464,42 @@ module Bridge
     end
   end
 
-  # (store_home, intent_id) for an intent dir path (`<store_home>/store/<id>--<slug>`).
-  def self.store_and_id_for(intent_dir)
-    store = File.dirname(intent_dir)
-    store_home = File.dirname(store)
-    [store_home, intent_id_from_dir(intent_dir)]
+  # Milestones already recorded in the ledger (field 3 of each line).
+  def self.savepoint_recorded_milestones(intent_dir)
+    f = File.join(intent_dir, SAVEPOINT_FILE)
+    return [] unless File.exist?(f)
+    File.read(f).each_line.map do |line|
+      parts = line.strip.split(/\s{2,}/)
+      parts.length >= 3 ? parts[2] : nil
+    end.compact
   end
 
-  # (stage, event_type) pairs already recorded for this intent, read from
-  # `savepoint_events` (replaces the retired savepoint.md line-parsing). The
-  # pair (not the event_type text alone) is the dedup key, because
-  # state-from-ledger events like `Why started` and `How started` share the
-  # text "started" while being distinct events (intent 81).
+  # (stage, milestone) pairs already recorded in the ledger. The pair (not the
+  # milestone text alone) is the dedup key, because state-from-ledger lines like
+  # `Why  started` and `How  started` share the milestone text "started" while
+  # being distinct events (intent 81).
   def self.savepoint_recorded_pairs(intent_dir)
-    store_home, intent_id = store_and_id_for(intent_dir)
-    return [] if blank?(intent_id)
-    conn = Plastic::DB.connect(store_home)
-    return [] if conn.nil?
-    Plastic::DB::SavepointEvents.events_for(conn, intent_id).map { |e| [e["stage"], e["event_type"]] }
-  rescue StandardError
-    []
+    f = File.join(intent_dir, SAVEPOINT_FILE)
+    return [] unless File.exist?(f)
+    File.read(f).each_line.filter_map do |line|
+      parts = line.strip.split(/\s{2,}/)
+      parts.length >= 3 ? [parts[1], parts[2]] : nil
+    end
   end
 
-  # Stamp one savepoint_events row for (stage, event_type). Best-effort and
-  # non-raising: a DB error must never break the caller (the hooks that call
-  # this treat the ledger as sugar, exactly as savepoint.md always was).
-  # Dedup for the once-only pairs is enforced inside SavepointEvents.stamp.
-  # Dedup here is UNIVERSAL across every Bridge ledger helper (mirrors the
-  # retired append_savepoint_line's `return false if savepoint_recorded_pairs
-  # ... include?` check): unlike SavepointEvents::DEDUP_MILESTONES, which only
-  # enumerates the fixed, non-parameterized pairs (a "What" pair's event_type
-  # is the intent's own filename, so it can never be a member of a frozen
-  # list), Bridge's own ledger surface deduplicates every (stage, event_type)
-  # pair it is asked to stamp, "What" included. A direct Plastic::DB.stamp_event
-  # caller outside Bridge (e.g. plastic-lock's `lock/takeover` audit) is
-  # unaffected and keeps writing a fresh row every time (a real, repeatable
-  # audit trail, never routed through this helper).
-  def self.stamp_savepoint_event(intent_dir, stage, event_type, session: nil, now: Time.now, payload: {})
-    store_home, intent_id = store_and_id_for(intent_dir)
-    return false if blank?(intent_id)
-    return false if savepoint_recorded_pairs(intent_dir).include?([stage, event_type])
-
-    stamped = !!Plastic::DB.stamp_event(store_home, intent_id, stage: stage, event_type: event_type,
-                                         actor_session: session, payload: payload, occurred_at: now.utc.iso8601)
-    # Drive the gate export off the STAMP itself (D5/AC8), not off a file
-    # landing seen by some caller: every append_* helper funnels through here,
-    # so a gate milestone exports and commits savepoint.jsonl regardless of
-    # which caller stamped it -- including the terminal Done event, which
-    # append_terminal_savepoint stamps from the completion path, never from a
-    # PostToolUse file write. export_and_commit_savepoint is itself a no-op
-    # for a non-gate (stage, event_type) pair, so this call is safe on every
-    # stamp, and its own rescue keeps export/commit failures from ever
-    # invalidating a stamp that already landed.
-    export_and_commit_savepoint(intent_dir, stage: stage, event_type: event_type) if stamped
-    stamped
-  rescue StandardError => e
-    $stderr.puts "plastic: savepoint stamp failed (non-fatal): #{e.message}"
-    false
+  # Append one ledger line for (stage, milestone) unless that pair is already
+  # recorded. The single append primitive shared by every line class. Returns
+  # true when a line was written, false when it was a no-op.
+  def self.append_savepoint_line(intent_dir, stage, milestone, now)
+    return false if savepoint_recorded_pairs(intent_dir).include?([stage, milestone])
+    line = "#{now.utc.iso8601}  #{stage}  #{milestone}\n"
+    File.open(File.join(intent_dir, SAVEPOINT_FILE), "a") { |io| io.write(line) }
+    true
   end
 
-  # Stamp the artifact-landing milestone for file_path if (and only if) it is a
-  # milestone. Returns true when a row was written (false: not a milestone, a
-  # sentinel placeholder, or a duplicate of an already-recorded pair).
-  def self.append_savepoint(intent_dir, file_path, session: nil, now: Time.now)
+  # Append the artifact-landing milestone for file_path if (and only if) it is a
+  # milestone not already recorded. Returns true when a line was written.
+  def self.append_savepoint(intent_dir, file_path, now: Time.now)
     basename = File.basename(file_path)
     stage, milestone = savepoint_milestone(intent_dir, basename)
     return false unless milestone
@@ -431,16 +507,16 @@ module Bridge
     # yet). The intent file is never sentineled, so it still logs its What line.
     return false unless stage_file_present?(File.join(intent_dir, basename))
 
-    stamp_savepoint_event(intent_dir, stage, milestone, session: session, now: now)
+    append_savepoint_line(intent_dir, stage, milestone, now)
   end
 
-  # --- State-from-ledger: pre-stage, exec-start, and terminal events (81) -----
+  # --- State-from-ledger: pre-stage, exec-start, and terminal lines (81) ------
   #
   # On top of intent 34's artifact-landing milestones, the ledger gains:
-  #   - `started` events, one per cycle stage entry (pre-stage, written by the
+  #   - `started` lines, one per cycle stage entry (pre-stage, written by the
   #     PreToolUse savepoint hook the moment a stage's artifact is first written);
   #   - an `Exec  started` companion emitted when checklist.md lands;
-  #   - a terminal `Done  delivered|abandoned` event written by the completion path.
+  #   - a terminal `Done  delivered|abandoned` line written by the completion path.
   # None of these are derivable from files on disk, so they are deliberately NOT
   # part of savepoint_milestone and are never regenerated by rebuild_savepoint:
   # a rebuilt ledger is the file-landing skeleton, the live ledger is richer.
@@ -455,37 +531,37 @@ module Bridge
     end
   end
 
-  # Stamp the pre-stage `started` event for file_path, iff: the basename opens a
+  # Append the pre-stage `started` line for file_path, iff: the basename opens a
   # stage, the stage is genuinely starting (its artifact is not yet a REAL file,
-  # so a sentinel placeholder still counts as "starting"). Idempotent (D5's
-  # dedup covers `started` pairs, see SavepointEvents::DEDUP_MILESTONES).
-  def self.append_started_savepoint(intent_dir, file_path, session: nil, now: Time.now)
+  # so a sentinel placeholder still counts as "starting"), and the pair is not
+  # already recorded. Returns true when a line was written.
+  def self.append_started_savepoint(intent_dir, file_path, now: Time.now)
     basename = File.basename(file_path)
     stage, milestone = savepoint_started_milestone(basename)
     return false unless milestone
     return false if stage_file_present?(File.join(intent_dir, basename))
 
-    stamp_savepoint_event(intent_dir, stage, milestone, session: session, now: now)
+    append_savepoint_line(intent_dir, stage, milestone, now)
   end
 
-  # Stamp the `Exec  started` companion (emitted when checklist.md lands, in the
-  # same PostToolUse event as the `How  checklist.md created` event). Idempotent.
-  def self.append_exec_started(intent_dir, session: nil, now: Time.now)
-    stamp_savepoint_event(intent_dir, "Exec", "started", session: session, now: now)
+  # Append the `Exec  started` companion (emitted when checklist.md lands, in the
+  # same PostToolUse event as the `How  checklist.md created` line). Idempotent.
+  def self.append_exec_started(intent_dir, now: Time.now)
+    append_savepoint_line(intent_dir, "Exec", "started", now)
   end
 
   TERMINAL_DISPOSITIONS = %w[delivered abandoned].freeze
 
-  # Stamp the terminal bookend `Done  delivered|abandoned`, written by the
+  # Append the terminal bookend `Done  delivered|abandoned`, written by the
   # completion path when an intent transfers to INDEX's Completed/Abandoned
   # section. Idempotent per disposition. Raises on an unknown disposition.
-  def self.append_terminal_savepoint(intent_dir, disposition, session: nil, now: Time.now)
+  def self.append_terminal_savepoint(intent_dir, disposition, now: Time.now)
     unless TERMINAL_DISPOSITIONS.include?(disposition)
       raise ArgumentError,
             "disposition must be one of #{TERMINAL_DISPOSITIONS.join(', ')}, got #{disposition.inspect}"
     end
 
-    stamp_savepoint_event(intent_dir, "Done", disposition, session: session, now: now)
+    append_savepoint_line(intent_dir, "Done", disposition, now)
   end
 
   # --- Tier convenience line (intent 130, D-A) ------------------------------
@@ -495,8 +571,7 @@ module Bridge
   # reads that line only; it never validates or enforces it (convention-only,
   # matching the skill and agent contracts). Returns nil when spec.md is
   # absent, empty, or its first line does not match, so a missing/malformed
-  # Tier line changes nothing about existing rebuild behavior. Unchanged by
-  # the ACTION_11 cutover: this reads spec.md directly, never the ledger.
+  # Tier line changes nothing about existing rebuild behavior.
   def self.savepoint_tier(intent_dir)
     path = File.join(intent_dir, "spec.md")
     return nil unless File.exist?(path)
@@ -506,78 +581,43 @@ module Bridge
     m && m[1]
   end
 
-  # Reconstruct the DB ledger (`savepoint_events`, plus the authoritative-only
-  # intents/roadmap_entries fields) from the git-committed savepoint.jsonl
-  # export -- the durable-recovery path (D5/AC8), replacing the retired
-  # files-on-disk-mtime reconstruction of savepoint.md. Returns true when the
-  # rebuild ran (a JSONL export was present and readable), false otherwise
-  # (nothing to rebuild from, no resolvable intent_id, or DB unavailable --
-  # fail open, never raises).
+  # Reconstruct the ledger from files on disk (timestamps from mtimes), in
+  # stage order, overwriting savepoint.md. Returns the number of lines written.
+  # When spec.md carries a Tier line, one convenience `Tier  <value>` line is
+  # echoed right after the spec.md milestone line (same mtime), so the tier
+  # survives a rebuild without becoming a new source of truth.
   def self.rebuild_savepoint(intent_dir)
-    store_home, intent_id = store_and_id_for(intent_dir)
-    return false if blank?(intent_id)
-    conn = Plastic::DB.connect(store_home)
-    return false if conn.nil?
-    !!Plastic::DB::SavepointEvents.rebuild_from_export(conn, intent_id: intent_id, intent_dir: intent_dir)
-  rescue StandardError => e
-    $stderr.puts "plastic: rebuild_savepoint failed: #{e.message}"
-    false
+    ordered = [
+      File.basename(intent_file(intent_dir)),
+      "spec.md", "plan.md", "checklist.md", "outcome.md",
+    ]
+    lines = ordered.flat_map do |basename|
+      path = File.join(intent_dir, basename)
+      next [] unless stage_file_present?(path)
+      stage, milestone = savepoint_milestone(intent_dir, basename)
+      next [] unless milestone
+      stamp = File.mtime(path).utc.iso8601
+      entry = "#{stamp}  #{stage}  #{milestone}\n"
+      if basename == "spec.md" && (tier = savepoint_tier(intent_dir))
+        [entry, "#{stamp}  Tier  #{tier}\n"]
+      else
+        [entry]
+      end
+    end
+    File.write(File.join(intent_dir, SAVEPOINT_FILE), lines.join)
+    lines.length
   end
 
-  # At a delivery gate boundary (Plastic::DB::SavepointEvents.is_gate_milestone?),
-  # export the committed savepoint.jsonl snapshot and git-commit it in the
-  # store repo (D5/AC8). The git commit happens OUTSIDE any DB transaction
-  # (export_savepoint has already returned by the time git runs): never hold
-  # the SQLite write lock across git (the beads lesson, D1). Best-effort and
-  # non-raising: a non-git store, a clean tree (nothing to commit), or any git
-  # failure is logged, never raised -- the JSONL file is already durable on
-  # disk either way. Returns true iff export+commit was attempted (a gate
-  # milestone and a resolvable intent_id).
-  def self.export_and_commit_savepoint(intent_dir, stage:, event_type:)
-    return false unless Plastic::DB::SavepointEvents.is_gate_milestone?(stage, event_type)
-
-    store_home, intent_id = store_and_id_for(intent_dir)
-    return false if blank?(intent_id)
-
-    path = Plastic::DB.export_savepoint(store_home, intent_id, intent_dir: intent_dir)
-    return false if path.nil?
-
-    commit_savepoint_export(store_home, path)
-    true
-  rescue StandardError => e
-    $stderr.puts "plastic: savepoint export/commit failed (non-fatal): #{e.message}"
-    false
-  end
-
-  def self.commit_savepoint_export(store_home, path)
-    require "open3"
-    _out, _err, status = Open3.capture3("git", "-C", store_home, "rev-parse", "--is-inside-work-tree")
-    return unless status.success?
-
-    rel = path.sub("#{store_home}/", "")
-    Open3.capture3("git", "-C", store_home, "add", rel)
-    Open3.capture3("git", "-C", store_home, "commit", "-m", "chore: savepoint export - #{rel}")
-  rescue StandardError => e
-    $stderr.puts "plastic: git commit of savepoint export failed (non-fatal): #{e.message}"
-  end
-
-  # Compute AND persist the current session/intent state (intent 41 cutover,
-  # replacing the /tmp bridge write). The returned Hash is the SAME bridge_data
-  # shape the retired /tmp bridge produced, built directly here (not via a DB
-  # round-trip) so a caller still gets a usable Hash back even when the DB is
-  # unavailable (fail open, always); the sessions-table write is best-effort
-  # and never raises past this method.
-  def self.derive(session, intent_id:, intent_dir:, store:, name:, now: Time.now)
-    intent_dir_abs = File.expand_path(intent_dir)
-    stage = derive_stage(intent_dir_abs)
-    has = has_files(intent_dir_abs)
-    missing = missing_for_stage(stage, intent_dir_abs) - has
+  def self.derive(session, intent_id:, intent_dir:, store:, name:, tmp: tmp_dir)
+    stage = derive_stage(intent_dir)
+    has = has_files(intent_dir)
+    missing = missing_for_stage(stage, intent_dir) - has
 
     data = {
       "session" => session,
       "intent" => {
         "id" => intent_id,
-        "dir" => File.basename(intent_dir_abs),
+        "dir" => intent_dir.sub("#{store}/", ""),
         "store" => store,
         "name" => name
       },
@@ -587,7 +627,7 @@ module Bridge
         "missing" => missing,
         "gate_failures" => 0,
         "auto" => false,
-        "last_activity" => now.utc.iso8601
+        "last_activity" => Time.now.utc.iso8601
       },
       "observe" => {
         "last_transition" => nil,
@@ -609,8 +649,7 @@ module Bridge
         "provisioned" => false
       },
       # Delivery-lock CACHE block (intent 108, D2). The durable truth is the
-      # `lock_leases` row for this intent (cutover intent 41 ACTION_10, replacing
-      # the retired delivery.lock file); arm fills this cache from that row.
+      # delivery.lock file in the intent dir; arm fills this cache from it.
       "lock" => {
         "owner_session" => nil,
         "acquired_at" => nil,
@@ -620,37 +659,8 @@ module Bridge
       }
     }
 
-    register_session(store: store, session: session, intent_id: intent_id,
-                      cwd: intent_dir_abs, auto: false, now: now)
+    write(session, data, tmp: tmp)
     data
-  end
-
-  # Best-effort sessions-table write shared by derive/arm/repair_lock (fail
-  # open: a DB error here must never break the caller's in-memory bridge_data).
-  def self.register_session(store:, session:, intent_id:, cwd:, auto:, now: Time.now)
-    Plastic::DB.session_register(
-      File.dirname(store), session_id: session_key(session, intent_id),
-      host: Socket.gethostname, pid: Process.pid, cwd: cwd,
-      active_intent_id: intent_id, auto: auto, now: now
-    )
-  rescue StandardError => e
-    $stderr.puts "plastic: session register failed, continuing in-memory only: #{e.message}"
-    nil
-  end
-
-  def self.update_session(store:, session:, intent_id:, now: Time.now, **fields)
-    Plastic::DB.session_update(File.dirname(store), session_id: session_key(session, intent_id),
-                               now: now, **fields)
-  rescue StandardError => e
-    $stderr.puts "plastic: session update failed: #{e.message}"
-    nil
-  end
-
-  def self.end_session(store:, session:, intent_id:)
-    Plastic::DB.session_end(File.dirname(store), session_id: session_key(session, intent_id))
-  rescue StandardError => e
-    $stderr.puts "plastic: session end failed: #{e.message}"
-    nil
   end
 
   # Gate check: returns nil if allowed, or an error message string if blocked
@@ -722,28 +732,26 @@ module Bridge
     data = derive(key, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name)
     data["build"]["auto"] = auto
 
-    # Acquire the delivery lease (D1/D2, cutover intent 41 ACTION_10):
-    # session-keyed, atomic (BEGIN IMMEDIATE check-then-insert), in
-    # `lock_leases`. The bridge lock block is a cache of the row. No
-    # delivery.lock file is written anywhere (AC7): the lease is the ONLY
-    # delivery-lock state. DB-unavailable fails OPEN (arm proceeds without
-    # lock enforcement, advisory only) rather than blocking arming outright.
+    # Acquire the durable delivery lock (D1/D2): session-keyed, O_EXCL, in the
+    # intent dir. The bridge lock block is a cache of the file.
     intent_dir_abs = File.expand_path(intent_dir)
-    store_home = File.dirname(store)
-    status, lease_row = Plastic::DB.lease_acquire(store_home, intent_id, session: key, host: Socket.gethostname)
+    status, lock_data = Lock.acquire(intent_dir_abs, session: key)
     case status
     when :acquired, :owned
-      data["lock"] = lock_cache_from_lease(store_home, lease_row)
+      data["lock"] = lock_cache(lock_data)
     when :held
       raise LockHeldError, "delivery lock for intent #{intent_id} is held by " \
-        "session #{lease_row && lease_row['owner_session']}; run /plastic-lock status"
+        "session #{lock_data && lock_data['owner_session']}; run /plastic-lock status"
     when :stale
       raise LockHeldError, "delivery lock for intent #{intent_id} is stale " \
-        "(owner #{lease_row && lease_row['owner_session']}); run /plastic-lock " \
+        "(owner #{lock_data && lock_data['owner_session']}); run /plastic-lock " \
         "reclaim to take it over with an audit"
-    when :fail_open
-      $stderr.puts "plastic: lease DB unavailable for intent #{intent_id}; " \
-        "arming without lock enforcement (advisory)"
+    when :excluded
+      raise LockHeldError, "a #{lock_data && lock_data['type']} lock is active on " \
+        "intent #{intent_id}; run /plastic-lock status"
+    when :corrupt
+      raise LockHeldError, "delivery.lock for intent #{intent_id} is unreadable; " \
+        "run /plastic-lock fix"
     end
 
     # Provision the per-intent worktrees (mandatory code worktree for project
@@ -755,9 +763,8 @@ module Bridge
       $stderr.puts "plastic: worktree provision raised, continuing unprovisioned: #{e.message}"
     end
 
-    update_session(store: store, session: key, intent_id: intent_id, auto: auto,
-                   cwd: data.dig("worktree", "code") || intent_dir_abs)
-    purge_done_bridges(session: key, store: store)
+    write(key, data)
+    purge_done_bridges(session: key)
     data
   end
   private_class_method :arm
@@ -776,62 +783,33 @@ module Bridge
   end
 
   # Degrade path for disarm_auto when no intent_id is given (intent 131): the
-  # session's sole per-intent row when there is exactly one, else nil (no
-  # legacy bare-key fallback in the DB world: every register call always
-  # carries an intent_id, so a bare row never exists post-cutover). Keeps the
-  # common single-intent auto path working without every caller having to name
-  # the intent id explicitly.
-  def self.sole_session_row(session, store_home:)
-    conn = Plastic::DB.connect(store_home)
-    return nil if conn.nil?
-    rows = Plastic::DB::Sessions.all(conn).select { |r| r["session_id"].to_s.start_with?("#{session}--") }
-    rows.length == 1 ? rows.first : nil
-  rescue StandardError
-    nil
+  # session's sole per-intent bridge when there is exactly one, else the
+  # legacy single-key file. Keeps the common single-intent auto path working
+  # without every caller having to name the intent id explicitly.
+  def self.sole_bridge_data(session, tmp: tmp_dir)
+    matches = Dir.glob(File.join(tmp, "plastic-#{session}--*.json")).reject { |f| f.end_with?(".tmp") }
+    if matches.length == 1
+      data = (JSON.parse(File.read(matches.first)) rescue nil)
+      return data if data
+    end
+    read(session, tmp: tmp)
   end
 
-  # Disarm. No-op if no session row exists. End-tail order (D6): worktrees are
-  # merged/removed FIRST (the verify step is the caller's, before disarm),
-  # then the delivery lock is cleared, and only then does the session become
-  # GC-eligible. purge_done_bridges enforces the same order defensively by
-  # skipping any row whose intent still holds a lock.
+  # Disarm. No-op if no bridge exists for the session. End-tail order (D6):
+  # worktrees are merged/removed FIRST (the verify step is the caller's,
+  # before disarm), then the delivery lock is cleared, and only then does the
+  # bridge become purge-eligible. purge_done_bridges enforces the same order
+  # defensively by skipping any bridge whose intent still holds a lock.
   #
-  # Takes intent_id (intent 131): a session can own SEVERAL live rows (one per
-  # concurrent intent), so disarm must target ONE of them. When intent_id is
-  # nil, degrades to the session's sole row (see sole_session_row). `store:` is
-  # optional (new kwarg, mirrors arm/derive): pass the intent's store dir when
-  # known (hermetic tests, or a caller that already knows it); otherwise it is
-  # resolved from cwd exactly like discover_bridge does.
-  def self.disarm_auto(session, intent_id: nil, store: nil)
-    store_home = store ? File.dirname(store) : resolve_store_home
-    conn = Plastic::DB.connect(store_home)
-    return nil if conn.nil?
-
-    row = if blank?(intent_id)
-            sole_session_row(session, store_home: store_home)
-          else
-            Plastic::DB::Sessions.active_for(conn, session: session_key(session, intent_id), cwd: nil)
-          end
-    return nil if row.nil?
-    intent_id ||= row["active_intent_id"]
-    return nil if blank?(intent_id)
-
-    intent_dir = Dir.glob(File.join(store_home, "store", "#{intent_id}--*")).first
-    return nil if intent_dir.nil?
-
-    lock_row = Plastic::DB::Sessions.current_lock_row(conn, intent_id)
-    data = Plastic::DB::Sessions.to_bridge_data(row, intent_dir: intent_dir, lock_row: lock_row)
+  # Now takes intent_id (intent 131): a session can own SEVERAL live bridges
+  # (one per concurrent intent), so disarm must target ONE of them. When
+  # intent_id is nil, degrades to the session's sole bridge (see
+  # sole_bridge_data) so the common single-intent path keeps working.
+  def self.disarm_auto(session, intent_id: nil)
+    data = blank?(intent_id) ? sole_bridge_data(session) : read(session, intent_id: intent_id)
+    return nil unless data
+    data["build"] ||= {}
     data["build"]["auto"] = false
-
-    # Rebuild the full worktree block (code/code_branch/store/store_branch) so
-    # Worktree.release can find both worktrees: the sessions row only carries
-    # `cwd` (-> worktree.code), never the store-worktree path, so this recomputes
-    # it the same PURE, deterministic way Worktree.provision derived it
-    # originally (no git calls; repo_for is a plain projects.yml read).
-    intent_slug = Worktree.slug_from_dir(intent_dir)
-    slug = Worktree.slug_for_store(File.join(store_home, "store"), home: Dir.home)
-    data["worktree"] = Worktree.paths(slug: slug, intent_id: intent_id, intent_slug: intent_slug, home: Dir.home)
-                               .merge("provisioned" => !blank?(row["cwd"]))
 
     # Release the worktrees the matching arm provisioned (intent 73c). Non-fatal:
     # a release error must not block disarming. CLEANUP (73c3) refines the
@@ -842,79 +820,71 @@ module Bridge
       $stderr.puts "plastic: worktree release raised, continuing: #{e.message}"
     end
 
-    owner = data.dig("lock", "owner_session")
-    owner = session if blank?(owner)
-    begin
-      Plastic::DB.lease_release(store_home, intent_id, session: owner)
-    rescue StandardError => e
-      $stderr.puts "plastic: lease release failed: #{e.message}"
+    dir = bridge_intent_dir(data)
+    if dir
+      owner = data.dig("lock", "owner_session")
+      owner = session if blank?(owner)
+      Lock.release(dir, session: owner)
     end
     data["lock"] = { "owner_session" => nil, "acquired_at" => nil,
                      "host" => nil, "type" => nil, "delegates" => [] }
 
-    end_session(store: File.join(store_home, "store"), session: session, intent_id: intent_id)
-    purge_done_bridges(session: session, store: File.join(store_home, "store"))
+    write(session, data)
+    purge_done_bridges(session: session)
     data
   end
 
-  # One deterministic, idempotent repair (intent 108, D5; cutover intent 41
-  # ACTION_10): diagnose, rebuild the delivery lease AND the session row from
-  # disk truth for the current session. NEVER touches a fresh foreign lease
-  # (reports "held"). There is no more "corrupt" state to repair (a DB row
-  # cannot be unparseable JSON), and an expired foreign lease is no longer a
-  # "stale, explicit reclaim only" condition to report here either: leases
-  # fail open on expiry by construction, so repair may simply take it over.
-  # Two entry points call this: the plastic-lock CLI and
-  # /plastic-intent-starting (self-healing boarding).
-  def self.repair_lock(session, intent_id:, intent_dir:, store:, name:, now: Time.now)
+  # One deterministic, idempotent repair (intent 108, D5): diagnose, remove
+  # faulty own-side state, rebuild the durable lock AND the bridge cache from
+  # disk truth for the current session. Legacy /tmp-only pid locks are
+  # migrated here: the delivery.lock file is created and the cache rebuilt
+  # without a pid. NEVER touches a fresh foreign lock (reports "held"); a
+  # stale foreign lock reports "stale" and is taken only by the explicit
+  # reclaim verb (Lock.takeover). Two entry points call this: the
+  # plastic-lock CLI and /plastic-intent-starting (self-healing boarding).
+  def self.repair_lock(session, intent_id:, intent_dir:, store:, name:,
+                       now: Time.now, tmp: tmp_dir)
     key = resolve_session(session, intent_id: intent_id, store: store)
     dir = File.expand_path(intent_dir)
-    store_home = File.dirname(store)
     actions = []
 
-    conn = Plastic::DB.connect(store_home)
-    if conn.nil?
-      actions << "DB unavailable; nothing to repair (fail open)"
-      return { "status" => "repaired", "actions" => actions, "lock" => nil, "session" => key }
+    if Lock.corrupt?(dir)
+      File.delete(Lock.path(dir))
+      actions << "removed corrupt delivery.lock"
     end
 
-    row = Plastic::DB::Leases.current(conn, intent_id)
-    if row && !Plastic::DB::Leases.authorized?(conn, intent_id, session: key) &&
-       Plastic::DB::Leases.fresh?(conn, intent_id, now: now)
-      return { "status" => "held", "owner" => row["owner_session"],
-               "actions" => actions, "session" => key }
+    lock = Lock.read(dir)
+    if lock && !Lock.authorized?(lock, key)
+      if Lock.fresh?(dir, now: now)
+        return { "status" => "held", "owner" => lock["owner_session"],
+                 "actions" => actions, "session" => key }
+      end
+      return { "status" => "stale", "owner" => lock["owner_session"],
+               "actions" => actions, "session" => key,
+               "hint" => "run /plastic-lock reclaim to take over with an audit" }
     end
 
-    if row && Plastic::DB::Leases.authorized?(conn, intent_id, session: key)
-      Plastic::DB.lease_renew(store_home, intent_id, session: key, now: now)
-      lease_row = Plastic::DB::Leases.current(conn, intent_id)
-      role = lease_row["owner_session"].to_s == key ? "owner" : "delegate"
-      actions << "lease kept (#{role})"
-    elsif row
-      # Foreign AND expired (the only way past the "held" return above):
-      # leases fail open on expiry, so repair may safely take over rather
-      # than report a stale/explicit-reclaim-only condition (mirrors the old
-      # repair_lock's "migrate legacy state" self-healing intent). A plain
-      # lease_acquire would only report :stale here without acquiring, which
-      # would misattribute the foreign row's data as this session's own.
-      status, lease_row = Plastic::DB.lease_takeover(store_home, intent_id, session: key, now: now)
-      actions << "lease #{status} (expired foreign lease reclaimed)"
+    if lock
+      Lock.heartbeat(dir, session: key, now: now)
+      lock_data = Lock.read(dir)
+      role = lock_data["owner_session"].to_s == key ? "owner" : "delegate"
+      actions << "lock kept (#{role})"
     else
-      status, lease_row = Plastic::DB.lease_acquire(store_home, intent_id, session: key, now: now)
-      actions << "lease #{status}"
+      status, lock_data = Lock.acquire(dir, session: key, now: now)
+      actions << "lock #{status}"
     end
 
-    previous = Plastic::DB::Sessions.active_for(conn, session: session_key(key, intent_id), cwd: nil)
-    auto = !!(previous && previous["auto"].to_i == 1)
-
-    data = derive(key, intent_id: intent_id, intent_dir: dir, store: store, name: name, now: now)
+    previous = read(key, intent_id: intent_id, tmp: tmp)
+    auto = !!(previous && previous.dig("build", "auto"))
+    data = derive(key, intent_id: intent_id, intent_dir: dir, store: store,
+                  name: name, tmp: tmp)
     data["build"]["auto"] = auto
-    data["lock"] = lock_cache_from_lease(store_home, lease_row)
-    update_session(store: store, session: key, intent_id: intent_id, auto: auto, now: now)
+    data["lock"] = lock_cache(lock_data)
+    write(key, data, tmp: tmp)
     actions << "bridge rebuilt from disk (stage #{data['build']['stage']})"
 
     { "status" => "repaired", "actions" => actions,
-      "lock" => lease_row, "session" => key }
+      "lock" => lock_data, "session" => key }
   end
 
   # Decide whether a code edit should be blocked while auto mode is armed.
@@ -951,50 +921,38 @@ module Bridge
       "(blocked edit: #{file_abs})"
   end
 
-  # --- Solo-mode detection (intent 128, cutover intent 41 ACTION_10) ----------
+  # --- Solo-mode detection (intent 128) ---------------------------------------
   #
-  # Positive-only confirmation that exactly one session is delivering, read
-  # from `lock_leases` rows (never the /tmp bridge cache, D2). Used to relax
+  # Positive-only confirmation that exactly one session is delivering, from the
+  # durable delivery.lock files (never the /tmp bridge cache, D2). Used to relax
   # the two ARBITRATION gates (lock_gate_decision, worktree_gate_decision) from
   # a hard deny to an advisory allow when there is nothing to arbitrate.
   #
-  # SOLO iff exactly ONE fresh delivery-grain lease exists across scan_roots
-  # (each a STORE dir; one plastic.db per store, so each is its own
-  # connection), that lease's owner_session equals the resolved session, and
-  # it has no registered delegates. Any ambiguity (more than one fresh lease,
-  # including several under the SAME owner_session, which reads as
-  # parallel-in-play), a foreign owner, a registered delegate, a
-  # blank/unresolvable session, or any error during the scan all return false
-  # (fail-closed direction preserved). A lease row can never be "unreadable"
-  # the way a hand-parsed JSON file could, so the old corrupt-lock ambiguity
-  # case is structurally impossible now.
-  def self.solo_delivery?(scan_roots:, session:, ttl: Plastic::DB::Leases::TTL_SECONDS, now: Time.now)
+  # SOLO iff exactly ONE fresh delivery.lock exists across scan_roots, that
+  # lock's owner_session equals the resolved session, and its delegates array
+  # is empty. Any ambiguity (more than one fresh lock, including several under
+  # the SAME owner_session, which reads as parallel-in-play), a foreign owner,
+  # a non-empty delegates array, a blank/unresolvable session, or any error
+  # during the scan all return false (fail-closed direction preserved).
+  def self.solo_delivery?(scan_roots:, session:, ttl: Lock::TTL_SECONDS, now: Time.now)
     return false if blank?(session)
 
-    store_homes = Array(scan_roots).compact.map { |root| File.dirname(File.expand_path(root.to_s)) }.uniq
-    fresh = store_homes.flat_map do |store_home|
-      # A store whose plastic.db was never provisioned has zero leases by
-      # definition (D3: an operational DB is created lazily on first real
-      # use, ACTION_12). Skip it WITHOUT calling connect: opening a
-      # connection has the side effect of creating the file (Schema.ensure!
-      # runs on every open), so scanning every candidate root unconditionally
-      # would plant an empty plastic.db in a store nobody ever touched --
-      # observed for the real global store when a caller does not override
-      # `home:` (every scan_roots list always includes it).
-      next [] unless File.exist?(Plastic::DB::StoreResolver.db_path_for_store(store_home))
+    lock_dirs = Array(scan_roots).compact.flat_map { |root|
+      Dir.glob(File.join(File.expand_path(root), "*", "delivery.lock"))
+    }.uniq.map { |lock_file| File.dirname(lock_file) }
 
-      conn = Plastic::DB.connect(store_home)
-      next [] if conn.nil?
-      Plastic::DB::Leases.fresh_delivery_rows(conn, now: now).map { |row| [store_home, row] }
-    end
+    fresh_dirs = lock_dirs.select { |dir| Lock.fresh?(dir, ttl: ttl, now: now) }
+    fresh_locks = fresh_dirs.map { |dir| Lock.read(dir) }
 
-    return false unless fresh.length == 1
+    # A fresh-but-unreadable (corrupt) lock is real ambiguity, not an absence:
+    # dropping it via filter_map could leave exactly one READABLE lock and
+    # misconfirm solo while a second, unreadable-but-live lock is in play.
+    # Any unreadable fresh lock keeps this fail-closed (review finding 2).
+    return false if fresh_locks.any?(&:nil?)
+    return false unless fresh_locks.length == 1
 
-    store_home, row = fresh.first
-    return false unless row["owner_session"].to_s == session.to_s
-
-    conn = Plastic::DB.connect(store_home)
-    Plastic::DB::Leases.delegates_for(conn, row["id"]).empty?
+    lock = fresh_locks.first
+    lock["owner_session"].to_s == session.to_s && Array(lock["delegates"]).empty?
   rescue StandardError
     false
   end
@@ -1006,21 +964,17 @@ module Bridge
     nil
   end
 
-  # --- Fail-closed lock gate (intent 96, cutover intent 41 ACTION_10) --------
+  # --- Fail-closed lock gate (intent 96) -------------------------------------
 
   # Returns a reason String to BLOCK, or nil to ALLOW. Decides from the
-  # `lock_leases` delivery-grain row for the TARGET intent (D2): the bridge
-  # argument only supplies a fallback session id, so a missing or disagreeing
-  # bridge never changes the verdict. Every deny names the exact resolving
-  # command (D5). ALLOW: non-intent paths, not-yet-active intents, any session
-  # the lease names as owner or delegate, and (new in this cutover) an EXPIRED
-  # lease -- leases fail open on expiry by construction (Plastic::DB::Leases,
-  # D-notes "fail open, always"): no explicit reclaim is required, unlike the
-  # retired file lock. DB-unavailable is its own fail-open path, distinct from
-  # "no lease at all" (which still denies: dormancy is not the same as never
-  # having armed).
+  # durable delivery.lock in the TARGET intent dir (D2): the bridge argument
+  # only supplies a fallback session id, so a missing or disagreeing bridge
+  # never changes the verdict. Every deny names the exact resolving command
+  # (D5). ALLOW: non-intent paths, not-yet-active intents, and any session the
+  # target's lock names as owner or delegate (even when stale: a stale lock is
+  # still its owner's until an explicit takeover).
   def self.lock_gate_decision(bridge_data, file_path, session: nil,
-                              ttl: Plastic::DB::Leases::TTL_SECONDS, now: Time.now, home: Dir.home)
+                              ttl: Lock::TTL_SECONDS, now: Time.now, home: Dir.home)
     return nil if blank?(file_path)
 
     target_dir = intent_dir_for(file_path)
@@ -1033,61 +987,48 @@ module Bridge
     sess = bridge_data["session"] if blank?(sess) && bridge_data.is_a?(Hash)
 
     # Solo-mode detection (intent 128): scan this intent's store plus the
-    # global store under `home` for fresh delivery leases. Computed once; used
-    # at the arbitration deny below to relax a hard deny to an advisory allow
-    # when solo delivery is positively confirmed.
+    # global store under `home` for fresh delivery locks. Computed once; used
+    # at every arbitration deny below to relax a hard deny to an advisory
+    # allow when solo delivery is positively confirmed.
     scan_roots = [store, File.join(File.expand_path(home), ".plastic", "store")]
     solo = solo_delivery?(scan_roots: scan_roots, session: sess, ttl: ttl, now: now)
 
-    store_home = File.dirname(store)
-    conn = Plastic::DB.connect(store_home)
-    if conn.nil?
-      $stderr.puts "plastic: lock gate DB unavailable for intent #{id}; allowing (advisory)"
-      return nil
+    lock = Lock.read(target_dir)
+    if lock
+      return nil if Lock.authorized?(lock, sess)
+      if Lock.fresh?(target_dir, ttl: ttl, now: now)
+        return solo_allow(id, "fresh delivery lock") if solo
+        return "intent #{id} delivery lock is held by session " \
+               "#{lock['owner_session']}. Back off; if you are the owner's " \
+               "subagent, the owner must run: plastic-lock delegate " \
+               "--intent-dir #{target_dir} --session <your-session-id>. " \
+               "Inspect with /plastic-lock status"
+      end
+      return solo_allow(id, "stale delivery lock") if solo
+      return "intent #{id} has a stale delivery lock (owner " \
+             "#{lock['owner_session']}); run /plastic-lock reclaim to take " \
+             "it over, or /plastic-lock fix"
     end
-
-    row = Plastic::DB::Leases.current(conn, id)
-    if row.nil?
-      return solo_allow(id, "no delivery lock") if solo
-      return "no delivery lock held for intent #{id}; run /plastic-intent-starting " \
-        "to lock and begin"
+    if Lock.corrupt?(target_dir)
+      return solo_allow(id, "unreadable delivery.lock") if solo
+      return "delivery.lock for intent #{id} is unreadable; run /plastic-lock fix"
     end
-
-    return nil if Plastic::DB::Leases.authorized?(conn, id, session: sess)
-
-    unless Plastic::DB::Leases.fresh?(conn, id, now: now)
-      $stderr.puts "plastic: lock gate advisory - intent #{id}'s delivery lease is " \
-        "expired (owner #{row['owner_session']}); allowing (leases fail open on expiry)"
-      return nil
-    end
-
-    return solo_allow(id, "fresh delivery lock") if solo
-    "intent #{id} delivery lock is held by session " \
-      "#{row['owner_session']}. Back off; if you are the owner's " \
-      "subagent, the owner must run: plastic-lock delegate " \
-      "--intent-dir #{target_dir} --session <your-session-id>. " \
-      "Inspect with /plastic-lock status"
+    return solo_allow(id, "no delivery lock") if solo
+    "no delivery lock held for intent #{id}; run /plastic-intent-starting " \
+      "to lock and begin"
   end
 
-  # A session holds an intent's lock iff the `lock_leases` delivery-grain row
-  # names it as owner or delegate (D1/D4). The bridge is only a cache: the
-  # lease decides, so a wiped /tmp or a clobbered bridge never strands the
-  # owner. No pid is consulted anywhere.
+  # A session holds an intent's lock iff the durable delivery.lock in the
+  # intent dir names it as owner or delegate (D1/D4). The bridge is only a
+  # cache: the lock FILE decides, so a wiped /tmp or a clobbered bridge never
+  # strands the owner. No pid is consulted anywhere.
   def self.holds_live_lock?(bridge_data, session: nil)
     sess = session
     sess = bridge_data["session"] if blank?(sess) && bridge_data.is_a?(Hash)
     return false if blank?(sess)
     dir = bridge_intent_dir(bridge_data)
     return false unless dir
-    id = intent_id_from_dir(dir)
-    return false unless id
-    store = bridge_data.is_a?(Hash) ? bridge_data.dig("intent", "store") : nil
-    return false if blank?(store)
-    conn = Plastic::DB.connect(File.dirname(store))
-    return false if conn.nil?
-    Plastic::DB::Leases.authorized?(conn, id, session: sess)
-  rescue StandardError
-    false
+    Lock.holds?(dir, session: sess)
   end
 
   # "<id>" from a ".../store/<id>--<slug>" dir, else nil.

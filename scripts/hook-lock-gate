@@ -3,75 +3,61 @@
 # frozen_string_literal: true
 #
 # Usage: hook-lock-gate <file_path> [session_id]
-# Fail-CLOSED PreToolUse gate (intent 96; cutover intent 41 ACTION_10). Blocks a
-# mutating write to an active intent's lifecycle dir when THIS session holds no
-# live delivery lease. Project code is NOT gated here (D2). Emits the PreToolUse
-# JSON deny contract at exit 0; reserves non-zero exit for hook-internal errors
-# only. Matcher Write|Edit|NotebookEdit, so reads never reach here.
-#
-# Lock state lives ONLY in `lock_leases` (AC7): no delivery.lock/.claims/ files
-# are written anywhere in this hook.
+# Fail-CLOSED PreToolUse gate (intent 96). Blocks a mutating write to an active
+# intent's lifecycle dir when THIS session holds no live lock. Project code is NOT
+# gated here (D2). Emits the PreToolUse JSON deny contract at exit 0; reserves
+# non-zero exit for hook-internal errors only. Matcher Write|Edit|NotebookEdit, so
+# reads never reach here.
 require "json"
 require_relative "lib/bridge"
-require_relative "lib/db"
+require_relative "lib/lock"
 
 begin
   file_path = ARGV[0]
   exit 0 unless file_path && !file_path.empty?
   session = (ARGV[1] unless ARGV[1].to_s.empty?) || ENV["CLAUDE_CODE_SESSION_ID"]
 
-  bridge_data = Bridge.discover_bridge(session: session, cwd: Dir.pwd)   # nil = no session row
+  bridge_data = Bridge.discover_bridge(session: session, cwd: Dir.pwd)   # nil = no bridge cache
   reason = Bridge.lock_gate_decision(bridge_data, file_path, session: session)
   unless reason
-    # Allow path: coarse renew of the delivery lease for the session that
-    # holds this target's lock (owner or delegate). Best-effort, never blocks.
+    # Allow path: refresh the lease for the session that holds this target's
+    # lock (owner or delegate). Best-effort, never blocks.
     begin
       dir = Bridge.intent_dir_for(file_path)
-      if dir && !session.to_s.empty?
-        intent_id = Bridge.intent_id_from_dir(dir)
-        store_home = File.dirname(File.dirname(dir))
-        Plastic::DB.lease_renew(store_home, intent_id, session: session) if intent_id
-      end
+      Lock.heartbeat(dir, session: session) if dir && !session.to_s.empty?
     rescue StandardError
       # ignore
     end
 
-    # Second, independent gate (intent 111 D7): the artifact-grain claim lease.
+    # Second, independent gate (intent 111 D7): the artifact-grain claim.
     # Composes UNDER the delivery lock above; only reached once the delivery
-    # lock already allows. Dormant (nil) unless a claim row exists for this
+    # lock already allows. Dormant (nil) unless a claim file exists for this
     # artifact, so AC7 (existing single-owner flows) is unaffected.
     begin
       dir = Bridge.intent_dir_for(file_path)
-      if dir
-        intent_id = Bridge.intent_id_from_dir(dir)
-        artifact = File.basename(file_path)
-        store_home = File.dirname(File.dirname(dir))
-        conn = intent_id ? Plastic::DB.connect(store_home) : nil
-
-        if conn
-          claim_reason = Plastic::DB::Leases.claim_gate_reason(conn, intent_id, artifact, session: session)
-          if claim_reason
-            print JSON.generate(
-              "hookSpecificOutput" => {
-                "hookEventName" => "PreToolUse",
-                "permissionDecision" => "deny",
-                "permissionDecisionReason" => claim_reason,
-              }
-            )
-            exit 0
-          end
-
-          # Fail-open surface (AC3): allow, but make the yielded/expired claim visible.
-          held_row = Plastic::DB::Leases.current(conn, intent_id, artifact: artifact)
-          if held_row && !Plastic::DB::Leases.fresh?(conn, intent_id, artifact: artifact) &&
-             held_row["owner_session"].to_s != session.to_s
-            $stderr.puts "plastic claim gate: unresolvable claim on #{artifact} in " \
-                         "intent #{intent_id} yielded; write proceeds (see /plastic-lock status)"
-          end
-
-          # Renew the session's own claim on the allow path (best-effort).
-          Plastic::DB.lease_renew(store_home, intent_id, artifact: artifact, session: session) rescue nil
+      artifact = File.basename(file_path) if dir
+      if dir && artifact
+        claim_reason = Claim.claim_gate_reason(dir, artifact, session: session)
+        if claim_reason
+          print JSON.generate(
+            "hookSpecificOutput" => {
+              "hookEventName" => "PreToolUse",
+              "permissionDecision" => "deny",
+              "permissionDecisionReason" => claim_reason,
+            }
+          )
+          exit 0
         end
+
+        # Fail-open surface (AC3): allow, but make the yielded/stale claim visible.
+        if Claim.fail_open?(dir, artifact)
+          $stderr.puts "plastic claim gate: unresolvable claim on #{artifact} in " \
+                       "intent #{Bridge.intent_id_from_dir(dir)} yielded; write " \
+                       "proceeds (see /plastic-lock status)"
+        end
+
+        # Heartbeat the session's own claim on the allow path (best-effort).
+        Claim.heartbeat(dir, artifact, session: session) rescue nil
       end
     rescue StandardError
       # ignore: a claim-gate bug must never block a write (fail open)

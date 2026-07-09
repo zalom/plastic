@@ -5,13 +5,13 @@ require "json"
 require "stringio"
 require "open3"
 require_relative "../scripts/lib/bridge"
-require_relative "../scripts/lib/db"
+require_relative "../scripts/lib/lock"
 require_relative "../scripts/lib/worktree"
 
-# End-to-end test (intent 111; cutover intent 41 ACTION_10): drives the real
-# scripts/hook-lock-gate to prove the SECOND, independent claim gate composes
-# under the existing delivery-lease gate. The writing session already holds
-# the delivery lease in every case here, so only the claim gate is exercised.
+# End-to-end test (intent 111): drives the real scripts/hook-lock-gate to prove
+# the SECOND, independent claim gate composes under the existing delivery-lock
+# gate. The writing session already holds the delivery lock in every case here
+# (Lock.acquire, no bridge needed), so only the claim gate is exercised.
 class ClaimGateHookTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/hook-lock-gate", __dir__)
 
@@ -26,7 +26,10 @@ class ClaimGateHookTest < Minitest::Test
     File.write(File.join(@root, "INDEX.md"),
                "## Active\n- [96 — demo](96--demo/96--demo.md)\n\n## Future\n")
 
+    @bridge_tmp = Dir.mktmpdir("claim-gate-hook-tmp")
     @saved_session = ENV["CLAUDE_CODE_SESSION_ID"]
+    @saved_plastic_tmp = ENV["PLASTIC_TMP"]
+    ENV["PLASTIC_TMP"] = @bridge_tmp
     ENV.delete("CLAUDE_CODE_SESSION_ID")
 
     @real_provision = Worktree.method(:provision)
@@ -35,27 +38,25 @@ class ClaimGateHookTest < Minitest::Test
 
   def teardown
     FileUtils.rm_rf(@root)
+    FileUtils.rm_rf(@bridge_tmp)
     @saved_session.nil? ? ENV.delete("CLAUDE_CODE_SESSION_ID") : ENV["CLAUDE_CODE_SESSION_ID"] = @saved_session
+    @saved_plastic_tmp.nil? ? ENV.delete("PLASTIC_TMP") : ENV["PLASTIC_TMP"] = @saved_plastic_tmp
     Worktree.define_singleton_method(:provision, @real_provision) if @real_provision
   end
 
-  def conn
-    Plastic::DB.connect(@root)
-  end
-
-  def acquire_delivery(session)
-    Plastic::DB::Leases.acquire(conn, "96", session: session, host: "h")
-  end
-
-  def acquire_claim(artifact, session:, now: Time.now)
-    Plastic::DB::Leases.acquire(conn, "96", artifact: artifact, session: session, host: "h", now: now)
+  def silence_stderr
+    original = $stderr
+    $stderr = StringIO.new
+    yield
+  ensure
+    $stderr = original
   end
 
   # Captures stdout and stderr SEPARATELY (unlike lock_gate_hook_test.rb, which
   # merges them): this test needs stderr alone to assert the fail-open
   # advisory without it polluting the deny-JSON check on stdout.
   def run_hook(file_path, session:)
-    env = { "PLASTIC_STORE_HOME" => @root, "CLAUDE_CODE_SESSION_ID" => session }
+    env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_CODE_SESSION_ID" => session }
     Open3.capture3(env, "ruby", SCRIPT, file_path)
   end
 
@@ -66,19 +67,23 @@ class ClaimGateHookTest < Minitest::Test
     false
   end
 
-  # (AC7 dormancy) delivery lease held, no claim at all -> ALLOW.
+  def hold_delivery_lock(session)
+    silence_stderr { Lock.acquire(@intent_dir, session: session) }
+  end
+
+  # (AC7 dormancy) delivery lock held, no claim file at all -> ALLOW.
   def test_allows_when_no_claim_present
-    acquire_delivery("sess-1")
+    hold_delivery_lock("sess-1")
     out, _err, status = run_hook(@intent_file, session: "sess-1")
     assert_equal 0, status.exitstatus
     assert_empty out.strip, "no claim on the artifact: gate must be dormant: #{out.inspect}"
   end
 
-  # (AC1/AC2) delivery lease held by sess-1, but plan.md is FRESHLY claimed by
+  # (AC1/AC2) delivery lock held by sess-1, but plan.md is FRESHLY claimed by
   # sess-2 -> DENY naming sess-2 and the artifact.
   def test_denies_write_to_foreign_fresh_claim
-    acquire_delivery("sess-1")
-    acquire_claim("plan.md", session: "sess-2")
+    hold_delivery_lock("sess-1")
+    Claim.acquire_claim(@intent_dir, "plan.md", session: "sess-2")
     out, _err, status = run_hook(@intent_file, session: "sess-1")
     assert_equal 0, status.exitstatus, "gate must never exit non-zero to block"
     assert denied?(out), "foreign fresh claim must deny: #{out.inspect}"
@@ -86,23 +91,25 @@ class ClaimGateHookTest < Minitest::Test
     assert_includes out, "plan.md"
   end
 
-  # sess-1 holds BOTH the delivery lease and the plan.md claim -> ALLOW.
+  # sess-1 holds BOTH the delivery lock and the plan.md claim -> ALLOW.
   def test_allows_when_session_holds_claim
-    acquire_delivery("sess-1")
-    acquire_claim("plan.md", session: "sess-1")
+    hold_delivery_lock("sess-1")
+    Claim.acquire_claim(@intent_dir, "plan.md", session: "sess-1")
     out, _err, status = run_hook(@intent_file, session: "sess-1")
     assert_equal 0, status.exitstatus
     assert_empty out.strip, "session holds its own claim: must ALLOW: #{out.inspect}"
   end
 
-  # (AC3) sess-2's claim on plan.md is EXPIRED -> fail open: ALLOW, and the
-  # yielded/expired condition is surfaced on stderr.
-  def test_fail_open_allows_expired_claim
-    acquire_delivery("sess-1")
-    acquire_claim("plan.md", session: "sess-2", now: Time.now - Plastic::DB::Leases::TTL_SECONDS - 100)
+  # (AC3) sess-2's claim on plan.md is STALE -> fail open: ALLOW, and the
+  # yielded/stale condition is surfaced on stderr.
+  def test_fail_open_allows_stale_claim
+    hold_delivery_lock("sess-1")
+    Claim.acquire_claim(@intent_dir, "plan.md", session: "sess-2")
+    old = Time.now - (Lock::TTL_SECONDS + 100)
+    FileUtils.touch(File.join(@intent_dir, ".claims", "plan.md.claim"), mtime: old)
     out, err, status = run_hook(@intent_file, session: "sess-1")
     assert_equal 0, status.exitstatus
-    refute denied?(out), "an expired claim must fail OPEN, not deny: #{out.inspect}"
+    refute denied?(out), "a stale claim must fail OPEN, not deny: #{out.inspect}"
     refute_empty err.strip, "the fail-open condition must be surfaced on stderr"
   end
 end

@@ -1053,21 +1053,11 @@ class DoctorIntegrationTest < Minitest::Test
     FileUtils.rm_rf(DOCTOR_TEST_CLAUDE)
     FileUtils.mkdir_p(DOCTOR_TEST_HOME)
     FileUtils.mkdir_p(DOCTOR_TEST_CLAUDE)
-
-    # run_checks's database category reports leftover /tmp/plastic-*.json
-    # bridge files (intent 41 ACTION_12). Isolate PLASTIC_TMP to an empty
-    # tmpdir so this integration suite never depends on whatever real /tmp
-    # happens to hold on the machine running the tests.
-    @saved_plastic_tmp = ENV["PLASTIC_TMP"]
-    @doctor_tmp = Dir.mktmpdir("doctor-integration-tmp")
-    ENV["PLASTIC_TMP"] = @doctor_tmp
   end
 
   def teardown
     FileUtils.rm_rf(DOCTOR_TEST_HOME)
     FileUtils.rm_rf(DOCTOR_TEST_CLAUDE)
-    FileUtils.rm_rf(@doctor_tmp) if @doctor_tmp
-    @saved_plastic_tmp.nil? ? ENV.delete("PLASTIC_TMP") : ENV["PLASTIC_TMP"] = @saved_plastic_tmp
   end
 
   def build_healthy_installation

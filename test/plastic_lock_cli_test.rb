@@ -4,18 +4,17 @@ require "fileutils"
 require "json"
 require "open3"
 require "rbconfig"
-require_relative "../scripts/lib/db"
+require_relative "../scripts/lib/lock"
 require_relative "../scripts/lib/bridge"
 
-# The one deterministic repair (intent 108, D5) and its CLI entry point,
-# cut over to `lock_leases` in intent 41 ACTION_10. Hermetic: store in
-# mktmpdir; the CLI child process needs no ambient session id (it is passed
-# explicitly via --session), so no tmp/store env injection is needed at all
-# (store resolution is derived from --intent-dir, which is always explicit).
+# The one deterministic repair (intent 108, D5) and its CLI entry point.
+# Hermetic: store in mktmpdir; bridges under an injected tmp (kwarg for the
+# in-process library calls, PLASTIC_TMP for the CLI child process).
 class PlasticLockCliTest < Minitest::Test
   CLI = File.expand_path("../scripts/plastic-lock", __dir__)
 
   def setup
+    @tmp = Dir.mktmpdir("plock-tmp")
     @home = Dir.mktmpdir("plock-home")
     @store = File.join(@home, ".plastic", "projects", "demo", "store")
     @intent_dir = File.join(@store, "96--demo")
@@ -26,32 +25,17 @@ class PlasticLockCliTest < Minitest::Test
   end
 
   def teardown
+    FileUtils.rm_rf(@tmp)
     FileUtils.rm_rf(@home)
-  end
-
-  def store_home
-    File.dirname(@store)
-  end
-
-  def conn
-    Plastic::DB.connect(store_home)
-  end
-
-  def lease_current
-    Plastic::DB::Leases.current(conn, "96")
-  end
-
-  def acquire(session:, now: Time.now)
-    Plastic::DB::Leases.acquire(conn, "96", session: session, host: "h", now: now)
   end
 
   def repair(session = "sess-1")
     Bridge.repair_lock(session, intent_id: "96", intent_dir: @intent_dir,
-                       store: @store, name: "demo")
+                       store: @store, name: "demo", tmp: @tmp)
   end
 
   def cli(*args, session: "sess-1")
-    Open3.capture3({ "CLAUDE_CODE_SESSION_ID" => nil },
+    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil },
                    RbConfig.ruby, CLI, *args,
                    "--intent-dir", @intent_dir, "--session", session)
   end
@@ -63,110 +47,128 @@ class PlasticLockCliTest < Minitest::Test
       report = repair
       assert_equal "repaired", report["status"]
     end
-    lease = lease_current
-    assert_equal "sess-1", lease["owner_session"]
-    row = Plastic::DB::Sessions.active_for(conn, session: "sess-1--96", cwd: nil)
-    refute_nil row
-    assert_equal "96", row["active_intent_id"]
-    refute lease.key?("pid")
+    lock = Lock.read(@intent_dir)
+    assert_equal "sess-1", lock["owner_session"]
+    bridge = Bridge.read("sess-1", intent_id: "96", tmp: @tmp)
+    refute_nil bridge
+    assert_equal "96", bridge.dig("intent", "id")
+    assert_equal "sess-1", bridge.dig("lock", "owner_session")
+    refute bridge["lock"].key?("pid")
   end
 
   def test_repair_backs_off_from_a_fresh_foreign_lock
-    acquire(session: "other")
+    Lock.acquire(@intent_dir, session: "other")
     report = repair
     assert_equal "held", report["status"]
-    assert_equal "other", lease_current["owner_session"]
+    assert_equal "other", Lock.read(@intent_dir)["owner_session"]
   end
 
-  def test_repair_takes_over_an_expired_foreign_lease
-    # Leases fail open on expiry: repair may safely reclaim an EXPIRED foreign
-    # lease (no more "stale, explicit reclaim only" state to report here).
-    acquire(session: "other", now: Time.now - Plastic::DB::Leases::TTL_SECONDS - 100)
+  def test_repair_reports_stale_foreign_and_points_at_reclaim
+    Lock.acquire(@intent_dir, session: "other")
+    FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
+    report = repair
+    assert_equal "stale", report["status"]
+    assert_includes report["hint"], "reclaim"
+  end
+
+  def test_repair_removes_a_corrupt_lock_and_rebuilds
+    File.write(Lock.path(@intent_dir), "{ nope")
     report = repair
     assert_equal "repaired", report["status"]
-    assert_includes report["actions"].join(" "), "expired foreign lease reclaimed"
-    assert_equal "sess-1", lease_current["owner_session"]
+    assert_equal "sess-1", Lock.read(@intent_dir)["owner_session"]
+  end
+
+  def test_repair_migrates_legacy_tmp_only_pid_lock_state
+    # Legacy world: a /tmp bridge with a pid-stamped lock block and NO
+    # delivery.lock file (pre-108). Repair builds the durable file from disk
+    # truth and rewrites the cache without a pid.
+    legacy = {
+      "session" => "sess-1",
+      "intent" => { "id" => "96", "dir" => "96--demo", "store" => @store,
+                    "name" => "demo" },
+      "build" => { "stage" => "why", "auto" => false },
+      "lock" => { "owner_session" => "sess-1", "pid" => 12345,
+                  "acquired_at" => "2026-07-01T00:00:00Z", "host" => "old" },
+    }
+    Bridge.write("sess-1", legacy, tmp: @tmp)
+    report = repair
+    assert_equal "repaired", report["status"]
+    assert File.exist?(Lock.path(@intent_dir))
+    bridge = Bridge.read("sess-1", intent_id: "96", tmp: @tmp)
+    refute bridge["lock"].key?("pid"), "migration strips the legacy pid"
   end
 
   def test_repair_preserves_the_armed_auto_flag
-    Plastic::DB::Sessions.register(conn, session_id: "sess-1--96", host: "h", pid: 1,
-                                    cwd: @intent_dir, active_intent_id: "96", auto: true, now: Time.now)
+    legacy = {
+      "session" => "sess-1",
+      "intent" => { "id" => "96", "dir" => "96--demo", "store" => @store,
+                    "name" => "demo" },
+      "build" => { "stage" => "why", "auto" => true },
+    }
+    Bridge.write("sess-1", legacy, tmp: @tmp)
     repair
-    row = Plastic::DB::Sessions.active_for(conn, session: "sess-1--96", cwd: nil)
-    assert_equal 1, row["auto"]
+    assert_equal true, Bridge.read("sess-1", intent_id: "96", tmp: @tmp).dig("build", "auto")
   end
 
   # --- CLI verbs ---------------------------------------------------------------
 
-  def test_cli_status_reports_lease
-    acquire(session: "sess-1")
+  def test_cli_status_reports_lock_and_bridge
+    Lock.acquire(@intent_dir, session: "sess-1")
     out, _err, st = cli("status")
     assert st.success?
     assert_includes out, "sess-1"
+    assert_includes out, "delivery"
   end
 
   def test_cli_fix_is_idempotent
     out1, _e1, st1 = cli("fix")
     out2, _e2, st2 = cli("fix")
     assert st1.success? && st2.success?
-    refute_nil lease_current
+    assert File.exist?(Lock.path(@intent_dir))
     assert_includes out1, "repaired"
     assert_includes out2, "repaired"
   end
 
   def test_cli_fix_exits_nonzero_when_held_elsewhere
-    acquire(session: "other")
+    Lock.acquire(@intent_dir, session: "other")
     _out, err, st = cli("fix")
     refute st.success?
     assert_includes err, "held"
   end
 
-  def test_cli_release_clears_the_lease
-    acquire(session: "sess-1")
+  def test_cli_release_clears_the_lock
+    Lock.acquire(@intent_dir, session: "sess-1")
     _out, _err, st = cli("release")
     assert st.success?
-    assert_nil lease_current
+    refute File.exist?(Lock.path(@intent_dir))
   end
 
-  def test_cli_reclaim_takes_over_an_expired_lease_with_audit
-    # Seed a minimal intents mirror row so the savepoint_events audit stamp
-    # (the new home for the old savepoint.md takeover line) actually persists.
-    now = Time.now.utc.iso8601
-    conn.execute("INSERT INTO intents (intent_id, created_at, updated_at) VALUES (?, ?, ?)",
-                 ["96", now, now])
-    acquire(session: "other", now: Time.now - Plastic::DB::Leases::TTL_SECONDS - 100)
+  def test_cli_reclaim_takes_over_a_stale_lock_with_audit
+    Lock.acquire(@intent_dir, session: "other")
+    FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
     _out, _err, st = cli("reclaim")
     assert st.success?
-    assert_equal "sess-1", lease_current["owner_session"]
-
-    events = conn.execute(
-      "SELECT event_type, actor_session, payload FROM savepoint_events " \
-      "WHERE event_type = 'lock/takeover'"
-    )
-    assert_equal 1, events.length
-    event_type, actor_session, payload = events.first
-    assert_equal "lock/takeover", event_type
-    assert_equal "sess-1", actor_session
-    assert_equal "other", JSON.parse(payload)["from"]
+    assert_equal "sess-1", Lock.read(@intent_dir)["owner_session"]
+    assert_includes File.read(File.join(@intent_dir, "savepoint.md")), "takeover"
   end
 
   def test_cli_reclaim_refuses_a_fresh_foreign_lock
-    acquire(session: "other")
+    Lock.acquire(@intent_dir, session: "other")
     _out, err, st = cli("reclaim")
     refute st.success?
     assert_includes err, "back off"
-    assert_equal "other", lease_current["owner_session"]
+    assert_equal "other", Lock.read(@intent_dir)["owner_session"]
   end
 
   def test_cli_delegate_registers_a_subagent_session
-    acquire(session: "sess-1")
+    Lock.acquire(@intent_dir, session: "sess-1")
     _out, _err, st = cli("delegate", "--delegate", "sub-1")
     assert st.success?
-    assert Plastic::DB::Leases.authorized?(conn, "96", session: "sub-1")
+    assert_includes Lock.read(@intent_dir)["delegates"], "sub-1"
   end
 
   def test_cli_delegate_refused_for_non_owner
-    acquire(session: "other")
+    Lock.acquire(@intent_dir, session: "other")
     _out, err, st = cli("delegate", "--delegate", "sub-1")
     refute st.success?
     assert_includes err, "owner"

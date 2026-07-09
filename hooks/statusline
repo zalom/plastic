@@ -84,32 +84,62 @@ else
 fi
 INDEX_DIR=$(dirname "$INDEX")
 
-# --- Current-session work-unit: the live DB session row wins over savepoint
-# recency (intent 41 ACTION_12 cutover: the retired /tmp bridge scan is
-# replaced by one `plastic-db bridge` call against the session/lock_leases
-# tables). The statusline receives the real session_id on stdin; --store pins
-# the lookup to the scope already resolved above (INDEX_DIR is the store_home:
-# plastic_home for global, plastic_home/projects/<slug> for a project), so the
-# same session's rows in a DIFFERENT store never leak into this line. --cwd
-# forwards REAL_CWD explicitly, since a bare ruby invocation's own process cwd
-# is not guaranteed to match the reported current_dir (this is a session with
-# SEVERAL concurrently-armed intents, intent 131, tiering on that cwd). One
-# Ruby process, tolerate any failure or absence exactly like a missing bridge
-# file did before (empty WORK falls through to the savepoint-recency scan
-# below). No jq; the CLI's pretty-printed JSON is scraped with grep/sed same
-# as the retired bridge file was.
+# --- Current-session work-unit: the live bridge wins over savepoint recency ---
+# The statusline receives the real session_id on stdin. A session can now own
+# SEVERAL per-intent bridges at once (intent 131, plastic-{session_id}--{id}.json),
+# one per concurrent delivery, so the statusline must pick which of them to show:
+# prefer a candidate whose worktree.code (or intent dir) prefixes REAL_CWD, else
+# the newest by mtime (ls -t is 3.2-safe); tolerate a legacy single-key
+# plastic-{session_id}.json when no per-intent file exists. This beats the shared,
+# savepoint-recency heuristic so parallel sessions on one store no longer
+# overwrite each other's line. grep/sed/ls only - no jq, no ruby.
 WORK=""
 SID=$(json_str "session_id")
 if [ -n "$SID" ]; then
-  PDB="$HOME/.plastic/scripts/plastic-db"
-  BRIDGE_JSON=""
-  [ -x "$PDB" ] && BRIDGE_JSON=$(ruby "$PDB" bridge --session "$SID" --cwd "$REAL_CWD" --store "$INDEX_DIR" 2>/dev/null)
+  BR_TMP="${PLASTIC_TMP:-/tmp}"
+  BRIDGE=""
+  CANDIDATES=$(ls -1t "${BR_TMP}"/plastic-"${SID}"--*.json 2>/dev/null)
+  if [ -n "$CANDIDATES" ]; then
+    while IFS= read -r cand; do
+      [ -z "$cand" ] && continue
+      WT_BLOCK=$(sed -n '/"worktree"[[:space:]]*:[[:space:]]*{/,/}/p' "$cand" 2>/dev/null)
+      WC=$(printf '%s\n' "$WT_BLOCK" | grep -o '"code"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 \
+        | sed 's/.*"code"[[:space:]]*:[[:space:]]*"//;s/"$//')
+      IN_BLOCK=$(sed -n '/"intent"[[:space:]]*:[[:space:]]*{/,/}/p' "$cand" 2>/dev/null)
+      ISTORE=$(printf '%s\n' "$IN_BLOCK" | grep -o '"store"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 \
+        | sed 's/.*"store"[[:space:]]*:[[:space:]]*"//;s/"$//')
+      IDIR=$(printf '%s\n' "$IN_BLOCK" | grep -o '"dir"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 \
+        | sed 's/.*"dir"[[:space:]]*:[[:space:]]*"//;s/"$//')
+      MATCH=""
+      if [ -n "$WC" ] && [ -n "$REAL_CWD" ]; then
+        case "$REAL_CWD" in "$WC"|"$WC"/*) MATCH=1 ;; esac
+      fi
+      if [ -z "$MATCH" ] && [ -n "$ISTORE" ] && [ -n "$IDIR" ] && [ -n "$REAL_CWD" ]; then
+        IPATH="$ISTORE/$IDIR"
+        case "$REAL_CWD" in "$IPATH"|"$IPATH"/*) MATCH=1 ;; esac
+      fi
+      if [ -n "$MATCH" ]; then
+        BRIDGE="$cand"
+        break
+      fi
+    done <<BRIDGE_CAND_EOF
+$CANDIDATES
+BRIDGE_CAND_EOF
+    # No cwd/worktree signal on any candidate: fail open to the newest (ls -t
+    # already sorted CANDIDATES newest-first).
+    [ -z "$BRIDGE" ] && BRIDGE=$(printf '%s\n' "$CANDIDATES" | head -1)
+  else
+    # Legacy tolerance: no per-intent bridge for this session, but an old
+    # single-key file may still exist.
+    LEGACY="${BR_TMP}/plastic-${SID}.json"
+    [ -f "$LEGACY" ] && BRIDGE="$LEGACY"
+  fi
 
-  if [ -n "$BRIDGE_JSON" ]; then
-    # Scope extraction to the "intent" object so a sibling top-level "id"/"name"
-    # can never win (the intent object holds only string fields, so the first
-    # "}" closes it).
-    INTENT_BLOCK=$(printf '%s\n' "$BRIDGE_JSON" | sed -n '/"intent"[[:space:]]*:[[:space:]]*{/,/}/p')
+  if [ -n "$BRIDGE" ] && [ -f "$BRIDGE" ]; then
+    # Bridge JSON is pretty-printed (one field per line). Scope extraction to the
+    # "intent" object so a sibling top-level "id"/"name" can never win (the intent
+    # object holds only string fields, so the first "}" closes it). grep/sed only.
+    INTENT_BLOCK=$(sed -n '/"intent"[[:space:]]*:[[:space:]]*{/,/}/p' "$BRIDGE" 2>/dev/null)
     B_ID=$(printf '%s\n' "$INTENT_BLOCK" | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 \
       | sed 's/.*"id"[[:space:]]*:[[:space:]]*"//;s/"$//')
     B_NAME=$(printf '%s\n' "$INTENT_BLOCK" | grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 \

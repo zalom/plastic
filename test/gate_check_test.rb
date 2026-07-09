@@ -2,28 +2,31 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require_relative "../scripts/lib/bridge"
-require_relative "../scripts/lib/db"
 
 # Regression for intent 52: the savepoint ledger must be written even when no
-# bridge exists and no session id present. The savepoint is derived from the
-# file path, decoupled from bridge resolution. Cutover intent 41 ACTION_11:
-# the ledger lands in `savepoint_events`, not savepoint.md.
+# bridge file exists and no session id present. The savepoint is derived
+# from the file path, decoupled from bridge resolution.
 class GateCheckTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/hook-gate-check", __dir__)
 
   def setup
     @root = Dir.mktmpdir("gate-check")
-    @store = File.join(@root, "store")
-    @intent_dir = File.join(@store, "52--x")
+    @intent_dir = File.join(@root, "store", "52--x")
     FileUtils.mkdir_p(@intent_dir)
+    # Isolated bridge tmp dir so the /tmp scan never sees real bridges.
+    @bridge_tmp = Dir.mktmpdir("gate-check-tmp")
     @saved_session = ENV["CLAUDE_CODE_SESSION_ID"]
+    @saved_plastic_tmp = ENV["PLASTIC_TMP"]
     # Clear so a real ambient session id cannot leak into a "no id" case.
     ENV.delete("CLAUDE_CODE_SESSION_ID")
+    ENV["PLASTIC_TMP"] = @bridge_tmp
   end
 
   def teardown
     FileUtils.rm_rf(@root)
+    FileUtils.rm_rf(@bridge_tmp)
     restore_env("CLAUDE_CODE_SESSION_ID", @saved_session)
+    restore_env("PLASTIC_TMP", @saved_plastic_tmp)
   end
 
   def restore_env(key, saved)
@@ -31,17 +34,10 @@ class GateCheckTest < Minitest::Test
   end
 
   def run_hook(file_path, session: nil)
-    # PLASTIC_STORE_HOME isolates the hook's discover_bridge call (used only
-    # for stage-transition tracking, exercised elsewhere): without it, cwd
-    # resolution would fall through to the REAL ~/.plastic.
-    env = { "CLAUDE_CODE_SESSION_ID" => session, "PLASTIC_STORE_HOME" => @root }
+    # PLASTIC_TMP (set in setup) makes bridge discovery hermetic regardless of cwd.
+    env = { "CLAUDE_CODE_SESSION_ID" => session, "PLASTIC_TMP" => @bridge_tmp }
     out = IO.popen(env, ["ruby", SCRIPT, file_path], &:read)
     [out, $?]
-  end
-
-  def pairs
-    conn = Plastic::DB.connect(@root)
-    Plastic::DB::SavepointEvents.events_for(conn, "52").map { |e| [e["stage"], e["event_type"]] }
   end
 
   def test_savepoint_written_without_bridge_or_session
@@ -51,20 +47,25 @@ class GateCheckTest < Minitest::Test
     spec = File.join(@intent_dir, "spec.md")
     File.write(spec, "spec\n")
 
+    ENV.delete("CLAUDE_CODE_SESSION_ID")
     out, status = run_hook(spec)
 
     assert_equal 0, status.exitstatus, "hook should exit 0, got: #{out}"
-    assert_includes pairs, ["Why", "spec.md created"]
+    ledger = File.join(@intent_dir, "savepoint.md")
+    assert File.exist?(ledger), "savepoint.md must be created"
+    assert_includes File.read(ledger), "spec.md created"
   end
 
   def test_savepoint_idempotent_across_runs
     File.write(File.join(@intent_dir, "52--x.md"), "## Intent\nx\n")
     spec = File.join(@intent_dir, "spec.md")
     File.write(spec, "spec\n")
+    ENV.delete("CLAUDE_CODE_SESSION_ID")
 
     run_hook(spec)
     run_hook(spec)
-    assert_equal 1, pairs.count { |p| p == ["Why", "spec.md created"] }
+    ledger = File.read(File.join(@intent_dir, "savepoint.md"))
+    assert_equal 1, ledger.lines.count { |l| l.include?("spec.md created") }
   end
 
   # --- Intent 81: checklist.md landing emits the Exec-started companion -------
@@ -73,56 +74,25 @@ class GateCheckTest < Minitest::Test
     File.write(File.join(@intent_dir, "52--x.md"), "## Intent\nx\n")
     checklist = File.join(@intent_dir, "checklist.md")
     File.write(checklist, "# Checklist\nreal\n")
+    ENV.delete("CLAUDE_CODE_SESSION_ID")
 
     out, status = run_hook(checklist)
     assert_equal 0, status.exitstatus, "hook should exit 0, got: #{out}"
 
-    assert_includes pairs, ["How", "checklist.md created"]
-    assert_includes pairs, ["Exec", "started"], "checklist landing must emit the Exec-started companion"
+    ledger = File.read(File.join(@intent_dir, "savepoint.md"))
+    assert_includes ledger, "checklist.md created"
+    assert_includes ledger, "Exec  started", "checklist landing must emit the Exec-started companion"
   end
 
   def test_exec_started_not_emitted_for_placeholder_checklist
     File.write(File.join(@intent_dir, "52--x.md"), "## Intent\nx\n")
     checklist = File.join(@intent_dir, "checklist.md")
-    File.write(checklist, "#{Bridge::PLACEHOLDER_SENTINEL}\n\nplaceholder\n")
+    File.write(checklist, "<!-- plastic:placeholder -->\n\nplaceholder\n")
+    ENV.delete("CLAUDE_CODE_SESSION_ID")
 
     run_hook(checklist)
-    refute_includes pairs, ["Exec", "started"], "a sentinel checklist must not emit Exec started"
-  end
-
-  # --- Gate-milestone export + commit (D5/AC8) --------------------------------
-
-  def test_gate_milestone_export_commits_savepoint_jsonl
-    system("git", "-C", @root, "init", "-q", out: File::NULL, err: File::NULL)
-    system("git", "-C", @root, "config", "user.email", "test@example.com")
-    system("git", "-C", @root, "config", "user.name", "Test")
-    File.write(File.join(@root, ".seed"), "seed\n")
-    system("git", "-C", @root, "add", "-A", out: File::NULL, err: File::NULL)
-    system("git", "-C", @root, "commit", "-q", "-m", "seed", out: File::NULL, err: File::NULL)
-
-    File.write(File.join(@intent_dir, "52--x.md"), "## Intent\nx\n")
-    spec = File.join(@intent_dir, "spec.md")
-    File.write(spec, "spec\n")
-
-    run_hook(spec)
-
-    export_path = File.join(@intent_dir, "savepoint.jsonl")
-    assert File.exist?(export_path), "a gate milestone must export savepoint.jsonl"
-
-    log = `git -C #{@root} log --oneline -- #{export_path.sub("#{@root}/", "")}`
-    refute_empty log.strip, "the exported savepoint.jsonl must be committed in the store repo"
-  end
-
-  def test_non_gate_started_event_does_not_export
-    File.write(File.join(@intent_dir, "52--x.md"), "## Intent\nx\n")
-    plan = File.join(@intent_dir, "plan.md")
-    # Pre-hook stamps "How started" (not a gate milestone) via hook-savepoint-pre
-    # in the real flow; here we drive gate-check directly on a non-milestone
-    # write to confirm no export fires for a non-lifecycle path.
-    other = File.join(@intent_dir, "resources", "note.md")
-    FileUtils.mkdir_p(File.dirname(other))
-    File.write(other, "x\n")
-    run_hook(other)
-    refute File.exist?(File.join(@intent_dir, "savepoint.jsonl"))
+    ledger_path = File.join(@intent_dir, "savepoint.md")
+    ledger = File.exist?(ledger_path) ? File.read(ledger_path) : ""
+    refute_includes ledger, "Exec  started", "a sentinel checklist must not emit Exec started"
   end
 end

@@ -7,7 +7,6 @@ require "fileutils"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/intent_validator"
 require_relative "../scripts/lib/links_section"
-require_relative "../scripts/lib/db"
 require_relative "../scripts/doctor"
 
 # ACTION_4 (intent 60b): the new-intent scaffolding CLI. Drive the real script as
@@ -242,39 +241,26 @@ class NewIntentTest < Minitest::Test
     assert IntentValidator.validate(a)[:ok], "source intent must stay born-complete"
   end
 
-  # --- Intent 81: born savepoint event stamped at creation (cutover intent 41
-  # ACTION_11: into `savepoint_events`, not savepoint.md). new-intent's
-  # Bridge.append_savepoint call needs a store_home/store/<id>--<slug> nesting
-  # to resolve its DB connection, unlike the flat @store used elsewhere in
-  # this file (fine for the DB-free scaffolding assertions above); a nested
-  # store is used for these two tests only. -------------------------------
-
-  def nested_store
-    dir = File.join(@store, "store")
-    FileUtils.mkdir_p(dir)
-    dir
-  end
-
-  def events_for(dir)
-    intent_id = File.basename(dir).split("--").first
-    conn = Plastic::DB.connect(@store)
-    Plastic::DB::SavepointEvents.events_for(conn, intent_id)
-  end
+  # --- Intent 81: born savepoint line stamped at creation --------------------
 
   def test_scaffold_stamps_born_savepoint_line
-    dir, status = run_new_intent("--store", nested_store, "--intent", "Demo", "--slug", "demo")
+    dir, status = run_new_intent("--store", @store, "--intent", "Demo", "--slug", "demo")
     assert_equal 0, status, "expected exit 0, got: #{dir}"
-    rows = events_for(dir)
-    assert_equal 1, rows.length, "born ledger has exactly one event"
-    assert_equal "What", rows.first["stage"]
-    assert_equal "#{File.basename(dir)}.md", rows.first["event_type"]
+    ledger = File.join(dir, "savepoint.md")
+    assert File.exist?(ledger), "new-intent must stamp savepoint.md at birth"
+    lines = File.read(ledger).split("\n").reject(&:empty?)
+    assert_equal 1, lines.length, "born ledger has exactly one line"
+    stage, milestone = lines.first.split(/\s{2,}/)[1, 2]
+    assert_equal "What", stage
+    assert_equal "#{File.basename(dir)}.md", milestone
   end
 
   def test_born_savepoint_is_idempotent_with_later_append
-    dir, = run_new_intent("--store", nested_store, "--intent", "Demo", "--slug", "demo")
+    dir, = run_new_intent("--store", @store, "--intent", "Demo", "--slug", "demo")
     intent_file = File.join(dir, "#{File.basename(dir)}.md")
     # A later gate fire on the same intent file must not add a duplicate What line.
     Bridge.append_savepoint(dir, intent_file)
-    assert_equal 1, events_for(dir).length
+    lines = File.read(File.join(dir, "savepoint.md")).split("\n").reject(&:empty?)
+    assert_equal 1, lines.length
   end
 end
