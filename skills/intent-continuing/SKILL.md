@@ -1,6 +1,6 @@
 ---
 name: plastic-intent-continuing
-description: Use when the user says "continue", "resume", or "pick up where we left off", or when starting a new session. Continues work with the latest project context: lands on the right dashboard, then presents choices. Boot (health check, core context, version, statusline) is owned by the SessionStart hook, not this skill. Does not drive work autonomously (that is plastic-auto).
+description: 'Use when the user says "continue", "resume", or "pick up where we left off", or when starting a new session. Continues work with the latest project context: lands on the right dashboard, then presents choices. Boot (health check, core context, version, statusline) is owned by the SessionStart hook, not this skill. Does not drive work autonomously (that is plastic-auto).'
 user-invocable: true
 ---
 
