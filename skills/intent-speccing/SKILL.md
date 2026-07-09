@@ -6,9 +6,9 @@ description: >
   to turn the brainstorm into a spec, asks to "write the spec", "spec this intent", "consolidate
   into spec.md", or the active intent is at Why with enough Decisions on record to close it out.
   Also fires on an indirect request that never names spec.md, such as "turn what we just
-  discussed into the contract the planner builds from." Distinct from `plastic-brainstorming`
+  discussed into the contract the planner builds from." Distinct from `plastic-intent-brainstorming`
   (the exploration that produces the enriched Why, upstream of this skill) and
-  `plastic-writing-plans` (turns an existing spec.md into plan.md for How, downstream of this
+  `plastic-intent-planning` (turns an existing spec.md into plan.md for How, downstream of this
   skill).
 user-invocable: true
 ---
@@ -37,14 +37,14 @@ report that and stop; do not guess which intent is meant.
 | 5 | Gap rule: if any section cannot be filled from the ledger built in step 2, STOP and ask the user for the missing ruling. Never invent scope to fill a gap. |
 | 6 | State the gate position (below) so the user knows what happens next. |
 | 7 | Self-verify against the checklist. Read `references/self-verify-checklist.md` now, verifying before presenting is the trigger. Fix any failing check, then re-verify from the top. |
-| 8 | Present `spec.md` for the user-review gate, then hand off to `plastic-writing-plans` for How. |
+| 8 | Present `spec.md` for the user-review gate, then hand off to `plastic-intent-planning` for How. |
 
 ## Gate position (step 6)
 
 The Why stage's deliverable is `spec.md`; the gate is satisfied the moment a complete, real
 `spec.md` exists (this is the gates-by-name framing: gate-check enforces spec.md before plan.md,
 not the Transition Gates table row). Writing `plan.md` is what opens the code gate for Exec, and
-writing `plan.md` is not this skill's job, that is `plastic-writing-plans`. State this to the user
+writing `plan.md` is not this skill's job, that is `plastic-intent-planning`. State this to the user
 at step 6 so the handoff at step 8 is expected, not a surprise.
 
 ## Tier stamp (step 3, convention only)
@@ -58,7 +58,7 @@ validates it.
 State, in this order: which file was written (`spec.md`, new or rewritten), the stamped `Tier:`
 value, the count of Acceptance Criteria produced (the surface the planner will cover), which
 `## Insights` rulings superseded an earlier Decision (if any) and where each landed, and the
-handoff target (`plastic-writing-plans`). If step 5 stopped for a missing ruling, report that
+handoff target (`plastic-intent-planning`). If step 5 stopped for a missing ruling, report that
 instead: which section, what is missing, and the question put to the user.
 
 ## References

@@ -37,7 +37,7 @@
       "scope": "triggering",
       "set": "validation",
       "prompt": "Brainstorm this intent.",
-      "expected_output": "Does NOT activate plastic-intent-speccing; activates plastic-brainstorming (exploration that produces the enriched Why, upstream of speccing).",
+      "expected_output": "Does NOT activate plastic-intent-speccing; activates plastic-intent-brainstorming (exploration that produces the enriched Why, upstream of speccing).",
       "files": [],
       "assertions": [
         {
@@ -52,7 +52,7 @@
       "scope": "triggering",
       "set": "validation",
       "prompt": "Write the plan.",
-      "expected_output": "Does NOT activate plastic-intent-speccing; activates plastic-writing-plans (turns an existing spec.md into plan.md for How, downstream of speccing).",
+      "expected_output": "Does NOT activate plastic-intent-speccing; activates plastic-intent-planning (turns an existing spec.md into plan.md for How, downstream of speccing).",
       "files": [],
       "assertions": [
         {
