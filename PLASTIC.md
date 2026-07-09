@@ -93,10 +93,10 @@ tags: [plastic, architecture]
 
 | Stage | Section | Deliverable | Detail |
 |-------|---------|-------------|--------|
-| **What** | `## Intent` | `{ID}--{slug}.md` | `plastic-creating-intent` |
-| **Why** | `## Context` + Decisions | `spec.md` | `plastic-brainstorming` |
-| **How** | Planning | `plan.md` + `actions/` + `checklist.md` | `plastic-writing-plans` |
-| **Exec** | Execution | `outcome.md` | `plastic-executing-plan` |
+| **What** | `## Intent` | `{ID}--{slug}.md` | `plastic-intent-creating` |
+| **Why** | `## Context` + Decisions | `spec.md` | `plastic-intent-brainstorming` |
+| **How** | Planning | `plan.md` + `actions/` + `checklist.md` | `plastic-intent-planning` |
+| **Exec** | Execution | `outcome.md` | `plastic-intent-executing` |
 
 `## Insights` is the append-only log of durable discoveries captured throughout ALL stages.
 An insight is a discovery worth keeping for later reads: novel, or old but newly relevant,
@@ -237,7 +237,7 @@ Beyond the lifecycle agents, Plastic ships thin skills for day-to-day operation:
   for its three scopes (`--core` for the boot integrity check, `--store` per store on dashboard
   load, and the full no-flag walk after an update).
 - **Lifecycle skills** (`plastic-install`, `plastic-update`, `plastic-uninstall`,
-  `plastic-versions`, intent 55) are thin wrappers over a single pinned
+  `plastic-rollback`, intent 55) are thin wrappers over a single pinned
   `npx -y @zalom/plastic@<channel> <verb>` call: initialize or repair an install, advance a
   channel, remove Plastic, and step the local versions ledger.
 
@@ -327,7 +327,7 @@ A Zettelkasten structure note, not a table of contents. Clusters by meaning.
 
 Sections: `## Active`, `## Future`, `## Clusters`, `## Abandoned`, `## Completed`.
 
-For index maintenance, use `plastic-managing-index`.
+For index maintenance, use `plastic-store-indexing`.
 
 One-line entry convention. Each index entry is ONE line: `- [<id> <terse title>](<dir>) <tags>`.
 The title is the title, not a summary: aim for about 80 characters, no multi-sentence
@@ -350,7 +350,7 @@ ALL work flows through intents.
 3. On completion, capture observations in `## Insights`.
 4. When done, write `outcome.md` + `## Outcome` summary. Update INDEX.md.
 5. Researches are intents. No separate folder.
-6. Intents are created only via `plastic-creating-intent`. Never hand-author an intent file. The skill self-verifies the written intent with `scripts/validate-intent` before announcing or committing, so every intent is born complete. `--intent` text is escaped for double quotes and backslashes before it lands in frontmatter, so free-form text is safe to pass as-is, and a reciprocal `chain:` append preserves the target intent's existing flow- or block-style entries.
+6. Intents are created only via `plastic-intent-creating`. Never hand-author an intent file. The skill self-verifies the written intent with `scripts/validate-intent` before announcing or committing, so every intent is born complete. `--intent` text is escaped for double quotes and backslashes before it lands in frontmatter, so free-form text is safe to pass as-is, and a reciprocal `chain:` append preserves the target intent's existing flow- or block-style entries.
 
 ## House Style (self-check)
 

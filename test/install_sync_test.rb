@@ -29,10 +29,10 @@ class InstallSyncTest < Minitest::Test
   end
 
   # Every verb script + the shared lib must be distributed, so the installed
-  # ~/.plastic/scripts copy is self-complete (update/uninstall/versions run from there).
+  # ~/.plastic/scripts copy is self-complete (update/uninstall/rollback run from there).
   def test_every_verb_script_is_distributed
     expected = %w[
-      scripts/install.rb scripts/update.rb scripts/uninstall.rb scripts/versions.rb
+      scripts/install.rb scripts/update.rb scripts/uninstall.rb scripts/rollback.rb
       scripts/lib/installer_core.rb
     ]
     missing = expected.reject { |s| core_lib.include?(%("#{s}")) }

@@ -19,7 +19,7 @@ subagents keep their pinned tier and never resolve to Fable.
 
 ## Precondition
 
-An active intent MUST exist in INDEX.md. If none exists, refuse: "No active intent found. Create one first with /plastic-creating-intent."
+An active intent MUST exist in INDEX.md. If none exists, refuse: "No active intent found. Create one first with /plastic-intent-creating."
 
 If multiple active intents exist, ask the user which one to deliver (this is the only question auto asks).
 
@@ -104,7 +104,7 @@ Roster (one role per cycle stage):
 - **plastic-executor** (code + checklist + `## Insights`)
 - **plastic-enforcer** (orchestrates + gates; that is YOU)
 
-Dispatch rule: sequential, one specialist per stage on one branch (the deliverables share files). Gate each deliverable against the stage's exit criteria before handing off. The How and Exec phases below default to Plastic's native dispatch (`plastic-executing-plan`) and delegate to the superpowers skills only when they are available or the user asks; do not restate the phase mechanics here.
+Dispatch rule: sequential, one specialist per stage on one branch (the deliverables share files). Gate each deliverable against the stage's exit criteria before handing off. The How and Exec phases below default to Plastic's native dispatch (`plastic-intent-executing`) and delegate to the superpowers skills only when they are available or the user asks; do not restate the phase mechanics here.
 
 Spawn preamble (live-state injection): before dispatching any specialist, run `scripts/spawn-preamble <intent_dir> --role <role>` and PREPEND its output to that specialist's prompt. The preamble is a deterministic, filesystem-only snapshot of the active intent (id, intent line, current stage, and the provisioned code worktree path when one exists on disk) plus the honoring instruction, so every spawned agent boots with accurate live state instead of guessing. This is the authoritative L2 mechanism for harnesses whose sub-agents do not inherit a top-level session event (see `docs/reference/harness-adapters.md`).
 
@@ -207,7 +207,7 @@ If the plan calls for creating a new project (the intent is an implementation in
 1. Determine project path from `~/.plastic/config.yml` `project_roots` or from intent context
 2. **Confirm path with user** — this is the ONE human interaction during auto delivery:
    > "Creating project `<slug>` at `<path>`. Confirm path, or provide alternative."
-3. Invoke `plastic-creating-project` skill
+3. Invoke `plastic-project-creating` skill
 4. The global intent is now Completed (creating-project handles this)
 5. The tactical mirror in the project store becomes the active intent
 6. Continue execution from the project directory using the tactical intent
@@ -215,7 +215,7 @@ If the plan calls for creating a new project (the intent is an implementation in
 ## Exec Phase
 
 1. If `superpowers:subagent-driven-development` or `superpowers:executing-plans` is available, delegate execution to it
-2. Otherwise invoke `plastic-executing-plan`
+2. Otherwise invoke `plastic-intent-executing`
 3. Execute actions from checklist sequentially
 4. Check off items in `checklist.md` as completed
 5. Append observations to `## Insights` with `(autonomous)` marker
@@ -272,7 +272,7 @@ During initial project creation, all decisions are non-destructive by definition
         - `manual` — notify user: "Verify failed: [summary]. Resolve manually."
    5. If `release.on_green` has items, invoke `plastic-releasing` to handle them (tag, changelog, publish, etc.). Do NOT duplicate release logic — delegate entirely.
 5. Review `## Insights` for observations that should spawn future intents. If any:
-   - Create them (using `plastic-creating-intent` conventions)
+   - Create them (using `plastic-intent-creating` conventions)
    - Update `chain` in the current intent's frontmatter
 6. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date). As the
    closing act of the transfer, stamp the terminal ledger bookend (intent 81) so the savepoint's

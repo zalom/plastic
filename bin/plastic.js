@@ -6,7 +6,7 @@
 //   npx @zalom/plastic install   [flags]
 //   npx @zalom/plastic update    [flags]
 //   npx @zalom/plastic uninstall [flags]
-//   npx @zalom/plastic versions  [flags]
+//   npx @zalom/plastic rollback  [flags]
 //
 // Back-compat: a bare `--uninstall` (no subcommand) routes to uninstall with a deprecation
 // warning; no subcommand at all defaults to install (legacy behaviour, one release).
@@ -15,7 +15,7 @@ import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { existsSync } from 'node:fs'
 
-const VERBS = ['install', 'update', 'uninstall', 'versions']
+const VERBS = ['install', 'update', 'uninstall', 'rollback']
 const packageRoot = new URL('..', import.meta.url).pathname
 const argv = process.argv.slice(2)
 

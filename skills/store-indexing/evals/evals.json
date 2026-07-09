@@ -1,0 +1,22 @@
+{
+  "skill_name": "plastic-store-indexing",
+  "notes": "Intent 66a. Spec for the QMD-first step when locating a specific intent to reclassify/flag/cluster before grep/Read. Runner is intent 76; spec only.",
+  "evals": [
+    {
+      "id": 1,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "QMD is present. The user says: move the intent about the statusline into the Completed section.",
+      "expected_output": "When locating one specific intent rather than rebuilding every section, before scanning the store with grep/Read runs `ruby ~/.plastic/scripts/qmd-sync search \"statusline\"` to surface the candidate intent, then opens the authoritative intent file for the hit it reclassifies. No-op fallback to the directory scan when QMD is absent.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "qmd-sync search is run before the directory scan when locating a specific intent; authoritative file opened for the hit",
+          "observed": "SKILL.md (or agent file) carries the QMD-first step: run qmd-sync search before grep/Read, then open the authoritative file; no-op fallback when QMD is absent",
+          "result": "pass"
+        }
+      ]
+    }
+  ]
+}

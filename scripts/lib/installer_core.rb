@@ -10,7 +10,7 @@ require_relative "hook_registry"
 require_relative "agent_models"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
-# map so the verb scripts (install/update/uninstall/versions) and their tests can run
+# map so the verb scripts (install/update/uninstall/rollback) and their tests can run
 # hermetically (no eval, no global-constant rewriting). Mirrors the DI recipe proven in
 # doctor.rb / install.rb (intents 30a, 30a1). Library only — no CLI, no $PROGRAM_NAME guard.
 class InstallerCore
@@ -54,7 +54,7 @@ class InstallerCore
     STABILITY[ch] || 2
   end
 
-  # --- Semver (§11) — parse/compare, shared by update + versions ---
+  # --- Semver (§11) — parse/compare, shared by update + rollback ---
 
   def semver_parse(version)
     m = /\A(\d+)\.(\d+)\.(\d+)(?:-(.+))?\z/.match(version.to_s.strip)
@@ -286,7 +286,7 @@ class InstallerCore
       "scripts/install.rb" => "scripts/install.rb",
       "scripts/update.rb" => "scripts/update.rb",
       "scripts/uninstall.rb" => "scripts/uninstall.rb",
-      "scripts/versions.rb" => "scripts/versions.rb",
+      "scripts/rollback.rb" => "scripts/rollback.rb",
       "scripts/doctor.rb" => "scripts/doctor.rb",
       "scripts/dashboard.rb" => "scripts/dashboard.rb",
     }

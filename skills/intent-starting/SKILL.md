@@ -57,7 +57,7 @@ enforces it: without a held lock, mutating writes to this active intent's dir ar
 4. **Dispatch What-stage discovery (under the lock).** Right after arming, when the intent
    was just activated in step 1 (on a resume that already has
    `resources/discovery--<slug>.md`, skip: discovery runs once per intent, at activation
-   only), dispatch the `plastic-intent-discovery` agent (see the `plastic-intent-discovery`
+   only), dispatch the `plastic-intent-discovery` agent (see the `plastic-intent-discovering`
    skill), now that this session owns the lock, deposit authorized as the owner session. Resolve its
    model explicitly and pass it at dispatch time (belt-and-braces): `read-config
    agents.models.plastic-intent-discovery --project <repo>`. The agent runs QMD discovery
@@ -88,7 +88,7 @@ that message, never delete a lock file by hand.
 Read `savepoint.md` and classify from the **last line** alone, then verify ONLY that line's
 artifact is real (sentinel-aware via `Bridge.stage_file_present?`). On drift (the last line
 disagrees with files on disk), rebuild the ledger from disk and note the correction. Do not
-inline the rebuild; the `plastic-savepoint` skill owns it:
+inline the rebuild; the `plastic-intent-savepoint` skill owns it:
 ```bash
 ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.rebuild_savepoint("<intent_dir>")'
 ```

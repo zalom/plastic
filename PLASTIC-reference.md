@@ -115,19 +115,19 @@ Detailed conventions live inside the skills that use them, not in this file.
 
 | Topic | Skill | References in skill |
 |-------|-------|-------------------|
-| Creating intents, lifecycle | `plastic-creating-intent` | lifecycle, wikilinks |
-| Brainstorming, spec writing | `plastic-brainstorming` | — |
-| Planning, actions | `plastic-writing-plans` | — |
-| Execution, delivery | `plastic-executing-plan` | — |
+| Creating intents, lifecycle | `plastic-intent-creating` | lifecycle, wikilinks |
+| Brainstorming, spec writing | `plastic-intent-brainstorming` | — |
+| Planning, actions | `plastic-intent-planning` | — |
+| Execution, delivery | `plastic-intent-executing` | — |
 | Autonomous delivery | `plastic-auto` | agent architecture |
-| Save/restore state | `plastic-savepoint`, `plastic-continuing` | context management |
-| Knowledge graph, linking | `plastic-linking-intents` | zettelkasten, wikilinks |
-| Projects, hubs | `plastic-creating-project` | hubs, project stores |
-| Provision a project store | `plastic-add-project-store` | project stores |
-| Index maintenance | `plastic-managing-index` | — |
+| Save/restore state | `plastic-intent-savepoint`, `plastic-intent-continuing` | context management |
+| Knowledge graph, linking | `plastic-intent-linking` | zettelkasten, wikilinks |
+| Projects, hubs | `plastic-project-creating` | hubs, project stores |
+| Provision a project store | `plastic-store-provisioning` | project stores |
+| Index maintenance | `plastic-store-indexing` | — |
 | Releases, deprecations | `plastic-releasing` | deprecation process |
 | Health diagnostics | `plastic-doctor` | three scopes: `--core` (binary install-integrity check, runs on SessionStart), `--store [global\|<slug>]` (per-store check, runs on dashboard load), no flag = full check (runs after every update); gate enforcement, stuck detection |
-| Authoring skills, agents, hooks | `plastic-creating-skills` | progressive disclosure, agentskills.io spec |
-| Evaluating skills, evals | `plastic-evaluating-skills` | eval methodology, convention checks |
+| Authoring skills, agents, hooks | `plastic-skill-creating` | progressive disclosure, agentskills.io spec |
+| Evaluating skills, evals | `plastic-skill-evaluating` | eval methodology, convention checks |
 | Create, order, and consume a roadmap of intents | `plastic-roadmap` | file format, operations |
 

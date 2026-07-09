@@ -476,7 +476,7 @@ class Doctor
         message: "#{bad_sections.size} intent file(s) have non-sanctioned ## sections",
         details: bad_sections.map { |b| "#{b[:dir]}: #{b[:issues].join(", ")}" },
         fixable: true,
-        fix_hint: "Dispatch plastic-intent-curator to relocate each unsanctioned section into the " \
+        fix_hint: "Dispatch plastic-store-curating to relocate each unsanctioned section into the " \
                   "intent's revisions.md via move-and-record (a missing required section is restored " \
                   "or reprojected instead); see PLASTIC.md > Structural maintenance and revisions.md"
       )
@@ -660,7 +660,7 @@ class Doctor
                  "(outcome.md or the savepoint Done echo is missing; advisory on immutable history)",
         details: gaps, fixable: true,
         fix_hint: "For live terminals, author a real outcome.md with the `disposition:` header via the " \
-                  "completion/abandon path (plastic-auto or plastic-intent-curator) and stamp the terminal " \
+                  "completion/abandon path (plastic-auto or plastic-store-curating) and stamp the terminal " \
                   "savepoint. Legacy terminal intents are immutable, so pre-convention gaps stay advisory."
       )
     end
@@ -882,7 +882,7 @@ class Doctor
     checks << graph_finding_check(
       "graph_i4_danglers", i4,
       "Every sources/chain id resolves to a real intent (I4)",
-      "Dispatch plastic-intent-curator to record the dangling sources/chain edge as a " \
+      "Dispatch plastic-store-curating to record the dangling sources/chain edge as a " \
       "broken-source/broken-chain move-and-record entry in the intent's revisions.md (see " \
       "PLASTIC.md > Structural maintenance and revisions.md), or restore the missing intent"
     )
@@ -1052,6 +1052,11 @@ class Doctor
     # skills_exist — flat, hyphen-namespaced personal skills (plastic-<name>/)
     checks << flat_skills_check(agent_dir, "--claude")
 
+    # stray_skills — installed plastic-* skill dir with no manifest entry (a leftover,
+    # e.g. an old-name copy after a rename; intent 158a AC15)
+    stray_check = stray_skills_check(agent_dir, "--claude", File.join(agent_dir, "plastic", "manifest.json"))
+    checks << stray_check if stray_check
+
     # agents_exist — auto-mode role files (plastic-*.md) synced into <dir>/agents
     checks << flat_agents_check(agent_dir, "--claude")
 
@@ -1073,6 +1078,43 @@ class Doctor
       check(
         category: "agent_registration", name: "skills_exist", status: "fail",
         message: "No plastic-* skills found in #{tilde(skills_root)}",
+        fixable: true, fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest #{installer_flag}"
+      )
+    end
+  end
+
+  # Backstop for a rename or removal (intent 158a, AC15): an installed plastic-*
+  # skill directory under agent_dir/skills that has NO corresponding entry in the
+  # current install manifest is a stray (e.g. a leftover old-name copy the
+  # install/update prune should have removed, or one it never saw because the
+  # manifest predates it). Complements flat_skills_check (which only confirms at
+  # least one skill exists). Defers to the manifest check when the manifest itself
+  # is missing or malformed, so the two checks never double-report the same gap.
+  def stray_skills_check(agent_dir, installer_flag, manifest_path)
+    skills_root = File.join(agent_dir, "skills")
+    manifest = read_json_safe(manifest_path)
+    files = manifest.is_a?(Hash) ? manifest["files"] : nil
+    return nil unless files.is_a?(Hash)
+
+    installed = Dir.glob(File.join(skills_root, "plastic-*", "SKILL.md"))
+                    .map { |f| File.basename(File.dirname(f)) }
+    tracked = files.keys
+                   .select { |p| p.start_with?("#{skills_root}/") }
+                   .map { |p| p.sub("#{skills_root}/", "").split("/").first }
+                   .uniq
+
+    strays = (installed - tracked).sort
+
+    if strays.empty?
+      check(
+        category: "agent_registration", name: "stray_skills", status: "pass",
+        message: "No stray plastic-* skill directories in #{tilde(skills_root)}"
+      )
+    else
+      check(
+        category: "agent_registration", name: "stray_skills", status: "warn",
+        message: "#{strays.size} installed skill dir(s) not in the current manifest (stray, e.g. a leftover old-name copy)",
+        details: strays,
         fixable: true, fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest #{installer_flag}"
       )
     end
@@ -1104,6 +1146,12 @@ class Doctor
 
     # For codex/hermes: just check skills exist (no settings.json hooks)
     checks << flat_skills_check(agent_dir, "--#{agent_key}")
+
+    # stray_skills — installed plastic-* skill dir with no manifest entry (a leftover,
+    # e.g. an old-name copy after a rename; intent 158a AC15)
+    stray_check = stray_skills_check(agent_dir, "--#{agent_key}", File.join(agent_dir, "plastic-manifest.json"))
+    checks << stray_check if stray_check
+
     checks << flat_agents_check(agent_dir, "--#{agent_key}")
 
     checks
@@ -1405,7 +1453,7 @@ class Doctor
       checks << check(
         category: "project_stores", name: "project_yml_exists", status: "warn",
         message: "project.yml missing for project '#{slug}'",
-        fixable: true, fix_hint: "Create project.yml from template — see plastic-creating-project"
+        fixable: true, fix_hint: "Create project.yml from template — see plastic-project-creating"
       )
     end
 

@@ -412,7 +412,7 @@ module Bridge
   NEXT_HINTS = {
     "why" => "write spec.md",
     "how" => "Why complete. Invoke plastic-auto to deliver autonomously, or write plan.md manually.",
-    "exec" => "How complete. Invoke plastic-auto or plastic-executing-plan to execute, or work through the checklist manually.",
+    "exec" => "How complete. Invoke plastic-auto or plastic-intent-executing to execute, or work through the checklist manually.",
     "done" => "Exec complete. Intent must be completed now — write outcome.md, update INDEX.md, auto-commit. Use plastic-auto or do it manually."
   }.freeze
 
@@ -918,7 +918,7 @@ module Bridge
 
     id = intent_info["id"]
     "intent #{id} has not reached How — write plan.md + checklist.md before " \
-      "editing project code. Run plastic-auto or plastic-writing-plans first. " \
+      "editing project code. Run plastic-auto or plastic-intent-planning first. " \
       "(blocked edit: #{file_abs})"
   end
 
