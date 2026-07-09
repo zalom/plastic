@@ -18,21 +18,29 @@ session = (ARGV[1] unless ARGV[1].to_s.empty?) || ENV["CLAUDE_CODE_SESSION_ID"]
 
 file_path_abs = File.expand_path(file_path)
 
-# --- Decoupled savepoint ledger (intent 34, hardened in intent 52) ---
+# --- Decoupled savepoint ledger (intent 34, hardened in intent 52; cutover
+# intent 41 ACTION_11: stamps `savepoint_events`, not savepoint.md) ---
 # The savepoint is derived purely from the file path's intent directory, BEFORE
 # any bridge resolution. A missing bridge must never skip the savepoint.
 intent_dir_abs = Bridge.intent_dir_for(file_path_abs)
 if intent_dir_abs
   begin
-    Bridge.append_savepoint(intent_dir_abs, file_path_abs)
+    landed = Bridge.append_savepoint(intent_dir_abs, file_path_abs, session: session)
+    # A gate-milestone landing (spec.md/plan.md/checklist.md/outcome.md created,
+    # or a terminal Done) exports the committed savepoint.jsonl snapshot and
+    # git-commits it in the store (D5/AC8). "started" events never trigger this.
+    if landed
+      stage, event_type = Bridge.savepoint_milestone(intent_dir_abs, File.basename(file_path_abs))
+      Bridge.export_and_commit_savepoint(intent_dir_abs, stage: stage, event_type: event_type) if stage
+    end
     # When checklist.md lands, How ends and Exec begins: emit the `Exec started`
     # companion in the same event (intent 81). Guard on a real (non-placeholder)
     # checklist so a scaffold sentinel does not trip it.
     if File.basename(file_path_abs) == "checklist.md" && Bridge.stage_file_present?(file_path_abs)
-      Bridge.append_exec_started(intent_dir_abs)
+      Bridge.append_exec_started(intent_dir_abs, session: session)
     end
   rescue StandardError
-    # ignore — rebuildable from disk
+    # ignore — rebuildable from the committed savepoint.jsonl export
   end
 end
 
@@ -102,9 +110,6 @@ if is_stage_file || is_action_file
 
   if error
     # Gate violation — block the write
-    bridge_data["build"]["gate_failures"] = (bridge_data["build"]["gate_failures"] || 0) + 1
-    Bridge.write(session, bridge_data)
-
     payload = {
       "decision" => "block",
       "reason" => "PLASTIC GATE — #{error}"
@@ -113,22 +118,15 @@ if is_stage_file || is_action_file
     exit 2
   end
 
-  # Gate passed — update bridge with new stage
-  old_stage = bridge_data["build"]["stage"]
+  # Gate passed. `build.stage` is no longer a persisted DB field (D3: stage
+  # stays pinned to markdown files, derive_stage is the single source, cheap
+  # enough to call on demand); bridge_data carries no prior-stage snapshot to
+  # diff against post-cutover, so old_stage reads as nil here and
+  # gate_narration's "reached" phrasing is used uniformly (a cosmetic
+  # narration difference only -- the gate decision itself is unaffected).
+  old_stage = bridge_data.dig("build", "stage")
   new_stage = Bridge.derive_stage(bridge_intent_dir_abs)
   new_missing = Bridge.missing_for_stage(new_stage) - Bridge.has_files(bridge_intent_dir_abs)
-
-  bridge_data["build"]["stage"] = new_stage
-  bridge_data["build"]["has"] = Bridge.has_files(bridge_intent_dir_abs)
-  bridge_data["build"]["missing"] = new_missing
-  bridge_data["build"]["gate_failures"] = 0
-  bridge_data["build"]["last_activity"] = Time.now.utc.iso8601
-
-  if old_stage != new_stage
-    bridge_data["observe"]["last_transition"] = "#{old_stage} → #{new_stage}"
-  end
-
-  Bridge.write(session, bridge_data)
 
   # Build transition context — ONE concise sentence (intent 84, Lever 1),
   # preserving the `Next: ...` hint. Formatting is pure in Bridge.gate_narration.
@@ -146,9 +144,8 @@ if is_stage_file || is_action_file
   puts JSON.generate(payload)
   exit 0
 else
-  # Regular file in intent dir — just update last_activity. The savepoint for
-  # the What milestone was already handled above by the decoupled ledger write.
-  bridge_data["build"]["last_activity"] = Time.now.utc.iso8601
-  Bridge.write(session, bridge_data)
+  # Regular file in intent dir: nothing left to persist here (the savepoint
+  # for the What milestone was already handled above by the decoupled ledger
+  # write; last_activity was never a DB field, see the note above).
   exit 0
 end

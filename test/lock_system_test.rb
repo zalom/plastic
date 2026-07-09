@@ -331,9 +331,11 @@ class LockSystemTest < Minitest::Test
     File.write(spec, "real spec content\n")
     assert_equal "how", Bridge.derive_stage(@dir96),
                  "stage derivation reads the MAIN intent dir"
-    Bridge.append_savepoint(@dir96, spec)
-    assert File.exist?(File.join(@dir96, "savepoint.md")),
-           "the savepoint ledger lands in the MAIN intent dir"
+    assert Bridge.append_savepoint(@dir96, spec),
+           "the savepoint event is stamped against the MAIN store's DB (cutover intent 41 ACTION_11)"
+    conn = Plastic::DB.connect(store_home)
+    assert_includes Plastic::DB::SavepointEvents.events_for(conn, "96").map { |e| [e["stage"], e["event_type"]] },
+                     ["Why", "spec.md created"]
     refute Dir.exist?(store_wt),
            "no lifecycle op needed the store worktree even to exist on disk"
   end

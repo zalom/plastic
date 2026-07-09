@@ -36,9 +36,11 @@ module Plastic
       # The (stage, event_type) pairs that are gate boundaries: landing a
       # lifecycle artifact, or the terminal disposition. Mirrors bridge.rb's
       # SAVEPOINT_MILESTONES set exactly, so ACTION_11's cutover reuses this
-      # as its export trigger and its dedup key. Free-form events (anything
-      # not in this set) are never deduped: only a gate milestone must be
-      # once-only per (intent_id, stage, event_type).
+      # as its export trigger (is_gate_milestone?, checked by hook-gate-check
+      # to decide whether to export+commit savepoint.jsonl). This set is
+      # narrower than the full dedup set below on purpose: a "started" event
+      # is once-only too, but it is not a delivery gate boundary and must
+      # never itself trigger an export.
       GATE_MILESTONES = [
         %w[Why spec.md\ created],
         %w[How plan.md\ created],
@@ -48,14 +50,31 @@ module Plastic
         %w[Done abandoned],
       ].freeze
 
+      # Every (stage, event_type) pair that is once-only per intent (D5's
+      # dedup, preserved from the retired savepoint.md ledger's
+      # savepoint_recorded_pairs check): GATE_MILESTONES plus the pre-stage
+      # `started` events (intent 81), which the old ledger also deduped by
+      # (stage, milestone) pair even though they are not gate boundaries.
+      # Free-form events outside this set (e.g. `lock/takeover`, a genuine
+      # repeatable audit trail) are never deduped: every stamp call inserts.
+      DEDUP_MILESTONES = (GATE_MILESTONES + [
+        %w[Why started],
+        %w[How started],
+        %w[Exec started],
+      ]).freeze
+
       def is_gate_milestone?(stage, event_type)
         GATE_MILESTONES.include?([stage, event_type])
       end
 
+      def dedup_milestone?(stage, event_type)
+        DEDUP_MILESTONES.include?([stage, event_type])
+      end
+
       # Append one row (fail-open: nil conn, or no matching `intents` row for
-      # intent_id, both return false/nil and never raise). A gate-milestone
-      # (stage, event_type) pair is written once only (D5's dedup); a
-      # free-form event is written every time it is stamped.
+      # intent_id, both return false/nil and never raise). A dedup-eligible
+      # (stage, event_type) pair (see DEDUP_MILESTONES) is written once only;
+      # any other free-form event is written every time it is stamped.
       def stamp(conn, intent_id:, stage:, event_type:, actor_session:, occurred_at:, payload: {})
         return nil if conn.nil?
 
@@ -63,7 +82,7 @@ module Plastic
           row_id = intent_row_id(c, intent_id)
           next false if row_id.nil?
 
-          if is_gate_milestone?(stage, event_type) &&
+          if dedup_milestone?(stage, event_type) &&
              !milestone_rows(c, row_id, stage, event_type).empty?
             next false
           end
@@ -75,6 +94,27 @@ module Plastic
             [row_id, stage, event_type, actor_session, JSON.generate(payload), occurred_at, occurred_at, occurred_at]
           )
           true
+        end
+      end
+
+      # Every savepoint_events row for intent_id, as plain Hashes (occurred_at
+      # then id order). Read-only counterpart to `stamp`; used by callers that
+      # need the recorded (stage, event_type) pairs (e.g. Bridge's dedup-aware
+      # append helpers, replacing the retired savepoint.md line-parsing).
+      # Fail-open: [] on a nil conn or a missing intents row.
+      def events_for(conn, intent_id)
+        return [] if conn.nil?
+
+        row_id = intent_row_id(conn, intent_id)
+        return [] if row_id.nil?
+
+        event_rows(conn, row_id).map do |row|
+          stage, event_type, actor_session, payload, occurred_at = row
+          {
+            "stage" => stage, "event_type" => event_type, "actor_session" => actor_session,
+            "payload" => JSON.parse(payload.nil? || payload.empty? ? "{}" : payload),
+            "occurred_at" => occurred_at,
+          }
         end
       end
 

@@ -335,14 +335,18 @@ module Bridge
     nxt ? "#{head} #{nxt}" : head
   end
 
-  # --- Cycle-step savepoint ledger (intent 34) ------------------------------
+  # --- Cycle-step savepoint ledger (intent 34; cutover intent 41 ACTION_11) --
   #
-  # savepoint.md is a deterministic, append-only, one-line-per-milestone ledger
-  # (newest at the bottom). It is sugar on top of the conventions: derived from
-  # files-on-disk, rebuildable, never a source of truth. Milestones are
-  # file-event boundaries only; action/resource files record nothing.
+  # The durable ledger now lives in `savepoint_events` (DB, authoritative) plus
+  # the git-committed `savepoint.jsonl` export at each delivery gate
+  # (ACTION_5/11). Per-intent savepoint.md retires from the LIVE flow: nothing
+  # here writes it anymore. Existing savepoint.md files are left in place
+  # (completed intents are immutable); rebuild_savepoint reconstructs the DB
+  # ledger from the JSONL export instead of regenerating the file. Milestones
+  # are still file-event boundaries only; action/resource files record
+  # nothing.
 
-  SAVEPOINT_FILE = "savepoint.md"
+  SAVEPOINT_FILE = "savepoint.md" # retired live-flow filename; kept as a legacy read target only (doctor, immutable history)
 
   # Map a written filename to [stage_label, milestone_text], or nil if the file
   # is not a lifecycle milestone.
@@ -357,42 +361,58 @@ module Bridge
     end
   end
 
-  # Milestones already recorded in the ledger (field 3 of each line).
-  def self.savepoint_recorded_milestones(intent_dir)
-    f = File.join(intent_dir, SAVEPOINT_FILE)
-    return [] unless File.exist?(f)
-    File.read(f).each_line.map do |line|
-      parts = line.strip.split(/\s{2,}/)
-      parts.length >= 3 ? parts[2] : nil
-    end.compact
+  # (store_home, intent_id) for an intent dir path (`<store_home>/store/<id>--<slug>`).
+  def self.store_and_id_for(intent_dir)
+    store = File.dirname(intent_dir)
+    store_home = File.dirname(store)
+    [store_home, intent_id_from_dir(intent_dir)]
   end
 
-  # (stage, milestone) pairs already recorded in the ledger. The pair (not the
-  # milestone text alone) is the dedup key, because state-from-ledger lines like
-  # `Why  started` and `How  started` share the milestone text "started" while
-  # being distinct events (intent 81).
+  # (stage, event_type) pairs already recorded for this intent, read from
+  # `savepoint_events` (replaces the retired savepoint.md line-parsing). The
+  # pair (not the event_type text alone) is the dedup key, because
+  # state-from-ledger events like `Why started` and `How started` share the
+  # text "started" while being distinct events (intent 81).
   def self.savepoint_recorded_pairs(intent_dir)
-    f = File.join(intent_dir, SAVEPOINT_FILE)
-    return [] unless File.exist?(f)
-    File.read(f).each_line.filter_map do |line|
-      parts = line.strip.split(/\s{2,}/)
-      parts.length >= 3 ? [parts[1], parts[2]] : nil
-    end
+    store_home, intent_id = store_and_id_for(intent_dir)
+    return [] if blank?(intent_id)
+    conn = Plastic::DB.connect(store_home)
+    return [] if conn.nil?
+    Plastic::DB::SavepointEvents.events_for(conn, intent_id).map { |e| [e["stage"], e["event_type"]] }
+  rescue StandardError
+    []
   end
 
-  # Append one ledger line for (stage, milestone) unless that pair is already
-  # recorded. The single append primitive shared by every line class. Returns
-  # true when a line was written, false when it was a no-op.
-  def self.append_savepoint_line(intent_dir, stage, milestone, now)
-    return false if savepoint_recorded_pairs(intent_dir).include?([stage, milestone])
-    line = "#{now.utc.iso8601}  #{stage}  #{milestone}\n"
-    File.open(File.join(intent_dir, SAVEPOINT_FILE), "a") { |io| io.write(line) }
-    true
+  # Stamp one savepoint_events row for (stage, event_type). Best-effort and
+  # non-raising: a DB error must never break the caller (the hooks that call
+  # this treat the ledger as sugar, exactly as savepoint.md always was).
+  # Dedup for the once-only pairs is enforced inside SavepointEvents.stamp.
+  # Dedup here is UNIVERSAL across every Bridge ledger helper (mirrors the
+  # retired append_savepoint_line's `return false if savepoint_recorded_pairs
+  # ... include?` check): unlike SavepointEvents::DEDUP_MILESTONES, which only
+  # enumerates the fixed, non-parameterized pairs (a "What" pair's event_type
+  # is the intent's own filename, so it can never be a member of a frozen
+  # list), Bridge's own ledger surface deduplicates every (stage, event_type)
+  # pair it is asked to stamp, "What" included. A direct Plastic::DB.stamp_event
+  # caller outside Bridge (e.g. plastic-lock's `lock/takeover` audit) is
+  # unaffected and keeps writing a fresh row every time (a real, repeatable
+  # audit trail, never routed through this helper).
+  def self.stamp_savepoint_event(intent_dir, stage, event_type, session: nil, now: Time.now, payload: {})
+    store_home, intent_id = store_and_id_for(intent_dir)
+    return false if blank?(intent_id)
+    return false if savepoint_recorded_pairs(intent_dir).include?([stage, event_type])
+
+    !!Plastic::DB.stamp_event(store_home, intent_id, stage: stage, event_type: event_type,
+                              actor_session: session, payload: payload, occurred_at: now.utc.iso8601)
+  rescue StandardError => e
+    $stderr.puts "plastic: savepoint stamp failed (non-fatal): #{e.message}"
+    false
   end
 
-  # Append the artifact-landing milestone for file_path if (and only if) it is a
-  # milestone not already recorded. Returns true when a line was written.
-  def self.append_savepoint(intent_dir, file_path, now: Time.now)
+  # Stamp the artifact-landing milestone for file_path if (and only if) it is a
+  # milestone. Returns true when a row was written (false: not a milestone, a
+  # sentinel placeholder, or a duplicate of an already-recorded pair).
+  def self.append_savepoint(intent_dir, file_path, session: nil, now: Time.now)
     basename = File.basename(file_path)
     stage, milestone = savepoint_milestone(intent_dir, basename)
     return false unless milestone
@@ -400,16 +420,16 @@ module Bridge
     # yet). The intent file is never sentineled, so it still logs its What line.
     return false unless stage_file_present?(File.join(intent_dir, basename))
 
-    append_savepoint_line(intent_dir, stage, milestone, now)
+    stamp_savepoint_event(intent_dir, stage, milestone, session: session, now: now)
   end
 
-  # --- State-from-ledger: pre-stage, exec-start, and terminal lines (81) ------
+  # --- State-from-ledger: pre-stage, exec-start, and terminal events (81) -----
   #
   # On top of intent 34's artifact-landing milestones, the ledger gains:
-  #   - `started` lines, one per cycle stage entry (pre-stage, written by the
+  #   - `started` events, one per cycle stage entry (pre-stage, written by the
   #     PreToolUse savepoint hook the moment a stage's artifact is first written);
   #   - an `Exec  started` companion emitted when checklist.md lands;
-  #   - a terminal `Done  delivered|abandoned` line written by the completion path.
+  #   - a terminal `Done  delivered|abandoned` event written by the completion path.
   # None of these are derivable from files on disk, so they are deliberately NOT
   # part of savepoint_milestone and are never regenerated by rebuild_savepoint:
   # a rebuilt ledger is the file-landing skeleton, the live ledger is richer.
@@ -424,37 +444,37 @@ module Bridge
     end
   end
 
-  # Append the pre-stage `started` line for file_path, iff: the basename opens a
+  # Stamp the pre-stage `started` event for file_path, iff: the basename opens a
   # stage, the stage is genuinely starting (its artifact is not yet a REAL file,
-  # so a sentinel placeholder still counts as "starting"), and the pair is not
-  # already recorded. Returns true when a line was written.
-  def self.append_started_savepoint(intent_dir, file_path, now: Time.now)
+  # so a sentinel placeholder still counts as "starting"). Idempotent (D5's
+  # dedup covers `started` pairs, see SavepointEvents::DEDUP_MILESTONES).
+  def self.append_started_savepoint(intent_dir, file_path, session: nil, now: Time.now)
     basename = File.basename(file_path)
     stage, milestone = savepoint_started_milestone(basename)
     return false unless milestone
     return false if stage_file_present?(File.join(intent_dir, basename))
 
-    append_savepoint_line(intent_dir, stage, milestone, now)
+    stamp_savepoint_event(intent_dir, stage, milestone, session: session, now: now)
   end
 
-  # Append the `Exec  started` companion (emitted when checklist.md lands, in the
-  # same PostToolUse event as the `How  checklist.md created` line). Idempotent.
-  def self.append_exec_started(intent_dir, now: Time.now)
-    append_savepoint_line(intent_dir, "Exec", "started", now)
+  # Stamp the `Exec  started` companion (emitted when checklist.md lands, in the
+  # same PostToolUse event as the `How  checklist.md created` event). Idempotent.
+  def self.append_exec_started(intent_dir, session: nil, now: Time.now)
+    stamp_savepoint_event(intent_dir, "Exec", "started", session: session, now: now)
   end
 
   TERMINAL_DISPOSITIONS = %w[delivered abandoned].freeze
 
-  # Append the terminal bookend `Done  delivered|abandoned`, written by the
+  # Stamp the terminal bookend `Done  delivered|abandoned`, written by the
   # completion path when an intent transfers to INDEX's Completed/Abandoned
   # section. Idempotent per disposition. Raises on an unknown disposition.
-  def self.append_terminal_savepoint(intent_dir, disposition, now: Time.now)
+  def self.append_terminal_savepoint(intent_dir, disposition, session: nil, now: Time.now)
     unless TERMINAL_DISPOSITIONS.include?(disposition)
       raise ArgumentError,
             "disposition must be one of #{TERMINAL_DISPOSITIONS.join(', ')}, got #{disposition.inspect}"
     end
 
-    append_savepoint_line(intent_dir, "Done", disposition, now)
+    stamp_savepoint_event(intent_dir, "Done", disposition, session: session, now: now)
   end
 
   # --- Tier convenience line (intent 130, D-A) ------------------------------
@@ -464,7 +484,8 @@ module Bridge
   # reads that line only; it never validates or enforces it (convention-only,
   # matching the skill and agent contracts). Returns nil when spec.md is
   # absent, empty, or its first line does not match, so a missing/malformed
-  # Tier line changes nothing about existing rebuild behavior.
+  # Tier line changes nothing about existing rebuild behavior. Unchanged by
+  # the ACTION_11 cutover: this reads spec.md directly, never the ledger.
   def self.savepoint_tier(intent_dir)
     path = File.join(intent_dir, "spec.md")
     return nil unless File.exist?(path)
@@ -474,31 +495,59 @@ module Bridge
     m && m[1]
   end
 
-  # Reconstruct the ledger from files on disk (timestamps from mtimes), in
-  # stage order, overwriting savepoint.md. Returns the number of lines written.
-  # When spec.md carries a Tier line, one convenience `Tier  <value>` line is
-  # echoed right after the spec.md milestone line (same mtime), so the tier
-  # survives a rebuild without becoming a new source of truth.
+  # Reconstruct the DB ledger (`savepoint_events`, plus the authoritative-only
+  # intents/roadmap_entries fields) from the git-committed savepoint.jsonl
+  # export -- the durable-recovery path (D5/AC8), replacing the retired
+  # files-on-disk-mtime reconstruction of savepoint.md. Returns true when the
+  # rebuild ran (a JSONL export was present and readable), false otherwise
+  # (nothing to rebuild from, no resolvable intent_id, or DB unavailable --
+  # fail open, never raises).
   def self.rebuild_savepoint(intent_dir)
-    ordered = [
-      File.basename(intent_file(intent_dir)),
-      "spec.md", "plan.md", "checklist.md", "outcome.md",
-    ]
-    lines = ordered.flat_map do |basename|
-      path = File.join(intent_dir, basename)
-      next [] unless stage_file_present?(path)
-      stage, milestone = savepoint_milestone(intent_dir, basename)
-      next [] unless milestone
-      stamp = File.mtime(path).utc.iso8601
-      entry = "#{stamp}  #{stage}  #{milestone}\n"
-      if basename == "spec.md" && (tier = savepoint_tier(intent_dir))
-        [entry, "#{stamp}  Tier  #{tier}\n"]
-      else
-        [entry]
-      end
-    end
-    File.write(File.join(intent_dir, SAVEPOINT_FILE), lines.join)
-    lines.length
+    store_home, intent_id = store_and_id_for(intent_dir)
+    return false if blank?(intent_id)
+    conn = Plastic::DB.connect(store_home)
+    return false if conn.nil?
+    !!Plastic::DB::SavepointEvents.rebuild_from_export(conn, intent_id: intent_id, intent_dir: intent_dir)
+  rescue StandardError => e
+    $stderr.puts "plastic: rebuild_savepoint failed: #{e.message}"
+    false
+  end
+
+  # At a delivery gate boundary (Plastic::DB::SavepointEvents.is_gate_milestone?),
+  # export the committed savepoint.jsonl snapshot and git-commit it in the
+  # store repo (D5/AC8). The git commit happens OUTSIDE any DB transaction
+  # (export_savepoint has already returned by the time git runs): never hold
+  # the SQLite write lock across git (the beads lesson, D1). Best-effort and
+  # non-raising: a non-git store, a clean tree (nothing to commit), or any git
+  # failure is logged, never raised -- the JSONL file is already durable on
+  # disk either way. Returns true iff export+commit was attempted (a gate
+  # milestone and a resolvable intent_id).
+  def self.export_and_commit_savepoint(intent_dir, stage:, event_type:)
+    return false unless Plastic::DB::SavepointEvents.is_gate_milestone?(stage, event_type)
+
+    store_home, intent_id = store_and_id_for(intent_dir)
+    return false if blank?(intent_id)
+
+    path = Plastic::DB.export_savepoint(store_home, intent_id, intent_dir: intent_dir)
+    return false if path.nil?
+
+    commit_savepoint_export(store_home, path)
+    true
+  rescue StandardError => e
+    $stderr.puts "plastic: savepoint export/commit failed (non-fatal): #{e.message}"
+    false
+  end
+
+  def self.commit_savepoint_export(store_home, path)
+    require "open3"
+    _out, _err, status = Open3.capture3("git", "-C", store_home, "rev-parse", "--is-inside-work-tree")
+    return unless status.success?
+
+    rel = path.sub("#{store_home}/", "")
+    Open3.capture3("git", "-C", store_home, "add", rel)
+    Open3.capture3("git", "-C", store_home, "commit", "-m", "chore: savepoint export - #{rel}")
+  rescue StandardError => e
+    $stderr.puts "plastic: git commit of savepoint export failed (non-fatal): #{e.message}"
   end
 
   # Compute AND persist the current session/intent state (intent 41 cutover,
@@ -912,6 +961,16 @@ module Bridge
 
     store_homes = Array(scan_roots).compact.map { |root| File.dirname(File.expand_path(root.to_s)) }.uniq
     fresh = store_homes.flat_map do |store_home|
+      # A store whose plastic.db was never provisioned has zero leases by
+      # definition (D3: an operational DB is created lazily on first real
+      # use, ACTION_12). Skip it WITHOUT calling connect: opening a
+      # connection has the side effect of creating the file (Schema.ensure!
+      # runs on every open), so scanning every candidate root unconditionally
+      # would plant an empty plastic.db in a store nobody ever touched --
+      # observed for the real global store when a caller does not override
+      # `home:` (every scan_roots list always includes it).
+      next [] unless File.exist?(Plastic::DB::StoreResolver.db_path_for_store(store_home))
+
       conn = Plastic::DB.connect(store_home)
       next [] if conn.nil?
       Plastic::DB::Leases.fresh_delivery_rows(conn, now: now).map { |row| [store_home, row] }

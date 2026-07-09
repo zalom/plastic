@@ -173,6 +173,31 @@ module Plastic
       true
     end
 
+    # Ensure a minimal `intents` row exists for intent_id (intent_id column
+    # only; no status/quadrant/content_hash set, so this never disturbs a
+    # frontmatter-mirrored row or races Mirror.reconcile). savepoint_events is
+    # meant to be authoritative (D5), but SavepointEvents.stamp fails open
+    # (silently no-ops) when intent_id has no `intents` row yet -- true right
+    # after an intent is created, since Mirror.reconcile is debounced and
+    # fires at READ entry points (boarding/dashboard/doctor), not at every
+    # gate-hook write. Calling this immediately before a stamp closes that
+    # gap so a fresh intent's very first milestones are never silently
+    # dropped. Idempotent; returns the intents.id (or the fail-open sentinel).
+    def ensure_intent_row(store, intent_id, now: Time.now, available: available?)
+      conn = store_conn(store, available: available)
+      return FAIL_OPEN_SENTINEL if conn.nil?
+
+      with_write(conn) do |c|
+        existing = c.execute("SELECT id FROM intents WHERE intent_id = ?", [intent_id]).first
+        next existing.first if existing
+
+        stamp = iso(now)
+        c.execute("INSERT INTO intents (intent_id, created_at, updated_at) VALUES (?, ?, ?)",
+                  [intent_id, stamp, stamp])
+        c.execute("SELECT id FROM intents WHERE intent_id = ?", [intent_id]).first.first
+      end
+    end
+
     # --- record verb: savepoint events + export ---------------------------
 
     def stamp_event(store, intent_id, stage:, event_type:, actor_session:, payload: {},
@@ -180,6 +205,7 @@ module Plastic
       conn = store_conn(store, available: available)
       return FAIL_OPEN_SENTINEL if conn.nil?
 
+      ensure_intent_row(store, intent_id, available: available)
       SavepointEvents.stamp(conn, intent_id: intent_id, stage: stage, event_type: event_type,
                              actor_session: actor_session, occurred_at: occurred_at, payload: payload)
     end
