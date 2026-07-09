@@ -1,0 +1,74 @@
+{
+  "skill_name": "plastic-intent-ending",
+  "notes": "Intent 161. Scopes: description triggering (3-6) and behavior (1-2: the two mandatory D6 cases). Case B graduates into test/end_intent_test.rb (test_done_bookend_lands_once_and_is_idempotent) per evaluating-skills conventions.",
+  "evals": [
+    {
+      "id": 1,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "checklist.md has one unchecked non-completion item. Try to complete the intent.",
+      "expected_output": "Defers to the existing Bridge.check_gate hard gate rather than writing outcome.md; tells the user to finish the checklist item first instead of fighting the deny.",
+      "files": [],
+      "assertions": [
+        { "type": "human", "check": "SKILL.md Step 0 states the gate blocks outcome.md while unchecked non-completion items remain, and instructs finishing the checklist rather than attempting the write", "result": "expect-pass" },
+        { "type": "code", "check": "Bridge.check_gate(intent_dir, 'outcome.md') returns a non-nil block reason when checklist.md has an unchecked '- [ ]' item (scripts/lib/bridge.rb)", "result": "pass" }
+      ]
+    },
+    {
+      "id": 2,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "Run the mechanical close (scripts/end-intent) for a delivered intent with a real outcome.md.",
+      "expected_output": "The savepoint Done bookend lands exactly once in savepoint.md, and a second run of the same command does not duplicate it (this is the regression the intent fixes: releasing used to skip this line entirely).",
+      "files": [],
+      "assertions": [
+        { "type": "human", "check": "SKILL.md Step 1-4 calls scripts/end-intent as one script instead of restating the outcome/INDEX/savepoint one-liners in prose", "result": "expect-pass" },
+        { "type": "code", "check": "test/end_intent_test.rb#test_done_bookend_lands_once_and_is_idempotent is green", "result": "pass" }
+      ]
+    },
+    {
+      "id": 3,
+      "scope": "triggering",
+      "set": "train",
+      "prompt": "Mark intent 87 done, it shipped.",
+      "expected_output": "Activates plastic-intent-ending to run the mechanical close (outcome.md, INDEX move, savepoint bookend, commit, disarm, reindex, report).",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-intent-ending", "result": "expect-pass" }
+      ]
+    },
+    {
+      "id": 4,
+      "scope": "triggering",
+      "set": "train",
+      "prompt": "This one's not worth finishing, abandon it and wrap this up.",
+      "expected_output": "Activates plastic-intent-ending (indirect trigger: 'wrap this up' names no lifecycle vocabulary directly). Abandoned runs the identical procedure, only outcome.md content and the INDEX section differ.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-intent-ending", "result": "expect-pass" }
+      ]
+    },
+    {
+      "id": 5,
+      "scope": "triggering",
+      "set": "validation",
+      "prompt": "Start work on intent 87.",
+      "expected_output": "Does NOT activate plastic-intent-ending; this is a boarding request (plastic-intent-starting), the opposite end of the lifecycle from a close.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE != plastic-intent-ending", "result": "expect-pass" }
+      ]
+    },
+    {
+      "id": 6,
+      "scope": "triggering",
+      "set": "validation",
+      "prompt": "Cut a release and tag it v1.2.0.",
+      "expected_output": "Does NOT activate plastic-intent-ending directly; activates plastic-releasing, which internally calls scripts/end-intent for the mechanical close as one of its own steps.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-releasing", "result": "expect-pass" }
+      ]
+    }
+  ]
+}

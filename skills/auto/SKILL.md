@@ -1,15 +1,15 @@
 ---
 name: plastic-auto
 description: >-
-  Autonomous intent delivery — agent takes over How and Exec. Use when user says
+  Autonomous intent delivery - agent takes over How and Exec. Use when user says
   "auto", "take it from here", "deliver this", or when brainstorming-grill-me concludes
   and user confirms autonomous execution. Requires an active intent in INDEX.md.
 user-invocable: true
 ---
 
-# Auto — Autonomous Intent Delivery
+# Auto - Autonomous Intent Delivery
 
-Announce: "Taking over intent [ID] — [name] for autonomous delivery."
+Announce: "Taking over intent [ID] - [name] for autonomous delivery."
 
 **Advisory (not a gate).** At auto-mode start, recommend once that the user run this
 orchestrating main session on the best available thinking model (Fable, Opus, or whatever
@@ -31,8 +31,8 @@ next dispatchable intent:
 ruby ~/.plastic/scripts/dashboard.rb all --json
 ```
 
-Work `dispatchable_queue` in `rank` order (these are `defer`/`research` dispositions —
-safe to deliver autonomously). Leave `human_only` and `next_big_thing` for the user — those
+Work `dispatchable_queue` in `rank` order (these are `defer`/`research` dispositions -
+safe to deliver autonomously). Leave `human_only` and `next_big_thing` for the user - those
 are `drive`/`triage` items the human should lead. See the `plastic-dashboard` skill.
 
 QMD-first (when available): when the user describes the work to deliver rather than naming an
@@ -65,7 +65,7 @@ and artifact depth to that size. Extended walkthrough: `references/tiers.md`.
 
 ## Arm the Lifecycle Gate (do this FIRST)
 
-Immediately after selecting the intent — before any other work — arm auto mode. This
+Immediately after selecting the intent - before any other work - arm auto mode. This
 writes the session bridge that makes the code-edit gate live, so project code cannot be
 edited before the plan exists (the gate applies to YOU, the orchestrator):
 
@@ -88,7 +88,7 @@ Honor the cycle: What → Why (spec.md) → How (plan.md + actions/ + checklist.
 
 ## Flags
 
-- `--skip-permissions` — bypass hard stops on destructive actions on existing projects. Full trust mode. Default: off.
+- `--skip-permissions` - bypass hard stops on destructive actions on existing projects. Full trust mode. Default: off.
 
 ## Team Spin-Up
 
@@ -168,15 +168,15 @@ this is worth doing, or proceed).
 When entering at Why stage:
 
 1. Read existing `## Context` and `### Decisions` from the intent file
-2. Assess gaps — what decisions are missing? What context is incomplete?
-3. Self-directed research — read code, search docs, explore related intents (via wikilinks in `## Links`), web search if needed. NO questions to human.
-4. Adaptive budget — assess complexity and set your own research budget:
+2. Assess gaps - what decisions are missing? What context is incomplete?
+3. Self-directed research - read code, search docs, explore related intents (via wikilinks in `## Links`), web search if needed. NO questions to human.
+4. Adaptive budget - assess complexity and set your own research budget:
    - Simple (config change, small feature): 2-3 research steps
    - Medium (new feature, integration): 5-8 research steps
    - Complex (new project, architecture): 10-15 research steps
-5. Make decisions — pick best option, document in `## Context > ### Decisions` with rationale
+5. Make decisions - pick best option, document in `## Context > ### Decisions` with rationale
 6. Log all autonomous decisions in `## Insights` with `(autonomous)` marker: "Decision: chose X because Y (autonomous)"
-7. Write `spec.md` — consolidated specification
+7. Write `spec.md` - consolidated specification
 8. Notify user (Why briefing): brief per `references/human-report-contract.md`
    (State: the approach chosen, one line; Risk: the main trade-off; Call: the one decision
    needed, approve or pick an option).
@@ -191,9 +191,9 @@ intent birth and persists at every tier; only writing `ACTION_N.md` files into i
 only (S/M leave the directory empty).
 
 1. If `superpowers:writing-plans` is available as a skill, delegate plan creation to it. Tell it the plan saves to the active intent's directory (not `docs/superpowers/plans/`).
-2. Otherwise, write `plan.md` directly — implementation plan with numbered tasks
-3. Write `ACTION_N.md` files into the existing `actions/` directory (one per task, self-contained) — L only
-4. Write `checklist.md` — execution registry with checkboxes covering all actions
+2. Otherwise, write `plan.md` directly - implementation plan with numbered tasks
+3. Write `ACTION_N.md` files into the existing `actions/` directory (one per task, self-contained) - L only
+4. Write `checklist.md` - execution registry with checkboxes covering all actions
 5. Notify user (How briefing): brief per `references/human-report-contract.md`
    (State: the plan shape, task count and what it builds; Risk: the riskiest task or
    dependency; Call: approve the plan to build).
@@ -205,7 +205,7 @@ Then proceed to Exec.
 If the plan calls for creating a new project (the intent is an implementation intent that needs a new codebase):
 
 1. Determine project path from `~/.plastic/config.yml` `project_roots` or from intent context
-2. **Confirm path with user** — this is the ONE human interaction during auto delivery:
+2. **Confirm path with user** - this is the ONE human interaction during auto delivery:
    > "Creating project `<slug>` at `<path>`. Confirm path, or provide alternative."
 3. Invoke `plastic-project-creating` skill
 4. The global intent is now Completed (creating-project handles this)
@@ -224,7 +224,7 @@ If the plan calls for creating a new project (the intent is an implementation in
    (State: what got built and the test result; Risk: residual failures or deviations;
    Call: go to review, or done).
 
-## Permission Model — Safe-by-Default
+## Permission Model - Safe-by-Default
 
 The agent MUST prefer non-destructive routes:
 
@@ -232,7 +232,7 @@ The agent MUST prefer non-destructive routes:
 |---|---|
 | Drop table | Rename to `_deprecated_<table>`, flag for cleanup |
 | Delete files | Move to `.archive/` or backup branch |
-| Alter column | Additive migration — new column + backfill |
+| Alter column | Additive migration - new column + backfill |
 | Remove feature | Feature flag off, code stays until human confirms |
 | Database migration | Backup before migration, keep rollback path |
 
@@ -247,7 +247,7 @@ With `--skip-permissions`, the agent logs the action in Insights but proceeds wi
 
 ### Greenfield Exception
 
-During initial project creation, all decisions are non-destructive by definition (there's nothing to destroy). The agent has full autonomy for greenfield choices — DB engine, framework, gems, architecture.
+During initial project creation, all decisions are non-destructive by definition (there's nothing to destroy). The agent has full autonomy for greenfield choices - DB engine, framework, gems, architecture.
 
 ## Completion
 
@@ -258,55 +258,38 @@ During initial project creation, all decisions are non-destructive by definition
    and End tail in PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`).
 3. Write `## Outcome` summary in the intent file (1-2 sentences)
 4. **Release (if configured)**
-   1. Detect project — match CWD against paths in `~/.plastic/projects.yml` to find the project slug. If no match, skip to step 5 (default commit-only behavior).
+   1. Detect project - match CWD against paths in `~/.plastic/projects.yml` to find the project slug. If no match, skip to step 5 (default commit-only behavior).
    2. Read `~/.plastic/projects/{slug}/project.yml`. If the file doesn't exist or has no `release` key, skip to step 5.
    3. Based on `release.on_complete`:
-      - `commit` — git add + commit (same as default, proceed to step 5)
-      - `commit_and_push` — git add + commit + push
-      - `manual` — skip auto-commit, notify user: "Release configured as manual — commit when ready."
+      - `commit` - git add + commit (same as default, proceed to step 5)
+      - `commit_and_push` - git add + commit + push
+      - `manual` - skip auto-commit, notify user: "Release configured as manual - commit when ready."
    4. If `release.verify` is set, run the verify command (e.g. `bundle exec rake test`):
       - **Exit 0 (green):** proceed to sub-step 5
       - **Non-zero (red):** check `release.on_red`:
-        - `fix_and_retry` — attempt to fix the failure, re-run verify (max 2 retries)
-        - `stop` — write `savepoint.md` with current state, notify user: "Verify failed — savepoint written.", **STOP**
-        - `manual` — notify user: "Verify failed: [summary]. Resolve manually."
-   5. If `release.on_green` has items, invoke `plastic-releasing` to handle them (tag, changelog, publish, etc.). Do NOT duplicate release logic — delegate entirely.
+        - `fix_and_retry` - attempt to fix the failure, re-run verify (max 2 retries)
+        - `stop` - write `savepoint.md` with current state, notify user: "Verify failed - savepoint written.", **STOP**
+        - `manual` - notify user: "Verify failed: [summary]. Resolve manually."
+   5. If `release.on_green` has items, invoke `plastic-releasing` to handle them (tag, changelog, publish, etc.). Do NOT duplicate release logic - delegate entirely.
 5. Review `## Insights` for observations that should spawn future intents. If any:
    - Create them (using `plastic-intent-creating` conventions)
    - Update `chain` in the current intent's frontmatter
-6. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date). As the
-   closing act of the transfer, stamp the terminal ledger bookend (intent 81) so the savepoint's
-   last line records delivery:
+6. Run the mechanical close through `plastic-intent-ending`: it owns steps 1-6 of the Done
+   procedure (outcome/INDEX/savepoint/commit, disarm, and the QMD reindex last) as ONE
+   delegation, not five separate one-liners restated here. Run its backing script for the
+   outcome/INDEX/savepoint/commit core, passing `--index-note` with a rich Completed/
+   Abandoned entry description (mode/tier, what shipped or why abandoned, suite result):
    ```bash
-   ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.append_terminal_savepoint("<intent_dir>", "delivered")'
+   ruby ~/.plastic/scripts/end-intent --store <store_path> --id <ID> --disposition delivered \
+     --index-note "<mode, tier>; <what shipped>; <suite result>"
    ```
-   (Use `"abandoned"` instead when the intent is being moved to `## Abandoned`.) Idempotent.
-7. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: deliver intent <ID> — <name>"`
-8. Disarm the lifecycle gate (auto delivery is finished). Substitute the intent's own id for
-   `<ID>` (a session can be delivering more than one intent at once, intent 131, so disarm must
-   name which of the session's bridges to clear):
-   ```bash
-   ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.disarm_auto(ENV["CLAUDE_CODE_SESSION_ID"], intent_id: "<ID>")'
-   ```
-   Disarm runs the ordered End tail (release worktrees, then clear the `delivery.lock`,
-   then the bridge becomes purge-eligible) and performs the mandatory worktree cleanup
-   (intent 73c3): both per-intent worktrees are removed and both repos pruned. This is
-   the plain remove path (no merge); when the work ships through a release, the release
-   path merges the branch BEFORE the worktree is removed instead of relying on this step.
-   Never leave an orphaned worktree, and run `git worktree prune` if you hit a stale
-   reference. For the full ordering rationale and the release-vs-plain-disarm
-   distinction, read `references/end-tail.md`.
-9. QMD reindex LAST (canonical End tail), run only after disarm has released the
-   worktrees, cleared the `delivery.lock`, and purged the bridge. It runs in the
-   background so it never blocks the turn:
-   ```bash
-   ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async
-   ```
-   `<store-root>` is the store that holds this intent (the global store or the project
-   store); the command is a no-op when QMD is absent. For why the reindex must be last
-   (so the index never references a bridge or lock about to disappear), read
-   `references/end-tail.md`.
-10. Notify user (Done briefing): brief per `references/human-report-contract.md`
+   (Use `--disposition abandoned` when the intent is being moved to `## Abandoned`.) Then
+   follow `plastic-intent-ending`'s Step 5 (disarm: `Bridge.disarm_auto` on this auto/curator
+   path, the plain-remove branch) and Step 6 (QMD reindex, async, last) exactly as that skill
+   states them. Never leave an orphaned worktree; run `git worktree prune` on a stale
+   reference. If any of this ever needs to change, change `plastic-intent-ending`, not this
+   skill.
+7. Notify user (Done briefing): brief per `references/human-report-contract.md`
     (State: the delivered impact; Risk: residual risk; Call: the decision left to you, merge,
     release, or accept). See `outcome.md` for details.
 
@@ -315,7 +298,7 @@ During initial project creation, all decisions are non-destructive by definition
 If the agent gets stuck (can't resolve a gap, dependency is missing, tests fail persistently):
 1. Log the blocker in `## Insights`
 2. Write `savepoint.md` with current state
-3. Notify user: "Blocked on intent [ID] — [name]: [description]. Savepoint written."
+3. Notify user: "Blocked on intent [ID] - [name]: [description]. Savepoint written."
 4. **STOP.** Do not attempt workarounds that could leave the project in a broken state.
 
 ## References

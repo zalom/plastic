@@ -214,26 +214,30 @@ gh release edit <tag-name> --latest
 
 ### 8. Complete Active Intent
 
-A release IS a delivery. The active intent that drove this work must be completed as part of the release process. This is NOT optional.
+A release IS a delivery. The active intent that drove this work must be completed as part of the release process. This is NOT optional. The mechanical close (outcome/INDEX/savepoint/commit) is `plastic-intent-ending`'s job, not this skill's: run its backing script rather than restating that prose here.
 
-1. Read `~/.plastic/INDEX.md` → find active intent(s) related to this release
+1. Read `~/.plastic/INDEX.md` (or the project's INDEX.md) - find active intent(s) related to this release.
 2. For each active intent being delivered:
-   a. Write `outcome.md` with detailed results
-   b. Write `## Outcome` summary in the intent file (reference the release tag)
-   c. Update `## Insights` with final observations
-   d. Move from `## Active` to `## Completed` in INDEX.md (with today's date)
-   e. Update clusters to show `_(completed)_`
-3. Auto-commit: `cd ~/.plastic && git add . && git commit -m "feat: complete intent <ID> - delivered in <tag-name>"`
+   a. Write a real `outcome.md` (never leave the scaffold placeholder), `disposition: delivered`, referencing the release tag.
+   b. Update `## Insights` with final observations.
+   c. Run the mechanical close (steps 1-4 of `plastic-intent-ending`): this stamps the intent file's `## Outcome` summary, moves the INDEX.md line to `## Completed` (dated today, with a rich entry description via `--index-note`), appends the savepoint `Done` bookend, and commits the store, all in one call:
+      ```bash
+      ruby ~/.plastic/scripts/end-intent --store <store_path> --id <ID> --disposition delivered \
+        --outcome-summary "delivered in <tag-name>: <one-line summary>" \
+        --index-note "<tag-name>, <mode/tier>; <what shipped>; <suite result>"
+      ```
+   d. Update clusters to show `_(completed)_` (the store-curating skill's job on its next pass).
 
 **If no active intent exists for this release**, that itself is a problem - work happened outside the intent system. Log it and move on, but flag it.
 
 ### 9. Clean Up the Intent's Worktrees (merge-then-remove)
 
-A release is the merge-then-remove path for the intent's worktrees (intent 73c3): the
-intent's code branch is merged back into the default branch BEFORE the worktree is removed.
-Drive it through `Worktree.finish` with `merge: true`, which merges the code branch, then
-removes both worktrees (code + paired store), prunes both repos, and clears the worktree block
-from the bridge:
+This is the release branch of `plastic-intent-ending`'s Step 5 disarm (`merge: true`), not a
+separate concern: a release is the merge-then-remove path for the intent's worktrees (intent
+73c3), so the intent's code branch is merged back into the default branch BEFORE the worktree
+is removed. Drive it through `Worktree.finish` with `merge: true`, which merges the code
+branch, then removes both worktrees (code + paired store), prunes both repos, and clears the
+worktree block from the bridge:
 
 ```bash
 ruby -r ~/.plastic/scripts/lib/worktree -r ~/.plastic/scripts/lib/bridge -e \
@@ -241,7 +245,7 @@ ruby -r ~/.plastic/scripts/lib/worktree -r ~/.plastic/scripts/lib/bridge -e \
 ```
 
 (Uses `discover_bridge`, not a bare session-keyed `Bridge.read`, because a session can own more
-than one live bridge now — intent 131 — and `discover_bridge` resolves the right one for this cwd.)
+than one live bridge now (intent 131) and `discover_bridge` resolves the right one for this cwd.)
 
 Honor the worktree-cleanup rule: never leave an orphaned worktree, and run `git worktree
 prune` in the affected repo if you hit a stale reference. For why this is the one place the
