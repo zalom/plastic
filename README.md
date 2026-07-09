@@ -102,14 +102,13 @@ Plastic delivers all work through successive stages ->
 
 ## Compatibility and ownership
 
-- Native installers for Claude, Codex, Hermes, and all supported targets.
+- Native installers for Claude (Codex, Hermes, and and others coming soon).
 - Plain Markdown plus Git. The work stays in files you own.
 - Personal stores by default.
 - Guided delivery with a human at every gate, or autonomous delivery when you
   ask for it.
 
-Plastic needs Ruby (already on macOS and Linux) and Node.js 18 or later. Swap
-`--claude` for `--codex`, `--hermes`, or `--all` to match your agent. Bun
+Plastic needs Ruby (already on macOS and Linux) and Node.js 18 or later. Bun
 users can run `bunx` in place of `npx`; Bun is never required.
 
 ## Built with Plastic
