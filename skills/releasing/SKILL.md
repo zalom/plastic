@@ -226,7 +226,7 @@ A release IS a delivery. The active intent that drove this work must be complete
         --outcome-summary "delivered in <tag-name>: <one-line summary>" \
         --index-note "<tag-name>, <mode/tier>; <what shipped>; <suite result>"
       ```
-   d. Update clusters to show `_(completed)_` (the intent-curator's job on its next pass).
+   d. Update clusters to show `_(completed)_` (the store-curating skill's job on its next pass).
 
 **If no active intent exists for this release**, that itself is a problem - work happened outside the intent system. Log it and move on, but flag it.
 

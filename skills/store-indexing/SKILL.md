@@ -7,7 +7,7 @@ user-invocable: false
 # Managing the Index
 
 ## When to Use
-- After creating a new intent (automatic - part of creating-intent workflow)
+- After creating a new intent (automatic - part of intent-creating workflow)
 - After completing or abandoning an intent
 - User says "index", "organize", or "clean up"
 - Periodic maintenance when the store grows
@@ -75,7 +75,7 @@ When 3+ intents share tags but aren't in a cluster, suggest a new cluster headin
 ### Flag Orphans
 Intents with no links (empty `sources`, empty `chain`, no `## Links` entries, not in any cluster) should be flagged for curation.
 
-REQUIRED BACKGROUND: linking-intents (for understanding connection types and Zettelkasten theory)
+REQUIRED BACKGROUND: intent-linking (for understanding connection types and Zettelkasten theory)
 
 ## References
 

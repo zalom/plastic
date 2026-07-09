@@ -144,8 +144,8 @@ historical record of what was planned.
 
 ## Routing
 
-`plastic-releasing`, `plastic-auto`, the curator agent, `intent-curator`, and
-`managing-index` all delegate their mechanical close to this skill (or call
+`plastic-releasing`, `plastic-auto`, the curator agent, `store-curating`, and
+`store-indexing` all delegate their mechanical close to this skill (or call
 `scripts/end-intent` directly for steps 1-4). None of them restate the
 outcome/INDEX/savepoint prose inline any more; if you find one that does,
 that surface has drifted and should route here instead.
