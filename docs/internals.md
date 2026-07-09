@@ -69,10 +69,12 @@ deliverables*. Determinism is weakest exactly where Plastic ships prose that ask
 a brain to author an artifact. The brain-loose 5 are the design and judgement
 skills (`brainstorming`, `brainstorming-grill-me`) and the curator surfaces
 (`intent-curator` as both skill and agent, plus `future-intent-researcher`).
-These produce `spec.md` and INDEX or cluster reorganizations with no output
-template at all: section set, ordering, depth, cluster naming, and orphan
-thresholds all drift. **`spec.md` is the single least-constrained artifact in the
-framework**, because historically no template existed for it.
+These produce INDEX or cluster reorganizations with no output template at all:
+section set, ordering, depth, cluster naming, and orphan thresholds all drift.
+`spec.md` moved out of this group at intent 163: `intent-speccing` now owns it
+through a fixed eight-section template (`templates/spec.md` plus
+`references/per-section-fill-rules.md`), so `spec.md` is no longer the
+least-constrained artifact in the framework.
 
 Auto mode adds five more agent surfaces, the role files that ship in `agents/`:
 `plastic-brainstorming`, `plastic-spec-specialist`, `plastic-planner`,

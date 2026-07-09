@@ -51,6 +51,7 @@ class InstallPackagingTest < Minitest::Test
     File.write(File.join(src, "doctor", "SKILL.md"), "doc")
     File.write(File.join(src, "auto", "SKILL.md"), "auto")
     File.write(File.join(src, "_active-intent-gate.md"), "gate")
+    File.write(File.join(src, "_decision-tables.md"), "tables")
 
     skills_root = File.join(@dir, "skills")
     installed = @installer.install_skills_flat(src, skills_root)
@@ -62,6 +63,10 @@ class InstallPackagingTest < Minitest::Test
     assert File.file?(File.join(PKG_TEST_HOME, "_active-intent-gate.md"))
     refute File.exist?(File.join(skills_root, "_active-intent-gate.md"))
     assert_includes installed, File.join(PKG_TEST_HOME, "_active-intent-gate.md")
+    # any top-level underscore markdown fragment relocates the same way, not just the gate
+    assert File.file?(File.join(PKG_TEST_HOME, "_decision-tables.md"))
+    refute File.exist?(File.join(skills_root, "_decision-tables.md"))
+    assert_includes installed, File.join(PKG_TEST_HOME, "_decision-tables.md")
   end
 
   # --- Manifest-diff prune ---

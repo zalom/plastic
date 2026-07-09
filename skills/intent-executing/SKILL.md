@@ -12,20 +12,33 @@ Load plan from the active intent's `plan.md`, execute all tasks, review between 
 
 **Announce at start:** "I'm using the executing-plan skill to implement this plan."
 
+## Step 0: Sync Worktree First
+
+Before Step 1 (Load Plan) in either workflow below, sync the code worktree with
+main first, so no edit lands on a path a merged rename or delete already removed:
+
+```
+git -C <worktree> fetch origin && git -C <worktree> merge --ff-only origin/main
+```
+
+After syncing, verify the plan's target files exist at the paths plan.md names.
+If a named file or directory is missing (renamed or removed upstream), stop and
+report it rather than editing a stale path.
+
 ## Mode Selection
 
 ### Check for superpowers first
 If `superpowers:subagent-driven-development` is available as a skill, delegate to it. If only `superpowers:executing-plans` is available, delegate to that. If neither is available, use Plastic's own execution engine below.
 
-**CRITICAL — when delegating to superpowers:**
+**CRITICAL: when delegating to superpowers:**
 - Tell the skill that the plan is at `~/.plastic/store/ID--slug/plan.md` (not `docs/superpowers/plans/`)
 - Tell the skill that specs live at `~/.plastic/store/ID--slug/spec.md` (not `docs/superpowers/specs/`)
 - All meta-artifacts must stay inside `~/.plastic/store/ID--slug/`
 - Code files go in the project tree as normal
-- Superpowers skills respect "user preferences for plan/spec location" — Plastic IS that preference
+- Superpowers skills respect "user preferences for plan/spec location"; Plastic IS that preference
 
 ### Subagent-Driven (Default)
-Dispatches a fresh subagent per task. Controller never implements — only dispatches, reviews, and tracks progress. Two-stage review after each task: spec compliance first, then code quality.
+Dispatches a fresh subagent per task. Controller never implements, only dispatches, reviews, and tracks progress. Two-stage review after each task: spec compliance first, then code quality.
 
 ### Inline (Fallback)
 Executes tasks sequentially in the current session. Use when subagents aren't available or user explicitly requests inline mode.
@@ -35,13 +48,14 @@ To select: user says "inline", "execute inline", or "no subagents".
 ## Subagent-Driven Workflow
 
 ### Step 1: Load Plan
+Run Step 0 (Sync Worktree First) before this step.
 1. Read the active intent's `plan.md`
-2. Extract ALL tasks with their full text — store in memory. Never make subagents read the plan file.
+2. Extract ALL tasks with their full text, store in memory. Never make subagents read the plan file.
 3. Create a task list to track progress
 
 ### Step 2: Execute Each Task
 
-For each task sequentially (never parallel — conflict risk):
+For each task sequentially (never parallel: conflict risk):
 
 **a. Dispatch implementer subagent**
 Use the Agent tool with the implementer prompt template. Include:
@@ -63,7 +77,8 @@ Use the Agent tool with spec-reviewer prompt. The reviewer reads actual code and
 Only after spec compliance passes. Reviews clean code, testing, architecture. Pass/fail.
 - If fail: implementer fixes, quality reviewer re-reviews (loop until pass)
 
-**e. Mark task complete**, move to next
+**e. Tick as it lands, then move to next**
+Follow `## Tick-as-you-land` below: move the task's checklist item to `## Completed` and add a `## Session Log` row in the same edit.
 
 ### Step 3: Final Review
 After all tasks complete, dispatch a final reviewer for the entire implementation.
@@ -75,16 +90,17 @@ Capture observations in `## Insights`. When ALL checklist items are checked:
 2. Write `## Outcome` summary in the intent file (1-2 sentences)
 3. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
 4. Update cluster entries to show `_(completed)_`
-5. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: complete intent <ID> — <name>"`
+5. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: complete intent <ID>: <name>"`
 6. QMD reindex LAST (canonical End tail). As the final End-tail step, after the terminal move and any disarm, ALWAYS refresh the QMD search index for this store (no-op when QMD is absent), running in the background so it never blocks the turn: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`. Completion is the lifecycle event that keeps the search index fresh, and the reindex runs last so the index never references a bridge or lock that is about to disappear (see PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`).
 
-**This is NOT optional.** An intent with all checklist items done but no Outcome is a broken state. Complete the intent immediately — do not leave it for later.
+**This is NOT optional.** An intent with all checklist items done but no Outcome is a broken state. Complete the intent immediately, do not leave it for later.
 
 ## Inline Workflow
 
 ### Step 1: Load and Review Plan
+Run Step 0 (Sync Worktree First) before this step.
 1. Read plan file from active intent
-2. Review critically — raise concerns before starting
+2. Review critically, raise concerns before starting
 3. Create task list to track progress
 
 ### Step 2: Execute Tasks
@@ -92,7 +108,7 @@ For each task:
 1. Mark as in_progress
 2. Follow each step exactly
 3. Run verifications as specified
-4. Mark as completed
+4. Tick as it lands: follow `## Tick-as-you-land` below
 
 ### Step 3: Update Intent and Complete
 Capture observations in `## Insights`. When ALL checklist items are checked:
@@ -101,10 +117,54 @@ Capture observations in `## Insights`. When ALL checklist items are checked:
 2. Write `## Outcome` summary in the intent file (1-2 sentences)
 3. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
 4. Update cluster entries to show `_(completed)_`
-5. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: complete intent <ID> — <name>"`
+5. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: complete intent <ID>: <name>"`
 6. QMD reindex LAST (canonical End tail). As the final End-tail step, after the terminal move and any disarm, ALWAYS refresh the QMD search index for this store (no-op when QMD is absent), running in the background so it never blocks the turn: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`. Completion is the lifecycle event that keeps the search index fresh, and the reindex runs last so the index never references a bridge or lock that is about to disappear (see PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`).
 
 **This is NOT optional.** Complete the intent immediately when work is done.
+
+## Tick-as-you-land
+
+As each task lands, in the same edit: move its checklist item from `## In
+Progress` to `## Completed` in `checklist.md`, and add one `## Session Log`
+row (Date, Items Completed, Notes). Do not batch several tasks' worth of
+checklist updates into one later edit; tick the moment the task is verified,
+before moving to the next task.
+
+## Verify before every owner gate
+
+Hard rule: before presenting any completed work to the owner, independently
+verify it. Grep or run the artifact the work just produced (the test suite,
+the changed file, the installed output) rather than restating the intended
+change. Never present an unverified claim to the owner. If verification
+fails, fix it before the gate, not after.
+
+## Methods report (audits and sweeps)
+
+When the work is an audit or a sweep (checking many files or many instances of
+something rather than building one artifact), deposit a methods report to
+`{intent_dir}/resources/` before the gate: what was checked, how it was
+checked, and what was found. This lets the owner review the method, not just
+the conclusion.
+
+## Reroute vs dispatch
+
+A human-facing instruction like "run /plastic-intent-speccing" means the user
+types that slash command themselves; it is never handed to a
+subagent. Agent-facing dispatch text is a prompt passed to the Agent tool for
+a subagent to execute. Keep the two separate: do not address a slash command
+to a subagent, and do not paste a dispatch prompt at the user.
+
+## Owner decisions during Exec
+
+When presenting a batch of Exec decisions for the owner to rule, read
+`~/.plastic/_decision-tables.md` and follow the numbered-table procedure,
+persisting each ruling with `--stage Exec`.
+
+## Gate position
+
+- **Before:** `plan.md` and `checklist.md` exist; the worktree is armed.
+- **Produces:** code changes, a ticked checklist, and (for audits or sweeps) a methods report in `resources/`.
+- **Next:** intent-ending owns `outcome.md` (see intent 161). This skill's own Update-Intent-and-Complete step above is unchanged by this note.
 
 ## Model Selection for Subagents
 
@@ -116,8 +176,8 @@ Match model to task complexity:
 ## Prompt Templates
 
 Subagent prompts are in this skill's directory:
-- `implementer-prompt.md` — template for implementer subagents
-- `spec-reviewer-prompt.md` — template for spec compliance reviewers
-- `code-quality-reviewer-prompt.md` — template for code quality reviewers
+- `implementer-prompt.md`: template for implementer subagents
+- `spec-reviewer-prompt.md`: template for spec compliance reviewers
+- `code-quality-reviewer-prompt.md`: template for code quality reviewers
 
 Read the appropriate template when dispatching each subagent type.

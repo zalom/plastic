@@ -1,19 +1,19 @@
 ---
 name: plastic-intent-brainstorming
-description: "Explore intent requirements and design before implementation. Produces spec.md in the active intent directory."
+description: "Explore intent requirements and design before implementation, through conversational prose questions asked one at a time (no multiple-choice chips), persisting each owner ruling immediately as an insight. Produces the enriched Why (Context and Decisions) in the active intent directory; hands off to /plastic-intent-speccing for spec.md."
 user-invocable: true
 ---
 
 # Brainstorming Ideas Into Designs
 
-Help turn ideas into fully formed designs and specs through natural collaborative dialogue.
+Help turn ideas into fully formed designs through natural collaborative dialogue.
 
-Announce: "I'm using the brainstorming skill to explore the design for intent {id} — {name}."
+Announce: "I'm using the brainstorming skill to explore the design for intent {id}: {name}."
 
-Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and get user approval.
+Start by understanding the current project context, then ask questions one at a time, in prose, to refine the idea. Once you understand what you're building, present the design and collect the owner's rulings on it. This skill's product is the enriched Why, not spec.md.
 
 <HARD-GATE>
-Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has ruled on it. This applies to EVERY project regardless of perceived simplicity.
 </HARD-GATE>
 
 ## Active Intent Gate
@@ -28,27 +28,25 @@ All artifacts go to the intent directory. Never write to external paths.
 
 ## Anti-Pattern: "This Is Too Simple To Need A Design"
 
-Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
+Every project goes through this process. A todo list, a single-function utility, a config change: all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get a ruling.
 
 ## Checklist
 
 You MUST create a task for each of these items and complete them in order:
 
-1. **Explore project context** — check files, docs, recent commits, read active intent
-2. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
-3. **Propose 2-3 approaches** — with trade-offs and your recommendation
-4. **Present design** — in sections scaled to their complexity, get user approval after each section
-5. **Write spec** — save to `{intent_dir}/spec.md` and commit to store repo
-6. **Spec self-review** — placeholder scan, consistency, scope, ambiguity
-7. **User reviews written spec** — ask user to review before proceeding
-8. **Transition to planning** — invoke `plastic-intent-planning`
+1. **Explore project context**: check files, docs, recent commits, read active intent
+2. **Grill in prose**: ask conversational prose questions, one at a time, no multiple-choice chips; understand purpose/constraints/success criteria
+3. **Propose 2-3 approaches**: with trade-offs and your recommendation
+4. **Present design**: in sections scaled to their complexity, get a ruling after each section
+5. **Collect rulings**: for each owner ruling, immediately persist it (see Collect rulings below); never batch
+6. **Hand off to /plastic-intent-speccing**: the enriched Why is done; do not author spec.md here
 
 ## Process Flow
 
-The Checklist above states the ordered flow (steps 1-8). For the same flow as a
+The Checklist above states the ordered flow (steps 1-6). For the same flow as a
 diagram, read `references/design-principles.md`.
 
-**The terminal state is invoking `plastic-intent-planning`.** Do NOT invoke any other implementation skill. The ONLY skill you invoke after brainstorming is `plastic-intent-planning`.
+**The terminal state is the handoff below.** Do NOT invoke any implementation skill and do NOT write spec.md. Brainstorming's product is the enriched Why.
 
 ## The Process
 
@@ -56,9 +54,9 @@ diagram, read `references/design-principles.md`.
 - QMD-first (when available): before scanning the store with grep/Read for prior decisions, specs, or outcomes, run `ruby ~/.plastic/scripts/qmd-sync search "<terms>"` to surface candidate, prior, or related intents, then open the authoritative intent file for any hit you act on. The command is a no-op when QMD is absent, so fall back to the existing INDEX.md / file scan.
 - Check out the current project state first (files, docs, recent commits)
 - Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
-- If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.
-- For appropriately-scoped projects, ask questions one at a time to refine the idea
-- Prefer multiple choice questions when possible, but open-ended is fine too
+- If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own Why → spec → plan → implementation cycle.
+- For appropriately-scoped projects, ask questions one at a time, in prose, to refine the idea
+- Ask conversational prose questions, not multiple-choice chips. A short menu of named options is fine when the choice is genuinely enumerable, but phrase it as a sentence, not a bulleted picker.
 - Only one question per message - if a topic needs more exploration, break it into multiple questions
 - Focus on understanding: purpose, constraints, success criteria
 
@@ -80,39 +78,39 @@ guidance (what makes a good interface, when a file has grown too large) and
 existing-codebase guidance (follow established patterns, fold in targeted
 improvements without unrelated refactoring).
 
-## After the Design
-**Documentation:**
-- Write the validated design (spec) to `{intent_dir}/spec.md` using the `${CLAUDE_PLUGIN_ROOT}/templates/spec.md` form
-- Use elements-of-style:writing-clearly-and-concisely skill if available
-- Commit to the store repo:
-  ```
-  cd {store_root} && git add . && git commit -m "docs: spec for intent {id} — {name}"
-  ```
+## Collect rulings
 
-**Spec Self-Review:**
-After writing the spec document, look at it with fresh eyes:
-1. **Placeholder scan:** Any "TBD", "TODO", incomplete sections, or vague requirements? Fix them.
-2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
-3. **Scope check:** Is this focused enough for a single implementation plan, or does it need decomposition?
-4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
+Each owner ruling triggers one immediate persist call, never a batch. The moment the
+owner rules on a question or a design section, before moving to the next one, run:
 
-Fix any issues inline. No need to re-review — just fix and move on.
+```
+ruby ~/.plastic/scripts/insight-append {intent_dir} "<ruling text>" --stage Why --author human
+```
 
-**User Review Gate:**
-After the spec review loop passes, ask the user to review the written spec before proceeding:
-> "Spec written and committed to `{intent_dir}/spec.md`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
+When a later ruling conflicts with an earlier one already on record, append a new
+insight that names the superseded ruling and states plainly that this one supersedes
+it. Both insights stay on record; the later one wins.
 
-Wait for the user's response. If they request changes, make them and re-run the spec review loop. Only proceed once the user approves.
+When presenting a batch of design options or rulings for the owner to choose, read
+`~/.plastic/_decision-tables.md` and follow the numbered-table procedure.
 
-**Implementation:**
-- Invoke `plastic-intent-planning` to create the implementation plan
-- Do NOT invoke any other skill. `plastic-intent-planning` is the next step.
+## Handoff
+
+Why exploration complete. The enriched Why is captured (Context, Decisions, one
+insight per ruling). Invoke /plastic-intent-speccing to consolidate it into spec.md.
+Do not author spec.md here.
+
+## Gate position
+
+- **Before:** an active intent exists with the lock armed.
+- **Produces:** the enriched Why (`## Context`, `### Decisions`, one `## Insights` entry per ruling).
+- **Next:** /plastic-intent-speccing consolidates the enriched Why into spec.md.
 
 ## Key Principles
 
 - **One question at a time** - Don't overwhelm with multiple questions
-- **Multiple choice preferred** - Easier to answer than open-ended when possible
+- **Prose, not chips** - Ask conversational prose questions; skip multiple-choice menus
 - **YAGNI ruthlessly** - Remove unnecessary features from all designs
 - **Explore alternatives** - Always propose 2-3 approaches before settling
-- **Incremental validation** - Present design, get approval before moving on
+- **Incremental validation** - Present design, collect a ruling before moving on
 - **Be flexible** - Go back and clarify when something doesn't make sense

@@ -20,30 +20,25 @@ steps).
 
 ## Process Flow (diagram)
 
-The Checklist above already states this ordered flow as numbered steps 1-8; this
+The Checklist above already states this ordered flow as numbered steps 1-6; this
 diagram is the same flow in a visual form.
 
 ```dot
 digraph brainstorming {
     "Explore project context" [shape=box];
-    "Ask clarifying questions" [shape=box];
+    "Grill in prose" [shape=box];
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
-    "User approves design?" [shape=diamond];
-    "Write spec" [shape=box];
-    "Spec self-review\n(fix inline)" [shape=box];
-    "User reviews spec?" [shape=diamond];
-    "Invoke plastic-intent-planning" [shape=doublecircle];
+    "Owner rules?" [shape=diamond];
+    "Collect rulings\n(persist each immediately)" [shape=box];
+    "Invoke /plastic-intent-speccing" [shape=doublecircle];
 
-    "Explore project context" -> "Ask clarifying questions";
-    "Ask clarifying questions" -> "Propose 2-3 approaches";
+    "Explore project context" -> "Grill in prose";
+    "Grill in prose" -> "Propose 2-3 approaches";
     "Propose 2-3 approaches" -> "Present design sections";
-    "Present design sections" -> "User approves design?";
-    "User approves design?" -> "Present design sections" [label="no, revise"];
-    "User approves design?" -> "Write spec" [label="yes"];
-    "Write spec" -> "Spec self-review\n(fix inline)";
-    "Spec self-review\n(fix inline)" -> "User reviews spec?";
-    "User reviews spec?" -> "Write spec" [label="changes requested"];
-    "User reviews spec?" -> "Invoke plastic-intent-planning" [label="approved"];
+    "Present design sections" -> "Owner rules?";
+    "Owner rules?" -> "Present design sections" [label="no, revise"];
+    "Owner rules?" -> "Collect rulings\n(persist each immediately)" [label="yes"];
+    "Collect rulings\n(persist each immediately)" -> "Invoke /plastic-intent-speccing";
 }
 ```

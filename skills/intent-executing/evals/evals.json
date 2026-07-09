@@ -1,0 +1,66 @@
+{
+  "skill_name": "plastic-intent-executing",
+  "notes": "Intent 164. New evals.json for the executing-plan skill: refuse-to-present-unverified, sync-worktree-first, and the reroute-vs-dispatch distinction. All assertions are pending a real observed run per the plastic-evaluating-skills convention.",
+  "evals": [
+    {
+      "id": 1,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "A task just landed: a new method was added and its test file was written. The agent is about to tell the owner the task is done and move to the next one.",
+      "expected_output": "Before presenting the completed task to the owner, the agent independently verifies it: greps the changed file or runs the specific test, rather than restating what it intended to do. It does not present the claim until the grep or test run has actually been observed.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "a grep or test run against the actual artifact is shown before the owner-facing claim; no claim is presented as done without that observed check",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "The agent finished implementing a task and, without running anything, tells the owner \"Task 3 is complete and the tests pass.\"",
+      "expected_output": "This is a refusal case: the skill does not allow presenting a pass claim without first grepping or running the artifact. The correct behavior is to run the verification first and only then report the observed result.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "the skill's stated hard rule blocks an unverified claim like this; expected behavior is verify-then-report, not report-then-hope",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "Execution is starting for an intent whose plan.md was written two days ago; the code worktree has not been touched since.",
+      "expected_output": "Before Step 1 (Load Plan), the agent syncs the code worktree with main: `git -C <worktree> fetch origin && git -C <worktree> merge --ff-only origin/main`, then verifies the plan's target files exist at the paths plan.md names before editing any of them.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "the fetch-and-merge --ff-only sync command runs before Load Plan; target file existence is checked before the first edit",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "The plan's next step reads \"run /plastic-intent-speccing\" as a human-facing instruction to consolidate the spec once Exec finishes an audit task.",
+      "expected_output": "The agent tells the user to type the /plastic-intent-speccing command themselves; it does not dispatch a subagent with that slash-command text as a prompt, and it does not paste an agent-facing dispatch prompt at the user instead.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "the slash-command instruction is directed at the user, not handed to the Agent tool as a subagent prompt; no dispatch-prompt text leaks into the user-facing message",
+          "result": "expect-pass"
+        }
+      ]
+    }
+  ]
+}

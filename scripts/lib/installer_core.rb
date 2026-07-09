@@ -471,8 +471,10 @@ class InstallerCore
   end
 
   # Copy each skills/<name>/ to <skills_root>/plastic-<name>/ (flat, namespaced by
-  # directory name — the only personal-skill namespacing Claude Code supports).
-  # The non-skill `_active-intent-gate.md` is relocated to ~/.plastic/ instead.
+  # directory name -- the only personal-skill namespacing Claude Code supports).
+  # Any top-level underscore-prefixed markdown fragment (e.g. `_active-intent-gate.md`,
+  # `_decision-tables.md`) is a shared non-skill fragment and relocates to ~/.plastic/
+  # instead, so every skill can read it from one shared location.
   def install_skills_flat(skills_source, skills_root)
     installed = []
     FileUtils.mkdir_p(skills_root)
@@ -481,7 +483,7 @@ class InstallerCore
       src = File.join(skills_source, entry)
       if File.directory?(src)
         installed += copy_dir_recursive(src, File.join(skills_root, "plastic-#{entry}"))
-      elsif entry == "_active-intent-gate.md"
+      elsif entry.start_with?("_") && entry.end_with?(".md")
         FileUtils.mkdir_p(plastic_home)
         dest = File.join(plastic_home, entry)
         FileUtils.cp(src, dest)
