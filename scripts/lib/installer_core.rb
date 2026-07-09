@@ -291,6 +291,7 @@ class InstallerCore
       "scripts/lib/db.rb" => "scripts/lib/db.rb",
       "scripts/lib/db/connection.rb" => "scripts/lib/db/connection.rb",
       "scripts/lib/db/store_resolver.rb" => "scripts/lib/db/store_resolver.rb",
+      "scripts/lib/db/schema.rb" => "scripts/lib/db/schema.rb",
     }
   end
 

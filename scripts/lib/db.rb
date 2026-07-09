@@ -10,6 +10,7 @@ end
 
 require_relative "db/connection"
 require_relative "db/store_resolver"
+require_relative "db/schema"
 
 # Plastic::DB — the single entry point every consumer uses to talk to a
 # store's plastic.db. No consumer writes SQL directly (D7); this facade plus
@@ -35,8 +36,8 @@ module Plastic
     #
     # available: is an injectable seam so tests can force absence without
     # unloading the gem. ensure_schema: is a DI seam for the schema-ensure
-    # step (wired to Schema.ensure! in ACTION_2); nil here is a no-op.
-    def connect(store_home, available: available?, ensure_schema: nil)
+    # step, defaulting to Schema.ensure!; pass nil to skip it.
+    def connect(store_home, available: available?, ensure_schema: ->(conn) { Schema.ensure!(conn) })
       return nil unless available
 
       db_path = StoreResolver.db_path_for_store(store_home)
