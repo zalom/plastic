@@ -47,6 +47,9 @@ Every role report, whatever the stage, carries these fields:
 
 ## Per-role payload
 
+Multi-item payload fields (ordered actions, insights, checklist deltas) default to tables per
+`PLASTIC.md` (## Tabular-First Reporting, intent 160); single fields stay prose.
+
 Each role appends a payload that fulfils its place in the What, Why, How, Exec cycle (decision
 D2). The payload is what makes the report useful to the orchestrator beyond the envelope.
 

@@ -33,6 +33,7 @@ lock. Dispatched as the `plastic-intent-discovery` background agent.
    the intent file, spec.md, or any lifecycle deliverable. The lock-owner-only
    write rule stays intact; the Why-stage `plastic-brainstorming` agent reads the
    deposit and enriches `## Context`.
+   Shape the deposit tabular-first per `PLASTIC.md` (## Tabular-First Reporting, intent 160).
 
 ## Stage coverage
 This is the What-stage agent in the one-agent-per-stage table (What:
