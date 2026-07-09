@@ -4,19 +4,20 @@ require "fileutils"
 require "stringio"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/worktree"
-require_relative "../scripts/lib/lock"
+require_relative "../scripts/lib/db"
 
-# Tests for the auto-mode flag added in intent 27.
+# Tests for the auto-mode flag added in intent 27. Sessions persist to the
+# `sessions` table (intent 41 cutover) instead of a /tmp bridge file; the
+# returned bridge_data Hash shape is unchanged, so the decision-function
+# consumers (code_gate_decision etc.) keep working identically.
 class BridgeAutoTest < Minitest::Test
   def setup
-    @store = Dir.mktmpdir("bridge-auto-store")
+    @home = Dir.mktmpdir("bridge-auto-home")
+    @store = File.join(@home, "store")
     @session = "test-#{Process.pid}-#{object_id}"
     @intent_dir = File.join(@store, "27--demo")
     FileUtils.mkdir_p(@intent_dir)
     File.write(File.join(@intent_dir, "27--demo.md"), "## Intent\nDemo\n")
-    @bridge_tmp = Dir.mktmpdir("bridge-auto-tmp")
-    @saved_plastic_tmp = ENV["PLASTIC_TMP"]
-    ENV["PLASTIC_TMP"] = @bridge_tmp
 
     # Neutralize real worktree git ops by default so this suite stays hermetic
     # (no real git, no touching the real ~/.plastic). The dedicated wiring tests
@@ -28,9 +29,7 @@ class BridgeAutoTest < Minitest::Test
   end
 
   def teardown
-    FileUtils.rm_rf(@store)
-    FileUtils.rm_rf(@bridge_tmp)
-    @saved_plastic_tmp.nil? ? ENV.delete("PLASTIC_TMP") : ENV["PLASTIC_TMP"] = @saved_plastic_tmp
+    FileUtils.rm_rf(@home)
     Worktree.define_singleton_method(:provision, @real_provision) if @real_provision
     Worktree.define_singleton_method(:release, @real_release) if @real_release
   end
@@ -39,30 +38,40 @@ class BridgeAutoTest < Minitest::Test
     Bridge.arm_auto(@session, intent_id: "27", intent_dir: @intent_dir, store: @store, name: "demo")
   end
 
+  def session_row(session_id: Bridge.session_key(@session, "27"))
+    conn = Plastic::DB.connect(File.dirname(@store))
+    Plastic::DB::Sessions.active_for(conn, session: session_id, cwd: nil)
+  end
+
+  def lease_current(intent_id: "27")
+    conn = Plastic::DB.connect(File.dirname(@store))
+    Plastic::DB::Leases.current(conn, intent_id)
+  end
+
   def test_derive_defaults_auto_false
     data = Bridge.derive(@session, intent_id: "27", intent_dir: @intent_dir, store: @store, name: "demo")
     assert_equal false, data["build"]["auto"]
   end
 
   def test_arm_auto_with_no_prior_bridge
-    refute File.exist?(Bridge.path(@session, intent_id: "27"))
+    refute session_row, "no session row should exist before arming"
     data = arm
     assert_equal true, data["build"]["auto"]
     assert_equal "27", data["intent"]["id"]
-    assert File.exist?(Bridge.path(@session, intent_id: "27"))
-    # persisted
-    assert_equal true, Bridge.read(@session, intent_id: "27")["build"]["auto"]
+    row = session_row
+    refute_nil row, "arm must persist a session row"
+    assert_equal 1, row["auto"]
   end
 
   def test_disarm_auto
     arm
-    data = Bridge.disarm_auto(@session, intent_id: "27")
+    data = Bridge.disarm_auto(@session, intent_id: "27", store: @store)
     assert_equal false, data["build"]["auto"]
-    assert_equal false, Bridge.read(@session, intent_id: "27")["build"]["auto"]
+    assert_nil session_row, "disarm must end the session row"
   end
 
   def test_disarm_auto_no_bridge_is_noop
-    assert_nil Bridge.disarm_auto(@session)
+    assert_nil Bridge.disarm_auto(@session, store: @store)
   end
 
   # --- intent 52: session-less arming ----------------------------------------
@@ -70,7 +79,7 @@ class BridgeAutoTest < Minitest::Test
   def test_arm_auto_uses_explicit_session
     data = Bridge.arm_auto(@session, intent_id: "27", intent_dir: @intent_dir, store: @store, name: "demo")
     assert_equal @session, data["session"]
-    assert File.exist?(Bridge.path(@session, intent_id: "27"))
+    refute_nil session_row
   end
 
   def test_arm_auto_derives_key_and_warns_when_no_session
@@ -83,9 +92,8 @@ class BridgeAutoTest < Minitest::Test
       data = Bridge.arm_auto(nil, intent_id: "27", intent_dir: @intent_dir, store: @store, name: "demo")
       assert_equal derived, data["session"]
     end
-    assert File.exist?(Bridge.path(derived, intent_id: "27"))
+    refute_nil session_row(session_id: Bridge.session_key(derived, "27"))
     refute_empty out
-    File.delete(Bridge.path(derived, intent_id: "27")) if File.exist?(Bridge.path(derived, intent_id: "27"))
   ensure
     ENV["CLAUDE_CODE_SESSION_ID"] = saved_code unless saved_code.nil?
   end
@@ -98,8 +106,6 @@ class BridgeAutoTest < Minitest::Test
       assert_equal ENV["CLAUDE_CODE_SESSION_ID"], data["session"]
     end
     assert_empty out.strip
-    p = Bridge.path("env-#{Process.pid}", intent_id: "27")
-    File.delete(p) if File.exist?(p)
   ensure
     if saved.nil?
       ENV.delete("CLAUDE_CODE_SESSION_ID")
@@ -135,14 +141,13 @@ class BridgeAutoTest < Minitest::Test
       assert_equal true, data["worktree"]["provisioned"]
     end
     assert_equal 1, seen.length, "arm_auto must call Worktree.provision exactly once"
-    # lock cache persisted to disk, and the durable lock file exists in the
-    # intent dir with the same owner (the file is the truth, D2)
-    assert_equal @session, Bridge.read(@session, intent_id: "27")["lock"]["owner_session"]
-    assert_equal @session, Lock.read(@intent_dir)["owner_session"]
+    # the delivery lease exists in `lock_leases` with the same owner (D2)
+    assert_equal @session, lease_current["owner_session"]
   end
 
   def test_arm_auto_raises_lock_held_when_another_session_owns_the_lock
-    Lock.acquire(@intent_dir, session: "someone-else")
+    conn = Plastic::DB.connect(File.dirname(@store))
+    Plastic::DB::Leases.acquire(conn, "27", session: "someone-else", host: "h")
     err = assert_raises(Bridge::LockHeldError) { arm }
     assert_includes err.message, "plastic-lock"
   end
@@ -160,22 +165,20 @@ class BridgeAutoTest < Minitest::Test
 
   def test_disarm_clears_the_delivery_lock
     arm
-    assert File.exist?(Lock.path(@intent_dir))
-    Bridge.disarm_auto(@session, intent_id: "27")
-    refute File.exist?(Lock.path(@intent_dir)), "disarm must clear delivery.lock (D6)"
-    data = Bridge.read(@session, intent_id: "27")
-    assert_nil data.dig("lock", "owner_session"), "the bridge cache is cleared too"
+    refute_nil lease_current
+    Bridge.disarm_auto(@session, intent_id: "27", store: @store)
+    assert_nil lease_current, "disarm must clear the delivery lease (D6)"
   end
 
   def test_disarm_orders_worktree_release_before_lock_clear
     arm
     events = []
-    # Capture as a local: define_singleton_method rebinds self, so instance
-    # variables would resolve against Worktree inside the recorder.
-    lock_path = Lock.path(@intent_dir)
-    recorder = ->(d, *_a, **_kw) { events << [:release, File.exist?(lock_path)]; d }
+    # Capture as locals: define_singleton_method rebinds self, so instance
+    # methods would not resolve against the test instance inside the recorder.
+    still_leased = -> { !lease_current.nil? }
+    recorder = ->(d, *_a, **_kw) { events << [:release, still_leased.call]; d }
     with_worktree(:release, recorder) do
-      Bridge.disarm_auto(@session, intent_id: "27")
+      Bridge.disarm_auto(@session, intent_id: "27", store: @store)
     end
     assert_equal [[:release, true]], events,
                  "worktrees are released while the lock is STILL held (End-tail order, D6)"
@@ -185,7 +188,7 @@ class BridgeAutoTest < Minitest::Test
     arm
     seen = []
     with_worktree(:release, ->(d, *_a, **_kw) { seen << d; d.delete("worktree"); d }) do
-      Bridge.disarm_auto(@session)
+      Bridge.disarm_auto(@session, store: @store)
     end
     assert_equal 1, seen.length, "disarm_auto must call Worktree.release exactly once"
   end
@@ -194,7 +197,7 @@ class BridgeAutoTest < Minitest::Test
     arm
     out = capture_stderr do
       with_worktree(:release, ->(*_a, **_kw) { raise "boom" }) do
-        data = Bridge.disarm_auto(@session)
+        data = Bridge.disarm_auto(@session, store: @store)
         assert_equal false, data["build"]["auto"]
       end
     end

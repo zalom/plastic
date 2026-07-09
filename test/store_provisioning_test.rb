@@ -69,6 +69,40 @@ class StoreProvisioningTest < Minitest::Test
     end
   end
 
+  # --- plastic.db* is git-ignored at the shared plastic_home root (ACTION_12) ---
+  # Every store (global + every project) lives under the ONE git repo rooted at
+  # plastic_home, so one unanchored .gitignore entry there covers every store's
+  # plastic.db/-wal/-shm sidecars, present and future.
+
+  def test_provision_ensures_plastic_db_gitignored_at_plastic_home
+    with_registered_home do |home|
+      StoreProvisioning.provision("demo", plastic_home: home, package_root: REPO)
+
+      gitignore = File.read(File.join(home, ".gitignore"))
+      assert_includes gitignore.lines.map(&:strip), "plastic.db*"
+    end
+  end
+
+  def test_provision_never_creates_the_db_file_itself
+    with_registered_home do |home|
+      StoreProvisioning.provision("demo", plastic_home: home, package_root: REPO)
+
+      refute File.exist?(File.join(home, "plastic.db")),
+             "provisioning a store must never force-create plastic.db (D3: lazy on first connect)"
+    end
+  end
+
+  def test_provision_is_idempotent_for_the_gitignore_entry
+    with_registered_home do |home|
+      StoreProvisioning.provision("demo", plastic_home: home, package_root: REPO)
+      StoreProvisioning.provision("demo", plastic_home: home, package_root: REPO)
+
+      gitignore = File.read(File.join(home, ".gitignore"))
+      assert_equal 1, gitignore.lines.map(&:strip).count("plastic.db*"),
+                   "a second provision must not duplicate the entry"
+    end
+  end
+
   # --- unregistered slug errors and writes nothing ---
 
   def test_unregistered_slug_errors_and_writes_nothing

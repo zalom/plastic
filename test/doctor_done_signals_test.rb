@@ -7,14 +7,15 @@ require "fileutils"
 
 require_relative "../scripts/doctor"
 require_relative "../scripts/lib/bridge"
-require_relative "../scripts/lib/lock"
+require_relative "../scripts/lib/db"
 
 # Intent 93 - the done_signals doctor check reconciles the three done-signals
 # (INDEX is canonical, outcome.md is the deliverable-exists signal, savepoint is
 # the audit echo) and surfaces a stalled completion (terminal in INDEX but the
-# End tail never released the delivery lock). Read-only, dependency-light: INDEX
-# parsing + file presence + placeholder sentinel + Lock.fresh?. Hermetic temp
-# homes, no eval, no ENV/global-constant seam.
+# End tail never released the delivery lease). Read-only, dependency-light:
+# INDEX parsing, file presence, the placeholder sentinel, and a `lock_leases`
+# read (cutover intent 41 ACTION_10). Hermetic temp homes, no eval, no
+# ENV/global-constant seam.
 class DoctorDoneSignalsTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("plastic-doctor-done-signals")
@@ -135,14 +136,18 @@ class DoctorDoneSignalsTest < Minitest::Test
     assert(complete[:details].any? { |d| d.include?("audit echo missing") })
   end
 
-  # Terminal but the delivery.lock is still present -> stalled completion (warn).
+  def acquire_lease(id, session: "s", now: Time.now)
+    conn = Plastic::DB.connect(@home)
+    Plastic::DB::Leases.acquire(conn, id, session: session, host: "h", now: now)
+  end
+
+  # Terminal but the delivery lease is still held -> stalled completion (warn).
   def test_stalled_completion_when_delivery_lock_present
     write_index("15", section: "Completed")
     write_intent_dir("15")
     write_outcome("15")
     write_savepoint_done("15")
-    File.write(Lock.path(intent_dir("15")),
-               '{"owner_session":"s","pid":1,"host":"h"}')
+    acquire_lease("15")
 
     agree = check("signals_agree")
     stalled = check("stalled_completion")
@@ -154,19 +159,16 @@ class DoctorDoneSignalsTest < Minitest::Test
            "fix_hint must say finishing a completion is NOT a reactivation")
   end
 
-  # A stale delivery.lock at a terminal intent is reported as STALE.
+  # An expired delivery lease at a terminal intent is reported as EXPIRED.
   def test_stalled_completion_reports_stale_lock
     write_index("16", section: "Completed")
     write_intent_dir("16")
     write_outcome("16")
     write_savepoint_done("16")
-    lock = Lock.path(intent_dir("16"))
-    File.write(lock, '{"owner_session":"s","pid":1,"host":"h"}')
-    old = Time.now - (Lock::TTL_SECONDS + 3600)
-    File.utime(old, old, lock)
+    acquire_lease("16", now: Time.now - (Plastic::DB::Leases::TTL_SECONDS + 3600))
 
     stalled = check("stalled_completion")
     assert_equal "warn", stalled[:status]
-    assert(stalled[:details].any? { |d| d.include?("STALE") })
+    assert(stalled[:details].any? { |d| d.include?("EXPIRED") })
   end
 end

@@ -3,11 +3,19 @@ require "tmpdir"
 require "fileutils"
 require "time"
 require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/db"
 
-# Tests for the deterministic cycle-step savepoint ledger added in intent 34.
+# Tests for the cycle-step savepoint ledger (intent 34), cut over to
+# `savepoint_events` (DB, authoritative) plus the git-committed
+# `savepoint.jsonl` export in intent 41's ACTION_11. Per-intent savepoint.md
+# retires from the live flow: every append_* helper now stamps a DB row
+# instead of formatting a text line, so this file asserts against
+# Plastic::DB::SavepointEvents rows (via Bridge.savepoint_recorded_pairs and
+# direct reads) rather than parsing savepoint.md content.
 class SavepointLedgerTest < Minitest::Test
   def setup
-    @store = Dir.mktmpdir("savepoint-ledger")
+    @home = Dir.mktmpdir("savepoint-ledger-home")
+    @store = File.join(@home, "store")
     @dir = File.join(@store, "34--demo")
     FileUtils.mkdir_p(@dir)
     @intent_basename = "34--demo.md"
@@ -15,7 +23,7 @@ class SavepointLedgerTest < Minitest::Test
   end
 
   def teardown
-    FileUtils.rm_rf(@store)
+    FileUtils.rm_rf(@home)
   end
 
   def write(name, body = "x\n")
@@ -25,16 +33,19 @@ class SavepointLedgerTest < Minitest::Test
     path
   end
 
-  def ledger
-    f = File.join(@dir, "savepoint.md")
-    File.exist?(f) ? File.read(f) : ""
+  def conn
+    Plastic::DB.connect(@home)
   end
 
-  def ledger_lines
-    ledger.split("\n").reject(&:empty?)
+  def events
+    Plastic::DB::SavepointEvents.events_for(conn, "34")
   end
 
-  # --- Task 1: savepoint_milestone -------------------------------------------
+  def pairs
+    events.map { |e| [e["stage"], e["event_type"]] }
+  end
+
+  # --- Task 1: savepoint_milestone (pure, unchanged) --------------------------
 
   def test_milestone_map_for_each_stage_file
     assert_equal ["What", @intent_basename], Bridge.savepoint_milestone(@dir, @intent_basename)
@@ -49,13 +60,15 @@ class SavepointLedgerTest < Minitest::Test
     assert_nil Bridge.savepoint_milestone(@dir, "notes.md")
   end
 
-  # --- Task 2: append_savepoint ----------------------------------------------
+  # --- Task 2: append_savepoint stamps a savepoint_events row -----------------
 
-  def test_append_creates_formatted_line
+  def test_append_creates_a_stamped_event
     write("spec.md", "# Spec\nreal\n")
     t = Time.utc(2026, 6, 16, 14, 20, 0)
     assert_equal true, Bridge.append_savepoint(@dir, File.join(@dir, "spec.md"), now: t)
-    assert_equal ["2026-06-16T14:20:00Z  Why  spec.md created"], ledger_lines
+    assert_equal [["Why", "spec.md created"]], pairs
+    row = events.first
+    assert_equal t.utc.iso8601, row["occurred_at"]
   end
 
   def test_append_is_idempotent_per_milestone
@@ -64,22 +77,22 @@ class SavepointLedgerTest < Minitest::Test
     t2 = Time.utc(2026, 6, 16, 15, 0, 0)
     assert_equal true, Bridge.append_savepoint(@dir, File.join(@dir, "spec.md"), now: t1)
     assert_equal false, Bridge.append_savepoint(@dir, File.join(@dir, "spec.md"), now: t2)
-    assert_equal 1, ledger_lines.length
+    assert_equal 1, events.length
   end
 
   def test_append_skips_sentinel_placeholder_lifecycle_file
     write("spec.md", "<!-- plastic:placeholder -->\n\nplaceholder\n")
     assert_equal false, Bridge.append_savepoint(@dir, File.join(@dir, "spec.md"), now: Time.now)
-    assert_equal "", ledger
+    assert_empty events
   end
 
   def test_append_ignores_non_milestone_files
     write("actions/ACTION_1.md")
     assert_equal false, Bridge.append_savepoint(@dir, File.join(@dir, "actions/ACTION_1.md"), now: Time.now)
-    assert_equal "", ledger
+    assert_empty events
   end
 
-  def test_full_sequence_newest_at_bottom
+  def test_full_sequence_recorded_in_occurred_at_order
     seq = [
       [@intent_basename, Time.utc(2026, 6, 16, 14, 0, 0)],
       ["spec.md", Time.utc(2026, 6, 16, 14, 20, 0)],
@@ -92,58 +105,60 @@ class SavepointLedgerTest < Minitest::Test
       Bridge.append_savepoint(@dir, File.join(@dir, name), now: t)
     end
     assert_equal [
-      "2026-06-16T14:00:00Z  What  #{@intent_basename}",
-      "2026-06-16T14:20:00Z  Why  spec.md created",
-      "2026-06-16T15:10:00Z  How  plan.md created",
-      "2026-06-16T15:11:00Z  How  checklist.md created",
-      "2026-06-16T16:40:00Z  Exec  outcome.md created",
-    ], ledger_lines
+      ["What", @intent_basename],
+      ["Why", "spec.md created"],
+      ["How", "plan.md created"],
+      ["How", "checklist.md created"],
+      ["Exec", "outcome.md created"],
+    ], pairs
   end
 
-  # --- Task 3: rebuild_savepoint ---------------------------------------------
+  # --- Task 3: rebuild_savepoint reconstructs the DB from the JSONL export ---
 
-  def test_rebuild_reconstructs_from_filesystem
+  def test_rebuild_restores_events_from_the_committed_export
     write("spec.md")
     write("plan.md")
     write("checklist.md")
     FileUtils.mkdir_p(File.join(@dir, "actions"))
-    refute File.exist?(File.join(@dir, "savepoint.md"))
+    Bridge.append_savepoint(@dir, File.join(@dir, @intent_basename))
+    Bridge.append_savepoint(@dir, File.join(@dir, "spec.md"))
+    Bridge.append_savepoint(@dir, File.join(@dir, "plan.md"))
+    Bridge.append_savepoint(@dir, File.join(@dir, "checklist.md"))
 
-    count = Bridge.rebuild_savepoint(@dir)
-    assert_equal 4, count # intent file + spec + plan + checklist
+    store_home_id = "34"
+    Plastic::DB.export_savepoint(@home, store_home_id, intent_dir: @dir)
+    assert File.exist?(File.join(@dir, "savepoint.jsonl"))
 
-    milestones = ledger_lines.map { |l| l.split(/\s{2,}/)[2] }
+    # Wipe the DB row-level state and rebuild purely from the committed export.
+    conn.execute("DELETE FROM savepoint_events")
+    assert_empty events
+
+    assert_equal true, Bridge.rebuild_savepoint(@dir)
+    milestones = pairs.map(&:last)
     assert_equal [@intent_basename, "spec.md created", "plan.md created", "checklist.md created"], milestones
   end
 
-  def test_rebuild_lines_are_chronological_by_mtime
-    write("spec.md")
-    write("plan.md")
-    Bridge.rebuild_savepoint(@dir)
-    stamps = ledger_lines.map { |l| Time.parse(l.split(/\s{2,}/)[0]) }
-    assert_equal stamps.sort, stamps
+  def test_rebuild_false_when_no_export_exists
+    refute File.exist?(File.join(@dir, "savepoint.jsonl"))
+    assert_equal false, Bridge.rebuild_savepoint(@dir)
   end
 
   # === Intent 81: state-from-ledger extensions ===============================
 
-  def stages_milestones
-    ledger_lines.map { |l| p = l.split(/\s{2,}/); [p[1], p[2]] }
-  end
-
   # --- Pair-based idempotency -------------------------------------------------
 
-  def test_recorded_pairs_parses_stage_and_milestone
+  def test_recorded_pairs_parses_stage_and_event_type
     write("spec.md", "real\n")
     Bridge.append_savepoint(@dir, File.join(@dir, "spec.md"), now: Time.utc(2026, 6, 16))
     assert_equal [["Why", "spec.md created"]], Bridge.savepoint_recorded_pairs(@dir)
   end
 
-  def test_started_lines_for_distinct_stages_coexist
-    # Both milestones are the literal text "started"; pair dedup must keep both.
+  def test_started_events_for_distinct_stages_coexist
+    # Both events share the literal event_type "started"; pair dedup must keep both.
     t = Time.utc(2026, 6, 16, 10, 0, 0)
     assert_equal true, Bridge.append_started_savepoint(@dir, File.join(@dir, "spec.md"), now: t)
     assert_equal true, Bridge.append_started_savepoint(@dir, File.join(@dir, "plan.md"), now: t + 60)
-    assert_equal [["Why", "started"], ["How", "started"]], stages_milestones
+    assert_equal [["Why", "started"], ["How", "started"]], pairs
   end
 
   # --- started milestones -----------------------------------------------------
@@ -160,32 +175,33 @@ class SavepointLedgerTest < Minitest::Test
     # No real spec.md yet (the pre-write moment).
     t = Time.utc(2026, 6, 16, 11, 40, 0)
     assert_equal true, Bridge.append_started_savepoint(@dir, File.join(@dir, "spec.md"), now: t)
-    assert_equal ["2026-06-16T11:40:00Z  Why  started"], ledger_lines
+    assert_equal [["Why", "started"]], pairs
+    assert_equal t.utc.iso8601, events.first["occurred_at"]
   end
 
   def test_append_started_noop_once_artifact_is_real
     write("spec.md", "real spec\n")
     assert_equal false, Bridge.append_started_savepoint(@dir, File.join(@dir, "spec.md"), now: Time.now)
-    assert_equal "", ledger
+    assert_empty events
   end
 
   def test_append_started_fires_for_placeholder_artifact
     # A sentinel placeholder is NOT a real stage file, so the stage is starting.
     write("plan.md", "#{Bridge::PLACEHOLDER_SENTINEL}\n\nplaceholder\n")
     assert_equal true, Bridge.append_started_savepoint(@dir, File.join(@dir, "plan.md"), now: Time.now)
-    assert_equal [["How", "started"]], stages_milestones
+    assert_equal [["How", "started"]], pairs
   end
 
   def test_append_started_idempotent
     t = Time.utc(2026, 6, 16, 11, 40, 0)
     assert_equal true, Bridge.append_started_savepoint(@dir, File.join(@dir, "spec.md"), now: t)
     assert_equal false, Bridge.append_started_savepoint(@dir, File.join(@dir, "spec.md"), now: t + 100)
-    assert_equal 1, ledger_lines.length
+    assert_equal 1, events.length
   end
 
   def test_append_started_nil_for_non_started_file
     assert_equal false, Bridge.append_started_savepoint(@dir, File.join(@dir, "outcome.md"), now: Time.now)
-    assert_equal "", ledger
+    assert_empty events
   end
 
   # --- Exec started companion -------------------------------------------------
@@ -193,64 +209,51 @@ class SavepointLedgerTest < Minitest::Test
   def test_append_exec_started
     t = Time.utc(2026, 6, 16, 12, 21, 0)
     assert_equal true, Bridge.append_exec_started(@dir, now: t)
-    assert_equal ["2026-06-16T12:21:00Z  Exec  started"], ledger_lines
+    assert_equal [["Exec", "started"]], pairs
   end
 
   def test_append_exec_started_idempotent
     assert_equal true, Bridge.append_exec_started(@dir, now: Time.now)
     assert_equal false, Bridge.append_exec_started(@dir, now: Time.now)
-    assert_equal 1, ledger_lines.length
+    assert_equal 1, events.length
   end
 
-  # --- terminal line ----------------------------------------------------------
+  # --- terminal event ----------------------------------------------------------
 
   def test_append_terminal_delivered
     t = Time.utc(2026, 6, 16, 16, 45, 0)
     assert_equal true, Bridge.append_terminal_savepoint(@dir, "delivered", now: t)
-    assert_equal ["2026-06-16T16:45:00Z  Done  delivered"], ledger_lines
+    assert_equal [["Done", "delivered"]], pairs
   end
 
   def test_append_terminal_abandoned
     assert_equal true, Bridge.append_terminal_savepoint(@dir, "abandoned", now: Time.now)
-    assert_equal [["Done", "abandoned"]], stages_milestones
+    assert_equal [["Done", "abandoned"]], pairs
   end
 
   def test_append_terminal_rejects_bad_disposition
     assert_raises(ArgumentError) { Bridge.append_terminal_savepoint(@dir, "done", now: Time.now) }
-    assert_equal "", ledger
+    assert_empty events
   end
 
   def test_append_terminal_idempotent_per_disposition
     assert_equal true, Bridge.append_terminal_savepoint(@dir, "delivered", now: Time.now)
     assert_equal false, Bridge.append_terminal_savepoint(@dir, "delivered", now: Time.now)
-    assert_equal 1, ledger_lines.length
+    assert_equal 1, events.length
   end
 
-  # --- rebuild stays a pure file-landing skeleton -----------------------------
+  # --- fail-open: no resolvable intent_id / DB unavailable --------------------
 
-  def test_rebuild_drops_started_and_terminal_lines
-    # A live ledger with started + exec-started + Done lines, built in event order:
-    # the `started` line is written while spec.md is still absent (the pre moment).
-    Bridge.append_started_savepoint(@dir, File.join(@dir, "spec.md"), now: Time.utc(2026, 6, 16, 1))
-    write("spec.md", "real\n")
-    write("plan.md", "real\n")
-    write("checklist.md", "real\n")
-    Bridge.append_savepoint(@dir, File.join(@dir, "spec.md"), now: Time.utc(2026, 6, 16, 2))
-    Bridge.append_exec_started(@dir, now: Time.utc(2026, 6, 16, 3))
-    Bridge.append_terminal_savepoint(@dir, "delivered", now: Time.utc(2026, 6, 16, 4))
-    assert_includes stages_milestones, ["Why", "started"]
-
-    Bridge.rebuild_savepoint(@dir)
-    stages = stages_milestones.map(&:first).uniq
-    refute_includes stages_milestones, ["Why", "started"]
-    refute_includes stages_milestones, ["Exec", "started"]
-    refute_includes stages_milestones, ["Done", "delivered"]
-    # Only the file-landing skeleton survives (What from intent file + spec/plan/checklist).
-    assert_equal [@intent_basename, "spec.md created", "plan.md created", "checklist.md created"],
-                 stages_milestones.map(&:last)
+  def test_append_savepoint_false_outside_any_store
+    loose = Dir.mktmpdir("loose-dir")
+    write_path = File.join(loose, "spec.md")
+    File.write(write_path, "spec\n")
+    assert_equal false, Bridge.append_savepoint(loose, write_path)
+  ensure
+    FileUtils.rm_rf(loose)
   end
 
-  # === Intent 130, D-A: Tier convenience line on rebuild ======================
+  # === Intent 130, D-A: Tier convenience line (unchanged, reads spec.md) =====
 
   def test_savepoint_tier_reads_top_line
     write("spec.md", "Tier: M\n\n# Spec: demo\n")
@@ -269,49 +272,5 @@ class SavepointLedgerTest < Minitest::Test
   def test_savepoint_tier_nil_when_malformed
     write("spec.md", "Tier: XL\n\n# Spec: demo\n")
     assert_nil Bridge.savepoint_tier(@dir)
-  end
-
-  def test_rebuild_echoes_tier_line_right_after_spec_milestone
-    write("spec.md", "Tier: M\n\n# Spec: demo\n")
-    write("plan.md")
-    write("checklist.md")
-    Bridge.rebuild_savepoint(@dir)
-    milestones = stages_milestones
-    spec_idx = milestones.index(["Why", "spec.md created"])
-    refute_nil spec_idx
-    assert_equal ["Tier", "M"], milestones[spec_idx + 1]
-  end
-
-  def test_rebuild_produces_exactly_one_tier_line_for_m
-    write("spec.md", "Tier: M\n\n# Spec: demo\n")
-    write("plan.md")
-    write("checklist.md")
-    Bridge.rebuild_savepoint(@dir)
-    tier_lines = stages_milestones.select { |stage, _| stage == "Tier" }
-    assert_equal [["Tier", "M"]], tier_lines
-  end
-
-  def test_rebuild_no_tier_line_when_spec_has_no_tier
-    write("spec.md", "# Spec: demo\n\nNo tier line.\n")
-    write("plan.md")
-    write("checklist.md")
-    Bridge.rebuild_savepoint(@dir)
-    refute stages_milestones.any? { |stage, _| stage == "Tier" }
-  end
-
-  def test_rebuild_tier_line_is_idempotent_across_reruns
-    write("spec.md", "Tier: L\n\n# Spec: demo\n")
-    write("plan.md")
-    Bridge.rebuild_savepoint(@dir)
-    Bridge.rebuild_savepoint(@dir)
-    tier_lines = stages_milestones.select { |stage, _| stage == "Tier" }
-    assert_equal [["Tier", "L"]], tier_lines
-  end
-
-  def test_rebuild_count_includes_tier_line
-    write("spec.md", "Tier: S\n\n# Spec: demo\n")
-    count = Bridge.rebuild_savepoint(@dir)
-    # intent file + spec.md milestone + Tier convenience line
-    assert_equal 3, count
   end
 end

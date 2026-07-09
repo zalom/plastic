@@ -8,6 +8,7 @@ require "digest"
 require "time"
 require_relative "hook_registry"
 require_relative "agent_models"
+require_relative "worktree"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/versions) and their tests can run
@@ -201,6 +202,13 @@ class InstallerCore
     FileUtils.mkdir_p(File.join(plastic_home, "scripts", "lib"))
     FileUtils.mkdir_p(File.join(plastic_home, "templates"))
 
+    # The per-store operational DB (intent 41) is never committed. This runs
+    # on every install AND every update (unlike `bootstrap`, which is
+    # fresh-install-only), so an already-installed user picks up the ignore
+    # entry retroactively the next time they update, without needing to
+    # provision a new project store first.
+    Worktree.ensure_gitignored(plastic_home, "plastic.db*")
+
     core_files.each do |src, dest|
       src_path = File.join(package_root, src)
       dest_path = File.join(plastic_home, dest)
@@ -249,7 +257,6 @@ class InstallerCore
       "scripts/lib/retrieval_gate.rb" => "scripts/lib/retrieval_gate.rb",
       "scripts/hook-auto-arm" => "scripts/hook-auto-arm",
       "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
-      "scripts/lib/lock.rb" => "scripts/lib/lock.rb",
       "scripts/plastic-lock" => "scripts/plastic-lock",
       "scripts/lib/hook_registry.rb" => "scripts/lib/hook_registry.rb",
       "scripts/agent-report" => "scripts/agent-report",
@@ -288,6 +295,16 @@ class InstallerCore
       "scripts/versions.rb" => "scripts/versions.rb",
       "scripts/doctor.rb" => "scripts/doctor.rb",
       "scripts/dashboard.rb" => "scripts/dashboard.rb",
+      "scripts/lib/db.rb" => "scripts/lib/db.rb",
+      "scripts/lib/db/connection.rb" => "scripts/lib/db/connection.rb",
+      "scripts/lib/db/store_resolver.rb" => "scripts/lib/db/store_resolver.rb",
+      "scripts/lib/db/schema.rb" => "scripts/lib/db/schema.rb",
+      "scripts/lib/db/leases.rb" => "scripts/lib/db/leases.rb",
+      "scripts/lib/db/sessions.rb" => "scripts/lib/db/sessions.rb",
+      "scripts/lib/db/savepoint_events.rb" => "scripts/lib/db/savepoint_events.rb",
+      "scripts/lib/db/mirror.rb" => "scripts/lib/db/mirror.rb",
+      "scripts/lib/db/roadmaps.rb" => "scripts/lib/db/roadmaps.rb",
+      "scripts/lib/db/rebuild.rb" => "scripts/lib/db/rebuild.rb",
     }
   end
 

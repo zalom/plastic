@@ -2,7 +2,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require_relative "../scripts/lib/bridge"
-require_relative "../scripts/lib/lock"
+require_relative "../scripts/lib/db"
 
 # Tests the PreToolUse code-edit gate decision (intent 27, R1).
 class CodeGateTest < Minitest::Test
@@ -72,7 +72,8 @@ class CodeGateTest < Minitest::Test
     # ARBITRATION gates) must have ZERO effect here: code_gate_decision does
     # not accept a session/lock/home argument at all and must stay
     # byte-for-byte unchanged. A pre-How project-code edit is still blocked.
-    Lock.acquire(@intent_dir, session: "sess-1")
+    conn = Plastic::DB.connect(File.dirname(@store))
+    Plastic::DB::Leases.acquire(conn, "27", session: "sess-1", host: "h")
     refute_nil decide(bridge(auto: true), @project_file),
                "solo delivery must never relax the stage-ordering gate"
   end

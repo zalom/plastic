@@ -5,7 +5,7 @@ require "json"
 require "open3"
 require "rbconfig"
 require_relative "../scripts/lib/bridge"
-require_relative "../scripts/lib/lock"
+require_relative "../scripts/lib/db"
 
 # Tests for the Bash-edit gate (intent 27a; interpreter writes, lock
 # composition, and the plastic-ok escape from intent 108 D7).
@@ -266,9 +266,14 @@ class BashGateTest < Minitest::Test
                "## Active\n- [27 — demo](27--demo/27--demo.md)\n\n## Future\n")
   end
 
+  def acquire_lease(session)
+    conn = Plastic::DB.connect(File.dirname(@store))
+    Plastic::DB::Leases.acquire(conn, "27", session: session, host: "h")
+  end
+
   def test_bash_gate_blocks_an_interpreter_write_into_a_locked_active_intent_dir
     activate_intent_27
-    Lock.acquire(@intent_dir, session: "other")
+    acquire_lease("other")
     cmd = "ruby -e 'File.write(#{File.join(@intent_dir, 'spec.md').inspect}, \"x\")'"
     reason = Bridge.bash_gate_decision(nil, cmd, cwd: "/", session: "sess-1")
     refute_nil reason
@@ -277,7 +282,7 @@ class BashGateTest < Minitest::Test
 
   def test_bash_gate_allows_the_lock_owner
     activate_intent_27
-    Lock.acquire(@intent_dir, session: "sess-1")
+    acquire_lease("sess-1")
     cmd = "ruby -e 'File.write(#{File.join(@intent_dir, 'spec.md').inspect}, \"x\")'"
     assert_nil Bridge.bash_gate_decision(nil, cmd, cwd: "/", session: "sess-1")
   end
