@@ -288,6 +288,9 @@ class InstallerCore
       "scripts/versions.rb" => "scripts/versions.rb",
       "scripts/doctor.rb" => "scripts/doctor.rb",
       "scripts/dashboard.rb" => "scripts/dashboard.rb",
+      "scripts/lib/db.rb" => "scripts/lib/db.rb",
+      "scripts/lib/db/connection.rb" => "scripts/lib/db/connection.rb",
+      "scripts/lib/db/store_resolver.rb" => "scripts/lib/db/store_resolver.rb",
     }
   end
 
