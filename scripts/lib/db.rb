@@ -16,6 +16,7 @@ require_relative "db/leases"
 require_relative "db/sessions"
 require_relative "db/savepoint_events"
 require_relative "db/roadmaps"
+require_relative "db/rebuild"
 
 # Plastic::DB — the single entry point every consumer uses to talk to a
 # store's plastic.db. No consumer writes SQL directly (D7); this facade plus
@@ -260,6 +261,23 @@ module Plastic
 
     def iso(time)
       time.utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+    end
+
+    # --- cold rebuild (ACTION_8, AC3) ---------------------------------------
+
+    def rebuild!(store, now: Time.now.utc, available: available?)
+      home = store || StoreResolver.resolve(cwd: Dir.pwd)[:store_home]
+      conn = connect(home, available: available)
+      return FAIL_OPEN_SENTINEL if conn.nil?
+
+      Rebuild.rebuild!(conn, store_home: home, now: now)
+    end
+
+    def canonical_dump(store, available: available?)
+      conn = store_conn(store, available: available)
+      return FAIL_OPEN_SENTINEL if conn.nil?
+
+      Rebuild.canonical_dump(conn)
     end
   end
 end
