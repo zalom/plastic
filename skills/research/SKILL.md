@@ -81,6 +81,8 @@ Examples:
 
 ### Report Structure
 
+Default to tabular-first per `PLASTIC.md` (## Tabular-First Reporting, intent 160): tables for findings and comparisons, prose for simple summaries.
+
 ```markdown
 # {Type}: {Topic}
 

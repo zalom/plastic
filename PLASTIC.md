@@ -370,6 +370,36 @@ cache) over re-reading them from disk, which only widens context. QMD is for OTH
 intents, not for re-reading what you just wrote. Pairs with `/clear` plus savepoint-resume
 hygiene after each intent. Advisory self-check, not hard-verifiable.
 
+## Tabular-First Reporting (intent 160)
+
+**Default.** Tabular layout is the default shape for three surfaces: What-stage discovery
+deposits, all research reports, and all agent reporting or presentation surfaces.
+
+**Calibration.** Tables are REQUIRED for any listing or discussion of intents, and for
+explaining complex data, comparisons, or multi-factor reasoning. This is NOT a blanket
+tables-everywhere rule: simple data stays prose, and tables must not be overused.
+
+**Bullets-limit.** Use bullets only when a table genuinely does not fit the content, and
+never more than 3-5 items.
+
+**Why tables.**
+
+| # | Reason |
+|---|--------|
+| 1 | Parallel structure makes comparison a row-vs-row scan, not a re-read. |
+| 2 | Coverage is provable: N items means N rows, an empty cell exposes a gap while a missing bullet hides it. |
+| 3 | Schema stated once in the headers, no repeated labels, higher density. |
+| 4 | A column reads vertically to show every value at once. |
+| 5 | Cells force terseness where bullets sprawl and nest. |
+| 6 | A ruling or decision column turns the report into the decision worksheet. |
+| 7 | Rows stay machine-readable for downstream tooling. |
+| 8 | Uniform granularity: every item answers the same questions. |
+| 9 | Line-scoped git diffs. |
+
+**Exception.** The EM-to-CTO human briefing (`skills/auto/references/human-report-contract.md`)
+keeps its deliberate prose shape (fixed State/Risk/Call, single item, nothing to tabulate) and
+is exempt from this rule.
+
 ## Retrieval Gate
 
 Advisory. Hard gates guard writes, locks, and structure, never reads or searches. Read,
