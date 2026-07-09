@@ -104,6 +104,15 @@ module Plastic
           pick_preferred(rows)
         end
 
+        # Every session row (read-only; used by the GC sweep that replaces the
+        # retired /tmp bridge purge, intent 41 ACTION_9). Fails open ([]) on a
+        # nil conn.
+        def all(conn)
+          return [] if conn.nil?
+
+          all_rows(conn)
+        end
+
         # Thin read join to `lock_leases` (the only cross-table access this
         # module makes; ACTION_3 owns writes to that table). Returns the
         # live delivery-grain lease row (artifact IS NULL, not yet released)
