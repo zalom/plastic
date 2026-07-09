@@ -17,5 +17,11 @@ fi
 
 SESSION_ID=$(echo "$INPUT" | ruby -rjson -e 'data = JSON.parse(STDIN.read); puts data.dig("session_id") || ""' 2>/dev/null)
 
+NEW_CONTENT=$(echo "$INPUT" | ruby -rjson -e '
+  data = JSON.parse(STDIN.read)
+  ti = data["tool_input"] || data["tool_params"] || {}
+  print ti["content"] || ti["new_string"] || ""
+' 2>/dev/null)
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ruby "$SCRIPT_DIR/../scripts/hook-code-gate" "$FILE_PATH" "$SESSION_ID"
+ruby "$SCRIPT_DIR/../scripts/hook-code-gate" "$FILE_PATH" "$SESSION_ID" "$NEW_CONTENT"
