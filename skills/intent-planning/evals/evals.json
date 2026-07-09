@@ -1,0 +1,66 @@
+{
+  "skill_name": "plastic-intent-planning",
+  "notes": "Intent 164. New evals.json for the writing-plans skill: tier-shape enforcement (S/M inline vs L actions/) and the checklist FORM plus [ORCHESTRATOR] hard-gate item convention. All assertions are pending a real observed run per the plastic-evaluating-skills convention.",
+  "evals": [
+    {
+      "id": 1,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "spec.md is stamped Tier: M and describes a single subsystem change touching four files across two tasks. Write the plan.",
+      "expected_output": "Produces an inline plan-as-checklist: all tasks with rationale live directly in plan.md, and checklist.md mirrors the task list. No actions/ACTION_N.md files are created; the actions/ directory stays empty or absent.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "no files created under actions/ for this intent; checklist.md exists and mirrors plan.md's task list",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "spec.md is stamped Tier: S and describes a single-file config change. Write the plan.",
+      "expected_output": "Produces an inline plan-as-checklist. No actions/ files are created, matching the S/M default.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "no files created under actions/ for this intent",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "spec.md is stamped Tier: L and describes a cross-cutting redesign decomposed into eight independent tasks meant to be dispatched to separate subagents in parallel. Write the plan.",
+      "expected_output": "Produces self-contained actions/ACTION_N.md, one file per task, each readable without the plan (full task text, code, and commands copied in). checklist.md has one item per task.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "actions/ directory contains one ACTION_N.md per task; each action file is self-contained (no bare references like \"see Task 3\" without the content)",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "spec.md names an owner decision (whether to delete or archive a legacy table) that must be ruled on before any code edit in the plan can proceed. Write the plan.",
+      "expected_output": "checklist.md includes a checklist item prefixed [ORCHESTRATOR] that names the owner decision and states it blocks all code edits until the owner rules; this item is ordered before the sweeping edit tasks that depend on it. checklist.md follows the FORM: ## In Progress, ## Completed (empty), ## Session Log with Date | Items Completed | Notes columns.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "an [ORCHESTRATOR] item exists, names the decision, states it blocks code edits, and precedes dependent tasks; checklist.md has the three FORM sections in the right shape",
+          "result": "expect-pass"
+        }
+      ]
+    }
+  ]
+}

@@ -26,7 +26,10 @@ plan.md so the shape matches on the first pass.
 
 **Tech Stack:** [Key technologies/libraries]
 
-**Intent:** {id} — {name}
+**Intent:** {id}: {name}
+
+**Tier:** S|M|L, copied from the spec's stamped `Tier:` line. S and M plans are
+inline plan-as-checklist (no `actions/`); L plans use `actions/ACTION_N.md`.
 
 ---
 ```
@@ -78,25 +81,46 @@ git commit -m "feat: add specific feature"
 
 ## checklist.md format
 
-Execution registry with one checkbox per task. Format:
+Execution registry with one checkbox per task, following this FORM regardless
+of tier (S, M, or L):
 
 ```markdown
-# Checklist — Intent {id}: {name}
+# Checklist: {name}
 
+## In Progress
 - [ ] Task 1: {task title}
 - [ ] Task 2: {task title}
 - [ ] Task 3: {task title}
-...
+
+## Completed
+(empty at plan time; move each item here, checked, the moment its task lands)
+
+## Session Log
+| Date | Items Completed | Notes |
+|------|-----------------|-------|
 ```
+
+- `## In Progress` holds every unchecked task, in plan order.
+- `## Completed` starts empty. As execution lands a task, move its item here
+  (checked) instead of leaving a checked box under `## In Progress`.
+- `## Session Log` gets one row per work session: the date, which items
+  completed, and any deviation or finding worth recording.
+- An owner-decision hard-gate item (see the parent SKILL.md's
+  `## Owner-decision hard-gate items`) is a normal checklist item prefixed
+  `[ORCHESTRATOR]`; it lives under `## In Progress` until the owner rules, then
+  moves to `## Completed` like any other item.
 
 ## actions/ACTION_N.md format
 
-One file per task. Each action is self-contained — a subagent can execute it without reading the plan.
+L tier only. S and M plans skip this file type entirely; their tasks live
+inline in `plan.md` (see the parent SKILL.md's `## Tier shapes`).
+
+One file per task. Each action is self-contained: a subagent can execute it without reading the plan.
 
 ```markdown
 # Action {N}: {task title}
 
-{Full task text copied from plan.md — all steps, all code, all commands. Nothing omitted.}
+{Full task text copied from plan.md: all steps, all code, all commands. Nothing omitted.}
 ```
 
 Create the `actions/` directory inside the intent directory: `{intent_dir}/actions/`
