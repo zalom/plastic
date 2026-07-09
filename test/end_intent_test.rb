@@ -5,6 +5,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "open3"
+require "date"
 require_relative "../scripts/lib/bridge"
 
 # end-intent (intent 161): the mechanical core of the Done procedure (D2 steps
@@ -179,6 +180,42 @@ class EndIntentTest < Minitest::Test
     assert_equal 0, status2
     after_second = File.read(@index)
     assert_equal after_first, after_second, "a second run must be a clean no-op on INDEX.md"
+    assert_equal 1, after_second.scan("[161").length, "no duplicate entry after the second run"
+  end
+
+  # --- --index-note appends the rich Completed/Abandoned entry [AC5, F3] -----
+
+  def test_index_note_appends_the_rich_entry_description
+    build_intent
+    write_index
+
+    _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                   "--index", @index, "--no-commit",
+                                   "--index-note", "(guided, Tier S). Shipped end to end. Suite 42/100/0/0.")
+    assert_equal 0, status
+
+    content = File.read(@index)
+    expected_line = "- [161 — Demo intent](store/161--demo/161--demo.md) — " \
+                    "#{Date.today.iso8601} (guided, Tier S). Shipped end to end. Suite 42/100/0/0.\n"
+    assert_includes content, expected_line
+    completed_head = content.lines.drop_while { |l| l.strip != "## Completed" }.take(3).join
+    refute_match(/_\(none\)_/, completed_head, "the placeholder must not survive alongside the rich entry")
+  end
+
+  def test_index_note_idempotency_holds_with_the_flag
+    build_intent
+    write_index
+    note = "(guided, Tier S). Shipped end to end. Suite 42/100/0/0."
+
+    run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                    "--index", @index, "--no-commit", "--index-note", note)
+    after_first = File.read(@index)
+
+    _out, status2 = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                    "--index", @index, "--no-commit", "--index-note", note)
+    assert_equal 0, status2
+    after_second = File.read(@index)
+    assert_equal after_first, after_second, "a second run with the same --index-note must be a clean no-op"
     assert_equal 1, after_second.scan("[161").length, "no duplicate entry after the second run"
   end
 

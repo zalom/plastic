@@ -277,9 +277,11 @@ During initial project creation, all decisions are non-destructive by definition
 6. Run the mechanical close through `plastic-intent-ending`: it owns steps 1-6 of the Done
    procedure (outcome/INDEX/savepoint/commit, disarm, and the QMD reindex last) as ONE
    delegation, not five separate one-liners restated here. Run its backing script for the
-   outcome/INDEX/savepoint/commit core:
+   outcome/INDEX/savepoint/commit core, passing `--index-note` with a rich Completed/
+   Abandoned entry description (mode/tier, what shipped or why abandoned, suite result):
    ```bash
-   ruby ~/.plastic/scripts/end-intent --store <store_path> --id <ID> --disposition delivered
+   ruby ~/.plastic/scripts/end-intent --store <store_path> --id <ID> --disposition delivered \
+     --index-note "<mode, tier>; <what shipped>; <suite result>"
    ```
    (Use `--disposition abandoned` when the intent is being moved to `## Abandoned`.) Then
    follow `plastic-intent-ending`'s Step 5 (disarm: `Bridge.disarm_auto` on this auto/curator

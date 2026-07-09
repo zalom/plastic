@@ -10,13 +10,17 @@
 #
 # Usage:
 #   end-intent --store <store_path> --id <intent_id> --disposition delivered|abandoned \
-#              [--index <path>] [--outcome-summary <text>] [--no-commit] [--dry-run]
+#              [--index <path>] [--outcome-summary <text>] [--index-note <text>] \
+#              [--no-commit] [--dry-run]
 #
 # Steps performed (in order), all idempotent:
 #   1. Guard outcome.md (exit 2, authors nothing, on any failure), then stamp
 #      the intent file's `## Outcome` section with --outcome-summary if given.
 #   2. Move the intent's INDEX.md line from `## Active` into `## Completed`
-#      (delivered) or `## Abandoned` (abandoned), dated today.
+#      (delivered) or `## Abandoned` (abandoned), dated today, appending
+#      --index-note (if given) after the date so the terminal entry stays
+#      the store's existing rich Completed/Abandoned shape rather than
+#      thinning to bare id+date.
 #   3. Append the savepoint `Done` bookend (Bridge.append_terminal_savepoint).
 #   4. Commit the store repo, unless --no-commit.
 #
@@ -41,7 +45,7 @@ EM_DASH = "\u2014"
 def parse_args(argv)
   opts = {
     store: nil, id: nil, disposition: nil, index: nil,
-    outcome_summary: nil, no_commit: false, dry_run: false,
+    outcome_summary: nil, index_note: nil, no_commit: false, dry_run: false,
   }
   i = 0
   while i < argv.length
@@ -52,6 +56,7 @@ def parse_args(argv)
     when "--disposition"     then opts[:disposition] = argv[i += 1]
     when "--index"           then opts[:index] = argv[i += 1]
     when "--outcome-summary" then opts[:outcome_summary] = argv[i += 1]
+    when "--index-note"      then opts[:index_note] = argv[i += 1]
     when "--no-commit"       then opts[:no_commit] = true
     when "--dry-run"         then opts[:dry_run] = true
     else
@@ -65,7 +70,7 @@ end
 def usage
   "usage: end-intent --store <store_path> --id <intent_id> " \
     "--disposition delivered|abandoned [--index <path>] " \
-    "[--outcome-summary <text>] [--no-commit] [--dry-run]"
+    "[--outcome-summary <text>] [--index-note <text>] [--no-commit] [--dry-run]"
 end
 
 def usage_abort(message)
@@ -178,15 +183,19 @@ def remove_active_entry(lines, active_start, entry_idx)
   new_lines
 end
 
-# Insert new_entry into the target terminal section: replace a lone
-# "_(none)_" placeholder if that is all the section holds, otherwise prepend
-# (newest-first, matching the existing Completed/Abandoned convention).
+# Insert new_entry into the target terminal section: replace the "_(none)_"
+# placeholder if that is the ONLY non-blank content the section holds (a
+# trailing blank line before the next heading is common and must not
+# defeat this check), otherwise prepend (newest-first, matching the
+# existing Completed/Abandoned convention).
 def insert_terminal_entry(lines, target_start, new_entry)
   new_lines = lines.dup
   stop = section_stop(new_lines, target_start)
-  body_idx = (target_start + 1...stop).to_a
-  if body_idx.length == 1 && new_lines[body_idx.first].strip == "_(none)_"
-    new_lines[body_idx.first] = new_entry
+  body_range = (target_start + 1...stop)
+  placeholder_idx = body_range.find { |i| new_lines[i].strip == "_(none)_" }
+  non_blank = body_range.reject { |i| new_lines[i].strip.empty? }
+  if placeholder_idx && non_blank == [placeholder_idx]
+    new_lines[placeholder_idx] = new_entry
   else
     new_lines.insert(target_start + 1, new_entry)
   end
@@ -196,8 +205,12 @@ end
 # Move the intent's `## Active` line into the terminal section. Returns the
 # new INDEX.md content, or the original content unchanged when there is
 # nothing to do (idempotent: a second run finds no Active entry and the
-# terminal section already carries it, so it is a clean no-op).
-def move_index_to_terminal(content, id, disposition, today:)
+# terminal section already carries it, so it is a clean no-op). `index_note`
+# (D2 "rich entry", review F3), when given, is appended verbatim after the
+# date with a single leading space: content authoring (mode/tier, what
+# shipped, suite result, and so on) stays with the caller, this only places
+# the text where the store's existing Completed/Abandoned lines carry it.
+def move_index_to_terminal(content, id, disposition, today:, index_note: nil)
   target_heading = index_target_heading(disposition)
   lines = content.lines
 
@@ -213,7 +226,8 @@ def move_index_to_terminal(content, id, disposition, today:)
 
   m = lines[entry_idx].match(ACTIVE_LINE_RE)
   title, link = m[2], m[3]
-  new_entry = "- [#{id} #{EM_DASH} #{title}](#{link}) #{EM_DASH} #{today}\n"
+  note_suffix = (index_note && !index_note.to_s.strip.empty?) ? " #{index_note.to_s.strip}" : ""
+  new_entry = "- [#{id} #{EM_DASH} #{title}](#{link}) #{EM_DASH} #{today}#{note_suffix}\n"
 
   lines = remove_active_entry(lines, active_start, entry_idx)
   target_start = lines.index { |l| l.rstrip == target_heading }
@@ -277,6 +291,7 @@ def main(argv)
     puts "end-intent: dry run for #{File.basename(intent_dir)} (#{disposition})"
     puts "  would stamp ## Outcome: #{opts[:outcome_summary].inspect}" if opts[:outcome_summary]
     puts "  would move INDEX.md entry from ## Active to #{index_target_heading(disposition)} (#{index_path})"
+    puts "  would append index note: #{opts[:index_note].inspect}" if opts[:index_note]
     puts "  would append savepoint bookend: Done  #{disposition}"
     puts(opts[:no_commit] ? "  would skip store commit (--no-commit)" : "  would commit the store repo")
     exit 0
@@ -295,7 +310,8 @@ def main(argv)
   # 2. INDEX.md terminal move.
   if File.exist?(index_path)
     original_index = File.read(index_path)
-    updated_index = move_index_to_terminal(original_index, id, disposition, today: today)
+    updated_index = move_index_to_terminal(original_index, id, disposition, today: today,
+                                            index_note: opts[:index_note])
     File.write(index_path, updated_index) if updated_index != original_index
   else
     warn "end-intent: INDEX.md not found at #{index_path}, skipping the terminal move"

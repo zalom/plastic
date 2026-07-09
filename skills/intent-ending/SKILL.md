@@ -1,12 +1,9 @@
 ---
 name: plastic-intent-ending
 description: >
-  Wrap, finish, close, or mark an intent Done, delivered or abandoned. The
-  single owned Done procedure every exit route (auto mode, the curator path,
-  releasing) calls for the mechanical close, so the savepoint Done bookend is
-  never skipped. Use when completing or abandoning an intent, when a
-  checklist reaches 100 percent and Exec is finished, or when asked to "wrap
-  this up".
+  Wrap, finish, close, or mark an intent Done, delivered or abandoned. Use
+  when completing or abandoning an intent, when a checklist reaches 100
+  percent and Exec is finished, or when asked to "wrap this up".
 user-invocable: true
 ---
 
@@ -37,21 +34,26 @@ authored the close in prose and dropped the savepoint bookend for two real
 deliveries). Never restate outcome/INDEX/savepoint prose inline again; call
 `scripts/end-intent`.
 
-### Step 0. Precondition (predict the deny, do not fight it)
+### Step 0. Precondition (the gate is section-blind, not selective)
 
-`Bridge.check_gate` is LIVE code already wired into the write-time hook. It
-BLOCKS an outcome.md write while any non-completion item in checklist.md is
-still unchecked (`- [ ]`). This skill's own precondition step only SURFACES
-that gate in prose before you hit it:
+`Bridge.check_gate` (scripts/lib/bridge.rb) is LIVE code already wired into
+the write-time hook. Its outcome.md rule is a blind scan of the WHOLE
+checklist.md: `content.scan(/^- \[ \]/)` counts every unchecked box, in
+every section, with no awareness of which section a box lives in. ANY
+unchecked box anywhere blocks the outcome.md write; there is no exemption
+for orchestrator-owned or completion-tracking items.
 
-1. Read checklist.md. Every non-completion item must be checked. The
-   orchestrator-owned items (merge, this skill's own close) are the only
-   ones allowed to stay open at this point; every actual delivery item must
-   be ticked.
+1. Read checklist.md. Tick every item as it is actually performed, including
+   an item that describes the close itself: running this very procedure IS
+   what that item describes, so tick it at the moment you begin the close,
+   before authoring outcome.md. By the time outcome.md is written,
+   checklist.md must read 100 percent checked; there is no other way past
+   the gate.
 2. Confirm every acceptance criterion in spec.md is verifiable (tests pass,
    or the manual check described in its HOW line was actually run).
-3. If either check fails, stop here. Finish the checklist or spec gaps
-   first; do not attempt outcome.md and fight the gate's deny.
+3. If checklist.md still has an unchecked box, stop here. Finish it first
+   (tick it if the described work is actually done, or do the remaining
+   work); do not attempt outcome.md and fight the gate's deny.
 
 ### Step 1-4. Run `scripts/end-intent`
 
@@ -59,25 +61,32 @@ First author outcome.md for real (never leave the scaffold placeholder in
 place): copy `templates/outcome.md`, set the frontmatter to
 `disposition: delivered` or `disposition: abandoned`, and fill `## Summary`,
 `## Delivered`, `## Verification`, `## Follow-ups`. On abandon, `## Summary`
-states the abandonment reason and the trail (see Pivot below).
+states the abandonment reason and the trail (see Pivot below). Also author
+the rich INDEX entry note now (a short line in the store's existing
+Completed/Abandoned convention: mode/tier, what shipped or why it was
+abandoned, suite result, merge/spawn notes); content authoring stays with
+you, `--index-note` only appends what you write.
 
 Then call the script once:
 
 ```bash
 ruby ~/.plastic/scripts/end-intent \
   --store <store_path> --id <intent_id> --disposition delivered|abandoned \
-  --outcome-summary "<one-line ## Outcome summary for the intent file>"
+  --outcome-summary "<one-line ## Outcome summary for the intent file>" \
+  --index-note "<rich Completed/Abandoned entry description>"
 ```
 
 This does all of steps 1-4 in order: guards outcome.md (refuses a missing,
 still-placeholder, or wrong-disposition file with exit 2 and authors
 nothing), stamps the intent file's `## Outcome` section, moves the INDEX.md
 line from `## Active` to `## Completed` or `## Abandoned` (dated today,
-idempotent), appends the savepoint `Done` bookend, and commits the store
-repo. Add `--no-commit` when a separate commit step already covers the
-store, and `--dry-run` to preview with no writes. Exit 0 is success; exit 1
-is a usage or resolution failure; exit 2 is the outcome.md guard refusing
-(fix outcome.md and re-run, nothing was written).
+idempotent) with the `--index-note` text appended after the date so the
+entry stays rich, appends the savepoint `Done` bookend, and commits the
+store repo. Omit `--index-note` for a thin id+date entry, add `--no-commit`
+when a separate commit step already covers the store, and `--dry-run` to
+preview with no writes. Exit 0 is success; exit 1 is a usage or resolution
+failure; exit 2 is the outcome.md guard refusing (fix outcome.md and re-run,
+nothing was written).
 
 ### Step 5. Disarm (worktree + lock)
 
