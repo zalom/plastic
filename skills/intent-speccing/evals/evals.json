@@ -1,0 +1,126 @@
+{
+  "skill_name": "plastic-intent-speccing",
+  "notes": "Intent 163. Scopes: description triggering (1-4) and behavior (5-8: all-8-sections output, mandatory superseding-ruling case, STOP-and-ask gap rule, tabular alternatives with no em-dash). No dedicated Ruby test file backs this skill yet (natural-language guided command), so all assertions are result: expect-pass pending a real observed run, per the intent-starting evals.json convention.",
+  "evals": [
+    {
+      "id": 1,
+      "scope": "triggering",
+      "set": "train",
+      "prompt": "The active intent is at Why with Context and Decisions recorded. Consolidate the enriched Why into spec.md.",
+      "expected_output": "Activates plastic-intent-speccing (the user-typed Why-to-How consolidation command).",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "router CHOICE == plastic-intent-speccing",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "scope": "triggering",
+      "set": "train",
+      "prompt": "Turn what we just discussed into the contract the planner builds from.",
+      "expected_output": "Activates plastic-intent-speccing; an indirect trigger that names neither the skill nor spec.md.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "router CHOICE == plastic-intent-speccing",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "scope": "triggering",
+      "set": "validation",
+      "prompt": "Brainstorm this intent.",
+      "expected_output": "Does NOT activate plastic-intent-speccing; activates plastic-intent-brainstorming (exploration that produces the enriched Why, upstream of speccing).",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "router CHOICE != plastic-intent-speccing",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "scope": "triggering",
+      "set": "validation",
+      "prompt": "Write the plan.",
+      "expected_output": "Does NOT activate plastic-intent-speccing; activates plastic-intent-planning (turns an existing spec.md into plan.md for How, downstream of speccing).",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "router CHOICE != plastic-intent-speccing",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "Intent Y is at Why: Context describes the problem and goal, and 5 Decisions are recorded resolving scope, approach, and one rejected alternative. Consolidate into spec.md.",
+      "expected_output": "Produces spec.md with Tier: S|M|L as the literal top line above the Spec heading; all 8 template sections present once, in template order (Problem, Goals, Non-Goals, Approach, Alternatives Considered, Decisions, Acceptance Criteria, Open Questions); no template placeholder text remains; every recorded Decision is encoded into its matching section.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "Tier line is literally the first line of the file; all 8 sections appear once each, in template order; no placeholder text; every Decision traces to a section",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "Intent Z has Decisions recording D4: ship the setting as a CLI flag. A later Insights entry, timestamped after D4, reads: superseding ruling, ship as a config-file setting instead of a CLI flag, per user correction. Consolidate into spec.md.",
+      "expected_output": "The produced spec Approach and Decisions sections encode the LATER ruling (config-file setting); the superseded earlier Decision (CLI flag) does not stand as the shipped design in any section. The Decisions section notes that the later Insight supersedes D4.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "Approach and Decisions state the config-file setting, not the CLI flag; no section still asserts the CLI-flag path as the shipped design",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "Intent W is at Why. Context says the team wants error handling that is more resilient, but no Decision or Insight states which specific mechanism (retry, circuit breaker, or fallback) was chosen. Consolidate into spec.md.",
+      "expected_output": "Stops at step 5 (the gap rule) instead of inventing an Approach; asks the user which error-handling mechanism was decided, naming the missing ruling and the section it blocks.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "no invented Approach or Decisions content fills the gap; the agent asks for the missing ruling instead of guessing a default mechanism",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "Intent V has Decisions recording 3 rejected alternatives, each with a one-line reason it lost. Consolidate into spec.md.",
+      "expected_output": "Alternatives Considered renders as a table (Alternative, Not chosen because), not the bullet-dash form shown in the template; the produced spec file contains no em-dashes or en-dashes anywhere in the file.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "Alternatives Considered is a two-column table with one row per rejected alternative; a full-file dash-glyph scan of the produced spec file finds none",
+          "result": "expect-pass"
+        }
+      ]
+    }
+  ]
+}
