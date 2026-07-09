@@ -73,7 +73,10 @@ def default_templates_dir
 end
 
 def render_tokens(text, tokens)
-  tokens.reduce(text) { |acc, (k, v)| acc.gsub("{{#{k}}}", v.to_s) }
+  # Block-form gsub: a String replacement argument reinterprets backslash
+  # sequences (so a doubled backslash from escape_double_quoted_scalar
+  # collapses back to one); the block form substitutes the value literally.
+  tokens.reduce(text) { |acc, (k, v)| acc.gsub("{{#{k}}}") { v.to_s } }
 end
 
 # Escape the characters that would break a double-quoted YAML scalar: backslash

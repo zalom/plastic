@@ -297,6 +297,43 @@ class NewIntentTest < Minitest::Test
     assert_includes body, "## Intent\n#{original}\n", "body ## Intent copy must stay raw, unescaped"
   end
 
+  def test_intent_value_with_backslash_is_escaped_in_frontmatter
+    # Regression: escape_double_quoted_scalar doubles a literal backslash, but
+    # render_tokens used a String-form gsub replacement, which re-interprets
+    # backslash sequences in the replacement and collapses the doubled
+    # backslash back to one -- silently corrupting the escaped value on its
+    # way into the frontmatter.
+    original = 'Fix the \\wiring bug'
+    dir, status = run_new_intent("--store", @store, "--intent", original, "--slug", "backslash-bug")
+    assert_equal 0, status, "expected exit 0, got: #{dir}"
+
+    result = IntentValidator.validate(dir)
+    assert result[:ok], "intent must be born complete: #{result[:errors].inspect}"
+
+    file = File.join(dir, "#{File.basename(dir)}.md")
+    fm = IntentValidator.parse_frontmatter(file)
+    assert_equal original, fm["intent"], "frontmatter intent field must round-trip to the original string"
+
+    body = IntentValidator.body_of(File.read(file))
+    assert_includes body, "## Intent\n#{original}\n", "body ## Intent copy must stay raw, unescaped"
+  end
+
+  def test_intent_value_with_backslash_and_double_quote_is_escaped_in_frontmatter
+    original = 'Fix the \\"reciprocal chain\\" wiring bug'
+    dir, status = run_new_intent("--store", @store, "--intent", original, "--slug", "backslash-quote-bug")
+    assert_equal 0, status, "expected exit 0, got: #{dir}"
+
+    result = IntentValidator.validate(dir)
+    assert result[:ok], "intent must be born complete: #{result[:errors].inspect}"
+
+    file = File.join(dir, "#{File.basename(dir)}.md")
+    fm = IntentValidator.parse_frontmatter(file)
+    assert_equal original, fm["intent"], "frontmatter intent field must round-trip to the original string"
+
+    body = IntentValidator.body_of(File.read(file))
+    assert_includes body, "## Intent\n#{original}\n", "body ## Intent copy must stay raw, unescaped"
+  end
+
   # --- Intent 81: born savepoint line stamped at creation --------------------
 
   def test_scaffold_stamps_born_savepoint_line
