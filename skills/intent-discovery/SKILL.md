@@ -6,6 +6,7 @@ description: >-
   resources/discovery--<slug>.md for the Why stage to consume. Use when an intent
   is activated (moved from Future to Active), after the lock is armed, under it,
   and before Why begins. Never writes the intent file itself.
+user-invocable: false
 ---
 
 # Intent Discovery — What-stage context deposit

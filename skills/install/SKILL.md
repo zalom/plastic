@@ -1,6 +1,7 @@
 ---
 name: plastic-install
 description: Use when initializing Plastic globally (~/.plastic/) or locally in a project, or to re-install/repair a broken installation. Accepts channel flags (--alpha, --beta, --latest) to select release channel. First install defaults to --beta; reinstalls match the already-installed channel. Global install is recommended: it creates the global intent store as a git-backed repository. Local install creates .plastic/ in the current project for testing.
+user-invocable: true
 ---
 
 # Install Plastic

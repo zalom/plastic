@@ -1,6 +1,7 @@
 ---
 name: plastic-writing-plans
 description: "Write implementation plans from a spec. Produces plan.md, checklist.md, and actions/ in the active intent directory."
+user-invocable: true
 ---
 
 # Writing Plans

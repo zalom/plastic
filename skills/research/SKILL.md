@@ -1,6 +1,7 @@
 ---
 name: plastic-research
 description: "Research a topic for the active intent. Agent decides shallow vs deep based on scope. Produces reports in the intent's resources/ directory."
+user-invocable: true
 ---
 
 # Research

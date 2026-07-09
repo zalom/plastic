@@ -1,6 +1,7 @@
 ---
 name: plastic-versions
 description: Use when the user wants to see their Plastic version history or roll back to a previously-installed version after a bad release. Manages the local, append-only versions.json ledger and steps between versions the user has actually run. For moving to a brand-new release, use plastic-update instead.
+user-invocable: true
 ---
 
 # Plastic Versions: local version time-machine

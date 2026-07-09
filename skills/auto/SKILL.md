@@ -4,6 +4,7 @@ description: >-
   Autonomous intent delivery — agent takes over How and Exec. Use when user says
   "auto", "take it from here", "deliver this", or when brainstorming-grill-me concludes
   and user confirms autonomous execution. Requires an active intent in INDEX.md.
+user-invocable: true
 ---
 
 # Auto — Autonomous Intent Delivery

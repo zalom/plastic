@@ -107,7 +107,7 @@ class LockSystemTest < Minitest::Test
   def test_single_owner_second_session_refused_owner_idempotent
     arm("a")
     err = assert_raises(Bridge::LockHeldError) { arm("b") }
-    assert_includes err.message, "plastic-lock"
+    assert_includes err.message, "/plastic-doctor"
 
     data = arm("a") # idempotent re-arm, :owned path
     assert_equal "a", data["lock"]["owner_session"]
@@ -293,7 +293,7 @@ class LockSystemTest < Minitest::Test
   def test_corrupted_lock_recovery
     File.write(Lock.path(@dir96), "{ nope")
     reason = gate("#{@dir96}/plan.md", session: "a")
-    assert_includes reason, "/plastic-lock fix"
+    assert_includes reason, "/plastic-doctor fix the lock"
     report = repair("a")
     assert_equal "repaired", report["status"]
     assert_equal "a", Lock.read(@dir96)["owner_session"]

@@ -6,6 +6,7 @@ description: >-
   when you need to provision a store, or when doctor reports a missing project
   store (project_store_dir). Thin wrapper around provision-project-store plus an
   optional qmd register step.
+user-invocable: false
 ---
 
 # Add a Project Store

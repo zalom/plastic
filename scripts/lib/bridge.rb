@@ -741,17 +741,18 @@ module Bridge
       data["lock"] = lock_cache(lock_data)
     when :held
       raise LockHeldError, "delivery lock for intent #{intent_id} is held by " \
-        "session #{lock_data && lock_data['owner_session']}; run /plastic-lock status"
+        "session #{lock_data && lock_data['owner_session']}; run /plastic-doctor " \
+        "check the lock status"
     when :stale
       raise LockHeldError, "delivery lock for intent #{intent_id} is stale " \
-        "(owner #{lock_data && lock_data['owner_session']}); run /plastic-lock " \
-        "reclaim to take it over with an audit"
+        "(owner #{lock_data && lock_data['owner_session']}); run /plastic-doctor " \
+        "reclaim the lock to take it over with an audit"
     when :excluded
       raise LockHeldError, "a #{lock_data && lock_data['type']} lock is active on " \
-        "intent #{intent_id}; run /plastic-lock status"
+        "intent #{intent_id}; run /plastic-doctor check the lock status"
     when :corrupt
       raise LockHeldError, "delivery.lock for intent #{intent_id} is unreadable; " \
-        "run /plastic-lock fix"
+        "run /plastic-doctor fix the lock"
     end
 
     # Provision the per-intent worktrees (mandatory code worktree for project
@@ -861,7 +862,7 @@ module Bridge
       end
       return { "status" => "stale", "owner" => lock["owner_session"],
                "actions" => actions, "session" => key,
-               "hint" => "run /plastic-lock reclaim to take over with an audit" }
+               "hint" => "run /plastic-doctor reclaim the lock to take over with an audit" }
     end
 
     if lock
@@ -1002,16 +1003,16 @@ module Bridge
                "#{lock['owner_session']}. Back off; if you are the owner's " \
                "subagent, the owner must run: plastic-lock delegate " \
                "--intent-dir #{target_dir} --session <your-session-id>. " \
-               "Inspect with /plastic-lock status"
+               "Inspect with /plastic-doctor check the lock status"
       end
       return solo_allow(id, "stale delivery lock") if solo
       return "intent #{id} has a stale delivery lock (owner " \
-             "#{lock['owner_session']}); run /plastic-lock reclaim to take " \
-             "it over, or /plastic-lock fix"
+             "#{lock['owner_session']}); run /plastic-doctor reclaim the lock to " \
+             "take it over, or /plastic-doctor fix the lock"
     end
     if Lock.corrupt?(target_dir)
       return solo_allow(id, "unreadable delivery.lock") if solo
-      return "delivery.lock for intent #{id} is unreadable; run /plastic-lock fix"
+      return "delivery.lock for intent #{id} is unreadable; run /plastic-doctor fix the lock"
     end
     return solo_allow(id, "no delivery lock") if solo
     "no delivery lock held for intent #{id}; run /plastic-intent-starting " \

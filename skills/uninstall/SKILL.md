@@ -1,6 +1,7 @@
 ---
 name: plastic-uninstall
 description: Use when the user wants to remove Plastic from an agent. Runs the manifest-driven uninstaller (removes skills, hooks, statusline, and any legacy plugin layout), reports exactly what was removed and what was left behind, then gives verification steps. Optionally deletes the intent store.
+user-invocable: true
 ---
 
 # Uninstall Plastic

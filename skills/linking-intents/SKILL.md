@@ -1,6 +1,7 @@
 ---
 name: plastic-linking-intents
 description: Use when creating connections between intents, the user says "link" or "connect", or when discovering that two intents are related. Manages sources, chain, and cross-reference links.
+user-invocable: false
 ---
 
 # Linking Intents

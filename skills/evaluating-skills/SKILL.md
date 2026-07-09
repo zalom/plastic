@@ -8,6 +8,7 @@ description: >
   skill, checking if a description triggers correctly, or assessing
   whether a skill is still needed. Also use when the user says "evaluate",
   "test the skill", "run evals", "check conventions", or "write evals".
+user-invocable: true
 ---
 
 # Evaluating Skills

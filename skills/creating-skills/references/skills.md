@@ -102,6 +102,7 @@ Use only the documented optionals below. Add nothing beyond them [A6].
 | `allowed-tools` | Space-separated tool list (experimental) |
 | `model` | Claude Code extension: pin the model for this skill |
 | `disable-model-invocation` | Claude Code extension: only the user may fire the skill |
+| `user-invocable` | Claude Code extension: set false to hide the skill from the user's / slash menu while leaving it agent-invocable; default true |
 | `context: fork` | Claude Code extension: run the body as a forked task |
 | `paths` | Claude Code extension: scope the skill to matching paths |
 

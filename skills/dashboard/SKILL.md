@@ -1,6 +1,7 @@
 ---
 name: plastic-dashboard
 description: Use when the user wants an overview of intents, asks "where are we", "what's next", "what should I work on", "show the dashboard", or invokes /plastic-dashboard. Renders a deterministic Value×Effort work cockpit as Markdown across the global store and all projects, and emits a machine-readable queue that auto mode consumes.
+user-invocable: false
 ---
 
 # Dashboard — Plastic Work Cockpit
