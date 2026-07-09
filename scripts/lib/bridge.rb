@@ -598,7 +598,8 @@ module Bridge
         "provisioned" => false
       },
       # Delivery-lock CACHE block (intent 108, D2). The durable truth is the
-      # delivery.lock file in the intent dir; arm fills this cache from it.
+      # `lock_leases` row for this intent (cutover intent 41 ACTION_10, replacing
+      # the retired delivery.lock file); arm fills this cache from that row.
       "lock" => {
         "owner_session" => nil,
         "acquired_at" => nil,

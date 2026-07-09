@@ -8,9 +8,24 @@ require "json"
 # spawned processes, or the tmp:/Dir.mktmpdir seams in-process), and any test
 # file exercising arm/derive must not leak the ambient CLAUDE_CODE_SESSION_ID
 # into those writes.
+#
+# Cutover intent 41 (ACTION_12): the /tmp bridge, delivery.lock, and
+# savepoint.md live writes all moved onto a store's `plastic.db`
+# (sessions/lock_leases/savepoint_events, via Plastic::DB and its
+# Leases/Sessions/SavepointEvents modules). The SAME hazard exists there: a
+# test writing DB state must isolate its own store/DB path, never write
+# against a store the live session shares (and, for `sessions`, never key a
+# row with the ambient session id). WRITERS below now also matches every
+# write verb on that surface, so a DB-writing test is held to the identical
+# isolation bar as a bridge-writing one.
 class HermeticityGuardTest < Minitest::Test
-  WRITERS = /Bridge\.(arm_auto|arm_guided|derive|write|disarm_auto|repair_lock)\b/.freeze
-  ISOLATION = /PLASTIC_TMP|tmp:\s|Dir\.mktmpdir/.freeze
+  WRITERS = /Bridge\.(arm_auto|arm_guided|derive|write|disarm_auto|repair_lock)\b
+            |Plastic::DB\.(set_status|set_quadrant|stamp_event|ensure_intent_row|export_savepoint
+              |lease_(acquire|renew|release|takeover|delegate_add)
+              |session_(register|update|end)|roadmap_(upsert|entry_set)|rebuild!|with_write)\b
+            |(Leases|Sessions|SavepointEvents)\.(acquire|renew|release|takeover|add_delegate
+              |register|update|end|stamp|export|rebuild_from_export)\b/x.freeze
+  ISOLATION = /PLASTIC_TMP|PLASTIC_STORE_HOME|tmp:\s|Dir\.mktmpdir/.freeze
 
   def test_every_bridge_writing_test_isolates_its_tmp
     offenders = Dir[File.expand_path("../*_test.rb", __FILE__)].select do |f|

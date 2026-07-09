@@ -1632,6 +1632,116 @@ class Doctor
     )
   end
 
+  # --- Check category: the operational database layer (intent 41, ACTION_12) ---
+  #
+  # Read-only, and careful to preserve the layer's two core promises while
+  # diagnosing it: fail-open (the sqlite3 gem is advisory, never a hard
+  # failure) and lazy provisioning (a store with no `plastic.db` yet is
+  # healthy, not broken -- this check must never be the thing that creates
+  # one). `available:`/`tmp_dir:` are DI seams so tests stay hermetic.
+  def check_database(available: Plastic::DB.available?, tmp_dir: ENV["PLASTIC_TMP"] || "/tmp")
+    [
+      sqlite3_gem_check(available: available),
+      db_health_check(available: available),
+      stale_bridge_check(tmp_dir: tmp_dir),
+    ]
+  end
+
+  def sqlite3_gem_check(available:)
+    if available
+      check(
+        category: "database", name: "sqlite3_gem", status: "pass",
+        message: "sqlite3 gem is available; the operational DB layer is active"
+      )
+    else
+      check(
+        category: "database", name: "sqlite3_gem", status: "warn",
+        message: "sqlite3 gem not installed; the operational DB layer runs fail-open " \
+                 "(status/quadrant/locks/sessions fall back to markdown-only behavior)",
+        fixable: true,
+        fix_hint: "gem install sqlite3 (v2.5.0+ ships a precompiled arm64-darwin native gem " \
+                  "with libsqlite3 bundled, so no compiler is needed)"
+      )
+    end
+  end
+
+  # Every existing plastic.db (global + each project) opens and its schema is
+  # current. A store with NO plastic.db yet is skipped, not flagged: D3 says
+  # the DB is provisioned lazily on first real use, so its absence is normal,
+  # not a health problem. Never opens a connection for a store lacking a DB
+  # file, since connect()/Schema.ensure! would create one as a side effect.
+  def db_health_check(available:)
+    unless available
+      return check(
+        category: "database", name: "db_health", status: "pass",
+        message: "sqlite3 gem not installed; DB health check skipped (fail-open)"
+      )
+    end
+
+    problems = []
+    checked = 0
+
+    done_signal_stores(nil).each do |store|
+      store_home = File.dirname(store[:index])
+      db_path = Plastic::DB::StoreResolver.db_path_for_store(store_home)
+      next unless File.exist?(db_path)
+
+      checked += 1
+      conn = Plastic::DB.connect(store_home, available: available)
+      if conn.nil?
+        problems << "#{store[:scope]}: plastic.db exists but could not be opened"
+        next
+      end
+
+      begin
+        if Plastic::DB::Schema.rebuild_needed?(conn)
+          problems << "#{store[:scope]}: schema format_version is stale " \
+                      "(run `plastic-db rebuild --store #{store[:scope]}`)"
+        end
+      rescue StandardError => e
+        problems << "#{store[:scope]}: plastic.db health check raised: #{e.message}"
+      end
+    end
+
+    if problems.empty?
+      message = checked.zero? ? "No plastic.db provisioned yet in any store (lazy provisioning, not required)" \
+                               : "All #{checked} provisioned plastic.db file(s) open and current"
+      check(category: "database", name: "db_health", status: "pass", message: message)
+    else
+      check(
+        category: "database", name: "db_health", status: "warn",
+        message: "#{problems.size} plastic.db health issue(s) found",
+        details: problems, fixable: true,
+        fix_hint: "Run `plastic-db rebuild --store <store>` for a stale format_version; " \
+                  "for a plastic.db that will not open, delete it and let it re-provision lazily"
+      )
+    end
+  end
+
+  # Informational only (do not depend on this): the retired /tmp session
+  # bridge (intent 41 ACTION_9) may leave inert JSON files behind after
+  # upgrading. The DB (`sessions`/`lock_leases`) is authoritative regardless
+  # of whether these exist, so this never fails and never blocks.
+  def stale_bridge_check(tmp_dir: ENV["PLASTIC_TMP"] || "/tmp")
+    stale = Dir.glob(File.join(tmp_dir, "plastic-*.json"))
+
+    if stale.empty?
+      check(
+        category: "database", name: "stale_bridges", status: "pass",
+        message: "No leftover /tmp bridge files (the /tmp bridge is retired; the DB is authoritative)"
+      )
+    else
+      check(
+        category: "database", name: "stale_bridges", status: "warn",
+        message: "#{stale.size} leftover /tmp bridge file(s) found (informational only; " \
+                 "the DB is authoritative and never reads these)",
+        details: stale.map { |p| tilde(p) },
+        fixable: true,
+        fix_hint: "Inert legacy artifacts from the retired /tmp bridge mechanism; safe to delete"
+      )
+    end
+  end
+
   # --- Run all checks ---
 
   def run_checks(agent_key)
@@ -1644,6 +1754,7 @@ class Doctor
     all_checks += check_deprecations
     all_checks += check_qmd
     all_checks += check_done_signals
+    all_checks += check_database
 
     summarize(all_checks, agent_key)
   end

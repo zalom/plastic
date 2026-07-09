@@ -118,4 +118,28 @@ class PlasticDbCliTest < Minitest::Test
     _out, _err, status = cli("bogus-verb")
     refute status.success?
   end
+
+  # --- bridge (statusline consumer, intent 41 ACTION_12) -----------------
+
+  def test_bridge_prints_empty_output_when_no_session_row_exists
+    out, err, status = cli("bridge", "--session", "nobody-armed")
+    assert status.success?, err
+    assert_equal "", out.strip
+  end
+
+  def test_bridge_prints_the_active_intent_for_a_registered_session
+    intent_dir = File.join(@store, "store", "41--demo")
+    FileUtils.mkdir_p(intent_dir)
+    File.write(File.join(intent_dir, "41--demo.md"), "---\nintent: Demo intent title\n---\n\n## Intent\n")
+
+    out, err, status = cli("session", "register", "--session", "sess-br-1", "--cwd", intent_dir, "--intent", "41")
+    assert status.success?, err
+
+    out, err, status = cli("bridge", "--session", "sess-br-1")
+    assert status.success?, err
+    data = JSON.parse(out)
+    assert_equal "41", data["intent"]["id"]
+    assert_equal "41--demo", data["intent"]["dir"]
+    assert_equal "Demo intent title", data["intent"]["name"]
+  end
 end

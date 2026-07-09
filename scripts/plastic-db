@@ -16,6 +16,7 @@
 #   plastic-db session <register|update|end> --session SID [--cwd C] [--intent I] [--auto] [--store S]
 #   plastic-db rebuild [--store S]
 #   plastic-db export <intent> --intent-dir DIR [--store S]
+#   plastic-db bridge --session SID [--cwd C] [--store S]
 #
 # --store selects the store: "global", a project slug (resolved under
 # ~/.plastic/projects/<slug>), or a literal directory path (containing "/"),
@@ -25,15 +26,17 @@
 # that needs one requires it explicitly on the command line.
 
 require "json"
+require "yaml"
 require "socket"
 require_relative "lib/db"
+require_relative "lib/bridge"
 
 def usage!
-  warn "usage: plastic-db <query|status|event|lease|session|rebuild|export> [args] [--store <global|slug|path>]"
+  warn "usage: plastic-db <query|status|event|lease|session|rebuild|export|bridge> [args] [--store <global|slug|path>]"
   exit 1
 end
 
-VERBS = %w[query status event lease session rebuild export].freeze
+VERBS = %w[query status event lease session rebuild export bridge].freeze
 
 verb = ARGV.shift
 usage! unless VERBS.include?(verb)
@@ -63,6 +66,27 @@ until ARGV.empty?
   else
     positional << flag
   end
+end
+
+# Read the "intent" frontmatter field (the intent's display title) straight
+# off disk. Sessions.to_bridge_data (the DB adapter discover_bridge returns)
+# carries only id/store/dir, never a title, since the gate-decision functions
+# it feeds never read one; a display consumer (the statusline) still wants a
+# name, so the CLI's rendering layer resolves it here rather than growing the
+# shared adapter's contract. Best-effort: any parse failure yields nil.
+def intent_title(store, dir)
+  return nil if store.nil? || dir.nil?
+
+  path = File.join(store, dir, "#{dir}.md")
+  return nil unless File.exist?(path)
+
+  parts = File.read(path).split("---", 3)
+  return nil if parts.length < 3
+
+  fm = YAML.safe_load(parts[1]) || {}
+  fm["intent"]
+rescue StandardError
+  nil
 end
 
 def store_home_for(name, plastic_home: File.join(Dir.home, ".plastic"))
@@ -150,4 +174,13 @@ when "export"
   usage! if intent_id.nil? || opts[:intent_dir].nil?
   path = Plastic::DB.export_savepoint(store, intent_id, intent_dir: opts[:intent_dir])
   puts path.nil? ? "fail-open" : path
+
+when "bridge"
+  usage! if opts[:session].nil?
+  data = Bridge.discover_bridge(session: opts[:session], cwd: opts[:cwd] || Dir.pwd, store_home: store)
+  data["intent"]["name"] = intent_title(data["intent"]["store"], data["intent"]["dir"]) if data
+  # Pretty-printed (one field per line) so simple line-oriented consumers
+  # (grep/sed, e.g. hooks/statusline) can scan the "intent" block the same
+  # way they scanned the retired /tmp bridge file's JSON.
+  puts data.nil? ? "" : JSON.pretty_generate(data)
 end

@@ -8,6 +8,7 @@ require "digest"
 require "time"
 require_relative "hook_registry"
 require_relative "agent_models"
+require_relative "worktree"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/versions) and their tests can run
@@ -200,6 +201,13 @@ class InstallerCore
     FileUtils.mkdir_p(plastic_home)
     FileUtils.mkdir_p(File.join(plastic_home, "scripts", "lib"))
     FileUtils.mkdir_p(File.join(plastic_home, "templates"))
+
+    # The per-store operational DB (intent 41) is never committed. This runs
+    # on every install AND every update (unlike `bootstrap`, which is
+    # fresh-install-only), so an already-installed user picks up the ignore
+    # entry retroactively the next time they update, without needing to
+    # provision a new project store first.
+    Worktree.ensure_gitignored(plastic_home, "plastic.db*")
 
     core_files.each do |src, dest|
       src_path = File.join(package_root, src)

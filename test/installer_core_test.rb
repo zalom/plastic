@@ -116,6 +116,33 @@ class InstallerCoreTest < Minitest::Test
            "distribute(:update) must also write the global manifest"
   end
 
+  # --- distribute: plastic.db* is git-ignored (intent 41 ACTION_12) ---
+  # Runs on both fresh install and every `plastic update`, so an
+  # already-installed user gets the entry retroactively without needing to
+  # provision a new project store first (unlike `bootstrap`, which is
+  # fresh-install-only and would never reach an existing installation).
+
+  def test_distribute_ensures_plastic_db_in_gitignore_on_install
+    @core.distribute(:install)
+    gitignore = File.read(File.join(@home, ".gitignore"))
+    assert_includes gitignore.lines.map(&:strip), "plastic.db*"
+  end
+
+  def test_distribute_ensures_plastic_db_in_gitignore_on_update
+    @core.distribute(:update)
+    gitignore = File.read(File.join(@home, ".gitignore"))
+    assert_includes gitignore.lines.map(&:strip), "plastic.db*"
+  end
+
+  def test_distribute_preserves_an_existing_gitignore_entry
+    FileUtils.mkdir_p(@home)
+    File.write(File.join(@home, ".gitignore"), "*.lock\n")
+    @core.distribute(:install)
+    lines = File.read(File.join(@home, ".gitignore")).lines.map(&:strip)
+    assert_includes lines, "*.lock"
+    assert_includes lines, "plastic.db*"
+  end
+
   # Regression guard (intent 78): every scripts/lib/*.rb in the package must be listed in
   # the core_files manifest. Without this, a new lib file (e.g. power_tools.rb from 66b) can
   # be require_relative'd but never installed, raising a LoadError in the live hook.
