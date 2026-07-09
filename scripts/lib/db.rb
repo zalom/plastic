@@ -42,13 +42,17 @@ module Plastic
     #
     # available: is an injectable seam so tests can force absence without
     # unloading the gem. ensure_schema: is a DI seam for the schema-ensure
-    # step, defaulting to Schema.ensure!; pass nil to skip it.
-    def connect(store_home, available: available?, ensure_schema: ->(conn) { Schema.ensure!(conn) })
+    # step, defaulting to Schema.ensure!; pass nil to skip it. busy_timeout:
+    # is a DI seam (D1 requires >=5000ms in production; this default is that
+    # floor, unchanged) so a contention-simulating test can inject a small
+    # value instead of waiting out the real timeout on every retry.
+    def connect(store_home, available: available?, ensure_schema: ->(conn) { Schema.ensure!(conn) },
+                busy_timeout: Connection::DEFAULT_BUSY_TIMEOUT_MS)
       return nil unless available
 
       db_path = StoreResolver.db_path_for_store(store_home)
       conn = begin
-        Connection.open(db_path)
+        Connection.open(db_path, busy_timeout: busy_timeout)
       rescue StandardError
         return nil
       end

@@ -26,6 +26,16 @@ require_relative "../scripts/lib/db"
 # way for a caller connected to store A to ever see store B's rows at all
 # (structurally impossible, not merely untested).
 class BridgeCollisionTest < Minitest::Test
+  # This file simulates collisions/siblings within ONE process, never real
+  # cross-process contention (that is db_contention_smoke_test.rb's job, and
+  # it legitimately wants the real production busy_timeout). Every write here
+  # goes through many short-lived, never-closed connections to the SAME
+  # store db, so a stubbed-in tiny busy_timeout keeps any incidental SQLITE_BUSY
+  # retry fast and deterministic instead of paying D1's real 5000ms floor per
+  # attempt. The assertions below are unchanged: collision/tiebreak outcomes,
+  # never timing.
+  TEST_BUSY_TIMEOUT_MS = 25
+
   def setup
     @saved_session = ENV["CLAUDE_CODE_SESSION_ID"]
     ENV.delete("CLAUDE_CODE_SESSION_ID")
@@ -48,6 +58,16 @@ class BridgeCollisionTest < Minitest::Test
     @real_release = Worktree.method(:release)
     Worktree.define_singleton_method(:provision) { |d, *_a, **_kw| d }
     Worktree.define_singleton_method(:release) { |d, *_a, **_kw| d }
+
+    # Route every connection this test's calls open (direct, and every one
+    # opened deep inside Bridge.arm_auto/discover_bridge/purge_done_bridges)
+    # through the tiny test busy_timeout, without changing Bridge's or
+    # Plastic::DB's production call sites.
+    @real_connect = Plastic::DB.method(:connect)
+    real_connect = @real_connect
+    Plastic::DB.define_singleton_method(:connect) do |store_home, **kw|
+      real_connect.call(store_home, **{ busy_timeout: TEST_BUSY_TIMEOUT_MS }.merge(kw))
+    end
   end
 
   def teardown
@@ -55,6 +75,7 @@ class BridgeCollisionTest < Minitest::Test
     @saved_session.nil? ? ENV.delete("CLAUDE_CODE_SESSION_ID") : ENV["CLAUDE_CODE_SESSION_ID"] = @saved_session
     Worktree.define_singleton_method(:provision, @real_provision) if @real_provision
     Worktree.define_singleton_method(:release, @real_release) if @real_release
+    Plastic::DB.define_singleton_method(:connect, @real_connect) if @real_connect
   end
 
   def write_index_active(ids)
