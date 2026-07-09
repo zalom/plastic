@@ -5,6 +5,7 @@ description: >-
   guided ONCE, then resume at the latest delivered station and run the cycle to Done. Use on
   `continuing --intent {id}`, when a new intent is registered and the user asks to work it,
   or when the user picks an intent to work. Requires the intent in INDEX `## Active`.
+user-invocable: true
 ---
 
 # Intent Starting — board a session onto an intent

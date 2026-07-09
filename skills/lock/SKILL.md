@@ -1,6 +1,7 @@
 ---
-name: lock
+name: plastic-lock
 description: Inspect, repair, release, or reclaim an intent's delivery lock. Use when a lock-gate deny names /plastic-lock, when resuming interrupted work after a crash, reboot, or /tmp wipe, when a lock reads held or stale, or when the user says "fix the lock", "who holds the lock", or "reclaim the lock".
+user-invocable: false
 ---
 
 # Plastic Lock

@@ -1,6 +1,7 @@
 ---
 name: plastic-releasing
 description: Use when merging a feature branch to main and tagging a release, bumping the version, or when the user says "release", "tag", or "ship it"
+user-invocable: true
 ---
 
 # Releasing

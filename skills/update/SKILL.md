@@ -1,6 +1,7 @@
 ---
 name: plastic-update
 description: Use when updating Plastic. Runs the `update` verb, which reads the installed VERSION, derives its channel, queries npm dist-tags, and advances to the next version on that channel (or switches channel with a flag).
+user-invocable: true
 ---
 
 # Update Plastic

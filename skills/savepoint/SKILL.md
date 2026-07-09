@@ -1,6 +1,7 @@
 ---
 name: plastic-savepoint
 description: Use when verifying or repairing an intent's savepoint ledger, when the user says "save" or "savepoint", or when a PreCompact hook fires. The ledger is written automatically by the gate hook at each lifecycle boundary; this skill only reads, verifies, and rebuilds it.
+user-invocable: false
 ---
 
 # Savepoint

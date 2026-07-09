@@ -11,6 +11,7 @@ description: |
   user: "Organize the intents"
   assistant: "I'll use the intent-curator to review clusters, flag orphans, and suggest connections"
   <commentary>Periodic maintenance of the Zettelkasten structure.</commentary></example>
+user-invocable: false
 ---
 
 # Intent Curator

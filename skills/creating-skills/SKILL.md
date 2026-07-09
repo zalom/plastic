@@ -9,6 +9,7 @@ description: >
   when an agent keeps missing a step or ignoring instructions, or when the user
   says "progressive disclosure", "write a skill", "thin router", "split into
   references", or "make this slim".
+user-invocable: true
 ---
 
 # Creating Skills

@@ -1,6 +1,7 @@
 ---
 name: plastic-humanizer
 description: Use to clean authored prose so it reads human and clutter-free. Removes AI tells and slop from a document, spec, outcome, README, report, or release note. Use when the user says "humanize", "de-slop", "remove the AI tells", or "clean up the wording". For documents, not for every chat reply, and not for code.
+user-invocable: true
 ---
 
 # Humanizer

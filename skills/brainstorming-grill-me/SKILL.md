@@ -4,6 +4,7 @@ description: >-
   Deep brainstorming that interviews the user relentlessly about a plan or design until reaching shared understanding.
   Use when user wants to stress-test a plan, get grilled on their design, or mentions "grill me".
   Pair with plastic-brainstorming for quick ideation and use grill-me for thorough interrogation. If superpowers:brainstorming is installed it complements this skill, but it is not required.
+user-invocable: true
 ---
 
 # Grill Me — Deep Brainstorming

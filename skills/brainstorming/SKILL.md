@@ -1,6 +1,7 @@
 ---
 name: plastic-brainstorming
 description: "Explore intent requirements and design before implementation. Produces spec.md in the active intent directory."
+user-invocable: true
 ---
 
 # Brainstorming Ideas Into Designs

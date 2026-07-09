@@ -5,6 +5,7 @@ description: >-
   git init, AGENTS.md with founding intent decisions, plastic-install --local,
   tactical mirror, projects.yml registration, and framework scaffolding.
   Use when an implementation intent spawns a project, or manually by user.
+user-invocable: true
 ---
 
 # Creating a Project
