@@ -65,10 +65,10 @@ Fix: run `/plastic-doctor fix the lock`.
 existed.
 
 > intent {id} has not reached How: write plan.md + checklist.md before
-> editing project code. Run plastic-auto or plastic-writing-plans first.
+> editing project code. Run plastic-auto or plastic-intent-planning first.
 > (blocked edit: {path})
 
-Fix: `plastic-auto` or `plastic-writing-plans`. Another choice of two: either
+Fix: `plastic-auto` or `plastic-intent-planning`. Another choice of two: either
 one writes the missing plan and checklist, then editing is allowed.
 
 **Create gate.** Someone tried to write an intent file by hand instead of
@@ -76,10 +76,10 @@ through the tool that creates them.
 
 > PLASTIC CREATE GATE: {basename} is not a valid intent:
 >   {validation errors}
-> Create intents via new-intent / plastic-creating-intent; do not
+> Create intents via new-intent / plastic-intent-creating; do not
 > hand-author them.
 
-Fix: `new-intent` (the underlying script) or `plastic-creating-intent` (the
+Fix: `new-intent` (the underlying script) or `plastic-intent-creating` (the
 skill that wraps it). A choice of two again.
 
 ## The one advisory gate

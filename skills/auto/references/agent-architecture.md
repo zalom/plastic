@@ -101,7 +101,7 @@ verifies state itself.
 ### Delegation
 
 The roles are thin handoff contracts, not a spawning engine. Dispatch and review run
-by default through Plastic's own engine, `plastic-executing-plan` (implementer plus
+by default through Plastic's own engine, `plastic-intent-executing` (implementer plus
 two-stage review, no external plugin). When `superpowers:subagent-driven-development`
 and `superpowers:dispatching-parallel-agents` are available, or the user asks for them,
 they delegate to those as an enhancement. The team model defines who hands what to whom
@@ -112,7 +112,7 @@ spawning.
 
 The default is always Plastic's native engine, so a user without superpowers still gets
 the full behavior. If the harness supports subagents but superpowers is absent, auto
-mode dispatches through `plastic-executing-plan`. If the harness has no subagent dispatch
+mode dispatches through `plastic-intent-executing`. If the harness has no subagent dispatch
 at all, auto mode falls back to a single agent walking the full What, Why, How, Exec
 cycle itself. The enforcer's gate discipline still applies in every case.
 

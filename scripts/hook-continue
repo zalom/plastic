@@ -19,7 +19,7 @@ cockpit, _err, status = Open3.capture3("ruby", dashboard, "continue")
 exit 0 unless status.success? && !cockpit.strip.empty?
 
 context = cockpit.rstrip +
-  "\n\nFollow the plastic-continuing skill workflow to resume: " \
+  "\n\nFollow the plastic-intent-continuing skill workflow to resume: " \
   "if active intents exist, read their state and resume; otherwise offer the " \
   "Value×Effort matrix items above, surfacing any stale (Nd) / ⚑ triage intents."
 

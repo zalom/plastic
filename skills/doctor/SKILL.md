@@ -13,7 +13,7 @@ Doctor has three scopes. Pick the right one for the situation:
 | Scope | Flag | When it runs | States |
 |-------|------|--------------|--------|
 | Core check | `--core` | SessionStart hook (automatic), also available on demand | Binary: pass or error |
-| Store check | `--store [global\|<slug>]` | Dashboard load, `plastic-continuing` | Three-state: pass / warn / fail |
+| Store check | `--store [global\|<slug>]` | Dashboard load, `plastic-intent-continuing` | Three-state: pass / warn / fail |
 | Full check | (no flag) | After every update (automatic), or `/plastic-doctor` | Three-state: pass / warn / fail |
 
 ### `--core` (binary, manifest-backed)
@@ -118,9 +118,9 @@ Use the `fix_hint` value to determine the correct action:
 | "Add missing entries to INDEX.md" | Add orphaned intents to the appropriate INDEX.md section |
 | "Remove stale references from INDEX.md" | Edit INDEX.md to remove ghost references |
 | "Inject the missing required frontmatter field(s)" | Edit the intent's `{ID}--{slug}.md` frontmatter to add the missing key (e.g. `chain: []`) without touching other keys |
-| "Run: provision-project-store {slug}" | Run `provision-project-store <slug>` (or invoke the `plastic-add-project-store` skill) to create the missing store |
+| "Run: provision-project-store {slug}" | Run `provision-project-store <slug>` (or invoke the `plastic-store-provisioning` skill) to create the missing store |
 | "Re-run installer" | Run `npx -y @zalom/plastic@<channel> install --agent <agent>` (channel: -alpha->@alpha, -beta->@beta, else @latest) |
-| "Dispatch plastic-intent-curator ... revisions.md ..." | Invoke the `plastic-intent-curator` (or the agent) to relocate the flagged section or ref into the intent's `revisions.md` via move-and-record (one dated, `[rule: <tag>]`-tagged entry per item), per PLASTIC.md > Structural maintenance and revisions.md. For a missing required section, restore or reproject it instead. |
+| "Dispatch plastic-store-curating ... revisions.md ..." | Invoke the `plastic-store-curating` (or the agent) to relocate the flagged section or ref into the intent's `revisions.md` via move-and-record (one dated, `[rule: <tag>]`-tagged entry per item), per PLASTIC.md > Structural maintenance and revisions.md. For a missing required section, restore or reproject it instead. |
 
 For fixes the agent cannot handle automatically, explain what the user needs
 to do manually. The `revisions.md` remedy is curator-applied (a move-and-record

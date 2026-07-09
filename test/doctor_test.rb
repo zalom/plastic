@@ -3,6 +3,7 @@ require "tmpdir"
 require "json"
 require "yaml"
 require "fileutils"
+require "digest"
 
 require_relative "../scripts/doctor"
 
@@ -107,13 +108,32 @@ module DoctorTestHelpers
   def write_skills(agent_dir)
     skill_dir = File.join(agent_dir, "skills", "plastic-doctor")
     FileUtils.mkdir_p(skill_dir)
-    File.write(File.join(skill_dir, "SKILL.md"), "# skill")
+    skill_file = File.join(skill_dir, "SKILL.md")
+    File.write(skill_file, "# skill")
+    track_in_agent_manifest(agent_dir, skill_file)
   end
 
   def write_agents(agent_dir)
     agents_dir = File.join(agent_dir, "agents")
     FileUtils.mkdir_p(agents_dir)
-    File.write(File.join(agents_dir, "plastic-enforcer.md"), "# agent")
+    agent_file = File.join(agents_dir, "plastic-enforcer.md")
+    File.write(agent_file, "# agent")
+    track_in_agent_manifest(agent_dir, agent_file)
+  end
+
+  # If a claude-style agent manifest already exists (<dir>/plastic/manifest.json), track
+  # this file in it too, so a fixture that builds an intact install (manifest first) and
+  # THEN adds skills/agents (write_skills/write_agents) stays internally consistent for
+  # checks that compare installed files against the manifest (e.g. stray_skills_check,
+  # intent 158a). A no-op when no manifest exists yet (most fixtures do not need one).
+  def track_in_agent_manifest(agent_dir, file_path)
+    manifest_path = File.join(agent_dir, "plastic", "manifest.json")
+    return unless File.exist?(manifest_path)
+
+    data = JSON.parse(File.read(manifest_path))
+    data["files"] ||= {}
+    data["files"][file_path] = Digest::SHA256.file(file_path).hexdigest
+    File.write(manifest_path, JSON.pretty_generate(data))
   end
 
   # Build all required core scripts

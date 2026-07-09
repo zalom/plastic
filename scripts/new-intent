@@ -13,7 +13,7 @@
 # IntentValidator (exit non-zero if not born complete).
 #
 # It does NOT touch INDEX.md, git, or project creation: those remain skill/agent
-# responsibilities (see plastic-creating-intent).
+# responsibilities (see plastic-intent-creating).
 #
 # Usage:
 #   new-intent --store <store_path> --intent "<one-line>" --slug <slug> \

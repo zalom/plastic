@@ -17,7 +17,7 @@ class SkillCommandLintTest < Minitest::Test
   EM_DASH = "—"
   EN_DASH = "–"
 
-  SKILL_NAMES = %w[install update uninstall versions].freeze
+  SKILL_NAMES = %w[install update uninstall rollback].freeze
 
   def skills_root
     File.expand_path("..", __dir__)

@@ -164,7 +164,7 @@ class Update < InstallerCore
       Behaviour:
         No flag advances to the next version on your current channel. Switching toward a
         more stable channel is frictionless; switching toward bleeding edge is confirmed.
-        Use `versions` to roll back to a previously-installed version.
+        Use `rollback` to roll back to a previously-installed version.
 
     HELP
   end

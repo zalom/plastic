@@ -257,7 +257,7 @@ class LockSystemTest < Minitest::Test
     auto_bridge = arm("a", auto: true)
     pre = Bridge.code_gate_decision(auto_bridge, project_file, home: @home)
     refute_nil pre
-    assert_includes pre, "plastic-writing-plans"
+    assert_includes pre, "plastic-intent-planning"
     File.write(File.join(@dir96, "plan.md"), "plan body\n")
     File.write(File.join(@dir96, "checklist.md"), "- [ ] x\n")
     assert_nil Bridge.code_gate_decision(auto_bridge, project_file, home: @home)

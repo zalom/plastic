@@ -145,7 +145,7 @@ milestone ledger (newest at the bottom) that the `gate-check` hook writes automa
 each lifecycle boundary. That is the existing hook mechanism bound to the artifact-write
 trigger, with the ledger as a derived form-fix on top. It is sugar over the conventions,
 never a source of truth: state stays derivable from files-on-disk and the ledger is
-rebuildable via `Bridge.rebuild_savepoint`. The `plastic-savepoint` skill is now a thin
+rebuildable via `Bridge.rebuild_savepoint`. The `plastic-intent-savepoint` skill is now a thin
 reader/verifier, not a writer.
 
 State-from-ledger (intent 81) makes the ledger the read-once answer to "what stage, and is it
@@ -228,7 +228,7 @@ file that another job already deleted, or any other error, is swallowed), so it 
 arming or delivery. `intent_active?` accepts an injectable `index_active_ids:` array and the temp
 directory is injectable, so the rule is testable hermetically.
 
-The `plastic-continuing` skill consumes that ledger on the resume path (intent 36): when the
+The `plastic-intent-continuing` skill consumes that ledger on the resume path (intent 36): when the
 user or an agent asks to continue a specific intent, the skill reads the last ledger line as
 the current stage, confirms the named stage file is present and non-empty, calls
 `Bridge.rebuild_savepoint` when the ledger and the filesystem disagree, and derives the next
@@ -255,7 +255,7 @@ autonomous execution.
   argument it checks all stores; `global` checks only the global store; a project slug
   checks only that project's store. The dashboard load triggers this automatically: the
   global board runs `--store global`, a project board runs `--store <slug>`. The
-  `plastic-continuing` skill also calls it on resume.
+  `plastic-intent-continuing` skill also calls it on resume.
 
 - **Full run (no flag)**: three-state. Walks every check category (global store,
   conventions across all intents, agent registration, core files, project stores,
@@ -397,7 +397,7 @@ one shared definition of "born complete" that creation and diagnosis both consul
   well-formed arrays of id references (bare ids, or cross-store references like global:1a2)). It is injectable (`plastic_home`), hermetic,
   uses no eval, and does no global-constant injection, mirroring `qmd_sync.rb`.
 - **Three consumers sit on top of it**: the `validate-intent` CLI (exit 0 when
-  complete, non-zero with a report otherwise); the `plastic-creating-intent`
+  complete, non-zero with a report otherwise); the `plastic-intent-creating`
   self-verify step (run the CLI on the just-written file, inject any missing field
   such as `chain: []`, then re-run before announcing or committing); and doctor's
   read-only conventions checks. Doctor's `frontmatter_fields` check is now
@@ -456,7 +456,7 @@ Per-intent validation cannot see asymmetry between intents, so the cross-intent
 ## sanctioned creation path (intent 60b)
 
 Intent 60 enforced the born-complete OUTCOME but not the PROCESS: an agent could
-bypass `plastic-creating-intent` and hand-author intent files with the same Write
+bypass `plastic-intent-creating` and hand-author intent files with the same Write
 primitive the skill uses. Process-purity is unprovable (the skill and a
 hand-author look identical at the tool layer), so the achievable targets are the
 INVARIANT (every intent file is born complete and structurally sanctioned) plus
@@ -487,7 +487,7 @@ Four coordinated pieces deliver that.
   placeholder lifecycle files, wires the reciprocal `[[id]]` links, and
   self-validates with `IntentValidator` (exit non-zero if not born complete). It
   does NOT touch INDEX.md, git, or project creation: those stay in
-  `plastic-creating-intent`, which is now a thin wrapper that keeps tier/store
+  `plastic-intent-creating`, which is now a thin wrapper that keeps tier/store
   detection and the branch-vs-root judgement and delegates scaffolding to one
   `new-intent` call.
 - **`scripts/hook-create-gate` (PreToolUse, matcher Write plus Edit plus the
@@ -539,9 +539,9 @@ one shared definition of store creation that creation and repair both consult.
   `InstallerCore#bootstrap_project_store`, which is now removed.
 - **Consumers sit on top of it**: the `scripts/provision-project-store` CLI (exit
   0 on success, non-zero with a report when the slug is unregistered or on usage
-  error); the `plastic-creating-intent` and `plastic-creating-project` skills (each
+  error); the `plastic-intent-creating` and `plastic-project-creating` skills (each
   calls the verb after `projects.yml` registration instead of an inline `mkdir`);
-  the `plastic-add-project-store` skill (resolve slug, run the verb, then the
+  the `plastic-store-provisioning` skill (resolve slug, run the verb, then the
   separate optional `qmd-sync register --store` step); and doctor's read-only
   `project_store_dir` check (warns and is fixable via the verb).
 - **Scope boundary**: the provisioner is pure filesystem. It never mutates qmd,
@@ -605,7 +605,7 @@ the human's main session, never a dispatched subagent).
   nothing if ignored; it concerns only the human's main session, since dispatched
   subagents keep their pinned tier and never resolve to Fable.
 - **What-stage discovery agent**: `plastic-intent-discovery` (paired with the
-  `skills/intent-discovery/SKILL.md` workflow) closes the What-stage gap in the
+  `skills/intent-discovering/SKILL.md` workflow) closes the What-stage gap in the
   one-agent-per-stage table. It fires inside `plastic-intent-starting`, right after
   an intent is activated (moved from `## Future` to `## Active`) and the bridge is
   armed, running under that lock as the owner session (it does not acquire the

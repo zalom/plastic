@@ -116,13 +116,13 @@
       "scope": "triggering",
       "set": "train",
       "prompt": "create a new intent for the dashboard idea",
-      "expected_output": "Does NOT activate plastic-auto; activates plastic-creating-intent.",
+      "expected_output": "Does NOT activate plastic-auto; activates plastic-intent-creating.",
       "files": [],
       "assertions": [
         {
           "type": "code",
           "check": "router CHOICE != plastic-auto",
-          "observed": "plastic-creating-intent",
+          "observed": "plastic-intent-creating",
           "result": "pass"
         }
       ]
@@ -132,13 +132,13 @@
       "scope": "triggering",
       "set": "validation",
       "prompt": "what's the status of my active intents?",
-      "expected_output": "Does NOT activate plastic-auto; this is a read/continuing/managing-index query.",
+      "expected_output": "Does NOT activate plastic-auto; this is a read/intent-continuing/store-indexing query.",
       "files": [],
       "assertions": [
         {
           "type": "code",
           "check": "router CHOICE != plastic-auto",
-          "observed": "plastic-managing-index",
+          "observed": "plastic-store-indexing",
           "result": "pass"
         }
       ]
