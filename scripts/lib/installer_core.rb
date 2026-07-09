@@ -254,6 +254,7 @@ class InstallerCore
       "scripts/lib/hook_registry.rb" => "scripts/lib/hook_registry.rb",
       "scripts/agent-report" => "scripts/agent-report",
       "scripts/lib/insights.rb" => "scripts/lib/insights.rb",
+      "scripts/insight-append" => "scripts/insight-append",
       "scripts/lib/worktree.rb" => "scripts/lib/worktree.rb",
       "scripts/lib/boot_banner.rb" => "scripts/lib/boot_banner.rb",
       "scripts/lib/dashboard_banner.rb" => "scripts/lib/dashboard_banner.rb",
