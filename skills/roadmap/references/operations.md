@@ -20,6 +20,8 @@ next" in under a minute, just from this one file.
    status mirroring that intent's current `INDEX.md` status.
 6. Append the first `## Log` line, a short `YYYY-MM-DD HH:MM UTC`-prefixed plain-language note
    that the roadmap was created.
+7. Refresh the QMD index for this roadmap (no-op when QMD is absent), in the background so it
+   never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <roadmaps-dir> --async`.
 
 ## Add / reorder entries
 
@@ -32,6 +34,8 @@ next" in under a minute, just from this one file.
   entry is eligible to run.
 - After any add/reorder, append a `## Log` line describing the change (e.g.
   `- <YYYY-MM-DD HH:MM UTC> added 132 to wave 2`).
+- Refresh the QMD index for this roadmap (no-op when QMD is absent), in the background so it
+  never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <roadmaps-dir> --async`.
 
 ## Sync status mirror
 
@@ -45,6 +49,8 @@ next" in under a minute, just from this one file.
    one-line EM-to-CTO entry described in `file-format.md` (date, what shipped and its impact in
    plain language, then a link to that intent's `outcome.md`). For other transitions, write a
    short dated plain-language line (no codenames, no jargon).
+5. Refresh the QMD index for this roadmap (no-op when QMD is absent), in the background so it
+   never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <roadmaps-dir> --async`.
 
 ## Append a log line
 
@@ -54,6 +60,8 @@ next" in under a minute, just from this one file.
   A delivery event follows the EM-to-CTO one-line shape with an `outcome.md` link (see
   `file-format.md`); bookkeeping events (created, an intent added to a wave, a wave completed, a
   roadmap closed) are short dated plain-language lines.
+- Refresh the QMD index for this roadmap (no-op when QMD is absent), in the background so it
+  never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <roadmaps-dir> --async`.
 
 ## Read / consume
 
@@ -76,3 +84,5 @@ next" in under a minute, just from this one file.
    lists only live (open or in-flight) roadmaps.
 4. Append the final `## Log` line before or as part of the move:
    `- <YYYY-MM-DD HH:MM UTC> roadmap closed`.
+5. Refresh the QMD index for this roadmap (no-op when QMD is absent), in the background so it
+   never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <roadmaps-dir> --async`.

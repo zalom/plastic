@@ -11,13 +11,33 @@ class QmdSyncTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("qmd-sync-home")
     FileUtils.mkdir_p(File.join(@home, "store"))
+    FileUtils.mkdir_p(File.join(@home, "roadmaps"))
     FileUtils.mkdir_p(File.join(@home, "projects", "dealintell", "store"))
+    FileUtils.mkdir_p(File.join(@home, "projects", "dealintell", "roadmaps"))
     File.write(File.join(@home, "projects.yml"), <<~YML)
       projects:
         dealintell:
           path: "/Users/zlatko/apps/personal/dealintell"
           status: active
     YML
+  end
+
+  # A tmp plastic_home with only store/ dirs (no roadmaps/ anywhere), for
+  # asserting the negative branch: a tier with no roadmap yet contributes no
+  # roadmap-companion entry and no phantom "missing" warning.
+  def bare_home
+    home = Dir.mktmpdir("qmd-sync-bare-home")
+    FileUtils.mkdir_p(File.join(home, "store"))
+    FileUtils.mkdir_p(File.join(home, "projects", "dealintell", "store"))
+    File.write(File.join(home, "projects.yml"), <<~YML)
+      projects:
+        dealintell:
+          path: "/Users/zlatko/apps/personal/dealintell"
+          status: active
+    YML
+    yield home
+  ensure
+    FileUtils.rm_rf(home)
   end
 
   def teardown
@@ -54,11 +74,36 @@ class QmdSyncTest < Minitest::Test
       QmdSync.collection_name(File.join(@home, "projects", "dealintell", "store"), plastic_home: @home)
   end
 
+  def test_collection_name_resolves_roadmap_companion_suffix
+    assert_equal "plastic-global-roadmaps",
+      QmdSync.collection_name(File.join(@home, "roadmaps"), plastic_home: @home)
+    assert_equal "plastic-dealintell-roadmaps",
+      QmdSync.collection_name(File.join(@home, "projects", "dealintell", "roadmaps"), plastic_home: @home)
+  end
+
   def test_enumerate_stores_includes_global_and_projects
     stores = QmdSync.enumerate_stores(plastic_home: @home)
     names = stores.map { |s| s[:collection] }
     assert_includes names, "plastic-global"
     assert_includes names, "plastic-dealintell"
+  end
+
+  def test_enumerate_stores_includes_roadmap_companions_when_dirs_exist
+    stores = QmdSync.enumerate_stores(plastic_home: @home)
+    by_collection = stores.each_with_object({}) { |s, h| h[s[:collection]] = s[:dir] }
+    assert_equal File.expand_path(File.join(@home, "roadmaps")),
+                 by_collection["plastic-global-roadmaps"]
+    assert_equal File.expand_path(File.join(@home, "projects", "dealintell", "roadmaps")),
+                 by_collection["plastic-dealintell-roadmaps"]
+  end
+
+  def test_enumerate_stores_omits_roadmap_companion_when_dir_absent
+    bare_home do |home|
+      stores = QmdSync.enumerate_stores(plastic_home: home)
+      names = stores.map { |s| s[:collection] }
+      refute_includes names, "plastic-global-roadmaps"
+      refute_includes names, "plastic-dealintell-roadmaps"
+    end
   end
 
   def test_register_adds_when_not_present
@@ -80,6 +125,22 @@ class QmdSyncTest < Minitest::Test
     assert_equal "exists", res[:output]
     refute calls.any? { |c| c[0, 2] == ["collection", "add"] },
            "no collection add when it already exists"
+  end
+
+  def test_register_all_loop_registers_roadmap_companion_dirs
+    # Mirrors the loop body `qmd-sync register --all` runs (scripts/qmd-sync):
+    # iterate enumerate_stores, register each dir that exists on disk.
+    runner, calls = fake_runner
+    stores = QmdSync.enumerate_stores(plastic_home: @home)
+    stores.each do |s|
+      next unless Dir.exist?(s[:dir])
+      QmdSync.register(collection: s[:collection], dir: s[:dir], runner: runner, detector: present)
+    end
+    adds = calls.select { |c| c[0, 2] == ["collection", "add"] }
+    assert adds.any? { |c| c[2] == File.expand_path(File.join(@home, "roadmaps")) && c[4] == "plastic-global-roadmaps" },
+           "register --all must issue a collection add for the global roadmaps dir"
+    assert adds.any? { |c| c[2] == File.expand_path(File.join(@home, "projects", "dealintell", "roadmaps")) && c[4] == "plastic-dealintell-roadmaps" },
+           "register --all must issue a collection add for the project roadmaps dir"
   end
 
   def test_reindex_issues_update_then_scoped_embed
@@ -127,6 +188,27 @@ class QmdSyncTest < Minitest::Test
     assert_equal true, st[:present]
     assert_includes st[:registered], "plastic-global"
     assert_includes st[:missing], "plastic-dealintell"
+    assert_equal false, st[:all_registered]
+  end
+
+  def test_status_all_registered_true_when_no_roadmaps_dirs_exist
+    bare_home do |home|
+      listing = "Collections (2):\n\nplastic-global (qmd://plastic-global/)\n" \
+                "plastic-dealintell (qmd://plastic-dealintell/)\n"
+      runner, = fake_runner("collection" => [listing, true])
+      st = QmdSync.status(plastic_home: home, runner: runner, detector: present)
+      assert_empty st[:missing], "a tier with no roadmaps/ dir must never be reported missing"
+      assert_equal true, st[:all_registered]
+    end
+  end
+
+  def test_status_reports_missing_for_existing_but_unregistered_roadmap_collection
+    listing = "Collections (2):\n\nplastic-global (qmd://plastic-global/)\n" \
+              "plastic-dealintell (qmd://plastic-dealintell/)\n"
+    runner, = fake_runner("collection" => [listing, true])
+    st = QmdSync.status(plastic_home: @home, runner: runner, detector: present)
+    assert_includes st[:missing], "plastic-global-roadmaps"
+    assert_includes st[:missing], "plastic-dealintell-roadmaps"
     assert_equal false, st[:all_registered]
   end
 
@@ -181,6 +263,23 @@ class QmdSyncTest < Minitest::Test
   def test_collections_for_cwd_falls_back_to_global_only
     cols = QmdSync.collections_for_cwd("/tmp/somewhere-else", plastic_home: @home)
     assert_equal ["plastic-global"], cols
+  end
+
+  def test_collections_for_cwd_includes_registered_roadmap_companions
+    listing = "Collections (2):\n\nplastic-dealintell (qmd://plastic-dealintell/)\n" \
+              "plastic-dealintell-roadmaps (qmd://plastic-dealintell-roadmaps/)\n"
+    runner, = fake_runner("collection" => [listing, true])
+    cols = QmdSync.collections_for_cwd("/Users/zlatko/apps/personal/dealintell", plastic_home: @home,
+                                       runner: runner, detector: present)
+    assert_equal ["plastic-dealintell", "plastic-dealintell-roadmaps", "plastic-global"], cols
+  end
+
+  def test_collections_for_cwd_omits_unregistered_roadmap_companion_without_erroring
+    listing = "Collections (1):\n\nplastic-dealintell (qmd://plastic-dealintell/)\n"
+    runner, = fake_runner("collection" => [listing, true])
+    cols = QmdSync.collections_for_cwd("/Users/zlatko/apps/personal/dealintell", plastic_home: @home,
+                                       runner: runner, detector: present)
+    assert_equal ["plastic-dealintell", "plastic-global"], cols
   end
 
   # --- fresh? (intent 84 freshness probe) ---

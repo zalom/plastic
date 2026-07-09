@@ -132,6 +132,34 @@ class RoadmapTest < Minitest::Test
                  "SKILL.md must name the roadmaps/archived/ destination")
   end
 
+  # --- intent 135: roadmap mutating verbs must wire their own QMD reindex ---
+
+  ROADMAP_REINDEX_LINE = "qmd-sync reindex --store <roadmaps-dir> --async"
+  MUTATING_HEADINGS = [
+    "Create",
+    "Add / reorder entries",
+    "Sync status mirror",
+    "Append a log line",
+    "Close / archive",
+  ].freeze
+
+  def test_operations_doc_wires_roadmap_reindex_in_each_mutating_verb
+    body = File.read(OPERATIONS)
+    sections = body.split(/^## /).drop(1)
+
+    MUTATING_HEADINGS.each do |heading|
+      section = sections.find { |s| s.start_with?(heading) }
+      refute_nil section, "operations.md must contain a '## #{heading}' section"
+      assert_includes section, ROADMAP_REINDEX_LINE,
+                       "'## #{heading}' section must wire the roadmap reindex call"
+    end
+
+    read_section = sections.find { |s| s.start_with?("Read / consume") }
+    refute_nil read_section, "operations.md must contain a '## Read / consume' section"
+    refute_includes read_section, ROADMAP_REINDEX_LINE,
+                     "'## Read / consume' is non-mutating and must not wire a reindex call"
+  end
+
   def test_references_document_close_archive_checkbox_and_log_formats
     file_format = File.read(FILE_FORMAT)
     operations = File.read(OPERATIONS)
