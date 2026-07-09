@@ -1,0 +1,314 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# end-intent (intent 161) - the mechanical core of the single owned Done
+# procedure (D2 steps 1-4). Pure with respect to worktrees, locks, and QMD:
+# those stay in the plastic-intent-ending skill body (steps 0 and 5-7), never
+# duplicated here. Pairs new-intent's shape: one callable script instead of
+# raw one-liners repeated in skill prose (the failure mode this intent fixes).
+#
+# Usage:
+#   end-intent --store <store_path> --id <intent_id> --disposition delivered|abandoned \
+#              [--index <path>] [--outcome-summary <text>] [--no-commit] [--dry-run]
+#
+# Steps performed (in order), all idempotent:
+#   1. Guard outcome.md (exit 2, authors nothing, on any failure), then stamp
+#      the intent file's `## Outcome` section with --outcome-summary if given.
+#   2. Move the intent's INDEX.md line from `## Active` into `## Completed`
+#      (delivered) or `## Abandoned` (abandoned), dated today.
+#   3. Append the savepoint `Done` bookend (Bridge.append_terminal_savepoint).
+#   4. Commit the store repo, unless --no-commit.
+#
+# Exit codes: 0 (ok), 1 (usage/resolution failure), 2 (outcome.md guard refused).
+
+require "fileutils"
+require "date"
+require "open3"
+require_relative "lib/bridge"
+require_relative "lib/intent_validator"
+
+DISPOSITIONS = %w[delivered abandoned].freeze
+
+# The store-line separator this script must reproduce is a real em dash
+# (U+2014), the existing INDEX.md convention (store files are exempt from the
+# no-em-dash shipped-file rule). Built from the codepoint, not a literal byte
+# in this source file, so the script's own source stays em-dash free.
+EM_DASH = "\u2014"
+
+# --- Explicit flag parsing (no eval, no global injection) -------------------
+
+def parse_args(argv)
+  opts = {
+    store: nil, id: nil, disposition: nil, index: nil,
+    outcome_summary: nil, no_commit: false, dry_run: false,
+  }
+  i = 0
+  while i < argv.length
+    arg = argv[i]
+    case arg
+    when "--store"          then opts[:store] = argv[i += 1]
+    when "--id"              then opts[:id] = argv[i += 1]
+    when "--disposition"     then opts[:disposition] = argv[i += 1]
+    when "--index"           then opts[:index] = argv[i += 1]
+    when "--outcome-summary" then opts[:outcome_summary] = argv[i += 1]
+    when "--no-commit"       then opts[:no_commit] = true
+    when "--dry-run"         then opts[:dry_run] = true
+    else
+      usage_abort("unknown argument #{arg.inspect}")
+    end
+    i += 1
+  end
+  opts
+end
+
+def usage
+  "usage: end-intent --store <store_path> --id <intent_id> " \
+    "--disposition delivered|abandoned [--index <path>] " \
+    "[--outcome-summary <text>] [--no-commit] [--dry-run]"
+end
+
+def usage_abort(message)
+  warn "end-intent: #{message}"
+  warn usage
+  exit 1
+end
+
+def expand(path)
+  File.expand_path(path.to_s.sub(/\A~/, Dir.home))
+end
+
+# Resolve the single "<store>/<id>--*" directory, or abort (usage error: exit 1).
+def resolve_intent_dir(store, id)
+  matches = Dir.glob(File.join(store, "#{id}--*")).select { |d| File.directory?(d) }
+  usage_abort("no intent directory matches #{id}--* under #{store}") if matches.empty?
+  if matches.length > 1
+    usage_abort("ambiguous id #{id.inspect}: #{matches.length} matching directories under #{store}")
+  end
+  matches.first
+end
+
+# --- outcome.md guard (D2 step 1a) ------------------------------------------
+#
+# Returns nil when the guard PASSES, or a reason String to refuse with exit 2.
+# Read-only: authors nothing regardless of outcome. Refuses a missing file, a
+# still-placeholder file (first line is the sentinel), or a disposition that
+# does not exactly equal the requested one (this is what naturally refuses a
+# freshly scaffolded outcome.md, whose disposition is the literal
+# "delivered|abandoned" string, not one of the two real values).
+def outcome_guard_reason(intent_dir, disposition)
+  path = File.join(intent_dir, "outcome.md")
+  return "outcome.md is missing at #{path}" unless File.exist?(path)
+
+  content = File.read(path)
+  first_line = content.each_line.first.to_s.chomp
+  if first_line == Bridge::PLACEHOLDER_SENTINEL
+    return "outcome.md is still the scaffold placeholder (first line is the sentinel)"
+  end
+
+  fm = IntentValidator.parse_frontmatter_text(content)
+  actual = fm.is_a?(Hash) ? fm["disposition"] : nil
+  unless DISPOSITIONS.include?(actual) && actual == disposition
+    return "outcome.md frontmatter disposition is #{actual.inspect}, expected #{disposition.inspect}"
+  end
+
+  nil
+end
+
+# --- intent-file `## Outcome` summary stamp (D2 step 1b) --------------------
+#
+# Replace the body of the intent file's `## Outcome` section with `summary`,
+# leaving every other section and the frontmatter untouched. No-op (returns
+# content unchanged) when summary is blank or the section is not found.
+def stamp_outcome_summary(content, summary)
+  return content if summary.nil? || summary.to_s.strip.empty?
+
+  lines = content.lines
+  start = lines.index { |l| l.rstrip == "## Outcome" }
+  return content if start.nil?
+
+  stop = start + 1
+  stop += 1 while stop < lines.length && !lines[stop].start_with?("## ")
+
+  body = "#{summary.to_s.strip}\n"
+  replacement = (stop < lines.length) ? [body, "\n"] : [body]
+  (lines[0..start] + replacement + lines[stop..]).join
+end
+
+# --- INDEX.md terminal move (D2 step 2) -------------------------------------
+
+ACTIVE_LINE_RE = /\A- \[(\S+)\s+#{Regexp.escape(EM_DASH)}\s+(.*?)\]\(([^)]+)\)/.freeze
+
+def index_target_heading(disposition)
+  disposition == "delivered" ? "## Completed" : "## Abandoned"
+end
+
+# Index of the first `## ` heading at or after heading_idx + 1, or lines.length
+# at EOF (the section's exclusive end bound).
+def section_stop(lines, heading_idx)
+  stop = heading_idx + 1
+  stop += 1 while stop < lines.length && !lines[stop].start_with?("## ")
+  stop
+end
+
+def active_line_id(line)
+  m = line.match(ACTIVE_LINE_RE)
+  m && m[1]
+end
+
+def section_contains_id?(lines, heading_idx, id)
+  stop = section_stop(lines, heading_idx)
+  (heading_idx + 1...stop).any? { |i| active_line_id(lines[i]) == id }
+end
+
+# Remove the entry at entry_idx from the `## Active` section. When no real
+# entries remain, install the canonical "_(none)_" placeholder (the same
+# empty-state convention INDEX.md already uses).
+def remove_active_entry(lines, active_start, entry_idx)
+  new_lines = lines.dup
+  new_lines.delete_at(entry_idx)
+  stop = section_stop(new_lines, active_start)
+  remaining = (active_start + 1...stop).reject { |i| new_lines[i].strip.empty? }
+  if remaining.empty?
+    # Keep the blank-line separator before the next heading (if any); only
+    # collapse the section body to the placeholder, never the spacing.
+    placeholder = (stop < new_lines.length) ? ["_(none)_\n", "\n"] : ["_(none)_\n"]
+    new_lines[(active_start + 1)...stop] = placeholder
+  end
+  new_lines
+end
+
+# Insert new_entry into the target terminal section: replace a lone
+# "_(none)_" placeholder if that is all the section holds, otherwise prepend
+# (newest-first, matching the existing Completed/Abandoned convention).
+def insert_terminal_entry(lines, target_start, new_entry)
+  new_lines = lines.dup
+  stop = section_stop(new_lines, target_start)
+  body_idx = (target_start + 1...stop).to_a
+  if body_idx.length == 1 && new_lines[body_idx.first].strip == "_(none)_"
+    new_lines[body_idx.first] = new_entry
+  else
+    new_lines.insert(target_start + 1, new_entry)
+  end
+  new_lines
+end
+
+# Move the intent's `## Active` line into the terminal section. Returns the
+# new INDEX.md content, or the original content unchanged when there is
+# nothing to do (idempotent: a second run finds no Active entry and the
+# terminal section already carries it, so it is a clean no-op).
+def move_index_to_terminal(content, id, disposition, today:)
+  target_heading = index_target_heading(disposition)
+  lines = content.lines
+
+  active_start = lines.index { |l| l.rstrip == "## Active" }
+  target_start = lines.index { |l| l.rstrip == target_heading }
+  return content if active_start.nil? || target_start.nil?
+
+  already_in_target = section_contains_id?(lines, target_start, id)
+  active_stop = section_stop(lines, active_start)
+  entry_idx = (active_start + 1...active_stop).find { |i| active_line_id(lines[i]) == id }
+
+  return content if entry_idx.nil? # already moved (or never present): no-op either way
+
+  m = lines[entry_idx].match(ACTIVE_LINE_RE)
+  title, link = m[2], m[3]
+  new_entry = "- [#{id} #{EM_DASH} #{title}](#{link}) #{EM_DASH} #{today}\n"
+
+  lines = remove_active_entry(lines, active_start, entry_idx)
+  target_start = lines.index { |l| l.rstrip == target_heading }
+  lines = insert_terminal_entry(lines, target_start, new_entry) unless already_in_target
+
+  lines.join
+end
+
+# --- store auto-commit (D2 step 4) ------------------------------------------
+
+def git_toplevel(dir)
+  out, _err, status = Open3.capture3("git", "-C", dir, "rev-parse", "--show-toplevel")
+  return nil unless status.success?
+  top = out.strip
+  top.empty? ? nil : top
+end
+
+# Best-effort store commit: never raises, never blocks the mechanical close.
+# Returns true when a commit was created, false otherwise (not a git repo,
+# nothing to commit, or the commit failed). Pins a local committer identity so
+# the commit succeeds even with no ambient git config (hermetic).
+def store_commit(store, id, disposition)
+  root = git_toplevel(store)
+  return false if root.nil?
+
+  Open3.capture3("git", "-C", root, "add", "-A")
+  _out, _err, status = Open3.capture3(
+    "git", "-C", root,
+    "-c", "user.name=Plastic", "-c", "user.email=plastic@localhost",
+    "commit", "--quiet", "-m", "chore: complete intent #{id} (#{disposition})"
+  )
+  status.success?
+end
+
+# --- main --------------------------------------------------------------------
+
+def main(argv)
+  opts = parse_args(argv)
+  usage_abort("--store is required") if opts[:store].nil? || opts[:store].empty?
+  usage_abort("--id is required") if opts[:id].nil? || opts[:id].empty?
+  unless DISPOSITIONS.include?(opts[:disposition])
+    usage_abort("--disposition must be one of #{DISPOSITIONS.join('|')}")
+  end
+
+  store = expand(opts[:store])
+  usage_abort("store dir does not exist: #{store}") unless Dir.exist?(store)
+
+  id = opts[:id]
+  disposition = opts[:disposition]
+  intent_dir = resolve_intent_dir(store, id)
+  index_path = opts[:index] ? expand(opts[:index]) : File.join(File.dirname(store), "INDEX.md")
+  today = Date.today.iso8601
+
+  reason = outcome_guard_reason(intent_dir, disposition)
+  if reason
+    warn "end-intent: #{reason}"
+    exit 2
+  end
+
+  if opts[:dry_run]
+    puts "end-intent: dry run for #{File.basename(intent_dir)} (#{disposition})"
+    puts "  would stamp ## Outcome: #{opts[:outcome_summary].inspect}" if opts[:outcome_summary]
+    puts "  would move INDEX.md entry from ## Active to #{index_target_heading(disposition)} (#{index_path})"
+    puts "  would append savepoint bookend: Done  #{disposition}"
+    puts(opts[:no_commit] ? "  would skip store commit (--no-commit)" : "  would commit the store repo")
+    exit 0
+  end
+
+  # 1b. Intent-file `## Outcome` summary stamp (no-op unless given).
+  if opts[:outcome_summary]
+    intent_file = Bridge.intent_file(intent_dir)
+    if File.exist?(intent_file)
+      original = File.read(intent_file)
+      updated = stamp_outcome_summary(original, opts[:outcome_summary])
+      File.write(intent_file, updated) if updated != original
+    end
+  end
+
+  # 2. INDEX.md terminal move.
+  if File.exist?(index_path)
+    original_index = File.read(index_path)
+    updated_index = move_index_to_terminal(original_index, id, disposition, today: today)
+    File.write(index_path, updated_index) if updated_index != original_index
+  else
+    warn "end-intent: INDEX.md not found at #{index_path}, skipping the terminal move"
+  end
+
+  # 3. Savepoint Done bookend (idempotent).
+  Bridge.append_terminal_savepoint(intent_dir, disposition)
+
+  # 4. Store auto-commit, unless --no-commit.
+  store_commit(store, id, disposition) unless opts[:no_commit]
+
+  puts intent_dir
+  exit 0
+end
+
+main(ARGV) if $PROGRAM_NAME == __FILE__

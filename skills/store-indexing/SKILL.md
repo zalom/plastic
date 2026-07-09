@@ -7,27 +7,27 @@ user-invocable: false
 # Managing the Index
 
 ## When to Use
-- After creating a new intent (automatic — part of creating-intent workflow)
+- After creating a new intent (automatic - part of creating-intent workflow)
 - After completing or abandoning an intent
 - User says "index", "organize", or "clean up"
 - Periodic maintenance when the store grows
 
 ## INDEX.md Structure
 
-INDEX.md is a Zettelkasten main structure note — the brain's entry point. It has four sections:
+INDEX.md is a Zettelkasten main structure note - the brain's entry point. It has four sections:
 
 ### Active
 Intents currently being worked on. Max 1-2 for focus.
 ```markdown
 ## Active
-- [1a2 — Design Plastic](store/1a2--design-plastic-state-system/1a2.md) — decision, human
+- [1a2 - Design Plastic](store/1a2--design-plastic-state-system/1a2.md) - decision, human
 ```
 
 ### Future
 Intents parked for later. May be picked up by agents.
 ```markdown
 ## Future
-- [1b1 — Build Reddit KB](store/1b1--build-reddit-knowledge-base/1b1.md) — implementation, human
+- [1b1 - Build Reddit KB](store/1b1--build-reddit-knowledge-base/1b1.md) - implementation, human
 ```
 
 ### Clusters
@@ -35,18 +35,17 @@ Topic-based groupings. Manually curated. Create a new cluster when 3+ intents sh
 ```markdown
 ## Clusters
 ### Reddit Knowledge Base
-- [1a — Research](store/1a--research-reddit-saved-posts/1a.md)
-- [1a1 — Plan](store/1a1--plan-reddit-knowledge-base/1a1.md)
+- [1a - Research](store/1a--research-reddit-saved-posts/1a.md)
+- [1a1 - Plan](store/1a1--plan-reddit-knowledge-base/1a1.md)
 ```
 
 ### Completed
 All completed intents with dates. Links preserved, never deleted.
 
-When you move an intent INTO Completed or Abandoned, run the closing acts of the transfer in the canonical End-tail order (see PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`):
+When you move an intent INTO Completed or Abandoned, do these things:
 
 1. Author a real `outcome.md` in the intent directory from `~/.plastic/templates/outcome.md`, with the frontmatter `disposition: delivered` for a completed intent or `disposition: abandoned` for an abandoned one. `outcome.md` is MANDATORY at every terminal, delivered and abandoned alike: on abandon it records the abandonment reason and replaces the scaffolded placeholder sentinel (never leave `outcome.md` a placeholder at a terminal).
-2. Stamp the terminal savepoint bookend (intent 81), so the ledger's last line records the disposition: `ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.append_terminal_savepoint("<intent_dir>", "delivered")'` (use `"abandoned"` for an abandoned intent). Idempotent.
-3. Refresh the QMD index for that store LAST, after the terminal move and savepoint (no-op when QMD is absent), in the background so it never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`.
+2. Call `plastic-intent-ending` for the terminal-transition close (INDEX move, savepoint `Done` bookend, store commit, disarm, and the QMD reindex last): `ruby ~/.plastic/scripts/end-intent --store <store> --id <id> --disposition delivered|abandoned`, then follow that skill's own disarm and reindex steps. Never restate those one-liners here.
 
 ## Workflow
 

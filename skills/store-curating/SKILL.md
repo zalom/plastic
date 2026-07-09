@@ -28,9 +28,9 @@ Dispatches to the `plastic-intent-curator` agent for intent store maintenance.
 
 Invoke the `plastic-intent-curator` agent via the Agent tool with `subagent_type: "plastic-intent-curator"`. Pass the user's request as the prompt, including:
 
-1. **What to do** — complete intent, reorganize, triage stale, etc.
-2. **Which store** — global (`~/.plastic/`) or project (`.plastic/store/`)
-3. **Which intents** — by ID or "all active"
+1. **What to do** - complete intent, reorganize, triage stale, etc.
+2. **Which store** - global (`~/.plastic/`) or project (`.plastic/store/`)
+3. **Which intents** - by ID or "all active"
 
 The agent handles:
 - Intent lifecycle management (status transitions, Outcome sections)
@@ -39,10 +39,9 @@ The agent handles:
 - Cluster management (create, merge, rename)
 - Orphan detection
 
-When an intent reaches a terminal state — moved to Completed OR Abandoned — do these things as the closing act of the transfer, in the canonical End-tail order (see PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`):
+When an intent reaches a terminal state, moved to Completed OR Abandoned, do these things:
 
 1. Author a real `outcome.md` in the intent directory from `~/.plastic/templates/outcome.md`, with the frontmatter `disposition: delivered` for a completed intent or `disposition: abandoned` for an abandoned one. `outcome.md` is MANDATORY at every terminal, delivered and abandoned alike: on abandon it records the abandonment reason and replaces the scaffolded placeholder sentinel (never leave `outcome.md` a placeholder at a terminal).
-2. Stamp the terminal savepoint bookend (intent 81), so the ledger's last line records the disposition: `ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.append_terminal_savepoint("<intent_dir>", "delivered")'` (use `"abandoned"` for an abandoned intent). Idempotent.
-3. Refresh the QMD index for the affected store LAST, after the terminal move and savepoint (no-op when QMD absent), running in the background so it never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`.
+2. Call `plastic-intent-ending` for the terminal-transition close (INDEX move, savepoint `Done` bookend, store commit, disarm, and the QMD reindex last): `ruby ~/.plastic/scripts/end-intent --store <store> --id <id> --disposition delivered|abandoned`, then follow that skill's own disarm and reindex steps. Never restate those one-liners here.
 
 After the agent completes, report what changed.
