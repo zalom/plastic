@@ -241,6 +241,99 @@ class NewIntentTest < Minitest::Test
     assert IntentValidator.validate(a)[:ok], "source intent must stay born-complete"
   end
 
+  def test_block_style_chain_predecessor_preserves_entries_and_appends
+    # Reproduces the intent-41 corruption shape: a predecessor whose chain: is a
+    # hand-authored YAML block list, not the flow style new-intent itself writes.
+    a, = run_new_intent("--store", @store, "--intent", "Root A", "--slug", "root-a")
+    a_file = File.join(a, "#{File.basename(a)}.md")
+    a_id = File.basename(a).split("--").first
+
+    content = File.read(a_file)
+    block_chain = "chain:\n  - \"12\"\n  - \"27\"\n"
+    File.write(a_file, content.sub(/^chain: \[\]\n/, block_chain))
+
+    b, status = run_new_intent("--store", @store, "--intent", "Root B", "--slug", "root-b", "--sources", a_id)
+    assert_equal 0, status, "expected exit 0, got: #{b}"
+
+    fm = IntentValidator.parse_frontmatter(a_file)
+    refute_nil fm, "frontmatter must still parse as valid YAML after a block-style append"
+    chain_ids = Array(fm["chain"]).map(&:to_s)
+    b_id = File.basename(b).split("--").first
+    assert_includes chain_ids, "12", "pre-existing block entry must survive"
+    assert_includes chain_ids, "27", "pre-existing block entry must survive"
+    assert_includes chain_ids, b_id, "new id must be appended"
+  end
+
+  def test_flow_style_chain_with_entries_still_appends_flow
+    # Guard: today's flow-append path already generalizes past a single entry; this
+    # pins that so the block-style rewrite in add_to_chain can't regress it.
+    a, = run_new_intent("--store", @store, "--intent", "Root A", "--slug", "root-a")
+    a_file = File.join(a, "#{File.basename(a)}.md")
+    a_id = File.basename(a).split("--").first
+
+    content = File.read(a_file)
+    File.write(a_file, content.sub(/^chain: \[\]\n/, "chain: [\"12\", \"27\"]\n"))
+
+    b, status = run_new_intent("--store", @store, "--intent", "Root B", "--slug", "root-b", "--sources", a_id)
+    assert_equal 0, status, "expected exit 0, got: #{b}"
+
+    b_id = File.basename(b).split("--").first
+    assert_equal ["12", "27", b_id], chain_of(a)
+  end
+
+  def test_intent_value_with_double_quote_is_escaped_in_frontmatter
+    original = 'Fix the "reciprocal chain" wiring bug'
+    dir, status = run_new_intent("--store", @store, "--intent", original, "--slug", "quote-bug")
+    assert_equal 0, status, "expected exit 0, got: #{dir}"
+
+    result = IntentValidator.validate(dir)
+    assert result[:ok], "intent must be born complete: #{result[:errors].inspect}"
+
+    file = File.join(dir, "#{File.basename(dir)}.md")
+    fm = IntentValidator.parse_frontmatter(file)
+    assert_equal original, fm["intent"], "frontmatter intent field must round-trip to the original string"
+
+    body = IntentValidator.body_of(File.read(file))
+    assert_includes body, "## Intent\n#{original}\n", "body ## Intent copy must stay raw, unescaped"
+  end
+
+  def test_intent_value_with_backslash_is_escaped_in_frontmatter
+    # Regression: escape_double_quoted_scalar doubles a literal backslash, but
+    # render_tokens used a String-form gsub replacement, which re-interprets
+    # backslash sequences in the replacement and collapses the doubled
+    # backslash back to one -- silently corrupting the escaped value on its
+    # way into the frontmatter.
+    original = 'Fix the \\wiring bug'
+    dir, status = run_new_intent("--store", @store, "--intent", original, "--slug", "backslash-bug")
+    assert_equal 0, status, "expected exit 0, got: #{dir}"
+
+    result = IntentValidator.validate(dir)
+    assert result[:ok], "intent must be born complete: #{result[:errors].inspect}"
+
+    file = File.join(dir, "#{File.basename(dir)}.md")
+    fm = IntentValidator.parse_frontmatter(file)
+    assert_equal original, fm["intent"], "frontmatter intent field must round-trip to the original string"
+
+    body = IntentValidator.body_of(File.read(file))
+    assert_includes body, "## Intent\n#{original}\n", "body ## Intent copy must stay raw, unescaped"
+  end
+
+  def test_intent_value_with_backslash_and_double_quote_is_escaped_in_frontmatter
+    original = 'Fix the \\"reciprocal chain\\" wiring bug'
+    dir, status = run_new_intent("--store", @store, "--intent", original, "--slug", "backslash-quote-bug")
+    assert_equal 0, status, "expected exit 0, got: #{dir}"
+
+    result = IntentValidator.validate(dir)
+    assert result[:ok], "intent must be born complete: #{result[:errors].inspect}"
+
+    file = File.join(dir, "#{File.basename(dir)}.md")
+    fm = IntentValidator.parse_frontmatter(file)
+    assert_equal original, fm["intent"], "frontmatter intent field must round-trip to the original string"
+
+    body = IntentValidator.body_of(File.read(file))
+    assert_includes body, "## Intent\n#{original}\n", "body ## Intent copy must stay raw, unescaped"
+  end
+
   # --- Intent 81: born savepoint line stamped at creation --------------------
 
   def test_scaffold_stamps_born_savepoint_line
