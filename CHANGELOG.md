@@ -6,6 +6,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 ## Unreleased
 
 ## Released
+- `1.1.0-beta.1` - shipped 2026-07-09; collected 41 (the per-store operational database layer: a SQLite `plastic.db` per store with 7 Rails-shaped tables, the `Plastic::DB` facade and `plastic-db` CLI, bridge/lock/savepoint state cut over from /tmp files to `sessions`/`lock_leases`/`savepoint_events` with fail-open leases, deterministic cold rebuild from markdown, lazy per-store provisioning, and doctor DB-health checks; independent review APPROVE, suite 1138/0/0 incl. a forked 100-process contention proof). First cut of the intelligence roadmap (Batch 1); markdown artifacts stay the permanent record, the DB is the operational layer.
 - `1.0.0` (first stable) - shipped 2026-07-08; collected 143 (brought PLASTIC.md to
   operational completeness so a booting agent learns the whole surface, cleaned the install
   directions down to the stable path, descoped loop engineering and the intelligence track out
