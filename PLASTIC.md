@@ -414,8 +414,9 @@ Each gate guards one thing. All are hard except the retrieval gate:
   `>` redirect, a `ruby -e` or `python -c` write), so the same rules apply whether an edit goes
   through the Write tool or a shell. A trailing `# plastic-ok` comment is an auditable escape that
   lets a deliberate command through, and every use is logged to
-  `~/.plastic/.cache/gate-escapes.log`. The code gate (Write, Edit, and MCP edits) carries the
-  identical audited `# plastic-ok` escape, logged to the same file.
+  `~/.plastic/.cache/gate-escapes.log`. The code gate (Write and Edit) carries the identical
+  audited `# plastic-ok` escape, logged to the same file. The escape does not extend to
+  `NotebookEdit` or MCP structural edits: they are still gated, just without an escape hatch.
 - **retrieval-gate** is advisory only (see the Retrieval Gate section): it hints at QMD and never
   blocks a read or search.
 

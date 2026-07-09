@@ -19,10 +19,13 @@ class PlasticMdBatch0ConventionsTest < Minitest::Test
   # --- 150: code-gate mirrors bash-gate's audited # plastic-ok escape -------
 
   def test_plastic_md_states_code_gate_escape_mirrors_bash_gate
-    assert_includes normalized_body,
-      "The code gate (Write, Edit, and MCP edits) carries the identical audited " \
+    body = normalized_body
+    assert_includes body,
+      "The code gate (Write and Edit) carries the identical audited " \
       "`# plastic-ok` escape, logged to the same file.",
-      "### The gates by name must state the code gate's mirrored # plastic-ok escape"
+      "### The gates by name must state the code gate's mirrored # plastic-ok escape, scoped to Write and Edit"
+    assert_match(/escape does not extend to.*NotebookEdit.*MCP structural edits/i, body,
+                 "must state the escape does not extend to NotebookEdit or MCP structural edits (gated, but no escape hatch)")
   end
 
   # --- 152: spawn preamble carries live state + worktree cd-fallback -------
