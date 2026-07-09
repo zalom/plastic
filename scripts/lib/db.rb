@@ -13,6 +13,7 @@ require_relative "db/store_resolver"
 require_relative "db/schema"
 require_relative "db/mirror"
 require_relative "db/sessions"
+require_relative "db/savepoint_events"
 
 # Plastic::DB — the single entry point every consumer uses to talk to a
 # store's plastic.db. No consumer writes SQL directly (D7); this facade plus
