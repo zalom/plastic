@@ -74,6 +74,15 @@ module Plastic
           )
         SQL
         <<~SQL,
+          CREATE TABLE IF NOT EXISTS lock_lease_delegates (
+            id INTEGER PRIMARY KEY,
+            lock_lease_id INTEGER REFERENCES lock_leases(id),
+            delegate_session TEXT,
+            created_at TEXT,
+            updated_at TEXT
+          )
+        SQL
+        <<~SQL,
           CREATE TABLE IF NOT EXISTS sessions (
             id INTEGER PRIMARY KEY,
             session_id TEXT UNIQUE,
@@ -128,6 +137,8 @@ module Plastic
         "CREATE INDEX IF NOT EXISTS idx_intents_quadrant ON intents(quadrant)",
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_lock_leases_live_holder " \
           "ON lock_leases(intent_id, artifact) WHERE released_at IS NULL",
+        "CREATE INDEX IF NOT EXISTS idx_lock_lease_delegates_lease_id " \
+          "ON lock_lease_delegates(lock_lease_id)",
         "CREATE INDEX IF NOT EXISTS idx_savepoint_events_intent_id ON savepoint_events(intent_id)",
         "CREATE INDEX IF NOT EXISTS idx_edges_source_intent_id ON edges(source_intent_id)",
         "CREATE INDEX IF NOT EXISTS idx_roadmap_entries_roadmap_batch " \

@@ -8,7 +8,6 @@ require "tempfile"
 require "digest"
 require "socket"
 require_relative "worktree"
-require_relative "lock"
 require_relative "db"
 
 module Bridge
@@ -75,15 +74,24 @@ module Bridge
     (store && dir) ? File.expand_path("#{store}/#{dir}") : nil
   end
 
-  # Bridge-cache copy of the durable lock file's fields (D2: the bridge is a
-  # CACHE; the file is the truth). Never carries a pid.
-  def self.lock_cache(lock_data)
+  # Bridge-cache copy of the delivery lease's fields (D2: the bridge is a
+  # CACHE; the lease row is the truth). Never carries a pid. `row` is a
+  # lock_leases row Hash (owner_session/host/acquired_at/artifact/id); nil
+  # yields the empty cache shape.
+  def self.lock_cache_from_lease(store_home, row)
+    if row.nil?
+      return { "owner_session" => nil, "acquired_at" => nil, "host" => nil,
+               "type" => nil, "delegates" => [] }
+    end
+
+    conn = Plastic::DB.connect(store_home)
+    delegates = conn ? Plastic::DB::Leases.delegates_for(conn, row["id"]) : []
     {
-      "owner_session" => lock_data["owner_session"],
-      "acquired_at" => lock_data["acquired_at"],
-      "host" => lock_data["host"],
-      "type" => lock_data["type"],
-      "delegates" => Array(lock_data["delegates"]),
+      "owner_session" => row["owner_session"],
+      "acquired_at" => row["acquired_at"],
+      "host" => row["host"],
+      "type" => blank?(row["artifact"]) ? "delivery" : "artifact",
+      "delegates" => delegates,
     }
   end
 
@@ -222,10 +230,7 @@ module Bridge
       # bridge purge): it can never be kept, since there is nothing to check
       # liveness against.
       keep = !blank?(id) && intent_active?(id, store: store)
-      unless keep
-        dir = blank?(id) ? nil : Dir.glob(File.join(store, "#{id}--*")).first
-        keep = !dir.nil? && File.exist?(Lock.path(dir))
-      end
+      keep ||= !blank?(id) && Plastic::DB::Leases.current(conn, id) != nil
       next if keep
 
       Plastic::DB::Sessions.end(conn, session_id: row["session_id"])
@@ -656,38 +661,28 @@ module Bridge
     data = derive(key, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name)
     data["build"]["auto"] = auto
 
-    # Acquire the durable delivery lock (D1/D2): session-keyed, O_EXCL, in the
-    # intent dir. The bridge lock block is a cache of the file. (Storage
-    # cutover for this half is ACTION_10's job; the file stays the gate's
-    # source of truth through ACTION_9.)
+    # Acquire the delivery lease (D1/D2, cutover intent 41 ACTION_10):
+    # session-keyed, atomic (BEGIN IMMEDIATE check-then-insert), in
+    # `lock_leases`. The bridge lock block is a cache of the row. No
+    # delivery.lock file is written anywhere (AC7): the lease is the ONLY
+    # delivery-lock state. DB-unavailable fails OPEN (arm proceeds without
+    # lock enforcement, advisory only) rather than blocking arming outright.
     intent_dir_abs = File.expand_path(intent_dir)
-    status, lock_data = Lock.acquire(intent_dir_abs, session: key)
+    store_home = File.dirname(store)
+    status, lease_row = Plastic::DB.lease_acquire(store_home, intent_id, session: key, host: Socket.gethostname)
     case status
     when :acquired, :owned
-      data["lock"] = lock_cache(lock_data)
+      data["lock"] = lock_cache_from_lease(store_home, lease_row)
     when :held
       raise LockHeldError, "delivery lock for intent #{intent_id} is held by " \
-        "session #{lock_data && lock_data['owner_session']}; run /plastic-lock status"
+        "session #{lease_row && lease_row['owner_session']}; run /plastic-lock status"
     when :stale
       raise LockHeldError, "delivery lock for intent #{intent_id} is stale " \
-        "(owner #{lock_data && lock_data['owner_session']}); run /plastic-lock " \
+        "(owner #{lease_row && lease_row['owner_session']}); run /plastic-lock " \
         "reclaim to take it over with an audit"
-    when :excluded
-      raise LockHeldError, "a #{lock_data && lock_data['type']} lock is active on " \
-        "intent #{intent_id}; run /plastic-lock status"
-    when :corrupt
-      raise LockHeldError, "delivery.lock for intent #{intent_id} is unreadable; " \
-        "run /plastic-lock fix"
-    end
-
-    # Mirror the acquired lock into lock_leases (best-effort): this feeds the
-    # bridge_data lock-cache adapter (Sessions.to_bridge_data) for OTHER
-    # processes that discover this session via the DB. ACTION_10 makes the
-    # lease the sole write and retires the file above.
-    begin
-      Plastic::DB.lease_acquire(File.dirname(store), intent_id, session: key, host: lock_data["host"])
-    rescue StandardError => e
-      $stderr.puts "plastic: lease mirror failed, continuing: #{e.message}"
+    when :fail_open
+      $stderr.puts "plastic: lease DB unavailable for intent #{intent_id}; " \
+        "arming without lock enforcement (advisory)"
     end
 
     # Provision the per-intent worktrees (mandatory code worktree for project
@@ -788,11 +783,10 @@ module Bridge
 
     owner = data.dig("lock", "owner_session")
     owner = session if blank?(owner)
-    Lock.release(intent_dir, session: owner)
     begin
       Plastic::DB.lease_release(store_home, intent_id, session: owner)
     rescue StandardError => e
-      $stderr.puts "plastic: lease release mirror failed: #{e.message}"
+      $stderr.puts "plastic: lease release failed: #{e.message}"
     end
     data["lock"] = { "owner_session" => nil, "acquired_at" => nil,
                      "host" => nil, "type" => nil, "delegates" => [] }
@@ -802,64 +796,64 @@ module Bridge
     data
   end
 
-  # One deterministic, idempotent repair (intent 108, D5): diagnose, remove
-  # faulty own-side state, rebuild the durable lock AND the bridge cache from
-  # disk truth for the current session. Legacy /tmp-only pid locks are
-  # migrated here: the delivery.lock file is created and the cache rebuilt
-  # without a pid. NEVER touches a fresh foreign lock (reports "held"); a
-  # stale foreign lock reports "stale" and is taken only by the explicit
-  # reclaim verb (Lock.takeover). Two entry points call this: the
-  # plastic-lock CLI and /plastic-intent-starting (self-healing boarding).
+  # One deterministic, idempotent repair (intent 108, D5; cutover intent 41
+  # ACTION_10): diagnose, rebuild the delivery lease AND the session row from
+  # disk truth for the current session. NEVER touches a fresh foreign lease
+  # (reports "held"). There is no more "corrupt" state to repair (a DB row
+  # cannot be unparseable JSON), and an expired foreign lease is no longer a
+  # "stale, explicit reclaim only" condition to report here either: leases
+  # fail open on expiry by construction, so repair may simply take it over.
+  # Two entry points call this: the plastic-lock CLI and
+  # /plastic-intent-starting (self-healing boarding).
   def self.repair_lock(session, intent_id:, intent_dir:, store:, name:, now: Time.now)
     key = resolve_session(session, intent_id: intent_id, store: store)
     dir = File.expand_path(intent_dir)
+    store_home = File.dirname(store)
     actions = []
 
-    if Lock.corrupt?(dir)
-      File.delete(Lock.path(dir))
-      actions << "removed corrupt delivery.lock"
-    end
-
-    lock = Lock.read(dir)
-    if lock && !Lock.authorized?(lock, key)
-      if Lock.fresh?(dir, now: now)
-        return { "status" => "held", "owner" => lock["owner_session"],
-                 "actions" => actions, "session" => key }
-      end
-      return { "status" => "stale", "owner" => lock["owner_session"],
-               "actions" => actions, "session" => key,
-               "hint" => "run /plastic-lock reclaim to take over with an audit" }
-    end
-
-    if lock
-      Lock.heartbeat(dir, session: key, now: now)
-      lock_data = Lock.read(dir)
-      role = lock_data["owner_session"].to_s == key ? "owner" : "delegate"
-      actions << "lock kept (#{role})"
-    else
-      status, lock_data = Lock.acquire(dir, session: key, now: now)
-      actions << "lock #{status}"
-    end
-
-    begin
-      Plastic::DB.lease_acquire(File.dirname(store), intent_id, session: key, host: lock_data["host"])
-    rescue StandardError => e
-      $stderr.puts "plastic: lease mirror failed, continuing: #{e.message}"
-    end
-
-    store_home = File.dirname(store)
     conn = Plastic::DB.connect(store_home)
-    previous = conn && Plastic::DB::Sessions.active_for(conn, session: session_key(key, intent_id), cwd: nil)
+    if conn.nil?
+      actions << "DB unavailable; nothing to repair (fail open)"
+      return { "status" => "repaired", "actions" => actions, "lock" => nil, "session" => key }
+    end
+
+    row = Plastic::DB::Leases.current(conn, intent_id)
+    if row && !Plastic::DB::Leases.authorized?(conn, intent_id, session: key) &&
+       Plastic::DB::Leases.fresh?(conn, intent_id, now: now)
+      return { "status" => "held", "owner" => row["owner_session"],
+               "actions" => actions, "session" => key }
+    end
+
+    if row && Plastic::DB::Leases.authorized?(conn, intent_id, session: key)
+      Plastic::DB.lease_renew(store_home, intent_id, session: key, now: now)
+      lease_row = Plastic::DB::Leases.current(conn, intent_id)
+      role = lease_row["owner_session"].to_s == key ? "owner" : "delegate"
+      actions << "lease kept (#{role})"
+    elsif row
+      # Foreign AND expired (the only way past the "held" return above):
+      # leases fail open on expiry, so repair may safely take over rather
+      # than report a stale/explicit-reclaim-only condition (mirrors the old
+      # repair_lock's "migrate legacy state" self-healing intent). A plain
+      # lease_acquire would only report :stale here without acquiring, which
+      # would misattribute the foreign row's data as this session's own.
+      status, lease_row = Plastic::DB.lease_takeover(store_home, intent_id, session: key, now: now)
+      actions << "lease #{status} (expired foreign lease reclaimed)"
+    else
+      status, lease_row = Plastic::DB.lease_acquire(store_home, intent_id, session: key, now: now)
+      actions << "lease #{status}"
+    end
+
+    previous = Plastic::DB::Sessions.active_for(conn, session: session_key(key, intent_id), cwd: nil)
     auto = !!(previous && previous["auto"].to_i == 1)
 
     data = derive(key, intent_id: intent_id, intent_dir: dir, store: store, name: name, now: now)
     data["build"]["auto"] = auto
-    data["lock"] = lock_cache(lock_data)
+    data["lock"] = lock_cache_from_lease(store_home, lease_row)
     update_session(store: store, session: key, intent_id: intent_id, auto: auto, now: now)
     actions << "bridge rebuilt from disk (stage #{data['build']['stage']})"
 
     { "status" => "repaired", "actions" => actions,
-      "lock" => lock_data, "session" => key }
+      "lock" => lease_row, "session" => key }
   end
 
   # Decide whether a code edit should be blocked while auto mode is armed.
@@ -896,38 +890,40 @@ module Bridge
       "(blocked edit: #{file_abs})"
   end
 
-  # --- Solo-mode detection (intent 128) ---------------------------------------
+  # --- Solo-mode detection (intent 128, cutover intent 41 ACTION_10) ----------
   #
-  # Positive-only confirmation that exactly one session is delivering, from the
-  # durable delivery.lock files (never the /tmp bridge cache, D2). Used to relax
+  # Positive-only confirmation that exactly one session is delivering, read
+  # from `lock_leases` rows (never the /tmp bridge cache, D2). Used to relax
   # the two ARBITRATION gates (lock_gate_decision, worktree_gate_decision) from
   # a hard deny to an advisory allow when there is nothing to arbitrate.
   #
-  # SOLO iff exactly ONE fresh delivery.lock exists across scan_roots, that
-  # lock's owner_session equals the resolved session, and its delegates array
-  # is empty. Any ambiguity (more than one fresh lock, including several under
-  # the SAME owner_session, which reads as parallel-in-play), a foreign owner,
-  # a non-empty delegates array, a blank/unresolvable session, or any error
-  # during the scan all return false (fail-closed direction preserved).
-  def self.solo_delivery?(scan_roots:, session:, ttl: Lock::TTL_SECONDS, now: Time.now)
+  # SOLO iff exactly ONE fresh delivery-grain lease exists across scan_roots
+  # (each a STORE dir; one plastic.db per store, so each is its own
+  # connection), that lease's owner_session equals the resolved session, and
+  # it has no registered delegates. Any ambiguity (more than one fresh lease,
+  # including several under the SAME owner_session, which reads as
+  # parallel-in-play), a foreign owner, a registered delegate, a
+  # blank/unresolvable session, or any error during the scan all return false
+  # (fail-closed direction preserved). A lease row can never be "unreadable"
+  # the way a hand-parsed JSON file could, so the old corrupt-lock ambiguity
+  # case is structurally impossible now.
+  def self.solo_delivery?(scan_roots:, session:, ttl: Plastic::DB::Leases::TTL_SECONDS, now: Time.now)
     return false if blank?(session)
 
-    lock_dirs = Array(scan_roots).compact.flat_map { |root|
-      Dir.glob(File.join(File.expand_path(root), "*", "delivery.lock"))
-    }.uniq.map { |lock_file| File.dirname(lock_file) }
+    store_homes = Array(scan_roots).compact.map { |root| File.dirname(File.expand_path(root.to_s)) }.uniq
+    fresh = store_homes.flat_map do |store_home|
+      conn = Plastic::DB.connect(store_home)
+      next [] if conn.nil?
+      Plastic::DB::Leases.fresh_delivery_rows(conn, now: now).map { |row| [store_home, row] }
+    end
 
-    fresh_dirs = lock_dirs.select { |dir| Lock.fresh?(dir, ttl: ttl, now: now) }
-    fresh_locks = fresh_dirs.map { |dir| Lock.read(dir) }
+    return false unless fresh.length == 1
 
-    # A fresh-but-unreadable (corrupt) lock is real ambiguity, not an absence:
-    # dropping it via filter_map could leave exactly one READABLE lock and
-    # misconfirm solo while a second, unreadable-but-live lock is in play.
-    # Any unreadable fresh lock keeps this fail-closed (review finding 2).
-    return false if fresh_locks.any?(&:nil?)
-    return false unless fresh_locks.length == 1
+    store_home, row = fresh.first
+    return false unless row["owner_session"].to_s == session.to_s
 
-    lock = fresh_locks.first
-    lock["owner_session"].to_s == session.to_s && Array(lock["delegates"]).empty?
+    conn = Plastic::DB.connect(store_home)
+    Plastic::DB::Leases.delegates_for(conn, row["id"]).empty?
   rescue StandardError
     false
   end
@@ -939,17 +935,21 @@ module Bridge
     nil
   end
 
-  # --- Fail-closed lock gate (intent 96) -------------------------------------
+  # --- Fail-closed lock gate (intent 96, cutover intent 41 ACTION_10) --------
 
   # Returns a reason String to BLOCK, or nil to ALLOW. Decides from the
-  # durable delivery.lock in the TARGET intent dir (D2): the bridge argument
-  # only supplies a fallback session id, so a missing or disagreeing bridge
-  # never changes the verdict. Every deny names the exact resolving command
-  # (D5). ALLOW: non-intent paths, not-yet-active intents, and any session the
-  # target's lock names as owner or delegate (even when stale: a stale lock is
-  # still its owner's until an explicit takeover).
+  # `lock_leases` delivery-grain row for the TARGET intent (D2): the bridge
+  # argument only supplies a fallback session id, so a missing or disagreeing
+  # bridge never changes the verdict. Every deny names the exact resolving
+  # command (D5). ALLOW: non-intent paths, not-yet-active intents, any session
+  # the lease names as owner or delegate, and (new in this cutover) an EXPIRED
+  # lease -- leases fail open on expiry by construction (Plastic::DB::Leases,
+  # D-notes "fail open, always"): no explicit reclaim is required, unlike the
+  # retired file lock. DB-unavailable is its own fail-open path, distinct from
+  # "no lease at all" (which still denies: dormancy is not the same as never
+  # having armed).
   def self.lock_gate_decision(bridge_data, file_path, session: nil,
-                              ttl: Lock::TTL_SECONDS, now: Time.now, home: Dir.home)
+                              ttl: Plastic::DB::Leases::TTL_SECONDS, now: Time.now, home: Dir.home)
     return nil if blank?(file_path)
 
     target_dir = intent_dir_for(file_path)
@@ -962,48 +962,61 @@ module Bridge
     sess = bridge_data["session"] if blank?(sess) && bridge_data.is_a?(Hash)
 
     # Solo-mode detection (intent 128): scan this intent's store plus the
-    # global store under `home` for fresh delivery locks. Computed once; used
-    # at every arbitration deny below to relax a hard deny to an advisory
-    # allow when solo delivery is positively confirmed.
+    # global store under `home` for fresh delivery leases. Computed once; used
+    # at the arbitration deny below to relax a hard deny to an advisory allow
+    # when solo delivery is positively confirmed.
     scan_roots = [store, File.join(File.expand_path(home), ".plastic", "store")]
     solo = solo_delivery?(scan_roots: scan_roots, session: sess, ttl: ttl, now: now)
 
-    lock = Lock.read(target_dir)
-    if lock
-      return nil if Lock.authorized?(lock, sess)
-      if Lock.fresh?(target_dir, ttl: ttl, now: now)
-        return solo_allow(id, "fresh delivery lock") if solo
-        return "intent #{id} delivery lock is held by session " \
-               "#{lock['owner_session']}. Back off; if you are the owner's " \
-               "subagent, the owner must run: plastic-lock delegate " \
-               "--intent-dir #{target_dir} --session <your-session-id>. " \
-               "Inspect with /plastic-lock status"
-      end
-      return solo_allow(id, "stale delivery lock") if solo
-      return "intent #{id} has a stale delivery lock (owner " \
-             "#{lock['owner_session']}); run /plastic-lock reclaim to take " \
-             "it over, or /plastic-lock fix"
+    store_home = File.dirname(store)
+    conn = Plastic::DB.connect(store_home)
+    if conn.nil?
+      $stderr.puts "plastic: lock gate DB unavailable for intent #{id}; allowing (advisory)"
+      return nil
     end
-    if Lock.corrupt?(target_dir)
-      return solo_allow(id, "unreadable delivery.lock") if solo
-      return "delivery.lock for intent #{id} is unreadable; run /plastic-lock fix"
+
+    row = Plastic::DB::Leases.current(conn, id)
+    if row.nil?
+      return solo_allow(id, "no delivery lock") if solo
+      return "no delivery lock held for intent #{id}; run /plastic-intent-starting " \
+        "to lock and begin"
     end
-    return solo_allow(id, "no delivery lock") if solo
-    "no delivery lock held for intent #{id}; run /plastic-intent-starting " \
-      "to lock and begin"
+
+    return nil if Plastic::DB::Leases.authorized?(conn, id, session: sess)
+
+    unless Plastic::DB::Leases.fresh?(conn, id, now: now)
+      $stderr.puts "plastic: lock gate advisory - intent #{id}'s delivery lease is " \
+        "expired (owner #{row['owner_session']}); allowing (leases fail open on expiry)"
+      return nil
+    end
+
+    return solo_allow(id, "fresh delivery lock") if solo
+    "intent #{id} delivery lock is held by session " \
+      "#{row['owner_session']}. Back off; if you are the owner's " \
+      "subagent, the owner must run: plastic-lock delegate " \
+      "--intent-dir #{target_dir} --session <your-session-id>. " \
+      "Inspect with /plastic-lock status"
   end
 
-  # A session holds an intent's lock iff the durable delivery.lock in the
-  # intent dir names it as owner or delegate (D1/D4). The bridge is only a
-  # cache: the lock FILE decides, so a wiped /tmp or a clobbered bridge never
-  # strands the owner. No pid is consulted anywhere.
+  # A session holds an intent's lock iff the `lock_leases` delivery-grain row
+  # names it as owner or delegate (D1/D4). The bridge is only a cache: the
+  # lease decides, so a wiped /tmp or a clobbered bridge never strands the
+  # owner. No pid is consulted anywhere.
   def self.holds_live_lock?(bridge_data, session: nil)
     sess = session
     sess = bridge_data["session"] if blank?(sess) && bridge_data.is_a?(Hash)
     return false if blank?(sess)
     dir = bridge_intent_dir(bridge_data)
     return false unless dir
-    Lock.holds?(dir, session: sess)
+    id = intent_id_from_dir(dir)
+    return false unless id
+    store = bridge_data.is_a?(Hash) ? bridge_data.dig("intent", "store") : nil
+    return false if blank?(store)
+    conn = Plastic::DB.connect(File.dirname(store))
+    return false if conn.nil?
+    Plastic::DB::Leases.authorized?(conn, id, session: sess)
+  rescue StandardError
+    false
   end
 
   # "<id>" from a ".../store/<id>--<slug>" dir, else nil.

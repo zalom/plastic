@@ -7,7 +7,6 @@ require "fileutils"
 require "stringio"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/worktree"
-require_relative "../scripts/lib/lock"
 require_relative "../scripts/lib/db"
 
 # Tests for arm_guided: acquire the delivery lock WITHOUT auto mode (intent 96).
@@ -54,6 +53,11 @@ class BridgeGuidedTest < Minitest::Test
     Plastic::DB::Sessions.active_for(conn, session: session_id, cwd: nil)
   end
 
+  def lease_current(intent_id: "96")
+    conn = Plastic::DB.connect(File.dirname(@store))
+    Plastic::DB::Leases.current(conn, intent_id)
+  end
+
   def test_arm_guided_leaves_auto_false
     data = arm_guided
     assert_equal false, data["build"]["auto"]
@@ -74,11 +78,12 @@ class BridgeGuidedTest < Minitest::Test
       assert_equal true, data["worktree"]["provisioned"]
     end
     assert_equal 1, seen.length, "arm_guided must call Worktree.provision exactly once"
-    assert_equal @session, Lock.read(@intent_dir)["owner_session"]
+    assert_equal @session, lease_current["owner_session"]
   end
 
   def test_arm_guided_raises_lock_held_when_another_session_owns_the_lock
-    Lock.acquire(@intent_dir, session: "someone-else")
+    conn = Plastic::DB.connect(File.dirname(@store))
+    Plastic::DB::Leases.acquire(conn, "96", session: "someone-else", host: "h")
     err = assert_raises(Bridge::LockHeldError) { arm_guided }
     assert_includes err.message, "plastic-lock"
   end
@@ -99,7 +104,7 @@ class BridgeGuidedTest < Minitest::Test
     data = Bridge.arm_auto(@session, intent_id: "96", intent_dir: @intent_dir, store: @store, name: "demo")
     assert_equal true, data["build"]["auto"]
     assert_equal data["session"], data["lock"]["owner_session"]
-    assert_equal @session, Lock.read(@intent_dir)["owner_session"]
+    assert_equal @session, lease_current["owner_session"]
     row = session_row
     assert_equal 1, row["auto"]
   end

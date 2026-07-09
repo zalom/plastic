@@ -49,21 +49,23 @@ class HermeticityGuardTest < Minitest::Test
       "#{offenders.map { |f| File.basename(f) }.join(', ')}"
   end
 
-  # hook-session-start and hook-gate-check WRITE bridge state (derive /
-  # last_activity) keyed by the ambient session id. A test that spawns either
-  # without env isolation clobbers the live session's /tmp bridge (the exact
-  # 107/110 incident, reproduced by deprecation_display_test before this
-  # guard). Spawning tests must inject PLASTIC_TMP.
+  # hook-session-start and hook-gate-check WRITE session/lease state (derive /
+  # last_activity / heartbeat) keyed by the ambient session id. A test that
+  # spawns either without store isolation clobbers the live session's state
+  # (the exact 107/110 incident, reproduced by deprecation_display_test before
+  # this guard). Spawning tests must inject a store seam: PLASTIC_STORE_HOME
+  # (the `sessions`/`lock_leases` store seam, intent 41 cutover) or the
+  # retired PLASTIC_TMP (pre-cutover /tmp bridge seam).
   def test_every_bridge_writing_hook_spawn_isolates_its_tmp
     offenders = Dir[File.expand_path("../*_test.rb", __FILE__)].select do |f|
       next false if File.basename(f) == File.basename(__FILE__)
       src = File.read(f)
       src.match?(/hook-(session-start|gate-check)/) &&
         src.match?(/Open3|IO\.popen|\bsystem\(/) &&
-        !src.include?("PLASTIC_TMP")
+        !src.include?("PLASTIC_TMP") && !src.include?("PLASTIC_STORE_HOME")
     end
     assert_empty offenders,
-      "these tests spawn a bridge-writing hook without PLASTIC_TMP isolation: " \
+      "these tests spawn a bridge-writing hook without store isolation: " \
       "#{offenders.map { |f| File.basename(f) }.join(', ')}"
   end
 

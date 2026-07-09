@@ -56,18 +56,25 @@ module Plastic
 
       # Atomic acquire (D8 core verb). Returns a [status, row] pair:
       #   [:acquired, row]   created fresh, no live row existed
-      #   [:owned, row]      re-acquire by the current owner_session (idempotent,
-      #                      also refreshes expires_at/host)
-      #   [:held, row]       a fresh foreign live row exists: back off
-      #   [:stale, row]      a foreign live row exists but is expired: caller
-      #                      may `takeover`
+      #   [:owned, row]      DELIVERY GRAIN ONLY: re-acquire by the current
+      #                      owner_session (idempotent, also refreshes
+      #                      expires_at/host). The artifact/claim grain is
+      #                      NEVER idempotently re-granted, even to the same
+      #                      session (O_EXCL semantics, intent 111): a fresh
+      #                      claim always yields :held regardless of who
+      #                      holds it, so this status never occurs when
+      #                      artifact: is given.
+      #   [:held, row]       a fresh live row exists (foreign at the delivery
+      #                      grain; ANY holder at the artifact grain): back off
+      #   [:stale, row]      a live row exists but is expired: caller may
+      #                      `takeover`
       #   [:fail_open, nil]  conn is nil (no DB): caller must ALLOW
       def acquire(conn, intent_id, artifact: nil, session:, host:, ttl: TTL_SECONDS, now: Time.now)
         result = Plastic::DB.with_write(conn) do |c|
           existing = find_live(c, intent_id, artifact)
 
           if existing
-            if existing["owner_session"] == session.to_s
+            if artifact.nil? && existing["owner_session"] == session.to_s
               stamp = iso(now)
               c.execute(
                 "UPDATE lock_leases SET expires_at = ?, host = ?, updated_at = ? WHERE id = ?",
@@ -154,14 +161,25 @@ module Plastic
         result.nil? ? [:fail_open, nil] : result
       end
 
-      # Does `session` hold a live lease for this grain? Stale-own still
-      # counts (mirrors Lock.holds?): the lease is theirs until an explicit
-      # takeover replaces it. Read-only; false (never raises) on a nil conn.
+      # Does `session` hold a live lease for this grain, as OWNER or a
+      # registered delegate (mirrors Lock.holds?/Lock.authorized?)? Stale-own
+      # still counts: the lease is theirs until an explicit takeover replaces
+      # it. Read-only; false (never raises) on a nil conn.
       def holds?(conn, intent_id, artifact: nil, session:)
+        authorized?(conn, intent_id, artifact: artifact, session: session)
+      end
+
+      # Same question as holds?, named for the delivery-grain gate call sites
+      # that used to read Lock.authorized?. One implementation, two names,
+      # kept both since both read naturally at their call sites.
+      def authorized?(conn, intent_id, artifact: nil, session:)
         return false if conn.nil?
 
         row = find_live(conn, intent_id, artifact)
-        !!(row && row["owner_session"] == session.to_s)
+        return false unless row
+        return true if row["owner_session"] == session.to_s
+
+        delegates_for(conn, row["id"]).include?(session.to_s)
       end
 
       # Is there a live AND unexpired row for this grain? Read-only; false on
@@ -172,17 +190,96 @@ module Plastic
         fresh_row?(find_live(conn, intent_id, artifact), now: now)
       end
 
+      # The live row for this grain, or nil (public read; find_live stays
+      # private since its `artifact.nil?` SQL branching is an implementation
+      # detail). Used by callers (Bridge's gate-decision functions, doctor)
+      # that need the row itself, not just a yes/no.
+      def current(conn, intent_id, artifact: nil)
+        return nil if conn.nil?
+
+        find_live(conn, intent_id, artifact)
+      end
+
+      # Every LIVE, UNEXPIRED delivery-grain (artifact IS NULL) row in this
+      # store's DB, across ALL intents -- the read solo-delivery detection
+      # needs (intent 128): "how many sessions are delivering right now,
+      # anywhere in scope". Read-only; [] on a nil conn.
+      def fresh_delivery_rows(conn, now: Time.now)
+        return [] if conn.nil?
+
+        rows = conn.execute(
+          "SELECT #{SELECT_COLUMNS_SQL} FROM lock_leases WHERE artifact IS NULL AND released_at IS NULL"
+        ).map { |r| to_row(r) }
+        rows.select { |r| fresh_row?(r, now: now) }
+      end
+
+      # Owner registers a delegate (mirrors Lock.add_delegate, D4): a session
+      # allowed to write under the CURRENT live lease. Only the owner may
+      # delegate; delegates cannot re-delegate. Idempotent (a delegate already
+      # registered is a no-op, not a duplicate row). Returns true/false.
+      def add_delegate(conn, intent_id, artifact: nil, delegate:, session:)
+        return false if delegate.nil? || delegate.to_s.strip.empty?
+
+        result = Plastic::DB.with_write(conn) do |c|
+          row = find_live(c, intent_id, artifact)
+          next false unless row && row["owner_session"] == session.to_s
+          next true if delegates_for(c, row["id"]).include?(delegate.to_s)
+
+          stamp = iso(Time.now)
+          c.execute(
+            "INSERT INTO lock_lease_delegates (lock_lease_id, delegate_session, created_at, updated_at) " \
+            "VALUES (?, ?, ?, ?)",
+            [row["id"], delegate.to_s, stamp, stamp]
+          )
+          true
+        end
+        !!result
+      end
+
+      # Delegate session ids registered against one lease row (by id). []
+      # when none, or on a nil conn.
+      def delegates_for(conn, lease_id)
+        return [] if conn.nil? || lease_id.nil?
+
+        conn.execute(
+          "SELECT delegate_session FROM lock_lease_delegates WHERE lock_lease_id = ?", [lease_id]
+        ).flatten
+      end
+
+      # Every LIVE artifact-grain (claim) lease for one intent (`plastic-lock
+      # status`'s AC5 data, replacing Claim.claims_status). [] when none, or
+      # on a nil conn. A lease row can never be "corrupt" the way a
+      # hand-parsed claim file could, so that field is structurally gone.
+      def artifact_leases_for(conn, intent_id, now: Time.now)
+        return [] if conn.nil?
+
+        rows = conn.execute(
+          "SELECT #{SELECT_COLUMNS_SQL} FROM lock_leases " \
+          "WHERE intent_id = ? AND artifact IS NOT NULL AND released_at IS NULL ORDER BY artifact",
+          [intent_id.to_s]
+        ).map { |r| to_row(r) }
+
+        rows.map do |row|
+          {
+            "artifact" => row["artifact"],
+            "owner_session" => row["owner_session"],
+            "acquired_at" => row["acquired_at"],
+            "fresh" => fresh_row?(row, now: now),
+          }
+        end
+      end
+
       # Delivery-grain write gate (artifact always NULL). Returns a deny
-      # String to BLOCK, or nil to ALLOW: dormant (no lease) -> nil; you hold
-      # it -> nil; fresh foreign holder -> deny naming holder + since;
-      # expired foreign holder -> nil (fail-open, expiry always yields). nil
-      # conn -> nil (fail-open: no DB, no gate).
+      # String to BLOCK, or nil to ALLOW: dormant (no lease) -> nil; you (or
+      # your delegate) hold it -> nil; fresh foreign holder -> deny naming
+      # holder + since; expired foreign holder -> nil (fail-open, expiry
+      # always yields). nil conn -> nil (fail-open: no DB, no gate).
       def gate_reason(conn, intent_id, session:, now: Time.now)
         return nil if conn.nil?
 
         row = find_live(conn, intent_id, nil)
         return nil unless row
-        return nil if row["owner_session"] == session.to_s
+        return nil if authorized?(conn, intent_id, session: session)
         return nil unless fresh_row?(row, now: now)
 
         "intent #{intent_id} delivery is held by #{row['owner_session']} since " \
@@ -201,9 +298,8 @@ module Plastic
         return nil if row["owner_session"] == session.to_s
         return nil unless fresh_row?(row, now: now)
 
-        "artifact #{artifact} in intent #{intent_id} is claimed by #{row['owner_session']} " \
-          "since #{row['acquired_at']}; another writer holds it. Back off or take over " \
-          "via Plastic::DB::Leases.takeover."
+        "artifact #{artifact} is claimed by #{row['owner_session']} since #{row['acquired_at']}; " \
+          "another writer holds it. Back off or run /plastic-lock status."
       end
 
       # -- internal helpers -----------------------------------------------

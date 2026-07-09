@@ -216,6 +216,38 @@ module Plastic
       Leases.release(conn, intent_id, artifact: artifact, session: session, now: now)
     end
 
+    def lease_takeover(store, intent_id, artifact: nil, session:, host: "unknown-host",
+                        ttl: Leases::TTL_SECONDS, now: Time.now, available: available?)
+      conn = store_conn(store, available: available)
+      return [:fail_open, nil] if conn.nil?
+
+      Leases.takeover(conn, intent_id, artifact: artifact, session: session, host: host, ttl: ttl, now: now)
+    end
+
+    def lease_current(store, intent_id, artifact: nil, available: available?)
+      conn = store_conn(store, available: available)
+      return nil if conn.nil?
+
+      Leases.current(conn, intent_id, artifact: artifact)
+    end
+
+    def lease_delegate_add(store, intent_id, artifact: nil, delegate:, session:, available: available?)
+      conn = store_conn(store, available: available)
+      return false if conn.nil?
+
+      Leases.add_delegate(conn, intent_id, artifact: artifact, delegate: delegate, session: session)
+    end
+
+    def lease_delegates(store, intent_id, artifact: nil, available: available?)
+      conn = store_conn(store, available: available)
+      return [] if conn.nil?
+
+      row = Leases.current(conn, intent_id, artifact: artifact)
+      return [] if row.nil?
+
+      Leases.delegates_for(conn, row["id"])
+    end
+
     # --- record verbs: sessions ---------------------------------------------
 
     def session_register(store, session_id:, host:, pid:, cwd:, active_intent_id:, auto:,

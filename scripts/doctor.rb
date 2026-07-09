@@ -21,7 +21,7 @@ require_relative "lib/graph_rebuild"
 require_relative "lib/links_projection"
 require_relative "lib/links_section"
 require_relative "lib/hook_registry"
-require_relative "lib/lock"
+require_relative "lib/db"
 require_relative "lib/bridge"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
@@ -515,9 +515,9 @@ class Doctor
   # `disposition:` header); the savepoint `Done` line is the audit echo. INDEX
   # wins on conflict. This check flags any disagreement, and separately surfaces a
   # "stalled completion": an intent that is terminal in INDEX but whose End tail
-  # never released its `delivery.lock` (the post-done window never closed). Read
+  # never released its delivery lease (the post-done window never closed). Read
   # only, dependency-light: it uses INDEX parsing, file presence, the placeholder
-  # sentinel, and `Lock.fresh?` — no new lock, no 111 lock-liveness surface.
+  # sentinel, and a `lock_leases` read — no new lock, no 111 lock-liveness surface.
 
   # For one store's INDEX.md, map each referenced intent directory name to the
   # `## ...` section(s) it appears under: { "<id>--<slug>" => ["Active", ...] }.
@@ -615,11 +615,17 @@ class Doctor
                   "`Done delivered|abandoned` line (audit echo missing)"
         end
 
-        # Stalled completion: the End tail never released the delivery lock, so the
-        # post-done window `[INDEX terminal -> Lock.release]` never closed.
-        if File.exist?(Lock.path(dir))
-          note = Lock.fresh?(dir) ? "delivery.lock still present (post-done window not closed)"
-                                  : "delivery.lock is present and STALE"
+        # Stalled completion: the End tail never released the delivery lease,
+        # so the post-done window `[INDEX terminal -> lease release]` never
+        # closed (cutover intent 41 ACTION_10: the lease lives in
+        # `lock_leases`, not a delivery.lock file).
+        store_home = File.dirname(store[:store_dir])
+        conn = Plastic::DB.connect(store_home)
+        lease_row = conn && Plastic::DB::Leases.current(conn, dirname.split("--", 2).first)
+        if lease_row
+          note = Plastic::DB::Leases.fresh?(conn, dirname.split("--", 2).first) ?
+                   "delivery lease still held (post-done window not closed)" :
+                   "delivery lease is present and EXPIRED"
           stalled << "#{label}: #{note} — the End tail did not finish"
         end
       end
@@ -677,7 +683,7 @@ class Doctor
                  "(terminal in INDEX but the End tail did not finish)",
         details: stalled, fixable: true,
         fix_hint: "Finish the End tail via stale-lock reclaim: `plastic-lock reclaim`, then complete the " \
-                  "tail (Worktree.release -> Lock.release -> purge -> QMD reindex last). This FINISHES a " \
+                  "tail (Worktree.release -> lease release -> purge -> QMD reindex last). This FINISHES a " \
                   "completion; it is NOT a reactivation of a done intent."
       )
     end

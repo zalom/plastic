@@ -4,7 +4,6 @@ require "fileutils"
 require "stringio"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/worktree"
-require_relative "../scripts/lib/lock"
 require_relative "../scripts/lib/db"
 
 # Tests for the auto-mode flag added in intent 27. Sessions persist to the
@@ -42,6 +41,11 @@ class BridgeAutoTest < Minitest::Test
   def session_row(session_id: Bridge.session_key(@session, "27"))
     conn = Plastic::DB.connect(File.dirname(@store))
     Plastic::DB::Sessions.active_for(conn, session: session_id, cwd: nil)
+  end
+
+  def lease_current(intent_id: "27")
+    conn = Plastic::DB.connect(File.dirname(@store))
+    Plastic::DB::Leases.current(conn, intent_id)
   end
 
   def test_derive_defaults_auto_false
@@ -137,13 +141,13 @@ class BridgeAutoTest < Minitest::Test
       assert_equal true, data["worktree"]["provisioned"]
     end
     assert_equal 1, seen.length, "arm_auto must call Worktree.provision exactly once"
-    # the durable lock file exists in the intent dir with the same owner (the
-    # file is still the truth pre-ACTION_10, D2)
-    assert_equal @session, Lock.read(@intent_dir)["owner_session"]
+    # the delivery lease exists in `lock_leases` with the same owner (D2)
+    assert_equal @session, lease_current["owner_session"]
   end
 
   def test_arm_auto_raises_lock_held_when_another_session_owns_the_lock
-    Lock.acquire(@intent_dir, session: "someone-else")
+    conn = Plastic::DB.connect(File.dirname(@store))
+    Plastic::DB::Leases.acquire(conn, "27", session: "someone-else", host: "h")
     err = assert_raises(Bridge::LockHeldError) { arm }
     assert_includes err.message, "plastic-lock"
   end
@@ -161,18 +165,18 @@ class BridgeAutoTest < Minitest::Test
 
   def test_disarm_clears_the_delivery_lock
     arm
-    assert File.exist?(Lock.path(@intent_dir))
+    refute_nil lease_current
     Bridge.disarm_auto(@session, intent_id: "27", store: @store)
-    refute File.exist?(Lock.path(@intent_dir)), "disarm must clear delivery.lock (D6)"
+    assert_nil lease_current, "disarm must clear the delivery lease (D6)"
   end
 
   def test_disarm_orders_worktree_release_before_lock_clear
     arm
     events = []
-    # Capture as a local: define_singleton_method rebinds self, so instance
-    # variables would resolve against Worktree inside the recorder.
-    lock_path = Lock.path(@intent_dir)
-    recorder = ->(d, *_a, **_kw) { events << [:release, File.exist?(lock_path)]; d }
+    # Capture as locals: define_singleton_method rebinds self, so instance
+    # methods would not resolve against the test instance inside the recorder.
+    still_leased = -> { !lease_current.nil? }
+    recorder = ->(d, *_a, **_kw) { events << [:release, still_leased.call]; d }
     with_worktree(:release, recorder) do
       Bridge.disarm_auto(@session, intent_id: "27", store: @store)
     end

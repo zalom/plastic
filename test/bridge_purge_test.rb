@@ -3,7 +3,6 @@ require "tmpdir"
 require "fileutils"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/worktree"
-require_relative "../scripts/lib/lock"
 require_relative "../scripts/lib/db"
 
 # Tests for the terminal-state session GC (intent 41 cutover of intent 80's
@@ -129,34 +128,45 @@ class BridgePurgeTest < Minitest::Test
     refute row_exists?("noid"), "a row with a blank active_intent_id is junk and purged"
   end
 
+  def acquire_lease(intent_id, session:)
+    conn = Plastic::DB.connect(@home)
+    Plastic::DB::Leases.acquire(conn, intent_id, session: session, host: "h")
+  end
+
+  def release_lease(intent_id, session:)
+    conn = Plastic::DB.connect(@home)
+    Plastic::DB::Leases.release(conn, intent_id, session: session)
+  end
+
   def test_never_purges_a_row_whose_intent_still_holds_a_delivery_lock
     write_index_active # 80 is TERMINAL, so the row would normally purge
     seed_session("other-sess", id: "80")
-    Lock.acquire(@intent_dir, session: "other-sess")
+    acquire_lease("80", session: "other-sess")
     removed = Bridge.purge_done_bridges(session: "current", store: @store)
     refute_includes removed, "other-sess",
-                    "a held delivery lock makes the row purge-ineligible (D6)"
+                    "a held delivery lease makes the row purge-ineligible (D6)"
     assert row_exists?("other-sess")
   end
 
-  # Intent 93 D4/AC5: the post-done window is bounded by the delivery lock,
-  # `[INDEX terminal -> Lock.release]`. The OPEN edge (above) keeps the terminal
-  # row while the lock is held; the CLOSE edge (here) proves that once the
-  # owner releases the lock the terminal row becomes purge-eligible again.
+  # Intent 93 D4/AC5: the post-done window is bounded by the delivery lease,
+  # `[INDEX terminal -> lease release]`. The OPEN edge (above) keeps the
+  # terminal row while the lease is held; the CLOSE edge (here) proves that
+  # once the owner releases the lease the terminal row becomes purge-eligible
+  # again.
   def test_purges_a_terminal_row_once_the_delivery_lock_is_released
     write_index_active # 80 is TERMINAL (not Active)
     seed_session("other-sess", id: "80")
 
-    # Window OPEN: lock held -> no purge.
-    Lock.acquire(@intent_dir, session: "other-sess")
+    # Window OPEN: lease held -> no purge.
+    acquire_lease("80", session: "other-sess")
     removed = Bridge.purge_done_bridges(session: "current", store: @store)
-    refute_includes removed, "other-sess", "window open: a held lock keeps the terminal row"
+    refute_includes removed, "other-sess", "window open: a held lease keeps the terminal row"
     assert row_exists?("other-sess")
 
-    # Window CLOSES on Lock.release -> the terminal row is now purged.
-    assert_equal :released, Lock.release(@intent_dir, session: "other-sess")
+    # Window CLOSES on release -> the terminal row is now purged.
+    assert_equal :released, release_lease("80", session: "other-sess")
     removed = Bridge.purge_done_bridges(session: "current", store: @store)
-    assert_includes removed, "other-sess", "window closed: after Lock.release the row is purge-eligible"
+    assert_includes removed, "other-sess", "window closed: after release the row is purge-eligible"
     refute row_exists?("other-sess")
   end
 

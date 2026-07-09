@@ -249,7 +249,6 @@ class InstallerCore
       "scripts/lib/retrieval_gate.rb" => "scripts/lib/retrieval_gate.rb",
       "scripts/hook-auto-arm" => "scripts/hook-auto-arm",
       "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
-      "scripts/lib/lock.rb" => "scripts/lib/lock.rb",
       "scripts/plastic-lock" => "scripts/plastic-lock",
       "scripts/lib/hook_registry.rb" => "scripts/lib/hook_registry.rb",
       "scripts/agent-report" => "scripts/agent-report",
@@ -292,6 +291,12 @@ class InstallerCore
       "scripts/lib/db/connection.rb" => "scripts/lib/db/connection.rb",
       "scripts/lib/db/store_resolver.rb" => "scripts/lib/db/store_resolver.rb",
       "scripts/lib/db/schema.rb" => "scripts/lib/db/schema.rb",
+      "scripts/lib/db/leases.rb" => "scripts/lib/db/leases.rb",
+      "scripts/lib/db/sessions.rb" => "scripts/lib/db/sessions.rb",
+      "scripts/lib/db/savepoint_events.rb" => "scripts/lib/db/savepoint_events.rb",
+      "scripts/lib/db/mirror.rb" => "scripts/lib/db/mirror.rb",
+      "scripts/lib/db/roadmaps.rb" => "scripts/lib/db/roadmaps.rb",
+      "scripts/lib/db/rebuild.rb" => "scripts/lib/db/rebuild.rb",
     }
   end
 

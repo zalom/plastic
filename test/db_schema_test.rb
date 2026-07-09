@@ -11,7 +11,7 @@ require_relative "../scripts/lib/db"
 # store; Plastic::DB.connect wires Schema.ensure! in by default.
 class DbSchemaTest < Minitest::Test
   TABLES = %w[
-    intents edges savepoint_events lock_leases sessions
+    intents edges savepoint_events lock_leases lock_lease_delegates sessions
     roadmaps roadmap_entries schema_meta
   ].freeze
 

@@ -7,7 +7,6 @@ require "fileutils"
 require "json"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/worktree"
-require_relative "../scripts/lib/lock"
 require_relative "../scripts/lib/db"
 
 # Regression test for intent 131 (two intents delivered concurrently under ONE

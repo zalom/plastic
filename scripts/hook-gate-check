@@ -9,7 +9,7 @@
 require "json"
 require_relative "lib/bridge"
 require_relative "lib/intent_validator"
-require_relative "lib/lock"
+require_relative "lib/db"
 
 file_path = ARGV[0]
 exit 0 unless file_path && !file_path.empty?
@@ -73,11 +73,13 @@ intent_dir = "#{store}/#{dir}"
 # Normalize both paths for comparison
 bridge_intent_dir_abs = File.expand_path(intent_dir)
 
-# Lease heartbeat (intent 108, D1): every write by the session that owns (or
-# delegates under) the lock refreshes the delivery.lock mtime. Best-effort:
-# a heartbeat failure must never break the gate hook.
+# Lease heartbeat (intent 108, D1; cutover intent 41 ACTION_10): every write
+# by the session that owns (or delegates under) the lock coarsely renews the
+# delivery lease in `lock_leases`. Best-effort: a heartbeat failure must never
+# break the gate hook.
 begin
-  Lock.heartbeat(bridge_intent_dir_abs, session: session)
+  intent_id = Bridge.intent_id_from_dir(bridge_intent_dir_abs)
+  Plastic::DB.lease_renew(File.dirname(store), intent_id, session: session) if intent_id
 rescue StandardError
   # ignore
 end

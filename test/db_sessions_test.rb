@@ -7,7 +7,6 @@ require "time"
 require_relative "../scripts/lib/db"
 require_relative "../scripts/lib/db/sessions"
 require_relative "../scripts/lib/bridge"
-require_relative "../scripts/lib/lock"
 
 # Hermetic unit tests for Plastic::DB::Sessions (intent 41, ACTION_4): the
 # `sessions` table register/update/end verbs, active-for-cwd resolution
@@ -311,7 +310,10 @@ class DbSessionsTest < Minitest::Test
     fx = setup_parity_fixture(auto: false)
     file_in_intent = File.join(fx[:intent_dir], "plan.md")
 
-    Lock.acquire(fx[:intent_dir], session: "owner-session")
+    # lock_gate_decision resolves its OWN store connection from the file path
+    # (fx's store), independent of this test's @conn (a different tmpdir).
+    fx_conn = Plastic::DB.connect(File.dirname(fx[:store]))
+    Plastic::DB::Leases.acquire(fx_conn, "77", session: "owner-session", host: "h")
 
     Plastic::DB::Sessions.register(
       @conn, session_id: "owner-session", host: "h", pid: 1, cwd: fx[:intent_dir],
