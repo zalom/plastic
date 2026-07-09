@@ -281,4 +281,87 @@ class BridgeResolveTest < Minitest::Test
     end
   end
 
+  # --- enclosing_worktree_dir (intent 168) -----------------------------------
+
+  def test_enclosing_worktree_dir_finds_the_owning_worktree
+    file = "/r/.claude/worktrees/301--demo-a/x/y.rb"
+    assert_equal "/r/.claude/worktrees/301--demo-a", Bridge.enclosing_worktree_dir(file)
+  end
+
+  def test_enclosing_worktree_dir_nil_for_store_path
+    assert_nil Bridge.enclosing_worktree_dir("/r/.plastic/store/301--demo-a/spec.md")
+  end
+
+  def test_enclosing_worktree_dir_nil_for_shared_checkout_path
+    assert_nil Bridge.enclosing_worktree_dir("/r/lib/app.rb")
+  end
+
+  def test_enclosing_worktree_dir_nil_without_dashes_in_dirname
+    assert_nil Bridge.enclosing_worktree_dir("/r/.claude/worktrees/README")
+  end
+
+  def test_enclosing_worktree_dir_nil_for_blank_input
+    assert_nil Bridge.enclosing_worktree_dir(nil)
+    assert_nil Bridge.enclosing_worktree_dir("")
+    assert_nil Bridge.enclosing_worktree_dir("   ")
+  end
+
+  # --- discover_bridge(edited_path:) worktree-membership-first (intent 168) --
+
+  def test_discover_edited_path_resolves_worktree_owner_across_session_boundary
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      Dir.mktmpdir("repo-root") do |repo|
+        w601 = File.join(repo, ".claude", "worktrees", "601--demo")
+        w602 = File.join(repo, ".claude", "worktrees", "602--demo")
+        FileUtils.mkdir_p(w601)
+        FileUtils.mkdir_p(w602)
+
+        bridge_x = {
+          "session" => "X",
+          "intent" => { "id" => "601", "dir" => "601--demo", "store" => @store, "name" => "demo 601" },
+          "build" => { "auto" => false },
+          "worktree" => { "code" => w601, "provisioned" => true },
+        }
+        bridge_y = {
+          "session" => "Y",
+          "intent" => { "id" => "602", "dir" => "602--demo", "store" => @store, "name" => "demo 602" },
+          "build" => { "auto" => false },
+          "worktree" => { "code" => w602, "provisioned" => true },
+        }
+        write_tmp_bridge(tmp, "plastic-X--601.json", bridge_x)
+        write_tmp_bridge(tmp, "plastic-Y--602.json", bridge_y)
+
+        edited_path = File.join(w602, "app.rb")
+        found = Bridge.discover_bridge(session: "X", cwd: edited_path, edited_path: edited_path, tmp: tmp)
+        assert_equal "602", found.dig("intent", "id"),
+          "the worktree owner (session Y) must win over the caller's own session (X)"
+      end
+    end
+  end
+
+  def test_discover_edited_path_no_owner_returns_nil_not_the_session_matched_sibling
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      Dir.mktmpdir("repo-root") do |repo|
+        w601 = File.join(repo, ".claude", "worktrees", "601--demo")
+        w602 = File.join(repo, ".claude", "worktrees", "602--demo")
+        FileUtils.mkdir_p(w601)
+        FileUtils.mkdir_p(w602) # no candidate owns this one
+
+        bridge_x = {
+          "session" => "X",
+          "intent" => { "id" => "601", "dir" => "601--demo", "store" => @store, "name" => "demo 601" },
+          "build" => { "auto" => false },
+          "worktree" => { "code" => w601, "provisioned" => true },
+        }
+        write_tmp_bridge(tmp, "plastic-X--601.json", bridge_x)
+
+        edited_path = File.join(w602, "app.rb")
+        found = Bridge.discover_bridge(session: "X", cwd: edited_path, edited_path: edited_path, tmp: tmp)
+        assert_nil found,
+          "a worktree-scoped edit with no owning candidate must resolve nil, " \
+          "never the session-matched sibling 601"
+      end
+    end
+  end
+
 end

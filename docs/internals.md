@@ -200,7 +200,7 @@ prefers an exact-session match, and when the caller `session` is present it keep
 candidates whose own `session` equals the caller (own-session, and the derived-key headless
 case reduces to the same equality). A foreign session's bridge is never resolved; when the
 caller has a session and owns no bridge, discovery returns `nil` so every gate fails open
-(no-op) for that session instead of inheriting another session's armed intent. With a session
+(no-op) for that session instead of inheriting another session's armed intent. Before that per-session filter, one opt-in carve-out (intent 168) applies only when hook-code-gate passes `edited_path`: if the edited file lies inside a provisioned code worktree (`<repo>/.claude/worktrees/{id}--{slug}`), discovery resolves the candidate whose `worktree.code` owns that directory (newest mtime on a tie), or `nil` when none owns it, and never the session-matched sibling. Every other caller passes no `edited_path`, so its resolution is unchanged. With a session
 present, cwd/store narrowing is a hard filter (a non-matching store excludes the candidate,
 never reverting to the unfiltered pool). Only when the caller has NO session at all (the
 intent 52 headless / derived-key path) does it keep the degraded scan of `/tmp/plastic-*.json`:

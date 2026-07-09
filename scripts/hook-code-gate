@@ -39,7 +39,7 @@ if new_content && Bridge::PLASTIC_OK_RE.match?(new_content.chomp)
 end
 
 # --- Load bridge (shared resolution; stdin session_id -> CLAUDE_CODE_SESSION_ID -> /tmp scan) ---
-bridge_data = Bridge.discover_bridge(session: session, cwd: file_path)
+bridge_data = Bridge.discover_bridge(session: session, cwd: file_path, edited_path: file_path)
 exit 0 unless bridge_data
 
 reason = Bridge.code_gate_decision(bridge_data, file_path) ||
