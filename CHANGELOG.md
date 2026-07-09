@@ -6,6 +6,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 ## Unreleased
 
 ## Released
+- `1.0.1` - shipped 2026-07-09; collected 150 (hook-code-gate resolves its bridge from the edited file's path so concurrent multi-intent sessions stop misrouting edits to the newest-armed sibling, plus an audited # plastic-ok escape on the code gate), 151 (the insight-append CLI ships via the installer manifest, closing the packaging gap every dispatched agent hit), 152 (the spawn preamble carries the provisioned code worktree path with a cd fallback for sessions launched outside the repo), 154 (new-intent preserves block-style chain lists instead of corrupting them and escapes quotes/backslashes in --intent values), and 135 (project-root roadmaps/ indexed again via companion -roadmaps QMD collections with reindex wiring in the roadmap skill). First stable patch after 1.0.0; all five delivered through isolated worktrees with independent adversarial review (Batch 0 of roadmaps/intelligence.md plus its first Batch 3 entry).
 - `1.0.0` (first stable) - shipped 2026-07-08; collected 143 (brought PLASTIC.md to
   operational completeness so a booting agent learns the whole surface, cleaned the install
   directions down to the stable path, descoped loop engineering and the intelligence track out
