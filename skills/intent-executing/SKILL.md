@@ -15,7 +15,7 @@ Load plan from the active intent's `plan.md`, execute all tasks, review between 
 ## Step 0: Sync Worktree First
 
 Before Step 1 (Load Plan) in either workflow below, sync the code worktree with
-main so you never edit paths a merged rename or delete already removed:
+main first, so no edit lands on a path a merged rename or delete already removed:
 
 ```
 git -C <worktree> fetch origin && git -C <worktree> merge --ff-only origin/main
@@ -134,8 +134,8 @@ before moving to the next task.
 
 Hard rule: before presenting any completed work to the owner, independently
 verify it. Grep or run the artifact the work just produced (the test suite,
-the changed file, the installed output) rather than restating what you
-intended to do. Never present an unverified claim to the owner. If verification
+the changed file, the installed output) rather than restating the intended
+change. Never present an unverified claim to the owner. If verification
 fails, fix it before the gate, not after.
 
 ## Methods report (audits and sweeps)
@@ -149,14 +149,14 @@ the conclusion.
 ## Reroute vs dispatch
 
 A human-facing instruction like "run /plastic-intent-speccing" means the user
-types that slash command themselves; it is not something you hand to a
-subagent. Agent-facing dispatch text is a prompt you pass to the Agent tool for
+types that slash command themselves; it is never handed to a
+subagent. Agent-facing dispatch text is a prompt passed to the Agent tool for
 a subagent to execute. Keep the two separate: do not address a slash command
 to a subagent, and do not paste a dispatch prompt at the user.
 
 ## Owner decisions during Exec
 
-When presenting a batch of Exec decisions for the owner to rule on, read
+When presenting a batch of Exec decisions for the owner to rule, read
 `~/.plastic/_decision-tables.md` and follow the numbered-table procedure,
 persisting each ruling with `--stage Exec`.
 
