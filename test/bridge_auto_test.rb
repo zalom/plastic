@@ -144,7 +144,7 @@ class BridgeAutoTest < Minitest::Test
   def test_arm_auto_raises_lock_held_when_another_session_owns_the_lock
     Lock.acquire(@intent_dir, session: "someone-else")
     err = assert_raises(Bridge::LockHeldError) { arm }
-    assert_includes err.message, "plastic-lock"
+    assert_includes err.message, "/plastic-doctor"
   end
 
   def test_arm_auto_survives_provision_raise

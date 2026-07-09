@@ -122,20 +122,20 @@ class LockGateTest < Minitest::Test
     Lock.acquire(@intent_dir, session: "other")
     FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
     reason = gate(nil, @intent_file, session: "sess-1")
-    assert_includes reason, "/plastic-lock reclaim"
+    assert_includes reason, "/plastic-doctor reclaim the lock"
   end
 
   def test_corrupt_lock_deny_names_fix
     File.write(Lock.path(@intent_dir), "{ nope")
     reason = gate(nil, @intent_file, session: "sess-1")
-    assert_includes reason, "/plastic-lock fix"
+    assert_includes reason, "/plastic-doctor fix the lock"
   end
 
   def test_fresh_foreign_lock_denies_and_names_status
     Lock.acquire(@intent_dir, session: "other")
     reason = gate(nil, @intent_file, session: "sess-1")
     refute_nil reason
-    assert_includes reason, "/plastic-lock status"
+    assert_includes reason, "/plastic-doctor check the lock status"
   end
 
   # --- scope: allow-by-lock is per-intent (still true independent of solo) ----

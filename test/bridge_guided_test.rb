@@ -76,7 +76,7 @@ class BridgeGuidedTest < Minitest::Test
   def test_arm_guided_raises_lock_held_when_another_session_owns_the_lock
     Lock.acquire(@intent_dir, session: "someone-else")
     err = assert_raises(Bridge::LockHeldError) { arm_guided }
-    assert_includes err.message, "plastic-lock"
+    assert_includes err.message, "/plastic-doctor"
   end
 
   def test_arm_guided_survives_provision_raise

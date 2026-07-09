@@ -368,8 +368,8 @@ module Claim
     holder = data && data["owner_session"]
     since = data && data["acquired_at"]
     "artifact #{artifact} is claimed by #{holder} since #{since}; another writer holds " \
-      "it. Back off or run /plastic-lock status. If you are a distinct delegate, the " \
-      "owner must register you: plastic-lock delegate --intent-dir #{intent_dir} " \
-      "--session <your-session-id>"
+      "it. Back off or run /plastic-doctor check the lock status. If you are a distinct " \
+      "delegate, the owner must register you: plastic-lock delegate --intent-dir " \
+      "#{intent_dir} --session <your-session-id>"
   end
 end

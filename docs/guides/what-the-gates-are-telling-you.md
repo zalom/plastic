@@ -36,27 +36,30 @@ delivering this intent.
 
 > intent {id} delivery lock is held by session {owner}. Back off; if you are
 > the owner's subagent, the owner must run: plastic-lock delegate --intent-dir
-> {dir} --session <your-session-id>. Inspect with /plastic-lock status
+> {dir} --session <your-session-id>. Inspect with /plastic-doctor check the
+> lock status
 
 Fix: if you are alone on this intent, this deny is rare. Plastic relaxes it
 automatically once it confirms exactly one live session is working. If it does
-fire, inspect with `/plastic-lock status`; if you are a subagent, the owning
-session runs the `plastic-lock delegate` command shown in the message.
+fire, inspect with `/plastic-doctor check the lock status`; if you are a
+subagent, the owning session runs the `plastic-lock delegate` command shown in
+the message.
 
 **Stale lock.** The lock file exists but its owner has gone quiet.
 
-> intent {id} has a stale delivery lock (owner {owner}); run /plastic-lock
-> reclaim to take it over, or /plastic-lock fix
+> intent {id} has a stale delivery lock (owner {owner}); run /plastic-doctor
+> reclaim the lock to take it over, or /plastic-doctor fix the lock
 
-Fix: `/plastic-lock reclaim` if you are taking the intent over from a session
-that stopped responding (this is recorded). Use `/plastic-lock fix` instead
-only if you are the rightful owner coming back to your own stale lock.
+Fix: run `/plastic-doctor reclaim the lock` if you are taking the intent over
+from a session that stopped responding (this is recorded). Use
+`/plastic-doctor fix the lock` instead only if you are the rightful owner
+coming back to your own stale lock.
 
 **Corrupt lock file.** The lock file cannot be read.
 
-> delivery.lock for intent {id} is unreadable; run /plastic-lock fix
+> delivery.lock for intent {id} is unreadable; run /plastic-doctor fix the lock
 
-Fix: `/plastic-lock fix`.
+Fix: run `/plastic-doctor fix the lock`.
 
 **Code gate.** You (or an agent) tried to edit project code before a plan
 existed.

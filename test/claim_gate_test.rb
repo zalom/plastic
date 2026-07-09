@@ -34,7 +34,7 @@ class ClaimGateTest < Minitest::Test
     refute_nil reason
     assert_includes reason, "sess-a"
     assert_includes reason, "plan.md"
-    assert_includes reason, "/plastic-lock status"
+    assert_includes reason, "/plastic-doctor check the lock status"
   end
 
   def test_denies_same_session_when_another_holds_via_delegate
