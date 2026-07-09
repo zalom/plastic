@@ -15,6 +15,18 @@ module Plastic
 
       FORMAT_VERSION = 1
 
+      # SQLite's built-in PRAGMA user_version, used purely as a cheap "has
+      # this DB file's DDL already been applied" marker so connect() can skip
+      # ensure!'s with_write (BEGIN IMMEDIATE) entirely on the overwhelmingly
+      # common already-current case: a pure read or a no-op lease renewal
+      # must never take the write lock just to re-run CREATE TABLE IF NOT
+      # EXISTS statements it already ran. Bump only when TABLE_DDL/INDEX_DDL
+      # actually changes. Unrelated to FORMAT_VERSION (schema_meta), which
+      # governs Mirror's derived-table cold-rebuild trigger, a different
+      # concept entirely: DDL_VERSION is about whether the DDL has run once;
+      # FORMAT_VERSION is about whether the derived rows need rebuilding.
+      DDL_VERSION = 1
+
       TABLE_DDL = [
         <<~SQL,
           CREATE TABLE IF NOT EXISTS intents (
@@ -145,14 +157,26 @@ module Plastic
           "ON roadmap_entries(roadmap_id, batch_number)",
       ].freeze
 
-      # Idempotent: safe to call on every connect. One with_write transaction
-      # for the whole DDL batch plus the schema_meta seed row.
+      # Idempotent, and a fast no-op on every connect after the first: reads
+      # PRAGMA user_version (a plain read, no write lock) and skips the DDL
+      # batch entirely once it already matches DDL_VERSION. Only a fresh or
+      # legacy DB file (user_version not yet current) pays for the one-time
+      # migration transaction, which stamps user_version at the end so every
+      # later connect takes the fast path.
       def ensure!(conn, now: -> { Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ") })
+        return true if current?(conn)
+
         Plastic::DB.with_write(conn) do |c|
           TABLE_DDL.each { |stmt| c.execute(stmt) }
           INDEX_DDL.each { |stmt| c.execute(stmt) }
           seed_schema_meta(c, now: now)
+          c.execute("PRAGMA user_version = #{DDL_VERSION}")
         end
+      end
+
+      # Has this connection's DB file already had DDL_VERSION's DDL applied?
+      def current?(conn)
+        conn.pragma("user_version").to_i == DDL_VERSION
       end
 
       def rebuild_needed?(conn, code_version: FORMAT_VERSION)

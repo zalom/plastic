@@ -107,6 +107,24 @@ module Plastic
       connect(home, available: available)
     end
 
+    # Opens a short-lived connection via store_conn, yields it to the block,
+    # and ALWAYS closes it afterward (even if the block raises), so no facade
+    # verb below leaks a SQLite3::Database handle. Returns fail_open_value
+    # immediately, without ever calling the block, when store_conn itself
+    # returns nil (no sqlite3 gem, unopenable DB) -- the same fail-open
+    # contract every verb already had, just with a matching close on the
+    # success path.
+    def with_conn(store, available:, fail_open_value: FAIL_OPEN_SENTINEL)
+      conn = store_conn(store, available: available)
+      return fail_open_value if conn.nil?
+
+      begin
+        yield conn
+      ensure
+        conn.close
+      end
+    end
+
     def intent_row_to_hash(row)
       INTENT_COLUMNS.zip(row).to_h
     end
@@ -119,45 +137,40 @@ module Plastic
     # --- query verbs -----------------------------------------------------
 
     def by_status(store, status, available: available?)
-      conn = store_conn(store, available: available)
-      return [] if conn.nil?
-
-      rows = conn.execute("SELECT #{INTENT_COLUMNS.join(', ')} FROM intents WHERE status = ? ORDER BY intent_id", [status])
-      rows.map { |row| intent_row_to_hash(row) }
+      with_conn(store, available: available, fail_open_value: []) do |conn|
+        rows = conn.execute("SELECT #{INTENT_COLUMNS.join(', ')} FROM intents WHERE status = ? ORDER BY intent_id", [status])
+        rows.map { |row| intent_row_to_hash(row) }
+      end
     end
 
     def by_quadrant(store, quadrant, available: available?)
-      conn = store_conn(store, available: available)
-      return [] if conn.nil?
-
-      rows = conn.execute(
-        "SELECT #{INTENT_COLUMNS.join(', ')} FROM intents WHERE quadrant = ? ORDER BY intent_id", [quadrant]
-      )
-      rows.map { |row| intent_row_to_hash(row) }
+      with_conn(store, available: available, fail_open_value: []) do |conn|
+        rows = conn.execute(
+          "SELECT #{INTENT_COLUMNS.join(', ')} FROM intents WHERE quadrant = ? ORDER BY intent_id", [quadrant]
+        )
+        rows.map { |row| intent_row_to_hash(row) }
+      end
     end
 
     def by_queue(store, roadmap_slug, batch: nil, available: available?)
-      conn = store_conn(store, available: available)
-      return [] if conn.nil?
-
-      Roadmaps.entries_for(conn, roadmap_slug, batch: batch)
-              .filter_map { |entry| intent_hash_for(conn, entry["intent_id"]) }
+      with_conn(store, available: available, fail_open_value: []) do |conn|
+        Roadmaps.entries_for(conn, roadmap_slug, batch: batch)
+                .filter_map { |entry| intent_hash_for(conn, entry["intent_id"]) }
+      end
     end
 
     # --- record verbs: authoritative status/quadrant ----------------------
 
     def set_status(store, intent_id, status, now: Time.now, available: available?)
-      conn = store_conn(store, available: available)
-      return FAIL_OPEN_SENTINEL if conn.nil?
-
-      with_write(conn) { |c| upsert_intent_column(c, intent_id, "status", status, iso(now)) }
+      with_conn(store, available: available) do |conn|
+        with_write(conn) { |c| upsert_intent_column(c, intent_id, "status", status, iso(now)) }
+      end
     end
 
     def set_quadrant(store, intent_id, quadrant, now: Time.now, available: available?)
-      conn = store_conn(store, available: available)
-      return FAIL_OPEN_SENTINEL if conn.nil?
-
-      with_write(conn) { |c| upsert_intent_column(c, intent_id, "quadrant", quadrant, iso(now)) }
+      with_conn(store, available: available) do |conn|
+        with_write(conn) { |c| upsert_intent_column(c, intent_id, "quadrant", quadrant, iso(now)) }
+      end
     end
 
     def upsert_intent_column(conn, intent_id, column, value, stamp)
@@ -184,17 +197,16 @@ module Plastic
     # gap so a fresh intent's very first milestones are never silently
     # dropped. Idempotent; returns the intents.id (or the fail-open sentinel).
     def ensure_intent_row(store, intent_id, now: Time.now, available: available?)
-      conn = store_conn(store, available: available)
-      return FAIL_OPEN_SENTINEL if conn.nil?
+      with_conn(store, available: available) do |conn|
+        with_write(conn) do |c|
+          existing = c.execute("SELECT id FROM intents WHERE intent_id = ?", [intent_id]).first
+          next existing.first if existing
 
-      with_write(conn) do |c|
-        existing = c.execute("SELECT id FROM intents WHERE intent_id = ?", [intent_id]).first
-        next existing.first if existing
-
-        stamp = iso(now)
-        c.execute("INSERT INTO intents (intent_id, created_at, updated_at) VALUES (?, ?, ?)",
-                  [intent_id, stamp, stamp])
-        c.execute("SELECT id FROM intents WHERE intent_id = ?", [intent_id]).first.first
+          stamp = iso(now)
+          c.execute("INSERT INTO intents (intent_id, created_at, updated_at) VALUES (?, ?, ?)",
+                    [intent_id, stamp, stamp])
+          c.execute("SELECT id FROM intents WHERE intent_id = ?", [intent_id]).first.first
+        end
       end
     end
 
@@ -202,119 +214,105 @@ module Plastic
 
     def stamp_event(store, intent_id, stage:, event_type:, actor_session:, payload: {},
                      occurred_at: iso(Time.now), available: available?)
-      conn = store_conn(store, available: available)
-      return FAIL_OPEN_SENTINEL if conn.nil?
-
-      ensure_intent_row(store, intent_id, available: available)
-      SavepointEvents.stamp(conn, intent_id: intent_id, stage: stage, event_type: event_type,
-                             actor_session: actor_session, occurred_at: occurred_at, payload: payload)
+      with_conn(store, available: available) do |conn|
+        ensure_intent_row(store, intent_id, available: available)
+        SavepointEvents.stamp(conn, intent_id: intent_id, stage: stage, event_type: event_type,
+                               actor_session: actor_session, occurred_at: occurred_at, payload: payload)
+      end
     end
 
     def export_savepoint(store, intent_id, intent_dir:, available: available?)
-      conn = store_conn(store, available: available)
-      return FAIL_OPEN_SENTINEL if conn.nil?
-
-      SavepointEvents.export(conn, intent_id: intent_id, intent_dir: intent_dir)
+      with_conn(store, available: available) do |conn|
+        SavepointEvents.export(conn, intent_id: intent_id, intent_dir: intent_dir)
+      end
     end
 
     # --- record verbs: leases ----------------------------------------------
 
     def lease_acquire(store, intent_id, artifact: nil, session:, host: "unknown-host",
                        ttl: Leases::TTL_SECONDS, now: Time.now, available: available?)
-      conn = store_conn(store, available: available)
-      return [:fail_open, nil] if conn.nil?
-
-      Leases.acquire(conn, intent_id, artifact: artifact, session: session, host: host, ttl: ttl, now: now)
+      with_conn(store, available: available, fail_open_value: [:fail_open, nil]) do |conn|
+        Leases.acquire(conn, intent_id, artifact: artifact, session: session, host: host, ttl: ttl, now: now)
+      end
     end
 
     def lease_renew(store, intent_id, artifact: nil, session:, ttl: Leases::TTL_SECONDS,
                      renew_window: Leases::RENEW_WINDOW_SECONDS, now: Time.now, available: available?)
-      conn = store_conn(store, available: available)
-      return :fail_open if conn.nil?
-
-      Leases.renew(conn, intent_id, artifact: artifact, session: session, ttl: ttl, renew_window: renew_window, now: now)
+      with_conn(store, available: available, fail_open_value: :fail_open) do |conn|
+        Leases.renew(conn, intent_id, artifact: artifact, session: session, ttl: ttl, renew_window: renew_window, now: now)
+      end
     end
 
     def lease_release(store, intent_id, artifact: nil, session:, now: Time.now, available: available?)
-      conn = store_conn(store, available: available)
-      return :fail_open if conn.nil?
-
-      Leases.release(conn, intent_id, artifact: artifact, session: session, now: now)
+      with_conn(store, available: available, fail_open_value: :fail_open) do |conn|
+        Leases.release(conn, intent_id, artifact: artifact, session: session, now: now)
+      end
     end
 
     def lease_takeover(store, intent_id, artifact: nil, session:, host: "unknown-host",
                         ttl: Leases::TTL_SECONDS, now: Time.now, available: available?)
-      conn = store_conn(store, available: available)
-      return [:fail_open, nil] if conn.nil?
-
-      Leases.takeover(conn, intent_id, artifact: artifact, session: session, host: host, ttl: ttl, now: now)
+      with_conn(store, available: available, fail_open_value: [:fail_open, nil]) do |conn|
+        Leases.takeover(conn, intent_id, artifact: artifact, session: session, host: host, ttl: ttl, now: now)
+      end
     end
 
     def lease_current(store, intent_id, artifact: nil, available: available?)
-      conn = store_conn(store, available: available)
-      return nil if conn.nil?
-
-      Leases.current(conn, intent_id, artifact: artifact)
+      with_conn(store, available: available) do |conn|
+        Leases.current(conn, intent_id, artifact: artifact)
+      end
     end
 
     def lease_delegate_add(store, intent_id, artifact: nil, delegate:, session:, available: available?)
-      conn = store_conn(store, available: available)
-      return false if conn.nil?
-
-      Leases.add_delegate(conn, intent_id, artifact: artifact, delegate: delegate, session: session)
+      with_conn(store, available: available, fail_open_value: false) do |conn|
+        Leases.add_delegate(conn, intent_id, artifact: artifact, delegate: delegate, session: session)
+      end
     end
 
     def lease_delegates(store, intent_id, artifact: nil, available: available?)
-      conn = store_conn(store, available: available)
-      return [] if conn.nil?
+      with_conn(store, available: available, fail_open_value: []) do |conn|
+        row = Leases.current(conn, intent_id, artifact: artifact)
+        next [] if row.nil?
 
-      row = Leases.current(conn, intent_id, artifact: artifact)
-      return [] if row.nil?
-
-      Leases.delegates_for(conn, row["id"])
+        Leases.delegates_for(conn, row["id"])
+      end
     end
 
     # --- record verbs: sessions ---------------------------------------------
 
     def session_register(store, session_id:, host:, pid:, cwd:, active_intent_id:, auto:,
                           now: Time.now, available: available?)
-      conn = store_conn(store, available: available)
-      return FAIL_OPEN_SENTINEL if conn.nil?
-
-      Sessions.register(conn, session_id: session_id, host: host, pid: pid, cwd: cwd,
-                         active_intent_id: active_intent_id, auto: auto, now: now)
+      with_conn(store, available: available) do |conn|
+        Sessions.register(conn, session_id: session_id, host: host, pid: pid, cwd: cwd,
+                           active_intent_id: active_intent_id, auto: auto, now: now)
+      end
     end
 
     def session_update(store, session_id:, now: Time.now, available: available?, **fields)
-      conn = store_conn(store, available: available)
-      return FAIL_OPEN_SENTINEL if conn.nil?
-
-      Sessions.update(conn, session_id: session_id, now: now, **fields)
+      with_conn(store, available: available) do |conn|
+        Sessions.update(conn, session_id: session_id, now: now, **fields)
+      end
     end
 
     def session_end(store, session_id:, available: available?)
-      conn = store_conn(store, available: available)
-      return FAIL_OPEN_SENTINEL if conn.nil?
-
-      Sessions.end(conn, session_id: session_id)
+      with_conn(store, available: available) do |conn|
+        Sessions.end(conn, session_id: session_id)
+      end
     end
 
     # --- record verbs: roadmaps ----------------------------------------------
 
     def roadmap_upsert(store, slug:, title: nil, goal: nil, now: Time.now, available: available?)
-      conn = store_conn(store, available: available)
-      return FAIL_OPEN_SENTINEL if conn.nil?
-
-      Roadmaps.upsert(conn, slug: slug, title: title, goal: goal, now: now)
+      with_conn(store, available: available) do |conn|
+        Roadmaps.upsert(conn, slug: slug, title: title, goal: goal, now: now)
+      end
     end
 
     def roadmap_entry_set(store, roadmap_slug:, intent_id:, batch_number: nil, status: nil, position: nil,
                            now: Time.now, available: available?)
-      conn = store_conn(store, available: available)
-      return FAIL_OPEN_SENTINEL if conn.nil?
-
-      Roadmaps.entry_set(conn, roadmap_slug: roadmap_slug, intent_id: intent_id, batch_number: batch_number,
-                          status: status, position: position, now: now)
+      with_conn(store, available: available) do |conn|
+        Roadmaps.entry_set(conn, roadmap_slug: roadmap_slug, intent_id: intent_id, batch_number: batch_number,
+                            status: status, position: position, now: now)
+      end
     end
 
     def iso(time)
@@ -328,14 +326,17 @@ module Plastic
       conn = connect(home, available: available)
       return FAIL_OPEN_SENTINEL if conn.nil?
 
-      Rebuild.rebuild!(conn, store_home: home, now: now)
+      begin
+        Rebuild.rebuild!(conn, store_home: home, now: now)
+      ensure
+        conn.close
+      end
     end
 
     def canonical_dump(store, available: available?)
-      conn = store_conn(store, available: available)
-      return FAIL_OPEN_SENTINEL if conn.nil?
-
-      Rebuild.canonical_dump(conn)
+      with_conn(store, available: available) do |conn|
+        Rebuild.canonical_dump(conn)
+      end
     end
   end
 end

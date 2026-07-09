@@ -29,8 +29,11 @@ class DbContentionSmokeTest < Minitest::Test
     marker_dir = File.join(store_home, "busy-markers")
     FileUtils.mkdir_p(marker_dir)
 
-    # Warm the schema ONCE before forking: every child then skips
-    # ensure_schema (already-applied DDL) and inherits the already-loaded
+    # Warm the schema ONCE before forking: every child then connects through
+    # the REAL production path (Schema.ensure! runs on every connect by
+    # default), but Schema.ensure! fast-paths on PRAGMA user_version already
+    # matching DDL_VERSION, so each child's ensure! is a plain read, never
+    # the write-locking DDL batch. Children also inherit the already-loaded
     # sqlite3 gem from the parent, so forking 100 children is cheap and the
     # children's first write isn't itself an 18-statement DDL race.
     seed_conn = Plastic::DB.connect(store_home)
@@ -73,7 +76,7 @@ class DbContentionSmokeTest < Minitest::Test
   # reason every path out of this method is an explicit exit!.
   def self.run_worker(store_home, worker_index, marker_dir)
     session = "contention-worker-#{worker_index}"
-    conn = Plastic::DB.connect(store_home, ensure_schema: nil)
+    conn = Plastic::DB.connect(store_home)
     unless conn
       File.write(File.join(marker_dir, "#{worker_index}-no-conn"), "1")
       exit!(1)

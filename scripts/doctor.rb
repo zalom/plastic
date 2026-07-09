@@ -1643,6 +1643,7 @@ class Doctor
     [
       sqlite3_gem_check(available: available),
       db_health_check(available: available),
+      mirror_reconcile_check(available: available),
       stale_bridge_check(tmp_dir: tmp_dir),
     ]
   end
@@ -1715,6 +1716,52 @@ class Doctor
         fix_hint: "Run `plastic-db rebuild --store <store>` for a stale format_version; " \
                   "for a plastic.db that will not open, delete it and let it re-provision lazily"
       )
+    end
+  end
+
+  # Doctor is a read entry point, so a doctor run doubles as the debounced
+  # Mirror.reconcile trigger for every store that already has a plastic.db
+  # (never for one that doesn't: opening a connection there would be the
+  # very side effect db_health_check above is careful to avoid, so this
+  # reuses its same "db_path already exists" guard). Boarding/dashboard
+  # wiring is intent 147's scope; doctor is the one read path ACTION_12
+  # wires. Fail-open and advisory only: a reconcile error is reported for
+  # visibility but never turns this check into a warn/fail, since a stale
+  # mirror is never itself a health problem (the files remain the source of
+  # truth regardless).
+  def mirror_reconcile_check(available:)
+    unless available
+      return check(
+        category: "database", name: "mirror_reconcile", status: "pass",
+        message: "sqlite3 gem not installed; mirror reconcile skipped (fail-open)"
+      )
+    end
+
+    results = []
+    done_signal_stores(nil).each do |store|
+      store_home = File.dirname(store[:index])
+      db_path = Plastic::DB::StoreResolver.db_path_for_store(store_home)
+      next unless File.exist?(db_path)
+
+      conn = Plastic::DB.connect(store_home, available: available)
+      next if conn.nil?
+
+      begin
+        outcome = Plastic::DB::Mirror.reconcile(conn, store_home: store_home)
+        results << "#{store[:scope]}: #{outcome}" if outcome
+      rescue StandardError => e
+        results << "#{store[:scope]}: reconcile raised #{e.message}"
+      ensure
+        conn.close
+      end
+    end
+
+    if results.empty?
+      check(category: "database", name: "mirror_reconcile", status: "pass",
+            message: "No provisioned store needed a mirror reconcile pass")
+    else
+      check(category: "database", name: "mirror_reconcile", status: "pass",
+            message: "Mirror reconcile ran for #{results.size} store(s)", details: results)
     end
   end
 

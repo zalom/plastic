@@ -92,6 +92,13 @@ module Plastic
       # columns (status, quadrant) are OMITTED from the UPDATE set, so a
       # reconcile never clobbers them; a brand-new row gets them NULL until the
       # record-verb API sets them.
+      # Check-then-insert-or-update runs ENTIRELY inside one with_write (BEGIN
+      # IMMEDIATE) transaction, the same discipline Leases.insert_live_row
+      # uses: a plain SELECT before the transaction would leave a window
+      # where two concurrent reconciles could both see "no existing row" and
+      # both attempt an INSERT, tripping the intents.intent_id UNIQUE
+      # constraint. Doing the check inside the transaction makes it atomic
+      # instead.
       def upsert_intent(conn, entry:, now:)
         fm = entry[:fm]
         stamp = now.strftime(TIME_FORMAT)
@@ -101,9 +108,9 @@ module Plastic
         chain = Array(fm["chain"]).join(",")
         sources = Array(fm["sources"]).join(",")
 
-        existing = conn.execute("SELECT id FROM intents WHERE intent_id = ?", [entry[:intent_id]]).first
-
         Plastic::DB.with_write(conn) do |c|
+          existing = c.execute("SELECT id FROM intents WHERE intent_id = ?", [entry[:intent_id]]).first
+
           if existing
             c.execute(
               "UPDATE intents SET title=?, slug=?, tags=?, author=?, created=?, chain=?, sources=?, " \

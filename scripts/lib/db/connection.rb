@@ -7,9 +7,13 @@ module Plastic
     # applies the mandatory write-discipline PRAGMAs (D1) on open. Holds no
     # transaction of its own; Plastic::DB.with_write owns transaction scope.
     class Connection
+      # busy_timeout is applied FIRST, load-bearing order: the one-time
+      # journal_mode=WAL conversion (a write) must itself honor the busy
+      # timeout, so a concurrent writer holding the file during that
+      # conversion is retried instead of raising SQLITE_BUSY immediately.
       PRAGMAS = %w[
-        journal_mode=WAL
         busy_timeout=5000
+        journal_mode=WAL
         synchronous=NORMAL
         foreign_keys=ON
       ].freeze
