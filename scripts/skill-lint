@@ -1,0 +1,50 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# skill-lint: deterministic CLI over SkillLint (intent 85b).
+#
+# Runs the five structural skill checks (body-budget, frontmatter-validity,
+# bare-pointer, orphan-files, references-depth) over a directory of Agent
+# Skills and reports every violation. Mirrors `scripts/validate-intent`'s
+# CLI-over-lib shape and exit-code contract.
+#
+# Usage:
+#   skill-lint [--skills-dir <path>]
+#
+# Exit codes: 0 (clean), 1 (violations found; reported on stderr), 2 (usage).
+# --skills-dir defaults to the repo skills/ directory next to this script.
+
+require_relative "lib/skill_lint"
+
+def resolve_skills_dir(args)
+  if (i = args.index("--skills-dir"))
+    args[i + 1]
+  else
+    File.expand_path("../skills", __dir__)
+  end
+end
+
+if ARGV.any? { |a| a.start_with?("--") && a != "--skills-dir" }
+  warn "usage: skill-lint [--skills-dir <path>]"
+  exit 2
+end
+
+if ARGV.include?("--skills-dir") && ARGV[ARGV.index("--skills-dir") + 1].nil?
+  warn "usage: skill-lint [--skills-dir <path>]"
+  exit 2
+end
+
+dir = File.expand_path(resolve_skills_dir(ARGV))
+result = SkillLint.new(skills_dir: dir).run
+
+if result.ok?
+  puts "OK: #{dir}"
+  exit 0
+end
+
+warn "VIOLATIONS: #{dir}"
+result.violations.each do |v|
+  warn "#{v[:check]} #{v[:skill]} #{v[:file]}:#{v[:line].nil? ? "-" : v[:line]} #{v[:message]}"
+end
+exit 1

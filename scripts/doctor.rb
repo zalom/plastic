@@ -25,6 +25,7 @@ require_relative "lib/lock"
 require_relative "lib/bridge"
 require_relative "lib/agent_models"
 require_relative "lib/legacy_bookend_amnesty"
+require_relative "lib/skill_lint"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -1805,6 +1806,48 @@ class Doctor
     )
   end
 
+  # --- Check category: skill-lint (advisory only; intent 85b) ---
+  #
+  # Reports SkillLint's five structural checks over the skills/ tree as a
+  # single ADVISORY finding. Always status: "pass", so it can never contribute
+  # to doctor's warn/fail exit code (summarize buckets purely by status; the
+  # lint verdict belongs to a future ship gate, intent 100, not to doctor).
+  # Resolves the same repo skills/ directory `scripts/skill-lint` defaults to,
+  # relative to this script's own location. Skills install flat and renamed
+  # (plastic-<name>) under each agent's own skills/ dir, a different directory
+  # shape SkillLint's frontmatter name-check does not target, so an installed
+  # ~/.plastic/scripts/doctor.rb with no sibling skills/ tree has nothing in
+  # scope here and reports a silent pass rather than guessing at a mismatched
+  # layout.
+  def check_skill_lint
+    dir = File.expand_path("../skills", __dir__)
+    unless File.directory?(dir)
+      return [check(
+        category: "skill_lint", name: "skill_lint", status: "pass",
+        message: "No skills/ directory found at #{tilde(dir)} to lint (nothing in scope for this advisory check)"
+      )]
+    end
+
+    result = SkillLint.new(skills_dir: dir).run
+
+    if result.ok?
+      [check(
+        category: "skill_lint", name: "skill_lint", status: "pass",
+        message: "skill-lint: clean (0 violations across the skills/ tree)"
+      )]
+    else
+      by_check = result.violations.group_by { |v| v[:check] }.transform_values(&:size)
+      counts = by_check.map { |check_id, n| "#{check_id}: #{n}" }.join(", ")
+      details = result.violations.map { |v| "#{v[:check]} #{v[:skill]} #{v[:file]}:#{v[:line]}: #{v[:message]}" }
+      [check(
+        category: "skill_lint", name: "skill_lint", status: "pass",
+        message: "skill-lint: #{result.violations.size} advisory violation(s) found (#{counts}); " \
+                  "informational only, never affects doctor's exit code",
+        details: details
+      )]
+    end
+  end
+
   # --- Run all checks ---
 
   def run_checks(agent_key)
@@ -1817,6 +1860,7 @@ class Doctor
     all_checks += check_deprecations
     all_checks += check_qmd
     all_checks += check_done_signals
+    all_checks += check_skill_lint
 
     summarize(all_checks, agent_key)
   end
