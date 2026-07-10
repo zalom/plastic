@@ -1,15 +1,15 @@
 {
   "skill_name": "plastic-intent-continuing",
-  "notes": "Intent 36, updated for 36a (boot moved into hook-session-start; the skill is now work-continuation only). Scopes: description triggering (1-8) and behavior/convention compliance of the work-continuation skill (9-14). Triggering assertions follow the plastic-auto eval style (one subagent router per case). Behavior assertions are convention checks against the SKILL.md.",
+  "notes": "Intent 158a1: slimmed to the specific-intent resume route of plastic-continuing (D8, extract not duplicate). Bare 'continue' now belongs to the router; triggering evals 1-4 were recast so this skill's positives always name a specific intent, and eval 4 asserts bare 'continue' does NOT settle here directly. Behavior eval 11 (dashboard selection) was removed, relocated to plastic-project-continuing's evals. Behavior eval 15 is new: the terminal handoff goes to plastic-intent-starting, not directly to plastic-auto. Scopes: description triggering (1-8) and behavior/convention compliance of the ledger-resume skill (9-15).",
   "results": {
-    "triggering": { "cases": 8, "passed": 8, "run": "2026-06-16, one subagent per case" },
-    "behavior": { "cases": 6, "passed": 6, "evidence": "convention checks against skills/intent-continuing/SKILL.md after the intent-36 rewrite; doctor --core verified at 0.07s with 9 liveness checks and full doctor unchanged at 30 checks" }
+    "triggering": { "cases": 8, "passed": 8, "run": "2026-07-10, one subagent per case" },
+    "behavior": { "cases": 7, "passed": 7, "evidence": "convention checks against skills/intent-continuing/SKILL.md after the 158a1 extraction" }
   },
   "evals": [
     {
       "id": 1, "scope": "triggering", "set": "train",
-      "prompt": "continue",
-      "expected_output": "Activates plastic-intent-continuing (the bare 'continue' keyword is the documented trigger).",
+      "prompt": "continue intent 4a",
+      "expected_output": "Activates plastic-intent-continuing (a specific intent named by id).",
       "files": [],
       "assertions": [
         { "type": "code", "check": "router CHOICE == plastic-intent-continuing", "observed": "plastic-intent-continuing", "result": "pass" }
@@ -17,8 +17,8 @@
     },
     {
       "id": 2, "scope": "triggering", "set": "train",
-      "prompt": "resume where we left off",
-      "expected_output": "Activates plastic-intent-continuing.",
+      "prompt": "resume the statusline-coloring intent",
+      "expected_output": "Activates plastic-intent-continuing (a specific intent named by description).",
       "files": [],
       "assertions": [
         { "type": "code", "check": "router CHOICE == plastic-intent-continuing", "observed": "plastic-intent-continuing", "result": "pass" }
@@ -26,8 +26,8 @@
     },
     {
       "id": 3, "scope": "triggering", "set": "validation",
-      "prompt": "pick up where we left off in this project",
-      "expected_output": "Activates plastic-intent-continuing.",
+      "prompt": "continuing --intent 96",
+      "expected_output": "Activates plastic-intent-continuing (the --intent form).",
       "files": [],
       "assertions": [
         { "type": "code", "check": "router CHOICE == plastic-intent-continuing", "observed": "plastic-intent-continuing", "result": "pass" }
@@ -35,11 +35,11 @@
     },
     {
       "id": 4, "scope": "triggering", "set": "train",
-      "prompt": "boot plastic and show me where things stand",
-      "expected_output": "Activates plastic-intent-continuing (continuing work + presenting state is the skill's purpose; boot itself is hook-owned).",
+      "prompt": "continue",
+      "expected_output": "Does NOT settle on plastic-intent-continuing directly. Bare 'continue' with no specific intent named belongs to the plastic-continuing router, which defaults to plastic-project-continuing.",
       "files": [],
       "assertions": [
-        { "type": "code", "check": "router CHOICE == plastic-intent-continuing", "observed": "plastic-intent-continuing", "result": "pass" }
+        { "type": "code", "check": "router CHOICE != plastic-intent-continuing", "observed": "plastic-continuing", "result": "pass" }
       ]
     },
     {
@@ -72,7 +72,7 @@
     {
       "id": 8, "scope": "triggering", "set": "validation",
       "prompt": "what's the dashboard look like right now",
-      "expected_output": "May activate plastic-dashboard rather than plastic-intent-continuing; an overview request without 'continue/resume' is a dashboard task.",
+      "expected_output": "Does NOT activate plastic-intent-continuing directly; an overview request without a specific intent named is a dashboard/project-board task.",
       "files": [],
       "assertions": [
         { "type": "code", "check": "router CHOICE != plastic-intent-continuing", "observed": "plastic-dashboard", "result": "pass" }
@@ -97,16 +97,7 @@
       ]
     },
     {
-      "id": 11, "scope": "behavior", "set": "train",
-      "prompt": "Is dashboard selection project-aware?",
-      "expected_output": "Project loaded -> `dashboard.rb project <slug>`; otherwise -> `dashboard.rb continue`. Skill only invokes, does not render.",
-      "files": ["skills/intent-continuing/SKILL.md"],
-      "assertions": [
-        { "type": "convention", "check": "both dashboard invocations present and gated on project detection", "observed": "'dashboard.rb project <slug>' and 'dashboard.rb continue' in the 'Continue (present the dashboard)' section", "result": "pass" }
-      ]
-    },
-    {
-      "id": 12, "scope": "behavior", "set": "validation",
+      "id": 11, "scope": "behavior", "set": "validation",
       "prompt": "Is ledger-resume conditional and ledger-driven?",
       "expected_output": "Resume fires only when a specific intent is named; reads savepoint.md last line as stage, verifies the stage file, rebuilds on drift, derives next step from first unchecked checklist item.",
       "files": ["skills/intent-continuing/SKILL.md"],
@@ -115,7 +106,7 @@
       ]
     },
     {
-      "id": 13, "scope": "behavior", "set": "validation",
+      "id": 12, "scope": "behavior", "set": "validation",
       "prompt": "Are the stale prose-savepoint fields gone?",
       "expected_output": "No 'In progress' / 'Blockers' fields read from a prose savepoint remain; the ledger model is used instead.",
       "files": ["skills/intent-continuing/SKILL.md"],
@@ -124,7 +115,7 @@
       ]
     },
     {
-      "id": 14, "scope": "behavior", "set": "validation",
+      "id": 13, "scope": "behavior", "set": "validation",
       "prompt": "Is the 'Determine Store' local-store gap filled?",
       "expected_output": "Step 2 of Determine Store describes local/project-store detection (no empty step).",
       "files": ["skills/intent-continuing/SKILL.md"],
@@ -133,12 +124,21 @@
       ]
     },
     {
-      "id": 15, "scope": "behavior", "set": "validation",
+      "id": 14, "scope": "behavior", "set": "validation",
       "prompt": "QMD is present. The user says: continue the work on the statusline coloring (names the intent by description, not id).",
       "expected_output": "Before scanning the store with grep/Read to locate the named intent, runs `ruby ~/.plastic/scripts/qmd-sync search \"statusline coloring\"` to surface the candidate intent, then opens the authoritative intent file for the hit it resumes. No-op fallback to INDEX.md / file scan when QMD is absent.",
       "files": ["skills/intent-continuing/SKILL.md"],
       "assertions": [
         { "type": "human", "check": "qmd-sync search is run before grep/Read when the intent is named by description; authoritative file opened for the hit", "observed": "Conditional Ledger-Resume carries the QMD-first step: run qmd-sync search before grep/Read, then open the authoritative file; no-op fallback when QMD is absent", "result": "pass" }
+      ]
+    },
+    {
+      "id": 15, "scope": "behavior", "set": "train",
+      "prompt": "Does the ledger-resume's terminal handoff go to plastic-intent-starting or directly to plastic-auto?",
+      "expected_output": "Step 5 announces state then hands off to plastic-intent-starting, which takes the lock and asks 'auto or guided?' exactly once; plastic-intent-starting's own auto branch is the one that hands to plastic-auto. This skill never hands to plastic-auto directly.",
+      "files": ["skills/intent-continuing/SKILL.md"],
+      "assertions": [
+        { "type": "convention", "check": "step 5 hands off to plastic-intent-starting, not plastic-auto; the single ask is attributed to plastic-intent-starting", "observed": "present in 'Conditional Ledger-Resume' step 5", "result": "pass" }
       ]
     }
   ]
