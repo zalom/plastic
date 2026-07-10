@@ -13,7 +13,7 @@ Doctor has three scopes. Pick the right one for the situation:
 | Scope | Flag | When it runs | States |
 |-------|------|--------------|--------|
 | Core check | `--core` | SessionStart hook (automatic), also available on demand | Binary: pass or error |
-| Store check | `--store [global\|<slug>]` | Dashboard load, `plastic-intent-continuing` | Three-state: pass / warn / fail |
+| Store check | `--store [global\|<slug>]` | Dashboard load, `plastic-project-continuing` | Three-state: pass / warn / fail |
 | Full check | (no flag) | After every update (automatic), or `/plastic-doctor` | Three-state: pass / warn / fail |
 
 ### `--core` (binary, manifest-backed)

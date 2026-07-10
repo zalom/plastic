@@ -136,8 +136,8 @@ Walk this once in
 | Family | Commands |
 | ------ | -------- |
 | Mode | `plastic-tutorial`, `plastic-auto` |
-| Intent | `plastic-intent-creating`, `plastic-intent-starting`, `plastic-intent-brainstorming`, `plastic-intent-grilling`, `plastic-intent-speccing`, `plastic-intent-planning`, `plastic-intent-executing`, `plastic-intent-ending`, `plastic-intent-continuing`, `plastic-intent-researching` |
-| Project and delivery | `plastic-project-creating`, `plastic-roadmap`, `plastic-releasing` |
+| Intent | `plastic-continuing`, `plastic-intent-creating`, `plastic-intent-starting`, `plastic-intent-brainstorming`, `plastic-intent-grilling`, `plastic-intent-speccing`, `plastic-intent-planning`, `plastic-intent-executing`, `plastic-intent-ending`, `plastic-intent-continuing`, `plastic-intent-researching` |
+| Project and delivery | `plastic-project-creating`, `plastic-project-continuing`, `plastic-roadmap`, `plastic-roadmap-continuing`, `plastic-releasing` |
 | Skill | `plastic-skill-creating`, `plastic-skill-evaluating` |
 | Product | `plastic-install`, `plastic-update`, `plastic-uninstall`, `plastic-rollback`, `plastic-doctor`, `plastic-humanizer` |
 
