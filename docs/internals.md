@@ -680,8 +680,12 @@ own isolation instead, deterministic and cwd-independent.
   never consulted for ownership and no code probes a pid.
   `Bridge.repair_lock` is the one idempotent repair: it rebuilds the lock and
   the bridge cache from disk, migrates legacy pid-stamped bridges, and never
-  touches a fresh foreign lock. The `plastic-lock` CLI exposes it (verbs:
-  status, fix, release, reclaim, delegate).
+  touches a fresh foreign lock. It also provisions the worktrees the same way
+  `arm` does (intent 136), so a repaired bridge always carries `worktree.code`
+  instead of wiping it back to derive's unprovisioned default; `plastic-lock
+  fix`, `plastic-lock reclaim`, and the boarding skill's self-heal all inherit
+  this since they call `repair_lock`. The `plastic-lock` CLI exposes it
+  (verbs: status, fix, release, reclaim, delegate).
 
 - **Solo-mode advisory relaxation** (intent 128): `Bridge.lock_gate_decision`
   and `Bridge.worktree_gate_decision` are ARBITRATION gates, not the

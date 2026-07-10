@@ -4,8 +4,10 @@ require "fileutils"
 require "json"
 require "open3"
 require "rbconfig"
+require "stringio"
 require_relative "../scripts/lib/lock"
 require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/worktree"
 
 # The one deterministic repair (intent 108, D5) and its CLI entry point.
 # Hermetic: store in mktmpdir; bridges under an injected tmp (kwarg for the
@@ -22,11 +24,18 @@ class PlasticLockCliTest < Minitest::Test
     File.write(File.join(@intent_dir, "96--demo.md"), "## Intent\nDemo\n")
     File.write(File.join(File.dirname(@store), "INDEX.md"),
                "## Active\n- [96 — demo](96--demo/96--demo.md)\n\n## Future\n")
+
+    # Neutralize real worktree git ops by default (intent 136: repair_lock now
+    # provisions too) so the in-process repair tests never shell out to real
+    # git or write the live ~/.plastic. Dedicated tests below re-stub locally.
+    @real_provision = Worktree.method(:provision)
+    Worktree.define_singleton_method(:provision) { |d, *_a, **_kw| d }
   end
 
   def teardown
     FileUtils.rm_rf(@tmp)
     FileUtils.rm_rf(@home)
+    Worktree.define_singleton_method(:provision, @real_provision) if @real_provision
   end
 
   def repair(session = "sess-1")
@@ -35,9 +44,29 @@ class PlasticLockCliTest < Minitest::Test
   end
 
   def cli(*args, session: "sess-1")
-    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil },
+    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil, "HOME" => @home },
                    RbConfig.ruby, CLI, *args,
                    "--intent-dir", @intent_dir, "--session", session)
+  end
+
+  # Temporarily redefine a Worktree singleton method for one block, restoring it
+  # after (mirrors test/bridge_auto_test.rb; Minitest::Mock#stub is unavailable
+  # in this bundled minitest).
+  def with_worktree(method_name, impl)
+    original = Worktree.method(method_name)
+    Worktree.define_singleton_method(method_name, impl)
+    yield
+  ensure
+    Worktree.define_singleton_method(method_name, original)
+  end
+
+  def capture_stderr
+    original = $stderr
+    $stderr = StringIO.new
+    yield
+    $stderr.string
+  ensure
+    $stderr = original
   end
 
   # --- repair_lock (library) --------------------------------------------------
@@ -108,6 +137,117 @@ class PlasticLockCliTest < Minitest::Test
     Bridge.write("sess-1", legacy, tmp: @tmp)
     repair
     assert_equal true, Bridge.read("sess-1", intent_id: "96", tmp: @tmp).dig("build", "auto")
+  end
+
+  # --- intent 136: repair_lock must provision the worktree ---------------------
+  # repair_lock rebuilds the bridge via derive but (pre-fix) never calls
+  # Worktree.provision, so the rebuilt bridge keeps derive's default
+  # worktree.code: nil and wipes any previously complete worktree block.
+
+  def test_repair_provisions_so_selection_keys_on_the_repaired_intent
+    repo = File.join(@home, "repo")
+    FileUtils.mkdir_p(repo)
+    File.write(File.join(@home, ".plastic", "projects.yml"),
+               "projects:\n  demo:\n    path: #{repo}\n")
+
+    code_wt = File.join(repo, ".claude", "worktrees", "96--demo")
+    sib_wt  = File.join(repo, ".claude", "worktrees", "97--sib")
+    FileUtils.mkdir_p(File.join(code_wt, "scripts"))
+    FileUtils.mkdir_p(sib_wt)
+    edited = File.join(code_wt, "scripts", "app.rb")
+
+    # Concurrent same-session sibling (97), fully armed, in its own worktree.
+    sibling = {
+      "session" => "sess-1",
+      "intent"  => { "id" => "97", "dir" => "97--sib", "store" => @store, "name" => "sib" },
+      "build"   => { "stage" => "how", "auto" => true, "last_activity" => Time.now.utc.iso8601 },
+      "worktree" => { "code" => sib_wt, "code_branch" => "plastic/97--sib",
+                      "store" => nil, "store_branch" => nil, "provisioned" => true },
+      "lock" => { "owner_session" => nil, "acquired_at" => nil, "host" => nil,
+                  "type" => nil, "delegates" => [] },
+    }
+    Bridge.write("sess-1", sibling, tmp: @tmp)
+
+    with_worktree(:provision, ->(d, *_a, **_kw) {
+      d["worktree"] = { "code" => code_wt, "code_branch" => "plastic/96--demo",
+                         "store" => nil, "store_branch" => nil, "provisioned" => true }
+      d
+    }) do
+      report = repair
+      assert_equal "repaired", report["status"]
+
+      after = Bridge.read("sess-1", intent_id: "96", tmp: @tmp)
+      assert_equal code_wt, after.dig("worktree", "code"),
+                   "AC1: the repaired bridge carries non-nil worktree.code"
+
+      ep = Bridge.discover_bridge(session: "sess-1", cwd: code_wt, tmp: @tmp, edited_path: edited)
+      assert_equal "96", ep&.dig("intent", "id"),
+                   "AC2: an edited-path write inside 96's worktree resolves to 96, not nil"
+
+      assert_equal 2, Bridge.bridge_cwd_tier(after, code_wt),
+                   "AC3: 96 tiers at 2 (worktree.code match) in its own worktree"
+
+      # Make the sibling the mtime winner; tier must still decide over it.
+      sib_file = Bridge.path("sess-1", intent_id: "97", tmp: @tmp)
+      File.utime(Time.now + 100, Time.now + 100, sib_file)
+      cwd_only = Bridge.discover_bridge(session: "sess-1", cwd: code_wt, tmp: @tmp)
+      assert_equal "96", cwd_only&.dig("intent", "id"),
+                   "AC3: from 96's own worktree cwd resolves to 96, not the newer sibling"
+    end
+  end
+
+  def test_repair_stamps_the_true_stage_not_why
+    File.write(File.join(@intent_dir, "spec.md"), "# Spec\nreal\n")
+    report = repair
+    assert_equal "repaired", report["status"]
+    bridge = Bridge.read("sess-1", intent_id: "96", tmp: @tmp)
+    assert_equal "how", bridge.dig("build", "stage"),
+                 "AC4: repair stamps the true derived stage, not a hardcoded why"
+  end
+
+  def test_repair_provision_failure_still_repairs
+    out = capture_stderr do
+      with_worktree(:provision, ->(*_a, **_kw) { raise "boom" }) do
+        report = repair
+        assert_equal "repaired", report["status"], "AC6: a provision raise must not break the repair"
+        assert_equal "sess-1", Lock.read(@intent_dir)["owner_session"]
+      end
+    end
+    refute_empty out, "AC6: the provision raise is logged, mirroring arm's survive-raise contract"
+  end
+
+  # Fake ShellRunner that records `git worktree remove` calls (proves the
+  # wiped block orphans a worktree; an intact block does not).
+  class Recorder
+    Result = Struct.new(:status, :stdout, :stderr) { def success?; status.zero?; end }
+    attr_reader :calls
+    def initialize; @calls = []; end
+    def run(*args); @calls << args.map(&:to_s); Result.new(0, "", ""); end
+  end
+
+  def test_released_repaired_bridge_removes_its_worktree
+    repo = File.join(@home, "repo")
+    FileUtils.mkdir_p(repo)
+    File.write(File.join(@home, ".plastic", "projects.yml"),
+               "projects:\n  demo:\n    path: #{repo}\n")
+    code_wt = File.join(repo, ".claude", "worktrees", "96--demo")
+    FileUtils.mkdir_p(code_wt)
+
+    after = nil
+    with_worktree(:provision, ->(d, *_a, **_kw) {
+      d["worktree"] = { "code" => code_wt, "code_branch" => "plastic/96--demo",
+                         "store" => nil, "store_branch" => nil, "provisioned" => true }
+      d
+    }) do
+      repair
+      after = Bridge.read("sess-1", intent_id: "96", tmp: @tmp)
+    end
+
+    recorder = Recorder.new
+    Worktree.release(after, home: @home, runner: recorder)
+    removes = recorder.calls.select { |c| c.include?("remove") && c.include?(code_wt) }
+    refute_empty removes,
+                 "AC5: End cleanup issues `worktree remove` for the repaired intent's code worktree"
   end
 
   # --- CLI verbs ---------------------------------------------------------------
