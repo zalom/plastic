@@ -29,8 +29,19 @@ roadmap handoff had to be resumed by hand, carried as a free-prose note in `171`
    cheaper, precise last-event signal (for example `dispatched 134` or `merged 172`), read
    alongside the existing `## Waves`/`## Log` judgment. The ledger is read-only here, a derived
    signal, never a new status field; INDEX.md stays the sole status writer.
-3. Rank liveness at read time (no new field is written). See `references/liveness-ranking.md`
-   for the full algorithm and the tie rule.
+3. Rank liveness by calling the shared reader in which mode (one implementation across the
+   auto loop and this skill):
+
+   ```bash
+   ruby ~/.plastic/scripts/roadmap-next --roadmaps-dir <tier>/roadmaps --which
+   ```
+
+   Read `state` and the winning `roadmap`. When `state` is `tie`, `tie_candidates` lists the
+   equally-live roadmaps to present side by side; the single "auto or guided?" ask below
+   doubles as the resolution. `roadmap-next` liveness-ranks the same way this skill used to do
+   by eye (a `delivering` or `blocked` entry wins, else the newest ledger or `## Log`
+   timestamp), now deterministically. See `references/liveness-ranking.md` for the algorithm it
+   implements.
 4. A genuine tie (two candidates equally live) is presented to the user and resolved by the
    single ask below, not silently picked.
 
@@ -49,13 +60,16 @@ Ask "auto or guided?" exactly once, after presenting state, mirroring
 
 Never re-ask. No new roadmap or INDEX status field is invented anywhere in this flow.
 
-## No new script
+## The shared reader
 
-The enumeration and ranking above are a read-time judgment done in prose, not a helper script.
-A helper script would need its own `core_files` registration and a hermetic test, raising the
-packaging surface for no material benefit here - so none is added. `scripts/roadmap-savepoint`
-already exists (intent 134, owned by `plastic-roadmap`); this skill only READS the ledger it
-writes.
+Liveness ranking and frontier selection live in one place, `scripts/lib/roadmap_queue.rb`
+(intent 148), behind the `scripts/roadmap-next` CLI. This skill calls it in which mode rather
+than ranking roadmaps in prose, so the auto loop (`plastic-auto`) and this skill share exactly
+one implementation (no forked ranking logic). 158a1 originally added no script because the
+benefit was marginal for a read-time judgment; the auto-loop consumer flipped that calculus by
+making the ranking load-bearing and deterministic. The reader is read-only: it consumes the
+roadmap `.md`, the 134 `<slug>.savepoint.md` ledger, and INDEX.md, and writes nothing. INDEX.md
+stays the single status writer.
 
 ## Caller contract: who writes the ledger
 
