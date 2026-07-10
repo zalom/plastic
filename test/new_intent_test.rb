@@ -356,4 +356,45 @@ class NewIntentTest < Minitest::Test
     lines = File.read(File.join(dir, "savepoint.md")).split("\n").reject(&:empty?)
     assert_equal 1, lines.length
   end
+
+  # --- Intent 133: actions/ must survive a fresh checkout --------------------
+
+  def run_git(chdir, *args)
+    out = IO.popen(["git", "-C", chdir, *args], err: [:child, :out], &:read)
+    [out.strip, $?.exitstatus]
+  end
+
+  def test_actions_dir_survives_fresh_checkout
+    skip "git not available" unless system("git", "--version", out: File::NULL, err: File::NULL)
+
+    dir, status = run_new_intent("--store", @store, "--intent", "Checkout survival", "--slug", "checkout-survival")
+    assert_equal 0, status, "expected exit 0, got: #{dir}"
+
+    gitkeep = File.join(dir, "actions", ".gitkeep")
+    assert File.exist?(gitkeep), "actions/.gitkeep must exist on disk right after scaffolding"
+
+    _, init_status = run_git(@store, "init", "-q")
+    assert_equal 0, init_status, "git init failed"
+
+    _, add_status = run_git(@store, "add", "-A")
+    assert_equal 0, add_status, "git add failed"
+
+    commit_out, commit_status = run_git(@store, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "x")
+    assert_equal 0, commit_status, "git commit failed: #{commit_out}"
+
+    checkout = Dir.mktmpdir("new-intent-checkout")
+    FileUtils.rmdir(checkout) # git worktree add wants to create/populate this itself
+    begin
+      worktree_out, worktree_status = run_git(@store, "worktree", "add", "--detach", checkout)
+      assert_equal 0, worktree_status, "git worktree add failed: #{worktree_out}"
+
+      relative = dir.delete_prefix("#{@store}/")
+      checked_out_actions = File.join(checkout, relative, "actions")
+      assert File.directory?(checked_out_actions),
+        "actions/ dir must survive a fresh checkout (regression: without .gitkeep, git drops the empty dir)"
+    ensure
+      run_git(@store, "worktree", "remove", checkout, "--force") if File.directory?(checkout)
+      FileUtils.rm_rf(checkout)
+    end
+  end
 end
