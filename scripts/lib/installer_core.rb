@@ -242,6 +242,7 @@ class InstallerCore
       "scripts/lib/qmd_hook.rb" => "scripts/lib/qmd_hook.rb",
       "scripts/lib/power_tools.rb" => "scripts/lib/power_tools.rb",
       "scripts/lib/agent_models.rb" => "scripts/lib/agent_models.rb",
+      "scripts/lib/release_guard.rb" => "scripts/lib/release_guard.rb",
       "scripts/hook-code-gate" => "scripts/hook-code-gate",
       "scripts/hook-lock-gate" => "scripts/hook-lock-gate",
       "scripts/hook-bash-gate" => "scripts/hook-bash-gate",
@@ -288,6 +289,7 @@ class InstallerCore
       "scripts/update.rb" => "scripts/update.rb",
       "scripts/uninstall.rb" => "scripts/uninstall.rb",
       "scripts/rollback.rb" => "scripts/rollback.rb",
+      "scripts/lib/legacy_bookend_amnesty.rb" => "scripts/lib/legacy_bookend_amnesty.rb",
       "scripts/doctor.rb" => "scripts/doctor.rb",
       "scripts/dashboard.rb" => "scripts/dashboard.rb",
     }

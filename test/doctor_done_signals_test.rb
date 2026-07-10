@@ -26,10 +26,10 @@ class DoctorDoneSignalsTest < Minitest::Test
 
   def global_store = File.join(@home, "store")
 
-  def doctor = Doctor.new(plastic_home: @home)
+  def doctor(bookend_amnesty: {}) = Doctor.new(plastic_home: @home, bookend_amnesty: bookend_amnesty)
 
-  def check(name)
-    doctor.check_done_signals.find { |c| c[:name] == name }
+  def check(name, bookend_amnesty: {})
+    doctor(bookend_amnesty: bookend_amnesty).check_done_signals.find { |c| c[:name] == name }
   end
 
   # Write a global INDEX.md placing intent `id` under `section`.
@@ -168,5 +168,47 @@ class DoctorDoneSignalsTest < Minitest::Test
     stalled = check("stalled_completion")
     assert_equal "warn", stalled[:status]
     assert(stalled[:details].any? { |d| d.include?("STALE") })
+  end
+
+  # Allowlisted (scope, id) missing the Done bookend does not generate an
+  # audit-echo gap. Intent 170a - A2 cutoff amnesty.
+  def test_no_audit_echo_gap_for_allowlisted_legacy_intent
+    write_index("30", section: "Completed")
+    write_intent_dir("30")
+    write_outcome("30")
+    File.write(File.join(intent_dir("30"), "savepoint.md"),
+               "2026-07-03T00:00:00Z  Exec  started\n")
+
+    complete = check("signals_complete", bookend_amnesty: { "global" => ["30"] })
+    assert_equal "pass", complete[:status]
+  end
+
+  # A non-allowlisted terminal intent missing the bookend still warns, even
+  # when unrelated ids are on the allowlist. Intent 170a.
+  def test_audit_echo_gap_still_warns_when_not_allowlisted
+    write_index("31", section: "Completed")
+    write_intent_dir("31")
+    write_outcome("31")
+    File.write(File.join(intent_dir("31"), "savepoint.md"),
+               "2026-07-03T00:00:00Z  Exec  started\n")
+
+    complete = check("signals_complete", bookend_amnesty: { "global" => ["99"] })
+    assert_equal "warn", complete[:status]
+    assert(complete[:details].any? { |d| d.include?("audit echo missing") })
+  end
+
+  # Scope qualification: the same id allowlisted under a DIFFERENT scope must
+  # not grandfather this scope's intent (ids collide across stores, e.g.
+  # global vs a project store, per spec.md D3). Intent 170a.
+  def test_audit_echo_gap_still_warns_when_id_matches_but_scope_does_not
+    write_index("32", section: "Completed")
+    write_intent_dir("32")
+    write_outcome("32")
+    File.write(File.join(intent_dir("32"), "savepoint.md"),
+               "2026-07-03T00:00:00Z  Exec  started\n")
+
+    complete = check("signals_complete", bookend_amnesty: { "project:demo" => ["32"] })
+    assert_equal "warn", complete[:status]
+    assert(complete[:details].any? { |d| d.include?("audit echo missing") })
   end
 end
