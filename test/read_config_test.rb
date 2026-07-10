@@ -21,7 +21,7 @@ class ReadConfigTest < Minitest::Test
   end
 
   def run_script(key, default: nil, global_dir: @global_dir, project_dir: nil)
-    env = { "PLASTIC_GLOBAL_ROOT" => global_dir }
+    env = { "PLASTIC_HOME" => global_dir }
     args = [SCRIPT, key]
     args += ["--default", default] if default
     args += ["--project", project_dir] if project_dir
@@ -127,7 +127,7 @@ class ReadConfigMigrateTest < Minitest::Test
     }
     File.write(File.join(@global_dir, "config.yml"), YAML.dump(v2_config))
 
-    env = { "PLASTIC_GLOBAL_ROOT" => @global_dir }
+    env = { "PLASTIC_HOME" => @global_dir }
     stdout, _, status = Open3.capture3(env, SCRIPT, "--migrate")
     assert status.success?
 
@@ -150,7 +150,7 @@ class ReadConfigMigrateTest < Minitest::Test
     }
     File.write(File.join(@global_dir, "config.yml"), YAML.dump(config))
 
-    env = { "PLASTIC_GLOBAL_ROOT" => @global_dir }
+    env = { "PLASTIC_HOME" => @global_dir }
     Open3.capture3(env, SCRIPT, "--migrate")
 
     migrated = YAML.safe_load(File.read(File.join(@global_dir, "config.yml")))
@@ -167,7 +167,7 @@ class ReadConfigMigrateTest < Minitest::Test
     }
     File.write(File.join(@global_dir, "config.yml"), YAML.dump(config))
 
-    env = { "PLASTIC_GLOBAL_ROOT" => @global_dir }
+    env = { "PLASTIC_HOME" => @global_dir }
     stdout, _, status = Open3.capture3(env, SCRIPT, "--migrate")
     assert status.success?
     assert_includes stdout, "already"

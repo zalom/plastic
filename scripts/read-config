@@ -5,7 +5,7 @@
 # Returns scalar values as strings, hash/array values as JSON.
 #
 # Environment:
-#   PLASTIC_GLOBAL_ROOT -- override ~/.plastic (for testing)
+#   PLASTIC_HOME -- override ~/.plastic (for testing)
 
 require "yaml"
 require "json"
@@ -88,7 +88,7 @@ end
 
 # Handle --migrate mode
 if ARGV.include?("--migrate")
-  global_root = ENV.fetch("PLASTIC_GLOBAL_ROOT", File.expand_path("~/.plastic"))
+  global_root = ENV.fetch("PLASTIC_HOME", File.expand_path("~/.plastic"))
   config_path = File.join(global_root, "config.yml")
   config = load_yaml(config_path)
 
@@ -116,7 +116,7 @@ if key.nil? || key.empty?
   exit 1
 end
 
-global_root = ENV.fetch("PLASTIC_GLOBAL_ROOT", File.expand_path("~/.plastic"))
+global_root = ENV.fetch("PLASTIC_HOME", File.expand_path("~/.plastic"))
 global_config = load_yaml(File.join(global_root, "config.yml"))
 
 project_config = {}

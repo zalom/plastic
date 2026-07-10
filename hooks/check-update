@@ -5,7 +5,7 @@
 # upgrade target instead of blindly trusting the `latest` tag.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PLASTIC_HOME="$HOME/.plastic"
+PLASTIC_HOME="${PLASTIC_HOME:-$HOME/.plastic}"
 CACHE_DIR="$PLASTIC_HOME/.cache"
 CACHE_FILE="$CACHE_DIR/update-check.json"
 VERSION_FILE="$PLASTIC_HOME/VERSION"
