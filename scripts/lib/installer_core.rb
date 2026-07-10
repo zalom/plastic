@@ -296,6 +296,8 @@ class InstallerCore
       "scripts/lib/legacy_bookend_amnesty.rb" => "scripts/lib/legacy_bookend_amnesty.rb",
       "scripts/doctor.rb" => "scripts/doctor.rb",
       "scripts/dashboard.rb" => "scripts/dashboard.rb",
+      "scripts/skill-lint" => "scripts/skill-lint",
+      "scripts/lib/skill_lint.rb" => "scripts/lib/skill_lint.rb",
     }
   end
 
