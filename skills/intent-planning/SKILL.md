@@ -1,6 +1,6 @@
 ---
 name: plastic-intent-planning
-description: "Write implementation plans from a spec. Produces plan.md, checklist.md, and (L tier only) actions/ in the active intent directory."
+description: "Write implementation plans from a spec. Produces plan.md, checklist.md, and at least one real actions/ACTION_N.md (every tier) in the active intent directory."
 user-invocable: true
 ---
 
@@ -31,12 +31,12 @@ If the spec covers multiple independent subsystems, it should have been broken i
 
 ## Tier shapes
 
-Read the spec's stamped `Tier:` line (written by intent-speccing) and pick the plan shape it calls for:
+Read the spec's stamped `Tier:` line (written by intent-speccing) and pick the action shape it calls for. Every tier produces at least one REAL action file in `actions/`; the tier only changes how many:
 
-- **S or M (default):** an inline plan-as-checklist. Tasks live directly in `plan.md` with rationale inline; `checklist.md` mirrors the task list. Do NOT create any `actions/` files. Leave the `actions/` directory empty (or absent).
+- **S or M (default):** write ONE consolidated `actions/ACTION_1.md` that carries the whole ordered delivery (the steps plus the exact changes). `plan.md` still holds the overall map and `checklist.md` still mirrors the task list. You may split into a few action files when that reads cleaner, but one real action file is the floor.
 - **L (many independent tasks, dispatched in parallel):** self-contained `actions/ACTION_N.md`, one per task, each readable without the plan (see `references/plan-format.md`).
 
-Default to inline for S and M. Reserve `actions/` for L, where tasks are independent enough to hand to separate subagents in parallel. When in doubt, prefer inline; creating unnecessary `actions/` files is a plan failure at S/M tier.
+A `.gitkeep` never counts as an action, and an empty `actions/` fails the How gate at every tier. At S/M, keep it to a single consolidated action file rather than one-per-task; over-splitting a small intent is the S/M failure mode, an empty `actions/` is the tier-wide one.
 
 ## File Structure
 
@@ -97,11 +97,11 @@ If you find issues, fix them inline. No need to re-review, just fix and move on.
 ## Plastic Artifacts
 
 After writing `plan.md`, create `checklist.md` (execution registry following the
-FORM: `## In Progress`, `## Completed`, `## Session Log`) in the intent directory.
-For L tier only, also create `actions/ACTION_N.md` (one self-contained file per
-task, in an `actions/` directory inside the intent directory). For S/M tier, do
-not create `actions/` files at all (see Tier shapes above). For the exact format
-of both, read `references/plan-format.md`.
+FORM: `## In Progress`, `## Completed`, `## Session Log`) and at least one real
+`actions/ACTION_N.md` (self-contained, in an `actions/` directory inside the intent
+directory). At S/M write one consolidated `actions/ACTION_1.md`; at L write one
+`actions/ACTION_N.md` per task (see Tier shapes above). For the exact format of
+both, read `references/plan-format.md`.
 
 ## Owner-decision hard-gate items
 
@@ -118,12 +118,12 @@ When collecting owner rulings for `[ORCHESTRATOR]` hard-gate items, read
 ## Gate position
 
 - **Before:** `spec.md` exists.
-- **Produces:** `plan.md` and `checklist.md` (plus `actions/` for L tier only).
+- **Produces:** `plan.md`, `checklist.md`, and at least one real `actions/ACTION_N.md` (every tier; one consolidated file at S/M, one per task at L).
 - **Next:** /plastic-intent-executing.
 
 ## Git Commit
 
-After writing all artifacts (plan.md, checklist.md, actions/ for L tier), commit to the store:
+After writing all artifacts (plan.md, checklist.md, and the actions/ACTION_N.md files), commit to the store:
 
 ```bash
 cd {store_root} && git add . && git commit -m "docs: plan for intent {id}: {name}"

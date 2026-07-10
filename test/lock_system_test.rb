@@ -259,6 +259,8 @@ class LockSystemTest < Minitest::Test
     refute_nil pre
     assert_includes pre, "plastic-intent-planning"
     File.write(File.join(@dir96, "plan.md"), "plan body\n")
+    FileUtils.mkdir_p(File.join(@dir96, "actions"))
+    File.write(File.join(@dir96, "actions", "ACTION_1.md"), "# Action 1\nreal\n")
     File.write(File.join(@dir96, "checklist.md"), "- [ ] x\n")
     assert_nil Bridge.code_gate_decision(auto_bridge, project_file, home: @home)
 

@@ -33,12 +33,14 @@ class CodeGateSiblingMisattributionTest < Minitest::Test
     File.write(File.join(@dir_g, "401--guided.md"), "## Intent\nG\n")
     File.write(File.join(@dir_g, "spec.md"), "spec\n")
 
-    # Derived intent D = 402, REACHED How (real plan.md + checklist.md, no sentinel).
+    # Derived intent D = 402, REACHED How (real plan.md + checklist.md + a real action
+    # file, no sentinel). Intent 133a: reaching How also requires has_real_action?.
     @dir_d = File.join(@store, "402--derived")
-    FileUtils.mkdir_p(@dir_d)
+    FileUtils.mkdir_p(File.join(@dir_d, "actions"))
     File.write(File.join(@dir_d, "402--derived.md"), "## Intent\nD\n")
     File.write(File.join(@dir_d, "spec.md"), "spec\n")
     File.write(File.join(@dir_d, "plan.md"), "plan\n")
+    File.write(File.join(@dir_d, "actions", "ACTION_1.md"), "# Action 1\nreal\n")
     File.write(File.join(@dir_d, "checklist.md"), "- [x] done\n")
 
     @code_g = File.join(@home, "repo", ".claude", "worktrees", "401--guided")

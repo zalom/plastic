@@ -71,10 +71,11 @@ an answer given in station 3.
 
 Type `/plastic-intent-planning`.
 
-Artifact: `plan.md` and `checklist.md`. At the S tier used here, `actions/` stays empty and
-the task rationale lives inline in `plan.md` instead of separate action files; only the L
-tier (many independent tasks, dispatched in parallel) gets one `actions/ACTION_N.md` file
-per task. `checklist.md` follows a fixed form: tasks start under `## In Progress`, move to
+Artifact: `plan.md`, `checklist.md`, and at least one real `actions/ACTION_N.md`. At the S
+tier used here, the planner consolidates the whole delivery into a single
+`actions/ACTION_1.md` (the ordered steps plus the exact changes); the L tier (many
+independent tasks, dispatched in parallel) instead gets one `actions/ACTION_N.md` file per
+task. `checklist.md` follows a fixed form: tasks start under `## In Progress`, move to
 `## Completed` as they land, and a `## Session Log` table records what happened each session.
 A task that depends on an owner decision landing first (a destructive step, a structural
 ruling) gets an `[ORCHESTRATOR]` prefix and blocks every other item until that decision is

@@ -14,14 +14,17 @@ When dispatched in auto mode you receive the standard Plastic spawn preamble (fr
 
 1. **Decompose the spec** — break the approach into ordered, independent actions
 2. **Write the plan** — produce `plan.md` with numbered tasks and verification
-3. **Write self-contained actions, tier-forked**:
-   - S/M: `plan.md` carries the checklist rationale INLINE; do NOT write
-     `actions/ACTION_N.md` files. Sections may be one line each.
-   - L: keep today's shape — one self-contained `actions/ACTION_N.md` per task.
+3. **Write at least one real action file at every tier, tier-forked**:
+   - S/M: write ONE self-contained `actions/ACTION_1.md` that consolidates the whole
+     ordered delivery (the steps plus the exact changes). You MAY split into a few files
+     when that reads cleaner, but one real action file is the floor.
+   - L: one self-contained `actions/ACTION_N.md` per task. A `.gitkeep` never counts as an
+     action, and an empty `actions/` fails the How gate.
 4. **Write the checklist** — `checklist.md` as the execution registry covering every action.
-   `checklist.md` exists at every tier: the file set does not change by tier, only depth
-   (inline vs action files) and agent topology do. plan.md + checklist.md are the two files
-   that open the code gate at every tier.
+   `checklist.md` and at least one real action file exist at every tier: the file set does not
+   change by tier, only action DEPTH (one consolidated action for S/M vs one-per-task for L)
+   and agent topology do. plan.md, checklist.md, AND a real `actions/ACTION_N.md` are what open
+   the code gate at every tier.
 
 ## How You Work
 
@@ -38,7 +41,7 @@ END your turn with a structured completion report as your final message, per the
 - The ordered actions, one line each: what the action does and how it is verified
 - Decomposition rationale: why this order, and why the actions are independent
 - Checklist coverage: the item count, and that every action plus suite-green is covered
-- Which tier shape was produced: inline plan-as-checklist (S/M) or full `actions/` (L)
+- Which tier shape was produced: one consolidated `actions/ACTION_1.md` (S/M) or one `actions/ACTION_N.md` per task (L)
 
 The plan is an argument; the orchestrator gates on whether that argument is sound before any code is written, so make the report make that case.
 
@@ -46,7 +49,8 @@ The plan is an argument; the orchestrator gates on whether that argument is soun
 
 - You are dispatched by the plastic-enforcer and your deliverable is gated before Exec begins
 - You write only intent-store files (`plan.md`, `actions/`, `checklist.md`); no project code
-- The code gate stays closed until `plan.md` and `checklist.md` exist, so produce both
+- The code gate stays closed until `plan.md`, `checklist.md`, and at least one real `actions/ACTION_N.md` exist, so produce all three
 - Keep each action self-contained so the executor can run them one at a time
-- The `actions/` empty-directory git-tracking edge (present only within one same-session
-  local delivery) is out of scope; do not add a `.gitkeep` or a guard for it here
+- Write real `actions/ACTION_N.md` files, never a `.gitkeep`: keeping a freshly-scaffolded
+  empty `actions/` under git is `scripts/new-intent`'s job at intent birth, not the planner's,
+  and a `.gitkeep` never counts as an action

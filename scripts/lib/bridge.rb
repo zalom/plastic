@@ -395,10 +395,24 @@ module Bridge
     File.exist?(path)
   end
 
+  # True iff actions/ holds AT LEAST ONE real action file: a non-empty *.md whose
+  # first line is not the placeholder sentinel. A `.gitkeep` (no .md extension)
+  # never counts, an empty *.md never counts, and a sentinel-only *.md never
+  # counts. Pure and side-effect-free so the gate stays unit-testable. Fail-open:
+  # a missing actions/ dir globs to nothing and returns false (the gate then
+  # reports it needs a real action file); it never raises.
+  def self.has_real_action?(intent_dir)
+    Dir.glob("#{intent_dir}/actions/*.md").any? do |f|
+      File.file?(f) && File.size(f) > 0 && stage_file_present?(f)
+    end
+  rescue StandardError
+    false
+  end
+
   def self.derive_stage(intent_dir)
     return "done" if stage_file_present?("#{intent_dir}/outcome.md")
     if stage_file_present?("#{intent_dir}/plan.md") &&
-       File.directory?("#{intent_dir}/actions") &&
+       has_real_action?(intent_dir) &&
        stage_file_present?("#{intent_dir}/checklist.md")
       return "exec"
     end
@@ -414,7 +428,7 @@ module Bridge
     ["spec.md", "plan.md", "checklist.md", "outcome.md"].each do |f|
       files << f if stage_file_present?("#{intent_dir}/#{f}")
     end
-    files << "actions/" if File.directory?("#{intent_dir}/actions")
+    files << "actions/" if has_real_action?(intent_dir)
     files
   end
 
@@ -779,8 +793,13 @@ module Bridge
         return "Cannot start How — Why is incomplete (spec.md missing)"
       end
     when "checklist.md"
-      unless stage_file_present?("#{intent_dir}/plan.md") && File.directory?("#{intent_dir}/actions")
-        return "Cannot complete How — plan.md or actions/ missing"
+      unless stage_file_present?("#{intent_dir}/plan.md")
+        return "Cannot complete How — plan.md missing"
+      end
+      unless has_real_action?(intent_dir)
+        return "Cannot complete How — actions/ has no real action file (only .gitkeep or empty). " \
+               "The planner must write at least one actions/ACTION_N.md before checklist.md. " \
+               "See skills/intent-planning."
       end
     when "outcome.md"
       checklist = "#{intent_dir}/checklist.md"
@@ -1017,11 +1036,14 @@ module Bridge
     return nil unless store && dir
     intent_dir_abs = File.expand_path("#{store}/#{dir}")
 
-    # "How reached" = the plan triplet exists. Gate by artifact presence, not the
-    # stage label (derive_stage returns "how" as soon as spec.md exists, before any
-    # plan). Code edits stay blocked until plan.md + checklist.md are both present.
+    # "How reached" = plan.md + checklist.md are both present AND actions/ holds at
+    # least one real action file. Gate by artifact presence, not the stage label
+    # (derive_stage returns "how" as soon as spec.md exists, before any plan). Code
+    # edits stay blocked until the planner has written a real action file, so an
+    # empty or .gitkeep-only actions/ never opens the code gate.
     reached_how = stage_file_present?("#{intent_dir_abs}/plan.md") &&
-                  stage_file_present?("#{intent_dir_abs}/checklist.md")
+                  stage_file_present?("#{intent_dir_abs}/checklist.md") &&
+                  has_real_action?(intent_dir_abs)
     return nil if reached_how
 
     file_abs = File.expand_path(file_path.to_s)
@@ -1030,9 +1052,9 @@ module Bridge
     return nil if file_abs == intent_dir_abs || file_abs.start_with?("#{intent_dir_abs}/")
 
     id = intent_info["id"]
-    "intent #{id} has not reached How — write plan.md + checklist.md before " \
-      "editing project code. Run plastic-auto or plastic-intent-planning first. " \
-      "(blocked edit: #{file_abs})"
+    "intent #{id} has not reached How — write plan.md + checklist.md and at least " \
+      "one real actions/ACTION_N.md before editing project code. Run plastic-auto or " \
+      "plastic-intent-planning first. (blocked edit: #{file_abs})"
   end
 
   # --- Solo-mode detection (intent 128) ---------------------------------------

@@ -31,8 +31,9 @@ is honored as written.
 4. **Sequence the team** — dispatch specialists per the chosen topology with a constructed
    context bundle:
    - S/M: ONE thinker agent, one boot, two stations — it writes spec.md, then plan.md +
-     checklist.md, in a single context. Sections may be one line each; plan.md carries the
-     checklist rationale inline; `actions/` files appear only for L. S may skip the QMD
+     checklist.md + at least one real action file, in a single context. Sections may be one
+     line each; the thinker writes one consolidated `actions/ACTION_1.md` (never an empty
+     `actions/`), while L writes one `actions/ACTION_N.md` per task. S may skip the QMD
      discovery deposit when chain and sources are both empty. A sonnet executor implements.
    - L: today's full team, one specialist per stage (brainstorming, spec-specialist, planner,
      executor), each in a fresh context.

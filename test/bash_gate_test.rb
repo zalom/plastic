@@ -194,6 +194,7 @@ class BashGateTest < Minitest::Test
   def reach_how
     File.write(File.join(@intent_dir, "plan.md"), "plan\n")
     FileUtils.mkdir_p(File.join(@intent_dir, "actions"))
+    File.write(File.join(@intent_dir, "actions", "ACTION_1.md"), "# Action 1\nreal\n")
     File.write(File.join(@intent_dir, "checklist.md"), "- [ ] x\n")
   end
 

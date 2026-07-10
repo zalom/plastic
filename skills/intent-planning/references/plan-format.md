@@ -28,8 +28,9 @@ plan.md so the shape matches on the first pass.
 
 **Intent:** {id}: {name}
 
-**Tier:** S|M|L, copied from the spec's stamped `Tier:` line. S and M plans are
-inline plan-as-checklist (no `actions/`); L plans use `actions/ACTION_N.md`.
+**Tier:** S|M|L, copied from the spec's stamped `Tier:` line. Every tier produces at
+least one real `actions/ACTION_N.md`; S and M consolidate the delivery into one action
+file, L uses one `actions/ACTION_N.md` per task.
 
 ---
 ```
@@ -112,10 +113,13 @@ of tier (S, M, or L):
 
 ## actions/ACTION_N.md format
 
-L tier only. S and M plans skip this file type entirely; their tasks live
-inline in `plan.md` (see the parent SKILL.md's `## Tier shapes`).
+Every tier writes at least one real action file here (see the parent SKILL.md's
+`## Tier shapes`): S and M consolidate the whole delivery into a single
+`actions/ACTION_1.md`, L writes one file per task.
 
-One file per task. Each action is self-contained: a subagent can execute it without reading the plan.
+Each action is self-contained: a subagent (or a solo executor) can execute it without
+reading the plan. It carries the ordered steps to deliver the task plus the exact changes
+to make (for code, the anchor or `file:line` and the old/new text).
 
 ```markdown
 # Action {N}: {task title}

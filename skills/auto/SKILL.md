@@ -56,8 +56,10 @@ and artifact depth to that size. Extended walkthrough: `references/tiers.md`.
    every tier and in both modes. A three-line spec.md is still a spec.md, in the same
    place, under the same gate.
 3. **Per-tier topology.** S/M: one thinker agent, one boot, two stations, sonnet
-   executor, `actions/` skipped; S may also skip the QMD discovery deposit when chain and
-   sources are both empty. L: today's full team (`## Team Spin-Up` below).
+   executor; the thinker writes at least one real action file (one consolidated
+   `actions/ACTION_1.md`), never an empty `actions/`. S may also skip the QMD discovery
+   deposit when chain and sources are both empty. L: today's full team (`## Team Spin-Up`
+   below), one `actions/ACTION_N.md` per task.
 4. **Never-cut list**, any tier or mode: the independent reviewer (separate agent, fresh
    context, never the maker), `outcome.md` as truth of delivery, the delivery lock,
    worktree isolation, intent creation via skill, INDEX as status truth, the QMD reindex
@@ -189,14 +191,15 @@ Then proceed to How.
 
 ## How Phase
 
-This is the L-tier shape (see `## Tiers` above); S/M skip step 3 and fold the checklist
-rationale into plan.md inline. The `actions/` directory itself is scaffolded empty at
-intent birth and persists at every tier; only writing `ACTION_N.md` files into it is L
-only (S/M leave the directory empty).
+Every tier runs all four steps below (see `## Tiers` above). The `actions/` directory is
+scaffolded (with a `.gitkeep`) at intent birth; the planner then writes at least one REAL
+`ACTION_N.md` into it at every tier. The tier only changes step 3's granularity: S/M write
+one consolidated `actions/ACTION_1.md`, L writes one `actions/ACTION_N.md` per task. A
+`.gitkeep`-only or empty `actions/` fails the How gate.
 
 1. If `superpowers:writing-plans` is available as a skill, delegate plan creation to it. Tell it the plan saves to the active intent's directory (not `docs/superpowers/plans/`).
 2. Otherwise, write `plan.md` directly - implementation plan with numbered tasks
-3. Write `ACTION_N.md` files into the existing `actions/` directory (one per task, self-contained) - L only
+3. Write at least one real `ACTION_N.md` into the existing `actions/` directory, self-contained (S/M: one consolidated `ACTION_1.md`; L: one per task)
 4. Write `checklist.md` - execution registry with checkboxes covering all actions
 5. Notify user (How briefing): brief per `references/human-report-contract.md`
    (State: the plan shape, task count and what it builds; Risk: the riskiest task or
