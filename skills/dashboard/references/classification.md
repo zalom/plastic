@@ -1,7 +1,7 @@
 # How Classification Works (Deterministic)
 
 The script (`dashboard.rb`) computes Effort/Value/Flags/Override/Caps deterministically;
-the agent never re-derives them. Read this to explain or debug a quadrant assignment.
+the agent never re-derives them. Read this to explain or debug a ranking or disposition.
 
 - **Effort** — small for `research`/`exploration`/`bugfix`, for already-scoped intents
   (plan/checklist exists), or a **branch id** (folgezettel depth ≥ 2, e.g. `4a`, `12b3`); big
@@ -16,7 +16,7 @@ the agent never re-derives them. Read this to explain or debug a quadrant assign
   the staleness threshold. All three kept low-noise by design.
 - **Override** — a `value: high|low` frontmatter field always wins (pre-stamped data, never
   model judgment at render time).
-- **Caps** — quadrant lists and the project board's `active`/`future` lists are capped at 8
-  entries plus a trailing "+N more" line; each entry's text is truncated to 120 characters
+- **Caps**: the next-work list and the project board's `active`/`future` lists are capped at
+  8 entries plus a trailing "+N more" line; each entry's text is truncated to 120 characters
   with a trailing ellipsis. Applies to the Markdown board only (the ASCII renderer has its own
   separate `CELL_CAP`).

@@ -133,8 +133,9 @@ class DashboardTest < Minitest::Test
     write_intent(demo, "12", "long-text",
                  { id: 12, intent: "A" * 150, author: "agent", tags: %w[demo], created: "2026-06-04" })
 
-    # Six extra bugfix (low+small -> defer) intents: pushes the defer quadrant (already
-    # holding 3/4/8/9) past MATRIX_DATA_CAP so matrix_data must cap it with "+N more".
+    # Six extra bugfix (low+small -> defer) intents: pushes the project's future pool
+    # (already holding 3/4/8/9 and friends) past NEXT_WORK_CAP so next_work must cap
+    # it with "+N more".
     (1..6).each do |i|
       write_intent(demo, "d#{i}", "bugfix-filler-#{i}",
                    { id: "d#{i}", intent: "Bugfix filler #{i}", author: "agent", tags: %w[demo bugfix], created: "2026-06-0#{i}" })
@@ -226,10 +227,10 @@ class DashboardTest < Minitest::Test
     assert_equal 0, status
     data = JSON.parse(out)
     assert_equal "global", data["mode"]
-    %w[date recently_worked matrix counts projects project_totals].each { |k| assert data.key?(k), "missing #{k}" }
-    # Global matrix is global-store intents only (no project intents folded in).
-    scopes = data["matrix"].values.flatten.map { |r| r["scope"] }
-    assert(scopes.all? { |s| s == "global" }, "global matrix leaked non-global scope: #{scopes.uniq}")
+    %w[date recently_worked next_work counts projects project_totals].each { |k| assert data.key?(k), "missing #{k}" }
+    # Global next_work is global-store intents only (no project intents folded in).
+    scopes = data["next_work"].map { |r| r["scope"] }.reject(&:empty?)
+    assert(scopes.all? { |s| s == "global" }, "global next_work leaked non-global scope: #{scopes.uniq}")
   end
 
   def test_data_project_shape
@@ -238,7 +239,7 @@ class DashboardTest < Minitest::Test
     data = JSON.parse(out)
     assert_equal "project", data["mode"]
     assert_equal "demo", data["slug"]
-    %w[recently_worked matrix counts active future].each { |k| assert data.key?(k), "missing #{k}" }
+    %w[recently_worked next_work counts active future].each { |k| assert data.key?(k), "missing #{k}" }
   end
 
   def test_data_last_accessed_prefers_ledger_over_created
@@ -253,8 +254,9 @@ class DashboardTest < Minitest::Test
   def test_value_high_for_human_root
     out, = run_dash("project", "demo", "--data")
     data = JSON.parse(out)
-    hi = (data["matrix"]["quick_win"] + data["matrix"]["next_big"]).map { |r| r["id"] }
-    assert_includes hi, "1" # human-authored root (high value)
+    entry = data["next_work"].find { |r| r["id"] == "1" }
+    refute_nil entry, "expected id 1 in next_work"
+    assert_equal "high", entry["value"] # human-authored root (high value)
   end
 
   # intent 68: a SPAWNED chain (reciprocal sources edge) is high; a purely RELATIONAL
@@ -262,9 +264,9 @@ class DashboardTest < Minitest::Test
   def test_spawned_chain_is_high_relational_chain_is_not
     out, = run_dash("project", "demo", "--data")
     data = JSON.parse(out)
-    high_ids = (data["matrix"]["quick_win"] + data["matrix"]["next_big"]).map { |r| r["id"] }
-    assert_includes high_ids, "4a", "spawned intent (4a1 lists it in sources) must be high"
-    refute_includes high_ids, "4b", "purely relational chain must NOT be high"
+    by_id = data["next_work"].each_with_object({}) { |r, h| h[r["id"]] = r }
+    assert_equal "high", by_id["4a"] && by_id["4a"]["value"], "spawned intent (4a1 lists it in sources) must be high"
+    assert_equal "low", by_id["4b"] && by_id["4b"]["value"], "purely relational chain must NOT be high"
   end
 
   def test_unblocked_requires_all_sources_done
@@ -295,24 +297,29 @@ class DashboardTest < Minitest::Test
     refute_includes (by_id["9"]&.dig("flags") || []), "unblocked"
   end
 
-  def test_matrix_quadrant_over_cap_is_capped_with_more_marker
+  def test_next_work_over_cap_is_capped_with_more_marker
     out, = run_dash("project", "demo", "--data")
-    defer = JSON.parse(out)["matrix"]["defer"]
-    # 3, 4a1, 4b, 8, 9 (bugfix or branch-id small effort, low value) + d1..d6 = 11
-    # total, over MATRIX_DATA_CAP (8): capped to 8 real entries + one "+N more".
-    assert_equal 9, defer.size
-    more = defer.last
+    next_work = JSON.parse(out)["next_work"]
+    # The project's future pool (19 records: 1,2,3,4,5,8,9,4a,4a1,4b,10,11,12,d1..d6)
+    # is over NEXT_WORK_CAP (8): capped to 8 real entries + one "+N more" (11 more).
+    assert_equal 9, next_work.size
+    more = next_work.last
     assert_equal "", more["id"]
-    assert_equal "→ +3 more", more["line"]
+    assert_equal "+11 more", more["line"]
   end
 
+  # Truncation is a property of next_work's line-building for any over-120-char
+  # intent text; asserted directly (in-process, hermetic) rather than by locating a
+  # long-text fixture id within the capped, rank-ordered "demo" project pool, since
+  # id 12 (the fixture's over-120-char intent) ranks low value/big effort/no flags
+  # and falls outside NEXT_WORK_CAP for that shared fixture (over-cap coverage lives
+  # in test_next_work_over_cap_is_capped_with_more_marker above).
   def test_intent_line_truncated_over_120_chars
-    out, = run_dash("project", "demo", "--data")
-    rec = JSON.parse(out)["matrix"]["triage"].find { |r| r["id"] == "12" }
-    refute_nil rec, "expected id 12 in the triage quadrant"
-    prefix = "⚑ 12 "
-    assert rec["line"].start_with?(prefix), "unexpected line shape: #{rec["line"]}"
-    text = rec["line"][prefix.length..-1]
+    rec = { id: "99", intent: "A" * 150, scope: "project:demo", lifecycle: "what",
+            value: :low, effort: :big, disposition: "triage", flags: [] }
+    entry = next_work([rec]).first
+    assert entry[:line].start_with?("99 "), "unexpected line shape: #{entry[:line]}"
+    text = entry[:line].delete_prefix("99 ")
     assert text.end_with?("…"), "expected ellipsis truncation: #{text}"
     assert_operator text.length, :<=, 121
   end
@@ -327,17 +334,19 @@ class DashboardTest < Minitest::Test
     rows.each { |r| assert r["line"].start_with?(r["glyph"]), "line not glyph-led: #{r["line"]}" }
   end
 
-  def test_matrix_lists_are_glyph_led_with_bullets
+  def test_next_work_shape
     out, = run_dash("project", "demo", "--data")
-    matrix = JSON.parse(out)["matrix"]
-    bullets = { "quick_win" => "⚡", "next_big" => "★", "defer" => "→", "triage" => "⚑", "research" => "🔬" }
-    matrix.each do |quad, list|
-      list.each do |r|
-        assert_equal bullets[quad], r["bullet"]
-        assert r["line"].start_with?(bullets[quad]), "#{quad} line not glyph-led: #{r["line"]}"
-        refute_includes r["line"], "<br>"
+    list = JSON.parse(out)["next_work"]
+    refute_empty list
+    list.each do |r|
+      %w[id intent scope lifecycle value disposition flags line].each do |k|
+        assert r.key?(k), "next_work entry missing #{k}: #{r.inspect}"
       end
+      refute_includes r["line"], "<br>"
     end
+    real = list.reject { |r| r["id"].to_s.empty? }
+    refute_empty real
+    real.each { |r| assert r["line"].start_with?("#{r['id']} "), "line not id-led: #{r["line"]}" }
   end
 
   def test_future_sorted_created_desc

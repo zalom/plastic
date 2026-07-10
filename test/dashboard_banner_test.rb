@@ -19,14 +19,14 @@ class DashboardBannerTest < Minitest::Test
   def test_names_next_big_thing_when_present
     payload = {
       "counts" => { "active" => 0, "future" => 1 },
-      "matrix" => { "next_big" => [{ "id" => "1", "line" => "★ 1 Big idea" }] },
+      "next_work" => [{ "id" => "1", "disposition" => "drive", "line" => "1 Big idea" }],
     }
     line = DashboardBanner.render(payload)
     assert_includes line, "next big thing: 1"
   end
 
   def test_omits_next_big_thing_when_absent
-    payload = { "counts" => { "active" => 0, "future" => 0 }, "matrix" => { "next_big" => [] } }
+    payload = { "counts" => { "active" => 0, "future" => 0 }, "next_work" => [] }
     line = DashboardBanner.render(payload)
     refute_includes line, "next big thing"
   end
@@ -34,7 +34,7 @@ class DashboardBannerTest < Minitest::Test
   def test_omits_next_big_thing_when_id_blank
     payload = {
       "counts" => { "active" => 0, "future" => 0 },
-      "matrix" => { "next_big" => [{ "id" => "", "line" => "★ +2 more" }] },
+      "next_work" => [{ "id" => "", "disposition" => "drive", "line" => "+2 more" }],
     }
     line = DashboardBanner.render(payload)
     refute_includes line, "next big thing"
@@ -49,11 +49,11 @@ class DashboardBannerTest < Minitest::Test
   end
 
   def test_payload_missing_counts_returns_nil
-    assert_nil DashboardBanner.render({ "matrix" => {} })
+    assert_nil DashboardBanner.render({ "next_work" => [] })
   end
 
-  def test_malformed_matrix_shape_is_ignored_not_raised
-    payload = { "counts" => { "active" => 1, "future" => 1 }, "matrix" => "not a hash" }
+  def test_malformed_next_work_shape_is_ignored_not_raised
+    payload = { "counts" => { "active" => 1, "future" => 1 }, "next_work" => "not an array" }
     line = DashboardBanner.render(payload)
     refute_nil line
     refute_includes line, "next big thing"
