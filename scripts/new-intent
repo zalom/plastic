@@ -282,6 +282,7 @@ def main(argv)
 
   # 2. Create dirs.
   FileUtils.mkdir_p(File.join(intent_dir, "actions"))
+  File.write(File.join(intent_dir, "actions", ".gitkeep"), "")
   FileUtils.mkdir_p(File.join(intent_dir, "resources"))
 
   # 3. Render the born-complete intent file from templates/intent.md.
