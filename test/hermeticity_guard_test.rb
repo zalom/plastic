@@ -33,19 +33,20 @@ class HermeticityGuardTest < Minitest::Test
       "these tests arm without handling the ambient session id: #{offenders.map { |f| File.basename(f) }.join(', ')}"
   end
 
-  # arm runs the REAL Worktree.provision, whose plastic_home derives from HOME:
-  # unneutralized, a test arm plants a store worktree in the LIVE ~/.plastic
-  # (observed: ~/.plastic/.worktrees/{52,80,96}--demo). Every arm-exercising
-  # test must stub provision or isolate HOME for spawned arms.
+  # arm (and, since intent 136, repair_lock) run the REAL Worktree.provision,
+  # whose plastic_home derives from HOME: unneutralized, a test plants a store
+  # worktree in the LIVE ~/.plastic (observed: ~/.plastic/.worktrees/{52,80,96}
+  # --demo). Every arm- or repair_lock-exercising test must stub provision or
+  # isolate HOME for spawned arms/repairs.
   def test_every_arm_exercising_test_neutralizes_worktree_provision
     offenders = Dir[File.expand_path("../*_test.rb", __FILE__)].select do |f|
       next false if File.basename(f) == File.basename(__FILE__)
       src = File.read(f)
-      src.match?(/Bridge\.(arm_auto|arm_guided)\b/) &&
+      src.match?(/Bridge\.(arm_auto|arm_guided|repair_lock)\b/) &&
         !src.match?(/define_singleton_method\(:provision|with_worktree\(:provision|"HOME"\s*=>/)
     end
     assert_empty offenders,
-      "these tests arm without stubbing Worktree.provision or isolating HOME: " \
+      "these tests arm/repair without stubbing Worktree.provision or isolating HOME: " \
       "#{offenders.map { |f| File.basename(f) }.join(', ')}"
   end
 

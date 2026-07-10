@@ -913,6 +913,18 @@ module Bridge
                   name: name, tmp: tmp)
     data["build"]["auto"] = auto
     data["lock"] = lock_cache(lock_data)
+
+    # Provision the per-intent worktrees so the rebuilt bridge carries
+    # worktree.code (intent 136). Without it, cwd/edited-path selection has no
+    # key: the repaired intent loses its own code gate and a concurrent sibling
+    # wins the tie-break. Idempotent (reuse dir / reattach branch) and fail-open
+    # for non-git / global-only, exactly as `arm` does; never break the repair.
+    begin
+      Worktree.provision(data)
+    rescue => e
+      $stderr.puts "plastic: worktree provision raised during repair, continuing unprovisioned: #{e.message}"
+    end
+
     write(key, data, tmp: tmp)
     actions << "bridge rebuilt from disk (stage #{data['build']['stage']})"
 
