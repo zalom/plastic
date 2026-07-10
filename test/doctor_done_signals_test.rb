@@ -26,10 +26,10 @@ class DoctorDoneSignalsTest < Minitest::Test
 
   def global_store = File.join(@home, "store")
 
-  def doctor = Doctor.new(plastic_home: @home)
+  def doctor(bookend_amnesty: {}) = Doctor.new(plastic_home: @home, bookend_amnesty: bookend_amnesty)
 
-  def check(name)
-    doctor.check_done_signals.find { |c| c[:name] == name }
+  def check(name, bookend_amnesty: {})
+    doctor(bookend_amnesty: bookend_amnesty).check_done_signals.find { |c| c[:name] == name }
   end
 
   # Write a global INDEX.md placing intent `id` under `section`.
@@ -213,5 +213,65 @@ class DoctorDoneSignalsTest < Minitest::Test
 
     doctor.check_done_signals # run again to double-confirm no mutation
     assert_equal before, File.read(savepoint_path)
+  end
+
+  # Composition with intent 170a: a phantom on a terminal intent that is on the frozen bookend
+  # amnesty is grandfathered here too, so savepoint_truthful does not resurface it. The same
+  # phantom on a non-amnestied terminal still warns (test above), and the amnesty is scope-qualified.
+  def test_savepoint_truthful_grandfathers_amnestied_terminal_phantom
+    write_index("23", section: "Completed")
+    dir = write_intent_dir("23")
+    write_outcome("23")
+    File.write(File.join(dir, "savepoint.md"),
+               "2026-07-03T00:00:00Z  Why  spec.md created\n2026-07-03T00:01:00Z  Why  spec.md created\n")
+
+    # No amnesty: the duplicate (Why, spec.md created) pair warns (report-only, terminal).
+    assert_equal "warn", check("savepoint_truthful")[:status]
+    # On the amnesty for this scope: grandfathered, so the advisory stays clean.
+    assert_equal "pass", check("savepoint_truthful", bookend_amnesty: { "global" => ["23"] })[:status]
+    # Amnesty is scope-qualified: the same id under a different scope does not grandfather it.
+    assert_equal "warn", check("savepoint_truthful", bookend_amnesty: { "project:demo" => ["23"] })[:status]
+  end
+
+  # Allowlisted (scope, id) missing the Done bookend does not generate an
+  # audit-echo gap. Intent 170a - A2 cutoff amnesty.
+  def test_no_audit_echo_gap_for_allowlisted_legacy_intent
+    write_index("30", section: "Completed")
+    write_intent_dir("30")
+    write_outcome("30")
+    File.write(File.join(intent_dir("30"), "savepoint.md"),
+               "2026-07-03T00:00:00Z  Exec  started\n")
+
+    complete = check("signals_complete", bookend_amnesty: { "global" => ["30"] })
+    assert_equal "pass", complete[:status]
+  end
+
+  # A non-allowlisted terminal intent missing the bookend still warns, even
+  # when unrelated ids are on the allowlist. Intent 170a.
+  def test_audit_echo_gap_still_warns_when_not_allowlisted
+    write_index("31", section: "Completed")
+    write_intent_dir("31")
+    write_outcome("31")
+    File.write(File.join(intent_dir("31"), "savepoint.md"),
+               "2026-07-03T00:00:00Z  Exec  started\n")
+
+    complete = check("signals_complete", bookend_amnesty: { "global" => ["99"] })
+    assert_equal "warn", complete[:status]
+    assert(complete[:details].any? { |d| d.include?("audit echo missing") })
+  end
+
+  # Scope qualification: the same id allowlisted under a DIFFERENT scope must
+  # not grandfather this scope's intent (ids collide across stores, e.g.
+  # global vs a project store, per spec.md D3). Intent 170a.
+  def test_audit_echo_gap_still_warns_when_id_matches_but_scope_does_not
+    write_index("32", section: "Completed")
+    write_intent_dir("32")
+    write_outcome("32")
+    File.write(File.join(intent_dir("32"), "savepoint.md"),
+               "2026-07-03T00:00:00Z  Exec  started\n")
+
+    complete = check("signals_complete", bookend_amnesty: { "project:demo" => ["32"] })
+    assert_equal "warn", complete[:status]
+    assert(complete[:details].any? { |d| d.include?("audit echo missing") })
   end
 end

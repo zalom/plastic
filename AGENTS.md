@@ -111,3 +111,10 @@ Rules for any agent (or human) contributing to this repository.
 - Run the full test suite (see the Testing section) and confirm green before committing code changes.
 - Never push `~/.plastic/`. The global store is local-only and may contain private data.
 - Core Plastic intents carry no release numbers; the intent schema stays release-agnostic. A release is a collection of intents: a cut (tag) bundles whichever intents have landed since the previous cut and completes them. Which release an intent lands in, and the shipped release history, live in `CHANGELOG.md` at the repo root, not in the intent file and not in PLASTIC.md.
+- Two release lanes exist: default (straight to main) and beta-verified (beta branch, beta
+  channel, real-use verification, then main). Read
+  `skills/releasing/references/release-lines.md` for the routing rule, the stable-line
+  guarantees, and the intent-41 re-land playbook.
+- Stable-line guarantees, in short: main stays always releasable with no pending revert awaiting
+  re-land, a stable release always carries the GitHub Latest badge and no pre-release suffix,
+  and the three version files always agree (checked by `scripts/lib/release_guard.rb`).

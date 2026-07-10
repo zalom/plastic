@@ -71,9 +71,9 @@ triage so the user can act on the fresh findings now on record.
 
 ## Deciding rules
 
-The board's Value x Effort quadrants are deterministic, computed by `dashboard.rb`; this skill
-never re-derives them. Cite the rule NAMES only when explaining a quadrant: Effort, Value,
-Flags, Override, Caps. Read `plastic-dashboard`'s `references/classification.md` for the
+The board's ranked next-work order is deterministic, computed by `dashboard.rb`; this skill
+never re-derives it. Cite the rule NAMES only when explaining a ranking or disposition: Effort,
+Value, Flags, Override, Caps. Read `plastic-dashboard`'s `references/classification.md` for the
 definitions; do not restate or copy them here.
 
 ## Then stop
@@ -86,11 +86,10 @@ intents. Do not start executing work. The only follow-up from here:
 
 ## Coordination
 
-Intent 149 (dashboard becomes prose summaries, queued wave 3) will change the board's
-rendering path. This skill is built against today's live templated Value x Effort matrix and
-cites `classification.md` rule names by name, not logic, so when 149 lands its implementer
-must re-check that this skill's rule-name citations and the `dashboard.rb project <slug>
---data` -> `dashboard-project.md` path still resolve.
+Intent 149 has landed: the dashboard is demoted to prose (no Value x Effort grid). This skill
+was built against the live INDEX.md-parsing `--data` path (147, the DB cutover, has not
+landed). Its rule-name citations (`classification.md`, cited by name, not logic) and the
+`dashboard.rb project <slug> --data` -> `dashboard-project.md` path still resolve.
 
 ## References
 
