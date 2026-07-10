@@ -1,13 +1,13 @@
 ---
 name: plastic-dashboard
-description: Use when the user wants an overview of intents, asks "where are we", "what's next", "what should I work on", "show the dashboard", or invokes /plastic-dashboard. Renders a deterministic Value×Effort work cockpit as Markdown across the global store and all projects, and emits a machine-readable queue that auto mode consumes.
+description: Use when the user wants an overview of intents, asks "where are we", "what's next", "what should I work on", "show the dashboard", or invokes /plastic-dashboard. Renders the intent store(s) as Markdown prose, the global board as a narrative of work done, each project board as a short summary plus its most-valuable next work, and emits a machine-readable queue that auto mode consumes.
 user-invocable: false
 ---
 
 # Dashboard — Plastic Work Cockpit
 
 A deterministic overview of the intent store(s). It answers three questions at a glance:
-**where we are** (recently worked), **where we go next** (a Value×Effort matrix), and
+**where we are** (recently worked), **where we go next** (the most-valuable next work), and
 **how to conduct it** (a disposition per intent). The human-facing surface is **Markdown**,
 because the user's UI renders Markdown natively but collapses raw tool-call stdout.
 
@@ -34,9 +34,9 @@ ruby ~/.plastic/scripts/dashboard.rb [continue|project <slug>] --data
 - `project <slug>` → that **project** board payload (`mode: "project"`).
 
 The payload is read-only JSON. Global-board fields: `date`, `store_health`, `recently_worked`,
-`matrix` (`quick_win`/`next_big`/`defer`/`triage`/`research`, each a list of `{line, bullet, ...}`),
-`counts`, `projects`, `project_totals`. Project-board fields: `slug`, `store_health`,
-`description`, `recently_worked`, `matrix`, `counts`, `active`, `future`.
+`next_work` (a flat, rank-ordered list of `{id, intent, scope, lifecycle, value, disposition,
+flags, line}`), `counts`, `projects`, `project_totals`. Project-board fields: `slug`,
+`store_health`, `description`, `recently_worked`, `next_work`, `counts`, `active`, `future`.
 
 Each board load runs the scoped store check (`doctor --store <scope>`): the global board runs
 `--store global` and a project board runs `--store <slug>`. The result rides in the payload as
@@ -51,13 +51,16 @@ Templates live in this skill's `templates/` directory:
 `~/.claude/skills/plastic-dashboard/templates/dashboard-global.md` and
 `dashboard-project.md`.
 
-Fill mechanically — no rewriting, no re-sorting:
-- `{{a.b.count}}` → the integer (e.g. `matrix.quick_win.count` = that list's length).
+Fill mechanically, no rewriting, no re-sorting:
+- `{{a.b.count}}` → the integer (e.g. `counts.active` = that count).
 - `{{...lines}}` → join the list's `.line` strings with **real newlines** (one per line).
-  These lines are already glyph-led (the glyph is the bullet — never add `-`, never emit
-  `<br>`). If a matrix quadrant list is empty, render `_(none)_`.
+  These are ordinary prose lines, not glyph-led bullets: never add a Markdown `-` bullet,
+  never emit `<br>`. If a list is empty, render `_(none)_`.
+- `next_work.lines` → the most-valuable next work, already ranked; each line reads
+  `"<id> <intent, truncated>"`. Use each entry's `disposition`/`flags` fields when the prose
+  needs to say why an item is next.
 - `projects.lines` → one line per project:
-  `- **{slug}** — {description} · active {active} · done {done} · future {future} · last accessed {last_accessed_at[0,10]}`.
+  `- **{slug}**: {description}, active {active}, done {done}, future {future}, last accessed {last_accessed_at[0,10]}`.
 - Scalars (`{{date}}`, `{{slug}}`, `{{description}}`) → substitute verbatim.
 
 ### Step 3 — Present it (mandatory, every invocation)
@@ -112,7 +115,7 @@ a raw terminal. The Markdown board (`--data` + template) is the surface for the 
 ## How classification works (deterministic)
 
 The script computes Effort/Value/Flags/Override/Caps; the agent never re-derives them.
-To explain or debug a quadrant assignment, read `references/classification.md`.
+To explain or debug a ranking or disposition, read `references/classification.md`.
 
 ## Eval
 
@@ -123,7 +126,7 @@ intentional change means the skill is broken.
 
 ## Notes
 
-- Quadrant lists are **not** Markdown `-` bullets — the glyph is the bullet (the boards are
-  UI-only and may evolve, so they need not be valid Markdown lists). Never emit `<br>`.
+- Board lines are ordinary prose, not a rigid grid: the boards are UI-only and may evolve,
+  so they need not be valid Markdown lists. Never emit `<br>`.
 - Clusters (Zettelkasten grouping in INDEX.md) are intentionally not rendered.
 - Additive: changes no core lifecycle, gate, or cycle logic.

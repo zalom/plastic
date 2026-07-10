@@ -26,16 +26,15 @@ module DashboardBanner
     line
   end
 
-  # The id of the top-ranked next_big candidate, when the payload's matrix carries
-  # exactly the shape dashboard.rb emits (a "next_big" list of {id, ...} hashes,
-  # already rank-sorted). Returns nil for any other shape rather than raising.
+  # The id of the top-ranked "drive" candidate, when the payload's next_work list
+  # carries the shape dashboard.rb emits (an Array of {id, disposition, ...}
+  # hashes, already rank-sorted). Returns nil for any other shape rather than
+  # raising.
   def next_big_thing_id(payload)
-    matrix = payload["matrix"]
-    return nil unless matrix.is_a?(Hash)
-    list = matrix["next_big"]
-    return nil unless list.is_a?(Array) && !list.empty?
-    top = list.first
-    return nil unless top.is_a?(Hash)
+    list = payload["next_work"]
+    return nil unless list.is_a?(Array)
+    top = list.find { |entry| entry.is_a?(Hash) && entry["disposition"] == "drive" }
+    return nil unless top
     id = top["id"].to_s
     id.empty? ? nil : id
   end

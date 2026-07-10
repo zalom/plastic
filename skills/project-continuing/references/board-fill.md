@@ -6,10 +6,11 @@ would otherwise bloat the SKILL.md body.
 
 ## Fill rules (owned by plastic-dashboard, summarized here for convenience)
 
-- `{{a.b.count}}` -> the integer (e.g. `matrix.quick_win.count` is that list's length).
+- `{{a.b.count}}` -> the integer (e.g. `counts.active` is that count).
 - `{{...lines}}` -> join the list's `.line` strings with real newlines (one per line). These
-  lines are already glyph-led (the glyph is the bullet); never add a `-` prefix, never emit
-  `<br>`. An empty quadrant renders `_(none)_`.
+  are ordinary prose lines; never add a `-` prefix, never emit `<br>`. An empty list renders
+  `_(none)_`.
+- `next_work.lines` -> the most-valuable next work, already ranked and capped.
 - `active.lines` / `future.lines` (project board) -> one line per intent, already formatted.
 - Scalars (`{{date}}`, `{{slug}}`, `{{description}}`) -> substitute verbatim.
 

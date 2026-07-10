@@ -355,10 +355,7 @@ LIFECYCLE_GLYPH = { "what" => "○", "why" => "◔", "how" => "◑", "exec" => "
 DISPOSITION_GLYPH = { "drive" => "▸", "defer" => "⇢", "research" => "⊙", "triage" => "⚑" }.freeze
 LEGEND = "legend  ○ What ◔ Why ◑ How ◕ Exec ● Done │ ▸drive ⇢defer ⊙research ⚑triage │ ⇡unblocked"
 
-# Markdown board glyphs (intent 37). Quadrant signatures + per-line bullets.
-QUADRANT_BULLET = {
-  "quick_win" => "⚡", "next_big" => "★", "defer" => "→", "triage" => "⚑",
-}.freeze
+# Markdown board glyphs (intent 37). Status signature for the project active/future lists.
 STATUS_GLYPH = { "active" => "◑", "completed" => "●", "future" => "○" }.freeze
 
 # ---------------------------------------------------------------------------
@@ -375,10 +372,10 @@ end
 CELL_CAP = 6
 
 # Markdown-board caps (Task 5, D6/D7): the ASCII renderer already caps via CELL_CAP/
-# cap_cell, but the Markdown board's matrix_data quadrants and the project board's
+# cap_cell, but the Markdown board's next_work list and the project board's
 # active/future lists had no cap and no per-line truncation, so a large store printed
 # hundreds of full-length lines. These two constants fix that on the Markdown side only.
-MATRIX_DATA_CAP = 8
+NEXT_WORK_CAP = 8
 INTENT_LINE_MAX_CHARS = 120
 
 def matrix(records, scope_tag: false)
@@ -584,31 +581,39 @@ def intent_line(rec, bullet)
     scope: rec[:scope], line: "#{bullet} #{rec[:id]} #{text}#{note}".rstrip }
 end
 
-# Cap a raw record list to MATRIX_DATA_CAP entries, then map to intent_line-shaped
+# Cap a raw record list to NEXT_WORK_CAP entries, then map to intent_line-shaped
 # hashes, appending a plain "+N more" line (no id, not a real record) when truncated.
 # Caps the record list first so the "+N more" entry never goes through intent_line.
 def cap_lines(list, bullet)
-  capped = list.first(MATRIX_DATA_CAP)
+  capped = list.first(NEXT_WORK_CAP)
   lines = capped.map { |r| intent_line(r, bullet) }
-  if list.size > MATRIX_DATA_CAP
+  if list.size > NEXT_WORK_CAP
     lines << { id: "", intent: "", created: "", bullet: bullet, scope: "",
-               line: "#{bullet} +#{list.size - MATRIX_DATA_CAP} more" }
+               line: "#{bullet} +#{list.size - NEXT_WORK_CAP} more" }
   end
   lines
 end
 
-def matrix_data(records)
-  cells = { "quick_win" => [], "next_big" => [], "defer" => [], "triage" => [] }
-  research = []
-  records.each do |r|
-    if %w[research exploration].include?(r[:type]) then research << r
-    else cells[r[:quadrant]] << r end
+# Flat, rank-ordered "most-valuable next work" list (intent 149). Replaces the
+# quadrant-keyed matrix_data with a single list ranked by the same rank_key every
+# other ordering uses, capped at NEXT_WORK_CAP with a trailing "+N more" marker
+# when the pool overflows. No grid glyph on the line; the prose surface supplies
+# its own bullet.
+def next_work(records)
+  ranked = records.sort_by { |r| rank_key(r) }
+  capped = ranked.first(NEXT_WORK_CAP)
+  lines = capped.map do |r|
+    text = r[:intent].to_s
+    text = "#{text[0, INTENT_LINE_MAX_CHARS]}…" if text.length > INTENT_LINE_MAX_CHARS
+    { id: r[:id], intent: r[:intent], scope: r[:scope], lifecycle: r[:lifecycle],
+      value: r[:value].to_s, disposition: r[:disposition], flags: r[:flags],
+      line: "#{r[:id]} #{text}" }
   end
-  by_created_desc = ->(list) { list.sort_by { |r| invert_ts(r[:created]) } }
-  out = {}
-  cells.each { |q, list| out[q] = cap_lines(by_created_desc.call(list), QUADRANT_BULLET[q]) }
-  out["research"] = cap_lines(by_created_desc.call(research), "🔬")
-  out
+  if ranked.size > NEXT_WORK_CAP
+    lines << { id: "", intent: "", scope: "", lifecycle: "", value: "", disposition: "",
+               flags: [], line: "+#{ranked.size - NEXT_WORK_CAP} more" }
+  end
+  lines
 end
 
 def short_description(scope)
@@ -654,7 +659,7 @@ def render_data_global(records)
   { mode: "global", date: today.to_s,
     store_health: store_health(:global),
     recently_worked: recently_worked(records),
-    matrix: matrix_data(matrix_pool),
+    next_work: next_work(matrix_pool),
     counts: counts_of(global),
     projects: projs,
     project_totals: {
@@ -671,7 +676,7 @@ def render_data_project(records, slug)
     store_health: store_health(slug),
     description: short_description(scope),
     recently_worked: recently_worked(records, project_scope: scope),
-    matrix: matrix_data(matrix_pool),
+    next_work: next_work(matrix_pool),
     counts: counts_of(scoped),
     active: cap_lines(scoped.select { |r| r[:status] == "active" }
                             .sort_by { |r| invert_ts(r[:last_accessed_at]) }, STATUS_GLYPH["active"]),
