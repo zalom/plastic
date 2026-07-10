@@ -271,6 +271,7 @@ class InstallerCore
       "scripts/rebuild-graph" => "scripts/rebuild-graph",
       "scripts/validate-intent" => "scripts/validate-intent",
       "scripts/new-intent" => "scripts/new-intent",
+      "scripts/end-intent" => "scripts/end-intent",
       "scripts/hook-create-gate" => "scripts/hook-create-gate",
       "templates/intent.md" => "templates/intent.md",
       "templates/spec.md" => "templates/spec.md",
