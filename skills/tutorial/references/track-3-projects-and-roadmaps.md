@@ -36,9 +36,6 @@ decisions, the project's own intent store, and a new entry in `projects.yml` reg
 Checkpoint: open `AGENTS.md` and find at least one line that traces back to a decision made
 while boarding the founding intent in station 1.
 
-Phase 2 note: this station's exact wording is drafted against the current project-creating
-skill body and will be re-checked once 164 lands.
-
 ### 3. Add more intents inside the project
 
 Type `/plastic-intent-creating` at least twice, from inside the project, describing two
@@ -66,20 +63,24 @@ the two or more intents from station 3 across one or more waves.
 Checkpoint: name which of the two intents from station 3 share a wave (so they run in
 parallel) and which one, if any, sits in a later wave (so it waits).
 
-Phase 2 note: this station's exact wording is drafted against the current roadmap skill body
-and will be re-checked once 164 lands.
-
 ### 5. Drive delivery with /goal
 
-`/goal` is a Claude Code harness command, not a Plastic skill. Hand the roadmap's Goal to
-Claude Code with it, and the harness drives the batch through the waves already planned in
-station 4.
+`/goal` is a Claude Code harness command, not a Plastic skill. It sets a completion condition
+and Claude keeps working, turn after turn, until a fast checker model confirms from what
+Claude has actually reported that the condition holds; `/goal` never reads files on its own,
+so the condition has to name a check Claude's own output can prove.
 
-Checkpoint: point at the exact file (`roadmaps/<slug>.md`) that `/goal` reads its plan of
-work from.
+Turn the roadmap's `## Goal` and current `## Waves` into that condition, for example:
 
-Phase 2 note: the precise `/goal` invocation and wording is provisional. Confirm the real
-Claude Code command and phrasing once 164 lands, before this station is walked end to end.
+`/goal every intent in wave 1 of roadmaps/<slug>.md shows Completed in INDEX.md, and the test
+suite is green`
+
+Claude then works through the wave itself, one intent at a time, and stops on its own once the
+checker agrees the condition holds. Run `/goal` with no argument at any point to see how long
+it has run and how many turns it has spent; run `/goal clear` to stop it before that.
+
+Checkpoint: point at the exact file (`roadmaps/<slug>.md`) whose `## Goal` and `## Waves`
+sections you turned into the condition above.
 
 ### 6. Merge discipline and releases
 

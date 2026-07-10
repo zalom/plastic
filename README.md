@@ -122,8 +122,8 @@ finished one fast.
 | Stage | What happens |
 | ----- | ------------- |
 | What | Describe the idea in plain words; Plastic scaffolds the intent |
-| Why | Explore it; each ruling lands in Context and Decisions as it is made |
-| How | Consolidate into `spec.md`, then `plan.md` and `checklist.md` |
+| Why | Explore it, one ruling at a time, then consolidate into `spec.md` |
+| How | Turn `spec.md` into `plan.md` and `checklist.md` |
 | Exec | Build the change, verify it, tick the checklist |
 | Done | `outcome.md` records what shipped; the index moves the intent to Completed |
 

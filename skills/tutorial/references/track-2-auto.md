@@ -32,9 +32,20 @@ already exist. Auto never invents one on its own.
 No new command at this station. Watch how the work splits.
 
 Auto owns How (the plan, the checklist, the action files) and Exec (the code, the tests, the
-mechanical close) from here on. The user keeps two things: the rulings made along the way,
-and the review points, moments auto is built to pause for, such as confirming a project path
-or stopping before a destructive action with no safe way back.
+mechanical close) from here on. Inside Exec it follows a few fixed habits: it syncs its
+working copy with the main line before touching anything, ticks each task the moment it
+lands rather than batching several into one later edit, and independently verifies its own
+work (running the test suite, or checking the changed file) before presenting anything back
+to you. For a task shaped like an audit or a sweep, checking many files rather than building
+one artifact, it also drops a short methods report into `resources/` before the gate, so you
+can review how it checked, not just what it found.
+
+The user keeps two things: the rulings made along the way, and the review points, moments
+auto is built to pause for, such as confirming a project path or stopping before a
+destructive action with no safe way back. When auto tells you to run a command yourself
+("run /plastic-intent-speccing"), that is an instruction for you to type; it is a different
+thing from the prompts auto hands to its own dispatched subagents, and the two are never
+mixed up in what it tells you.
 
 Checkpoint: name one thing auto will always stop and ask about, rather than decide alone.
 
@@ -47,9 +58,6 @@ One gate, retrieval, is advisory only and never blocks anything; it just adds a 
 
 Checkpoint: read one gate message from the run so far and say whether it is one of the hard
 gates or the one advisory note.
-
-Phase 2 note: the exact wording of what auto does inside How and Exec is drafted against the
-current auto and stage-skill bodies and will be re-checked once 164 lands.
 
 ### 4. Reading the per-stage reports
 

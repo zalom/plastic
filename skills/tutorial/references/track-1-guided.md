@@ -45,16 +45,16 @@ sessions from editing the same intent at the same time.
 ### 3. Why, rulings one at a time
 
 Type `/plastic-intent-brainstorming` (or `/plastic-intent-grilling` for a harder,
-interview-style pass over the same ground). Answer its questions one at a time.
+interview-style pass over the same ground). It asks conversational prose questions, one at a
+time, never a multiple-choice menu, and answers them one at a time in return.
 
-Artifact: `## Context` and `### Decisions` in the intent file fill in as each answer lands.
-Each ruling is written down the moment it is made, not remembered for later.
+Artifact: `## Context` and `### Decisions` in the intent file fill in as each answer lands, and
+each ruling also lands as its own `## Insights` entry the moment it is made, never batched for
+later. This station's product is the enriched Why; it hands off to `/plastic-intent-speccing`
+next, it does not write `spec.md` itself.
 
 Checkpoint: after two or three answers, look at the intent file. Every ruling given out loud
-is already sitting in `### Decisions`, in writing.
-
-Phase 2 note: this station's exact wording (the ruling-persist loop) is drafted against the
-current brainstorming skill body and will be re-checked once 164 lands.
+is already sitting in `### Decisions` and in `## Insights`, in writing.
 
 ### 4. Consolidate the spec
 
@@ -66,40 +66,42 @@ sections filled from the rulings recorded in station 3.
 Checkpoint: name the stamped tier and point at one sentence in `spec.md` that traces back to
 an answer given in station 3.
 
-Phase 2 note: this station's exact wording (tier shapes, the section-fill sequence) is
-drafted against the current speccing skill body and will be re-checked once 164 lands.
-
 ### 5. Plan
 
 Type `/plastic-intent-planning`.
 
 Artifact: `plan.md` and `checklist.md`. At the S tier used here, `actions/` stays empty and
-the task rationale lives inline in `plan.md` instead of separate action files.
+the task rationale lives inline in `plan.md` instead of separate action files; only the L
+tier (many independent tasks, dispatched in parallel) gets one `actions/ACTION_N.md` file
+per task. `checklist.md` follows a fixed form: tasks start under `## In Progress`, move to
+`## Completed` as they land, and a `## Session Log` table records what happened each session.
+A task that depends on an owner decision landing first (a destructive step, a structural
+ruling) gets an `[ORCHESTRATOR]` prefix and blocks every other item until that decision is
+made; this worked example has none.
 
-Checkpoint: open `checklist.md`. Every task in `plan.md` has a matching checkbox; that
-checklist is what gets ticked off during Exec, not `plan.md` itself.
-
-Phase 2 note: this station's exact wording (tier shapes, the checklist FORM) is drafted
-against the current planning skill body and will be re-checked once 164 lands.
+Checkpoint: open `checklist.md`. Every task in `plan.md` has a matching checkbox under
+`## In Progress`; that checklist, not `plan.md` itself, is what gets ticked off and moved to
+`## Completed` during Exec.
 
 ### 6. Exec, verify before the gate
 
 Type `/plastic-intent-executing`.
 
-Teach the order: the agent makes the change, runs whatever verifies it (a test suite, or a
-manual check for a docs change like this one), and only then ticks the checklist box and
-moves on. Verifying always comes before checking the box, never after.
+Teach the order: first the agent syncs its working copy with the main line, so no edit lands
+on a path a merged change upstream has already touched or removed. Then it makes the change,
+runs whatever verifies it (a test suite, or a manual check for a docs change like this one),
+and only then ticks the checklist box, moving the task from `## In Progress` to
+`## Completed` and adding a `## Session Log` row, before moving to the next task. Verifying
+always comes before checking a box, never after, and each task is ticked the moment it lands,
+never batched for later.
 
 Artifact: the actual change on disk (the new README Usage section, or, in the global-store
 fallback, a short written note saved as the intent's deliverable) and a fully ticked
 `checklist.md`.
 
 Checkpoint: find the new Usage section in the README (or the written note) and confirm every
-box in `checklist.md` is checked before moving to station 7.
-
-Phase 2 note: this station's exact wording (sync-first, tick-as-you-land,
-verify-before-gate) is drafted against the current executing skill body and will be
-re-checked once 164 lands.
+box in `checklist.md` is checked and moved to `## Completed`, with a `## Session Log` row for
+this session, before moving to station 7.
 
 ### 7. Done
 

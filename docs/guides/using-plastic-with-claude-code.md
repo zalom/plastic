@@ -14,10 +14,13 @@ You already met the choice in
 choice feels like in practice, day to day.
 
 In guided mode, the agent briefs you at every stage boundary: what it is about
-to do, what could go wrong, and what decision is left to you. You act on that
-before the next stage starts. It reads like a short conversation at each step:
-a state of play, a risk if any, and a call to make. This is deliberately slow.
-It is the right choice when you want to watch each decision as it happens.
+to do, what could go wrong, and what decision is left to you. You act on that,
+then type the next stage's command yourself: `plastic-intent-speccing`, for
+example, to turn a ruled-on design into `spec.md`, or `plastic-intent-ending`
+to close the intent out once Exec is done. It reads like a short conversation
+at each step: a state of play, a risk if any, and a call to make. This is
+deliberately slow. It is the right choice when you want to watch each decision
+as it happens.
 
 In auto mode, the agent still gives you that same short briefing at every
 stage, but it takes the call itself and keeps moving, except at a small number
