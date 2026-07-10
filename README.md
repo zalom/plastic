@@ -165,7 +165,7 @@ Plastic is developed through Plastic.
 The roadmap, intent history, plans, decisions, and outcomes
 behind releases are part of the repository, not a hidden process.
 
-See the current [roadmap](ROADMAP.md) and [changelog](CHANGELOG.md).
+[changelog](CHANGELOG.md).
 
 ## Documentation
 
