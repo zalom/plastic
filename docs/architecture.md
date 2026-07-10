@@ -24,7 +24,7 @@ The inner, finite life of a single intent is **What to Why to How to Exec**:
 
 - **What**: the desire is captured (the intent file with `## Intent` filled).
 - **Why**: the desire is justified and decided (`## Context` plus `spec.md`).
-- **How**: the work is planned (`plan.md` plus `checklist.md`, optionally `actions/`).
+- **How**: the work is planned (`plan.md` plus `checklist.md` plus at least one real `actions/ACTION_N.md`).
 - **Exec**: the work is carried out and the result recorded (`outcome.md` plus the `## Outcome` summary).
 
 Once Exec completes, the intent is done.
@@ -72,7 +72,7 @@ ID--slug/
   outcome.md      # the Exec deliverable (mandatory at every terminal; a disposition: delivered|abandoned header)
   savepoint.md    # deterministic cycle-step ledger, written automatically
   revisions.md    # optional structural-maintenance audit trail (present only after maintenance)
-  actions/        # individual work items, when work splits into parallel pieces
+  actions/        # real action files, at least one per planned intent (one consolidated file at S/M, one per task at L)
   resources/      # research, references, snapshots, diagrams
 ```
 

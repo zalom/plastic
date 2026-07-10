@@ -30,9 +30,10 @@ the savepoint ledger.
 One thinker agent boots ONCE and stays in a single context for two stations:
 
 1. Station 1 — writes `spec.md` (collapsed sections allowed, one line each is valid).
-2. Station 2 — writes `plan.md` + `checklist.md` in the SAME context (no reboot). plan.md
-   carries the checklist rationale inline instead of separate `actions/ACTION_N.md` files.
-   `actions/` is not created for S/M.
+2. Station 2 — writes `plan.md` + `checklist.md` + at least one real action file in the
+   SAME context (no reboot). At S/M the thinker consolidates the whole delivery into one
+   `actions/ACTION_1.md` (rather than one file per task); `actions/` is populated at every
+   tier, and a `.gitkeep`-only or empty `actions/` fails the How gate.
 
 Then a sonnet executor (a fresh dispatch, this is the one topology split that always
 happens) implements from plan.md + checklist.md, checks off items, appends `## Insights`,

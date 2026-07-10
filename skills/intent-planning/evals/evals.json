@@ -1,18 +1,18 @@
 {
   "skill_name": "plastic-intent-planning",
-  "notes": "Intent 164. New evals.json for the writing-plans skill: tier-shape enforcement (S/M inline vs L actions/) and the checklist FORM plus [ORCHESTRATOR] hard-gate item convention. All assertions are pending a real observed run per the plastic-evaluating-skills convention.",
+  "notes": "Intent 164, updated by 133a. Evals for the writing-plans skill: action-file enforcement at every tier (S/M consolidate the delivery into one real actions/ACTION_1.md, L writes one actions/ACTION_N.md per task) and the checklist FORM plus [ORCHESTRATOR] hard-gate item convention. All assertions are pending a real observed run per the plastic-evaluating-skills convention.",
   "evals": [
     {
       "id": 1,
       "scope": "behavior",
       "set": "train",
       "prompt": "spec.md is stamped Tier: M and describes a single subsystem change touching four files across two tasks. Write the plan.",
-      "expected_output": "Produces an inline plan-as-checklist: all tasks with rationale live directly in plan.md, and checklist.md mirrors the task list. No actions/ACTION_N.md files are created; the actions/ directory stays empty or absent.",
+      "expected_output": "Produces plan.md plus checklist.md plus at least one real actions/ACTION_N.md. At M the planner consolidates the whole delivery into a single actions/ACTION_1.md (it may split into a few files if that reads cleaner); the actions/ directory is never left empty or .gitkeep-only. checklist.md mirrors plan.md's task list.",
       "files": [],
       "assertions": [
         {
           "type": "code",
-          "check": "no files created under actions/ for this intent; checklist.md exists and mirrors plan.md's task list",
+          "check": "at least one real (non-empty, non-.gitkeep) file exists under actions/ for this intent; checklist.md exists and mirrors plan.md's task list",
           "result": "expect-pass"
         }
       ]
@@ -22,12 +22,12 @@
       "scope": "behavior",
       "set": "train",
       "prompt": "spec.md is stamped Tier: S and describes a single-file config change. Write the plan.",
-      "expected_output": "Produces an inline plan-as-checklist. No actions/ files are created, matching the S/M default.",
+      "expected_output": "Produces plan.md plus checklist.md plus one consolidated actions/ACTION_1.md carrying the whole ordered delivery (the steps plus the exact changes). The actions/ directory is never left empty or .gitkeep-only, matching the every-tier action-file rule.",
       "files": [],
       "assertions": [
         {
           "type": "code",
-          "check": "no files created under actions/ for this intent",
+          "check": "at least one real (non-empty, non-.gitkeep) actions/ACTION_N.md exists under actions/ for this intent; no empty or .gitkeep-only actions/ dir remains",
           "result": "expect-pass"
         }
       ]
@@ -58,6 +58,21 @@
         {
           "type": "human",
           "check": "an [ORCHESTRATOR] item exists, names the decision, states it blocks code edits, and precedes dependent tasks; checklist.md has the three FORM sections in the right shape",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "spec.md is stamped Tier: S. A prior draft left actions/ with only a .gitkeep. Write the plan and its actions.",
+      "expected_output": "Writes at least one real actions/ACTION_1.md (non-empty, not the placeholder sentinel, not a .gitkeep) that consolidates the whole S-tier delivery. Leaving actions/ empty or .gitkeep-only is a plan failure that would block the How gate; the planner never does this at any tier.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "actions/ contains at least one real action file (non-empty *.md, first line not the placeholder sentinel); no .gitkeep-only or empty actions/ dir remains",
           "result": "expect-pass"
         }
       ]

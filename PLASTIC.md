@@ -19,7 +19,7 @@ store/
     plan.md               # optional - implementation plan (How deliverable)
     checklist.md          # optional - execution registry (How deliverable)
     outcome.md            # optional - detailed result (Exec deliverable)
-    actions/              # optional - individual work items
+    actions/              # optional - real action files (How deliverable, at least one required)
     resources/            # optional - research, references, screenshots, diagrams
     savepoint.md          # optional - deterministic cycle-step ledger (auto-written)
     revisions.md          # optional - append-only structural-maintenance audit trail
@@ -95,7 +95,7 @@ tags: [plastic, architecture]
 |-------|---------|-------------|--------|
 | **What** | `## Intent` | `{ID}--{slug}.md` | `plastic-intent-creating` |
 | **Why** | `## Context` + Decisions | `spec.md` | `plastic-intent-brainstorming` |
-| **How** | Planning | `plan.md` + `actions/` + `checklist.md` | `plastic-intent-planning` |
+| **How** | Planning | `plan.md` + `actions/ACTION_N.md` (at least one) + `checklist.md` | `plastic-intent-planning` |
 | **Exec** | Execution | `outcome.md` | `plastic-intent-executing` |
 
 `## Insights` is the append-only log of durable discoveries captured throughout ALL stages.
@@ -133,8 +133,9 @@ same-structure invariant holds: same file set, stage order, gates, and savepoint
 every tier and in both modes.
 
 S/M collapse the topology (one thinker agent writes spec.md then plan.md plus
-checklist.md in one context; actions/ only for L; a sonnet executor implements). L keeps
-the full team.
+checklist.md plus at least one real action file in one context, consolidated into a single
+actions/ACTION_1.md at S/M and one file per task at L; a sonnet executor implements). L
+keeps the full team.
 
 Never cut at any tier: the independent reviewer, outcome.md as truth of delivery, the
 delivery lock, worktree isolation, intent creation via skill, INDEX as status truth, the
@@ -425,8 +426,8 @@ purge. See `docs/internals.md` for depth.
 | Transition | Trigger | Gate |
 |---|---|---|
 | What → Why | `spec.md` written | (none) |
-| Why → How | `plan.md` + `actions/` + `checklist.md` | `spec.md` must exist |
-| How → Exec | Checklist has items | Plan triplet must exist |
+| Why → How | `plan.md` + `actions/ACTION_N.md` (at least one) + `checklist.md` | `spec.md` must exist |
+| How → Exec | Checklist has items | plan.md, checklist.md, and at least one real actions/ACTION_N.md must exist |
 | Exec → Done | `outcome.md` written | All checklist items checked |
 
 Hard blocking: hooks exit code 2 on gate failure.
@@ -530,7 +531,7 @@ each station.
 | Start (board) | none (a procedure, not a stage) | `plastic-lock fix` self-heals stale, corrupt, or legacy state; arm acquires `delivery.lock` (O_EXCL, session-keyed), provisions the code worktree, writes the bridge cache | lock-gate denies any write into an active intent dir without this intent's lock; every deny names the resolving command | savepoint confirms the boarding station |
 | What (create) | `<id>--<slug>.md`, born complete | no lock yet; no bridge | create-gate validates the proposed intent content (Write, Edit, and MCP edits) | savepoint `What` line; intent listed in INDEX `## Active` |
 | Why | `spec.md` | owner writes refresh the lease (lock file mtime heartbeat) | gate-check requires the intent file with `## Intent` before spec.md; lock-gate admits only the owner or a delegate | savepoint `Why started`, `Why spec.md created` |
-| How | `plan.md`, `actions/`, `checklist.md` | heartbeat on writes; the code gate stays closed until plan.md plus checklist.md exist | gate-check requires spec.md before plan.md, and plan.md plus actions/ before checklist.md | savepoint `How started`, `How plan.md created`, `How checklist.md created`, `Exec started` |
+| How | `plan.md`, `actions/ACTION_N.md` (at least one), `checklist.md` | heartbeat on writes; the code gate stays closed until plan.md, checklist.md, and a real action file all exist | gate-check requires spec.md before plan.md, and plan.md plus a real actions/ACTION_N.md before checklist.md | savepoint `How started`, `How plan.md created`, `How checklist.md created`, `Exec started` |
 | Exec | code on the intent branch, checklist checked off | heartbeat; code edits confined to the provisioned worktree; delegates write under the owner's lock; bash, interpreter, and MCP writes gated the same way | code-gate, worktree-gate, bash-gate, lock-gate | checklist boxes; savepoint milestones |
 | End (done) | mandatory `outcome.md` (`disposition: delivered\|abandoned`), INDEX moves to Completed or Abandoned | ordered End tail: verify, merge and remove worktrees, disarm clears `delivery.lock`, then the bridge is purge-eligible, and the QMD reindex runs LAST (after purge) | gate-check blocks outcome.md while checklist items are unchecked | savepoint `Done delivered` (or `abandoned`); takeover audits, if any, remain in savepoint.md |
 | Maintenance (any stage) | `revisions.md` move-and-record entries | future `maintenance.lock` (short TTL), mutually exclusive with `delivery.lock` in either direction; 108 ships the schema seam only, the implementation follows intent 93 in a chained intent | acquisition refuses while the other lock type is fresh; a terminal intent with no lock held is read-only | dated, rule-tagged `revisions.md` entry; savepoint untouched |

@@ -88,11 +88,14 @@ class StageFilePresentTest < Minitest::Test
     assert_equal "how", Bridge.derive_stage(intent_dir)
   end
 
-  def test_real_plan_and_checklist_advance_to_exec
+  def test_real_plan_and_checklist_stay_how_until_a_real_action_exists
     intent_dir = scaffold_intent
     File.write(File.join(intent_dir, "spec.md"), "# Spec\nreal\n")
     File.write(File.join(intent_dir, "plan.md"), "# Plan\nreal\n")
     File.write(File.join(intent_dir, "checklist.md"), "# Checklist\nreal\n")
+    # Intent 133a: real plan + checklist but an empty actions/ does not reach Exec.
+    assert_equal "how", Bridge.derive_stage(intent_dir)
+    File.write(File.join(intent_dir, "actions", "ACTION_1.md"), "# Action 1\nreal\n")
     assert_equal "exec", Bridge.derive_stage(intent_dir)
   end
 
@@ -138,6 +141,10 @@ class StageFilePresentTest < Minitest::Test
 
     File.write(File.join(intent_dir, "plan.md"), "# Plan\nreal\n")
     File.write(File.join(intent_dir, "checklist.md"), "# Checklist\nreal\n")
+    # Intent 133a: real plan + checklist but an empty actions/ still blocks the gate.
+    refute_nil Bridge.code_gate_decision(bridge, target, home: @dir)
+
+    File.write(File.join(intent_dir, "actions", "ACTION_1.md"), "# Action 1\nreal\n")
     assert_nil Bridge.code_gate_decision(bridge, target, home: @dir)
   end
 end
