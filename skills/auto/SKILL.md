@@ -15,7 +15,9 @@ Announce: "Taking over intent [ID] - [name] for autonomous delivery."
 orchestrating main session on the best available thinking model (Fable, Opus, or whatever
 supersedes them) for the sharpest gating and synthesis. This is advice only: it changes no
 behavior and blocks nothing if ignored. It concerns the human's MAIN session; dispatched
-subagents keep their pinned tier and never resolve to Fable.
+subagents keep their pinned tier and never resolve to Fable, unless an explicit
+`agents.models.<name>` config override names Fable for that role, in which case the override
+is honored as written.
 
 ## Precondition
 
@@ -108,7 +110,9 @@ Dispatch rule: sequential, one specialist per stage on one branch (the deliverab
 
 Spawn preamble (live-state injection): before dispatching any specialist, run `scripts/spawn-preamble <intent_dir> --role <role>` and PREPEND its output to that specialist's prompt. The preamble is a deterministic, filesystem-only snapshot of the active intent (id, intent line, current stage, and the provisioned code worktree path when one exists on disk) plus the honoring instruction, so every spawned agent boots with accurate live state instead of guessing. This is the authoritative L2 mechanism for harnesses whose sub-agents do not inherit a top-level session event (see `docs/reference/harness-adapters.md`).
 
-Dispatch-time model contract (belt-and-braces): alongside the preamble, resolve each specialist's model through the config chain (`read-config agents.models.<basename> --project <repo>`: project override, then global, then the shipped tier default) and pass it explicitly at dispatch. Never rely on the dispatched role's frontmatter alone; a resolved subagent model is never Fable.
+Dispatch-time model contract (belt-and-braces): alongside the preamble, resolve each specialist's model through the config chain (`read-config agents.models.<basename> --project <repo>`: project override, then global, then the shipped tier default) and pass it explicitly at dispatch. Never rely on the dispatched role's frontmatter alone; a resolved subagent model is never Fable,
+unless an explicit `agents.models.<name>` config override names Fable for that role, in which
+case the override is honored as written.
 
 Completion report (require-then-synthesize): every dispatched specialist MUST end with a structured completion report as its final message. The preamble's `REPORT_CONTRACT` injects this and the role prompts carry the per-role format (see `references/agent-report-contract.md`). Because child-agent honor is best-effort across harnesses, this is decision-shaping, not a hard block. When a specialist returns no usable report (it went idle, emitted only a bare ping, or its message was lost to a mid-run interjection), run `scripts/agent-report <intent_dir> --role <role>` to synthesize a deterministic filesystem-derived report so the handoff account always exists. Use the agent-authored report when present, the synthesized one otherwise.
 

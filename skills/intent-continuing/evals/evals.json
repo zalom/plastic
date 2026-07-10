@@ -3,7 +3,7 @@
   "notes": "Intent 36, updated for 36a (boot moved into hook-session-start; the skill is now work-continuation only). Scopes: description triggering (1-8) and behavior/convention compliance of the work-continuation skill (9-14). Triggering assertions follow the plastic-auto eval style (one subagent router per case). Behavior assertions are convention checks against the SKILL.md.",
   "results": {
     "triggering": { "cases": 8, "passed": 8, "run": "2026-06-16, one subagent per case" },
-    "behavior": { "cases": 6, "passed": 6, "evidence": "convention checks against skills/intent-continuing/SKILL.md after the intent-36 rewrite; doctor --core verified at 0.07s with 9 liveness checks and full doctor unchanged at 30 checks" }
+    "behavior": { "cases": 8, "passed": 8, "evidence": "convention checks against skills/intent-continuing/SKILL.md after the intent-36 rewrite; doctor --core verified at 0.07s with 9 liveness checks and full doctor unchanged at 30 checks; id 16 (intent 170) added for the research-dispatch branch" }
   },
   "evals": [
     {
@@ -139,6 +139,15 @@
       "files": ["skills/intent-continuing/SKILL.md"],
       "assertions": [
         { "type": "human", "check": "qmd-sync search is run before grep/Read when the intent is named by description; authoritative file opened for the hit", "observed": "Conditional Ledger-Resume carries the QMD-first step: run qmd-sync search before grep/Read, then open the authoritative file; no-op fallback when QMD is absent", "result": "pass" }
+      ]
+    },
+    {
+      "id": 16, "scope": "behavior", "set": "validation",
+      "prompt": "In the stale-future-intent triage, the user picks option c) Defer to agent: research. What happens?",
+      "expected_output": "A real dispatch, not a label: plastic-future-intent-researcher's model is resolved via `read-config agents.models.<basename> --project <repo>` (never bare frontmatter, sanctioned-override-aware per D1), the agent is dispatched via the Agent tool on the selected stale future intent and writes its findings into that intent's `## Context`, then the skill re-presents the stale-future-intent triage so the user can act on the fresh findings.",
+      "files": ["skills/intent-continuing/SKILL.md"],
+      "assertions": [
+        { "type": "convention", "check": "SKILL.md's 'Defer to agent: research' paragraph resolves the model via read-config (not bare frontmatter), dispatches plastic-future-intent-researcher via the Agent tool, and re-presents the triage after the agent returns", "observed": "'Defer to agent: research.' paragraph under Stale Future Intents: resolves via read-config agents.models.<basename> --project <repo>, dispatches with subagent_type: \"plastic-future-intent-researcher\", findings land in ## Context, then re-presents the triage", "result": "pass" }
       ]
     }
   ]

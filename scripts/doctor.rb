@@ -23,6 +23,7 @@ require_relative "lib/links_section"
 require_relative "lib/hook_registry"
 require_relative "lib/lock"
 require_relative "lib/bridge"
+require_relative "lib/agent_models"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -1271,7 +1272,83 @@ class Doctor
       end
     end
 
+    checks += check_agent_model_drift(agent_key)
+
     checks
+  end
+
+  # agent_model_drift - advisory (never fail) config-vs-frontmatter comparison
+  # for every installed <agent_dir>/agents/plastic-*.md file (intent 170, D1).
+  # Resolution mirrors read-config's own precedence (project override -> global
+  # override -> shipped AgentModels::TIER_DEFAULTS), reusing AgentModels'
+  # `override_map` directly so this stays hermetically DI-testable (no
+  # shell-out to `read-config`, no ENV/global seam). There is no live project
+  # scope at doctor-run time for a globally-installed agent file, so the
+  # project layer is empty here; the resolver still supports one, matching the
+  # same `override_map(project_config:, global_config:)` shape the installer
+  # already calls.
+  #
+  # Classification per installed agent basename:
+  #   - no `agents.models.<basename>` override AND frontmatter == resolved
+  #     default -> pass (clean)
+  #   - no override AND frontmatter != resolved default -> warn (real drift)
+  #   - an override IS configured -> pass/informational, LISTED as a
+  #     sanctioned override, regardless of whether frontmatter matches (that
+  #     mismatch is the override working, e.g. `plastic-brainstorming: fable`)
+  #   - zero installed agent files -> pass (nothing to check)
+  # This check never returns "fail".
+  def check_agent_model_drift(agent_key)
+    agent_config = agents[agent_key]
+    return [] unless agent_config
+
+    agents_dir = File.join(agent_config[:dir], "agents")
+    installed = Dir.glob(File.join(agents_dir, "plastic-*.md")).sort
+
+    if installed.empty?
+      return [check(
+        category: "core_files", name: "agent_model_drift", status: "pass",
+        message: "No installed plastic-* agent files to check for model drift"
+      )]
+    end
+
+    global_config = load_yaml_safe(File.join(plastic_home, "config.yml")) || {}
+    overrides = AgentModels.override_map(project_config: {}, global_config: global_config)
+
+    drifted = []
+    sanctioned = []
+
+    installed.each do |path|
+      basename = File.basename(path, ".md")
+      installed_model = (parse_frontmatter(path) || {})["model"]
+      resolved_default = AgentModels::TIER_DEFAULTS[basename]
+      override = overrides[basename]
+
+      if override
+        sanctioned << "#{basename}: frontmatter=#{installed_model.inspect}, sanctioned override=#{override.inspect}"
+      elsif installed_model != resolved_default
+        drifted << "#{basename}: frontmatter=#{installed_model.inspect}, resolved default=#{resolved_default.inspect}"
+      end
+    end
+
+    if drifted.empty?
+      message = if sanctioned.empty?
+                  "No agent-model drift (#{installed.size} installed agent(s) match the resolved default)"
+                else
+                  "No unsanctioned agent-model drift; #{sanctioned.size} sanctioned override(s) in effect"
+                end
+      [check(
+        category: "core_files", name: "agent_model_drift", status: "pass",
+        message: message,
+        details: sanctioned
+      )]
+    else
+      [check(
+        category: "core_files", name: "agent_model_drift", status: "warn",
+        message: "#{drifted.size} installed agent(s) have unsanctioned model drift vs the config-resolved default",
+        details: drifted + sanctioned,
+        fixable: false
+      )]
+    end
   end
 
   # --- Check category: manifest sync (binary core integrity) ---

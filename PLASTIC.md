@@ -167,8 +167,10 @@ and Exec, spins up the team above, and works the dashboard's dispatchable queue.
 `human_only` (intents that need a person); auto mode consumes the former.
 
 **Model contract.** Every agent in `agents/*.md` pins an explicit Claude Code model alias in
-its own frontmatter: `opus`, `sonnet`, or `haiku`. Never `inherit`, never Fable. Aliases track
-"latest per tier" so no Plastic release is required to advance a tier. The tier by role:
+its own frontmatter: `opus`, `sonnet`, or `haiku`. Never `inherit`, never Fable by default,
+unless an explicit `agents.models.<name>` config override names Fable for that role, in which
+case the override is honored as written. Aliases track "latest per tier" so no Plastic release
+is required to advance a tier. The tier by role:
 `plastic-enforcer`, `plastic-brainstorming`, `plastic-planner` are `opus`;
 `plastic-spec-specialist`, `plastic-executor`, `plastic-intent-curator`,
 `plastic-future-intent-researcher`, `plastic-intent-discovery` are `sonnet`.

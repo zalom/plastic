@@ -281,3 +281,127 @@ class DoctorManifestSyncTest < Minitest::Test
     assert_equal "fail", result[:status], "a warn must roll up to fail in --core"
   end
 end
+
+# ===========================================================================
+# Task C (intent 170) - agent_model_drift: config-vs-frontmatter advisory check
+# ===========================================================================
+
+class DoctorAgentModelDriftTest < Minitest::Test
+  include DoctorTestHelpers
+
+  def setup
+    FileUtils.rm_rf([DOCTOR_TEST_HOME, DOCTOR_TEST_CLAUDE])
+    FileUtils.mkdir_p(DOCTOR_TEST_HOME)
+    FileUtils.mkdir_p(DOCTOR_TEST_CLAUDE)
+  end
+
+  def teardown
+    FileUtils.rm_rf([DOCTOR_TEST_HOME, DOCTOR_TEST_CLAUDE])
+  end
+
+  # Write an installed agent role file with an explicit frontmatter `model:`.
+  def write_agent_file(agent_dir, basename, model:)
+    agents_dir = File.join(agent_dir, "agents")
+    FileUtils.mkdir_p(agents_dir)
+    path = File.join(agents_dir, "#{basename}.md")
+    File.write(path, <<~MD)
+      ---
+      name: #{basename}
+      description: test fixture
+      model: #{model}
+      ---
+      # #{basename}
+    MD
+    path
+  end
+
+  def write_global_config(overrides)
+    File.write(File.join(DOCTOR_TEST_HOME, "config.yml"), YAML.dump(
+      "agents" => { "models" => overrides }
+    ))
+  end
+
+  def test_drift_warns_when_unconfigured_frontmatter_disagrees_with_default
+    default = AgentModels::TIER_DEFAULTS["plastic-executor"]
+    refute_equal "haiku", default, "fixture assumes plastic-executor's shipped default isn't haiku"
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-executor", model: "haiku")
+    # No config.yml at all -> no override configured for plastic-executor.
+
+    checks = doctor.check_agent_model_drift("claude")
+    drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+    refute_nil drift_check
+    assert_equal "warn", drift_check[:status]
+    assert drift_check[:details].any? { |d| d.include?("plastic-executor") },
+      "expected drift details to name plastic-executor, got: #{drift_check[:details].inspect}"
+  end
+
+  def test_sanctioned_override_is_listed_as_pass_even_when_frontmatter_differs
+    default = AgentModels::TIER_DEFAULTS["plastic-brainstorming"]
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-brainstorming", model: default)
+    # Sanctioned override differs from both the shipped default and the
+    # installed frontmatter (mirrors the real ~/.plastic/config.yml override,
+    # mihradesign intent 24: plastic-brainstorming -> fable).
+    write_global_config("plastic-brainstorming" => "fable")
+
+    checks = doctor.check_agent_model_drift("claude")
+    drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+    refute_nil drift_check
+    assert_equal "pass", drift_check[:status],
+      "a sanctioned override must never be flagged, even if frontmatter has not caught up yet"
+    assert drift_check[:details].any? { |d| d.include?("plastic-brainstorming") && d.include?("fable") },
+      "expected the sanctioned override to be LISTED, got: #{drift_check[:details].inspect}"
+  end
+
+  def test_clean_match_passes
+    default = AgentModels::TIER_DEFAULTS["plastic-executor"]
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-executor", model: default)
+    # No config.yml -> no override; frontmatter already matches the default.
+
+    checks = doctor.check_agent_model_drift("claude")
+    drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+    refute_nil drift_check
+    assert_equal "pass", drift_check[:status]
+  end
+
+  def test_no_installed_agent_files_passes
+    # DOCTOR_TEST_CLAUDE has no agents/ dir at all.
+    checks = doctor.check_agent_model_drift("claude")
+    drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+    refute_nil drift_check
+    assert_equal "pass", drift_check[:status]
+  end
+
+  def test_check_never_returns_fail
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-executor", model: "totally-unresolved-model")
+
+    checks = doctor.check_agent_model_drift("claude")
+
+    refute checks.any? { |c| c[:status] == "fail" },
+      "agent_model_drift must never fail the run, got: #{checks.map { |c| [c[:name], c[:status]] }}"
+  end
+
+  def test_wired_into_check_core_files
+    build_core_files_for_drift
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-executor", model: "haiku")
+
+    checks = doctor.check_core_files("claude")
+
+    assert checks.any? { |c| c[:name] == "agent_model_drift" },
+      "check_core_files must include the agent_model_drift check"
+  end
+
+  private
+
+  def build_core_files_for_drift
+    File.write(File.join(DOCTOR_TEST_HOME, "PLASTIC.md"), "# Plastic\n")
+    File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "1.0.0")
+    write_core_scripts(File.join(DOCTOR_TEST_HOME, "scripts"))
+    agent_version_dir = File.join(DOCTOR_TEST_CLAUDE, "plastic")
+    FileUtils.mkdir_p(agent_version_dir)
+    File.write(File.join(agent_version_dir, "VERSION"), "1.0.0")
+  end
+end

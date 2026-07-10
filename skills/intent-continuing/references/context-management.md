@@ -29,4 +29,7 @@ Triggered by UserPromptSubmit hook when user says "continue". Priority order:
 **3. Stale future intents (untouched 3+ days) → triage:**
 - **activate** — start working on it now
 - **abandon** — mark as abandoned
-- **defer to agent** — implement, research, or ideate
+- **defer to agent** — implement, research, or ideate. `research` is a real dispatch: resolve
+  `plastic-future-intent-researcher`'s model via `read-config agents.models.<basename> --project
+  <repo>` (never bare frontmatter), dispatch the agent (Agent tool) on the selected stale future
+  intent, let it write findings into that intent's `## Context`, then re-present the triage

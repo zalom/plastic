@@ -135,6 +135,16 @@ Stale future intents (no action taken):
 
 When the user activates a future intent, move it to `## Active` in INDEX.md and auto-commit.
 
+**Defer to agent: research.** Selecting `research` is a real dispatch, not a label. Resolve
+`plastic-future-intent-researcher`'s model via `read-config agents.models.<basename> --project
+<repo>` (project override, then global, then the shipped tier default) rather than relying on
+bare frontmatter, which also honors a sanctioned `agents.models.<name>` override if one is
+configured. Dispatch the agent (Agent tool, `subagent_type: "plastic-future-intent-researcher"`)
+on the selected stale future intent, passing the resolved model explicitly. The agent writes its
+findings into that intent's `## Context` (see `agents/plastic-future-intent-researcher.md`); it
+does not itself dispatch further sub-agents. Once it returns, re-present the stale-future-intent
+triage so the user can act on the fresh findings now on record.
+
 ## References
 
 - Read `references/context-management.md` for the full save/continue protocol and for
