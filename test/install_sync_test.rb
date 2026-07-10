@@ -106,4 +106,25 @@ class InstallSyncTest < Minitest::Test
   ensure
     FileUtils.rm_rf(home)
   end
+
+  # Regression guard (intent 172): generalizes the 78/86/151 manifest-drift class instead of
+  # patching one more one-off instance. Any shipped skill can reference a scripts/<name> path
+  # that is real on disk but missing from core_files, so install/update never copy it and the
+  # skill points at nothing post-install. This scans every shipped skill file for such
+  # references, keeps only the ones that resolve to a real repo file (doc-example paths like
+  # scripts/scaffold.rb or scripts/validate_slug.rb, and directory tokens like scripts/lib,
+  # name no real file and are correctly ignored, no hardcoded skip-list), and asserts each
+  # surviving ref is registered in core_files.
+  def test_every_skill_referenced_script_that_exists_is_registered_for_install
+    refs = Dir.glob(File.join(REPO, "skills", "**", "*")).select { |p| File.file?(p) }.flat_map do |path|
+      File.read(path).scan(%r{scripts/[A-Za-z0-9._-]+})
+    end.uniq
+
+    real_refs = refs.select { |ref| File.file?(File.join(REPO, ref)) }
+    refute_empty real_refs, "expected skills to reference at least one real scripts/* file"
+
+    missing = real_refs.reject { |ref| core_lib.include?(%("#{ref}")) }
+    assert_empty missing,
+      "skill-referenced scripts missing from core_files (installed skills would point at nothing): #{missing.join(", ")}"
+  end
 end
