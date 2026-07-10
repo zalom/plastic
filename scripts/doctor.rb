@@ -24,6 +24,7 @@ require_relative "lib/hook_registry"
 require_relative "lib/lock"
 require_relative "lib/bridge"
 require_relative "lib/agent_models"
+require_relative "lib/legacy_bookend_amnesty"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -41,6 +42,11 @@ class Doctor
   # Single source of truth for the required-field list lives in IntentValidator
   # (intent 60). Alias it here so the two can never drift.
   REQUIRED_FRONTMATTER_FIELDS = IntentValidator::REQUIRED_FIELDS
+
+  # Single source of truth for the pre-161 legacy Done-bookend amnesty list
+  # lives in LegacyBookendAmnesty (intent 170a). Alias it here so the two can
+  # never drift.
+  LEGACY_BOOKEND_AMNESTY = LegacyBookendAmnesty::LIST
 
   CLAUDE_HOOK_SCRIPTS = %w[
     plastic-session-start
@@ -67,9 +73,11 @@ class Doctor
 
   attr_reader :plastic_home, :agents
 
-  def initialize(plastic_home: DEFAULT_PLASTIC_HOME, agents: DEFAULT_AGENTS)
+  def initialize(plastic_home: DEFAULT_PLASTIC_HOME, agents: DEFAULT_AGENTS,
+                  bookend_amnesty: LEGACY_BOOKEND_AMNESTY)
     @plastic_home = plastic_home
     @agents = agents
+    @bookend_amnesty = bookend_amnesty
   end
 
   # --- Flag parsing ---
@@ -609,11 +617,18 @@ class Doctor
         next unless terminal
 
         # Audit echo (weakest signal, D1): the savepoint should carry a
-        # `Done delivered|abandoned` line. Missing on legacy history -> advisory gap.
+        # `Done delivered|abandoned` line. Missing on legacy history -> advisory
+        # gap, unless the (scope, id) is on the frozen pre-161 amnesty list
+        # (intent 170a). The amnesty is scope-qualified: an id on the list for
+        # one scope does not grandfather the same id in another scope.
         savepoint = File.join(dir, "savepoint.md")
         if File.exist?(savepoint) && File.read(savepoint) !~ /\bDone\b.*\b(delivered|abandoned)\b/
-          gaps << "#{label}: terminal in INDEX but savepoint.md has no " \
-                  "`Done delivered|abandoned` line (audit echo missing)"
+          id = dirname.split("--", 2).first
+          amnestied = @bookend_amnesty.fetch(store[:scope], []).include?(id)
+          unless amnestied
+            gaps << "#{label}: terminal in INDEX but savepoint.md has no " \
+                    "`Done delivered|abandoned` line (audit echo missing)"
+          end
         end
 
         # Stalled completion: the End tail never released the delivery lock, so the
