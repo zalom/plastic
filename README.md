@@ -99,6 +99,53 @@ Plastic delivers all work through successive stages ->
 | How   | What is the plan?                               | Plan and checklist | plan.md, checklist.md, actions/ACTION_1.md ... ACTION_N.md |
 | Exec  | What was actually delivered?                    | Outcome            | outcome.md                                     |
 
+## How to use Plastic
+
+Plastic organizes all work as intents. Each intent is one directory, and it carries the same
+small set of files at every stage.
+
+**The intent directory**
+
+| File | What it holds |
+| ---- | -------------- |
+| `{id}--slug.md` | The intent itself: intent line, context, decisions |
+| `spec.md` | The Why, consolidated into one contract for the plan |
+| `plan.md`, `checklist.md`, `actions/` | The How: the plan and its execution registry |
+| `outcome.md` | The Exec record: what actually shipped |
+
+See [`docs/architecture.md`](docs/architecture.md) for the full store layout, and
+[reading a delivered intent](docs/guides/reading-a-delivered-intent.md) for how to read a
+finished one fast.
+
+**From idea to delivery, one line per stage**
+
+| Stage | What happens |
+| ----- | ------------- |
+| What | Describe the idea in plain words; Plastic scaffolds the intent |
+| Why | Explore it; each ruling lands in Context and Decisions as it is made |
+| How | Consolidate into `spec.md`, then `plan.md` and `checklist.md` |
+| Exec | Build the change, verify it, tick the checklist |
+| Done | `outcome.md` records what shipped; the index moves the intent to Completed |
+
+Walk this once in
+[your first intent in 10 minutes](docs/guides/your-first-intent-in-10-minutes.md), or run
+`plastic-tutorial` for an interactive, hands-on walkthrough of three different ways to work.
+
+**Commands, by family**
+
+| Family | Commands |
+| ------ | -------- |
+| Mode | `plastic-tutorial`, `plastic-auto` |
+| Intent | `plastic-intent-creating`, `plastic-intent-starting`, `plastic-intent-brainstorming`, `plastic-intent-grilling`, `plastic-intent-speccing`, `plastic-intent-planning`, `plastic-intent-executing`, `plastic-intent-ending`, `plastic-intent-continuing`, `plastic-intent-researching` |
+| Project and delivery | `plastic-project-creating`, `plastic-roadmap`, `plastic-releasing` |
+| Skill | `plastic-skill-creating`, `plastic-skill-evaluating` |
+| Product | `plastic-install`, `plastic-update`, `plastic-uninstall`, `plastic-rollback`, `plastic-doctor`, `plastic-humanizer` |
+
+See [`docs/guides/index.md`](docs/guides/index.md) for task-oriented walkthroughs.
+
+The agent helps most at Why and How: turning a rough idea into rulings, and rulings into a
+plan a machine can build from exactly. Read
+[pick your mode](docs/guides/pick-your-mode.md) to decide how much of that to hand over.
 
 ## Compatibility and ownership
 
