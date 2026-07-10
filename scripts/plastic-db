@@ -1,0 +1,186 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+#
+# plastic-db: thin CLI over Plastic::DB (intent 41, ACTION_7, D7/AC5). Every
+# verb below calls a Plastic::DB facade method directly and renders its
+# result; this file implements no verb logic of its own, only argument
+# parsing and JSON/text rendering, so it can never drift into a second
+# implementation of the database layer.
+#
+# Usage:
+#   plastic-db query (--status S | --quadrant Q | --queue R [--batch N]) [--store S]
+#   plastic-db status <intent> <new-status> [--store S]
+#   plastic-db event <intent> --stage ST --type T --session SID [--payload JSON] [--store S]
+#   plastic-db lease <acquire|renew|release> <intent> --session SID [--artifact A] [--host H] [--store S]
+#   plastic-db session <register|update|end> --session SID [--cwd C] [--intent I] [--auto] [--store S]
+#   plastic-db rebuild [--store S]
+#   plastic-db export <intent> --intent-dir DIR [--store S]
+#   plastic-db bridge --session SID [--cwd C] [--store S]
+#
+# --store selects the store: "global", a project slug (resolved under
+# ~/.plastic/projects/<slug>), or a literal directory path (containing "/"),
+# the last form used by hermetic tests against a tmpdir store. Omitted,
+# --store falls back to CWD-resolve (StoreResolver), never an ambient
+# session id. --session is never defaulted from the environment: a verb
+# that needs one requires it explicitly on the command line.
+
+require "json"
+require "yaml"
+require "socket"
+require_relative "lib/db"
+require_relative "lib/bridge"
+
+def usage!
+  warn "usage: plastic-db <query|status|event|lease|session|rebuild|export|bridge> [args] [--store <global|slug|path>]"
+  exit 1
+end
+
+VERBS = %w[query status event lease session rebuild export bridge].freeze
+
+verb = ARGV.shift
+usage! unless VERBS.include?(verb)
+
+positional = []
+opts = {}
+until ARGV.empty?
+  case (flag = ARGV.shift)
+  when "--store" then opts[:store] = ARGV.shift
+  when "--status" then opts[:status] = ARGV.shift
+  when "--quadrant" then opts[:quadrant] = ARGV.shift
+  when "--queue" then opts[:queue] = ARGV.shift
+  when "--batch" then opts[:batch] = ARGV.shift
+  when "--stage" then opts[:stage] = ARGV.shift
+  when "--type" then opts[:type] = ARGV.shift
+  when "--payload" then opts[:payload] = ARGV.shift
+  when "--session" then opts[:session] = ARGV.shift
+  when "--host" then opts[:host] = ARGV.shift
+  when "--artifact" then opts[:artifact] = ARGV.shift
+  when "--cwd" then opts[:cwd] = ARGV.shift
+  when "--intent" then opts[:intent] = ARGV.shift
+  when "--intent-dir" then opts[:intent_dir] = ARGV.shift
+  when "--auto" then opts[:auto] = true
+  when /\A--/
+    warn "plastic-db: unknown flag #{flag}"
+    usage!
+  else
+    positional << flag
+  end
+end
+
+# Read the "intent" frontmatter field (the intent's display title) straight
+# off disk. Sessions.to_bridge_data (the DB adapter discover_bridge returns)
+# carries only id/store/dir, never a title, since the gate-decision functions
+# it feeds never read one; a display consumer (the statusline) still wants a
+# name, so the CLI's rendering layer resolves it here rather than growing the
+# shared adapter's contract. Best-effort: any parse failure yields nil.
+def intent_title(store, dir)
+  return nil if store.nil? || dir.nil?
+
+  path = File.join(store, dir, "#{dir}.md")
+  return nil unless File.exist?(path)
+
+  parts = File.read(path).split("---", 3)
+  return nil if parts.length < 3
+
+  fm = YAML.safe_load(parts[1]) || {}
+  fm["intent"]
+rescue StandardError
+  nil
+end
+
+def store_home_for(name, plastic_home: File.join(Dir.home, ".plastic"))
+  return Plastic::DB::StoreResolver.resolve(cwd: Dir.pwd)[:store_home] if name.nil? || name.strip.empty?
+  return File.expand_path(name) if name.include?("/") || Dir.exist?(name)
+  return plastic_home if name == "global"
+
+  File.join(plastic_home, "projects", name)
+end
+
+store = store_home_for(opts[:store])
+
+case verb
+when "query"
+  result =
+    if opts[:status]
+      Plastic::DB.by_status(store, opts[:status])
+    elsif opts[:quadrant]
+      Plastic::DB.by_quadrant(store, opts[:quadrant])
+    elsif opts[:queue]
+      Plastic::DB.by_queue(store, opts[:queue], batch: opts[:batch] && Integer(opts[:batch]))
+    else
+      usage!
+    end
+  puts JSON.generate(result)
+
+when "status"
+  intent_id, new_status = positional
+  usage! if intent_id.nil? || new_status.nil?
+  Plastic::DB.set_status(store, intent_id, new_status)
+  puts "ok"
+
+when "event"
+  intent_id = positional.first
+  usage! if intent_id.nil? || opts[:stage].nil? || opts[:type].nil? || opts[:session].nil?
+  payload = opts[:payload] ? JSON.parse(opts[:payload]) : {}
+  Plastic::DB.stamp_event(store, intent_id, stage: opts[:stage], event_type: opts[:type],
+                           actor_session: opts[:session], payload: payload)
+  puts "ok"
+
+when "lease"
+  action, intent_id = positional
+  usage! unless %w[acquire renew release].include?(action)
+  usage! if intent_id.nil? || opts[:session].nil?
+
+  case action
+  when "acquire"
+    status, = Plastic::DB.lease_acquire(store, intent_id, artifact: opts[:artifact], session: opts[:session],
+                                         host: opts[:host] || Socket.gethostname)
+    puts status
+  when "renew"
+    puts Plastic::DB.lease_renew(store, intent_id, artifact: opts[:artifact], session: opts[:session])
+  when "release"
+    puts Plastic::DB.lease_release(store, intent_id, artifact: opts[:artifact], session: opts[:session])
+  end
+
+when "session"
+  action = positional.first
+  usage! unless %w[register update end].include?(action)
+  usage! if opts[:session].nil?
+
+  case action
+  when "register"
+    row = Plastic::DB.session_register(store, session_id: opts[:session], host: opts[:host] || Socket.gethostname,
+                                        pid: Process.pid, cwd: opts[:cwd] || Dir.pwd,
+                                        active_intent_id: opts[:intent], auto: !!opts[:auto])
+    puts JSON.generate(row)
+  when "update"
+    fields = {}
+    fields[:cwd] = opts[:cwd] if opts[:cwd]
+    fields[:active_intent_id] = opts[:intent] if opts[:intent]
+    fields[:auto] = true if opts[:auto]
+    row = Plastic::DB.session_update(store, session_id: opts[:session], **fields)
+    puts JSON.generate(row)
+  when "end"
+    puts Plastic::DB.session_end(store, session_id: opts[:session])
+  end
+
+when "rebuild"
+  result = Plastic::DB.rebuild!(store)
+  puts result.nil? ? "fail-open" : "ok"
+
+when "export"
+  intent_id = positional.first
+  usage! if intent_id.nil? || opts[:intent_dir].nil?
+  path = Plastic::DB.export_savepoint(store, intent_id, intent_dir: opts[:intent_dir])
+  puts path.nil? ? "fail-open" : path
+
+when "bridge"
+  usage! if opts[:session].nil?
+  data = Bridge.discover_bridge(session: opts[:session], cwd: opts[:cwd] || Dir.pwd, store_home: store)
+  data["intent"]["name"] = intent_title(data["intent"]["store"], data["intent"]["dir"]) if data
+  # Pretty-printed (one field per line) so simple line-oriented consumers
+  # (grep/sed, e.g. hooks/statusline) can scan the "intent" block the same
+  # way they scanned the retired /tmp bridge file's JSON.
+  puts data.nil? ? "" : JSON.pretty_generate(data)
+end

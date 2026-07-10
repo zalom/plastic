@@ -4,17 +4,17 @@ require "fileutils"
 require "json"
 require "open3"
 require "rbconfig"
-require_relative "../scripts/lib/lock"
+require_relative "../scripts/lib/db"
 require_relative "../scripts/lib/bridge"
 
 # plastic-lock claim/release-claim verbs + claims in status (intent 111 D5,
-# AC2 via CLI, AC5). Hermetic: store in mktmpdir, PLASTIC_TMP injected for the
-# CLI child process, explicit --intent-dir/--session (never ambient).
+# AC2 via CLI, AC5; cutover intent 41 ACTION_10 onto the artifact grain of
+# `lock_leases`). Hermetic: store in mktmpdir, explicit --intent-dir/--session
+# (never ambient).
 class ClaimCliTest < Minitest::Test
   CLI = File.expand_path("../scripts/plastic-lock", __dir__)
 
   def setup
-    @tmp = Dir.mktmpdir("claim-cli-tmp")
     @home = Dir.mktmpdir("claim-cli-home")
     @store = File.join(@home, ".plastic", "projects", "demo", "store")
     @intent_dir = File.join(@store, "96--demo")
@@ -25,12 +25,23 @@ class ClaimCliTest < Minitest::Test
   end
 
   def teardown
-    FileUtils.rm_rf(@tmp)
     FileUtils.rm_rf(@home)
   end
 
+  def store_home
+    File.dirname(@store)
+  end
+
+  def conn
+    Plastic::DB.connect(store_home)
+  end
+
+  def claim_current(artifact)
+    Plastic::DB::Leases.current(conn, "96", artifact: artifact)
+  end
+
   def cli(*args, session: "sess-1")
-    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil },
+    Open3.capture3({ "CLAUDE_CODE_SESSION_ID" => nil },
                    RbConfig.ruby, CLI, *args,
                    "--intent-dir", @intent_dir, "--session", session)
   end
@@ -38,7 +49,7 @@ class ClaimCliTest < Minitest::Test
   def test_claim_acquires_and_exits_zero
     _out, _err, st = cli("claim", "--artifact", "plan.md", session: "sess-1")
     assert st.success?
-    assert_equal "sess-1", Claim.read(@intent_dir, "plan.md")["owner_session"]
+    assert_equal "sess-1", claim_current("plan.md")["owner_session"]
   end
 
   def test_second_claim_same_session_is_rejected
@@ -56,13 +67,12 @@ class ClaimCliTest < Minitest::Test
     assert_includes err, "sess-1"
   end
 
-  def test_claim_takes_over_stale_claim
-    Claim.acquire_claim(@intent_dir, "plan.md", session: "old-sess")
-    old = Time.now - (Lock::TTL_SECONDS + 100)
-    FileUtils.touch(Claim.path(@intent_dir, "plan.md"), mtime: old)
+  def test_claim_takes_over_expired_claim
+    Plastic::DB::Leases.acquire(conn, "96", artifact: "plan.md", session: "old-sess", host: "h",
+                                now: Time.now - Plastic::DB::Leases::TTL_SECONDS - 100)
     out, err, st = cli("claim", "--artifact", "plan.md", session: "sess-1")
     assert st.success?
-    assert_equal "sess-1", Claim.read(@intent_dir, "plan.md")["owner_session"]
+    assert_equal "sess-1", claim_current("plan.md")["owner_session"]
     assert_includes(out + err, "took over")
   end
 
@@ -70,12 +80,12 @@ class ClaimCliTest < Minitest::Test
     cli("claim", "--artifact", "plan.md", session: "sess-1")
     _out, _err, st = cli("release-claim", "--artifact", "plan.md", session: "sess-1")
     assert st.success?
-    assert_nil Claim.read(@intent_dir, "plan.md")
+    assert_nil claim_current("plan.md")
   end
 
   def test_status_lists_live_claims
-    Claim.acquire_claim(@intent_dir, "plan.md", session: "sess-1")
-    Claim.acquire_claim(@intent_dir, "spec.md", session: "sess-2")
+    Plastic::DB::Leases.acquire(conn, "96", artifact: "plan.md", session: "sess-1", host: "h")
+    Plastic::DB::Leases.acquire(conn, "96", artifact: "spec.md", session: "sess-2", host: "h")
     out, _err, st = cli("status", session: "sess-1")
     assert st.success?
     report = JSON.parse(out)

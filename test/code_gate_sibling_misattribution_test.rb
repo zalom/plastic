@@ -9,20 +9,23 @@ require_relative "../scripts/lib/bridge"
 # Regression test for intent 168: scripts/hook-code-gate resolved its bridge through
 # Bridge.discover_bridge, which applies the intent-90 strict per-session filter BEFORE
 # any worktree check. In a parallel roadmap wave the orchestrator's guided intent keys
-# its bridge by the real session id, while a derived-key auto sibling keys its own
-# bridge by `auto-<hash>`. A subagent editing a file inside its OWN sibling's worktree
+# its state by the real session id, while a derived-key auto sibling keys its own
+# state by `auto-<hash>`. A subagent editing a file inside its OWN sibling's worktree
 # inherits the orchestrator's session via CLAUDE_CODE_SESSION_ID, so the per-session
-# filter discarded the sibling's own worktree-matching bridge and left only the guided
-# bridge, which then failed worktree confinement for the WRONG intent. This test fails
-# against the pre-fix resolver (exit 2 naming the guided intent 401) and passes once
-# the edited file's worktree membership decides before the per-session filter (D1).
+# filter discarded the sibling's own worktree-matching candidate and left only the
+# guided one, which then failed worktree confinement for the WRONG intent. This test
+# fails against the pre-fix resolver (exit 2 naming the guided intent 401) and passes
+# once the edited file's worktree membership decides before the per-session filter
+# (D1). Cutover intent 41: candidates are `sessions` table rows (seeded through
+# Plastic::DB::Sessions.register in an isolated PLASTIC_STORE_HOME), not /tmp files.
 class CodeGateSiblingMisattributionTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/hook-code-gate", __dir__)
 
   def setup
     @tmp = Dir.mktmpdir("code-gate-sibling-tmp")
     @home = Dir.mktmpdir("code-gate-sibling-home")
-    @store = File.join(@home, ".plastic", "projects", "demo", "store")
+    @store_home = File.join(@home, ".plastic", "projects", "demo")
+    @store = File.join(@store_home, "store")
     FileUtils.mkdir_p(@store)
 
     @session = "orchestrator-session" # the guided real session id hook-code-gate resolves
@@ -48,14 +51,10 @@ class CodeGateSiblingMisattributionTest < Minitest::Test
     @file_d = File.join(@code_d, "app.rb")
     File.write(@file_d, "puts 1\n")
 
-    write_bridge("plastic-#{@session}--401.json",
-                 session: @session, id: "401", dir: "401--guided",
-                 auto: false, code: @code_g) # GUIDED
+    seed_session("#{@session}--401", intent_id: "401", cwd: @code_g, auto: false) # GUIDED
 
     @derived_key = Bridge.derive_key(@store, "402")
-    write_bridge("plastic-#{@derived_key}--402.json",
-                 session: @derived_key, id: "402", dir: "402--derived",
-                 auto: true, code: @code_d)
+    seed_session("#{@derived_key}--402", intent_id: "402", cwd: @code_d, auto: true)
 
     # Unrelated to either worktree/store, proving the fix does not rely on Dir.pwd.
     @unrelated_cwd = Dir.mktmpdir("code-gate-sibling-cwd")
@@ -67,18 +66,15 @@ class CodeGateSiblingMisattributionTest < Minitest::Test
     FileUtils.rm_rf(@unrelated_cwd)
   end
 
-  def write_bridge(name, session:, id:, dir:, auto:, code:)
-    data = {
-      "session" => session,
-      "intent" => { "id" => id, "dir" => dir, "store" => @store, "name" => "demo #{id}" },
-      "build" => { "auto" => auto },
-      "worktree" => { "code" => code, "provisioned" => true },
-    }
-    File.write(File.join(@tmp, name), JSON.generate(data))
+  def seed_session(session_id, intent_id:, cwd:, auto:)
+    conn = Plastic::DB.connect(@store_home)
+    Plastic::DB::Sessions.register(conn, session_id: session_id, host: "h", pid: 1,
+                                    cwd: cwd, active_intent_id: intent_id, auto: auto, now: Time.now)
   end
 
   def run_hook(file_path, session, content = nil)
-    env = { "PLASTIC_TMP" => @tmp, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
+    env = { "PLASTIC_TMP" => @tmp, "HOME" => @home,
+            "PLASTIC_STORE_HOME" => @store_home, "CLAUDE_CODE_SESSION_ID" => nil }
     args = [RbConfig.ruby, SCRIPT, file_path, session]
     args << content if content
     Open3.capture3(env, *args, chdir: @unrelated_cwd)
@@ -94,7 +90,7 @@ class CodeGateSiblingMisattributionTest < Minitest::Test
   end
 
   # Regression (b): the fix must NOT start allowing shared-checkout writes. An
-  # auto pre-How bridge editing a file OUTSIDE any worktree still blocks, naming
+  # auto pre-How session editing a file OUTSIDE any worktree still blocks, naming
   # its own intent, because enclosing_worktree_dir(@shared) is nil and the edit
   # falls through to the unchanged pipeline (code_gate_decision).
   def test_shared_checkout_edit_outside_any_worktree_still_blocks
@@ -106,9 +102,7 @@ class CodeGateSiblingMisattributionTest < Minitest::Test
     code_z = File.join(@home, "repo", ".claude", "worktrees", "501--auto")
     FileUtils.mkdir_p(code_z)
 
-    write_bridge("plastic-#{@session}--501.json",
-                 session: @session, id: "501", dir: "501--auto",
-                 auto: true, code: code_z)
+    seed_session("#{@session}--501", intent_id: "501", cwd: code_z, auto: true)
 
     shared = File.join(@home, "repo", "lib", "app.rb")
     FileUtils.mkdir_p(File.dirname(shared))

@@ -8,18 +8,21 @@ require_relative "../scripts/lib/bridge"
 
 # Regression test for intent 150: scripts/hook-code-gate resolved its bridge lookup
 # against Dir.pwd (the hook process's own launch dir), never the file actually being
-# edited. Under one session id owning two concurrent per-intent bridges, cwd never
-# overlapped either candidate, so discover_bridge fell through to the newest-mtime
-# tiebreak and the newer sibling's bridge decided every edit in the session -- including
-# edits that belonged to the OTHER sibling. This test fails against the pre-fix Dir.pwd
-# line and passes once cwd is resolved from the edited file's own path (D1).
+# edited. Under one session id owning two concurrent per-intent candidates, cwd never
+# overlapped either one, so discovery fell through to the recency tiebreak and the
+# newer sibling decided every edit in the session -- including edits that belonged
+# to the OTHER sibling. This test fails against the pre-fix Dir.pwd line and passes
+# once cwd is resolved from the edited file's own path (D1). Cutover intent 41: the
+# candidates are `sessions` table rows (seeded through Plastic::DB::Sessions.register
+# in an isolated PLASTIC_STORE_HOME), not /tmp bridge files.
 class CodeGateHookCollisionTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/hook-code-gate", __dir__)
 
   def setup
     @tmp = Dir.mktmpdir("code-gate-collision-tmp")
     @home = Dir.mktmpdir("code-gate-collision-home")
-    @store = File.join(@home, ".plastic", "projects", "demo", "store")
+    @store_home = File.join(@home, ".plastic", "projects", "demo")
+    @store = File.join(@store_home, "store")
     FileUtils.mkdir_p(@store)
 
     @session = "collision-session"
@@ -42,9 +45,9 @@ class CodeGateHookCollisionTest < Minitest::Test
     File.write(@file_a, "puts 1\n")
     File.write(@file_b, "puts 1\n")
 
-    write_bridge("301", @dir_a, @code_a)
-    sleep 0.02
-    write_bridge("302", @dir_b, @code_b) # strictly newer mtime than 301's
+    t = Time.now
+    seed_session("301", @code_a, now: t)
+    seed_session("302", @code_b, now: t + 2) # strictly newer than 301's
 
     # Unrelated to either worktree/store, proving the fix stops relying on Dir.pwd.
     @unrelated_cwd = Dir.mktmpdir("code-gate-collision-cwd")
@@ -56,18 +59,15 @@ class CodeGateHookCollisionTest < Minitest::Test
     FileUtils.rm_rf(@unrelated_cwd)
   end
 
-  def write_bridge(id, dir, code)
-    data = {
-      "session" => @session,
-      "intent" => { "id" => id, "dir" => File.basename(dir), "store" => @store, "name" => "demo #{id}" },
-      "build" => { "auto" => true },
-      "worktree" => { "code" => code, "provisioned" => true },
-    }
-    File.write(File.join(@tmp, "plastic-#{@session}--#{id}.json"), JSON.generate(data))
+  def seed_session(id, code, now:)
+    conn = Plastic::DB.connect(@store_home)
+    Plastic::DB::Sessions.register(conn, session_id: "#{@session}--#{id}", host: "h", pid: 1,
+                                    cwd: code, active_intent_id: id, auto: true, now: now)
   end
 
   def run_hook(file_path, content = nil)
-    env = { "PLASTIC_TMP" => @tmp, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
+    env = { "PLASTIC_TMP" => @tmp, "HOME" => @home,
+            "PLASTIC_STORE_HOME" => @store_home, "CLAUDE_CODE_SESSION_ID" => nil }
     args = [RbConfig.ruby, SCRIPT, file_path, @session]
     args << content if content
     Open3.capture3(env, *args, chdir: @unrelated_cwd)

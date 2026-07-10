@@ -4,12 +4,13 @@ require "fileutils"
 require "json"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/worktree"
-require_relative "../scripts/lib/lock"
+require_relative "../scripts/lib/db"
 
 # The composed lock-mechanism surface, end to end (intent 108, the original
-# What). Every test is hermetic: injected PLASTIC_TMP (ambient save/restore),
-# mktmpdir stores, injected clocks, FakeRunner for git, and Worktree
-# provision/release neutralized except where a test exercises them with a fake.
+# What; cutover intent 41 ACTION_10). Every test is hermetic: mktmpdir stores,
+# injected clocks, FakeRunner for git, and Worktree provision/release
+# neutralized except where a test exercises them with a fake. Lock state lives
+# ONLY in `lock_leases` (AC7): no delivery.lock/.claims/ files anywhere.
 class LockSystemTest < Minitest::Test
   # A fake ShellRunner (worktree_test.rb pattern): records calls, scripted
   # results, every git call "succeeds" by default.
@@ -29,11 +30,8 @@ class LockSystemTest < Minitest::Test
   end
 
   def setup
-    @tmp = Dir.mktmpdir("locksys-tmp")
     @home = Dir.mktmpdir("locksys-home")
-    @prev_tmp = ENV["PLASTIC_TMP"]
     @prev_sid = ENV["CLAUDE_CODE_SESSION_ID"]
-    ENV["PLASTIC_TMP"] = @tmp
     ENV["CLAUDE_CODE_SESSION_ID"] = nil
     @store = File.join(@home, ".plastic", "projects", "demo", "store")
     %w[96--demo 97--other].each do |d|
@@ -59,11 +57,9 @@ class LockSystemTest < Minitest::Test
   end
 
   def teardown
-    ENV["PLASTIC_TMP"] = @prev_tmp
     ENV["CLAUDE_CODE_SESSION_ID"] = @prev_sid
     Worktree.define_singleton_method(:provision, @real_provision) if @real_provision
     Worktree.define_singleton_method(:release, @real_release) if @real_release
-    FileUtils.rm_rf(@tmp)
     FileUtils.rm_rf(@home)
   end
 
@@ -99,7 +95,21 @@ class LockSystemTest < Minitest::Test
 
   def repair(session)
     Bridge.repair_lock(session, intent_id: "96", intent_dir: @dir96,
-                       store: @store, name: "demo", tmp: @tmp)
+                       store: @store, name: "demo")
+  end
+
+  def store_home
+    File.dirname(@store)
+  end
+
+  def lease_current(intent_id)
+    conn = Plastic::DB.connect(store_home)
+    Plastic::DB::Leases.current(conn, intent_id)
+  end
+
+  def session_row(session_id)
+    conn = Plastic::DB.connect(store_home)
+    Plastic::DB::Sessions.active_for(conn, session: session_id, cwd: nil)
   end
 
   # --- 1. single owner ---------------------------------------------------------
@@ -111,29 +121,28 @@ class LockSystemTest < Minitest::Test
 
     data = arm("a") # idempotent re-arm, :owned path
     assert_equal "a", data["lock"]["owner_session"]
-    assert_equal "a", Lock.read(@dir96)["owner_session"]
+    assert_equal "a", lease_current("96")["owner_session"]
   end
 
   # --- 2. lease expiry and explicit reclaim ------------------------------------
 
   def test_lease_expiry_gates_takeover
     arm("a")
-    status, _ = Lock.takeover(@dir96, session: "b", ttl: 1800)
+    status, _ = Plastic::DB.lease_takeover(store_home, "96", session: "b")
     assert_equal :fresh, status, "no takeover while the lease is fresh"
 
-    FileUtils.touch(Lock.path(@dir96), mtime: Time.now - 4000)
-    status, data = Lock.takeover(@dir96, session: "b", ttl: 1800)
+    status, data = Plastic::DB.lease_takeover(store_home, "96", session: "b",
+                                              now: Time.now + Plastic::DB::Leases::TTL_SECONDS + 200)
     assert_equal :taken, status
     assert_equal "b", data["owner_session"]
-    audit = File.read(File.join(@dir96, "savepoint.md"))
-    assert_includes audit, "takeover: b reclaimed delivery lock from a"
   end
 
   # --- 3. delegation end to end -------------------------------------------------
 
   def test_delegate_passes_the_gate_stranger_denied_with_routing
     arm("owner-a")
-    assert Lock.add_delegate(@dir96, delegate: "sub", session: "owner-a")
+    conn = Plastic::DB.connect(store_home)
+    assert Plastic::DB::Leases.add_delegate(conn, "96", delegate: "sub", session: "owner-a")
     assert_nil gate("#{@dir96}/plan.md", session: "sub")
     reason = gate("#{@dir96}/plan.md", session: "stranger")
     refute_nil reason
@@ -142,17 +151,17 @@ class LockSystemTest < Minitest::Test
 
   # --- 4. session resolution: all three fallbacks -------------------------------
 
-  def test_explicit_session_keys_the_bridge
+  def test_explicit_session_keys_the_session_row
     arm("explicit-sid")
-    assert File.exist?(File.join(@tmp, "plastic-explicit-sid--96.json"))
-    assert_equal "explicit-sid", Lock.read(@dir96)["owner_session"]
+    refute_nil session_row("explicit-sid--96")
+    assert_equal "explicit-sid", lease_current("96")["owner_session"]
   end
 
-  def test_env_session_keys_the_bridge_when_no_explicit
+  def test_env_session_keys_the_session_row_when_no_explicit
     ENV["CLAUDE_CODE_SESSION_ID"] = "env-sid"
     arm(nil)
-    assert File.exist?(File.join(@tmp, "plastic-env-sid--96.json"))
-    assert_equal "env-sid", Lock.read(@dir96)["owner_session"]
+    refute_nil session_row("env-sid--96")
+    assert_equal "env-sid", lease_current("96")["owner_session"]
   ensure
     ENV["CLAUDE_CODE_SESSION_ID"] = nil
   end
@@ -160,8 +169,8 @@ class LockSystemTest < Minitest::Test
   def test_derived_key_when_both_blank_and_warns
     derived = Bridge.derive_key(@store, "96")
     _out, err = capture_io { arm(nil) }
-    assert File.exist?(File.join(@tmp, "plastic-#{derived}--96.json"))
-    assert_equal derived, Lock.read(@dir96)["owner_session"]
+    refute_nil session_row(Bridge.session_key(derived, "96"))
+    assert_equal derived, lease_current("96")["owner_session"]
     assert_match(/derived bridge key/, err)
   end
 
@@ -223,29 +232,27 @@ class LockSystemTest < Minitest::Test
     assert_nil result["worktree"]
   end
 
-  # --- 7. purge on terminal, with the lock guard ---------------------------------
+  # --- 7. purge on terminal, with the lease guard ---------------------------------
 
   def test_purge_terminal_respects_lock_and_current_session
     write_index_active([]) # both intents are terminal now
+    conn = Plastic::DB.connect(store_home)
     seed = lambda do |session, id, dir|
-      Bridge.write(session, { "session" => session,
-                              "intent" => { "id" => id, "dir" => File.basename(dir),
-                                            "store" => @store, "name" => "demo" },
-                              "build" => { "auto" => false } }, tmp: @tmp)
-      Bridge.path(session, intent_id: id, tmp: @tmp)
+      Plastic::DB::Sessions.register(conn, session_id: Bridge.session_key(session, id), host: "h", pid: 1,
+                                      cwd: dir, active_intent_id: id, auto: false, now: Time.now)
     end
 
-    terminal = seed.call("t-sess", "96", @dir96) # terminal, no lock -> purges
-    locked = seed.call("l-sess", "97", @dir97)   # terminal, lock held -> kept
-    current = seed.call("current", "96", @dir96)
-    Lock.acquire(@dir97, session: "l-sess")
+    seed.call("t-sess", "96", @dir96) # terminal, no lease -> purges
+    seed.call("l-sess", "97", @dir97) # terminal, lease held -> kept
+    seed.call("current", "96", @dir96)
+    Plastic::DB::Leases.acquire(conn, "97", session: "l-sess", host: "h")
 
-    removed = Bridge.purge_done_bridges(session: "current", tmp: @tmp)
-    assert_includes removed, terminal, "a terminal intent's bridge purges"
-    refute File.exist?(terminal)
-    assert File.exist?(current), "the current session's bridge never purges"
-    refute_includes removed, locked
-    assert File.exist?(locked), "a held delivery.lock blocks the purge (D6)"
+    removed = Bridge.purge_done_bridges(session: "current", store: @store)
+    assert_includes removed, "t-sess--96", "a terminal intent's row purges"
+    assert_nil session_row("t-sess--96")
+    refute_nil session_row("current--96"), "the current session's row never purges"
+    refute_includes removed, "l-sess--97"
+    refute_nil session_row("l-sess--97"), "a held delivery lease blocks the purge (D6)"
   end
 
   # --- 8. per-gate deny/allow matrix ----------------------------------------------
@@ -262,7 +269,7 @@ class LockSystemTest < Minitest::Test
     File.write(File.join(@dir96, "checklist.md"), "- [ ] x\n")
     assert_nil Bridge.code_gate_decision(auto_bridge, project_file, home: @home)
 
-    # lock-gate: no lock -> deny naming intent-starting; owner -> allow.
+    # lock-gate: no lease -> deny naming intent-starting; owner -> allow.
     refute_nil gate("#{@dir97}/plan.md", session: "nobody")
     assert_includes gate("#{@dir97}/plan.md", session: "nobody"), "/plastic-intent-starting"
     assert_nil gate("#{@dir96}/plan.md", session: "a")
@@ -278,36 +285,38 @@ class LockSystemTest < Minitest::Test
 
   # --- 9-11. recovery ---------------------------------------------------------------
 
-  def test_corrupted_bridge_recovery
+  def test_session_row_missing_recovery
     arm("a")
-    File.write(Bridge.path("a", intent_id: "96", tmp: @tmp), "}{ not json")
+    conn = Plastic::DB.connect(store_home)
+    Plastic::DB::Sessions.end(conn, session_id: "a--96")
     assert_nil gate("#{@dir96}/plan.md", session: "a"),
-               "a clobbered bridge cannot strand the owner: the lock file wins (D2)"
+               "a missing session row cannot strand the owner: the lease decides (D2)"
     report = repair("a")
     assert_equal "repaired", report["status"]
-    bridge = Bridge.read("a", intent_id: "96", tmp: @tmp)
-    assert_equal "96", bridge.dig("intent", "id")
-    assert_equal "a", bridge.dig("lock", "owner_session")
+    row = session_row("a--96")
+    refute_nil row
+    assert_equal "96", row["active_intent_id"]
+    assert_equal "a", lease_current("96")["owner_session"]
   end
 
-  def test_corrupted_lock_recovery
-    File.write(Lock.path(@dir96), "{ nope")
-    reason = gate("#{@dir96}/plan.md", session: "a")
-    assert_includes reason, "/plastic-doctor fix the lock"
+  def test_expired_foreign_lease_recovery
+    conn = Plastic::DB.connect(store_home)
+    Plastic::DB::Leases.acquire(conn, "96", session: "old-owner", host: "h",
+                                now: Time.now - Plastic::DB::Leases::TTL_SECONDS - 100)
+    assert_nil gate("#{@dir96}/plan.md", session: "a"),
+               "an expired lease allows outright (leases fail open on expiry)"
     report = repair("a")
     assert_equal "repaired", report["status"]
-    assert_equal "a", Lock.read(@dir96)["owner_session"]
+    assert_equal "a", lease_current("96")["owner_session"]
     assert_nil gate("#{@dir96}/plan.md", session: "a")
   end
 
-  def test_missing_bridge_tmp_wiped_recovery
-    arm("a")
-    File.delete(Bridge.path("a", intent_id: "96", tmp: @tmp))
-    assert_nil gate("#{@dir96}/plan.md", session: "a"),
-               "a wiped /tmp cannot strand the owner"
+  def test_fresh_foreign_lease_recovery_reports_held
+    conn = Plastic::DB.connect(store_home)
+    Plastic::DB::Leases.acquire(conn, "96", session: "other-owner", host: "h")
     report = repair("a")
-    assert_equal "repaired", report["status"]
-    refute_nil Bridge.read("a", intent_id: "96", tmp: @tmp), "repair rebuilds the bridge cache"
+    assert_equal "held", report["status"]
+    assert_equal "other-owner", report["owner"]
   end
 
   # --- 12. D9: lifecycle writes read only the MAIN store dir -----------------------
@@ -322,9 +331,11 @@ class LockSystemTest < Minitest::Test
     File.write(spec, "real spec content\n")
     assert_equal "how", Bridge.derive_stage(@dir96),
                  "stage derivation reads the MAIN intent dir"
-    Bridge.append_savepoint(@dir96, spec)
-    assert File.exist?(File.join(@dir96, "savepoint.md")),
-           "the savepoint ledger lands in the MAIN intent dir"
+    assert Bridge.append_savepoint(@dir96, spec),
+           "the savepoint event is stamped against the MAIN store's DB (cutover intent 41 ACTION_11)"
+    conn = Plastic::DB.connect(store_home)
+    assert_includes Plastic::DB::SavepointEvents.events_for(conn, "96").map { |e| [e["stage"], e["event_type"]] },
+                     ["Why", "spec.md created"]
     refute Dir.exist?(store_wt),
            "no lifecycle op needed the store worktree even to exist on disk"
   end

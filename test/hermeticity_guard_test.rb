@@ -8,9 +8,24 @@ require "json"
 # spawned processes, or the tmp:/Dir.mktmpdir seams in-process), and any test
 # file exercising arm/derive must not leak the ambient CLAUDE_CODE_SESSION_ID
 # into those writes.
+#
+# Cutover intent 41 (ACTION_12): the /tmp bridge, delivery.lock, and
+# savepoint.md live writes all moved onto a store's `plastic.db`
+# (sessions/lock_leases/savepoint_events, via Plastic::DB and its
+# Leases/Sessions/SavepointEvents modules). The SAME hazard exists there: a
+# test writing DB state must isolate its own store/DB path, never write
+# against a store the live session shares (and, for `sessions`, never key a
+# row with the ambient session id). WRITERS below now also matches every
+# write verb on that surface, so a DB-writing test is held to the identical
+# isolation bar as a bridge-writing one.
 class HermeticityGuardTest < Minitest::Test
-  WRITERS = /Bridge\.(arm_auto|arm_guided|derive|write|disarm_auto|repair_lock)\b/.freeze
-  ISOLATION = /PLASTIC_TMP|tmp:\s|Dir\.mktmpdir/.freeze
+  WRITERS = /Bridge\.(arm_auto|arm_guided|derive|write|disarm_auto|repair_lock)\b
+            |Plastic::DB\.(set_status|set_quadrant|stamp_event|ensure_intent_row|export_savepoint
+              |lease_(acquire|renew|release|takeover|delegate_add)
+              |session_(register|update|end)|roadmap_(upsert|entry_set)|rebuild!|with_write)\b
+            |(Leases|Sessions|SavepointEvents)\.(acquire|renew|release|takeover|add_delegate
+              |register|update|end|stamp|export|rebuild_from_export)\b/x.freeze
+  ISOLATION = /PLASTIC_TMP|PLASTIC_STORE_HOME|tmp:\s|Dir\.mktmpdir/.freeze
 
   def test_every_bridge_writing_test_isolates_its_tmp
     offenders = Dir[File.expand_path("../*_test.rb", __FILE__)].select do |f|
@@ -49,21 +64,23 @@ class HermeticityGuardTest < Minitest::Test
       "#{offenders.map { |f| File.basename(f) }.join(', ')}"
   end
 
-  # hook-session-start and hook-gate-check WRITE bridge state (derive /
-  # last_activity) keyed by the ambient session id. A test that spawns either
-  # without env isolation clobbers the live session's /tmp bridge (the exact
-  # 107/110 incident, reproduced by deprecation_display_test before this
-  # guard). Spawning tests must inject PLASTIC_TMP.
+  # hook-session-start and hook-gate-check WRITE session/lease state (derive /
+  # last_activity / heartbeat) keyed by the ambient session id. A test that
+  # spawns either without store isolation clobbers the live session's state
+  # (the exact 107/110 incident, reproduced by deprecation_display_test before
+  # this guard). Spawning tests must inject a store seam: PLASTIC_STORE_HOME
+  # (the `sessions`/`lock_leases` store seam, intent 41 cutover) or the
+  # retired PLASTIC_TMP (pre-cutover /tmp bridge seam).
   def test_every_bridge_writing_hook_spawn_isolates_its_tmp
     offenders = Dir[File.expand_path("../*_test.rb", __FILE__)].select do |f|
       next false if File.basename(f) == File.basename(__FILE__)
       src = File.read(f)
       src.match?(/hook-(session-start|gate-check)/) &&
         src.match?(/Open3|IO\.popen|\bsystem\(/) &&
-        !src.include?("PLASTIC_TMP")
+        !src.include?("PLASTIC_TMP") && !src.include?("PLASTIC_STORE_HOME")
     end
     assert_empty offenders,
-      "these tests spawn a bridge-writing hook without PLASTIC_TMP isolation: " \
+      "these tests spawn a bridge-writing hook without store isolation: " \
       "#{offenders.map { |f| File.basename(f) }.join(', ')}"
   end
 

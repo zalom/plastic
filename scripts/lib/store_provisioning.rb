@@ -3,6 +3,7 @@
 
 require "fileutils"
 require "yaml"
+require_relative "worktree"
 
 # StoreProvisioning — the single source of truth for creating a registered
 # project's intent store (intent 61).
@@ -47,6 +48,14 @@ module StoreProvisioning
     project_dir = File.join(plastic_home, "projects", slug)
     store_dir = File.join(project_dir, "store")
     FileUtils.mkdir_p(store_dir)
+
+    # Every project store (and the global store) shares ONE git repo rooted at
+    # plastic_home (there is no per-project .git), so a single unanchored
+    # `.gitignore` entry there covers `plastic.db`/`plastic.db-wal`/
+    # `plastic.db-shm` at any depth under it, present store or future one. The
+    # DB itself is never created here: SQLite creates the file lazily on first
+    # `Plastic::DB.connect` (D3), and this call must never force that early.
+    Worktree.ensure_gitignored(plastic_home, "plastic.db*")
 
     created = []
     created << write_if_missing(File.join(store_dir, ".gitkeep"), "")

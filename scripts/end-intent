@@ -253,6 +253,11 @@ def store_commit(store, id, disposition)
   root = git_toplevel(store)
   return false if root.nil?
 
+  # The operational DB (plastic.db + WAL/SHM) is derived, rebuildable state
+  # (intent 41): never committed. Store provisioning ensures this ignore on
+  # real stores; self-heal here so any store repo commits clean.
+  Worktree.ensure_gitignored(root, "plastic.db*")
+
   Open3.capture3("git", "-C", root, "add", "-A")
   _out, _err, status = Open3.capture3(
     "git", "-C", root,
@@ -317,8 +322,10 @@ def main(argv)
     warn "end-intent: INDEX.md not found at #{index_path}, skipping the terminal move"
   end
 
-  # 3. Savepoint Done bookend (idempotent).
-  Bridge.append_terminal_savepoint(intent_dir, disposition)
+  # 3. Savepoint Done bookend (idempotent). --no-commit also suppresses the
+  #    gate-export commit the Done stamp would otherwise create (the export
+  #    file still lands; only git commits are skipped).
+  Bridge.append_terminal_savepoint(intent_dir, disposition, commit: !opts[:no_commit])
 
   # 4. Store auto-commit, unless --no-commit.
   store_commit(store, id, disposition) unless opts[:no_commit]

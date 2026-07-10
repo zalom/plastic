@@ -1,23 +1,25 @@
+# encoding: UTF-8
+# frozen_string_literal: true
+
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "stringio"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/worktree"
-require_relative "../scripts/lib/lock"
+require_relative "../scripts/lib/db"
 
 # Tests for arm_guided: acquire the delivery lock WITHOUT auto mode (intent 96).
-# Mirrors bridge_auto_test.rb's hermetic setup exactly.
+# Mirrors bridge_auto_test.rb's hermetic setup exactly (intent 41: sessions
+# persist to the `sessions` table instead of a /tmp bridge file).
 class BridgeGuidedTest < Minitest::Test
   def setup
-    @store = Dir.mktmpdir("bridge-guided-store")
+    @home = Dir.mktmpdir("bridge-guided-home")
+    @store = File.join(@home, "store")
     @session = "test-#{Process.pid}-#{object_id}"
     @intent_dir = File.join(@store, "96--demo")
     FileUtils.mkdir_p(@intent_dir)
     File.write(File.join(@intent_dir, "96--demo.md"), "## Intent\nDemo\n")
-    @bridge_tmp = Dir.mktmpdir("bridge-guided-tmp")
-    @saved_plastic_tmp = ENV["PLASTIC_TMP"]
-    ENV["PLASTIC_TMP"] = @bridge_tmp
 
     # Neutralize real worktree git ops by default so this suite stays hermetic.
     @real_provision = Worktree.method(:provision)
@@ -27,9 +29,7 @@ class BridgeGuidedTest < Minitest::Test
   end
 
   def teardown
-    FileUtils.rm_rf(@store)
-    FileUtils.rm_rf(@bridge_tmp)
-    @saved_plastic_tmp.nil? ? ENV.delete("PLASTIC_TMP") : ENV["PLASTIC_TMP"] = @saved_plastic_tmp
+    FileUtils.rm_rf(@home)
     Worktree.define_singleton_method(:provision, @real_provision) if @real_provision
     Worktree.define_singleton_method(:release, @real_release) if @real_release
   end
@@ -48,12 +48,23 @@ class BridgeGuidedTest < Minitest::Test
     Bridge.arm_guided(@session, intent_id: "96", intent_dir: @intent_dir, store: @store, name: "demo")
   end
 
+  def session_row(session_id: Bridge.session_key(@session, "96"))
+    conn = Plastic::DB.connect(File.dirname(@store))
+    Plastic::DB::Sessions.active_for(conn, session: session_id, cwd: nil)
+  end
+
+  def lease_current(intent_id: "96")
+    conn = Plastic::DB.connect(File.dirname(@store))
+    Plastic::DB::Leases.current(conn, intent_id)
+  end
+
   def test_arm_guided_leaves_auto_false
     data = arm_guided
     assert_equal false, data["build"]["auto"]
     assert_equal "96", data["intent"]["id"]
-    assert File.exist?(Bridge.path(@session, intent_id: "96"))
-    assert_equal false, Bridge.read(@session, intent_id: "96")["build"]["auto"]
+    row = session_row
+    refute_nil row
+    assert_equal 0, row["auto"]
   end
 
   def test_arm_guided_stamps_lock_and_calls_provision
@@ -67,14 +78,12 @@ class BridgeGuidedTest < Minitest::Test
       assert_equal true, data["worktree"]["provisioned"]
     end
     assert_equal 1, seen.length, "arm_guided must call Worktree.provision exactly once"
-    # lock cache persisted to disk, and the durable lock file exists in the
-    # intent dir with the same owner (the file is the truth, D2)
-    assert_equal @session, Bridge.read(@session, intent_id: "96")["lock"]["owner_session"]
-    assert_equal @session, Lock.read(@intent_dir)["owner_session"]
+    assert_equal @session, lease_current["owner_session"]
   end
 
   def test_arm_guided_raises_lock_held_when_another_session_owns_the_lock
-    Lock.acquire(@intent_dir, session: "someone-else")
+    conn = Plastic::DB.connect(File.dirname(@store))
+    Plastic::DB::Leases.acquire(conn, "96", session: "someone-else", host: "h")
     err = assert_raises(Bridge::LockHeldError) { arm_guided }
     assert_includes err.message, "/plastic-doctor"
   end
@@ -95,11 +104,12 @@ class BridgeGuidedTest < Minitest::Test
     data = Bridge.arm_auto(@session, intent_id: "96", intent_dir: @intent_dir, store: @store, name: "demo")
     assert_equal true, data["build"]["auto"]
     assert_equal data["session"], data["lock"]["owner_session"]
-    assert_equal @session, Lock.read(@intent_dir)["owner_session"]
-    assert_equal true, Bridge.read(@session, intent_id: "96")["build"]["auto"]
+    assert_equal @session, lease_current["owner_session"]
+    row = session_row
+    assert_equal 1, row["auto"]
   end
 
-  # Session-less arming derives the key, writes the bridge, warns on stderr.
+  # Session-less arming derives the key, registers the session, warns on stderr.
   def test_arm_guided_derives_key_and_warns_when_no_session
     saved_code = ENV["CLAUDE_CODE_SESSION_ID"]
     ENV.delete("CLAUDE_CODE_SESSION_ID")
@@ -109,9 +119,8 @@ class BridgeGuidedTest < Minitest::Test
       assert_equal derived, data["session"]
       assert_equal false, data["build"]["auto"]
     end
-    assert File.exist?(Bridge.path(derived, intent_id: "96"))
+    refute_nil session_row(session_id: Bridge.session_key(derived, "96"))
     refute_empty out
-    File.delete(Bridge.path(derived, intent_id: "96")) if File.exist?(Bridge.path(derived, intent_id: "96"))
   ensure
     ENV["CLAUDE_CODE_SESSION_ID"] = saved_code unless saved_code.nil?
   end

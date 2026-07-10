@@ -2,6 +2,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/db"
 
 # Tests for the placeholder sentinel + Bridge.stage_file_present? predicate and
 # its integration with stage detection and the savepoint ledger (intent 60b).
@@ -103,27 +104,51 @@ class StageFilePresentTest < Minitest::Test
   end
 
   # --- integration: savepoint trio ignores sentinels ------------------------
+  #
+  # These three stamp `savepoint_events` (intent 41 cutover), which needs a
+  # store_home/store/<id>--<slug> nesting to resolve its DB connection --
+  # unlike scaffold_intent's flat @dir/60--demo layout (fine for the other,
+  # DB-free tests above). A dedicated nested scaffold keeps this local.
+
+  def scaffold_nested_intent
+    store = File.join(@dir, "store")
+    intent_dir = File.join(store, "60--demo")
+    FileUtils.mkdir_p(File.join(intent_dir, "actions"))
+    File.write(File.join(intent_dir, "60--demo.md"), "## Intent\nDemo\n\n## Context\nWhy\n")
+    %w[spec.md plan.md checklist.md outcome.md].each do |f|
+      File.write(File.join(intent_dir, f), "#{SENTINEL}\n\nplaceholder\n")
+    end
+    intent_dir
+  end
+
+  def pairs_for(intent_dir, intent_id)
+    conn = Plastic::DB.connect(File.dirname(File.dirname(intent_dir)))
+    Plastic::DB::SavepointEvents.events_for(conn, intent_id).map { |e| [e["stage"], e["event_type"]] }
+  end
 
   def test_rebuild_logs_only_what_for_scaffolded_intent
-    intent_dir = scaffold_intent
-    count = Bridge.rebuild_savepoint(intent_dir)
-    assert_equal 1, count
-    ledger = File.read(File.join(intent_dir, "savepoint.md"))
-    assert_includes ledger, "What"
-    refute_includes ledger, "spec.md created"
-    refute_includes ledger, "outcome.md created"
+    intent_dir = scaffold_nested_intent
+    Bridge.append_savepoint(intent_dir, File.join(intent_dir, "60--demo.md"))
+    Plastic::DB.export_savepoint(File.dirname(File.dirname(intent_dir)), "60", intent_dir: intent_dir)
+    conn = Plastic::DB.connect(File.dirname(File.dirname(intent_dir)))
+    conn.execute("DELETE FROM savepoint_events")
+
+    assert_equal true, Bridge.rebuild_savepoint(intent_dir)
+    milestones = pairs_for(intent_dir, "60")
+    assert_equal [["What", "60--demo.md"]], milestones
   end
 
   def test_append_returns_false_for_sentinel_lifecycle_file
-    intent_dir = scaffold_intent
+    intent_dir = scaffold_nested_intent
     refute Bridge.append_savepoint(intent_dir, File.join(intent_dir, "plan.md"))
-    refute File.exist?(File.join(intent_dir, "savepoint.md"))
+    assert_empty pairs_for(intent_dir, "60")
   end
 
   def test_append_logs_real_lifecycle_file
-    intent_dir = scaffold_intent
+    intent_dir = scaffold_nested_intent
     File.write(File.join(intent_dir, "spec.md"), "# Spec\nreal\n")
     assert Bridge.append_savepoint(intent_dir, File.join(intent_dir, "spec.md"))
+    assert_includes pairs_for(intent_dir, "60"), ["Why", "spec.md created"]
   end
 
   def test_code_gate_does_not_unlock_on_placeholder_plan_checklist
