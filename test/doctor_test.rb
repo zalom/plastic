@@ -114,11 +114,14 @@ module DoctorTestHelpers
     track_in_agent_manifest(agent_dir, skill_file)
   end
 
+  # Frontmatter carries the shipped TIER_DEFAULTS model so "healthy install"
+  # fixtures also stay clean under the agent_model_drift check (intent 170).
   def write_agents(agent_dir)
     agents_dir = File.join(agent_dir, "agents")
     FileUtils.mkdir_p(agents_dir)
     agent_file = File.join(agents_dir, "plastic-enforcer.md")
-    File.write(agent_file, "# agent")
+    model = AgentModels::TIER_DEFAULTS["plastic-enforcer"]
+    File.write(agent_file, "---\nname: plastic-enforcer\nmodel: #{model}\n---\n# agent\n")
     track_in_agent_manifest(agent_dir, agent_file)
   end
 

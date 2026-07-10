@@ -1,9 +1,9 @@
 {
   "skill_name": "plastic-project-continuing",
-  "notes": "Intent 158a1. New project route, absorbing intent-continuing's Continue/Priority Order/Stale Future Intents sections (move, not duplicate). Scopes: description triggering (1-3) and behavior/convention compliance (4-9), the latter checked against SKILL.md.",
+  "notes": "Intent 158a1. New project route, absorbing intent-continuing's Continue/Priority Order/Stale Future Intents sections (move, not duplicate). Scopes: description triggering (1-3) and behavior/convention compliance (4-10), the latter checked against SKILL.md.",
   "results": {
     "triggering": { "cases": 3, "passed": 3, "run": "2026-07-10, one subagent per case" },
-    "behavior": { "cases": 6, "passed": 6, "evidence": "convention checks against skills/project-continuing/SKILL.md after the 158a1 extraction" }
+    "behavior": { "cases": 7, "passed": 7, "evidence": "convention checks against skills/project-continuing/SKILL.md after the 158a1 extraction; id 10 (intent 170) added for the research-dispatch wiring of plastic-future-intent-researcher" }
   },
   "evals": [
     {
@@ -85,6 +85,15 @@
       "files": ["skills/project-continuing/SKILL.md", "skills/intent-continuing/SKILL.md"],
       "assertions": [
         { "type": "convention", "check": "'## Priority Order' and '## Stale Future Intents' present here, absent from intent-continuing", "observed": "present here, absent there", "result": "pass" }
+      ]
+    },
+    {
+      "id": 10, "scope": "behavior", "set": "validation",
+      "prompt": "In the stale-future-intent triage, the user picks option c) Defer to agent: research. What happens?",
+      "expected_output": "A real dispatch, not a label: plastic-future-intent-researcher's model is resolved via `read-config agents.models.<basename> --project <repo>` (never bare frontmatter, sanctioned-override-aware), the agent is dispatched via the Agent tool on the selected stale future intent and writes its findings into that intent's `## Context`, then the skill re-presents the stale-future-intent triage.",
+      "files": ["skills/project-continuing/SKILL.md"],
+      "assertions": [
+        { "type": "convention", "check": "the 'Defer to agent: research' paragraph under Stale Future Intents resolves the model via read-config (not bare frontmatter), dispatches plastic-future-intent-researcher via the Agent tool, and re-presents the triage after the agent returns", "observed": "'Defer to agent: research.' paragraph present: resolves via read-config agents.models.<basename> --project <repo>, dispatches subagent_type plastic-future-intent-researcher, findings land in ## Context, then re-presents the triage", "result": "pass" }
       ]
     }
   ]

@@ -14,7 +14,8 @@ architect:
 
 # Per-agent model override (intent 116). Uncomment and set to a Claude Code
 # alias (opus, sonnet, haiku) to override the shipped tier for one agent. With
-# no entry, the shipped default applies. Never resolves to Fable.
+# no entry, the shipped default applies and never resolves to Fable; naming
+# Fable here is an explicit, sanctioned override, honored as written.
 # agents:
 #   models:
 #     plastic-executor: sonnet

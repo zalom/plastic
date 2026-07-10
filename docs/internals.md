@@ -67,8 +67,10 @@ the payload, which is golden tested alongside the text and JSON snapshots.
 **Where looseness concentrates.** In the prose skills that produce *written
 deliverables*. Determinism is weakest exactly where Plastic ships prose that asks
 a brain to author an artifact. The brain-loose 5 are the design and judgement
-skills (`brainstorming`, `brainstorming-grill-me`) and the curator surfaces
-(`intent-curator` as both skill and agent, plus `future-intent-researcher`).
+skills (`intent-brainstorming`, `intent-grilling`) and the curator surfaces
+(the `store-curating` skill, renamed from `intent-curator` at 158a while its
+agent counterpart `plastic-intent-curator` kept its name, plus
+`future-intent-researcher`).
 These produce INDEX or cluster reorganizations with no output template at all:
 section set, ordering, depth, cluster naming, and orphan thresholds all drift.
 `spec.md` moved out of this group at intent 163: `intent-speccing` now owns it
@@ -354,7 +356,7 @@ trigger lives at a fixed point:
 
 - **install**: the install skill registers every store as a `plastic-`
   prefixed collection (`register --all`).
-- **project creation**: the creating-project skill registers the new project
+- **project creation**: the project-creating skill registers the new project
   store's collection (`register --store <dir>`).
 - **intent delivery**: the delivery/completion path reindexes the delivering
   store's collection. This is the LAST step of the canonical End tail (intent
@@ -566,8 +568,11 @@ Every subagent in `agents/*.md` pins an explicit Claude Code model alias (`opus`
 `plastic-brainstorming`, and `plastic-planner` are `opus`; `plastic-spec-specialist`,
 `plastic-executor`, `plastic-intent-curator`, `plastic-future-intent-researcher`, and
 `plastic-intent-discovery` are `sonnet`. None is ever `inherit` and none is ever
-Fable (Fable is named only in the auto-mode advisory notice below, which is about
-the human's main session, never a dispatched subagent).
+Fable by default. Fable is named in two places, and only two: the auto-mode advisory
+notice below (about the human's main session, never a dispatched subagent), and an
+explicit `agents.models.<name>` config override, which is honored as written for a
+dispatched subagent when one is configured (e.g. `plastic-brainstorming: fable`,
+mihradesign intent 24, a sanctioned, permanent override, not drift).
 
 - **Single source of truth for the tier table**: `scripts/lib/agent_models.rb` holds
   `AgentModels::TIER_DEFAULTS`, a pure Ruby hash mirroring the shipped frontmatter
@@ -604,17 +609,21 @@ the human's main session, never a dispatched subagent).
   frontmatter at dispatch time is a harness implementation detail rather than a
   contract Plastic controls, every dispatch site (the enforcer's per-stage
   dispatches, `skills/auto/SKILL.md`'s dispatch mechanics, the
-  `plastic-intent-discovery` dispatch inside `plastic-intent-starting`, and
-  `plastic-future-intent-researcher`'s own spawns) also resolves the target agent's
-  model through the same chain (`read-config agents.models.<basename> --project
-  <repo>`) and passes it explicitly as the dispatch call's model parameter, never
-  relying on the dispatched role's frontmatter alone.
+  `plastic-intent-discovery` dispatch inside `plastic-intent-starting`, and the
+  `plastic-project-continuing` stale-future-intent triage's dispatch of
+  `plastic-future-intent-researcher` (which does not itself spawn further
+  sub-agents)) also resolves the target agent's model through the same chain
+  (`read-config agents.models.<basename> --project <repo>`) and passes it
+  explicitly as the dispatch call's model parameter, never relying on the
+  dispatched role's frontmatter alone.
 - **Orchestrator advisory (not a gate)**: at auto-mode start, the enforcer and the
   `plastic-auto` skill each recommend once that the user run the orchestrating main
   session on the best available thinking model (Fable, Opus, or whatever supersedes
   them), for the sharpest gating and synthesis. This changes no behavior and blocks
   nothing if ignored; it concerns only the human's main session, since dispatched
-  subagents keep their pinned tier and never resolve to Fable.
+  subagents keep their pinned tier and never resolve to Fable, unless an explicit
+  `agents.models.<name>` config override names Fable for that role, in which case the
+  override is honored as written.
 - **What-stage discovery agent**: `plastic-intent-discovery` (paired with the
   `skills/intent-discovering/SKILL.md` workflow) closes the What-stage gap in the
   one-agent-per-stage table. It fires inside `plastic-intent-starting`, right after

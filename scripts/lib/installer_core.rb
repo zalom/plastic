@@ -12,7 +12,7 @@ require_relative "agent_models"
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/rollback) and their tests can run
 # hermetically (no eval, no global-constant rewriting). Mirrors the DI recipe proven in
-# doctor.rb / install.rb (intents 30a, 30a1). Library only — no CLI, no $PROGRAM_NAME guard.
+# doctor.rb / install.rb (intents 30a, 30a1). Library only - no CLI, no $PROGRAM_NAME guard.
 class InstallerCore
   DEFAULT_PLASTIC_HOME = File.join(Dir.home, ".plastic")
 
@@ -54,7 +54,7 @@ class InstallerCore
     STABILITY[ch] || 2
   end
 
-  # --- Semver (§11) — parse/compare, shared by update + rollback ---
+  # --- Semver (§11) - parse/compare, shared by update + rollback ---
 
   def semver_parse(version)
     m = /\A(\d+)\.(\d+)\.(\d+)(?:-(.+))?\z/.match(version.to_s.strip)
@@ -95,7 +95,7 @@ class InstallerCore
     semver_compare(a, b) == 1
   end
 
-  # --- versions.json ledger (append-only JSONL — one object per line) ---
+  # --- versions.json ledger (append-only JSONL - one object per line) ---
 
   def ledger_path
     File.join(plastic_home, "versions.json")
