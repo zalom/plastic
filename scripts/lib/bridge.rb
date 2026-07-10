@@ -165,6 +165,18 @@ module Bridge
     -1
   end
 
+  # The provisioned code worktree dir (<repo>/.claude/worktrees/{id}--{slug})
+  # that contains file_path, or nil (intent 168). Structural and bridge-free:
+  # Worktree.provision builds exactly this layout, so a file under it is
+  # "worktree-scoped" and only that intent may gate it. The {id}--{slug} shape
+  # (a `--` in the dir name) is required, so a stray .claude/worktrees/README
+  # is not worktree-scoped and returns nil.
+  def self.enclosing_worktree_dir(file_path)
+    return nil if blank?(file_path)
+    m = File.expand_path(file_path).match(%r{\A(.*/\.claude/worktrees/[^/]+--[^/]+)(?:/|\z)})
+    m && m[1]
+  end
+
   # Resolve the active bridge: scan tmp for plastic-*.json (both per-intent and
   # legacy-keyed files), keep only valid bridges, filter to the caller's own
   # session when it has one, prefer auto-armed, then disambiguate by cwd tier
@@ -172,7 +184,7 @@ module Bridge
   # path: a session now legitimately owns several bridges (one per concurrent
   # intent), so filename lookup alone cannot pick the right one; cwd must
   # decide (intent 131).
-  def self.discover_bridge(session:, cwd: Dir.pwd, tmp: tmp_dir)
+  def self.discover_bridge(session:, cwd: Dir.pwd, tmp: tmp_dir, edited_path: nil)
     candidates = Dir.glob(File.join(tmp, "plastic-*.json")).reject { |f| f.end_with?(".tmp") }
     parsed = candidates.filter_map do |f|
       data = (JSON.parse(File.read(f)) rescue nil)
@@ -180,6 +192,26 @@ module Bridge
       { file: f, data: data, mtime: File.mtime(f) }
     end
     return nil if parsed.empty?
+
+    # Worktree-membership-first (intent 168). hook-code-gate passes the edited
+    # file as edited_path; when that file lies inside a provisioned code worktree
+    # (<repo>/.claude/worktrees/{id}--{slug}), only that worktree's owning intent
+    # may gate the write, BEFORE the intent-90 per-session filter below. Resolve
+    # the candidate whose worktree.code owns that dir (newest mtime on a tie), or
+    # nil when none owns it, so a session-keyed guided bridge can never claim a
+    # write located inside a sibling intent's worktree. No edited_path (every
+    # other caller) or a non-worktree path skips this and runs the pipeline
+    # unchanged (intents 90/52/131 preserved).
+    unless blank?(edited_path)
+      wt_dir = enclosing_worktree_dir(edited_path)
+      if wt_dir
+        owners = parsed.select do |c|
+          code = c[:data].dig("worktree", "code")
+          !blank?(code) && File.expand_path(code) == wt_dir
+        end
+        return owners.max_by { |c| c[:mtime] }&.fetch(:data)
+      end
+    end
 
     has_session = !blank?(session)
 
