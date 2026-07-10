@@ -64,14 +64,22 @@ work, and a longer-term intelligence track. Its Log is a dated, plain-language
 account of each delivery as it happened, written the way a project lead would
 brief someone checking in on progress.
 
-## A word on "loop"
+## A word on "loop" and "/goal"
 
-You may hear about "loop" as a future way of running Plastic: auto mode
-repeated automatically across a whole roadmap until a goal is reached, without
-a person restarting it each time. As of this guide, that is a designed idea,
-not something you can run today. There is no command or skill named for it
-yet. It is planned for the same stable release line as the rest of this
-guide's waves, but it has not shipped. Do not expect to invoke it.
+Two Claude Code harness commands, not Plastic skills, keep a session moving
+without you restarting it each time. `/loop` repeats a prompt or command on a
+fixed time interval, until you stop it or Claude decides the work is done.
+`/goal` works differently: you give it a condition instead of an interval, it
+sets that as the completion condition, and Claude keeps working, turn after
+turn, until a fast checker model confirms from what Claude has actually
+reported that the condition holds. `/goal` never reads files on its own, so
+the condition has to name a check Claude's own output can prove.
+
+The tutorial's projects-and-roadmaps track walks `/goal` in practice: you hand
+it a roadmap's `## Goal` and current wave as the condition, and it drives
+through that wave and stops on its own once the condition is met. Both
+commands ship with Claude Code itself; Plastic supplies the roadmap and its
+waves, the harness supplies the command that drives through them.
 
 ## What to read next
 
