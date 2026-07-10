@@ -3,12 +3,15 @@
 
 require "minitest/autorun"
 
-# Guard test (intent 55): the four lifecycle skills must issue a deterministic,
-# pinned CLI invocation everywhere. A bare `npx @zalom/plastic ...` (or a bare
-# `@latest`) resolves the broken 0.0.1 npm stub; `-y` plus a pinned `@<channel>`
-# is the fix that keeps the invocation from ever hanging on an npx confirmation
-# prompt or drifting onto an unpinned package. This test makes that contract
-# executable so the skills cannot silently regress.
+# Guard test (intent 55, extended by 144): the four lifecycle skills must issue
+# a deterministic, pinned CLI invocation everywhere. Pinning `-y` plus an
+# explicit `@<channel>` is a standing determinism convention: it keeps the
+# invocation from ever hanging on an npx confirmation prompt or drifting onto
+# an unpinned package. (Historical motivation: intent 55 pinned this after a
+# bare `npx @zalom/plastic ...` resolved the broken 0.0.1 npm stub on the
+# `latest` dist-tag; intent 143 fixed that stub, but the pinning convention
+# stands regardless.) This test makes that contract executable so the skills
+# cannot silently regress.
 #
 # Hermetic: reads the four SKILL.md files from disk only, no ambient session
 # id, no network, no eval. DI-friendly: `skills_root` defaults to the repo
@@ -18,6 +21,7 @@ class SkillCommandLintTest < Minitest::Test
   EN_DASH = "–"
 
   SKILL_NAMES = %w[install update uninstall rollback].freeze
+  FIRST_INSTALL_DEFAULT_SKILLS = %w[install update uninstall].freeze
 
   def skills_root
     File.expand_path("..", __dir__)
@@ -35,6 +39,13 @@ class SkillCommandLintTest < Minitest::Test
   # First token of a trimmed line, ignoring a trailing `# ...` comment.
   def first_token(line)
     line.split(/\s+#/, 2).first.to_s.strip.split(/\s+/).first
+  end
+
+  # Collapse all whitespace runs to a single space, so a sentence that wraps
+  # differently across skill files (one line here, two lines there) still
+  # compares as a single substring.
+  def normalize_ws(s)
+    s.gsub(/\s+/, " ")
   end
 
   SKILL_NAMES.each do |name|
@@ -56,6 +67,47 @@ class SkillCommandLintTest < Minitest::Test
                          "#{name}/SKILL.md command missing a pinned channel: #{line.strip}"
       end
     end
+  end
+
+  # --- first-install default channel (intent 144) ---
+  #
+  # These assertions are whitespace-normalized on purpose: install/update wrap
+  # the channel-rule and override sentences across two lines, uninstall keeps
+  # them on one line; the normalized substring is identical across all three
+  # files.
+
+  FIRST_INSTALL_DEFAULT_SKILLS.each do |name|
+    define_method("test_#{name}_skill_first_install_defaults_to_latest") do
+      content = normalize_ws(File.read(skill_path(name)))
+      assert_includes content, "default to `@latest`.",
+                       "#{name}/SKILL.md should default a first install to @latest, not @beta"
+      refute_includes content, "default to `@beta`.",
+                       "#{name}/SKILL.md still documents @beta as the first-install default"
+    end
+
+    define_method("test_#{name}_skill_reinstall_channel_derivation_intact") do
+      content = normalize_ws(File.read(skill_path(name)))
+      assert_includes content,
+        "derive `<channel>` from `~/.plastic/VERSION`: a version containing " \
+        "`-alpha` means `@alpha`, `-beta` means `@beta`, otherwise `@latest`.",
+        "#{name}/SKILL.md's reinstall channel-derivation sentence changed"
+    end
+
+    define_method("test_#{name}_skill_explicit_override_sentence_intact") do
+      content = normalize_ws(File.read(skill_path(name)))
+      assert_includes content,
+        "The user can always override with `--alpha` / `--beta` / `--latest`.",
+        "#{name}/SKILL.md's explicit-override sentence changed"
+    end
+  end
+
+  def test_install_skill_flags_table_marks_latest_as_first_install_default
+    content = File.read(skill_path("install"))
+    assert_includes content,
+      "| `--latest` | Install from the stable channel (default on a first install) |"
+    assert_includes content, "| `--beta` | Install from the beta channel |"
+    refute_includes content,
+      "| `--beta` | Install from the beta channel (default on a first install) |"
   end
 
   # --- doctor skill (intent 38) ---

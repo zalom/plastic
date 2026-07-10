@@ -14,7 +14,7 @@ underlying uninstaller and adds reporting + verification.
 
 If Plastic is installed, derive `<channel>` from `~/.plastic/VERSION`: a version containing
 `-alpha` means `@alpha`, `-beta` means `@beta`, otherwise `@latest`. If not installed,
-default to `@beta`. The user can always override with `--alpha` / `--beta` / `--latest`.
+default to `@latest`. The user can always override with `--alpha` / `--beta` / `--latest`.
 
 ## Procedure
 
@@ -74,5 +74,5 @@ Delete it too?
 ```
 
 - **Keep:** "Your data is at ~/.plastic/. Re-install anytime with
-  `npx -y @zalom/plastic@beta install --claude` (or your channel)."
+  `npx -y @zalom/plastic@latest install --claude` (or your channel)."
 - **Delete:** run `rm -rf ~/.plastic/` and confirm.

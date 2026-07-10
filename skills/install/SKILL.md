@@ -1,13 +1,13 @@
 ---
 name: plastic-install
-description: 'Use when initializing Plastic globally (~/.plastic/) or locally in a project, or to re-install/repair a broken installation. Accepts channel flags (--alpha, --beta, --latest) to select release channel. First install defaults to --beta; reinstalls match the already-installed channel. Global install is recommended: it creates the global intent store as a git-backed repository. Local install creates .plastic/ in the current project for testing.'
+description: 'Use when initializing Plastic globally (~/.plastic/) or locally in a project, or to re-install/repair a broken installation. Accepts channel flags (--alpha, --beta, --latest) to select release channel. First install defaults to --latest (stable); reinstalls match the already-installed channel. Global install is recommended: it creates the global intent store as a git-backed repository. Local install creates .plastic/ in the current project for testing.'
 user-invocable: true
 ---
 
 # Install Plastic
 
-> **Recommended path:** for a first install, run `npx -y @zalom/plastic@beta install --claude`
-> in your shell (or `bunx -y @zalom/plastic@beta install --claude` if you use Bun). This skill
+> **Recommended path:** for a first install, run `npx -y @zalom/plastic@latest install --claude`
+> in your shell (or `bunx -y @zalom/plastic@latest install --claude` if you use Bun). This skill
 > exists to **re-install or repair** an existing setup from inside the agent, and to
 > drive interactive global configuration. Whenever this skill performs an install or
 > re-install, it **runs `/plastic-doctor` afterward** and reports the result.
@@ -16,7 +16,7 @@ user-invocable: true
 
 If Plastic is installed, derive `<channel>` from `~/.plastic/VERSION`: a version containing
 `-alpha` means `@alpha`, `-beta` means `@beta`, otherwise `@latest`. If not installed
-(first install), default to `@beta`. The user can always override with
+(first install), default to `@latest`. The user can always override with
 `--alpha` / `--beta` / `--latest`.
 
 ## Re-install / repair
@@ -35,18 +35,18 @@ Then **run `/plastic-doctor`** and report what it found.
 
 | Flag | Behavior |
 |------|----------|
-| `--latest` | Install from the stable channel |
-| `--beta` | Install from the beta channel (default on a first install) |
+| `--latest` | Install from the stable channel (default on a first install) |
+| `--beta` | Install from the beta channel |
 | `--alpha` | Install from the alpha channel |
 
 When invoked from within Claude Code (re-install or channel switch), the skill
 runs the appropriate npx command:
 
 ```bash
-# Stable
+# Stable (default on a first install)
 npx -y @zalom/plastic@latest install --claude
 
-# Beta (default on a first install)
+# Beta
 npx -y @zalom/plastic@beta install --claude
 
 # Alpha
@@ -68,10 +68,10 @@ Run `/plastic-install` with no arguments.
 Check if `~/.plastic/VERSION` exists.
 - If yes: announce "Plastic is already installed at ~/.plastic/. Run `/plastic-update` to
   sync core files, or use the re-install command above to repair in place."
-- If no: run the fresh install command (default `@beta`, or the channel the user named):
+- If no: run the fresh install command (default `@latest`, or the channel the user named):
 
 ```bash
-npx -y @zalom/plastic@beta install --claude
+npx -y @zalom/plastic@latest install --claude
 ```
 
 This single command, via `install.rb` (`bootstrap` + `distribute`), creates `store/`,
