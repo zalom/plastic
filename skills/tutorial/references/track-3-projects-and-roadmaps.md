@@ -23,6 +23,10 @@ Create and board an intent the same way as track 1, stations 1 and 2: `/plastic-
 then `/plastic-intent-starting`. Describe something meant to grow into a small real project,
 for example "build a personal todo app."
 
+Then type `/plastic-intent-brainstorming` and record a couple of real rulings on this founding
+intent, for example the language or how tasks get stored. Keep it short: this intent only
+needs enough decisions for the new project to inherit, not a full design.
+
 Checkpoint: explain why this intent is "founding": its decisions are about to carry forward
 into a whole new project.
 
@@ -33,8 +37,8 @@ Type `/plastic-project-creating`.
 Artifact: a new project directory, an `AGENTS.md` file carrying the founding intent's
 decisions, the project's own intent store, and a new entry in `projects.yml` registering it.
 
-Checkpoint: open `AGENTS.md` and find at least one line that traces back to a decision made
-while boarding the founding intent in station 1.
+Checkpoint: open `AGENTS.md` and find at least one line that traces back to a decision
+recorded in the founding intent back in station 1.
 
 ### 3. Add more intents inside the project
 
@@ -78,6 +82,8 @@ suite is green`
 Claude then works through the wave itself, one intent at a time, and stops on its own once the
 checker agrees the condition holds. Run `/goal` with no argument at any point to see how long
 it has run and how many turns it has spent; run `/goal clear` to stop it before that.
+
+On a harness without `/goal`, just tell the agent to deliver the roadmap in auto mode instead.
 
 Checkpoint: point at the exact file (`roadmaps/<slug>.md`) whose `## Goal` and `## Waves`
 sections you turned into the condition above.

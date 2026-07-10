@@ -11,10 +11,11 @@ end to end: a piece of work moved through What, Why, How, and Exec, with a finis
 
 Run `/plastic-update` first, so the commands below match what is actually installed.
 
-Work in a sandbox: a throwaway git repository is the cleanest choice, since the worked
-example below edits a README. No throwaway repo handy? A global-store intent works too; its
-station 6 deliverable becomes a short written note instead of a file edit (see station 6).
-Either way, nothing in this track touches a real project.
+Work in a sandbox: this track always creates a global-store intent; the throwaway repo below
+is never registered as a Plastic project. Pick a throwaway git repository if you have one
+handy, since the worked example edits its README: station 6's deliverable is that file edit.
+No repo handy? Station 6's deliverable becomes a short written note saved in the intent's own
+directory instead (see station 6). Either way, nothing in this track touches a real project.
 
 ## Stations
 

@@ -79,7 +79,9 @@ The tutorial's projects-and-roadmaps track walks `/goal` in practice: you hand
 it a roadmap's `## Goal` and current wave as the condition, and it drives
 through that wave and stops on its own once the condition is met. Both
 commands ship with Claude Code itself; Plastic supplies the roadmap and its
-waves, the harness supplies the command that drives through them.
+waves, the harness supplies the command that drives through them. On a
+harness without these commands, the same roadmap-driven delivery still
+works: just tell the agent to deliver it in auto mode instead.
 
 ## What to read next
 
