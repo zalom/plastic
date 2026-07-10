@@ -1,15 +1,19 @@
 # Liveness Ranking (read time, no new field)
 
 Depth reference for "Find the mid-flight roadmap" in `SKILL.md`. This is the full algorithm the
-body summarizes.
+body summarizes. Since intent 148, this algorithm is IMPLEMENTED in
+`scripts/lib/roadmap_queue.rb` behind the `scripts/roadmap-next` CLI; it is no longer a by-eye
+procedure. This page documents what that reader does, and is the specification the reader
+satisfies.
 
 ## Why read-time, not a stored field
 
 INDEX.md stays the sole writer of intent status; the roadmap file mirrors it (see
 `plastic-roadmap`'s `references/file-format.md`). Adding a "mid-flight" flag to the roadmap
 file or to INDEX.md would create a second thing to keep in sync for a question that is cheap to
-answer by reading what is already there. So liveness is computed fresh, every time this skill
-runs, from the tier's live `roadmaps/*.md` files (excluding `roadmaps/archived/`).
+answer by reading what is already there. So liveness is computed fresh, every call, from the
+tier's live `roadmaps/*.md` files (excluding `roadmaps/archived/`), by `RoadmapQueue` (intent
+148) rather than by eye.
 
 ## The algorithm
 
@@ -38,9 +42,9 @@ runs, from the tier's live `roadmaps/*.md` files (excluding `roadmaps/archived/`
 
 Before this skill existed, nothing resumed a mid-flight roadmap automatically. The `171`
 (consistency-dividend) roadmap handoff had to be resumed by hand: a free-prose "SESSION
-HANDOFF" note written into `171`'s own `## Insights`, because no skill read `## Waves` +
-`## Log` and reconstructed where the batch stood. This ranking is the mechanism that replaces
-that hand-carried note.
+HANDOFF" note written into `171`'s own `## Insights`, because nothing read `## Waves` +
+`## Log` and reconstructed where the batch stood. This ranking, now a deterministic reader
+rather than a by-eye judgment, is the mechanism that replaces that hand-carried note.
 
 ## Grammar pointer (do not duplicate)
 

@@ -208,6 +208,28 @@ closing-step slot each already uses for its QMD reindex; `plastic-roadmap-contin
 ledger's last line as a cheap last-event signal, purely as a read. `INDEX.md` stays the single
 status writer throughout; the ledger, like the intent-dir one, is sugar, never a source of truth.
 
+The roadmap read path (intent 148) sits on top of that ledger. `scripts/lib/roadmap_queue.rb`
+(`RoadmapQueue`, constructor-DI and hermetic: clock and paths injected, no eval, no ENV or global
+config seam; a thin `scripts/roadmap-next` CLI wraps it, both registered in
+`InstallerCore#core_files` and covered by a hermetic test) is the one reader the auto loop and
+`plastic-roadmap-continuing` share. It does two things: liveness-ranks the tier's `roadmaps/*.md`
+(a `delivering` or `blocked` entry wins, else the newest ledger or `## Log` timestamp, read
+through `RoadmapSavepoint.ledger_path_for`), and within the winning roadmap selects the frontier
+batch. The frontier wave is the first wave, top to bottom, holding a `queued` or `delivering`
+entry; that wave's `queued` entries in file order are dispatchable (the head is next), a
+`delivering` entry marks the wave in-flight and gates the next wave, a `blocked` entry is surfaced
+but does not gate, and `delivered`/`abandoned` entries are settled. Every frontier token is
+reconciled against INDEX.md before classification and INDEX wins on any mismatch, so an intent
+INDEX already shows Completed or Abandoned can never be dispatched. The CLI emits JSON with a
+`state` field (`dispatchable`, `in_flight`, `exhausted`, `none`, or `tie`) and a
+`dispatchable_queue` array shaped to match the dashboard's, plus `in_flight`, `blocked`, and
+`tie_candidates`. It runs in two modes: queue mode (the default, for the loop) breaks ties
+deterministically (newest ledger line, then slug ascending) and flags `tie: true`; which mode
+(`--which`, for `plastic-roadmap-continuing`) returns `tie_candidates` so the skill's single ask
+resolves the tie. The design is file-based throughout (roadmap `.md`, the 134 ledger, INDEX.md),
+DB-ready but not DB-dependent: `RoadmapQueue` is the single seam a future 147 DB-backed read
+swaps behind without changing either caller.
+
 A companion rule keeps the intent-dir ledger itself honest. `Bridge.savepoint_phantom_lines`
 (intent 134) is pure and disk-only, no bridge or session resolution and no writes, matching
 intent 52's decoupling precedent: it flags a `savepoint.md` line that disk evidence contradicts,

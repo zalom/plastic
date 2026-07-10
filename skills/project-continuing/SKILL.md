@@ -91,6 +91,14 @@ was built against the live INDEX.md-parsing `--data` path (147, the DB cutover, 
 landed). Its rule-name citations (`classification.md`, cited by name, not logic) and the
 `dashboard.rb project <slug> --data` -> `dashboard-project.md` path still resolve.
 
+Intent 148 landed: roadmaps are the primary planning surface. When the tier has a mid-flight
+roadmap (`ruby ~/.plastic/scripts/roadmap-next --roadmaps-dir <tier>/roadmaps` reports a `state`
+other than `none`), the roadmap route (`plastic-roadmap-continuing`) is the live surface for
+"what to work next", and `plastic-continuing` routes there. This board still presents project
+state and stops, asking nothing (unchanged): it does not itself dispatch, re-rank, or resume a
+roadmap. The global store and any project with no roadmap report `none`, so this board stays the
+default route for them.
+
 ## References
 
 - `references/board-fill.md` - the template-fill mechanics and store-health surfacing detail.

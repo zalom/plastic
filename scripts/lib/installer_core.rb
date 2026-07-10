@@ -263,6 +263,8 @@ class InstallerCore
       "scripts/qmd-sync" => "scripts/qmd-sync",
       "scripts/lib/roadmap_savepoint.rb" => "scripts/lib/roadmap_savepoint.rb",
       "scripts/roadmap-savepoint" => "scripts/roadmap-savepoint",
+      "scripts/lib/roadmap_queue.rb" => "scripts/lib/roadmap_queue.rb",
+      "scripts/roadmap-next" => "scripts/roadmap-next",
       "scripts/lib/intent_validator.rb" => "scripts/lib/intent_validator.rb",
       "scripts/lib/graph_rebuild.rb" => "scripts/lib/graph_rebuild.rb",
       "scripts/lib/frontmatter_writer.rb" => "scripts/lib/frontmatter_writer.rb",
