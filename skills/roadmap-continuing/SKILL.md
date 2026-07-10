@@ -24,15 +24,21 @@ roadmap handoff had to be resumed by hand, carried as a free-prose note in `171`
    (exclude `roadmaps/archived/`). Read via Read/glob, or `plastic-roadmap`'s Read/consume
    verb. See `plastic-roadmap`'s `references/file-format.md` for the file grammar; do not
    duplicate it here.
-2. Rank liveness at read time (no new field is written; INDEX.md stays the sole status
-   writer). See `references/liveness-ranking.md` for the full algorithm and the tie rule.
-3. A genuine tie (two candidates equally live) is presented to the user and resolved by the
+2. For each candidate, also read its paired ledger `roadmaps/<slug>.savepoint.md` when present
+   (see `plastic-roadmap`'s `references/file-format.md#savepoint-ledger`): its last line(s) are a
+   cheaper, precise last-event signal (for example `dispatched 134` or `merged 172`), read
+   alongside the existing `## Waves`/`## Log` judgment. The ledger is read-only here, a derived
+   signal, never a new status field; INDEX.md stays the sole status writer.
+3. Rank liveness at read time (no new field is written). See `references/liveness-ranking.md`
+   for the full algorithm and the tie rule.
+4. A genuine tie (two candidates equally live) is presented to the user and resolved by the
    single ask below, not silently picked.
 
 ## Present state
 
-Present the chosen roadmap's `## Goal`, the current wave with each entry's mirrored status,
-and the newest `## Log` line(s), before any ask.
+Present the chosen roadmap's `## Goal`, the current wave with each entry's mirrored status, the
+ledger's newest line(s) (the last mechanized event) alongside the newest `## Log` line, before any
+ask, so the coordinator sees the machine last-event at a glance.
 
 ## Ask once
 
@@ -47,7 +53,18 @@ Never re-ask. No new roadmap or INDEX status field is invented anywhere in this 
 
 The enumeration and ranking above are a read-time judgment done in prose, not a helper script.
 A helper script would need its own `core_files` registration and a hermetic test, raising the
-packaging surface for no material benefit here - so none is added.
+packaging surface for no material benefit here - so none is added. `scripts/roadmap-savepoint`
+already exists (intent 134, owned by `plastic-roadmap`); this skill only READS the ledger it
+writes.
+
+## Caller contract: who writes the ledger
+
+This skill is a reader, not a writer, of `roadmaps/<slug>.savepoint.md`. The coordinator flows
+(`plastic-auto`, the enforcer, and this skill's own resume-and-hand-off path) call `ruby
+~/.plastic/scripts/roadmap-savepoint append` at their own dispatch, merge, park, handoff, and
+release points, the same events `plastic-roadmap`'s verbs append at their closing steps. A
+resuming coordinator therefore both reads the ledger here and writes to it as it drives the next
+wave or entry.
 
 ## References
 

@@ -11,7 +11,9 @@ roadmap.
 
 `roadmaps/` lists only live (open or in-flight) roadmaps. Once a roadmap's `## Goal` is reached,
 its file moves to `roadmaps/archived/{slug}.md` (see Close/archive in `operations.md`); the
-`archived/` subdirectory is scaffolded once, alongside `roadmaps/`, with a `.gitkeep`.
+`archived/` subdirectory is scaffolded once, alongside `roadmaps/`, with a `.gitkeep`. Its
+name-paired ledger, `roadmaps/{slug}.savepoint.md` (see Savepoint ledger below), moves alongside
+it in the same Close/archive step.
 
 ## The four sections (in order)
 
@@ -62,6 +64,33 @@ that entry-intent's `outcome.md`:
 
 The log line never restates `outcome.md` detail; it points at it (lossless-by-reference). This
 complements, and does not replace, `INDEX.md`'s `## Completed` section or `CHANGELOG.md`.
+
+## Savepoint ledger
+
+`roadmaps/{slug}.savepoint.md` is the name-paired sibling of `roadmaps/{slug}.md`: the machine
+counterpart to the human `## Log`, moving to `roadmaps/archived/{slug}.savepoint.md` alongside its
+roadmap on close (see Close/archive). It is created lazily by the first `append` call; there is no
+template to scaffold.
+
+Line shape, one event per line, append-only, newest at the bottom:
+
+```
+<UTC-iso8601>  <event>  <detail>
+```
+
+Two-space fields, mirroring the intent-dir cycle-step ledger (`savepoint.md`). The controlled event
+vocabulary: `created`, `dispatched`, `parked`, `merged`, `release`, `handoff`, `closed`, and
+optionally `added`, `reordered`, `wave`. The `(event, detail)` pair is the idempotency key, so
+re-appending the same pair is a no-op.
+
+`## Log` and the ledger record the same events in two voices: the Log is the dated, one-sentence,
+EM-to-CTO-plain-language record a human reads cold; the ledger is the terse, machine-timestamped,
+controlled-vocabulary record a coordinator reads at a glance. Both are append-only; neither edits
+the other.
+
+The ledger is derived and rebuildable (`ruby ~/.plastic/scripts/roadmap-savepoint rebuild --roadmap
+roadmaps/{slug}.md`, reconstructing it from `## Log`), never a status source: `INDEX.md` stays the
+single writer of intent status, exactly as for the roadmap file itself.
 
 ## Worked example
 

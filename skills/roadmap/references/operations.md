@@ -20,7 +20,10 @@ next" in under a minute, just from this one file.
    status mirroring that intent's current `INDEX.md` status.
 6. Append the first `## Log` line, a short `YYYY-MM-DD HH:MM UTC`-prefixed plain-language note
    that the roadmap was created.
-7. Refresh the QMD index for this roadmap (no-op when QMD is absent), in the background so it
+7. Append the ledger event (derived, idempotent, safe to re-run; never writes INDEX or roadmap
+   status; creates `roadmaps/<slug>.savepoint.md` lazily): `ruby ~/.plastic/scripts/roadmap-savepoint
+   append --roadmap roadmaps/<slug>.md --event created --detail "<slug>: <title>"`.
+8. Refresh the QMD index for this roadmap (no-op when QMD is absent), in the background so it
    never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <roadmaps-dir> --async`.
 
 ## Add / reorder entries
@@ -34,6 +37,10 @@ next" in under a minute, just from this one file.
   entry is eligible to run.
 - After any add/reorder, append a `## Log` line describing the change (e.g.
   `- <YYYY-MM-DD HH:MM UTC> added 132 to wave 2`).
+- Append the ledger event (derived, idempotent, safe to re-run; never writes INDEX or roadmap
+  status): `ruby ~/.plastic/scripts/roadmap-savepoint append --roadmap roadmaps/<slug>.md --event
+  added --detail "<id> to wave N"` for an add, or `--event reordered` for a reorder (describe the
+  move in `<detail>`).
 - Refresh the QMD index for this roadmap (no-op when QMD is absent), in the background so it
   never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <roadmaps-dir> --async`.
 
@@ -49,7 +56,12 @@ next" in under a minute, just from this one file.
    one-line EM-to-CTO entry described in `file-format.md` (date, what shipped and its impact in
    plain language, then a link to that intent's `outcome.md`). For other transitions, write a
    short dated plain-language line (no codenames, no jargon).
-5. Refresh the QMD index for this roadmap (no-op when QMD is absent), in the background so it
+5. Append the ledger event, only when the status token actually changed (derived, idempotent,
+   never writes INDEX or roadmap status): map the new status to its mechanized event (`delivered`
+   -> `merged`, `delivering` -> `dispatched`, `blocked`/`abandoned` -> `parked`), then `ruby
+   ~/.plastic/scripts/roadmap-savepoint append --roadmap roadmaps/<slug>.md --event <event>
+   --detail "<intent-id>"` (add a sha in `<detail>` when one is known).
+6. Refresh the QMD index for this roadmap (no-op when QMD is absent), in the background so it
    never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <roadmaps-dir> --async`.
 
 ## Append a log line
@@ -60,6 +72,10 @@ next" in under a minute, just from this one file.
   A delivery event follows the EM-to-CTO one-line shape with an `outcome.md` link (see
   `file-format.md`); bookkeeping events (created, an intent added to a wave, a wave completed, a
   roadmap closed) are short dated plain-language lines.
+- Append the matching ledger event (derived, idempotent, never writes INDEX or roadmap status):
+  when the line records a release cut, `ruby ~/.plastic/scripts/roadmap-savepoint append --roadmap
+  roadmaps/<slug>.md --event release --detail "<version>"`; otherwise append the mechanized event
+  matching the bookkeeping line just written (see the per-verb event mapping on this page).
 - Refresh the QMD index for this roadmap (no-op when QMD is absent), in the background so it
   never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <roadmaps-dir> --async`.
 
@@ -80,9 +96,13 @@ next" in under a minute, just from this one file.
    `abandoned` with a recorded reason, plus whatever else the goal states).
 2. Create `roadmaps/archived/` beside `roadmaps/` (both siblings of `INDEX.md`) if it does not
    exist yet.
-3. Move the file: `roadmaps/{slug}.md` -> `roadmaps/archived/{slug}.md`. `roadmaps/` itself then
-   lists only live (open or in-flight) roadmaps.
-4. Append the final `## Log` line before or as part of the move:
+3. Append the ledger closed event, while the roadmap is still at its live path (derived,
+   idempotent, never writes INDEX or roadmap status): `ruby ~/.plastic/scripts/roadmap-savepoint
+   append --roadmap roadmaps/<slug>.md --event closed --detail "<slug>"`.
+4. Move BOTH files: `roadmaps/{slug}.md` -> `roadmaps/archived/{slug}.md` AND
+   `roadmaps/{slug}.savepoint.md` -> `roadmaps/archived/{slug}.savepoint.md`. `roadmaps/` itself
+   then lists only live (open or in-flight) roadmaps.
+5. Append the final `## Log` line before or as part of the move:
    `- <YYYY-MM-DD HH:MM UTC> roadmap closed`.
-5. Refresh the QMD index for this roadmap (no-op when QMD is absent), in the background so it
+6. Refresh the QMD index for this roadmap (no-op when QMD is absent), in the background so it
    never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <roadmaps-dir> --async`.

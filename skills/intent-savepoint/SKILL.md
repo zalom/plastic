@@ -42,6 +42,18 @@ Read the active store's `INDEX.md` and extract intents under `## Active`.
 - Confirm the **last line's stage** matches the stage derived from files-on-disk
   (`Bridge.derive_stage`). If they disagree, or the file is missing/empty, the ledger has
   drifted.
+- Run `Bridge.savepoint_phantom_lines(intent_dir)` (pure, disk-only, no bridge or session
+  resolution; intent 134). It flags a line disk evidence contradicts: a file-landing milestone
+  whose file is absent or still a sentinel placeholder, a duplicate `(stage, milestone)` pair, or
+  a state line (`How  started` / `Exec  started`) whose stage prerequisites are absent. If it
+  returns any lines:
+  - **LIVE intent (INDEX `## Active`):** rebuild via step 3 below.
+  - **INDEX `## Completed`/`## Abandoned` intent:** REPORT the phantom lines and STOP. Do not
+    rewrite. Completed intents are immutable. A repair is available only under an explicit human
+    grant, following the 124a precedent: rebuild the file-landing skeleton (step 3), then
+    re-append the terminal `Done  <disposition>` bookend with the disposition read from
+    `outcome.md`'s `disposition:` frontmatter and the timestamp recovered from the merge commit or
+    the file's mtime, never invented.
 
 ### 3. Rebuild on drift
 Reconstruct from the filesystem rather than hand-editing:

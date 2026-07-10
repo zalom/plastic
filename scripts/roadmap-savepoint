@@ -1,0 +1,64 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# roadmap-savepoint - deterministic CLI over RoadmapSavepoint (intent 134).
+#
+# The plastic-roadmap skill verbs and the coordinator flows call this instead of hand-writing
+# ledger lines. append is idempotent on the (event, detail) pair; rebuild is the one operation
+# allowed to overwrite the ledger, reconstructing it from the roadmap's own `## Log`.
+#
+# Usage:
+#   roadmap-savepoint append --roadmap <path> --event <event> --detail "<text>"
+#   roadmap-savepoint rebuild --roadmap <path>
+#
+# Exits non-zero with a usage line on stderr for an unknown verb or a missing required flag.
+
+require_relative "lib/roadmap_savepoint"
+
+def opt(args, name)
+  (i = args.index(name)) && args[i + 1]
+end
+
+def usage
+  warn "Usage: roadmap-savepoint append --roadmap <path> --event <event> --detail \"<text>\""
+  warn "       roadmap-savepoint rebuild --roadmap <path>"
+end
+
+verb = ARGV.shift
+
+case verb
+when "append"
+  roadmap = opt(ARGV, "--roadmap")
+  event = opt(ARGV, "--event")
+  detail = opt(ARGV, "--detail")
+  if roadmap.nil? || event.nil? || detail.nil?
+    warn "append: pass --roadmap <path> --event <event> --detail \"<text>\""
+    usage
+    exit 2
+  end
+  begin
+    wrote = RoadmapSavepoint.append(roadmap, event, detail)
+    puts wrote ? "appended #{event}  #{detail}" : "no-op (already recorded): #{event}  #{detail}"
+    exit 0
+  rescue ArgumentError => e
+    warn "append: #{e.message}"
+    exit 2
+  end
+
+when "rebuild"
+  roadmap = opt(ARGV, "--roadmap")
+  if roadmap.nil?
+    warn "rebuild: pass --roadmap <path>"
+    usage
+    exit 2
+  end
+  count = RoadmapSavepoint.rebuild(roadmap)
+  puts "rebuilt #{count} line#{count == 1 ? '' : 's'}"
+  exit 0
+
+else
+  warn "roadmap-savepoint: unknown verb #{verb.inspect}. Use append|rebuild."
+  usage
+  exit 2
+end

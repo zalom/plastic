@@ -640,6 +640,75 @@ module Bridge
     lines.length
   end
 
+  # --- Phantom-line detection (intent 134) ------------------------------------
+  #
+  # A companion to the ledger, not a new writer: pure, disk-only, hermetic (no bridge or
+  # session resolution, no writes), matching intent 52's savepoint-decoupling precedent. Under
+  # a gate-routing misfire (bug 131) or an out-of-band merge (124a's precedent), a ledger line
+  # can go stale or duplicate without the file evidence agreeing. This detects, never repairs;
+  # repair is `rebuild_savepoint` (live intents) or the 124a manual Done-bookend recipe
+  # (terminal intents, human-granted only).
+
+  # (stage, milestone) -> basename, for every file-landing milestone this intent_dir could have
+  # produced (the intent file plus the four lifecycle artifacts). Reuses savepoint_milestone so
+  # the mapping never drifts from the one the writer itself uses.
+  def self.savepoint_file_landing_pairs(intent_dir)
+    basenames = [File.basename(intent_file(intent_dir)), "spec.md", "plan.md", "checklist.md", "outcome.md"]
+    basenames.each_with_object({}) do |basename, map|
+      pair = savepoint_milestone(intent_dir, basename)
+      map[pair] = basename if pair
+    end
+  end
+
+  # A `started` state line's real prerequisite is the PRECEDING stage's artifact, not its own
+  # (a `started` line legitimately fires before its own stage's file is real by design). `Exec
+  # started` additionally requires plan.md, since Exec cannot start before How produced it too.
+  SAVEPOINT_STATE_PREREQUISITES = {
+    ["How", "started"] => ["spec.md"],
+    ["Exec", "started"] => ["plan.md", "checklist.md"],
+  }.freeze
+
+  # Raw (stripped) ledger lines whose disk evidence contradicts them, each paired with a short
+  # reason: [line, reason]. Three phantom classes (D5):
+  #   - a file-landing milestone whose file is absent or still a sentinel placeholder;
+  #   - a duplicate (stage, milestone) pair (the later occurrence is the phantom);
+  #   - a state line (`How started` / `Exec started`) whose stage prerequisites are absent.
+  # A clean ledger, or an absent one, returns [].
+  def self.savepoint_phantom_lines(intent_dir)
+    path = File.join(intent_dir, SAVEPOINT_FILE)
+    return [] unless File.exist?(path)
+
+    landing = savepoint_file_landing_pairs(intent_dir)
+    seen = []
+    phantoms = []
+
+    File.read(path).each_line do |raw|
+      line = raw.strip
+      next if line.empty?
+      parts = line.split(/\s{2,}/)
+      next if parts.length < 3
+      pair = [parts[1], parts[2]]
+
+      if seen.include?(pair)
+        phantoms << [line, "duplicate (stage, milestone) pair"]
+        next
+      end
+      seen << pair
+
+      if (basename = landing[pair]) && !stage_file_present?(File.join(intent_dir, basename))
+        phantoms << [line, "milestone file absent or still a sentinel placeholder"]
+        next
+      end
+
+      prereqs = SAVEPOINT_STATE_PREREQUISITES[pair]
+      if prereqs && prereqs.any? { |b| !stage_file_present?(File.join(intent_dir, b)) }
+        phantoms << [line, "state line prerequisite absent on disk"]
+      end
+    end
+
+    phantoms
+  end
+
   def self.derive(session, intent_id:, intent_dir:, store:, name:, tmp: tmp_dir)
     stage = derive_stage(intent_dir)
     has = has_files(intent_dir)

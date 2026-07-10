@@ -169,4 +169,49 @@ class DoctorDoneSignalsTest < Minitest::Test
     assert_equal "warn", stalled[:status]
     assert(stalled[:details].any? { |d| d.include?("STALE") })
   end
+
+  # --- savepoint_truthful (intent 134) ----------------------------------------
+
+  # A fully clean terminal intent's savepoint carries no phantom lines.
+  def test_savepoint_truthful_passes_on_clean_terminal_intent
+    write_index("20", section: "Completed")
+    write_intent_dir("20")
+    write_outcome("20")
+    write_savepoint_done("20")
+
+    assert_equal "pass", check("savepoint_truthful")[:status]
+  end
+
+  # A phantom on a LIVE (Active) intent is a warn, never a fail, with a fix_hint.
+  def test_savepoint_truthful_warns_never_fails_on_live_phantom
+    write_index("21", section: "Active")
+    dir = write_intent_dir("21")
+    File.write(File.join(dir, "savepoint.md"), "2026-07-03T00:00:00Z  How  plan.md created\n")
+
+    result = check("savepoint_truthful")
+    assert_equal "warn", result[:status]
+    refute_equal "fail", result[:status]
+    assert result[:fix_hint]
+    assert(result[:details].any? { |d| d.include?("21") })
+  end
+
+  # A phantom on a TERMINAL intent is reported, not rewritten: doctor is read-only by
+  # construction, so the savepoint file is byte-identical before and after the check runs, and
+  # the detail names it report-only (immutable history), not auto-rebuildable.
+  def test_savepoint_truthful_reports_terminal_phantom_without_rewriting
+    write_index("22", section: "Completed")
+    dir = write_intent_dir("22")
+    write_outcome("22")
+    savepoint_path = File.join(dir, "savepoint.md")
+    File.write(savepoint_path,
+               "2026-07-03T00:00:00Z  Done  delivered\n2026-07-03T00:05:00Z  Done  delivered\n")
+    before = File.read(savepoint_path)
+
+    result = check("savepoint_truthful")
+    assert_equal "warn", result[:status]
+    assert(result[:details].any? { |d| d.include?("22") && d.include?("report-only") })
+
+    doctor.check_done_signals # run again to double-confirm no mutation
+    assert_equal before, File.read(savepoint_path)
+  end
 end

@@ -21,6 +21,10 @@ runs, from the tier's live `roadmaps/*.md` files (excluding `roadmaps/archived/`
 3. **Otherwise, newest `## Log` entry wins.** Among the remaining candidates (none have a
    `delivering`/`blocked` entry), read each file's last `## Log` line (append-only, newest at
    the bottom) and rank by that line's `YYYY-MM-DD HH:MM UTC` timestamp. The most recent wins.
+   When a candidate's paired `roadmaps/<slug>.savepoint.md` (intent 134) is present, its last
+   line is a cheaper, machine-timestamped read of the same fact (the ledger is derived from `##
+   Log`, so the two should already agree); reading it first is an optimization, not a second
+   source of truth, so a missing or stale ledger never blocks falling back to `## Log` itself.
 4. **Genuine tie -> present, do not silently pick.** If two or more candidates are equally live
    (for example two roadmaps both idle with `## Log` entries on the same timestamp, or two both
    showing `delivering` entries with no other signal to separate them), do not choose for the
