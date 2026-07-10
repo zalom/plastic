@@ -14,10 +14,13 @@ You already met the choice in
 choice feels like in practice, day to day.
 
 In guided mode, the agent briefs you at every stage boundary: what it is about
-to do, what could go wrong, and what decision is left to you. You act on that
-before the next stage starts. It reads like a short conversation at each step:
-a state of play, a risk if any, and a call to make. This is deliberately slow.
-It is the right choice when you want to watch each decision as it happens.
+to do, what could go wrong, and what decision is left to you. You act on that,
+then type the next stage's command yourself: `plastic-intent-speccing`, for
+example, to turn a ruled-on design into `spec.md`, or `plastic-intent-ending`
+to close the intent out once Exec is done. It reads like a short conversation
+at each step: a state of play, a risk if any, and a call to make. This is
+deliberately slow. It is the right choice when you want to watch each decision
+as it happens.
 
 In auto mode, the agent still gives you that same short briefing at every
 stage, but it takes the call itself and keeps moving, except at a small number
@@ -61,14 +64,24 @@ work, and a longer-term intelligence track. Its Log is a dated, plain-language
 account of each delivery as it happened, written the way a project lead would
 brief someone checking in on progress.
 
-## A word on "loop"
+## A word on "loop" and "/goal"
 
-You may hear about "loop" as a future way of running Plastic: auto mode
-repeated automatically across a whole roadmap until a goal is reached, without
-a person restarting it each time. As of this guide, that is a designed idea,
-not something you can run today. There is no command or skill named for it
-yet. It is planned for the same stable release line as the rest of this
-guide's waves, but it has not shipped. Do not expect to invoke it.
+Two Claude Code harness commands, not Plastic skills, keep a session moving
+without you restarting it each time. `/loop` repeats a prompt or command on a
+fixed time interval, until you stop it or Claude decides the work is done.
+`/goal` works differently: you give it a condition instead of an interval, it
+sets that as the completion condition, and Claude keeps working, turn after
+turn, until a fast checker model confirms from what Claude has actually
+reported that the condition holds. `/goal` never reads files on its own, so
+the condition has to name a check Claude's own output can prove.
+
+The tutorial's projects-and-roadmaps track walks `/goal` in practice: you hand
+it a roadmap's `## Goal` and current wave as the condition, and it drives
+through that wave and stops on its own once the condition is met. Both
+commands ship with Claude Code itself; Plastic supplies the roadmap and its
+waves, the harness supplies the command that drives through them. On a
+harness without these commands, the same roadmap-driven delivery still
+works: just tell the agent to deliver it in auto mode instead.
 
 ## What to read next
 

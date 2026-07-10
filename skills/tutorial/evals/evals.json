@@ -1,0 +1,186 @@
+{
+  "skill_name": "plastic-tutorial",
+  "notes": "Intent 166, Phase 1. Scopes: triggering (1-6, should and should-not with near-misses) and track routing (7-10, one case per track plus a direct-menu case). plastic-tutorial is a natural-language guided command with no backing Ruby test, so every assertion carries result: expect-pass pending a real observed run, per the intent-speccing evals.json convention. Phase 2 (post-164) can tighten these into observed pass/fail after a paired run.",
+  "evals": [
+    {
+      "id": 1,
+      "scope": "triggering",
+      "set": "train",
+      "prompt": "I want a tutorial on how Plastic works.",
+      "expected_output": "Activates plastic-tutorial and offers the three-track menu.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "router CHOICE == plastic-tutorial",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "scope": "triggering",
+      "set": "train",
+      "prompt": "Teach me Plastic from scratch.",
+      "expected_output": "Activates plastic-tutorial and offers the three-track menu.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "router CHOICE == plastic-tutorial",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "scope": "triggering",
+      "set": "train",
+      "prompt": "Walk me through Plastic before I try it on my real project.",
+      "expected_output": "Activates plastic-tutorial and offers the three-track menu.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "router CHOICE == plastic-tutorial",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "scope": "triggering",
+      "set": "validation",
+      "prompt": "How do I use Plastic day to day?",
+      "expected_output": "Activates plastic-tutorial and offers the three-track menu.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "router CHOICE == plastic-tutorial",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "scope": "triggering",
+      "set": "validation",
+      "prompt": "I have never touched this tool before. What can it actually do for me before I commit real work to it?",
+      "expected_output": "Activates plastic-tutorial; an indirect trigger that names neither the skill nor the word tutorial.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "router CHOICE == plastic-tutorial",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "scope": "triggering",
+      "set": "train",
+      "prompt": "Create an intent for adding a search feature.",
+      "expected_output": "Does NOT activate plastic-tutorial; activates plastic-intent-creating (a near-miss that shares the word intent but starts real work, not a walkthrough).",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "router CHOICE != plastic-tutorial",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "scope": "triggering",
+      "set": "validation",
+      "prompt": "Just run the whole thing for me, I do not want to steer any of it.",
+      "expected_output": "Does NOT activate plastic-tutorial; activates plastic-auto (a near-miss that describes autonomous delivery of real work, not a walkthrough of how auto works).",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "router CHOICE != plastic-tutorial",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "scope": "track-routing",
+      "set": "train",
+      "prompt": "Inside the tutorial menu: show me auto mode.",
+      "expected_output": "Routes to track 2 (references/track-2-auto.md), the auto handover track.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "TRACK == track-2-auto",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "scope": "track-routing",
+      "set": "train",
+      "prompt": "Inside the tutorial menu: I want a roadmap.",
+      "expected_output": "Routes to track 3 (references/track-3-projects-and-roadmaps.md), the projects and roadmaps track.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "TRACK == track-3-projects-and-roadmaps",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "scope": "track-routing",
+      "set": "validation",
+      "prompt": "Inside the tutorial menu: start a project.",
+      "expected_output": "Routes to track 3 (references/track-3-projects-and-roadmaps.md), the projects and roadmaps track.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "TRACK == track-3-projects-and-roadmaps",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "scope": "track-routing",
+      "set": "validation",
+      "prompt": "Walk me through my first intent, one stage at a time.",
+      "expected_output": "Routes to track 1 (references/track-1-guided.md), the guided delivery track.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "TRACK == track-1-guided",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "scope": "track-routing",
+      "set": "train",
+      "prompt": "Tutorial. (No further detail given.)",
+      "expected_output": "Activates plastic-tutorial and presents the three-track menu itself, since no track was named; this is the one case where the menu is the expected output rather than a routed track.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "the reply shows the three-track menu (guided, auto, projects and roadmaps) and does not jump into any one track uninvited",
+          "result": "expect-pass"
+        }
+      ]
+    }
+  ]
+}
