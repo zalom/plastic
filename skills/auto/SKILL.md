@@ -26,8 +26,22 @@ An active intent MUST exist in INDEX.md. If none exists, refuse: "No active inte
 If multiple active intents exist, ask the user which one to deliver (this is the only question auto asks).
 
 **Picking work when no intent is specified.** If the user says "auto" without naming an
-intent and none is active, consult the dashboard's machine-readable queue to choose the
-next dispatchable intent:
+intent and none is active, consult the roadmap first (the primary planning surface), then
+fall back to the dashboard queue. Read the tier's mid-flight roadmap:
+
+```bash
+ruby ~/.plastic/scripts/roadmap-next --roadmaps-dir <tier>/roadmaps
+```
+
+Branch on `state`:
+- `dispatchable`: work its `dispatchable_queue` in `rank` order (the head is the next batch
+  entry). These are the current batch's `queued` intents, parallel-safe within the wave.
+- `in_flight`: the frontier batch is still delivering. Report it and wait. Do NOT dispatch a
+  later batch and do NOT fall through to the dashboard, the roadmap is live.
+- `none` or `exhausted`: no roadmap, or nothing left to dispatch. Fall back to the dashboard
+  queue below. (The global store has no roadmap, so it always reports `none` and falls back.)
+
+Dashboard fallback:
 
 ```bash
 ruby ~/.plastic/scripts/dashboard.rb all --json

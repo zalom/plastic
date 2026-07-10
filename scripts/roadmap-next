@@ -1,0 +1,44 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# roadmap-next - thin CLI over RoadmapQueue (intent 148).
+#
+# The auto loop and plastic-roadmap-continuing both call this instead of ranking roadmap
+# liveness in prose. Queue mode (default) is for the auto loop: it breaks a tie
+# deterministically and reports the winner's frontier state. Which mode (--which) is for
+# plastic-roadmap-continuing: it returns tie_candidates so the skill's single ask can resolve
+# a genuine tie.
+#
+# Usage:
+#   roadmap-next --roadmaps-dir <dir> [--index <path>] [--which]
+#
+# Exits 0 on any successful analysis, including state "none" and "exhausted" (valid answers,
+# not errors). Exits non-zero only on a missing required flag.
+
+require_relative "lib/roadmap_queue"
+require "json"
+
+def opt(args, name)
+  (i = args.index(name)) && args[i + 1]
+end
+
+def usage
+  warn "Usage: roadmap-next --roadmaps-dir <dir> [--index <path>] [--which]"
+  warn "       default mode is the auto-loop queue; --which returns tie_candidates for continuing."
+end
+
+which = !!ARGV.delete("--which")
+roadmaps_dir = opt(ARGV, "--roadmaps-dir")
+index = opt(ARGV, "--index")
+
+if roadmaps_dir.nil?
+  warn "roadmap-next: pass --roadmaps-dir <dir>"
+  usage
+  exit 2
+end
+
+reader = RoadmapQueue.new(roadmaps_dir: roadmaps_dir, index_path: index)
+payload = which ? reader.which : reader.queue
+puts JSON.generate(payload)
+exit 0
