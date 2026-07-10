@@ -168,4 +168,5 @@ class Install < InstallerCore
   end
 end
 
-exit(Install.new(package_root: ENV["PLASTIC_PACKAGE_ROOT"] || File.expand_path("..", __dir__)).cli(ARGV)) if $PROGRAM_NAME == __FILE__
+exit(Install.new(package_root: ENV["PLASTIC_PACKAGE_ROOT"] || File.expand_path("..", __dir__),
+                 plastic_home: ENV.fetch("PLASTIC_HOME") { InstallerCore::DEFAULT_PLASTIC_HOME }).cli(ARGV)) if $PROGRAM_NAME == __FILE__

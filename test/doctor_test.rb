@@ -4,6 +4,7 @@ require "json"
 require "yaml"
 require "fileutils"
 require "digest"
+require "open3"
 
 require_relative "../scripts/doctor"
 
@@ -1352,5 +1353,27 @@ class DoctorVersionCompareTest < Minitest::Test
 
   def test_different_length_versions
     assert_equal 0, doctor.compare_versions("1.0", "1.0.0")
+  end
+end
+
+# Entry-point coverage (intent 169, Defect 2): scripts/doctor.rb's
+# `$PROGRAM_NAME == __FILE__` entry reads `ENV["PLASTIC_HOME"]` and threads it
+# into `Doctor.new(plastic_home:)`. The `Doctor` class itself stays DI
+# (unchanged, covered by every other test above); this is the one focused
+# subprocess test for the entry line, since it is a Defect-2 leak reader.
+class DoctorEntryPlasticHomeTest < Minitest::Test
+  SCRIPT = File.expand_path("../../scripts/doctor.rb", __FILE__)
+
+  def test_entry_honors_plastic_home_and_never_resolves_the_real_store
+    Dir.mktmpdir("doctor-entry-home") do |sandbox|
+      env = { "PLASTIC_HOME" => sandbox }
+      stdout, _stderr, _status = Open3.capture3(env, "ruby", SCRIPT)
+
+      assert_includes stdout, sandbox,
+        "doctor entry must resolve the sandbox PLASTIC_HOME, not just fall to its default"
+      real_plastic_home = File.join(Dir.home, ".plastic")
+      refute_includes stdout, real_plastic_home,
+        "doctor entry must not resolve the operator's real ~/.plastic store"
+    end
   end
 end

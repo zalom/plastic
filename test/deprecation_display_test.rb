@@ -138,7 +138,7 @@ class DeprecationDisplayTest < Minitest::Test
     # the fixture INDEX, hook-session-start DERIVES a bridge; unisolated it
     # wrote /tmp/plastic-<live session id>.json with intent "1" test data
     # (the 107/110 live-bridge clobber, reproduced by this very test).
-    env = { "PLASTIC_GLOBAL_ROOT" => @store_root,
+    env = { "PLASTIC_HOME" => @store_root,
             "PLASTIC_TMP" => @plugin_root, "CLAUDE_CODE_SESSION_ID" => nil }
     cmd = ["ruby", SCRIPT, index_path, @store_root, "global", @plugin_root]
     stdout, _stderr, _status = Open3.capture3(env, *cmd)
@@ -193,7 +193,7 @@ class DeprecationDisplayTest < Minitest::Test
       #!/usr/bin/env ruby
       require "yaml"
       require "json"
-      global_root = ENV.fetch("PLASTIC_GLOBAL_ROOT", File.expand_path("~/.plastic"))
+      global_root = ENV.fetch("PLASTIC_HOME", File.expand_path("~/.plastic"))
       config_path = File.join(global_root, "config.yml")
       config = File.exist?(config_path) ? (YAML.safe_load(File.read(config_path)) || {}) : {}
       key = ARGV[0]

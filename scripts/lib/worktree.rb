@@ -79,6 +79,21 @@ module Worktree
     }
   end
 
+  # Derive the OS-HOME level (the PARENT of `.plastic`) from an intent store
+  # path, anchored on the `.plastic` path segment (Defect 1, intent 169): a
+  # store is always `<plastic_home>/store` or
+  # `<plastic_home>/projects/<slug>/store`, and `<plastic_home>` is always the
+  # `.plastic` dir. Returns nil when `store` is blank or carries no `.plastic`
+  # segment, so callers fall back to their own `home:` default rather than
+  # resolving anything. Pure: no `ENV[...]` read, no I/O.
+  def home_from_store(store)
+    return nil if blank?(store)
+    parts = File.expand_path(store.to_s).split(File::SEPARATOR)
+    idx = parts.rindex(".plastic")
+    return nil unless idx
+    parts[0...idx].join(File::SEPARATOR)
+  end
+
   # Absolute repo path for a project slug from `~/.plastic/projects.yml`, or nil.
   # Reuses the qmd_sync safe-loader pattern: any failure yields nil.
   def repo_for(slug, home: Dir.home)
@@ -105,6 +120,12 @@ module Worktree
     intent_id = intent["id"].to_s
     store = intent["store"].to_s
     intent_slug = slug_from_dir(intent["dir"]) || slug_from_dir(store)
+
+    # Defect 1 fix (intent 169): derive plastic_home from the already-sandboxed
+    # store path when possible, so a sandboxed board never falls to the real
+    # `Dir.home` default. `home:` remains the fallback only when the store is
+    # blank or carries no recognizable `.plastic` segment.
+    home = home_from_store(store) || home
 
     slug = slug_for_store(store, home: home)
     p = paths(slug: slug, intent_id: intent_id, intent_slug: intent_slug, home: home)

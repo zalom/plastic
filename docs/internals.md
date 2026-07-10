@@ -230,6 +230,15 @@ file that another job already deleted, or any other error, is swallowed), so it 
 arming or delivery. `intent_active?` accepts an injectable `index_active_ids:` array and the temp
 directory is injectable, so the rule is testable hermetically.
 
+The `## Active` line shape that scan depends on is load-bearing. `Bridge.intent_active?`
+matches only a line shaped like `` `- [ID — Title](path)` ``, with an em-dash (U+2014, not a
+plain hyphen) between the id and the title. A plain hyphen there makes `intent_active?` return
+false, which fails the lock gate OPEN: an intent that is genuinely active gets read as
+not-active, its bridge becomes purge-eligible, and writes stop being gated for it. This is
+documentation only, not a hardening: intent 96 consciously deferred making the regex accept a
+plain hyphen too, since that changes fail-open behavior and deserves its own decision, not a
+silent widening.
+
 The `plastic-intent-continuing` skill consumes that ledger on the resume path (intent 36): when the
 user or an agent asks to continue a specific intent, the skill reads the last ledger line as
 the current stage, confirms the named stage file is present and non-empty, calls
@@ -649,6 +658,28 @@ own isolation instead, deterministic and cwd-independent.
   and leaving `code: null`. `Worktree.release(bridge_data)` removes both
   worktrees, prunes, and clears the block; it is a no-op when nothing was
   provisioned.
+- **Unified `PLASTIC_HOME` seam** (intent 169): every CLI-script and hook entry
+  point resolves its sandbox override from the single env var `PLASTIC_HOME`
+  (`read-config`, `dashboard.rb`, `qmd-sync`, `provision-project-store`,
+  `validate-intent`, `doctor.rb`, `install.rb`, `hooks/check-update`); an older,
+  differently-named env var that only `read-config` read was hard-cut, not
+  aliased. Holding this seam is a level mismatch: the env var names the
+  plastic_home ROOT (`~/.plastic`) and is
+  used directly as `File.join(PLASTIC_HOME, "store")`, while `worktree.rb`'s
+  `home:` kwarg names the OS HOME (the PARENT of `.plastic`) and computes
+  `plastic_home = File.expand_path(File.join(home, ".plastic"))` internally, so
+  threading the env value straight into `home:` would yield a
+  `~/.plastic/.plastic` bug. `Worktree.provision` therefore never reads the env:
+  it derives `home` from the already-sandboxed `bridge_data["intent"]["store"]`
+  path (anchored on the `.plastic` path segment, via the pure `home_from_store`
+  helper), falling back to its `home: Dir.home` default only when the store is
+  blank or unrecognized. This closes a real incident where a sandboxed board,
+  with no override on `provision`, planted a git worktree in the operator's
+  actual `~/.plastic`; deriving from the store trusts the already-sandboxed
+  value over the ambient environment. The derivation only engages when the
+  store's plastic-home segment is literally named `.plastic` (a sandbox home
+  like `/tmp/x/.plastic` works; an arbitrarily named root does not, and
+  `provision` falls back to the passed `home:`).
 - **The lock file is the truth, the bridge is a cache** (intent 108):
   `scripts/lib/lock.rb` owns the durable `delivery.lock` JSON file inside the
   intent directory: `{ type, owner_session, host, acquired_at, delegates }`,

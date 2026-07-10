@@ -8,6 +8,11 @@ require "json"
 # spawned processes, or the tmp:/Dir.mktmpdir seams in-process), and any test
 # file exercising arm/derive must not leak the ambient CLAUDE_CODE_SESSION_ID
 # into those writes.
+#
+# This file is a STATIC guard (source scans only). It cannot catch a live
+# Worktree.provision call resolving against the real ~/.plastic (that is how
+# 166 got bitten). See test/worktree_hermeticity_test.rb (intent 169) for the
+# runtime behavioral counterpart.
 class HermeticityGuardTest < Minitest::Test
   WRITERS = /Bridge\.(arm_auto|arm_guided|derive|write|disarm_auto|repair_lock)\b/.freeze
   ISOLATION = /PLASTIC_TMP|tmp:\s|Dir\.mktmpdir/.freeze

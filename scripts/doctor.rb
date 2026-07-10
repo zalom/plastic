@@ -1801,4 +1801,4 @@ class Doctor
 
 end
 
-Doctor.new.cli(ARGV) if $PROGRAM_NAME == __FILE__
+Doctor.new(plastic_home: ENV.fetch("PLASTIC_HOME") { Doctor::DEFAULT_PLASTIC_HOME }).cli(ARGV) if $PROGRAM_NAME == __FILE__
