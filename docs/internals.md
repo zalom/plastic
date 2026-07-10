@@ -610,7 +610,7 @@ mihradesign intent 24, a sanctioned, permanent override, not drift).
   contract Plastic controls, every dispatch site (the enforcer's per-stage
   dispatches, `skills/auto/SKILL.md`'s dispatch mechanics, the
   `plastic-intent-discovery` dispatch inside `plastic-intent-starting`, and the
-  `plastic-intent-continuing` stale-future-intent triage's dispatch of
+  `plastic-project-continuing` stale-future-intent triage's dispatch of
   `plastic-future-intent-researcher` (which does not itself spawn further
   sub-agents)) also resolves the target agent's model through the same chain
   (`read-config agents.models.<basename> --project <repo>`) and passes it
