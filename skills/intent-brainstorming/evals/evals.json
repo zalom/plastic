@@ -1,0 +1,67 @@
+{
+  "skill_name": "plastic-intent-brainstorming",
+  "notes": "Intent 66a. Spec for the QMD-first step in the Why/explore-context phase (surface prior decisions/specs/outcomes before grep/Read). Runner is intent 76; spec only. Intent 164 extended this file with the prose-grilling, conflict-supersession, and handoff-to-speccing scenarios; evals 2-4 are pending a real observed run per the plastic-evaluating-skills convention.",
+  "evals": [
+    {
+      "id": 1,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "QMD is present. Brainstorming the active intent during the Why phase, the agent needs prior decisions and specs on caching.",
+      "expected_output": "In the explore-project-context (Why) step, before scanning the store with grep/Read, runs `ruby ~/.plastic/scripts/qmd-sync search \"caching decisions\"` to surface prior decisions, specs, or outcomes, then opens the authoritative intent file for any hit it acts on. No-op fallback to INDEX.md / file scan when QMD is absent.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "qmd-sync search is run during Why before grep/Read; authoritative file opened for any hit",
+          "observed": "SKILL.md (or agent file) carries the QMD-first step: run qmd-sync search before grep/Read, then open the authoritative file; no-op fallback when QMD is absent",
+          "result": "pass"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "During Why exploration for intent X, the owner first rules that a setting ships as a CLI flag. Later in the same session, after more discussion, the owner rules that it should ship as a config-file setting instead, explicitly reversing the earlier call.",
+      "expected_output": "The skill persists BOTH rulings as separate insight-append calls with --stage Why: one for the CLI-flag ruling when it was made, and a second for the config-file ruling that names the CLI-flag ruling as superseded and states that this ruling supersedes it. Neither call is skipped, merged, or batched.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "two separate `ruby ~/.plastic/scripts/insight-append {intent_dir} \"<ruling text>\" --stage Why --author human` calls are made, one per ruling, immediately as each ruling lands; the second insight names the superseded CLI-flag ruling and states supersession",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "Brainstorming a new intent about notification delivery, the agent needs to learn the owner's preferred channel (email, push, or SMS).",
+      "expected_output": "The agent asks a single conversational prose question about the preferred channel, one at a time, phrased as a sentence rather than a bulleted or lettered multiple-choice menu.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "the question is prose, not a chip/lettered multiple-choice menu; only one question is asked per message",
+          "result": "expect-pass"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "Design for intent Y is presented and the owner has ruled on every open section.",
+      "expected_output": "The skill states the enriched Why is captured (Context, Decisions, one insight per ruling) and invokes /plastic-intent-speccing as the handoff. It does not write spec.md itself.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "no spec.md write action is taken by this skill; the terminal message names /plastic-intent-speccing and states spec.md is not authored here",
+          "result": "expect-pass"
+        }
+      ]
+    }
+  ]
+}

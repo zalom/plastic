@@ -93,10 +93,10 @@ tags: [plastic, architecture]
 
 | Stage | Section | Deliverable | Detail |
 |-------|---------|-------------|--------|
-| **What** | `## Intent` | `{ID}--{slug}.md` | `plastic-creating-intent` |
-| **Why** | `## Context` + Decisions | `spec.md` | `plastic-brainstorming` |
-| **How** | Planning | `plan.md` + `actions/` + `checklist.md` | `plastic-writing-plans` |
-| **Exec** | Execution | `outcome.md` | `plastic-executing-plan` |
+| **What** | `## Intent` | `{ID}--{slug}.md` | `plastic-intent-creating` |
+| **Why** | `## Context` + Decisions | `spec.md` | `plastic-intent-brainstorming` |
+| **How** | Planning | `plan.md` + `actions/` + `checklist.md` | `plastic-intent-planning` |
+| **Exec** | Execution | `outcome.md` | `plastic-intent-executing` |
 
 `## Insights` is the append-only log of durable discoveries captured throughout ALL stages.
 An insight is a discovery worth keeping for later reads: novel, or old but newly relevant,
@@ -113,9 +113,9 @@ entries stay append-only, newest at the bottom; the prefix only stamps each line
 which stage, and who.
 
 The blessed write path is the `insight-append` helper
-(`scripts/insight-append <intent_dir> <text> --stage S --author A`), which formats the prefix,
-validates it, and appends at the bottom. Hand-editing `## Insights` is an escape hatch; the
-helper is the default so the format cannot drift.
+(`scripts/insight-append <intent_dir> <text> --stage S --author A`), which ships with every
+install and update, formats the prefix, validates it, and appends at the bottom. Hand-editing
+`## Insights` is an escape hatch; the helper is the default so the format cannot drift.
 
 Background sessions and dispatched sub-agents do not write the insight themselves. They carry
 each nugget home in the completion report's `insights:` field, and the orchestrator (or any
@@ -191,6 +191,13 @@ adapter layer that maps Plastic's hooks and model aliases onto each supported ag
 (Claude, Codex, Hermes) is the cross-harness portability layer; see
 docs/reference/harness-adapters.md for the adapter contract.
 
+**Spawn preamble (intent 152).** `scripts/spawn-preamble` emits a live-state block purely from
+filesystem state: the active intent, stage, role/cycle-step, the honor instruction, and the
+report contract. When the intent's code worktree is resolvable and exists on disk, it also
+appends the worktree's absolute path plus a verbatim instruction to `cd` there directly, for
+harnesses whose `EnterWorktree` cannot discover a nested repo from a non-repo launch directory.
+Output is byte-identical when no worktree resolves.
+
 **Orchestrator advisory.** At auto-mode start, the orchestrator recommends once that the user
 run the main session on the best available thinking model (Fable, Opus, or whatever supersedes
 them). This is advisory only: it changes no behavior and blocks nothing if ignored, and it
@@ -230,7 +237,7 @@ Beyond the lifecycle agents, Plastic ships thin skills for day-to-day operation:
   for its three scopes (`--core` for the boot integrity check, `--store` per store on dashboard
   load, and the full no-flag walk after an update).
 - **Lifecycle skills** (`plastic-install`, `plastic-update`, `plastic-uninstall`,
-  `plastic-versions`, intent 55) are thin wrappers over a single pinned
+  `plastic-rollback`, intent 55) are thin wrappers over a single pinned
   `npx -y @zalom/plastic@<channel> <verb>` call: initialize or repair an install, advance a
   channel, remove Plastic, and step the local versions ledger.
 
@@ -320,7 +327,7 @@ A Zettelkasten structure note, not a table of contents. Clusters by meaning.
 
 Sections: `## Active`, `## Future`, `## Clusters`, `## Abandoned`, `## Completed`.
 
-For index maintenance, use `plastic-managing-index`.
+For index maintenance, use `plastic-store-indexing`.
 
 One-line entry convention. Each index entry is ONE line: `- [<id> <terse title>](<dir>) <tags>`.
 The title is the title, not a summary: aim for about 80 characters, no multi-sentence
@@ -343,7 +350,7 @@ ALL work flows through intents.
 3. On completion, capture observations in `## Insights`.
 4. When done, write `outcome.md` + `## Outcome` summary. Update INDEX.md.
 5. Researches are intents. No separate folder.
-6. Intents are created only via `plastic-creating-intent`. Never hand-author an intent file. The skill self-verifies the written intent with `scripts/validate-intent` before announcing or committing, so every intent is born complete.
+6. Intents are created only via `plastic-intent-creating`. Never hand-author an intent file. The skill self-verifies the written intent with `scripts/validate-intent` before announcing or committing, so every intent is born complete. `--intent` text is escaped for double quotes and backslashes before it lands in frontmatter, so free-form text is safe to pass as-is, and a reciprocal `chain:` append preserves the target intent's existing flow- or block-style entries.
 
 ## House Style (self-check)
 
@@ -362,6 +369,36 @@ delivered artifacts in your own context: prefer revisiting that in-context memor
 cache) over re-reading them from disk, which only widens context. QMD is for OTHER or indexed
 intents, not for re-reading what you just wrote. Pairs with `/clear` plus savepoint-resume
 hygiene after each intent. Advisory self-check, not hard-verifiable.
+
+## Tabular-First Reporting (intent 160)
+
+**Default.** Tabular layout is the default shape for three surfaces: What-stage discovery
+deposits, all research reports, and all agent reporting or presentation surfaces.
+
+**Calibration.** Tables are REQUIRED for any listing or discussion of intents, and for
+explaining complex data, comparisons, or multi-factor reasoning. This is NOT a blanket
+tables-everywhere rule: simple data stays prose, and tables must not be overused.
+
+**Bullets-limit.** Use bullets only when a table genuinely does not fit the content, and
+never more than 3-5 items.
+
+**Why tables.**
+
+| # | Reason |
+|---|--------|
+| 1 | Parallel structure makes comparison a row-vs-row scan, not a re-read. |
+| 2 | Coverage is provable: N items means N rows, an empty cell exposes a gap while a missing bullet hides it. |
+| 3 | Schema stated once in the headers, no repeated labels, higher density. |
+| 4 | A column reads vertically to show every value at once. |
+| 5 | Cells force terseness where bullets sprawl and nest. |
+| 6 | A ruling or decision column turns the report into the decision worksheet. |
+| 7 | Rows stay machine-readable for downstream tooling. |
+| 8 | Uniform granularity: every item answers the same questions. |
+| 9 | Line-scoped git diffs. |
+
+**Exception.** The EM-to-CTO human briefing (`skills/auto/references/human-report-contract.md`)
+keeps its deliberate prose shape (fixed State/Risk/Call, single item, nothing to tabulate) and
+is exempt from this rule.
 
 ## Retrieval Gate
 
@@ -407,7 +444,9 @@ Each gate guards one thing. All are hard except the retrieval gate:
   `>` redirect, a `ruby -e` or `python -c` write), so the same rules apply whether an edit goes
   through the Write tool or a shell. A trailing `# plastic-ok` comment is an auditable escape that
   lets a deliberate command through, and every use is logged to
-  `~/.plastic/.cache/gate-escapes.log`.
+  `~/.plastic/.cache/gate-escapes.log`. The code gate (Write and Edit) carries the identical
+  audited `# plastic-ok` escape, logged to the same file. The escape does not extend to
+  `NotebookEdit` or MCP structural edits: they are still gated, just without an escape hatch.
 - **retrieval-gate** is advisory only (see the Retrieval Gate section): it hints at QMD and never
   blocks a read or search.
 

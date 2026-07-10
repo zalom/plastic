@@ -201,7 +201,7 @@ parts = []
 
 # Boot banner first: every session start surfaces that Plastic loaded, with the
 # version (clean) or the first failing core check (degraded). Owned by the hook
-# so it runs by construction — the plastic-continuing skill no longer does this.
+# so it runs by construction — the plastic-intent-continuing skill no longer does this.
 parts << core_banner
 parts << ""
 

@@ -24,6 +24,7 @@ for the Why stage to consume.
    the intent file, spec.md, or any lifecycle deliverable: the lock-owner-only
    write rule stays intact, and the Why-stage `plastic-brainstorming` agent is
    the one that reads your deposit and enriches `## Context`.
+   Shape the deposit tabular-first per `PLASTIC.md` (## Tabular-First Reporting, intent 160).
 
 ## Constraints
 - Read-only with respect to the intent: your single output is

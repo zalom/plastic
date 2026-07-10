@@ -7,7 +7,7 @@ require "fileutils"
 require "json"
 require "stringio"
 require_relative "../scripts/lib/worktree"
-require_relative "../scripts/lib/db"
+require_relative "../scripts/lib/lock"
 
 # Hermetic tests for the Worktree module (intent 73c1). No real git runs: a
 # FakeRunner records calls and returns scripted results. projects.yml is built
@@ -238,14 +238,13 @@ class WorktreeTest < Minitest::Test
     assert_nil result["worktree"]
   end
 
-  # --- lock_held_by_other? (intent 108; cutover intent 41: the `lock_leases`
-  # delivery-grain row decides) -------------------------------------------
+  # --- lock_held_by_other? (intent 108: the delivery.lock file decides) -------
 
-  def intent_dir_with_lock(store, id, slug, session:, now: Time.now)
+  def intent_dir_with_lock(store, id, slug, session:, mtime: nil)
     dir = File.join(store, "#{id}--#{slug}")
     FileUtils.mkdir_p(dir)
-    conn = Plastic::DB.connect(File.dirname(store))
-    Plastic::DB::Leases.acquire(conn, id, session: session, host: "h", now: now)
+    Lock.acquire(dir, session: session)
+    FileUtils.touch(Lock.path(dir), mtime: mtime) if mtime
     dir
   end
 
@@ -264,20 +263,19 @@ class WorktreeTest < Minitest::Test
   end
 
   def test_lock_not_held_by_other_for_a_delegate
-    intent_dir_with_lock(@store, "73c1", "worktree-x", session: "other")
-    conn = Plastic::DB.connect(File.dirname(@store))
-    Plastic::DB::Leases.add_delegate(conn, "73c1", delegate: "me", session: "other")
+    dir = intent_dir_with_lock(@store, "73c1", "worktree-x", session: "other")
+    Lock.add_delegate(dir, delegate: "me", session: "other")
     refute Worktree.lock_held_by_other?(
       intent_id: "73c1", store: @store, current_session: "me", home: @home
     ), "a delegate of the owner does not count as 'other' (D4)"
   end
 
   def test_lock_not_held_when_stale
-    old = Time.now - 4000
-    intent_dir_with_lock(@store, "73c1", "worktree-x", session: "other", now: old)
+    intent_dir_with_lock(@store, "73c1", "worktree-x", session: "other",
+                         mtime: Time.now - 4000)
     refute Worktree.lock_held_by_other?(
-      intent_id: "73c1", store: @store, current_session: "me", home: @home, now: Time.now
-    ), "an expired lease does not hold (leases fail open on expiry)"
+      intent_id: "73c1", store: @store, current_session: "me", home: @home
+    ), "a stale lock does not hold (explicit takeover reclaims it)"
   end
 
   def test_lock_not_held_for_different_intent

@@ -13,7 +13,7 @@
 # IntentValidator (exit non-zero if not born complete).
 #
 # It does NOT touch INDEX.md, git, or project creation: those remain skill/agent
-# responsibilities (see plastic-creating-intent).
+# responsibilities (see plastic-intent-creating).
 #
 # Usage:
 #   new-intent --store <store_path> --intent "<one-line>" --slug <slug> \
@@ -73,15 +73,28 @@ def default_templates_dir
 end
 
 def render_tokens(text, tokens)
-  tokens.reduce(text) { |acc, (k, v)| acc.gsub("{{#{k}}}", v.to_s) }
+  # Block-form gsub: a String replacement argument reinterprets backslash
+  # sequences (so a doubled backslash from escape_double_quoted_scalar
+  # collapses back to one); the block form substitutes the value literally.
+  tokens.reduce(text) { |acc, (k, v)| acc.gsub("{{#{k}}}") { v.to_s } }
+end
+
+# Escape the characters that would break a double-quoted YAML scalar: backslash
+# first, so a real backslash in the input isn't re-escaped by the quote step,
+# then the double quote itself. Used only for the frontmatter-bound INTENT
+# token; the body's DESCRIPTION copy stays raw (markdown prose, not a YAML
+# scalar) so escaping it would corrupt what the user actually typed.
+def escape_double_quoted_scalar(value)
+  value.to_s.gsub("\\") { "\\\\" }.gsub('"') { '\"' }
 end
 
 # Add an id to a source intent's frontmatter `chain` array, idempotently (I1
 # reciprocity: `child in parent.sources` => `parent.chain` gains `child`). A
-# targeted edit of the `chain:` line only; the body (including `## Links`) is
+# targeted edit that preserves every existing entry and appends the new id in
+# the SAME on-disk YAML style (flow `chain: [...]` or block `chain:` + indented
+# `- "id"` lines) the target already uses; the body (including `## Links`) is
 # preserved byte-for-byte and no other frontmatter key is touched, so the file
-# stays born-complete. Renders the array in flow style (`["a", "b"]`) to match
-# templates/intent.md. No-op when the id is already present.
+# stays born-complete. No-op when the id is already present.
 def add_to_chain(file_path, new_id)
   return unless File.exist?(file_path)
   content = File.read(file_path)
@@ -91,21 +104,41 @@ def add_to_chain(file_path, new_id)
   return unless parts.length >= 3
 
   fm = parts[1]
-  chain_line = fm.lines.find { |l| l.match?(/\A\s*chain\s*:/) }
-  return unless chain_line
+  lines = fm.lines
+  chain_idx = lines.index { |l| l.match?(/\A\s*chain\s*:/) }
+  return unless chain_idx
 
-  existing = fm.match(/\bchain\s*:\s*\[(.*?)\]/m)
-  ids =
-    if existing
-      existing[1].scan(/"([^"]*)"|'([^']*)'/).flatten.compact
-    else
-      []
+  flow_match = lines[chain_idx].match(/\A\s*chain\s*:\s*\[(.*?)\]\s*\z/m)
+
+  if flow_match
+    ids = flow_match[1].scan(/"([^"]*)"|'([^']*)'/).flatten.compact
+    return if ids.include?(new_id)
+
+    ids << new_id
+    lines[chain_idx] = "chain: [#{ids.map { |i| "\"#{i}\"" }.join(", ")}]\n"
+  else
+    entry_re = /\A(\s*-\s*)(?:"([^"]*)"|'([^']*)'|(\S+))\s*\z/
+    entry_lines = []
+    j = chain_idx + 1
+    while j < lines.length && lines[j].match?(entry_re)
+      entry_lines << lines[j]
+      j += 1
     end
-  return if ids.include?(new_id)
 
-  ids << new_id
-  rendered = "chain: [#{ids.map { |i| "\"#{i}\"" }.join(", ")}]"
-  new_fm = fm.sub(/^\s*chain\s*:.*$/, rendered)
+    ids = entry_lines.map { |l| (m = l.match(entry_re)) && (m[2] || m[3] || m[4]) }
+    return if ids.include?(new_id)
+
+    if entry_lines.empty?
+      prefix, quote = "  - ", "\""
+    else
+      m = entry_lines.last.match(entry_re)
+      prefix = m[1]
+      quote = m[2] ? "\"" : (m[3] ? "'" : "")
+    end
+    lines.insert(chain_idx + 1 + entry_lines.length, "#{prefix}#{quote}#{new_id}#{quote}\n")
+  end
+
+  new_fm = lines.join
   File.write(file_path, ["", new_fm, parts[2]].join("---"))
 end
 
@@ -260,7 +293,7 @@ def main(argv)
   intent_template = File.read(File.join(templates, "intent.md"))
   intent_body = render_tokens(intent_template, {
     "ID" => id,
-    "INTENT" => opts[:intent],
+    "INTENT" => escape_double_quoted_scalar(opts[:intent]),
     "SOURCES" => sources_str,
     "DATE" => Date.today.iso8601,
     "AUTHOR" => opts[:author],

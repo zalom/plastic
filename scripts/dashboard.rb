@@ -33,7 +33,7 @@ def today
 end
 
 # A generic "about a month" threshold, not tuned to any one store's item count.
-# Deliberately independent from plastic-continuing's separate stale_threshold_days
+# Deliberately independent from plastic-intent-continuing's separate stale_threshold_days
 # config: that one is a proactive boot-time triage nudge, this is a board annotation.
 # Unifying the two is a follow-up, not this intent.
 STALE_DAYS = 30
@@ -466,7 +466,7 @@ def render_continue(records)
   out.concat(matrix(open, scope_tag: true))
   out << ""
   out << LEGEND
-  out << "run     plastic-dashboard project <slug>  ·  plastic-auto  (works the dispatchable queue)"
+  out << "ask    for the <slug> project board  ·  plastic-auto  (works the dispatchable queue)"
   out.join("\n") + "\n"
 end
 

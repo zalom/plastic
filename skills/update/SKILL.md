@@ -1,6 +1,7 @@
 ---
 name: plastic-update
 description: Use when updating Plastic. Runs the `update` verb, which reads the installed VERSION, derives its channel, queries npm dist-tags, and advances to the next version on that channel (or switches channel with a flag).
+user-invocable: true
 ---
 
 # Update Plastic
@@ -34,7 +35,7 @@ If Plastic is installed, derive `<channel>` from `~/.plastic/VERSION`: a version
 | `--alpha` | Switch to / advance the **alpha** channel (bleeding edge, confirmed if moving down in stability) |
 
 Switching toward a more stable channel is frictionless; switching toward bleeding edge is
-confirmed. To roll **back** to a previously-installed version, use `plastic-versions`.
+confirmed. To roll **back** to a previously-installed version, use `plastic-rollback`.
 
 ## Prerequisites
 

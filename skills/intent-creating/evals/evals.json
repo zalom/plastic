@@ -1,0 +1,72 @@
+{
+  "skill_name": "plastic-intent-creating",
+  "notes": "Intent 68. Scope: output-quality for the sources-vs-chain construction rules (D1/D2). Asserts the related-but-not-spawned case produces NO sources plus a predecessor chain link and a ## Links mirror, contrasted with the created-from case (true ascendant -> --sources set, reciprocal chain). The machine-checkable half lives in test/new_intent_test.rb (test_sources_path_gets_child_in_chain_frontmatter); this file documents the agent-facing scenario for skill evaluation and is NOT run by bin/test.",
+  "evals": [
+    {
+      "id": 1,
+      "scope": "behavior",
+      "set": "train",
+      "prompt": "Create an intent for adding a retry policy to the uploader. It's related to intent 41 (the upload pipeline work) but it's independent: it did not come out of intent 41's lifecycle.",
+      "expected_output": "A new root intent is created with EMPTY sources (it was not created from 41). The relation is recorded on the PREDECESSOR: intent 41 gains the new intent's id in its frontmatter chain, and a [[<new-id>]] wikilink is added to intent 41's ## Links. The new intent is NOT given 41 in --sources (the related-but-not-spawned rule). No false symmetry: 41 keeps the new id on chain with no reciprocal sources.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "new intent sources is empty",
+          "observed": "sources: []",
+          "result": "pass"
+        },
+        {
+          "type": "code",
+          "check": "predecessor 41 chain includes new id",
+          "observed": "41.chain includes <new-id>",
+          "result": "pass"
+        },
+        {
+          "type": "code",
+          "check": "predecessor 41 ## Links has [[<new-id>]] mirror",
+          "observed": "[[<new-id>]] present in 41 ## Links",
+          "result": "pass"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "Create an intent that is the direct continuation of intent 41: it emerged from intent 41's lifecycle and could not exist without it.",
+      "expected_output": "Because the new intent was genuinely CREATED FROM 41 (D1), it carries 41 in --sources (or branches from 41, which folds 41 into sources via the redundant-explicit rule). The reciprocal I1 backlink lands: intent 41's frontmatter chain gains the new intent's id. This is the created-from case, contrasted with the related-but-not-spawned case in eval 1.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "code",
+          "check": "new intent sources includes 41",
+          "observed": "sources includes 41",
+          "result": "pass"
+        },
+        {
+          "type": "code",
+          "check": "predecessor 41 chain includes new id (I1 reciprocity)",
+          "observed": "41.chain includes <new-id>",
+          "result": "pass"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "QMD is present. The user says: create an intent to add retry to the uploader.",
+      "expected_output": "Before allocating the id / scaffolding, runs `ruby ~/.plastic/scripts/qmd-sync search \"add retry to the uploader\"` to surface a near-duplicate or true predecessor, then opens the authoritative intent file for any hit (reusing a near-duplicate or setting a real predecessor in --sources). No-op fallback to INDEX.md / file scan when QMD is absent.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "qmd-sync search is run before id allocation; authoritative file opened for any hit; informs reuse / --sources",
+          "observed": "SKILL.md (or agent file) carries the QMD-first step: run qmd-sync search before grep/Read, then open the authoritative file; no-op fallback when QMD is absent",
+          "result": "pass"
+        }
+      ]
+    }
+  ]
+}

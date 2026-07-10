@@ -47,13 +47,13 @@ Plastic has its own lifecycle skills. When a Plastic skill exists for the curren
 
 | Phase | Skill | Produces |
 |-------|-------|----------|
-| What | `plastic-creating-intent` | Intent file |
-| Why | `plastic-brainstorming` | `spec.md` |
-| Why | `plastic-research` | `resources/*.md` |
-| Why | `plastic-brainstorming-grill-me` | Deep interrogation |
-| How | `plastic-writing-plans` | `plan.md`, `checklist.md`, `actions/` |
-| Exec | `plastic-executing-plan` | Code + `outcome.md` |
-| Done | `plastic-intent-curator` | Lifecycle transition |
+| What | `plastic-intent-creating` | Intent file |
+| Why | `plastic-intent-brainstorming` | `spec.md` |
+| Why | `plastic-intent-researching` | `resources/*.md` |
+| Why | `plastic-intent-grilling` | Deep interrogation |
+| How | `plastic-intent-planning` | `plan.md`, `checklist.md`, `actions/` |
+| Exec | `plastic-intent-executing` | Code + `outcome.md` |
+| Done | `plastic-store-curating` | Lifecycle transition |
 
 **Artifact convention:** ALL lifecycle artifacts go to the active intent directory (`store/{id}--{slug}/`). Never write specs to `docs/superpowers/specs/` or plans to `docs/superpowers/plans/`.
 

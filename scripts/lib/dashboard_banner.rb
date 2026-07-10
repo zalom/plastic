@@ -20,7 +20,7 @@ module DashboardBanner
     return nil unless counts.is_a?(Hash)
     active = counts["active"].to_i
     future = counts["future"].to_i
-    line = "Plastic: #{active} active · #{future} next · run /plastic-dashboard to see the board"
+    line = "Plastic: #{active} active · #{future} next · say \"show the dashboard\" to see the board"
     nbt = next_big_thing_id(payload)
     line += " · next big thing: #{nbt}" if nbt
     line

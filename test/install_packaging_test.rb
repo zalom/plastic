@@ -51,6 +51,7 @@ class InstallPackagingTest < Minitest::Test
     File.write(File.join(src, "doctor", "SKILL.md"), "doc")
     File.write(File.join(src, "auto", "SKILL.md"), "auto")
     File.write(File.join(src, "_active-intent-gate.md"), "gate")
+    File.write(File.join(src, "_decision-tables.md"), "tables")
 
     skills_root = File.join(@dir, "skills")
     installed = @installer.install_skills_flat(src, skills_root)
@@ -62,6 +63,10 @@ class InstallPackagingTest < Minitest::Test
     assert File.file?(File.join(PKG_TEST_HOME, "_active-intent-gate.md"))
     refute File.exist?(File.join(skills_root, "_active-intent-gate.md"))
     assert_includes installed, File.join(PKG_TEST_HOME, "_active-intent-gate.md")
+    # any top-level underscore markdown fragment relocates the same way, not just the gate
+    assert File.file?(File.join(PKG_TEST_HOME, "_decision-tables.md"))
+    refute File.exist?(File.join(skills_root, "_decision-tables.md"))
+    assert_includes installed, File.join(PKG_TEST_HOME, "_decision-tables.md")
   end
 
   # --- Manifest-diff prune ---
@@ -217,49 +222,5 @@ class InstallPackagingTest < Minitest::Test
     pkg = JSON.parse(File.read(File.join(REPO, "package.json")))
     assert_includes pkg["files"], "agents/",
       "agents/ must be in package.json `files` so role files ship to consumers"
-  end
-
-  # --- the operational DB layer ships under scripts/ (intent 41 ACTION_12) ---
-  # scripts/lib/db.rb, scripts/lib/db/*.rb, and scripts/plastic-db are all new
-  # files this intent adds; none live outside scripts/, so the existing
-  # "scripts/" entry already covers them with no `files` array change needed.
-  # This guard fails loudly if that ever stops being true.
-
-  def test_scripts_dir_is_packaged_for_distribution
-    pkg = JSON.parse(File.read(File.join(REPO, "package.json")))
-    assert_includes pkg["files"], "scripts/",
-      "scripts/ must be in package.json `files` so the DB layer and its CLI ship to consumers"
-  end
-
-  # --- zero new daemons/background processes in the shipped DB layer (AC4) ---
-  # The only `fork` anywhere in the repo is the contention smoke TEST
-  # (test/db_contention_smoke_test.rb), never shipped runtime code.
-
-  def test_db_layer_source_has_no_fork_spawn_or_background_loop
-    files = %w[scripts/lib/db.rb scripts/plastic-db] +
-            Dir.glob(File.join(REPO, "scripts", "lib", "db", "*.rb")).map { |p| p.sub("#{REPO}/", "") }
-    refute_empty files
-
-    offenders = files.select do |rel|
-      code = File.readlines(File.join(REPO, rel)).reject { |l| l.strip.start_with?("#") }.join
-      code =~ /\bfork\b|\bProcess\.spawn\b|\bThread\.new\b|\bsystem\(/
-    end
-    assert_empty offenders, "DB layer file(s) with fork/spawn/background-thread code: #{offenders.join(', ')}"
-  end
-
-  def test_db_layer_files_all_live_under_scripts
-    expected = %w[scripts/lib/db.rb scripts/plastic-db] +
-               Dir.glob(File.join(REPO, "scripts", "lib", "db", "*.rb")).map { |p| p.sub("#{REPO}/", "") }
-    missing = expected.reject { |f| File.file?(File.join(REPO, f)) }
-    assert_empty missing, "expected DB layer file(s) not found on disk: #{missing.join(', ')}"
-
-    # Repo-wide: no db*.rb / plastic-db file exists OUTSIDE scripts/, so the
-    # single "scripts/" files-array entry is the whole story (no separate
-    # `files` entry could ever be needed for this layer).
-    stray = Dir.glob(File.join(REPO, "**", "{db.rb,plastic-db}"))
-                .reject { |p| p.include?("/node_modules/") || p.include?("/.git/") }
-                .map { |p| p.sub("#{REPO}/", "") }
-                .reject { |f| f.start_with?("scripts/") }
-    assert_empty stray, "found DB layer file(s) outside scripts/: #{stray.join(', ')}"
   end
 end

@@ -23,6 +23,7 @@
 # Exit codes: 0 (preamble emitted), 2 (usage).
 
 require_relative "lib/bridge"
+require_relative "lib/worktree"
 
 # Verbatim honoring instruction. Kept as one constant so the contract doc and the
 # test assert against the exact same string.
@@ -30,6 +31,16 @@ HONOR_INSTRUCTION =
   "You are operating inside Plastic. Use it as your operating scaffold. " \
   "Emit VALID lifecycle artifacts; do not hallucinate intents or stages. " \
   "Your primary output is valid lifecycle artifacts; you close with a structured report about them."
+
+# Verbatim cd-fallback instruction (intent 152). The harness's own EnterWorktree
+# tool assumes cwd IS the repo root, which fails when a dispatched agent's
+# session launches from a directory that is not itself a git repo (the normal
+# shape for a background job): it cannot discover the nested project repo
+# underneath it. Kept as one constant so the doc and the test assert against
+# the exact same string.
+WORKTREE_FALLBACK_INSTRUCTION =
+  "If EnterWorktree fails to discover the nested repo from a non-repo launch " \
+  "directory, cd directly to the code worktree path above before editing project code."
 
 # Verbatim completion-report contract (intent 74). Kept as one constant so the
 # contract doc (skills/auto/references/agent-report-contract.md), the role prompts,
@@ -123,7 +134,8 @@ end
 intent_dir = File.expand_path(intent_dir_arg)
 
 fm = frontmatter_for(intent_dir)
-id = fm["id"].to_s.strip
+raw_id = fm["id"].to_s.strip
+id = raw_id
 intent_name = fm["intent"].to_s.strip
 id = "(unknown)" if id.empty?
 intent_name = "(unknown)" if intent_name.empty?
@@ -131,12 +143,24 @@ intent_name = "(unknown)" if intent_name.empty?
 stage = current_stage(intent_dir)
 cycle = role || step || stage
 
+# Already-provisioned code worktree path (intent 152), resolved purely from
+# filesystem/YAML state (no git shell-out): see Worktree.paths's own doc
+# comment. Fails open (no lines added) when unresolvable or not on disk.
+store_root = File.dirname(intent_dir)
+project_slug = Worktree.slug_for_store(store_root)
+intent_slug = Worktree.slug_from_dir(intent_dir)
+code_path = Worktree.paths(slug: project_slug, intent_id: raw_id, intent_slug: intent_slug)["code"]
+
 lines = []
 lines << "=== Plastic spawn preamble ==="
 lines << "Store: #{intent_dir}"
 lines << "Active intent: #{id} - #{intent_name}"
 lines << "Current stage: #{stage}"
 lines << "Cycle step / role: #{cycle}"
+if code_path && Dir.exist?(code_path)
+  lines << "Code worktree: #{code_path}"
+  lines << WORKTREE_FALLBACK_INSTRUCTION
+end
 lines << ""
 lines << HONOR_INSTRUCTION
 lines << ""

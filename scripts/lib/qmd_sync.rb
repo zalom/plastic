@@ -42,8 +42,10 @@ module QmdSync
   end
 
   # Collection name for a store directory.
-  #   global store (<plastic_home>/store)        -> "plastic-global"
-  #   project store (<.../projects/<slug>/store) -> "plastic-<slug>"
+  #   global store (<plastic_home>/store)          -> "plastic-global"
+  #   project store (<.../projects/<slug>/store)   -> "plastic-<slug>"
+  #   roadmaps dir (sibling of either store above)  -> the sibling store's
+  #                                                    collection name, suffixed "-roadmaps"
   # Slug is resolved from projects.yml by matching the project path; falls back
   # to the directory's parent name when no registry match exists.
   def collection_name(store_dir, plastic_home:)
@@ -51,12 +53,19 @@ module QmdSync
     global_store = File.expand_path(File.join(plastic_home, "store"))
     return "plastic-global" if store_dir == global_store
 
+    if File.basename(store_dir) == "roadmaps"
+      sibling_store = File.join(File.dirname(store_dir), "store")
+      return "#{collection_name(sibling_store, plastic_home: plastic_home)}-roadmaps"
+    end
+
     slug = slug_for_store(store_dir, plastic_home: plastic_home)
     "plastic-#{slug}"
   end
 
   # Every store Plastic knows about: the global store plus each registered
-  # project store. Returns [{collection:, dir:}, ...].
+  # project store, plus a roadmap-companion entry per tier when that tier's
+  # sibling `roadmaps/` directory exists on disk (intent 135). Returns
+  # [{collection:, dir:}, ...].
   def enumerate_stores(plastic_home:)
     stores = [{
       collection: "plastic-global",
@@ -75,7 +84,12 @@ module QmdSync
       dir = Dir.exist?(mirror_store) ? mirror_store : project_store
       stores << { collection: "plastic-#{slug}", dir: dir }
     end
-    stores
+
+    stores.flat_map do |s|
+      roadmaps_dir = File.join(File.dirname(s[:dir]), "roadmaps")
+      next [s] unless Dir.exist?(roadmaps_dir)
+      [s, { collection: "#{s[:collection]}-roadmaps", dir: roadmaps_dir }]
+    end
   end
 
   # Register a store directory as a collection. Idempotent: re-running is safe.
@@ -185,7 +199,12 @@ module QmdSync
   # project's collection plus plastic-global, or just plastic-global when the
   # CWD is not inside any registered project. Project match = CWD equals the
   # registered path or is nested under it.
-  def collections_for_cwd(cwd, plastic_home:)
+  #
+  # Each collection's roadmap companion (intent 135) is appended right after it
+  # when actually registered (checked via the injected runner's `collection
+  # list`), because `qmd search -c <unregistered-collection>` hard-fails the
+  # whole call, so an unregistered companion must never be added blindly.
+  def collections_for_cwd(cwd, plastic_home:, runner: default_runner, detector: method(:detect))
     cwd = File.expand_path(cwd)
     projects = load_projects(plastic_home)
     slug, = projects.find do |_s, info|
@@ -194,7 +213,15 @@ module QmdSync
       root = File.expand_path(path)
       cwd == root || cwd.start_with?(root + File::SEPARATOR)
     end
-    slug ? ["plastic-#{slug}", "plastic-global"] : ["plastic-global"]
+
+    base = slug ? ["plastic-#{slug}", "plastic-global"] : ["plastic-global"]
+    return base unless detector.call
+
+    registered = list_collections(runner)
+    base.flat_map do |c|
+      roadmap = "#{c}-roadmaps"
+      registered.include?(roadmap) ? [c, roadmap] : [c]
+    end
   end
 
   # --- internals ---

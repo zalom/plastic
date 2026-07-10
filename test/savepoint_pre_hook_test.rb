@@ -5,19 +5,16 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require_relative "../scripts/lib/bridge"
-require_relative "../scripts/lib/db"
 
-# Intent 81: the PreToolUse savepoint trigger stamps the pre-stage `started`
-# event, derived from the file path alone (no bridge, no session), and never
-# blocks. Cutover intent 41 ACTION_11: the event lands in `savepoint_events`,
-# not savepoint.md. Drive the real hook script as a subprocess for fidelity.
+# Intent 81: the PreToolUse savepoint trigger appends the pre-stage `started`
+# line, derived from the file path alone (no bridge, no session), and never
+# blocks. Drive the real hook script as a subprocess for fidelity.
 class SavepointPreHookTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/hook-savepoint-pre", __dir__)
 
   def setup
     @root = Dir.mktmpdir("savepoint-pre")
-    @store = File.join(@root, "store")
-    @intent_dir = File.join(@store, "81--x")
+    @intent_dir = File.join(@root, "store", "81--x")
     FileUtils.mkdir_p(@intent_dir)
     File.write(File.join(@intent_dir, "81--x.md"), "## Intent\nx\n")
   end
@@ -31,37 +28,37 @@ class SavepointPreHookTest < Minitest::Test
     [out, $?]
   end
 
-  def pairs
-    conn = Plastic::DB.connect(@root)
-    Plastic::DB::SavepointEvents.events_for(conn, "81").map { |e| [e["stage"], e["event_type"]] }
+  def ledger
+    f = File.join(@intent_dir, "savepoint.md")
+    File.exist?(f) ? File.read(f) : ""
   end
 
-  def test_pre_write_of_spec_stamps_why_started
+  def test_pre_write_of_spec_appends_why_started
     # spec.md does not exist yet (the pre-write moment).
     spec = File.join(@intent_dir, "spec.md")
     out, status = run_hook(spec)
     assert_equal 0, status.exitstatus, "hook must exit 0, got: #{out}"
-    assert_includes pairs, ["Why", "started"]
+    assert_includes ledger, "Why  started"
   end
 
-  def test_pre_write_of_plan_stamps_how_started
+  def test_pre_write_of_plan_appends_how_started
     plan = File.join(@intent_dir, "plan.md")
     _out, status = run_hook(plan)
     assert_equal 0, status.exitstatus
-    assert_includes pairs, ["How", "started"]
+    assert_includes ledger, "How  started"
   end
 
   def test_started_fires_for_sentinel_placeholder
     # A scaffolded placeholder spec is not a real stage file: stage is starting.
     File.write(File.join(@intent_dir, "spec.md"), "#{Bridge::PLACEHOLDER_SENTINEL}\n\nx\n")
     run_hook(File.join(@intent_dir, "spec.md"))
-    assert_includes pairs, ["Why", "started"]
+    assert_includes ledger, "Why  started"
   end
 
   def test_no_started_once_artifact_is_real
     File.write(File.join(@intent_dir, "spec.md"), "# Real spec\nbody\n")
     run_hook(File.join(@intent_dir, "spec.md"))
-    refute_includes pairs, ["Why", "started"]
+    refute_includes ledger, "Why  started"
   end
 
   def test_non_lifecycle_path_is_noop
@@ -70,7 +67,7 @@ class SavepointPreHookTest < Minitest::Test
     File.write(other, "x\n")
     _out, status = run_hook(other)
     assert_equal 0, status.exitstatus
-    assert_empty pairs
+    assert_equal "", ledger
   end
 
   def test_path_outside_any_intent_dir_is_noop

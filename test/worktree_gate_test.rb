@@ -3,15 +3,15 @@ require "tmpdir"
 require "fileutils"
 require "json"
 require_relative "../scripts/lib/bridge"
-require_relative "../scripts/lib/db"
+require_relative "../scripts/lib/lock"
 
-# Hermetic unit tests (intent 73c2, rewired in 108, cutover intent 41
-# ACTION_10) for Bridge.worktree_gate_decision.
+# Hermetic unit tests (intent 73c2, rewired in 108) for
+# Bridge.worktree_gate_decision.
 #
 # No real git, no real ~/.plastic: a fake $HOME tmpdir is the plastic home and
 # the code worktree is a tmpdir. Cross-intent ownership is decided by the
-# durable `lock_leases` delivery-grain row in the other intent's dir: a FRESH
-# foreign lease is a live owner; an EXPIRED one is a dead owner.
+# durable delivery.lock file in the other intent's dir: a FRESH foreign lock
+# is a live owner; a STALE one (old mtime) is a dead owner.
 class WorktreeGateTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("wt-gate-home")
@@ -116,27 +116,9 @@ class WorktreeGateTest < Minitest::Test
     d
   end
 
-  # Acquire a delivery lease for the intent living at `dir` (an
-  # `<store_home>/store/<id>--<slug>` path): resolves store_home and intent_id
-  # from the path itself, mirroring how Bridge/Worktree resolve it in
-  # production.
-  def acquire_lease(dir, session:, now: Time.now)
-    intent_id = Bridge.intent_id_from_dir(dir)
-    store_home = File.dirname(File.dirname(dir))
-    conn = Plastic::DB.connect(store_home)
-    Plastic::DB::Leases.acquire(conn, intent_id, session: session, host: "h", now: now)
-  end
-
-  def add_delegate(dir, delegate:, session:)
-    intent_id = Bridge.intent_id_from_dir(dir)
-    store_home = File.dirname(File.dirname(dir))
-    conn = Plastic::DB.connect(store_home)
-    Plastic::DB::Leases.add_delegate(conn, intent_id, delegate: delegate, session: session)
-  end
-
   def test_blocks_non_owner_edit_to_locked_active_intent_store
     other = other_intent_dir("99", "other-thing")
-    acquire_lease(other, session: "owner99") # fresh foreign lease = live owner
+    Lock.acquire(other, session: "owner99") # fresh foreign lock = live owner
     # An unprovisioned bridge for "me": rule 1 is inert, rule 2 fires.
     bridge = provisioned_bridge(session: "me")
     bridge["worktree"]["provisioned"] = false
@@ -146,9 +128,9 @@ class WorktreeGateTest < Minitest::Test
   end
 
   def test_allows_owner_edit_to_own_locked_intent_store
-    # The other intent's lease is owned by the SAME session doing the edit.
+    # The other intent's lock is owned by the SAME session doing the edit.
     other = other_intent_dir("99", "other-thing")
-    acquire_lease(other, session: "me")
+    Lock.acquire(other, session: "me")
     bridge = provisioned_bridge(session: "me")
     bridge["worktree"]["provisioned"] = false
     assert_nil decision(bridge, File.join(other, "spec.md"), session: "me")
@@ -156,11 +138,12 @@ class WorktreeGateTest < Minitest::Test
 
   def test_allows_edit_to_intent_store_with_stale_lock
     other = other_intent_dir("99", "other-thing")
-    acquire_lease(other, session: "owner99", now: Time.now - 4000) # expired = dead owner
+    Lock.acquire(other, session: "owner99")
+    FileUtils.touch(Lock.path(other), mtime: Time.now - 4000) # stale = dead owner
     bridge = provisioned_bridge(session: "me")
     bridge["worktree"]["provisioned"] = false
     assert_nil decision(bridge, File.join(other, "spec.md"), session: "me"),
-               "an expired lease does not hold (leases fail open on expiry)"
+               "a stale lock does not hold (explicit takeover reclaims it)"
   end
 
   def test_allows_edit_under_plastic_home_outside_any_intent_dir
@@ -169,32 +152,32 @@ class WorktreeGateTest < Minitest::Test
   end
 
   # --- Solo-mode detection (intent 128) --------------------------------------
-  # Positive-only confirmation from the durable `lock_leases` rows relaxes
+  # Positive-only confirmation from the durable delivery.lock files relaxes
   # both rules to ALLOW when exactly one session is delivering.
 
   def test_solo_relaxes_rule1_code_confinement
-    acquire_lease(@intent_dir, session: "me") # the ONLY fresh lease in scope
+    Lock.acquire(@intent_dir, session: "me") # the ONLY fresh lock in scope
     assert_nil decision(provisioned_bridge, File.join(@repo, "lib", "app.rb")),
                "solo confirmed: rule 1 (worktree confinement) relaxes to allow"
   end
 
   def test_solo_does_not_relax_rule1_under_two_fresh_locks_same_owner
-    acquire_lease(@intent_dir, session: "me")
+    Lock.acquire(@intent_dir, session: "me")
     other = other_intent_dir("77", "other-parallel")
-    acquire_lease(other, session: "me") # same owner, second fresh lease: PARALLEL (AC2)
+    Lock.acquire(other, session: "me") # same owner, second fresh lock: PARALLEL (AC2)
     refute_nil decision(provisioned_bridge, File.join(@repo, "lib", "app.rb")),
-               "two fresh leases under one owner_session is parallel-in-play, not solo"
+               "two fresh locks under one owner_session is parallel-in-play, not solo"
   end
 
   def test_solo_does_not_relax_rule1_with_a_delegate
-    acquire_lease(@intent_dir, session: "me")
-    add_delegate(@intent_dir, delegate: "sub-1", session: "me")
+    Lock.acquire(@intent_dir, session: "me")
+    Lock.add_delegate(@intent_dir, delegate: "sub-1", session: "me")
     refute_nil decision(provisioned_bridge, File.join(@repo, "lib", "app.rb")),
-               "a registered delegate is a team, not solo (AC3)"
+               "a non-empty delegates array is a team, not solo (AC3)"
   end
 
   def test_solo_does_not_relax_rule1_with_blank_session
-    acquire_lease(@intent_dir, session: "me")
+    Lock.acquire(@intent_dir, session: "me")
     bridge = provisioned_bridge(session: "")
     refute_nil decision(bridge, File.join(@repo, "lib", "app.rb")),
                "a blank session can never be positively confirmed solo (AC4)"
@@ -203,15 +186,15 @@ class WorktreeGateTest < Minitest::Test
   def test_solo_never_relaxes_rule2_across_projects_review_finding_1
     # Hardening (review finding 1): worktree-gate's scan_roots include the
     # EDIT TARGET's own store (not just the acting bridge's own store plus
-    # the global store), so a live foreign lease on a DIFFERENT project's
+    # the global store), so a live foreign lock on a DIFFERENT project's
     # intent is never invisible to the scan just because that project isn't
     # "mine". Solo can never be confirmed here, so rule 2 stays denied even
     # though the rival lives in a completely different project store.
     other_project_store = File.join(@plastic_home, "projects", "otherproj", "store")
     other = File.join(other_project_store, "99--other-thing")
     FileUtils.mkdir_p(other)
-    acquire_lease(other, session: "owner99") # fresh, foreign, cross-project rival
-    acquire_lease(@intent_dir, session: "me") # "me"'s own fresh lease, elsewhere
+    Lock.acquire(other, session: "owner99") # fresh, foreign, cross-project rival
+    Lock.acquire(@intent_dir, session: "me") # "me"'s own fresh lock, elsewhere
     bridge = provisioned_bridge(session: "me")
     bridge["worktree"]["provisioned"] = false
     reason = decision(bridge, File.join(other, "spec.md"), session: "me")
@@ -221,14 +204,14 @@ class WorktreeGateTest < Minitest::Test
 
   def test_solo_never_relaxes_rule2_when_the_rival_lock_is_in_scanned_roots
     # The common case: the rival's store IS in solo's scan (same store as
-    # "me"'s own intent), so its fresh foreign lease is itself a second fresh
-    # lease in scope. Solo can never be confirmed, so rule 2 stays denied.
+    # "me"'s own intent), so its fresh foreign lock is itself a second fresh
+    # lock in scope. Solo can never be confirmed, so rule 2 stays denied.
     other = other_intent_dir("99", "other-thing")
-    acquire_lease(other, session: "owner99")
-    acquire_lease(@intent_dir, session: "me")
+    Lock.acquire(other, session: "owner99")
+    Lock.acquire(@intent_dir, session: "me")
     bridge = provisioned_bridge(session: "me")
     bridge["worktree"]["provisioned"] = false
     reason = decision(bridge, File.join(other, "spec.md"), session: "me")
-    refute_nil reason, "a live rival lease in the same scanned store defeats solo by construction"
+    refute_nil reason, "a live rival lock in the same scanned store defeats solo by construction"
   end
 end

@@ -20,8 +20,26 @@ exit 0 unless file_path && !file_path.empty?
 
 session = (ARGV[1] unless ARGV[1].to_s.empty?) || ENV["CLAUDE_CODE_SESSION_ID"]
 
+# Auditable escape (intent 150, mirrors the Bash gate's intent 108 D7): a trailing
+# `# plastic-ok` in the new Write/Edit content allows the edit and logs it, so a
+# deliberately sanctioned code edit no longer needs the Bash-funneling workaround.
+new_content = ARGV[2]
+if new_content && Bridge::PLASTIC_OK_RE.match?(new_content.chomp)
+  begin
+    require "fileutils"
+    log = File.join(Dir.home, ".plastic", ".cache", "gate-escapes.log")
+    FileUtils.mkdir_p(File.dirname(log))
+    File.open(log, "a") do |io|
+      io.puts("#{Time.now.utc.iso8601}\t#{session}\t#{file_path}")
+    end
+  rescue StandardError
+    # the escape still applies; logging is best-effort
+  end
+  exit 0
+end
+
 # --- Load bridge (shared resolution; stdin session_id -> CLAUDE_CODE_SESSION_ID -> /tmp scan) ---
-bridge_data = Bridge.discover_bridge(session: session, cwd: Dir.pwd)
+bridge_data = Bridge.discover_bridge(session: session, cwd: file_path, edited_path: file_path)
 exit 0 unless bridge_data
 
 reason = Bridge.code_gate_decision(bridge_data, file_path) ||

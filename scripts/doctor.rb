@@ -21,7 +21,7 @@ require_relative "lib/graph_rebuild"
 require_relative "lib/links_projection"
 require_relative "lib/links_section"
 require_relative "lib/hook_registry"
-require_relative "lib/db"
+require_relative "lib/lock"
 require_relative "lib/bridge"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
@@ -476,7 +476,7 @@ class Doctor
         message: "#{bad_sections.size} intent file(s) have non-sanctioned ## sections",
         details: bad_sections.map { |b| "#{b[:dir]}: #{b[:issues].join(", ")}" },
         fixable: true,
-        fix_hint: "Dispatch plastic-intent-curator to relocate each unsanctioned section into the " \
+        fix_hint: "Dispatch plastic-store-curating to relocate each unsanctioned section into the " \
                   "intent's revisions.md via move-and-record (a missing required section is restored " \
                   "or reprojected instead); see PLASTIC.md > Structural maintenance and revisions.md"
       )
@@ -515,9 +515,9 @@ class Doctor
   # `disposition:` header); the savepoint `Done` line is the audit echo. INDEX
   # wins on conflict. This check flags any disagreement, and separately surfaces a
   # "stalled completion": an intent that is terminal in INDEX but whose End tail
-  # never released its delivery lease (the post-done window never closed). Read
+  # never released its `delivery.lock` (the post-done window never closed). Read
   # only, dependency-light: it uses INDEX parsing, file presence, the placeholder
-  # sentinel, and a `lock_leases` read — no new lock, no 111 lock-liveness surface.
+  # sentinel, and `Lock.fresh?` — no new lock, no 111 lock-liveness surface.
 
   # For one store's INDEX.md, map each referenced intent directory name to the
   # `## ...` section(s) it appears under: { "<id>--<slug>" => ["Active", ...] }.
@@ -615,17 +615,11 @@ class Doctor
                   "`Done delivered|abandoned` line (audit echo missing)"
         end
 
-        # Stalled completion: the End tail never released the delivery lease,
-        # so the post-done window `[INDEX terminal -> lease release]` never
-        # closed (cutover intent 41 ACTION_10: the lease lives in
-        # `lock_leases`, not a delivery.lock file).
-        store_home = File.dirname(store[:store_dir])
-        conn = Plastic::DB.connect(store_home)
-        lease_row = conn && Plastic::DB::Leases.current(conn, dirname.split("--", 2).first)
-        if lease_row
-          note = Plastic::DB::Leases.fresh?(conn, dirname.split("--", 2).first) ?
-                   "delivery lease still held (post-done window not closed)" :
-                   "delivery lease is present and EXPIRED"
+        # Stalled completion: the End tail never released the delivery lock, so the
+        # post-done window `[INDEX terminal -> Lock.release]` never closed.
+        if File.exist?(Lock.path(dir))
+          note = Lock.fresh?(dir) ? "delivery.lock still present (post-done window not closed)"
+                                  : "delivery.lock is present and STALE"
           stalled << "#{label}: #{note} — the End tail did not finish"
         end
       end
@@ -666,7 +660,7 @@ class Doctor
                  "(outcome.md or the savepoint Done echo is missing; advisory on immutable history)",
         details: gaps, fixable: true,
         fix_hint: "For live terminals, author a real outcome.md with the `disposition:` header via the " \
-                  "completion/abandon path (plastic-auto or plastic-intent-curator) and stamp the terminal " \
+                  "completion/abandon path (plastic-auto or plastic-store-curating) and stamp the terminal " \
                   "savepoint. Legacy terminal intents are immutable, so pre-convention gaps stay advisory."
       )
     end
@@ -682,9 +676,9 @@ class Doctor
         message: "#{stalled.size} stalled completion#{stalled.size == 1 ? "" : "s"} " \
                  "(terminal in INDEX but the End tail did not finish)",
         details: stalled, fixable: true,
-        fix_hint: "Finish the End tail via stale-lock reclaim: `plastic-lock reclaim`, then complete the " \
-                  "tail (Worktree.release -> lease release -> purge -> QMD reindex last). This FINISHES a " \
-                  "completion; it is NOT a reactivation of a done intent."
+        fix_hint: "Finish the End tail via stale-lock reclaim: run /plastic-doctor reclaim the lock, " \
+                  "then complete the tail (Worktree.release -> Lock.release -> purge -> QMD reindex " \
+                  "last). This FINISHES a completion; it is NOT a reactivation of a done intent."
       )
     end
 
@@ -888,7 +882,7 @@ class Doctor
     checks << graph_finding_check(
       "graph_i4_danglers", i4,
       "Every sources/chain id resolves to a real intent (I4)",
-      "Dispatch plastic-intent-curator to record the dangling sources/chain edge as a " \
+      "Dispatch plastic-store-curating to record the dangling sources/chain edge as a " \
       "broken-source/broken-chain move-and-record entry in the intent's revisions.md (see " \
       "PLASTIC.md > Structural maintenance and revisions.md), or restore the missing intent"
     )
@@ -1058,6 +1052,11 @@ class Doctor
     # skills_exist — flat, hyphen-namespaced personal skills (plastic-<name>/)
     checks << flat_skills_check(agent_dir, "--claude")
 
+    # stray_skills — installed plastic-* skill dir with no manifest entry (a leftover,
+    # e.g. an old-name copy after a rename; intent 158a AC15)
+    stray_check = stray_skills_check(agent_dir, "--claude", File.join(agent_dir, "plastic", "manifest.json"))
+    checks << stray_check if stray_check
+
     # agents_exist — auto-mode role files (plastic-*.md) synced into <dir>/agents
     checks << flat_agents_check(agent_dir, "--claude")
 
@@ -1079,6 +1078,43 @@ class Doctor
       check(
         category: "agent_registration", name: "skills_exist", status: "fail",
         message: "No plastic-* skills found in #{tilde(skills_root)}",
+        fixable: true, fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest #{installer_flag}"
+      )
+    end
+  end
+
+  # Backstop for a rename or removal (intent 158a, AC15): an installed plastic-*
+  # skill directory under agent_dir/skills that has NO corresponding entry in the
+  # current install manifest is a stray (e.g. a leftover old-name copy the
+  # install/update prune should have removed, or one it never saw because the
+  # manifest predates it). Complements flat_skills_check (which only confirms at
+  # least one skill exists). Defers to the manifest check when the manifest itself
+  # is missing or malformed, so the two checks never double-report the same gap.
+  def stray_skills_check(agent_dir, installer_flag, manifest_path)
+    skills_root = File.join(agent_dir, "skills")
+    manifest = read_json_safe(manifest_path)
+    files = manifest.is_a?(Hash) ? manifest["files"] : nil
+    return nil unless files.is_a?(Hash)
+
+    installed = Dir.glob(File.join(skills_root, "plastic-*", "SKILL.md"))
+                    .map { |f| File.basename(File.dirname(f)) }
+    tracked = files.keys
+                   .select { |p| p.start_with?("#{skills_root}/") }
+                   .map { |p| p.sub("#{skills_root}/", "").split("/").first }
+                   .uniq
+
+    strays = (installed - tracked).sort
+
+    if strays.empty?
+      check(
+        category: "agent_registration", name: "stray_skills", status: "pass",
+        message: "No stray plastic-* skill directories in #{tilde(skills_root)}"
+      )
+    else
+      check(
+        category: "agent_registration", name: "stray_skills", status: "warn",
+        message: "#{strays.size} installed skill dir(s) not in the current manifest (stray, e.g. a leftover old-name copy)",
+        details: strays,
         fixable: true, fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest #{installer_flag}"
       )
     end
@@ -1110,6 +1146,12 @@ class Doctor
 
     # For codex/hermes: just check skills exist (no settings.json hooks)
     checks << flat_skills_check(agent_dir, "--#{agent_key}")
+
+    # stray_skills — installed plastic-* skill dir with no manifest entry (a leftover,
+    # e.g. an old-name copy after a rename; intent 158a AC15)
+    stray_check = stray_skills_check(agent_dir, "--#{agent_key}", File.join(agent_dir, "plastic-manifest.json"))
+    checks << stray_check if stray_check
+
     checks << flat_agents_check(agent_dir, "--#{agent_key}")
 
     checks
@@ -1411,7 +1453,7 @@ class Doctor
       checks << check(
         category: "project_stores", name: "project_yml_exists", status: "warn",
         message: "project.yml missing for project '#{slug}'",
-        fixable: true, fix_hint: "Create project.yml from template — see plastic-creating-project"
+        fixable: true, fix_hint: "Create project.yml from template — see plastic-project-creating"
       )
     end
 
@@ -1632,163 +1674,6 @@ class Doctor
     )
   end
 
-  # --- Check category: the operational database layer (intent 41, ACTION_12) ---
-  #
-  # Read-only, and careful to preserve the layer's two core promises while
-  # diagnosing it: fail-open (the sqlite3 gem is advisory, never a hard
-  # failure) and lazy provisioning (a store with no `plastic.db` yet is
-  # healthy, not broken -- this check must never be the thing that creates
-  # one). `available:`/`tmp_dir:` are DI seams so tests stay hermetic.
-  def check_database(available: Plastic::DB.available?, tmp_dir: ENV["PLASTIC_TMP"] || "/tmp")
-    [
-      sqlite3_gem_check(available: available),
-      db_health_check(available: available),
-      mirror_reconcile_check(available: available),
-      stale_bridge_check(tmp_dir: tmp_dir),
-    ]
-  end
-
-  def sqlite3_gem_check(available:)
-    if available
-      check(
-        category: "database", name: "sqlite3_gem", status: "pass",
-        message: "sqlite3 gem is available; the operational DB layer is active"
-      )
-    else
-      check(
-        category: "database", name: "sqlite3_gem", status: "warn",
-        message: "sqlite3 gem not installed; the operational DB layer runs fail-open " \
-                 "(status/quadrant/locks/sessions fall back to markdown-only behavior)",
-        fixable: true,
-        fix_hint: "gem install sqlite3 (v2.5.0+ ships a precompiled arm64-darwin native gem " \
-                  "with libsqlite3 bundled, so no compiler is needed)"
-      )
-    end
-  end
-
-  # Every existing plastic.db (global + each project) opens and its schema is
-  # current. A store with NO plastic.db yet is skipped, not flagged: D3 says
-  # the DB is provisioned lazily on first real use, so its absence is normal,
-  # not a health problem. Never opens a connection for a store lacking a DB
-  # file, since connect()/Schema.ensure! would create one as a side effect.
-  def db_health_check(available:)
-    unless available
-      return check(
-        category: "database", name: "db_health", status: "pass",
-        message: "sqlite3 gem not installed; DB health check skipped (fail-open)"
-      )
-    end
-
-    problems = []
-    checked = 0
-
-    done_signal_stores(nil).each do |store|
-      store_home = File.dirname(store[:index])
-      db_path = Plastic::DB::StoreResolver.db_path_for_store(store_home)
-      next unless File.exist?(db_path)
-
-      checked += 1
-      conn = Plastic::DB.connect(store_home, available: available)
-      if conn.nil?
-        problems << "#{store[:scope]}: plastic.db exists but could not be opened"
-        next
-      end
-
-      begin
-        if Plastic::DB::Schema.rebuild_needed?(conn)
-          problems << "#{store[:scope]}: schema format_version is stale " \
-                      "(run `plastic-db rebuild --store #{store[:scope]}`)"
-        end
-      rescue StandardError => e
-        problems << "#{store[:scope]}: plastic.db health check raised: #{e.message}"
-      end
-    end
-
-    if problems.empty?
-      message = checked.zero? ? "No plastic.db provisioned yet in any store (lazy provisioning, not required)" \
-                               : "All #{checked} provisioned plastic.db file(s) open and current"
-      check(category: "database", name: "db_health", status: "pass", message: message)
-    else
-      check(
-        category: "database", name: "db_health", status: "warn",
-        message: "#{problems.size} plastic.db health issue(s) found",
-        details: problems, fixable: true,
-        fix_hint: "Run `plastic-db rebuild --store <store>` for a stale format_version; " \
-                  "for a plastic.db that will not open, delete it and let it re-provision lazily"
-      )
-    end
-  end
-
-  # Doctor is a read entry point, so a doctor run doubles as the debounced
-  # Mirror.reconcile trigger for every store that already has a plastic.db
-  # (never for one that doesn't: opening a connection there would be the
-  # very side effect db_health_check above is careful to avoid, so this
-  # reuses its same "db_path already exists" guard). Boarding/dashboard
-  # wiring is intent 147's scope; doctor is the one read path ACTION_12
-  # wires. Fail-open and advisory only: a reconcile error is reported for
-  # visibility but never turns this check into a warn/fail, since a stale
-  # mirror is never itself a health problem (the files remain the source of
-  # truth regardless).
-  def mirror_reconcile_check(available:)
-    unless available
-      return check(
-        category: "database", name: "mirror_reconcile", status: "pass",
-        message: "sqlite3 gem not installed; mirror reconcile skipped (fail-open)"
-      )
-    end
-
-    results = []
-    done_signal_stores(nil).each do |store|
-      store_home = File.dirname(store[:index])
-      db_path = Plastic::DB::StoreResolver.db_path_for_store(store_home)
-      next unless File.exist?(db_path)
-
-      conn = Plastic::DB.connect(store_home, available: available)
-      next if conn.nil?
-
-      begin
-        outcome = Plastic::DB::Mirror.reconcile(conn, store_home: store_home)
-        results << "#{store[:scope]}: #{outcome}" if outcome
-      rescue StandardError => e
-        results << "#{store[:scope]}: reconcile raised #{e.message}"
-      ensure
-        conn.close
-      end
-    end
-
-    if results.empty?
-      check(category: "database", name: "mirror_reconcile", status: "pass",
-            message: "No provisioned store needed a mirror reconcile pass")
-    else
-      check(category: "database", name: "mirror_reconcile", status: "pass",
-            message: "Mirror reconcile ran for #{results.size} store(s)", details: results)
-    end
-  end
-
-  # Informational only (do not depend on this): the retired /tmp session
-  # bridge (intent 41 ACTION_9) may leave inert JSON files behind after
-  # upgrading. The DB (`sessions`/`lock_leases`) is authoritative regardless
-  # of whether these exist, so this never fails and never blocks.
-  def stale_bridge_check(tmp_dir: ENV["PLASTIC_TMP"] || "/tmp")
-    stale = Dir.glob(File.join(tmp_dir, "plastic-*.json"))
-
-    if stale.empty?
-      check(
-        category: "database", name: "stale_bridges", status: "pass",
-        message: "No leftover /tmp bridge files (the /tmp bridge is retired; the DB is authoritative)"
-      )
-    else
-      check(
-        category: "database", name: "stale_bridges", status: "warn",
-        message: "#{stale.size} leftover /tmp bridge file(s) found (informational only; " \
-                 "the DB is authoritative and never reads these)",
-        details: stale.map { |p| tilde(p) },
-        fixable: true,
-        fix_hint: "Inert legacy artifacts from the retired /tmp bridge mechanism; safe to delete"
-      )
-    end
-  end
-
   # --- Run all checks ---
 
   def run_checks(agent_key)
@@ -1801,7 +1686,6 @@ class Doctor
     all_checks += check_deprecations
     all_checks += check_qmd
     all_checks += check_done_signals
-    all_checks += check_database
 
     summarize(all_checks, agent_key)
   end

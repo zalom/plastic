@@ -1,29 +1,31 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
-require_relative "../scripts/lib/db"
 
 # Intent 4a1c1: hook-gate-check runs IntentValidator on the intent file itself as
 # an artifact-validity backstop. Invalid intent file -> loud non-zero (the
 # PostToolUse rejection signal, since the write already happened). Valid intent
-# file -> exit 0 with the What savepoint stamped (cutover intent 41 ACTION_11:
-# into `savepoint_events`, not savepoint.md). Non-intent lifecycle files
+# file -> exit 0 with the What savepoint appended. Non-intent lifecycle files
 # (spec.md, etc.) keep their existing behavior, untouched by this backstop.
 class GateCheckValidityTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/hook-gate-check", __dir__)
 
   def setup
     @root = Dir.mktmpdir("gate-validity")
-    @store = File.join(@root, "store")
-    @intent_dir = File.join(@store, "4a1c1--agent-harness")
+    @intent_dir = File.join(@root, "store", "4a1c1--agent-harness")
     FileUtils.mkdir_p(@intent_dir)
+    @bridge_tmp = Dir.mktmpdir("gate-validity-tmp")
     @saved_session = ENV["CLAUDE_CODE_SESSION_ID"]
+    @saved_plastic_tmp = ENV["PLASTIC_TMP"]
+    ENV["PLASTIC_TMP"] = @bridge_tmp
     ENV.delete("CLAUDE_CODE_SESSION_ID")
   end
 
   def teardown
     FileUtils.rm_rf(@root)
+    FileUtils.rm_rf(@bridge_tmp)
     restore_env("CLAUDE_CODE_SESSION_ID", @saved_session)
+    restore_env("PLASTIC_TMP", @saved_plastic_tmp)
   end
 
   def restore_env(key, saved)
@@ -64,16 +66,10 @@ class GateCheckValidityTest < Minitest::Test
   end
 
   def run_hook(file_path)
-    # PLASTIC_STORE_HOME isolates the hook's discover_bridge call: without it,
-    # cwd resolution would fall through to the REAL ~/.plastic.
-    env = { "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_STORE_HOME" => @root }
+    # Capture stdout+stderr together; bridge tmp is isolated so discovery is hermetic.
+    env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_CODE_SESSION_ID" => nil }
     out = IO.popen(env, ["ruby", SCRIPT, file_path], err: [:child, :out], &:read)
     [out, $?]
-  end
-
-  def pairs
-    conn = Plastic::DB.connect(@root)
-    Plastic::DB::SavepointEvents.events_for(conn, "4a1c1").map { |e| [e["stage"], e["event_type"]] }
   end
 
   def test_invalid_intent_file_exits_nonzero_with_message
@@ -86,12 +82,14 @@ class GateCheckValidityTest < Minitest::Test
     assert_includes out, "sources", "the failing field(s) must be named"
   end
 
-  def test_valid_intent_file_exits_zero_and_stamps_savepoint
+  def test_valid_intent_file_exits_zero_and_appends_savepoint
     File.write(intent_file, valid_frontmatter)
     out, status = run_hook(intent_file)
 
     assert_equal 0, status.exitstatus, "valid intent file must exit 0, got: #{out}"
-    assert_includes pairs, ["What", "4a1c1--agent-harness.md"], "What milestone savepoint must be stamped"
+    ledger = File.join(@intent_dir, "savepoint.md")
+    assert File.exist?(ledger), "What milestone savepoint must be appended"
+    assert_includes File.read(ledger), "4a1c1--agent-harness.md"
   end
 
   def test_non_intent_lifecycle_file_behaviour_unchanged
@@ -105,7 +103,8 @@ class GateCheckValidityTest < Minitest::Test
     assert_equal 0, status.exitstatus, "spec.md must keep exit 0, got: #{out}"
     refute_includes out, "PLASTIC ARTIFACT INVALID",
       "validity backstop must not fire for non-intent files"
-    assert_includes pairs, ["Why", "spec.md created"]
+    ledger = File.join(@intent_dir, "savepoint.md")
+    assert_includes File.read(ledger), "spec.md created"
   end
 
   def test_invalid_intent_file_does_not_fire_for_spec_even_if_intent_invalid

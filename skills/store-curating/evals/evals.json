@@ -1,0 +1,22 @@
+{
+  "skill_name": "plastic-store-curating",
+  "notes": "Intent 66a. Spec for the QMD-first discovery step in agents/plastic-intent-curator.md (locate a specific intent before grep/find; distinct from the completion-time reindex step). Runner is intent 76; spec only.",
+  "evals": [
+    {
+      "id": 1,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "QMD is present. The user says: find and reclassify the intent about orphan detection.",
+      "expected_output": "During discovery (How You Work), before scanning the store with grep/find to locate the intent, runs `ruby ~/.plastic/scripts/qmd-sync search \"orphan detection\"` to surface the candidate or related intents, then opens the authoritative intent file for the hit it acts on. This discovery step is distinct from the completion-time reindex step. No-op fallback to the full scan when QMD is absent.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "qmd-sync search is run before grep/find during discovery; authoritative file opened for the hit; reindex step stays separate",
+          "observed": "SKILL.md (or agent file) carries the QMD-first step: run qmd-sync search before grep/Read, then open the authoritative file; no-op fallback when QMD is absent",
+          "result": "pass"
+        }
+      ]
+    }
+  ]
+}

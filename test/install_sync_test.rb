@@ -1,4 +1,10 @@
 require "minitest/autorun"
+require "tmpdir"
+require "fileutils"
+require "json"
+require "digest"
+
+require_relative "../scripts/lib/installer_core"
 
 # Regression guard (intent 27 hotfix): a hook script can be added and wired into
 # hooks.json / settings without being copied to ~/.plastic/scripts on install,
@@ -23,10 +29,10 @@ class InstallSyncTest < Minitest::Test
   end
 
   # Every verb script + the shared lib must be distributed, so the installed
-  # ~/.plastic/scripts copy is self-complete (update/uninstall/versions run from there).
+  # ~/.plastic/scripts copy is self-complete (update/uninstall/rollback run from there).
   def test_every_verb_script_is_distributed
     expected = %w[
-      scripts/install.rb scripts/update.rb scripts/uninstall.rb scripts/versions.rb
+      scripts/install.rb scripts/update.rb scripts/uninstall.rb scripts/rollback.rb
       scripts/lib/installer_core.rb
     ]
     missing = expected.reject { |s| core_lib.include?(%("#{s}")) }
@@ -64,5 +70,40 @@ class InstallSyncTest < Minitest::Test
       end
     end
     assert_empty broken, "hook wrappers reference missing scripts: #{broken.join(", ")}"
+  end
+
+  # Regression guard (intent 151): scripts/insight-append is the blessed write path
+  # every spawn preamble and agent-report-contract instructs agents to shell out to,
+  # but it was never registered in core_files, so install/update never copied it to
+  # ~/.plastic/scripts. This fails loudly if the entry drops out again.
+  def test_insight_append_script_is_registered_for_install
+    home = Dir.mktmpdir("core-test")
+    core = InstallerCore.new(package_root: REPO, plastic_home: home, version: "1.0.0-test")
+    assert core.core_files.key?("scripts/insight-append"),
+      "scripts/insight-append missing from core_files (installed wrapper would point at nothing)"
+    assert_equal "scripts/insight-append", core.core_files["scripts/insight-append"]
+  ensure
+    FileUtils.rm_rf(home)
+  end
+
+  # Companion guard: registration alone isn't enough, distribute must actually land an
+  # executable copy with a matching manifest entry, the same contract every other
+  # core_files script gets.
+  def test_distribute_installs_executable_insight_append_with_manifest_entry
+    home = Dir.mktmpdir("core-test")
+    core = InstallerCore.new(package_root: REPO, plastic_home: home, version: "1.0.0-test")
+    core.distribute(:install)
+
+    dest = File.join(home, "scripts", "insight-append")
+    assert File.exist?(dest), "distribute must install scripts/insight-append"
+    mode = File.stat(dest).mode & 0o777
+    assert_equal 0o755, mode, "installed scripts/insight-append must be executable (0755)"
+
+    manifest = JSON.parse(File.read(File.join(home, "manifest.json")))
+    assert manifest["files"].key?(dest), "manifest must list #{dest}"
+    assert_equal Digest::SHA256.file(dest).hexdigest, manifest["files"][dest],
+      "manifest sha256 for #{dest} must match on-disk digest"
+  ensure
+    FileUtils.rm_rf(home)
   end
 end

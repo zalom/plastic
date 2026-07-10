@@ -12,7 +12,7 @@ class DashboardBannerTest < Minitest::Test
     line = DashboardBanner.render(payload)
     assert_includes line, "2 active"
     assert_includes line, "5 next"
-    assert_includes line, "/plastic-dashboard"
+    assert_includes line, "show the dashboard"
     refute_includes line, "\n"
   end
 

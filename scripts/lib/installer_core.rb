@@ -8,10 +8,9 @@ require "digest"
 require "time"
 require_relative "hook_registry"
 require_relative "agent_models"
-require_relative "worktree"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
-# map so the verb scripts (install/update/uninstall/versions) and their tests can run
+# map so the verb scripts (install/update/uninstall/rollback) and their tests can run
 # hermetically (no eval, no global-constant rewriting). Mirrors the DI recipe proven in
 # doctor.rb / install.rb (intents 30a, 30a1). Library only — no CLI, no $PROGRAM_NAME guard.
 class InstallerCore
@@ -55,7 +54,7 @@ class InstallerCore
     STABILITY[ch] || 2
   end
 
-  # --- Semver (§11) — parse/compare, shared by update + versions ---
+  # --- Semver (§11) — parse/compare, shared by update + rollback ---
 
   def semver_parse(version)
     m = /\A(\d+)\.(\d+)\.(\d+)(?:-(.+))?\z/.match(version.to_s.strip)
@@ -202,13 +201,6 @@ class InstallerCore
     FileUtils.mkdir_p(File.join(plastic_home, "scripts", "lib"))
     FileUtils.mkdir_p(File.join(plastic_home, "templates"))
 
-    # The per-store operational DB (intent 41) is never committed. This runs
-    # on every install AND every update (unlike `bootstrap`, which is
-    # fresh-install-only), so an already-installed user picks up the ignore
-    # entry retroactively the next time they update, without needing to
-    # provision a new project store first.
-    Worktree.ensure_gitignored(plastic_home, "plastic.db*")
-
     core_files.each do |src, dest|
       src_path = File.join(package_root, src)
       dest_path = File.join(plastic_home, dest)
@@ -257,10 +249,12 @@ class InstallerCore
       "scripts/lib/retrieval_gate.rb" => "scripts/lib/retrieval_gate.rb",
       "scripts/hook-auto-arm" => "scripts/hook-auto-arm",
       "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
+      "scripts/lib/lock.rb" => "scripts/lib/lock.rb",
       "scripts/plastic-lock" => "scripts/plastic-lock",
       "scripts/lib/hook_registry.rb" => "scripts/lib/hook_registry.rb",
       "scripts/agent-report" => "scripts/agent-report",
       "scripts/lib/insights.rb" => "scripts/lib/insights.rb",
+      "scripts/insight-append" => "scripts/insight-append",
       "scripts/lib/worktree.rb" => "scripts/lib/worktree.rb",
       "scripts/lib/boot_banner.rb" => "scripts/lib/boot_banner.rb",
       "scripts/lib/dashboard_banner.rb" => "scripts/lib/dashboard_banner.rb",
@@ -292,19 +286,9 @@ class InstallerCore
       "scripts/install.rb" => "scripts/install.rb",
       "scripts/update.rb" => "scripts/update.rb",
       "scripts/uninstall.rb" => "scripts/uninstall.rb",
-      "scripts/versions.rb" => "scripts/versions.rb",
+      "scripts/rollback.rb" => "scripts/rollback.rb",
       "scripts/doctor.rb" => "scripts/doctor.rb",
       "scripts/dashboard.rb" => "scripts/dashboard.rb",
-      "scripts/lib/db.rb" => "scripts/lib/db.rb",
-      "scripts/lib/db/connection.rb" => "scripts/lib/db/connection.rb",
-      "scripts/lib/db/store_resolver.rb" => "scripts/lib/db/store_resolver.rb",
-      "scripts/lib/db/schema.rb" => "scripts/lib/db/schema.rb",
-      "scripts/lib/db/leases.rb" => "scripts/lib/db/leases.rb",
-      "scripts/lib/db/sessions.rb" => "scripts/lib/db/sessions.rb",
-      "scripts/lib/db/savepoint_events.rb" => "scripts/lib/db/savepoint_events.rb",
-      "scripts/lib/db/mirror.rb" => "scripts/lib/db/mirror.rb",
-      "scripts/lib/db/roadmaps.rb" => "scripts/lib/db/roadmaps.rb",
-      "scripts/lib/db/rebuild.rb" => "scripts/lib/db/rebuild.rb",
     }
   end
 
@@ -487,8 +471,10 @@ class InstallerCore
   end
 
   # Copy each skills/<name>/ to <skills_root>/plastic-<name>/ (flat, namespaced by
-  # directory name — the only personal-skill namespacing Claude Code supports).
-  # The non-skill `_active-intent-gate.md` is relocated to ~/.plastic/ instead.
+  # directory name -- the only personal-skill namespacing Claude Code supports).
+  # Any top-level underscore-prefixed markdown fragment (e.g. `_active-intent-gate.md`,
+  # `_decision-tables.md`) is a shared non-skill fragment and relocates to ~/.plastic/
+  # instead, so every skill can read it from one shared location.
   def install_skills_flat(skills_source, skills_root)
     installed = []
     FileUtils.mkdir_p(skills_root)
@@ -497,7 +483,7 @@ class InstallerCore
       src = File.join(skills_source, entry)
       if File.directory?(src)
         installed += copy_dir_recursive(src, File.join(skills_root, "plastic-#{entry}"))
-      elsif entry == "_active-intent-gate.md"
+      elsif entry.start_with?("_") && entry.end_with?(".md")
         FileUtils.mkdir_p(plastic_home)
         dest = File.join(plastic_home, entry)
         FileUtils.cp(src, dest)

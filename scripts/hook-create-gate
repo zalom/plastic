@@ -67,7 +67,7 @@ result =
     # the validator.
     unless File.exist?(abs)
       block!("PLASTIC CREATE GATE — #{File.basename(abs)} does not exist; " \
-             "create intents via new-intent / plastic-creating-intent.")
+             "create intents via new-intent / plastic-intent-creating.")
     end
     current = File.read(abs)
     unless current.include?(old_string)
@@ -91,5 +91,5 @@ exit 0 if result[:ok]
 
 $stderr.puts "PLASTIC CREATE GATE — #{File.basename(abs)} is not a valid intent:"
 result[:errors].each { |e| $stderr.puts "  #{e}" }
-$stderr.puts "Create intents via new-intent / plastic-creating-intent; do not hand-author them."
+$stderr.puts "Create intents via new-intent / plastic-intent-creating; do not hand-author them."
 exit 2

@@ -2,35 +2,31 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 #
-# plastic-lock: inspect and repair the durable delivery lease (intent 108, D5;
-# cutover intent 41 ACTION_10), and take/free per-artifact claim leases
-# (intent 111 D1/D5). Lock state lives ONLY in `lock_leases` (AC7): no
-# delivery.lock or .claims/ files are written anywhere.
+# plastic-lock: inspect and repair the durable delivery lock (intent 108, D5),
+# and take/free per-artifact claim tokens (intent 111 D1/D5).
 #
 # Usage: plastic-lock <status|fix|release|reclaim|delegate|claim|release-claim>
 #          [--intent-dir DIR] [--session SID] [--delegate SID] [--artifact NAME]
 #
 # Verbs:
-#   status        report the delivery lease, its delegates, and any live
-#                 per-artifact claim leases
-#   fix           idempotent repair: rebuild the lease + session row from disk
-#                 truth for the current session; never touches a fresh
-#                 foreign lease
-#   release       owner clears the lease (End tail / abandoning a boarding)
-#   reclaim       explicit takeover of an expired lease, audited via a
-#                 savepoint_events `lock/takeover` row
-#   delegate      owner registers a subagent session under the lease (D4)
-#   claim         acquire the named --artifact's claim lease (intent 111);
+#   status        report the lock file, the bridge cache, their agreement,
+#                 and any live per-artifact claims
+#   fix           idempotent repair: rebuild lock + bridge from disk truth for
+#                 the current session; never touches a fresh foreign lock
+#   release       owner clears the lock (End tail / abandoning a boarding)
+#   reclaim       explicit takeover of a stale lock, audited in savepoint.md
+#   delegate      owner registers a subagent session under the lock (D4)
+#   claim         acquire the named --artifact's claim token (intent 111);
 #                 rejected (exit 1) while a fresh claim is held by anyone,
-#                 including this same session; takes over an expired claim
-#   release-claim free the named --artifact's claim lease
+#                 including this same session; takes over a stale claim
+#   release-claim free the named --artifact's claim token
 #
 # Without --intent-dir the intent is resolved from this session's bridge.
 # Exit 0 on success/report; exit 1 when the verb is blocked (held elsewhere).
 
 require "json"
 require_relative "lib/bridge"
-require_relative "lib/db"
+require_relative "lib/lock"
 
 def usage!
   warn "usage: plastic-lock <status|fix|release|reclaim|delegate|claim|release-claim> " \
@@ -70,31 +66,23 @@ dir = File.expand_path(dir)
 
 intent_id = Bridge.intent_id_from_dir(dir)
 store = File.dirname(dir)
-store_home = File.dirname(store)
 name = File.basename(dir)
 key = Bridge.resolve_session(session, intent_id: intent_id, store: store)
 
 case verb
 when "status"
-  conn = Plastic::DB.connect(store_home)
-  row = conn && Plastic::DB::Leases.current(conn, intent_id)
-  delegates = row ? Plastic::DB::Leases.delegates_for(conn, row["id"]) : []
-  fresh = conn ? Plastic::DB::Leases.fresh?(conn, intent_id) : false
-  claims = if conn
-             Plastic::DB::Leases.artifact_leases_for(conn, intent_id)
-           else
-             []
-           end
+  lock = Lock.read(dir)
+  bridge = Bridge.read(key, intent_id: intent_id)
   report = {
     "intent_dir" => dir,
     "session" => key,
-    "lock" => row && {
-      "owner_session" => row["owner_session"], "host" => row["host"],
-      "acquired_at" => row["acquired_at"], "delegates" => delegates,
-    },
-    "lock_fresh" => fresh,
-    "authorized" => conn ? Plastic::DB::Leases.authorized?(conn, intent_id, session: key) : false,
-    "claims" => claims,
+    "lock" => lock,
+    "lock_fresh" => Lock.fresh?(dir),
+    "lock_corrupt" => Lock.corrupt?(dir),
+    "bridge_present" => !bridge.nil?,
+    "agreement" => (lock && bridge) ?
+      (lock["owner_session"] == bridge.dig("lock", "owner_session")) : nil,
+    "claims" => Claim.claims_status(dir),
   }
   puts JSON.pretty_generate(report)
 when "fix"
@@ -107,32 +95,31 @@ when "fix"
     exit 1
   end
 when "release"
-  result = Plastic::DB.lease_release(store_home, intent_id, session: key)
+  result = Lock.release(dir, session: key)
   if result == :not_owner
     warn "plastic-lock: not the owner; run plastic-lock status"
     exit 1
   end
+  data = Bridge.read(key, intent_id: intent_id)
+  if data
+    data["lock"] = { "owner_session" => nil, "acquired_at" => nil,
+                     "host" => nil, "type" => nil, "delegates" => [] }
+    Bridge.write(key, data)
+  end
   puts "released (#{result})"
 when "reclaim"
-  old_owner = Plastic::DB.lease_current(store_home, intent_id)&.fetch("owner_session", nil)
-  status, lease_row = Plastic::DB.lease_takeover(store_home, intent_id, session: key)
+  status, lock_data = Lock.takeover(dir, session: key)
   if status == :fresh
-    warn "plastic-lock: lock is FRESH and held by #{lease_row['owner_session']}; " \
+    warn "plastic-lock: lock is FRESH and held by #{lock_data['owner_session']}; " \
          "back off (no silent reclaim)"
     exit 1
-  end
-  begin
-    Plastic::DB.stamp_event(store_home, intent_id, stage: "Exec", event_type: "lock/takeover",
-                            actor_session: key, payload: { "from" => old_owner })
-  rescue StandardError => e
-    warn "plastic-lock: takeover audit stamp failed (non-fatal): #{e.message}"
   end
   report = Bridge.repair_lock(key, intent_id: intent_id, intent_dir: dir,
                               store: store, name: name)
   puts JSON.pretty_generate(report)
 when "delegate"
   usage! if opts[:delegate].nil?
-  ok = Plastic::DB.lease_delegate_add(store_home, intent_id, delegate: opts[:delegate], session: key)
+  ok = Lock.add_delegate(dir, delegate: opts[:delegate], session: key)
   unless ok
     warn "plastic-lock: only the lock owner may delegate; run plastic-lock status"
     exit 1
@@ -140,9 +127,10 @@ when "delegate"
   puts "delegated #{opts[:delegate]} under #{key}"
 when "claim"
   usage! if opts[:artifact].nil?
-  status, data = Plastic::DB.lease_acquire(store_home, intent_id, artifact: opts[:artifact], session: key)
+  status, data = Claim.acquire_claim(dir, opts[:artifact], session: key,
+                                     delegate: opts[:delegate])
   case status
-  when :acquired, :owned
+  when :acquired
     puts "claimed #{opts[:artifact]} under #{key}"
   when :held
     warn "plastic-lock: #{opts[:artifact]} is claimed by " \
@@ -150,21 +138,24 @@ when "claim"
     exit 1
   when :stale
     old = data && data["owner_session"]
-    status2, = Plastic::DB.lease_takeover(store_home, intent_id, artifact: opts[:artifact], session: key)
-    if status2 == :taken
+    Claim.release_claim(dir, opts[:artifact], session: key, force: true)
+    status2, = Claim.acquire_claim(dir, opts[:artifact], session: key,
+                                   delegate: opts[:delegate])
+    if status2 == :acquired
       warn "plastic-lock: took over stale claim on #{opts[:artifact]} from #{old}"
       puts "claimed #{opts[:artifact]} under #{key}"
     else
       warn "plastic-lock: could not take over #{opts[:artifact]} (#{status2})"
       exit 1
     end
-  when :fail_open
-    warn "plastic-lock: DB unavailable; claim not recorded (fail open)"
-    puts "claimed #{opts[:artifact]} under #{key} (advisory only, DB unavailable)"
+  when :corrupt
+    Claim.release_claim(dir, opts[:artifact], session: key, force: true)
+    Claim.acquire_claim(dir, opts[:artifact], session: key, delegate: opts[:delegate])
+    puts "claimed #{opts[:artifact]} under #{key} (repaired corrupt claim)"
   end
 when "release-claim"
   usage! if opts[:artifact].nil?
-  result = Plastic::DB.lease_release(store_home, intent_id, artifact: opts[:artifact], session: key)
+  result = Claim.release_claim(dir, opts[:artifact], session: key)
   if result == :not_owner
     warn "plastic-lock: not the claim owner; run plastic-lock status"
     exit 1

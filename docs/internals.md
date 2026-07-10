@@ -69,10 +69,12 @@ deliverables*. Determinism is weakest exactly where Plastic ships prose that ask
 a brain to author an artifact. The brain-loose 5 are the design and judgement
 skills (`brainstorming`, `brainstorming-grill-me`) and the curator surfaces
 (`intent-curator` as both skill and agent, plus `future-intent-researcher`).
-These produce `spec.md` and INDEX or cluster reorganizations with no output
-template at all: section set, ordering, depth, cluster naming, and orphan
-thresholds all drift. **`spec.md` is the single least-constrained artifact in the
-framework**, because historically no template existed for it.
+These produce INDEX or cluster reorganizations with no output template at all:
+section set, ordering, depth, cluster naming, and orphan thresholds all drift.
+`spec.md` moved out of this group at intent 163: `intent-speccing` now owns it
+through a fixed eight-section template (`templates/spec.md` plus
+`references/per-section-fill-rules.md`), so `spec.md` is no longer the
+least-constrained artifact in the framework.
 
 Auto mode adds five more agent surfaces, the role files that ship in `agents/`:
 `plastic-brainstorming`, `plastic-spec-specialist`, `plastic-planner`,
@@ -145,7 +147,7 @@ milestone ledger (newest at the bottom) that the `gate-check` hook writes automa
 each lifecycle boundary. That is the existing hook mechanism bound to the artifact-write
 trigger, with the ledger as a derived form-fix on top. It is sugar over the conventions,
 never a source of truth: state stays derivable from files-on-disk and the ledger is
-rebuildable via `Bridge.rebuild_savepoint`. The `plastic-savepoint` skill is now a thin
+rebuildable via `Bridge.rebuild_savepoint`. The `plastic-intent-savepoint` skill is now a thin
 reader/verifier, not a writer.
 
 State-from-ledger (intent 81) makes the ledger the read-once answer to "what stage, and is it
@@ -198,7 +200,7 @@ prefers an exact-session match, and when the caller `session` is present it keep
 candidates whose own `session` equals the caller (own-session, and the derived-key headless
 case reduces to the same equality). A foreign session's bridge is never resolved; when the
 caller has a session and owns no bridge, discovery returns `nil` so every gate fails open
-(no-op) for that session instead of inheriting another session's armed intent. With a session
+(no-op) for that session instead of inheriting another session's armed intent. Before that per-session filter, one opt-in carve-out (intent 168) applies only when hook-code-gate passes `edited_path`: if the edited file lies inside a provisioned code worktree (`<repo>/.claude/worktrees/{id}--{slug}`), discovery resolves the candidate whose `worktree.code` owns that directory (newest mtime on a tie), or `nil` when none owns it, and never the session-matched sibling. Every other caller passes no `edited_path`, so its resolution is unchanged. With a session
 present, cwd/store narrowing is a hard filter (a non-matching store excludes the candidate,
 never reverting to the unfiltered pool). Only when the caller has NO session at all (the
 intent 52 headless / derived-key path) does it keep the degraded scan of `/tmp/plastic-*.json`:
@@ -228,7 +230,7 @@ file that another job already deleted, or any other error, is swallowed), so it 
 arming or delivery. `intent_active?` accepts an injectable `index_active_ids:` array and the temp
 directory is injectable, so the rule is testable hermetically.
 
-The `plastic-continuing` skill consumes that ledger on the resume path (intent 36): when the
+The `plastic-intent-continuing` skill consumes that ledger on the resume path (intent 36): when the
 user or an agent asks to continue a specific intent, the skill reads the last ledger line as
 the current stage, confirms the named stage file is present and non-empty, calls
 `Bridge.rebuild_savepoint` when the ledger and the filesystem disagree, and derives the next
@@ -255,13 +257,13 @@ autonomous execution.
   argument it checks all stores; `global` checks only the global store; a project slug
   checks only that project's store. The dashboard load triggers this automatically: the
   global board runs `--store global`, a project board runs `--store <slug>`. The
-  `plastic-continuing` skill also calls it on resume.
+  `plastic-intent-continuing` skill also calls it on resume.
 
 - **Full run (no flag)**: three-state. Walks every check category (global store,
   conventions across all intents, agent registration, core files, project stores,
-  deprecations, qmd, done signals, and the database category below). This is what
-  `/plastic-doctor` invokes. It also runs automatically after every `plastic-update`
-  (informational: prints the report but does not block or revert the update).
+  deprecations). This is what `/plastic-doctor` invokes. It also runs automatically
+  after every `plastic-update` (informational: prints the report but does not block
+  or revert the update).
 
 The project-stores category includes an additive `project_store_dir` check
 (intent 61): when a registered project's `store/` directory is missing, it warns
@@ -347,10 +349,10 @@ trigger lives at a fixed point:
   store's collection (`register --store <dir>`).
 - **intent delivery**: the delivery/completion path reindexes the delivering
   store's collection. This is the LAST step of the canonical End tail (intent
-  93): it runs after the INDEX terminal move, the savepoint `Done` event, the
-  commit, and disarm (worktree release, the delivery lease release, then the
-  session-row purge), so the index never references a session or lease that
-  disarm is about to remove. It is mandatory on completion and runs async
+  93): it runs after the INDEX terminal move, the savepoint `Done` line, the
+  commit, and disarm (worktree release, `Lock.release`, then the bridge purge),
+  so the index never references a bridge or lock that disarm is about to remove.
+  It is mandatory on completion and runs async
   (`reindex --store <dir> --async`) so it never blocks the turn. The sync
   `reindex` runs `qmd update` then `qmd embed -c plastic-<slug>` inline;
   `QmdSync.reindex_async` runs the same work detached via `Process.spawn` plus
@@ -397,7 +399,7 @@ one shared definition of "born complete" that creation and diagnosis both consul
   well-formed arrays of id references (bare ids, or cross-store references like global:1a2)). It is injectable (`plastic_home`), hermetic,
   uses no eval, and does no global-constant injection, mirroring `qmd_sync.rb`.
 - **Three consumers sit on top of it**: the `validate-intent` CLI (exit 0 when
-  complete, non-zero with a report otherwise); the `plastic-creating-intent`
+  complete, non-zero with a report otherwise); the `plastic-intent-creating`
   self-verify step (run the CLI on the just-written file, inject any missing field
   such as `chain: []`, then re-run before announcing or committing); and doctor's
   read-only conventions checks. Doctor's `frontmatter_fields` check is now
@@ -456,7 +458,7 @@ Per-intent validation cannot see asymmetry between intents, so the cross-intent
 ## sanctioned creation path (intent 60b)
 
 Intent 60 enforced the born-complete OUTCOME but not the PROCESS: an agent could
-bypass `plastic-creating-intent` and hand-author intent files with the same Write
+bypass `plastic-intent-creating` and hand-author intent files with the same Write
 primitive the skill uses. Process-purity is unprovable (the skill and a
 hand-author look identical at the tool layer), so the achievable targets are the
 INVARIANT (every intent file is born complete and structurally sanctioned) plus
@@ -487,7 +489,7 @@ Four coordinated pieces deliver that.
   placeholder lifecycle files, wires the reciprocal `[[id]]` links, and
   self-validates with `IntentValidator` (exit non-zero if not born complete). It
   does NOT touch INDEX.md, git, or project creation: those stay in
-  `plastic-creating-intent`, which is now a thin wrapper that keeps tier/store
+  `plastic-intent-creating`, which is now a thin wrapper that keeps tier/store
   detection and the branch-vs-root judgement and delegates scaffolding to one
   `new-intent` call.
 - **`scripts/hook-create-gate` (PreToolUse, matcher Write plus Edit plus the
@@ -539,9 +541,9 @@ one shared definition of store creation that creation and repair both consult.
   `InstallerCore#bootstrap_project_store`, which is now removed.
 - **Consumers sit on top of it**: the `scripts/provision-project-store` CLI (exit
   0 on success, non-zero with a report when the slug is unregistered or on usage
-  error); the `plastic-creating-intent` and `plastic-creating-project` skills (each
+  error); the `plastic-intent-creating` and `plastic-project-creating` skills (each
   calls the verb after `projects.yml` registration instead of an inline `mkdir`);
-  the `plastic-add-project-store` skill (resolve slug, run the verb, then the
+  the `plastic-store-provisioning` skill (resolve slug, run the verb, then the
   separate optional `qmd-sync register --store` step); and doctor's read-only
   `project_store_dir` check (warns and is fixable via the verb).
 - **Scope boundary**: the provisioner is pure filesystem. It never mutates qmd,
@@ -605,7 +607,7 @@ the human's main session, never a dispatched subagent).
   nothing if ignored; it concerns only the human's main session, since dispatched
   subagents keep their pinned tier and never resolve to Fable.
 - **What-stage discovery agent**: `plastic-intent-discovery` (paired with the
-  `skills/intent-discovery/SKILL.md` workflow) closes the What-stage gap in the
+  `skills/intent-discovering/SKILL.md` workflow) closes the What-stage gap in the
   one-agent-per-stage table. It fires inside `plastic-intent-starting`, right after
   an intent is activated (moved from `## Future` to `## Active`) and the bridge is
   armed, running under that lock as the owner session (it does not acquire the
@@ -647,72 +649,69 @@ own isolation instead, deterministic and cwd-independent.
   and leaving `code: null`. `Worktree.release(bridge_data)` removes both
   worktrees, prunes, and clears the block; it is a no-op when nothing was
   provisioned.
-- **The lease row is the truth, the bridge is a cache** (intent 108; cutover
-  intent 41 ACTION_10). This bullet described the original file-based design:
-  `scripts/lib/lock.rb` owned a durable `delivery.lock` JSON file inside the
-  intent directory. That file, and the module, are retired. The durable truth
-  now lives in the store's `plastic.db`, `lock_leases` table (one row per
-  delivery or per-artifact claim); see
-  [the operational database layer](#the-operational-database-layer-intent-41)
-  below for the full mechanism and schema. `Plastic::DB::Leases.acquire` is
-  atomic (a check-then-insert inside one write transaction) and returns
-  `:acquired/:owned/:held/:stale/:fail_open`; freshness is `expires_at`
-  against a 1800-second TTL, renewed coarsely (only once the remaining life is
-  inside a window) from the write-path hooks. `arm` acquires the lease,
-  raising `Bridge::LockHeldError` with the resolving `plastic-lock` verb when
-  it cannot, and fills the bridge's `lock` block as a cache; `disarm_auto`
-  releases the worktrees, releases the lease, and only then is the session row
-  purge-eligible (`purge_done_bridges` also skips any session whose intent
-  still holds a live lease). This makes the post-done access window
-  lease-bounded, `[INDEX terminal to lease release]` (intent 93): while the
-  lease is held the completing session keeps full read and write access to the
-  terminal directory and no purge can fire, and once the lease is released the
-  window closes, the session row is purged, and the directory is frozen. A
-  crash mid-tail is recovered by reclaiming the stale lease and finishing the
-  tail; `doctor` (the `done_signals` check) surfaces this as a stalled
-  completion (terminal in INDEX but the lease is still present or stale).
-  Finishing the tail is finishing a completion, never a reactivation: a done
-  intent is never moved back to `## Active`. Gates decide from the lease row:
-  `Bridge.lock_gate_decision` reads the TARGET intent's lease, admits the
-  owner or a registered delegate (even on a stale lease, which stays its
+- **The lock file is the truth, the bridge is a cache** (intent 108):
+  `scripts/lib/lock.rb` owns the durable `delivery.lock` JSON file inside the
+  intent directory: `{ type, owner_session, host, acquired_at, delegates }`,
+  never a pid. `Lock.acquire` is atomic (O_EXCL) and returns
+  `:acquired/:owned/:held/:stale/:excluded/:corrupt`; freshness is the file
+  mtime against `Lock::TTL_SECONDS` (1800 seconds), refreshed by
+  `Lock.heartbeat` from the write-path hooks (`hook-gate-check` and the
+  lock-gate allow path). `arm` acquires the lock, raising
+  `Bridge::LockHeldError` with the resolving `plastic-lock` verb when it
+  cannot, and fills the bridge's `lock` block as a cache; `disarm_auto`
+  releases the worktrees, clears the lock, and only then is the bridge
+  purge-eligible (`purge_done_bridges` also skips any bridge whose intent dir
+  still holds a `delivery.lock`). This makes the post-done access window
+  lock-bounded, `[INDEX terminal to Lock.release]` (intent 93): while the lock
+  is held the completing session keeps full read and write access to the
+  terminal directory and no purge can fire, and once `Lock.release` runs the
+  window closes, the bridge is purged, and the directory is frozen. A crash
+  mid-tail is recovered by reclaiming the stale lock and finishing the tail;
+  `doctor` (the `done_signals` check) surfaces this as a stalled completion
+  (terminal in INDEX but the lock is still present or stale). Finishing the tail
+  is finishing a completion, never a reactivation: a done intent is never moved
+  back to `## Active`. Gates decide from the lock file:
+  `Bridge.lock_gate_decision` reads the TARGET intent dir's lock, admits the
+  owner or a registered delegate (even on a stale lock, which stays its
   owner's until an explicit takeover), and every deny names the resolving
-  command. A stale foreign lease is taken only by `Plastic::DB.lease_takeover`,
-  which stamps an audit event to the intent's `savepoint_events` ledger.
-  `Worktree.lock_held_by_other?` asks the same table, so no `/tmp` file is
-  ever consulted for ownership and no code probes a pid. `Bridge.repair_lock`
-  is the one idempotent repair: it rebuilds the lease and the bridge cache
-  from disk, and never touches a fresh foreign lease. The `plastic-lock` CLI
-  exposes it (verbs: status, fix, release, reclaim, delegate).
+  command. A stale foreign lock is taken only by `Lock.takeover`, which
+  appends an audit line to the intent's savepoint.md.
+  `Worktree.lock_held_by_other?` asks the same file, so `/tmp` bridges are
+  never consulted for ownership and no code probes a pid.
+  `Bridge.repair_lock` is the one idempotent repair: it rebuilds the lock and
+  the bridge cache from disk, migrates legacy pid-stamped bridges, and never
+  touches a fresh foreign lock. The `plastic-lock` CLI exposes it (verbs:
+  status, fix, release, reclaim, delegate).
 
-- **Solo-mode advisory relaxation** (intent 128; scan storage cut over onto
-  the DB in intent 41 ACTION_10): `Bridge.lock_gate_decision` and
-  `Bridge.worktree_gate_decision` are ARBITRATION gates, not the
+- **Solo-mode advisory relaxation** (intent 128): `Bridge.lock_gate_decision`
+  and `Bridge.worktree_gate_decision` are ARBITRATION gates, not the
   stage-ordering gate, so they only matter when a second writer might exist.
-  `Bridge.solo_delivery?(scan_roots:, session:, ttl:, now:)` scans each root's
-  fresh, delivery-grain `lock_leases` rows (dependency-injected `scan_roots`,
-  no ENV seam; skips a store whose `plastic.db` was never provisioned without
-  opening a connection, so the scan itself can never be what lazily creates
-  one) and returns true only on a positive, confident solo determination:
-  exactly one fresh lease across the scan, owned by `session`, with an empty
-  delegates array. More than one fresh lease (even several under the same
-  `owner_session`, which still counts as parallel-in-play), a foreign owner, a
-  non-empty delegates array, a blank/unresolvable session, or any scan error
-  all return false, preserving today's fail-closed behavior. Both gates
-  compute this once (scan roots: the target intent's store plus the global
-  store under an injected `home:`) and, on a confirmed solo, return `nil`
-  (allow, with one terse stderr line) at every arbitration deny point instead
-  of the deny string. `code_gate_decision` (the stage-ordering gate) and
-  `Plastic::DB::Leases.claim_gate_reason` (the per-artifact claim gate) are
-  never touched by this: a solo context still enforces How before code edits,
-  and the claim gate's single-writer guarantee is unaffected. A lease row can
-  never be "corrupt" the way a hand-parsed lock file could, so the old
-  unreadable-but-fresh-file ambiguity case is structurally gone; the one
-  hardening that still matters is that `worktree_gate_decision`'s scan_roots
-  always include the EDIT TARGET's own store, not just the acting bridge's own
-  store plus the global store, so a live rival lease on an intent in a
-  different project is never invisible to the scan just because that project
-  is not the acting session's own; this keeps rule 2 (non-owner store edit)
-  fail-closed against cross-project rivals too.
+  `Bridge.solo_delivery?(scan_roots:, session:, ttl:, now:)` scans the durable
+  `delivery.lock` files under the injected `scan_roots` (dependency-injected,
+  no ENV seam) and returns true only on a positive, confident solo
+  determination: exactly one fresh lock across the scan, owned by `session`,
+  with an empty `delegates` array. More than one fresh lock (even several
+  under the same `owner_session`, which still counts as parallel-in-play), a
+  foreign owner, a non-empty `delegates` array, a blank/unresolvable session,
+  or any scan error all return false, preserving today's fail-closed behavior.
+  Both gates compute this once (scan roots: the target intent's store plus the
+  global store under an injected `home:`) and, on a confirmed solo, return
+  `nil` (allow, with one terse stderr line) at every arbitration deny point
+  instead of the deny string. `code_gate_decision` (the stage-ordering gate)
+  and `Claim.claim_gate_reason` (the per-artifact claim gate) are never
+  touched by this: a solo context still enforces How before code edits, and
+  the claim gate's single-writer guarantee is unaffected.
+  Two hardenings keep the detection strictly conservative. First, a fresh
+  lock file that fails to parse (corrupt) is real ambiguity, not an absence:
+  `solo_delivery?` treats any unreadable-but-fresh lock as disqualifying,
+  never as a lock to silently drop from the count. Second,
+  `worktree_gate_decision`'s scan_roots always include the EDIT TARGET's own
+  store, not just the acting bridge's own store plus the global store, so a
+  live rival lock on an intent in a different project is never invisible to
+  the scan just because that project is not the acting session's own; this
+  makes rule 2 (non-owner store edit) fail-closed against cross-project
+  rivals too. Both changes only add scan coverage or narrow the true-case, so
+  they can only make solo detection stricter, never looser.
 
 ## per-artifact claim tokens (intent 111)
 
@@ -725,51 +724,43 @@ same-time write to `spec.md`, `plan.md`, `checklist.md`, or the intent file
 itself. Intent 111 adds a second, lighter layer underneath the delivery lock to
 close that gap.
 
-- **Storage (cutover intent 41 ACTION_10).** This section originally described
-  a file-based `module Claim` in `scripts/lib/lock.rb`, one `.claims/<artifact>.claim`
-  JSON file per artifact. That module and those files are retired. A claim is
-  now a `lock_leases` row exactly like a delivery lease, distinguished only by
-  a non-NULL `artifact` column (`Plastic::DB::Leases`, the same module and
-  table the delivery lock uses, see
-  [the operational database layer](#the-operational-database-layer-intent-41)).
-  Keeping the grain in the `artifact` column rather than a filename means
-  acquiring one artifact's claim never contends on another (the same
-  `(intent_id, artifact)` partial-unique-index reasoning as the delivery
-  grain), and a lease row can never be "corrupt" the way a hand-parsed claim
-  file could, so that failure mode is gone by construction.
-- **Scope, per-intent-per-artifact, never session-global.** A claim row is
-  always keyed by `(intent_id, artifact)`, so it can only ever affect one
-  artifact of one intent. This is the hard guard against recreating the
-  collision-90 failure mode, where an over-armed bridge froze unrelated
+- **Storage.** `module Claim` lives in `scripts/lib/lock.rb`, sibling to
+  `module Lock`, and never touches `Lock`'s functions. Each claim is one small
+  JSON file, `.claims/<artifact>.claim`, inside the intent directory (for
+  example `spec.md.claim`, `plan.md.claim`), carrying `artifact`,
+  `owner_session`, `acquired_at`, and `delegate` (nil unless set). Keeping one
+  file per artifact means acquiring one artifact's claim never contends on
+  another, and a corrupt or stale claim on one file cannot wedge the others.
+- **Scope, per-intent-per-artifact, never session-global.** A claim's on-disk
+  path is always `<intent_dir>/.claims/<artifact>.claim`, so it can only ever
+  affect one artifact of one intent. This is the hard guard against recreating
+  the collision-90 failure mode, where an over-armed bridge froze unrelated
   sessions.
-- **Exclusivity is atomic acquire, not session-equality.**
-  `Plastic::DB::Leases.acquire` with an `artifact:` argument runs the same
-  check-then-insert inside one write transaction as the delivery grain; the
-  first writer wins (`:acquired`). Any later acquire against a FRESH existing
-  claim returns `:held` and names the holder, even when the caller shares the
-  holder's session id, since the claim grain is never idempotently re-granted,
-  unlike the delivery grain's `:owned` re-acquire. A genuine sole writer
-  acquires once and keeps the claim alive with `Plastic::DB::Leases.renew`.
+- **Exclusivity is O_EXCL at acquire, not session-equality.**
+  `Claim.acquire_claim` creates the file with `File::EXCL`; the first writer
+  wins (`:acquired`). Any later acquire against a FRESH existing claim returns
+  `:held` and names the holder, even when the caller shares the holder's
+  session id. A fresh claim is never idempotently re-granted; a genuine sole
+  writer acquires once and keeps the claim alive with `Claim.heartbeat`.
 - **Composition, not replacement.** A lifecycle write must hold BOTH the
-  intent's delivery lock (owner or delegate, `Plastic::DB::Leases.holds?`,
-  unchanged in spirit) AND the specific artifact's claim.
-  `Plastic::DB::Leases.claim_gate_reason` is the second, independent gate: it
-  is DORMANT (returns nil, allow) when no claim row exists for the artifact,
-  so every existing single-owner flow and the prior lock/bridge suite stay
-  green unless two writers actually contend for the same file.
-  `scripts/hook-lock-gate` runs the claim gate only after the existing
-  `Bridge.lock_gate_decision` already allows, refreshes the caller's own claim
-  lease on the allow path, and denies with the holder's session and the
-  artifact name when a fresh foreign claim is found.
-- **Fail open, always, by construction.** Since the cutover (intent 41
-  ACTION_10) a claim is a lease row with the same expiry semantics as the
-  delivery grain, so "fail open on a stale claim" is no longer a bespoke
-  `Claim.fail_open?` predicate to test in isolation: it falls out of
-  `Plastic::DB::Leases.fresh_row?`/`claim_gate_reason` exactly like an expired
-  delivery lease does. A stale claim yields (the write proceeds) rather than
-  being blocked, and the condition is surfaced on stderr from the gate and in
-  `plastic-lock status`. Absence of a claim row is plain dormancy, not a
-  fail-open condition.
+  intent's delivery lock (owner or delegate, `Lock.holds?`, unchanged) AND the
+  specific artifact's claim. `Claim.claim_gate_reason` is the second,
+  independent gate: it is DORMANT (returns nil, allow) when no claim file
+  exists for the artifact, so every existing single-owner flow and the prior
+  lock/bridge suite stay green unless two writers actually contend for the
+  same file. `scripts/hook-lock-gate` runs the claim gate only after the
+  existing `Bridge.lock_gate_decision` already allows, refreshes the caller's
+  own claim heartbeat on the allow path, and denies with the holder's session
+  and the artifact name when a fresh foreign claim is found.
+- **Fail open, always, as a named contract.** `Claim.fail_open?(intent_dir,
+  artifact, ttl:, now:)` is the one place this behavior is defined and tested:
+  true only when a claim FILE exists but is unresolvable (stale past the TTL,
+  or corrupt). On a true result, the write proceeds (the claim is yielded to
+  the current writer) rather than being blocked, and the condition is
+  surfaced on stderr from the gate and in `plastic-lock status`. Absence of a
+  claim is plain dormancy, not a fail-open condition. Intent 112's maintenance
+  lock gates its own Exec on this test and re-runs it as a regression check on
+  every edit it makes to `lock.rb`.
 - **CLI and visibility.** `plastic-lock claim --artifact <name>` acquires a
   claim (exit 1 and names the holder when one is already held, even by the
   same session; takes over a stale claim automatically); `plastic-lock
@@ -813,151 +804,6 @@ close that gap.
   never edits `projects.yml` and never mutates qmd. The PreToolUse gate that
   blocks edits outside the active worktree, and the cleanup policy that decides
   merge-vs-remove on the completion path, are layered on top by sibling intents.
-
-## the operational database layer (intent 41)
-
-Every store (global and each project) is given a disposable, git-ignored
-SQLite database, `plastic.db`, holding Plastic's authoritative operational
-state (status, quadrant, queue/batch membership, lock leases, session state,
-savepoint events) plus a derived, rebuildable mirror of intent frontmatter and
-a graph edges table. This intent replaces the **read-write paths** of the
-lock/bridge/savepoint subsystem described above: the `/tmp` session bridge,
-the file-based `delivery.lock`/`.claims/*.claim` leases, and the live-flow
-`savepoint.md` append all move onto this DB. It does **not** touch the
-INDEX-parsing **read** paths of boarding, continuing, or the dashboard, that
-cutover is a separate, later scope (intent 147). Where one hook function did
-both (reading bridge state and parsing INDEX, e.g. `intent_active?` inside the
-session purge), only the bridge half moved; the INDEX read is unchanged.
-
-- **One entry point, one package.** `Plastic::DB` (`scripts/lib/db.rb`) is a
-  thin facade that `require_relative`s a `scripts/lib/db/` package:
-  `connection.rb` (open + PRAGMAs), `store_resolver.rb`, `schema.rb`,
-  `leases.rb`, `sessions.rb`, `savepoint_events.rb`, `mirror.rb`,
-  `roadmaps.rb`, `rebuild.rb`. No consumer writes SQL directly; a thin
-  `scripts/plastic-db` CLI mirrors the same verbs for shell callers (hooks,
-  the statusline), so the CLI can never drift into a second implementation.
-- **Store resolution is unchanged (AC6).** `Plastic::DB::StoreResolver`
-  mirrors the CWD-match/global-on-cwd-miss logic Plastic already used for the
-  intent store: a cwd nested under a registered project resolves to that
-  project's store (`<plastic_home>/projects/<slug>`), any other cwd falls
-  back to the global store (`<plastic_home>`). `store_home` is always the
-  directory that holds `INDEX.md`; the DB file itself is
-  `<store_home>/plastic.db`.
-- **Write discipline (D1).** Every write goes through `Plastic::DB.with_write`:
-  `BEGIN IMMEDIATE`, the row write happens ONLY inside that short transaction
-  (never holding the lock across git or other file work, the same lesson
-  that shaped the file-lock design), with bounded exponential-backoff retry
-  on `SQLITE_BUSY`/`SQLITE_LOCKED`. WAL mode, `busy_timeout >= 5000`,
-  `synchronous = NORMAL`, and `PRAGMA foreign_keys = ON` are set on every
-  connection. Leases are leases, not per-heartbeat writes: renewal only bumps
-  `expires_at` once the remaining life is inside a window, keeping renewal off
-  the hot path.
-- **Fail open, always (the layer's core promise).** No `sqlite3` gem, an
-  unopenable DB file, or any DB error in a gate path makes `connect` return
-  `nil`; every query verb then returns its empty/false result and every
-  record verb returns a fail-open sentinel, and every caller ALLOWS rather
-  than blocking. Plastic runs correctly markdown-only with no DB at all: the
-  layer only adds speed and structure on top, never a new hard dependency.
-  Absence of a lease reads as dormancy (allow), identical to the old file
-  lock's dormant state. `doctor`'s `sqlite3_gem` check reports the gem's
-  absence as advisory, never a failure, with the install hint that v2.5.0+
-  ships a precompiled `arm64-darwin` native gem (no compiler needed).
-- **Schema at a glance (Rails-shaped, dialect-clean).** Every table: integer
-  `id` PRIMARY KEY, `created_at`/`updated_at` TEXT ISO8601, declared FKs
-  (`PRAGMA foreign_keys = ON`). Booleans are INTEGER 0/1; no `STRICT`, no
-  `WITHOUT ROWID`, no engine-specific functions, no vector columns, so a
-  future `sqlite-vec` load or a Turso migration needs zero schema change.
-  - `intents`: one row per intent, `intent_id` TEXT UNIQUE (the human id).
-    Derived fields (files win, resynced by content hash, never mtime): title,
-    slug, tags, author, created, chain, sources. Authoritative fields: status,
-    quadrant.
-  - `edges`: the `sources`/`chain` graph, fully derived from frontmatter.
-  - `savepoint_events`: append-only ledger (stage, event_type, actor_session,
-    payload, occurred_at), the durable successor to live `savepoint.md`
-    writes.
-  - `lock_leases`: `(intent_id, artifact)` grain (`artifact IS NULL` is the
-    delivery grain; non-NULL is a per-artifact claim), owner_session, host,
-    acquired_at, expires_at, released_at. A partial unique index on
-    `(intent_id, artifact) WHERE released_at IS NULL` backstops one live
-    holder per grain (the actual mutual exclusion is the check-then-insert
-    inside one `with_write` transaction, not the index alone).
-  - `sessions`: one row per armed session (`session_id` UNIQUE), replacing
-    the `/tmp` bridge. A bare session that owns several concurrently-armed
-    intents gets one row per intent, keyed `"<session>--<intent_id>"`.
-  - `roadmaps`/`roadmap_entries`: queue and batch membership, authoritative.
-  - `schema_meta`: one row (`format_version`, `last_full_rebuild_at`,
-    `last_reconcile_at`); a `format_version` bump forces a cold rebuild of the
-    derived tables.
-- **The `bridge_data` adapter is the migration spine.** The gate-decision
-  functions (`code_gate_decision`, `worktree_gate_decision`,
-  `lock_gate_decision`, `derive_stage`) are untouched: they still consume a
-  plain Hash. `Plastic::DB::Sessions.to_bridge_data` builds that SAME Hash
-  shape from a `sessions` row (plus a joined `lock_leases` row for the `lock`
-  block), so those functions read DB state through their existing interface.
-  Only the state SOURCE moved (from `/tmp` JSON to DB rows); stage stays
-  pinned to markdown files, so `derive_stage` needed no change at all.
-- **Frontmatter mirror + edges, reconciled by content hash, never mtime.** The
-  `intents`/`edges` mirror resyncs by comparing a content hash of the
-  frontmatter against the row's `content_hash`, debounced (checked against
-  `schema_meta.last_reconcile_at`, default 2 seconds, injectable) so a burst of
-  reads or a human/agent edit burst collapses into one resync pass. A
-  `format_version` mismatch forces a full cold rebuild instead of an
-  incremental resync.
-- **Rebuild determinism.** `Plastic::DB.rebuild!` reconstructs every derived
-  table from files on disk plus the committed `savepoint.jsonl` snapshots.
-  "Deterministic" is interpreted at the canonical-logical-dump level (rows in
-  a stable sort order, serialized to text), not raw `.db` bytes: derived rows
-  get content-derived timestamps (from frontmatter `created:`), never
-  `Time.now`, so two rebuilds of one fixture store produce an identical dump.
-- **The JSONL export closes the durable-recovery gap.** Because
-  `savepoint_events` lives only in the DB, every delivery gate boundary (a
-  lifecycle file landing, or the terminal `Done` event) additionally exports
-  `<intent_dir>/savepoint.jsonl`, one JSON line per event, in occurred-at
-  order, plus a trailing `{"kind":"state",...}` record carrying the
-  DB-authoritative-only fields (status, quadrant, queue, batch), and commits
-  it in the store's git repo (outside any DB transaction: the export call has
-  already returned by the time git runs, never holding the SQLite write lock
-  across git). `rebuild_savepoint`/`Plastic::DB::SavepointEvents.rebuild_from_export`
-  replays it back verbatim if the DB is ever lost, restoring both the ledger
-  and those authoritative-only fields, so a cold rebuild starting from files
-  plus this committed snapshot is still fully deterministic. The one accepted
-  loss is an operational change made after the last gate snapshot, if the DB
-  is destroyed mid-gate.
-- **Provisioning is lazy, and the DB is never committed.** SQLite creates
-  `plastic.db` on first `Plastic::DB.connect`; nothing pre-creates it for a
-  store that has not been touched yet, and no doctor check may either (each
-  reads `File.exist?(db_path)` before opening a connection, since opening one
-  has the side effect of creating the file). Every store shares ONE git repo
-  rooted at `plastic_home` (there is no per-project `.git`), so a single
-  unanchored `.gitignore` entry, `plastic.db*`, covers `plastic.db` and its
-  `-wal`/`-shm` sidecars at any depth under it, present store or future one.
-  `StoreProvisioning.provision` and `InstallerCore#distribute` (on both fresh
-  install and every `plastic update`) both ensure that entry idempotently, so
-  an already-installed user picks it up retroactively without needing to
-  provision a new project store first.
-- **Doctor's `database` check category.** Three read-only checks, added to the
-  full run (not the `--core` or `--store` scopes): `sqlite3_gem` (advisory
-  pass/warn, never a failure); `db_health` (opens and checks
-  `schema_meta.format_version` for every store whose `plastic.db` ALREADY
-  exists, skipping (not flagging) any store with none yet); and
-  `stale_bridges` (reports, but never depends on, leftover
-  `/tmp/plastic-*.json` files from the retired bridge, informational only,
-  safe to delete).
-- **Hermeticity guard extended.** `test/hermeticity_guard_test.rb`'s `WRITERS`
-  pattern, which originally policed only `Bridge.arm_auto/arm_guided/derive/
-  write/disarm_auto/repair_lock`, now also matches every `Plastic::DB.*`
-  record verb and every `Leases`/`Sessions`/`SavepointEvents` write method, so
-  a test that writes DB state is held to the same isolation bar (an injected
-  `Dir.mktmpdir` store/DB path, `PLASTIC_TMP`, or `PLASTIC_STORE_HOME`; never
-  the ambient session id) that bridge-writing tests already were.
-- **Cross-cutting proofs in the test suite.** A forked, real-OS-process
-  contention smoke test drives roughly 100 concurrent writers at one tmpdir
-  DB and asserts the one-live-holder invariant holds (the only `fork` anywhere
-  in the shipped surface; it is a test, never runtime code). A rebuild
-  determinism test asserts the canonical dump is byte-identical across two
-  cold rebuilds of the same fixture store. A full-lifecycle export test
-  drives an intent from creation through a terminal disposition and asserts
-  the JSONL export round-trips losslessly.
 
 ## living-document
 

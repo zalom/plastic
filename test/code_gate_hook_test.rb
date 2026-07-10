@@ -5,12 +5,11 @@ require "json"
 require "stringio"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/worktree"
-require_relative "../scripts/lib/db"
 
-# End-to-end test (intent 52, cutover in intent 41): drives the real
-# scripts/hook-code-gate with a DERIVED-KEY armed session present in an
-# isolated store (PLASTIC_STORE_HOME), no session id present. Proves the gate
-# engages off a session-less session row.
+# End-to-end test (intent 52): drives the real scripts/hook-code-gate with a
+# DERIVED-KEY armed bridge present in an isolated PLASTIC_TMP, no session id present.
+# Proves the gate engages off a session-less bridge and that a malformed
+# session:null bridge in the same dir is ignored.
 class CodeGateHookTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/hook-code-gate", __dir__)
 
@@ -26,19 +25,19 @@ class CodeGateHookTest < Minitest::Test
     FileUtils.mkdir_p(File.dirname(@project_file))
     File.write(@project_file, "puts 1\n")
 
+    @bridge_tmp = Dir.mktmpdir("code-gate-hook-tmp")
     @saved_session = ENV["CLAUDE_CODE_SESSION_ID"]
-    @saved_store_home = ENV["PLASTIC_STORE_HOME"]
+    @saved_plastic_tmp = ENV["PLASTIC_TMP"]
+    ENV["PLASTIC_TMP"] = @bridge_tmp
     ENV.delete("CLAUDE_CODE_SESSION_ID")
-    ENV["PLASTIC_STORE_HOME"] = @root
 
     # Neutralize the real provision (intent 108 hermeticity fix): unstubbed,
     # arm's provision would plant a store worktree in the LIVE ~/.plastic.
     @real_provision = Worktree.method(:provision)
     Worktree.define_singleton_method(:provision) { |d, *_a, **_kw| d }
 
-    # Arm via the derived key (no session). This registers a session row in
-    # @root's plastic.db. arm_auto prints a derived-key notice to stderr;
-    # silence it for clean output.
+    # Arm via the derived key (no session). This writes the bridge into PLASTIC_TMP.
+    # arm_auto prints a derived-key notice to stderr; silence it for clean output.
     silence_stderr { Bridge.arm_auto(nil, intent_id: "52", intent_dir: @intent_dir, store: @store, name: "demo") }
   end
 
@@ -52,18 +51,19 @@ class CodeGateHookTest < Minitest::Test
 
   def teardown
     FileUtils.rm_rf(@root)
+    FileUtils.rm_rf(@bridge_tmp)
     @saved_session.nil? ? ENV.delete("CLAUDE_CODE_SESSION_ID") : ENV["CLAUDE_CODE_SESSION_ID"] = @saved_session
-    @saved_store_home.nil? ? ENV.delete("PLASTIC_STORE_HOME") : ENV["PLASTIC_STORE_HOME"] = @saved_store_home
+    @saved_plastic_tmp.nil? ? ENV.delete("PLASTIC_TMP") : ENV["PLASTIC_TMP"] = @saved_plastic_tmp
     Worktree.define_singleton_method(:provision, @real_provision) if @real_provision
   end
 
   def run_hook(file_path)
-    env = { "PLASTIC_STORE_HOME" => @root, "CLAUDE_CODE_SESSION_ID" => nil }
+    env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_CODE_SESSION_ID" => nil }
     out = IO.popen(env, ["ruby", SCRIPT, file_path], err: [:child, :out], &:read)
     [out, $?]
   end
 
-  def test_blocks_project_code_pre_how_off_derived_key_session
+  def test_blocks_project_code_pre_how_off_derived_key_bridge
     _out, status = run_hook(@project_file)
     assert_equal 2, status.exitstatus, "pre-How project edit should be blocked"
   end
@@ -80,15 +80,14 @@ class CodeGateHookTest < Minitest::Test
     assert_equal 0, status.exitstatus, "edit under ~/.plastic should be allowed"
   end
 
-  def test_ignores_a_second_foreign_session_row
-    # A foreign session's row for an unrelated intent must not affect the
-    # derived-key session's own gate: it still blocks project code.
-    other_dir = File.join(@store, "99--other")
-    FileUtils.mkdir_p(other_dir)
-    conn = Plastic::DB.connect(@root)
-    Plastic::DB::Sessions.register(conn, session_id: "foreign--99", host: "h", pid: 1,
-                                    cwd: other_dir, active_intent_id: "99", auto: true, now: Time.now)
+  def test_ignores_malformed_null_session_bridge
+    # A session:null bridge alongside the valid derived-key bridge must be skipped
+    # (bridge_valid? rejects it), so the gate still blocks project code.
+    File.write(
+      File.join(@bridge_tmp, "plastic-.json"),
+      JSON.generate("session" => nil, "intent" => { "id" => "99" }, "build" => { "auto" => true }),
+    )
     _out, status = run_hook(@project_file)
-    assert_equal 2, status.exitstatus, "foreign row ignored; gate still blocks"
+    assert_equal 2, status.exitstatus, "malformed bridge ignored; gate still blocks"
   end
 end

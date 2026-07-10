@@ -40,7 +40,7 @@
       "scope": "triggering",
       "set": "validation",
       "prompt": "continue",
-      "expected_output": "Does NOT activate plastic-intent-starting; bare 'continue' is plastic-continuing (no specific intent named).",
+      "expected_output": "Does NOT activate plastic-intent-starting; bare 'continue' is plastic-intent-continuing (no specific intent named).",
       "files": [],
       "assertions": [
         { "type": "code", "check": "router CHOICE != plastic-intent-starting", "result": "expect-pass" }
@@ -51,7 +51,7 @@
       "scope": "triggering",
       "set": "validation",
       "prompt": "create a new intent for the uploader retry policy",
-      "expected_output": "Does NOT activate plastic-intent-starting; activates plastic-creating-intent.",
+      "expected_output": "Does NOT activate plastic-intent-starting; activates plastic-intent-creating.",
       "files": [],
       "assertions": [
         { "type": "code", "check": "router CHOICE != plastic-intent-starting", "result": "expect-pass" }

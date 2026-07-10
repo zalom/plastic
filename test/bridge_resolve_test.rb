@@ -4,11 +4,9 @@ require "fileutils"
 require "json"
 require "digest"
 require_relative "../scripts/lib/bridge"
-require_relative "../scripts/lib/db"
 
-# Tests for session resolution, derived keys, intent-dir discovery, and the
-# `sessions`-table-backed bridge discovery (intent 41 cutover, replacing the
-# /tmp bridge scan added in intent 52/90/131).
+# Tests for session resolution, derived keys, write guards, intent-dir discovery,
+# and /tmp bridge discovery added in intent 52 (session-id-less bridge).
 class BridgeResolveTest < Minitest::Test
   def setup
     @store = Dir.mktmpdir("bridge-resolve-store")
@@ -18,8 +16,6 @@ class BridgeResolveTest < Minitest::Test
     @saved_code_env = ENV["CLAUDE_CODE_SESSION_ID"]
     # Clear so a real ambient session id cannot leak into a "no id" case.
     ENV.delete("CLAUDE_CODE_SESSION_ID")
-    @saved_store_home = ENV["PLASTIC_STORE_HOME"]
-    ENV.delete("PLASTIC_STORE_HOME")
   end
 
   def teardown
@@ -29,7 +25,6 @@ class BridgeResolveTest < Minitest::Test
     else
       ENV["CLAUDE_CODE_SESSION_ID"] = @saved_code_env
     end
-    @saved_store_home.nil? ? ENV.delete("PLASTIC_STORE_HOME") : ENV["PLASTIC_STORE_HOME"] = @saved_store_home
   end
 
   # --- derive_key ------------------------------------------------------------
@@ -97,32 +92,44 @@ class BridgeResolveTest < Minitest::Test
   end
 
   def test_arm_auto_keys_by_code_session_id
-    ENV["CLAUDE_CODE_SESSION_ID"] = "real-id"
-    # Neutralize the real provision (intent 108 hermeticity fix): unstubbed,
-    # arm's provision would plant a store worktree in the LIVE ~/.plastic.
-    real_provision = Worktree.method(:provision)
-    Worktree.define_singleton_method(:provision) { |d, *_a, **_kw| d }
-    begin
-      data = Bridge.arm_auto(nil, intent_id: "52", intent_dir: @intent_dir,
-                             store: @store, name: "demo")
-      assert_equal "real-id", data["session"]
-      conn = Plastic::DB.connect(File.dirname(@store))
-      row = Plastic::DB::Sessions.active_for(conn, session: "real-id--52", cwd: nil)
-      refute_nil row, "expected a session row keyed by the real code session id AND intent id"
-    ensure
-      Worktree.define_singleton_method(:provision, real_provision)
+    Dir.mktmpdir("arm-code-session") do |tmp|
+      saved_tmp = ENV["PLASTIC_TMP"]
+      ENV["PLASTIC_TMP"] = tmp
+      ENV["CLAUDE_CODE_SESSION_ID"] = "real-id"
+      # Neutralize the real provision (intent 108 hermeticity fix): unstubbed,
+      # arm's provision would plant a store worktree in the LIVE ~/.plastic.
+      real_provision = Worktree.method(:provision)
+      Worktree.define_singleton_method(:provision) { |d, *_a, **_kw| d }
+      begin
+        data = Bridge.arm_auto(nil, intent_id: "52", intent_dir: @intent_dir,
+                               store: @store, name: "demo")
+        assert_equal "real-id", data["session"]
+        assert File.exist?(File.join(tmp, "plastic-real-id--52.json")),
+               "expected bridge file keyed by the real code session id AND intent id"
+      ensure
+        Worktree.define_singleton_method(:provision, real_provision)
+        if saved_tmp.nil?
+          ENV.delete("PLASTIC_TMP")
+        else
+          ENV["PLASTIC_TMP"] = saved_tmp
+        end
+      end
     end
   end
 
-  # --- session_key -----------------------------------------------------------
+  # --- write guard -----------------------------------------------------------
 
-  def test_session_key_joins_bare_session_and_intent_id
-    assert_equal "sess--52", Bridge.session_key("sess", "52")
+  def test_write_raises_on_empty_session
+    assert_raises(ArgumentError) { Bridge.write(nil, {}) }
+    assert_raises(ArgumentError) { Bridge.write("", {}) }
+    assert_raises(ArgumentError) { Bridge.write("   ", {}) }
   end
 
   # --- intent_dir_for --------------------------------------------------------
 
   def test_intent_dir_for_finds_ancestor_store_dir
+    file = File.join(@store, "52--demo", "spec.md")
+    # The store dir name must match /store/<id>--<slug>. Build a realistic tree.
     real_store = File.join(@store, "store")
     intent = File.join(real_store, "52--demo")
     FileUtils.mkdir_p(File.join(intent, "actions"))
@@ -151,72 +158,210 @@ class BridgeResolveTest < Minitest::Test
     refute Bridge.bridge_valid?({ "session" => "s", "intent" => "x" })
   end
 
-  # --- discover_bridge (sessions-table backed) --------------------------------
+  # --- discover_bridge -------------------------------------------------------
 
-  def seed_session(store_home, session_id:, intent_id:, cwd:, auto: false, now: Time.now)
-    FileUtils.mkdir_p(File.join(store_home, "store", "#{intent_id}--demo")) unless Bridge.blank?(intent_id)
-    conn = Plastic::DB.connect(store_home)
-    Plastic::DB::Sessions.register(conn, session_id: session_id, host: "h", pid: 1,
-                                    cwd: cwd, active_intent_id: intent_id, auto: auto, now: now)
+  def write_tmp_bridge(tmp, name, data)
+    File.write(File.join(tmp, name), JSON.generate(data))
   end
 
-  def test_discover_prefers_auto_session
-    Dir.mktmpdir("db-store") do |home|
-      seed_session(home, session_id: "a--52", intent_id: "52", cwd: @intent_dir, auto: false)
-      seed_session(home, session_id: "b--52", intent_id: "52", cwd: @intent_dir, auto: true)
-      found = Bridge.discover_bridge(session: nil, cwd: @intent_dir, store_home: home)
-      # Both rows are for intent "52" (session filtering is off since session: nil);
-      # active_for prefers the auto-armed row when cwd cannot disambiguate siblings
-      # that share the same cwd.
-      assert_equal true, found["build"]["auto"]
+  def valid_bridge(session:, store:, auto: false)
+    {
+      "session" => session,
+      "intent" => { "id" => "52", "dir" => "52--demo", "store" => store, "name" => "demo" },
+      "build" => { "auto" => auto },
+    }
+  end
+
+  def test_discover_prefers_auto_bridge
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      write_tmp_bridge(tmp, "plastic-a.json", valid_bridge(session: "a", store: @store, auto: false))
+      sleep 0.01
+      write_tmp_bridge(tmp, "plastic-b.json", valid_bridge(session: "b", store: @store, auto: true))
+      found = Bridge.discover_bridge(session: nil, cwd: @store, tmp: tmp)
+      assert_equal "b", found["session"]
+    end
+  end
+
+  def test_discover_skips_invalid_and_tmp_files
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      File.write(File.join(tmp, "plastic-bad.json"), "{ not json")
+      File.write(File.join(tmp, "plastic-x.json.tmp"), JSON.generate(valid_bridge(session: "x", store: @store)))
+      write_tmp_bridge(tmp, "plastic-good.json", valid_bridge(session: "good", store: @store))
+      found = Bridge.discover_bridge(session: nil, cwd: @store, tmp: tmp)
+      assert_equal "good", found["session"]
+    end
+  end
+
+  def test_discover_prefers_cwd_matching_store
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      other_store = File.join(@store, "other")
+      FileUtils.mkdir_p(other_store)
+      write_tmp_bridge(tmp, "plastic-other.json", valid_bridge(session: "other", store: other_store, auto: true))
+      sleep 0.01
+      write_tmp_bridge(tmp, "plastic-mine.json", valid_bridge(session: "mine", store: @store, auto: true))
+      found = Bridge.discover_bridge(session: nil, cwd: @store, tmp: tmp)
+      assert_equal "mine", found["session"]
     end
   end
 
   def test_discover_returns_nil_when_no_candidates
-    Dir.mktmpdir("db-store") { |home| assert_nil Bridge.discover_bridge(session: nil, cwd: @store, store_home: home) }
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      assert_nil Bridge.discover_bridge(session: nil, cwd: @store, tmp: tmp)
+    end
   end
 
+  def test_discover_tie_breaks_by_newest_mtime
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      write_tmp_bridge(tmp, "plastic-old.json", valid_bridge(session: "old", store: @store, auto: true))
+      sleep 0.02
+      write_tmp_bridge(tmp, "plastic-new.json", valid_bridge(session: "new", store: @store, auto: true))
+      found = Bridge.discover_bridge(session: nil, cwd: @store, tmp: tmp)
+      assert_equal "new", found["session"]
+    end
+  end
+
+  # --- discover_bridge: strict per-session resolution (intent 90) -------------
+
   def test_discover_returns_nil_for_foreign_session_when_caller_has_session
-    Dir.mktmpdir("db-store") do |home|
-      seed_session(home, session_id: "B--52", intent_id: "52", cwd: @intent_dir, auto: true)
-      found = Bridge.discover_bridge(session: "A", cwd: @intent_dir, store_home: home)
-      assert_nil found, "a session with no own row must not inherit a foreign session's row"
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      # Foreign session B owns an armed auto bridge; caller A owns none.
+      write_tmp_bridge(tmp, "plastic-B.json", valid_bridge(session: "B", store: @store, auto: true))
+      found = Bridge.discover_bridge(session: "A", cwd: @store, tmp: tmp)
+      assert_nil found, "a session with no own bridge must not inherit a foreign session's bridge"
+    end
+  end
+
+  def test_discover_never_returns_newer_foreign_over_own_session
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      write_tmp_bridge(tmp, "plastic-A.json", valid_bridge(session: "A", store: @store, auto: true))
+      sleep 0.02
+      # Newer foreign bridge must NOT shadow the caller's own bridge.
+      write_tmp_bridge(tmp, "plastic-B.json", valid_bridge(session: "B", store: @store, auto: true))
+      found = Bridge.discover_bridge(session: "A", cwd: @store, tmp: tmp)
+      assert_equal "A", found["session"]
     end
   end
 
   def test_discover_derived_key_headless_resolves_own
-    Dir.mktmpdir("db-store") do |home|
+    Dir.mktmpdir("tmp-bridges") do |tmp|
       key = Bridge.derive_key(@store, "52")
-      seed_session(home, session_id: Bridge.session_key(key, "52"), intent_id: "52", cwd: @intent_dir, auto: true)
-      found = Bridge.discover_bridge(session: key, cwd: @intent_dir, store_home: home)
-      # to_bridge_data strips the "--<intent_id>" suffix back off (the bare
-      # key is what the JSON content's "session" field always carried, even
-      # for a per-intent-keyed file).
+      write_tmp_bridge(tmp, "plastic-#{key}.json", valid_bridge(session: key, store: @store, auto: true))
+      found = Bridge.discover_bridge(session: key, cwd: @store, tmp: tmp)
       assert_equal key, found["session"]
     end
   end
 
-  def test_discover_single_own_session_still_resolves
-    Dir.mktmpdir("db-store") do |home|
-      seed_session(home, session_id: "solo--52", intent_id: "52", cwd: @intent_dir, auto: true)
-      found = Bridge.discover_bridge(session: "solo", cwd: @intent_dir, store_home: home)
-      refute_nil found
-      assert_equal "52", found.dig("intent", "id")
+  def test_discover_foreign_session_not_rescued_by_cwd_match
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      # Foreign bridge B's store matches cwd exactly, yet a caller with session A must still
+      # get nil: session ownership beats cwd, never inherits a foreign armed intent.
+      write_tmp_bridge(tmp, "plastic-B.json", valid_bridge(session: "B", store: @store, auto: true))
+      found = Bridge.discover_bridge(session: "A", cwd: @store, tmp: tmp)
+      assert_nil found, "cwd match must not rescue a foreign session's bridge"
     end
   end
 
-  def test_discover_uses_plastic_store_home_env_override
-    Dir.mktmpdir("db-store") do |home|
-      seed_session(home, session_id: "env-sess--52", intent_id: "52", cwd: @intent_dir, auto: true)
-      ENV["PLASTIC_STORE_HOME"] = home
-      found = Bridge.discover_bridge(session: "env-sess", cwd: "/somewhere/unrelated")
-      refute_nil found, "PLASTIC_STORE_HOME must win over cwd-based store resolution"
-      assert_equal "52", found.dig("intent", "id")
+  def test_discover_headless_blank_session_still_finds_lone_bridge_off_cwd
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      Dir.mktmpdir("unrelated-cwd") do |elsewhere|
+        # Intent 52 degraded path preserved: no session, a single armed bridge is still found
+        # even when cwd does not overlap its store (best-effort revert retained).
+        write_tmp_bridge(tmp, "plastic-x.json", valid_bridge(session: "x", store: @store, auto: true))
+        found = Bridge.discover_bridge(session: nil, cwd: elsewhere, tmp: tmp)
+        assert_equal "x", found["session"]
+      end
     end
   end
 
-  def test_discover_returns_nil_when_db_unavailable
-    ENV["PLASTIC_STORE_HOME"] = "/no/such/store/home/at/all"
-    assert_nil Bridge.discover_bridge(session: "solo", cwd: @intent_dir)
+  def test_discover_single_own_session_bridge_still_resolves
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      write_tmp_bridge(tmp, "plastic-solo.json", valid_bridge(session: "solo", store: @store, auto: true))
+      found = Bridge.discover_bridge(session: "solo", cwd: @store, tmp: tmp)
+      assert_equal "solo", found["session"]
+    end
   end
+
+  # --- enclosing_worktree_dir (intent 168) -----------------------------------
+
+  def test_enclosing_worktree_dir_finds_the_owning_worktree
+    file = "/r/.claude/worktrees/301--demo-a/x/y.rb"
+    assert_equal "/r/.claude/worktrees/301--demo-a", Bridge.enclosing_worktree_dir(file)
+  end
+
+  def test_enclosing_worktree_dir_nil_for_store_path
+    assert_nil Bridge.enclosing_worktree_dir("/r/.plastic/store/301--demo-a/spec.md")
+  end
+
+  def test_enclosing_worktree_dir_nil_for_shared_checkout_path
+    assert_nil Bridge.enclosing_worktree_dir("/r/lib/app.rb")
+  end
+
+  def test_enclosing_worktree_dir_nil_without_dashes_in_dirname
+    assert_nil Bridge.enclosing_worktree_dir("/r/.claude/worktrees/README")
+  end
+
+  def test_enclosing_worktree_dir_nil_for_blank_input
+    assert_nil Bridge.enclosing_worktree_dir(nil)
+    assert_nil Bridge.enclosing_worktree_dir("")
+    assert_nil Bridge.enclosing_worktree_dir("   ")
+  end
+
+  # --- discover_bridge(edited_path:) worktree-membership-first (intent 168) --
+
+  def test_discover_edited_path_resolves_worktree_owner_across_session_boundary
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      Dir.mktmpdir("repo-root") do |repo|
+        w601 = File.join(repo, ".claude", "worktrees", "601--demo")
+        w602 = File.join(repo, ".claude", "worktrees", "602--demo")
+        FileUtils.mkdir_p(w601)
+        FileUtils.mkdir_p(w602)
+
+        bridge_x = {
+          "session" => "X",
+          "intent" => { "id" => "601", "dir" => "601--demo", "store" => @store, "name" => "demo 601" },
+          "build" => { "auto" => false },
+          "worktree" => { "code" => w601, "provisioned" => true },
+        }
+        bridge_y = {
+          "session" => "Y",
+          "intent" => { "id" => "602", "dir" => "602--demo", "store" => @store, "name" => "demo 602" },
+          "build" => { "auto" => false },
+          "worktree" => { "code" => w602, "provisioned" => true },
+        }
+        write_tmp_bridge(tmp, "plastic-X--601.json", bridge_x)
+        write_tmp_bridge(tmp, "plastic-Y--602.json", bridge_y)
+
+        edited_path = File.join(w602, "app.rb")
+        found = Bridge.discover_bridge(session: "X", cwd: edited_path, edited_path: edited_path, tmp: tmp)
+        assert_equal "602", found.dig("intent", "id"),
+          "the worktree owner (session Y) must win over the caller's own session (X)"
+      end
+    end
+  end
+
+  def test_discover_edited_path_no_owner_returns_nil_not_the_session_matched_sibling
+    Dir.mktmpdir("tmp-bridges") do |tmp|
+      Dir.mktmpdir("repo-root") do |repo|
+        w601 = File.join(repo, ".claude", "worktrees", "601--demo")
+        w602 = File.join(repo, ".claude", "worktrees", "602--demo")
+        FileUtils.mkdir_p(w601)
+        FileUtils.mkdir_p(w602) # no candidate owns this one
+
+        bridge_x = {
+          "session" => "X",
+          "intent" => { "id" => "601", "dir" => "601--demo", "store" => @store, "name" => "demo 601" },
+          "build" => { "auto" => false },
+          "worktree" => { "code" => w601, "provisioned" => true },
+        }
+        write_tmp_bridge(tmp, "plastic-X--601.json", bridge_x)
+
+        edited_path = File.join(w602, "app.rb")
+        found = Bridge.discover_bridge(session: "X", cwd: edited_path, edited_path: edited_path, tmp: tmp)
+        assert_nil found,
+          "a worktree-scoped edit with no owning candidate must resolve nil, " \
+          "never the session-matched sibling 601"
+      end
+    end
+  end
+
 end
