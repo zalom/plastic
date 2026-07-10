@@ -15,6 +15,7 @@ Project configuration drives the workflow - no hardcoded assumptions.
 - [ ] All tests pass (or verification skipped per config)
 - [ ] Merge feature branch to main
 - [ ] Bump version in configured version files
+- [ ] Stable-cut guard passes (version files agree, no pre-release suffix; stable/latest cuts only)
 - [ ] Commit version bump
 - [ ] Create annotated tag
 - [ ] Push to remote with tags
@@ -93,6 +94,25 @@ the full rationale and the already-merged-by-hand no-op case, read
 `references/promotion-and-tagging.md`.
 
 ### 4. Bump Version
+
+**Stable-cut guard.** Before touching any version file for a stable (no pre-release suffix,
+`latest`) cut, run the guard in `scripts/lib/release_guard.rb`:
+
+```ruby
+require "./scripts/lib/release_guard"
+result = ReleaseGuard.check(
+  package_json: "package.json",
+  plugin_json: ".claude-plugin/plugin.json",
+  marketplace_json: ".claude-plugin/marketplace.json",
+  stable: true
+)
+raise "release guard failed: #{result.mismatches} #{result.prerelease_suffix}" unless result.ok?
+```
+
+If it reports a mismatch or a pre-release-suffix violation, stop and resolve it before bumping
+any file. For a beta or alpha cut, pass `stable: false`; only version-file agreement is checked,
+a pre-release suffix is expected. Read `references/release-lines.md` for the stable-line
+guarantees this guard protects.
 
 Determine which files to update from project.yml:
 
@@ -252,6 +272,32 @@ prune` in the affected repo if you hit a stale reference. For why this is the on
 merge-vs-remove policy lands on merge, and the fail-open/idempotent guarantees of `finish`,
 read `references/promotion-and-tagging.md`.
 
+## Release lines and channels
+
+Two lanes get code to a release, on top of the workflow above.
+
+- **Default lane.** Branch, merge to main, cut stable, publish to npm `latest`. This is the
+  workflow in the steps above, unchanged. Use it for additive, suite-verifiable,
+  low-blast-radius work.
+- **Beta-verified lane.** Branch, merge to `beta`, publish to the npm `beta` channel, verify in
+  real use, then merge to main and cut stable. Use it for work that changes operational
+  substrate, or carries data, migration, lock, or state-format risk, or that a hermetic suite
+  cannot fully validate on its own.
+
+**Stable-line guarantees.** An external `latest` user can rely on:
+
+- `main` is always green and releasable; no pending revert awaiting re-land sits on `main`.
+- A stable release carries no pre-release suffix, publishes to `latest`, and the newest release
+  always carries the GitHub "Latest" badge.
+- The three version files always agree, checked by `scripts/lib/release_guard.rb` (see Bump
+  Version above).
+- A stable cut collects only intents that cleared their lane's verification bar.
+- Channel semantics are fixed: `latest` is stable, `beta` is the verification line, `alpha` is
+  experimental.
+
+Read `references/release-lines.md` for the full lane-routing detail, the version-line map, and
+the intent-41 re-land playbook.
+
 ## Conventions
 
 - **Annotated tags only** - `git tag -a`, never lightweight tags
@@ -266,6 +312,8 @@ read `references/promotion-and-tagging.md`.
 
 ## References
 
+- Read `references/release-lines.md` for the two release lanes, the stable-line guarantees,
+  the version-line map, and the intent-41 re-land playbook before starting any release
 - When promoting a pre-release across channels (`--promote beta`/`--promote stable`) or
   tagging a historical release retroactively, read `references/promotion-and-tagging.md`
   for the exact commands and rules first
