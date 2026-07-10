@@ -72,7 +72,7 @@ line.
 
 ### 5. Continue and where-was-I after time away
 
-Type `/plastic-intent-continuing`.
+Type `/plastic-continuing`.
 
 Artifact: the current state, presented and then the session stops. If a specific intent is
 named, the agent reads its stage and savepoint and resumes exactly there, rather than

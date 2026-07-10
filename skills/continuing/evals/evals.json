@@ -1,0 +1,91 @@
+{
+  "skill_name": "plastic-continuing",
+  "notes": "Intent 158a1. New bare front-door router restored per intent 96 (D8). Scopes: description triggering (1-5) and routing behavior (6-9), the latter checked as convention against SKILL.md's routing table.",
+  "results": {
+    "triggering": { "cases": 5, "passed": 5, "run": "2026-07-10, one subagent per case" },
+    "behavior": { "cases": 4, "passed": 4, "evidence": "convention checks against skills/continuing/SKILL.md's routing table" }
+  },
+  "evals": [
+    {
+      "id": 1, "scope": "triggering", "set": "train",
+      "prompt": "continue",
+      "expected_output": "Activates plastic-continuing (the bare 'continue' keyword is the router's documented trigger).",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-continuing", "observed": "plastic-continuing", "result": "pass" }
+      ]
+    },
+    {
+      "id": 2, "scope": "triggering", "set": "train",
+      "prompt": "resume where we left off",
+      "expected_output": "Activates plastic-continuing.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-continuing", "observed": "plastic-continuing", "result": "pass" }
+      ]
+    },
+    {
+      "id": 3, "scope": "triggering", "set": "validation",
+      "prompt": "pick up where we left off",
+      "expected_output": "Activates plastic-continuing.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-continuing", "observed": "plastic-continuing", "result": "pass" }
+      ]
+    },
+    {
+      "id": 4, "scope": "triggering", "set": "validation",
+      "prompt": "where was I",
+      "expected_output": "Activates plastic-continuing (indirect trigger: a continue request that never says 'continue').",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-continuing", "observed": "plastic-continuing", "result": "pass" }
+      ]
+    },
+    {
+      "id": 5, "scope": "triggering", "set": "validation",
+      "prompt": "continue the for-loop in this function",
+      "expected_output": "Does NOT activate plastic-continuing. Near-miss: shares 'continue' but is a code-editing task.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE != plastic-continuing", "observed": "none", "result": "pass" }
+      ]
+    },
+    {
+      "id": 6, "scope": "behavior", "set": "train",
+      "prompt": "continue",
+      "expected_output": "Bare 'continue' with no further target dispatches to the project route (plastic-project-continuing), the routing table's default.",
+      "files": ["skills/continuing/SKILL.md"],
+      "assertions": [
+        { "type": "convention", "check": "routing table's default row maps bare continue/resume/no target to plastic-project-continuing", "observed": "present", "result": "pass" }
+      ]
+    },
+    {
+      "id": 7, "scope": "behavior", "set": "train",
+      "prompt": "continue --intent 4a",
+      "expected_output": "Dispatches to the intent route (plastic-intent-continuing).",
+      "files": ["skills/continuing/SKILL.md"],
+      "assertions": [
+        { "type": "convention", "check": "routing table maps --intent {id} to plastic-intent-continuing", "observed": "present", "result": "pass" }
+      ]
+    },
+    {
+      "id": 8, "scope": "behavior", "set": "validation",
+      "prompt": "resume the statusline-coloring intent",
+      "expected_output": "Dispatches to the intent route (plastic-intent-continuing): a specific intent named by description.",
+      "files": ["skills/continuing/SKILL.md"],
+      "assertions": [
+        { "type": "convention", "check": "routing table maps a named specific intent (by id or description) to plastic-intent-continuing", "observed": "present", "result": "pass" }
+      ]
+    },
+    {
+      "id": 9, "scope": "behavior", "set": "validation",
+      "prompt": "continue the consistency-dividend roadmap",
+      "expected_output": "Dispatches to the roadmap route (plastic-roadmap-continuing).",
+      "files": ["skills/continuing/SKILL.md"],
+      "assertions": [
+        { "type": "convention", "check": "routing table maps a named roadmap/delivery batch to plastic-roadmap-continuing", "observed": "present", "result": "pass" }
+      ]
+    }
+  ]
+}

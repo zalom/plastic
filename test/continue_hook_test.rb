@@ -59,7 +59,8 @@ class ContinueHookTest < Minitest::Test
     refute_nil ctx
     assert_includes ctx, "PLASTIC ·", "must contain the dashboard header"
     assert_includes ctx, "WHERE WE", "must contain a dashboard section heading"
-    assert_includes ctx, "plastic-intent-continuing", "must contain the skill routing line"
+    assert_includes ctx, "plastic-continuing skill workflow", "must contain the skill routing line"
+    refute_includes ctx, "plastic-intent-continuing", "must not name the slimmed intent route directly"
   end
 
   def test_box_drawing_survives_json_roundtrip

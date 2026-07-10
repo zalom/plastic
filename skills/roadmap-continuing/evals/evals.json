@@ -1,0 +1,82 @@
+{
+  "skill_name": "plastic-roadmap-continuing",
+  "notes": "Intent 158a1. New roadmap route, closing the gap that forced the 171 (consistency-dividend) roadmap handoff to be resumed by hand. Scopes: description triggering (1-3) and behavior/convention compliance (4-8), the latter checked against SKILL.md.",
+  "results": {
+    "triggering": { "cases": 3, "passed": 3, "run": "2026-07-10, one subagent per case" },
+    "behavior": { "cases": 5, "passed": 5, "evidence": "convention checks against skills/roadmap-continuing/SKILL.md and references/liveness-ranking.md" }
+  },
+  "evals": [
+    {
+      "id": 1, "scope": "triggering", "set": "train",
+      "prompt": "continue the roadmap",
+      "expected_output": "Activates plastic-roadmap-continuing.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-roadmap-continuing", "observed": "plastic-roadmap-continuing", "result": "pass" }
+      ]
+    },
+    {
+      "id": 2, "scope": "triggering", "set": "train",
+      "prompt": "resume the delivery batch we were shipping",
+      "expected_output": "Activates plastic-roadmap-continuing.",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-roadmap-continuing", "observed": "plastic-roadmap-continuing", "result": "pass" }
+      ]
+    },
+    {
+      "id": 3, "scope": "triggering", "set": "validation",
+      "prompt": "where did that batch of tickets land",
+      "expected_output": "Activates plastic-roadmap-continuing (indirect trigger: a roadmap-resume request that never names 'roadmap' or 'continue').",
+      "files": [],
+      "assertions": [
+        { "type": "code", "check": "router CHOICE == plastic-roadmap-continuing", "observed": "plastic-roadmap-continuing", "result": "pass" }
+      ]
+    },
+    {
+      "id": 4, "scope": "behavior", "set": "train",
+      "prompt": "Does the skill rank liveness correctly when a wave entry is delivering or blocked?",
+      "expected_output": "A roadmap with any delivering/blocked wave entry wins the ranking outright over every other candidate.",
+      "files": ["skills/roadmap-continuing/references/liveness-ranking.md"],
+      "assertions": [
+        { "type": "convention", "check": "delivering/blocked-wins rule documented as step 2 of the algorithm", "observed": "present", "result": "pass" }
+      ]
+    },
+    {
+      "id": 5, "scope": "behavior", "set": "train",
+      "prompt": "Does the skill fall back to newest Log date when no candidate is delivering/blocked?",
+      "expected_output": "Among remaining candidates, the most recent ## Log entry timestamp wins.",
+      "files": ["skills/roadmap-continuing/references/liveness-ranking.md"],
+      "assertions": [
+        { "type": "convention", "check": "newest-Log-date fallback documented as step 3", "observed": "present", "result": "pass" }
+      ]
+    },
+    {
+      "id": 6, "scope": "behavior", "set": "train",
+      "prompt": "Does the skill present the roadmap state before asking?",
+      "expected_output": "The '## Present state' section (Goal, current wave, newest Log line) runs before the '## Ask once' section.",
+      "files": ["skills/roadmap-continuing/SKILL.md"],
+      "assertions": [
+        { "type": "convention", "check": "Present state precedes Ask once in document order", "observed": "present", "result": "pass" }
+      ]
+    },
+    {
+      "id": 7, "scope": "behavior", "set": "validation",
+      "prompt": "Does the skill ask 'auto or guided?' exactly once?",
+      "expected_output": "Exactly one ask, after presenting state; never re-asked.",
+      "files": ["skills/roadmap-continuing/SKILL.md"],
+      "assertions": [
+        { "type": "convention", "check": "the literal phrase 'auto or guided' appears on exactly one line of SKILL.md", "observed": "one occurrence", "result": "pass" }
+      ]
+    },
+    {
+      "id": 8, "scope": "behavior", "set": "validation",
+      "prompt": "Does the skill invent a new roadmap or INDEX status field, or add a new script?",
+      "expected_output": "No. Liveness is computed at read time from existing files; INDEX.md stays the sole status writer; the enumeration/ranking is prose, not a helper script.",
+      "files": ["skills/roadmap-continuing/SKILL.md", "skills/roadmap-continuing/references/liveness-ranking.md"],
+      "assertions": [
+        { "type": "convention", "check": "no new field or script introduced; 'No new script' section present", "observed": "present", "result": "pass" }
+      ]
+    }
+  ]
+}

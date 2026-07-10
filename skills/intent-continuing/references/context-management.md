@@ -1,4 +1,4 @@
-# Context Management (Start-Save-Continue)
+# Context Management (Save, then resume-flow debugging)
 
 ## Save Point
 Triggered by PreCompact hook or manually:
@@ -7,29 +7,22 @@ Triggered by PreCompact hook or manually:
 3. Update active intent's `savepoint.md` (in-progress, next steps, blockers, discoveries)
 4. Add observations to `## Insights`
 5. Update INDEX.md
-6. Commit: `cd ~/.plastic && git add . && git commit -m "chore: savepoint — [intent name]"`
+6. Commit: `cd ~/.plastic && git add . && git commit -m "chore: savepoint - [intent name]"`
 7. Notify user to `/clear`
 
-## Continue
-Triggered by UserPromptSubmit hook when user says "continue". Priority order:
+## Debugging the resume flow
 
-**1. Active intents first (resume work):**
-1. Read INDEX.md → find active intent(s)
-2. Read active intent's `intent.md` → what and why
-3. Read active intent's `savepoint.md` → where we left off
-4. Read active intent's `checklist.md` → what's next
-5. Announce: intent name, current state, next step, blockers
-6. Resume
+When a resume looks wrong (the announced stage does not match what is on disk, or the next
+step looks stale):
 
-**2. No active intents → offer future intents:**
-1. List all future intents from INDEX.md
-2. Present them as options
-3. When user picks one, move to Active in INDEX.md
+1. Read `savepoint.md`'s last line directly; that line alone is the source of truth for stage
+   (see `SKILL.md`'s `## Conditional Ledger-Resume` for the full state table).
+2. Confirm the artifact that line implies (`plan.md`, `checklist.md`, `outcome.md`, ...) is
+   present and non-empty on disk.
+3. If the two disagree, the ledger has drifted: rebuild it rather than hand-editing:
+   `ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.rebuild_savepoint("<intent_dir>")'`
+4. Re-read the rebuilt last line and re-derive the next step from `checklist.md`'s first
+   unchecked item.
 
-**3. Stale future intents (untouched 3+ days) → triage:**
-- **activate** — start working on it now
-- **abandon** — mark as abandoned
-- **defer to agent** — implement, research, or ideate. `research` is a real dispatch: resolve
-  `plastic-future-intent-researcher`'s model via `read-config agents.models.<basename> --project
-  <repo>` (never bare frontmatter), dispatch the agent (Agent tool) on the selected stale future
-  intent, let it write findings into that intent's `## Context`, then re-present the triage
+The general "land on the board / priority order / stale future intents" flow now lives in
+`plastic-project-continuing`; this file no longer duplicates it.
