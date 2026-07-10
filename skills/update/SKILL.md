@@ -22,7 +22,7 @@ clean no-op. You do not compute the target yourself, the script does.
 
 If Plastic is installed, derive `<channel>` from `~/.plastic/VERSION`: a version containing
 `-alpha` means `@alpha`, `-beta` means `@beta`, otherwise `@latest`. If not installed
-(first install), default to `@beta`. The user can always override with
+(first install), default to `@latest`. The user can always override with
 `--alpha` / `--beta` / `--latest`.
 
 ## Flags
@@ -40,7 +40,7 @@ confirmed. To roll **back** to a previously-installed version, use `plastic-roll
 ## Prerequisites
 
 Plastic must be installed (`~/.plastic/VERSION` present). If not, run `plastic-install`
-first (or `npx -y @zalom/plastic@beta install --claude` directly).
+first (or `npx -y @zalom/plastic@latest install --claude` directly).
 
 ## Procedure
 
