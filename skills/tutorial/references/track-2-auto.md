@@ -25,7 +25,8 @@ Artifact: the delivery lock arms, and the agent announces it is taking over the 
 autonomous delivery.
 
 Checkpoint: name the one precondition auto needs before it will start: an active intent must
-already exist. Auto never invents one on its own.
+already exist for the intent you name. (Say "auto" with nothing named, and it can pick a
+queued intent from the dashboard's queue itself.)
 
 ### 2. What auto does, and what stays with the user
 
