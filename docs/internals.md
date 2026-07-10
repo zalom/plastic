@@ -185,6 +185,47 @@ or ref, where it came from, the rule it broke, and its verbatim prior content). 
 when maintenance happened, so its presence is itself the signal, and no tool reads or validates
 it: it is convention, not enforcement.
 
+The roadmap savepoint ledger (intent 134) mirrors the cycle-step mechanism for roadmaps, which
+carried no comparable machine record of their own `## Log`. `scripts/lib/roadmap_savepoint.rb`
+(constructor-DI, hermetic: clock and paths injected, no eval, no ENV or global config seam; a
+thin `scripts/roadmap-savepoint` CLI wraps it, both registered in `InstallerCore#core_files`)
+owns two operations. `append(roadmap_path, event, detail, now:)` writes one line
+`<UTC-iso8601>  <event>  <detail>` to the roadmap's name-paired sibling
+`roadmaps/<slug>.savepoint.md` (created lazily on first use, moved into `roadmaps/archived/`
+alongside its roadmap on close), validated against a controlled vocabulary (`created`,
+`dispatched`, `parked`, `merged`, `release`, `handoff`, `closed`, plus optional `added`,
+`reordered`, `wave`) and keyed for idempotency on the `(event, detail)` pair rather than the
+event word alone, since two `dispatched` events with different details are distinct.
+`rebuild(roadmap_path)` reconstructs the ledger deterministically from the roadmap's `## Log`:
+each `- YYYY-MM-DD HH:MM UTC`-prefixed line opens one event (a continuation line with no date
+prefix never matches, so it is inherently ignored for classification), classified by a small
+ordered keyword table and converted to iso8601 with `:00Z` seconds, then cross-checked against
+`## Waves` and the tier's INDEX `## Completed` section so every `delivered` wave entry with no
+matching `merged` line in the Log gets one backfilled from INDEX, timestamped only from an
+on-disk source and never invented (an entry with no recoverable source anywhere is silently
+dropped, not fabricated). The `plastic-roadmap` skill's verbs call `append` at the same
+closing-step slot each already uses for its QMD reindex; `plastic-roadmap-continuing` reads the
+ledger's last line as a cheap last-event signal, purely as a read. `INDEX.md` stays the single
+status writer throughout; the ledger, like the intent-dir one, is sugar, never a source of truth.
+
+A companion rule keeps the intent-dir ledger itself honest. `Bridge.savepoint_phantom_lines`
+(intent 134) is pure and disk-only, no bridge or session resolution and no writes, matching
+intent 52's decoupling precedent: it flags a `savepoint.md` line that disk evidence contradicts,
+in three classes: a file-landing milestone (built from the same map `savepoint_milestone` uses)
+whose file is absent or still a sentinel placeholder; a duplicate `(stage, milestone)` pair (the
+later occurrence is the one flagged); or a state line, `How  started` or `Exec  started`, whose
+stage prerequisite (the PRECEDING stage's real artifact, not its own, since a `started` line
+legitimately fires before its own stage's file is real) is absent on disk. The bug-131 bridge
+clobber and the 124a out-of-band merge are the two live precedents this guards against: either
+can leave a phantom or dropped line that nothing previously detected. The
+`plastic-intent-savepoint` skill's verify step runs the detector and, on a hit, auto-rebuilds via
+`Bridge.rebuild_savepoint` for a live (INDEX Active) intent; for a terminal (Completed/Abandoned)
+intent it reports and stops, since completed intents are immutable, and the 124a manual
+Done-bookend repair (rebuild the skeleton, then re-append the terminal line from git or mtime
+evidence) stays reserved for an explicit human grant. `doctor.rb`'s `check_done_signals` carries
+a sibling `savepoint_truthful` advisory (pass when clean, warn and never fail, mirroring
+`signals_complete`) that runs the same detector across every intent dir the check already visits.
+
 Session resolution feeds the bridge that the gate hooks read (intent 52). Claude Code does
 not export a session id env var into the hook environment; it passes `session_id` on the hook
 stdin JSON. So the bash wrappers parse `session_id` out of stdin (in Ruby, never in bash) and

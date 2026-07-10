@@ -21,7 +21,10 @@ wave entry mirrors that intent's status in `INDEX.md` (`queued`/`delivering`/`de
 **`INDEX.md` is the single writer of intent status; on any conflict INDEX wins and the roadmap
 entry is corrected to match.**
 
-The skill operates on the file directly via Read/Edit; no helper script.
+The skill operates on the roadmap file directly via Read/Edit. The one deterministic helper it
+uses is the savepoint ledger writer (`scripts/roadmap-savepoint`, `append`/`rebuild`); every verb's
+closing step calls `append` after its Read/Edit, and the roadmap `.md` file itself stays
+Read/Edit-only.
 
 ## Verbs
 
@@ -50,3 +53,6 @@ verb above.
 - Additive: this skill introduces no gate, lock, or hook, and does not change `INDEX.md`'s section
   list or the intent frontmatter schema.
 - Closing a roadmap moves it to `roadmaps/archived/{slug}.md` so `roadmaps/` lists only live ones.
+- Every verb also appends a machine ledger line to the roadmap's name-paired
+  `roadmaps/{slug}.savepoint.md`, the derived counterpart to the human `## Log`; see
+  `references/file-format.md` for its shape and location.

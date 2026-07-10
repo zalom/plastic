@@ -170,6 +170,69 @@ class DoctorDoneSignalsTest < Minitest::Test
     assert(stalled[:details].any? { |d| d.include?("STALE") })
   end
 
+  # --- savepoint_truthful (intent 134) ----------------------------------------
+
+  # A fully clean terminal intent's savepoint carries no phantom lines.
+  def test_savepoint_truthful_passes_on_clean_terminal_intent
+    write_index("20", section: "Completed")
+    write_intent_dir("20")
+    write_outcome("20")
+    write_savepoint_done("20")
+
+    assert_equal "pass", check("savepoint_truthful")[:status]
+  end
+
+  # A phantom on a LIVE (Active) intent is a warn, never a fail, with a fix_hint.
+  def test_savepoint_truthful_warns_never_fails_on_live_phantom
+    write_index("21", section: "Active")
+    dir = write_intent_dir("21")
+    File.write(File.join(dir, "savepoint.md"), "2026-07-03T00:00:00Z  How  plan.md created\n")
+
+    result = check("savepoint_truthful")
+    assert_equal "warn", result[:status]
+    refute_equal "fail", result[:status]
+    assert result[:fix_hint]
+    assert(result[:details].any? { |d| d.include?("21") })
+  end
+
+  # A phantom on a TERMINAL intent is reported, not rewritten: doctor is read-only by
+  # construction, so the savepoint file is byte-identical before and after the check runs, and
+  # the detail names it report-only (immutable history), not auto-rebuildable.
+  def test_savepoint_truthful_reports_terminal_phantom_without_rewriting
+    write_index("22", section: "Completed")
+    dir = write_intent_dir("22")
+    write_outcome("22")
+    savepoint_path = File.join(dir, "savepoint.md")
+    File.write(savepoint_path,
+               "2026-07-03T00:00:00Z  Done  delivered\n2026-07-03T00:05:00Z  Done  delivered\n")
+    before = File.read(savepoint_path)
+
+    result = check("savepoint_truthful")
+    assert_equal "warn", result[:status]
+    assert(result[:details].any? { |d| d.include?("22") && d.include?("report-only") })
+
+    doctor.check_done_signals # run again to double-confirm no mutation
+    assert_equal before, File.read(savepoint_path)
+  end
+
+  # Composition with intent 170a: a phantom on a terminal intent that is on the frozen bookend
+  # amnesty is grandfathered here too, so savepoint_truthful does not resurface it. The same
+  # phantom on a non-amnestied terminal still warns (test above), and the amnesty is scope-qualified.
+  def test_savepoint_truthful_grandfathers_amnestied_terminal_phantom
+    write_index("23", section: "Completed")
+    dir = write_intent_dir("23")
+    write_outcome("23")
+    File.write(File.join(dir, "savepoint.md"),
+               "2026-07-03T00:00:00Z  Why  spec.md created\n2026-07-03T00:01:00Z  Why  spec.md created\n")
+
+    # No amnesty: the duplicate (Why, spec.md created) pair warns (report-only, terminal).
+    assert_equal "warn", check("savepoint_truthful")[:status]
+    # On the amnesty for this scope: grandfathered, so the advisory stays clean.
+    assert_equal "pass", check("savepoint_truthful", bookend_amnesty: { "global" => ["23"] })[:status]
+    # Amnesty is scope-qualified: the same id under a different scope does not grandfather it.
+    assert_equal "warn", check("savepoint_truthful", bookend_amnesty: { "project:demo" => ["23"] })[:status]
+  end
+
   # Allowlisted (scope, id) missing the Done bookend does not generate an
   # audit-echo gap. Intent 170a - A2 cutoff amnesty.
   def test_no_audit_echo_gap_for_allowlisted_legacy_intent

@@ -586,6 +586,7 @@ class Doctor
     conflicts = [] # canonical INDEX-wins disagreement (fail)
     gaps = []      # terminal completeness gaps on immutable/legacy history (warn)
     stalled = []   # terminal but End tail unfinished (warn)
+    phantoms = []  # savepoint.md line(s) disk evidence contradicts (warn, never fail; intent 134)
 
     done_signal_stores(scopes).each do |store|
       index_sections_by_dir(store[:index]).each do |dirname, in_sections|
@@ -603,6 +604,24 @@ class Doctor
         if active && outcome_real
           conflicts << "#{label}: outcome.md is real but the intent is still under ## Active " \
                        "(INDEX is canonical — move it to its terminal section or revert outcome.md)"
+        end
+
+        # Savepoint truthfulness (advisory, never fail; intent 134): a line the disk contradicts
+        # (a phantom milestone, a duplicate pair, or a state line with an absent prerequisite).
+        # Live intents auto-rebuild via plastic-intent-savepoint; terminal intents are immutable,
+        # so a phantom there is report-only. Composition with intent 170a: a pre-161 legacy intent
+        # on the frozen bookend amnesty is grandfathered here too. Its immutable history carries
+        # known pre-convention drift (the same class the audit-echo gap forgives), so it must not
+        # resurface through this advisory. The suppression is scope-qualified exactly like the
+        # audit-echo amnesty; every live intent and every non-amnestied terminal still fires.
+        phantom_lines = Bridge.savepoint_phantom_lines(dir)
+        phantom_id = dirname.split("--", 2).first
+        phantom_amnestied = terminal && @bookend_amnesty.fetch(store[:scope], []).include?(phantom_id)
+        if phantom_lines.any? && !phantom_amnestied
+          detail = phantom_lines.map { |line, reason| "#{line} (#{reason})" }.join("; ")
+          scope_note = terminal ? "terminal in INDEX, report-only (immutable history)" : "live intent, auto-rebuildable"
+          phantoms << "#{label}: #{phantom_lines.size} phantom savepoint line(s) contradicted by " \
+                      "disk, #{scope_note}: #{detail}"
         end
 
         # Completeness gap (warn, not fail): a terminal intent whose outcome.md is
@@ -695,6 +714,26 @@ class Doctor
         fix_hint: "Finish the End tail via stale-lock reclaim: run /plastic-doctor reclaim the lock, " \
                   "then complete the tail (Worktree.release -> Lock.release -> purge -> QMD reindex " \
                   "last). This FINISHES a completion; it is NOT a reactivation of a done intent."
+      )
+    end
+
+    # savepoint_truthful: advisory only, never fails the run (intent 134). A phantom line on a
+    # live intent auto-rebuilds; on terminal (immutable) history it stays report-only.
+    if phantoms.empty?
+      checks << check(
+        category: "done_signals", name: "savepoint_truthful", status: "pass",
+        message: "No savepoint.md lines are contradicted by disk (phantom-line check clean)"
+      )
+    else
+      checks << check(
+        category: "done_signals", name: "savepoint_truthful", status: "warn",
+        message: "#{phantoms.size} intent#{phantoms.size == 1 ? "" : "s"} carry savepoint.md " \
+                 "line(s) contradicted by disk (advisory; terminal history stays report-only)",
+        details: phantoms, fixable: true,
+        fix_hint: "For a live (Active) intent, run plastic-intent-savepoint to rebuild via " \
+                  "Bridge.rebuild_savepoint. Terminal (Completed/Abandoned) intents are immutable: " \
+                  "a phantom there stays advisory unless an explicit human grant authorizes the " \
+                  "124a manual Done-bookend repair."
       )
     end
 

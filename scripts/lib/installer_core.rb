@@ -261,6 +261,8 @@ class InstallerCore
       "scripts/lib/dashboard_banner.rb" => "scripts/lib/dashboard_banner.rb",
       "scripts/lib/qmd_sync.rb" => "scripts/lib/qmd_sync.rb",
       "scripts/qmd-sync" => "scripts/qmd-sync",
+      "scripts/lib/roadmap_savepoint.rb" => "scripts/lib/roadmap_savepoint.rb",
+      "scripts/roadmap-savepoint" => "scripts/roadmap-savepoint",
       "scripts/lib/intent_validator.rb" => "scripts/lib/intent_validator.rb",
       "scripts/lib/graph_rebuild.rb" => "scripts/lib/graph_rebuild.rb",
       "scripts/lib/frontmatter_writer.rb" => "scripts/lib/frontmatter_writer.rb",
