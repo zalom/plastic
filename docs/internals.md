@@ -228,7 +228,11 @@ deterministically (newest ledger line, then slug ascending) and flags `tie: true
 (`--which`, for `plastic-roadmap-continuing`) returns `tie_candidates` so the skill's single ask
 resolves the tie. The design is file-based throughout (roadmap `.md`, the 134 ledger, INDEX.md),
 DB-ready but not DB-dependent: `RoadmapQueue` is the single seam a future 147 DB-backed read
-swaps behind without changing either caller.
+swaps behind without changing either caller. A sibling seam covers ranking itself: dispatchable
+candidates are value-ordered by an injected `ranker:` (default `FileOrderRanker`, today's file
+order), reported as `ranking_strategy` in the payload, so intent 173's decision-systems
+recommendation can replace the ordering rule without reworking parsing, frontier detection, or
+the rest of the JSON contract.
 
 A companion rule keeps the intent-dir ledger itself honest. `Bridge.savepoint_phantom_lines`
 (intent 134) is pure and disk-only, no bridge or session resolution and no writes, matching

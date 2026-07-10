@@ -5,11 +5,27 @@ require "time"
 require "json"
 require_relative "roadmap_savepoint"
 
+# FileOrderRanker - the default value-ordering strategy: today's roadmap file order,
+# unchanged. This is the intent-173 ranking-swap seam (sibling to the 147 DB-swap seam): a
+# future scored ranker (RICE/ICE/WSJF/pairwise) implements the same #rank/#name pair and is
+# injected through RoadmapQueue's ranker: keyword, with no change to parsing, frontier
+# detection, gating, INDEX reconciliation, or the JSON contract.
+class FileOrderRanker
+  def rank(entries)
+    entries
+  end
+
+  def name
+    "file-order"
+  end
+end
+
 # RoadmapQueue - the one deterministic reader the auto loop and plastic-roadmap-continuing
 # both call (intent 148). Constructor-DI, hermetic: clock and paths injected, no eval, no ENV
 # or global config seam. It does two things: liveness-ranks a tier's roadmaps/*.md files
 # (porting plastic-roadmap-continuing's read-time algorithm), and, within the winning
-# roadmap, selects the frontier wave plus its dispatchable set (D-b). Every frontier token is
+# roadmap, selects the frontier wave plus its dispatchable set (D-b), value-ordered by the
+# injected ranker (default FileOrderRanker, the intent-173 swap seam). Every frontier token is
 # reconciled against INDEX.md first, INDEX wins. Reads through the 134 ledger via the public
 # RoadmapSavepoint.ledger_path_for; never writes anything, never modifies roadmap_savepoint.rb.
 class RoadmapQueue
@@ -24,10 +40,11 @@ class RoadmapQueue
 
   LOG_LINE = /\A-\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s+UTC\b/.freeze
 
-  def initialize(roadmaps_dir:, index_path: nil, now: Time.now)
+  def initialize(roadmaps_dir:, index_path: nil, now: Time.now, ranker: FileOrderRanker.new)
     @roadmaps_dir = roadmaps_dir
     @index_path   = index_path
     @now          = now
+    @ranker       = ranker
   end
 
   # Auto-loop mode: break ties deterministically, report the winner's frontier state.
@@ -217,7 +234,10 @@ class RoadmapQueue
       queued = wave[:entries].select { |e| e[:status] == "queued" }
       delivering = wave[:entries].select { |e| e[:status] == "delivering" }
 
-      dispatchable = queued.each_with_index.map do |e, i|
+      # intent-173 ranking-swap seam: value-orders the dispatchable candidates only.
+      ordered = @ranker.rank(queued)
+
+      dispatchable = ordered.each_with_index.map do |e, i|
         { "id" => e[:id], "scope" => scope_label, "roadmap" => candidate[:slug],
           "wave" => wave[:heading], "status" => "queued", "rank" => i + 1 }
       end
@@ -258,6 +278,7 @@ class RoadmapQueue
       "blocked" => blocked,
       "tie" => tie,
       "tie_candidates" => tie_candidates,
+      "ranking_strategy" => @ranker.name,
       "generated_at" => @now.utc.iso8601,
     }
   end

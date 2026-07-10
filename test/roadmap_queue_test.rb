@@ -83,6 +83,57 @@ class RoadmapQueueTest < Minitest::Test
     assert_equal [1, 2], result["dispatchable_queue"].map { |e| e["rank"] }
     assert_equal ["queued", "queued"], result["dispatchable_queue"].map { |e| e["status"] }
     assert_equal NOW.utc.iso8601, result["generated_at"]
+    assert_equal "file-order", result["ranking_strategy"]
+  end
+
+  # --- ranking-swap seam (intent 173): injectable ranker, additive to the contract ---
+
+  # A custom ranker that reverses file order, proving the seam swaps value-ordering only,
+  # with no change to parsing, frontier detection, gating, or INDEX reconciliation.
+  class ReversingRanker
+    def rank(entries)
+      entries.reverse
+    end
+
+    def name
+      "custom"
+    end
+  end
+
+  def test_default_ranker_is_file_order_and_preserves_todays_dispatchable_order
+    write_roadmap("demo", <<~MD)
+      # Roadmap: Demo
+      ## Waves
+      ### Wave 1
+      - [ ] 211 Alpha — queued
+      - [ ] 212 Beta — queued
+      - [ ] 213 Gamma — queued
+    MD
+
+    result = RoadmapQueue.new(roadmaps_dir: @roadmaps, now: NOW).queue
+    assert_equal "file-order", result["ranking_strategy"]
+    assert_equal %w[211 212 213], result["dispatchable_queue"].map { |e| e["id"] }
+    assert_equal [1, 2, 3], result["dispatchable_queue"].map { |e| e["rank"] }
+  end
+
+  def test_swapping_the_ranker_flips_dispatchable_order_and_renumbers_ranks_with_no_other_change
+    write_roadmap("demo", <<~MD)
+      # Roadmap: Demo
+      ## Waves
+      ### Wave 1
+      - [ ] 211 Alpha — queued
+      - [ ] 212 Beta — queued
+      - [ ] 213 Gamma — queued
+    MD
+
+    result = RoadmapQueue.new(roadmaps_dir: @roadmaps, now: NOW, ranker: ReversingRanker.new).queue
+    assert_equal "custom", result["ranking_strategy"]
+    assert_equal %w[213 212 211], result["dispatchable_queue"].map { |e| e["id"] }
+    assert_equal [1, 2, 3], result["dispatchable_queue"].map { |e| e["rank"] }
+    # everything else is unaffected by the swap: state, frontier, wave, status all unchanged.
+    assert_equal "dispatchable", result["state"]
+    assert_equal "Wave 1", result["frontier_wave"]
+    assert_equal ["queued", "queued", "queued"], result["dispatchable_queue"].map { |e| e["status"] }
   end
 
   # --- in_flight: the live wave-4/wave-5 headline case ----------------------------
