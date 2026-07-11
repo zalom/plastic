@@ -251,17 +251,26 @@ class QmdSyncTest < Minitest::Test
   end
 
   def test_collections_for_cwd_matches_project_plus_global
-    cols = QmdSync.collections_for_cwd("/Users/zlatko/apps/personal/dealintell", plastic_home: @home)
+    listing = "Collections (1):\n\nplastic-dealintell (qmd://plastic-dealintell/)\n"
+    runner, = fake_runner("collection" => [listing, true])
+    cols = QmdSync.collections_for_cwd("/Users/zlatko/apps/personal/dealintell", plastic_home: @home,
+                                       runner: runner, detector: present)
     assert_equal ["plastic-dealintell", "plastic-global"], cols
   end
 
   def test_collections_for_cwd_matches_subdir_of_project
-    cols = QmdSync.collections_for_cwd("/Users/zlatko/apps/personal/dealintell/lib/x", plastic_home: @home)
+    listing = "Collections (1):\n\nplastic-dealintell (qmd://plastic-dealintell/)\n"
+    runner, = fake_runner("collection" => [listing, true])
+    cols = QmdSync.collections_for_cwd("/Users/zlatko/apps/personal/dealintell/lib/x", plastic_home: @home,
+                                       runner: runner, detector: present)
     assert_equal ["plastic-dealintell", "plastic-global"], cols
   end
 
   def test_collections_for_cwd_falls_back_to_global_only
-    cols = QmdSync.collections_for_cwd("/tmp/somewhere-else", plastic_home: @home)
+    listing = "Collections (1):\n\nplastic-dealintell (qmd://plastic-dealintell/)\n"
+    runner, = fake_runner("collection" => [listing, true])
+    cols = QmdSync.collections_for_cwd("/tmp/somewhere-else", plastic_home: @home,
+                                       runner: runner, detector: present)
     assert_equal ["plastic-global"], cols
   end
 

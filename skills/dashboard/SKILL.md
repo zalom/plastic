@@ -34,9 +34,13 @@ ruby ~/.plastic/scripts/dashboard.rb [continue|project <slug>] --data
 - `project <slug>` → that **project** board payload (`mode: "project"`).
 
 The payload is read-only JSON. Global-board fields: `date`, `store_health`, `recently_worked`,
-`next_work` (a flat, rank-ordered list of `{id, intent, scope, lifecycle, value, disposition,
-flags, line}`), `counts`, `projects`, `project_totals`. Project-board fields: `slug`,
-`store_health`, `description`, `recently_worked`, `next_work`, `counts`, `active`, `future`.
+`next_work`, `counts`, `projects`, `project_totals`. Project-board fields: `slug`, `store_health`,
+`description`, `recently_worked`, `next_work`, `counts`, `active`, `future`. Each list carries
+cell-ready fields for its table: `next_work` rows are
+`{id, intent, scope, lifecycle, value, disposition, flags, what, flags_label, line}`;
+`recently_worked` rows carry `{id, status, glyph, last_accessed_at, what, state, scope, line}`;
+`active`/`future` rows carry `{id, intent, created, bullet, scope, what, stage, line}`. The `what`,
+`scope`, and `flags_label` cell fields arrive pipe-escaped and whitespace-normalized.
 
 Each board load runs the scoped store check (`doctor --store <scope>`): the global board runs
 `--store global` and a project board runs `--store <slug>`. The result rides in the payload as
@@ -53,13 +57,22 @@ Templates live in this skill's `templates/` directory:
 
 Fill mechanically, no rewriting, no re-sorting:
 - `{{a.b.count}}` → the integer (e.g. `counts.active` = that count).
-- `{{...lines}}` → join the list's `.line` strings with **real newlines** (one per line).
-  These are ordinary prose lines, not glyph-led bullets: never add a Markdown `-` bullet,
-  never emit `<br>`. If a list is empty, render `_(none)_`.
-- `next_work.lines` → the most-valuable next work, already ranked; each line reads
-  `"<id> <intent, truncated>"`. Use each entry's `disposition`/`flags` fields when the prose
-  needs to say why an item is next.
-- `projects.lines` → one line per project:
+- `{{<list>.rows}}` → the four intent lists (`recently_worked`, `next_work`, `active`, `future`)
+  render as **Markdown table rows**. The template hard-codes each table's header and separator;
+  this placeholder becomes one data row per list entry, joined with real newlines, in that table's
+  fixed column order (below). Drop each cell from the named payload field **verbatim**: cells
+  arrive pre-escaped and whitespace-normalized from the script (pipes escaped as `\|`), so never
+  re-escape, re-truncate, or reword them. Never emit `<br>`.
+  - `recently_worked` (global) → `| {id} | {what} | {state} | {scope} |`
+  - `recently_worked` (project) → `| {id} | {what} | {state} |`
+  - `next_work` → `| {id} | {what} | {value} | {disposition} | {flags_label} |`
+  - `active` → `| {id} | {what} | {stage} |`
+  - `future` → `| {id} | {what} |`
+  Overflow entry (empty `id`, `what` = `+N more`) → one row with `+N more` in the Id column and
+  every other cell blank. Empty list → one full-width row with `_(none)_` in the Id column and
+  every other cell blank, matching that table's column count (e.g. `| _(none)_ | | | | |` for
+  the 5-column next_work table, `| _(none)_ | |` for the 2-column future table).
+- `{{projects.lines}}` → the project rollup stays **prose**, one line per project (not a table):
   `- **{slug}**: {description}, active {active}, done {done}, future {future}, last accessed {last_accessed_at[0,10]}`.
 - Scalars (`{{date}}`, `{{slug}}`, `{{description}}`) → substitute verbatim.
 
@@ -126,7 +139,8 @@ intentional change means the skill is broken.
 
 ## Notes
 
-- Board lines are ordinary prose, not a rigid grid: the boards are UI-only and may evolve,
-  so they need not be valid Markdown lists. Never emit `<br>`.
+- The four intent lists (recently worked, active, future, next work) render as Markdown tables;
+  the narrative wrappers, counts, and the project rollup stay prose. No Value x Effort grid
+  returns. Never emit `<br>`.
 - Clusters (Zettelkasten grouping in INDEX.md) are intentionally not rendered.
 - Additive: changes no core lifecycle, gate, or cycle logic.

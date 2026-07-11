@@ -72,10 +72,10 @@
     {
       "id": 8, "scope": "behavior", "set": "validation",
       "prompt": "Does the skill carry the intent-149 coordination note?",
-      "expected_output": "A 'Coordination' section records that intent 149 has landed (dashboard demoted to prose, no Value x Effort grid) and confirms the rule-name citations and the dashboard.rb project <slug> --data -> dashboard-project.md path still resolve.",
+      "expected_output": "A 'Coordination' section records that intent 149 has landed (dashboard demoted to prose, no Value x Effort grid) and intent 149a has landed (the four intent lists render as Markdown tables), and confirms the rule-name citations and the dashboard.rb project <slug> --data -> dashboard-project.md path still resolve.",
       "files": ["skills/project-continuing/SKILL.md"],
       "assertions": [
-        { "type": "convention", "check": "'149' present with the landed coordination note", "observed": "present: 'Intent 149 has landed' with confirmed rule-name citations and dashboard.rb path", "result": "pass" }
+        { "type": "convention", "check": "'149' present with the landed coordination note", "observed": "present: 'Intent 149 has landed' and 'Intent 149a has landed' (lists render as Markdown tables) with confirmed rule-name citations and dashboard.rb path", "result": "pass" }
       ]
     },
     {

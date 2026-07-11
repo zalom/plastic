@@ -1,7 +1,10 @@
 # 🧩 Plastic · Global Board, {{date}}
 
 **Recently worked** (last 24h)
-{{recently_worked.lines}}
+
+| Id | What | State | Scope |
+| --- | --- | --- | --- |
+{{recently_worked.rows}}
 
 ## Where we are
 
@@ -11,6 +14,9 @@
 {{projects.lines}}
 
 ## Most-valuable next work
-{{next_work.lines}}
+
+| Id | What | Value | Disposition | Flags |
+| --- | --- | --- | --- | --- |
+{{next_work.rows}}
 
 **What would you like to work on next?** (type an **intent id**, a **project name**, or anything **new** you'd like to start)

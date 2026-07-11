@@ -551,6 +551,19 @@ def within_24h?(rec)
   d && d >= (today - 1)
 end
 
+# Collapse whitespace to single spaces, strip, then escape Markdown table pipes so
+# free-text payload data is safe to drop verbatim into a table cell. Block-form gsub
+# avoids replacement-string backslash pitfalls.
+def cell(s)
+  s.to_s.gsub(/\s+/, " ").strip.gsub("|") { "\\|" }
+end
+
+# Truncate an intent title to the shared line budget, ellipsis when over.
+def truncate_intent(text)
+  t = text.to_s
+  t.length > INTENT_LINE_MAX_CHARS ? "#{t[0, INTENT_LINE_MAX_CHARS]}…" : t
+end
+
 def worked_row(rec, project_scope)
   glyph = STATUS_GLYPH[rec[:status]]
   proj = rec[:scope] == "global" ? "global" : rec[:scope].sub("project:", "")
@@ -559,6 +572,7 @@ def worked_row(rec, project_scope)
   {
     id: rec[:id], status: rec[:status], glyph: glyph,
     last_accessed_at: rec[:last_accessed_at],
+    what: cell(truncate_intent(rec[:intent])), state: status_word, scope: cell(proj),
     line: "#{glyph} #{prefix}#{status_word}: #{rec[:id]} #{rec[:intent]}".strip,
   }
 end
@@ -578,7 +592,8 @@ def intent_line(rec, bullet)
   text = rec[:intent].to_s
   text = "#{text[0, INTENT_LINE_MAX_CHARS]}…" if text.length > INTENT_LINE_MAX_CHARS
   { id: rec[:id], intent: rec[:intent], created: rec[:created], bullet: bullet,
-    scope: rec[:scope], line: "#{bullet} #{rec[:id]} #{text}#{note}".rstrip }
+    scope: rec[:scope], what: cell(text), stage: rec[:lifecycle].to_s.capitalize,
+    line: "#{bullet} #{rec[:id]} #{text}#{note}".rstrip }
 end
 
 # Cap a raw record list to NEXT_WORK_CAP entries, then map to intent_line-shaped
@@ -589,6 +604,7 @@ def cap_lines(list, bullet)
   lines = capped.map { |r| intent_line(r, bullet) }
   if list.size > NEXT_WORK_CAP
     lines << { id: "", intent: "", created: "", bullet: bullet, scope: "",
+               what: "+#{list.size - NEXT_WORK_CAP} more", stage: "",
                line: "#{bullet} +#{list.size - NEXT_WORK_CAP} more" }
   end
   lines
@@ -607,11 +623,13 @@ def next_work(records)
     text = "#{text[0, INTENT_LINE_MAX_CHARS]}…" if text.length > INTENT_LINE_MAX_CHARS
     { id: r[:id], intent: r[:intent], scope: r[:scope], lifecycle: r[:lifecycle],
       value: r[:value].to_s, disposition: r[:disposition], flags: r[:flags],
+      what: cell(text), flags_label: cell(Array(r[:flags]).join(", ")),
       line: "#{r[:id]} #{text}" }
   end
   if ranked.size > NEXT_WORK_CAP
     lines << { id: "", intent: "", scope: "", lifecycle: "", value: "", disposition: "",
-               flags: [], line: "+#{ranked.size - NEXT_WORK_CAP} more" }
+               flags: [], what: "+#{ranked.size - NEXT_WORK_CAP} more", flags_label: "",
+               line: "+#{ranked.size - NEXT_WORK_CAP} more" }
   end
   lines
 end
