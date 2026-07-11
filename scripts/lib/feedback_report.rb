@@ -134,18 +134,23 @@ class FeedbackReport
     [final_url, page_one, true, end_marker.strip]
   end
 
-  # Orchestrate: fill the version token, redact secrets, resolve the report
-  # path, then cap the URL. The FULL redacted body always goes to disk; only
-  # the URL's body may be the capped page-one.
+  # Orchestrate: redact the title, fill the version token and redact the
+  # body, resolve the report path from the REDACTED title (so a secret in
+  # the title never lands in the filename either), then cap the URL. The
+  # title is redacted before it ever reaches build_url/apply_cap, so a
+  # secret pasted into the title cannot ride the `title=` URL param
+  # unredacted. The FULL redacted body always goes to disk; only the URL's
+  # body may be the capped page-one.
   def compose(title:, body:)
+    redacted_title = redact(title)
     filled = fill_version(body)
-    redacted = redact(filled)
-    path = report_path(title)
-    url, _url_body, truncated, note = apply_cap(title, redacted, path)
+    redacted_body = redact(filled)
+    path = report_path(redacted_title)
+    url, _url_body, truncated, note = apply_cap(redacted_title, redacted_body, path)
 
     Result.new(
       report_path: path,
-      body: redacted,
+      body: redacted_body,
       url: url,
       encoded_url_bytes: url.bytesize,
       truncated: truncated,

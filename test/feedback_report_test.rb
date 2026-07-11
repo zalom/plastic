@@ -7,6 +7,7 @@ require "fileutils"
 require "json"
 require "open3"
 require "uri"
+require "cgi"
 
 require_relative "../scripts/lib/feedback_report"
 
@@ -65,6 +66,28 @@ class FeedbackReportTest < Minitest::Test
     secret = "sk-ant-" + ("z9Y8x7W6v5U4t3S2r1Q0" * 1)
     redacted = engine.redact("key is #{secret} end")
     assert_equal "key is [REDACTED] end", redacted
+  end
+
+  # A secret pasted into the TITLE (not the body) must be redacted before it
+  # reaches the URL's `title=` param or the report filename, exactly like a
+  # secret in the body. Regression: compose() used to thread only `body`
+  # through redact(), leaving `title` to flow raw into build_url/apply_cap
+  # and slug_for/report_path.
+  def test_title_secret_is_redacted_in_url_and_filename
+    secret = "Bearer " + ("a1B2c3D4e5F6g7H8i9J0" * 1)
+    title = "Error: #{secret} rejected"
+
+    result = fr.compose(title: title, body: "harmless body, no secrets here")
+
+    refute_includes result.url, "a1B2c3D4e5F6g7H8i9J0", "URL must not carry the raw title secret"
+    assert_includes result.url, CGI.escape("[REDACTED]"), "URL title param should carry the redacted marker"
+    refute_includes File.basename(result.report_path), "a1b2c3d4e5f6g7h8i9j0",
+      "report filename slug must not carry the raw title secret"
+
+    query = URI.parse(result.url).query
+    params = Hash[URI.decode_www_form(query)]
+    assert_equal "Error: [REDACTED] rejected", params["title"],
+      "decoded title param should show the redacted title, not the raw secret"
   end
 
   # --- version fill ---
