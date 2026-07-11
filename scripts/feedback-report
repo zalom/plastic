@@ -1,0 +1,54 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# feedback-report - thin CLI over FeedbackReport (intent 174).
+#
+# Reads a redacted-ready markdown body from STDIN, composes a local report
+# file plus a prefilled GitHub new-issue URL, writes the file, and prints the
+# result as JSON. This script has no send path: it never contacts GitHub and
+# never holds a credential. Only the human, opening the printed URL in their
+# own browser, submits anything.
+#
+# Usage:
+#   feedback-report --title "<short title>" < body.md
+#
+# Exit codes: 0 (success), 1 (error composing/writing the report), 2 (usage).
+
+require "json"
+require_relative "lib/feedback_report"
+
+def parse_title(argv)
+  i = argv.index("--title")
+  return nil unless i && argv[i + 1]
+
+  argv[i + 1]
+end
+
+title = parse_title(ARGV)
+
+if title.nil? || title.strip.empty?
+  warn 'usage: feedback-report --title "<short title>" < body.md'
+  exit 2
+end
+
+body = $stdin.read
+
+begin
+  home = File.join(Dir.home, ".plastic")
+  engine = FeedbackReport.new(plastic_home: home)
+  result = engine.compose(title: title, body: body)
+  engine.persist(result)
+
+  puts JSON.pretty_generate(
+    report_path: result.report_path,
+    url: result.url,
+    encoded_url_bytes: result.encoded_url_bytes,
+    truncated: result.truncated,
+    page_break_note: result.page_break_note
+  )
+  exit 0
+rescue StandardError => e
+  warn "feedback-report error: #{e.message}"
+  exit 1
+end

@@ -127,6 +127,7 @@ Detailed conventions live inside the skills that use them, not in this file.
 | Index maintenance | `plastic-store-indexing` | — |
 | Releases, deprecations | `plastic-releasing` | deprecation process |
 | Health diagnostics | `plastic-doctor` | three scopes: `--core` (binary install-integrity check, runs on SessionStart), `--store [global\|<slug>]` (per-store check, runs on dashboard load), no flag = full check (runs after every update); gate enforcement, stuck detection |
+| Report a Plastic quirk, bug, or feature idea | `plastic-feedback` | transport and privacy (redaction checklist, why a prefilled URL) |
 | Authoring skills, agents, hooks | `plastic-skill-creating` | progressive disclosure, agentskills.io spec |
 | Evaluating skills, evals | `plastic-skill-evaluating` | eval methodology, convention checks |
 | Create, order, and consume a roadmap of intents | `plastic-roadmap` | file format, operations |

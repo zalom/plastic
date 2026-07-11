@@ -298,6 +298,8 @@ class InstallerCore
       "scripts/dashboard.rb" => "scripts/dashboard.rb",
       "scripts/skill-lint" => "scripts/skill-lint",
       "scripts/lib/skill_lint.rb" => "scripts/lib/skill_lint.rb",
+      "scripts/feedback-report" => "scripts/feedback-report",
+      "scripts/lib/feedback_report.rb" => "scripts/lib/feedback_report.rb",
     }
   end
 

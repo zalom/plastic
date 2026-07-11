@@ -351,6 +351,15 @@ The project-stores category includes an additive `project_store_dir` check
 and is fixable, with the fix `provision-project-store {slug}`. Doctor stays
 read-only; the doctor skill applies the fix by running the verb.
 
+`plastic-feedback` (intent 174) follows the same engine-in-lib, thin-CLI shape as
+`doctor.rb`: `FeedbackReport` in `scripts/lib/feedback_report.rb` is a constructor-DI
+engine (redact secrets, fill the version token, resolve a collision-safe report
+path, cap the encoded URL at 7500 bytes with a page-one-plus-marker overflow), and
+`scripts/feedback-report` is the thin CLI the skill shells out to. The skill sets
+`disable-model-invocation: true` so only the user can fire it; a one-line nudge in
+`PLASTIC.md` is the only surviving trigger path for the agent, since that flag also
+hides the skill's description from the agent's own context.
+
 `hook-session-start` calls `--core` in-process (reusing the `Doctor` class, no second
 process spawn) to drive the boot banner on every session start (intent 36a).
 
