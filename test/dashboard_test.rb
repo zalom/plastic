@@ -306,6 +306,7 @@ class DashboardTest < Minitest::Test
     more = next_work.last
     assert_equal "", more["id"]
     assert_equal "+11 more", more["line"]
+    assert_equal "+11 more", more["what"]
   end
 
   # Truncation is a property of next_work's line-building for any over-120-char
@@ -331,7 +332,10 @@ class DashboardTest < Minitest::Test
     keyed = rows.map { |r| r["status"] == "active" ? 0 : 1 }
     assert_equal keyed.sort, keyed, "active rows must precede done rows"
     assert_operator rows.size, :<=, 15
-    rows.each { |r| assert r["line"].start_with?(r["glyph"]), "line not glyph-led: #{r["line"]}" }
+    rows.each do |r|
+      assert r["line"].start_with?(r["glyph"]), "line not glyph-led: #{r["line"]}"
+      %w[what state scope].each { |k| assert r.key?(k), "recently_worked missing #{k}: #{r.inspect}" }
+    end
   end
 
   def test_next_work_shape
@@ -339,7 +343,7 @@ class DashboardTest < Minitest::Test
     list = JSON.parse(out)["next_work"]
     refute_empty list
     list.each do |r|
-      %w[id intent scope lifecycle value disposition flags line].each do |k|
+      %w[id intent scope lifecycle value disposition flags what flags_label line].each do |k|
         assert r.key?(k), "next_work entry missing #{k}: #{r.inspect}"
       end
       refute_includes r["line"], "<br>"
@@ -353,6 +357,26 @@ class DashboardTest < Minitest::Test
     out, = run_dash("project", "demo", "--data")
     created = JSON.parse(out)["future"].map { |r| r["created"] }
     assert_equal created.sort.reverse, created
+  end
+
+  def test_active_and_future_carry_cell_fields
+    out, = run_dash("project", "demo", "--data")
+    data = JSON.parse(out)
+    active = data["active"].reject { |r| r["id"].to_s.empty? }
+    refute_empty active
+    active.each { |r| %w[what stage].each { |k| assert r.key?(k), "active missing #{k}: #{r.inspect}" } }
+    future = data["future"].reject { |r| r["id"].to_s.empty? }
+    refute_empty future
+    future.each { |r| assert r.key?("what"), "future missing what: #{r.inspect}" }
+  end
+
+  def test_cell_escapes_pipe_in_intent
+    rec = { id: "99", intent: "left | right\nmid", scope: "project:demo", lifecycle: "what",
+            value: :low, effort: :big, disposition: "triage", flags: [] }
+    entry = next_work([rec]).first
+    assert_includes entry[:what], "\\|", "pipe must be escaped as \\|"
+    refute_match(/(?<!\\)\|/, entry[:what], "no raw unescaped pipe in cell")
+    refute_includes entry[:what], "\n", "newline must be collapsed"
   end
 
   # --- store health (doctor --store per board) -------------------------------

@@ -3,19 +3,29 @@
 {{description}}
 
 **Recently worked** (last active work, last 24h)
-{{recently_worked.lines}}
+
+| Id | What | State |
+| --- | --- | --- |
+{{recently_worked.rows}}
 
 ## Intents, active {{counts.active}}, done {{counts.done}}, future {{counts.future}}
 
 **Active**
-{{active.lines}}
+
+| Id | What | Stage |
+| --- | --- | --- |
+{{active.rows}}
 
 **Future**
-{{future.lines}}
+
+| Id | What |
+| --- | --- |
+{{future.rows}}
 
 ## Most-valuable next work
-{{next_work.lines}}
 
-**Legend** · ○ What ◔ Why ◑ How ◕ Exec ● Done
+| Id | What | Value | Disposition | Flags |
+| --- | --- | --- | --- | --- |
+{{next_work.rows}}
 
 **What would you like to work on next?** (type an **intent id**, or **global** to go back)

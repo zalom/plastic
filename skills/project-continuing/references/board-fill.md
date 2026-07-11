@@ -7,11 +7,17 @@ would otherwise bloat the SKILL.md body.
 ## Fill rules (owned by plastic-dashboard, summarized here for convenience)
 
 - `{{a.b.count}}` -> the integer (e.g. `counts.active` is that count).
-- `{{...lines}}` -> join the list's `.line` strings with real newlines (one per line). These
-  are ordinary prose lines; never add a `-` prefix, never emit `<br>`. An empty list renders
-  `_(none)_`.
-- `next_work.lines` -> the most-valuable next work, already ranked and capped.
-- `active.lines` / `future.lines` (project board) -> one line per intent, already formatted.
+- `{{<list>.rows}}` -> the four intent lists (`recently_worked`, `next_work`, `active`, `future`)
+  render as Markdown table rows. The template hard-codes each table's header and separator; the
+  placeholder becomes one data row per entry, in that table's fixed column order, cells dropped
+  verbatim from the payload (cells arrive pipe-escaped and whitespace-normalized; do not re-escape
+  or re-truncate). Column order per table:
+  - `recently_worked` -> `| id | what | state | scope |` (global), `| id | what | state |` (project)
+  - `next_work` -> `| id | what | value | disposition | flags_label |`
+  - `active` -> `| id | what | stage |`; `future` -> `| id | what |`
+  Overflow entry (empty `id`, `what` = `+N more`) -> `+N more` in the Id column, other cells blank.
+  Empty list -> one row `| _(none)_ |`, other cells blank. Never emit `<br>`.
+- `{{projects.lines}}` (global board) -> the project rollup stays prose, one line per project.
 - Scalars (`{{date}}`, `{{slug}}`, `{{description}}`) -> substitute verbatim.
 
 No re-sorting, no re-summarizing, no hand-written prose replacing a line the payload already

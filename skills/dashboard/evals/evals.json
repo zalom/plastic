@@ -17,6 +17,22 @@
           "result": "pass"
         }
       ]
+    },
+    {
+      "id": 2,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "How do the four intent lists render on the Markdown boards?",
+      "expected_output": "recently_worked, next_work, active, and future render as Markdown tables (fixed columns: next_work Id|What|Value|Disposition|Flags; active Id|What|Stage; future Id|What; recently_worked Id|What|State, plus a Scope column on the global board). The narrative wrappers, counts, and the projects rollup stay prose; no Value x Effort grid. Cells arrive pre-escaped from the payload and are dropped verbatim.",
+      "files": ["skills/dashboard/templates/dashboard-global.md", "skills/dashboard/templates/dashboard-project.md", "skills/dashboard/SKILL.md"],
+      "assertions": [
+        {
+          "type": "convention",
+          "check": "the four intent lists render as Markdown tables with the fixed columns; wrappers and the projects rollup stay prose; no grid",
+          "observed": "templates hard-code table headers plus {{list.rows}} for recently_worked/next_work/active/future; SKILL.md Step 2 documents the fixed column order and verbatim pre-escaped cell fill; projects stays {{projects.lines}} prose",
+          "result": "pass"
+        }
+      ]
     }
   ]
 }
