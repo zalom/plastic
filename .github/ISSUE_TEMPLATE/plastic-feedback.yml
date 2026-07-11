@@ -1,0 +1,39 @@
+name: Plastic feedback
+description: Report a Plastic quirk, bug, or feature idea from a project running Plastic.
+title: "[feedback] "
+labels: ["feedback"]
+body:
+  - type: input
+    id: plastic-version
+    attributes:
+      label: Plastic version
+      description: The output of `cat ~/.plastic/VERSION`, if you have it.
+      placeholder: "e.g. 1.7.3"
+    validations:
+      required: false
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Describe the quirk, bug, or missing feature you hit. Please leave out project names, file paths, and any content specific to your codebase.
+      placeholder: What did Plastic do, and what command or skill were you using at the time?
+    validations:
+      required: true
+  - type: textarea
+    id: root-cause
+    attributes:
+      label: Root cause (if known)
+      description: If you already know why this happened, describe it here. Leave blank otherwise.
+    validations:
+      required: false
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What did you expect Plastic to do instead?
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        If you have a screenshot, drag it onto any textarea above to attach it.

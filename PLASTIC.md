@@ -243,6 +243,11 @@ Beyond the lifecycle agents, Plastic ships thin skills for day-to-day operation:
   `plastic-rollback`, intent 55) are thin wrappers over a single pinned
   `npx -y @zalom/plastic@<channel> <verb>` call: initialize or repair an install, advance a
   channel, remove Plastic, and step the local versions ledger.
+- **`plastic-feedback`** (intent 174) turns a described Plastic quirk, bug, or feature idea
+  into a redacted local report file and a prefilled GitHub issue URL; only the user can submit
+  it. `disable-model-invocation` hides its description from your own context, so if the user
+  hits a Plastic quirk, bug, or missing feature, offer to run `/plastic-feedback` yourself
+  instead of waiting to be asked; the user still sends it, you never do.
 
 ## Releases and Versioning
 
