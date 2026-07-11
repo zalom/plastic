@@ -16,7 +16,9 @@ would otherwise bloat the SKILL.md body.
   - `next_work` -> `| id | what | value | disposition | flags_label |`
   - `active` -> `| id | what | stage |`; `future` -> `| id | what |`
   Overflow entry (empty `id`, `what` = `+N more`) -> `+N more` in the Id column, other cells blank.
-  Empty list -> one row `| _(none)_ |`, other cells blank. Never emit `<br>`.
+  Empty list -> one full-width row with `_(none)_` in the Id column, other cells blank, matching
+  that table's column count (e.g. `| _(none)_ | | | | |` for the 5-column next_work table,
+  `| _(none)_ | |` for the 2-column future table). Never emit `<br>`.
 - `{{projects.lines}}` (global board) -> the project rollup stays prose, one line per project.
 - Scalars (`{{date}}`, `{{slug}}`, `{{description}}`) -> substitute verbatim.
 

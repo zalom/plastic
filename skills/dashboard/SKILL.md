@@ -69,7 +69,9 @@ Fill mechanically, no rewriting, no re-sorting:
   - `active` → `| {id} | {what} | {stage} |`
   - `future` → `| {id} | {what} |`
   Overflow entry (empty `id`, `what` = `+N more`) → one row with `+N more` in the Id column and
-  every other cell blank. Empty list → one row `| _(none)_ |` with the remaining cells blank.
+  every other cell blank. Empty list → one full-width row with `_(none)_` in the Id column and
+  every other cell blank, matching that table's column count (e.g. `| _(none)_ | | | | |` for
+  the 5-column next_work table, `| _(none)_ | |` for the 2-column future table).
 - `{{projects.lines}}` → the project rollup stays **prose**, one line per project (not a table):
   `- **{slug}**: {description}, active {active}, done {done}, future {future}, last accessed {last_accessed_at[0,10]}`.
 - Scalars (`{{date}}`, `{{slug}}`, `{{description}}`) → substitute verbatim.

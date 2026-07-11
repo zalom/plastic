@@ -60,13 +60,13 @@ skills that show a renderer's output verbatim (dashboard, continuing, uninstall,
 versions). Where Plastic ships *code*, the form is owned by code and cannot
 drift. The dashboard is a near-miss on this line: the script owns the
 classification, ranking, and data (`dashboard.rb --data` emits a complete,
-deterministic JSON payload, including the rank-ordered `next_work` list), while
-deterministic JSON payload carrying cell-ready fields for each list), while
-the skill composes the human-facing board from that payload, rendering the four
-intent lists as Markdown tables and the wrappers as prose (intent 149, tables in
-149a), never re-sorting or re-classifying. Determinism lives in the payload: the
-cells arrive pre-escaped and the list shapes are asserted in tests alongside the
-untouched text and JSON goldens.
+deterministic JSON payload carrying cell-ready fields for each list, including
+the rank-ordered `next_work` list), while the skill composes the human-facing
+board from that payload, rendering the four intent lists as Markdown tables and
+the wrappers as prose (intent 149, tables in 149a), never re-sorting or
+re-classifying. Determinism lives in the payload: the cells arrive pre-escaped
+and the list shapes are asserted in tests alongside the untouched text and JSON
+goldens.
 
 **Where looseness concentrates.** In the prose skills that produce *written
 deliverables*. Determinism is weakest exactly where Plastic ships prose that asks
