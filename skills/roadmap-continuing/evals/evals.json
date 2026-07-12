@@ -26,7 +26,7 @@
     },
     {
       "id": 3, "scope": "triggering", "set": "validation",
-      "prompt": "where did that batch of tickets land",
+      "prompt": "where did that batch of intents land",
       "expected_output": "Activates plastic-roadmap-continuing (indirect trigger: a roadmap-resume request that never names 'roadmap' or 'continue').",
       "files": [],
       "assertions": [
