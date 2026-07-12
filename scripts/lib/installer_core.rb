@@ -307,6 +307,8 @@ class InstallerCore
       "scripts/new-intent" => "scripts/new-intent",
       "scripts/end-intent" => "scripts/end-intent",
       "scripts/hook-create-gate" => "scripts/hook-create-gate",
+      "scripts/lib/apply_patch_envelope.rb" => "scripts/lib/apply_patch_envelope.rb",
+      "scripts/codex-hook" => "scripts/codex-hook",
       "templates/intent.md" => "templates/intent.md",
       "templates/spec.md" => "templates/spec.md",
       "templates/plan.md" => "templates/plan.md",
@@ -501,8 +503,54 @@ class InstallerCore
     FileUtils.mkdir_p(config[:home_dir])
     inject_codex_agents_md(File.join(config[:home_dir], "AGENTS.md"))
 
+    # L3 hooks (intent 102): register into ~/.codex/hooks.json (user scope, defeats the
+    # worktree bug). Partial-ownership file, so it is merged and NOT manifest-tracked
+    # (stripped surgically on uninstall), same treatment as AGENTS.md.
+    merge_codex_hooks(File.join(config[:home_dir], "hooks.json"))
+
     write_manifest(installed, File.join(config[:dir], "plastic-manifest.json"))
     { agent: config[:name], success: true, files: installed.size }
+  end
+
+  def codex_dispatcher_path
+    File.join(plastic_home, "scripts", "codex-hook")
+  end
+
+  # ~/.codex/hooks.json merge (intent 102). Guide-settled shape [guide Part 3]:
+  # top-level {"hooks": {<Event>: [...]}}, identical to Claude's settings.json
+  # hooks shape, so this mirrors merge_claude_hooks against a different file and
+  # a different purge predicate (the dispatcher command contains "codex-hook",
+  # not the "plastic-" substring merge_claude_hooks matches, since the path is
+  # "~/.plastic/scripts/codex-hook", not "~/.claude/hooks/plastic-<name>").
+  def merge_codex_hooks(hooks_json_path)
+    data = read_json_safe(hooks_json_path) || {}
+    hooks = data["hooks"] ||= {}
+    purge_stale_codex_hooks(hooks)
+    plastic = HookRegistry.codex_hooks_json(dispatcher_path: codex_dispatcher_path)
+    plastic.each do |event, groups|
+      hooks[event] ||= []
+      Array(groups).each { |g| hooks[event] << g }
+    end
+    write_json_atomic(hooks_json_path, data)
+  end
+
+  def purge_stale_codex_hooks(hooks)
+    codex_cmd = ->(cmd) { cmd.to_s.include?("codex-hook") }
+
+    hooks.each do |event, groups|
+      next unless groups.is_a?(Array)
+
+      hooks[event] = groups.map do |group|
+        if group.is_a?(Hash) && group["hooks"].is_a?(Array)
+          group["hooks"].reject! { |h| codex_cmd.call(h["command"]) }
+          group unless group["hooks"].empty?
+        elsif group.is_a?(Hash) && group["command"]
+          codex_cmd.call(group["command"]) ? nil : group
+        else
+          group
+        end
+      end.compact
+    end
   end
 
   def install_hermes(config, force)
@@ -871,11 +919,16 @@ class InstallerCore
     end
 
     # Codex: surgically strip Plastic's marked section from the user-owned AGENTS.md
-    # (dedicated pair, never the manifest whole-file-delete path above).
+    # (dedicated pair, never the manifest whole-file-delete path above), plus the
+    # Plastic entries from hooks.json (intent 102).
     if key == "codex"
       agents_md = File.join(config[:home_dir], "AGENTS.md")
       stripped = strip_codex_section(agents_md)
       removed << stripped if stripped
+
+      hooks_json = File.join(config[:home_dir], "hooks.json")
+      hooks_removed = remove_codex_hooks(hooks_json)
+      removed << hooks_removed if hooks_removed
     end
 
     { success: true, files: removed.size, removed: removed }
@@ -918,6 +971,38 @@ class InstallerCore
     end
 
     write_json_atomic(settings_path, settings)
+  end
+
+  # Remove exactly Plastic's entries from ~/.codex/hooks.json (intent 102), mirrors
+  # remove_claude_hooks against the Codex file/purge predicate. Returns the path
+  # when it acted (rewritten or deleted), nil on no-op, mirroring strip_codex_section's
+  # convention so the caller only records an actual change.
+  def remove_codex_hooks(hooks_json_path)
+    data = read_json_safe(hooks_json_path)
+    return nil unless data && data["hooks"]
+
+    before = JSON.generate(data)
+
+    data["hooks"].each do |event, groups|
+      next unless groups.is_a?(Array)
+
+      data["hooks"][event] = groups.map do |g|
+        next g unless g.is_a?(Hash) && Array(g["hooks"]).is_a?(Array)
+
+        g["hooks"] = Array(g["hooks"]).reject { |h| h["command"].to_s.include?("codex-hook") }
+        g["hooks"].empty? ? nil : g
+      end.compact
+    end
+    data["hooks"].delete_if { |_, v| v.is_a?(Array) && v.empty? }
+
+    return nil if JSON.generate(data) == before # nothing to change: true no-op
+
+    if data["hooks"].empty? && data.keys == ["hooks"]
+      File.delete(hooks_json_path) # Plastic-created and now empty: remove
+    else
+      write_json_atomic(hooks_json_path, data)
+    end
+    hooks_json_path
   end
 
   # --- Utilities ---

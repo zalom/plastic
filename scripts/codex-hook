@@ -1,0 +1,96 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+#
+# Usage: codex-hook <gate>   (gate: code-gate | lock-gate | savepoint-pre | gate-check | create-gate)
+#
+# The Codex input adapter (intent 102). Reads a Codex hook stdin payload
+# (session_id at top level, the apply_patch command in tool_input.command,
+# [guide Part 4]), parses the diff envelope via ApplyPatchEnvelope, and drives
+# Plastic's payload-agnostic Ruby gate/savepoint cores once per file operation.
+# The cores' output contracts are already Codex-compatible, so their stdout/
+# stderr/exit are relayed unchanged (see ACTION_1's ARGV-contract table).
+require "json"
+require "rbconfig"
+require_relative "lib/apply_patch_envelope"
+require_relative "lib/intent_validator"
+
+gate = ARGV[0].to_s
+raw = ($stdin.read rescue nil)
+exit 0 if raw.nil? || raw.strip.empty?
+payload = (JSON.parse(raw) rescue nil)
+exit 0 unless payload.is_a?(Hash)
+
+session = payload["session_id"].to_s
+command = payload.dig("tool_input", "command") || payload.dig("tool_params", "command")
+ops = ApplyPatchEnvelope.parse(command)
+exit 0 if ops.empty? # fail-open: nothing parseable to gate
+
+CORES = __dir__ # ~/.plastic/scripts
+def run_core(name, *argv)
+  out = IO.popen([RbConfig.ruby, File.join(CORES, name), *argv], "r", err: [:child, :out], &:read)
+  [out, $?.exitstatus]
+end
+
+def intent_file?(path)
+  abs = File.expand_path(path)
+  dir = File.dirname(abs)
+  dir.match?(%r{/store/[^/]+--[^/]+\z}) && File.basename(abs) == "#{File.basename(dir)}.md"
+end
+
+case gate
+when "create-gate"
+  # Pre-write veto: born-complete validation for Add ops on intent files only.
+  # Update/Delete/Move defer to the PostToolUse gate-check backstop (spec Decision 5).
+  ops.each do |o|
+    next unless o.op == :add && intent_file?(o.path)
+    result = IntentValidator.validate_content(o.added_content.to_s)
+    next if result[:ok]
+    $stderr.puts "PLASTIC CREATE GATE - #{File.basename(o.path)} is not a valid intent:"
+    result[:errors].each { |e| $stderr.puts "  #{e}" }
+    $stderr.puts "Create intents via new-intent / plastic-intent-creating; do not hand-author them."
+    exit 2
+  end
+  exit 0
+
+when "lock-gate"
+  # Deny is signalled by JSON on stdout at exit 0. Relay the first deny.
+  ops.each do |o|
+    out, _ = run_core("hook-lock-gate", o.path, session)
+    if out.include?('"permissionDecision":"deny"') || out.include?('"permissionDecision": "deny"')
+      print out
+      exit 0
+    end
+  end
+  exit 0
+
+when "code-gate"
+  ops.each do |o|
+    out, code = run_core("hook-code-gate", o.path, session, o.added_content.to_s)
+    if code == 2
+      $stderr.print out
+      exit 2
+    end
+  end
+  exit 0
+
+when "gate-check"
+  last_allow = nil
+  ops.each do |o|
+    out, code = run_core("hook-gate-check", o.path, session)
+    if code == 2
+      print out # {"decision":"block",...}
+      exit 2
+    end
+    last_allow = out unless out.to_s.strip.empty?
+  end
+  print last_allow if last_allow
+  exit 0
+
+when "savepoint-pre"
+  ops.each { |o| run_core("hook-savepoint-pre", o.path) }
+  exit 0
+
+else
+  exit 0
+end

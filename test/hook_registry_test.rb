@@ -53,6 +53,49 @@ class HookRegistryTest < Minitest::Test
     assert_equal reg_pre, json_pre
   end
 
+  # --- Codex registration (intent 102) ---
+
+  def test_codex_hooks_json_emits_the_four_gate_savepoint_commands_under_apply_patch
+    codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
+
+    pre_group = codex["PreToolUse"].first
+    assert_equal "apply_patch", pre_group["matcher"]
+    names = pre_group["hooks"].map { |h| h["command"][/codex-hook" (\S+)/, 1] }
+    assert_equal %w[code-gate lock-gate savepoint-pre create-gate], names
+    pre_group["hooks"].each do |h|
+      assert_equal "command", h["type"]
+      refute_nil h["statusMessage"]
+    end
+  end
+
+  def test_codex_hooks_json_emits_post_tool_use_gate_check_under_apply_patch
+    codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
+
+    post_group = codex["PostToolUse"].first
+    assert_equal "apply_patch", post_group["matcher"]
+    names = post_group["hooks"].map { |h| h["command"][/codex-hook" (\S+)/, 1] }
+    assert_equal %w[gate-check], names
+  end
+
+  def test_codex_hooks_json_status_message_matches_events_status
+    codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
+    code_gate_status = HookRegistry.events["PreToolUse"]
+      .flat_map { |g| g["hooks"] }
+      .find { |h| h["name"] == "code-gate" }["status"]
+
+    code_gate_hook = codex["PreToolUse"].first["hooks"].find { |h| h["command"].include?("code-gate") }
+    assert_equal code_gate_status, code_gate_hook["statusMessage"]
+  end
+
+  # Pinning: every Codex hook name must exist in the single `events` source, so a
+  # rename in `events` cannot silently drift the Codex registration.
+  def test_every_codex_hook_name_exists_in_the_events_source
+    all_names = HookRegistry.events.values.flatten.flat_map { |g| g["hooks"] }.map { |h| h["name"] }
+    (HookRegistry::CODEX_PRE_HOOKS + HookRegistry::CODEX_POST_HOOKS).each do |name|
+      assert_includes all_names, name, "Codex hook '#{name}' is not registered in HookRegistry.events"
+    end
+  end
+
   private
 
   # `"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook" code-gate` -> "code-gate";

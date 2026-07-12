@@ -233,4 +233,263 @@ class CodexInstallTest < Minitest::Test
     assert checks.any? { |c| c[:name] == "skills_exist" }, "generic skills check must still run for codex"
     assert checks.any? { |c| c[:name] == "agents_exist" }, "generic agents check must still run for codex"
   end
+
+  # --- Intent 102, Step 5: install_codex hooks.json wiring ---
+
+  def hooks_json_path
+    File.join(@codex_home, "hooks.json")
+  end
+
+  def all_codex_hook_commands(data)
+    (data["hooks"] || {}).flat_map do |_event, groups|
+      Array(groups).flat_map { |g| Array(g["hooks"]).map { |h| h["command"] } }
+    end
+  end
+
+  def test_install_codex_fresh_create_writes_well_formed_hooks_json
+    refute File.directory?(@codex_home), "home_dir must be absent before install (the owner's install-day path)"
+
+    result = @core.install_for_agent("codex", false)
+
+    assert result[:success]
+    assert File.directory?(@codex_home)
+    assert File.exist?(hooks_json_path)
+
+    data = JSON.parse(File.read(hooks_json_path))
+    commands = all_codex_hook_commands(data)
+    assert commands.any? { |c| c.include?("codex-hook") && c.include?("code-gate") }
+    assert commands.any? { |c| c.include?("codex-hook") && c.include?("gate-check") }
+
+    pre_group = data["hooks"]["PreToolUse"].find { |g| g["matcher"] == "apply_patch" }
+    refute_nil pre_group, "PreToolUse must register under the apply_patch matcher"
+    post_group = data["hooks"]["PostToolUse"].find { |g| g["matcher"] == "apply_patch" }
+    refute_nil post_group, "PostToolUse must register under the apply_patch matcher"
+  end
+
+  def test_install_codex_merges_into_existing_hooks_json_preserving_user_entry
+    FileUtils.mkdir_p(@codex_home)
+    user_hooks = {
+      "hooks" => {
+        "PreToolUse" => [
+          { "matcher" => "SomeOtherTool", "hooks" => [{ "type" => "command", "command" => "/usr/local/bin/my-hook" }] },
+        ],
+      },
+    }
+    File.write(hooks_json_path, JSON.pretty_generate(user_hooks))
+
+    @core.install_for_agent("codex", false)
+
+    data = JSON.parse(File.read(hooks_json_path))
+    user_group = data["hooks"]["PreToolUse"].find { |g| g["matcher"] == "SomeOtherTool" }
+    refute_nil user_group, "the pre-existing user hook group must survive the merge"
+    assert_equal "/usr/local/bin/my-hook", user_group["hooks"].first["command"]
+
+    plastic_group = data["hooks"]["PreToolUse"].find { |g| g["matcher"] == "apply_patch" }
+    refute_nil plastic_group, "Plastic's apply_patch group must be added alongside the user's"
+  end
+
+  def test_install_codex_is_idempotent_on_rerun
+    @core.install_for_agent("codex", false)
+    first = JSON.parse(File.read(hooks_json_path))
+
+    @core.install_for_agent("codex", false)
+    second = JSON.parse(File.read(hooks_json_path))
+
+    assert_equal first, second, "re-running install must not duplicate hook groups"
+    pre_groups = second["hooks"]["PreToolUse"].select { |g| g["matcher"] == "apply_patch" }
+    assert_equal 1, pre_groups.size, "exactly one apply_patch PreToolUse group after re-run"
+  end
+
+  def test_install_codex_does_not_manifest_track_hooks_json
+    @core.install_for_agent("codex", false)
+
+    manifest = JSON.parse(File.read(File.join(@agent_dir, "plastic-manifest.json")))
+    manifest_keys = manifest["files"].keys
+    refute manifest_keys.any? { |k| k.include?("hooks.json") },
+      "hooks.json must never be manifest-tracked (partial-ownership file)"
+  end
+
+  # --- Intent 102, Step 6: uninstall hooks.json wiring ---
+
+  def test_uninstall_strips_exactly_plastic_hooks_json_groups
+    FileUtils.mkdir_p(@codex_home)
+    user_hooks = {
+      "hooks" => {
+        "PreToolUse" => [
+          { "matcher" => "SomeOtherTool", "hooks" => [{ "type" => "command", "command" => "/usr/local/bin/my-hook" }] },
+        ],
+      },
+    }
+    File.write(hooks_json_path, JSON.pretty_generate(user_hooks))
+
+    @core.install_for_agent("codex", false)
+    @core.uninstall_agent("codex", @core.agent_config("codex"))
+
+    data = JSON.parse(File.read(hooks_json_path))
+    refute all_codex_hook_commands(data).any? { |c| c.include?("codex-hook") },
+      "no codex-hook command may survive uninstall"
+  end
+
+  def test_uninstall_preserves_pre_existing_user_hook_entry
+    FileUtils.mkdir_p(@codex_home)
+    user_hooks = {
+      "hooks" => {
+        "PreToolUse" => [
+          { "matcher" => "SomeOtherTool", "hooks" => [{ "type" => "command", "command" => "/usr/local/bin/my-hook" }] },
+        ],
+      },
+    }
+    File.write(hooks_json_path, JSON.pretty_generate(user_hooks))
+
+    @core.install_for_agent("codex", false)
+    @core.uninstall_agent("codex", @core.agent_config("codex"))
+
+    data = JSON.parse(File.read(hooks_json_path))
+    user_group = data["hooks"]["PreToolUse"].find { |g| g["matcher"] == "SomeOtherTool" }
+    refute_nil user_group, "the user's own hook entry must survive uninstall byte-preserved"
+    assert_equal "/usr/local/bin/my-hook", user_group["hooks"].first["command"]
+  end
+
+  def test_uninstall_removes_plastic_created_hooks_json_with_nothing_else
+    @core.install_for_agent("codex", false)
+    assert File.exist?(hooks_json_path)
+
+    @core.uninstall_agent("codex", @core.agent_config("codex"))
+
+    refute File.exist?(hooks_json_path), "a Plastic-created hooks.json with nothing else left must be removed"
+  end
+
+  def test_uninstall_with_no_plastic_groups_is_a_noop
+    FileUtils.mkdir_p(@codex_home)
+    user_hooks = {
+      "hooks" => {
+        "PreToolUse" => [
+          { "matcher" => "SomeOtherTool", "hooks" => [{ "type" => "command", "command" => "/usr/local/bin/my-hook" }] },
+        ],
+      },
+    }
+    seed = JSON.pretty_generate(user_hooks)
+    File.write(hooks_json_path, seed)
+
+    result = @core.uninstall_agent("codex", @core.agent_config("codex"))
+
+    assert result[:success]
+    assert_equal JSON.parse(seed), JSON.parse(File.read(hooks_json_path)),
+      "a hooks.json with no Plastic groups must be untouched"
+  end
+
+  # --- Intent 102, Step 7: doctor codex_hooks_registered + config.toml advisory ---
+
+  def config_toml_path
+    File.join(@codex_home, "config.toml")
+  end
+
+  def test_doctor_codex_hooks_registered_passes_on_healthy_install
+    @core.install_for_agent("codex", false)
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    hooks_check = checks.find { |c| c[:name] == "codex_hooks_registered" }
+
+    refute_nil hooks_check
+    assert_equal "pass", hooks_check[:status]
+  end
+
+  def test_doctor_codex_hooks_registered_fails_when_missing
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    hooks_check = checks.find { |c| c[:name] == "codex_hooks_registered" }
+
+    refute_nil hooks_check
+    assert_equal "fail", hooks_check[:status]
+  end
+
+  def test_doctor_codex_hooks_registered_fails_when_drifted
+    @core.install_for_agent("codex", false)
+    data = JSON.parse(File.read(hooks_json_path))
+    # Simulate drift: drop the create-gate command from the live file.
+    data["hooks"]["PreToolUse"].each do |g|
+      next unless g["matcher"] == "apply_patch"
+      g["hooks"].reject! { |h| h["command"].include?("create-gate") }
+    end
+    File.write(hooks_json_path, JSON.pretty_generate(data))
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    hooks_check = checks.find { |c| c[:name] == "codex_hooks_registered" }
+
+    refute_nil hooks_check
+    assert_equal "fail", hooks_check[:status]
+    assert(hooks_check[:details].any? { |d| d.include?("create-gate") })
+  end
+
+  def test_doctor_config_toml_advisory_warns_on_hooks_disabled
+    FileUtils.mkdir_p(@codex_home)
+    File.write(config_toml_path, "[features]\nhooks = false\n")
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    advisory = checks.find { |c| c[:name] == "codex_config_advisory" }
+
+    refute_nil advisory
+    assert_equal "warn", advisory[:status]
+    assert_includes advisory[:message], "hooks are disabled"
+  end
+
+  def test_doctor_config_toml_advisory_warns_on_deprecated_alias
+    FileUtils.mkdir_p(@codex_home)
+    File.write(config_toml_path, "codex_hooks = false\n")
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    advisory = checks.find { |c| c[:name] == "codex_config_advisory" }
+
+    refute_nil advisory
+    assert_equal "warn", advisory[:status]
+  end
+
+  def test_doctor_config_toml_advisory_warns_on_read_only_sandbox
+    FileUtils.mkdir_p(@codex_home)
+    File.write(config_toml_path, "sandbox_mode = \"read-only\"\n")
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    advisory = checks.find { |c| c[:name] == "codex_config_advisory" }
+
+    refute_nil advisory
+    assert_equal "warn", advisory[:status]
+    assert_includes advisory[:message], "sandbox_mode"
+  end
+
+  def test_doctor_config_toml_advisory_silent_when_clean
+    FileUtils.mkdir_p(@codex_home)
+    File.write(config_toml_path, "model = \"gpt-test\"\n")
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    advisory = checks.find { |c| c[:name] == "codex_config_advisory" }
+
+    assert_nil advisory, "a clean config.toml must produce no advisory check"
+  end
+
+  def test_doctor_config_toml_advisory_silent_when_absent
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    advisory = checks.find { |c| c[:name] == "codex_config_advisory" }
+
+    assert_nil advisory, "an absent config.toml must produce no advisory check"
+  end
+
+  def test_doctor_agents_md_check_still_runs_alongside_hooks_check
+    @core.install_for_agent("codex", false)
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+
+    assert checks.any? { |c| c[:name] == "codex_agents_md" }
+    assert checks.any? { |c| c[:name] == "codex_hooks_registered" }
+  end
+
+  def test_doctor_never_writes_config_toml
+    FileUtils.mkdir_p(@codex_home)
+    File.write(config_toml_path, "sandbox_mode = \"read-only\"\n")
+    before = File.read(config_toml_path)
+    before_mtime = File.mtime(config_toml_path)
+
+    doctor_for(@codex_home).check_agent_registration("codex")
+
+    assert_equal before, File.read(config_toml_path), "doctor must never modify config.toml content"
+    assert_equal before_mtime, File.mtime(config_toml_path), "doctor must never touch config.toml"
+  end
 end

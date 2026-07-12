@@ -141,7 +141,7 @@ paths are explicitly OUT of scope here: the session id may be unset in those run
 so the session-keyed gate falls back to the derived key, and the enforcer falls back to
 manual gating. Those paths get their own treatment elsewhere.
 
-## Worked example: Codex CLI (L1 core; L2/L3 deferred)
+## Worked example: Codex CLI (L1 + L3 core; L2 deferred)
 
 Codex CLI is rated **Tier A (full parity)**: `PreToolUse` hooks gate `apply_patch`, giving
 a true pre-write veto for both create-path and in-place edits. This is the one axis
@@ -152,7 +152,7 @@ survive Plastic's per-intent worktree, and clear headless hook-trust (managed ho
 `--dangerously-bypass-hook-trust`), since an untrusted hook is silently skipped rather
 than blocking.
 
-### L1 standing conventions (this slice)
+### L1 standing conventions
 
 Skills copy flat and unmodified to `~/.agents/skills/plastic-<name>/` (copy-not-transform,
 settled by 23 and reconfirmed by 181). Plastic's standing conventions inject into
@@ -168,26 +168,91 @@ Claude Code's `settings.json` hooks strip, so any content the user added elsewhe
 is present and well formed (matched BEGIN and END markers) alongside the existing
 skills and agents checks.
 
-### L2 / L3 (deferred)
+### L2 live state (deferred)
 
-L2 live state and L3 hooks and gates for Codex (the `[hooks]` table registration, the
-`apply_patch` matcher, create and stage gates, savepoint append) are intent 102's to
-build. Per-agent model mapping (`[agents.<name>].model` and `model_reasoning_effort`) is
-intent 102a's. This slice does not write `config.toml`.
+`SessionStart`, `UserPromptSubmit`, and `SubagentStart` context injection for Codex are
+future work, out of this slice. Per-agent model mapping (`[agents.<name>].model` and
+`model_reasoning_effort`) is intent 102a's, also not this slice.
 
-### Deferred config.toml settings
+### L3 lifecycle gates and savepoints (intent 102)
 
-Intent 102 will write, with a set-if-absent merge policy (never clobber a value the user
-already set): `[features] hooks = true`, `sandbox_mode = "workspace-write"` (with
-`writable_roots` covering the store), and `approval_policy` set to `"on-request"` or
-`"never"`.
+Registration writes `~/.codex/hooks.json` at USER scope (defeats the open worktree-scoped
+hook bug), derived from the single `HookRegistry.events` source so the Codex registration
+can never drift from Claude's independently of it. Every file-mutation gate (`code-gate`,
+`lock-gate`, `savepoint-pre`, `create-gate`) and the `gate-check` savepoint backstop
+collapse onto ONE matcher, `apply_patch`, because it is Codex's sole file-mutation tool
+(every Codex edit reports `tool_name: "apply_patch"`; there is no `Edit`/`Write` tool to
+match). `hooks.json` is a partial-ownership file exactly like `AGENTS.md`: merged on
+install (a pre-existing user hook entry survives untouched) and surgically stripped on
+uninstall, never manifest-tracked.
+
+The one real translation cost is the payload shape. Claude hands a hook a clean
+`tool_input.file_path` plus `tool_input.content`; Codex hands a diff envelope in
+`tool_input.command` (the `apply_patch` V4A patch text), and one `apply_patch` call can
+bundle several file operations (Add, Update, Delete, Move/rename). `ApplyPatchEnvelope.parse`
+is the one new translation piece: a pure parser that walks the `*** Begin Patch` /
+`*** End Patch` envelope and returns an ordered list of `{op:, path:, added_content:}` for
+every `*** Add/Update/Delete File:` section, folding a trailing `*** Move to:` into the
+op's effective path. It fails open (returns an empty list and warns to stderr) on any
+missing or unparseable envelope, so a gate can never hard-crash on a payload shape it does
+not recognize.
+
+One Ruby dispatcher, `scripts/codex-hook <gate>`, reads the Codex hook stdin once
+(`session_id` at top level, the envelope in `tool_input.command`), parses it, and drives
+the SAME payload-agnostic Ruby gate and savepoint cores Claude's bash shims already drive,
+once per file operation, so none of the four reused cores change at all. Their output
+contracts were already Codex-compatible verbatim (`permissionDecision:"deny"` for
+`lock-gate`, exit 2 for `code-gate`/`create-gate`, `decision:"block"` for `gate-check`), so
+the dispatcher relays stdout, stderr, and exit code unchanged. On a multi-file patch, a
+PreToolUse veto denies the whole `apply_patch` call on the first violating file.
+`create-gate` validates born-complete content inline for Add operations on intent files
+only; Update, Delete, and Move operations defer to the PostToolUse `gate-check` backstop,
+which re-validates the intent file after the write lands, so nothing goes unchecked.
+
+The `apply_patch` V4A envelope's inner grammar (the exact shape of `*** Add/Update/Delete
+File:` sections, `*** Move to:`, and the `+`/`-`/context line prefixes) is not
+primary-sourced in either the guide this slice was built against or 181's report; the
+parser is built to the best-known public shape and fails open on anything else. This slice
+ships no live-Codex verification (the owner has no Codex installed): hermetic fixtures
+carry the full burden. The owner's first real validation is a fresh `plastic-install
+--codex` followed by a `doctor` run; `doctor`'s `codex_hooks_registered` check confirms
+`hooks.json` carries exactly what `HookRegistry.codex_hooks_json` defines, with a fix hint
+pointing back at the installer on any drift.
+
+### config.toml (deferred, read-only advisory)
+
+Plastic does not write `~/.codex/config.toml` this slice, and has no TOML writer: the
+deferred settings (`[features] hooks = true`, `sandbox_mode = "workspace-write"` with
+`writable_roots`, `approval_policy`) stay owner-managed. Codex additionally loads an
+inline `config.toml [hooks]` table as an equivalent to `hooks.json` (hook sources are
+additive, so either or both may be present); Plastic documents this as the alternative it
+does not write to, not something it merges into. `doctor` runs a READ-ONLY scan of
+`config.toml` and warns when `[features] hooks = false` (or the deprecated `codex_hooks =
+false` alias) or `sandbox_mode = "read-only"` is present, since either would silently stop
+Plastic's gates from firing; it never writes the file.
+
+### Headless hook trust
+
+Codex reviews hook trust by hash, at user scope too, and re-reviews on any change to the
+hook's command. Interactive sessions trust the installed hooks via `/hooks`. Headless runs
+(`codex exec`) need either `--dangerously-bypass-hook-trust` or a managed
+`requirements.toml` shipped ahead of time; this slice documents both paths and ships no
+trust artifact of its own.
+
+### Minimum Codex version
+
+The hooks feature and the headless trust-bypass fix land on the 0.13x release line onward
+(verified on 0.144.x). User-scope registration (not the project-local `.codex/hooks.json`)
+is required regardless of version, because the project-scoped file has an open
+worktree-scoping bug.
 
 ## Roadmap
 
 Later adapters extend this contract to other harnesses. They arrive as new ROOT
 intents (not children of this one) with `sources: ["4a1c1", "7"]`, where intent 7 is
 the harness-adapters umbrella and 4a1c1 is this foundation. Codex's L1 core (skills copy
-plus AGENTS.md standing-conventions injection) has landed (intent 33a); its L2/L3 hooks
-and gates are intent 102, and per-agent model mapping is 102a. The current line of sight
-for the remaining harnesses is Hermes, then OpenClaw. All of them target reasoning
-agents only.
+plus AGENTS.md standing-conventions injection, intent 33a) and L3 hooks and gates
+(`hooks.json` registration, the `apply_patch` envelope parser, the dispatcher, intent 102)
+have both landed. Codex's L2 live-state injection and per-agent model mapping (102a)
+remain future work. The current line of sight for the remaining harnesses is Hermes, then
+OpenClaw. All of them target reasoning agents only.

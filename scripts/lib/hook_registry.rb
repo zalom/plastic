@@ -75,6 +75,38 @@ module HookRegistry
     }
   end
 
+  # Codex registration (~/.codex/hooks.json, intent 102). Derived from `events`:
+  # the file-mutation PreToolUse gate/savepoint hooks collapse from Claude's
+  # multi-tool matchers onto Codex's single apply_patch tool (181 F4: apply_patch
+  # is Codex's sole file-mutation tool; tool_name always reports apply_patch), plus
+  # the PostToolUse gate-check. Command invokes the codex-hook dispatcher with the
+  # gate name. Guide-settled shape [guide Part 3]: top-level {"hooks":{<Event>:
+  # [{"matcher","hooks":[{"type":"command","command","statusMessage"}]}]}},
+  # identical to Claude's shape, string command. Single source of truth (108 D7):
+  # any drift from `events` is a bug, pinned by test.
+  CODEX_PRE_HOOKS  = %w[code-gate lock-gate savepoint-pre create-gate].freeze
+  CODEX_POST_HOOKS = %w[gate-check].freeze
+
+  def codex_hooks_json(dispatcher_path:)
+    # name => statusMessage, straight from the single `events` source (A8): the
+    # guide Part 3 hooks.json format carries a per-hook statusMessage, so emit it.
+    status_by_name = events.values.flatten.flat_map { |g| g["hooks"] }
+                           .each_with_object({}) { |h, m| m[h["name"]] = h["status"] }
+    cmd = ->(name) {
+      { "type" => "command",
+        "command" => "\"#{dispatcher_path}\" #{name}",
+        "statusMessage" => status_by_name[name].to_s }
+    }
+    # Preserve the order these hook names appear across the PreToolUse groups in `events`.
+    pre_order = events["PreToolUse"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    pre = (pre_order & CODEX_PRE_HOOKS).map { |n| cmd.call(n) }
+    post = CODEX_POST_HOOKS.map { |n| cmd.call(n) }
+    {
+      "PreToolUse"  => [{ "matcher" => "apply_patch", "hooks" => pre }],
+      "PostToolUse" => [{ "matcher" => "apply_patch", "hooks" => post }],
+    }
+  end
+
   # The settings.json shape merge_claude_hooks expects: single-group events map
   # to a Hash, multi-group events to an Array (the merge loop handles both).
   def claude_settings_hooks(hook_dir:)

@@ -1252,7 +1252,73 @@ class Doctor
       end
     end
 
+    checks << codex_hooks_registered_check(config)
+    codex_config_toml_advisory_check(config).tap { |c| checks << c if c }
+
     checks
+  end
+
+  # codex_hooks_registered (intent 102, the owner-facing first-run validation
+  # path, Decision 14): ~/.codex/hooks.json must carry EXACTLY the commands
+  # HookRegistry.codex_hooks_json defines, mirroring the Claude
+  # hooks_match_registry diff. Never writes.
+  def codex_hooks_registered_check(config)
+    hooks_json = File.join(config[:home_dir], "hooks.json")
+    dispatcher = File.join(plastic_home, "scripts", "codex-hook")
+    data = read_json_safe(hooks_json)
+
+    if data.nil?
+      return check(
+        category: "agent_registration", name: "codex_hooks_registered", status: "fail",
+        message: "Codex hooks.json missing or unreadable at #{tilde(hooks_json)}",
+        fixable: true, fix_hint: "Re-run the Plastic installer with --codex"
+      )
+    end
+
+    expected = HookRegistry.codex_hooks_json(dispatcher_path: dispatcher)
+    live = data["hooks"] || {}
+    missing = []
+    expected.each do |event, groups|
+      want = Array(groups).flat_map { |g| g["hooks"].map { |h| h["command"] } }
+      got = Array(live[event]).flat_map { |g| Array(g["hooks"]).map { |h| h["command"] } }
+      missing.concat(want - got)
+    end
+
+    if missing.empty?
+      check(
+        category: "agent_registration", name: "codex_hooks_registered", status: "pass",
+        message: "Codex hooks registered in hooks.json"
+      )
+    else
+      check(
+        category: "agent_registration", name: "codex_hooks_registered", status: "fail",
+        message: "Codex hooks.json missing #{missing.size} command(s)",
+        details: missing,
+        fixable: true, fix_hint: "Re-run the Plastic installer with --codex"
+      )
+    end
+  end
+
+  # config.toml advisory (intent 102, Decision 2, R2): READ ONLY. Warns on the two
+  # documented footguns (hooks disabled, sandbox read-only); never writes, and
+  # returns nil (no check emitted) when config.toml is absent or carries neither.
+  def codex_config_toml_advisory_check(config)
+    config_toml = File.join(config[:home_dir], "config.toml")
+    return nil unless File.exist?(config_toml)
+
+    toml = File.read(config_toml) rescue ""
+    warns = []
+    # guide Part 3: `codex_hooks` is a deprecated alias for `[features] hooks`; catch both.
+    warns << "hooks are disabled ([features] hooks = false); Plastic gates will not fire" if toml.match?(/^\s*(?:codex_)?hooks\s*=\s*false/)
+    warns << "sandbox_mode = \"read-only\"; apply_patch writes (and gates) cannot run" if toml.match?(/^\s*sandbox_mode\s*=\s*["']read-only["']/)
+    return nil if warns.empty?
+
+    check(
+      category: "agent_registration", name: "codex_config_advisory", status: "warn",
+      message: warns.join("; "),
+      fixable: false,
+      fix_hint: "Set [features] hooks = true and sandbox_mode = \"workspace-write\" in ~/.codex/config.toml"
+    )
   end
 
   # --- Check category 4: Core files ---
