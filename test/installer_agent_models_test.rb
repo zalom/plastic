@@ -63,4 +63,18 @@ class InstallerAgentModelsTest < Minitest::Test
     # unlisted agent still passes through
     assert_equal "model: opus", model_line("plastic-enforcer")
   end
+
+  # --- effort_for (intent 102a): Codex model_reasoning_effort mapping ---
+
+  def test_effort_for_maps_the_three_shipped_aliases
+    assert_equal "high", AgentModels.effort_for("opus")
+    assert_equal "medium", AgentModels.effort_for("sonnet")
+    assert_equal "low", AgentModels.effort_for("haiku")
+  end
+
+  def test_effort_for_returns_nil_for_a_non_alias_value
+    assert_nil AgentModels.effort_for("gpt-5.4-codex")
+    assert_nil AgentModels.effort_for("")
+    assert_nil AgentModels.effort_for(nil)
+  end
 end

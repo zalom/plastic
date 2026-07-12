@@ -132,7 +132,7 @@ class CodexInstallTest < Minitest::Test
 
   # --- Step 3: install_codex wiring ---
 
-  def test_install_codex_writes_agents_md_and_copies_skills_and_agents
+  def test_install_codex_writes_agents_md_skills_and_generates_agent_tomls
     result = @core.install_for_agent("codex", false)
 
     assert result[:success]
@@ -142,13 +142,213 @@ class CodexInstallTest < Minitest::Test
     skills = Dir.glob(File.join(@agent_dir, "skills", "plastic-*"))
     refute_empty skills, "skills must still be copied"
 
-    agent_roles = Dir.glob(File.join(@agent_dir, "agents", "*.md"))
-    refute_empty agent_roles, "agent role files must still be copied"
+    agent_tomls = Dir.glob(File.join(@codex_home, "agents", "plastic-*.toml"))
+    refute_empty agent_tomls, "codex agent role files must be generated as TOML under ~/.codex/agents"
+    assert_empty Dir.glob(File.join(@agent_dir, "agents", "*.md")),
+      "the codex leg must not write the dead ~/.agents/agents/*.md copy"
 
     manifest = JSON.parse(File.read(File.join(@agent_dir, "plastic-manifest.json")))
     manifest_keys = manifest["files"].keys
     refute manifest_keys.any? { |k| k.include?("AGENTS.md") },
       "AGENTS.md must never be manifest-tracked"
+  end
+
+  def test_install_codex_manifest_tracks_the_generated_tomls_one_per_source_agent
+    @core.install_for_agent("codex", false)
+
+    sources = Dir.glob(File.join(WORKTREE, "agents", "*.md"))
+    tomls = Dir.glob(File.join(@codex_home, "agents", "plastic-*.toml"))
+    assert_equal sources.size, tomls.size, "one generated toml per shipped agent .md"
+
+    manifest = JSON.parse(File.read(File.join(@agent_dir, "plastic-manifest.json")))
+    manifest_keys = manifest["files"].keys
+    tomls.each do |t|
+      assert_includes manifest_keys, t, "the manifest must track the generated toml #{t}"
+    end
+  end
+
+  # --- Intent 102a: Codex agent TOML generation (escape helpers, field mapping, effort) ---
+
+  def decode_toml_escapes(s)
+    out = +""
+    i = 0
+    while i < s.length
+      c = s[i]
+      if c == "\\" && i + 1 < s.length
+        nxt = s[i + 1]
+        case nxt
+        when "\\" then out << "\\"; i += 2
+        when '"' then out << '"'; i += 2
+        when "u"
+          hex = s[i + 2, 4]
+          out << [hex.to_i(16)].pack("U")
+          i += 6
+        else
+          out << c
+          i += 1
+        end
+      else
+        out << c
+        i += 1
+      end
+    end
+    out
+  end
+
+  def test_toml_ml_escape_round_trips_quotes_backslash_triple_quote_newline_and_unicode
+    input = "a\"b\\c\"\"\"d\neé"
+    escaped = @core.toml_ml_escape(input)
+
+    refute_includes escaped, '"""', "no bare triple-quote may survive escaping"
+    assert_includes escaped, "\n", "the real newline must be preserved"
+    assert_includes escaped, "é", "the unicode character must be preserved"
+    assert_equal input, decode_toml_escapes(escaped), "the escape must round-trip losslessly"
+  end
+
+  def test_toml_ml_escape_normalizes_crlf_and_lone_cr_to_lf
+    escaped = @core.toml_ml_escape("line1\r\nline2\rline3")
+    assert_equal "line1\nline2\nline3", escaped
+  end
+
+  def test_toml_ml_escape_escapes_c0_controls_but_preserves_tab_and_newline
+    escaped = @core.toml_ml_escape("a\x01b\tc\nd")
+    expected_control_escape = "\\" + "u0001" # backslash + literal u0001, six characters
+    assert_includes escaped, expected_control_escape
+    assert_includes escaped, "\t", "tab must be preserved, not escaped"
+    assert_includes escaped, "\n", "newline must be preserved, not escaped"
+  end
+
+  def test_toml_inline_escape_collapses_newlines_to_spaces
+    escaped = @core.toml_inline_escape("line one\nline two\n  line three")
+    refute_includes escaped, "\n"
+    assert_equal "line one line two line three", escaped
+  end
+
+  def test_codex_model_fields_by_shape
+    assert_equal 'model_reasoning_effort = "high"', @core.codex_model_fields("opus")
+    assert_equal 'model_reasoning_effort = "medium"', @core.codex_model_fields("sonnet")
+    assert_equal 'model_reasoning_effort = "low"', @core.codex_model_fields("haiku")
+    assert_equal 'model = "gpt-5.4-codex"', @core.codex_model_fields("gpt-5.4-codex")
+    assert_equal "", @core.codex_model_fields("")
+    assert_equal "", @core.codex_model_fields(nil)
+  end
+
+  def test_render_codex_agent_toml_maps_frontmatter_and_carries_the_body_verbatim
+    dir = Dir.mktmpdir("codex-agent-src")
+    begin
+      src = File.join(dir, "plastic-sample.md")
+      File.write(src, <<~MD)
+        ---
+        name: plastic-sample
+        description: A sample role for testing
+        model: sonnet
+        ---
+
+        You are the sample role. This body has a "quote" in it.
+      MD
+
+      toml = @core.render_codex_agent_toml(src, nil)
+
+      assert_match(/^name = "plastic-sample"$/, toml)
+      assert_match(/^description = "A sample role for testing"$/, toml)
+      assert_includes toml, 'model_reasoning_effort = "medium"'
+      refute_match(/^model = /, toml)
+
+      marker = 'developer_instructions = """'
+      start = toml.index(marker)
+      refute_nil start, "developer_instructions block must be present"
+      finish = toml.index('"""', start + marker.length)
+      refute_nil finish, "the developer_instructions triple-quote must be balanced"
+
+      assert_includes toml, 'This body has a \\"quote\\" in it.',
+        "the body must survive (escaped) inside developer_instructions"
+    ensure
+      FileUtils.rm_rf(dir)
+    end
+  end
+
+  def test_effort_per_tier_on_default_install_and_no_hardcoded_model
+    @core.install_for_agent("codex", false)
+
+    opus_toml = File.read(File.join(@codex_home, "agents", "plastic-enforcer.toml"))
+    assert_includes opus_toml, 'model_reasoning_effort = "high"'
+    refute_match(/^model = /, opus_toml)
+
+    sonnet_toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
+    assert_includes sonnet_toml, 'model_reasoning_effort = "medium"'
+    refute_match(/^model = /, sonnet_toml)
+
+    Dir.glob(File.join(@codex_home, "agents", "plastic-*.toml")).each do |f|
+      refute_includes File.read(f), 'model = "gpt',
+        "no default-path toml may carry a hardcoded Codex model id"
+    end
+  end
+
+  def test_haiku_alias_maps_to_low_effort_via_synthetic_render
+    dir = Dir.mktmpdir("codex-agent-src")
+    begin
+      src = File.join(dir, "plastic-haiku-sample.md")
+      File.write(src, <<~MD)
+        ---
+        name: plastic-haiku-sample
+        description: haiku tier sample
+        model: haiku
+        ---
+
+        body
+      MD
+
+      toml = @core.render_codex_agent_toml(src, nil)
+      assert_includes toml, 'model_reasoning_effort = "low"'
+      refute_match(/^model = /, toml)
+    ensure
+      FileUtils.rm_rf(dir)
+    end
+  end
+
+  def test_override_with_a_codex_model_id_wins_as_a_literal_model_and_drops_effort
+    File.write(File.join(@home, "config.yml"),
+               "agents:\n  models:\n    plastic-executor: gpt-5.4-codex\n")
+
+    @core.install_for_agent("codex", false)
+
+    toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
+    assert_includes toml, 'model = "gpt-5.4-codex"'
+    refute_match(/^model_reasoning_effort = /, toml)
+  end
+
+  def test_override_with_a_tier_word_maps_to_effort_not_a_literal_model
+    File.write(File.join(@home, "config.yml"),
+               "agents:\n  models:\n    plastic-executor: haiku\n")
+
+    @core.install_for_agent("codex", false)
+
+    toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
+    assert_includes toml, 'model_reasoning_effort = "low"'
+    refute_match(/^model = /, toml)
+  end
+
+  def test_regenerating_codex_agent_tomls_is_byte_identical
+    @core.install_for_agent("codex", false)
+    first = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
+
+    @core.install_for_agent("codex", false)
+    second = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
+
+    assert_equal first, second, "regenerating via install_for_agent must be byte-identical"
+
+    dir_a = Dir.mktmpdir("codex-toml-a")
+    dir_b = Dir.mktmpdir("codex-toml-b")
+    begin
+      @core.generate_codex_agents(dir_a, models: {})
+      @core.generate_codex_agents(dir_b, models: {})
+      assert_equal File.read(File.join(dir_a, "plastic-executor.toml")),
+                   File.read(File.join(dir_b, "plastic-executor.toml")),
+                   "generate_codex_agents must produce byte-identical output across independent runs"
+    ensure
+      FileUtils.rm_rf(dir_a)
+      FileUtils.rm_rf(dir_b)
+    end
   end
 
   # --- Step 4: surgical uninstall strip ---
@@ -223,15 +423,84 @@ class CodexInstallTest < Minitest::Test
   def test_doctor_generic_checks_still_run_for_codex
     FileUtils.mkdir_p(File.join(@agent_dir, "skills", "plastic-doctor"))
     File.write(File.join(@agent_dir, "skills", "plastic-doctor", "SKILL.md"), "# doctor")
-    FileUtils.mkdir_p(File.join(@agent_dir, "agents"))
-    File.write(File.join(@agent_dir, "agents", "plastic-enforcer.md"), "# enforcer")
+    FileUtils.mkdir_p(File.join(@codex_home, "agents"))
+    File.write(File.join(@codex_home, "agents", "plastic-enforcer.toml"), codex_toml_fixture)
     FileUtils.mkdir_p(@codex_home)
     File.write(agents_md, @core.codex_section)
 
     checks = doctor_for(@codex_home).check_agent_registration("codex")
 
     assert checks.any? { |c| c[:name] == "skills_exist" }, "generic skills check must still run for codex"
-    assert checks.any? { |c| c[:name] == "agents_exist" }, "generic agents check must still run for codex"
+    assert checks.any? { |c| c[:name] == "codex_agents_toml" }, "the codex TOML agents check must run"
+    refute checks.any? { |c| c[:name] == "agents_exist" },
+      "the flat .md agents check must no longer apply to codex"
+  end
+
+  # --- Intent 102a: doctor codex_agents_toml_check ---
+
+  def codex_toml_fixture(name: "plastic-enforcer")
+    <<~TOML
+      name = "#{name}"
+      description = "test agent"
+      model_reasoning_effort = "high"
+      developer_instructions = """
+      body
+      """
+    TOML
+  end
+
+  def test_doctor_codex_agents_toml_passes_on_healthy_install
+    @core.install_for_agent("codex", false)
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    toml_check = checks.find { |c| c[:name] == "codex_agents_toml" }
+
+    refute_nil toml_check
+    assert_equal "pass", toml_check[:status]
+  end
+
+  def test_doctor_codex_agents_toml_fails_when_absent
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    toml_check = checks.find { |c| c[:name] == "codex_agents_toml" }
+
+    refute_nil toml_check
+    assert_equal "fail", toml_check[:status]
+  end
+
+  def test_doctor_codex_agents_toml_fails_when_developer_instructions_missing
+    FileUtils.mkdir_p(File.join(@codex_home, "agents"))
+    malformed_path = File.join(@codex_home, "agents", "plastic-broken.toml")
+    File.write(malformed_path, "name = \"plastic-broken\"\ndescription = \"broken\"\n")
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    toml_check = checks.find { |c| c[:name] == "codex_agents_toml" }
+
+    refute_nil toml_check
+    assert_equal "fail", toml_check[:status]
+    assert(toml_check[:details].any? { |d| d.include?("plastic-broken.toml") })
+  end
+
+  def test_doctor_codex_checks_include_agents_md_and_hooks_alongside_toml_check
+    @core.install_for_agent("codex", false)
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+
+    assert checks.any? { |c| c[:name] == "codex_agents_toml" }
+    assert checks.any? { |c| c[:name] == "codex_agents_md" }
+    assert checks.any? { |c| c[:name] == "codex_hooks_registered" }
+  end
+
+  # --- Intent 102a: uninstall prunes the generated agent tomls (manifest path, no new code) ---
+
+  def test_uninstall_removes_generated_agent_tomls_via_the_manifest
+    @core.install_for_agent("codex", false)
+    tomls = Dir.glob(File.join(@codex_home, "agents", "plastic-*.toml"))
+    refute_empty tomls, "the install must have generated at least one agent toml"
+
+    @core.uninstall_agent("codex", @core.agent_config("codex"))
+
+    assert_empty Dir.glob(File.join(@codex_home, "agents", "plastic-*.toml")),
+      "uninstall must prune the generated agent tomls via the manifest"
   end
 
   # --- Intent 102, Step 5: install_codex hooks.json wiring ---

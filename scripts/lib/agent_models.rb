@@ -21,6 +21,18 @@ module AgentModels
     "plastic-intent-discovery" => "sonnet"
   }.freeze
 
+  # Codex reasoning-effort per tier alias (intent 102a). model_reasoning_effort is a
+  # depth-of-thinking dial independent of model selection (181 line 317-318), so mapping
+  # the tier here never encodes a rotting Codex model id (116 D1). opus is the deepest
+  # reasoning tier -> the deepest generally-safe effort (high, not the model-dependent
+  # xhigh); sonnet the mid execution tier -> medium; haiku the lightest -> low. minimal is
+  # unused.
+  EFFORT_BY_ALIAS = {
+    "opus" => "high",
+    "sonnet" => "medium",
+    "haiku" => "low"
+  }.freeze
+
   module_function
 
   # Pull the `agents.models` sub-hash out of a loaded config hash, tolerating a
@@ -39,5 +51,11 @@ module AgentModels
   # copied file, so they are ignored without raising.
   def override_map(project_config: {}, global_config: {})
     models_section(global_config).merge(models_section(project_config))
+  end
+
+  # The model_reasoning_effort for a Plastic tier alias, or nil for any value that is not
+  # one of the three shipped aliases (the caller treats nil as a literal Codex model id).
+  def effort_for(value)
+    EFFORT_BY_ALIAS[value.to_s]
   end
 end

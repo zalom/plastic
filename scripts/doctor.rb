@@ -1199,9 +1199,11 @@ class Doctor
     end
   end
 
-  def check_generic_agent_registration(agent_key, agent_dir)
+  # Shared skills-presence plus stray-skills check, used by both the generic
+  # (hermes) agent-registration path and codex's TOML-based one. Neither the flat
+  # `.md` agents check nor anything agent-format-specific lives here.
+  def check_flat_skills_and_stray(agent_key, agent_dir)
     checks = []
-    config = agents[agent_key]
 
     # For codex/hermes: just check skills exist (no settings.json hooks)
     checks << flat_skills_check(agent_dir, "--#{agent_key}")
@@ -1211,8 +1213,12 @@ class Doctor
     stray_check = stray_skills_check(agent_dir, "--#{agent_key}", File.join(agent_dir, "plastic-manifest.json"))
     checks << stray_check if stray_check
 
-    checks << flat_agents_check(agent_dir, "--#{agent_key}")
+    checks
+  end
 
+  def check_generic_agent_registration(agent_key, agent_dir)
+    checks = check_flat_skills_and_stray(agent_key, agent_dir)
+    checks << flat_agents_check(agent_dir, "--#{agent_key}")   # hermes: unchanged (.md copy)
     checks
   end
 
@@ -1222,9 +1228,10 @@ class Doctor
   CODEX_SECTION_END = "<!-- END PLASTIC INTEGRATION -->"
 
   def check_codex_registration(agent_key, agent_dir)
-    checks = check_generic_agent_registration(agent_key, agent_dir)
-
     config = agents[agent_key]
+    checks = check_flat_skills_and_stray(agent_key, agent_dir)
+    checks << codex_agents_toml_check(config)
+
     agents_md = File.join(config[:home_dir], "AGENTS.md")
 
     if !File.exist?(agents_md)
@@ -1256,6 +1263,47 @@ class Doctor
     codex_config_toml_advisory_check(config).tap { |c| checks << c if c }
 
     checks
+  end
+
+  # Codex-specific agent presence + structural sanity: ~/.codex/agents/plastic-*.toml
+  # exist and each carries the mandatory fields. No TOML parser (doctor depends on none):
+  # "structural" means the mandatory keys appear as lines and the multi-line
+  # developer_instructions string is balanced (an opening triple-quote has a later one).
+  def codex_agents_toml_check(config)
+    agents_root = File.join(config[:home_dir], "agents")
+    found = Dir.glob(File.join(agents_root, "plastic-*.toml"))
+
+    if found.empty?
+      return check(
+        category: "agent_registration", name: "codex_agents_toml", status: "fail",
+        message: "No plastic-* agent TOML files found in #{tilde(agents_root)}",
+        fixable: true, fix_hint: "Re-run the Plastic installer with --codex"
+      )
+    end
+
+    malformed = found.reject { |f| codex_agent_toml_well_formed?(File.read(f)) }
+    if malformed.empty?
+      check(
+        category: "agent_registration", name: "codex_agents_toml", status: "pass",
+        message: "#{found.size} plastic-* agent TOML(s) installed in #{tilde(agents_root)}"
+      )
+    else
+      check(
+        category: "agent_registration", name: "codex_agents_toml", status: "fail",
+        message: "#{malformed.size} Codex agent TOML(s) missing mandatory fields",
+        details: malformed.map { |f| tilde(f) },
+        fixable: true, fix_hint: "Re-run the Plastic installer with --codex"
+      )
+    end
+  end
+
+  def codex_agent_toml_well_formed?(content)
+    marker = 'developer_instructions = """'
+    di = content.index(marker)
+    has_name = content.match?(/^name\s*=\s*"/)
+    has_desc = content.match?(/^description\s*=\s*"/)
+    balanced = di && content.index('"""', di + marker.length)
+    has_name && has_desc && !di.nil? && !balanced.nil?
   end
 
   # codex_hooks_registered (intent 102, the owner-facing first-run validation

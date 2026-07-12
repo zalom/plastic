@@ -185,6 +185,10 @@ class InstallPackagingTest < Minitest::Test
     assert_empty installer.install_agents(File.join(@dir, "agents"))
   end
 
+  # claude/hermes: install_agents copies agents/*.md verbatim into <dir>/agents,
+  # manifest-tracked there. codex is covered separately below: generate_codex_agents
+  # renders each agents/*.md into a standalone <home_dir>/agents/<basename>.toml
+  # (intent 102a); the flat .md copy is dead on codex and must NOT be written.
   def test_every_repo_agent_installs_and_is_manifest_tracked_for_each_harness
     agent_names = Dir.glob(File.join(REPO, "agents", "*.md")).map { |p| File.basename(p) }
     refute_empty agent_names, "expected agents/*.md role files to ship"
@@ -194,8 +198,6 @@ class InstallPackagingTest < Minitest::Test
     harnesses = [
       ["claude", ->(dir) { installer.install_claude({ name: "Claude Code", dir: dir }, false) },
        ->(dir) { File.join(dir, "plastic", "manifest.json") }],
-      ["codex", ->(dir) { installer.install_codex({ name: "Codex CLI", dir: dir, home_dir: File.join(dir, "..", "codex-home") }, false) },
-       ->(dir) { File.join(dir, "plastic-manifest.json") }],
       ["hermes", ->(dir) { installer.install_hermes({ name: "Hermes", dir: dir }, false) },
        ->(dir) { File.join(dir, "plastic-manifest.json") }],
     ]
@@ -216,6 +218,32 @@ class InstallPackagingTest < Minitest::Test
           "#{key}: manifest sha256 for #{name} must match on-disk digest"
       end
     end
+  end
+
+  def test_every_repo_agent_generates_a_codex_toml_and_is_manifest_tracked
+    agent_basenames = Dir.glob(File.join(REPO, "agents", "*.md")).map { |p| File.basename(p, ".md") }
+    refute_empty agent_basenames, "expected agents/*.md role files to ship"
+
+    installer = InstallerCore.new(package_root: REPO, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
+
+    codex_dir = File.join(@dir, "codex")
+    home_dir = File.join(@dir, "codex-home")
+    FileUtils.mkdir_p(codex_dir)
+    installer.install_codex({ name: "Codex CLI", dir: codex_dir, home_dir: home_dir }, false)
+
+    agents_root = File.join(home_dir, "agents")
+    manifest = JSON.parse(File.read(File.join(codex_dir, "plastic-manifest.json")))["files"]
+
+    agent_basenames.each do |basename|
+      dest = File.join(agents_root, "#{basename}.toml")
+      assert File.file?(dest), "codex: #{basename}.toml must be generated into #{agents_root}"
+      assert manifest.key?(dest), "codex: manifest must track #{dest}"
+      assert_equal Digest::SHA256.file(dest).hexdigest, manifest[dest],
+        "codex: manifest sha256 for #{basename}.toml must match on-disk digest"
+    end
+
+    assert_empty Dir.glob(File.join(codex_dir, "agents", "*.md")),
+      "codex: the dead ~/.agents/agents/*.md copy must not be written"
   end
 
   def test_agents_dir_is_packaged_for_distribution

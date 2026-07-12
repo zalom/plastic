@@ -171,8 +171,30 @@ skills and agents checks.
 ### L2 live state (deferred)
 
 `SessionStart`, `UserPromptSubmit`, and `SubagentStart` context injection for Codex are
-future work, out of this slice. Per-agent model mapping (`[agents.<name>].model` and
-`model_reasoning_effort`) is intent 102a's, also not this slice.
+future work, out of this slice.
+
+### Per-agent model mapping (intent 102a)
+
+Each Plastic role file in `agents/*.md` installs on Codex as a whole-file, Plastic-owned,
+manifest-tracked `~/.codex/agents/<name>.toml`, generated at install time instead of the
+prior dead `~/.agents/agents/*.md` copy (that root is the cross-tool skills standard, not
+an agents root, and Codex's native subagent loader never read it). `name` and
+`description` come from the source file's frontmatter; `developer_instructions` is the
+Markdown body verbatim, escaped for a TOML multi-line basic string (backslash and quote
+escaping so no `"""` delimiter collision can form, CRLF normalized to LF, C0 controls
+escaped). Output is deterministic and byte-identical on regenerate.
+
+The model value is effort-only by default: the shipped tier alias (`opus`, `sonnet`,
+`haiku`) maps to `model_reasoning_effort` (`high`, `medium`, `low`), and Plastic never
+writes a hardcoded `model` id, since a Codex model id would rot on every release (Codex
+ships multiple releases per week). An existing `agents.models.<name>` config override is
+honored by shape: a tier word maps to effort exactly like the default; any other value is
+written verbatim as a literal `model` id (the user owns that value and its staleness). A
+model-id override emits `model` only; the default path emits `model_reasoning_effort`
+only, so an agent with no override cleanly inherits the user's globally configured Codex
+model. `doctor`'s codex check validates the generated `.toml` files (presence plus a
+structural check for the mandatory fields) in place of the flat `.md` check, which no
+longer applies to codex. Hermes and `~/.codex/config.toml` are untouched by this slice.
 
 ### L3 lifecycle gates and savepoints (intent 102)
 
@@ -251,8 +273,8 @@ worktree-scoping bug.
 Later adapters extend this contract to other harnesses. They arrive as new ROOT
 intents (not children of this one) with `sources: ["4a1c1", "7"]`, where intent 7 is
 the harness-adapters umbrella and 4a1c1 is this foundation. Codex's L1 core (skills copy
-plus AGENTS.md standing-conventions injection, intent 33a) and L3 hooks and gates
-(`hooks.json` registration, the `apply_patch` envelope parser, the dispatcher, intent 102)
-have both landed. Codex's L2 live-state injection and per-agent model mapping (102a)
-remain future work. The current line of sight for the remaining harnesses is Hermes, then
-OpenClaw. All of them target reasoning agents only.
+plus AGENTS.md standing-conventions injection, intent 33a), L3 hooks and gates
+(`hooks.json` registration, the `apply_patch` envelope parser, the dispatcher, intent 102),
+and per-agent model mapping (`~/.codex/agents/*.toml` generation, intent 102a) have all
+landed. Codex's L2 live-state injection remains future work. The current line of sight for
+the remaining harnesses is Hermes, then OpenClaw. All of them target reasoning agents only.

@@ -681,10 +681,16 @@ mihradesign intent 24, a sanctioned, permanent override, not drift).
   it plain-copies the file so the shipped value passes through unchanged. The new
   `agent_model_overrides(project_dir = nil)` helper resolves project-then-global
   config into an `AgentModels.override_map` (loading YAML defensively via
-  `load_config_yaml`, tolerating a missing or malformed file). All three install
-  paths (`install_claude`, `install_codex`, `install_hermes`) call `install_agents`
-  with `models: agent_model_overrides`, so the override lands identically across
-  every harness target on install, update, and repair.
+  `load_config_yaml`, tolerating a missing or malformed file). `install_claude` and
+  `install_hermes` call `install_agents` with `models: agent_model_overrides`, so the
+  override lands identically for those two harness targets on install, update, and
+  repair. `install_codex` instead calls `generate_codex_agents` with the same
+  `agent_model_overrides` map (intent 102a): Codex reads standalone
+  `~/.codex/agents/<name>.toml` files, not the `.md` frontmatter format, so the override
+  resolves to a `model_reasoning_effort` line for a tier alias or a literal `model` line
+  for anything else, rather than a rewritten frontmatter line. See
+  [harness-adapters.md](reference/harness-adapters.md) for the full codex agent TOML
+  contract.
 - **Dispatch-time contract (belt-and-braces)**: because Claude Code reading
   frontmatter at dispatch time is a harness implementation detail rather than a
   contract Plastic controls, every dispatch site (the enforcer's per-stage

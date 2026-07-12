@@ -496,7 +496,7 @@ class InstallerCore
     installed = []
     skills_source = File.join(package_root, "skills")
     installed += install_skills_flat(skills_source, File.join(config[:dir], "skills")) if File.directory?(skills_source)
-    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides)
+    installed += generate_codex_agents(File.join(config[:home_dir], "agents"), models: agent_model_overrides)
 
     # Instruction injection (L1): Plastic standing conventions into ~/.codex/AGENTS.md.
     # Partial-ownership file, so it is NOT manifest-tracked (stripped surgically on uninstall).
@@ -510,6 +510,89 @@ class InstallerCore
 
     write_manifest(installed, File.join(config[:dir], "plastic-manifest.json"))
     { agent: config[:name], success: true, files: installed.size }
+  end
+
+  # --- Codex agent TOML generation (intent 102a) ---
+  #
+  # Codex reads standalone TOML agent files at ~/.codex/agents/*.toml (config[:home_dir]),
+  # never the ~/.agents/agents/*.md copy the shared install_agents writes (that root is
+  # the cross-tool skills standard, not an agents root). The codex leg therefore generates
+  # a whole-file, Plastic-owned .toml per repo agents/*.md instead of copying markdown.
+  # The returned paths append to `installed`, so they are manifest-tracked and pruned on
+  # uninstall by the manifest whole-file-delete path, exactly like ~/.claude/agents/*.md.
+  def generate_codex_agents(agents_root, models: {})
+    sources = Dir.glob(File.join(package_root, "agents", "*.md"))
+    return [] if sources.empty?
+
+    FileUtils.mkdir_p(agents_root)
+    sources.map do |src|
+      basename = File.basename(src, ".md")
+      dest = File.join(agents_root, "#{basename}.toml")
+      write_text_atomic(dest, render_codex_agent_toml(src, models[basename]))
+      dest
+    end
+  end
+
+  # Render one repo agents/*.md into a deterministic Codex agent TOML document. Fixed field
+  # order (name, description, one model field, developer_instructions) so regenerate is
+  # byte-identical (idempotency).
+  def render_codex_agent_toml(source_path, override)
+    front, body = split_frontmatter(File.read(source_path))
+    name = (front["name"] || File.basename(source_path, ".md")).to_s
+    description = (front["description"] || "").to_s
+    effective = (override && !override.to_s.empty? ? override : front["model"]).to_s
+
+    parts = []
+    parts << %(name = "#{toml_inline_escape(name)}")
+    parts << %(description = "#{toml_inline_escape(description)}")
+    parts << codex_model_fields(effective)
+    parts << "developer_instructions = \"\"\"\n#{toml_ml_escape(body.strip)}\n\"\"\""
+    parts.reject(&:empty?).join("\n") + "\n"
+  end
+
+  # Split a Plastic agent .md into [frontmatter_hash, body]. Tolerant: a file with no
+  # frontmatter yields [{}, whole content].
+  def split_frontmatter(content)
+    if content =~ /\A---\s*\n(.*?)\n---\s*\n?(.*)\z/m
+      front = YAML.safe_load($1) rescue {}
+      front = {} unless front.is_a?(Hash)
+      [front, $2]
+    else
+      [{}, content]
+    end
+  end
+
+  # The single model-selection line. A known tier alias (opus/sonnet/haiku) emits
+  # model_reasoning_effort only; any other non-empty value is a literal Codex model id
+  # emitted verbatim as `model`. Empty -> no line (the agent inherits the session default).
+  def codex_model_fields(effective)
+    return "" if effective.nil? || effective.to_s.empty?
+    effort = AgentModels.effort_for(effective)
+    if effort
+      %(model_reasoning_effort = "#{effort}")
+    else
+      %(model = "#{toml_inline_escape(effective.to_s)}")
+    end
+  end
+
+  # Escape arbitrary text for a TOML multi-line basic string ("""..."""). Order matters:
+  # normalize line endings, escape backslash FIRST (so introduced escapes are not
+  # re-escaped), then EVERY double-quote (which alone prevents any triple-quote delimiter
+  # collision), then C0 control chars other than tab/newline.
+  def toml_ml_escape(str)
+    s = str.to_s.gsub(/\r\n?/, "\n")
+    s = s.gsub("\\") { "\\\\" }
+    s = s.gsub('"') { '\\"' }
+    s.gsub(/[\x00-\x08\x0b\x0c\x0e-\x1f]/) { |c| format('\u%04X', c.ord) }
+  end
+
+  # Escape text for a single-line TOML basic string ("..."). Collapse any newline to a
+  # space (single-line context), then the same backslash/quote/control escapes.
+  def toml_inline_escape(str)
+    s = str.to_s.gsub(/\s*\r?\n\s*/, " ").strip
+    s = s.gsub("\\") { "\\\\" }
+    s = s.gsub('"') { '\\"' }
+    s.gsub(/[\x00-\x08\x0b\x0c\x0e-\x1f]/) { |c| format('\u%04X', c.ord) }
   end
 
   def codex_dispatcher_path
