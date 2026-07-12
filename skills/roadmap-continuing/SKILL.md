@@ -4,7 +4,7 @@ description: >-
   Use when the user wants to continue or resume a roadmap, pick up a mid-flight delivery batch,
   asks "where is the roadmap", or wants to resume the wave that was shipping, including an
   indirect ask that never names a roadmap directly (for example "where did that batch of
-  tickets land"). This is the roadmap route of plastic-continuing: it finds the tier's
+  intents land"). This is the roadmap route of plastic-continuing: it finds the tier's
   mid-flight roadmap, presents its state, then asks how to proceed exactly once.
 user-invocable: true
 ---

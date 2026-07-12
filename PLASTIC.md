@@ -10,6 +10,7 @@ See `PLASTIC-reference.md` for reference material: read it on demand, it is not 
 
 A directory in the store containing `{ID}--{slug}.md` and optional supporting files.
 It represents a desire: something a human or agent wants to accomplish, explore, or understand.
+The unit of work in Plastic is always an intent, never a ticket.
 
 ```
 store/

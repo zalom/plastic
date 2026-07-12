@@ -44,7 +44,7 @@ Plastic makes that thinking legible, resumable, and useful later.
 
 **Plastic is built for an AI-native developer, technical founder, or
 independent builder who works across multiple sessions, has ideas before
-they have tickets, and feels the cost of losing reasoning between agents,
+they have intents, and feels the cost of losing reasoning between agents,
 contexts, and days.**
 
 ## What it solves?

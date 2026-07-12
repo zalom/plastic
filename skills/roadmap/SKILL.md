@@ -1,6 +1,6 @@
 ---
 name: plastic-roadmap
-description: Use when the user wants to plan a delivery batch, order waves of intents, ship a batch of tickets in one go, track a named collection of intents toward a goal, or asks for a "roadmap". Creates and maintains a roadmap file, a delivery-side collection of intents (the counterpart to a release), separate from INDEX.md status tracking.
+description: Use when the user wants to plan a delivery batch, order waves of intents, ship a batch of intents in one go, track a named collection of intents toward a goal, or asks for a "roadmap". Creates and maintains a roadmap file, a delivery-side collection of intents (the counterpart to a release), separate from INDEX.md status tracking.
 user-invocable: true
 ---
 
