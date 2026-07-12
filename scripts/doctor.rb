@@ -34,7 +34,8 @@ class Doctor
 
   DEFAULT_AGENTS = {
     "claude" => { name: "Claude Code", dir: File.join(Dir.home, ".claude") },
-    "codex"  => { name: "Codex CLI",   dir: File.join(Dir.home, ".agents") },
+    "codex"  => { name: "Codex CLI",   dir: File.join(Dir.home, ".agents"),
+                  home_dir: File.join(Dir.home, ".codex") },
     "hermes" => { name: "Hermes",      dir: File.join(Dir.home, ".hermes") },
   }.freeze
 
@@ -980,6 +981,8 @@ class Doctor
     case agent_key
     when "claude"
       checks += check_claude_registration(agent_dir)
+    when "codex"
+      checks += check_codex_registration(agent_key, agent_dir)
     else
       checks += check_generic_agent_registration(agent_key, agent_dir)
     end
@@ -1209,6 +1212,45 @@ class Doctor
     checks << stray_check if stray_check
 
     checks << flat_agents_check(agent_dir, "--#{agent_key}")
+
+    checks
+  end
+
+  # Codex marker literals. Keep in sync with InstallerCore::CODEX_SECTION_BEGIN_PREFIX /
+  # CODEX_SECTION_END (doctor does not require installer_core, so the literals are duplicated).
+  CODEX_SECTION_BEGIN_PREFIX = "<!-- BEGIN PLASTIC INTEGRATION"
+  CODEX_SECTION_END = "<!-- END PLASTIC INTEGRATION -->"
+
+  def check_codex_registration(agent_key, agent_dir)
+    checks = check_generic_agent_registration(agent_key, agent_dir)
+
+    config = agents[agent_key]
+    agents_md = File.join(config[:home_dir], "AGENTS.md")
+
+    if !File.exist?(agents_md)
+      checks << check(
+        category: "agent_registration", name: "codex_agents_md", status: "fail",
+        message: "Codex AGENTS.md not found at #{tilde(agents_md)}",
+        fixable: true, fix_hint: "Re-run the Plastic installer with --codex"
+      )
+    else
+      content = File.read(agents_md)
+      b = content.index(CODEX_SECTION_BEGIN_PREFIX)
+      e = content.index(CODEX_SECTION_END)
+      well_formed = b && e && e > b && content[b...e].include?("-->")
+      if well_formed
+        checks << check(
+          category: "agent_registration", name: "codex_agents_md", status: "pass",
+          message: "Codex AGENTS.md carries the Plastic section"
+        )
+      else
+        checks << check(
+          category: "agent_registration", name: "codex_agents_md", status: "fail",
+          message: "Codex AGENTS.md is missing or has a malformed Plastic section",
+          fixable: true, fix_hint: "Re-run the Plastic installer with --codex"
+        )
+      end
+    end
 
     checks
   end

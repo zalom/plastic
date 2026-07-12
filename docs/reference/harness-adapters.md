@@ -141,9 +141,53 @@ paths are explicitly OUT of scope here: the session id may be unset in those run
 so the session-keyed gate falls back to the derived key, and the enforcer falls back to
 manual gating. Those paths get their own treatment elsewhere.
 
+## Worked example: Codex CLI (L1 core; L2/L3 deferred)
+
+Codex CLI is rated **Tier A (full parity)**: `PreToolUse` hooks gate `apply_patch`, giving
+a true pre-write veto for both create-path and in-place edits. This is the one axis
+where Codex sits above Claude Code interactive, whose in-place-edit enforcement stays a
+post-write backstop (see Tier B above). The verdict carries two caveats, both config
+discipline rather than tier ceilings: register hooks and skills at USER scope so they
+survive Plastic's per-intent worktree, and clear headless hook-trust (managed hooks or
+`--dangerously-bypass-hook-trust`), since an untrusted hook is silently skipped rather
+than blocking.
+
+### L1 standing conventions (this slice)
+
+Skills copy flat and unmodified to `~/.agents/skills/plastic-<name>/` (copy-not-transform,
+settled by 23 and reconfirmed by 181). Plastic's standing conventions inject into
+`~/.codex/AGENTS.md` as a marked section: a small curated body (work flows through
+intents, `~/.plastic/PLASTIC.md` is the source of truth and is never edited, skills are
+the operational procedures, intent artifacts live under `~/.plastic/`), wrapped in
+`<!-- BEGIN PLASTIC INTEGRATION hash:... -->` and `<!-- END PLASTIC INTEGRATION -->`
+markers. The injector is three-state (create the file, append the section, or replace it
+in place) and idempotent: re-injecting the same body reproduces the file byte for byte.
+Uninstall strips exactly that section through a dedicated surgical pair, mirroring
+Claude Code's `settings.json` hooks strip, so any content the user added elsewhere in
+`AGENTS.md` survives both install and uninstall untouched. `doctor` verifies the section
+is present and well formed (matched BEGIN and END markers) alongside the existing
+skills and agents checks.
+
+### L2 / L3 (deferred)
+
+L2 live state and L3 hooks and gates for Codex (the `[hooks]` table registration, the
+`apply_patch` matcher, create and stage gates, savepoint append) are intent 102's to
+build. Per-agent model mapping (`[agents.<name>].model` and `model_reasoning_effort`) is
+intent 102a's. This slice does not write `config.toml`.
+
+### Deferred config.toml settings
+
+Intent 102 will write, with a set-if-absent merge policy (never clobber a value the user
+already set): `[features] hooks = true`, `sandbox_mode = "workspace-write"` (with
+`writable_roots` covering the store), and `approval_policy` set to `"on-request"` or
+`"never"`.
+
 ## Roadmap
 
 Later adapters extend this contract to other harnesses. They arrive as new ROOT
 intents (not children of this one) with `sources: ["4a1c1", "7"]`, where intent 7 is
-the harness-adapters umbrella and 4a1c1 is this foundation. The current line of sight
-is Hermes, then OpenClaw, then Codex. All of them target reasoning agents only.
+the harness-adapters umbrella and 4a1c1 is this foundation. Codex's L1 core (skills copy
+plus AGENTS.md standing-conventions injection) has landed (intent 33a); its L2/L3 hooks
+and gates are intent 102, and per-agent model mapping is 102a. The current line of sight
+for the remaining harnesses is Hermes, then OpenClaw. All of them target reasoning
+agents only.

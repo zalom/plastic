@@ -194,7 +194,7 @@ class InstallPackagingTest < Minitest::Test
     harnesses = [
       ["claude", ->(dir) { installer.install_claude({ name: "Claude Code", dir: dir }, false) },
        ->(dir) { File.join(dir, "plastic", "manifest.json") }],
-      ["codex", ->(dir) { installer.install_codex({ name: "Codex CLI", dir: dir }, false) },
+      ["codex", ->(dir) { installer.install_codex({ name: "Codex CLI", dir: dir, home_dir: File.join(dir, "..", "codex-home") }, false) },
        ->(dir) { File.join(dir, "plastic-manifest.json") }],
       ["hermes", ->(dir) { installer.install_hermes({ name: "Hermes", dir: dir }, false) },
        ->(dir) { File.join(dir, "plastic-manifest.json") }],

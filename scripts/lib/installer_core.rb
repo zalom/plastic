@@ -18,9 +18,38 @@ class InstallerCore
 
   DEFAULT_AGENTS = [
     { key: "claude", name: "Claude Code", dir: File.join(Dir.home, ".claude"), flag: "--claude" },
-    { key: "codex", name: "Codex CLI", dir: File.join(Dir.home, ".agents"), flag: "--codex" },
+    { key: "codex", name: "Codex CLI", dir: File.join(Dir.home, ".agents"),
+      home_dir: File.join(Dir.home, ".codex"), flag: "--codex" },
     { key: "hermes", name: "Hermes", dir: File.join(Dir.home, ".hermes"), flag: "--hermes" },
   ].freeze
+
+  # Codex AGENTS.md marked-section markers (single source of truth; doctor.rb
+  # matches these literals structurally, so keep the two in sync by hand).
+  CODEX_SECTION_BEGIN_PREFIX = "<!-- BEGIN PLASTIC INTEGRATION"
+  CODEX_SECTION_END = "<!-- END PLASTIC INTEGRATION -->"
+
+  # Regex matching exactly one managed section (BEGIN line .. END line), non-greedy.
+  CODEX_SECTION_RE = /^<!-- BEGIN PLASTIC INTEGRATION.*?-->\n.*?\n<!-- END PLASTIC INTEGRATION -->\n?/m
+
+  # Curated essentials plus a pointer to ~/.plastic/PLASTIC.md, injected into
+  # ~/.codex/AGENTS.md. Not a slice of PLASTIC.md (which is already over the 32 KiB
+  # AGENTS.md merge cap on its own), so it never drifts and carries no maintenance fork.
+  CODEX_AGENTS_MD_BODY = <<~MD.freeze
+    Plastic is installed for this agent. Plastic is intent-driven state management: all
+    work flows through an intent, moved through What, Why, How, then Exec. Do not jump
+    straight to code.
+
+    Standing rules:
+    - The full conventions live in ~/.plastic/PLASTIC.md. Read it and follow it exactly.
+      It is generated and overwritten on Plastic updates, so never edit it.
+    - Operational procedures are installed as skills under ~/.agents/skills/ (each
+      plastic-<name>/SKILL.md). Use them for the lifecycle work they describe.
+    - Intents, specs, plans, checklists, and outcomes live under ~/.plastic/, never in
+      the project tree.
+
+    This section is managed by the Plastic installer. It is replaced on update and removed
+    on uninstall. Do not edit anything between the BEGIN and END markers.
+  MD
 
   attr_reader :package_root, :plastic_home, :version, :agents
 
@@ -467,6 +496,11 @@ class InstallerCore
     installed += install_skills_flat(skills_source, File.join(config[:dir], "skills")) if File.directory?(skills_source)
     installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides)
 
+    # Instruction injection (L1): Plastic standing conventions into ~/.codex/AGENTS.md.
+    # Partial-ownership file, so it is NOT manifest-tracked (stripped surgically on uninstall).
+    FileUtils.mkdir_p(config[:home_dir])
+    inject_codex_agents_md(File.join(config[:home_dir], "AGENTS.md"))
+
     write_manifest(installed, File.join(config[:dir], "plastic-manifest.json"))
     { agent: config[:name], success: true, files: installed.size }
   end
@@ -691,6 +725,77 @@ class InstallerCore
     end
   end
 
+  # --- Codex AGENTS.md marked-section injection (22a/Beads pattern) ---
+  # New primitive: markdown marked-section merge, the analog of merge_claude_hooks'
+  # JSON read-modify-write for a partial-ownership text file. Three states
+  # (create/append/replace), a body freshness hash in the BEGIN marker, atomic
+  # writes, and the 22a safety rule: never write when the existing section can't
+  # be parsed (a BEGIN marker with no matching END).
+
+  # Atomic text writer, mirrors write_json_atomic.
+  def write_text_atomic(path, content)
+    tmp = "#{path}.plastic-tmp.#{Process.pid}"
+    File.write(tmp, content)
+    File.rename(tmp, path)
+  rescue => e
+    File.delete(tmp) if tmp && File.exist?(tmp)
+    raise e
+  end
+
+  def codex_section(body: CODEX_AGENTS_MD_BODY)
+    hash = Digest::SHA256.hexdigest(body)[0, 12]
+    "#{CODEX_SECTION_BEGIN_PREFIX} hash:#{hash} -->\n#{body.strip}\n#{CODEX_SECTION_END}\n"
+  end
+
+  # Returns :created / :appended / :replaced / :refused. Never raises on a normal user file.
+  def inject_codex_agents_md(path, body: CODEX_AGENTS_MD_BODY)
+    section = codex_section(body: body)
+
+    unless File.exist?(path)
+      FileUtils.mkdir_p(File.dirname(path))
+      write_text_atomic(path, section)
+      return :created
+    end
+
+    content = File.read(path)
+    has_begin = content.include?(CODEX_SECTION_BEGIN_PREFIX)
+    has_end = content.include?(CODEX_SECTION_END)
+
+    # 22a safety rule: never write if the existing section cannot be parsed.
+    return :refused if has_begin && !has_end
+
+    if has_begin
+      write_text_atomic(path, content.sub(CODEX_SECTION_RE, section))
+      :replaced
+    else
+      base = content.end_with?("\n") ? content : content + "\n"
+      write_text_atomic(path, base + "\n" + section)
+      :appended
+    end
+  end
+
+  # Remove exactly Plastic's managed section from a user-owned AGENTS.md. Preserve all other
+  # content. Delete the file only if Plastic created it and nothing else remains. Returns the
+  # path when it acted, nil on no-op. Mirrors remove_claude_hooks: dedicated surgical strip,
+  # never the manifest whole-file-delete path.
+  def strip_codex_section(path)
+    return nil unless File.exist?(path)
+    content = File.read(path)
+    return nil unless content.include?(CODEX_SECTION_BEGIN_PREFIX)
+
+    # Remove the section plus the single separator newline the append introduced, so a
+    # standard user file round-trips byte-identical.
+    stripped = content.sub(/\n?#{CODEX_SECTION_RE}/, "")
+
+    if stripped.strip.empty?
+      File.delete(path)                 # Plastic-created file: nothing else left
+    else
+      stripped = stripped.rstrip + "\n" # normalize trailing whitespace we may have left
+      write_text_atomic(path, stripped)
+    end
+    path
+  end
+
   # --- Uninstall ---
 
   def handle_uninstall(uninstall_agents)
@@ -763,6 +868,14 @@ class InstallerCore
       settings_path = File.join(config[:dir], "settings.json")
       remove_claude_hooks(settings_path) if File.exist?(settings_path)
       removed.concat(migrate_legacy_plugin(config[:dir]))
+    end
+
+    # Codex: surgically strip Plastic's marked section from the user-owned AGENTS.md
+    # (dedicated pair, never the manifest whole-file-delete path above).
+    if key == "codex"
+      agents_md = File.join(config[:home_dir], "AGENTS.md")
+      stripped = strip_codex_section(agents_md)
+      removed << stripped if stripped
     end
 
     { success: true, files: removed.size, removed: removed }
