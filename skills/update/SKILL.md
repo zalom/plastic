@@ -57,7 +57,24 @@ unavailable. The command prints the transition (`vX -> vY`) or "already up to da
 a post-update doctor summary, and records the move in the append-only
 `~/.plastic/versions.json` ledger.
 
-### Step 2: Relay the result, announce convention changes
+### Step 2: Ask the advisor question once, if unset (Claude Code only)
+
+If this update brought in the advisor feature and `advisor.claude.default` is still
+unset in `~/.plastic/config.yml`, ask the same question `plastic-install` asks on a
+fresh install, once, then never again (a key already set is respected, never re-asked):
+> "Which advisor should be the default?"
+> - **Faux Fable** (recommended): Opus 4.8 carrying the frontier reasoning
+>   instructions. Much cheaper, available on any plan, reasons in the same
+>   disciplined way.
+> - **Fable 5**: the frontier model itself. The strongest reasoning available,
+>   billed through usage credits, so summon it for a few rounds and close it.
+
+Write the answer with `npx -y @zalom/plastic@<channel> install --claude --reinstall
+--advisor faux` (or `--advisor real`). Non-interactive sessions skip the question; the
+`plastic-agent-advisor` skill's own routing falls back to `plastic-faux-advisor` at
+consult time, so nothing is silently broken by leaving the key unset.
+
+### Step 3: Relay the result, announce convention changes
 
 Relay what `update` printed, do not recompute the version transition or the doctor
 summary:
@@ -73,12 +90,12 @@ Then read `~/.plastic/PLASTIC.md` and announce convention changes that affect th
 current session, and recommend `/clear` for a clean session with all new conventions
 loaded.
 
-### Step 3: Health check only on a relayed failure
+### Step 4: Health check only on a relayed failure
 
 If the relayed doctor summary shows a failure, invoke `plastic-doctor` for the full
 report and offer to fix. If it already reads clean, do not re-run doctor.
 
-### Step 4: Commit + clear update cache
+### Step 5: Commit + clear update cache
 
 ```bash
 cd ~/.plastic && git add PLASTIC.md scripts/ AGENTS.md VERSION versions.json 2>/dev/null && git commit -m "chore: update Plastic to $(cat ~/.plastic/VERSION)" --allow-empty

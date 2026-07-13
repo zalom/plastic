@@ -68,12 +68,12 @@ Run `/plastic-install` with no arguments.
 Check if `~/.plastic/VERSION` exists.
 - If yes: announce "Plastic is already installed at ~/.plastic/. Run `/plastic-update` to
   sync core files, or use the re-install command above to repair in place."
-- If no: first ask the advisor and model instructions questions below (Claude Code only),
-  then run the fresh install command (default `@latest`, or the channel the user named)
-  with whichever flags those answers produced:
+- If no: first ask the advisor question below (Claude Code only), then run the fresh
+  install command (default `@latest`, or the channel the user named) with whichever
+  flags that answer produced:
 
 ```bash
-npx -y @zalom/plastic@latest install --claude [--no-advisor] [--no-opus-instructions] [--advisor-model opus|fable]
+npx -y @zalom/plastic@latest install --claude [--no-advisor] [--advisor VALUE]
 ```
 
 This single command, via `install.rb` (`bootstrap` + `distribute`), creates `store/`,
@@ -82,34 +82,31 @@ and copies the utility scripts (`folgezettel-id`, `read-config`, and the rest of
 `scripts/`). This skill does none of that itself; it wraps the command with the
 interactive steps the CLI does not yet own, plus reporting and a doctor pass.
 
-**Advisor and model instructions (Claude Code only)**
+**The advisor (Claude Code only)**
 
-Ask the user two feature questions, interactive sessions only:
-> "How to talk to Fable as an advisor?" (a `plastic-advisor` consultation agent for
-> expensive reasoning: plan review, architecture calls, second opinions)
-> - Yes (recommended) -> leave the advisor enabled (default, no flag)
+Ask the user one feature question, interactive sessions only:
+> "Would you like an advisor agent for expensive reasoning: plan review, architecture
+> calls, second opinions, breaking deadlocks?"
+> - Yes (recommended) -> ask which advisor is the default, below
 > - No -> append `--no-advisor`
 
-> "Provide Fable reasoning to Opus?" (an Operating Manual injected automatically into
-> Opus main sessions, teaching reasoning discipline)
-> - Yes (recommended) -> leave model instructions enabled (default, no flag)
-> - No -> append `--no-opus-instructions`
+If yes, ask which advisor is the default, exactly two choices:
+> "Which advisor should be the default?"
+> - **Faux Fable** (recommended): Opus 4.8 carrying the frontier reasoning
+>   instructions. Much cheaper, available on any plan, reasons in the same
+>   disciplined way. -> append `--advisor faux`
+> - **Fable 5**: the frontier model itself. The strongest reasoning available,
+>   billed through usage credits, so summon it for a few rounds and close it. ->
+>   append `--advisor real`
 
-If the advisor is wanted, ask which model runs it, exactly two choices:
-> "Which model should run the advisor?"
-> - Opus 4.8: the advisor runs the role using the Fable reasoning instructions ->
->   append `--advisor-model opus`
-> - Fable 5: the advisor is Fable itself (default) -> append `--advisor-model fable`,
->   or leave the flag off (fable is the shipped default either way)
+Non-interactive sessions (no tty) skip the question entirely: the install ships with the
+shipped default, advisor enabled with no `--advisor` flag (the `plastic-agent-advisor`
+skill's own routing falls back to `plastic-faux-advisor` at consult time).
 
-Non-interactive sessions (no tty) skip all three questions: the install ships with the
-shipped defaults (advisor enabled, model instructions enabled, advisor model fable).
-
-Update flow: if `advisor.enabled`, `model_instructions.opus`, or `advisor.model` are
-already set in `~/.plastic/config.yml`, do not re-ask; the existing value is respected,
-the same ask-once-when-unset rule the statusline choice below already follows. Any of
-the three flags can also be passed again on `install --reinstall` to change a prior
-answer.
+Update flow: if `advisor.enabled` or `advisor.claude.default` are already set in
+`~/.plastic/config.yml`, do not re-ask; the existing value is respected, the same
+ask-once-when-unset rule the statusline choice below already follows. Either flag can
+also be passed again on `install --reinstall` to change a prior answer.
 
 **Statusline**
 
