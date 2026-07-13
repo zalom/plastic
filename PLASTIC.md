@@ -163,6 +163,16 @@ orchestrates them:
 Final-gate code review stays an ad-hoc subagent the enforcer dispatches at the final gate, not
 a standing role.
 
+**Consultation agents (intent 185).** `fable-advisor-s/m/l` are not stage roles: they are never
+in the table above and never dispatched by the auto pipeline. The user or the main session
+invokes one directly, per the shipped Advisor Protocol (`manuals/advisor-protocol.md`), at
+effort low/medium/xhigh for the S/M/L tiers. Claude-only: Codex has no fable alias, so
+`generate_codex_agents` skips them. Both manuals ship at `manuals/operating-manual.md` and
+`manuals/advisor-protocol.md`, read at runtime through `CLAUDE_PLUGIN_ROOT`. An Opus main
+session receives the Operating Manual automatically (session-start model detection, with a
+statusline-cache fallback for `/clear` starts); `context.opus_manual: false` disables both
+paths.
+
 **Auto-mode entry.** `plastic-auto` is the entry skill for autonomous delivery: it takes over How
 and Exec, spins up the team above, and works the dashboard's dispatchable queue. The dashboard's
 `--data` output splits intents into a `dispatchable_queue` (work an agent can pick up) and
@@ -171,8 +181,10 @@ and Exec, spins up the team above, and works the dashboard's dispatchable queue.
 **Model contract.** Every agent in `agents/*.md` pins an explicit Claude Code model alias in
 its own frontmatter: `opus`, `sonnet`, or `haiku`. Never `inherit`, never Fable by default,
 unless an explicit `agents.models.<name>` config override names Fable for that role, in which
-case the override is honored as written. Aliases track "latest per tier" so no Plastic release
-is required to advance a tier. The tier by role:
+case the override is honored as written. Consultation agents (fable-advisor-s/m/l) are the
+shipped exception: they pin fable in frontmatter by design, are never dispatched by the auto
+pipeline, and downgrade via agents.models overrides like any other agent. Aliases track "latest
+per tier" so no Plastic release is required to advance a tier. The tier by role:
 `plastic-enforcer`, `plastic-brainstorming`, `plastic-planner` are `opus`;
 `plastic-spec-specialist`, `plastic-executor`, `plastic-intent-curator`,
 `plastic-future-intent-researcher`, `plastic-intent-discovery` are `sonnet`.
@@ -205,7 +217,10 @@ Output is byte-identical when no worktree resolves.
 **Orchestrator advisory.** At auto-mode start, the orchestrator recommends once that the user
 run the main session on the best available thinking model (Fable, Opus, or whatever supersedes
 them). This is advisory only: it changes no behavior and blocks nothing if ignored, and it
-concerns the human's main session, never a dispatched subagent.
+concerns the human's main session, never a dispatched subagent. Consultation agents
+(fable-advisor-s/m/l) are the shipped exception: they pin fable in frontmatter by design, are
+never dispatched by the auto pipeline, and downgrade via agents.models overrides like any other
+agent.
 
 **`plastic-intent-discovery`.** The What-stage agent. It fires at intent activation, after the
 delivery lock is armed and before Why begins, running under that lock as the owner session (it

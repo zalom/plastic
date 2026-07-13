@@ -154,6 +154,9 @@ plan a machine can build from exactly. Read
 - Personal stores by default.
 - Guided delivery with a human at every gate, or autonomous delivery when you
   ask for it.
+- An Opus main session auto-loads an Operating Manual for reasoning discipline, detected
+  from the session's model with no setup required. Three fable-advisor-s/m/l agents ship
+  alongside it for tiered expert consultations, at effort low, medium, and xhigh.
 
 Plastic needs Ruby (already on macOS and Linux) and Node.js 18 or later. Bun
 users can run `bunx` in place of `npx`; Bun is never required.

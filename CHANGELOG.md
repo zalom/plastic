@@ -5,6 +5,12 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+### Added
+- Ship `manuals/operating-manual.md` and `manuals/advisor-protocol.md` in the npm package, read at runtime through `CLAUDE_PLUGIN_ROOT`.
+- Three fable-advisor-s/m/l consultation agents, pinned to `model: fable` at effort low/medium/xhigh, for tiered expert consultations per the shipped Advisor Protocol.
+- Model-conditional Opus operating manual injection: primary via the SessionStart hook's stdin model field, with a statusline-cache fallback for `/clear` starts, gated by a `context.opus_manual` kill-switch (enabled by default).
+- `generate_codex_agents` skips agents whose authored frontmatter model is `fable`, since Codex has no fable alias.
+
 ## Released
 - `1.2.0` - shipped 2026-07-13; collected 33a (Codex adapter core: plastic-install --codex lays the adapted skills into ~/.agents/skills/ and injects a marked, hash-stamped Plastic section into ~/.codex/AGENTS.md, with surgical uninstall and a doctor check), 102 (the lifecycle gates ported to Codex: hooks.json registration derived from the hook registry, an apply_patch V4A envelope parser giving true pre-write vetoes, and a Ruby dispatcher driving the four existing gate and savepoint cores unchanged), and 102a (per-agent TOML generation in ~/.codex/agents/ mapping reasoning tiers to model_reasoning_effort with shape-based model overrides, fixing the dead agents copy); community-verified by 182 (the PreToolUse Bash-only claim resolved as version drift fixed in Codex 0.123.0 per PR 18391, the V4A grammar confirmed against the official apply-patch crate closing 102 residual, Tier A standing; hardening seed 184 parked); suite green at 1338 runs.
 - `1.1.5` - shipped 2026-07-12; collected 179 (the unit of work is an intent, never a ticket - owner ruling recorded as one plain sentence in PLASTIC.md's What is an Intent section, and the last unit-of-work "ticket" wordings swept from the README and the roadmap and roadmap-continuing skills plus the matching eval prompt; the humanizer's support-ticket voice metaphor was judged a different sense and left; suite green at 1251 runs).

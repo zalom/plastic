@@ -648,11 +648,14 @@ Every subagent in `agents/*.md` pins an explicit Claude Code model alias (`opus`
 `plastic-brainstorming`, and `plastic-planner` are `opus`; `plastic-spec-specialist`,
 `plastic-executor`, `plastic-intent-curator`, `plastic-future-intent-researcher`, and
 `plastic-intent-discovery` are `sonnet`. None is ever `inherit` and none is ever
-Fable by default. Fable is named in two places, and only two: the auto-mode advisory
-notice below (about the human's main session, never a dispatched subagent), and an
+Fable by default. Fable is named in three places, and only three: the auto-mode advisory
+notice below (about the human's main session, never a dispatched subagent), an
 explicit `agents.models.<name>` config override, which is honored as written for a
 dispatched subagent when one is configured (e.g. `plastic-brainstorming: fable`,
-mihradesign intent 24, a sanctioned, permanent override, not drift).
+mihradesign intent 24, a sanctioned, permanent override, not drift), and the shipped
+consultation agents. Consultation agents (fable-advisor-s/m/l) are the shipped exception:
+they pin fable in frontmatter by design, are never dispatched by the auto pipeline, and
+downgrade via agents.models overrides like any other agent.
 
 - **Single source of truth for the tier table**: `scripts/lib/agent_models.rb` holds
   `AgentModels::TIER_DEFAULTS`, a pure Ruby hash mirroring the shipped frontmatter
@@ -709,7 +712,9 @@ mihradesign intent 24, a sanctioned, permanent override, not drift).
   nothing if ignored; it concerns only the human's main session, since dispatched
   subagents keep their pinned tier and never resolve to Fable, unless an explicit
   `agents.models.<name>` config override names Fable for that role, in which case the
-  override is honored as written.
+  override is honored as written. Consultation agents (fable-advisor-s/m/l) are the
+  shipped exception: they pin fable in frontmatter by design, are never dispatched by
+  the auto pipeline, and downgrade via agents.models overrides like any other agent.
 - **What-stage discovery agent**: `plastic-intent-discovery` (paired with the
   `skills/intent-discovering/SKILL.md` workflow) closes the What-stage gap in the
   one-agent-per-stage table. It fires inside `plastic-intent-starting`, right after
