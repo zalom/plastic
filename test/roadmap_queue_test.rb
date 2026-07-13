@@ -357,6 +357,70 @@ class RoadmapQueueTest < Minitest::Test
     assert_equal ["901"], result["dispatchable_queue"].map { |e| e["id"] }
   end
 
+  # --- Batches heading (canonical, intent 196) ----------------------------------------
+
+  def test_batches_heading_dispatchable_lists_frontier_queued_entries_in_file_order
+    write_roadmap("demo", <<~MD)
+      # Roadmap: Demo
+      ## Batches
+      ### Batch 1
+      - [x] 201 Alpha — delivered
+
+      ### Batch 2
+      - [ ] 203 Gamma — queued
+      - [ ] 204 Delta — queued
+    MD
+
+    result = reader
+    assert_equal "dispatchable", result["state"]
+    assert_equal "Batch 2", result["frontier_wave"]
+    assert_equal ["203", "204"], result["dispatchable_queue"].map { |e| e["id"] }
+  end
+
+  def test_batches_heading_exhausted_when_every_entry_is_settled
+    write_roadmap("done", <<~MD)
+      # Roadmap: Done
+      ## Batches
+      ### Batch 1
+      - [x] 501 Alpha — delivered
+      - [x] 502 Beta — abandoned
+    MD
+
+    result = reader
+    assert_equal "exhausted", result["state"]
+    assert_empty result["dispatchable_queue"]
+  end
+
+  # --- heading-less roadmap fails loudly (intent 196) ----------------------------------
+
+  def test_missing_grouping_heading_raises_naming_the_path
+    path = write_roadmap("broken", <<~MD)
+      # Roadmap: Broken
+      ## Goal
+      No grouping heading below.
+    MD
+
+    err = assert_raises(RoadmapSavepoint::MissingGroupingHeading) { reader }
+    assert_includes err.message, path
+    assert_includes err.message, "Batches"
+    assert_includes err.message, "Waves"
+  end
+
+  def test_cli_missing_grouping_heading_exits_3_with_stderr_message
+    path = write_roadmap("broken", <<~MD)
+      # Roadmap: Broken
+      ## Goal
+      No grouping heading below.
+    MD
+
+    _out, err, status = run_cli(["--roadmaps-dir", @roadmaps])
+    refute status.success?
+    assert_equal 3, status.exitstatus
+    assert_match(/Batches/, err)
+    assert_match(/Waves/, err)
+    assert_match(/#{Regexp.escape(File.basename(path))}/, err)
+  end
+
   # --- CLI smoke ------------------------------------------------------------------------
 
   def test_cli_reports_state_and_dispatchable_queue_as_json

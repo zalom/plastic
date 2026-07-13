@@ -21,12 +21,20 @@ require "fileutils"
 module RoadmapSavepoint
   module_function
 
-  EVENTS = %w[created dispatched parked merged release handoff closed added reordered wave].freeze
+  EVENTS = %w[created dispatched parked merged release handoff closed added reordered wave batch].freeze
+
+  # Raised by grouping_section_body when a roadmap has neither '## Batches' (canonical, owner
+  # ruling 145) nor '## Waves' (legacy) as its top-level grouping heading (intent 196): a
+  # malformed roadmap must fail loudly, never silently parse as zero entries.
+  class MissingGroupingHeading < StandardError; end
+
+  # Canonical first, legacy fallback second. A roadmap file has exactly one of these, never both.
+  GROUPING_HEADINGS = %w[Batches Waves].freeze
 
   # Keyword -> event classification for `rebuild`, checked top to bottom, first match wins.
   # Kept small and deterministic (action 1). Order matters: more specific/rarer words are
-  # checked before the broader "wave" fallback so an incidental "wave" mention in an otherwise
-  # classifiable line never shadows its real event.
+  # checked before the broader "wave"/"batch" fallbacks so an incidental "wave" or "batch"
+  # mention in an otherwise classifiable line never shadows its real event.
   KEYWORD_TABLE = [
     [/\bclosed\b/i, "closed"],
     [/\bhanded off\b|\bhandoff\b/i, "handoff"],
@@ -38,6 +46,7 @@ module RoadmapSavepoint
     [/\badded\b|\badds\b/i, "added"],
     [/\bcreated\b/i, "created"],
     [/\bwave\b/i, "wave"],
+    [/\bbatch(?:es)?\b/i, "batch"],
   ].freeze
 
   # --- append -----------------------------------------------------------------
@@ -88,15 +97,16 @@ module RoadmapSavepoint
   # --- rebuild ------------------------------------------------------------------
 
   # Reconstruct the paired ledger deterministically from the roadmap file's `## Log` (never the
-  # roadmap `.md`, which is read-only here), cross-checked against `## Waves` and the tier's
-  # INDEX so every `delivered` wave entry has a `merged` line. Every timestamp comes from an
-  # on-disk source (the Log, or INDEX `## Completed`); an entry with no recoverable timestamp is
-  # not emitted (D4, never invented). Overwrites the ledger (the one operation allowed to rewrite
-  # it, matching `Bridge.rebuild_savepoint`). Returns the number of lines written.
+  # roadmap `.md`, which is read-only here), cross-checked against the roadmap's grouping
+  # section (`## Batches`, or legacy `## Waves`) and the tier's INDEX so every `delivered` wave
+  # entry has a `merged` line. Every timestamp comes from an on-disk source (the Log, or INDEX
+  # `## Completed`); an entry with no recoverable timestamp is not emitted (D4, never invented).
+  # Overwrites the ledger (the one operation allowed to rewrite it, matching
+  # `Bridge.rebuild_savepoint`). Returns the number of lines written.
   def rebuild(roadmap_path)
     text = File.read(roadmap_path)
     log_lines = classify_log(section_body(text, "Log"))
-    delivered_ids = delivered_wave_ids(section_body(text, "Waves"))
+    delivered_ids = delivered_wave_ids(grouping_section_body(text, path: roadmap_path))
     backfilled = backfill_merged_lines(log_lines, delivered_ids, roadmap_path)
 
     lines = dedup_pairs(log_lines + backfilled)
@@ -139,7 +149,8 @@ module RoadmapSavepoint
 
   WAVE_ENTRY = /\A-\s*\[([ xX])\]\s+(\S+)\s+.+—\s*(\S+)\s*\z/.freeze
 
-  # Intent ids of every `[x] ... — delivered` entry in the `## Waves` body.
+  # Intent ids of every `[x] ... — delivered` entry in the roadmap's grouping section body
+  # (`## Batches`, or legacy `## Waves`).
   def delivered_wave_ids(waves_body)
     waves_body.each_line.filter_map do |line|
       m = line.strip.match(WAVE_ENTRY)
@@ -197,6 +208,23 @@ module RoadmapSavepoint
     m ? m[1] : ""
   end
   private_class_method :section_body
+
+  # The one shared fix point for the Batches/Waves grammar (intent 196). '## Batches' is
+  # canonical (owner ruling 145); '## Waves' is the legacy heading the three pre-ruling roadmaps
+  # still use and must keep parsing forever (145 also forbids renaming those files). Public,
+  # because roadmap_queue.rb calls it instead of holding its own copy of the heading string: that
+  # file already depends one-directionally on this module (require_relative "roadmap_savepoint",
+  # already calling `ledger_path_for`), so this is the smaller diff than a new shared module.
+  # Raises MissingGroupingHeading, naming the offending path, when neither heading is present.
+  def grouping_section_body(text, path: nil)
+    GROUPING_HEADINGS.each do |heading|
+      m = text.match(/^##\s+#{Regexp.escape(heading)}\s*$(.*?)(?=^##\s|\z)/m)
+      return m[1] if m
+    end
+    raise MissingGroupingHeading,
+          "#{path || '(unknown roadmap file)'}: found neither '## Batches' (canonical) nor " \
+          "'## Waves' (legacy) grouping heading"
+  end
 
   # Stable dedup on the `(event, detail)` pair, keeping the first occurrence in the given
   # (already chronological-then-backfill-appended) order.

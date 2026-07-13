@@ -195,13 +195,14 @@ owns two operations. `append(roadmap_path, event, detail, now:)` writes one line
 `roadmaps/<slug>.savepoint.md` (created lazily on first use, moved into `roadmaps/archived/`
 alongside its roadmap on close), validated against a controlled vocabulary (`created`,
 `dispatched`, `parked`, `merged`, `release`, `handoff`, `closed`, plus optional `added`,
-`reordered`, `wave`) and keyed for idempotency on the `(event, detail)` pair rather than the
-event word alone, since two `dispatched` events with different details are distinct.
+`reordered`, `wave`, `batch`) and keyed for idempotency on the `(event, detail)` pair rather than
+the event word alone, since two `dispatched` events with different details are distinct.
 `rebuild(roadmap_path)` reconstructs the ledger deterministically from the roadmap's `## Log`:
 each `- YYYY-MM-DD HH:MM UTC`-prefixed line opens one event (a continuation line with no date
 prefix never matches, so it is inherently ignored for classification), classified by a small
 ordered keyword table and converted to iso8601 with `:00Z` seconds, then cross-checked against
-`## Waves` and the tier's INDEX `## Completed` section so every `delivered` wave entry with no
+the roadmap's grouping section (`## Batches`, or legacy `## Waves`) and the tier's INDEX
+`## Completed` section so every `delivered` batch entry with no
 matching `merged` line in the Log gets one backfilled from INDEX, timestamped only from an
 on-disk source and never invented (an entry with no recoverable source anywhere is silently
 dropped, not fabricated). The `plastic-roadmap` skill's verbs call `append` at the same
@@ -216,9 +217,9 @@ config seam; a thin `scripts/roadmap-next` CLI wraps it, both registered in
 `plastic-roadmap-continuing` share. It does two things: liveness-ranks the tier's `roadmaps/*.md`
 (a `delivering` or `blocked` entry wins, else the newest ledger or `## Log` timestamp, read
 through `RoadmapSavepoint.ledger_path_for`), and within the winning roadmap selects the frontier
-batch. The frontier wave is the first wave, top to bottom, holding a `queued` or `delivering`
-entry; that wave's `queued` entries in file order are dispatchable (the head is next), a
-`delivering` entry marks the wave in-flight and gates the next wave, a `blocked` entry is surfaced
+batch. The frontier batch is the first batch, top to bottom, holding a `queued` or `delivering`
+entry; that batch's `queued` entries in file order are dispatchable (the head is next), a
+`delivering` entry marks the batch in-flight and gates the next batch, a `blocked` entry is surfaced
 but does not gate, and `delivered`/`abandoned` entries are settled. Every frontier token is
 reconciled against INDEX.md before classification and INDEX wins on any mismatch, so an intent
 INDEX already shows Completed or Abandoned can never be dispatched. The CLI emits JSON with a

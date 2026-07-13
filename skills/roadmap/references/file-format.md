@@ -21,15 +21,19 @@ it in the same Close/archive step.
    roadmap delivers and which tier (project or global) it lives in.
 2. **`## Goal`** — a checkable prose condition: one or a few sentences a human or coordinator reads
    to decide the roadmap is done. Not an executable checker, not a list of tasks.
-3. **`## Waves`** — ordered waves (`### Wave 1`, `### Wave 2`, ...). Entries inside a wave are
-   parallel-safe (can be dispatched together); waves run top to bottom, sequentially (wave 2 does
-   not start until wave 1's entries are no longer `queued`/`delivering`).
+3. **`## Batches`** — ordered batches (`### Batch 1`, `### Batch 2`, ...). Entries inside a batch
+   are parallel-safe (can be dispatched together); batches run top to bottom, sequentially (batch 2
+   does not start until batch 1's entries are no longer `queued`/`delivering`). A roadmap written
+   before owner ruling 145 may instead use `## Waves` / `### Wave N`; both headings are accepted
+   when reading, but every new roadmap is scaffolded with `## Batches`, and an existing roadmap
+   file's heading is never renamed to migrate it.
 4. **`## Log`** — append-only, dated, one line per event. Newest entry at the bottom. Never edit or
    remove an existing log line.
 
 ## Entry line shape
 
-One line per intent, inside its wave, as a Markdown checkbox:
+One line per intent, inside its batch (or wave, on a roadmap still using the legacy heading), as a
+Markdown checkbox:
 
 ```
 - [x] <intent-id> <title> — delivered
@@ -80,8 +84,8 @@ Line shape, one event per line, append-only, newest at the bottom:
 
 Two-space fields, mirroring the intent-dir cycle-step ledger (`savepoint.md`). The controlled event
 vocabulary: `created`, `dispatched`, `parked`, `merged`, `release`, `handoff`, `closed`, and
-optionally `added`, `reordered`, `wave`. The `(event, detail)` pair is the idempotency key, so
-re-appending the same pair is a no-op.
+optionally `added`, `reordered`, `wave`, `batch`. The `(event, detail)` pair is the idempotency key,
+so re-appending the same pair is a no-op.
 
 `## Log` and the ledger record the same events in two voices: the Log is the dated, one-sentence,
 EM-to-CTO-plain-language record a human reads cold; the ledger is the terse, machine-timestamped,
@@ -102,16 +106,16 @@ Delivery-side collection of intents that close out the pre-1.0 hardening pass, p
 ## Goal
 All intents below are delivered, the suite is green, and a 1.0.0 release is cut.
 
-## Waves
-Entries in a wave are parallel-safe; waves run top to bottom. The checkbox tracks delivered/not;
+## Batches
+Entries in a batch are parallel-safe; batches run top to bottom. The checkbox tracks delivered/not;
 the token after the em-dash carries the precise mirrored status (queued | delivering | delivered |
 abandoned | blocked); INDEX wins on any conflict.
 
-### Wave 1
+### Batch 1
 - [x] 121 Fix bash gate redirect parsing — delivered
 - [ ] 130 Proportional cycle tiers — delivering
 
-### Wave 2
+### Batch 2
 - [x] 124 Roadmap feature — delivered
 
 ## Log

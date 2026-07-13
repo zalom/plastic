@@ -42,9 +42,9 @@ next to your `INDEX.md`) with four parts:
 - A short title and one-line description of what the roadmap is for.
 - A **Goal**: a plain-language paragraph describing what "done" looks like for
   the whole batch.
-- **Waves**: an ordered list of groups of intents. Intents in the same wave
-  can run in parallel; waves run one after another. Each entry mirrors the
-  intent's real status, and the index is always the final word if the two
+- **Batches**: an ordered list of groups of intents. Intents in the same
+  batch can run in parallel; batches run one after another. Each entry mirrors
+  the intent's real status, and the index is always the final word if the two
   ever disagree.
 - A **Log**: a running, dated diary of what happened, written so a person
   outside the work can follow along.
@@ -76,10 +76,10 @@ reported that the condition holds. `/goal` never reads files on its own, so
 the condition has to name a check Claude's own output can prove.
 
 The tutorial's projects-and-roadmaps track walks `/goal` in practice: you hand
-it a roadmap's `## Goal` and current wave as the condition, and it drives
-through that wave and stops on its own once the condition is met. Both
+it a roadmap's `## Goal` and current batch as the condition, and it drives
+through that batch and stops on its own once the condition is met. Both
 commands ship with Claude Code itself; Plastic supplies the roadmap and its
-waves, the harness supplies the command that drives through them. On a
+batches, the harness supplies the command that drives through them. On a
 harness without these commands, the same roadmap-driven delivery still
 works: just tell the agent to deliver it in auto mode instead.
 

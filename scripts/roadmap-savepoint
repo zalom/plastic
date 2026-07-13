@@ -13,6 +13,9 @@
 #   roadmap-savepoint rebuild --roadmap <path>
 #
 # Exits non-zero with a usage line on stderr for an unknown verb or a missing required flag.
+# Exits 3 on rebuild when a roadmap has neither '## Batches' (canonical) nor '## Waves' (legacy)
+# as its grouping heading (intent 196): a malformed roadmap fails loudly, never silently
+# rebuilds an empty ledger.
 
 require_relative "lib/roadmap_savepoint"
 
@@ -53,7 +56,12 @@ when "rebuild"
     usage
     exit 2
   end
-  count = RoadmapSavepoint.rebuild(roadmap)
+  begin
+    count = RoadmapSavepoint.rebuild(roadmap)
+  rescue RoadmapSavepoint::MissingGroupingHeading => e
+    warn "rebuild: #{e.message}"
+    exit 3
+  end
   puts "rebuilt #{count} line#{count == 1 ? '' : 's'}"
   exit 0
 

@@ -67,16 +67,18 @@ root, `~/.plastic/projects/{slug}/roadmaps/`, beside `project.yml`; for the glob
 in-flight) roadmaps: once a roadmap's goal is reached, it moves to `roadmaps/archived/{slug}.md`,
 a sibling subdirectory scaffolded once with a `.gitkeep`.
 
-A roadmap file has four sections, in order: a title/meta header, `## Goal`, `## Waves`, and an
+A roadmap file has four sections, in order: a title/meta header, `## Goal`, `## Batches`, and an
 append-only dated `## Log`. `## Goal` is a checkable prose condition read by a human or agent, not
-an executable checker. `## Waves` holds ordered waves; entries inside a wave are parallel-safe,
-waves run sequentially, top to bottom.
+an executable checker. `## Batches` holds ordered batches; entries inside a batch are
+parallel-safe, batches run sequentially, top to bottom. A roadmap written before owner ruling 145
+may instead use the legacy `## Waves` heading; the tooling accepts both, but never renames an
+existing roadmap file to migrate it.
 
-Each wave entry carries a status token (`queued`/`delivering`/`delivered`/`abandoned`/`blocked`)
+Each batch entry carries a status token (`queued`/`delivering`/`delivered`/`abandoned`/`blocked`)
 that mirrors that intent's status in `INDEX.md`. `INDEX.md` is the single writer of intent status;
 on any conflict INDEX wins and the roadmap entry is corrected to match.
 
-**Human-comprehension surface.** A roadmap is also written to be read cold. Wave entries render as
+**Human-comprehension surface.** A roadmap is also written to be read cold. Batch entries render as
 checkboxes (checked once delivered, unchecked otherwise) next to the status token, and each `## Log`
 line is one plain-language sentence, starting `YYYY-MM-DD HH:MM UTC`, written the way an
 engineering manager would brief a non-expert executive: what shipped and why it matters, no jargon
@@ -86,7 +88,7 @@ opening the file with no other context can tell what shipped, what is running no
 next in under a minute.
 
 **Relationship to loop engineering (intent 69).** A roadmap is the planning half of the work; the
-loop is its runtime. Waves lay out the parallelism plan: what can run together, and in what order.
+loop is its runtime. Batches lay out the parallelism plan: what can run together, and in what order.
 Loop engineering (intent 69, not yet delivered) is expected to consume that plan and supply the
 running parts, the heartbeat, how many dispatches run at once, checking the goal, and resuming
 after a stop. This section only states the relationship and points to intent 69 as the future

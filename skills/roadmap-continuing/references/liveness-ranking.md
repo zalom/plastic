@@ -19,8 +19,9 @@ tier's live `roadmaps/*.md` files (excluding `roadmaps/archived/`), by `RoadmapQ
 
 1. **Enumerate.** List every `roadmaps/*.md` at the tier (project or global), skipping
    `roadmaps/archived/`.
-2. **Delivering/blocked wins outright.** If any candidate roadmap has at least one `## Waves`
-   entry whose mirrored status token is `delivering` or `blocked`, it is in flight right now.
+2. **Delivering/blocked wins outright.** If any candidate roadmap has at least one grouping-section
+   entry (`## Batches`, or legacy `## Waves`) whose mirrored status token is `delivering` or
+   `blocked`, it is in flight right now.
    That candidate wins the ranking immediately; skip the rest of the ranking for it.
 3. **Otherwise, newest `## Log` entry wins.** Among the remaining candidates (none have a
    `delivering`/`blocked` entry), read each file's last `## Log` line (append-only, newest at
@@ -42,8 +43,8 @@ tier's live `roadmaps/*.md` files (excluding `roadmaps/archived/`), by `RoadmapQ
 
 Before this skill existed, nothing resumed a mid-flight roadmap automatically. The `171`
 (consistency-dividend) roadmap handoff had to be resumed by hand: a free-prose "SESSION
-HANDOFF" note written into `171`'s own `## Insights`, because nothing read `## Waves` +
-`## Log` and reconstructed where the batch stood. This ranking, now a deterministic reader
+HANDOFF" note written into `171`'s own `## Insights`, because nothing read the grouping section
+(`## Batches`/legacy `## Waves`) + `## Log` and reconstructed where the batch stood. This ranking, now a deterministic reader
 rather than a by-eye judgment, is the mechanism that replaces that hand-carried note.
 
 ## Grammar pointer (do not duplicate)
@@ -52,5 +53,5 @@ The roadmap file's four sections, entry line shape, and status vocabulary
 (`queued|delivering|delivered|abandoned|blocked`) are owned by `plastic-roadmap`:
 `skills/roadmap/references/file-format.md` for the shape, and
 `skills/roadmap/references/operations.md#read--consume` for how a reader (human or
-coordinator) is meant to walk `## Waves` and `## Log`. This page assumes that grammar and adds
+coordinator) is meant to walk `## Batches` (or legacy `## Waves`) and `## Log`. This page assumes that grammar and adds
 only the liveness-ranking judgment on top of it.

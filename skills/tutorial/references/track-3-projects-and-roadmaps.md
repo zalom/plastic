@@ -56,16 +56,16 @@ in the global store.
 Type `/plastic-roadmap`.
 
 Teach the roadmap file shape exactly: a title and short meta header, a `## Goal` section in
-prose describing what "done" looks like for the whole batch, a `## Waves` section (an
-ordered list of groups of intents; intents inside one wave are safe to run in parallel,
-waves themselves run one after another), and an append-only, dated `## Log`. `INDEX.md`
+prose describing what "done" looks like for the whole batch, a `## Batches` section (an
+ordered list of groups of intents; intents inside one batch are safe to run in parallel,
+batches themselves run one after another), and an append-only, dated `## Log`. `INDEX.md`
 stays the single source of truth for each intent's status; the roadmap only mirrors it.
 
 Artifact: a new `roadmaps/<slug>.md` file, sitting next to the project's `INDEX.md`, listing
-the two or more intents from station 3 across one or more waves.
+the two or more intents from station 3 across one or more batches.
 
-Checkpoint: name which of the two intents from station 3 share a wave (so they run in
-parallel) and which one, if any, sits in a later wave (so it waits).
+Checkpoint: name which of the two intents from station 3 share a batch (so they run in
+parallel) and which one, if any, sits in a later batch (so it waits).
 
 ### 5. Drive delivery with /goal
 
@@ -74,18 +74,18 @@ and Claude keeps working, turn after turn, until a fast checker model confirms f
 Claude has actually reported that the condition holds; `/goal` never reads files on its own,
 so the condition has to name a check Claude's own output can prove.
 
-Turn the roadmap's `## Goal` and current `## Waves` into that condition, for example:
+Turn the roadmap's `## Goal` and current `## Batches` into that condition, for example:
 
-`/goal every intent in wave 1 of roadmaps/<slug>.md shows Completed in INDEX.md, and the test
+`/goal every intent in batch 1 of roadmaps/<slug>.md shows Completed in INDEX.md, and the test
 suite is green`
 
-Claude then works through the wave itself, one intent at a time, and stops on its own once the
+Claude then works through the batch itself, one intent at a time, and stops on its own once the
 checker agrees the condition holds. Run `/goal` with no argument at any point to see how long
 it has run and how many turns it has spent; run `/goal clear` to stop it before that.
 
 On a harness without `/goal`, just tell the agent to deliver the roadmap in auto mode instead.
 
-Checkpoint: point at the exact file (`roadmaps/<slug>.md`) whose `## Goal` and `## Waves`
+Checkpoint: point at the exact file (`roadmaps/<slug>.md`) whose `## Goal` and `## Batches`
 sections you turned into the condition above.
 
 ### 6. Merge discipline and releases
