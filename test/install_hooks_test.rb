@@ -402,34 +402,6 @@ class MergeClaudeHooksTest < Minitest::Test
            "UserPromptSubmit must register plastic-qmd-search: #{commands.inspect}"
   end
 
-  # Regression guard (intent 185 ACTION-5): merge_claude_hooks builds settings.json
-  # purely from HookRegistry.events, so a hook script can exist on disk (and even be
-  # wired into the plugin hooks/hooks.json) without ever reaching a flat install's
-  # settings.json unless it is also registered there. Proves both directions: a
-  # fresh install (merge into empty settings) and an update (merge again over an
-  # already-merged settings.json) both wire the model-instructions fallback hook.
-  def test_user_prompt_submit_includes_model_instructions_on_fresh_install
-    File.write(@settings_path, "{}")
-    @installer.merge_claude_hooks(@settings_path)
-    settings = JSON.parse(File.read(@settings_path))
-    commands = settings["hooks"]["UserPromptSubmit"].flat_map { |g| g["hooks"] }.map { |h| h["command"] }
-    assert commands.any? { |c| c.include?("plastic-model-instructions") },
-           "UserPromptSubmit must register plastic-model-instructions on fresh install: #{commands.inspect}"
-  end
-
-  def test_user_prompt_submit_includes_model_instructions_on_update
-    File.write(@settings_path, "{}")
-    @installer.merge_claude_hooks(@settings_path) # simulates the original install
-    @installer.merge_claude_hooks(@settings_path) # simulates a later update re-merge
-
-    settings = JSON.parse(File.read(@settings_path))
-    commands = settings["hooks"]["UserPromptSubmit"].flat_map { |g| g["hooks"] }.map { |h| h["command"] }
-    assert commands.any? { |c| c.include?("plastic-model-instructions") },
-           "UserPromptSubmit must still register plastic-model-instructions after an update re-merge: #{commands.inspect}"
-    assert_equal 1, commands.count { |c| c.include?("plastic-model-instructions") },
-           "update must not duplicate the model-instructions entry"
-  end
-
   def test_statusline_no_existing_line_installs_plastic_silently
     File.write(@settings_path, "{}")
     choice = @installer.statusline_choice(@settings_path)

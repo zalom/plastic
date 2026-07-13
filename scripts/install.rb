@@ -159,14 +159,13 @@ class Install < InstallerCore
         --statusline VALUE   keep or plastic. If an existing statusline is found, this
                              skips the interactive prompt. Interactive sessions ask by
                              default; non-interactive sessions default to keep.
-        --no-advisor         Skip installing plastic-advisor and omit the advisor
-                             pointer from injected model instructions (advisor.enabled: false)
-        --no-opus-instructions
-                             Skip injecting the Operating Manual into Opus sessions
-                             (model_instructions.opus: false)
-        --advisor-model VALUE
-                             Which model runs plastic-advisor: opus or fable (advisor.model,
-                             shipped default fable)
+        --no-advisor         Skip installing both advisor agents and the agent-advisor
+                             skill (advisor.enabled: false)
+        --advisor VALUE      Which advisor agent is the default: an agent name, or the
+                             shorthand "real" (plastic-advisor) or "faux"
+                             (plastic-faux-advisor). Writes advisor.claude.default. Left
+                             unset, the agent-advisor skill falls back to
+                             plastic-faux-advisor at consult time.
         -h, --help           Show this help
 
       Notes:

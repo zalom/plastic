@@ -116,29 +116,6 @@ class InstallerCoreTest < Minitest::Test
            "distribute(:update) must also write the global manifest"
   end
 
-  # Regression guard (intent 185 ACTION-5): the two shipped model instruction
-  # documents must land at ~/.plastic/model_instructions on both a fresh install
-  # and an update, so ModelInstructions' fallback_dir default resolves them even
-  # under a flat, non-plugin install with an empty CLAUDE_PLUGIN_ROOT. The generic
-  # manifest sweep above only checks entries that already exist on disk (a silent
-  # skip, not a failure, if the copy never happened), so this asserts existence
-  # explicitly for both modes.
-  def test_distribute_syncs_model_instructions_on_install
-    @core.distribute(:install)
-    assert File.exist?(File.join(@home, "model_instructions", "operating-manual.md")),
-           "distribute(:install) must sync model_instructions/operating-manual.md to plastic_home"
-    assert File.exist?(File.join(@home, "model_instructions", "advisor-protocol.md")),
-           "distribute(:install) must sync model_instructions/advisor-protocol.md to plastic_home"
-  end
-
-  def test_distribute_syncs_model_instructions_on_update
-    @core.distribute(:update)
-    assert File.exist?(File.join(@home, "model_instructions", "operating-manual.md")),
-           "distribute(:update) must sync model_instructions/operating-manual.md to plastic_home"
-    assert File.exist?(File.join(@home, "model_instructions", "advisor-protocol.md")),
-           "distribute(:update) must sync model_instructions/advisor-protocol.md to plastic_home"
-  end
-
   # Regression guard (intent 78): every scripts/lib/*.rb in the package must be listed in
   # the core_files manifest. Without this, a new lib file (e.g. power_tools.rb from 66b) can
   # be require_relative'd but never installed, raising a LoadError in the live hook.

@@ -9,23 +9,10 @@ require "yaml"
 require_relative "lib/bridge"
 require_relative "lib/boot_banner"
 require_relative "lib/qmd_sync"
-require_relative "lib/model_instructions"
 require_relative "doctor"
 
 index_path, store_root, mode, plugin_root = ARGV
 exit 0 unless index_path && store_root && mode
-
-# --- Hook stdin (intent 185) ---
-# SessionStart payload carries an optional `model` field (omitted after /clear
-# and conversation recovery, which the statusline-cache fallback covers). Never
-# block on a missing or malformed payload.
-raw_stdin = $stdin.tty? ? "" : ($stdin.read rescue "")
-hook_payload = begin
-  JSON.parse(raw_stdin)
-rescue StandardError
-  {}
-end
-hook_payload = {} unless hook_payload.is_a?(Hash)
 
 # --- Parse INDEX.md ---
 
@@ -308,33 +295,6 @@ end
 if update_notice
   parts.unshift("! #{update_notice}\n")
 end
-
-# --- Model instructions injection (intent 185), fail-open ---
-# Primary path: keyed on the model field this SessionStart payload actually
-# carried. Appended before the empty-parts check below so injection text alone
-# is enough to keep this hook from exiting silently.
-model_instructions_session_id = hook_payload["session_id"] || ENV["CLAUDE_CODE_SESSION_ID"] || Process.pid.to_s
-model_instructions_reader = -> { `"#{read_config}" model_instructions.opus`.strip }
-advisor_reader = -> { `"#{read_config}" advisor.enabled`.strip }
-# store_root is always ~/.plastic (see the Usage comment at the top): the
-# model_instructions fallback lives at store_root/model_instructions regardless
-# of "mode" or current project, so this stays correct even when plugin_root is
-# empty (a flat, non-plugin install).
-model_instructions_fallback_dir = File.join(store_root, "model_instructions")
-model_instructions_text = begin
-  ModelInstructions.injection(
-    model: hook_payload["model"],
-    session_id: model_instructions_session_id,
-    plugin_root: plugin_root,
-    state_dir: "/tmp",
-    model_instructions_reader: model_instructions_reader,
-    advisor_reader: advisor_reader,
-    fallback_dir: model_instructions_fallback_dir
-  )
-rescue StandardError
-  nil
-end
-parts << model_instructions_text if model_instructions_text
 
 # Emit nothing when there is genuinely nothing to surface (no conventions,
 # no deprecations, no update notice).

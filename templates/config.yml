@@ -12,25 +12,36 @@ agent:
 architect:
   style:
 
-# Per-agent model override (intent 116). Uncomment and set to a Claude Code
-# alias (opus, sonnet, haiku) to override the shipped tier for one agent. With
-# no entry, the shipped default applies and never resolves to Fable; naming
-# Fable here is an explicit, sanctioned override, honored as written.
+# Per-agent model override (intent 116), harness-scoped. Uncomment and set to
+# a Claude Code alias (opus, sonnet, haiku) to override the shipped tier for
+# one agent on one harness. The legacy flat form (agents.models.<name>: value,
+# no harness nesting) still works and is read as the claude harness; nested
+# wins over flat for the same agent. A model named under claude is never read
+# for codex, and vice versa, so a literal model id can never leak into the
+# wrong harness's config. With no entry, the shipped default applies and never
+# resolves to Fable; naming Fable here is an explicit, sanctioned override,
+# honored as written.
 # agents:
 #   models:
-#     plastic-executor: sonnet
-#     plastic-enforcer: opus
+#     claude:
+#       plastic-executor: sonnet
+#       plastic-enforcer: opus
+#     codex:
+#       plastic-executor: gpt-5.1-codex
 
-# Consultation agent and model instructions (intent 185). advisor.enabled and
-# model_instructions.opus default to enabled; missing or unreadable counts as
-# enabled (fail-open). Set at install time via --no-advisor /
-# --no-opus-instructions / --advisor-model, or uncomment here directly.
+# The advisor (intent 185): two consultation agents, plastic-advisor (the real
+# advisor, expensive, model fable by default) and plastic-faux-advisor (the
+# cheaper imitation, model opus by default, carrying the same reasoning
+# discipline inline). advisor.enabled defaults to enabled; missing or
+# unreadable counts as enabled (fail-open). The claude.default/primary/
+# secondary values are AGENT NAMES, never model names, so a slot can point at
+# a locally registered agent instead. Set at install time via --no-advisor /
+# --advisor, or uncomment here directly. Each agent's actual model is a plain
+# agents.models.claude.<name> override, same mechanism as any other agent.
 # advisor:
-#   enabled: false   # skip installing plastic-advisor; omit its pointer
-#                     # from injected model instructions
-#   model: opus       # which model runs plastic-advisor: opus or fable.
-#                      # Resolved ahead of any agents.models.plastic-advisor
-#                      # override, through the same install-time frontmatter
-#                      # rewrite every agent override uses. Shipped default: fable.
-# model_instructions:
-#   opus: false   # skip injecting the Operating Manual into Opus sessions
+#   enabled: false               # skip installing both advisor agents and the
+#                                 # agent-advisor skill entirely
+#   claude:
+#     default: plastic-faux-advisor    # which agent the advisor skill routes to
+#     primary: plastic-advisor         # the real advisor slot
+#     secondary: plastic-faux-advisor  # the cheaper advisor slot

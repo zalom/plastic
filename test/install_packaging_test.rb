@@ -263,11 +263,11 @@ class InstallPackagingTest < Minitest::Test
     end
   end
 
-  # Regression guard (intent 185 ACTION-7): the Codex skip is unconditional and
-  # name-based (AgentModels::CONSULTATION_AGENTS), never a peek at the authored
-  # or overridden model value, so an advisor.model override that flips the
-  # advisor to "opus" must NOT accidentally un-skip it. There is no Codex
-  # advisor path, full stop.
+  # Regression guard: the Codex skip is unconditional and name-based
+  # (AgentModels::CONSULTATION_AGENTS), never a peek at the authored or
+  # overridden model value, so a models: override that flips an advisor's
+  # model must NOT accidentally un-skip it. There is no Codex advisor path,
+  # full stop.
   def test_generate_codex_agents_skip_survives_a_model_override
     installer = InstallerCore.new(package_root: REPO, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
     agents_root = File.join(@dir, "codex-agents-override")
@@ -288,20 +288,32 @@ class InstallPackagingTest < Minitest::Test
       "agents/ must be in package.json `files` so role files ship to consumers"
   end
 
-  # --- The two model instruction documents ship in the npm package, read at
-  # runtime via CLAUDE_PLUGIN_ROOT (intent 185). No install-time copy step:
-  # these two guards fail loudly if the files are removed from the repo or
-  # model_instructions/ drops out of package.json `files`.
+  def test_skills_dir_is_packaged_for_distribution
+    pkg = JSON.parse(File.read(File.join(REPO, "package.json")))
+    assert_includes pkg["files"], "skills/",
+      "skills/ must be in package.json `files` so the agent-advisor skill and its references ship to consumers"
+  end
 
-  def test_model_instructions_exist_in_repo
-    %w[operating-manual.md advisor-protocol.md].each do |name|
-      assert File.file?(File.join(REPO, "model_instructions", name)), "model_instructions/#{name} must exist in the repo"
+  # --- The advisor agents and the shipped Advisor Protocol reference ship with
+  # no injection surface (intent 185 final design): the faux advisor inlines
+  # the Operating Manual in its own body, and the Advisor Protocol ships as a
+  # skill reference. These guards fail loudly if either moves or disappears.
+
+  def test_advisor_agent_files_exist_in_repo
+    %w[plastic-advisor.md plastic-faux-advisor.md].each do |name|
+      assert File.file?(File.join(REPO, "agents", name)), "agents/#{name} must exist in the repo"
     end
   end
 
-  def test_model_instructions_dir_is_packaged_for_distribution
-    pkg = JSON.parse(File.read(File.join(REPO, "package.json")))
-    assert_includes pkg["files"], "model_instructions/",
-      "model_instructions/ must be in package.json `files` so the documents ship to consumers"
+  def test_faux_advisor_inlines_the_operating_manual
+    body = File.read(File.join(REPO, "agents", "plastic-faux-advisor.md"))
+    assert_includes body, "# The Operating Manual",
+      "plastic-faux-advisor.md must inline the full Operating Manual in its own body"
+    assert_includes body, "The five-question self-test"
+  end
+
+  def test_advisor_protocol_reference_exists_in_repo
+    assert File.file?(File.join(REPO, "skills", "agent-advisor", "references", "advisor-protocol.md")),
+      "skills/agent-advisor/references/advisor-protocol.md must exist in the repo"
   end
 end

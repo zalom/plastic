@@ -263,10 +263,6 @@ class InstallerCore
       "scripts/read-config" => "scripts/read-config",
       "scripts/select-update-target" => "scripts/select-update-target",
       "scripts/hook-session-start" => "scripts/hook-session-start",
-      "scripts/hook-model-instructions" => "scripts/hook-model-instructions",
-      "scripts/lib/model_instructions.rb" => "scripts/lib/model_instructions.rb",
-      "model_instructions/operating-manual.md" => "model_instructions/operating-manual.md",
-      "model_instructions/advisor-protocol.md" => "model_instructions/advisor-protocol.md",
       "scripts/hook-continue" => "scripts/hook-continue",
       "scripts/hook-future-intent-check" => "scripts/hook-future-intent-check",
       "scripts/hook-gate-check" => "scripts/hook-gate-check",
@@ -469,9 +465,13 @@ class InstallerCore
       installed << dest
     end
 
-    # Copy skills as flat, hyphen-namespaced personal skills (plastic-<name>/)
+    # Copy skills as flat, hyphen-namespaced personal skills (plastic-<name>/).
+    # advisor.enabled: false skips the agent-advisor skill along with both
+    # advisor agents below, so a user who declined the advisor never sees a
+    # dead-end skill pointing at nothing installed.
     skills_source = File.join(package_root, "skills")
-    installed += install_skills_flat(skills_source, skills_root) if File.directory?(skills_source)
+    skill_exclude = advisor_enabled? ? [] : ["agent-advisor"]
+    installed += install_skills_flat(skills_source, skills_root, exclude: skill_exclude) if File.directory?(skills_source)
 
     # Copy agent role files into <dir>/agents (manifest-tracked, pruned on update)
     installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides, advisor_enabled: advisor_enabled?)
@@ -499,8 +499,12 @@ class InstallerCore
   def install_codex(config, force)
     installed = []
     skills_source = File.join(package_root, "skills")
-    installed += install_skills_flat(skills_source, File.join(config[:dir], "skills")) if File.directory?(skills_source)
-    installed += generate_codex_agents(File.join(config[:home_dir], "agents"), models: agent_model_overrides)
+    skill_exclude = advisor_enabled? ? [] : ["agent-advisor"]
+    installed += install_skills_flat(skills_source, File.join(config[:dir], "skills"), exclude: skill_exclude) if File.directory?(skills_source)
+    # Codex-scoped overrides only (agents.models.codex.*): a literal Claude
+    # model id set under agents.models.claude.* (or the legacy flat form,
+    # which resolves as claude) must never reach a Codex TOML.
+    installed += generate_codex_agents(File.join(config[:home_dir], "agents"), models: agent_model_overrides(harness: "codex"))
 
     # Instruction injection (L1): Plastic standing conventions into ~/.codex/AGENTS.md.
     # Partial-ownership file, so it is NOT manifest-tracked (stripped surgically on uninstall).
@@ -531,12 +535,13 @@ class InstallerCore
     FileUtils.mkdir_p(agents_root)
     sources.filter_map do |src|
       basename = File.basename(src, ".md")
-      # Codex advisor is out of scope for this release (intent 185 ACTION-7): the
+      # Codex advisor support is out of scope for this release (intent 185): the
       # owner has not evaluated the Codex reasoning-model ecosystem long enough to
-      # judge it. Skip every AgentModels::CONSULTATION_AGENTS file by name, a
-      # deliberate and mechanical scope cut tracked at intent 186 (Codex advisor
-      # evaluation), not a permanent exclusion and not conditioned on any
-      # frontmatter or override value.
+      # judge it. Skip every AgentModels::CONSULTATION_AGENTS file (both
+      # plastic-advisor and plastic-faux-advisor) by name, a deliberate and
+      # mechanical scope cut tracked at intent 186 (Codex advisor evaluation), not
+      # a permanent exclusion and not conditioned on any frontmatter or override
+      # value.
       next if AgentModels::CONSULTATION_AGENTS.include?(basename)
 
       dest = File.join(agents_root, "#{basename}.toml")
@@ -651,7 +656,8 @@ class InstallerCore
   def install_hermes(config, force)
     installed = []
     skills_source = File.join(package_root, "skills")
-    installed += install_skills_flat(skills_source, File.join(config[:dir], "skills")) if File.directory?(skills_source)
+    skill_exclude = advisor_enabled? ? [] : ["agent-advisor"]
+    installed += install_skills_flat(skills_source, File.join(config[:dir], "skills"), exclude: skill_exclude) if File.directory?(skills_source)
     installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides, advisor_enabled: advisor_enabled?)
 
     write_manifest(installed, File.join(config[:dir], "plastic-manifest.json"))
@@ -662,12 +668,14 @@ class InstallerCore
   # directory name -- the only personal-skill namespacing Claude Code supports).
   # Any top-level underscore-prefixed markdown fragment (e.g. `_active-intent-gate.md`,
   # `_decision-tables.md`) is a shared non-skill fragment and relocates to ~/.plastic/
-  # instead, so every skill can read it from one shared location.
-  def install_skills_flat(skills_source, skills_root)
+  # instead, so every skill can read it from one shared location. `exclude` skips
+  # named top-level skill directories entirely (intent 185: the agent-advisor skill
+  # when advisor.enabled is false).
+  def install_skills_flat(skills_source, skills_root, exclude: [])
     installed = []
     FileUtils.mkdir_p(skills_root)
 
-    Dir.children(skills_source).reject { |e| e.start_with?(".") }.each do |entry|
+    Dir.children(skills_source).reject { |e| e.start_with?(".") || exclude.include?(e) }.each do |entry|
       src = File.join(skills_source, entry)
       if File.directory?(src)
         installed += copy_dir_recursive(src, File.join(skills_root, "plastic-#{entry}"))
@@ -687,9 +695,10 @@ class InstallerCore
   # equivalents). Returns the installed destination paths so callers can append
   # them to `installed` before write_manifest (manifest + prune are then automatic).
   # No-op safe: returns [] when the package has no agents dir or it is empty.
-  # advisor_enabled: false (intent 185 ACTION-6, advisor.enabled config key) skips
-  # every AgentModels::CONSULTATION_AGENTS file entirely, so a user who declined
-  # "How to talk to Fable as an advisor" never gets plastic-advisor installed.
+  # advisor_enabled: false (advisor.enabled config key) skips every
+  # AgentModels::CONSULTATION_AGENTS file entirely (both plastic-advisor and
+  # plastic-faux-advisor), so a user who declined the advisor never gets either
+  # agent installed.
   def install_agents(agents_root, models: {}, advisor_enabled: true)
     sources = Dir.glob(File.join(package_root, "agents", "*.md"))
     return [] if sources.empty?
@@ -719,16 +728,18 @@ class InstallerCore
   end
 
   # Resolve per-agent model overrides for this install: project config (when a
-  # project dir is known) overlaid on global config. Defaults are NOT included,
-  # so unconfigured agents keep their shipped frontmatter.
+  # project dir is known) overlaid on global config, scoped to `harness`
+  # ("claude" or "codex"). Defaults are NOT included, so unconfigured agents
+  # keep their shipped frontmatter.
   #
-  # advisor.model (intent 185 ACTION-7) feeds the SAME map through the SAME
-  # install_agents frontmatter-rewrite path every other override already uses;
-  # it is not a second mechanism. Resolution for the plastic-advisor entry:
-  # advisor.model (project, then global) wins when set, else any
-  # agents.models.plastic-advisor override already in the map applies, else the
-  # shipped default (fable) passes through untouched.
-  def agent_model_overrides(project_dir = nil)
+  # Both advisor agents (plastic-advisor, plastic-faux-advisor) resolve through
+  # this SAME generic map, like any other agent: a config author sets
+  # agents.models.claude.plastic-advisor (or the legacy flat
+  # agents.models.plastic-advisor, read as claude) to point either agent at a
+  # different literal model. There is no separate advisor-specific model key;
+  # which agent the advisor SKILL routes to by default is a routing decision
+  # (advisor.claude.default), never a model-selection one.
+  def agent_model_overrides(project_dir = nil, harness: "claude")
     global_config = load_config_yaml(File.join(plastic_home, "config.yml"))
     project_config =
       if project_dir
@@ -736,17 +747,12 @@ class InstallerCore
       else
         {}
       end
-    map = AgentModels.override_map(project_config: project_config, global_config: global_config)
-
-    advisor_model = project_config.dig("advisor", "model") || global_config.dig("advisor", "model")
-    map["plastic-advisor"] = advisor_model if advisor_model && !advisor_model.to_s.empty?
-
-    map
+    AgentModels.override_map(project_config: project_config, global_config: global_config, harness: harness)
   end
 
-  # advisor.enabled (intent 185 ACTION-6): project overlays global, missing or
-  # malformed counts as enabled (fail-open), matching ModelInstructions.enabled?'s
-  # semantics for the runtime config_reader path.
+  # advisor.enabled: project overlays global, missing or malformed counts as
+  # enabled (fail-open). Harness-blind: false skips both advisor agents and the
+  # agent-advisor skill on every installed harness.
   def advisor_enabled?(project_dir = nil)
     global_config = load_config_yaml(File.join(plastic_home, "config.yml"))
     project_config = project_dir ? load_config_yaml(File.join(project_dir, ".plastic_store", "config.yml")) : {}
@@ -755,20 +761,23 @@ class InstallerCore
     value != false
   end
 
-  # Write advisor.enabled / model_instructions.opus / advisor.model into the
-  # global config.yml from install-time flags (intent 185 ACTION-6, ACTION-7).
-  # Absent flags change nothing: advisor.enabled and model_instructions.opus
-  # default to enabled when missing, and advisor.model defaults to the shipped
-  # frontmatter (fable) when missing, so there is nothing to write.
-  #   --no-advisor            -> advisor.enabled: false
-  #   --no-opus-instructions  -> model_instructions.opus: false
-  #   --advisor-model VALUE   -> advisor.model: VALUE (opus or fable)
+  # Agent-name shorthands for the --advisor flag: the two shipped choices,
+  # named for the role (real advisor vs. the cheaper imitation), never a model
+  # name.
+  ADVISOR_SHORTHANDS = { "real" => "plastic-advisor", "faux" => "plastic-faux-advisor" }.freeze
+
+  # Write advisor.enabled / advisor.claude.default into the global config.yml
+  # from install-time flags. Absent flags change nothing: advisor.enabled
+  # defaults to enabled when missing, and advisor.claude.default is left unset
+  # (the skill's own fallback chain applies) when missing.
+  #   --no-advisor      -> advisor.enabled: false
+  #   --advisor VALUE   -> advisor.claude.default: VALUE (an agent name, or the
+  #                        shorthand "real"/"faux")
   def apply_config_flags(argv)
     no_advisor = argv.include?("--no-advisor")
-    no_opus_instructions = argv.include?("--no-opus-instructions")
-    advisor_model_idx = argv.index("--advisor-model")
-    advisor_model = advisor_model_idx && argv[advisor_model_idx + 1]
-    return unless no_advisor || no_opus_instructions || advisor_model
+    advisor_idx = argv.index("--advisor")
+    advisor_value = advisor_idx && argv[advisor_idx + 1]
+    return unless no_advisor || advisor_value
 
     config_path = File.join(plastic_home, "config.yml")
     config = load_config_yaml(config_path)
@@ -777,13 +786,11 @@ class InstallerCore
       config["advisor"] ||= {}
       config["advisor"]["enabled"] = false
     end
-    if no_opus_instructions
-      config["model_instructions"] ||= {}
-      config["model_instructions"]["opus"] = false
-    end
-    if advisor_model
+    if advisor_value
+      agent_name = ADVISOR_SHORTHANDS[advisor_value] || advisor_value
       config["advisor"] ||= {}
-      config["advisor"]["model"] = advisor_model
+      config["advisor"]["claude"] ||= {}
+      config["advisor"]["claude"]["default"] = agent_name
     end
 
     FileUtils.mkdir_p(plastic_home)
