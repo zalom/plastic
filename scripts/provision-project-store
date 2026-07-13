@@ -12,10 +12,12 @@
 # nothing.
 #
 # Usage:
-#   provision-project-store <slug> [--home <path>]
+#   provision-project-store <slug> [--home <path>] [--package-root <path>]
 #
 # Exit codes: 0 (store provisioned), 1 (unregistered slug / error on stderr),
 # 2 (usage). --home <path> overrides the Plastic home (default: ~/.plastic).
+# --package-root <path> overrides where templates/ resolves from (default:
+# StoreProvisioning::PACKAGE_ROOT, the repo root); mainly for hermetic tests.
 
 require_relative "lib/store_provisioning"
 
@@ -27,22 +29,33 @@ def plastic_home(args)
   end
 end
 
-home = plastic_home(ARGV)
+def package_root(args)
+  if (i = args.index("--package-root")) && args[i + 1]
+    File.expand_path(args[i + 1])
+  else
+    StoreProvisioning::PACKAGE_ROOT
+  end
+end
 
-# First positional arg, skipping any flag and the value that follows --home.
+home = plastic_home(ARGV)
+root = package_root(ARGV)
+
+# First positional arg, skipping any flag and the value that follows --home
+# or --package-root.
 home_value_index = (i = ARGV.index("--home")) ? i + 1 : nil
+package_root_value_index = (i = ARGV.index("--package-root")) ? i + 1 : nil
 slug_index = ARGV.each_index.find do |idx|
   arg = ARGV[idx]
-  !arg.start_with?("--") && idx != home_value_index
+  !arg.start_with?("--") && idx != home_value_index && idx != package_root_value_index
 end
 slug = slug_index && ARGV[slug_index]
 
 if slug.nil?
-  warn "usage: provision-project-store <slug> [--home <path>]"
+  warn "usage: provision-project-store <slug> [--home <path>] [--package-root <path>]"
   exit 2
 end
 
-result = StoreProvisioning.provision(slug, plastic_home: home)
+result = StoreProvisioning.provision(slug, plastic_home: home, package_root: root)
 
 if result[:ok]
   puts "OK: #{result[:store_dir]}"

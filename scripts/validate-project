@@ -1,0 +1,53 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# validate-project - deterministic CLI over ProjectValidator (intent 190).
+#
+# Checks whether a registered project's spawn is structurally complete: the
+# project directory exists, project.yml exists and parses, a root AGENTS.md
+# exists, and the store/ and INDEX.md exist. plastic-project-creating runs
+# this as a self-check before announcing a spawn as done; any agent or human
+# can run it on one slug.
+#
+# Usage:
+#   validate-project <slug> [--home <path>]
+#
+# Exit codes: 0 (structurally complete), 1 (incomplete; report on stderr), 2 (usage).
+# --home <path> overrides the Plastic home (default: ~/.plastic).
+
+require_relative "lib/project_validator"
+
+def plastic_home(args)
+  if (i = args.index("--home")) && args[i + 1]
+    File.expand_path(args[i + 1])
+  else
+    File.expand_path(ENV["PLASTIC_HOME"] || "~/.plastic")
+  end
+end
+
+home = plastic_home(ARGV)
+
+home_value_index = (i = ARGV.index("--home")) ? i + 1 : nil
+slug_index = ARGV.each_index.find do |idx|
+  arg = ARGV[idx]
+  !arg.start_with?("--") && idx != home_value_index
+end
+slug = slug_index && ARGV[slug_index]
+
+if slug.nil?
+  warn "usage: validate-project <slug> [--home <path>]"
+  exit 2
+end
+
+result = ProjectValidator.validate(slug, plastic_home: home)
+
+if result[:ok]
+  puts "OK: #{slug}"
+  exit 0
+end
+
+warn "INCOMPLETE: #{slug}"
+result[:missing].each { |item| warn "missing: #{item}" }
+result[:errors].each { |error| warn error }
+exit 1

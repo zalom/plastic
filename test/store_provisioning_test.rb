@@ -2,6 +2,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "yaml"
+require "open3"
 
 require_relative "../scripts/lib/store_provisioning"
 
@@ -87,6 +88,104 @@ class StoreProvisioningTest < Minitest::Test
       result = StoreProvisioning.provision("demo", plastic_home: home, package_root: REPO)
       refute result[:ok]
       refute File.exist?(File.join(home, "projects", "demo"))
+    end
+  end
+
+  # --- installed-layout: package_root has NO templates/ dir at all ---
+
+  def test_installed_layout_with_no_templates_dir_fails_loudly
+    with_registered_home do |home|
+      Dir.mktmpdir do |empty_package_root|
+        result = StoreProvisioning.provision("demo", plastic_home: home, package_root: empty_package_root)
+
+        refute result[:ok], "must fail when package_root has no templates/index.md or project.yml"
+        assert_match(/index\.md/, result[:error])
+        assert_match(/project\.yml/, result[:error])
+
+        project_dir = File.join(home, "projects", "demo")
+        refute File.exist?(project_dir), "nothing should be created, not even the project dir"
+      end
+    end
+  end
+
+  # --- installed-layout: package_root HAS the two required templates (simulated correct install) ---
+
+  def test_installed_layout_with_simulated_templates_succeeds
+    with_registered_home do |home|
+      Dir.mktmpdir do |fake_package_root|
+        templates_dir = File.join(fake_package_root, "templates")
+        FileUtils.mkdir_p(templates_dir)
+        File.write(File.join(templates_dir, "index.md"), "FAKE INDEX CONTENT\n")
+        File.write(File.join(templates_dir, "project.yml"), "governing_docs: []\n")
+
+        result = StoreProvisioning.provision("demo", plastic_home: home, package_root: fake_package_root)
+
+        assert result[:ok], "expected ok, got #{result.inspect}"
+        project_dir = File.join(home, "projects", "demo")
+        assert_equal "FAKE INDEX CONTENT\n", File.read(File.join(project_dir, "INDEX.md"))
+        assert_equal "governing_docs: []\n", File.read(File.join(project_dir, "project.yml"))
+      end
+    end
+  end
+
+  # --- installed-layout: package_root has ONLY one of the two templates ---
+
+  def test_installed_layout_with_only_one_template_still_fails_and_writes_nothing
+    with_registered_home do |home|
+      Dir.mktmpdir do |fake_package_root|
+        templates_dir = File.join(fake_package_root, "templates")
+        FileUtils.mkdir_p(templates_dir)
+        File.write(File.join(templates_dir, "index.md"), "FAKE INDEX\n")
+        # project.yml deliberately absent
+
+        result = StoreProvisioning.provision("demo", plastic_home: home, package_root: fake_package_root)
+
+        refute result[:ok]
+        assert_match(/project\.yml/, result[:error])
+        refute_match(/index\.md/, result[:error])
+        refute File.exist?(File.join(home, "projects", "demo"))
+      end
+    end
+  end
+
+  # --- CLI smoke: exits non-zero with no OK on stdout when a template is missing ---
+
+  def test_cli_prints_no_ok_and_exits_nonzero_when_template_missing
+    with_registered_home do |home|
+      Dir.mktmpdir do |empty_package_root|
+        stdout, stderr, status = Open3.capture3(CLI, "demo", "--home", home,
+                                                 "--package-root", empty_package_root)
+
+        refute status.success?, "CLI must exit non-zero when a required template is missing"
+        refute_match(/OK/, stdout, "no OK line should ever be produced for ok:false")
+        assert_match(/index\.md/, stderr)
+        assert_match(/project\.yml/, stderr)
+        refute File.exist?(File.join(home, "projects", "demo")),
+               "nothing should be created, not even the project dir"
+      end
+    end
+  end
+
+  # --- CLI smoke: exits 0 with the OK line when --package-root has the templates ---
+
+  def test_cli_prints_ok_and_exits_zero_when_package_root_has_templates
+    with_registered_home do |home|
+      Dir.mktmpdir do |fake_package_root|
+        templates_dir = File.join(fake_package_root, "templates")
+        FileUtils.mkdir_p(templates_dir)
+        File.write(File.join(templates_dir, "index.md"), "FAKE INDEX CONTENT\n")
+        File.write(File.join(templates_dir, "project.yml"), "governing_docs: []\n")
+
+        stdout, _stderr, status = Open3.capture3(CLI, "demo", "--home", home,
+                                                  "--package-root", fake_package_root)
+
+        assert status.success?, "CLI should exit 0 when --package-root has both templates"
+        assert_match(/^OK: /, stdout)
+
+        project_dir = File.join(home, "projects", "demo")
+        assert_equal "FAKE INDEX CONTENT\n", File.read(File.join(project_dir, "INDEX.md"))
+        assert_equal "governing_docs: []\n", File.read(File.join(project_dir, "project.yml"))
+      end
     end
   end
 

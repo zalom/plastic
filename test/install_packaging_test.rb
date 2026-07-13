@@ -134,17 +134,33 @@ class InstallPackagingTest < Minitest::Test
 
   REPO = File.expand_path("../../", __FILE__)
 
-  def test_canonical_templates_exist_in_repo
-    expected = %w[intent.md plan.md checklist.md savepoint.md index.md spec.md outcome.md revisions.md]
-    missing = expected.reject { |t| File.file?(File.join(REPO, "templates", t)) }
-    assert_empty missing, "canonical templates missing from templates/: #{missing.join(", ")}"
-  end
-
-  def test_revisions_template_is_in_core_files
+  # Generalized guard (intent 190): globs the repo's REAL templates/ directory,
+  # never a hardcoded list, and checks both layers: core_files registration and
+  # distribute() actually landing every file in a fresh tmp plastic_home. This
+  # must fail on any future refactor that drops a templates/* file from either
+  # layer, with zero further edits to this test.
+  def test_every_repo_template_is_registered_and_installed
     installer = InstallerCore.new(package_root: REPO, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
-    assert installer.core_files.key?("templates/revisions.md"),
-      "templates/revisions.md must be registered in core_files so it installs to ~/.plastic/templates/"
-    assert_equal "templates/revisions.md", installer.core_files["templates/revisions.md"]
+
+    template_paths = Dir.glob(File.join(REPO, "templates", "*")).select { |p| File.file?(p) }
+    template_names = template_paths.map { |p| File.basename(p) }
+    refute_empty template_names, "expected templates/*.md files in the repo"
+
+    # Layer 1: core_files registration (fails before the fix: only 6/13).
+    unregistered = template_names.reject { |name| installer.core_files.value?(File.join("templates", name)) }
+    assert_empty unregistered, "templates/* missing from core_files: #{unregistered.join(", ")}"
+
+    # Layer 2: distribute() must actually copy every one into plastic_home.
+    installer.distribute(:install)
+    not_landed = template_names.reject { |name| File.exist?(File.join(PKG_TEST_HOME, "templates", name)) }
+    assert_empty not_landed, "distribute() did not copy into plastic_home: #{not_landed.join(", ")}"
+
+    # Byte-for-byte, not just present: catch a copy that silently truncates/corrupts.
+    template_names.each do |name|
+      expected_content = File.read(File.join(REPO, "templates", name))
+      actual_content = File.read(File.join(PKG_TEST_HOME, "templates", name))
+      assert_equal expected_content, actual_content, "#{name} content mismatch after distribute()"
+    end
   end
 
   def test_templates_dir_is_packaged_for_distribution
