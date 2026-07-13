@@ -305,13 +305,19 @@ arming or delivery. `intent_active?` accepts an injectable `index_active_ids:` a
 directory is injectable, so the rule is testable hermetically.
 
 The `## Active` line shape that scan depends on is load-bearing. `Bridge.intent_active?`
-matches only a line shaped like `` `- [ID — Title](path)` ``, with an em-dash (U+2014, not a
-plain hyphen) between the id and the title. A plain hyphen there makes `intent_active?` return
-false, which fails the lock gate OPEN: an intent that is genuinely active gets read as
-not-active, its bridge becomes purge-eligible, and writes stop being gated for it. This is
-documentation only, not a hardening: intent 96 consciously deferred making the regex accept a
-plain hyphen too, since that changes fail-open behavior and deserves its own decision, not a
-silent widening.
+matches a line shaped like `` `- [ID <sep> Title](path)` ``, where `<sep>` is either a real
+em dash (U+2014) or a plain hyphen, as the id/title separator on READ, through the
+single shared matcher `Bridge.index_entry_match` (`Bridge::INDEX_ENTRY_RE`), the same one
+`scripts/end-intent`'s own INDEX-move parser uses (intent 188). Before intent 188, a plain
+hyphen line made `intent_active?` return false, which failed the lock gate OPEN: an intent
+that was genuinely active read as not-active, its bridge became purge-eligible, and writes
+stopped being gated for it; intents 96 and 169 both flagged this and deliberately deferred
+hardening it, since accepting a hyphen changes fail-open behavior and deserved its own
+decision rather than a silent widening. Intent 188 makes that decision: hardening
+`intent_active?` is strictly MORE blocking than before (a hyphen-formatted `## Active` line
+is now correctly gated instead of silently ignored), accepted as a bug fix since no passing
+test relied on the old fail-open behavior. Every WRITE still emits the real em dash; only
+what the readers can PARSE has widened.
 
 The `plastic-intent-continuing` skill consumes that ledger on the resume path (intent 36): when the
 user or an agent asks to continue a specific intent, the skill reads the last ledger line as

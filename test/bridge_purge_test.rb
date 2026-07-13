@@ -103,6 +103,32 @@ class BridgePurgeTest < Minitest::Test
     refute Bridge.intent_active?("80", store: @store)
   end
 
+  # --- shared INDEX entry matcher (intent 188, D9/D12/D13) --------------------
+
+  def test_intent_active_recognizes_hyphen_separator
+    File.write(File.join(File.dirname(@store), "INDEX.md"), <<~MD)
+      ## Active
+      - [80 - Demo intent](store/80--demo/80--demo.md) - note
+
+      ## Future
+      _(none)_
+    MD
+    assert Bridge.intent_active?("80", store: @store),
+      "a plain-hyphen ## Active line must be recognized as active (D13 hardening)"
+  end
+
+  def test_index_entry_match_accepts_em_dash_and_hyphen_rejects_missing_separator
+    em_dash = Bridge.index_entry_match("- [80 — Title](path)")
+    hyphen = Bridge.index_entry_match("- [80 - Title](path)")
+    none = Bridge.index_entry_match("- [80 Title](path)")
+
+    refute_nil em_dash
+    assert_equal %w[80 Title path], [em_dash[1], em_dash[2], em_dash[3]]
+    refute_nil hyphen
+    assert_equal %w[80 Title path], [hyphen[1], hyphen[2], hyphen[3]]
+    assert_nil none, "a line with no id/title separator must not match"
+  end
+
   # --- purge_done_bridges ----------------------------------------------------
 
   def test_purges_terminal_intent

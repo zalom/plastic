@@ -305,19 +305,25 @@ During initial project creation, all decisions are non-destructive by definition
    - Update `chain` in the current intent's frontmatter
 6. Run the mechanical close through `plastic-intent-ending`: it owns steps 1-6 of the Done
    procedure (outcome/INDEX/savepoint/commit, disarm, and the QMD reindex last) as ONE
-   delegation, not five separate one-liners restated here. Run its backing script for the
-   outcome/INDEX/savepoint/commit core, passing `--index-note` with a rich Completed/
-   Abandoned entry description (mode/tier, what shipped or why abandoned, suite result):
+   delegation, not five separate one-liners restated here. `scripts/end-intent` now performs
+   steps 1-5 itself, INCLUDING disarm (worktree release plus clearing `delivery.lock`): a
+   single call closes the intent AND clears its lock, so exit 0 means both are done. Pass
+   `--session` (this session's id, or rely on the `CLAUDE_CODE_SESSION_ID` fallback) so
+   disarm resolves the right bridge, and `--index-note` with a rich Completed/Abandoned entry
+   description (mode/tier, what shipped or why abandoned, suite result):
    ```bash
    ruby ~/.plastic/scripts/end-intent --store <store_path> --id <ID> --disposition delivered \
+     --session "$CLAUDE_CODE_SESSION_ID" \
      --index-note "<mode, tier>; <what shipped>; <suite result>"
    ```
-   (Use `--disposition abandoned` when the intent is being moved to `## Abandoned`.) Then
-   follow `plastic-intent-ending`'s Step 5 (disarm: `Bridge.disarm_auto` on this auto/curator
-   path, the plain-remove branch) and Step 6 (QMD reindex, async, last) exactly as that skill
-   states them. Never leave an orphaned worktree; run `git worktree prune` on a stale
-   reference. If any of this ever needs to change, change `plastic-intent-ending`, not this
-   skill.
+   (Use `--disposition abandoned` when the intent is being moved to `## Abandoned`.) A
+   non-zero exit needs attention before moving on: 4 means a live foreign session holds the
+   lock (back off), 5 means the code worktree is dirty (commit/stash first, or pass
+   `--discard-worktree-changes` deliberately), 3 means disarm ran but the lock is still
+   present (run `/plastic-doctor check the lock status`). Only Step 6 (QMD reindex, async,
+   last) remains a separate action after this call succeeds. Never leave an orphaned
+   worktree; run `git worktree prune` on a stale reference. If any of this ever needs to
+   change, change `plastic-intent-ending`, not this skill.
 7. Notify user (Done briefing): brief per `references/human-report-contract.md`
     (State: the delivered impact; Risk: residual risk; Call: the decision left to you, merge,
     release, or accept). See `outcome.md` for details.

@@ -33,19 +33,33 @@ purge-eligible. Disarming also purges stale bridge files from the temp directory
 automatically (it keeps the current bridge, any live run, and any bridge whose intent
 still holds a delivery lock), so no manual `/tmp` cleanup is needed.
 
-**Worktree cleanup (mandatory, intent 73c3).** Disarming performs the worktree release:
-`disarm_auto` calls `Worktree.release`, which removes both per-intent worktrees (the code
-worktree under `<repo>/.claude/worktrees/{id}--{slug}` and the paired store worktree under
-`<plastic_home>/.worktrees/{id}--{slug}`), prunes both repos, and clears the worktree block
-from the bridge. This is the plain remove path: the disarm route does NOT merge, so use it
-only when no release merges the branch (the branch survives and can be reclaimed).
+**Mechanized since intent 188.** `scripts/end-intent` performs this disarm itself, as its
+own step 5, after steps 1-4 (outcome/INDEX/savepoint/commit) commit. No agent needs to run
+a separate `Bridge.disarm_auto` one-liner any more on the auto mode / curator path: the
+single `end-intent` call in `SKILL.md`'s Completion section already does it. A pre-flight
+lock guard (before anything is written) refuses on a live foreign session (exit 4) and
+reclaims a stale foreign lock automatically (audited to savepoint.md); a dirty code
+worktree refuses before removal (exit 5, `--discard-worktree-changes` overrides
+deliberately); and the durable lock file is checked again after disarm, never merely
+trusted (exit 3 if it is somehow still present).
 
-When the work is being shipped through a release, do NOT rely on this plain remove. The
-release path (Completion step 4, via `plastic-releasing`) is responsible for merging the
-intent's code branch (`plastic/{id}--{slug}`) back to the repo's default branch BEFORE the
-worktree is removed, so the integrated work is not lost. It does this with
-`Worktree.finish(bridge_data, merge: true)` (merge-then-remove). Never leave an orphaned
-worktree, and run `git worktree prune` if you hit a stale reference.
+**Worktree cleanup (mandatory, intent 73c3).** `end-intent`'s step 5 calls
+`Bridge.disarm_auto` by default, which calls `Worktree.release`, which removes both
+per-intent worktrees (the code worktree under `<repo>/.claude/worktrees/{id}--{slug}` and
+the paired store worktree under `<plastic_home>/.worktrees/{id}--{slug}`), prunes both
+repos, and clears the worktree block from the bridge. This is the plain remove path: the
+disarm route does NOT merge, so use it only when no release merges the branch (the branch
+survives and can be reclaimed).
+
+When the work is being shipped through a release, do NOT rely on this plain remove.
+`skills/releasing/SKILL.md` reorders its own two steps for exactly this reason (intent 188,
+D7): its worktree-merge step now runs BEFORE its `end-intent` call, merging the intent's
+code branch (`plastic/{id}--{slug}`) back to the repo's default branch BEFORE the worktree
+is removed, via `Worktree.finish(bridge_data, merge: true)` (merge-then-remove), so the
+integrated work is not lost. By the time `end-intent`'s own step 5 runs afterward, the
+worktree is already gone (a harmless no-op) and only the delivery lock is left to clear,
+correctly, for the first time on that path. Never leave an orphaned worktree, and run
+`git worktree prune` if you hit a stale reference.
 
 ## QMD reindex ordering rationale
 

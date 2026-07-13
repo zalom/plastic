@@ -259,6 +259,34 @@ module Bridge
     auto_pool.max_by { |c| c[:mtime] }&.fetch(:data)
   end
 
+  # --- Shared INDEX entry matcher (intent 188, D12/D13) -----------------------
+  #
+  # ONE definition site for the "- [ID <sep> Title](link)" shape both
+  # `intent_active?` (below) and `scripts/end-intent`'s own INDEX-move parser
+  # depend on, so the two regexes can never drift apart again (the em-dash-only
+  # bug was flagged and deferred at intents 96 and 169, then independently
+  # rediscovered as a SEPARATE end-intent defect at intent 188). Accepts a real
+  # em dash (U+2014) OR a plain hyphen as the id/title separator on READ.
+  # Hardening this widens intent_active?'s fail-open case: a hyphen-formatted
+  # `## Active` line used to read as not-active (lock gate failed open); it now
+  # reads as active (gate correctly blocks). Accepted as a bug fix (D13): no
+  # passing test relied on the old fail-open behavior. Every WRITE still emits
+  # the real em dash (D10); only what this matcher can PARSE has widened.
+  #
+  # The separator is built from the codepoint, not a literal byte in this
+  # source file, so this new code stays em-dash free (the shipped-file
+  # convention; store files like INDEX.md are the exempt surface this matcher
+  # READS, not where this constant lives). Matches the existing convention in
+  # scripts/end-intent.
+  EM_DASH = "\u2014".freeze
+  INDEX_ENTRY_RE = /\A- \[(\S+)\s+(?:#{Regexp.escape(EM_DASH)}|-)\s+(.*?)\]\(([^)]+)\)/.freeze
+
+  # Match `line` (already chomped) against the shared INDEX entry shape.
+  # Returns a MatchData (captures: 1 = id, 2 = title, 3 = link) or nil.
+  def self.index_entry_match(line)
+    line.to_s.match(INDEX_ENTRY_RE)
+  end
+
   # --- Terminal-state bridge purge (intent 80) -------------------------------
 
   # True iff the intent is Active in its store's INDEX.md. An INDEX.md lives at
@@ -284,7 +312,7 @@ module Bridge
       end
       next unless in_active
       break if stripped.start_with?("## ") # next section ends the Active block
-      m = stripped.match(/^- \[(\S+) +—/)
+      m = index_entry_match(stripped)
       return true if m && m[1] == target
     end
     false

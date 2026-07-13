@@ -21,8 +21,8 @@ Project configuration drives the workflow - no hardcoded assumptions.
 - [ ] Push to remote with tags
 - [ ] Run post-push actions (GitHub release, npm publish, etc.)
 - [ ] Verify release sync (npm dist-tag, GitHub "Latest", git tag all show the new version)
-- [ ] Complete active intent
 - [ ] Clean up the intent's worktrees (merge-then-remove)
+- [ ] Complete active intent
 
 ## Workflow
 
@@ -232,25 +232,19 @@ If the GitHub "Latest" badge is on an older tag (the common drift), fix it witho
 gh release edit <tag-name> --latest
 ```
 
-### 8. Complete Active Intent
+### 8. Clean Up the Intent's Worktrees (merge-then-remove)
 
-A release IS a delivery. The active intent that drove this work must be completed as part of the release process. This is NOT optional. The mechanical close (outcome/INDEX/savepoint/commit) is `plastic-intent-ending`'s job, not this skill's: run its backing script rather than restating that prose here.
-
-1. Read `~/.plastic/INDEX.md` (or the project's INDEX.md) - find active intent(s) related to this release.
-2. For each active intent being delivered:
-   a. Write a real `outcome.md` (never leave the scaffold placeholder), `disposition: delivered`, referencing the release tag.
-   b. Update `## Insights` with final observations.
-   c. Run the mechanical close (steps 1-4 of `plastic-intent-ending`): this stamps the intent file's `## Outcome` summary, moves the INDEX.md line to `## Completed` (dated today, with a rich entry description via `--index-note`), appends the savepoint `Done` bookend, and commits the store, all in one call:
-      ```bash
-      ruby ~/.plastic/scripts/end-intent --store <store_path> --id <ID> --disposition delivered \
-        --outcome-summary "delivered in <tag-name>: <one-line summary>" \
-        --index-note "<tag-name>, <mode/tier>; <what shipped>; <suite result>"
-      ```
-   d. Update clusters to show `_(completed)_` (the store-curating skill's job on its next pass).
-
-**If no active intent exists for this release**, that itself is a problem - work happened outside the intent system. Log it and move on, but flag it.
-
-### 9. Clean Up the Intent's Worktrees (merge-then-remove)
+This step now runs BEFORE step 9's `end-intent` call (intent 188, D7): `scripts/end-intent`
+gained its own step 5 that disarms (releases the worktree, clears `delivery.lock`) as part
+of every close. Its plain-remove shape does not merge, so if `end-intent` ran first on a
+release, its step 5 would remove the worktree WITHOUT merging the code branch first,
+stranding the integrated work (`Worktree.finish` returns early once the worktree block it
+needs is gone, per `worktree.rb`'s own "no-op if nothing was provisioned" contract).
+Running this merge-then-remove step first means the worktree is already gone by the time
+step 9 runs, so `end-intent`'s own disarm becomes a harmless no-op for the worktree
+(nothing left to remove), while for the FIRST time on this path it also clears the delivery
+lock correctly (G5): before intent 188 this path left the lock stranded, exactly the class
+of bug closed by the End-tail enforcement work.
 
 This is the release branch of `plastic-intent-ending`'s Step 5 disarm (`merge: true`), not a
 separate concern: a release is the merge-then-remove path for the intent's worktrees (intent
@@ -271,6 +265,30 @@ Honor the worktree-cleanup rule: never leave an orphaned worktree, and run `git 
 prune` in the affected repo if you hit a stale reference. For why this is the one place the
 merge-vs-remove policy lands on merge, and the fail-open/idempotent guarantees of `finish`,
 read `references/promotion-and-tagging.md`.
+
+### 9. Complete Active Intent
+
+A release IS a delivery. The active intent that drove this work must be completed as part of the release process. This is NOT optional. The mechanical close (outcome/INDEX/savepoint/commit, AND disarm since intent 188) is `plastic-intent-ending`'s job, not this skill's: run its backing script rather than restating that prose here.
+
+1. Read `~/.plastic/INDEX.md` (or the project's INDEX.md) - find active intent(s) related to this release.
+2. For each active intent being delivered:
+   a. Write a real `outcome.md` (never leave the scaffold placeholder), `disposition: delivered`, referencing the release tag.
+   b. Update `## Insights` with final observations.
+   c. Run the mechanical close (`scripts/end-intent`'s steps 1-5): this stamps the intent file's `## Outcome` summary, moves the INDEX.md line to `## Completed` (dated today, with a rich entry description via `--index-note`), appends the savepoint `Done` bookend, commits the store, and disarms (releases the worktree - already gone from step 8 above - and clears `delivery.lock`), all in one call:
+      ```bash
+      ruby ~/.plastic/scripts/end-intent --store <store_path> --id <ID> --disposition delivered \
+        --session "$CLAUDE_CODE_SESSION_ID" \
+        --outcome-summary "delivered in <tag-name>: <one-line summary>" \
+        --index-note "<tag-name>, <mode/tier>; <what shipped>; <suite result>"
+      ```
+      A non-zero exit needs attention: 4 means a live foreign session holds the lock (back
+      off), 5 means the code worktree is still dirty (should not happen here, since step 8
+      already removed it; investigate before overriding with `--discard-worktree-changes`),
+      3 means disarm ran but the lock is still present (run `/plastic-doctor check the lock
+      status`).
+   d. Update clusters to show `_(completed)_` (the store-curating skill's job on its next pass).
+
+**If no active intent exists for this release**, that itself is a problem - work happened outside the intent system. Log it and move on, but flag it.
 
 ## Release lines and channels
 
