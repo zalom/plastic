@@ -2,6 +2,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "yaml"
+require "open3"
 
 require_relative "../scripts/lib/store_provisioning"
 
@@ -152,19 +153,38 @@ class StoreProvisioningTest < Minitest::Test
   def test_cli_prints_no_ok_and_exits_nonzero_when_template_missing
     with_registered_home do |home|
       Dir.mktmpdir do |empty_package_root|
-        # The CLI resolves package_root from its own file location (repo root),
-        # not from an injectable flag, so exercise the lib directly for this
-        # case and rely on test_cli_provisions_with_home_override (existing,
-        # package_root: REPO via the CLI's own resolution) to prove the CLI's
-        # branch already works for the ok:true path. This test proves the
-        # ok:false path at the lib level with a captured result, mirroring what
-        # the CLI's own puts/warn branch does.
-        result = StoreProvisioning.provision("demo", plastic_home: home, package_root: empty_package_root)
-        refute result[:ok]
-        # Mirror the CLI's own branch inline to prove D4's contract without
-        # needing a --package-root CLI flag:
-        out = result[:ok] ? "OK: #{result[:store_dir]}" : nil
-        assert_nil out, "no OK line should ever be produced for ok:false"
+        stdout, stderr, status = Open3.capture3(CLI, "demo", "--home", home,
+                                                 "--package-root", empty_package_root)
+
+        refute status.success?, "CLI must exit non-zero when a required template is missing"
+        refute_match(/OK/, stdout, "no OK line should ever be produced for ok:false")
+        assert_match(/index\.md/, stderr)
+        assert_match(/project\.yml/, stderr)
+        refute File.exist?(File.join(home, "projects", "demo")),
+               "nothing should be created, not even the project dir"
+      end
+    end
+  end
+
+  # --- CLI smoke: exits 0 with the OK line when --package-root has the templates ---
+
+  def test_cli_prints_ok_and_exits_zero_when_package_root_has_templates
+    with_registered_home do |home|
+      Dir.mktmpdir do |fake_package_root|
+        templates_dir = File.join(fake_package_root, "templates")
+        FileUtils.mkdir_p(templates_dir)
+        File.write(File.join(templates_dir, "index.md"), "FAKE INDEX CONTENT\n")
+        File.write(File.join(templates_dir, "project.yml"), "governing_docs: []\n")
+
+        stdout, _stderr, status = Open3.capture3(CLI, "demo", "--home", home,
+                                                  "--package-root", fake_package_root)
+
+        assert status.success?, "CLI should exit 0 when --package-root has both templates"
+        assert_match(/^OK: /, stdout)
+
+        project_dir = File.join(home, "projects", "demo")
+        assert_equal "FAKE INDEX CONTENT\n", File.read(File.join(project_dir, "INDEX.md"))
+        assert_equal "governing_docs: []\n", File.read(File.join(project_dir, "project.yml"))
       end
     end
   end
