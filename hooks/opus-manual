@@ -1,0 +1,3 @@
+#!/bin/bash
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ruby "$SCRIPT_DIR/../scripts/hook-opus-manual" "${CLAUDE_PLUGIN_ROOT:-}"

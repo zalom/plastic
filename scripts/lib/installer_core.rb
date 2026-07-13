@@ -263,6 +263,8 @@ class InstallerCore
       "scripts/read-config" => "scripts/read-config",
       "scripts/select-update-target" => "scripts/select-update-target",
       "scripts/hook-session-start" => "scripts/hook-session-start",
+      "scripts/hook-opus-manual" => "scripts/hook-opus-manual",
+      "scripts/lib/opus_manual.rb" => "scripts/lib/opus_manual.rb",
       "scripts/hook-continue" => "scripts/hook-continue",
       "scripts/hook-future-intent-check" => "scripts/hook-future-intent-check",
       "scripts/hook-gate-check" => "scripts/hook-gate-check",

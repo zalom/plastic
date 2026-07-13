@@ -9,10 +9,23 @@ require "yaml"
 require_relative "lib/bridge"
 require_relative "lib/boot_banner"
 require_relative "lib/qmd_sync"
+require_relative "lib/opus_manual"
 require_relative "doctor"
 
 index_path, store_root, mode, plugin_root = ARGV
 exit 0 unless index_path && store_root && mode
+
+# --- Hook stdin (intent 185) ---
+# SessionStart payload carries an optional `model` field (omitted after /clear
+# and conversation recovery, which the statusline-cache fallback covers). Never
+# block on a missing or malformed payload.
+raw_stdin = $stdin.tty? ? "" : ($stdin.read rescue "")
+hook_payload = begin
+  JSON.parse(raw_stdin)
+rescue StandardError
+  {}
+end
+hook_payload = {} unless hook_payload.is_a?(Hash)
 
 # --- Parse INDEX.md ---
 
@@ -295,6 +308,25 @@ end
 if update_notice
   parts.unshift("! #{update_notice}\n")
 end
+
+# --- Opus manual injection (intent 185), fail-open ---
+# Primary path: keyed on the model field this SessionStart payload actually
+# carried. Appended before the empty-parts check below so injection text alone
+# is enough to keep this hook from exiting silently.
+opus_session_id = hook_payload["session_id"] || ENV["CLAUDE_CODE_SESSION_ID"] || Process.pid.to_s
+opus_config_reader = -> { `"#{read_config}" context.opus_manual`.strip }
+opus_text = begin
+  OpusManual.injection(
+    model: hook_payload["model"],
+    session_id: opus_session_id,
+    plugin_root: plugin_root,
+    state_dir: "/tmp",
+    config_reader: opus_config_reader
+  )
+rescue StandardError
+  nil
+end
+parts << opus_text if opus_text
 
 # Emit nothing when there is genuinely nothing to surface (no conventions,
 # no deprecations, no update notice).

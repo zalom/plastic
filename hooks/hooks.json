@@ -138,6 +138,16 @@
             "statusMessage": "Searching QMD..."
           }
         ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" opus-manual",
+            "statusMessage": "Checking Opus manual..."
+          }
+        ]
       }
     ]
   }

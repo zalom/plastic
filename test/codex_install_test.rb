@@ -156,9 +156,13 @@ class CodexInstallTest < Minitest::Test
   def test_install_codex_manifest_tracks_the_generated_tomls_one_per_source_agent
     @core.install_for_agent("codex", false)
 
+    # Consultation agents (intent 185) pin `fable` in authored frontmatter, and
+    # Codex has no fable alias, so generate_codex_agents skips them: one toml per
+    # shipped agent EXCEPT those three.
     sources = Dir.glob(File.join(WORKTREE, "agents", "*.md"))
-    tomls = Dir.glob(File.join(@codex_home, "agents", "plastic-*.toml"))
-    assert_equal sources.size, tomls.size, "one generated toml per shipped agent .md"
+      .reject { |p| AgentModels::CONSULTATION_AGENTS.include?(File.basename(p, ".md")) }
+    tomls = Dir.glob(File.join(@codex_home, "agents", "*.toml"))
+    assert_equal sources.size, tomls.size, "one generated toml per shipped agent .md, excluding consultation agents"
 
     manifest = JSON.parse(File.read(File.join(@agent_dir, "plastic-manifest.json")))
     manifest_keys = manifest["files"].keys
