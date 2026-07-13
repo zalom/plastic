@@ -251,10 +251,29 @@ class InstallerCore
     puts "  \u{2705} Core files synced (v#{version})"
   end
 
+  # Templates ship in full: every file under templates/ in the repo must reach
+  # ~/.plastic/templates/ on install/update. Derived from Dir.glob so a new
+  # template file added later is registered automatically, closing the
+  # whack-a-mole pattern that hid templates/index.md and templates/project.yml
+  # from every install for five weeks (intent 190).
+  def template_files
+    Dir.glob(File.join(package_root, "templates", "*")).each_with_object({}) do |path, acc|
+      next unless File.file?(path)
+
+      rel = File.join("templates", File.basename(path))
+      acc[rel] = rel
+    end
+  end
+
   # Files copied into ~/.plastic on install/update. Every verb script + the shared lib
   # must be here so the installed ~/.plastic/scripts copy is self-complete (sync-guarded
-  # by install_sync_test).
+  # by install_sync_test). The templates half is glob-derived (template_files above); the
+  # rest stays a hand-written literal.
   def core_files
+    hand_registered_files.merge(template_files)
+  end
+
+  def hand_registered_files
     {
       "PLASTIC.md" => "PLASTIC.md",
       "PLASTIC-reference.md" => "PLASTIC-reference.md",
@@ -310,15 +329,11 @@ class InstallerCore
       "scripts/hook-create-gate" => "scripts/hook-create-gate",
       "scripts/lib/apply_patch_envelope.rb" => "scripts/lib/apply_patch_envelope.rb",
       "scripts/codex-hook" => "scripts/codex-hook",
-      "templates/intent.md" => "templates/intent.md",
-      "templates/spec.md" => "templates/spec.md",
-      "templates/plan.md" => "templates/plan.md",
-      "templates/checklist.md" => "templates/checklist.md",
-      "templates/outcome.md" => "templates/outcome.md",
-      "templates/revisions.md" => "templates/revisions.md",
       "scripts/spawn-preamble" => "scripts/spawn-preamble",
       "scripts/lib/store_provisioning.rb" => "scripts/lib/store_provisioning.rb",
       "scripts/provision-project-store" => "scripts/provision-project-store",
+      "scripts/lib/project_validator.rb" => "scripts/lib/project_validator.rb",
+      "scripts/validate-project" => "scripts/validate-project",
       "scripts/lib/installer_core.rb" => "scripts/lib/installer_core.rb",
       "scripts/lib/preflight.rb" => "scripts/lib/preflight.rb",
       "scripts/install.rb" => "scripts/install.rb",

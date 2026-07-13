@@ -44,24 +44,33 @@ module StoreProvisioning
       }
     end
 
+    index_template = File.join(package_root, "templates", "index.md")
+    project_template = File.join(package_root, "templates", "project.yml")
+
+    missing = []
+    missing << "templates/index.md" unless File.exist?(index_template)
+    missing << "templates/project.yml" unless File.exist?(project_template)
+
+    unless missing.empty?
+      return {
+        ok: false,
+        error: "cannot provision project '#{slug}': missing required " \
+               "template(s) #{missing.join(", ")} under #{package_root}/templates. " \
+               "This means the installer did not ship these templates to " \
+               "package_root/templates: check InstallerCore#core_files registers " \
+               "every templates/* file, then re-run the Plastic installer (or " \
+               "'plastic update') so package_root has current templates.",
+      }
+    end
+
     project_dir = File.join(plastic_home, "projects", slug)
     store_dir = File.join(project_dir, "store")
     FileUtils.mkdir_p(store_dir)
 
     created = []
     created << write_if_missing(File.join(store_dir, ".gitkeep"), "")
-
-    index_template = File.join(package_root, "templates", "index.md")
-    if File.exist?(index_template)
-      created << write_if_missing(File.join(project_dir, "INDEX.md"),
-                                  File.read(index_template))
-    end
-
-    project_template = File.join(package_root, "templates", "project.yml")
-    if File.exist?(project_template)
-      created << write_if_missing(File.join(project_dir, "project.yml"),
-                                  File.read(project_template))
-    end
+    created << write_if_missing(File.join(project_dir, "INDEX.md"), File.read(index_template))
+    created << write_if_missing(File.join(project_dir, "project.yml"), File.read(project_template))
 
     { ok: true, store_dir: store_dir, created: created.compact }
   end

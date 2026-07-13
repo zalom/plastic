@@ -122,7 +122,35 @@ ruby ~/.plastic/scripts/qmd-sync register --store ~/.plastic/projects/<slug>/sto
 `qmd-sync` no-ops when QMD is absent, so run it unconditionally. This adds the
 `plastic-<slug>` collection and indexes it.
 
-### 12. Announce
+### 12. Self-Check with validate-project
+
+Before announcing, verify the spawn actually landed everything it claims to
+have created. Run:
+
+```bash
+ruby ~/.plastic/scripts/validate-project <slug>
+```
+
+If this exits 0, proceed to step 13. If it exits non-zero, STOP: do not
+proceed to Announce. Read the `missing:` and error lines it printed to
+stderr, fix the named gap(s), for example:
+
+- missing `project.yml` or `INDEX.md` or `store/`: re-run
+  `ruby ~/.plastic/scripts/provision-project-store <slug>` (step 7), then
+  re-check
+- missing project-root `AGENTS.md`: repeat step 4 (populate AGENTS.md at the
+  project root, not `~/.plastic/projects/<slug>/`)
+- project directory missing on disk: repeat step 2
+- not registered in projects.yml: repeat step 6
+
+Re-run `validate-project <slug>` after each fix until it exits 0. Only a
+project spawn that passes this self-check moves on to be announced as
+created. A spawn that never verifies itself is exactly the bug this step
+exists to close (intent 190; the intent-26 spawn shipped with no
+`project.yml` and no root `AGENTS.md`, caught only weeks later by a doctor
+sweep).
+
+### 13. Announce
 
 Log in `## Insights` of each founding intent:
 > "Project `<slug>` created at `<path>`. Tactical mirror: `project-<slug>:1` (autonomous)"
