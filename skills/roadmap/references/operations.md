@@ -16,7 +16,7 @@ next" in under a minute, just from this one file.
 3. Copy `templates/roadmap.md` to `roadmaps/{slug}.md`.
 4. Fill the header (`# Roadmap: <title>` + the one-line meta) and write a real `## Goal` prose
    condition.
-5. Add at least one `## Waves` wave with real entries (see Add / reorder below), each entry's
+5. Add at least one `## Batches` batch with real entries (see Add / reorder below), each entry's
    status mirroring that intent's current `INDEX.md` status.
 6. Append the first `## Log` line, a short `YYYY-MM-DD HH:MM UTC`-prefixed plain-language note
    that the roadmap was created.
@@ -28,18 +28,20 @@ next" in under a minute, just from this one file.
 
 ## Add / reorder entries
 
-- **Add**: append an entry line (`- <intent-id> <title> — <status>`) to the target wave. Pick the
+- **Add**: append an entry line (`- <intent-id> <title> — <status>`) to the target batch. Pick the
   intent's title and status straight from `INDEX.md`.
-- **New wave**: add a new `### Wave N` heading after the last wave; entries in it are gated behind
-  every earlier wave's entries leaving `queued`/`delivering`.
-- **Reorder**: move an entry line to a different wave, or move a `### Wave` heading (with its
-  entries) earlier or later. Reordering never changes an entry's status; it only changes when the
-  entry is eligible to run.
+- **New batch**: add a new `### Batch N` heading after the last batch; entries in it are gated
+  behind every earlier batch's entries leaving `queued`/`delivering`. A roadmap still on the legacy
+  `## Waves` heading keeps using `### Wave N` for a new entry; never migrate an existing roadmap's
+  heading to add one.
+- **Reorder**: move an entry line to a different batch, or move a `### Batch` (or, on a legacy
+  roadmap, `### Wave`) heading (with its entries) earlier or later. Reordering never changes an
+  entry's status; it only changes when the entry is eligible to run.
 - After any add/reorder, append a `## Log` line describing the change (e.g.
-  `- <YYYY-MM-DD HH:MM UTC> added 132 to wave 2`).
+  `- <YYYY-MM-DD HH:MM UTC> added 132 to batch 2`).
 - Append the ledger event (derived, idempotent, safe to re-run; never writes INDEX or roadmap
   status): `ruby ~/.plastic/scripts/roadmap-savepoint append --roadmap roadmaps/<slug>.md --event
-  added --detail "<id> to wave N"` for an add, or `--event reordered` for a reorder (describe the
+  added --detail "<id> to batch N"` for an add, or `--event reordered` for a reorder (describe the
   move in `<detail>`).
 - Refresh the QMD index for this roadmap (no-op when QMD is absent), in the background so it
   never blocks: `ruby ~/.plastic/scripts/qmd-sync reindex --store <roadmaps-dir> --async`.
@@ -70,7 +72,7 @@ next" in under a minute, just from this one file.
   edit or delete an existing line (append-only).
 - Every line is plain language a non-expert can read, never a codename or a raw `field -> value`.
   A delivery event follows the EM-to-CTO one-line shape with an `outcome.md` link (see
-  `file-format.md`); bookkeeping events (created, an intent added to a wave, a wave completed, a
+  `file-format.md`); bookkeeping events (created, an intent added to a batch, a batch completed, a
   roadmap closed) are short dated plain-language lines.
 - Append the matching ledger event (derived, idempotent, never writes INDEX or roadmap status):
   when the line records a release cut, `ruby ~/.plastic/scripts/roadmap-savepoint append --roadmap
@@ -81,14 +83,16 @@ next" in under a minute, just from this one file.
 
 ## Read / consume
 
-- A human reading the file gets the current picture directly: `## Goal` for the target, `## Waves`
-  for what is queued/delivering/delivered per wave (checkboxes give the shipped/not-shipped view at
-  a glance), `## Log` for a one-line, plain-language history with a link into each intent's
-  `outcome.md` for detail.
-- A future coordinator (for example, an auto-mode dispatcher) reads `## Waves` top to bottom:
-  a wave is eligible to dispatch once every entry in the previous wave is no longer
-  `queued`/`delivering`; within an eligible wave, entries still `queued` are parallel-dispatchable.
-  Always re-sync against `INDEX.md` before dispatch decisions, since INDEX is the source of truth.
+- A human reading the file gets the current picture directly: `## Goal` for the target, `## Batches`
+  (or, on a roadmap still using the legacy `## Waves` heading, that section instead) for what is
+  queued/delivering/delivered per batch (checkboxes give the shipped/not-shipped view at a glance),
+  `## Log` for a one-line, plain-language history with a link into each intent's `outcome.md` for
+  detail.
+- A future coordinator (for example, an auto-mode dispatcher) reads the grouping section
+  (`## Batches`, or legacy `## Waves`) top to bottom: a batch is eligible to dispatch once every
+  entry in the previous batch is no longer `queued`/`delivering`; within an eligible batch, entries
+  still `queued` are parallel-dispatchable. Always re-sync against `INDEX.md` before dispatch
+  decisions, since INDEX is the source of truth.
 
 ## Close / archive
 

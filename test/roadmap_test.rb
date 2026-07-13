@@ -30,15 +30,15 @@ class RoadmapTest < Minitest::Test
   def test_template_has_the_four_sections_in_order
     body = File.read(TEMPLATE)
     headings = body.scan(/^## .+$/)
-    assert_equal ["## Goal", "## Waves", "## Log"], headings,
-                 "must contain ## Goal, ## Waves, ## Log in that order"
+    assert_equal ["## Goal", "## Batches", "## Log"], headings,
+                 "must contain ## Goal, ## Batches, ## Log in that order"
   end
 
   def test_template_waves_has_a_status_entry_line
     body = File.read(TEMPLATE)
     status_alt = STATUS_TOKENS.join("|")
     assert_match(/^- .+ — (#{status_alt})\s*$/, body,
-                 "## Waves must show an entry line '- <id> <title> — <status>'")
+                 "## Batches must show an entry line '- <id> <title> — <status>'")
   end
 
   def test_template_log_has_a_dated_line
@@ -52,9 +52,9 @@ class RoadmapTest < Minitest::Test
   def test_template_wave_entries_use_checkbox_syntax
     body = File.read(TEMPLATE)
     assert_match(/^- \[ \] .+ — \w+\s*$/, body,
-                 "## Waves must show an unchecked '- [ ] <id> <title> — <status>' entry")
+                 "## Batches must show an unchecked '- [ ] <id> <title> — <status>' entry")
     assert_match(/^- \[x\] .+ — delivered\s*$/, body,
-                 "## Waves must show a checked '- [x] <id> <title> — delivered' entry")
+                 "## Batches must show a checked '- [x] <id> <title> — delivered' entry")
   end
 
   def test_template_log_documents_outcome_link_and_lossless_rule
@@ -187,7 +187,7 @@ class RoadmapTest < Minitest::Test
 
   def test_plastic_md_states_the_four_sections
     body = File.read(PLASTIC_REFERENCE)
-    ["## Goal", "## Waves", "## Log"].each do |heading|
+    ["## Goal", "## Batches", "## Log"].each do |heading|
       assert_includes body, heading, "must name section #{heading}"
     end
   end

@@ -2,7 +2,7 @@
 name: plastic-roadmap-continuing
 description: >-
   Use when the user wants to continue or resume a roadmap, pick up a mid-flight delivery batch,
-  asks "where is the roadmap", or wants to resume the wave that was shipping, including an
+  asks "where is the roadmap", or wants to resume the batch that was shipping, including an
   indirect ask that never names a roadmap directly (for example "where did that batch of
   intents land"). This is the roadmap route of plastic-continuing: it finds the tier's
   mid-flight roadmap, presents its state, then asks how to proceed exactly once.
@@ -27,7 +27,7 @@ roadmap handoff had to be resumed by hand, carried as a free-prose note in `171`
 2. For each candidate, also read its paired ledger `roadmaps/<slug>.savepoint.md` when present
    (see `plastic-roadmap`'s `references/file-format.md#savepoint-ledger`): its last line(s) are a
    cheaper, precise last-event signal (for example `dispatched 134` or `merged 172`), read
-   alongside the existing `## Waves`/`## Log` judgment. The ledger is read-only here, a derived
+   alongside the existing `## Batches` (or legacy `## Waves`) / `## Log` judgment. The ledger is read-only here, a derived
    signal, never a new status field; INDEX.md stays the sole status writer.
 3. Rank liveness by calling the shared reader in which mode (one implementation across the
    auto loop and this skill):
@@ -47,7 +47,7 @@ roadmap handoff had to be resumed by hand, carried as a free-prose note in `171`
 
 ## Present state
 
-Present the chosen roadmap's `## Goal`, the current wave with each entry's mirrored status, the
+Present the chosen roadmap's `## Goal`, the current batch with each entry's mirrored status, the
 ledger's newest line(s) (the last mechanized event) alongside the newest `## Log` line, before any
 ask, so the coordinator sees the machine last-event at a glance.
 
@@ -56,7 +56,7 @@ ask, so the coordinator sees the machine last-event at a glance.
 Ask "auto or guided?" exactly once, after presenting state, mirroring
 `plastic-intent-starting`'s single-ask contract:
 - **guided** -> continue step by step with the user.
-- **auto** -> hand off to `plastic-auto` to drive the next wave or entry.
+- **auto** -> hand off to `plastic-auto` to drive the next batch or entry.
 
 Never re-ask. No new roadmap or INDEX status field is invented anywhere in this flow.
 
@@ -78,7 +78,7 @@ This skill is a reader, not a writer, of `roadmaps/<slug>.savepoint.md`. The coo
 ~/.plastic/scripts/roadmap-savepoint append` at their own dispatch, merge, park, handoff, and
 release points, the same events `plastic-roadmap`'s verbs append at their closing steps. A
 resuming coordinator therefore both reads the ledger here and writes to it as it drives the next
-wave or entry.
+batch or entry.
 
 ## References
 

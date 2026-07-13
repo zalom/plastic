@@ -170,6 +170,114 @@ class RoadmapSavepointTest < Minitest::Test
     assert_equal first, second
   end
 
+  # --- grouping_section_body: canonical + legacy (intent 196) -------------------------
+
+  def test_grouping_section_body_reads_canonical_batches_heading
+    body = "# Roadmap: Demo\n\n## Batches\n### Batch 1\n- [x] 1 A — delivered\n"
+    assert_match(/Batch 1/, RoadmapSavepoint.grouping_section_body(body))
+  end
+
+  def test_grouping_section_body_falls_back_to_legacy_waves_heading
+    body = "# Roadmap: Demo\n\n## Waves\n### Wave 1\n- [x] 1 A — delivered\n"
+    assert_match(/Wave 1/, RoadmapSavepoint.grouping_section_body(body))
+  end
+
+  def test_grouping_section_body_raises_naming_the_path_when_neither_heading_present
+    path = write_roadmap("broken", "# Roadmap: Broken\n\n## Goal\nNo grouping heading.\n")
+    err = assert_raises(RoadmapSavepoint::MissingGroupingHeading) do
+      RoadmapSavepoint.grouping_section_body(File.read(path), path: path)
+    end
+    assert_includes err.message, path
+    assert_includes err.message, "Batches"
+    assert_includes err.message, "Waves"
+  end
+
+  # --- rebuild on a Batches-heading roadmap (intent 196) -------------------------------
+
+  def test_rebuild_from_batches_heading_backfills_merged_line_from_index
+    path = write_roadmap("demo", <<~MD)
+      # Roadmap: Demo
+      ## Batches
+      ### Batch 1
+      - [x] 901 Solo — delivered
+
+      ## Log
+      - 2026-07-10 02:20 UTC Roadmap created on the owner's selection.
+    MD
+    File.write(File.join(@home, "INDEX.md"), <<~IDX)
+      # Index
+
+      ## Active
+
+      ## Future
+
+      ## Clusters
+
+      ## Abandoned
+
+      ## Completed
+      - [901 — Solo](store/901--solo/901--solo.md) — 2026-07-10 delivered.
+    IDX
+
+    RoadmapSavepoint.rebuild(path)
+    lines = ledger_lines(path)
+    assert(lines.any? { |l| l.include?("901") && l.include?("merged") })
+  end
+
+  # --- rebuild on a heading-less roadmap fails loudly (intent 196) --------------------
+
+  def test_rebuild_raises_missing_grouping_heading_on_a_headingless_roadmap
+    path = write_roadmap("broken", "# Roadmap: Broken\n\n## Goal\nNo grouping heading.\n\n## Log\n- 2026-07-10 02:20 UTC created.\n")
+    assert_raises(RoadmapSavepoint::MissingGroupingHeading) { RoadmapSavepoint.rebuild(path) }
+  end
+
+  def test_cli_rebuild_missing_grouping_heading_exits_3_with_stderr_message
+    path = write_roadmap("broken", "# Roadmap: Broken\n\n## Goal\nNo grouping heading.\n\n## Log\n- 2026-07-10 02:20 UTC created.\n")
+    _out, err, status = run_cli(["rebuild", "--roadmap", path])
+    refute status.success?
+    assert_equal 3, status.exitstatus
+    assert_match(/Batches/, err)
+    assert_match(/Waves/, err)
+  end
+
+  # --- KEYWORD_TABLE recognizes "batch" the same way it recognizes "wave" (gate correction, D9) --
+
+  def test_classify_log_line_recognizes_batch_the_same_way_it_recognizes_wave
+    path = write_roadmap("demo", <<~MD)
+      # Roadmap: Demo
+      ## Batches
+      ### Batch 1
+      - [x] 902 Solo — delivered
+
+      ## Log
+      - 2026-07-10 02:20 UTC Roadmap created on the owner's selection.
+      - 2026-07-10 02:30 UTC Batch 2 opened for delivery.
+    MD
+
+    RoadmapSavepoint.rebuild(path)
+    lines = ledger_lines(path)
+    assert(lines.any? { |l| l.include?("batch") && l.include?("Batch 2 opened for delivery.") },
+           "a Batches-era grouping Log line must classify and survive rebuild, not be dropped")
+  end
+
+  def test_classify_log_line_legacy_wave_wording_still_classifies
+    path = write_roadmap("demo", <<~MD)
+      # Roadmap: Demo
+      ## Waves
+      ### Wave 1
+      - [x] 903 Solo — delivered
+
+      ## Log
+      - 2026-07-10 02:20 UTC Roadmap created on the owner's selection.
+      - 2026-07-10 02:30 UTC Wave 2 opened for delivery.
+    MD
+
+    RoadmapSavepoint.rebuild(path)
+    lines = ledger_lines(path)
+    assert(lines.any? { |l| l.include?("wave") && l.include?("Wave 2 opened for delivery.") },
+           "the legacy Waves-era grouping Log line must keep classifying exactly as before")
+  end
+
   # --- CLI smoke (mirrors qmd_sync_search_cli_test.rb) -------------------------
 
   def run_cli(args)

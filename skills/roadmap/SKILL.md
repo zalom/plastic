@@ -13,10 +13,12 @@ to a release (completion-side, `CHANGELOG.md`). It lives at `roadmaps/{slug}.md`
 project's `INDEX.md` and `project.yml`). It never sits inside `store/`, which holds intent
 directories, not project artifacts.
 
-A roadmap file has four parts: a title/meta header, `## Goal` (prose), `## Waves` (ordered; entries
-inside a wave are parallel-safe, waves run sequentially), and an append-only dated `## Log`. Each
-wave entry mirrors that intent's status in `INDEX.md` (`queued`/`delivering`/`delivered`/
-`abandoned`/`blocked`).
+A roadmap file has four parts: a title/meta header, `## Goal` (prose), `## Batches` (ordered;
+entries inside a batch are parallel-safe, batches run sequentially), and an append-only dated
+`## Log`. A roadmap written before owner ruling 145 may instead use the legacy `## Waves` heading;
+reading accepts both, but every new roadmap is scaffolded with `## Batches`, and an existing
+roadmap file's heading is never renamed to migrate it. Each batch entry mirrors that intent's
+status in `INDEX.md` (`queued`/`delivering`/`delivered`/`abandoned`/`blocked`).
 
 **`INDEX.md` is the single writer of intent status; on any conflict INDEX wins and the roadmap
 entry is corrected to match.**
@@ -31,9 +33,9 @@ Read/Edit-only.
 | Verb | When | Mechanics |
 |------|------|-----------|
 | Create | user wants to start a new roadmap / plan a delivery batch | `references/operations.md#create` |
-| Add / reorder entries | user wants to add intents to a wave or resequence waves | `references/operations.md#add--reorder-entries` |
+| Add / reorder entries | user wants to add intents to a batch or resequence batches | `references/operations.md#add--reorder-entries` |
 | Sync status mirror | an entry's status may be stale against INDEX | `references/operations.md#sync-status-mirror` |
-| Append log line | a roadmap event just happened (created, wave done, closed) | `references/operations.md#append-a-log-line` |
+| Append log line | a roadmap event just happened (created, batch done, closed) | `references/operations.md#append-a-log-line` |
 | Read / consume | a human or a coordinator needs the roadmap's current state | `references/operations.md#read--consume` |
 | Close / archive | the roadmap's `## Goal` is reached | `references/operations.md#close--archive` |
 
@@ -47,7 +49,7 @@ verb above.
   layout per project. The general rule: `roadmaps/` is a sibling of `INDEX.md`, wherever `INDEX.md`
   lives.
 - `## Goal` is a checkable prose condition read by a human or agent, not an executable checker.
-- Wave entries render as checkboxes (`- [x] ... — delivered` / `- [ ] ... — <status>`); a human
+- Batch entries render as checkboxes (`- [x] ... — delivered` / `- [ ] ... — <status>`); a human
   reading cold should see shipped/running/next within a minute. `## Log` lines are one-sentence,
   EM-to-CTO-voice, dated, and link each entry-intent's `outcome.md` (lossless-by-reference).
 - Additive: this skill introduces no gate, lock, or hook, and does not change `INDEX.md`'s section

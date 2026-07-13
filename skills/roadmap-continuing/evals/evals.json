@@ -35,8 +35,8 @@
     },
     {
       "id": 4, "scope": "behavior", "set": "train",
-      "prompt": "Does the skill rank liveness correctly when a wave entry is delivering or blocked?",
-      "expected_output": "A roadmap with any delivering/blocked wave entry wins the ranking outright over every other candidate.",
+      "prompt": "Does the skill rank liveness correctly when a batch entry is delivering or blocked?",
+      "expected_output": "A roadmap with any delivering/blocked batch entry wins the ranking outright over every other candidate.",
       "files": ["skills/roadmap-continuing/references/liveness-ranking.md"],
       "assertions": [
         { "type": "convention", "check": "delivering/blocked-wins rule documented as step 2 of the algorithm", "observed": "present", "result": "pass" }
@@ -54,7 +54,7 @@
     {
       "id": 6, "scope": "behavior", "set": "train",
       "prompt": "Does the skill present the roadmap state before asking?",
-      "expected_output": "The '## Present state' section (Goal, current wave, newest Log line) runs before the '## Ask once' section.",
+      "expected_output": "The '## Present state' section (Goal, current batch, newest Log line) runs before the '## Ask once' section.",
       "files": ["skills/roadmap-continuing/SKILL.md"],
       "assertions": [
         { "type": "convention", "check": "Present state precedes Ask once in document order", "observed": "present", "result": "pass" }

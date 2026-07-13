@@ -14,7 +14,9 @@
 #   roadmap-next --roadmaps-dir <dir> [--index <path>] [--which]
 #
 # Exits 0 on any successful analysis, including state "none" and "exhausted" (valid answers,
-# not errors). Exits non-zero only on a missing required flag.
+# not errors). Exits 2 on a missing required flag. Exits 3 when a roadmap has neither
+# '## Batches' (canonical) nor '## Waves' (legacy) as its grouping heading (intent 196): a
+# malformed roadmap fails loudly, never silently parses as zero entries.
 
 require_relative "lib/roadmap_queue"
 require "json"
@@ -39,6 +41,11 @@ if roadmaps_dir.nil?
 end
 
 reader = RoadmapQueue.new(roadmaps_dir: roadmaps_dir, index_path: index)
-payload = which ? reader.which : reader.queue
+begin
+  payload = which ? reader.which : reader.queue
+rescue RoadmapSavepoint::MissingGroupingHeading => e
+  warn "roadmap-next: #{e.message}"
+  exit 3
+end
 puts JSON.generate(payload)
 exit 0

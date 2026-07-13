@@ -112,7 +112,7 @@ class RoadmapQueue
 
   def parse_roadmap(path)
     text = File.read(path)
-    { slug: File.basename(path, ".md"), path: path, waves: parse_waves(section_body(text, "Waves")) }
+    { slug: File.basename(path, ".md"), path: path, waves: parse_waves(RoadmapSavepoint.grouping_section_body(text, path: path)) }
   end
 
   def parse_waves(waves_body)

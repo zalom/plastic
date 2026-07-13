@@ -39,7 +39,7 @@ ruby ~/.plastic/scripts/roadmap-next --roadmaps-dir <tier>/roadmaps
 
 Branch on `state`:
 - `dispatchable`: work its `dispatchable_queue` in `rank` order (the head is the next batch
-  entry). These are the current batch's `queued` intents, parallel-safe within the wave.
+  entry). These are the current batch's `queued` intents, parallel-safe within the batch.
 - `in_flight`: the frontier batch is still delivering. Report it and wait. Do NOT dispatch a
   later batch and do NOT fall through to the dashboard, the roadmap is live.
 - `none` or `exhausted`: no roadmap, or nothing left to dispatch. Fall back to the dashboard
