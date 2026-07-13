@@ -21,15 +21,17 @@ module AgentModels
     "plastic-intent-discovery" => "sonnet"
   }.freeze
 
-  # Consultation agent (intent 185 ACTION-7: model-agnostic role). Ships `fable`
-  # as the shipped DEFAULT in frontmatter, not a hard-wired identity; the model
-  # is a user choice (advisor.model config key, resolved ahead of any
-  # agents.models.plastic-advisor override, see
-  # InstallerCore#agent_model_overrides). Not a lifecycle-stage role: never
+  # The two advisor agents (intent 185 final design): plastic-advisor (the real
+  # advisor, ships `model: fable`) and plastic-faux-advisor (the imitation
+  # advisor, an ordinary model carrying the same reasoning discipline inline,
+  # ships `model: opus`). Both are shipped DEFAULTS in frontmatter, never a
+  # hard-wired identity: agents.models.claude.<name> (or the legacy flat form)
+  # overrides either one through the same install-time frontmatter rewrite
+  # every agent override uses. Neither is a lifecycle-stage role: never
   # dispatched by the auto pipeline, not part of TIER_DEFAULTS. Claude-only for
-  # this release (generate_codex_agents skips it by name; the Codex advisor case
-  # is intent 186, not a permanent exclusion).
-  CONSULTATION_AGENTS = %w[plastic-advisor].freeze
+  # this release (generate_codex_agents skips both by name; the Codex advisor
+  # case is intent 186, not a permanent exclusion).
+  CONSULTATION_AGENTS = %w[plastic-advisor plastic-faux-advisor].freeze
 
   # Codex reasoning-effort per tier alias (intent 102a). model_reasoning_effort is a
   # depth-of-thinking dial independent of model selection (181 line 317-318), so mapping
@@ -45,22 +47,37 @@ module AgentModels
 
   module_function
 
-  # Pull the `agents.models` sub-hash out of a loaded config hash, tolerating a
-  # missing or malformed shape. Returns a plain { basename => model } hash.
-  def models_section(config)
+  # Pull { basename => model } out of a loaded config hash's `agents.models`
+  # section, scoped to `harness` ("claude" or "codex"), tolerating a missing or
+  # malformed shape. `agents.models` can mix two shapes: legacy FLAT scalar
+  # entries (agents.models.plastic-executor: sonnet), honored as the claude
+  # harness only, and harness-scoped sub-hashes (agents.models.claude.*,
+  # agents.models.codex.*). Nested wins over flat for the same agent on the
+  # claude harness; a non-claude harness reads ONLY its own nested sub-hash,
+  # never the flat entries, so a literal model id written under the flat form
+  # (or agents.models.claude.*) can never leak into another harness's config.
+  def models_section(config, harness: "claude")
     return {} unless config.is_a?(Hash)
     agents = config["agents"]
     return {} unless agents.is_a?(Hash)
     section = agents["models"]
-    section.is_a?(Hash) ? section : {}
+    return {} unless section.is_a?(Hash)
+
+    nested = section[harness]
+    nested = nested.is_a?(Hash) ? nested : {}
+    return nested unless harness == "claude"
+
+    flat = section.reject { |_key, value| value.is_a?(Hash) }
+    flat.merge(nested)
   end
 
   # Override map for the installer: global overrides overlaid by project
-  # overrides (project wins). Defaults are intentionally excluded. Unknown agent
-  # keys are carried through as-is; install_agents simply never matches them to a
-  # copied file, so they are ignored without raising.
-  def override_map(project_config: {}, global_config: {})
-    models_section(global_config).merge(models_section(project_config))
+  # overrides (project wins), scoped to `harness`. Defaults are intentionally
+  # excluded. Unknown agent keys are carried through as-is; install_agents
+  # simply never matches them to a copied file, so they are ignored without
+  # raising.
+  def override_map(project_config: {}, global_config: {}, harness: "claude")
+    models_section(global_config, harness: harness).merge(models_section(project_config, harness: harness))
   end
 
   # The model_reasoning_effort for a Plastic tier alias, or nil for any value that is not
