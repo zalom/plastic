@@ -37,6 +37,7 @@
     "hooks/",
     "agents/",
     "templates/",
+    "manuals/",
     "PLASTIC.md",
     "PLASTIC-reference.md",
     "deprecations.yml"

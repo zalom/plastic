@@ -251,4 +251,20 @@ class InstallPackagingTest < Minitest::Test
     assert_includes pkg["files"], "agents/",
       "agents/ must be in package.json `files` so role files ship to consumers"
   end
+
+  # --- Manuals ship in the npm package, read at runtime via CLAUDE_PLUGIN_ROOT
+  # (intent 185). No install-time copy step: these two guards fail loudly if the
+  # files are removed from the repo or manuals/ drops out of package.json `files`.
+
+  def test_manuals_exist_in_repo
+    %w[operating-manual.md advisor-protocol.md].each do |name|
+      assert File.file?(File.join(REPO, "manuals", name)), "manuals/#{name} must exist in the repo"
+    end
+  end
+
+  def test_manuals_dir_is_packaged_for_distribution
+    pkg = JSON.parse(File.read(File.join(REPO, "package.json")))
+    assert_includes pkg["files"], "manuals/",
+      "manuals/ must be in package.json `files` so the manuals ship to consumers"
+  end
 end
