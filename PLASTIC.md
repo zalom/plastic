@@ -456,9 +456,10 @@ Advisory. Hard gates guard writes, locks, and structure, never reads or searches
 Grep, Glob, and bash search are always allowed, including over the stores. When QMD is
 present and fresh, a content search over store markdown receives an advisory hint pointing
 at `qmd search` alongside its result; when QMD is present but stale, a background reindex
-fires so the next turn's hint runs against a fresh index (never synchronous). QMD and
-Serena are recommendations, not obligations: the UserPromptSubmit power-tools hook appends
-one recommendation line per present tool. The legacy trailing `# qmd-ok` token is still
+fires so the next turn's hint runs against a fresh index (never synchronous). QMD, Enola,
+and Serena are recommendations, not obligations: the UserPromptSubmit power-tools hook
+appends one recommendation line per present tool, naming Enola only, not both, when Enola
+and Serena are both present (Enola-first, one code-navigation slot). The legacy trailing `# qmd-ok` token is still
 accepted on Bash commands and simply silences the hint. Scope stays the agent's own tool
 calls; Ruby `File.read` inside a script is invisible to the hook by design.
 

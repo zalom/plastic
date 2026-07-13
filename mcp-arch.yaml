@@ -1,0 +1,56 @@
+# Enola snapshot config (intent 187).
+#
+# Enola discovers this file from the working directory of the `enola` process,
+# not from the repo_path passed to generate_snapshot. Keep it at the repo root.
+#
+# `ignore` REPLACES Enola's built-in default glob list, it does not add to it.
+# So this file must restate the defaults it wants to keep. It is Enola 0.1.24's
+# default set with two deliberate changes:
+#
+# 1. ADDED `.claude/worktrees/**`. Plastic gives every code intent its own git
+#    worktree under .claude/worktrees/, and each one is a full copy of the repo.
+#    Enola does not read .gitignore, so without this line a snapshot of the repo
+#    root indexes those copies too. Measured: 2307 of 3453 facts (66.8%) came
+#    from worktrees, and symbol lookups resolved to a disposable worktree copy
+#    instead of the real file.
+#
+# 2. REMOVED Enola's default `**/*_test.rb` and `**/*_spec.rb`. Enola ignores
+#    test files by default, which suits repos where tests are noise for the
+#    architecture explainers. It does not suit Plastic: test/ is 102 files, every
+#    code intent edits it, and an agent that cannot resolve a test symbol falls
+#    straight back to grep, which is the habit this whole setup exists to break.
+#    Keeping them costs index size and buys working navigation.
+ignore:
+  - "vendor/**"
+  - "node_modules/**"
+  - ".git/**"
+  - "**/*_test.go"
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/*.spec.tsx"
+  - ".enola/**"
+  - ".next/**"
+  - "dist/**"
+  - "**/build/**"
+  - "out/**"
+  - ".vercel/**"
+  - ".turbo/**"
+  - "coverage/**"
+  - ".nuxt/**"
+  - ".svelte-kit/**"
+  - "**/__pycache__/**"
+  - "**/.venv/**"
+  - "**/venv/**"
+  - "**/site-packages/**"
+  - "**/.tox/**"
+  - "**/.nox/**"
+  - "**/.eggs/**"
+  - "**/.mypy_cache/**"
+  - "**/.pytest_cache/**"
+  - "**/.ruff_cache/**"
+  - "**/Pods/**"
+  - "**/.gradle/**"
+  - "**/*.min.js"
+  - "**/*.bundle.js"
+  - ".claude/worktrees/**"

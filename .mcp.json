@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "enola": {
+      "type": "stdio",
+      "command": "enola",
+      "args": [],
+      "env": {
+        "PATH": "${HOME}/.local/bin:${PATH}"
+      }
+    }
+  }
+}

@@ -3,17 +3,18 @@
 
 require_relative "qmd_sync"
 
-# PowerTools — detect-then-degrade harness for Plastic's optional power-tools
-# (intent 66b; demoted to recommendations in intent 108, D8). It owns
-# deterministic detection of each tool and builds a RECOMMENDATION string for
-# whichever tools are present, so the agent is reminded (not obliged) to prefer
-# them: QMD for finding intents, Serena for code navigation.
+# PowerTools - detect-then-degrade harness for Plastic's optional power-tools
+# (intent 66b; demoted to recommendations in intent 108, D8; Enola added in
+# intent 187). It owns deterministic detection of each tool and builds a
+# RECOMMENDATION string for whichever tools are present, so the agent is
+# reminded (not obliged) to prefer them: QMD for finding intents, Enola or
+# Serena for code navigation.
 #
 # Strictly detect-then-degrade: a tool that is absent contributes nothing, and
 # `mandate` returns nil when no tool is present. Nothing here installs anything.
 #
 # Pure and dependency-injected: every detection runs through an injected callable
-# or keyword probe (PATH scan / `.serena` marker walk), so the whole module is
+# or keyword probe (PATH scan / marker-directory walk), so the whole module is
 # unit-testable with no real binaries, no network, and no global/ENV state.
 module PowerTools
   module_function
@@ -31,10 +32,27 @@ module PowerTools
     !!path_probe.call
   end
 
+  # True when Enola is present: a `.enola` directory exists in cwd or any
+  # ancestor (a generated snapshot), OR `enola` is resolvable on PATH. Both
+  # probes are injectable so tests do not depend on the host having Enola
+  # installed or indexed (intent 187).
+  def enola?(cwd:, path_probe: method(:which_enola), marker_finder: method(:enola_marker?))
+    return true if marker_finder.call(cwd)
+    !!path_probe.call
+  end
+
   # True when `serena` is an executable on PATH. Mirrors QmdSync.which_qmd.
   def which_serena
     ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).any? do |dir|
       candidate = File.join(dir, "serena")
+      File.file?(candidate) && File.executable?(candidate)
+    end
+  end
+
+  # True when `enola` is an executable on PATH. Mirrors which_serena.
+  def which_enola
+    ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).any? do |dir|
+      candidate = File.join(dir, "enola")
       File.file?(candidate) && File.executable?(candidate)
     end
   end
@@ -52,26 +70,51 @@ module PowerTools
     false
   end
 
+  # Walk up from cwd to the filesystem root, returning true if any level holds
+  # an `.enola` directory (a generated snapshot).
+  def enola_marker?(cwd)
+    dir = File.expand_path(cwd)
+    loop do
+      return true if Dir.exist?(File.join(dir, ".enola"))
+      parent = File.dirname(dir)
+      break if parent == dir
+      dir = parent
+    end
+    false
+  end
+
   QMD_OBLIGATION = "prefer `qmd search` / `qmd query` over the `plastic-*` " \
                    "collections to check for existing or related intents before " \
                    "treating work as new"
   SERENA_OBLIGATION = "prefer its symbolic tools (find_symbol / get_symbols_overview / " \
                        "find_referencing_symbols) for code navigation"
+  ENOLA_OBLIGATION = "prefer its MCP symbol resolution (or `.enola/facts.jsonl`) for " \
+                     "code navigation over grep"
 
   # Recommendation text for whichever tools are present, or nil when none are.
-  # Both present collapse to ONE combined line naming both obligations (no
-  # embedded newline); one present returns that tool's own line; neither
-  # returns nil.
-  def mandate(cwd:, qmd_detector: QmdSync.method(:detect), serena_detector: nil)
+  # QMD plus a code-navigation tool collapse to ONE combined line naming both
+  # obligations (no embedded newline); one tool present returns that tool's own
+  # line; neither returns nil.
+  #
+  # Enola-first: Enola and Serena share ONE code-navigation slot. When both are
+  # present, only Enola is named (intent 187, matching the owner's standing
+  # Enola-first ruling and avoiding a bloated three-tool line). The QMD-only and
+  # Serena-only lines are unchanged from before Enola existed.
+  def mandate(cwd:, qmd_detector: QmdSync.method(:detect), serena_detector: nil, enola_detector: nil)
     qmd_present = qmd?(detector: qmd_detector)
+    enola_present = enola_detector ? !!enola_detector.call : enola?(cwd: cwd)
     serena_present = serena_detector ? !!serena_detector.call : serena?(cwd: cwd)
 
-    if qmd_present && serena_present
-      "QMD and Serena are available: #{QMD_OBLIGATION}, and #{SERENA_OBLIGATION}."
+    nav_present = enola_present || serena_present
+    nav_name = enola_present ? "Enola" : "Serena"
+    nav_obligation = enola_present ? ENOLA_OBLIGATION : SERENA_OBLIGATION
+
+    if qmd_present && nav_present
+      "QMD and #{nav_name} are available: #{QMD_OBLIGATION}, and #{nav_obligation}."
     elsif qmd_present
       "QMD is available: #{QMD_OBLIGATION}."
-    elsif serena_present
-      "Serena is available: #{SERENA_OBLIGATION}."
+    elsif nav_present
+      "#{nav_name} is available: #{nav_obligation}."
     end
   end
 end

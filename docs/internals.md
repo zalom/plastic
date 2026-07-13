@@ -472,8 +472,10 @@ over the CWD's project collection plus `plastic-global` and injects only hits ab
 appends the power-tools mandate from `scripts/lib/power_tools.rb`
 (`PowerTools.mandate`): an always-on "MUST use QMD" obligation when qmd is present
 and a "MUST use Serena" obligation when Serena is present (symbolic code navigation
-before grep/Read). Serena presence is detected by a `.serena` marker in the working
-directory or an ancestor, or `serena` on PATH (`PowerTools.serena?`); qmd presence
+before grep/Read), or, when Enola is also present, that slot names Enola instead of
+Serena (Enola-first, one code-navigation slot; `PowerTools.enola?` checks a `.enola`
+marker or `enola` on PATH). Serena presence is detected by a `.serena` marker in the
+working directory or an ancestor, or `serena` on PATH (`PowerTools.serena?`); qmd presence
 by `PowerTools.qmd?`. These are mandates, not soft reminders. A 2s timeout plus
 rescue-all keeps a slow or broken qmd from ever blocking the turn; when neither tool
 is present the hook is a silent no-op. The hook registers as a fourth
