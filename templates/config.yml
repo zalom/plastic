@@ -20,3 +20,17 @@ architect:
 #   models:
 #     plastic-executor: sonnet
 #     plastic-enforcer: opus
+
+# Consultation agent and model instructions (intent 185). advisor.enabled and
+# model_instructions.opus default to enabled; missing or unreadable counts as
+# enabled (fail-open). Set at install time via --no-advisor /
+# --no-opus-instructions / --advisor-model, or uncomment here directly.
+# advisor:
+#   enabled: false   # skip installing plastic-advisor; omit its pointer
+#                     # from injected model instructions
+#   model: opus       # which model runs plastic-advisor: opus or fable.
+#                      # Resolved ahead of any agents.models.plastic-advisor
+#                      # override, through the same install-time frontmatter
+#                      # rewrite every agent override uses. Shipped default: fable.
+# model_instructions:
+#   opus: false   # skip injecting the Operating Manual into Opus sessions

@@ -68,10 +68,12 @@ Run `/plastic-install` with no arguments.
 Check if `~/.plastic/VERSION` exists.
 - If yes: announce "Plastic is already installed at ~/.plastic/. Run `/plastic-update` to
   sync core files, or use the re-install command above to repair in place."
-- If no: run the fresh install command (default `@latest`, or the channel the user named):
+- If no: first ask the advisor and model instructions questions below (Claude Code only),
+  then run the fresh install command (default `@latest`, or the channel the user named)
+  with whichever flags those answers produced:
 
 ```bash
-npx -y @zalom/plastic@latest install --claude
+npx -y @zalom/plastic@latest install --claude [--no-advisor] [--no-opus-instructions] [--advisor-model opus|fable]
 ```
 
 This single command, via `install.rb` (`bootstrap` + `distribute`), creates `store/`,
@@ -79,6 +81,35 @@ This single command, via `install.rb` (`bootstrap` + `distribute`), creates `sto
 and copies the utility scripts (`folgezettel-id`, `read-config`, and the rest of
 `scripts/`). This skill does none of that itself; it wraps the command with the
 interactive steps the CLI does not yet own, plus reporting and a doctor pass.
+
+**Advisor and model instructions (Claude Code only)**
+
+Ask the user two feature questions, interactive sessions only:
+> "How to talk to Fable as an advisor?" (a `plastic-advisor` consultation agent for
+> expensive reasoning: plan review, architecture calls, second opinions)
+> - Yes (recommended) -> leave the advisor enabled (default, no flag)
+> - No -> append `--no-advisor`
+
+> "Provide Fable reasoning to Opus?" (an Operating Manual injected automatically into
+> Opus main sessions, teaching reasoning discipline)
+> - Yes (recommended) -> leave model instructions enabled (default, no flag)
+> - No -> append `--no-opus-instructions`
+
+If the advisor is wanted, ask which model runs it, exactly two choices:
+> "Which model should run the advisor?"
+> - Opus 4.8: the advisor runs the role using the Fable reasoning instructions ->
+>   append `--advisor-model opus`
+> - Fable 5: the advisor is Fable itself (default) -> append `--advisor-model fable`,
+>   or leave the flag off (fable is the shipped default either way)
+
+Non-interactive sessions (no tty) skip all three questions: the install ships with the
+shipped defaults (advisor enabled, model instructions enabled, advisor model fable).
+
+Update flow: if `advisor.enabled`, `model_instructions.opus`, or `advisor.model` are
+already set in `~/.plastic/config.yml`, do not re-ask; the existing value is respected,
+the same ask-once-when-unset rule the statusline choice below already follows. Any of
+the three flags can also be passed again on `install --reinstall` to change a prior
+answer.
 
 **Statusline**
 

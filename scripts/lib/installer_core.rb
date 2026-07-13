@@ -263,10 +263,10 @@ class InstallerCore
       "scripts/read-config" => "scripts/read-config",
       "scripts/select-update-target" => "scripts/select-update-target",
       "scripts/hook-session-start" => "scripts/hook-session-start",
-      "scripts/hook-opus-manual" => "scripts/hook-opus-manual",
-      "scripts/lib/opus_manual.rb" => "scripts/lib/opus_manual.rb",
-      "manuals/operating-manual.md" => "manuals/operating-manual.md",
-      "manuals/advisor-protocol.md" => "manuals/advisor-protocol.md",
+      "scripts/hook-model-instructions" => "scripts/hook-model-instructions",
+      "scripts/lib/model_instructions.rb" => "scripts/lib/model_instructions.rb",
+      "model_instructions/operating-manual.md" => "model_instructions/operating-manual.md",
+      "model_instructions/advisor-protocol.md" => "model_instructions/advisor-protocol.md",
       "scripts/hook-continue" => "scripts/hook-continue",
       "scripts/hook-future-intent-check" => "scripts/hook-future-intent-check",
       "scripts/hook-gate-check" => "scripts/hook-gate-check",
@@ -474,7 +474,7 @@ class InstallerCore
     installed += install_skills_flat(skills_source, skills_root) if File.directory?(skills_source)
 
     # Copy agent role files into <dir>/agents (manifest-tracked, pruned on update)
-    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides)
+    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides, advisor_enabled: advisor_enabled?)
 
     # Write VERSION
     version_file = File.join(plastic_dir, "VERSION")
@@ -530,14 +530,15 @@ class InstallerCore
 
     FileUtils.mkdir_p(agents_root)
     sources.filter_map do |src|
-      # Codex has no fable alias (intent 185): skip any agent whose AUTHORED
-      # frontmatter model is `fable`, checked before overrides are applied. An
-      # override that flips a non-fable agent's authored model to fable is still
-      # honored as written (intent 170) and is not skipped here.
-      authored_front, = split_frontmatter(File.read(src))
-      next if authored_front["model"].to_s == "fable"
-
       basename = File.basename(src, ".md")
+      # Codex advisor is out of scope for this release (intent 185 ACTION-7): the
+      # owner has not evaluated the Codex reasoning-model ecosystem long enough to
+      # judge it. Skip every AgentModels::CONSULTATION_AGENTS file by name, a
+      # deliberate and mechanical scope cut tracked at intent 186 (Codex advisor
+      # evaluation), not a permanent exclusion and not conditioned on any
+      # frontmatter or override value.
+      next if AgentModels::CONSULTATION_AGENTS.include?(basename)
+
       dest = File.join(agents_root, "#{basename}.toml")
       write_text_atomic(dest, render_codex_agent_toml(src, models[basename]))
       dest
@@ -651,7 +652,7 @@ class InstallerCore
     installed = []
     skills_source = File.join(package_root, "skills")
     installed += install_skills_flat(skills_source, File.join(config[:dir], "skills")) if File.directory?(skills_source)
-    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides)
+    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides, advisor_enabled: advisor_enabled?)
 
     write_manifest(installed, File.join(config[:dir], "plastic-manifest.json"))
     { agent: config[:name], success: true, files: installed.size }
@@ -686,9 +687,16 @@ class InstallerCore
   # equivalents). Returns the installed destination paths so callers can append
   # them to `installed` before write_manifest (manifest + prune are then automatic).
   # No-op safe: returns [] when the package has no agents dir or it is empty.
-  def install_agents(agents_root, models: {})
+  # advisor_enabled: false (intent 185 ACTION-6, advisor.enabled config key) skips
+  # every AgentModels::CONSULTATION_AGENTS file entirely, so a user who declined
+  # "How to talk to Fable as an advisor" never gets plastic-advisor installed.
+  def install_agents(agents_root, models: {}, advisor_enabled: true)
     sources = Dir.glob(File.join(package_root, "agents", "*.md"))
     return [] if sources.empty?
+
+    unless advisor_enabled
+      sources = sources.reject { |src| AgentModels::CONSULTATION_AGENTS.include?(File.basename(src, ".md")) }
+    end
 
     FileUtils.mkdir_p(agents_root)
     sources.map do |src|
@@ -713,6 +721,13 @@ class InstallerCore
   # Resolve per-agent model overrides for this install: project config (when a
   # project dir is known) overlaid on global config. Defaults are NOT included,
   # so unconfigured agents keep their shipped frontmatter.
+  #
+  # advisor.model (intent 185 ACTION-7) feeds the SAME map through the SAME
+  # install_agents frontmatter-rewrite path every other override already uses;
+  # it is not a second mechanism. Resolution for the plastic-advisor entry:
+  # advisor.model (project, then global) wins when set, else any
+  # agents.models.plastic-advisor override already in the map applies, else the
+  # shipped default (fable) passes through untouched.
   def agent_model_overrides(project_dir = nil)
     global_config = load_config_yaml(File.join(plastic_home, "config.yml"))
     project_config =
@@ -721,7 +736,58 @@ class InstallerCore
       else
         {}
       end
-    AgentModels.override_map(project_config: project_config, global_config: global_config)
+    map = AgentModels.override_map(project_config: project_config, global_config: global_config)
+
+    advisor_model = project_config.dig("advisor", "model") || global_config.dig("advisor", "model")
+    map["plastic-advisor"] = advisor_model if advisor_model && !advisor_model.to_s.empty?
+
+    map
+  end
+
+  # advisor.enabled (intent 185 ACTION-6): project overlays global, missing or
+  # malformed counts as enabled (fail-open), matching ModelInstructions.enabled?'s
+  # semantics for the runtime config_reader path.
+  def advisor_enabled?(project_dir = nil)
+    global_config = load_config_yaml(File.join(plastic_home, "config.yml"))
+    project_config = project_dir ? load_config_yaml(File.join(project_dir, ".plastic_store", "config.yml")) : {}
+    value = project_config.dig("advisor", "enabled")
+    value = global_config.dig("advisor", "enabled") if value.nil?
+    value != false
+  end
+
+  # Write advisor.enabled / model_instructions.opus / advisor.model into the
+  # global config.yml from install-time flags (intent 185 ACTION-6, ACTION-7).
+  # Absent flags change nothing: advisor.enabled and model_instructions.opus
+  # default to enabled when missing, and advisor.model defaults to the shipped
+  # frontmatter (fable) when missing, so there is nothing to write.
+  #   --no-advisor            -> advisor.enabled: false
+  #   --no-opus-instructions  -> model_instructions.opus: false
+  #   --advisor-model VALUE   -> advisor.model: VALUE (opus or fable)
+  def apply_config_flags(argv)
+    no_advisor = argv.include?("--no-advisor")
+    no_opus_instructions = argv.include?("--no-opus-instructions")
+    advisor_model_idx = argv.index("--advisor-model")
+    advisor_model = advisor_model_idx && argv[advisor_model_idx + 1]
+    return unless no_advisor || no_opus_instructions || advisor_model
+
+    config_path = File.join(plastic_home, "config.yml")
+    config = load_config_yaml(config_path)
+
+    if no_advisor
+      config["advisor"] ||= {}
+      config["advisor"]["enabled"] = false
+    end
+    if no_opus_instructions
+      config["model_instructions"] ||= {}
+      config["model_instructions"]["opus"] = false
+    end
+    if advisor_model
+      config["advisor"] ||= {}
+      config["advisor"]["model"] = advisor_model
+    end
+
+    FileUtils.mkdir_p(plastic_home)
+    File.write(config_path, YAML.dump(config))
   end
 
   def load_config_yaml(path)

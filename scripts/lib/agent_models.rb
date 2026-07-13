@@ -21,12 +21,15 @@ module AgentModels
     "plastic-intent-discovery" => "sonnet"
   }.freeze
 
-  # Consultation agent (intent 185, single-agent rename 185 ACTION-5) pins `fable`
-  # in shipped frontmatter by design, plastic- prefixed like every other Plastic
-  # agent. Not a lifecycle-stage role: never dispatched by the auto pipeline, not
-  # part of TIER_DEFAULTS, Claude-only (generate_codex_agents skips authored-fable
-  # agents; Codex has no fable alias). agents.models overrides still apply.
-  CONSULTATION_AGENTS = %w[plastic-fable-advisor].freeze
+  # Consultation agent (intent 185 ACTION-7: model-agnostic role). Ships `fable`
+  # as the shipped DEFAULT in frontmatter, not a hard-wired identity; the model
+  # is a user choice (advisor.model config key, resolved ahead of any
+  # agents.models.plastic-advisor override, see
+  # InstallerCore#agent_model_overrides). Not a lifecycle-stage role: never
+  # dispatched by the auto pipeline, not part of TIER_DEFAULTS. Claude-only for
+  # this release (generate_codex_agents skips it by name; the Codex advisor case
+  # is intent 186, not a permanent exclusion).
+  CONSULTATION_AGENTS = %w[plastic-advisor].freeze
 
   # Codex reasoning-effort per tier alias (intent 102a). model_reasoning_effort is a
   # depth-of-thinking dial independent of model selection (181 line 317-318), so mapping

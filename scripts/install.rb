@@ -57,6 +57,7 @@ class Install < InstallerCore
 
     distribute(mode)
     bootstrap if fresh
+    apply_config_flags(argv)
 
     results = selected.map { |key| install_for_agent(key, force, argv: argv, input: input, reinstall: reinstall) }
 
@@ -158,6 +159,14 @@ class Install < InstallerCore
         --statusline VALUE   keep or plastic. If an existing statusline is found, this
                              skips the interactive prompt. Interactive sessions ask by
                              default; non-interactive sessions default to keep.
+        --no-advisor         Skip installing plastic-advisor and omit the advisor
+                             pointer from injected model instructions (advisor.enabled: false)
+        --no-opus-instructions
+                             Skip injecting the Operating Manual into Opus sessions
+                             (model_instructions.opus: false)
+        --advisor-model VALUE
+                             Which model runs plastic-advisor: opus or fable (advisor.model,
+                             shipped default fable)
         -h, --help           Show this help
 
       Notes:
