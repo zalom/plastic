@@ -234,7 +234,11 @@ class InstallPackagingTest < Minitest::Test
     agents_root = File.join(home_dir, "agents")
     manifest = JSON.parse(File.read(File.join(codex_dir, "plastic-manifest.json")))["files"]
 
-    agent_basenames.each do |basename|
+    # Codex has no fable alias: consultation agents (intent 185) are excluded from
+    # generation, checked separately below.
+    codex_expected = agent_basenames - AgentModels::CONSULTATION_AGENTS
+
+    codex_expected.each do |basename|
       dest = File.join(agents_root, "#{basename}.toml")
       assert File.file?(dest), "codex: #{basename}.toml must be generated into #{agents_root}"
       assert manifest.key?(dest), "codex: manifest must track #{dest}"
@@ -244,6 +248,19 @@ class InstallPackagingTest < Minitest::Test
 
     assert_empty Dir.glob(File.join(codex_dir, "agents", "*.md")),
       "codex: the dead ~/.agents/agents/*.md copy must not be written"
+  end
+
+  def test_generate_codex_agents_skips_authored_fable_consultation_agents
+    installer = InstallerCore.new(package_root: REPO, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
+    agents_root = File.join(@dir, "codex-agents")
+
+    installed = installer.generate_codex_agents(agents_root)
+
+    AgentModels::CONSULTATION_AGENTS.each do |basename|
+      dest = File.join(agents_root, "#{basename}.toml")
+      refute File.exist?(dest), "codex: #{basename}.toml must not be generated (authored model is fable)"
+      refute_includes installed, dest
+    end
   end
 
   def test_agents_dir_is_packaged_for_distribution

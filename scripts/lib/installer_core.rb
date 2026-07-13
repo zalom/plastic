@@ -525,7 +525,14 @@ class InstallerCore
     return [] if sources.empty?
 
     FileUtils.mkdir_p(agents_root)
-    sources.map do |src|
+    sources.filter_map do |src|
+      # Codex has no fable alias (intent 185): skip any agent whose AUTHORED
+      # frontmatter model is `fable`, checked before overrides are applied. An
+      # override that flips a non-fable agent's authored model to fable is still
+      # honored as written (intent 170) and is not skipped here.
+      authored_front, = split_frontmatter(File.read(src))
+      next if authored_front["model"].to_s == "fable"
+
       basename = File.basename(src, ".md")
       dest = File.join(agents_root, "#{basename}.toml")
       write_text_atomic(dest, render_codex_agent_toml(src, models[basename]))

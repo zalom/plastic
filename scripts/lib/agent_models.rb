@@ -21,6 +21,12 @@ module AgentModels
     "plastic-intent-discovery" => "sonnet"
   }.freeze
 
+  # Consultation agents (intent 185) pin `fable` in shipped frontmatter by design.
+  # They are not lifecycle-stage roles: never dispatched by the auto pipeline, not
+  # part of TIER_DEFAULTS, Claude-only (generate_codex_agents skips authored-fable
+  # agents; Codex has no fable alias). agents.models overrides still apply.
+  CONSULTATION_AGENTS = %w[fable-advisor-s fable-advisor-m fable-advisor-l].freeze
+
   # Codex reasoning-effort per tier alias (intent 102a). model_reasoning_effort is a
   # depth-of-thinking dial independent of model selection (181 line 317-318), so mapping
   # the tier here never encodes a rotting Codex model id (116 D1). opus is the deepest

@@ -77,4 +77,32 @@ class InstallerAgentModelsTest < Minitest::Test
     assert_nil AgentModels.effort_for("")
     assert_nil AgentModels.effort_for(nil)
   end
+
+  # --- Consultation agents (intent 185): shipped fable exception ---
+
+  def test_consultation_agents_contains_exactly_the_three_advisors
+    assert_equal %w[fable-advisor-s fable-advisor-m fable-advisor-l], AgentModels::CONSULTATION_AGENTS
+  end
+
+  def test_tier_defaults_excludes_every_consultation_agent
+    AgentModels::CONSULTATION_AGENTS.each do |basename|
+      refute AgentModels::TIER_DEFAULTS.key?(basename),
+        "TIER_DEFAULTS must not contain #{basename}: consultation agents are not lifecycle-stage roles"
+    end
+  end
+
+  def test_install_agents_preserves_shipped_fable_model_for_advisors
+    @core.install_agents(@dest)
+    AgentModels::CONSULTATION_AGENTS.each do |basename|
+      assert_equal "model: fable", model_line(basename)
+    end
+  end
+
+  def test_install_agents_rewrites_fable_advisor_model_on_override
+    @core.install_agents(@dest, models: { "fable-advisor-l" => "opus" })
+    assert_equal "model: opus", model_line("fable-advisor-l")
+    # unlisted advisors still pass through with their shipped fable pin
+    assert_equal "model: fable", model_line("fable-advisor-s")
+    assert_equal "model: fable", model_line("fable-advisor-m")
+  end
 end
