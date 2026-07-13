@@ -310,9 +310,12 @@ class CodexInstallTest < Minitest::Test
     end
   end
 
+  # Codex-scoped config (intent 185 final design): agents.models is
+  # harness-scoped, so a Codex override must be written under
+  # agents.models.codex.* to reach the Codex TOML render.
   def test_override_with_a_codex_model_id_wins_as_a_literal_model_and_drops_effort
     File.write(File.join(@home, "config.yml"),
-               "agents:\n  models:\n    plastic-executor: gpt-5.4-codex\n")
+               "agents:\n  models:\n    codex:\n      plastic-executor: gpt-5.4-codex\n")
 
     @core.install_for_agent("codex", false)
 
@@ -323,13 +326,31 @@ class CodexInstallTest < Minitest::Test
 
   def test_override_with_a_tier_word_maps_to_effort_not_a_literal_model
     File.write(File.join(@home, "config.yml"),
-               "agents:\n  models:\n    plastic-executor: haiku\n")
+               "agents:\n  models:\n    codex:\n      plastic-executor: haiku\n")
 
     @core.install_for_agent("codex", false)
 
     toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
     assert_includes toml, 'model_reasoning_effort = "low"'
     refute_match(/^model = /, toml)
+  end
+
+  # The literal-model-id-leak regression proof (intent 185 final design): a
+  # Claude-scoped or legacy flat override must NEVER surface in a generated
+  # Codex TOML. Writing the SAME override under agents.models.plastic-executor
+  # (flat, read as claude) must leave the Codex render at its shipped default,
+  # not the override, closing the bug the harness scoping exists to fix.
+  def test_flat_override_never_leaks_into_the_codex_toml
+    File.write(File.join(@home, "config.yml"),
+               "agents:\n  models:\n    plastic-executor: gpt-5.4-codex\n")
+
+    @core.install_for_agent("codex", false)
+
+    toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
+    refute_includes toml, 'model = "gpt-5.4-codex"',
+      "a flat/claude-scoped literal model id must never leak into the Codex TOML"
+    assert_includes toml, 'model_reasoning_effort = "medium"',
+      "with no codex-scoped override, plastic-executor's shipped sonnet tier (medium effort) must pass through"
   end
 
   def test_regenerating_codex_agent_tomls_is_byte_identical

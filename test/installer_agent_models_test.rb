@@ -79,11 +79,12 @@ class InstallerAgentModelsTest < Minitest::Test
     assert_nil AgentModels.effort_for(nil)
   end
 
-  # --- Consultation agent (intent 185 ACTION-7: model-agnostic role, renamed
-  # plastic-advisor): fable ships as the DEFAULT, not a hard-wired exception ---
+  # --- The two advisor agents (intent 185 final design): plastic-advisor
+  # (real, ships fable) and plastic-faux-advisor (imitation, ships opus).
+  # Each ships its own default in frontmatter, not a hard-wired exception ---
 
-  def test_consultation_agents_contains_exactly_the_single_advisor
-    assert_equal %w[plastic-advisor], AgentModels::CONSULTATION_AGENTS
+  def test_consultation_agents_contains_exactly_the_two_advisors
+    assert_equal %w[plastic-advisor plastic-faux-advisor], AgentModels::CONSULTATION_AGENTS
   end
 
   def test_tier_defaults_excludes_every_consultation_agent
@@ -93,22 +94,17 @@ class InstallerAgentModelsTest < Minitest::Test
     end
   end
 
-  def test_install_agents_preserves_shipped_fable_model_for_advisor
+  def test_install_agents_preserves_each_advisors_shipped_default_model
     @core.install_agents(@dest)
-    AgentModels::CONSULTATION_AGENTS.each do |basename|
-      assert_equal "model: fable", model_line(basename)
-    end
+    assert_equal "model: fable", model_line("plastic-advisor")
+    assert_equal "model: opus", model_line("plastic-faux-advisor")
   end
 
   def test_install_agents_rewrites_advisor_model_on_override
-    @core.install_agents(@dest, models: { "plastic-advisor" => "opus" })
+    @core.install_agents(@dest, models: { "plastic-advisor" => "opus", "plastic-faux-advisor" => "fable" })
     assert_equal "model: opus", model_line("plastic-advisor")
+    assert_equal "model: fable", model_line("plastic-faux-advisor")
   end
-
-  # --- advisor.model resolution (intent 185 ACTION-7): advisor.model -> any
-  # agents.models.plastic-advisor override -> the shipped default (fable). All
-  # three feed InstallerCore#agent_model_overrides, the SAME map install_agents
-  # already rewrites frontmatter from; there is no second install mechanism. ---
 
   def write_global_config(hash)
     File.write(File.join(@home, "config.yml"), YAML.dump(hash))
@@ -119,34 +115,97 @@ class InstallerAgentModelsTest < Minitest::Test
     File.write(File.join(project_dir, ".plastic_store", "config.yml"), YAML.dump(hash))
   end
 
-  def test_advisor_model_absent_leaves_shipped_default_untouched
-    @core.install_agents(@dest, models: @core.agent_model_overrides)
-    assert_equal "model: fable", model_line("plastic-advisor")
+  # --- Harness-scoped agents.models (intent 185 final design): the legacy
+  # flat form (agents.models.<name>: value) is honored as the claude harness
+  # only; nested agents.models.<harness>.<name> wins over flat for the same
+  # agent; a non-claude harness reads ONLY its own nested sub-hash, never the
+  # flat entries or the claude sub-hash. This closes a real latent bug:
+  # previously the same flat map fed both the Claude frontmatter rewrite and
+  # the Codex TOML generator, so a literal Claude model id could leak into a
+  # Codex config. ---
+
+  def test_models_section_reads_flat_form_as_claude
+    g = { "agents" => { "models" => { "plastic-executor" => "opus" } } }
+    assert_equal({ "plastic-executor" => "opus" }, AgentModels.models_section(g, harness: "claude"))
   end
 
-  def test_advisor_model_global_overrides_shipped_default
-    write_global_config("advisor" => { "model" => "opus" })
-    @core.install_agents(@dest, models: @core.agent_model_overrides)
-    assert_equal "model: opus", model_line("plastic-advisor")
+  def test_models_section_flat_form_never_applies_to_codex
+    g = { "agents" => { "models" => { "plastic-executor" => "opus" } } }
+    assert_equal({}, AgentModels.models_section(g, harness: "codex"))
   end
 
-  def test_advisor_model_project_wins_over_global
-    write_global_config("advisor" => { "model" => "opus" })
-    project_dir = File.join(@home, "project")
-    write_project_config(project_dir, "advisor" => { "model" => "fable" })
-    @core.install_agents(@dest, models: @core.agent_model_overrides(project_dir))
-    assert_equal "model: fable", model_line("plastic-advisor")
+  def test_models_section_nested_wins_over_flat_for_claude
+    g = { "agents" => { "models" => { "plastic-executor" => "opus", "claude" => { "plastic-executor" => "sonnet" } } } }
+    assert_equal "sonnet", AgentModels.models_section(g, harness: "claude")["plastic-executor"]
   end
 
-  def test_advisor_model_wins_over_agents_models_plastic_advisor_override
-    write_global_config("advisor" => { "model" => "fable" }, "agents" => { "models" => { "plastic-advisor" => "opus" } })
-    @core.install_agents(@dest, models: @core.agent_model_overrides)
-    assert_equal "model: fable", model_line("plastic-advisor")
+  def test_models_section_reads_codex_nested_sub_hash
+    g = { "agents" => { "models" => { "codex" => { "plastic-executor" => "gpt-5.1-codex" } } } }
+    assert_equal({ "plastic-executor" => "gpt-5.1-codex" }, AgentModels.models_section(g, harness: "codex"))
   end
 
-  def test_agents_models_plastic_advisor_applies_when_advisor_model_unset
-    write_global_config("agents" => { "models" => { "plastic-advisor" => "opus" } })
-    @core.install_agents(@dest, models: @core.agent_model_overrides)
-    assert_equal "model: opus", model_line("plastic-advisor")
+  def test_override_map_defaults_to_claude_harness
+    g = { "agents" => { "models" => { "plastic-executor" => "opus" } } }
+    assert_equal({ "plastic-executor" => "opus" }, AgentModels.override_map(global_config: g))
+  end
+
+  # The literal-model-id-leak regression proof: a literal Claude model id set
+  # under the flat legacy form must never reach
+  # InstallerCore#agent_model_overrides(harness: "codex"), the map
+  # install_codex feeds straight into generate_codex_agents.
+  def test_agent_model_overrides_never_leaks_a_claude_model_id_into_codex
+    write_global_config("agents" => { "models" => { "plastic-executor" => "claude-opus-4-8-literal-id" } })
+    claude_map = @core.agent_model_overrides
+    codex_map = @core.agent_model_overrides(harness: "codex")
+
+    assert_equal "claude-opus-4-8-literal-id", claude_map["plastic-executor"]
+    refute codex_map.key?("plastic-executor"),
+      "a literal Claude model id under the flat/claude form must never leak into the codex-scoped override map"
+  end
+
+  def test_agent_model_overrides_reads_codex_scoped_entries_only_for_codex_harness
+    write_global_config("agents" => { "models" => {
+      "codex" => { "plastic-executor" => "gpt-5.1-codex" },
+      "claude" => { "plastic-executor" => "sonnet" },
+    } })
+    codex_map = @core.agent_model_overrides(harness: "codex")
+    claude_map = @core.agent_model_overrides
+
+    assert_equal "gpt-5.1-codex", codex_map["plastic-executor"]
+    assert_equal "sonnet", claude_map["plastic-executor"]
+  end
+
+  # --- advisor.enabled / apply_config_flags (intent 185 final design):
+  # advisor.claude.default names an AGENT, never a model; --advisor accepts
+  # the agent name or the "real"/"faux" shorthand ---
+
+  def test_apply_config_flags_no_advisor_disables
+    @core.apply_config_flags(["--no-advisor"])
+    config = YAML.safe_load(File.read(File.join(@home, "config.yml")))
+    assert_equal false, config.dig("advisor", "enabled")
+  end
+
+  def test_apply_config_flags_advisor_shorthand_real_writes_plastic_advisor
+    @core.apply_config_flags(["--advisor", "real"])
+    config = YAML.safe_load(File.read(File.join(@home, "config.yml")))
+    assert_equal "plastic-advisor", config.dig("advisor", "claude", "default")
+  end
+
+  def test_apply_config_flags_advisor_shorthand_faux_writes_plastic_faux_advisor
+    @core.apply_config_flags(["--advisor", "faux"])
+    config = YAML.safe_load(File.read(File.join(@home, "config.yml")))
+    assert_equal "plastic-faux-advisor", config.dig("advisor", "claude", "default")
+  end
+
+  def test_apply_config_flags_advisor_value_passes_through_a_literal_agent_name
+    @core.apply_config_flags(["--advisor", "my-custom-advisor"])
+    config = YAML.safe_load(File.read(File.join(@home, "config.yml")))
+    assert_equal "my-custom-advisor", config.dig("advisor", "claude", "default")
+  end
+
+  def test_apply_config_flags_absent_flags_write_nothing
+    @core.apply_config_flags([])
+    refute File.exist?(File.join(@home, "config.yml")),
+      "apply_config_flags must not create config.yml when no relevant flag is present"
   end
 end
