@@ -653,19 +653,26 @@ notice below (about the human's main session, never a dispatched subagent), an
 explicit `agents.models.<name>` config override, which is honored as written for a
 dispatched subagent when one is configured (e.g. `plastic-brainstorming: fable`,
 mihradesign intent 24, a sanctioned, permanent override, not drift), and the shipped
-consultation agent's default. The advisor (`plastic-advisor`) is not a lifecycle stage
-role: the never-Fable rule governs stage agents only. It is never dispatched by the auto
-pipeline, and its model is a user choice, fable by default on Claude Code, set via
-`advisor.model`.
+default of one of the two consultation agents (`plastic-advisor`; its sibling
+`plastic-faux-advisor` ships `opus`, not Fable). The two advisors, `plastic-advisor`
+and `plastic-faux-advisor`, are not lifecycle stage roles: the never-Fable rule governs
+stage agents only. Neither is ever dispatched by the auto pipeline; they are
+consultation roles summoned deliberately by the user or the main session, and their
+models are user configuration (fable and opus by default on Claude Code).
 
 - **Single source of truth for the tier table**: `scripts/lib/agent_models.rb` holds
   `AgentModels::TIER_DEFAULTS`, a pure Ruby hash mirroring the shipped frontmatter
   (basename without `.md` to alias). It has no file IO, no `ENV`, no `eval`. It also
-  exposes `AgentModels.override_map(project_config:, global_config:)`, a pure resolver
-  that merges `agents.models.*` out of a global config hash overlaid by a project
-  config hash (project wins), returning ONLY the configured overrides. It deliberately
-  excludes the tier defaults, because a rewrite to a value the shipped file already
-  has would violate "no override configured leaves the frontmatter untouched."
+  exposes `AgentModels.override_map(project_config:, global_config:, harness:)`, a
+  pure resolver that merges `agents.models.*` out of a global config hash overlaid by
+  a project config hash (project wins), scoped to `harness` ("claude" or "codex"),
+  returning ONLY the configured overrides. `AgentModels.models_section(config, harness:)`
+  implements the scoping: for `harness: "claude"` it merges the legacy flat scalar
+  entries with the `claude` sub-hash (nested wins for the same agent); for any other
+  harness it reads ONLY that harness's own nested sub-hash, never the flat entries and
+  never another harness's sub-hash. Both deliberately exclude the tier defaults,
+  because a rewrite to a value the shipped file already has would violate "no override
+  configured leaves the frontmatter untouched."
 - **Config key and precedence**: `agents.models.<basename>` in a project's
   `<dir>/.plastic_store/config.yml` or the global `~/.plastic/config.yml` overrides
   one agent's tier, honoring the same `project -> global -> built-in default`
@@ -682,17 +689,22 @@ pipeline, and its model is a user choice, fable by default on Claude Code, set v
   rewrites the single frontmatter `model:` line via a targeted regex substitution
   (`rewrite_model_line`, the same `content.gsub`-style idiom `install_claude` already
   uses for its hook path rewrite, not the array-only `FrontmatterWriter`); with none,
-  it plain-copies the file so the shipped value passes through unchanged. The new
-  `agent_model_overrides(project_dir = nil)` helper resolves project-then-global
-  config into an `AgentModels.override_map` (loading YAML defensively via
-  `load_config_yaml`, tolerating a missing or malformed file). `install_claude` and
-  `install_hermes` call `install_agents` with `models: agent_model_overrides`, so the
-  override lands identically for those two harness targets on install, update, and
-  repair. `install_codex` instead calls `generate_codex_agents` with the same
-  `agent_model_overrides` map (intent 102a): Codex reads standalone
-  `~/.codex/agents/<name>.toml` files, not the `.md` frontmatter format, so the override
-  resolves to a `model_reasoning_effort` line for a tier alias or a literal `model` line
-  for anything else, rather than a rewritten frontmatter line. See
+  it plain-copies the file so the shipped value passes through unchanged. The
+  `agent_model_overrides(project_dir = nil, harness: "claude")` helper resolves
+  project-then-global config into an `AgentModels.override_map` scoped to `harness`
+  (loading YAML defensively via `load_config_yaml`, tolerating a missing or malformed
+  file). `install_claude` and `install_hermes` call `install_agents` with `models:
+  agent_model_overrides` (default claude scope), so the override lands identically
+  for those two harness targets on install, update, and repair. `install_codex`
+  instead calls `generate_codex_agents` with `models: agent_model_overrides(harness:
+  "codex")` (intent 102a, rescoped at intent 185): Codex reads standalone
+  `~/.codex/agents/<name>.toml` files, not the `.md` frontmatter format, so the
+  override resolves to a `model_reasoning_effort` line for a tier alias or a literal
+  `model` line for anything else, rather than a rewritten frontmatter line. Scoping the
+  Codex call to `harness: "codex"` is what closes the literal-model-id leak: a value
+  set under the legacy flat form or `agents.models.claude.*` is claude-scoped only and
+  is never visible to the codex-scoped resolution, so it can never surface in a
+  generated Codex TOML `model` line. See
   [harness-adapters.md](reference/harness-adapters.md) for the full codex agent TOML
   contract.
 - **Dispatch-time contract (belt-and-braces)**: because Claude Code reading
@@ -713,10 +725,11 @@ pipeline, and its model is a user choice, fable by default on Claude Code, set v
   nothing if ignored; it concerns only the human's main session, since dispatched
   subagents keep their pinned tier and never resolve to Fable, unless an explicit
   `agents.models.<name>` config override names Fable for that role, in which case the
-  override is honored as written. The advisor (`plastic-advisor`) is not a lifecycle
-  stage role: the never-Fable rule governs stage agents only. It is never dispatched by
-  the auto pipeline, and its model is a user choice, fable by default on Claude Code,
-  set via `advisor.model`.
+  override is honored as written. The two advisors, `plastic-advisor` and
+  `plastic-faux-advisor`, are not lifecycle stage roles: the never-Fable rule governs
+  stage agents only. Neither is ever dispatched by the auto pipeline; they are
+  consultation roles summoned deliberately by the user or the main session, and their
+  models are user configuration (fable and opus by default on Claude Code).
 - **What-stage discovery agent**: `plastic-intent-discovery` (paired with the
   `skills/intent-discovering/SKILL.md` workflow) closes the What-stage gap in the
   one-agent-per-stage table. It fires inside `plastic-intent-starting`, right after

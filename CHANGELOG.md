@@ -6,11 +6,26 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 ## Unreleased
 
 ### Added
-- Ship `model_instructions/operating-manual.md` and `model_instructions/advisor-protocol.md` in the npm package, synced to `~/.plastic/model_instructions` on every install and update, read at runtime through `CLAUDE_PLUGIN_ROOT` with a `~/.plastic/model_instructions` fallback. `model_instructions/` holds per-harness instruction documents; a future harness adds its own file set.
-- `plastic-advisor`, a model-agnostic consultation agent for tiered expert consultations (state S, M, or L in the brief) per the shipped Advisor Protocol. Ships `model: fable` as the default, never a hard-wired vendor pin: `advisor.model` (global, project-overridable) picks the actual model, resolved through the same frontmatter-rewrite mechanism `agents.models` overrides already use.
-- Install (Claude Code only) asks whether to enable the advisor and the Operating Manual injection, and, when the advisor is wanted, which model runs it: Opus 4.8 (the advisor runs the role via the Fable reasoning instructions) or Fable 5 (the advisor is Fable itself). New flags `--no-advisor`, `--no-opus-instructions`, and `--advisor-model opus|fable`.
-- Model-conditional Opus operating manual injection: primary via the SessionStart hook's stdin model field, with a statusline-cache fallback for `/clear` starts, gated by a `model_instructions.opus` kill-switch (enabled by default); `advisor.enabled: false` skips installing the advisor agent and omits its pointer, without ever deleting an already-installed agent file.
-- `generate_codex_agents` skips `plastic-advisor` by name: no Codex advisor ships in this release (tracked at intent 186, not a permanent exclusion).
+- Two consultation agents for expensive reasoning, summoned deliberately and never
+  dispatched by the auto pipeline: `plastic-advisor` (the real advisor, ships `model:
+  fable`) and `plastic-faux-advisor` (the cheaper imitation, ships `model: opus` with
+  the frontier reasoning discipline inlined in its own body, never injected into a
+  user's own session). The `plastic-agent-advisor` skill is the one front door: it
+  teaches when consulting is worth the money, routes to the configured advisor, and
+  can set the config on request. The shipped Advisor Protocol lives in the skill's
+  `references/advisor-protocol.md`.
+- Config, harness-scoped with keys matching the installer's existing agent keys
+  (`claude`, `codex`): `advisor.enabled`, `advisor.claude.{default,primary,secondary}`
+  naming agents (never models), and `agents.models` scoped by harness
+  (`agents.models.claude.*`, `agents.models.codex.*`) with the pre-existing flat form
+  still honored as `claude`. Closes a real latent bug where a literal Claude model id
+  could leak into a generated Codex config.
+- Install asks whether the user wants the advisor and, if so, which is the default
+  (Faux Fable, recommended, or Fable 5), with a plain description of each; update asks
+  the same question once when the key is unset. New flags `--no-advisor` and
+  `--advisor VALUE` (an agent name, or the shorthand `real`/`faux`).
+- `generate_codex_agents` skips both advisor agents by name: no Codex advisor ships in
+  this release (tracked at intent 186, not a permanent exclusion).
 
 ## Released
 - `1.2.0` - shipped 2026-07-13; collected 33a (Codex adapter core: plastic-install --codex lays the adapted skills into ~/.agents/skills/ and injects a marked, hash-stamped Plastic section into ~/.codex/AGENTS.md, with surgical uninstall and a doctor check), 102 (the lifecycle gates ported to Codex: hooks.json registration derived from the hook registry, an apply_patch V4A envelope parser giving true pre-write vetoes, and a Ruby dispatcher driving the four existing gate and savepoint cores unchanged), and 102a (per-agent TOML generation in ~/.codex/agents/ mapping reasoning tiers to model_reasoning_effort with shape-based model overrides, fixing the dead agents copy); community-verified by 182 (the PreToolUse Bash-only claim resolved as version drift fixed in Codex 0.123.0 per PR 18391, the V4A grammar confirmed against the official apply-patch crate closing 102 residual, Tier A standing; hardening seed 184 parked); suite green at 1338 runs.

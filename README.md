@@ -154,11 +154,11 @@ plan a machine can build from exactly. Read
 - Personal stores by default.
 - Guided delivery with a human at every gate, or autonomous delivery when you
   ask for it.
-- An Opus main session auto-loads an Operating Manual for reasoning discipline, detected
-  from the session's model with no setup required. A plastic-advisor agent ships
-  alongside it for tiered expert consultations (state S, M, or L in the brief); which
-  model runs the advisor is a choice made at install (Opus 4.8 or Fable 5, fable by
-  default), never a hard-wired vendor pin.
+- Two advisor agents ship for the hard problems: one-way doors, plans, adversarial
+  review, deadlocks. Summon one deliberately, state S, M, or L in the brief; nobody's
+  main session is ever touched. Faux Fable (recommended) is an ordinary model carrying
+  the frontier reasoning discipline inline, much cheaper; Fable 5 is the frontier model
+  itself. Choose the default at install, switch it any time.
 
 Plastic needs Ruby (already on macOS and Linux) and Node.js 18 or later. Bun
 users can run `bunx` in place of `npx`; Bun is never required.
