@@ -425,7 +425,18 @@ class EndIntentTest < Minitest::Test
   # the same "run /plastic-lock fix" case AGENTS.md already names): its
   # owner_session cannot be read at all, so the direct release is skipped,
   # and the still-present lock file makes end-intent exit 3.
-  def test_ac3_corrupt_lock_cannot_be_directly_released_exits_3_then_idempotent_retry_exits_0
+  # NOTE (post-review, superseded by BLOCKER 2's fix below): this scenario
+  # (a FRESH corrupt lock, no bridge) used to slip past pre-flight entirely
+  # and only get caught at step 5's disarm fallback, exiting 3 AFTER steps
+  # 1-4 had already committed. The BLOCKER 2 fix makes `preflight_lock_verdict`
+  # arbitrate a corrupt lock by freshness (mtime is still a valid heartbeat
+  # even when the JSON content is garbage), so this exact fixture is now
+  # caught at pre-flight instead, exiting 4 and authoring NOTHING, which is
+  # strictly safer. See test_blocker2_fresh_corrupt_lock_refuses_authoring_nothing
+  # and test_blocker2_stale_corrupt_lock_is_taken_over_and_closes_normally for
+  # the current, accurate contract; this test only confirms a fresh corrupt
+  # lock's blocked close can be retried cleanly once the block is cleared.
+  def test_ac3_corrupt_lock_refuses_at_preflight_then_idempotent_retry_exits_0
     intent_dir = build_intent(id: "161")
     write_index(id: "161")
     File.write(Lock.path(intent_dir), "{ not valid json")
@@ -433,9 +444,10 @@ class EndIntentTest < Minitest::Test
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
                                   "--index", @index, "--no-commit", session: "sess-1")
-    assert_equal 3, status
-    assert_match(/still present/i, out)
-    assert File.exist?(Lock.path(intent_dir)), "a corrupt lock's owner cannot be resolved: it must still be present"
+    assert_equal 4, status
+    assert_match(/corrupt/i, out)
+    assert File.exist?(Lock.path(intent_dir)), "a FRESH corrupt lock is left exactly as found"
+    assert_empty savepoint_lines(intent_dir), "pre-flight refusal must author nothing"
 
     File.delete(Lock.path(intent_dir)) # simulate an external fix (plastic-lock fix, or a takeover)
 
@@ -537,5 +549,98 @@ class EndIntentTest < Minitest::Test
                                    "--index", @index, "--no-commit")
     assert_equal 0, status
     assert_equal before, File.read(@index), "an id already in the terminal section must be an untouched no-op"
+  end
+
+  # --- BLOCKER 2 (post-review, lock arbitration bypass): a corrupt lock must -
+  # --- be arbitrated by freshness (mtime is still a valid heartbeat), never --
+  # --- silently treated as "no lock at all" ----------------------------------
+
+  def test_blocker2_fresh_corrupt_lock_refuses_authoring_nothing
+    intent_dir = build_intent(id: "161")
+    write_index(id: "161")
+    File.write(Lock.path(intent_dir), "{ this is not valid json at all")
+    before_index = File.read(@index)
+    before_intent_file = File.read(Bridge.intent_file(intent_dir))
+    before_outcome = File.read(File.join(intent_dir, "outcome.md"))
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                  "--index", @index, "--no-commit", session: "sess-1")
+    assert_equal 4, status, "a FRESH corrupt lock must refuse exactly like a fresh foreign lock: #{out}"
+    assert_match(/corrupt/i, out)
+    assert_equal before_index, File.read(@index), "INDEX.md must be left untouched"
+    assert_equal before_intent_file, File.read(Bridge.intent_file(intent_dir))
+    assert_equal before_outcome, File.read(File.join(intent_dir, "outcome.md"))
+    assert_empty savepoint_lines(intent_dir), "savepoint.md must be left untouched"
+    assert File.exist?(Lock.path(intent_dir)), "the corrupt lock file must be left exactly as found"
+  end
+
+  def test_blocker2_stale_corrupt_lock_is_taken_over_and_closes_normally
+    intent_dir = build_intent(id: "161")
+    write_index(id: "161")
+    File.write(Lock.path(intent_dir), "{ this is not valid json at all")
+    FileUtils.touch(Lock.path(intent_dir), mtime: Time.now - 4000) # older than Lock::TTL_SECONDS (1800)
+
+    _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                   "--index", @index, "--no-commit", session: "sess-1")
+    assert_equal 0, status, "a STALE corrupt lock must be reclaimed automatically, never require manual repair"
+
+    lines = savepoint_lines(intent_dir)
+    assert(lines.any? { |l| l.include?("Lock") && l.include?("takeover") && l.include?("sess-1") },
+           "expected an audited takeover line: #{lines.inspect}")
+    refute File.exist?(Lock.path(intent_dir)), "a normal close clears the lock even after a corrupt-lock takeover"
+  end
+
+  # --- BLOCKER 3 (post-review, crash that deletes the lock): a lock with a ---
+  # --- blank/missing owner_session, and no other session identity resolvable, -
+  # --- must refuse (exit 4) rather than crash inside Lock.takeover after the -
+  # --- lock file has already been deleted ------------------------------------
+
+  def test_blocker3_stale_lock_with_blank_owner_and_no_resolvable_session_refuses_without_crashing
+    intent_dir = build_intent(id: "161")
+    write_index(id: "161")
+    File.write(Lock.path(intent_dir), JSON.pretty_generate(
+      "type" => "delivery", "owner_session" => "", "host" => "test"
+    ))
+    FileUtils.touch(Lock.path(intent_dir), mtime: Time.now - 4000) # older than Lock::TTL_SECONDS (1800)
+
+    # Deliberately no --session (run_end_intent already isolates
+    # CLAUDE_CODE_SESSION_ID away from the ambient real one), so no session
+    # identity resolves from any source.
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                  "--index", @index, "--no-commit")
+    assert_equal 4, status, "must refuse cleanly, never raise an uncaught exception: #{out}"
+    refute_match(/ArgumentError|traceback|\.rb:\d+:in/, out, "must never crash with a raw backtrace")
+    assert_match(/no session identity could be resolved/i, out)
+    assert File.exist?(Lock.path(intent_dir)), "BLOCKER 3: the lock file must survive, never be deleted pre-crash"
+    assert_empty savepoint_lines(intent_dir), "savepoint.md must be left untouched"
+  end
+
+  # --- SHOULD-FIX 4 (post-review, silent tail): a duplicate id under --------
+  # --- ## Active must warn loudly instead of leaving a silent orphan --------
+
+  def test_blocker4_duplicate_active_id_warns_loudly_but_still_succeeds
+    build_intent(id: "161")
+    File.write(@index, <<~MD)
+      # Index
+
+      ## Active
+      - [161 — Demo intent](store/161--demo/161--demo.md) — note
+      - [161 — Demo intent duplicate](store/161--demo/161--demo.md) — note dup
+
+      ## Completed
+      _(none)_
+
+      ## Abandoned
+      _(none)_
+    MD
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                  "--index", @index, "--no-commit")
+    assert_equal 0, status, "the requested move must still succeed: #{out}"
+    assert_match(/still has an entry under ## Active/i, out)
+
+    content = File.read(@index)
+    assert_match(/^## Active\n- \[161 /, content, "the duplicate entry must still be visible under ## Active")
+    assert_match(/^## Completed\n- \[161 — Demo intent\]/, content, "the first match must still have moved")
   end
 end

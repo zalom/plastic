@@ -156,6 +156,38 @@ class EndIntentWorktreeGuardTest < Minitest::Test
     refute File.exist?(Lock.path(intent_dir)), "a real close must clear the delivery lock"
   end
 
+  # --- BLOCKER 1 (post-review, data loss): an inconclusive `git status` must --
+  # --- fail CLOSED, never open. This is the most important test in this file. --
+  #
+  # Before the fix, `dirty = status.success? && !out.strip.empty?` made a
+  # FAILED `git status --porcelain` (non-zero exit: not a git repo, corrupt
+  # index, git missing) read as `dirty = false`, so the guard concluded
+  # "clean" and proceeded to force-remove the worktree, permanently
+  # destroying whatever uncommitted work was in it, and still exited 0. A
+  # directory that is not a git repository at all is the simplest real
+  # reproduction: `git -C <dir> status --porcelain` fails outright.
+  def test_blocker1_worktree_whose_git_status_fails_is_never_removed_uncommitted_file_survives
+    id = "161"
+    intent_dir = build_intent(id: id)
+    write_index(id: id)
+    Lock.acquire(intent_dir, session: "sess-1")
+
+    not_a_repo = File.join(@home, "not-a-git-repo")
+    FileUtils.mkdir_p(not_a_repo)
+    marker = File.join(not_a_repo, "scratch.txt")
+    File.write(marker, "uncommitted work that must survive\n")
+    write_bridge(session: "sess-1", id: id, worktree_code: not_a_repo)
+
+    out, status = run_end_intent("--store", @store, "--id", id, "--disposition", "delivered",
+                                  "--index", @index, "--no-commit", session: "sess-1")
+    assert_equal 5, status, "an inconclusive git status must refuse (exit 5), not proceed: #{out}"
+    assert_match(/could not inspect/i, out)
+    assert Dir.exist?(not_a_repo), "BLOCKER 1: the worktree directory must NOT be removed"
+    assert File.exist?(marker), "BLOCKER 1: the uncommitted file must survive intact"
+    assert_equal "uncommitted work that must survive\n", File.read(marker)
+    assert File.exist?(Lock.path(intent_dir)), "disarm never ran: the delivery lock must still be present"
+  end
+
   # --- AC12: no worktree block, and an already-gone worktree, are clean no-ops --
 
   def test_ac12_no_worktree_block_does_not_raise
