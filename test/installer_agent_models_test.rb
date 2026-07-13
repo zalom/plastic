@@ -3,6 +3,7 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
+require "yaml"
 
 require_relative "../scripts/lib/agent_models"
 require_relative "../scripts/lib/installer_core"
@@ -78,10 +79,11 @@ class InstallerAgentModelsTest < Minitest::Test
     assert_nil AgentModels.effort_for(nil)
   end
 
-  # --- Consultation agent (intent 185, single-agent rename 185 ACTION-5): shipped fable exception ---
+  # --- Consultation agent (intent 185 ACTION-7: model-agnostic role, renamed
+  # plastic-advisor): fable ships as the DEFAULT, not a hard-wired exception ---
 
   def test_consultation_agents_contains_exactly_the_single_advisor
-    assert_equal %w[plastic-fable-advisor], AgentModels::CONSULTATION_AGENTS
+    assert_equal %w[plastic-advisor], AgentModels::CONSULTATION_AGENTS
   end
 
   def test_tier_defaults_excludes_every_consultation_agent
@@ -98,8 +100,53 @@ class InstallerAgentModelsTest < Minitest::Test
     end
   end
 
-  def test_install_agents_rewrites_fable_advisor_model_on_override
-    @core.install_agents(@dest, models: { "plastic-fable-advisor" => "opus" })
-    assert_equal "model: opus", model_line("plastic-fable-advisor")
+  def test_install_agents_rewrites_advisor_model_on_override
+    @core.install_agents(@dest, models: { "plastic-advisor" => "opus" })
+    assert_equal "model: opus", model_line("plastic-advisor")
+  end
+
+  # --- advisor.model resolution (intent 185 ACTION-7): advisor.model -> any
+  # agents.models.plastic-advisor override -> the shipped default (fable). All
+  # three feed InstallerCore#agent_model_overrides, the SAME map install_agents
+  # already rewrites frontmatter from; there is no second install mechanism. ---
+
+  def write_global_config(hash)
+    File.write(File.join(@home, "config.yml"), YAML.dump(hash))
+  end
+
+  def write_project_config(project_dir, hash)
+    FileUtils.mkdir_p(File.join(project_dir, ".plastic_store"))
+    File.write(File.join(project_dir, ".plastic_store", "config.yml"), YAML.dump(hash))
+  end
+
+  def test_advisor_model_absent_leaves_shipped_default_untouched
+    @core.install_agents(@dest, models: @core.agent_model_overrides)
+    assert_equal "model: fable", model_line("plastic-advisor")
+  end
+
+  def test_advisor_model_global_overrides_shipped_default
+    write_global_config("advisor" => { "model" => "opus" })
+    @core.install_agents(@dest, models: @core.agent_model_overrides)
+    assert_equal "model: opus", model_line("plastic-advisor")
+  end
+
+  def test_advisor_model_project_wins_over_global
+    write_global_config("advisor" => { "model" => "opus" })
+    project_dir = File.join(@home, "project")
+    write_project_config(project_dir, "advisor" => { "model" => "fable" })
+    @core.install_agents(@dest, models: @core.agent_model_overrides(project_dir))
+    assert_equal "model: fable", model_line("plastic-advisor")
+  end
+
+  def test_advisor_model_wins_over_agents_models_plastic_advisor_override
+    write_global_config("advisor" => { "model" => "fable" }, "agents" => { "models" => { "plastic-advisor" => "opus" } })
+    @core.install_agents(@dest, models: @core.agent_model_overrides)
+    assert_equal "model: fable", model_line("plastic-advisor")
+  end
+
+  def test_agents_models_plastic_advisor_applies_when_advisor_model_unset
+    write_global_config("agents" => { "models" => { "plastic-advisor" => "opus" } })
+    @core.install_agents(@dest, models: @core.agent_model_overrides)
+    assert_equal "model: opus", model_line("plastic-advisor")
   end
 end

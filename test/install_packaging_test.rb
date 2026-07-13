@@ -250,7 +250,7 @@ class InstallPackagingTest < Minitest::Test
       "codex: the dead ~/.agents/agents/*.md copy must not be written"
   end
 
-  def test_generate_codex_agents_skips_authored_fable_consultation_agents
+  def test_generate_codex_agents_skips_consultation_agents_by_name
     installer = InstallerCore.new(package_root: REPO, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
     agents_root = File.join(@dir, "codex-agents")
 
@@ -258,7 +258,26 @@ class InstallPackagingTest < Minitest::Test
 
     AgentModels::CONSULTATION_AGENTS.each do |basename|
       dest = File.join(agents_root, "#{basename}.toml")
-      refute File.exist?(dest), "codex: #{basename}.toml must not be generated (authored model is fable)"
+      refute File.exist?(dest), "codex: #{basename}.toml must not be generated (no Codex advisor this release, intent 186)"
+      refute_includes installed, dest
+    end
+  end
+
+  # Regression guard (intent 185 ACTION-7): the Codex skip is unconditional and
+  # name-based (AgentModels::CONSULTATION_AGENTS), never a peek at the authored
+  # or overridden model value, so an advisor.model override that flips the
+  # advisor to "opus" must NOT accidentally un-skip it. There is no Codex
+  # advisor path, full stop.
+  def test_generate_codex_agents_skip_survives_a_model_override
+    installer = InstallerCore.new(package_root: REPO, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
+    agents_root = File.join(@dir, "codex-agents-override")
+
+    overrides = AgentModels::CONSULTATION_AGENTS.to_h { |basename| [basename, "opus"] }
+    installed = installer.generate_codex_agents(agents_root, models: overrides)
+
+    AgentModels::CONSULTATION_AGENTS.each do |basename|
+      dest = File.join(agents_root, "#{basename}.toml")
+      refute File.exist?(dest), "codex: #{basename}.toml must stay skipped even under a models: override"
       refute_includes installed, dest
     end
   end
@@ -269,19 +288,20 @@ class InstallPackagingTest < Minitest::Test
       "agents/ must be in package.json `files` so role files ship to consumers"
   end
 
-  # --- Manuals ship in the npm package, read at runtime via CLAUDE_PLUGIN_ROOT
-  # (intent 185). No install-time copy step: these two guards fail loudly if the
-  # files are removed from the repo or manuals/ drops out of package.json `files`.
+  # --- The two model instruction documents ship in the npm package, read at
+  # runtime via CLAUDE_PLUGIN_ROOT (intent 185). No install-time copy step:
+  # these two guards fail loudly if the files are removed from the repo or
+  # model_instructions/ drops out of package.json `files`.
 
-  def test_manuals_exist_in_repo
+  def test_model_instructions_exist_in_repo
     %w[operating-manual.md advisor-protocol.md].each do |name|
-      assert File.file?(File.join(REPO, "manuals", name)), "manuals/#{name} must exist in the repo"
+      assert File.file?(File.join(REPO, "model_instructions", name)), "model_instructions/#{name} must exist in the repo"
     end
   end
 
-  def test_manuals_dir_is_packaged_for_distribution
+  def test_model_instructions_dir_is_packaged_for_distribution
     pkg = JSON.parse(File.read(File.join(REPO, "package.json")))
-    assert_includes pkg["files"], "manuals/",
-      "manuals/ must be in package.json `files` so the manuals ship to consumers"
+    assert_includes pkg["files"], "model_instructions/",
+      "model_instructions/ must be in package.json `files` so the documents ship to consumers"
   end
 end

@@ -213,7 +213,7 @@ class StatuslineTest < Minitest::Test
                  "statusline must not invoke ruby or jq (intent 59 constraint)")
   end
 
-  # Model cache (intent 185): the UserPromptSubmit fallback (hook-opus-manual)
+  # Model cache (intent 185): the UserPromptSubmit fallback (hook-model-instructions)
   # reads this cache to inject the Opus manual after a /clear, when the
   # SessionStart hook's stdin model field is absent. The write is a literal
   # /tmp/plastic-model-<sid> path (not PLASTIC_TMP-scoped, matching the

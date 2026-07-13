@@ -6,16 +6,16 @@ require "fileutils"
 require "json"
 require "open3"
 
-require_relative "../scripts/lib/opus_manual"
+require_relative "../scripts/lib/model_instructions"
 
-# Pure-logic coverage for OpusManual (intent 185). Single process, dependency
+# Pure-logic coverage for ModelInstructions (intent 185). Single process, dependency
 # injection only: no real /tmp, no real config, no real plugin install.
-class OpusManualTest < Minitest::Test
+class ModelInstructionsTest < Minitest::Test
   def setup
-    @dir = Dir.mktmpdir("opus-manual-test")
+    @dir = Dir.mktmpdir("model-instructions-test")
     @plugin_root = File.join(@dir, "plugin")
-    FileUtils.mkdir_p(File.join(@plugin_root, "manuals"))
-    File.write(File.join(@plugin_root, "manuals", "operating-manual.md"), "# The Operating Manual\n\nBody.\n")
+    FileUtils.mkdir_p(File.join(@plugin_root, "model_instructions"))
+    File.write(File.join(@plugin_root, "model_instructions", "operating-manual.md"), "# The Operating Manual\n\nBody.\n")
     @state_dir = File.join(@dir, "state")
     FileUtils.mkdir_p(@state_dir)
   end
@@ -32,100 +32,103 @@ class OpusManualTest < Minitest::Test
     -> { "false" }
   end
 
-  # --- opus? ---
+  # --- file_for ---
 
-  def test_opus_matches_case_insensitively_and_as_a_substring
-    assert OpusManual.opus?("claude-opus-4-8")
-    assert OpusManual.opus?("Opus")
-    assert OpusManual.opus?("OPUS")
-    refute OpusManual.opus?("claude-sonnet-4-5")
-    refute OpusManual.opus?("fable")
-    refute OpusManual.opus?(nil)
+  def test_file_for_matches_opus_case_insensitively_and_as_a_substring
+    assert_equal "operating-manual.md", ModelInstructions.file_for("claude-opus-4-8")
+    assert_equal "operating-manual.md", ModelInstructions.file_for("Opus")
+    assert_equal "operating-manual.md", ModelInstructions.file_for("OPUS")
+    assert_nil ModelInstructions.file_for("claude-sonnet-4-5")
+    assert_nil ModelInstructions.file_for("fable")
+    assert_nil ModelInstructions.file_for(nil)
   end
 
   # --- enabled? ---
 
   def test_enabled_true_for_nil_missing_or_any_non_false_value
-    assert OpusManual.enabled?(-> { nil })
-    assert OpusManual.enabled?(-> { "" })
-    assert OpusManual.enabled?(-> { "true" })
-    assert OpusManual.enabled?(-> { true })
+    assert ModelInstructions.enabled?(-> { nil })
+    assert ModelInstructions.enabled?(-> { "" })
+    assert ModelInstructions.enabled?(-> { "true" })
+    assert ModelInstructions.enabled?(-> { true })
   end
 
   def test_enabled_false_only_for_an_explicit_false
-    refute OpusManual.enabled?(-> { false })
-    refute OpusManual.enabled?(-> { "false" })
-    refute OpusManual.enabled?(-> { "FALSE" })
-    refute OpusManual.enabled?(-> { "  false  " })
+    refute ModelInstructions.enabled?(-> { false })
+    refute ModelInstructions.enabled?(-> { "false" })
+    refute ModelInstructions.enabled?(-> { "FALSE" })
+    refute ModelInstructions.enabled?(-> { "  false  " })
   end
 
   def test_enabled_true_when_config_reader_raises
-    assert OpusManual.enabled?(-> { raise "boom" })
+    assert ModelInstructions.enabled?(-> { raise "boom" })
   end
 
-  # --- manual_text ---
+  # --- instruction_text ---
 
-  def test_manual_text_reads_the_shipped_file
-    assert_includes OpusManual.manual_text(@plugin_root), "The Operating Manual"
+  def test_instruction_text_reads_the_shipped_file
+    assert_includes ModelInstructions.instruction_text("operating-manual.md", @plugin_root), "The Operating Manual"
   end
 
-  def test_manual_text_nil_when_missing_or_unset
+  def test_instruction_text_nil_when_missing_or_unset
     # fallback_dir is pinned to a guaranteed-empty tmp path (never the real
-    # ~/.plastic/manuals default) so this stays hermetic regardless of what is
-    # actually installed on the machine running the suite.
+    # ~/.plastic/model_instructions default) so this stays hermetic regardless of
+    # what is actually installed on the machine running the suite.
     empty_fallback = File.join(@dir, "no-such-fallback")
-    assert_nil OpusManual.manual_text(File.join(@dir, "no-such-plugin-root"), fallback_dir: empty_fallback)
-    assert_nil OpusManual.manual_text(nil, fallback_dir: empty_fallback)
-    assert_nil OpusManual.manual_text("", fallback_dir: empty_fallback)
+    assert_nil ModelInstructions.instruction_text("operating-manual.md", File.join(@dir, "no-such-plugin-root"), fallback_dir: empty_fallback)
+    assert_nil ModelInstructions.instruction_text("operating-manual.md", nil, fallback_dir: empty_fallback)
+    assert_nil ModelInstructions.instruction_text("operating-manual.md", "", fallback_dir: empty_fallback)
   end
 
-  # --- manual_text fallback resolution (intent 185 ACTION-5): plugin_root first,
-  # then a DI'd fallback_dir (default ~/.plastic/manuals in production, where the
-  # installer syncs both manuals on every install/update) ---
+  # --- instruction_text fallback resolution (intent 185): plugin_root first,
+  # then a DI'd fallback_dir (default ~/.plastic/model_instructions in
+  # production, where the installer syncs both documents on every install and
+  # update) ---
 
-  def test_manual_text_prefers_plugin_root_when_both_resolve
+  def test_instruction_text_prefers_plugin_root_when_both_resolve
     fallback = File.join(@dir, "fallback")
     FileUtils.mkdir_p(fallback)
     File.write(File.join(fallback, "operating-manual.md"), "# Fallback copy\n")
 
-    text = OpusManual.manual_text(@plugin_root, fallback_dir: fallback)
+    text = ModelInstructions.instruction_text("operating-manual.md", @plugin_root, fallback_dir: fallback)
     assert_includes text, "The Operating Manual"
     refute_includes text, "Fallback copy"
   end
 
-  def test_manual_text_uses_fallback_when_plugin_root_empty
+  def test_instruction_text_uses_fallback_when_plugin_root_empty
     fallback = File.join(@dir, "fallback")
     FileUtils.mkdir_p(fallback)
     File.write(File.join(fallback, "operating-manual.md"), "# Fallback copy\n")
 
-    assert_includes OpusManual.manual_text("", fallback_dir: fallback), "Fallback copy"
-    assert_includes OpusManual.manual_text(nil, fallback_dir: fallback), "Fallback copy"
+    assert_includes ModelInstructions.instruction_text("operating-manual.md", "", fallback_dir: fallback), "Fallback copy"
+    assert_includes ModelInstructions.instruction_text("operating-manual.md", nil, fallback_dir: fallback), "Fallback copy"
   end
 
-  def test_manual_text_uses_fallback_when_plugin_root_file_missing
+  def test_instruction_text_uses_fallback_when_plugin_root_file_missing
     fallback = File.join(@dir, "fallback")
     FileUtils.mkdir_p(fallback)
     File.write(File.join(fallback, "operating-manual.md"), "# Fallback copy\n")
 
     unreadable_plugin_root = File.join(@dir, "no-such-plugin-root")
-    assert_includes OpusManual.manual_text(unreadable_plugin_root, fallback_dir: fallback), "Fallback copy"
+    assert_includes ModelInstructions.instruction_text("operating-manual.md", unreadable_plugin_root, fallback_dir: fallback), "Fallback copy"
   end
 
-  def test_manual_text_nil_when_plugin_root_and_fallback_both_missing
-    assert_nil OpusManual.manual_text(File.join(@dir, "no-such-plugin-root"),
-                                       fallback_dir: File.join(@dir, "no-such-fallback"))
+  def test_instruction_text_nil_when_plugin_root_and_fallback_both_missing
+    assert_nil ModelInstructions.instruction_text("operating-manual.md", File.join(@dir, "no-such-plugin-root"),
+                                                    fallback_dir: File.join(@dir, "no-such-fallback"))
   end
 
   # --- pointer_text ---
 
-  def test_pointer_text_names_plastic_fable_advisor
-    assert_includes OpusManual.pointer_text, "plastic-fable-advisor"
+  def test_pointer_text_names_plastic_advisor
+    assert_includes ModelInstructions.pointer_text, "plastic-advisor"
   end
 
   # --- injection: full decision matrix ---
-  # model x enabled x marker-present x manual-present. Only the single cell
-  # model=opus, enabled=true, marker=absent, manual=present may return text;
-  # every other combination (12 axes x up to 2 values = 16 cells) must be nil.
+  # model x model_instructions_enabled x marker-present x file-present. Only the
+  # single cell model=opus, enabled=true, marker=absent, file=present may return
+  # text; every other combination (4 axes, up to 2 values each) must be nil.
+  # advisor_reader is fixed enabled here; its effect is on CONTENT, never on
+  # nil/non-nil, covered separately below.
 
   MODELS = {
     opus: "claude-opus-4-8",
@@ -138,36 +141,37 @@ class OpusManualTest < Minitest::Test
     MODELS.each do |model_key, model_value|
       [true, false].each do |enabled|
         [true, false].each do |marker_present|
-          [true, false].each do |manual_present|
+          [true, false].each do |file_present|
             Dir.mktmpdir do |cell_dir|
               state_dir = File.join(cell_dir, "state")
               FileUtils.mkdir_p(state_dir)
               session_id = "cell-session"
-              File.write(File.join(state_dir, "#{OpusManual::MARKER_PREFIX}#{session_id}"), "") if marker_present
+              File.write(File.join(state_dir, "#{ModelInstructions::MARKER_PREFIX}#{session_id}"), "") if marker_present
 
               plugin_root = File.join(cell_dir, "plugin")
-              if manual_present
-                FileUtils.mkdir_p(File.join(plugin_root, "manuals"))
-                File.write(File.join(plugin_root, "manuals", "operating-manual.md"), "# The Operating Manual\n")
+              if file_present
+                FileUtils.mkdir_p(File.join(plugin_root, "model_instructions"))
+                File.write(File.join(plugin_root, "model_instructions", "operating-manual.md"), "# The Operating Manual\n")
               end
 
               reader = enabled ? enabled_reader : disabled_reader
 
-              text = OpusManual.injection(
+              text = ModelInstructions.injection(
                 model: model_value, session_id: session_id, plugin_root: plugin_root,
-                state_dir: state_dir, config_reader: reader,
-                # Pinned to a guaranteed-empty tmp path: the manual_present axis must
-                # be decided by plugin_root alone, never by a real ~/.plastic/manuals
-                # the fallback default would otherwise silently pick up.
+                state_dir: state_dir, model_instructions_reader: reader, advisor_reader: enabled_reader,
+                # Pinned to a guaranteed-empty tmp path: the file_present axis must
+                # be decided by plugin_root alone, never by a real
+                # ~/.plastic/model_instructions the fallback default would
+                # otherwise silently pick up.
                 fallback_dir: File.join(cell_dir, "no-such-fallback")
               )
 
-              should_inject = model_key == :opus && enabled && !marker_present && manual_present
-              context = "model=#{model_value.inspect} enabled=#{enabled} marker=#{marker_present} manual=#{manual_present}"
+              should_inject = model_key == :opus && enabled && !marker_present && file_present
+              context = "model=#{model_value.inspect} enabled=#{enabled} marker=#{marker_present} file=#{file_present}"
               if should_inject
                 refute_nil text, "expected injection for #{context}"
                 assert_includes text, "The Operating Manual"
-                assert_includes text, "Fable advisor available"
+                assert_includes text, "Advisor available"
               else
                 assert_nil text, "expected no injection for #{context}"
               end
@@ -178,19 +182,43 @@ class OpusManualTest < Minitest::Test
     end
   end
 
-  # --- simulated manifest install (intent 185 ACTION-5 Done-when): an empty
+  # --- advisor_reader gates CONTENT only, never nil/non-nil (intent 185
+  # ACTION-7): the instruction text still lands when the advisor is disabled or
+  # not installed; only the pointer paragraph is withheld ---
+
+  def test_advisor_disabled_still_injects_instructions_without_the_pointer
+    text = ModelInstructions.injection(
+      model: "claude-opus-4-8", session_id: "advisor-off-session", plugin_root: @plugin_root,
+      state_dir: @state_dir, model_instructions_reader: enabled_reader, advisor_reader: disabled_reader
+    )
+    refute_nil text, "instructions must still inject when only the advisor pointer is disabled"
+    assert_includes text, "The Operating Manual"
+    refute_includes text, "Advisor available"
+    refute_includes text, "plastic-advisor"
+  end
+
+  def test_advisor_enabled_appends_the_pointer
+    text = ModelInstructions.injection(
+      model: "claude-opus-4-8", session_id: "advisor-on-session", plugin_root: @plugin_root,
+      state_dir: @state_dir, model_instructions_reader: enabled_reader, advisor_reader: enabled_reader
+    )
+    assert_includes text, "Advisor available"
+    assert_includes text, "plastic-advisor"
+  end
+
+  # --- simulated manifest install (intent 185 Done-when): an empty
   # CLAUDE_PLUGIN_ROOT (a flat, non-plugin install) must still inject via the
-  # fallback_dir the installer synced the manuals to (~/.plastic/manuals in
-  # production, DI'd here to a tmp dir standing in for it) ---
+  # fallback_dir the installer synced the documents to (~/.plastic/model_instructions
+  # in production, DI'd here to a tmp dir standing in for it) ---
 
   def test_injection_via_fallback_dir_with_empty_plugin_root_simulates_flat_install
-    fallback = File.join(@dir, "plastic-home-manuals")
+    fallback = File.join(@dir, "plastic-home-model-instructions")
     FileUtils.mkdir_p(fallback)
     File.write(File.join(fallback, "operating-manual.md"), "# The Operating Manual\n\nBody.\n")
 
-    text = OpusManual.injection(
+    text = ModelInstructions.injection(
       model: "claude-opus-4-8", session_id: "flat-install-session", plugin_root: "",
-      state_dir: File.join(@dir, "state2"), config_reader: enabled_reader,
+      state_dir: File.join(@dir, "state2"), model_instructions_reader: enabled_reader, advisor_reader: enabled_reader,
       fallback_dir: fallback
     )
     refute_nil text, "a simulated manifest install with an empty CLAUDE_PLUGIN_ROOT must still inject via fallback_dir"
@@ -201,16 +229,16 @@ class OpusManualTest < Minitest::Test
 
   def test_marker_written_once_second_call_returns_nil
     session_id = "once-session"
-    first = OpusManual.injection(
+    first = ModelInstructions.injection(
       model: "claude-opus-4-8", session_id: session_id, plugin_root: @plugin_root,
-      state_dir: @state_dir, config_reader: enabled_reader
+      state_dir: @state_dir, model_instructions_reader: enabled_reader, advisor_reader: enabled_reader
     )
     refute_nil first
-    assert File.exist?(File.join(@state_dir, "#{OpusManual::MARKER_PREFIX}#{session_id}"))
+    assert File.exist?(File.join(@state_dir, "#{ModelInstructions::MARKER_PREFIX}#{session_id}"))
 
-    second = OpusManual.injection(
+    second = ModelInstructions.injection(
       model: "claude-opus-4-8", session_id: session_id, plugin_root: @plugin_root,
-      state_dir: @state_dir, config_reader: enabled_reader
+      state_dir: @state_dir, model_instructions_reader: enabled_reader, advisor_reader: enabled_reader
     )
     assert_nil second
   end
@@ -222,40 +250,39 @@ class OpusManualTest < Minitest::Test
     blocked_state_dir = File.join(@dir, "blocked-state")
     File.write(blocked_state_dir, "a file, not a directory")
 
-    text = OpusManual.injection(
+    text = ModelInstructions.injection(
       model: "claude-opus-4-8", session_id: "s1", plugin_root: @plugin_root,
-      state_dir: blocked_state_dir, config_reader: enabled_reader
+      state_dir: blocked_state_dir, model_instructions_reader: enabled_reader, advisor_reader: enabled_reader
     )
     assert_nil text
   end
 end
 
-# Subprocess smoke coverage for the two hook scripts (intent 185). No existing
-# hook test exercises the opus-manual injection, so each script gets one
-# IO.popen run per case, with a tmpdir plugin_root/state fixture and fake
-# stdin JSON. PLASTIC_TMP isolates bridge derivation (hermeticity guard);
+# Subprocess smoke coverage for the two hook scripts (intent 185). Each script
+# gets one IO.popen run per case, with a tmpdir plugin_root/state fixture and
+# fake stdin JSON. PLASTIC_TMP isolates bridge derivation (hermeticity guard);
 # PLASTIC_HOME isolates the shelled-out read-config call the injection's
-# config_reader makes, so neither touches the real ~/.plastic.
-class OpusManualSessionStartHookTest < Minitest::Test
+# readers make, so neither touches the real ~/.plastic.
+class ModelInstructionsSessionStartHookTest < Minitest::Test
   HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
 
   def setup
-    @dir = Dir.mktmpdir("opus-manual-session-start")
+    @dir = Dir.mktmpdir("model-instructions-session-start")
     @index = File.join(@dir, "INDEX.md")
     File.write(@index, "# Index\n\n## Active\n\n## Future\n")
 
     @plugin_root = File.join(@dir, "plugin")
-    FileUtils.mkdir_p(File.join(@plugin_root, "manuals"))
-    File.write(File.join(@plugin_root, "manuals", "operating-manual.md"), "# The Operating Manual\n\nBody text.\n")
+    FileUtils.mkdir_p(File.join(@plugin_root, "model_instructions"))
+    File.write(File.join(@plugin_root, "model_instructions", "operating-manual.md"), "# The Operating Manual\n\nBody text.\n")
     FileUtils.mkdir_p(File.join(@plugin_root, "scripts", "lib"))
     FileUtils.cp(File.expand_path("../scripts/read-config", __dir__), File.join(@plugin_root, "scripts", "read-config"))
     FileUtils.cp(File.expand_path("../scripts/lib/agent_models.rb", __dir__), File.join(@plugin_root, "scripts", "lib", "agent_models.rb"))
 
-    @markers_before = Dir["/tmp/plastic-opus-manual-*"]
+    @markers_before = Dir["/tmp/plastic-model-instructions-*"]
   end
 
   def teardown
-    (Dir["/tmp/plastic-opus-manual-*"] - @markers_before).each { |f| FileUtils.rm_f(f) }
+    (Dir["/tmp/plastic-model-instructions-*"] - @markers_before).each { |f| FileUtils.rm_f(f) }
     FileUtils.rm_rf(@dir)
   end
 
@@ -281,7 +308,7 @@ class OpusManualSessionStartHookTest < Minitest::Test
     assert_equal 0, status.exitstatus
     ctx = context_from(out)
     assert_includes ctx, "The Operating Manual"
-    assert_includes ctx, "Fable advisor available"
+    assert_includes ctx, "Advisor available"
   end
 
   def test_sonnet_model_in_stdin_emits_no_manual
@@ -307,25 +334,26 @@ class OpusManualSessionStartHookTest < Minitest::Test
     assert_equal 0, status.exitstatus
   end
 
-  # Fallback resolution (intent 185 ACTION-5): hook-session-start derives
-  # fallback_dir from its own store-root ARGV (store_root/manuals). Give it a
-  # plugin_root that resolves config but has no manuals/ of its own, and pre-seed
-  # store_root/manuals with the manual, proving the derived fallback actually
-  # gets passed through and used, hermetically (never the real ~/.plastic).
-  def test_plugin_root_without_manuals_falls_back_to_store_root_manuals
-    plugin_root_no_manual = File.join(@dir, "plugin-no-manual")
-    FileUtils.mkdir_p(File.join(plugin_root_no_manual, "scripts", "lib"))
+  # Fallback resolution (intent 185): hook-session-start derives fallback_dir
+  # from its own store-root ARGV (store_root/model_instructions). Give it a
+  # plugin_root that resolves config but has no model_instructions/ of its own,
+  # and pre-seed store_root/model_instructions with the manual, proving the
+  # derived fallback actually gets passed through and used, hermetically (never
+  # the real ~/.plastic).
+  def test_plugin_root_without_model_instructions_falls_back_to_store_root
+    plugin_root_no_docs = File.join(@dir, "plugin-no-docs")
+    FileUtils.mkdir_p(File.join(plugin_root_no_docs, "scripts", "lib"))
     FileUtils.cp(File.expand_path("../scripts/read-config", __dir__),
-                 File.join(plugin_root_no_manual, "scripts", "read-config"))
+                 File.join(plugin_root_no_docs, "scripts", "read-config"))
     FileUtils.cp(File.expand_path("../scripts/lib/agent_models.rb", __dir__),
-                 File.join(plugin_root_no_manual, "scripts", "lib", "agent_models.rb"))
+                 File.join(plugin_root_no_docs, "scripts", "lib", "agent_models.rb"))
 
-    FileUtils.mkdir_p(File.join(@dir, "manuals"))
-    File.write(File.join(@dir, "manuals", "operating-manual.md"), "# The Operating Manual\n\nFallback body.\n")
+    FileUtils.mkdir_p(File.join(@dir, "model_instructions"))
+    File.write(File.join(@dir, "model_instructions", "operating-manual.md"), "# The Operating Manual\n\nFallback body.\n")
 
     out = nil
     IO.popen({ "PLASTIC_TMP" => @dir, "PLASTIC_HOME" => @dir, "CLAUDE_CODE_SESSION_ID" => nil },
-             ["ruby", HOOK, @index, @dir, "global", plugin_root_no_manual], "r+") do |io|
+             ["ruby", HOOK, @index, @dir, "global", plugin_root_no_docs], "r+") do |io|
       io.write(JSON.generate({ "session_id" => "opus-smoke-fallback", "model" => "claude-opus-4-8" }))
       io.close_write
       out = io.read
@@ -339,21 +367,21 @@ class OpusManualSessionStartHookTest < Minitest::Test
   end
 end
 
-class OpusManualFallbackHookTest < Minitest::Test
-  HOOK = File.expand_path("../hooks/opus-manual", __dir__)
+class ModelInstructionsFallbackHookTest < Minitest::Test
+  HOOK = File.expand_path("../hooks/model-instructions", __dir__)
 
   def setup
-    @dir = Dir.mktmpdir("opus-manual-fallback")
+    @dir = Dir.mktmpdir("model-instructions-fallback")
     @plugin_root = File.join(@dir, "plugin")
-    FileUtils.mkdir_p(File.join(@plugin_root, "manuals"))
-    File.write(File.join(@plugin_root, "manuals", "operating-manual.md"), "# The Operating Manual\n\nBody text.\n")
+    FileUtils.mkdir_p(File.join(@plugin_root, "model_instructions"))
+    File.write(File.join(@plugin_root, "model_instructions", "operating-manual.md"), "# The Operating Manual\n\nBody text.\n")
     FileUtils.mkdir_p(File.join(@plugin_root, "scripts", "lib"))
     FileUtils.cp(File.expand_path("../scripts/read-config", __dir__), File.join(@plugin_root, "scripts", "read-config"))
     FileUtils.cp(File.expand_path("../scripts/lib/agent_models.rb", __dir__), File.join(@plugin_root, "scripts", "lib", "agent_models.rb"))
 
-    @session_id = "opus-fallback-smoke-#{Process.pid}"
+    @session_id = "model-instructions-fallback-smoke-#{Process.pid}"
     @cache_path = "/tmp/plastic-model-#{@session_id}"
-    @marker_path = "/tmp/plastic-opus-manual-#{@session_id}"
+    @marker_path = "/tmp/plastic-model-instructions-#{@session_id}"
   end
 
   def teardown
@@ -404,17 +432,17 @@ class OpusManualFallbackHookTest < Minitest::Test
     assert_equal "", out
   end
 
-  # Simulated manifest install (intent 185 ACTION-5 Done-when): hook-opus-manual
-  # passes no explicit fallback_dir, so this exercises OpusManual's real default
-  # (~/.plastic/manuals) end to end. HOME is redirected to a tmp dir so the real
-  # home directory is never touched; CLAUDE_PLUGIN_ROOT is empty, standing in for
-  # a flat, non-plugin install.
-  def test_empty_plugin_root_falls_back_to_home_plastic_manuals
+  # Simulated manifest install (intent 185 Done-when): hook-model-instructions
+  # passes no explicit fallback_dir, so this exercises ModelInstructions' real
+  # default (~/.plastic/model_instructions) end to end. HOME is redirected to a
+  # tmp dir so the real home directory is never touched; CLAUDE_PLUGIN_ROOT is
+  # empty, standing in for a flat, non-plugin install.
+  def test_empty_plugin_root_falls_back_to_home_plastic_model_instructions
     fake_home = File.join(@dir, "fake-home")
-    FileUtils.mkdir_p(File.join(fake_home, ".plastic", "manuals"))
-    File.write(File.join(fake_home, ".plastic", "manuals", "operating-manual.md"),
+    FileUtils.mkdir_p(File.join(fake_home, ".plastic", "model_instructions"))
+    File.write(File.join(fake_home, ".plastic", "model_instructions", "operating-manual.md"),
                "# The Operating Manual\n\nBody.\n")
-    # hook-opus-manual resolves read-config under ~/.plastic/scripts when
+    # hook-model-instructions resolves read-config under ~/.plastic/scripts when
     # plugin_root is empty; seed it so the config_reader shell-out is clean
     # (no stray "No such file" stderr) rather than merely harmless.
     FileUtils.mkdir_p(File.join(fake_home, ".plastic", "scripts", "lib"))
@@ -423,9 +451,9 @@ class OpusManualFallbackHookTest < Minitest::Test
     FileUtils.cp(File.expand_path("../scripts/lib/agent_models.rb", __dir__),
                  File.join(fake_home, ".plastic", "scripts", "lib", "agent_models.rb"))
 
-    sid = "opus-fallback-home-#{Process.pid}"
+    sid = "model-instructions-fallback-home-#{Process.pid}"
     cache_path = "/tmp/plastic-model-#{sid}"
-    marker_path = "/tmp/plastic-opus-manual-#{sid}"
+    marker_path = "/tmp/plastic-model-instructions-#{sid}"
     File.write(cache_path, "Opus")
 
     out = nil
