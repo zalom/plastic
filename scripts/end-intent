@@ -447,12 +447,44 @@ def run_disarm(intent_dir, id, session, discard_worktree_changes:,
   # /tmp, a resumed job under a new session id), which would otherwise strand a
   # committed, terminal intent still holding its lock: the exact stalled
   # completion this intent forbids. Pre-flight has already established that this
-  # session is the owner, a delegate, or the post-takeover owner, so clearing the
-  # durable lock directly is safe here.
+  # session is the owner, a delegate, or the post-takeover owner, so clearing
+  # the durable lock directly IS safe, PROVIDED the lock actually present here
+  # is still ours to clear.
+  #
+  # TOCTOU fix (post-review hardening, intent 188): the first version of this
+  # fallback read the lock's OWN recorded owner and handed it straight back to
+  # Lock.release, which makes the ownership check vacuous (comparing a value to
+  # itself is always true) and deletes WHATEVER lock is present, including a
+  # fresh lock a DIFFERENT, live session acquired during this close's window
+  # (no lock existed at pre-flight, so we proceeded; someone else then armed
+  # one before we reached this point). That silently broke mutual exclusion.
+  # `Lock.authorized?` (owner or a registered delegate), not a raw equality
+  # check against the lock's own field, is what actually proves the lock
+  # present here is ours; a lock we are not authorized for was acquired by
+  # someone else mid-close, and must never be deleted; the verification below
+  # then correctly reports :lock_remains (exit 3) rather than silently
+  # steamrolling a foreign lock.
   if File.exist?(Lock.path(intent_dir))
     begin
-      owner = (Lock.read(intent_dir) || {})["owner_session"]
-      Lock.release(intent_dir, session: owner) unless Bridge.blank?(owner)
+      current = Lock.read(intent_dir)
+      if current && Lock.authorized?(current, session)
+        # Ours (owner or delegate). Release as the recorded owner, which is
+        # what Lock.release expects; `authorized?` is what actually proved
+        # the right to do so.
+        Lock.release(intent_dir, session: current["owner_session"])
+      elsif current
+        # A lock we are NOT authorized for is present at step 5, though
+        # pre-flight cleared us. Another session acquired it during this
+        # close (TOCTOU). Never delete another session's lock: refuse and
+        # let the caller sort it out.
+        warn "end-intent: the delivery lock at #{Lock.path(intent_dir)} is now held by " \
+             "#{current['owner_session'].inspect}, which acquired it during this close; " \
+             "refusing to delete another session's lock. Run /plastic-doctor to check the " \
+             "lock status."
+      end
+      # current.nil? here means the lock is corrupt/unparseable; nothing to
+      # authorize against, so nothing is attempted, and the verification
+      # below reports :lock_remains honestly.
     rescue StandardError => e
       warn "end-intent: direct lock release raised: #{e.message}"
     end
