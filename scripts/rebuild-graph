@@ -24,6 +24,7 @@ require "fileutils"
 require_relative "lib/graph_rebuild"
 require_relative "lib/frontmatter_writer"
 require_relative "lib/intent_validator"
+require_relative "lib/store_discovery"
 
 class RebuildGraph
   DEFAULT_HOME = File.join(Dir.home, ".plastic")
@@ -65,23 +66,24 @@ class RebuildGraph
 
   attr_reader :plastic_home, :dry_run, :audit_path
 
-  # The three in-scope stores, each as { key:, root:, store:, index: }.
-  # `root` is the dir holding INDEX.md; `store` is the intents dir.
+  # Every store in scope: global plus every projects/<slug>/store directory that exists
+  # (intent 189). A superset of reality, not a hardcoded list: missing a real store here
+  # means a live cross-store ref into it gets classified :dead and DELETED (the exact bug
+  # this discovery fixes); including one nobody registered is harmless. Single source of
+  # truth is StoreDiscovery, shared with project-links, doctor.rb, and new-intent.
   def stores
-    list = []
-    global_store = File.join(plastic_home, "store")
-    list << { key: "global", root: plastic_home, store: global_store,
-              index: File.join(plastic_home, "INDEX.md") } if File.directory?(global_store)
+    discovery[:stores]
+  end
 
-    %w[plastic knowdb].each do |slug|
-      root = File.join(plastic_home, "projects", slug)
-      store = File.join(root, "store")
-      next unless File.directory?(store)
+  # Registered projects.yml slugs with no store directory on disk (legal;
+  # plastic-store-provisioning exists for exactly this state). Reported in the audit
+  # (intent 189 D5) so this never looks like a silent empty store.
+  def missing_stores
+    discovery[:missing]
+  end
 
-      list << { key: "project:#{slug}", root: root, store: store,
-                index: File.join(root, "INDEX.md") }
-    end
-    list
+  def discovery
+    @discovery ||= StoreDiscovery.discover(plastic_home)
   end
 
   # { id => { sources:, chain:, path: } } for one store.
@@ -169,13 +171,32 @@ class RebuildGraph
   # PURE-ish formatter (string from results). Per-store, grouped by kind.
   def render_audit(store_list, results)
     total = store_list.sum { |s| results[s[:key]][:changes].size }
+    preserved_unknown = store_list.flat_map { |s| results[s[:key]][:preserved] }
     lines = []
     lines << "# Audit: store-wide sources/chain graph rebuild (intent 49)"
     lines << ""
     lines << "Generated: #{Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ")}#{dry_run ? " (DRY RUN)" : ""}"
     lines << ""
     lines << "Total changes across all stores: #{total}"
+    lines << "Unknown-store refs preserved (NOT dropped): #{preserved_unknown.size}"
     lines << ""
+
+    unless preserved_unknown.empty?
+      lines << "## Unknown-store refs preserved (store not recognized this run; check " \
+               "projects.yml and store discovery before trusting a zero-change result)"
+      lines << ""
+      preserved_unknown.each do |p|
+        lines << "- #{p[:intent]}.#{p[:field]}: #{p[:ref]} (store #{p[:store].inspect} not recognized)"
+      end
+      lines << ""
+    end
+
+    unless missing_stores.empty?
+      lines << "## Registered projects with no store on disk"
+      lines << ""
+      missing_stores.each { |m| lines << "- #{m[:slug]} (#{m[:project_dir]})" }
+      lines << ""
+    end
 
     store_list.each do |s|
       key = s[:key]
@@ -232,13 +253,17 @@ if $PROGRAM_NAME == __FILE__
     when "--plastic-home" then home = ARGV[i + 1]; i += 2
     when "--dry-run" then dry = true; i += 1
     when "--audit-path" then audit = ARGV[i + 1]; i += 2
-    else i += 1
+    else
+      abort "rebuild-graph: unknown argument #{ARGV[i].inspect} " \
+            "(usage: --plastic-home PATH | --dry-run | --audit-path PATH)"
     end
   end
 
   tool = RebuildGraph.new(plastic_home: home, dry_run: dry, audit_path: audit)
   results = tool.run
   total = results.values.sum { |r| r[:changes].size }
+  preserved = results.values.sum { |r| r[:preserved].size }
   puts "rebuild-graph #{dry ? "DRY RUN" : "applied"}: #{total} change(s) across #{results.size} store(s)."
+  puts "Unknown-store refs preserved (not dropped): #{preserved}" if preserved.positive?
   puts "Audit: #{tool.audit_path}"
 end

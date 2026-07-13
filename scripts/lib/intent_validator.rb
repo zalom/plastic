@@ -37,9 +37,18 @@ module IntentValidator
   # (for example "14", "14a", "4a1"). Mirrors scripts/folgezettel-id.
   ID_PATTERN = /\A([a-z0-9-]+:)?\d+[a-z0-9]*\z/
 
-  # True iff `value` is a String matching the Folgezettel id form.
-  def valid_id?(value)
-    value.to_s.match?(ID_PATTERN)
+  # True iff `value` is a String matching the Folgezettel id form. When `known_stores` is
+  # given (an Array of store slugs, e.g. from StoreDiscovery.known_slugs), a cross-store
+  # prefix must also name a store in that set; a bare id (no prefix) is unaffected. When
+  # `known_stores` is nil (the default), only the shape is checked, so every existing
+  # caller keeps working unchanged (intent 189 D3).
+  def valid_id?(value, known_stores: nil)
+    s = value.to_s
+    return false unless s.match?(ID_PATTERN)
+    return true if known_stores.nil?
+
+    prefix = s[/\A([a-z0-9-]+):/, 1]
+    prefix.nil? || known_stores.include?(prefix)
   end
 
   # Read a file's YAML frontmatter, returning the parsed Hash (or {} when the
@@ -93,8 +102,10 @@ module IntentValidator
   end
 
   # PURE: given a parsed frontmatter Hash (or nil), return
-  # { ok: Boolean, missing: [field names], errors: [human strings] }.
-  def validate_frontmatter(fm)
+  # { ok: Boolean, missing: [field names], errors: [human strings] }. `known_stores`
+  # (optional, an Array of store slugs) is forwarded to valid_id? for each array-field
+  # element; when nil, only id shape is checked (unchanged existing behavior).
+  def validate_frontmatter(fm, known_stores: nil)
     unless fm.is_a?(Hash)
       return { ok: false, missing: REQUIRED_FIELDS.dup, errors: ["no frontmatter found"] }
     end
@@ -112,11 +123,28 @@ module IntentValidator
       end
 
       value.each do |element|
-        errors << "#{key} has invalid id: #{element.inspect}" unless valid_id?(element)
+        next if valid_id?(element, known_stores: known_stores)
+
+        errors << id_error(key, element, known_stores)
       end
     end
 
     { ok: missing.empty? && errors.empty?, missing: missing, errors: errors }
+  end
+
+  # Build the rejection message for one bad id. Distinguishes a shape failure (never a
+  # valid Folgezettel form at all) from a known-store rejection (right shape, but the
+  # store prefix names a store that does not exist), so an agent can tell "typo'd id" apart
+  # from "made up a store" (intent 189 D3).
+  def id_error(key, element, known_stores)
+    s = element.to_s
+    prefix = known_stores && s.match?(ID_PATTERN) ? s[/\A([a-z0-9-]+):/, 1] : nil
+    if prefix
+      "#{key} has invalid id: #{element.inspect} (store #{prefix.inspect} is not a known " \
+        "store; known stores: #{known_stores.sort.join(", ")})"
+    else
+      "#{key} has invalid id: #{element.inspect}"
+    end
   end
 
   # PURE: combine the frontmatter result with section-structure findings for a
@@ -124,8 +152,8 @@ module IntentValidator
   # :section_missing, :section_unknown, and folded section errors; :ok is the AND
   # of frontmatter and sections. Lets the create gate validate proposed content
   # (no file on disk) with the same definition as the CLI and doctor.
-  def validate_content(content)
-    fm_result = validate_frontmatter(parse_frontmatter_text(content))
+  def validate_content(content, known_stores: nil)
+    fm_result = validate_frontmatter(parse_frontmatter_text(content), known_stores: known_stores)
     sections = validate_sections(body_of(content))
     merge_sections(fm_result, sections)
   end
@@ -148,10 +176,10 @@ module IntentValidator
   # Resolve an intent directory's primary md file and validate its frontmatter
   # AND its sanctioned section structure. `plastic_home` is accepted for
   # house-style parity (injectable) even though validation reads the dir directly.
-  def validate(intent_dir, plastic_home: File.join(Dir.home, ".plastic"))
+  def validate(intent_dir, plastic_home: File.join(Dir.home, ".plastic"), known_stores: nil)
     md_path = File.join(intent_dir, "#{File.basename(intent_dir)}.md")
     content = File.exist?(md_path) ? File.read(md_path) : nil
-    validate_content(content)
+    validate_content(content, known_stores: known_stores)
   end
 
   # PURE: cross-intent graph-shape invariants (intent 68). These need visibility

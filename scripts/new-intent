@@ -29,6 +29,7 @@ require_relative "lib/intent_validator"
 require_relative "lib/graph_rebuild"
 require_relative "lib/links_projection"
 require_relative "lib/links_section"
+require_relative "lib/store_discovery"
 
 # --- Explicit flag parsing (no eval, no global injection) ------------------
 
@@ -162,17 +163,12 @@ def store_context(store)
   end
 end
 
-# The in-scope stores under `plastic_home`, each { key:, store: }. Mirrors
-# project-links/RebuildGraph#stores so cross-store resolution spans the family.
+# The in-scope stores under `plastic_home`, each { key:, store: }. Delegates to
+# StoreDiscovery, the single source of truth also used by project-links, rebuild-graph,
+# and doctor.rb (intent 189), so cross-store resolution spans EVERY real store, not a
+# hardcoded few.
 def family_stores(plastic_home)
-  list = []
-  global_store = File.join(plastic_home, "store")
-  list << { key: "global", store: global_store } if File.directory?(global_store)
-  %w[plastic knowdb].each do |slug|
-    store = File.join(plastic_home, "projects", slug, "store")
-    list << { key: "project:#{slug}", store: store } if File.directory?(store)
-  end
-  list
+  StoreDiscovery.discover(plastic_home)[:stores].map { |s| { key: s[:key], store: s[:store] } }
 end
 
 # Build the cross-store maps the LinksProjection resolver needs:
@@ -353,8 +349,10 @@ def main(argv)
   # fire adds nothing.
   Bridge.append_savepoint(intent_dir, intent_file)
 
-  # 7. Self-validate (frontmatter + sanctioned sections).
-  result = IntentValidator.validate(intent_dir)
+  # 7. Self-validate (frontmatter + sanctioned sections), including that every
+  # sources/chain cross-store token names a real store (intent 189 D3).
+  known_stores = StoreDiscovery.known_slugs(plastic_home)
+  result = IntentValidator.validate(intent_dir, known_stores: known_stores)
   unless result[:ok]
     warn "new-intent: scaffolded intent is NOT born complete:"
     result[:missing].each { |f| warn "  missing field: #{f}" }

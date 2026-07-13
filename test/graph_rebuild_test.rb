@@ -126,6 +126,25 @@ class GraphRebuildResolverTest < Minitest::Test
     assert_equal "global:999", result[:ref]
   end
 
+  # THE deepest hazard (D2): a store token this run has never heard of must NOT be
+  # classified :dead. It is a different fact (store unknown) from "id absent from a known
+  # store", and only the guard below stops it from being deleted.
+  def test_unknown_store_ref_is_not_dead
+    result = resolve("mystery-store:1", "project:plastic")
+    assert_equal :unknown_store, result[:status]
+    assert_equal "mystery-store:1", result[:ref]
+    assert_equal "mystery-store", result[:store]
+  end
+
+  # A store token that IS a known store, just missing the id, is still :dead. The guard
+  # must not paper over genuine dangling refs. "knowdb" is a real store in this file's
+  # store_index fixture (project:knowdb => %w[1]); id 999 is not in it.
+  def test_known_store_missing_id_is_still_dead
+    result = resolve("knowdb:999", "global")
+    assert_equal :dead, result[:status]
+    assert_equal "knowdb:999", result[:ref]
+  end
+
   def test_same_store_bare_ref_collapses_when_present
     result = resolve("19a", "project:plastic")
     assert_equal :same_store, result[:status]

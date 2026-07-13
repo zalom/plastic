@@ -24,6 +24,7 @@ require_relative "lib/intent_validator"
 require_relative "lib/graph_rebuild"
 require_relative "lib/links_projection"
 require_relative "lib/links_section"
+require_relative "lib/store_discovery"
 
 class ProjectLinks
   DEFAULT_HOME = File.join(Dir.home, ".plastic")
@@ -54,24 +55,21 @@ class ProjectLinks
 
   attr_reader :plastic_home, :dry_run, :audit_path
 
-  # The three in-scope stores, each as { key:, root:, store:, index: }.
+  # Every store in scope: global plus every projects/<slug>/store directory that exists
+  # (intent 189). Shares its definition with rebuild-graph, doctor.rb, and new-intent via
+  # StoreDiscovery, so this tool can never again disagree with doctor about what exists.
   def stores
-    list = []
-    global_store = File.join(plastic_home, "store")
-    if File.directory?(global_store)
-      list << { key: "global", root: plastic_home, store: global_store,
-                index: File.join(plastic_home, "INDEX.md") }
-    end
+    discovery[:stores]
+  end
 
-    %w[plastic knowdb].each do |slug|
-      root = File.join(plastic_home, "projects", slug)
-      store = File.join(root, "store")
-      next unless File.directory?(store)
+  # Registered projects.yml slugs with no store directory on disk (intent 189 D5).
+  # Reported in the audit rather than silently treated as an empty store.
+  def missing_stores
+    discovery[:missing]
+  end
 
-      list << { key: "project:#{slug}", root: root, store: store,
-                index: File.join(root, "INDEX.md") }
-    end
-    list
+  def discovery
+    @discovery ||= StoreDiscovery.discover(plastic_home)
   end
 
   # { id => { sources:, chain:, basename:, label:, path: } } for one store.
@@ -212,6 +210,13 @@ class ProjectLinks
              "unchanged #{total[:unchanged]}, failed #{total[:failed]}."
     lines << ""
 
+    unless missing_stores.empty?
+      lines << "## Registered projects with no store on disk"
+      lines << ""
+      missing_stores.each { |m| lines << "- #{m[:slug]} (#{m[:project_dir]})" }
+      lines << ""
+    end
+
     store_list.each do |s|
       key = s[:key]
       res = results[key]
@@ -269,7 +274,9 @@ if $PROGRAM_NAME == __FILE__
     when "--plastic-home" then home = ARGV[i + 1]; i += 2
     when "--dry-run" then dry = true; i += 1
     when "--audit-path" then audit = ARGV[i + 1]; i += 2
-    else i += 1
+    else
+      abort "project-links: unknown argument #{ARGV[i].inspect} " \
+            "(usage: --plastic-home PATH | --dry-run | --audit-path PATH)"
     end
   end
 
