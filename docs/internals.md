@@ -653,9 +653,10 @@ notice below (about the human's main session, never a dispatched subagent), an
 explicit `agents.models.<name>` config override, which is honored as written for a
 dispatched subagent when one is configured (e.g. `plastic-brainstorming: fable`,
 mihradesign intent 24, a sanctioned, permanent override, not drift), and the shipped
-consultation agents. Consultation agents (plastic-fable-advisor) are the shipped exception:
-they pin fable in frontmatter by design, are never dispatched by the auto pipeline, and
-downgrade via agents.models overrides like any other agent.
+consultation agent's default. The advisor (`plastic-advisor`) is not a lifecycle stage
+role: the never-Fable rule governs stage agents only. It is never dispatched by the auto
+pipeline, and its model is a user choice, fable by default on Claude Code, set via
+`advisor.model`.
 
 - **Single source of truth for the tier table**: `scripts/lib/agent_models.rb` holds
   `AgentModels::TIER_DEFAULTS`, a pure Ruby hash mirroring the shipped frontmatter
@@ -712,9 +713,10 @@ downgrade via agents.models overrides like any other agent.
   nothing if ignored; it concerns only the human's main session, since dispatched
   subagents keep their pinned tier and never resolve to Fable, unless an explicit
   `agents.models.<name>` config override names Fable for that role, in which case the
-  override is honored as written. Consultation agents (plastic-fable-advisor) are the
-  shipped exception: they pin fable in frontmatter by design, are never dispatched by
-  the auto pipeline, and downgrade via agents.models overrides like any other agent.
+  override is honored as written. The advisor (`plastic-advisor`) is not a lifecycle
+  stage role: the never-Fable rule governs stage agents only. It is never dispatched by
+  the auto pipeline, and its model is a user choice, fable by default on Claude Code,
+  set via `advisor.model`.
 - **What-stage discovery agent**: `plastic-intent-discovery` (paired with the
   `skills/intent-discovering/SKILL.md` workflow) closes the What-stage gap in the
   one-agent-per-stage table. It fires inside `plastic-intent-starting`, right after

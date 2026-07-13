@@ -163,16 +163,26 @@ orchestrates them:
 Final-gate code review stays an ad-hoc subagent the enforcer dispatches at the final gate, not
 a standing role.
 
-**Consultation agents (intent 185).** `plastic-fable-advisor` is not a stage role: never in the
-table above, never dispatched by the auto pipeline. The user or the main session invokes it
-directly, per the shipped Advisor Protocol (`manuals/advisor-protocol.md`), stating a TIER (S,
-M, or L) in the brief; shipped effort is medium, raised per-call to xhigh for L consultations
-where the harness supports it. Claude-only: Codex has no fable alias, so `generate_codex_agents`
-skips it. Both manuals ship at `manuals/operating-manual.md` and
-`manuals/advisor-protocol.md`, read at runtime through `CLAUDE_PLUGIN_ROOT`. An Opus main
-session receives the Operating Manual automatically (session-start model detection, with a
-statusline-cache fallback for `/clear` starts); `context.opus_manual: false` disables both
-paths.
+**The advisor: a model-agnostic consultation role (intent 185).** `plastic-advisor` is not a
+stage role: never in the table above, never dispatched by the auto pipeline. It ships the
+Advisor Protocol's functionality (when and how to consult, the answer contract), never a
+hard-wired vendor model: shipped frontmatter names `model: fable` only as today's default on
+Claude Code, and the agent speaks of itself as "the advisor," not as any one model. The user
+or the main session invokes it directly, stating a TIER (S, M, or L) in the brief; shipped
+effort is medium, raised per-call to xhigh for L consultations where the harness supports it.
+`advisor.model` (global, project-overridable) picks which model runs it: install (Claude Code
+only) asks Opus 4.8 (runs the role via the Fable reasoning instructions) or Fable 5 (the
+advisor is Fable itself), or set it directly with `--advisor-model opus|fable`. Running out of
+Fable credits is answered by changing `advisor.model`, never by removing the installed agent.
+Claude-only for this release: Codex has no fable alias and the owner has not evaluated the
+Codex ecosystem long enough to judge it, so `generate_codex_agents` skips `plastic-advisor` by
+name, tracked at intent 186, not a permanent exclusion. `model_instructions/` ships per-harness
+instruction documents (Claude Code today: `operating-manual.md`, `advisor-protocol.md`), read
+at runtime through `CLAUDE_PLUGIN_ROOT`. An Opus main session receives the Operating Manual
+automatically (session-start model detection, with a statusline-cache fallback for `/clear`
+starts); `model_instructions.opus: false` disables the manual injection, and `advisor.enabled:
+false` skips installing the agent and omits its pointer, without ever deleting an
+already-installed agent file.
 
 **Auto-mode entry.** `plastic-auto` is the entry skill for autonomous delivery: it takes over How
 and Exec, spins up the team above, and works the dashboard's dispatchable queue. The dashboard's
@@ -182,9 +192,10 @@ and Exec, spins up the team above, and works the dashboard's dispatchable queue.
 **Model contract.** Every agent in `agents/*.md` pins an explicit Claude Code model alias in
 its own frontmatter: `opus`, `sonnet`, or `haiku`. Never `inherit`, never Fable by default,
 unless an explicit `agents.models.<name>` config override names Fable for that role, in which
-case the override is honored as written. Consultation agents (plastic-fable-advisor) are the
-shipped exception: they pin fable in frontmatter by design, are never dispatched by the auto
-pipeline, and downgrade via agents.models overrides like any other agent. Aliases track "latest
+case the override is honored as written. The advisor (`plastic-advisor`) is not a lifecycle
+stage role: the never-Fable rule governs stage agents only. It is never dispatched by the auto
+pipeline, and its model is a user choice, fable by default on Claude Code, set via
+`advisor.model`. Aliases track "latest
 per tier" so no Plastic release is required to advance a tier. The tier by role:
 `plastic-enforcer`, `plastic-brainstorming`, `plastic-planner` are `opus`;
 `plastic-spec-specialist`, `plastic-executor`, `plastic-intent-curator`,
@@ -218,10 +229,10 @@ Output is byte-identical when no worktree resolves.
 **Orchestrator advisory.** At auto-mode start, the orchestrator recommends once that the user
 run the main session on the best available thinking model (Fable, Opus, or whatever supersedes
 them). This is advisory only: it changes no behavior and blocks nothing if ignored, and it
-concerns the human's main session, never a dispatched subagent. Consultation agents
-(plastic-fable-advisor) are the shipped exception: they pin fable in frontmatter by design, are
-never dispatched by the auto pipeline, and downgrade via agents.models overrides like any other
-agent.
+concerns the human's main session, never a dispatched subagent. The advisor (`plastic-advisor`)
+is not a lifecycle stage role: the never-Fable rule governs stage agents only. It is never
+dispatched by the auto pipeline, and its model is a user choice, fable by default on Claude
+Code, set via `advisor.model`.
 
 **`plastic-intent-discovery`.** The What-stage agent. It fires at intent activation, after the
 delivery lock is armed and before Why begins, running under that lock as the owner session (it

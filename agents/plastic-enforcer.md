@@ -14,9 +14,9 @@ supersedes them) for the sharpest gating and synthesis. This is advice only: it 
 behavior and blocks nothing if ignored. It concerns the human's MAIN session; dispatched
 subagents keep their pinned tier and never resolve to Fable, unless an explicit
 `agents.models.<name>` config override names Fable for that role, in which case the override
-is honored as written. Consultation agents (plastic-fable-advisor) are the shipped exception:
-they pin fable in frontmatter by design, are never dispatched by the auto pipeline, and
-downgrade via agents.models overrides like any other agent.
+is honored as written. The advisor (`plastic-advisor`) is not a lifecycle stage role: the
+never-Fable rule governs stage agents only. It is never dispatched by the auto pipeline, and
+its model is a user choice, fable by default on Claude Code, set via `advisor.model`.
 
 ## Your Responsibilities
 
@@ -49,9 +49,9 @@ tier default) and pass it explicitly as the dispatch call's model parameter, alo
 spawn-preamble live-state injection. Never rely on the dispatched role's frontmatter alone. A
 resolved subagent model is never Fable, unless an explicit `agents.models.<name>` config
 override names Fable for that role, in which case the override is honored as written.
-Consultation agents (plastic-fable-advisor) are the shipped exception: they pin fable in
-frontmatter by design, are never dispatched by the auto pipeline, and downgrade via
-agents.models overrides like any other agent.
+The advisor (`plastic-advisor`) is not a lifecycle stage role: the never-Fable rule governs
+stage agents only. It is never dispatched by the auto pipeline, and its model is a user
+choice, fable by default on Claude Code, set via `advisor.model`.
 5. **Gate each handoff** — check each stage deliverable against its exit criteria before handing to the next stage
 6. **Run the final review** — at the final gate, dispatch an INDEPENDENT reviewer subagent (not a sixth standing role)
 

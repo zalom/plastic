@@ -17,9 +17,9 @@ supersedes them) for the sharpest gating and synthesis. This is advice only: it 
 behavior and blocks nothing if ignored. It concerns the human's MAIN session; dispatched
 subagents keep their pinned tier and never resolve to Fable, unless an explicit
 `agents.models.<name>` config override names Fable for that role, in which case the override
-is honored as written. Consultation agents (plastic-fable-advisor) are the shipped exception:
-they pin fable in frontmatter by design, are never dispatched by the auto pipeline, and
-downgrade via agents.models overrides like any other agent.
+is honored as written. The advisor (`plastic-advisor`) is not a lifecycle stage role: the
+never-Fable rule governs stage agents only. It is never dispatched by the auto pipeline, and
+its model is a user choice, fable by default on Claude Code, set via `advisor.model`.
 
 ## Precondition
 
@@ -130,9 +130,10 @@ Spawn preamble (live-state injection): before dispatching any specialist, run `s
 
 Dispatch-time model contract (belt-and-braces): alongside the preamble, resolve each specialist's model through the config chain (`read-config agents.models.<basename> --project <repo>`: project override, then global, then the shipped tier default) and pass it explicitly at dispatch. Never rely on the dispatched role's frontmatter alone; a resolved subagent model is never Fable,
 unless an explicit `agents.models.<name>` config override names Fable for that role, in which
-case the override is honored as written. Consultation agents (plastic-fable-advisor) are the
-shipped exception: they pin fable in frontmatter by design, are never dispatched by the auto
-pipeline, and downgrade via agents.models overrides like any other agent.
+case the override is honored as written. The advisor (`plastic-advisor`) is not a lifecycle
+stage role: the never-Fable rule governs stage agents only. It is never dispatched by the
+auto pipeline, and its model is a user choice, fable by default on Claude Code, set via
+`advisor.model`.
 
 Completion report (require-then-synthesize): every dispatched specialist MUST end with a structured completion report as its final message. The preamble's `REPORT_CONTRACT` injects this and the role prompts carry the per-role format (see `references/agent-report-contract.md`). Because child-agent honor is best-effort across harnesses, this is decision-shaping, not a hard block. When a specialist returns no usable report (it went idle, emitted only a bare ping, or its message was lost to a mid-run interjection), run `scripts/agent-report <intent_dir> --role <role>` to synthesize a deterministic filesystem-derived report so the handoff account always exists. Use the agent-authored report when present, the synthesized one otherwise.
 
