@@ -202,6 +202,18 @@ The audit echo can itself drift, so a pure, disk-only detector (`Bridge.savepoin
 
 The End tail runs in a fixed order, and the QMD reindex is always last, after the purge: `outcome.md`, then the INDEX terminal move, then the savepoint `Done` line, then the commit, then disarm (worktree release, then `Lock.release`, then the bridge purge), and finally the QMD reindex. Running the reindex after disarm keeps the search index from referencing a bridge or lock that is about to disappear. The post-done access window is bounded by the delivery lock, `[INDEX terminal to Lock.release]`: while the lock is held the completing session keeps full access and no purge fires, and once the lock is released the bridge is purged and the directory is frozen (writable again only under the future maintenance lock, the contract intent 112 enforces).
 
+Since intent 188, `scripts/end-intent` performs disarm itself, as its own step 5 after the
+outcome/INDEX/savepoint/commit steps commit: the script's exit code 0 now means both "the
+intent is closed" and "its delivery lock is gone," rather than the second half being left to
+a separate one-liner an agent had to remember to run. A pre-flight guard resolves the calling
+session and refuses the whole run before anything is written when a live foreign session
+holds the lock, and reclaims a stale foreign lock automatically (audited to savepoint.md). A
+dirty code worktree refuses before removal (rather than the existing force-remove path
+silently discarding uncommitted changes), unless an explicit `--discard-worktree-changes`
+flag overrides it. `end-intent`'s own INDEX-move parser and `Bridge.intent_active?` now share
+one matcher that accepts a real em dash or a plain hyphen as the id/title separator on read,
+while every write still emits the real em dash.
+
 ## dashboard
 
 The dashboard is the work cockpit. It answers three questions: where we are (recently worked), where we go next (the most-valuable next work, ranked), and how to conduct each item (a disposition). The split keeps determinism while reaching a Markdown UI:

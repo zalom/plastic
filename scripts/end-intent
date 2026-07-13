@@ -2,43 +2,88 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# end-intent (intent 161) - the mechanical core of the single owned Done
-# procedure (D2 steps 1-4). Pure with respect to worktrees, locks, and QMD:
-# those stay in the plastic-intent-ending skill body (steps 0 and 5-7), never
-# duplicated here. Pairs new-intent's shape: one callable script instead of
-# raw one-liners repeated in skill prose (the failure mode this intent fixes).
+# end-intent (intent 161, extended by intent 188) - the mechanical core of the
+# single owned Done procedure. Steps 1-4 (outcome/INDEX/savepoint/commit) plus,
+# since intent 188, step 5 (disarm: worktree release + delivery-lock clear).
+# QMD reindex (step 6) and the human report (step 7) stay in the
+# plastic-intent-ending skill body: intent 161's boundary moves by exactly one
+# step (D2), not further.
 #
 # Usage:
 #   end-intent --store <store_path> --id <intent_id> --disposition delivered|abandoned \
 #              [--index <path>] [--outcome-summary <text>] [--index-note <text>] \
+#              [--session <session_id>] [--discard-worktree-changes] \
 #              [--no-commit] [--dry-run]
 #
 # Steps performed (in order), all idempotent:
+#   0. Pre-flight lock guard (intent 188, D4): resolve the calling session
+#      (--session, else CLAUDE_CODE_SESSION_ID, else the existing lock's own
+#      recorded owner when non-blank, else no-op) and check it against
+#      delivery.lock. A FRESH foreign lock refuses the whole run (exit 4),
+#      authoring nothing. A STALE foreign lock is reclaimed via Lock.takeover
+#      (audited to savepoint.md), then the run proceeds as the new owner. A
+#      lock file that exists but will not parse (corrupt) is arbitrated by
+#      freshness too (the mtime heartbeat is still valid even when the JSON
+#      content is not): fresh refuses (exit 4), stale is taken over. A lock
+#      file that exists while no session identity resolves from ANY source
+#      also refuses (exit 4) rather than ever reaching Lock.takeover with a
+#      blank session, which would delete the lock file and then crash.
 #   1. Guard outcome.md (exit 2, authors nothing, on any failure), then stamp
 #      the intent file's `## Outcome` section with --outcome-summary if given.
 #   2. Move the intent's INDEX.md line from `## Active` into `## Completed`
 #      (delivered) or `## Abandoned` (abandoned), dated today, appending
-#      --index-note (if given) after the date so the terminal entry stays
-#      the store's existing rich Completed/Abandoned shape rather than
-#      thinning to bare id+date.
+#      --index-note (if given). Accepts a real em dash OR a plain hyphen as
+#      the id/title separator on READ (shared matcher, Bridge.index_entry_match);
+#      always EMITS the real em dash on write. An id that resolves to neither
+#      `## Active` nor the terminal section is a loud failure (exit 1); an id
+#      already correctly in the terminal section is a quiet, idempotent success.
 #   3. Append the savepoint `Done` bookend (Bridge.append_terminal_savepoint).
 #   4. Commit the store repo, unless --no-commit.
+#   5. Disarm (intent 188, D2/D16): check the code worktree (resolved from the
+#      bridge) for uncommitted changes first (exit 5 if dirty, unless
+#      --discard-worktree-changes); call the disarm seam (default
+#      Bridge.disarm_auto); verify the durable lock file is actually gone
+#      afterward. The /tmp bridge is only a cache (AGENTS.md): when no bridge
+#      resolves at all (a wiped /tmp, a resumed job under a new session id),
+#      the durable lock file is released directly instead, LOUDLY (a warning
+#      that a worktree may be orphaned), rather than stranding a committed,
+#      terminal intent still holding its lock.
 #
-# Exit codes: 0 (ok), 1 (usage/resolution failure), 2 (outcome.md guard refused).
+# Exit codes:
+#   0  ok - the intent is closed and no delivery.lock remains.
+#   1  usage/resolution failure, OR an id that resolves to neither ## Active
+#      nor the terminal section (D11). Deliberately double duty; see plan.md.
+#   2  the outcome.md guard refused; authors nothing.
+#   3  steps 1-4 already committed, but the delivery lock genuinely could not
+#      be cleared (not a bridge cache miss; see step 5 above).
+#   4  pre-flight refusal: a FRESH foreign lock is held by a live,
+#      non-delegate session; a FRESH lock that will not parse (corrupt); or a
+#      lock file with no resolvable session identity at all. Authors nothing.
+#   5  the code worktree is dirty, OR its cleanliness could not be proven
+#      (git status itself failed: corrupt index, git missing, not a repo);
+#      refused before removal; pass --discard-worktree-changes to override
+#      deliberately.
 
 require "fileutils"
 require "date"
 require "open3"
 require_relative "lib/bridge"
+require_relative "lib/lock"
 require_relative "lib/intent_validator"
 
 DISPOSITIONS = %w[delivered abandoned].freeze
 
-# The store-line separator this script must reproduce is a real em dash
-# (U+2014), the existing INDEX.md convention (store files are exempt from the
-# no-em-dash shipped-file rule). Built from the codepoint, not a literal byte
-# in this source file, so the script's own source stays em-dash free.
+# The store-line separator this script must reproduce ON WRITE is a real em
+# dash (U+2014), the existing INDEX.md convention (store files are exempt from
+# the no-em-dash shipped-file rule). Built from the codepoint, not a literal
+# byte in this source file, so the script's own source stays em-dash free.
+# READING accepts a plain hyphen too, via the shared Bridge.index_entry_match
+# (intent 188, D9/D12): see move_index_to_terminal below.
 EM_DASH = "\u2014"
+
+# Raised internally when the INDEX id resolves to neither `## Active` nor the
+# terminal section (D11): the caller (main) rescues this and exits 1.
+class UnresolvedIndexEntry < StandardError; end
 
 # --- Explicit flag parsing (no eval, no global injection) -------------------
 
@@ -46,19 +91,22 @@ def parse_args(argv)
   opts = {
     store: nil, id: nil, disposition: nil, index: nil,
     outcome_summary: nil, index_note: nil, no_commit: false, dry_run: false,
+    session: nil, discard_worktree_changes: false,
   }
   i = 0
   while i < argv.length
     arg = argv[i]
     case arg
-    when "--store"          then opts[:store] = argv[i += 1]
-    when "--id"              then opts[:id] = argv[i += 1]
-    when "--disposition"     then opts[:disposition] = argv[i += 1]
-    when "--index"           then opts[:index] = argv[i += 1]
-    when "--outcome-summary" then opts[:outcome_summary] = argv[i += 1]
-    when "--index-note"      then opts[:index_note] = argv[i += 1]
-    when "--no-commit"       then opts[:no_commit] = true
-    when "--dry-run"         then opts[:dry_run] = true
+    when "--store"                    then opts[:store] = argv[i += 1]
+    when "--id"                       then opts[:id] = argv[i += 1]
+    when "--disposition"              then opts[:disposition] = argv[i += 1]
+    when "--index"                    then opts[:index] = argv[i += 1]
+    when "--outcome-summary"          then opts[:outcome_summary] = argv[i += 1]
+    when "--index-note"               then opts[:index_note] = argv[i += 1]
+    when "--session"                  then opts[:session] = argv[i += 1]
+    when "--discard-worktree-changes" then opts[:discard_worktree_changes] = true
+    when "--no-commit"                then opts[:no_commit] = true
+    when "--dry-run"                  then opts[:dry_run] = true
     else
       usage_abort("unknown argument #{arg.inspect}")
     end
@@ -70,7 +118,8 @@ end
 def usage
   "usage: end-intent --store <store_path> --id <intent_id> " \
     "--disposition delivered|abandoned [--index <path>] " \
-    "[--outcome-summary <text>] [--index-note <text>] [--no-commit] [--dry-run]"
+    "[--outcome-summary <text>] [--index-note <text>] [--session <session_id>] " \
+    "[--discard-worktree-changes] [--no-commit] [--dry-run]"
 end
 
 def usage_abort(message)
@@ -140,9 +189,7 @@ def stamp_outcome_summary(content, summary)
   (lines[0..start] + replacement + lines[stop..]).join
 end
 
-# --- INDEX.md terminal move (D2 step 2) -------------------------------------
-
-ACTIVE_LINE_RE = /\A- \[(\S+)\s+#{Regexp.escape(EM_DASH)}\s+(.*?)\]\(([^)]+)\)/.freeze
+# --- INDEX.md terminal move (D2 step 2, hardened by intent 188 D9/D11/D12) --
 
 def index_target_heading(disposition)
   disposition == "delivered" ? "## Completed" : "## Abandoned"
@@ -156,8 +203,10 @@ def section_stop(lines, heading_idx)
   stop
 end
 
+# Shared matcher (Bridge.index_entry_match, intent 188 D12): accepts a real em
+# dash OR a plain hyphen as the id/title separator on READ.
 def active_line_id(line)
-  m = line.match(ACTIVE_LINE_RE)
+  m = Bridge.index_entry_match(line)
   m && m[1]
 end
 
@@ -203,28 +252,40 @@ def insert_terminal_entry(lines, target_start, new_entry)
 end
 
 # Move the intent's `## Active` line into the terminal section. Returns the
-# new INDEX.md content, or the original content unchanged when there is
-# nothing to do (idempotent: a second run finds no Active entry and the
-# terminal section already carries it, so it is a clean no-op). `index_note`
-# (D2 "rich entry", review F3), when given, is appended verbatim after the
-# date with a single leading space: content authoring (mode/tier, what
-# shipped, suite result, and so on) stays with the caller, this only places
-# the text where the store's existing Completed/Abandoned lines carry it.
+# new INDEX.md content on success. Raises UnresolvedIndexEntry (D11) when the
+# id resolves to NEITHER `## Active` NOR the terminal section (including the
+# degenerate case where one of the two headings is missing from INDEX.md
+# entirely); returns the content UNCHANGED (a quiet, idempotent success) when
+# the id is already correctly present in the terminal section, whether or not
+# a stray duplicate also still sits under `## Active` (that duplicate is
+# cleaned up too, when found, matching the pre-188 idempotent-cleanup
+# behavior for the ordinary already-moved re-run case).
 def move_index_to_terminal(content, id, disposition, today:, index_note: nil)
   target_heading = index_target_heading(disposition)
   lines = content.lines
 
-  active_start = lines.index { |l| l.rstrip == "## Active" }
   target_start = lines.index { |l| l.rstrip == target_heading }
-  return content if active_start.nil? || target_start.nil?
+  active_start = lines.index { |l| l.rstrip == "## Active" }
+  already_in_target = target_start && section_contains_id?(lines, target_start, id)
 
-  already_in_target = section_contains_id?(lines, target_start, id)
-  active_stop = section_stop(lines, active_start)
-  entry_idx = (active_start + 1...active_stop).find { |i| active_line_id(lines[i]) == id }
+  entry_idx = nil
+  if active_start
+    active_stop = section_stop(lines, active_start)
+    entry_idx = (active_start + 1...active_stop).find { |i| active_line_id(lines[i]) == id }
+  end
 
-  return content if entry_idx.nil? # already moved (or never present): no-op either way
+  if entry_idx.nil?
+    return content if already_in_target # true idempotency (D11): quiet success
+    raise UnresolvedIndexEntry,
+          "intent #{id} could not be resolved: not found under ## Active, and not already " \
+          "present in #{target_heading} (check INDEX.md for a malformed or missing entry)"
+  end
 
-  m = lines[entry_idx].match(ACTIVE_LINE_RE)
+  if target_start.nil?
+    raise UnresolvedIndexEntry, "INDEX.md has no #{target_heading} heading; cannot complete the move"
+  end
+
+  m = Bridge.index_entry_match(lines[entry_idx])
   title, link = m[2], m[3]
   note_suffix = (index_note && !index_note.to_s.strip.empty?) ? " #{index_note.to_s.strip}" : ""
   new_entry = "- [#{id} #{EM_DASH} #{title}](#{link}) #{EM_DASH} #{today}#{note_suffix}\n"
@@ -234,6 +295,23 @@ def move_index_to_terminal(content, id, disposition, today:, index_note: nil)
   lines = insert_terminal_entry(lines, target_start, new_entry) unless already_in_target
 
   lines.join
+end
+
+# Post-move duplicate detector (SHOULD-FIX 4, post-review hardening). If
+# `## Active` somehow held two entries for the same id, `move_index_to_terminal`
+# only ever removes the FIRST match (`entry_idx` is a single index, found once);
+# a duplicate would otherwise stay under `## Active` forever, exit 0, with no
+# signal anywhere, which is exactly the silent tail this intent exists to kill.
+# Not a failure (the requested move DID succeed): warn only, never fail.
+def warn_if_active_duplicate_remains(content, id)
+  lines = content.lines
+  active_start = lines.index { |l| l.rstrip == "## Active" }
+  return unless active_start
+  return unless section_contains_id?(lines, active_start, id)
+
+  warn "end-intent: intent #{id} still has an entry under ## Active after the move " \
+       "(a duplicate ## Active line for this id); INDEX.md needs manual cleanup. Check " \
+       "INDEX.md directly, or run /plastic-doctor."
 end
 
 # --- store auto-commit (D2 step 4) ------------------------------------------
@@ -262,6 +340,170 @@ def store_commit(store, id, disposition)
   status.success?
 end
 
+# --- pre-flight lock guard (D3/D4, intent 188) ------------------------------
+
+# Session resolution order (D3): explicit --session, else CLAUDE_CODE_SESSION_ID,
+# else (only when a delivery.lock exists) that lock's own recorded owner, else
+# (no lock at all, or the recorded owner is itself blank/missing) nil. Returning
+# a blank STRING (rather than nil) here is what crashed end-intent post-review:
+# `Lock.takeover(session: "")` deletes the lock file and THEN raises from
+# `Lock.acquire`'s `blank?(session)` guard, uncaught, destroying mutual
+# exclusion with a raw backtrace. nil is the only safe "could not resolve"
+# signal; main refuses explicitly on it rather than ever reaching takeover.
+def resolve_end_session(explicit, intent_dir)
+  return explicit.to_s.strip unless Bridge.blank?(explicit)
+  env = ENV["CLAUDE_CODE_SESSION_ID"]
+  return env.to_s.strip unless Bridge.blank?(env)
+  lock = Lock.read(intent_dir)
+  return nil unless lock
+  owner = lock["owner_session"].to_s
+  Bridge.blank?(owner) ? nil : owner
+end
+
+# Read-only pre-flight verdict (D4). Returns [:proceed, lock_or_nil],
+# [:refuse, lock] (a FRESH foreign lock: exit 4, authors nothing),
+# [:refuse_corrupt, nil] (a FRESH lock file that will not parse: exit 4,
+# authors nothing; see below), or [:takeover, lock_or_nil] (a STALE foreign
+# lock, or a STALE corrupt lock: reclaim via Lock.takeover, then proceed as
+# the new owner). Never mutates anything itself, so it is safe to call under
+# --dry-run.
+#
+# `Lock.read` returns nil for BOTH "no lock file" and "lock file exists but is
+# corrupt/unparseable" (post-review hardening, intent 188): treating both as
+# :proceed would let a corrupt-but-FRESH foreign lock (a live owner mid
+# partial write, or genuine corruption) skip arbitration entirely, so steps
+# 1-4 would author real writes while another session may still hold this
+# intent. The lock file's mtime IS the heartbeat (Lock.fresh?) and stays
+# readable even when the JSON content is garbage, so a corrupt lock is
+# arbitrated by freshness exactly like a valid one: fresh refuses (we cannot
+# tell whether it is safe to touch), stale is ours to reclaim automatically
+# (no human repair, per the standing fail-open locking rule).
+def preflight_lock_verdict(intent_dir, session)
+  return [:proceed, nil] unless File.exist?(Lock.path(intent_dir))
+
+  lock = Lock.read(intent_dir)
+  if lock.nil?
+    return [:refuse_corrupt, nil] if Lock.fresh?(intent_dir)
+    return [:takeover, nil]
+  end
+
+  return [:proceed, lock] if Lock.authorized?(lock, session)
+  return [:refuse, lock] if Lock.fresh?(intent_dir)
+  [:takeover, lock]
+end
+
+# --- step 5: disarm (D2/D16, intent 188) ------------------------------------
+#
+# Injected seams (D2): bridge_reader defaults to the real Bridge.read (so the
+# dirty-worktree check can resolve the code worktree path without disarming
+# first), disarm defaults to the real Bridge.disarm_auto. Tests may inject
+# fakes for in-process unit coverage of this function; the subprocess-driven
+# end-to-end tests exercise the real defaults against a hermetic tmp home.
+#
+# Returns :ok, :dirty (exit 5), or :lock_remains (exit 3). A blank session
+# (D3's "no lock at all" fallback case) is a clean no-op: :ok, nothing touched.
+def run_disarm(intent_dir, id, session, discard_worktree_changes:,
+               bridge_reader: ->(sess, iid) { Bridge.read(sess, intent_id: iid) },
+               disarm: ->(sess, iid) { Bridge.disarm_auto(sess, intent_id: iid) })
+  return :ok if Bridge.blank?(session)
+
+  data = bridge_reader.call(session, id)
+  worktree_code = data.is_a?(Hash) ? data.dig("worktree", "code") : nil
+
+  if worktree_code && Dir.exist?(worktree_code)
+    begin
+      out, err, status = Open3.capture3("git", "-C", worktree_code, "status", "--porcelain")
+    rescue StandardError => e
+      out, err, status = nil, e.message, nil
+    end
+
+    # Fail CLOSED (intent 188, post-review hardening). A failed or impossible
+    # `git status` (corrupt per-worktree index, git missing from PATH, not a
+    # repo) means we cannot PROVE the worktree is clean, and the removal below
+    # force-removes on a plain `git worktree remove` failure, which destroys
+    # uncommitted work. Never force-remove an unproven worktree: the guard
+    # exists to protect uncommitted code, so an inconclusive check must refuse,
+    # not silently proceed as if it were clean.
+    if status.nil? || !status.success?
+      unless discard_worktree_changes
+        warn "end-intent: could not inspect the code worktree at #{worktree_code} " \
+             "(git status failed: #{err.to_s.strip}); refusing to remove it, because " \
+             "removal would force-discard any uncommitted work. Pass " \
+             "--discard-worktree-changes to remove it anyway, or repair the worktree."
+        return :dirty
+      end
+    elsif !out.strip.empty? && !discard_worktree_changes
+      warn "end-intent: code worktree #{worktree_code} has uncommitted changes; refusing " \
+           "to remove it. Pass --discard-worktree-changes to force the close deliberately, " \
+           "or commit/stash the changes and re-run."
+      return :dirty
+    end
+  end
+
+  disarm.call(session, id)
+
+  # The /tmp bridge is only a cache; the durable lock file is the truth
+  # (AGENTS.md). `disarm_auto` no-ops entirely when no bridge resolves (a wiped
+  # /tmp, a resumed job under a new session id), which would otherwise strand a
+  # committed, terminal intent still holding its lock: the exact stalled
+  # completion this intent forbids. Pre-flight has already established that this
+  # session is the owner, a delegate, or the post-takeover owner, so clearing
+  # the durable lock directly IS safe, PROVIDED the lock actually present here
+  # is still ours to clear.
+  #
+  # TOCTOU fix (post-review hardening, intent 188): the first version of this
+  # fallback read the lock's OWN recorded owner and handed it straight back to
+  # Lock.release, which makes the ownership check vacuous (comparing a value to
+  # itself is always true) and deletes WHATEVER lock is present, including a
+  # fresh lock a DIFFERENT, live session acquired during this close's window
+  # (no lock existed at pre-flight, so we proceeded; someone else then armed
+  # one before we reached this point). That silently broke mutual exclusion.
+  # `Lock.authorized?` (owner or a registered delegate), not a raw equality
+  # check against the lock's own field, is what actually proves the lock
+  # present here is ours; a lock we are not authorized for was acquired by
+  # someone else mid-close, and must never be deleted; the verification below
+  # then correctly reports :lock_remains (exit 3) rather than silently
+  # steamrolling a foreign lock.
+  if File.exist?(Lock.path(intent_dir))
+    begin
+      current = Lock.read(intent_dir)
+      if current && Lock.authorized?(current, session)
+        # Ours (owner or delegate). Release as the recorded owner, which is
+        # what Lock.release expects; `authorized?` is what actually proved
+        # the right to do so.
+        Lock.release(intent_dir, session: current["owner_session"])
+      elsif current
+        # A lock we are NOT authorized for is present at step 5, though
+        # pre-flight cleared us. Another session acquired it during this
+        # close (TOCTOU). Never delete another session's lock: refuse and
+        # let the caller sort it out.
+        warn "end-intent: the delivery lock at #{Lock.path(intent_dir)} is now held by " \
+             "#{current['owner_session'].inspect}, which acquired it during this close; " \
+             "refusing to delete another session's lock. Run /plastic-doctor to check the " \
+             "lock status."
+      end
+      # current.nil? here means the lock is corrupt/unparseable; nothing to
+      # authorize against, so nothing is attempted, and the verification
+      # below reports :lock_remains honestly.
+    rescue StandardError => e
+      warn "end-intent: direct lock release raised: #{e.message}"
+    end
+  end
+
+  unless File.exist?(Lock.path(intent_dir))
+    if data.nil?
+      warn "end-intent: no bridge resolved for session #{session.inspect} (intent #{id}); " \
+           "the delivery lock was cleared directly from disk, but any worktree this intent " \
+           "provisioned was NOT removed. Run /plastic-doctor to check for an orphaned worktree."
+    end
+    return :ok
+  end
+
+  warn "end-intent: the delivery lock at #{Lock.path(intent_dir)} is still present after " \
+       "disarm and a direct release attempt. Run /plastic-doctor to check the lock status."
+  :lock_remains
+end
+
 # --- main --------------------------------------------------------------------
 
 def main(argv)
@@ -281,6 +523,39 @@ def main(argv)
   index_path = opts[:index] ? expand(opts[:index]) : File.join(File.dirname(store), "INDEX.md")
   today = Date.today.iso8601
 
+  # --- pre-flight lock guard (D4): before ANY of steps 1-4 write anything ---
+  session = resolve_end_session(opts[:session], intent_dir)
+
+  # A lock file exists but no session identity resolved from ANY source
+  # (post-review hardening, intent 188): proceeding would either crash inside
+  # Lock.takeover (blank session reaches Lock.acquire's blank? guard AFTER the
+  # existing lock file was already deleted) or silently mis-arbitrate. Refuse
+  # rather than guess; nothing has been written yet.
+  if Bridge.blank?(session) && File.exist?(Lock.path(intent_dir))
+    warn "end-intent: a delivery lock exists at #{Lock.path(intent_dir)} but no session " \
+         "identity could be resolved (--session, CLAUDE_CODE_SESSION_ID, and the lock's " \
+         "own recorded owner are all blank); refusing rather than guessing. Pass " \
+         "--session explicitly, or run /plastic-doctor check the lock status."
+    exit 4
+  end
+
+  verdict, lock_data = preflight_lock_verdict(intent_dir, session)
+
+  if verdict == :refuse
+    warn "end-intent: delivery lock for #{id} is held by a live session " \
+         "(#{lock_data['owner_session']}); refusing to close. Run /plastic-doctor check " \
+         "the lock status"
+    exit 4
+  end
+
+  if verdict == :refuse_corrupt
+    warn "end-intent: the delivery lock at #{Lock.path(intent_dir)} exists and is fresh, " \
+         "but its content will not parse (corrupt); refusing to close since another " \
+         "session may be actively heartbeating it. Run /plastic-doctor check the lock " \
+         "status, or plastic-lock fix once it is confirmed safe."
+    exit 4
+  end
+
   reason = outcome_guard_reason(intent_dir, disposition)
   if reason
     warn "end-intent: #{reason}"
@@ -294,7 +569,21 @@ def main(argv)
     puts "  would append index note: #{opts[:index_note].inspect}" if opts[:index_note]
     puts "  would append savepoint bookend: Done  #{disposition}"
     puts(opts[:no_commit] ? "  would skip store commit (--no-commit)" : "  would commit the store repo")
+    if verdict == :takeover
+      owner_desc = lock_data ? lock_data["owner_session"] : "corrupt/unreadable"
+      puts "  would reclaim the stale delivery lock (owner #{owner_desc}) via takeover"
+    end
+    puts "  would disarm (release the code worktree, clear the delivery lock)"
     exit 0
+  end
+
+  if verdict == :takeover
+    takeover_status, = Lock.takeover(intent_dir, session: session)
+    unless takeover_status == :taken
+      warn "end-intent: could not take over the stale delivery lock for #{id} " \
+           "(status: #{takeover_status}); run /plastic-doctor fix the lock"
+      exit 4
+    end
   end
 
   # 1b. Intent-file `## Outcome` summary stamp (no-op unless given).
@@ -310,9 +599,17 @@ def main(argv)
   # 2. INDEX.md terminal move.
   if File.exist?(index_path)
     original_index = File.read(index_path)
-    updated_index = move_index_to_terminal(original_index, id, disposition, today: today,
-                                            index_note: opts[:index_note])
-    File.write(index_path, updated_index) if updated_index != original_index
+    begin
+      updated_index = move_index_to_terminal(original_index, id, disposition, today: today,
+                                              index_note: opts[:index_note])
+      if updated_index != original_index
+        File.write(index_path, updated_index)
+        warn_if_active_duplicate_remains(updated_index, id)
+      end
+    rescue UnresolvedIndexEntry => e
+      warn "end-intent: #{e.message}"
+      exit 1
+    end
   else
     warn "end-intent: INDEX.md not found at #{index_path}, skipping the terminal move"
   end
@@ -322,6 +619,13 @@ def main(argv)
 
   # 4. Store auto-commit, unless --no-commit.
   store_commit(store, id, disposition) unless opts[:no_commit]
+
+  # 5. Disarm (D2/D16): dirty-worktree guard, disarm seam, lock verification.
+  result = run_disarm(intent_dir, id, session, discard_worktree_changes: opts[:discard_worktree_changes])
+  case result
+  when :dirty then exit 5
+  when :lock_remains then exit 3
+  end
 
   puts intent_dir
   exit 0

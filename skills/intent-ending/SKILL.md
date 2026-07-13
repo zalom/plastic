@@ -24,15 +24,16 @@ failure branch: only outcome.md content and the INDEX section differ.
 | 2 | INDEX.md terminal move (Active -> Completed/Abandoned) | `scripts/end-intent` |
 | 3 | savepoint `Done` bookend | `scripts/end-intent` |
 | 4 | store auto-commit | `scripts/end-intent` |
-| 5 | disarm (worktree + lock) | You, after end-intent exits 0 |
+| 5 | disarm (worktree + lock) | `scripts/end-intent` (intent 188) |
 | 6 | QMD reindex, async, LAST | You |
 | 7 | EM-to-CTO report | You |
 
-Steps 1-4 are ONE callable script, not four separate one-liners: this is
-exactly what the failure mode this intent fixes looked like (releasing hand
+Steps 1-5 are ONE callable script call, not several separate one-liners: this
+is exactly what the failure mode this intent fixes looked like (releasing hand
 authored the close in prose and dropped the savepoint bookend for two real
-deliveries). Never restate outcome/INDEX/savepoint prose inline again; call
-`scripts/end-intent`.
+deliveries; separately, one session delivered four intents back to back and
+never ran the old step-5 one-liner at all, intent 188). Never restate
+outcome/INDEX/savepoint/disarm prose inline again; call `scripts/end-intent`.
 
 ### Step 0. Precondition (the gate is section-blind, not selective)
 
@@ -55,7 +56,7 @@ for orchestrator-owned or completion-tracking items.
    (tick it if the described work is actually done, or do the remaining
    work); do not attempt outcome.md and fight the gate's deny.
 
-### Step 1-4. Run `scripts/end-intent`
+### Step 1-5. Run `scripts/end-intent`
 
 First author outcome.md for real (never leave the scaffold placeholder in
 place): copy `templates/outcome.md`, set the frontmatter to
@@ -72,40 +73,52 @@ Then call the script once:
 ```bash
 ruby ~/.plastic/scripts/end-intent \
   --store <store_path> --id <intent_id> --disposition delivered|abandoned \
+  --session "$CLAUDE_CODE_SESSION_ID" \
   --outcome-summary "<one-line ## Outcome summary for the intent file>" \
   --index-note "<rich Completed/Abandoned entry description>"
 ```
 
-This does all of steps 1-4 in order: guards outcome.md (refuses a missing,
+This does all of steps 1-5 in order: guards outcome.md (refuses a missing,
 still-placeholder, or wrong-disposition file with exit 2 and authors
 nothing), stamps the intent file's `## Outcome` section, moves the INDEX.md
 line from `## Active` to `## Completed` or `## Abandoned` (dated today,
-idempotent) with the `--index-note` text appended after the date so the
-entry stays rich, appends the savepoint `Done` bookend, and commits the
-store repo. Omit `--index-note` for a thin id+date entry, add `--no-commit`
-when a separate commit step already covers the store, and `--dry-run` to
-preview with no writes. Exit 0 is success; exit 1 is a usage or resolution
-failure; exit 2 is the outcome.md guard refusing (fix outcome.md and re-run,
-nothing was written).
+idempotent, accepting either a real em dash or a plain hyphen as the id/
+title separator on read while always emitting the real em dash on write)
+with the `--index-note` text appended after the date so the entry stays
+rich, appends the savepoint `Done` bookend, commits the store repo, and
+disarms (releases the code worktree and clears `delivery.lock`, verified
+against the durable lock file on disk, never merely trusted). Omit
+`--index-note` for a thin id+date entry, add `--no-commit` when a separate
+commit step already covers the store (this never skips disarm), and
+`--dry-run` to preview steps 1-5 with no writes.
 
-### Step 5. Disarm (worktree + lock)
+A pre-flight lock guard runs before anything is written: it resolves the
+calling session (`--session`, else `CLAUDE_CODE_SESSION_ID`, else the
+existing lock's own recorded owner, else a no-op) and checks it against any
+existing `delivery.lock`. A live foreign session refuses the whole run
+(exit 4, nothing written); a stale foreign lock is reclaimed automatically
+(audited to savepoint.md) and the run proceeds as the new owner. Before
+removing the worktree, step 5 also refuses on an unexpectedly dirty code
+worktree (exit 5, naming the worktree path) rather than force-discarding
+uncommitted changes; pass `--discard-worktree-changes` only when you mean
+to override that deliberately.
 
-Two branches, decided by how this intent ships:
+On the auto mode / curator path (no release), this single call performs the
+FULL disarm (plain worktree remove, since the branch survives for later
+reclaim). On a release-shipped path, `skills/releasing/SKILL.md` merges and
+removes the worktree FIRST (its own step 8, merge-then-remove) before ever
+calling this script, so by the time this call's step 5 runs, the worktree is
+already gone (a harmless no-op) and only the lock is left to clear,
+correctly, for the first time on that path (D7).
 
-- **Shipped through a release** (the `plastic-releasing` flow reached this
-  close): merge the code branch back BEFORE removing the worktrees, via
-  `Worktree.finish(bridge_data, merge: true)`. Releasing's own workflow
-  already drives this; this skill's job here is only the outcome/INDEX/
-  savepoint/commit core above.
-- **Auto mode or the curator path** (no release involved): plain remove,
-  branch survives for reclaim.
-  ```bash
-  ruby -r ~/.plastic/scripts/lib/bridge -e \
-    'Bridge.disarm_auto(ENV["CLAUDE_CODE_SESSION_ID"], intent_id: "<ID>")'
-  ```
-  `disarm_auto` releases both worktrees, clears the `delivery.lock`, and only
-  then makes the bridge purge-eligible, in that order. Never leave an
-  orphaned worktree; run `git worktree prune` on a stale reference.
+Exit codes: 0 success (the intent is closed AND its delivery lock is gone);
+1 a usage or resolution failure, OR an INDEX id that resolves to neither
+`## Active` nor the terminal section; 2 the outcome.md guard refusing (fix
+outcome.md and re-run, nothing was written); 3 steps 1-4 already committed
+but disarm could not verify the lock is gone afterward (run `/plastic-doctor
+check the lock status`); 4 a live foreign session holds the lock (back off);
+5 the code worktree is dirty (commit/stash first, or pass
+`--discard-worktree-changes` deliberately).
 
 ### Step 6. QMD reindex, LAST
 
@@ -146,6 +159,6 @@ historical record of what was planned.
 
 `plastic-releasing`, `plastic-auto`, the curator agent, `store-curating`, and
 `store-indexing` all delegate their mechanical close to this skill (or call
-`scripts/end-intent` directly for steps 1-4). None of them restate the
-outcome/INDEX/savepoint prose inline any more; if you find one that does,
-that surface has drifted and should route here instead.
+`scripts/end-intent` directly for steps 1-5). None of them restate the
+outcome/INDEX/savepoint/disarm prose inline any more; if you find one that
+does, that surface has drifted and should route here instead.

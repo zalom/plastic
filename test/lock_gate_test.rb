@@ -111,6 +111,19 @@ class LockGateTest < Minitest::Test
                "a non-empty delegates array is a team, not solo (AC3): stays denied"
   end
 
+  # --- AC6 (intent 188): a hyphen-formatted ## Active line is now gated ------
+
+  def test_hyphen_active_line_is_now_properly_lock_gated
+    lines = ["## Active", "- [96 - demo](96--demo/96--demo.md)", "", "## Future"]
+    File.write(@index, lines.join("\n") + "\n")
+
+    reason = gate(nil, @intent_file, session: "s")
+    refute_nil reason,
+      "AC6: a hyphen-formatted Active line must be recognized as active and properly gated " \
+      "(pre-188 this read as not-active and failed the lock gate OPEN)"
+    assert_includes reason, "no delivery lock held"
+  end
+
   # --- deny routing (D5): every deny names the resolving command ---------------
 
   def test_no_lock_deny_names_intent_starting
