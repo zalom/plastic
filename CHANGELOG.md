@@ -5,29 +5,9 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
-### Added
-- Two consultation agents for expensive reasoning, summoned deliberately and never
-  dispatched by the auto pipeline: `plastic-advisor` (the real advisor, ships `model:
-  fable`) and `plastic-faux-advisor` (the cheaper imitation, ships `model: opus` with
-  the frontier reasoning discipline inlined in its own body, never injected into a
-  user's own session). The `plastic-agent-advisor` skill is the one front door: it
-  teaches when consulting is worth the money, routes to the configured advisor, and
-  can set the config on request. The shipped Advisor Protocol lives in the skill's
-  `references/advisor-protocol.md`.
-- Config, harness-scoped with keys matching the installer's existing agent keys
-  (`claude`, `codex`): `advisor.enabled`, `advisor.claude.{default,primary,secondary}`
-  naming agents (never models), and `agents.models` scoped by harness
-  (`agents.models.claude.*`, `agents.models.codex.*`) with the pre-existing flat form
-  still honored as `claude`. Closes a real latent bug where a literal Claude model id
-  could leak into a generated Codex config.
-- Install asks whether the user wants the advisor and, if so, which is the default
-  (Faux Fable, recommended, or Fable 5), with a plain description of each; update asks
-  the same question once when the key is unset. New flags `--no-advisor` and
-  `--advisor VALUE` (an agent name, or the shorthand `real`/`faux`).
-- `generate_codex_agents` skips both advisor agents by name: no Codex advisor ships in
-  this release (tracked at intent 186, not a permanent exclusion).
-
 ## Released
+
+- `1.3.0` - shipped 2026-07-13; the advisor (intent 185): an advisor you summon on purpose, never instructions forced into your session. Two consultation agents, `plastic-advisor` (the real one, model `fable`, effort `xhigh`) and `plastic-faux-advisor` (model `opus`, effort `max`, carrying the frontier reasoning discipline inlined in its own body so an ordinary model reasons at frontier level), plus the `plastic-agent-advisor` skill that teaches when a consultation is worth the money, routes to the configured advisor, and sets the configuration on request. Configuration is harness-scoped on Plastic own harness keys: `advisor.claude.{default,primary,secondary}` name AGENTS (so a slot can point at your own locally registered agent) and `agents.models.claude.*` name MODELS through family aliases only, so `fable` and `opus` follow to the newest model in their family and nothing rots. Install and update ask which advisor is your default. Fixes a real leak found on the way: a literal model id in the flat `agents.models` table was written into generated Codex TOML, now impossible. Codex advisor support is parked at intent 186 until that ecosystem is evaluated in real use.
 - `1.2.0` - shipped 2026-07-13; collected 33a (Codex adapter core: plastic-install --codex lays the adapted skills into ~/.agents/skills/ and injects a marked, hash-stamped Plastic section into ~/.codex/AGENTS.md, with surgical uninstall and a doctor check), 102 (the lifecycle gates ported to Codex: hooks.json registration derived from the hook registry, an apply_patch V4A envelope parser giving true pre-write vetoes, and a Ruby dispatcher driving the four existing gate and savepoint cores unchanged), and 102a (per-agent TOML generation in ~/.codex/agents/ mapping reasoning tiers to model_reasoning_effort with shape-based model overrides, fixing the dead agents copy); community-verified by 182 (the PreToolUse Bash-only claim resolved as version drift fixed in Codex 0.123.0 per PR 18391, the V4A grammar confirmed against the official apply-patch crate closing 102 residual, Tier A standing; hardening seed 184 parked); suite green at 1338 runs.
 - `1.1.5` - shipped 2026-07-12; collected 179 (the unit of work is an intent, never a ticket - owner ruling recorded as one plain sentence in PLASTIC.md's What is an Intent section, and the last unit-of-work "ticket" wordings swept from the README and the roadmap and roadmap-continuing skills plus the matching eval prompt; the humanizer's support-ticket voice metaphor was judged a different sense and left; suite green at 1251 runs).
 - `1.1.4` - shipped 2026-07-11; collected 149a (the dashboard boards render their four intent lists - recently worked, next work, active, future - as Markdown tables filled from cell-ready pre-escaped --data payload fields, per the owner tabular-first ruling; the 149 prose demotion stands, the classification engine, --json contract, and ASCII goldens are untouched, and the release-verify pass made the three collections_for_cwd tests hermetic, taking the suite fully green at 1251 runs).
