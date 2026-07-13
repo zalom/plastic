@@ -70,7 +70,7 @@ module HookRegistry
           { "name" => "future-intent-check", "status" => "Checking future intents..." },
           { "name" => "auto-arm", "status" => "Checking auto mode..." },
           { "name" => "qmd-search", "status" => "Searching QMD..." },
-          { "name" => "opus-manual", "status" => "Checking Opus manual..." },
+          { "name" => "model-instructions", "status" => "Checking model instructions..." },
         ] },
       ],
     }

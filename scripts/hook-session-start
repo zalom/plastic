@@ -9,7 +9,7 @@ require "yaml"
 require_relative "lib/bridge"
 require_relative "lib/boot_banner"
 require_relative "lib/qmd_sync"
-require_relative "lib/opus_manual"
+require_relative "lib/model_instructions"
 require_relative "doctor"
 
 index_path, store_root, mode, plugin_root = ARGV
@@ -309,29 +309,32 @@ if update_notice
   parts.unshift("! #{update_notice}\n")
 end
 
-# --- Opus manual injection (intent 185), fail-open ---
+# --- Model instructions injection (intent 185), fail-open ---
 # Primary path: keyed on the model field this SessionStart payload actually
 # carried. Appended before the empty-parts check below so injection text alone
 # is enough to keep this hook from exiting silently.
-opus_session_id = hook_payload["session_id"] || ENV["CLAUDE_CODE_SESSION_ID"] || Process.pid.to_s
-opus_config_reader = -> { `"#{read_config}" context.opus_manual`.strip }
-# store_root is always ~/.plastic (see the Usage comment at the top): the manuals
-# fallback lives at store_root/manuals regardless of "mode" or current project, so
-# this stays correct even when plugin_root is empty (a flat, non-plugin install).
-opus_fallback_dir = File.join(store_root, "manuals")
-opus_text = begin
-  OpusManual.injection(
+model_instructions_session_id = hook_payload["session_id"] || ENV["CLAUDE_CODE_SESSION_ID"] || Process.pid.to_s
+model_instructions_reader = -> { `"#{read_config}" model_instructions.opus`.strip }
+advisor_reader = -> { `"#{read_config}" advisor.enabled`.strip }
+# store_root is always ~/.plastic (see the Usage comment at the top): the
+# model_instructions fallback lives at store_root/model_instructions regardless
+# of "mode" or current project, so this stays correct even when plugin_root is
+# empty (a flat, non-plugin install).
+model_instructions_fallback_dir = File.join(store_root, "model_instructions")
+model_instructions_text = begin
+  ModelInstructions.injection(
     model: hook_payload["model"],
-    session_id: opus_session_id,
+    session_id: model_instructions_session_id,
     plugin_root: plugin_root,
     state_dir: "/tmp",
-    config_reader: opus_config_reader,
-    fallback_dir: opus_fallback_dir
+    model_instructions_reader: model_instructions_reader,
+    advisor_reader: advisor_reader,
+    fallback_dir: model_instructions_fallback_dir
   )
 rescue StandardError
   nil
 end
-parts << opus_text if opus_text
+parts << model_instructions_text if model_instructions_text
 
 # Emit nothing when there is genuinely nothing to surface (no conventions,
 # no deprecations, no update notice).

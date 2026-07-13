@@ -144,8 +144,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" opus-manual",
-            "statusMessage": "Checking Opus manual..."
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" model-instructions",
+            "statusMessage": "Checking model instructions..."
           }
         ]
       }

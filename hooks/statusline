@@ -98,9 +98,9 @@ SID=$(json_str "session_id")
 
 # --- Model cache (intent 185) ---
 # Persist the last-seen display_name per session_id so the UserPromptSubmit
-# fallback (hooks/opus-manual) can inject the Opus manual after a /clear, when
-# the SessionStart hook's stdin model field is absent. Pure bash, no ruby, no
-# jq: a failed write is silently ignored, never blocks the statusline.
+# fallback (hooks/model-instructions) can inject the model instructions after a
+# /clear, when the SessionStart hook's stdin model field is absent. Pure bash,
+# no ruby, no jq: a failed write is silently ignored, never blocks the statusline.
 MODEL_DN=$(json_str "display_name")
 if [ -n "$SID" ] && [ -n "$MODEL_DN" ]; then
   printf '%s' "$MODEL_DN" > "/tmp/plastic-model-$SID" 2>/dev/null || true

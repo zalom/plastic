@@ -1,17 +1,17 @@
 #!/usr/bin/env ruby
 # encoding: UTF-8
-# Usage: hook-opus-manual [plugin_root]
-# UserPromptSubmit fallback for the Opus manual injection (intent 185). Reads
-# the model the statusline last cached for this session_id and injects the
-# manual once, when the primary session-start path did not fire (for example
+# Usage: hook-model-instructions [plugin_root]
+# UserPromptSubmit fallback for model-conditional instruction injection (intent
+# 185). Reads the model the statusline last cached for this session_id and
+# injects once, when the primary session-start path did not fire (for example
 # after /clear, where the stdin model field is absent). Fail-open: any error
 # means silent exit 0, and nothing prints on the no-injection path (stray
 # stdout here becomes injected context on UserPromptSubmit).
 
 require "json"
-require_relative "lib/opus_manual"
+require_relative "lib/model_instructions"
 
-def emit_opus_manual(plugin_root)
+def emit_model_instructions(plugin_root)
   raw = $stdin.tty? ? "" : ($stdin.read rescue "")
   payload = begin
     JSON.parse(raw)
@@ -23,7 +23,7 @@ def emit_opus_manual(plugin_root)
   session_id = payload["session_id"].to_s
   return if session_id.empty?
 
-  cache_path = "/tmp/#{OpusManual::CACHE_PREFIX}#{session_id}"
+  cache_path = "/tmp/#{ModelInstructions::CACHE_PREFIX}#{session_id}"
   return unless File.exist?(cache_path)
 
   cached_model = File.read(cache_path).strip
@@ -34,20 +34,22 @@ def emit_opus_manual(plugin_root)
   else
     File.expand_path("~/.plastic/scripts/read-config")
   end
-  config_reader = -> { `"#{read_config}" context.opus_manual`.strip }
+  model_instructions_reader = -> { `"#{read_config}" model_instructions.opus`.strip }
+  advisor_reader = -> { `"#{read_config}" advisor.enabled`.strip }
 
-  text = OpusManual.injection(
+  text = ModelInstructions.injection(
     model: cached_model,
     session_id: session_id,
     plugin_root: plugin_root,
     state_dir: "/tmp",
-    config_reader: config_reader
+    model_instructions_reader: model_instructions_reader,
+    advisor_reader: advisor_reader
   )
   print text if text
 end
 
 begin
-  emit_opus_manual(ARGV[0])
+  emit_model_instructions(ARGV[0])
 rescue Exception
   # Fail open: never block the session, never print on the error path.
 end
