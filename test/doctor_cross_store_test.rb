@@ -76,6 +76,20 @@ class DoctorCrossStoreTest < Minitest::Test
     assert(check[:details].any? { |d| d.include?("global:999") && d.include?("dead") })
   end
 
+  # The malformed tag-form ref (the exact hazard doctor's sweep found on the live store):
+  # a store token that resolves to no known store must be flagged distinctly from a
+  # genuine dead ref, never conflated with it.
+  def test_unknown_store_ref_is_flagged_distinctly_from_dead
+    setup_family
+    write_intent(plastic_store, "11", sources: ["project-ai-agents-resources:1"], chain: [])
+
+    check = cross_store_check
+    assert_equal "warn", check[:status]
+    assert(check[:details].any? { |d| d.include?("11.sources") && d.include?("does not recognize") })
+    refute(check[:details].any? { |d| d.include?("11.sources") && d.include?("(dead)") },
+           "must not be conflated with a genuine dead ref")
+  end
+
   def test_healthy_live_cross_store_ref_is_green
     setup_family
     write_intent(global_store, "1a2", sources: [], chain: ["knowdb:1"])

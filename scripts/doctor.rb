@@ -18,6 +18,7 @@ require "digest"
 require_relative "lib/qmd_sync"
 require_relative "lib/intent_validator"
 require_relative "lib/graph_rebuild"
+require_relative "lib/store_discovery"
 require_relative "lib/links_projection"
 require_relative "lib/links_section"
 require_relative "lib/hook_registry"
@@ -228,30 +229,21 @@ class Doctor
     end
   end
 
+  # Single source of truth for "what stores exist" (intent 189), shared with
+  # rebuild-graph, project-links, and new-intent via StoreDiscovery. Memoized: one Doctor
+  # instance runs many checks against the same plastic_home in a single pass.
+  def store_discovery
+    @store_discovery ||= StoreDiscovery.discover(plastic_home)
+  end
+
   def all_intent_dirs
     dirs = []
-
-    global_store = File.join(plastic_home, "store")
-    if File.directory?(global_store)
-      store_intent_dirs(global_store).each do |entry|
-        full = File.join(global_store, entry)
-        dirs << { path: full, name: entry, scope: "global" }
+    store_discovery[:stores].each do |s|
+      store_intent_dirs(s[:store]).each do |entry|
+        full = File.join(s[:store], entry)
+        dirs << { path: full, name: entry, scope: s[:key] }
       end
     end
-
-    projects_root = File.join(plastic_home, "projects")
-    if File.directory?(projects_root)
-      Dir.children(projects_root).each do |project|
-        project_store = File.join(projects_root, project, "store")
-        next unless File.directory?(project_store)
-
-        store_intent_dirs(project_store).each do |entry|
-          full = File.join(project_store, entry)
-          dirs << { path: full, name: entry, scope: "project:#{project}" }
-        end
-      end
-    end
-
     dirs
   end
 
@@ -432,12 +424,13 @@ class Doctor
     # well-formed arrays of id strings). Delegates to IntentValidator so the
     # born-complete contract is defined in exactly one place. Read-only: shape
     # repair is not a single-field inject, so this check is not fixable here.
+    known_stores = store_discovery[:stores].map { |s| s[:slug] }
     malformed = []
     intent_dirs.each do |d|
       md_path = File.join(d[:path], "#{d[:name]}.md")
       next unless File.exist?(md_path)
 
-      result = IntentValidator.validate_frontmatter(parse_frontmatter(md_path))
+      result = IntentValidator.validate_frontmatter(parse_frontmatter(md_path), known_stores: known_stores)
       shape_errors = result[:errors].select { |e| e.include?("must be an array") || e.include?("invalid id") }
       malformed << { dir: tilde(d[:path]), errors: shape_errors } unless shape_errors.empty?
     end
@@ -860,6 +853,9 @@ class Doctor
                                                 relocation_map: relocation_map,
                                                 store_index: store_index)
             case res[:status]
+            when :unknown_store
+              findings << "#{id}.#{field} cross-store ref #{ref} names a store this scan does " \
+                          "not recognize (#{res[:store]}); left untouched, verify store discovery"
             when :dead
               findings << "#{id}.#{field} cross-store ref #{ref} resolves to no intent (dead)"
             when :same_store
@@ -880,18 +876,12 @@ class Doctor
   end
 
   # { store_key => INDEX.md text } for every store (global + all projects), for the
-  # relocation-map builder. Reads INDEX.md one level above each store dir.
+  # relocation-map builder. Sourced from the same StoreDiscovery list all_intent_dirs
+  # uses, so the two can never enumerate a different set of stores.
   def cross_store_index_texts
     texts = {}
-    global_index = File.join(plastic_home, "INDEX.md")
-    texts["global"] = File.read(global_index) if File.exist?(global_index)
-
-    projects_root = File.join(plastic_home, "projects")
-    if File.directory?(projects_root)
-      Dir.children(projects_root).each do |project|
-        idx = File.join(projects_root, project, "INDEX.md")
-        texts["project:#{project}"] = File.read(idx) if File.exist?(idx)
-      end
+    store_discovery[:stores].each do |s|
+      texts[s[:key]] = File.read(s[:index]) if File.exist?(s[:index])
     end
     texts
   end

@@ -117,6 +117,32 @@ class GraphRebuildTransformTest < Minitest::Test
     assert(result[:changes].any? { |c| c[:kind] == :drop && c[:before] == "global:999" })
   end
 
+  # THE regression this action exists to prevent: an unknown-store ref survives
+  # rebuild_store untouched, and is reported in :preserved, never in :changes.
+  def test_unknown_store_ref_is_preserved_not_dropped
+    nodes = { "11" => { sources: %w[mystery-store:1], chain: [] } }
+    result = rebuild(nodes, store_index: { "project:plastic" => %w[11] })
+
+    assert_equal %w[mystery-store:1], result[:nodes]["11"][:sources],
+                 "unknown-store ref must survive unchanged"
+    refute(result[:changes].any? { |c| c[:kind] == :drop },
+           "must never be recorded as a drop")
+    assert(result[:preserved].any? { |p|
+      p[:intent] == "11" && p[:field] == :sources && p[:ref] == "mystery-store:1" && p[:store] == "mystery-store"
+    })
+  end
+
+  # Idempotency must hold for the preserved case too: a second pass changes nothing and
+  # preserves the same ref again (it is still unknown).
+  def test_unknown_store_ref_idempotent_across_passes
+    nodes = { "11" => { sources: %w[mystery-store:1], chain: [] } }
+    first = rebuild(nodes, store_index: { "project:plastic" => %w[11] })
+    second = rebuild(first[:nodes], store_index: { "project:plastic" => %w[11] })
+    assert_equal first[:nodes], second[:nodes]
+    assert_empty second[:changes]
+    refute_empty second[:preserved]
+  end
+
   # --- idempotency (AC): second pass yields zero changes ---
 
   def test_idempotency_second_pass_zero_changes

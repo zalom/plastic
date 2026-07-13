@@ -66,6 +66,30 @@ class IntentValidatorTest < Minitest::Test
     assert IntentValidator.valid_id?(14)
   end
 
+  def test_valid_id_with_known_stores_accepts_recognized_prefix
+    assert IntentValidator.valid_id?("knowdb:1", known_stores: %w[global plastic knowdb])
+  end
+
+  # THE exact hazard: the tag form has a legal shape, but its prefix is not a real store.
+  def test_valid_id_with_known_stores_rejects_unrecognized_prefix
+    refute IntentValidator.valid_id?("project-ai-agents-resources:1",
+                                      known_stores: %w[global plastic knowdb ai-agents-resources])
+  end
+
+  def test_valid_id_with_known_stores_still_shape_checks_first
+    refute IntentValidator.valid_id?("14-x", known_stores: %w[global])
+  end
+
+  # Fallback (unsupplied known_stores): unchanged shape-only behavior, so every existing
+  # caller of valid_id? keeps working.
+  def test_valid_id_without_known_stores_falls_back_to_shape_only
+    assert IntentValidator.valid_id?("project-ai-agents-resources:1")
+  end
+
+  def test_valid_id_known_stores_ignores_bare_ids
+    assert IntentValidator.valid_id?("14a", known_stores: %w[global])
+  end
+
   # --- validate_frontmatter: missing fields ---
 
   def test_missing_chain_is_reported
@@ -100,6 +124,25 @@ class IntentValidatorTest < Minitest::Test
 
     refute result[:ok]
     assert result[:errors].any? { |e| e.include?("invalid id") }
+  end
+
+  def test_validate_frontmatter_reports_unknown_store_with_named_prefix
+    fm = { "id" => "1", "intent" => "t", "sources" => ["project-ai-agents-resources:1"],
+           "chain" => [], "created" => "2026-01-01", "author" => "t", "tags" => ["t"] }
+    result = IntentValidator.validate_frontmatter(
+      fm, known_stores: %w[global plastic knowdb ai-agents-resources]
+    )
+    refute result[:ok]
+    assert(result[:errors].any? { |e|
+      e.include?("project-ai-agents-resources") && e.include?("not a known store")
+    })
+  end
+
+  def test_validate_frontmatter_without_known_stores_still_accepts_tag_form_shape
+    fm = { "id" => "1", "intent" => "t", "sources" => ["project-ai-agents-resources:1"],
+           "chain" => [], "created" => "2026-01-01", "author" => "t", "tags" => ["t"] }
+    result = IntentValidator.validate_frontmatter(fm) # no known_stores: unchanged fallback
+    assert result[:ok], "shape-only fallback must accept this the same as before"
   end
 
   def test_well_formed_arrays_pass

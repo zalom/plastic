@@ -197,11 +197,17 @@ module GraphRebuild
 
   # Classify a resolved (store, id) relative to the referer, using the live store
   # index to detect dead targets:
-  #   - target id present in the referer's OWN store -> :same_store (collapse to bare)
-  #   - target id present in a DIFFERENT store       -> :cross_store (keep slug:id)
-  #   - target id present NOWHERE                     -> :dead (drop)
+  #   - the store token resolves to no known store          -> :unknown_store (NEVER
+  #     dropped; this is what makes a future discovery miss non-destructive, intent 189 D2)
+  #   - target id present in the referer's OWN known store   -> :same_store (collapse)
+  #   - target id present in a DIFFERENT known store          -> :cross_store (keep slug:id)
+  #   - target id present NOWHERE in a known store            -> :dead (drop)
   def classify(store_tok, bare, referer_store, store_index, original_ref)
     canonical = canonical_store_key(store_tok, store_index)
+    unless known_store?(canonical, store_index)
+      return { status: :unknown_store, ref: original_ref.to_s, store: store_tok }
+    end
+
     if ids_in(store_index, canonical).include?(bare)
       if canonical == referer_store
         { status: :same_store, id: bare }
@@ -211,6 +217,15 @@ module GraphRebuild
     else
       { status: :dead, ref: original_ref.to_s }
     end
+  end
+
+  # True iff `canonical` names a store this run actually knows about (it is "global", or a
+  # literal key in `store_index`). A ref whose store token canonicalizes to anything else
+  # has never been discovered by this run, and must be classified :unknown_store, never
+  # :dead: those are different facts (store unknown vs. id absent from a known store) and
+  # only the second one means the ref is genuinely gone.
+  def known_store?(canonical, store_index)
+    canonical == "global" || (store_index || {}).key?(canonical)
   end
 
   def ids_in(store_index, store_key)
@@ -225,8 +240,11 @@ module GraphRebuild
   #   relocation_map — from build_relocation_map (spans all stores)
   #   store_index    — { store_key => bare ids present } (spans all stores)
   #
-  # Returns { nodes: <new map>, changes: [ {intent:, kind:, before:, after:} ] }.
-  # kinds: :dedupe, :i3, :repoint, :collapse, :drop, :i1_backlink.
+  # Returns { nodes: <new map>, changes: [ {intent:, kind:, before:, after:} ],
+  #           preserved: [ {intent:, field:, ref:, store:} ] }.
+  # kinds (changes, real mutations only): :dedupe, :i3, :repoint, :collapse, :drop,
+  # :i1_backlink. `preserved` is DIFFERENT: an unknown-store ref left byte-for-byte
+  # unchanged, reported for visibility, never counted as a "change" (nothing mutated).
   #
   # Order is load-bearing (spec Phase 2):
   #   1. dedupe each array order-preserving
@@ -247,6 +265,7 @@ module GraphRebuild
     end
 
     changes = []
+    preserved = []
 
     out.each do |id, edges|
       # 1. dedupe order-preserving
@@ -289,6 +308,11 @@ module GraphRebuild
               changes << { intent: id, kind: :repoint, field: field, before: ref, after: res[:ref] }
             end
             rebuilt << res[:ref]
+          when :unknown_store
+            # NEVER drop: the store is unrecognized, not the id absent from a known store.
+            # Preserve byte-for-byte and report separately from `changes` (nothing mutated).
+            preserved << { intent: id, field: field, ref: ref, store: res[:store] }
+            rebuilt << ref
           when :dead
             changes << { intent: id, kind: :drop, field: field, before: ref, after: nil }
             # dropped: not appended
@@ -323,6 +347,6 @@ module GraphRebuild
       end
     end
 
-    { nodes: out, changes: changes }
+    { nodes: out, changes: changes, preserved: preserved }
   end
 end

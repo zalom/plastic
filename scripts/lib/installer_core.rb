@@ -296,6 +296,7 @@ class InstallerCore
       "scripts/roadmap-next" => "scripts/roadmap-next",
       "scripts/lib/intent_validator.rb" => "scripts/lib/intent_validator.rb",
       "scripts/lib/graph_rebuild.rb" => "scripts/lib/graph_rebuild.rb",
+      "scripts/lib/store_discovery.rb" => "scripts/lib/store_discovery.rb",
       "scripts/lib/frontmatter_writer.rb" => "scripts/lib/frontmatter_writer.rb",
       "scripts/lib/links_projection.rb" => "scripts/lib/links_projection.rb",
       "scripts/lib/links_section.rb" => "scripts/lib/links_section.rb",

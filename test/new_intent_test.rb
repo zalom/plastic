@@ -204,6 +204,33 @@ class NewIntentTest < Minitest::Test
     FileUtils.rm_rf(home) if home
   end
 
+  # THE regression this action exists to prevent: a source from a project slug OUTSIDE the
+  # old hardcoded %w[plastic knowdb] list must still resolve. The governing (source)
+  # intent lives in `custom-project`; the child is created in a DIFFERENT store (global),
+  # so resolving the source's label needs custom-project to be discovered by
+  # family_stores, not covered by build_cross_store_maps' own-store fallback (that
+  # fallback only guarantees the store being WRITTEN to, not one merely referenced).
+  def test_cross_store_source_from_previously_invisible_project_slug
+    home = Dir.mktmpdir("new-intent-xstore-custom")
+    global = File.join(home, "store")
+    proj = File.join(home, "projects", "custom-project", "store")
+    [global, proj].each { |d| FileUtils.mkdir_p(d) }
+    File.write(File.join(home, "INDEX.md"), "# Index\n\n## Relocated\n(none)\n")
+    File.write(File.join(home, "projects", "custom-project", "INDEX.md"), "# Index\n\n## Relocated\n(none)\n")
+
+    gov, = run_new_intent("--store", proj, "--intent", "Governing intent", "--slug", "governing")
+    gov_base = File.basename(gov)
+    gov_id = gov_base.split("--").first
+
+    child, status = run_new_intent("--store", global, "--intent", "Sourced child", "--slug",
+                                   "sourced-child", "--sources", "custom-project:#{gov_id}")
+    assert_equal 0, status, "cross-store --sources create must succeed: #{child}"
+    assert_equal "## Links\n- [[custom-project:#{gov_base}|Governing intent]]\n", links_section_of(child),
+                 "a source from a project slug outside the old hardcoded list must still resolve"
+  ensure
+    FileUtils.rm_rf(home) if home
+  end
+
   # The decisive guarantee: a freshly created intent AND its parent are both
   # canonical, i.e. the doctor graph_links_projection check passes with no drift.
   # Build a real <home>/store layout so the doctor resolves the store family.

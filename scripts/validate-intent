@@ -16,6 +16,7 @@
 # --home <path> overrides the Plastic home (default: ~/.plastic).
 
 require_relative "lib/intent_validator"
+require_relative "lib/store_discovery"
 
 def plastic_home(args)
   if (i = args.index("--home")) && args[i + 1]
@@ -41,7 +42,8 @@ if intent_dir.nil?
 end
 
 dir = File.expand_path(intent_dir)
-result = IntentValidator.validate(dir, plastic_home: home)
+known_stores = StoreDiscovery.known_slugs(home)
+result = IntentValidator.validate(dir, plastic_home: home, known_stores: known_stores)
 
 if result[:ok]
   puts "OK: #{dir}"
