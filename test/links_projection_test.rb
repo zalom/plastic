@@ -85,6 +85,29 @@ class LinksProjectionTest < Minitest::Test
     assert_equal "does-not-exist", err.ref
   end
 
+  # Finding 2 (independent review of intent 189): a :dead resolver miss and an
+  # :unknown_store resolver miss used to share one generic UnresolvedRef message.
+  # They must now be distinguishable, so project-links' FAILED audit lines can tell
+  # "genuinely dead" apart from "store not discovered this run, left untouched".
+  def test_dead_and_unknown_store_reasons_produce_different_messages
+    dead_resolver = ->(_ref) { { reason: :dead } }
+    unknown_resolver = ->(_ref) { { reason: :unknown_store, store: "ghost" } }
+
+    dead_err = assert_raises(LinksProjection::UnresolvedRef) do
+      LinksProjection.section(sources: ["x"], chain: [], resolve: dead_resolver)
+    end
+    unknown_err = assert_raises(LinksProjection::UnresolvedRef) do
+      LinksProjection.section(sources: ["x"], chain: [], resolve: unknown_resolver)
+    end
+
+    assert_equal :dead, dead_err.reason
+    assert_equal :unknown_store, unknown_err.reason
+    refute_equal dead_err.message, unknown_err.message
+    assert_match(/dead/, dead_err.message)
+    assert_match(/unknown store/, unknown_err.message)
+    assert_includes unknown_err.message, "ghost"
+  end
+
   def test_resolver_returning_blank_target_raises
     blank = ->(_ref) { { target: "  ", label: "x" } }
     assert_raises(LinksProjection::UnresolvedRef) do

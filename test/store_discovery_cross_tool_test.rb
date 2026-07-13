@@ -6,6 +6,7 @@ require "tmpdir"
 require "fileutils"
 
 require_relative "../scripts/doctor"
+require_relative "../scripts/lib/intent_validator"
 load File.expand_path("../scripts/rebuild-graph", __dir__)
 load File.expand_path("../scripts/project-links", __dir__)
 
@@ -61,5 +62,49 @@ class StoreDiscoveryCrossToolTest < Minitest::Test
     assert_equal expected, doctor_scopes
     assert_equal expected, rebuild_keys
     assert_equal expected, links_keys
+  end
+
+  def write_intent_with_chain(store_dir, id, chain)
+    dir = File.join(store_dir, "#{id}--slug")
+    FileUtils.mkdir_p(dir)
+    chain_yaml = chain.empty? ? "[]" : "[#{chain.map { |c| "\"#{c}\"" }.join(", ")}]"
+    fm = +"---\nid: \"#{id}\"\nintent: t\nsources: []\nchain: #{chain_yaml}\n"
+    fm << "created: 2026-06-01\nauthor: t\ntags: [t]\n---\n\n## Intent\nb\n"
+    File.write(File.join(dir, "#{id}--slug.md"), fm)
+  end
+
+  # Finding 1 (independent review of intent 189): a store that exists on disk with
+  # ZERO intents (the normal state right after StoreProvisioning, before its first
+  # intent lands) must classify a ref into it the SAME way in doctor as in
+  # rebuild-graph: :dead, never :unknown_store. Doctor's store_index used to gain a
+  # key only when a valid intent was found, so a real-but-empty store had no key and
+  # a ref into it looked undiscovered, even though StoreDiscovery reports the store.
+  def test_doctor_and_rebuild_graph_agree_ref_into_real_empty_store_is_dead
+    global = File.join(@home, "store")
+    empty_store = File.join(@home, "projects", "emptyproj", "store")
+    FileUtils.mkdir_p(global)
+    FileUtils.mkdir_p(empty_store)
+    write_intent_with_chain(global, "1", ["emptyproj:5"])
+    write_index(File.join(@home, "INDEX.md"))
+    write_index(File.join(@home, "projects", "emptyproj", "INDEX.md"))
+
+    check = Doctor.new(plastic_home: @home).check_conventions
+                  .find { |c| c[:name] == "graph_cross_store_resolution" }
+    assert_equal "warn", check[:status]
+    assert(
+      check[:details].any? { |d| d.include?("emptyproj:5") && d.include?("dead") },
+      "doctor must classify a ref into a real, empty store as dead: #{check[:details].inspect}"
+    )
+    refute(
+      check[:details].any? { |d| d.include?("emptyproj:5") && d.include?("does not recognize") },
+      "the store IS discovered by StoreDiscovery; it just holds zero intents, so this " \
+      "must not read as unknown_store"
+    )
+
+    audit = File.join(@home, "audit.md")
+    RebuildGraph.new(plastic_home: @home, dry_run: false, audit_path: audit).run
+    fm = IntentValidator.parse_frontmatter(File.join(global, "1--slug", "1--slug.md"))
+    refute_includes fm["chain"], "emptyproj:5",
+                     "rebuild-graph must drop the ref: the store is known and id 5 is absent from it"
   end
 end

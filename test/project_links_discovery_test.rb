@@ -94,4 +94,36 @@ class ProjectLinksDiscoveryTest < Minitest::Test
                    err: [:child, :out], &:read)
     refute $?.success?, "an unrecognized flag must abort: #{out}"
   end
+
+  # Finding 2 (independent review of intent 189): a genuinely dead cross-store ref
+  # and a ref into a store this run never discovered must produce DISTINGUISHABLE
+  # FAILED audit lines, not the same generic resolver-miss text for both. Neither
+  # writes; both stay :failed (data-safety unchanged), only the message differs.
+  def test_failed_audit_lines_distinguish_dead_from_unknown_store
+    global = File.join(@home, "store")
+    realproj = File.join(@home, "projects", "realproj", "store")
+    [global, realproj].each { |d| FileUtils.mkdir_p(d) }
+    write_intent(global, "1--dead", id: "1", intent: "Dead ref holder",
+                        sources: [], chain: ["realproj:999"])
+    write_intent(global, "2--unknown", id: "2", intent: "Unknown store ref holder",
+                        sources: [], chain: ["ghostproj:1"])
+    write_intent(realproj, "10--real", id: "10", intent: "Real intent", sources: [], chain: [])
+    write_index(File.join(@home, "INDEX.md"))
+    write_index(File.join(@home, "projects", "realproj", "INDEX.md"))
+
+    audit = File.join(@home, "audit.md")
+    results = ProjectLinks.new(plastic_home: @home, dry_run: true, audit_path: audit).run
+
+    dead_entry = results["global"][:entries].find { |e| e[:id] == "1" }
+    unknown_entry = results["global"][:entries].find { |e| e[:id] == "2" }
+    assert_equal :failed, dead_entry[:status]
+    assert_equal :failed, unknown_entry[:status]
+    refute_equal dead_entry[:error], unknown_entry[:error]
+    assert_includes dead_entry[:error], "dead"
+    assert_includes unknown_entry[:error], "unknown store"
+
+    audit_text = File.read(audit)
+    assert_includes audit_text, "- 1: #{dead_entry[:error]}"
+    assert_includes audit_text, "- 2: #{unknown_entry[:error]}"
+  end
 end

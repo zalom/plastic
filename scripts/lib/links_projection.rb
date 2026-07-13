@@ -28,13 +28,32 @@ module LinksProjection
   EMPTY_COMMENT = "<!-- No sources or chain; this intent has no graph edges to project. -->"
 
   # Raised when a sources/chain ref resolves to no intent. Carries the offending
-  # ref so the IO shell can report it per-intent and skip the write.
+  # ref, plus, when the resolver supplies one, the GraphRebuild status behind the
+  # miss (`:dead` or `:unknown_store`), so a rescuer can tell "genuinely gone" apart
+  # from "store not discovered this run, left untouched" instead of one generic
+  # failure. `reason` is nil when the resolver has no status to report (a live
+  # store/id whose node_index lookup still misses).
   class UnresolvedRef < StandardError
-    attr_reader :ref
+    attr_reader :ref, :reason
 
-    def initialize(ref)
+    def initialize(ref, reason: nil, store: nil)
       @ref = ref
-      super("unresolved sources/chain ref: #{ref.inspect}")
+      @reason = reason
+      super("#{message_for(reason, store)}: #{ref.inspect}")
+    end
+
+    private
+
+    def message_for(reason, store)
+      case reason
+      when :dead
+        "unresolved sources/chain ref (dead, resolves to no intent)"
+      when :unknown_store
+        "unresolved sources/chain ref (unknown store #{store.inspect}, not discovered " \
+          "this run; left untouched, verify store discovery)"
+      else
+        "unresolved sources/chain ref"
+      end
     end
   end
 
@@ -88,13 +107,18 @@ module LinksProjection
   end
 
   # PURE. Resolve one ref to [target, label]. Raises UnresolvedRef when the
-  # resolver returns nothing usable.
+  # resolver returns nothing usable, carrying whatever :reason/:store the
+  # resolver supplied (see #resolve_ref_projection) so the miss stays
+  # distinguishable at the IO shell.
   def resolve_entry(ref, resolve)
     resolved = resolve.call(ref)
-    target = resolved.is_a?(Hash) ? resolved[:target] || resolved["target"] : nil
-    raise UnresolvedRef, ref if target.nil? || target.to_s.strip.empty?
+    hash = resolved.is_a?(Hash) ? resolved : {}
+    target = hash[:target] || hash["target"]
+    if target.nil? || target.to_s.strip.empty?
+      raise UnresolvedRef.new(ref, reason: hash[:reason], store: hash[:store])
+    end
 
-    label = (resolved[:label] || resolved["label"]).to_s.strip
+    label = (hash[:label] || hash["label"]).to_s.strip
     [target.to_s, label]
   end
 
@@ -117,8 +141,10 @@ module LinksProjection
   #   node_index     — { store_key => { id => { basename:, label: } } } (spans all stores)
   #
   # Returns { target:, label: } (target is `<id>--<slug>` for a same-store id, or
-  # `<slug>:<id>--<slug>` for a cross-store one), or nil when the ref resolves to no
-  # live intent (which makes #section / #entry raise UnresolvedRef).
+  # `<slug>:<id>--<slug>` for a cross-store one). On a miss, returns { reason: :dead }
+  # or { reason: :unknown_store, store: } instead of a bare nil, so #resolve_entry can
+  # raise UnresolvedRef with a distinguishable message (#section / #entry still raise
+  # either way; only the message differs).
   #
   # Uses GraphRebuild.resolve_ref so a relocation always wins over a coincidentally
   # reused id (the `global:24` impostor hazard), exactly as the frontmatter rebuild
@@ -142,8 +168,10 @@ module LinksProjection
       return nil if node.nil?
 
       { target: "#{slug}:#{node[:basename]}", label: node[:label] }
-    else # :dead
-      nil
+    when :dead
+      { reason: :dead }
+    when :unknown_store
+      { reason: :unknown_store, store: res[:store] }
     end
   end
 

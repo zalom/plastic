@@ -247,6 +247,20 @@ class Doctor
     dirs
   end
 
+  # A store_index Hash seeded with EVERY store StoreDiscovery reports, mapping a
+  # store with zero intents to [] rather than leaving its key absent. Mirrors
+  # RebuildGraph#run and ProjectLinks#run, which both set `store_index[key] =
+  # nodes.keys` for every discovered store (empty array for an empty store). Without
+  # this seed, a store_index built only from intents that parse has no key for a
+  # freshly provisioned, still-empty store, so GraphRebuild.classify calls it
+  # :unknown_store instead of :dead, disagreeing with the repair tools about the
+  # same ref (intent 189 review, finding 1).
+  def seeded_store_index
+    idx = Hash.new { |h, k| h[k] = [] }
+    store_discovery[:stores].each { |s| idx[s[:key]] }
+    idx
+  end
+
   # --- Check category 1: Global store ---
 
   def check_global_store
@@ -743,7 +757,7 @@ class Doctor
   def links_projection_check(scopes: nil)
     all_dirs = all_intent_dirs
 
-    store_index = Hash.new { |h, k| h[k] = [] }
+    store_index = seeded_store_index
     node_index = Hash.new { |h, k| h[k] = {} }
     intents = [] # { scope:, id:, sources:, chain:, path: }
 
@@ -822,7 +836,7 @@ class Doctor
 
     # Per-scope node maps + store_index over the WHOLE family.
     nodes_by_scope = Hash.new { |h, k| h[k] = {} }
-    store_index = Hash.new { |h, k| h[k] = [] }
+    store_index = seeded_store_index
     all_dirs.each do |d|
       md = File.join(d[:path], "#{d[:name]}.md")
       next unless File.exist?(md)
