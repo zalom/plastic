@@ -315,13 +315,18 @@ end
 # is enough to keep this hook from exiting silently.
 opus_session_id = hook_payload["session_id"] || ENV["CLAUDE_CODE_SESSION_ID"] || Process.pid.to_s
 opus_config_reader = -> { `"#{read_config}" context.opus_manual`.strip }
+# store_root is always ~/.plastic (see the Usage comment at the top): the manuals
+# fallback lives at store_root/manuals regardless of "mode" or current project, so
+# this stays correct even when plugin_root is empty (a flat, non-plugin install).
+opus_fallback_dir = File.join(store_root, "manuals")
 opus_text = begin
   OpusManual.injection(
     model: hook_payload["model"],
     session_id: opus_session_id,
     plugin_root: plugin_root,
     state_dir: "/tmp",
-    config_reader: opus_config_reader
+    config_reader: opus_config_reader,
+    fallback_dir: opus_fallback_dir
   )
 rescue StandardError
   nil

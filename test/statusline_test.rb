@@ -212,4 +212,23 @@ class StatuslineTest < Minitest::Test
     refute_match(/\b(ruby|jq)\b/, code,
                  "statusline must not invoke ruby or jq (intent 59 constraint)")
   end
+
+  # Model cache (intent 185): the UserPromptSubmit fallback (hook-opus-manual)
+  # reads this cache to inject the Opus manual after a /clear, when the
+  # SessionStart hook's stdin model field is absent. The write is a literal
+  # /tmp/plastic-model-<sid> path (not PLASTIC_TMP-scoped, matching the
+  # statusline's fail-open, mild-failure-on-wipe design), so this test uses a
+  # unique session id and cleans up the real /tmp file itself.
+  def test_writes_model_cache_for_userpromptsubmit_fallback
+    sid = "cache-test-#{Process.pid}"
+    cache_path = "/tmp/plastic-model-#{sid}"
+    FileUtils.rm_f(cache_path)
+
+    render(stdin_json(session_id: sid))
+
+    assert File.exist?(cache_path), "statusline must cache display_name to #{cache_path}"
+    assert_equal "Opus", File.read(cache_path)
+  ensure
+    FileUtils.rm_f(cache_path)
+  end
 end

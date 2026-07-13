@@ -163,11 +163,12 @@ orchestrates them:
 Final-gate code review stays an ad-hoc subagent the enforcer dispatches at the final gate, not
 a standing role.
 
-**Consultation agents (intent 185).** `fable-advisor-s/m/l` are not stage roles: they are never
-in the table above and never dispatched by the auto pipeline. The user or the main session
-invokes one directly, per the shipped Advisor Protocol (`manuals/advisor-protocol.md`), at
-effort low/medium/xhigh for the S/M/L tiers. Claude-only: Codex has no fable alias, so
-`generate_codex_agents` skips them. Both manuals ship at `manuals/operating-manual.md` and
+**Consultation agents (intent 185).** `plastic-fable-advisor` is not a stage role: never in the
+table above, never dispatched by the auto pipeline. The user or the main session invokes it
+directly, per the shipped Advisor Protocol (`manuals/advisor-protocol.md`), stating a TIER (S,
+M, or L) in the brief; shipped effort is medium, raised per-call to xhigh for L consultations
+where the harness supports it. Claude-only: Codex has no fable alias, so `generate_codex_agents`
+skips it. Both manuals ship at `manuals/operating-manual.md` and
 `manuals/advisor-protocol.md`, read at runtime through `CLAUDE_PLUGIN_ROOT`. An Opus main
 session receives the Operating Manual automatically (session-start model detection, with a
 statusline-cache fallback for `/clear` starts); `context.opus_manual: false` disables both
@@ -181,7 +182,7 @@ and Exec, spins up the team above, and works the dashboard's dispatchable queue.
 **Model contract.** Every agent in `agents/*.md` pins an explicit Claude Code model alias in
 its own frontmatter: `opus`, `sonnet`, or `haiku`. Never `inherit`, never Fable by default,
 unless an explicit `agents.models.<name>` config override names Fable for that role, in which
-case the override is honored as written. Consultation agents (fable-advisor-s/m/l) are the
+case the override is honored as written. Consultation agents (plastic-fable-advisor) are the
 shipped exception: they pin fable in frontmatter by design, are never dispatched by the auto
 pipeline, and downgrade via agents.models overrides like any other agent. Aliases track "latest
 per tier" so no Plastic release is required to advance a tier. The tier by role:
@@ -218,7 +219,7 @@ Output is byte-identical when no worktree resolves.
 run the main session on the best available thinking model (Fable, Opus, or whatever supersedes
 them). This is advisory only: it changes no behavior and blocks nothing if ignored, and it
 concerns the human's main session, never a dispatched subagent. Consultation agents
-(fable-advisor-s/m/l) are the shipped exception: they pin fable in frontmatter by design, are
+(plastic-fable-advisor) are the shipped exception: they pin fable in frontmatter by design, are
 never dispatched by the auto pipeline, and downgrade via agents.models overrides like any other
 agent.
 

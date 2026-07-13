@@ -17,7 +17,7 @@ supersedes them) for the sharpest gating and synthesis. This is advice only: it 
 behavior and blocks nothing if ignored. It concerns the human's MAIN session; dispatched
 subagents keep their pinned tier and never resolve to Fable, unless an explicit
 `agents.models.<name>` config override names Fable for that role, in which case the override
-is honored as written. Consultation agents (fable-advisor-s/m/l) are the shipped exception:
+is honored as written. Consultation agents (plastic-fable-advisor) are the shipped exception:
 they pin fable in frontmatter by design, are never dispatched by the auto pipeline, and
 downgrade via agents.models overrides like any other agent.
 
@@ -130,7 +130,7 @@ Spawn preamble (live-state injection): before dispatching any specialist, run `s
 
 Dispatch-time model contract (belt-and-braces): alongside the preamble, resolve each specialist's model through the config chain (`read-config agents.models.<basename> --project <repo>`: project override, then global, then the shipped tier default) and pass it explicitly at dispatch. Never rely on the dispatched role's frontmatter alone; a resolved subagent model is never Fable,
 unless an explicit `agents.models.<name>` config override names Fable for that role, in which
-case the override is honored as written. Consultation agents (fable-advisor-s/m/l) are the
+case the override is honored as written. Consultation agents (plastic-fable-advisor) are the
 shipped exception: they pin fable in frontmatter by design, are never dispatched by the auto
 pipeline, and downgrade via agents.models overrides like any other agent.
 

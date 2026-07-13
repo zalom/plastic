@@ -21,11 +21,12 @@ module AgentModels
     "plastic-intent-discovery" => "sonnet"
   }.freeze
 
-  # Consultation agents (intent 185) pin `fable` in shipped frontmatter by design.
-  # They are not lifecycle-stage roles: never dispatched by the auto pipeline, not
+  # Consultation agent (intent 185, single-agent rename 185 ACTION-5) pins `fable`
+  # in shipped frontmatter by design, plastic- prefixed like every other Plastic
+  # agent. Not a lifecycle-stage role: never dispatched by the auto pipeline, not
   # part of TIER_DEFAULTS, Claude-only (generate_codex_agents skips authored-fable
   # agents; Codex has no fable alias). agents.models overrides still apply.
-  CONSULTATION_AGENTS = %w[fable-advisor-s fable-advisor-m fable-advisor-l].freeze
+  CONSULTATION_AGENTS = %w[plastic-fable-advisor].freeze
 
   # Codex reasoning-effort per tier alias (intent 102a). model_reasoning_effort is a
   # depth-of-thinking dial independent of model selection (181 line 317-318), so mapping

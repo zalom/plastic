@@ -6,8 +6,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 ## Unreleased
 
 ### Added
-- Ship `manuals/operating-manual.md` and `manuals/advisor-protocol.md` in the npm package, read at runtime through `CLAUDE_PLUGIN_ROOT`.
-- Three fable-advisor-s/m/l consultation agents, pinned to `model: fable` at effort low/medium/xhigh, for tiered expert consultations per the shipped Advisor Protocol.
+- Ship `manuals/operating-manual.md` and `manuals/advisor-protocol.md` in the npm package, synced to `~/.plastic/manuals` on every install and update, read at runtime through `CLAUDE_PLUGIN_ROOT` with a `~/.plastic/manuals` fallback.
+- One `plastic-fable-advisor` consultation agent, pinned to `model: fable` at effort medium, for tiered expert consultations (state S, M, or L in the brief) per the shipped Advisor Protocol.
 - Model-conditional Opus operating manual injection: primary via the SessionStart hook's stdin model field, with a statusline-cache fallback for `/clear` starts, gated by a `context.opus_manual` kill-switch (enabled by default).
 - `generate_codex_agents` skips agents whose authored frontmatter model is `fable`, since Codex has no fable alias.
 

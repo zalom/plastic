@@ -653,7 +653,7 @@ notice below (about the human's main session, never a dispatched subagent), an
 explicit `agents.models.<name>` config override, which is honored as written for a
 dispatched subagent when one is configured (e.g. `plastic-brainstorming: fable`,
 mihradesign intent 24, a sanctioned, permanent override, not drift), and the shipped
-consultation agents. Consultation agents (fable-advisor-s/m/l) are the shipped exception:
+consultation agents. Consultation agents (plastic-fable-advisor) are the shipped exception:
 they pin fable in frontmatter by design, are never dispatched by the auto pipeline, and
 downgrade via agents.models overrides like any other agent.
 
@@ -712,7 +712,7 @@ downgrade via agents.models overrides like any other agent.
   nothing if ignored; it concerns only the human's main session, since dispatched
   subagents keep their pinned tier and never resolve to Fable, unless an explicit
   `agents.models.<name>` config override names Fable for that role, in which case the
-  override is honored as written. Consultation agents (fable-advisor-s/m/l) are the
+  override is honored as written. Consultation agents (plastic-fable-advisor) are the
   shipped exception: they pin fable in frontmatter by design, are never dispatched by
   the auto pipeline, and downgrade via agents.models overrides like any other agent.
 - **What-stage discovery agent**: `plastic-intent-discovery` (paired with the

@@ -265,6 +265,8 @@ class InstallerCore
       "scripts/hook-session-start" => "scripts/hook-session-start",
       "scripts/hook-opus-manual" => "scripts/hook-opus-manual",
       "scripts/lib/opus_manual.rb" => "scripts/lib/opus_manual.rb",
+      "manuals/operating-manual.md" => "manuals/operating-manual.md",
+      "manuals/advisor-protocol.md" => "manuals/advisor-protocol.md",
       "scripts/hook-continue" => "scripts/hook-continue",
       "scripts/hook-future-intent-check" => "scripts/hook-future-intent-check",
       "scripts/hook-gate-check" => "scripts/hook-gate-check",

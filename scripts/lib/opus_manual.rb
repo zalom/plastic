@@ -12,15 +12,17 @@ module OpusManual
 
   POINTER_TEXT = <<~TEXT.freeze
     ## Fable advisor available
-    This install ships consultation agents you can dispatch for expensive reasoning:
-    fable-advisor-s (effort low: one bounded decision, verdict + biggest risk),
-    fable-advisor-m (effort medium: plan or plan-review, decision + stepped plan + risk
-    map), fable-advisor-l (effort xhigh: architecture, one-way doors, deadlocks; adds
-    kill criteria). Consult in natural prose with a self-contained brief: goal and the
-    decision it feeds, max 3 questions, your own candidate answer to attack, evidence
-    labeled verified/inferred/assumed, constraints, one-way doors. Before your first
-    consultation this session, read manuals/advisor-protocol.md under the Plastic
-    plugin root. Escalate a tier only when failure cost justifies it.
+    This install ships plastic-fable-advisor, a consultation agent for expensive
+    reasoning (model fable). Consult in natural prose with a self-contained brief:
+    a TIER line (S: bounded decision, verdict + biggest risk; M: plan or plan-review
+    with per-step checks + risk map; L: architecture and one-way doors, adds rival
+    approaches and kill criteria), the goal and the decision it feeds, max 3
+    questions, your own candidate answer to attack, evidence labeled
+    verified/inferred/assumed, constraints, one-way doors. Where the harness supports
+    per-call effort, raise it to xhigh for L consultations. Before your first
+    consultation this session, read the shipped Advisor Protocol
+    (manuals/advisor-protocol.md under the plugin root, or ~/.plastic/manuals on
+    installs). Escalate a tier only when failure cost justifies it.
   TEXT
 
   module_function
@@ -43,11 +45,20 @@ module OpusManual
     true
   end
 
-  # The shipped manual text, or nil if plugin_root is unset or the file is
-  # missing/unreadable.
-  def manual_text(plugin_root)
-    return nil if plugin_root.to_s.empty?
-    File.read(File.join(plugin_root.to_s, "manuals", "operating-manual.md"))
+  # The shipped manual text. Tries plugin_root/manuals first (when plugin_root is
+  # non-empty and the file reads), then falls back to fallback_dir (default
+  # ~/.plastic/manuals, where the installer syncs both manuals on every install
+  # and update). nil when neither resolves, so a simulated manifest install with
+  # an empty CLAUDE_PLUGIN_ROOT still finds the manual through the fallback.
+  def manual_text(plugin_root, fallback_dir: File.expand_path("~/.plastic/manuals"))
+    unless plugin_root.to_s.empty?
+      begin
+        return File.read(File.join(plugin_root.to_s, "manuals", "operating-manual.md"))
+      rescue StandardError
+        # fall through to fallback_dir
+      end
+    end
+    File.read(File.join(fallback_dir.to_s, "operating-manual.md"))
   rescue StandardError
     nil
   end
@@ -60,14 +71,15 @@ module OpusManual
   # (session-start) and fallback (UserPromptSubmit) paths never double-inject:
   # both call this with the same state_dir/session_id, so the marker file is
   # shared between them.
-  def injection(model:, session_id:, plugin_root:, state_dir:, config_reader:)
+  def injection(model:, session_id:, plugin_root:, state_dir:, config_reader:,
+                fallback_dir: File.expand_path("~/.plastic/manuals"))
     return nil unless opus?(model)
     return nil unless enabled?(config_reader)
 
     marker = File.join(state_dir.to_s, "#{MARKER_PREFIX}#{session_id}")
     return nil if File.exist?(marker)
 
-    text = manual_text(plugin_root)
+    text = manual_text(plugin_root, fallback_dir: fallback_dir)
     return nil unless text
 
     FileUtils.mkdir_p(state_dir.to_s)

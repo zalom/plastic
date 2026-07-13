@@ -116,6 +116,28 @@ class InstallerCoreTest < Minitest::Test
            "distribute(:update) must also write the global manifest"
   end
 
+  # Regression guard (intent 185 ACTION-5): the two shipped manuals must land at
+  # ~/.plastic/manuals on both a fresh install and an update, so OpusManual's
+  # fallback_dir default resolves them even under a flat, non-plugin install with
+  # an empty CLAUDE_PLUGIN_ROOT. The generic manifest sweep above only checks
+  # entries that already exist on disk (a silent skip, not a failure, if the copy
+  # never happened), so this asserts existence explicitly for both modes.
+  def test_distribute_syncs_manuals_on_install
+    @core.distribute(:install)
+    assert File.exist?(File.join(@home, "manuals", "operating-manual.md")),
+           "distribute(:install) must sync manuals/operating-manual.md to plastic_home"
+    assert File.exist?(File.join(@home, "manuals", "advisor-protocol.md")),
+           "distribute(:install) must sync manuals/advisor-protocol.md to plastic_home"
+  end
+
+  def test_distribute_syncs_manuals_on_update
+    @core.distribute(:update)
+    assert File.exist?(File.join(@home, "manuals", "operating-manual.md")),
+           "distribute(:update) must sync manuals/operating-manual.md to plastic_home"
+    assert File.exist?(File.join(@home, "manuals", "advisor-protocol.md")),
+           "distribute(:update) must sync manuals/advisor-protocol.md to plastic_home"
+  end
+
   # Regression guard (intent 78): every scripts/lib/*.rb in the package must be listed in
   # the core_files manifest. Without this, a new lib file (e.g. power_tools.rb from 66b) can
   # be require_relative'd but never installed, raising a LoadError in the live hook.
