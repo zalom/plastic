@@ -551,6 +551,54 @@ class DashboardTest < Minitest::Test
     end
   end
 
+  def test_project_render_uses_one_fixed_clock_at_the_ttl_boundary
+    fixed_now = Time.utc(2026, 7, 14, 12, 0, 0)
+    Dir.mktmpdir("plastic-dash-lock-clock") do |root|
+      records = %w[a b].map do |id|
+        dir = File.join(root, id)
+        FileUtils.mkdir_p(dir)
+        Lock.acquire(dir, session: "session-#{id}", harness: "codex",
+                     agent: "plastic-enforcer", now: fixed_now)
+        boundary = fixed_now - Lock::TTL_SECONDS
+        File.utime(boundary, boundary, File.join(dir, "delivery.lock"))
+        { id: id, intent: "Boundary #{id}", created: "2026-07-14", scope: "project:clock",
+          status: "active", lifecycle: "exec", last_accessed_at: "", intent_dir: dir }
+      end
+
+      payload = render_data_project(records, "clock", all: true, now: fixed_now)
+      assert_equal %w[Fresh Fresh], payload[:active].map { |row| row[:activity] }
+    end
+  end
+
+  def test_plain_worker_values_normalize_hostile_lock_metadata
+    with_lock_visibility_fixture do
+      dir = File.join(@home, "projects", "demo", "store", "c--claude-owner")
+      lock = Lock.read(dir)
+      lock["owner_agent"] = "\e[31mbad\e[0m\nline\t| " + ("A" * 200)
+      Lock.write(dir, lock)
+      claim_path = Claim.path(dir, "spec.md")
+      claim = JSON.parse(File.read(claim_path))
+      claim["delegate"] = "\e[32mwriter\e[0m\r\n| " + ("W" * 200)
+      File.write(claim_path, JSON.generate(claim))
+
+      data_out, = run_dash("project", "demo", "--data", "--all")
+      row = JSON.parse(data_out)["active"].find { |item| item["id"] == "c" }
+      assert_operator row["worker"].length, :<=, INTENT_LINE_MAX_CHARS + 1
+      assert_operator row["activity"].length, :<=, INTENT_LINE_MAX_CHARS + 1
+      refute_match(/\e|[\r\n\t]/, row["worker"])
+      refute_match(/\e|[\r\n\t]/, row["activity"])
+      assert_includes row["worker"], "bad line \\|"
+      assert_includes row["activity"], "writer \\|"
+
+      plain, = run_dash("project", "demo", "--plain")
+      active_line = plain.lines.find { |line| line.start_with?(STATUS_GLYPH["active"] + " c ") }
+      refute_nil active_line
+      refute_match(/\e|[\r\t]/, active_line)
+      assert_equal 1, plain.lines.count { |line| line.include?("bad line \\|") }
+      assert_includes active_line, "writer \\|"
+    end
+  end
+
   def test_project_markdown_template_has_worker_and_activity_columns
     template = File.read(File.expand_path("../skills/dashboard/templates/dashboard-project.md", __dir__))
     assert_includes template, "| Id | What | Stage | Worker | Activity |"
