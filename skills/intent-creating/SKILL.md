@@ -69,6 +69,11 @@ Having a "parent" in mind does NOT automatically mean branch. Choose by meaning:
   `--sources` when it was genuinely created from / emerged from that intent's lifecycle.
   Topic similarity alone is not a `sources` edge.
 
+When a branch intent exists because a late ruling arrived AFTER its parent was already
+completed (the owner's late-ruling rule), the parent is restored to v1 via
+`scripts/restore-intent-v1`, never by a hand-run `git checkout`/revert. See `PLASTIC.md` >
+Terminal immutability for the rule and the tool.
+
 `## Links` is a DERIVED view of `sources`/`chain`. Never hand-write a `## Links` line; add the
 frontmatter edge and reproject. Links are decided by context influence (a `chain` edge has a high
 bar: the candidate's context must materially help deliver this intent), not by shared files or a

@@ -630,6 +630,18 @@ always allowed and unbounded (curator reindex, dashboards, and future intents th
 its id or chain), so a done intent stays fully readable forever. Intent 93 states this rule;
 intent 112 builds the gate that enforces it.
 
+Restore-to-v1 (the owner rule that a completed intent is immutable: a late ruling goes to a
+new `--parent` branch intent, and the completed intent is restored to v1) is performed ONLY by
+`scripts/restore-intent-v1`, run under the maintenance lock. Its prose (the intent narrative,
+checklist.md, outcome.md, spec.md, plan.md) is immutable and reverts to v1; its frontmatter
+graph (`sources`/`chain`) is metadata about OTHER intents, not content of this one, and is
+APPEND-ONLY: it is preserved as the union of the v1 snapshot and the current snapshot, never
+subtracted. A hand-run whole-file `git checkout`/revert of a completed intent is FORBIDDEN,
+because it cannot distinguish prose from graph metadata and silently destroys backlinks written
+after v1 (proven on intent 124: a legitimately accrued chain edge was destroyed by a hand-run
+restore and went undetected for a week). This governs the restore mechanism only; it does not
+loosen terminal immutability itself.
+
 Fail-safe lock doctrine (the contract intent 111 implements): the lock system never traps a
 session or burns credits. When a gate cannot verify lock integrity it fails open, degrading
 to advisory (warn) rather than hard-blocking. Repair is orchestrator-driven: on a lock-issue
