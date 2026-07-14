@@ -516,6 +516,120 @@ class CodexHooksTest < Minitest::Test
     assert_includes JSON.parse(out)["systemMessage"], "PLASTIC SAVEPOINT"
   end
 
+  # ---- Codex hook stdin payload for the Bash-tool gates (intent 203) ----
+  # tool_name is "Bash" (D1, confirmed against the official Codex hooks doc),
+  # NOT "apply_patch": these two gate names never go through ApplyPatchEnvelope.
+
+  def codex_bash_payload(command, session_id: "", cwd: @store)
+    {
+      "session_id" => session_id.to_s,
+      "transcript_path" => "/tmp/transcript",
+      "cwd" => cwd,
+      "hook_event_name" => "PreToolUse",
+      "model" => "test-model",
+      "permission_mode" => "default",
+      "turn_id" => "turn-1",
+      "tool_name" => "Bash",
+      "tool_use_id" => "tool-1",
+      "tool_input" => { "command" => command },
+    }
+  end
+
+  # ---- bash-gate / retrieval-gate (intent 203): the Bash-tool dispatch path ----
+
+  def test_bash_gate_denies_a_pre_how_shell_write_to_project_code
+    intent_dir = File.join(@store, "52--demo")
+    FileUtils.mkdir_p(intent_dir)
+    File.write(File.join(intent_dir, "52--demo.md"), "## Intent\nDemo\n")
+    File.write(File.join(intent_dir, "spec.md"), "spec\n") # stage Why, pre-How
+
+    project_file = File.join(@root, "code", "app.rb")
+    FileUtils.mkdir_p(File.dirname(project_file))
+    File.write(project_file, "puts 1\n")
+
+    silence_stderr { Bridge.arm_auto(nil, intent_id: "52", intent_dir: intent_dir, store: @store, name: "demo") }
+
+    command = "echo 'puts 2' > #{project_file}"
+    out, status = run_hook("bash-gate", codex_bash_payload(command))
+    assert_equal 2, status.exitstatus, "a pre-How shell write to project code must be DENIED: #{out}"
+    assert_includes out, "PLASTIC GATE"
+  end
+
+  def test_bash_gate_allows_the_plastic_ok_escape_and_logs_it
+    intent_dir = File.join(@store, "52--demo")
+    FileUtils.mkdir_p(intent_dir)
+    File.write(File.join(intent_dir, "52--demo.md"), "## Intent\nDemo\n")
+    File.write(File.join(intent_dir, "spec.md"), "spec\n")
+
+    project_file = File.join(@root, "code", "app.rb")
+    FileUtils.mkdir_p(File.dirname(project_file))
+    File.write(project_file, "puts 1\n")
+
+    silence_stderr { Bridge.arm_auto(nil, intent_id: "52", intent_dir: intent_dir, store: @store, name: "demo") }
+
+    command = "echo 'puts 2' > #{project_file} # plastic-ok"
+    out, status = run_hook("bash-gate", codex_bash_payload(command, session_id: "codex-esc"), session: "codex-esc")
+    assert_equal 0, status.exitstatus, "the audited escape must allow the write: #{out}"
+
+    log = File.join(@fake_home, ".plastic", ".cache", "gate-escapes.log")
+    assert File.exist?(log), "the escape must be audited on Codex too, identically to Claude"
+    assert_includes File.read(log), "codex-esc"
+  end
+
+  def test_retrieval_gate_never_denies_even_for_a_write_command
+    project_file = File.join(@root, "code", "app.rb")
+    FileUtils.mkdir_p(File.dirname(project_file))
+    File.write(project_file, "puts 1\n")
+
+    command = "echo 'puts 2' > #{project_file}"
+    _out, status = run_hook("retrieval-gate", codex_bash_payload(command))
+    assert_equal 0, status.exitstatus, "retrieval-gate must never deny, even for a write-shaped command"
+  end
+
+  def test_bash_gate_vs_retrieval_gate_prove_the_difference
+    intent_dir = File.join(@store, "52--demo")
+    FileUtils.mkdir_p(intent_dir)
+    File.write(File.join(intent_dir, "52--demo.md"), "## Intent\nDemo\n")
+    File.write(File.join(intent_dir, "spec.md"), "spec\n")
+
+    project_file = File.join(@root, "code", "app.rb")
+    FileUtils.mkdir_p(File.dirname(project_file))
+    File.write(project_file, "puts 1\n")
+
+    silence_stderr { Bridge.arm_auto(nil, intent_id: "52", intent_dir: intent_dir, store: @store, name: "demo") }
+
+    command = "echo 'puts 2' > #{project_file}"
+
+    _bash_out, bash_status = run_hook("bash-gate", codex_bash_payload(command))
+    assert_equal 2, bash_status.exitstatus, "bash-gate must deny this write"
+
+    _retrieval_out, retrieval_status = run_hook("retrieval-gate", codex_bash_payload(command))
+    assert_equal 0, retrieval_status.exitstatus, "retrieval-gate must never deny the SAME command"
+  end
+
+  def test_bash_gate_allows_a_read_only_command
+    _out, status = run_hook("bash-gate", codex_bash_payload("cat app.rb"))
+    assert_equal 0, status.exitstatus
+  end
+
+  # ---- adversarial fail-open for the Bash-tool path (mirrors Decision 14) ----
+
+  def test_bash_gate_malformed_stdin_fails_open
+    env = { "PLASTIC_TMP" => @bridge_tmp, "HOME" => @fake_home }
+    out = nil
+    IO.popen(env, [RbConfig.ruby, SCRIPT, "bash-gate"], "r+", err: [:child, :out]) do |io|
+      io.write("not valid json{{{")
+      io.close_write
+      out = io.read
+    end
+    assert_equal 0, $?.exitstatus, out
+  end
+
+  def test_retrieval_gate_missing_tool_input_fails_open
+    _out, status = run_hook("retrieval-gate", { "session_id" => "", "cwd" => @store, "tool_name" => "Bash" })
+    assert_equal 0, status.exitstatus
+  end
+
   # ---- live-state adversarial fail-open (intent 199, mirrors Decision 14) ----
 
   def test_state_hook_malformed_stdin_fails_open
