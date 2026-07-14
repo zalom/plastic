@@ -24,8 +24,14 @@ module RestoreIntentV1
   #
   # Returns:
   #   { sources: [...], chain: [...],
-  #     dropped:    [ { field: :sources|:chain, ref: "<id or store:id>" }, ... ],
-  #     unverified: [ { field: :sources|:chain, ref: "<id or store:id>" }, ... ] }
+  #     dropped:      [ { field: :sources|:chain, ref: "<id or store:id>" }, ... ],
+  #     unverified:   [ { field: :sources|:chain, ref: "<id or store:id>" }, ... ],
+  #     current_only: [ { field: :sources|:chain, ref: "<id or store:id>" }, ... ] }
+  #
+  # `current_only` names every edge present in the CURRENT snapshot but absent from
+  # the v1 snapshot (D3 transparency): an edge added by the very change being
+  # reverted, which the union now carries forward. Named explicitly regardless of
+  # its target-resolution outcome, so it is never a silent side effect.
   def compute_graph(v1_sources:, v1_chain:, current_sources:, current_chain:,
                      referer_store:, relocation_map:, store_index:)
     sources_result = resolve_union(v1_sources, current_sources, :sources,
@@ -38,6 +44,8 @@ module RestoreIntentV1
       chain: chain_result[:kept],
       dropped: sources_result[:dropped] + chain_result[:dropped],
       unverified: sources_result[:unverified] + chain_result[:unverified],
+      current_only: current_only_edges(v1_sources, current_sources, :sources) +
+                    current_only_edges(v1_chain, current_chain, :chain),
     }
   end
 
@@ -67,6 +75,15 @@ module RestoreIntentV1
     { kept: kept, dropped: dropped, unverified: unverified }
   end
 
+  # PURE. Every edge present in `current_edges` but absent from `v1_edges`
+  # (raw, before target resolution): the set the restore is about to carry
+  # forward that v1 itself never had.
+  def current_only_edges(v1_edges, current_edges, field)
+    v1_set = Array(v1_edges).map(&:to_s)
+    Array(current_edges).map(&:to_s).uniq.reject { |ref| v1_set.include?(ref) }
+                         .map { |ref| { field: field, ref: ref } }
+  end
+
   # PURE. Reapply the computed graph onto v1's exact prose. Delegates entirely to
   # FrontmatterWriter; this module never rewrites YAML itself.
   def apply_graph(v1_content, desired_sources:, desired_chain:)
@@ -75,13 +92,15 @@ module RestoreIntentV1
 
   # PURE. Render one revisions.md entry (intent 107's append-only, move-and-record
   # convention). `n` is the next revision number for this intent's revisions.md.
-  def render_revision_entry(n, at:, timestamp:, before_sources:, after_sources:,
+  # `files` names every file reverted to its v1 content in this restore.
+  def render_revision_entry(n, at:, timestamp:, files:, before_sources:, after_sources:,
                              before_chain:, after_chain:, dropped:)
     lines = []
     lines << "## Revision v#{n} - #{timestamp}"
     lines << "- Why: restore-to-v1 preserved the frontmatter graph across a completed-intent " \
              "restore [rule: restored-to-v1]"
     lines << "- Prior location: frontmatter - sources/chain; prose reverted to ref #{at}"
+    lines << "- Files reverted to v1: #{files.empty? ? "(none, already at v1)" : files.join(", ")}"
     lines << "- Change: sources (before: #{before_sources.inspect} -> after: #{after_sources.inspect}); " \
              "chain (before: #{before_chain.inspect} -> after: #{after_chain.inspect})"
     unless dropped.empty?
@@ -93,18 +112,30 @@ module RestoreIntentV1
     "#{lines.join("\n")}\n"
   end
 
-  # PURE. Render the dry-run/apply human-readable report.
-  def render_report(base:, at:, prose_changes:, graph:, apply:)
+  # PURE. Render the dry-run/apply human-readable report. `v1` and `current` are
+  # { sources:, chain: } snapshots shown alongside the resulting union so a
+  # reviewer can see all three shapes without recomputing anything by hand (spec
+  # acceptance criterion: dry-run prints the v1 graph, the current graph, and the
+  # resulting union, not only the union).
+  def render_report(base:, at:, prose_changes:, v1:, current:, graph:, apply:)
     lines = []
     lines << "restore-intent-v1: #{base} at #{at} (#{apply ? "APPLY" : "DRY RUN"})"
     prose_changes.each { |f| lines << "  prose: revert #{f}" }
-    lines << "  sources -> #{graph[:sources].inspect}"
-    lines << "  chain -> #{graph[:chain].inspect}"
+    lines << "  v1 sources -> #{v1[:sources].inspect}"
+    lines << "  v1 chain -> #{v1[:chain].inspect}"
+    lines << "  current sources -> #{current[:sources].inspect}"
+    lines << "  current chain -> #{current[:chain].inspect}"
+    lines << "  union sources -> #{graph[:sources].inspect}"
+    lines << "  union chain -> #{graph[:chain].inspect}"
     graph[:dropped].each do |d|
       lines << "  DROPPED dead edge (#{d[:field]}): #{d[:ref]} - target intent does not exist"
     end
     graph[:unverified].each do |d|
       lines << "  UNVERIFIED edge (#{d[:field]}): #{d[:ref]} - store unknown, kept"
+    end
+    graph[:current_only].each do |d|
+      lines << "  CURRENT-ONLY edge (#{d[:field]}): #{d[:ref]} - added by the change being " \
+               "reverted, now surviving the restore"
     end
     lines.join("\n")
   end

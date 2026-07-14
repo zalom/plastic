@@ -66,4 +66,14 @@ class RestoreIntentV1LibTest < Minitest::Test
     assert_includes result, "chain: [\"2\"]"
     assert_includes result, "## Intent\nExample.\n"
   end
+
+  def test_current_only_edge_is_named_regardless_of_resolution_outcome
+    graph = RestoreIntentV1.compute_graph(
+      v1_sources: [], v1_chain: ["1"],
+      current_sources: [], current_chain: ["1", "2"],
+      referer_store: "global", relocation_map: empty_relocation_map, store_index: store_index
+    )
+    assert_equal [{ field: :chain, ref: "2" }], graph[:current_only],
+      "an edge present in current but absent from v1 must be named as current-only"
+  end
 end

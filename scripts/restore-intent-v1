@@ -118,7 +118,12 @@ class RestoreIntentV1CLI
     prose_changes = other_files.keys.dup
     prose_changes.unshift("#{base}.md") if new_md != current_md
 
-    puts RestoreIntentV1.render_report(base: base, at: at, prose_changes: prose_changes, graph: graph, apply: apply)
+    puts RestoreIntentV1.render_report(
+      base: base, at: at, prose_changes: prose_changes,
+      v1: { sources: v1_fm["sources"], chain: v1_fm["chain"] },
+      current: { sources: current_fm["sources"], chain: current_fm["chain"] },
+      graph: graph, apply: apply
+    )
 
     return unless apply
 
@@ -129,7 +134,8 @@ class RestoreIntentV1CLI
          "immutability). Confirm the maintenance lock is held before this --apply."
 
     reproject_links
-    append_revision(dir, base, graph, before_sources: current_fm["sources"], before_chain: current_fm["chain"])
+    append_revision(dir, base, graph, files: prose_changes,
+                    before_sources: current_fm["sources"], before_chain: current_fm["chain"])
   end
 
   private
@@ -188,14 +194,14 @@ class RestoreIntentV1CLI
          "Rerun: ruby #{project_links} --plastic-home #{plastic_home}"
   end
 
-  def append_revision(dir, base, graph, before_sources:, before_chain:)
+  def append_revision(dir, base, graph, files:, before_sources:, before_chain:)
     path = File.join(dir, "revisions.md")
     existing = File.exist?(path) ? File.read(path) : "# revisions.md\n\n"
     nums = existing.scan(/^## Revision v(\d+)/).flatten.map(&:to_i)
     n = (nums.max || 0) + 1
 
     entry = RestoreIntentV1.render_revision_entry(
-      n, at: at, timestamp: Time.now.utc.strftime("%Y-%m-%d-%H:%M"),
+      n, at: at, timestamp: Time.now.utc.strftime("%Y-%m-%d-%H:%M"), files: files,
       before_sources: before_sources, after_sources: graph[:sources],
       before_chain: before_chain, after_chain: graph[:chain],
       dropped: graph[:dropped]

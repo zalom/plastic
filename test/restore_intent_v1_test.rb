@@ -140,12 +140,21 @@ class RestoreIntentV1Test < Minitest::Test
     File.write(a_md, File.read(a_md).sub('chain: ["999"]', "chain: []"))
     commit_all("intent #{a_id} amended in place")
 
+    # The drop must be named in BOTH the dry-run report and the apply report
+    # (spec acceptance criterion names both explicitly), not only on --apply.
+    dry_out, dry_status = Open3.capture2(
+      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home
+    )
+    assert_equal 0, dry_status.exitstatus, "dry run should succeed: #{dry_out}"
+    assert_includes dry_out, "999", "the dropped dead edge must be named in the DRY RUN report"
+    assert_empty chain_of(a_dir), "a dry run must not have written anything yet"
+
     out, status = Open3.capture2(
       RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
     )
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
     assert_empty chain_of(a_dir), "a confirmed-dead v1 edge must not be reintroduced"
-    assert_includes out, "999", "the dropped dead edge must be named in the report"
+    assert_includes out, "999", "the dropped dead edge must be named in the APPLY report"
 
     revisions = File.read(File.join(a_dir, "revisions.md"))
     assert_includes revisions, "999", "the dropped dead edge must be recorded in revisions.md"
@@ -294,5 +303,68 @@ class RestoreIntentV1Test < Minitest::Test
     )
     refute_equal 0, status.exitstatus, "must exit non-zero: #{out}"
     assert_equal before, File.read(a_md), "file must be byte-for-byte unchanged"
+  end
+
+  # AC (spec.md): --apply reverts the intent's own .md while sources/chain equals
+  # the union, "verified by reading the written file back and diffing prose
+  # against the v1 git blob byte-for-byte outside the two frontmatter array
+  # lines." This test performs exactly that diff, directly against the real git
+  # blob at v1_sha, not merely against a substring check.
+  def test_apply_restores_md_byte_identical_to_v1_outside_graph_arrays
+    a_dir, a_id, v1_sha = seed_124_131_shape
+    a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
+    rel = relative_to_home(a_dir)
+    v1_blob = git("show", "#{v1_sha}:#{rel}/#{File.basename(a_dir)}.md")
+
+    out, status = Open3.capture2(
+      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
+    )
+    assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
+
+    # Strip the two graph frontmatter lines AND the ## Links section: Links is a
+    # DERIVED projection of the graph (re-projected after an applied restore, per
+    # Goal 4), not immutable prose, so it legitimately differs from v1 whenever
+    # the graph itself legitimately differs (exactly this fixture's case).
+    normalize = lambda do |text|
+      without_graph_lines = text.lines.reject { |l| l.match?(/\A(sources|chain):/) }.join
+      without_graph_lines.sub(/^## Links\n.*\z/m, "")
+    end
+    assert_equal normalize.call(v1_blob), normalize.call(File.read(a_md)),
+      "the restored .md must be byte-identical to v1 outside the sources/chain frontmatter " \
+      "lines and the derived ## Links section"
+  end
+
+  # AC (spec.md): the revisions.md entry names the reverted files and exactly one
+  # new entry is gained per applied restore.
+  def test_revisions_gains_exactly_one_entry_naming_reverted_files
+    a_dir, a_id, v1_sha = seed_124_131_shape
+
+    out, status = Open3.capture2(
+      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
+    )
+    assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
+
+    revisions = File.read(File.join(a_dir, "revisions.md"))
+    assert_equal 1, revisions.scan(/^## Revision v\d+/).length,
+      "exactly one new revisions.md entry must be gained per applied restore"
+    assert_includes revisions, "restored-to-v1", "the entry must carry the restored-to-v1 tag"
+    assert_includes revisions, "#{File.basename(a_dir)}.md",
+      "the entry must name the reverted intent .md file"
+  end
+
+  # AC (spec.md): --apply prints a one-line reminder naming the maintenance
+  # lock; the tool never calls lock-acquisition/lock-check code (verified
+  # structurally: scripts/restore-intent-v1 never requires lib/lock.rb).
+  def test_apply_prints_maintenance_lock_reminder
+    a_dir, a_id, v1_sha = seed_124_131_shape
+
+    out, status = Open3.capture2(
+      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
+    )
+    assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
+    assert_includes out, "maintenance lock", "an --apply run must print the maintenance lock reminder"
+
+    refute_includes File.read(RESTORE), "lib/lock\"",
+      "the tool itself must never require the lock library (fail-open doctrine, 111)"
   end
 end
