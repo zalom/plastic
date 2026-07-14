@@ -105,4 +105,58 @@ class DoctorConfigAsksTest < Minitest::Test
     assert_includes full_categories, "config_asks",
       "config_asks must run in the full tier (run_checks)"
   end
+
+  # --- Fix round: an unreadable manifest must WARN, never silently PASS ---
+  #
+  # Reproduced live by an independent reviewer: with the pre-fix code, a
+  # malformed config_asks.yml made ConfigAsks.pending return [], so this
+  # check reported "pass" / "No pending config questions" while the manifest
+  # was actually unreadable. Doctor asserting health on a broken input is the
+  # exact silent-failure disease this batch exists to kill, so it must warn.
+
+  def test_warn_when_manifest_is_malformed_yaml
+    File.write(File.join(DOCTOR_TEST_HOME, "config_asks.yml"), "not: valid: yaml: [")
+
+    checks = doctor.check_config_asks
+    check = checks.first
+
+    assert_equal 1, checks.size
+    assert_equal "warn", check[:status], "an unreadable manifest must never read as pass"
+    assert_equal "config_asks_manifest", check[:name]
+    assert_match(/config_asks\.yml/, check[:message])
+  end
+
+  def test_warn_when_manifest_top_level_is_not_an_array
+    File.write(File.join(DOCTOR_TEST_HOME, "config_asks.yml"), "config_asks: not_an_array\n")
+
+    checks = doctor.check_config_asks
+    check = checks.first
+
+    assert_equal "warn", check[:status]
+    assert_equal "config_asks_manifest", check[:name]
+  end
+
+  def test_pass_when_manifest_is_absent
+    # Absent (never written at all) is a legitimate quiet no-op, distinct
+    # from a manifest that exists but cannot be read.
+    checks = doctor.check_config_asks
+
+    assert_equal "pass", checks.first[:status]
+    assert_equal "pending_asks", checks.first[:name]
+  end
+
+  # --- Fix round: agent scoping actually wired through doctor ---
+
+  def test_agent_scoped_entry_only_warns_for_its_own_agent
+    write_manifest([sample_entry.merge("agents" => ["codex"])])
+    # No config.yml -- key unset, so the entry would be pending if it applied.
+
+    claude_checks = doctor.check_config_asks("claude")
+    codex_checks = doctor.check_config_asks("codex")
+
+    assert_equal "pass", claude_checks.first[:status],
+      "an entry scoped to codex must not fire for claude"
+    assert_equal "warn", codex_checks.first[:status],
+      "an entry scoped to codex must fire for codex"
+  end
 end

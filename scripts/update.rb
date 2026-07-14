@@ -55,7 +55,7 @@ class Update < InstallerCore
       puts "\u{2b06}\u{fe0f}  Updating Plastic #{iv} \u{2192} #{res[:target]}"
       exit_code = perform_switch(res[:target], agent_args(argv))
       if exit_code == 0
-        announce_pending_config_asks
+        announce_pending_config_asks(agent_key: primary_agent_key(argv))
         run_post_update_doctor(full: argv.include?("--full-doctor"))
       end
       exit_code
@@ -68,8 +68,21 @@ class Update < InstallerCore
   # `install --reinstall`). Informational only, like run_post_update_doctor:
   # rescued so a crash here can never undo or fail an update that already
   # succeeded, and never changes the exit code this methods caller returns.
-  def announce_pending_config_asks(out: $stdout)
-    pending = ConfigAsks.pending(plastic_home)
+  #
+  # A manifest that exists but cannot be read or parsed still prints
+  # something visible (the problem itself), it never prints nothing: a
+  # missing manifest is a legitimate quiet no-op, an unreadable one is not.
+  # agent_key defaults to "claude" and should be the agent this update is
+  # actually installing for, so an entry scoped to a different agent is not
+  # announced here.
+  def announce_pending_config_asks(agent_key: "claude", out: $stdout)
+    manifest_problem = ConfigAsks.manifest_error(plastic_home)
+    if manifest_problem
+      out.puts "\nCould not check for pending config questions: #{manifest_problem}"
+      return
+    end
+
+    pending = ConfigAsks.pending(plastic_home, agent_key)
     return if pending.empty?
 
     out.puts "\nConfig question(s) introduced by this update:"
@@ -144,6 +157,14 @@ class Update < InstallerCore
     flags = agents.map { |a| a[:flag] }.select { |f| argv.include?(f) }
     flags << "--all" if argv.include?("--all")
     flags.empty? ? ["--claude"] : flags
+  end
+
+  # The single agent key this update is installing for, for config_asks
+  # scoping purposes: the first explicitly-flagged agent found in argv, or
+  # "claude" (matches agent_args' own default, and covers --all / no flag).
+  def primary_agent_key(argv)
+    match = agents.find { |a| argv.include?(a[:flag]) }
+    match ? match[:key] : "claude"
   end
 
   def fetch_dist_tags

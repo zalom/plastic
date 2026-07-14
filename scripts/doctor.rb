@@ -1981,8 +1981,24 @@ class Doctor
   # recoverable-later path for a pending question is a full `/plastic-doctor`
   # run, the declared maintenance front door; the moment-it-happens path is
   # update.rb#announce_pending_config_asks, which already runs on every hop.
-  def check_config_asks
-    pending = ConfigAsks.pending(plastic_home)
+  #
+  # A manifest that exists but cannot be read or parsed is reported as its own
+  # WARN (config_asks_manifest), never as a silent pass: an unreadable
+  # manifest is not the same as "nothing declared", and reporting it as
+  # healthy would be the exact silent-failure this whole batch exists to
+  # close. agent_key filters entries by their optional agents scoping (an
+  # entry with no agents field applies to every agent).
+  def check_config_asks(agent_key = "claude")
+    manifest_problem = ConfigAsks.manifest_error(plastic_home)
+    if manifest_problem
+      return [check(
+        category: "config_asks", name: "config_asks_manifest", status: "warn",
+        message: "config_asks.yml problem: #{manifest_problem}",
+        fixable: false
+      )]
+    end
+
+    pending = ConfigAsks.pending(plastic_home, agent_key)
 
     if pending.empty?
       return [check(
@@ -2103,7 +2119,7 @@ class Doctor
     all_checks += check_core_files(agent_key)
     all_checks += check_project_stores
     all_checks += check_deprecations
-    all_checks += check_config_asks
+    all_checks += check_config_asks(agent_key)
     all_checks += check_qmd
     all_checks += check_done_signals
     all_checks += check_skill_lint

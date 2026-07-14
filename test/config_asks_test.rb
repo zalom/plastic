@@ -125,4 +125,75 @@ class ConfigAsksTest < Minitest::Test
       "the no-nagging guarantee, not a failure"
     refute pending.any? { |e| e["id"] == "advisor-default" }
   end
+
+  # --- manifest_error: distinguish "nothing declared" from "declared but
+  # broken" (fix round: an unreadable manifest must never look like a clean
+  # pass to a caller) ---
+
+  def test_manifest_error_nil_when_absent
+    # No config_asks.yml at all -- a legitimate quiet no-op, not an error.
+    assert_nil ConfigAsks.manifest_error(@home)
+  end
+
+  def test_manifest_error_nil_when_valid
+    write_manifest([sample_entry])
+    assert_nil ConfigAsks.manifest_error(@home)
+  end
+
+  def test_manifest_error_present_when_yaml_is_malformed
+    File.write(File.join(@home, "config_asks.yml"), "not: valid: yaml: [")
+
+    error = ConfigAsks.manifest_error(@home)
+
+    refute_nil error
+    assert_match(/config_asks\.yml/, error)
+  end
+
+  def test_manifest_error_present_when_top_level_is_not_an_array
+    File.write(File.join(@home, "config_asks.yml"), "config_asks: not_an_array\n")
+
+    error = ConfigAsks.manifest_error(@home)
+
+    refute_nil error
+    assert_match(/config_asks\.yml/, error)
+  end
+
+  def test_manifest_error_does_not_flag_a_broken_config_yml
+    # manifest_error is scoped to config_asks.yml only; a broken config.yml is
+    # a separate concern (load_config already degrades that to {} safely,
+    # since ConfigAsks only reads config.yml, never writes it).
+    write_manifest([sample_entry])
+    File.write(File.join(@home, "config.yml"), "not: valid: yaml: [")
+
+    assert_nil ConfigAsks.manifest_error(@home)
+  end
+
+  # --- agent scoping (fix round: the agents: field was declared but never
+  # read, so an agent-scoped entry could not actually be agent-scoped) ---
+
+  def test_pending_filters_out_entry_scoped_to_a_different_agent
+    entry = sample_entry.merge("agents" => ["codex"])
+    write_manifest([entry])
+
+    assert_equal [], ConfigAsks.pending(@home, "claude")
+    assert_equal 1, ConfigAsks.pending(@home, "codex").size
+  end
+
+  def test_pending_entry_without_agents_field_applies_to_every_agent
+    entry = sample_entry.dup
+    entry.delete("agents")
+    write_manifest([entry])
+
+    assert_equal 1, ConfigAsks.pending(@home, "claude").size
+    assert_equal 1, ConfigAsks.pending(@home, "codex").size
+    assert_equal 1, ConfigAsks.pending(@home, "hermes").size
+  end
+
+  def test_pending_with_nil_agent_key_does_not_filter
+    entry = sample_entry.merge("agents" => ["codex"])
+    write_manifest([entry])
+
+    # No agent_key passed at all -- backward-compatible "do not filter" mode.
+    assert_equal 1, ConfigAsks.pending(@home).size
+  end
 end

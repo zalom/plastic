@@ -18,6 +18,12 @@
 # (write-config config_asks_dismissed --push <id>) both clear it permanently.
 # This deliberately ignores "introduced" so an entry fires on the very next
 # update/doctor run no matter how many releases have already passed (retro-fire).
+#
+# Footgun for whoever adds the next entry: this predicate reads config.yml
+# directly and never merges in read-config's DEFAULTS, so keying a new entry
+# on something that already has a non-nil value in read-config's DEFAULTS
+# would make that entry look unset, and therefore pending, forever, even
+# though the rest of Plastic already treats it as answered by that default.
 
 config_asks:
   - id: advisor-default
