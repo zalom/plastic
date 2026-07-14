@@ -420,6 +420,24 @@ class InstallerCore
     (data["files"] || {}).keys
   end
 
+  # Per-agent registration probe (intent 198, D7 follow-up). `installed?` in
+  # install.rb only answers "is Plastic core installed at all", which cannot
+  # tell two harnesses apart: once core is present, install.rb's old gate
+  # refused to add ANY new harness, even one that had never been touched. This
+  # asks the narrower, correct question, "has Plastic already registered
+  # files for THIS agent", using the signal already tracked for prune-on-update:
+  # the per-agent manifest (manifest_path_for). A missing manifest file, or a
+  # manifest whose "files" list is empty (write_manifest still writes one when
+  # nothing was installed), both mean nothing is registered for this agent yet.
+  # An unknown key is never "installed" (fail toward proceeding, since a caller
+  # that already validated the key gets its own "Unknown agent" result from
+  # install_for_agent).
+  def agent_installed?(key)
+    config = agent_config(key)
+    return false unless config
+    !manifest_files(manifest_path_for(key, config)).empty?
+  end
+
   def install_for_agent(key, force, argv: [], input: $stdin, reinstall: false)
     config = agent_config(key)
     return { agent: config[:name], success: false, reason: "Unknown agent" } unless config
