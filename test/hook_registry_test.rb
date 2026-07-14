@@ -105,6 +105,38 @@ class HookRegistryTest < Minitest::Test
     end
   end
 
+  # --- Live-state events (intent 199) ---
+
+  def test_codex_hooks_json_emits_session_start_group_projected_from_events
+    codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
+    group = codex["SessionStart"]&.first
+    refute_nil group, "SessionStart must be registered for Codex"
+    assert_equal "", group["matcher"]
+    names = group["hooks"].map { |h| h["command"][/codex-hook" (\S+)/, 1] }
+    expected = HookRegistry.events["SessionStart"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    assert_equal expected, names
+  end
+
+  def test_codex_hooks_json_emits_user_prompt_submit_group_projected_from_events
+    codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
+    group = codex["UserPromptSubmit"]&.first
+    refute_nil group, "UserPromptSubmit must be registered for Codex"
+    assert_equal "", group["matcher"]
+    names = group["hooks"].map { |h| h["command"][/codex-hook" (\S+)/, 1] }
+    expected = HookRegistry.events["UserPromptSubmit"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    assert_equal expected, names
+  end
+
+  def test_codex_hooks_json_emits_pre_compact_group_projected_from_events
+    codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
+    group = codex["PreCompact"]&.first
+    refute_nil group, "PreCompact must be registered for Codex"
+    assert_equal "", group["matcher"]
+    names = group["hooks"].map { |h| h["command"][/codex-hook" (\S+)/, 1] }
+    expected = HookRegistry.events["PreCompact"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    assert_equal expected, names
+  end
+
   private
 
   # `"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook" code-gate` -> "code-gate";
