@@ -503,6 +503,22 @@ class PlasticLockCliTest < Minitest::Test
     assert_includes Lock.read(@intent_dir)["delegates"], "sub-1"
   end
 
+  def test_cli_who_prints_the_most_recently_registered_delegate
+    Lock.acquire(@intent_dir, session: "sess-1", harness: "codex",
+                 agent: "plastic-enforcer")
+    Lock.add_delegate(@intent_dir, delegate: "sub-1", session: "sess-1",
+                      harness: "codex", agent: "first-agent")
+    Lock.add_delegate(@intent_dir, delegate: "sub-2", session: "sess-1",
+                      harness: "codex", agent: "second-agent")
+    Lock.add_delegate(@intent_dir, delegate: "sub-1", session: "sess-1",
+                      harness: "codex", agent: "current-agent")
+
+    out, err, st = cli("who")
+
+    assert st.success?, err
+    assert_includes out, "Delegate: current-agent via Codex, active"
+  end
+
   def test_cli_delegate_terminal_status_rejects_nonowner_and_invalid_status
     Lock.acquire(@intent_dir, session: "owner")
     Lock.add_delegate(@intent_dir, delegate: "sub-1", session: "owner")

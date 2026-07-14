@@ -291,11 +291,20 @@ module Lock
                "claims" => Claim.claims_status(intent_dir, ttl: ttl, now: now) }
     end
 
-    activity_by_session = Array(data["delegate_activity"]).each_with_object({}) do |record, memo|
+    activity = Array(data["delegate_activity"])
+    activity_by_session = activity.each_with_object({}) do |record, memo|
       memo[record["session"].to_s] = record if record.is_a?(Hash)
     end
-    delegates = Array(data["delegates"]).map do |delegate|
-      session = delegate.to_s
+    authorized_sessions = Array(data["delegates"]).map(&:to_s)
+    activity_sessions = activity.filter_map do |record|
+      record["session"].to_s if record.is_a?(Hash) &&
+                                authorized_sessions.include?(record["session"].to_s)
+    end.uniq
+    # Legacy string-only delegates retain their authorization order. Rich
+    # records follow in activity order (oldest to newest), so consumers may
+    # reliably take the last projection entry as the current/latest delegate.
+    ordered_sessions = (authorized_sessions - activity_sessions) + activity_sessions
+    delegates = ordered_sessions.map do |session|
       record = activity_by_session[session] || {}
       {
         "session" => session,
