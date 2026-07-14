@@ -18,22 +18,49 @@ class HermeticityGuardTest < Minitest::Test
   ISOLATION = /PLASTIC_TMP|tmp:\s|Dir\.mktmpdir/.freeze
   LOCK_VISIBILITY_PATHS = %w[
     scripts/lib/lock.rb
+    scripts/lib/bridge.rb
     scripts/plastic-lock
     scripts/dashboard.rb
   ].freeze
-  TRANSCRIPT_LOOKUP_MARKERS = [
-    ".claude/projects",
-    ".codex/sessions",
-    "rollout-",
-  ].freeze
+
+  # Strip syntax that can separate adjacent path components in Ruby source,
+  # then allow a short punctuation-only gap. This catches both a contiguous
+  # path and constructions such as File.join(Dir.home, ".codex", "sessions")
+  # without flagging unrelated prose that happens to mention both words.
+  def transcript_lookup_markers(source)
+    compact = source.delete("'\" \t\r\n")
+    markers = []
+    markers << ".claude/projects" if compact.match?(/\.claude[^[:alnum:]_]{0,24}projects/)
+    markers << ".codex/sessions" if compact.match?(/\.codex[^[:alnum:]_]{0,24}sessions/)
+    markers << "rollout-" if source.include?("rollout-")
+    markers
+  end
+
+  def test_transcript_lookup_detection_catches_contiguous_paths
+    source = 'File.read(File.join(Dir.home, ".codex/sessions", "rollout-123.jsonl"))'
+
+    assert_equal [".codex/sessions", "rollout-"], transcript_lookup_markers(source)
+  end
+
+  def test_transcript_lookup_detection_catches_split_file_join_components
+    claude = "File.join(Dir.home, '.claude', 'projects', session)"
+    codex = 'File.join(Dir.home, ".codex", "sessions", year, "rollout-#{id}.jsonl")'
+
+    assert_equal [".claude/projects"], transcript_lookup_markers(claude)
+    assert_equal [".codex/sessions", "rollout-"], transcript_lookup_markers(codex)
+  end
+
+  def test_transcript_lookup_detection_ignores_unrelated_component_names
+    source = 'dashboard.projects.map { |project| project.sessions }'
+
+    assert_empty transcript_lookup_markers(source)
+  end
 
   def test_lock_visibility_does_not_search_ambient_transcript_stores
     root = File.expand_path("..", __dir__)
     offenders = LOCK_VISIBILITY_PATHS.flat_map do |relative_path|
       source = File.read(File.join(root, relative_path))
-      TRANSCRIPT_LOOKUP_MARKERS.filter_map do |marker|
-        "#{relative_path}: #{marker}" if source.include?(marker)
-      end
+      transcript_lookup_markers(source).map { |marker| "#{relative_path}: #{marker}" }
     end
 
     assert_empty offenders,
