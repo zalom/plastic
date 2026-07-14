@@ -640,6 +640,24 @@ class CodexInstallTest < Minitest::Test
     refute_nil post_group, "PostToolUse must register under the apply_patch matcher"
   end
 
+  def test_install_codex_fresh_create_writes_live_state_hook_groups
+    @core.install_for_agent("codex", false)
+
+    data = JSON.parse(File.read(hooks_json_path))
+    commands = all_codex_hook_commands(data)
+    %w[session-start check-update continue future-intent-check auto-arm qmd-search savepoint].each do |name|
+      assert commands.any? { |c| c.include?("codex-hook") && c.include?(name) },
+        "expected a codex-hook command for '#{name}', got: #{commands.inspect}"
+    end
+
+    session_group = data["hooks"]["SessionStart"]&.find { |g| g["matcher"] == "" }
+    refute_nil session_group, "SessionStart must register under an empty matcher"
+    prompt_group = data["hooks"]["UserPromptSubmit"]&.find { |g| g["matcher"] == "" }
+    refute_nil prompt_group, "UserPromptSubmit must register under an empty matcher"
+    compact_group = data["hooks"]["PreCompact"]&.find { |g| g["matcher"] == "" }
+    refute_nil compact_group, "PreCompact must register under an empty matcher"
+  end
+
   def test_install_codex_merges_into_existing_hooks_json_preserving_user_entry
     FileUtils.mkdir_p(@codex_home)
     user_hooks = {

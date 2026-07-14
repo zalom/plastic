@@ -2,19 +2,46 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 #
-# Usage: codex-hook <gate>   (gate: code-gate | lock-gate | savepoint-pre | gate-check | create-gate | links-gate)
+# Usage: codex-hook <gate>
+#   file-mutation gates: code-gate | lock-gate | savepoint-pre | gate-check | create-gate | links-gate
+#   live-state hooks (intent 199): session-start | check-update | continue |
+#     future-intent-check | auto-arm | qmd-search | savepoint
 #
-# The Codex input adapter (intent 102). Reads a Codex hook stdin payload
-# (session_id at top level, the apply_patch command in tool_input.command,
-# [guide Part 4]), parses the diff envelope via ApplyPatchEnvelope, and drives
-# Plastic's payload-agnostic Ruby gate/savepoint cores once per file operation.
-# The cores' output contracts are already Codex-compatible, so their stdout/
-# stderr/exit are relayed unchanged (see ACTION_1's ARGV-contract table).
+# The Codex input adapter (intent 102, extended by 199). Reads a Codex hook stdin
+# payload once. Two shapes exist and the gate name alone selects which path runs
+# (Codex's own hooks.json registration guarantees the two never cross): the
+# file-mutation gates read session_id at top level and the apply_patch command in
+# tool_input.command [guide Part 4], parse the diff envelope via ApplyPatchEnvelope,
+# and drive Plastic's payload-agnostic Ruby gate/savepoint cores once per file
+# operation, relaying stdout/stderr/exit unchanged. The live-state hooks carry no
+# tool_input at all (they are not tool calls); the dispatcher execs the SAME
+# launcher file Claude already runs for that hook (hooks/<name>), which is already
+# harness-agnostic (resolves ~/.plastic off $HOME, reads only the common stdin
+# fields the guide confirms Codex shares with Claude for these three events), so
+# the body is reused, not rewritten (D3). The one adaptation is threading the
+# payload's session_id into CLAUDE_CODE_SESSION_ID, since Codex's own process env
+# never carries it, plus a bounded timeout: hooks/check-update backgrounds a real
+# npm network call without redirecting its output away from the inherited stdout/
+# stderr pipes, and Codex invokes hooks synchronously, so without a bound a slow
+# network call could hold this dispatcher's pipe open past the launcher's own
+# (fast) exit.
 require "json"
+require "open3"
 require "rbconfig"
+require "timeout"
 require_relative "lib/apply_patch_envelope"
 require_relative "lib/intent_validator"
 require_relative "lib/links_gate"
+
+# Sync stdout so a relayed launcher's stdout and stderr land on the merged
+# pipe in call order. Ruby buffers STDOUT (but not STDERR) when it is not a
+# TTY; without this, `warn err` below can reach the OS pipe before a
+# preceding `print out` is flushed, corrupting the relayed JSON for any
+# caller that merges the dispatcher's own stdout and stderr.
+$stdout.sync = true
+
+STATE_HOOKS = %w[session-start check-update continue future-intent-check auto-arm qmd-search savepoint].freeze
+STATE_TIMEOUT = 5
 
 gate = ARGV[0].to_s
 raw = ($stdin.read rescue nil)
@@ -23,7 +50,24 @@ payload = (JSON.parse(raw) rescue nil)
 exit 0 unless payload.is_a?(Hash)
 
 session = payload["session_id"].to_s
+
+if STATE_HOOKS.include?(gate)
+  launcher = File.expand_path(File.join(__dir__, "..", "hooks", gate))
+  cwd = payload["cwd"].to_s
+  cwd = Dir.pwd if cwd.empty? || !Dir.exist?(cwd)
+  env = { "CLAUDE_CODE_SESSION_ID" => (session.empty? ? nil : session) }
+  out, err, status = begin
+    Timeout.timeout(STATE_TIMEOUT) { Open3.capture3(env, launcher, stdin_data: raw, chdir: cwd) }
+  rescue StandardError
+    ["", "", nil] # fail open: launcher missing, unexecutable, crashed, or too slow
+  end
+  print out unless out.to_s.empty?
+  warn err unless err.to_s.empty?
+  exit(status ? status.exitstatus : 0)
+end
+
 command = payload.dig("tool_input", "command") || payload.dig("tool_params", "command")
+exit 0 if command.nil? # fail-open: no tool_input at all (unrecognized gate name or non-tool-call payload)
 ops = ApplyPatchEnvelope.parse(command)
 exit 0 if ops.empty? # fail-open: nothing parseable to gate
 

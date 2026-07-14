@@ -88,6 +88,14 @@ module HookRegistry
   CODEX_PRE_HOOKS  = %w[code-gate lock-gate savepoint-pre links-gate create-gate].freeze
   CODEX_POST_HOOKS = %w[gate-check].freeze
 
+  # Live-state events registered WHOLE (intent 199), unlike CODEX_PRE_HOOKS/
+  # CODEX_POST_HOOKS above: Codex's SessionStart/UserPromptSubmit/PreCompact already
+  # match Claude's shape exactly, one matcher group each ("", no tool to collapse
+  # onto), so every hook `events` lists under these three events projects straight
+  # through with no allowlist to keep in sync. A hook added to any of them on the
+  # Claude side registers for Codex automatically.
+  CODEX_LIVE_STATE_EVENTS = %w[SessionStart UserPromptSubmit PreCompact].freeze
+
   def codex_hooks_json(dispatcher_path:)
     # name => statusMessage, straight from the single `events` source (A8): the
     # guide Part 3 hooks.json format carries a per-hook statusMessage, so emit it.
@@ -102,10 +110,16 @@ module HookRegistry
     pre_order = events["PreToolUse"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
     pre = (pre_order & CODEX_PRE_HOOKS).map { |n| cmd.call(n) }
     post = CODEX_POST_HOOKS.map { |n| cmd.call(n) }
-    {
+
+    result = {
       "PreToolUse"  => [{ "matcher" => "apply_patch", "hooks" => pre }],
       "PostToolUse" => [{ "matcher" => "apply_patch", "hooks" => post }],
     }
+    CODEX_LIVE_STATE_EVENTS.each do |event|
+      names = events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+      result[event] = [{ "matcher" => "", "hooks" => names.map { |n| cmd.call(n) } }]
+    end
+    result
   end
 
   # The settings.json shape merge_claude_hooks expects: single-group events map

@@ -155,7 +155,7 @@ paths are explicitly OUT of scope here: the session id may be unset in those run
 so the session-keyed gate falls back to the derived key, and the enforcer falls back to
 manual gating. Those paths get their own treatment elsewhere.
 
-## Worked example: Codex CLI (L1 + L3 core; L2 deferred)
+## Worked example: Codex CLI
 
 Codex CLI is rated **Tier A (full parity)**: `PreToolUse` hooks gate `apply_patch`, giving
 a true pre-write veto for both create-path and in-place edits. This is the one axis
@@ -190,10 +190,34 @@ Claude Code's `settings.json` hooks strip, so any content the user added elsewhe
 is present and well formed (matched BEGIN and END markers) alongside the existing
 skills and agents checks.
 
-### L2 live state (deferred)
+### L2 live state (intent 199)
 
-`SessionStart`, `UserPromptSubmit`, and `SubagentStart` context injection for Codex are
-future work, out of this slice.
+`SessionStart` fires `session-start` and `check-update`; `UserPromptSubmit` fires
+`continue`, `future-intent-check`, `auto-arm`, and `qmd-search`; `PreCompact` fires
+`savepoint`. Each hook name is projected straight off the single `HookRegistry.events`
+source (108 D7), the same total-projection shape as the file-mutation gates above: a hook
+added to any of these three events on the Claude side registers for Codex automatically,
+with no Codex-only allowlist to keep in sync.
+
+The stdin shape for these three events differs from `apply_patch`'s diff envelope: no
+`tool_input` at all, since none of the three is a tool call. `scripts/codex-hook` reuses the
+exact launcher files Claude already runs for these seven hooks (`hooks/session-start`,
+`hooks/check-update`, `hooks/continue`, `hooks/future-intent-check`, `hooks/auto-arm`,
+`hooks/qmd-search`, `hooks/savepoint`) unmodified: each is already harness-agnostic, since it
+resolves `~/.plastic` off `$HOME` on its own and reads only the common stdin fields
+(`user_prompt` for the four `UserPromptSubmit` hooks) the official Codex hooks doc confirms
+match Claude's schema for these events. The dispatcher's only adaptation is threading the
+payload's `session_id` into `CLAUDE_CODE_SESSION_ID` (Codex's own process env never carries
+it) and bounding the call with a timeout (`hooks/check-update` backgrounds a real network
+call without redirecting its output, and Codex invokes hooks synchronously), then relaying
+stdout, stderr, and exit code unchanged, the same "drive the body, relay its output" pattern
+already used for the file-mutation gates. `SubagentStart` is still not wired: no Plastic
+hook exists for it on any harness today.
+
+The one gap this leaves open is the shell-tool write hole: `bash-gate` and `retrieval-gate`
+never reach Codex, so an agent that writes a file through Codex's shell tool bypasses every
+write gate Plastic has on that harness. This is a hole in the gates, not a missing context
+injection, and is filed as its own intent (203).
 
 ### Per-agent model mapping (intent 102a)
 
@@ -330,6 +354,9 @@ plus AGENTS.md standing-conventions injection, intent 33a), L3 hooks and gates
 and per-agent model mapping (`~/.codex/agents/*.toml` generation, intent 102a) have all
 landed. Intent 198 closed the gap between "shipped" and "actually works on a first install":
 the directory-presence probe, the missing links-gate dispatcher branch, the hook-trust
-reminder, and the Codex model-drift check. Codex's L2 live-state injection remains future
-work. The current line of sight for
-the remaining harnesses is Hermes, then OpenClaw. All of them target reasoning agents only.
+reminder, and the Codex model-drift check. Intent 199 closed Codex's L2 live-state gap:
+`SessionStart`, `UserPromptSubmit`, and `PreCompact` now reach Codex the same way they reach
+Claude. The shell-tool gate hole (`bash-gate` and `retrieval-gate` never reaching Codex's
+shell tool, intent 203) is the one piece of L2/L3 coverage still open. The current line of
+sight for the remaining harnesses is Hermes, then OpenClaw. All of them target reasoning
+agents only.
