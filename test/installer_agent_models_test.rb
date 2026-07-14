@@ -94,6 +94,24 @@ class InstallerAgentModelsTest < Minitest::Test
     end
   end
 
+  def test_tier_defaults_and_consultation_agents_together_classify_every_shipped_agent
+    # Deliberately matches install_agents' own agents/*.md glob (scripts/lib/installer_core.rb),
+    # not doctor's narrower runtime plastic-* glob, so an unprefixed shipped agent cannot slip
+    # past this guard.
+    real_basenames = Dir[File.join(WORKTREE, "agents", "*.md")]
+                        .map { |f| File.basename(f, ".md") }
+
+    overlap = AgentModels::TIER_DEFAULTS.keys & AgentModels::CONSULTATION_AGENTS
+    assert_empty overlap,
+      "TIER_DEFAULTS and CONSULTATION_AGENTS must stay disjoint, found in both: #{overlap.inspect}"
+
+    classified = AgentModels::TIER_DEFAULTS.keys + AgentModels::CONSULTATION_AGENTS
+    unclassified = real_basenames - classified
+    assert_empty unclassified,
+      "every shipped agents/*.md basename must be a TIER_DEFAULTS key or a " \
+      "CONSULTATION_AGENTS member (add it to scripts/lib/agent_models.rb): #{unclassified.inspect}"
+  end
+
   def test_install_agents_preserves_each_advisors_shipped_default_model
     @core.install_agents(@dest)
     assert_equal "model: fable", model_line("plastic-advisor")
