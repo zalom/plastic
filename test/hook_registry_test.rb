@@ -53,15 +53,24 @@ class HookRegistryTest < Minitest::Test
     assert_equal reg_pre, json_pre
   end
 
+  # ACTION_1 (intent 192): the links-gate hook is registered under the same
+  # "Write|Edit" matcher savepoint-pre already uses.
+  def test_links_gate_registered_under_write_edit_matcher
+    pre = HookRegistry.events["PreToolUse"]
+    group = pre.find { |g| g["matcher"] == "Write|Edit" }
+    names = group["hooks"].map { |h| h["name"] }
+    assert_includes names, "links-gate"
+  end
+
   # --- Codex registration (intent 102) ---
 
-  def test_codex_hooks_json_emits_the_four_gate_savepoint_commands_under_apply_patch
+  def test_codex_hooks_json_emits_the_five_gate_savepoint_commands_under_apply_patch
     codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
 
     pre_group = codex["PreToolUse"].first
     assert_equal "apply_patch", pre_group["matcher"]
     names = pre_group["hooks"].map { |h| h["command"][/codex-hook" (\S+)/, 1] }
-    assert_equal %w[code-gate lock-gate savepoint-pre create-gate], names
+    assert_equal %w[code-gate lock-gate savepoint-pre links-gate create-gate], names
     pre_group["hooks"].each do |h|
       assert_equal "command", h["type"]
       refute_nil h["statusMessage"]

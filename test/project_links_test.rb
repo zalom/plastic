@@ -185,4 +185,64 @@ class ProjectLinksTest < Minitest::Test
   def file_snapshot
     Dir.glob(File.join(@home, "**", "store", "**", "*.md")).sort.to_h { |p| [p, File.read(p)] }
   end
+
+  # --- ACTION_1 (intent 192): orphan-candidate preservation ---
+
+  # Adds two more plastic-store intents on top of build_fixture_stores: "14--old-sibling"
+  # (a real, resolvable target) and "21--subject", whose OWN Links section carries a
+  # hand-typed, frontmatter-unbacked line pointing at 14 (resolvable: preserve), plus a
+  # broken/garbage line that resolves nowhere (dead: still silently dropped).
+  def add_orphan_fixture
+    plastic = File.join(@home, "projects", "plastic", "store")
+    write_intent(plastic, "14--old-sibling", id: "14", intent: "Old sibling intent",
+                 sources: [], chain: [])
+    write_intent(plastic, "21--subject", id: "21", intent: "Subject intent",
+                 sources: [], chain: [],
+                 links: "## Links\n- [[14--old-sibling|Old sibling intent]]\n" \
+                        "- [[99--nowhere|Nowhere at all]]\n")
+  end
+
+  def test_unbacked_but_resolvable_link_is_preserved_and_reported
+    add_orphan_fixture
+    run_tool
+    body = read("projects/plastic/store/21--subject/21--subject.md")
+    assert_includes body, "- [[14--old-sibling|Old sibling intent]]",
+                     "an unbacked line that still resolves must be preserved, not deleted"
+    audit = File.read(@audit)
+    assert_includes audit, "Orphan candidates preserved"
+    assert_includes audit, "21: -> 14--old-sibling"
+  end
+
+  def test_unbacked_and_dead_link_is_still_dropped_silently
+    add_orphan_fixture
+    run_tool
+    body = read("projects/plastic/store/21--subject/21--subject.md")
+    refute_includes body, "99--nowhere", "a line that resolves nowhere must still be dropped"
+    audit = File.read(@audit)
+    # The audit's "Sample before/after" block legitimately shows the raw OLD
+    # section text (including the dead line) as an honest diff; that is not a
+    # report of an orphan. The real assertion is that the dead ref never gets
+    # an orphan-report line (neither "preserved" nor "dropped via the flag").
+    refute_includes audit, "- 21: -> 99--nowhere",
+                    "a silent garbage drop is not reported as an orphan"
+  end
+
+  def test_drop_unbacked_links_flag_removes_resolvable_orphan_and_reports_it_separately
+    add_orphan_fixture
+    ProjectLinks.new(plastic_home: @home, audit_path: @audit, drop_unbacked_links: true).run
+    body = read("projects/plastic/store/21--subject/21--subject.md")
+    refute_includes body, "14--old-sibling",
+                    "--drop-unbacked-links must delete an orphan candidate when passed"
+    audit = File.read(@audit)
+    assert_includes audit, "Orphan candidates DROPPED (--drop-unbacked-links)"
+    assert_includes audit, "21: -> 14--old-sibling"
+  end
+
+  def test_orphan_preservation_is_idempotent
+    add_orphan_fixture
+    run_tool
+    snapshot = file_snapshot
+    run_tool
+    assert_equal snapshot, file_snapshot, "a second run with a preserved orphan must change nothing"
+  end
 end

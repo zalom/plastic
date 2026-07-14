@@ -27,6 +27,10 @@ module LinksProjection
   HEADING = "## Links"
   EMPTY_COMMENT = "<!-- No sources or chain; this intent has no graph edges to project. -->"
 
+  # A single rendered entry line, e.g. `- [[10--demo|Some intent]]` or
+  # `- [[knowdb:1--demo|Some intent]]`. The inverse of the line #entry renders.
+  ENTRY_LINE_RE = /\A- \[\[([^|\]]+)\|(.*)\]\]\z/
+
   # Raised when a sources/chain ref resolves to no intent. Carries the offending
   # ref, plus, when the resolver supplies one, the GraphRebuild status behind the
   # miss (`:dead` or `:unknown_store`), so a rescuer can tell "genuinely gone" apart
@@ -93,6 +97,33 @@ module LinksProjection
   # PURE. The canonical empty-state section: heading + the single comment line.
   def empty_section
     "#{HEADING}\n#{EMPTY_COMMENT}\n"
+  end
+
+  # PURE. Parse a rendered or extracted `## Links` section's entry lines back into
+  # [{target:, label:}], in the order they appear. Ignores the heading line and the
+  # empty-state comment (and any other line that is not a `- [[target|label]]`
+  # line). The structural inverse of #entry's line shape. Used by callers
+  # (project-links) that need to compare or merge an OLD section's entries
+  # against a freshly-computed canonical one, one level below #section's own
+  # resolve-and-render.
+  def parse_entries(text)
+    text.to_s.each_line.filter_map do |line|
+      m = line.chomp.match(ENTRY_LINE_RE)
+      m && { target: m[1], label: m[2] }
+    end
+  end
+
+  # PURE. Render a final `## Links` block from an ALREADY-RESOLVED, ALREADY
+  # ORDERED list of {target:, label:} entries (no resolve callable; the caller
+  # has already done resolution/merging, e.g. project-links merging canonical
+  # entries with preserved orphan entries). Falls back to the empty-state
+  # comment when `entries` is empty. Shares the heading/line format with
+  # #section so the two can never render a different shape for the same list.
+  def render_entries(entries)
+    list = Array(entries)
+    return empty_section if list.empty?
+
+    (["#{HEADING}\n"] + list.map { |e| "- [[#{e[:target]}|#{e[:label]}]]\n" }).join
   end
 
   # Resolve `ref`, render its entry, and append it to `rendered` UNLESS its resolved

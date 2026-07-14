@@ -48,6 +48,7 @@ module HookRegistry
         ] },
         { "matcher" => "Write|Edit", "hooks" => [
           { "name" => "savepoint-pre", "status" => "Recording stage start..." },
+          { "name" => "links-gate", "status" => "Checking Links gate..." },
         ] },
         { "matcher" => CREATE_MATCHER, "hooks" => [
           { "name" => "create-gate", "status" => "Checking create gate..." },
@@ -84,7 +85,7 @@ module HookRegistry
   # [{"matcher","hooks":[{"type":"command","command","statusMessage"}]}]}},
   # identical to Claude's shape, string command. Single source of truth (108 D7):
   # any drift from `events` is a bug, pinned by test.
-  CODEX_PRE_HOOKS  = %w[code-gate lock-gate savepoint-pre create-gate].freeze
+  CODEX_PRE_HOOKS  = %w[code-gate lock-gate savepoint-pre links-gate create-gate].freeze
   CODEX_POST_HOOKS = %w[gate-check].freeze
 
   def codex_hooks_json(dispatcher_path:)
