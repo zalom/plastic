@@ -812,6 +812,93 @@ class CodexInstallTest < Minitest::Test
     assert(hooks_check[:details].any? { |d| d.include?("create-gate") })
   end
 
+  # --- Intent 200: doctor codex_hooks_implemented_check (registry vs. dispatcher) ---
+
+  def codex_hook_path
+    File.join(@home, "scripts", "codex-hook")
+  end
+
+  def test_doctor_codex_hooks_implemented_passes_on_the_real_healthy_dispatcher
+    @core.distribute(:install) # copies the REAL scripts/codex-hook into plastic_home
+    @core.install_for_agent("codex", false)
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    implemented_check = checks.find { |c| c[:name] == "codex_hooks_implemented" }
+
+    refute_nil implemented_check
+    assert_equal "pass", implemented_check[:status]
+  end
+
+  def test_doctor_codex_hooks_implemented_fails_when_a_registered_gate_has_no_dispatcher_branch
+    @core.distribute(:install) # copies the REAL scripts/codex-hook into plastic_home
+    @core.install_for_agent("codex", false)
+    content = File.read(codex_hook_path)
+    branch_start = content.index('when "links-gate"')
+    refute_nil branch_start, "fixture assumption: scripts/codex-hook must still carry a links-gate branch"
+    else_start = content.index("\nelse", branch_start)
+    refute_nil else_start, "fixture assumption: the case statement must still end in a trailing else"
+    File.write(codex_hook_path, content[0...branch_start] + content[(else_start + 1)..])
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    implemented_check = checks.find { |c| c[:name] == "codex_hooks_implemented" }
+
+    refute_nil implemented_check
+    assert_equal "fail", implemented_check[:status]
+    assert(implemented_check[:details].any? { |d|
+      d.include?("links-gate") && d.include?("registered") && d.include?("allows")
+    }, "expected a links-gate detail naming the direction and the fail-open runtime effect, got: #{implemented_check[:details].inspect}")
+  end
+
+  def test_doctor_codex_hooks_implemented_fails_when_the_dispatcher_has_a_branch_nobody_registers
+    @core.distribute(:install) # copies the REAL scripts/codex-hook into plastic_home
+    @core.install_for_agent("codex", false)
+    content = File.read(codex_hook_path)
+    updated = content.sub(
+      "SHELL_HOOKS = %w[bash-gate retrieval-gate].freeze",
+      "SHELL_HOOKS = %w[bash-gate retrieval-gate phantom-gate].freeze"
+    )
+    refute_equal content, updated, "fixture assumption: the SHELL_HOOKS literal must still match this exact text"
+    File.write(codex_hook_path, updated)
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    implemented_check = checks.find { |c| c[:name] == "codex_hooks_implemented" }
+
+    refute_nil implemented_check
+    assert_equal "fail", implemented_check[:status]
+    assert(implemented_check[:details].any? { |d| d.include?("phantom-gate") && d.include?("dead code") },
+      "expected a phantom-gate detail naming it as dead/unreachable code, got: #{implemented_check[:details].inspect}")
+  end
+
+  def test_doctor_codex_hooks_implemented_fails_loudly_when_the_dispatcher_cannot_be_read
+    @core.distribute(:install) # copies the REAL scripts/codex-hook into plastic_home
+    @core.install_for_agent("codex", false)
+    reshaped = <<~RUBY
+      #!/usr/bin/env ruby
+      # Reshaped fixture: no STATE_HOOKS/SHELL_HOOKS constants, no `case gate`
+      # statement, so the extractor must find zero names and doctor must fail
+      # loudly rather than silently pass.
+      GATES = {
+        "code-gate" => ->(_x) { exit 0 },
+        "lock-gate" => ->(_x) { exit 0 },
+      }
+      handler = GATES[ARGV[0]] || ->(_x) { exit(0) }
+      handler.call(nil)
+    RUBY
+    File.write(codex_hook_path, reshaped)
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    implemented_check = checks.find { |c| c[:name] == "codex_hooks_implemented" }
+
+    refute_nil implemented_check
+    assert_equal "fail", implemented_check[:status]
+    assert_includes implemented_check[:message], "Could not read"
+  end
+
+  def test_codex_dispatcher_gate_names_returns_nil_on_no_recognizable_names
+    doctor = doctor_for(@codex_home)
+    assert_nil doctor.codex_dispatcher_gate_names("# nothing recognizable here\nexit 0\n")
+  end
+
   def test_doctor_config_toml_advisory_warns_on_hooks_disabled
     FileUtils.mkdir_p(@codex_home)
     File.write(config_toml_path, "[features]\nhooks = false\n")

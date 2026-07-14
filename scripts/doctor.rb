@@ -1270,6 +1270,7 @@ class Doctor
 
     hooks_check = codex_hooks_registered_check(config)
     checks << hooks_check
+    checks << codex_hooks_implemented_check(config)
     checks << codex_hook_trust_advisory_check if hooks_check[:status] == "pass"
     codex_config_toml_advisory_check(config).tap { |c| checks << c if c }
 
@@ -1385,6 +1386,124 @@ class Doctor
         fixable: true, fix_hint: "Re-run the Plastic installer with --codex"
       )
     end
+  end
+
+  # codex_hooks_implemented (intent 200): codex_hooks_registered_check above proves
+  # hooks.json content matches what HookRegistry would emit; both sides of THAT
+  # comparison come from the registry, so a pass only proves the registry agrees
+  # with itself. It never looks at the actual dispatcher, so it cannot see a
+  # registered gate with no real branch there (links-gate shipped exactly this way,
+  # dead, in v1.4.0/intent 192, invisible to doctor and the suite until 198 found it
+  # by hand), or a dispatcher branch nobody registers (bash-gate's shape, intent
+  # 203, in the opposite direction). This check closes both directions at once.
+
+  # The Codex gate names HookRegistry actually registers: the six apply_patch-gated
+  # names (CODEX_PRE_HOOKS + CODEX_POST_HOOKS), the two Bash-matcher shell gates
+  # (CODEX_BASH_HOOKS), and the live-state hook names Codex inherits whole from
+  # `events` (CODEX_LIVE_STATE_EVENTS). No parsing needed: these are HookRegistry's
+  # own Ruby constants.
+  def codex_registry_gate_names
+    live_state = HookRegistry::CODEX_LIVE_STATE_EVENTS.flat_map do |event|
+      HookRegistry.events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    end
+    (HookRegistry::CODEX_PRE_HOOKS + HookRegistry::CODEX_POST_HOOKS +
+     HookRegistry::CODEX_BASH_HOOKS + live_state).uniq
+  end
+
+  # Source-text extraction of scripts/codex-hook's supported gate names (D3): the
+  # dispatcher is an executable script with real top-level side effects (it reads
+  # $stdin and may exit), so it can never be required or executed to introspect it,
+  # only read as plain text, mirroring codex_agent_toml_well_formed? above. Pulls
+  # gate names from the STATE_HOOKS and SHELL_HOOKS %w[] literals, plus the `when
+  # "<name>"` labels of the top-level `case gate` statement (stopping at its
+  # trailing `else`). Line-shape dependent, not AST-safe, disclosed as such in
+  # docs; the healthy-install pass test against the REAL dispatcher is what proves
+  # this shape still holds.
+  #
+  # SELF-CHECKING: returns nil, never [], when nothing recognizable is found. A
+  # reshaped dispatcher (combined `when "a", "b"` arms, a multi-line array, a
+  # Hash-dispatch rewrite) would otherwise silently read as zero gate names, and a
+  # zero-gate dispatcher would make the diff below either flag every registered
+  # hook as "missing" or, worse, quietly under-report a real gap. A check that
+  # finds nothing and calls that healthy IS the exact disease this whole check
+  # exists to catch, one level up, so nil forces the caller (below) to fail loudly
+  # instead of reporting health it never actually verified.
+  def codex_dispatcher_gate_names(source)
+    names = []
+    %w[STATE_HOOKS SHELL_HOOKS].each do |const|
+      m = source.match(/^#{const}\s*=\s*%w\[([^\]]*)\]/)
+      names.concat(m[1].split(/\s+/)) if m
+    end
+
+    case_start = source.index(/^case gate\b/)
+    if case_start
+      case_body = source[case_start..-1]
+      else_idx = case_body.index(/^else\b/)
+      scanned = else_idx ? case_body[0...else_idx] : case_body
+      names.concat(scanned.scan(/^when\s+"([^"]+)"/).flatten)
+    end
+
+    names.uniq!
+    names.empty? ? nil : names
+  end
+
+  # The both-direction diff. Each mismatch becomes one detail line naming the
+  # hook, the direction, the harness ("Codex"), and the concrete runtime effect,
+  # never a generic "Codex hooks drift" message (D4).
+  def codex_hooks_implemented_check(config)
+    dispatcher_path = File.join(plastic_home, "scripts", "codex-hook")
+
+    unless File.exist?(dispatcher_path)
+      return check(
+        category: "agent_registration", name: "codex_hooks_implemented", status: "fail",
+        message: "scripts/codex-hook not found at #{tilde(dispatcher_path)}; cannot verify " \
+                 "the Codex hook registry and dispatcher agree",
+        fixable: true, fix_hint: "Re-run the Plastic installer with --codex"
+      )
+    end
+
+    dispatcher_names = codex_dispatcher_gate_names(File.read(dispatcher_path))
+
+    if dispatcher_names.nil?
+      return check(
+        category: "agent_registration", name: "codex_hooks_implemented", status: "fail",
+        message: "Could not read any gate names out of #{tilde(dispatcher_path)}: the " \
+                 "STATE_HOOKS/SHELL_HOOKS constants and the `case gate` statement no longer " \
+                 "match the shape this check expects, so the registry could not be checked " \
+                 "against the real dispatcher. This is exactly the silent-pass failure this " \
+                 "check exists to prevent; update codex_dispatcher_gate_names in doctor.rb " \
+                 "to the file's new shape.",
+        fixable: false
+      )
+    end
+
+    registry_names = codex_registry_gate_names
+    missing_dispatcher_branch = registry_names - dispatcher_names
+    dead_branch = dispatcher_names - registry_names
+
+    if missing_dispatcher_branch.empty? && dead_branch.empty?
+      return check(
+        category: "agent_registration", name: "codex_hooks_implemented", status: "pass",
+        message: "Every Codex-registered gate has a scripts/codex-hook branch, and every " \
+                 "dispatcher branch is registered"
+      )
+    end
+
+    details = missing_dispatcher_branch.map do |name|
+      "#{name} is registered in ~/.codex/hooks.json but scripts/codex-hook has no branch " \
+        "for it, so it always falls through to the fail-open else and always allows the write"
+    end
+    details += dead_branch.map do |name|
+      "#{name} has a branch in scripts/codex-hook but is not registered in HookRegistry for " \
+        "Codex, so it is dead code Codex never reaches"
+    end
+
+    check(
+      category: "agent_registration", name: "codex_hooks_implemented", status: "fail",
+      message: "Codex's hook registry and scripts/codex-hook disagree on #{details.size} gate(s)",
+      details: details,
+      fixable: false
+    )
   end
 
   # config.toml advisory (intent 102, Decision 2, R2): READ ONLY. Warns on the two

@@ -964,6 +964,40 @@ close that gap.
   blocks edits outside the active worktree, and the cleanup policy that decides
   merge-vs-remove on the completion path, are layered on top by sibling intents.
 
+## doctor: Codex hook registry vs. dispatcher agreement (intent 200)
+
+`codex_hooks_registered_check` (`doctor.rb`) only diffs `~/.codex/hooks.json`'s content
+against what `HookRegistry.codex_hooks_json` would emit; both sides come from the registry,
+so a pass proves only that the registry agrees with itself. It never looks at
+`scripts/codex-hook`, the actual dispatcher every Codex tool call runs through, so it cannot
+see a registered gate with no real branch there, or a dispatcher branch nobody registers.
+Both shipped: `links-gate` registered and reported healthy with no dispatcher branch in
+v1.4.0 (intent 192), invisible to doctor and the suite until intent 198 found it by hand;
+`bash-gate` fully implemented but never registered on Codex (intent 203), so a shell write
+bypassed every gate while doctor again reported Codex healthy.
+
+`codex_hooks_implemented_check` (intent 200) closes both directions: the dispatcher's
+supported-gate list is read out of `scripts/codex-hook` itself by plain source-text
+extraction (`codex_dispatcher_gate_names`, its `STATE_HOOKS`/`SHELL_HOOKS` constants plus its
+top-level `case gate` statement's `when "..."` labels), never a hand-kept duplicate in
+`doctor.rb` (a duplicate would be the exact bug this check exists to catch, one level up).
+`scripts/codex-hook` itself is unmodified: it keeps failing open (`exit 0`) on an
+unrecognized gate; the loud failure belongs to `doctor` alone. The extraction is
+self-checking: if it finds zero gate names (a future reshape of the dispatcher the regex no
+longer matches), the check fails loudly and says the dispatcher could not be read, rather
+than silently reporting the healthy pass a zero-name read would otherwise produce.
+
+**Claude has a narrower version of the same hole.** Claude's "is it implemented" question
+already has a different, existing shape (a launcher file exists and is executable:
+`hooks_exist`/`hooks_executable`, `doctor.rb`), because Claude registers every hook as its
+own file instead of routing through one dispatcher, so this intent does not force a shared
+abstraction over two different mechanisms (D6). But the list those two checks test against,
+`CLAUDE_HOOK_SCRIPTS`, is itself a hand-kept subset of `HookRegistry`'s hook names (about 7 of
+the roughly 15 registered), so a launcher file missing for one of the other registered hooks
+would currently pass doctor undetected. This is the same disease class, narrower in effect,
+recorded here as a finding rather than fixed in this delivery, and left as a candidate for its
+own future intent.
+
 ## living-document
 
 This is a living document. When Plastic's architecture, lifecycle, conventions,

@@ -306,6 +306,28 @@ carry the full burden. The owner's first real validation is a fresh `plastic-ins
 `hooks.json` carries exactly what `HookRegistry.codex_hooks_json` defines, with a fix hint
 pointing back at the installer on any drift.
 
+`codex_hooks_registered` only proves that `hooks.json`'s content agrees with what
+`HookRegistry` would emit; both sides of that comparison come from the registry, so a pass
+proves the registry agrees with itself, not that a registered gate actually does anything.
+That gap let `links-gate` ship registered and reported healthy for its whole life in v1.4.0
+with no dispatcher branch (found by hand in intent 198), and let `bash-gate` ship with a
+working dispatcher branch never registered on Codex (intent 203), in the opposite direction.
+`codex_hooks_implemented` (intent 200) closes both directions at once: it reads
+`scripts/codex-hook`'s `STATE_HOOKS`/`SHELL_HOOKS` constants and its top-level `case gate`
+statement as plain text, never `require`d or executed (the dispatcher reads `$stdin` and calls
+`exit` at the top level, so loading it as Ruby would hang on stdin or exit before doctor got an
+answer), the same plain-text-over-parser choice `codex_agent_toml_well_formed?` already makes
+for Codex's agent TOML files, and diffs the extracted names against `HookRegistry`'s Codex
+names in both directions: a name the registry emits with no dispatcher branch (registered, not
+implemented, the `links-gate` shape) and a dispatcher branch nobody registers (implemented, not
+registered, the `bash-gate` shape, plus dead code as a free byproduct). The extraction is
+line-shape dependent, not AST-safe, and disclosed as such: if a future edit reshapes the
+dispatcher (combined `when "a", "b"` arms, a multi-line array, a Hash-dispatch rewrite) so the
+extractor recognizes zero gate names, the check fails loudly by design rather than silently
+reporting a clean pass, since a check that finds nothing and calls that healthy would be this
+exact disease one level up. `scripts/codex-hook`'s runtime behavior is unchanged: it still
+exits 0 on an unrecognized gate; the loud failure lives only in doctor.
+
 ### Shell-tool gate: Bash matcher (intent 203)
 
 Codex's shell tool reports `tool_name: "Bash"`, confirmed against the official Codex hooks
