@@ -88,8 +88,9 @@ class CodexHooksTest < Minitest::Test
     }
   end
 
-  def run_hook(gate, payload_hash, session: nil, chdir: @store, home: @fake_home)
+  def run_hook(gate, payload_hash, session: nil, chdir: @store, home: @fake_home, plastic_home: nil)
     env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_CODE_SESSION_ID" => session, "HOME" => home }
+    env["PLASTIC_HOME"] = plastic_home if plastic_home
     out = nil
     IO.popen(env, [RbConfig.ruby, SCRIPT, gate], "r+", err: [:child, :out], chdir: chdir) do |io|
       io.write(payload_hash.nil? ? "" : JSON.generate(payload_hash))
@@ -283,6 +284,62 @@ class CodexHooksTest < Minitest::Test
 
     ledger = File.read(File.join(intent_dir, "savepoint.md"))
     assert_includes ledger, "Why  started"
+  end
+
+  # ---- links-gate ----
+
+  def links_intent_content(id:, body_line: "Body.")
+    <<~MD
+      ---
+      id: "#{id}"
+      intent: "Demo"
+      sources: []
+      chain: []
+      created: 2026-01-01
+      author: test
+      tags: []
+      ---
+
+      ## Intent
+      #{body_line}
+
+      ## Links
+      <!-- No sources or chain; this intent has no graph edges to project. -->
+    MD
+  end
+
+  def test_links_gate_denies_a_hand_typed_links_section
+    intent_dir = File.join(@store, "70--demo")
+    FileUtils.mkdir_p(intent_dir)
+    intent_path = File.join(intent_dir, "70--demo.md")
+    before = links_intent_content(id: "70")
+    File.write(intent_path, before)
+
+    after = before.sub(
+      "<!-- No sources or chain; this intent has no graph edges to project. -->\n",
+      "- [[99--nowhere|Nowhere]]\n"
+    )
+
+    body = patch(update_section(intent_path, after.each_line.map(&:chomp)))
+    out, status = run_hook("links-gate", codex_payload(body), plastic_home: @root)
+
+    assert_equal 2, status.exitstatus, "hand-typed unbacked Links line must be denied: #{out}"
+    assert_includes out, "PLASTIC LINKS GATE"
+  end
+
+  def test_links_gate_allows_an_edit_that_leaves_links_untouched
+    intent_dir = File.join(@store, "71--demo")
+    FileUtils.mkdir_p(intent_dir)
+    intent_path = File.join(intent_dir, "71--demo.md")
+    before = links_intent_content(id: "71")
+    File.write(intent_path, before)
+
+    after = before.sub("Body.", "Body, edited.")
+
+    body = patch(update_section(intent_path, after.each_line.map(&:chomp)))
+    _out, status = run_hook("links-gate", codex_payload(body), plastic_home: @root)
+
+    assert_equal 0, status.exitstatus, "an edit that never touches ## Links must be allowed"
   end
 
   # ---- multi-file veto ----

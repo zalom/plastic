@@ -175,7 +175,7 @@ class InstallerCore
     return ["claude"] unless input.tty?
 
     puts "Which agents should Plastic register for?\n\n"
-    agents.each_with_index { |a, i| puts "  #{i + 1}. #{a[:name]} (#{a[:dir]})" }
+    agents.each_with_index { |a, i| puts "  #{i + 1}. #{a[:name]} (#{a[:home_dir] || a[:dir]})" }
     puts "  #{agents.size + 1}. All"
     puts
 
@@ -424,8 +424,22 @@ class InstallerCore
     config = agent_config(key)
     return { agent: config[:name], success: false, reason: "Unknown agent" } unless config
 
-    unless File.directory?(config[:dir])
-      return { agent: config[:name], success: false, reason: "#{config[:dir]} not found \u{2014} #{config[:name]} not installed?" }
+    # Presence probe (intent 198, Decision D1): an agent that declares its own
+    # home directory (Codex, home_dir: ~/.codex) is checked THERE, because
+    # config[:dir] (~/.agents) is the shared cross-tool skills root, not
+    # anything Codex itself creates. A fresh Codex install has no ~/.agents
+    # yet, so testing config[:dir] aborted a genuinely-present Codex. Claude
+    # and Hermes declare no home_dir, so presence_dir resolves to config[:dir]
+    # exactly as before and their behavior is unchanged. The failure message
+    # reuses the same resolved directory, so it always names the directory
+    # actually tested. install_codex still needs config[:dir] to exist by the
+    # time it writes skills; install_skills_flat and generate_codex_agents
+    # already FileUtils.mkdir_p their own nested paths under config[:dir] and
+    # config[:home_dir], so a fresh install creates it as a side effect (no
+    # separate top-level mkdir_p is required here).
+    presence_dir = config[:home_dir] || config[:dir]
+    unless File.directory?(presence_dir)
+      return { agent: config[:name], success: false, reason: "#{presence_dir} not found, #{config[:name]} not installed?" }
     end
 
     # Capture the prior manifest so we can prune files that no longer ship

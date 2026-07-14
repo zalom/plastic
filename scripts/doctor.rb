@@ -1268,10 +1268,32 @@ class Doctor
       end
     end
 
-    checks << codex_hooks_registered_check(config)
+    hooks_check = codex_hooks_registered_check(config)
+    checks << hooks_check
+    checks << codex_hook_trust_advisory_check if hooks_check[:status] == "pass"
     codex_config_toml_advisory_check(config).tap { |c| checks << c if c }
 
     checks
+  end
+
+  # Hooks being REGISTERED (hooks.json content matches HookRegistry) is not
+  # the same as hooks being TRUSTED: Codex gates every non-managed hook
+  # command behind a human /hooks review, keyed by the command's current
+  # hash, so a release that changes a hook command re-arms the review
+  # (intent 198, Decision D2). Whether Codex persists a queryable trust
+  # record anywhere under ~/.codex is undocumented and unverified, so this
+  # can never be a real pass or fail on trust state; it is an advisory that
+  # always names the /hooks step, and it fires only once hooks are actually
+  # registered (an unregistered hook is already reported by
+  # codex_hooks_registered_check, so reminding about trust on top of that
+  # would be noise, not signal).
+  def codex_hook_trust_advisory_check
+    check(
+      category: "agent_registration", name: "codex_hooks_trust", status: "warn",
+      message: "Open Codex, run /hooks, and trust the Plastic hook definitions. " \
+               "Codex re-arms this review whenever a hook's command changes.",
+      fixable: false
+    )
   end
 
   # Codex-specific agent presence + structural sanity: ~/.codex/agents/plastic-*.toml
@@ -1313,6 +1335,15 @@ class Doctor
     has_desc = content.match?(/^description\s*=\s*"/)
     balanced = di && content.index('"""', di + marker.length)
     has_name && has_desc && !di.nil? && !balanced.nil?
+  end
+
+  # Plain string extraction of the single model-selection line a generated
+  # Codex agent TOML carries (model_reasoning_effort for a tier alias, model
+  # for a literal override id; codex_model_fields never emits both). No TOML
+  # parser dependency, mirroring codex_agent_toml_well_formed? above.
+  def codex_agent_toml_model_value(content)
+    m = content.match(/^model_reasoning_effort\s*=\s*"([^"]*)"/) || content.match(/^model\s*=\s*"([^"]*)"/)
+    m && m[1]
   end
 
   # codex_hooks_registered (intent 102, the owner-facing first-run validation
@@ -1547,6 +1578,8 @@ class Doctor
     agent_config = agents[agent_key]
     return [] unless agent_config
 
+    return check_agent_model_drift_codex(agent_config) if agent_key == "codex"
+
     agents_dir = File.join(agent_config[:dir], "agents")
     installed = Dir.glob(File.join(agents_dir, "plastic-*.md")).sort
 
@@ -1603,6 +1636,83 @@ class Doctor
         category: "core_files", name: "agent_model_drift", status: "warn",
         message: parts.join("; "),
         details: drifted + unclassified + sanctioned + consultation,
+        fixable: false
+      )]
+    end
+  end
+
+  # Codex leg of agent_model_drift (intent 198, Decision D4): the shared .md
+  # path above is structurally blind on Codex (codex agents are TOML under
+  # ~/.codex/agents/, never ~/.agents/agents/*.md), so it always passed on an
+  # empty glob without opening a single Codex file. This mirrors the same
+  # four buckets (sanctioned override, matches default, drifted,
+  # unclassified) against ~/.codex/agents/plastic-*.toml instead, reading
+  # model / model_reasoning_effort with the same plain string matching
+  # codex_agent_toml_well_formed? already uses (no TOML parser dependency).
+  # The expected value resolves through AgentModels::TIER_DEFAULTS mapped
+  # through AgentModels.effort_for, honoring the Codex-scoped
+  # agents.models.codex.<name> override precedence install_codex's own
+  # agent_model_overrides(harness: "codex") already applies.
+  # AgentModels::CONSULTATION_AGENTS need no special-case bucket here:
+  # generate_codex_agents already skips writing them for Codex entirely, so
+  # the glob below never finds them and there is nothing to classify.
+  def check_agent_model_drift_codex(agent_config)
+    agents_dir = File.join(agent_config[:home_dir], "agents")
+    installed = Dir.glob(File.join(agents_dir, "plastic-*.toml")).sort
+
+    if installed.empty?
+      return [check(
+        category: "core_files", name: "agent_model_drift", status: "pass",
+        message: "No installed plastic-* agent TOML files to check for model drift"
+      )]
+    end
+
+    global_config = load_yaml_safe(File.join(plastic_home, "config.yml")) || {}
+    overrides = AgentModels.override_map(project_config: {}, global_config: global_config, harness: "codex")
+
+    drifted = []
+    sanctioned = []
+    unclassified = []
+
+    installed.each do |path|
+      basename = File.basename(path, ".toml")
+      installed_value = codex_agent_toml_model_value(File.read(path))
+      override = overrides[basename]
+
+      if override
+        sanctioned << "#{basename}: toml=#{installed_value.inspect}, sanctioned override=#{override.inspect}"
+      elsif AgentModels::TIER_DEFAULTS.key?(basename)
+        expected_effort = AgentModels.effort_for(AgentModels::TIER_DEFAULTS[basename])
+        if installed_value != expected_effort
+          drifted << "#{basename}: toml=#{installed_value.inspect}, resolved default effort=#{expected_effort.inspect}"
+        end
+      else
+        unclassified << "#{basename}: toml=#{installed_value.inspect}, no resolved default (basename is in " \
+                         "neither AgentModels::TIER_DEFAULTS nor AgentModels::CONSULTATION_AGENTS in " \
+                         "scripts/lib/agent_models.rb; add it there, or set agents.models.codex.#{basename} " \
+                         "to sanction a model explicitly)"
+      end
+    end
+
+    if drifted.empty? && unclassified.empty?
+      message = if sanctioned.empty?
+                  "No agent-model drift (#{installed.size} installed Codex agent TOML(s) match the resolved default)"
+                else
+                  "No unsanctioned Codex agent-model drift; #{sanctioned.size} sanctioned override(s) in effect"
+                end
+      [check(
+        category: "core_files", name: "agent_model_drift", status: "pass",
+        message: message,
+        details: sanctioned
+      )]
+    else
+      parts = []
+      parts << "#{drifted.size} installed Codex agent TOML(s) have unsanctioned model drift vs the config-resolved default" if drifted.any?
+      parts << "#{unclassified.size} installed Codex agent TOML(s) have no resolved default in scripts/lib/agent_models.rb" if unclassified.any?
+      [check(
+        category: "core_files", name: "agent_model_drift", status: "warn",
+        message: parts.join("; "),
+        details: drifted + unclassified + sanctioned,
         fixable: false
       )]
     end
