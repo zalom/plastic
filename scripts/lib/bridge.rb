@@ -888,7 +888,7 @@ module Bridge
   # and arm_guided (auto: false) are thin delegators so the lock-stamp + provision
   # behaviour stays identical across both modes. Works even when no bridge exists
   # yet (mid-session intent creation).
-  def self.arm(session, intent_id:, intent_dir:, store:, name:, auto:, harness: :claude,
+  def self.arm(session, intent_id:, intent_dir:, store:, name:, auto:, harness: nil,
                agent: nil, model: nil, thread: nil)
     key = resolve_session(session, intent_id: intent_id, store: store)
     if blank?(session) && blank?(ENV["CLAUDE_CODE_SESSION_ID"])
@@ -901,7 +901,7 @@ module Bridge
     # intent dir. The bridge lock block is a cache of the file.
     intent_dir_abs = File.expand_path(intent_dir)
     status, lock_data = Lock.acquire(intent_dir_abs, session: key,
-                                     harness: harness.to_s, agent: agent,
+                                     harness: harness, agent: agent,
                                      model: model, thread: thread,
                                      run_mode: auto ? "auto" : "guided")
     case status
@@ -942,7 +942,7 @@ module Bridge
 
   # Arm auto mode for a session+intent. Works even when no bridge exists yet
   # (mid-session intent creation). Re-derives intent state, then sets build.auto.
-  def self.arm_auto(session, intent_id:, intent_dir:, store:, name:, harness: :claude,
+  def self.arm_auto(session, intent_id:, intent_dir:, store:, name:, harness: nil,
                     agent: nil, model: nil, thread: nil)
     arm(session, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name,
         auto: true, harness: harness, agent: agent, model: model, thread: thread)
@@ -951,7 +951,7 @@ module Bridge
   # Acquire the delivery lock WITHOUT auto mode (intent 96 / Start guided branch).
   # Mirrors arm_auto's lock-stamp + worktree provision but leaves build.auto = false.
   # Same signature as arm_auto; disarm_auto (mode-agnostic) releases a guided lock.
-  def self.arm_guided(session, intent_id:, intent_dir:, store:, name:, harness: :claude,
+  def self.arm_guided(session, intent_id:, intent_dir:, store:, name:, harness: nil,
                       agent: nil, model: nil, thread: nil)
     arm(session, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name,
         auto: false, harness: harness, agent: agent, model: model, thread: thread)

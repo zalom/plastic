@@ -35,7 +35,7 @@ class BridgeAutoTest < Minitest::Test
     Worktree.define_singleton_method(:release, @real_release) if @real_release
   end
 
-  def arm(harness: :claude)
+  def arm(harness: nil)
     Bridge.arm_auto(@session, intent_id: "27", intent_dir: @intent_dir, store: @store,
                     name: "demo", harness: harness)
   end
@@ -53,6 +53,8 @@ class BridgeAutoTest < Minitest::Test
     assert File.exist?(Bridge.path(@session, intent_id: "27"))
     # persisted
     assert_equal true, Bridge.read(@session, intent_id: "27")["build"]["auto"]
+    assert_nil Lock.read(@intent_dir)["owner_harness"]
+    assert_nil Lock.read(@intent_dir)["owner_agent"]
   end
 
   def test_disarm_auto
@@ -142,7 +144,7 @@ class BridgeAutoTest < Minitest::Test
     assert_equal @session, Lock.read(@intent_dir)["owner_session"]
   end
 
-  def test_arm_auto_records_explicit_controller_identity_and_mode
+  def test_codex_boarding_records_enforcer_harness_thread_and_mode
     data = Bridge.arm_auto(@session, intent_id: "27", intent_dir: @intent_dir,
                            store: @store, name: "demo", harness: :codex,
                            agent: "plastic-enforcer", model: "gpt-5", thread: "thread-27")

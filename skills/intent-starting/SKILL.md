@@ -47,10 +47,10 @@ enforces it: without a held lock, mutating writes to this active intent's dir ar
    ```bash
    # guided (lock only):
    ruby -r ~/.plastic/scripts/lib/bridge -e \
-     'Bridge.arm_guided(ENV["CLAUDE_CODE_SESSION_ID"], intent_id: "<ID>", intent_dir: "<STORE>/<dir>", store: "<STORE>", name: "<name>")'
+     'codex=ENV["CODEX_THREAD_ID"].to_s.strip; claude=ENV["CLAUDE_CODE_SESSION_ID"].to_s.strip; harness=!codex.empty? ? "codex" : (!claude.empty? ? "claude" : nil); session=!codex.empty? ? codex : (!claude.empty? ? claude : nil); Bridge.arm_guided(session, intent_id: "<ID>", intent_dir: "<STORE>/<dir>", store: "<STORE>", name: "<name>", harness: harness, agent: "plastic-enforcer", thread: (!codex.empty? ? codex : nil))'
    # auto (lock + auto), then hand to plastic-auto:
    ruby -r ~/.plastic/scripts/lib/bridge -e \
-     'Bridge.arm_auto(ENV["CLAUDE_CODE_SESSION_ID"], intent_id: "<ID>", intent_dir: "<STORE>/<dir>", store: "<STORE>", name: "<name>")'
+     'codex=ENV["CODEX_THREAD_ID"].to_s.strip; claude=ENV["CLAUDE_CODE_SESSION_ID"].to_s.strip; harness=!codex.empty? ? "codex" : (!claude.empty? ? "claude" : nil); session=!codex.empty? ? codex : (!claude.empty? ? claude : nil); Bridge.arm_auto(session, intent_id: "<ID>", intent_dir: "<STORE>/<dir>", store: "<STORE>", name: "<name>", harness: harness, agent: "plastic-enforcer", thread: (!codex.empty? ? codex : nil))'
    ```
    Replace `<ID>`, `<STORE>` (`~/.plastic/projects/<slug>/store` or `~/.plastic/store`),
    `<dir>` (the `ID--slug` directory), and `<name>`.
@@ -67,8 +67,10 @@ enforces it: without a held lock, mutating writes to this active intent's dir ar
    discovery yields nothing, proceed to Why normally.
 
 **Session id resolution (verbatim from `plastic-auto`).** The first argument is the session
-id the bridge is keyed by: pass the hook stdin `session_id` when you have it, otherwise
-`ENV["CLAUDE_CODE_SESSION_ID"]`, otherwise `nil`. Both arms call `resolve_session`, which
+id the bridge is keyed by: pass the hook stdin `session_id` when you have it; in the executable
+snippets, a nonblank `CODEX_THREAD_ID` identifies Codex, otherwise a nonblank
+`CLAUDE_CODE_SESSION_ID` identifies Claude, otherwise identity remains unknown. Never infer a
+harness from an absent variable. Both arms call `resolve_session`, which
 picks the first non-empty of: the explicit id you pass → `CLAUDE_CODE_SESSION_ID` → a
 deterministic derived key (a hash of the store and intent id). It never returns nil, so the
 lock is taken even when every session env var is empty; arming prints a one-line stderr

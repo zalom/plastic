@@ -93,13 +93,15 @@ edited before the plan exists (the gate applies to YOU, the orchestrator):
 
 ```bash
 ruby -r ~/.plastic/scripts/lib/bridge -e \
-  'Bridge.arm_auto(ENV["CLAUDE_CODE_SESSION_ID"], intent_id: "<ID>", intent_dir: "<STORE>/<dir>", store: "<STORE>", name: "<name>")'
+  'codex=ENV["CODEX_THREAD_ID"].to_s.strip; claude=ENV["CLAUDE_CODE_SESSION_ID"].to_s.strip; harness=!codex.empty? ? "codex" : (!claude.empty? ? "claude" : nil); session=!codex.empty? ? codex : (!claude.empty? ? claude : nil); Bridge.arm_auto(session, intent_id: "<ID>", intent_dir: "<STORE>/<dir>", store: "<STORE>", name: "<name>", harness: harness, agent: "plastic-enforcer", thread: (!codex.empty? ? codex : nil))'
 ```
 
 Replace `<ID>`, `<STORE>` (e.g. `~/.plastic/projects/<slug>/store` or `~/.plastic/store`),
 `<dir>` (the `ID--slug` directory), and `<name>`. The first argument is the session id you
-want the bridge keyed by: pass the hook stdin `session_id` when you have it, otherwise
-`ENV["CLAUDE_CODE_SESSION_ID"]`, otherwise `nil`. Arming always succeeds and acquires the
+want the bridge keyed by: pass the hook stdin `session_id` when you have it. The executable
+snippet trusts a nonblank `CODEX_THREAD_ID` as Codex, otherwise a nonblank
+`CLAUDE_CODE_SESSION_ID` as Claude, otherwise leaves harness and thread unknown. Never guess
+identity from an absent runtime variable. Arming always succeeds and acquires the
 durable `delivery.lock` in the intent dir. For the `resolve_session` fallback chain
 (why arming never needs a non-empty session env var, and what the lock ownership model
 implies for later tool calls) read `references/end-tail.md`.
@@ -148,10 +150,13 @@ The enforcer's session owns the delivery lock. Per-stage specialists run in
 their own sessions and would be denied by the lock gate, so register each one
 as a delegate before (or when) it needs to write into the intent dir:
 
-1. Instruct each spawned specialist to report its session id
-   (`CLAUDE_CODE_SESSION_ID`) in its first message.
+1. Instruct each spawned specialist to report its session id and runtime identity in its first
+   message: `CODEX_THREAD_ID` for Codex, or `CLAUDE_CODE_SESSION_ID` for Claude. Use the
+   specialist/hook identity when known; never infer a harness or model from missing context.
 2. As the lock owner, run:
-   `ruby ~/.plastic/scripts/plastic-lock delegate --intent-dir <intent-dir> --delegate <specialist-session-id>`
+   `ruby ~/.plastic/scripts/plastic-lock delegate --intent-dir <intent-dir> --delegate <specialist-session-id> --harness <specialist-harness-when-known> --agent <role> --model <resolved-model-when-known> --thread <reported-CODEX_THREAD_ID-when-Codex>`
+   Omit `--harness`, `--model`, or `--thread` when that value is unknown; `--agent <role>` is
+   always known from the dispatch roster.
 3. If a specialist hits a lock-gate deny, the deny message names this exact
    command; run it and have the specialist retry.
 4. Immediately after the specialist returns, and before validating or dispatching
@@ -163,10 +168,13 @@ as a delegate before (or when) it needs to write into the intent dir:
 5. Record the classification with exactly one of:
    ```bash
    ruby ~/.plastic/scripts/plastic-lock delegate --intent-dir <intent-dir> \
-     --delegate <specialist-session-id> --status finished
+     --delegate <specialist-session-id> --status finished --harness <same-specialist-harness-when-known> \
+     --agent <same-role> --model <same-resolved-model-when-known> --thread <same-CODEX_THREAD_ID-when-Codex>
    ruby ~/.plastic/scripts/plastic-lock delegate --intent-dir <intent-dir> \
-     --delegate <specialist-session-id> --status failed
+     --delegate <specialist-session-id> --status failed --harness <same-specialist-harness-when-known> \
+     --agent <same-role> --model <same-resolved-model-when-known> --thread <same-CODEX_THREAD_ID-when-Codex>
    ```
+   Apply the same omission rule to unknown values on terminal status commands.
    A failed specialist stops that handoff under the normal blocker/error procedure;
    never dispatch the next specialist first.
 

@@ -497,9 +497,13 @@ class PlasticLockCliTest < Minitest::Test
     assert_equal %w[codex plastic-planner gpt-5 thread-d active],
                  activity.values_at("harness", "agent", "model", "thread", "status")
 
-    _out, err, st = cli("delegate", "--delegate", "sub-1", "--status", "finished")
+    _out, err, st = cli("delegate", "--delegate", "sub-1", "--status", "finished",
+                        "--harness", "codex", "--agent", "plastic-planner",
+                        "--model", "gpt-5", "--thread", "thread-d")
     assert st.success?, err
-    assert_equal "finished", Lock.read(@intent_dir)["delegate_activity"].last["status"]
+    activity = Lock.read(@intent_dir)["delegate_activity"].last
+    assert_equal %w[codex plastic-planner gpt-5 thread-d finished],
+                 activity.values_at("harness", "agent", "model", "thread", "status")
     assert_includes Lock.read(@intent_dir)["delegates"], "sub-1"
   end
 
