@@ -300,9 +300,21 @@ module Lock
       record["session"].to_s if record.is_a?(Hash) &&
                                 authorized_sessions.include?(record["session"].to_s)
     end.uniq
+    activity_order = activity.each_with_index.each_with_object({}) do |(record, index), memo|
+      memo[record["session"].to_s] = index if record.is_a?(Hash)
+    end
+    activity_sessions.sort_by! do |session|
+      record = activity_by_session[session] || {}
+      # Active delegates are current ahead of terminal delegates. Within that
+      # group, latest activity wins; original record order is the stable
+      # fallback for legacy records without timestamps.
+      [record["status"].to_s == "active" ? 1 : 0,
+       record["last_activity_at"].to_s, activity_order.fetch(session, -1)]
+    end
     # Legacy string-only delegates retain their authorization order. Rich
-    # records follow in activity order (oldest to newest), so consumers may
-    # reliably take the last projection entry as the current/latest delegate.
+    # records follow in deterministic current/latest order, so consumers may
+    # reliably take the last projection entry: the most recent active delegate
+    # when one exists, otherwise the most recent terminal activity.
     ordered_sessions = (authorized_sessions - activity_sessions) + activity_sessions
     delegates = ordered_sessions.map do |session|
       record = activity_by_session[session] || {}

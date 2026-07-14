@@ -519,6 +519,28 @@ class PlasticLockCliTest < Minitest::Test
     assert_includes out, "Delegate: current-agent via Codex, active"
   end
 
+  def test_cli_who_prefers_current_active_then_latest_terminal_delegate
+    t0 = Time.utc(2026, 7, 14, 12, 0, 0)
+    Lock.acquire(@intent_dir, session: "sess-1", harness: "codex",
+                 agent: "plastic-enforcer", now: t0)
+    Lock.add_delegate(@intent_dir, delegate: "sub-1", session: "sess-1",
+                      harness: "codex", agent: "first-agent", now: t0 + 1)
+    Lock.add_delegate(@intent_dir, delegate: "sub-2", session: "sess-1",
+                      harness: "codex", agent: "second-agent", now: t0 + 2)
+    Lock.update_delegate_status(@intent_dir, delegate: "sub-2", status: "finished",
+                                session: "sess-1", now: t0 + 3)
+
+    out, err, st = cli("who")
+    assert st.success?, err
+    assert_includes out, "Delegate: first-agent via Codex, active"
+
+    Lock.update_delegate_status(@intent_dir, delegate: "sub-1", status: "failed",
+                                session: "sess-1", now: t0 + 4)
+    out, err, st = cli("who")
+    assert st.success?, err
+    assert_includes out, "Delegate: first-agent via Codex, failed"
+  end
+
   def test_cli_delegate_terminal_status_rejects_nonowner_and_invalid_status
     Lock.acquire(@intent_dir, session: "owner")
     Lock.add_delegate(@intent_dir, delegate: "sub-1", session: "owner")
