@@ -124,7 +124,7 @@ module Lock
       if existing["owner_session"].to_s == session.to_s
         data = payload(session: session, type: type, host: host, now: now,
                        delegates: Array(existing["delegates"]),
-                       delegate_activity: Array(existing["delegate_activity"]).last(DELEGATE_ACTIVITY_LIMIT),
+                       delegate_activity: Array(existing["delegate_activity"]),
                        harness: merged_value(harness, existing["owner_harness"]),
                        agent: merged_value(agent, existing["owner_agent"]),
                        model: merged_value(model, existing["owner_model"]),
@@ -162,7 +162,7 @@ module Lock
       "owner_model" => normalized_value(model),
       "owner_thread" => normalized_value(thread),
       "run_mode" => normalized_value(run_mode),
-      "delegate_activity" => Array(delegate_activity).last(DELEGATE_ACTIVITY_LIMIT),
+      "delegate_activity" => bounded_delegate_activity(delegate_activity, delegates: delegates),
     }
   end
 
@@ -172,6 +172,24 @@ module Lock
 
   def merged_value(explicit, existing)
     blank?(explicit) ? normalized_value(existing) : explicit.to_s
+  end
+
+  # Keep every active record that still names an authorized delegate, while
+  # bounding completed history. Active work is current truth and must never be
+  # evicted merely because newer delegates finished.
+  def bounded_delegate_activity(records, delegates:)
+    records = Array(records)
+    authorized = Array(delegates).map(&:to_s)
+    terminal_indexes = records.each_index.reject do |index|
+      record = records[index]
+      record.is_a?(Hash) && record["status"].to_s == "active" &&
+        authorized.include?(record["session"].to_s)
+    end.last(DELEGATE_ACTIVITY_LIMIT)
+    records.each_with_index.filter_map do |record, index|
+      active = record.is_a?(Hash) && record["status"].to_s == "active" &&
+               authorized.include?(record["session"].to_s)
+      record if active || terminal_indexes.include?(index)
+    end
   end
 
   # Owner/delegate heartbeat: touch the mtime, never rewrite content.
@@ -202,7 +220,8 @@ module Lock
       "model" => merged_value(model, previous && previous["model"]),
       "thread" => merged_value(thread, previous && previous["thread"]),
     }
-    data["delegate_activity"] = (activity + [record]).last(DELEGATE_ACTIVITY_LIMIT)
+    data["delegate_activity"] = bounded_delegate_activity(activity + [record],
+                                                          delegates: data["delegates"])
     write(intent_dir, data, type: type)
     true
   end
@@ -223,7 +242,8 @@ module Lock
       "status" => status.to_s,
       "last_activity_at" => now.utc.iso8601
     )
-    data["delegate_activity"] = activity.last(DELEGATE_ACTIVITY_LIMIT)
+    data["delegate_activity"] = bounded_delegate_activity(activity,
+                                                          delegates: data["delegates"])
     write(intent_dir, data, type: type)
     true
   end

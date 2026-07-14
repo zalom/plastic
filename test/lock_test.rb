@@ -165,6 +165,8 @@ class LockTest < Minitest::Test
     Lock.acquire(@dir, session: "sess-a", now: @t0)
     21.times do |i|
       Lock.add_delegate(@dir, delegate: "sub-#{i}", session: "sess-a", now: @t0 + i)
+      Lock.update_delegate_status(@dir, delegate: "sub-#{i}", status: "finished",
+                                  session: "sess-a", now: @t0 + i + 0.5)
     end
     activity = Lock.read(@dir)["delegate_activity"]
     assert_equal Lock::DELEGATE_ACTIVITY_LIMIT, activity.length
@@ -175,6 +177,25 @@ class LockTest < Minitest::Test
     assert_equal 20, activity.length
     assert_equal 1, activity.count { |record| record["session"] == "sub-10" }
     assert_equal "updated", activity.last["agent"]
+  end
+
+  def test_terminal_history_never_evicts_an_older_active_delegate
+    Lock.acquire(@dir, session: "sess-a", now: @t0)
+    Lock.add_delegate(@dir, delegate: "active-old", session: "sess-a", now: @t0 + 1,
+                      harness: "codex", agent: "active-agent")
+    21.times do |i|
+      session = "terminal-#{i}"
+      Lock.add_delegate(@dir, delegate: session, session: "sess-a", now: @t0 + i + 2,
+                        harness: "codex", agent: "terminal-agent")
+      Lock.update_delegate_status(@dir, delegate: session, status: "finished",
+                                  session: "sess-a", now: @t0 + i + 2.5)
+    end
+
+    activity = Lock.read(@dir)["delegate_activity"]
+    assert_equal 1, activity.count { |record| record["status"] == "active" }
+    assert_equal Lock::DELEGATE_ACTIVITY_LIMIT,
+                 activity.count { |record| record["status"] != "active" }
+    assert_equal "active-old", Lock.who(@dir, now: @t0 + 30)["delegates"].last["session"]
   end
 
   def test_delegate_cannot_re_delegate_or_release
