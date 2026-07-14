@@ -1,0 +1,64 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# Usage: write-config <key> <value>
+#        write-config <key> --push <value>
+# Writes a value into the GLOBAL ~/.plastic/config.yml at a dot-notation key,
+# creating intermediate hashes as needed. read-config's missing write-side
+# counterpart. --push appends into an array at that key instead of overwriting
+# it (deduped, creating the array if absent) -- used for dismissal lists like
+# config_asks_dismissed.
+#
+# Environment:
+#   PLASTIC_HOME -- override ~/.plastic (for testing)
+
+require "yaml"
+require "json"
+require "fileutils"
+
+def usage_abort
+  $stderr.puts "Usage: write-config <key> <value>\n       write-config <key> --push <value>"
+  exit 1
+end
+
+argv = ARGV.dup
+push = false
+if (idx = argv.index("--push"))
+  push = true
+  argv.delete_at(idx)
+end
+
+key, raw_value = argv
+usage_abort if key.nil? || key.empty? || raw_value.nil?
+
+def coerce(raw)
+  JSON.parse(raw)
+rescue JSON::ParserError
+  raw
+end
+
+value = coerce(raw_value)
+
+global_root = ENV.fetch("PLASTIC_HOME", File.expand_path("~/.plastic"))
+config_path = File.join(global_root, "config.yml")
+
+config = File.exist?(config_path) ? (YAML.safe_load(File.read(config_path)) || {}) : {}
+
+keys = key.split(".")
+leaf = keys.pop
+node = keys.reduce(config) { |acc, k| acc[k] ||= {} }
+
+if push
+  current = node[leaf]
+  current = [] unless current.is_a?(Array)
+  current << value unless current.include?(value)
+  node[leaf] = current
+else
+  node[leaf] = value
+end
+
+FileUtils.mkdir_p(global_root)
+File.write(config_path, YAML.dump(config))
+
+puts "#{key} = #{node[leaf].inspect}"

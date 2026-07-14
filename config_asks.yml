@@ -1,0 +1,32 @@
+# Plastic config-ask notices
+# Each entry declares a config question a release introduced. The update CLI
+# and doctor both read this file (never skill prose) so the ask fires from
+# fresh code on every hop, not only the release that shipped it.
+#
+# Schema:
+#   id: unique slug (used for dismissal tracking, config_asks_dismissed)
+#   key: dot-notation config key the answer is written to (read-config/write-config)
+#   question: one-line question text
+#   options: ordered list of { label:, value: } -- value is written verbatim via
+#            write-config; the first option is presented as the recommended default
+#   introduced: semver where the entry was added (informational only -- see
+#               "Pending predicate" below, introduced does NOT gate firing)
+#   agents: optional list of harnesses this applies to (default: all)
+#
+# Pending predicate: key resolves to nil/empty in config.yml AND id is not in
+# config_asks_dismissed. Answering (write-config <key> <value>) or dismissing
+# (write-config config_asks_dismissed --push <id>) both clear it permanently.
+# This deliberately ignores "introduced" so an entry fires on the very next
+# update/doctor run no matter how many releases have already passed (retro-fire).
+
+config_asks:
+  - id: advisor-default
+    key: advisor.claude.default
+    introduced: "1.3.0"
+    agents: ["claude"]
+    question: "Which advisor should be the default?"
+    options:
+      - label: "Faux Fable (recommended): Opus 4.8 carrying the frontier reasoning instructions. Much cheaper, available on any plan, reasons in the same disciplined way."
+        value: "plastic-faux-advisor"
+      - label: "Fable 5: the frontier model itself. The strongest reasoning available, billed through usage credits, so summon it for a few rounds and close it."
+        value: "plastic-advisor"

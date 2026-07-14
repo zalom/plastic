@@ -14,6 +14,7 @@
 
 require_relative "lib/installer_core"
 require_relative "doctor"
+require_relative "lib/config_asks"
 
 class Update < InstallerCore
   PKG = "@zalom/plastic"
@@ -53,9 +54,36 @@ class Update < InstallerCore
       end
       puts "\u{2b06}\u{fe0f}  Updating Plastic #{iv} \u{2192} #{res[:target]}"
       exit_code = perform_switch(res[:target], agent_args(argv))
-      run_post_update_doctor(full: argv.include?("--full-doctor")) if exit_code == 0
+      if exit_code == 0
+        announce_pending_config_asks
+        run_post_update_doctor(full: argv.include?("--full-doctor"))
+      end
       exit_code
     end
+  end
+
+  # Print any pending config question(s) straight to stdout, right after a
+  # successful perform_switch (the moment the NEW config_asks.yml and
+  # write-config just landed on disk via the target versions own
+  # `install --reinstall`). Informational only, like run_post_update_doctor:
+  # rescued so a crash here can never undo or fail an update that already
+  # succeeded, and never changes the exit code this methods caller returns.
+  def announce_pending_config_asks(out: $stdout)
+    pending = ConfigAsks.pending(plastic_home)
+    return if pending.empty?
+
+    out.puts "\nConfig question(s) introduced by this update:"
+    pending.each do |entry|
+      out.puts "  #{entry["question"]} (id: #{entry["id"]})"
+      Array(entry["options"]).each do |opt|
+        out.puts "    - #{opt["label"]}"
+        out.puts "      #{ConfigAsks.write_config_command(plastic_home, entry["key"], opt["value"])}"
+      end
+      out.puts "    - Not now (keep the default)"
+      out.puts "      #{ConfigAsks.dismiss_command(plastic_home, entry["id"])}"
+    end
+  rescue StandardError => e
+    out.puts "  could not check config asks: #{e.message}"
   end
 
   # Run doctor after a successful update and print a human-readable summary.
