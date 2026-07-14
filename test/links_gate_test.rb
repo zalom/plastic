@@ -7,7 +7,7 @@ require "fileutils"
 
 require_relative "../scripts/lib/links_gate"
 
-# LinksGate — the pure(ish) decision logic behind the links-gate PreToolUse
+# LinksGate, the pure(ish) decision logic behind the links-gate PreToolUse
 # hook (intent 192). Hermetic: every fixture lives under Dir.mktmpdir, never
 # touches the real ~/.plastic. LinksGate.decision takes plastic_home as an
 # explicit parameter (no ENV read inside the lib), matching the DI convention

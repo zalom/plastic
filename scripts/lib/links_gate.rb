@@ -7,7 +7,7 @@ require_relative "links_projection"
 require_relative "store_discovery"
 require_relative "graph_rebuild"
 
-# LinksGate — the write-time belt for the PLASTIC.md `## Links` contract
+# LinksGate, the write-time belt for the PLASTIC.md `## Links` contract
 # (intent 192). Pure decision logic plus a small store-scanning glue (mirrors
 # the glue ProjectLinks and Doctor each already carry independently for
 # themselves; the CALCULATION is shared via LinksSection/LinksProjection so

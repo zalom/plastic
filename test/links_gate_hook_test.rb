@@ -88,4 +88,38 @@ class LinksGateHookTest < Minitest::Test
     _out, status = run_gate({ "tool_input" => { "file_path" => path } })
     assert_equal 0, status
   end
+
+  # REGRESSION (independent review of intent 192): a store-scan failure while
+  # computing the canonical projection (build_context -> load_nodes ->
+  # Dir.children) used to raise Errno::EACCES straight through the hook, an
+  # uncaught crash exiting 1: neither allow (0) nor deny (2). Exit 1 is a
+  # bricked write, not a fail-open. The hook's own top-level rescue must catch
+  # ANY unexpected exception and fail open (exit 0), mirroring hook-lock-gate's
+  # own top-level rescue. This fixture makes an UNRELATED project store
+  # directory unreadable while editing a perfectly healthy subject intent
+  # whose ## Links legitimately changes, forcing the store-wide scan to run
+  # and hit the unreadable directory.
+  def test_unreadable_unrelated_store_dir_fails_open_instead_of_crashing
+    skip "chmod 0000 does not block root; cannot exercise the permission failure" if Process.uid.zero?
+
+    path = write_intent("20--subject", id: "20", intent: "Subject", sources: [], chain: [],
+                         links: "## Links\n<!-- No sources or chain; this intent has no graph edges to project. -->\n")
+    content = File.read(path).sub(
+      "<!-- No sources or chain; this intent has no graph edges to project. -->\n",
+      "- [[99--nowhere|Nowhere]]\n"
+    )
+
+    broken_store = File.join(@home, "projects", "broken", "store")
+    FileUtils.mkdir_p(broken_store)
+    File.chmod(0o000, broken_store)
+
+    begin
+      out, status = run_gate({ "tool_input" => { "file_path" => path, "content" => content } })
+      assert_equal 0, status,
+                   "an unrelated unreadable store dir must never brick an edit (fail open): #{out}"
+    ensure
+      # Restore permissions so Dir.mktmpdir's own teardown cleanup can remove the tree.
+      File.chmod(0o700, broken_store) if Dir.exist?(broken_store)
+    end
+  end
 end
