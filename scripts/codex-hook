@@ -6,25 +6,35 @@
 #   file-mutation gates: code-gate | lock-gate | savepoint-pre | gate-check | create-gate | links-gate
 #   live-state hooks (intent 199): session-start | check-update | continue |
 #     future-intent-check | auto-arm | qmd-search | savepoint
+#   shell-tool gates (intent 203): bash-gate | retrieval-gate
 #
-# The Codex input adapter (intent 102, extended by 199). Reads a Codex hook stdin
-# payload once. Two shapes exist and the gate name alone selects which path runs
-# (Codex's own hooks.json registration guarantees the two never cross): the
-# file-mutation gates read session_id at top level and the apply_patch command in
-# tool_input.command [guide Part 4], parse the diff envelope via ApplyPatchEnvelope,
-# and drive Plastic's payload-agnostic Ruby gate/savepoint cores once per file
-# operation, relaying stdout/stderr/exit unchanged. The live-state hooks carry no
-# tool_input at all (they are not tool calls); the dispatcher execs the SAME
-# launcher file Claude already runs for that hook (hooks/<name>), which is already
-# harness-agnostic (resolves ~/.plastic off $HOME, reads only the common stdin
-# fields the guide confirms Codex shares with Claude for these three events), so
-# the body is reused, not rewritten (D3). The one adaptation is threading the
-# payload's session_id into CLAUDE_CODE_SESSION_ID, since Codex's own process env
-# never carries it, plus a bounded timeout: hooks/check-update backgrounds a real
-# npm network call without redirecting its output away from the inherited stdout/
-# stderr pipes, and Codex invokes hooks synchronously, so without a bound a slow
-# network call could hold this dispatcher's pipe open past the launcher's own
-# (fast) exit.
+# The Codex input adapter (intent 102, extended by 199 and 203). Reads a Codex
+# hook stdin payload once. Three shapes exist and the gate name alone selects
+# which path runs (Codex's own hooks.json registration guarantees they never
+# cross): the file-mutation gates read session_id at top level and the
+# apply_patch command in tool_input.command [guide Part 4], parse the diff
+# envelope via ApplyPatchEnvelope, and drive Plastic's payload-agnostic Ruby
+# gate/savepoint cores once per file operation, relaying stdout/stderr/exit
+# unchanged. The live-state hooks carry no tool_input at all (they are not tool
+# calls); the dispatcher execs the SAME launcher file Claude already runs for
+# that hook (hooks/<name>), which is already harness-agnostic (resolves
+# ~/.plastic off $HOME, reads only the common stdin fields the guide confirms
+# Codex shares with Claude for these three events), so the body is reused, not
+# rewritten (D3). The shell-tool gates (bash-gate, retrieval-gate) report
+# tool_name: "Bash" with the command in tool_input.command, but MUST NOT be
+# routed through ApplyPatchEnvelope.parse below: a plain shell command has no
+# *** Begin Patch/*** End Patch envelope, so it would parse to an empty op list
+# and hit this file's own `exit 0 if ops.empty?` line, silently allowing every
+# Bash call and reopening the exact hole intent 203 closes. So these two exec
+# the SAME scripts/hook-bash-gate / scripts/hook-retrieval-gate files Claude
+# already runs, unmodified, the identical "drive the body, relay its output"
+# pattern used for the live-state hooks. The one adaptation shared by both the
+# live-state and shell-tool paths is threading the payload's session_id into
+# CLAUDE_CODE_SESSION_ID, since Codex's own process env never carries it, plus
+# a bounded timeout: hooks/check-update backgrounds a real npm network call
+# without redirecting its output away from the inherited stdout/stderr pipes,
+# and Codex invokes hooks synchronously, so without a bound a slow network call
+# could hold this dispatcher's pipe open past the launcher's own (fast) exit.
 require "json"
 require "open3"
 require "rbconfig"
@@ -42,6 +52,7 @@ $stdout.sync = true
 
 STATE_HOOKS = %w[session-start check-update continue future-intent-check auto-arm qmd-search savepoint].freeze
 STATE_TIMEOUT = 5
+SHELL_HOOKS = %w[bash-gate retrieval-gate].freeze
 
 gate = ARGV[0].to_s
 raw = ($stdin.read rescue nil)
@@ -60,6 +71,31 @@ if STATE_HOOKS.include?(gate)
     Timeout.timeout(STATE_TIMEOUT) { Open3.capture3(env, launcher, stdin_data: raw, chdir: cwd) }
   rescue StandardError
     ["", "", nil] # fail open: launcher missing, unexecutable, crashed, or too slow
+  end
+  print out unless out.to_s.empty?
+  warn err unless err.to_s.empty?
+  exit(status ? status.exitstatus : 0)
+end
+
+if SHELL_HOOKS.include?(gate)
+  # bash-gate / retrieval-gate (intent 203): a shell command has no apply_patch
+  # diff envelope, so this branch execs the SAME scripts/hook-bash-gate /
+  # scripts/hook-retrieval-gate files Claude already runs, unmodified, and
+  # relays their exit code and stderr. It must never fall through to
+  # ApplyPatchEnvelope.parse below (see header comment).
+  cwd = payload["cwd"].to_s
+  cwd = Dir.pwd if cwd.empty? || !Dir.exist?(cwd)
+  env = { "CLAUDE_CODE_SESSION_ID" => (session.empty? ? nil : session) }
+  script = File.join(__dir__, "hook-#{gate}")
+  argv = [script]
+  # hook-retrieval-gate reads plastic_home off ARGV[0] (mirrors hooks/retrieval-gate's
+  # own launcher, which passes "$HOME/.plastic"); hook-bash-gate takes no args, it
+  # resolves Dir.home directly.
+  argv << ENV.fetch("PLASTIC_HOME") { File.join(Dir.home, ".plastic") } if gate == "retrieval-gate"
+  out, err, status = begin
+    Timeout.timeout(STATE_TIMEOUT) { Open3.capture3(env, RbConfig.ruby, *argv, stdin_data: raw, chdir: cwd) }
+  rescue StandardError
+    ["", "", nil] # fail open: script missing, unexecutable, crashed, or too slow
   end
   print out unless out.to_s.empty?
   warn err unless err.to_s.empty?

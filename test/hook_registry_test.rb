@@ -86,6 +86,20 @@ class HookRegistryTest < Minitest::Test
     assert_equal %w[gate-check], names
   end
 
+  def test_codex_hooks_json_emits_bash_gate_and_retrieval_gate_under_bash_matcher
+    codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
+
+    bash_group = codex["PreToolUse"].find { |g| g["matcher"] == "Bash" }
+    refute_nil bash_group, "a Bash matcher group must be registered for Codex"
+    names = bash_group["hooks"].map { |h| h["command"][/codex-hook" (\S+)/, 1] }
+    assert_equal %w[bash-gate retrieval-gate], names,
+      "bash-gate must be listed before retrieval-gate, the order events lists them"
+    bash_group["hooks"].each do |h|
+      assert_equal "command", h["type"]
+      refute_nil h["statusMessage"]
+    end
+  end
+
   def test_codex_hooks_json_status_message_matches_events_status
     codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
     code_gate_status = HookRegistry.events["PreToolUse"]
@@ -100,7 +114,7 @@ class HookRegistryTest < Minitest::Test
   # rename in `events` cannot silently drift the Codex registration.
   def test_every_codex_hook_name_exists_in_the_events_source
     all_names = HookRegistry.events.values.flatten.flat_map { |g| g["hooks"] }.map { |h| h["name"] }
-    (HookRegistry::CODEX_PRE_HOOKS + HookRegistry::CODEX_POST_HOOKS).each do |name|
+    (HookRegistry::CODEX_PRE_HOOKS + HookRegistry::CODEX_POST_HOOKS + HookRegistry::CODEX_BASH_HOOKS).each do |name|
       assert_includes all_names, name, "Codex hook '#{name}' is not registered in HookRegistry.events"
     end
   end

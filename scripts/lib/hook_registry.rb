@@ -88,6 +88,18 @@ module HookRegistry
   CODEX_PRE_HOOKS  = %w[code-gate lock-gate savepoint-pre links-gate create-gate].freeze
   CODEX_POST_HOOKS = %w[gate-check].freeze
 
+  # Codex's shell-tool gate hole (intent 203): bash-gate (denies a shell write to
+  # project code before How) and retrieval-gate (advisory, never denies) both
+  # belong on the Bash matcher, and ONLY Bash: the official Codex hooks doc's
+  # PreToolUse event catalog enumerates exactly Bash, apply_patch, and MCP tool
+  # calls, and neither it nor the two prior Codex research passes (198's
+  # official-docs research, 181's deep research) documents a discrete Read,
+  # Grep, or Glob tool name (D3). So this does NOT copy Claude's four-name
+  # "Bash|Read|Grep|Glob" retrieval-gate matcher; registering a tool name Codex
+  # never reports would be dead weight that looks alive, the exact defect this
+  # intent exists to fix.
+  CODEX_BASH_HOOKS = %w[bash-gate retrieval-gate].freeze
+
   # Live-state events registered WHOLE (intent 199), unlike CODEX_PRE_HOOKS/
   # CODEX_POST_HOOKS above: Codex's SessionStart/UserPromptSubmit/PreCompact already
   # match Claude's shape exactly, one matcher group each ("", no tool to collapse
@@ -109,10 +121,14 @@ module HookRegistry
     # Preserve the order these hook names appear across the PreToolUse groups in `events`.
     pre_order = events["PreToolUse"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
     pre = (pre_order & CODEX_PRE_HOOKS).map { |n| cmd.call(n) }
+    bash = (pre_order & CODEX_BASH_HOOKS).map { |n| cmd.call(n) }
     post = CODEX_POST_HOOKS.map { |n| cmd.call(n) }
 
     result = {
-      "PreToolUse"  => [{ "matcher" => "apply_patch", "hooks" => pre }],
+      "PreToolUse"  => [
+        { "matcher" => "apply_patch", "hooks" => pre },
+        { "matcher" => "Bash", "hooks" => bash },
+      ],
       "PostToolUse" => [{ "matcher" => "apply_patch", "hooks" => post }],
     }
     CODEX_LIVE_STATE_EVENTS.each do |event|
