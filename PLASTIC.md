@@ -510,18 +510,31 @@ Each gate guards one thing. All are hard except the retrieval gate:
 
 Exactly one session or agent develops an intent's delivery at a time. Ownership is
 session-keyed and durable: arming acquires `delivery.lock` inside the intent directory
-(atomically, O_EXCL), recording the owner session, the host, the acquired-at time, a
-delegates list, and the lock type. Liveness is a lease: the owner's hooks refresh the lock
-file's mtime on tool activity, and the lock counts as stale only when that heartbeat is
-older than the TTL. No process id is consulted anywhere. The /tmp session bridge is a cache
+(atomically, O_EXCL). The session id is the authorization identity. Descriptive provenance
+records the controller's explicit `harness`, `agent`, `model`, `thread`, and `mode` values,
+but never grants access and is never inferred from transcripts or filesystem paths. Missing
+fields on legacy locks display as `Unknown`. Liveness is a lease: the owner's hooks refresh
+the lock file's mtime on tool activity, and that mtime is the sole heartbeat truth. The lock
+counts as stale only when the mtime is older than the TTL. No process id is consulted anywhere.
+The /tmp session bridge is a cache
 of this state; on any disagreement, or when the bridge is missing, the lock file wins.
 Another session that finds a fresh lock backs off; a stale lock is reclaimed only by
 explicit takeover, which replaces the lock and appends an audit line to the intent's
-savepoint.md. Subagents spawned by the owner write under the owner's lock once registered
-as delegates. Disarm clears the lock; the End tail is ordered: verify, merge and remove
+savepoint.md. Rearming the same session preserves its acquired identity and refreshes known
+provenance; an explicit takeover replaces the controller and starts new provenance.
+Subagents spawned by the owner write under the owner's lock once registered as delegates.
+Delegate activity status (`active`, `finished`, or `failed`) is descriptive and does not revoke
+the session's string-array authorization. A registered delegate remains authorized until a
+separate authorization-removal mechanism exists. Finished and failed delegate activity is
+retained as descriptive history, bounded to the 20 most recent terminal entries. A controller,
+a delegate, and an artifact claim are distinct evidence: controller ownership authorizes the
+delivery, delegate registration authorizes a child session, and a claim selects one current
+writer for one artifact. Disarm clears the lock; the End tail is ordered: verify, merge and remove
 worktrees, clear the lock, and only then is the bridge purge-eligible. Repair is one
-idempotent function with two entry points: the `plastic-lock` command (status, fix,
-release, reclaim, delegate) and `/plastic-intent-starting`, so boarding self-heals. This is
+idempotent function with two entry points: the `plastic-lock` command (`who`, status, fix,
+release, reclaim, delegate) and `/plastic-intent-starting`, so boarding self-heals. `who` is
+read-only and reports the controller, mtime heartbeat, delegates, and claims from durable files.
+This is
 mandatory, not a convention.
 
 Solo-mode gate defaults (intent 128): on a confirmed positive solo determination
@@ -663,4 +676,3 @@ the lock-bounded post-done window with its keep-guard test. Intent 111 owns the 
 liveness surface, the lock-issue message, orchestrator auto-repair, and the fail-open
 behavior itself. Intent 112 owns the maintenance lock and the immutability gate (it inherits
 fail-open from 111). Intent 4a1b1 owns deep agent stuck-detection and is not superseded.
-

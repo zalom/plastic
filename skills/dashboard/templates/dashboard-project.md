@@ -4,8 +4,8 @@
 
 **Active**
 
-| Id | What | Stage |
-| --- | --- | --- |
+| Id | What | Stage | Worker | Activity |
+| --- | --- | --- | --- | --- |
 {{active.rows}}
 
 **Most-valuable next work**

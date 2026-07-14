@@ -26,6 +26,7 @@ require "yaml"
 require "date"
 require_relative "doctor"
 require_relative "lib/bridge"
+require_relative "lib/lock"
 
 PLASTIC_HOME = ENV.fetch("PLASTIC_HOME") { File.join(Dir.home, ".plastic") }
 
@@ -222,6 +223,10 @@ def parse_intent(store_info, dir_name, status_index)
     body_has_context: body.include?("## Context"),
     last_accessed_at: last_accessed_at(dir, (fm["created"].to_s rescue "")),
     done_at: done_timestamp(dir),
+    # Kept only in the internal record so project Active rows can inspect the
+    # durable lock beside the intent. intent_line deliberately does not expose
+    # this filesystem path in --data or any rendered surface.
+    intent_dir: File.expand_path(dir),
   }
 end
 
@@ -713,21 +718,65 @@ def footer_line(next_shown:, next_total:, active_shown: nil, active_total: nil)
   end
 end
 
-def intent_line(rec, bullet)
+ANSI_ESCAPE_RE = /\e\[[0-?]*[ -\/]*[@-~]/
+
+def safe_active_value(value, max_chars: INTENT_LINE_MAX_CHARS)
+  text = value.to_s.gsub(ANSI_ESCAPE_RE, "").gsub(/[[:cntrl:]]+/, " ")
+  # Idempotent because the composed worker/activity values pass through this
+  # helper once per component and once after composition.
+  normalized = text.gsub(/\s+/, " ").strip.gsub(/(?<!\\)\|/) { "\\|" }
+  normalized.length > max_chars ? "#{normalized[0, max_chars]}…" : normalized
+end
+
+def display_provenance(value)
+  # Worker combines agent and harness; bound each half so one hostile or merely
+  # verbose value cannot crowd the other identity out of the shared line budget.
+  text = safe_active_value(value, max_chars: INTENT_LINE_MAX_CHARS / 2 - 4)
+  return "Unknown" if text.empty? || text.casecmp("unknown").zero?
+  %w[claude codex].include?(text.downcase) ? text.capitalize : text
+end
+
+def active_lock_fields(rec, now:)
+  view = Lock.who(rec.fetch(:intent_dir), now: now)
+  owner = view["owner"] || {}
+  worker = "#{display_provenance(owner['agent'])} · #{display_provenance(owner['harness'])}"
+  activity = case view["state"]
+             when "fresh" then "Fresh"
+             when "stale" then "Stale"
+             when "corrupt" then "Corrupt"
+             else "No lock"
+             end
+  if view["state"] == "fresh"
+    claim = Array(view["claims"]).find { |item| item["fresh"] && !item["corrupt"] }
+    writer = claim && safe_active_value(claim["delegate"] || claim["owner_session"],
+                                        max_chars: INTENT_LINE_MAX_CHARS - 20)
+    activity = "#{activity} · writer #{writer}" unless writer.to_s.empty?
+  end
+  [worker, activity]
+end
+
+def intent_line(rec, bullet, now: Time.now)
   note = rec[:status] == "active" ? " (#{rec[:lifecycle].to_s.capitalize})" : ""
   text = rec[:intent].to_s
   text = "#{text[0, INTENT_LINE_MAX_CHARS]}…" if text.length > INTENT_LINE_MAX_CHARS
-  { id: rec[:id], intent: rec[:intent], created: rec[:created], bullet: bullet,
+  row = { id: rec[:id], intent: rec[:intent], created: rec[:created], bullet: bullet,
     scope: rec[:scope], what: cell(text), stage: rec[:lifecycle].to_s.capitalize,
     line: "#{bullet} #{rec[:id]} #{text}#{note}".rstrip }
+  if rec[:status] == "active"
+    worker, activity = active_lock_fields(rec, now: now)
+    row[:worker] = safe_active_value(worker)
+    row[:activity] = safe_active_value(activity)
+    row[:line] = "#{row[:line]} · #{row[:worker]} · #{row[:activity]}"
+  end
+  row
 end
 
 # Cap an already-sorted record list to `cap` entries and map to intent_line-shaped hashes.
 # No trailing "+N more" marker (D5, intent 202): the payload's own *_total/*_shown fields
 # (see render_data_project) carry the honest count, and the footer states it in prose, so a
 # fake blank row is no longer needed here.
-def capped_rows(list, bullet, cap)
-  list.first(cap).map { |r| intent_line(r, bullet) }
+def capped_rows(list, bullet, cap, now: Time.now)
+  list.first(cap).map { |r| intent_line(r, bullet, now: now) }
 end
 
 # Flat, rank-ordered "most-valuable next work" list (intent 149), capped at `cap` (default
@@ -804,7 +853,8 @@ def render_data_global(records, next_limit: NEXT_WORK_CAP, all: false)
     footer: footer_line(next_shown: next_shown, next_total: matrix_pool.size) }
 end
 
-def render_data_project(records, slug, active_limit: ACTIVE_CAP, next_limit: NEXT_WORK_CAP, all: false)
+def render_data_project(records, slug, active_limit: ACTIVE_CAP, next_limit: NEXT_WORK_CAP,
+                        all: false, now: Time.now)
   scope = "project:#{slug}"
   scoped = records.select { |r| r[:scope] == scope }
   active_pool = scoped.select { |r| r[:status] == "active" }.sort_by { |r| finish_first_key(r) }
@@ -820,7 +870,7 @@ def render_data_project(records, slug, active_limit: ACTIVE_CAP, next_limit: NEX
     description: short_description(scope),
     summary: recent_delivery_summary(records, project_scope: scope),
     counts: counts_of(scoped),
-    active: capped_rows(active_pool, STATUS_GLYPH["active"], active_cap),
+    active: capped_rows(active_pool, STATUS_GLYPH["active"], active_cap, now: now),
     active_total: active_pool.size,
     active_shown: active_shown,
     next_work: next_work(next_pool, cap: next_cap),

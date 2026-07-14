@@ -371,9 +371,242 @@ class DashboardTest < Minitest::Test
     data = JSON.parse(out)
     active = data["active"].reject { |r| r["id"].to_s.empty? }
     refute_empty active
-    active.each { |r| %w[what stage].each { |k| assert r.key?(k), "active missing #{k}: #{r.inspect}" } }
+    active.each { |r| %w[what stage worker activity].each { |k| assert r.key?(k), "active missing #{k}: #{r.inspect}" } }
     assert_operator data["active"].size, :<=, 3
     assert_equal [data["active_shown"], data["active_total"]].min, data["active_shown"]
+  end
+
+  def with_lock_visibility_fixture
+    saved_home = @home
+    @home = Dir.mktmpdir("plastic-dash-lock-visibility")
+    demo = File.join(@home, "projects", "demo", "store")
+    FileUtils.mkdir_p(demo)
+    FileUtils.mkdir_p(File.join(@home, "store"))
+    File.write(File.join(@home, "projects.yml"),
+               "---\nprojects:\n  demo:\n    path: \"/tmp/demo-locks\"\n    status: active\n")
+    File.write(File.join(@home, "INDEX.md"), "# Index\n## Active\n## Future\n## Clusters\n## Abandoned\n## Completed\n")
+
+    fixtures = {
+      "c" => ["claude-owner", "Claude enriched"],
+      "x" => ["codex-owner", "Codex enriched"],
+      "l" => ["legacy", "Legacy lock"],
+      "s" => ["stale", "Stale lock"],
+      "b" => ["broken", "Corrupt lock"],
+      "n" => ["none", "No lock"],
+    }
+    fixtures.each do |id, (slug, title)|
+      write_intent(demo, id, slug,
+                   { id: id, intent: title, author: "agent", tags: %w[demo], created: "2026-06-01" })
+    end
+
+    # Give three lock-state rows distinct lifecycle depths so this same fixture
+    # proves worker projection never disturbs finish-first ordering.
+    File.write(File.join(demo, "c--claude-owner", "spec.md"), "s")
+    File.write(File.join(demo, "c--claude-owner", "plan.md"), "p")
+    File.write(File.join(demo, "c--claude-owner", "checklist.md"), "- [ ] x\n")
+    File.write(File.join(demo, "x--codex-owner", "spec.md"), "s")
+    File.write(File.join(demo, "x--codex-owner", "plan.md"), "p")
+    File.write(File.join(demo, "l--legacy", "spec.md"), "s")
+    write_intent(demo, "f", "future-work",
+                 { id: "f", intent: "Future work", author: "agent", tags: %w[demo bugfix], created: "2026-06-01" })
+
+    now = Time.now
+    claude_dir = File.join(demo, "c--claude-owner")
+    Lock.acquire(claude_dir, session: "claude-session", harness: "claude",
+                 agent: "plastic-enforcer", now: now)
+    Claim.acquire_claim(claude_dir, "spec.md", session: "claude-session",
+                        delegate: "writer-session", now: now)
+    Lock.acquire(File.join(demo, "x--codex-owner"), session: "codex-session",
+                 harness: "codex", agent: "plastic-planner", now: now)
+    legacy_dir = File.join(demo, "l--legacy")
+    File.write(File.join(legacy_dir, "delivery.lock"), JSON.generate(
+      "type" => "delivery", "owner_session" => "legacy-session", "host" => "test",
+      "acquired_at" => now.utc.iso8601, "delegates" => []
+    ))
+    stale_dir = File.join(demo, "s--stale")
+    Lock.acquire(stale_dir, session: "stale-session", harness: "codex",
+                 agent: "plastic-executor", now: now - Lock::TTL_SECONDS - 60)
+    File.utime(now - Lock::TTL_SECONDS - 60, now - Lock::TTL_SECONDS - 60,
+               File.join(stale_dir, "delivery.lock"))
+    File.write(File.join(demo, "b--broken", "delivery.lock"), "not json")
+
+    active_lines = fixtures.map do |id, (slug, title)|
+      "- [#{id} - #{title}](store/#{id}--#{slug}/#{id}--#{slug}.md)"
+    end
+    File.write(File.join(@home, "projects", "demo", "INDEX.md"),
+               "# Index\n## Active\n#{active_lines.join("\n")}\n## Future\n" \
+               "- [f - Future work](store/f--future-work/f--future-work.md)\n" \
+               "## Clusters\n## Abandoned\n## Completed\n")
+    yield
+  ensure
+    FileUtils.remove_entry(@home) if @home && File.directory?(@home)
+    @home = saved_home
+  end
+
+  def test_project_active_rows_show_worker_and_durable_activity_states
+    with_lock_visibility_fixture do
+      out, status = run_dash("project", "demo", "--data", "--all")
+      assert_equal 0, status
+      rows = JSON.parse(out)["active"].to_h { |row| [row["id"], row] }
+      assert_equal "plastic-enforcer · Claude", rows["c"]["worker"]
+      assert_equal "Fresh · writer writer-session", rows["c"]["activity"]
+      assert_equal "plastic-planner · Codex", rows["x"]["worker"]
+      assert_equal "Fresh", rows["x"]["activity"]
+      assert_equal "Unknown · Unknown", rows["l"]["worker"]
+      assert_equal "Fresh", rows["l"]["activity"]
+      assert_equal "plastic-executor · Codex", rows["s"]["worker"]
+      assert_equal "Stale", rows["s"]["activity"]
+      assert_equal "Unknown · Unknown", rows["b"]["worker"]
+      assert_equal "Corrupt", rows["b"]["activity"]
+      assert_equal "Unknown · Unknown", rows["n"]["worker"]
+      assert_equal "No lock", rows["n"]["activity"]
+    end
+  end
+
+  def test_plain_project_includes_worker_and_activity_without_changing_caps
+    with_lock_visibility_fixture do
+      out, status = run_dash("project", "demo", "--plain")
+      assert_equal 0, status
+      assert_includes out, "plastic-enforcer · Claude · Fresh · writer writer-session"
+      assert_includes out, "Unknown · Unknown · No lock"
+      assert_equal 6, out.lines.count { |line| line.start_with?(STATUS_GLYPH["active"]) }
+    end
+  end
+
+  def test_lock_visibility_preserves_default_cap_finish_first_totals_and_next_work
+    with_lock_visibility_fixture do
+      out, status = run_dash("project", "demo", "--data")
+      assert_equal 0, status
+      data = JSON.parse(out)
+      assert_equal %w[c x l], data["active"].map { |row| row["id"] }
+      assert_equal 3, data["active_shown"]
+      assert_equal 6, data["active_total"]
+      assert_equal ["f"], data["next_work"].map { |row| row["id"] }
+      assert_equal 1, data["next_shown"]
+      assert_equal 1, data["next_total"]
+      refute data["next_work"].first.key?("worker")
+      refute data["next_work"].first.key?("activity")
+    end
+  end
+
+  def test_lock_visibility_preserves_limit_active_and_all_paging
+    with_lock_visibility_fixture do
+      limited, = run_dash("project", "demo", "--data", "--limit-active", "2")
+      limited_data = JSON.parse(limited)
+      assert_equal %w[c x], limited_data["active"].map { |row| row["id"] }
+      assert_equal 2, limited_data["active_shown"]
+      assert_equal 6, limited_data["active_total"]
+
+      all, = run_dash("project", "demo", "--data", "--all")
+      all_data = JSON.parse(all)
+      assert_equal %w[c x l b n s], all_data["active"].map { |row| row["id"] }
+      assert_equal 6, all_data["active_shown"]
+      assert_equal 6, all_data["active_total"]
+    end
+  end
+
+  def test_worker_fields_do_not_leak_to_global_data_or_auto_json
+    with_lock_visibility_fixture do
+      global, = run_dash("continue", "--data")
+      auto, = run_dash("project", "demo", "--json")
+      [JSON.parse(global), JSON.parse(auto)].each do |payload|
+        serialized = JSON.generate(payload)
+        refute_includes serialized, '"worker"'
+        refute_includes serialized, '"activity"'
+        refute_includes serialized, '"intent_dir"'
+      end
+    end
+  end
+
+  def test_internal_intent_dir_never_leaks_from_project_surfaces
+    with_lock_visibility_fixture do
+      data, = run_dash("project", "demo", "--data", "--all")
+      plain, = run_dash("project", "demo", "--plain")
+      terminal, = run_dash("project", "demo")
+      [data, plain, terminal].each do |surface|
+        refute_includes surface, "intent_dir"
+        refute_includes surface, @home
+      end
+    end
+  end
+
+  def test_project_markdown_mechanical_fill_renders_five_active_columns_and_values
+    with_lock_visibility_fixture do
+      out, = run_dash("project", "demo", "--data")
+      data = JSON.parse(out)
+      template = File.read(File.expand_path("../skills/dashboard/templates/dashboard-project.md", __dir__))
+      rows = data["active"].map do |row|
+        "| #{row['id']} | #{row['what']} | #{row['stage']} | #{row['worker']} | #{row['activity']} |"
+      end.join("\n")
+      markdown = template.gsub("{{slug}}", data["slug"])
+                         .gsub("{{date}}", data["date"])
+                         .gsub("{{summary}}", data["summary"])
+                         .gsub("{{active.rows}}", rows)
+      assert_includes markdown, "| Id | What | Stage | Worker | Activity |"
+      assert_includes markdown, "| c | Claude enriched | Exec | plastic-enforcer · Claude | Fresh · writer writer-session |"
+      assert_includes markdown, "| x | Codex enriched | How | plastic-planner · Codex | Fresh |"
+      markdown.lines.grep(/^\| [cxl] \|/).each do |line|
+        assert_equal 6, line.count("|"), "expected exactly five Markdown cells: #{line.inspect}"
+      end
+    end
+  end
+
+  def test_project_render_uses_one_fixed_clock_at_the_ttl_boundary
+    fixed_now = Time.utc(2026, 7, 14, 12, 0, 0)
+    Dir.mktmpdir("plastic-dash-lock-clock") do |root|
+      records = %w[a b].map do |id|
+        dir = File.join(root, id)
+        FileUtils.mkdir_p(dir)
+        Lock.acquire(dir, session: "session-#{id}", harness: "codex",
+                     agent: "plastic-enforcer", now: fixed_now)
+        boundary = fixed_now - Lock::TTL_SECONDS
+        File.utime(boundary, boundary, File.join(dir, "delivery.lock"))
+        { id: id, intent: "Boundary #{id}", created: "2026-07-14", scope: "project:clock",
+          status: "active", lifecycle: "exec", last_accessed_at: "", intent_dir: dir }
+      end
+
+      payload = render_data_project(records, "clock", all: true, now: fixed_now)
+      assert_equal %w[Fresh Fresh], payload[:active].map { |row| row[:activity] }
+    end
+  end
+
+  def test_plain_worker_values_normalize_hostile_lock_metadata
+    with_lock_visibility_fixture do
+      dir = File.join(@home, "projects", "demo", "store", "c--claude-owner")
+      lock = Lock.read(dir)
+      lock["owner_agent"] = "\e[31mbad\e[0m\nline\t| " + ("A" * 200)
+      Lock.write(dir, lock)
+      claim_path = Claim.path(dir, "spec.md")
+      claim = JSON.parse(File.read(claim_path))
+      claim["delegate"] = "\e[32mwriter\e[0m\r\n| " + ("W" * 200)
+      File.write(claim_path, JSON.generate(claim))
+
+      data_out, = run_dash("project", "demo", "--data", "--all")
+      row = JSON.parse(data_out)["active"].find { |item| item["id"] == "c" }
+      assert_operator row["worker"].length, :<=, INTENT_LINE_MAX_CHARS + 1
+      assert_operator row["activity"].length, :<=, INTENT_LINE_MAX_CHARS + 1
+      refute_match(/\e|[\r\n\t]/, row["worker"])
+      refute_match(/\e|[\r\n\t]/, row["activity"])
+      assert_includes row["worker"], "bad line \\|"
+      assert_includes row["activity"], "writer \\|"
+
+      plain, = run_dash("project", "demo", "--plain")
+      active_line = plain.lines.find { |line| line.start_with?(STATUS_GLYPH["active"] + " c ") }
+      refute_nil active_line
+      refute_match(/\e|[\r\t]/, active_line)
+      assert_equal 1, plain.lines.count { |line| line.include?("bad line \\|") }
+      assert_includes active_line, "writer \\|"
+    end
+  end
+
+  def test_project_markdown_template_has_worker_and_activity_columns
+    template = File.read(File.expand_path("../skills/dashboard/templates/dashboard-project.md", __dir__))
+    assert_includes template, "| Id | What | Stage | Worker | Activity |"
+    assert_includes template, "| --- | --- | --- | --- | --- |"
+
+    contract = File.read(File.expand_path("../skills/dashboard/SKILL.md", __dir__))
+    assert_includes contract, "| {id} | {what} | {stage} | {worker} | {activity} |"
+    assert_includes contract, "| _(none)_ | | | |"
   end
 
   def test_cell_escapes_pipe_in_intent

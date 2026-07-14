@@ -81,6 +81,13 @@ account therefore always exists: agent-authored when present, deterministically 
 otherwise. This structures the finish notification only; in-flight observations stay in
 `## Insights`, no progress chatter is added.
 
+Immediately after a specialist returns and before the next handoff, the enforcer records the
+delegate's activity through `plastic-lock delegate --intent-dir <intent-dir> --delegate <id>
+--status finished|failed`. `finished` requires a usable agent-authored or synthesized completion
+report. A blocked or errored return, or one with no report that can be synthesized, is `failed`
+and stops the handoff under the normal error procedure. Activity status is descriptive and does
+not revoke the registered delegate's authorization.
+
 ### Gate Ownership
 
 The enforcer arms and verifies the lifecycle gate, then gates every stage transition.

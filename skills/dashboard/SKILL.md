@@ -42,8 +42,10 @@ and `footer` are finished prose strings (2-3 sentences and one line respectively
 are - never re-worded or re-derived by the skill. Each list carries cell-ready fields for
 its table: `next_work` rows are
 `{id, intent, scope, lifecycle, value, disposition, flags, what, flags_label, line}`;
-`active` rows carry `{id, intent, created, bullet, scope, what, stage, line}`. The `what`,
-`scope`, and `flags_label` cell fields arrive pipe-escaped and whitespace-normalized.
+`active` rows carry
+`{id, intent, created, bullet, scope, what, stage, worker, activity, line}`. The `what`,
+`scope`, `worker`, `activity`, and `flags_label` cell fields arrive pipe-escaped and
+whitespace-normalized.
 
 Each board load runs the scoped store check (`doctor --store <scope>`): the global board runs
 `--store global` and a project board runs `--store <slug>`. The result rides in the payload as
@@ -67,10 +69,10 @@ Fill mechanically, no rewriting, no re-sorting:
   and whitespace-normalized from the script (pipes escaped as `\|`), so never re-escape,
   re-truncate, or reword them. Never emit `<br>`.
   - `next_work` → `| {id} | {what} | {value} | {disposition} | {flags_label} |`
-  - `active` → `| {id} | {what} | {stage} |`
+  - `active` → `| {id} | {what} | {stage} | {worker} | {activity} |`
   Empty list → one full-width row with `_(none)_` in the Id column and every other cell blank,
   matching that table's column count (e.g. `| _(none)_ | | | | |` for the 5-column next_work
-  table, `| _(none)_ | |` for the 3-column active table). Neither list carries an overflow
+  table, `| _(none)_ | | | |` for the 5-column active table). Neither list carries an overflow
   "+N more" row anymore (D5, intent 202): the true pool size rides on the payload as
   `active_total`/`next_total` (shown counts as `active_shown`/`next_shown`), and `{{footer}}`
   states it in prose instead.

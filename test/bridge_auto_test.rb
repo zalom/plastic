@@ -35,7 +35,7 @@ class BridgeAutoTest < Minitest::Test
     Worktree.define_singleton_method(:release, @real_release) if @real_release
   end
 
-  def arm(harness: :claude)
+  def arm(harness: nil)
     Bridge.arm_auto(@session, intent_id: "27", intent_dir: @intent_dir, store: @store,
                     name: "demo", harness: harness)
   end
@@ -53,6 +53,8 @@ class BridgeAutoTest < Minitest::Test
     assert File.exist?(Bridge.path(@session, intent_id: "27"))
     # persisted
     assert_equal true, Bridge.read(@session, intent_id: "27")["build"]["auto"]
+    assert_nil Lock.read(@intent_dir)["owner_harness"]
+    assert_nil Lock.read(@intent_dir)["owner_agent"]
   end
 
   def test_disarm_auto
@@ -140,6 +142,23 @@ class BridgeAutoTest < Minitest::Test
     # intent dir with the same owner (the file is the truth, D2)
     assert_equal @session, Bridge.read(@session, intent_id: "27")["lock"]["owner_session"]
     assert_equal @session, Lock.read(@intent_dir)["owner_session"]
+  end
+
+  def test_codex_boarding_records_enforcer_harness_thread_and_mode
+    data = Bridge.arm_auto(@session, intent_id: "27", intent_dir: @intent_dir,
+                           store: @store, name: "demo", harness: :codex,
+                           agent: "plastic-enforcer", model: "gpt-5", thread: "thread-27")
+    expected = {
+      "owner_harness" => "codex",
+      "owner_agent" => "plastic-enforcer",
+      "owner_model" => "gpt-5",
+      "owner_thread" => "thread-27",
+      "run_mode" => "auto",
+    }
+    expected.each do |field, value|
+      assert_equal value, Lock.read(@intent_dir)[field]
+      assert_equal value, data.dig("lock", field)
+    end
   end
 
   def test_arm_auto_raises_lock_held_when_another_session_owns_the_lock
