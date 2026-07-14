@@ -137,4 +137,41 @@ class LinksProjectionTest < Minitest::Test
     # Sources win: it appears once, with no duplicate chain entry.
     assert_equal "## Links\n- [[40--store-graph|Build the store graph]]\n", text
   end
+
+  # --- ACTION_1 (intent 192): parse_entries / render_entries ---
+
+  def test_parse_entries_extracts_target_and_label_in_order
+    text = "## Links\n- [[10--a|A intent]]\n- [[knowdb:1--b|B intent]]\n"
+    assert_equal(
+      [{ target: "10--a", label: "A intent" }, { target: "knowdb:1--b", label: "B intent" }],
+      LinksProjection.parse_entries(text)
+    )
+  end
+
+  def test_parse_entries_ignores_heading_and_empty_state_comment
+    assert_equal [], LinksProjection.parse_entries(LinksProjection.empty_section)
+  end
+
+  def test_parse_entries_ignores_non_entry_lines
+    assert_equal [], LinksProjection.parse_entries("## Links\nsome stray prose\n")
+  end
+
+  def test_render_entries_falls_back_to_empty_section_when_given_nothing
+    assert_equal LinksProjection.empty_section, LinksProjection.render_entries([])
+    assert_equal LinksProjection.empty_section, LinksProjection.render_entries(nil)
+  end
+
+  def test_render_entries_matches_entry_line_shape
+    text = LinksProjection.render_entries([{ target: "10--a", label: "A intent" }])
+    assert_equal "## Links\n- [[10--a|A intent]]\n", text
+  end
+
+  # Round-trip: parsing #section's own output and re-rendering it must reproduce
+  # the identical text (this is what lets project-links safely merge preserved
+  # orphan entries onto a freshly-computed canonical section).
+  def test_parse_then_render_entries_round_trips_section_output
+    text = LinksProjection.section(sources: %w[40 60], chain: ["knowdb:1"], resolve: resolver)
+    round_tripped = LinksProjection.render_entries(LinksProjection.parse_entries(text))
+    assert_equal text, round_tripped
+  end
 end

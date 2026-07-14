@@ -158,4 +158,22 @@ class DoctorLinksProjectionTest < Minitest::Test
     assert_equal "warn", check[:status]
     assert(check[:details].any? { |d| d.start_with?("7 ## Links") })
   end
+
+  # ACTION_1 (intent 192): the fix_hint must no longer read as an unconditional
+  # "regenerate" instruction; it must name the default-preserving behavior and
+  # the opt-in flag, since running project-links used to be able to destroy an
+  # unbacked-but-resolvable line (the dealintell 15 bug this intent fixes).
+  def test_fix_hint_names_the_preserving_default_and_the_opt_in_flag
+    seed_targets
+    write_intent(plastic_store, "5--child", id: "5", intent: "Child",
+                 sources: ["40"], chain: [],
+                 links: "## Links\n<!-- Retroactive (intent 60b): heading only. -->\n")
+
+    check = links_check
+    refute_equal "Run scripts/project-links to regenerate the canonical ## Links sections",
+                 check[:fix_hint],
+                 "the fix_hint must no longer promise unconditional destructive regeneration"
+    assert_includes check[:fix_hint], "--drop-unbacked-links"
+    assert_includes check[:fix_hint], "PRESERVES"
+  end
 end

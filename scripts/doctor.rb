@@ -810,7 +810,11 @@ class Doctor
     graph_finding_check(
       "graph_links_projection", findings,
       "Every intent's ## Links equals its frontmatter projection (membership and ordering)",
-      "Run scripts/project-links to regenerate the canonical ## Links sections"
+      "Run scripts/project-links to regenerate the canonical ## Links sections. By default " \
+      "it PRESERVES any line unbacked by frontmatter that still resolves to a real intent " \
+      "(reported as an orphan candidate, never silently deleted); add the missing " \
+      "sources/chain edge if the relationship is real, or pass --drop-unbacked-links to " \
+      "delete an orphan candidate deliberately."
     )
   end
 
