@@ -24,6 +24,27 @@ require "time"
 module Lock
   module_function
 
+  # Skill-invocation prefix per harness (intent 201, D2/D3). Claude Code invokes a
+  # skill with a slash (/plastic-doctor); Codex CLI invokes explicitly with a
+  # dollar ($plastic-doctor) and may also select one implicitly by matching the
+  # skill's description. This table is the actual source of truth for
+  # Bridge.skill_ref (bridge.rb requires lock.rb, never the reverse, so the
+  # table lives here rather than pulling Bridge into this dependency-free file
+  # just to render two characters). InstallerCore::DEFAULT_AGENTS carries the
+  # same values per adapter as documented config (see ACTION_2); this constant
+  # is not read from it at runtime, by the same reasoning bridge.rb/hook-*
+  # already stay clear of installer_core.rb (spec Alternatives Considered).
+  SKILL_PREFIXES = { "claude" => "/", "codex" => "$" }.freeze
+
+  # Renders a skill reference for the given harness. Unset or unrecognized
+  # harness falls back to Claude's slash form, so an existing call site that
+  # never passes harness: keeps behaving exactly as it does today (D2). name
+  # is the bare skill name ("plastic-doctor"), never pre-prefixed.
+  def self.skill_ref(name, harness: :claude)
+    prefix = SKILL_PREFIXES.fetch(harness.to_s, SKILL_PREFIXES["claude"])
+    "#{prefix}#{name}"
+  end
+
   TYPES = %w[delivery maintenance].freeze
 
   # Lease TTL. Heartbeats fire from the write-path hooks (PostToolUse
@@ -359,7 +380,8 @@ module Claim
   # ENGAGES only when a claim file exists (dormant otherwise, so single-owner flows
   # and the existing suite stay green, AC7). Fails open on stale/corrupt via
   # fail_open?, the named contract.
-  def claim_gate_reason(intent_dir, artifact, session:, ttl: Lock::TTL_SECONDS, now: Time.now)
+  def claim_gate_reason(intent_dir, artifact, session:, ttl: Lock::TTL_SECONDS, now: Time.now,
+                        harness: :claude)
     return nil if Lock.blank?(artifact)
     return nil unless File.exist?(path(intent_dir, artifact))   # dormant: no claim
     return nil if holds_claim?(intent_dir, artifact, session: session)  # you hold it
@@ -368,8 +390,8 @@ module Claim
     holder = data && data["owner_session"]
     since = data && data["acquired_at"]
     "artifact #{artifact} is claimed by #{holder} since #{since}; another writer holds " \
-      "it. Back off or run /plastic-doctor check the lock status. If you are a distinct " \
-      "delegate, the owner must register you: plastic-lock delegate --intent-dir " \
-      "#{intent_dir} --session <your-session-id>"
+      "it. Back off or run #{Lock.skill_ref('plastic-doctor', harness: harness)} check the " \
+      "lock status. If you are a distinct delegate, the owner must register you: " \
+      "plastic-lock delegate --intent-dir #{intent_dir} --session <your-session-id>"
   end
 end

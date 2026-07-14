@@ -17,9 +17,10 @@ class InstallerCore
   DEFAULT_PLASTIC_HOME = File.join(Dir.home, ".plastic")
 
   DEFAULT_AGENTS = [
-    { key: "claude", name: "Claude Code", dir: File.join(Dir.home, ".claude"), flag: "--claude" },
+    { key: "claude", name: "Claude Code", dir: File.join(Dir.home, ".claude"), flag: "--claude",
+      skill_prefix: "/" },
     { key: "codex", name: "Codex CLI", dir: File.join(Dir.home, ".agents"),
-      home_dir: File.join(Dir.home, ".codex"), flag: "--codex" },
+      home_dir: File.join(Dir.home, ".codex"), flag: "--codex", skill_prefix: "$" },
     { key: "hermes", name: "Hermes", dir: File.join(Dir.home, ".hermes"), flag: "--hermes" },
   ].freeze
 
@@ -43,7 +44,8 @@ class InstallerCore
     - The full conventions live in ~/.plastic/PLASTIC.md. Read it and follow it exactly.
       It is generated and overwritten on Plastic updates, so never edit it.
     - Operational procedures are installed as skills under ~/.agents/skills/ (each
-      plastic-<name>/SKILL.md). Use them for the lifecycle work they describe.
+      plastic-<name>/SKILL.md). Invoke one explicitly as $plastic-<name> (for example
+      $plastic-doctor), or let Codex pick one implicitly by matching its description.
     - Intents, specs, plans, checklists, and outcomes live under ~/.plastic/, never in
       the project tree.
 

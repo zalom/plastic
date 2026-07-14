@@ -37,6 +37,14 @@ class ClaimGateTest < Minitest::Test
     assert_includes reason, "/plastic-doctor check the lock status"
   end
 
+  def test_denies_fresh_foreign_claim_names_dollar_prefix_for_codex_harness
+    Claim.acquire_claim(@dir, "plan.md", session: "sess-a", now: @t0)
+    reason = Claim.claim_gate_reason(@dir, "plan.md", session: "sess-b", now: @t0, harness: :codex)
+    refute_nil reason
+    assert_includes reason, "$plastic-doctor check the lock status"
+    refute_includes reason, "/plastic-doctor"
+  end
+
   def test_denies_same_session_when_another_holds_via_delegate
     Claim.acquire_claim(@dir, "plan.md", session: "sess-a", delegate: "d1", now: @t0)
     reason = Claim.claim_gate_reason(@dir, "plan.md", session: "sess-c", now: @t0)

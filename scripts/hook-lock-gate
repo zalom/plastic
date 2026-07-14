@@ -2,7 +2,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 #
-# Usage: hook-lock-gate <file_path> [session_id]
+# Usage: hook-lock-gate <file_path> [session_id] [harness]
 # Fail-CLOSED PreToolUse gate (intent 96). Blocks a mutating write to an active
 # intent's lifecycle dir when THIS session holds no live lock. Project code is NOT
 # gated here (D2). Emits the PreToolUse JSON deny contract at exit 0; reserves
@@ -16,9 +16,14 @@ begin
   file_path = ARGV[0]
   exit 0 unless file_path && !file_path.empty?
   session = (ARGV[1] unless ARGV[1].to_s.empty?) || ENV["CLAUDE_CODE_SESSION_ID"]
+  # Usage: hook-lock-gate <file_path> [session_id] [harness]. Claude's own bash
+  # shim never passes a third arg, so harness falls through to Lock's default
+  # (claude, slash form); scripts/codex-hook is the only caller that passes
+  # "codex" here (intent 201 D2).
+  harness = (ARGV[2] unless ARGV[2].to_s.empty?) || "claude"
 
   bridge_data = Bridge.discover_bridge(session: session, cwd: Dir.pwd)   # nil = no bridge cache
-  reason = Bridge.lock_gate_decision(bridge_data, file_path, session: session)
+  reason = Bridge.lock_gate_decision(bridge_data, file_path, session: session, harness: harness)
   unless reason
     # Allow path: refresh the lease for the session that holds this target's
     # lock (owner or delegate). Best-effort, never blocks.
@@ -37,7 +42,7 @@ begin
       dir = Bridge.intent_dir_for(file_path)
       artifact = File.basename(file_path) if dir
       if dir && artifact
-        claim_reason = Claim.claim_gate_reason(dir, artifact, session: session)
+        claim_reason = Claim.claim_gate_reason(dir, artifact, session: session, harness: harness)
         if claim_reason
           print JSON.generate(
             "hookSpecificOutput" => {
