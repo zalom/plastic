@@ -1,5 +1,6 @@
 require "minitest/autorun"
 require "json"
+require "tmpdir"
 
 # Hermeticity guard (intent 108; validates 73c1a). The 107/110 incidents:
 # a bridge test writing with the ambient real session id clobbered the live
@@ -16,9 +17,8 @@ require "json"
 class HermeticityGuardTest < Minitest::Test
   WRITERS = /Bridge\.(arm_auto|arm_guided|derive|write|disarm_auto|repair_lock)\b/.freeze
   ISOLATION = /PLASTIC_TMP|tmp:\s|Dir\.mktmpdir/.freeze
-  LOCK_VISIBILITY_PATHS = %w[
+  LOCK_VISIBILITY_ROOTS = %w[
     scripts/lib/lock.rb
-    scripts/lib/bridge.rb
     scripts/plastic-lock
     scripts/dashboard.rb
   ].freeze
@@ -34,6 +34,50 @@ class HermeticityGuardTest < Minitest::Test
     markers << ".codex/sessions" if compact.match?(/\.codex[^[:alnum:]_]{0,24}sessions/)
     markers << "rollout-" if source.include?("rollout-")
     markers
+  end
+
+  def local_dependency_closure(root, roots)
+    root = File.expand_path(root)
+    root_prefix = "#{root}#{File::SEPARATOR}"
+    pending = roots.map { |path| File.expand_path(path, root) }
+    visited = {}
+
+    until pending.empty?
+      path = pending.shift
+      next unless path.start_with?(root_prefix) && File.file?(path)
+      next if visited[path]
+
+      visited[path] = true
+      File.read(path).scan(/require_relative\s*(?:\(\s*)?["']([^"']+)["']/).flatten.each do |relative|
+        candidate = File.expand_path(relative, File.dirname(path))
+        candidate = "#{candidate}.rb" unless File.file?(candidate)
+        pending << candidate if candidate.start_with?(root_prefix) && File.file?(candidate)
+      end
+    end
+
+    visited.keys.sort
+  end
+
+  def test_lock_visibility_dependency_closure_follows_local_helpers
+    root = File.expand_path("..", __dir__)
+    relative_paths = local_dependency_closure(root, LOCK_VISIBILITY_ROOTS)
+      .map { |path| path.delete_prefix("#{root}#{File::SEPARATOR}") }
+
+    %w[scripts/lib/bridge.rb scripts/lib/worktree.rb scripts/doctor.rb].each do |expected|
+      assert_includes relative_paths, expected
+    end
+  end
+
+  def test_lock_visibility_dependency_closure_cannot_escape_project_root
+    Dir.mktmpdir("lock-visibility-closure") do |parent|
+      root = File.join(parent, "project")
+      Dir.mkdir(root)
+      File.write(File.join(parent, "outside.rb"), "TRANSCRIPT_LOOKUP = true\n")
+      File.write(File.join(root, "entry.rb"), "require_relative '../outside'\n")
+      closure = local_dependency_closure(root, ["entry.rb", "../outside.rb"])
+
+      assert_equal [File.join(root, "entry.rb")], closure
+    end
   end
 
   def test_transcript_lookup_detection_catches_contiguous_paths
@@ -58,9 +102,9 @@ class HermeticityGuardTest < Minitest::Test
 
   def test_lock_visibility_does_not_search_ambient_transcript_stores
     root = File.expand_path("..", __dir__)
-    offenders = LOCK_VISIBILITY_PATHS.flat_map do |relative_path|
-      source = File.read(File.join(root, relative_path))
-      transcript_lookup_markers(source).map { |marker| "#{relative_path}: #{marker}" }
+    offenders = local_dependency_closure(root, LOCK_VISIBILITY_ROOTS).flat_map do |path|
+      relative_path = path.delete_prefix("#{root}#{File::SEPARATOR}")
+      transcript_lookup_markers(File.read(path)).map { |marker| "#{relative_path}: #{marker}" }
     end
 
     assert_empty offenders,
