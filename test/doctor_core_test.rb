@@ -394,6 +394,89 @@ class DoctorAgentModelDriftTest < Minitest::Test
       "check_core_files must include the agent_model_drift check"
   end
 
+  def test_consultation_agent_with_shipped_default_never_flagged_as_drift
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-advisor", model: "fable")
+    # No config.yml -> no override configured for plastic-advisor.
+
+    checks = doctor.check_agent_model_drift("claude")
+    drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+    refute_nil drift_check
+    assert_equal "pass", drift_check[:status],
+      "a consultation agent must never be flagged as drift; its model is user configuration"
+    assert drift_check[:details].any? { |d| d.include?("plastic-advisor") && d.include?("consultation") },
+      "expected plastic-advisor to be listed informationally as a consultation role, got: #{drift_check[:details].inspect}"
+  end
+
+  def test_consultation_agent_model_change_is_still_not_flagged_as_drift
+    # plastic-advisor ships fable by default; installing it with a DIFFERENT
+    # model and no override must still never be treated as drift, because
+    # bucket 3 never compares a consultation agent's frontmatter to anything.
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-advisor", model: "opus")
+
+    checks = doctor.check_agent_model_drift("claude")
+    drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+    assert_equal "pass", drift_check[:status]
+    refute drift_check[:details].any? { |d| d.include?("resolved default") },
+      "a consultation agent must never be compared against a resolved default"
+  end
+
+  def test_unclassified_agent_warns_naming_agent_models_rb
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-not-a-real-role", model: "sonnet")
+    # No config.yml -> no override; basename is in neither registry.
+
+    checks = doctor.check_agent_model_drift("claude")
+    drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+    refute_nil drift_check
+    assert_equal "warn", drift_check[:status]
+    assert drift_check[:details].any? { |d| d.include?("plastic-not-a-real-role") && d.include?("agent_models.rb") },
+      "expected an actionable unclassified message naming agent_models.rb, got: #{drift_check[:details].inspect}"
+  end
+
+  def test_unclassified_agent_silenced_by_explicit_override
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-not-a-real-role", model: "sonnet")
+    write_global_config("plastic-not-a-real-role" => "sonnet")
+
+    checks = doctor.check_agent_model_drift("claude")
+    drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+    assert_equal "pass", drift_check[:status],
+      "an explicit agents.models.<name> override must silence the unclassified warning too"
+    assert drift_check[:details].any? { |d| d.include?("plastic-not-a-real-role") && d.include?("sanctioned override") }
+  end
+
+  # End-to-end regression proof (intent 191): the REAL shipped agents/*.md
+  # roster, with no config.yml override, must produce zero drift and zero
+  # unclassified entries through the actual check_agent_model_drift code
+  # path, not a synthetic fixture. This is the direct proof that today's
+  # false positive (both advisors reported as drift) is gone and cannot
+  # silently come back.
+  def test_real_shipped_agent_roster_has_zero_drift_and_zero_unclassified
+    worktree = File.expand_path("../../", __FILE__)
+    real_home = Dir.mktmpdir("plastic-doctor-real-roster")
+    begin
+      real_doctor = Doctor.new(
+        plastic_home: real_home,
+        agents: { "claude" => { name: "Claude Code", dir: worktree } }
+      )
+      # No config.yml in real_home -> no overrides configured for anything.
+
+      checks = real_doctor.check_agent_model_drift("claude")
+      drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+      refute_nil drift_check
+      assert_equal "pass", drift_check[:status],
+        "the real shipped agents/*.md roster must classify cleanly with no config overrides: " \
+        "#{drift_check[:message]} #{drift_check[:details].inspect}"
+      refute drift_check[:details].any? { |d| d.include?("resolved default=nil") },
+        "no agent should ever be reported with a nil resolved default"
+    ensure
+      FileUtils.rm_rf(real_home)
+    end
+  end
+
   private
 
   def build_core_files_for_drift

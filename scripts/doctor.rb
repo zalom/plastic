@@ -1493,25 +1493,51 @@ class Doctor
   end
 
   # agent_model_drift - advisory (never fail) config-vs-frontmatter comparison
-  # for every installed <agent_dir>/agents/plastic-*.md file (intent 170, D1).
-  # Resolution mirrors read-config's own precedence (project override -> global
-  # override -> shipped AgentModels::TIER_DEFAULTS), reusing AgentModels'
-  # `override_map` directly so this stays hermetically DI-testable (no
-  # shell-out to `read-config`, no ENV/global seam). There is no live project
-  # scope at doctor-run time for a globally-installed agent file, so the
-  # project layer is empty here; the resolver still supports one, matching the
-  # same `override_map(project_config:, global_config:)` shape the installer
-  # already calls.
+  # for every installed <agent_dir>/agents/plastic-*.md file (intent 170, D1;
+  # reclassified intent 191). Resolution mirrors read-config's own precedence
+  # (project override -> global override -> shipped AgentModels::TIER_DEFAULTS),
+  # reusing AgentModels' `override_map` directly so this stays hermetically
+  # DI-testable (no shell-out to `read-config`, no ENV/global seam). There is
+  # no live project scope at doctor-run time for a globally-installed agent
+  # file, so the project layer is empty here; the resolver still supports one,
+  # matching the same `override_map(project_config:, global_config:)` shape
+  # the installer already calls.
   #
-  # Classification per installed agent basename:
-  #   - no `agents.models.<basename>` override AND frontmatter == resolved
-  #     default -> pass (clean)
-  #   - no override AND frontmatter != resolved default -> warn (real drift)
-  #   - an override IS configured -> pass/informational, LISTED as a
-  #     sanctioned override, regardless of whether frontmatter matches (that
-  #     mismatch is the override working, e.g. `plastic-brainstorming: fable`)
+  # This check deliberately never diffs installed frontmatter against the
+  # shipped agents/*.md source tree directly (considered and rejected, intent
+  # 191): at real doctor run time doctor.rb lives at ~/.plastic/scripts/doctor.rb,
+  # and the installer copies only scripts/ into ~/.plastic, never the agents/
+  # tree, so a "compare against shipped frontmatter" check would find nothing
+  # in the field and pass silently on every real installation while only ever
+  # exercising itself inside the repo, the same dead-in-production shape
+  # already documented above check_skill_lint. The only registry of sanctioned
+  # defaults reachable at doctor run time is scripts/lib/agent_models.rb (it
+  # IS copied into ~/.plastic/scripts/lib), so this check classifies each
+  # installed basename using ONLY the two registries that module already
+  # ships, TIER_DEFAULTS and CONSULTATION_AGENTS. No new model values are
+  # added anywhere.
+  #
+  # Classification per installed agent basename, checked in this order:
+  #   1. an `agents.models.<basename>` override IS configured -> sanctioned,
+  #      pass/informational, LISTED regardless of whether frontmatter matches
+  #      (that mismatch is the override working, e.g. plastic-brainstorming: fable).
+  #   2. no override AND basename is a TIER_DEFAULTS key -> compare frontmatter
+  #      to that default; match is pass (clean), mismatch is real drift (warn).
+  #   3. no override AND basename is a CONSULTATION_AGENTS member -> not a
+  #      lifecycle stage role (intent 185); its model is user configuration by
+  #      contract (PLASTIC.md: "their models are user configuration"), so this
+  #      check does not compare and does not warn, it only lists the agent
+  #      informationally as a consultation role.
+  #   4. no override AND basename is in NEITHER registry -> unclassified. This
+  #      check has no ground truth for this agent, so it does not claim
+  #      "drift vs default nil" (that claim would be false); it reports,
+  #      advisory warn, that the agent is present in the installed agents dir
+  #      but absent from both registries in scripts/lib/agent_models.rb, and
+  #      names that file as the place to add it. Setting an
+  #      agents.models.<basename> override also silences this line, by
+  #      routing the agent through bucket 1.
   #   - zero installed agent files -> pass (nothing to check)
-  # This check never returns "fail".
+  # This check never returns "fail" (bucket 4 is an advisory warn, not a fail).
   def check_agent_model_drift(agent_key)
     agent_config = agents[agent_key]
     return [] unless agent_config
@@ -1531,21 +1557,29 @@ class Doctor
 
     drifted = []
     sanctioned = []
+    consultation = []
+    unclassified = []
 
     installed.each do |path|
       basename = File.basename(path, ".md")
       installed_model = (parse_frontmatter(path) || {})["model"]
-      resolved_default = AgentModels::TIER_DEFAULTS[basename]
       override = overrides[basename]
 
       if override
         sanctioned << "#{basename}: frontmatter=#{installed_model.inspect}, sanctioned override=#{override.inspect}"
-      elsif installed_model != resolved_default
-        drifted << "#{basename}: frontmatter=#{installed_model.inspect}, resolved default=#{resolved_default.inspect}"
+      elsif AgentModels::TIER_DEFAULTS.key?(basename)
+        resolved_default = AgentModels::TIER_DEFAULTS[basename]
+        if installed_model != resolved_default
+          drifted << "#{basename}: frontmatter=#{installed_model.inspect}, resolved default=#{resolved_default.inspect}"
+        end
+      elsif AgentModels::CONSULTATION_AGENTS.include?(basename)
+        consultation << "#{basename}: frontmatter=#{installed_model.inspect} (consultation role, not a lifecycle default, model is user configuration)"
+      else
+        unclassified << "#{basename}: frontmatter=#{installed_model.inspect}, no resolved default (basename is in neither AgentModels::TIER_DEFAULTS nor AgentModels::CONSULTATION_AGENTS in scripts/lib/agent_models.rb; add it there, or set agents.models.#{basename} to sanction a model explicitly)"
       end
     end
 
-    if drifted.empty?
+    if drifted.empty? && unclassified.empty?
       message = if sanctioned.empty?
                   "No agent-model drift (#{installed.size} installed agent(s) match the resolved default)"
                 else
@@ -1554,13 +1588,16 @@ class Doctor
       [check(
         category: "core_files", name: "agent_model_drift", status: "pass",
         message: message,
-        details: sanctioned
+        details: sanctioned + consultation
       )]
     else
+      parts = []
+      parts << "#{drifted.size} installed agent(s) have unsanctioned model drift vs the config-resolved default" if drifted.any?
+      parts << "#{unclassified.size} installed agent(s) have no resolved default in scripts/lib/agent_models.rb" if unclassified.any?
       [check(
         category: "core_files", name: "agent_model_drift", status: "warn",
-        message: "#{drifted.size} installed agent(s) have unsanctioned model drift vs the config-resolved default",
-        details: drifted + sanctioned,
+        message: parts.join("; "),
+        details: drifted + unclassified + sanctioned + consultation,
         fixable: false
       )]
     end
