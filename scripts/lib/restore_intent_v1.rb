@@ -16,7 +16,11 @@ require_relative "frontmatter_writer"
 # doctor.rb already share: a :dead edge (resolves to no id in any known store) is
 # dropped and reported; :same_store, :cross_store, and :unknown_store edges are
 # all kept (bias toward preserving an edge that might be real; only positive proof
-# of non-existence justifies a drop).
+# of non-existence justifies a drop). The value WRITTEN for a kept edge is the
+# RESOLVED value GraphRebuild returns (classification[:id] for :same_store,
+# classification[:ref] for :cross_store), never the raw pre-resolution ref, so
+# this tool can never disagree with rebuild-graph/doctor about the canonical form
+# of an edge it just wrote (D14).
 module RestoreIntentV1
   module_function
 
@@ -51,6 +55,12 @@ module RestoreIntentV1
 
   # PURE. Union two edge arrays (deduped, order-preserving, first array's order
   # wins for shared entries), then target-resolve each via GraphRebuild.resolve_ref.
+  # WRITES THE RESOLVED VALUE, not the raw union member: a redundant same-store
+  # prefix (e.g. "global:15" written by a "global" intent) collapses to the bare
+  # "15", and a relocated ref is repointed to its resolved "store:id" form, exactly
+  # matching what GraphRebuild.rebuild_store itself writes (res[:id] / res[:ref]).
+  # Resolution can make two distinct union members collapse to the same resolved
+  # value, so `kept` is de-duped again after resolution.
   def resolve_union(v1_edges, current_edges, field, referer_store, relocation_map, store_index)
     union = (Array(v1_edges).map(&:to_s) + Array(current_edges).map(&:to_s)).uniq
     kept = []
@@ -67,12 +77,14 @@ module RestoreIntentV1
       when :unknown_store
         kept << ref
         unverified << { field: field, ref: ref }
-      else # :same_store, :cross_store
-        kept << ref
+      when :same_store
+        kept << classification[:id]
+      when :cross_store
+        kept << classification[:ref]
       end
     end
 
-    { kept: kept, dropped: dropped, unverified: unverified }
+    { kept: kept.uniq, dropped: dropped, unverified: unverified }
   end
 
   # PURE. Every edge present in `current_edges` but absent from `v1_edges`

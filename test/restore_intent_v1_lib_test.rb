@@ -76,4 +76,35 @@ class RestoreIntentV1LibTest < Minitest::Test
     assert_equal [{ field: :chain, ref: "2" }], graph[:current_only],
       "an edge present in current but absent from v1 must be named as current-only"
   end
+
+  def test_redundant_same_store_prefixed_ref_collapses_to_resolved_bare_id
+    # A ref carrying this intent's OWN store prefix ("global:15" written by a
+    # "global" intent) must resolve and be WRITTEN as the bare canonical id "15",
+    # not survive as the stale pre-resolution "global:15" (BLOCKING bug: the tool
+    # must write GraphRebuild's resolved value, never the raw union member).
+    graph = RestoreIntentV1.compute_graph(
+      v1_sources: [], v1_chain: ["global:15"],
+      current_sources: [], current_chain: [],
+      referer_store: "global", relocation_map: empty_relocation_map,
+      store_index: { "global" => %w[1 2 15] }
+    )
+    assert_equal ["15"], graph[:chain]
+    refute_includes graph[:chain], "global:15"
+  end
+
+  def test_relocated_ref_is_rewritten_to_its_resolved_repointed_value
+    # v1's chain names "24" (bare, home store "global"); the store's Relocated
+    # log records that 24 moved to foo:22. The restore must WRITE the resolved
+    # "foo:22", never the stale pre-relocation "24" (the same BLOCKING bug: the
+    # tool must agree with GraphRebuild/doctor about the canonical form).
+    relocation_map = { %w[global 24] => %w[foo 22] }
+    graph = RestoreIntentV1.compute_graph(
+      v1_sources: [], v1_chain: ["24"],
+      current_sources: [], current_chain: [],
+      referer_store: "global", relocation_map: relocation_map,
+      store_index: { "global" => [], "foo" => ["22"] }
+    )
+    assert_equal ["foo:22"], graph[:chain]
+    refute_includes graph[:chain], "24"
+  end
 end
