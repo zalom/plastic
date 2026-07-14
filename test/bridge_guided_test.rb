@@ -74,6 +74,23 @@ class BridgeGuidedTest < Minitest::Test
     assert_equal @session, Lock.read(@intent_dir)["owner_session"]
   end
 
+  def test_arm_guided_records_explicit_controller_identity_and_mode
+    data = Bridge.arm_guided(@session, intent_id: "96", intent_dir: @intent_dir,
+                             store: @store, name: "demo", harness: :claude,
+                             agent: "plastic-enforcer", model: "opus", thread: "thread-96")
+    expected = {
+      "owner_harness" => "claude",
+      "owner_agent" => "plastic-enforcer",
+      "owner_model" => "opus",
+      "owner_thread" => "thread-96",
+      "run_mode" => "guided",
+    }
+    expected.each do |field, value|
+      assert_equal value, Lock.read(@intent_dir)[field]
+      assert_equal value, data.dig("lock", field)
+    end
+  end
+
   def test_arm_guided_raises_lock_held_when_another_session_owns_the_lock
     Lock.acquire(@intent_dir, session: "someone-else")
     err = assert_raises(Bridge::LockHeldError) { arm_guided }

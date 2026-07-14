@@ -142,6 +142,23 @@ class BridgeAutoTest < Minitest::Test
     assert_equal @session, Lock.read(@intent_dir)["owner_session"]
   end
 
+  def test_arm_auto_records_explicit_controller_identity_and_mode
+    data = Bridge.arm_auto(@session, intent_id: "27", intent_dir: @intent_dir,
+                           store: @store, name: "demo", harness: :codex,
+                           agent: "plastic-enforcer", model: "gpt-5", thread: "thread-27")
+    expected = {
+      "owner_harness" => "codex",
+      "owner_agent" => "plastic-enforcer",
+      "owner_model" => "gpt-5",
+      "owner_thread" => "thread-27",
+      "run_mode" => "auto",
+    }
+    expected.each do |field, value|
+      assert_equal value, Lock.read(@intent_dir)[field]
+      assert_equal value, data.dig("lock", field)
+    end
+  end
+
   def test_arm_auto_raises_lock_held_when_another_session_owns_the_lock
     Lock.acquire(@intent_dir, session: "someone-else")
     err = assert_raises(Bridge::LockHeldError) { arm }

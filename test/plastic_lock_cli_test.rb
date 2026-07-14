@@ -149,6 +149,42 @@ class PlasticLockCliTest < Minitest::Test
     assert_equal true, Bridge.read("sess-1", intent_id: "96", tmp: @tmp).dig("build", "auto")
   end
 
+  def test_repair_enriches_same_owner_legacy_lock_from_explicit_metadata
+    Lock.acquire(@intent_dir, session: "sess-1")
+    report = Bridge.repair_lock("sess-1", intent_id: "96", intent_dir: @intent_dir,
+                                store: @store, name: "demo", tmp: @tmp,
+                                harness: :codex, agent: "plastic-enforcer",
+                                model: "gpt-5", thread: "thread-96")
+    assert_equal "repaired", report["status"]
+    lock = Lock.read(@intent_dir)
+    assert_equal "codex", lock["owner_harness"]
+    assert_equal "plastic-enforcer", lock["owner_agent"]
+    assert_equal "gpt-5", lock["owner_model"]
+    assert_equal "thread-96", lock["owner_thread"]
+    assert_equal "guided", lock["run_mode"]
+  end
+
+  def test_repair_without_metadata_keeps_identity_unknown_and_does_not_infer_cache
+    Lock.acquire(@intent_dir, session: "sess-1")
+    legacy = {
+      "session" => "sess-1",
+      "intent" => { "id" => "96", "dir" => "96--demo", "store" => @store,
+                    "name" => "demo" },
+      "build" => { "stage" => "why", "auto" => true },
+      "lock" => { "owner_session" => "sess-1", "owner_harness" => "codex",
+                  "owner_agent" => "cached-agent", "owner_model" => "cached-model",
+                  "owner_thread" => "cached-thread" },
+    }
+    Bridge.write("sess-1", legacy, tmp: @tmp)
+    repair
+    lock = Lock.read(@intent_dir)
+    assert_nil lock["owner_harness"]
+    assert_nil lock["owner_agent"]
+    assert_nil lock["owner_model"]
+    assert_nil lock["owner_thread"]
+    assert_equal "auto", lock["run_mode"], "mode derives only from the current bridge auto boolean"
+  end
+
   # --- intent 136: repair_lock must provision the worktree ---------------------
   # repair_lock rebuilds the bridge via derive but (pre-fix) never calls
   # Worktree.provision, so the rebuilt bridge keeps derive's default

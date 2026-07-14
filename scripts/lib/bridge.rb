@@ -97,6 +97,12 @@ module Bridge
       "host" => lock_data["host"],
       "type" => lock_data["type"],
       "delegates" => Array(lock_data["delegates"]),
+      "owner_harness" => lock_data["owner_harness"],
+      "owner_agent" => lock_data["owner_agent"],
+      "owner_model" => lock_data["owner_model"],
+      "owner_thread" => lock_data["owner_thread"],
+      "run_mode" => lock_data["run_mode"],
+      "delegate_activity" => Array(lock_data["delegate_activity"]),
     }
   end
 
@@ -882,7 +888,8 @@ module Bridge
   # and arm_guided (auto: false) are thin delegators so the lock-stamp + provision
   # behaviour stays identical across both modes. Works even when no bridge exists
   # yet (mid-session intent creation).
-  def self.arm(session, intent_id:, intent_dir:, store:, name:, auto:, harness: :claude)
+  def self.arm(session, intent_id:, intent_dir:, store:, name:, auto:, harness: :claude,
+               agent: nil, model: nil, thread: nil)
     key = resolve_session(session, intent_id: intent_id, store: store)
     if blank?(session) && blank?(ENV["CLAUDE_CODE_SESSION_ID"])
       $stderr.puts "plastic: no session id available; arming with derived bridge key #{key}"
@@ -893,7 +900,10 @@ module Bridge
     # Acquire the durable delivery lock (D1/D2): session-keyed, O_EXCL, in the
     # intent dir. The bridge lock block is a cache of the file.
     intent_dir_abs = File.expand_path(intent_dir)
-    status, lock_data = Lock.acquire(intent_dir_abs, session: key)
+    status, lock_data = Lock.acquire(intent_dir_abs, session: key,
+                                     harness: harness.to_s, agent: agent,
+                                     model: model, thread: thread,
+                                     run_mode: auto ? "auto" : "guided")
     case status
     when :acquired, :owned
       data["lock"] = lock_cache(lock_data)
@@ -932,17 +942,19 @@ module Bridge
 
   # Arm auto mode for a session+intent. Works even when no bridge exists yet
   # (mid-session intent creation). Re-derives intent state, then sets build.auto.
-  def self.arm_auto(session, intent_id:, intent_dir:, store:, name:, harness: :claude)
+  def self.arm_auto(session, intent_id:, intent_dir:, store:, name:, harness: :claude,
+                    agent: nil, model: nil, thread: nil)
     arm(session, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name,
-        auto: true, harness: harness)
+        auto: true, harness: harness, agent: agent, model: model, thread: thread)
   end
 
   # Acquire the delivery lock WITHOUT auto mode (intent 96 / Start guided branch).
   # Mirrors arm_auto's lock-stamp + worktree provision but leaves build.auto = false.
   # Same signature as arm_auto; disarm_auto (mode-agnostic) releases a guided lock.
-  def self.arm_guided(session, intent_id:, intent_dir:, store:, name:, harness: :claude)
+  def self.arm_guided(session, intent_id:, intent_dir:, store:, name:, harness: :claude,
+                      agent: nil, model: nil, thread: nil)
     arm(session, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name,
-        auto: false, harness: harness)
+        auto: false, harness: harness, agent: agent, model: model, thread: thread)
   end
 
   # Degrade path for disarm_auto when no intent_id is given (intent 131): the
@@ -1006,10 +1018,15 @@ module Bridge
   # reclaim verb (Lock.takeover). Two entry points call this: the
   # plastic-lock CLI and /plastic-intent-starting (self-healing boarding).
   def self.repair_lock(session, intent_id:, intent_dir:, store:, name:,
-                       now: Time.now, tmp: tmp_dir, harness: :claude)
+                       now: Time.now, tmp: tmp_dir, harness: nil,
+                       agent: nil, model: nil, thread: nil)
     key = resolve_session(session, intent_id: intent_id, store: store)
     dir = File.expand_path(intent_dir)
     actions = []
+    previous = read(key, intent_id: intent_id, tmp: tmp)
+    auto = !!(previous && previous.dig("build", "auto"))
+    identity = { harness: harness, agent: agent, model: model, thread: thread,
+                 run_mode: auto ? "auto" : "guided" }
 
     if Lock.corrupt?(dir)
       File.delete(Lock.path(dir))
@@ -1029,17 +1046,19 @@ module Bridge
     end
 
     if lock
-      Lock.heartbeat(dir, session: key, now: now)
-      lock_data = Lock.read(dir)
+      if lock["owner_session"].to_s == key.to_s
+        _status, lock_data = Lock.acquire(dir, session: key, now: now, **identity)
+      else
+        Lock.heartbeat(dir, session: key, now: now)
+        lock_data = Lock.read(dir)
+      end
       role = lock_data["owner_session"].to_s == key ? "owner" : "delegate"
       actions << "lock kept (#{role})"
     else
-      status, lock_data = Lock.acquire(dir, session: key, now: now)
+      status, lock_data = Lock.acquire(dir, session: key, now: now, **identity)
       actions << "lock #{status}"
     end
 
-    previous = read(key, intent_id: intent_id, tmp: tmp)
-    auto = !!(previous && previous.dig("build", "auto"))
     data = derive(key, intent_id: intent_id, intent_dir: dir, store: store,
                   name: name, tmp: tmp)
     data["build"]["auto"] = auto
