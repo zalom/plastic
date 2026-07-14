@@ -46,8 +46,8 @@ class LockGateTest < Minitest::Test
     File.write(@index, lines.join("\n") + "\n")
   end
 
-  def gate(bridge, file, session: nil)
-    Bridge.lock_gate_decision(bridge, file, session: session, home: @home)
+  def gate(bridge, file, session: nil, harness: :claude)
+    Bridge.lock_gate_decision(bridge, file, session: session, home: @home, harness: harness)
   end
 
   # --- ALLOW: the lock FILE decides (D2) --------------------------------------
@@ -149,6 +149,35 @@ class LockGateTest < Minitest::Test
     reason = gate(nil, @intent_file, session: "sess-1")
     refute_nil reason
     assert_includes reason, "/plastic-doctor check the lock status"
+  end
+
+  def test_no_lock_deny_names_dollar_prefix_for_codex_harness
+    reason = gate(nil, @intent_file, session: "s", harness: :codex)
+    assert_includes reason, "$plastic-intent-starting"
+    refute_includes reason, "/plastic-intent-starting"
+  end
+
+  def test_stale_lock_deny_names_dollar_prefix_for_codex_harness
+    Lock.acquire(@intent_dir, session: "other")
+    FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
+    reason = gate(nil, @intent_file, session: "sess-1", harness: :codex)
+    assert_includes reason, "$plastic-doctor reclaim the lock"
+    refute_includes reason, "/plastic-doctor"
+  end
+
+  def test_corrupt_lock_deny_names_dollar_prefix_for_codex_harness
+    File.write(Lock.path(@intent_dir), "{ nope")
+    reason = gate(nil, @intent_file, session: "sess-1", harness: :codex)
+    assert_includes reason, "$plastic-doctor fix the lock"
+    refute_includes reason, "/plastic-doctor"
+  end
+
+  def test_fresh_foreign_lock_denies_and_names_dollar_prefix_for_codex_harness
+    Lock.acquire(@intent_dir, session: "other")
+    reason = gate(nil, @intent_file, session: "sess-1", harness: :codex)
+    refute_nil reason
+    assert_includes reason, "$plastic-doctor check the lock status"
+    refute_includes reason, "/plastic-doctor"
   end
 
   # --- scope: allow-by-lock is per-intent (still true independent of solo) ----

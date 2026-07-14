@@ -35,8 +35,9 @@ class BridgeAutoTest < Minitest::Test
     Worktree.define_singleton_method(:release, @real_release) if @real_release
   end
 
-  def arm
-    Bridge.arm_auto(@session, intent_id: "27", intent_dir: @intent_dir, store: @store, name: "demo")
+  def arm(harness: :claude)
+    Bridge.arm_auto(@session, intent_id: "27", intent_dir: @intent_dir, store: @store,
+                    name: "demo", harness: harness)
   end
 
   def test_derive_defaults_auto_false
@@ -145,6 +146,13 @@ class BridgeAutoTest < Minitest::Test
     Lock.acquire(@intent_dir, session: "someone-else")
     err = assert_raises(Bridge::LockHeldError) { arm }
     assert_includes err.message, "/plastic-doctor"
+  end
+
+  def test_arm_auto_raises_lock_held_naming_dollar_prefix_for_codex_harness
+    Lock.acquire(@intent_dir, session: "someone-else")
+    err = assert_raises(Bridge::LockHeldError) { arm(harness: :codex) }
+    assert_includes err.message, "$plastic-doctor"
+    refute_includes err.message, "/plastic-doctor"
   end
 
   def test_arm_auto_survives_provision_raise

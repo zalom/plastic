@@ -32,6 +32,20 @@ includes artifact validity).
 | L2 live state | The active intent's id, stage, and role arrive at the point of work (session event and/or spawn preamble) | The live snapshot tells the agent where it is in the cycle so it acts in-stage | None directly; feeds the L3 gates that do block |
 | L3 lifecycle gates + savepoints | Gate and savepoint hooks fire on file writes within the intent dir | Gate context nudges the next correct lifecycle move | Stage gates block out-of-order writes; the artifact-validity backstop rejects an intent file that is not born complete; savepoints record each milestone |
 
+## Skill invocation prefix
+
+Each adapter's users invoke a Plastic skill with a different literal prefix in front of the bare
+skill name (for example `plastic-doctor`). `InstallerCore::DEFAULT_AGENTS` carries this as each
+entry's `skill_prefix`, the documented source both `Bridge.skill_ref` (`scripts/lib/lock.rb`) and
+this table cite; the gate scripts do not read `DEFAULT_AGENTS` at runtime (see the L1 dependency
+note in the Codex worked example below), so the two are independently maintained by hand.
+
+| Adapter | Invocation |
+|---|---|
+| Claude Code | `/plastic-<name>` (slash) |
+| Codex CLI | `$plastic-<name>` (dollar), explicit; Codex may also select a skill implicitly by matching its `description` |
+| Hermes | not yet defined (future adapter, see Roadmap below) |
+
 ## Capability tiers
 
 An adapter declares the strongest tier it can honestly support.

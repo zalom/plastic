@@ -56,8 +56,11 @@ when "create-gate"
 
 when "lock-gate"
   # Deny is signalled by JSON on stdout at exit 0. Relay the first deny.
+  # "codex" is threaded as the harness (intent 201 D2): hook-lock-gate renders
+  # any deny reason with the $plastic-<name> form instead of Claude's default
+  # slash.
   ops.each do |o|
-    out, _ = run_core("hook-lock-gate", o.path, session)
+    out, _ = run_core("hook-lock-gate", o.path, session, "codex")
     if out.include?('"permissionDecision":"deny"') || out.include?('"permissionDecision": "deny"')
       print out
       exit 0

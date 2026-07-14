@@ -44,8 +44,9 @@ class BridgeGuidedTest < Minitest::Test
     Worktree.define_singleton_method(method_name, original)
   end
 
-  def arm_guided
-    Bridge.arm_guided(@session, intent_id: "96", intent_dir: @intent_dir, store: @store, name: "demo")
+  def arm_guided(harness: :claude)
+    Bridge.arm_guided(@session, intent_id: "96", intent_dir: @intent_dir, store: @store,
+                      name: "demo", harness: harness)
   end
 
   def test_arm_guided_leaves_auto_false
@@ -77,6 +78,13 @@ class BridgeGuidedTest < Minitest::Test
     Lock.acquire(@intent_dir, session: "someone-else")
     err = assert_raises(Bridge::LockHeldError) { arm_guided }
     assert_includes err.message, "/plastic-doctor"
+  end
+
+  def test_arm_guided_raises_lock_held_naming_dollar_prefix_for_codex_harness
+    Lock.acquire(@intent_dir, session: "someone-else")
+    err = assert_raises(Bridge::LockHeldError) { arm_guided(harness: :codex) }
+    assert_includes err.message, "$plastic-doctor"
+    refute_includes err.message, "/plastic-doctor"
   end
 
   def test_arm_guided_survives_provision_raise

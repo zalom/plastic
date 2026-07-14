@@ -100,6 +100,16 @@ class PlasticLockCliTest < Minitest::Test
     assert_includes report["hint"], "reclaim"
   end
 
+  def test_repair_reports_stale_hint_with_dollar_prefix_for_codex_harness
+    Lock.acquire(@intent_dir, session: "other")
+    FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
+    report = Bridge.repair_lock("sess-1", intent_id: "96", intent_dir: @intent_dir,
+                                store: @store, name: "demo", tmp: @tmp, harness: :codex)
+    assert_equal "stale", report["status"]
+    assert_includes report["hint"], "$plastic-doctor reclaim the lock"
+    refute_includes report["hint"], "/plastic-doctor"
+  end
+
   def test_repair_removes_a_corrupt_lock_and_rebuilds
     File.write(Lock.path(@intent_dir), "{ nope")
     report = repair
@@ -274,6 +284,15 @@ class PlasticLockCliTest < Minitest::Test
     _out, err, st = cli("fix")
     refute st.success?
     assert_includes err, "held"
+  end
+
+  def test_cli_fix_reports_stale_hint_with_dollar_prefix_when_harness_flag_is_codex
+    Lock.acquire(@intent_dir, session: "other")
+    FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
+    _out, err, st = cli("fix", "--harness", "codex")
+    refute_equal 0, st.exitstatus
+    assert_includes err, "$plastic-doctor reclaim the lock"
+    refute_includes err, "/plastic-doctor"
   end
 
   def test_cli_release_clears_the_lock

@@ -99,6 +99,11 @@ tags: [plastic, architecture]
 | **How** | Planning | `plan.md` + `actions/ACTION_N.md` (at least one) + `checklist.md` | `plastic-intent-planning` |
 | **Exec** | Execution | `outcome.md` | `plastic-intent-executing` |
 
+Invoke a skill for your harness: Claude Code uses the slash form (`/plastic-intent-creating`);
+Codex CLI uses a dollar prefix instead (`$plastic-intent-creating`), and may also select a skill
+implicitly by matching its description. Skill names elsewhere in this document are given bare
+(`plastic-intent-creating`); add the prefix for your harness.
+
 `## Insights` is the append-only log of durable discoveries captured throughout ALL stages.
 An insight is a discovery worth keeping for later reads: novel, or old but newly relevant,
 surfaced at any stage (What, Why, How, Exec). It is the most interesting residue of an
@@ -288,8 +293,8 @@ Beyond the lifecycle agents, Plastic ships thin skills for day-to-day operation:
 - **`plastic-feedback`** (intent 174) turns a described Plastic quirk, bug, or feature idea
   into a redacted local report file and a prefilled GitHub issue URL; only the user can submit
   it. `disable-model-invocation` hides its description from your own context, so if the user
-  hits a Plastic quirk, bug, or missing feature, offer to run `/plastic-feedback` yourself
-  instead of waiting to be asked; the user still sends it, you never do.
+  hits a Plastic quirk, bug, or missing feature, offer to invoke the plastic-feedback skill
+  yourself instead of waiting to be asked; the user still sends it, you never do.
 
 ## Releases and Versioning
 

@@ -199,6 +199,23 @@ class CodexHooksTest < Minitest::Test
     refute_includes out, '"permissionDecision":"deny"', "held lock must allow silently: #{out}"
   end
 
+  def test_lock_gate_denies_fresh_foreign_lock_naming_dollar_prefix
+    intent_dir = File.join(@store, "96--demo")
+    FileUtils.mkdir_p(intent_dir)
+    File.write(File.join(intent_dir, "96--demo.md"), "## Intent\nDemo\n")
+    File.write(File.join(@root, "INDEX.md"), "## Active\n- [96 - demo](96--demo/96--demo.md)\n\n## Future\n")
+
+    Lock.acquire(intent_dir, session: "other-session")
+
+    plan = File.join(intent_dir, "plan.md")
+    body = patch(update_section(plan, ["content"]))
+    out, status = run_hook("lock-gate", codex_payload(body, session_id: "me"), session: "me")
+    assert_equal 0, status.exitstatus, "lock-gate must never exit non-zero"
+    assert_includes out, '"permissionDecision":"deny"'
+    assert_includes out, "$plastic-doctor check the lock status"
+    refute_includes out, "/plastic-doctor"
+  end
+
   # ---- code-gate ----
 
   def test_code_gate_blocks_pre_how_project_edit

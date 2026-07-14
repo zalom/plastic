@@ -57,6 +57,16 @@ class CodexInstallTest < Minitest::Test
     refute hermes.key?(:home_dir), "hermes must not gain a home_dir key"
   end
 
+  def test_default_agents_entries_carry_a_skill_prefix
+    codex = InstallerCore::DEFAULT_AGENTS.find { |a| a[:key] == "codex" }
+    claude = InstallerCore::DEFAULT_AGENTS.find { |a| a[:key] == "claude" }
+    hermes = InstallerCore::DEFAULT_AGENTS.find { |a| a[:key] == "hermes" }
+
+    assert_equal "/", claude[:skill_prefix]
+    assert_equal "$", codex[:skill_prefix]
+    refute hermes.key?(:skill_prefix), "hermes is a future adapter, same as home_dir"
+  end
+
   def test_doctor_default_agents_codex_entry_has_home_dir
     codex = Doctor::DEFAULT_AGENTS["codex"]
     assert codex[:home_dir].end_with?(".codex")
@@ -134,6 +144,13 @@ class CodexInstallTest < Minitest::Test
   def test_body_is_under_1kib_and_has_no_em_dash
     assert InstallerCore::CODEX_AGENTS_MD_BODY.bytesize < 1024
     refute_includes InstallerCore::CODEX_AGENTS_MD_BODY, "—"
+  end
+
+  def test_body_teaches_dollar_prefix_invocation
+    body = InstallerCore::CODEX_AGENTS_MD_BODY
+    assert_includes body, "$plastic-<name>"
+    assert_includes body, "$plastic-doctor"
+    assert_match(/implicitly.*description/, body)
   end
 
   # --- Step 3: install_codex wiring ---

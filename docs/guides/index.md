@@ -3,6 +3,10 @@
 Task-oriented walkthroughs for people meeting Plastic for the first time,
 through choosing a way of working, to understanding the bigger picture.
 
+Commands below use Claude Code's slash form (`/plastic-<name>`). On Codex CLI, invoke the same
+skill with a dollar prefix instead (`$plastic-<name>`), or let Codex select one implicitly by
+matching its description.
+
 1. [Your first intent in 10 minutes](your-first-intent-in-10-minutes.md).
    For a brand-new user: install Plastic and deliver one small intent, start
    to finish.
