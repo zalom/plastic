@@ -40,10 +40,26 @@ class Install < InstallerCore
     puts "\n\u{1f9e0} Plastic v#{version}\n\n"
 
     if installed? && !reinstall
-      warn "Plastic v#{installed_version} is already installed."
-      warn "  - To upgrade:        npx @zalom/plastic update"
-      warn "  - To re-sync files:  npx @zalom/plastic install --reinstall"
-      return 1
+      # `installed?` is a GLOBAL check (is Plastic core installed for ANY
+      # harness), so it cannot by itself decide whether to refuse: once any
+      # agent is present, a machine that has NEVER installed a second harness
+      # (e.g. Codex, with no ~/.agents, no ~/.codex/hooks.json) must still be
+      # able to add it. Refuse only when EVERY selected agent already has its
+      # own registration (intent 198, D7); otherwise proceed with just the
+      # unregistered ones, and report the already-registered ones without
+      # silently re-syncing them (that is what --reinstall is for).
+      new_agents = selected.reject { |key| agent_installed?(key) }
+      if new_agents.empty?
+        warn "Plastic v#{installed_version} is already installed."
+        warn "  - To upgrade:        npx @zalom/plastic update"
+        warn "  - To re-sync files:  npx @zalom/plastic install --reinstall"
+        return 1
+      end
+
+      already_registered = selected - new_agents
+      run(selected: new_agents, force: force, reinstall: reinstall, ledger_action: ledger_action, argv: argv,
+          already_registered: already_registered)
+      return 0
     end
 
     run(selected: selected, force: force, reinstall: reinstall, ledger_action: ledger_action, argv: argv)
@@ -51,7 +67,11 @@ class Install < InstallerCore
   end
 
   # Hermetic entrypoint (no prompting / no exit). Returns the per-agent results array.
-  def run(selected:, force: false, reinstall: false, ledger_action: nil, argv: ARGV, input: $stdin)
+  # `already_registered` names agents the gate above found already registered:
+  # they are reported, never re-installed, so the summary line and the Codex
+  # trust reminder only ever count agents that actually changed this run.
+  def run(selected:, force: false, reinstall: false, ledger_action: nil, argv: ARGV, input: $stdin,
+          already_registered: [])
     fresh = !installed?
     mode = fresh ? :install : :update # :update here means "re-sync, skip bootstrap"
 
@@ -60,6 +80,7 @@ class Install < InstallerCore
     apply_config_flags(argv)
 
     results = selected.map { |key| install_for_agent(key, force, argv: argv, input: input, reinstall: reinstall) }
+    results += already_registered.map { |key| already_registered_result(key) }
 
     action = ledger_action || (fresh ? "install" : "reinstall")
     ledger_append(version, action)
@@ -114,10 +135,17 @@ class Install < InstallerCore
     argv[i + 1]
   end
 
+  def already_registered_result(key)
+    config = agent_config(key)
+    { agent: config[:name], success: false, already_registered: true }
+  end
+
   def print_results(results, mode)
     puts "\n\u{2014} Results \u{2014}\n\n"
     results.each do |r|
-      if r[:success]
+      if r[:already_registered]
+        puts "  \u{2139}  #{r[:agent]}: already registered, not re-synced (use --reinstall to re-sync)"
+      elsif r[:success]
         puts "  \u{2705} #{r[:agent]}: #{r[:files]} files installed"
       else
         puts "  \u{26a0}\u{fe0f}  #{r[:agent]}: #{r[:reason]}"

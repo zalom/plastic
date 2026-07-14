@@ -154,4 +154,64 @@ class InstallerCoreTest < Minitest::Test
                  "scripts/doctor.rb fix_hints name commands missing from InstallerCore#core_files " \
                  "(doctor would tell users to run an unshipped tool): #{missing.join(', ')}"
   end
+
+  # --- agent_installed? (intent 198, D7 follow-up) ---
+  #
+  # Distinct from `installed?` in install.rb (a GLOBAL "is core present at
+  # all" check). This is the per-agent probe install.rb's gate needed but
+  # never had, which is why adding a new harness to an existing install used
+  # to be refused outright. Own agents fixtures (tmpdir dirs), never the
+  # shared @core built in setup.
+
+  def test_agent_installed_false_with_no_manifest_file
+    dir = Dir.mktmpdir("agent-installed-none")
+    core = InstallerCore.new(package_root: WORKTREE, plastic_home: @home,
+                              agents: [{ key: "codex", name: "Codex CLI", dir: dir, home_dir: dir, flag: "--codex" }],
+                              version: "1.0.0-test")
+    refute core.agent_installed?("codex"), "no manifest at all means nothing registered for this agent"
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
+  def test_agent_installed_false_with_an_empty_manifest
+    dir = Dir.mktmpdir("agent-installed-empty")
+    FileUtils.mkdir_p(dir)
+    File.write(File.join(dir, "plastic-manifest.json"), JSON.generate("version" => "1", "files" => {}))
+    core = InstallerCore.new(package_root: WORKTREE, plastic_home: @home,
+                              agents: [{ key: "codex", name: "Codex CLI", dir: dir, home_dir: dir, flag: "--codex" }],
+                              version: "1.0.0-test")
+    refute core.agent_installed?("codex"), "a manifest with an empty files list means nothing registered"
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
+  def test_agent_installed_true_once_the_manifest_tracks_a_file
+    dir = Dir.mktmpdir("agent-installed-present")
+    FileUtils.mkdir_p(dir)
+    File.write(File.join(dir, "plastic-manifest.json"),
+               JSON.generate("version" => "1", "files" => { File.join(dir, "marker") => "x" }))
+    core = InstallerCore.new(package_root: WORKTREE, plastic_home: @home,
+                              agents: [{ key: "codex", name: "Codex CLI", dir: dir, home_dir: dir, flag: "--codex" }],
+                              version: "1.0.0-test")
+    assert core.agent_installed?("codex")
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
+  def test_agent_installed_uses_the_claude_manifest_path
+    dir = Dir.mktmpdir("agent-installed-claude")
+    FileUtils.mkdir_p(File.join(dir, "plastic"))
+    File.write(File.join(dir, "plastic", "manifest.json"),
+               JSON.generate("version" => "1", "files" => { File.join(dir, "marker") => "x" }))
+    core = InstallerCore.new(package_root: WORKTREE, plastic_home: @home,
+                              agents: [{ key: "claude", name: "Claude Code", dir: dir, flag: "--claude" }],
+                              version: "1.0.0-test")
+    assert core.agent_installed?("claude")
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
+  def test_agent_installed_false_for_an_unknown_key
+    refute @core.agent_installed?("nope")
+  end
 end
