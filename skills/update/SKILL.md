@@ -57,22 +57,35 @@ unavailable. The command prints the transition (`vX -> vY`) or "already up to da
 a post-update doctor summary, and records the move in the append-only
 `~/.plastic/versions.json` ledger.
 
-### Step 2: Ask the advisor question once, if unset (Claude Code only)
+### Step 2: Relay any pending config question(s) the update printed
 
-If this update brought in the advisor feature and `advisor.claude.default` is still
-unset in `~/.plastic/config.yml`, ask the same question `plastic-install` asks on a
-fresh install, once, then never again (a key already set is respected, never re-asked):
-> "Which advisor should be the default?"
-> - **Faux Fable** (recommended): Opus 4.8 carrying the frontier reasoning
->   instructions. Much cheaper, available on any plan, reasons in the same
->   disciplined way.
-> - **Fable 5**: the frontier model itself. The strongest reasoning available,
->   billed through usage credits, so summon it for a few rounds and close it.
+If `update`'s own output (Step 1) printed a "Config question(s) introduced by
+this update" block, relay each question to the user exactly as printed
+(question, options, and the `write-config` command for each option). Do not
+invent or hardcode a specific question here: it comes from the CLI's fresh
+output (`config_asks.yml`, read by code that just synced from the new version),
+never from this skill file, which is always one release behind and cannot know
+what a future release will ask.
 
-Write the answer with `npx -y @zalom/plastic@<channel> install --claude --reinstall
---advisor faux` (or `--advisor real`). Non-interactive sessions skip the question; the
-`plastic-agent-advisor` skill's own routing falls back to `plastic-faux-advisor` at
-consult time, so nothing is silently broken by leaving the key unset.
+Once the user picks an option, run the printed `write-config` command for that
+option, for example:
+
+```
+ruby ~/.plastic/scripts/write-config advisor.claude.default plastic-faux-advisor
+```
+
+If they say "not now" / want to keep the default, run the printed dismissal
+command instead, for example:
+
+```
+ruby ~/.plastic/scripts/write-config config_asks_dismissed --push advisor-default
+```
+
+If `update` printed nothing under that heading, skip this step silently - there
+is nothing pending. A question already answered or dismissed is never re-asked
+(both the CLI print and the doctor check verify this before showing anything),
+and a pending question missed here still shows up as a `config_asks` warn on
+the next `/plastic-doctor` run, so nothing is silently lost.
 
 ### Step 3: Relay the result, announce convention changes
 
@@ -98,6 +111,6 @@ report and offer to fix. If it already reads clean, do not re-run doctor.
 ### Step 5: Commit + clear update cache
 
 ```bash
-cd ~/.plastic && git add PLASTIC.md scripts/ AGENTS.md VERSION versions.json 2>/dev/null && git commit -m "chore: update Plastic to $(cat ~/.plastic/VERSION)" --allow-empty
+cd ~/.plastic && git add PLASTIC.md scripts/ AGENTS.md VERSION versions.json deprecations.yml config_asks.yml 2>/dev/null && git commit -m "chore: update Plastic to $(cat ~/.plastic/VERSION)" --allow-empty
 rm -f ~/.plastic/.cache/update-check.json
 ```

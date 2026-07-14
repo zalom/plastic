@@ -14,6 +14,7 @@
 
 require_relative "lib/installer_core"
 require_relative "doctor"
+require_relative "lib/config_asks"
 
 class Update < InstallerCore
   PKG = "@zalom/plastic"
@@ -53,9 +54,49 @@ class Update < InstallerCore
       end
       puts "\u{2b06}\u{fe0f}  Updating Plastic #{iv} \u{2192} #{res[:target]}"
       exit_code = perform_switch(res[:target], agent_args(argv))
-      run_post_update_doctor(full: argv.include?("--full-doctor")) if exit_code == 0
+      if exit_code == 0
+        announce_pending_config_asks(agent_key: primary_agent_key(argv))
+        run_post_update_doctor(full: argv.include?("--full-doctor"))
+      end
       exit_code
     end
+  end
+
+  # Print any pending config question(s) straight to stdout, right after a
+  # successful perform_switch (the moment the NEW config_asks.yml and
+  # write-config just landed on disk via the target versions own
+  # `install --reinstall`). Informational only, like run_post_update_doctor:
+  # rescued so a crash here can never undo or fail an update that already
+  # succeeded, and never changes the exit code this methods caller returns.
+  #
+  # A manifest that exists but cannot be read or parsed still prints
+  # something visible (the problem itself), it never prints nothing: a
+  # missing manifest is a legitimate quiet no-op, an unreadable one is not.
+  # agent_key defaults to "claude" and should be the agent this update is
+  # actually installing for, so an entry scoped to a different agent is not
+  # announced here.
+  def announce_pending_config_asks(agent_key: "claude", out: $stdout)
+    manifest_problem = ConfigAsks.manifest_error(plastic_home)
+    if manifest_problem
+      out.puts "\nCould not check for pending config questions: #{manifest_problem}"
+      return
+    end
+
+    pending = ConfigAsks.pending(plastic_home, agent_key)
+    return if pending.empty?
+
+    out.puts "\nConfig question(s) introduced by this update:"
+    pending.each do |entry|
+      out.puts "  #{entry["question"]} (id: #{entry["id"]})"
+      Array(entry["options"]).each do |opt|
+        out.puts "    - #{opt["label"]}"
+        out.puts "      #{ConfigAsks.write_config_command(plastic_home, entry["key"], opt["value"])}"
+      end
+      out.puts "    - Not now (keep the default)"
+      out.puts "      #{ConfigAsks.dismiss_command(plastic_home, entry["id"])}"
+    end
+  rescue StandardError => e
+    out.puts "  could not check config asks: #{e.message}"
   end
 
   # Run doctor after a successful update and print a human-readable summary.
@@ -116,6 +157,14 @@ class Update < InstallerCore
     flags = agents.map { |a| a[:flag] }.select { |f| argv.include?(f) }
     flags << "--all" if argv.include?("--all")
     flags.empty? ? ["--claude"] : flags
+  end
+
+  # The single agent key this update is installing for, for config_asks
+  # scoping purposes: the first explicitly-flagged agent found in argv, or
+  # "claude" (matches agent_args' own default, and covers --all / no flag).
+  def primary_agent_key(argv)
+    match = agents.find { |a| argv.include?(a[:flag]) }
+    match ? match[:key] : "claude"
   end
 
   def fetch_dist_tags

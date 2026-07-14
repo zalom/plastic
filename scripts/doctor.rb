@@ -27,6 +27,7 @@ require_relative "lib/bridge"
 require_relative "lib/agent_models"
 require_relative "lib/legacy_bookend_amnesty"
 require_relative "lib/skill_lint"
+require_relative "lib/config_asks"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -1965,6 +1966,65 @@ class Doctor
     a_pre <=> b_pre
   end
 
+  # --- Check category: config asks (release-introduced config questions) ---
+  #
+  # Reads config_asks.yml via ConfigAsks (intent 194): a shipped, declarative
+  # manifest so a release can announce a new config question and collect the
+  # answer without this file, update.rb, or any skill needing to change again.
+  # Rolled up into one check (mirrors check_deprecations shape). Full-tier
+  # (run_checks) ONLY, deliberately excluded from run_core_checks: the post-
+  # update path (update.rb#run_post_update_doctor) defaults to the fast/core
+  # tier, which rolls up with binary: true (any warn becomes overall "fail").
+  # A config-asks warn in that tier would flip every post-update doctor to
+  # "fail" on an otherwise healthy install until the question is answered,
+  # re-noising the post-update surface intent 126 deliberately quieted. The
+  # recoverable-later path for a pending question is a full `/plastic-doctor`
+  # run, the declared maintenance front door; the moment-it-happens path is
+  # update.rb#announce_pending_config_asks, which already runs on every hop.
+  #
+  # A manifest that exists but cannot be read or parsed is reported as its own
+  # WARN (config_asks_manifest), never as a silent pass: an unreadable
+  # manifest is not the same as "nothing declared", and reporting it as
+  # healthy would be the exact silent-failure this whole batch exists to
+  # close. agent_key filters entries by their optional agents scoping (an
+  # entry with no agents field applies to every agent).
+  def check_config_asks(agent_key = "claude")
+    manifest_problem = ConfigAsks.manifest_error(plastic_home)
+    if manifest_problem
+      return [check(
+        category: "config_asks", name: "config_asks_manifest", status: "warn",
+        message: "config_asks.yml problem: #{manifest_problem}",
+        fixable: false
+      )]
+    end
+
+    pending = ConfigAsks.pending(plastic_home, agent_key)
+
+    if pending.empty?
+      return [check(
+        category: "config_asks", name: "pending_asks", status: "pass",
+        message: "No pending config questions"
+      )]
+    end
+
+    details = pending.map do |entry|
+      lines = ["#{entry["question"]} (id: #{entry["id"]})"]
+      Array(entry["options"]).each do |opt|
+        lines << "  - #{opt["label"]}"
+        lines << "    #{ConfigAsks.write_config_command(plastic_home, entry["key"], opt["value"])}"
+      end
+      lines << "  - Not now (keep the default)"
+      lines << "    #{ConfigAsks.dismiss_command(plastic_home, entry["id"])}"
+      lines.join("\n")
+    end
+
+    [check(
+      category: "config_asks", name: "pending_asks", status: "warn",
+      message: "#{pending.size} pending config question(s)", details: details,
+      fixable: false
+    )]
+  end
+
   # --- Check category: QMD integration (read-only, optional) ---
   #
   # QMD is an optional integration. When `qmd` is not on PATH we emit a single
@@ -2059,6 +2119,7 @@ class Doctor
     all_checks += check_core_files(agent_key)
     all_checks += check_project_stores
     all_checks += check_deprecations
+    all_checks += check_config_asks(agent_key)
     all_checks += check_qmd
     all_checks += check_done_signals
     all_checks += check_skill_lint

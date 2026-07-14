@@ -2,6 +2,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "stringio"
+require "yaml"
 
 require_relative "../scripts/update"
 
@@ -171,5 +172,164 @@ class UpdateVerbTest < Minitest::Test
     u.cli([])
 
     refute doctor_called, "run_post_update_doctor should NOT be called after a failed switch"
+  end
+
+  # --- announce_pending_config_asks (intent 194) ---
+
+  def write_manifest(entries)
+    File.write(File.join(@home, "config_asks.yml"), YAML.dump("config_asks" => entries))
+  end
+
+  def write_global_config(data)
+    File.write(File.join(@home, "config.yml"), YAML.dump(data))
+  end
+
+  def sample_config_ask_entry
+    {
+      "id" => "advisor-default",
+      "key" => "advisor.claude.default",
+      "introduced" => "1.3.0",
+      "question" => "Which advisor should be the default?",
+      "options" => [
+        { "label" => "Faux Fable", "value" => "plastic-faux-advisor" },
+        { "label" => "Fable 5", "value" => "plastic-advisor" },
+      ],
+    }
+  end
+
+  def test_announce_prints_nothing_when_no_config_asks_yml
+    # No config_asks.yml written into @home at all -- a legitimate quiet
+    # no-op, distinct from a manifest that exists but cannot be read.
+    buf = StringIO.new
+    @u.announce_pending_config_asks(out: buf)
+
+    assert_empty buf.string
+  end
+
+  # Fix round: an unreadable manifest must still print SOMETHING (the
+  # problem itself), never nothing -- a silent no-op there would look
+  # identical to "no manifest at all", hiding a broken install from the
+  # one moment update.rb runs fresh code and could tell the user.
+  def test_announce_prints_manifest_error_when_malformed
+    File.write(File.join(@home, "config_asks.yml"), "not: valid: yaml: [")
+
+    buf = StringIO.new
+    @u.announce_pending_config_asks(out: buf)
+
+    refute_empty buf.string, "an unreadable manifest must print something, not nothing"
+    assert_match(/config_asks\.yml/, buf.string)
+  end
+
+  def test_announce_prints_pending_question_and_commands
+    write_manifest([sample_config_ask_entry])
+    # No config.yml -- key is unset, so the entry is pending.
+
+    buf = StringIO.new
+    @u.announce_pending_config_asks(out: buf)
+
+    output = buf.string
+    assert_match(/Which advisor should be the default\?/, output)
+    assert_match(/Faux Fable/, output)
+    assert_match(/Fable 5/, output)
+    assert_match(/write-config advisor\.claude\.default plastic-faux-advisor/, output)
+    assert_match(/write-config advisor\.claude\.default plastic-advisor/, output)
+    assert_match(/write-config config_asks_dismissed --push advisor-default/, output)
+  end
+
+  def test_announce_silent_when_key_already_set
+    write_manifest([sample_config_ask_entry])
+    write_global_config("advisor" => { "claude" => { "default" => "plastic-advisor" } })
+
+    buf = StringIO.new
+    @u.announce_pending_config_asks(out: buf)
+
+    assert_empty buf.string
+  end
+
+  def test_announce_rescues_and_does_not_raise
+    raising = Class.new(Update) do
+      def plastic_home
+        raise RuntimeError, "malformed config_asks.yml"
+      end
+    end.new(package_root: ".", plastic_home: @home, version: "x")
+
+    buf = StringIO.new
+    assert_silent do
+      # StringIO writes don't touch stdout, so assert_silent only guards
+      # against an uncaught raise reaching the caller.
+      raising.announce_pending_config_asks(out: buf)
+    end
+
+    assert_match(/could not check config asks/i, buf.string)
+    assert_match(/malformed config_asks\.yml/, buf.string)
+  end
+
+  def test_cli_calls_announce_before_doctor_on_success
+    u = Update.new(package_root: ".", plastic_home: @home, version: "x")
+
+    call_order = []
+    u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
+    u.define_singleton_method(:fetch_dist_tags) { TAGS }
+    u.define_singleton_method(:perform_switch) { |_target, _flags| 0 }
+    u.define_singleton_method(:announce_pending_config_asks) { |**_kwargs| call_order << :announce }
+    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| call_order << :doctor; nil }
+
+    result = u.cli([])
+
+    assert_equal [:announce, :doctor], call_order,
+      "announce_pending_config_asks must run before run_post_update_doctor"
+    assert_equal 0, result, "cli's return value must be unaffected by either call"
+  end
+
+  def test_cli_passes_the_matching_agent_key_to_announce
+    u = Update.new(package_root: ".", plastic_home: @home, version: "x")
+
+    received_agent_key = nil
+    u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
+    u.define_singleton_method(:fetch_dist_tags) { TAGS }
+    u.define_singleton_method(:perform_switch) { |_target, _flags| 0 }
+    u.define_singleton_method(:announce_pending_config_asks) { |agent_key:, **_kwargs| received_agent_key = agent_key }
+    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| nil }
+
+    u.cli(["--codex"])
+
+    assert_equal "codex", received_agent_key,
+      "cli should pass the agent it is actually installing for, not always the default claude"
+  end
+
+  # --- Fix round: agent scoping actually wired through announce ---
+
+  def test_announce_silent_for_entry_scoped_to_a_different_agent
+    write_manifest([sample_config_ask_entry.merge("agents" => ["codex"])])
+    # No config.yml -- key unset, so the entry would be pending if it applied.
+
+    buf = StringIO.new
+    @u.announce_pending_config_asks(agent_key: "claude", out: buf)
+
+    assert_empty buf.string, "an entry scoped to codex must not be announced for claude"
+  end
+
+  def test_announce_prints_for_entry_scoped_to_matching_agent
+    write_manifest([sample_config_ask_entry.merge("agents" => ["codex"])])
+
+    buf = StringIO.new
+    @u.announce_pending_config_asks(agent_key: "codex", out: buf)
+
+    assert_match(/Which advisor should be the default\?/, buf.string)
+  end
+
+  def test_cli_skips_announce_on_failed_switch
+    u = Update.new(package_root: ".", plastic_home: @home, version: "x")
+
+    announced = false
+    u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
+    u.define_singleton_method(:fetch_dist_tags) { TAGS }
+    u.define_singleton_method(:perform_switch) { |_target, _flags| 1 }
+    u.define_singleton_method(:announce_pending_config_asks) { |**_kwargs| announced = true }
+    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| nil }
+
+    u.cli([])
+
+    refute announced, "announce_pending_config_asks should NOT be called after a failed switch"
   end
 end

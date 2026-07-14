@@ -103,10 +103,10 @@ Non-interactive sessions (no tty) skip the question entirely: the install ships 
 shipped default, advisor enabled with no `--advisor` flag (the `plastic-agent-advisor`
 skill's own routing falls back to `plastic-faux-advisor` at consult time).
 
-Update flow: if `advisor.enabled` or `advisor.claude.default` are already set in
-`~/.plastic/config.yml`, do not re-ask; the existing value is respected, the same
-ask-once-when-unset rule the statusline choice below already follows. Either flag can
-also be passed again on `install --reinstall` to change a prior answer.
+Update flow: pending config questions, including this one, are now announced
+generically by `plastic-update`'s Step 2, sourced from `config_asks.yml` - not
+duplicated here. A value already set by either path is never re-asked by the
+other.
 
 **Statusline**
 
