@@ -1,0 +1,120 @@
+# encoding: UTF-8
+# frozen_string_literal: true
+
+require "minitest/autorun"
+require "tmpdir"
+require "fileutils"
+require "open3"
+require_relative "../scripts/lib/intent_validator"
+require_relative "../scripts/lib/links_section"
+
+class RestoreIntentV1Test < Minitest::Test
+  NEW_INTENT = File.expand_path("../scripts/new-intent", __dir__)
+  RESTORE = File.expand_path("../scripts/restore-intent-v1", __dir__)
+  TEMPLATES = File.expand_path("../templates", __dir__)
+
+  def setup
+    @home = Dir.mktmpdir("restore-intent-v1")
+    @store = File.join(@home, "store")
+    FileUtils.mkdir_p(@store)
+    File.write(File.join(@home, "INDEX.md"), "# Index\n\n## Relocated\n(none)\n")
+    git("init", "-q")
+    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "--allow-empty", "-q", "-m", "init")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+  end
+
+  def git(*args)
+    out, status = Open3.capture2("git", "-C", @home, *args)
+    raise "git #{args.join(" ")} failed: #{out}" unless status.success?
+
+    out
+  end
+
+  def new_intent(*args)
+    out, status = Open3.capture2(RbConfig.ruby, NEW_INTENT, "--templates", TEMPLATES, "--store", @store, *args)
+    raise "new-intent failed: #{out}" unless status.success?
+
+    out.strip
+  end
+
+  def commit_all(message)
+    git("add", "-A")
+    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", message)
+    git("rev-parse", "HEAD").strip
+  end
+
+  def frontmatter_of(dir)
+    IntentValidator.parse_frontmatter(File.join(dir, "#{File.basename(dir)}.md"))
+  end
+
+  def chain_of(dir)
+    Array(frontmatter_of(dir)["chain"]).map(&:to_s)
+  end
+
+  # Resolve an id back to its on-disk directory under @store (used by tests that
+  # need the created intent's basename/label after the fact, e.g. a ## Links
+  # assertion).
+  def dir_for_id(id)
+    Dir.children(@store).map { |e| File.join(@store, e) }
+       .find { |d| File.basename(d).split("--", 2).first == id.to_s }
+  end
+
+  # Builds the 124/131-shaped fixture. Returns [a_dir, a_id, v1_sha].
+  def seed_124_131_shape
+    a_dir = new_intent("--intent", "Delivered thing", "--slug", "delivered-thing")
+    a_id = File.basename(a_dir).split("--", 2).first
+    v1_sha = commit_all("intent #{a_id} delivered")
+
+    b_dir = new_intent("--intent", "Later thing", "--slug", "later-thing", "--sources", a_id)
+    commit_all("feat: create later thing (sources #{a_id})")
+    assert_includes chain_of(a_dir), File.basename(b_dir).split("--", 2).first,
+      "fixture setup: new-intent must write the I1 backlink before the test proceeds"
+
+    a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
+    File.write(a_md, File.read(a_md) + "\n\n### Amendment\nA late ruling landed in place.\n")
+    commit_all("intent #{a_id} amended in place")
+
+    [a_dir, a_id, v1_sha]
+  end
+
+  # THE regression: the OLD hand-run behavior (60a51bf's literal mechanism) loses
+  # the accrued I1 backlink because it is a whole-file revert with no concept of
+  # graph metadata.
+  def test_old_whole_file_revert_destroys_the_accrued_backlink
+    a_dir, _a_id, v1_sha = seed_124_131_shape
+    rel = relative_to_home(a_dir)
+
+    git("checkout", v1_sha, "--", "#{rel}/#{File.basename(a_dir)}.md")
+
+    refute_includes chain_of(a_dir), chain_of(a_dir).first.to_s.empty? ? "" : chain_of(a_dir).first,
+      "sanity: chain should not be empty by coincidence" unless chain_of(a_dir).empty?
+    assert_empty chain_of(a_dir),
+      "the OLD whole-file revert must reproduce the real incident: chain reverts to v1's " \
+      "empty array, destroying the accrued backlink"
+  end
+
+  # THE fix: the NEW tool preserves the backlink through an identical restore.
+  def test_new_tool_preserves_the_accrued_backlink
+    a_dir, a_id, v1_sha = seed_124_131_shape
+    b_id_chain_before = chain_of(a_dir)
+
+    out, status = Open3.capture2(
+      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
+    )
+    assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
+
+    assert_equal b_id_chain_before, chain_of(a_dir),
+      "the accrued backlink must survive the restore"
+    refute_includes File.read(File.join(a_dir, "#{File.basename(a_dir)}.md")), "A late ruling landed in place",
+      "the amendment prose must be reverted to v1"
+  end
+
+  # Path relative to @home (the fixture's git repo root), for `git checkout <sha>
+  # -- <path>` invocations run directly against the fixture (not through the CLI).
+  def relative_to_home(dir)
+    dir.delete_prefix("#{@home}/")
+  end
+end
