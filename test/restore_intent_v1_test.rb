@@ -245,4 +245,54 @@ class RestoreIntentV1Test < Minitest::Test
     assert_equal expected, LinksSection.extract_section(body),
       "## Links must reflect the preserved chain edge after an applied restore"
   end
+
+  def test_unresolved_at_aborts_with_no_write
+    a_dir = new_intent("--intent", "Untouched", "--slug", "untouched")
+    a_id = File.basename(a_dir).split("--", 2).first
+    a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
+    commit_all("intent #{a_id} delivered")
+    before = File.read(a_md)
+
+    out, status = Open3.capture2(
+      RbConfig.ruby, RESTORE, a_id, "--at", "not-a-real-ref", "--plastic-home", @home, "--apply"
+    )
+    refute_equal 0, status.exitstatus, "must exit non-zero: #{out}"
+    assert_equal before, File.read(a_md), "file must be byte-for-byte unchanged"
+  end
+
+  def test_unresolved_intent_id_aborts_with_no_write
+    a_dir = new_intent("--intent", "Untouched two", "--slug", "untouched-two")
+    a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
+    v1_sha = commit_all("intent delivered")
+    before = File.read(a_md)
+
+    out, status = Open3.capture2(
+      RbConfig.ruby, RESTORE, "999999", "--at", v1_sha, "--plastic-home", @home, "--apply"
+    )
+    refute_equal 0, status.exitstatus, "must exit non-zero: #{out}"
+    assert_equal before, File.read(a_md), "file must be byte-for-byte unchanged"
+  end
+
+  def test_unparseable_v1_frontmatter_aborts_with_no_write
+    a_dir = new_intent("--intent", "Bad v1", "--slug", "bad-v1")
+    a_id = File.basename(a_dir).split("--", 2).first
+    a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
+
+    # Corrupt v1's frontmatter itself (no closing --- delimiter), commit it as v1.
+    File.write(a_md, "---\nid: \"#{a_id}\"\nsources: [\nno closing delimiter here")
+    v1_sha = commit_all("intent #{a_id} delivered with broken frontmatter")
+
+    # Restore the working copy to something valid so "current" is readable, but
+    # v1 (the committed snapshot) remains broken.
+    good_a_dir = new_intent("--intent", "Bad v1 fixed", "--slug", "bad-v1-fixed")
+    FileUtils.cp(File.join(good_a_dir, "#{File.basename(good_a_dir)}.md"), a_md)
+    commit_all("intent #{a_id} amended in place")
+    before = File.read(a_md)
+
+    out, status = Open3.capture2(
+      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
+    )
+    refute_equal 0, status.exitstatus, "must exit non-zero: #{out}"
+    assert_equal before, File.read(a_md), "file must be byte-for-byte unchanged"
+  end
 end
