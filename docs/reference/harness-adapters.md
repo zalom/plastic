@@ -154,6 +154,14 @@ than blocking.
 
 ### L1 standing conventions
 
+The installer's first-install presence probe tests `~/.codex` (Codex's own home,
+`config[:home_dir]`), not `~/.agents` (`config[:dir]`, the shared cross-tool skills root any
+AgentSkills-compliant tool can already have created). `~/.agents` itself is created by the
+install when it does not yet exist (`install_skills_flat` and `generate_codex_agents` both
+`mkdir_p` their own nested paths), so a machine with Codex installed but no other
+AgentSkills-compliant tool no longer aborts on a missing directory it never owned (intent 198
+fixed a defect that made every fresh Codex-only install fail before this).
+
 Skills copy flat and unmodified to `~/.agents/skills/plastic-<name>/` (copy-not-transform,
 settled by 23 and reconfirmed by 181). Plastic's standing conventions inject into
 `~/.codex/AGENTS.md` as a marked section: a small curated body (work flows through
@@ -196,6 +204,14 @@ model. `doctor`'s codex check validates the generated `.toml` files (presence pl
 structural check for the mandatory fields) in place of the flat `.md` check, which no
 longer applies to codex. Hermes and `~/.codex/config.toml` are untouched by this slice.
 
+`doctor`'s model-drift check (`check_agent_model_drift`) has a Codex-specific path since
+intent 198: it reads `~/.codex/agents/plastic-*.toml` directly (the same plain string
+matching `codex_agents_toml_check` already uses, no TOML parser dependency) and compares
+each file's `model`/`model_reasoning_effort` line against the tier default, honoring an
+`agents.models.codex.<name>` override. Previously this check globbed a path Codex never
+writes and always passed silently without opening a single Codex file, so a drifted
+override could never be caught.
+
 ### L3 lifecycle gates and savepoints (intent 102)
 
 Registration writes `~/.codex/hooks.json` at USER scope (defeats the open worktree-scoped
@@ -231,6 +247,19 @@ PreToolUse veto denies the whole `apply_patch` call on the first violating file.
 only; Update, Delete, and Move operations defer to the PostToolUse `gate-check` backstop,
 which re-validates the intent file after the write lands, so nothing goes unchecked.
 
+`links-gate` (registered in `HookRegistry::CODEX_PRE_HOOKS` since intent 192, but with no
+dispatcher branch until intent 198) is the write-time belt for the PLASTIC.md `## Links`
+contract: it reuses the exact same `LinksGate.decision` Claude's `hook-links-gate` drives, so
+both harnesses share one decision function and can never disagree by construction.
+`before_content` is the real on-disk file; `after_content` is the Update op's `added_content`.
+This is a disclosed, narrower judgment than Claude's version: `ApplyPatchEnvelope.parse` only
+ever captures a diff's added lines, never its removed or context lines, so for an Update whose
+diff is a partial hunk rather than a full-file rewrite, `after_content` may not be the complete
+proposed file. This is the same class of disclosed limitation the envelope parser's header
+comment and `create-gate`'s own Update/Delete/Move handling already carry (best effort, never a
+hard crash); running the same best-effort compare on Update ops here is strictly more coverage
+than the total fail-open that shipped in v1.4.0.
+
 The `apply_patch` V4A envelope's inner grammar (the exact shape of `*** Add/Update/Delete
 File:` sections, `*** Move to:`, and the `+`/`-`/context line prefixes) is not
 primary-sourced in either the guide this slice was built against or 181's report; the
@@ -261,6 +290,15 @@ hook's command. Interactive sessions trust the installed hooks via `/hooks`. Hea
 `requirements.toml` shipped ahead of time; this slice documents both paths and ships no
 trust artifact of its own.
 
+Since intent 198, the installer itself prints the `/hooks` step after a successful Codex
+install (`scripts/install.rb`'s `print_results`), so a user is told to trust the hooks instead
+of discovering silently that no gate ever fires. `doctor`'s `check_codex_registration` adds a
+`codex_hooks_trust` advisory (`warn`, never `pass` or `fail`) once hooks are registered as
+expected: whether Codex persists a queryable trust record anywhere under `~/.codex` is
+undocumented and unverified, so this can never be a real pass or fail check, only a reminder.
+Because trust is keyed to each hook's current command hash, any future Plastic release that
+changes a hook's command re-arms the review, and the advisory's wording says so.
+
 ### Minimum Codex version
 
 The hooks feature and the headless trust-bypass fix land on the 0.13x release line onward
@@ -276,5 +314,8 @@ the harness-adapters umbrella and 4a1c1 is this foundation. Codex's L1 core (ski
 plus AGENTS.md standing-conventions injection, intent 33a), L3 hooks and gates
 (`hooks.json` registration, the `apply_patch` envelope parser, the dispatcher, intent 102),
 and per-agent model mapping (`~/.codex/agents/*.toml` generation, intent 102a) have all
-landed. Codex's L2 live-state injection remains future work. The current line of sight for
+landed. Intent 198 closed the gap between "shipped" and "actually works on a first install":
+the directory-presence probe, the missing links-gate dispatcher branch, the hook-trust
+reminder, and the Codex model-drift check. Codex's L2 live-state injection remains future
+work. The current line of sight for
 the remaining harnesses is Hermes, then OpenClaw. All of them target reasoning agents only.

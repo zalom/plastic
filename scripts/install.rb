@@ -132,6 +132,23 @@ class Install < InstallerCore
     puts "   Registered for: #{installed.map { |r| r[:agent] }.join(", ")}"
     puts "   Run /clear (or restart your agent) to pick up new conventions."
     puts "   Next: read docs/guides/your-first-intent-in-10-minutes.md\n\n"
+
+    print_codex_hook_trust_reminder(installed)
+  end
+
+  # Codex hooks are installed but INERT until a human reviews and trusts each
+  # hook definition via /hooks (intent 198, Decision D2); Codex keys trust to
+  # the hook's current command hash, so a future release that changes a hook
+  # command re-arms the review. Printed only when a harness that declares its
+  # own home_dir (Codex today) actually installed successfully in this run.
+  # Data-driven from `agents`, never a hardcoded harness name, mirroring the
+  # same reasoning as the D1 presence-probe fix.
+  def print_codex_hook_trust_reminder(installed)
+    codex_like = agents.select { |a| a.key?(:home_dir) }
+    return if codex_like.none? { |a| installed.any? { |r| r[:agent] == a[:name] } }
+
+    puts "   Codex: open Codex, run /hooks, and trust the Plastic hook definitions."
+    puts "   Plastic's gates will not fire until you do.\n\n"
   end
 
   def show_help

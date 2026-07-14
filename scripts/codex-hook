@@ -2,7 +2,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 #
-# Usage: codex-hook <gate>   (gate: code-gate | lock-gate | savepoint-pre | gate-check | create-gate)
+# Usage: codex-hook <gate>   (gate: code-gate | lock-gate | savepoint-pre | gate-check | create-gate | links-gate)
 #
 # The Codex input adapter (intent 102). Reads a Codex hook stdin payload
 # (session_id at top level, the apply_patch command in tool_input.command,
@@ -14,6 +14,7 @@ require "json"
 require "rbconfig"
 require_relative "lib/apply_patch_envelope"
 require_relative "lib/intent_validator"
+require_relative "lib/links_gate"
 
 gate = ARGV[0].to_s
 raw = ($stdin.read rescue nil)
@@ -89,6 +90,36 @@ when "gate-check"
 
 when "savepoint-pre"
   ops.each { |o| run_core("hook-savepoint-pre", o.path) }
+  exit 0
+
+when "links-gate"
+  # Write-time belt for the PLASTIC.md ## Links contract (intent 192), reusing
+  # the SAME LinksGate.decision Claude's hook-links-gate already drives, so
+  # both harnesses share one decision function. before_content is the real
+  # on-disk file (File.read, or "" when it does not yet exist); after_content
+  # is the proposed result, o.added_content.
+  #
+  # DISCLOSED, NARROWER judgment than Claude's version (intent 198, Decision
+  # D3): ApplyPatchEnvelope.parse only ever captures a diff's ADDED lines,
+  # never its removed or context lines, so for an Update whose diff is a
+  # partial hunk rather than a full-file rewrite, after_content may not be the
+  # complete proposed file. This is the same class of disclosed limitation
+  # create-gate already carries for Update/Delete/Move (best effort, never a
+  # hard crash). links-gate has no PostToolUse backstop to defer to on Claude
+  # either, so running this best-effort compare on Update ops too is strictly
+  # more coverage than the prior total fail-open.
+  ops.each do |o|
+    next unless intent_file?(o.path)
+
+    before_content = File.exist?(o.path) ? File.read(o.path) : ""
+    plastic_home = ENV.fetch("PLASTIC_HOME") { File.join(Dir.home, ".plastic") }
+    reason = LinksGate.decision(file_path: o.path, before_content: before_content,
+                                 after_content: o.added_content.to_s, plastic_home: plastic_home)
+    next unless reason
+
+    $stderr.puts reason
+    exit 2
+  end
   exit 0
 
 else
