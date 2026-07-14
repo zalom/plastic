@@ -1019,14 +1019,19 @@ module Bridge
   # plastic-lock CLI and /plastic-intent-starting (self-healing boarding).
   def self.repair_lock(session, intent_id:, intent_dir:, store:, name:,
                        now: Time.now, tmp: tmp_dir, harness: nil,
-                       agent: nil, model: nil, thread: nil, hint_harness: nil)
+                       agent: nil, model: nil, thread: nil, run_mode: nil,
+                       hint_harness: nil)
     key = resolve_session(session, intent_id: intent_id, store: store)
     dir = File.expand_path(intent_dir)
     actions = []
     previous = read(key, intent_id: intent_id, tmp: tmp)
     auto = !!(previous && previous.dig("build", "auto"))
+    derived_mode = if previous && previous.dig("build").is_a?(Hash) &&
+                      previous["build"].key?("auto")
+                     auto ? "auto" : "guided"
+                   end
     identity = { harness: harness, agent: agent, model: model, thread: thread,
-                 run_mode: auto ? "auto" : "guided" }
+                 run_mode: blank?(run_mode) ? derived_mode : run_mode.to_s }
 
     if Lock.corrupt?(dir)
       File.delete(Lock.path(dir))
