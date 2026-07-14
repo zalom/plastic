@@ -851,12 +851,13 @@ own isolation instead, deterministic and cwd-independent.
   bridge, or searches harness transcripts.
 
 - **Three distinct evidence layers and bounded delegate history** (intent 108a):
-  the controller record proves whole-intent authority; an active delegate record
+  the controller record proves whole-intent authority; a registered delegate record
   authorizes one child session under that controller; a claim record identifies
   one current writer for one artifact among already-authorized sessions. Delegate
-  terminal status is observational and does not rewrite controller authority.
-  Active delegates are retained, while finished and failed history is capped at
-  the 20 most recent terminal entries.
+  activity status (`active`, `finished`, or `failed`) is observational and does not
+  remove the session from the string-array authorization list. A delegate remains
+  authorized until a separate removal mechanism exists. Finished and failed activity
+  history is capped at the 20 most recent terminal entries.
 
 - **Solo-mode advisory relaxation** (intent 128): `Bridge.lock_gate_decision`
   and `Bridge.worktree_gate_decision` are ARBITRATION gates, not the

@@ -36,16 +36,16 @@ includes artifact validity).
 
 Every adapter passes lock provenance explicitly when it knows it. `harness` uses the
 adapter's canonical value, such as `claude`, `codex`, or `hermes`; `agent`, `model`, and
-`thread` use the harness's actual values. Unknown role, model, or thread values stay
+`thread` use the harness's actual values. Unknown harness, role, model, or thread values stay
 `Unknown`. Adapters must not infer them from transcript paths, session-id formats, process
 names, or model defaults.
 
 Provenance is descriptive. The session id remains the authorization identity, and the
 `delivery.lock` file mtime remains the sole heartbeat and freshness truth. Controller,
 delegate, and artifact-claim records are separate evidence and must not be collapsed into a
-single worker label. The adapter registers child sessions as delegates and reports terminal
-delegate status; Plastic retains active delegates and bounds finished or failed history to
-the 20 most recent entries.
+single worker label. The adapter registers child sessions as delegates and reports their
+activity status. That status is descriptive and does not revoke the delegate session's
+authorization. Plastic bounds finished or failed activity history to the 20 most recent entries.
 
 ## Skill invocation prefix
 

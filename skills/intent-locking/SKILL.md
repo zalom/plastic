@@ -52,7 +52,8 @@ Provenance is descriptive; the session remains the authorization identity.
   Provenance timestamps do not replace it.
 - Only the lock owner may register delegates or mark them `finished` or
   `failed`. Terminal status is observational and does not remove the delegate
-  session from the authorization list.
+  session from the authorization list. Finished and failed activity history is
+  bounded to the 20 most recent terminal entries.
 - `reclaim` refuses a fresh lock. There is no silent reclaim anywhere; every
   takeover is audited in the intent's savepoint.md.
 - Acquiring a lock for new work is NOT this skill's job: board through

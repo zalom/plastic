@@ -522,8 +522,10 @@ Another session that finds a fresh lock backs off; a stale lock is reclaimed onl
 explicit takeover, which replaces the lock and appends an audit line to the intent's
 savepoint.md. Rearming the same session preserves its acquired identity and refreshes known
 provenance; an explicit takeover replaces the controller and starts new provenance.
-Subagents spawned by the owner write under the owner's lock once registered as active
-delegates. Active delegates remain visible and authorized; finished and failed delegates are
+Subagents spawned by the owner write under the owner's lock once registered as delegates.
+Delegate activity status (`active`, `finished`, or `failed`) is descriptive and does not revoke
+the session's string-array authorization. A registered delegate remains authorized until a
+separate authorization-removal mechanism exists. Finished and failed delegate activity is
 retained as descriptive history, bounded to the 20 most recent terminal entries. A controller,
 a delegate, and an artifact claim are distinct evidence: controller ownership authorizes the
 delivery, delegate registration authorizes a child session, and a claim selects one current
