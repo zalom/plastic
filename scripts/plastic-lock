@@ -54,7 +54,8 @@ end
 
 session = opts[:session]
 session = ENV["CLAUDE_CODE_SESSION_ID"] if session.nil? || session.strip.empty?
-harness = opts[:harness] || "claude"
+harness = opts[:harness]
+hint_harness = harness || "claude"
 
 dir = opts[:dir]
 if dir.nil? || dir.strip.empty?
@@ -90,7 +91,8 @@ when "status"
   puts JSON.pretty_generate(report)
 when "fix"
   report = Bridge.repair_lock(key, intent_id: intent_id, intent_dir: dir,
-                              store: store, name: name, harness: harness)
+                              store: store, name: name, harness: harness,
+                              hint_harness: hint_harness)
   puts JSON.pretty_generate(report)
   unless report["status"] == "repaired"
     warn "plastic-lock: #{report['status']} by #{report['owner']}" \
@@ -118,7 +120,8 @@ when "reclaim"
     exit 1
   end
   report = Bridge.repair_lock(key, intent_id: intent_id, intent_dir: dir,
-                              store: store, name: name, harness: harness)
+                              store: store, name: name, harness: harness,
+                              hint_harness: hint_harness)
   puts JSON.pretty_generate(report)
 when "delegate"
   usage! if opts[:delegate].nil?

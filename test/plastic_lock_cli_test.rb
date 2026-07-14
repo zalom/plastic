@@ -150,11 +150,16 @@ class PlasticLockCliTest < Minitest::Test
   end
 
   def test_repair_enriches_same_owner_legacy_lock_from_explicit_metadata
-    Lock.acquire(@intent_dir, session: "sess-1")
+    acquired_at = Time.utc(2026, 7, 1, 12, 0, 0)
+    Lock.acquire(@intent_dir, session: "sess-1", host: "original-host", now: acquired_at)
+    Lock.add_delegate(@intent_dir, delegate: "delegate-1", session: "sess-1",
+                      now: acquired_at + 1)
+    original = Lock.read(@intent_dir)
+    heartbeat_at = acquired_at + 60
     report = Bridge.repair_lock("sess-1", intent_id: "96", intent_dir: @intent_dir,
                                 store: @store, name: "demo", tmp: @tmp,
                                 harness: :codex, agent: "plastic-enforcer",
-                                model: "gpt-5", thread: "thread-96")
+                                model: "gpt-5", thread: "thread-96", now: heartbeat_at)
     assert_equal "repaired", report["status"]
     lock = Lock.read(@intent_dir)
     assert_equal "codex", lock["owner_harness"]
@@ -162,6 +167,11 @@ class PlasticLockCliTest < Minitest::Test
     assert_equal "gpt-5", lock["owner_model"]
     assert_equal "thread-96", lock["owner_thread"]
     assert_equal "guided", lock["run_mode"]
+    assert_equal original["acquired_at"], lock["acquired_at"]
+    assert_equal "original-host", lock["host"]
+    assert_equal original["delegates"], lock["delegates"]
+    assert_equal original["delegate_activity"], lock["delegate_activity"]
+    assert_in_delta heartbeat_at.to_f, File.mtime(Lock.path(@intent_dir)).to_f, 0.001
   end
 
   def test_repair_without_metadata_keeps_identity_unknown_and_does_not_infer_cache
@@ -183,6 +193,20 @@ class PlasticLockCliTest < Minitest::Test
     assert_nil lock["owner_model"]
     assert_nil lock["owner_thread"]
     assert_equal "auto", lock["run_mode"], "mode derives only from the current bridge auto boolean"
+  end
+
+  def test_cli_fix_without_harness_keeps_owner_harness_unknown
+    Lock.acquire(@intent_dir, session: "sess-1")
+    out, err, st = cli("fix")
+    assert st.success?, "#{out}\n#{err}"
+    assert_nil Lock.read(@intent_dir)["owner_harness"]
+  end
+
+  def test_cli_fix_with_explicit_codex_harness_enriches_owner
+    Lock.acquire(@intent_dir, session: "sess-1")
+    out, err, st = cli("fix", "--harness", "codex")
+    assert st.success?, "#{out}\n#{err}"
+    assert_equal "codex", Lock.read(@intent_dir)["owner_harness"]
   end
 
   # --- intent 136: repair_lock must provision the worktree ---------------------

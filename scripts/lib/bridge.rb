@@ -1019,7 +1019,7 @@ module Bridge
   # plastic-lock CLI and /plastic-intent-starting (self-healing boarding).
   def self.repair_lock(session, intent_id:, intent_dir:, store:, name:,
                        now: Time.now, tmp: tmp_dir, harness: nil,
-                       agent: nil, model: nil, thread: nil)
+                       agent: nil, model: nil, thread: nil, hint_harness: nil)
     key = resolve_session(session, intent_id: intent_id, store: store)
     dir = File.expand_path(intent_dir)
     actions = []
@@ -1041,13 +1041,20 @@ module Bridge
       end
       return { "status" => "stale", "owner" => lock["owner_session"],
                "actions" => actions, "session" => key,
-               "hint" => "run #{skill_ref('plastic-doctor', harness: harness)} reclaim the " \
+               "hint" => "run #{skill_ref('plastic-doctor', harness: hint_harness || harness)} reclaim the " \
                          "lock to take over with an audit" }
     end
 
     if lock
       if lock["owner_session"].to_s == key.to_s
-        _status, lock_data = Lock.acquire(dir, session: key, now: now, **identity)
+        lock_data = lock.dup
+        { "owner_harness" => harness, "owner_agent" => agent,
+          "owner_model" => model, "owner_thread" => thread,
+          "run_mode" => identity[:run_mode] }.each do |field, value|
+          lock_data[field] = value.to_s unless blank?(value)
+        end
+        Lock.write(dir, lock_data)
+        Lock.heartbeat(dir, session: key, now: now)
       else
         Lock.heartbeat(dir, session: key, now: now)
         lock_data = Lock.read(dir)
