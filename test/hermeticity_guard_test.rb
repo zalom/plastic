@@ -17,7 +17,12 @@ require "tmpdir"
 class HermeticityGuardTest < Minitest::Test
   WRITERS = /Bridge\.(arm_auto|arm_guided|derive|write|disarm_auto|repair_lock)\b/.freeze
   ISOLATION = /PLASTIC_TMP|tmp:\s|Dir\.mktmpdir/.freeze
-  LOCK_VISIBILITY_ROOTS = %w[
+  # This boundary is intentionally conservative. Dashboard calls Doctor's
+  # store_health during every board load, so Doctor and its local dependency
+  # closure are part of the ambient-read path even though most are not lock
+  # visibility helpers. A future transcript diagnostic on that load path must
+  # be injected or isolated; it must not read an ambient harness store.
+  AMBIENT_READ_BOUNDARY_ROOTS = %w[
     scripts/lib/lock.rb
     scripts/plastic-lock
     scripts/dashboard.rb
@@ -37,30 +42,42 @@ class HermeticityGuardTest < Minitest::Test
   end
 
   def local_dependency_closure(root, roots)
-    root = File.expand_path(root)
+    root = File.realpath(root)
     root_prefix = "#{root}#{File::SEPARATOR}"
     pending = roots.map { |path| File.expand_path(path, root) }
     visited = {}
 
     until pending.empty?
-      path = pending.shift
-      next unless path.start_with?(root_prefix) && File.file?(path)
+      candidate = pending.shift
+      path = resolve_local_dependency(candidate, root_prefix)
+      next unless path
       next if visited[path]
 
       visited[path] = true
       File.read(path).scan(/require_relative\s*(?:\(\s*)?["']([^"']+)["']/).flatten.each do |relative|
         candidate = File.expand_path(relative, File.dirname(path))
-        candidate = "#{candidate}.rb" unless File.file?(candidate)
-        pending << candidate if candidate.start_with?(root_prefix) && File.file?(candidate)
+        pending << candidate
       end
     end
 
     visited.keys.sort
+  rescue Errno::ENOENT, Errno::EACCES, Errno::ELOOP
+    []
+  end
+
+  def resolve_local_dependency(candidate, root_prefix)
+    [candidate, "#{candidate}.rb"].uniq.each do |possible|
+      real = File.realpath(possible)
+      return real if real.start_with?(root_prefix) && File.file?(real)
+    rescue Errno::ENOENT, Errno::EACCES, Errno::ENOTDIR, Errno::ELOOP
+      next
+    end
+    nil
   end
 
   def test_lock_visibility_dependency_closure_follows_local_helpers
     root = File.expand_path("..", __dir__)
-    relative_paths = local_dependency_closure(root, LOCK_VISIBILITY_ROOTS)
+    relative_paths = local_dependency_closure(root, AMBIENT_READ_BOUNDARY_ROOTS)
       .map { |path| path.delete_prefix("#{root}#{File::SEPARATOR}") }
 
     %w[scripts/lib/bridge.rb scripts/lib/worktree.rb scripts/doctor.rb].each do |expected|
@@ -76,7 +93,21 @@ class HermeticityGuardTest < Minitest::Test
       File.write(File.join(root, "entry.rb"), "require_relative '../outside'\n")
       closure = local_dependency_closure(root, ["entry.rb", "../outside.rb"])
 
-      assert_equal [File.join(root, "entry.rb")], closure
+      assert_equal [File.realpath(File.join(root, "entry.rb"))], closure
+    end
+  end
+
+  def test_lock_visibility_dependency_closure_rejects_symlink_to_outside
+    Dir.mktmpdir("lock-visibility-symlink") do |parent|
+      root = File.join(parent, "project")
+      Dir.mkdir(root)
+      outside = File.join(parent, "outside.rb")
+      File.write(outside, "TRANSCRIPT_LOOKUP = true\n")
+      File.symlink(outside, File.join(root, "linked.rb"))
+      File.write(File.join(root, "entry.rb"), "require_relative 'linked'\n")
+
+      expected = [File.realpath(File.join(root, "entry.rb"))]
+      assert_equal expected, local_dependency_closure(root, ["entry.rb"])
     end
   end
 
@@ -102,7 +133,7 @@ class HermeticityGuardTest < Minitest::Test
 
   def test_lock_visibility_does_not_search_ambient_transcript_stores
     root = File.expand_path("..", __dir__)
-    offenders = local_dependency_closure(root, LOCK_VISIBILITY_ROOTS).flat_map do |path|
+    offenders = local_dependency_closure(root, AMBIENT_READ_BOUNDARY_ROOTS).flat_map do |path|
       relative_path = path.delete_prefix("#{root}#{File::SEPARATOR}")
       transcript_lookup_markers(File.read(path)).map { |marker| "#{relative_path}: #{marker}" }
     end
