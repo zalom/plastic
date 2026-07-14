@@ -399,6 +399,17 @@ class DashboardTest < Minitest::Test
                    { id: id, intent: title, author: "agent", tags: %w[demo], created: "2026-06-01" })
     end
 
+    # Give three lock-state rows distinct lifecycle depths so this same fixture
+    # proves worker projection never disturbs finish-first ordering.
+    File.write(File.join(demo, "c--claude-owner", "spec.md"), "s")
+    File.write(File.join(demo, "c--claude-owner", "plan.md"), "p")
+    File.write(File.join(demo, "c--claude-owner", "checklist.md"), "- [ ] x\n")
+    File.write(File.join(demo, "x--codex-owner", "spec.md"), "s")
+    File.write(File.join(demo, "x--codex-owner", "plan.md"), "p")
+    File.write(File.join(demo, "l--legacy", "spec.md"), "s")
+    write_intent(demo, "f", "future-work",
+                 { id: "f", intent: "Future work", author: "agent", tags: %w[demo bugfix], created: "2026-06-01" })
+
     now = Time.now
     claude_dir = File.join(demo, "c--claude-owner")
     Lock.acquire(claude_dir, session: "claude-session", harness: "claude",
@@ -423,7 +434,9 @@ class DashboardTest < Minitest::Test
       "- [#{id} - #{title}](store/#{id}--#{slug}/#{id}--#{slug}.md)"
     end
     File.write(File.join(@home, "projects", "demo", "INDEX.md"),
-               "# Index\n## Active\n#{active_lines.join("\n")}\n## Future\n## Clusters\n## Abandoned\n## Completed\n")
+               "# Index\n## Active\n#{active_lines.join("\n")}\n## Future\n" \
+               "- [f - Future work](store/f--future-work/f--future-work.md)\n" \
+               "## Clusters\n## Abandoned\n## Completed\n")
     yield
   ensure
     FileUtils.remove_entry(@home) if @home && File.directory?(@home)
@@ -457,6 +470,84 @@ class DashboardTest < Minitest::Test
       assert_includes out, "plastic-enforcer · Claude · Fresh · writer writer-session"
       assert_includes out, "Unknown · Unknown · No lock"
       assert_equal 6, out.lines.count { |line| line.start_with?(STATUS_GLYPH["active"]) }
+    end
+  end
+
+  def test_lock_visibility_preserves_default_cap_finish_first_totals_and_next_work
+    with_lock_visibility_fixture do
+      out, status = run_dash("project", "demo", "--data")
+      assert_equal 0, status
+      data = JSON.parse(out)
+      assert_equal %w[c x l], data["active"].map { |row| row["id"] }
+      assert_equal 3, data["active_shown"]
+      assert_equal 6, data["active_total"]
+      assert_equal ["f"], data["next_work"].map { |row| row["id"] }
+      assert_equal 1, data["next_shown"]
+      assert_equal 1, data["next_total"]
+      refute data["next_work"].first.key?("worker")
+      refute data["next_work"].first.key?("activity")
+    end
+  end
+
+  def test_lock_visibility_preserves_limit_active_and_all_paging
+    with_lock_visibility_fixture do
+      limited, = run_dash("project", "demo", "--data", "--limit-active", "2")
+      limited_data = JSON.parse(limited)
+      assert_equal %w[c x], limited_data["active"].map { |row| row["id"] }
+      assert_equal 2, limited_data["active_shown"]
+      assert_equal 6, limited_data["active_total"]
+
+      all, = run_dash("project", "demo", "--data", "--all")
+      all_data = JSON.parse(all)
+      assert_equal %w[c x l b n s], all_data["active"].map { |row| row["id"] }
+      assert_equal 6, all_data["active_shown"]
+      assert_equal 6, all_data["active_total"]
+    end
+  end
+
+  def test_worker_fields_do_not_leak_to_global_data_or_auto_json
+    with_lock_visibility_fixture do
+      global, = run_dash("continue", "--data")
+      auto, = run_dash("project", "demo", "--json")
+      [JSON.parse(global), JSON.parse(auto)].each do |payload|
+        serialized = JSON.generate(payload)
+        refute_includes serialized, '"worker"'
+        refute_includes serialized, '"activity"'
+        refute_includes serialized, '"intent_dir"'
+      end
+    end
+  end
+
+  def test_internal_intent_dir_never_leaks_from_project_surfaces
+    with_lock_visibility_fixture do
+      data, = run_dash("project", "demo", "--data", "--all")
+      plain, = run_dash("project", "demo", "--plain")
+      terminal, = run_dash("project", "demo")
+      [data, plain, terminal].each do |surface|
+        refute_includes surface, "intent_dir"
+        refute_includes surface, @home
+      end
+    end
+  end
+
+  def test_project_markdown_mechanical_fill_renders_five_active_columns_and_values
+    with_lock_visibility_fixture do
+      out, = run_dash("project", "demo", "--data")
+      data = JSON.parse(out)
+      template = File.read(File.expand_path("../skills/dashboard/templates/dashboard-project.md", __dir__))
+      rows = data["active"].map do |row|
+        "| #{row['id']} | #{row['what']} | #{row['stage']} | #{row['worker']} | #{row['activity']} |"
+      end.join("\n")
+      markdown = template.gsub("{{slug}}", data["slug"])
+                         .gsub("{{date}}", data["date"])
+                         .gsub("{{summary}}", data["summary"])
+                         .gsub("{{active.rows}}", rows)
+      assert_includes markdown, "| Id | What | Stage | Worker | Activity |"
+      assert_includes markdown, "| c | Claude enriched | Exec | plastic-enforcer · Claude | Fresh · writer writer-session |"
+      assert_includes markdown, "| x | Codex enriched | How | plastic-planner · Codex | Fresh |"
+      markdown.lines.grep(/^\| [cxl] \|/).each do |line|
+        assert_equal 6, line.count("|"), "expected exactly five Markdown cells: #{line.inspect}"
+      end
     end
   end
 
