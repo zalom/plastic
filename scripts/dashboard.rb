@@ -26,6 +26,7 @@ require "yaml"
 require "date"
 require_relative "doctor"
 require_relative "lib/bridge"
+require_relative "lib/lock"
 
 PLASTIC_HOME = ENV.fetch("PLASTIC_HOME") { File.join(Dir.home, ".plastic") }
 
@@ -222,6 +223,10 @@ def parse_intent(store_info, dir_name, status_index)
     body_has_context: body.include?("## Context"),
     last_accessed_at: last_accessed_at(dir, (fm["created"].to_s rescue "")),
     done_at: done_timestamp(dir),
+    # Kept only in the internal record so project Active rows can inspect the
+    # durable lock beside the intent. intent_line deliberately does not expose
+    # this filesystem path in --data or any rendered surface.
+    intent_dir: File.expand_path(dir),
   }
 end
 
@@ -713,13 +718,44 @@ def footer_line(next_shown:, next_total:, active_shown: nil, active_total: nil)
   end
 end
 
+def display_provenance(value)
+  text = value.to_s.strip
+  return "Unknown" if text.empty? || text.casecmp("unknown").zero?
+  %w[claude codex].include?(text.downcase) ? text.capitalize : text
+end
+
+def active_lock_fields(rec)
+  view = Lock.who(rec.fetch(:intent_dir))
+  owner = view["owner"] || {}
+  worker = "#{display_provenance(owner['agent'])} · #{display_provenance(owner['harness'])}"
+  activity = case view["state"]
+             when "fresh" then "Fresh"
+             when "stale" then "Stale"
+             when "corrupt" then "Corrupt"
+             else "No lock"
+             end
+  if view["state"] == "fresh"
+    claim = Array(view["claims"]).find { |item| item["fresh"] && !item["corrupt"] }
+    writer = claim && (claim["delegate"] || claim["owner_session"])
+    activity = "#{activity} · writer #{writer}" unless writer.to_s.empty?
+  end
+  [worker, activity]
+end
+
 def intent_line(rec, bullet)
   note = rec[:status] == "active" ? " (#{rec[:lifecycle].to_s.capitalize})" : ""
   text = rec[:intent].to_s
   text = "#{text[0, INTENT_LINE_MAX_CHARS]}…" if text.length > INTENT_LINE_MAX_CHARS
-  { id: rec[:id], intent: rec[:intent], created: rec[:created], bullet: bullet,
+  row = { id: rec[:id], intent: rec[:intent], created: rec[:created], bullet: bullet,
     scope: rec[:scope], what: cell(text), stage: rec[:lifecycle].to_s.capitalize,
     line: "#{bullet} #{rec[:id]} #{text}#{note}".rstrip }
+  if rec[:status] == "active"
+    worker, activity = active_lock_fields(rec)
+    row[:worker] = cell(worker)
+    row[:activity] = cell(activity)
+    row[:line] = "#{row[:line]} · #{worker} · #{activity}"
+  end
+  row
 end
 
 # Cap an already-sorted record list to `cap` entries and map to intent_line-shaped hashes.

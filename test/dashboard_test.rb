@@ -371,9 +371,103 @@ class DashboardTest < Minitest::Test
     data = JSON.parse(out)
     active = data["active"].reject { |r| r["id"].to_s.empty? }
     refute_empty active
-    active.each { |r| %w[what stage].each { |k| assert r.key?(k), "active missing #{k}: #{r.inspect}" } }
+    active.each { |r| %w[what stage worker activity].each { |k| assert r.key?(k), "active missing #{k}: #{r.inspect}" } }
     assert_operator data["active"].size, :<=, 3
     assert_equal [data["active_shown"], data["active_total"]].min, data["active_shown"]
+  end
+
+  def with_lock_visibility_fixture
+    saved_home = @home
+    @home = Dir.mktmpdir("plastic-dash-lock-visibility")
+    demo = File.join(@home, "projects", "demo", "store")
+    FileUtils.mkdir_p(demo)
+    FileUtils.mkdir_p(File.join(@home, "store"))
+    File.write(File.join(@home, "projects.yml"),
+               "---\nprojects:\n  demo:\n    path: \"/tmp/demo-locks\"\n    status: active\n")
+    File.write(File.join(@home, "INDEX.md"), "# Index\n## Active\n## Future\n## Clusters\n## Abandoned\n## Completed\n")
+
+    fixtures = {
+      "c" => ["claude-owner", "Claude enriched"],
+      "x" => ["codex-owner", "Codex enriched"],
+      "l" => ["legacy", "Legacy lock"],
+      "s" => ["stale", "Stale lock"],
+      "b" => ["broken", "Corrupt lock"],
+      "n" => ["none", "No lock"],
+    }
+    fixtures.each do |id, (slug, title)|
+      write_intent(demo, id, slug,
+                   { id: id, intent: title, author: "agent", tags: %w[demo], created: "2026-06-01" })
+    end
+
+    now = Time.now
+    claude_dir = File.join(demo, "c--claude-owner")
+    Lock.acquire(claude_dir, session: "claude-session", harness: "claude",
+                 agent: "plastic-enforcer", now: now)
+    Claim.acquire_claim(claude_dir, "spec.md", session: "claude-session",
+                        delegate: "writer-session", now: now)
+    Lock.acquire(File.join(demo, "x--codex-owner"), session: "codex-session",
+                 harness: "codex", agent: "plastic-planner", now: now)
+    legacy_dir = File.join(demo, "l--legacy")
+    File.write(File.join(legacy_dir, "delivery.lock"), JSON.generate(
+      "type" => "delivery", "owner_session" => "legacy-session", "host" => "test",
+      "acquired_at" => now.utc.iso8601, "delegates" => []
+    ))
+    stale_dir = File.join(demo, "s--stale")
+    Lock.acquire(stale_dir, session: "stale-session", harness: "codex",
+                 agent: "plastic-executor", now: now - Lock::TTL_SECONDS - 60)
+    File.utime(now - Lock::TTL_SECONDS - 60, now - Lock::TTL_SECONDS - 60,
+               File.join(stale_dir, "delivery.lock"))
+    File.write(File.join(demo, "b--broken", "delivery.lock"), "not json")
+
+    active_lines = fixtures.map do |id, (slug, title)|
+      "- [#{id} - #{title}](store/#{id}--#{slug}/#{id}--#{slug}.md)"
+    end
+    File.write(File.join(@home, "projects", "demo", "INDEX.md"),
+               "# Index\n## Active\n#{active_lines.join("\n")}\n## Future\n## Clusters\n## Abandoned\n## Completed\n")
+    yield
+  ensure
+    FileUtils.remove_entry(@home) if @home && File.directory?(@home)
+    @home = saved_home
+  end
+
+  def test_project_active_rows_show_worker_and_durable_activity_states
+    with_lock_visibility_fixture do
+      out, status = run_dash("project", "demo", "--data", "--all")
+      assert_equal 0, status
+      rows = JSON.parse(out)["active"].to_h { |row| [row["id"], row] }
+      assert_equal "plastic-enforcer · Claude", rows["c"]["worker"]
+      assert_equal "Fresh · writer writer-session", rows["c"]["activity"]
+      assert_equal "plastic-planner · Codex", rows["x"]["worker"]
+      assert_equal "Fresh", rows["x"]["activity"]
+      assert_equal "Unknown · Unknown", rows["l"]["worker"]
+      assert_equal "Fresh", rows["l"]["activity"]
+      assert_equal "plastic-executor · Codex", rows["s"]["worker"]
+      assert_equal "Stale", rows["s"]["activity"]
+      assert_equal "Unknown · Unknown", rows["b"]["worker"]
+      assert_equal "Corrupt", rows["b"]["activity"]
+      assert_equal "Unknown · Unknown", rows["n"]["worker"]
+      assert_equal "No lock", rows["n"]["activity"]
+    end
+  end
+
+  def test_plain_project_includes_worker_and_activity_without_changing_caps
+    with_lock_visibility_fixture do
+      out, status = run_dash("project", "demo", "--plain")
+      assert_equal 0, status
+      assert_includes out, "plastic-enforcer · Claude · Fresh · writer writer-session"
+      assert_includes out, "Unknown · Unknown · No lock"
+      assert_equal 6, out.lines.count { |line| line.start_with?(STATUS_GLYPH["active"]) }
+    end
+  end
+
+  def test_project_markdown_template_has_worker_and_activity_columns
+    template = File.read(File.expand_path("../skills/dashboard/templates/dashboard-project.md", __dir__))
+    assert_includes template, "| Id | What | Stage | Worker | Activity |"
+    assert_includes template, "| --- | --- | --- | --- | --- |"
+
+    contract = File.read(File.expand_path("../skills/dashboard/SKILL.md", __dir__))
+    assert_includes contract, "| {id} | {what} | {stage} | {worker} | {activity} |"
+    assert_includes contract, "| _(none)_ | | | |"
   end
 
   def test_cell_escapes_pipe_in_intent
