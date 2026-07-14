@@ -806,12 +806,17 @@ own isolation instead, deterministic and cwd-independent.
   `provision` falls back to the passed `home:`).
 - **The lock file is the truth, the bridge is a cache** (intent 108):
   `scripts/lib/lock.rb` owns the durable `delivery.lock` JSON file inside the
-  intent directory: `{ type, owner_session, host, acquired_at, delegates }`,
-  never a pid. `Lock.acquire` is atomic (O_EXCL) and returns
+  intent directory. `owner_session` is authorization; the controller's
+  `harness`, `agent`, `model`, `thread`, and `mode` are descriptive provenance
+  supplied explicitly by the harness. Missing legacy values remain unknown and
+  are never reconstructed from transcript locations, session-id formats, or
+  other heuristics. The file never carries a pid. `Lock.acquire` is atomic
+  (O_EXCL) and returns
   `:acquired/:owned/:held/:stale/:excluded/:corrupt`; freshness is the file
   mtime against `Lock::TTL_SECONDS` (1800 seconds), refreshed by
   `Lock.heartbeat` from the write-path hooks (`hook-gate-check` and the
-  lock-gate allow path). `arm` acquires the lock, raising
+  lock-gate allow path). The mtime is the sole heartbeat and freshness truth;
+  provenance timestamps are descriptive only. `arm` acquires the lock, raising
   `Bridge::LockHeldError` with the resolving `plastic-lock` verb when it
   cannot, and fills the bridge's `lock` block as a cache; `disarm_auto`
   releases the worktrees, clears the lock, and only then is the bridge
@@ -829,8 +834,9 @@ own isolation instead, deterministic and cwd-independent.
   `Bridge.lock_gate_decision` reads the TARGET intent dir's lock, admits the
   owner or a registered delegate (even on a stale lock, which stays its
   owner's until an explicit takeover), and every deny names the resolving
-  command. A stale foreign lock is taken only by `Lock.takeover`, which
-  appends an audit line to the intent's savepoint.md.
+  command. Rearming the same session preserves authority and refreshes supplied
+  provenance. A stale foreign lock is taken only by `Lock.takeover`, which
+  replaces the controller and appends an audit line to the intent's savepoint.md.
   `Worktree.lock_held_by_other?` asks the same file, so `/tmp` bridges are
   never consulted for ownership and no code probes a pid.
   `Bridge.repair_lock` is the one idempotent repair: it rebuilds the lock and
@@ -840,7 +846,17 @@ own isolation instead, deterministic and cwd-independent.
   instead of wiping it back to derive's unprovisioned default; `plastic-lock
   fix`, `plastic-lock reclaim`, and the boarding skill's self-heal all inherit
   this since they call `repair_lock`. The `plastic-lock` CLI exposes it
-  (verbs: status, fix, release, reclaim, delegate).
+  (verbs: who, status, fix, release, reclaim, delegate). `who` reads only the
+  durable lock, its mtime, and claim files. It never repairs state, consults the
+  bridge, or searches harness transcripts.
+
+- **Three distinct evidence layers and bounded delegate history** (intent 108a):
+  the controller record proves whole-intent authority; an active delegate record
+  authorizes one child session under that controller; a claim record identifies
+  one current writer for one artifact among already-authorized sessions. Delegate
+  terminal status is observational and does not rewrite controller authority.
+  Active delegates are retained, while finished and failed history is capped at
+  the 20 most recent terminal entries.
 
 - **Solo-mode advisory relaxation** (intent 128): `Bridge.lock_gate_decision`
   and `Bridge.worktree_gate_decision` are ARBITRATION gates, not the

@@ -32,6 +32,21 @@ includes artifact validity).
 | L2 live state | The active intent's id, stage, and role arrive at the point of work (session event and/or spawn preamble) | The live snapshot tells the agent where it is in the cycle so it acts in-stage | None directly; feeds the L3 gates that do block |
 | L3 lifecycle gates + savepoints | Gate and savepoint hooks fire on file writes within the intent dir | Gate context nudges the next correct lifecycle move | Stage gates block out-of-order writes; the artifact-validity backstop rejects an intent file that is not born complete; savepoints record each milestone |
 
+### Lock provenance contract
+
+Every adapter passes lock provenance explicitly when it knows it. `harness` uses the
+adapter's canonical value, such as `claude`, `codex`, or `hermes`; `agent`, `model`, and
+`thread` use the harness's actual values. Unknown role, model, or thread values stay
+`Unknown`. Adapters must not infer them from transcript paths, session-id formats, process
+names, or model defaults.
+
+Provenance is descriptive. The session id remains the authorization identity, and the
+`delivery.lock` file mtime remains the sole heartbeat and freshness truth. Controller,
+delegate, and artifact-claim records are separate evidence and must not be collapsed into a
+single worker label. The adapter registers child sessions as delegates and reports terminal
+delegate status; Plastic retains active delegates and bounds finished or failed history to
+the 20 most recent entries.
+
 ## Skill invocation prefix
 
 Each adapter's users invoke a Plastic skill with a different literal prefix in front of the bare
