@@ -16,6 +16,29 @@ require "json"
 class HermeticityGuardTest < Minitest::Test
   WRITERS = /Bridge\.(arm_auto|arm_guided|derive|write|disarm_auto|repair_lock)\b/.freeze
   ISOLATION = /PLASTIC_TMP|tmp:\s|Dir\.mktmpdir/.freeze
+  LOCK_VISIBILITY_PATHS = %w[
+    scripts/lib/lock.rb
+    scripts/plastic-lock
+    scripts/dashboard.rb
+  ].freeze
+  TRANSCRIPT_LOOKUP_MARKERS = [
+    ".claude/projects",
+    ".codex/sessions",
+    "rollout-",
+  ].freeze
+
+  def test_lock_visibility_does_not_search_ambient_transcript_stores
+    root = File.expand_path("..", __dir__)
+    offenders = LOCK_VISIBILITY_PATHS.flat_map do |relative_path|
+      source = File.read(File.join(root, relative_path))
+      TRANSCRIPT_LOOKUP_MARKERS.filter_map do |marker|
+        "#{relative_path}: #{marker}" if source.include?(marker)
+      end
+    end
+
+    assert_empty offenders,
+      "lock visibility must use durable lock state, not ambient transcript stores: #{offenders.join(', ')}"
+  end
 
   def test_every_bridge_writing_test_isolates_its_tmp
     offenders = Dir[File.expand_path("../*_test.rb", __FILE__)].select do |f|
