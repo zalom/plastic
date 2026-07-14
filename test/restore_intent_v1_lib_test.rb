@@ -1,0 +1,110 @@
+# encoding: UTF-8
+# frozen_string_literal: true
+
+require "minitest/autorun"
+require_relative "../scripts/lib/restore_intent_v1"
+
+class RestoreIntentV1LibTest < Minitest::Test
+  # A minimal store_index/relocation_map: one store "global" holding ids "1" and "2".
+  # "999" is absent from every known store (a confirmed-dead target).
+  def store_index
+    { "global" => %w[1 2] }
+  end
+
+  def empty_relocation_map
+    {}
+  end
+
+  def test_union_dedupes_and_preserves_both_snapshots
+    graph = RestoreIntentV1.compute_graph(
+      v1_sources: [], v1_chain: ["1"],
+      current_sources: [], current_chain: ["1", "2"],
+      referer_store: "global", relocation_map: empty_relocation_map, store_index: store_index
+    )
+    assert_equal %w[1 2], graph[:chain].sort
+    assert_empty graph[:dropped]
+  end
+
+  def test_dead_target_is_dropped_and_reported
+    graph = RestoreIntentV1.compute_graph(
+      v1_sources: [], v1_chain: ["999"],
+      current_sources: [], current_chain: ["1"],
+      referer_store: "global", relocation_map: empty_relocation_map, store_index: store_index
+    )
+    assert_equal ["1"], graph[:chain]
+    refute_includes graph[:chain], "999"
+    assert_equal [{ field: :chain, ref: "999" }], graph[:dropped]
+  end
+
+  def test_unknown_store_ref_is_kept_and_flagged_unverified
+    graph = RestoreIntentV1.compute_graph(
+      v1_sources: [], v1_chain: ["otherstore:5"],
+      current_sources: [], current_chain: [],
+      referer_store: "global", relocation_map: empty_relocation_map, store_index: store_index
+    )
+    assert_includes graph[:chain], "otherstore:5"
+    assert_equal [{ field: :chain, ref: "otherstore:5" }], graph[:unverified]
+    assert_empty graph[:dropped]
+  end
+
+  def test_apply_graph_rewrites_only_sources_and_chain
+    v1_content = <<~MD
+      ---
+      id: "1"
+      intent: "Example"
+      sources: []
+      chain: []
+      created: 2026-01-01
+      author: human
+      tags: []
+      ---
+
+      ## Intent
+      Example.
+    MD
+    result = RestoreIntentV1.apply_graph(v1_content, desired_sources: [], desired_chain: ["2"])
+    assert_includes result, "chain: [\"2\"]"
+    assert_includes result, "## Intent\nExample.\n"
+  end
+
+  def test_current_only_edge_is_named_regardless_of_resolution_outcome
+    graph = RestoreIntentV1.compute_graph(
+      v1_sources: [], v1_chain: ["1"],
+      current_sources: [], current_chain: ["1", "2"],
+      referer_store: "global", relocation_map: empty_relocation_map, store_index: store_index
+    )
+    assert_equal [{ field: :chain, ref: "2" }], graph[:current_only],
+      "an edge present in current but absent from v1 must be named as current-only"
+  end
+
+  def test_redundant_same_store_prefixed_ref_collapses_to_resolved_bare_id
+    # A ref carrying this intent's OWN store prefix ("global:15" written by a
+    # "global" intent) must resolve and be WRITTEN as the bare canonical id "15",
+    # not survive as the stale pre-resolution "global:15" (BLOCKING bug: the tool
+    # must write GraphRebuild's resolved value, never the raw union member).
+    graph = RestoreIntentV1.compute_graph(
+      v1_sources: [], v1_chain: ["global:15"],
+      current_sources: [], current_chain: [],
+      referer_store: "global", relocation_map: empty_relocation_map,
+      store_index: { "global" => %w[1 2 15] }
+    )
+    assert_equal ["15"], graph[:chain]
+    refute_includes graph[:chain], "global:15"
+  end
+
+  def test_relocated_ref_is_rewritten_to_its_resolved_repointed_value
+    # v1's chain names "24" (bare, home store "global"); the store's Relocated
+    # log records that 24 moved to foo:22. The restore must WRITE the resolved
+    # "foo:22", never the stale pre-relocation "24" (the same BLOCKING bug: the
+    # tool must agree with GraphRebuild/doctor about the canonical form).
+    relocation_map = { %w[global 24] => %w[foo 22] }
+    graph = RestoreIntentV1.compute_graph(
+      v1_sources: [], v1_chain: ["24"],
+      current_sources: [], current_chain: [],
+      referer_store: "global", relocation_map: relocation_map,
+      store_index: { "global" => [], "foo" => ["22"] }
+    )
+    assert_equal ["foo:22"], graph[:chain]
+    refute_includes graph[:chain], "24"
+  end
+end

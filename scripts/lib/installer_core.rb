@@ -323,6 +323,8 @@ class InstallerCore
       "scripts/project-links" => "scripts/project-links",
       "scripts/link-suggest" => "scripts/link-suggest",
       "scripts/rebuild-graph" => "scripts/rebuild-graph",
+      "scripts/lib/restore_intent_v1.rb" => "scripts/lib/restore_intent_v1.rb",
+      "scripts/restore-intent-v1" => "scripts/restore-intent-v1",
       "scripts/validate-intent" => "scripts/validate-intent",
       "scripts/new-intent" => "scripts/new-intent",
       "scripts/end-intent" => "scripts/end-intent",

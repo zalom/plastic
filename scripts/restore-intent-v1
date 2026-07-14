@@ -1,0 +1,288 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# restore-intent-v1 - restore a completed intent's PROSE to an explicit v1 git ref
+# while preserving its frontmatter GRAPH (sources/chain) as a target-resolved
+# union of the v1 snapshot and the current snapshot (intent 193). This is the
+# ONLY sanctioned way to restore a completed intent to v1; a hand-run whole-file
+# `git checkout`/revert is forbidden (see PLASTIC.md > Terminal immutability),
+# because it cannot tell prose from graph metadata and silently destroys
+# backlinks written after v1 (the 124/131 incident this tool exists to prevent).
+#
+# Usage:
+#   restore-intent-v1 <intent-id> --at <git-ref> [--plastic-home PATH] [--apply] \
+#                      [--skip-links] [--audit-path PATH]
+#
+# Dry-run by default (the OPPOSITE of rebuild-graph/project-links, which default
+# to a real run): this tool is rarer and higher blast-radius, and this exact
+# class of tool already destroyed live store data once. --apply is required to
+# write.
+#
+# Restore-to-v1 runs under the MAINTENANCE lock (PLASTIC.md > Terminal
+# immutability: the maintenance lock covers sanctioned structural move-and-record
+# edits after completion). This tool does NOT acquire, check, or manage that
+# lock itself (fail-open doctrine, intent 111: lock management is the
+# orchestrator's job, never built into a CLI as a trap); it only prints a
+# one-line reminder on --apply.
+#
+# LINKS BLAST RADIUS: an applied restore reprojects `## Links` via
+# scripts/project-links, which is a STORE-WIDE operation with no per-intent
+# scoping (it rewrites `## Links` in every intent under --plastic-home, not only
+# the one being restored). This is announced explicitly before it runs. Pass
+# --skip-links to decline it (the tool then warns loudly that `## Links` is
+# stale until project-links is run by hand).
+#
+# Pure-Ruby (no bash). Graph math lives in lib/restore_intent_v1.rb and reuses
+# lib/graph_rebuild.rb + lib/frontmatter_writer.rb verbatim; this shell does only
+# discovery, git IO, and reporting. Never pushes ~/.plastic.
+
+require "fileutils"
+require "time"
+require "open3"
+
+require_relative "lib/store_discovery"
+require_relative "lib/intent_validator"
+require_relative "lib/graph_rebuild"
+require_relative "lib/frontmatter_writer"
+require_relative "lib/restore_intent_v1"
+
+class RestoreIntentV1CLI
+  DEFAULT_HOME = File.join(Dir.home, ".plastic")
+  PROSE_SIBLINGS = %w[checklist.md outcome.md spec.md plan.md].freeze
+
+  def self.parse_argv(argv)
+    args = argv.dup
+    intent_id = nil
+    opts = { at: nil, plastic_home: DEFAULT_HOME, apply: false, skip_links: false, audit_path: nil }
+    i = 0
+    while i < args.length
+      case args[i]
+      when "--at" then opts[:at] = args[i += 1]
+      when "--plastic-home" then opts[:plastic_home] = args[i += 1]
+      when "--apply" then opts[:apply] = true
+      when "--skip-links" then opts[:skip_links] = true
+      when "--audit-path" then opts[:audit_path] = args[i += 1]
+      else
+        intent_id ||= args[i]
+      end
+      i += 1
+    end
+    [intent_id, opts]
+  end
+
+  def initialize(intent_id, at:, plastic_home: DEFAULT_HOME, apply: false, skip_links: false, audit_path: nil)
+    @intent_id = intent_id
+    @at = at
+    @plastic_home = plastic_home
+    @apply = apply
+    @skip_links = skip_links
+    @audit_path = audit_path
+  end
+
+  attr_reader :intent_id, :at, :plastic_home, :apply, :skip_links, :audit_path
+
+  def run
+    abort_loud("--at is required") if at.nil? || at.to_s.strip.empty?
+    abort_loud("intent id is required") if intent_id.nil? || intent_id.to_s.strip.empty?
+    abort_loud("--at #{at} does not resolve to a commit") unless ref_exists?
+
+    discovery = StoreDiscovery.discover(plastic_home)
+    dir, store_key = find_intent_dir(discovery, intent_id)
+    abort_loud("intent #{intent_id} not found in any known store under #{plastic_home}") if dir.nil?
+
+    base = File.basename(dir)
+    md_path = File.join(dir, "#{base}.md")
+
+    v1_md = git_show(relative(md_path))
+    abort_loud("--at #{at} has no version of #{base}.md; aborting, no write") if v1_md.nil?
+
+    current_md = File.read(md_path)
+    current_fm = IntentValidator.parse_frontmatter_text(current_md)
+    v1_fm = IntentValidator.parse_frontmatter_text(v1_md)
+    abort_loud("v1 snapshot frontmatter unparseable; aborting, no write") if v1_fm.nil? || v1_fm.empty?
+    abort_loud("current frontmatter unparseable; aborting, no write") if current_fm.nil? || current_fm.empty?
+
+    store_index, relocation_map = build_resolution_inputs(discovery)
+
+    graph = RestoreIntentV1.compute_graph(
+      v1_sources: v1_fm["sources"], v1_chain: v1_fm["chain"],
+      current_sources: current_fm["sources"], current_chain: current_fm["chain"],
+      referer_store: store_key, relocation_map: relocation_map, store_index: store_index
+    )
+
+    new_md = RestoreIntentV1.apply_graph(v1_md, desired_sources: graph[:sources], desired_chain: graph[:chain])
+    confirm_graph_write!(new_md, graph)
+
+    other_files = prose_siblings_to_restore(dir)
+
+    prose_changes = other_files.keys.dup
+    prose_changes.unshift("#{base}.md") if new_md != current_md
+
+    puts RestoreIntentV1.render_report(
+      base: base, at: at, prose_changes: prose_changes,
+      v1: { sources: v1_fm["sources"], chain: v1_fm["chain"] },
+      current: { sources: current_fm["sources"], chain: current_fm["chain"] },
+      graph: graph, apply: apply
+    )
+
+    return unless apply
+
+    File.write(md_path, new_md) if new_md != current_md
+    other_files.each { |f, content| File.write(File.join(dir, f), content) }
+
+    puts "Reminder: restore-to-v1 runs under the maintenance lock (PLASTIC.md > Terminal " \
+         "immutability). Confirm the maintenance lock is held before this --apply."
+
+    handle_links_reprojection(base)
+    append_revision(dir, base, graph, files: prose_changes,
+                    before_sources: current_fm["sources"], before_chain: current_fm["chain"])
+  end
+
+  private
+
+  # D8 fail-loud, "unconfirmed graph write": re-parse what was actually computed
+  # for write and assert its sources/chain arrays EQUAL the computed union.
+  # Asserting the substrings "sources:"/"chain:" merely appear somewhere in the
+  # text is NOT a confirmation (a no-op rewrite on a v1 snapshot missing those
+  # keys entirely would still contain neither substring's absence, this checks
+  # the actual parsed values match). Aborts loud, no write, when they do not.
+  def confirm_graph_write!(new_md, graph)
+    written_fm = IntentValidator.parse_frontmatter_text(new_md)
+    written_sources = written_fm ? Array(written_fm["sources"]).map(&:to_s) : nil
+    written_chain = written_fm ? Array(written_fm["chain"]).map(&:to_s) : nil
+
+    return if written_fm && written_sources == graph[:sources] && written_chain == graph[:chain]
+
+    abort_loud(
+      "the rewritten frontmatter does not confirm the computed sources/chain union " \
+      "(expected sources=#{graph[:sources].inspect} chain=#{graph[:chain].inspect}, " \
+      "got sources=#{written_sources.inspect} chain=#{written_chain.inspect}); aborting, no write"
+    )
+  end
+
+  # Every PROSE_SIBLING that existed AT THE V1 REF (not merely that exists NOW)
+  # whose v1 content differs from what is on disk today. Scoping to "exists now"
+  # would silently never restore a sibling deleted after v1 (BLOCKING bug): the
+  # exact class of silent loss this intent exists to prevent, just on a prose
+  # file instead of a graph edge. A sibling deleted since v1 is recreated with
+  # its exact v1 bytes; a sibling that never existed at v1 is left untouched.
+  def prose_siblings_to_restore(dir)
+    other_files = {}
+    PROSE_SIBLINGS.each do |f|
+      path = File.join(dir, f)
+      v1_content = git_show(relative(path))
+      next if v1_content.nil? # did not exist at v1: nothing to restore
+
+      current_content = File.exist?(path) ? File.read(path) : nil
+      other_files[f] = v1_content if v1_content != current_content
+    end
+    other_files
+  end
+
+  # LINKS BLAST RADIUS (D8/Goal 4): reprojection is store-wide, not scoped to
+  # this intent. Announce it unmissably before running it, unless --skip-links
+  # was given, in which case warn loudly that ## Links is now stale.
+  def handle_links_reprojection(base)
+    if skip_links
+      warn "restore-intent-v1: --skip-links given; ## Links across the WHOLE STORE " \
+           "(#{plastic_home}) is now potentially STALE relative to the preserved graph. " \
+           "Rerun `ruby #{File.expand_path("project-links", __dir__)} --plastic-home " \
+           "#{plastic_home}` to reproject it."
+      return
+    end
+
+    puts "restore-intent-v1: reprojecting ## Links STORE-WIDE (every intent under " \
+         "#{plastic_home}, not only #{base}) via project-links..."
+    reproject_links
+  end
+
+  def ref_exists?
+    _out, status = Open3.capture2("git", "-C", plastic_home, "rev-parse", "--verify", "--quiet", "#{at}^{commit}")
+    status.success?
+  end
+
+  def git_show(rel_path)
+    out, status = Open3.capture2("git", "-C", plastic_home, "show", "#{at}:#{rel_path}")
+    status.success? ? out : nil
+  end
+
+  def relative(path)
+    path.delete_prefix("#{plastic_home}/")
+  end
+
+  # id--slug directory resolution: exact id match on the dirname's segment before
+  # the first "--" (matches the convention scripts/doctor.rb already uses), never
+  # a start_with? scan, so "1" never matches "124--...". A bare id present in MORE
+  # THAN ONE store is ambiguous; given this tool's blast radius, abort loud and
+  # name every candidate rather than silently guessing the first one found.
+  def find_intent_dir(discovery, id)
+    matches = []
+    discovery[:stores].each do |s|
+      Dir.children(s[:store]).reject { |e| e.start_with?(".") }.each do |entry|
+        full = File.join(s[:store], entry)
+        next unless File.directory?(full)
+        next unless entry.split("--", 2).first == id.to_s
+
+        matches << [full, s[:key]]
+      end
+    end
+    return matches.first if matches.length <= 1
+
+    candidates = matches.map { |(full, key)| "#{key}:#{File.basename(full)}" }.join(", ")
+    abort_loud(
+      "intent id #{id} is ambiguous: found in more than one store (#{candidates}); " \
+      "aborting, no write. This tool has too much blast radius to guess which one you " \
+      "mean; resolve the collision (rename or relocate one of the intents) before restoring."
+    )
+  end
+
+  # Build the store_index (store_key => bare ids present) and relocation_map
+  # (from every store's INDEX.md ## Relocated log) that GraphRebuild.resolve_ref
+  # needs, using the exact recipe scripts/rebuild-graph already uses.
+  def build_resolution_inputs(discovery)
+    store_index = {}
+    index_texts = {}
+    discovery[:stores].each do |s|
+      store_index[s[:key]] = Dir.children(s[:store]).reject { |e| e.start_with?(".") }
+                                 .select { |e| File.directory?(File.join(s[:store], e)) }
+                                 .map { |e| e.split("--", 2).first }
+      index_texts[s[:key]] = File.exist?(s[:index]) ? File.read(s[:index]) : ""
+    end
+    [store_index, GraphRebuild.build_relocation_map(index_texts)]
+  end
+
+  def reproject_links
+    project_links = File.expand_path("project-links", __dir__)
+    system(RbConfig.ruby, project_links, "--plastic-home", plastic_home)
+    return if $?.success?
+
+    warn "restore-intent-v1: ## Links may now be stale (project-links reprojection failed). " \
+         "Rerun: ruby #{project_links} --plastic-home #{plastic_home}"
+  end
+
+  def append_revision(dir, base, graph, files:, before_sources:, before_chain:)
+    path = File.join(dir, "revisions.md")
+    existing = File.exist?(path) ? File.read(path) : "# revisions.md\n\n"
+    nums = existing.scan(/^## Revision v(\d+)/).flatten.map(&:to_i)
+    n = (nums.max || 0) + 1
+
+    entry = RestoreIntentV1.render_revision_entry(
+      n, at: at, timestamp: Time.now.utc.strftime("%Y-%m-%d-%H:%M"), files: files,
+      before_sources: before_sources, after_sources: graph[:sources],
+      before_chain: before_chain, after_chain: graph[:chain],
+      dropped: graph[:dropped]
+    )
+    File.write(path, "#{existing.chomp}\n\n#{entry}")
+  end
+
+  def abort_loud(message)
+    warn "restore-intent-v1: #{message}"
+    exit 1
+  end
+end
+
+if $PROGRAM_NAME == __FILE__
+  intent_id, opts = RestoreIntentV1CLI.parse_argv(ARGV)
+  RestoreIntentV1CLI.new(intent_id, **opts).run
+end
