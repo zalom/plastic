@@ -117,4 +117,132 @@ class RestoreIntentV1Test < Minitest::Test
   def relative_to_home(dir)
     dir.delete_prefix("#{@home}/")
   end
+
+  # Synthetic: v1's chain names an id with no directory anywhere in the fixture
+  # store. This is a general hardening (D14), not a replay of the 124 incident,
+  # whose real v1 snapshot held chain: [] with no dangling edge.
+  def test_dead_v1_edge_is_dropped_and_reported
+    a_dir = new_intent("--intent", "Has a dead edge", "--slug", "has-dead-edge")
+    a_id = File.basename(a_dir).split("--", 2).first
+    a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
+
+    # Hand-craft v1's frontmatter to carry a dead edge (an id nothing scaffolds),
+    # exactly the shape a real historical v1 could carry if its target were later
+    # deleted; this is what the fixture is testing, not something new-intent
+    # would ever produce on its own.
+    content = File.read(a_md)
+    content = content.sub('chain: []', 'chain: ["999"]')
+    File.write(a_md, content)
+    v1_sha = commit_all("intent #{a_id} delivered with a since-dead edge")
+
+    # Revert the dead edge back out of the working file (simulating that nothing
+    # legitimately re-added it later); current chain is empty.
+    File.write(a_md, File.read(a_md).sub('chain: ["999"]', "chain: []"))
+    commit_all("intent #{a_id} amended in place")
+
+    out, status = Open3.capture2(
+      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
+    )
+    assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
+    assert_empty chain_of(a_dir), "a confirmed-dead v1 edge must not be reintroduced"
+    assert_includes out, "999", "the dropped dead edge must be named in the report"
+
+    revisions = File.read(File.join(a_dir, "revisions.md"))
+    assert_includes revisions, "999", "the dropped dead edge must be recorded in revisions.md"
+  end
+
+  # Synthetic, combining a dead v1 edge with a live, legitimately-accrued current
+  # edge: the single most valuable target-resolution test, since it proves the
+  # restore recovers exactly the TRUE current graph, never the dead edge and
+  # never a naive union of both.
+  def test_dead_v1_edge_dropped_while_live_current_edge_survives
+    a_dir = new_intent("--intent", "Has both edges", "--slug", "has-both-edges")
+    a_id = File.basename(a_dir).split("--", 2).first
+    a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
+
+    content = File.read(a_md).sub('chain: []', 'chain: ["999"]')
+    File.write(a_md, content)
+    v1_sha = commit_all("intent #{a_id} delivered with a since-dead edge")
+
+    File.write(a_md, File.read(a_md).sub('chain: ["999"]', "chain: []"))
+    commit_all("intent #{a_id} amended in place")
+
+    b_dir = new_intent("--intent", "Live accrual", "--slug", "live-accrual", "--sources", a_id)
+    commit_all("feat: create live accrual (sources #{a_id})")
+    b_id = File.basename(b_dir).split("--", 2).first
+    assert_equal [b_id], chain_of(a_dir), "fixture setup: only the live backlink should be present"
+
+    out, status = Open3.capture2(
+      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
+    )
+    assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
+    assert_equal [b_id], chain_of(a_dir),
+      "restored chain must be exactly the live accrued edge, no dead edge, no duplication"
+  end
+
+  # Dry-run (no --apply) is the default: it must exit 0, print a report, and
+  # touch NO file on disk, not even the .md file's frontmatter.
+  def test_dry_run_is_default_no_filesystem_write
+    a_dir, a_id, v1_sha = seed_124_131_shape
+    a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
+    before_md = File.read(a_md)
+    before_chain = chain_of(a_dir)
+
+    out, status = Open3.capture2(
+      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home
+    )
+    assert_equal 0, status.exitstatus, "a dry run should still exit 0: #{out}"
+    assert_equal before_md, File.read(a_md), "dry run (no --apply) must not write the .md file"
+    assert_equal before_chain, chain_of(a_dir), "dry run must not change the frontmatter graph"
+    assert_includes out, "DRY RUN", "dry-run output must say so explicitly"
+  end
+
+  # The real 60a51bf restore touched exactly these four lifecycle files besides
+  # the intent's own .md (138 deletions / 2 insertions across all four in that
+  # single commit). Prove every one of them reverts to its exact v1 byte content.
+  def test_apply_reverts_all_four_lifecycle_siblings_to_exact_v1_bytes
+    a_dir = new_intent("--intent", "Full lifecycle files", "--slug", "full-lifecycle")
+    a_id = File.basename(a_dir).split("--", 2).first
+    siblings = %w[checklist.md outcome.md spec.md plan.md]
+    v1_bytes = siblings.to_h { |f| [f, File.read(File.join(a_dir, f))] }
+    v1_sha = commit_all("intent #{a_id} delivered")
+
+    siblings.each { |f| File.write(File.join(a_dir, f), "#{v1_bytes[f]}\nlate edit\n") }
+    commit_all("intent #{a_id} lifecycle files amended in place")
+
+    out, status = Open3.capture2(
+      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
+    )
+    assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
+    siblings.each do |f|
+      assert_equal v1_bytes[f], File.read(File.join(a_dir, f)),
+        "#{f} must revert to its exact v1 byte content"
+    end
+  end
+
+  # ## Links must reflect the PRESERVED graph after an applied restore. Asserted
+  # directly against the canonical projected text (matching the exact format
+  # test/new_intent_test.rb already pins for a chain-only backlink: sources
+  # first, chain second, "- [[basename|label]]" per entry), never by shelling
+  # out to scripts/project-links, whose CLI surface intent 192 is rewriting
+  # concurrently in this same session. The TOOL itself still calls project-links
+  # for real at --apply time (Task 2's reproject_links); this test observes the
+  # resulting file, it does not re-invoke project-links itself.
+  def test_links_section_reflects_the_preserved_graph_after_apply
+    a_dir, a_id, v1_sha = seed_124_131_shape
+    b_id = chain_of(a_dir).first
+    b_dir = dir_for_id(b_id)
+    refute_nil b_dir, "fixture setup: B's directory must resolve"
+
+    out, status = Open3.capture2(
+      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
+    )
+    assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
+
+    a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
+    body = IntentValidator.body_of(File.read(a_md))
+    expected = "## Links\n- [[#{File.basename(b_dir)}|Later thing]]\n"
+    assert_equal expected, LinksSection.extract_section(body),
+      "## Links must reflect the preserved chain edge after an applied restore"
+  end
 end
