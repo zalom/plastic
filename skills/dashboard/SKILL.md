@@ -33,13 +33,16 @@ ruby ~/.plastic/scripts/dashboard.rb [continue|project <slug>] --data
 - `continue` (default) → the **global** board payload (`mode: "global"`).
 - `project <slug>` → that **project** board payload (`mode: "project"`).
 
-The payload is read-only JSON. Global-board fields: `date`, `store_health`, `recently_worked`,
-`next_work`, `counts`, `projects`, `project_totals`. Project-board fields: `slug`, `store_health`,
-`description`, `recently_worked`, `next_work`, `counts`, `active`, `future`. Each list carries
-cell-ready fields for its table: `next_work` rows are
+The payload is read-only JSON. Global-board fields: `date`, `store_health`, `summary`,
+`next_work`, `next_total`, `next_shown`, `counts`, `projects`, `project_totals`, `footer`.
+Project-board fields: `slug`, `store_health`, `description`, `summary`, `counts`, `active`,
+`active_total`, `active_shown`, `next_work`, `next_total`, `next_shown`, `footer`. `summary`
+and `footer` are finished prose strings (2-3 sentences and one line respectively), built in
+`dashboard.rb` and substituted verbatim, exactly like `{{date}}`/`{{description}}` already
+are - never re-worded or re-derived by the skill. Each list carries cell-ready fields for
+its table: `next_work` rows are
 `{id, intent, scope, lifecycle, value, disposition, flags, what, flags_label, line}`;
-`recently_worked` rows carry `{id, status, glyph, last_accessed_at, what, state, scope, line}`;
-`active`/`future` rows carry `{id, intent, created, bullet, scope, what, stage, line}`. The `what`,
+`active` rows carry `{id, intent, created, bullet, scope, what, stage, line}`. The `what`,
 `scope`, and `flags_label` cell fields arrive pipe-escaped and whitespace-normalized.
 
 Each board load runs the scoped store check (`doctor --store <scope>`): the global board runs
@@ -57,24 +60,42 @@ Templates live in this skill's `templates/` directory:
 
 Fill mechanically, no rewriting, no re-sorting:
 - `{{a.b.count}}` → the integer (e.g. `counts.active` = that count).
-- `{{<list>.rows}}` → the four intent lists (`recently_worked`, `next_work`, `active`, `future`)
-  render as **Markdown table rows**. The template hard-codes each table's header and separator;
-  this placeholder becomes one data row per list entry, joined with real newlines, in that table's
-  fixed column order (below). Drop each cell from the named payload field **verbatim**: cells
-  arrive pre-escaped and whitespace-normalized from the script (pipes escaped as `\|`), so never
-  re-escape, re-truncate, or reword them. Never emit `<br>`.
-  - `recently_worked` (global) → `| {id} | {what} | {state} | {scope} |`
-  - `recently_worked` (project) → `| {id} | {what} | {state} |`
+- `{{<list>.rows}}` → the two intent lists (`active`, `next_work`) render as **Markdown table
+  rows**. The template hard-codes each table's header and separator; this placeholder becomes
+  one data row per list entry, joined with real newlines, in that table's fixed column order
+  (below). Drop each cell from the named payload field **verbatim**: cells arrive pre-escaped
+  and whitespace-normalized from the script (pipes escaped as `\|`), so never re-escape,
+  re-truncate, or reword them. Never emit `<br>`.
   - `next_work` → `| {id} | {what} | {value} | {disposition} | {flags_label} |`
   - `active` → `| {id} | {what} | {stage} |`
-  - `future` → `| {id} | {what} |`
-  Overflow entry (empty `id`, `what` = `+N more`) → one row with `+N more` in the Id column and
-  every other cell blank. Empty list → one full-width row with `_(none)_` in the Id column and
-  every other cell blank, matching that table's column count (e.g. `| _(none)_ | | | | |` for
-  the 5-column next_work table, `| _(none)_ | |` for the 2-column future table).
-- `{{projects.lines}}` → the project rollup stays **prose**, one line per project (not a table):
+  Empty list → one full-width row with `_(none)_` in the Id column and every other cell blank,
+  matching that table's column count (e.g. `| _(none)_ | | | | |` for the 5-column next_work
+  table, `| _(none)_ | |` for the 3-column active table). Neither list carries an overflow
+  "+N more" row anymore (D5, intent 202): the true pool size rides on the payload as
+  `active_total`/`next_total` (shown counts as `active_shown`/`next_shown`), and `{{footer}}`
+  states it in prose instead.
+- `{{projects.lines}}` (global board only) → the project rollup stays **prose**, one line per
+  project (not a table):
   `- **{slug}**: {description}, active {active}, done {done}, future {future}, last accessed {last_accessed_at[0,10]}`.
-- Scalars (`{{date}}`, `{{slug}}`, `{{description}}`) → substitute verbatim.
+- Scalars (`{{date}}`, `{{slug}}`, `{{summary}}`, `{{footer}}`) → substitute verbatim. `summary`
+  and `footer` are finished prose built in `dashboard.rb`; do not rewrite, shorten, or
+  re-derive them from the counts - that is exactly the non-determinism D5 rules out.
+
+### Paging (conversational, D4)
+
+The board shows a short page by default (Active capped at 3, Next-work at 5). When the
+user asks for "more" or "all", re-invoke Step 1 with an explicit flag and re-fill the
+template with the new payload - nothing is persisted to disk, the offset lives only in the
+chat turn:
+- "all" → add `--all` (lifts both caps to unbounded; the footer then shows equal shown/total).
+- "more" → add `--limit-active N`/`--limit-next N` with a larger `N` for whichever list the
+  user is paging.
+
+For a real, own-terminal pager instead, point the owner at `--plain`:
+`ruby ~/.plastic/scripts/dashboard.rb project <slug> --plain | less` (or `continue --plain`
+for the global board). `--plain` prints the full, uncapped board as plain text with no
+Markdown table syntax; it is a separate CLI mode from `--data`, not something this skill
+fills a template from.
 
 ### Step 3 — Present it (mandatory, every invocation)
 
@@ -139,8 +160,8 @@ intentional change means the skill is broken.
 
 ## Notes
 
-- The four intent lists (recently worked, active, future, next work) render as Markdown tables;
-  the narrative wrappers, counts, and the project rollup stay prose. No Value x Effort grid
+- The two intent lists (active, next work) render as Markdown tables; the prose summary,
+  footer, counts, and the project rollup stay prose (intent 202). No Value x Effort grid
   returns. Never emit `<br>`.
 - Clusters (Zettelkasten grouping in INDEX.md) are intentionally not rendered.
 - Additive: changes no core lifecycle, gate, or cycle logic.

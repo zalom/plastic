@@ -7,20 +7,22 @@ would otherwise bloat the SKILL.md body.
 ## Fill rules (owned by plastic-dashboard, summarized here for convenience)
 
 - `{{a.b.count}}` -> the integer (e.g. `counts.active` is that count).
-- `{{<list>.rows}}` -> the four intent lists (`recently_worked`, `next_work`, `active`, `future`)
-  render as Markdown table rows. The template hard-codes each table's header and separator; the
-  placeholder becomes one data row per entry, in that table's fixed column order, cells dropped
-  verbatim from the payload (cells arrive pipe-escaped and whitespace-normalized; do not re-escape
-  or re-truncate). Column order per table:
-  - `recently_worked` -> `| id | what | state | scope |` (global), `| id | what | state |` (project)
+- `{{<list>.rows}}` -> the two intent lists (`active`, `next_work`) render as Markdown table
+  rows. The template hard-codes each table's header and separator; the placeholder becomes one
+  data row per entry, in that table's fixed column order, cells dropped verbatim from the
+  payload (cells arrive pipe-escaped and whitespace-normalized; do not re-escape or
+  re-truncate). Column order per table:
   - `next_work` -> `| id | what | value | disposition | flags_label |`
-  - `active` -> `| id | what | stage |`; `future` -> `| id | what |`
-  Overflow entry (empty `id`, `what` = `+N more`) -> `+N more` in the Id column, other cells blank.
+  - `active` -> `| id | what | stage |`
   Empty list -> one full-width row with `_(none)_` in the Id column, other cells blank, matching
-  that table's column count (e.g. `| _(none)_ | | | | |` for the 5-column next_work table,
-  `| _(none)_ | |` for the 2-column future table). Never emit `<br>`.
+  that table's column count. Neither list carries an overflow "+N more" row (intent 202): the
+  true pool size rides on the payload (`active_total`/`next_total`, shown as
+  `active_shown`/`next_shown`), stated in prose by `{{footer}}` instead. Never emit `<br>`.
 - `{{projects.lines}}` (global board) -> the project rollup stays prose, one line per project.
-- Scalars (`{{date}}`, `{{slug}}`, `{{description}}`) -> substitute verbatim.
+- Scalars (`{{date}}`, `{{slug}}`, `{{summary}}`, `{{footer}}`) -> substitute verbatim.
+  `summary` (the 2-3 sentence "what was delivered most recently") and `footer` (the
+  honest-totals + how-to-see-everything line) are finished prose built in `dashboard.rb`,
+  replacing the old recently-worked table and the raw future table respectively.
 
 No re-sorting, no re-summarizing, no hand-written prose replacing a line the payload already
 supplies. Same store state produces a byte-identical payload regardless of model.

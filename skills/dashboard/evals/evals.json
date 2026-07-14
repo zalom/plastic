@@ -22,14 +22,14 @@
       "id": 2,
       "scope": "behavior",
       "set": "validation",
-      "prompt": "How do the four intent lists render on the Markdown boards?",
-      "expected_output": "recently_worked, next_work, active, and future render as Markdown tables (fixed columns: next_work Id|What|Value|Disposition|Flags; active Id|What|Stage; future Id|What; recently_worked Id|What|State, plus a Scope column on the global board). The narrative wrappers, counts, and the projects rollup stay prose; no Value x Effort grid. Cells arrive pre-escaped from the payload and are dropped verbatim.",
+      "prompt": "How does the project board render after intent 202 (short by default, paged on request)?",
+      "expected_output": "The project board shows, in order, and nothing else: a 2-3 sentence prose summary of what was delivered most recently (built in dashboard.rb from completed/completed_on data, not the 24h-windowed recently_worked), an Active table capped at 3 rows (Id|What|Stage, ordered lifecycle-stage descending with a savepoint tie-break), a Next-work table capped at 5 rows (Id|What|Value|Disposition|Flags), and a one-line footer stating true totals (e.g. '3 of 12 active, 5 of 47 next work') plus how to see everything. The raw Future table and its {{future.rows}} placeholder, and the separate Recently-worked table, are both gone from dashboard-project.md. dashboard-global.md carries the equivalent fix (D6): a prose summary in place of its recently-worked table, the same honest footer, and the same --limit-active/--limit-next/--all/--plain mechanics.",
       "files": ["skills/dashboard/templates/dashboard-global.md", "skills/dashboard/templates/dashboard-project.md", "skills/dashboard/SKILL.md"],
       "assertions": [
         {
           "type": "convention",
-          "check": "the four intent lists render as Markdown tables with the fixed columns; wrappers and the projects rollup stay prose; no grid",
-          "observed": "templates hard-code table headers plus {{list.rows}} for recently_worked/next_work/active/future; SKILL.md Step 2 documents the fixed column order and verbatim pre-escaped cell fill; projects stays {{projects.lines}} prose",
+          "check": "project board template has summary+active+next_work+footer only (no future, no recently_worked table); global template has summary+footer added; SKILL.md documents the new payload fields and CLI flags",
+          "observed": "templates carry {{summary}}, {{active.rows}} (Id|What|Stage), {{next_work.rows}} (Id|What|Value|Disposition|Flags), {{footer}}; {{future.rows}} and the recently-worked table are removed from both; SKILL.md Step 1/2 document summary/footer/active_total/active_shown/next_total/next_shown and --limit-active/--limit-next/--all/--plain",
           "result": "pass"
         }
       ]
