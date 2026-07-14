@@ -46,6 +46,8 @@ module Lock
   end
 
   TYPES = %w[delivery maintenance].freeze
+  DELEGATE_ACTIVITY_LIMIT = 20
+  DELEGATE_STATUSES = %w[active finished failed].freeze
 
   # Lease TTL. Heartbeats fire from the write-path hooks (PostToolUse
   # gate-check and the lock-gate allow path), so a delivering session
@@ -105,7 +107,8 @@ module Lock
   #   [:excluded, other] the OTHER lock type is fresh (D3)
   #   [:corrupt, nil]    unparseable lock file: run repair
   def acquire(intent_dir, session:, type: "delivery", host: Socket.gethostname,
-              ttl: TTL_SECONDS, now: Time.now)
+              ttl: TTL_SECONDS, now: Time.now, harness: nil, agent: nil,
+              model: nil, thread: nil, run_mode: nil)
     raise ArgumentError, "unknown lock type #{type.inspect}" unless TYPES.include?(type)
     raise ArgumentError, "lock session must be present" if blank?(session)
 
@@ -120,7 +123,13 @@ module Lock
     if existing
       if existing["owner_session"].to_s == session.to_s
         data = payload(session: session, type: type, host: host, now: now,
-                       delegates: Array(existing["delegates"]))
+                       delegates: Array(existing["delegates"]),
+                       delegate_activity: Array(existing["delegate_activity"]).last(DELEGATE_ACTIVITY_LIMIT),
+                       harness: merged_value(harness, existing["owner_harness"]),
+                       agent: merged_value(agent, existing["owner_agent"]),
+                       model: merged_value(model, existing["owner_model"]),
+                       thread: merged_value(thread, existing["owner_thread"]),
+                       run_mode: merged_value(run_mode, existing["run_mode"]))
         write(intent_dir, data, type: type)
         return [:owned, data]
       end
@@ -128,7 +137,9 @@ module Lock
       return [:stale, existing]
     end
 
-    data = payload(session: session, type: type, host: host, now: now)
+    data = payload(session: session, type: type, host: host, now: now,
+                   harness: harness, agent: agent, model: model, thread: thread,
+                   run_mode: run_mode)
     File.open(path(intent_dir, type: type),
               File::WRONLY | File::CREAT | File::EXCL) do |io|
       io.write(JSON.pretty_generate(data))
@@ -138,14 +149,29 @@ module Lock
     [:held, read(intent_dir, type: type)] # lost the O_EXCL race
   end
 
-  def payload(session:, type:, host:, now:, delegates: [])
+  def payload(session:, type:, host:, now:, delegates: [], delegate_activity: [],
+              harness: nil, agent: nil, model: nil, thread: nil, run_mode: nil)
     {
       "type" => type,
       "owner_session" => session.to_s,
       "host" => host,
       "acquired_at" => now.utc.iso8601,
       "delegates" => delegates,
+      "owner_harness" => normalized_value(harness),
+      "owner_agent" => normalized_value(agent),
+      "owner_model" => normalized_value(model),
+      "owner_thread" => normalized_value(thread),
+      "run_mode" => normalized_value(run_mode),
+      "delegate_activity" => Array(delegate_activity).last(DELEGATE_ACTIVITY_LIMIT),
     }
+  end
+
+  def normalized_value(value)
+    blank?(value) ? nil : value.to_s
+  end
+
+  def merged_value(explicit, existing)
+    blank?(explicit) ? normalized_value(existing) : explicit.to_s
   end
 
   # Owner/delegate heartbeat: touch the mtime, never rewrite content.
@@ -157,11 +183,47 @@ module Lock
 
   # Owner registers a delegate (D4): a session allowed to write under this
   # lock. Only the OWNER may delegate; delegates cannot re-delegate.
-  def add_delegate(intent_dir, delegate:, session:, type: "delivery")
+  def add_delegate(intent_dir, delegate:, session:, type: "delivery", now: Time.now,
+                   harness: nil, agent: nil, model: nil, thread: nil)
     data = read(intent_dir, type: type)
     return false if blank?(delegate)
     return false unless data && data["owner_session"].to_s == session.to_s
     data["delegates"] = (Array(data["delegates"]) + [delegate.to_s]).uniq
+    activity = Array(data["delegate_activity"])
+    previous = activity.find { |record| record.is_a?(Hash) && record["session"].to_s == delegate.to_s }
+    activity.reject! { |record| record.is_a?(Hash) && record["session"].to_s == delegate.to_s }
+    record = {
+      "session" => delegate.to_s,
+      "status" => "active",
+      "registered_at" => now.utc.iso8601,
+      "last_activity_at" => now.utc.iso8601,
+      "harness" => merged_value(harness, previous && previous["harness"]),
+      "agent" => merged_value(agent, previous && previous["agent"]),
+      "model" => merged_value(model, previous && previous["model"]),
+      "thread" => merged_value(thread, previous && previous["thread"]),
+    }
+    data["delegate_activity"] = (activity + [record]).last(DELEGATE_ACTIVITY_LIMIT)
+    write(intent_dir, data, type: type)
+    true
+  end
+
+  # Activity metadata is observational only. Finishing or failing a delegate
+  # never removes its string session id from the authorization list.
+  def update_delegate_status(intent_dir, delegate:, status:, session:, type: "delivery",
+                             now: Time.now)
+    return false unless (DELEGATE_STATUSES - ["active"]).include?(status.to_s)
+    data = read(intent_dir, type: type)
+    return false unless data && data["owner_session"].to_s == session.to_s
+    activity = Array(data["delegate_activity"])
+    index = activity.index do |record|
+      record.is_a?(Hash) && record["session"].to_s == delegate.to_s
+    end
+    return false unless index
+    activity[index] = activity[index].merge(
+      "status" => status.to_s,
+      "last_activity_at" => now.utc.iso8601
+    )
+    data["delegate_activity"] = activity.last(DELEGATE_ACTIVITY_LIMIT)
     write(intent_dir, data, type: type)
     true
   end
@@ -185,7 +247,8 @@ module Lock
   # lock; there is no silent reclaim path anywhere else.
   # Returns [:taken, data], [:fresh, existing], or acquire's error statuses.
   def takeover(intent_dir, session:, type: "delivery", host: Socket.gethostname,
-               ttl: TTL_SECONDS, now: Time.now)
+               ttl: TTL_SECONDS, now: Time.now, harness: nil, agent: nil,
+               model: nil, thread: nil, run_mode: nil)
     existing = read(intent_dir, type: type)
     if existing && !authorized?(existing, session) &&
        fresh?(intent_dir, type: type, ttl: ttl, now: now)
@@ -196,7 +259,8 @@ module Lock
     p = path(intent_dir, type: type)
     File.delete(p) if File.exist?(p)
     status, data = acquire(intent_dir, session: session, type: type, host: host,
-                           ttl: ttl, now: now)
+                           ttl: ttl, now: now, harness: harness, agent: agent,
+                           model: model, thread: thread, run_mode: run_mode)
     return [status, data] unless status == :acquired
 
     audit = "#{now.utc.iso8601}  Lock  takeover: #{session} reclaimed #{type} " \
@@ -210,6 +274,54 @@ module Lock
   # activity.
   def write(intent_dir, data, type: "delivery")
     File.write(path(intent_dir, type: type), JSON.pretty_generate(data))
+  end
+
+  # Read-only normalized inspection. The lock file and its mtime remain the
+  # sole sources of owner and heartbeat truth; no environment or transcript
+  # inference belongs here.
+  def who(intent_dir, ttl: TTL_SECONDS, now: Time.now)
+    p = path(intent_dir)
+    unless File.exist?(p)
+      return { "state" => "none",
+               "claims" => Claim.claims_status(intent_dir, ttl: ttl, now: now) }
+    end
+    data = read(intent_dir)
+    unless data
+      return { "state" => "corrupt",
+               "claims" => Claim.claims_status(intent_dir, ttl: ttl, now: now) }
+    end
+
+    activity_by_session = Array(data["delegate_activity"]).each_with_object({}) do |record, memo|
+      memo[record["session"].to_s] = record if record.is_a?(Hash)
+    end
+    delegates = Array(data["delegates"]).map do |delegate|
+      session = delegate.to_s
+      record = activity_by_session[session] || {}
+      {
+        "session" => session,
+        "harness" => normalized_value(record["harness"]) || "unknown",
+        "agent" => normalized_value(record["agent"]) || "unknown",
+        "model" => normalized_value(record["model"]) || "unknown",
+        "thread" => normalized_value(record["thread"]) || "unknown",
+        "status" => normalized_value(record["status"]) || "unknown",
+        "registered_at" => record["registered_at"],
+        "last_activity_at" => record["last_activity_at"],
+      }
+    end
+    {
+      "state" => fresh?(intent_dir, ttl: ttl, now: now) ? "fresh" : "stale",
+      "owner" => {
+        "harness" => normalized_value(data["owner_harness"]) || "unknown",
+        "agent" => normalized_value(data["owner_agent"]) || "unknown",
+        "model" => normalized_value(data["owner_model"]) || "unknown",
+        "thread" => normalized_value(data["owner_thread"]) || "unknown",
+        "run_mode" => normalized_value(data["run_mode"]) || "unknown",
+      },
+      "owner_session" => data["owner_session"],
+      "heartbeat_at" => File.mtime(p).utc.iso8601,
+      "delegates" => delegates,
+      "claims" => Claim.claims_status(intent_dir, ttl: ttl, now: now),
+    }
   end
 end
 
