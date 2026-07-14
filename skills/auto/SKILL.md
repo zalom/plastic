@@ -151,9 +151,24 @@ as a delegate before (or when) it needs to write into the intent dir:
 1. Instruct each spawned specialist to report its session id
    (`CLAUDE_CODE_SESSION_ID`) in its first message.
 2. As the lock owner, run:
-   `ruby ~/.plastic/scripts/plastic-lock delegate --delegate <specialist-session-id>`
+   `ruby ~/.plastic/scripts/plastic-lock delegate --intent-dir <intent-dir> --delegate <specialist-session-id>`
 3. If a specialist hits a lock-gate deny, the deny message names this exact
    command; run it and have the specialist retry.
+4. Immediately after the specialist returns, and before validating or dispatching
+   the next handoff, classify the return and record its activity status as the owner:
+   - `finished` means the specialist returned a usable completion report, whether
+     agent-authored or synthesized through `scripts/agent-report`.
+   - `failed` means the specialist returned blocked, errored, or without a usable
+     completion report that can be synthesized.
+5. Record the classification with exactly one of:
+   ```bash
+   ruby ~/.plastic/scripts/plastic-lock delegate --intent-dir <intent-dir> \
+     --delegate <specialist-session-id> --status finished
+   ruby ~/.plastic/scripts/plastic-lock delegate --intent-dir <intent-dir> \
+     --delegate <specialist-session-id> --status failed
+   ```
+   A failed specialist stops that handoff under the normal blocker/error procedure;
+   never dispatch the next specialist first.
 
 Only the owner can delegate. Delegates cannot re-delegate or release.
 
