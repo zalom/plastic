@@ -181,7 +181,7 @@ class ProjectLinks
         canonical_text = LinksProjection.section(
           sources: node[:sources], chain: node[:chain], resolve: resolve
         )
-        kept, dropped_optin = orphan_split(old_text, canonical_text, referer_store,
+        kept, dropped_optin, dead = orphan_split(old_text, canonical_text, referer_store,
                                             store_index, node_index)
         section_text = LinksProjection.render_entries(
           LinksProjection.parse_entries(canonical_text) + kept
@@ -189,20 +189,20 @@ class ProjectLinks
         updated = LinksSection.rewrite(content, section_text)
       rescue LinksProjection::UnresolvedRef, LinksSection::AmbiguousLinks => e
         entries << { id: id, status: :failed, error: e.message,
-                     orphans_preserved: [], orphans_dropped_optin: [] }
+                     orphans_preserved: [], orphans_dropped_optin: [], orphans_dead: [] }
         next
       end
 
       if updated == content
-        entries << { id: id, status: :unchanged,
-                     orphans_preserved: kept, orphans_dropped_optin: dropped_optin }
+        entries << { id: id, status: :unchanged, orphans_preserved: kept,
+                     orphans_dropped_optin: dropped_optin, orphans_dead: dead }
         next
       end
 
       status = had_links ? :regenerated : :added
       File.write(node[:path], updated) unless dry_run
       entries << { id: id, status: status, before: old_text, after: section_text,
-                   orphans_preserved: kept, orphans_dropped_optin: dropped_optin }
+                   orphans_preserved: kept, orphans_dropped_optin: dropped_optin, orphans_dead: dead }
     end
 
     counts = entries.each_with_object(Hash.new(0)) { |e, h| h[e[:status]] += 1 }
@@ -246,11 +246,17 @@ class ProjectLinks
     canonical_targets = LinksProjection.parse_entries(canonical_text).map { |e| e[:target] }
     kept = []
     dropped_optin = []
+    dead = []
     LinksProjection.parse_entries(old_text).each do |oe|
       next if canonical_targets.include?(oe[:target]) # already backed; not an orphan
 
       label = resolve_orphan_label(oe[:target], referer_store, store_index, node_index)
-      next if label.nil? # dead: not backed AND does not resolve; silent drop, as before
+      if label.nil?
+        # Resolves to nothing: still dropped from the file (nothing real to preserve),
+        # but no longer silent. Reported as a malformed-orphan candidate in the audit.
+        dead << { target: oe[:target] }
+        next
+      end
 
       if drop_unbacked_links
         dropped_optin << oe
@@ -258,7 +264,7 @@ class ProjectLinks
         kept << { target: oe[:target], label: label }
       end
     end
-    [kept, dropped_optin]
+    [kept, dropped_optin, dead]
   end
 
   # Does `target` (already in projected `id--slug` or `store:id--slug` form)
@@ -318,11 +324,13 @@ class ProjectLinks
     end
     total_preserved = store_list.sum { |s| results[s[:key]][:entries].sum { |e| Array(e[:orphans_preserved]).size } }
     total_dropped_optin = store_list.sum { |s| results[s[:key]][:entries].sum { |e| Array(e[:orphans_dropped_optin]).size } }
+    total_dead = store_list.sum { |s| results[s[:key]][:entries].sum { |e| Array(e[:orphans_dead]).size } }
     lines << "Totals across all stores: " \
              "regenerated #{total[:regenerated]}, added #{total[:added]}, " \
              "unchanged #{total[:unchanged]}, failed #{total[:failed]}. " \
              "Unbacked Links lines preserved as orphan candidates: #{total_preserved}" \
-             "#{drop_unbacked_links ? ", dropped via --drop-unbacked-links: #{total_dropped_optin}" : ""}."
+             "#{drop_unbacked_links ? ", dropped via --drop-unbacked-links: #{total_dropped_optin}" : ""}" \
+             ", malformed references found: #{total_dead}."
     lines << ""
 
     unless missing_stores.empty?
@@ -362,6 +370,17 @@ class ProjectLinks
       unless dropped_optin.empty?
         lines << "### Orphan candidates DROPPED (--drop-unbacked-links) (#{dropped_optin.size})"
         dropped_optin.each { |id, o| lines << "- #{id}: -> #{o[:target]}" }
+        lines << ""
+      end
+
+      dead_refs = res[:entries].flat_map { |e| Array(e[:orphans_dead]).map { |o| [e[:id], o] } }
+      unless dead_refs.empty?
+        lines << "### Malformed references found, dropped silently before this fix (#{dead_refs.size})"
+        lines << "Resolve to no real intent under any known store; these are dropped from the " \
+                 "regenerated ## Links section (nothing real to preserve), but were previously " \
+                 "invisible to every check. Confirm each is genuinely dead (a typo'd slug, a " \
+                 "sibling wrongly linked) rather than a missing store/relocation before trusting."
+        dead_refs.each { |id, o| lines << "- #{id}: -> #{o[:target]}" }
         lines << ""
       end
 

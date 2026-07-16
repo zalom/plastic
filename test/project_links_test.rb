@@ -213,18 +213,23 @@ class ProjectLinksTest < Minitest::Test
     assert_includes audit, "21: -> 14--old-sibling"
   end
 
-  def test_unbacked_and_dead_link_is_still_dropped_silently
+  # ACTION_2 (intent 197): the dead line is still dropped from the file (nothing real to
+  # preserve), but it is no longer silent: it must now surface under the new "Malformed
+  # references" finding, never misreported as a preserved or opt-in-dropped orphan (it is
+  # neither, since it resolves to no real intent at all).
+  def test_unbacked_and_dead_link_is_dropped_but_reported_as_malformed
     add_orphan_fixture
     run_tool
     body = read("projects/plastic/store/21--subject/21--subject.md")
     refute_includes body, "99--nowhere", "a line that resolves nowhere must still be dropped"
+
     audit = File.read(@audit)
-    # The audit's "Sample before/after" block legitimately shows the raw OLD
-    # section text (including the dead line) as an honest diff; that is not a
-    # report of an orphan. The real assertion is that the dead ref never gets
-    # an orphan-report line (neither "preserved" nor "dropped via the flag").
-    refute_includes audit, "- 21: -> 99--nowhere",
-                    "a silent garbage drop is not reported as an orphan"
+    assert_includes audit, "Malformed references found"
+    assert_includes audit, "- 21: -> 99--nowhere"
+
+    preserved_section = audit[/### Orphan candidates preserved.*?\n\n/m].to_s
+    refute_includes preserved_section, "99--nowhere",
+                    "a dead ref must never be misreported as a preserved orphan candidate"
   end
 
   def test_drop_unbacked_links_flag_removes_resolvable_orphan_and_reports_it_separately
@@ -314,6 +319,34 @@ class ProjectLinksTest < Minitest::Test
     # Every OTHER store (including knowdb, which also has an id "13") must report a synthetic
     # zero-activity result, never having been handed to project_store at all.
     assert_equal 0, results["project:knowdb"][:entries].size
+  end
+
+  # --- ACTION_2 (intent 197): malformed/unresolvable Links line is reported, not silently dropped ---
+
+  def test_unresolvable_link_line_is_reported_not_silently_dropped
+    write_intent(File.join(@home, "projects", "plastic", "store"), "20--parent",
+                 id: "20", intent: "Parent", sources: [], chain: [],
+                 links: "## Links\n- [[does-not-exist-anywhere|Ghost]]\n")
+
+    tool = ProjectLinks.new(plastic_home: @home, audit_path: @audit)
+    tool.run
+
+    # The dead line does not survive into the regenerated file (still dropped).
+    refute_includes read("projects/plastic/store/20--parent/20--parent.md"), "does-not-exist-anywhere"
+
+    # But it IS reported in the audit as a finding, not silently absent.
+    audit = File.read(@audit)
+    assert_includes audit, "Malformed references found"
+    assert_includes audit, "does-not-exist-anywhere"
+  end
+
+  # FALSIFIABLE (208): prove the audit's dead-refs section is not merely ALWAYS empty
+  # (which would make the assertion above vacuous). A store with zero dead refs must emit
+  # no "Malformed references found" heading at all.
+  def test_empty_output_on_nonempty_dead_input_would_be_a_failure
+    run_tool
+    refute_includes File.read(@audit), "Malformed references found",
+      "a clean fixture store must not spuriously report dead refs"
   end
 
 end
