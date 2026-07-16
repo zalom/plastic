@@ -328,6 +328,7 @@ class InstallerCore
       "scripts/rebuild-graph" => "scripts/rebuild-graph",
       "scripts/lib/restore_intent_v1.rb" => "scripts/lib/restore_intent_v1.rb",
       "scripts/restore-intent-v1" => "scripts/restore-intent-v1",
+      "scripts/lib/revisions_writer.rb" => "scripts/lib/revisions_writer.rb",
       "scripts/validate-intent" => "scripts/validate-intent",
       "scripts/new-intent" => "scripts/new-intent",
       "scripts/end-intent" => "scripts/end-intent",
