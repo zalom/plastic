@@ -25,6 +25,7 @@ require_relative "lib/graph_rebuild"
 require_relative "lib/frontmatter_writer"
 require_relative "lib/intent_validator"
 require_relative "lib/store_discovery"
+require_relative "lib/revisions_writer"
 
 class RebuildGraph
   DEFAULT_HOME = File.join(Dir.home, ".plastic")
@@ -47,6 +48,7 @@ class RebuildGraph
   def initialize(plastic_home: DEFAULT_HOME, dry_run: false, audit_path: nil)
     @plastic_home = plastic_home
     @dry_run = dry_run
+    @write_failures = []
 
     # A dry run must NOT stomp the canonical audit (the spec/checklist tell humans
     # to run --dry-run to review the plan). When no explicit --audit-path is given,
@@ -64,7 +66,11 @@ class RebuildGraph
       end
   end
 
-  attr_reader :plastic_home, :dry_run, :audit_path
+  attr_reader :plastic_home, :dry_run, :audit_path, :write_failures
+
+  def any_write_failures?
+    !write_failures.empty?
+  end
 
   # Every store in scope: global plus every projects/<slug>/store directory that exists
   # (intent 189). A superset of reality, not a hardcoded list: missing a real store here
@@ -140,11 +146,15 @@ class RebuildGraph
     results
   end
 
-  # Write changed frontmatter back via the minimal style-preserving writer.
+  # Write changed frontmatter back via the minimal style-preserving writer. Every applied
+  # change writes a revisions.md receipt FIRST (intent 197): if the receipt cannot be
+  # written, the frontmatter change is withheld (reported in write_failures) rather than
+  # left unrecorded.
   def write_back(store_list, nodes_by_store, results)
     store_list.each do |s|
       key = s[:key]
       new_nodes = results[key][:nodes]
+      changes_by_id = results[key][:changes].group_by { |c| c[:intent] }
       nodes_by_store[key].each do |id, original|
         rebuilt = new_nodes[id]
         next if rebuilt.nil?
@@ -154,7 +164,22 @@ class RebuildGraph
         updated = FrontmatterWriter.rewrite_arrays(content,
                                                    sources: rebuilt[:sources],
                                                    chain: rebuilt[:chain])
-        File.write(original[:path], updated) if updated != content
+        next if updated == content
+
+        id_changes = changes_by_id[id] || []
+        begin
+          RevisionsWriter.append!(
+            File.dirname(original[:path]),
+            why: "graph rebuild: #{id_changes.map { |c| c[:kind] }.uniq.join(", ")}",
+            rule: "graph-rebuild",
+            prior_location: "#{File.basename(original[:path], ".md")}.md frontmatter - sources/chain",
+            change: id_changes.map { |c| format_change(c) }.join("; ")
+          )
+        rescue RevisionsWriter::WriteFailed => e
+          @write_failures << { id: id, error: e.message }
+          next
+        end
+        File.write(original[:path], updated)
       end
     end
   end
@@ -188,6 +213,13 @@ class RebuildGraph
       preserved_unknown.each do |p|
         lines << "- #{p[:intent]}.#{p[:field]}: #{p[:ref]} (store #{p[:store].inspect} not recognized)"
       end
+      lines << ""
+    end
+
+    unless write_failures.empty?
+      lines << "## Frontmatter changes that could NOT be written (revisions.md receipt failed)"
+      lines << ""
+      write_failures.each { |f| lines << "- #{f[:id]}: #{f[:error]}" }
       lines << ""
     end
 
@@ -266,4 +298,6 @@ if $PROGRAM_NAME == __FILE__
   puts "rebuild-graph #{dry ? "DRY RUN" : "applied"}: #{total} change(s) across #{results.size} store(s)."
   puts "Unknown-store refs preserved (not dropped): #{preserved}" if preserved.positive?
   puts "Audit: #{tool.audit_path}"
+  puts "Write failures (receipt could not be recorded, change withheld): #{tool.write_failures.size}" if tool.any_write_failures?
+  exit 1 if tool.any_write_failures?
 end

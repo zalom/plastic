@@ -226,4 +226,50 @@ class RebuildGraphTest < Minitest::Test
     # and is not store data.
     Dir.glob(File.join(@home, "**", "store", "**", "*.md")).sort.to_h { |p| [p, File.read(p)] }
   end
+  # --- ACTION_5 (intent 197): RevisionsWriter receipt wired into rebuild-graph ---
+
+  def test_applied_frontmatter_change_writes_a_revisions_md_receipt
+    RebuildGraph.new(plastic_home: @home, audit_path: @audit).run
+    revisions = File.read(File.join(@home, "projects", "plastic", "store", "22c--slug", "revisions.md"))
+    assert_includes revisions, "## Revision v1"
+    assert_includes revisions, "[rule: graph-rebuild]"
+    assert_includes revisions, "i1_backlink"
+  end
+
+  # FALSIFIABLE (208): append-only across two separate runs that each make a real change.
+  def test_second_applied_change_appends_v2_not_overwrite
+    RebuildGraph.new(plastic_home: @home, audit_path: @audit).run # v1
+    # Force a second real change to 22c: add another backlink source pointing at it.
+    write_intent(File.join(@home, "projects", "plastic", "store"), "83", sources: ["22c"], chain: [])
+    RebuildGraph.new(plastic_home: @home, audit_path: @audit).run # v2
+
+    revisions = File.read(File.join(@home, "projects", "plastic", "store", "22c--slug", "revisions.md"))
+    assert_equal 2, revisions.scan(/^## Revision v\d+/).length
+    assert_includes revisions, "## Revision v1"
+    assert_includes revisions, "## Revision v2"
+  end
+
+  def test_dry_run_writes_no_revisions_md
+    RebuildGraph.new(plastic_home: @home, dry_run: true, audit_path: @audit).run
+    refute File.exist?(File.join(@home, "projects", "plastic", "store", "22c--slug", "revisions.md"))
+  end
+
+  # FALSIFIABLE (208): a receipt failure must refuse the frontmatter write (chmod the
+  # target dir read-only), confirm the .md is untouched, any_write_failures? is true, and the
+  # CLI process exits 1.
+  def test_revisions_write_failure_refuses_the_frontmatter_write
+    dir = File.join(@home, "projects", "plastic", "store", "22c--slug")
+    before = File.read(File.join(dir, "22c--slug.md"))
+    File.chmod(0o500, dir)
+    begin
+      tool = RebuildGraph.new(plastic_home: @home, audit_path: @audit)
+      tool.run
+      assert tool.any_write_failures?
+      assert_equal before, File.read(File.join(dir, "22c--slug.md")),
+        "the frontmatter must be untouched when its receipt cannot be written"
+    ensure
+      File.chmod(0o700, dir)
+    end
+  end
+
 end
