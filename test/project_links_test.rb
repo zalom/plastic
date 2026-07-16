@@ -245,4 +245,75 @@ class ProjectLinksTest < Minitest::Test
     run_tool
     assert_equal snapshot, file_snapshot, "a second run with a preserved orphan must change nothing"
   end
+
+  # --- ACTION_1 (intent 197): --intent single-intent scope ---
+
+  def test_intent_scope_regenerates_only_the_named_intent
+    # build_fixture_stores (setup) already seeds "11--child" (project:plastic) with a
+    # stale ## Links (heading-only comment) against real sources ["global:40"]/chain
+    # ["global:1a2"]. Scope to "11" only and confirm every other fixture file is untouched.
+    before = Dir.glob(File.join(@home, "**", "*.md")).to_h { |f| [f, File.read(f)] }
+
+    tool = ProjectLinks.new(plastic_home: @home, audit_path: @audit, intent: "11")
+    tool.run
+
+    before.each do |path, original|
+      if path.end_with?("11--child/11--child.md")
+        refute_equal original, File.read(path), "the scoped intent must be regenerated"
+      else
+        assert_equal original, File.read(path), "an unscoped intent must be byte-identical: #{path}"
+      end
+    end
+  end
+
+  def test_intent_scope_with_unknown_id_changes_nothing
+    before = Dir.glob(File.join(@home, "**", "*.md")).to_h { |f| [f, File.read(f)] }
+    tool = ProjectLinks.new(plastic_home: @home, audit_path: @audit, intent: "no-such-id")
+    tool.run
+    before.each { |path, original| assert_equal original, File.read(path) }
+  end
+
+  # FALSIFIABLE (208) and load-bearing: this is the EXACT real-world shape Task 13 depends
+  # on (ids 26 and 15 both collide across real stores today). A bare --intent matching more
+  # than one store must abort loud, listing every candidate, rather than silently write to
+  # the first match found.
+  def test_ambiguous_intent_across_stores_aborts_with_no_write
+    knowdb = File.join(@home, "projects", "knowdb", "store")
+    FileUtils.mkdir_p(knowdb)
+    write_intent(knowdb, "13--knowdb-collision", id: "13", intent: "Unrelated knowdb thing",
+                 sources: [], chain: [])
+    write_index(File.join(@home, "projects", "knowdb", "INDEX.md"))
+    before = Dir.glob(File.join(@home, "**", "*.md")).to_h { |f| [f, File.read(f)] }
+
+    _out, err = capture_io do
+      assert_raises(SystemExit) do
+        ProjectLinks.new(plastic_home: @home, audit_path: @audit, intent: "13").run
+      end
+    end
+    assert_match(/ambiguous/, err)
+    assert_match(/--store/, err)
+
+    before.each { |path, original| assert_equal original, File.read(path), "no file may change on an aborted ambiguous run" }
+  end
+
+  # The --store companion resolves the SAME ambiguity deliberately.
+  def test_explicit_store_disambiguates_and_scopes_correctly
+    knowdb = File.join(@home, "projects", "knowdb", "store")
+    FileUtils.mkdir_p(knowdb)
+    write_intent(knowdb, "13--knowdb-collision", id: "13", intent: "Unrelated knowdb thing",
+                 sources: [], chain: [])
+    write_index(File.join(@home, "projects", "knowdb", "INDEX.md"))
+    knowdb_md = File.join(knowdb, "13--knowdb-collision", "13--knowdb-collision.md")
+    before_knowdb = File.read(knowdb_md)
+
+    results = ProjectLinks.new(plastic_home: @home, audit_path: @audit, intent: "13",
+                                store: "project:plastic").run
+
+    assert_equal before_knowdb, File.read(knowdb_md),
+                 "the non-targeted store's same-id intent must be untouched"
+    # Every OTHER store (including knowdb, which also has an id "13") must report a synthetic
+    # zero-activity result, never having been handed to project_store at all.
+    assert_equal 0, results["project:knowdb"][:entries].size
+  end
+
 end
