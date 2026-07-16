@@ -144,8 +144,15 @@ class RestoreIntentV1Test < Minitest::Test
     v1_sha = commit_all("intent #{a_id} delivered with a since-dead edge")
 
     # Revert the dead edge back out of the working file (simulating that nothing
-    # legitimately re-added it later); current chain is empty.
-    File.write(a_md, File.read(a_md).sub('chain: ["999"]', "chain: []"))
+    # legitimately re-added it later); current chain is empty. Also land an unrelated
+    # prose amendment: current's chain already equals the post-drop union on its own,
+    # so without an independent real change this restore would be a genuine no-op
+    # (correctly writing no revisions.md at all, per intent 197's append-only-on-
+    # real-change discipline) and this test's final assertion would have nothing to
+    # observe.
+    current = File.read(a_md).sub('chain: ["999"]', "chain: []")
+    current += "\n\n### Amendment\nSomething unrelated changed after v1.\n"
+    File.write(a_md, current)
     commit_all("intent #{a_id} amended in place")
 
     # The drop must be named in BOTH the dry-run report and the apply report
@@ -531,5 +538,58 @@ class RestoreIntentV1Test < Minitest::Test
     )
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
     assert_includes out.downcase, "stale", "declining reprojection must print a loud staleness warning"
+  end
+
+  # --- ACTION_6 (intent 197): prove the existing writer already satisfies append-only vN+1 ---
+
+  # FALSIFIABLE (208): append-only. Seed the target intent with a PRE-EXISTING
+  # revisions.md (v1, unrelated to this restore) before running --apply, and confirm the
+  # restore's own entry lands as v2 (or later), with v1's exact text still present verbatim.
+  def test_preexisting_revisions_md_is_preserved_and_new_entry_appends_after_it
+    a_dir, a_id, v1_sha = seed_124_131_shape
+
+    preexisting = "# revisions.md\n\n## Revision v1 - 2026-01-01-00:00\n" \
+                  "- Why: unrelated prior structural fix [rule: unsanctioned-section]\n" \
+                  "- Prior location: #{File.basename(a_dir)}.md - ## Scratch\n" \
+                  "- Content held:\n\n  ## Scratch\n  old junk\n"
+    revisions_path = File.join(a_dir, "revisions.md")
+    File.write(revisions_path, preexisting)
+
+    out, status = Open3.capture2(
+      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
+    )
+    assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
+
+    revisions = File.read(revisions_path)
+    assert_includes revisions, "## Revision v1 - 2026-01-01-00:00", "the pre-existing v1 entry must survive verbatim"
+    assert_includes revisions, "unrelated prior structural fix", "v1's exact text must not be altered"
+    assert_includes revisions, "restored-to-v1", "the restore's own entry must be present"
+    refute_includes revisions, "## Revision v1 -\n- Why: restore-to-v1",
+      "the restore's own entry must never overwrite the pre-existing v1 entry"
+    # Numbering must be strictly increasing (append-only): every entry after v1 has a
+    # higher number, never a repeat of v1.
+    numbers = revisions.scan(/^## Revision v(\d+)/).flatten.map(&:to_i)
+    assert_equal numbers.sort, numbers.uniq.sort, "no revision number may repeat"
+    assert numbers.all? { |n| n >= 1 }, "every entry must be v1 or later"
+    assert numbers.length >= 2, "the pre-existing entry plus at least one new entry must both be present"
+  end
+
+  # FALSIFIABLE (208) counterpart: a SECOND restore run (idempotent no-op, since the
+  # intent is already at v1) must NOT append a spurious content-free entry when nothing
+  # actually changed. (Establishes the "no-op yields no entry" floor so the test above is
+  # not vacuously passing on a tool that appends unconditionally on every invocation.)
+  def test_idempotent_second_restore_appends_no_further_entry_when_already_at_v1
+    a_dir, a_id, v1_sha = seed_124_131_shape
+
+    Open3.capture2(RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply")
+    revisions_path = File.join(a_dir, "revisions.md")
+    count_after_first = File.read(revisions_path).scan(/^## Revision v\d+/).length
+
+    Open3.capture2(RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply")
+    count_after_second = File.read(revisions_path).scan(/^## Revision v\d+/).length
+
+    assert_equal count_after_first, count_after_second,
+      "a true no-op restore (already at v1, nothing left to change) must not append a " \
+      "content-free entry; D14 records every ACTUAL change, not every invocation"
   end
 end
