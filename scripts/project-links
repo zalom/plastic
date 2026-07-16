@@ -18,8 +18,9 @@
 # reported in the audit, never silently deleted. Pass --drop-unbacked-links to
 # delete orphan candidates deliberately (reported separately from a silent
 # drop). A line that resolves to nothing (a broken or mistyped wikilink) is
-# still dropped silently, exactly as before: it names no real relationship to
-# lose.
+# still dropped from the file (it names no real relationship to keep), but
+# reported in the audit as a malformed-reference finding rather than
+# vanishing without a trace (intent 197).
 #
 # Usage:
 #   project-links [--plastic-home PATH] [--dry-run] [--audit-path PATH] [--drop-unbacked-links]
@@ -42,6 +43,7 @@ require_relative "lib/graph_rebuild"
 require_relative "lib/links_projection"
 require_relative "lib/links_section"
 require_relative "lib/store_discovery"
+require_relative "lib/revisions_writer"
 
 class ProjectLinks
   DEFAULT_HOME = File.join(Dir.home, ".plastic")
@@ -200,7 +202,24 @@ class ProjectLinks
       end
 
       status = had_links ? :regenerated : :added
-      File.write(node[:path], updated) unless dry_run
+
+      unless dry_run
+        begin
+          RevisionsWriter.append!(
+            File.dirname(node[:path]),
+            why: revision_why(status, kept, dropped_optin, dead),
+            rule: "links-projection",
+            prior_location: "#{node[:basename]}.md ## Links",
+            change: revision_change(old_text, section_text)
+          )
+        rescue RevisionsWriter::WriteFailed => e
+          entries << { id: id, status: :failed, error: e.message,
+                       orphans_preserved: [], orphans_dropped_optin: [], orphans_dead: [] }
+          next
+        end
+        File.write(node[:path], updated)
+      end
+
       entries << { id: id, status: status, before: old_text, after: section_text,
                    orphans_preserved: kept, orphans_dropped_optin: dropped_optin, orphans_dead: dead }
     end
@@ -235,13 +254,29 @@ class ProjectLinks
     candidates.first
   end
 
+  # Renders the one-sentence "Why" for a project-links-authored receipt. Free text; the
+  # [rule: tag] suffix is appended by RevisionsWriter itself, not here.
+  def revision_why(status, kept, dropped_optin, dead)
+    parts = []
+    parts << (status == :added ? "added a missing ## Links section" : "regenerated ## Links to match frontmatter")
+    parts << "dropped #{dead.size} unresolvable reference(s)" unless dead.empty?
+    parts << "dropped #{dropped_optin.size} unbacked-but-resolvable reference(s) (--drop-unbacked-links)" unless dropped_optin.empty?
+    parts.join("; ")
+  end
+
+  def revision_change(before_text, after_text)
+    "## Links regenerated (before -> after)\n\n  BEFORE:\n" \
+      "#{block_lines(before_text).map { |l| "    #{l}" }.join("\n")}\n\n  AFTER:\n" \
+      "#{block_lines(after_text).map { |l| "    #{l}" }.join("\n")}"
+  end
+
   # Split the OLD (pre-mutation) `## Links` entries into orphans to KEEP
   # (unbacked by frontmatter but resolve to a real, currently-discovered
   # intent) vs DROP under the explicit --drop-unbacked-links opt-in. An entry
-  # that resolves nowhere is neither: it is dropped silently, exactly as before
-  # intent 192 (this is dealintell 3b's three broken single-dash lines:
-  # garbage, not data). Returns [kept_entries, dropped_optin_entries], both
-  # [{target:, label:}].
+  # that resolves nowhere is neither: it is dropped from the file (nothing real to
+  # preserve) but reported as a malformed-reference finding, not silently (intent 197;
+  # this is dealintell 3b's three broken single-dash lines: garbage, not data).
+  # Returns [kept_entries, dropped_optin_entries, dead_entries].
   def orphan_split(old_text, canonical_text, referer_store, store_index, node_index)
     canonical_targets = LinksProjection.parse_entries(canonical_text).map { |e| e[:target] }
     kept = []

@@ -349,4 +349,55 @@ class ProjectLinksTest < Minitest::Test
       "a clean fixture store must not spuriously report dead refs"
   end
 
+  # --- ACTION_4 (intent 197): RevisionsWriter receipt wired into project-links ---
+
+  def test_applied_change_writes_a_revisions_md_receipt
+    run_tool
+    revisions = File.read(File.join(@home, "projects", "plastic", "store", "11--child", "revisions.md"))
+    assert_includes revisions, "## Revision v1"
+    assert_includes revisions, "[rule: links-projection]"
+  end
+
+  # FALSIFIABLE (208): append-only. Run the tool twice against the same fixture, changing
+  # the target's frontmatter between runs so a SECOND real change happens, and confirm v2 is
+  # appended rather than v1 being overwritten.
+  def test_second_applied_change_appends_v2_not_overwrite
+    run_tool # v1 written
+    # Mutate 11--child's frontmatter so a second real projection change happens.
+    path = File.join(@home, "projects", "plastic", "store", "11--child", "11--child.md")
+    content = File.read(path)
+    File.write(path, content.sub('sources: ["global:40"]', 'sources: ["global:40", "13"]'))
+
+    run_tool # v2 written
+
+    revisions = File.read(File.join(@home, "projects", "plastic", "store", "11--child", "revisions.md"))
+    assert_includes revisions, "## Revision v1"
+    assert_includes revisions, "## Revision v2"
+    assert_equal 2, revisions.scan(/^## Revision v\d+/).length
+  end
+
+  def test_dry_run_writes_no_revisions_md
+    run_tool(dry_run: true)
+    refute File.exist?(File.join(@home, "projects", "plastic", "store", "11--child", "revisions.md"))
+  end
+
+  # FALSIFIABLE (208): a receipt failure must refuse the file write, not silently drop the
+  # receipt. Point RevisionsWriter at an unwritable location by making the intent's own
+  # directory read-only, and confirm the ## Links file is untouched and the id is reported
+  # :failed (making any_failed? true / exit 1).
+  def test_revisions_write_failure_refuses_the_links_write
+    dir = File.join(@home, "projects", "plastic", "store", "11--child")
+    before = File.read(File.join(dir, "11--child.md"))
+    File.chmod(0o500, dir) # read+execute only, no write
+    begin
+      tool = ProjectLinks.new(plastic_home: @home, audit_path: @audit)
+      results = tool.run
+      assert tool.any_failed?(results)
+      assert_equal before, File.read(File.join(dir, "11--child.md")),
+        "the intent file must be untouched when its receipt cannot be written"
+    ensure
+      File.chmod(0o700, dir) # restore for teardown's FileUtils.remove_entry
+    end
+  end
+
 end

@@ -342,9 +342,14 @@ class RestoreIntentV1Test < Minitest::Test
       "lines and the derived ## Links section"
   end
 
-  # AC (spec.md): the revisions.md entry names the reverted files and exactly one
-  # new entry is gained per applied restore.
-  def test_revisions_gains_exactly_one_entry_naming_reverted_files
+  # AC (spec.md): the revisions.md entry names the reverted files. Intent 197 wired
+  # RevisionsWriter into project-links too, so a restore that ALSO changes the target's
+  # own ## Links section (because its graph changed) now gains a SECOND, separate entry:
+  # one from project-links (the mechanical ## Links regeneration, reprojected as a normal
+  # part of handle_links_reprojection) and one from restore-intent-v1 itself (the semantic
+  # graph/prose restore). Both are real, distinct structural changes, so both get their own
+  # receipt; this is the intended, more complete audit trail, not a duplicate.
+  def test_revisions_gains_restored_to_v1_entry_naming_reverted_files
     a_dir, a_id, v1_sha = seed_124_131_shape
 
     out, status = Open3.capture2(
@@ -353,9 +358,11 @@ class RestoreIntentV1Test < Minitest::Test
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
 
     revisions = File.read(File.join(a_dir, "revisions.md"))
-    assert_equal 1, revisions.scan(/^## Revision v\d+/).length,
-      "exactly one new revisions.md entry must be gained per applied restore"
+    assert_equal 2, revisions.scan(/^## Revision v\d+/).length,
+      "one entry from project-links' own ## Links reprojection plus one from restore-intent-v1 itself"
     assert_includes revisions, "restored-to-v1", "the entry must carry the restored-to-v1 tag"
+    assert_includes revisions, "links-projection",
+      "the target's own ## Links regeneration (triggered by the restored graph) must carry its own receipt"
     assert_includes revisions, "#{File.basename(a_dir)}.md",
       "the entry must name the reverted intent .md file"
   end
