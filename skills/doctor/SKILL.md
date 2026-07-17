@@ -106,6 +106,11 @@ If any checks have `fixable: true` AND status is not `pass`:
 
 If no fixable issues exist, skip this step.
 
+This "Fix all / Select individually / Skip" prompt IS the router the spec calls
+`doctor --fix-all` (intent 197): doctor itself never mutates anything (see Step 5's table and
+"Important Notes" below); "Fix all" means "dispatch every fixable finding to the maintenance
+tool or skill that owns that class of repair," one row per fix_hint pattern.
+
 ### Step 5: Apply fixes
 
 Use the `fix_hint` value to determine the correct action:
@@ -121,6 +126,7 @@ Use the `fix_hint` value to determine the correct action:
 | "Run: provision-project-store {slug}" | Run `provision-project-store <slug>` (or invoke the `plastic-store-provisioning` skill) to create the missing store |
 | "Re-run installer" | Run `npx -y @zalom/plastic@<channel> install --agent <agent>` (channel: -alpha->@alpha, -beta->@beta, else @latest) |
 | "Dispatch plastic-store-curating ... revisions.md ..." | Invoke the `plastic-store-curating` (or the agent) to relocate the flagged section or ref into the intent's `revisions.md` via move-and-record (one dated, `[rule: <tag>]`-tagged entry per item), per PLASTIC.md > Structural maintenance and revisions.md. For a missing required section, restore or reproject it instead. |
+| "Run scripts/project-links ... PRESERVES ... --drop-unbacked-links" | Run `ruby ~/.plastic/scripts/maintenance-run --tool project-links --intent <id> --apply` for the one flagged id (never run bare `project-links` against a real store outside the rare owner-approved batch exception, D2) |
 
 For fixes the agent cannot handle automatically, explain what the user needs
 to do manually. The `revisions.md` remedy is curator-applied (a move-and-record
