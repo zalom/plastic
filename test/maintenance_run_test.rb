@@ -1,0 +1,192 @@
+# encoding: UTF-8
+# frozen_string_literal: true
+
+require "minitest/autorun"
+require "tmpdir"
+require "fileutils"
+require "open3"
+
+class MaintenanceRunTest < Minitest::Test
+  MAINTENANCE_RUN = File.expand_path("../scripts/maintenance-run", __dir__)
+
+  def setup
+    @home = Dir.mktmpdir("plastic-maintenance-run")
+    build_fixture_stores
+    git("init", "-q", "-b", "main")
+    git("add", "-A")
+    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "seed fixtures")
+  end
+
+  def teardown
+    FileUtils.remove_entry(@home) if @home && Dir.exist?(@home)
+  end
+
+  # --- fixture builders (mirrors test/project_links_test.rb's write_intent/flow/write_index) ---
+
+  def write_intent(store_dir, basename, id:, intent:, sources:, chain:, links: "## Links\n- legacy placeholder\n")
+    dir = File.join(store_dir, basename)
+    FileUtils.mkdir_p(dir)
+    content = +"---\n"
+    content << "id: \"#{id}\"\n"
+    content << "intent: \"#{intent}\"\n"
+    content << "sources: #{flow(sources)}\n"
+    content << "chain: #{flow(chain)}\n"
+    content << "created: 2026-06-01\n"
+    content << "author: test\n"
+    content << "tags: [t]\n"
+    content << "---\n\n# #{intent}\n\n## Intent\nBody #{id}.\n\n"
+    content << links if links
+    File.write(File.join(dir, "#{basename}.md"), content)
+  end
+
+  def flow(ids)
+    return "[]" if ids.empty?
+
+    "[#{ids.map { |i| "\"#{i}\"" }.join(", ")}]"
+  end
+
+  def write_index(path, body = "(none)")
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, "# Index\n\n## Relocated\n#{body}\n\n## Completed\n")
+  end
+
+  # Global: 40 (project-links' cross-store source target for 11).
+  # Plastic: 11 sources global:40 (its own ## Links is a stale placeholder - project-links
+  # --intent 11 regenerates it, a real change); 12 sources 11 with 11.chain still empty (the
+  # I1 backlink rebuild-graph fixes by adding 12 to 11.chain - 11 is the touched id).
+  def build_fixture_stores
+    global = File.join(@home, "store")
+    plastic = File.join(@home, "projects", "plastic", "store")
+    [global, plastic].each { |d| FileUtils.mkdir_p(d) }
+
+    write_intent(global, "40--store-graph", id: "40", intent: "Build the store graph",
+                 sources: [], chain: [])
+    write_intent(plastic, "11--child", id: "11", intent: "Child of forty",
+                 sources: ["global:40"], chain: [],
+                 links: "## Links\n<!-- Retroactive (intent 60b): heading only. -->\n")
+    write_intent(plastic, "12--grandchild", id: "12", intent: "Grandchild",
+                 sources: ["11"], chain: [])
+
+    write_index(File.join(@home, "INDEX.md"))
+    write_index(File.join(@home, "projects", "plastic", "INDEX.md"))
+  end
+
+  def git(*args)
+    out, status = Open3.capture2("git", "-C", @home, *args)
+    raise "git #{args.join(" ")} failed: #{out}" unless status.success?
+
+    out
+  end
+
+  def branches
+    out, = Open3.capture3("git", "-C", @home, "branch", "--list")
+    out
+  end
+
+  def test_defers_when_target_holds_a_fresh_delivery_lock
+    # Write a delivery.lock with a fresh mtime in the target intent's directory
+    # (JSON shape: {"type":"delivery","owner_session":"other-session", ...}; see
+    # scripts/lib/lock.rb's `payload` for the exact keys, or just the minimal
+    # {"owner_session":"x"} - Lock.fresh? only checks the file's mtime, not its content).
+    lock_path = File.join(@home, "projects", "plastic", "store", "11--child", "delivery.lock")
+    File.write(lock_path, '{"owner_session":"someone-else"}')
+
+    out, err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
+                                       "--intent", "11", "--plastic-home", @home, "--apply")
+    assert_equal 2, status.exitstatus
+    assert_match(/deferred/, out + err)
+  end
+
+  def test_applies_project_links_and_merges_when_clean
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
+                                        "--intent", "11", "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+    assert_match(/applied and merged/, out)
+
+    log, = Open3.capture3("git", "-C", @home, "log", "--oneline")
+    assert_match(/maintenance - project-links --intent 11/, log)
+    status_out, = Open3.capture3("git", "-C", @home, "status", "--porcelain")
+    assert_empty status_out.strip
+    refute_match(/maintenance\//, branches, "no maintenance branch should remain after merge")
+  end
+
+  def test_dry_run_makes_no_changes_by_default
+    before = File.read(File.join(@home, "projects", "plastic", "store", "11--child", "11--child.md"))
+    _out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
+                                         "--intent", "11", "--plastic-home", @home)
+    assert_equal 0, status.exitstatus
+    assert_equal before, File.read(File.join(@home, "projects", "plastic", "store", "11--child", "11--child.md"))
+  end
+
+  def test_project_links_without_intent_is_a_usage_error
+    _out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
+                                         "--plastic-home", @home, "--apply")
+    assert_equal 1, status.exitstatus
+  end
+
+  # FALSIFIABLE (208): an unrelated dirty file elsewhere in the store refuses the WHOLE run
+  # (exit 4), rather than being silently swept up or silently ignored.
+  def test_refuses_when_store_working_tree_is_dirty
+    File.write(File.join(@home, "unrelated.md"), "dirty\n")
+    _out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
+                                         "--intent", "11", "--plastic-home", @home, "--apply")
+    assert_equal 4, status.exitstatus
+  end
+
+  # 12 sources 11 while 11.chain is still empty: rebuild-graph's I1 pass writes the missing
+  # backlink into 11's own frontmatter, so 11 is the touched id (mirrors
+  # test/rebuild_graph_test.rb's "22c.chain += 80" shape). A fresh lock on 11 must defer the
+  # WHOLE rebuild-graph run, never partially apply around it.
+  def test_rebuild_graph_defers_when_any_touched_id_holds_a_fresh_lock
+    lock_path = File.join(@home, "projects", "plastic", "store", "11--child", "delivery.lock")
+    File.write(lock_path, '{"owner_session":"someone-else"}')
+
+    out, err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "rebuild-graph",
+                                       "--plastic-home", @home, "--apply")
+    assert_equal 2, status.exitstatus
+    assert_match(/deferred/, out + err)
+    refute_match(/maintenance\/rebuild-graph-/, branches, "no branch should be created on defer")
+  end
+
+  # FALSIFIABLE (208) and load-bearing for Task 13: real proof-case ids (26, 15) collide
+  # across stores. An ambiguous --intent with no --store must abort (exit 1, a usage-shaped
+  # failure, distinct from 2/3/4) rather than silently regenerate the WRONG store's intent.
+  def test_ambiguous_intent_across_stores_aborts_without_store_flag
+    knowdb = File.join(@home, "projects", "knowdb", "store")
+    FileUtils.mkdir_p(File.join(knowdb, "11--knowdb-collision"))
+    File.write(File.join(knowdb, "11--knowdb-collision", "11--knowdb-collision.md"),
+               "---\nid: \"11\"\nintent: t\nsources: []\nchain: []\ncreated: 2026-06-01\n" \
+               "author: t\ntags: [t]\n---\n\n## Intent\nb\n")
+    FileUtils.mkdir_p(File.join(@home, "projects", "knowdb"))
+    File.write(File.join(@home, "projects", "knowdb", "INDEX.md"), "# Index\n\n## Completed\n")
+    Open3.capture3("git", "-C", @home, "add", "-A")
+    Open3.capture3("git", "-C", @home, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "add collision")
+
+    _out, err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
+                                        "--intent", "11", "--plastic-home", @home, "--apply")
+    assert_equal 1, status.exitstatus
+    assert_match(/ambiguous/, err)
+  end
+
+  def test_store_flag_disambiguates_and_applies_to_the_named_store_only
+    knowdb = File.join(@home, "projects", "knowdb", "store")
+    FileUtils.mkdir_p(File.join(knowdb, "11--knowdb-collision"))
+    File.write(File.join(knowdb, "11--knowdb-collision", "11--knowdb-collision.md"),
+               "---\nid: \"11\"\nintent: t\nsources: []\nchain: []\ncreated: 2026-06-01\n" \
+               "author: t\ntags: [t]\n---\n\n## Intent\nb\n")
+    FileUtils.mkdir_p(File.join(@home, "projects", "knowdb"))
+    File.write(File.join(@home, "projects", "knowdb", "INDEX.md"), "# Index\n\n## Completed\n")
+    Open3.capture3("git", "-C", @home, "add", "-A")
+    Open3.capture3("git", "-C", @home, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "add collision")
+
+    before_knowdb = File.read(File.join(knowdb, "11--knowdb-collision", "11--knowdb-collision.md"))
+
+    _out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
+                                         "--intent", "11", "--store", "project:plastic",
+                                         "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus
+
+    assert_equal before_knowdb, File.read(File.join(knowdb, "11--knowdb-collision", "11--knowdb-collision.md")),
+      "the --store-excluded knowdb intent 11 must be untouched"
+  end
+end
