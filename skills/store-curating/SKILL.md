@@ -45,3 +45,12 @@ When an intent reaches a terminal state, moved to Completed OR Abandoned, do the
 2. Call `plastic-intent-ending` for the terminal-transition close (INDEX move, savepoint `Done` bookend, store commit, disarm, and the QMD reindex last): `ruby ~/.plastic/scripts/end-intent --store <store> --id <id> --disposition delivered|abandoned`, then follow that skill's own disarm and reindex steps. Never restate those one-liners here.
 
 After the agent completes, report what changed.
+
+## Maintenance dispatch (intent 197)
+
+When invoked to fix a structural finding on an intent OTHER than one currently being delivered
+(for example, from `/plastic-doctor`'s fix-all routing), the `plastic-intent-curator` agent
+follows its own step 7: it detects (never acquires) the target's delivery lock, requires a
+clean working tree, and performs the fix on a fresh branch merged back to main as one closed
+operation, with an append-only `revisions.md` receipt in the same pass as the edit. See
+`agents/plastic-intent-curator.md` for the exact mechanics.

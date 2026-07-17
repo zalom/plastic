@@ -17,6 +17,22 @@
           "result": "pass"
         }
       ]
+    },
+    {
+      "id": 2,
+      "scope": "behavior",
+      "set": "validation",
+      "prompt": "The user says: intent 26 (Completed) has a stale ## Links comment that contradicts its own real chain edge; fix it. Intent 26 is NOT the intent currently being delivered by this session.",
+      "expected_output": "Before editing intent 26, checks its delivery lock freshness (plastic-lock status --intent-dir, reading lock_fresh) and defers if fresh; requires a clean store working tree; creates a fresh maintenance branch off main; makes the scoped edit AND appends a revisions.md receipt in the same pass, refusing the edit if the receipt cannot be written; stages only the changed paths (never git add -A); merges the branch back to main and deletes it before reporting done.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "human",
+          "check": "agent file states detect-only lock check, clean-tree precheck, branch-and-merge-back, and refuse-without-receipt as an unconditional sequence for maintenance on a non-current intent",
+          "observed": "agents/plastic-intent-curator.md step 7 covers all five sub-steps (a-f) exactly as asked",
+          "result": "pass"
+        }
+      ]
     }
   ]
 }
