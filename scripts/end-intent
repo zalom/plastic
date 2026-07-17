@@ -67,6 +67,7 @@
 require "fileutils"
 require "date"
 require "open3"
+require "pathname"
 require_relative "lib/bridge"
 require_relative "lib/lock"
 require_relative "lib/intent_validator"
@@ -324,20 +325,43 @@ def git_toplevel(dir)
 end
 
 # Best-effort store commit: never raises, never blocks the mechanical close.
-# Returns true when a commit was created, false otherwise (not a git repo,
-# nothing to commit, or the commit failed). Pins a local committer identity so
-# the commit succeeds even with no ambient git config (hermetic).
-def store_commit(store, id, disposition)
+# Returns true when a commit was created, false otherwise (not a git repo, nothing to
+# commit, or the commit failed). Pins a local committer identity so the commit succeeds
+# even with no ambient git config (hermetic).
+#
+# SCOPED, never `git add -A` (D17, intent 197): stages only the completing intent's own
+# directory plus the store's INDEX.md, by explicit relative path. An unrelated dirty file
+# elsewhere in the store (another session's uncommitted work, a maintenance session's
+# in-flight change) is left exactly as it was found, never swept into this commit. This is
+# the safety floor that makes a concurrent maintenance session's change-plus-receipt safe on
+# the shared store checkout before intent 178 (store worktrees) lands.
+def store_commit(store, id, disposition, intent_dir:, index_path:)
   root = git_toplevel(store)
   return false if root.nil?
 
-  Open3.capture3("git", "-C", root, "add", "-A")
+  paths = [intent_dir, index_path].select { |p| p && File.exist?(p) }
+                                   .map { |p| relative_to(root, p) }
+  return false if paths.empty?
+
+  Open3.capture3("git", "-C", root, "add", "--", *paths)
   _out, _err, status = Open3.capture3(
     "git", "-C", root,
     "-c", "user.name=Plastic", "-c", "user.email=plastic@localhost",
     "commit", "--quiet", "-m", "chore: complete intent #{id} (#{disposition})"
   )
   status.success?
+end
+
+# `path`, relative to `root` (both absolute). Assumes `path` is inside `root` (true for
+# both intent_dir and index_path here, since both are derived from `store`, itself always
+# inside the same git repo `git_toplevel` resolved `root` from). Uses File.realpath, not
+# File.expand_path: `root` came back from `git rev-parse --show-toplevel`, which resolves
+# symlinked ancestors (e.g. macOS's /var -> /private/var), so an unresolved `path` can start
+# with a different prefix than `root` and produce a bogus, escaping relative path. Both
+# `path` and `root` are known to exist by the time this is called (the caller filters on
+# File.exist? first), so realpath is safe here.
+def relative_to(root, path)
+  Pathname.new(File.realpath(path)).relative_path_from(Pathname.new(File.realpath(root))).to_s
 end
 
 # --- pre-flight lock guard (D3/D4, intent 188) ------------------------------
@@ -617,8 +641,9 @@ def main(argv)
   # 3. Savepoint Done bookend (idempotent).
   Bridge.append_terminal_savepoint(intent_dir, disposition)
 
-  # 4. Store auto-commit, unless --no-commit.
-  store_commit(store, id, disposition) unless opts[:no_commit]
+  # 4. Store auto-commit, unless --no-commit. Scoped to this intent's own paths (D17):
+  # never git add -A.
+  store_commit(store, id, disposition, intent_dir: intent_dir, index_path: index_path) unless opts[:no_commit]
 
   # 5. Disarm (D2/D16): dirty-worktree guard, disarm seam, lock verification.
   result = run_disarm(intent_dir, id, session, discard_worktree_changes: opts[:discard_worktree_changes])

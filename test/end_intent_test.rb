@@ -314,6 +314,32 @@ class EndIntentTest < Minitest::Test
     assert_empty log.strip, "--no-commit must leave the store repo with no commits"
   end
 
+  # FALSIFIABLE (208): an unrelated dirty file elsewhere in the store must survive the
+  # commit untouched and uncommitted (D17's whole point).
+  def test_store_commit_never_sweeps_an_unrelated_dirty_file
+    build_intent
+    write_index
+    Open3.capture3("git", "init", "-q", @home)
+    Open3.capture3("git", "-C", @home, "add", "-A")
+    Open3.capture3("git", "-C", @home, "-c", "user.name=t", "-c", "user.email=t@t",
+                   "commit", "-q", "-m", "seed")
+
+    unrelated = File.join(@home, "unrelated-scratch.md")
+    File.write(unrelated, "unrelated dirty content\n")
+
+    _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
+    assert_equal 0, status
+
+    log, = Open3.capture3("git", "-C", @home, "log", "--oneline")
+    assert_match(/complete intent 161/, log)
+
+    show, = Open3.capture3("git", "-C", @home, "show", "--stat", "HEAD")
+    refute_match(/unrelated-scratch\.md/, show, "the unrelated file must not appear in the commit")
+
+    status_out, = Open3.capture3("git", "-C", @home, "status", "--porcelain")
+    assert_match(/unrelated-scratch\.md/, status_out, "the unrelated file must remain uncommitted/dirty")
+  end
+
   # --- outcome-summary stamp (D2 step 1b) -------------------------------------
 
   def test_outcome_summary_stamps_the_intent_file_outcome_section
