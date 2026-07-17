@@ -22,6 +22,8 @@ Violation tags (starter set, free-text tags allowed):
 - `broken-chain`: a chain frontmatter edge to an intent that no longer exists
 - `broken-source`: a sources frontmatter edge to an intent that no longer exists
 - `misplaced-content`: content that belongs in a different artifact or section
+- `links-projection`: a tool-authored `## Links` regeneration (project-links; intent 197)
+- `graph-rebuild`: a tool-authored sources/chain frontmatter rebuild (rebuild-graph; intent 197)
 
 ## Two Processes
 
