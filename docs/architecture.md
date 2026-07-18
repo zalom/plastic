@@ -147,6 +147,16 @@ Config, harness-scoped with keys matching `InstallerCore::DEFAULT_AGENTS` exactl
 
 `InstallerCore#generate_codex_agents` skips every `AgentModels::CONSULTATION_AGENTS` file by name before rendering any TOML: no Codex advisor ships in this release, a deliberate, mechanical scope cut (the owner has not evaluated the Codex reasoning-model ecosystem long enough to judge it), tracked at intent 186, not a permanent exclusion. An `agents.models.<name>` override that flips a non-consultation agent's authored model to `fable` is still honored as written (intent 170) and is unaffected by this name-based skip.
 
+Codex per-role model identity (intent 186): Codex has no vendor alias layer, so `AgentModels::CODEX_MODEL_BY_ALIAS` centralizes every Codex model id in one place, paired with the existing `AgentModels::EFFORT_BY_ALIAS` tier. A generated Codex agent TOML for a tier alias carries both lines, model first:
+
+| Tier | Codex model | Reasoning effort |
+|---|---|---|
+| `opus` roles | `gpt-5.6-sol` | `high` |
+| `sonnet` roles | `gpt-5.6-terra` | `medium` |
+| `haiku` roles | `gpt-5.6-luna` | `low` |
+
+Both are shipped defaults, overridable per role through `agents.models.codex.<name>` (a tier word selects model and effort together; a literal Codex model id wins verbatim, `model` only, no effort line). The advisor Codex pairing is decided (`plastic-advisor` to `gpt-5.6-sol` at `xhigh`, `plastic-faux-advisor` to `gpt-5.6-terra` at `high`) but emission stays deferred: `generate_codex_agents` still skips both `AgentModels::CONSULTATION_AGENTS` files.
+
 ### qmd search integration
 
 QMD is an optional, recommended local markdown search engine layered over the stores. Plastic functions without it (ripgrep over the store files is the fallback), so the integration adds search without becoming a dependency. The topology is one collection per store in the default qmd index, all `plastic-` prefixed: `plastic-global` for the global store and `plastic-<slug>` for each project store (slugs from `projects.yml`). Plastic delegates all index mechanics to the qmd CLI through a single helper (`scripts/lib/qmd_sync.rb`, exposed as the `scripts/qmd-sync` CLI, with verbs for detect, register, reindex, status, and a read-only `search`) and never reimplements qmd commands. Index mutation is tied to lifecycle events only, never ad-hoc: install registers all stores, project creation registers the new project store, and intent delivery reindexes the delivering store's collection. That delivery reindex is mandatory on completion and runs async (detached, non-blocking) so it never holds up the turn. Session start is report-only and never mutates the index. Query craft itself is owned by the installed `qmd` skill, not by Plastic.

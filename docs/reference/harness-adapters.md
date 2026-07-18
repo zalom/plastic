@@ -243,14 +243,18 @@ Markdown body verbatim, escaped for a TOML multi-line basic string (backslash an
 escaping so no `"""` delimiter collision can form, CRLF normalized to LF, C0 controls
 escaped). Output is deterministic and byte-identical on regenerate.
 
-The model value is effort-only by default: the shipped tier alias (`opus`, `sonnet`,
-`haiku`) maps to `model_reasoning_effort` (`high`, `medium`, `low`), and Plastic never
-writes a hardcoded `model` id, since a Codex model id would rot on every release (Codex
-ships multiple releases per week). An existing `agents.models.<name>` config override is
-honored by shape: a tier word maps to effort exactly like the default; any other value is
-written verbatim as a literal `model` id (the user owns that value and its staleness). A
-model-id override emits `model` only; the default path emits `model_reasoning_effort`
-only, so an agent with no override cleanly inherits the user's globally configured Codex
+The shipped tier alias (`opus`, `sonnet`, `haiku`) resolves to BOTH a `model` line and a
+`model_reasoning_effort` line, model first (intent 186, `AgentModels::CODEX_MODEL_BY_ALIAS`
+paired with the existing `AgentModels::EFFORT_BY_ALIAS`): opus roles to `gpt-5.6-sol` at
+`high`, sonnet roles to `gpt-5.6-terra` at `medium`, haiku roles to `gpt-5.6-luna` at `low`.
+Codex has no vendor alias layer of its own, so a Codex model id rots on every release
+(Codex ships multiple releases per week); Plastic resolves that by owning the alias itself,
+centralizing every id in one map, so a Codex deprecation costs a single line plus a Plastic
+release rather than a per-role file edit. An existing `agents.models.<name>` config override
+is honored by shape: a tier word maps to model and effort together exactly like the default;
+any other value is written verbatim as a literal `model` id only, with no effort line (the
+user owns that value and its staleness). An empty value emits nothing, so an agent with no
+override and no shipped tier alias cleanly inherits the user's globally configured Codex
 model. `doctor`'s codex check validates the generated `.toml` files (presence plus a
 structural check for the mandatory fields) in place of the flat `.md` check, which no
 longer applies to codex. Hermes and `~/.codex/config.toml` are untouched by this slice.
@@ -258,10 +262,15 @@ longer applies to codex. Hermes and `~/.codex/config.toml` are untouched by this
 `doctor`'s model-drift check (`check_agent_model_drift`) has a Codex-specific path since
 intent 198: it reads `~/.codex/agents/plastic-*.toml` directly (the same plain string
 matching `codex_agents_toml_check` already uses, no TOML parser dependency) and compares
-each file's `model`/`model_reasoning_effort` line against the tier default, honoring an
-`agents.models.codex.<name>` override. Previously this check globbed a path Codex never
-writes and always passed silently without opening a single Codex file, so a drifted
-override could never be caught.
+each file's `model_reasoning_effort` line against the tier default, honoring an `agents.models.codex.<name>` override. Previously
+this check globbed a path Codex never writes and always passed silently without opening a
+single Codex file, so a drifted override could never be caught.
+
+The two advisor agents (`plastic-advisor`, `plastic-faux-advisor`) have a Codex pairing
+defined at intent 186 (`plastic-advisor` to `gpt-5.6-sol` at `xhigh`, `plastic-faux-advisor`
+to `gpt-5.6-terra` at `high`) but emission stays deferred: `generate_codex_agents` still
+skips both `AgentModels::CONSULTATION_AGENTS` files by name, so no Codex TOML is written
+for either yet.
 
 ### L3 lifecycle gates and savepoints (intent 102)
 

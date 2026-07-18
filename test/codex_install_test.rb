@@ -298,12 +298,47 @@ class CodexInstallTest < Minitest::Test
   end
 
   def test_codex_model_fields_by_shape
-    assert_equal 'model_reasoning_effort = "high"', @core.codex_model_fields("opus")
-    assert_equal 'model_reasoning_effort = "medium"', @core.codex_model_fields("sonnet")
-    assert_equal 'model_reasoning_effort = "low"', @core.codex_model_fields("haiku")
+    assert_equal %(model = "gpt-5.6-sol"\nmodel_reasoning_effort = "high"), @core.codex_model_fields("opus")
+    assert_equal %(model = "gpt-5.6-terra"\nmodel_reasoning_effort = "medium"), @core.codex_model_fields("sonnet")
+    assert_equal %(model = "gpt-5.6-luna"\nmodel_reasoning_effort = "low"), @core.codex_model_fields("haiku")
     assert_equal 'model = "gpt-5.4-codex"', @core.codex_model_fields("gpt-5.4-codex")
     assert_equal "", @core.codex_model_fields("")
     assert_equal "", @core.codex_model_fields(nil)
+  end
+
+  def test_codex_model_by_alias_resolves_ids
+    assert_equal "gpt-5.6-sol", AgentModels.codex_model_for("opus")
+    assert_equal "gpt-5.6-terra", AgentModels.codex_model_for("sonnet")
+    assert_equal "gpt-5.6-luna", AgentModels.codex_model_for("haiku")
+    assert_nil AgentModels.codex_model_for("gpt-5.4-mini")
+    assert_nil AgentModels.codex_model_for(nil)
+  end
+
+  def test_codex_tier_alias_emits_model_then_effort
+    %w[opus sonnet haiku].each do |a|
+      out = @core.codex_model_fields(a)
+      assert_match(/\Amodel = "gpt-5\.6-[a-z]+"\nmodel_reasoning_effort = "(high|medium|low)"\z/, out)
+    end
+  end
+
+  def test_reasoning_roles_get_stronger_model_and_higher_effort_than_executors
+    reasoning = @core.codex_model_fields(AgentModels::TIER_DEFAULTS["plastic-planner"])  # opus
+    executor  = @core.codex_model_fields(AgentModels::TIER_DEFAULTS["plastic-executor"]) # sonnet
+    assert_includes reasoning, 'model = "gpt-5.6-sol"'
+    assert_includes reasoning, 'model_reasoning_effort = "high"'
+    assert_includes executor, 'model = "gpt-5.6-terra"'
+    assert_includes executor, 'model_reasoning_effort = "medium"'
+    refute_equal reasoning, executor
+  end
+
+  def test_agents_models_codex_tier_override_selects_model_and_effort
+    # override plastic-executor to the opus tier via agents.models.codex.*; expect sol/high to win.
+    File.write(File.join(@home, "config.yml"),
+               "agents:\n  models:\n    codex:\n      plastic-executor: opus\n")
+    @core.install_for_agent("codex", false)
+    toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
+    assert_includes toml, 'model = "gpt-5.6-sol"'
+    assert_includes toml, 'model_reasoning_effort = "high"'
   end
 
   def test_render_codex_agent_toml_maps_frontmatter_and_carries_the_body_verbatim
@@ -325,7 +360,7 @@ class CodexInstallTest < Minitest::Test
       assert_match(/^name = "plastic-sample"$/, toml)
       assert_match(/^description = "A sample role for testing"$/, toml)
       assert_includes toml, 'model_reasoning_effort = "medium"'
-      refute_match(/^model = /, toml)
+      assert_includes toml, 'model = "gpt-5.6-terra"'
 
       marker = 'developer_instructions = """'
       start = toml.index(marker)
@@ -340,21 +375,16 @@ class CodexInstallTest < Minitest::Test
     end
   end
 
-  def test_effort_per_tier_on_default_install_and_no_hardcoded_model
+  def test_model_and_effort_per_tier_on_default_install
     @core.install_for_agent("codex", false)
 
     opus_toml = File.read(File.join(@codex_home, "agents", "plastic-enforcer.toml"))
+    assert_includes opus_toml, 'model = "gpt-5.6-sol"'
     assert_includes opus_toml, 'model_reasoning_effort = "high"'
-    refute_match(/^model = /, opus_toml)
 
     sonnet_toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
+    assert_includes sonnet_toml, 'model = "gpt-5.6-terra"'
     assert_includes sonnet_toml, 'model_reasoning_effort = "medium"'
-    refute_match(/^model = /, sonnet_toml)
-
-    Dir.glob(File.join(@codex_home, "agents", "plastic-*.toml")).each do |f|
-      refute_includes File.read(f), 'model = "gpt',
-        "no default-path toml may carry a hardcoded Codex model id"
-    end
   end
 
   def test_haiku_alias_maps_to_low_effort_via_synthetic_render
@@ -373,7 +403,7 @@ class CodexInstallTest < Minitest::Test
 
       toml = @core.render_codex_agent_toml(src, nil)
       assert_includes toml, 'model_reasoning_effort = "low"'
-      refute_match(/^model = /, toml)
+      assert_includes toml, 'model = "gpt-5.6-luna"'
     ensure
       FileUtils.rm_rf(dir)
     end
@@ -393,7 +423,7 @@ class CodexInstallTest < Minitest::Test
     refute_match(/^model_reasoning_effort = /, toml)
   end
 
-  def test_override_with_a_tier_word_maps_to_effort_not_a_literal_model
+  def test_override_with_a_tier_word_maps_to_model_and_effort
     File.write(File.join(@home, "config.yml"),
                "agents:\n  models:\n    codex:\n      plastic-executor: haiku\n")
 
@@ -401,7 +431,7 @@ class CodexInstallTest < Minitest::Test
 
     toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
     assert_includes toml, 'model_reasoning_effort = "low"'
-    refute_match(/^model = /, toml)
+    assert_includes toml, 'model = "gpt-5.6-luna"'
   end
 
   # The literal-model-id-leak regression proof (intent 185 final design): a
@@ -420,6 +450,8 @@ class CodexInstallTest < Minitest::Test
       "a flat/claude-scoped literal model id must never leak into the Codex TOML"
     assert_includes toml, 'model_reasoning_effort = "medium"',
       "with no codex-scoped override, plastic-executor's shipped sonnet tier (medium effort) must pass through"
+    assert_includes toml, 'model = "gpt-5.6-terra"',
+      "with no codex-scoped override, plastic-executor's shipped sonnet tier model must pass through"
   end
 
   def test_regenerating_codex_agent_tomls_is_byte_identical

@@ -31,6 +31,10 @@ module AgentModels
   # dispatched by the auto pipeline, not part of TIER_DEFAULTS. Claude-only for
   # this release (generate_codex_agents skips both by name; the Codex advisor
   # case is intent 186, not a permanent exclusion).
+  #
+  # Intent 186 DEFINES the advisor Codex pairing but keeps emission deferred: when the skip is
+  # lifted, plastic-advisor pairs to gpt-5.6-sol at xhigh (the deepest) and plastic-faux-advisor
+  # to gpt-5.6-terra at high (cheaper). Neither is in TIER_DEFAULTS and neither is auto-dispatched.
   CONSULTATION_AGENTS = %w[plastic-advisor plastic-faux-advisor].freeze
 
   # Codex reasoning-effort per tier alias (intent 102a). model_reasoning_effort is a
@@ -43,6 +47,21 @@ module AgentModels
     "opus" => "high",
     "sonnet" => "medium",
     "haiku" => "low"
+  }.freeze
+
+  # Codex model id per tier alias (intent 186). Codex has NO vendor alias layer: every model id
+  # is a literal versioned string that rots (gpt-5.2 / gpt-5.3-codex already deprecated), which is
+  # why 116 D1 / 102a Decision B refused to pin a raw id per role file. This resolves that by
+  # centralizing every id in ONE map: Plastic owns the alias, so per-role identity costs a single
+  # line to refresh on a Codex deprecation plus a Plastic release, and no per-role file carries a
+  # raw id. opus (deepest reasoning tier) -> the flagship Sol; sonnet (execution tier) -> the
+  # balanced Terra; haiku (lightest) -> the fast/cheap Luna. Paired with EFFORT_BY_ALIAS so
+  # reasoning roles get a stronger model AND higher effort than executors. This is a shipped
+  # DEFAULT, fully overridable via agents.models.codex.<name>.
+  CODEX_MODEL_BY_ALIAS = {
+    "opus" => "gpt-5.6-sol",
+    "sonnet" => "gpt-5.6-terra",
+    "haiku" => "gpt-5.6-luna"
   }.freeze
 
   module_function
@@ -84,5 +103,11 @@ module AgentModels
   # one of the three shipped aliases (the caller treats nil as a literal Codex model id).
   def effort_for(value)
     EFFORT_BY_ALIAS[value.to_s]
+  end
+
+  # The Codex model id for a Plastic tier alias, or nil for any value that is not one of the three
+  # shipped aliases (the caller then treats the value as a literal Codex model id, or omits it).
+  def codex_model_for(value)
+    CODEX_MODEL_BY_ALIAS[value.to_s]
   end
 end

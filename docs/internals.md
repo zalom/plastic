@@ -706,16 +706,17 @@ models are user configuration (fable and opus by default on Claude Code).
   agent_model_overrides` (default claude scope), so the override lands identically
   for those two harness targets on install, update, and repair. `install_codex`
   instead calls `generate_codex_agents` with `models: agent_model_overrides(harness:
-  "codex")` (intent 102a, rescoped at intent 185): Codex reads standalone
-  `~/.codex/agents/<name>.toml` files, not the `.md` frontmatter format, so the
-  override resolves to a `model_reasoning_effort` line for a tier alias or a literal
-  `model` line for anything else, rather than a rewritten frontmatter line. Scoping the
-  Codex call to `harness: "codex"` is what closes the literal-model-id leak: a value
-  set under the legacy flat form or `agents.models.claude.*` is claude-scoped only and
-  is never visible to the codex-scoped resolution, so it can never surface in a
-  generated Codex TOML `model` line. See
-  [harness-adapters.md](reference/harness-adapters.md) for the full codex agent TOML
-  contract.
+  "codex")` (intent 102a, rescoped at intent 185, model mapping added at intent 186):
+  Codex reads standalone `~/.codex/agents/<name>.toml` files, not the `.md` frontmatter
+  format, so a tier alias (opus, sonnet, haiku) resolves to BOTH a `model` line (from
+  `AgentModels::CODEX_MODEL_BY_ALIAS`, model first) and a `model_reasoning_effort`
+  line, a literal override resolves to a `model` line only, and an empty value emits
+  nothing (the agent inherits the session model). Scoping the Codex call to `harness:
+  "codex"` is what closes the literal-model-id leak: a value set under the legacy flat
+  form or `agents.models.claude.*` is claude-scoped only and is never visible to the
+  codex-scoped resolution, so it can never surface in a generated Codex TOML `model`
+  line. See [harness-adapters.md](reference/harness-adapters.md) for the full codex
+  agent TOML contract.
 - **Dispatch-time contract (belt-and-braces)**: because Claude Code reading
   frontmatter at dispatch time is a harness implementation detail rather than a
   contract Plastic controls, every dispatch site (the enforcer's per-stage

@@ -613,8 +613,8 @@ class InstallerCore
   end
 
   # Render one repo agents/*.md into a deterministic Codex agent TOML document. Fixed field
-  # order (name, description, one model field, developer_instructions) so regenerate is
-  # byte-identical (idempotency).
+  # order (name, description, the model field(s) from codex_model_fields, developer_instructions)
+  # so regenerate is byte-identical (idempotency).
   def render_codex_agent_toml(source_path, override)
     front, body = split_frontmatter(File.read(source_path))
     name = (front["name"] || File.basename(source_path, ".md")).to_s
@@ -641,14 +641,21 @@ class InstallerCore
     end
   end
 
-  # The single model-selection line. A known tier alias (opus/sonnet/haiku) emits
-  # model_reasoning_effort only; any other non-empty value is a literal Codex model id
-  # emitted verbatim as `model`. Empty -> no line (the agent inherits the session default).
+  # The model-selection line(s). A known tier alias (opus/sonnet/haiku) emits BOTH a `model` line
+  # (from AgentModels.codex_model_for, the intent-186 per-role Codex identity) and a
+  # model_reasoning_effort line, model first for deterministic byte-identical regenerate. Any other
+  # non-empty value is a literal Codex model id emitted verbatim as `model` only. Empty -> no line
+  # (the agent inherits the session default). If an alias somehow lacks a mapped model, the effort
+  # line still emits alone (backward-safe).
   def codex_model_fields(effective)
     return "" if effective.nil? || effective.to_s.empty?
     effort = AgentModels.effort_for(effective)
     if effort
-      %(model_reasoning_effort = "#{effort}")
+      lines = []
+      model = AgentModels.codex_model_for(effective)
+      lines << %(model = "#{toml_inline_escape(model)}") if model && !model.to_s.empty?
+      lines << %(model_reasoning_effort = "#{effort}")
+      lines.join("\n")
     else
       %(model = "#{toml_inline_escape(effective.to_s)}")
     end
