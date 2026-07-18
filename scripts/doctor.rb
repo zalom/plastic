@@ -14,6 +14,7 @@ require "yaml"
 require "time"
 require "date"
 require "digest"
+require "rubygems"
 
 require_relative "lib/qmd_sync"
 require_relative "lib/intent_validator"
@@ -71,13 +72,32 @@ class Doctor
     doctor.rb
   ].freeze
 
+  # The apply_patch PreToolUse veto only fires from Codex v0.123.0 onward
+  # (PR #18391, "emit hooks for apply_patch edits"). Below it the veto
+  # silently no-ops (intent 184).
+  CODEX_HOOKS_FLOOR = "0.123.0"
+
   attr_reader :plastic_home, :agents
 
+  # Testable shell-out default, mirroring QmdSync.default_runner: a real
+  # Open3.capture3 call in production, swappable for a fake in tests so no
+  # test needs a real codex binary or a PATH mutation.
+  def self.default_runner
+    lambda do |args|
+      require "open3"
+      out, _err, status = Open3.capture3("codex", *args)
+      [out, status.success?]
+    rescue Errno::ENOENT
+      ["", false] # codex not on PATH: undetectable, fail open
+    end
+  end
+
   def initialize(plastic_home: DEFAULT_PLASTIC_HOME, agents: DEFAULT_AGENTS,
-                  bookend_amnesty: LEGACY_BOOKEND_AMNESTY)
+                  bookend_amnesty: LEGACY_BOOKEND_AMNESTY, runner: Doctor.default_runner)
     @plastic_home = plastic_home
     @agents = agents
     @bookend_amnesty = bookend_amnesty
+    @runner = runner
   end
 
   # --- Flag parsing ---
@@ -1300,6 +1320,7 @@ class Doctor
     checks << codex_hooks_implemented_check(config)
     checks << codex_hook_trust_advisory_check if hooks_check[:status] == "pass"
     codex_config_toml_advisory_check(config).tap { |c| checks << c if c }
+    codex_version_floor_check(config).tap { |c| checks << c if c }
 
     checks
   end
@@ -1553,6 +1574,60 @@ class Doctor
       fixable: false,
       fix_hint: "Set [features] hooks = true and sandbox_mode = \"workspace-write\" in ~/.codex/config.toml"
     )
+  end
+
+  # Codex version-floor advisory (intent 184): READ ONLY. The apply_patch PreToolUse
+  # veto (scripts/lib/hook_registry.rb, scripts/codex-hook) only fires from Codex
+  # v0.123.0 (PR #18391); below it the veto silently no-ops. version.json is Codex's
+  # update-checker cache and holds no installed version, so the only install-method-
+  # agnostic source is `codex --version`, shelled out through the injected runner.
+  # Four honest branches (intent 208, no pass-by-construction): absent home -> nil;
+  # present but undetectable -> distinct warn; below floor -> warn; at/above -> pass.
+  def codex_version_floor_check(config)
+    return nil unless File.exist?(config[:home_dir])
+
+    stdout, ok = @runner.call(["--version"])
+    version = ok ? codex_version_from_output(stdout) : nil
+    parsed = version && safe_version(version)
+
+    if parsed.nil?
+      return check(
+        category: "agent_registration", name: "codex_version_floor", status: "warn",
+        message: "Could not determine the installed Codex version (`codex --version` did not " \
+                 "return a parseable version); Plastic cannot confirm the apply_patch hooks " \
+                 "floor v#{CODEX_HOOKS_FLOOR} is met, so its gate may silently no-op",
+        fixable: false,
+        fix_hint: "Ensure `codex` is on PATH and `codex --version` >= #{CODEX_HOOKS_FLOOR}"
+      )
+    end
+
+    if parsed < safe_version(CODEX_HOOKS_FLOOR)
+      return check(
+        category: "agent_registration", name: "codex_version_floor", status: "warn",
+        message: "Installed Codex #{version} predates v#{CODEX_HOOKS_FLOOR}; the apply_patch " \
+                 "PreToolUse veto only exists from v#{CODEX_HOOKS_FLOOR} (PR #18391), so Plastic's " \
+                 "gate silently no-ops on this install",
+        fixable: false,
+        fix_hint: "Upgrade Codex to v#{CODEX_HOOKS_FLOOR} or newer with your install method " \
+                  "(npm i -g @openai/codex, mise, homebrew, or cargo)"
+      )
+    end
+
+    check(
+      category: "agent_registration", name: "codex_version_floor", status: "pass",
+      message: "Codex #{version} meets the apply_patch hooks floor v#{CODEX_HOOKS_FLOOR}"
+    )
+  end
+
+  def codex_version_from_output(stdout)
+    m = stdout.to_s.match(/(\d+\.\d+\.\d+(?:[.\-+][0-9A-Za-z.\-+]*)?)/)
+    m && m[1]
+  end
+
+  def safe_version(str)
+    Gem::Version.new(str.to_s)
+  rescue ArgumentError
+    nil
   end
 
   # --- Check category 4: Core files ---
