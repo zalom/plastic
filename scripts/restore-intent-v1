@@ -45,6 +45,7 @@ require_relative "lib/store_discovery"
 require_relative "lib/intent_validator"
 require_relative "lib/graph_rebuild"
 require_relative "lib/frontmatter_writer"
+require_relative "lib/links_projection"
 require_relative "lib/restore_intent_v1"
 
 class RestoreIntentV1CLI
@@ -116,8 +117,18 @@ class RestoreIntentV1CLI
 
     other_files = prose_siblings_to_restore(dir)
 
+    # `## Links` is a purely derived section: apply_graph always re-derives new_md's body
+    # from v1_md's ORIGINAL (pre-reprojection) content, so its Links ENTRY LINES differ
+    # from the current, already-reprojected file on every single invocation, even when
+    # nothing else changed. Comparing raw new_md != current_md would treat that churn as a
+    # real change forever (write, reproject, write, reproject...), which is both pointless
+    # IO and, per D14, a false "something changed" signal. md_changed ignores only the
+    # entry lines themselves; any other difference (frontmatter graph, real prose) is
+    # still a real, detected change.
+    md_changed = differs_outside_links_entries?(new_md, current_md)
+
     prose_changes = other_files.keys.dup
-    prose_changes.unshift("#{base}.md") if new_md != current_md
+    prose_changes.unshift("#{base}.md") if md_changed
 
     puts RestoreIntentV1.render_report(
       base: base, at: at, prose_changes: prose_changes,
@@ -128,7 +139,7 @@ class RestoreIntentV1CLI
 
     return unless apply
 
-    File.write(md_path, new_md) if new_md != current_md
+    File.write(md_path, new_md) if md_changed
     other_files.each { |f, content| File.write(File.join(dir, f), content) }
 
     puts "Reminder: restore-to-v1 runs under the maintenance lock (PLASTIC.md > Terminal " \
@@ -136,7 +147,8 @@ class RestoreIntentV1CLI
 
     handle_links_reprojection(base)
     append_revision(dir, base, graph, files: prose_changes,
-                    before_sources: current_fm["sources"], before_chain: current_fm["chain"])
+                    before_sources: current_fm["sources"], before_chain: current_fm["chain"]) \
+      if md_changed || other_files.any?
   end
 
   private
@@ -259,6 +271,28 @@ class RestoreIntentV1CLI
 
     warn "restore-intent-v1: ## Links may now be stale (project-links reprojection failed). " \
          "Rerun: ruby #{project_links} --plastic-home #{plastic_home}"
+  end
+
+  # True iff `md_a`/`md_b` differ OUTSIDE their ## Links ENTRY LINES (the ones
+  # LinksProjection renders/parses, plus its empty-state comment). Line-level, not
+  # section-level: a section-boundary replace (LinksSection.rewrite) would discard
+  # everything from the heading to EOF, which is unsafe here because a stray prose
+  # edit sitting after ## Links would be discarded too, not only the Links entries
+  # themselves. Frontmatter and every non-entry body line are compared verbatim, so a
+  # genuine graph or prose change is always still detected.
+  def differs_outside_links_entries?(md_a, md_b)
+    neutralize_links_entries(md_a) != neutralize_links_entries(md_b)
+  end
+
+  def neutralize_links_entries(text)
+    text.to_s.lines.map do |line|
+      stripped = line.chomp
+      if stripped.match?(LinksProjection::ENTRY_LINE_RE) || stripped == LinksProjection::EMPTY_COMMENT
+        "\n"
+      else
+        line
+      end
+    end.join
   end
 
   def append_revision(dir, base, graph, files:, before_sources:, before_chain:)

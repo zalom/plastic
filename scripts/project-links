@@ -18,11 +18,16 @@
 # reported in the audit, never silently deleted. Pass --drop-unbacked-links to
 # delete orphan candidates deliberately (reported separately from a silent
 # drop). A line that resolves to nothing (a broken or mistyped wikilink) is
-# still dropped silently, exactly as before: it names no real relationship to
-# lose.
+# still dropped from the file (it names no real relationship to keep), but
+# reported in the audit as a malformed-reference finding rather than
+# vanishing without a trace (intent 197).
 #
 # Usage:
 #   project-links [--plastic-home PATH] [--dry-run] [--audit-path PATH] [--drop-unbacked-links]
+#                 [--intent <id> [--store <key>]]
+#
+# --store only matters when --intent alone is ambiguous across stores (the tool
+# aborts loud, naming every candidate store, rather than silently picking one).
 #
 # Pure-Ruby (no bash). The pure logic lives in lib/links_projection.rb and
 # lib/links_section.rb; this shell does only discovery, IO, and reporting. It reads
@@ -38,6 +43,7 @@ require_relative "lib/graph_rebuild"
 require_relative "lib/links_projection"
 require_relative "lib/links_section"
 require_relative "lib/store_discovery"
+require_relative "lib/revisions_writer"
 
 class ProjectLinks
   DEFAULT_HOME = File.join(Dir.home, ".plastic")
@@ -47,10 +53,12 @@ class ProjectLinks
     "projects/plastic/store/72--links-graph-projection/resources/audit--links-projection.md"
 
   def initialize(plastic_home: DEFAULT_HOME, dry_run: false, audit_path: nil,
-                 drop_unbacked_links: false)
+                 drop_unbacked_links: false, intent: nil, store: nil)
     @plastic_home = plastic_home
     @dry_run = dry_run
     @drop_unbacked_links = drop_unbacked_links
+    @intent = intent && intent.to_s
+    @store = store
 
     # A dry run must NOT stomp the canonical audit (humans run --dry-run to review
     # the plan). With no explicit --audit-path, a dry run writes a `.dry-run.md`
@@ -68,7 +76,7 @@ class ProjectLinks
       end
   end
 
-  attr_reader :plastic_home, :dry_run, :audit_path, :drop_unbacked_links
+  attr_reader :plastic_home, :dry_run, :audit_path, :drop_unbacked_links, :intent, :store
 
   # Every store in scope: global plus every projects/<slug>/store directory that exists
   # (intent 189). Shares its definition with rebuild-graph, doctor.rb, and new-intent via
@@ -130,13 +138,23 @@ class ProjectLinks
 
     relocation_map = GraphRebuild.build_relocation_map(index_texts)
 
+    target_store_key = intent ? resolve_target_store(store_list, nodes_by_store, intent) : nil
+
     results = {}
     store_list.each do |s|
       key = s[:key]
-      results[key] = project_store(
-        key, nodes_by_store[key],
-        relocation_map: relocation_map, store_index: store_index, node_index: node_index
-      )
+      if intent
+        results[key] = (key == target_store_key) ? project_store(
+          key, nodes_by_store[key],
+          relocation_map: relocation_map, store_index: store_index, node_index: node_index,
+          only: intent
+        ) : { entries: [], counts: Hash.new(0) }
+      else
+        results[key] = project_store(
+          key, nodes_by_store[key],
+          relocation_map: relocation_map, store_index: store_index, node_index: node_index
+        )
+      end
     end
 
     emit_audit(store_list, results)
@@ -146,9 +164,10 @@ class ProjectLinks
   # Project every intent in ONE store. Returns
   # { entries: [ {id:, status:, before:, after:, error:, orphans_preserved:,
   #   orphans_dropped_optin:} ], counts: {...} }.
-  def project_store(referer_store, nodes, relocation_map:, store_index:, node_index:)
+  def project_store(referer_store, nodes, relocation_map:, store_index:, node_index:, only: nil)
     entries = []
     nodes.each do |id, node|
+      next if only && id != only
       resolve = ->(ref) do
         LinksProjection.resolve_ref_projection(
           ref, referer_store: referer_store,
@@ -164,7 +183,7 @@ class ProjectLinks
         canonical_text = LinksProjection.section(
           sources: node[:sources], chain: node[:chain], resolve: resolve
         )
-        kept, dropped_optin = orphan_split(old_text, canonical_text, referer_store,
+        kept, dropped_optin, dead = orphan_split(old_text, canonical_text, referer_store,
                                             store_index, node_index)
         section_text = LinksProjection.render_entries(
           LinksProjection.parse_entries(canonical_text) + kept
@@ -172,42 +191,107 @@ class ProjectLinks
         updated = LinksSection.rewrite(content, section_text)
       rescue LinksProjection::UnresolvedRef, LinksSection::AmbiguousLinks => e
         entries << { id: id, status: :failed, error: e.message,
-                     orphans_preserved: [], orphans_dropped_optin: [] }
+                     orphans_preserved: [], orphans_dropped_optin: [], orphans_dead: [] }
         next
       end
 
       if updated == content
-        entries << { id: id, status: :unchanged,
-                     orphans_preserved: kept, orphans_dropped_optin: dropped_optin }
+        entries << { id: id, status: :unchanged, orphans_preserved: kept,
+                     orphans_dropped_optin: dropped_optin, orphans_dead: dead }
         next
       end
 
       status = had_links ? :regenerated : :added
-      File.write(node[:path], updated) unless dry_run
+
+      unless dry_run
+        begin
+          RevisionsWriter.append!(
+            File.dirname(node[:path]),
+            why: revision_why(status, kept, dropped_optin, dead),
+            rule: "links-projection",
+            prior_location: "#{node[:basename]}.md ## Links",
+            change: revision_change(old_text, section_text)
+          )
+        rescue RevisionsWriter::WriteFailed => e
+          entries << { id: id, status: :failed, error: e.message,
+                       orphans_preserved: [], orphans_dropped_optin: [], orphans_dead: [] }
+          next
+        end
+        File.write(node[:path], updated)
+      end
+
       entries << { id: id, status: status, before: old_text, after: section_text,
-                   orphans_preserved: kept, orphans_dropped_optin: dropped_optin }
+                   orphans_preserved: kept, orphans_dropped_optin: dropped_optin, orphans_dead: dead }
     end
 
     counts = entries.each_with_object(Hash.new(0)) { |e, h| h[e[:status]] += 1 }
     { entries: entries, counts: counts }
   end
 
+  # Resolves --intent to exactly ONE store key, aborting loud on ambiguity (mirrors
+  # scripts/restore-intent-v1's find_intent_dir, which solves this identical cross-store
+  # id-collision problem the same way). `store:` (explicit --store) short-circuits resolution
+  # when the caller already knows which store; otherwise every store containing a matching
+  # id is a candidate, and more than one is a hard abort (never silently pick one). An id
+  # found in NO store is not an error (unlike restore-intent-v1's higher blast radius): it
+  # resolves to nil, so every store gets the synthetic zero-activity result in `run` (a
+  # provably observable no-op, not a crash) rather than aborting a caller that may be
+  # running this defensively (e.g. before an id is known to exist yet).
+  def resolve_target_store(store_list, nodes_by_store, intent)
+    if store
+      abort "project-links: --store #{store.inspect} has no intent #{intent.inspect}" \
+        unless nodes_by_store[store]&.key?(intent)
+      return store
+    end
+
+    candidates = store_list.select { |s| nodes_by_store[s[:key]].key?(intent) }.map { |s| s[:key] }
+    return nil if candidates.empty?
+    if candidates.length > 1
+      abort "project-links: intent #{intent.inspect} is ambiguous across stores " \
+            "(#{candidates.join(", ")}); pass --store <key> to disambiguate (e.g. --store " \
+            "#{candidates.first})"
+    end
+    candidates.first
+  end
+
+  # Renders the one-sentence "Why" for a project-links-authored receipt. Free text; the
+  # [rule: tag] suffix is appended by RevisionsWriter itself, not here.
+  def revision_why(status, kept, dropped_optin, dead)
+    parts = []
+    parts << (status == :added ? "added a missing ## Links section" : "regenerated ## Links to match frontmatter")
+    parts << "dropped #{dead.size} unresolvable reference(s)" unless dead.empty?
+    parts << "dropped #{dropped_optin.size} unbacked-but-resolvable reference(s) (--drop-unbacked-links)" unless dropped_optin.empty?
+    parts.join("; ")
+  end
+
+  def revision_change(before_text, after_text)
+    "## Links regenerated (before -> after)\n\n  BEFORE:\n" \
+      "#{block_lines(before_text).map { |l| "    #{l}" }.join("\n")}\n\n  AFTER:\n" \
+      "#{block_lines(after_text).map { |l| "    #{l}" }.join("\n")}"
+  end
+
   # Split the OLD (pre-mutation) `## Links` entries into orphans to KEEP
   # (unbacked by frontmatter but resolve to a real, currently-discovered
   # intent) vs DROP under the explicit --drop-unbacked-links opt-in. An entry
-  # that resolves nowhere is neither: it is dropped silently, exactly as before
-  # intent 192 (this is dealintell 3b's three broken single-dash lines:
-  # garbage, not data). Returns [kept_entries, dropped_optin_entries], both
-  # [{target:, label:}].
+  # that resolves nowhere is neither: it is dropped from the file (nothing real to
+  # preserve) but reported as a malformed-reference finding, not silently (intent 197;
+  # this is dealintell 3b's three broken single-dash lines: garbage, not data).
+  # Returns [kept_entries, dropped_optin_entries, dead_entries].
   def orphan_split(old_text, canonical_text, referer_store, store_index, node_index)
     canonical_targets = LinksProjection.parse_entries(canonical_text).map { |e| e[:target] }
     kept = []
     dropped_optin = []
+    dead = []
     LinksProjection.parse_entries(old_text).each do |oe|
       next if canonical_targets.include?(oe[:target]) # already backed; not an orphan
 
       label = resolve_orphan_label(oe[:target], referer_store, store_index, node_index)
-      next if label.nil? # dead: not backed AND does not resolve; silent drop, as before
+      if label.nil?
+        # Resolves to nothing: still dropped from the file (nothing real to preserve),
+        # but no longer silent. Reported as a malformed-orphan candidate in the audit.
+        dead << { target: oe[:target] }
+        next
+      end
 
       if drop_unbacked_links
         dropped_optin << oe
@@ -215,7 +299,7 @@ class ProjectLinks
         kept << { target: oe[:target], label: label }
       end
     end
-    [kept, dropped_optin]
+    [kept, dropped_optin, dead]
   end
 
   # Does `target` (already in projected `id--slug` or `store:id--slug` form)
@@ -267,6 +351,7 @@ class ProjectLinks
     lines << "# Audit: store-wide ## Links projection (intent 72)"
     lines << ""
     lines << "Generated: #{Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ")}#{dry_run ? " (DRY RUN)" : ""}"
+    lines << "Scoped to intent #{intent} only (--intent)." if intent
     lines << ""
 
     total = STATUS_ORDER.to_h do |st|
@@ -274,11 +359,13 @@ class ProjectLinks
     end
     total_preserved = store_list.sum { |s| results[s[:key]][:entries].sum { |e| Array(e[:orphans_preserved]).size } }
     total_dropped_optin = store_list.sum { |s| results[s[:key]][:entries].sum { |e| Array(e[:orphans_dropped_optin]).size } }
+    total_dead = store_list.sum { |s| results[s[:key]][:entries].sum { |e| Array(e[:orphans_dead]).size } }
     lines << "Totals across all stores: " \
              "regenerated #{total[:regenerated]}, added #{total[:added]}, " \
              "unchanged #{total[:unchanged]}, failed #{total[:failed]}. " \
              "Unbacked Links lines preserved as orphan candidates: #{total_preserved}" \
-             "#{drop_unbacked_links ? ", dropped via --drop-unbacked-links: #{total_dropped_optin}" : ""}."
+             "#{drop_unbacked_links ? ", dropped via --drop-unbacked-links: #{total_dropped_optin}" : ""}" \
+             ", malformed references found: #{total_dead}."
     lines << ""
 
     unless missing_stores.empty?
@@ -321,6 +408,17 @@ class ProjectLinks
         lines << ""
       end
 
+      dead_refs = res[:entries].flat_map { |e| Array(e[:orphans_dead]).map { |o| [e[:id], o] } }
+      unless dead_refs.empty?
+        lines << "### Malformed references found, dropped silently before this fix (#{dead_refs.size})"
+        lines << "Resolve to no real intent under any known store; these are dropped from the " \
+                 "regenerated ## Links section (nothing real to preserve), but were previously " \
+                 "invisible to every check. Confirm each is genuinely dead (a typo'd slug, a " \
+                 "sibling wrongly linked) rather than a missing store/relocation before trusting."
+        dead_refs.each { |id, o| lines << "- #{id}: -> #{o[:target]}" }
+        lines << ""
+      end
+
       sample = res[:entries].select { |e| %i[regenerated added].include?(e[:status]) }.first(5)
       next if sample.empty?
 
@@ -356,6 +454,8 @@ if $PROGRAM_NAME == __FILE__
   dry = false
   audit = nil
   drop = false
+  intent = nil
+  store = nil
   i = 0
   while i < ARGV.length
     case ARGV[i]
@@ -363,14 +463,17 @@ if $PROGRAM_NAME == __FILE__
     when "--dry-run" then dry = true; i += 1
     when "--audit-path" then audit = ARGV[i + 1]; i += 2
     when "--drop-unbacked-links" then drop = true; i += 1
+    when "--intent" then intent = ARGV[i + 1]; i += 2
+    when "--store" then store = ARGV[i + 1]; i += 2
     else
       abort "project-links: unknown argument #{ARGV[i].inspect} " \
-            "(usage: --plastic-home PATH | --dry-run | --audit-path PATH | --drop-unbacked-links)"
+            "(usage: --plastic-home PATH | --dry-run | --audit-path PATH | " \
+            "--drop-unbacked-links | --intent <id> [--store <key>])"
     end
   end
 
   tool = ProjectLinks.new(plastic_home: home, dry_run: dry, audit_path: audit,
-                           drop_unbacked_links: drop)
+                           drop_unbacked_links: drop, intent: intent, store: store)
   results = tool.run
   totals = ProjectLinks::STATUS_ORDER.to_h do |st|
     [st, results.values.sum { |r| r[:counts][st] }]

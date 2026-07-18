@@ -811,7 +811,11 @@ class Doctor
       "it PRESERVES any line unbacked by frontmatter that still resolves to a real intent " \
       "(reported as an orphan candidate, never silently deleted); add the missing " \
       "sources/chain edge if the relationship is real, or pass --drop-unbacked-links to " \
-      "delete an orphan candidate deliberately."
+      "delete an orphan candidate deliberately. Prefer `ruby scripts/maintenance-run --tool " \
+      "project-links --intent <id> --apply` over running project-links directly: it detects " \
+      "(never acquires) the target's delivery lock, requires a clean store working tree, and " \
+      "commits the scoped change plus its revisions.md receipt as one merged operation " \
+      "(PLASTIC.md > WORK vs MAINTENANCE)."
     )
   end
 

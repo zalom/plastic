@@ -176,4 +176,17 @@ class DoctorLinksProjectionTest < Minitest::Test
     assert_includes check[:fix_hint], "--drop-unbacked-links"
     assert_includes check[:fix_hint], "PRESERVES"
   end
+
+  # ACTION_11 (intent 197): the fix_hint must point at the maintenance-run wrapper (lock
+  # detection, clean-tree precondition, scoped commit-plus-receipt), not just bare
+  # project-links, so an agent following the hint runs the safe path by default.
+  def test_fix_hint_names_maintenance_run
+    seed_targets
+    write_intent(plastic_store, "5--child", id: "5", intent: "Child",
+                 sources: ["40"], chain: [],
+                 links: "## Links\n<!-- Retroactive (intent 60b): heading only. -->\n")
+
+    check = links_check
+    assert_includes check[:fix_hint], "maintenance-run"
+  end
 end
