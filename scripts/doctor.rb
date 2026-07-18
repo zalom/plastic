@@ -1732,14 +1732,16 @@ class Doctor
               "#{tilde(File.join(plastic_home, "VERSION"))}: #{global_version}",
               "#{tilde(agent_version_path)}: #{agent_version}",
             ],
-            fixable: false
+            fixable: true,
+            fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or plastic-rollback to a prior version"
           )
         end
       else
         checks << check(
           category: "core_files", name: "version_match", status: "warn",
           message: "Agent-side VERSION file not found at #{tilde(agent_version_path)}",
-          fixable: false
+          fixable: true,
+          fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or plastic-rollback to a prior version"
         )
       end
     end
@@ -2010,6 +2012,32 @@ class Doctor
         fixable: true, fix_hint: "Re-run the Plastic installer to restore tracked files"
       )
     end
+  end
+
+  # install_integrity (intent 210, D4): FULL tier only, warn-only, never writes. For each
+  # installed agent, re-hash its manifest-listed files against disk and WARN on drift
+  # (a hand-edit is legitimate; this is advisory, unlike the core-tier binary manifest_sync
+  # gate). PASS when clean. `agents` here is doctor's own Hash keyed by agent key.
+  def check_install_integrity
+    checks = []
+    agents.each do |key, config|
+      manifest_path = File.join(config[:dir], "plastic", "manifest.json")
+      next unless File.exist?(manifest_path)
+      data = read_json_safe(manifest_path)
+      files = data.is_a?(Hash) ? (data["files"] || {}) : {}
+      next if files.empty?
+      drifted = files.reject { |f, h| File.exist?(f) && Digest::SHA256.file(f).hexdigest == h }
+      checks << if drifted.empty?
+        check(category: "install_integrity", name: "#{key}_integrity", status: "pass",
+              message: "#{config[:name]}: all #{files.size} tracked file(s) match the manifest")
+      else
+        check(category: "install_integrity", name: "#{key}_integrity", status: "warn",
+              message: "#{config[:name]}: #{drifted.size} tracked file(s) differ from the manifest (drift may be deliberate)",
+              details: drifted.keys.map { |f| tilde(f) }, fixable: true,
+              fix_hint: "Re-sync if unintended: npx @zalom/plastic@latest install --reinstall --#{key}")
+      end
+    end
+    checks
   end
 
   # --- Check category 5: Project stores ---
@@ -2449,6 +2477,7 @@ class Doctor
     all_checks += check_qmd
     all_checks += check_done_signals
     all_checks += check_skill_lint
+    all_checks += check_install_integrity
 
     summarize(all_checks, agent_key)
   end

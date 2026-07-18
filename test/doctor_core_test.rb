@@ -253,6 +253,64 @@ class DoctorManifestSyncTest < Minitest::Test
     FileUtils.rm_rf(DOCTOR_TEST_CODEX)
   end
 
+  # --- install_integrity (intent 210, D4/G6): FULL tier only, warn-only, never writes ---
+
+  def test_install_integrity_passes_on_a_clean_install
+    build_intact_install
+
+    checks = doctor.check_install_integrity
+    claude_check = checks.find { |c| c[:name] == "claude_integrity" }
+
+    refute_nil claude_check
+    assert_equal "pass", claude_check[:status]
+  end
+
+  def test_install_integrity_warns_on_a_hand_edited_tracked_file
+    paths = build_intact_install
+    File.write(paths[:agent_file], "1.0.0-HAND-EDITED")
+
+    checks = doctor.check_install_integrity
+    claude_check = checks.find { |c| c[:name] == "claude_integrity" }
+
+    assert_equal "warn", claude_check[:status]
+    assert_includes claude_check[:details], tilde_expected(paths[:agent_file])
+  end
+
+  def tilde_expected(path)
+    doctor.tilde(path)
+  end
+
+  # Falsifiable (AC9): install_integrity never writes, even when it finds drift.
+  def test_install_integrity_never_writes
+    paths = build_intact_install
+    File.write(paths[:agent_file], "1.0.0-HAND-EDITED")
+    manifest_path = File.join(DOCTOR_TEST_CLAUDE, "plastic", "manifest.json")
+    before_manifest_mtime = File.mtime(manifest_path)
+    before_agent_mtime = File.mtime(paths[:agent_file])
+
+    doctor.check_install_integrity
+
+    assert_equal before_manifest_mtime, File.mtime(manifest_path), "install_integrity must never write the manifest"
+    assert_equal before_agent_mtime, File.mtime(paths[:agent_file]), "install_integrity must never write a tracked file"
+  end
+
+  # AC9, falsifiable: install_integrity is FULL-tier only, never part of the binary core run.
+  def test_install_integrity_is_full_tier_only_absent_from_core_run
+    build_intact_install
+    write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+    write_agents(DOCTOR_TEST_CLAUDE)
+    write_core_scripts(File.join(DOCTOR_TEST_HOME, "scripts"))
+    File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "1.0.0")
+
+    core_names = doctor.run_core_checks("claude")[:checks].map { |c| c[:name] }
+    full_names = doctor.run_checks("claude")[:checks].map { |c| c[:name] }
+
+    refute_includes core_names, "claude_integrity", "install_integrity must be absent from the binary core run"
+    assert_includes full_names, "claude_integrity", "install_integrity must be present in the full run"
+  end
+
   # --- binary roll-up ---
 
   def test_binary_summarize_warn_rolls_up_to_fail
