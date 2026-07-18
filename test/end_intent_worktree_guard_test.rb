@@ -121,7 +121,7 @@ class EndIntentWorktreeGuardTest < Minitest::Test
       "build" => { "auto" => false },
       "worktree" => {
         "code" => worktree_code, "code_branch" => "plastic/#{id}--#{slug}",
-        "store" => nil, "store_branch" => nil, "provisioned" => true,
+        "provisioned" => true,
       },
       "lock" => { "owner_session" => session, "acquired_at" => Time.now.utc.iso8601,
                   "host" => "test", "type" => "delivery", "delegates" => [] },

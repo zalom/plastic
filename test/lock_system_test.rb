@@ -211,7 +211,7 @@ class LockSystemTest < Minitest::Test
     assert_nil Bridge.worktree_gate_decision(bridge, File.join(@home, "elsewhere", "x.md"), home: @home)
 
     # Merge-remove: finish(merge: true) merges the code branch, then removes
-    # both worktrees and clears the block.
+    # the worktree and clears the block.
     finish_runner = FakeRunner.new
     result = with_real_worktree do
       Worktree.finish(bridge, home: @home, runner: finish_runner, merge: true)
@@ -219,7 +219,7 @@ class LockSystemTest < Minitest::Test
     merges = finish_runner.calls.select { |c| c.include?("merge") }
     removes = finish_runner.calls.select { |c| c.include?("remove") }
     refute_empty merges, "finish(merge: true) must merge the code branch"
-    assert_equal 2, removes.length, "both worktrees are removed"
+    assert_equal 1, removes.length, "the code worktree is removed"
     assert_nil result["worktree"]
   end
 
@@ -314,11 +314,15 @@ class LockSystemTest < Minitest::Test
 
   # --- 12. D9: lifecycle writes read only the MAIN store dir -----------------------
 
-  def test_d9_lifecycle_writes_use_the_main_store_dir_not_the_store_worktree
+  # Intent 178 retired the store worktree entirely, so `provision` no longer
+  # carries a "store" key at all (proven directly in
+  # test/worktree_test.rb#test_provision_does_not_create_a_store_worktree).
+  # What is left of D9's guarantee, and still worth proving here, is that
+  # lifecycle writes land in the MAIN intent dir regardless.
+  def test_d9_lifecycle_writes_use_the_main_store_dir
     runner = FakeRunner.new
     bridge = provision_bridge_with(runner)
-    store_wt = bridge.dig("worktree", "store")
-    refute_nil store_wt
+    refute bridge["worktree"].key?("store"), "provision must not carry a store key at all"
 
     spec = File.join(@dir96, "spec.md")
     File.write(spec, "real spec content\n")
@@ -327,8 +331,6 @@ class LockSystemTest < Minitest::Test
     Bridge.append_savepoint(@dir96, spec)
     assert File.exist?(File.join(@dir96, "savepoint.md")),
            "the savepoint ledger lands in the MAIN intent dir"
-    refute Dir.exist?(store_wt),
-           "no lifecycle op needed the store worktree even to exist on disk"
   end
 
   def test_d9_no_runtime_reader_consumes_the_store_worktree

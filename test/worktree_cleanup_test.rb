@@ -54,8 +54,6 @@ class WorktreeCleanupTest < Minitest::Test
       "worktree" => {
         "code" => File.join(@repo, ".claude", "worktrees", "#{id}--#{slug}"),
         "code_branch" => "plastic/#{id}--#{slug}",
-        "store" => File.join(@plastic_home, ".worktrees", "#{id}--#{slug}"),
-        "store_branch" => "plastic-store/#{id}--#{slug}",
         "provisioned" => true,
       },
     }
@@ -90,7 +88,7 @@ class WorktreeCleanupTest < Minitest::Test
     assert merge_idx < code_remove, "merge must precede worktree removal"
 
     # And both worktrees were removed + pruned.
-    assert_equal 2, runner.calls.count { |c| c.include?("remove") }
+    assert_equal 1, runner.calls.count { |c| c.include?("remove") }
     refute_empty runner.calls.select { |c| c.include?("prune") }
   end
 
@@ -112,7 +110,7 @@ class WorktreeCleanupTest < Minitest::Test
 
     # A failed merge is aborted, and teardown still happens (worktree not stranded).
     assert runner.calls.any? { |c| c.include?("merge") && c.include?("--abort") }, "must abort failed merge"
-    assert_equal 2, runner.calls.count { |c| c.include?("remove") }
+    assert_equal 1, runner.calls.count { |c| c.include?("remove") }
   end
 
   def test_finish_merge_skips_when_target_equals_code_branch
@@ -127,7 +125,7 @@ class WorktreeCleanupTest < Minitest::Test
     refute runner.calls.any? { |c| c.include?("merge") && !c.include?("--abort") },
            "must not merge a branch into itself"
     # Still removes.
-    assert_equal 2, runner.calls.count { |c| c.include?("remove") }
+    assert_equal 1, runner.calls.count { |c| c.include?("remove") }
   end
 
   # --- finish: remove-only (disarm / abandon path) ---------------------------
@@ -137,7 +135,7 @@ class WorktreeCleanupTest < Minitest::Test
     result = Worktree.finish(provisioned_bridge, home: @home, runner: runner, merge: false)
     assert_nil result["worktree"]
     refute runner.calls.any? { |c| c.include?("merge") }, "remove-only must not merge"
-    assert_equal 2, runner.calls.count { |c| c.include?("remove") }
+    assert_equal 1, runner.calls.count { |c| c.include?("remove") }
     refute_empty runner.calls.select { |c| c.include?("prune") }
   end
 
@@ -214,7 +212,11 @@ class WorktreeCleanupTest < Minitest::Test
 
   # --- provision calls ensure_gitignored -------------------------------------
 
-  def test_provision_ensures_both_gitignore_entries
+  # Intent 178 retired the store worktree, so provision no longer ensures a
+  # `.worktrees/` entry in the plastic home's own `.gitignore` (that entry
+  # already ships committed there from prior runs and is left alone). The code
+  # repo's `.gitignore` entry is unaffected: the code worktree stays mandatory.
+  def test_provision_ensures_the_code_repo_gitignore_entry
     runner = FakeRunner.new do |args|
       if args[2] == "rev-parse"
         next Worktree::ShellRunner::Result.new(0, "true\n", "")
@@ -226,8 +228,9 @@ class WorktreeCleanupTest < Minitest::Test
     }
     Worktree.provision(bridge, home: @home, runner: runner)
 
-    assert_includes File.read(File.join(@plastic_home, ".gitignore")), ".worktrees/"
     assert_includes File.read(File.join(@repo, ".gitignore")), ".claude/worktrees/"
+    refute_includes File.read(File.join(@plastic_home, ".gitignore")), ".worktrees/",
+      "provision no longer writes a .worktrees/ entry into the plastic home gitignore (intent 178)"
   end
 
   def capture_stderr

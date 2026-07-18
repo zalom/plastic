@@ -798,13 +798,12 @@ module Bridge
         "warning_at" => 80,
         "critical_at" => 90
       },
-      # Worktree isolation block (intent 73c). Born unprovisioned; arm_auto calls
-      # Worktree.provision to fill it. code/store are abs paths or null.
+      # Worktree isolation block (intent 73c; store-worktree half retired by
+      # intent 178). Born unprovisioned; arm_auto calls Worktree.provision to
+      # fill it. "code" is an abs path or null.
       "worktree" => {
         "code" => nil,
         "code_branch" => nil,
-        "store" => nil,
-        "store_branch" => nil,
         "provisioned" => false
       },
       # Delivery-lock CACHE block (intent 108, D2). The durable truth is the

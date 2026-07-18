@@ -99,12 +99,7 @@ class WorktreeHermeticityTest < Minitest::Test
         "expected #{path.inspect} to stay under sandbox #{@sandbox.inspect}"
     end
 
-    # (2) the store worktree add target equals <plastic_home>/.worktrees/<id>--<slug>.
-    expected_store = File.join(@plastic_home, ".worktrees", "169--demo")
-    assert_equal expected_store, data["worktree"]["store"]
-    assert_includes add_targets, expected_store
-
-    # (3) regression for the 166 incident shape: no recorded path is under the
+    # (2) regression for the 166 incident shape: no recorded path is under the
     # REAL ~/.plastic/.worktrees.
     real_worktrees_dir = File.join(Dir.home, ".plastic", ".worktrees")
     (dash_c_targets + add_targets).each do |path|
@@ -113,7 +108,7 @@ class WorktreeHermeticityTest < Minitest::Test
         "(the exact 166 incident shape)"
     end
 
-    # (4) read-only before/after snapshot of the real .worktrees dir: no new entry.
+    # (3) read-only before/after snapshot of the real .worktrees dir: no new entry.
     assert_equal @real_worktrees_before, snapshot_real_worktrees,
       "provision must not create any new entry in the real ~/.plastic/.worktrees"
   end
