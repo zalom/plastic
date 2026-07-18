@@ -79,6 +79,28 @@ class InstallerCoreTest < Minitest::Test
     assert entry.key?("at")
   end
 
+  # --- ledger harness field (intent 210, G5) ---
+
+  def test_ledger_append_with_harness_records_it
+    @core.ledger_append("1.6.0", "update", harness: "codex")
+    entry = @core.ledger_current
+    assert_equal "codex", entry["harness"]
+  end
+
+  def test_ledger_append_without_harness_omits_the_key
+    @core.ledger_append("1.6.0", "update")
+    entry = @core.ledger_current
+    refute entry.key?("harness"), "a core-only append must not invent a harness value"
+  end
+
+  def test_ledger_read_tolerates_a_legacy_row_with_no_harness_key
+    File.write(@core.ledger_path, JSON.generate("version" => "1.4.1", "action" => "install", "at" => "2026-01-01T00:00:00Z") + "\n")
+    entries = @core.ledger_read
+    assert_equal 1, entries.length
+    assert_equal "1.4.1", entries.first["version"]
+    refute entries.first.key?("harness")
+  end
+
   # --- distribute: global manifest ---
 
   def test_distribute_writes_global_manifest

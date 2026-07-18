@@ -79,11 +79,24 @@ class Install < InstallerCore
     bootstrap if fresh
     apply_config_flags(argv)
 
-    results = selected.map { |key| transactional_install_for_agent(key, force, argv: argv, input: input, reinstall: reinstall) }
+    results = selected.map do |key|
+      result = transactional_install_for_agent(key, force, argv: argv, input: input, reinstall: reinstall)
+      result[:key] = key
+      result
+    end
     results += already_registered.map { |key| already_registered_result(key) }
 
     action = ledger_action || (fresh ? "install" : "reinstall")
-    ledger_append(version, action)
+    # One ledger row per successfully-synced agent, carrying its harness (intent 210,
+    # G5). A run where nothing agent-specific succeeded (or selected was empty) still
+    # gets a single core-only row, so the version/action event is never silently
+    # dropped from the ledger.
+    synced = results.select { |r| r[:success] && r[:key] }
+    if synced.any?
+      synced.each { |r| ledger_append(version, action, harness: r[:key]) }
+    else
+      ledger_append(version, action)
+    end
 
     print_results(results, fresh ? :install : :reinstall)
     results

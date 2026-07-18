@@ -159,6 +159,19 @@ class RollbackVerbTest < Minitest::Test
     assert_equal plain.switch_calls, with_upgrade.switch_calls
   end
 
+  # AC7, falsifiable: a consolidated update (intent 210) appends ONE ledger row per
+  # synced harness at the same version. version_timeline must still collapse those
+  # same-version rows into a single timeline entry, or the version would appear twice.
+  def test_version_timeline_dedups_same_version_multi_harness_rows
+    ledger = [
+      { "version" => "1.6.0", "action" => "update", "harness" => "claude" },
+      { "version" => "1.6.0", "action" => "update", "harness" => "codex" },
+      { "version" => "1.6.1", "action" => "update", "harness" => "claude" },
+    ]
+    assert_equal ["1.6.0", "1.6.1"], @v.version_timeline(ledger),
+      "same-version per-harness rows must collapse to one timeline entry"
+  end
+
   def test_unknown_version_warns_and_does_not_switch
     rb = fresh_recording_rollback(
       installed_version: "1.0.0-alpha.15",

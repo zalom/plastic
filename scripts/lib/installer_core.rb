@@ -133,11 +133,15 @@ class InstallerCore
   end
 
   # Append a single immutable entry. Opens in append mode; never rewrites prior lines.
-  # action ∈ { install, reinstall, update, downgrade }.
-  def ledger_append(entry_version, action)
+  # action ∈ { install, reinstall, update, downgrade }. `harness` (intent 210, G5) names
+  # which agent this row records a sync for (claude/codex/hermes); optional so a
+  # core-only or pre-210 caller still writes a valid, readable row. Readers must stay
+  # tolerant of legacy rows that carry no "harness" key at all.
+  def ledger_append(entry_version, action, harness: nil)
     FileUtils.mkdir_p(plastic_home)
-    line = JSON.generate("version" => entry_version, "action" => action, "at" => Time.now.utc.iso8601)
-    File.open(ledger_path, "a") { |f| f.puts(line) }
+    entry = { "version" => entry_version, "action" => action, "at" => Time.now.utc.iso8601 }
+    entry["harness"] = harness if harness
+    File.open(ledger_path, "a") { |f| f.puts(JSON.generate(entry)) }
   end
 
   def ledger_read
