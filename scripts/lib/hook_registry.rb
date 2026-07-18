@@ -138,6 +138,18 @@ module HookRegistry
     result
   end
 
+  # Flattened, deduplicated Claude launcher names for every hook `events`
+  # registers (intent 204): each hook name maps to a hooks/<name> launcher
+  # installed as ~/.claude/hooks/plastic-<name>. The single derivation doctor's
+  # hooks_exist/hooks_executable/hooks_no_orphans checks read from, so a
+  # hand-kept list of launchers can never drift out of step with `events`
+  # again (the gap that let 8 of 15 launchers, all the enforcement gates, go
+  # unchecked).
+  def claude_launcher_names
+    events.values.flatten.flat_map { |g| g["hooks"].map { |h| h["name"] } }
+          .uniq.sort.map { |name| "plastic-#{name}" }
+  end
+
   # The settings.json shape merge_claude_hooks expects: single-group events map
   # to a Hash, multi-group events to an Array (the merge loop handles both).
   def claude_settings_hooks(hook_dir:)

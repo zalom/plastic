@@ -52,17 +52,13 @@ class Doctor
   # never drift.
   LEGACY_BOOKEND_AMNESTY = LegacyBookendAmnesty::LIST
 
-  CLAUDE_HOOK_SCRIPTS = %w[
-    plastic-session-start
-    plastic-check-update
-    plastic-savepoint
-    plastic-gate-check
-    plastic-continue
-    plastic-future-intent-check
-    plastic-qmd-search
-  ].freeze
-
   CLAUDE_HOOK_EVENTS = %w[SessionStart PreCompact PostToolUse UserPromptSubmit].freeze
+
+  # Launchers the installer places in the agent's hooks dir that are NOT hooks
+  # (intent 204): plastic-statusline is the settings["statusLine"] command, wired
+  # outside HookRegistry.events entirely, so it must be excluded from the
+  # orphan-launcher scan below or a correct install would report a false orphan.
+  CLAUDE_NON_HOOK_LAUNCHERS = %w[plastic-statusline].freeze
 
   REQUIRED_SCRIPTS = %w[
     folgezettel-id
@@ -1003,13 +999,17 @@ class Doctor
     checks = []
     hooks_dir = File.join(agent_dir, "hooks")
 
+    # Derived from HookRegistry.events (intent 204), not a hand-kept list, so
+    # every registered hook (all 15, including the enforcement gates) is checked.
+    expected_launchers = HookRegistry.claude_launcher_names
+
     # hooks_exist
-    missing_hooks = CLAUDE_HOOK_SCRIPTS.reject { |h| File.exist?(File.join(hooks_dir, h)) }
+    missing_hooks = expected_launchers.reject { |h| File.exist?(File.join(hooks_dir, h)) }
 
     if missing_hooks.empty?
       checks << check(
         category: "agent_registration", name: "hooks_exist", status: "pass",
-        message: "All #{CLAUDE_HOOK_SCRIPTS.size} expected hook scripts exist"
+        message: "All #{expected_launchers.size} expected hook scripts exist"
       )
     else
       checks << check(
@@ -1021,7 +1021,7 @@ class Doctor
     end
 
     # hooks_executable
-    existing_hooks = CLAUDE_HOOK_SCRIPTS
+    existing_hooks = expected_launchers
       .map { |h| File.join(hooks_dir, h) }
       .select { |p| File.exist?(p) }
 
@@ -1038,6 +1038,29 @@ class Doctor
         message: "#{non_executable.size} hook script(s) not executable",
         details: non_executable.map { |p| tilde(p) },
         fixable: true, fix_hint: "chmod +x on the listed files"
+      )
+    end
+
+    # hooks_no_orphans: the mirror of hooks_exist. A plastic-* launcher on disk
+    # that HookRegistry does not know about is dead code the next reader would
+    # trust as live (the same drift class as a missing launcher, just facing
+    # the other way). plastic-statusline is a legitimate non-hook installer
+    # artifact (see CLAUDE_NON_HOOK_LAUNCHERS) and is excluded here.
+    present_launchers = Dir.glob(File.join(hooks_dir, "plastic-*")).map { |p| File.basename(p) }
+    orphans = (present_launchers - expected_launchers - CLAUDE_NON_HOOK_LAUNCHERS).sort
+
+    if orphans.empty?
+      checks << check(
+        category: "agent_registration", name: "hooks_no_orphans", status: "pass",
+        message: "No orphaned hook launchers in #{tilde(hooks_dir)}"
+      )
+    else
+      checks << check(
+        category: "agent_registration", name: "hooks_no_orphans", status: "warn",
+        message: "#{orphans.size} hook launcher(s) on disk are not registered in HookRegistry",
+        details: orphans.map { |h| "#{tilde(hooks_dir)}/#{h}" },
+        fixable: true,
+        fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest --claude (prunes stale launchers)"
       )
     end
 
