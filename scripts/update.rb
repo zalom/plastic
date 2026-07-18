@@ -42,8 +42,22 @@ class Update < InstallerCore
 
     case res[:status]
     when :up_to_date
-      puts "\u{2705} Plastic v#{iv} is already up to date on the #{channel_for(iv)} channel."
-      return 0
+      targeted = target_agent_keys(argv)
+      stale = agents_needing_sync(target: iv, agent_versions: agent_versions_for(targeted))
+      if stale.empty?
+        puts "\u{2705} Plastic v#{iv} is already up to date on the #{channel_for(iv)} channel."
+        return 0
+      end
+      # Same-version repair (intent 210, D1/AC4): the core is current but a targeted
+      # agent's own record is stale or missing (e.g. a harness added after the last
+      # sync). Re-sync at the SAME version instead of the clean no-op above.
+      puts "\u{1f527} Plastic core v#{iv} is current; repairing stale agent(s): #{stale.join(", ")}"
+      exit_code = perform_switch(iv, agent_args(argv))
+      if exit_code == 0
+        announce_pending_config_asks(agent_key: primary_agent_key(argv))
+        run_post_update_doctor(full: argv.include?("--full-doctor"), synced_agents: targeted)
+      end
+      exit_code
     when :unknown_channel
       warn "No published version on the #{requested} channel."
       return 1
@@ -56,10 +70,17 @@ class Update < InstallerCore
       exit_code = perform_switch(res[:target], agent_args(argv))
       if exit_code == 0
         announce_pending_config_asks(agent_key: primary_agent_key(argv))
-        run_post_update_doctor(full: argv.include?("--full-doctor"))
+        run_post_update_doctor(full: argv.include?("--full-doctor"), synced_agents: target_agent_keys(argv))
       end
       exit_code
     end
+  end
+
+  # Given the resolved target version and a { key => installed_version_or_nil } map for the
+  # agents this update targets, return the keys that still need a sync: version behind the
+  # target, or missing (nil). All-current returns []. Pure; unit-tested (intent 210, G3).
+  def agents_needing_sync(target:, agent_versions:)
+    agent_versions.select { |_k, v| v.nil? || semver_gt?(target, v) }.keys
   end
 
   # Print any pending config question(s) straight to stdout, right after a
@@ -99,22 +120,29 @@ class Update < InstallerCore
     out.puts "  could not check config asks: #{e.message}"
   end
 
-  # Run doctor after a successful update and print a human-readable summary.
-  # Defaults to the fast core tier (agent registration + core files + manifest
-  # sync, binary pass|fail, no store walk) so a newcomer's first post-update
+  # Run doctor after a successful update and print a human-readable summary, once per
+  # synced agent (intent 210, C5: a Codex-only or --all update must not always report
+  # only claude). Defaults to the fast core tier (agent registration + core files +
+  # manifest sync, binary pass|fail, no store walk) so a newcomer's first post-update
   # run is not buried in convention warns they cannot act on. `full: true`
   # (via `--full-doctor`) runs the complete store walk instead. Informational
   # only: does not raise and does not affect the update's exit code. Accepts
-  # injected `doctor` and `out` for hermetic unit tests.
-  def run_post_update_doctor(doctor: nil, out: $stdout, full: false)
+  # injected `doctor` and `out` for hermetic unit tests. Returns the single result hash
+  # when exactly one agent was checked (matches the pre-210 return shape), else an
+  # array of per-agent result hashes.
+  def run_post_update_doctor(doctor: nil, out: $stdout, full: false, synced_agents: ["claude"])
     doctor ||= Doctor.new
+    keys = synced_agents.nil? || synced_agents.empty? ? ["claude"] : synced_agents
     out.puts full ? "\nRunning full doctor after update..." : "\nRunning core doctor after update..."
-    result = full ? doctor.run_checks("claude") : doctor.run_core_checks("claude")
-    s = result[:summary]
-    out.puts "  Doctor status: #{result[:status]} " \
-             "(pass: #{s[:pass]}, warn: #{s[:warn]}, fail: #{s[:fail]}, total: #{s[:total]})"
-    out.puts "  Run /plastic-doctor for details." unless result[:status] == "pass"
-    result
+    results = keys.map do |key|
+      result = full ? doctor.run_checks(key) : doctor.run_core_checks(key)
+      s = result[:summary]
+      out.puts "  [#{key}] Doctor status: #{result[:status]} " \
+               "(pass: #{s[:pass]}, warn: #{s[:warn]}, fail: #{s[:fail]}, total: #{s[:total]})"
+      out.puts "  Run /plastic-doctor for details." unless result[:status] == "pass"
+      result
+    end
+    keys.size == 1 ? results.first : results
   rescue StandardError => e
     # Non-blocking: a crash here (e.g. malformed file in the real store) must not
     # undo or fail an update that already succeeded. Report and move on.
@@ -152,11 +180,30 @@ class Update < InstallerCore
     nil
   end
 
-  # Agent flags to pass through to the delegated install (default --claude).
+  # Agent keys this invocation targets (intent 210, D1/G3): explicit flags in argv, or
+  # --all, or, when no flag was given at all, every currently-installed agent (never a
+  # hardcoded Claude-only default). Single source of truth for both agent_args (the
+  # argv fragment forwarded to the delegated install) and the same-version repair check.
+  def target_agent_keys(argv)
+    return agents.map { |a| a[:key] } if argv.include?("--all")
+
+    explicit = agents.select { |a| argv.include?(a[:flag]) }.map { |a| a[:key] }
+    return explicit unless explicit.empty?
+
+    installed = installed_agents
+    installed.empty? ? ["claude"] : installed
+  end
+
+  # Agent flags to pass through to the delegated install. No-flag resolves to every
+  # installed agent's flag, not a hardcoded ["--claude"] (intent 210, AC3).
   def agent_args(argv)
-    flags = agents.map { |a| a[:flag] }.select { |f| argv.include?(f) }
-    flags << "--all" if argv.include?("--all")
-    flags.empty? ? ["--claude"] : flags
+    target_agent_keys(argv).map { |k| agents.find { |a| a[:key] == k }[:flag] }
+  end
+
+  # { key => installed_version_or_nil } for the given agent keys, read from each
+  # agent's own record (intent 210, D1).
+  def agent_versions_for(keys)
+    keys.each_with_object({}) { |k, h| h[k] = agent_version_for(agent_config(k)) }
   end
 
   # The single agent key this update is installing for, for config_asks

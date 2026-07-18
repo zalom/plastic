@@ -214,4 +214,44 @@ class InstallerCoreTest < Minitest::Test
   def test_agent_installed_false_for_an_unknown_key
     refute @core.agent_installed?("nope")
   end
+
+  # --- installed_agents / agent_version_for (intent 210, D1) ---
+
+  def test_installed_agents_reads_the_per_agent_version_file
+    claude_dir = Dir.mktmpdir("installed-agents-claude")
+    codex_dir = Dir.mktmpdir("installed-agents-codex")
+    FileUtils.mkdir_p(File.join(claude_dir, "plastic"))
+    File.write(File.join(claude_dir, "plastic", "VERSION"), "1.6.0\n")
+    # codex_dir has no plastic/VERSION at all: not installed.
+
+    core = InstallerCore.new(package_root: WORKTREE, plastic_home: @home,
+                              agents: [
+                                { key: "claude", name: "Claude Code", dir: claude_dir, flag: "--claude" },
+                                { key: "codex", name: "Codex CLI", dir: codex_dir, home_dir: codex_dir, flag: "--codex" },
+                              ], version: "1.0.0-test")
+
+    assert_equal ["claude"], core.installed_agents
+  ensure
+    FileUtils.rm_rf(claude_dir)
+    FileUtils.rm_rf(codex_dir)
+  end
+
+  def test_agent_version_for_reads_the_stripped_version_string
+    dir = Dir.mktmpdir("agent-version-for")
+    FileUtils.mkdir_p(File.join(dir, "plastic"))
+    File.write(File.join(dir, "plastic", "VERSION"), "1.5.2\n")
+
+    assert_equal "1.5.2", @core.agent_version_for({ dir: dir })
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
+  def test_agent_version_for_nil_when_no_version_file
+    dir = Dir.mktmpdir("agent-version-for-missing")
+    FileUtils.mkdir_p(dir)
+
+    assert_nil @core.agent_version_for({ dir: dir })
+  ensure
+    FileUtils.rm_rf(dir)
+  end
 end

@@ -454,6 +454,18 @@ class InstallerCore
     !manifest_files(manifest_path_for(key, config)).empty?
   end
 
+  # Agent keys whose per-agent record exists (intent 210, D2): folder-with-VERSION =
+  # registered. Reads the record, never a written config list. Fail-open: an unreadable
+  # record is simply "not installed" here (doctor reports integrity separately).
+  def installed_agents
+    agents.select { |a| File.exist?(File.join(record_dir_for(a), "VERSION")) }.map { |a| a[:key] }
+  end
+
+  def agent_version_for(config)
+    path = File.join(record_dir_for(config), "VERSION")
+    File.exist?(path) ? File.read(path).strip : nil
+  end
+
   def install_for_agent(key, force, argv: [], input: $stdin, reinstall: false)
     config = agent_config(key)
     return { agent: config[:name], success: false, reason: "Unknown agent" } unless config
