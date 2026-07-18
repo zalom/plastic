@@ -59,7 +59,7 @@ remember where they left off.
 
 ## Before any track
 
-Every track opens with the same two checks: run `/plastic-update` first, so the walkthrough
-matches what is actually installed, and work in a sandbox (a throwaway repo, or a global-store
-intent) so nothing real is touched by mistake. Each reference restates this briefly; do not
-skip it even if the user seems experienced.
+Every track opens with the same two checks: run `/plastic-update` first (`$plastic-update` on
+Codex), so the walkthrough matches what is actually installed, and work in a sandbox (a
+throwaway repo, or a global-store intent) so nothing real is touched by mistake. Each reference
+restates this briefly; do not skip it even if the user seems experienced.

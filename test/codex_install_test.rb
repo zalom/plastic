@@ -3,6 +3,7 @@ require "tmpdir"
 require "fileutils"
 require "json"
 require "digest"
+require "stringio"
 
 require_relative "../scripts/lib/installer_core"
 require_relative "../scripts/doctor"
@@ -19,6 +20,11 @@ class CodexInstallTest < Minitest::Test
     @home = Dir.mktmpdir("codex-test")            # plastic_home
     @agent_dir = Dir.mktmpdir("codex-agents")      # ~/.agents equivalent (skills+agents)
     @codex_home = File.join(@home, "codex-home")   # ~/.codex equivalent (AGENTS.md)
+    # Pre-created, mirroring @agent_dir: since intent 198 (Decision D1), Codex's
+    # OWN home is the presence signal install_for_agent probes, so a fixture
+    # exercising install_codex must already have it (a real machine only gets
+    # this far because Codex itself created ~/.codex on its own install).
+    FileUtils.mkdir_p(@codex_home)
     @agents = [{ key: "codex", name: "Codex CLI", dir: @agent_dir,
                  home_dir: @codex_home, flag: "--codex" }]
     @core = InstallerCore.new(package_root: WORKTREE, plastic_home: @home,
@@ -49,6 +55,16 @@ class CodexInstallTest < Minitest::Test
     assert codex[:home_dir].end_with?(".codex")
     refute claude.key?(:home_dir), "claude must not gain a home_dir key"
     refute hermes.key?(:home_dir), "hermes must not gain a home_dir key"
+  end
+
+  def test_default_agents_entries_carry_a_skill_prefix
+    codex = InstallerCore::DEFAULT_AGENTS.find { |a| a[:key] == "codex" }
+    claude = InstallerCore::DEFAULT_AGENTS.find { |a| a[:key] == "claude" }
+    hermes = InstallerCore::DEFAULT_AGENTS.find { |a| a[:key] == "hermes" }
+
+    assert_equal "/", claude[:skill_prefix]
+    assert_equal "$", codex[:skill_prefix]
+    refute hermes.key?(:skill_prefix), "hermes is a future adapter, same as home_dir"
   end
 
   def test_doctor_default_agents_codex_entry_has_home_dir
@@ -128,6 +144,13 @@ class CodexInstallTest < Minitest::Test
   def test_body_is_under_1kib_and_has_no_em_dash
     assert InstallerCore::CODEX_AGENTS_MD_BODY.bytesize < 1024
     refute_includes InstallerCore::CODEX_AGENTS_MD_BODY, "—"
+  end
+
+  def test_body_teaches_dollar_prefix_invocation
+    body = InstallerCore::CODEX_AGENTS_MD_BODY
+    assert_includes body, "$plastic-<name>"
+    assert_includes body, "$plastic-doctor"
+    assert_match(/implicitly.*description/, body)
   end
 
   # --- Step 3: install_codex wiring ---
@@ -505,6 +528,61 @@ class CodexInstallTest < Minitest::Test
     assert(toml_check[:details].any? { |d| d.include?("plastic-broken.toml") })
   end
 
+  # --- Intent 198, ACTION_4: doctor check_agent_model_drift for codex ---
+
+  def test_codex_model_drift_passes_on_a_healthy_generated_install
+    @core.install_for_agent("codex", false)
+
+    checks = doctor_for(@codex_home).check_agent_model_drift("codex")
+    drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+    refute_nil drift_check
+    assert_equal "pass", drift_check[:status]
+  end
+
+  def test_codex_model_drift_warns_when_a_toml_effort_disagrees_with_the_tier_default
+    @core.install_for_agent("codex", false)
+    default_effort = AgentModels.effort_for(AgentModels::TIER_DEFAULTS["plastic-executor"])
+    wrong_effort = default_effort == "low" ? "high" : "low"
+    toml_path = File.join(@codex_home, "agents", "plastic-executor.toml")
+    content = File.read(toml_path).sub(
+      %(model_reasoning_effort = "#{default_effort}"),
+      %(model_reasoning_effort = "#{wrong_effort}")
+    )
+    File.write(toml_path, content)
+
+    checks = doctor_for(@codex_home).check_agent_model_drift("codex")
+    drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+    refute_nil drift_check
+    assert_equal "warn", drift_check[:status]
+    assert drift_check[:details].any? { |d| d.include?("plastic-executor") },
+      "expected drift details to name plastic-executor, got: #{drift_check[:details].inspect}"
+  end
+
+  def test_codex_model_drift_honors_a_codex_scoped_override
+    File.write(File.join(@home, "config.yml"),
+               "agents:\n  models:\n    codex:\n      plastic-executor: haiku\n")
+    @core.install_for_agent("codex", false)
+
+    checks = doctor_for(@codex_home).check_agent_model_drift("codex")
+    drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+    refute_nil drift_check
+    assert_equal "pass", drift_check[:status],
+      "a sanctioned codex-scoped override must never be flagged as drift"
+    assert drift_check[:details].any? { |d| d.include?("plastic-executor") && d.include?("haiku") },
+      "expected the sanctioned override to be LISTED, got: #{drift_check[:details].inspect}"
+  end
+
+  def test_codex_model_drift_passes_when_no_toml_files_installed
+    checks = doctor_for(@codex_home).check_agent_model_drift("codex")
+    drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+    refute_nil drift_check
+    assert_equal "pass", drift_check[:status]
+  end
+
   def test_doctor_codex_checks_include_agents_md_and_hooks_alongside_toml_check
     @core.install_for_agent("codex", false)
 
@@ -541,7 +619,9 @@ class CodexInstallTest < Minitest::Test
   end
 
   def test_install_codex_fresh_create_writes_well_formed_hooks_json
-    refute File.directory?(@codex_home), "home_dir must be absent before install (the owner's install-day path)"
+    # home_dir (~/.codex) already exists per setup (intent 198, Decision D1:
+    # that is the presence signal); hooks.json itself is what is fresh here.
+    refute File.exist?(hooks_json_path), "hooks.json must be absent before install (the owner's install-day path)"
 
     result = @core.install_for_agent("codex", false)
 
@@ -558,6 +638,24 @@ class CodexInstallTest < Minitest::Test
     refute_nil pre_group, "PreToolUse must register under the apply_patch matcher"
     post_group = data["hooks"]["PostToolUse"].find { |g| g["matcher"] == "apply_patch" }
     refute_nil post_group, "PostToolUse must register under the apply_patch matcher"
+  end
+
+  def test_install_codex_fresh_create_writes_live_state_hook_groups
+    @core.install_for_agent("codex", false)
+
+    data = JSON.parse(File.read(hooks_json_path))
+    commands = all_codex_hook_commands(data)
+    %w[session-start check-update continue future-intent-check auto-arm qmd-search savepoint].each do |name|
+      assert commands.any? { |c| c.include?("codex-hook") && c.include?(name) },
+        "expected a codex-hook command for '#{name}', got: #{commands.inspect}"
+    end
+
+    session_group = data["hooks"]["SessionStart"]&.find { |g| g["matcher"] == "" }
+    refute_nil session_group, "SessionStart must register under an empty matcher"
+    prompt_group = data["hooks"]["UserPromptSubmit"]&.find { |g| g["matcher"] == "" }
+    refute_nil prompt_group, "UserPromptSubmit must register under an empty matcher"
+    compact_group = data["hooks"]["PreCompact"]&.find { |g| g["matcher"] == "" }
+    refute_nil compact_group, "PreCompact must register under an empty matcher"
   end
 
   def test_install_codex_merges_into_existing_hooks_json_preserving_user_entry
@@ -714,6 +812,93 @@ class CodexInstallTest < Minitest::Test
     assert(hooks_check[:details].any? { |d| d.include?("create-gate") })
   end
 
+  # --- Intent 200: doctor codex_hooks_implemented_check (registry vs. dispatcher) ---
+
+  def codex_hook_path
+    File.join(@home, "scripts", "codex-hook")
+  end
+
+  def test_doctor_codex_hooks_implemented_passes_on_the_real_healthy_dispatcher
+    @core.distribute(:install) # copies the REAL scripts/codex-hook into plastic_home
+    @core.install_for_agent("codex", false)
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    implemented_check = checks.find { |c| c[:name] == "codex_hooks_implemented" }
+
+    refute_nil implemented_check
+    assert_equal "pass", implemented_check[:status]
+  end
+
+  def test_doctor_codex_hooks_implemented_fails_when_a_registered_gate_has_no_dispatcher_branch
+    @core.distribute(:install) # copies the REAL scripts/codex-hook into plastic_home
+    @core.install_for_agent("codex", false)
+    content = File.read(codex_hook_path)
+    branch_start = content.index('when "links-gate"')
+    refute_nil branch_start, "fixture assumption: scripts/codex-hook must still carry a links-gate branch"
+    else_start = content.index("\nelse", branch_start)
+    refute_nil else_start, "fixture assumption: the case statement must still end in a trailing else"
+    File.write(codex_hook_path, content[0...branch_start] + content[(else_start + 1)..])
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    implemented_check = checks.find { |c| c[:name] == "codex_hooks_implemented" }
+
+    refute_nil implemented_check
+    assert_equal "fail", implemented_check[:status]
+    assert(implemented_check[:details].any? { |d|
+      d.include?("links-gate") && d.include?("registered") && d.include?("allows")
+    }, "expected a links-gate detail naming the direction and the fail-open runtime effect, got: #{implemented_check[:details].inspect}")
+  end
+
+  def test_doctor_codex_hooks_implemented_fails_when_the_dispatcher_has_a_branch_nobody_registers
+    @core.distribute(:install) # copies the REAL scripts/codex-hook into plastic_home
+    @core.install_for_agent("codex", false)
+    content = File.read(codex_hook_path)
+    updated = content.sub(
+      "SHELL_HOOKS = %w[bash-gate retrieval-gate].freeze",
+      "SHELL_HOOKS = %w[bash-gate retrieval-gate phantom-gate].freeze"
+    )
+    refute_equal content, updated, "fixture assumption: the SHELL_HOOKS literal must still match this exact text"
+    File.write(codex_hook_path, updated)
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    implemented_check = checks.find { |c| c[:name] == "codex_hooks_implemented" }
+
+    refute_nil implemented_check
+    assert_equal "fail", implemented_check[:status]
+    assert(implemented_check[:details].any? { |d| d.include?("phantom-gate") && d.include?("dead code") },
+      "expected a phantom-gate detail naming it as dead/unreachable code, got: #{implemented_check[:details].inspect}")
+  end
+
+  def test_doctor_codex_hooks_implemented_fails_loudly_when_the_dispatcher_cannot_be_read
+    @core.distribute(:install) # copies the REAL scripts/codex-hook into plastic_home
+    @core.install_for_agent("codex", false)
+    reshaped = <<~RUBY
+      #!/usr/bin/env ruby
+      # Reshaped fixture: no STATE_HOOKS/SHELL_HOOKS constants, no `case gate`
+      # statement, so the extractor must find zero names and doctor must fail
+      # loudly rather than silently pass.
+      GATES = {
+        "code-gate" => ->(_x) { exit 0 },
+        "lock-gate" => ->(_x) { exit 0 },
+      }
+      handler = GATES[ARGV[0]] || ->(_x) { exit(0) }
+      handler.call(nil)
+    RUBY
+    File.write(codex_hook_path, reshaped)
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    implemented_check = checks.find { |c| c[:name] == "codex_hooks_implemented" }
+
+    refute_nil implemented_check
+    assert_equal "fail", implemented_check[:status]
+    assert_includes implemented_check[:message], "Could not read"
+  end
+
+  def test_codex_dispatcher_gate_names_returns_nil_on_no_recognizable_names
+    doctor = doctor_for(@codex_home)
+    assert_nil doctor.codex_dispatcher_gate_names("# nothing recognizable here\nexit 0\n")
+  end
+
   def test_doctor_config_toml_advisory_warns_on_hooks_disabled
     FileUtils.mkdir_p(@codex_home)
     File.write(config_toml_path, "[features]\nhooks = false\n")
@@ -775,6 +960,26 @@ class CodexInstallTest < Minitest::Test
     assert checks.any? { |c| c[:name] == "codex_hooks_registered" }
   end
 
+  # --- Intent 198, ACTION_2: doctor codex_hooks_trust advisory ---
+
+  def test_doctor_codex_hooks_trust_advisory_present_when_hooks_registered
+    @core.install_for_agent("codex", false)
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    trust_check = checks.find { |c| c[:name] == "codex_hooks_trust" }
+
+    refute_nil trust_check
+    assert_equal "warn", trust_check[:status]
+    assert_includes trust_check[:message], "/hooks"
+  end
+
+  def test_doctor_codex_hooks_trust_advisory_absent_when_hooks_not_registered
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    trust_check = checks.find { |c| c[:name] == "codex_hooks_trust" }
+
+    assert_nil trust_check, "no reason to remind about trust when hooks were never registered"
+  end
+
   def test_doctor_never_writes_config_toml
     FileUtils.mkdir_p(@codex_home)
     File.write(config_toml_path, "sandbox_mode = \"read-only\"\n")
@@ -785,5 +990,106 @@ class CodexInstallTest < Minitest::Test
 
     assert_equal before, File.read(config_toml_path), "doctor must never modify config.toml content"
     assert_equal before_mtime, File.mtime(config_toml_path), "doctor must never touch config.toml"
+  end
+end
+
+# Intent 198, Decision D1: presence must probe home_dir (~/.codex) for an agent
+# that declares one, and the install must CREATE config[:dir] (~/.agents)
+# rather than demand it exist up front. These tests build their OWN
+# InstallerCore instances with synthetic, minimal agent lists (never
+# CodexInstallTest's shared fixture, whose @agent_dir is ALWAYS pre-created via
+# Dir.mktmpdir before every test, which is exactly why this bug was never
+# caught by the existing suite).
+class CodexPresenceProbeTest < Minitest::Test
+  def setup
+    @home = Dir.mktmpdir("codex-presence-home")   # plastic_home
+    @root = Dir.mktmpdir("codex-presence-root")    # holds the two harness roots
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+    FileUtils.rm_rf(@root)
+  end
+
+  def worktree
+    File.expand_path("../../", __FILE__)
+  end
+
+  def core_for(agents)
+    InstallerCore.new(package_root: worktree, plastic_home: @home, agents: agents, version: "1.0.0-test")
+  end
+
+  def test_install_succeeds_when_agents_dir_never_existed_but_codex_home_does
+    agent_dir = File.join(@root, "agents-root")     # ~/.agents equivalent: NEVER created
+    codex_home = File.join(@root, "codex-home")     # ~/.codex equivalent: pre-created
+    FileUtils.mkdir_p(codex_home)
+    refute Dir.exist?(agent_dir), "fixture precondition: the shared skills root must never have existed"
+    assert Dir.exist?(codex_home), "fixture precondition: codex's own home must already exist"
+
+    core = core_for([{ key: "codex", name: "Codex CLI", dir: agent_dir, home_dir: codex_home, flag: "--codex" }])
+    result = core.install_for_agent("codex", false)
+
+    assert result[:success], "install must succeed once codex's OWN home is present: #{result[:reason]}"
+    assert Dir.exist?(agent_dir), "install must CREATE ~/.agents, not demand it exist"
+    refute_empty Dir.glob(File.join(agent_dir, "skills", "plastic-*")), "skills must land under the newly-created dir"
+    refute_empty Dir.glob(File.join(codex_home, "agents", "plastic-*.toml")), "agent TOMLs must be generated"
+    assert File.exist?(File.join(codex_home, "hooks.json"))
+    assert File.exist?(File.join(codex_home, "AGENTS.md"))
+  end
+
+  def test_failure_message_names_the_directory_actually_tested_for_codex
+    agent_dir = File.join(@root, "agents-root")               # would otherwise be blamed
+    absent_codex_home = File.join(@root, "codex-home-absent")  # the actual probe target; never created
+
+    core = core_for([{ key: "codex", name: "Codex CLI", dir: agent_dir, home_dir: absent_codex_home, flag: "--codex" }])
+    result = core.install_for_agent("codex", false)
+
+    refute result[:success]
+    assert_includes result[:reason], absent_codex_home
+    refute_includes result[:reason], agent_dir,
+      "the message must name home_dir, not the unrelated shared skills root"
+  end
+
+  def test_presence_probe_still_tests_dir_for_an_agent_with_no_home_dir
+    absent_dir = File.join(@root, "claude-like-absent")  # never created; no home_dir declared
+
+    core = core_for([{ key: "claude", name: "Claude Code", dir: absent_dir, flag: "--claude" }])
+    result = core.install_for_agent("claude", false)
+
+    refute result[:success]
+    assert_includes result[:reason], absent_dir
+  end
+end
+
+# Intent 198, Decision D1 (prompt_agents half): the interactive picker line
+# must show the directory that actually indicates presence.
+class CodexPromptAgentsLabelTest < Minitest::Test
+  class FakeTTY
+    def initialize(input_str) = (@io = StringIO.new(input_str))
+    def tty? = true
+    def gets = @io.gets
+  end
+
+  def worktree
+    File.expand_path("../../", __FILE__)
+  end
+
+  def test_codex_entry_is_labeled_by_home_dir_not_the_shared_skills_root
+    home = Dir.mktmpdir("prompt-agents-home")
+    begin
+      agents = [
+        { key: "claude", name: "Claude Code", dir: "/tmp/fake-claude", flag: "--claude" },
+        { key: "codex", name: "Codex CLI", dir: "/tmp/fake-agents", home_dir: "/tmp/fake-codex", flag: "--codex" },
+      ]
+      core = InstallerCore.new(package_root: worktree, plastic_home: home, agents: agents, version: "1.0.0-test")
+
+      out, _err = capture_io { core.prompt_agents(input: FakeTTY.new("\n")) }
+
+      assert_includes out, "Codex CLI (/tmp/fake-codex)"
+      refute_includes out, "Codex CLI (/tmp/fake-agents)"
+      assert_includes out, "Claude Code (/tmp/fake-claude)", "an agent with no home_dir must still show its dir"
+    ensure
+      FileUtils.rm_rf(home)
+    end
   end
 end

@@ -104,6 +104,16 @@ state and stops, asking nothing (unchanged): it does not itself dispatch, re-ran
 roadmap. The global store and any project with no roadmap report `none`, so this board stays the
 default route for them.
 
+Intent 202 has landed on top of 149/149a: the project board is short by default. The
+Recently-worked table and the raw Future table are both gone, replaced by a 2-3 sentence
+prose summary (built in `dashboard.rb`, not by this skill) plus a one-line footer stating
+true totals. Active is capped at 3 (ordered lifecycle-stage descending, a later savepoint
+breaking a tie - D2), Next-work at 5. Conversational paging ("more"/"all") re-invokes
+`dashboard.rb ... --data` with `--limit-active`/`--limit-next`/`--all`, carrying no state on
+disk; `--plain` prints the full uncapped board as plain text for a real pager. The rule-name
+citations and the `dashboard.rb project <slug> --data` -> `dashboard-project.md` path still
+resolve.
+
 ## References
 
 - `references/board-fill.md` - the template-fill mechanics and store-health surfacing detail.

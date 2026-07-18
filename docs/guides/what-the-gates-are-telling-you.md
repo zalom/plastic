@@ -7,6 +7,10 @@ next.
 After this guide you will be able to read any Plastic gate message and know
 the exact command (or one of two commands) that resolves it.
 
+The examples below show Claude Code's slash form. On Codex CLI, invoke the same fix with a
+dollar prefix instead (for example `$plastic-doctor`), or let Codex pick one implicitly by
+matching its description.
+
 ## Two kinds of gate
 
 Plastic has HARD gates and one ADVISORY gate. This distinction matters:

@@ -33,8 +33,7 @@ class BridgeWorktreeDeriveTest < Minitest::Test
 
   def test_derive_emits_worktree_block
     wt = derive["worktree"]
-    assert_equal({ "code" => nil, "code_branch" => nil, "store" => nil,
-                   "store_branch" => nil, "provisioned" => false }, wt)
+    assert_equal({ "code" => nil, "code_branch" => nil, "provisioned" => false }, wt)
   end
 
   def test_derive_emits_lock_block

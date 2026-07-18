@@ -35,8 +35,9 @@ class BridgeAutoTest < Minitest::Test
     Worktree.define_singleton_method(:release, @real_release) if @real_release
   end
 
-  def arm
-    Bridge.arm_auto(@session, intent_id: "27", intent_dir: @intent_dir, store: @store, name: "demo")
+  def arm(harness: nil)
+    Bridge.arm_auto(@session, intent_id: "27", intent_dir: @intent_dir, store: @store,
+                    name: "demo", harness: harness)
   end
 
   def test_derive_defaults_auto_false
@@ -52,6 +53,8 @@ class BridgeAutoTest < Minitest::Test
     assert File.exist?(Bridge.path(@session, intent_id: "27"))
     # persisted
     assert_equal true, Bridge.read(@session, intent_id: "27")["build"]["auto"]
+    assert_nil Lock.read(@intent_dir)["owner_harness"]
+    assert_nil Lock.read(@intent_dir)["owner_agent"]
   end
 
   def test_disarm_auto
@@ -141,10 +144,34 @@ class BridgeAutoTest < Minitest::Test
     assert_equal @session, Lock.read(@intent_dir)["owner_session"]
   end
 
+  def test_codex_boarding_records_enforcer_harness_thread_and_mode
+    data = Bridge.arm_auto(@session, intent_id: "27", intent_dir: @intent_dir,
+                           store: @store, name: "demo", harness: :codex,
+                           agent: "plastic-enforcer", model: "gpt-5", thread: "thread-27")
+    expected = {
+      "owner_harness" => "codex",
+      "owner_agent" => "plastic-enforcer",
+      "owner_model" => "gpt-5",
+      "owner_thread" => "thread-27",
+      "run_mode" => "auto",
+    }
+    expected.each do |field, value|
+      assert_equal value, Lock.read(@intent_dir)[field]
+      assert_equal value, data.dig("lock", field)
+    end
+  end
+
   def test_arm_auto_raises_lock_held_when_another_session_owns_the_lock
     Lock.acquire(@intent_dir, session: "someone-else")
     err = assert_raises(Bridge::LockHeldError) { arm }
     assert_includes err.message, "/plastic-doctor"
+  end
+
+  def test_arm_auto_raises_lock_held_naming_dollar_prefix_for_codex_harness
+    Lock.acquire(@intent_dir, session: "someone-else")
+    err = assert_raises(Bridge::LockHeldError) { arm(harness: :codex) }
+    assert_includes err.message, "$plastic-doctor"
+    refute_includes err.message, "/plastic-doctor"
   end
 
   def test_arm_auto_survives_provision_raise

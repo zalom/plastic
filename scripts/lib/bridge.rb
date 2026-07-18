@@ -21,6 +21,16 @@ module Bridge
   # (<id>--<slug>.md) is never sentineled; it is born complete.
   PLACEHOLDER_SENTINEL = "<!-- plastic:placeholder -->"
 
+  # Single place a skill-reference string gets built (intent 201, D3): every
+  # message that used to write "/plastic-something" by hand calls this
+  # instead, so a fourth harness only teaches ITS prefix once instead of
+  # hunting the codebase for hardcoded slashes. The actual prefix table lives
+  # on Lock (see lock.rb), which bridge.rb already requires; this is a thin
+  # delegator so every call site in this file reads Bridge.skill_ref.
+  def self.skill_ref(name, harness: :claude)
+    Lock.skill_ref(name, harness: harness)
+  end
+
   # Bridge cleanup is terminal-state, not age-based (intent 80). A bridge is dead
   # weight ONLY once its intent is terminal (no longer in its store's INDEX.md
   # `## Active` block); such bridges are purged. An Active intent's bridge is kept
@@ -87,6 +97,12 @@ module Bridge
       "host" => lock_data["host"],
       "type" => lock_data["type"],
       "delegates" => Array(lock_data["delegates"]),
+      "owner_harness" => lock_data["owner_harness"],
+      "owner_agent" => lock_data["owner_agent"],
+      "owner_model" => lock_data["owner_model"],
+      "owner_thread" => lock_data["owner_thread"],
+      "run_mode" => lock_data["run_mode"],
+      "delegate_activity" => Array(lock_data["delegate_activity"]),
     }
   end
 
@@ -782,13 +798,12 @@ module Bridge
         "warning_at" => 80,
         "critical_at" => 90
       },
-      # Worktree isolation block (intent 73c). Born unprovisioned; arm_auto calls
-      # Worktree.provision to fill it. code/store are abs paths or null.
+      # Worktree isolation block (intent 73c; store-worktree half retired by
+      # intent 178). Born unprovisioned; arm_auto calls Worktree.provision to
+      # fill it. "code" is an abs path or null.
       "worktree" => {
         "code" => nil,
         "code_branch" => nil,
-        "store" => nil,
-        "store_branch" => nil,
         "provisioned" => false
       },
       # Delivery-lock CACHE block (intent 108, D2). The durable truth is the
@@ -872,7 +887,8 @@ module Bridge
   # and arm_guided (auto: false) are thin delegators so the lock-stamp + provision
   # behaviour stays identical across both modes. Works even when no bridge exists
   # yet (mid-session intent creation).
-  def self.arm(session, intent_id:, intent_dir:, store:, name:, auto:)
+  def self.arm(session, intent_id:, intent_dir:, store:, name:, auto:, harness: nil,
+               agent: nil, model: nil, thread: nil)
     key = resolve_session(session, intent_id: intent_id, store: store)
     if blank?(session) && blank?(ENV["CLAUDE_CODE_SESSION_ID"])
       $stderr.puts "plastic: no session id available; arming with derived bridge key #{key}"
@@ -883,24 +899,29 @@ module Bridge
     # Acquire the durable delivery lock (D1/D2): session-keyed, O_EXCL, in the
     # intent dir. The bridge lock block is a cache of the file.
     intent_dir_abs = File.expand_path(intent_dir)
-    status, lock_data = Lock.acquire(intent_dir_abs, session: key)
+    status, lock_data = Lock.acquire(intent_dir_abs, session: key,
+                                     harness: harness, agent: agent,
+                                     model: model, thread: thread,
+                                     run_mode: auto ? "auto" : "guided")
     case status
     when :acquired, :owned
       data["lock"] = lock_cache(lock_data)
     when :held
       raise LockHeldError, "delivery lock for intent #{intent_id} is held by " \
-        "session #{lock_data && lock_data['owner_session']}; run /plastic-doctor " \
-        "check the lock status"
+        "session #{lock_data && lock_data['owner_session']}; run " \
+        "#{skill_ref('plastic-doctor', harness: harness)} check the lock status"
     when :stale
       raise LockHeldError, "delivery lock for intent #{intent_id} is stale " \
-        "(owner #{lock_data && lock_data['owner_session']}); run /plastic-doctor " \
-        "reclaim the lock to take it over with an audit"
+        "(owner #{lock_data && lock_data['owner_session']}); run " \
+        "#{skill_ref('plastic-doctor', harness: harness)} reclaim the lock to take it " \
+        "over with an audit"
     when :excluded
       raise LockHeldError, "a #{lock_data && lock_data['type']} lock is active on " \
-        "intent #{intent_id}; run /plastic-doctor check the lock status"
+        "intent #{intent_id}; run #{skill_ref('plastic-doctor', harness: harness)} check " \
+        "the lock status"
     when :corrupt
       raise LockHeldError, "delivery.lock for intent #{intent_id} is unreadable; " \
-        "run /plastic-doctor fix the lock"
+        "run #{skill_ref('plastic-doctor', harness: harness)} fix the lock"
     end
 
     # Provision the per-intent worktrees (mandatory code worktree for project
@@ -920,15 +941,19 @@ module Bridge
 
   # Arm auto mode for a session+intent. Works even when no bridge exists yet
   # (mid-session intent creation). Re-derives intent state, then sets build.auto.
-  def self.arm_auto(session, intent_id:, intent_dir:, store:, name:)
-    arm(session, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name, auto: true)
+  def self.arm_auto(session, intent_id:, intent_dir:, store:, name:, harness: nil,
+                    agent: nil, model: nil, thread: nil)
+    arm(session, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name,
+        auto: true, harness: harness, agent: agent, model: model, thread: thread)
   end
 
   # Acquire the delivery lock WITHOUT auto mode (intent 96 / Start guided branch).
   # Mirrors arm_auto's lock-stamp + worktree provision but leaves build.auto = false.
   # Same signature as arm_auto; disarm_auto (mode-agnostic) releases a guided lock.
-  def self.arm_guided(session, intent_id:, intent_dir:, store:, name:)
-    arm(session, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name, auto: false)
+  def self.arm_guided(session, intent_id:, intent_dir:, store:, name:, harness: nil,
+                      agent: nil, model: nil, thread: nil)
+    arm(session, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name,
+        auto: false, harness: harness, agent: agent, model: model, thread: thread)
   end
 
   # Degrade path for disarm_auto when no intent_id is given (intent 131): the
@@ -992,10 +1017,20 @@ module Bridge
   # reclaim verb (Lock.takeover). Two entry points call this: the
   # plastic-lock CLI and /plastic-intent-starting (self-healing boarding).
   def self.repair_lock(session, intent_id:, intent_dir:, store:, name:,
-                       now: Time.now, tmp: tmp_dir)
+                       now: Time.now, tmp: tmp_dir, harness: nil,
+                       agent: nil, model: nil, thread: nil, run_mode: nil,
+                       hint_harness: nil)
     key = resolve_session(session, intent_id: intent_id, store: store)
     dir = File.expand_path(intent_dir)
     actions = []
+    previous = read(key, intent_id: intent_id, tmp: tmp)
+    auto = !!(previous && previous.dig("build", "auto"))
+    derived_mode = if previous && previous.dig("build").is_a?(Hash) &&
+                      previous["build"].key?("auto")
+                     auto ? "auto" : "guided"
+                   end
+    identity = { harness: harness, agent: agent, model: model, thread: thread,
+                 run_mode: blank?(run_mode) ? derived_mode : run_mode.to_s }
 
     if Lock.corrupt?(dir)
       File.delete(Lock.path(dir))
@@ -1010,21 +1045,31 @@ module Bridge
       end
       return { "status" => "stale", "owner" => lock["owner_session"],
                "actions" => actions, "session" => key,
-               "hint" => "run /plastic-doctor reclaim the lock to take over with an audit" }
+               "hint" => "run #{skill_ref('plastic-doctor', harness: hint_harness || harness)} reclaim the " \
+                         "lock to take over with an audit" }
     end
 
     if lock
-      Lock.heartbeat(dir, session: key, now: now)
-      lock_data = Lock.read(dir)
+      if lock["owner_session"].to_s == key.to_s
+        lock_data = lock.dup
+        { "owner_harness" => harness, "owner_agent" => agent,
+          "owner_model" => model, "owner_thread" => thread,
+          "run_mode" => identity[:run_mode] }.each do |field, value|
+          lock_data[field] = value.to_s unless blank?(value)
+        end
+        Lock.write(dir, lock_data)
+        Lock.heartbeat(dir, session: key, now: now)
+      else
+        Lock.heartbeat(dir, session: key, now: now)
+        lock_data = Lock.read(dir)
+      end
       role = lock_data["owner_session"].to_s == key ? "owner" : "delegate"
       actions << "lock kept (#{role})"
     else
-      status, lock_data = Lock.acquire(dir, session: key, now: now)
+      status, lock_data = Lock.acquire(dir, session: key, now: now, **identity)
       actions << "lock #{status}"
     end
 
-    previous = read(key, intent_id: intent_id, tmp: tmp)
-    auto = !!(previous && previous.dig("build", "auto"))
     data = derive(key, intent_id: intent_id, intent_dir: dir, store: store,
                   name: name, tmp: tmp)
     data["build"]["auto"] = auto
@@ -1138,7 +1183,8 @@ module Bridge
   # target's lock names as owner or delegate (even when stale: a stale lock is
   # still its owner's until an explicit takeover).
   def self.lock_gate_decision(bridge_data, file_path, session: nil,
-                              ttl: Lock::TTL_SECONDS, now: Time.now, home: Dir.home)
+                              ttl: Lock::TTL_SECONDS, now: Time.now, home: Dir.home,
+                              harness: :claude)
     return nil if blank?(file_path)
 
     target_dir = intent_dir_for(file_path)
@@ -1166,20 +1212,23 @@ module Bridge
                "#{lock['owner_session']}. Back off; if you are the owner's " \
                "subagent, the owner must run: plastic-lock delegate " \
                "--intent-dir #{target_dir} --session <your-session-id>. " \
-               "Inspect with /plastic-doctor check the lock status"
+               "Inspect with #{skill_ref('plastic-doctor', harness: harness)} check the " \
+               "lock status"
       end
       return solo_allow(id, "stale delivery lock") if solo
       return "intent #{id} has a stale delivery lock (owner " \
-             "#{lock['owner_session']}); run /plastic-doctor reclaim the lock to " \
-             "take it over, or /plastic-doctor fix the lock"
+             "#{lock['owner_session']}); run #{skill_ref('plastic-doctor', harness: harness)} " \
+             "reclaim the lock to take it over, or " \
+             "#{skill_ref('plastic-doctor', harness: harness)} fix the lock"
     end
     if Lock.corrupt?(target_dir)
       return solo_allow(id, "unreadable delivery.lock") if solo
-      return "delivery.lock for intent #{id} is unreadable; run /plastic-doctor fix the lock"
+      return "delivery.lock for intent #{id} is unreadable; run " \
+             "#{skill_ref('plastic-doctor', harness: harness)} fix the lock"
     end
     return solo_allow(id, "no delivery lock") if solo
-    "no delivery lock held for intent #{id}; run /plastic-intent-starting " \
-      "to lock and begin"
+    "no delivery lock held for intent #{id}; run " \
+      "#{skill_ref('plastic-intent-starting', harness: harness)} to lock and begin"
   end
 
   # A session holds an intent's lock iff the durable delivery.lock in the

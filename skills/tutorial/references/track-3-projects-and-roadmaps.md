@@ -9,7 +9,8 @@ will exist with more than one intent inside it and a roadmap file describing the
 
 ## Before you start
 
-Run `/plastic-update` first, so the commands below match what is actually installed.
+Run `/plastic-update` first (`$plastic-update` on Codex), so the commands below match what is
+actually installed.
 
 Work in a sandbox: this whole track is a walked example. It creates a real project directory
 and a real roadmap file on disk, but the project is a throwaway one made for learning, not

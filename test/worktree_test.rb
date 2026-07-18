@@ -61,8 +61,6 @@ class WorktreeTest < Minitest::Test
                        home: @home, repo_path: @repo)
     assert_equal File.join(@repo, ".claude", "worktrees", "73c1--worktree-x"), p["code"]
     assert_equal "plastic/73c1--worktree-x", p["code_branch"]
-    assert_equal File.join(@plastic_home, ".worktrees", "73c1--worktree-x"), p["store"]
-    assert_equal "plastic-store/73c1--worktree-x", p["store_branch"]
   end
 
   def test_paths_resolves_repo_from_projects_yml_when_nil
@@ -74,9 +72,6 @@ class WorktreeTest < Minitest::Test
     p = Worktree.paths(slug: "nope", intent_id: "9", intent_slug: "s", home: @home)
     assert_nil p["code"]
     assert_nil p["code_branch"]
-    # store path is always present (consistency worktree)
-    assert_equal File.join(@plastic_home, ".worktrees", "9--s"), p["store"]
-    assert_equal "plastic-store/9--s", p["store_branch"]
   end
 
   # --- repo_for --------------------------------------------------------------
@@ -107,7 +102,7 @@ class WorktreeTest < Minitest::Test
     }
   end
 
-  def test_provision_creates_both_worktrees_with_git_C
+  def test_provision_creates_the_code_worktree_with_git_C
     runner = FakeRunner.new do |args|
       # rev-parse probe must report a git repo
       if args[1] == @repo && args[2] == "rev-parse"
@@ -121,18 +116,38 @@ class WorktreeTest < Minitest::Test
     assert_equal true, wt["provisioned"]
     assert_equal File.join(@repo, ".claude", "worktrees", "73c1--worktree-x"), wt["code"]
     assert_equal "plastic/73c1--worktree-x", wt["code_branch"]
-    assert_equal File.join(@plastic_home, ".worktrees", "73c1--worktree-x"), wt["store"]
-    assert_equal "plastic-store/73c1--worktree-x", wt["store_branch"]
 
     # Every git op used -C with the resolved path, never cwd (decision D6).
     add_calls = runner.calls.select { |c| c.include?("add") }
     assert add_calls.all? { |c| c[0] == "-C" }, "all worktree adds must use -C"
     code_add = add_calls.find { |c| c[1] == @repo }
-    store_add = add_calls.find { |c| c[1] == @plastic_home }
     refute_nil code_add
-    refute_nil store_add
     assert_includes code_add, "plastic/73c1--worktree-x"
-    assert_includes store_add, "plastic-store/73c1--worktree-x"
+    refute add_calls.any? { |c| c[1] == @plastic_home }, "no worktree add against the plastic home repo"
+  end
+
+  def test_provision_does_not_create_a_store_worktree
+    runner = FakeRunner.new do |args|
+      if args[1] == @repo && args[2] == "rev-parse"
+        next Worktree::ShellRunner::Result.new(0, "true\n", "")
+      end
+      Worktree::ShellRunner::Result.new(0, "", "")
+    end
+    data = Worktree.provision(bridge_data, home: @home, runner: runner)
+
+    refute data["worktree"].key?("store"), "provision must not carry a store key at all"
+    refute data["worktree"].key?("store_branch")
+
+    # The falsifiable core (D6): before this fix, provision issued
+    # `git -C <plastic_home> worktree add <plastic_home>/.worktrees/<name> -b plastic-store/<name>`.
+    # This asserts NO git call was ever made against the plastic home repo, in any form.
+    against_plastic_home = runner.calls.select { |c| c[0] == "-C" && c[1] == @plastic_home }
+    assert_empty against_plastic_home,
+      "no git op should ever run against the plastic home repo once store-worktree " \
+      "provisioning is retired (intent 178, D1); saw: #{against_plastic_home.inspect}"
+
+    refute Dir.exist?(File.join(@plastic_home, ".worktrees", "73c1--worktree-x")),
+      "no store worktree directory should be created on disk"
   end
 
   def test_provision_fail_open_when_repo_not_git
@@ -210,14 +225,12 @@ class WorktreeTest < Minitest::Test
 
   # --- release ---------------------------------------------------------------
 
-  def test_release_removes_both_and_prunes_then_clears_block
+  def test_release_removes_the_code_worktree_and_prunes_then_clears_block
     runner = FakeRunner.new
     data = bridge_data
     data["worktree"] = {
       "code" => File.join(@repo, ".claude", "worktrees", "73c1--worktree-x"),
       "code_branch" => "plastic/73c1--worktree-x",
-      "store" => File.join(@plastic_home, ".worktrees", "73c1--worktree-x"),
-      "store_branch" => "plastic-store/73c1--worktree-x",
       "provisioned" => true,
     }
     result = Worktree.release(data, home: @home, runner: runner)
@@ -225,9 +238,9 @@ class WorktreeTest < Minitest::Test
 
     removes = runner.calls.select { |c| c.include?("remove") }
     prunes = runner.calls.select { |c| c.include?("prune") }
-    assert_equal 2, removes.length
+    assert_equal 1, removes.length
     assert removes.all? { |c| c[0] == "-C" }
-    refute_empty prunes
+    assert_equal 1, prunes.length
   end
 
   def test_release_noop_when_nothing_provisioned

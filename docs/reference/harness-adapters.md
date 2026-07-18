@@ -32,6 +32,35 @@ includes artifact validity).
 | L2 live state | The active intent's id, stage, and role arrive at the point of work (session event and/or spawn preamble) | The live snapshot tells the agent where it is in the cycle so it acts in-stage | None directly; feeds the L3 gates that do block |
 | L3 lifecycle gates + savepoints | Gate and savepoint hooks fire on file writes within the intent dir | Gate context nudges the next correct lifecycle move | Stage gates block out-of-order writes; the artifact-validity backstop rejects an intent file that is not born complete; savepoints record each milestone |
 
+### Lock provenance contract
+
+Every adapter passes lock provenance explicitly when it knows it. `harness` uses the
+adapter's canonical value, such as `claude`, `codex`, or `hermes`; `agent`, `model`, and
+`thread` use the harness's actual values. Unknown harness, role, model, or thread values stay
+`Unknown`. Adapters must not infer them from transcript paths, session-id formats, process
+names, or model defaults.
+
+Provenance is descriptive. The session id remains the authorization identity, and the
+`delivery.lock` file mtime remains the sole heartbeat and freshness truth. Controller,
+delegate, and artifact-claim records are separate evidence and must not be collapsed into a
+single worker label. The adapter registers child sessions as delegates and reports their
+activity status. That status is descriptive and does not revoke the delegate session's
+authorization. Plastic bounds finished or failed activity history to the 20 most recent entries.
+
+## Skill invocation prefix
+
+Each adapter's users invoke a Plastic skill with a different literal prefix in front of the bare
+skill name (for example `plastic-doctor`). `InstallerCore::DEFAULT_AGENTS` carries this as each
+entry's `skill_prefix`, the documented source both `Bridge.skill_ref` (`scripts/lib/lock.rb`) and
+this table cite; the gate scripts do not read `DEFAULT_AGENTS` at runtime (see the L1 dependency
+note in the Codex worked example below), so the two are independently maintained by hand.
+
+| Adapter | Invocation |
+|---|---|
+| Claude Code | `/plastic-<name>` (slash) |
+| Codex CLI | `$plastic-<name>` (dollar), explicit; Codex may also select a skill implicitly by matching its `description` |
+| Hermes | not yet defined (future adapter, see Roadmap below) |
+
 ## Capability tiers
 
 An adapter declares the strongest tier it can honestly support.
@@ -141,7 +170,7 @@ paths are explicitly OUT of scope here: the session id may be unset in those run
 so the session-keyed gate falls back to the derived key, and the enforcer falls back to
 manual gating. Those paths get their own treatment elsewhere.
 
-## Worked example: Codex CLI (L1 + L3 core; L2 deferred)
+## Worked example: Codex CLI
 
 Codex CLI is rated **Tier A (full parity)**: `PreToolUse` hooks gate `apply_patch`, giving
 a true pre-write veto for both create-path and in-place edits. This is the one axis
@@ -153,6 +182,14 @@ survive Plastic's per-intent worktree, and clear headless hook-trust (managed ho
 than blocking.
 
 ### L1 standing conventions
+
+The installer's first-install presence probe tests `~/.codex` (Codex's own home,
+`config[:home_dir]`), not `~/.agents` (`config[:dir]`, the shared cross-tool skills root any
+AgentSkills-compliant tool can already have created). `~/.agents` itself is created by the
+install when it does not yet exist (`install_skills_flat` and `generate_codex_agents` both
+`mkdir_p` their own nested paths), so a machine with Codex installed but no other
+AgentSkills-compliant tool no longer aborts on a missing directory it never owned (intent 198
+fixed a defect that made every fresh Codex-only install fail before this).
 
 Skills copy flat and unmodified to `~/.agents/skills/plastic-<name>/` (copy-not-transform,
 settled by 23 and reconfirmed by 181). Plastic's standing conventions inject into
@@ -168,10 +205,32 @@ Claude Code's `settings.json` hooks strip, so any content the user added elsewhe
 is present and well formed (matched BEGIN and END markers) alongside the existing
 skills and agents checks.
 
-### L2 live state (deferred)
+### L2 live state (intent 199)
 
-`SessionStart`, `UserPromptSubmit`, and `SubagentStart` context injection for Codex are
-future work, out of this slice.
+`SessionStart` fires `session-start` and `check-update`; `UserPromptSubmit` fires
+`continue`, `future-intent-check`, `auto-arm`, and `qmd-search`; `PreCompact` fires
+`savepoint`. Each hook name is projected straight off the single `HookRegistry.events`
+source (108 D7), the same total-projection shape as the file-mutation gates above: a hook
+added to any of these three events on the Claude side registers for Codex automatically,
+with no Codex-only allowlist to keep in sync.
+
+The stdin shape for these three events differs from `apply_patch`'s diff envelope: no
+`tool_input` at all, since none of the three is a tool call. `scripts/codex-hook` reuses the
+exact launcher files Claude already runs for these seven hooks (`hooks/session-start`,
+`hooks/check-update`, `hooks/continue`, `hooks/future-intent-check`, `hooks/auto-arm`,
+`hooks/qmd-search`, `hooks/savepoint`) unmodified: each is already harness-agnostic, since it
+resolves `~/.plastic` off `$HOME` on its own and reads only the common stdin fields
+(`user_prompt` for the four `UserPromptSubmit` hooks) the official Codex hooks doc confirms
+match Claude's schema for these events. The dispatcher's only adaptation is threading the
+payload's `session_id` into `CLAUDE_CODE_SESSION_ID` (Codex's own process env never carries
+it) and bounding the call with a timeout (`hooks/check-update` backgrounds a real network
+call without redirecting its output, and Codex invokes hooks synchronously), then relaying
+stdout, stderr, and exit code unchanged, the same "drive the body, relay its output" pattern
+already used for the file-mutation gates. `SubagentStart` is still not wired: no Plastic
+hook exists for it on any harness today.
+
+The shell-tool write hole this once left open, `bash-gate` and `retrieval-gate` never reaching
+Codex's shell tool, is now closed; see the Bash matcher subsection under L3 below.
 
 ### Per-agent model mapping (intent 102a)
 
@@ -195,6 +254,14 @@ only, so an agent with no override cleanly inherits the user's globally configur
 model. `doctor`'s codex check validates the generated `.toml` files (presence plus a
 structural check for the mandatory fields) in place of the flat `.md` check, which no
 longer applies to codex. Hermes and `~/.codex/config.toml` are untouched by this slice.
+
+`doctor`'s model-drift check (`check_agent_model_drift`) has a Codex-specific path since
+intent 198: it reads `~/.codex/agents/plastic-*.toml` directly (the same plain string
+matching `codex_agents_toml_check` already uses, no TOML parser dependency) and compares
+each file's `model`/`model_reasoning_effort` line against the tier default, honoring an
+`agents.models.codex.<name>` override. Previously this check globbed a path Codex never
+writes and always passed silently without opening a single Codex file, so a drifted
+override could never be caught.
 
 ### L3 lifecycle gates and savepoints (intent 102)
 
@@ -231,6 +298,19 @@ PreToolUse veto denies the whole `apply_patch` call on the first violating file.
 only; Update, Delete, and Move operations defer to the PostToolUse `gate-check` backstop,
 which re-validates the intent file after the write lands, so nothing goes unchecked.
 
+`links-gate` (registered in `HookRegistry::CODEX_PRE_HOOKS` since intent 192, but with no
+dispatcher branch until intent 198) is the write-time belt for the PLASTIC.md `## Links`
+contract: it reuses the exact same `LinksGate.decision` Claude's `hook-links-gate` drives, so
+both harnesses share one decision function and can never disagree by construction.
+`before_content` is the real on-disk file; `after_content` is the Update op's `added_content`.
+This is a disclosed, narrower judgment than Claude's version: `ApplyPatchEnvelope.parse` only
+ever captures a diff's added lines, never its removed or context lines, so for an Update whose
+diff is a partial hunk rather than a full-file rewrite, `after_content` may not be the complete
+proposed file. This is the same class of disclosed limitation the envelope parser's header
+comment and `create-gate`'s own Update/Delete/Move handling already carry (best effort, never a
+hard crash); running the same best-effort compare on Update ops here is strictly more coverage
+than the total fail-open that shipped in v1.4.0.
+
 The `apply_patch` V4A envelope's inner grammar (the exact shape of `*** Add/Update/Delete
 File:` sections, `*** Move to:`, and the `+`/`-`/context line prefixes) is not
 primary-sourced in either the guide this slice was built against or 181's report; the
@@ -240,6 +320,56 @@ carry the full burden. The owner's first real validation is a fresh `plastic-ins
 --codex` followed by a `doctor` run; `doctor`'s `codex_hooks_registered` check confirms
 `hooks.json` carries exactly what `HookRegistry.codex_hooks_json` defines, with a fix hint
 pointing back at the installer on any drift.
+
+`codex_hooks_registered` only proves that `hooks.json`'s content agrees with what
+`HookRegistry` would emit; both sides of that comparison come from the registry, so a pass
+proves the registry agrees with itself, not that a registered gate actually does anything.
+That gap let `links-gate` ship registered and reported healthy for its whole life in v1.4.0
+with no dispatcher branch (found by hand in intent 198), and let `bash-gate` ship with a
+working dispatcher branch never registered on Codex (intent 203), in the opposite direction.
+`codex_hooks_implemented` (intent 200) closes both directions at once: it reads
+`scripts/codex-hook`'s `STATE_HOOKS`/`SHELL_HOOKS` constants and its top-level `case gate`
+statement as plain text, never `require`d or executed (the dispatcher reads `$stdin` and calls
+`exit` at the top level, so loading it as Ruby would hang on stdin or exit before doctor got an
+answer), the same plain-text-over-parser choice `codex_agent_toml_well_formed?` already makes
+for Codex's agent TOML files, and diffs the extracted names against `HookRegistry`'s Codex
+names in both directions: a name the registry emits with no dispatcher branch (registered, not
+implemented, the `links-gate` shape) and a dispatcher branch nobody registers (implemented, not
+registered, the `bash-gate` shape, plus dead code as a free byproduct). The extraction is
+line-shape dependent, not AST-safe, and disclosed as such: if a future edit reshapes the
+dispatcher (combined `when "a", "b"` arms, a multi-line array, a Hash-dispatch rewrite) so the
+extractor recognizes zero gate names, the check fails loudly by design rather than silently
+reporting a clean pass, since a check that finds nothing and calls that healthy would be this
+exact disease one level up. `scripts/codex-hook`'s runtime behavior is unchanged: it still
+exits 0 on an unrecognized gate; the loud failure lives only in doctor.
+
+### Shell-tool gate: Bash matcher (intent 203)
+
+Codex's shell tool reports `tool_name: "Bash"`, confirmed against the official Codex hooks
+doc, with the command in `tool_input.command`. Two more hooks Claude already wires on its
+`Bash` matcher now reach Codex the same way: `bash-gate` (denies a shell write to project
+code before the active intent reaches How, the same lifecycle discipline the `apply_patch`
+gates above already enforce) and `retrieval-gate` (advisory only, the QMD/Enola-first nudge;
+it never denies anything).
+
+The Codex matcher is `Bash` alone, not Claude's four-name `Bash|Read|Grep|Glob` string: the
+official Codex hooks doc's PreToolUse event catalog enumerates exactly `Bash`, `apply_patch`,
+and MCP tool calls, and neither it nor the two prior Codex research passes (198's
+official-docs research, 181's deep research) documents a discrete `Read`, `Grep`, or `Glob`
+tool name. Registering a tool name Codex never reports would be dead weight that looks
+alive, so `HookRegistry::CODEX_BASH_HOOKS` intersects against the same `Bash` matcher Claude
+already uses (see `HookRegistry.events`), not a copy of Claude's four-name string.
+
+The dispatch is a third payload category in `scripts/codex-hook`, a peer to the file-mutation
+`apply_patch` gates and the live-state hooks, not folded into either. A shell command carries
+no `apply_patch` diff envelope, so routing it through `ApplyPatchEnvelope.parse` would yield an
+empty op list and hit the dispatcher's own `exit 0 if ops.empty?` fail-open line, silently
+reopening the exact hole this intent closes. Instead `bash-gate` and `retrieval-gate` exec the
+SAME `scripts/hook-bash-gate` / `scripts/hook-retrieval-gate` files Claude already runs,
+unmodified, relaying Codex's raw stdin, exit code, and stderr, the identical "drive the body,
+relay its output" pattern intent 199 used for the live-state hooks. Because the gate bodies
+run unchanged, the audited `# plastic-ok` escape (logged to
+`~/.plastic/.cache/gate-escapes.log`) works on Codex with no new code.
 
 ### config.toml (deferred, read-only advisory)
 
@@ -261,6 +391,15 @@ hook's command. Interactive sessions trust the installed hooks via `/hooks`. Hea
 `requirements.toml` shipped ahead of time; this slice documents both paths and ships no
 trust artifact of its own.
 
+Since intent 198, the installer itself prints the `/hooks` step after a successful Codex
+install (`scripts/install.rb`'s `print_results`), so a user is told to trust the hooks instead
+of discovering silently that no gate ever fires. `doctor`'s `check_codex_registration` adds a
+`codex_hooks_trust` advisory (`warn`, never `pass` or `fail`) once hooks are registered as
+expected: whether Codex persists a queryable trust record anywhere under `~/.codex` is
+undocumented and unverified, so this can never be a real pass or fail check, only a reminder.
+Because trust is keyed to each hook's current command hash, any future Plastic release that
+changes a hook's command re-arms the review, and the advisory's wording says so.
+
 ### Minimum Codex version
 
 The hooks feature and the headless trust-bypass fix land on the 0.13x release line onward
@@ -276,5 +415,12 @@ the harness-adapters umbrella and 4a1c1 is this foundation. Codex's L1 core (ski
 plus AGENTS.md standing-conventions injection, intent 33a), L3 hooks and gates
 (`hooks.json` registration, the `apply_patch` envelope parser, the dispatcher, intent 102),
 and per-agent model mapping (`~/.codex/agents/*.toml` generation, intent 102a) have all
-landed. Codex's L2 live-state injection remains future work. The current line of sight for
-the remaining harnesses is Hermes, then OpenClaw. All of them target reasoning agents only.
+landed. Intent 198 closed the gap between "shipped" and "actually works on a first install":
+the directory-presence probe, the missing links-gate dispatcher branch, the hook-trust
+reminder, and the Codex model-drift check. Intent 199 closed Codex's L2 live-state gap:
+`SessionStart`, `UserPromptSubmit`, and `PreCompact` now reach Codex the same way they reach
+Claude. Intent 203 closed the shell-tool gate hole: `bash-gate` and `retrieval-gate` now reach
+Codex's `Bash` tool, matched on `Bash` alone since that is the one shell-tool name the official
+Codex hooks doc confirms (no discrete `Read`, `Grep`, or `Glob` tool is documented). The
+current line of sight for the remaining harnesses is Hermes, then OpenClaw. All of them target
+reasoning agents only.

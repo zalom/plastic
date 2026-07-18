@@ -44,8 +44,6 @@ class WorktreeGateTest < Minitest::Test
       "worktree" => {
         "code" => @code_wt,
         "code_branch" => "plastic/73c2--worktree-enforcement-gate",
-        "store" => File.join(@plastic_home, ".worktrees", "73c2--worktree-enforcement-gate"),
-        "store_branch" => "plastic-store/73c2--worktree-enforcement-gate",
         "provisioned" => true,
       },
       "lock" => { "owner_session" => session, "acquired_at" => nil, "host" => nil,

@@ -11,6 +11,8 @@
 #
 # Usage:
 #   ruby dashboard.rb [continue|project <slug>|all] [--json]
+#   ruby dashboard.rb [continue|project <slug>] --data [--limit-active N] [--limit-next N] [--all]
+#   ruby dashboard.rb [continue|project <slug>] --plain
 # Default mode: continue.
 #
 # Env overrides (for deterministic tests):
@@ -24,6 +26,7 @@ require "yaml"
 require "date"
 require_relative "doctor"
 require_relative "lib/bridge"
+require_relative "lib/lock"
 
 PLASTIC_HOME = ENV.fetch("PLASTIC_HOME") { File.join(Dir.home, ".plastic") }
 
@@ -62,13 +65,39 @@ def index_section_ids(index_path, header)
   seg.scan(/^- \[([^\]\s]+)/).flatten
 end
 
+# Bug found at intent 202's gate review: the date used to be anchored to the END of the
+# line, which was true of old INDEX.md entries but stopped being true the moment
+# `scripts/end-intent --index-note "..."` started writing the date FOLLOWED BY the note
+# text (that has been the documented completion path for every completion since it
+# shipped). Anchored-to-end-of-line silently missed the date on every noted entry.
+# Fixed by anchoring to the position right after the markdown link's closing paren
+# instead, with no end-of-line requirement, so trailing note prose is irrelevant. The
+# separator there may be a real em dash (U+2014, INDEX.md's normal on-write convention,
+# built from the codepoint so this source line stays em-dash free) or a plain hyphen
+# (end-intent's own Bridge.index_entry_match accepts either on read). Because regex
+# alternation is leftmost-first, this only ever matches the date immediately after the
+# link. It never continues scanning into the note prose, so a second date mentioned
+# later in a note's free text cannot be mistaken for the completion date.
+COMPLETION_DATE_RE = /^- \[([^\]\s]+).*?\)\s*[\u2014-]\s*(\d{4}-\d{2}-\d{2})\b/
+
 # Map of intent id -> completion date string, parsed from the "## Completed" section
-# (lines like "- [12 — ...](...) — 2026-06-10"). Deterministic, content-derived.
+# (lines like "- [12 (em dash) title](link) (em dash) 2026-06-10 optional note text").
+# Deterministic, content-derived. Observability: a populated "## Completed" section that
+# yields not one single dated entry is a parser regression, not a legitimately empty
+# result, so it is surfaced with a stderr warning rather than rotting invisibly (the same
+# silent-failure class intent 202's gate review caught this file already committing).
 def completion_dates(index_path)
   return {} unless File.exist?(index_path)
   body = File.read(index_path)
   seg = body[/^## Completed\s*\n(.*?)(?=^## |\z)/m, 1] || ""
-  seg.scan(/^- \[([^\]\s]+).*?—\s*(\d{4}-\d{2}-\d{2})\s*$/).to_h
+  entry_count = seg.scan(/^- \[/).size
+  dates = seg.scan(COMPLETION_DATE_RE).to_h
+  if entry_count.positive? && dates.empty?
+    warn "dashboard: completion_dates parsed 0/#{entry_count} dates from the " \
+         "\"## Completed\" section of #{index_path}; treat this as a parser regression, " \
+         "not a genuinely undated store."
+  end
+  dates
 end
 
 # All stores: global + every registered project. -> [{scope, store, index}]
@@ -107,6 +136,29 @@ def last_accessed_at(dir, created)
   end
   return "#{created}T00:00:00Z" if created && !created.empty?
   ""
+end
+
+# D3 fix (intent 202 gate review): the actual moment an intent finished, distinct from
+# completion_dates' day-granularity date. Reads savepoint.md bottom-up like
+# last_accessed_at above, but matches on the stage token specifically ("Done") instead of
+# taking whatever the last line says, so a ledger touched again after Done (which would
+# violate the completed-intents-immutable convention) still reports the true Done moment
+# rather than whatever ran later. Returns nil when there is no savepoint or no Done line,
+# so callers get an honest "no signal" instead of a fabricated time.
+def done_timestamp(dir)
+  sp = File.join(dir, "savepoint.md")
+  return nil unless File.exist?(sp)
+  File.readlines(sp).reverse_each do |line|
+    stripped = line.strip
+    next if stripped.empty?
+    fields = stripped.split(/\s+/)
+    next unless fields[1] == "Done"
+    m = fields[0].match(ISO8601_RE)
+    return m[0] if m
+  end
+  nil
+rescue StandardError
+  nil
 end
 
 # True iff the savepoint ledger's last non-blank line shows real post-birth
@@ -170,6 +222,11 @@ def parse_intent(store_info, dir_name, status_index)
     checklist_partial: real.("checklist.md") && checklist_partially_done?(File.join(dir, "checklist.md")),
     body_has_context: body.include?("## Context"),
     last_accessed_at: last_accessed_at(dir, (fm["created"].to_s rescue "")),
+    done_at: done_timestamp(dir),
+    # Kept only in the internal record so project Active rows can inspect the
+    # durable lock beside the intent. intent_line deliberately does not expose
+    # this filesystem path in --data or any rendered surface.
+    intent_dir: File.expand_path(dir),
   }
 end
 
@@ -371,12 +428,24 @@ end
 
 CELL_CAP = 6
 
-# Markdown-board caps (Task 5, D6/D7): the ASCII renderer already caps via CELL_CAP/
-# cap_cell, but the Markdown board's next_work list and the project board's
-# active/future lists had no cap and no per-line truncation, so a large store printed
-# hundreds of full-length lines. These two constants fix that on the Markdown side only.
-NEXT_WORK_CAP = 8
+# Markdown-board caps (Task 5, D6/D7 of intent 37; re-tuned by intent 202 D1/D5): the ASCII
+# renderer still caps via CELL_CAP/cap_cell, untouched. ACTIVE_CAP/NEXT_WORK_CAP are the
+# --data board's DEFAULTS only: --limit-active/--limit-next override either one per call,
+# and --all lifts both to unbounded (see main). Whatever is actually shown, the payload
+# always reports the true pool size alongside it, so the footer can state an honest count
+# instead of a silent "+N more" row (D5).
+ACTIVE_CAP = 3
+NEXT_WORK_CAP = 5
 INTENT_LINE_MAX_CHARS = 120
+
+# D1 fix (intent 202 gate review): the "most recently delivered" summary must read as 2 to
+# 3 short sentences, never the longest thing on the board. SUMMARY_CHAR_BUDGET is the hard
+# ceiling on the fully assembled string (about what 2 to 3 plain sentences read as).
+# SUMMARY_TITLE_MAX_CHARS bounds each per-intent label before assembly, so the normal case
+# (short titles) never needs the hard cap at all; the hard cap is the safety net that holds
+# even when every intent's `intent` field is a full paragraph.
+SUMMARY_CHAR_BUDGET = 320
+SUMMARY_TITLE_MAX_CHARS = 48
 
 def matrix(records, scope_tag: false)
   cells = { "quick_win" => [], "next_big" => [], "defer" => [], "triage" => [] }
@@ -544,11 +613,14 @@ def invert_ts(ts)
   ts.to_s.ljust(20).chars.map { |c| 255 - c.ord }
 end
 
-def within_24h?(rec)
-  ts = rec[:last_accessed_at]
-  return false if ts.nil? || ts.empty?
-  d = (Date.parse(ts[0, 10]) rescue nil)
-  d && d >= (today - 1)
+# D2 "finish first": lifecycle stage descending (Exec, How, Why, What). "done" is included
+# only defensively; it never appears in Active (status must be "active" to reach this sort).
+# A later savepoint timestamp breaks a tie within the same stage. This is a NEW sort key,
+# separate from rank_key: D3 leaves ranking untouched, so rank_key itself is not edited.
+LIFECYCLE_FINISH_RANK = { "exec" => 0, "how" => 1, "why" => 2, "what" => 3, "done" => 4 }.freeze
+
+def finish_first_key(rec)
+  [LIFECYCLE_FINISH_RANK.fetch(rec[:lifecycle], 9), invert_ts(rec[:last_accessed_at])]
 end
 
 # Collapse whitespace to single spaces, strip, then escape Markdown table pipes so
@@ -564,61 +636,157 @@ def truncate_intent(text)
   t.length > INTENT_LINE_MAX_CHARS ? "#{t[0, INTENT_LINE_MAX_CHARS]}…" : t
 end
 
-def worked_row(rec, project_scope)
-  glyph = STATUS_GLYPH[rec[:status]]
-  proj = rec[:scope] == "global" ? "global" : rec[:scope].sub("project:", "")
-  status_word = rec[:status] == "completed" ? "done" : rec[:status]
-  prefix = project_scope ? "" : "#{proj} | "
-  {
-    id: rec[:id], status: rec[:status], glyph: glyph,
-    last_accessed_at: rec[:last_accessed_at],
-    what: cell(truncate_intent(rec[:intent])), state: status_word, scope: cell(proj),
-    line: "#{glyph} #{prefix}#{status_word}: #{rec[:id]} #{rec[:intent]}".strip,
-  }
+# Truncate `text` to at most `max_chars`, cutting at the last whitespace at or before the
+# limit (never mid-word) and appending a single ellipsis character when truncation happens.
+# recent_delivery_summary (D1 fix) uses this twice: once per intent label, so a
+# paragraph-long `intent` field collapses to a short name, and once on the fully assembled
+# summary string, the hard budget cap that holds no matter how the per-label math adds up.
+def truncate_on_word_boundary(text, max_chars)
+  t = text.to_s
+  return t if t.length <= max_chars
+  ellipsis = "…"
+  limit = [max_chars - ellipsis.length, 0].max
+  slice = t[0, limit]
+  cut = slice.rindex(/\s/)
+  slice = slice[0, cut] if cut && cut.positive?
+  "#{slice.rstrip}#{ellipsis}"
 end
 
-def recently_worked(records, project_scope: nil)
-  pool = records.select do |r|
-    %w[active completed].include?(r[:status]) && within_24h?(r) &&
-      (project_scope.nil? || r[:scope] == project_scope)
+# D3 fix (intent 202 gate review): completion dates only carry day granularity, and many
+# intents can share a single day, so completed_on alone left Array#sort_by to break the tie
+# however it fell out (not documented as stable, so nothing here relied on input order being
+# preserved). This key makes the tie-break real, in priority order:
+#   1. completed_on: the date already recorded in the store's "## Completed" section.
+#   2. done_at (see done_timestamp above): the savepoint's own "Done" timestamp, when the
+#      intent has one. This is the true completion moment, so it breaks a same-day tie
+#      honestly instead of arbitrarily. Missing it (nil, mapped to "") sorts behind any
+#      intent that does have one, since we never invent a plausible-looking time for it.
+#   3. scope + id: always present and always unique (no two records share both), so two
+#      intents can never compare equal here. This is the deterministic fallback of last
+#      resort for intents with no Done timestamp on either side, chosen for exactly one
+#      reason: it removes every remaining "whatever sort_by happened to do" case.
+# Ascending; callers reverse the sorted list to read most-recent-first.
+def delivery_recency_key(rec)
+  [rec[:completed_on].to_s, rec[:done_at] || "", rec[:scope].to_s, rec[:id].to_s]
+end
+
+# Prose "what was delivered most recently" (D1), built once here so both the Markdown
+# board and --plain get byte-identical wording for the same store state. Sourced from
+# completed intents with a non-empty completed_on, most-recent-first - the SAME basis
+# render_continue already uses for its "last touched" line, generalized to take an optional
+# project scope. Deliberately NOT recently_worked's 24h window: a project not touched today
+# would otherwise wrongly report nothing delivered even when its last delivery was real and
+# recent.
+def recent_delivery_summary(records, project_scope: nil, limit: 3)
+  in_scope = records.select { |r| r[:status] == "completed" && !r[:completed_on].to_s.empty? &&
+                                    (project_scope.nil? || r[:scope] == project_scope) }
+  done_total = records.count { |r| r[:status] == "completed" &&
+                                     (project_scope.nil? || r[:scope] == project_scope) }
+  recent = in_scope.sort_by { |r| delivery_recency_key(r) }.reverse.first(limit)
+  scope_phrase = project_scope.nil? ? " across all projects" : ""
+  return "Nothing has been delivered#{scope_phrase} yet." if recent.empty?
+
+  # Short per-intent label (D1): never the full `intent` paragraph, always id + a
+  # word-boundary-truncated title, so one huge intent text cannot dominate the summary.
+  titles = recent.map { |r| "#{r[:id]} #{truncate_on_word_boundary(r[:intent], SUMMARY_TITLE_MAX_CHARS)}".strip }
+  headline =
+    if titles.size == 1
+      "Most recently delivered: #{titles.first} (#{recent.first[:completed_on]})."
+    else
+      "Most recently delivered: #{titles[0...-1].join(', ')} and #{titles.last} " \
+      "(most recent #{recent.first[:completed_on]})."
+    end
+  summary = "#{headline} #{done_total} intent#{'s' unless done_total == 1} completed#{scope_phrase} in total."
+  # Hard cap (D1): guarantees the invariant regardless of how the per-title math above adds
+  # up, e.g. very long ids or an unusually large done_total driving the closing sentence
+  # over budget on its own.
+  truncate_on_word_boundary(summary, SUMMARY_CHAR_BUDGET)
+end
+
+# Honest-totals footer (D5): built once here so the Markdown board and --plain state the
+# same true counts in the same words. active_shown/active_total are omitted on the global
+# board (it has no Active list of its own).
+def footer_line(next_shown:, next_total:, active_shown: nil, active_total: nil)
+  if active_shown
+    "Showing #{active_shown} of #{active_total} active, #{next_shown} of #{next_total} " \
+    "next work. Ask for \"more\" or \"all\" to see everything, or run " \
+    "`dashboard.rb project <slug> --plain` for the full plain-text board."
+  else
+    "Showing #{next_shown} of #{next_total} next work across all projects. Ask for " \
+    "\"more\" or \"all\" to see everything, or run `dashboard.rb continue --plain` for " \
+    "the full plain-text board."
   end
-  ordered = pool.sort_by { |r| [r[:status] == "active" ? 0 : 1, invert_ts(r[:last_accessed_at])] }
-  ordered = ordered.first(5) if ordered.size > 15
-  ordered.map { |r| worked_row(r, project_scope) }
 end
 
-def intent_line(rec, bullet)
+ANSI_ESCAPE_RE = /\e\[[0-?]*[ -\/]*[@-~]/
+
+def safe_active_value(value, max_chars: INTENT_LINE_MAX_CHARS)
+  text = value.to_s.gsub(ANSI_ESCAPE_RE, "").gsub(/[[:cntrl:]]+/, " ")
+  # Idempotent because the composed worker/activity values pass through this
+  # helper once per component and once after composition.
+  normalized = text.gsub(/\s+/, " ").strip.gsub(/(?<!\\)\|/) { "\\|" }
+  normalized.length > max_chars ? "#{normalized[0, max_chars]}…" : normalized
+end
+
+def display_provenance(value)
+  # Worker combines agent and harness; bound each half so one hostile or merely
+  # verbose value cannot crowd the other identity out of the shared line budget.
+  text = safe_active_value(value, max_chars: INTENT_LINE_MAX_CHARS / 2 - 4)
+  return "Unknown" if text.empty? || text.casecmp("unknown").zero?
+  %w[claude codex].include?(text.downcase) ? text.capitalize : text
+end
+
+def active_lock_fields(rec, now:)
+  view = Lock.who(rec.fetch(:intent_dir), now: now)
+  owner = view["owner"] || {}
+  worker = "#{display_provenance(owner['agent'])} · #{display_provenance(owner['harness'])}"
+  activity = case view["state"]
+             when "fresh" then "Fresh"
+             when "stale" then "Stale"
+             when "corrupt" then "Corrupt"
+             else "No lock"
+             end
+  if view["state"] == "fresh"
+    claim = Array(view["claims"]).find { |item| item["fresh"] && !item["corrupt"] }
+    writer = claim && safe_active_value(claim["delegate"] || claim["owner_session"],
+                                        max_chars: INTENT_LINE_MAX_CHARS - 20)
+    activity = "#{activity} · writer #{writer}" unless writer.to_s.empty?
+  end
+  [worker, activity]
+end
+
+def intent_line(rec, bullet, now: Time.now)
   note = rec[:status] == "active" ? " (#{rec[:lifecycle].to_s.capitalize})" : ""
   text = rec[:intent].to_s
   text = "#{text[0, INTENT_LINE_MAX_CHARS]}…" if text.length > INTENT_LINE_MAX_CHARS
-  { id: rec[:id], intent: rec[:intent], created: rec[:created], bullet: bullet,
+  row = { id: rec[:id], intent: rec[:intent], created: rec[:created], bullet: bullet,
     scope: rec[:scope], what: cell(text), stage: rec[:lifecycle].to_s.capitalize,
     line: "#{bullet} #{rec[:id]} #{text}#{note}".rstrip }
-end
-
-# Cap a raw record list to NEXT_WORK_CAP entries, then map to intent_line-shaped
-# hashes, appending a plain "+N more" line (no id, not a real record) when truncated.
-# Caps the record list first so the "+N more" entry never goes through intent_line.
-def cap_lines(list, bullet)
-  capped = list.first(NEXT_WORK_CAP)
-  lines = capped.map { |r| intent_line(r, bullet) }
-  if list.size > NEXT_WORK_CAP
-    lines << { id: "", intent: "", created: "", bullet: bullet, scope: "",
-               what: "+#{list.size - NEXT_WORK_CAP} more", stage: "",
-               line: "#{bullet} +#{list.size - NEXT_WORK_CAP} more" }
+  if rec[:status] == "active"
+    worker, activity = active_lock_fields(rec, now: now)
+    row[:worker] = safe_active_value(worker)
+    row[:activity] = safe_active_value(activity)
+    row[:line] = "#{row[:line]} · #{row[:worker]} · #{row[:activity]}"
   end
-  lines
+  row
 end
 
-# Flat, rank-ordered "most-valuable next work" list (intent 149). Replaces the
-# quadrant-keyed matrix_data with a single list ranked by the same rank_key every
-# other ordering uses, capped at NEXT_WORK_CAP with a trailing "+N more" marker
-# when the pool overflows. No grid glyph on the line; the prose surface supplies
-# its own bullet.
-def next_work(records)
+# Cap an already-sorted record list to `cap` entries and map to intent_line-shaped hashes.
+# No trailing "+N more" marker (D5, intent 202): the payload's own *_total/*_shown fields
+# (see render_data_project) carry the honest count, and the footer states it in prose, so a
+# fake blank row is no longer needed here.
+def capped_rows(list, bullet, cap, now: Time.now)
+  list.first(cap).map { |r| intent_line(r, bullet, now: now) }
+end
+
+# Flat, rank-ordered "most-valuable next work" list (intent 149), capped at `cap` (default
+# NEXT_WORK_CAP; --data mode overrides via --limit-next or lifts it via --all, see main). No
+# trailing "+N more" marker (D5, intent 202): render_data_project/render_data_global report
+# the true pool size alongside this capped list, and the footer states it in prose. No grid
+# glyph on the line; the prose surface supplies its own bullet.
+def next_work(records, cap: NEXT_WORK_CAP)
   ranked = records.sort_by { |r| rank_key(r) }
-  capped = ranked.first(NEXT_WORK_CAP)
-  lines = capped.map do |r|
+  ranked.first(cap).map do |r|
     text = r[:intent].to_s
     text = "#{text[0, INTENT_LINE_MAX_CHARS]}…" if text.length > INTENT_LINE_MAX_CHARS
     { id: r[:id], intent: r[:intent], scope: r[:scope], lifecycle: r[:lifecycle],
@@ -626,12 +794,6 @@ def next_work(records)
       what: cell(text), flags_label: cell(Array(r[:flags]).join(", ")),
       line: "#{r[:id]} #{text}" }
   end
-  if ranked.size > NEXT_WORK_CAP
-    lines << { id: "", intent: "", scope: "", lifecycle: "", value: "", disposition: "",
-               flags: [], what: "+#{ranked.size - NEXT_WORK_CAP} more", flags_label: "",
-               line: "+#{ranked.size - NEXT_WORK_CAP} more" }
-  end
-  lines
 end
 
 def short_description(scope)
@@ -670,36 +832,91 @@ def counts_of(records)
     future: records.count { |r| r[:status] == "future" } }
 end
 
-def render_data_global(records)
+def render_data_global(records, next_limit: NEXT_WORK_CAP, all: false)
   global = records.select { |r| r[:scope] == "global" }
   matrix_pool = global.select { |r| actionable?(r) && r[:status] != "active" }
+  next_cap = all ? matrix_pool.size : next_limit
+  next_shown = [next_cap, matrix_pool.size].min
   projs = project_summaries(records)
   { mode: "global", date: today.to_s,
     store_health: store_health(:global),
-    recently_worked: recently_worked(records),
-    next_work: next_work(matrix_pool),
+    summary: recent_delivery_summary(records, project_scope: nil),
+    next_work: next_work(matrix_pool, cap: next_cap),
+    next_total: matrix_pool.size,
+    next_shown: next_shown,
     counts: counts_of(global),
     projects: projs,
     project_totals: {
       active: projs.sum { |p| p[:active] }, done: projs.sum { |p| p[:done] },
       future: projs.sum { |p| p[:future] }
-    } }
+    },
+    footer: footer_line(next_shown: next_shown, next_total: matrix_pool.size) }
 end
 
-def render_data_project(records, slug)
+def render_data_project(records, slug, active_limit: ACTIVE_CAP, next_limit: NEXT_WORK_CAP,
+                        all: false, now: Time.now)
   scope = "project:#{slug}"
   scoped = records.select { |r| r[:scope] == scope }
-  matrix_pool = scoped.select { |r| r[:status] == "future" }
+  active_pool = scoped.select { |r| r[:status] == "active" }.sort_by { |r| finish_first_key(r) }
+  next_pool = scoped.select { |r| r[:status] == "future" }
+
+  active_cap = all ? active_pool.size : active_limit
+  next_cap = all ? next_pool.size : next_limit
+  active_shown = [active_cap, active_pool.size].min
+  next_shown = [next_cap, next_pool.size].min
+
   { mode: "project", date: today.to_s, slug: slug,
     store_health: store_health(slug),
     description: short_description(scope),
-    recently_worked: recently_worked(records, project_scope: scope),
-    next_work: next_work(matrix_pool),
+    summary: recent_delivery_summary(records, project_scope: scope),
     counts: counts_of(scoped),
-    active: cap_lines(scoped.select { |r| r[:status] == "active" }
-                            .sort_by { |r| invert_ts(r[:last_accessed_at]) }, STATUS_GLYPH["active"]),
-    future: cap_lines(scoped.select { |r| r[:status] == "future" }
-                            .sort_by { |r| invert_ts(r[:created]) }, STATUS_GLYPH["future"]) }
+    active: capped_rows(active_pool, STATUS_GLYPH["active"], active_cap, now: now),
+    active_total: active_pool.size,
+    active_shown: active_shown,
+    next_work: next_work(next_pool, cap: next_cap),
+    next_total: next_pool.size,
+    next_shown: next_shown,
+    footer: footer_line(active_shown: active_shown, active_total: active_pool.size,
+                         next_shown: next_shown, next_total: next_pool.size) }
+end
+
+# --plain (D4): the full, uncapped board as plain text, no Markdown table syntax, meant to
+# pipe cleanly into a real pager (`less`). Reuses the exact same payload builders --data
+# uses, with all: true, and prints the `summary`/`.line`/`footer` fields those builders
+# already compute -- no separate selection or sorting logic lives here.
+def render_plain_project(records, slug)
+  payload = render_data_project(records, slug, all: true)
+  lines = []
+  lines << "#{slug} - Project Board, #{payload[:date]}"
+  lines << payload[:description] unless payload[:description].to_s.empty?
+  lines << ""
+  lines << payload[:summary]
+  lines << ""
+  lines << "Active (#{payload[:active_total]})"
+  lines.concat(payload[:active].empty? ? ["(none)"] : payload[:active].map { |r| r[:line] })
+  lines << ""
+  lines << "Most-valuable next work (#{payload[:next_total]})"
+  lines.concat(payload[:next_work].empty? ? ["(none)"] : payload[:next_work].map { |r| r[:line] })
+  lines << ""
+  lines << payload[:footer]
+  lines.join("\n") + "\n"
+end
+
+def render_plain_global(records)
+  payload = render_data_global(records, all: true)
+  counts = payload[:counts]
+  lines = []
+  lines << "Plastic - Global Board, #{payload[:date]}"
+  lines << ""
+  lines << payload[:summary]
+  lines << ""
+  lines << "#{counts[:active]} intents active, #{counts[:done]} done, #{counts[:future]} queued for later."
+  lines << ""
+  lines << "Most-valuable next work (#{payload[:next_total]})"
+  lines.concat(payload[:next_work].empty? ? ["(none)"] : payload[:next_work].map { |r| r[:line] })
+  lines << ""
+  lines << payload[:footer]
+  lines.join("\n") + "\n"
 end
 
 # ---------------------------------------------------------------------------
@@ -737,9 +954,23 @@ def canonical_pretty_json(payload)
   JSON.pretty_generate(payload).gsub(/\[\s*\n\s*\]/, "[]").gsub(/\{\s*\n\s*\}/, "{}")
 end
 
+# Pull a "--flag value" pair out of argv, mutating it in place; returns the value string,
+# or nil when the flag is absent. Unlike --json/--data/--all (bare toggles),
+# --limit-active/--limit-next carry a value.
+def extract_flag_value(argv, flag)
+  idx = argv.index(flag)
+  return nil unless idx
+  argv.delete_at(idx)
+  argv.delete_at(idx)
+end
+
 def main(argv)
   json = argv.delete("--json")
   data = argv.delete("--data")
+  plain = argv.delete("--plain")
+  all = argv.delete("--all")
+  limit_active = extract_flag_value(argv, "--limit-active")
+  limit_next = extract_flag_value(argv, "--limit-next")
   mode = argv.shift || "continue"
   slug = argv.shift
 
@@ -747,8 +978,29 @@ def main(argv)
   records = raw.map { |r| classify(r, done_ids, referenced, completed_on_map) }
 
   if data
-    payload = mode == "project" ? render_data_project(records, slug) : render_data_global(records)
+    payload =
+      if mode == "project"
+        render_data_project(records, slug,
+                             active_limit: (limit_active || ACTIVE_CAP).to_i,
+                             next_limit: (limit_next || NEXT_WORK_CAP).to_i,
+                             all: !!all)
+      else
+        render_data_global(records, next_limit: (limit_next || NEXT_WORK_CAP).to_i, all: !!all)
+      end
     puts canonical_pretty_json(payload)
+    return 0
+  end
+
+  if plain
+    if mode == "project"
+      if slug.nil? || slug.empty?
+        warn "usage: dashboard.rb project <slug> --plain"
+        return 2
+      end
+      print render_plain_project(records, slug)
+    else
+      print render_plain_global(records)
+    end
     return 0
   end
 

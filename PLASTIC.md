@@ -99,6 +99,11 @@ tags: [plastic, architecture]
 | **How** | Planning | `plan.md` + `actions/ACTION_N.md` (at least one) + `checklist.md` | `plastic-intent-planning` |
 | **Exec** | Execution | `outcome.md` | `plastic-intent-executing` |
 
+Invoke a skill for your harness: Claude Code uses the slash form (`/plastic-intent-creating`);
+Codex CLI uses a dollar prefix instead (`$plastic-intent-creating`), and may also select a skill
+implicitly by matching its description. Skill names elsewhere in this document are given bare
+(`plastic-intent-creating`); add the prefix for your harness.
+
 `## Insights` is the append-only log of durable discoveries captured throughout ALL stages.
 An insight is a discovery worth keeping for later reads: novel, or old but newly relevant,
 surfaced at any stage (What, Why, How, Exec). It is the most interesting residue of an
@@ -288,8 +293,8 @@ Beyond the lifecycle agents, Plastic ships thin skills for day-to-day operation:
 - **`plastic-feedback`** (intent 174) turns a described Plastic quirk, bug, or feature idea
   into a redacted local report file and a prefilled GitHub issue URL; only the user can submit
   it. `disable-model-invocation` hides its description from your own context, so if the user
-  hits a Plastic quirk, bug, or missing feature, offer to run `/plastic-feedback` yourself
-  instead of waiting to be asked; the user still sends it, you never do.
+  hits a Plastic quirk, bug, or missing feature, offer to invoke the plastic-feedback skill
+  yourself instead of waiting to be asked; the user still sends it, you never do.
 
 ## Releases and Versioning
 
@@ -505,18 +510,31 @@ Each gate guards one thing. All are hard except the retrieval gate:
 
 Exactly one session or agent develops an intent's delivery at a time. Ownership is
 session-keyed and durable: arming acquires `delivery.lock` inside the intent directory
-(atomically, O_EXCL), recording the owner session, the host, the acquired-at time, a
-delegates list, and the lock type. Liveness is a lease: the owner's hooks refresh the lock
-file's mtime on tool activity, and the lock counts as stale only when that heartbeat is
-older than the TTL. No process id is consulted anywhere. The /tmp session bridge is a cache
+(atomically, O_EXCL). The session id is the authorization identity. Descriptive provenance
+records the controller's explicit `harness`, `agent`, `model`, `thread`, and `mode` values,
+but never grants access and is never inferred from transcripts or filesystem paths. Missing
+fields on legacy locks display as `Unknown`. Liveness is a lease: the owner's hooks refresh
+the lock file's mtime on tool activity, and that mtime is the sole heartbeat truth. The lock
+counts as stale only when the mtime is older than the TTL. No process id is consulted anywhere.
+The /tmp session bridge is a cache
 of this state; on any disagreement, or when the bridge is missing, the lock file wins.
 Another session that finds a fresh lock backs off; a stale lock is reclaimed only by
 explicit takeover, which replaces the lock and appends an audit line to the intent's
-savepoint.md. Subagents spawned by the owner write under the owner's lock once registered
-as delegates. Disarm clears the lock; the End tail is ordered: verify, merge and remove
+savepoint.md. Rearming the same session preserves its acquired identity and refreshes known
+provenance; an explicit takeover replaces the controller and starts new provenance.
+Subagents spawned by the owner write under the owner's lock once registered as delegates.
+Delegate activity status (`active`, `finished`, or `failed`) is descriptive and does not revoke
+the session's string-array authorization. A registered delegate remains authorized until a
+separate authorization-removal mechanism exists. Finished and failed delegate activity is
+retained as descriptive history, bounded to the 20 most recent terminal entries. A controller,
+a delegate, and an artifact claim are distinct evidence: controller ownership authorizes the
+delivery, delegate registration authorizes a child session, and a claim selects one current
+writer for one artifact. Disarm clears the lock; the End tail is ordered: verify, merge and remove
 worktrees, clear the lock, and only then is the bridge purge-eligible. Repair is one
-idempotent function with two entry points: the `plastic-lock` command (status, fix,
-release, reclaim, delegate) and `/plastic-intent-starting`, so boarding self-heals. This is
+idempotent function with two entry points: the `plastic-lock` command (`who`, status, fix,
+release, reclaim, delegate) and `/plastic-intent-starting`, so boarding self-heals. `who` is
+read-only and reports the controller, mtime heartbeat, delegates, and claims from durable files.
+This is
 mandatory, not a convention.
 
 Solo-mode gate defaults (intent 128): on a confirmed positive solo determination
@@ -560,16 +578,25 @@ behind. See "WORK vs MAINTENANCE" below for the full doctrine.
 Every code-touching intent gets its own git worktree named `{id}--{slug}`, and all code edits
 for that intent happen only inside it. Plastic provisions the worktree deterministically: it
 resolves the project repo from `projects.yml` and runs `git -C <repo> worktree add`, so
-isolation never depends on the current working directory. There are two worktrees per project
-intent: a code worktree at `<repo>/.claude/worktrees/{id}--{slug}` (branch `plastic/{id}--{slug}`)
-and a store worktree at `<plastic_home>/.worktrees/{id}--{slug}` (branch
-`plastic-store/{id}--{slug}`), so lifecycle-doc commits and code commits move as one unit.
+isolation never depends on the current working directory. There is one worktree per project
+intent, the code worktree at `<repo>/.claude/worktrees/{id}--{slug}` (branch
+`plastic/{id}--{slug}`).
+
+Plastic does not provision a second worktree for lifecycle-doc writes. Two things cover that
+need instead. First, the harness's own native worktree: Claude Code manages its own code
+worktree at `<repo>/.claude/worktrees/{name}`, and Codex manages its own at
+`$CODEX_HOME/worktrees` (default `~/.codex/worktrees`); both exist on their own, independent of
+anything Plastic provisions. Second, intent 197's branch-from-main plus scoped commit, which
+gives store writes their own write safety without a dedicated worktree. Plastic tried a second,
+dedicated store worktree at `<plastic_home>/.worktrees/{id}--{slug}` first; agents never wrote
+into it, because every delivering agent writes lifecycle docs straight to the main store
+checkout, so intent 178 retired the store worktree in favor of the two mechanisms above.
 
 Provisioning fails open for intents that touch no project code (pure research or decision
 intents in the global store, or a non-git repo): those get the lock only, and the worktree
 block stays unprovisioned. The fail-open path is always logged, never silent.
 
-Cleanup is part of Done: the End tail merges the branch, then removes both worktrees. Never leave
+Cleanup is part of Done: the End tail merges the branch, then removes the worktree. Never leave
 an orphaned worktree behind, and clear a stale worktree reference with `git worktree prune`.
 
 ### Intent delivery, station by station
@@ -750,4 +777,3 @@ behavior itself. Intent 112 attempted a maintenance lock and an immutability gat
 abandoned before merge and superseded by intent 197's WORK vs MAINTENANCE doctrine
 (detect-only lock, branch-and-merge, tool-enforced `revisions.md`). Intent 4a1b1 owns deep
 agent stuck-detection and is not superseded.
-

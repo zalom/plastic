@@ -806,12 +806,17 @@ own isolation instead, deterministic and cwd-independent.
   `provision` falls back to the passed `home:`).
 - **The lock file is the truth, the bridge is a cache** (intent 108):
   `scripts/lib/lock.rb` owns the durable `delivery.lock` JSON file inside the
-  intent directory: `{ type, owner_session, host, acquired_at, delegates }`,
-  never a pid. `Lock.acquire` is atomic (O_EXCL) and returns
+  intent directory. `owner_session` is authorization; the controller's
+  `harness`, `agent`, `model`, `thread`, and `mode` are descriptive provenance
+  supplied explicitly by the harness. Missing legacy values remain unknown and
+  are never reconstructed from transcript locations, session-id formats, or
+  other heuristics. The file never carries a pid. `Lock.acquire` is atomic
+  (O_EXCL) and returns
   `:acquired/:owned/:held/:stale/:excluded/:corrupt`; freshness is the file
   mtime against `Lock::TTL_SECONDS` (1800 seconds), refreshed by
   `Lock.heartbeat` from the write-path hooks (`hook-gate-check` and the
-  lock-gate allow path). `arm` acquires the lock, raising
+  lock-gate allow path). The mtime is the sole heartbeat and freshness truth;
+  provenance timestamps are descriptive only. `arm` acquires the lock, raising
   `Bridge::LockHeldError` with the resolving `plastic-lock` verb when it
   cannot, and fills the bridge's `lock` block as a cache; `disarm_auto`
   releases the worktrees, clears the lock, and only then is the bridge
@@ -829,8 +834,9 @@ own isolation instead, deterministic and cwd-independent.
   `Bridge.lock_gate_decision` reads the TARGET intent dir's lock, admits the
   owner or a registered delegate (even on a stale lock, which stays its
   owner's until an explicit takeover), and every deny names the resolving
-  command. A stale foreign lock is taken only by `Lock.takeover`, which
-  appends an audit line to the intent's savepoint.md.
+  command. Rearming the same session preserves authority and refreshes supplied
+  provenance. A stale foreign lock is taken only by `Lock.takeover`, which
+  replaces the controller and appends an audit line to the intent's savepoint.md.
   `Worktree.lock_held_by_other?` asks the same file, so `/tmp` bridges are
   never consulted for ownership and no code probes a pid.
   `Bridge.repair_lock` is the one idempotent repair: it rebuilds the lock and
@@ -840,7 +846,18 @@ own isolation instead, deterministic and cwd-independent.
   instead of wiping it back to derive's unprovisioned default; `plastic-lock
   fix`, `plastic-lock reclaim`, and the boarding skill's self-heal all inherit
   this since they call `repair_lock`. The `plastic-lock` CLI exposes it
-  (verbs: status, fix, release, reclaim, delegate).
+  (verbs: who, status, fix, release, reclaim, delegate). `who` reads only the
+  durable lock, its mtime, and claim files. It never repairs state, consults the
+  bridge, or searches harness transcripts.
+
+- **Three distinct evidence layers and bounded delegate history** (intent 108a):
+  the controller record proves whole-intent authority; a registered delegate record
+  authorizes one child session under that controller; a claim record identifies
+  one current writer for one artifact among already-authorized sessions. Delegate
+  activity status (`active`, `finished`, or `failed`) is observational and does not
+  remove the session from the string-array authorization list. A delegate remains
+  authorized until a separate removal mechanism exists. Finished and failed activity
+  history is capped at the 20 most recent terminal entries.
 
 - **Solo-mode advisory relaxation** (intent 128): `Bridge.lock_gate_decision`
   and `Bridge.worktree_gate_decision` are ARBITRATION gates, not the
@@ -963,6 +980,40 @@ close that gap.
   never edits `projects.yml` and never mutates qmd. The PreToolUse gate that
   blocks edits outside the active worktree, and the cleanup policy that decides
   merge-vs-remove on the completion path, are layered on top by sibling intents.
+
+## doctor: Codex hook registry vs. dispatcher agreement (intent 200)
+
+`codex_hooks_registered_check` (`doctor.rb`) only diffs `~/.codex/hooks.json`'s content
+against what `HookRegistry.codex_hooks_json` would emit; both sides come from the registry,
+so a pass proves only that the registry agrees with itself. It never looks at
+`scripts/codex-hook`, the actual dispatcher every Codex tool call runs through, so it cannot
+see a registered gate with no real branch there, or a dispatcher branch nobody registers.
+Both shipped: `links-gate` registered and reported healthy with no dispatcher branch in
+v1.4.0 (intent 192), invisible to doctor and the suite until intent 198 found it by hand;
+`bash-gate` fully implemented but never registered on Codex (intent 203), so a shell write
+bypassed every gate while doctor again reported Codex healthy.
+
+`codex_hooks_implemented_check` (intent 200) closes both directions: the dispatcher's
+supported-gate list is read out of `scripts/codex-hook` itself by plain source-text
+extraction (`codex_dispatcher_gate_names`, its `STATE_HOOKS`/`SHELL_HOOKS` constants plus its
+top-level `case gate` statement's `when "..."` labels), never a hand-kept duplicate in
+`doctor.rb` (a duplicate would be the exact bug this check exists to catch, one level up).
+`scripts/codex-hook` itself is unmodified: it keeps failing open (`exit 0`) on an
+unrecognized gate; the loud failure belongs to `doctor` alone. The extraction is
+self-checking: if it finds zero gate names (a future reshape of the dispatcher the regex no
+longer matches), the check fails loudly and says the dispatcher could not be read, rather
+than silently reporting the healthy pass a zero-name read would otherwise produce.
+
+**Claude has a narrower version of the same hole.** Claude's "is it implemented" question
+already has a different, existing shape (a launcher file exists and is executable:
+`hooks_exist`/`hooks_executable`, `doctor.rb`), because Claude registers every hook as its
+own file instead of routing through one dispatcher, so this intent does not force a shared
+abstraction over two different mechanisms (D6). But the list those two checks test against,
+`CLAUDE_HOOK_SCRIPTS`, is itself a hand-kept subset of `HookRegistry`'s hook names (about 7 of
+the roughly 15 registered), so a launcher file missing for one of the other registered hooks
+would currently pass doctor undetected. This is the same disease class, narrower in effect,
+recorded here as a finding rather than fixed in this delivery, and left as a candidate for its
+own future intent.
 
 ## living-document
 

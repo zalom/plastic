@@ -5,10 +5,11 @@
 # plastic-lock: inspect and repair the durable delivery lock (intent 108, D5),
 # and take/free per-artifact claim tokens (intent 111 D1/D5).
 #
-# Usage: plastic-lock <status|fix|release|reclaim|delegate|claim|release-claim>
+# Usage: plastic-lock <status|who|fix|release|reclaim|delegate|claim|release-claim>
 #          [--intent-dir DIR] [--session SID] [--delegate SID] [--artifact NAME]
 #
 # Verbs:
+#   who           compact, read-only durable owner/activity view
 #   status        report the lock file, the bridge cache, their agreement,
 #                 and any live per-artifact claims
 #   fix           idempotent repair: rebuild lock + bridge from disk truth for
@@ -29,13 +30,15 @@ require_relative "lib/bridge"
 require_relative "lib/lock"
 
 def usage!
-  warn "usage: plastic-lock <status|fix|release|reclaim|delegate|claim|release-claim> " \
-       "[--intent-dir DIR] [--session SID] [--delegate SID] [--artifact NAME]"
+  warn "usage: plastic-lock <status|who|fix|release|reclaim|delegate|claim|release-claim> " \
+       "[--intent-dir DIR] [--session SID] [--delegate SID] [--artifact NAME] " \
+       "[--harness claude|codex] [--agent NAME] [--model MODEL] [--thread ID] " \
+       "[--mode auto|guided] [--status finished|failed]"
   exit 1
 end
 
 verb = ARGV.shift
-usage! unless %w[status fix release reclaim delegate claim release-claim].include?(verb)
+usage! unless %w[status who fix release reclaim delegate claim release-claim].include?(verb)
 
 opts = {}
 until ARGV.empty?
@@ -44,17 +47,30 @@ until ARGV.empty?
   when "--session" then opts[:session] = ARGV.shift
   when "--delegate" then opts[:delegate] = ARGV.shift
   when "--artifact" then opts[:artifact] = ARGV.shift
+  when "--harness" then opts[:harness] = ARGV.shift
+  when "--agent" then opts[:agent] = ARGV.shift
+  when "--model" then opts[:model] = ARGV.shift
+  when "--thread" then opts[:thread] = ARGV.shift
+  when "--mode" then opts[:mode] = ARGV.shift
+  when "--status" then opts[:status] = ARGV.shift
   else
     warn "unknown flag #{flag}"
     usage!
   end
 end
+usage! if opts[:mode] && !%w[auto guided].include?(opts[:mode])
 
 session = opts[:session]
 session = ENV["CLAUDE_CODE_SESSION_ID"] if session.nil? || session.strip.empty?
+harness = opts[:harness]
+hint_harness = harness || "claude"
 
 dir = opts[:dir]
 if dir.nil? || dir.strip.empty?
+  if verb == "who"
+    warn "plastic-lock: who is strictly durable-state only; pass --intent-dir <intent dir>"
+    exit 1
+  end
   bridge = Bridge.discover_bridge(session: session, cwd: Dir.pwd)
   dir = Bridge.bridge_intent_dir(bridge)
 end
@@ -63,6 +79,37 @@ if dir.nil?
   exit 1
 end
 dir = File.expand_path(dir)
+
+if verb == "who"
+  view = Lock.who(dir)
+  basename = File.basename(dir)
+  intent_id, slug = basename.split("--", 2)
+  display = ->(value) { value.nil? || value.to_s.strip.empty? || value == "unknown" ? "Unknown" : value.to_s }
+  harness = ->(value) {
+    shown = display.call(value)
+    shown == "Unknown" ? shown : shown.sub(/\A./) { |char| char.upcase }
+  }
+  owner = view["owner"] || {}
+  claims = Array(view["claims"]).select { |claim| claim["fresh"] && !claim["corrupt"] }
+  claim_text = claims.map do |claim|
+    writer = claim["delegate"] || claim["owner_session"]
+    "#{display.call(claim['artifact'])} by #{display.call(writer)}"
+  end
+  delegate = Array(view["delegates"]).last
+
+  puts "#{intent_id} · #{slug || basename}"
+  puts "State: #{view['state']}"
+  puts "Controller: #{display.call(owner['agent'])} via #{harness.call(owner['harness'])}"
+  puts "Session: #{display.call(view['owner_session'])}"
+  puts "Heartbeat: #{view['heartbeat_at'] || 'none'}"
+  puts "Claims: #{claim_text.empty? ? 'none' : claim_text.join(', ')}"
+  if delegate
+    puts "Delegate: #{display.call(delegate['agent'])} via #{harness.call(delegate['harness'])}, #{display.call(delegate['status'])}"
+  else
+    puts "Delegate: none"
+  end
+  exit 0
+end
 
 intent_id = Bridge.intent_id_from_dir(dir)
 store = File.dirname(dir)
@@ -87,7 +134,10 @@ when "status"
   puts JSON.pretty_generate(report)
 when "fix"
   report = Bridge.repair_lock(key, intent_id: intent_id, intent_dir: dir,
-                              store: store, name: name)
+                              store: store, name: name, harness: harness,
+                              agent: opts[:agent], model: opts[:model], thread: opts[:thread],
+                              run_mode: opts[:mode],
+                              hint_harness: hint_harness)
   puts JSON.pretty_generate(report)
   unless report["status"] == "repaired"
     warn "plastic-lock: #{report['status']} by #{report['owner']}" \
@@ -108,23 +158,40 @@ when "release"
   end
   puts "released (#{result})"
 when "reclaim"
-  status, lock_data = Lock.takeover(dir, session: key)
+  status, lock_data = Lock.takeover(dir, session: key, harness: harness,
+                                    agent: opts[:agent], model: opts[:model],
+                                    thread: opts[:thread], run_mode: opts[:mode])
   if status == :fresh
     warn "plastic-lock: lock is FRESH and held by #{lock_data['owner_session']}; " \
          "back off (no silent reclaim)"
     exit 1
   end
   report = Bridge.repair_lock(key, intent_id: intent_id, intent_dir: dir,
-                              store: store, name: name)
+                              store: store, name: name, harness: harness,
+                              agent: opts[:agent], model: opts[:model], thread: opts[:thread],
+                              run_mode: opts[:mode],
+                              hint_harness: hint_harness)
   puts JSON.pretty_generate(report)
 when "delegate"
   usage! if opts[:delegate].nil?
-  ok = Lock.add_delegate(dir, delegate: opts[:delegate], session: key)
+  usage! if opts[:status] && !%w[finished failed].include?(opts[:status])
+  ok = if opts[:status]
+         Lock.update_delegate_status(dir, delegate: opts[:delegate],
+                                     status: opts[:status], session: key)
+       else
+         Lock.add_delegate(dir, delegate: opts[:delegate], session: key,
+                           harness: harness, agent: opts[:agent], model: opts[:model],
+                           thread: opts[:thread])
+       end
   unless ok
     warn "plastic-lock: only the lock owner may delegate; run plastic-lock status"
     exit 1
   end
-  puts "delegated #{opts[:delegate]} under #{key}"
+  if opts[:status]
+    puts "delegate #{opts[:delegate]} marked #{opts[:status]} under #{key}"
+  else
+    puts "delegated #{opts[:delegate]} under #{key}"
+  end
 when "claim"
   usage! if opts[:artifact].nil?
   status, data = Claim.acquire_claim(dir, opts[:artifact], session: key,

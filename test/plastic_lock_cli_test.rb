@@ -100,6 +100,16 @@ class PlasticLockCliTest < Minitest::Test
     assert_includes report["hint"], "reclaim"
   end
 
+  def test_repair_reports_stale_hint_with_dollar_prefix_for_codex_harness
+    Lock.acquire(@intent_dir, session: "other")
+    FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
+    report = Bridge.repair_lock("sess-1", intent_id: "96", intent_dir: @intent_dir,
+                                store: @store, name: "demo", tmp: @tmp, harness: :codex)
+    assert_equal "stale", report["status"]
+    assert_includes report["hint"], "$plastic-doctor reclaim the lock"
+    refute_includes report["hint"], "/plastic-doctor"
+  end
+
   def test_repair_removes_a_corrupt_lock_and_rebuilds
     File.write(Lock.path(@intent_dir), "{ nope")
     report = repair
@@ -137,6 +147,66 @@ class PlasticLockCliTest < Minitest::Test
     Bridge.write("sess-1", legacy, tmp: @tmp)
     repair
     assert_equal true, Bridge.read("sess-1", intent_id: "96", tmp: @tmp).dig("build", "auto")
+  end
+
+  def test_repair_enriches_same_owner_legacy_lock_from_explicit_metadata
+    acquired_at = Time.utc(2026, 7, 1, 12, 0, 0)
+    Lock.acquire(@intent_dir, session: "sess-1", host: "original-host", now: acquired_at)
+    Lock.add_delegate(@intent_dir, delegate: "delegate-1", session: "sess-1",
+                      now: acquired_at + 1)
+    original = Lock.read(@intent_dir)
+    heartbeat_at = acquired_at + 60
+    report = Bridge.repair_lock("sess-1", intent_id: "96", intent_dir: @intent_dir,
+                                store: @store, name: "demo", tmp: @tmp,
+                                harness: :codex, agent: "plastic-enforcer",
+                                model: "gpt-5", thread: "thread-96", now: heartbeat_at)
+    assert_equal "repaired", report["status"]
+    lock = Lock.read(@intent_dir)
+    assert_equal "codex", lock["owner_harness"]
+    assert_equal "plastic-enforcer", lock["owner_agent"]
+    assert_equal "gpt-5", lock["owner_model"]
+    assert_equal "thread-96", lock["owner_thread"]
+    assert_nil lock["run_mode"], "repair without a bridge or explicit mode must not invent guided"
+    assert_equal original["acquired_at"], lock["acquired_at"]
+    assert_equal "original-host", lock["host"]
+    assert_equal original["delegates"], lock["delegates"]
+    assert_equal original["delegate_activity"], lock["delegate_activity"]
+    assert_in_delta heartbeat_at.to_f, File.mtime(Lock.path(@intent_dir)).to_f, 0.001
+  end
+
+  def test_repair_without_metadata_keeps_identity_unknown_and_does_not_infer_cache
+    Lock.acquire(@intent_dir, session: "sess-1")
+    legacy = {
+      "session" => "sess-1",
+      "intent" => { "id" => "96", "dir" => "96--demo", "store" => @store,
+                    "name" => "demo" },
+      "build" => { "stage" => "why", "auto" => true },
+      "lock" => { "owner_session" => "sess-1", "owner_harness" => "codex",
+                  "owner_agent" => "cached-agent", "owner_model" => "cached-model",
+                  "owner_thread" => "cached-thread" },
+    }
+    Bridge.write("sess-1", legacy, tmp: @tmp)
+    repair
+    lock = Lock.read(@intent_dir)
+    assert_nil lock["owner_harness"]
+    assert_nil lock["owner_agent"]
+    assert_nil lock["owner_model"]
+    assert_nil lock["owner_thread"]
+    assert_equal "auto", lock["run_mode"], "mode derives only from the current bridge auto boolean"
+  end
+
+  def test_cli_fix_without_harness_keeps_owner_harness_unknown
+    Lock.acquire(@intent_dir, session: "sess-1")
+    out, err, st = cli("fix")
+    assert st.success?, "#{out}\n#{err}"
+    assert_nil Lock.read(@intent_dir)["owner_harness"]
+  end
+
+  def test_cli_fix_with_explicit_codex_harness_enriches_owner
+    Lock.acquire(@intent_dir, session: "sess-1")
+    out, err, st = cli("fix", "--harness", "codex")
+    assert st.success?, "#{out}\n#{err}"
+    assert_equal "codex", Lock.read(@intent_dir)["owner_harness"]
   end
 
   # --- intent 136: repair_lock must provision the worktree ---------------------
@@ -260,6 +330,80 @@ class PlasticLockCliTest < Minitest::Test
     assert_includes out, "delivery"
   end
 
+  def test_cli_who_renders_enriched_lock_claim_and_delegate_without_mutation
+    now = Time.at(Time.now.to_i).utc
+    Lock.acquire(@intent_dir, session: "sess-a", now: now,
+                 harness: "codex", agent: "plastic-enforcer", model: "gpt-5",
+                 thread: "thread-a", run_mode: "auto")
+    Lock.add_delegate(@intent_dir, delegate: "delegate-1", session: "sess-a", now: now,
+                      harness: "codex", agent: "plastic-planner", model: "gpt-5",
+                      thread: "thread-d")
+    Claim.acquire_claim(@intent_dir, "plan.md", session: "sess-a",
+                        delegate: "delegate-1", now: now)
+    FileUtils.touch(Lock.path(@intent_dir), mtime: now)
+    FileUtils.touch(Claim.path(@intent_dir, "plan.md"), mtime: now)
+    paths = [Lock.path(@intent_dir), Claim.path(@intent_dir, "plan.md")]
+    before = paths.to_h { |path| [path, [File.binread(path), File.stat(path).mtime]] }
+
+    out, err, st = cli("who")
+
+    assert st.success?, err
+    assert_equal <<~TEXT, out
+      96 · demo
+      State: fresh
+      Controller: plastic-enforcer via Codex
+      Session: sess-a
+      Heartbeat: #{now.iso8601}
+      Claims: plan.md by delegate-1
+      Delegate: plastic-planner via Codex, active
+    TEXT
+    paths.each do |path|
+      assert_equal before[path][0], File.binread(path), "who changed bytes for #{path}"
+      assert_equal before[path][1], File.stat(path).mtime, "who changed mtime for #{path}"
+    end
+  end
+
+  def test_cli_who_renders_legacy_unknowns_without_rewriting
+    path = Lock.path(@intent_dir)
+    File.write(path, JSON.pretty_generate(
+      "type" => "delivery", "owner_session" => "legacy-sess", "host" => "old",
+      "acquired_at" => "2026-07-01T00:00:00Z", "delegates" => ["legacy-delegate"]
+    ))
+    before_bytes = File.binread(path)
+    before_mtime = File.stat(path).mtime
+
+    out, err, st = cli("who")
+
+    assert st.success?, err
+    assert_includes out, "Controller: Unknown via Unknown"
+    assert_includes out, "Session: legacy-sess"
+    assert_includes out, "Delegate: Unknown via Unknown, Unknown"
+    assert_equal before_bytes, File.binread(path)
+    assert_equal before_mtime, File.stat(path).mtime
+  end
+
+  def test_cli_who_distinguishes_stale_corrupt_and_missing_locks
+    Lock.acquire(@intent_dir, session: "old")
+    FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - Lock::TTL_SECONDS - 10)
+    out, = cli("who")
+    assert_includes out, "State: stale"
+
+    File.write(Lock.path(@intent_dir), "{ nope")
+    out, = cli("who")
+    assert_equal "96 · demo\nState: corrupt\nController: Unknown via Unknown\nSession: Unknown\nHeartbeat: none\nClaims: none\nDelegate: none\n", out
+
+    File.delete(Lock.path(@intent_dir))
+    out, = cli("who")
+    assert_includes out, "State: none"
+    assert_includes out, "Heartbeat: none"
+  end
+
+  def test_cli_who_requires_explicit_intent_dir_instead_of_reading_bridge
+    out, err, st = Open3.capture3({ "PLASTIC_TMP" => @tmp }, RbConfig.ruby, CLI, "who")
+    refute st.success?, out
+    assert_includes err, "strictly durable-state only"
+  end
+
   def test_cli_fix_is_idempotent
     out1, _e1, st1 = cli("fix")
     out2, _e2, st2 = cli("fix")
@@ -274,6 +418,15 @@ class PlasticLockCliTest < Minitest::Test
     _out, err, st = cli("fix")
     refute st.success?
     assert_includes err, "held"
+  end
+
+  def test_cli_fix_reports_stale_hint_with_dollar_prefix_when_harness_flag_is_codex
+    Lock.acquire(@intent_dir, session: "other")
+    FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
+    _out, err, st = cli("fix", "--harness", "codex")
+    refute_equal 0, st.exitstatus
+    assert_includes err, "$plastic-doctor reclaim the lock"
+    refute_includes err, "/plastic-doctor"
   end
 
   def test_cli_release_clears_the_lock
@@ -300,11 +453,109 @@ class PlasticLockCliTest < Minitest::Test
     assert_equal "other", Lock.read(@intent_dir)["owner_session"]
   end
 
+  def test_cli_fix_accepts_explicit_owner_metadata_and_mode
+    Lock.acquire(@intent_dir, session: "sess-1")
+    _out, err, st = cli("fix", "--harness", "codex", "--agent", "plastic-enforcer",
+                        "--model", "gpt-5", "--thread", "thread-a", "--mode", "auto")
+    assert st.success?, err
+    lock = Lock.read(@intent_dir)
+    assert_equal %w[codex plastic-enforcer gpt-5 thread-a auto],
+                 lock.values_at("owner_harness", "owner_agent", "owner_model", "owner_thread", "run_mode")
+  end
+
+  def test_cli_fix_without_mode_preserves_known_durable_mode_when_bridge_is_missing
+    Lock.acquire(@intent_dir, session: "sess-1", run_mode: "auto")
+    _out, err, st = cli("fix")
+    assert st.success?, err
+    assert_equal "auto", Lock.read(@intent_dir)["run_mode"]
+  end
+
+  def test_cli_reclaim_accepts_explicit_owner_metadata_and_mode
+    Lock.acquire(@intent_dir, session: "other")
+    FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
+    _out, err, st = cli("reclaim", "--harness", "codex", "--agent", "plastic-enforcer",
+                        "--model", "gpt-5", "--thread", "thread-a", "--mode", "auto")
+    assert st.success?, err
+    assert_equal %w[codex plastic-enforcer gpt-5 thread-a auto],
+                 Lock.read(@intent_dir).values_at("owner_harness", "owner_agent", "owner_model",
+                                                  "owner_thread", "run_mode")
+  end
+
   def test_cli_delegate_registers_a_subagent_session
     Lock.acquire(@intent_dir, session: "sess-1")
     _out, _err, st = cli("delegate", "--delegate", "sub-1")
     assert st.success?
     assert_includes Lock.read(@intent_dir)["delegates"], "sub-1"
+  end
+
+  def test_cli_delegate_records_metadata_and_owner_marks_terminal_status
+    Lock.acquire(@intent_dir, session: "sess-1")
+    _out, err, st = cli("delegate", "--delegate", "sub-1", "--harness", "codex",
+                        "--agent", "plastic-planner", "--model", "gpt-5", "--thread", "thread-d")
+    assert st.success?, err
+    activity = Lock.read(@intent_dir)["delegate_activity"].last
+    assert_equal %w[codex plastic-planner gpt-5 thread-d active],
+                 activity.values_at("harness", "agent", "model", "thread", "status")
+
+    _out, err, st = cli("delegate", "--delegate", "sub-1", "--status", "finished",
+                        "--harness", "codex", "--agent", "plastic-planner",
+                        "--model", "gpt-5", "--thread", "thread-d")
+    assert st.success?, err
+    activity = Lock.read(@intent_dir)["delegate_activity"].last
+    assert_equal %w[codex plastic-planner gpt-5 thread-d finished],
+                 activity.values_at("harness", "agent", "model", "thread", "status")
+    assert_includes Lock.read(@intent_dir)["delegates"], "sub-1"
+  end
+
+  def test_cli_who_prints_the_most_recently_registered_delegate
+    Lock.acquire(@intent_dir, session: "sess-1", harness: "codex",
+                 agent: "plastic-enforcer")
+    Lock.add_delegate(@intent_dir, delegate: "sub-1", session: "sess-1",
+                      harness: "codex", agent: "first-agent")
+    Lock.add_delegate(@intent_dir, delegate: "sub-2", session: "sess-1",
+                      harness: "codex", agent: "second-agent")
+    Lock.add_delegate(@intent_dir, delegate: "sub-1", session: "sess-1",
+                      harness: "codex", agent: "current-agent")
+
+    out, err, st = cli("who")
+
+    assert st.success?, err
+    assert_includes out, "Delegate: current-agent via Codex, active"
+  end
+
+  def test_cli_who_prefers_current_active_then_latest_terminal_delegate
+    t0 = Time.utc(2026, 7, 14, 12, 0, 0)
+    Lock.acquire(@intent_dir, session: "sess-1", harness: "codex",
+                 agent: "plastic-enforcer", now: t0)
+    Lock.add_delegate(@intent_dir, delegate: "sub-1", session: "sess-1",
+                      harness: "codex", agent: "first-agent", now: t0 + 1)
+    Lock.add_delegate(@intent_dir, delegate: "sub-2", session: "sess-1",
+                      harness: "codex", agent: "second-agent", now: t0 + 2)
+    Lock.update_delegate_status(@intent_dir, delegate: "sub-2", status: "finished",
+                                session: "sess-1", now: t0 + 3)
+
+    out, err, st = cli("who")
+    assert st.success?, err
+    assert_includes out, "Delegate: first-agent via Codex, active"
+
+    Lock.update_delegate_status(@intent_dir, delegate: "sub-1", status: "failed",
+                                session: "sess-1", now: t0 + 4)
+    out, err, st = cli("who")
+    assert st.success?, err
+    assert_includes out, "Delegate: first-agent via Codex, failed"
+  end
+
+  def test_cli_delegate_terminal_status_rejects_nonowner_and_invalid_status
+    Lock.acquire(@intent_dir, session: "owner")
+    Lock.add_delegate(@intent_dir, delegate: "sub-1", session: "owner")
+    _out, err, st = cli("delegate", "--delegate", "sub-1", "--status", "failed",
+                        session: "intruder")
+    refute st.success?
+    assert_includes err, "owner"
+
+    _out, _err, st = cli("delegate", "--delegate", "sub-1", "--status", "active",
+                         session: "owner")
+    refute st.success?
   end
 
   def test_cli_delegate_refused_for_non_owner

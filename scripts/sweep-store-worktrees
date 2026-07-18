@@ -1,0 +1,53 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# sweep-store-worktrees (intent 178, D2) -- ONE-TIME cleanup of the store
+# worktrees Plastic used to provision under `~/.plastic/.worktrees/` before
+# intent 178 retired the mechanism. Dry-run by default; nothing is ever
+# removed without an explicit --apply, run only after reviewing the dry-run
+# report (D2: "present a dry-run for owner review before applying").
+#
+# Usage:
+#   scripts/sweep-store-worktrees              # dry run (default, safe)
+#   scripts/sweep-store-worktrees --apply       # actually remove REMOVE candidates
+#   scripts/sweep-store-worktrees --home <dir>  # override plastic_home (tests/CI only)
+
+require_relative "lib/worktree_sweep"
+
+def parse_args(argv)
+  opts = { apply: false, home: Dir.home }
+  i = 0
+  while i < argv.length
+    case argv[i]
+    when "--apply" then opts[:apply] = true
+    when "--home"  then opts[:home] = argv[i += 1]
+    else
+      warn "sweep-store-worktrees: unknown argument #{argv[i].inspect}"
+      exit 1
+    end
+    i += 1
+  end
+  opts
+end
+
+def main(argv)
+  opts = parse_args(argv)
+  plastic_home = File.expand_path(File.join(opts[:home], ".plastic"))
+  unless Dir.exist?(File.join(plastic_home, ".worktrees"))
+    puts "No #{File.join(plastic_home, '.worktrees')} directory; nothing to sweep."
+    exit 0
+  end
+
+  candidates = WorktreeSweep.candidates(plastic_home: plastic_home)
+  puts WorktreeSweep.dry_run_report(candidates)
+
+  if opts[:apply]
+    removed = WorktreeSweep.apply!(candidates, plastic_home: plastic_home)
+    puts ""
+    puts "Removed #{removed.length} worktree(s):"
+    removed.each { |c| puts "  #{c.name}" }
+  end
+end
+
+main(ARGV) if $PROGRAM_NAME == __FILE__

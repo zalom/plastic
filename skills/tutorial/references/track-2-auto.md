@@ -9,7 +9,8 @@ agent end to end, and pausing and resuming that delivery will feel familiar.
 
 ## Before you start
 
-Run `/plastic-update` first, so the commands below match what is actually installed.
+Run `/plastic-update` first (`$plastic-update` on Codex), so the commands below match what is
+actually installed.
 
 Work in a sandbox: a throwaway git repository, or a global-store intent. Nothing in this
 track touches a real project.

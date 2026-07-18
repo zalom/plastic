@@ -85,10 +85,12 @@ module DoctorTestHelpers
     dir
   end
 
-  # Build Claude hook scripts (thin wrappers)
+  # Build Claude hook scripts (thin wrappers), derived from HookRegistry
+  # (intent 204) so fixtures always cover all 15 registered hooks, not a
+  # hand-kept subset.
   def write_claude_hooks(hooks_dir)
     FileUtils.mkdir_p(hooks_dir)
-    Doctor::CLAUDE_HOOK_SCRIPTS.each do |hook|
+    HookRegistry.claude_launcher_names.each do |hook|
       path = File.join(hooks_dir, hook)
       File.write(path, "#!/bin/bash\nexit 0\n")
       File.chmod(0o755, path)
@@ -534,14 +536,14 @@ class DoctorAgentRegistrationTest < Minitest::Test
     hooks_check = checks.find { |c| c[:name] == "hooks_exist" }
 
     assert_equal "fail", hooks_check[:status]
-    assert_equal Doctor::CLAUDE_HOOK_SCRIPTS.size, hooks_check[:details].size
+    assert_equal HookRegistry.claude_launcher_names.size, hooks_check[:details].size
   end
 
   def test_non_executable_hooks_fails
     hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
     FileUtils.mkdir_p(hooks_dir)
     # Write hooks but don't make them executable
-    Doctor::CLAUDE_HOOK_SCRIPTS.each do |hook|
+    HookRegistry.claude_launcher_names.each do |hook|
       path = File.join(hooks_dir, hook)
       File.write(path, "#!/bin/bash\nexit 0\n")
       File.chmod(0o644, path)
@@ -553,7 +555,7 @@ class DoctorAgentRegistrationTest < Minitest::Test
     exec_check = checks.find { |c| c[:name] == "hooks_executable" }
 
     assert_equal "fail", exec_check[:status]
-    assert_equal Doctor::CLAUDE_HOOK_SCRIPTS.size, exec_check[:details].size
+    assert_equal HookRegistry.claude_launcher_names.size, exec_check[:details].size
   end
 
   def test_missing_settings_entries_fails
@@ -738,6 +740,79 @@ class DoctorAgentRegistrationTest < Minitest::Test
     assert_equal 1, checks.size
     assert_equal "agent_dir_exists", checks[0][:name]
     assert_equal "fail", checks[0][:status]
+  end
+
+  # --- hooks_exist / hooks_no_orphans derive from HookRegistry, not a
+  # hand-kept list (intent 204) ---
+
+  # Under the old hand-kept CLAUDE_HOOK_SCRIPTS (7 names) this launcher was
+  # never inspected, so a missing links-gate launcher would have gone
+  # unnoticed. The derived set covers all 15, so this now fails.
+  def test_missing_previously_unchecked_gate_launcher_fails_hooks_exist
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    write_claude_hooks(hooks_dir)
+    File.delete(File.join(hooks_dir, "plastic-links-gate"))
+    write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    checks = doctor.check_agent_registration("claude")
+    hooks_check = checks.find { |c| c[:name] == "hooks_exist" }
+
+    assert_equal "fail", hooks_check[:status]
+    assert_includes hooks_check[:details].join, "plastic-links-gate"
+  end
+
+  def test_orphan_launcher_not_in_registry_fails_hooks_no_orphans
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    write_claude_hooks(hooks_dir)
+    bogus = File.join(hooks_dir, "plastic-bogus-gate")
+    File.write(bogus, "#!/bin/bash\nexit 0\n")
+    File.chmod(0o755, bogus)
+    write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    checks = doctor.check_agent_registration("claude")
+    orphan_check = checks.find { |c| c[:name] == "hooks_no_orphans" }
+
+    assert_equal "warn", orphan_check[:status]
+    assert_includes orphan_check[:details].join, "plastic-bogus-gate"
+  end
+
+  def test_statusline_launcher_not_flagged_as_orphan
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    write_claude_hooks(hooks_dir)
+    statusline = File.join(hooks_dir, "plastic-statusline")
+    File.write(statusline, "#!/bin/bash\nexit 0\n")
+    File.chmod(0o755, statusline)
+    write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    checks = doctor.check_agent_registration("claude")
+    orphan_check = checks.find { |c| c[:name] == "hooks_no_orphans" }
+
+    assert_equal "pass", orphan_check[:status],
+                 "plastic-statusline is the statusLine entry point, not a hook: #{orphan_check[:details].inspect}"
+  end
+
+  def test_all_fifteen_launchers_plus_statusline_pass_hooks_exist_and_no_orphans
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    write_claude_hooks(hooks_dir)
+    statusline = File.join(hooks_dir, "plastic-statusline")
+    File.write(statusline, "#!/bin/bash\nexit 0\n")
+    File.chmod(0o755, statusline)
+    write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+    write_agents(DOCTOR_TEST_CLAUDE)
+
+    checks = doctor.check_agent_registration("claude")
+    hooks_check = checks.find { |c| c[:name] == "hooks_exist" }
+    exec_check = checks.find { |c| c[:name] == "hooks_executable" }
+    orphan_check = checks.find { |c| c[:name] == "hooks_no_orphans" }
+
+    assert_equal 15, HookRegistry.claude_launcher_names.size
+    assert_equal "pass", hooks_check[:status]
+    assert_equal "pass", exec_check[:status]
+    assert_equal "pass", orphan_check[:status]
   end
 end
 

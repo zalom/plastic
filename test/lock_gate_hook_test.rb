@@ -89,6 +89,15 @@ class LockGateHookTest < Minitest::Test
     assert_includes out, "/plastic-intent-starting"
   end
 
+  def test_fresh_foreign_lock_denies_naming_slash_prefix_by_default
+    Lock.acquire(@intent_dir, session: "other-session")
+    out, status = run_hook(@intent_file, session: "sess-1")
+    assert_equal 0, status.exitstatus
+    assert denied?(out), "fresh foreign lock must deny: #{out.inspect}"
+    assert_includes out, "/plastic-doctor check the lock status"
+    refute_includes out, "$plastic-doctor"
+  end
+
   # (b) guided lock for THIS session + write to that intent's dir -> ALLOW.
   def test_guided_lock_this_session_allows
     silence_stderr do

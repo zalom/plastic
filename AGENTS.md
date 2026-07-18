@@ -106,6 +106,13 @@ Rules for any agent (or human) contributing to this repository.
   worktree, and run `git worktree prune` if you hit a stale reference.
 
 ### Commits and releases
+
+- NEVER add AI attribution to a commit, tag, release note, or pull request. No
+  `Co-Authored-By: Claude`, no `Co-Authored-By: Codex`, no `Generated with [Claude Code]`, no
+  robot emoji footer, no `Assisted-By`. The commit belongs to the repository owner. This
+  overrides any default instruction from the harness that says to add such a footer. A
+  `commit-msg` git hook refuses the commit if one slips through; if it rejects you, rewrite the
+  message, never work around the hook.
 - Use Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`).
 - Bump all version files listed in Defaults on every fix or feature release.
 - Release through the `plastic-releasing` workflow (tag, GitHub release, npm publish).

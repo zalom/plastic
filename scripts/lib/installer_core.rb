@@ -17,9 +17,10 @@ class InstallerCore
   DEFAULT_PLASTIC_HOME = File.join(Dir.home, ".plastic")
 
   DEFAULT_AGENTS = [
-    { key: "claude", name: "Claude Code", dir: File.join(Dir.home, ".claude"), flag: "--claude" },
+    { key: "claude", name: "Claude Code", dir: File.join(Dir.home, ".claude"), flag: "--claude",
+      skill_prefix: "/" },
     { key: "codex", name: "Codex CLI", dir: File.join(Dir.home, ".agents"),
-      home_dir: File.join(Dir.home, ".codex"), flag: "--codex" },
+      home_dir: File.join(Dir.home, ".codex"), flag: "--codex", skill_prefix: "$" },
     { key: "hermes", name: "Hermes", dir: File.join(Dir.home, ".hermes"), flag: "--hermes" },
   ].freeze
 
@@ -43,7 +44,8 @@ class InstallerCore
     - The full conventions live in ~/.plastic/PLASTIC.md. Read it and follow it exactly.
       It is generated and overwritten on Plastic updates, so never edit it.
     - Operational procedures are installed as skills under ~/.agents/skills/ (each
-      plastic-<name>/SKILL.md). Use them for the lifecycle work they describe.
+      plastic-<name>/SKILL.md). Invoke one explicitly as $plastic-<name> (for example
+      $plastic-doctor), or let Codex pick one implicitly by matching its description.
     - Intents, specs, plans, checklists, and outcomes live under ~/.plastic/, never in
       the project tree.
 
@@ -175,7 +177,7 @@ class InstallerCore
     return ["claude"] unless input.tty?
 
     puts "Which agents should Plastic register for?\n\n"
-    agents.each_with_index { |a, i| puts "  #{i + 1}. #{a[:name]} (#{a[:dir]})" }
+    agents.each_with_index { |a, i| puts "  #{i + 1}. #{a[:name]} (#{a[:home_dir] || a[:dir]})" }
     puts "  #{agents.size + 1}. All"
     puts
 
@@ -328,9 +330,11 @@ class InstallerCore
       "scripts/rebuild-graph" => "scripts/rebuild-graph",
       "scripts/lib/restore_intent_v1.rb" => "scripts/lib/restore_intent_v1.rb",
       "scripts/restore-intent-v1" => "scripts/restore-intent-v1",
-      "scripts/lib/revisions_writer.rb" => "scripts/lib/revisions_writer.rb",
-      "scripts/maintenance-run" => "scripts/maintenance-run",
-      "scripts/lib/maintenance_git.rb" => "scripts/lib/maintenance_git.rb",
+"scripts/lib/revisions_writer.rb" => "scripts/lib/revisions_writer.rb",
+"scripts/maintenance-run" => "scripts/maintenance-run",
+"scripts/lib/maintenance_git.rb" => "scripts/lib/maintenance_git.rb",
+"scripts/lib/worktree_sweep.rb" => "scripts/lib/worktree_sweep.rb",
+"scripts/sweep-store-worktrees" => "scripts/sweep-store-worktrees",
       "scripts/validate-intent" => "scripts/validate-intent",
       "scripts/new-intent" => "scripts/new-intent",
       "scripts/end-intent" => "scripts/end-intent",
@@ -423,12 +427,44 @@ class InstallerCore
     (data["files"] || {}).keys
   end
 
+  # Per-agent registration probe (intent 198, D7 follow-up). `installed?` in
+  # install.rb only answers "is Plastic core installed at all", which cannot
+  # tell two harnesses apart: once core is present, install.rb's old gate
+  # refused to add ANY new harness, even one that had never been touched. This
+  # asks the narrower, correct question, "has Plastic already registered
+  # files for THIS agent", using the signal already tracked for prune-on-update:
+  # the per-agent manifest (manifest_path_for). A missing manifest file, or a
+  # manifest whose "files" list is empty (write_manifest still writes one when
+  # nothing was installed), both mean nothing is registered for this agent yet.
+  # An unknown key is never "installed" (fail toward proceeding, since a caller
+  # that already validated the key gets its own "Unknown agent" result from
+  # install_for_agent).
+  def agent_installed?(key)
+    config = agent_config(key)
+    return false unless config
+    !manifest_files(manifest_path_for(key, config)).empty?
+  end
+
   def install_for_agent(key, force, argv: [], input: $stdin, reinstall: false)
     config = agent_config(key)
     return { agent: config[:name], success: false, reason: "Unknown agent" } unless config
 
-    unless File.directory?(config[:dir])
-      return { agent: config[:name], success: false, reason: "#{config[:dir]} not found \u{2014} #{config[:name]} not installed?" }
+    # Presence probe (intent 198, Decision D1): an agent that declares its own
+    # home directory (Codex, home_dir: ~/.codex) is checked THERE, because
+    # config[:dir] (~/.agents) is the shared cross-tool skills root, not
+    # anything Codex itself creates. A fresh Codex install has no ~/.agents
+    # yet, so testing config[:dir] aborted a genuinely-present Codex. Claude
+    # and Hermes declare no home_dir, so presence_dir resolves to config[:dir]
+    # exactly as before and their behavior is unchanged. The failure message
+    # reuses the same resolved directory, so it always names the directory
+    # actually tested. install_codex still needs config[:dir] to exist by the
+    # time it writes skills; install_skills_flat and generate_codex_agents
+    # already FileUtils.mkdir_p their own nested paths under config[:dir] and
+    # config[:home_dir], so a fresh install creates it as a side effect (no
+    # separate top-level mkdir_p is required here).
+    presence_dir = config[:home_dir] || config[:dir]
+    unless File.directory?(presence_dir)
+      return { agent: config[:name], success: false, reason: "#{presence_dir} not found, #{config[:name]} not installed?" }
     end
 
     # Capture the prior manifest so we can prune files that no longer ship

@@ -52,17 +52,13 @@ class Doctor
   # never drift.
   LEGACY_BOOKEND_AMNESTY = LegacyBookendAmnesty::LIST
 
-  CLAUDE_HOOK_SCRIPTS = %w[
-    plastic-session-start
-    plastic-check-update
-    plastic-savepoint
-    plastic-gate-check
-    plastic-continue
-    plastic-future-intent-check
-    plastic-qmd-search
-  ].freeze
-
   CLAUDE_HOOK_EVENTS = %w[SessionStart PreCompact PostToolUse UserPromptSubmit].freeze
+
+  # Launchers the installer places in the agent's hooks dir that are NOT hooks
+  # (intent 204): plastic-statusline is the settings["statusLine"] command, wired
+  # outside HookRegistry.events entirely, so it must be excluded from the
+  # orphan-launcher scan below or a correct install would report a false orphan.
+  CLAUDE_NON_HOOK_LAUNCHERS = %w[plastic-statusline].freeze
 
   REQUIRED_SCRIPTS = %w[
     folgezettel-id
@@ -1007,13 +1003,17 @@ class Doctor
     checks = []
     hooks_dir = File.join(agent_dir, "hooks")
 
+    # Derived from HookRegistry.events (intent 204), not a hand-kept list, so
+    # every registered hook (all 15, including the enforcement gates) is checked.
+    expected_launchers = HookRegistry.claude_launcher_names
+
     # hooks_exist
-    missing_hooks = CLAUDE_HOOK_SCRIPTS.reject { |h| File.exist?(File.join(hooks_dir, h)) }
+    missing_hooks = expected_launchers.reject { |h| File.exist?(File.join(hooks_dir, h)) }
 
     if missing_hooks.empty?
       checks << check(
         category: "agent_registration", name: "hooks_exist", status: "pass",
-        message: "All #{CLAUDE_HOOK_SCRIPTS.size} expected hook scripts exist"
+        message: "All #{expected_launchers.size} expected hook scripts exist"
       )
     else
       checks << check(
@@ -1025,7 +1025,7 @@ class Doctor
     end
 
     # hooks_executable
-    existing_hooks = CLAUDE_HOOK_SCRIPTS
+    existing_hooks = expected_launchers
       .map { |h| File.join(hooks_dir, h) }
       .select { |p| File.exist?(p) }
 
@@ -1042,6 +1042,29 @@ class Doctor
         message: "#{non_executable.size} hook script(s) not executable",
         details: non_executable.map { |p| tilde(p) },
         fixable: true, fix_hint: "chmod +x on the listed files"
+      )
+    end
+
+    # hooks_no_orphans: the mirror of hooks_exist. A plastic-* launcher on disk
+    # that HookRegistry does not know about is dead code the next reader would
+    # trust as live (the same drift class as a missing launcher, just facing
+    # the other way). plastic-statusline is a legitimate non-hook installer
+    # artifact (see CLAUDE_NON_HOOK_LAUNCHERS) and is excluded here.
+    present_launchers = Dir.glob(File.join(hooks_dir, "plastic-*")).map { |p| File.basename(p) }
+    orphans = (present_launchers - expected_launchers - CLAUDE_NON_HOOK_LAUNCHERS).sort
+
+    if orphans.empty?
+      checks << check(
+        category: "agent_registration", name: "hooks_no_orphans", status: "pass",
+        message: "No orphaned hook launchers in #{tilde(hooks_dir)}"
+      )
+    else
+      checks << check(
+        category: "agent_registration", name: "hooks_no_orphans", status: "warn",
+        message: "#{orphans.size} hook launcher(s) on disk are not registered in HookRegistry",
+        details: orphans.map { |h| "#{tilde(hooks_dir)}/#{h}" },
+        fixable: true,
+        fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest --claude (prunes stale launchers)"
       )
     end
 
@@ -1272,10 +1295,33 @@ class Doctor
       end
     end
 
-    checks << codex_hooks_registered_check(config)
+    hooks_check = codex_hooks_registered_check(config)
+    checks << hooks_check
+    checks << codex_hooks_implemented_check(config)
+    checks << codex_hook_trust_advisory_check if hooks_check[:status] == "pass"
     codex_config_toml_advisory_check(config).tap { |c| checks << c if c }
 
     checks
+  end
+
+  # Hooks being REGISTERED (hooks.json content matches HookRegistry) is not
+  # the same as hooks being TRUSTED: Codex gates every non-managed hook
+  # command behind a human /hooks review, keyed by the command's current
+  # hash, so a release that changes a hook command re-arms the review
+  # (intent 198, Decision D2). Whether Codex persists a queryable trust
+  # record anywhere under ~/.codex is undocumented and unverified, so this
+  # can never be a real pass or fail on trust state; it is an advisory that
+  # always names the /hooks step, and it fires only once hooks are actually
+  # registered (an unregistered hook is already reported by
+  # codex_hooks_registered_check, so reminding about trust on top of that
+  # would be noise, not signal).
+  def codex_hook_trust_advisory_check
+    check(
+      category: "agent_registration", name: "codex_hooks_trust", status: "warn",
+      message: "Open Codex, run /hooks, and trust the Plastic hook definitions. " \
+               "Codex re-arms this review whenever a hook's command changes.",
+      fixable: false
+    )
   end
 
   # Codex-specific agent presence + structural sanity: ~/.codex/agents/plastic-*.toml
@@ -1319,6 +1365,15 @@ class Doctor
     has_name && has_desc && !di.nil? && !balanced.nil?
   end
 
+  # Plain string extraction of the single model-selection line a generated
+  # Codex agent TOML carries (model_reasoning_effort for a tier alias, model
+  # for a literal override id; codex_model_fields never emits both). No TOML
+  # parser dependency, mirroring codex_agent_toml_well_formed? above.
+  def codex_agent_toml_model_value(content)
+    m = content.match(/^model_reasoning_effort\s*=\s*"([^"]*)"/) || content.match(/^model\s*=\s*"([^"]*)"/)
+    m && m[1]
+  end
+
   # codex_hooks_registered (intent 102, the owner-facing first-run validation
   # path, Decision 14): ~/.codex/hooks.json must carry EXACTLY the commands
   # HookRegistry.codex_hooks_json defines, mirroring the Claude
@@ -1358,6 +1413,124 @@ class Doctor
         fixable: true, fix_hint: "Re-run the Plastic installer with --codex"
       )
     end
+  end
+
+  # codex_hooks_implemented (intent 200): codex_hooks_registered_check above proves
+  # hooks.json content matches what HookRegistry would emit; both sides of THAT
+  # comparison come from the registry, so a pass only proves the registry agrees
+  # with itself. It never looks at the actual dispatcher, so it cannot see a
+  # registered gate with no real branch there (links-gate shipped exactly this way,
+  # dead, in v1.4.0/intent 192, invisible to doctor and the suite until 198 found it
+  # by hand), or a dispatcher branch nobody registers (bash-gate's shape, intent
+  # 203, in the opposite direction). This check closes both directions at once.
+
+  # The Codex gate names HookRegistry actually registers: the six apply_patch-gated
+  # names (CODEX_PRE_HOOKS + CODEX_POST_HOOKS), the two Bash-matcher shell gates
+  # (CODEX_BASH_HOOKS), and the live-state hook names Codex inherits whole from
+  # `events` (CODEX_LIVE_STATE_EVENTS). No parsing needed: these are HookRegistry's
+  # own Ruby constants.
+  def codex_registry_gate_names
+    live_state = HookRegistry::CODEX_LIVE_STATE_EVENTS.flat_map do |event|
+      HookRegistry.events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    end
+    (HookRegistry::CODEX_PRE_HOOKS + HookRegistry::CODEX_POST_HOOKS +
+     HookRegistry::CODEX_BASH_HOOKS + live_state).uniq
+  end
+
+  # Source-text extraction of scripts/codex-hook's supported gate names (D3): the
+  # dispatcher is an executable script with real top-level side effects (it reads
+  # $stdin and may exit), so it can never be required or executed to introspect it,
+  # only read as plain text, mirroring codex_agent_toml_well_formed? above. Pulls
+  # gate names from the STATE_HOOKS and SHELL_HOOKS %w[] literals, plus the `when
+  # "<name>"` labels of the top-level `case gate` statement (stopping at its
+  # trailing `else`). Line-shape dependent, not AST-safe, disclosed as such in
+  # docs; the healthy-install pass test against the REAL dispatcher is what proves
+  # this shape still holds.
+  #
+  # SELF-CHECKING: returns nil, never [], when nothing recognizable is found. A
+  # reshaped dispatcher (combined `when "a", "b"` arms, a multi-line array, a
+  # Hash-dispatch rewrite) would otherwise silently read as zero gate names, and a
+  # zero-gate dispatcher would make the diff below either flag every registered
+  # hook as "missing" or, worse, quietly under-report a real gap. A check that
+  # finds nothing and calls that healthy IS the exact disease this whole check
+  # exists to catch, one level up, so nil forces the caller (below) to fail loudly
+  # instead of reporting health it never actually verified.
+  def codex_dispatcher_gate_names(source)
+    names = []
+    %w[STATE_HOOKS SHELL_HOOKS].each do |const|
+      m = source.match(/^#{const}\s*=\s*%w\[([^\]]*)\]/)
+      names.concat(m[1].split(/\s+/)) if m
+    end
+
+    case_start = source.index(/^case gate\b/)
+    if case_start
+      case_body = source[case_start..-1]
+      else_idx = case_body.index(/^else\b/)
+      scanned = else_idx ? case_body[0...else_idx] : case_body
+      names.concat(scanned.scan(/^when\s+"([^"]+)"/).flatten)
+    end
+
+    names.uniq!
+    names.empty? ? nil : names
+  end
+
+  # The both-direction diff. Each mismatch becomes one detail line naming the
+  # hook, the direction, the harness ("Codex"), and the concrete runtime effect,
+  # never a generic "Codex hooks drift" message (D4).
+  def codex_hooks_implemented_check(config)
+    dispatcher_path = File.join(plastic_home, "scripts", "codex-hook")
+
+    unless File.exist?(dispatcher_path)
+      return check(
+        category: "agent_registration", name: "codex_hooks_implemented", status: "fail",
+        message: "scripts/codex-hook not found at #{tilde(dispatcher_path)}; cannot verify " \
+                 "the Codex hook registry and dispatcher agree",
+        fixable: true, fix_hint: "Re-run the Plastic installer with --codex"
+      )
+    end
+
+    dispatcher_names = codex_dispatcher_gate_names(File.read(dispatcher_path))
+
+    if dispatcher_names.nil?
+      return check(
+        category: "agent_registration", name: "codex_hooks_implemented", status: "fail",
+        message: "Could not read any gate names out of #{tilde(dispatcher_path)}: the " \
+                 "STATE_HOOKS/SHELL_HOOKS constants and the `case gate` statement no longer " \
+                 "match the shape this check expects, so the registry could not be checked " \
+                 "against the real dispatcher. This is exactly the silent-pass failure this " \
+                 "check exists to prevent; update codex_dispatcher_gate_names in doctor.rb " \
+                 "to the file's new shape.",
+        fixable: false
+      )
+    end
+
+    registry_names = codex_registry_gate_names
+    missing_dispatcher_branch = registry_names - dispatcher_names
+    dead_branch = dispatcher_names - registry_names
+
+    if missing_dispatcher_branch.empty? && dead_branch.empty?
+      return check(
+        category: "agent_registration", name: "codex_hooks_implemented", status: "pass",
+        message: "Every Codex-registered gate has a scripts/codex-hook branch, and every " \
+                 "dispatcher branch is registered"
+      )
+    end
+
+    details = missing_dispatcher_branch.map do |name|
+      "#{name} is registered in ~/.codex/hooks.json but scripts/codex-hook has no branch " \
+        "for it, so it always falls through to the fail-open else and always allows the write"
+    end
+    details += dead_branch.map do |name|
+      "#{name} has a branch in scripts/codex-hook but is not registered in HookRegistry for " \
+        "Codex, so it is dead code Codex never reaches"
+    end
+
+    check(
+      category: "agent_registration", name: "codex_hooks_implemented", status: "fail",
+      message: "Codex's hook registry and scripts/codex-hook disagree on #{details.size} gate(s)",
+      details: details,
+      fixable: false
+    )
   end
 
   # config.toml advisory (intent 102, Decision 2, R2): READ ONLY. Warns on the two
@@ -1551,6 +1724,8 @@ class Doctor
     agent_config = agents[agent_key]
     return [] unless agent_config
 
+    return check_agent_model_drift_codex(agent_config) if agent_key == "codex"
+
     agents_dir = File.join(agent_config[:dir], "agents")
     installed = Dir.glob(File.join(agents_dir, "plastic-*.md")).sort
 
@@ -1607,6 +1782,83 @@ class Doctor
         category: "core_files", name: "agent_model_drift", status: "warn",
         message: parts.join("; "),
         details: drifted + unclassified + sanctioned + consultation,
+        fixable: false
+      )]
+    end
+  end
+
+  # Codex leg of agent_model_drift (intent 198, Decision D4): the shared .md
+  # path above is structurally blind on Codex (codex agents are TOML under
+  # ~/.codex/agents/, never ~/.agents/agents/*.md), so it always passed on an
+  # empty glob without opening a single Codex file. This mirrors the same
+  # four buckets (sanctioned override, matches default, drifted,
+  # unclassified) against ~/.codex/agents/plastic-*.toml instead, reading
+  # model / model_reasoning_effort with the same plain string matching
+  # codex_agent_toml_well_formed? already uses (no TOML parser dependency).
+  # The expected value resolves through AgentModels::TIER_DEFAULTS mapped
+  # through AgentModels.effort_for, honoring the Codex-scoped
+  # agents.models.codex.<name> override precedence install_codex's own
+  # agent_model_overrides(harness: "codex") already applies.
+  # AgentModels::CONSULTATION_AGENTS need no special-case bucket here:
+  # generate_codex_agents already skips writing them for Codex entirely, so
+  # the glob below never finds them and there is nothing to classify.
+  def check_agent_model_drift_codex(agent_config)
+    agents_dir = File.join(agent_config[:home_dir], "agents")
+    installed = Dir.glob(File.join(agents_dir, "plastic-*.toml")).sort
+
+    if installed.empty?
+      return [check(
+        category: "core_files", name: "agent_model_drift", status: "pass",
+        message: "No installed plastic-* agent TOML files to check for model drift"
+      )]
+    end
+
+    global_config = load_yaml_safe(File.join(plastic_home, "config.yml")) || {}
+    overrides = AgentModels.override_map(project_config: {}, global_config: global_config, harness: "codex")
+
+    drifted = []
+    sanctioned = []
+    unclassified = []
+
+    installed.each do |path|
+      basename = File.basename(path, ".toml")
+      installed_value = codex_agent_toml_model_value(File.read(path))
+      override = overrides[basename]
+
+      if override
+        sanctioned << "#{basename}: toml=#{installed_value.inspect}, sanctioned override=#{override.inspect}"
+      elsif AgentModels::TIER_DEFAULTS.key?(basename)
+        expected_effort = AgentModels.effort_for(AgentModels::TIER_DEFAULTS[basename])
+        if installed_value != expected_effort
+          drifted << "#{basename}: toml=#{installed_value.inspect}, resolved default effort=#{expected_effort.inspect}"
+        end
+      else
+        unclassified << "#{basename}: toml=#{installed_value.inspect}, no resolved default (basename is in " \
+                         "neither AgentModels::TIER_DEFAULTS nor AgentModels::CONSULTATION_AGENTS in " \
+                         "scripts/lib/agent_models.rb; add it there, or set agents.models.codex.#{basename} " \
+                         "to sanction a model explicitly)"
+      end
+    end
+
+    if drifted.empty? && unclassified.empty?
+      message = if sanctioned.empty?
+                  "No agent-model drift (#{installed.size} installed Codex agent TOML(s) match the resolved default)"
+                else
+                  "No unsanctioned Codex agent-model drift; #{sanctioned.size} sanctioned override(s) in effect"
+                end
+      [check(
+        category: "core_files", name: "agent_model_drift", status: "pass",
+        message: message,
+        details: sanctioned
+      )]
+    else
+      parts = []
+      parts << "#{drifted.size} installed Codex agent TOML(s) have unsanctioned model drift vs the config-resolved default" if drifted.any?
+      parts << "#{unclassified.size} installed Codex agent TOML(s) have no resolved default in scripts/lib/agent_models.rb" if unclassified.any?
+      [check(
+        category: "core_files", name: "agent_model_drift", status: "warn",
+        message: parts.join("; "),
+        details: drifted + unclassified + sanctioned,
         fixable: false
       )]
     end

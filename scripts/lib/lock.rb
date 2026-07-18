@@ -24,7 +24,30 @@ require "time"
 module Lock
   module_function
 
+  # Skill-invocation prefix per harness (intent 201, D2/D3). Claude Code invokes a
+  # skill with a slash (/plastic-doctor); Codex CLI invokes explicitly with a
+  # dollar ($plastic-doctor) and may also select one implicitly by matching the
+  # skill's description. This table is the actual source of truth for
+  # Bridge.skill_ref (bridge.rb requires lock.rb, never the reverse, so the
+  # table lives here rather than pulling Bridge into this dependency-free file
+  # just to render two characters). InstallerCore::DEFAULT_AGENTS carries the
+  # same values per adapter as documented config (see ACTION_2); this constant
+  # is not read from it at runtime, by the same reasoning bridge.rb/hook-*
+  # already stay clear of installer_core.rb (spec Alternatives Considered).
+  SKILL_PREFIXES = { "claude" => "/", "codex" => "$" }.freeze
+
+  # Renders a skill reference for the given harness. Unset or unrecognized
+  # harness falls back to Claude's slash form, so an existing call site that
+  # never passes harness: keeps behaving exactly as it does today (D2). name
+  # is the bare skill name ("plastic-doctor"), never pre-prefixed.
+  def self.skill_ref(name, harness: :claude)
+    prefix = SKILL_PREFIXES.fetch(harness.to_s, SKILL_PREFIXES["claude"])
+    "#{prefix}#{name}"
+  end
+
   TYPES = %w[delivery maintenance].freeze
+  DELEGATE_ACTIVITY_LIMIT = 20
+  DELEGATE_STATUSES = %w[active finished failed].freeze
 
   # Lease TTL. Heartbeats fire from the write-path hooks (PostToolUse
   # gate-check and the lock-gate allow path), so a delivering session
@@ -84,7 +107,8 @@ module Lock
   #   [:excluded, other] the OTHER lock type is fresh (D3)
   #   [:corrupt, nil]    unparseable lock file: run repair
   def acquire(intent_dir, session:, type: "delivery", host: Socket.gethostname,
-              ttl: TTL_SECONDS, now: Time.now)
+              ttl: TTL_SECONDS, now: Time.now, harness: nil, agent: nil,
+              model: nil, thread: nil, run_mode: nil)
     raise ArgumentError, "unknown lock type #{type.inspect}" unless TYPES.include?(type)
     raise ArgumentError, "lock session must be present" if blank?(session)
 
@@ -99,7 +123,13 @@ module Lock
     if existing
       if existing["owner_session"].to_s == session.to_s
         data = payload(session: session, type: type, host: host, now: now,
-                       delegates: Array(existing["delegates"]))
+                       delegates: Array(existing["delegates"]),
+                       delegate_activity: Array(existing["delegate_activity"]),
+                       harness: merged_value(harness, existing["owner_harness"]),
+                       agent: merged_value(agent, existing["owner_agent"]),
+                       model: merged_value(model, existing["owner_model"]),
+                       thread: merged_value(thread, existing["owner_thread"]),
+                       run_mode: merged_value(run_mode, existing["run_mode"]))
         write(intent_dir, data, type: type)
         return [:owned, data]
       end
@@ -107,7 +137,9 @@ module Lock
       return [:stale, existing]
     end
 
-    data = payload(session: session, type: type, host: host, now: now)
+    data = payload(session: session, type: type, host: host, now: now,
+                   harness: harness, agent: agent, model: model, thread: thread,
+                   run_mode: run_mode)
     File.open(path(intent_dir, type: type),
               File::WRONLY | File::CREAT | File::EXCL) do |io|
       io.write(JSON.pretty_generate(data))
@@ -117,14 +149,47 @@ module Lock
     [:held, read(intent_dir, type: type)] # lost the O_EXCL race
   end
 
-  def payload(session:, type:, host:, now:, delegates: [])
+  def payload(session:, type:, host:, now:, delegates: [], delegate_activity: [],
+              harness: nil, agent: nil, model: nil, thread: nil, run_mode: nil)
     {
       "type" => type,
       "owner_session" => session.to_s,
       "host" => host,
       "acquired_at" => now.utc.iso8601,
       "delegates" => delegates,
+      "owner_harness" => normalized_value(harness),
+      "owner_agent" => normalized_value(agent),
+      "owner_model" => normalized_value(model),
+      "owner_thread" => normalized_value(thread),
+      "run_mode" => normalized_value(run_mode),
+      "delegate_activity" => bounded_delegate_activity(delegate_activity, delegates: delegates),
     }
+  end
+
+  def normalized_value(value)
+    blank?(value) ? nil : value.to_s
+  end
+
+  def merged_value(explicit, existing)
+    blank?(explicit) ? normalized_value(existing) : explicit.to_s
+  end
+
+  # Keep every active record that still names an authorized delegate, while
+  # bounding completed history. Active work is current truth and must never be
+  # evicted merely because newer delegates finished.
+  def bounded_delegate_activity(records, delegates:)
+    records = Array(records)
+    authorized = Array(delegates).map(&:to_s)
+    terminal_indexes = records.each_index.reject do |index|
+      record = records[index]
+      record.is_a?(Hash) && record["status"].to_s == "active" &&
+        authorized.include?(record["session"].to_s)
+    end.last(DELEGATE_ACTIVITY_LIMIT)
+    records.each_with_index.filter_map do |record, index|
+      active = record.is_a?(Hash) && record["status"].to_s == "active" &&
+               authorized.include?(record["session"].to_s)
+      record if active || terminal_indexes.include?(index)
+    end
   end
 
   # Owner/delegate heartbeat: touch the mtime, never rewrite content.
@@ -136,11 +201,49 @@ module Lock
 
   # Owner registers a delegate (D4): a session allowed to write under this
   # lock. Only the OWNER may delegate; delegates cannot re-delegate.
-  def add_delegate(intent_dir, delegate:, session:, type: "delivery")
+  def add_delegate(intent_dir, delegate:, session:, type: "delivery", now: Time.now,
+                   harness: nil, agent: nil, model: nil, thread: nil)
     data = read(intent_dir, type: type)
     return false if blank?(delegate)
     return false unless data && data["owner_session"].to_s == session.to_s
     data["delegates"] = (Array(data["delegates"]) + [delegate.to_s]).uniq
+    activity = Array(data["delegate_activity"])
+    previous = activity.find { |record| record.is_a?(Hash) && record["session"].to_s == delegate.to_s }
+    activity.reject! { |record| record.is_a?(Hash) && record["session"].to_s == delegate.to_s }
+    record = {
+      "session" => delegate.to_s,
+      "status" => "active",
+      "registered_at" => now.utc.iso8601,
+      "last_activity_at" => now.utc.iso8601,
+      "harness" => merged_value(harness, previous && previous["harness"]),
+      "agent" => merged_value(agent, previous && previous["agent"]),
+      "model" => merged_value(model, previous && previous["model"]),
+      "thread" => merged_value(thread, previous && previous["thread"]),
+    }
+    data["delegate_activity"] = bounded_delegate_activity(activity + [record],
+                                                          delegates: data["delegates"])
+    write(intent_dir, data, type: type)
+    true
+  end
+
+  # Activity metadata is observational only. Finishing or failing a delegate
+  # never removes its string session id from the authorization list.
+  def update_delegate_status(intent_dir, delegate:, status:, session:, type: "delivery",
+                             now: Time.now)
+    return false unless (DELEGATE_STATUSES - ["active"]).include?(status.to_s)
+    data = read(intent_dir, type: type)
+    return false unless data && data["owner_session"].to_s == session.to_s
+    activity = Array(data["delegate_activity"])
+    index = activity.index do |record|
+      record.is_a?(Hash) && record["session"].to_s == delegate.to_s
+    end
+    return false unless index
+    activity[index] = activity[index].merge(
+      "status" => status.to_s,
+      "last_activity_at" => now.utc.iso8601
+    )
+    data["delegate_activity"] = bounded_delegate_activity(activity,
+                                                          delegates: data["delegates"])
     write(intent_dir, data, type: type)
     true
   end
@@ -164,7 +267,8 @@ module Lock
   # lock; there is no silent reclaim path anywhere else.
   # Returns [:taken, data], [:fresh, existing], or acquire's error statuses.
   def takeover(intent_dir, session:, type: "delivery", host: Socket.gethostname,
-               ttl: TTL_SECONDS, now: Time.now)
+               ttl: TTL_SECONDS, now: Time.now, harness: nil, agent: nil,
+               model: nil, thread: nil, run_mode: nil)
     existing = read(intent_dir, type: type)
     if existing && !authorized?(existing, session) &&
        fresh?(intent_dir, type: type, ttl: ttl, now: now)
@@ -175,7 +279,8 @@ module Lock
     p = path(intent_dir, type: type)
     File.delete(p) if File.exist?(p)
     status, data = acquire(intent_dir, session: session, type: type, host: host,
-                           ttl: ttl, now: now)
+                           ttl: ttl, now: now, harness: harness, agent: agent,
+                           model: model, thread: thread, run_mode: run_mode)
     return [status, data] unless status == :acquired
 
     audit = "#{now.utc.iso8601}  Lock  takeover: #{session} reclaimed #{type} " \
@@ -189,6 +294,75 @@ module Lock
   # activity.
   def write(intent_dir, data, type: "delivery")
     File.write(path(intent_dir, type: type), JSON.pretty_generate(data))
+  end
+
+  # Read-only normalized inspection. The lock file and its mtime remain the
+  # sole sources of owner and heartbeat truth; no environment or transcript
+  # inference belongs here.
+  def who(intent_dir, ttl: TTL_SECONDS, now: Time.now)
+    p = path(intent_dir)
+    unless File.exist?(p)
+      return { "state" => "none",
+               "claims" => Claim.claims_status(intent_dir, ttl: ttl, now: now) }
+    end
+    data = read(intent_dir)
+    unless data
+      return { "state" => "corrupt",
+               "claims" => Claim.claims_status(intent_dir, ttl: ttl, now: now) }
+    end
+
+    activity = Array(data["delegate_activity"])
+    activity_by_session = activity.each_with_object({}) do |record, memo|
+      memo[record["session"].to_s] = record if record.is_a?(Hash)
+    end
+    authorized_sessions = Array(data["delegates"]).map(&:to_s)
+    activity_sessions = activity.filter_map do |record|
+      record["session"].to_s if record.is_a?(Hash) &&
+                                authorized_sessions.include?(record["session"].to_s)
+    end.uniq
+    activity_order = activity.each_with_index.each_with_object({}) do |(record, index), memo|
+      memo[record["session"].to_s] = index if record.is_a?(Hash)
+    end
+    activity_sessions.sort_by! do |session|
+      record = activity_by_session[session] || {}
+      # Active delegates are current ahead of terminal delegates. Within that
+      # group, latest activity wins; original record order is the stable
+      # fallback for legacy records without timestamps.
+      [record["status"].to_s == "active" ? 1 : 0,
+       record["last_activity_at"].to_s, activity_order.fetch(session, -1)]
+    end
+    # Legacy string-only delegates retain their authorization order. Rich
+    # records follow in deterministic current/latest order, so consumers may
+    # reliably take the last projection entry: the most recent active delegate
+    # when one exists, otherwise the most recent terminal activity.
+    ordered_sessions = (authorized_sessions - activity_sessions) + activity_sessions
+    delegates = ordered_sessions.map do |session|
+      record = activity_by_session[session] || {}
+      {
+        "session" => session,
+        "harness" => normalized_value(record["harness"]) || "unknown",
+        "agent" => normalized_value(record["agent"]) || "unknown",
+        "model" => normalized_value(record["model"]) || "unknown",
+        "thread" => normalized_value(record["thread"]) || "unknown",
+        "status" => normalized_value(record["status"]) || "unknown",
+        "registered_at" => record["registered_at"],
+        "last_activity_at" => record["last_activity_at"],
+      }
+    end
+    {
+      "state" => fresh?(intent_dir, ttl: ttl, now: now) ? "fresh" : "stale",
+      "owner" => {
+        "harness" => normalized_value(data["owner_harness"]) || "unknown",
+        "agent" => normalized_value(data["owner_agent"]) || "unknown",
+        "model" => normalized_value(data["owner_model"]) || "unknown",
+        "thread" => normalized_value(data["owner_thread"]) || "unknown",
+        "run_mode" => normalized_value(data["run_mode"]) || "unknown",
+      },
+      "owner_session" => data["owner_session"],
+      "heartbeat_at" => File.mtime(p).utc.iso8601,
+      "delegates" => delegates,
+      "claims" => Claim.claims_status(intent_dir, ttl: ttl, now: now),
+    }
   end
 end
 
@@ -359,7 +533,8 @@ module Claim
   # ENGAGES only when a claim file exists (dormant otherwise, so single-owner flows
   # and the existing suite stay green, AC7). Fails open on stale/corrupt via
   # fail_open?, the named contract.
-  def claim_gate_reason(intent_dir, artifact, session:, ttl: Lock::TTL_SECONDS, now: Time.now)
+  def claim_gate_reason(intent_dir, artifact, session:, ttl: Lock::TTL_SECONDS, now: Time.now,
+                        harness: :claude)
     return nil if Lock.blank?(artifact)
     return nil unless File.exist?(path(intent_dir, artifact))   # dormant: no claim
     return nil if holds_claim?(intent_dir, artifact, session: session)  # you hold it
@@ -368,8 +543,8 @@ module Claim
     holder = data && data["owner_session"]
     since = data && data["acquired_at"]
     "artifact #{artifact} is claimed by #{holder} since #{since}; another writer holds " \
-      "it. Back off or run /plastic-doctor check the lock status. If you are a distinct " \
-      "delegate, the owner must register you: plastic-lock delegate --intent-dir " \
-      "#{intent_dir} --session <your-session-id>"
+      "it. Back off or run #{Lock.skill_ref('plastic-doctor', harness: harness)} check the " \
+      "lock status. If you are a distinct delegate, the owner must register you: " \
+      "plastic-lock delegate --intent-dir #{intent_dir} --session <your-session-id>"
   end
 end

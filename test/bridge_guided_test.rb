@@ -44,8 +44,9 @@ class BridgeGuidedTest < Minitest::Test
     Worktree.define_singleton_method(method_name, original)
   end
 
-  def arm_guided
-    Bridge.arm_guided(@session, intent_id: "96", intent_dir: @intent_dir, store: @store, name: "demo")
+  def arm_guided(harness: nil)
+    Bridge.arm_guided(@session, intent_id: "96", intent_dir: @intent_dir, store: @store,
+                      name: "demo", harness: harness)
   end
 
   def test_arm_guided_leaves_auto_false
@@ -54,6 +55,8 @@ class BridgeGuidedTest < Minitest::Test
     assert_equal "96", data["intent"]["id"]
     assert File.exist?(Bridge.path(@session, intent_id: "96"))
     assert_equal false, Bridge.read(@session, intent_id: "96")["build"]["auto"]
+    assert_nil Lock.read(@intent_dir)["owner_harness"]
+    assert_nil Lock.read(@intent_dir)["owner_agent"]
   end
 
   def test_arm_guided_stamps_lock_and_calls_provision
@@ -73,10 +76,35 @@ class BridgeGuidedTest < Minitest::Test
     assert_equal @session, Lock.read(@intent_dir)["owner_session"]
   end
 
+  def test_claude_boarding_records_enforcer_harness_without_guessing_thread
+    data = Bridge.arm_guided(@session, intent_id: "96", intent_dir: @intent_dir,
+                             store: @store, name: "demo", harness: :claude,
+                             agent: "plastic-enforcer", model: "opus")
+    expected = {
+      "owner_harness" => "claude",
+      "owner_agent" => "plastic-enforcer",
+      "owner_model" => "opus",
+      "run_mode" => "guided",
+    }
+    expected.each do |field, value|
+      assert_equal value, Lock.read(@intent_dir)[field]
+      assert_equal value, data.dig("lock", field)
+    end
+    assert_nil Lock.read(@intent_dir)["owner_thread"]
+    assert_nil data.dig("lock", "owner_thread")
+  end
+
   def test_arm_guided_raises_lock_held_when_another_session_owns_the_lock
     Lock.acquire(@intent_dir, session: "someone-else")
     err = assert_raises(Bridge::LockHeldError) { arm_guided }
     assert_includes err.message, "/plastic-doctor"
+  end
+
+  def test_arm_guided_raises_lock_held_naming_dollar_prefix_for_codex_harness
+    Lock.acquire(@intent_dir, session: "someone-else")
+    err = assert_raises(Bridge::LockHeldError) { arm_guided(harness: :codex) }
+    assert_includes err.message, "$plastic-doctor"
+    refute_includes err.message, "/plastic-doctor"
   end
 
   def test_arm_guided_survives_provision_raise

@@ -9,7 +9,8 @@ end to end: a piece of work moved through What, Why, How, and Exec, with a finis
 
 ## Before you start
 
-Run `/plastic-update` first, so the commands below match what is actually installed.
+Run `/plastic-update` first (`$plastic-update` on Codex), so the commands below match what is
+actually installed.
 
 Work in a sandbox: this track always creates a global-store intent; the throwaway repo below
 is never registered as a Plastic project. Pick a throwaway git repository if you have one
