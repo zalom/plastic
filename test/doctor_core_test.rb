@@ -220,8 +220,25 @@ class DoctorManifestSyncTest < Minitest::Test
     assert checks.any? { |c| c[:message].include?("manifest missing") }
   end
 
-  def test_other_agent_uses_flat_manifest_path
-    # codex agent reads <dir>/plastic-manifest.json
+  def test_other_agent_uses_the_uniform_plastic_manifest_path
+    # codex agent reads <dir>/plastic/manifest.json (intent 210, D2: same rule as claude)
+    FileUtils.mkdir_p(DOCTOR_TEST_CODEX)
+    global_file, global_hash = write_tracked(File.join(DOCTOR_TEST_HOME, "PLASTIC.md"), "# Plastic\n")
+    write_manifest(File.join(DOCTOR_TEST_HOME, "manifest.json"), { global_file => global_hash })
+
+    agent_file, agent_hash = write_tracked(File.join(DOCTOR_TEST_CODEX, "skills", "x.md"), "# x\n")
+    write_manifest(File.join(DOCTOR_TEST_CODEX, "plastic", "manifest.json"), { agent_file => agent_hash })
+
+    checks = doctor.check_manifest_sync("codex")
+    assert checks.all? { |c| c[:status] == "pass" },
+      "Expected all pass, got: #{checks.map { |c| [c[:name], c[:status]] }}"
+  ensure
+    FileUtils.rm_rf(DOCTOR_TEST_CODEX)
+  end
+
+  def test_codex_legacy_flat_manifest_path_is_no_longer_read
+    # A leftover pre-migration <dir>/plastic-manifest.json must NOT satisfy the agent
+    # manifest check once the uniform path is in effect (intent 210, D2 falsifiable check).
     FileUtils.mkdir_p(DOCTOR_TEST_CODEX)
     global_file, global_hash = write_tracked(File.join(DOCTOR_TEST_HOME, "PLASTIC.md"), "# Plastic\n")
     write_manifest(File.join(DOCTOR_TEST_HOME, "manifest.json"), { global_file => global_hash })
@@ -230,8 +247,8 @@ class DoctorManifestSyncTest < Minitest::Test
     write_manifest(File.join(DOCTOR_TEST_CODEX, "plastic-manifest.json"), { agent_file => agent_hash })
 
     checks = doctor.check_manifest_sync("codex")
-    assert checks.all? { |c| c[:status] == "pass" },
-      "Expected all pass, got: #{checks.map { |c| [c[:name], c[:status]] }}"
+    assert checks.any? { |c| c[:status] == "fail" },
+      "the legacy flat manifest must not be treated as the agent manifest"
   ensure
     FileUtils.rm_rf(DOCTOR_TEST_CODEX)
   end

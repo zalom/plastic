@@ -175,8 +175,8 @@ class InstallerCoreTest < Minitest::Test
 
   def test_agent_installed_false_with_an_empty_manifest
     dir = Dir.mktmpdir("agent-installed-empty")
-    FileUtils.mkdir_p(dir)
-    File.write(File.join(dir, "plastic-manifest.json"), JSON.generate("version" => "1", "files" => {}))
+    FileUtils.mkdir_p(File.join(dir, "plastic"))
+    File.write(File.join(dir, "plastic", "manifest.json"), JSON.generate("version" => "1", "files" => {}))
     core = InstallerCore.new(package_root: WORKTREE, plastic_home: @home,
                               agents: [{ key: "codex", name: "Codex CLI", dir: dir, home_dir: dir, flag: "--codex" }],
                               version: "1.0.0-test")
@@ -187,8 +187,8 @@ class InstallerCoreTest < Minitest::Test
 
   def test_agent_installed_true_once_the_manifest_tracks_a_file
     dir = Dir.mktmpdir("agent-installed-present")
-    FileUtils.mkdir_p(dir)
-    File.write(File.join(dir, "plastic-manifest.json"),
+    FileUtils.mkdir_p(File.join(dir, "plastic"))
+    File.write(File.join(dir, "plastic", "manifest.json"),
                JSON.generate("version" => "1", "files" => { File.join(dir, "marker") => "x" }))
     core = InstallerCore.new(package_root: WORKTREE, plastic_home: @home,
                               agents: [{ key: "codex", name: "Codex CLI", dir: dir, home_dir: dir, flag: "--codex" }],

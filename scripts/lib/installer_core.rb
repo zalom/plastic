@@ -414,11 +414,20 @@ class InstallerCore
 
   # --- Agent adapters ---
 
-  def manifest_path_for(key, config)
-    case key
-    when "claude" then File.join(config[:dir], "plastic", "manifest.json")
-    else File.join(config[:dir], "plastic-manifest.json")
-    end
+  # Uniform per-agent install record dir: <agent-dir>/plastic/ holds VERSION and
+  # manifest.json for every agent (intent 210, D2). Claude already used this; Codex
+  # and Hermes are migrated onto it so one rule covers all agents and doctor's existing
+  # version_match probe (<dir>/plastic/VERSION) lands on it.
+  def record_dir_for(config)
+    File.join(config[:dir], "plastic")
+  end
+
+  def legacy_manifest_path_for(config)
+    File.join(config[:dir], "plastic-manifest.json")
+  end
+
+  def manifest_path_for(_key, config)
+    File.join(record_dir_for(config), "manifest.json")
   end
 
   def manifest_files(manifest_path)
@@ -469,7 +478,12 @@ class InstallerCore
 
     # Capture the prior manifest so we can prune files that no longer ship
     # (renamed/removed skills) after a re-copy. This gives leftover-free updates.
+    # Union in the legacy flat manifest's files too (intent 210, Codex migration): an
+    # agent still on the pre-migration <dir>/plastic-manifest.json record tracked files
+    # the new per-agent manifest never lists, so without the union prune would miss them.
     old_files = manifest_files(manifest_path_for(key, config))
+    legacy_path = legacy_manifest_path_for(config)
+    old_files |= manifest_files(legacy_path) if File.exist?(legacy_path) && legacy_path != manifest_path_for(key, config)
 
     result = case key
              when "claude" then install_claude(config, force, argv: argv, input: input, reinstall: reinstall)
@@ -480,6 +494,13 @@ class InstallerCore
     new_files = manifest_files(manifest_path_for(key, config))
     pruned = prune_removed_files(old_files - new_files)
     result[:pruned] = pruned if pruned.positive?
+
+    # The legacy manifest is fully superseded once the new one is written; delete it so
+    # the migration is one-shot (intent 210, D2).
+    if File.exist?(legacy_path) && legacy_path != manifest_path_for(key, config)
+      File.delete(legacy_path)
+    end
+
     result
   end
 
@@ -559,6 +580,8 @@ class InstallerCore
   end
 
   def install_codex(config, force)
+    FileUtils.mkdir_p(record_dir_for(config))
+
     installed = []
     skills_source = File.join(package_root, "skills")
     skill_exclude = advisor_enabled? ? [] : ["agent-advisor"]
@@ -578,7 +601,13 @@ class InstallerCore
     # (stripped surgically on uninstall), same treatment as AGENTS.md.
     merge_codex_hooks(File.join(config[:home_dir], "hooks.json"))
 
-    write_manifest(installed, File.join(config[:dir], "plastic-manifest.json"))
+    # Uniform per-agent record (intent 210, D2): write VERSION alongside the manifest,
+    # the same shape install_claude already writes.
+    version_file = File.join(record_dir_for(config), "VERSION")
+    File.write(version_file, "#{version}\n")
+    installed << version_file
+
+    write_manifest(installed, manifest_path_for("codex", config))
     { agent: config[:name], success: true, files: installed.size }
   end
 
@@ -723,13 +752,21 @@ class InstallerCore
   end
 
   def install_hermes(config, force)
+    FileUtils.mkdir_p(record_dir_for(config))
+
     installed = []
     skills_source = File.join(package_root, "skills")
     skill_exclude = advisor_enabled? ? [] : ["agent-advisor"]
     installed += install_skills_flat(skills_source, File.join(config[:dir], "skills"), exclude: skill_exclude) if File.directory?(skills_source)
     installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides, advisor_enabled: advisor_enabled?)
 
-    write_manifest(installed, File.join(config[:dir], "plastic-manifest.json"))
+    # Uniform per-agent record (intent 210, D2): write VERSION alongside the manifest,
+    # the same shape install_claude already writes.
+    version_file = File.join(record_dir_for(config), "VERSION")
+    File.write(version_file, "#{version}\n")
+    installed << version_file
+
+    write_manifest(installed, manifest_path_for("hermes", config))
     { agent: config[:name], success: true, files: installed.size }
   end
 

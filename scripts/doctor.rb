@@ -1266,7 +1266,7 @@ class Doctor
 
     # stray_skills — installed plastic-* skill dir with no manifest entry (a leftover,
     # e.g. an old-name copy after a rename; intent 158a AC15)
-    stray_check = stray_skills_check(agent_dir, "--#{agent_key}", File.join(agent_dir, "plastic-manifest.json"))
+    stray_check = stray_skills_check(agent_dir, "--#{agent_key}", File.join(agent_dir, "plastic", "manifest.json"))
     checks << stray_check if stray_check
 
     checks
@@ -1944,8 +1944,7 @@ class Doctor
   # Verify, for BOTH the global manifest and the agent-side manifest, that every
   # file listed exists and its current SHA256 matches the recorded hash.
   #   - GLOBAL manifest:    <plastic_home>/manifest.json
-  #   - AGENT-side manifest: claude -> <dir>/plastic/manifest.json
-  #                          other  -> <dir>/plastic-manifest.json
+  #   - AGENT-side manifest (every agent, intent 210 D2): <dir>/plastic/manifest.json
   # Manifest format: { "version", "created", "files": { abs_path => sha256 } }.
   # A missing manifest is a fail; any missing/mismatched listed file is a fail;
   # otherwise a single pass per manifest.
@@ -1956,11 +1955,7 @@ class Doctor
     checks << verify_manifest(global_manifest, "global")
 
     agent_dir = agents[agent_key][:dir]
-    agent_manifest = if agent_key == "claude"
-                       File.join(agent_dir, "plastic", "manifest.json")
-                     else
-                       File.join(agent_dir, "plastic-manifest.json")
-                     end
+    agent_manifest = File.join(agent_dir, "plastic", "manifest.json")
     checks << verify_manifest(agent_manifest, "agent")
 
     checks

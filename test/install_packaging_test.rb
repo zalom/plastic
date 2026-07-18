@@ -215,7 +215,7 @@ class InstallPackagingTest < Minitest::Test
       ["claude", ->(dir) { installer.install_claude({ name: "Claude Code", dir: dir }, false) },
        ->(dir) { File.join(dir, "plastic", "manifest.json") }],
       ["hermes", ->(dir) { installer.install_hermes({ name: "Hermes", dir: dir }, false) },
-       ->(dir) { File.join(dir, "plastic-manifest.json") }],
+       ->(dir) { File.join(dir, "plastic", "manifest.json") }],
     ]
 
     harnesses.each do |key, run_install, manifest_for|
@@ -248,7 +248,7 @@ class InstallPackagingTest < Minitest::Test
     installer.install_codex({ name: "Codex CLI", dir: codex_dir, home_dir: home_dir }, false)
 
     agents_root = File.join(home_dir, "agents")
-    manifest = JSON.parse(File.read(File.join(codex_dir, "plastic-manifest.json")))["files"]
+    manifest = JSON.parse(File.read(File.join(codex_dir, "plastic", "manifest.json")))["files"]
 
     # Codex has no fable alias: consultation agents (intent 185) are excluded from
     # generation, checked separately below.
