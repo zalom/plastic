@@ -79,7 +79,7 @@ class Install < InstallerCore
     bootstrap if fresh
     apply_config_flags(argv)
 
-    results = selected.map { |key| install_for_agent(key, force, argv: argv, input: input, reinstall: reinstall) }
+    results = selected.map { |key| transactional_install_for_agent(key, force, argv: argv, input: input, reinstall: reinstall) }
     results += already_registered.map { |key| already_registered_result(key) }
 
     action = ledger_action || (fresh ? "install" : "reinstall")
@@ -152,6 +152,8 @@ class Install < InstallerCore
       end
     end
 
+    print_agent_summary(results)
+
     installed = results.select { |r| r[:success] }
     return unless installed.any?
 
@@ -162,6 +164,21 @@ class Install < InstallerCore
     puts "   Next: read docs/guides/your-first-intent-in-10-minutes.md\n\n"
 
     print_codex_hook_trust_reminder(installed)
+  end
+
+  # Per-agent transaction summary (intent 210, D3): agent | from -> to | ok/failed.
+  # Skipped for a run with only one result, where the line above already says it all.
+  def print_agent_summary(results)
+    return if results.size <= 1
+
+    puts "\n  Agent          From \u{2192} To            Result"
+    puts "  -----          -----------      ------"
+    results.each do |r|
+      from = r[:from_version] || "-"
+      to = r[:to_version] || "-"
+      status = r[:already_registered] ? "skipped" : (r[:success] ? "ok" : "failed")
+      puts format("  %-14s %-16s %s", r[:agent], "#{from} \u{2192} #{to}", status)
+    end
   end
 
   # Codex hooks are installed but INERT until a human reviews and trusts each

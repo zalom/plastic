@@ -15,9 +15,10 @@ class InstallCodexHookTrustTest < Minitest::Test
     # Mirrors the REAL install_for_agent's contract (result[:agent] =
     # config[:name]), not just the raw key, so the codex-detection logic in
     # print_codex_hook_trust_reminder (which matches on agent DISPLAY name)
-    # is exercised faithfully.
-    def install_for_agent(key, _force, **)
-      { agent: agent_config(key)[:name], success: true, files: 1 }
+    # is exercised faithfully. Stubs the transaction wrapper (the actual call
+    # site inside #run since intent 210, D3), not the adapter it wraps.
+    def transactional_install_for_agent(key, _force, **)
+      { agent: agent_config(key)[:name], success: true, files: 1, from_version: nil, to_version: version }
     end
   end
 

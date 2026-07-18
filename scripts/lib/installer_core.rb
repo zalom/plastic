@@ -516,6 +516,83 @@ class InstallerCore
     result
   end
 
+  # --- Per-agent transaction with auto-restore (intent 210, D3) ---
+
+  def backup_dir_for(config)
+    File.join(plastic_home, "backups", config[:key])
+  end
+
+  # Snapshot the agent's currently manifest-listed files, PLUS the manifest itself (so
+  # a restore puts the manifest and the files it describes back in sync; otherwise a
+  # restored file set would be checked against the just-written NEW manifest and fail
+  # verification all over again), into the backup dir, mirroring their absolute paths
+  # under it. Replaces any prior snapshot (one snapshot kept, D3). Returns the list of
+  # (source_abs) files snapshotted.
+  def snapshot_agent(config)
+    dir = backup_dir_for(config)
+    FileUtils.rm_rf(dir)
+    manifest_path = manifest_path_for(config[:key], config)
+    files = manifest_files(manifest_path)
+    files |= [manifest_path] if File.exist?(manifest_path)
+    files.each do |f|
+      next unless File.exist?(f)
+      dest = File.join(dir, f) # f is absolute; File.join keeps the tree distinct per agent
+      FileUtils.mkdir_p(File.dirname(dest))
+      FileUtils.cp(f, dest)
+    end
+    files
+  end
+
+  # Restore the snapshot back over the live tree for this agent (auto-restore, D3/D4).
+  def restore_agent(config)
+    dir = backup_dir_for(config)
+    Dir.glob(File.join(dir, "**", "*")).each do |src|
+      next unless File.file?(src)
+      dest = src.sub(dir, "")
+      FileUtils.mkdir_p(File.dirname(dest))
+      FileUtils.cp(src, dest)
+    end
+  end
+
+  # True when every file listed in the agent manifest exists on disk with the recorded
+  # hash. A missing or mismatched listed file is the falsifiable failure that triggers
+  # auto-restore (intent 210, G4/G8).
+  def verify_agent_manifest(config)
+    path = manifest_path_for(config[:key], config)
+    return false unless File.exist?(path)
+    data = JSON.parse(File.read(path)) rescue {}
+    files = data["files"] || {}
+    return false if files.empty?
+    files.all? { |f, h| File.exist?(f) && Digest::SHA256.file(f).hexdigest == h }
+  end
+
+  # Per-agent transaction (intent 210, D3): snapshot -> apply -> verify -> auto-restore on
+  # failure. Forward-fix: a failure here never touches other agents. On a fresh install
+  # (no prior manifest) verify-failure prunes the partial write instead of restoring.
+  def transactional_install_for_agent(key, force, argv: [], input: $stdin, reinstall: false)
+    config = agent_config(key)
+    return { agent: key, success: false, reason: "Unknown agent" } unless config
+
+    from_version = agent_version_for(config)
+    had_record = !manifest_files(manifest_path_for(key, config)).empty?
+    snapshot_agent(config) if had_record
+
+    result = install_for_agent(key, force, argv: argv, input: input, reinstall: reinstall)
+
+    if result[:success] && !verify_agent_manifest(config)
+      if had_record
+        restore_agent(config)
+        result = { agent: config[:name], success: false, reason: "verify failed - restored prior snapshot" }
+      else
+        prune_removed_files(manifest_files(manifest_path_for(key, config)))
+        result = { agent: config[:name], success: false, reason: "verify failed - partial install pruned" }
+      end
+    end
+    result[:from_version] = from_version
+    result[:to_version] = agent_version_for(config)
+    result
+  end
+
   # Delete tracked files present in the old manifest but absent from the new one,
   # then remove any now-empty skill directories they lived in.
   def prune_removed_files(stale_files)
