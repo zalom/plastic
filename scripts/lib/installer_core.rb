@@ -133,11 +133,15 @@ class InstallerCore
   end
 
   # Append a single immutable entry. Opens in append mode; never rewrites prior lines.
-  # action ∈ { install, reinstall, update, downgrade }.
-  def ledger_append(entry_version, action)
+  # action ∈ { install, reinstall, update, downgrade }. `harness` (intent 210, G5) names
+  # which agent this row records a sync for (claude/codex/hermes); optional so a
+  # core-only or pre-210 caller still writes a valid, readable row. Readers must stay
+  # tolerant of legacy rows that carry no "harness" key at all.
+  def ledger_append(entry_version, action, harness: nil)
     FileUtils.mkdir_p(plastic_home)
-    line = JSON.generate("version" => entry_version, "action" => action, "at" => Time.now.utc.iso8601)
-    File.open(ledger_path, "a") { |f| f.puts(line) }
+    entry = { "version" => entry_version, "action" => action, "at" => Time.now.utc.iso8601 }
+    entry["harness"] = harness if harness
+    File.open(ledger_path, "a") { |f| f.puts(JSON.generate(entry)) }
   end
 
   def ledger_read
@@ -414,11 +418,20 @@ class InstallerCore
 
   # --- Agent adapters ---
 
-  def manifest_path_for(key, config)
-    case key
-    when "claude" then File.join(config[:dir], "plastic", "manifest.json")
-    else File.join(config[:dir], "plastic-manifest.json")
-    end
+  # Uniform per-agent install record dir: <agent-dir>/plastic/ holds VERSION and
+  # manifest.json for every agent (intent 210, D2). Claude already used this; Codex
+  # and Hermes are migrated onto it so one rule covers all agents and doctor's existing
+  # version_match probe (<dir>/plastic/VERSION) lands on it.
+  def record_dir_for(config)
+    File.join(config[:dir], "plastic")
+  end
+
+  def legacy_manifest_path_for(config)
+    File.join(config[:dir], "plastic-manifest.json")
+  end
+
+  def manifest_path_for(_key, config)
+    File.join(record_dir_for(config), "manifest.json")
   end
 
   def manifest_files(manifest_path)
@@ -445,6 +458,18 @@ class InstallerCore
     !manifest_files(manifest_path_for(key, config)).empty?
   end
 
+  # Agent keys whose per-agent record exists (intent 210, D2): folder-with-VERSION =
+  # registered. Reads the record, never a written config list. Fail-open: an unreadable
+  # record is simply "not installed" here (doctor reports integrity separately).
+  def installed_agents
+    agents.select { |a| File.exist?(File.join(record_dir_for(a), "VERSION")) }.map { |a| a[:key] }
+  end
+
+  def agent_version_for(config)
+    path = File.join(record_dir_for(config), "VERSION")
+    File.exist?(path) ? File.read(path).strip : nil
+  end
+
   def install_for_agent(key, force, argv: [], input: $stdin, reinstall: false)
     config = agent_config(key)
     return { agent: config[:name], success: false, reason: "Unknown agent" } unless config
@@ -469,7 +494,12 @@ class InstallerCore
 
     # Capture the prior manifest so we can prune files that no longer ship
     # (renamed/removed skills) after a re-copy. This gives leftover-free updates.
+    # Union in the legacy flat manifest's files too (intent 210, Codex migration): an
+    # agent still on the pre-migration <dir>/plastic-manifest.json record tracked files
+    # the new per-agent manifest never lists, so without the union prune would miss them.
     old_files = manifest_files(manifest_path_for(key, config))
+    legacy_path = legacy_manifest_path_for(config)
+    old_files |= manifest_files(legacy_path) if File.exist?(legacy_path) && legacy_path != manifest_path_for(key, config)
 
     result = case key
              when "claude" then install_claude(config, force, argv: argv, input: input, reinstall: reinstall)
@@ -480,6 +510,90 @@ class InstallerCore
     new_files = manifest_files(manifest_path_for(key, config))
     pruned = prune_removed_files(old_files - new_files)
     result[:pruned] = pruned if pruned.positive?
+
+    # The legacy manifest is fully superseded once the new one is written; delete it so
+    # the migration is one-shot (intent 210, D2).
+    if File.exist?(legacy_path) && legacy_path != manifest_path_for(key, config)
+      File.delete(legacy_path)
+    end
+
+    result
+  end
+
+  # --- Per-agent transaction with auto-restore (intent 210, D3) ---
+
+  def backup_dir_for(config)
+    File.join(plastic_home, "backups", config[:key])
+  end
+
+  # Snapshot the agent's currently manifest-listed files, PLUS the manifest itself (so
+  # a restore puts the manifest and the files it describes back in sync; otherwise a
+  # restored file set would be checked against the just-written NEW manifest and fail
+  # verification all over again), into the backup dir, mirroring their absolute paths
+  # under it. Replaces any prior snapshot (one snapshot kept, D3). Returns the list of
+  # (source_abs) files snapshotted.
+  def snapshot_agent(config)
+    dir = backup_dir_for(config)
+    FileUtils.rm_rf(dir)
+    manifest_path = manifest_path_for(config[:key], config)
+    files = manifest_files(manifest_path)
+    files |= [manifest_path] if File.exist?(manifest_path)
+    files.each do |f|
+      next unless File.exist?(f)
+      dest = File.join(dir, f) # f is absolute; File.join keeps the tree distinct per agent
+      FileUtils.mkdir_p(File.dirname(dest))
+      FileUtils.cp(f, dest)
+    end
+    files
+  end
+
+  # Restore the snapshot back over the live tree for this agent (auto-restore, D3/D4).
+  def restore_agent(config)
+    dir = backup_dir_for(config)
+    Dir.glob(File.join(dir, "**", "*")).each do |src|
+      next unless File.file?(src)
+      dest = src.sub(dir, "")
+      FileUtils.mkdir_p(File.dirname(dest))
+      FileUtils.cp(src, dest)
+    end
+  end
+
+  # True when every file listed in the agent manifest exists on disk with the recorded
+  # hash. A missing or mismatched listed file is the falsifiable failure that triggers
+  # auto-restore (intent 210, G4/G8).
+  def verify_agent_manifest(config)
+    path = manifest_path_for(config[:key], config)
+    return false unless File.exist?(path)
+    data = JSON.parse(File.read(path)) rescue {}
+    files = data["files"] || {}
+    return false if files.empty?
+    files.all? { |f, h| File.exist?(f) && Digest::SHA256.file(f).hexdigest == h }
+  end
+
+  # Per-agent transaction (intent 210, D3): snapshot -> apply -> verify -> auto-restore on
+  # failure. Forward-fix: a failure here never touches other agents. On a fresh install
+  # (no prior manifest) verify-failure prunes the partial write instead of restoring.
+  def transactional_install_for_agent(key, force, argv: [], input: $stdin, reinstall: false)
+    config = agent_config(key)
+    return { agent: key, success: false, reason: "Unknown agent" } unless config
+
+    from_version = agent_version_for(config)
+    had_record = !manifest_files(manifest_path_for(key, config)).empty?
+    snapshot_agent(config) if had_record
+
+    result = install_for_agent(key, force, argv: argv, input: input, reinstall: reinstall)
+
+    if result[:success] && !verify_agent_manifest(config)
+      if had_record
+        restore_agent(config)
+        result = { agent: config[:name], success: false, reason: "verify failed - restored prior snapshot" }
+      else
+        prune_removed_files(manifest_files(manifest_path_for(key, config)))
+        result = { agent: config[:name], success: false, reason: "verify failed - partial install pruned" }
+      end
+    end
+    result[:from_version] = from_version
+    result[:to_version] = agent_version_for(config)
     result
   end
 
@@ -559,6 +673,8 @@ class InstallerCore
   end
 
   def install_codex(config, force)
+    FileUtils.mkdir_p(record_dir_for(config))
+
     installed = []
     skills_source = File.join(package_root, "skills")
     skill_exclude = advisor_enabled? ? [] : ["agent-advisor"]
@@ -578,7 +694,13 @@ class InstallerCore
     # (stripped surgically on uninstall), same treatment as AGENTS.md.
     merge_codex_hooks(File.join(config[:home_dir], "hooks.json"))
 
-    write_manifest(installed, File.join(config[:dir], "plastic-manifest.json"))
+    # Uniform per-agent record (intent 210, D2): write VERSION alongside the manifest,
+    # the same shape install_claude already writes.
+    version_file = File.join(record_dir_for(config), "VERSION")
+    File.write(version_file, "#{version}\n")
+    installed << version_file
+
+    write_manifest(installed, manifest_path_for("codex", config))
     { agent: config[:name], success: true, files: installed.size }
   end
 
@@ -723,13 +845,21 @@ class InstallerCore
   end
 
   def install_hermes(config, force)
+    FileUtils.mkdir_p(record_dir_for(config))
+
     installed = []
     skills_source = File.join(package_root, "skills")
     skill_exclude = advisor_enabled? ? [] : ["agent-advisor"]
     installed += install_skills_flat(skills_source, File.join(config[:dir], "skills"), exclude: skill_exclude) if File.directory?(skills_source)
     installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides, advisor_enabled: advisor_enabled?)
 
-    write_manifest(installed, File.join(config[:dir], "plastic-manifest.json"))
+    # Uniform per-agent record (intent 210, D2): write VERSION alongside the manifest,
+    # the same shape install_claude already writes.
+    version_file = File.join(record_dir_for(config), "VERSION")
+    File.write(version_file, "#{version}\n")
+    installed << version_file
+
+    write_manifest(installed, manifest_path_for("hermes", config))
     { agent: config[:name], success: true, files: installed.size }
   end
 

@@ -47,15 +47,25 @@ first (or `npx -y @zalom/plastic@latest install --claude` directly).
 ### Step 1: Run the update
 
 ```bash
-npx -y @zalom/plastic@<channel> update --claude
+npx -y @zalom/plastic@<channel> update
 # channel switch: append --beta / --latest / --alpha
-# other agents: append --codex / --hermes / --all
+# to target a specific harness instead of every installed one: --claude / --codex / --hermes / --all
 ```
 
-`bunx -y @zalom/plastic@<channel> update --claude` works as a fallback if `npx` is
-unavailable. The command prints the transition (`vX -> vY`) or "already up to date", runs
-a post-update doctor summary, and records the move in the append-only
-`~/.plastic/versions.json` ledger.
+`bunx -y @zalom/plastic@<channel> update` works as a fallback if `npx` is unavailable.
+
+With no harness flag, `update` targets **every currently-installed harness** (read from
+each agent's own `<agent-dir>/plastic/VERSION`), never Claude alone. Pass an explicit flag
+only to target one harness specifically.
+
+If the core is already on the target version but a targeted harness's own record is stale
+or missing (for example a harness added after the last sync), `update` still re-syncs that
+harness at the same version instead of reporting a clean no-op (same-version repair).
+
+The command prints the transition (`vX -> vY`) or "already up to date", a per-agent
+transaction summary when more than one harness synced, runs a post-update doctor summary
+per synced harness, and records one `versions.json` ledger row per synced harness (each
+row's `harness` field names which one).
 
 ### Step 2: Relay any pending config question(s) the update printed
 
@@ -94,7 +104,7 @@ summary:
 
 ```
 Plastic update (<channel>)
-Command:  npx -y @zalom/plastic@<channel> update --claude <flags>
+Command:  npx -y @zalom/plastic@<channel> update <flags>
 Version:  <before> -> <after>
 Doctor:   <relayed summary, or "all clear">
 ```

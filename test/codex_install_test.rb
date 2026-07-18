@@ -216,7 +216,7 @@ class CodexInstallTest < Minitest::Test
     assert_empty Dir.glob(File.join(@agent_dir, "agents", "*.md")),
       "the codex leg must not write the dead ~/.agents/agents/*.md copy"
 
-    manifest = JSON.parse(File.read(File.join(@agent_dir, "plastic-manifest.json")))
+    manifest = JSON.parse(File.read(File.join(@agent_dir, "plastic", "manifest.json")))
     manifest_keys = manifest["files"].keys
     refute manifest_keys.any? { |k| k.include?("AGENTS.md") },
       "AGENTS.md must never be manifest-tracked"
@@ -233,11 +233,64 @@ class CodexInstallTest < Minitest::Test
     tomls = Dir.glob(File.join(@codex_home, "agents", "*.toml"))
     assert_equal sources.size, tomls.size, "one generated toml per shipped agent .md, excluding consultation agents"
 
-    manifest = JSON.parse(File.read(File.join(@agent_dir, "plastic-manifest.json")))
+    manifest = JSON.parse(File.read(File.join(@agent_dir, "plastic", "manifest.json")))
     manifest_keys = manifest["files"].keys
     tomls.each do |t|
       assert_includes manifest_keys, t, "the manifest must track the generated toml #{t}"
     end
+  end
+
+  # --- Intent 210, D2: uniform per-agent record dir + legacy manifest migration ---
+
+  def test_install_codex_writes_the_uniform_record_dir_and_no_legacy_manifest
+    result = @core.install_for_agent("codex", false)
+
+    assert result[:success]
+    assert File.exist?(File.join(@agent_dir, "plastic", "VERSION")),
+      "codex must write its VERSION into the uniform record dir"
+    assert_equal "1.0.0-test\n", File.read(File.join(@agent_dir, "plastic", "VERSION"))
+    assert File.exist?(File.join(@agent_dir, "plastic", "manifest.json")),
+      "codex must write its manifest into the uniform record dir"
+    refute File.exist?(File.join(@agent_dir, "plastic-manifest.json")),
+      "the legacy flat manifest must never be (re)written"
+  end
+
+  def test_manifest_path_for_resolves_to_the_uniform_path_for_every_agent
+    config = { dir: @agent_dir }
+    assert_equal File.join(@agent_dir, "plastic", "manifest.json"), @core.manifest_path_for("codex", config)
+    assert_equal File.join(@agent_dir, "plastic", "manifest.json"), @core.manifest_path_for("hermes", config)
+    assert_equal File.join(@agent_dir, "plastic", "manifest.json"), @core.manifest_path_for("claude", config)
+  end
+
+  # Falsifiable migration check (intent 210, B5): a pre-migration install left files
+  # tracked only in the legacy flat manifest. A fresh install that no longer ships one
+  # of those files must still prune it, proving the legacy list was unioned into
+  # old_files rather than silently dropped.
+  def test_legacy_manifest_files_no_longer_shipped_are_pruned_on_migration
+    stale = File.join(@agent_dir, "skills", "plastic-long-gone", "SKILL.md")
+    FileUtils.mkdir_p(File.dirname(stale))
+    File.write(stale, "# stale\n")
+    legacy_manifest = File.join(@agent_dir, "plastic-manifest.json")
+    File.write(legacy_manifest, JSON.generate(
+      "version" => "1", "files" => { stale => Digest::SHA256.file(stale).hexdigest }
+    ))
+
+    result = @core.install_for_agent("codex", false)
+
+    refute File.exist?(stale), "a file tracked only by the legacy manifest must be pruned on migration"
+    refute File.exist?(legacy_manifest), "the legacy manifest must be deleted once migrated"
+    assert result[:pruned].to_i.positive?, "the migration prune must be reflected in the result"
+  end
+
+  def test_doctor_check_manifest_sync_agrees_with_a_freshly_installed_codex_fixture
+    @core.distribute(:install) # writes the GLOBAL manifest check_manifest_sync also verifies
+    @core.install_for_agent("codex", false)
+
+    doctor = Doctor.new(plastic_home: @home,
+                         agents: { "codex" => { name: "Codex CLI", dir: @agent_dir, home_dir: @codex_home } })
+    checks = doctor.check_manifest_sync("codex")
+    assert checks.all? { |c| c[:status] == "pass" },
+      "installer and doctor must agree on the record path: #{checks.map { |c| [c[:name], c[:status]] }}"
   end
 
   # --- Intent 102a: Codex agent TOML generation (escape helpers, field mapping, effort) ---
@@ -773,7 +826,7 @@ class CodexInstallTest < Minitest::Test
   def test_install_codex_does_not_manifest_track_hooks_json
     @core.install_for_agent("codex", false)
 
-    manifest = JSON.parse(File.read(File.join(@agent_dir, "plastic-manifest.json")))
+    manifest = JSON.parse(File.read(File.join(@agent_dir, "plastic", "manifest.json")))
     manifest_keys = manifest["files"].keys
     refute manifest_keys.any? { |k| k.include?("hooks.json") },
       "hooks.json must never be manifest-tracked (partial-ownership file)"

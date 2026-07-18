@@ -101,7 +101,8 @@ class DoctorStraySkillsTest < Minitest::Test
   end
 
   def test_wired_into_generic_agent_registration_when_a_manifest_exists
-    generic_manifest_path = File.join(@agent_dir, "plastic-manifest.json")
+    generic_manifest_path = File.join(@agent_dir, "plastic", "manifest.json")
+    FileUtils.mkdir_p(File.join(@agent_dir, "plastic"))
     install_skill("plastic-doctor")
     files = { File.join(@agent_dir, "skills", "plastic-doctor", "SKILL.md") =>
                 Digest::SHA256.file(File.join(@agent_dir, "skills", "plastic-doctor", "SKILL.md")).hexdigest }

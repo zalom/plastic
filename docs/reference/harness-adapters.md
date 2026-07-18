@@ -61,6 +61,25 @@ note in the Codex worked example below), so the two are independently maintained
 | Codex CLI | `$plastic-<name>` (dollar), explicit; Codex may also select a skill implicitly by matching its `description` |
 | Hermes | not yet defined (future adapter, see Roadmap below) |
 
+## Per-harness version truth (intent 210)
+
+Every adapter's own installed version lives at the same uniform path,
+`<agent-dir>/plastic/VERSION`, alongside its own `<agent-dir>/plastic/manifest.json`.
+This is the one record `doctor`'s `version_match` and `check_manifest_sync` read, and the
+one record `update` reads to decide which harnesses are installed and which are stale, so
+no adapter can be silently skipped by a Claude-only default.
+
+| Adapter | Version-truth path | Agent dir (`config[:dir]`) |
+|---|---|---|
+| Claude Code | `~/.claude/plastic/VERSION` | `~/.claude` |
+| Codex CLI | `~/.agents/plastic/VERSION` | `~/.agents` |
+| Hermes | `~/.hermes/plastic/VERSION` | `~/.hermes` |
+
+Codex and Hermes previously wrote a flat `<agent-dir>/plastic-manifest.json` with no
+per-agent `VERSION` file at all, so `update` could only ever act on Claude by default. A
+one-time migration on next install unions the old flat manifest's files into the prune
+set, then removes it; the version-truth path above is what every adapter converges on.
+
 ## Capability tiers
 
 An adapter declares the strongest tier it can honestly support.

@@ -6,14 +6,18 @@ require "json"
 require_relative "../scripts/install"
 
 # install verb orchestration: fresh vs refuse vs --reinstall, and ledger action (intent 30a1a).
-# File-sync internals (distribute/install_for_agent) are covered by installer_core /
-# install_packaging tests; here we stub them to isolate the verb's decision logic.
+# File-sync internals (distribute/install_for_agent/transactional_install_for_agent) are
+# covered by installer_core / install_packaging / update_transaction tests; here we stub
+# the transaction wrapper (the actual call site inside #run since intent 210, D3) to
+# isolate the verb's decision logic.
 class InstallVerbTest < Minitest::Test
   class FakeInstall < Install
     attr_reader :distributed, :bootstrapped
     def distribute(mode) = (@distributed = mode)
     def bootstrap = (@bootstrapped = true)
-    def install_for_agent(key, _force, **) = { agent: key, success: true, files: 1 }
+    def transactional_install_for_agent(key, _force, **)
+      { agent: key, success: true, files: 1, from_version: nil, to_version: version }
+    end
   end
 
   def setup
@@ -179,6 +183,11 @@ class InstallPerAgentGateTest < Minitest::Test
       assert_match(/Claude Code.*already registered/i, out)
       refute_match(/Registered for:.*Claude Code/, out,
         "claude was not installed THIS run, so it must not appear in the fresh-install summary")
+
+      # Per-agent transaction summary table (intent 210, D3).
+      assert_match(/Codex CLI\s+- \u{2192} 1\.0\.0-test\s+ok/, out)
+      assert_match(/Hermes\s+- \u{2192} 1\.0\.0-test\s+ok/, out)
+      assert_match(/Claude Code\s+.*skipped/, out)
     ensure
       FileUtils.rm_rf(hermes_dir)
     end

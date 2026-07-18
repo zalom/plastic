@@ -332,4 +332,168 @@ class UpdateVerbTest < Minitest::Test
 
     refute announced, "announce_pending_config_asks should NOT be called after a failed switch"
   end
+
+  # --- Intent 210: installed-agent discovery + consolidated update ---
+
+  AGENTS_FIXTURE = [
+    { key: "claude", name: "Claude Code", dir: "claude-dir", flag: "--claude" },
+    { key: "codex", name: "Codex CLI", dir: "codex-dir", home_dir: "codex-dir", flag: "--codex" },
+  ].freeze
+
+  def test_agents_needing_sync_returns_stale_and_missing_keys
+    r = @u.agents_needing_sync(target: "1.6.0", agent_versions: { claude: "1.6.0", codex: "1.5.0" })
+    assert_equal [:codex], r
+  end
+
+  def test_agents_needing_sync_treats_a_nil_version_as_missing
+    r = @u.agents_needing_sync(target: "1.6.0", agent_versions: { claude: "1.6.0", codex: nil })
+    assert_equal [:codex], r
+  end
+
+  def test_agents_needing_sync_all_current_returns_empty
+    r = @u.agents_needing_sync(target: "1.6.0", agent_versions: { claude: "1.6.0", codex: "1.6.0" })
+    assert_empty r
+  end
+
+  def agent_fixture_dirs
+    claude_dir = Dir.mktmpdir("update-agent-args-claude")
+    codex_dir = Dir.mktmpdir("update-agent-args-codex")
+    FileUtils.mkdir_p(File.join(claude_dir, "plastic"))
+    File.write(File.join(claude_dir, "plastic", "VERSION"), "1.6.0\n")
+    FileUtils.mkdir_p(File.join(codex_dir, "plastic"))
+    File.write(File.join(codex_dir, "plastic", "VERSION"), "1.5.0\n")
+    [claude_dir, codex_dir]
+  end
+
+  # AC3, falsifiable: no-flag update over a fixture where BOTH Claude and Codex are
+  # installed must target both, never silently collapse to Claude-only.
+  def test_agent_args_with_no_flag_targets_every_installed_agent
+    claude_dir, codex_dir = agent_fixture_dirs
+    agents = [
+      { key: "claude", name: "Claude Code", dir: claude_dir, flag: "--claude" },
+      { key: "codex", name: "Codex CLI", dir: codex_dir, home_dir: codex_dir, flag: "--codex" },
+    ]
+    u = Update.new(package_root: ".", plastic_home: @home, version: "x", agents: agents)
+
+    flags = u.send(:agent_args, [])
+
+    assert_equal ["--claude", "--codex"].sort, flags.sort
+    refute_equal ["--claude"], flags, "no-flag update must not collapse to Claude-only (AC3)"
+  ensure
+    FileUtils.rm_rf(claude_dir)
+    FileUtils.rm_rf(codex_dir)
+  end
+
+  def test_agent_args_falls_back_to_claude_when_nothing_installed
+    u = Update.new(package_root: ".", plastic_home: @home, version: "x", agents: AGENTS_FIXTURE)
+    assert_equal ["--claude"], u.send(:agent_args, [])
+  end
+
+  def test_agent_args_honors_an_explicit_flag_over_installed_state
+    claude_dir, codex_dir = agent_fixture_dirs
+    agents = [
+      { key: "claude", name: "Claude Code", dir: claude_dir, flag: "--claude" },
+      { key: "codex", name: "Codex CLI", dir: codex_dir, home_dir: codex_dir, flag: "--codex" },
+    ]
+    u = Update.new(package_root: ".", plastic_home: @home, version: "x", agents: agents)
+
+    assert_equal ["--codex"], u.send(:agent_args, ["--codex"])
+  ensure
+    FileUtils.rm_rf(claude_dir)
+    FileUtils.rm_rf(codex_dir)
+  end
+
+  # AC4, falsifiable: core is current (up_to_date) but the targeted agent's own record
+  # is stale -> cli must perform the switch (same-version repair), never the clean no-op.
+  def test_cli_same_version_repair_performs_switch_for_a_stale_targeted_agent
+    claude_dir, codex_dir = agent_fixture_dirs # codex pinned at 1.5.0
+    agents = [
+      { key: "claude", name: "Claude Code", dir: claude_dir, flag: "--claude" },
+      { key: "codex", name: "Codex CLI", dir: codex_dir, home_dir: codex_dir, flag: "--codex" },
+    ]
+    u = Update.new(package_root: ".", plastic_home: @home, version: "x", agents: agents)
+
+    switch_calls = []
+    u.define_singleton_method(:installed_version) { "1.6.0" }
+    u.define_singleton_method(:fetch_dist_tags) { { "latest" => "1.6.0" } }
+    u.define_singleton_method(:perform_switch) { |target, flags| switch_calls << [target, flags]; 0 }
+    u.define_singleton_method(:announce_pending_config_asks) { |**_kwargs| }
+    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| }
+
+    exit_code = u.cli(["--codex"])
+
+    assert_equal 0, exit_code
+    refute_empty switch_calls, "a stale targeted agent must trigger perform_switch even though core is up to date"
+    target, flags = switch_calls.first
+    assert_equal "1.6.0", target, "same-version repair re-syncs at the SAME version, not a new one"
+    assert_includes flags, "--codex"
+  ensure
+    FileUtils.rm_rf(claude_dir)
+    FileUtils.rm_rf(codex_dir)
+  end
+
+  def test_cli_up_to_date_is_still_a_clean_noop_when_the_targeted_agent_is_current
+    claude_dir, codex_dir = agent_fixture_dirs
+    File.write(File.join(codex_dir, "plastic", "VERSION"), "1.6.0\n") # codex now current too
+    agents = [
+      { key: "claude", name: "Claude Code", dir: claude_dir, flag: "--claude" },
+      { key: "codex", name: "Codex CLI", dir: codex_dir, home_dir: codex_dir, flag: "--codex" },
+    ]
+    u = Update.new(package_root: ".", plastic_home: @home, version: "x", agents: agents)
+
+    switch_calls = []
+    u.define_singleton_method(:installed_version) { "1.6.0" }
+    u.define_singleton_method(:fetch_dist_tags) { { "latest" => "1.6.0" } }
+    u.define_singleton_method(:perform_switch) { |target, flags| switch_calls << [target, flags]; 0 }
+
+    exit_code = u.cli(["--codex"])
+
+    assert_equal 0, exit_code
+    assert_empty switch_calls, "an already-current targeted agent must stay a clean no-op"
+  ensure
+    FileUtils.rm_rf(claude_dir)
+    FileUtils.rm_rf(codex_dir)
+  end
+
+  # --- run_post_update_doctor per synced agent (intent 210, C5) ---
+
+  class MultiFakeDoctor
+    attr_reader :core_calls, :full_calls
+
+    def initialize
+      @core_calls = []
+      @full_calls = []
+    end
+
+    def run_core_checks(agent_key)
+      @core_calls << agent_key
+      { status: "pass", summary: { pass: 1, warn: 0, fail: 0, total: 1 } }
+    end
+
+    def run_checks(agent_key)
+      @full_calls << agent_key
+      { status: "pass", summary: { pass: 1, warn: 0, fail: 0, total: 1 } }
+    end
+  end
+
+  def test_run_post_update_doctor_runs_core_check_per_synced_agent
+    fake = MultiFakeDoctor.new
+    out = StringIO.new
+
+    results = @u.run_post_update_doctor(doctor: fake, out: out, synced_agents: ["claude", "codex"])
+
+    assert_equal ["claude", "codex"], fake.core_calls,
+      "the core doctor must run once per synced agent, not always claude alone"
+    assert_equal 2, results.size
+  end
+
+  def test_run_post_update_doctor_still_defaults_to_claude_when_no_synced_agents_given
+    fake = MultiFakeDoctor.new
+    out = StringIO.new
+
+    result = @u.run_post_update_doctor(doctor: fake, out: out)
+
+    assert_equal ["claude"], fake.core_calls
+    assert_equal({ status: "pass", summary: { pass: 1, warn: 0, fail: 0, total: 1 } }, result)
+  end
 end

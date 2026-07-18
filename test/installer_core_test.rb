@@ -79,6 +79,28 @@ class InstallerCoreTest < Minitest::Test
     assert entry.key?("at")
   end
 
+  # --- ledger harness field (intent 210, G5) ---
+
+  def test_ledger_append_with_harness_records_it
+    @core.ledger_append("1.6.0", "update", harness: "codex")
+    entry = @core.ledger_current
+    assert_equal "codex", entry["harness"]
+  end
+
+  def test_ledger_append_without_harness_omits_the_key
+    @core.ledger_append("1.6.0", "update")
+    entry = @core.ledger_current
+    refute entry.key?("harness"), "a core-only append must not invent a harness value"
+  end
+
+  def test_ledger_read_tolerates_a_legacy_row_with_no_harness_key
+    File.write(@core.ledger_path, JSON.generate("version" => "1.4.1", "action" => "install", "at" => "2026-01-01T00:00:00Z") + "\n")
+    entries = @core.ledger_read
+    assert_equal 1, entries.length
+    assert_equal "1.4.1", entries.first["version"]
+    refute entries.first.key?("harness")
+  end
+
   # --- distribute: global manifest ---
 
   def test_distribute_writes_global_manifest
@@ -175,8 +197,8 @@ class InstallerCoreTest < Minitest::Test
 
   def test_agent_installed_false_with_an_empty_manifest
     dir = Dir.mktmpdir("agent-installed-empty")
-    FileUtils.mkdir_p(dir)
-    File.write(File.join(dir, "plastic-manifest.json"), JSON.generate("version" => "1", "files" => {}))
+    FileUtils.mkdir_p(File.join(dir, "plastic"))
+    File.write(File.join(dir, "plastic", "manifest.json"), JSON.generate("version" => "1", "files" => {}))
     core = InstallerCore.new(package_root: WORKTREE, plastic_home: @home,
                               agents: [{ key: "codex", name: "Codex CLI", dir: dir, home_dir: dir, flag: "--codex" }],
                               version: "1.0.0-test")
@@ -187,8 +209,8 @@ class InstallerCoreTest < Minitest::Test
 
   def test_agent_installed_true_once_the_manifest_tracks_a_file
     dir = Dir.mktmpdir("agent-installed-present")
-    FileUtils.mkdir_p(dir)
-    File.write(File.join(dir, "plastic-manifest.json"),
+    FileUtils.mkdir_p(File.join(dir, "plastic"))
+    File.write(File.join(dir, "plastic", "manifest.json"),
                JSON.generate("version" => "1", "files" => { File.join(dir, "marker") => "x" }))
     core = InstallerCore.new(package_root: WORKTREE, plastic_home: @home,
                               agents: [{ key: "codex", name: "Codex CLI", dir: dir, home_dir: dir, flag: "--codex" }],
@@ -213,5 +235,45 @@ class InstallerCoreTest < Minitest::Test
 
   def test_agent_installed_false_for_an_unknown_key
     refute @core.agent_installed?("nope")
+  end
+
+  # --- installed_agents / agent_version_for (intent 210, D1) ---
+
+  def test_installed_agents_reads_the_per_agent_version_file
+    claude_dir = Dir.mktmpdir("installed-agents-claude")
+    codex_dir = Dir.mktmpdir("installed-agents-codex")
+    FileUtils.mkdir_p(File.join(claude_dir, "plastic"))
+    File.write(File.join(claude_dir, "plastic", "VERSION"), "1.6.0\n")
+    # codex_dir has no plastic/VERSION at all: not installed.
+
+    core = InstallerCore.new(package_root: WORKTREE, plastic_home: @home,
+                              agents: [
+                                { key: "claude", name: "Claude Code", dir: claude_dir, flag: "--claude" },
+                                { key: "codex", name: "Codex CLI", dir: codex_dir, home_dir: codex_dir, flag: "--codex" },
+                              ], version: "1.0.0-test")
+
+    assert_equal ["claude"], core.installed_agents
+  ensure
+    FileUtils.rm_rf(claude_dir)
+    FileUtils.rm_rf(codex_dir)
+  end
+
+  def test_agent_version_for_reads_the_stripped_version_string
+    dir = Dir.mktmpdir("agent-version-for")
+    FileUtils.mkdir_p(File.join(dir, "plastic"))
+    File.write(File.join(dir, "plastic", "VERSION"), "1.5.2\n")
+
+    assert_equal "1.5.2", @core.agent_version_for({ dir: dir })
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
+  def test_agent_version_for_nil_when_no_version_file
+    dir = Dir.mktmpdir("agent-version-for-missing")
+    FileUtils.mkdir_p(dir)
+
+    assert_nil @core.agent_version_for({ dir: dir })
+  ensure
+    FileUtils.rm_rf(dir)
   end
 end

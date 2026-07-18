@@ -891,6 +891,33 @@ class DoctorCoreFilesTest < Minitest::Test
     assert version_check[:message].include?("1.0.0")
   end
 
+  # AC8, falsifiable (intent 210): a version split is reinstall-fixable (npx install
+  # --reinstall, or plastic-rollback), so this must report fixable: true with a
+  # fix_hint, not the old fixable: false dead end.
+  def test_version_mismatch_is_fixable_with_a_reinstall_hint
+    build_core_files
+    File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "2.0.0")
+
+    checks = doctor.check_core_files("claude")
+    version_check = checks.find { |c| c[:name] == "version_match" }
+
+    assert_equal true, version_check[:fixable], "a version split must be reported as fixable, not a dead end"
+    refute_nil version_check[:fix_hint]
+    assert_match(/reinstall|rollback/i, version_check[:fix_hint])
+  end
+
+  def test_missing_agent_version_file_is_fixable
+    build_core_files
+    File.delete(File.join(DOCTOR_TEST_CLAUDE, "plastic", "VERSION"))
+
+    checks = doctor.check_core_files("claude")
+    version_check = checks.find { |c| c[:name] == "version_match" }
+
+    assert_equal "warn", version_check[:status]
+    assert_equal true, version_check[:fixable]
+    refute_nil version_check[:fix_hint]
+  end
+
   def test_missing_version_file_fails
     build_core_files
     File.delete(File.join(DOCTOR_TEST_HOME, "VERSION"))
