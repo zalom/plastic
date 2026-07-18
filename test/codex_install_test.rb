@@ -40,9 +40,55 @@ class CodexInstallTest < Minitest::Test
     File.join(@codex_home, "AGENTS.md")
   end
 
-  def doctor_for(home_dir)
+  def doctor_for(home_dir, runner: nil)
     Doctor.new(plastic_home: @home,
-               agents: { "codex" => { name: "Codex CLI", dir: @agent_dir, home_dir: home_dir } })
+               agents: { "codex" => { name: "Codex CLI", dir: @agent_dir, home_dir: home_dir } },
+               **(runner ? { runner: runner } : {}))
+  end
+
+  def version_floor_check(home_dir, runner)
+    doctor_for(home_dir, runner: runner)
+      .check_codex_registration("codex", @agent_dir)
+      .find { |c| c[:name] == "codex_version_floor" }
+  end
+
+  # 1. Falsifiable: below floor -> warn naming the 0.123.0 floor
+  def test_codex_version_floor_below_floor_warns
+    runner = ->(_args) { ["codex-cli 0.100.0\n", true] }
+    c = version_floor_check(@codex_home, runner)
+    assert_equal "warn", c[:status]
+    assert_includes c[:message], "0.123.0"
+  end
+
+  # 2. Falsifiable: empty output on a PRESENT home is undetectable warn, not pass, not silence
+  def test_codex_version_floor_undetectable_warns_distinctly
+    runner = ->(_args) { ["", false] }
+    c = version_floor_check(@codex_home, runner)
+    assert_equal "warn", c[:status]
+    assert_match(/could not determine/i, c[:message])
+  end
+
+  # 3. Unparseable output also -> undetectable warn
+  def test_codex_version_floor_unparseable_warns
+    runner = ->(_args) { ["garble\n", true] }
+    c = version_floor_check(@codex_home, runner)
+    assert_equal "warn", c[:status]
+    assert_match(/could not determine/i, c[:message])
+  end
+
+  # 4. At/above floor -> explicit pass
+  def test_codex_version_floor_at_or_above_floor_passes
+    ["codex-cli 0.123.0\n", "codex-cli 0.144.4\n"].each do |out|
+      c = version_floor_check(@codex_home, ->(_args) { [out, true] })
+      assert_equal "pass", c[:status], "expected pass for #{out.strip}"
+    end
+  end
+
+  # 5. Absent ~/.codex home -> no check emitted (nil)
+  def test_codex_version_floor_absent_home_emits_nothing
+    absent = File.join(@home, "no-such-codex")
+    c = version_floor_check(absent, ->(_args) { ["codex-cli 0.100.0\n", true] })
+    assert_nil c
   end
 
   # --- Step 1: two-root schema ---
