@@ -330,6 +330,8 @@ class InstallerCore
       "scripts/rebuild-graph" => "scripts/rebuild-graph",
       "scripts/lib/restore_intent_v1.rb" => "scripts/lib/restore_intent_v1.rb",
       "scripts/restore-intent-v1" => "scripts/restore-intent-v1",
+      "scripts/lib/worktree_sweep.rb" => "scripts/lib/worktree_sweep.rb",
+      "scripts/sweep-store-worktrees" => "scripts/sweep-store-worktrees",
       "scripts/validate-intent" => "scripts/validate-intent",
       "scripts/new-intent" => "scripts/new-intent",
       "scripts/end-intent" => "scripts/end-intent",
