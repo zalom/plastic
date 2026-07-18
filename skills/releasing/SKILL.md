@@ -247,11 +247,11 @@ lock correctly (G5): before intent 188 this path left the lock stranded, exactly
 of bug closed by the End-tail enforcement work.
 
 This is the release branch of `plastic-intent-ending`'s Step 5 disarm (`merge: true`), not a
-separate concern: a release is the merge-then-remove path for the intent's worktrees (intent
+separate concern: a release is the merge-then-remove path for the intent's worktree (intent
 73c3), so the intent's code branch is merged back into the default branch BEFORE the worktree
 is removed. Drive it through `Worktree.finish` with `merge: true`, which merges the code
-branch, then removes both worktrees (code + paired store), prunes both repos, and clears the
-worktree block from the bridge:
+branch, then removes the worktree, prunes the repo, and clears the worktree block from the
+bridge:
 
 ```bash
 ruby -r ~/.plastic/scripts/lib/worktree -r ~/.plastic/scripts/lib/bridge -e \

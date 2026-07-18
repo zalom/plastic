@@ -575,16 +575,25 @@ chained intent.
 Every code-touching intent gets its own git worktree named `{id}--{slug}`, and all code edits
 for that intent happen only inside it. Plastic provisions the worktree deterministically: it
 resolves the project repo from `projects.yml` and runs `git -C <repo> worktree add`, so
-isolation never depends on the current working directory. There are two worktrees per project
-intent: a code worktree at `<repo>/.claude/worktrees/{id}--{slug}` (branch `plastic/{id}--{slug}`)
-and a store worktree at `<plastic_home>/.worktrees/{id}--{slug}` (branch
-`plastic-store/{id}--{slug}`), so lifecycle-doc commits and code commits move as one unit.
+isolation never depends on the current working directory. There is one worktree per project
+intent, the code worktree at `<repo>/.claude/worktrees/{id}--{slug}` (branch
+`plastic/{id}--{slug}`).
+
+Plastic does not provision a second worktree for lifecycle-doc writes. Two things cover that
+need instead. First, the harness's own native worktree: Claude Code manages its own code
+worktree at `<repo>/.claude/worktrees/{name}`, and Codex manages its own at
+`$CODEX_HOME/worktrees` (default `~/.codex/worktrees`); both exist on their own, independent of
+anything Plastic provisions. Second, intent 197's branch-from-main plus scoped commit, which
+gives store writes their own write safety without a dedicated worktree. Plastic tried a second,
+dedicated store worktree at `<plastic_home>/.worktrees/{id}--{slug}` first; agents never wrote
+into it, because every delivering agent writes lifecycle docs straight to the main store
+checkout, so intent 178 retired the store worktree in favor of the two mechanisms above.
 
 Provisioning fails open for intents that touch no project code (pure research or decision
 intents in the global store, or a non-git repo): those get the lock only, and the worktree
 block stays unprovisioned. The fail-open path is always logged, never silent.
 
-Cleanup is part of Done: the End tail merges the branch, then removes both worktrees. Never leave
+Cleanup is part of Done: the End tail merges the branch, then removes the worktree. Never leave
 an orphaned worktree behind, and clear a stale worktree reference with `git worktree prune`.
 
 ### Intent delivery, station by station

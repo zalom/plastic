@@ -18,9 +18,11 @@ require_relative "lock"
 # projects.yml and runs `git -C <repo> worktree add`, so the cwd-not-root bug
 # dies by construction (decision D6).
 #
-# Two worktrees per project intent, both named `{id}--{slug}` (decision D2):
-#   code  worktree  <repo>/.claude/worktrees/{id}--{slug}  branch plastic/{id}--{slug}
-#   store worktree  <plastic_home>/.worktrees/{id}--{slug} branch plastic-store/{id}--{slug}
+# One worktree per project intent (decision D2, retired to a single worktree by
+# intent 178): the code worktree, <repo>/.claude/worktrees/{id}--{slug}, branch
+# plastic/{id}--{slug}. Store-write safety for lifecycle-doc writes now comes
+# from intent 197's branch-from-main plus scoped-commit mechanism instead of a
+# second, dedicated worktree (see PLASTIC.md's worktree doctrine).
 #
 # The durable delivery.lock file in the intent dir is the single-owner
 # delivery lock (intent 108): session-keyed, lease-based, explicit takeover.
@@ -60,22 +62,21 @@ module Worktree
     "#{intent_id}--#{intent_slug}"
   end
 
-  # Pure, deterministic. Returns the four paths/branches. No git calls.
+  # Pure, deterministic. Returns the code worktree's path/branch. No git calls.
   # `repo_path` is resolved from projects.yml when nil; when it cannot be
   # resolved the code worktree path/branch are nil (a global-store-only intent).
+  # Store-worktree provisioning was retired by intent 178: this used to also
+  # return a `store`/`store_branch` pair for a second worktree under
+  # `<plastic_home>/.worktrees/{id}--{slug}`; nothing provisions that anymore.
   def paths(slug:, intent_id:, intent_slug:, home: Dir.home, repo_path: nil)
     name = dir_name(intent_id, intent_slug)
     repo = repo_path || repo_for(slug, home: home)
-    plastic_home = File.expand_path(File.join(home, ".plastic"))
 
     code_path = repo ? File.join(File.expand_path(repo), ".claude", "worktrees", name) : nil
-    store_path = File.join(plastic_home, ".worktrees", name)
 
     {
       "code" => code_path,
       "code_branch" => code_path ? "plastic/#{name}" : nil,
-      "store" => store_path,
-      "store_branch" => "plastic-store/#{name}",
     }
   end
 
@@ -133,27 +134,15 @@ module Worktree
     block = {
       "code" => nil,
       "code_branch" => nil,
-      "store" => p["store"],
-      "store_branch" => p["store_branch"],
       "provisioned" => false,
     }
 
     plastic_home = File.expand_path(File.join(home, ".plastic"))
 
-    # Gitignore safety (intent 73c3): the store worktrees live under the store git
-    # repo, so without ignoring `.worktrees/` a `git add -A` sweeps their gitlinks
-    # into the store commit. Ensure both ignore entries before any worktree add.
-    ensure_gitignored(plastic_home, ".worktrees/", runner: runner)
-
     # The durable lock files live inside intent dirs under the store git repo
-    # (intent 108, D2): transient state, never committed.
+    # (intent 108, D2): transient state, never committed. Unrelated to store
+    # worktrees (retired by intent 178); this stays regardless.
     ensure_gitignored(plastic_home, "*.lock", runner: runner)
-
-    # Store worktree: created against the plastic home git repo. Fail-open if the
-    # store repo is not a git repo (a fresh global store may be ungit'd).
-    store_ok = add_worktree(runner, repo: plastic_home,
-                            worktree: p["store"], branch: p["store_branch"],
-                            label: "store")
 
     # Code worktree: MANDATORY for project intents. Fail-open when the repo is
     # unresolvable or non-git -- that is the global-store-only / non-git case.
@@ -173,9 +162,6 @@ module Worktree
            "is unresolvable or not a git repo; code worktree skipped"
     end
 
-    block["store"] = store_ok ? p["store"] : nil
-    block["store_branch"] = store_ok ? p["store_branch"] : nil
-
     # provisioned is true only when the MANDATORY code worktree exists. The gate
     # fails open on provisioned: false (non-git / global-only).
     block["provisioned"] = code_ok
@@ -184,26 +170,22 @@ module Worktree
     bridge_data
   end
 
-  # Remove both worktrees (then `git worktree prune`), clear the worktree block.
+  # Remove the worktree (then `git worktree prune`), clear the worktree block.
   # No-op when nothing was provisioned. CLEANUP (73c3) layers the merge-vs-remove
   # policy on top via `finish`; this is the plain remove. Pass `remove: false` to
   # clear the block WITHOUT touching git (so `finish` can merge first, then call
-  # release to drop the worktrees once the code branch is integrated).
+  # release to drop the worktree once the code branch is integrated).
   def release(bridge_data, home: Dir.home, runner: ShellRunner.new, remove: true)
     return bridge_data unless bridge_data.is_a?(Hash)
     block = bridge_data["worktree"]
     return bridge_data unless block.is_a?(Hash)
 
     if remove
-      plastic_home = File.expand_path(File.join(home, ".plastic"))
       slug = slug_for_store(bridge_data.dig("intent", "store").to_s, home: home)
       repo = repo_for(slug, home: home)
 
       remove_worktree(runner, repo: repo, worktree: block["code"]) if repo && block["code"]
-      remove_worktree(runner, repo: plastic_home, worktree: block["store"]) if block["store"]
-
       prune(runner, repo: repo) if repo
-      prune(runner, repo: plastic_home)
     end
 
     bridge_data.delete("worktree")
@@ -212,7 +194,7 @@ module Worktree
 
   # --- cleanup policy (merge-vs-remove) -------------------------------------
 
-  # Finish an intent's delivery by tearing down its worktrees, optionally merging
+  # Finish an intent's delivery by tearing down its worktree, optionally merging
   # the code branch back first (intent 73c3). The merge-vs-remove decision is the
   # one piece of policy on top of the plain `release`:
   #
