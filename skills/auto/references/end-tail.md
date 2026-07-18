@@ -44,12 +44,14 @@ deliberately); and the durable lock file is checked again after disarm, never me
 trusted (exit 3 if it is somehow still present).
 
 **Worktree cleanup (mandatory, intent 73c3).** `end-intent`'s step 5 calls
-`Bridge.disarm_auto` by default, which calls `Worktree.release`, which removes both
-per-intent worktrees (the code worktree under `<repo>/.claude/worktrees/{id}--{slug}` and
-the paired store worktree under `<plastic_home>/.worktrees/{id}--{slug}`), prunes both
-repos, and clears the worktree block from the bridge. This is the plain remove path: the
-disarm route does NOT merge, so use it only when no release merges the branch (the branch
-survives and can be reclaimed).
+`Bridge.disarm_auto` by default, which calls `Worktree.release`, which removes the
+intent's code worktree under `<repo>/.claude/worktrees/{id}--{slug}`, prunes the repo, and
+clears the worktree block from the bridge. (Plastic used to also provision a paired store
+worktree under `<plastic_home>/.worktrees/{id}--{slug}`; intent 178 retired it, since
+lifecycle-doc writes go straight to the main store checkout, and intent 197's
+branch-from-main plus scoped commit already gives them their own write safety.) This is the
+plain remove path: the disarm route does NOT merge, so use it only when no release merges
+the branch (the branch survives and can be reclaimed).
 
 When the work is being shipped through a release, do NOT rely on this plain remove.
 `skills/releasing/SKILL.md` reorders its own two steps for exactly this reason (intent 188,
