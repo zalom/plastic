@@ -85,6 +85,14 @@ class EndIntentTest < Minitest::Test
                "# Outcome: Demo intent\n\n## Summary\nDid the thing.\n"
     File.write(File.join(intent_dir, "outcome.md"), outcome)
 
+    # Real, complete spec/plan/checklist (intent 222): the per-intent structure gate now
+    # runs ahead of the outcome guard and checks these are present too, so a fixture meant
+    # to exercise ONLY the outcome-guard scenarios must otherwise present a clean, fully
+    # delivered intent (matching the real shape end-intent is actually called against).
+    File.write(File.join(intent_dir, "spec.md"), "Tier: S\n\n# Spec: Demo intent\n")
+    File.write(File.join(intent_dir, "plan.md"), "# Plan: Demo intent\n\n- [x] Step 1\n")
+    File.write(File.join(intent_dir, "checklist.md"), "# Checklist: Demo intent\n\n- [x] Step 1\n")
+
     intent_dir
   end
 
@@ -146,26 +154,36 @@ class EndIntentTest < Minitest::Test
     assert_equal 1, done_lines_after.length, "a second run must not duplicate the Done bookend"
   end
 
-  # --- (b) missing / placeholder / wrong-disposition outcome.md -> exit 2 [AC4] --
+  # --- (b) missing / placeholder outcome.md -> exit 6; wrong-disposition -> exit 2 [AC4] --
+  #
+  # Intent 222 executor note: the new per-intent structure gate (its intent_lifecycle_artifacts
+  # check) unconditionally verifies outcome.md PRESENCE via Bridge.stage_file_present?, and runs
+  # BEFORE the old outcome-only guard below. A missing or still-placeholder outcome.md is
+  # therefore now caught by the STRONGER, EARLIER gate (exit 6), not the old guard (exit 2):
+  # this is the intended artifact-completeness-at-close enforcement 219/222 call for, not a
+  # regression. The old guard's exit-2 path stays byte-identical for what it alone still
+  # owns: disposition MATCHING (see test_wrong_disposition_.../test_scaffolded_outcome_...
+  # below), since end-intent's own gate call deliberately omits `disposition:` (see
+  # scripts/end-intent's gate comment) so it never re-checks disposition itself.
 
-  def test_missing_outcome_refuses_with_exit_2_and_no_done_line
+  def test_missing_outcome_refuses_with_exit_6_via_the_structure_gate
     intent_dir = File.join(@store, "161--demo")
     FileUtils.mkdir_p(intent_dir)
     File.write(File.join(intent_dir, "161--demo.md"), "## Intent\nDemo\n")
     write_index
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 2, status
+    assert_equal 6, status
     assert_match(/missing/i, out)
     assert_empty savepoint_lines(intent_dir)
   end
 
-  def test_placeholder_outcome_refuses_with_exit_2_and_no_done_line
+  def test_placeholder_outcome_refuses_with_exit_6_via_the_structure_gate
     intent_dir = build_intent(sentinel: true, outcome_disposition: "delivered|abandoned")
     write_index
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 2, status
+    assert_equal 6, status
     assert_match(/placeholder/i, out)
     assert_empty savepoint_lines(intent_dir)
   end
@@ -668,5 +686,49 @@ class EndIntentTest < Minitest::Test
     content = File.read(@index)
     assert_match(/^## Active\n- \[161 /, content, "the duplicate entry must still be visible under ## Active")
     assert_match(/^## Completed\n- \[161 — Demo intent\]/, content, "the first match must still have moved")
+  end
+
+  # --- structure gate (intent 222): refuse-then-succeed end-to-end -----------
+
+  # An unchecked checklist item is now a hard refusal (exit 6) at the structure gate, BEFORE
+  # any of steps 1-4 write anything; checking the box (the only change) then re-running the
+  # identical invocation must close normally: exit 0, INDEX moves, the savepoint gains the
+  # Done bookend, and the store commits.
+  def test_structure_gate_refuses_on_unchecked_checklist_item_then_succeeds_once_checked
+    intent_dir = build_intent(id: "161")
+    File.write(File.join(intent_dir, "checklist.md"), "# Checklist\n\n- [ ] finish the thing\n")
+    write_index
+    Open3.capture3("git", "init", "-q", @home)
+    Open3.capture3("git", "-C", @home, "add", "-A")
+    Open3.capture3("git", "-C", @home, "-c", "user.name=t", "-c", "user.email=t@t",
+                   "commit", "-q", "-m", "seed")
+
+    before_index = File.read(@index)
+    before_outcome = File.read(File.join(intent_dir, "outcome.md"))
+    before_intent_file = File.read(Bridge.intent_file(intent_dir))
+    refute File.exist?(File.join(intent_dir, "savepoint.md")), "no savepoint yet in this fixture"
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
+    assert_equal 6, status, "an unchecked checklist item must refuse via the structure gate: #{out}"
+    assert_match(/intent_checklist_complete/, out)
+    assert_equal before_index, File.read(@index), "INDEX.md must be untouched by a refused close"
+    assert_equal before_outcome, File.read(File.join(intent_dir, "outcome.md")), "outcome.md must be untouched"
+    assert_equal before_intent_file, File.read(Bridge.intent_file(intent_dir)), "the intent file must be untouched"
+    refute File.exist?(File.join(intent_dir, "savepoint.md")), "a refused close must author no savepoint line"
+
+    File.write(File.join(intent_dir, "checklist.md"), "# Checklist\n\n- [x] finish the thing\n")
+
+    out2, status2 = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
+    assert_equal 0, status2, "checking the box must let the identical invocation close cleanly: #{out2}"
+    content = File.read(@index)
+    refute_match(/^- \[161 /, content.lines.take_while { |l| l.strip != "## Completed" }.join,
+                 "the Active section must no longer carry the 161 entry")
+    assert_match(/^## Completed\n- \[161 /, content)
+    assert(savepoint_lines(intent_dir).any? { |l| l.include?("Done") && l.include?("delivered") },
+           "the savepoint must gain the Done bookend on the successful close")
+
+    log, _err, log_status = Open3.capture3("git", "-C", @home, "log", "--oneline")
+    assert log_status.success?
+    assert_match(/complete intent 161/, log, "the successful close must still commit the store")
   end
 end

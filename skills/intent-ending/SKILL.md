@@ -52,9 +52,18 @@ for orchestrator-owned or completion-tracking items.
    the gate.
 2. Confirm every acceptance criterion in spec.md is verifiable (tests pass,
    or the manual check described in its HOW line was actually run).
-3. If checklist.md still has an unchecked box, stop here. Finish it first
-   (tick it if the described work is actually done, or do the remaining
-   work); do not attempt outcome.md and fight the gate's deny.
+3. The structure gate (intent 222) now enforces this: `scripts/end-intent`
+   refuses with exit 6 and names the exact unchecked box (or any other
+   structural gap: intent-file validity, lifecycle-artifact presence,
+   `## Links` projection). On a refusal, fix via the OWNING tool, never a
+   hand edit of the check's own output:
+   - checklist/outcome content - finish it yourself, the same as before.
+   - links projection - `scripts/project-links --intent <id> --apply` via
+     `maintenance-run`.
+   - a savepoint issue - advisory only (WARN, never blocks): run
+     `plastic-intent-savepoint` to rebuild via `Bridge.rebuild_savepoint` if
+     you want it clean, but it never refuses the close on its own.
+   Then re-run `scripts/end-intent`.
 
 ### Step 1-5. Run `scripts/end-intent`
 
@@ -78,9 +87,10 @@ ruby ~/.plastic/scripts/end-intent \
   --index-note "<rich Completed/Abandoned entry description>"
 ```
 
-This does all of steps 1-5 in order: guards outcome.md (refuses a missing,
-still-placeholder, or wrong-disposition file with exit 2 and authors
-nothing), stamps the intent file's `## Outcome` section, moves the INDEX.md
+This does all of steps 1-5 in order: guards outcome.md (a missing or
+still-placeholder file is caught by the structure gate first and exits 6; a
+wrong-disposition file exits 2; either way it authors nothing), stamps the
+intent file's `## Outcome` section, moves the INDEX.md
 line from `## Active` to `## Completed` or `## Abandoned` (dated today,
 idempotent, accepting either a real em dash or a plain hyphen as the id/
 title separator on read while always emitting the real em dash on write)

@@ -63,6 +63,10 @@
 #      (git status itself failed: corrupt index, git missing, not a repo);
 #      refused before removal; pass --discard-worktree-changes to override
 #      deliberately.
+#   6  the doctor per-intent structure gate refused (checklist incomplete,
+#      links out of projection, intent-file malformed, or a lifecycle artifact
+#      missing/placeholder); named reasons on stderr; authors nothing
+#      (intent 222).
 
 require "fileutils"
 require "date"
@@ -71,6 +75,7 @@ require "pathname"
 require_relative "lib/bridge"
 require_relative "lib/lock"
 require_relative "lib/intent_validator"
+require_relative "lib/outcome_guard"
 
 DISPOSITIONS = %w[delivered abandoned].freeze
 
@@ -143,32 +148,68 @@ def resolve_intent_dir(store, id)
   matches.first
 end
 
-# --- outcome.md guard (D2 step 1a) ------------------------------------------
+# --- structure gate helper (intent 222) -------------------------------------
 #
-# Returns nil when the guard PASSES, or a reason String to refuse with exit 2.
-# Read-only: authors nothing regardless of outcome. Refuses a missing file, a
-# still-placeholder file (first line is the sentinel), or a disposition that
-# does not exactly equal the requested one (this is what naturally refuses a
-# freshly scaffolded outcome.md, whose disposition is the literal
-# "delivered|abandoned" string, not one of the two real values).
-def outcome_guard_reason(intent_dir, disposition)
-  path = File.join(intent_dir, "outcome.md")
-  return "outcome.md is missing at #{path}" unless File.exist?(path)
-
-  content = File.read(path)
-  first_line = content.each_line.first.to_s.chomp
-  if first_line == Bridge::PLACEHOLDER_SENTINEL
-    return "outcome.md is still the scaffold placeholder (first line is the sentinel)"
+# Derive the TRUE plastic_home and this intent's store scope key from the --store
+# directory end-intent was given, so the per-intent doctor gate (below) sees the SAME
+# multi-store universe doctor.rb itself would (needed for its links-projection sub-check,
+# which resolves cross-store refs). --store is either the global store
+# (<plastic_home>/store) or a project store (<plastic_home>/projects/<slug>/store); the two
+# shapes are told apart by whether store's grandparent directory is literally named
+# "projects" (the StoreDiscovery convention, scripts/lib/store_discovery.rb), never by
+# hardcoding ".plastic" as a name.
+def resolve_plastic_home_and_scope(store)
+  parent = File.dirname(store)
+  grandparent = File.dirname(parent)
+  if File.basename(grandparent) == "projects"
+    slug = File.basename(parent)
+    [File.dirname(grandparent), "project:#{slug}"]
+  else
+    [parent, "global"]
   end
-
-  fm = IntentValidator.parse_frontmatter_text(content)
-  actual = fm.is_a?(Hash) ? fm["disposition"] : nil
-  unless DISPOSITIONS.include?(actual) && actual == disposition
-    return "outcome.md frontmatter disposition is #{actual.inspect}, expected #{disposition.inspect}"
-  end
-
-  nil
 end
+
+# Doctor's per-intent structure gate (intent 222), a pre-write step: FAIL refuses the close
+# (exit 6, authors nothing), WARN prints an advisory note and proceeds, PASS proceeds
+# silently, and an unexpected exception from the gate call itself is rescued and treated as
+# a skipped gate (fail-open on a crash: a broken gate must never wedge a close).
+#
+# `gate:` is an injected seam (mirrors run_disarm's own bridge_reader:/disarm: pattern
+# below) defaulting to the real Doctor.new(...).run_intent_check(...) call; tests load this
+# script in-process (as test/end_intent_disarm_toctou_test.rb already does for run_disarm)
+# and inject a raising stub to prove the fail-open contract, with no eval/ENV/global seam.
+#
+# Disposition is deliberately NOT passed to the real gate call (intent 222 executor
+# decision): the existing outcome-only guard immediately following this call already owns
+# disposition-matching (exit 2), and intent_lifecycle_artifacts unconditionally checks
+# outcome.md PRESENCE via Bridge.stage_file_present? regardless of disposition, so passing
+# it here would make this gate re-check the SAME disposition match the old guard already
+# owns, needlessly widening which exit-2 fixtures become exit-6. doctor.rb --intent called
+# directly (with --disposition) still exercises the fold-in per D2/acceptance criteria.
+def run_structure_gate(id, store:, gate: ->(gate_home, gate_scope) {
+  require_relative "doctor"
+  Doctor.new(plastic_home: gate_home).run_intent_check(id, store: gate_scope)
+})
+  gate_home, gate_scope = resolve_plastic_home_and_scope(store)
+  gate_verdict = gate.call(gate_home, gate_scope)
+  case gate_verdict[:status]
+  when "fail"
+    gate_verdict[:checks].select { |c| c[:status] == "fail" }.each do |c|
+      detail = Array(c[:details]).any? ? " (#{Array(c[:details]).join("; ")})" : ""
+      warn "end-intent: structure gate refused: #{c[:name]}: #{c[:message]}#{detail}"
+    end
+    exit 6
+  when "warn"
+    gate_verdict[:checks].select { |c| c[:status] == "warn" }.each do |c|
+      detail = Array(c[:details]).any? ? " (#{Array(c[:details]).join("; ")})" : ""
+      warn "end-intent: structure gate warning (proceeding): #{c[:name]}: #{c[:message]}#{detail}"
+    end
+  end
+rescue StandardError => e
+  warn "end-intent: structure gate crashed (#{e.message}); proceeding without it"
+end
+
+# outcome.md guard: see OutcomeGuard.reason (scripts/lib/outcome_guard.rb, extracted intent 222)
 
 # --- intent-file `## Outcome` summary stamp (D2 step 1b) --------------------
 #
@@ -580,7 +621,9 @@ def main(argv)
     exit 4
   end
 
-  reason = outcome_guard_reason(intent_dir, disposition)
+  run_structure_gate(id, store: store)
+
+  reason = OutcomeGuard.reason(intent_dir, disposition)
   if reason
     warn "end-intent: #{reason}"
     exit 2
