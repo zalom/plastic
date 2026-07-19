@@ -48,21 +48,35 @@ Each manifest maps a file path to its SHA256.
 
 ### `--store [global|<slug>]`
 
-Checks store state: intents are well-formed, INDEX sections are present, conventions
-are followed, and links are valid. Scope options:
+Checks the operations Plastic itself depends on in one store: QMD search reachability (scoped
+to that store's own collection; global uses `plastic-global`, a project slug uses
+`plastic-<slug>`), sources/chain resolution, cross-store resolution, INDEX parsing, and links
+projection. A project slug also checks tool readiness (Serena, Enola): each is a pass whether
+present or absent, present naming it available, absent noting it as an optional integration
+never installed by doctor. Scope options:
 
-- No argument: checks all stores (global and all projects)
-- `global`: checks only the global store
-- A project slug (e.g. `--store plastic`): checks only that project's store
+- No argument (`:all`): checks all stores (global and all project stores), QMD reachability
+  unscoped across every collection.
+- `global`: checks only the global store, QMD scoped to `plastic-global`, no tool-readiness
+  checks (code-navigation tools have no meaning against the global store).
+- A project slug (e.g. `--store plastic`): checks only that project's store, QMD scoped to
+  `plastic-<slug>`, plus Serena/Enola readiness for that project.
 
-Produces three-state results (pass / warn / fail) and is run per-scope at dashboard
-load time: the global board uses `--store global`, a project board uses `--store <slug>`.
+Produces three-state results (pass / warn / fail) and is run per-scope at dashboard load time:
+the global board uses `--store global`, a project board uses `--store <slug>`. **This IS the
+load-time full project check** named by 219's doctrine: no separate mechanism exists or is
+needed, since a project slug's scan already carries every per-project finding scoped to that
+project alone.
 
 ### Full doctor (no flag)
 
-Runs core plus all store checks plus deprecation checks. This is what `/plastic-doctor`
-invokes. It also runs automatically after every `plastic-update` (informational,
-does not block or revert the update).
+Runs the install-wide surface: agent registration, core files (including config-honoring
+drift), manifest sync is core-only and not part of this run, deprecation checks, config-ask
+checks, install-integrity checks, skill-lint (advisory), QMD reachability (unscoped, every
+collection), and the global store's own conventions/done-signals content. **Never carries a
+per-project finding**; that is `--store <slug>`'s job (see above). This is what
+`/plastic-doctor` invokes, and it also runs automatically after every `plastic-update`
+(informational, does not block or revert the update).
 
 ## When to Use
 

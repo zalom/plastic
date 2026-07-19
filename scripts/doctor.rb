@@ -29,6 +29,7 @@ require_relative "lib/agent_models"
 require_relative "lib/legacy_bookend_amnesty"
 require_relative "lib/skill_lint"
 require_relative "lib/config_asks"
+require_relative "lib/power_tools"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -2477,7 +2478,7 @@ class Doctor
   # When present, we report whether every Plastic store is registered as a QMD
   # collection. Everything here is read-only; we never invoke a mutating qmd
   # subcommand. detector/runner are injectable so tests stay hermetic.
-  def check_qmd(detector: QmdSync.method(:detect), runner: QmdSync.default_runner)
+  def check_qmd(detector: QmdSync.method(:detect), runner: QmdSync.default_runner, collection: nil)
     return [absent_qmd_check] unless detector.call
 
     checks = [check(
@@ -2486,17 +2487,20 @@ class Doctor
     )]
 
     status = QmdSync.status(plastic_home: plastic_home, runner: runner, detector: detector)
-    missing = status[:missing] || []
+    expected = collection ? [collection] : (status[:expected] || [])
+    missing = collection ? (Array(status[:missing]) & expected) : (status[:missing] || [])
 
-    if status[:all_registered]
+    if missing.empty?
       checks << check(
         category: "qmd", name: "collections", status: "pass",
-        message: "All #{status[:expected].size} Plastic store(s) registered as QMD collections"
+        message: collection ? "Store collection '#{collection}' registered as a QMD collection" \
+                             : "All #{expected.size} Plastic store(s) registered as QMD collections"
       )
     else
       checks << check(
         category: "qmd", name: "collections", status: "warn",
-        message: "#{missing.size} Plastic store(s) not registered as QMD collections",
+        message: collection ? "Store collection '#{collection}' not registered as a QMD collection" \
+                             : "#{missing.size} Plastic store(s) not registered as QMD collections",
         details: missing,
         fixable: true, fix_hint: "Run: qmd-sync register --all"
       )
@@ -2510,6 +2514,47 @@ class Doctor
       category: "qmd", name: "present", status: "pass",
       message: "QMD not installed (optional integration)"
     )
+  end
+
+  # --- Check category: tool readiness (Serena, Enola) ---
+  #
+  # One readiness check per recognized code-navigation power tool (intent 221, D4). Wraps
+  # PowerTools' existing pure, injectable presence detectors (scripts/lib/power_tools.rb).
+  # Absence is a PASS with a note, never a warn, mirroring check_qmd's absent-is-a-silent-pass
+  # shape (108 D8: power tools are recommendations, never a hard gate). No fail path exists for
+  # either check: PowerTools' detectors are pure presence probes (a marker-directory walk or a
+  # PATH scan) with no handshake to test whether a detected tool actually works, so there is
+  # nothing to report beyond present/absent.
+  def check_serena(cwd:, path_probe: PowerTools.method(:which_serena), marker_finder: PowerTools.method(:serena_marker?))
+    present = PowerTools.serena?(cwd: cwd, path_probe: path_probe, marker_finder: marker_finder)
+
+    if present
+      [check(
+        category: "tools", name: "serena_ready", status: "pass",
+        message: "Serena is available for code navigation"
+      )]
+    else
+      [check(
+        category: "tools", name: "serena_ready", status: "pass",
+        message: "Serena not installed (optional code-navigation tool)"
+      )]
+    end
+  end
+
+  def check_enola(cwd:, path_probe: PowerTools.method(:which_enola), marker_finder: PowerTools.method(:enola_marker?))
+    present = PowerTools.enola?(cwd: cwd, path_probe: path_probe, marker_finder: marker_finder)
+
+    if present
+      [check(
+        category: "tools", name: "enola_ready", status: "pass",
+        message: "Enola is available for code navigation"
+      )]
+    else
+      [check(
+        category: "tools", name: "enola_ready", status: "pass",
+        message: "Enola not installed (optional code-navigation tool)"
+      )]
+    end
   end
 
   # --- Check category: skill-lint (advisory only; intent 85b) ---
@@ -2559,14 +2604,13 @@ class Doctor
   def run_checks(agent_key)
     all_checks = []
     all_checks += check_global_store
-    all_checks += check_conventions
+    all_checks += check_conventions(scopes: ["global"])
     all_checks += check_agent_registration(agent_key)
     all_checks += check_core_files(agent_key)
-    all_checks += check_project_stores
     all_checks += check_deprecations
     all_checks += check_config_asks(agent_key)
     all_checks += check_qmd
-    all_checks += check_done_signals
+    all_checks += check_done_signals(scopes: ["global"])
     all_checks += check_skill_lint
     all_checks += check_install_integrity
 
@@ -2595,13 +2639,16 @@ class Doctor
   #   "<slug>" -> that project only + conventions scoped to ["project:<slug>"]
   #               (fail if the slug is not registered in projects.yml)
   # 3-state roll-up (pass/warn/fail), like the full run.
+  # QMD reachability is now wired into every branch, scoped to that branch's own
+  # collection(s) (D3); Serena/Enola readiness is per-slug only (D4).
   def run_store_checks(store)
     all_checks =
       case store
       when :all
-        check_global_store + check_project_stores + check_conventions + check_done_signals
+        check_global_store + check_project_stores + check_conventions + check_done_signals + check_qmd
       when :global
-        check_global_store + check_conventions(scopes: ["global"]) + check_done_signals(scopes: ["global"])
+        check_global_store + check_conventions(scopes: ["global"]) +
+          check_done_signals(scopes: ["global"]) + check_qmd(collection: "plastic-global")
       else
         all_checks_for_project_slug(store)
       end
@@ -2623,9 +2670,16 @@ class Doctor
       )]
     end
 
-    check_project_store(slug, projects[slug]) +
+    project_info = projects[slug]
+    project_path = project_info.is_a?(Hash) ? project_info["path"] : nil
+    probe_cwd = project_path || Dir.pwd
+
+    check_project_store(slug, project_info) +
       check_conventions(scopes: ["project:#{slug}"]) +
-      check_done_signals(scopes: ["project:#{slug}"])
+      check_done_signals(scopes: ["project:#{slug}"]) +
+      check_qmd(collection: "plastic-#{slug}") +
+      check_serena(cwd: probe_cwd) +
+      check_enola(cwd: probe_cwd)
   end
 
   # Roll a list of checks up into the standard result envelope.

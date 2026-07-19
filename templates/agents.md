@@ -7,6 +7,14 @@
 
 You are working on this project as part of a strategic intent. Your governing intent is tracked in the global Plastic store at `~/.plastic/store/`.
 
+## Tools
+
+Plastic detects the tools it can use to work faster on this project: QMD (search this
+project's intent store instead of grep), and Serena or Enola (symbolic code navigation
+instead of grep). None is required. Whichever are present, their readiness is checked every
+time this project loads (`doctor --store <slug>`), so working through Plastic on this project
+means preferring a detected tool's own search or navigation over a generic file scan.
+
 ## How to Work
 
 1. **Check active tactical intents** in `.plastic/store/` — these are your current tasks

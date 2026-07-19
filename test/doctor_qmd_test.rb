@@ -82,4 +82,36 @@ class DoctorQmdTest < Minitest::Test
     assert_equal "pass", collections[:status]
     refute collections[:fixable]
   end
+
+  def test_scoped_collection_pass_when_registered
+    checks = doctor.check_qmd(detector: present,
+      runner: runner_listing(["plastic-global", "plastic-dealintell"]),
+      collection: "plastic-dealintell")
+
+    collections = by_name(checks, "collections")
+    assert_equal "pass", collections[:status]
+    assert_includes collections[:message], "plastic-dealintell"
+  end
+
+  def test_scoped_collection_warns_naming_only_itself
+    # plastic-global IS registered; plastic-dealintell is not. Scoped to
+    # plastic-dealintell only, the warn must name only that one collection, not
+    # every missing store in the install.
+    checks = doctor.check_qmd(detector: present,
+      runner: runner_listing(["plastic-global"]),
+      collection: "plastic-dealintell")
+
+    collections = by_name(checks, "collections")
+    assert_equal "warn", collections[:status]
+    assert_equal ["plastic-dealintell"], collections[:details]
+  end
+
+  def test_unscoped_default_behavior_is_unchanged
+    # collection: not passed at all -> byte-for-byte pre-221 behavior.
+    checks = doctor.check_qmd(detector: present, runner: runner_listing(["plastic-global"]))
+
+    collections = by_name(checks, "collections")
+    assert_equal "warn", collections[:status]
+    assert_includes collections[:details], "plastic-dealintell"
+  end
 end
