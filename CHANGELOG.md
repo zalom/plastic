@@ -7,6 +7,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Released
 
+- `1.7.1` - shipped 2026-07-19; collected 218: fix the maintenance merge-back failing on hosts without a global git identity (CI runners, fresh machines) - the no-ff merge in scripts/lib/maintenance_git.rb now carries the same committer identity flags as the maintenance commit, proven by an identity-isolated regression test that disables git's OS-account fallback; clears the 3 CI test failures red since the v1.5.0 push; full suite 1796 runs, 6238 assertions, 0 failures.
+
 - `1.7.0` - shipped 2026-07-19; collected 210: consolidated multi-harness updates - one update run from any agent now refreshes the shared core and every installed agent (per-agent install records as the registry, VERSION + manifest under <agent-dir>/plastic/ with Codex and Hermes gaining the record), per-agent transactional apply with snapshot and auto-restore on failed verification, same-version repair, harness-stamped versions.json rows, doctor version_match now fixable with a repair hint plus a new full-tier install_integrity advisory; full suite 1795 runs, 6231 assertions, 0 failures.
 
 - `1.6.0` - shipped 2026-07-18; collected 184, 186, and 183: a read-only doctor advisory that warns when the installed Codex predates the v0.123.0 apply_patch hooks floor so gates never silently no-op, shipped per-role Codex model and effort defaults (gpt-5.6-sol high for reasoning roles, gpt-5.6-terra medium for executors, gpt-5.6-luna low; user-overridable via agents.models.codex.*), and the Boss-system reuse-mining verdicts that spawned the working-notes vault design intent (store-only); full suite 1763 runs, 6149 assertions, 0 failures.
