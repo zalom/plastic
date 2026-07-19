@@ -1420,6 +1420,46 @@ class DoctorStoreScopingTest < Minitest::Test
       assert result.key?(key), "store result missing envelope key #{key}"
     end
   end
+
+  def test_store_global_includes_scoped_qmd_but_no_tool_checks
+    result = doctor.run_store_checks(:global)
+    names = result[:checks].map { |c| c[:name] }
+
+    assert_includes names, "present" # check_qmd's own "present" check name
+    refute_includes names, "serena_ready"
+    refute_includes names, "enola_ready"
+  end
+
+  def test_store_slug_includes_qmd_and_both_tool_checks
+    result = doctor.run_store_checks(@project_slug)
+    names = result[:checks].map { |c| c[:name] }
+
+    assert_includes names, "collections" # check_qmd's scoped collection check
+    assert_includes names, "serena_ready"
+    assert_includes names, "enola_ready"
+  end
+
+  # D5 no-leak guarantee: a project registered with a real violation (its own store
+  # directory missing) must be invisible to run_checks and visible to run_store_checks(slug).
+  def test_run_checks_never_leaks_a_project_finding_run_store_checks_does
+    FileUtils.rm_rf(@project_store) # the registered project's store directory now does not exist
+
+    full = doctor.run_checks("claude")
+    scoped = doctor.run_store_checks(@project_slug)
+
+    refute_includes full[:checks].map { |c| c[:category] }, "project_stores",
+      "run_checks must carry zero project_stores findings after 221"
+    # A raw substring search for @project_slug ("plastic") would false-positive on doctor's
+    # own tmpdir/agent-file naming (e.g. "plastic-doctor-test-...", "installed plastic-*
+    # agent files"), so assert against the actual leak signature: the quoted slug
+    # check_project_store emits ("for 'plastic'"), not every occurrence of the substring.
+    refute_includes full[:checks].to_json, "for '#{@project_slug}'",
+      "run_checks must never mention a registered project's slug in a per-project finding"
+
+    store_dir_check = scoped[:checks].find { |c| c[:name] == "project_store_dir" }
+    refute_nil store_dir_check, "run_store_checks(slug) must surface the missing store directory"
+    assert_equal "warn", store_dir_check[:status]
+  end
 end
 
 class DoctorVersionCompareTest < Minitest::Test

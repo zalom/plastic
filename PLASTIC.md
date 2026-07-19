@@ -283,9 +283,8 @@ Beyond the lifecycle agents, Plastic ships thin skills for day-to-day operation:
 - **`plastic-dashboard`** renders a deterministic Value x Effort work cockpit across the global
   store and every project, and emits a machine-readable queue (`scripts/dashboard.rb --data
   [continue|project <slug>]`) that auto mode consumes.
-- **`plastic-doctor`** checks installation health. See the Skills Reference in PLASTIC-reference.md
-  for its three scopes (`--core` for the boot integrity check, `--store` per store on dashboard
-  load, and the full no-flag walk after an update).
+- **`plastic-doctor`** checks installation health across three scopes. See the `### Doctor`
+  section below.
 - **Lifecycle skills** (`plastic-install`, `plastic-update`, `plastic-uninstall`,
   `plastic-rollback`, intent 55) are thin wrappers over a single pinned
   `npx -y @zalom/plastic@<channel> <verb>` call: initialize or repair an install, advance a
@@ -295,6 +294,24 @@ Beyond the lifecycle agents, Plastic ships thin skills for day-to-day operation:
   it. `disable-model-invocation` hides its description from your own context, so if the user
   hits a Plastic quirk, bug, or missing feature, offer to invoke the plastic-feedback skill
   yourself instead of waiting to be asked; the user still sends it, you never do.
+
+### Doctor
+
+Doctor has three scopes, each with its own contract (intent 219, the governing doctrine):
+
+1. **Core check** (`--core`): fast and binary. Is Plastic loaded and ready for work on every
+   registered agent. No store-content scanning, no warnings.
+2. **Store scan** (`--store [global|<slug>]`): fast, three-state. Verifies the operations
+   Plastic itself depends on in one store (QMD reachability, sources/chain and cross-store
+   resolution, INDEX parsing, links projection), plus tool readiness (Serena, Enola) for a
+   project store. Runs at load time: the global board uses `--store global`, a project board
+   uses `--store <slug>`.
+3. **Full check** (no flag): the install-wide surface. Agent-scoped and install-scoped
+   families (deprecations, install integrity, skill lint, config asks, config-honoring drift)
+   plus the global store's own content. Never carries a per-project finding; `--store <slug>`
+   is the project-scoped check, not this one.
+
+See `plastic-doctor/SKILL.md` for the operational encoding of all three.
 
 ## Releases and Versioning
 

@@ -106,9 +106,19 @@ class DoctorCoreFlagTest < Minitest::Test
     result = doctor.run_checks("claude")
     categories = result[:checks].map { |c| c[:category] }.uniq
 
-    %w[global_store conventions project_stores deprecations].each do |cat|
+    %w[global_store conventions deprecations].each do |cat|
       assert_includes categories, cat, "full doctor must still run '#{cat}' category"
     end
+  end
+
+  # 221 D5: run_checks must never carry a project_stores finding; that is
+  # run_store_checks(slug)'s job now.
+  def test_full_run_never_includes_project_stores_category
+    result = doctor.run_checks("claude")
+    categories = result[:checks].map { |c| c[:category] }.uniq
+
+    refute_includes categories, "project_stores",
+      "run_checks must never carry a project_stores finding after 221's re-homing"
   end
 
   def test_core_liveness_checks_are_subset_of_full_run
