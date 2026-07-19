@@ -26,7 +26,6 @@ require_relative "lib/hook_registry"
 require_relative "lib/lock"
 require_relative "lib/bridge"
 require_relative "lib/agent_models"
-require_relative "lib/legacy_bookend_amnesty"
 require_relative "lib/outcome_guard"
 require_relative "lib/skill_lint"
 require_relative "lib/config_asks"
@@ -49,11 +48,6 @@ class Doctor
   # Single source of truth for the required-field list lives in IntentValidator
   # (intent 60). Alias it here so the two can never drift.
   REQUIRED_FRONTMATTER_FIELDS = IntentValidator::REQUIRED_FIELDS
-
-  # Single source of truth for the pre-161 legacy Done-bookend amnesty list
-  # lives in LegacyBookendAmnesty (intent 170a). Alias it here so the two can
-  # never drift.
-  LEGACY_BOOKEND_AMNESTY = LegacyBookendAmnesty::LIST
 
   CLAUDE_HOOK_EVENTS = %w[SessionStart PreCompact PostToolUse UserPromptSubmit].freeze
 
@@ -95,10 +89,9 @@ class Doctor
   end
 
   def initialize(plastic_home: DEFAULT_PLASTIC_HOME, agents: DEFAULT_AGENTS,
-                  bookend_amnesty: LEGACY_BOOKEND_AMNESTY, runner: Doctor.default_runner)
+                  runner: Doctor.default_runner)
     @plastic_home = plastic_home
     @agents = agents
-    @bookend_amnesty = bookend_amnesty
     @runner = runner
   end
 
@@ -676,7 +669,7 @@ class Doctor
 def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, active:)
   outcome = File.join(dir, "outcome.md")
   outcome_real = Bridge.stage_file_present?(outcome)
-  findings = { conflict: nil, phantom: nil, gap: [], stalled: nil }
+  findings = { conflict: nil, phantom: nil, gap: [], operational_gap: [], stalled: nil }
 
   # HARD conflict: the deliverable exists but INDEX still says Active. This
   # is the one true INDEX-wins disagreement, so it stays a fail.
@@ -685,51 +678,43 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
                           "(INDEX is canonical - move it to its terminal section or revert outcome.md)"
   end
 
-  # Savepoint truthfulness (advisory, never fail; intent 134): a line the disk contradicts
-  # (a phantom milestone, a duplicate pair, or a state line with an absent prerequisite).
-  # Live intents auto-rebuild via plastic-intent-savepoint; terminal intents are immutable,
-  # so a phantom there is report-only. Composition with intent 170a: a pre-161 legacy intent
-  # on the frozen bookend amnesty is grandfathered here too. Its immutable history carries
-  # known pre-convention drift (the same class the audit-echo gap forgives), so it must not
-  # resurface through this advisory. The suppression is scope-qualified exactly like the
-  # audit-echo amnesty; every live intent and every non-amnestied terminal still fires.
+  # Savepoint truthfulness (advisory, never fail; intent 134). Terminal phantom lines are
+  # ALWAYS report-only (immutable history), with no suppression by id or scope (intent 211:
+  # the generic replacement for the frozen 170a amnesty list is simply "never suppress" -
+  # the message already labels a terminal phantom report-only, so dropping the id-based
+  # suppression is strictly more general and needs no per-store state at all).
   phantom_lines = Bridge.savepoint_phantom_lines(dir)
-  phantom_id = dirname.split("--", 2).first
-  phantom_amnestied = terminal && @bookend_amnesty.fetch(scope, []).include?(phantom_id)
-  if phantom_lines.any? && !phantom_amnestied
+  if phantom_lines.any?
     detail = phantom_lines.map { |line, reason| "#{line} (#{reason})" }.join("; ")
     scope_note = terminal ? "terminal in INDEX, report-only (immutable history)" : "live intent, auto-rebuildable"
     findings[:phantom] = "#{label}: #{phantom_lines.size} phantom savepoint line(s) contradicted by " \
                          "disk, #{scope_note}: #{detail}"
   end
 
-  # Completeness gap (warn, not fail): a terminal intent whose outcome.md is
-  # missing/placeholder. Legacy terminal intents predate this convention and
-  # are immutable, so this is advisory, never breakage.
+  # Delivery-claim gap (intent 211, 219 D6): a missing/placeholder outcome.md on a terminal
+  # intent is never fabricated, so this is unrepairable by construction. Reported informational
+  # only (signals_complete, always status "pass" - see check_done_signals).
   if terminal && !outcome_real
     state = File.exist?(outcome) ? "still a placeholder" : "missing"
     findings[:gap] << "#{label}: terminal in INDEX but outcome.md is #{state} " \
-                     "(author outcome.md with the disposition header)"
+                     "(delivery claim - never fabricated)"
   end
 
   if terminal
-    # Audit echo (weakest signal, D1): the savepoint should carry a
-    # `Done delivered|abandoned` line. Missing on legacy history -> advisory
-    # gap, unless the (scope, id) is on the frozen pre-161 amnesty list
-    # (intent 170a). The amnesty is scope-qualified: an id on the list for
-    # one scope does not grandfather the same id in another scope.
+    # Operational gap (intent 211, 219 D6): savepoint.md missing entirely (not previously
+    # checked at all) or present but missing the Done bookend - both are minimally
+    # reconstructible via maintenance-run --tool rebuild-savepoint, so this is repairable and
+    # reported as a fixable warn (savepoint_operational).
     savepoint = File.join(dir, "savepoint.md")
-    if File.exist?(savepoint) && File.read(savepoint) !~ /\bDone\b.*\b(delivered|abandoned)\b/
-      id = dirname.split("--", 2).first
-      amnestied = @bookend_amnesty.fetch(scope, []).include?(id)
-      unless amnestied
-        findings[:gap] << "#{label}: terminal in INDEX but savepoint.md has no " \
-                          "`Done delivered|abandoned` line (audit echo missing)"
-      end
+    if !File.exist?(savepoint)
+      findings[:operational_gap] << "#{label}: terminal in INDEX but savepoint.md is missing " \
+                                    "entirely (operational - reconstructible)"
+    elsif File.read(savepoint) !~ /\bDone\b.*\b(delivered|abandoned)\b/
+      findings[:operational_gap] << "#{label}: terminal in INDEX but savepoint.md has no " \
+                                    "`Done delivered|abandoned` line (operational - reconstructible)"
     end
 
-    # Stalled completion: the End tail never released the delivery lock, so the
-    # post-done window `[INDEX terminal -> Lock.release]` never closed.
+    # Stalled completion: unchanged, never consulted amnesty.
     if File.exist?(Lock.path(dir))
       note = Lock.fresh?(dir) ? "delivery.lock still present (post-done window not closed)"
                               : "delivery.lock is present and STALE"
@@ -741,10 +726,11 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
 end
 
 def check_done_signals(scopes: nil)
-  conflicts = [] # canonical INDEX-wins disagreement (fail)
-  gaps = []      # terminal completeness gaps on immutable/legacy history (warn)
-  stalled = []   # terminal but End tail unfinished (warn)
-  phantoms = []  # savepoint.md line(s) disk evidence contradicts (warn, never fail; intent 134)
+  conflicts = []
+  gaps = []              # delivery-claim (outcome.md) gaps only - legacy, informational
+  operational_gaps = []  # savepoint gaps (missing file, or missing Done echo) - repairable
+  stalled = []
+  phantoms = []
 
   done_signal_stores(scopes).each do |store|
     index_sections_by_dir(store[:index]).each do |dirname, in_sections|
@@ -761,89 +747,106 @@ def check_done_signals(scopes: nil)
       conflicts << findings[:conflict] if findings[:conflict]
       phantoms << findings[:phantom] if findings[:phantom]
       gaps.concat(findings[:gap])
+      operational_gaps.concat(findings[:operational_gap])
       stalled << findings[:stalled] if findings[:stalled]
     end
   end
 
   checks = []
 
-    # signals_agree: only the canonical INDEX-wins conflict is a hard fail, so
-    # `doctor` never goes red on immutable legacy terminal intents.
-    if conflicts.empty?
-      checks << check(
-        category: "done_signals", name: "signals_agree", status: "pass",
-        message: "No done-signal conflicts (no intent has a real outcome.md while still Active)"
-      )
-    else
-      checks << check(
-        category: "done_signals", name: "signals_agree", status: "fail",
-        message: "#{conflicts.size} done-signal conflict#{conflicts.size == 1 ? "" : "s"} " \
-                 "(INDEX ## Completed/## Abandoned is canonical; a real outcome.md must not stay Active)",
-        details: conflicts, fixable: true,
-        fix_hint: "Reconcile to INDEX (canonical): move the intent to its terminal section, or revert " \
-                  "outcome.md to a placeholder. Deliverable-exists but still-Active is the one done-signal " \
-                  "state that must never persist."
-      )
-    end
-
-    # signals_complete: terminal completeness gaps are advisory (warn), because
-    # completed intents are immutable and legacy history predates this convention.
-    if gaps.empty?
-      checks << check(
-        category: "done_signals", name: "signals_complete", status: "pass",
-        message: "Every terminal intent carries a real outcome.md and a Done savepoint echo"
-      )
-    else
-      checks << check(
-        category: "done_signals", name: "signals_complete", status: "warn",
-        message: "#{gaps.size} terminal completeness gap#{gaps.size == 1 ? "" : "s"} " \
-                 "(outcome.md or the savepoint Done echo is missing; advisory on immutable history)",
-        details: gaps, fixable: true,
-        fix_hint: "For live terminals, author a real outcome.md with the `disposition:` header via the " \
-                  "completion/abandon path (plastic-auto or plastic-store-curating) and stamp the terminal " \
-                  "savepoint. Legacy terminal intents are immutable, so pre-convention gaps stay advisory."
-      )
-    end
-
-    if stalled.empty?
-      checks << check(
-        category: "done_signals", name: "stalled_completion", status: "pass",
-        message: "No stalled completions (every terminal intent released its delivery lock)"
-      )
-    else
-      checks << check(
-        category: "done_signals", name: "stalled_completion", status: "warn",
-        message: "#{stalled.size} stalled completion#{stalled.size == 1 ? "" : "s"} " \
-                 "(terminal in INDEX but the End tail did not finish)",
-        details: stalled, fixable: true,
-        fix_hint: "Finish the End tail via stale-lock reclaim: run /plastic-doctor reclaim the lock, " \
-                  "then complete the tail (Worktree.release -> Lock.release -> purge -> QMD reindex " \
-                  "last). This FINISHES a completion; it is NOT a reactivation of a done intent."
-      )
-    end
-
-    # savepoint_truthful: advisory only, never fails the run (intent 134). A phantom line on a
-    # live intent auto-rebuilds; on terminal (immutable) history it stays report-only.
-    if phantoms.empty?
-      checks << check(
-        category: "done_signals", name: "savepoint_truthful", status: "pass",
-        message: "No savepoint.md lines are contradicted by disk (phantom-line check clean)"
-      )
-    else
-      checks << check(
-        category: "done_signals", name: "savepoint_truthful", status: "warn",
-        message: "#{phantoms.size} intent#{phantoms.size == 1 ? "" : "s"} carry savepoint.md " \
-                 "line(s) contradicted by disk (advisory; terminal history stays report-only)",
-        details: phantoms, fixable: true,
-        fix_hint: "For a live (Active) intent, run plastic-intent-savepoint to rebuild via " \
-                  "Bridge.rebuild_savepoint. Terminal (Completed/Abandoned) intents are immutable: " \
-                  "a phantom there stays advisory unless an explicit human grant authorizes the " \
-                  "124a manual Done-bookend repair."
-      )
-    end
-
-    checks
+  # signals_agree: unchanged.
+  if conflicts.empty?
+    checks << check(
+      category: "done_signals", name: "signals_agree", status: "pass",
+      message: "No done-signal conflicts (no intent has a real outcome.md while still Active)"
+    )
+  else
+    checks << check(
+      category: "done_signals", name: "signals_agree", status: "fail",
+      message: "#{conflicts.size} done-signal conflict#{conflicts.size == 1 ? "" : "s"} " \
+               "(INDEX ## Completed/## Abandoned is canonical; a real outcome.md must not stay Active)",
+      details: conflicts, fixable: true,
+      fix_hint: "Reconcile to INDEX (canonical): move the intent to its terminal section, or revert " \
+                "outcome.md to a placeholder. Deliverable-exists but still-Active is the one done-signal " \
+                "state that must never persist."
+    )
   end
+
+  # signals_complete (intent 211, 219 D6, repurposed): outcome.md delivery-claim gaps only.
+  # Never fabricated, so there is no legitimate fix to hint at - always status "pass",
+  # informational (matches check_skill_lint's advisory precedent: count + details, no
+  # fix_hint/fixable, never affects doctor's exit code).
+  if gaps.empty?
+    checks << check(
+      category: "done_signals", name: "signals_complete", status: "pass",
+      message: "Every terminal intent carries a real outcome.md"
+    )
+  else
+    checks << check(
+      category: "done_signals", name: "signals_complete", status: "pass",
+      message: "#{gaps.size} terminal intent#{gaps.size == 1 ? "" : "s"} missing a real outcome.md " \
+               "(delivery claim - never fabricated; informational only, does not affect doctor's exit code)",
+      details: gaps
+    )
+  end
+
+  # savepoint_operational (intent 211, NEW): missing savepoint.md or missing Done echo -
+  # repairable via maintenance-run --tool rebuild-savepoint, so this stays warn+fixable.
+  if operational_gaps.empty?
+    checks << check(
+      category: "done_signals", name: "savepoint_operational", status: "pass",
+      message: "No terminal intent is missing an operational savepoint.md or its Done echo"
+    )
+  else
+    checks << check(
+      category: "done_signals", name: "savepoint_operational", status: "warn",
+      message: "#{operational_gaps.size} terminal intent#{operational_gaps.size == 1 ? "" : "s"} " \
+               "missing an operational savepoint.md or its Done echo (reconstructible)",
+      details: operational_gaps, fixable: true,
+      fix_hint: "Reconstruct the minimal two-line started/Done echo via " \
+                "`maintenance-run --tool rebuild-savepoint --intent <id> --apply` (197-conformant: " \
+                "receipt-before-write via RevisionsWriter, one intent per invocation, owner-approval-gated)."
+    )
+  end
+
+  if stalled.empty?
+    checks << check(
+      category: "done_signals", name: "stalled_completion", status: "pass",
+      message: "No stalled completions (every terminal intent released its delivery lock)"
+    )
+  else
+    checks << check(
+      category: "done_signals", name: "stalled_completion", status: "warn",
+      message: "#{stalled.size} stalled completion#{stalled.size == 1 ? "" : "s"} " \
+               "(terminal in INDEX but the End tail did not finish)",
+      details: stalled, fixable: true,
+      fix_hint: "Finish the End tail via stale-lock reclaim: run /plastic-doctor reclaim the lock, " \
+                "then complete the tail (Worktree.release -> Lock.release -> purge -> QMD reindex " \
+                "last). This FINISHES a completion; it is NOT a reactivation of a done intent."
+    )
+  end
+
+  # savepoint_truthful: advisory only (intent 134), never fails. No amnesty suppression left.
+  if phantoms.empty?
+    checks << check(
+      category: "done_signals", name: "savepoint_truthful", status: "pass",
+      message: "No savepoint.md lines are contradicted by disk (phantom-line check clean)"
+    )
+  else
+    checks << check(
+      category: "done_signals", name: "savepoint_truthful", status: "warn",
+      message: "#{phantoms.size} intent#{phantoms.size == 1 ? "" : "s"} carry savepoint.md " \
+               "line(s) contradicted by disk (advisory; terminal history stays report-only)",
+      details: phantoms, fixable: true,
+      fix_hint: "For a live (Active) intent, run plastic-intent-savepoint to rebuild via " \
+                "Bridge.rebuild_savepoint. Terminal (Completed/Abandoned) intents are immutable: " \
+                "a phantom there stays advisory unless an explicit human grant authorizes the " \
+                "124a manual Done-bookend repair."
+    )
+  end
+
+  checks
+end
 
   # Build the cross-store node maps (basename + label per store) + relocation map from ALL
   # stores (intent 222): the one shared build both the store-wide links_projection_check and
