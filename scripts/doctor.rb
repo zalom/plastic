@@ -366,6 +366,45 @@ class Doctor
     checks
   end
 
+  # --- Check category: global store availability (core-only, D1) ---
+  #
+  # Narrow, core-appropriate version of check_global_store: presence/readability only, zero
+  # content scanning. check_global_store (above) is store/full-scope and includes
+  # orphaned_intents / ghost_references, both explicitly forbidden at core by D1.
+  def check_global_store_available
+    checks = []
+
+    if File.directory?(plastic_home)
+      checks << check(
+        category: "global_store", name: "global_store_reachable", status: "pass",
+        message: "Global store directory reachable at #{tilde(plastic_home)}"
+      )
+    else
+      checks << check(
+        category: "global_store", name: "global_store_reachable", status: "fail",
+        message: "Global store directory not found at #{tilde(plastic_home)}",
+        fixable: true, fix_hint: "Run the Plastic installer to bootstrap the store"
+      )
+      return checks
+    end
+
+    index_path = File.join(plastic_home, "INDEX.md")
+    if File.exist?(index_path)
+      checks << check(
+        category: "global_store", name: "global_index_reachable", status: "pass",
+        message: "INDEX.md exists"
+      )
+    else
+      checks << check(
+        category: "global_store", name: "global_index_reachable", status: "fail",
+        message: "INDEX.md not found at #{tilde(index_path)}",
+        fixable: true, fix_hint: "Run the Plastic installer to bootstrap the store"
+      )
+    end
+
+    checks
+  end
+
   # --- Check category 2: Conventions ---
 
   # When `scopes` is a non-nil Array of scope strings (e.g. ["global"] or
@@ -1632,7 +1671,7 @@ class Doctor
 
   # --- Check category 4: Core files ---
 
-  def check_core_files(agent_key)
+  def check_core_files(agent_key, include_drift: true)
     checks = []
 
     # plastic_md
@@ -1746,7 +1785,7 @@ class Doctor
       end
     end
 
-    checks += check_agent_model_drift(agent_key)
+    checks += check_agent_model_drift(agent_key) if include_drift
 
     checks
   end
@@ -2069,6 +2108,58 @@ class Doctor
 
     projects.each do |slug, project_info|
       checks += check_project_store(slug, project_info)
+    end
+
+    checks
+  end
+
+  # --- Check category: registered project paths (core-only, D1) ---
+  #
+  # D1 requires every registered project's store to have its repository path resolve to a
+  # real, existing directory. check_project_store (above) only validates the plastic-home-side
+  # mirror (~/.plastic/projects/<slug>/{store,INDEX.md,project.yml}); this method validates the
+  # registered repo path itself (projects.yml's "path" key), decoupled from 175's deeper
+  # repo-root-versus-registered-path question (219 D9).
+  def check_registered_project_paths
+    checks = []
+
+    projects_yml_path = File.join(plastic_home, "projects.yml")
+    projects_data = load_yaml_safe(projects_yml_path)
+
+    if projects_data.nil?
+      checks << check(
+        category: "project_stores", name: "registered_project_paths", status: "fail",
+        message: "projects.yml not found or invalid at #{tilde(projects_yml_path)}",
+        fixable: true, fix_hint: "Re-run the Plastic installer to restore projects.yml"
+      )
+      return checks
+    end
+
+    projects = projects_data["projects"]
+    unless projects.is_a?(Hash) && !projects.empty?
+      checks << check(
+        category: "project_stores", name: "registered_project_paths", status: "pass",
+        message: "No projects registered"
+      )
+      return checks
+    end
+
+    projects.each do |slug, project_info|
+      path = project_info.is_a?(Hash) ? project_info["path"] : nil
+
+      if path && File.directory?(path)
+        checks << check(
+          category: "project_stores", name: "project_path_resolves", status: "pass",
+          message: "Registered path for '#{slug}' resolves to a real directory"
+        )
+      else
+        checks << check(
+          category: "project_stores", name: "project_path_resolves", status: "fail",
+          message: "Registered path for '#{slug}' does not resolve to a real directory",
+          details: [path ? tilde(path) : "(no path set in projects.yml)"],
+          fixable: false
+        )
+      end
     end
 
     checks
@@ -2482,14 +2573,18 @@ class Doctor
     summarize(all_checks, agent_key)
   end
 
-  # Binary core sync check: agent registration + core files + manifest sync,
-  # rolled up with binary: true so ANY warn or fail makes the overall status
-  # "fail" (and "warn" is never emitted). Used by `doctor.rb --core`.
+  # Binary core sync check: agent registration + core files (drift excluded) + manifest
+  # sync + registered project paths + global store availability, rolled up with binary:
+  # true so ANY warn or fail makes the overall status "fail" (and "warn" is never
+  # emitted). Used by `doctor.rb --core` (219 D1/D2: operational readiness only, no
+  # agent_model_drift, no store-content scanning).
   def run_core_checks(agent_key)
     all_checks = []
     all_checks += check_agent_registration(agent_key)
-    all_checks += check_core_files(agent_key)
+    all_checks += check_core_files(agent_key, include_drift: false)
     all_checks += check_manifest_sync(agent_key)
+    all_checks += check_registered_project_paths
+    all_checks += check_global_store_available
 
     summarize(all_checks, agent_key, binary: true)
   end
