@@ -87,9 +87,10 @@ ruby ~/.plastic/scripts/end-intent \
   --index-note "<rich Completed/Abandoned entry description>"
 ```
 
-This does all of steps 1-5 in order: guards outcome.md (refuses a missing,
-still-placeholder, or wrong-disposition file with exit 2 and authors
-nothing), stamps the intent file's `## Outcome` section, moves the INDEX.md
+This does all of steps 1-5 in order: guards outcome.md (a missing or
+still-placeholder file is caught by the structure gate first and exits 6; a
+wrong-disposition file exits 2; either way it authors nothing), stamps the
+intent file's `## Outcome` section, moves the INDEX.md
 line from `## Active` to `## Completed` or `## Abandoned` (dated today,
 idempotent, accepting either a real em dash or a plain hyphen as the id/
 title separator on read while always emitting the real em dash on write)
