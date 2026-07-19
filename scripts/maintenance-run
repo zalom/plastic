@@ -14,6 +14,7 @@
 #   maintenance-run --tool project-links --intent <id> [--store <key>] [--plastic-home PATH] [--apply]
 #   maintenance-run --tool rebuild-graph [--plastic-home PATH] [--apply]
 #   maintenance-run --tool restore-intent-v1 <id> --at <ref> [--plastic-home PATH] [--apply] [--skip-links]
+#   maintenance-run --tool rebuild-savepoint --intent <id> [--store <key>] [--plastic-home PATH] [--apply]
 #
 # project-links here is ALWAYS single-intent: --intent is required. A store-wide
 # project-links sweep is the rare, owner-approved batch exception (D2) and is run directly
@@ -35,6 +36,8 @@ require "time"
 require_relative "lib/store_discovery"
 require_relative "lib/lock"
 require_relative "lib/maintenance_git"
+require_relative "lib/bridge"
+require_relative "lib/revisions_writer"
 
 DEFAULT_HOME = File.join(Dir.home, ".plastic")
 
@@ -217,9 +220,58 @@ def run_restore_intent_v1(home, id, at, store, apply, skip_links)
   report_result(result)
 end
 
+def run_rebuild_savepoint(home, intent, store, apply)
+  abort_loud("--tool rebuild-savepoint requires --intent <id>") unless intent
+
+  discovery = StoreDiscovery.discover(home)
+  dir = resolve_dir_for_id(discovery, intent, store: store)
+  abort_loud("intent #{intent} not found under #{home}#{store ? " (--store #{store})" : ""}") unless dir
+  check_not_fresh!(dir, intent)
+
+  outcome_path = File.join(dir, "outcome.md")
+  unless Bridge.stage_file_present?(outcome_path)
+    abort_loud("intent #{intent}'s outcome.md is missing or a placeholder; the 124a recipe " \
+               "requires a real disposition to echo, and 219 D6 forbids ever inventing one", 1)
+  end
+
+  frontmatter = File.read(outcome_path)[/\A---\n(.*?)\n---/m, 1].to_s
+  disposition = frontmatter[/^disposition:\s*(\S+)/, 1]
+  abort_loud("intent #{intent}'s outcome.md has no disposition: frontmatter field", 1) unless disposition
+
+  unless apply
+    puts "maintenance-run: DRY RUN, would reconstruct savepoint.md for #{intent} " \
+         "(Bridge.rebuild_savepoint + Done #{disposition} echo)"
+    exit 0
+  end
+
+  begin
+    result = MaintenanceGit.run_scoped(
+      repo_dir: home, branch_name: "maintenance/rebuild-savepoint-#{intent}-#{stamp}",
+      commit_message: "chore: maintenance - rebuild-savepoint #{intent}"
+    ) do
+      Bridge.rebuild_savepoint(dir)
+      Bridge.append_terminal_savepoint(dir, disposition)
+      RevisionsWriter.append!(
+        dir,
+        why: "reconstruct missing operational savepoint.md (generic operational-gap predicate)",
+        rule: "savepoint-operational-reconstruction",
+        prior_location: "#{intent}/savepoint.md",
+        change: "savepoint.md rebuilt from disk (Bridge.rebuild_savepoint) plus Done " \
+                "#{disposition} echo appended (Bridge.append_terminal_savepoint); disposition " \
+                "read from outcome.md's own frontmatter, never invented"
+      )
+    end
+  rescue MaintenanceGit::DirtyWorkingTree, MaintenanceGit::NotAGitRepo => e
+    abort_loud(e.message, 4)
+  rescue RuntimeError => e
+    abort_loud(e.message, 3)
+  end
+  report_result(result)
+end
+
 def main(argv)
   opts = parse_argv(argv)
-  abort_loud("--tool is required (project-links|rebuild-graph|restore-intent-v1)") unless opts[:tool]
+  abort_loud("--tool is required (project-links|rebuild-graph|restore-intent-v1|rebuild-savepoint)") unless opts[:tool]
 
   case opts[:tool]
   when "project-links"
@@ -227,9 +279,11 @@ def main(argv)
   when "rebuild-graph" then run_rebuild_graph(opts[:plastic_home], opts[:apply])
   when "restore-intent-v1"
     run_restore_intent_v1(opts[:plastic_home], opts[:id], opts[:at], opts[:store], opts[:apply], opts[:skip_links])
+  when "rebuild-savepoint"
+    run_rebuild_savepoint(opts[:plastic_home], opts[:intent], opts[:store], opts[:apply])
   else
     abort_loud("unknown --tool #{opts[:tool].inspect} " \
-               "(expected project-links|rebuild-graph|restore-intent-v1)")
+               "(expected project-links|rebuild-graph|restore-intent-v1|rebuild-savepoint)")
   end
 end
 

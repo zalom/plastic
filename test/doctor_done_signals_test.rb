@@ -15,6 +15,13 @@ require_relative "../scripts/lib/lock"
 # End tail never released the delivery lock). Read-only, dependency-light: INDEX
 # parsing + file presence + placeholder sentinel + Lock.fresh?. Hermetic temp
 # homes, no eval, no ENV/global-constant seam.
+#
+# Intent 211: replaces the frozen 170a id-list amnesty with a generic,
+# runtime-computed repairability predicate. signals_complete narrows to the
+# outcome.md delivery-claim bucket (always status "pass", informational); a
+# new savepoint_operational check takes the operational bucket (missing
+# savepoint.md, or missing its Done echo), warn+fixable, routed to
+# maintenance-run --tool rebuild-savepoint. No injectable suppression seam survives.
 class DoctorDoneSignalsTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("plastic-doctor-done-signals")
@@ -26,11 +33,9 @@ class DoctorDoneSignalsTest < Minitest::Test
 
   def global_store = File.join(@home, "store")
 
-  def doctor(bookend_amnesty: {}) = Doctor.new(plastic_home: @home, bookend_amnesty: bookend_amnesty)
+  def doctor = Doctor.new(plastic_home: @home)
 
-  def check(name, bookend_amnesty: {})
-    doctor(bookend_amnesty: bookend_amnesty).check_done_signals.find { |c| c[:name] == name }
-  end
+  def check(name) = doctor.check_done_signals.find { |c| c[:name] == name }
 
   # Write a global INDEX.md placing intent `id` under `section`.
   def write_index(id, section:)
@@ -75,6 +80,7 @@ class DoctorDoneSignalsTest < Minitest::Test
 
     assert_equal "pass", check("signals_agree")[:status]
     assert_equal "pass", check("signals_complete")[:status]
+    assert_equal "pass", check("savepoint_operational")[:status]
     assert_equal "pass", check("stalled_completion")[:status]
   end
 
@@ -93,9 +99,9 @@ class DoctorDoneSignalsTest < Minitest::Test
     assert_equal "pass", check("signals_complete")[:status]
   end
 
-  # Terminal but outcome.md is still a placeholder -> completeness gap (WARN,
-  # not fail): legacy terminal intents are immutable, so this stays advisory.
-  def test_gap_when_terminal_but_outcome_placeholder
+  # Terminal but outcome.md is still a placeholder -> a delivery-claim gap.
+  # Never fabricated, so signals_complete stays "pass" (informational only).
+  def test_legacy_note_when_terminal_but_outcome_placeholder
     write_index("13", section: "Abandoned")
     write_intent_dir("13")
     write_placeholder_outcome("13")
@@ -103,26 +109,26 @@ class DoctorDoneSignalsTest < Minitest::Test
 
     assert_equal "pass", check("signals_agree")[:status], "not a hard conflict"
     complete = check("signals_complete")
-    assert_equal "warn", complete[:status]
-    assert complete[:fix_hint]
+    assert_equal "pass", complete[:status], "outcome-missing is informational only, never warn"
+    refute complete[:fixable], "there is no legitimate fix for a delivery-claim gap"
     assert(complete[:details].any? { |d| d.include?("still a placeholder") })
   end
 
-  # Terminal but outcome.md is missing entirely -> completeness gap (WARN).
-  def test_gap_when_terminal_but_outcome_missing
+  # Terminal but outcome.md is missing entirely -> same delivery-claim bucket.
+  def test_legacy_note_when_terminal_but_outcome_missing
     write_index("14", section: "Completed")
     write_intent_dir("14")
     write_savepoint_done("14")
 
     assert_equal "pass", check("signals_agree")[:status]
     complete = check("signals_complete")
-    assert_equal "warn", complete[:status]
+    assert_equal "pass", complete[:status]
     assert(complete[:details].any? { |d| d.include?("missing") })
   end
 
-  # Terminal with a real outcome.md but NO Done savepoint echo -> completeness
-  # gap (WARN), never a hard fail.
-  def test_gap_when_terminal_but_savepoint_echo_missing
+  # Terminal with a real outcome.md but NO Done savepoint echo -> operational
+  # gap (WARN, fixable), while signals_complete stays clean (no outcome gap here).
+  def test_operational_gap_when_terminal_but_savepoint_echo_missing
     write_index("17", section: "Completed")
     write_intent_dir("17")
     write_outcome("17")
@@ -130,9 +136,25 @@ class DoctorDoneSignalsTest < Minitest::Test
                "2026-07-03T00:00:00Z  Exec  started\n")
 
     assert_equal "pass", check("signals_agree")[:status]
-    complete = check("signals_complete")
-    assert_equal "warn", complete[:status]
-    assert(complete[:details].any? { |d| d.include?("audit echo missing") })
+    assert_equal "pass", check("signals_complete")[:status], "no outcome gap here"
+    operational = check("savepoint_operational")
+    assert_equal "warn", operational[:status]
+    assert operational[:fixable]
+    assert_includes operational[:fix_hint], "rebuild-savepoint"
+    assert(operational[:details].any? { |d| d.include?("no `Done delivered|abandoned` line") })
+  end
+
+  # Terminal with a real outcome.md but savepoint.md missing entirely (a case never
+  # checked before 211) -> operational gap (WARN, fixable).
+  def test_operational_gap_when_terminal_but_savepoint_missing_entirely
+    write_index("18", section: "Completed")
+    dir = write_intent_dir("18")
+    write_outcome("18")
+    refute File.exist?(File.join(dir, "savepoint.md"))
+
+    operational = check("savepoint_operational")
+    assert_equal "warn", operational[:status]
+    assert(operational[:details].any? { |d| d.include?("missing entirely") })
   end
 
   # Terminal but the delivery.lock is still present -> stalled completion (warn).
@@ -215,85 +237,48 @@ class DoctorDoneSignalsTest < Minitest::Test
     assert_equal before, File.read(savepoint_path)
   end
 
-  # Composition with intent 170a: a phantom on a terminal intent that is on the frozen bookend
-  # amnesty is grandfathered here too, so savepoint_truthful does not resurface it. The same
-  # phantom on a non-amnestied terminal still warns (test above), and the amnesty is scope-qualified.
-  def test_savepoint_truthful_grandfathers_amnestied_terminal_phantom
+  # Intent 211: the frozen 170a amnesty is gone outright. A terminal phantom line always
+  # warns, unconditionally - no (scope, id) can suppress it anymore.
+  def test_savepoint_truthful_never_suppresses_terminal_phantom
     write_index("23", section: "Completed")
     dir = write_intent_dir("23")
     write_outcome("23")
     File.write(File.join(dir, "savepoint.md"),
                "2026-07-03T00:00:00Z  Why  spec.md created\n2026-07-03T00:01:00Z  Why  spec.md created\n")
 
-    # No amnesty: the duplicate (Why, spec.md created) pair warns (report-only, terminal).
+    # No amnesty mechanism exists anymore: every terminal phantom warns, unconditionally.
     assert_equal "warn", check("savepoint_truthful")[:status]
-    # On the amnesty for this scope: grandfathered, so the advisory stays clean.
-    assert_equal "pass", check("savepoint_truthful", bookend_amnesty: { "global" => ["23"] })[:status]
-    # Amnesty is scope-qualified: the same id under a different scope does not grandfather it.
-    assert_equal "warn", check("savepoint_truthful", bookend_amnesty: { "project:demo" => ["23"] })[:status]
   end
 
-  # Allowlisted (scope, id) missing the Done bookend does not generate an
-  # audit-echo gap. Intent 170a - A2 cutoff amnesty.
-  def test_no_audit_echo_gap_for_allowlisted_legacy_intent
+  # Intent 211: the generic operational-gap predicate warns for ANY terminal intent missing
+  # the Done bookend, with no allowlist axis left to consult (170a's amnesty is fully removed).
+  def test_savepoint_operational_warns_for_any_terminal_missing_echo
     write_index("30", section: "Completed")
     write_intent_dir("30")
     write_outcome("30")
     File.write(File.join(intent_dir("30"), "savepoint.md"),
                "2026-07-03T00:00:00Z  Exec  started\n")
 
-    complete = check("signals_complete", bookend_amnesty: { "global" => ["30"] })
-    assert_equal "pass", complete[:status]
-  end
-
-  # A non-allowlisted terminal intent missing the bookend still warns, even
-  # when unrelated ids are on the allowlist. Intent 170a.
-  def test_audit_echo_gap_still_warns_when_not_allowlisted
-    write_index("31", section: "Completed")
-    write_intent_dir("31")
-    write_outcome("31")
-    File.write(File.join(intent_dir("31"), "savepoint.md"),
-               "2026-07-03T00:00:00Z  Exec  started\n")
-
-    complete = check("signals_complete", bookend_amnesty: { "global" => ["99"] })
-    assert_equal "warn", complete[:status]
-    assert(complete[:details].any? { |d| d.include?("audit echo missing") })
-  end
-
-  # Scope qualification: the same id allowlisted under a DIFFERENT scope must
-  # not grandfather this scope's intent (ids collide across stores, e.g.
-  # global vs a project store, per spec.md D3). Intent 170a.
-  def test_audit_echo_gap_still_warns_when_id_matches_but_scope_does_not
-    write_index("32", section: "Completed")
-    write_intent_dir("32")
-    write_outcome("32")
-    File.write(File.join(intent_dir("32"), "savepoint.md"),
-               "2026-07-03T00:00:00Z  Exec  started\n")
-
-    complete = check("signals_complete", bookend_amnesty: { "project:demo" => ["32"] })
-    assert_equal "warn", complete[:status]
-    assert(complete[:details].any? { |d| d.include?("audit echo missing") })
+    operational = check("savepoint_operational")
+    assert_equal "warn", operational[:status], "no allowlist exists anymore to suppress this"
   end
 
   # Regression pin for the intent 222 extraction (done_signal_findings_for_dir): a terminal
-  # dir missing BOTH outcome.md and the savepoint audit echo is two SEPARATE, independent
-  # `if` blocks in the original code (never elsif), so it must still contribute TWO distinct
-  # strings to `gaps`, not one - verified against HEAD before the extraction landed, per
-  # plan.md Step 3's note. Collapsing this into a single nilable field would silently drop
-  # one of the two gaps for this one dir.
+  # dir missing BOTH outcome.md and the savepoint audit echo fires both gap classes
+  # independently (never elsif), landing in the two SEPARATE buckets intent 211 introduced:
+  # the outcome.md gap in signals_complete's (pass, informational) details, and the missing
+  # Done echo in savepoint_operational's (warn, fixable) details.
   def test_extraction_preserves_both_gaps_when_a_dir_has_outcome_and_echo_gaps_together
     write_index("33", section: "Completed")
     write_intent_dir("33")
-    # No outcome.md at all (missing), and a savepoint with no Done echo: BOTH gap
-    # conditions are true for this SAME dir simultaneously.
     File.write(File.join(intent_dir("33"), "savepoint.md"),
                "2026-07-03T00:00:00Z  Exec  started\n")
 
     complete = check("signals_complete")
-    assert_equal "warn", complete[:status]
-    matches = complete[:details].select { |d| d.include?("33") }
-    assert_equal 2, matches.size, "expected BOTH gap strings for dir 33: #{complete[:details].inspect}"
-    assert(matches.any? { |d| d.include?("outcome.md is missing") })
-    assert(matches.any? { |d| d.include?("audit echo missing") })
+    operational = check("savepoint_operational")
+    assert_equal "pass", complete[:status]
+    assert_equal "warn", operational[:status]
+    assert(complete[:details].any? { |d| d.include?("33") && d.include?("outcome.md is missing") })
+    assert(operational[:details].any? { |d| d.include?("33") && d.include?("no `Done delivered|abandoned` line") })
   end
 end

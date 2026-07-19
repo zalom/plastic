@@ -189,4 +189,90 @@ class MaintenanceRunTest < Minitest::Test
     assert_equal before_knowdb, File.read(File.join(knowdb, "11--knowdb-collision", "11--knowdb-collision.md")),
       "the --store-excluded knowdb intent 11 must be untouched"
   end
+
+  # --- rebuild-savepoint (intent 211, D7): dry-run default, refuses without a real outcome.md,
+  # composes Bridge.rebuild_savepoint + Bridge.append_terminal_savepoint inside one scoped commit ---
+
+  def write_outcome(dir, disposition: "delivered")
+    File.write(File.join(dir, "outcome.md"),
+               "---\ndisposition: #{disposition}\n---\n\n# Outcome\n\nDelivered.\n")
+  end
+
+  def test_rebuild_savepoint_requires_intent_flag
+    _out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "rebuild-savepoint",
+                                         "--plastic-home", @home, "--apply")
+    assert_equal 1, status.exitstatus
+  end
+
+  def test_rebuild_savepoint_dry_run_reports_intended_reconstruction_without_writing
+    dir = File.join(@home, "projects", "plastic", "store", "11--child")
+    write_outcome(dir)
+    savepoint_path = File.join(dir, "savepoint.md")
+    refute File.exist?(savepoint_path)
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "rebuild-savepoint",
+                                        "--intent", "11", "--store", "project:plastic",
+                                        "--plastic-home", @home)
+    assert_equal 0, status.exitstatus, out
+    assert_match(/DRY RUN/, out)
+    refute File.exist?(savepoint_path), "dry-run must not write savepoint.md"
+  end
+
+  def test_rebuild_savepoint_applies_and_appends_one_revisions_entry
+    dir = File.join(@home, "projects", "plastic", "store", "11--child")
+    write_outcome(dir)
+    git("add", "-A")
+    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "seed outcome fixture")
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "rebuild-savepoint",
+                                        "--intent", "11", "--store", "project:plastic",
+                                        "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+    assert_match(/applied and merged/, out)
+
+    savepoint = File.read(File.join(dir, "savepoint.md"))
+    assert_match(/\bDone\b.*\bdelivered\b/, savepoint)
+
+    revisions = File.read(File.join(dir, "revisions.md"))
+    assert_equal 1, revisions.scan(/^## Revision v\d+/).size
+    assert_match(/savepoint-operational-reconstruction/, revisions)
+
+    status_out, = Open3.capture3("git", "-C", @home, "status", "--porcelain")
+    assert_empty status_out.strip
+  end
+
+  def test_rebuild_savepoint_refuses_when_outcome_missing
+    dir = File.join(@home, "projects", "plastic", "store", "11--child")
+    refute File.exist?(File.join(dir, "outcome.md"))
+
+    _out, err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "rebuild-savepoint",
+                                        "--intent", "11", "--store", "project:plastic",
+                                        "--plastic-home", @home, "--apply")
+    assert_equal 1, status.exitstatus
+    assert_match(/outcome\.md is missing or a placeholder/, err)
+    refute File.exist?(File.join(dir, "savepoint.md"))
+  end
+
+  def test_rebuild_savepoint_refuses_when_outcome_is_a_placeholder
+    dir = File.join(@home, "projects", "plastic", "store", "11--child")
+    File.write(File.join(dir, "outcome.md"), "<!-- plastic:placeholder -->\n")
+
+    _out, err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "rebuild-savepoint",
+                                        "--intent", "11", "--store", "project:plastic",
+                                        "--plastic-home", @home)
+    assert_equal 1, status.exitstatus
+    assert_match(/outcome\.md is missing or a placeholder/, err)
+  end
+
+  def test_rebuild_savepoint_defers_when_target_holds_a_fresh_delivery_lock
+    dir = File.join(@home, "projects", "plastic", "store", "11--child")
+    write_outcome(dir)
+    File.write(File.join(dir, "delivery.lock"), '{"owner_session":"someone-else"}')
+
+    out, err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "rebuild-savepoint",
+                                       "--intent", "11", "--store", "project:plastic",
+                                       "--plastic-home", @home, "--apply")
+    assert_equal 2, status.exitstatus
+    assert_match(/deferred/, out + err)
+  end
 end
