@@ -73,7 +73,8 @@ module MaintenanceGit
     run_git!(root, "-c", "user.name=Plastic", "-c", "user.email=plastic@localhost",
              "commit", "--quiet", "-m", commit_message)
     checkout!(root, base)
-    run_git!(root, "merge", "--quiet", "--no-ff", "-m", "Merge #{branch_name} into #{base}", branch_name)
+    run_git!(root, "-c", "user.name=Plastic", "-c", "user.email=plastic@localhost",
+             "merge", "--quiet", "--no-ff", "-m", "Merge #{branch_name} into #{base}", branch_name)
     delete_branch(root, branch_name)
 
     { changed: changed, committed: true, merged: true, branch: branch_name }

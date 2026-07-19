@@ -45,6 +45,45 @@ class MaintenanceGitTest < Minitest::Test
     assert_empty status_out.strip
   end
 
+  # FALSIFIABLE (208): with no global or system git identity available, the scoped merge-back
+  # must still succeed because run_scoped passes committer identity on the merge itself. This
+  # fails on the pre-fix lib (git aborts the no-ff merge with an unknown-committer error) on
+  # any machine, including one whose OS account gives git a name it could otherwise guess.
+  # user.useConfigOnly=true (injected via GIT_CONFIG_COUNT/KEY/VALUE, git's own env-config
+  # mechanism) disables that OS-account guess, so this isolation is real even on a machine
+  # with a normal user account and no git identity configured anywhere.
+  ISOLATED_IDENTITY_KEYS = %w[
+    GIT_CONFIG_GLOBAL GIT_CONFIG_SYSTEM GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
+    GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+  ].freeze
+
+  def test_merges_back_when_no_host_git_identity_is_configured
+    saved = ENV.slice(*ISOLATED_IDENTITY_KEYS)
+    ENV["GIT_CONFIG_GLOBAL"] = File::NULL
+    ENV["GIT_CONFIG_SYSTEM"] = File::NULL
+    ENV["GIT_CONFIG_COUNT"] = "1"
+    ENV["GIT_CONFIG_KEY_0"] = "user.useConfigOnly"
+    ENV["GIT_CONFIG_VALUE_0"] = "true"
+    %w[GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL].each { |k| ENV.delete(k) }
+
+    result = MaintenanceGit.run_scoped(repo_dir: @repo, branch_name: "maintenance/noid",
+                                       commit_message: "chore: noid") do
+      File.write(File.join(@repo, "noid.md"), "noid\n")
+    end
+
+    assert result[:merged], "the no-ff merge-back must succeed without any host git identity"
+    out, = Open3.capture3("git", "-C", @repo, "rev-parse", "--abbrev-ref", "HEAD")
+    assert_equal "main", out.strip
+    assert File.exist?(File.join(@repo, "noid.md"))
+    refute_includes branches, "maintenance/noid", "the maintenance branch must be deleted after merge"
+    status_out, = Open3.capture3("git", "-C", @repo, "status", "--porcelain")
+    assert_empty status_out.strip
+  ensure
+    ISOLATED_IDENTITY_KEYS.each do |k|
+      saved.key?(k) ? ENV[k] = saved[k] : ENV.delete(k)
+    end
+  end
+
   def test_refuses_to_start_when_working_tree_is_dirty
     File.write(File.join(@repo, "unrelated.md"), "dirty\n")
 
