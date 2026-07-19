@@ -1421,8 +1421,19 @@ class DoctorStoreScopingTest < Minitest::Test
     end
   end
 
+  # Fake `qmd collection list` output reporting both collections these tests touch
+  # (plastic-global and the @project_slug collection) as already registered, so
+  # check_qmd's scoped "collections" check reaches its pass branch deterministically
+  # (intent 221a) regardless of whether the executing host actually has QMD
+  # installed or any collections registered.
+  def fake_qmd_collection_list_runner
+    ->(_args) {
+      ["plastic-global (qmd://plastic-global/)\nplastic-#{@project_slug} (qmd://plastic-#{@project_slug}/)\n", true]
+    }
+  end
+
   def test_store_global_includes_scoped_qmd_but_no_tool_checks
-    result = doctor.run_store_checks(:global)
+    result = doctor.run_store_checks(:global, qmd_detector: -> { true }, qmd_runner: fake_qmd_collection_list_runner)
     names = result[:checks].map { |c| c[:name] }
 
     assert_includes names, "present" # check_qmd's own "present" check name
@@ -1431,7 +1442,12 @@ class DoctorStoreScopingTest < Minitest::Test
   end
 
   def test_store_slug_includes_qmd_and_both_tool_checks
-    result = doctor.run_store_checks(@project_slug)
+    result = doctor.run_store_checks(
+      @project_slug,
+      qmd_detector: -> { true }, qmd_runner: fake_qmd_collection_list_runner,
+      serena_path_probe: -> { false }, serena_marker_finder: ->(_cwd) { false },
+      enola_path_probe: -> { false }, enola_marker_finder: ->(_cwd) { false }
+    )
     names = result[:checks].map { |c| c[:name] }
 
     assert_includes names, "collections" # check_qmd's scoped collection check
