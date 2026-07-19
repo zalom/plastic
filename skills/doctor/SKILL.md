@@ -16,18 +16,35 @@ Doctor has three scopes. Pick the right one for the situation:
 | Store check | `--store [global\|<slug>]` | Dashboard load, `plastic-project-continuing` | Three-state: pass / warn / fail |
 | Full check | (no flag) | After every update (automatic), or `/plastic-doctor` | Three-state: pass / warn / fail |
 
-### `--core` (binary, manifest-backed)
+### `--core` (binary, operational-readiness only)
 
-Verifies that every core file is present and content-matches what the installed
-version shipped. It checks two install manifests:
+Checks ONLY that Plastic is loaded and ready for work: agent registration (skills,
+subagents, hooks/harnesses present and registered), core files (manifest-backed
+presence/hash checks, excluding `agent_model_drift`, which is a non-boot
+config-honoring check, never run at core), manifest sync (global + agent manifest
+SHA256), every registered project's path resolving to a real, existing directory,
+and the global store being reachable (`INDEX.md` present; no orphan/ghost content
+scanning). Result is binary: exit 0 on pass, non-zero on error. It never produces
+warnings, and it never scans store content.
+
+It checks two install manifests as part of core files and manifest sync:
 
 - `~/.plastic/manifest.json` (global manifest, covers PLASTIC.md and global scripts)
 - `~/.claude/plastic/manifest.json` (agent-side manifest, covers agent scripts and hooks)
 
-Each manifest maps a file path to its SHA256. The core check also confirms hooks
-are registered, scripts are present and executable, and the installed version
-matches. Result is binary: exit 0 on pass, non-zero on error. It never produces
-warnings.
+Each manifest maps a file path to its SHA256.
+
+**On failure**, the report states this guided route, in order:
+
+1. Run `plastic doctor --fix` (the Fix all / Select individually / Skip router from
+   Step 4-5 below).
+2. If that does not resolve it, roll back to the last known-good version via
+   `plastic-rollback` (restores from the local, append-only `versions.json` ledger of
+   versions actually run).
+3. Optionally report the issue via the feedback command (`scripts/feedback-report`,
+   backing the `plastic-feedback` skill), which composes a local report plus a
+   prefilled GitHub issue URL and never holds a credential or contacts GitHub
+   directly.
 
 ### `--store [global|<slug>]`
 
@@ -125,6 +142,7 @@ Use the `fix_hint` value to determine the correct action:
 | "Inject the missing required frontmatter field(s)" | Edit the intent's `{ID}--{slug}.md` frontmatter to add the missing key (e.g. `chain: []`) without touching other keys |
 | "Run: provision-project-store {slug}" | Run `provision-project-store <slug>` (or invoke the `plastic-store-provisioning` skill) to create the missing store |
 | "Re-run installer" | Run `npx -y @zalom/plastic@<channel> install --agent <agent>` (channel: -alpha->@alpha, -beta->@beta, else @latest) |
+| "Run the Plastic installer to bootstrap the store" | Run `npx -y @zalom/plastic@<channel> install --agent <agent>` (channel: -alpha->@alpha, -beta->@beta, else @latest) to restore the global store's plastic_home directory or INDEX.md |
 | "Dispatch plastic-store-curating ... revisions.md ..." | Invoke the `plastic-store-curating` (or the agent) to relocate the flagged section or ref into the intent's `revisions.md` via move-and-record (one dated, `[rule: <tag>]`-tagged entry per item), per PLASTIC.md > Structural maintenance and revisions.md. For a missing required section, restore or reproject it instead. |
 | "Run scripts/project-links ... PRESERVES ... --drop-unbacked-links" | Run `ruby ~/.plastic/scripts/maintenance-run --tool project-links --intent <id> --apply` for the one flagged id (never run bare `project-links` against a real store outside the rare owner-approved batch exception, D2) |
 

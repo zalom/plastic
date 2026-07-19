@@ -17,6 +17,7 @@ class DoctorCoreFlagTest < Minitest::Test
     intent_dirname intent_filename frontmatter_fields
     project_dir_exists project_index project_yml_exists governing_docs_exist
     cross_references active_deprecations deprecations_file
+    agent_model_drift
   ].freeze
 
   def setup
@@ -59,24 +60,29 @@ class DoctorCoreFlagTest < Minitest::Test
     end
   end
 
-  def test_core_run_is_exactly_the_three_liveness_groups
+  def test_core_run_is_exactly_the_five_liveness_groups
     d = doctor
     expected = (d.check_agent_registration("claude") +
-                d.check_core_files("claude") +
-                d.check_manifest_sync("claude"))
+                d.check_core_files("claude", include_drift: false) +
+                d.check_manifest_sync("claude") +
+                d.check_registered_project_paths +
+                d.check_global_store_available)
                .map { |c| c[:name] }
     actual = d.run_core_checks("claude")[:checks].map { |c| c[:name] }
 
     assert_equal expected, actual,
-      "--core must be exactly agent_registration + core_files + manifest_sync, in order"
+      "--core must be exactly agent_registration + core_files(no drift) + manifest_sync + " \
+      "registered_project_paths + global_store_available, in order"
   end
 
   def test_core_run_only_has_liveness_categories
     result = doctor.run_core_checks("claude")
     categories = result[:checks].map { |c| c[:category] }.uniq
 
-    assert_equal %w[agent_registration core_files manifest_sync], categories.sort,
-      "--core categories should be agent_registration, core_files, and manifest_sync"
+    assert_equal %w[agent_registration core_files global_store manifest_sync project_stores],
+      categories.sort,
+      "--core categories should be agent_registration, core_files, global_store, " \
+      "manifest_sync, and project_stores"
   end
 
   def test_core_run_has_standard_envelope
@@ -106,14 +112,90 @@ class DoctorCoreFlagTest < Minitest::Test
   end
 
   def test_core_liveness_checks_are_subset_of_full_run
-    # manifest_sync is core-only; the rest of --core must also appear in the
-    # full run.
-    manifest_names = doctor.check_manifest_sync("claude").map { |c| c[:name] }
+    # manifest_sync, registered_project_paths, and global_store_available are core-only;
+    # the rest of --core must also appear in the full run.
+    core_only_names = (doctor.check_manifest_sync("claude") +
+                        doctor.check_registered_project_paths +
+                        doctor.check_global_store_available).map { |c| c[:name] }
     core_names = doctor.run_core_checks("claude")[:checks].map { |c| c[:name] }
     full_names = doctor.run_checks("claude")[:checks].map { |c| c[:name] }
 
-    extra = (core_names - manifest_names) - full_names
-    assert_empty extra, "non-manifest core checks not present in full run: #{extra.inspect}"
+    extra = (core_names - core_only_names) - full_names
+    assert_empty extra, "non-carved-out core checks not present in full run: #{extra.inspect}"
+  end
+
+  # --- check_registered_project_paths ---
+
+  def test_registered_project_paths_passes_when_none_registered
+    File.write(File.join(DOCTOR_TEST_HOME, "projects.yml"), YAML.dump("projects" => {}))
+
+    checks = doctor.check_registered_project_paths
+    check = checks.find { |c| c[:name] == "registered_project_paths" }
+
+    refute_nil check
+    assert_equal "pass", check[:status]
+  end
+
+  def test_registered_project_paths_fails_on_missing_projects_yml
+    # No projects.yml written at all.
+    checks = doctor.check_registered_project_paths
+    check = checks.find { |c| c[:name] == "registered_project_paths" }
+
+    refute_nil check
+    assert_equal "fail", check[:status]
+  end
+
+  def test_project_path_resolves_passes_for_a_real_directory
+    real_dir = Dir.mktmpdir("plastic-doctor-project-path")
+    File.write(File.join(DOCTOR_TEST_HOME, "projects.yml"),
+      YAML.dump("projects" => { "demo" => { "path" => real_dir } }))
+
+    checks = doctor.check_registered_project_paths
+    check = checks.find { |c| c[:name] == "project_path_resolves" }
+
+    refute_nil check
+    assert_equal "pass", check[:status]
+  ensure
+    FileUtils.rm_rf(real_dir)
+  end
+
+  def test_project_path_resolves_fails_for_a_nonexistent_directory
+    File.write(File.join(DOCTOR_TEST_HOME, "projects.yml"),
+      YAML.dump("projects" => { "demo" => { "path" => "/nonexistent/plastic-demo-dir" } }))
+
+    checks = doctor.check_registered_project_paths
+    check = checks.find { |c| c[:name] == "project_path_resolves" }
+
+    refute_nil check
+    assert_equal "fail", check[:status]
+    assert check[:message].include?("demo"), "expected failure to name the slug"
+  end
+
+  # --- check_global_store_available ---
+
+  def test_global_store_available_passes_when_intact
+    File.write(File.join(DOCTOR_TEST_HOME, "INDEX.md"), "# Index\n")
+
+    checks = doctor.check_global_store_available
+    assert checks.all? { |c| c[:status] == "pass" },
+      "expected all pass, got: #{checks.map { |c| [c[:name], c[:status]] }}"
+  end
+
+  def test_global_index_reachable_fails_when_index_missing
+    # DOCTOR_TEST_HOME exists (directory) but INDEX.md is not written.
+    checks = doctor.check_global_store_available
+    check = checks.find { |c| c[:name] == "global_index_reachable" }
+
+    refute_nil check
+    assert_equal "fail", check[:status]
+  end
+
+  def test_global_store_available_has_no_content_scanning_checks
+    File.write(File.join(DOCTOR_TEST_HOME, "INDEX.md"), "# Index\n")
+    names = doctor.check_global_store_available.map { |c| c[:name] }
+
+    refute_includes names, "orphaned_intents"
+    refute_includes names, "ghost_references"
   end
 end
 
@@ -187,6 +269,8 @@ class DoctorManifestSyncTest < Minitest::Test
     write_agents(DOCTOR_TEST_CLAUDE)
     File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "1.0.0")
     write_core_scripts(File.join(DOCTOR_TEST_HOME, "scripts"))
+    File.write(File.join(DOCTOR_TEST_HOME, "projects.yml"), YAML.dump("projects" => {}))
+    File.write(File.join(DOCTOR_TEST_HOME, "INDEX.md"), "# Index\n")
 
     result = doctor.run_core_checks("claude")
     assert_equal "pass", result[:status],
@@ -303,6 +387,8 @@ class DoctorManifestSyncTest < Minitest::Test
     write_agents(DOCTOR_TEST_CLAUDE)
     write_core_scripts(File.join(DOCTOR_TEST_HOME, "scripts"))
     File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "1.0.0")
+    File.write(File.join(DOCTOR_TEST_HOME, "projects.yml"), YAML.dump("projects" => {}))
+    File.write(File.join(DOCTOR_TEST_HOME, "INDEX.md"), "# Index\n")
 
     core_names = doctor.run_core_checks("claude")[:checks].map { |c| c[:name] }
     full_names = doctor.run_checks("claude")[:checks].map { |c| c[:name] }
@@ -349,6 +435,8 @@ class DoctorManifestSyncTest < Minitest::Test
     write_core_scripts(File.join(DOCTOR_TEST_HOME, "scripts"))
     # global VERSION 2.0.0 vs agent-side plastic/VERSION 1.0.0 (from build_intact_install)
     File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "2.0.0")
+    File.write(File.join(DOCTOR_TEST_HOME, "projects.yml"), YAML.dump("projects" => {}))
+    File.write(File.join(DOCTOR_TEST_HOME, "INDEX.md"), "# Index\n")
 
     result = doctor.run_core_checks("claude")
     assert_equal "warn", result[:checks].find { |c| c[:name] == "version_match" }&.dig(:status),
