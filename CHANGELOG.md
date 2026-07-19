@@ -6,6 +6,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 ## Unreleased
 
 ## Released
+- `1.8.0` - shipped 2026-07-19; collected 219 (doctor check-surface doctrine), 220 (core rescope: drift out of --core, project-path and global-store checks, guided failure route), 221 (store scan verifies Plastic-dependent ops, tool readiness checks, AGENTS.md Tools convention, install-wide full run), 221a (hermetic store-scan tests, CI green), 222 (doctor --intent per-intent scope, mechanical close gate exit 6), 211 (generic legacy-gap predicate, shipped amnesty file removed, packaging guard, maintenance-run rebuild-savepoint)
 
 - `1.7.1` - shipped 2026-07-19; collected 218: fix the maintenance merge-back failing on hosts without a global git identity (CI runners, fresh machines) - the no-ff merge in scripts/lib/maintenance_git.rb now carries the same committer identity flags as the maintenance commit, proven by an identity-isolated regression test that disables git's OS-account fallback; clears the 3 CI test failures red since the v1.5.0 push; full suite 1796 runs, 6238 assertions, 0 failures.
 
