@@ -2878,16 +2878,30 @@ def check_done_signals(scopes: nil)
   # 3-state roll-up (pass/warn/fail), like the full run.
   # QMD reachability is now wired into every branch, scoped to that branch's own
   # collection(s) (D3); Serena/Enola readiness is per-slug only (D4).
-  def run_store_checks(store)
+  # Same injection seams as all_checks_for_project_slug (intent 221a), threaded through
+  # so every branch's check_qmd/check_serena/check_enola call can be made hermetic.
+  # Defaults are byte-identical to the real probes; both production callers
+  # (scripts/doctor.rb's CLI entry point and scripts/dashboard.rb) call
+  # run_store_checks(store) with a single positional argument and no kwargs, so
+  # behavior at those call sites is unchanged.
+  def run_store_checks(store, qmd_detector: QmdSync.method(:detect), qmd_runner: QmdSync.default_runner,
+                        serena_path_probe: PowerTools.method(:which_serena),
+                        serena_marker_finder: PowerTools.method(:serena_marker?),
+                        enola_path_probe: PowerTools.method(:which_enola),
+                        enola_marker_finder: PowerTools.method(:enola_marker?))
     all_checks =
       case store
       when :all
-        check_global_store + check_project_stores + check_conventions + check_done_signals + check_qmd
+        check_global_store + check_project_stores + check_conventions + check_done_signals +
+          check_qmd(detector: qmd_detector, runner: qmd_runner)
       when :global
         check_global_store + check_conventions(scopes: ["global"]) +
-          check_done_signals(scopes: ["global"]) + check_qmd(collection: "plastic-global")
+          check_done_signals(scopes: ["global"]) +
+          check_qmd(detector: qmd_detector, runner: qmd_runner, collection: "plastic-global")
       else
-        all_checks_for_project_slug(store)
+        all_checks_for_project_slug(store, qmd_detector: qmd_detector, qmd_runner: qmd_runner,
+                                     serena_path_probe: serena_path_probe, serena_marker_finder: serena_marker_finder,
+                                     enola_path_probe: enola_path_probe, enola_marker_finder: enola_marker_finder)
       end
 
     summarize(all_checks, "claude", binary: false)
@@ -2895,7 +2909,16 @@ def check_done_signals(scopes: nil)
 
   # Build the checks for a single project slug, or a lone fail check when the
   # slug is unknown.
-  def all_checks_for_project_slug(slug)
+  # qmd_detector/qmd_runner and the serena_/enola_ path_probe/marker_finder kwargs are
+  # injection seams (intent 221a) mirroring check_qmd/check_serena/check_enola's own
+  # kwargs, defaulted to the same real probes those methods already default to. No
+  # caller passes these; they exist so tests can make host state (QMD/Serena/Enola
+  # presence) irrelevant.
+  def all_checks_for_project_slug(slug, qmd_detector: QmdSync.method(:detect), qmd_runner: QmdSync.default_runner,
+                                   serena_path_probe: PowerTools.method(:which_serena),
+                                   serena_marker_finder: PowerTools.method(:serena_marker?),
+                                   enola_path_probe: PowerTools.method(:which_enola),
+                                   enola_marker_finder: PowerTools.method(:enola_marker?))
     projects_data = load_yaml_safe(File.join(plastic_home, "projects.yml"))
     projects = projects_data.is_a?(Hash) ? projects_data["projects"] : nil
 
@@ -2914,9 +2937,9 @@ def check_done_signals(scopes: nil)
     check_project_store(slug, project_info) +
       check_conventions(scopes: ["project:#{slug}"]) +
       check_done_signals(scopes: ["project:#{slug}"]) +
-      check_qmd(collection: "plastic-#{slug}") +
-      check_serena(cwd: probe_cwd) +
-      check_enola(cwd: probe_cwd)
+      check_qmd(detector: qmd_detector, runner: qmd_runner, collection: "plastic-#{slug}") +
+      check_serena(cwd: probe_cwd, path_probe: serena_path_probe, marker_finder: serena_marker_finder) +
+      check_enola(cwd: probe_cwd, path_probe: enola_path_probe, marker_finder: enola_marker_finder)
   end
 
   # Roll a list of checks up into the standard result envelope.
