@@ -274,4 +274,26 @@ class DoctorDoneSignalsTest < Minitest::Test
     assert_equal "warn", complete[:status]
     assert(complete[:details].any? { |d| d.include?("audit echo missing") })
   end
+
+  # Regression pin for the intent 222 extraction (done_signal_findings_for_dir): a terminal
+  # dir missing BOTH outcome.md and the savepoint audit echo is two SEPARATE, independent
+  # `if` blocks in the original code (never elsif), so it must still contribute TWO distinct
+  # strings to `gaps`, not one - verified against HEAD before the extraction landed, per
+  # plan.md Step 3's note. Collapsing this into a single nilable field would silently drop
+  # one of the two gaps for this one dir.
+  def test_extraction_preserves_both_gaps_when_a_dir_has_outcome_and_echo_gaps_together
+    write_index("33", section: "Completed")
+    write_intent_dir("33")
+    # No outcome.md at all (missing), and a savepoint with no Done echo: BOTH gap
+    # conditions are true for this SAME dir simultaneously.
+    File.write(File.join(intent_dir("33"), "savepoint.md"),
+               "2026-07-03T00:00:00Z  Exec  started\n")
+
+    complete = check("signals_complete")
+    assert_equal "warn", complete[:status]
+    matches = complete[:details].select { |d| d.include?("33") }
+    assert_equal 2, matches.size, "expected BOTH gap strings for dir 33: #{complete[:details].inspect}"
+    assert(matches.any? { |d| d.include?("outcome.md is missing") })
+    assert(matches.any? { |d| d.include?("audit echo missing") })
+  end
 end

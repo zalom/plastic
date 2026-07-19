@@ -96,4 +96,56 @@ class EndIntentDisarmToctouTest < Minitest::Test
     assert_equal :ok, result
     refute File.exist?(Lock.path(@intent_dir))
   end
+
+  # --- structure gate fail-open on a crash (intent 222, D4) -------------------
+  #
+  # The per-intent doctor gate end-intent's main calls before any write (run_structure_gate,
+  # scripts/end-intent) must never let a crash inside the gate call itself wedge a close: an
+  # unexpected exception is rescued, logged, and treated as a skipped gate. This cannot be
+  # reproduced by spawning the real script as a subprocess (test/end_intent_test.rb's house
+  # style): there is no eval/ENV/global seam available to make the gate crash from outside a
+  # fresh child process without an actual on-disk trigger, and the one genuine trigger this
+  # codebase has (resolve_single_intent_dir's cross-store ambiguity RuntimeError) collides
+  # with end-intent's OWN, earlier resolve_intent_dir call whenever the decoy sits in the
+  # same --store directory, since both scan that literal directory for "id--*" first. Only
+  # run_structure_gate's own injected `gate:` seam (mirrors run_disarm's bridge_reader:/
+  # disarm: pattern above) gives a deterministic hook, exactly like every other test in this
+  # file - hence its home here, not test/end_intent_test.rb (this file's own header comment
+  # already reserves it as the one place that loads the script in-process).
+  def test_structure_gate_crash_is_rescued_and_never_exits_or_raises
+    crashing_gate = ->(_gate_home, _gate_scope) { raise "boom (test-injected doctor crash)" }
+
+    _stdout, stderr = capture_io do
+      run_structure_gate("161", store: File.join(@home, "store"), gate: crashing_gate)
+    end
+
+    assert_match(/structure gate crashed/i, stderr)
+    assert_match(/boom \(test-injected doctor crash\)/, stderr)
+  end
+
+  # A clean ("pass") verdict from the gate proceeds silently: no stderr output, no exit.
+  def test_structure_gate_pass_verdict_proceeds_silently
+    passing_gate = ->(_gate_home, _gate_scope) { { status: "pass", checks: [] } }
+
+    stdout, stderr = capture_io do
+      run_structure_gate("161", store: File.join(@home, "store"), gate: passing_gate)
+    end
+
+    assert_empty stdout
+    assert_empty stderr
+  end
+
+  # A "warn" verdict prints the advisory and proceeds (never exits): matches intent 134's
+  # advisory-only doctrine for intent_savepoint_truthful.
+  def test_structure_gate_warn_verdict_prints_and_proceeds
+    warn_check = { name: "intent_savepoint_truthful", status: "warn", message: "savepoint.md is missing" }
+    warning_gate = ->(_gate_home, _gate_scope) { { status: "warn", checks: [warn_check] } }
+
+    _stdout, stderr = capture_io do
+      run_structure_gate("161", store: File.join(@home, "store"), gate: warning_gate)
+    end
+
+    assert_match(/structure gate warning \(proceeding\)/i, stderr)
+    assert_match(/savepoint\.md is missing/i, stderr)
+  end
 end

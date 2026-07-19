@@ -52,9 +52,18 @@ for orchestrator-owned or completion-tracking items.
    the gate.
 2. Confirm every acceptance criterion in spec.md is verifiable (tests pass,
    or the manual check described in its HOW line was actually run).
-3. If checklist.md still has an unchecked box, stop here. Finish it first
-   (tick it if the described work is actually done, or do the remaining
-   work); do not attempt outcome.md and fight the gate's deny.
+3. The structure gate (intent 222) now enforces this: `scripts/end-intent`
+   refuses with exit 6 and names the exact unchecked box (or any other
+   structural gap: intent-file validity, lifecycle-artifact presence,
+   `## Links` projection). On a refusal, fix via the OWNING tool, never a
+   hand edit of the check's own output:
+   - checklist/outcome content - finish it yourself, the same as before.
+   - links projection - `scripts/project-links --intent <id> --apply` via
+     `maintenance-run`.
+   - a savepoint issue - advisory only (WARN, never blocks): run
+     `plastic-intent-savepoint` to rebuild via `Bridge.rebuild_savepoint` if
+     you want it clean, but it never refuses the close on its own.
+   Then re-run `scripts/end-intent`.
 
 ### Step 1-5. Run `scripts/end-intent`
 

@@ -343,10 +343,11 @@ During initial project creation, all decisions are non-destructive by definition
    non-zero exit needs attention before moving on: 4 means a live foreign session holds the
    lock (back off), 5 means the code worktree is dirty (commit/stash first, or pass
    `--discard-worktree-changes` deliberately), 3 means disarm ran but the lock is still
-   present (run `/plastic-doctor check the lock status`). Only Step 6 (QMD reindex, async,
-   last) remains a separate action after this call succeeds. Never leave an orphaned
-   worktree; run `git worktree prune` on a stale reference. If any of this ever needs to
-   change, change `plastic-intent-ending`, not this skill.
+   present (run `/plastic-doctor check the lock status`), 6 means the structure gate refused
+   (see the named reason on stderr; fix via the owning tool named above, then re-run). Only
+   Step 6 (QMD reindex, async, last) remains a separate action after this call succeeds.
+   Never leave an orphaned worktree; run `git worktree prune` on a stale reference. If any of
+   this ever needs to change, change `plastic-intent-ending`, not this skill.
 7. Notify user (Done briefing): brief per `references/human-report-contract.md`
     (State: the delivered impact; Risk: residual risk; Call: the decision left to you, merge,
     release, or accept). See `outcome.md` for details.

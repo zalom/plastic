@@ -359,6 +359,7 @@ class InstallerCore
       "scripts/uninstall.rb" => "scripts/uninstall.rb",
       "scripts/rollback.rb" => "scripts/rollback.rb",
       "scripts/lib/legacy_bookend_amnesty.rb" => "scripts/lib/legacy_bookend_amnesty.rb",
+      "scripts/lib/outcome_guard.rb" => "scripts/lib/outcome_guard.rb",
       "scripts/doctor.rb" => "scripts/doctor.rb",
       "scripts/dashboard.rb" => "scripts/dashboard.rb",
       "scripts/skill-lint" => "scripts/skill-lint",

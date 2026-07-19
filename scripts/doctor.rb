@@ -27,6 +27,7 @@ require_relative "lib/lock"
 require_relative "lib/bridge"
 require_relative "lib/agent_models"
 require_relative "lib/legacy_bookend_amnesty"
+require_relative "lib/outcome_guard"
 require_relative "lib/skill_lint"
 require_relative "lib/config_asks"
 require_relative "lib/power_tools"
@@ -113,6 +114,8 @@ class Doctor
     #   :global    — --store global
     #   "<slug>"   — --store <slug> (a single project)
     store = nil
+    intent = nil
+    disposition = nil
 
     i = 0
     while i < argv.length
@@ -128,6 +131,12 @@ class Doctor
       when "--core"
         core = true
         i += 1
+      when "--intent"
+        intent = argv[i + 1]
+        i += 2
+      when "--disposition"
+        disposition = argv[i + 1]
+        i += 2
       when "--store"
         nxt = argv[i + 1]
         if nxt && !nxt.start_with?("-")
@@ -145,7 +154,7 @@ class Doctor
       end
     end
 
-    { agent: agent, help: help, core: core, store: store }
+    { agent: agent, help: help, core: core, store: store, intent: intent, disposition: disposition }
   end
 
   def show_help
@@ -164,6 +173,11 @@ class Doctor
         --store [WHICH] Run only the store/conventions checks. WHICH may be:
                         global (global store only), a project slug (that project
                         only), or omitted (all stores). 3-state pass/warn/fail.
+        --intent ID     Per-intent structure gate at intent-end (intent 222): one
+                        closing intent only, never a store sweep. Pair with
+                        --store <key> to disambiguate an id that collides across
+                        stores, and --disposition delivered|abandoned to fold in
+                        the outcome.md disposition check. 3-state pass/warn/fail.
         -h, --help      Show this help
 
       Output:
@@ -648,85 +662,110 @@ class Doctor
     stores
   end
 
-  def check_done_signals(scopes: nil)
-    conflicts = [] # canonical INDEX-wins disagreement (fail)
-    gaps = []      # terminal completeness gaps on immutable/legacy history (warn)
-    stalled = []   # terminal but End tail unfinished (warn)
-    phantoms = []  # savepoint.md line(s) disk evidence contradicts (warn, never fail; intent 134)
+# Per-directory done-signal findings for ONE intent dir (intent 222): the shared unit both
+# check_done_signals's store-wide loop (211's territory, unchanged severities) and the new
+# per-intent check (check_intent_end) call, so the two surfaces can never independently
+# drift on what counts as a phantom line or a completeness gap. Returns
+# {conflict:, phantom:, gap:, stalled:} where conflict/phantom/stalled are nil or a finding
+# string, and gap is an ARRAY (0, 1, or 2 strings): the original inline code pushed the
+# "outcome missing" gap and the "audit echo missing" gap as two SEPARATE, independent `if`
+# blocks (never elsif), so a single terminal dir missing BOTH can legitimately contribute
+# two distinct gap strings in the same pass; collapsing that into one nilable field would
+# silently drop one of the two on a dir where both are true (verified against
+# test/doctor_done_signals_test.rb's fixtures before this extraction, per plan.md Step 3).
+def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, active:)
+  outcome = File.join(dir, "outcome.md")
+  outcome_real = Bridge.stage_file_present?(outcome)
+  findings = { conflict: nil, phantom: nil, gap: [], stalled: nil }
 
-    done_signal_stores(scopes).each do |store|
-      index_sections_by_dir(store[:index]).each do |dirname, in_sections|
-        dir = File.join(store[:store_dir], dirname)
-        next unless File.directory?(dir)
+  # HARD conflict: the deliverable exists but INDEX still says Active. This
+  # is the one true INDEX-wins disagreement, so it stays a fail.
+  if active && outcome_real
+    findings[:conflict] = "#{label}: outcome.md is real but the intent is still under ## Active " \
+                          "(INDEX is canonical - move it to its terminal section or revert outcome.md)"
+  end
 
-        terminal = (in_sections & ["Completed", "Abandoned"]).any?
-        active = in_sections.include?("Active") && !terminal
-        outcome = File.join(dir, "outcome.md")
-        outcome_real = Bridge.stage_file_present?(outcome)
-        label = "#{store[:scope]} store/#{dirname}"
+  # Savepoint truthfulness (advisory, never fail; intent 134): a line the disk contradicts
+  # (a phantom milestone, a duplicate pair, or a state line with an absent prerequisite).
+  # Live intents auto-rebuild via plastic-intent-savepoint; terminal intents are immutable,
+  # so a phantom there is report-only. Composition with intent 170a: a pre-161 legacy intent
+  # on the frozen bookend amnesty is grandfathered here too. Its immutable history carries
+  # known pre-convention drift (the same class the audit-echo gap forgives), so it must not
+  # resurface through this advisory. The suppression is scope-qualified exactly like the
+  # audit-echo amnesty; every live intent and every non-amnestied terminal still fires.
+  phantom_lines = Bridge.savepoint_phantom_lines(dir)
+  phantom_id = dirname.split("--", 2).first
+  phantom_amnestied = terminal && @bookend_amnesty.fetch(scope, []).include?(phantom_id)
+  if phantom_lines.any? && !phantom_amnestied
+    detail = phantom_lines.map { |line, reason| "#{line} (#{reason})" }.join("; ")
+    scope_note = terminal ? "terminal in INDEX, report-only (immutable history)" : "live intent, auto-rebuildable"
+    findings[:phantom] = "#{label}: #{phantom_lines.size} phantom savepoint line(s) contradicted by " \
+                         "disk, #{scope_note}: #{detail}"
+  end
 
-        # HARD conflict: the deliverable exists but INDEX still says Active. This
-        # is the one true INDEX-wins disagreement, so it stays a fail.
-        if active && outcome_real
-          conflicts << "#{label}: outcome.md is real but the intent is still under ## Active " \
-                       "(INDEX is canonical — move it to its terminal section or revert outcome.md)"
-        end
+  # Completeness gap (warn, not fail): a terminal intent whose outcome.md is
+  # missing/placeholder. Legacy terminal intents predate this convention and
+  # are immutable, so this is advisory, never breakage.
+  if terminal && !outcome_real
+    state = File.exist?(outcome) ? "still a placeholder" : "missing"
+    findings[:gap] << "#{label}: terminal in INDEX but outcome.md is #{state} " \
+                     "(author outcome.md with the disposition header)"
+  end
 
-        # Savepoint truthfulness (advisory, never fail; intent 134): a line the disk contradicts
-        # (a phantom milestone, a duplicate pair, or a state line with an absent prerequisite).
-        # Live intents auto-rebuild via plastic-intent-savepoint; terminal intents are immutable,
-        # so a phantom there is report-only. Composition with intent 170a: a pre-161 legacy intent
-        # on the frozen bookend amnesty is grandfathered here too. Its immutable history carries
-        # known pre-convention drift (the same class the audit-echo gap forgives), so it must not
-        # resurface through this advisory. The suppression is scope-qualified exactly like the
-        # audit-echo amnesty; every live intent and every non-amnestied terminal still fires.
-        phantom_lines = Bridge.savepoint_phantom_lines(dir)
-        phantom_id = dirname.split("--", 2).first
-        phantom_amnestied = terminal && @bookend_amnesty.fetch(store[:scope], []).include?(phantom_id)
-        if phantom_lines.any? && !phantom_amnestied
-          detail = phantom_lines.map { |line, reason| "#{line} (#{reason})" }.join("; ")
-          scope_note = terminal ? "terminal in INDEX, report-only (immutable history)" : "live intent, auto-rebuildable"
-          phantoms << "#{label}: #{phantom_lines.size} phantom savepoint line(s) contradicted by " \
-                      "disk, #{scope_note}: #{detail}"
-        end
-
-        # Completeness gap (warn, not fail): a terminal intent whose outcome.md is
-        # missing/placeholder. Legacy terminal intents predate this convention and
-        # are immutable, so this is advisory, never breakage.
-        if terminal && !outcome_real
-          state = File.exist?(outcome) ? "still a placeholder" : "missing"
-          gaps << "#{label}: terminal in INDEX but outcome.md is #{state} " \
-                  "(author outcome.md with the disposition header)"
-        end
-
-        next unless terminal
-
-        # Audit echo (weakest signal, D1): the savepoint should carry a
-        # `Done delivered|abandoned` line. Missing on legacy history -> advisory
-        # gap, unless the (scope, id) is on the frozen pre-161 amnesty list
-        # (intent 170a). The amnesty is scope-qualified: an id on the list for
-        # one scope does not grandfather the same id in another scope.
-        savepoint = File.join(dir, "savepoint.md")
-        if File.exist?(savepoint) && File.read(savepoint) !~ /\bDone\b.*\b(delivered|abandoned)\b/
-          id = dirname.split("--", 2).first
-          amnestied = @bookend_amnesty.fetch(store[:scope], []).include?(id)
-          unless amnestied
-            gaps << "#{label}: terminal in INDEX but savepoint.md has no " \
-                    "`Done delivered|abandoned` line (audit echo missing)"
-          end
-        end
-
-        # Stalled completion: the End tail never released the delivery lock, so the
-        # post-done window `[INDEX terminal -> Lock.release]` never closed.
-        if File.exist?(Lock.path(dir))
-          note = Lock.fresh?(dir) ? "delivery.lock still present (post-done window not closed)"
-                                  : "delivery.lock is present and STALE"
-          stalled << "#{label}: #{note} — the End tail did not finish"
-        end
+  if terminal
+    # Audit echo (weakest signal, D1): the savepoint should carry a
+    # `Done delivered|abandoned` line. Missing on legacy history -> advisory
+    # gap, unless the (scope, id) is on the frozen pre-161 amnesty list
+    # (intent 170a). The amnesty is scope-qualified: an id on the list for
+    # one scope does not grandfather the same id in another scope.
+    savepoint = File.join(dir, "savepoint.md")
+    if File.exist?(savepoint) && File.read(savepoint) !~ /\bDone\b.*\b(delivered|abandoned)\b/
+      id = dirname.split("--", 2).first
+      amnestied = @bookend_amnesty.fetch(scope, []).include?(id)
+      unless amnestied
+        findings[:gap] << "#{label}: terminal in INDEX but savepoint.md has no " \
+                          "`Done delivered|abandoned` line (audit echo missing)"
       end
     end
 
-    checks = []
+    # Stalled completion: the End tail never released the delivery lock, so the
+    # post-done window `[INDEX terminal -> Lock.release]` never closed.
+    if File.exist?(Lock.path(dir))
+      note = Lock.fresh?(dir) ? "delivery.lock still present (post-done window not closed)"
+                              : "delivery.lock is present and STALE"
+      findings[:stalled] = "#{label}: #{note} - the End tail did not finish"
+    end
+  end
+
+  findings
+end
+
+def check_done_signals(scopes: nil)
+  conflicts = [] # canonical INDEX-wins disagreement (fail)
+  gaps = []      # terminal completeness gaps on immutable/legacy history (warn)
+  stalled = []   # terminal but End tail unfinished (warn)
+  phantoms = []  # savepoint.md line(s) disk evidence contradicts (warn, never fail; intent 134)
+
+  done_signal_stores(scopes).each do |store|
+    index_sections_by_dir(store[:index]).each do |dirname, in_sections|
+      dir = File.join(store[:store_dir], dirname)
+      next unless File.directory?(dir)
+
+      terminal = (in_sections & ["Completed", "Abandoned"]).any?
+      active = in_sections.include?("Active") && !terminal
+      label = "#{store[:scope]} store/#{dirname}"
+
+      findings = done_signal_findings_for_dir(
+        dir, label: label, scope: store[:scope], dirname: dirname, terminal: terminal, active: active
+      )
+      conflicts << findings[:conflict] if findings[:conflict]
+      phantoms << findings[:phantom] if findings[:phantom]
+      gaps.concat(findings[:gap])
+      stalled << findings[:stalled] if findings[:stalled]
+    end
+  end
+
+  checks = []
 
     # signals_agree: only the canonical INDEX-wins conflict is a hard fail, so
     # `doctor` never goes red on immutable legacy terminal intents.
@@ -806,14 +845,12 @@ class Doctor
     checks
   end
 
-  # Build the cross-store node maps (basename + label per store) + relocation map
-  # from ALL stores, then for every intent compute its canonical `## Links`
-  # projection and flag any whose ACTUAL `## Links` section differs (membership or
-  # ordering drift), or whose projection raises UnresolvedRef. `scopes` (nil = full
-  # run) filters only the REPORTED findings by origin scope.
-  def links_projection_check(scopes: nil)
+  # Build the cross-store node maps (basename + label per store) + relocation map from ALL
+  # stores (intent 222): the one shared build both the store-wide links_projection_check and
+  # the new per-intent intent_links_projection_check_for call, so the two can never disagree
+  # on how a ref resolves.
+  def build_links_projection_context
     all_dirs = all_intent_dirs
-
     store_index = seeded_store_index
     node_index = Hash.new { |h, k| h[k] = {} }
     intents = [] # { scope:, id:, sources:, chain:, path: }
@@ -836,6 +873,20 @@ class Doctor
     end
 
     relocation_map = GraphRebuild.build_relocation_map(cross_store_index_texts)
+    { store_index: store_index, node_index: node_index, relocation_map: relocation_map, intents: intents }
+  end
+
+  # Build the cross-store node maps (basename + label per store) + relocation map
+  # from ALL stores, then for every intent compute its canonical `## Links`
+  # projection and flag any whose ACTUAL `## Links` section differs (membership or
+  # ordering drift), or whose projection raises UnresolvedRef. `scopes` (nil = full
+  # run) filters only the REPORTED findings by origin scope.
+  def links_projection_check(scopes: nil)
+    ctx = build_links_projection_context
+    store_index = ctx[:store_index]
+    node_index = ctx[:node_index]
+    relocation_map = ctx[:relocation_map]
+    intents = ctx[:intents]
 
     findings = []
     intents.each do |node|
@@ -887,6 +938,171 @@ class Doctor
   # any real projection, so a missing section is a finding).
   def actual_links_section(path)
     LinksSection.extract_section(IntentValidator.body_of(File.read(path)))
+  end
+
+  # --- Check scope 4: per-intent structure gate at intent-end (intent 222) ---
+  #
+  # Doctor's fourth check scope, invoked by `--intent <id>`. Never a store-wide sweep:
+  # resolves exactly one intent directory (mirrors scripts/end-intent's resolve_intent_dir /
+  # scripts/project-links's --intent disambiguation) and returns five checks, four
+  # FAIL-severity, one WARN-severity (intent_savepoint_truthful stays WARN per intent 134's
+  # binding advisory-only ruling; see spec.md D2/D8 - do NOT escalate it to FAIL).
+  def check_intent_end(id, store: nil, disposition: nil)
+    intent_dir, scope = resolve_single_intent_dir(id, store: store)
+    unless intent_dir
+      return [check(
+        category: "intent_end", name: "intent_resolved", status: "fail",
+        message: "no intent directory matches #{id.inspect}" \
+                 "#{store ? " under store #{store.inspect}" : ""}"
+      )]
+    end
+
+    [
+      intent_structure_check(intent_dir),
+      intent_lifecycle_artifacts_check(intent_dir, disposition),
+      intent_checklist_complete_check(intent_dir),
+      intent_links_projection_check_for(id, scope),
+      intent_savepoint_truthful_check(intent_dir),
+    ]
+  end
+
+  # Resolves --intent (+ optional --store) to exactly one (intent_dir, scope) pair, or
+  # [nil, nil] when found nowhere. `store`, when given, must already be a resolved scope key
+  # (e.g. "global" or "project:<slug>", matching all_intent_dirs' own `d[:scope]`); the CLI
+  # boundary (`cli`) is what translates the loosely-typed --store flag value into this shape.
+  # Aborts loud (raises) on cross-store ambiguity when no scope was given, mirroring
+  # scripts/project-links's resolve_target_store.
+  def resolve_single_intent_dir(id, store: nil)
+    candidates = all_intent_dirs.select { |d| d[:name].start_with?("#{id}--") }
+    candidates = candidates.select { |d| d[:scope] == store } if store
+
+    return [nil, nil] if candidates.empty?
+    if candidates.length > 1
+      scopes = candidates.map { |d| d[:scope] }.join(", ")
+      raise "intent #{id.inspect} is ambiguous across stores (#{scopes}); pass --store <key> " \
+            "to disambiguate (e.g. --store #{candidates.first[:scope]})"
+    end
+
+    [candidates.first[:path], candidates.first[:scope]]
+  end
+
+  def intent_structure_check(intent_dir)
+    result = IntentValidator.validate(intent_dir)
+    if result[:ok]
+      check(category: "intent_end", name: "intent_structure", status: "pass",
+            message: "Intent file frontmatter and sections are well-formed")
+    else
+      check(category: "intent_end", name: "intent_structure", status: "fail",
+            message: "Intent file has #{result[:errors].size} structural error(s)",
+            details: result[:errors])
+    end
+  end
+
+  INTENT_END_LIFECYCLE_FILES = %w[spec.md plan.md checklist.md outcome.md].freeze
+
+  def intent_lifecycle_artifacts_check(intent_dir, disposition)
+    missing = INTENT_END_LIFECYCLE_FILES.select { |f| !Bridge.stage_file_present?(File.join(intent_dir, f)) }
+    unless Bridge.stage_file_present?(Bridge.intent_file(intent_dir))
+      missing = [File.basename(Bridge.intent_file(intent_dir))] + missing
+    end
+
+    outcome_note = nil
+    if disposition && !missing.include?("outcome.md")
+      outcome_note = OutcomeGuard.reason(intent_dir, disposition)
+    end
+
+    if missing.empty? && outcome_note.nil?
+      check(category: "intent_end", name: "intent_lifecycle_artifacts", status: "pass",
+            message: "Every lifecycle artifact is present and real")
+    else
+      details = missing.map { |f| "#{f} missing or still a placeholder" }
+      details << outcome_note if outcome_note
+      check(category: "intent_end", name: "intent_lifecycle_artifacts", status: "fail",
+            message: "#{details.size} lifecycle-artifact gap(s)", details: details)
+    end
+  end
+
+  def intent_checklist_complete_check(intent_dir)
+    path = File.join(intent_dir, "checklist.md")
+    unless Bridge.stage_file_present?(path)
+      return check(category: "intent_end", name: "intent_checklist_complete", status: "pass",
+                    message: "n/a: checklist.md absent or placeholder (flagged above if that is a gap)")
+    end
+
+    unchecked = File.read(path).scan(/^- \[ \].*$/)
+    if unchecked.empty?
+      check(category: "intent_end", name: "intent_checklist_complete", status: "pass",
+            message: "checklist.md has zero unchecked items")
+    else
+      check(category: "intent_end", name: "intent_checklist_complete", status: "fail",
+            message: "#{unchecked.size} unchecked checklist item(s) remain", details: unchecked)
+    end
+  end
+
+  def intent_links_projection_check_for(id, scope)
+    ctx = build_links_projection_context
+    node = ctx[:intents].find { |n| n[:id] == id && n[:scope] == scope }
+    unless node
+      return check(category: "intent_end", name: "intent_links_projection", status: "warn",
+                    message: "could not locate #{id.inspect} in the links-projection graph")
+    end
+
+    resolve = ->(ref) do
+      LinksProjection.resolve_ref_projection(
+        ref, referer_store: node[:scope], relocation_map: ctx[:relocation_map],
+             store_index: ctx[:store_index], node_index: ctx[:node_index]
+      )
+    end
+
+    begin
+      expected = LinksProjection.section(sources: node[:sources], chain: node[:chain], resolve: resolve)
+      actual = actual_links_section(node[:path])
+    rescue LinksProjection::UnresolvedRef, LinksSection::AmbiguousLinks => e
+      return check(category: "intent_end", name: "intent_links_projection", status: "fail",
+                    message: "## Links projection failed: #{e.message}")
+    end
+
+    if actual == expected
+      check(category: "intent_end", name: "intent_links_projection", status: "pass",
+            message: "## Links matches its frontmatter projection")
+    else
+      check(category: "intent_end", name: "intent_links_projection", status: "fail",
+            message: "## Links does not match its frontmatter projection (membership/ordering drift)",
+            fixable: true,
+            fix_hint: "Run scripts/project-links --intent #{id} --apply (via maintenance-run)")
+    end
+  end
+
+  # WARN-only, per intent 134 (savepoint truthfulness is advisory, never a hard gate). Do not
+  # change this to FAIL: it would silently contradict a standing, binding ruling.
+  def intent_savepoint_truthful_check(intent_dir)
+    savepoint = File.join(intent_dir, "savepoint.md")
+    unless File.exist?(savepoint)
+      return check(category: "intent_end", name: "intent_savepoint_truthful", status: "warn",
+                    message: "savepoint.md is missing")
+    end
+
+    first_line = File.read(savepoint).each_line.find { |l| !l.strip.empty? }.to_s.strip
+    parts = first_line.split(/\s{2,}/)
+    born_pair = parts.length >= 3 ? [parts[1], parts[2]] : nil
+    expected_pair = Bridge.savepoint_milestone(intent_dir, File.basename(Bridge.intent_file(intent_dir)))
+
+    phantoms = Bridge.savepoint_phantom_lines(intent_dir)
+    problems = []
+    problems << "born line #{born_pair.inspect} does not match the expected #{expected_pair.inspect}" \
+      if born_pair != expected_pair
+    problems << "#{phantoms.size} phantom savepoint line(s): " \
+                "#{phantoms.map { |l, r| "#{l} (#{r})" }.join("; ")}" if phantoms.any?
+
+    if problems.empty?
+      check(category: "intent_end", name: "intent_savepoint_truthful", status: "pass",
+            message: "Savepoint born line and phantom-line state are truthful")
+    else
+      check(category: "intent_end", name: "intent_savepoint_truthful", status: "warn",
+            message: "#{problems.size} savepoint truthfulness issue(s) (advisory, never blocking)",
+            details: problems,
+            fixable: true, fix_hint: "Run plastic-intent-savepoint to rebuild via Bridge.rebuild_savepoint")
+    end
   end
 
   # Build the relocation map + cross-store store_index from ALL stores, then for
@@ -2633,6 +2849,27 @@ class Doctor
     summarize(all_checks, agent_key, binary: true)
   end
 
+  # Per-intent structure gate for `doctor.rb --intent <id> [--store <key>] [--disposition ...]`
+  # (intent 222). `store`, here, is already the resolved scope key (see
+  # normalize_intent_store_scope, the CLI-boundary translator that turns the loosely-typed
+  # --store flag value into this shape before calling in).
+  def run_intent_check(id, store: nil, disposition: nil)
+    checks = check_intent_end(id, store: store, disposition: disposition)
+    summarize(checks, "claude", binary: false)
+  end
+
+  # Translate the loosely-typed --store flag value (nil / :all / :global / a bare project
+  # slug String, see parse_args) into the scope-key shape all_intent_dirs' own `d[:scope]`
+  # uses ("global" / "project:<slug>"), for --intent disambiguation only. --store with no
+  # value (:all) means "no disambiguation given" here, distinct from its store-scan meaning.
+  def normalize_intent_store_scope(store)
+    case store
+    when nil, :all then nil
+    when :global then "global"
+    else "project:#{store}"
+    end
+  end
+
   # Store-scoped checks for `doctor.rb --store [global|<slug>]`.
   #   :all     -> global store + all project stores + all conventions
   #   :global  -> global store + conventions scoped to ["global"]
@@ -2721,7 +2958,15 @@ class Doctor
     end
 
     result =
-      if !flags[:store].nil?
+      if flags[:intent]
+        begin
+          run_intent_check(flags[:intent], store: normalize_intent_store_scope(flags[:store]),
+                                            disposition: flags[:disposition])
+        rescue StandardError => e
+          $stderr.puts "doctor: #{e.message}"
+          exit 2
+        end
+      elsif !flags[:store].nil?
         run_store_checks(flags[:store])
       elsif flags[:core]
         run_core_checks(flags[:agent])
