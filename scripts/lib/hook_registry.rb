@@ -23,7 +23,6 @@ module HookRegistry
   ].freeze
 
   WRITE_MATCHER = (%w[Write Edit NotebookEdit] + SERENA_EDIT_TOOLS).join("|")
-  CREATE_MATCHER = (%w[Write Edit] + SERENA_EDIT_TOOLS).join("|")
 
   # Per-gate tool applicability for the merged edit-path dispatcher (intent 244,
   # spec D-d/D-l). Registration collapses to ONE PreToolUse hook on WRITE_MATCHER

@@ -41,8 +41,8 @@ module EditGates
   #                exact original meaning; code-gate computes its own combined
   #                content-or-new_string-or-"" value locally, mirroring what its
   #                old Bash shim computed independently for ARGV[2].
-  Context = Struct.new(:tool_name, :session, :gate_path, :file_path, :content,
-                       :old_string, :new_string, :replace_all, :harness,
+  Context = Struct.new(:tool_name, :session, :gate_path, :file_path, :savepoint_path,
+                       :content, :old_string, :new_string, :replace_all, :harness,
                        keyword_init: true) do
     # links-gate and create-gate branch on content.nil? (key absent) vs content
     # present (even ""). This is the raw field already, kept as a named reader
@@ -50,6 +50,23 @@ module EditGates
     def content_or_nil
       content
     end
+  end
+
+  # Per-key tool_input/tool_params fallback (post-review fix, intent 244): old
+  # links-gate and create-gate read
+  # `payload.dig("tool_input", key) || payload.dig("tool_params", key)`, each
+  # key falling back independently, NOT the whole-object pick `input =
+  # tool_input || tool_params` used for gate_path/content/etc below. This
+  # matters for a payload shaped tool_input: {} plus
+  # tool_params: { file_path: X }: the whole-object read stops at the (empty)
+  # tool_input and never sees X; the per-key read still finds it. `prefer`
+  # flips which object wins when BOTH carry the key, since savepoint-pre alone
+  # read tool_params FIRST (see savepoint_path below).
+  def per_key_field(payload, key, prefer: "tool_input")
+    other = prefer == "tool_input" ? "tool_params" : "tool_input"
+    a = payload[prefer]
+    b = payload[other]
+    (a.is_a?(Hash) ? a[key] : nil) || (b.is_a?(Hash) ? b[key] : nil)
   end
 
   def context_from(payload, env: ENV)
@@ -69,7 +86,11 @@ module EditGates
       tool_name: payload["tool_name"],
       session: (session unless session.to_s.empty?),
       gate_path: raw,
-      file_path: input["file_path"],
+      file_path: per_key_field(payload, "file_path", prefer: "tool_input"),
+      # savepoint-pre's own historical precedence, inverted from links-gate /
+      # create-gate above: old hooks/savepoint-pre read
+      # `dig("tool_params","file_path") || dig("tool_input","file_path")`.
+      savepoint_path: per_key_field(payload, "file_path", prefer: "tool_params"),
       content: input["content"],
       old_string: input["old_string"],
       new_string: input["new_string"],
@@ -80,7 +101,10 @@ module EditGates
 
   # --- savepoint-pre (intent 81): never denies; appends the `started` ledger line.
   def savepoint_pre(ctx)
-    path = ctx.file_path
+    # ctx.savepoint_path carries context_from's tool_params-first read (fix 3);
+    # falls back to ctx.file_path for the thin CLI wrapper (hook-savepoint-pre),
+    # which only ever sets file_path directly and never populates savepoint_path.
+    path = ctx.savepoint_path || ctx.file_path
     return ALLOW if path.nil? || path.empty?
 
     abs = File.expand_path(path)
@@ -266,6 +290,24 @@ module EditGates
     Deny.new(shape: :stderr, lines: lines)
   end
 
+  # Applicability (post-review fixes 1+2, intent 244): reproduces the Claude
+  # harness's OWN matcher semantics, not the dispatcher's earlier string
+  # equality. Two corrections:
+  #   - the harness matches an UNANCHORED REGEX (`"Write|Edit"` matches
+  #     "NotebookEdit" by substring), so applicability must too, or a gate
+  #     whose table entry never listed NotebookEdit explicitly stops firing on
+  #     it even though the old per-gate matcher group DID fire (a coverage
+  #     narrowing the byte-identical-behavior bar exists to catch);
+  #   - a missing/unrecognized tool_name means "the harness matched, but did
+  #     not name the tool", not "not our tool": the five old wrappers never
+  #     read tool_name at all, so they ALL ran on such a payload. Skipping
+  #     every gate here would be a coverage WEAKENING (the gate-weakening
+  #     direction is the dangerous one; see intent 203).
+  def tool_applies?(tool_name, tools)
+    return true if tool_name.to_s.empty?
+    Regexp.new(tools.join("|")).match?(tool_name.to_s)
+  end
+
   # --- the ordered evaluation (spec D-a, D-i) -------------------------------
   # `route` is injected so a test can supply a raising gate and prove isolation
   # without eval, an ENV seam, or a global. `gate_tools` is injected for the same
@@ -273,24 +315,26 @@ module EditGates
   # Returns the process exit code.
   def dispatch(ctx:, route:, gate_tools: HookRegistry::GATE_TOOLS, out: $stdout, err: $stderr)
     gate_tools.each do |gate, tools|
-      next unless tools.include?(ctx.tool_name)
+      next unless tool_applies?(ctx.tool_name, tools)
 
-      outcome =
-        begin
-          route.call(gate, ctx)
-        rescue StandardError => e
-          err.puts "plastic #{gate} error: #{e.message}"
-          next
+      begin
+        outcome = route.call(gate, ctx)
+        next unless outcome
+
+        if outcome.shape == :json
+          out.print outcome.stdout
+          return 0
+        else
+          outcome.lines.each { |line| err.puts line }
+          return 2
         end
-
-      next unless outcome
-
-      if outcome.shape == :json
-        out.print outcome.stdout
-        return 0
-      else
-        outcome.lines.each { |line| err.puts line }
-        return 2
+      rescue StandardError => e
+        # Fix 7: outcome.shape / out.print / err.puts now live INSIDE the same
+        # rescue as route.call, so a malformed outcome or a stream write
+        # failure (e.g. EPIPE) is isolated exactly like a raising gate, and
+        # never aborts the gates still to come.
+        err.puts "plastic #{gate} error: #{e.message}"
+        next
       end
     end
     0
