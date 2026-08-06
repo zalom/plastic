@@ -92,7 +92,7 @@ module HookRegistry
   # research passes (198's official-docs research, 181's deep research)
   # documents a discrete Read, Grep, or Glob tool name (D3). Registering a tool
   # name Codex never reports would be dead weight that looks alive, the exact
-  # defect that intent exists to fix.
+  # defect this intent exists to fix.
   CODEX_BASH_HOOKS = %w[bash-gate].freeze
 
   # Live-state events registered WHOLE (intent 199), unlike CODEX_PRE_HOOKS/

@@ -28,9 +28,9 @@
 # Bash call and reopening the exact hole intent 203 closes. So it execs the SAME
 # scripts/hook-bash-gate file Claude already runs, unmodified, the identical
 # "drive the body, relay its output" pattern used for the live-state hooks. The
-# one adaptation shared by both the
-# live-state and shell-tool paths is threading the payload's session_id into
-# CLAUDE_CODE_SESSION_ID, since Codex's own process env never carries it, plus
+# one adaptation shared by both the live-state and shell-tool paths is threading
+# the payload's session_id into CLAUDE_CODE_SESSION_ID, since Codex's own
+# process env never carries it, plus
 # a bounded timeout: hooks/check-update backgrounds a real npm network call
 # without redirecting its output away from the inherited stdout/stderr pipes,
 # and Codex invokes hooks synchronously, so without a bound a slow network call

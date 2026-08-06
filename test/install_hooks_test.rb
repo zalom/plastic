@@ -318,8 +318,8 @@ class MergeClaudeHooksTest < Minitest::Test
 
   # The whole PreToolUse list carries exactly the registry's groups, and merging
   # twice never duplicates one. Gate-agnostic on purpose: it is derived from
-  # HookRegistry.events, so it keeps holding as gates are added, removed, or
-  # merged (intent 226, spec D6; it previously lived inside a retrieval-gate test).
+  # HookRegistry.events, so a removed gate cannot linger and a new one cannot
+  # be dropped, as gates are added, removed, or merged (intent 226, spec D6).
   def test_pretooluse_carries_exactly_the_registry_groups_across_two_merges
     File.write(@settings_path, "{}")
     @installer.merge_claude_hooks(@settings_path)
@@ -331,19 +331,6 @@ class MergeClaudeHooksTest < Minitest::Test
     end
     assert_equal HookRegistry.events["PreToolUse"].size, plastic_groups.size,
                  "PreToolUse must carry exactly the registry's groups"
-  end
-
-  # Intent 226: the retrieval gate is deleted, so nothing may register it.
-  def test_pretooluse_registers_no_retrieval_gate
-    File.write(@settings_path, "{}")
-    @installer.merge_claude_hooks(@settings_path)
-    settings = JSON.parse(File.read(@settings_path))
-
-    commands = pretooluse_commands(settings)
-    refute commands.any? { |c| c.include?("retrieval-gate") },
-      "retrieval-gate must not be registered"
-    refute settings["hooks"]["PreToolUse"].any? { |g| g["matcher"] == "Bash|Read|Grep|Glob" },
-      "the Bash|Read|Grep|Glob matcher group must be gone"
   end
 
   def test_pretooluse_create_gate_is_idempotent_across_two_merges
