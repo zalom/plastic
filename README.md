@@ -183,8 +183,9 @@ behind releases are part of the repository, not a hidden process.
 
 ## Conventions
 
-Plastic conventions live in `PLASTIC.md`, distributed to `~/.plastic/PLASTIC.md`
-and overwritten on every update. Project-specific rules live in `AGENTS.md`.
+The always-on core conventions live in `PLASTIC.md`, distributed to `~/.plastic/PLASTIC.md`
+and overwritten on every update. Deeper doctrine lives in the `plastic-conventions` skill,
+loaded on demand by the skills that need it. Project-specific rules live in `AGENTS.md`.
 Run `plastic-doctor` to check installation health; it compares files against
 the manifests, checks store state, and runs automatically after every update.
 

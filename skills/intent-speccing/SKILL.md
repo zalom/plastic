@@ -47,6 +47,10 @@ not the Transition Gates table row). Writing `plan.md` is what opens the code ga
 writing `plan.md` is not this skill's job, that is `plastic-intent-planning`. State this to the user
 at step 6 so the handoff at step 8 is expected, not a surprise.
 
+Read `../plastic-conventions/references/lifecycle-and-savepoints.md` for the subagent
+report-home contract behind this handoff. This path resolves relative to this skill's own
+installed directory.
+
 ## Tier stamp (step 3, convention only)
 
 Write `Tier: S|M|L` as the literal first line of the file, above the `# Spec:` heading. This line

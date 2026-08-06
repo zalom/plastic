@@ -5,10 +5,11 @@ require "minitest/autorun"
 
 # ACTION_4 (intent 124): hermetic structural tests for the roadmap feature.
 # Asserts the template's born-complete shape, the skill's frontmatter + slim
-# body + references, and the PLASTIC-reference.md contract invariants (moved out
-# of PLASTIC.md in intent 127). Reads ONLY in-repo files; the live project-store
-# roadmap instance (Action 05) is a runtime deliverable, not a test target, so
-# this stays hermetic.
+# body + references, and the roadmaps chapter's contract invariants (moved out
+# of PLASTIC.md in intent 127, then out of PLASTIC-reference.md into
+# skills/conventions/references/roadmaps.md in intent 223). Reads ONLY in-repo
+# files; the live project-store roadmap instance (Action 05) is a runtime
+# deliverable, not a test target, so this stays hermetic.
 class RoadmapTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   TEMPLATE = File.join(ROOT, "templates", "roadmap.md")
@@ -16,7 +17,7 @@ class RoadmapTest < Minitest::Test
   REFERENCES_DIR = File.join(ROOT, "skills", "roadmap", "references")
   FILE_FORMAT = File.join(REFERENCES_DIR, "file-format.md")
   OPERATIONS = File.join(REFERENCES_DIR, "operations.md")
-  PLASTIC_REFERENCE = File.join(ROOT, "PLASTIC-reference.md")
+  ROADMAPS_CHAPTER = File.join(ROOT, "skills", "conventions", "references", "roadmaps.md")
   STATUS_TOKENS = %w[queued delivering delivered abandoned blocked].freeze
   LINE_BUDGET = 500
 
@@ -75,7 +76,7 @@ class RoadmapTest < Minitest::Test
   # --- amendment (2026-07-06 human rulings 5+6): project-root location, HH:MM UTC log ---
 
   def test_docs_do_not_place_roadmaps_under_store
-    [SKILL, FILE_FORMAT, OPERATIONS, PLASTIC_REFERENCE].each do |path|
+    [SKILL, FILE_FORMAT, OPERATIONS, ROADMAPS_CHAPTER].each do |path|
       body = File.read(path)
       refute_match(%r{store/roadmaps}, body,
                    "#{path} must not place roadmaps/ under store/")
@@ -85,7 +86,7 @@ class RoadmapTest < Minitest::Test
   end
 
   def test_docs_state_sibling_of_index_rule
-    [SKILL, FILE_FORMAT, OPERATIONS, PLASTIC_REFERENCE].each do |path|
+    [SKILL, FILE_FORMAT, OPERATIONS, ROADMAPS_CHAPTER].each do |path|
       body = File.read(path)
       assert_match(/sibling of\s+`?INDEX\.md`?/, body,
                    "#{path} must state roadmaps/ is a sibling of INDEX.md")
@@ -178,61 +179,65 @@ class RoadmapTest < Minitest::Test
                  "operations.md must state the human-comprehension goal")
   end
 
-  # --- PLASTIC-reference.md contract (moved out of PLASTIC.md in intent 127) --
+  # --- roadmaps chapter contract (moved out of PLASTIC.md in 127, then out of --
+  # --- PLASTIC-reference.md into skills/conventions/references/roadmaps.md in 223
 
   def test_plastic_md_states_file_location
-    body = File.read(PLASTIC_REFERENCE)
+    body = File.read(ROADMAPS_CHAPTER)
     assert_includes body, "roadmaps/{slug}.md", "must name the roadmaps/{slug}.md location"
   end
 
   def test_plastic_md_states_the_four_sections
-    body = File.read(PLASTIC_REFERENCE)
+    body = File.read(ROADMAPS_CHAPTER)
     ["## Goal", "## Batches", "## Log"].each do |heading|
       assert_includes body, heading, "must name section #{heading}"
     end
   end
 
   def test_plastic_md_states_wave_parallel_safety
-    body = File.read(PLASTIC_REFERENCE)
+    body = File.read(ROADMAPS_CHAPTER)
     assert_match(/parallel-safe/, body, "must state wave parallel-safety semantics")
   end
 
   def test_plastic_md_states_goal_as_prose_rule
-    body = File.read(PLASTIC_REFERENCE)
+    body = File.read(ROADMAPS_CHAPTER)
     assert_match(/checkable prose condition/, body, "must state the goal-as-prose rule")
   end
 
   def test_plastic_md_states_index_wins_rule
-    body = File.read(PLASTIC_REFERENCE)
+    body = File.read(ROADMAPS_CHAPTER)
     assert_match(/INDEX wins/, body, "must state the status-mirror / INDEX-wins rule")
   end
 
-  def test_plastic_md_has_skills_reference_row
-    body = File.read(PLASTIC_REFERENCE)
-    assert_match(/plastic-roadmap/, body, "must list plastic-roadmap in Skills Reference")
-  end
+  # test_plastic_md_has_skills_reference_row intentionally removed: it asserted against
+  # PLASTIC-reference.md's "Skills Reference" table, which intent 223 (D10) deleted as
+  # superseded by the plastic-conventions router. Repointing the constant to
+  # ROADMAPS_CHAPTER made the assertion match an unrelated sentence ("Use `plastic-roadmap`
+  # to create, order, close, and consume one.") instead, so it passed for the wrong reason
+  # and could never fail for the reason its message named. No real replacement exists: no
+  # chapter or skill still carries a "Skills Reference" table to assert against.
 
   def test_plastic_md_states_archived_rule
-    body = File.read(PLASTIC_REFERENCE)
+    body = File.read(ROADMAPS_CHAPTER)
     assert_match(%r{roadmaps/archived/}, body,
                  "must state the roadmaps/archived/ subdirectory and its move-on-close rule")
   end
 
   def test_plastic_md_states_purpose_line_verbatim
-    body = File.read(PLASTIC_REFERENCE)
+    body = File.read(ROADMAPS_CHAPTER)
     assert_includes body,
                      "planned parallel delivery of intents in a coherent and organized way",
                      "must state the verbatim purpose line"
   end
 
   def test_plastic_md_states_loop_relationship
-    body = File.read(PLASTIC_REFERENCE)
+    body = File.read(ROADMAPS_CHAPTER)
     assert_match(/intent 69/, body, "must name intent 69 as the loop-engineering consumer")
     assert_match(/planning half/i, body, "must state roadmap = planning half, loop = runtime")
   end
 
   def test_plastic_md_states_checkbox_and_em_to_cto_log_format
-    body = File.read(PLASTIC_REFERENCE)
+    body = File.read(ROADMAPS_CHAPTER)
     assert_match(/checkbox/i, body, "must mention the checkbox wave-entry rendering")
     assert_match(/outcome\.md/, body, "must mention linking log lines to outcome.md")
   end

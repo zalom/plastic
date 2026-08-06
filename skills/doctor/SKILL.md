@@ -85,6 +85,10 @@ per-project finding**; that is `--store <slug>`'s job (see above). This is what
 - When hooks aren't firing, skills aren't loading, or something seems broken
 - When the user says "check plastic", "diagnose", "what's wrong with plastic"
 
+Read `../plastic-conventions/references/gates-and-enforcement.md` for the transition-gate
+mechanics, the audited escape, and gate logging before diagnosing a stuck or misbehaving gate.
+This path resolves relative to this skill's own installed directory.
+
 ## Procedure
 
 ### Step 1: Run the diagnostic script
@@ -157,13 +161,17 @@ Use the `fix_hint` value to determine the correct action:
 | "Run: provision-project-store {slug}" | Run `provision-project-store <slug>` (or invoke the `plastic-store-provisioning` skill) to create the missing store |
 | "Re-run installer" | Run `npx -y @zalom/plastic@<channel> install --agent <agent>` (channel: -alpha->@alpha, -beta->@beta, else @latest) |
 | "Run the Plastic installer to bootstrap the store" | Run `npx -y @zalom/plastic@<channel> install --agent <agent>` (channel: -alpha->@alpha, -beta->@beta, else @latest) to restore the global store's plastic_home directory or INDEX.md |
-| "Dispatch plastic-store-curating ... revisions.md ..." | Invoke the `plastic-store-curating` (or the agent) to relocate the flagged section or ref into the intent's `revisions.md` via move-and-record (one dated, `[rule: <tag>]`-tagged entry per item), per PLASTIC.md > Structural maintenance and revisions.md. For a missing required section, restore or reproject it instead. |
+| "Dispatch plastic-store-curating ... revisions.md ..." | Invoke the `plastic-store-curating` (or the agent) to relocate the flagged section or ref into the intent's `revisions.md` via move-and-record (one dated, `[rule: <tag>]`-tagged entry per item), per plastic-conventions > references/maintenance-and-revisions.md. For a missing required section, restore or reproject it instead. |
 | "Run scripts/project-links ... PRESERVES ... --drop-unbacked-links" | Run `ruby ~/.plastic/scripts/maintenance-run --tool project-links --intent <id> --apply` for the one flagged id (never run bare `project-links` against a real store outside the rare owner-approved batch exception, D2) |
 
 For fixes the agent cannot handle automatically, explain what the user needs
 to do manually. The `revisions.md` remedy is curator-applied (a move-and-record
 relocation, not a mechanical edit) and stays human-gated by the Step 4
 Fix / Select / Skip prompt.
+
+Read `../plastic-conventions/references/maintenance-and-revisions.md` for WORK versus
+MAINTENANCE, the `revisions.md` move-and-record contract, and the violation-tag catalog behind
+the `revisions.md` remedy above.
 
 ### Step 6: Verify
 

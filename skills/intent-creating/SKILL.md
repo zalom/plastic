@@ -71,14 +71,19 @@ Having a "parent" in mind does NOT automatically mean branch. Choose by meaning:
 
 When a branch intent exists because a late ruling arrived AFTER its parent was already
 completed (the owner's late-ruling rule), the parent is restored to v1 via
-`scripts/restore-intent-v1`, never by a hand-run `git checkout`/revert. See `PLASTIC.md` >
-Terminal immutability for the rule and the tool.
+`scripts/restore-intent-v1`, never by a hand-run `git checkout`/revert. See
+`plastic-conventions > references/maintenance-and-revisions.md`, WORK vs MAINTENANCE, for the
+rule and the tool.
 
 `## Links` is a DERIVED view of `sources`/`chain`. Never hand-write a `## Links` line; add the
 frontmatter edge and reproject. Links are decided by context influence (a `chain` edge has a high
 bar: the candidate's context must materially help deliver this intent), not by shared files or a
 similarity score. To gather candidates with their context and record an edge, use the
 `plastic-intent-linking` skill and `scripts/link-suggest`.
+
+Read `../plastic-conventions/references/knowledge-graph.md` for the full linking doctrine: the
+tiers of influence, sources versus chain, and how the `## Links` projection is derived. This path
+resolves relative to this skill's own installed directory.
 
 ### 3. Determine Intent Properties
 

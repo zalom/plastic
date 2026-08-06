@@ -12,6 +12,10 @@ session-keyed, liveness is a lease (the owner's hooks refresh the file mtime;
 stale means the heartbeat is older than the TTL). The /tmp bridge is only a
 cache; the lock file wins every disagreement.
 
+Read `../plastic-conventions/references/locks-and-worktrees.md` for delivery isolation in full:
+the single-owner lock, claims, worktrees, solo mode, and the station ledger behind every verb
+below. This path resolves relative to this skill's own installed directory.
+
 ## Verbs
 
 Run from the project (the intent resolves from this session's bridge), or pass

@@ -15,7 +15,7 @@ module RevisionsWriter
   module_function
 
   # PURE. Renders one `## Revision vN - TIMESTAMP` entry in the documented shape
-  # (PLASTIC-reference.md > Structural maintenance and revisions.md; templates/revisions.md).
+  # (plastic-conventions > references/maintenance-and-revisions.md; templates/revisions.md).
   # `n` is the next revision number (caller resolves it via next_revision_number, or a caller
   # that already knows it, e.g. a batch writer amortizing one file read across many entries).
   # `why` is the one-sentence reason ending in "[rule: <tag>]" (tag is appended here if the

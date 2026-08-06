@@ -22,6 +22,10 @@ It is **sugar on top of the conventions**, not a source of truth. The gate hook
 nothing to save by hand. State is always derivable from files-on-disk; the ledger just lets
 a resuming agent read the cycle's succession from one glance (last line = where we are).
 
+Read `../plastic-conventions/references/lifecycle-and-savepoints.md` for the subagent
+report-home contract that this ledger feeds. This path resolves relative to this skill's own
+installed directory.
+
 ## When to Use
 - A PreCompact hook fires, or the user says "save" / "savepoint": verify the ledger is current.
 - Resuming an intent: read the ledger to learn the cycle's succession quickly.

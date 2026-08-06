@@ -39,6 +39,10 @@ The agent handles:
 - Cluster management (create, merge, rename)
 - Orphan detection
 
+Read `../plastic-conventions/references/knowledge-graph.md` for the linking doctrine: tiers of
+influence, sources versus chain, and the `## Links` projection, before judging a link discovery or
+orphan finding. This path resolves relative to this skill's own installed directory.
+
 When an intent reaches a terminal state, moved to Completed OR Abandoned, do these things:
 
 1. Author a real `outcome.md` in the intent directory from `~/.plastic/templates/outcome.md`, with the frontmatter `disposition: delivered` for a completed intent or `disposition: abandoned` for an abandoned one. `outcome.md` is MANDATORY at every terminal, delivered and abandoned alike: on abandon it records the abandonment reason and replaces the scaffolded placeholder sentinel (never leave `outcome.md` a placeholder at a terminal).
@@ -54,3 +58,7 @@ follows its own step 7: it detects (never acquires) the target's delivery lock, 
 clean working tree, and performs the fix on a fresh branch merged back to main as one closed
 operation, with an append-only `revisions.md` receipt in the same pass as the edit. See
 `agents/plastic-intent-curator.md` for the exact mechanics.
+
+Read `../plastic-conventions/references/maintenance-and-revisions.md` for WORK versus
+MAINTENANCE, the `revisions.md` move-and-record contract, and the violation-tag catalog before
+running a maintenance dispatch like this one.

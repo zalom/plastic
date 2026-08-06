@@ -1,6 +1,6 @@
 # Plastic deprecation notices
 # Each entry is shown to the user during SessionStart.
-# See PLASTIC.md "Deprecation Process" for the full convention.
+# See the plastic-releasing skill for the full convention.
 #
 # Schema:
 #   id: unique-slug (used for dismissal tracking)
@@ -11,4 +11,12 @@
 #   removal: semver where feature is removed
 #   link: optional URL to migration guide
 
-deprecations: []
+deprecations:
+  - id: plastic-reference-md-absorbed
+    severity: info
+    summary: "PLASTIC-reference.md has been absorbed into the plastic-conventions skill and removed; its content now lives in that skill's reference chapters."
+    migration_steps:
+      - "No action is required. Running plastic update removes the leftover ~/.plastic/PLASTIC-reference.md automatically."
+      - "If you hand-copied or hand-edited that file, delete your own copy; it is no longer read by Plastic."
+    introduced: "1.9.0"
+    removal: "1.11.0"

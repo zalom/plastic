@@ -77,11 +77,160 @@ class InstallPackagingTest < Minitest::Test
     stale = File.join(skill_dir, "SKILL.md")
     File.write(stale, "x")
 
-    removed = @installer.prune_removed_files([stale])
+    removed = @installer.prune_removed_files([stale], root: @dir)
 
     assert_equal 1, removed
     refute File.exist?(stale)
     refute File.directory?(skill_dir), "now-empty skill dir should be removed"
+  end
+
+  # Intent 223 F5: prune_removed_files reads candidate paths back from a JSON
+  # manifest. It has no containment guard of its own beyond the mandatory `root:`
+  # boundary, so these three cases pin the hazards a hand-edited or corrupt
+  # manifest could otherwise trigger.
+
+  def test_prune_removed_files_with_no_prior_manifest_is_a_noop
+    # manifest_files returns [] when the manifest does not exist yet (fresh install);
+    # prune_removed_files must accept that empty list without error.
+    removed = @installer.prune_removed_files(@installer.manifest_files(File.join(@dir, "does-not-exist.json")), root: @dir)
+    assert_equal 0, removed
+  end
+
+  def test_manifest_files_on_unparseable_json_returns_empty
+    bad_manifest = File.join(@dir, "manifest.json")
+    File.write(bad_manifest, "{not valid json")
+
+    files = @installer.manifest_files(bad_manifest)
+
+    assert_equal [], files
+    removed = @installer.prune_removed_files(files, root: @dir)
+    assert_equal 0, removed
+  end
+
+  def test_prune_removed_files_refuses_a_path_outside_root
+    root = File.join(@dir, "home")
+    FileUtils.mkdir_p(root)
+    outside_dir = File.join(@dir, "outside")
+    FileUtils.mkdir_p(outside_dir)
+    outside_file = File.join(outside_dir, "do-not-delete.txt")
+    File.write(outside_file, "precious")
+
+    removed = @installer.prune_removed_files([outside_file], root: root)
+
+    assert_equal 0, removed, "a path outside root must not be counted as pruned"
+    assert File.exist?(outside_file), "a path outside root must never be deleted"
+  end
+
+  # Sibling-prefix guard: a directory that merely shares root's string prefix
+  # (root "home/x", sibling "home/x-evil") must not be treated as contained.
+  def test_prune_removed_files_refuses_a_sibling_prefix_path
+    root = File.join(@dir, "home", "x")
+    FileUtils.mkdir_p(root)
+    sibling_dir = File.join(@dir, "home", "x-evil")
+    FileUtils.mkdir_p(sibling_dir)
+    sibling_file = File.join(sibling_dir, "do-not-delete.txt")
+    File.write(sibling_file, "precious")
+
+    removed = @installer.prune_removed_files([sibling_file], root: root)
+
+    assert_equal 0, removed
+    assert File.exist?(sibling_file)
+  end
+
+  # Post-delivery hardening (intent 223): `plastic_home` (~/.plastic) CONTAINS the
+  # user's entire intent history under `store/` (global) and `projects/` (every
+  # project store). `distribute` legitimately prunes with `root: plastic_home`, so the
+  # ordinary `root:` containment check ADMITS a store path rather than refusing it.
+  # This is unreachable today (the pruned set can never include a store path; see
+  # `distribute`), so these are defense-in-depth tests for the standing rule that NO
+  # path ever deletes the global or project intent stores, not regression tests for a
+  # live bug.
+  def test_prune_removed_files_refuses_a_path_inside_the_global_store
+    store_dir = File.join(PKG_TEST_HOME, "store")
+    precious = File.join(store_dir, "42--do-not-lose-me", "intent.md")
+    FileUtils.mkdir_p(File.dirname(precious))
+    File.write(precious, "the user's entire intent history")
+
+    removed = @installer.prune_removed_files([precious], root: PKG_TEST_HOME)
+
+    assert_equal 0, removed, "a global-store path must never be counted as pruned"
+    assert File.exist?(precious), "a global-store path must never be deleted, even when root contains it"
+  end
+
+  def test_prune_removed_files_refuses_a_path_inside_a_project_store
+    project_store_dir = File.join(PKG_TEST_HOME, "projects", "myproj", "store")
+    precious = File.join(project_store_dir, "1--x", "intent.md")
+    FileUtils.mkdir_p(File.dirname(precious))
+    File.write(precious, "a project's intent history")
+
+    removed = @installer.prune_removed_files([precious], root: PKG_TEST_HOME)
+
+    assert_equal 0, removed, "a project-store path must never be counted as pruned"
+    assert File.exist?(precious), "a project-store path must never be deleted, even when root contains it"
+  end
+
+  # Confirms the store exclusion above does not overreach: a file that lives directly
+  # under plastic_home, not under store/ or projects/ (like the shared underscore
+  # fragments install_skills_flat relocates there), stays prunable.
+  def test_prune_removed_files_still_prunes_a_file_directly_under_plastic_home
+    fragment = File.join(PKG_TEST_HOME, "_active-intent-gate.md")
+    File.write(fragment, "gate")
+
+    removed = @installer.prune_removed_files([fragment], root: [PKG_TEST_HOME, fragment])
+
+    assert_equal 1, removed
+    refute File.exist?(fragment)
+  end
+
+  # Intent 223, D14 (Why-gate correction): distribute() copies core_files and writes
+  # the manifest but never diffed old-vs-new, so a file dropped from core_files (like
+  # PLASTIC-reference.md) orphaned forever on every existing install. This subclass
+  # injects a small hand_registered_files map via DI so the test never touches the
+  # real repo's core_files list; it is the seam the existing tests in this file use.
+  class DistributePruneTestInstaller < InstallerCore
+    def initialize(hand_registered:, **kwargs)
+      super(**kwargs)
+      @hand_registered = hand_registered
+    end
+
+    def hand_registered_files
+      @hand_registered
+    end
+  end
+
+  def test_distribute_prunes_a_dropped_core_file_and_spares_a_live_one
+    pkg_root = File.join(@dir, "pkg-distribute")
+    FileUtils.mkdir_p(pkg_root)
+    File.write(File.join(pkg_root, "PLASTIC.md"), "core")
+    File.write(File.join(pkg_root, "PLASTIC-reference.md"), "reference")
+
+    manifest_path = File.join(PKG_TEST_HOME, "manifest.json")
+    installed_reference = File.join(PKG_TEST_HOME, "PLASTIC-reference.md")
+    installed_core = File.join(PKG_TEST_HOME, "PLASTIC.md")
+
+    # First distribute: core_files still lists both PLASTIC.md and PLASTIC-reference.md.
+    with_both = DistributePruneTestInstaller.new(
+      package_root: pkg_root, plastic_home: PKG_TEST_HOME, version: "1.0.0-test",
+      hand_registered: { "PLASTIC.md" => "PLASTIC.md", "PLASTIC-reference.md" => "PLASTIC-reference.md" },
+    )
+    with_both.distribute(:install)
+
+    assert File.exist?(installed_reference), "first distribute must install PLASTIC-reference.md"
+    assert_includes with_both.manifest_files(manifest_path), installed_reference
+
+    # Second distribute: PLASTIC-reference.md dropped from core_files (the ACTION_7 case).
+    without_reference = DistributePruneTestInstaller.new(
+      package_root: pkg_root, plastic_home: PKG_TEST_HOME, version: "1.0.1-test",
+      hand_registered: { "PLASTIC.md" => "PLASTIC.md" },
+    )
+    without_reference.distribute(:update)
+
+    refute File.exist?(installed_reference), "distribute must prune a core file dropped from core_files"
+    refute_includes without_reference.manifest_files(manifest_path), installed_reference,
+      "manifest must no longer list the pruned file"
+
+    assert File.exist?(installed_core), "distribute must spare a file still listed in core_files"
+    assert_includes without_reference.manifest_files(manifest_path), installed_core
   end
 
   # --- Legacy plugin migration ---

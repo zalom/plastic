@@ -106,6 +106,10 @@ Do not author spec.md here.
 - **Produces:** the enriched Why (`## Context`, `### Decisions`, one `## Insights` entry per ruling).
 - **Next:** /plastic-intent-speccing consolidates the enriched Why into spec.md.
 
+Read `../plastic-conventions/references/lifecycle-and-savepoints.md` for the subagent
+report-home contract this handoff relies on. This path resolves relative to this skill's own
+installed directory.
+
 ## Key Principles
 
 - **One question at a time** - Don't overwhelm with multiple questions

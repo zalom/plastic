@@ -31,6 +31,10 @@ If the spec covers multiple independent subsystems, it should have been broken i
 
 ## Tier shapes
 
+Read `../plastic-conventions/references/tiers-and-dispatch.md` for tier sizing and the
+stage-to-agent dispatch rules behind this section. This path resolves relative to this skill's own
+installed directory.
+
 Read the spec's stamped `Tier:` line (written by intent-speccing) and pick the action shape it calls for. Every tier produces at least one REAL action file in `actions/`; the tier only changes how many:
 
 - **S or M (default):** write ONE consolidated `actions/ACTION_1.md` that carries the whole ordered delivery (the steps plus the exact changes). `plan.md` still holds the overall map and `checklist.md` still mirrors the task list. You may split into a few action files when that reads cleaner, but one real action file is the floor.
@@ -120,6 +124,9 @@ When collecting owner rulings for `[ORCHESTRATOR]` hard-gate items, read
 - **Before:** `spec.md` exists.
 - **Produces:** `plan.md`, `checklist.md`, and at least one real `actions/ACTION_N.md` (every tier; one consolidated file at S/M, one per task at L).
 - **Next:** /plastic-intent-executing.
+
+Read `../plastic-conventions/references/lifecycle-and-savepoints.md` for the subagent
+report-home contract this handoff relies on.
 
 ## Git Commit
 

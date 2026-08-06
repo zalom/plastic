@@ -15,6 +15,10 @@ curator path, and releasing all call this skill (or its backing script,
 prose three times. `abandoned` is the SAME procedure as `delivered`, not a
 failure branch: only outcome.md content and the INDEX section differ.
 
+Read `../plastic-conventions/references/completion-and-done.md` for what "intent done" means and
+the End-stage tail behind the steps below. This path resolves relative to this skill's own
+installed directory.
+
 ## The 8 steps (0-7)
 
 | # | Step | Who does it |

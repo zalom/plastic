@@ -114,6 +114,22 @@ Three mechanisms:
 - **Directory structure**: the placement of artifacts (the `ID--slug/` folder,
   reserved lifecycle file names, everything else under `resources/`).
 
+Convention today ships in three tiers rather than one file (intent 223). `PLASTIC.md`
+(installed at `~/.plastic/PLASTIC.md`) is the always-on core: the small set of rules primed at
+every session start, held under 500 lines and 5,000 estimated tokens by a dedicated Minitest
+test (`test/plastic_core_budget_test.rb`), the regrowth-enforcement mechanism after two prior
+splits (intents 13b, 127) each shrank it once with nothing holding the boundary. Doctrine used
+by more than one skill lives in `skills/conventions/` (installed as `plastic-conventions`,
+`user-invocable: false`), a thin router skill whose body only names its 8 `references/*.md`
+chapters and when to read each. A chapter is reached only through a consuming skill's own bound
+load line, `../plastic-conventions/references/<chapter>.md`, resolved relative to the consuming
+skill's installed directory; an unbound chapter orphans, and a load line pointing at a chapter
+that does not exist is a dangling reference, both caught by the same test. `skill-lint`'s scope
+(`skills/*/SKILL.md`) is unchanged by this: it lints `plastic-conventions`'s own body like any
+other skill, but it does not read `PLASTIC.md` or enforce the chapter wiring; that enforcement
+is the suite test, not doctor, since doctor's skill-lint finding is advisory by design and
+always reports pass.
+
 **Layer 2: agent-extra harnesses.** An AI agent lacks a human's innate senses: it
 does not feel fatigue, does not sense when working memory is full, does not carry
 the lifecycle order in its body. Where a human supplies a behaviour from instinct,

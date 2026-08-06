@@ -17,8 +17,8 @@ Create `AGENTS.md` in the project root with:
 ```markdown
 # <Project Name> — Agent Instructions
 
-Read `PLASTIC.md` in `~/.plastic/`. It contains all Plastic conventions.
-Follow it exactly.
+Read `PLASTIC.md` in `~/.plastic/` for the core conventions; deeper doctrine lives in
+the `plastic-conventions` skill's chapters. Follow it exactly.
 
 This file is the operating contract for this project. Any agent entering
 this project reads this file first.

@@ -47,6 +47,10 @@ scanning the store with grep/Read run `ruby ~/.plastic/scripts/qmd-sync search "
 surface the candidate intent, then open the authoritative intent file for the hit you resume. The
 command is a no-op when QMD is absent, so fall back to the existing INDEX.md / file scan.
 
+Read `../plastic-conventions/references/lifecycle-and-savepoints.md` for the subagent
+report-home contract behind the resume below. This path resolves relative to this skill's own
+installed directory.
+
 For that intent's directory:
 
 1. **Read `savepoint.md` FIRST (intent 81).** It is a deterministic, append-only ledger

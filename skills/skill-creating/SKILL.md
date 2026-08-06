@@ -49,6 +49,9 @@ routes each authoring task to the reference that holds the depth.
 | Deciding script versus prose, or writing a script | `references/scripts.md` |
 | Building evals for a skill | `references/evals.md` |
 
+Read `references/defaults-first.md` before naming an external skill as a default, for the
+Plastic-first, delegate-by-exception rule.
+
 ## Shrink context, or let a skill self-improve
 
 - When prompts or tool output blow the context budget, open `references/hooks.md` (E7) for

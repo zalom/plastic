@@ -6,9 +6,10 @@
 # while preserving its frontmatter GRAPH (sources/chain) as a target-resolved
 # union of the v1 snapshot and the current snapshot (intent 193). This is the
 # ONLY sanctioned way to restore a completed intent to v1; a hand-run whole-file
-# `git checkout`/revert is forbidden (see PLASTIC.md > Terminal immutability),
-# because it cannot tell prose from graph metadata and silently destroys
-# backlinks written after v1 (the 124/131 incident this tool exists to prevent).
+# `git checkout`/revert is forbidden (see plastic-conventions > references/maintenance-and-revisions.md,
+# WORK vs MAINTENANCE and its Restore-to-v1 paragraph), because it cannot tell prose from graph
+# metadata and silently destroys backlinks written after v1 (the 124/131 incident this tool
+# exists to prevent).
 #
 # Usage:
 #   restore-intent-v1 <intent-id> --at <git-ref> [--plastic-home PATH] [--apply] \
@@ -19,12 +20,14 @@
 # class of tool already destroyed live store data once. --apply is required to
 # write.
 #
-# Restore-to-v1 runs under the MAINTENANCE lock (PLASTIC.md > Terminal
-# immutability: the maintenance lock covers sanctioned structural move-and-record
-# edits after completion). This tool does NOT acquire, check, or manage that
-# lock itself (fail-open doctrine, intent 111: lock management is the
-# orchestrator's job, never built into a CLI as a trap); it only prints a
-# one-line reminder on --apply.
+# There is exactly one lock in Plastic, `delivery.lock`, and MAINTENANCE (this tool included)
+# never acquires or checks it: WORK vs MAINTENANCE (plastic-conventions >
+# references/maintenance-and-revisions.md) holds the corrected doctrine after intent 112's
+# proposed second "maintenance.lock" was abandoned before merge and never shipped. This tool does
+# NOT acquire, check, or manage `delivery.lock` itself (fail-open doctrine, intent 111: lock
+# management is the orchestrator's job, never built into a CLI as a trap); it only prints a
+# one-line reminder on --apply that the target intent must be terminal, which the caller is
+# responsible for confirming before running with --apply.
 #
 # LINKS BLAST RADIUS: an applied restore reprojects `## Links` via
 # scripts/project-links, which is a STORE-WIDE operation with no per-intent
@@ -142,8 +145,10 @@ class RestoreIntentV1CLI
     File.write(md_path, new_md) if md_changed
     other_files.each { |f, content| File.write(File.join(dir, f), content) }
 
-    puts "Reminder: restore-to-v1 runs under the maintenance lock (PLASTIC.md > Terminal " \
-         "immutability). Confirm the maintenance lock is held before this --apply."
+    puts "Reminder: restore-to-v1 is MAINTENANCE, not WORK (plastic-conventions > " \
+         "references/maintenance-and-revisions.md, WORK vs MAINTENANCE). There is no " \
+         "maintenance lock to hold; confirm the target intent is terminal (Completed or " \
+         "Abandoned) with no fresh delivery.lock before this --apply."
 
     handle_links_reprojection(base)
     append_revision(dir, base, graph, files: prose_changes,

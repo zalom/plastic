@@ -25,6 +25,10 @@ After syncing, verify the plan's target files exist at the paths plan.md names.
 If a named file or directory is missing (renamed or removed upstream), stop and
 report it rather than editing a stale path.
 
+Read `../plastic-conventions/references/locks-and-worktrees.md` for delivery isolation: the
+single-owner lock, claims, worktrees, solo mode, and the station ledger, before touching the
+worktree above. This path resolves relative to this skill's own installed directory.
+
 ## Mode Selection
 
 ### Check for superpowers first
@@ -138,6 +142,9 @@ the changed file, the installed output) rather than restating the intended
 change. Never present an unverified claim to the owner. If verification
 fails, fix it before the gate, not after.
 
+Read `../plastic-conventions/references/gates-and-enforcement.md` for the transition-gate
+mechanics, the audited escape, and gate logging behind every owner gate named here.
+
 ## Methods report (audits and sweeps)
 
 When the work is an audit or a sweep (checking many files or many instances of
@@ -165,6 +172,9 @@ persisting each ruling with `--stage Exec`.
 - **Before:** `plan.md` and `checklist.md` exist; the worktree is armed.
 - **Produces:** code changes, a ticked checklist, and (for audits or sweeps) a methods report in `resources/`.
 - **Next:** intent-ending owns `outcome.md` (see intent 161). This skill's own Update-Intent-and-Complete step above is unchanged by this note.
+
+Read `../plastic-conventions/references/lifecycle-and-savepoints.md` for the subagent
+report-home contract this handoff relies on.
 
 ## Model Selection for Subagents
 

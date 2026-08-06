@@ -4,7 +4,19 @@
 > plugin is updated. Do not modify it: your changes will be lost.
 > For project-specific rules, use `AGENTS.md` instead.
 
-See `PLASTIC-reference.md` for reference material: read it on demand, it is not injected at session start.
+Deeper doctrine lives in the `plastic-conventions` skill's chapters
+(`plastic-conventions > references/<chapter>.md`); read the one that matches your task on demand,
+it is not injected at session start.
+
+## Two Processes
+
+| Process | Scope | Type | Actor |
+|---|---|---|---|
+| **Build → Observe → Repeat** | The system | Continuous loop | Coordinator |
+| **What → Why → How → Exec** | One intent | Finite lifecycle | Agent |
+
+B→O→R is the Coordinator's heartbeat. W→W→H→E is what happens inside each intent.
+The connection: an intent's `## Insights` feeds the Coordinator's Observe phase.
 
 ## What is an Intent
 
@@ -31,14 +43,6 @@ roles. Supporting artifacts that aren't lifecycle deliverables (research reports
 reference docs, external API snapshots, screenshots, diagrams) go in `resources/`.
 Name files inside as `{type}--{description}.md` (e.g., `deep-research--gsd-core.md`).
 
-`revisions.md` is an optional, append-only structural-maintenance audit trail. It is not a
-lifecycle deliverable and is never scaffolded at intent birth. Its mere existence signals that
-the intent underwent structural (not conceptual) change. Structural maintenance is move-and-record:
-it removes a misplaced section, file, or ref from its artifact and preserves that content in full
-inside `revisions.md` (newest entry at the bottom, one entry per relocated item), so no record is
-lost and the delivered meaning is never altered. Changing what an intent delivered is a new intent,
-not a revision.
-
 ## Frontmatter
 
 Identity and knowledge graph only. Nothing operational.
@@ -55,40 +59,14 @@ tags: [plastic, architecture]
 ---
 ```
 
-- `sources` (formative, must-load, acyclic) and `chain` (forward + relational, lighter,
-  may cycle) form the directed knowledge graph. Reciprocity is one-directional: every
-  `sources` edge has a reciprocal `chain` entry (I1), but `chain` may carry relational
-  entries with no reciprocal `sources` (I2), so the graph is not strictly symmetric.
 - Context contract: load `sources` strongly (they are what the intent was built from);
   traverse `chain` lightly for discovery. See
   docs/concepts/how-plastic-sources-and-chains-intents.md for the full model.
-- `## Links` (I5) is the human-readable projection of the graph. It mirrors the
-  frontmatter exactly: every entry is `- [[id--slug|<target's full intent: text>]]`, a
-  clickable `id--slug` wikilink target with the target intent's full `intent:` text as the
-  label (cross-store targets render `- [[store:id--slug|<target's full intent: text>]]`).
-  Ordering is mandatory: all `sources` first (top), then all `chain`, frontmatter order
-  preserved within each group. Sources never appear at the end. No source/chain tags, no
-  sub-grouping. An intent with empty `sources` and `chain` carries the empty-state comment.
-- `## Links` is a DERIVED view, not a place to author links (Convention over Configuration).
-  It equals the projection of `sources` (first) then `chain`. Never hand-write or hand-edit a
-  `## Links` line, and never auto-delete one. The edge lives in the frontmatter graph; the
-  section is regenerated from it (doctor `graph_links_projection` enforces this identity). To
-  add a link, add the frontmatter edge, then reproject.
-- Links are decided by CONTEXT INFLUENCE, not by shared files, shared symbols, or a topic
-  similarity score. The question is whether one intent's context actually informed another.
-  Three tiers:
-  - **sources:** the foundational context that shaped this intent's creation (a split, an idea
-    born during development, a merge). Earns an edge.
-  - **chain:** the context that materially helps DELIVER this intent. This is a HIGH bar: only
-    the genuinely delivery-moving intents, not everything in the same area. Earns an edge,
-    reflected in `## Links`.
-  - **tags:** a loose theme grouping for search. NOT a link. A shared tag is a door INTO the
-    store (filtered discovery), not a pathway BETWEEN two notes.
-  Judging influence is an agent's call, made by reading the candidate's Intent and Context. A
-  script cannot grade it, so `scripts/link-suggest` only gathers candidates with that evidence,
-  records a confirmed edge with a rating and reason, and flags drift.
 - IDs use Luhmann's alternating convention: `1` → `1a` → `1a1` → `1a1a`
 - Multiple branches increment: `1a`, `1b`, `1c`
+
+See `plastic-conventions > references/knowledge-graph.md` for the linking doctrine: the tiers
+of influence (sources/chain/tags) and the `## Links` projection rules.
 
 ## Lifecycle Stages
 
@@ -123,39 +101,22 @@ The blessed write path is the `insight-append` helper
 install and update, formats the prefix, validates it, and appends at the bottom. Hand-editing
 `## Insights` is an escape hatch; the helper is the default so the format cannot drift.
 
-Background sessions and dispatched sub-agents do not write the insight themselves. They carry
-each nugget home in the completion report's `insights:` field, and the orchestrator (or any
-agent that can write the file) persists it via the helper. A session that cannot write the
-intent file still returns its report, so the insight survives.
-For full lifecycle detail, the skills in the Detail column have references/.
+See `plastic-conventions > references/lifecycle-and-savepoints.md` for the subagent
+report-home contract (how an insight reaches the intent when the writer cannot write the file
+itself) and `savepoint.md`'s role.
 
 ## Tiers (proportional auto sizing)
 
 Auto mode sizes every intent S/M/L at Why: S = single mechanism or file cluster (hours);
 M = one subsystem (about a day); L = cross-cutting or novel design.
 
-Speed comes from two levers only: artifact content depth and agent topology. The
-same-structure invariant holds: same file set, stage order, gates, and savepoint ledger at
-every tier and in both modes.
-
-S/M collapse the topology (one thinker agent writes spec.md then plan.md plus
-checklist.md plus at least one real action file in one context, consolidated into a single
-actions/ACTION_1.md at S/M and one file per task at L; a sonnet executor implements). L
-keeps the full team.
-
-Never cut at any tier: the independent reviewer, outcome.md as truth of delivery, the
-delivery lock, worktree isolation, intent creation via skill, INDEX as status truth, the
-QMD reindex at End.
-
 Tier is recorded as a `Tier: S|M|L` line at the top of spec.md. It is convention-only,
 read by the orchestrator, not enforced by any gate or by doctor.
 
-Guided mode is unchanged: full-depth artifacts, the human at every gate.
+See `plastic-conventions > references/tiers-and-dispatch.md` for topology by tier, what never
+gets cut, and guided mode.
 
 ## Agent Models and Dispatch (intent 116)
-
-Every lifecycle stage has exactly one dispatchable background agent, plus the enforcer that
-orchestrates them:
 
 | Stage | Agent |
 |---|---|
@@ -165,169 +126,23 @@ orchestrates them:
 | Exec | `plastic-executor` |
 | Done | `plastic-intent-curator` |
 
-Final-gate code review stays an ad-hoc subagent the enforcer dispatches at the final gate, not
-a standing role.
-
-**The advisor: two consultation agents, never injected (intent 185).** Neither is a stage
-role: never in the table above, never dispatched by the auto pipeline, and neither ever
-touches a user's own session. `plastic-advisor` is the real advisor, ships `model: fable`,
-expensive, billed through usage credits. `plastic-faux-advisor` is the imitation advisor, ships
-`model: opus`, an ordinary model carrying the Operating Manual's reasoning discipline inlined
-in its own body (not injected into anything), so it reasons the same disciplined way at a
-fraction of the cost. The `plastic-agent-advisor` skill is the one front door: it teaches when
-consulting is worth the money (from the Advisor Protocol: buy one-way doors, plans, adversarial
-review, deadlocks, ranking; never buy what a tool can answer, code volume, or confirmation of a
-decision already made), routes to the configured agent, and can set the config on request. The
-user or the main session states a TIER (S, M, or L) and an EFFORT line in the brief; shipped
-effort is `xhigh` for `plastic-advisor` and `max` for `plastic-faux-advisor`.
-
-Config is harness-scoped, keys matching `InstallerCore::DEFAULT_AGENTS` exactly (`claude`,
-`codex`, never `claude_code`): `advisor.enabled` (false skips installing both agents and the
-skill), `advisor.claude.default` (which agent the skill routes to), `advisor.claude.primary`
-and `.secondary` (the two slots, agent NAMES never model names, so a slot can point at a
-locally registered agent). Each agent's actual model is a plain `agents.models.claude.<name>`
-override, the SAME harness-scoped mechanism every other agent uses, resolved through
-`InstallerCore#agent_model_overrides(harness:)`; there is no separate advisor-model key.
-`agents.models` is harness-scoped from this release (`agents.models.claude.*`,
-`agents.models.codex.*`), with the pre-existing flat form (`agents.models.<name>: value`)
-still honored as the claude harness and nested winning over flat. This closes a real latent
-bug: previously the same override map fed both the Claude frontmatter rewrite and the Codex
-TOML generator, so a literal Claude model id could leak into a Codex config; a model named
-under `claude` is now never emitted to `codex`. Install asks which advisor is the default
-(Claude Code only), with a plain description of each: Faux Fable (recommended, cheaper,
-available on any plan) or Fable 5 (the frontier model, billed through credits). Update asks
-the same question once when the key is unset, then never again. Claude-only for this release:
-the owner has not evaluated the Codex reasoning-model ecosystem long enough to judge it, so
-`generate_codex_agents` skips both agents by name, tracked at intent 186, not a permanent
-exclusion.
-
-**Auto-mode entry.** `plastic-auto` is the entry skill for autonomous delivery: it takes over How
-and Exec, spins up the team above, and works the dashboard's dispatchable queue. The dashboard's
-`--data` output splits intents into a `dispatchable_queue` (work an agent can pick up) and
-`human_only` (intents that need a person); auto mode consumes the former.
-
-**Model contract.** Every agent in `agents/*.md` pins an explicit Claude Code model alias in
-its own frontmatter: `opus`, `sonnet`, or `haiku`. Never `inherit`, never Fable by default,
-unless an explicit `agents.models.<name>` config override names Fable for that role, in which
-case the override is honored as written. The two advisors, `plastic-advisor` and
-`plastic-faux-advisor`, are not lifecycle stage roles: the never-Fable rule governs stage
-agents only. Neither is ever dispatched by the auto pipeline; they are consultation roles
-summoned deliberately by the user or the main session, and their models are user configuration
-(fable and opus by default on Claude Code). Aliases track "latest
-per tier" so no Plastic release is required to advance a tier. The tier by role:
-`plastic-enforcer`, `plastic-brainstorming`, `plastic-planner` are `opus`;
-`plastic-spec-specialist`, `plastic-executor`, `plastic-intent-curator`,
-`plastic-future-intent-researcher`, `plastic-intent-discovery` are `sonnet`.
-
-**Config and installer mechanism.** `agents.models.<basename>` in a project's
-`<dir>/.plastic_store/config.yml` or the global `~/.plastic/config.yml` overrides one agent's
-tier. Precedence is project, then global, then the shipped default, matching every other
-`read-config` key. The installer applies the resolved override to each agent file's `model:`
-line at copy time (install, update, and repair, across every harness target). With no override
-configured, the shipped frontmatter passes through unchanged.
-
-**Dispatch-time contract.** Frontmatter is primary, and Claude Code reads it at dispatch, but
-because that read is a harness implementation detail rather than a contract Plastic controls,
-every dispatch site also resolves the target agent's model through the config chain
-(`read-config agents.models.<basename> --project <repo>`) and passes it explicitly at dispatch,
-belt-and-braces on top of the frontmatter pin.
-
-**Cross-harness portability.** The dispatch and model-tier contract above is harness-facing. The
-adapter layer that maps Plastic's hooks and model aliases onto each supported agent runtime
-(Claude, Codex, Hermes) is the cross-harness portability layer; see
-docs/reference/harness-adapters.md for the adapter contract.
-
-**Spawn preamble (intent 152).** `scripts/spawn-preamble` emits a live-state block purely from
-filesystem state: the active intent, stage, role/cycle-step, the honor instruction, and the
-report contract. When the intent's code worktree is resolvable and exists on disk, it also
-appends the worktree's absolute path plus a verbatim instruction to `cd` there directly, for
-harnesses whose `EnterWorktree` cannot discover a nested repo from a non-repo launch directory.
-Output is byte-identical when no worktree resolves.
-
-**Orchestrator advisory.** At auto-mode start, the orchestrator recommends once that the user
-run the main session on the best available thinking model (Fable, Opus, or whatever supersedes
-them). This is advisory only: it changes no behavior and blocks nothing if ignored, and it
-concerns the human's main session, never a dispatched subagent. The two advisors,
-`plastic-advisor` and `plastic-faux-advisor`, are not lifecycle stage roles: the never-Fable
-rule governs stage agents only. Neither is ever dispatched by the auto pipeline; they are
-consultation roles summoned deliberately by the user or the main session, and their models are
-user configuration (fable and opus by default on Claude Code).
-
-**`plastic-intent-discovery`.** The What-stage agent. It fires at intent activation, after the
-delivery lock is armed and before Why begins, running under that lock as the owner session (it
-does not acquire the lock itself and is not blocked by it): it reads the intent's
-`chain`/`sources` frontmatter, runs QMD-first discovery over completed predecessor work and
-related parked or future intents, and deposits findings to `resources/discovery--<slug>.md` in
-the intent directory ONLY. It never writes the intent file, `spec.md`, or any other lifecycle
-deliverable; the Why-stage `plastic-brainstorming` agent reads its deposit and enriches
-`## Context`.
-
-`savepoint.md`: a deterministic, append-only ledger of cycle-step milestones (one line per
-lifecycle boundary, newest at the bottom), written automatically by the gate hook. It is
-sugar on top of the conventions, not a source of truth: state is always derivable from
-files-on-disk, and the ledger is rebuildable. It exists so a resuming agent reads the cycle's
-succession at a glance (last line = where we are).
-
-## Auto-Mode Human Reporting (intent 92)
-
-In auto mode the orchestrator briefs the human at every lifecycle stage boundary in a fixed,
-impact-first shape (the EM-to-CTO report contract): State, then Risk, then Call. It leads with
-what changed and why it matters, names one risk, and leaves the decision to the human. Separately,
-the `plastic-humanizer` skill cleans authored prose (specs, outcomes, READMEs, release notes) of
-AI tells and slop; it is for documents, not for every reply.
+See `plastic-conventions > references/tiers-and-dispatch.md` for the advisor, model
+configuration, the dispatch contract, and the spawn preamble.
 
 ## Operational Skills
 
-Beyond the lifecycle agents, Plastic ships thin skills for day-to-day operation:
-
-- **`plastic-dashboard`** renders a deterministic Value x Effort work cockpit across the global
-  store and every project, and emits a machine-readable queue (`scripts/dashboard.rb --data
-  [continue|project <slug>]`) that auto mode consumes.
-- **`plastic-doctor`** checks installation health across three scopes. See the `### Doctor`
-  section below.
-- **Lifecycle skills** (`plastic-install`, `plastic-update`, `plastic-uninstall`,
-  `plastic-rollback`, intent 55) are thin wrappers over a single pinned
-  `npx -y @zalom/plastic@<channel> <verb>` call: initialize or repair an install, advance a
-  channel, remove Plastic, and step the local versions ledger.
-- **`plastic-feedback`** (intent 174) turns a described Plastic quirk, bug, or feature idea
-  into a redacted local report file and a prefilled GitHub issue URL; only the user can submit
-  it. `disable-model-invocation` hides its description from your own context, so if the user
-  hits a Plastic quirk, bug, or missing feature, offer to invoke the plastic-feedback skill
-  yourself instead of waiting to be asked; the user still sends it, you never do.
-
-### Doctor
-
-Doctor has three scopes, each with its own contract (intent 219, the governing doctrine):
-
-1. **Core check** (`--core`): fast and binary. Is Plastic loaded and ready for work on every
-   registered agent. No store-content scanning, no warnings.
-2. **Store scan** (`--store [global|<slug>]`): fast, three-state. Verifies the operations
-   Plastic itself depends on in one store (QMD reachability, sources/chain and cross-store
-   resolution, INDEX parsing, links projection), plus tool readiness (Serena, Enola) for a
-   project store. Runs at load time: the global board uses `--store global`, a project board
-   uses `--store <slug>`.
-3. **Full check** (no flag): the install-wide surface. Agent-scoped and install-scoped
-   families (deprecations, install integrity, skill lint, config asks, config-honoring drift)
-   plus the global store's own content. Never carries a per-project finding; `--store <slug>`
-   is the project-scoped check, not this one.
-
-See `plastic-doctor/SKILL.md` for the operational encoding of all three.
+- **`plastic-feedback`** turns a described Plastic quirk, bug, or feature idea into a redacted
+  local report file and a prefilled GitHub issue URL; only the user submits it. If the user hits
+  a Plastic quirk, bug, or missing feature, offer to invoke the plastic-feedback skill yourself
+  instead of waiting to be asked.
+- **`plastic-doctor`** checks installation health across three scopes: core, store, and full.
+  See `plastic-doctor/SKILL.md` for the contract.
 
 ## Releases and Versioning
 
-Plastic ships as versioned releases. A release is a collection of intents: a cut bundles whichever
-intents landed since the previous cut and completes them, so the intent schema itself stays
-release-agnostic and carries no version number. Cutting a release bumps the three version files
-(`package.json`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`), tags
-`v{version}`, runs `gh release create --latest`, and publishes to npm. The npm dist-tag follows
-the version string: a `-alpha` suffix routes to the `alpha` tag, `-beta` to `beta`, and a plain
-version with no suffix routes to `latest`. Release history lives in `CHANGELOG.md` at the repo
-root, one line per cut. The `plastic-releasing` skill runs the whole flow.
-
-Deprecations are declared in `deprecations.yml` and shown at SessionStart. While Plastic is
-pre-1.0, a satisfied deprecation may be removed immediately; from `1.0.0` on the steady-state
-grace rule applies (removal at least two minors ahead). See PLASTIC-reference.md for the
-Deprecation Process.
+Plastic ships as versioned releases; a release is a collection of intents. Run
+`plastic-releasing` for the full flow (version bump, tag, GitHub release, npm publish).
+Deprecations are declared in `deprecations.yml` and shown at SessionStart.
 
 ## Gotchas
 
@@ -381,17 +196,8 @@ Format: `ID--three-to-five-words` (all stores).
 - Intent file matches directory: `1a1--slug/1a1--slug.md`
 - Next ID: `"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" <parent_id> <store_path>`
 
-**Branch vs root: the semantic decision.** The numbering is mechanics; choosing
-*whether* to branch is meaning:
-
-- **Branch (`14a`, `14b`):** a sub-task, refinement, or direct continuation of the
-  parent. It cannot stand on its own; it only makes sense as part of the parent's work.
-- **Root (`15`, `16`)**: an independent thought, even if inspired by another intent.
-  Reserve `sources` for true created-from provenance (intents this was built out of). An
-  independent intent merely related to or inspired by another carries NO `sources`; record
-  the relation on the PREDECESSOR's `chain` (and mirror it as a
-  `[[id--slug|<target's full intent: text>]]` wikilink in `## Links`).
-- **Rule of thumb:** if the intent could exist without its parent, it's a root.
+See `plastic-conventions > references/knowledge-graph.md` for the branch-vs-root semantic
+decision: when to branch versus start a root.
 
 ## INDEX.md
 
@@ -407,11 +213,9 @@ descriptions. This is a self-check, not a gate.
 
 ## Roadmaps
 
-A roadmap is a named, ordered, delivery-side collection of intents (waves of parallel-safe
-entries plus an append-only log), the delivery-side counterpart to a release and a sibling of
-`INDEX.md` (never inside `store/`). Create, order, close, and consume one with `plastic-roadmap`.
-`INDEX.md` stays the single writer of intent status; a roadmap entry mirrors it and yields on any
-conflict. See PLASTIC-reference.md for the full Roadmaps format.
+A roadmap is a named, ordered, delivery-side collection of intents. Create, order, close, and
+consume one with `plastic-roadmap`; see `plastic-conventions > references/roadmaps.md` for the
+full format.
 
 ## Rules for Skills
 
@@ -454,42 +258,17 @@ tables-everywhere rule: simple data stays prose, and tables must not be overused
 **Bullets-limit.** Use bullets only when a table genuinely does not fit the content, and
 never more than 3-5 items.
 
-**Why tables.**
-
-| # | Reason |
-|---|--------|
-| 1 | Parallel structure makes comparison a row-vs-row scan, not a re-read. |
-| 2 | Coverage is provable: N items means N rows, an empty cell exposes a gap while a missing bullet hides it. |
-| 3 | Schema stated once in the headers, no repeated labels, higher density. |
-| 4 | A column reads vertically to show every value at once. |
-| 5 | Cells force terseness where bullets sprawl and nest. |
-| 6 | A ruling or decision column turns the report into the decision worksheet. |
-| 7 | Rows stay machine-readable for downstream tooling. |
-| 8 | Uniform granularity: every item answers the same questions. |
-| 9 | Line-scoped git diffs. |
-
 **Exception.** The EM-to-CTO human briefing (`skills/auto/references/human-report-contract.md`)
 keeps its deliberate prose shape (fixed State/Risk/Call, single item, nothing to tabulate) and
 is exempt from this rule.
 
 ## Retrieval Gate
 
-Advisory. Hard gates guard writes, locks, and structure, never reads or searches. Read,
-Grep, Glob, and bash search are always allowed, including over the stores. When QMD is
-present and fresh, a content search over store markdown receives an advisory hint pointing
-at `qmd search` alongside its result; when QMD is present but stale, a background reindex
-fires so the next turn's hint runs against a fresh index (never synchronous). QMD, Enola,
-and Serena are recommendations, not obligations: the UserPromptSubmit power-tools hook
-appends one recommendation line per present tool, naming Enola only, not both, when Enola
-and Serena are both present (Enola-first, one code-navigation slot). The legacy trailing `# qmd-ok` token is still
-accepted on Bash commands and simply silences the hint. Scope stays the agent's own tool
-calls; Ruby `File.read` inside a script is invisible to the hook by design.
-
-The deterministic entry point is the `scripts/qmd-sync` CLI (verbs: detect, register, reindex,
-status, search), a clean no-op when QMD is absent. Each store indexes into its own
-`plastic-<slug>` collection (`plastic-global` for the global store, `plastic-<slug>` per project).
-Index mutation is lifecycle-only, and the reindex runs LAST in the End tail, after the bridge
-purge. See `docs/internals.md` for depth.
+Advisory only: hard gates guard writes, locks, and structure, never reads or searches. QMD,
+Enola, and Serena are recommendations, not obligations. The deterministic entry point is
+`scripts/qmd-sync` (detect, register, reindex, status, search); a trailing `# qmd-ok` on a Bash
+command silences the hint. See `plastic-conventions > references/gates-and-enforcement.md` for
+the mechanics.
 
 ## Transition Gates
 
@@ -504,293 +283,37 @@ Hard blocking: hooks exit code 2 on gate failure.
 
 ### The gates by name
 
-Each gate guards one thing. All are hard except the retrieval gate:
+One line each; all are hard except the retrieval gate:
 
-- **create-gate** validates the proposed intent file at What write-time (Write, Edit, and MCP
-  edits), so a malformed or incomplete intent never lands.
-- **gate-check** enforces lifecycle stage order (spec.md before plan.md, the plan triplet before
-  the checklist, all checklist items before outcome.md).
-- **lock-gate** arbitrates ownership and claims: it admits only the intent's lock owner or a
-  registered delegate to write into an active intent directory, and every deny names the
-  resolving `plastic-lock` command.
-- **bash-gate** intercepts a write attempted through a bash or interpreter one-liner (a heredoc, a
-  `>` redirect, a `ruby -e` or `python -c` write), so the same rules apply whether an edit goes
-  through the Write tool or a shell. A trailing `# plastic-ok` comment is an auditable escape that
-  lets a deliberate command through, and every use is logged to
-  `~/.plastic/.cache/gate-escapes.log`. The code gate (Write and Edit) carries the identical
-  audited `# plastic-ok` escape, logged to the same file. The escape does not extend to
-  `NotebookEdit` or MCP structural edits: they are still gated, just without an escape hatch.
-- **retrieval-gate** is advisory only (see the Retrieval Gate section): it hints at QMD and never
-  blocks a read or search.
+- **create-gate** validates the proposed intent file at What write-time.
+- **gate-check** enforces lifecycle stage order.
+- **lock-gate** admits only the intent's lock owner or a registered delegate to write into an
+  active intent directory.
+- **bash-gate** intercepts a write attempted through a bash or interpreter one-liner, mirrored
+  by the code gate for Write and Edit.
+- **retrieval-gate** is advisory only: it hints at QMD and never blocks a read or search.
+
+See `plastic-conventions > references/gates-and-enforcement.md` for the escape and logging
+detail.
 
 ## Delivery Isolation and the Single-Owner Lock
 
-Exactly one session or agent develops an intent's delivery at a time. Ownership is
-session-keyed and durable: arming acquires `delivery.lock` inside the intent directory
-(atomically, O_EXCL). The session id is the authorization identity. Descriptive provenance
-records the controller's explicit `harness`, `agent`, `model`, `thread`, and `mode` values,
-but never grants access and is never inferred from transcripts or filesystem paths. Missing
-fields on legacy locks display as `Unknown`. Liveness is a lease: the owner's hooks refresh
-the lock file's mtime on tool activity, and that mtime is the sole heartbeat truth. The lock
-counts as stale only when the mtime is older than the TTL. No process id is consulted anywhere.
-The /tmp session bridge is a cache
-of this state; on any disagreement, or when the bridge is missing, the lock file wins.
-Another session that finds a fresh lock backs off; a stale lock is reclaimed only by
-explicit takeover, which replaces the lock and appends an audit line to the intent's
-savepoint.md. Rearming the same session preserves its acquired identity and refreshes known
-provenance; an explicit takeover replaces the controller and starts new provenance.
-Subagents spawned by the owner write under the owner's lock once registered as delegates.
-Delegate activity status (`active`, `finished`, or `failed`) is descriptive and does not revoke
-the session's string-array authorization. A registered delegate remains authorized until a
-separate authorization-removal mechanism exists. Finished and failed delegate activity is
-retained as descriptive history, bounded to the 20 most recent terminal entries. A controller,
-a delegate, and an artifact claim are distinct evidence: controller ownership authorizes the
-delivery, delegate registration authorizes a child session, and a claim selects one current
-writer for one artifact. Disarm clears the lock; the End tail is ordered: verify, merge and remove
-worktrees, clear the lock, and only then is the bridge purge-eligible. Repair is one
-idempotent function with two entry points: the `plastic-lock` command (`who`, status, fix,
-release, reclaim, delegate) and `/plastic-intent-starting`, so boarding self-heals. `who` is
-read-only and reports the controller, mtime heartbeat, delegates, and claims from durable files.
-This is
-mandatory, not a convention.
+Exactly one session or agent develops an intent's delivery at a time. Ownership is a
+session-keyed, durable `delivery.lock` (O_EXCL) in the intent directory; liveness is a lease
+(the owner's hooks refresh the file mtime, stale means older than the TTL). The `/tmp` session
+bridge is only a cache: the lock file wins on any disagreement. A per-artifact claim token
+arbitrates the file grain underneath the lock. Every code-touching intent gets its own git
+worktree (`<repo>/.claude/worktrees/{id}--{slug}`, branch `plastic/{id}--{slug}`); code edits
+happen only inside it. On a confirmed solo delivery the lock and worktree gates relax to
+advisory; any parallel or team activity restores strict enforcement.
 
-Solo-mode gate defaults (intent 128): on a confirmed positive solo determination
-(`Bridge.solo_delivery?`, a single owner working alone with no sign of parallel or team
-delivery), the lock and worktree arbitration gates relax from enforced to advisory. The moment
-any parallel or team activity appears they return to strictly enforced. This is a real behavior
-difference, not just a message change: a solo session is not hard-blocked by these gates, a
-shared one still is.
+"Intent done" is one law with three signals that must agree: INDEX `## Completed` /
+`## Abandoned`, `outcome.md`, and the savepoint `Done` line; INDEX is authoritative on any
+conflict.
 
-The bridge resolves the current session in a fixed precedence: the stdin `session_id` first, then
-the `CLAUDE_CODE_SESSION_ID` environment variable, then a derived key when neither is present. A
-bridge is purge-eligible by terminal state, not by age: it is removed only once its intent is no
-longer active, never on a timer. See `docs/internals.md` for depth.
+Structural maintenance (WORK vs MAINTENANCE) never touches delivered content: it only records
+itself in `revisions.md`, and only proceeds when the target's `delivery.lock` is not fresh.
 
-The delivery lock arbitrates at the whole-intent grain: it decides who may work
-an intent at all. Underneath it, a per-artifact claim token (intent 111)
-arbitrates at the file grain: it decides who, among those already holding the
-delivery lock, is the one writer for one lifecycle file right now. A write to
-`spec.md`, `plan.md`, `checklist.md`, or the intent file must hold both the
-delivery lock and that file's claim. Claims live in `.claims/<artifact>.claim`
-inside the intent directory, one small JSON file per artifact, scoped strictly
-per-intent-per-artifact, never session-global. The claim gate is dormant
-(allows) when no claim file exists for an artifact, so ordinary single-owner
-work is unaffected; it engages, and denies, only when a second writer tries to
-take a fresh claim someone else already holds. A stale or corrupt claim fails
-open (the write proceeds, the claim yields) and the condition is surfaced in
-`plastic-lock status`, which lists any live claims alongside the delivery
-lock. See `plastic-lock claim`/`release-claim` and `docs/internals.md` for the
-full mechanism.
-
-There is exactly one lock in Plastic: `delivery.lock` (exclusive, one owner plus delegates),
-shipped by intent 108. An earlier two-lock doctrine proposed a second `maintenance.lock`
-(short TTL, structural move-and-record only); intent 112 built it in full and was then
-abandoned before merge on a design pivot, so nothing from it ever shipped (`lock.rb`'s
-`TYPES` seam is the only trace left). Intent 197 rejects the second lock outright rather than
-reviving it: a lock held by a maintenance session could be mistaken by a resuming session
-for an active delivery. Maintenance instead DETECTS `delivery.lock`'s freshness
-(`Lock.fresh?`) and defers when fresh; it never acquires any lock of its own and leaves none
-behind. See "WORK vs MAINTENANCE" below for the full doctrine.
-
-Every code-touching intent gets its own git worktree named `{id}--{slug}`, and all code edits
-for that intent happen only inside it. Plastic provisions the worktree deterministically: it
-resolves the project repo from `projects.yml` and runs `git -C <repo> worktree add`, so
-isolation never depends on the current working directory. There is one worktree per project
-intent, the code worktree at `<repo>/.claude/worktrees/{id}--{slug}` (branch
-`plastic/{id}--{slug}`).
-
-Plastic does not provision a second worktree for lifecycle-doc writes. Two things cover that
-need instead. First, the harness's own native worktree: Claude Code manages its own code
-worktree at `<repo>/.claude/worktrees/{name}`, and Codex manages its own at
-`$CODEX_HOME/worktrees` (default `~/.codex/worktrees`); both exist on their own, independent of
-anything Plastic provisions. Second, intent 197's branch-from-main plus scoped commit, which
-gives store writes their own write safety without a dedicated worktree. Plastic tried a second,
-dedicated store worktree at `<plastic_home>/.worktrees/{id}--{slug}` first; agents never wrote
-into it, because every delivering agent writes lifecycle docs straight to the main store
-checkout, so intent 178 retired the store worktree in favor of the two mechanisms above.
-
-Provisioning fails open for intents that touch no project code (pure research or decision
-intents in the global store, or a non-git repo): those get the lock only, and the worktree
-block stays unprovisioned. The fail-open path is always logged, never silent.
-
-Cleanup is part of Done: the End tail merges the branch, then removes the worktree. Never leave
-an orphaned worktree behind, and clear a stale worktree reference with `git worktree prune`.
-
-### Intent delivery, station by station
-
-How one intent travels from boarding to Done, and what the lock, bridge, and gates do at
-each station.
-
-| Station | Delivered artifact | Lock and bridge steps | Pre-stage gate | Post-stage record |
-|---|---|---|---|---|
-| Start (board) | none (a procedure, not a stage) | `plastic-lock fix` self-heals stale, corrupt, or legacy state; arm acquires `delivery.lock` (O_EXCL, session-keyed), provisions the code worktree, writes the bridge cache | lock-gate denies any write into an active intent dir without this intent's lock; every deny names the resolving command | savepoint confirms the boarding station |
-| What (create) | `<id>--<slug>.md`, born complete | no lock yet; no bridge | create-gate validates the proposed intent content (Write, Edit, and MCP edits) | savepoint `What` line; intent listed in INDEX `## Active` |
-| Why | `spec.md` | owner writes refresh the lease (lock file mtime heartbeat) | gate-check requires the intent file with `## Intent` before spec.md; lock-gate admits only the owner or a delegate | savepoint `Why started`, `Why spec.md created` |
-| How | `plan.md`, `actions/ACTION_N.md` (at least one), `checklist.md` | heartbeat on writes; the code gate stays closed until plan.md, checklist.md, and a real action file all exist | gate-check requires spec.md before plan.md, and plan.md plus a real actions/ACTION_N.md before checklist.md | savepoint `How started`, `How plan.md created`, `How checklist.md created`, `Exec started` |
-| Exec | code on the intent branch, checklist checked off | heartbeat; code edits confined to the provisioned worktree; delegates write under the owner's lock; bash, interpreter, and MCP writes gated the same way | code-gate, worktree-gate, bash-gate, lock-gate | checklist boxes; savepoint milestones |
-| End (done) | mandatory `outcome.md` (`disposition: delivered\|abandoned`), INDEX moves to Completed or Abandoned | ordered End tail: verify, merge and remove worktrees, disarm clears `delivery.lock`, then the bridge is purge-eligible, and the QMD reindex runs LAST (after purge) | gate-check blocks outcome.md while checklist items are unchecked | savepoint `Done delivered` (or `abandoned`); takeover audits, if any, remain in savepoint.md |
-| Maintenance (Future, Terminal, or Active-with-a-stale-or-no-lock) | `revisions.md` move-and-record entries | detects (never acquires) `delivery.lock`; defers and reports while the target's lock is FRESH (`Lock.fresh?`); a stale or absent lock is not-active, maintenance proceeds | none enforced by any gate; the maintenance tool or skill itself checks `Lock.fresh?` (see WORK vs MAINTENANCE below) | append-only, rule-tagged `revisions.md` entry written in the same operation as the change, or the change is refused; lands via a fresh branch off store main merged back as one closed op, never `git add -A` |
-
-### What "intent done" means (intent 93)
-
-Done is one law with three signals, and they must agree. INDEX `## Completed` /
-`## Abandoned` is the single canonical terminal marker: it is the store-wide ledger a fresh
-session reads first, so it wins on any conflict. `outcome.md` is the "deliverable exists"
-signal, and the savepoint `Done delivered|abandoned` line is the audit echo. All three must
-agree; when they disagree, INDEX is authoritative and `doctor` flags the mismatch (the
-`done_signals` check: `outcome.md` real but still under `## Active`, or terminal without a
-real `outcome.md`, or a terminal intent whose savepoint carries no `Done` line).
-
-`outcome.md` is mandatory at every terminal transition, delivered and abandoned alike. It
-self-declares its disposition through a `disposition: delivered|abandoned` frontmatter
-header. The delivered path authors it with the result; the abandoned path authors it with
-the abandonment reason and no longer leaves the scaffolded placeholder sentinel in place.
-
-The canonical End tail runs in this order, and the QMD reindex is always LAST, after the
-purge: `outcome.md -> INDEX terminal -> savepoint Done -> commit -> disarm (Worktree.release
--> Lock.release -> purge) -> QMD reindex`. Running the reindex last keeps the index from
-ever referencing a bridge or lock that disarm is about to remove.
-
-`scripts/end-intent` performs this order's disarm step (verify the code worktree is clean,
-then merge/remove worktrees, then clear the lock) as its own step 5, mechanically, since
-intent 188: a session no longer needs a separate one-liner for it, and the script's own
-exit code (0) is the single fact a caller needs that the intent is closed AND its delivery
-lock is gone. A pre-flight lock guard runs before anything is written (refuses a live
-foreign session, reclaims a stale one with an audit line), and a dirty code worktree
-refuses before removal rather than force-discarding uncommitted changes.
-
-The post-done access window is lock-bounded: `[INDEX terminal -> Lock.release]`. Through it
-the completing session keeps full read and write access to the terminal directory and no
-purge can fire (108's lock-held keep-guard keeps the bridge while `delivery.lock` exists).
-Once the lock is released the window closes: the bridge becomes purge-eligible and the
-directory is frozen. A crash mid-tail is recovered by stale-lock reclaim plus finishing the
-tail; `doctor` surfaces this as a "stalled completion" (terminal in INDEX but the lock is
-still present or stale). Finishing the tail is FINISHING a completion, never a reactivation:
-a done intent is never moved back to `## Active`.
-
-### WORK vs MAINTENANCE (intent 197)
-
-Plastic separates two different things an earlier doctrine blurred under one word,
-"immutable." WORK is the delivered CONTENT an intent produced: the code and project files a
-delivery changed, the research it recorded, the outcome it wrote. Once the intent is terminal
-(Completed or Abandoned), that content is immutable - the only way to change it is another
-intent that continues or reverts it. Editing a Done intent's own artifacts so it looks like it
-delivered something different, or that parts are missing, is forbidden (the book analogy:
-never rewrite the text on the pages of an old, valuable book).
-
-MAINTENANCE is everything else: structure, the sources/chain graph, a section that does not
-belong in the file, formatting, and any store-wide operational change (a new Plastic version
-adding or removing a frontmatter field across every intent). Maintenance is not immutable and
-needs no owner gate to run, on the one condition below (recording is universal). The
-decidable test is CONTENT vs METADATA, not "meaning vs structure": a graph edit is structure
-even when it is also, in a loose sense, about lineage, because it does not change what the
-intent delivered. Precedent: plastic intent 124's own `revisions.md` v1 dropped a dead chain
-edge to a non-existent `124b` (`[rule: broken-chain]`), and v2 added a missing required
-reciprocity edge to `131` (`[rule: misplaced-content]`), both ordinary maintenance, not
-owner-gated exceptions. Allowed maintenance: (a) a frontmatter chain/sources edge that points
-to a non-existent or wrong intent, or a missing required edge; (b) an extra non-convention
-section in the intent file, removed and moved into `revisions.md`; (c) a store-wide
-operational change from a new Plastic version, applied to every intent; (d) any other
-structural or operational tidy. Forbidden: anything that alters what the work delivered.
-
-The residual guard on every graph edit: it must move TOWARD ground truth (drop a dangling or
-false edge, add a reciprocity-forced or documented-real one) and must never invent a
-relationship - "might be related" is never a valid `[rule:]` reason. This is already implied
-by the mandatory `[rule: tag]` on every `revisions.md` entry; no additional per-edit owner
-gate is needed for an ordinary graph fix of this kind.
-
-Maintenance normally needs no intent and no roadmap at all; it runs through the maintenance
-tools and skills and records itself. The one exception: a batch touching more than about 5
-different intents at once must stay rare, and is always an owner decision - the agent asks
-first and shows the diff before proceeding. This exception governs rare cross-intent sweeps;
-it does not apply to an ordinary single-intent graph repair.
-
-Maintenance target-state eligibility, by the intent's own lifecycle state: a Future intent,
-yes; a Terminal (Completed or Abandoned) intent, yes; an Active intent mid-delivery, WAIT. The
-wait is keyed on whether the target currently holds a FRESH `delivery.lock` (`Lock.fresh?`),
-never on INDEX `## Active` membership - `end-intent` releases the lock only after the INDEX
-move and its commit tail finish, so keying on Active membership would miss that tail window
-and let maintenance race a live completion. A STALE lock is not maintenance's problem to
-resolve; it is treated as not-active, and maintenance proceeds rather than waiting
-indefinitely behind a dead session.
-
-There is exactly one lock in the system (see the two-lock correction above): `delivery.lock`,
-meaning an active agent is delivering that intent. Maintenance DETECTS this lock and NEVER
-ACQUIRES it, even transiently, because a maintenance-held lock could be mistaken by a resuming
-or continuation session for an active delivery. Maintenance leaves no lock behind: there is
-nothing to clean up afterward, and no ambiguity about who, if anyone, holds the one lock.
-`bridge.rb:1195`'s `lock_gate_decision` already allows any write once an intent is not in
-INDEX `## Active` - there is no enforced freeze gate in the codebase today, and there never
-was one that shipped (see the corrected history below).
-
-Stranding and clobbering are avoided by construction, not by a second lock: a maintenance
-action creates a fresh branch from the CURRENT state of store main, applies only its own
-scoped changes, and merges that branch back to main as part of the SAME closed operation.
-Nothing strands on an unmerged branch; two concurrent maintenance runs reconcile as ordinary
-merge conflicts on main, never silent loss. This is lighter than intent 178's full per-session
-delivery worktrees (178 stays about the agent write paths for delivery); maintenance only
-needs branch-from-main plus scoped merge-back (`scripts/lib/maintenance_git.rb`,
-`scripts/maintenance-run`).
-
-No commit anywhere, store or project repo, uses `git add -A`; every maintenance and delivery
-commit stages only the paths it actually changed (`scripts/end-intent`'s `store_commit`,
-`scripts/maintenance-run`).
-
-The one condition on every maintenance action, with no exception, is that it is recorded.
-Every maintenance action, whether run by a tool or made by hand, must leave an append-only
-`revisions.md` entry on its target intent (`## Revision vN`, a `Why ... [rule: tag]` line, a
-`Prior location`, and the change itself). If the file already exists, a new run appends
-`vN+1`; it never overwrites an earlier entry (precedent: intent 124's `revisions.md` v3
-corrects v2 by appending a correction entry and explicitly leaving v2 in place). This is
-tool-enforced, not prose alone: `scripts/project-links`, `scripts/rebuild-graph`, and
-`scripts/restore-intent-v1` each write this receipt in the SAME write as the structural
-change, or refuse to proceed without one (`scripts/lib/revisions_writer.rb`); the intent
-curator (`agents/plastic-intent-curator.md`) holds itself to the identical rule by hand.
-
-Doctor stays a detector: core and full checks, every installed agent, both global and project
-stores. It gains no write path of its own. The "Fix all" prompt
-(`skills/doctor/SKILL.md`) is a ROUTER: for each fixable finding it dispatches to the tool
-that already owns that class of repair (`project-links`, `rebuild-graph`,
-`restore-intent-v1`, or the curator, via `scripts/maintenance-run` where applicable), and
-those tools perform the mutation and write the `revisions.md` receipt - never doctor itself.
-
-Corrected history (D18): an earlier version of this section described a terminal-immutability
-gate "intent 112 enforces" and a two-lock model. Intent 112 built that gate in full and was
-then ABANDONED before merge on a design pivot; nothing from it ever shipped. `bridge.rb:1195`
-confirms no such gate runs today: a write to a terminal intent is allowed unconditionally once
-the intent leaves INDEX `## Active`. The deadlock that stopped intents 189, 192, and 195 from
-repairing three live `graph_links_projection` violations was self-imposed discipline (agents
-and the owner both treating undocumented doctrine as a real gate), not a technical one. This
-section is the corrected doctrine; intent 112's own history stays in INDEX as an abandoned,
-superseded design.
-
-Restore-to-v1 (the owner rule that a completed intent is immutable: a late ruling goes to a
-new `--parent` branch intent, and the completed intent is restored to v1) is performed ONLY by
-`scripts/restore-intent-v1`. Its prose (the intent narrative, `checklist.md`, `outcome.md`,
-`spec.md`, `plan.md`) is immutable and reverts to v1; its frontmatter graph
-(`sources`/`chain`) is metadata about OTHER intents, not content of this one, and is
-APPEND-ONLY: preserved as the union of the v1 snapshot and the current snapshot, never
-subtracted. It writes its own `revisions.md` receipt in the same run. A hand-run whole-file
-`git checkout`/revert of a completed intent is FORBIDDEN, because it cannot distinguish prose
-from graph metadata and silently destroys backlinks written after v1 (proven on intent 124: a
-legitimately accrued chain edge was destroyed by a hand-run restore and went undetected for a
-week).
-
-Fail-safe lock doctrine (the contract intent 111 implements): the lock system never traps a
-session or burns credits. When a gate cannot verify lock integrity it fails open, degrading
-to advisory (warn) rather than hard-blocking. Repair is orchestrator-driven: on a lock-issue
-signal the orchestrator inspects and repairs the lock automatically, and the human
-`plastic-lock` command is a fallback path, not the trigger. Intent 93 states this doctrine;
-intent 111 builds the fail-open behavior, the lock-liveness surface, the lock-issue message,
-and the auto-repair.
-
-Scope split. Intent 93 ships doctrine plus the low-risk reconciliation that needs no new
-lock: the canonical done-marker and three-signal reconciliation, the mandatory `outcome.md`
-plus `disposition` header at both terminals, the End tail with the reindex moved last, the
-`done_signals` doctor check (three-signal agreement plus stalled-completion detection), and
-the lock-bounded post-done window with its keep-guard test. Intent 111 owns the lock
-liveness surface, the lock-issue message, orchestrator auto-repair, and the fail-open
-behavior itself. Intent 112 attempted a maintenance lock and an immutability gate; it was
-abandoned before merge and superseded by intent 197's WORK vs MAINTENANCE doctrine
-(detect-only lock, branch-and-merge, tool-enforced `revisions.md`). Intent 4a1b1 owns deep
-agent stuck-detection and is not superseded.
+See `plastic-conventions > references/locks-and-worktrees.md`,
+`references/completion-and-done.md`, and `references/maintenance-and-revisions.md` for the full
+doctrine.

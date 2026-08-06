@@ -26,6 +26,10 @@ Two distinct steps, do not conflate them:
 
 ## The three tiers (by context influence)
 
+Read `../plastic-conventions/references/knowledge-graph.md` for the full linking doctrine behind
+these tiers, the sources-versus-chain distinction, and the `## Links` projection. This path
+resolves relative to this skill's own installed directory.
+
 - **sources:** the foundational context that shaped this intent's CREATION (a split, an idea born
   during development, a merge). Earns an edge. Decided by origin, never inferred.
 - **chain:** the context that materially helps DELIVER this intent. HIGH bar: only the genuinely

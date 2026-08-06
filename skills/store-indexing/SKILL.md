@@ -75,7 +75,15 @@ When 3+ intents share tags but aren't in a cluster, suggest a new cluster headin
 ### Flag Orphans
 Intents with no links (empty `sources`, empty `chain`, no `## Links` entries, not in any cluster) should be flagged for curation.
 
+Before reclassifying a structural finding outside routine indexing, read
+`../plastic-conventions/references/maintenance-and-revisions.md` for WORK versus MAINTENANCE, the
+`revisions.md` move-and-record contract, and the violation-tag catalog.
+
 REQUIRED BACKGROUND: intent-linking (for understanding connection types and Zettelkasten theory)
+
+Read `../plastic-conventions/references/knowledge-graph.md` for the linking doctrine: tiers of
+influence, sources versus chain, and the `## Links` projection. This path resolves relative to
+this skill's own installed directory.
 
 ## References
 

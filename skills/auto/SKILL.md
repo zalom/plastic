@@ -85,6 +85,10 @@ and artifact depth to that size. Extended walkthrough: `references/tiers.md`.
 5. **Tier record.** `Tier: S|M|L` at the top of spec.md. Convention-only: read by the
    orchestrator, never validated by any gate or by doctor.
 
+Read `../plastic-conventions/references/tiers-and-dispatch.md` for tier sizing, agent-model
+config, advisor routing, and the auto-mode human report contract behind the sizing above. This
+path resolves relative to this skill's own installed directory.
+
 ## Arm the Lifecycle Gate (do this FIRST)
 
 Immediately after selecting the intent - before any other work - arm auto mode. This
@@ -109,6 +113,9 @@ implies for later tool calls) read `references/end-tail.md`.
 **Hard rule for the rest of this run:** do NOT edit project code (anything outside the
 intent directory / `~/.plastic/`) until `plan.md` AND `checklist.md` exist for the intent.
 Honor the cycle: What → Why (spec.md) → How (plan.md + actions/ + checklist.md) → Exec.
+
+Read `../plastic-conventions/references/locks-and-worktrees.md` for delivery isolation: the
+single-owner lock, claims, worktrees, solo mode, and the station ledger behind the arming above.
 
 ## Flags
 
@@ -302,6 +309,9 @@ With `--skip-permissions`, the agent logs the action in Insights but proceeds wi
 During initial project creation, all decisions are non-destructive by definition (there's nothing to destroy). The agent has full autonomy for greenfield choices - DB engine, framework, gems, architecture.
 
 ## Completion
+
+Read `../plastic-conventions/references/completion-and-done.md` for what "intent done" means and
+the End-stage tail the steps below walk through.
 
 1. Verify all checklist items are checked
 2. Write `outcome.md` with detailed results, from `${CLAUDE_PLUGIN_ROOT}/templates/outcome.md`.

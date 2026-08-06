@@ -32,17 +32,20 @@ class InstallerCore
   # Regex matching exactly one managed section (BEGIN line .. END line), non-greedy.
   CODEX_SECTION_RE = /^<!-- BEGIN PLASTIC INTEGRATION.*?-->\n.*?\n<!-- END PLASTIC INTEGRATION -->\n?/m
 
-  # Curated essentials plus a pointer to ~/.plastic/PLASTIC.md, injected into
-  # ~/.codex/AGENTS.md. Not a slice of PLASTIC.md (which is already over the 32 KiB
-  # AGENTS.md merge cap on its own), so it never drifts and carries no maintenance fork.
+  # Curated essentials plus a pointer to ~/.plastic/PLASTIC.md and the plastic-conventions
+  # skill, injected into ~/.codex/AGENTS.md. Not a slice of PLASTIC.md itself: AGENTS.md is
+  # a shared file Codex merges from multiple sources, so this block stays a small,
+  # hand-curated pointer rather than embedding the core wholesale, and it never drifts
+  # because it only ever points, never duplicates.
   CODEX_AGENTS_MD_BODY = <<~MD.freeze
     Plastic is installed for this agent. Plastic is intent-driven state management: all
     work flows through an intent, moved through What, Why, How, then Exec. Do not jump
     straight to code.
 
     Standing rules:
-    - The full conventions live in ~/.plastic/PLASTIC.md. Read it and follow it exactly.
-      It is generated and overwritten on Plastic updates, so never edit it.
+    - Core conventions live in ~/.plastic/PLASTIC.md. Read it and follow it exactly. For
+      depth, read a chapter from ~/.agents/skills/plastic-conventions/references/ on demand.
+      Both are generated and overwritten on Plastic updates, so never edit them.
     - Operational procedures are installed as skills under ~/.agents/skills/ (each
       plastic-<name>/SKILL.md). Invoke one explicitly as $plastic-<name> (for example
       $plastic-doctor), or let Codex pick one implicitly by matching its description.
@@ -232,6 +235,13 @@ class InstallerCore
   def distribute(mode)
     puts "  \u{1f4e6} #{mode == :update ? "Updating" : "Installing"} core files to #{plastic_home}"
 
+    manifest_path = File.join(plastic_home, "manifest.json")
+    # Capture the prior manifest before the copy loop touches anything, so a
+    # file dropped from core_files (renamed/removed) can be pruned below
+    # instead of orphaning forever. Mirrors install_for_agent's prune (D14
+    # Why-gate correction: this global path never had it).
+    old_files = manifest_files(manifest_path)
+
     FileUtils.mkdir_p(plastic_home)
     FileUtils.mkdir_p(File.join(plastic_home, "scripts", "lib"))
     FileUtils.mkdir_p(File.join(plastic_home, "templates"))
@@ -252,9 +262,11 @@ class InstallerCore
     global_files = core_files.values.map { |d| File.join(plastic_home, d) }
     global_files << File.join(plastic_home, "VERSION")
     global_files = global_files.select { |p| File.exist?(p) }
-    write_manifest(global_files, File.join(plastic_home, "manifest.json"))
+    write_manifest(global_files, manifest_path)
 
-    puts "  \u{2705} Core files synced (v#{version})"
+    pruned = prune_removed_files(old_files - global_files, root: plastic_home)
+
+    puts "  \u{2705} Core files synced (v#{version})#{pruned.positive? ? ", #{pruned} stale file(s) pruned" : ""}"
   end
 
   # Templates ship in full: every file under templates/ in the repo must reach
@@ -282,7 +294,6 @@ class InstallerCore
   def hand_registered_files
     {
       "PLASTIC.md" => "PLASTIC.md",
-      "PLASTIC-reference.md" => "PLASTIC-reference.md",
       "deprecations.yml" => "deprecations.yml",
       "config_asks.yml" => "config_asks.yml",
       "scripts/folgezettel-id" => "scripts/folgezettel-id",
@@ -403,10 +414,11 @@ class InstallerCore
     MD
 
     write_if_missing(File.join(plastic_home, "AGENTS.md"), <<~MD)
-      # Plastic \u{2014} Agent Instructions
+      # Plastic: Agent Instructions
 
-      Read `PLASTIC.md` in this directory. It contains all Plastic conventions.
-      Follow it exactly. Never modify it \u{2014} it is overwritten on plugin updates.
+      Read `PLASTIC.md` in this directory for the core conventions; deeper doctrine lives
+      in the `plastic-conventions` skill's chapters. Follow it exactly. Never modify it:
+      it is overwritten on plugin updates.
 
       This file (`AGENTS.md`) is where project-specific rules live.
 
@@ -508,7 +520,8 @@ class InstallerCore
              end
 
     new_files = manifest_files(manifest_path_for(key, config))
-    pruned = prune_removed_files(old_files - new_files)
+    pruned = prune_removed_files(old_files - new_files,
+                                  root: [config[:dir], config[:home_dir], *shared_fragment_prune_roots])
     result[:pruned] = pruned if pruned.positive?
 
     # The legacy manifest is fully superseded once the new one is written; delete it so
@@ -588,7 +601,8 @@ class InstallerCore
         restore_agent(config)
         result = { agent: config[:name], success: false, reason: "verify failed - restored prior snapshot" }
       else
-        prune_removed_files(manifest_files(manifest_path_for(key, config)))
+        prune_removed_files(manifest_files(manifest_path_for(key, config)),
+                             root: [config[:dir], config[:home_dir], *shared_fragment_prune_roots])
         result = { agent: config[:name], success: false, reason: "verify failed - partial install pruned" }
       end
     end
@@ -599,10 +613,30 @@ class InstallerCore
 
   # Delete tracked files present in the old manifest but absent from the new one,
   # then remove any now-empty skill directories they lived in.
-  def prune_removed_files(stale_files)
+  #
+  # `root:` is a mandatory containment boundary (intent 223 F5): every manifest path
+  # is read back from JSON written by write_manifest and could, on a hand-edited or
+  # otherwise corrupt manifest, name a path outside the install this call is pruning
+  # (for example `distribute` prunes against `~/.plastic/`, `install_for_agent` prunes
+  # against one agent's own directories). Accepts a single path or an array (an agent
+  # with a two-root schema, like Codex's `dir` plus `home_dir`, tracks files under
+  # both, so a single boundary would wrongly reject legitimate prunes under the root
+  # not passed). A candidate that resolves outside every given root is skipped and
+  # never deleted, so a stray manifest entry can never delete a path outside the
+  # target home.
+  def prune_removed_files(stale_files, root:)
+    expanded_roots = Array(root).compact.map { |r| File.expand_path(r) }
     removed = 0
     dirs = []
     stale_files.each do |f|
+      if path_contained?(f, store_roots)
+        warn "  \u{26a0}\u{fe0f}  Refused to prune #{f}: inside the intent store"
+        next
+      end
+      unless path_contained?(f, expanded_roots)
+        warn "  \u{26a0}\u{fe0f}  Skipped prune of #{f}: outside #{expanded_roots.join(", ")}"
+        next
+      end
       if File.exist?(f)
         File.delete(f)
         removed += 1
@@ -613,6 +647,54 @@ class InstallerCore
       FileUtils.rmdir(d) if File.directory?(d) && Dir.empty?(d)
     end
     removed
+  end
+
+  # True when `path`, once expanded, is one of `roots` itself or lives underneath
+  # one of them. String-prefix containment guarded by a trailing separator so a
+  # sibling directory that merely shares a prefix (`/home/x-evil` vs root `/home/x`)
+  # never counts as contained.
+  def path_contained?(path, roots)
+    expanded = File.expand_path(path)
+    Array(roots).any? { |root| expanded == root || expanded.start_with?(root + File::SEPARATOR) }
+  end
+
+  # Intent 223 (post-delivery hardening): the user's entire intent history lives under
+  # `plastic_home/store` (the global store) and `plastic_home/projects` (every project
+  # store). `distribute` legitimately prunes with `root: plastic_home`, which CONTAINS
+  # both directories, so the ordinary `root:` containment check in `prune_removed_files`
+  # admits a store path instead of refusing it. Today that branch is unreachable (the
+  # pruned set is always `old_files - global_files`, both derived from `core_files` plus
+  # `VERSION`, so no store path can ever appear there), so this is defense in depth for
+  # an unreachable case, not a fix for a live bug. It exists because the standing rule is
+  # that NO path ever deletes the global or project intent stores, and the cost of being
+  # wrong (irreversible loss of the user's whole intent history) warrants a guard that
+  # fails milder than the bug it prevents, independent of what any caller's `root:` is or
+  # what a hand-edited manifest claims.
+  def store_roots
+    [File.join(plastic_home, "store"), File.join(plastic_home, "projects")].map { |p| File.expand_path(p) }
+  end
+
+  # `install_skills_flat` relocates any top-level underscore-prefixed markdown
+  # fragment (today: `_active-intent-gate.md`, `_decision-tables.md`) out of the
+  # per-agent skills tree and into `plastic_home` directly, then lists them in
+  # `installed`, so they are manifest-tracked and eligible for prune. But
+  # `install_for_agent`'s prune roots are `[config[:dir], config[:home_dir]]`,
+  # which do not cover `plastic_home`, so those two files could never actually be
+  # pruned (every attempt printed "Skipped prune of ... outside ..." to stderr).
+  #
+  # Fix scope (intent 223 N3): add each shared fragment's exact FILE path as its
+  # own containment root, never `plastic_home` itself as a directory root.
+  # `path_contained?` only matches a candidate that equals a root exactly or
+  # lives under `root + separator`; a root that is itself a file path can never
+  # have children, so listing these exact files as roots permits pruning ONLY
+  # those files, never anything else under `plastic_home`. This keeps
+  # `~/.plastic/store` and `~/.plastic/projects` (the user's intent stores, never
+  # prunable by standing rule) outside every prune root.
+  def shared_fragment_prune_roots
+    skills_source = File.join(package_root, "skills")
+    return [] unless File.directory?(skills_source)
+    Dir.children(skills_source).select { |e| e.start_with?("_") && e.end_with?(".md") }
+       .map { |e| File.join(plastic_home, e) }
   end
 
   def install_claude(config, force, argv: [], input: $stdin, reinstall: false)

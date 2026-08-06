@@ -384,7 +384,9 @@ class RestoreIntentV1Test < Minitest::Test
       RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
     )
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
-    assert_includes out, "maintenance lock", "an --apply run must print the maintenance lock reminder"
+    assert_includes out, "There is no maintenance lock to hold",
+      "an --apply run must print the corrected no-lock reminder (fail-open doctrine, 111), " \
+      "not the earlier wrong doctrine that a maintenance lock must be held"
 
     refute_includes File.read(RESTORE), "lib/lock\"",
       "the tool itself must never require the lock library (fail-open doctrine, 111)"

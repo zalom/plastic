@@ -45,6 +45,10 @@ roadmap handoff had to be resumed by hand, carried as a free-prose note in `171`
 4. A genuine tie (two candidates equally live) is presented to the user and resolved by the
    single ask below, not silently picked.
 
+Read `../plastic-conventions/references/roadmaps.md` for the roadmap file format, batch
+semantics, and the status-mirror rule behind the candidates gathered above. This path resolves
+relative to this skill's own installed directory.
+
 ## Present state
 
 Present the chosen roadmap's `## Goal`, the current batch with each entry's mirrored status, the

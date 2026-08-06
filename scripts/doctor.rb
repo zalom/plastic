@@ -560,7 +560,7 @@ class Doctor
         fixable: true,
         fix_hint: "Dispatch plastic-store-curating to relocate each unsanctioned section into the " \
                   "intent's revisions.md via move-and-record (a missing required section is restored " \
-                  "or reprojected instead); see PLASTIC.md > Structural maintenance and revisions.md"
+                  "or reprojected instead); see plastic-conventions > references/maintenance-and-revisions.md"
       )
     end
 
@@ -929,7 +929,7 @@ end
       "project-links --intent <id> --apply` over running project-links directly: it detects " \
       "(never acquires) the target's delivery lock, requires a clean store working tree, and " \
       "commits the scoped change plus its revisions.md receipt as one merged operation " \
-      "(PLASTIC.md > WORK vs MAINTENANCE)."
+      "(plastic-conventions > references/maintenance-and-revisions.md)."
     )
   end
 
@@ -1229,7 +1229,7 @@ end
       "Every sources/chain id resolves to a real intent (I4)",
       "Dispatch plastic-store-curating to record the dangling sources/chain edge as a " \
       "broken-source/broken-chain move-and-record entry in the intent's revisions.md (see " \
-      "PLASTIC.md > Structural maintenance and revisions.md), or restore the missing intent"
+      "plastic-conventions > references/maintenance-and-revisions.md), or restore the missing intent"
     )
     checks
   end

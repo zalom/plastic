@@ -32,6 +32,10 @@ The lock is non-negotiable and comes before any mutating work. The ACTION-3 lock
 enforces it: without a held lock, mutating writes to this active intent's dir are denied with
 "run /plastic-intent-starting to lock and begin".
 
+Read `../plastic-conventions/references/locks-and-worktrees.md` for delivery isolation: the
+single-owner lock, claims, worktrees, solo mode, and the station ledger behind everything below.
+This path resolves relative to this skill's own installed directory.
+
 1. **Ensure the intent is in INDEX `## Active`.** If it sits in `## Future`, activate it
    (move it to `## Active`, auto-commit) before arming. Creation precedes activation, so a
    brand-new What intent is activated here, then locked.
@@ -106,11 +110,17 @@ Never re-ask at a later station.
 - **auto** → `arm_auto` (lock + auto), then hand off to `plastic-auto`. The auto branch's
   only remaining job is the handoff; `plastic-auto` runs the cycle from here.
 
+Read `../plastic-conventions/references/tiers-and-dispatch.md` for tier sizing and the
+stage-to-agent dispatch rules behind the auto branch above.
+
 ## Board at the latest delivered station
 
 The station is derived from `savepoint.md` last line + real artifacts on disk. See
 `references/boarding-matrix.md` for the full table (last line → latest delivered → boards at →
 continue with) and the per-station notes. Summary of what "continue" means per station:
+
+Read `../plastic-conventions/references/gates-and-enforcement.md` for the transition-gate
+mechanics, the audited escape, and gate logging that govern moving between the stations below.
 
 - **What** → do what What requires (106-expanded), then brainstorm → `spec.md`.
 - **Why** → continue brainstorming → `spec.md`.

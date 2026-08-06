@@ -43,6 +43,10 @@ See `references/file-format.md` for the exact entry-line shape, status vocabular
 format, and a worked example. See `references/operations.md` for step-by-step mechanics of each
 verb above.
 
+Read `../plastic-conventions/references/roadmaps.md` for the roadmap file format, batch
+semantics, and the status-mirror rule that this skill's own file-format reference builds on. This
+path resolves relative to this skill's own installed directory.
+
 ## Notes
 
 - File location and the four-section shape are identical across tiers; do not invent a different
