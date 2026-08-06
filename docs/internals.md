@@ -608,8 +608,13 @@ Four coordinated pieces deliver that.
   `plastic-intent-creating`, which is now a thin wrapper that keeps tier/store
   detection and the branch-vs-root judgement and delegates scaffolding to one
   `new-intent` call.
-- **`scripts/hook-create-gate` (PreToolUse, matcher Write plus Edit plus the
-  Serena MCP edit tools, from `HookRegistry::CREATE_MATCHER`).** When the target
+- **create-gate (PreToolUse check, applies to Write plus Edit plus the
+  Serena MCP edit tools, per `HookRegistry::GATE_TOOLS["create-gate"]`).**
+  On Claude it runs as one of five in-process checks inside the merged
+  `scripts/hook-edit-gates` dispatcher (intent 244); `scripts/hook-create-gate`
+  is retained as a thin CLI wrapper over the same `EditGates.create_gate` logic,
+  the entry point `scripts/codex-hook` calls on Codex and the one
+  `test/create_gate_hook_test.rb` drives directly. When the target
   path is an intent file inside its own equally-named dir
   (`store/**/<id>--<slug>/<id>--<slug>.md`), it judges the payload with
   `IntentValidator.validate_content` and blocks with exit 2 on failure. Three
@@ -981,17 +986,44 @@ close that gap.
   resolves to `:plastic`; otherwise it reads a `--statusline keep|plastic`
   flag, then falls back to `:keep` on `--reinstall`, an interactive prompt
   (`prompt_statusline`) on a tty, or `:keep` as the safe non-interactive
-  default. The write matcher covers Write, Edit,
-  NotebookEdit, and the Serena MCP edit tools; the create-gate matcher covers
-  Write, Edit, and the same MCP tools; bash-gate and savepoint-pre are
-  registered (the old hand-rolled merge literal had dropped bash-gate, so it
-  shipped dead). The bash gate composes the code gate AND the lock gate over
-  every write target, including interpreter one-liners (`ruby -e`,
-  `python -c`, `perl -e`, `node -e` carrying a write verb plus a quoted
-  absolute path); a trailing `# plastic-ok` comment allows a sanctioned
-  command and logs it to `~/.plastic/.cache/gate-escapes.log`. The worktree
-  gate confines only paths inside the project repo (derived from the code
-  worktree path). Reads and searches are never gated.
+  default. Claude's five edit-path gates (code-gate, lock-gate, savepoint-pre,
+  links-gate, create-gate) register as ONE PreToolUse hook, `edit-gates`
+  (`hooks/edit-gates` -> `scripts/hook-edit-gates`), on the union write matcher
+  (Write, Edit, NotebookEdit, and the Serena MCP edit tools; intent 244). The
+  gates themselves did not go away: the dispatcher parses the PreToolUse stdin
+  payload once and runs all five in-process, in the fixed order savepoint-pre,
+  lock-gate, code-gate, links-gate, create-gate, with the first deny ending
+  evaluation. Per-gate tool applicability, which used to be encoded by three
+  separate matcher groups, now lives in `HookRegistry::GATE_TOOLS`:
+
+  | Gate | Applies to |
+  |---|---|
+  | savepoint-pre | Write, Edit |
+  | lock-gate | Write, Edit, NotebookEdit, Serena edit tools |
+  | code-gate | Write, Edit, NotebookEdit, Serena edit tools |
+  | links-gate | Write, Edit |
+  | create-gate | Write, Edit, Serena edit tools |
+
+  bash-gate stays registered separately on its own `Bash` matcher (the old
+  hand-rolled merge literal had once dropped it, so it shipped dead; that gap
+  is what the derived registration exists to prevent). A crash inside any one
+  gate's logic is isolated (its own rescue, one stderr line, evaluation
+  continues) and never denies the call by itself. Each gate's own deny shape
+  is unchanged: stderr plus exit 2 for code-gate, links-gate, and create-gate;
+  stdout `permissionDecision` JSON plus exit 0 for lock-gate; savepoint-pre
+  never denies. Codex is unaffected: it still registers all five gates
+  separately and `scripts/codex-hook` still dispatches them one at a time; the
+  five `scripts/hook-<gate>` CLI wrappers Codex calls, and the 45 hook
+  contract tests that drive them, are retained on purpose as the tested,
+  Codex-facing entry point, not transitional scaffolding. The bash gate
+  composes the code gate AND the lock gate over every write target, including
+  interpreter one-liners (`ruby -e`, `python -c`, `perl -e`, `node -e`
+  carrying a write verb plus a quoted absolute path); a trailing `# plastic-ok`
+  comment allows a sanctioned command and logs it to
+  `~/.plastic/.cache/gate-escapes.log` (the escape is scoped to code-gate
+  only; lock-gate, links-gate, and create-gate still evaluate normally). The
+  worktree gate confines only paths inside the project repo (derived from the
+  code worktree path). Reads and searches are never gated.
 - **Scope boundary**: `worktree.rb` is pure provisioning and lock-state logic. It
   never edits `projects.yml` and never mutates qmd. The PreToolUse gate that
   blocks edits outside the active worktree, and the cleanup policy that decides
@@ -1020,16 +1052,20 @@ self-checking: if it finds zero gate names (a future reshape of the dispatcher t
 longer matches), the check fails loudly and says the dispatcher could not be read, rather
 than silently reporting the healthy pass a zero-name read would otherwise produce.
 
-**Claude has a narrower version of the same hole.** Claude's "is it implemented" question
-already has a different, existing shape (a launcher file exists and is executable:
-`hooks_exist`/`hooks_executable`, `doctor.rb`), because Claude registers every hook as its
-own file instead of routing through one dispatcher, so this intent does not force a shared
-abstraction over two different mechanisms (D6). But the list those two checks test against,
-`CLAUDE_HOOK_SCRIPTS`, is itself a hand-kept subset of `HookRegistry`'s hook names (about 7 of
-the roughly 15 registered), so a launcher file missing for one of the other registered hooks
-would currently pass doctor undetected. This is the same disease class, narrower in effect,
-recorded here as a finding rather than fixed in this delivery, and left as a candidate for its
-own future intent.
+**Claude closed its own version of the same hole (intent 244).** At the time intent 200
+shipped, Claude registered every edit-path gate as its own launcher file, so "is it
+implemented" was answered by a different, existing shape (`hooks_exist`/`hooks_executable`)
+and this class of check did not apply. Intent 244 collapsed the five edit-path gates
+(code-gate, lock-gate, savepoint-pre, links-gate, create-gate) into one registered hook,
+`hooks/edit-gates` -> `scripts/hook-edit-gates`, which reopened exactly the same hole one
+level up: a gate could ship registered in `HookRegistry::GATE_TOOLS` with no real branch in
+the dispatcher's `case gate` statement (always allows, silently), or a dispatcher branch
+nobody registers (dead code). `claude_hooks_implemented_check` (`doctor.rb`) is the Claude
+twin of `codex_hooks_implemented_check`: it reads `scripts/hook-edit-gates` as plain text
+(`claude_dispatcher_gate_names`, the file's `when "<gate>"` labels), compares that against
+`HookRegistry::GATE_TOOLS.keys` in both directions, and fails loudly (rather than silently
+passing) if the extraction finds no recognizable gate names at all, the same self-checking
+posture as its Codex counterpart.
 
 ## living-document
 

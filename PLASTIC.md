@@ -282,7 +282,9 @@ Hard blocking: hooks exit code 2 on gate failure.
 
 ### The gates by name
 
-One line each:
+One line each. On Claude the five edit-path gates (savepoint-pre, lock-gate, code-gate,
+links-gate, create-gate) run inside one dispatcher process per Write or Edit, in that fixed
+order with the first deny winning; what each gate checks is unchanged.
 
 - **create-gate** validates the proposed intent file at What write-time.
 - **gate-check** enforces lifecycle stage order.

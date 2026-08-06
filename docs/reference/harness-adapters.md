@@ -160,17 +160,19 @@ prevent the file from landing on disk. The non-zero exit is the rejection signal
 a true veto. A valid intent file (or any non-intent lifecycle file) preserves the
 existing behavior exactly: the savepoint is appended and the hook exits 0.
 
-The create gate (`hook-create-gate`, PreToolUse, matcher Write, intent 60b) is the
-defense-in-depth complement on the create path. When the target path is an intent file
-inside its own equally-named dir (`store/**/<id>--<slug>/<id>--<slug>.md`), it validates
-the PROPOSED content from the hook stdin payload (`tool_input.content`) before the write
-lands, using `IntentValidator` for born-complete frontmatter plus the sanctioned `##`
-section set, and blocks with exit 2 on failure. It depends only on the stdin path plus
-content, never on the session bridge or any session id, so it enforces even in
-headless and background runs. It is Claude-Code-only defense-in-depth: the `new-intent`
-CLI plus the creating-intent instruction are the portable lever that works on any harness
-(intent 60b D9). The PreToolUse block makes the PostToolUse backstop a no-op for the
-create case, so the two never double-report.
+The create gate (PreToolUse, matcher Write, intent 60b) is the defense-in-depth complement
+on the create path. On Claude it is one of five checks the merged `hooks/edit-gates` ->
+`scripts/hook-edit-gates` dispatcher runs in-process (intent 244); `scripts/hook-create-gate`
+remains the CLI wrapper Codex calls and the 45 hook contract tests still drive directly. When
+the target path is an intent file inside its own equally-named dir
+(`store/**/<id>--<slug>/<id>--<slug>.md`), it validates the PROPOSED content from the hook
+stdin payload (`tool_input.content`) before the write lands, using `IntentValidator` for
+born-complete frontmatter plus the sanctioned `##` section set, and blocks with exit 2 on
+failure. It depends only on the stdin path plus content, never on the session bridge or any
+session id, so it enforces even in headless and background runs. It is Claude-Code-only
+defense-in-depth: the `new-intent` CLI plus the creating-intent instruction are the portable
+lever that works on any harness (intent 60b D9). The PreToolUse block makes the PostToolUse
+backstop a no-op for the create case, so the two never double-report.
 
 Child versus parent agents are distinguished via `agent_id`.
 
@@ -294,14 +296,23 @@ for either yet.
 ### L3 lifecycle gates and savepoints (intent 102)
 
 Registration writes `~/.codex/hooks.json` at USER scope (defeats the open worktree-scoped
-hook bug), derived from the single `HookRegistry.events` source so the Codex registration
-can never drift from Claude's independently of it. Every file-mutation gate (`code-gate`,
-`lock-gate`, `savepoint-pre`, `create-gate`) and the `gate-check` savepoint backstop
-collapse onto ONE matcher, `apply_patch`, because it is Codex's sole file-mutation tool
-(every Codex edit reports `tool_name: "apply_patch"`; there is no `Edit`/`Write` tool to
-match). `hooks.json` is a partial-ownership file exactly like `AGENTS.md`: merged on
-install (a pre-existing user hook entry survives untouched) and surgically stripped on
-uninstall, never manifest-tracked.
+hook bug), derived from the single `HookRegistry` source so the Codex registration can never
+drift from Claude's independently of it. Every file-mutation gate (`code-gate`, `lock-gate`,
+`savepoint-pre`, `create-gate`) and the `gate-check` savepoint backstop collapse onto ONE
+matcher, `apply_patch`, because it is Codex's sole file-mutation tool (every Codex edit
+reports `tool_name: "apply_patch"`; there is no `Edit`/`Write` tool to match). `hooks.json`
+is a partial-ownership file exactly like `AGENTS.md`: merged on install (a pre-existing user
+hook entry survives untouched) and surgically stripped on uninstall, never manifest-tracked.
+
+This is where Claude and Codex diverge in shape (intent 244). Claude collapsed its five
+edit-path gates into one registered hook (`hooks/edit-gates` -> `scripts/hook-edit-gates`,
+one process per Write/Edit); Codex keeps registering all five separately, since its own
+per-gate `codex-hook <gate>` dispatch is unaffected and out of that intent's scope. The two
+harnesses' Codex-facing entry points are the same either way: `HookRegistry.codex_hooks_json`
+still emits its five per-gate `codex-hook` commands byte-identical to before, deriving its
+order from `HookRegistry::CODEX_PRE_HOOKS & GATE_TOOLS.keys` and each `statusMessage` from
+`HookRegistry::GATE_STATUS`, now that the five gate names no longer appear in Claude's
+collapsed `events["PreToolUse"]`.
 
 The one real translation cost is the payload shape. Claude hands a hook a clean
 `tool_input.file_path` plus `tool_input.content`; Codex hands a diff envelope in

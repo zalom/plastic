@@ -77,7 +77,10 @@ Notes that change the choice of event: [E2]
 - PreCompact fires before the runtime compacts the conversation. Use it to write a savepoint
   while the full context still exists.
 
-Plastic ships working instances of each: `scripts/hook-code-gate` (PreToolUse gate),
+Plastic ships working instances of each: `hooks/edit-gates` -> `scripts/hook-edit-gates`
+(PreToolUse, the merged dispatcher that runs code-gate, lock-gate, savepoint-pre, links-gate,
+and create-gate in one process; each gate's own logic lives in `scripts/lib/edit_gates.rb`
+and is also reachable through the standalone `scripts/hook-code-gate` CLI wrapper),
 `scripts/hook-session-start` (SessionStart boot and inject), `scripts/hook-savepoint-pre`
 (PreCompact savepoint). Read one before authoring a new hook of the same shape.
 
