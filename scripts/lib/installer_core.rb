@@ -355,6 +355,7 @@ class InstallerCore
       "scripts/hook-links-gate" => "scripts/hook-links-gate",
       "scripts/lib/links_gate.rb" => "scripts/lib/links_gate.rb",
       "scripts/lib/edit_gates.rb" => "scripts/lib/edit_gates.rb",
+      "scripts/hook-edit-gates" => "scripts/hook-edit-gates",
       "scripts/lib/apply_patch_envelope.rb" => "scripts/lib/apply_patch_envelope.rb",
       "scripts/codex-hook" => "scripts/codex-hook",
       "scripts/spawn-preamble" => "scripts/spawn-preamble",

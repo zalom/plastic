@@ -1,0 +1,58 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# The merged Claude PreToolUse edit-path dispatcher (intent 244). One registered
+# hook, one Ruby process, one stdin parse, five gates in-process, in the fixed
+# order savepoint-pre, lock-gate, code-gate, links-gate, create-gate (spec D-a).
+# The first deny ends evaluation and its own shape is reproduced exactly: stderr
+# plus exit 2 for code-gate/links-gate/create-gate, stdout permissionDecision
+# JSON plus exit 0 for lock-gate (spec D-b). savepoint-pre runs first so its
+# `started` ledger append stays unconditional, including on a call another gate
+# then blocks (spec D-c).
+#
+# Fail-open everywhere (spec D-i): each gate runs inside its own rescue in
+# EditGates.dispatch, and this file's top level rescues to exit 0, so a gate bug
+# never denies and never silences a sibling gate.
+#
+# LOAD-BEARING SHAPE: doctor's claude_hooks_implemented_check reads THIS FILE as
+# plain text and extracts the `when "<gate>"` labels of the `case gate` statement
+# below, because a script with top-level side effects can never be required to
+# introspect it (the same technique intent 200 used for scripts/codex-hook). If
+# the case statement is reshaped, update that check in scripts/doctor.rb in the
+# same change, or it will fail loudly by design.
+
+require "json"
+require_relative "lib/edit_gates"
+
+def route(gate, ctx)
+  case gate
+  when "savepoint-pre" then EditGates.savepoint_pre(ctx)
+  when "lock-gate"     then EditGates.lock_gate(ctx)
+  when "code-gate"     then EditGates.code_gate(ctx)
+  when "links-gate"    then EditGates.links_gate(ctx)
+  when "create-gate"   then EditGates.create_gate(ctx)
+  end
+end
+
+begin
+  raw = begin
+    $stdin.read
+  rescue StandardError
+    nil
+  end
+  exit 0 if raw.nil? || raw.strip.empty?
+
+  payload = begin
+    JSON.parse(raw)
+  rescue StandardError
+    nil
+  end
+  exit 0 unless payload.is_a?(Hash)
+
+  exit EditGates.dispatch(ctx: EditGates.context_from(payload), route: method(:route))
+rescue StandardError => e
+  # Dispatcher-internal failure: never impersonate a deny (spec D-i).
+  $stderr.puts "plastic edit-gates error: #{e.message}"
+  exit 0
+end
