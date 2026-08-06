@@ -1,0 +1,8 @@
+#!/bin/bash
+# power-tools mandate hook launcher (intents 66, 66b, 187, 246). No-op when there is no global store.
+GLOBAL_INDEX="$HOME/.plastic/INDEX.md"
+if [ ! -f "$GLOBAL_INDEX" ]; then
+  exit 0
+fi
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec ruby "$SCRIPT_DIR/../scripts/hook-power-tools"

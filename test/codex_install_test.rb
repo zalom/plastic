@@ -776,7 +776,7 @@ class CodexInstallTest < Minitest::Test
 
     data = JSON.parse(File.read(hooks_json_path))
     commands = all_codex_hook_commands(data)
-    %w[session-start check-update continue future-intent-check auto-arm qmd-search savepoint].each do |name|
+    %w[session-start check-update continue future-intent-check auto-arm power-tools savepoint].each do |name|
       assert commands.any? { |c| c.include?("codex-hook") && c.include?(name) },
         "expected a codex-hook command for '#{name}', got: #{commands.inspect}"
     end

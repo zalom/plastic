@@ -492,13 +492,13 @@ class CodexHooksTest < Minitest::Test
     assert_includes ctx, "Invoke the plastic-auto skill"
   end
 
-  def test_qmd_search_never_blocks_regardless_of_qmd_presence
+  def test_power_tools_hook_never_blocks_regardless_of_qmd_presence
     plastic_home = File.join(@fake_home, ".plastic")
     FileUtils.mkdir_p(plastic_home)
     File.write(File.join(plastic_home, "INDEX.md"), "# Index\n\n## Active\n\n## Future\n")
 
     payload = state_payload(event: "UserPromptSubmit", user_prompt: "what should I work on next in this project")
-    out, status = run_hook("qmd-search", payload)
+    out, status = run_hook("power-tools", payload)
     assert_equal 0, status.exitstatus
     # qmd may or may not be on PATH in the run environment; either way the dispatcher
     # must relay valid JSON or nothing, never crash, never hang.

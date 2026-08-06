@@ -483,26 +483,30 @@ trigger lives at a fixed point:
   ~2GB of models qmd lazily downloads on first embed/rerank are present. The index
   itself lives under `~/.cache` and is never committed to the `~/.plastic` git.
 
-The search side (read-only, never mutates the index) is exercised on every turn by
-the power-tools `UserPromptSubmit` hook (`hooks/qmd-search` ->
-`scripts/hook-qmd-search`, decision logic in `scripts/lib/qmd_hook.rb`,
-search in `QmdSync.search`). Gated on a substantive prompt (the `< 10` char and
-bare-`continue` guards mirror `future-intent-check`), its output is composed of two
-parts. When qmd is on PATH it runs `qmd search --json` (BM25, no model downloads)
-over the CWD's project collection plus `plastic-global` and injects only hits above
-`min_score` (default 0.5, capped at 3) framed as related or prior intents. It then
-appends the power-tools mandate from `scripts/lib/power_tools.rb`
-(`PowerTools.mandate`): an always-on "MUST use QMD" obligation when qmd is present
-and a "MUST use Serena" obligation when Serena is present (symbolic code navigation
-before grep/Read), or, when Enola is also present, that slot names Enola instead of
-Serena (Enola-first, one code-navigation slot; `PowerTools.enola?` checks a `.enola`
-marker or `enola` on PATH). Serena presence is detected by a `.serena` marker in the
-working directory or an ancestor, or `serena` on PATH (`PowerTools.serena?`); qmd presence
-by `PowerTools.qmd?`. These are mandates, not soft reminders. A 2s timeout plus
-rescue-all keeps a slow or broken qmd from ever blocking the turn; when neither tool
-is present the hook is a silent no-op. The hook registers as a fourth
-`UserPromptSubmit` entry in `merge_claude_hooks`, ships via `core_files`, and is
-listed in doctor's `CLAUDE_HOOK_SCRIPTS`.
+The power-tools `UserPromptSubmit` hook (`hooks/power-tools` ->
+`scripts/hook-power-tools`, decision logic in `scripts/lib/qmd_hook.rb`) runs on
+every turn and emits one thing: the power-tools mandate from
+`scripts/lib/power_tools.rb` (`PowerTools.mandate`), an always-on "MUST use QMD"
+obligation when qmd is present and a "MUST use Serena" obligation when Serena is
+present (symbolic code navigation before grep/Read), or, when Enola is also
+present, that slot names Enola instead of Serena (Enola-first, one code-navigation
+slot; `PowerTools.enola?` checks a `.enola` marker or `enola` on PATH). Serena
+presence is detected by a `.serena` marker in the working directory or an ancestor,
+or `serena` on PATH (`PowerTools.serena?`); qmd presence by `PowerTools.qmd?`. These
+are mandates, not soft reminders. All three probes are PATH and marker-file walks
+with no subprocess, so the whole hook costs about a tenth of a second. A 2s timeout
+plus rescue-all keeps anything unexpected from blocking the turn; when no tool is
+present the hook is a silent no-op. It registers as a fourth `UserPromptSubmit`
+entry in `merge_claude_hooks`, ships via `core_files`, and its launcher is covered
+by doctor's `HookRegistry`-derived hook checks.
+
+Until intent 246 this hook also injected scored `qmd search` hits ahead of the
+mandate, gated on a substantive prompt. Intent 225 measured that injection at 0.24
+intent-level recall@3 against a plain ripgrep control at 0.18, while agent-driven
+`qmd query` scored 0.71, and both of the hook's expensive subprocesses lived inside
+that block. It was removed because the failure was recall, not latency, which is
+also why caching and async were rejected. `QmdSync.search` is untouched and still
+backs the read-only `scripts/qmd-sync search` CLI verb.
 
 ### intent born-complete validation
 

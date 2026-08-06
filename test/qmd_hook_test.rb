@@ -4,11 +4,6 @@ require "fileutils"
 require_relative "../scripts/lib/qmd_hook"
 
 class QmdHookTest < Minitest::Test
-  HITS_JSON = <<~JSON
-    [{"docid":"#a1","score":0.81,"file":"qmd://plastic-global/15--enforce/15.md","line":1,"title":"Enforce Plastic supremacy","snippet":"x"}]
-  JSON
-  EMPTY_JSON = "[]"
-
   def setup
     @home = Dir.mktmpdir("qmd-hook-home")
     File.write(File.join(@home, "projects.yml"), "projects: {}\n")
@@ -20,88 +15,40 @@ class QmdHookTest < Minitest::Test
 
   def present = ->(*) { true }
   def absent  = ->(*) { false }
-  def runner_returning(out) = ->(_args) { [out, true] }
 
   def test_noop_when_no_tools_present
-    out = QmdHook.run(prompt: "build a qmd hook for plastic", cwd: "/tmp", plastic_home: @home,
-                      runner: runner_returning(HITS_JSON), detector: absent, serena_detector: absent,
+    out = QmdHook.run(cwd: "/tmp", detector: absent, serena_detector: absent,
                       enola_detector: absent)
     assert_nil out
   end
 
-  def test_noop_when_prompt_too_short_and_no_tools
-    out = QmdHook.run(prompt: "yes", cwd: "/tmp", plastic_home: @home,
-                      runner: runner_returning(HITS_JSON), detector: absent, serena_detector: absent,
+  def test_qmd_only_emits_the_qmd_line
+    out = QmdHook.run(cwd: "/tmp", detector: present, serena_detector: absent,
                       enola_detector: absent)
-    assert_nil out
-  end
-
-  def test_noop_on_bare_continue_and_no_tools
-    out = QmdHook.run(prompt: "continue", cwd: "/tmp", plastic_home: @home,
-                      runner: runner_returning(HITS_JSON), detector: absent, serena_detector: absent,
-                      enola_detector: absent)
-    assert_nil out
+    assert_includes out, "QMD is available"
   end
 
   def test_serena_only_emits_serena_line_without_qmd
-    out = QmdHook.run(prompt: "navigate the codebase for a symbol", cwd: "/tmp", plastic_home: @home,
-                      runner: runner_returning(HITS_JSON), detector: absent, serena_detector: present,
+    out = QmdHook.run(cwd: "/tmp", detector: absent, serena_detector: present,
                       enola_detector: absent)
     assert_includes out, "Serena is available"
     refute_includes out, "QMD is available"
-    refute_includes out, "Related / prior Plastic intents"
-  end
-
-  def test_qmd_mandate_on_short_prompt_skips_hit_search
-    out = QmdHook.run(prompt: "yes", cwd: "/tmp", plastic_home: @home,
-                      runner: runner_returning(EMPTY_JSON), detector: present, serena_detector: absent,
-                      enola_detector: absent)
-    assert_includes out, "QMD is available"
-    refute_includes out, "Related / prior Plastic intents"
-  end
-
-  def test_injects_hits_and_mandate_when_above_threshold
-    out = QmdHook.run(prompt: "enforce plastic supremacy across stores", cwd: "/tmp", plastic_home: @home,
-                      runner: runner_returning(HITS_JSON), detector: present, serena_detector: absent,
-                      enola_detector: absent)
-    assert_includes out, "Related / prior Plastic intents"
-    assert_includes out, "Enforce Plastic supremacy"
-    assert_includes out, "81%"
-    assert_includes out, "QMD is available", "qmd mandate line must be present"
-  end
-
-  def test_mandate_only_when_no_hits
-    out = QmdHook.run(prompt: "some unrelated substantive prompt here", cwd: "/tmp", plastic_home: @home,
-                      runner: runner_returning(EMPTY_JSON), detector: present, serena_detector: absent,
-                      enola_detector: absent)
-    refute_includes out, "Related / prior Plastic intents"
-    assert_includes out, "QMD is available"
   end
 
   def test_serena_line_only_when_serena_detector_true
-    with_serena = QmdHook.run(prompt: "some unrelated substantive prompt here", cwd: "/tmp", plastic_home: @home,
-                              runner: runner_returning(EMPTY_JSON), detector: present, serena_detector: present,
+    with_serena = QmdHook.run(cwd: "/tmp", detector: present, serena_detector: present,
                               enola_detector: absent)
     assert_includes with_serena, "Serena"
 
-    without_serena = QmdHook.run(prompt: "some unrelated substantive prompt here", cwd: "/tmp", plastic_home: @home,
-                                 runner: runner_returning(EMPTY_JSON), detector: present, serena_detector: absent,
+    without_serena = QmdHook.run(cwd: "/tmp", detector: present, serena_detector: absent,
                                  enola_detector: absent)
     refute_includes without_serena, "Serena"
-  end
-
-  def test_nil_when_neither_tool_present
-    out = QmdHook.run(prompt: "some unrelated substantive prompt here", cwd: "/tmp", plastic_home: @home,
-                      runner: runner_returning(EMPTY_JSON), detector: absent, serena_detector: absent,
-                      enola_detector: absent)
-    assert_nil out
   end
 
   # --- Enola composition (intent 187) ---
 
   def test_enola_only_emits_enola_line_without_serena_or_qmd
-    out = QmdHook.run(prompt: "navigate the codebase for a symbol", cwd: "/tmp", plastic_home: @home,
-                      runner: runner_returning(HITS_JSON), detector: absent, serena_detector: absent,
+    out = QmdHook.run(cwd: "/tmp", detector: absent, serena_detector: absent,
                       enola_detector: present)
     assert_includes out, "Enola is available"
     refute_includes out, "Serena"
@@ -109,11 +56,29 @@ class QmdHookTest < Minitest::Test
   end
 
   def test_enola_first_suppresses_serena_when_both_present
-    out = QmdHook.run(prompt: "some unrelated substantive prompt here", cwd: "/tmp", plastic_home: @home,
-                      runner: runner_returning(EMPTY_JSON), detector: absent, serena_detector: present,
+    out = QmdHook.run(cwd: "/tmp", detector: absent, serena_detector: present,
                       enola_detector: present)
     assert_includes out, "Enola is available"
     refute_includes out, "Serena"
+  end
+
+  # --- Intent 246: the retrieval injection is gone ---
+
+  # The removed block could emit exactly two shapes: the header line, and one
+  # percentage-scored hit line per hit. Their absence across every tool
+  # combination is this intent's behavior contract, so it is asserted directly
+  # rather than inferred from the code being deleted.
+  def test_no_retrieval_hits_are_ever_injected
+    [absent, present].each do |qmd|
+      [absent, present].each do |serena|
+        [absent, present].each do |enola|
+          out = QmdHook.run(cwd: "/tmp", detector: qmd, serena_detector: serena,
+                            enola_detector: enola).to_s
+          refute_includes out, "Related / prior Plastic intents"
+          refute_match(/\[\d+%\]/, out)
+        end
+      end
+    end
   end
 
   def test_executable_noops_when_no_tools_present
@@ -121,14 +86,14 @@ class QmdHookTest < Minitest::Test
     require "json"
     require "rbconfig"
     ruby = RbConfig.ruby
-    script = File.expand_path("../scripts/hook-qmd-search", __dir__)
-    input = JSON.generate("user_prompt" => "build a qmd hook for plastic stores")
+    script = File.expand_path("../scripts/hook-power-tools", __dir__)
+    input = JSON.generate("user_prompt" => "build a hook for plastic stores")
     # PATH limited to system dirs (no qmd, no serena, no enola) and cwd is the
     # tmpdir home (no `.serena`/`.enola` ancestor), so no tool is present -> no
     # output, exit 0. Launch ruby by absolute path so it does not depend on
     # PATH; run from @home so the script's Dir.pwd marker walks find nothing.
     out, _err, status = Open3.capture3(
-      { "PATH" => "/usr/bin:/bin" }, ruby, script, @home,
+      { "PATH" => "/usr/bin:/bin" }, ruby, script,
       chdir: @home, stdin_data: input
     )
     assert status.success?, "hook must exit 0 when no tools present"

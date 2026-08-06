@@ -208,13 +208,13 @@
       "scope": "behavior",
       "set": "validation",
       "prompt": "A power-tool is present (qmd on PATH, or a .serena marker / serena on PATH). A substantive prompt arrives in auto mode.",
-      "expected_output": "The UserPromptSubmit power-tools hook appends a MANDATORY obligation per present tool: a MUST-use-QMD line when qmd is present (to check for an existing or related intent before treating work as new), and a MUST-use-Serena line when serena is present (symbolic tools before grep/Read). QMD hits are still injected when above threshold.",
+      "expected_output": "The UserPromptSubmit power-tools hook appends a MANDATORY obligation per present tool: a MUST-use-QMD line when qmd is present (to check for an existing or related intent before treating work as new), and a MUST-use-Serena line when serena is present (symbolic tools before grep/Read). No search hits are injected: intent 246 removed the per-prompt qmd hit search, so the hook emits the mandate and nothing else.",
       "files": [],
       "assertions": [
         {
           "type": "code",
           "check": "PowerTools.mandate returns MUST/MANDATORY lines for each present tool; QmdHook.run appends the mandate",
-          "observed": "power_tools_test.rb + qmd_hook_test.rb assert MUST wording; serena line gated on the serena detector",
+          "observed": "power_tools_test.rb + qmd_hook_test.rb assert MUST wording; serena line gated on the serena detector; qmd_hook_test.rb test_no_retrieval_hits_are_ever_injected asserts no hit header for any tool combination",
           "result": "pass"
         }
       ]

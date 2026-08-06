@@ -99,8 +99,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" qmd-search",
-            "statusMessage": "Searching QMD..."
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" power-tools",
+            "statusMessage": "Checking power tools..."
           }
         ]
       }
