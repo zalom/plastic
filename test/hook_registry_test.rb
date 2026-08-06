@@ -17,11 +17,6 @@ class HookRegistryTest < Minitest::Test
     assert_includes HookRegistry::WRITE_MATCHER, "NotebookEdit"
   end
 
-  def test_create_matcher_covers_edit
-    assert_includes HookRegistry::CREATE_MATCHER, "Edit"
-    assert_includes HookRegistry::CREATE_MATCHER, "Write"
-  end
-
   def test_claude_settings_hooks_builds_plastic_commands
     settings = HookRegistry.claude_settings_hooks(hook_dir: "/x/hooks")
     lock = settings["PreToolUse"].find { |g| g["hooks"].any? { |h| h["command"].include?("edit-gates") } }
@@ -120,14 +115,35 @@ class HookRegistryTest < Minitest::Test
     end
   end
 
-  # Intent 244: registration collapsed to ONE PreToolUse hook on the union
-  # matcher, so the three matcher groups that used to encode per-gate coverage
-  # are gone. This derives them back out of GATE_TOOLS by tool-set equality: a
-  # gate that silently widened or narrowed its coverage fails here.
+  # Intent 244, retargeted by post-review fix 6: registration collapsed to
+  # ONE PreToolUse hook on the union matcher, so the three matcher groups
+  # that used to encode per-gate coverage are gone from `events`. The
+  # original version of this test derived its expectations from
+  # `%w[Write Edit NotebookEdit] + SERENA_EDIT_TOOLS`, the SAME building
+  # blocks GATE_TOOLS itself is built from, so a change to SERENA_EDIT_TOOLS
+  # would move both sides of the assertion together and the pin could never
+  # actually fail. These three strings are instead the LITERAL matcher
+  # values `hooks/hooks.json` carried at 80dddea, the last commit before this
+  # intent's dispatcher collapse landed (captured via
+  # `git show 80dddea:hooks/hooks.json`). They are FROZEN pre-change values,
+  # the historical truth of what the five gates actually covered, and must
+  # NOT be regenerated from current constants (SERENA_EDIT_TOOLS or
+  # otherwise): that would silently restore the self-referential pin this
+  # fix exists to remove.
+  HISTORICAL_FULL_UNION_MATCHER =
+    "Write|Edit|NotebookEdit|mcp__serena__replace_content|mcp__serena__replace_symbol_body|" \
+    "mcp__serena__insert_after_symbol|mcp__serena__insert_before_symbol|" \
+    "mcp__serena__safe_delete_symbol|mcp__serena__rename_symbol".freeze
+  HISTORICAL_WRITE_EDIT_MATCHER = "Write|Edit".freeze
+  HISTORICAL_CREATE_MATCHER =
+    "Write|Edit|mcp__serena__replace_content|mcp__serena__replace_symbol_body|" \
+    "mcp__serena__insert_after_symbol|mcp__serena__insert_before_symbol|" \
+    "mcp__serena__safe_delete_symbol|mcp__serena__rename_symbol".freeze
+
   def test_gate_tools_table_derives_todays_three_matcher_groups
-    full_union   = %w[Write Edit NotebookEdit] + HookRegistry::SERENA_EDIT_TOOLS
-    write_edit   = %w[Write Edit]
-    create_tools = %w[Write Edit] + HookRegistry::SERENA_EDIT_TOOLS
+    full_union   = HISTORICAL_FULL_UNION_MATCHER.split("|")
+    write_edit   = HISTORICAL_WRITE_EDIT_MATCHER.split("|")
+    create_tools = HISTORICAL_CREATE_MATCHER.split("|")
     assert_equal full_union.sort,   HookRegistry::GATE_TOOLS["code-gate"].sort
     assert_equal full_union.sort,   HookRegistry::GATE_TOOLS["lock-gate"].sort
     assert_equal write_edit.sort,   HookRegistry::GATE_TOOLS["savepoint-pre"].sort

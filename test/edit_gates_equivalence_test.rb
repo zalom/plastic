@@ -93,6 +93,23 @@ class EditGatesEquivalenceTest < Minitest::Test
     Open3.capture3(base_env.merge(env), RbConfig.ruby, script, stdin_data: JSON.generate(payload))
   end
 
+  # Fix 5 (post-review, intent 244): red-phase proofs mutate a COPY of the
+  # shipped scripts/ tree under a tmpdir, never scripts/lib/edit_gates.rb or
+  # scripts/hook-edit-gates in the working tree. An interrupt mid-proof must
+  # never leave a shipped file corrupted, and parallel test runs must never
+  # race on the same file. `overrides` maps a path relative to the repo's
+  # scripts/ directory (e.g. "lib/edit_gates.rb") to its mutated content;
+  # every other file under scripts/ is copied verbatim, so both the wrapper
+  # script and the dispatcher can be run from the SAME copy and still share
+  # the one (mutated) library, exactly like the real tree.
+  def mutated_scripts_dir(overrides)
+    real_scripts = File.expand_path("../scripts", __dir__)
+    copy = File.join(mktmp("mutated-scripts"), "scripts")
+    FileUtils.cp_r(real_scripts, copy)
+    overrides.each { |relative, content| File.write(File.join(copy, relative), content) }
+    copy
+  end
+
   def assert_equivalent(wrapper_result, dispatcher_result, label)
     w_out, w_err, w_status = wrapper_result
     d_out, d_err, d_status = dispatcher_result
@@ -495,6 +512,32 @@ class EditGatesEquivalenceTest < Minitest::Test
     assert_equal "", w[1]
   end
 
+  # Fix 3 (post-review, intent 244): per-key tool_input/tool_params fallback
+  # for file_path, restored after review found the merged context_from's
+  # whole-object pick silently dropped it. tool_input: {} is an empty but
+  # TRUTHY hash, so a whole-object pick (`tool_input || tool_params`) never
+  # even looks at tool_params; the old links-gate/create-gate wrappers read
+  # `dig("tool_input","file_path") || dig("tool_params","file_path")`, each
+  # KEY falling back independently, and still find file_path in tool_params.
+  # create-gate's pathless-missing-file deny (case12's shape) is the
+  # observable proof: a broken (nil) file_path allows immediately, while the
+  # correctly-resolved ghost path is judged and denied.
+  def test_group_b_tool_input_empty_hash_tool_params_carries_file_path
+    home = mktmp("eq-fix3-create-gate-home")
+    store = File.join(home, "store")
+    FileUtils.mkdir_p(store)
+    ghost = File.join(store, "99--ghost", "99--ghost.md")
+    payload = { "tool_name" => "Write", "tool_input" => {}, "tool_params" => { "file_path" => ghost } }
+    env = { "HOME" => home }
+    w = run_stdin(CREATE_GATE, payload, env: env)
+    d = run_stdin(DISPATCHER, payload, env: env)
+    assert_equivalent(w, d, "group B: tool_input empty hash, tool_params carries file_path")
+    assert_equal 2, w[2].exitstatus,
+                 "sanity: this payload must actually be JUDGED (denied), not silently allowed " \
+                 "(a broken file_path read would allow immediately instead)"
+    assert_includes w[1], "cannot read proposed content"
+  end
+
   # =====================================================================
   # Red-phase proofs (intent 208: a check that cannot fail is not a check)
   # =====================================================================
@@ -507,21 +550,20 @@ class EditGatesEquivalenceTest < Minitest::Test
     original = File.read(EDIT_GATES_LIB)
     mutated = original.sub('"PLASTIC GATE — #{reason}"', '"PLASTIC GATE - #{reason}"')
     refute_equal original, mutated, "sanity: the mutation must actually change the file"
-    File.write(EDIT_GATES_LIB, mutated)
-    begin
-      fx = code_gate_fixture
-      env = { "PLASTIC_TMP" => fx[:bridge_tmp], "HOME" => fx[:home] }
-      w = run_argv(CODE_GATE, [fx[:project_file]], env: env)
-      d = run_stdin(DISPATCHER, { "tool_name" => "Write",
-                                   "tool_input" => { "file_path" => fx[:project_file] } }, env: env)
-      assert_equal w[0], d[0]
-      assert_equal w[1], d[1]
-      assert_equal w[2].exitstatus, d[2].exitstatus
-      assert_includes w[1], "PLASTIC GATE - ",
-                      "sanity: both sides now emit the hyphenated message, undetectable by this file"
-    ensure
-      File.write(EDIT_GATES_LIB, original)
-    end
+    copy_dir = mutated_scripts_dir("lib/edit_gates.rb" => mutated)
+    code_gate_copy = File.join(copy_dir, "hook-code-gate")
+    dispatcher_copy = File.join(copy_dir, "hook-edit-gates")
+
+    fx = code_gate_fixture
+    env = { "PLASTIC_TMP" => fx[:bridge_tmp], "HOME" => fx[:home] }
+    w = run_argv(code_gate_copy, [fx[:project_file]], env: env)
+    d = run_stdin(dispatcher_copy, { "tool_name" => "Write",
+                                      "tool_input" => { "file_path" => fx[:project_file] } }, env: env)
+    assert_equal w[0], d[0]
+    assert_equal w[1], d[1]
+    assert_equal w[2].exitstatus, d[2].exitstatus
+    assert_includes w[1], "PLASTIC GATE - ",
+                    "sanity: both sides now emit the hyphenated message, undetectable by this file"
   end
 
   # Proof 2: deleting the "code-gate" arm from the dispatcher's case/when must
@@ -535,35 +577,33 @@ class EditGatesEquivalenceTest < Minitest::Test
     original = File.read(DISPATCHER)
     mutated = original.lines.reject { |l| l.include?('when "code-gate"') }.join
     refute_equal original, mutated, "sanity: the mutation must actually remove the arm"
-    File.write(DISPATCHER, mutated)
-    begin
-      fx1 = code_gate_fixture
-      env1 = { "PLASTIC_TMP" => fx1[:bridge_tmp], "HOME" => fx1[:home] }
-      w1 = run_argv(CODE_GATE, [fx1[:project_file]], env: env1)
-      d1 = run_stdin(DISPATCHER, { "tool_name" => "Write",
-                                    "tool_input" => { "file_path" => fx1[:project_file] } }, env: env1)
-      case1_mismatch = (w1[0] != d1[0]) || (w1[1] != d1[1]) || (w1[2].exitstatus != d1[2].exitstatus)
-      assert case1_mismatch, "case 1 must go RED when the code-gate arm is removed " \
-                              "(the dispatcher wrongly allows what the wrapper denies)"
+    copy_dir = mutated_scripts_dir("hook-edit-gates" => mutated)
+    dispatcher_copy = File.join(copy_dir, "hook-edit-gates")
 
-      fx3 = code_gate_fixture
-      content = "puts 1\n# plastic-ok\n"
-      env3 = { "PLASTIC_TMP" => fx3[:bridge_tmp], "HOME" => fx3[:home] }
-      log = File.join(fx3[:home], ".plastic", ".cache", "gate-escapes.log")
-      w3 = run_argv(CODE_GATE, [fx3[:project_file], "", content], env: env3)
-      w3_log_lines = File.exist?(log) ? File.readlines(log).length : 0
-      File.delete(log) if File.exist?(log)
-      run_stdin(DISPATCHER, { "tool_name" => "Write",
-                              "tool_input" => { "file_path" => fx3[:project_file], "content" => content } },
-                env: env3)
-      d3_log_lines = File.exist?(log) ? File.readlines(log).length : 0
-      assert w3_log_lines != d3_log_lines,
-             "case 3's escape-log assertion must go RED: the dispatcher never calls code_gate " \
-             "at all once its arm is removed, so it audits zero lines while the wrapper still " \
-             "audits one (#{w3_log_lines} vs #{d3_log_lines})"
-    ensure
-      File.write(DISPATCHER, original)
-    end
+    fx1 = code_gate_fixture
+    env1 = { "PLASTIC_TMP" => fx1[:bridge_tmp], "HOME" => fx1[:home] }
+    w1 = run_argv(CODE_GATE, [fx1[:project_file]], env: env1)
+    d1 = run_stdin(dispatcher_copy, { "tool_name" => "Write",
+                                       "tool_input" => { "file_path" => fx1[:project_file] } }, env: env1)
+    case1_mismatch = (w1[0] != d1[0]) || (w1[1] != d1[1]) || (w1[2].exitstatus != d1[2].exitstatus)
+    assert case1_mismatch, "case 1 must go RED when the code-gate arm is removed " \
+                            "(the dispatcher wrongly allows what the wrapper denies)"
+
+    fx3 = code_gate_fixture
+    content = "puts 1\n# plastic-ok\n"
+    env3 = { "PLASTIC_TMP" => fx3[:bridge_tmp], "HOME" => fx3[:home] }
+    log = File.join(fx3[:home], ".plastic", ".cache", "gate-escapes.log")
+    w3 = run_argv(CODE_GATE, [fx3[:project_file], "", content], env: env3)
+    w3_log_lines = File.exist?(log) ? File.readlines(log).length : 0
+    File.delete(log) if File.exist?(log)
+    run_stdin(dispatcher_copy, { "tool_name" => "Write",
+                                  "tool_input" => { "file_path" => fx3[:project_file], "content" => content } },
+              env: env3)
+    d3_log_lines = File.exist?(log) ? File.readlines(log).length : 0
+    assert w3_log_lines != d3_log_lines,
+           "case 3's escape-log assertion must go RED: the dispatcher never calls code_gate " \
+           "at all once its arm is removed, so it audits zero lines while the wrapper still " \
+           "audits one (#{w3_log_lines} vs #{d3_log_lines})"
   end
 
   # Proof 3: dropping project_root from context_from's absolutization must
@@ -575,19 +615,17 @@ class EditGatesEquivalenceTest < Minitest::Test
       'root = payload["cwd"] || ""',
     )
     refute_equal original, mutated, "sanity: the mutation must actually drop the project_root term"
-    File.write(EDIT_GATES_LIB, mutated)
-    begin
-      fx = code_gate_fixture
-      decoy = mktmp("eq-decoy-cwd-proof3")
-      env = { "PLASTIC_TMP" => fx[:bridge_tmp], "HOME" => fx[:home] }
-      w = run_argv(CODE_GATE, [fx[:project_file]], env: env)
-      d = run_stdin(DISPATCHER, { "tool_name" => "Write", "cwd" => decoy,
-                                   "tool_input" => { "relative_path" => "code/app.rb",
-                                                      "project_root" => fx[:root] } }, env: env)
-      mismatch = (w[0] != d[0]) || (w[1] != d[1]) || (w[2].exitstatus != d[2].exitstatus)
-      assert mismatch, "the project_root row must go RED once project_root is dropped from context_from"
-    ensure
-      File.write(EDIT_GATES_LIB, original)
-    end
+    copy_dir = mutated_scripts_dir("lib/edit_gates.rb" => mutated)
+    dispatcher_copy = File.join(copy_dir, "hook-edit-gates")
+
+    fx = code_gate_fixture
+    decoy = mktmp("eq-decoy-cwd-proof3")
+    env = { "PLASTIC_TMP" => fx[:bridge_tmp], "HOME" => fx[:home] }
+    w = run_argv(CODE_GATE, [fx[:project_file]], env: env)
+    d = run_stdin(dispatcher_copy, { "tool_name" => "Write", "cwd" => decoy,
+                                      "tool_input" => { "relative_path" => "code/app.rb",
+                                                         "project_root" => fx[:root] } }, env: env)
+    mismatch = (w[0] != d[0]) || (w[1] != d[1]) || (w[2].exitstatus != d[2].exitstatus)
+    assert mismatch, "the project_root row must go RED once project_root is dropped from context_from"
   end
 end

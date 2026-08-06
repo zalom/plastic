@@ -46,8 +46,27 @@ class EditGatesDispatcherTest < Minitest::Test
     { "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_TMP" => @safe_tmp, "PLASTIC_HOME" => nil, "HOME" => @safe_home }
   end
 
-  def run_dispatcher(payload, env: {})
-    Open3.capture3(base_env.merge(env), RbConfig.ruby, DISPATCHER, stdin_data: JSON.generate(payload))
+  def run_dispatcher(payload, env: {}, dispatcher: DISPATCHER)
+    Open3.capture3(base_env.merge(env), RbConfig.ruby, dispatcher, stdin_data: JSON.generate(payload))
+  end
+
+  # Fix 5 (post-review, intent 244): red-phase proofs mutate a COPY of the
+  # shipped scripts/ tree under a tmpdir, never the real
+  # scripts/lib/edit_gates.rb, scripts/lib/hook_registry.rb or
+  # scripts/hook-edit-gates in the working tree. An interrupt mid-proof must
+  # never leave a shipped file corrupted, and parallel test runs must never
+  # race on the same file. `overrides` maps a path relative to the repo's
+  # scripts/ directory (e.g. "lib/edit_gates.rb") to its mutated content;
+  # every other file under scripts/ is copied verbatim so require_relative
+  # keeps resolving inside the copy exactly like the real tree, and a
+  # dispatcher copy can be run standalone or an in-process lib copy can be
+  # `load`ed with its sibling deps present.
+  def mutated_scripts_dir(overrides)
+    real_scripts = File.expand_path("../scripts", __dir__)
+    copy = File.join(mktmp("mutated-scripts"), "scripts")
+    FileUtils.cp_r(real_scripts, copy)
+    overrides.each { |relative, content| File.write(File.join(copy, relative), content) }
+    copy
   end
 
   def scaffold_intent(store, intent:, slug:)
@@ -111,6 +130,116 @@ class EditGatesDispatcherTest < Minitest::Test
     assert_equal 2, code, "the later sibling's genuine deny must still fire"
     assert_includes err.string, "plastic code-gate error: boom"
     assert_includes err.string, "denied by links-gate"
+  end
+
+  # Fix 7 (post-review, intent 244): outcome.shape / out.print / err.puts must
+  # live INSIDE the same rescue as route.call, so a MALFORMED outcome (not a
+  # raised exception, a genuinely bad return value) is isolated exactly like
+  # a crashing gate and never aborts the gates still to come. A route that
+  # returns a plain String (no #shape method) reproduces this without an
+  # artificial exception.
+  def test_a_malformed_outcome_does_not_stop_the_others_and_does_not_deny
+    seen = []
+    route = lambda do |gate, _ctx|
+      seen << gate
+      next "not-a-deny-object" if gate == "code-gate"
+      nil
+    end
+    err = StringIO.new
+    out = StringIO.new
+    ctx = EditGates::Context.new(tool_name: "Write", file_path: "/tmp/x.md", gate_path: "/tmp/x.md")
+
+    code = EditGates.dispatch(ctx: ctx, route: route, out: out, err: err)
+
+    assert_equal 0, code, "a malformed outcome must never deny"
+    assert_equal HookRegistry::GATE_TOOLS.keys, seen, "all five gates must still be visited"
+    assert_equal 1, err.string.lines.length, "exactly one error line"
+    assert_includes err.string, "plastic code-gate error:"
+    assert_equal "", out.string
+  end
+
+  # The other half: a malformed outcome must not silence a LATER sibling's genuine deny.
+  def test_a_malformed_outcome_does_not_silence_a_later_denying_sibling
+    route = lambda do |gate, _ctx|
+      next "not-a-deny-object" if gate == "code-gate"
+      next EditGates::Deny.new(shape: :stderr, lines: ["denied by links-gate"]) if gate == "links-gate"
+      nil
+    end
+    err = StringIO.new
+    out = StringIO.new
+    ctx = EditGates::Context.new(tool_name: "Write", file_path: "/tmp/x.md", gate_path: "/tmp/x.md")
+
+    code = EditGates.dispatch(ctx: ctx, route: route, out: out, err: err)
+
+    assert_equal 2, code, "the later sibling's genuine deny must still fire"
+    assert_includes err.string, "plastic code-gate error:"
+    assert_includes err.string, "denied by links-gate"
+  end
+
+  # Red-phase proof for fix 7: narrow the rescue back to wrap ONLY route.call
+  # (the pre-fix shape, outcome.shape/out.print/err.puts left OUTSIDE it) and
+  # confirm the malformed-outcome test above goes red: the NoMethodError from
+  # `outcome.shape` on a plain String escapes dispatch entirely instead of
+  # being isolated per-gate, so the LATER sibling never gets a chance to run.
+  def test_red_phase_proof_fix7_rescue_scope_is_load_bearing
+    original = File.read(EDIT_GATES_LIB)
+    narrowed = original.sub(
+      "      begin\n" \
+      "        outcome = route.call(gate, ctx)\n" \
+      "        next unless outcome\n" \
+      "\n" \
+      "        if outcome.shape == :json\n" \
+      "          out.print outcome.stdout\n" \
+      "          return 0\n" \
+      "        else\n" \
+      "          outcome.lines.each { |line| err.puts line }\n" \
+      "          return 2\n" \
+      "        end\n" \
+      "      rescue StandardError => e\n" \
+      "        # Fix 7: outcome.shape / out.print / err.puts now live INSIDE the same\n" \
+      "        # rescue as route.call, so a malformed outcome or a stream write\n" \
+      "        # failure (e.g. EPIPE) is isolated exactly like a raising gate, and\n" \
+      "        # never aborts the gates still to come.\n" \
+      "        err.puts \"plastic \#{gate} error: \#{e.message}\"\n" \
+      "        next\n" \
+      "      end",
+      "      outcome =\n" \
+      "        begin\n" \
+      "          route.call(gate, ctx)\n" \
+      "        rescue StandardError => e\n" \
+      "          err.puts \"plastic \#{gate} error: \#{e.message}\"\n" \
+      "          next\n" \
+      "        end\n" \
+      "\n" \
+      "      next unless outcome\n" \
+      "\n" \
+      "      if outcome.shape == :json\n" \
+      "        out.print outcome.stdout\n" \
+      "        return 0\n" \
+      "      else\n" \
+      "        outcome.lines.each { |line| err.puts line }\n" \
+      "        return 2\n" \
+      "      end",
+    )
+    refute_equal original, narrowed, "sanity: the mutation must actually narrow the rescue scope"
+    copy_dir = mutated_scripts_dir("lib/edit_gates.rb" => narrowed)
+    quiet_load(File.join(copy_dir, "lib", "edit_gates.rb"))
+    begin
+      route = lambda do |gate, _ctx|
+        next "not-a-deny-object" if gate == "code-gate"
+        next EditGates::Deny.new(shape: :stderr, lines: ["denied by links-gate"]) if gate == "links-gate"
+        nil
+      end
+      ctx = EditGates::Context.new(tool_name: "Write", file_path: "/tmp/x.md", gate_path: "/tmp/x.md")
+      escaped = assert_raises(NoMethodError) do
+        EditGates.dispatch(ctx: ctx, route: route, out: StringIO.new, err: StringIO.new)
+      end
+      assert_match(/shape/, escaped.message,
+                   "with the rescue narrowed to route.call only, outcome.shape's NoMethodError " \
+                   "must escape dispatch instead of being isolated; this is the RED signal")
+    ensure
+      quiet_load(EDIT_GATES_LIB)
+    end
   end
 
   # 1b, end to end, through the real launcher: force a REAL exception with a
@@ -185,12 +314,21 @@ class EditGatesDispatcherTest < Minitest::Test
     original = File.read(EDIT_GATES_LIB)
 
     reraise = original.sub(
-      "rescue StandardError => e\n          err.puts \"plastic \#{gate} error: \#{e.message}\"\n          next",
-      "rescue StandardError => e\n          raise e",
+      "      rescue StandardError => e\n" \
+      "        # Fix 7: outcome.shape / out.print / err.puts now live INSIDE the same\n" \
+      "        # rescue as route.call, so a malformed outcome or a stream write\n" \
+      "        # failure (e.g. EPIPE) is isolated exactly like a raising gate, and\n" \
+      "        # never aborts the gates still to come.\n" \
+      "        err.puts \"plastic \#{gate} error: \#{e.message}\"\n" \
+      "        next\n" \
+      "      end",
+      "      rescue StandardError => e\n" \
+      "        raise e\n" \
+      "      end",
     )
     refute_equal original, reraise, "sanity: the re-raise mutation must actually change the file"
-    File.write(EDIT_GATES_LIB, reraise)
-    quiet_load(EDIT_GATES_LIB)
+    copy_dir = mutated_scripts_dir("lib/edit_gates.rb" => reraise)
+    quiet_load(File.join(copy_dir, "lib", "edit_gates.rb"))
     begin
       route = lambda { |gate, _ctx| raise "boom" if gate == "code-gate" }
       ctx = EditGates::Context.new(tool_name: "Write", file_path: "/tmp/x.md", gate_path: "/tmp/x.md")
@@ -199,17 +337,16 @@ class EditGatesDispatcherTest < Minitest::Test
       end
       assert_equal "boom", escaped.message, "with the rescue removed, the exception must escape dispatch"
     ensure
-      File.write(EDIT_GATES_LIB, original)
       quiet_load(EDIT_GATES_LIB)
     end
 
     stop_early = original.sub(
-      "          err.puts \"plastic \#{gate} error: \#{e.message}\"\n          next",
-      "          err.puts \"plastic \#{gate} error: \#{e.message}\"\n          return 0",
+      "        err.puts \"plastic \#{gate} error: \#{e.message}\"\n        next\n      end",
+      "        err.puts \"plastic \#{gate} error: \#{e.message}\"\n        return 0\n      end",
     )
     refute_equal original, stop_early, "sanity: the stop-early mutation must actually change the file"
-    File.write(EDIT_GATES_LIB, stop_early)
-    quiet_load(EDIT_GATES_LIB)
+    copy_dir = mutated_scripts_dir("lib/edit_gates.rb" => stop_early)
+    quiet_load(File.join(copy_dir, "lib", "edit_gates.rb"))
     begin
       route = lambda do |gate, _ctx|
         raise "boom" if gate == "code-gate"
@@ -220,7 +357,6 @@ class EditGatesDispatcherTest < Minitest::Test
       code = EditGates.dispatch(ctx: ctx, route: route, out: StringIO.new, err: StringIO.new)
       refute_equal 2, code, "with next replaced by return 0, the sibling's later deny must be swallowed"
     ensure
-      File.write(EDIT_GATES_LIB, original)
       quiet_load(EDIT_GATES_LIB)
     end
   end
@@ -293,29 +429,26 @@ class EditGatesDispatcherTest < Minitest::Test
       "    gate_tools.each do |gate, tools|",
     )
     refute_equal original, mutated, "sanity: the mutation must actually hoist the escape check"
-    File.write(EDIT_GATES_LIB, mutated)
-    begin
-      root = mktmp("compose-escape-redphase")
-      store = File.join(root, "store")
-      intent_dir = File.join(store, "73--demo")
-      FileUtils.mkdir_p(intent_dir)
-      File.write(File.join(intent_dir, "73--demo.md"), "## Intent\nDemo\n")
-      File.write(File.join(root, "INDEX.md"), "## Active\n- [73 — demo](73--demo/73--demo.md)\n\n## Future\n")
-      plan_path = File.join(intent_dir, "plan.md")
-      env = { "PLASTIC_TMP" => mktmp("compose-escape-redphase-tmp"), "HOME" => mktmp("compose-escape-redphase-home") }
-      out, _err, status = run_dispatcher(
-        { "tool_name" => "Write", "tool_input" => { "file_path" => plan_path, "content" => "x\n# plastic-ok\n" } },
-        env: env,
-      )
-      # With the check hoisted, lock-gate's deny is bypassed entirely: exit 0
-      # with EMPTY stdout (no deny JSON), where the true code emits the deny.
-      assert_equal 0, status.exitstatus
-      refute_includes out, "permissionDecision",
-                       "with the escape hoisted above the loop, lock-gate's deny must be bypassed; " \
-                       "this is the RED signal the true code must never produce"
-    ensure
-      File.write(EDIT_GATES_LIB, original)
-    end
+    copy_dir = mutated_scripts_dir("lib/edit_gates.rb" => mutated)
+    dispatcher_copy = File.join(copy_dir, "hook-edit-gates")
+    root = mktmp("compose-escape-redphase")
+    store = File.join(root, "store")
+    intent_dir = File.join(store, "73--demo")
+    FileUtils.mkdir_p(intent_dir)
+    File.write(File.join(intent_dir, "73--demo.md"), "## Intent\nDemo\n")
+    File.write(File.join(root, "INDEX.md"), "## Active\n- [73 — demo](73--demo/73--demo.md)\n\n## Future\n")
+    plan_path = File.join(intent_dir, "plan.md")
+    env = { "PLASTIC_TMP" => mktmp("compose-escape-redphase-tmp"), "HOME" => mktmp("compose-escape-redphase-home") }
+    out, _err, status = run_dispatcher(
+      { "tool_name" => "Write", "tool_input" => { "file_path" => plan_path, "content" => "x\n# plastic-ok\n" } },
+      env: env, dispatcher: dispatcher_copy,
+    )
+    # With the check hoisted, lock-gate's deny is bypassed entirely: exit 0
+    # with EMPTY stdout (no deny JSON), where the true code emits the deny.
+    assert_equal 0, status.exitstatus
+    refute_includes out, "permissionDecision",
+                     "with the escape hoisted above the loop, lock-gate's deny must be bypassed; " \
+                     "this is the RED signal the true code must never produce"
   end
 
   # =====================================================================
@@ -369,38 +502,58 @@ class EditGatesDispatcherTest < Minitest::Test
       "  }.freeze",
     )
     refute_equal original, mutated, "sanity: the mutation must actually reorder the table"
-    File.write(HOOK_REGISTRY_LIB, mutated)
-    begin
-      root = mktmp("compose-savepoint-redphase")
-      store = File.join(root, "store")
-      intent_dir = File.join(store, "72--demo")
-      FileUtils.mkdir_p(intent_dir)
-      File.write(File.join(intent_dir, "72--demo.md"), "## Intent\nDemo\n")
-      File.write(File.join(root, "INDEX.md"), "## Active\n- [72 — demo](72--demo/72--demo.md)\n\n## Future\n")
-      spec_path = File.join(intent_dir, "spec.md")
-      env = { "PLASTIC_TMP" => mktmp("compose-savepoint-redphase-tmp"),
-              "HOME" => mktmp("compose-savepoint-redphase-home") }
-      run_dispatcher({ "tool_name" => "Write", "tool_input" => { "file_path" => spec_path } }, env: env)
+    copy_dir = mutated_scripts_dir("lib/hook_registry.rb" => mutated)
+    dispatcher_copy = File.join(copy_dir, "hook-edit-gates")
+    root = mktmp("compose-savepoint-redphase")
+    store = File.join(root, "store")
+    intent_dir = File.join(store, "72--demo")
+    FileUtils.mkdir_p(intent_dir)
+    File.write(File.join(intent_dir, "72--demo.md"), "## Intent\nDemo\n")
+    File.write(File.join(root, "INDEX.md"), "## Active\n- [72 — demo](72--demo/72--demo.md)\n\n## Future\n")
+    spec_path = File.join(intent_dir, "spec.md")
+    env = { "PLASTIC_TMP" => mktmp("compose-savepoint-redphase-tmp"),
+            "HOME" => mktmp("compose-savepoint-redphase-home") }
+    run_dispatcher({ "tool_name" => "Write", "tool_input" => { "file_path" => spec_path } },
+                   env: env, dispatcher: dispatcher_copy)
 
-      ledger = File.join(intent_dir, "savepoint.md")
-      refute File.exist?(ledger),
-             "with savepoint-pre reordered LAST, lock-gate's deny must end evaluation before the " \
-             "append ever happens; this must go RED against the true (savepoint-pre-first) table"
-    ensure
-      File.write(HOOK_REGISTRY_LIB, original)
-    end
+    ledger = File.join(intent_dir, "savepoint.md")
+    refute File.exist?(ledger),
+           "with savepoint-pre reordered LAST, lock-gate's deny must end evaluation before the " \
+           "append ever happens; this must go RED against the true (savepoint-pre-first) table"
+  end
+
+  # Fix 3 (post-review, intent 244): savepoint-pre's own historical
+  # precedence is INVERTED from links-gate/create-gate's ctx.file_path: old
+  # hooks/savepoint-pre read tool_params.file_path FIRST, then
+  # tool_input.file_path, while links-gate/create-gate read tool_input FIRST.
+  # Pinned directly against EditGates.context_from, in-process, the most
+  # direct falsification available (revert savepoint_path's `prefer:` and
+  # this goes red immediately).
+  def test_context_from_savepoint_path_prefers_tool_params_over_tool_input
+    payload = { "tool_input" => { "file_path" => "/tmp/from-tool-input.md" },
+                "tool_params" => { "file_path" => "/tmp/from-tool-params.md" } }
+    ctx = EditGates.context_from(payload)
+    assert_equal "/tmp/from-tool-params.md", ctx.savepoint_path,
+                 "savepoint-pre's own historical precedence is tool_params FIRST, inverted from " \
+                 "links-gate/create-gate's ctx.file_path"
+    assert_equal "/tmp/from-tool-input.md", ctx.file_path,
+                 "links-gate/create-gate's ctx.file_path stays tool_input FIRST"
   end
 
   # =====================================================================
-  # Test 4: applicability by tool_name (AC7 dispatcher half, H4)
+  # Test 4: applicability by tool_name (AC7 dispatcher half, H4; regex
+  # substring semantics + empty-tool_name-runs-everything, post-review
+  # fixes 1 and 2)
   # =====================================================================
 
   # Runs a genuinely FRESH Ruby process each time (never the already-loaded,
-  # frozen GATE_TOOLS in THIS test process), so the red-phase proof's registry
-  # mutation is observed correctly.
-  def run_fresh_applicability_check(tool_name)
+  # frozen GATE_TOOLS in THIS test process), so a red-phase proof's mutation
+  # is observed correctly. `edit_gates_lib` defaults to the real
+  # scripts/lib/edit_gates.rb; red-phase proofs pass a mutated COPY's path
+  # instead (fix 5: a proof must never write to the file in the working tree).
+  def run_fresh_applicability_check(tool_name, edit_gates_lib: EDIT_GATES_LIB)
     script = <<~RUBY
-      require_relative #{EDIT_GATES_LIB.inspect}
+      require_relative #{edit_gates_lib.inspect}
       require "stringio"
       seen = []
       route = lambda { |gate, _ctx| seen << gate; nil }
@@ -419,10 +572,21 @@ class EditGatesDispatcherTest < Minitest::Test
     cases = {
       "Write" => full,
       "Edit" => full,
-      "NotebookEdit" => %w[lock-gate code-gate],
+      # Fix 1: Claude's own matcher is an UNANCHORED REGEX ("Write|Edit"
+      # matches "NotebookEdit" by substring on "Edit"), and every GATE_TOOLS
+      # entry contains "Edit" somewhere, so NotebookEdit now visits all five
+      # gates, exactly like the five old per-gate wrapper matcher groups did
+      # before this intent collapsed them into one dispatcher (the coverage
+      # narrowing an independent reviewer caught).
+      "NotebookEdit" => full,
       "mcp__serena__replace_content" => %w[lock-gate code-gate create-gate],
       "Bash" => [],
-      nil => [],
+      # Fix 2: a missing/empty tool_name means the harness matched but did
+      # not name the tool (the five old wrappers never read tool_name at all,
+      # so they ALL ran unconditionally on such a payload); it must run every
+      # gate, not none (reverses this intent's own earlier H4 ruling).
+      nil => full,
+      "" => full,
       "SomethingUnknown" => [],
     }
 
@@ -433,24 +597,70 @@ class EditGatesDispatcherTest < Minitest::Test
     end
   end
 
-  # Red-phase proof for test 4: widening create-gate's table entry to include
-  # NotebookEdit must turn the NotebookEdit row red (the same falsification
-  # ACTION_6's registry-side pinning test provides, from the dispatcher side).
-  def test_red_phase_proof_widening_create_gate_coverage_turns_notebookedit_row_red
+  # Red-phase proof for fix 1: revert tool_applies? to plain string equality
+  # (`tools.include?(tool_name)`, the pre-fix behavior) and confirm the
+  # NotebookEdit row goes red: savepoint-pre/links-gate/create-gate stop
+  # firing on it, reproducing the coverage-narrowing bug exactly.
+  def test_red_phase_proof_regex_semantics_is_load_bearing
+    original = File.read(EDIT_GATES_LIB)
+    mutated = original.sub(
+      "  def tool_applies?(tool_name, tools)\n" \
+      "    return true if tool_name.to_s.empty?\n" \
+      "    Regexp.new(tools.join(\"|\")).match?(tool_name.to_s)\n" \
+      "  end",
+      "  def tool_applies?(tool_name, tools)\n" \
+      "    return true if tool_name.to_s.empty?\n" \
+      "    tools.include?(tool_name.to_s)\n" \
+      "  end",
+    )
+    refute_equal original, mutated, "sanity: the mutation must actually revert to string equality"
+    copy_dir = mutated_scripts_dir("lib/edit_gates.rb" => mutated)
+    _code, seen = run_fresh_applicability_check(
+      "NotebookEdit", edit_gates_lib: File.join(copy_dir, "lib", "edit_gates.rb"),
+    )
+    refute_equal %w[savepoint-pre lock-gate code-gate links-gate create-gate], seen,
+                 "string equality must under-match NotebookEdit; this row must go RED"
+  end
+
+  # Red-phase proof for fix 2: revert to skip-everything on an absent/empty
+  # tool_name (this intent's earlier H4 behavior) and confirm the nil row
+  # goes red: it must run zero gates instead of all five.
+  def test_red_phase_proof_empty_tool_name_runs_everything_is_load_bearing
+    original = File.read(EDIT_GATES_LIB)
+    mutated = original.sub(
+      "  def tool_applies?(tool_name, tools)\n" \
+      "    return true if tool_name.to_s.empty?\n" \
+      "    Regexp.new(tools.join(\"|\")).match?(tool_name.to_s)\n" \
+      "  end",
+      "  def tool_applies?(tool_name, tools)\n" \
+      "    return false if tool_name.to_s.empty?\n" \
+      "    Regexp.new(tools.join(\"|\")).match?(tool_name.to_s)\n" \
+      "  end",
+    )
+    refute_equal original, mutated, "sanity: the mutation must actually revert to skip-everything"
+    copy_dir = mutated_scripts_dir("lib/edit_gates.rb" => mutated)
+    _code, seen = run_fresh_applicability_check(nil, edit_gates_lib: File.join(copy_dir, "lib", "edit_gates.rb"))
+    refute_equal %w[savepoint-pre lock-gate code-gate links-gate create-gate], seen,
+                 "skip-everything on an empty tool_name must under-match; this row must go RED"
+  end
+
+  # Red-phase proof for test 4 (H4-era coverage pin, retargeted): widening
+  # create-gate's table entry to include a tool name it does not already
+  # cover must turn that tool's row red. "Grep" replaces the original
+  # "NotebookEdit" probe: under fix 1's regex substring semantics
+  # NotebookEdit now legitimately matches every GATE_TOOLS entry (via "Edit"),
+  # so it can no longer prove a coverage change; "Grep" shares no substring
+  # with any current entry, so it still isolates a genuine widening.
+  def test_red_phase_proof_widening_create_gate_coverage_turns_a_new_tool_row_red
     original = File.read(HOOK_REGISTRY_LIB)
     mutated = original.sub(
       '"create-gate"   => (%w[Write Edit] + SERENA_EDIT_TOOLS).freeze,',
-      '"create-gate"   => (%w[Write Edit NotebookEdit] + SERENA_EDIT_TOOLS).freeze,',
+      '"create-gate"   => (%w[Write Edit Grep] + SERENA_EDIT_TOOLS).freeze,',
     )
     refute_equal original, mutated, "sanity: the mutation must actually widen create-gate's coverage"
-    File.write(HOOK_REGISTRY_LIB, mutated)
-    begin
-      _code, seen = run_fresh_applicability_check("NotebookEdit")
-      refute_equal %w[lock-gate code-gate], seen,
-                   "widening create-gate's coverage to NotebookEdit must turn this row RED"
-    ensure
-      File.write(HOOK_REGISTRY_LIB, original)
-    end
+    copy_dir = mutated_scripts_dir("lib/hook_registry.rb" => mutated)
+    _code, seen = run_fresh_applicability_check("Grep", edit_gates_lib: File.join(copy_dir, "lib", "edit_gates.rb"))
+    refute_equal [], seen, "widening create-gate's coverage to Grep must turn this row RED"
   end
 
   # ACTION_8 cross-check: scripts/hook-edit-gates's `case gate` and
