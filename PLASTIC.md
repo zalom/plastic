@@ -262,13 +262,12 @@ never more than 3-5 items.
 keeps its deliberate prose shape (fixed State/Risk/Call, single item, nothing to tabulate) and
 is exempt from this rule.
 
-## Retrieval Gate
+## QMD Search
 
-Advisory only: hard gates guard writes, locks, and structure, never reads or searches. QMD,
-Enola, and Serena are recommendations, not obligations. The deterministic entry point is
-`scripts/qmd-sync` (detect, register, reindex, status, search); a trailing `# qmd-ok` on a Bash
-command silences the hint. See `plastic-conventions > references/gates-and-enforcement.md` for
-the mechanics.
+QMD, Enola, and Serena are recommendations, not obligations. The deterministic entry point
+is `scripts/qmd-sync` (detect, register, reindex, status, search). Intent delivery reindexes
+the store; see `plastic-conventions > references/gates-and-enforcement.md` for gate
+mechanics.
 
 ## Transition Gates
 
@@ -283,7 +282,7 @@ Hard blocking: hooks exit code 2 on gate failure.
 
 ### The gates by name
 
-One line each; all are hard except the retrieval gate:
+One line each:
 
 - **create-gate** validates the proposed intent file at What write-time.
 - **gate-check** enforces lifecycle stage order.
@@ -291,7 +290,6 @@ One line each; all are hard except the retrieval gate:
   active intent directory.
 - **bash-gate** intercepts a write attempted through a bash or interpreter one-liner, mirrored
   by the code gate for Write and Edit.
-- **retrieval-gate** is advisory only: it hints at QMD and never blocks a read or search.
 
 See `plastic-conventions > references/gates-and-enforcement.md` for the escape and logging
 detail.
