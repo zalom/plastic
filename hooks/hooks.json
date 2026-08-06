@@ -35,38 +35,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" code-gate",
-            "statusMessage": "Checking lifecycle gate..."
-          },
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" lock-gate",
-            "statusMessage": "Checking lock gate..."
-          }
-        ]
-      },
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" savepoint-pre",
-            "statusMessage": "Recording stage start..."
-          },
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" links-gate",
-            "statusMessage": "Checking Links gate..."
-          }
-        ]
-      },
-      {
-        "matcher": "Write|Edit|mcp__serena__replace_content|mcp__serena__replace_symbol_body|mcp__serena__insert_after_symbol|mcp__serena__insert_before_symbol|mcp__serena__safe_delete_symbol|mcp__serena__rename_symbol",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" create-gate",
-            "statusMessage": "Checking create gate..."
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" edit-gates",
+            "statusMessage": "Checking Plastic gates..."
           }
         ]
       },

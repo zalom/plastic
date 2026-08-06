@@ -8,7 +8,7 @@ class HookRegistryTest < Minitest::Test
     pre = HookRegistry.events["PreToolUse"]
     names = pre.flat_map { |g| g["hooks"].map { |h| h["name"] } }
     assert_includes names, "bash-gate"
-    assert_includes names, "savepoint-pre"
+    assert_includes HookRegistry::GATE_TOOLS.keys, "savepoint-pre"
   end
 
   def test_write_matcher_covers_mcp_edit_tools
@@ -24,8 +24,8 @@ class HookRegistryTest < Minitest::Test
 
   def test_claude_settings_hooks_builds_plastic_commands
     settings = HookRegistry.claude_settings_hooks(hook_dir: "/x/hooks")
-    lock = settings["PreToolUse"].find { |g| g["hooks"].any? { |h| h["command"].include?("lock-gate") } }
-    assert_equal "/x/hooks/plastic-lock-gate", lock["hooks"][1]["command"]
+    lock = settings["PreToolUse"].find { |g| g["hooks"].any? { |h| h["command"].include?("edit-gates") } }
+    assert_equal "/x/hooks/plastic-edit-gates", lock["hooks"][0]["command"]
   end
 
   def test_every_registry_hook_name_has_a_launcher_file
@@ -53,13 +53,11 @@ class HookRegistryTest < Minitest::Test
     assert_equal reg_pre, json_pre
   end
 
-  # ACTION_1 (intent 192): the links-gate hook is registered under the same
-  # "Write|Edit" matcher savepoint-pre already uses.
-  def test_links_gate_registered_under_write_edit_matcher
-    pre = HookRegistry.events["PreToolUse"]
-    group = pre.find { |g| g["matcher"] == "Write|Edit" }
-    names = group["hooks"].map { |h| h["name"] }
-    assert_includes names, "links-gate"
+  # ACTION_1 (intent 192), repointed at ACTION_6 (intent 244): links-gate's
+  # registration collapsed into the single edit-gates dispatcher, so its per-gate
+  # applicability now lives in GATE_TOOLS instead of a matcher group.
+  def test_links_gate_applies_to_write_and_edit_only
+    assert_equal %w[Write Edit], HookRegistry::GATE_TOOLS["links-gate"]
   end
 
   # --- Codex registration (intent 102) ---
@@ -102,20 +100,61 @@ class HookRegistryTest < Minitest::Test
 
   def test_codex_hooks_json_status_message_matches_events_status
     codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
-    code_gate_status = HookRegistry.events["PreToolUse"]
-      .flat_map { |g| g["hooks"] }
-      .find { |h| h["name"] == "code-gate" }["status"]
 
-    code_gate_hook = codex["PreToolUse"].first["hooks"].find { |h| h["command"].include?("code-gate") }
-    assert_equal code_gate_status, code_gate_hook["statusMessage"]
+    HookRegistry::CODEX_PRE_HOOKS.each do |name|
+      expected_status = HookRegistry::GATE_STATUS[name]
+      hook = codex["PreToolUse"].first["hooks"].find { |h| h["command"].include?(name) }
+      assert_equal expected_status, hook["statusMessage"], "#{name} statusMessage must match GATE_STATUS"
+    end
   end
 
-  # Pinning: every Codex hook name must exist in the single `events` source, so a
-  # rename in `events` cannot silently drift the Codex registration.
+  # Pinning: every Codex hook name must exist either in the single `events`
+  # source or in GATE_TOOLS (the edit-path gates that left `events` when
+  # Claude's registration collapsed to one hook, intent 244), so a rename in
+  # either place cannot silently drift the Codex registration.
   def test_every_codex_hook_name_exists_in_the_events_source
-    all_names = HookRegistry.events.values.flatten.flat_map { |g| g["hooks"] }.map { |h| h["name"] }
+    all_names = HookRegistry.events.values.flatten.flat_map { |g| g["hooks"] }.map { |h| h["name"] } +
+                HookRegistry::GATE_TOOLS.keys
     (HookRegistry::CODEX_PRE_HOOKS + HookRegistry::CODEX_POST_HOOKS + HookRegistry::CODEX_BASH_HOOKS).each do |name|
-      assert_includes all_names, name, "Codex hook '#{name}' is not registered in HookRegistry.events"
+      assert_includes all_names, name, "Codex hook '#{name}' is not registered in HookRegistry.events or GATE_TOOLS"
+    end
+  end
+
+  # Intent 244: registration collapsed to ONE PreToolUse hook on the union
+  # matcher, so the three matcher groups that used to encode per-gate coverage
+  # are gone. This derives them back out of GATE_TOOLS by tool-set equality: a
+  # gate that silently widened or narrowed its coverage fails here.
+  def test_gate_tools_table_derives_todays_three_matcher_groups
+    full_union   = %w[Write Edit NotebookEdit] + HookRegistry::SERENA_EDIT_TOOLS
+    write_edit   = %w[Write Edit]
+    create_tools = %w[Write Edit] + HookRegistry::SERENA_EDIT_TOOLS
+    assert_equal full_union.sort,   HookRegistry::GATE_TOOLS["code-gate"].sort
+    assert_equal full_union.sort,   HookRegistry::GATE_TOOLS["lock-gate"].sort
+    assert_equal write_edit.sort,   HookRegistry::GATE_TOOLS["savepoint-pre"].sort
+    assert_equal write_edit.sort,   HookRegistry::GATE_TOOLS["links-gate"].sort
+    assert_equal create_tools.sort, HookRegistry::GATE_TOOLS["create-gate"].sort
+  end
+
+  def test_the_union_matcher_covers_every_gate_tools_entry
+    registered = HookRegistry::WRITE_MATCHER.split("|")
+    HookRegistry::GATE_TOOLS.each do |gate, tools|
+      (tools - registered).each do |tool|
+        flunk "#{gate} lists #{tool}, which the registered matcher never matches"
+      end
+    end
+  end
+
+  # Intent 244: the five gate names left `events` when Claude's registration
+  # collapsed, so Codex's statusMessage values now come from GATE_STATUS. Doctor
+  # compares command strings only, so nothing else would catch these going empty.
+  def test_codex_hooks_json_keeps_every_gate_status_message
+    codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
+    hooks = codex["PreToolUse"].first["hooks"]
+    HookRegistry::CODEX_PRE_HOOKS.each do |name|
+      entry = hooks.find { |h| h["command"].include?(name) }
+      refute_nil entry, "#{name} must still be registered for Codex"
+      refute_empty entry["statusMessage"].to_s, "#{name} lost its statusMessage"
+      assert_equal HookRegistry::GATE_STATUS[name], entry["statusMessage"]
     end
   end
 

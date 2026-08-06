@@ -73,16 +73,12 @@ module HookRegistry
         ] },
       ],
       "PreToolUse" => [
+        # ONE registered edit-path hook (intent 244, spec D-d). WRITE_MATCHER is a
+        # strict superset of the three matcher groups this replaces; per-gate tool
+        # applicability lives in GATE_TOOLS above and is read by
+        # scripts/hook-edit-gates, so no gate's coverage widened or narrowed.
         { "matcher" => WRITE_MATCHER, "hooks" => [
-          { "name" => "code-gate", "status" => "Checking lifecycle gate..." },
-          { "name" => "lock-gate", "status" => "Checking lock gate..." },
-        ] },
-        { "matcher" => "Write|Edit", "hooks" => [
-          { "name" => "savepoint-pre", "status" => "Recording stage start..." },
-          { "name" => "links-gate", "status" => "Checking Links gate..." },
-        ] },
-        { "matcher" => CREATE_MATCHER, "hooks" => [
-          { "name" => "create-gate", "status" => "Checking create gate..." },
+          { "name" => "edit-gates", "status" => "Checking Plastic gates..." },
         ] },
         { "matcher" => "Bash", "hooks" => [
           { "name" => "bash-gate", "status" => "Checking lifecycle gate..." },
@@ -135,10 +131,16 @@ module HookRegistry
   CODEX_LIVE_STATE_EVENTS = %w[SessionStart UserPromptSubmit PreCompact].freeze
 
   def codex_hooks_json(dispatcher_path:)
-    # name => statusMessage, straight from the single `events` source (A8): the
-    # guide Part 3 hooks.json format carries a per-hook statusMessage, so emit it.
-    status_by_name = events.values.flatten.flat_map { |g| g["hooks"] }
-                           .each_with_object({}) { |h, m| m[h["name"]] = h["status"] }
+    # GATE_STATUS first, then `events`, so `events` still wins for every name it
+    # carries. The five edit-path gate names left `events` when Claude's
+    # registration collapsed to one hook (intent 244), but Codex still registers
+    # all five separately and must keep emitting today's exact statusMessage
+    # strings; without this merge every Codex statusMessage would silently become
+    # "" and doctor's command-only diff would never notice.
+    status_by_name = GATE_STATUS.merge(
+      events.values.flatten.flat_map { |g| g["hooks"] }
+            .each_with_object({}) { |h, m| m[h["name"]] = h["status"] }
+    )
     cmd = ->(name) {
       { "type" => "command",
         "command" => "\"#{dispatcher_path}\" #{name}",
@@ -146,7 +148,12 @@ module HookRegistry
     }
     # Preserve the order these hook names appear across the PreToolUse groups in `events`.
     pre_order = events["PreToolUse"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
-    pre = (pre_order & CODEX_PRE_HOOKS).map { |n| cmd.call(n) }
+    # Claude's edit-path groups collapsed to one hook, so the per-gate order can no
+    # longer be read out of `events` (spec D-l). CODEX_PRE_HOOKS is its own literal
+    # order (code-gate lock-gate savepoint-pre links-gate create-gate) and the
+    # intersection with GATE_TOOLS.keys still validates that every Codex gate name
+    # exists in the registry. The emitted JSON is unchanged.
+    pre = (CODEX_PRE_HOOKS & GATE_TOOLS.keys).map { |n| cmd.call(n) }
     bash = (pre_order & CODEX_BASH_HOOKS).map { |n| cmd.call(n) }
     post = CODEX_POST_HOOKS.map { |n| cmd.call(n) }
 

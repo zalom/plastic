@@ -746,12 +746,15 @@ class DoctorAgentRegistrationTest < Minitest::Test
   # hand-kept list (intent 204) ---
 
   # Under the old hand-kept CLAUDE_HOOK_SCRIPTS (7 names) this launcher was
-  # never inspected, so a missing links-gate launcher would have gone
-  # unnoticed. The derived set covers all 15, so this now fails.
+  # never inspected, so a missing gate launcher would have gone unnoticed.
+  # The derived set covers everything HookRegistry.events registers, so this
+  # still fails. Intent 244 collapsed the five edit-path gates into one
+  # registered launcher, edit-gates, which is now the launcher this test
+  # deletes to prove the derived check still catches a missing one.
   def test_missing_previously_unchecked_gate_launcher_fails_hooks_exist
     hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
     write_claude_hooks(hooks_dir)
-    File.delete(File.join(hooks_dir, "plastic-links-gate"))
+    File.delete(File.join(hooks_dir, "plastic-edit-gates"))
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
 
@@ -759,7 +762,7 @@ class DoctorAgentRegistrationTest < Minitest::Test
     hooks_check = checks.find { |c| c[:name] == "hooks_exist" }
 
     assert_equal "fail", hooks_check[:status]
-    assert_includes hooks_check[:details].join, "plastic-links-gate"
+    assert_includes hooks_check[:details].join, "plastic-edit-gates"
   end
 
   def test_orphan_launcher_not_in_registry_fails_hooks_no_orphans
@@ -809,7 +812,10 @@ class DoctorAgentRegistrationTest < Minitest::Test
     exec_check = checks.find { |c| c[:name] == "hooks_executable" }
     orphan_check = checks.find { |c| c[:name] == "hooks_no_orphans" }
 
-    assert_equal 14, HookRegistry.claude_launcher_names.size
+    # Intent 244 collapsed the five edit-path gates (code-gate, lock-gate,
+    # savepoint-pre, links-gate, create-gate) into one registered launcher,
+    # edit-gates: 14 - 5 + 1 = 10.
+    assert_equal 10, HookRegistry.claude_launcher_names.size
     assert_equal "pass", hooks_check[:status]
     assert_equal "pass", exec_check[:status]
     assert_equal "pass", orphan_check[:status]
