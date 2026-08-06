@@ -274,6 +274,7 @@ class DoctorManifestSyncTest < Minitest::Test
     build_intact_install
     # Complete the rest of the liveness surface so nothing else fails.
     write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    write_claude_dispatcher(DOCTOR_TEST_HOME)
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
     write_agents(DOCTOR_TEST_CLAUDE)

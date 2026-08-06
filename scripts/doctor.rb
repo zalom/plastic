@@ -1347,6 +1347,12 @@ end
       )
     end
 
+    # claude_hooks_implemented (intent 244): the edit-path gates now live as
+    # branches inside one dispatcher (scripts/hook-edit-gates), which is
+    # exactly the shape that let links-gate ship registered and dead on
+    # Codex (intent 200's failure class, one level up).
+    checks << claude_hooks_implemented_check
+
     # hooks_registered — settings.json has Plastic hooks for required events
     settings_path = File.join(agent_dir, "settings.json")
     settings = read_json_safe(settings_path)
@@ -1435,6 +1441,82 @@ end
     checks << flat_agents_check(agent_dir, "--claude")
 
     checks
+  end
+
+  # claude_hooks_implemented (intent 244, the Claude twin of intent 200's Codex
+  # check): the edit-path gates now live as branches inside one dispatcher,
+  # which is exactly the shape that let links-gate ship registered and dead on
+  # Codex. HookRegistry::GATE_TOOLS is the registry side; scripts/hook-edit-gates
+  # is the implementation side. Checked in BOTH directions, so a registered gate
+  # with no branch (always allows, silently) and a branch nobody registers
+  # (dead code) are both reported.
+  #
+  # Read as plain text, never required: the dispatcher has top-level side effects
+  # (it reads $stdin and exits), the same reason codex_dispatcher_gate_names reads
+  # scripts/codex-hook as text.
+  def claude_dispatcher_gate_names(source)
+    case_start = source.index(/^\s*case gate\b/)
+    return nil unless case_start
+
+    case_body = source[case_start..-1]
+    end_idx = case_body.index(/^\s*end\b/)
+    scanned = end_idx ? case_body[0...end_idx] : case_body
+    names = scanned.scan(/^\s*when\s+"([^"]+)"/).flatten.uniq
+    names.empty? ? nil : names
+  end
+
+  def claude_hooks_implemented_check
+    dispatcher_path = File.join(plastic_home, "scripts", "hook-edit-gates")
+
+    unless File.exist?(dispatcher_path)
+      return check(
+        category: "agent_registration", name: "claude_hooks_implemented", status: "fail",
+        message: "scripts/hook-edit-gates not found at #{tilde(dispatcher_path)}; cannot verify " \
+                 "the edit-path gate registry and dispatcher agree",
+        fixable: true, fix_hint: "Re-run the Plastic installer"
+      )
+    end
+
+    dispatcher_names = claude_dispatcher_gate_names(File.read(dispatcher_path))
+
+    if dispatcher_names.nil?
+      return check(
+        category: "agent_registration", name: "claude_hooks_implemented", status: "fail",
+        message: "Could not read any gate names out of #{tilde(dispatcher_path)}: the `case gate` " \
+                 "statement no longer matches the shape this check expects, so the registry was " \
+                 "never actually checked against the real dispatcher. Update " \
+                 "claude_dispatcher_gate_names in doctor.rb to the file's new shape.",
+        fixable: false
+      )
+    end
+
+    registry_names = HookRegistry::GATE_TOOLS.keys
+    missing_branch = registry_names - dispatcher_names
+    dead_branch = dispatcher_names - registry_names
+
+    if missing_branch.empty? && dead_branch.empty?
+      return check(
+        category: "agent_registration", name: "claude_hooks_implemented", status: "pass",
+        message: "Every registered edit-path gate has a scripts/hook-edit-gates branch, and every " \
+                 "dispatcher branch is registered"
+      )
+    end
+
+    details = missing_branch.map do |name|
+      "#{name} is in HookRegistry::GATE_TOOLS but scripts/hook-edit-gates has no branch for it, " \
+        "so the dispatcher skips it on every edit and it never blocks anything"
+    end
+    details += dead_branch.map do |name|
+      "#{name} has a branch in scripts/hook-edit-gates but is not in HookRegistry::GATE_TOOLS, so " \
+        "the dispatcher never reaches it and it is dead code"
+    end
+
+    check(
+      category: "agent_registration", name: "claude_hooks_implemented", status: "fail",
+      message: "The edit-path gate registry and scripts/hook-edit-gates disagree on " \
+               "#{details.size} gate(s)",
+      details: details, fixable: false
+    )
   end
 
   # Plastic skills install as ~/.claude/skills/plastic-<name>/SKILL.md. Pass if at

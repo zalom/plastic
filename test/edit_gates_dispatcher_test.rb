@@ -452,4 +452,25 @@ class EditGatesDispatcherTest < Minitest::Test
       File.write(HOOK_REGISTRY_LIB, original)
     end
   end
+
+  # ACTION_8 cross-check: scripts/hook-edit-gates's `case gate` and
+  # HookRegistry::GATE_TOOLS are also compared by EditGates.dispatch at
+  # runtime (an unrouted gate returns nil and is treated as allow). Doctor's
+  # claude_hooks_implemented_check pins this too, via a text extractor; this
+  # is the plain in-process pin, independent of doctor's text-scan shape.
+  def test_every_registered_gate_has_a_dispatcher_branch
+    source = File.read(DISPATCHER)
+    branches = source.scan(/^\s*when\s+"([^"]+)"/).flatten
+    assert_equal HookRegistry::GATE_TOOLS.keys.sort, branches.sort
+  end
+
+  # Red-phase proof: delete one `when` arm and confirm the pin goes red.
+  def test_red_phase_proof_deleting_a_dispatcher_branch_turns_the_cross_check_red
+    original = File.read(DISPATCHER)
+    mutated = original.sub(/^\s*when "create-gate".*\n/, "")
+    refute_equal original, mutated, "sanity: the mutation must actually remove a when arm"
+    branches = mutated.scan(/^\s*when\s+"([^"]+)"/).flatten
+    refute_equal HookRegistry::GATE_TOOLS.keys.sort, branches.sort,
+                 "deleting the create-gate arm must turn this pin RED"
+  end
 end
