@@ -8,9 +8,12 @@
 # gated here (D2). Emits the PreToolUse JSON deny contract at exit 0; reserves
 # non-zero exit for hook-internal errors only. Matcher Write|Edit|NotebookEdit, so
 # reads never reach here.
-require "json"
-require_relative "lib/bridge"
-require_relative "lib/lock"
+#
+# Thin CLI wrapper (intent 244): the gate logic itself lives in
+# scripts/lib/edit_gates.rb, shared with the merged Claude dispatcher
+# (scripts/hook-edit-gates) so the two harnesses cannot drift.
+
+require_relative "lib/edit_gates"
 
 begin
   file_path = ARGV[0]
@@ -22,62 +25,14 @@ begin
   # "codex" here (intent 201 D2).
   harness = (ARGV[2] unless ARGV[2].to_s.empty?) || "claude"
 
-  bridge_data = Bridge.discover_bridge(session: session, cwd: Dir.pwd)   # nil = no bridge cache
-  reason = Bridge.lock_gate_decision(bridge_data, file_path, session: session, harness: harness)
-  unless reason
-    # Allow path: refresh the lease for the session that holds this target's
-    # lock (owner or delegate). Best-effort, never blocks.
-    begin
-      dir = Bridge.intent_dir_for(file_path)
-      Lock.heartbeat(dir, session: session) if dir && !session.to_s.empty?
-    rescue StandardError
-      # ignore
-    end
-
-    # Second, independent gate (intent 111 D7): the artifact-grain claim.
-    # Composes UNDER the delivery lock above; only reached once the delivery
-    # lock already allows. Dormant (nil) unless a claim file exists for this
-    # artifact, so AC7 (existing single-owner flows) is unaffected.
-    begin
-      dir = Bridge.intent_dir_for(file_path)
-      artifact = File.basename(file_path) if dir
-      if dir && artifact
-        claim_reason = Claim.claim_gate_reason(dir, artifact, session: session, harness: harness)
-        if claim_reason
-          print JSON.generate(
-            "hookSpecificOutput" => {
-              "hookEventName" => "PreToolUse",
-              "permissionDecision" => "deny",
-              "permissionDecisionReason" => claim_reason,
-            }
-          )
-          exit 0
-        end
-
-        # Fail-open surface (AC3): allow, but make the yielded/stale claim visible.
-        if Claim.fail_open?(dir, artifact)
-          $stderr.puts "plastic claim gate: unresolvable claim on #{artifact} in " \
-                       "intent #{Bridge.intent_id_from_dir(dir)} yielded; write " \
-                       "proceeds (see /plastic-lock status)"
-        end
-
-        # Heartbeat the session's own claim on the allow path (best-effort).
-        Claim.heartbeat(dir, artifact, session: session) rescue nil
-      end
-    rescue StandardError
-      # ignore: a claim-gate bug must never block a write (fail open)
-    end
-
-    exit 0
-  end
-
-  print JSON.generate(
-    "hookSpecificOutput" => {
-      "hookEventName" => "PreToolUse",
-      "permissionDecision" => "deny",
-      "permissionDecisionReason" => reason   # "run /plastic-intent-starting to lock and begin"
-    }
+  ctx = EditGates::Context.new(
+    tool_name: "Write", session: session, gate_path: file_path, file_path: file_path,
+    harness: harness,
   )
+
+  outcome = EditGates.lock_gate(ctx)
+  exit 0 unless outcome
+  print outcome.stdout
   exit 0
 rescue => e
   # Hook-internal failure only: do NOT impersonate a user-deny. Log and fail open

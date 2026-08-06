@@ -13,9 +13,13 @@
 #   { "tool_input": { "file_path":, "content": | "old_string"/"new_string"/"replace_all": } }
 # Exit 0 = allow (including every "cannot judge" case). Exit 2 = deny (message
 # on stderr).
+#
+# Thin CLI wrapper (intent 244): the gate logic itself lives in
+# scripts/lib/edit_gates.rb, shared with the merged Claude dispatcher
+# (scripts/hook-edit-gates) so the two harnesses cannot drift.
 
 require "json"
-require_relative "lib/links_gate"
+require_relative "lib/edit_gates"
 
 begin
   raw = begin
@@ -32,36 +36,9 @@ begin
   end
   exit 0 unless payload.is_a?(Hash)
 
-  path = payload.dig("tool_input", "file_path") || payload.dig("tool_params", "file_path")
-  exit 0 if path.to_s.strip.empty?
-
-  abs = File.expand_path(path)
-  exit 0 unless LinksGate.intent_file?(abs)
-
-  input = payload["tool_input"] || payload["tool_params"] || {}
-  content = input["content"]
-  old_string = input["old_string"]
-
-  before_content = File.exist?(abs) ? File.read(abs) : ""
-
-  after_content =
-    if !content.nil?
-      content
-    elsif !old_string.nil?
-      exit 0 unless before_content.include?(old_string) # the Edit tool itself will fail; nothing to judge
-      input["replace_all"] ? before_content.gsub(old_string, input["new_string"].to_s)
-                            : before_content.sub(old_string, input["new_string"].to_s)
-    else
-      exit 0 # pathless mutation (no visible proposal); cannot judge, allow
-    end
-
-  plastic_home = ENV.fetch("PLASTIC_HOME") { File.join(Dir.home, ".plastic") }
-
-  reason = LinksGate.decision(file_path: abs, before_content: before_content,
-                               after_content: after_content, plastic_home: plastic_home)
-  exit 0 unless reason
-
-  $stderr.puts reason
+  outcome = EditGates.links_gate(EditGates.context_from(payload))
+  exit 0 unless outcome
+  outcome.lines.each { |line| $stderr.puts line }
   exit 2
 rescue => e
   # Hook-internal failure only: do NOT impersonate a user-deny. Log and fail open

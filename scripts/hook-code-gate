@@ -2,7 +2,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# Usage: hook-code-gate <file_path>
+# Usage: hook-code-gate <file_path> [session_id] [content]
 # PreToolUse gate. Composes two independent block rules; EITHER blocks the edit:
 #   - Stage rule (intent 27): when auto mode is armed and the active intent has not
 #     reached How (plan.md + checklist.md), block edits to project code outside the store.
@@ -12,39 +12,24 @@
 #
 # Exit 0 = allow. Exit 2 = block (reason on stderr, shown to the agent).
 # No bridge = allow. Each rule fails open on its own conditions (see bridge.rb).
+#
+# Thin CLI wrapper (intent 244): the gate logic itself lives in
+# scripts/lib/edit_gates.rb, shared with the merged Claude dispatcher
+# (scripts/hook-edit-gates) so the two harnesses cannot drift.
 
-require_relative "lib/bridge"
+require_relative "lib/edit_gates"
 
 file_path = ARGV[0]
 exit 0 unless file_path && !file_path.empty?
 
 session = (ARGV[1] unless ARGV[1].to_s.empty?) || ENV["CLAUDE_CODE_SESSION_ID"]
 
-# Auditable escape (intent 150, mirrors the Bash gate's intent 108 D7): a trailing
-# `# plastic-ok` in the new Write/Edit content allows the edit and logs it, so a
-# deliberately sanctioned code edit no longer needs the Bash-funneling workaround.
-new_content = ARGV[2]
-if new_content && Bridge::PLASTIC_OK_RE.match?(new_content.chomp)
-  begin
-    require "fileutils"
-    log = File.join(Dir.home, ".plastic", ".cache", "gate-escapes.log")
-    FileUtils.mkdir_p(File.dirname(log))
-    File.open(log, "a") do |io|
-      io.puts("#{Time.now.utc.iso8601}\t#{session}\t#{file_path}")
-    end
-  rescue StandardError
-    # the escape still applies; logging is best-effort
-  end
-  exit 0
-end
+ctx = EditGates::Context.new(
+  tool_name: "Write", session: session, gate_path: file_path, file_path: file_path,
+  content: ARGV[2], harness: "claude",
+)
 
-# --- Load bridge (shared resolution; stdin session_id -> CLAUDE_CODE_SESSION_ID -> /tmp scan) ---
-bridge_data = Bridge.discover_bridge(session: session, cwd: file_path, edited_path: file_path)
-exit 0 unless bridge_data
-
-reason = Bridge.code_gate_decision(bridge_data, file_path) ||
-         Bridge.worktree_gate_decision(bridge_data, file_path, current_session: session)
-exit 0 unless reason
-
-$stderr.puts "PLASTIC GATE — #{reason}"
+outcome = EditGates.code_gate(ctx)
+exit 0 unless outcome
+outcome.lines.each { |line| $stderr.puts line }
 exit 2

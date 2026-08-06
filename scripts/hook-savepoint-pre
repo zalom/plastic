@@ -13,20 +13,17 @@
 # write: any non-match or failure exits 0. The append is idempotent and only
 # fires while the stage is genuinely starting (the artifact is not yet a real,
 # non-placeholder file), so re-edits add nothing.
+#
+# Thin CLI wrapper (intent 244): the gate logic itself lives in
+# scripts/lib/edit_gates.rb, shared with the merged Claude dispatcher
+# (scripts/hook-edit-gates) so the two harnesses cannot drift.
 
-require_relative "lib/bridge"
+require_relative "lib/edit_gates"
 
 file_path = ARGV[0]
 exit 0 if file_path.nil? || file_path.empty?
 
-file_path_abs = File.expand_path(file_path)
-intent_dir = Bridge.intent_dir_for(file_path_abs)
-exit 0 unless intent_dir
-
-begin
-  Bridge.append_started_savepoint(intent_dir, file_path_abs)
-rescue StandardError
-  # best-effort; the ledger is rebuildable and the post line still lands
-end
-
+EditGates.savepoint_pre(
+  EditGates::Context.new(tool_name: "Write", file_path: file_path, harness: "claude")
+)
 exit 0

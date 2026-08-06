@@ -26,9 +26,15 @@
 #   Pathless MCP mutation:  validate the CURRENT on-disk file (the PostToolUse
 #                           gate-check backstop validates the result); a
 #                           missing file blocks (fail-safe).
+#
+# Thin CLI wrapper (intent 244): the gate logic itself lives in
+# scripts/lib/edit_gates.rb, shared with the merged Claude dispatcher
+# (scripts/hook-edit-gates) so the two harnesses cannot drift. Deliberately
+# WITHOUT a top-level rescue, matching this script's behavior before the
+# extraction: an internal exception here has never been caught.
 
 require "json"
-require_relative "lib/intent_validator"
+require_relative "lib/edit_gates"
 
 raw = $stdin.read rescue nil
 exit 0 if raw.nil? || raw.strip.empty?
@@ -36,60 +42,7 @@ exit 0 if raw.nil? || raw.strip.empty?
 payload = JSON.parse(raw) rescue nil
 exit 0 unless payload.is_a?(Hash)
 
-path = payload.dig("tool_input", "file_path") || payload.dig("tool_params", "file_path")
-exit 0 if path.nil? || path.to_s.strip.empty?
-
-# Precise path matcher: the target must be an intent file inside its own
-# equally-named dir. Never matches sibling lifecycle files (spec.md, etc.) or
-# unrelated store files.
-abs = File.expand_path(path)
-dir = File.dirname(abs)
-is_intent_file = dir.match?(%r{/store/[^/]+--[^/]+\z}) &&
-                 File.basename(abs) == "#{File.basename(dir)}.md"
-exit 0 unless is_intent_file
-
-input = payload["tool_input"] || payload["tool_params"] || {}
-content = input["content"]
-old_string = input["old_string"]
-
-def block!(lines)
-  Array(lines).each { |l| $stderr.puts l }
-  exit 2
-end
-
-result =
-  if !content.nil?
-    # Write: validate the proposed content (intent 60b, unchanged).
-    IntentValidator.validate_content(content)
-  elsif !old_string.nil?
-    # Edit (intent 108, D7): simulate the replacement on the on-disk file and
-    # validate the RESULT, so an Edit can no longer sneak an intent file past
-    # the validator.
-    unless File.exist?(abs)
-      block!("PLASTIC CREATE GATE — #{File.basename(abs)} does not exist; " \
-             "create intents via new-intent / plastic-intent-creating.")
-    end
-    current = File.read(abs)
-    unless current.include?(old_string)
-      exit 0 # the Edit tool itself will fail; nothing lands, nothing to judge
-    end
-    simulated = input["replace_all"] ? current.gsub(old_string, input["new_string"].to_s)
-                                     : current.sub(old_string, input["new_string"].to_s)
-    IntentValidator.validate_content(simulated)
-  else
-    # Pathless mutation (MCP symbolic edits): the proposal is not visible at
-    # PreToolUse. Judge the CURRENT file: valid -> allow (the PostToolUse
-    # gate-check backstop validates the result), invalid/missing -> block.
-    unless File.exist?(abs)
-      block!("PLASTIC CREATE GATE — #{File.basename(abs)}: cannot read proposed " \
-             "content and no file exists; refusing to allow an unvalidated intent write.")
-    end
-    IntentValidator.validate_content(File.read(abs))
-  end
-
-exit 0 if result[:ok]
-
-$stderr.puts "PLASTIC CREATE GATE — #{File.basename(abs)} is not a valid intent:"
-result[:errors].each { |e| $stderr.puts "  #{e}" }
-$stderr.puts "Create intents via new-intent / plastic-intent-creating; do not hand-author them."
+outcome = EditGates.create_gate(EditGates.context_from(payload))
+exit 0 unless outcome
+outcome.lines.each { |line| $stderr.puts line }
 exit 2

@@ -25,6 +25,37 @@ module HookRegistry
   WRITE_MATCHER = (%w[Write Edit NotebookEdit] + SERENA_EDIT_TOOLS).join("|")
   CREATE_MATCHER = (%w[Write Edit] + SERENA_EDIT_TOOLS).join("|")
 
+  # Per-gate tool applicability for the merged edit-path dispatcher (intent 244,
+  # spec D-d/D-l). Registration collapses to ONE PreToolUse hook on WRITE_MATCHER
+  # (a strict superset of the three former matcher groups), and this table is what
+  # keeps each gate's own coverage exactly what it was: scripts/hook-edit-gates
+  # reads tool_name off the payload and skips any gate whose list excludes it.
+  # Key order IS the evaluation order (spec D-a): savepoint-pre first because it
+  # never denies and its ledger append must stay unconditional; lock-gate leads
+  # the deniers because holding the delivery lock is the precondition the other
+  # rules assume. A test pins this table against today's three matcher groups, so
+  # no gate's coverage can widen or narrow silently.
+  GATE_TOOLS = {
+    "savepoint-pre" => %w[Write Edit].freeze,
+    "lock-gate"     => (%w[Write Edit NotebookEdit] + SERENA_EDIT_TOOLS).freeze,
+    "code-gate"     => (%w[Write Edit NotebookEdit] + SERENA_EDIT_TOOLS).freeze,
+    "links-gate"    => %w[Write Edit].freeze,
+    "create-gate"   => (%w[Write Edit] + SERENA_EDIT_TOOLS).freeze,
+  }.freeze
+
+  # Per-gate statusMessage, kept as its own source because these five names stop
+  # appearing in `events` once registration collapses, while Codex still
+  # registers all five per-gate entries and must keep emitting today's exact
+  # statusMessage strings (intent 244, spec D-e). codex_hooks_json merges this
+  # under the names it derives from `events`.
+  GATE_STATUS = {
+    "code-gate"     => "Checking lifecycle gate...",
+    "lock-gate"     => "Checking lock gate...",
+    "savepoint-pre" => "Recording stage start...",
+    "links-gate"    => "Checking Links gate...",
+    "create-gate"   => "Checking create gate...",
+  }.freeze
+
   # event => ordered list of { "matcher" =>, "hooks" => [{ "name" =>, "status" => }] }
   # The name is the hooks/<name> launcher; the flat install ships it as
   # ~/.claude/hooks/plastic-<name>.
