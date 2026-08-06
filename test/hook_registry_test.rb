@@ -86,14 +86,14 @@ class HookRegistryTest < Minitest::Test
     assert_equal %w[gate-check], names
   end
 
-  def test_codex_hooks_json_emits_bash_gate_and_retrieval_gate_under_bash_matcher
+  def test_codex_hooks_json_emits_bash_gate_under_bash_matcher
     codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
 
     bash_group = codex["PreToolUse"].find { |g| g["matcher"] == "Bash" }
     refute_nil bash_group, "a Bash matcher group must be registered for Codex"
     names = bash_group["hooks"].map { |h| h["command"][/codex-hook" (\S+)/, 1] }
-    assert_equal %w[bash-gate retrieval-gate], names,
-      "bash-gate must be listed before retrieval-gate, the order events lists them"
+    assert_equal %w[bash-gate], names,
+      "the Codex Bash matcher carries exactly CODEX_BASH_HOOKS"
     bash_group["hooks"].each do |h|
       assert_equal "command", h["type"]
       refute_nil h["statusMessage"]

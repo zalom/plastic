@@ -56,9 +56,6 @@ module HookRegistry
         { "matcher" => "Bash", "hooks" => [
           { "name" => "bash-gate", "status" => "Checking lifecycle gate..." },
         ] },
-        { "matcher" => "Bash|Read|Grep|Glob", "hooks" => [
-          { "name" => "retrieval-gate", "status" => "Checking retrieval gate..." },
-        ] },
       ],
       "PostToolUse" => [
         { "matcher" => "Write|Edit", "hooks" => [
@@ -89,16 +86,14 @@ module HookRegistry
   CODEX_POST_HOOKS = %w[gate-check].freeze
 
   # Codex's shell-tool gate hole (intent 203): bash-gate (denies a shell write to
-  # project code before How) and retrieval-gate (advisory, never denies) both
-  # belong on the Bash matcher, and ONLY Bash: the official Codex hooks doc's
-  # PreToolUse event catalog enumerates exactly Bash, apply_patch, and MCP tool
-  # calls, and neither it nor the two prior Codex research passes (198's
-  # official-docs research, 181's deep research) documents a discrete Read,
-  # Grep, or Glob tool name (D3). So this does NOT copy Claude's four-name
-  # "Bash|Read|Grep|Glob" retrieval-gate matcher; registering a tool name Codex
-  # never reports would be dead weight that looks alive, the exact defect this
-  # intent exists to fix.
-  CODEX_BASH_HOOKS = %w[bash-gate retrieval-gate].freeze
+  # project code before How) belongs on the Bash matcher, and ONLY Bash: the
+  # official Codex hooks doc's PreToolUse event catalog enumerates exactly Bash,
+  # apply_patch, and MCP tool calls, and neither it nor the two prior Codex
+  # research passes (198's official-docs research, 181's deep research)
+  # documents a discrete Read, Grep, or Glob tool name (D3). Registering a tool
+  # name Codex never reports would be dead weight that looks alive, the exact
+  # defect that intent exists to fix.
+  CODEX_BASH_HOOKS = %w[bash-gate].freeze
 
   # Live-state events registered WHOLE (intent 199), unlike CODEX_PRE_HOOKS/
   # CODEX_POST_HOOKS above: Codex's SessionStart/UserPromptSubmit/PreCompact already

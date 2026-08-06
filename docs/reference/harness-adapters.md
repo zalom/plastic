@@ -248,8 +248,8 @@ stdout, stderr, and exit code unchanged, the same "drive the body, relay its out
 already used for the file-mutation gates. `SubagentStart` is still not wired: no Plastic
 hook exists for it on any harness today.
 
-The shell-tool write hole this once left open, `bash-gate` and `retrieval-gate` never reaching
-Codex's shell tool, is now closed; see the Bash matcher subsection under L3 below.
+The shell-tool write hole this once left open, `bash-gate` never reaching Codex's shell tool,
+is now closed; see the Bash matcher subsection under L3 below.
 
 ### Per-agent model mapping (intent 102a)
 
@@ -374,29 +374,27 @@ exits 0 on an unrecognized gate; the loud failure lives only in doctor.
 ### Shell-tool gate: Bash matcher (intent 203)
 
 Codex's shell tool reports `tool_name: "Bash"`, confirmed against the official Codex hooks
-doc, with the command in `tool_input.command`. Two more hooks Claude already wires on its
-`Bash` matcher now reach Codex the same way: `bash-gate` (denies a shell write to project
-code before the active intent reaches How, the same lifecycle discipline the `apply_patch`
-gates above already enforce) and `retrieval-gate` (advisory only, the QMD/Enola-first nudge;
-it never denies anything).
+doc, with the command in `tool_input.command`. One more hook Claude already wires on its
+`Bash` matcher now reaches Codex the same way: `bash-gate`, which denies a shell write to
+project code before the active intent reaches How, the same lifecycle discipline the
+`apply_patch` gates above already enforce.
 
-The Codex matcher is `Bash` alone, not Claude's four-name `Bash|Read|Grep|Glob` string: the
-official Codex hooks doc's PreToolUse event catalog enumerates exactly `Bash`, `apply_patch`,
-and MCP tool calls, and neither it nor the two prior Codex research passes (198's
-official-docs research, 181's deep research) documents a discrete `Read`, `Grep`, or `Glob`
-tool name. Registering a tool name Codex never reports would be dead weight that looks
-alive, so `HookRegistry::CODEX_BASH_HOOKS` intersects against the same `Bash` matcher Claude
-already uses (see `HookRegistry.events`), not a copy of Claude's four-name string.
+The Codex matcher is `Bash` alone: the official Codex hooks doc's PreToolUse event catalog
+enumerates exactly `Bash`, `apply_patch`, and MCP tool calls, and neither it nor the two prior
+Codex research passes (198's official-docs research, 181's deep research) documents a discrete
+`Read`, `Grep`, or `Glob` tool name. Registering a tool name Codex never reports would be dead
+weight that looks alive, so `HookRegistry::CODEX_BASH_HOOKS` intersects against the same `Bash`
+matcher Claude already uses (see `HookRegistry.events`).
 
 The dispatch is a third payload category in `scripts/codex-hook`, a peer to the file-mutation
 `apply_patch` gates and the live-state hooks, not folded into either. A shell command carries
 no `apply_patch` diff envelope, so routing it through `ApplyPatchEnvelope.parse` would yield an
 empty op list and hit the dispatcher's own `exit 0 if ops.empty?` fail-open line, silently
-reopening the exact hole this intent closes. Instead `bash-gate` and `retrieval-gate` exec the
-SAME `scripts/hook-bash-gate` / `scripts/hook-retrieval-gate` files Claude already runs,
-unmodified, relaying Codex's raw stdin, exit code, and stderr, the identical "drive the body,
-relay its output" pattern intent 199 used for the live-state hooks. Because the gate bodies
-run unchanged, the audited `# plastic-ok` escape (logged to
+reopening the exact hole this intent closes. Instead `bash-gate` execs the SAME
+`scripts/hook-bash-gate` file Claude already runs, unmodified, relaying Codex's raw stdin,
+exit code, and stderr, the identical "drive the body, relay its output" pattern intent 199
+used for the live-state hooks. Because the gate body runs unchanged, the audited
+`# plastic-ok` escape (logged to
 `~/.plastic/.cache/gate-escapes.log`) works on Codex with no new code.
 
 ### config.toml (deferred, read-only advisory)
@@ -447,8 +445,8 @@ landed. Intent 198 closed the gap between "shipped" and "actually works on a fir
 the directory-presence probe, the missing links-gate dispatcher branch, the hook-trust
 reminder, and the Codex model-drift check. Intent 199 closed Codex's L2 live-state gap:
 `SessionStart`, `UserPromptSubmit`, and `PreCompact` now reach Codex the same way they reach
-Claude. Intent 203 closed the shell-tool gate hole: `bash-gate` and `retrieval-gate` now reach
-Codex's `Bash` tool, matched on `Bash` alone since that is the one shell-tool name the official
-Codex hooks doc confirms (no discrete `Read`, `Grep`, or `Glob` tool is documented). The
+Claude. Intent 203 closed the shell-tool gate hole: `bash-gate` now reaches Codex's `Bash`
+tool, matched on `Bash` alone since that is the one shell-tool name the official Codex hooks
+doc confirms (no discrete `Read`, `Grep`, or `Glob` tool is documented). The
 current line of sight for the remaining harnesses is Hermes, then OpenClaw. All of them target
 reasoning agents only.

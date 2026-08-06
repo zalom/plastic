@@ -291,46 +291,4 @@ class QmdSyncTest < Minitest::Test
     assert_equal ["plastic-dealintell", "plastic-global"], cols
   end
 
-  # --- fresh? (intent 84 freshness probe) ---
-
-  STATUS_FRESH = <<~TXT
-    QMD Status
-    Documents
-      Total:    833 files indexed
-      Pending:  0 need embedding
-  TXT
-
-  STATUS_STALE = <<~TXT
-    QMD Status
-    Documents
-      Total:    833 files indexed
-      Pending:  20 need embedding (run 'qmd embed')
-  TXT
-
-  STATUS_NO_PENDING = <<~TXT
-    QMD Status
-    Documents
-      Total:    833 files indexed
-  TXT
-
-  def test_fresh_true_when_pending_zero
-    runner, _ = fake_runner("status" => [STATUS_FRESH, true])
-    assert_equal true, QmdSync.fresh?(runner: runner)
-  end
-
-  def test_fresh_false_when_pending_nonzero
-    runner, _ = fake_runner("status" => [STATUS_STALE, true])
-    assert_equal false, QmdSync.fresh?(runner: runner)
-  end
-
-  def test_fresh_true_on_parse_miss
-    # No Pending line -> conservative fresh (do not block reads on a parse miss).
-    runner, _ = fake_runner("status" => [STATUS_NO_PENDING, true])
-    assert_equal true, QmdSync.fresh?(runner: runner)
-  end
-
-  def test_fresh_false_when_runner_fails
-    runner, _ = fake_runner("status" => ["", false])
-    assert_equal false, QmdSync.fresh?(runner: runner)
-  end
 end

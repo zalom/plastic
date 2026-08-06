@@ -991,8 +991,7 @@ close that gap.
   absolute path); a trailing `# plastic-ok` comment allows a sanctioned
   command and logs it to `~/.plastic/.cache/gate-escapes.log`. The worktree
   gate confines only paths inside the project repo (derived from the code
-  worktree path); the retrieval gate is advisory and never blocks a read or
-  search.
+  worktree path). Reads and searches are never gated.
 - **Scope boundary**: `worktree.rb` is pure provisioning and lock-state logic. It
   never edits `projects.yml` and never mutates qmd. The PreToolUse gate that
   blocks edits outside the active worktree, and the cleanup policy that decides

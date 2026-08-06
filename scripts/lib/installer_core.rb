@@ -314,8 +314,6 @@ class InstallerCore
       "scripts/hook-code-gate" => "scripts/hook-code-gate",
       "scripts/hook-lock-gate" => "scripts/hook-lock-gate",
       "scripts/hook-bash-gate" => "scripts/hook-bash-gate",
-      "scripts/hook-retrieval-gate" => "scripts/hook-retrieval-gate",
-      "scripts/lib/retrieval_gate.rb" => "scripts/lib/retrieval_gate.rb",
       "scripts/hook-auto-arm" => "scripts/hook-auto-arm",
       "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
       "scripts/lib/lock.rb" => "scripts/lib/lock.rb",

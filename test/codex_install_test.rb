@@ -985,8 +985,8 @@ class CodexInstallTest < Minitest::Test
     @core.install_for_agent("codex", false)
     content = File.read(codex_hook_path)
     updated = content.sub(
-      "SHELL_HOOKS = %w[bash-gate retrieval-gate].freeze",
-      "SHELL_HOOKS = %w[bash-gate retrieval-gate phantom-gate].freeze"
+      "SHELL_HOOKS = %w[bash-gate].freeze",
+      "SHELL_HOOKS = %w[bash-gate phantom-gate].freeze"
     )
     refute_equal content, updated, "fixture assumption: the SHELL_HOOKS literal must still match this exact text"
     File.write(codex_hook_path, updated)

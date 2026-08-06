@@ -134,21 +134,6 @@ module QmdSync
     pid
   end
 
-  # True when the QMD index has no pending (unembedded) documents. Binary
-  # freshness signal for the retrieval gate (intent 84, Lever 2). `qmd status` is
-  # plain text (no --json); it prints a line like "Pending: N need embedding".
-  # No pending line found -> treat as fresh (conservative: a parse miss must not
-  # block reads). Runner failure -> false (cannot confirm freshness). The caller
-  # gates on `detect` first, so absence is handled upstream; this only answers
-  # "is the present index fresh?". Pure via the injected runner.
-  def self.fresh?(runner: default_runner)
-    out, ok = runner.call(["status"])
-    return false unless ok && out
-    m = out[/^\s*Pending:\s*(\d+)\b/i, 1]
-    pending = m ? m.to_i : 0
-    pending.zero?
-  end
-
   # Read-only status used by doctor and the session-start report line.
   # Returns a structured hash; never mutates the index.
   def status(plastic_home:, runner: default_runner, detector: method(:detect))

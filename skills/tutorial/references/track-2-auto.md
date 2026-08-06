@@ -56,10 +56,9 @@ Checkpoint: name one thing auto will always stop and ask about, rather than deci
 No new command. Auto still honors every hard gate a guided session would hit: the delivery
 lock (one owner at a time), the code gate (shut until `plan.md` and `checklist.md` exist),
 and the create gate (intents only come from the tool that makes them, never hand-authored).
-One gate, retrieval, is advisory only and never blocks anything; it just adds a note.
 
-Checkpoint: read one gate message from the run so far and say whether it is one of the hard
-gates or the one advisory note.
+Checkpoint: read one gate message from the run so far and name which of the three gates it
+came from.
 
 ### 4. Reading the per-stage reports
 

@@ -34,9 +34,8 @@ present, search it before re-deriving an existing decision, spec, or outcome.
   recommendation line per present tool, Enola-first when both code-navigation tools are
   present (one code-navigation slot, Enola wins over Serena), and the per-skill
   QMD-first steps run `qmd-sync search` before grep/Read, then open the authoritative
-  intent file. The retrieval gate is advisory and never blocks a read or search. Use the
-  deterministic `scripts/qmd-sync search "<terms>"` helper, which scopes collections for
-  you and is a clean no-op when QMD is absent.
+  intent file. Use the deterministic `scripts/qmd-sync search "<terms>"` helper, which
+  scopes collections for you and is a clean no-op when QMD is absent.
 - **Completion fires an async reindex.** Intent delivery reindexes the delivering store's
   collection in the background (non-blocking), so the index stays fresh while
   "index mutation is lifecycle-only" stays true. Never reindex ad-hoc.

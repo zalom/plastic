@@ -1598,8 +1598,8 @@ module Bridge
   end
 
   # A TRAILING `# plastic-ok` shell comment: the auditable escape for
-  # sanctioned bash/interpreter writes (mirrors the retrieval gate's
-  # `# qmd-ok`). The hook logs every use to ~/.plastic/.cache/gate-escapes.log.
+  # sanctioned bash/interpreter writes. The hook logs every use to
+  # ~/.plastic/.cache/gate-escapes.log.
   PLASTIC_OK_RE = /(?:\A|\s)#\s*plastic-ok\s*\z/.freeze
 
   def self.bash_escape?(command)

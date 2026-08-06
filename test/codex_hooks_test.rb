@@ -535,7 +535,7 @@ class CodexHooksTest < Minitest::Test
     }
   end
 
-  # ---- bash-gate / retrieval-gate (intent 203): the Bash-tool dispatch path ----
+  # ---- bash-gate (intent 203): the Bash-tool dispatch path ----
 
   def test_bash_gate_denies_a_pre_how_shell_write_to_project_code
     intent_dir = File.join(@store, "52--demo")
@@ -576,37 +576,6 @@ class CodexHooksTest < Minitest::Test
     assert_includes File.read(log), "codex-esc"
   end
 
-  def test_retrieval_gate_never_denies_even_for_a_write_command
-    project_file = File.join(@root, "code", "app.rb")
-    FileUtils.mkdir_p(File.dirname(project_file))
-    File.write(project_file, "puts 1\n")
-
-    command = "echo 'puts 2' > #{project_file}"
-    _out, status = run_hook("retrieval-gate", codex_bash_payload(command))
-    assert_equal 0, status.exitstatus, "retrieval-gate must never deny, even for a write-shaped command"
-  end
-
-  def test_bash_gate_vs_retrieval_gate_prove_the_difference
-    intent_dir = File.join(@store, "52--demo")
-    FileUtils.mkdir_p(intent_dir)
-    File.write(File.join(intent_dir, "52--demo.md"), "## Intent\nDemo\n")
-    File.write(File.join(intent_dir, "spec.md"), "spec\n")
-
-    project_file = File.join(@root, "code", "app.rb")
-    FileUtils.mkdir_p(File.dirname(project_file))
-    File.write(project_file, "puts 1\n")
-
-    silence_stderr { Bridge.arm_auto(nil, intent_id: "52", intent_dir: intent_dir, store: @store, name: "demo") }
-
-    command = "echo 'puts 2' > #{project_file}"
-
-    _bash_out, bash_status = run_hook("bash-gate", codex_bash_payload(command))
-    assert_equal 2, bash_status.exitstatus, "bash-gate must deny this write"
-
-    _retrieval_out, retrieval_status = run_hook("retrieval-gate", codex_bash_payload(command))
-    assert_equal 0, retrieval_status.exitstatus, "retrieval-gate must never deny the SAME command"
-  end
-
   def test_bash_gate_allows_a_read_only_command
     _out, status = run_hook("bash-gate", codex_bash_payload("cat app.rb"))
     assert_equal 0, status.exitstatus
@@ -623,11 +592,6 @@ class CodexHooksTest < Minitest::Test
       out = io.read
     end
     assert_equal 0, $?.exitstatus, out
-  end
-
-  def test_retrieval_gate_missing_tool_input_fails_open
-    _out, status = run_hook("retrieval-gate", { "session_id" => "", "cwd" => @store, "tool_name" => "Bash" })
-    assert_equal 0, status.exitstatus
   end
 
   # ---- live-state adversarial fail-open (intent 199, mirrors Decision 14) ----

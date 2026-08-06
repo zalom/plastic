@@ -794,7 +794,7 @@ class DoctorAgentRegistrationTest < Minitest::Test
                  "plastic-statusline is the statusLine entry point, not a hook: #{orphan_check[:details].inspect}"
   end
 
-  def test_all_fifteen_launchers_plus_statusline_pass_hooks_exist_and_no_orphans
+  def test_all_launchers_plus_statusline_pass_hooks_exist_and_no_orphans
     hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
     write_claude_hooks(hooks_dir)
     statusline = File.join(hooks_dir, "plastic-statusline")
@@ -809,7 +809,7 @@ class DoctorAgentRegistrationTest < Minitest::Test
     exec_check = checks.find { |c| c[:name] == "hooks_executable" }
     orphan_check = checks.find { |c| c[:name] == "hooks_no_orphans" }
 
-    assert_equal 15, HookRegistry.claude_launcher_names.size
+    assert_equal 14, HookRegistry.claude_launcher_names.size
     assert_equal "pass", hooks_check[:status]
     assert_equal "pass", exec_check[:status]
     assert_equal "pass", orphan_check[:status]

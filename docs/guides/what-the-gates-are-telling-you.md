@@ -11,19 +11,14 @@ The examples below show Claude Code's slash form. On Codex CLI, invoke the same 
 dollar prefix instead (for example `$plastic-doctor`), or let Codex pick one implicitly by
 matching its description.
 
-## Two kinds of gate
+## What a gate is
 
-Plastic has HARD gates and one ADVISORY gate. This distinction matters:
+Every Plastic gate is a hard gate. The gates (lock, code, create, worktree)
+stop the action outright. You cannot proceed until you fix the thing the
+message names.
 
-- **HARD gates** (lock, code, create, worktree) stop the action outright. You
-  cannot proceed until you fix the thing the message names.
-- **The ADVISORY gate** (retrieval) never stops anything. It only adds a
-  reminder. Reads and searches over the intent stores are never blocked, by
-  any gate, ever.
-
-Most first-time confusion comes from not knowing which kind you hit. If your
-read or search still ran and you just got extra text with it, that was the
-advisory gate. Nothing failed.
+Gates guard writes, locks, and structure. They never guard reads. Reads and
+searches over the intent stores are never blocked, by any gate, ever.
 
 ## The hard gates, verbatim
 
@@ -86,22 +81,12 @@ through the tool that creates them.
 Fix: `new-intent` (the underlying script) or `plastic-intent-creating` (the
 skill that wraps it). A choice of two again.
 
-## The one advisory gate
-
-**Retrieval gate.** This one never blocks anything. If it fires, your search
-still ran; you just get an extra note:
-
-> PLASTIC advisory: {reason} (this search ran; the hint is not a block)
-
-The reason is usually a nudge to search through the proper tool instead of
-scanning files directly. It is a suggestion, not a wall.
-
 ## The honest summary
 
 Of the six real hard-gate messages, four name one clear fixing command
 (no lock, lock held, stale lock, corrupt lock). Two name a choice of two
-commands (code gate, create gate). The advisory retrieval gate never denies
-at all, and no read or search is ever blocked by anything in Plastic.
+commands (code gate, create gate). No read or search is ever blocked by
+anything in Plastic.
 
 So the rule to remember is not "every deny names the one command." It is:
 every deny names the command, or the short choice of commands, that gets you
