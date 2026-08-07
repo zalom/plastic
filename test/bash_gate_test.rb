@@ -312,4 +312,62 @@ class BashGateTest < Minitest::Test
   ensure
     FileUtils.rm_rf(tmp)
   end
+
+  # --- block log (intent 229) --------------------------------------------------
+
+  def blocked_bash_payload
+    cmd = "ruby -e 'File.write(#{File.join(@intent_dir, 'spec.md').inspect}, \"x\")'"
+    { "tool_input" => { "command" => cmd }, "cwd" => @cwd, "session_id" => "sess-blk" }
+  end
+
+  def run_bash_hook(payload, tmp)
+    Open3.capture3(
+      { "HOME" => @home, "PLASTIC_TMP" => tmp, "CLAUDE_CODE_SESSION_ID" => nil },
+      RbConfig.ruby, HOOK, stdin_data: JSON.generate(payload)
+    )
+  end
+
+  def test_hook_block_writes_a_block_log_line
+    activate_intent_27
+    Lock.acquire(@intent_dir, session: "other")
+    tmp = Dir.mktmpdir("bash-gate-block-tmp")
+    _out, err, status = run_bash_hook(blocked_bash_payload, tmp)
+
+    assert_equal 2, status.exitstatus, "a locked intent dir write must be blocked: #{err}"
+    log = File.join(@home, ".plastic", ".cache", "gate-blocks.log")
+    assert File.exist?(log), "a block must be logged"
+    f = File.read(log).lines.first.chomp.split("\t", -1)
+    assert_equal 6, f.size
+    assert_equal "bash-gate", f[1]
+    assert_equal "sess-blk", f[2]
+    assert_includes f[4], "spec.md"
+    refute_empty f[5], "the rule field carries the deny reason"
+  ensure
+    FileUtils.rm_rf(tmp)
+  end
+
+  def test_a_failing_block_log_write_does_not_change_the_bash_hook_output
+    activate_intent_27
+    Lock.acquire(@intent_dir, session: "other")
+    tmp = Dir.mktmpdir("bash-gate-block-fail-tmp")
+    payload = blocked_bash_payload
+
+    out_ok, err_ok, st_ok = run_bash_hook(payload, tmp)
+
+    # Break only the log destination: same HOME, same store, same lock, same
+    # payload. A regular file where .cache must be a directory makes mkdir_p
+    # raise Errno::EEXIST, which the hook's rescue swallows.
+    cache = File.join(@home, ".plastic", ".cache")
+    FileUtils.rm_rf(cache)
+    File.write(cache, "not a directory\n")
+
+    out_bad, err_bad, st_bad = run_bash_hook(payload, tmp)
+
+    assert_equal st_ok.exitstatus, st_bad.exitstatus
+    assert_equal out_ok, out_bad, "stdout must be byte-for-byte identical"
+    assert_equal err_ok, err_bad, "stderr must be byte-for-byte identical"
+    assert_equal 2, st_bad.exitstatus, "the block must still happen"
+  ensure
+    FileUtils.rm_rf(tmp)
+  end
 end
