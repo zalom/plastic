@@ -1,0 +1,120 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# scaffold-intent (intent 213) - one CLI, three subcommands, each writes one lifecycle
+# artifact by copying or mechanically deriving it from an already-committed source. Every
+# field it writes is a verbatim copy or a mechanical derivation (a `git diff --stat`, a
+# supplied file's contents) of an already-committed artifact; no subcommand interprets or
+# invents prose. A field it cannot derive mechanically is left as the template's own stub
+# text instead of being guessed at.
+#
+# Usage:
+#   scaffold-intent spec|checklist|outcome --store <path> --id <intent_id> [--force]
+#     [--test-summary <path>]   (outcome subcommand only)
+#
+# Subcommand is the first positional argument. --store and --id are required for every
+# subcommand. --test-summary is valid only on the outcome subcommand; on spec or
+# checklist, or naming a path that does not exist, it is a usage error (exit 1). No other
+# flags exist: --store, --id, --force, and --test-summary (outcome only) are the whole
+# shipped surface (D5, a one-way door).
+#
+# Exit codes:
+#   0  scaffolded
+#   1  usage or path-resolution failure
+#   2  refused to overwrite real content without --force
+#   3  a prerequisite committed artifact is missing or still sentinel
+#
+# The actions/ rule (intent 133a, D11): scaffold-intent does not scaffold actions/ in any
+# form. Actions require judgment and stay entirely with the planner. No subcommand
+# creates the directory, writes a .gitkeep, or writes a sentinel-only ACTION_*.md.
+#
+# outcome is an end-of-Exec step. Run it once the diff and the test summary exist, right
+# before plastic-intent-ending writes the narrative. Writing outcome.md makes the intent
+# read as Done to the statusline and to any stage-derived display (Bridge.derive_stage
+# keys on outcome.md's presence). This does NOT purge a bridge:
+# Bridge.purge_done_bridges keys on INDEX Active status plus lock presence, never on the
+# derived stage.
+
+require_relative "lib/scaffold_intent"
+
+SUBCOMMANDS = %w[spec checklist outcome].freeze
+
+def parse_args(argv)
+  opts = { subcommand: nil, store: nil, id: nil, force: false, test_summary: nil }
+  args = argv.dup
+  opts[:subcommand] = args.shift
+
+  i = 0
+  while i < args.length
+    arg = args[i]
+    case arg
+    when "--store"        then opts[:store] = args[i += 1]
+    when "--id"            then opts[:id] = args[i += 1]
+    when "--force"         then opts[:force] = true
+    when "--test-summary"  then opts[:test_summary] = args[i += 1]
+    else
+      usage_abort("unknown argument #{arg.inspect}")
+    end
+    i += 1
+  end
+  opts
+end
+
+def usage
+  "usage: scaffold-intent spec|checklist|outcome --store <store_path> --id <intent_id> " \
+    "[--force] [--test-summary <path>]"
+end
+
+def usage_abort(message)
+  warn "scaffold-intent: #{message}"
+  warn usage
+  exit 1
+end
+
+def main(argv)
+  opts = parse_args(argv)
+
+  usage_abort("subcommand must be one of #{SUBCOMMANDS.join('|')}") unless SUBCOMMANDS.include?(opts[:subcommand])
+  usage_abort("--store is required") if opts[:store].nil? || opts[:store].empty?
+  usage_abort("--id is required") if opts[:id].nil? || opts[:id].empty?
+  if opts[:test_summary] && opts[:subcommand] != "outcome"
+    usage_abort("--test-summary is valid only on the outcome subcommand")
+  end
+
+  store = ScaffoldIntent.expand(opts[:store])
+  usage_abort("store dir does not exist: #{store}") unless Dir.exist?(store)
+
+  intent_dir, err = ScaffoldIntent.resolve_intent_dir(store, opts[:id])
+  usage_abort(err) if intent_dir.nil?
+
+  test_summary_path = nil
+  if opts[:test_summary]
+    test_summary_path = ScaffoldIntent.expand(opts[:test_summary])
+    usage_abort("--test-summary path does not exist: #{test_summary_path}") unless File.exist?(test_summary_path)
+  end
+
+  result =
+    case opts[:subcommand]
+    when "spec"
+      ScaffoldIntent.scaffold_spec(intent_dir: intent_dir, force: opts[:force])
+    when "checklist"
+      ScaffoldIntent.scaffold_checklist(intent_dir: intent_dir, force: opts[:force])
+    when "outcome"
+      ScaffoldIntent.scaffold_outcome(intent_dir: intent_dir, force: opts[:force], store: store,
+                                      id: opts[:id], test_summary: test_summary_path)
+    end
+
+  if result[:message]
+    if result[:code] == 0
+      puts result[:message]
+    else
+      warn "scaffold-intent: #{result[:message]}"
+    end
+  end
+  puts result[:path] if result[:path]
+
+  exit result[:code]
+end
+
+main(ARGV) if $PROGRAM_NAME == __FILE__
