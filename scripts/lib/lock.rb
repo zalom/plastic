@@ -56,6 +56,26 @@ module Lock
   # either way (takeover), so the TTL only bounds WHEN takeover is allowed.
   TTL_SECONDS = 1800
 
+  # The write guard is a mutex, not a lock in the Plastic sense: it carries no
+  # owner, no timestamp, and no content, it is only an inode to flock. It is
+  # a SIBLING of delivery.lock (never delivery.lock itself), because renaming
+  # over a file you hold an flock on leaves you holding an orphaned inode
+  # while the next writer flocks a fresh one at the same path. The name lands
+  # inside the existing *.lock rule in ~/.plastic/.gitignore, so no gitignore
+  # change is needed.
+  WRITE_GUARD_TIMEOUT_SECONDS = 2.0
+  WRITE_GUARD_RETRY_SECONDS = 0.01
+
+  # The sibling guard path for a lock type. NOT built by passing a compound
+  # type: into path (see TYPES comment above): Lock.path(dir, type:
+  # "delivery.write") would render the same string, and the exclusion at
+  # acquire ((TYPES - [type]).first) silently checks only one other type, so
+  # a third TYPES entry would break mutual exclusion with no error. This
+  # helper keeps the guard entirely outside TYPES.
+  def write_guard_path(intent_dir, type: "delivery")
+    File.join(intent_dir, "#{type}.write.lock")
+  end
+
   def blank?(value)
     value.nil? || value.to_s.strip.empty?
   end
@@ -122,15 +142,25 @@ module Lock
     existing = read(intent_dir, type: type)
     if existing
       if existing["owner_session"].to_s == session.to_s
-        data = payload(session: session, type: type, host: host, now: now,
-                       delegates: Array(existing["delegates"]),
-                       delegate_activity: Array(existing["delegate_activity"]),
-                       harness: merged_value(harness, existing["owner_harness"]),
-                       agent: merged_value(agent, existing["owner_agent"]),
-                       model: merged_value(model, existing["owner_model"]),
-                       thread: merged_value(thread, existing["owner_thread"]),
-                       run_mode: merged_value(run_mode, existing["run_mode"]))
-        write(intent_dir, data, type: type)
+        # Re-read happens INSIDE the guard so the read-modify-write is
+        # covered, not just the write (spec D5). Fall back to the
+        # already-read existing when the file has vanished underneath us.
+        # If the re-read shows a different owner, keep today's outcome and
+        # write anyway: an owner-changed-underneath refusal would be new
+        # semantics the spec does not authorize.
+        data = with_write_guard(intent_dir, type: type) do
+          record = read(intent_dir, type: type) || existing
+          rebuilt = payload(session: session, type: type, host: host, now: now,
+                            delegates: Array(record["delegates"]),
+                            delegate_activity: Array(record["delegate_activity"]),
+                            harness: merged_value(harness, record["owner_harness"]),
+                            agent: merged_value(agent, record["owner_agent"]),
+                            model: merged_value(model, record["owner_model"]),
+                            thread: merged_value(thread, record["owner_thread"]),
+                            run_mode: merged_value(run_mode, record["run_mode"]))
+          write(intent_dir, rebuilt, type: type)
+          rebuilt
+        end
         return [:owned, data]
       end
       return [:held, existing] if fresh?(intent_dir, type: type, ttl: ttl, now: now)
@@ -203,27 +233,32 @@ module Lock
   # lock. Only the OWNER may delegate; delegates cannot re-delegate.
   def add_delegate(intent_dir, delegate:, session:, type: "delivery", now: Time.now,
                    harness: nil, agent: nil, model: nil, thread: nil)
-    data = read(intent_dir, type: type)
     return false if blank?(delegate)
-    return false unless data && data["owner_session"].to_s == session.to_s
-    data["delegates"] = (Array(data["delegates"]) + [delegate.to_s]).uniq
-    activity = Array(data["delegate_activity"])
-    previous = activity.find { |record| record.is_a?(Hash) && record["session"].to_s == delegate.to_s }
-    activity.reject! { |record| record.is_a?(Hash) && record["session"].to_s == delegate.to_s }
-    record = {
-      "session" => delegate.to_s,
-      "status" => "active",
-      "registered_at" => now.utc.iso8601,
-      "last_activity_at" => now.utc.iso8601,
-      "harness" => merged_value(harness, previous && previous["harness"]),
-      "agent" => merged_value(agent, previous && previous["agent"]),
-      "model" => merged_value(model, previous && previous["model"]),
-      "thread" => merged_value(thread, previous && previous["thread"]),
-    }
-    data["delegate_activity"] = bounded_delegate_activity(activity + [record],
-                                                          delegates: data["delegates"])
-    write(intent_dir, data, type: type)
-    true
+    # The read moves inside the guard (spec D5): a guard around the write
+    # alone still loses updates, since both writers already read the stale
+    # copy before contending for the guard.
+    with_write_guard(intent_dir, type: type) do
+      data = read(intent_dir, type: type)
+      next false unless data && data["owner_session"].to_s == session.to_s
+      data["delegates"] = (Array(data["delegates"]) + [delegate.to_s]).uniq
+      activity = Array(data["delegate_activity"])
+      previous = activity.find { |record| record.is_a?(Hash) && record["session"].to_s == delegate.to_s }
+      activity.reject! { |record| record.is_a?(Hash) && record["session"].to_s == delegate.to_s }
+      record = {
+        "session" => delegate.to_s,
+        "status" => "active",
+        "registered_at" => now.utc.iso8601,
+        "last_activity_at" => now.utc.iso8601,
+        "harness" => merged_value(harness, previous && previous["harness"]),
+        "agent" => merged_value(agent, previous && previous["agent"]),
+        "model" => merged_value(model, previous && previous["model"]),
+        "thread" => merged_value(thread, previous && previous["thread"]),
+      }
+      data["delegate_activity"] = bounded_delegate_activity(activity + [record],
+                                                            delegates: data["delegates"])
+      write(intent_dir, data, type: type)
+      true
+    end
   end
 
   # Activity metadata is observational only. Finishing or failing a delegate
@@ -231,21 +266,23 @@ module Lock
   def update_delegate_status(intent_dir, delegate:, status:, session:, type: "delivery",
                              now: Time.now)
     return false unless (DELEGATE_STATUSES - ["active"]).include?(status.to_s)
-    data = read(intent_dir, type: type)
-    return false unless data && data["owner_session"].to_s == session.to_s
-    activity = Array(data["delegate_activity"])
-    index = activity.index do |record|
-      record.is_a?(Hash) && record["session"].to_s == delegate.to_s
+    with_write_guard(intent_dir, type: type) do
+      data = read(intent_dir, type: type)
+      next false unless data && data["owner_session"].to_s == session.to_s
+      activity = Array(data["delegate_activity"])
+      index = activity.index do |record|
+        record.is_a?(Hash) && record["session"].to_s == delegate.to_s
+      end
+      next false unless index
+      activity[index] = activity[index].merge(
+        "status" => status.to_s,
+        "last_activity_at" => now.utc.iso8601
+      )
+      data["delegate_activity"] = bounded_delegate_activity(activity,
+                                                            delegates: data["delegates"])
+      write(intent_dir, data, type: type)
+      true
     end
-    return false unless index
-    activity[index] = activity[index].merge(
-      "status" => status.to_s,
-      "last_activity_at" => now.utc.iso8601
-    )
-    data["delegate_activity"] = bounded_delegate_activity(activity,
-                                                          delegates: data["delegates"])
-    write(intent_dir, data, type: type)
-    true
   end
 
   # Owner releases the lock (disarm / End tail, D6). force: true is the repair
@@ -289,11 +326,93 @@ module Lock
     [:taken, data]
   end
 
-  # Rewrite the lock file in place (owner-side mutations). A content write also
-  # refreshes the mtime, which is correct: every sanctioned mutation is owner
-  # activity.
+  # Bounded mutual exclusion for the read-modify-write callers of write (spec
+  # D3, D5): acquire's re-acquire branch, add_delegate, and
+  # update_delegate_status each read, modify, then write, and the guard must
+  # span the whole sequence, not just the write, or two writers that already
+  # read the stale copy before contending still lose an update.
+  #
+  # NOT re-entrant: it opens a fresh file descriptor on every call, and flock
+  # is scoped to the open file description, so a nested acquisition from the
+  # same process would conflict with its own outer hold and burn the whole
+  # timeout budget on every single write. write must never take this guard
+  # itself; only the three read-modify-write call sites do.
+  #
+  # Fails open on every edge, per Plastic's fail-open doctrine (intent 93 D7,
+  # 111, 112): when the guard file cannot be opened, and when the flock
+  # cannot be won inside guard_timeout, the block still runs and its value is
+  # still returned. The write still happens, still atomically; the worst case
+  # on timeout is exactly today's possibly-lost update, never a torn file and
+  # never a hang.
+  #
+  # The guard file is never deleted, by anyone, ever. Unlinking an flock
+  # target is the unlink-recreate race: a later opener would create a fresh
+  # inode and stop serializing against the current holder, breaking mutual
+  # exclusion exactly when contention is highest. scripts/write-config:59
+  # leaves config.yml.lock in place for the same reason. A leftover guard
+  # file is inert: nothing reads it, it stays zero bytes, and
+  # scripts/end-intent:558 keys its exit contract on Lock.path alone.
+  def with_write_guard(intent_dir, type: "delivery",
+                       guard_timeout: WRITE_GUARD_TIMEOUT_SECONDS,
+                       guard_retry: WRITE_GUARD_RETRY_SECONDS)
+    handle = begin
+      File.open(write_guard_path(intent_dir, type: type), File::CREAT | File::RDWR, 0o644)
+    rescue SystemCallError
+      nil
+    end
+    return yield unless handle
+
+    begin
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + guard_timeout
+      until handle.flock(File::LOCK_EX | File::LOCK_NB)
+        break if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+        sleep guard_retry
+      end
+      yield
+    ensure
+      begin
+        handle.flock(File::LOCK_UN)
+      rescue SystemCallError
+        nil
+      end
+      begin
+        handle.close
+      rescue SystemCallError, IOError
+        nil
+      end
+    end
+  end
+
+  # Rewrite the lock file in place (owner-side mutations): write-to-sibling-
+  # temp plus File.rename, never an in-place truncate. POSIX rename is an
+  # atomic replace, so a concurrent reader always observes either the
+  # complete previous content or the complete new content, never a partial
+  # file. The temp file is a SIBLING in the same directory as the target,
+  # never a system tmpdir, because File.rename can raise EXDEV when the temp
+  # and the target live on different filesystems.
+  #
+  # A content write also refreshes the mtime, which is correct: every
+  # sanctioned mutation is owner activity. File.rename carries the temp
+  # file's mtime onto the target, so the post-rename mtime is "now", exactly
+  # what fresh? (above) and the hook heartbeats already assume. The rename
+  # also swaps the inode, which is safe here: heartbeat touches by path
+  # through FileUtils.touch, not by handle, and nothing in the repo holds an
+  # open handle on delivery.lock across a write.
+  #
+  # This method does NOT take the write guard itself. with_write_guard is not
+  # re-entrant, so a nested acquisition from the same process would conflict
+  # with its own outer hold and burn the entire timeout budget on every
+  # write, including the hot heartbeat path. The three read-modify-write
+  # callers take the guard around the whole sequence instead; write stays a
+  # bare atomic replace.
   def write(intent_dir, data, type: "delivery")
-    File.write(path(intent_dir, type: type), JSON.pretty_generate(data))
+    target = path(intent_dir, type: type)
+    temp = "#{target}.tmp.#{Process.pid}.#{Thread.current.object_id}.#{Time.now.to_f}"
+    File.write(temp, JSON.pretty_generate(data))
+    File.rename(temp, target)
+  rescue StandardError
+    File.delete(temp) if temp && File.exist?(temp)
+    raise
   end
 
   # Read-only normalized inspection. The lock file and its mtime remain the
