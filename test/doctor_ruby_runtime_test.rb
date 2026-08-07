@@ -103,9 +103,13 @@ class DoctorRubyRuntimeTest < Minitest::Test
   # Guard: a check that exists but is never called reports nothing. Source scan rather
   # than a live doctor run, so the test stays hermetic and fast.
   def test_the_check_is_registered_in_the_full_run_and_not_in_the_binary_core_run
-    source = File.read(File.expand_path("../scripts/doctor.rb", __dir__))
-    full_run = source[/def run_checks\(agent_key\).*?\n  end/m]
-    core_run = source[/def run_core_checks\(agent_key\).*?\n  end/m]
+    # run_checks stays in scripts/doctor.rb; run_core_checks moved to
+    # scripts/lib/doctor_core.rb (intent 228), so each is read from where it
+    # actually lives now. The assertion itself is unchanged.
+    doctor_source = File.read(File.expand_path("../scripts/doctor.rb", __dir__))
+    core_source = File.read(File.expand_path("../scripts/lib/doctor_core.rb", __dir__))
+    full_run = doctor_source[/def run_checks\(agent_key\).*?\n  end/m]
+    core_run = core_source[/def run_core_checks\(agent_key\).*?\n  end/m]
 
     assert_includes full_run, "check_ruby_runtime"
     refute_includes core_run, "check_ruby_runtime",

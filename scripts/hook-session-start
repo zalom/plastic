@@ -9,7 +9,7 @@ require "yaml"
 require_relative "lib/bridge"
 require_relative "lib/boot_banner"
 require_relative "lib/qmd_sync"
-require_relative "doctor"
+require_relative "lib/doctor_core"
 
 index_path, plastic_home, mode, plugin_root = ARGV
 exit 0 unless index_path && plastic_home && mode

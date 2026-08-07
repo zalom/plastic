@@ -372,6 +372,7 @@ class InstallerCore
       "scripts/rollback.rb" => "scripts/rollback.rb",
       "scripts/lib/outcome_guard.rb" => "scripts/lib/outcome_guard.rb",
       "scripts/doctor.rb" => "scripts/doctor.rb",
+      "scripts/lib/doctor_core.rb" => "scripts/lib/doctor_core.rb",
       "scripts/dashboard.rb" => "scripts/dashboard.rb",
       "scripts/skill-lint" => "scripts/skill-lint",
       "scripts/lib/skill_lint.rb" => "scripts/lib/skill_lint.rb",
