@@ -11,8 +11,6 @@ user-invocable: false
 
 # Intent Discovery — What-stage context deposit
 
-Announce: "Discovering context for intent [ID] — [name]."
-
 Runs once, at intent activation, after the lock is armed and before Why. It gathers what is
 already known so Why does not start cold, and deposits it as a resource the
 Why-stage brainstorming agent reads.

@@ -38,3 +38,6 @@ directory is frozen. A crash mid-tail is recovered by stale-lock reclaim plus fi
 tail; `doctor` surfaces this as a "stalled completion" (terminal in INDEX but the lock is
 still present or stale). Finishing the tail is FINISHING a completion, never a reactivation:
 a done intent is never moved back to `## Active`.
+
+One report per audience: a delivery produces `outcome.md` plus one EM-to-CTO owner report, and
+no other step restates either (see `skills/auto/references/human-report-contract.md`).

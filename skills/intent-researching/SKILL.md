@@ -8,8 +8,6 @@ user-invocable: true
 
 Investigate a topic related to the active intent. Choose the right depth, produce a cited report.
 
-**Announce at start:** "I'm researching [topic] for intent {id} — {name}."
-
 ## Active Intent Gate
 
 Before proceeding, resolve the active intent:

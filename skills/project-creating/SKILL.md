@@ -10,8 +10,6 @@ user-invocable: true
 
 # Creating a Project
 
-Announce: "Creating project `<slug>` from intent [ID] — [name]."
-
 ## Precondition
 
 An active intent must exist with enough context to define a project — at minimum: name/slug, path, and key decisions from `## Context > ### Decisions`.

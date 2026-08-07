@@ -29,6 +29,14 @@ short. The words can flex to fit the stage.
 - **Done**: State = the delivered impact. Risk = residual risk. Call = the decision left to you
   (merge, release, accept).
 
+## One report per audience
+
+A delivery produces exactly two artifacts: `outcome.md` (authored by `plastic-intent-ending`)
+and one EM-to-CTO owner report at the End stage. No stage or skill restates a delivery
+already written to `outcome.md`; point at it instead. Skills do not open with a banner that
+names the skill or restates the intent id and name the owner just typed. Announce only what
+the reader cannot already know: an error, a result, a choice with its reason, or a handoff.
+
 ## Boundary vs intent 74
 
 Intent 74's report contract (`references/agent-report-contract.md`) is the INTERNAL,
