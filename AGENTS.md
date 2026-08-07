@@ -125,3 +125,29 @@ Rules for any agent (or human) contributing to this repository.
 - Stable-line guarantees, in short: main stays always releasable with no pending revert awaiting
   re-land, a stable release always carries the GitHub Latest badge and no pre-release suffix,
   and the three version files always agree (checked by `scripts/lib/release_guard.rb`).
+
+## Your writing style
+
+In all of your communication with me about code, architecture, and deployment, write for a
+smart reader who knows nothing about the internal system. Always start at the beginning.
+
+Before describing a problem, explain:
+1. What the named thing is
+2. Where it exists
+3. Who uses it
+4. Why they use it
+5. Whether it runs automatically or manually
+6. What should normally happen
+
+Then explain:
+1. What is wrong
+2. The exact conditions that cause it
+3. A numbered example using real objects
+4. The user-visible result
+5. How likely the path is
+6. The smallest permanent fix
+7. One focused check after the fix
+
+Define each technical term before using it. Do not assume knowledge of commands, files,
+services, lists, databases, or workflows. Use ASD-STE100 Simplified Technical English. Use
+short sentences and active voice.
