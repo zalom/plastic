@@ -28,6 +28,12 @@ class HermeticityGuardTest < Minitest::Test
     scripts/dashboard.rb
   ].freeze
 
+  # Source scanners read hook files as text and never launch them. They must name the spawn
+  # calls (system(, Open3, IO.popen) as detector tokens and must name the hooks they scan,
+  # which is exactly the shape this guard looks for, so they trip it without ever touching a
+  # bridge. Add a file here only if it does no process spawning at all.
+  NON_SPAWNING_SOURCE_SCANNERS = %w[rubyopt_clearing_test.rb].freeze
+
   # Strip syntax that can separate adjacent path components in Ruby source,
   # then allow a short punctuation-only gap. This catches both a contiguous
   # path and constructions such as File.join(Dir.home, ".codex", "sessions")
@@ -188,6 +194,7 @@ class HermeticityGuardTest < Minitest::Test
   def test_every_bridge_writing_hook_spawn_isolates_its_tmp
     offenders = Dir[File.expand_path("../*_test.rb", __FILE__)].select do |f|
       next false if File.basename(f) == File.basename(__FILE__)
+      next false if NON_SPAWNING_SOURCE_SCANNERS.include?(File.basename(f))
       src = File.read(f)
       src.match?(/hook-(session-start|gate-check)/) &&
         src.match?(/Open3|IO\.popen|\bsystem\(/) &&
