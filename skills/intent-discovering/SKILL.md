@@ -19,11 +19,14 @@ Why-stage brainstorming agent reads.
 Inside `plastic-intent-starting`, right after the bridge is armed, under the
 lock. Dispatched as the `plastic-intent-discovery` background agent.
 
-**Precondition: the intent has graph edges.** Read the activating intent's `chain` and
-`sources` frontmatter fields first. When BOTH are empty there is nothing to discover, so
-the pass does not run: write the single line `no chain/sources, discovery skipped` to
-`resources/discovery--<slug>.md` and stop there. One filled field is enough to run the
-full pass below.
+**Precondition: Tier S and the intent has graph edges.** The skip applies only at Tier S.
+Read the activating intent's `chain` and `sources` frontmatter fields first. When the
+orchestrator has sized the intent S AND both fields are empty, there is nothing to
+discover, so the pass does not run: write the single line
+`no chain/sources, discovery skipped` to `resources/discovery--<slug>.md` and stop there.
+Sizing is the orchestrator's own call, read off the intent line, so it is already known at
+activation and does not need spec.md's `Tier:` line stamped yet. At M or L, or when either
+field is filled, run the full pass below.
 
 ## What it does
 1. **Read the intent's links.** Load the activating intent file's `chain` and

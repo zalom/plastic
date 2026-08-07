@@ -23,7 +23,8 @@ deliberately slow. It is the right choice when you want to watch each decision
 as it happens.
 
 In auto mode, the agent briefs you as it goes: at every stage for a medium or
-large intent, and once before it starts building for a small one. Then it
+large intent, and once before it starts building for a small one (Plastic
+sizes each intent small, medium, or large as it starts work). Then it
 takes the call itself and keeps moving, except at a small number of hard
 stops: confirming a project path, or before an action with no safe way back.
 You get the full story as it happens, but you are only pulled in when it

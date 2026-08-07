@@ -65,7 +65,8 @@ came from.
 No new command. At each stage boundary (What, Why, How, Exec, Done) the agent briefs in a
 fixed three-line shape: State (what happened and why it matters), Risk (the one thing that
 could bite, or "nothing flagged"), and Call (the decision left to the user, or the call the
-agent is taking on its own).
+agent is taking on its own). That is the depth for a medium or large intent. A small intent
+gets one briefing, at How, folding in what the earlier stages would have said.
 
 Checkpoint: in the most recent report, point at the State line, the Risk line, and the Call
 line.

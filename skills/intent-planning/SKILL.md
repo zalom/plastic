@@ -62,7 +62,7 @@ Granularity follows the `Tier:` line the spec stamped.
 - "Run the tests and make sure they pass" - step
 - "Commit" - step
 
-**At S, size each step to the work.** Do not slice a small delivery into fixed 2-5 minute steps. Keep steps coarse enough to read in one pass, and let the one consolidated `actions/ACTION_1.md` carry the whole delivery. Detail does not relax: a step still names its exact file paths, its exact changes, and how it is verified. Only the slicing relaxes.
+**At S, size each step to the work.** Do not slice a small delivery into fixed 2-5 minute steps. Keep steps coarse enough to read in one pass, and let the one consolidated `actions/ACTION_1.md` carry the whole delivery. Each step still names its exact file paths, its exact changes, and how it is verified. Only the slicing relaxes.
 
 This changes granularity, nothing else. Every tier still produces at least one real `actions/ACTION_N.md`, and an empty or `.gitkeep`-only `actions/` still fails the How gate (see `## Tier shapes` above).
 

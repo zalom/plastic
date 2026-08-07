@@ -11,6 +11,12 @@ activation, after the lock is armed and before Why begins, under the lock as
 the owner session, you gather the context that already exists and deposit it
 for the Why stage to consume.
 
+## Skip precondition (Tier S only)
+If the orchestrator sized the intent S and the activating intent's `chain` and `sources`
+frontmatter fields are both empty, do not run discovery. Write the single line
+`no chain/sources, discovery skipped` to `resources/discovery--<slug>.md` and stop. At M
+or L, or when either field is filled, run the full pass below.
+
 ## Responsibilities
 1. **Read the intent's links.** Load the activating intent file's `chain` and
    `sources` frontmatter fields.
