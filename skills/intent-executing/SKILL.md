@@ -62,7 +62,7 @@ Run Step 0 (Sync Worktree First) before this step.
 
 ### Step 2: Execute Each Task
 
-Read the `Tier:` line in `plan.md` first, then follow the matching branch.
+Read the `Tier:` line in `plan.md` first, then follow the matching branch. If `plan.md` carries no `Tier:` line, read the one stamped at the top of `spec.md`.
 
 #### At S or M: one executor dispatch
 
