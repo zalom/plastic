@@ -658,6 +658,36 @@ Portability split (D9): the `new-intent` CLI plus the skill instruction are the
 portable lever that works on any harness; the PreToolUse create gate is
 Claude-Code-only defense-in-depth, not the primary lock.
 
+## The four delivery scripts (intent 213)
+
+`AGENTS.md` states the classification rule: a step becomes a script only when its output is
+a pure function of already-committed artifacts (spec.md, plan.md, checklist.md, outcome.md,
+test results, the diff). Everything else stays judgment and stays with the agent. Four
+scripts, each a thin CLI over its own `scripts/lib/` module, apply that rule to the four
+lifecycle steps that qualify.
+
+`scripts/start-intent` composes `Bridge.arm_auto` or `Bridge.arm_guided`, then reads the four
+lifecycle files and prints a resume-station report. It never releases or takes over a lock.
+
+`scripts/scaffold-intent` is one CLI with three subcommands, `spec`, `checklist`, and
+`outcome`. Each writes only what is mechanically derivable from a committed artifact and
+leaves every judgment section as the template's stub. It never scaffolds `actions/`. Running
+the `outcome` subcommand makes the derived stage read as done, so run it only at the true end
+of Exec.
+
+`scripts/verify-intent` folds doctor scoped to the intent, the added-line em-dash diff guard
+(the first standing implementation of that check), a diffstat, and an optional
+caller-supplied suite command into one verdict. It does not invent a project test-command
+config.
+
+`scripts/exec-worktree` wraps `Worktree.finish`. Its only net-new logic is an order
+precondition that calls `Bridge.code_gate_decision`. The precondition is a friendly early
+error, not the enforcement point: the hook layer remains the gate, and on a guided bridge the
+precondition is advisory only.
+
+`scripts/lib/spec_header.rb` is the only parser of the `Tier:` and `Settled:` lines at the
+top of spec.md. `Bridge.savepoint_tier` delegates to it.
+
 ## project store provisioning
 
 A project could be registered in `projects.yml` yet have no store on disk, which

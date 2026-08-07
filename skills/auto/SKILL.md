@@ -88,7 +88,9 @@ and artifact depth to that size. Extended walkthrough: `references/tiers.md`.
    worktree isolation, intent creation via skill, INDEX as status truth, the QMD reindex
    at End. Lightness is about ceremony, never about these guarantees.
 5. **Tier record.** `Tier: S|M|L` at the top of spec.md. Convention-only: read by the
-   orchestrator, never validated by any gate or by doctor.
+   orchestrator, never validated by any gate or by doctor. A separate
+   `Settled: yes (<reason>)` line may sit directly beneath the `Tier:` line; an absent
+   line means not settled, and settledness is independent of scope.
 
 Read `../plastic-conventions/references/tiers-and-dispatch.md` for tier sizing, agent-model
 config, advisor routing, and the auto-mode human report contract behind the sizing above. This

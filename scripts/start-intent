@@ -1,0 +1,89 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# start-intent (intent 213, group 2) - board a session onto an intent: arm the delivery
+# lock, then print a read-only resume-station report.
+#
+# Usage:
+#   start-intent --store <path> --id <intent_id> --mode auto|guided [--session <session_id>]
+#
+# --store, --id, and --mode are required. --session is optional and defaults to
+# CLAUDE_CODE_SESSION_ID, matching end-intent's resolution order. No other flags exist.
+#
+# Steps performed:
+#   0. Resolve inputs: the intent dir, the intent name from frontmatter (falling back to
+#      the dir basename), the calling session (--session, else CLAUDE_CODE_SESSION_ID,
+#      else nil; deliberately no lock-owner fallback), and harness/thread from
+#      CODEX_THREAD_ID / CLAUDE_CODE_SESSION_ID (mirroring skills/auto/SKILL.md's arming
+#      snippet).
+#   1. Pre-flight lock read (read-only): refuse a fresh foreign lock, an unparseable
+#      lock, or a lock present with no resolvable session identity. A stale foreign lock
+#      falls through to arming, which arbitrates it itself.
+#   2. Arm: Bridge.arm_auto (--mode auto) or Bridge.arm_guided (--mode guided). Nothing
+#      else acquires anything.
+#   3. Print the resume-station report (read-only): which lifecycle files are real, and
+#      where the intent should resume (Why/How/Exec/Done).
+#
+# This script never releases and never takes over a lock: it never calls the Lock
+# module's release or takeover operations (parked intent 254's territory). A held or
+# corrupt lock is reported and refused, never repaired.
+#
+# Exit codes:
+#   0  armed and resume-station printed
+#   1  usage or path-resolution failure
+#   3  lock held by another live session (deny, mirrors end-intent's pre-flight refusal)
+#   4  unparseable lock, or no session identity with a lock present
+#
+# There is deliberately no exit 2 in this script's contract.
+
+require_relative "lib/start_intent"
+
+def parse_args(argv)
+  opts = { store: nil, id: nil, mode: nil, session: nil }
+  i = 0
+  while i < argv.length
+    arg = argv[i]
+    case arg
+    when "--store"   then opts[:store] = argv[i += 1]
+    when "--id"      then opts[:id] = argv[i += 1]
+    when "--mode"    then opts[:mode] = argv[i += 1]
+    when "--session" then opts[:session] = argv[i += 1]
+    else
+      usage_abort("unknown argument #{arg.inspect}")
+    end
+    i += 1
+  end
+  opts
+end
+
+def usage
+  "usage: start-intent --store <store_path> --id <intent_id> --mode auto|guided " \
+    "[--session <session_id>]"
+end
+
+def usage_abort(message)
+  warn "start-intent: #{message}"
+  warn usage
+  exit 1
+end
+
+def main(argv)
+  opts = parse_args(argv)
+
+  codex_thread_id = ENV["CODEX_THREAD_ID"]
+  claude_session_id = ENV["CLAUDE_CODE_SESSION_ID"]
+  detected = StartIntent.resolve_harness(codex_thread_id, claude_session_id)
+
+  result = StartIntent.run(
+    store: opts[:store], id: opts[:id], mode: opts[:mode], session: opts[:session],
+    env_session: claude_session_id, harness: detected[:harness], thread: detected[:thread]
+  )
+
+  Array(result[:stderr]).each { |line| warn line }
+  warn usage if result[:exit_code] == StartIntent::EXIT_USAGE
+  Array(result[:stdout]).each { |line| puts line }
+  exit result[:exit_code]
+end
+
+main(ARGV) if $PROGRAM_NAME == __FILE__

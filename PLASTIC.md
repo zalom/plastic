@@ -113,6 +113,13 @@ M = one subsystem (about a day); L = cross-cutting or novel design.
 Tier is recorded as a `Tier: S|M|L` line at the top of spec.md. It is convention-only,
 read by the orchestrator, not enforced by any gate or by doctor.
 
+Settledness is recorded separately, as a `Settled: yes (<reason>)` line directly beneath the
+`Tier:` line, above the `# Spec:` heading. It records that a design has already done its
+thinking, so a later stage can trust it without deriving it again. An absent line means not
+settled; there is no `Settled: no` form. Settledness and scope are independent, so a large
+intent can be settled and never becomes a smaller tier. `scripts/lib/spec_header.rb` is the
+only parser of both lines; nothing else reads the grammar.
+
 See `plastic-conventions > references/tiers-and-dispatch.md` for topology by tier, what never
 gets cut, and guided mode.
 
