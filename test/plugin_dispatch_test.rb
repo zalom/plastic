@@ -46,7 +46,12 @@ class PluginDispatchTest < Minitest::Test
   # Never mutate the test process ENV: pass a per-spawn env hash instead, the
   # convention in bash_gate_test.rb and codex_hooks_test.rb.
   def hook_env
-    { "HOME" => @home, "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_CODE_SESSION_ID" => nil }
+    {
+      "HOME" => @home,
+      "PLASTIC_HOME" => nil,
+      "PLASTIC_TMP" => @bridge_tmp,
+      "CLAUDE_CODE_SESSION_ID" => nil,
+    }
   end
 
   def hooks_json_commands(root)
@@ -63,25 +68,27 @@ class PluginDispatchTest < Minitest::Test
     hooks_json_commands(root).flat_map do |command|
       argv = Shellwords.split(command.gsub("${CLAUDE_PLUGIN_ROOT}", root))
       target = argv.first
-      next [Complaint.new(command, :missing_target, "#{target} does not exist")] unless File.file?(target)
+      unless File.file?(target)
+        next [Complaint.new(command, :missing_target, "#{command}: #{target} does not exist")]
+      end
 
       found = []
       unless File.executable?(target)
-        found << Complaint.new(command, :not_executable_target, "#{target} is not executable")
+        found << Complaint.new(command, :not_executable_target, "#{command}: #{target} is not executable")
       end
       next found unless File.basename(target) == "run-hook"
 
       name = argv[1].to_s
       if name.empty?
-        found << Complaint.new(command, :missing_name, "run-hook was given no hook name")
+        found << Complaint.new(command, :missing_name, "#{command}: run-hook was given no hook name")
         next found
       end
 
       launcher = File.join(File.dirname(target), name)
       if !File.file?(launcher)
-        found << Complaint.new(command, :missing_launcher, "run-hook target #{name} does not exist")
+        found << Complaint.new(command, :missing_launcher, "#{command}: run-hook target #{name} does not exist")
       elsif !File.executable?(launcher)
-        found << Complaint.new(command, :not_executable_launcher, "run-hook target #{name} is not executable")
+        found << Complaint.new(command, :not_executable_launcher, "#{command}: run-hook target #{name} is not executable")
       end
       found
     end
@@ -131,7 +138,11 @@ class PluginDispatchTest < Minitest::Test
   end
 
   def test_every_hooks_json_command_uses_the_plugin_root_variable
-    hooks_json_commands(REPO).each do |command|
+    commands = hooks_json_commands(REPO)
+    assert_operator commands.size, :>=, 10,
+                    "fixture floor: hooks.json declares at least 10 commands; an empty walk is not a pass"
+
+    commands.each do |command|
       assert_includes command, "${CLAUDE_PLUGIN_ROOT}/hooks/",
                       "#{command} must address its launcher through the plugin root variable"
       Shellwords.split(command.gsub("${CLAUDE_PLUGIN_ROOT}", "PLUGINROOT")).each do |token|
@@ -147,11 +158,17 @@ class PluginDispatchTest < Minitest::Test
     root = synthetic_plugin_root(
       "SessionStart" => ['"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook" ghost'],
       "PreCompact" => ['"${CLAUDE_PLUGIN_ROOT}/hooks/limp"'],
+      # run-hook dispatched to a present-but-0644 launcher: the founding defect's
+      # exact shape (hooks/create-gate shipped 100644). Proves not_executable_launcher
+      # is actually reachable, not merely a dead branch.
+      "PostToolUse" => ['"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook" limp'],
+      # run-hook given no hook name at all. Proves missing_name is reachable too.
+      "Notification" => ['"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook"'],
     )
     write_launcher(root, "limp", mode: 0o644)
 
     kinds = unresolved_commands(root).map(&:kind).sort_by(&:to_s)
-    assert_equal %i[missing_launcher not_executable_target], kinds
+    assert_equal %i[missing_launcher missing_name not_executable_launcher not_executable_target], kinds
   end
 
   def test_a_new_hooks_json_entry_is_checked_without_editing_this_test
@@ -219,8 +236,17 @@ class PluginDispatchTest < Minitest::Test
 
   # --- AC9: one real launcher, end to end, with real stdin JSON ---
 
+  # hooks/continue's bash body has two branches: run scripts/hook-continue (the
+  # scripts/ leg this test is meant to cover) and, only if that produces
+  # nothing, fall back to a hardcoded heredoc carrying its own
+  # "PLASTIC CONTINUE" JSON. Both branches satisfy a bare hookEventName
+  # assertion, so that alone does not prove the Ruby path ran. The refute
+  # below pins out to NOT be the bash fallback, which is only true when
+  # scripts/hook-continue actually executed and rendered the dashboard.
+  BASH_FALLBACK_MARKER = "PLASTIC CONTINUE: The user wants to resume previous work"
+
   def test_the_continue_launcher_runs_end_to_end_through_run_hook
-    FileUtils.mkdir_p(File.join(@home, ".plastic"))
+    FileUtils.mkdir_p(File.join(@home, ".plastic", "store"))
     File.write(File.join(@home, ".plastic", "INDEX.md"), "# Intent Index\n\n## Active\n\n## Future\n")
     payload = JSON.generate("session_id" => "sess-234", "user_prompt" => "continue")
 
@@ -231,5 +257,7 @@ class PluginDispatchTest < Minitest::Test
     refute_empty out.strip, "the continue launcher must emit context when a store INDEX exists"
     parsed = JSON.parse(out)
     assert_equal "UserPromptSubmit", parsed.dig("hookSpecificOutput", "hookEventName")
+    refute_includes out, BASH_FALLBACK_MARKER,
+                    "must reach scripts/hook-continue's dashboard render, not the bash heredoc fallback"
   end
 end
