@@ -1,0 +1,38 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# power-tools UserPromptSubmit hook (intents 66, 66b, 187, 246). Emits the
+# PowerTools mandate, one recommendation line per present tool, as
+# hookSpecificOutput. Silent no-op (exit 0) when no power tool is present or
+# anything goes wrong. It parses no prompt: the mandate depends on tool presence
+# alone, so there is nothing to gate on prompt triviality. Intent 246 removed the
+# qmd hit search this hook used to run first.
+require "json"
+require "timeout"
+require_relative "lib/qmd_hook"
+
+# Drain stdin so the caller's write never blocks or breaks on a closed pipe. The
+# payload is deliberately not parsed.
+begin
+  STDIN.read
+rescue StandardError
+  nil
+end
+
+context = begin
+  Timeout.timeout(2) do
+    QmdHook.run(cwd: Dir.pwd)
+  end
+rescue Exception
+  nil
+end
+
+exit 0 if context.nil? || context.strip.empty?
+
+puts JSON.generate(
+  "hookSpecificOutput" => {
+    "hookEventName" => "UserPromptSubmit",
+    "additionalContext" => context,
+  }
+)

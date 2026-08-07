@@ -373,14 +373,14 @@ class MergeClaudeHooksTest < Minitest::Test
     assert_equal 1, wen_groups.size, "still exactly ONE write-matcher group after re-merge"
   end
 
-  def test_user_prompt_submit_includes_qmd_search
+  def test_user_prompt_submit_includes_the_power_tools_hook
     File.write(@settings_path, "{}")
     @installer.merge_claude_hooks(@settings_path)
     settings = JSON.parse(File.read(@settings_path))
     group = settings["hooks"]["UserPromptSubmit"].first
     commands = group["hooks"].map { |h| h["command"] }
-    assert commands.any? { |c| c.include?("plastic-qmd-search") },
-           "UserPromptSubmit must register plastic-qmd-search: #{commands.inspect}"
+    assert commands.any? { |c| c.include?("plastic-power-tools") },
+           "UserPromptSubmit must register plastic-power-tools: #{commands.inspect}"
   end
 
   def test_statusline_no_existing_line_installs_plastic_silently

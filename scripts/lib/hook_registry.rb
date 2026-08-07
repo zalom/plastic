@@ -93,7 +93,7 @@ module HookRegistry
           { "name" => "continue", "status" => "Checking for continue..." },
           { "name" => "future-intent-check", "status" => "Checking future intents..." },
           { "name" => "auto-arm", "status" => "Checking auto mode..." },
-          { "name" => "qmd-search", "status" => "Searching QMD..." },
+          { "name" => "power-tools", "status" => "Checking power tools..." },
         ] },
       ],
     }

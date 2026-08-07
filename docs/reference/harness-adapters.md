@@ -229,17 +229,20 @@ skills and agents checks.
 ### L2 live state (intent 199)
 
 `SessionStart` fires `session-start` and `check-update`; `UserPromptSubmit` fires
-`continue`, `future-intent-check`, `auto-arm`, and `qmd-search`; `PreCompact` fires
+`continue`, `future-intent-check`, `auto-arm`, and `power-tools`; `PreCompact` fires
 `savepoint`. Each hook name is projected straight off the single `HookRegistry.events`
 source (108 D7), the same total-projection shape as the file-mutation gates above: a hook
-added to any of these three events on the Claude side registers for Codex automatically,
-with no Codex-only allowlist to keep in sync.
+added to any of these three events on the Claude side lands in Codex's `hooks.json`
+automatically. One thing does not follow automatically. `scripts/codex-hook` carries its own
+`STATE_HOOKS` literal, which decides which names the dispatcher will actually relay, so a hook
+added to or renamed in any of these three events must be added there by hand. A cross-check in
+`test/hook_registry_test.rb` fails when the two disagree (intent 246).
 
 The stdin shape for these three events differs from `apply_patch`'s diff envelope: no
 `tool_input` at all, since none of the three is a tool call. `scripts/codex-hook` reuses the
 exact launcher files Claude already runs for these seven hooks (`hooks/session-start`,
 `hooks/check-update`, `hooks/continue`, `hooks/future-intent-check`, `hooks/auto-arm`,
-`hooks/qmd-search`, `hooks/savepoint`) unmodified: each is already harness-agnostic, since it
+`hooks/power-tools`, `hooks/savepoint`) unmodified: each is already harness-agnostic, since it
 resolves `~/.plastic` off `$HOME` on its own and reads only the common stdin fields
 (`user_prompt` for the four `UserPromptSubmit` hooks) the official Codex hooks doc confirms
 match Claude's schema for these events. The dispatcher's only adaptation is threading the

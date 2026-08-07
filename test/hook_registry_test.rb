@@ -206,6 +206,27 @@ class HookRegistryTest < Minitest::Test
     assert_equal expected, names
   end
 
+  # Intent 246, D8. scripts/codex-hook's STATE_HOOKS array is a hand-kept
+  # literal, unlike claude_launcher_names which derives from `events`. A hook
+  # renamed in `events` but not in that array leaves the Codex dispatcher
+  # relaying a name it does not recognise: it falls past the STATE_HOOKS branch
+  # into the apply_patch path, hits `exit 0 if ops.empty?`, and emits nothing,
+  # silently, forever. Nothing else in the suite catches that, because a missing
+  # launcher fails open to empty output, which the codex hook tests accept.
+  def test_codex_dispatcher_relays_every_live_state_hook_name
+    src = File.read(File.expand_path("../scripts/codex-hook", __dir__))
+    literal = src[/^STATE_HOOKS\s*=\s*%w\[([^\]]*)\]/, 1]
+    refute_nil literal, "STATE_HOOKS literal not found in scripts/codex-hook"
+    relayed = literal.split
+    HookRegistry::CODEX_LIVE_STATE_EVENTS.each do |event|
+      names = HookRegistry.events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+      names.each do |name|
+        assert_includes relayed, name,
+          "scripts/codex-hook STATE_HOOKS must relay '#{name}', registered under #{event}"
+      end
+    end
+  end
+
   private
 
   # `"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook" code-gate` -> "code-gate";

@@ -21,10 +21,10 @@ class QmdSyncSearchCliTest < Minitest::Test
   JSON
 
   def setup
-    @home = Dir.mktmpdir("qmd-search-home")
+    @home = Dir.mktmpdir("qmd-sync-search-home")
     FileUtils.mkdir_p(File.join(@home, "store"))
     File.write(File.join(@home, "projects.yml"), "projects: {}\n")
-    @bindir = Dir.mktmpdir("qmd-search-bin")
+    @bindir = Dir.mktmpdir("qmd-sync-search-bin")
   end
 
   def teardown

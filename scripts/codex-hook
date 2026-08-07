@@ -5,7 +5,7 @@
 # Usage: codex-hook <gate>
 #   file-mutation gates: code-gate | lock-gate | savepoint-pre | gate-check | create-gate | links-gate
 #   live-state hooks (intent 199): session-start | check-update | continue |
-#     future-intent-check | auto-arm | qmd-search | savepoint
+#     future-intent-check | auto-arm | power-tools | savepoint
 #   shell-tool gate (intent 203): bash-gate
 #
 # The Codex input adapter (intent 102, extended by 199 and 203). Reads a Codex
@@ -50,7 +50,7 @@ require_relative "lib/links_gate"
 # caller that merges the dispatcher's own stdout and stderr.
 $stdout.sync = true
 
-STATE_HOOKS = %w[session-start check-update continue future-intent-check auto-arm qmd-search savepoint].freeze
+STATE_HOOKS = %w[session-start check-update continue future-intent-check auto-arm power-tools savepoint].freeze
 STATE_TIMEOUT = 5
 SHELL_HOOKS = %w[bash-gate].freeze
 
