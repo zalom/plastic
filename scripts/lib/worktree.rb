@@ -166,7 +166,21 @@ module Worktree
     # fails open on provisioned: false (non-git / global-only).
     block["provisioned"] = code_ok
 
-    bridge_data["worktree"] = block
+    # Intent 230: only OVERWRITE the worktree block when the code worktree was
+    # actually added. On failure, keep a pointer the caller already had rather
+    # than erasing it -- clearing it is what sent code edits into the shared
+    # checkout. A pointer whose directory is gone is worse than none, so it is
+    # replaced by the fresh unprovisioned block; the guard must not fail harder
+    # than the bug it guards.
+    if code_ok
+      bridge_data["worktree"] = block
+    else
+      existing = bridge_data["worktree"]
+      keep = existing.is_a?(Hash) && !blank?(existing["code"]) &&
+             Dir.exist?(existing["code"].to_s)
+      bridge_data["worktree"] = block unless keep
+    end
+
     bridge_data
   end
 

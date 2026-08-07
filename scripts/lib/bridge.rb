@@ -767,12 +767,16 @@ module Bridge
     phantoms
   end
 
-  def self.derive(session, intent_id:, intent_dir:, store:, name:, tmp: tmp_dir)
+  # Pure compute (intent 230): build the bridge state and write NOTHING. `derive`
+  # is the writing wrapper over this; `arm` and `repair_lock` use the pure form so
+  # the single bridge write happens only after the delivery lock and the worktree
+  # have both settled. Joins the pure `derive_stage` / `derive_key` family.
+  def self.derive_data(session, intent_id:, intent_dir:, store:, name:)
     stage = derive_stage(intent_dir)
     has = has_files(intent_dir)
     missing = missing_for_stage(stage, intent_dir) - has
 
-    data = {
+    {
       "session" => session,
       "intent" => {
         "id" => intent_id,
@@ -816,7 +820,14 @@ module Bridge
         "delegates" => []
       }
     }
+  end
 
+  # Compute AND persist. Contract unchanged (intent 230 kept it deliberately):
+  # `scripts/hook-session-start` calls this and wants the immediate write, and
+  # test/bridge_worktree_derive_test.rb pins write-on-call.
+  def self.derive(session, intent_id:, intent_dir:, store:, name:, tmp: tmp_dir)
+    data = derive_data(session, intent_id: intent_id, intent_dir: intent_dir,
+                       store: store, name: name)
     write(session, data, tmp: tmp)
     data
   end
@@ -881,6 +892,19 @@ module Bridge
 
   # --- Auto mode (intent 27) ---
 
+  # Intent 230: freshly composed state carries worktree.code = nil, so a failed
+  # Worktree.provision would have nothing to keep. Seed the block from the bridge
+  # already on disk when it names a code path, so provision's keep-rule (see
+  # Worktree.provision) can preserve it. Provision SUCCESS overwrites this with
+  # the freshly resolved (identical) pointer, so this only matters on failure.
+  def self.carry_prior_worktree(data, session, tmp: tmp_dir)
+    prior = read(session, intent_id: data.dig("intent", "id"), tmp: tmp)
+    block = prior && prior["worktree"]
+    data["worktree"] = block if block.is_a?(Hash) && !blank?(block["code"])
+    data
+  end
+  private_class_method :carry_prior_worktree
+
   # Shared arming spine (intent 96): resolve the session key, derive intent state,
   # set the caller-controlled auto flag, acquire the delivery lock, provision the
   # per-intent worktrees, persist, and purge terminal bridges. arm_auto (auto: true)
@@ -893,7 +917,10 @@ module Bridge
     if blank?(session) && blank?(ENV["CLAUDE_CODE_SESSION_ID"])
       $stderr.puts "plastic: no session id available; arming with derived bridge key #{key}"
     end
-    data = derive(key, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name)
+    # Compute only (intent 230). Nothing reaches disk until the lock is ours and
+    # the worktree has settled; a LockHeldError below must leave the previous
+    # bridge exactly as it was.
+    data = derive_data(key, intent_id: intent_id, intent_dir: intent_dir, store: store, name: name)
     data["build"]["auto"] = auto
 
     # Acquire the durable delivery lock (D1/D2): session-keyed, O_EXCL, in the
@@ -923,6 +950,8 @@ module Bridge
       raise LockHeldError, "delivery.lock for intent #{intent_id} is unreadable; " \
         "run #{skill_ref('plastic-doctor', harness: harness)} fix the lock"
     end
+
+    carry_prior_worktree(data, key)
 
     # Provision the per-intent worktrees (mandatory code worktree for project
     # intents; fail-open for non-git / global-only). Never let a provision error
@@ -1070,10 +1099,12 @@ module Bridge
       actions << "lock #{status}"
     end
 
-    data = derive(key, intent_id: intent_id, intent_dir: dir, store: store,
-                  name: name, tmp: tmp)
+    data = derive_data(key, intent_id: intent_id, intent_dir: dir, store: store,
+                       name: name)
     data["build"]["auto"] = auto
     data["lock"] = lock_cache(lock_data)
+
+    carry_prior_worktree(data, key, tmp: tmp)
 
     # Provision the per-intent worktrees so the rebuilt bridge carries
     # worktree.code (intent 136). Without it, cwd/edited-path selection has no

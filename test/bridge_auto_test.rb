@@ -185,6 +185,54 @@ class BridgeAutoTest < Minitest::Test
     refute_empty out
   end
 
+  # --- intent 230: the bridge is written once, after lock + worktree settle ---
+
+  # Seed a bridge on disk that carries a real worktree pointer, the way a live
+  # armed session would.
+  def seed_bridge_with_pointer(code_dir)
+    data = Bridge.derive(@session, intent_id: "27", intent_dir: @intent_dir,
+                         store: @store, name: "demo")
+    data["worktree"] = { "code" => code_dir, "code_branch" => "plastic/27--demo",
+                         "provisioned" => true }
+    Bridge.write(@session, data)
+    data
+  end
+
+  def test_arm_auto_leaves_the_on_disk_bridge_untouched_when_the_lock_is_held
+    code_dir = File.join(@store, "fake-worktree")
+    FileUtils.mkdir_p(code_dir)
+    seed_bridge_with_pointer(code_dir)
+    before = File.read(Bridge.path(@session, intent_id: "27"))
+
+    Lock.acquire(@intent_dir, session: "someone-else")
+    assert_raises(Bridge::LockHeldError) { arm }
+
+    assert_equal before, File.read(Bridge.path(@session, intent_id: "27")),
+                 "a failed lock must not rewrite the bridge (intent 230)"
+  end
+
+  def test_arm_auto_writes_no_bridge_at_all_when_the_lock_is_held
+    refute File.exist?(Bridge.path(@session, intent_id: "27"))
+    Lock.acquire(@intent_dir, session: "someone-else")
+    assert_raises(Bridge::LockHeldError) { arm }
+    refute File.exist?(Bridge.path(@session, intent_id: "27")),
+           "no bridge may exist without a lock behind it (intent 230)"
+  end
+
+  def test_arm_auto_keeps_the_existing_worktree_pointer_when_provision_raises
+    code_dir = File.join(@store, "fake-worktree")
+    FileUtils.mkdir_p(code_dir)
+    seed_bridge_with_pointer(code_dir)
+
+    capture_stderr do
+      with_worktree(:provision, ->(*_a, **_kw) { raise "boom" }) { arm }
+    end
+
+    persisted = Bridge.read(@session, intent_id: "27")["worktree"]
+    assert_equal code_dir, persisted["code"],
+                 "a failed provision must not erase a live worktree pointer"
+  end
+
   def test_disarm_clears_the_delivery_lock
     arm
     assert File.exist?(Lock.path(@intent_dir))

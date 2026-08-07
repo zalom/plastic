@@ -118,6 +118,25 @@ class BridgeGuidedTest < Minitest::Test
     refute_empty out
   end
 
+  # --- intent 230 ---
+
+  def test_arm_guided_leaves_the_on_disk_bridge_untouched_when_the_lock_is_held
+    data = Bridge.derive(@session, intent_id: "96", intent_dir: @intent_dir,
+                         store: @store, name: "demo")
+    code_dir = File.join(@store, "fake-worktree")
+    FileUtils.mkdir_p(code_dir)
+    data["worktree"] = { "code" => code_dir, "code_branch" => "plastic/96--demo",
+                         "provisioned" => true }
+    Bridge.write(@session, data)
+    before = File.read(Bridge.path(@session, intent_id: "96"))
+
+    Lock.acquire(@intent_dir, session: "someone-else")
+    assert_raises(Bridge::LockHeldError) { arm_guided }
+
+    assert_equal before, File.read(Bridge.path(@session, intent_id: "96")),
+                 "a failed lock must not rewrite the bridge (intent 230)"
+  end
+
   # GUARD: the shared arm helper kept arm_auto byte-identical in behaviour.
   def test_arm_auto_still_sets_auto_true_and_stamps_lock
     data = Bridge.arm_auto(@session, intent_id: "96", intent_dir: @intent_dir, store: @store, name: "demo")
