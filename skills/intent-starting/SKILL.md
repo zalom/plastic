@@ -10,8 +10,6 @@ user-invocable: true
 
 # Intent Starting — board a session onto an intent
 
-Announce: "Boarding intent [ID] — [name]."
-
 `plastic-intent-starting` is the Start procedure. It boards a session onto one intent: take
 the lock FIRST, confirm the delivery state, ask **auto or guided ONCE**, board at the latest
 delivered station, then run the cycle to Done. The What → Why → How → Exec stations are the

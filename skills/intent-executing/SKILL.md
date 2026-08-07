@@ -10,8 +10,6 @@ user-invocable: true
 
 Load plan from the active intent's `plan.md`, execute all tasks, review between tasks, report when complete.
 
-**Announce at start:** "I'm using the executing-plan skill to implement this plan."
-
 ## Step 0: Sync Worktree First
 
 Before Step 1 (Load Plan) in either workflow below, sync the code worktree with
@@ -90,12 +88,8 @@ After all tasks complete, dispatch a final reviewer for the entire implementatio
 ### Step 4: Update Intent and Complete
 Capture observations in `## Insights`. When ALL checklist items are checked:
 
-1. Write `outcome.md` with detailed results in the intent directory, using the `${CLAUDE_PLUGIN_ROOT}/templates/outcome.md` form. Set the frontmatter `disposition: delivered` (the delivered terminal). `outcome.md` is mandatory at every terminal and self-declares its disposition (canonical done-marker in PLASTIC.md).
-2. Write `## Outcome` summary in the intent file (1-2 sentences)
-3. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
-4. Update cluster entries to show `_(completed)_`
-5. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: complete intent <ID>: <name>"`
-6. QMD reindex LAST (canonical End tail). As the final End-tail step, after the terminal move and any disarm, ALWAYS refresh the QMD search index for this store (no-op when QMD is absent), running in the background so it never blocks the turn: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`. Completion is the lifecycle event that keeps the search index fresh, and the reindex runs last so the index never references a bridge or lock that is about to disappear (see PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`).
+1. Update the intent's cluster entries in `INDEX.md` to show `_(completed)_`. Do this first, so the store auto-commit in the next step picks it up. `plastic-intent-ending` does not cover cluster maintenance (`store-indexing` and `store-curating` own it), so doing it here keeps the step from being lost.
+2. Hand the mechanical close to `plastic-intent-ending`. It owns `outcome.md`, the intent file's `## Outcome` stamp, the INDEX terminal move, the savepoint `Done` line, the store auto-commit, disarm, the QMD reindex, and the EM-to-CTO owner report, as ONE delegation. Author the outcome.md content when that skill asks for it; do not restate the mechanical steps here.
 
 **This is NOT optional.** An intent with all checklist items done but no Outcome is a broken state. Complete the intent immediately, do not leave it for later.
 
@@ -117,12 +111,8 @@ For each task:
 ### Step 3: Update Intent and Complete
 Capture observations in `## Insights`. When ALL checklist items are checked:
 
-1. Write `outcome.md` with detailed results in the intent directory, using the `${CLAUDE_PLUGIN_ROOT}/templates/outcome.md` form. Set the frontmatter `disposition: delivered` (the delivered terminal). `outcome.md` is mandatory at every terminal and self-declares its disposition (canonical done-marker in PLASTIC.md).
-2. Write `## Outcome` summary in the intent file (1-2 sentences)
-3. Move intent from `## Active` to `## Completed` in INDEX.md (with today's date)
-4. Update cluster entries to show `_(completed)_`
-5. Auto-commit: `cd <store-root> && git add . && git commit -m "feat: complete intent <ID>: <name>"`
-6. QMD reindex LAST (canonical End tail). As the final End-tail step, after the terminal move and any disarm, ALWAYS refresh the QMD search index for this store (no-op when QMD is absent), running in the background so it never blocks the turn: `ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async`. Completion is the lifecycle event that keeps the search index fresh, and the reindex runs last so the index never references a bridge or lock that is about to disappear (see PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`).
+1. Update the intent's cluster entries in `INDEX.md` to show `_(completed)_`. Do this first, so the store auto-commit in the next step picks it up. `plastic-intent-ending` does not cover cluster maintenance (`store-indexing` and `store-curating` own it), so doing it here keeps the step from being lost.
+2. Hand the mechanical close to `plastic-intent-ending`. It owns `outcome.md`, the intent file's `## Outcome` stamp, the INDEX terminal move, the savepoint `Done` line, the store auto-commit, disarm, the QMD reindex, and the EM-to-CTO owner report, as ONE delegation. Author the outcome.md content when that skill asks for it; do not restate the mechanical steps here.
 
 **This is NOT optional.** Complete the intent immediately when work is done.
 
@@ -171,7 +161,7 @@ persisting each ruling with `--stage Exec`.
 
 - **Before:** `plan.md` and `checklist.md` exist; the worktree is armed.
 - **Produces:** code changes, a ticked checklist, and (for audits or sweeps) a methods report in `resources/`.
-- **Next:** intent-ending owns `outcome.md` (see intent 161). This skill's own Update-Intent-and-Complete step above is unchanged by this note.
+- **Next:** `plastic-intent-ending` owns `outcome.md` and the rest of the mechanical close (see intent 161). The Update-Intent-and-Complete step above hands off to it.
 
 Read `../plastic-conventions/references/lifecycle-and-savepoints.md` for the subagent
 report-home contract this handoff relies on.

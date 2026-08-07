@@ -8,8 +8,6 @@ user-invocable: true
 
 Help turn ideas into fully formed designs through natural collaborative dialogue.
 
-Announce: "I'm using the brainstorming skill to explore the design for intent {id}: {name}."
-
 Start by understanding the current project context, then ask questions one at a time, in prose, to refine the idea. Once you understand what you're building, present the design and collect the owner's rulings on it. This skill's product is the enriched Why, not spec.md.
 
 <HARD-GATE>

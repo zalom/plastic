@@ -318,12 +318,11 @@ the End-stage tail the steps below walk through.
    Set the frontmatter `disposition: delivered` (this is the delivered terminal). `outcome.md`
    is mandatory at every terminal and self-declares its disposition (see the canonical done-marker
    and End tail in PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`).
-3. Write `## Outcome` summary in the intent file (1-2 sentences)
-4. **Release (if configured)**
-   1. Detect project - match CWD against paths in `~/.plastic/projects.yml` to find the project slug. If no match, skip to step 5 (default commit-only behavior).
-   2. Read `~/.plastic/projects/{slug}/project.yml`. If the file doesn't exist or has no `release` key, skip to step 5.
+3. **Release (if configured)**
+   1. Detect project - match CWD against paths in `~/.plastic/projects.yml` to find the project slug. If no match, skip to step 4 (default commit-only behavior).
+   2. Read `~/.plastic/projects/{slug}/project.yml`. If the file doesn't exist or has no `release` key, skip to step 4.
    3. Based on `release.on_complete`:
-      - `commit` - git add + commit (same as default, proceed to step 5)
+      - `commit` - git add + commit (same as default, proceed to step 4)
       - `commit_and_push` - git add + commit + push
       - `manual` - skip auto-commit, notify user: "Release configured as manual - commit when ready."
    4. If `release.verify` is set, run the verify command (e.g. `bundle exec rake test`):
@@ -333,12 +332,13 @@ the End-stage tail the steps below walk through.
         - `stop` - write `savepoint.md` with current state, notify user: "Verify failed - savepoint written.", **STOP**
         - `manual` - notify user: "Verify failed: [summary]. Resolve manually."
    5. If `release.on_green` has items, invoke `plastic-releasing` to handle them (tag, changelog, publish, etc.). Do NOT duplicate release logic - delegate entirely.
-5. Review `## Insights` for observations that should spawn future intents. If any:
+4. Review `## Insights` for observations that should spawn future intents. If any:
    - Create them (using `plastic-intent-creating` conventions)
    - Update `chain` in the current intent's frontmatter
-6. Run the mechanical close through `plastic-intent-ending`: it owns steps 1-6 of the Done
-   procedure (outcome/INDEX/savepoint/commit, disarm, and the QMD reindex last) as ONE
-   delegation, not five separate one-liners restated here. `scripts/end-intent` now performs
+5. Run the mechanical close through `plastic-intent-ending`: it owns steps 1-7 of the Done
+   procedure (outcome/INDEX/savepoint/commit, disarm, the QMD reindex last, and the single
+   EM-to-CTO owner report) as ONE delegation, not a series of separate one-liners restated
+   here. `scripts/end-intent` now performs
    steps 1-5 itself, INCLUDING disarm (worktree release plus clearing `delivery.lock`): a
    single call closes the intent AND clears its lock, so exit 0 means both are done. Pass
    `--session` (this session's id, or rely on the `CLAUDE_CODE_SESSION_ID` fallback) so
@@ -358,9 +358,6 @@ the End-stage tail the steps below walk through.
    Step 6 (QMD reindex, async, last) remains a separate action after this call succeeds.
    Never leave an orphaned worktree; run `git worktree prune` on a stale reference. If any of
    this ever needs to change, change `plastic-intent-ending`, not this skill.
-7. Notify user (Done briefing): brief per `references/human-report-contract.md`
-    (State: the delivered impact; Risk: residual risk; Call: the decision left to you, merge,
-    release, or accept). See `outcome.md` for details.
 
 ## Error Handling
 
