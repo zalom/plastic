@@ -43,8 +43,10 @@ require "minitest/autorun"
 # because hooks.json is a registry, not a script. Three other files need no exclusion at all and
 # are scanned like the rest: run-hook execs a sibling hook by path and never types ruby;
 # savepoint prints one JSON heredoc; statusline is pure bash by design. All three pass because
-# they contain no ruby token. A NEW hook that spawns ruby without clearing fails this test
-# automatically, with no maintenance.
+# they contain no ruby token. Every enumerated hook is checked by BOTH detectors, the bash
+# SHELL_SPAWN_TOKEN scan and the Ruby-language ruby_spawn_line? scan, so a NEW hook that spawns
+# ruby without clearing fails this test automatically, with no maintenance, regardless of which
+# language it spawns ruby from.
 #
 # HOW TO ADD A LEGITIMATE EXCEPTION: put the marker below on the offending line with a written
 # reason, for example:
@@ -61,6 +63,9 @@ class RubyoptClearingTest < Minitest::Test
   REPO = File.expand_path("../../", __FILE__)
 
   EXEMPT_MARKER = "plastic-rubyopt-exempt"
+  # Forces an actual reason: a bare marker with no colon and text after it does not exempt
+  # the line, matching the header's claim above that the marker "forces a reason".
+  EXEMPT_PATTERN = /#{Regexp.escape(EXEMPT_MARKER)}:\s*\S/
 
   SHELL_CLEARED = "env -u RUBYOPT ruby "
   SHELL_PLACEHOLDER = "PLASTIC_CLEARED_RUBY "
@@ -99,7 +104,7 @@ class RubyoptClearingTest < Minitest::Test
 
   def scannable_lines(rel)
     File.readlines(File.join(REPO, rel)).each_with_index.reject do |line, _i|
-      line.strip.start_with?("#") || line.include?(EXEMPT_MARKER)
+      line.strip.start_with?("#") || line.match?(EXEMPT_PATTERN)
     end
   end
 
@@ -133,11 +138,16 @@ class RubyoptClearingTest < Minitest::Test
   # --- shell launchers ---
 
   def test_every_shell_hook_clears_rubyopt_before_spawning_ruby
-    offenders = shell_files.flat_map { |rel| uncleared_shell_spawns(rel) }
+    # Checked by BOTH detectors regardless of language: the bash SHELL_SPAWN_TOKEN scan and
+    # the Ruby-language ruby_spawn_line? scan (for example a hook written with
+    # Open3.capture3("ruby", ...) or IO.popen(["ruby", ...])), because hooks/ is not
+    # restricted to bash and a Ruby-language hook must not slip past either half.
+    offenders = shell_files.flat_map { |rel| uncleared_shell_spawns(rel) + uncleared_ruby_spawns(rel) }
 
     assert_empty offenders,
       "these hook lines spawn ruby without clearing RUBYOPT. Put `env -u RUBYOPT` in front of " \
-      "ruby, or mark the line with `# #{EXEMPT_MARKER}: <reason>` if it is genuinely fine:\n" +
+      "ruby (or a leading {\"RUBYOPT\" => nil} env hash for a Ruby-language spawn), or mark " \
+      "the line with `# #{EXEMPT_MARKER}: <reason>` if it is genuinely fine:\n" +
       offenders.join("\n")
   end
 
@@ -152,6 +162,21 @@ class RubyoptClearingTest < Minitest::Test
   def test_the_hooks_scan_enumerates_rather_than_reading_a_list
     # If a new hook lands, it must be scanned without anyone editing this test.
     assert_operator shell_files.size, :>=, KNOWN_SHELL_LAUNCHERS.size
+  end
+
+  # Guard against a vacuous pass on the SHELL half: if SHELL_SPAWN_TOKEN ever stopped
+  # matching a bare `ruby` command word, every hook would look clean by default and the
+  # test above would give no signal at all. Counts RAW (pre-neutralization) recognized
+  # command words across hooks/ only, the 14 already-cleared shell spawn sites from intent
+  # 235's ACTION_2. This number covers hooks/ alone, re-derived here rather than trusted from
+  # elsewhere; it does not include the named ruby-side scripts/ spawners guarded below.
+  def test_the_shell_detector_still_recognizes_the_spawn_sites_it_is_meant_to_cover
+    recognized = shell_files.sum { |rel| scannable_lines(rel).count { |line, _i| line =~ SHELL_SPAWN_TOKEN } }
+
+    assert_equal 14, recognized,
+      "the shell scan should recognize 14 ruby command words across hooks/, all already " \
+      "cleared; if this number drops, SHELL_SPAWN_TOKEN stopped matching and the hooks test " \
+      "above is vacuous"
   end
 
   # --- ruby-side spawners ---

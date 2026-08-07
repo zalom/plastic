@@ -371,11 +371,13 @@ autonomous execution.
   or revert the update).
 
 The `runtime` category holds one check, `ruby_floor`: it spawns bare `ruby` the way a hook
-launcher does, asks the resolved interpreter for its own version and absolute path, and warns
-when that is below `Preflight::RUBY_FLOOR`. It exists because a version manager that activates
-on shell prompt render does not reach a hook process spawned by the agent application, so the
-ruby your shell has is not always the ruby your hooks get. The check reports only. It never
-pins an interpreter and never repairs.
+launcher does and asks the resolved interpreter for its own version and absolute path. It
+passes when that version is at or above `Preflight::RUBY_FLOOR`, and it warns in two cases:
+when the version is below the floor, and when no runnable `ruby` could be resolved at all
+(undetermined, for example an unparseable version string). It never fails the run. It exists
+because a version manager that activates on shell prompt render does not reach a hook process
+spawned by the agent application, so the ruby your shell has is not always the ruby your hooks
+get. The check reports only. It never pins an interpreter and never repairs.
 
 The project-stores category includes an additive `project_store_dir` check
 (intent 61): when a registered project's `store/` directory is missing, it warns
