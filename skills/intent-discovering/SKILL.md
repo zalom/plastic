@@ -29,8 +29,8 @@ size to unlock the skip. At M or L, or when either field is filled, run the full
 
 ## What it does
 1. **Read the intent's links.** Load the activating intent file's `chain` and
-   `sources` frontmatter fields. If both are empty and the intent is sized S, apply the skip
-   above and stop.
+   `sources` frontmatter fields. If both are empty and a size of S is already on record, apply
+   the skip above and stop.
 2. **QMD-first discovery.** Search the Plastic stores with
    `scripts/qmd-sync search "<terms>"` (or the `qmd` skill), scoped to the
    relevant `plastic-*` collections, across completed predecessor work named in
