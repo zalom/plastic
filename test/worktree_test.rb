@@ -223,6 +223,48 @@ class WorktreeTest < Minitest::Test
                     "delivery.lock files must never be committed to the store repo"
   end
 
+  # --- intent 230: a failed provision must not erase an existing pointer ------
+
+  # A runner whose rev-parse probe reports "not a git repo", so provision takes
+  # its fail-open branch and code_ok stays false.
+  def non_git_runner
+    FakeRunner.new do |args|
+      if args[2] == "rev-parse"
+        next Worktree::ShellRunner::Result.new(128, "", "not a git repository")
+      end
+      Worktree::ShellRunner::Result.new(0, "", "")
+    end
+  end
+
+  def test_provision_keeps_an_existing_pointer_when_the_code_worktree_is_not_added
+    existing_dir = File.join(@tmp, "live-worktree")
+    FileUtils.mkdir_p(existing_dir)
+    data = bridge_data
+    data["worktree"] = { "code" => existing_dir, "code_branch" => "plastic/73c1--worktree-x",
+                         "provisioned" => true }
+
+    capture_stderr do
+      out = Worktree.provision(data, home: @home, runner: non_git_runner)
+      assert_equal existing_dir, out["worktree"]["code"],
+                   "a failed provision must leave a live pointer alone (intent 230)"
+      assert_equal true, out["worktree"]["provisioned"]
+    end
+  end
+
+  def test_provision_replaces_a_pointer_whose_worktree_directory_is_gone
+    data = bridge_data
+    data["worktree"] = { "code" => File.join(@tmp, "vanished"),
+                         "code_branch" => "plastic/73c1--worktree-x",
+                         "provisioned" => true }
+
+    capture_stderr do
+      out = Worktree.provision(data, home: @home, runner: non_git_runner)
+      assert_nil out["worktree"]["code"],
+                 "a pointer to a directory that is gone is worse than none"
+      assert_equal false, out["worktree"]["provisioned"]
+    end
+  end
+
   # --- release ---------------------------------------------------------------
 
   def test_release_removes_the_code_worktree_and_prunes_then_clears_block
