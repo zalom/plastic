@@ -1,6 +1,6 @@
 #!/bin/bash
 INPUT=$(cat)
-MESSAGE=$(echo "$INPUT" | ruby -rjson -e 'puts JSON.parse(STDIN.read)["user_prompt"]' 2>/dev/null || echo "")
+MESSAGE=$(echo "$INPUT" | env -u RUBYOPT ruby -rjson -e 'puts JSON.parse(STDIN.read)["user_prompt"]' 2>/dev/null || echo "")
 
 if echo "$MESSAGE" | grep -iq '\bcontinue\b'; then
   GLOBAL_INDEX="$HOME/.plastic/INDEX.md"
@@ -14,7 +14,7 @@ if echo "$MESSAGE" | grep -iq '\bcontinue\b'; then
   MODE="global"
 
   SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-  OUTPUT=$(ruby "$SCRIPT_DIR/../scripts/hook-continue" "$INDEX" "$STORE_ROOT" "$MODE" 2>/dev/null)
+  OUTPUT=$(env -u RUBYOPT ruby "$SCRIPT_DIR/../scripts/hook-continue" "$INDEX" "$STORE_ROOT" "$MODE" 2>/dev/null)
 
   if [ -n "$OUTPUT" ]; then
     echo "$OUTPUT"

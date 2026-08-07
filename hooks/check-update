@@ -31,7 +31,7 @@ fi
     exit 0
   fi
 
-  TARGET=$(printf '%s' "$TAGS" | ruby "$SELECTOR" "$CURRENT" 2>/dev/null)
+  TARGET=$(printf '%s' "$TAGS" | env -u RUBYOPT ruby "$SELECTOR" "$CURRENT" 2>/dev/null)
   CHECKED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
   if [ -n "$TARGET" ]; then

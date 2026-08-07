@@ -15,7 +15,7 @@ exit 0 unless index_path && File.exist?(index_path)
 dashboard = File.expand_path("dashboard.rb", __dir__)
 exit 0 unless File.exist?(dashboard)
 
-cockpit, _err, status = Open3.capture3("ruby", dashboard, "continue")
+cockpit, _err, status = Open3.capture3({"RUBYOPT" => nil}, "ruby", dashboard, "continue")
 exit 0 unless status.success? && !cockpit.strip.empty?
 
 context = cockpit.rstrip +
@@ -36,7 +36,7 @@ payload = {
 # degrades silently, omitting systemMessage; this hook must never crash
 # UserPromptSubmit over a summary line.
 begin
-  data_json, _data_err, data_status = Open3.capture3("ruby", dashboard, "continue", "--data")
+  data_json, _data_err, data_status = Open3.capture3({"RUBYOPT" => nil}, "ruby", dashboard, "continue", "--data")
   if data_status.success?
     banner = DashboardBanner.render(JSON.parse(data_json))
     payload["systemMessage"] = banner if banner

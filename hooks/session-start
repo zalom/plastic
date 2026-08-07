@@ -6,4 +6,4 @@ if [ ! -f "$GLOBAL_INDEX" ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ruby "$SCRIPT_DIR/../scripts/hook-session-start" "$GLOBAL_INDEX" "$HOME/.plastic" "global" "${CLAUDE_PLUGIN_ROOT:-}"
+env -u RUBYOPT ruby "$SCRIPT_DIR/../scripts/hook-session-start" "$GLOBAL_INDEX" "$HOME/.plastic" "global" "${CLAUDE_PLUGIN_ROOT:-}"

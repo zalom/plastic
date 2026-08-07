@@ -46,16 +46,25 @@ if (!existsSync(script)) {
 try {
   execFileSync('ruby', [script, ...rest], {
     stdio: 'inherit',
-    env: { ...process.env, PLASTIC_PACKAGE_ROOT: packageRoot },
+    // Clear RUBYOPT last, after the spread, so a global setting (for example --yjit)
+    // cannot reach a ruby that does not know the flag. A machine with an old ruby
+    // must get preflight's real message, not a crash.
+    env: { ...process.env, PLASTIC_PACKAGE_ROOT: packageRoot, RUBYOPT: '' },
   })
 } catch (err) {
   if (err.status) process.exit(err.status)
-  // Ruby cannot run to print its own message when it is missing, so this
-  // mirrors scripts/lib/preflight.rb's FATAL block word for word.
-  console.error('Plastic needs Ruby 3.0.0 or newer to run its scripts (found not found).')
-  console.error('Install a pinned Ruby with mise:')
-  console.error('  curl https://mise.run | sh        # only if mise is not installed yet')
-  console.error('  mise use --global ruby@3.3')
-  console.error('Then re-run the Plastic installer.')
+  // We only get here when ruby could not be executed at all. A ruby that runs but is
+  // too old exits with a status, handled on the line above, and prints its own real
+  // message from scripts/lib/preflight.rb naming the version actually found.
+  if (err.code === 'ENOENT') {
+    console.error('Plastic needs Ruby 3.0.0 or newer to run its scripts (ruby was not found on PATH).')
+    console.error('Install a pinned Ruby with mise:')
+    console.error('  curl https://mise.run | sh        # only if mise is not installed yet')
+    console.error('  mise use --global ruby@3.3')
+    console.error('Then re-run the Plastic installer.')
+  } else {
+    console.error(`Plastic could not run ruby: ${err.message}`)
+    console.error('Check that `ruby -v` works in this shell, then re-run the Plastic installer.')
+  }
   process.exit(1)
 }

@@ -13,7 +13,7 @@ fi
 
 # Try Ruby first (macOS/Linux default)
 if command -v ruby &>/dev/null; then
-  ruby -r digest -e 'puts Digest::SHA256.hexdigest(ARGV[0]).to_i(16).to_s(36)[0,6]' "$INTENT_NAME"
+  env -u RUBYOPT ruby -r digest -e 'puts Digest::SHA256.hexdigest(ARGV[0]).to_i(16).to_s(36)[0,6]' "$INTENT_NAME"
   exit 0
 fi
 

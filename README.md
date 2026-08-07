@@ -160,8 +160,18 @@ plan a machine can build from exactly. Read
   the frontier reasoning discipline inline, much cheaper; Fable 5 is the frontier model
   itself. Choose the default at install, switch it any time.
 
-Plastic needs Ruby (already on macOS and Linux) and Node.js 18 or later. Bun
-users can run `bunx` in place of `npx`; Bun is never required.
+Plastic needs Ruby 3.0 or later and Node.js 18 or later. Most Linux systems already
+have a new enough Ruby. macOS ships Ruby 2.6, which is too old, so a clean Mac needs
+a newer one first:
+
+```
+curl https://mise.run | sh        # only if mise is not installed yet
+mise use --global ruby@3.3
+```
+
+The installer checks this before it does anything and tells you the same thing if the
+Ruby it finds is too old. Bun users can run `bunx` in place of `npx`; Bun is never
+required.
 
 ## Built with Plastic
 

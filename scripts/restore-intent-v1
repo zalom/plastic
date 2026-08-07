@@ -271,7 +271,7 @@ class RestoreIntentV1CLI
 
   def reproject_links
     project_links = File.expand_path("project-links", __dir__)
-    system(RbConfig.ruby, project_links, "--plastic-home", plastic_home)
+    system({"RUBYOPT" => nil}, RbConfig.ruby, project_links, "--plastic-home", plastic_home)
     return if $?.success?
 
     warn "restore-intent-v1: ## Links may now be stale (project-links reprojection failed). " \

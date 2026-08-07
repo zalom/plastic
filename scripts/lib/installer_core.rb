@@ -308,6 +308,7 @@ class InstallerCore
       "scripts/hook-power-tools" => "scripts/hook-power-tools",
       "scripts/lib/qmd_hook.rb" => "scripts/lib/qmd_hook.rb",
       "scripts/lib/power_tools.rb" => "scripts/lib/power_tools.rb",
+      "scripts/lib/ruby_probe.rb" => "scripts/lib/ruby_probe.rb",
       "scripts/lib/agent_models.rb" => "scripts/lib/agent_models.rb",
       "scripts/lib/config_asks.rb" => "scripts/lib/config_asks.rb",
       "scripts/lib/release_guard.rb" => "scripts/lib/release_guard.rb",
