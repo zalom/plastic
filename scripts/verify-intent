@@ -1,0 +1,73 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# verify-intent (intent 213) - bundles the checks that need no project-specific knowledge
+# into one verdict: the per-intent doctor scan, an added-line em-dash diff guard, a
+# diffstat, and an optional caller-supplied suite command.
+#
+# Usage:
+#   verify-intent --store <path> --id <intent_id> [--base <ref>] [--suite <command>]
+#
+# --base overrides the auto-detected diff base (default: the merge base with the repo's
+# detected default branch) for repos where detection is ambiguous. --suite is an optional
+# caller-supplied command to run (in the repo directory) and fold into the verdict. No
+# other flags exist.
+#
+# Checks, all run every invocation (the fourth only when --suite is given):
+#   1. doctor    - Doctor#run_intent_check(id, store: scope), fail-open on a crash
+#   2. em-dash   - added lines only of `git diff <base>...HEAD`, never the whole tree
+#   3. diffstat  - `git diff --stat <base>...HEAD`, never a failure on its own
+#   4. suite     - the supplied --suite command, run with RUBYOPT cleared
+#
+# Every check runs, then the run exits on the LOWEST-numbered failure that occurred, so one
+# invocation gives the full picture on stdout even when several checks fail.
+#
+# Exit codes:
+#   0  every check passed
+#   1  usage or path-resolution failure
+#   2  doctor reported an issue
+#   3  the em-dash guard found a violation on an added line
+#   4  the supplied --suite command exited non-zero
+
+require_relative "lib/verify_intent"
+
+def parse_args(argv)
+  opts = { store: nil, id: nil, base: nil, suite: nil }
+  i = 0
+  while i < argv.length
+    arg = argv[i]
+    case arg
+    when "--store" then opts[:store] = argv[i += 1]
+    when "--id"    then opts[:id] = argv[i += 1]
+    when "--base"  then opts[:base] = argv[i += 1]
+    when "--suite" then opts[:suite] = argv[i += 1]
+    else
+      usage_abort("unknown argument #{arg.inspect}")
+    end
+    i += 1
+  end
+  opts
+end
+
+def usage
+  "usage: verify-intent --store <path> --id <intent_id> [--base <ref>] [--suite <command>]"
+end
+
+def usage_abort(message)
+  warn "verify-intent: #{message}"
+  warn usage
+  exit 1
+end
+
+def main(argv)
+  opts = parse_args(argv)
+  usage_abort("--store is required") if opts[:store].nil? || opts[:store].empty?
+  usage_abort("--id is required") if opts[:id].nil? || opts[:id].empty?
+
+  verdict = VerifyIntent.run(store: opts[:store], id: opts[:id], base: opts[:base], suite: opts[:suite])
+  verdict[:lines].each { |line| puts line }
+  exit verdict[:exit_code]
+end
+
+main(ARGV) if $PROGRAM_NAME == __FILE__

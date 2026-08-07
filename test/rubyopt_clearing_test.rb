@@ -80,6 +80,7 @@ class RubyoptClearingTest < Minitest::Test
     scripts/maintenance-run
     scripts/restore-intent-v1
     scripts/hook-continue
+    scripts/lib/verify_intent.rb
   ].freeze
 
   # Rename guard only. The hooks scan below enumerates the directory, it does not read this.
