@@ -86,6 +86,12 @@ nothing else depends on it. No frontmatter schema change, no new file, no doctor
 gate check. If a later intent wants doctor or a gate to validate the line, that is a
 separate, explicit follow-up; this system deliberately adds no new operational surface.
 
+Settledness is a separate line, `Settled: yes (<reason>)`, directly beneath the `Tier:` line
+and above the `# Spec:` heading. It records that a design has already done its thinking. An
+absent line means not settled; there is no `Settled: no` form. Settledness and scope are
+independent, so a large intent can be settled without becoming a smaller tier.
+`scripts/lib/spec_header.rb` is the only parser of both lines.
+
 ## Never-cut list, the safety floor
 
 At any tier or mode: the independent reviewer (separate agent, fresh context, never the

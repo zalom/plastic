@@ -71,6 +71,9 @@ Rules for any agent (or human) contributing to this repository.
   or malformed intent file, so hand-authoring is both rejected and unnecessary.
 - Plans, specs, checklists, and outcomes live in the intent directory under `~/.plastic/`,
   never in the project tree.
+- A step becomes a script only when its output is a pure function of already-committed
+  artifacts (spec.md, plan.md, checklist.md, outcome.md, test results, the diff). Everything
+  else stays judgment and stays with the agent. Make no exceptions for convenience.
 
 ### Testing
 - Run the full suite with:
