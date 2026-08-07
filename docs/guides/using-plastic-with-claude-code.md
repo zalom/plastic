@@ -27,8 +27,7 @@ large intent, and once before it starts building for a small one (Plastic sizes
 each intent small, medium, or large). Then it takes the call itself and keeps
 moving, except at a small number of hard stops: confirming a project path, or
 before an action with no safe way back. You get the full story as it happens,
-but you are only pulled in when it
-truly matters.
+but you are only pulled in when it truly matters.
 
 One way to describe the difference: the agent always carries the machinery,
 the arming, the gates, the actual work of each stage. In guided mode, you also
