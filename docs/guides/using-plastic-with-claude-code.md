@@ -22,11 +22,12 @@ at each step: a state of play, a risk if any, and a call to make. This is
 deliberately slow. It is the right choice when you want to watch each decision
 as it happens.
 
-In auto mode, the agent still gives you that same short briefing at every
-stage, but it takes the call itself and keeps moving, except at a small number
-of hard stops: confirming a project path, or before an action with no safe way
-back. You get the full story as it happens, but you are only pulled in when it
-truly matters.
+In auto mode, the agent briefs you as it goes: at every stage for a medium or
+large intent, and once before it starts building for a small one (Plastic sizes
+each intent small, medium, or large). Then it takes the call itself and keeps
+moving, except at a small number of hard stops: confirming a project path, or
+before an action with no safe way back. You get the full story as it happens,
+but you are only pulled in when it truly matters.
 
 One way to describe the difference: the agent always carries the machinery,
 the arming, the gates, the actual work of each stage. In guided mode, you also

@@ -19,9 +19,18 @@ Why-stage brainstorming agent reads.
 Inside `plastic-intent-starting`, right after the bridge is armed, under the
 lock. Dispatched as the `plastic-intent-discovery` background agent.
 
+**Precondition for skipping: a size of S already on record, and no graph edges.** Read the
+activating intent's `chain` and `sources` frontmatter fields first. When a `Tier: S` line is
+already stamped at the top of `spec.md` AND both fields are empty, the pass does not run:
+write the single line `no chain/sources, discovery skipped` to
+`resources/discovery--<slug>.md` and stop there. Sizing happens at Why, which is after this
+stage, so a first activation usually has no size yet and the full pass runs. Never guess a
+size to unlock the skip. At M or L, or when either field is filled, run the full pass below.
+
 ## What it does
 1. **Read the intent's links.** Load the activating intent file's `chain` and
-   `sources` frontmatter fields.
+   `sources` frontmatter fields. If both are empty and a size of S is already on record, apply
+   the skip above and stop.
 2. **QMD-first discovery.** Search the Plastic stores with
    `scripts/qmd-sync search "<terms>"` (or the `qmd` skill), scoped to the
    relevant `plastic-*` collections, across completed predecessor work named in

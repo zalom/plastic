@@ -128,7 +128,8 @@ succession at a glance (last line = where we are).
 ### Auto-Mode Human Reporting (intent 92)
 
 In auto mode the orchestrator briefs the human at every lifecycle stage boundary in a fixed,
-impact-first shape (the EM-to-CTO report contract): State, then Risk, then Call. It leads with
+impact-first shape (the EM-to-CTO report contract): State, then Risk, then Call. This is the
+depth at M and L; at S the briefing fires once, at How. It leads with
 what changed and why it matters, names one risk, and leaves the decision to the human. Separately,
 the `plastic-humanizer` skill cleans authored prose (specs, outcomes, READMEs, release notes) of
 AI tells and slop; it is for documents, not for every reply.

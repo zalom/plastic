@@ -68,13 +68,14 @@ ceremony, never these guarantees.
 1. Arm the gate, then dispatch the brainstorming specialist; gate its `## Context` + `### Decisions`
 2. Dispatch the spec-specialist; gate `spec.md`. Then the planner; gate `plan.md` + `checklist.md`
 3. Dispatch the executor; require a green suite. Sequential, one team per intent, on one branch when files are shared
-4. Dispatch and review by default through Plastic's native engine, `plastic-intent-executing` (implementer plus two-stage review, no external plugin). If `superpowers:subagent-driven-development` and `superpowers:dispatching-parallel-agents` are available, or the user asks for them, delegate to them as an enhancement
+4. Dispatch and review by default through Plastic's native engine, `plastic-intent-executing` (no external plugin): at S and M, one executor dispatch for the whole consolidated action; at L, implementer plus two-stage review per task. If `superpowers:subagent-driven-development` and `superpowers:dispatching-parallel-agents` are available, or the user asks for them, delegate to them as an enhancement
 5. At the final gate, dispatch an independent reviewer subagent, then complete the intent
 
 ## Human-facing stage reporting
 
 At each gate, the orchestrator briefs the human in EM-to-CTO voice: impact first, the one risk
-that matters, then the decision left to them. The shape and per-stage content live in
+that matters, then the decision left to them. This is the depth at M and L; at S the briefing
+fires once, at How. The shape and per-stage content live in
 `skills/auto/references/human-report-contract.md`; follow it rather than improvising a report.
 This is separate from the intent 74 report contract (`skills/auto/references/agent-report-contract.md`),
 which is the internal, structured handoff a dispatched specialist sends back to the orchestrator.
