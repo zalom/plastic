@@ -195,7 +195,7 @@ module LinkSuggestCLI
   def qmd_search_ids(query, nodes)
     return [] if query.to_s.strip.empty?
 
-    out = `ruby #{File.join(Dir.home, ".plastic", "scripts", "qmd-sync")} search #{shell_quote(query)} 2>/dev/null`
+    out = `env -u RUBYOPT ruby #{File.join(Dir.home, ".plastic", "scripts", "qmd-sync")} search #{shell_quote(query)} 2>/dev/null`
     return [] if out.nil? || out.empty?
 
     out.scan(/\b([0-9]+[a-z0-9]*)\b/).flatten.uniq.select { |id| nodes.key?(id) }

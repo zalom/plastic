@@ -130,7 +130,7 @@ def run_project_links(home, intent, store, apply)
   base_args += ["--store", store] if store
 
   unless apply
-    system(RbConfig.ruby, tool_path, *base_args, "--dry-run")
+    system({"RUBYOPT" => nil}, RbConfig.ruby, tool_path, *base_args, "--dry-run")
     exit($?.exitstatus)
   end
 
@@ -139,7 +139,7 @@ def run_project_links(home, intent, store, apply)
       repo_dir: home, branch_name: "maintenance/project-links-#{intent}-#{stamp}",
       commit_message: "chore: maintenance - project-links --intent #{intent}"
     ) do
-      ok = system(RbConfig.ruby, tool_path, *base_args)
+      ok = system({"RUBYOPT" => nil}, RbConfig.ruby, tool_path, *base_args)
       raise "project-links failed for #{intent}" unless ok
     end
   rescue MaintenanceGit::DirtyWorkingTree, MaintenanceGit::NotAGitRepo => e
@@ -171,7 +171,7 @@ def run_rebuild_graph(home, apply)
       repo_dir: home, branch_name: "maintenance/rebuild-graph-#{stamp}",
       commit_message: "chore: maintenance - rebuild-graph"
     ) do
-      ok = system(RbConfig.ruby, tool_path, "--plastic-home", home)
+      ok = system({"RUBYOPT" => nil}, RbConfig.ruby, tool_path, "--plastic-home", home)
       raise "rebuild-graph failed" unless ok
     end
   rescue MaintenanceGit::DirtyWorkingTree, MaintenanceGit::NotAGitRepo => e
@@ -200,7 +200,7 @@ def run_restore_intent_v1(home, id, at, store, apply, skip_links)
   args << "--skip-links" if skip_links
 
   unless apply
-    system(RbConfig.ruby, *args)
+    system({"RUBYOPT" => nil}, RbConfig.ruby, *args)
     exit($?.exitstatus)
   end
 
@@ -209,7 +209,7 @@ def run_restore_intent_v1(home, id, at, store, apply, skip_links)
       repo_dir: home, branch_name: "maintenance/restore-intent-v1-#{id}-#{stamp}",
       commit_message: "chore: maintenance - restore-intent-v1 #{id}"
     ) do
-      ok = system(RbConfig.ruby, *args, "--apply")
+      ok = system({"RUBYOPT" => nil}, RbConfig.ruby, *args, "--apply")
       raise "restore-intent-v1 failed for #{id}" unless ok
     end
   rescue MaintenanceGit::DirtyWorkingTree, MaintenanceGit::NotAGitRepo => e
