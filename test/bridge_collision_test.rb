@@ -5,6 +5,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "json"
+require "stringio"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/worktree"
 require_relative "../scripts/lib/lock"
@@ -272,5 +273,56 @@ class BridgeCollisionTest < Minitest::Test
                  "read for 202 still resolves the matching legacy file"
     assert_equal "202", Bridge.read(session, tmp: @tmp)&.dig("intent", "id"),
                  "read with no intent_id still tolerates the legacy file"
+  end
+
+  def capture_stderr
+    original = $stderr
+    $stderr = StringIO.new
+    yield
+    $stderr.string
+  ensure
+    $stderr = original
+  end
+
+  # --- 10. intent 233: a two-sibling session refuses a no-id disarm ----------
+
+  def test_no_id_disarm_on_a_two_sibling_session_touches_nothing
+    session = "twin-session"
+    Bridge.arm_auto(session, intent_id: "201", intent_dir: @dirA, store: @store, name: "demo-a")
+    Bridge.arm_auto(session, intent_id: "202", intent_dir: @dirB, store: @store, name: "demo-b")
+
+    assert File.exist?(Lock.path(@dirA))
+    assert File.exist?(Lock.path(@dirB))
+
+    # Plant the pre-131 legacy single-key bridge, carrying sibling A. Without
+    # it a no-id disarm was ALREADY a no-op here (read returns nil when the
+    # legacy file is absent), so the safety assertions below would pass against
+    # the old code too and would prove nothing. With it, the old fall-through
+    # picked A and released A's live lock. This is the case D6 exists for.
+    File.write(Bridge.path(session, tmp: @tmp),
+               File.read(Bridge.path(session, intent_id: "201", tmp: @tmp)))
+
+    out = capture_stderr { @result = Bridge.disarm_auto(session) }
+
+    assert_nil @result
+    assert File.exist?(Lock.path(@dirA)), "sibling A's lock must survive a refused no-id disarm"
+    assert File.exist?(Lock.path(@dirB)), "sibling B's lock must survive a refused no-id disarm"
+    assert File.exist?(Bridge.path(session, intent_id: "201", tmp: @tmp))
+    assert File.exist?(Bridge.path(session, intent_id: "202", tmp: @tmp))
+    refute_empty out
+    assert_includes out, session
+  end
+
+  def test_explicit_id_disarm_releases_only_the_named_sibling
+    session = "twin-session-explicit"
+    Bridge.arm_auto(session, intent_id: "201", intent_dir: @dirA, store: @store, name: "demo-a")
+    Bridge.arm_auto(session, intent_id: "202", intent_dir: @dirB, store: @store, name: "demo-b")
+
+    Bridge.disarm_auto(session, intent_id: "201")
+
+    refute File.exist?(Lock.path(@dirA)), "201's lock must be released"
+    assert File.exist?(Lock.path(@dirB)), "202's lock must be untouched"
+    assert_equal "202", Bridge.read(session, intent_id: "202", tmp: @tmp)&.dig("intent", "id")
+    assert_equal false, Bridge.read(session, intent_id: "201", tmp: @tmp)&.dig("build", "auto")
   end
 end
