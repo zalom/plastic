@@ -892,12 +892,6 @@ module Bridge
 
   # --- Auto mode (intent 27) ---
 
-  # Shared arming spine (intent 96): resolve the session key, derive intent state,
-  # set the caller-controlled auto flag, acquire the delivery lock, provision the
-  # per-intent worktrees, persist, and purge terminal bridges. arm_auto (auto: true)
-  # and arm_guided (auto: false) are thin delegators so the lock-stamp + provision
-  # behaviour stays identical across both modes. Works even when no bridge exists
-  # yet (mid-session intent creation).
   # Intent 230: freshly composed state carries worktree.code = nil, so a failed
   # Worktree.provision would have nothing to keep. Seed the block from the bridge
   # already on disk when it names a code path, so provision's keep-rule (see
@@ -911,6 +905,12 @@ module Bridge
   end
   private_class_method :carry_prior_worktree
 
+  # Shared arming spine (intent 96): resolve the session key, derive intent state,
+  # set the caller-controlled auto flag, acquire the delivery lock, provision the
+  # per-intent worktrees, persist, and purge terminal bridges. arm_auto (auto: true)
+  # and arm_guided (auto: false) are thin delegators so the lock-stamp + provision
+  # behaviour stays identical across both modes. Works even when no bridge exists
+  # yet (mid-session intent creation).
   def self.arm(session, intent_id:, intent_dir:, store:, name:, auto:, harness: nil,
                agent: nil, model: nil, thread: nil)
     key = resolve_session(session, intent_id: intent_id, store: store)
