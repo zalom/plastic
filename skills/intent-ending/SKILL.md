@@ -171,8 +171,9 @@ historical record of what was planned.
 
 ## Routing
 
-`plastic-releasing`, `plastic-auto`, the curator agent, `store-curating`, and
-`store-indexing` all delegate their mechanical close to this skill (or call
-`scripts/end-intent` directly for steps 1-5). None of them restate the
-outcome/INDEX/savepoint/disarm prose inline any more; if you find one that
-does, that surface has drifted and should route here instead.
+`plastic-releasing`, `plastic-auto`, `plastic-intent-executing`, the curator
+agent, `store-curating`, and `store-indexing` all delegate their mechanical
+close to this skill (or call `scripts/end-intent` directly for steps 1-5).
+None of them restate the outcome/INDEX/savepoint/disarm prose inline any
+more; if you find one that does, that surface has drifted and should route
+here instead.
