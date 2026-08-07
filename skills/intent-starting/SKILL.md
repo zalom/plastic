@@ -69,11 +69,12 @@ This path resolves relative to this skill's own installed directory.
    discovery yields nothing, proceed to Why normally.
 
    **Skip the dispatch only at Tier S, when there is nothing to discover.** The skip fires
-   only when BOTH hold: the orchestrator has sized the intent S, and the activating intent's
-   `chain` and `sources` frontmatter fields are both empty. Sizing is the orchestrator's own
-   call, read off the intent line, so it is already known at activation and does not need
-   spec.md's `Tier:` line stamped yet. At M or L, or when either field is filled, dispatch
-   the agent as written above. When both conditions hold, write the single line
+   only when BOTH hold: a size of S is already on record for this intent, and the activating
+   intent's `chain` and `sources` frontmatter fields are both empty. On record means a
+   stamped `Tier: S` line at the top of `spec.md`. Sizing happens at Why, which is after this
+   step, so a first activation usually has no size yet: run the pass. The skip mainly earns
+   its keep on a re-activated intent that is already sized S. Never guess a size here to
+   unlock the skip. When both conditions hold, write the single line
    `no chain/sources, discovery skipped` to `resources/discovery--<slug>.md` in its place,
    then go to Why.
 
