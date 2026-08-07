@@ -40,7 +40,7 @@ happens) implements from plan.md + checklist.md, checks off items, appends `## I
 and drives the suite green. At S/M that is ONE executor dispatch for the whole consolidated
 action: no per-task implementer, and no per-task spec review or quality review. L keeps the
 per-task loop. The gate lives in `plastic-intent-executing`'s Subagent-Driven workflow,
-which reads the `Tier:` line in plan.md. The arithmetic: an S plan with N tasks costs 3N
+which reads the `Tier:` line stamped at the top of spec.md, the authoritative record. The arithmetic: an S plan with N tasks costs 3N
 plus 1 agent boots under the L shape, and 2 boots under this one.
 
 The independent reviewer still runs at the final gate for S/M, in its own fresh context,
