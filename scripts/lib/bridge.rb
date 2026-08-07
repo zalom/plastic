@@ -9,6 +9,7 @@ require "digest"
 require "socket"
 require_relative "worktree"
 require_relative "lock"
+require_relative "spec_header"
 
 module Bridge
   STAGES = %w[what why how exec done].freeze
@@ -662,13 +663,10 @@ module Bridge
   # matching the skill and agent contracts). Returns nil when spec.md is
   # absent, empty, or its first line does not match, so a missing/malformed
   # Tier line changes nothing about existing rebuild behavior.
+  # The grammar itself now lives in SpecHeader (scripts/lib/spec_header.rb, intent 213);
+  # this method is a thin read on top of it.
   def self.savepoint_tier(intent_dir)
-    path = File.join(intent_dir, "spec.md")
-    return nil unless File.exist?(path)
-    first = File.open(path, &:gets)
-    return nil if first.nil?
-    m = first.chomp.strip.match(/\ATier:\s*(S|M|L)\z/)
-    m && m[1]
+    SpecHeader.parse_file(File.join(intent_dir, "spec.md"))[:tier]
   end
 
   # Reconstruct the ledger from files on disk (timestamps from mtimes), in

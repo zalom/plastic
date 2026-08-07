@@ -371,6 +371,7 @@ class InstallerCore
       "scripts/uninstall.rb" => "scripts/uninstall.rb",
       "scripts/rollback.rb" => "scripts/rollback.rb",
       "scripts/lib/outcome_guard.rb" => "scripts/lib/outcome_guard.rb",
+      "scripts/lib/spec_header.rb" => "scripts/lib/spec_header.rb",
       "scripts/doctor.rb" => "scripts/doctor.rb",
       "scripts/lib/doctor_core.rb" => "scripts/lib/doctor_core.rb",
       "scripts/dashboard.rb" => "scripts/dashboard.rb",
