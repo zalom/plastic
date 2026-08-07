@@ -30,6 +30,8 @@ require_relative "lib/outcome_guard"
 require_relative "lib/skill_lint"
 require_relative "lib/config_asks"
 require_relative "lib/power_tools"
+require_relative "lib/preflight"
+require_relative "lib/ruby_probe"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -2858,6 +2860,61 @@ end
     end
   end
 
+  # --- Check category: runtime (which ruby a spawned hook resolves) ---
+  #
+  # Intent 235, D6. REPORT ONLY: this check never pins an interpreter and never repairs.
+  # A hook is launched by the agent application, not by a login shell, so a version
+  # manager that activates on shell prompt render (mise, rbenv, asdf) may never reach it
+  # and bare `ruby` can still resolve to the system interpreter long after the user
+  # installs a modern Ruby.
+  #
+  # Below the floor is a WARN, never a fail. Doctor cannot know that the PATH it sees is
+  # the PATH the agent application will hand its hooks, so it reports the risk with a
+  # precise fix hint instead of blocking. "Could not determine" is the same warn: an
+  # honest unknown, not a silent pass.
+  #
+  # The probe is injected as a keyword with a real default (see check_serena for the same
+  # shape), so tests never spawn a process and never touch ENV.
+  def check_ruby_runtime(probe: RubyProbe.method(:resolve))
+    resolved = probe.call
+    version = resolved[:version]
+    parsed = version && safe_version(version)
+
+    if parsed.nil?
+      return [check(
+        category: "runtime", name: "ruby_floor", status: "warn",
+        message: "Could not determine which ruby a Plastic hook would resolve on PATH " \
+                 "(no runnable `ruby` answered), so Plastic cannot confirm hook processes " \
+                 "meet the Ruby #{Preflight::RUBY_FLOOR} floor",
+        fixable: false,
+        fix_hint: "Make sure `ruby -v` works, then pin one for the whole machine: " \
+                  "mise use --global ruby@#{Preflight::RUBY_PIN}"
+      )]
+    end
+
+    where = resolved[:path].to_s.empty? ? "ruby on PATH" : resolved[:path]
+
+    if parsed < safe_version(Preflight::RUBY_FLOOR)
+      return [check(
+        category: "runtime", name: "ruby_floor", status: "warn",
+        message: "Hooks would resolve Ruby #{version} at #{where}, below Plastic's floor of " \
+                 "#{Preflight::RUBY_FLOOR}. Hook scripts can fail on this interpreter even when " \
+                 "your own shell has a newer Ruby, because a shell-activated version manager " \
+                 "does not reach a hook process spawned by the agent application",
+        details: [where],
+        fixable: false,
+        fix_hint: "Pin a Ruby the whole machine sees: mise use --global ruby@#{Preflight::RUBY_PIN}"
+      )]
+    end
+
+    [check(
+      category: "runtime", name: "ruby_floor", status: "pass",
+      message: "Hooks would resolve Ruby #{version} at #{where}, at or above Plastic's floor " \
+               "of #{Preflight::RUBY_FLOOR}",
+      details: [where]
+    )]
+  end
+
   # --- Check category: skill-lint (advisory only; intent 85b) ---
   #
   # Reports SkillLint's five structural checks over the skills/ tree as a
@@ -2911,6 +2968,7 @@ end
     all_checks += check_deprecations
     all_checks += check_config_asks(agent_key)
     all_checks += check_qmd
+    all_checks += check_ruby_runtime
     all_checks += check_done_signals(scopes: ["global"])
     all_checks += check_skill_lint
     all_checks += check_install_integrity
