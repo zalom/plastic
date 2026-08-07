@@ -68,6 +68,12 @@ This path resolves relative to this skill's own installed directory.
    lock-owner-only rule is untouched. This is advisory context for Why, not a gate: if
    discovery yields nothing, proceed to Why normally.
 
+   **Skip the dispatch when there is nothing to discover.** Read the activating intent's
+   `chain` and `sources` frontmatter fields before dispatching. When BOTH are empty there
+   are no graph edges to follow, so do not dispatch the agent. Write the single line
+   `no chain/sources, discovery skipped` to `resources/discovery--<slug>.md` in its place,
+   then go to Why. One filled field is enough to run the pass as written above.
+
 **Session id resolution (verbatim from `plastic-auto`).** The first argument is the session
 id the bridge is keyed by: pass the hook stdin `session_id` when you have it; in the executable
 snippets, a nonblank `CODEX_THREAD_ID` identifies Codex, otherwise a nonblank

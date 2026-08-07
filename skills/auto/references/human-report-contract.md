@@ -29,6 +29,15 @@ short. The words can flex to fit the stage.
 - **Done**: State = the delivered impact. Risk = residual risk. Call = the decision left to you
   (merge, release, accept).
 
+## Depth at Tier S
+
+At Tier S in auto mode the mid-flight briefings collapse to one. Only the How briefing fires, and
+it folds in what the What and Why briefings would have said: the work picked up and the approach
+chosen go into its State line. The Exec briefing folds into the final owner report at End. M and L
+send all four. The shape does not change: still State, then Risk, then Call, and the per-stage
+content above still says what each line covers. This is a depth cut, not a new report. A delivery
+still ends with `outcome.md` plus one owner report.
+
 ## One report per audience
 
 A delivery produces exactly two artifacts: `outcome.md` (authored by `plastic-intent-ending`)

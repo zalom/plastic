@@ -37,15 +37,27 @@ One thinker agent boots ONCE and stays in a single context for two stations:
 
 Then a sonnet executor (a fresh dispatch, this is the one topology split that always
 happens) implements from plan.md + checklist.md, checks off items, appends `## Insights`,
-and drives the suite green, exactly as it does for L.
+and drives the suite green. At S/M that is ONE executor dispatch for the whole consolidated
+action: no per-task implementer, and no per-task spec review or quality review. L keeps the
+per-task loop. The gate lives in `plastic-intent-executing`'s Subagent-Driven workflow,
+which reads the `Tier:` line in plan.md. The arithmetic: an S plan with N tasks costs 3N
+plus 1 agent boots under the L shape, and 2 boots under this one.
 
 The independent reviewer still runs at the final gate for S/M, in its own fresh context,
 never the maker. This is on the never-cut list; it does not collapse.
 
+S sends ONE mid-flight owner briefing instead of four. Only the How briefing fires, at the
+point the plan is ready and before any code is written, and it folds in what the What and
+Why briefings would have said; the Exec briefing folds into the final owner report at End.
+M and L send all four. The briefing calls live in `plastic-auto`'s stage sections, and the
+depth note lives in `references/human-report-contract.md`.
+
 S may skip the QMD discovery deposit (normally a `plastic-intent-discovery` pass before
 Why) when the intent's `chain` and `sources` are both empty in frontmatter. With no graph
 edges there is nothing to discover, so the deposit is pure overhead; a one-line context
-note ("no chain/sources, discovery skipped") takes its place.
+note ("no chain/sources, discovery skipped") takes its place, written to
+`resources/discovery--<slug>.md`. Two places implement the skip: the dispatch site in
+`plastic-intent-starting` step 4, and the precondition in `plastic-intent-discovering`.
 
 ## L topology, unchanged
 

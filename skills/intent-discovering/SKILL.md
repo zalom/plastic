@@ -19,9 +19,15 @@ Why-stage brainstorming agent reads.
 Inside `plastic-intent-starting`, right after the bridge is armed, under the
 lock. Dispatched as the `plastic-intent-discovery` background agent.
 
+**Precondition: the intent has graph edges.** Read the activating intent's `chain` and
+`sources` frontmatter fields first. When BOTH are empty there is nothing to discover, so
+the pass does not run: write the single line `no chain/sources, discovery skipped` to
+`resources/discovery--<slug>.md` and stop there. One filled field is enough to run the
+full pass below.
+
 ## What it does
 1. **Read the intent's links.** Load the activating intent file's `chain` and
-   `sources` frontmatter fields.
+   `sources` frontmatter fields. If both are empty, apply the skip above and stop.
 2. **QMD-first discovery.** Search the Plastic stores with
    `scripts/qmd-sync search "<terms>"` (or the `qmd` skill), scoped to the
    relevant `plastic-*` collections, across completed predecessor work named in

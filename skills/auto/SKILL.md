@@ -75,9 +75,13 @@ and artifact depth to that size. Extended walkthrough: `references/tiers.md`.
    place, under the same gate.
 3. **Per-tier topology.** S/M: one thinker agent, one boot, two stations, sonnet
    executor; the thinker writes at least one real action file (one consolidated
-   `actions/ACTION_1.md`), never an empty `actions/`. S may also skip the QMD discovery
-   deposit when chain and sources are both empty. L: today's full team (`## Team Spin-Up`
-   below), one `actions/ACTION_N.md` per task.
+   `actions/ACTION_1.md`), never an empty `actions/`. That executor runs as ONE dispatch
+   for the whole consolidated action, with no per-task two-stage review loop
+   (`plastic-intent-executing` holds that gate). S cuts two more things: it skips the QMD
+   discovery deposit when chain and sources are both empty, and it sends ONE mid-flight
+   owner briefing, at How. M and L send all four. L: today's full team (`## Team Spin-Up`
+   below), one `actions/ACTION_N.md` per task, and a per-task implementer plus two-stage
+   review.
 4. **Never-cut list**, any tier or mode: the independent reviewer (separate agent, fresh
    context, never the maker), `outcome.md` as truth of delivery, the delivery lock,
    worktree isolation, intent creation via skill, INDEX as status truth, the QMD reindex
@@ -217,9 +221,9 @@ Filesystem fallback (ledger missing only):
 
 Announce which stage you're entering and why.
 
-Notify user (What briefing): brief per `references/human-report-contract.md`
+Notify user (What briefing, M and L only): brief per `references/human-report-contract.md`
 (State: the work picked up and why it matters now; Risk: scope uncertainty; Call: confirm
-this is worth doing, or proceed).
+this is worth doing, or proceed). At S this briefing does not fire; the How briefing carries it.
 
 ## Why Completion (Autonomous)
 
@@ -235,9 +239,10 @@ When entering at Why stage:
 5. Make decisions - pick best option, document in `## Context > ### Decisions` with rationale
 6. Log all autonomous decisions in `## Insights` with `(autonomous)` marker: "Decision: chose X because Y (autonomous)"
 7. Write `spec.md` - consolidated specification
-8. Notify user (Why briefing): brief per `references/human-report-contract.md`
+8. Notify user (Why briefing, M and L only): brief per `references/human-report-contract.md`
    (State: the approach chosen, one line; Risk: the main trade-off; Call: the one decision
-   needed, approve or pick an option).
+   needed, approve or pick an option). At S this briefing does not fire; the How briefing
+   carries it.
 
 Then proceed to How.
 
@@ -253,9 +258,12 @@ one consolidated `actions/ACTION_1.md`, L writes one `actions/ACTION_N.md` per t
 2. Otherwise, write `plan.md` directly - implementation plan with numbered tasks
 3. Write at least one real `ACTION_N.md` into the existing `actions/` directory, self-contained (S/M: one consolidated `ACTION_1.md`; L: one per task)
 4. Write `checklist.md` - execution registry with checkboxes covering all actions
-5. Notify user (How briefing): brief per `references/human-report-contract.md`
+5. Notify user (How briefing, every tier): brief per `references/human-report-contract.md`
    (State: the plan shape, task count and what it builds; Risk: the riskiest task or
-   dependency; Call: approve the plan to build).
+   dependency; Call: approve the plan to build). At S this is the ONE mid-flight briefing:
+   fold into the same three lines what the What and Why briefings would have said (the work
+   picked up, the approach chosen), and send it here, with the plan ready and before any
+   code is written.
 
 Then proceed to Exec.
 
@@ -279,9 +287,10 @@ If the plan calls for creating a new project (the intent is an implementation in
 4. Check off items in `checklist.md` as completed
 5. Append observations to `## Insights` with `(autonomous)` marker
 6. Sub-agents can be spawned for parallel actions (one agent per action)
-7. Notify user (Exec briefing): brief per `references/human-report-contract.md`
+7. Notify user (Exec briefing, M and L only): brief per `references/human-report-contract.md`
    (State: what got built and the test result; Risk: residual failures or deviations;
-   Call: go to review, or done).
+   Call: go to review, or done). At S this briefing does not fire; the final owner report at
+   End carries what it would have said.
 
 ## Permission Model - Safe-by-Default
 

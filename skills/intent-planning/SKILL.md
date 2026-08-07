@@ -53,12 +53,18 @@ This structure informs the task decomposition. Each task should produce self-con
 
 ## Bite-Sized Task Granularity
 
-**Each step is one action (2-5 minutes):**
+Granularity follows the `Tier:` line the spec stamped.
+
+**At M or L, each step is one action (2-5 minutes):**
 - "Write the failing test" - step
 - "Run it to make sure it fails" - step
 - "Implement the minimal code to make the test pass" - step
 - "Run the tests and make sure they pass" - step
 - "Commit" - step
+
+**At S, size each step to the work.** Do not slice a small delivery into fixed 2-5 minute steps. Keep steps coarse enough to read in one pass, and let the one consolidated `actions/ACTION_1.md` carry the whole delivery. Detail does not relax: a step still names its exact file paths, its exact changes, and how it is verified. Only the slicing relaxes.
+
+This changes granularity, nothing else. Every tier still produces at least one real `actions/ACTION_N.md`, and an empty or `.gitkeep`-only `actions/` still fails the How gate (see `## Tier shapes` above).
 
 ## Plan Format
 
