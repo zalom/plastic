@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # encoding: UTF-8
-# Usage: hook-session-start <index_path> <store_root> <mode> [plugin_root]
+# Usage: hook-session-start <index_path> <plastic_home> <mode> [plugin_root]
 # Outputs hook JSON for the session-start hook. Exits silently if nothing to show.
 
 require "json"
@@ -11,8 +11,14 @@ require_relative "lib/boot_banner"
 require_relative "lib/qmd_sync"
 require_relative "doctor"
 
-index_path, store_root, mode, plugin_root = ARGV
-exit 0 unless index_path && store_root && mode
+index_path, plastic_home, mode, plugin_root = ARGV
+exit 0 unless index_path && plastic_home && mode
+
+# Plastic home and the store are two different paths (intent 231). The shim passes
+# home (~/.plastic) as argument 2; the store lives one level below it. Compose the
+# store exactly once here, so no later line re-derives it and no path can gain a
+# doubled store/ segment.
+store_dir = File.join(plastic_home, "store")
 
 # --- Parse INDEX.md ---
 
@@ -47,11 +53,11 @@ end
 bridge_data = nil
 if active.length == 1 && active.first =~ /store\/([\w-]+)\//
   dir_name = $1
-  intent_dir = "#{store_root}/store/#{dir_name}"
+  intent_dir = "#{store_dir}/#{dir_name}"
   session = ENV["CLAUDE_CODE_SESSION_ID"] || Process.pid.to_s
   intent_id = dir_name.split("--").first
   intent_name = active.first[/\[([^\]]+)\]/, 1] || "unknown"
-  bridge_data = Bridge.derive(session, intent_id: intent_id, intent_dir: intent_dir, store: store_root, name: intent_name)
+  bridge_data = Bridge.derive(session, intent_id: intent_id, intent_dir: intent_dir, store: store_dir, name: intent_name)
 end
 
 # --- Detect stale future intents ---
@@ -68,7 +74,7 @@ stale_days = 3 if stale_days == 0
 future.each do |f|
   if f =~ /store\/([\w-]+)\//
     dir_name = $1
-    intent_file = "#{store_root}/store/#{dir_name}/#{dir_name}.md"
+    intent_file = "#{store_dir}/#{dir_name}/#{dir_name}.md"
     next unless File.exist?(intent_file)
 
     content = File.read(intent_file)
@@ -88,7 +94,7 @@ current_project = nil
 project_active = []
 project_future = []
 
-projects_path = "#{store_root}/projects.yml"
+projects_path = "#{plastic_home}/projects.yml"
 if File.exist?(projects_path)
   projects = YAML.safe_load(File.read(projects_path)) rescue {}
   cwd = Dir.pwd
@@ -96,7 +102,7 @@ if File.exist?(projects_path)
     project_path = File.expand_path(info["path"])
     if cwd.start_with?(project_path)
       current_project = { "slug" => slug, "parent" => info["parent"], "path" => project_path }
-      project_index = "#{store_root}/projects/#{slug}/INDEX.md"
+      project_index = "#{plastic_home}/projects/#{slug}/INDEX.md"
       if File.exist?(project_index)
         p_section = nil
         File.readlines(project_index).each do |pline|
@@ -122,7 +128,7 @@ end
 
 # --- Load PLASTIC.md conventions ---
 
-plastic_md_path = "#{store_root}/PLASTIC.md"
+plastic_md_path = "#{plastic_home}/PLASTIC.md"
 plastic_md = File.exist?(plastic_md_path) ? File.read(plastic_md_path).strip : nil
 
 # --- Load deprecations ---
@@ -130,7 +136,7 @@ plastic_md = File.exist?(plastic_md_path) ? File.read(plastic_md_path).strip : n
 dep_file = if plugin_root && !plugin_root.empty?
   "#{plugin_root}/deprecations.yml"
 else
-  "#{store_root}/deprecations.yml"
+  "#{plastic_home}/deprecations.yml"
 end
 
 deprecations = []
@@ -147,7 +153,7 @@ rescue
 end
 
 current_version = nil
-version_file = "#{store_root}/VERSION"
+version_file = "#{plastic_home}/VERSION"
 if File.exist?(version_file)
   current_version = File.read(version_file).strip
 elsif plugin_root && !plugin_root.empty?
@@ -167,7 +173,7 @@ end
 # --- Check for available updates (from previous session's check) ---
 
 update_notice = nil
-cache_file = "#{store_root}/.cache/update-check.json"
+cache_file = "#{plastic_home}/.cache/update-check.json"
 if File.exist?(cache_file)
   cache = JSON.parse(File.read(cache_file)) rescue {}
   if cache["updateAvailable"]
@@ -181,7 +187,7 @@ end
 # session: any failure or exception degrades to a banner and we continue.
 
 core_health = begin
-  Doctor.new(plastic_home: store_root).run_core_checks("claude")
+  Doctor.new(plastic_home: plastic_home).run_core_checks("claude")
 rescue
   nil
 end
@@ -212,7 +218,7 @@ parts << ""
 # slow/broken/missing qmd appends nothing and the hook continues cleanly.
 begin
   require "timeout"
-  qmd_status = Timeout.timeout(2) { QmdSync.status(plastic_home: store_root) }
+  qmd_status = Timeout.timeout(2) { QmdSync.status(plastic_home: plastic_home) }
   if qmd_status[:present]
     if qmd_status[:all_registered]
       parts << "QMD: #{qmd_status[:registered].size} Plastic collections indexed (search with the qmd skill)."

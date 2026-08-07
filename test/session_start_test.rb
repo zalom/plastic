@@ -6,6 +6,7 @@ require "open3"
 
 require_relative "../scripts/lib/boot_banner"
 require_relative "../scripts/lib/qmd_sync"
+require_relative "../scripts/lib/bridge"
 
 # Unit coverage for the pure boot-banner renderer (intent 36a). Health is
 # injected, so these are fully hermetic — no doctor run, no ~/.claude, no ENV.
@@ -158,5 +159,121 @@ class QmdStatusLineTest < Minitest::Test
       assert_equal "QMD detected — run `qmd-sync register --all` to index your Plastic stores for search.",
                    line_for(status)
     end
+  end
+end
+
+# Intent 231: Plastic home and the store are two different paths. hooks/session-start
+# passes home (~/.plastic) as argument 2, so the hook itself must compose the store
+# before handing anything to Bridge.derive. No test reached this path before: the
+# SessionStartHookTest fixture above seeds an EMPTY "## Active" section, so the
+# active.length == 1 guard never fires and the bridge is never derived. These tests
+# seed a real Active entry and read the bridge the hook actually wrote.
+#
+# Hermetic per test/hermeticity_guard_test.rb: PLASTIC_TMP points the bridge write at
+# a private tmpdir, and CLAUDE_CODE_SESSION_ID is cleared so the hook keys the bridge
+# by its own pid and never touches a live session's file.
+class SessionStartBridgePathTest < Minitest::Test
+  HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
+  SHIM = File.expand_path("../hooks/session-start", __dir__)
+  DIR_NAME = "231--session-start-home-vs-store".freeze
+
+  def setup
+    @home = Dir.mktmpdir("plastic-231-home")
+    @tmp = Dir.mktmpdir("plastic-231-tmp")
+    @intent_dir = File.join(@home, "store", DIR_NAME)
+    FileUtils.mkdir_p(@intent_dir)
+    File.write(File.join(@home, "INDEX.md"),
+               "# Index\n\n## Active\n" \
+               "- [231 - session start home vs store](store/#{DIR_NAME}/#{DIR_NAME}.md)\n" \
+               "\n## Future\n")
+    File.write(File.join(@intent_dir, "#{DIR_NAME}.md"),
+               "---\nid: \"231\"\n---\n\n## Intent\nHome and store are two paths.\n")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+    FileUtils.rm_rf(@tmp)
+  end
+
+  # Argument 2 is Plastic HOME, exactly what hooks/session-start passes today.
+  def run_hook
+    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil },
+                   "ruby", HOOK, File.join(@home, "INDEX.md"), @home, "global")
+  end
+
+  def bridge_files
+    Dir[File.join(@tmp, "plastic-*.json")]
+  end
+
+  def bridge
+    files = bridge_files
+    assert_equal 1, files.length, "hook must write exactly one bridge"
+    JSON.parse(File.read(files.first))
+  end
+
+  def test_bridge_store_field_is_the_store_not_home
+    _out, _err, status = run_hook
+    assert_equal 0, status.exitstatus
+    data = bridge
+    assert_equal File.join(@home, "store"), data.dig("intent", "store"),
+                 "bridge must record the store path, not Plastic home"
+    refute_equal @home, data.dig("intent", "store"),
+                 "Plastic home must never be written as the bridge store field"
+  end
+
+  def test_bridge_dir_field_is_the_bare_intent_dir_name
+    run_hook
+    data = bridge
+    assert_equal DIR_NAME, data.dig("intent", "dir")
+    refute_includes data.dig("intent", "dir"), "store/",
+                    "dir is relative to the store, so it carries no store/ prefix"
+  end
+
+  def test_no_doubled_store_segment_is_ever_constructed
+    run_hook
+    data = bridge
+    refute_includes data.dig("intent", "store"), "store/store"
+    assert_equal @intent_dir, Bridge.bridge_intent_dir(data),
+                 "store plus dir must recompose to the real intent directory"
+    refute_includes Bridge.bridge_intent_dir(data), "store/store"
+  end
+
+  # The tempting one-line repair is to make the shim pass $HOME/.plastic/store. That
+  # is the wrong fix: ten other lines in the hook compose store/ onto argument 2, so
+  # it would produce store/store paths. Pin the shim so that repair cannot land quietly.
+  def test_shim_passes_plastic_home_not_the_store
+    src = File.read(SHIM)
+    assert_includes src, '"$HOME/.plastic" "global"',
+                    "shim must keep passing Plastic home as argument 2"
+    refute_includes src, "$HOME/.plastic/store",
+                    "the split belongs inside the hook, never in the shim"
+  end
+
+  # Intent 230 split Bridge.derive into a pure derive_data plus a writing derive, and
+  # kept session start on the writing form on purpose. Both halves of that contract.
+  def test_bridge_is_persisted_immediately
+    _out, _err, status = run_hook
+    assert_equal 0, status.exitstatus
+    assert_equal 1, bridge_files.length,
+                 "session start persists the bridge on the spot (intent 230 contract)"
+  end
+
+  def test_hook_still_calls_the_writing_derive
+    src = File.read(HOOK)
+    assert_includes src, "Bridge.derive(session,",
+                    "session start must keep the writing derive, not derive_data"
+  end
+
+  # The cost of the bug: intent_active? resolves the INDEX as the PARENT of the store
+  # dir, so a bridge carrying home looks inactive and purge_done_bridges deletes a live
+  # session's bridge. The second assertion is the negative control that pins the old
+  # failure mode.
+  def test_purge_sees_a_live_active_intent_as_active
+    run_hook
+    data = bridge
+    assert Bridge.intent_active?("231", store: data.dig("intent", "store")),
+           "a live Active intent's bridge must survive purge_done_bridges"
+    refute Bridge.intent_active?("231", store: @home),
+           "home as the store field is what made a live intent look inactive"
   end
 end
