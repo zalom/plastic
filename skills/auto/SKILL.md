@@ -79,8 +79,8 @@ and artifact depth to that size. Extended walkthrough: `references/tiers.md`.
    for the whole consolidated action, with no per-task two-stage review loop
    (`plastic-intent-executing` holds that gate). S cuts two more things: it skips the QMD
    discovery deposit when chain and sources are both empty AND a size of S is already on
-   record (a stamped `Tier: S` line in spec.md), which a first activation does not have, and
-   it sends ONE mid-flight owner briefing, at How. M and L send all four. L: today's full team (`## Team Spin-Up`
+   record (a stamped `Tier: S` line in spec.md), which a first activation does not have,
+   and it sends ONE mid-flight owner briefing, at How. M and L send all four. L: today's full team (`## Team Spin-Up`
    below), one `actions/ACTION_N.md` per task, and a per-task implementer plus two-stage
    review.
 4. **Never-cut list**, any tier or mode: the independent reviewer (separate agent, fresh
