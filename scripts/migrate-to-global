@@ -44,7 +44,7 @@ fi
 
 # Rewrite relative links to wikilinks
 echo "  Rewriting links to [[ID]] format..."
-ruby <<'RUBY'
+env -u RUBYOPT ruby <<'RUBY'
   # Find intent files (named {ID}.md, the primary file in each intent directory)
   Dir.glob(File.expand_path("~/.plastic/store/*/")).each do |dir|
     id = File.basename(dir).split("--").first
@@ -68,7 +68,7 @@ RUBY
 # Register project in projects.yml
 echo "  Registering project..."
 REMOTE=$(cd "$PROJECT_PATH" && git remote get-url origin 2>/dev/null || echo "null")
-ruby -r yaml <<RUBY
+env -u RUBYOPT ruby -r yaml <<RUBY
   path = File.expand_path("$GLOBAL_ROOT/projects.yml")
   data = YAML.safe_load(File.read(path)) rescue {}
   data["projects"] ||= {}
