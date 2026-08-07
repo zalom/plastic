@@ -376,6 +376,8 @@ class InstallerCore
       "scripts/scaffold-intent" => "scripts/scaffold-intent",
       "scripts/lib/verify_intent.rb" => "scripts/lib/verify_intent.rb",
       "scripts/verify-intent" => "scripts/verify-intent",
+      "scripts/lib/start_intent.rb" => "scripts/lib/start_intent.rb",
+      "scripts/start-intent" => "scripts/start-intent",
       "scripts/doctor.rb" => "scripts/doctor.rb",
       "scripts/lib/doctor_core.rb" => "scripts/lib/doctor_core.rb",
       "scripts/dashboard.rb" => "scripts/dashboard.rb",
