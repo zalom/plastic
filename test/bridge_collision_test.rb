@@ -294,6 +294,14 @@ class BridgeCollisionTest < Minitest::Test
     assert File.exist?(Lock.path(@dirA))
     assert File.exist?(Lock.path(@dirB))
 
+    # Plant the pre-131 legacy single-key bridge, carrying sibling A. Without
+    # it a no-id disarm was ALREADY a no-op here (read returns nil when the
+    # legacy file is absent), so the safety assertions below would pass against
+    # the old code too and would prove nothing. With it, the old fall-through
+    # picked A and released A's live lock. This is the case D6 exists for.
+    File.write(Bridge.path(session, tmp: @tmp),
+               File.read(Bridge.path(session, intent_id: "201", tmp: @tmp)))
+
     out = capture_stderr { @result = Bridge.disarm_auto(session) }
 
     assert_nil @result

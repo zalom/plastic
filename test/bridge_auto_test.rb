@@ -362,7 +362,13 @@ class BridgeAutoTest < Minitest::Test
       end
     end
     assert_kind_of Hash, result
-    refute_nil Bridge.read(@session, intent_id: "27")
+    # The tail after the failed release still ran, and it PERSISTED the
+    # preserved cache: reading the bridge back from disk is what proves
+    # write() happened rather than the in-memory hash merely being returned.
+    persisted = Bridge.read(@session, intent_id: "27")
+    refute_nil persisted
+    assert_equal @session, persisted.dig("lock", "owner_session")
+    assert_equal "not_owner", persisted.dig("lock", "release_status")
     File.delete(Lock.path(@intent_dir)) if File.exist?(Lock.path(@intent_dir))
   end
 
