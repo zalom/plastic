@@ -76,6 +76,17 @@ module Lock
     File.join(intent_dir, "#{type}.write.lock")
   end
 
+  # The sibling temp path for write's write-to-temp-then-rename. Ends in
+  # ".lock" (not just ".tmp") so a temp orphaned by a crash between the
+  # write and the rename is covered by the store's existing *.lock
+  # .gitignore rule rather than committed by the store's `git add -A`
+  # auto-commit. Sibling in the same directory as the target, never a
+  # system tmpdir, because File.rename can raise EXDEV across filesystems.
+  def write_temp_path(intent_dir, type: "delivery")
+    "#{path(intent_dir, type: type)}.tmp.#{Process.pid}.#{Thread.current.object_id}." \
+      "#{Time.now.to_f}.lock"
+  end
+
   def blank?(value)
     value.nil? || value.to_s.strip.empty?
   end
@@ -147,7 +158,12 @@ module Lock
         # already-read existing when the file has vanished underneath us.
         # If the re-read shows a different owner, keep today's outcome and
         # write anyway: an owner-changed-underneath refusal would be new
-        # semantics the spec does not authorize.
+        # semantics the spec does not authorize. The rebuilt payload then
+        # carries THIS session as owner while inheriting the NEW owner's
+        # delegate list, merging two lock identities into one record. The
+        # window is a takeover landing between the pre-guard read and the
+        # guarded re-read; no test covers it, and closing it means guarding
+        # takeover itself, which this intent's scope does not authorize.
         data = with_write_guard(intent_dir, type: type) do
           record = read(intent_dir, type: type) || existing
           rebuilt = payload(session: session, type: type, host: host, now: now,
@@ -345,13 +361,17 @@ module Lock
   # on timeout is exactly today's possibly-lost update, never a torn file and
   # never a hang.
   #
-  # The guard file is never deleted, by anyone, ever. Unlinking an flock
-  # target is the unlink-recreate race: a later opener would create a fresh
-  # inode and stop serializing against the current holder, breaking mutual
-  # exclusion exactly when contention is highest. scripts/write-config:59
+  # The guard file must never be deleted, by anyone, ever. Unlinking an
+  # flock target is the unlink-recreate race: a later opener would create a
+  # fresh inode and stop serializing against the current holder, breaking
+  # mutual exclusion exactly when contention is highest. scripts/write-config:59
   # leaves config.yml.lock in place for the same reason. A leftover guard
   # file is inert: nothing reads it, it stays zero bytes, and
-  # scripts/end-intent:558 keys its exit contract on Lock.path alone.
+  # scripts/end-intent:558 keys its exit contract on Lock.path alone. This is
+  # a requirement, not a guarantee the code enforces: the curator stray-file
+  # rule (skills/conventions/references/maintenance-and-revisions.md:155)
+  # has no *.lock carve-out today, so a wrongful delete there degrades one
+  # write window to the pre-fix (unguarded) behavior, not a hard failure.
   def with_write_guard(intent_dir, type: "delivery",
                        guard_timeout: WRITE_GUARD_TIMEOUT_SECONDS,
                        guard_retry: WRITE_GUARD_RETRY_SECONDS)
@@ -364,9 +384,19 @@ module Lock
 
     begin
       deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + guard_timeout
-      until handle.flock(File::LOCK_EX | File::LOCK_NB)
-        break if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
-        sleep guard_retry
+      begin
+        until handle.flock(File::LOCK_EX | File::LOCK_NB)
+          break if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+          sleep guard_retry
+        end
+      rescue SystemCallError
+        # File#flock RAISES (does not return false) for every errno except
+        # EWOULDBLOCK, so on a filesystem where flock is unsupported (NFS,
+        # SMB, some FUSE mounts) this loop raises instead of just failing to
+        # win the lock. An flock we cannot take must degrade to an
+        # unguarded but still atomic write, same as the File.open rescue
+        # above, or this method breaks its own fail-open promise.
+        nil
       end
       yield
     ensure
@@ -407,7 +437,7 @@ module Lock
   # bare atomic replace.
   def write(intent_dir, data, type: "delivery")
     target = path(intent_dir, type: type)
-    temp = "#{target}.tmp.#{Process.pid}.#{Thread.current.object_id}.#{Time.now.to_f}"
+    temp = write_temp_path(intent_dir, type: type)
     File.write(temp, JSON.pretty_generate(data))
     File.rename(temp, target)
   rescue StandardError

@@ -67,6 +67,16 @@ class LockAtomicWriteTest < Minitest::Test
     assert_equal ["delivery.lock"], Dir.children(@dir).sort
   end
 
+  def test_the_temp_path_is_a_sibling_covered_by_the_store_gitignore_rule
+    temp = Lock.write_temp_path(@dir)
+    assert_equal @dir, File.dirname(temp),
+      "the temp file must be a sibling in the intent dir, never a system tmpdir (EXDEV)"
+    assert temp.end_with?(".lock"),
+      "the temp name must end in .lock so an orphan left by a crash between the write " \
+      "and the rename is covered by ~/.plastic/.gitignore's existing *.lock rule, not " \
+      "committed by the store's git add -A auto-commit"
+  end
+
   def test_write_replaces_the_file_by_rename_not_in_place_truncation
     Lock.write(@dir, large_payload)
     before_ino = File.stat(Lock.path(@dir)).ino
