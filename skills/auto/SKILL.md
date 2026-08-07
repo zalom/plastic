@@ -338,9 +338,9 @@ the End-stage tail the steps below walk through.
 5. Run the mechanical close through `plastic-intent-ending`: it owns steps 1-7 of the Done
    procedure (outcome/INDEX/savepoint/commit, disarm, the QMD reindex last, and the single
    EM-to-CTO owner report) as ONE delegation, not a series of separate one-liners restated
-   here. `scripts/end-intent` now performs
-   steps 1-5 itself, INCLUDING disarm (worktree release plus clearing `delivery.lock`): a
-   single call closes the intent AND clears its lock, so exit 0 means both are done. Pass
+   here. `scripts/end-intent` now performs steps 1-5 itself, INCLUDING disarm (worktree
+   release plus clearing `delivery.lock`): a single call closes the intent AND clears its
+   lock, so exit 0 means both are done. Pass
    `--session` (this session's id, or rely on the `CLAUDE_CODE_SESSION_ID` fallback) so
    disarm resolves the right bridge, and `--index-note` with a rich Completed/Abandoned entry
    description (mode/tier, what shipped or why abandoned, suite result):
@@ -354,8 +354,9 @@ the End-stage tail the steps below walk through.
    lock (back off), 5 means the code worktree is dirty (commit/stash first, or pass
    `--discard-worktree-changes` deliberately), 3 means disarm ran but the lock is still
    present (run `/plastic-doctor check the lock status`), 6 means the structure gate refused
-   (see the named reason on stderr; fix via the owning tool named above, then re-run). Only
-   Step 6 (QMD reindex, async, last) remains a separate action after this call succeeds.
+   (see the named reason on stderr; fix via the owning tool named above, then re-run). Two
+   steps remain as separate actions after this call succeeds: Step 6 (QMD reindex, async,
+   last) and Step 7 (the EM-to-CTO owner report, the single report the owner reads).
    Never leave an orphaned worktree; run `git worktree prune` on a stale reference. If any of
    this ever needs to change, change `plastic-intent-ending`, not this skill.
 
