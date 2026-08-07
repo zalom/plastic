@@ -128,6 +128,19 @@ class StartIntentTest < Minitest::Test
     MD
   end
 
+  def write_outcome_authored_abandoned(dir)
+    File.write(File.join(dir, "outcome.md"), <<~MD)
+      ---
+      disposition: abandoned
+      ---
+
+      # Outcome: Demo
+
+      ## Verification
+      real verification content, disposition abandoned
+    MD
+  end
+
   def write_fresh_lock(dir, owner: "other-session")
     payload = Lock.payload(session: owner, type: "delivery", host: "h", now: Time.now)
     File.write(Lock.path(dir), JSON.pretty_generate(payload))
@@ -243,6 +256,22 @@ class StartIntentTest < Minitest::Test
     write_checklist(dir)
     write_real_action(dir)
     write_outcome_authored(dir)
+    report = StartIntent.build_report(intent_dir: dir, mode: "auto", data: base_data)
+    assert_match(/resume at:\s+Done/, report)
+    assert_match(/outcome\.md:\s+authored/, report)
+  end
+
+  # --- 3b: BLOCKING 3 regression: a fully-authored ABANDONED outcome.md must classify
+  # as authored too, not get hardcoded-delivered-misread as scaffolded and pointed back
+  # into Exec ---------------------------------------------------------------------------
+
+  def test_station_done_when_outcome_is_authored_abandoned
+    dir = build_intent_dir
+    write_spec(dir)
+    write_plan(dir)
+    write_checklist(dir)
+    write_real_action(dir)
+    write_outcome_authored_abandoned(dir)
     report = StartIntent.build_report(intent_dir: dir, mode: "auto", data: base_data)
     assert_match(/resume at:\s+Done/, report)
     assert_match(/outcome\.md:\s+authored/, report)
@@ -373,6 +402,73 @@ class StartIntentTest < Minitest::Test
     out, status = run_start_intent("--bogus")
     assert_equal 1, status
     assert_match(/unknown argument/, out)
+  end
+
+  # --- 10b: BLOCKING 6 regression: the default_armer seam (never exercised by any test
+  # before this) routes each mode to the correct real Bridge method. Intercepts exactly
+  # at the Bridge class-method boundary so nothing real is ever armed: no lock file, no
+  # worktree provisioning, no ambient session. Uses tmpdir fixtures (@store, from setup)
+  # and synthesized session/thread ids, never CLAUDE_CODE_SESSION_ID. -------------------
+
+  # Replaces Bridge's real `method_name` with a double that records every call and
+  # returns a fixture Hash, never running the real Bridge.arm (no lock, no worktree, no
+  # ambient session touched). Restores the original method afterward even if the block
+  # raises.
+  def stub_bridge_arm(method_name, calls)
+    original = Bridge.method(method_name)
+    Bridge.define_singleton_method(method_name) do |session, **kwargs|
+      calls << { session: session, kwargs: kwargs }
+      { "session" => "fake-armed", "lock" => { "owner_session" => "fake-armed" },
+        "worktree" => { "code" => nil } }
+    end
+    yield
+  ensure
+    Bridge.define_singleton_method(method_name, original)
+  end
+
+  def test_default_armer_routes_auto_mode_to_bridge_arm_auto
+    calls = []
+    stub_bridge_arm(:arm_auto, calls) do
+      result = StartIntent.default_armer.call(
+        "auto", session: "synth-session-auto", intent_id: "213", intent_dir: @store,
+        store: @store, name: "Demo intent", harness: "claude", agent: nil, model: nil,
+        thread: "synth-thread-#{Process.pid}"
+      )
+      assert_equal 1, calls.length
+      assert_equal "synth-session-auto", calls.first[:session]
+      assert_equal "213", calls.first[:kwargs][:intent_id]
+      assert_equal "fake-armed", result["session"]
+    end
+  end
+
+  def test_default_armer_routes_guided_mode_to_bridge_arm_guided
+    calls = []
+    stub_bridge_arm(:arm_guided, calls) do
+      result = StartIntent.default_armer.call(
+        "guided", session: "synth-session-guided", intent_id: "213", intent_dir: @store,
+        store: @store, name: "Demo intent", harness: "claude", agent: nil, model: nil,
+        thread: "synth-thread-#{Process.pid}"
+      )
+      assert_equal 1, calls.length
+      assert_equal "synth-session-guided", calls.first[:session]
+      assert_equal "fake-armed", result["session"]
+    end
+  end
+
+  def test_default_armer_never_crosses_modes
+    auto_calls = []
+    guided_calls = []
+    stub_bridge_arm(:arm_auto, auto_calls) do
+      stub_bridge_arm(:arm_guided, guided_calls) do
+        StartIntent.default_armer.call(
+          "auto", session: "synth-session-cross", intent_id: "213", intent_dir: @store,
+          store: @store, name: "Demo intent", harness: nil, agent: nil, model: nil,
+          thread: nil
+        )
+      end
+    end
+    assert_equal 1, auto_calls.length
+    assert_empty guided_calls
   end
 
   # --- 11: guard: never Lock.release, never Lock.takeover ------------------------------

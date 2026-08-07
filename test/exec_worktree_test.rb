@@ -85,6 +85,43 @@ class ExecWorktreeTest < Minitest::Test
     end
   end
 
+  # Fake Worktree::ShellRunner double so the post-finish merge verification (BLOCKING
+  # 1/2: merged_into_current_branch? and Worktree.current_branch) never shells out to
+  # real git. `ancestor: true` simulates a merge that landed cleanly (the intent branch
+  # IS an ancestor of HEAD); `ancestor: false` simulates the conflicted-merge bug itself:
+  # Worktree.finish already removed the worktree (fail-open), but the branch never made
+  # it into the repo's history.
+  class FakeRunner
+    Result = Struct.new(:status, :stdout, :stderr) do
+      def success?
+        status.zero?
+      end
+    end
+
+    def initialize(ancestor: true, current_branch: "main")
+      @ancestor = ancestor
+      @current_branch = current_branch
+    end
+
+    def run(*args)
+      if args.include?("merge-base")
+        Result.new(@ancestor ? 0 : 1, "", "")
+      elsif args.include?("rev-parse")
+        Result.new(0, "#{@current_branch}\n", "")
+      else
+        Result.new(0, "", "")
+      end
+    end
+  end
+
+  def merged_runner(current_branch: "main")
+    FakeRunner.new(ancestor: true, current_branch: current_branch)
+  end
+
+  def unmerged_runner
+    FakeRunner.new(ancestor: false)
+  end
+
   def clean_status_checker
     ->(_worktree_code) { ["", "", FakeStatus.new(true)] }
   end
@@ -140,10 +177,11 @@ class ExecWorktreeTest < Minitest::Test
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", finisher: finisher,
-                               status_checker: clean_status_checker)
+                               status_checker: clean_status_checker, runner: merged_runner)
     assert_equal 0, result[:exit_code]
     assert_equal 1, calls.length
     assert_equal true, calls.first[:merge]
+    assert_match(%r{merge:\s+merged into main}, result[:stdout].join("\n"))
   end
 
   def test_abandoned_calls_finisher_with_merge_false
@@ -222,7 +260,7 @@ class ExecWorktreeTest < Minitest::Test
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", finisher: finisher,
-                               status_checker: clean_status_checker)
+                               status_checker: clean_status_checker, runner: merged_runner)
     assert_equal 0, result[:exit_code]
     assert_equal 1, calls.length
     assert_match(/precondition: passed/, result[:stdout].join("\n"))
@@ -238,7 +276,7 @@ class ExecWorktreeTest < Minitest::Test
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", finisher: finisher,
-                               status_checker: clean_status_checker)
+                               status_checker: clean_status_checker, runner: merged_runner)
     assert_equal 0, result[:exit_code]
     assert_equal 1, calls.length
     output = result[:stdout].join("\n")
@@ -293,6 +331,54 @@ class ExecWorktreeTest < Minitest::Test
     assert_equal 3, result[:exit_code]
     assert_empty calls, "an unproven worktree must refuse: removal force-removes on failure"
     assert_match(/could not inspect/, result[:stderr].join)
+  end
+
+  # --- 7b: BLOCKING 1/2 regression: a conflicted merge must not report success ------
+  #
+  # Worktree.finish is fail-open: on a merge conflict Worktree.merge_branch aborts, warns,
+  # and returns false, but Worktree.finish still removes the worktree afterward regardless
+  # (scripts/lib/worktree.rb:225-258). Before this fix, exec-worktree discarded that
+  # return value and reported success (exit 0, "merged into <branch>") anyway, once the
+  # worktree was simply gone. Now it verifies from committed git state and refuses.
+
+  def test_delivered_merge_that_did_not_land_exits_3_and_names_the_branch
+    build_intent_dir(how_complete: true)
+    code = worktree_code_path
+    FileUtils.mkdir_p(code)
+    write_bridge(auto: true, worktree_code: code)
+    # spy_finisher simulates the real fail-open finisher exactly: it removes the
+    # worktree from disk regardless of whether the merge landed.
+    finisher, calls = spy_finisher
+
+    result = run_exec_worktree(disposition: "delivered", finisher: finisher,
+                               status_checker: clean_status_checker, runner: unmerged_runner)
+    assert_equal 3, result[:exit_code]
+    assert_equal 1, calls.length, "finish still runs; only the post-finish verdict changes"
+    refute_match(/merge:\s+merged into/, result[:stdout].join("\n"))
+    assert_match(%r{plastic/213--demo}, result[:stderr].join)
+    assert_match(/did not land/, result[:stderr].join)
+    assert_match(/was not merged/, result[:stderr].join)
+    assert_match(/nothing is lost/, result[:stderr].join)
+  end
+
+  # --- 7c: BLOCKING 2 regression: a landed merge names the real integration target, not
+  # the source branch, and only after the outcome was actually read -------------------
+
+  def test_delivered_merge_that_landed_exits_0_and_reports_the_real_target_branch
+    build_intent_dir(how_complete: true)
+    code = worktree_code_path
+    FileUtils.mkdir_p(code)
+    write_bridge(auto: true, worktree_code: code)
+    finisher, calls = spy_finisher
+
+    result = run_exec_worktree(disposition: "delivered", finisher: finisher,
+                               status_checker: clean_status_checker,
+                               runner: merged_runner(current_branch: "main"))
+    assert_equal 0, result[:exit_code]
+    assert_equal 1, calls.length
+    output = result[:stdout].join("\n")
+    assert_match(%r{merge:\s+merged into main}, output)
+    refute_match(%r{merge:\s+merged into plastic/213--demo}, output)
   end
 
   # --- 8: dirty worktree on abandoned proceeds ---------------------------------------
@@ -419,7 +505,8 @@ class ExecWorktreeTest < Minitest::Test
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", home: @plastic_home,
-                               finisher: finisher, status_checker: clean_status_checker)
+                               finisher: finisher, status_checker: clean_status_checker,
+                               runner: merged_runner)
     assert_equal 0, result[:exit_code]
     assert_equal @home, calls.first[:home]
   end
@@ -432,7 +519,8 @@ class ExecWorktreeTest < Minitest::Test
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", home: @home,
-                               finisher: finisher, status_checker: clean_status_checker)
+                               finisher: finisher, status_checker: clean_status_checker,
+                               runner: merged_runner)
     assert_equal 0, result[:exit_code]
     assert_equal @home, calls.first[:home]
   end

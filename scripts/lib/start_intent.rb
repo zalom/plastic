@@ -152,16 +152,30 @@ module StartIntent
   # frontmatter disposition at the template placeholder `delivered|abandoned`, so a naive
   # sentinel check would misreport that as Done. Returns [state, reason]:
   #   "not_started" the sentinel is still present (or the file is absent), reason nil
-  #   "authored"    sentinel gone AND OutcomeGuard.reason(intent_dir, "delivered") is nil
-  #   "scaffolded"  sentinel gone AND OutcomeGuard.reason(...) returns a reason string
+  #   "authored"    sentinel gone AND OutcomeGuard.reason(intent_dir, disposition) is nil
+  #                 for EITHER "delivered" or "abandoned" (BLOCKING 3 fix: a fully-authored
+  #                 abandoned outcome.md is authored too; checking "delivered" only used to
+  #                 misreport it as "scaffolded, not authored" and point a resuming session
+  #                 back into Exec)
+  #   "scaffolded"  sentinel gone AND OutcomeGuard.reason(...) returns a reason string for
+  #                 BOTH dispositions
   # OutcomeGuard.reason is the single existing definition of "is outcome.md real for this
   # close"; this never re-derives that definition.
   def classify_outcome(intent_dir)
     outcome_path = File.join(intent_dir, "outcome.md")
     return ["not_started", nil] unless Bridge.stage_file_present?(outcome_path)
 
-    reason = OutcomeGuard.reason(intent_dir, "delivered")
-    reason.nil? ? ["authored", nil] : ["scaffolded", reason]
+    delivered_reason = OutcomeGuard.reason(intent_dir, "delivered")
+    return ["authored", nil] if delivered_reason.nil?
+
+    abandoned_reason = OutcomeGuard.reason(intent_dir, "abandoned")
+    return ["authored", nil] if abandoned_reason.nil?
+
+    # Neither disposition's guard passed: report the "delivered" reason, since it is the
+    # more common close path and OutcomeGuard.reason's message already names whatever
+    # disposition is actually recorded in the frontmatter (or that the file is missing or
+    # still the scaffold placeholder), so it stays informative either way.
+    ["scaffolded", delivered_reason]
   end
 
   def settled_text(header)

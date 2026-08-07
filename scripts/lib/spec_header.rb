@@ -12,7 +12,11 @@
 #   Settled: yes (design fixed by the 2026-07-18 Fable advisor verdict)
 #
 # `Tier:` is exactly one of S, M, L; anything else is unparseable and yields nil. An ABSENT
-# `Settled:` line means not settled, there is no `Settled: no` variant.
+# `Settled:` line means not settled, there is no `Settled: no` variant. The parenthesised
+# reason is REQUIRED for a line to count as settled: a bare `Settled: yes` with no reason
+# does NOT parse as settled. D2 calls Settled a ONE-WAY DOOR (leniency accepted now can
+# never be tightened later), so this stays strict from the start rather than being loosened
+# once and then needing a breaking change to fix.
 module SpecHeader
   module_function
 
@@ -24,7 +28,7 @@ module SpecHeader
   HEADER_BLOCK_MAX_LINES = 10
 
   TIER_RE = /\ATier:\s*(S|M|L)\z/
-  SETTLED_RE = /\ASettled:\s*yes\s*(?:\((.*)\))?\z/
+  SETTLED_RE = /\ASettled:\s*yes\s*\((.*)\)\z/
 
   # PURE. Parse a spec.md's raw text. Returns a Hash with symbol keys, always the same
   # three keys: tier ("S"|"M"|"L"|nil), settled (true|false), settled_reason (String|nil).

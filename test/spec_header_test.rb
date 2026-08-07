@@ -15,9 +15,12 @@ class SpecHeaderTest < Minitest::Test
     assert_equal({ tier: "L", settled: true, settled_reason: "owner ruled it settled" }, result)
   end
 
-  def test_settled_yes_without_parens_has_nil_reason
+  # BLOCKING 5: the parenthesised reason is REQUIRED. D2 calls Settled a ONE-WAY DOOR, so
+  # leniency accepted now (a bare "Settled: yes" counting as settled) could never be
+  # tightened later without a breaking change; this stays strict from the start.
+  def test_settled_yes_without_parens_is_not_settled
     result = SpecHeader.parse("Tier: M\nSettled: yes\n\n# Spec: x\n")
-    assert_equal true, result[:settled]
+    assert_equal false, result[:settled]
     assert_nil result[:settled_reason]
   end
 
@@ -71,11 +74,22 @@ class SpecHeaderTest < Minitest::Test
     assert_equal "Tier: S|M|L\n", SpecHeader.render(tier: nil, settled_reason: nil)
   end
 
+  # BLOCKING 4: the original guard substring-matched exactly one regex spelling
+  # ('Tier:\s*(S|M|L)'), so a second parser written with different whitespace/anchors
+  # (or one parsing Settled: instead) passed clean, and Settled: was never checked at
+  # all. This version scans scripts/, hooks/, skills/, agents/, and templates/, and
+  # flags a line only when it embeds an actual regex/parsing construct (a /.../ or
+  # %r{...} regex literal, or a call to .match(/.match?(/=~/Regexp.new(/.scan(/
+  # grep -E/egrep/sed -E) whose OWN text mentions "Tier:" or "Settled:". Prose that
+  # merely names the line (a comment, a doc example, an agent brief) has no such
+  # construct on the line, so it is left alone; a file with unrelated regex machinery
+  # elsewhere (bridge.rb has plenty, for checklists and INDEX lines) is also left
+  # alone, because THOSE lines never mention "Tier:" or "Settled:" themselves.
   def test_only_spec_header_implements_the_tier_grammar
     root = File.expand_path("..", __dir__)
-    fragment = 'Tier:\s*(S|M|L)'
     offenders = []
-    %w[scripts hooks skills].each do |top|
+
+    %w[scripts hooks skills agents templates].each do |top|
       Dir[File.join(root, top, "**", "*")].each do |path|
         next unless File.file?(path)
         next if path.end_with?("scripts/lib/spec_header.rb")
@@ -85,11 +99,33 @@ class SpecHeaderTest < Minitest::Test
         rescue StandardError
           nil
         end
-        offenders << path.sub("#{root}/", "") if content && content.include?(fragment)
+        next unless content
+
+        offending_line = content.each_line.find { |line| second_parser_line?(line) }
+        offenders << path.sub("#{root}/", "") if offending_line
       end
     end
+
     assert_empty offenders,
-                 "a second Tier: (S|M|L) parser was introduced outside scripts/lib/spec_header.rb; " \
-                 "delegate to SpecHeader instead: #{offenders.join(', ')}"
+                 "a second Tier:/Settled: parser was introduced outside " \
+                 "scripts/lib/spec_header.rb; delegate to SpecHeader instead: " \
+                 "#{offenders.join(', ')}"
+  end
+
+  GRAMMAR_TOKENS = ["Tier:", "Settled:"].freeze
+  PARSING_CALL_RE = /\.match\?\(|\.match\(|=~|Regexp\.new\(|\.scan\(|grep\s+-E|egrep|sed\s+-E/
+
+  def second_parser_line?(line)
+    return false unless GRAMMAR_TOKENS.any? { |t| line.include?(t) }
+
+    regex_literal_bodies(line).any? { |body| GRAMMAR_TOKENS.any? { |t| body.include?(t) } } ||
+      line.match?(PARSING_CALL_RE)
+  end
+
+  def regex_literal_bodies(line)
+    bodies = []
+    line.scan(%r{/([^/\n]*)/}) { |m| bodies << m[0] }
+    line.scan(/%r\{([^}\n]*)\}/) { |m| bodies << m[0] }
+    bodies
   end
 end
