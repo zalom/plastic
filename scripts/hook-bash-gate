@@ -55,5 +55,24 @@ bridge_data = Bridge.discover_bridge(session: session, cwd: cwd)
 reason = Bridge.bash_gate_decision(bridge_data, command, cwd: cwd, session: session)
 exit 0 unless reason
 
+# Block log (intent 229): one six-field TSV line, hand-rolled here exactly as
+# the escape write above is, so this script keeps requiring only lib/bridge and
+# pays no extra load on every Bash tool call. Best-effort: the block applies
+# regardless.
+begin
+  require "fileutils"
+  require "time"
+  blocklog = File.join(Dir.home, ".plastic", ".cache", "gate-blocks.log")
+  FileUtils.mkdir_p(File.dirname(blocklog))
+  intent_id = bridge_data.is_a?(Hash) ? bridge_data.dig("intent", "id").to_s : ""
+  File.open(blocklog, "a") do |io|
+    io.puts([Time.now.utc.iso8601, "bash-gate", session.to_s, intent_id,
+             command.to_s.gsub(/\s+/, " ").strip,
+             reason.to_s.gsub(/\s+/, " ").strip].join("\t"))
+  end
+rescue StandardError
+  # the block still applies; logging is best-effort
+end
+
 $stderr.puts "PLASTIC GATE — #{reason}"
 exit 2

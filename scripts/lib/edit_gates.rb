@@ -210,6 +210,51 @@ module EditGates
     # the escape still applies; logging is best-effort
   end
 
+  # --- block log (intent 229): one TSV line per block, six tab-separated fields
+  # in a fixed order. Mirrors log_escape above exactly: best-effort, wrapped in
+  # rescue StandardError, so a logging failure can never change what a gate
+  # decided and can never raise. `path` is the injected seam a test uses to
+  # force the write to fail without eval, ENV, or a global.
+  def block_log_path
+    File.join(Dir.home, ".plastic", ".cache", "gate-blocks.log")
+  end
+
+  def log_block(gate:, session:, intent:, subject:, rule:, path: nil)
+    require "fileutils"
+    log = path || block_log_path
+    FileUtils.mkdir_p(File.dirname(log))
+    File.open(log, "a") do |io|
+      io.puts([Time.now.utc.iso8601, gate, session.to_s, intent.to_s,
+               collapse_ws(subject), collapse_ws(rule)].join("\t"))
+    end
+  rescue StandardError
+    # the block still applies; logging is best-effort
+  end
+
+  def collapse_ws(value)
+    value.to_s.gsub(/\s+/, " ").strip
+  end
+
+  # The reason text a Deny carries, per shape. Rescues to "" so a malformed
+  # outcome costs one field, never the line and never the decision.
+  def deny_reason(outcome)
+    if outcome.shape == :json
+      JSON.parse(outcome.stdout.to_s).dig("hookSpecificOutput", "permissionDecisionReason").to_s
+    else
+      Array(outcome.lines).join(" ")
+    end
+  rescue StandardError
+    ""
+  end
+
+  # "" when the path is not inside an intent dir, keeping the column count fixed.
+  def block_intent_id(path)
+    dir = Bridge.intent_dir_for(path.to_s)
+    dir ? Bridge.intent_id_from_dir(dir).to_s : ""
+  rescue StandardError
+    ""
+  end
+
   # --- links-gate (intent 192): the write-time belt for the ## Links contract.
   def links_gate(ctx)
     path = ctx.file_path
@@ -313,13 +358,21 @@ module EditGates
   # without eval, an ENV seam, or a global. `gate_tools` is injected for the same
   # reason and defaults to the single source of truth.
   # Returns the process exit code.
-  def dispatch(ctx:, route:, gate_tools: HookRegistry::GATE_TOOLS, out: $stdout, err: $stderr)
+  def dispatch(ctx:, route:, gate_tools: HookRegistry::GATE_TOOLS, out: $stdout, err: $stderr,
+               block_log: nil)
     gate_tools.each do |gate, tools|
       next unless tool_applies?(ctx.tool_name, tools)
 
       begin
         outcome = route.call(gate, ctx)
         next unless outcome
+
+        # intent 229: one block-log line per deny, both shapes, one call site.
+        # Every helper here rescues internally, so nothing new can reach this
+        # method's rescue and turn a logging problem into a changed decision.
+        subject = ctx.gate_path.to_s.empty? ? ctx.file_path.to_s : ctx.gate_path.to_s
+        log_block(gate: gate, session: ctx.session, intent: block_intent_id(subject),
+                  subject: subject, rule: deny_reason(outcome), path: block_log)
 
         if outcome.shape == :json
           out.print outcome.stdout

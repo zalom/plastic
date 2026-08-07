@@ -125,7 +125,8 @@ class EditGatesDispatcherTest < Minitest::Test
     out = StringIO.new
     ctx = EditGates::Context.new(tool_name: "Write", file_path: "/tmp/x.md", gate_path: "/tmp/x.md")
 
-    code = EditGates.dispatch(ctx: ctx, route: route, out: out, err: err)
+    code = EditGates.dispatch(ctx: ctx, route: route, out: out, err: err,
+                              block_log: File.join(@safe_tmp, "block.log"))
 
     assert_equal 2, code, "the later sibling's genuine deny must still fire"
     assert_includes err.string, "plastic code-gate error: boom"
@@ -149,7 +150,8 @@ class EditGatesDispatcherTest < Minitest::Test
     out = StringIO.new
     ctx = EditGates::Context.new(tool_name: "Write", file_path: "/tmp/x.md", gate_path: "/tmp/x.md")
 
-    code = EditGates.dispatch(ctx: ctx, route: route, out: out, err: err)
+    code = EditGates.dispatch(ctx: ctx, route: route, out: out, err: err,
+                              block_log: File.join(@safe_tmp, "block.log"))
 
     assert_equal 0, code, "a malformed outcome must never deny"
     assert_equal HookRegistry::GATE_TOOLS.keys, seen, "all five gates must still be visited"
@@ -169,7 +171,8 @@ class EditGatesDispatcherTest < Minitest::Test
     out = StringIO.new
     ctx = EditGates::Context.new(tool_name: "Write", file_path: "/tmp/x.md", gate_path: "/tmp/x.md")
 
-    code = EditGates.dispatch(ctx: ctx, route: route, out: out, err: err)
+    code = EditGates.dispatch(ctx: ctx, route: route, out: out, err: err,
+                              block_log: File.join(@safe_tmp, "block.log"))
 
     assert_equal 2, code, "the later sibling's genuine deny must still fire"
     assert_includes err.string, "plastic code-gate error:"
@@ -187,6 +190,13 @@ class EditGatesDispatcherTest < Minitest::Test
       "      begin\n" \
       "        outcome = route.call(gate, ctx)\n" \
       "        next unless outcome\n" \
+      "\n" \
+      "        # intent 229: one block-log line per deny, both shapes, one call site.\n" \
+      "        # Every helper here rescues internally, so nothing new can reach this\n" \
+      "        # method's rescue and turn a logging problem into a changed decision.\n" \
+      "        subject = ctx.gate_path.to_s.empty? ? ctx.file_path.to_s : ctx.gate_path.to_s\n" \
+      "        log_block(gate: gate, session: ctx.session, intent: block_intent_id(subject),\n" \
+      "                  subject: subject, rule: deny_reason(outcome), path: block_log)\n" \
       "\n" \
       "        if outcome.shape == :json\n" \
       "          out.print outcome.stdout\n" \
@@ -213,6 +223,10 @@ class EditGatesDispatcherTest < Minitest::Test
       "\n" \
       "      next unless outcome\n" \
       "\n" \
+      "      subject = ctx.gate_path.to_s.empty? ? ctx.file_path.to_s : ctx.gate_path.to_s\n" \
+      "      log_block(gate: gate, session: ctx.session, intent: block_intent_id(subject),\n" \
+      "                subject: subject, rule: deny_reason(outcome), path: block_log)\n" \
+      "\n" \
       "      if outcome.shape == :json\n" \
       "        out.print outcome.stdout\n" \
       "        return 0\n" \
@@ -232,7 +246,8 @@ class EditGatesDispatcherTest < Minitest::Test
       end
       ctx = EditGates::Context.new(tool_name: "Write", file_path: "/tmp/x.md", gate_path: "/tmp/x.md")
       escaped = assert_raises(NoMethodError) do
-        EditGates.dispatch(ctx: ctx, route: route, out: StringIO.new, err: StringIO.new)
+        EditGates.dispatch(ctx: ctx, route: route, out: StringIO.new, err: StringIO.new,
+                            block_log: File.join(@safe_tmp, "block.log"))
       end
       assert_match(/shape/, escaped.message,
                    "with the rescue narrowed to route.call only, outcome.shape's NoMethodError " \
@@ -421,9 +436,11 @@ class EditGatesDispatcherTest < Minitest::Test
   def test_red_phase_proof_escape_scope_is_load_bearing
     original = File.read(EDIT_GATES_LIB)
     mutated = original.sub(
-      "  def dispatch(ctx:, route:, gate_tools: HookRegistry::GATE_TOOLS, out: $stdout, err: $stderr)\n" \
+      "  def dispatch(ctx:, route:, gate_tools: HookRegistry::GATE_TOOLS, out: $stdout, err: $stderr,\n" \
+      "               block_log: nil)\n" \
       "    gate_tools.each do |gate, tools|",
-      "  def dispatch(ctx:, route:, gate_tools: HookRegistry::GATE_TOOLS, out: $stdout, err: $stderr)\n" \
+      "  def dispatch(ctx:, route:, gate_tools: HookRegistry::GATE_TOOLS, out: $stdout, err: $stderr,\n" \
+      "               block_log: nil)\n" \
       "    new_content = ctx.content || ctx.new_string || \"\"\n" \
       "    return 0 if new_content && Bridge::PLASTIC_OK_RE.match?(new_content.chomp)\n\n" \
       "    gate_tools.each do |gate, tools|",
@@ -682,5 +699,145 @@ class EditGatesDispatcherTest < Minitest::Test
     branches = mutated.scan(/^\s*when\s+"([^"]+)"/).flatten
     refute_equal HookRegistry::GATE_TOOLS.keys.sort, branches.sort,
                  "deleting the create-gate arm must turn this pin RED"
+  end
+
+  # =====================================================================
+  # intent 229: one block-log line per deny, six tab-separated fields
+  # =====================================================================
+
+  # intent 229 helpers -------------------------------------------------------
+  def block_ctx(path)
+    EditGates::Context.new(tool_name: "Write", file_path: path, gate_path: path, session: "sess-1")
+  end
+
+  def stderr_deny_route
+    lambda do |gate, _ctx|
+      next EditGates::Deny.new(shape: :stderr, lines: ["PLASTIC GATE  blocked by code-gate"]) if gate == "code-gate"
+      nil
+    end
+  end
+
+  def json_deny_route
+    lambda do |gate, _ctx|
+      next nil unless gate == "lock-gate"
+      EditGates::Deny.new(shape: :json, stdout: JSON.generate(
+        "hookSpecificOutput" => { "hookEventName" => "PreToolUse",
+                                  "permissionDecision" => "deny",
+                                  "permissionDecisionReason" => "intent 229 delivery lock is held" }
+      ))
+    end
+  end
+
+  def block_fields(log)
+    lines = File.read(log).lines
+    assert_equal 1, lines.size, "exactly one block line must be written"
+    lines.first.chomp.split("\t", -1)
+  end
+
+  def test_dispatch_logs_six_fields_on_a_stderr_deny
+    tmp = mktmp("block-log-stderr")
+    store = File.join(tmp, "store", "229--demo")
+    FileUtils.mkdir_p(store)
+    path = File.join(store, "plan.md")
+    log = File.join(tmp, "cache", "gate-blocks.log")
+
+    code = EditGates.dispatch(ctx: block_ctx(path), route: stderr_deny_route,
+                              out: StringIO.new, err: StringIO.new, block_log: log)
+
+    assert_equal 2, code
+    f = block_fields(log)
+    assert_equal 6, f.size, "six tab-separated fields, always"
+    assert_match(/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/, f[0], "field 1 is an ISO8601 UTC timestamp")
+    assert_equal "code-gate", f[1], "field 2 is the gate that actually fired"
+    assert_equal "sess-1", f[2]
+    assert_equal "229", f[3], "field 4 is the intent id derived from the path"
+    assert_equal path, f[4]
+    assert_includes f[5], "blocked by code-gate"
+  end
+
+  def test_dispatch_logs_the_json_deny_reason
+    tmp = mktmp("block-log-json")
+    store = File.join(tmp, "store", "229--demo")
+    FileUtils.mkdir_p(store)
+    path = File.join(store, "plan.md")
+    log = File.join(tmp, "cache", "gate-blocks.log")
+
+    code = EditGates.dispatch(ctx: block_ctx(path), route: json_deny_route,
+                              out: StringIO.new, err: StringIO.new, block_log: log)
+
+    assert_equal 0, code, "the json shape exits 0 by design"
+    f = block_fields(log)
+    assert_equal 6, f.size
+    assert_equal "lock-gate", f[1]
+    assert_equal "intent 229 delivery lock is held", f[5],
+                 "the rule field is the permissionDecisionReason, not the raw JSON"
+  end
+
+  def test_dispatch_writes_an_empty_intent_field_outside_any_intent_dir
+    tmp = mktmp("block-log-nointent")
+    path = File.join(tmp, "app.rb")
+    log = File.join(tmp, "cache", "gate-blocks.log")
+
+    EditGates.dispatch(ctx: block_ctx(path), route: stderr_deny_route,
+                       out: StringIO.new, err: StringIO.new, block_log: log)
+
+    f = block_fields(log)
+    assert_equal 6, f.size, "an unresolvable intent must not shift the columns"
+    assert_equal "", f[3], "the intent field is empty, not omitted"
+    assert_equal path, f[4]
+  end
+
+  def test_a_failing_block_log_write_changes_nothing
+    tmp = mktmp("block-log-fail")
+    path = File.join(tmp, "store", "229--demo", "plan.md")
+    good = File.join(tmp, "good", "gate-blocks.log")
+    # The parent of `bad` is a REGULAR FILE, so FileUtils.mkdir_p raises
+    # Errno::ENOTDIR. No chmod, so this behaves identically for root and on
+    # every filesystem.
+    File.write(File.join(tmp, "wall"), "not a directory\n")
+    bad = File.join(tmp, "wall", "gate-blocks.log")
+
+    out_ok = StringIO.new
+    err_ok = StringIO.new
+    code_ok = EditGates.dispatch(ctx: block_ctx(path), route: stderr_deny_route,
+                                 out: out_ok, err: err_ok, block_log: good)
+
+    out_bad = StringIO.new
+    err_bad = StringIO.new
+    code_bad = EditGates.dispatch(ctx: block_ctx(path), route: stderr_deny_route,
+                                  out: out_bad, err: err_bad, block_log: bad)
+
+    assert_equal code_ok, code_bad, "a failing log write must not change the exit code"
+    assert_equal out_ok.string, out_bad.string, "stdout must be byte-for-byte identical"
+    assert_equal err_ok.string, err_bad.string, "stderr must be byte-for-byte identical"
+    assert File.exist?(good)
+    refute File.exist?(bad)
+  end
+
+  def test_real_dispatcher_logs_a_lock_gate_block
+    root = mktmp("block-log-real")
+    store = File.join(root, "store")
+    intent_dir = File.join(store, "70--demo")
+    FileUtils.mkdir_p(intent_dir)
+    File.write(File.join(intent_dir, "70--demo.md"), "## Intent\nDemo\n")
+    File.write(File.join(root, "INDEX.md"), "## Active\n- [70 - demo](70--demo/70--demo.md)\n\n## Future\n")
+    plan_path = File.join(intent_dir, "plan.md")
+    home = mktmp("block-log-real-home")
+
+    env = { "PLASTIC_TMP" => mktmp("block-log-real-tmp"), "HOME" => home }
+    _out, _err, status = run_dispatcher(
+      { "tool_name" => "Write", "tool_input" => { "file_path" => plan_path, "content" => "x\n" } },
+      env: env,
+    )
+
+    assert_equal 0, status.exitstatus, "lock-gate denies with the json shape, which exits 0"
+    log = File.join(home, ".plastic", ".cache", "gate-blocks.log")
+    assert File.exist?(log), "a real block must write a block-log line"
+    f = File.read(log).lines.first.chomp.split("\t", -1)
+    assert_equal 6, f.size
+    assert_equal "lock-gate", f[1]
+    assert_equal "70", f[3]
+    assert_equal plan_path, f[4]
+    refute_empty f[5]
   end
 end

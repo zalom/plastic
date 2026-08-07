@@ -99,6 +99,23 @@ if is_stage_file || is_action_file
   error = Bridge.check_gate(bridge_intent_dir_abs, file_path_abs)
 
   if error
+    # Block log (intent 229): same hand-rolled best-effort write as
+    # hook-bash-gate's; this script keeps its current requires.
+    begin
+      require "fileutils"
+      require "time"
+      blocklog = File.join(Dir.home, ".plastic", ".cache", "gate-blocks.log")
+      FileUtils.mkdir_p(File.dirname(blocklog))
+      File.open(blocklog, "a") do |io|
+        io.puts([Time.now.utc.iso8601, "gate-check", session.to_s,
+                 Bridge.intent_id_from_dir(bridge_intent_dir_abs).to_s,
+                 file_path_abs.to_s.gsub(/\s+/, " ").strip,
+                 error.to_s.gsub(/\s+/, " ").strip].join("\t"))
+      end
+    rescue StandardError
+      # the block still applies; logging is best-effort
+    end
+
     # Gate violation — block the write
     bridge_data["build"]["gate_failures"] = (bridge_data["build"]["gate_failures"] || 0) + 1
     Bridge.write(session, bridge_data)
