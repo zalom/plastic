@@ -2,6 +2,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "json"
+require "stringio"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/worktree"
 require_relative "../scripts/lib/lock"
@@ -254,5 +255,40 @@ class BridgePurgeTest < Minitest::Test
     self_bridge = Bridge.read("delivering", intent_id: "80")
     refute_nil self_bridge, "current bridge must remain readable after disarm"
     assert_equal false, self_bridge["build"]["auto"]
+  end
+
+  def capture_stderr
+    original = $stderr
+    $stderr = StringIO.new
+    yield
+    $stderr.string
+  ensure
+    $stderr = original
+  end
+
+  # --- intent 233: a failed release keeps the bridge purge-ineligible -------
+
+  def test_a_bridge_whose_release_failed_survives_a_later_purge
+    Bridge.arm_auto("delivering", intent_id: "80", intent_dir: @intent_dir,
+                    store: @store, name: "demo")
+
+    lock_path = Lock.path(@intent_dir)
+    lock_data = JSON.parse(File.read(lock_path))
+    lock_data["owner_session"] = "foreign-sess"
+    File.write(lock_path, JSON.generate(lock_data))
+
+    write_index_active # intent 80 is TERMINAL, would normally be purgeable
+
+    data = nil
+    out = capture_stderr { data = Bridge.disarm_auto("delivering", intent_id: "80") }
+    assert_includes out, "not_owner"
+    refute_nil data.dig("lock", "owner_session"), "the cache must be preserved on a failed release"
+    assert File.exist?(lock_path), "the durable lock must still be on disk"
+
+    removed = Bridge.purge_done_bridges(session: "someone-else", tmp: @tmp)
+    refute_includes removed, Bridge.path("delivering", intent_id: "80", tmp: @tmp),
+                    "a bridge whose lock survived a failed release stays purge-ineligible (D7)"
+    assert File.exist?(Bridge.path("delivering", intent_id: "80", tmp: @tmp)),
+           "a bridge whose lock survived a failed release stays purge-ineligible (D7)"
   end
 end

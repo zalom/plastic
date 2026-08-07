@@ -2,6 +2,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "stringio"
+require "json"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/worktree"
 require_relative "../scripts/lib/lock"
@@ -122,6 +123,27 @@ class BridgeAutoTest < Minitest::Test
     yield
   ensure
     Worktree.define_singleton_method(method_name, original)
+  end
+
+  # Temporarily redefine Lock.release for one block, restoring it after. Same
+  # define_singleton_method seam with_worktree uses (this bundled minitest has
+  # no Minitest::Mock#stub). Needed only for the raising case: :released,
+  # :not_owner, and :none are all produced with real files, no stub.
+  def with_lock_release(impl)
+    original = Lock.method(:release)
+    Lock.define_singleton_method(:release, impl)
+    yield
+  ensure
+    Lock.define_singleton_method(:release, original)
+  end
+
+  # Rewrite the real delivery.lock so a different session owns it. Real
+  # Lock.release then returns :not_owner; no stub involved.
+  def steal_lock(owner)
+    p = Lock.path(@intent_dir)
+    data = JSON.parse(File.read(p))
+    data["owner_session"] = owner
+    File.write(p, JSON.generate(data))
   end
 
   # arm_auto must acquire the durable delivery lock (owner=key, timestamp, host,
@@ -274,6 +296,74 @@ class BridgeAutoTest < Minitest::Test
       end
     end
     refute_empty out
+  end
+
+  # --- intent 233: disarm branches on the lock release result -----------------
+
+  def test_disarm_blanks_the_lock_cache_when_the_release_succeeds
+    arm
+    data = Bridge.disarm_auto(@session, intent_id: "27")
+    refute_nil data
+    assert_nil data["lock"]["owner_session"]
+    assert_nil data["lock"]["acquired_at"]
+    assert_nil data["lock"]["host"]
+    assert_nil data["lock"]["type"]
+    assert_equal [], data["lock"]["delegates"]
+    assert_equal "released", data["lock"]["release_status"]
+    refute File.exist?(Lock.path(@intent_dir))
+    persisted = Bridge.read(@session, intent_id: "27")
+    assert_nil persisted["lock"]["owner_session"]
+  end
+
+  def test_disarm_preserves_the_lock_cache_when_the_release_is_not_owner
+    arm
+    steal_lock("foreign-#{Process.pid}")
+    out = capture_stderr { @data = Bridge.disarm_auto(@session, intent_id: "27") }
+    assert_equal @session, @data.dig("lock", "owner_session")
+    assert File.exist?(Lock.path(@intent_dir))
+    assert_includes out, @intent_dir
+    assert_includes out, "not_owner"
+    assert_equal "not_owner", @data.dig("lock", "release_status")
+    assert_equal false, @data["build"]["auto"]
+    assert_equal @session, Bridge.read(@session, intent_id: "27").dig("lock", "owner_session")
+  end
+
+  def test_disarm_preserves_the_lock_cache_when_the_release_raises
+    arm
+    out = capture_stderr do
+      with_lock_release(->(*_a, **_kw) { raise "boom" }) do
+        @data = Bridge.disarm_auto(@session, intent_id: "27")
+      end
+    end
+    assert_equal @session, @data.dig("lock", "owner_session")
+    assert File.exist?(Lock.path(@intent_dir))
+    refute_empty out
+    assert_includes out, @intent_dir
+    assert_equal "raised", @data.dig("lock", "release_status")
+    assert_equal false, @data["build"]["auto"]
+  end
+
+  def test_disarm_treats_a_missing_lock_as_a_successful_release
+    arm
+    File.delete(Lock.path(@intent_dir))
+    out = capture_stderr { @data = Bridge.disarm_auto(@session, intent_id: "27") }
+    assert_nil @data.dig("lock", "owner_session")
+    assert_equal "none", @data.dig("lock", "release_status")
+    assert_empty out.strip
+  end
+
+  def test_disarm_still_purges_and_returns_after_a_failed_release
+    arm
+    steal_lock("foreign-#{Process.pid}")
+    result = nil
+    capture_stderr do
+      with_worktree(:release, ->(d, *_a, **_kw) { d }) do
+        result = Bridge.disarm_auto(@session, intent_id: "27")
+      end
+    end
+    assert_kind_of Hash, result
+    refute_nil Bridge.read(@session, intent_id: "27")
+    File.delete(Lock.path(@intent_dir)) if File.exist?(Lock.path(@intent_dir))
   end
 
   def capture_stderr

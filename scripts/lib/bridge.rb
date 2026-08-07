@@ -988,12 +988,23 @@ module Bridge
   # Degrade path for disarm_auto when no intent_id is given (intent 131): the
   # session's sole per-intent bridge when there is exactly one, else the
   # legacy single-key file. Keeps the common single-intent auto path working
-  # without every caller having to name the intent id explicitly.
+  # without every caller having to name the intent id explicitly. With TWO or
+  # more per-intent bridges it refuses to guess (intent 233); see below.
   def self.sole_bridge_data(session, tmp: tmp_dir)
     matches = Dir.glob(File.join(tmp, "plastic-#{session}--*.json")).reject { |f| f.end_with?(".tmp") }
     if matches.length == 1
       data = (JSON.parse(File.read(matches.first)) rescue nil)
       return data if data
+    end
+    # Refuse to guess among siblings (intent 233): with 2+ per-intent bridges
+    # the legacy single-key file below can carry EITHER sibling, so falling
+    # through would let a no-id disarm release the wrong intent's lock. A
+    # disarm that does nothing is recoverable; one that unlocks a live
+    # delivery is not. Zero matches keeps the legacy fallback (131 migration).
+    if matches.length > 1
+      $stderr.puts "plastic: session #{session} has #{matches.length} bridges; " \
+                   "disarm needs an explicit intent_id (refusing to guess)"
+      return nil
     end
     read(session, tmp: tmp)
   end
@@ -1008,6 +1019,9 @@ module Bridge
   # (one per concurrent intent), so disarm must target ONE of them. When
   # intent_id is nil, degrades to the session's sole bridge (see
   # sole_bridge_data) so the common single-intent path keeps working.
+  #
+  # The lock clear is conditional (intent 233): a failed release leaves the
+  # cached lock fields alone so the orphan stays findable.
   def self.disarm_auto(session, intent_id: nil)
     data = blank?(intent_id) ? sole_bridge_data(session) : read(session, intent_id: intent_id)
     return nil unless data
@@ -1023,14 +1037,39 @@ module Bridge
       $stderr.puts "plastic: worktree release raised, continuing: #{e.message}"
     end
 
+    # Check what the release actually DID before touching the cache (intent
+    # 233). Blanking the cache after a failed release orphans the durable
+    # delivery.lock: the file stays on disk and nothing points at it any more.
+    # Rescue mirrors the Worktree.release rescue above: warn, never raise,
+    # never abort the rest of the tail (the guard fails milder than the bug).
     dir = bridge_intent_dir(data)
+    release_status = nil
     if dir
       owner = data.dig("lock", "owner_session")
       owner = session if blank?(owner)
-      Lock.release(dir, session: owner)
+      begin
+        release_status = Lock.release(dir, session: owner)
+      rescue => e
+        release_status = :raised
+        $stderr.puts "plastic: delivery lock release raised for #{dir}, continuing: #{e.message}"
+      end
     end
-    data["lock"] = { "owner_session" => nil, "acquired_at" => nil,
-                     "host" => nil, "type" => nil, "delegates" => [] }
+
+    # Success means "no lock left on disk": :released (we deleted it), :none
+    # (there was none), and nil (no intent dir, so no release was attempted).
+    # Only :not_owner and a raised release keep the cache pointing at the lock
+    # so plastic-lock fix / reclaim / doctor can still find and repair it.
+    if release_status.nil? || release_status == :released || release_status == :none
+      data["lock"] = { "owner_session" => nil, "acquired_at" => nil,
+                       "host" => nil, "type" => nil, "delegates" => [] }
+    else
+      $stderr.puts "plastic: delivery lock NOT released for #{dir} (#{release_status}); " \
+                   "bridge lock cache preserved for repair"
+      data["lock"] = {} unless data["lock"].is_a?(Hash)
+    end
+    # Diagnostic only (D5): the primary contract stays "owner_session non-nil
+    # after disarm means the lock was not released".
+    data["lock"]["release_status"] = release_status.nil? ? nil : release_status.to_s
 
     write(session, data)
     purge_done_bridges(session: session)
