@@ -17,6 +17,17 @@ class PluginDispatchTest < Minitest::Test
 
   Complaint = Struct.new(:command, :kind, :message)
 
+  # The five Complaint kinds unresolved_commands can produce split into two
+  # levels: a command's own argv[0] (target-level) and, only when that argv[0]
+  # is run-hook, the launcher named by its second argument (run-hook-level).
+  # This is the single source for that split. Test 1 selects it, test 2
+  # rejects the same constant, so the partition is total by construction: if a
+  # kind is ever added or removed here, coverage does not silently vanish, it
+  # moves from one test's catch to the other's. Two independently hand-kept
+  # arrays (one per test) previously encoded this split and a dropped entry in
+  # either one went unnoticed by the whole suite; this replaces both with one.
+  TARGET_LEVEL_KINDS = %i[missing_target not_executable_target].freeze
+
   def setup
     @tmp = Dir.mktmpdir("plugin-dispatch")
     @plugin_root = File.join(@tmp, "plugin-root")
@@ -123,7 +134,7 @@ class PluginDispatchTest < Minitest::Test
                     "fixture floor: hooks.json declares at least 10 commands; an empty walk is not a pass"
 
     bad = unresolved_commands(@plugin_root)
-          .select { |c| %i[missing_target not_executable_target].include?(c.kind) }
+          .select { |c| TARGET_LEVEL_KINDS.include?(c.kind) }
     assert_empty bad.map(&:message)
   end
 
@@ -132,8 +143,13 @@ class PluginDispatchTest < Minitest::Test
     assert_operator wrapped.size, :>=, 7,
                     "fixture floor: at least 7 commands dispatch through run-hook"
 
+    # Everything that is not a target-level complaint is a run-hook-level one
+    # by construction (see TARGET_LEVEL_KINDS): missing_name, missing_launcher,
+    # and not_executable_launcher all land here with no allow-list of their
+    # own to fall out of sync, and any future kind lands here too until it is
+    # deliberately added to TARGET_LEVEL_KINDS instead.
     bad = unresolved_commands(@plugin_root)
-          .select { |c| %i[missing_name missing_launcher not_executable_launcher].include?(c.kind) }
+          .reject { |c| TARGET_LEVEL_KINDS.include?(c.kind) }
     assert_empty bad.map(&:message)
   end
 
@@ -246,6 +262,15 @@ class PluginDispatchTest < Minitest::Test
   BASH_FALLBACK_MARKER = "PLASTIC CONTINUE: The user wants to resume previous work"
 
   def test_the_continue_launcher_runs_end_to_end_through_run_hook
+    # Self-validation for the refute below: if hooks/continue's fallback text
+    # ever changes, BASH_FALLBACK_MARKER goes stale and the refute becomes
+    # vacuously true (it would never match anything, pass or fail). Pin the
+    # marker's presence in the shipped source so a text change here breaks
+    # loudly instead of the coverage rotting silently.
+    assert_includes File.read(File.join(plugin_hooks_dir, "continue")), BASH_FALLBACK_MARKER,
+                    "fixture assumption: hooks/continue must still carry this literal fallback text, " \
+                    "or the refute below is checking for something that can no longer appear"
+
     FileUtils.mkdir_p(File.join(@home, ".plastic", "store"))
     File.write(File.join(@home, ".plastic", "INDEX.md"), "# Intent Index\n\n## Active\n\n## Future\n")
     payload = JSON.generate("session_id" => "sess-234", "user_prompt" => "continue")
