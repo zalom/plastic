@@ -13,9 +13,11 @@ require_relative "../scripts/doctor"
 # reopens the Doctor class defined in scripts/lib/doctor_core.rb, so the
 # SessionStart hook can require only the core file instead of the whole
 # diagnostic engine. Four tests: output identity between the core-only load
-# and the full Doctor (T1), the non-core libs staying absent from the core
-# require (T2), a load-size regrowth budget on the boot path (T3), and a
-# guard against a second hand-kept list of which checks are core (T4).
+# and the full Doctor (T1), an exact-set assertion of which repo files the
+# core require is allowed to pull in, so a new file cannot quietly re-attach
+# itself to the boot path (T2), a byte-size regrowth budget as a secondary
+# guard (T3), and a guard against a second hand-kept list of which checks
+# are core (T4).
 #
 # Hermetic throughout: every fixture lives in a Dir.mktmpdir, every subprocess
 # is launched with an explicit absolute path, no eval, no ENV or
@@ -138,11 +140,12 @@ class DoctorCoreSplitTest < Minitest::Test
   # --- T2 and T3 share one clean-subprocess measurement of everything loaded
   # when only scripts/lib/doctor_core.rb is required. ---
 
-  NON_CORE_LIB_BASENAMES = %w[
-    qmd_sync intent_validator graph_rebuild store_discovery store_provisioning
-    links_projection links_section lock bridge worktree agent_models
-    outcome_guard skill_lint config_asks power_tools preflight ruby_probe
-  ].freeze
+  # The complete, exact set of repo-file basenames the boot path is allowed
+  # to load. This is an allow-list, not a deny-list: anything new that
+  # attaches itself to scripts/lib/doctor_core.rb's require chain fails this
+  # test by name, with no hand-kept list of "known non-core libs" for a
+  # human to keep in sync as the codebase grows.
+  CORE_REQUIRE_ALLOWED_BASENAMES = %w[doctor_core.rb hook_registry.rb].freeze
 
   def loaded_after_core_require
     return @loaded_after_core_require if defined?(@loaded_after_core_require)
@@ -162,33 +165,34 @@ class DoctorCoreSplitTest < Minitest::Test
     @loaded_after_core_require = JSON.parse(out)
   end
 
-  # T2: none of the 17 non-core lib basenames may load when only
-  # scripts/lib/doctor_core.rb is required. hook_registry.rb must load
-  # (doctor_core.rb's one dependency); doctor.rb must not.
-  def test_non_core_libs_absent_from_core_require
-    basenames = loaded_after_core_require.map { |i| i["basename"] }
+  # T2: the set of repo-file basenames loaded when only
+  # scripts/lib/doctor_core.rb is required must be EXACTLY
+  # CORE_REQUIRE_ALLOWED_BASENAMES, no more and no less. Unlike a hand-kept
+  # deny-list, this catches any future file by name, including ones that did
+  # not exist when this test was written.
+  def test_core_require_loads_exactly_the_allowed_repo_files
+    plastic_files = loaded_after_core_require.select { |i| i["path"].start_with?(ROOT) }
+    basenames = plastic_files.map { |i| i["basename"] }.sort
 
-    NON_CORE_LIB_BASENAMES.each do |lib|
-      refute_includes basenames, "#{lib}.rb",
-        "scripts/lib/doctor_core.rb must not pull in #{lib}.rb; it belongs to the non-core half"
-    end
-    assert_includes basenames, "hook_registry.rb",
-      "scripts/lib/doctor_core.rb's one dependency, hook_registry.rb, did not load"
-    refute_includes basenames, "doctor.rb",
-      "requiring scripts/lib/doctor_core.rb must never pull in scripts/doctor.rb"
+    extra = basenames - CORE_REQUIRE_ALLOWED_BASENAMES
+    missing = CORE_REQUIRE_ALLOWED_BASENAMES - basenames
+
+    assert_empty extra,
+      "scripts/lib/doctor_core.rb's require chain now pulls in #{extra.join(', ')}, which " \
+      "is not on the boot-path allow-list (#{CORE_REQUIRE_ALLOWED_BASENAMES.join(', ')}). " \
+      "If this file genuinely belongs on the boot path, add it to " \
+      "CORE_REQUIRE_ALLOWED_BASENAMES deliberately in a new intent; otherwise it has " \
+      "re-attached itself to the boot path and must be removed from the require chain."
+    assert_empty missing,
+      "scripts/lib/doctor_core.rb no longer requires #{missing.join(', ')}, which the boot " \
+      "path is expected to depend on."
   end
 
-  # T3: the regrowth-enforcement mechanism (modeled on
-  # test/plastic_core_budget_test.rb). If the boot path grows past this
-  # ceiling, the failure message is the instruction: justify the growth in a
-  # new intent rather than raise the ceiling here.
-  def test_core_require_stays_under_the_boot_path_budget
+  # T3: a byte-size regrowth budget as a secondary guard (modeled on
+  # test/plastic_core_budget_test.rb). T2 already pins the exact file set, so
+  # this only catches one of the two allowed files quietly bloating in place.
+  def test_core_require_stays_under_the_boot_path_byte_budget
     plastic_files = loaded_after_core_require.select { |i| i["path"].start_with?(ROOT) }
-
-    assert_operator plastic_files.size, :<=, 3,
-      "the doctor boot path now loads #{plastic_files.size} repo files " \
-      "(#{plastic_files.map { |i| i['basename'] }.sort.join(', ')}); ceiling is 3. " \
-      "If this growth is intentional, justify it in a new intent before raising the ceiling."
 
     total_bytes = plastic_files.sum { |i| i["bytes"] }
     assert_operator total_bytes, :<=, 65_000,
@@ -199,7 +203,10 @@ class DoctorCoreSplitTest < Minitest::Test
   # T4: the core-check name set named inside run_core_checks must not appear
   # as a hand-written literal list (array, hash, or constant) anywhere else
   # under scripts/, so a future change cannot plant a second "which checks
-  # are core" list beside the real one.
+  # are core" list beside the real one. The scan covers both *.rb files and
+  # the extensionless executables under scripts/ (detected by a Ruby
+  # shebang), since a duplicate list is at least as likely to be planted in
+  # a boot-side executable script as in a .rb file.
   def test_core_check_list_appears_in_exactly_one_place
     core_source = File.read(DOCTOR_CORE_PATH)
     run_core_checks_body = core_source[/def run_core_checks\(agent_key\).*?\n  end/m]
@@ -208,13 +215,35 @@ class DoctorCoreSplitTest < Minitest::Test
     check_names = run_core_checks_body.scan(/all_checks \+= (check_\w+)/).flatten.uniq
     refute_empty check_names, "expected at least one check_* call inside run_core_checks"
 
-    offenders = Dir.glob(File.join(ROOT, "scripts", "**", "*.rb")).reject { |p| p == DOCTOR_CORE_PATH }.select do |path|
+    offenders = scripts_scan_targets.reject { |p| p == DOCTOR_CORE_PATH }.select do |path|
       content = File.read(path)
       literal_list_with_all_names?(content, check_names)
     end
 
     assert_empty offenders,
       "found a hand-kept duplicate of the core-check name list outside doctor_core.rb: #{offenders.join(', ')}"
+  end
+
+  # Every *.rb file under scripts/, plus every extensionless file under
+  # scripts/ whose first line is a Ruby shebang. Detecting executables by
+  # shebang (rather than by hardcoding a specific script's name) keeps the
+  # scan itself honest: it derives what counts as Ruby source instead of
+  # hand-listing it.
+  def scripts_scan_targets
+    rb_files = Dir.glob(File.join(ROOT, "scripts", "**", "*.rb"))
+    executables = Dir.glob(File.join(ROOT, "scripts", "**", "*")).select do |path|
+      File.file?(path) && File.extname(path).empty? && ruby_shebang?(path)
+    end
+    (rb_files + executables).uniq
+  end
+
+  def ruby_shebang?(path)
+    first_line = File.open(path) { |f| f.gets }
+    return false unless first_line
+
+    first_line.start_with?("#!") && first_line.include?("ruby")
+  rescue StandardError
+    false
   end
 
   # A literal Ruby list (array or %w[...]) that names every one of check_names
