@@ -77,6 +77,17 @@ module CodexEditGates
     end
   end
 
+  # True iff tool_name is a NON-EMPTY string that no CODEX_GATE_TOOLS entry
+  # matches. An empty/missing tool_name already means "the harness matched but
+  # did not name the tool" and every gate runs (EditGates.tool_applies?'s own
+  # empty-name rule); this is the OTHER unmatched case, a non-empty tool_name
+  # this dispatcher does not recognize. Checked once against "apply_patch",
+  # since every CODEX_GATE_TOOLS value is the identical single-entry list.
+  def unexpected_tool_name?(tool_name)
+    return false if tool_name.to_s.empty?
+    !EditGates.tool_applies?(tool_name, %w[apply_patch])
+  end
+
   # Returns the process exit code. Two passes (spec D3):
   #   pass 1 runs savepoint-pre over EVERY op. It never denies, and running it
   #   before any deny check keeps its started ledger append unconditional, so
@@ -86,7 +97,24 @@ module CodexEditGates
   # deny, so pass 2 captures stdout per op: a non-empty buffer IS a deny, and it
   # is printed and evaluation stops. Without that capture a second op could emit
   # a second deny JSON.
+  #
+  # Codex only ever invokes this dispatcher from the apply_patch matcher, so by
+  # the time we get here the harness HAS already matched, regardless of what
+  # tool_name the payload itself carries. A non-empty, unrecognized tool_name
+  # (a future Codex rename, or a malformed/adversarial payload) must therefore
+  # never silently skip every gate: that is the coverage WEAKENING
+  # EditGates.tool_applies?'s own empty-name rule exists to prevent, just
+  # triggered from the opposite direction (an unrecognized name here, not a
+  # missing one there). Loud and safe: warn once to err and run all five gates
+  # exactly as if tool_name had been "apply_patch", rather than silent and
+  # permissive.
   def dispatch(ops:, payload:, out: $stdout, err: $stderr)
+    if unexpected_tool_name?(payload["tool_name"])
+      err.puts "plastic codex edit-gates: unexpected tool_name #{payload["tool_name"].inspect}; " \
+                "the apply_patch matcher already selected this dispatcher, so all five gates run anyway"
+      payload = payload.merge("tool_name" => "apply_patch")
+    end
+
     pairs = ops.map { |op| [op, context_for(payload, op)] }
 
     pairs.each do |op, ctx|

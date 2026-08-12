@@ -847,4 +847,76 @@ class CodexHooksTest < Minitest::Test
     _out, status = run_hook("edit-gates", codex_payload(body_violating_first))
     assert_equal 2, status.exitstatus, "the first op's violation must deny the whole call"
   end
+
+  # ---- review finding 1 (post-delivery): an unrecognized, non-empty tool_name
+  # must not silently skip every gate. Codex only ever invokes this dispatcher
+  # from the apply_patch matcher, so the harness has already matched by the
+  # time we get here; a future Codex rename (or an adversarial payload) that
+  # carries a tool_name CODEX_GATE_TOOLS does not recognize must still run all
+  # five gates, loudly (one stderr line naming the unexpected tool), not
+  # silently allow. ----
+
+  def test_unexpected_tool_name_still_runs_every_gate
+    intent_path = File.join(@store, "1--demo", "1--demo.md")
+    body = patch(add_section(intent_path, malformed_intent_content))
+    payload = codex_payload(body)
+    payload["tool_name"] = "patch"
+    out, status = run_hook("edit-gates", payload)
+    assert_equal 2, status.exitstatus, "an unrecognized tool_name must not skip gates: #{out}"
+    assert_includes out, "PLASTIC CREATE GATE"
+    assert_includes out, "unexpected tool_name"
+  end
+
+  def test_recognized_tool_name_emits_no_unexpected_tool_line
+    intent_path = File.join(@store, "1--demo", "1--demo.md")
+    body = patch(add_section(intent_path, malformed_intent_content))
+    payload = codex_payload(body)
+    assert_equal "apply_patch", payload["tool_name"]
+    out, status = run_hook("edit-gates", payload)
+    assert_equal 2, status.exitstatus, "control: apply_patch must still deny: #{out}"
+    refute_includes out, "unexpected tool_name"
+  end
+
+  def test_absent_tool_name_emits_no_unexpected_tool_line
+    intent_path = File.join(@store, "1--demo", "1--demo.md")
+    body = patch(add_section(intent_path, malformed_intent_content))
+    payload = codex_payload(body)
+    payload.delete("tool_name")
+    out, status = run_hook("edit-gates", payload)
+    assert_equal 2, status.exitstatus, "control: an absent tool_name must still deny: #{out}"
+    refute_includes out, "unexpected tool_name"
+  end
+
+  # ---- review finding 2 (post-delivery): a missing scripts/lib/codex_edit_gates.rb
+  # (a future manifest gap, exactly the class of bug the full suite caught
+  # during this intent's own delivery) must fail open with a gate decision,
+  # never crash. LoadError is a ScriptError, a sibling of StandardError, not a
+  # subclass, so the dispatcher's rescue must name both. ----
+
+  def mutated_scripts_dir_missing_codex_edit_gates_lib
+    real_scripts = File.expand_path("../scripts", __dir__)
+    copy_root = Dir.mktmpdir("codex-hook-missing-lib")
+    copy = File.join(copy_root, "scripts")
+    FileUtils.cp_r(real_scripts, copy)
+    FileUtils.rm_f(File.join(copy, "lib", "codex_edit_gates.rb"))
+    copy
+  end
+
+  def test_missing_codex_edit_gates_lib_fails_open_not_crash
+    copy = mutated_scripts_dir_missing_codex_edit_gates_lib
+    script = File.join(copy, "codex-hook")
+    intent_path = File.join(@store, "1--demo", "1--demo.md")
+    body = patch(add_section(intent_path, valid_intent_content))
+    env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_CODE_SESSION_ID" => nil, "HOME" => @fake_home }
+    out = nil
+    IO.popen(env, [RbConfig.ruby, script, "edit-gates"], "r+", err: [:child, :out]) do |io|
+      io.write(JSON.generate(codex_payload(body)))
+      io.close_write
+      out = io.read
+    end
+    assert_equal 0, $?.exitstatus, "a missing lib must fail open, never crash: #{out}"
+    assert_includes out, "plastic codex edit-gates error:"
+  ensure
+    FileUtils.rm_rf(File.dirname(copy)) if copy
+  end
 end

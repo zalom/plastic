@@ -118,11 +118,15 @@ when "edit-gates"
   # links-gate and create-gate; stdout permissionDecision JSON plus exit 0 for
   # lock-gate. Fail-open at both levels, per gate inside EditGates.dispatch and
   # again at this file's own top level.
-  require_relative "lib/codex_edit_gates"
   begin
+    require_relative "lib/codex_edit_gates"
     exit CodexEditGates.dispatch(ops: ops, payload: payload)
-  rescue StandardError => e
-    # Dispatcher-internal failure: never impersonate a deny.
+  rescue StandardError, ScriptError => e
+    # Dispatcher-internal failure: never impersonate a deny. ScriptError (a
+    # sibling of StandardError, not a subclass) covers LoadError: a future
+    # manifest gap (a lib file required here but not distributed, exactly the
+    # bug the full suite caught during this intent's own delivery) must fail
+    # open with a gate decision, never exit 1 with no decision at all.
     $stderr.puts "plastic codex edit-gates error: #{e.message}"
     exit 0
   end
