@@ -716,6 +716,87 @@ class CodexInstallTest < Minitest::Test
     assert_equal "pass", drift_check[:status]
   end
 
+  # --- Intent 216: model-line drift ---
+
+  def test_codex_model_drift_warns_when_a_toml_model_id_disagrees_with_the_tier_default
+    @core.install_for_agent("codex", false)
+    expected_model = AgentModels.codex_model_for(AgentModels::TIER_DEFAULTS["plastic-executor"])
+    wrong_model = "gpt-5.4-mini"
+    toml_path = File.join(@codex_home, "agents", "plastic-executor.toml")
+    content = File.read(toml_path).sub(
+      %(model = "#{expected_model}"),
+      %(model = "#{wrong_model}")
+    )
+    File.write(toml_path, content)
+
+    checks = doctor_for(@codex_home).check_agent_model_drift("codex")
+    drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+    refute_nil drift_check
+    assert_equal "warn", drift_check[:status]
+    detail = drift_check[:details].find do |d|
+      d.include?("plastic-executor") && d.include?("model") && d.include?(wrong_model) && d.include?(expected_model)
+    end
+    refute_nil detail, "expected a detail line naming plastic-executor, model, #{wrong_model}, and #{expected_model}, got: #{drift_check[:details].inspect}"
+    refute detail.include?("effort"), "a model-only drift must not blame the effort field, got: #{detail}"
+  end
+
+  def test_codex_model_drift_reports_both_fields_when_model_and_effort_both_drift
+    @core.install_for_agent("codex", false)
+    expected_model = AgentModels.codex_model_for(AgentModels::TIER_DEFAULTS["plastic-executor"])
+    expected_effort = AgentModels.effort_for(AgentModels::TIER_DEFAULTS["plastic-executor"])
+    wrong_model = "gpt-5.4-mini"
+    wrong_effort = expected_effort == "low" ? "high" : "low"
+    toml_path = File.join(@codex_home, "agents", "plastic-executor.toml")
+    content = File.read(toml_path)
+      .sub(%(model = "#{expected_model}"), %(model = "#{wrong_model}"))
+      .sub(%(model_reasoning_effort = "#{expected_effort}"), %(model_reasoning_effort = "#{wrong_effort}"))
+    File.write(toml_path, content)
+
+    checks = doctor_for(@codex_home).check_agent_model_drift("codex")
+    drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+    refute_nil drift_check
+    assert_equal "warn", drift_check[:status]
+    detail = drift_check[:details].find { |d| d.include?("plastic-executor") }
+    refute_nil detail
+    assert detail.include?("model"), "expected the detail line to name the model field, got: #{detail}"
+    assert detail.include?("effort"), "expected the detail line to name the effort field, got: #{detail}"
+    assert detail.include?(wrong_model)
+    assert detail.include?(expected_model)
+    assert detail.include?(wrong_effort)
+    assert detail.include?(expected_effort)
+  end
+
+  def test_codex_model_drift_honors_a_literal_codex_model_id_override
+    File.write(File.join(@home, "config.yml"),
+               "agents:\n  models:\n    codex:\n      plastic-executor: gpt-5.4-codex\n")
+    @core.install_for_agent("codex", false)
+
+    checks = doctor_for(@codex_home).check_agent_model_drift("codex")
+    drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
+
+    refute_nil drift_check
+    assert_equal "pass", drift_check[:status],
+      "a literal codex model id override must never be flagged as drift"
+    assert drift_check[:details].any? { |d| d.include?("plastic-executor") && d.include?("gpt-5.4-codex") },
+      "expected the sanctioned literal override to be LISTED, got: #{drift_check[:details].inspect}"
+  end
+
+  def test_codex_agent_toml_model_fields_reads_both_lines_separately
+    two_line = "model = \"gpt-5.6-terra\"\nmodel_reasoning_effort = \"medium\"\n"
+    fields = doctor_for(@codex_home).codex_agent_toml_model_fields(two_line)
+
+    assert_equal "gpt-5.6-terra", fields[:model]
+    assert_equal "medium", fields[:effort]
+
+    model_only = "model = \"gpt-5.4-codex\"\n"
+    fields_model_only = doctor_for(@codex_home).codex_agent_toml_model_fields(model_only)
+
+    assert_equal "gpt-5.4-codex", fields_model_only[:model]
+    assert_nil fields_model_only[:effort]
+  end
+
   def test_doctor_codex_checks_include_agents_md_and_hooks_alongside_toml_check
     @core.install_for_agent("codex", false)
 

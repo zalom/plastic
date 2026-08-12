@@ -1157,13 +1157,24 @@ end
   # `.md` agents check nor anything agent-format-specific lives here.
 
 
-  # Plain string extraction of the single model-selection line a generated
-  # Codex agent TOML carries (model_reasoning_effort for a tier alias, model
-  # for a literal override id; codex_model_fields never emits both). No TOML
-  # parser dependency, mirroring codex_agent_toml_well_formed? above.
-  def codex_agent_toml_model_value(content)
-    m = content.match(/^model_reasoning_effort\s*=\s*"([^"]*)"/) || content.match(/^model\s*=\s*"([^"]*)"/)
-    m && m[1]
+  # Plain string extraction of the two model-selection lines a generated
+  # Codex agent TOML can carry, read separately (intent 216). Per the
+  # emission contract in installer_core.rb's codex_model_fields: a tier
+  # alias emits BOTH `model` and `model_reasoning_effort` (model first); a
+  # literal Codex model id override emits `model` only, no effort line; an
+  # empty value emits neither. No TOML parser dependency, mirroring
+  # codex_agent_toml_well_formed? above.
+  #
+  # Regex detail: `/^model\s*=\s*"([^"]*)"/` cannot match a
+  # `model_reasoning_effort = "..."` line, because the character right
+  # after `model` there is `_`, which matches neither `\s` nor `=`. The two
+  # matchers are independent lookups and need no ordering trick, unlike the
+  # single-value extractor this replaces. `^` anchors at line start in
+  # Ruby by default, so no `/m` flag is needed.
+  def codex_agent_toml_model_fields(content)
+    model = content.match(/^model\s*=\s*"([^"]*)"/)
+    effort = content.match(/^model_reasoning_effort\s*=\s*"([^"]*)"/)
+    { model: model && model[1], effort: effort && effort[1] }
   end
 
   # codex_hooks_registered (intent 102, the owner-facing first-run validation
@@ -1310,18 +1321,39 @@ end
     end
   end
 
-  # Codex leg of agent_model_drift (intent 198, Decision D4): the shared .md
-  # path above is structurally blind on Codex (codex agents are TOML under
-  # ~/.codex/agents/, never ~/.agents/agents/*.md), so it always passed on an
-  # empty glob without opening a single Codex file. This mirrors the same
-  # four buckets (sanctioned override, matches default, drifted,
-  # unclassified) against ~/.codex/agents/plastic-*.toml instead, reading
-  # model / model_reasoning_effort with the same plain string matching
+  # Codex leg of agent_model_drift (intent 198, Decision D4; widened intent
+  # 216 to cover both TOML lines). The shared .md path above is structurally
+  # blind on Codex (codex agents are TOML under ~/.codex/agents/, never
+  # ~/.agents/agents/*.md), so it always passed on an empty glob without
+  # opening a single Codex file. This mirrors the same four buckets
+  # (sanctioned override, matches default, drifted, unclassified) against
+  # ~/.codex/agents/plastic-*.toml instead, reading `model` and
+  # `model_reasoning_effort` as two SEPARATE lines via
+  # codex_agent_toml_model_fields, the same plain string matching
   # codex_agent_toml_well_formed? already uses (no TOML parser dependency).
-  # The expected value resolves through AgentModels::TIER_DEFAULTS mapped
-  # through AgentModels.effort_for, honoring the Codex-scoped
+  #
+  # Per the intent-186 emission contract (installer_core.rb's
+  # codex_model_fields): a tier alias writes BOTH lines, a literal Codex
+  # model id override writes `model` only. Bucket 2 (no override, basename
+  # is a TIER_DEFAULTS key) therefore compares BOTH fields, each against its
+  # own config-resolved default: the model value against
+  # AgentModels.codex_model_for(tier), the effort value against
+  # AgentModels.effort_for(tier), honoring the Codex-scoped
   # agents.models.codex.<name> override precedence install_codex's own
-  # agent_model_overrides(harness: "codex") already applies.
+  # agent_model_overrides(harness: "codex") already applies. Either field
+  # disagreeing is drift; the detail line names exactly which field(s)
+  # drifted so a model mismatch never reads as an effort mismatch or vice
+  # versa. An alias with no mapped Codex model id (codex_model_for returns
+  # nil) skips the model comparison rather than reporting drift, mirroring
+  # the installer, which still emits the effort line alone in that case.
+  #
+  # Bucket 1 (an agents.models.codex.<name> override is configured) stays
+  # sanctioned and is NEVER compared: per-agent model and effort are user
+  # configuration, per harness and per project, and can be edited after
+  # install without a reinstall, so an override must always read as
+  # healthy. This also keeps the Codex leg identical in shape to the Claude
+  # leg's four-bucket contract from intent 191.
+  #
   # AgentModels::CONSULTATION_AGENTS need no special-case bucket here:
   # generate_codex_agents already skips writing them for Codex entirely, so
   # the glob below never finds them and there is nothing to classify.
@@ -1345,21 +1377,30 @@ end
 
     installed.each do |path|
       basename = File.basename(path, ".toml")
-      installed_value = codex_agent_toml_model_value(File.read(path))
+      fields = codex_agent_toml_model_fields(File.read(path))
       override = overrides[basename]
 
       if override
-        sanctioned << "#{basename}: toml=#{installed_value.inspect}, sanctioned override=#{override.inspect}"
+        sanctioned << "#{basename}: toml model=#{fields[:model].inspect}, " \
+                      "toml effort=#{fields[:effort].inspect}, sanctioned override=#{override.inspect}"
       elsif AgentModels::TIER_DEFAULTS.key?(basename)
-        expected_effort = AgentModels.effort_for(AgentModels::TIER_DEFAULTS[basename])
-        if installed_value != expected_effort
-          drifted << "#{basename}: toml=#{installed_value.inspect}, resolved default effort=#{expected_effort.inspect}"
+        tier = AgentModels::TIER_DEFAULTS[basename]
+        expected_model = AgentModels.codex_model_for(tier)
+        expected_effort = AgentModels.effort_for(tier)
+        mismatches = []
+        if expected_model && fields[:model] != expected_model
+          mismatches << "model=#{fields[:model].inspect}, resolved default model=#{expected_model.inspect}"
         end
+        if expected_effort && fields[:effort] != expected_effort
+          mismatches << "effort=#{fields[:effort].inspect}, resolved default effort=#{expected_effort.inspect}"
+        end
+        drifted << "#{basename}: #{mismatches.join("; ")}" if mismatches.any?
       else
-        unclassified << "#{basename}: toml=#{installed_value.inspect}, no resolved default (basename is in " \
-                         "neither AgentModels::TIER_DEFAULTS nor AgentModels::CONSULTATION_AGENTS in " \
-                         "scripts/lib/agent_models.rb; add it there, or set agents.models.codex.#{basename} " \
-                         "to sanction a model explicitly)"
+        unclassified << "#{basename}: toml model=#{fields[:model].inspect}, " \
+                        "toml effort=#{fields[:effort].inspect}, no resolved default (basename is in " \
+                        "neither AgentModels::TIER_DEFAULTS nor AgentModels::CONSULTATION_AGENTS in " \
+                        "scripts/lib/agent_models.rb; add it there, or set agents.models.codex.#{basename} " \
+                        "to sanction a model explicitly)"
       end
     end
 
@@ -1376,7 +1417,7 @@ end
       )]
     else
       parts = []
-      parts << "#{drifted.size} installed Codex agent TOML(s) have unsanctioned model drift vs the config-resolved default" if drifted.any?
+      parts << "#{drifted.size} installed Codex agent TOML(s) have unsanctioned model or effort drift vs the config-resolved default" if drifted.any?
       parts << "#{unclassified.size} installed Codex agent TOML(s) have no resolved default in scripts/lib/agent_models.rb" if unclassified.any?
       [check(
         category: "core_files", name: "agent_model_drift", status: "warn",
