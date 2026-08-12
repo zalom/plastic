@@ -311,9 +311,16 @@ structural check for the mandatory fields) in place of the flat `.md` check, whi
 longer applies to codex. Hermes and `~/.codex/config.toml` are untouched by this slice.
 
 `doctor`'s model-drift check (`check_agent_model_drift`) has a Codex-specific path since
-intent 198: it reads `~/.codex/agents/plastic-*.toml` directly (the same plain string
-matching `codex_agents_toml_check` already uses, no TOML parser dependency) and compares
-each file's `model_reasoning_effort` line against the tier default, honoring an `agents.models.codex.<name>` override. Previously
+intent 198, widened at intent 216: it reads `~/.codex/agents/plastic-*.toml` directly (the
+same plain string matching `codex_agents_toml_check` already uses, no TOML parser
+dependency) and reads the `model` and `model_reasoning_effort` lines as two separate values,
+through independent regexes, so the model line is always opened rather than skipped by a
+fallback. It compares the model value against the tier's resolved Codex model id and the
+effort value against the tier's resolved effort, each comparison skipped when its expected
+value is absent, so a tier with no mapped Codex model id never reads as drift; detail lines
+name which field drifted. An `agents.models.codex.<name>` override stays sanctioned and is
+never compared, because model and effort are user configuration per harness and per
+project. The check validates only, it never enforces and it never fails the boot. Previously
 this check globbed a path Codex never writes and always passed silently without opening a
 single Codex file, so a drifted override could never be caught.
 
