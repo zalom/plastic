@@ -68,7 +68,7 @@ if STATE_HOOKS.include?(gate)
   cwd = Dir.pwd if cwd.empty? || !Dir.exist?(cwd)
   env = { "CLAUDE_CODE_SESSION_ID" => (session.empty? ? nil : session) }
   out, err, status = begin
-    Timeout.timeout(STATE_TIMEOUT) { Open3.capture3(env, launcher, stdin_data: raw, chdir: cwd) }
+    Timeout.timeout(STATE_TIMEOUT) { Open3.capture3(env.merge("RUBYOPT" => nil), launcher, stdin_data: raw, chdir: cwd) }
   rescue StandardError
     ["", "", nil] # fail open: launcher missing, unexecutable, crashed, or too slow
   end
@@ -88,7 +88,7 @@ if SHELL_HOOKS.include?(gate)
   script = File.join(__dir__, "hook-#{gate}")
   argv = [script]
   out, err, status = begin
-    Timeout.timeout(STATE_TIMEOUT) { Open3.capture3(env, RbConfig.ruby, *argv, stdin_data: raw, chdir: cwd) }
+    Timeout.timeout(STATE_TIMEOUT) { Open3.capture3(env.merge("RUBYOPT" => nil), RbConfig.ruby, *argv, stdin_data: raw, chdir: cwd) }
   rescue StandardError
     ["", "", nil] # fail open: script missing, unexecutable, crashed, or too slow
   end
@@ -104,7 +104,7 @@ exit 0 if ops.empty? # fail-open: nothing parseable to gate
 
 CORES = __dir__ # ~/.plastic/scripts
 def run_core(name, *argv)
-  out = IO.popen([RbConfig.ruby, File.join(CORES, name), *argv], "r", err: [:child, :out], &:read)
+  out = IO.popen([{ "RUBYOPT" => nil }, RbConfig.ruby, File.join(CORES, name), *argv], "r", err: [:child, :out], &:read)
   [out, $?.exitstatus]
 end
 
