@@ -127,4 +127,31 @@ class ApplyPatchEnvelopeTest < Minitest::Test
     assert_equal :add, ops[0].op
     assert_equal "content\n", ops[0].added_content
   end
+
+  # Adversarial, the END_MARK counterpart of test_adversarial_embedded_marker_does_not_
+  # create_second_op above: a content line that reads "+*** End Patch" is legal file
+  # content under add_line: "+" /(.*)/ LF, not a terminator, because it starts with "+".
+  # A bare `text.index(END_MARK)` stops at the FIRST such substring anywhere in the
+  # text, so it would truncate the body there and drop the real second Add File
+  # section entirely. Both Add File sections must survive as separate ops.
+  def test_content_line_that_reads_end_patch_is_not_a_terminator
+    command = <<~PATCH
+      *** Begin Patch
+      *** Add File: docs/notes.md
+      +Some docs mention the marker below.
+      +*** End Patch
+      +more text
+      *** Add File: other/file.md
+      +garbage content
+      *** End Patch
+    PATCH
+
+    ops = ApplyPatchEnvelope.parse(command)
+
+    assert_equal 2, ops.size
+    assert_equal [:add, :add], ops.map(&:op)
+    assert_equal %w[docs/notes.md other/file.md], ops.map(&:path)
+    assert_equal "Some docs mention the marker below.\n*** End Patch\nmore text\n", ops[0].added_content
+    assert_equal "garbage content\n", ops[1].added_content
+  end
 end

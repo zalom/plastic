@@ -61,6 +61,30 @@ note in the Codex worked example below), so the two are independently maintained
 | Codex CLI | `$plastic-<name>` (dollar), explicit; Codex may also select a skill implicitly by matching its `description` |
 | Hermes | not yet defined (future adapter, see Roadmap below) |
 
+## Harness support
+
+| Harness | Install | Standing conventions | Live state | Write gates | Statusline | Subagent teams |
+|---|---|---|---|---|---|---|
+| Claude Code | npm, `plastic-install --claude` | native `CLAUDE.md` | seven hooks through `settings.json` | pre-write veto on intent creation, post-write backstop on in-place edits | yes | yes |
+| Codex CLI | npm, `plastic-install --codex` | marked section injected into `~/.codex/AGENTS.md` | seven hooks through `~/.codex/hooks.json`, all dispatched by one command | pre-write veto on `apply_patch`, fails open on an envelope it cannot parse | no | no, a single agent walks the whole cycle |
+| Hermes | npm, `plastic-install --hermes` | none | none | none | no | no |
+
+1. Plastic installs from npm only, for every harness above (owner ruling of 2026-08-08).
+   No other install path exists or is planned.
+2. Hermes copies skills and agent files and wires nothing else. It is a packaging target,
+   not a working adapter.
+3. Codex receives its skill text with paths and command prefixes rewritten at install time
+   (intent 239), so the instructions resolve on a Codex machine. Eleven lines still speak
+   Claude Code afterward, all disclosed and none executable: four instruction lines that
+   name Claude's hook launcher directory, left as they are because Codex installs no
+   per-agent launchers and there is no Codex path to point at; two lines in a
+   skill-authoring reference that document Claude's own placeholder convention TO SKILL
+   AUTHORS, where rewriting the token would turn a true sentence false; one line in the
+   shared `~/.plastic/_active-intent-gate.md` fragment, installed byte-identical to every
+   harness; and four lines inside skill `evals/evals.json` fixtures, which are test
+   scaffolding read by nothing at install or run time, not agent-facing instructions.
+4. Codex has no statusline and no subagent dispatch. Both are gaps, not stated non-goals.
+
 ## Per-harness version truth (intent 210)
 
 Every adapter's own installed version lives at the same uniform path,
@@ -200,7 +224,10 @@ post-write backstop (see Tier B above). The verdict carries two caveats, both co
 discipline rather than tier ceilings: register hooks and skills at USER scope so they
 survive Plastic's per-intent worktree, and clear headless hook-trust (managed hooks or
 `--dangerously-bypass-hook-trust`), since an untrusted hook is silently skipped rather
-than blocking.
+than blocking. One more caveat sits underneath the veto itself: the grammar behind it is
+primary-sourced as of intent 239 (see below), but the gate still fails open on any
+envelope its parser cannot read, so the veto is real only for envelopes the parser
+understands.
 
 ### L1 standing conventions
 
@@ -367,14 +394,26 @@ hard crash); running the same best-effort compare on Update ops here is strictly
 than the total fail-open that shipped in v1.4.0.
 
 The `apply_patch` V4A envelope's inner grammar (the exact shape of `*** Add/Update/Delete
-File:` sections, `*** Move to:`, and the `+`/`-`/context line prefixes) is not
-primary-sourced in either the guide this slice was built against or 181's report; the
-parser is built to the best-known public shape and fails open on anything else. This slice
-ships no live-Codex verification (the owner has no Codex installed): hermetic fixtures
-carry the full burden. The owner's first real validation is a fresh `plastic-install
---codex` followed by a `doctor` run; `doctor`'s `codex_hooks_registered` check confirms
-`hooks.json` carries exactly what `HookRegistry.codex_hooks_json` defines, with a fix hint
-pointing back at the installer on any drift.
+File:` sections, `*** Move to:`, and the `+`/`-`/context line prefixes) is now
+primary-sourced (intent 239): it is embedded verbatim in the native codex binary, and was
+extracted from codex-cli 0.146.0 into `test/fixtures/codex-v4a-grammar.txt`, which carries
+the binary's path, size, and SHA256 in its header. `test/codex_v4a_grammar_test.rb` checks
+the parser's markers against that grammar, and a live test in the same file re-extracts
+from an installed binary on every run so the fixture cannot drift silently (it skips
+cleanly on a machine with no codex binary). The parser is deliberately laxer than codex on
+marker position: codex requires the envelope's first line to be `*** Begin Patch` and its
+last to be `*** End Patch`, while this parser scans for the markers on any line of the
+payload, not only the first and last, and it ignores `*** Environment ID:` lines rather
+than parsing them, since they name no file operation. Both markers still must form a
+whole line: a content line such as `+*** End Patch` is legal file content under
+`add_line: "+" /(.*)/ LF`, never a terminator, so the parser anchors both markers to
+line boundaries instead of doing a bare substring search. Anything else unparseable
+still fails open (returns no operations and warns), so a gate can never hard-crash on a
+payload shape it does not recognize. The
+owner's first real validation is a fresh `plastic-install --codex` followed by a `doctor`
+run; `doctor`'s `codex_hooks_registered` check confirms `hooks.json` carries exactly what
+`HookRegistry.codex_hooks_json` defines, with a fix hint pointing back at the installer on
+any drift.
 
 `codex_hooks_registered` only proves that `hooks.json`'s content agrees with what
 `HookRegistry` would emit; both sides of that comparison come from the registry, so a pass

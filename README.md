@@ -149,7 +149,8 @@ plan a machine can build from exactly. Read
 
 ## Compatibility and ownership
 
-- Native installers for Claude (Codex, Hermes, and and others coming soon).
+- Native installers for Claude Code and Codex CLI, both from npm. Hermes is a packaging
+  target for now. See [harness support](docs/reference/harness-adapters.md).
 - Plain Markdown plus Git. The work stays in files you own.
 - Personal stores by default.
 - Guided delivery with a human at every gate, or autonomous delivery when you
