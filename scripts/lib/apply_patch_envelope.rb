@@ -13,16 +13,22 @@
 # Part 4] the hook stdin schema, including `tool_input.command` as the carrier of
 # the apply_patch envelope text (consumed by scripts/codex-hook).
 #
-# Residual gap (in neither the guide nor 181, per Decision 14): the apply_patch
-# V4A envelope INNER grammar parsed below (`*** Begin/End Patch`, `*** Add/Update/
-# Delete File:`, `*** Move to:`, `+`/`-`/context lines) is not primary-sourced.
-# There is no live Codex to verify it against (the owner has none installed), so
-# this parser is built to the best-known public V4A shape and FAILS OPEN on
-# anything else. Returns [] and warns on any missing or unparseable envelope:
-# gates fail OPEN (orchestrator-locks fail-open rule). The PostToolUse gate-check
-# artifact backstop re-validates the intent file after the write, so a fail-open
-# create-gate is still netted. A real Codex run after delivery is the only future
-# check on this residual.
+# Grammar provenance (intent 239, 2026-08-12). The V4A envelope grammar parsed below
+# is primary-sourced: it is embedded verbatim in the native codex binary and was
+# extracted from codex-cli 0.146.0 into test/fixtures/codex-v4a-grammar.txt, which
+# carries the binary's path, size and SHA256 in its header.
+# test/codex_v4a_grammar_test.rb checks this parser's markers against that grammar,
+# and a live test re-extracts from an installed binary so the fixture cannot drift
+# (it skips cleanly on a machine with no codex).
+#
+# Two deliberate differences from the real grammar, both in the safe direction:
+# codex requires the envelope's first line to be "*** Begin Patch" and its last to be
+# "*** End Patch", while this parser scans for the markers anywhere in the payload;
+# and "*** Environment ID:", a real production of the grammar, is ignored here rather
+# than parsed, because it names no file operation. Anything else unparseable FAILS
+# OPEN: parse returns [] and warns, so gates allow the write (orchestrator-locks
+# fail-open rule), and the PostToolUse gate-check backstop re-validates the intent
+# file after the write lands.
 module ApplyPatchEnvelope
   module_function
 

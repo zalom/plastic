@@ -8,6 +8,7 @@ require "digest"
 require "time"
 require_relative "hook_registry"
 require_relative "agent_models"
+require_relative "harness_text"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/rollback) and their tests can run
@@ -386,6 +387,7 @@ class InstallerCore
       "scripts/hook-edit-gates" => "scripts/hook-edit-gates",
       "scripts/lib/apply_patch_envelope.rb" => "scripts/lib/apply_patch_envelope.rb",
       "scripts/lib/codex_edit_gates.rb" => "scripts/lib/codex_edit_gates.rb",
+      "scripts/lib/harness_text.rb" => "scripts/lib/harness_text.rb",
       "scripts/codex-hook" => "scripts/codex-hook",
       "scripts/spawn-preamble" => "scripts/spawn-preamble",
       "scripts/lib/store_provisioning.rb" => "scripts/lib/store_provisioning.rb",
@@ -799,7 +801,16 @@ class InstallerCore
     installed = []
     skills_source = File.join(package_root, "skills")
     skill_exclude = advisor_enabled? ? [] : ["agent-advisor"]
-    installed += install_skills_flat(skills_source, File.join(config[:dir], "skills"), exclude: skill_exclude) if File.directory?(skills_source)
+    # Intent 239: Codex is the one harness that gets its instruction text projected at
+    # copy time. skill_names comes from the real skills/ listing, so the rewrite table
+    # maintains itself as skills are added and renamed. Every OTHER install path passes
+    # no transform and keeps the byte-for-byte copy.
+    skill_names = Dir.children(skills_source).select { |e| File.directory?(File.join(skills_source, e)) }
+    codex_transform = lambda do |content, rel|
+      HarnessText.for_codex(content, rel_path: rel, skill_names: skill_names)
+    end
+    installed += install_skills_flat(skills_source, File.join(config[:dir], "skills"),
+                                     exclude: skill_exclude, transform: codex_transform) if File.directory?(skills_source)
     # Codex-scoped overrides only (agents.models.codex.*): a literal Claude
     # model id set under agents.models.claude.* (or the legacy flat form,
     # which resolves as claude) must never reach a Codex TOML.
@@ -991,15 +1002,19 @@ class InstallerCore
   # instead, so every skill can read it from one shared location. `exclude` skips
   # named top-level skill directories entirely (intent 185: the agent-advisor skill
   # when advisor.enabled is false).
-  def install_skills_flat(skills_source, skills_root, exclude: [])
+  def install_skills_flat(skills_source, skills_root, exclude: [], transform: nil)
     installed = []
     FileUtils.mkdir_p(skills_root)
 
     Dir.children(skills_source).reject { |e| e.start_with?(".") || exclude.include?(e) }.each do |entry|
       src = File.join(skills_source, entry)
       if File.directory?(src)
-        installed += copy_dir_recursive(src, File.join(skills_root, "plastic-#{entry}"))
+        installed += copy_dir_recursive(src, File.join(skills_root, "plastic-#{entry}"),
+                                        transform: transform, rel_prefix: entry)
       elsif entry.start_with?("_") && entry.end_with?(".md")
+        # Spec D8: shared fragments land in the HARNESS-NEUTRAL plastic_home, shared
+        # with any co-installed Claude. Never transformed, or a Codex install would
+        # corrupt Claude's copy of the same file.
         FileUtils.mkdir_p(plastic_home)
         dest = File.join(plastic_home, entry)
         FileUtils.cp(src, dest)
@@ -1498,16 +1513,22 @@ class InstallerCore
     agents.find { |a| a[:key] == key }
   end
 
-  def copy_dir_recursive(src, dest)
+  def copy_dir_recursive(src, dest, transform: nil, rel_prefix: "")
     files = []
     FileUtils.mkdir_p(dest)
     Dir.entries(src).reject { |e| e.start_with?(".") }.each do |entry|
       src_path = File.join(src, entry)
       dest_path = File.join(dest, entry)
+      rel = rel_prefix.empty? ? entry : File.join(rel_prefix, entry)
       if File.directory?(src_path)
-        files += copy_dir_recursive(src_path, dest_path)
+        files += copy_dir_recursive(src_path, dest_path, transform: transform, rel_prefix: rel)
       elsif File.file?(src_path)
-        FileUtils.cp(src_path, dest_path)
+        if transform && File.extname(entry) == ".md"
+          File.write(dest_path, transform.call(File.read(src_path), rel))
+          File.chmod(File.stat(src_path).mode & 0o7777, dest_path)
+        else
+          FileUtils.cp(src_path, dest_path)
+        end
         files << dest_path
       end
     end

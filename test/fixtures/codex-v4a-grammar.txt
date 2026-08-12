@@ -1,0 +1,39 @@
+# Codex V4A apply_patch grammar, extracted from the native codex binary (intent 239).
+# binary path: /Users/zlatko/.local/share/mise/installs/node/22/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex
+# binary size: 271056976 bytes
+# binary sha256: ae1d3ffe6d48aec6a4dc3f50e7eb8e0d11962485a6a9406c5a7012139383da02
+# codex --version: codex-cli 0.146.0
+# anchor byte offset: 197976427
+# extraction date: 2026-08-12T15:35:46Z
+# Extracted by intent 239. Do not hand-edit: regenerate from the binary.
+
+## Grammar
+start: begin_patch hunk+ end_patch
+begin_patch: "*** Begin Patch" LF
+end_patch: "*** End Patch" LF?
+
+hunk: add_hunk | delete_hunk | update_hunk
+add_hunk: "*** Add File: " filename LF add_line+
+delete_hunk: "*** Delete File: " filename LF
+update_hunk: "*** Update File: " filename LF change_move? change?
+
+filename: /(.+)/
+add_line: "+" /(.*)/ LF -> line
+
+change_move: "*** Move to: " filename LF
+change: (change_context | change_line)+ eof_line?
+change_context: ("@@" | "@@ " /(.+)/) LF
+change_line: ("+" | "-" | " ") /(.*)/ LF
+eof_line: "*** End of File" LF
+
+%import common.LF
+start: begin_patch hunk+ end_patchstart: begin_patch environment_id? hunk+ end_patch
+environment_id: "*** Environment ID: " filename LF
+
+## Strictness strings
+The first line of the patch must be
+do not wrap the patch in JSON
+apply_patch_freeform
+*** Environment ID: 
+*** Move to: 
+*** End of File
