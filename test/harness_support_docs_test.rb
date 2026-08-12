@@ -73,6 +73,31 @@ class HarnessSupportDocsTest < Minitest::Test
     refute_includes section, "marketplace"
   end
 
+  def per_agent_model_mapping_section
+    text = adapters_doc_text
+    start = text.index("### Per-agent model mapping")
+    raise "### Per-agent model mapping heading not found" unless start
+    rest = text[start..]
+    next_heading = rest.index("\n### ", 1)
+    next_heading ? rest[0...next_heading] : rest
+  end
+
+  # Intent 239a: intent 216 (commit b6ad017) landed after intent 239 delivered and widened
+  # check_agent_model_drift_codex to read `model` and `model_reasoning_effort` as two
+  # separate lines (codex_agent_toml_model_fields), comparing both against their resolved
+  # defaults. The doc previously said the check only reads the `model_reasoning_effort`
+  # line, which was true before intent 216 but is stale now: the old single-value extractor
+  # preferred effort via an `||` fallback and never opened the model line, so a drifted
+  # per-role model id passed silently. Pins the corrected claim so a revert to the old
+  # wording fails this test (see RED proof in the intent 239 outcome).
+  def test_model_drift_doc_describes_both_fields_not_effort_only
+    section = per_agent_model_mapping_section.gsub(/\s+/, " ")
+    assert_includes section, "reads the `model` and `model_reasoning_effort` lines as two separate values"
+    assert_includes section, "compares the model value against the tier's resolved Codex model id"
+    assert_includes section, "intent 216"
+    refute_includes section, "compares each file's `model_reasoning_effort` line against the tier default, honoring"
+  end
+
   def test_readme_has_no_doubled_and
     refute_includes readme_text, "and and"
   end
