@@ -1170,7 +1170,7 @@ class CodexInstallTest < Minitest::Test
     @core.distribute(:install)
 
     source = File.read(File.join(@home, "scripts", "codex-hook"))
-    literal = source[/^STATE_HOOKS = %w\[([^\]]*)\]/, 1]
+    literal = source[/^STATE_HOOKS\s*=\s*%w\[([^\]]*)\]/, 1]
     refute_nil literal,
       "fixture assumption: scripts/codex-hook must still declare STATE_HOOKS as a %w[...] literal"
 

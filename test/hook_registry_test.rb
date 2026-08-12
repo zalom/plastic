@@ -227,6 +227,32 @@ class HookRegistryTest < Minitest::Test
     end
   end
 
+  # Intent 250. The 246 test above runs one direction only, registry subset of
+  # STATE_HOOKS: it catches a registered hook missing from the literal and it
+  # cannot catch the reverse. Delete or rename a hook in `events` and its old
+  # name stays in STATE_HOOKS, green, so the dispatcher keeps a relay branch for
+  # a gate Codex never sends, pointing at a launcher the installer no longer
+  # ships. The one file a reader consults to learn what the dispatcher supports
+  # then advertises dead wiring as live. Doctor already diffs both directions
+  # for the INSTALLED dispatcher (intent 200, doctor_core.rb). This is that same
+  # diff for the repo source, where the suite is the only gate that runs.
+  def test_codex_dispatcher_names_no_state_hook_the_registry_does_not_register
+    src = File.read(File.expand_path("../scripts/codex-hook", __dir__))
+    literal = src[/^STATE_HOOKS\s*=\s*%w\[([^\]]*)\]/, 1]
+    refute_nil literal, "STATE_HOOKS literal not found in scripts/codex-hook"
+    live_events = HookRegistry::CODEX_LIVE_STATE_EVENTS
+    registered = live_events.flat_map do |event|
+      HookRegistry.events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    end
+    literal.split.each do |name|
+      assert_includes registered, name,
+        "scripts/codex-hook STATE_HOOKS relays '#{name}', but no hook by that name is " \
+        "registered for Codex under #{live_events.join(', ')}. The dispatcher keeps a " \
+        "relay branch for a gate Codex never sends, pointing at a launcher the installer " \
+        "no longer ships: dead wiring that reads as live."
+    end
+  end
+
   private
 
   # `"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook" code-gate` -> "code-gate";
