@@ -41,11 +41,16 @@ class CodexInstallContentTest < Minitest::Test
     Dir.children(SKILLS_SRC).select { |e| File.directory?(File.join(SKILLS_SRC, e)) }
   end
 
+  # "claude home path" stops at a backtick as well as whitespace: the corpus wraps
+  # paths in markdown code spans (`` `~/.claude/hooks/plastic-*` ``), and the closing
+  # backtick is not part of the path. Without this the match would swallow it, and
+  # the exact-text allowlist comparison below would never line up with the entry's
+  # clean path text.
   def patterns
     alt = skill_names.sort_by { |n| -n.length }.map { |n| Regexp.escape(n) }.join("|")
     {
       "CLAUDE_PLUGIN_ROOT" => /\$\{CLAUDE_PLUGIN_ROOT\}/,
-      "claude home path" => %r{~/\.claude/\S*},
+      "claude home path" => %r{~/\.claude/[^\s`]*},
       "claude slash prefix" => %r{(?<![\w./~*-])/plastic-(?:#{alt})(?![\w-])},
     }
   end
@@ -73,6 +78,12 @@ class CodexInstallContentTest < Minitest::Test
      "Spec D5. Same sample output block."],
   ].freeze
 
+  # Coverage is checked per MATCH, not per line: the allowlist clears only a match
+  # whose own matched text is IDENTICAL to an entry's allow_text for that path. A
+  # per-line check (line.include?(allow_text)) would let any new Claude-ism sitting
+  # on the same physical line as an allowlisted string ride along uncaught, since a
+  # line containing the allowlisted substring also "includes" it regardless of what
+  # else the line contains.
   def test_no_unallowlisted_claude_isms_in_the_installed_codex_tree
     offenders = []
     installed_md.each do |path|
@@ -83,7 +94,7 @@ class CodexInstallContentTest < Minitest::Test
             matched = m.is_a?(String) ? m : Regexp.last_match(0)
             matched = Regexp.last_match(0) if matched.nil?
             covered = ALLOWED.any? do |(allow_path, allow_text, _reason)|
-              rel(path) == allow_path && line.include?(allow_text)
+              rel(path) == allow_path && matched == allow_text
             end
             offenders << "#{rel(path)}:#{lineno}: #{matched.inspect}" unless covered
           end

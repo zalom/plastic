@@ -74,9 +74,15 @@ note in the Codex worked example below), so the two are independently maintained
 2. Hermes copies skills and agent files and wires nothing else. It is a packaging target,
    not a working adapter.
 3. Codex receives its skill text with paths and command prefixes rewritten at install time
-   (intent 239), so the instructions resolve on a Codex machine. Four instruction lines
-   that name Claude's hook launcher directory are left as they are, because Codex installs
-   no per-agent launchers and there is no Codex path to point at.
+   (intent 239), so the instructions resolve on a Codex machine. Eleven lines still speak
+   Claude Code afterward, all disclosed and none executable: four instruction lines that
+   name Claude's hook launcher directory, left as they are because Codex installs no
+   per-agent launchers and there is no Codex path to point at; two lines in a
+   skill-authoring reference that document Claude's own placeholder convention TO SKILL
+   AUTHORS, where rewriting the token would turn a true sentence false; one line in the
+   shared `~/.plastic/_active-intent-gate.md` fragment, installed byte-identical to every
+   harness; and four lines inside skill `evals/evals.json` fixtures, which are test
+   scaffolding read by nothing at install or run time, not agent-facing instructions.
 4. Codex has no statusline and no subagent dispatch. Both are gaps, not stated non-goals.
 
 ## Per-harness version truth (intent 210)
@@ -396,10 +402,14 @@ the parser's markers against that grammar, and a live test in the same file re-e
 from an installed binary on every run so the fixture cannot drift silently (it skips
 cleanly on a machine with no codex binary). The parser is deliberately laxer than codex on
 marker position: codex requires the envelope's first line to be `*** Begin Patch` and its
-last to be `*** End Patch`, while this parser scans for the markers anywhere in the
-payload, and it ignores `*** Environment ID:` lines rather than parsing them, since they
-name no file operation. Anything else unparseable still fails open (returns no operations
-and warns), so a gate can never hard-crash on a payload shape it does not recognize. The
+last to be `*** End Patch`, while this parser scans for the markers on any line of the
+payload, not only the first and last, and it ignores `*** Environment ID:` lines rather
+than parsing them, since they name no file operation. Both markers still must form a
+whole line: a content line such as `+*** End Patch` is legal file content under
+`add_line: "+" /(.*)/ LF`, never a terminator, so the parser anchors both markers to
+line boundaries instead of doing a bare substring search. Anything else unparseable
+still fails open (returns no operations and warns), so a gate can never hard-crash on a
+payload shape it does not recognize. The
 owner's first real validation is a fresh `plastic-install --codex` followed by a `doctor`
 run; `doctor`'s `codex_hooks_registered` check confirms `hooks.json` carries exactly what
 `HookRegistry.codex_hooks_json` defines, with a fix hint pointing back at the installer on
