@@ -4,6 +4,8 @@ require "fileutils"
 require "json"
 require "digest"
 require "stringio"
+require "open3"
+require "rbconfig"
 
 require_relative "../scripts/lib/installer_core"
 require_relative "../scripts/doctor"
@@ -1121,6 +1123,69 @@ class CodexInstallTest < Minitest::Test
 
     assert_equal before, File.read(config_toml_path), "doctor must never modify config.toml content"
     assert_equal before_mtime, File.mtime(config_toml_path), "doctor must never touch config.toml"
+  end
+
+  # --- Intent 249: the INSTALLED dispatcher must reach an INSTALLED launcher ---
+  #
+  # scripts/codex-hook:66 resolves a live-state launcher at __dir__/../hooks/<gate>, which is
+  # ~/.plastic/hooks/<gate> once installed. Before intent 249 nothing created that directory:
+  # Open3.capture3 raised Errno::ENOENT, the rescue on line 72 swallowed it, and all seven
+  # STATE_HOOKS silently exited 0 on every real Codex install. It went unseen because every
+  # other test drives the dispatcher from the PACKAGE ROOT (test/codex_hooks_test.rb:24 pins
+  # SCRIPT to the repo copy), where __dir__/../hooks is the repo's own populated hooks/. This
+  # test is the one that runs from the installed layout instead.
+  def test_the_installed_dispatcher_reaches_an_installed_hook_launcher
+    @core.distribute(:install)
+
+    launcher = File.join(@home, "hooks", "session-start")
+    assert File.file?(launcher),
+      "distribute must ship the hook launchers into <plastic_home>/hooks, or codex-hook:66 " \
+      "resolves a path that does not exist and every Codex live-state hook fails open silently"
+
+    # Stand-in launcher: a unique token on stdout and a distinctive exit code, so the assertions
+    # below can tell a real relay apart from the fail-open path (empty output, exit 0).
+    File.write(launcher, "#!/bin/bash\necho PLASTIC_LAUNCHER_REACHED_249\nexit 7\n")
+    File.chmod(0o755, launcher)
+
+    payload = JSON.generate({
+      "session_id" => "sess-249",
+      "cwd" => @home,
+      "hook_event_name" => "SessionStart",
+    })
+    out, _err, status = Open3.capture3(
+      { "RUBYOPT" => nil }, RbConfig.ruby, File.join(@home, "scripts", "codex-hook"),
+      "session-start", stdin_data: payload
+    )
+
+    assert_includes out, "PLASTIC_LAUNCHER_REACHED_249",
+      "the dispatcher must relay the launcher's stdout, not swallow a missing-file error"
+    assert_equal 7, status.exitstatus,
+      "the dispatcher must relay the launcher's exit code, not fail open with 0"
+  end
+
+  # Structural companion: every gate the dispatcher is willing to dispatch must exist and be
+  # runnable after an install. The expected names are parsed out of the INSTALLED dispatcher's
+  # own STATE_HOOKS declaration rather than restated here, so this cannot drift from the code.
+  def test_every_state_hook_the_installed_dispatcher_names_is_installed_and_executable
+    @core.distribute(:install)
+
+    source = File.read(File.join(@home, "scripts", "codex-hook"))
+    literal = source[/^STATE_HOOKS = %w\[([^\]]*)\]/, 1]
+    refute_nil literal,
+      "fixture assumption: scripts/codex-hook must still declare STATE_HOOKS as a %w[...] literal"
+
+    names = literal.split
+    assert_operator names.size, :>=, 7,
+      "expected at least the seven live-state hooks, got: #{names.inspect}"
+
+    names.each do |name|
+      path = File.join(@home, "hooks", name)
+      assert File.file?(path),
+        "STATE_HOOKS names #{name}, but <plastic_home>/hooks/#{name} was never installed"
+      assert File.executable?(path),
+        "<plastic_home>/hooks/#{name} is installed but not executable, so capture3 raises " \
+        "EACCES and the dispatcher fails open"
+    end
   end
 end
 

@@ -53,9 +53,10 @@ require "minitest/autorun"
 #     ruby -e 'puts 1'   # plastic-rubyopt-exempt: writes its own RUBYOPT deliberately
 # It is per line, it forces a reason, and it is greppable. It is unused today.
 #
-# KNOWN, DELIBERATE GAPS (recorded, not asserted, so this test does not fail the day they are
-# closed). Both files are off limits to intent 235 and both still carry uncleared ruby spawns:
-#   scripts/codex-hook:71, 91, 107   handed to the codex-fixes roadmap (spec.md, D5)
+# KNOWN, DELIBERATE GAP (recorded, not asserted, so this test does not fail the day it is
+# closed). scripts/codex-hook was listed here by intent 235 and is NO LONGER a gap: intent 249
+# cleared all three of its spawn sites and added it to RUBY_SPAWNERS below, so it is now
+# asserted rather than recorded. One file is still off limits and still carries uncleared spawns:
 #   scripts/hook-session-start:65, 142  fixed TRANSITIVELY: hooks/session-start clears RUBYOPT
 #                                       before launching it, so both backtick children inherit
 #                                       an already-clean environment. No edit inside the file.
@@ -81,6 +82,7 @@ class RubyoptClearingTest < Minitest::Test
     scripts/restore-intent-v1
     scripts/hook-continue
     scripts/lib/verify_intent.rb
+    scripts/codex-hook
   ].freeze
 
   # Rename guard only. The hooks scan below enumerates the directory, it does not read this.
@@ -204,6 +206,10 @@ class RubyoptClearingTest < Minitest::Test
       "scripts/maintenance-run" => 5,
       "scripts/restore-intent-v1" => 1,
       "scripts/hook-continue" => 2,
+      # 2, not 3: the third spawn site (the live-state branch) execs a BASH launcher, so its
+      # line names neither RbConfig.ruby nor "ruby" and ruby_spawn_line? does not see it. It is
+      # cleared anyway (intent 249), it just is not counted here.
+      "scripts/codex-hook" => 2,
     }
 
     expected.each do |rel, count|

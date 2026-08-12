@@ -245,6 +245,7 @@ class InstallerCore
     FileUtils.mkdir_p(plastic_home)
     FileUtils.mkdir_p(File.join(plastic_home, "scripts", "lib"))
     FileUtils.mkdir_p(File.join(plastic_home, "templates"))
+    FileUtils.mkdir_p(File.join(plastic_home, "hooks"))
 
     core_files.each do |src, dest|
       src_path = File.join(package_root, src)
@@ -258,6 +259,14 @@ class InstallerCore
     File.write(File.join(plastic_home, "VERSION"), "#{version}\n")
 
     Dir.glob(File.join(plastic_home, "scripts", "*")).each { |f| FileUtils.chmod(0o755, f) if File.file?(f) }
+    # Same treatment for the hook launchers, and UNCONDITIONAL on update as well as install:
+    # FileUtils.cp onto an existing file keeps the DESTINATION's old mode, so a copy over a
+    # non-executable predecessor would stay non-executable forever and capture3 would raise
+    # EACCES into the same silent fail-open this intent is closing. *.json is skipped because
+    # hooks.json is a registry, not a program (same reasoning as test/rubyopt_clearing_test.rb).
+    Dir.glob(File.join(plastic_home, "hooks", "*")).each do |f|
+      FileUtils.chmod(0o755, f) if File.file?(f) && !f.end_with?(".json")
+    end
 
     global_files = core_files.values.map { |d| File.join(plastic_home, d) }
     global_files << File.join(plastic_home, "VERSION")
@@ -283,12 +292,30 @@ class InstallerCore
     end
   end
 
+  # Hook launchers ship in full: scripts/codex-hook resolves a live-state launcher at
+  # __dir__/../hooks/<gate>, which is ~/.plastic/hooks/<gate> once installed, so the launchers
+  # have to BE there or every Codex live-state hook fails open with no message (intent 249).
+  # Glob-derived for the same reason template_files is: a hand-written list hid two template
+  # files from every install for five weeks (intent 190), and a new hook must register itself.
+  # No path rewrite on this copy, unlike install_claude's: the launchers resolve their core
+  # through "$SCRIPT_DIR/../scripts/", which from ~/.plastic/hooks/ already lands on
+  # ~/.plastic/scripts/. Copied whole, hooks.json and run-hook and statusline included: all
+  # three are inert at that path, and an exclusion list is exactly the maintenance this avoids.
+  def hook_files
+    Dir.glob(File.join(package_root, "hooks", "*")).each_with_object({}) do |path, acc|
+      next unless File.file?(path)
+
+      rel = File.join("hooks", File.basename(path))
+      acc[rel] = rel
+    end
+  end
+
   # Files copied into ~/.plastic on install/update. Every verb script + the shared lib
   # must be here so the installed ~/.plastic/scripts copy is self-complete (sync-guarded
   # by install_sync_test). The templates half is glob-derived (template_files above); the
   # rest stays a hand-written literal.
   def core_files
-    hand_registered_files.merge(template_files)
+    hand_registered_files.merge(template_files).merge(hook_files)
   end
 
   def hand_registered_files
