@@ -1187,6 +1187,34 @@ class CodexInstallTest < Minitest::Test
         "EACCES and the dispatcher fails open"
     end
   end
+
+  # Companion guard: the chmod loop over <plastic_home>/hooks/* is what repairs a launcher that
+  # lost its exec bit on a PRIOR distribute. FileUtils.cp onto a NEW destination copies the
+  # source's mode, so a fresh install already looks executable without the loop doing anything,
+  # which lets a naive test pass even with the loop deleted. This test forces the loop to earn
+  # its keep: it distributes once, strips the exec bit from an already-installed launcher (the
+  # state a corrupted or manually-edited install can land in), distributes again, and asserts the
+  # SECOND distribute restores 0755. It also pins that hooks.json, the registry file, is
+  # deliberately left alone (spec Decision 3: a JSON registry is data, not a program).
+  def test_a_second_distribute_repairs_a_launcher_that_lost_its_exec_bit
+    @core.distribute(:install)
+
+    launcher = File.join(@home, "hooks", "session-start")
+    File.chmod(0o644, launcher)
+
+    @core.distribute(:install)
+
+    mode = File.stat(launcher).mode & 0o777
+    assert_equal 0o755, mode,
+      "a second distribute must restore the exec bit on hooks/session-start, or a launcher " \
+      "that lost it after an earlier distribute stays broken forever: capture3 raises " \
+      "Errno::EACCES, codex-hook:72 swallows it, and the live-state hook fails open silently"
+
+    registry = File.join(@home, "hooks", "hooks.json")
+    registry_mode = File.stat(registry).mode & 0o777
+    refute_equal 0o755, registry_mode,
+      "hooks.json is a data registry, not a program; distribute must not force it executable"
+  end
 end
 
 # Intent 198, Decision D1: presence must probe home_dir (~/.codex) for an agent
