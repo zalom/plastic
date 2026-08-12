@@ -156,11 +156,20 @@ class CodexHooksTest < Minitest::Test
   end
 
   # ---- create-gate ----
+  #
+  # Intent 251: five registered per-gate commands became one edit-gates
+  # dispatcher. The per-gate names cannot survive as unregistered dispatcher
+  # arms, because doctor reports those as dead code Codex never reaches
+  # (intent 200). Per-gate isolation now lives in test/codex_edit_gates_test.rb,
+  # which drives CodexEditGates in-process; the tests below still prove the
+  # SAME decisions, reached through the one real subprocess dispatcher, with
+  # only the gate argument changed per intent 244 D-n (a regression bar you
+  # have to modify to make it pass is not a bar).
 
   def test_create_gate_blocks_malformed_add
     intent_path = File.join(@store, "1--demo", "1--demo.md")
     body = patch(add_section(intent_path, malformed_intent_content))
-    out, status = run_hook("create-gate", codex_payload(body))
+    out, status = run_hook("edit-gates", codex_payload(body))
     assert_equal 2, status.exitstatus, "malformed intent Add must be blocked: #{out}"
     assert_includes out, "PLASTIC CREATE GATE"
   end
@@ -168,21 +177,21 @@ class CodexHooksTest < Minitest::Test
   def test_create_gate_allows_valid_add
     intent_path = File.join(@store, "1--demo", "1--demo.md")
     body = patch(add_section(intent_path, valid_intent_content))
-    _out, status = run_hook("create-gate", codex_payload(body))
+    _out, status = run_hook("edit-gates", codex_payload(body))
     assert_equal 0, status.exitstatus
   end
 
   def test_create_gate_defers_update_of_intent_file
     intent_path = File.join(@store, "1--demo", "1--demo.md")
     body = patch(update_section(intent_path, ["broken frontmatter, would fail if validated"]))
-    _out, status = run_hook("create-gate", codex_payload(body))
+    _out, status = run_hook("edit-gates", codex_payload(body))
     assert_equal 0, status.exitstatus, "Update ops must defer to the PostToolUse backstop"
   end
 
   def test_create_gate_allows_non_intent_path
     non_intent = File.join(@store, "1--demo", "spec.md")
     body = patch(add_section(non_intent, malformed_intent_content))
-    _out, status = run_hook("create-gate", codex_payload(body))
+    _out, status = run_hook("edit-gates", codex_payload(body))
     assert_equal 0, status.exitstatus, "a non-intent-file path must never be judged by create-gate"
   end
 
@@ -196,7 +205,7 @@ class CodexHooksTest < Minitest::Test
 
     plan = File.join(intent_dir, "plan.md")
     body = patch(update_section(plan, ["content"]))
-    out, status = run_hook("lock-gate", codex_payload(body))
+    out, status = run_hook("edit-gates", codex_payload(body))
     assert_equal 0, status.exitstatus, "lock-gate must never exit non-zero"
     assert_includes out, '"permissionDecision":"deny"'
   end
@@ -214,7 +223,7 @@ class CodexHooksTest < Minitest::Test
 
     plan = File.join(intent_dir, "plan.md")
     body = patch(update_section(plan, ["content"]))
-    out, status = run_hook("lock-gate", codex_payload(body, session_id: session), session: session)
+    out, status = run_hook("edit-gates", codex_payload(body, session_id: session), session: session)
     assert_equal 0, status.exitstatus
     refute_includes out, '"permissionDecision":"deny"', "held lock must allow silently: #{out}"
   end
@@ -229,7 +238,7 @@ class CodexHooksTest < Minitest::Test
 
     plan = File.join(intent_dir, "plan.md")
     body = patch(update_section(plan, ["content"]))
-    out, status = run_hook("lock-gate", codex_payload(body, session_id: "me"), session: "me")
+    out, status = run_hook("edit-gates", codex_payload(body, session_id: "me"), session: "me")
     assert_equal 0, status.exitstatus, "lock-gate must never exit non-zero"
     assert_includes out, '"permissionDecision":"deny"'
     assert_includes out, "$plastic-doctor check the lock status"
@@ -251,7 +260,7 @@ class CodexHooksTest < Minitest::Test
     silence_stderr { Bridge.arm_auto(nil, intent_id: "52", intent_dir: intent_dir, store: @store, name: "demo") }
 
     body = patch(update_section(project_file, ["puts 2"]))
-    _out, status = run_hook("code-gate", codex_payload(body))
+    _out, status = run_hook("edit-gates", codex_payload(body))
     assert_equal 2, status.exitstatus, "pre-How project edit should be blocked"
   end
 
@@ -268,7 +277,7 @@ class CodexHooksTest < Minitest::Test
     silence_stderr { Bridge.arm_auto(nil, intent_id: "52", intent_dir: intent_dir, store: @store, name: "demo") }
 
     body = patch(update_section(project_file, ["puts 2", "# plastic-ok"]))
-    _out, status = run_hook("code-gate", codex_payload(body))
+    _out, status = run_hook("edit-gates", codex_payload(body))
     assert_equal 0, status.exitstatus, "trailing # plastic-ok must allow the edit"
   end
 
@@ -316,7 +325,7 @@ class CodexHooksTest < Minitest::Test
 
     spec = File.join(intent_dir, "spec.md")
     body = patch(add_section(spec, "content"))
-    _out, status = run_hook("savepoint-pre", codex_payload(body))
+    _out, status = run_hook("edit-gates", codex_payload(body))
     assert_equal 0, status.exitstatus
 
     ledger = File.read(File.join(intent_dir, "savepoint.md"))
@@ -358,7 +367,7 @@ class CodexHooksTest < Minitest::Test
     )
 
     body = patch(update_section(intent_path, after.each_line.map(&:chomp)))
-    out, status = run_hook("links-gate", codex_payload(body), plastic_home: @root)
+    out, status = run_hook("edit-gates", codex_payload(body), plastic_home: @root)
 
     assert_equal 2, status.exitstatus, "hand-typed unbacked Links line must be denied: #{out}"
     assert_includes out, "PLASTIC LINKS GATE"
@@ -374,7 +383,7 @@ class CodexHooksTest < Minitest::Test
     after = before.sub("Body.", "Body, edited.")
 
     body = patch(update_section(intent_path, after.each_line.map(&:chomp)))
-    _out, status = run_hook("links-gate", codex_payload(body), plastic_home: @root)
+    _out, status = run_hook("edit-gates", codex_payload(body), plastic_home: @root)
 
     assert_equal 0, status.exitstatus, "an edit that never touches ## Links must be allowed"
   end
@@ -398,7 +407,7 @@ class CodexHooksTest < Minitest::Test
     # violating_file first (no escape): the dispatcher must deny the whole call
     # on this first violation, never reaching clean_file (escaped, would pass alone).
     body = patch(update_section(violating_file, ["bad"]), update_section(clean_file, ["ok", "# plastic-ok"]))
-    _out, status = run_hook("code-gate", codex_payload(body))
+    _out, status = run_hook("edit-gates", codex_payload(body))
     assert_equal 2, status.exitstatus, "one violating file in a bundle must deny the whole apply_patch"
   end
 
@@ -626,7 +635,7 @@ class CodexHooksTest < Minitest::Test
   # ---- adversarial fail-open (Decision 14, no live Codex) ----
 
   def test_missing_tool_input_fails_open
-    _out, status = run_hook("code-gate", { "session_id" => "" })
+    _out, status = run_hook("edit-gates", { "session_id" => "" })
     assert_equal 0, status.exitstatus
   end
 
@@ -635,17 +644,17 @@ class CodexHooksTest < Minitest::Test
     body = patch(add_section(intent_path, valid_intent_content))
     payload = codex_payload(body)
     payload.delete("session_id")
-    _out, status = run_hook("create-gate", payload)
+    _out, status = run_hook("edit-gates", payload)
     assert_equal 0, status.exitstatus
   end
 
   def test_empty_command_fails_open
-    _out, status = run_hook("code-gate", codex_payload(""))
+    _out, status = run_hook("edit-gates", codex_payload(""))
     assert_equal 0, status.exitstatus
   end
 
   def test_non_apply_patch_command_fails_open
-    _out, status = run_hook("code-gate", codex_payload("rm -rf /"))
+    _out, status = run_hook("edit-gates", codex_payload("rm -rf /"))
     assert_equal 0, status.exitstatus
   end
 
@@ -659,10 +668,183 @@ class CodexHooksTest < Minitest::Test
   def test_empty_stdin_fails_open
     env = { "PLASTIC_TMP" => @bridge_tmp, "HOME" => @fake_home }
     out = nil
-    IO.popen(env, [RbConfig.ruby, SCRIPT, "code-gate"], "r+", err: [:child, :out]) do |io|
+    IO.popen(env, [RbConfig.ruby, SCRIPT, "edit-gates"], "r+", err: [:child, :out]) do |io|
       io.close_write
       out = io.read
     end
     assert_equal 0, $?.exitstatus, out
+  end
+
+  # ---- merged dispatcher (intent 251) ----
+
+  # Order matters here (unlike the other four scenarios, this one shares a
+  # single @store/@bridge_tmp across all four probes): code-gate's
+  # Bridge.arm_auto plants a REAL delivery.lock for intent 52, and lock-gate's
+  # solo-delivery relaxation (intent 128) scans the whole store for any fresh
+  # delivery lock and, finding exactly one, treats it as confirmed solo mode
+  # and ALLOWS an unrelated intent's otherwise-undenied write. So code-gate
+  # runs LAST, after every probe that depends on "no live lock anywhere yet".
+  def test_edit_gates_runs_every_gate_on_one_apply_patch_payload
+    # lock-gate
+    lock_intent_dir = File.join(@store, "96--demo")
+    FileUtils.mkdir_p(lock_intent_dir)
+    File.write(File.join(lock_intent_dir, "96--demo.md"), "## Intent\nDemo\n")
+    File.write(File.join(@root, "INDEX.md"), "## Active\n- [96 - demo](96--demo/96--demo.md)\n\n## Future\n")
+    plan = File.join(lock_intent_dir, "plan.md")
+    body = patch(update_section(plan, ["content"]))
+    out, status = run_hook("edit-gates", codex_payload(body))
+    assert_equal 0, status.exitstatus, "lock-gate: #{out}"
+    assert_includes out, '"permissionDecision":"deny"'
+
+    # links-gate
+    links_intent_dir = File.join(@store, "70--demo")
+    FileUtils.mkdir_p(links_intent_dir)
+    intent_path = File.join(links_intent_dir, "70--demo.md")
+    before = links_intent_content(id: "70")
+    File.write(intent_path, before)
+    after = before.sub(
+      "<!-- No sources or chain; this intent has no graph edges to project. -->\n",
+      "- [[99--nowhere|Nowhere]]\n"
+    )
+    body = patch(update_section(intent_path, after.each_line.map(&:chomp)))
+    out, status = run_hook("edit-gates", codex_payload(body), plastic_home: @root)
+    assert_equal 2, status.exitstatus, "links-gate: #{out}"
+    assert_includes out, "PLASTIC LINKS GATE"
+
+    # create-gate
+    malformed_path = File.join(@store, "1--demo", "1--demo.md")
+    body = patch(add_section(malformed_path, malformed_intent_content))
+    out, status = run_hook("edit-gates", codex_payload(body))
+    assert_equal 2, status.exitstatus, "create-gate: #{out}"
+    assert_includes out, "PLASTIC CREATE GATE"
+
+    # code-gate (last: see the method comment)
+    intent_dir = File.join(@store, "52--demo")
+    FileUtils.mkdir_p(intent_dir)
+    File.write(File.join(intent_dir, "52--demo.md"), "## Intent\nDemo\n")
+    File.write(File.join(intent_dir, "spec.md"), "spec\n")
+    project_file = File.join(@root, "code", "app.rb")
+    FileUtils.mkdir_p(File.dirname(project_file))
+    File.write(project_file, "puts 1\n")
+    silence_stderr { Bridge.arm_auto(nil, intent_id: "52", intent_dir: intent_dir, store: @store, name: "demo") }
+
+    body = patch(update_section(project_file, ["puts 2"]))
+    out, status = run_hook("edit-gates", codex_payload(body))
+    assert_equal 2, status.exitstatus, "code-gate: #{out}"
+    assert_includes out, "PLASTIC GATE"
+  end
+
+  def test_savepoint_pre_still_appends_when_a_later_op_is_denied
+    intent_dir = File.join(@store, "52--demo")
+    FileUtils.mkdir_p(intent_dir)
+    File.write(File.join(intent_dir, "52--demo.md"), "## Intent\nDemo\n")
+    File.write(File.join(intent_dir, "spec.md"), "spec\n") # stage Why, pre-How
+    project_file = File.join(@root, "code", "bad.rb")
+    FileUtils.mkdir_p(File.dirname(project_file))
+    File.write(project_file, "puts 1\n")
+    silence_stderr { Bridge.arm_auto(nil, intent_id: "52", intent_dir: intent_dir, store: @store, name: "demo") }
+
+    other_intent_dir = File.join(@store, "81--x")
+    FileUtils.mkdir_p(other_intent_dir)
+    File.write(File.join(other_intent_dir, "81--x.md"), "## Intent\nx\n")
+    spec_path = File.join(other_intent_dir, "spec.md")
+
+    # The op order matters (spec D3): the first op's code-gate violation must
+    # still deny the whole call, but the second op's savepoint-pre ledger line
+    # must land anyway, because pass 1 runs savepoint-pre over EVERY op before
+    # pass 2 ever checks a deny. A single op-major pass would never reach the
+    # second op at all.
+    body = patch(update_section(project_file, ["puts 2"]), add_section(spec_path, "content"))
+    out, status = run_hook("edit-gates", codex_payload(body))
+
+    assert_equal 2, status.exitstatus, "the first op's code-gate violation must deny the whole call: #{out}"
+    ledger = File.read(File.join(other_intent_dir, "savepoint.md"))
+    assert_includes ledger, "Why  started"
+  end
+
+  def test_lock_gate_deny_reason_uses_the_codex_dollar_prefix
+    intent_dir = File.join(@store, "96--demo")
+    FileUtils.mkdir_p(intent_dir)
+    File.write(File.join(intent_dir, "96--demo.md"), "## Intent\nDemo\n")
+    File.write(File.join(@root, "INDEX.md"), "## Active\n- [96 - demo](96--demo/96--demo.md)\n\n## Future\n")
+
+    Lock.acquire(intent_dir, session: "other-session")
+
+    plan = File.join(intent_dir, "plan.md")
+    body = patch(update_section(plan, ["content"]))
+    out, status = run_hook("edit-gates", codex_payload(body, session_id: "me"), session: "me")
+    assert_equal 0, status.exitstatus, "lock-gate must never exit non-zero"
+    assert_includes out, '"permissionDecision":"deny"'
+    assert_includes out, "$plastic-doctor check the lock status"
+    refute_includes out, "/plastic-doctor"
+  end
+
+  # Pins spec D1 in both directions: a payload with tool_name: "apply_patch"
+  # and a payload with a missing tool_name must both run all five gates.
+  # Red-phase proof required: swap CodexEditGates::SAVEPOINT_TOOLS/DENY_TOOLS
+  # to derive from HookRegistry::GATE_TOOLS instead of CODEX_GATE_TOOLS and
+  # confirm this test goes RED (the gate is silently skipped and the write is
+  # allowed). This is the single most important red-phase proof in the
+  # intent: it is the failure mode where every gate stops firing and nothing
+  # else notices.
+  def test_every_gate_runs_when_tool_name_is_apply_patch
+    intent_path = File.join(@store, "1--demo", "1--demo.md")
+    body = patch(add_section(intent_path, malformed_intent_content))
+    payload = codex_payload(body)
+    assert_equal "apply_patch", payload["tool_name"]
+    out, status = run_hook("edit-gates", payload)
+    assert_equal 2, status.exitstatus, "expected create-gate to deny: #{out}"
+    assert_includes out, "PLASTIC CREATE GATE"
+  end
+
+  def test_every_gate_runs_when_tool_name_is_absent
+    intent_path = File.join(@store, "1--demo", "1--demo.md")
+    body = patch(add_section(intent_path, malformed_intent_content))
+    payload = codex_payload(body)
+    payload.delete("tool_name")
+    out, status = run_hook("edit-gates", payload)
+    assert_equal 2, status.exitstatus, "expected create-gate to deny: #{out}"
+    assert_includes out, "PLASTIC CREATE GATE"
+  end
+
+  def test_create_gate_is_add_only_through_the_merged_dispatcher
+    intent_path = File.join(@store, "1--demo", "1--demo.md")
+    add_body = patch(add_section(intent_path, malformed_intent_content))
+    out, status = run_hook("edit-gates", codex_payload(add_body))
+    assert_equal 2, status.exitstatus, "an Add of malformed intent content must be denied: #{out}"
+    assert_includes out, "PLASTIC CREATE GATE"
+
+    update_body = patch(update_section(intent_path, [malformed_intent_content.chomp]))
+    out, status = run_hook("edit-gates", codex_payload(update_body))
+    assert_equal 0, status.exitstatus, "the same content as an Update op must be allowed (add-only rule): #{out}"
+  end
+
+  def test_an_unparseable_envelope_still_fails_open_through_edit_gates
+    out, status = run_hook("edit-gates", codex_payload("not a real patch envelope"))
+    assert_equal 0, status.exitstatus
+    assert_includes out, "plastic apply_patch parse:"
+  end
+
+  def test_a_multi_op_patch_denies_on_the_first_violating_op
+    intent_dir = File.join(@store, "52--demo")
+    FileUtils.mkdir_p(intent_dir)
+    File.write(File.join(intent_dir, "52--demo.md"), "## Intent\nDemo\n")
+    File.write(File.join(intent_dir, "spec.md"), "spec\n")
+    clean_file = File.join(@root, "code", "clean.rb")
+    violating_file = File.join(@root, "code", "bad.rb")
+    FileUtils.mkdir_p(File.dirname(clean_file))
+    File.write(clean_file, "puts 1\n")
+    File.write(violating_file, "puts 1\n")
+    silence_stderr { Bridge.arm_auto(nil, intent_id: "52", intent_dir: intent_dir, store: @store, name: "demo") }
+
+    # clean_file always escapes (# plastic-ok), so it never denies on its own
+    # in either position; violating_file is the sole source of the deny.
+    body_clean_first = patch(update_section(clean_file, ["ok", "# plastic-ok"]), update_section(violating_file, ["bad"]))
+    _out, status = run_hook("edit-gates", codex_payload(body_clean_first))
+    assert_equal 2, status.exitstatus, "the second op's violation must still deny the whole call"
+
+    body_violating_first = patch(update_section(violating_file, ["bad"]), update_section(clean_file, ["ok", "# plastic-ok"]))
+    _out, status = run_hook("edit-gates", codex_payload(body_violating_first))
+    assert_equal 2, status.exitstatus, "the first op's violation must deny the whole call"
   end
 end

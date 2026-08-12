@@ -11,7 +11,10 @@
 #
 # Thin CLI wrapper (intent 244): the gate logic itself lives in
 # scripts/lib/edit_gates.rb, shared with the merged Claude dispatcher
-# (scripts/hook-edit-gates) so the two harnesses cannot drift.
+# (scripts/hook-edit-gates) and, since intent 251, the merged Codex dispatcher
+# (scripts/lib/codex_edit_gates.rb). This wrapper has no production caller on
+# either harness anymore; it remains as the per-gate isolation surface for the
+# hook test suite.
 
 require_relative "lib/edit_gates"
 
@@ -21,8 +24,9 @@ begin
   session = (ARGV[1] unless ARGV[1].to_s.empty?) || ENV["CLAUDE_CODE_SESSION_ID"]
   # Usage: hook-lock-gate <file_path> [session_id] [harness]. Claude's own bash
   # shim never passes a third arg, so harness falls through to Lock's default
-  # (claude, slash form); scripts/codex-hook is the only caller that passes
-  # "codex" here (intent 201 D2).
+  # (claude, slash form). Since intent 251 the merged Codex library
+  # (scripts/lib/codex_edit_gates.rb) sets harness: "codex" directly on the
+  # Context it builds; no caller of this wrapper passes "codex" anymore.
   harness = (ARGV[2] unless ARGV[2].to_s.empty?) || "claude"
 
   ctx = EditGates::Context.new(

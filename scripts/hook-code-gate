@@ -15,7 +15,10 @@
 #
 # Thin CLI wrapper (intent 244): the gate logic itself lives in
 # scripts/lib/edit_gates.rb, shared with the merged Claude dispatcher
-# (scripts/hook-edit-gates) so the two harnesses cannot drift.
+# (scripts/hook-edit-gates) and, since intent 251, the merged Codex dispatcher
+# (scripts/lib/codex_edit_gates.rb). This wrapper has no production caller on
+# either harness anymore; it remains as the per-gate isolation surface for the
+# hook test suite.
 
 require_relative "lib/edit_gates"
 

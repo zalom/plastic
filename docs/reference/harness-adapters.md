@@ -307,15 +307,21 @@ reports `tool_name: "apply_patch"`; there is no `Edit`/`Write` tool to match). `
 is a partial-ownership file exactly like `AGENTS.md`: merged on install (a pre-existing user
 hook entry survives untouched) and surgically stripped on uninstall, never manifest-tracked.
 
-This is where Claude and Codex diverge in shape (intent 244). Claude collapsed its five
-edit-path gates into one registered hook (`hooks/edit-gates` -> `scripts/hook-edit-gates`,
-one process per Write/Edit); Codex keeps registering all five separately, since its own
-per-gate `codex-hook <gate>` dispatch is unaffected and out of that intent's scope. The two
-harnesses' Codex-facing entry points are the same either way: `HookRegistry.codex_hooks_json`
-still emits its five per-gate `codex-hook` commands byte-identical to before, deriving its
-order from `HookRegistry::CODEX_PRE_HOOKS & GATE_TOOLS.keys` and each `statusMessage` from
-`HookRegistry::GATE_STATUS`, now that the five gate names no longer appear in Claude's
-collapsed `events["PreToolUse"]`.
+Claude and Codex now collapse the same way. Claude merged its five edit-path gates into one
+registered hook (`hooks/edit-gates` -> `scripts/hook-edit-gates`, one process per Write/Edit,
+intent 244); Codex's `apply_patch` PreToolUse matcher carries ONE command, `codex-hook
+edit-gates` (intent 251). That one process parses stdin once, parses the apply_patch envelope
+once, and runs all five gates in-process through `scripts/lib/codex_edit_gates.rb`, which
+drives the same `scripts/lib/edit_gates.rb` functions Claude's `hook-edit-gates` drives. The
+cost went from eight processes per PreToolUse event (five registered commands, three of which
+started a nested child per file operation via `run_core`) to one; Codex's PostToolUse
+`gate-check` is unchanged and still costs two processes. Two Codex-specific rules live in the
+Codex library and nowhere else: create-gate applies to Add operations only (Update, Delete,
+and Move defer to the PostToolUse `gate-check` backstop), and savepoint-pre runs as its own
+first pass over every operation so its ledger line lands even when a later gate blocks the
+call. `HookRegistry.codex_hooks_json` derives the single `edit-gates` command's
+`statusMessage` from `events["PreToolUse"]` directly, the same source Claude's own registration
+reads, since `edit-gates` is a name `events` itself carries.
 
 The one real translation cost is the payload shape. Claude hands a hook a clean
 `tool_input.file_path` plus `tool_input.content`; Codex hands a diff envelope in
@@ -329,19 +335,26 @@ missing or unparseable envelope, so a gate can never hard-crash on a payload sha
 not recognize.
 
 One Ruby dispatcher, `scripts/codex-hook <gate>`, reads the Codex hook stdin once
-(`session_id` at top level, the envelope in `tool_input.command`), parses it, and drives
-the SAME payload-agnostic Ruby gate and savepoint cores Claude's bash shims already drive,
-once per file operation, so none of the four reused cores change at all. Their output
-contracts were already Codex-compatible verbatim (`permissionDecision:"deny"` for
-`lock-gate`, exit 2 for `code-gate`/`create-gate`, `decision:"block"` for `gate-check`), so
-the dispatcher relays stdout, stderr, and exit code unchanged. On a multi-file patch, a
-PreToolUse veto denies the whole `apply_patch` call on the first violating file.
-`create-gate` validates born-complete content inline for Add operations on intent files
-only; Update, Delete, and Move operations defer to the PostToolUse `gate-check` backstop,
-which re-validates the intent file after the write lands, so nothing goes unchecked.
+(`session_id` at top level, the envelope in `tool_input.command`), parses it, and for
+`edit-gates` drives `scripts/lib/codex_edit_gates.rb`, which builds one `EditGates::Context`
+per file operation and runs the SAME `scripts/lib/edit_gates.rb` decision functions Claude's
+merged dispatcher runs, in-process, so the two harnesses cannot drift (intent 251). Their
+output contracts were already Codex-compatible verbatim (`permissionDecision:"deny"` for
+`lock-gate`, exit 2 for `code-gate`/`create-gate`, `decision:"block"` for the PostToolUse
+`gate-check` backstop, still a separate two-process path), and the dispatcher still relays
+stdout, stderr, and exit code unchanged. Evaluation runs in two passes over the ops:
+savepoint-pre first over every op (its ledger append stays unconditional even when a later
+op is denied), then the four denying gates per op, first deny wins, in Claude's fixed order.
+On a multi-file patch, a PreToolUse veto still denies the whole `apply_patch` call on the
+first violating file. `create-gate` validates born-complete content inline for Add operations
+on intent files only; Update, Delete, and Move operations defer to the PostToolUse
+`gate-check` backstop, which re-validates the intent file after the write lands, so nothing
+goes unchecked.
 
-`links-gate` (registered in `HookRegistry::CODEX_PRE_HOOKS` since intent 192, but with no
-dispatcher branch until intent 198) is the write-time belt for the PLASTIC.md `## Links`
+`links-gate` (one of the five gates named in `HookRegistry::CODEX_GATE_TOOLS` since intent 251,
+registered under the single `edit-gates` command; covered by the old `CODEX_PRE_HOOKS` literal
+since intent 192, but with no dispatcher branch until intent 198) is the write-time belt for
+the PLASTIC.md `## Links`
 contract: it reuses the exact same `LinksGate.decision` Claude's `hook-links-gate` drives, so
 both harnesses share one decision function and can never disagree by construction.
 `before_content` is the real on-disk file; `after_content` is the Update op's `added_content`.

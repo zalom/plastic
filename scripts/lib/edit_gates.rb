@@ -2,10 +2,13 @@
 # frozen_string_literal: true
 
 # EditGates (intent 244): the five Claude PreToolUse edit-path gates as plain
-# functions over one parsed payload. Two callers share these functions so the
-# harnesses cannot drift: scripts/hook-edit-gates (the merged Claude dispatcher)
-# and the retained scripts/hook-code-gate / hook-lock-gate / hook-savepoint-pre
-# CLI wrappers that scripts/codex-hook still popens per file op.
+# functions over one parsed payload. Three callers share these functions so the
+# harnesses cannot drift: scripts/hook-edit-gates (the merged Claude dispatcher),
+# scripts/lib/codex_edit_gates.rb (the merged Codex dispatcher, intent 251), and
+# the retained scripts/hook-code-gate / hook-lock-gate / hook-savepoint-pre /
+# hook-links-gate / hook-create-gate CLI wrappers, which no longer have a
+# production caller on either harness and remain as the per-gate isolation
+# surface for the hook test suite.
 #
 # A gate returns nil to allow, or a Deny. Two deny shapes coexist deliberately
 # (spec D-b): :stderr (stderr lines plus exit 2, code-gate / links-gate /

@@ -624,10 +624,13 @@ Four coordinated pieces deliver that.
 - **create-gate (PreToolUse check, applies to Write plus Edit plus the
   Serena MCP edit tools, per `HookRegistry::GATE_TOOLS["create-gate"]`).**
   On Claude it runs as one of five in-process checks inside the merged
-  `scripts/hook-edit-gates` dispatcher (intent 244); `scripts/hook-create-gate`
-  is retained as a thin CLI wrapper over the same `EditGates.create_gate` logic,
-  the entry point `scripts/codex-hook` calls on Codex and the one
-  `test/create_gate_hook_test.rb` drives directly. When the target
+  `scripts/hook-edit-gates` dispatcher (intent 244); on Codex it runs the same
+  way inside `scripts/lib/codex_edit_gates.rb` (intent 251), add-only there
+  (Update, Delete, and Move defer to the PostToolUse backstop).
+  `scripts/hook-create-gate` is retained as a thin CLI wrapper over the same
+  `EditGates.create_gate` logic, with no production caller on either harness
+  anymore, kept as the isolation surface `test/create_gate_hook_test.rb`
+  drives directly. When the target
   path is an intent file inside its own equally-named dir
   (`store/**/<id>--<slug>/<id>--<slug>.md`), it judges the payload with
   `IntentValidator.validate_content` and blocks with exit 2 on failure. Three
@@ -1054,11 +1057,18 @@ close that gap.
   continues) and never denies the call by itself. Each gate's own deny shape
   is unchanged: stderr plus exit 2 for code-gate, links-gate, and create-gate;
   stdout `permissionDecision` JSON plus exit 0 for lock-gate; savepoint-pre
-  never denies. Codex is unaffected: it still registers all five gates
-  separately and `scripts/codex-hook` still dispatches them one at a time; the
-  five `scripts/hook-<gate>` CLI wrappers Codex calls, and the 45 hook
-  contract tests that drive them, are retained on purpose as the tested,
-  Codex-facing entry point, not transitional scaffolding. The bash gate
+  never denies. Codex collapsed the same way (intent 251): its `apply_patch`
+  matcher carries ONE registered command, `edit-gates`, and `scripts/codex-hook`
+  parses stdin once, parses the apply_patch envelope once, and runs all five
+  gates in-process through `scripts/lib/codex_edit_gates.rb`, which drives the
+  SAME `scripts/lib/edit_gates.rb` functions Claude's `hook-edit-gates` drives,
+  so the two harnesses cannot drift. Two Codex-specific rules live only in that
+  library: create-gate applies to Add operations only (Update, Delete, and Move
+  defer to the PostToolUse `gate-check` backstop), and savepoint-pre runs as its
+  own first pass over every operation so its ledger line lands even when a
+  later gate blocks the call. The five `scripts/hook-<gate>` CLI wrappers lose
+  their last production caller but are retained on purpose as the per-gate
+  isolation surface for the hook contract tests that drive them. The bash gate
   composes the code gate AND the lock gate over every write target, including
   interpreter one-liners (`ruby -e`, `python -c`, `perl -e`, `node -e`
   carrying a write verb plus a quoted absolute path); a trailing `# plastic-ok`

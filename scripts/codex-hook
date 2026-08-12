@@ -3,34 +3,37 @@
 # frozen_string_literal: true
 #
 # Usage: codex-hook <gate>
-#   file-mutation gates: code-gate | lock-gate | savepoint-pre | gate-check | create-gate | links-gate
+#   file-mutation gates: edit-gates | gate-check
 #   live-state hooks (intent 199): session-start | check-update | continue |
 #     future-intent-check | auto-arm | power-tools | savepoint
 #   shell-tool gate (intent 203): bash-gate
 #
-# The Codex input adapter (intent 102, extended by 199 and 203). Reads a Codex
-# hook stdin payload once. Three shapes exist and the gate name alone selects
-# which path runs (Codex's own hooks.json registration guarantees they never
-# cross): the file-mutation gates read session_id at top level and the
-# apply_patch command in tool_input.command [guide Part 4], parse the diff
-# envelope via ApplyPatchEnvelope, and drive Plastic's payload-agnostic Ruby
-# gate/savepoint cores once per file operation, relaying stdout/stderr/exit
-# unchanged. The live-state hooks carry no tool_input at all (they are not tool
-# calls); the dispatcher execs the SAME launcher file Claude already runs for
-# that hook (hooks/<name>), which is already harness-agnostic (resolves
-# ~/.plastic off $HOME, reads only the common stdin fields the guide confirms
-# Codex shares with Claude for these three events), so the body is reused, not
-# rewritten (D3). The shell-tool gate (bash-gate) reports tool_name: "Bash" with
-# the command in tool_input.command, but MUST NOT be routed through
-# ApplyPatchEnvelope.parse below: a plain shell command has no
-# *** Begin Patch/*** End Patch envelope, so it would parse to an empty op list
-# and hit this file's own `exit 0 if ops.empty?` line, silently allowing every
-# Bash call and reopening the exact hole intent 203 closes. So it execs the SAME
-# scripts/hook-bash-gate file Claude already runs, unmodified, the identical
-# "drive the body, relay its output" pattern used for the live-state hooks. The
-# one adaptation shared by both the live-state and shell-tool paths is threading
-# the payload's session_id into CLAUDE_CODE_SESSION_ID, since Codex's own
-# process env never carries it, plus
+# The Codex input adapter (intent 102, extended by 199, 203, and collapsed by
+# 251). Reads a Codex hook stdin payload once. Three shapes exist and the gate
+# name alone selects which path runs (Codex's own hooks.json registration
+# guarantees they never cross): the apply_patch path reads session_id at top
+# level and the apply_patch command in tool_input.command [guide Part 4],
+# parses the diff envelope once via ApplyPatchEnvelope, and runs all five gates
+# (savepoint-pre, lock-gate, code-gate, links-gate, create-gate) IN-PROCESS
+# through scripts/lib/codex_edit_gates.rb, which drives the same
+# scripts/lib/edit_gates.rb functions Claude's merged dispatcher drives
+# (mirroring intent 244). This replaced five registered PreToolUse commands and
+# three nested run_core children with one process. The live-state hooks carry
+# no tool_input at all (they are not tool calls); the dispatcher execs the SAME
+# launcher file Claude already runs for that hook (hooks/<name>), which is
+# already harness-agnostic (resolves ~/.plastic off $HOME, reads only the
+# common stdin fields the guide confirms Codex shares with Claude for these
+# three events), so the body is reused, not rewritten (D3). The shell-tool gate
+# (bash-gate) reports tool_name: "Bash" with the command in tool_input.command,
+# but MUST NOT be routed through ApplyPatchEnvelope.parse below: a plain shell
+# command has no *** Begin Patch/*** End Patch envelope, so it would parse to
+# an empty op list and hit this file's own `exit 0 if ops.empty?` line,
+# silently allowing every Bash call and reopening the exact hole intent 203
+# closes. So it execs the SAME scripts/hook-bash-gate file Claude already runs,
+# unmodified, the identical "drive the body, relay its output" pattern used for
+# the live-state hooks. The one adaptation shared by both the live-state and
+# shell-tool paths is threading the payload's session_id into
+# CLAUDE_CODE_SESSION_ID, since Codex's own process env never carries it, plus
 # a bounded timeout: hooks/check-update backgrounds a real npm network call
 # without redirecting its output away from the inherited stdout/stderr pipes,
 # and Codex invokes hooks synchronously, so without a bound a slow network call
@@ -39,9 +42,6 @@ require "json"
 require "open3"
 require "rbconfig"
 require "timeout"
-require_relative "lib/apply_patch_envelope"
-require_relative "lib/intent_validator"
-require_relative "lib/links_gate"
 
 # Sync stdout so a relayed launcher's stdout and stderr land on the merged
 # pipe in call order. Ruby buffers STDOUT (but not STDERR) when it is not a
@@ -97,6 +97,8 @@ if SHELL_HOOKS.include?(gate)
   exit(status ? status.exitstatus : 0)
 end
 
+require_relative "lib/apply_patch_envelope"
+
 command = payload.dig("tool_input", "command") || payload.dig("tool_params", "command")
 exit 0 if command.nil? # fail-open: no tool_input at all (unrecognized gate name or non-tool-call payload)
 ops = ApplyPatchEnvelope.parse(command)
@@ -108,50 +110,22 @@ def run_core(name, *argv)
   [out, $?.exitstatus]
 end
 
-def intent_file?(path)
-  abs = File.expand_path(path)
-  dir = File.dirname(abs)
-  dir.match?(%r{/store/[^/]+--[^/]+\z}) && File.basename(abs) == "#{File.basename(dir)}.md"
-end
-
 case gate
-when "create-gate"
-  # Pre-write veto: born-complete validation for Add ops on intent files only.
-  # Update/Delete/Move defer to the PostToolUse gate-check backstop (spec Decision 5).
-  ops.each do |o|
-    next unless o.op == :add && intent_file?(o.path)
-    result = IntentValidator.validate_content(o.added_content.to_s)
-    next if result[:ok]
-    $stderr.puts "PLASTIC CREATE GATE - #{File.basename(o.path)} is not a valid intent:"
-    result[:errors].each { |e| $stderr.puts "  #{e}" }
-    $stderr.puts "Create intents via new-intent / plastic-intent-creating; do not hand-author them."
-    exit 2
+when "edit-gates"
+  # The ONE registered PreToolUse command on the apply_patch matcher (intent
+  # 251). Five gates, in-process, in Claude's evaluation order, first deny wins,
+  # each deny shape reproduced exactly: stderr plus exit 2 for code-gate,
+  # links-gate and create-gate; stdout permissionDecision JSON plus exit 0 for
+  # lock-gate. Fail-open at both levels, per gate inside EditGates.dispatch and
+  # again at this file's own top level.
+  require_relative "lib/codex_edit_gates"
+  begin
+    exit CodexEditGates.dispatch(ops: ops, payload: payload)
+  rescue StandardError => e
+    # Dispatcher-internal failure: never impersonate a deny.
+    $stderr.puts "plastic codex edit-gates error: #{e.message}"
+    exit 0
   end
-  exit 0
-
-when "lock-gate"
-  # Deny is signalled by JSON on stdout at exit 0. Relay the first deny.
-  # "codex" is threaded as the harness (intent 201 D2): hook-lock-gate renders
-  # any deny reason with the $plastic-<name> form instead of Claude's default
-  # slash.
-  ops.each do |o|
-    out, _ = run_core("hook-lock-gate", o.path, session, "codex")
-    if out.include?('"permissionDecision":"deny"') || out.include?('"permissionDecision": "deny"')
-      print out
-      exit 0
-    end
-  end
-  exit 0
-
-when "code-gate"
-  ops.each do |o|
-    out, code = run_core("hook-code-gate", o.path, session, o.added_content.to_s)
-    if code == 2
-      $stderr.print out
-      exit 2
-    end
-  end
-  exit 0
 
 when "gate-check"
   last_allow = nil
@@ -164,40 +138,6 @@ when "gate-check"
     last_allow = out unless out.to_s.strip.empty?
   end
   print last_allow if last_allow
-  exit 0
-
-when "savepoint-pre"
-  ops.each { |o| run_core("hook-savepoint-pre", o.path) }
-  exit 0
-
-when "links-gate"
-  # Write-time belt for the PLASTIC.md ## Links contract (intent 192), reusing
-  # the SAME LinksGate.decision Claude's hook-links-gate already drives, so
-  # both harnesses share one decision function. before_content is the real
-  # on-disk file (File.read, or "" when it does not yet exist); after_content
-  # is the proposed result, o.added_content.
-  #
-  # DISCLOSED, NARROWER judgment than Claude's version (intent 198, Decision
-  # D3): ApplyPatchEnvelope.parse only ever captures a diff's ADDED lines,
-  # never its removed or context lines, so for an Update whose diff is a
-  # partial hunk rather than a full-file rewrite, after_content may not be the
-  # complete proposed file. This is the same class of disclosed limitation
-  # create-gate already carries for Update/Delete/Move (best effort, never a
-  # hard crash). links-gate has no PostToolUse backstop to defer to on Claude
-  # either, so running this best-effort compare on Update ops too is strictly
-  # more coverage than the prior total fail-open.
-  ops.each do |o|
-    next unless intent_file?(o.path)
-
-    before_content = File.exist?(o.path) ? File.read(o.path) : ""
-    plastic_home = ENV.fetch("PLASTIC_HOME") { File.join(Dir.home, ".plastic") }
-    reason = LinksGate.decision(file_path: o.path, before_content: before_content,
-                                 after_content: o.added_content.to_s, plastic_home: plastic_home)
-    next unless reason
-
-    $stderr.puts reason
-    exit 2
-  end
   exit 0
 
 else

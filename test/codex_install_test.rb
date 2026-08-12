@@ -764,7 +764,9 @@ class CodexInstallTest < Minitest::Test
 
     data = JSON.parse(File.read(hooks_json_path))
     commands = all_codex_hook_commands(data)
-    assert commands.any? { |c| c.include?("codex-hook") && c.include?("code-gate") }
+    # Intent 251: the five per-gate commands collapsed into one edit-gates
+    # dispatcher command.
+    assert commands.any? { |c| c.include?("codex-hook") && c.include?("edit-gates") }
     assert commands.any? { |c| c.include?("codex-hook") && c.include?("gate-check") }
 
     pre_group = data["hooks"]["PreToolUse"].find { |g| g["matcher"] == "apply_patch" }
@@ -930,10 +932,12 @@ class CodexInstallTest < Minitest::Test
   def test_doctor_codex_hooks_registered_fails_when_drifted
     @core.install_for_agent("codex", false)
     data = JSON.parse(File.read(hooks_json_path))
-    # Simulate drift: drop the create-gate command from the live file.
+    # Simulate drift: drop the edit-gates command from the live file. Intent
+    # 251 collapsed the apply_patch PreToolUse matcher to this one command, so
+    # dropping it is the only way left to simulate a drifted apply_patch group.
     data["hooks"]["PreToolUse"].each do |g|
       next unless g["matcher"] == "apply_patch"
-      g["hooks"].reject! { |h| h["command"].include?("create-gate") }
+      g["hooks"].reject! { |h| h["command"].include?("edit-gates") }
     end
     File.write(hooks_json_path, JSON.pretty_generate(data))
 
@@ -942,7 +946,7 @@ class CodexInstallTest < Minitest::Test
 
     refute_nil hooks_check
     assert_equal "fail", hooks_check[:status]
-    assert(hooks_check[:details].any? { |d| d.include?("create-gate") })
+    assert(hooks_check[:details].any? { |d| d.include?("edit-gates") })
   end
 
   # --- Intent 200: doctor codex_hooks_implemented_check (registry vs. dispatcher) ---
@@ -962,15 +966,21 @@ class CodexInstallTest < Minitest::Test
     assert_equal "pass", implemented_check[:status]
   end
 
+  # Intent 251: the case statement's arms collapsed from five per-gate names
+  # to exactly two, edit-gates and gate-check (spec D8, the dispatcher-shape
+  # constraint doctor's extractor is read against). edit-gates is no longer
+  # the LAST arm before the trailing else (gate-check is), so this fixture
+  # cuts from the edit-gates arm's start to the NEXT when clause's start,
+  # removing only that one arm and leaving gate-check and else intact.
   def test_doctor_codex_hooks_implemented_fails_when_a_registered_gate_has_no_dispatcher_branch
     @core.distribute(:install) # copies the REAL scripts/codex-hook into plastic_home
     @core.install_for_agent("codex", false)
     content = File.read(codex_hook_path)
-    branch_start = content.index('when "links-gate"')
-    refute_nil branch_start, "fixture assumption: scripts/codex-hook must still carry a links-gate branch"
-    else_start = content.index("\nelse", branch_start)
-    refute_nil else_start, "fixture assumption: the case statement must still end in a trailing else"
-    File.write(codex_hook_path, content[0...branch_start] + content[(else_start + 1)..])
+    branch_start = content.index('when "edit-gates"')
+    refute_nil branch_start, "fixture assumption: scripts/codex-hook must still carry an edit-gates branch"
+    next_when_start = content.index('when "gate-check"', branch_start)
+    refute_nil next_when_start, "fixture assumption: scripts/codex-hook must still carry a gate-check branch"
+    File.write(codex_hook_path, content[0...branch_start] + content[next_when_start..])
 
     checks = doctor_for(@codex_home).check_agent_registration("codex")
     implemented_check = checks.find { |c| c[:name] == "codex_hooks_implemented" }
@@ -978,8 +988,8 @@ class CodexInstallTest < Minitest::Test
     refute_nil implemented_check
     assert_equal "fail", implemented_check[:status]
     assert(implemented_check[:details].any? { |d|
-      d.include?("links-gate") && d.include?("registered") && d.include?("allows")
-    }, "expected a links-gate detail naming the direction and the fail-open runtime effect, got: #{implemented_check[:details].inspect}")
+      d.include?("edit-gates") && d.include?("registered") && d.include?("allows")
+    }, "expected an edit-gates detail naming the direction and the fail-open runtime effect, got: #{implemented_check[:details].inspect}")
   end
 
   def test_doctor_codex_hooks_implemented_fails_when_the_dispatcher_has_a_branch_nobody_registers

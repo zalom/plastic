@@ -42,17 +42,20 @@ module HookRegistry
     "create-gate"   => (%w[Write Edit] + SERENA_EDIT_TOOLS).freeze,
   }.freeze
 
-  # Per-gate statusMessage, kept as its own source because these five names stop
-  # appearing in `events` once registration collapses, while Codex still
-  # registers all five per-gate entries and must keep emitting today's exact
-  # statusMessage strings (intent 244, spec D-e). codex_hooks_json merges this
-  # under the names it derives from `events`.
-  GATE_STATUS = {
-    "code-gate"     => "Checking lifecycle gate...",
-    "lock-gate"     => "Checking lock gate...",
-    "savepoint-pre" => "Recording stage start...",
-    "links-gate"    => "Checking Links gate...",
-    "create-gate"   => "Checking create gate...",
+  # Per-gate tool applicability for the merged CODEX edit-path dispatcher (intent
+  # 251, spec D1). Codex reports exactly one file-mutation tool name, apply_patch
+  # (intent 181 F4), so every value is the same single-entry list. The table is
+  # NOT decoration: EditGates.tool_applies? builds a regex from these values, and
+  # reusing GATE_TOOLS here would match none of them against "apply_patch" and
+  # silently skip all five gates. Key order IS the evaluation order and is the
+  # SAME order GATE_TOOLS uses (spec D5), so the two harnesses evaluate the five
+  # gates in one order, not two.
+  CODEX_GATE_TOOLS = {
+    "savepoint-pre" => %w[apply_patch].freeze,
+    "lock-gate"     => %w[apply_patch].freeze,
+    "code-gate"     => %w[apply_patch].freeze,
+    "links-gate"    => %w[apply_patch].freeze,
+    "create-gate"   => %w[apply_patch].freeze,
   }.freeze
 
   # event => ordered list of { "matcher" =>, "hooks" => [{ "name" =>, "status" => }] }
@@ -108,7 +111,14 @@ module HookRegistry
   # [{"matcher","hooks":[{"type":"command","command","statusMessage"}]}]}},
   # identical to Claude's shape, string command. Single source of truth (108 D7):
   # any drift from `events` is a bug, pinned by test.
-  CODEX_PRE_HOOKS  = %w[code-gate lock-gate savepoint-pre links-gate create-gate].freeze
+  #
+  # Codex's apply_patch matcher carries ONE dispatcher command, edit-gates,
+  # which runs all five gates in-process through scripts/lib/codex_edit_gates.rb
+  # (intent 251), mirroring what intent 244 did for Claude. Five separately
+  # registered commands used to cost eight OS processes per edit (five
+  # top-level plus three nested run_core children); one dispatcher process
+  # reaches the same five gate decisions.
+  CODEX_PRE_HOOKS  = %w[edit-gates].freeze
   CODEX_POST_HOOKS = %w[gate-check].freeze
 
   # Codex's shell-tool gate hole (intent 203): bash-gate (denies a shell write to
@@ -130,16 +140,11 @@ module HookRegistry
   CODEX_LIVE_STATE_EVENTS = %w[SessionStart UserPromptSubmit PreCompact].freeze
 
   def codex_hooks_json(dispatcher_path:)
-    # GATE_STATUS first, then `events`, so `events` still wins for every name it
-    # carries. The five edit-path gate names left `events` when Claude's
-    # registration collapsed to one hook (intent 244), but Codex still registers
-    # all five separately and must keep emitting today's exact statusMessage
-    # strings; without this merge every Codex statusMessage would silently become
-    # "" and doctor's command-only diff would never notice.
-    status_by_name = GATE_STATUS.merge(
-      events.values.flatten.flat_map { |g| g["hooks"] }
-            .each_with_object({}) { |h, m| m[h["name"]] = h["status"] }
-    )
+    # Every Codex hook name is now a name `events` itself carries (intent 251,
+    # spec D9): edit-gates is Claude's own PreToolUse hook name, so there is
+    # nothing left to merge in from a separate status table.
+    status_by_name = events.values.flatten.flat_map { |g| g["hooks"] }
+                           .each_with_object({}) { |h, m| m[h["name"]] = h["status"] }
     cmd = ->(name) {
       { "type" => "command",
         "command" => "\"#{dispatcher_path}\" #{name}",
@@ -147,12 +152,11 @@ module HookRegistry
     }
     # Preserve the order these hook names appear across the PreToolUse groups in `events`.
     pre_order = events["PreToolUse"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
-    # Claude's edit-path groups collapsed to one hook, so the per-gate order can no
-    # longer be read out of `events` (spec D-l). CODEX_PRE_HOOKS is its own literal
-    # order (code-gate lock-gate savepoint-pre links-gate create-gate) and the
-    # intersection with GATE_TOOLS.keys still validates that every Codex gate name
-    # exists in the registry. The emitted JSON is unchanged.
-    pre = (CODEX_PRE_HOOKS & GATE_TOOLS.keys).map { |n| cmd.call(n) }
+    # The Codex apply_patch matcher carries the same edit-gates name Claude's own
+    # PreToolUse group carries (intent 251, spec D9), so the intersection with
+    # pre_order validates the Codex gate name against the single source of truth,
+    # `events`, rather than against a table of Claude tool applicability.
+    pre = (CODEX_PRE_HOOKS & pre_order).map { |n| cmd.call(n) }
     bash = (pre_order & CODEX_BASH_HOOKS).map { |n| cmd.call(n) }
     post = CODEX_POST_HOOKS.map { |n| cmd.call(n) }
 

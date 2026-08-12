@@ -57,17 +57,27 @@ class HookRegistryTest < Minitest::Test
 
   # --- Codex registration (intent 102) ---
 
-  def test_codex_hooks_json_emits_the_five_gate_savepoint_commands_under_apply_patch
+  # Intent 251: the Codex apply_patch matcher carries exactly ONE command. Five
+  # separately-registered commands cost eight processes per edit (five top-level
+  # plus three nested run_core children); one dispatcher runs all five gates
+  # in-process. If this ever grows back to five entries, the process fat is back.
+  def test_codex_apply_patch_matcher_carries_exactly_one_command
     codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
+    group = codex["PreToolUse"].find { |g| g["matcher"] == "apply_patch" }
+    refute_nil group
+    names = group["hooks"].map { |h| h["command"][/codex-hook" (\S+)/, 1] }
+    assert_equal %w[edit-gates], names,
+      "the Codex apply_patch matcher must carry exactly the merged edit-gates dispatcher"
+    refute_empty group["hooks"].first["statusMessage"].to_s
+  end
 
-    pre_group = codex["PreToolUse"].first
-    assert_equal "apply_patch", pre_group["matcher"]
-    names = pre_group["hooks"].map { |h| h["command"][/codex-hook" (\S+)/, 1] }
-    assert_equal %w[code-gate lock-gate savepoint-pre links-gate create-gate], names
-    pre_group["hooks"].each do |h|
-      assert_equal "command", h["type"]
-      refute_nil h["statusMessage"]
-    end
+  # Intent 251, spec D1 and D5: the Codex gate table must name every gate the
+  # merged dispatcher runs, in the SAME order Claude evaluates them, and every
+  # value must be Codex's own tool name. Reusing GATE_TOOLS here would match
+  # nothing against "apply_patch" and silently skip all five gates.
+  def test_codex_gate_tools_names_every_gate_in_claude_order_on_apply_patch
+    assert_equal HookRegistry::GATE_TOOLS.keys, HookRegistry::CODEX_GATE_TOOLS.keys
+    HookRegistry::CODEX_GATE_TOOLS.each_value { |tools| assert_equal %w[apply_patch], tools }
   end
 
   def test_codex_hooks_json_emits_post_tool_use_gate_check_under_apply_patch
@@ -95,11 +105,14 @@ class HookRegistryTest < Minitest::Test
 
   def test_codex_hooks_json_status_message_matches_events_status
     codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
+    events_status = HookRegistry.events.values.flatten.flat_map { |g| g["hooks"] }
+                                 .each_with_object({}) { |h, m| m[h["name"]] = h["status"] }
 
     HookRegistry::CODEX_PRE_HOOKS.each do |name|
-      expected_status = HookRegistry::GATE_STATUS[name]
       hook = codex["PreToolUse"].first["hooks"].find { |h| h["command"].include?(name) }
-      assert_equal expected_status, hook["statusMessage"], "#{name} statusMessage must match GATE_STATUS"
+      refute_nil hook, "#{name} must be registered under the Codex apply_patch matcher"
+      assert_equal events_status[name], hook["statusMessage"],
+        "#{name} statusMessage must match the one events carries"
     end
   end
 
@@ -160,17 +173,20 @@ class HookRegistryTest < Minitest::Test
     end
   end
 
-  # Intent 244: the five gate names left `events` when Claude's registration
-  # collapsed, so Codex's statusMessage values now come from GATE_STATUS. Doctor
-  # compares command strings only, so nothing else would catch these going empty.
+  # Intent 251: the Codex apply_patch matcher now carries edit-gates, a name
+  # `events` itself defines, so a Codex statusMessage must never silently go
+  # empty. Doctor compares command strings only, so nothing else would catch
+  # this going empty.
   def test_codex_hooks_json_keeps_every_gate_status_message
     codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
     hooks = codex["PreToolUse"].first["hooks"]
+    events_status = HookRegistry.events.values.flatten.flat_map { |g| g["hooks"] }
+                                 .each_with_object({}) { |h, m| m[h["name"]] = h["status"] }
     HookRegistry::CODEX_PRE_HOOKS.each do |name|
       entry = hooks.find { |h| h["command"].include?(name) }
       refute_nil entry, "#{name} must still be registered for Codex"
       refute_empty entry["statusMessage"].to_s, "#{name} lost its statusMessage"
-      assert_equal HookRegistry::GATE_STATUS[name], entry["statusMessage"]
+      assert_equal events_status[name], entry["statusMessage"]
     end
   end
 
