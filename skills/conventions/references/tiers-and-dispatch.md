@@ -38,10 +38,10 @@ user or the main session states a TIER (S, M, or L) and an EFFORT line in the br
 effort is `xhigh` for `plastic-advisor` and `max` for `plastic-faux-advisor`.
 
 Config is harness-scoped, keys matching `InstallerCore::DEFAULT_AGENTS` exactly (`claude`,
-`codex`, never `claude_code`): `advisor.enabled` (false skips installing both agents and the
-skill), `advisor.claude.default` (which agent the skill routes to), `advisor.claude.primary`
-and `.secondary` (the two slots, agent NAMES never model names, so a slot can point at a
-locally registered agent). Each agent's actual model is a plain `agents.models.claude.<name>`
+`codex`, `hermes`, never `claude_code`): `advisor.enabled` (false skips installing both agents and the
+skill), `advisor.claude.default` (which agent the skill routes to; an agent NAME never a model
+name, so it can point at a locally registered agent, and the only advisor routing key the
+installer writes). Each agent's actual model is a plain `agents.models.claude.<name>`
 override, the SAME harness-scoped mechanism every other agent uses, resolved through
 `InstallerCore#agent_model_overrides(harness:)`; there is no separate advisor-model key.
 `agents.models` is harness-scoped from this release (`agents.models.claude.*`,

@@ -1,6 +1,6 @@
 ---
 name: plastic-uninstall
-description: Use when the user wants to remove Plastic from an agent. Runs the manifest-driven uninstaller (removes skills, hooks, statusline, and any legacy plugin layout), reports exactly what was removed and what was left behind, then gives verification steps. Optionally deletes the intent store.
+description: Use when the user wants to remove Plastic from an agent. Runs the manifest-driven uninstaller (removes skills, hooks, statusline, and any legacy plugin layout), reports exactly what was removed and what was left behind, then gives verification steps. The intent store always stays.
 user-invocable: true
 ---
 
@@ -51,7 +51,7 @@ ls ~/.claude/hooks  | grep '^plastic-'    # -> no output
 grep -n plastic ~/.claude/settings.json   # -> no plastic hook/plugin refs
 ```
 
-### Step 4: Report + offer the data decision
+### Step 4: Report
 
 Emit the reporting block, using the Step 3 checks for the verification line:
 
@@ -67,12 +67,9 @@ Then:
 ```
 Plastic is uninstalled from [agent].
 Your intent store at ~/.plastic/ is untouched.
-
-Delete it too?
-  a) Keep everything (recommended): re-install anytime with npx
-  b) Delete everything now: removes ~/.plastic/ entirely (irreversible)
 ```
 
-- **Keep:** "Your data is at ~/.plastic/. Re-install anytime with
-  `npx -y @zalom/plastic@latest install --claude` (or your channel)."
-- **Delete:** run `rm -rf ~/.plastic/` and confirm.
+Uninstall removes installed harness files only. The store at `~/.plastic/` (intents,
+history, projects, config, version ledger) always stays; no uninstall path deletes it.
+Tell the user: "Your data is at ~/.plastic/. Re-install anytime with
+`npx -y @zalom/plastic@latest install --claude` (or your channel)."

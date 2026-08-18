@@ -39,12 +39,12 @@ a session.
 
 ## Routing: which advisor answers
 
-1. Read the harness-scoped config: `advisor.claude.default`. If unset, fall back to
-   `advisor.claude.secondary`, then to `plastic-faux-advisor`.
+1. Read the harness-scoped config: `advisor.claude.default`, the only advisor routing key
+   the installer writes. If unset, use `plastic-advisor`, the shipped default.
 2. If the user names which advisor they want ("ask the real one", "use Fable", "ask the
-   cheap one"), honor that directly and dispatch `advisor.claude.primary` (default
-   `plastic-advisor`) or `advisor.claude.secondary` (default `plastic-faux-advisor`)
-   accordingly, overriding step 1 for this consultation only.
+   cheap one"), honor that directly and dispatch `plastic-advisor` (the real advisor) or
+   `plastic-faux-advisor` (the cheaper imitation) accordingly, overriding step 1 for this
+   consultation only.
 3. If `advisor.enabled` reads `false`, neither advisor agent nor this skill is
    installed; this step should not be reachable, but if it is, tell the user the
    advisor is disabled and point at "Setting the default" below.

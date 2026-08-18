@@ -31,7 +31,7 @@ store/
     spec.md               # optional - specification (Why deliverable)
     plan.md               # optional - implementation plan (How deliverable)
     checklist.md          # optional - execution registry (How deliverable)
-    outcome.md            # optional - detailed result (Exec deliverable)
+    outcome.md            # detailed result (Exec deliverable) - mandatory at a terminal (Completed and Abandoned alike)
     actions/              # optional - real action files (How deliverable, at least one required)
     resources/            # optional - research, references, screenshots, diagrams
     savepoint.md          # optional - deterministic cycle-step ledger (auto-written)
@@ -73,7 +73,7 @@ of influence (sources/chain/tags) and the `## Links` projection rules.
 | Stage | Section | Deliverable | Detail |
 |-------|---------|-------------|--------|
 | **What** | `## Intent` | `{ID}--{slug}.md` | `plastic-intent-creating` |
-| **Why** | `## Context` + Decisions | `spec.md` | `plastic-intent-brainstorming` |
+| **Why** | `## Context` + Decisions | `spec.md` | `plastic-intent-brainstorming` enriches Context/Decisions; `plastic-intent-speccing` writes `spec.md` |
 | **How** | Planning | `plan.md` + `actions/ACTION_N.md` (at least one) + `checklist.md` | `plastic-intent-planning` |
 | **Exec** | Execution | `outcome.md` | `plastic-intent-executing` |
 
@@ -201,7 +201,7 @@ Format: `ID--three-to-five-words` (all stores).
 - Root intents: sequential numbers (`1`, `2`, `3`)
 - Branches alternate: `1` → `1a` → `1a1` → `1a1a`
 - Intent file matches directory: `1a1--slug/1a1--slug.md`
-- Next ID: `"${CLAUDE_PLUGIN_ROOT}/scripts/folgezettel-id" <parent_id> <store_path>`
+- Next ID: `ruby ~/.plastic/scripts/folgezettel-id <parent_id> <store_path>`
 
 See `plastic-conventions > references/knowledge-graph.md` for the branch-vs-root semantic
 decision: when to branch versus start a root.
@@ -293,12 +293,20 @@ One line each. On Claude the five edit-path gates (savepoint-pre, lock-gate, cod
 links-gate, create-gate) run inside one dispatcher process per Write or Edit, in that fixed
 order with the first deny winning; what each gate checks is unchanged.
 
-- **create-gate** validates the proposed intent file at What write-time.
-- **gate-check** enforces lifecycle stage order.
+- **savepoint-pre** appends the savepoint ledger line before a write into an intent dir; it
+  records and never denies.
 - **lock-gate** admits only the intent's lock owner or a registered delegate to write into an
   active intent directory.
-- **bash-gate** intercepts a write attempted through a bash or interpreter one-liner, mirrored
-  by the code gate for Write and Edit.
+- **code-gate** denies a code edit before How is delivered and a code edit outside the
+  provisioned worktree (stage rule or worktree rule, first match wins), with the audited
+  `# plastic-ok` escape.
+- **links-gate** enforces the derived `## Links` projection contract at write time.
+- **create-gate** validates the proposed intent file at What write-time.
+- **bash-gate** (on the Bash matcher) intercepts a write attempted through a bash or
+  interpreter one-liner, with the same audited escape.
+- **gate-check** (PostToolUse) enforces lifecycle stage order after each write.
+- **future-intent-check** (UserPromptSubmit) surfaces parked future intents whose keywords
+  match the user's message; it informs and never denies.
 
 See `plastic-conventions > references/gates-and-enforcement.md` for the escape and logging
 detail.

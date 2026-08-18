@@ -73,7 +73,7 @@ State is derived from what exists, not from what's declared.
 
 1. Determine the target store: `~/.plastic/store/` for global intents (default), `~/.plastic/projects/{slug}/store/` for project intents
 2. Decide branch vs root (this sets whether you pass `--parent`)
-3. Scaffold with one call: `"${CLAUDE_PLUGIN_ROOT}/scripts/new-intent" --store <store> --intent "<one-line>" --slug <slug> [--parent <id>] [--sources id,id] [--tags ...]`. This allocates the id, creates the directory plus `actions/` and `resources/`, renders the born-complete intent file (frontmatter plus `## Intent`, `## Context`, `## Outcome`, `## Insights`, `## Links`), writes the sentinel placeholder lifecycle files, wires the reciprocal links, and self-validates.
+3. Scaffold with one call: `ruby ~/.plastic/scripts/new-intent --store <store> --intent "<one-line>" --slug <slug> [--parent <id>] [--sources id,id] [--tags ...]`. This allocates the id, creates the directory plus `actions/` and `resources/`, renders the born-complete intent file (frontmatter plus `## Intent`, `## Context`, `## Outcome`, `## Insights`, `## Links`), writes the sentinel placeholder lifecycle files, wires the reciprocal links, and self-validates.
 4. Update the appropriate `INDEX.md` — add to Active section and appropriate cluster
 
 The intent file is born complete with all five sanctioned `##` sections; the lifecycle files (`spec.md`/`plan.md`/`checklist.md`/`outcome.md`) are sentinel placeholders that read as "stage not reached" until an agent fills them and deletes the `<!-- plastic:placeholder -->` first line.

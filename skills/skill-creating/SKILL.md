@@ -35,8 +35,11 @@ routes each authoring task to the reference that holds the depth.
 - Build at least three evals before writing extensive docs.
 - Match determinism to fragility: a deterministic script for fragile or
   repeated mechanical steps, prose for judgment calls.
-- Imperative voice, no second person. No em-dashes or en-dashes in any shipped
-  skill or doc (use commas, periods, parentheses, colons).
+- Imperative voice, no second person. User-facing docs (README, docs/, AGENTS.md,
+  CLAUDE.md) never use em-dashes or en-dashes, and newly authored skill text avoids
+  them (use commas, periods, parentheses, colons). Existing internal files and the
+  sanctioned template emissions (templates/index.md's INDEX line shape) are not
+  violations.
 
 ## Route the authoring task to its reference
 

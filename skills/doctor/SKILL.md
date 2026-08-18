@@ -36,8 +36,9 @@ Each manifest maps a file path to its SHA256.
 
 **On failure**, the report states this guided route, in order:
 
-1. Run `plastic doctor --fix` (the Fix all / Select individually / Skip router from
-   Step 4-5 below).
+1. Offer fixes in the `/plastic-doctor` conversation (the Fix all / Select individually /
+   Skip router from Steps 4-5 below); doctor itself only reports, and each chosen repair
+   is dispatched to the maintenance tool or skill that owns it.
 2. If that does not resolve it, roll back to the last known-good version via
    `plastic-rollback` (restores from the local, append-only `versions.json` ledger of
    versions actually run).
@@ -159,8 +160,8 @@ Use the `fix_hint` value to determine the correct action:
 | "Remove stale references from INDEX.md" | Edit INDEX.md to remove ghost references |
 | "Inject the missing required frontmatter field(s)" | Edit the intent's `{ID}--{slug}.md` frontmatter to add the missing key (e.g. `chain: []`) without touching other keys |
 | "Run: provision-project-store {slug}" | Run `provision-project-store <slug>` (or invoke the `plastic-store-provisioning` skill) to create the missing store |
-| "Re-run installer" | Run `npx -y @zalom/plastic@<channel> install --agent <agent>` (channel: -alpha->@alpha, -beta->@beta, else @latest) |
-| "Run the Plastic installer to bootstrap the store" | Run `npx -y @zalom/plastic@<channel> install --agent <agent>` (channel: -alpha->@alpha, -beta->@beta, else @latest) to restore the global store's plastic_home directory or INDEX.md |
+| "Re-run installer" | Run `npx -y @zalom/plastic@<channel> install --claude` (or `--codex`/`--hermes`/`--all` for that agent; channel: -alpha->@alpha, -beta->@beta, else @latest) |
+| "Run the Plastic installer to bootstrap the store" | Run `npx -y @zalom/plastic@<channel> install --claude` (or `--codex`/`--hermes`/`--all`; channel: -alpha->@alpha, -beta->@beta, else @latest) to restore the global store's plastic_home directory or INDEX.md |
 | "Dispatch plastic-store-curating ... revisions.md ..." | Invoke the `plastic-store-curating` (or the agent) to relocate the flagged section or ref into the intent's `revisions.md` via move-and-record (one dated, `[rule: <tag>]`-tagged entry per item), per plastic-conventions > references/maintenance-and-revisions.md. For a missing required section, restore or reproject it instead. |
 | "Run scripts/project-links ... PRESERVES ... --drop-unbacked-links" | Run `ruby ~/.plastic/scripts/maintenance-run --tool project-links --intent <id> --apply` for the one flagged id (never run bare `project-links` against a real store outside the rare owner-approved batch exception, D2) |
 
@@ -206,4 +207,4 @@ This keeps the update flow clean when nothing is wrong.
 
 ## References
 
-- Read `references/gates-stuck-detection.md` for the full gate enforcement table, bridge file pattern, and stuck detection thresholds when diagnosing gate failures or stuck agents
+- Read `references/gates-stuck-detection.md` for the full gate enforcement table, bridge file pattern, and the recorded stuck-detection signals when diagnosing gate failures or stuck agents

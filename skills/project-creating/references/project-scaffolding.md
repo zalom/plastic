@@ -74,7 +74,7 @@ Update the project's `~/.plastic/projects/{slug}/INDEX.md`:
 # Index
 
 ## Active
-- [1 — <intent name>](store/1--<slug>/1.md) — implementation, from: global:<ID>
+- [1 — <intent name>](store/1--<slug>/1--<slug>.md) — implementation, from: global:<ID>
 ```
 
 **For multi-intent spawning (Hub):**

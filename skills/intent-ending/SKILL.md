@@ -62,8 +62,8 @@ for orchestrator-owned or completion-tracking items.
    `## Links` projection). On a refusal, fix via the OWNING tool, never a
    hand edit of the check's own output:
    - checklist/outcome content - finish it yourself, the same as before.
-   - links projection - `scripts/project-links --intent <id> --apply` via
-     `maintenance-run`.
+   - links projection - run
+     `ruby ~/.plastic/scripts/maintenance-run --tool project-links --intent <id> --apply`.
    - a savepoint issue - advisory only (WARN, never blocks): run
      `plastic-intent-savepoint` to rebuild via `Bridge.rebuild_savepoint` if
      you want it clean, but it never refuses the close on its own.

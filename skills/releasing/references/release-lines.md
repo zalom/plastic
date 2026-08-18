@@ -20,7 +20,7 @@ green Minitest run can fully vouch for.
 
 **Beta-verified lane.** Branch, merge to the `beta` branch, publish to the npm `beta` dist-tag,
 verify in real use, then merge `beta` into `main` and cut stable. It sits on top of the existing
-promotion mechanics (`--promote beta` / `--promote stable`, linear only, see
+promotion mechanics (agent-performed channel promotion, linear only, see
 `promotion-and-tagging.md`); it names when to use them, not new machinery.
 
 ## Routing rule

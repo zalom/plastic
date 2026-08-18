@@ -28,11 +28,16 @@ Hard blocking — hooks exit with code 2 when gates fail.
 
 ## Stuck Detection
 
-| Condition | Threshold | Action |
-|---|---|---|
-| Consecutive gate failures | 3+ | Warning |
-| Consecutive gate failures | 5+ | Force savepoint + escalate |
-| No activity | 5+ min | Warning |
-| No activity | 10+ min | Force savepoint + escalate |
-| Context pressure | 80% | Warning |
-| Context pressure | 90% | Force savepoint |
+No automatic stuck detector ships today: no threshold fires, and nothing forces a savepoint
+or escalates on its own. What exists is recorded data, and reading it is the diagnosing
+agent's judgment:
+
+- `build.gate_failures` in the bridge file: `scripts/hook-gate-check` increments it on every
+  blocked write and resets it to 0 on a passing one. Nothing reads the counter back; a high
+  value is a signal for you, not a trigger for the system.
+- `build.last_activity` in the bridge file: updated on passing writes. There are no
+  inactivity timers, and context pressure is not tracked anywhere.
+
+When diagnosing, treat repeated denies of the same gate with no station progress (compare
+the savepoint ledger) as stuck: stop, read the deny reason, and route through the resolving
+command it names.

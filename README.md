@@ -63,7 +63,7 @@ It solves problems that builder already feels:
 One command installs Plastic for your agent:
 
 ```bash
-npx @zalom/plastic --claude
+npx -y @zalom/plastic install --claude
 ```
 
 Then load the conventions and begin:

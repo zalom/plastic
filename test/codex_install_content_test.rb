@@ -117,9 +117,9 @@ class CodexInstallContentTest < Minitest::Test
     lifecycle = File.read(File.join(@skills_root, "plastic-intent-creating", "references", "lifecycle.md"))
     auto_skill = File.read(File.join(@skills_root, "plastic-auto", "SKILL.md"))
 
-    assert_includes creating_skill, "$HOME/.plastic/scripts/new-intent"
-    assert_includes lifecycle, "$HOME/.plastic/scripts/new-intent"
-    assert_includes auto_skill, "$HOME/.plastic/templates/outcome.md"
+    assert_includes creating_skill, "~/.plastic/scripts/new-intent"
+    assert_includes lifecycle, "~/.plastic/scripts/new-intent"
+    assert_includes auto_skill, "~/.plastic/templates/outcome.md"
 
     refute_includes creating_skill, "CLAUDE_PLUGIN_ROOT"
     refute_includes lifecycle, "CLAUDE_PLUGIN_ROOT"
