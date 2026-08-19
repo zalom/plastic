@@ -15,7 +15,7 @@ class ConfigTemplateTest < Minitest::Test
   def test_has_agent_section
     assert_kind_of Hash, @config["agent"]
     assert_equal "claude-code", @config["agent"]["type"]
-    assert_equal "linear", @config["agent"]["parallel_mode"]
+    assert_equal "agent-teams", @config["agent"]["parallel_mode"]
   end
 
   def test_has_architect_section

@@ -187,7 +187,7 @@ Version:  none -> <installed>
 Doctor:   <summary or "all clear">
 ```
 
-Then: "Read `docs/guides/your-first-intent-in-10-minutes.md` for your first intent, start to finish."
+Then: "Read [`your-first-intent-in-10-minutes.md`](https://github.com/zalom/plastic/blob/main/docs/guides/your-first-intent-in-10-minutes.md) for your first intent, start to finish."
 
 ### Local Install (testing/legacy)
 

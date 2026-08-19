@@ -38,10 +38,10 @@ user or the main session states a TIER (S, M, or L) and an EFFORT line in the br
 effort is `xhigh` for `plastic-advisor` and `max` for `plastic-faux-advisor`.
 
 Config is harness-scoped, keys matching `InstallerCore::DEFAULT_AGENTS` exactly (`claude`,
-`codex`, never `claude_code`): `advisor.enabled` (false skips installing both agents and the
-skill), `advisor.claude.default` (which agent the skill routes to), `advisor.claude.primary`
-and `.secondary` (the two slots, agent NAMES never model names, so a slot can point at a
-locally registered agent). Each agent's actual model is a plain `agents.models.claude.<name>`
+`codex`, `hermes`, never `claude_code`): `advisor.enabled` (false skips installing both agents and the
+skill), `advisor.claude.default` (which agent the skill routes to; an agent NAME never a model
+name, so it can point at a locally registered agent, and the only advisor routing key the
+installer writes). Each agent's actual model is a plain `agents.models.claude.<name>`
 override, the SAME harness-scoped mechanism every other agent uses, resolved through
 `InstallerCore#agent_model_overrides(harness:)`; there is no separate advisor-model key.
 `agents.models` is harness-scoped from this release (`agents.models.claude.*`,
@@ -92,7 +92,7 @@ belt-and-braces on top of the frontmatter pin.
 **Cross-harness portability.** The dispatch and model-tier contract above is harness-facing. The
 adapter layer that maps Plastic's hooks and model aliases onto each supported agent runtime
 (Claude, Codex, Hermes) is the cross-harness portability layer; see
-docs/reference/harness-adapters.md for the adapter contract.
+[`harness-adapters.md`](https://github.com/zalom/plastic/blob/main/docs/reference/harness-adapters.md) for the adapter contract.
 
 **Spawn preamble (intent 152).** `scripts/spawn-preamble` emits a live-state block purely from
 filesystem state: the active intent, stage, role/cycle-step, the honor instruction, and the

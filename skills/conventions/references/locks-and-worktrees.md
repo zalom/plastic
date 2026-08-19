@@ -43,7 +43,7 @@ shared one still is.
 The bridge resolves the current session in a fixed precedence: the stdin `session_id` first, then
 the `CLAUDE_CODE_SESSION_ID` environment variable, then a derived key when neither is present. A
 bridge is purge-eligible by terminal state, not by age: it is removed only once its intent is no
-longer active, never on a timer. See `docs/internals.md` for depth.
+longer active, never on a timer. See [`docs/internals.md`](https://github.com/zalom/plastic/blob/main/docs/internals.md) for depth.
 
 The delivery lock arbitrates at the whole-intent grain: it decides who may work
 an intent at all. Underneath it, a per-artifact claim token (intent 111)
@@ -58,7 +58,7 @@ work is unaffected; it engages, and denies, only when a second writer tries to
 take a fresh claim someone else already holds. A stale or corrupt claim fails
 open (the write proceeds, the claim yields) and the condition is surfaced in
 `plastic-lock status`, which lists any live claims alongside the delivery
-lock. See `plastic-lock claim`/`release-claim` and `docs/internals.md` for the
+lock. See `plastic-lock claim`/`release-claim` and [`docs/internals.md`](https://github.com/zalom/plastic/blob/main/docs/internals.md) for the
 full mechanism.
 
 There is exactly one lock in Plastic: `delivery.lock` (exclusive, one owner plus delegates),
@@ -108,6 +108,6 @@ each station.
 | What (create) | `<id>--<slug>.md`, born complete | no lock yet; no bridge | create-gate validates the proposed intent content (Write, Edit, and MCP edits) | savepoint `What` line; intent listed in INDEX `## Active` |
 | Why | `spec.md` | owner writes refresh the lease (lock file mtime heartbeat) | gate-check requires the intent file with `## Intent` before spec.md; lock-gate admits only the owner or a delegate | savepoint `Why started`, `Why spec.md created` |
 | How | `plan.md`, `actions/ACTION_N.md` (at least one), `checklist.md` | heartbeat on writes; the code gate stays closed until plan.md, checklist.md, and a real action file all exist | gate-check requires spec.md before plan.md, and plan.md plus a real actions/ACTION_N.md before checklist.md | savepoint `How started`, `How plan.md created`, `How checklist.md created`, `Exec started` |
-| Exec | code on the intent branch, checklist checked off | heartbeat; code edits confined to the provisioned worktree; delegates write under the owner's lock; bash, interpreter, and MCP writes gated the same way | code-gate, worktree-gate, bash-gate, lock-gate | checklist boxes; savepoint milestones |
+| Exec | code on the intent branch, checklist checked off | heartbeat; code edits confined to the provisioned worktree; delegates write under the owner's lock; bash, interpreter, and MCP writes gated the same way | the five edit-path gates (savepoint-pre, lock-gate, code-gate with its stage and worktree rules, links-gate, create-gate) plus bash-gate for shell writes | checklist boxes; savepoint milestones |
 | End (done) | mandatory `outcome.md` (`disposition: delivered\|abandoned`), INDEX moves to Completed or Abandoned | ordered End tail: verify, merge and remove worktrees, disarm clears `delivery.lock`, then the bridge is purge-eligible, and the QMD reindex runs LAST (after purge) | gate-check blocks outcome.md while checklist items are unchecked | savepoint `Done delivered` (or `abandoned`); takeover audits, if any, remain in savepoint.md |
 | Maintenance (Future, Terminal, or Active-with-a-stale-or-no-lock) | `revisions.md` move-and-record entries | detects (never acquires) `delivery.lock`; defers and reports while the target's lock is FRESH (`Lock.fresh?`); a stale or absent lock is not-active, maintenance proceeds | none enforced by any gate; the maintenance tool or skill itself checks `Lock.fresh?` (see WORK vs MAINTENANCE in `references/maintenance-and-revisions.md`) | append-only, rule-tagged `revisions.md` entry written in the same operation as the change, or the change is refused; lands via a fresh branch off store main merged back as one closed op, never `git add -A` |

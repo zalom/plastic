@@ -97,4 +97,4 @@ Checked at: {{timestamp}}
   FOOTER -- always include this line exactly as written.
   ===================================================================== -->
 
-Run `plastic doctor --fix` to auto-fix all fixable issues, or ask me to fix them now.
+Doctor only reports; it never fixes anything itself. Ask me to fix these issues and I will offer Fix all / Select individually / Skip, then route each chosen repair through the tool that owns it.

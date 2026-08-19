@@ -1,9 +1,9 @@
 # Index
 
 ## Active
-<!-- Line shape: `- [ID — Title](path)`. The em-dash (U+2014, not a plain hyphen)
-     between id and title is load-bearing: Bridge.intent_active? matches only that
-     shape, and a plain hyphen there fails the lock gate open (see docs/internals.md). -->
+<!-- Line shape: `- [ID — Title](path)`. Writes emit the em-dash (U+2014) between
+     id and title; readers (Bridge.index_entry_match) accept the em-dash or a plain
+     hyphen, so either form parses (see https://github.com/zalom/plastic/blob/main/docs/internals.md). -->
 (no active intents)
 
 ## Future
@@ -11,6 +11,9 @@
 
 ## Clusters
 (clusters emerge as intents accumulate; add headings when 3+ intents share a topic)
+
+## Abandoned
+(links preserved, never deleted)
 
 ## Completed
 (links preserved, never deleted)

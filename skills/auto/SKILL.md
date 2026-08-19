@@ -27,7 +27,7 @@ Claude Code).
 
 An active intent MUST exist in INDEX.md. If none exists, refuse: "No active intent found. Create one first with /plastic-intent-creating."
 
-If multiple active intents exist, ask the user which one to deliver (this is the only question auto asks).
+If multiple active intents exist, ask the user which one to deliver (the one question auto asks at boarding, before delivery starts).
 
 **Picking work when no intent is specified.** If the user says "auto" without naming an
 intent and none is active, consult the roadmap first (the primary planning surface), then
@@ -144,7 +144,7 @@ Roster (one role per cycle stage):
 
 Dispatch rule: sequential, one specialist per stage on one branch (the deliverables share files). Gate each deliverable against the stage's exit criteria before handing off. The How and Exec phases below default to Plastic's native dispatch (`plastic-intent-executing`) and delegate to the superpowers skills only when they are available or the user asks; do not restate the phase mechanics here.
 
-Spawn preamble (live-state injection): before dispatching any specialist, run `scripts/spawn-preamble <intent_dir> --role <role>` and PREPEND its output to that specialist's prompt. The preamble is a deterministic, filesystem-only snapshot of the active intent (id, intent line, current stage, and the provisioned code worktree path when one exists on disk) plus the honoring instruction, so every spawned agent boots with accurate live state instead of guessing. This is the authoritative L2 mechanism for harnesses whose sub-agents do not inherit a top-level session event (see `docs/reference/harness-adapters.md`).
+Spawn preamble (live-state injection): before dispatching any specialist, run `scripts/spawn-preamble <intent_dir> --role <role>` and PREPEND its output to that specialist's prompt. The preamble is a deterministic, filesystem-only snapshot of the active intent (id, intent line, current stage, and the provisioned code worktree path when one exists on disk) plus the honoring instruction, so every spawned agent boots with accurate live state instead of guessing. This is the authoritative L2 mechanism for harnesses whose sub-agents do not inherit a top-level session event (see [`harness-adapters.md`](https://github.com/zalom/plastic/blob/main/docs/reference/harness-adapters.md)).
 
 Dispatch-time model contract (belt-and-braces): alongside the preamble, resolve each specialist's model through the config chain (`read-config agents.models.<basename> --project <repo>`: project override, then global, then the shipped tier default) and pass it explicitly at dispatch. Never rely on the dispatched role's frontmatter alone; a resolved subagent model is never Fable,
 unless an explicit `agents.models.<name>` config override names Fable for that role, in which
@@ -275,7 +275,7 @@ Then proceed to Exec.
 If the plan calls for creating a new project (the intent is an implementation intent that needs a new codebase):
 
 1. Determine project path from `~/.plastic/config.yml` `project_roots` or from intent context
-2. **Confirm path with user** - this is the ONE human interaction during auto delivery:
+2. **Confirm path with user** - the one human interaction added mid-delivery, and only when this gate fires:
    > "Creating project `<slug>` at `<path>`. Confirm path, or provide alternative."
 3. Invoke `plastic-project-creating` skill
 4. The global intent is now Completed (creating-project handles this)
@@ -326,7 +326,7 @@ Read `../plastic-conventions/references/completion-and-done.md` for what "intent
 the End-stage tail the steps below walk through.
 
 1. Verify all checklist items are checked
-2. Write `outcome.md` with detailed results, from `${CLAUDE_PLUGIN_ROOT}/templates/outcome.md`.
+2. Write `outcome.md` with detailed results, from `~/.plastic/templates/outcome.md`.
    Set the frontmatter `disposition: delivered` (this is the delivered terminal). `outcome.md`
    is mandatory at every terminal and self-declares its disposition (see the canonical done-marker
    and End tail in PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`).

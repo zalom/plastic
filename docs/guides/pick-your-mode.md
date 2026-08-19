@@ -18,8 +18,8 @@ skips the question entirely.
 You say "guided." Plastic takes the lock on the intent, and from there you
 start each stage yourself, typing its command, while the agent narrows its
 thinking inside that one stage before handing back to you. Why closes with
-`plastic-intent-speccing`, which turns your rulings into `spec.md`; the whole
-intent closes with `plastic-intent-ending`, which writes the final outcome and
+`/plastic-intent-speccing`, which turns your rulings into `spec.md`; the whole
+intent closes with `/plastic-intent-ending`, which writes the final outcome and
 marks it done. At each stage you see what the agent is about to do and you
 approve it before it moves on. This is the slower, closer-to-the-wheel option.
 Choose it when the work is delicate, new, or you want to learn how Plastic

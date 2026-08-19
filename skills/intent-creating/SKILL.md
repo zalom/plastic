@@ -42,7 +42,7 @@ When creating a tactical intent in a project store:
 - **Global:** `~/.plastic/store/`
 - **Project:** `~/.plastic/projects/{slug}/store/`
 
-### 1b. Check for a Duplicate or Predecessor (QMD-first)
+### 2. Check for a Duplicate or Predecessor (QMD-first)
 
 QMD-first (when available): before scanning the store with grep/Read, run
 `ruby ~/.plastic/scripts/qmd-sync search "<terms>"` to surface candidate, prior, or duplicate
@@ -50,7 +50,7 @@ intents, then open the authoritative intent file for any hit you act on. The com
 when QMD is absent, so fall back to the existing INDEX.md / file scan. Do this before allocating
 the id so a near-duplicate can be reused and a true predecessor can be set in `--sources`.
 
-### 2. Decide Branch vs Root
+### 3. Decide Branch vs Root
 
 Decide this BEFORE scaffolding, because it sets whether you pass `--parent`.
 Having a "parent" in mind does NOT automatically mean branch. Choose by meaning:
@@ -85,7 +85,7 @@ Read `../plastic-conventions/references/knowledge-graph.md` for the full linking
 tiers of influence, sources versus chain, and how the `## Links` projection is derived. This path
 resolves relative to this skill's own installed directory.
 
-### 3. Determine Intent Properties
+### 4. Determine Intent Properties
 
 Ask or infer from context:
 - **intent**: one-line description
@@ -100,11 +100,11 @@ Ask or infer from context:
 
 `chain` carries what this intent spawns AND related-but-not-spawned successors it leads to;
 it starts empty and is populated later. See
-`docs/concepts/how-plastic-sources-and-chains-intents.md` for the full model.
+[`how-plastic-sources-and-chains-intents.md`](https://github.com/zalom/plastic/blob/main/docs/concepts/how-plastic-sources-and-chains-intents.md) for the full model.
 Place the intent in `## Active` or `## Future` in INDEX.md (status is
 convention-derived, not a frontmatter field).
 
-### 4. Scaffold via new-intent (single call)
+### 5. Scaffold via new-intent (single call)
 
 Delegate id allocation, directory and file creation, the born-complete intent
 file, the sentinel placeholder lifecycle files, the reciprocal file links, and
@@ -112,7 +112,7 @@ self-validation to one `new-intent` invocation. Do NOT hand-author any of these
 files.
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/new-intent" \
+ruby ~/.plastic/scripts/new-intent \
   --store "<STORE>" --intent "<one-line>" --slug "<slug>" \
   [--parent "<parent_id>"] [--author "<author>"] \
   [--sources "id,id"] [--tags "project-<slug>,tag"]

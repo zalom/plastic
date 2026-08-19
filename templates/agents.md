@@ -23,31 +23,30 @@ means preferring a detected tool's own search or navigation over a generic file 
 4. **Use [[global:ID]]** to link back to the governing strategic intent
 5. **Auto-commit** all intent changes in this project's git repo
 
-## Intent Lifecycle — What→Why→How→Next
+## Intent Lifecycle — What→Why→How→Exec
 
 State is derived from filesystem conventions, not frontmatter fields:
 
 | Convention | Signal |
 |---|---|
-| `## Context` has content | Intent is permanent (not fleeting) |
-| `actions/` directory exists | Intent is actionable |
+| `## Context` has content | Intent is permanent (developed, actionable) |
 | `## Outcome` has content | Intent is done |
 
 Sections map to the lifecycle:
 - **## Intent** — What (the desire)
 - **## Context** — Why (background + ### Decisions)
-- **## Outcome** — How (the result, deliverables)
-- **## Insights** — Next (observations, raw material for future intents)
+- **## Outcome** — Exec (the result; How's deliverables are the `plan.md`, `actions/`, and `checklist.md` files)
+- **## Insights** — observations across all stages, raw material for future intents
 
 Active/Future/Completed placement is managed in INDEX.md, not in frontmatter.
 
 ## Creating Tactical Intents
 
-1. Scan `.plastic/store/` for the next sequential ID
-2. Generate ID: `~/.plastic/scripts/folgezettel-id`
-3. Create `.plastic/store/ID--slug/ID--slug.md`
-4. Set frontmatter: `id`, `intent`, `sources` (array — link to governing intent), `chain` (starts empty), `created`, `author`, `tags`
-5. Add `[[global:ID]]` backlink in `## Links`
+Create through the `plastic-intent-creating` skill, which scaffolds with one call:
+`ruby ~/.plastic/scripts/new-intent --store .plastic/store --intent "<one-line>" --slug <slug> [--sources <governing-id>]`.
+It allocates the Folgezettel ID, creates `.plastic/store/ID--slug/ID--slug.md` born
+complete, and wires the links. Never hand-author the files: the write-time create gate
+rejects an incomplete or malformed intent file.
 
 ## Lifecycle Skills
 
@@ -56,12 +55,13 @@ Plastic has its own lifecycle skills. When a Plastic skill exists for the curren
 | Phase | Skill | Produces |
 |-------|-------|----------|
 | What | `plastic-intent-creating` | Intent file |
-| Why | `plastic-intent-brainstorming` | `spec.md` |
+| Why | `plastic-intent-brainstorming` | Enriched `## Context` + `### Decisions` |
+| Why | `plastic-intent-speccing` | `spec.md` |
 | Why | `plastic-intent-researching` | `resources/*.md` |
 | Why | `plastic-intent-grilling` | Deep interrogation |
 | How | `plastic-intent-planning` | `plan.md`, `checklist.md`, `actions/` |
 | Exec | `plastic-intent-executing` | Code + `outcome.md` |
-| Done | `plastic-store-curating` | Lifecycle transition |
+| Done | `plastic-intent-ending` | Lifecycle transition |
 
 **Artifact convention:** ALL lifecycle artifacts go to the active intent directory (`store/{id}--{slug}/`). Never write specs to `docs/superpowers/specs/` or plans to `docs/superpowers/plans/`.
 

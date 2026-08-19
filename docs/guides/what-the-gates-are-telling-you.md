@@ -13,9 +13,11 @@ matching its description.
 
 ## What a gate is
 
-Every Plastic gate is a hard gate. The gates (lock, code, create, worktree)
-stop the action outright. You cannot proceed until you fix the thing the
-message names.
+Every write runs through five gates (savepoint-pre, lock, code, links,
+create), and shell commands pass a bash gate. Savepoint-pre only records
+state and never denies; every other gate is a hard gate that stops the
+action outright. You cannot proceed until you fix the thing the message
+names.
 
 Gates guard writes, locks, and structure. They never guard reads. Reads and
 searches over the intent stores are never blocked, by any gate, ever.
@@ -61,11 +63,11 @@ coming back to your own stale lock.
 Fix: run `/plastic-doctor fix the lock`.
 
 **Code gate.** You (or an agent) tried to edit project code before a plan
-existed.
+existed. The message reads, punctuation aside:
 
-> intent {id} has not reached How: write plan.md + checklist.md before
-> editing project code. Run plastic-auto or plastic-intent-planning first.
-> (blocked edit: {path})
+> intent {id} has not reached How: write plan.md + checklist.md and at least
+> one real actions/ACTION_N.md before editing project code. Run plastic-auto
+> or plastic-intent-planning first. (blocked edit: {path})
 
 Fix: `plastic-auto` or `plastic-intent-planning`. Another choice of two: either
 one writes the missing plan and checklist, then editing is allowed.
@@ -83,10 +85,11 @@ skill that wraps it). A choice of two again.
 
 ## The honest summary
 
-Of the six real hard-gate messages, four name one clear fixing command
+Of the six gate messages quoted above, four name one clear fixing command
 (no lock, lock held, stale lock, corrupt lock). Two name a choice of two
-commands (code gate, create gate). No read or search is ever blocked by
-anything in Plastic.
+commands (code gate, create gate). The links gate and the bash gate deny the
+same way (the bash gate reuses the code and lock gate messages for shell
+writes). No read or search is ever blocked by anything in Plastic.
 
 So the rule to remember is not "every deny names the one command." It is:
 every deny names the command, or the short choice of commands, that gets you

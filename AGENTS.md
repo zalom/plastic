@@ -31,8 +31,9 @@ present, search it before re-deriving an existing decision, spec, or outcome.
   outcomes before re-deriving them. The stores are the memory.
 - **Power tools are recommended when present.** When QMD (for intents), Enola, or Serena
   (for code navigation) is present, prefer them: the UserPromptSubmit hook appends one
-  recommendation line per present tool, Enola-first when both code-navigation tools are
-  present (one code-navigation slot, Enola wins over Serena), and the per-skill
+  combined recommendation line covering QMD and at most one code-navigation tool,
+  Enola-first when both code-navigation tools are present (one code-navigation slot,
+  Enola wins over Serena), and the per-skill
   QMD-first steps run `qmd-sync search` before grep/Read, then open the authoritative
   intent file. Use the deterministic `scripts/qmd-sync search "<terms>"` helper, which
   scopes collections for you and is a clean no-op when QMD is absent.
@@ -100,8 +101,9 @@ Rules for any agent (or human) contributing to this repository.
 - Every code-touching intent gets its own worktree named `{id}--{slug}`, and code edits happen
   only inside it. Plastic provisions this automatically at arm time by resolving the repo from
   `projects.yml` and running `git -C <repo> worktree add`, so isolation does not depend on the
-  current directory. The code worktree lives at `<repo>/.claude/worktrees/{id}--{slug}`; the
-  paired store worktree lives at `<plastic_home>/.worktrees/{id}--{slug}`.
+  current directory. The code worktree lives at `<repo>/.claude/worktrees/{id}--{slug}` on
+  branch `plastic/{id}--{slug}`. It is the only worktree: store-write safety for lifecycle
+  docs comes from intent 197's branch-from-main plus scoped commits, not a second worktree.
 - Do isolated feature work in that worktree, not the shared checkout, so parallel sessions and
   the main working copy stay clean. Run and test inside it, then merge the branch back.
 - Clean up when done: remove the worktree after the branch is merged. Never leave an orphaned

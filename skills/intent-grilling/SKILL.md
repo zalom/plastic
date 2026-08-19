@@ -53,20 +53,22 @@ This process is thorough. It typically takes 20-45 minutes for a complex design.
 
 > "We've covered [areas]. Still to explore: [areas]. Continue, or pause and capture what we have?"
 
-If the user wants to pause, capture all decisions made so far into the active intent's spec.md.
+If the user wants to pause, capture all decisions made so far into the active intent's `## Context` / `### Decisions`, ready for /plastic-intent-speccing to consolidate later.
 
 ### 5. Close Out
 
 When all branches are resolved:
 
-1. Write the complete spec to the active intent directory (`spec.md`)
+1. Record every ruling in the active intent's `## Context` / `### Decisions`, then hand off
+   to /plastic-intent-speccing to consolidate them into `spec.md` (that skill owns
+   `spec.md` exclusively)
 2. List all decisions made
 3. List any deferred items (things the user explicitly chose to decide later)
 4. Proceed to Autonomous Handoff Offer (step 6)
 
 ### 6. Autonomous Handoff Offer
 
-After closing out (spec written, decisions listed), assess whether the agent has enough context to deliver the intent autonomously.
+After closing out (decisions listed, spec consolidated by /plastic-intent-speccing), assess whether the agent has enough context to deliver the intent autonomously.
 
 **Self-assessment checklist:**
 - All key decisions resolved (no open "it depends" or "TBD")

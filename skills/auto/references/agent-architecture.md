@@ -59,7 +59,7 @@ savepoint line, else stage derived from which lifecycle files exist), the cycle
 role, and the honoring instruction that the agent must emit valid lifecycle artifacts
 and not hallucinate intents or stages. This is the standard L2 live-state mechanism
 for harnesses whose spawned sub-agents do not inherit the top-level session event. See
-`docs/reference/harness-adapters.md` for how it slots into the per-harness contract.
+[`harness-adapters.md`](https://github.com/zalom/plastic/blob/main/docs/reference/harness-adapters.md) for how it slots into the per-harness contract.
 
 ### Completion Reports
 

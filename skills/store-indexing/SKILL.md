@@ -14,20 +14,20 @@ user-invocable: false
 
 ## INDEX.md Structure
 
-INDEX.md is a Zettelkasten main structure note - the brain's entry point. It has four sections:
+INDEX.md is a Zettelkasten main structure note - the brain's entry point. It has five sections:
 
 ### Active
 Intents currently being worked on. Max 1-2 for focus.
 ```markdown
 ## Active
-- [1a2 — Design Plastic](store/1a2--design-plastic-state-system/1a2.md) — decision, human
+- [1a2 — Design Plastic](store/1a2--design-plastic-state-system/1a2--design-plastic-state-system.md) — decision, human
 ```
 
 ### Future
 Intents parked for later. May be picked up by agents.
 ```markdown
 ## Future
-- [1b1 — Build Reddit KB](store/1b1--build-reddit-knowledge-base/1b1.md) — implementation, human
+- [1b1 — Build Reddit KB](store/1b1--build-reddit-knowledge-base/1b1--build-reddit-knowledge-base.md) — implementation, human
 ```
 
 ### Clusters
@@ -35,9 +35,12 @@ Topic-based groupings. Manually curated. Create a new cluster when 3+ intents sh
 ```markdown
 ## Clusters
 ### Reddit Knowledge Base
-- [1a — Research](store/1a--research-reddit-saved-posts/1a.md)
-- [1a1 — Plan](store/1a1--plan-reddit-knowledge-base/1a1.md)
+- [1a — Research](store/1a--research-reddit-saved-posts/1a--research-reddit-saved-posts.md)
+- [1a1 — Plan](store/1a1--plan-reddit-knowledge-base/1a1--plan-reddit-knowledge-base.md)
 ```
+
+### Abandoned
+Intents ended without delivery. Links preserved, never deleted.
 
 ### Completed
 All completed intents with dates. Links preserved, never deleted.

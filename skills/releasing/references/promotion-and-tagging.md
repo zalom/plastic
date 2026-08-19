@@ -33,21 +33,27 @@ cleared is a no-op.
 
 ## Promotion
 
-To promote a release across channels, use `--promote`:
+Promotion is not a CLI flag; there is no `--promote` command. It is a set of steps the
+agent performs during the releasing workflow, reusing the normal release mechanics
+(version bump, tag, `npm publish` with the channel's dist-tag, GitHub release):
 
 ```bash
-plastic-releasing --promote beta    # promotes current alpha → beta
-plastic-releasing --promote stable  # promotes current beta → stable
+# Promote alpha → beta: set version files from -alpha.N to -beta.1, commit, tag, then
+npm publish --access public --tag beta
+
+# Promote beta → stable: strip the pre-release suffix (e.g., 1.0.0-beta.3 → 1.0.0),
+# commit, tag, then
+npm publish --access public          # no --tag flag publishes to latest
 ```
 
 **Promotion rules:**
 - Linear only: alpha → beta → stable. Cannot skip channels.
-- `--promote beta`: reads version from `package.json`, changes `-alpha.N` suffix
-  to `-beta.1`, publishes with `--tag beta`.
-- `--promote stable`: reads version from `package.json`, strips pre-release suffix
-  entirely (e.g., `1.0.0-beta.3` → `1.0.0`), publishes to `latest`.
 - Version files are bumped and committed as in a normal release.
-- An annotated tag is created for the promoted version.
+- An annotated tag is created for the promoted version, and the GitHub release is cut
+  as in the normal workflow (`gh release create ... --latest` for stable).
+- To point a channel at an already-published version without republishing, move the
+  dist-tag directly: `npm dist-tag add @zalom/plastic@<version> <channel>`. To move the
+  GitHub "Latest" badge: `gh release edit <tag> --latest`.
 
 ## Retroactive Tagging
 

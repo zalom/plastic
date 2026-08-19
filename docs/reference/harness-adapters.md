@@ -65,8 +65,8 @@ note in the Codex worked example below), so the two are independently maintained
 
 | Harness | Install | Standing conventions | Live state | Write gates | Statusline | Subagent teams |
 |---|---|---|---|---|---|---|
-| Claude Code | npm, `plastic-install --claude` | native `CLAUDE.md` | seven hooks through `settings.json` | pre-write veto on intent creation, post-write backstop on in-place edits | yes | yes |
-| Codex CLI | npm, `plastic-install --codex` | marked section injected into `~/.codex/AGENTS.md` | seven hooks through `~/.codex/hooks.json`, all dispatched by one command | pre-write veto on `apply_patch`, fails open on an envelope it cannot parse | no | no, a single agent walks the whole cycle |
+| Claude Code | npm, `plastic-install --claude` | native `CLAUDE.md` | ten hooks through `settings.json` | pre-write veto on intent creation, post-write backstop on in-place edits | yes | yes |
+| Codex CLI | npm, `plastic-install --codex` | marked section injected into `~/.codex/AGENTS.md` | ten hooks through `~/.codex/hooks.json`, all dispatched by one command | pre-write veto on `apply_patch`, fails open on an envelope it cannot parse | no | no, a single agent walks the whole cycle |
 | Hermes | npm, `plastic-install --hermes` | none | none | none | no | no |
 
 1. Plastic installs from npm only, for every harness above (owner ruling of 2026-08-08).
@@ -184,10 +184,13 @@ prevent the file from landing on disk. The non-zero exit is the rejection signal
 a true veto. A valid intent file (or any non-intent lifecycle file) preserves the
 existing behavior exactly: the savepoint is appended and the hook exits 0.
 
-The create gate (PreToolUse, matcher Write, intent 60b) is the defense-in-depth complement
-on the create path. On Claude it is one of five checks the merged `hooks/edit-gates` ->
-`scripts/hook-edit-gates` dispatcher runs in-process (intent 244); `scripts/hook-create-gate`
-remains the CLI wrapper Codex calls and the 45 hook contract tests still drive directly. When
+The create gate (PreToolUse, matching Write, Edit, and the six Serena MCP edit tools, intent
+60b) is the defense-in-depth complement on the create path. On Claude it is one of five checks
+the merged `hooks/edit-gates` -> `scripts/hook-edit-gates` dispatcher runs in-process (intent
+244); on Codex it runs in-process too, through the `scripts/lib/codex_edit_gates.rb`
+dispatcher (intent 251). The `scripts/hook-create-gate` CLI wrapper survives only as the
+isolation surface that the 15 hook contract tests in `test/create_gate_hook_test.rb` drive
+directly. When
 the target path is an intent file inside its own equally-named dir
 (`store/**/<id>--<slug>/<id>--<slug>.md`), it validates the PROPOSED content from the hook
 stdin payload (`tool_input.content`) before the write lands, using `IntentValidator` for

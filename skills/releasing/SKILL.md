@@ -332,7 +332,7 @@ the intent-41 re-land playbook.
 
 - Read `references/release-lines.md` for the two release lanes, the stable-line guarantees,
   the version-line map, and the intent-41 re-land playbook before starting any release
-- When promoting a pre-release across channels (`--promote beta`/`--promote stable`) or
+- When promoting a pre-release across channels (alpha to beta, beta to stable) or
   tagging a historical release retroactively, read `references/promotion-and-tagging.md`
   for the exact commands and rules first
 - Read `references/deprecations.md` for the full deprecation process, severity levels, deprecations.yml schema, and dismissal rules when adding or managing deprecations

@@ -50,8 +50,8 @@ There is no database you cannot open, and no service that holds your memory
 somewhere else. You can read every intent with your own eyes, and you own
 all of it.
 
-## Honest about beta
+## Plastic changes
 
-Plastic is in beta. It works, and I use it every day, but it is still
-moving. I would rather tell you that than pretend otherwise. Install it, and
-let the record grow with you.
+This is a personal project shared with the world. I benefit from Plastic and constantly improving it and implementing new ideas but keeping the core architecture. Plastic evolves and adapts continously - as neuroplasticity says: It is the brain's ability to change, adapt, and reorganize its structure and functions throughout life. It tells us that the brain is not a fixed machine, but a flexible network that rewires itself when we learn new things, experience new environments, or recover from injuries.
+The same goes for Plastic.
+This statement does not represent a volatile change, it is just normal change. But as with any change, there are risks of breaking some workflows.

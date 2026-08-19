@@ -494,15 +494,18 @@ trigger lives at a fixed point:
 
 The power-tools `UserPromptSubmit` hook (`hooks/power-tools` ->
 `scripts/hook-power-tools`, decision logic in `scripts/lib/qmd_hook.rb`) runs on
-every turn and emits one thing: the power-tools mandate from
-`scripts/lib/power_tools.rb` (`PowerTools.mandate`), an always-on "MUST use QMD"
-obligation when qmd is present and a "MUST use Serena" obligation when Serena is
-present (symbolic code navigation before grep/Read), or, when Enola is also
+every turn and emits one thing: the recommendation string from
+`scripts/lib/power_tools.rb` (`PowerTools.mandate`), a "prefer QMD" reminder for
+finding intents when qmd is present and a "prefer Serena's symbolic tools"
+reminder for code navigation when Serena is present, or, when Enola is also
 present, that slot names Enola instead of Serena (Enola-first, one code-navigation
-slot; `PowerTools.enola?` checks a `.enola` marker or `enola` on PATH). Serena
-presence is detected by a `.serena` marker in the working directory or an ancestor,
-or `serena` on PATH (`PowerTools.serena?`); qmd presence by `PowerTools.qmd?`. These
-are mandates, not soft reminders. All three probes are PATH and marker-file walks
+slot; `PowerTools.enola?` checks a `.enola` marker or `enola` on PATH). When qmd
+and a code-navigation tool are both present, the two collapse into ONE combined
+line naming both, not one line per tool. Serena presence is detected by a
+`.serena` marker in the working directory or an ancestor, or `serena` on PATH
+(`PowerTools.serena?`); qmd presence by `PowerTools.qmd?`. These are
+recommendations, not mandates (intent 108, D8): the agent is reminded, never
+obliged. All three probes are PATH and marker-file walks
 with no subprocess, so the whole hook costs about a tenth of a second. A 2s timeout
 plus rescue-all keeps anything unexpected from blocking the turn; when no tool is
 present the hook is a silent no-op. It registers as a fourth `UserPromptSubmit`
@@ -830,25 +833,26 @@ checkout, so parallel intent deliveries were not isolated. Plastic supplies its
 own isolation instead, deterministic and cwd-independent.
 
 - **Single source of truth**: `scripts/lib/worktree.rb` (module `Worktree`) is
-  the only definition of how an intent's worktrees and lock are made. It is
+  the only definition of how an intent's worktree and lock are made. It is
   dependency-injected (a `ShellRunner` runs `git`, a `home` argument resolves
   `projects.yml`), hermetic, idempotent, uses no eval, and does no
   global-constant injection, mirroring `intent_validator.rb` and
   `store_provisioning.rb`. Every git call uses `git -C <resolved path>`, never
   cwd: that is the actual fix for the cwd-not-repo-root gap.
-- **Two worktrees, id-first names**: `Worktree.paths` is pure and returns the
+- **One worktree, id-first name**: `Worktree.paths` is pure and returns the
   code worktree (`<repo>/.claude/worktrees/{id}--{slug}`, branch
-  `plastic/{id}--{slug}`) and the store worktree
-  (`<plastic_home>/.worktrees/{id}--{slug}`, branch `plastic-store/{id}--{slug}`).
+  `plastic/{id}--{slug}`). A paired store worktree used to exist; intent 178
+  retired it, and store-write safety for lifecycle docs now comes from intent
+  197's branch-from-main plus scoped-commit mechanism.
   `Worktree.repo_for` resolves the abs repo path from `projects.yml` (reusing the
   qmd_sync safe-loader pattern), or nil.
 - **Provision and release**: `Worktree.provision(bridge_data)` resolves the slug
-  from `bridge_data["intent"]["store"]`, creates both worktrees idempotently (an
-  existing worktree path is reused, never re-created or errored), and writes the
-  `worktree` block plus `provisioned: true`. It fails open with a stderr log when
-  the repo is unresolvable or not a git work tree, setting `provisioned: false`
-  and leaving `code: null`. `Worktree.release(bridge_data)` removes both
-  worktrees, prunes, and clears the block; it is a no-op when nothing was
+  from `bridge_data["intent"]["store"]`, creates the code worktree idempotently
+  (an existing worktree path is reused, never re-created or errored), and writes
+  the `worktree` block plus `provisioned: true`. It fails open with a stderr log
+  when the repo is unresolvable or not a git work tree, setting `provisioned:
+  false` and leaving `code: null`. `Worktree.release(bridge_data)` removes the
+  worktree, prunes, and clears the block; it is a no-op when nothing was
   provisioned.
 - **Unified `PLASTIC_HOME` seam** (intent 169): every CLI-script and hook entry
   point resolves its sandbox override from the single env var `PLASTIC_HOME`
@@ -1002,9 +1006,10 @@ close that gap.
   or corrupt). On a true result, the write proceeds (the claim is yielded to
   the current writer) rather than being blocked, and the condition is
   surfaced on stderr from the gate and in `plastic-lock status`. Absence of a
-  claim is plain dormancy, not a fail-open condition. Intent 112's maintenance
-  lock gates its own Exec on this test and re-runs it as a regression check on
-  every edit it makes to `lock.rb`.
+  claim is plain dormancy, not a fail-open condition. Intent 112, which planned
+  a maintenance lock on top of this test, was abandoned: no maintenance lock
+  exists, and a terminal intent directory is edited only on an explicit owner
+  grant.
 - **CLI and visibility.** `plastic-lock claim --artifact <name>` acquires a
   claim (exit 1 and names the holder when one is already held, even by the
   same session; takes over a stale claim automatically); `plastic-lock
