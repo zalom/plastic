@@ -92,7 +92,7 @@ belt-and-braces on top of the frontmatter pin.
 **Cross-harness portability.** The dispatch and model-tier contract above is harness-facing. The
 adapter layer that maps Plastic's hooks and model aliases onto each supported agent runtime
 (Claude, Codex, Hermes) is the cross-harness portability layer; see
-docs/reference/harness-adapters.md for the adapter contract.
+[`harness-adapters.md`](https://github.com/zalom/plastic/blob/main/docs/reference/harness-adapters.md) for the adapter contract.
 
 **Spawn preamble (intent 152).** `scripts/spawn-preamble` emits a live-state block purely from
 filesystem state: the active intent, stage, role/cycle-step, the honor instruction, and the

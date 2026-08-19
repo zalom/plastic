@@ -157,7 +157,7 @@ To explain or debug a ranking or disposition, read `references/classification.md
 
 The eval is the payload + golden snapshots: run the engine against the fixture store and
 assert the `--data` payload shape/sorting/classification and the byte-identical `--json` +
-text goldens in `test/fixtures/dashboard/`. See `test/dashboard_test.rb`. Drift without an
+text goldens in [`test/fixtures/dashboard/`](https://github.com/zalom/plastic/tree/main/test/fixtures/dashboard). See [`dashboard_test.rb`](https://github.com/zalom/plastic/blob/main/test/dashboard_test.rb). Drift without an
 intentional change means the skill is broken.
 
 ## Notes

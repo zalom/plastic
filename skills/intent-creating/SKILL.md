@@ -100,7 +100,7 @@ Ask or infer from context:
 
 `chain` carries what this intent spawns AND related-but-not-spawned successors it leads to;
 it starts empty and is populated later. See
-`docs/concepts/how-plastic-sources-and-chains-intents.md` for the full model.
+[`how-plastic-sources-and-chains-intents.md`](https://github.com/zalom/plastic/blob/main/docs/concepts/how-plastic-sources-and-chains-intents.md) for the full model.
 Place the intent in `## Active` or `## Future` in INDEX.md (status is
 convention-derived, not a frontmatter field).
 

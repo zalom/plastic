@@ -43,7 +43,7 @@ shared one still is.
 The bridge resolves the current session in a fixed precedence: the stdin `session_id` first, then
 the `CLAUDE_CODE_SESSION_ID` environment variable, then a derived key when neither is present. A
 bridge is purge-eligible by terminal state, not by age: it is removed only once its intent is no
-longer active, never on a timer. See `docs/internals.md` for depth.
+longer active, never on a timer. See [`docs/internals.md`](https://github.com/zalom/plastic/blob/main/docs/internals.md) for depth.
 
 The delivery lock arbitrates at the whole-intent grain: it decides who may work
 an intent at all. Underneath it, a per-artifact claim token (intent 111)
@@ -58,7 +58,7 @@ work is unaffected; it engages, and denies, only when a second writer tries to
 take a fresh claim someone else already holds. A stale or corrupt claim fails
 open (the write proceeds, the claim yields) and the condition is surfaced in
 `plastic-lock status`, which lists any live claims alongside the delivery
-lock. See `plastic-lock claim`/`release-claim` and `docs/internals.md` for the
+lock. See `plastic-lock claim`/`release-claim` and [`docs/internals.md`](https://github.com/zalom/plastic/blob/main/docs/internals.md) for the
 full mechanism.
 
 There is exactly one lock in Plastic: `delivery.lock` (exclusive, one owner plus delegates),

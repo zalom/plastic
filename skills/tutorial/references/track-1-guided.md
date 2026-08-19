@@ -120,6 +120,6 @@ two, exactly the README section (or note) just delivered.
 ## Wrap and where to go next
 
 That is the full cycle once: create, board, decide, spec, plan, build, done. Read
-`docs/guides/your-first-intent-in-10-minutes.md` for the same path condensed to a single
-read, and `docs/guides/what-the-gates-are-telling-you.md` for what to do if a station denies
+[`your-first-intent-in-10-minutes.md`](https://github.com/zalom/plastic/blob/main/docs/guides/your-first-intent-in-10-minutes.md) for the same path condensed to a single
+read, and [`what-the-gates-are-telling-you.md`](https://github.com/zalom/plastic/blob/main/docs/guides/what-the-gates-are-telling-you.md) for what to do if a station denies
 an action instead of completing it.

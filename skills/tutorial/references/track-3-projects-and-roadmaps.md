@@ -106,6 +106,6 @@ waiting on a release to exist first.
 
 This is the same What, Why, How, Exec cycle from tracks 1 and 2, repeated across a project
 and gathered by a roadmap. Read
-`docs/guides/using-plastic-with-claude-code.md` for roadmap-driven delivery in more depth,
+[`using-plastic-with-claude-code.md`](https://github.com/zalom/plastic/blob/main/docs/guides/using-plastic-with-claude-code.md) for roadmap-driven delivery in more depth,
 including a real worked roadmap. For the exact roadmap file format beyond what this
 walkthrough covers, the `plastic-roadmap` skill itself is the reference.

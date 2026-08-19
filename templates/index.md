@@ -3,7 +3,7 @@
 ## Active
 <!-- Line shape: `- [ID — Title](path)`. Writes emit the em-dash (U+2014) between
      id and title; readers (Bridge.index_entry_match) accept the em-dash or a plain
-     hyphen, so either form parses (see docs/internals.md). -->
+     hyphen, so either form parses (see https://github.com/zalom/plastic/blob/main/docs/internals.md). -->
 (no active intents)
 
 ## Future

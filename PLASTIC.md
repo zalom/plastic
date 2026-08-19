@@ -61,7 +61,7 @@ tags: [plastic, architecture]
 
 - Context contract: load `sources` strongly (they are what the intent was built from);
   traverse `chain` lightly for discovery. See
-  docs/concepts/how-plastic-sources-and-chains-intents.md for the full model.
+  [`how-plastic-sources-and-chains-intents.md`](https://github.com/zalom/plastic/blob/main/docs/concepts/how-plastic-sources-and-chains-intents.md) for the full model.
 - IDs use Luhmann's alternating convention: `1` → `1a` → `1a1` → `1a1a`
 - Multiple branches increment: `1a`, `1b`, `1c`
 

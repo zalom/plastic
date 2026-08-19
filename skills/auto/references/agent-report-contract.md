@@ -90,7 +90,7 @@ argument is sound before any code is written.
 ## Fallback: always a report
 
 Decision-shaping (the preamble plus these prompts) makes the report mandatory, but child-agent
-honor is best-effort across harnesses (Tier B/C in `docs/reference/harness-adapters.md`), so the
+honor is best-effort across harnesses (Tier B/C in [`harness-adapters.md`](https://github.com/zalom/plastic/blob/main/docs/reference/harness-adapters.md)), so the
 contract is never a hard block (decision D3). When a dispatched agent returns no usable report
 (it went idle, emitted only a bare ping, or its message was lost to a mid-run interjection), the
 enforcer synthesizes one:

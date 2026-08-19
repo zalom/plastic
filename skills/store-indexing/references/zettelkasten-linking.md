@@ -14,7 +14,7 @@
    `intent:` text. Ordering is mandatory: all `sources` first (top), then all `chain`,
    frontmatter order preserved within each group. Sources never appear at the end. No
    source/chain tags, no sub-grouping.
-2. **Sources/Chain** (knowledge graph): `sources` = direct ascendants this was created from (formation, acyclic, must-load); `chain` = forward continuations and related successors (may cycle, lighter context). See `docs/concepts/how-plastic-sources-and-chains-intents.md` for the full model.
+2. **Sources/Chain** (knowledge graph): `sources` = direct ascendants this was created from (formation, acyclic, must-load); `chain` = forward continuations and related successors (may cycle, lighter context). See [`how-plastic-sources-and-chains-intents.md`](https://github.com/zalom/plastic/blob/main/docs/concepts/how-plastic-sources-and-chains-intents.md) for the full model.
 3. **Tags** (weakest) — shared tags, `project-<name>` for project membership
 
 ## When to Create a Cluster

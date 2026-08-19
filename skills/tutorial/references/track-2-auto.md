@@ -55,9 +55,11 @@ Checkpoint: name one thing auto will always stop and ask about, rather than deci
 
 No new command. Auto still honors every hard gate a guided session would hit: the delivery
 lock (one owner at a time), the code gate (shut until `plan.md` and `checklist.md` exist),
-and the create gate (intents only come from the tool that makes them, never hand-authored).
+the create gate (intents only come from the tool that makes them, never hand-authored), the
+links gate (a `## Links` section changes only to match the file's own frontmatter), and the
+bash gate (a shell command cannot write project code the code gate would have blocked).
 
-Checkpoint: read one gate message from the run so far and name which of the three gates it
+Checkpoint: read one gate message from the run so far and name which of the five gates it
 came from.
 
 ### 4. Reading the per-stage reports
@@ -85,10 +87,10 @@ at and how that matched what was actually on disk.
 ## Wrap and where to go next
 
 Auto keeps the same stages and the same gates as guided; the only difference is who steers.
-Read `docs/guides/pick-your-mode.md` for the honest trade-off between guided and auto, and
-`docs/guides/using-plastic-with-claude-code.md` for how that choice feels day to day and how
+Read [`pick-your-mode.md`](https://github.com/zalom/plastic/blob/main/docs/guides/pick-your-mode.md) for the honest trade-off between guided and auto, and
+[`using-plastic-with-claude-code.md`](https://github.com/zalom/plastic/blob/main/docs/guides/using-plastic-with-claude-code.md) for how that choice feels day to day and how
 it connects to roadmap-driven delivery. For denial messages met along the way, read
-`docs/guides/what-the-gates-are-telling-you.md`.
+[`what-the-gates-are-telling-you.md`](https://github.com/zalom/plastic/blob/main/docs/guides/what-the-gates-are-telling-you.md).
 
 Note on terms: "guided" means the user starts each stage with a command and the agent
 narrows the thinking inside it, the same shape track 1 walked. "Manual", editing project
