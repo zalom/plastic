@@ -1,0 +1,25 @@
+# Skeptic report: concurrency claims (skeptic-bugs)
+
+Verdicts: (1) SessionStart wipes armed bridge: CONFIRMED as mechanism, WRONG as cause of documented bugs (hook-session-start:51 uses ENV||pid, never stdin session_id, so interactive derive lands in junk file; only bg/headless with env set clobber; hooks/session-start:9 only passes the GLOBAL index and derives only when exactly 1 active intent, so it can never touch project-store intents where the flap bugs live). (2) Store-shape $HOME/.plastic at hooks/session-start:9: CONFIRMED, live in /tmp now (intent 28 vs 27 bridges); purge_done_bridges deleted an Active intent's bridge in repro when no delivery.lock present; the lock check (bridge.rb:381-383) is the only protection; lock gate itself unaffected (derives store from file path, bridge.rb:1195). (3) derive_key aliasing: CONFIRMED code-level (both got :owned) but it is DESIGNED headless fallback the user deliberately relies on (memory: derived-key arm for 2nd concurrent delivery); real cost is split-key case, live now: intent 69 has two bridges, one with worktree.code set (auto-bbe9efeea2) and one nil (real-session key) - a hook resolving the real session id loses worktree confinement. (4) disarm_auto discards Lock.release return (bridge.rb:999-1001): CONFIRMED by repro (:not_owner, lock still on disk after "successful" disarm), contradicts D2 at lock.rb:15-16. (5) Lock.write non-atomic: CONFIRMED (Bridge.write next door does tmp+rename correctly); repro'd corrupt->repair->two-owners chain. Heartbeat 0-byte TOCTOU: CONFIRMED but "permanent poison pill" OVERSTATED (repair_lock handles corrupt first, gate names fix command - recoverable stall). Takeover no rollback: CONFIRMED and worse (repro: delivery lock deleted, acquire :excluded, nothing restores) but UNREACHABLE today (nothing acquires maintenance locks). "No flock anywhere": WRONG - scripts/write-config:64 holds LOCK_EX + temp-rename, the correct pattern exists and was never applied to Lock/Bridge. (6) build.auto only in /tmp: CONFIRMED end-to-end (repro: delete bridge -> gate allows; repair_lock reports repaired but restores auto=false since it reads the flag from the bridge it is rebuilding, bridge.rb:1027; nothing durable records arming). (7) Heartbeats write-path only: CONFIRMED mechanism, severity OVERSTATED (hook-gate-check:80 heartbeats BEFORE the not-inside-intent-dir early exit at :84, so every Write/Edit anywhere refreshes; and expiry never blocks the owner - holds? is authorized? only, lock.rb:98-100; freshness only opens an audited takeover window). (8) Zero concurrency tests: OVERSTATED - test/write_config_test.rb:123-135 races two subprocesses from two threads and is the right template; correct claim: Lock/Bridge/Claim have none.
+
+## NEW root cause the first report missed
+Bridge.derive writes the virgin bridge at bridge.rb:820; arm calls derive at :896 BEFORE Lock.acquire at :902. Every LockHeldError branch raises AFTER the armed bridge is already overwritten. Repro: re-arm with own lock corrupt -> raised, bridge now auto=false/worktree nil/owner nil, worktree gate returns ALLOW (isolation lost) while durable lock intact. Worktree.provision (worktree.rb:145-170) unconditionally replaces bridge worktree block; code stays nil unless add_worktree succeeds, so one transient git failure during re-arm overwrites a good pointer with null. THIS is the pointer flap: it lives in arm/repair_lock, not SessionStart. Fits documented symptoms exactly (project intents, concurrent delivery, lock intact, fail-open confinement loss).
+
+## Ranked (likelihood x damage)
+1. derive-before-acquire self-clobber (HIGH; matches reference_parallel_exec_worktree_pointer_flap exactly)
+2. provision nulls good worktree.code on git hiccup (MEDIUM; same family)
+3. store-shape defect (CERTAIN, live; bridge purgeable when no lock file)
+4. disarm_auto discards release result (MEDIUM; matches reference_disarm_auto_unsafe_clobbered_bridge)
+5. non-atomic Lock.write -> two owners (LOW/event, unbounded exposure)
+6. build.auto in /tmp (LOW, needs /tmp wipe)
+7. SessionStart derive clobber (LOW, bg-only, lone global intent)
+8. heartbeat gaps (cosmetic)
+9. takeover rollback (zero today)
+
+## KISS ship-first list
+1. Move derive's write AFTER lock acquire + provision (derive returns hash, arm persists once at end) - kills #1; make provision preserve existing worktree.code on add_worktree failure - kills #2. Few lines.
+2. One-line store-shape fix ($HOME/.plastic/store).
+3. Use Lock.release return in disarm_auto (:not_owner -> release as actual owner or surface).
+4. Atomic Lock.write (copy Bridge.write pattern, 3 lines) - removes corrupt->two-owners chain.
+5. One concurrency test for Lock cloned from write_config_test shape.
+Gold-plating: full flock everywhere (1+4 remove most exposure), takeover rollback (unreachable), heartbeat changes (expiry can't block owner), moving build.auto to intent dir (worth an intent someday; triggered only by /tmp wipe that forces re-boarding anyway). Not housekeeping: purge_done_bridges deleting another session's bridge (fix 2 closes it).
