@@ -57,11 +57,9 @@ CONSUMES the intent 74 report to WRITE the human briefing defined here. The two 
 
 ## Brevity: point, don't repeat
 
-Surface rules (no em-dashes, plain words, no filler openers, and so on) are owned by the
-shipped `plastic-humanizer` skill and the always-on plain-language layer. This contract does not
-re-list that catalog. It restates only the hard bans as one line: no em-dashes, no "not X but Y",
-no rule of three, no hype words, no sycophancy, no over-bolding. Apply `plastic-humanizer` and the
-always-on layer for everything else.
+Surface rules are owned by the `writing-style` skill. This contract does not restate them, in full
+or in summary. It defines the report's shape only: what to say, in what order, and when to stop.
+Apply the `writing-style` skill for the wording.
 
 ## Emission: guided vs auto
 

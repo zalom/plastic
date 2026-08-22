@@ -59,9 +59,7 @@ Rules for any agent (or human) contributing to this repository.
   `docs/internals.md` in the same change.
 - Keep the README light. It carries the pitch, install, and a pointer into `docs/`.
   Deeper material belongs in `docs/`.
-- User-facing documents (README, `docs/`, AGENTS.md, CLAUDE.md) avoid AI tell-tale signs.
-  Do not use em-dashes. Use commas, periods, parentheses, or colons. Internal store and
-  intent files are exempt from this rule.
+- Writing follows the `writing-style` skill. It owns the wording rules for every document in this repository; this file does not restate them.
 
 ### Work
 - All work flows through an intent. Move it through What, Why, How, Exec. Do not jump

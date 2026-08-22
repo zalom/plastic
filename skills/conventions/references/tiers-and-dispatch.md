@@ -130,6 +130,6 @@ succession at a glance (last line = where we are).
 In auto mode the orchestrator briefs the human at every lifecycle stage boundary in a fixed,
 impact-first shape (the EM-to-CTO report contract): State, then Risk, then Call. This is the
 depth at M and L; at S the briefing fires once, at How. It leads with
-what changed and why it matters, names one risk, and leaves the decision to the human. Separately,
-the `plastic-humanizer` skill cleans authored prose (specs, outcomes, READMEs, release notes) of
-AI tells and slop; it is for documents, not for every reply.
+what changed and why it matters, names one risk, and leaves the decision to the human. Wording
+rules for the briefing, and for authored prose such as specs, outcomes, READMEs, and release
+notes, are owned by the `writing-style` skill, not by this contract.

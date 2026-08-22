@@ -139,7 +139,7 @@ Walk this once in
 | Intent | `plastic-continuing`, `plastic-intent-creating`, `plastic-intent-starting`, `plastic-intent-brainstorming`, `plastic-intent-grilling`, `plastic-intent-speccing`, `plastic-intent-planning`, `plastic-intent-executing`, `plastic-intent-ending`, `plastic-intent-continuing`, `plastic-intent-researching` |
 | Project and delivery | `plastic-project-creating`, `plastic-project-continuing`, `plastic-roadmap`, `plastic-roadmap-continuing`, `plastic-releasing` |
 | Skill | `plastic-skill-creating`, `plastic-skill-evaluating` |
-| Product | `plastic-install`, `plastic-update`, `plastic-uninstall`, `plastic-rollback`, `plastic-doctor`, `plastic-humanizer` |
+| Product | `plastic-install`, `plastic-update`, `plastic-uninstall`, `plastic-rollback`, `plastic-doctor` |
 
 See [`docs/guides/index.md`](docs/guides/index.md) for task-oriented walkthroughs.
 
