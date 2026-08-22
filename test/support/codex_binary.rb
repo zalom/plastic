@@ -53,7 +53,9 @@ module CodexBinary
     i = offset_of(path, ANCHOR) or return nil
     raw = File.open(path, "rb") { |f| f.seek(i); f.read(4096) }
     stop = raw.index(STOP) or return nil
-    raw[0, stop]
+    # codex 0.148.0 placed a bare "apply_patch" literal between the grammar and
+    # STOP; it is not part of the grammar, so drop it when present.
+    raw[0, stop].sub(/apply_patch\z/, "")
   end
 
   # Strings that establish codex's own strictness and tool shape (spec AC13).
