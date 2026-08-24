@@ -1225,8 +1225,8 @@ class InstallerCore
   # The statusline swap-back on uninstall is not an [event, command] pair: it is a
   # value restored, not an entry deleted. It gets its own line rather than being
   # forced into the entry list (intent 278).
-  def report_removed_statusline(restored_command)
-    puts "  \u{1f9f9} Removed Plastic's statusLine from settings.json."
+  def report_removed_statusline(restored_command, file_label = "settings.json")
+    puts "  \u{1f9f9} Removed Plastic's statusLine from #{file_label}."
     return if restored_command.nil? || restored_command.to_s.empty?
 
     puts "     - restored your original statusLine: #{tilde(restored_command.to_s)}"
@@ -1536,7 +1536,7 @@ class InstallerCore
       original_path = File.join(plastic_home, ".cache", "original-statusline.json")
       if File.exist?(original_path)
         original = JSON.parse(File.read(original_path)) rescue nil
-        if original
+        if original.is_a?(Hash)
           settings["statusLine"] = original
           restored_statusline = original["command"]
         end

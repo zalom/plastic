@@ -578,6 +578,44 @@ class MergeClaudeHooksTest < Minitest::Test
     assert_match(/restored/i, output)
   end
 
+  # F1 regression: a corrupted original-statusline.json cache (an Array or a bare
+  # number instead of the Hash merge always wrote) must not crash remove_claude_hooks.
+  # Crashing here is worse than main: uninstall_agent already deleted the launcher
+  # files by the time remove_claude_hooks runs, so a raised TypeError would leave
+  # every Plastic hook still registered in settings.json with no launchers left to
+  # run them.
+  def test_remove_survives_array_shaped_statusline_cache
+    cache_dir = File.join(PLASTIC_TEST_HOME, ".cache")
+    FileUtils.mkdir_p(cache_dir)
+    File.write(File.join(cache_dir, "original-statusline.json"), JSON.generate([1, 2]))
+
+    File.write(@settings_path, JSON.pretty_generate({
+      "hooks" => {},
+      "statusLine" => { "type" => "command", "command" => "/path/plastic-statusline" },
+    }))
+
+    @installer.remove_claude_hooks(@settings_path)
+
+    settings = JSON.parse(File.read(@settings_path))
+    refute settings.key?("statusLine"), "A malformed cache must not be restored as statusLine"
+  end
+
+  def test_remove_survives_numeric_shaped_statusline_cache
+    cache_dir = File.join(PLASTIC_TEST_HOME, ".cache")
+    FileUtils.mkdir_p(cache_dir)
+    File.write(File.join(cache_dir, "original-statusline.json"), JSON.generate(5))
+
+    File.write(@settings_path, JSON.pretty_generate({
+      "hooks" => {},
+      "statusLine" => { "type" => "command", "command" => "/path/plastic-statusline" },
+    }))
+
+    @installer.remove_claude_hooks(@settings_path)
+
+    settings = JSON.parse(File.read(@settings_path))
+    refute settings.key?("statusLine"), "A malformed cache must not be restored as statusLine"
+  end
+
   def test_remove_does_not_print_kept_user_hook
     existing = {
       "hooks" => {
