@@ -190,6 +190,20 @@ immutable forbids outright. The receipt is instead the scoped git commit
 durable, diffable record - not a missing safeguard, a deliberate substitution for a receipt
 shape that would otherwise require an illegal write.
 
+`--prune` (intent 280) reverses the same tool's direction under the identical carve-out: instead
+of adding newly-violating ids, it removes rows that suppress nothing this run (the intent's gap
+got repaired, the id was mistyped, or the intent directory is gone), computed via the same
+`DoctorExclusions.dead_rows` predicate doctor itself reports from, so the reporter and the
+remover can never disagree about what a dead row is. Same dry-run-by-default, same `--apply`
+gate, same comment-preserving writer, same one scoped commit, same no-`revisions.md`-entry rule -
+this direction still modifies no intent directory, only the store-level table. It holds back two
+kinds of row before writing even when they read as dead: an id whose intent dir carries a fresh
+delivery lock (the lock skip would otherwise leave it out of the walk entirely and misclassify
+it), and an id whose intent has not reached a terminal state yet (`savepoint_operational` only
+fires on a terminal intent, so the row has nothing to suppress *yet*). Both are named in the
+output as kept, never silently dropped, and a rule left with zero ids after pruning is removed
+from the file rather than written as a bare `rule_name` line the loader would reject.
+
 Like every other tool behind `maintenance-run`, it dry-runs by default (the owner-approval
 gate), unions with any existing hand-edited file content so a manually added id is never
 dropped, and skips (never aborts on) any intent dir holding a fresh delivery lock.
