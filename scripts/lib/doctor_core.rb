@@ -125,11 +125,11 @@ class Doctor
     return unless hooks_hash.is_a?(Hash)
 
     hooks_hash.each do |event, groups|
-      Array(groups).each do |g|
+      group_list = groups.is_a?(Hash) ? [groups] : Array(groups)
+      group_list.each do |g|
         next unless g.is_a?(Hash)
 
-        # A bare Hash (array wrapper dropped by a hand-edit) is one entry,
-        # not a skipped group (review finding, 276).
+        # A bare Hash is one entry, not a skipped group (review finding).
         hooks_list = case g["hooks"]
                      when Array then g["hooks"]
                      when Hash then [g["hooks"]]
@@ -144,43 +144,104 @@ class Doctor
     end
   end
 
-  # Mode (a): does the EXECUTABLE token's basename carry the reserved
-  # plastic- prefix, never an argument's (review finding, 276)? The
-  # executable is the first token if it names a path, else the first that does.
-  def unowned_prefixed_command?(cmd)
-    tokens = cmd.to_s.split(/\s+/).reject(&:empty?).map { |t| t.delete("\"'") }
-    return false if tokens.empty?
+  # Candidate start positions before end_pos: string start, or right after
+  # whitespace or an opening quote (round 3).
+  def command_boundaries(raw, end_pos)
+    boundaries = [0]
+    (0...end_pos).each do |i|
+      ch = raw[i]
+      boundaries << i + 1 if ch =~ /\s/ || ch == '"' || ch == "'"
+    end
+    boundaries.uniq.sort
+  end
 
-    executable = tokens.first.include?("/") ? tokens.first : (tokens.find { |t| t.include?("/") } || tokens.first)
+  # Strip a quote pair only when it wraps the WHOLE string; never delete a
+  # quote character inside it (that broke a real apostrophe, round 3).
+  def strip_balanced_quotes(str)
+    if str.length >= 2 && (str[0] == '"' || str[0] == "'") && str[0] == str[-1]
+      str[1..-2]
+    else
+      str
+    end
+  end
+
+  # End position of the leftmost known launcher name in raw, matched whole
+  # (optionally + ".rb"); nil if none appears.
+  def launcher_name_end_position(raw, known_names)
+    positions = known_names.filter_map do |name|
+      m = raw.match(/#{Regexp.escape(name)}(\.rb)?(?=["'\s]|\z)/)
+      m && [m.begin(0), m.end(0)]
+    end
+    return nil if positions.empty?
+
+    positions.min_by(&:first).last
+  end
+
+  # Mode (b): true unless a launcher this command names is missing (round 3
+  # candidate design: see command_boundaries/strip_balanced_quotes above).
+  def launcher_on_disk?(cmd, known_names)
+    raw = cmd.to_s
+    end_pos = launcher_name_end_position(raw, known_names)
+    return true unless end_pos
+
+    any_absolute = false
+    command_boundaries(raw, end_pos).each do |start|
+      candidate = strip_balanced_quotes(raw[start...end_pos])
+      next if candidate.empty?
+
+      candidate = File.expand_path(candidate) if candidate.start_with?("~")
+      next unless candidate.start_with?("/")
+
+      any_absolute = true
+      return true if File.exist?(candidate)
+    end
+
+    !any_absolute
+  end
+
+  # Mode (a): does the EXECUTABLE's basename carry plastic-, never an
+  # argument's? Executable = longest leading candidate (whole command, or
+  # with a leading word stripped) that resolves to a real file, else the
+  # first token, quote-aware (round 3).
+  def unowned_prefixed_command?(cmd)
+    raw = cmd.to_s
+    return false if raw.strip.empty?
+
+    executable = executable_candidate(raw)
+    return false unless executable
+
     File.basename(executable).sub(/\.rb\z/, "").start_with?("plastic-")
   end
 
-  # Mode (b): true unless the launcher this command names is missing from
-  # disk. See launcher_path_from_command for how the path is derived.
-  def launcher_on_disk?(cmd, known_names)
-    path = launcher_path_from_command(cmd)
-    return true unless path
-
-    basename = File.basename(path).sub(/\.rb\z/, "")
-    return true unless known_names.include?(basename)
-
-    path = File.expand_path(path) if path.start_with?("~")
-    return true unless path.start_with?("/")
-
-    File.exist?(path)
+  def executable_candidate(raw)
+    return resolved_candidate(raw) || after_leading_word(raw) || quote_aware_first_token(raw)
   end
 
-  # The real filesystem path a command names (review finding, 276: a
-  # whitespace split treats a fragment of a spaced path as the whole path).
-  # Codex always quotes its dispatcher path, verbatim; the legacy Claude
-  # shape prefixes a bare "ruby " word, stripped; the current Claude shape
-  # is nothing but the path.
-  def launcher_path_from_command(cmd)
-    raw = cmd.to_s
-    quoted = raw[/"([^"]*)"/, 1] || raw[/'([^']*)'/, 1]
-    path = quoted || (raw.start_with?("ruby ") ? raw.sub(/\Aruby\s+/, "") : raw)
-    path = path.delete("\"'").strip
-    path.empty? ? nil : path
+  def after_leading_word(raw)
+    first_space = raw.index(/\s/)
+    return nil unless first_space
+
+    resolved_candidate(raw[(first_space + 1)..-1].to_s.strip)
+  end
+
+  # Quote-stripped, tilde-expanded str, returned only if it resolves to a
+  # real file; nil otherwise so the caller tries its next candidate.
+  def resolved_candidate(str)
+    candidate = strip_balanced_quotes(str)
+    return nil if candidate.empty?
+
+    candidate = File.expand_path(candidate) if candidate.start_with?("~")
+    candidate if File.exist?(candidate)
+  end
+
+  def quote_aware_first_token(raw)
+    if raw.start_with?('"') || raw.start_with?("'")
+      q = raw[0]
+      close = raw.index(q, 1)
+      return close ? raw[1...close] : raw[1..-1].to_s
+    end
+
+    raw.split(/\s+/).reject(&:empty?).first.to_s
   end
 
   # Shared mode-(a) fix_hint text (intent 276), parametrized by the config
@@ -494,7 +555,7 @@ class Doctor
 
     clauses = []
     clauses << "#{unowned.size} #{unowned.size == 1 ? "carries" : "carry"} the reserved plastic- prefix without being Plastic's" unless unowned.empty?
-    clauses << "#{missing_launcher.size} name a launcher missing from disk" unless missing_launcher.empty?
+    clauses << "#{missing_launcher.size} #{missing_launcher.size == 1 ? "names" : "name"} a launcher missing from disk" unless missing_launcher.empty?
 
     hints = []
     hints << rename_hint unless unowned.empty?
@@ -607,7 +668,7 @@ class Doctor
       return check(
         category: "agent_registration", name: "stray_skills", status: "warn",
         message: "#{installed.size} plastic-* skill dir(s) installed but the manifest at " \
-                 "#{tilde(manifest_path)} is missing, so ownership cannot be verified",
+                 "#{tilde(manifest_path)} is missing or unusable, so ownership cannot be verified",
         details: installed.sort, fixable: true,
         fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest #{installer_flag}"
       )

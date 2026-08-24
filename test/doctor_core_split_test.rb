@@ -196,14 +196,18 @@ class DoctorCoreSplitTest < Minitest::Test
   # hooks_entries_owned, codex_hooks_entries_owned, and extended
   # stray_skills_check to never return nil -- all three wired into
   # check_claude_registration/check_codex_registration, both already on the
-  # boot path, so the growth is load-bearing, not incidental. First measured
-  # at ~66,700 bytes (ceiling set to 70,000); a review pass then fixed a
-  # blocking path-resolution bug (a spaced PLASTIC_HOME or hooks dir made
-  # every launcher report a false "missing" fail) plus two narrower
-  # correctness gaps, which measured out to ~68,200 bytes. The ceiling
-  # carries headroom above that measured total, not against it, so the next
-  # genuine regrowth still trips this guard.
-  BOOT_PATH_BYTE_BUDGET = 69_000
+  # boot path, so the growth is load-bearing, not incidental. Measured
+  # ~66,700 bytes at first (ceiling 70,000), then ~68,200 after a review
+  # pass fixed a blocking path-resolution bug (a spaced PLASTIC_HOME or
+  # hooks dir made every launcher false-fail as "missing"; ceiling 69,000).
+  # A second review pass found the fix still broke on an apostrophe in the
+  # path and a trailing/leading argument; the replacement resolver (finds
+  # a known launcher name's occurrence, then tries every token-boundary
+  # candidate ending there, longest first) measures ~69,800 bytes after two
+  # comment-trimming passes. The ceiling carries headroom above that
+  # measured total, not against it, so the next genuine regrowth still
+  # trips this guard.
+  BOOT_PATH_BYTE_BUDGET = 70_500
 
   def test_core_require_stays_under_the_boot_path_byte_budget
     plastic_files = loaded_after_core_require.select { |i| i["path"].start_with?(ROOT) }
