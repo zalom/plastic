@@ -15,6 +15,7 @@
 #   maintenance-run --tool rebuild-graph [--plastic-home PATH] [--apply]
 #   maintenance-run --tool restore-intent-v1 <id> --at <ref> [--plastic-home PATH] [--apply] [--skip-links]
 #   maintenance-run --tool rebuild-savepoint --intent <id> [--store <key>] [--plastic-home PATH] [--apply]
+#   maintenance-run --tool register-exclusions [--rule <name>] [--store <key>] [--plastic-home PATH] [--apply]
 #
 # project-links here is ALWAYS single-intent: --intent is required. A store-wide
 # project-links sweep is the rare, owner-approved batch exception (D2) and is run directly
@@ -38,6 +39,7 @@ require_relative "lib/lock"
 require_relative "lib/maintenance_git"
 require_relative "lib/bridge"
 require_relative "lib/revisions_writer"
+require_relative "doctor" # safe: doctor.rb's CLI is behind $PROGRAM_NAME == __FILE__
 
 DEFAULT_HOME = File.join(Dir.home, ".plastic")
 
@@ -75,7 +77,7 @@ end
 
 def parse_argv(argv)
   opts = { tool: nil, intent: nil, store: nil, plastic_home: DEFAULT_HOME, apply: false,
-           at: nil, skip_links: false, id: nil }
+           at: nil, skip_links: false, id: nil, rule: nil }
   i = 0
   while i < argv.length
     case argv[i]
@@ -86,6 +88,7 @@ def parse_argv(argv)
     when "--apply" then opts[:apply] = true
     when "--at" then opts[:at] = argv[i += 1]
     when "--skip-links" then opts[:skip_links] = true
+    when "--rule" then opts[:rule] = argv[i += 1]
     else
       opts[:id] ||= argv[i] # positional id, restore-intent-v1 only
     end
@@ -269,9 +272,138 @@ def run_rebuild_savepoint(home, intent, store, apply)
   report_result(result)
 end
 
+# Renders one store's canonical doctor-exclusions content (spec D6/D7): a leading comment
+# block documenting the format, then one `rule_name id id id` line per rule, ids sorted. Pure.
+# `existing_text:` (review F2) is the file's raw content BEFORE this run, or nil when the
+# file does not exist yet. A hand-edited exclusion file's comments are the only home for an
+# exemption's justification (D8: no revisions.md receipt exists for this tool), so an update
+# preserves every comment and blank line from `existing_text` verbatim, in original order,
+# ahead of the freshly rendered rule lines - it never re-renders over them. The boilerplate
+# header is written only when there is no existing file to preserve anything from.
+def render_exclusions_file(rules, existing_text: nil)
+  if existing_text
+    lines = existing_text.each_line.select { |l| l.strip.empty? || l.strip.start_with?("#") }.map(&:chomp)
+  else
+    lines = [
+      "# doctor-exclusions - knowingly-exempt (intent_id, rule) pairs (intent 274).",
+      "# Format: rule_name id id id  (one line per rule, ids space-separated).",
+      "# Blank lines and lines starting with # are ignored. Ids only, never any other",
+      "# content - doctor reports how many findings this file suppressed and where",
+      "# this file lives, so the count always stays honest.",
+      "",
+    ]
+  end
+  rules.keys.sort.each do |rule_name|
+    lines << "#{rule_name} #{rules[rule_name].sort.join(" ")}"
+  end
+  "#{lines.join("\n")}\n"
+end
+
+# register-exclusions (intent 274, spec D7/D8): the one-time population tool. Computes
+# violations through Doctor's OWN done_signal_findings_for_dir rather than a reimplementation
+# of that predicate (the drift 222 extracted that function to prevent), unions with any
+# existing hand-edited file, skips (never aborts on) any intent dir holding a fresh delivery
+# lock, and writes ALL stores in one scoped commit (they already live in the single ~/.plastic
+# git repo, so a cross-store write is still one repo and one scoped commit - D7).
+#
+# Writes NO revisions.md entries (D8): this tool modifies no intent directory, only one
+# store-level table per store, so 197's receipt-before-write rule (which covers tools that
+# structurally edit an intent's OWN files) does not apply, and writing one would mean editing
+# every touched Completed intent directory - forbidden, completed intents are immutable. The
+# scoped commit plus the diffable exclusion file itself are the receipt.
+def run_register_exclusions(home, rule, store, apply)
+  rule ||= "savepoint_operational"
+  unless RuleCatalog.excludable_check?(rule)
+    abort_loud("--rule #{rule.inspect} is not excludable (expected one of: " \
+               "#{RuleCatalog::EXCLUDABLE_CHECKS.keys.join(", ")})")
+  end
+
+  doctor = Doctor.new(plastic_home: home)
+  stores = doctor.done_signal_stores(store ? [store] : nil)
+  abort_loud("no store matches --store #{store.inspect}") if store && stores.empty?
+
+  plan = {}
+  skip_lines = []
+
+  stores.each do |s|
+    existing = DoctorExclusions.load(s[:index])
+    if existing[:errors].any?
+      abort_loud("#{s[:scope]}: existing doctor-exclusions is malformed, refusing to rewrite " \
+                 "it (#{existing[:errors].join("; ")})", 1)
+    end
+    # scrub: DoctorExclusions.load already scrubs internally (never raises, D5), but this
+    # raw read feeds render_exclusions_file's own line scan below, which was NOT going
+    # through that scrub - an invalid byte in a hand-written comment raised
+    # Encoding::CompatibilityError here on every register-exclusions run, dry-run included,
+    # even though `existing` itself (loaded via DoctorExclusions.load) reported the file
+    # clean. Scrub this read the same way so both paths agree.
+    existing_text = File.exist?(existing[:path]) ? File.read(existing[:path]).scrub : nil
+
+    found_ids = []
+    doctor.index_sections_by_dir(s[:index]).each do |dirname, in_sections|
+      dir = File.join(s[:store_dir], dirname)
+      next unless File.directory?(dir)
+
+      terminal = (in_sections & ["Completed", "Abandoned"]).any?
+      next unless terminal
+
+      if Lock.fresh?(dir)
+        skip_lines << "#{s[:scope]}: #{dirname} skipped (fresh delivery lock)"
+        next
+      end
+
+      active = in_sections.include?("Active") && !terminal
+      findings = doctor.done_signal_findings_for_dir(
+        dir, label: "#{s[:scope]} store/#{dirname}", scope: s[:scope], dirname: dirname,
+        terminal: terminal, active: active, excluded_rules: []
+      )
+      found_ids << dirname.split("--", 2).first if findings[:operational_gap].any?
+    end
+
+    already = existing[:rules][rule] || []
+    added = found_ids - already
+    next if added.empty?
+
+    merged_rules = existing[:rules].merge(rule => (already | found_ids).sort)
+    plan[s] = { content: render_exclusions_file(merged_rules, existing_text: existing_text), added: added.sort }
+  end
+
+  puts skip_lines.join("\n") unless skip_lines.empty?
+
+  if plan.empty?
+    puts "maintenance-run: no new #{rule} violations to register."
+    exit 0
+  end
+
+  unless apply
+    plan.each do |s, info|
+      puts "maintenance-run: DRY RUN, #{s[:scope]} would register #{info[:added].size} " \
+           "id(s) under #{rule}: #{info[:added].join(", ")}"
+    end
+    exit 0
+  end
+
+  begin
+    result = MaintenanceGit.run_scoped(
+      repo_dir: home, branch_name: "maintenance/register-exclusions-#{stamp}",
+      commit_message: "chore: maintenance - register doctor exclusions (#{rule})"
+    ) do
+      plan.each { |s, info| File.write(DoctorExclusions.path_for(s[:index]), info[:content]) }
+    end
+  rescue MaintenanceGit::DirtyWorkingTree, MaintenanceGit::NotAGitRepo => e
+    abort_loud(e.message, 4)
+  rescue RuntimeError => e
+    abort_loud(e.message, 3)
+  end
+  report_result(result)
+end
+
 def main(argv)
   opts = parse_argv(argv)
-  abort_loud("--tool is required (project-links|rebuild-graph|restore-intent-v1|rebuild-savepoint)") unless opts[:tool]
+  unless opts[:tool]
+    abort_loud("--tool is required " \
+               "(project-links|rebuild-graph|restore-intent-v1|rebuild-savepoint|register-exclusions)")
+  end
 
   case opts[:tool]
   when "project-links"
@@ -281,9 +413,11 @@ def main(argv)
     run_restore_intent_v1(opts[:plastic_home], opts[:id], opts[:at], opts[:store], opts[:apply], opts[:skip_links])
   when "rebuild-savepoint"
     run_rebuild_savepoint(opts[:plastic_home], opts[:intent], opts[:store], opts[:apply])
+  when "register-exclusions"
+    run_register_exclusions(opts[:plastic_home], opts[:rule], opts[:store], opts[:apply])
   else
-    abort_loud("unknown --tool #{opts[:tool].inspect} " \
-               "(expected project-links|rebuild-graph|restore-intent-v1|rebuild-savepoint)")
+    abort_loud("unknown --tool #{opts[:tool].inspect} (expected project-links|rebuild-graph|" \
+               "restore-intent-v1|rebuild-savepoint|register-exclusions)")
   end
 end
 

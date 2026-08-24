@@ -205,6 +205,34 @@ This keeps the update flow clean when nothing is wrong.
 - Non-zero exit codes mean "issues found", not "script crashed".
   Always parse stdout regardless of exit code.
 
+## Doctor-Exclusions: Known-Exempt Findings
+
+Some `savepoint_operational` findings can never legitimately close (a terminal intent with no
+real `outcome.md` has no disposition to echo, and doctor never invents one), so each store
+carries a `doctor-exclusions` file, sibling to that store's `INDEX.md`, recording
+knowingly-exempt `(intent_id, rule)` pairs. Format: one `rule_name id id id` line per rule,
+blank lines and `#` comments ignored. v1 honors exactly one rule, `savepoint_operational`.
+
+**Reading the count.** When any exclusion applies, the `savepoint_operational` check's message
+folds in the count and the file's path, e.g. `"... (3 excluded via ~/.plastic/doctor-exclusions)"`.
+A malformed line in the file forces the check to `warn` with the parse error in `details`, even
+when zero real gaps remain, so a broken file is never silently permissive.
+
+**Hand-editing.** The file is plain text; add a line (or append ids to an existing rule line) and
+save. No installer step, no reindex, and no `revisions.md` entry is required or written.
+
+**Populating it in bulk.** Run the maintenance tool, dry-run first:
+
+```bash
+ruby ~/.plastic/scripts/maintenance-run --tool register-exclusions
+```
+
+This computes every current `savepoint_operational` violation across all stores (or one store
+via `--store <key>`), through doctor's own finding function, and prints what it would register
+without writing anything. Review the output, then re-run with `--apply` to write the file(s) and
+land one scoped git commit. It unions with any existing hand-added ids (never drops one) and
+skips, rather than aborts on, any intent dir holding a fresh delivery lock.
+
 ## References
 
 - Read `references/gates-stuck-detection.md` for the full gate enforcement table, bridge file pattern, and the recorded stuck-detection signals when diagnosing gate failures or stuck agents

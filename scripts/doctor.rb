@@ -13,6 +13,7 @@ require "date"
 
 require_relative "lib/doctor_core"
 
+require_relative "lib/doctor_exclusions"
 require_relative "lib/qmd_sync"
 require_relative "lib/intent_validator"
 require_relative "lib/graph_rebuild"
@@ -531,17 +532,24 @@ class Doctor
 # check_done_signals's store-wide loop (211's territory, unchanged severities) and the new
 # per-intent check (check_intent_end) call, so the two surfaces can never independently
 # drift on what counts as a phantom line or a completeness gap. Returns
-# {conflict:, phantom:, gap:, stalled:} where conflict/phantom/stalled are nil or a finding
-# string, and gap is an ARRAY (0, 1, or 2 strings): the original inline code pushed the
-# "outcome missing" gap and the "audit echo missing" gap as two SEPARATE, independent `if`
-# blocks (never elsif), so a single terminal dir missing BOTH can legitimately contribute
-# two distinct gap strings in the same pass; collapsing that into one nilable field would
-# silently drop one of the two on a dir where both are true (verified against
-# test/doctor_done_signals_test.rb's fixtures before this extraction, per plan.md Step 3).
-def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, active:)
+# {conflict:, phantom:, gap:, operational_gap:, excluded:, stalled:} where conflict/phantom/
+# stalled are nil or a finding string, and gap/operational_gap/excluded are ARRAYs (0, 1, or 2
+# strings): the original inline code pushed the "outcome missing" gap and the "audit echo
+# missing" gap as two SEPARATE, independent `if` blocks (never elsif), so a single terminal
+# dir missing BOTH can legitimately contribute two distinct gap strings in the same pass;
+# collapsing that into one nilable field would silently drop one of the two on a dir where
+# both are true (verified against test/doctor_done_signals_test.rb's fixtures before this
+# extraction, per plan.md Step 3).
+#
+# `excluded_rules:` (intent 274) is the set of rule names the caller's doctor-exclusions file
+# names for this one intent id. A savepoint_operational finding routes to :excluded instead of
+# :operational_gap when "savepoint_operational" is in that set; the :gap bucket (signals_complete,
+# the outcome.md check) never consults it, which is what keeps the exclusion key (intent_id,
+# rule) rather than just intent_id (see test/doctor_done_signals_test.rb case 12).
+def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, active:, excluded_rules: [])
   outcome = File.join(dir, "outcome.md")
   outcome_real = Bridge.stage_file_present?(outcome)
-  findings = { conflict: nil, phantom: nil, gap: [], operational_gap: [], stalled: nil }
+  findings = { conflict: nil, phantom: nil, gap: [], operational_gap: [], excluded: [], stalled: nil }
 
   # HARD conflict: the deliverable exists but INDEX still says Active. This
   # is the one true INDEX-wins disagreement, so it stays a fail.
@@ -578,12 +586,13 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
     # reconstructible via maintenance-run --tool rebuild-savepoint, so this is repairable and
     # reported as a fixable warn (savepoint_operational).
     savepoint = File.join(dir, "savepoint.md")
+    bucket = excluded_rules.include?("savepoint_operational") ? findings[:excluded] : findings[:operational_gap]
     if !File.exist?(savepoint)
-      findings[:operational_gap] << "#{label}: terminal in INDEX but savepoint.md is missing " \
-                                    "entirely (operational - reconstructible)"
+      bucket << "#{label}: terminal in INDEX but savepoint.md is missing " \
+                "entirely (operational - reconstructible)"
     elsif File.read(savepoint) !~ /\bDone\b.*\b(delivered|abandoned)\b/
-      findings[:operational_gap] << "#{label}: terminal in INDEX but savepoint.md has no " \
-                                    "`Done delivered|abandoned` line (operational - reconstructible)"
+      bucket << "#{label}: terminal in INDEX but savepoint.md has no " \
+                "`Done delivered|abandoned` line (operational - reconstructible)"
     end
 
     # Stalled completion: unchanged, never consulted amnesty.
@@ -601,10 +610,20 @@ def check_done_signals(scopes: nil)
   conflicts = []
   gaps = []              # delivery-claim (outcome.md) gaps only - legacy, informational
   operational_gaps = []  # savepoint gaps (missing file, or missing Done echo) - repairable
+  excluded = []           # savepoint gaps knowingly exempted via doctor-exclusions (intent 274)
+  exclusion_errors = []   # malformed doctor-exclusions lines, scope-tagged
+  exclusion_error_paths = []
+  exclusion_paths = []    # files that actually contributed a live exclusion
   stalled = []
   phantoms = []
 
   done_signal_stores(scopes).each do |store|
+    exclusions = DoctorExclusions.load(store[:index])
+    if exclusions[:errors].any?
+      exclusion_errors.concat(exclusions[:errors].map { |e| "#{store[:scope]}: #{e}" })
+      exclusion_error_paths << exclusions[:path]
+    end
+
     index_sections_by_dir(store[:index]).each do |dirname, in_sections|
       dir = File.join(store[:store_dir], dirname)
       next unless File.directory?(dir)
@@ -612,17 +631,26 @@ def check_done_signals(scopes: nil)
       terminal = (in_sections & ["Completed", "Abandoned"]).any?
       active = in_sections.include?("Active") && !terminal
       label = "#{store[:scope]} store/#{dirname}"
+      intent_id = dirname.split("--", 2).first
+      excluded_rules = DoctorExclusions.rules_for(exclusions, intent_id)
 
       findings = done_signal_findings_for_dir(
-        dir, label: label, scope: store[:scope], dirname: dirname, terminal: terminal, active: active
+        dir, label: label, scope: store[:scope], dirname: dirname, terminal: terminal, active: active,
+        excluded_rules: excluded_rules
       )
       conflicts << findings[:conflict] if findings[:conflict]
       phantoms << findings[:phantom] if findings[:phantom]
       gaps.concat(findings[:gap])
       operational_gaps.concat(findings[:operational_gap])
+      if findings[:excluded].any?
+        excluded.concat(findings[:excluded])
+        exclusion_paths << exclusions[:path]
+      end
       stalled << findings[:stalled] if findings[:stalled]
     end
   end
+  exclusion_paths.uniq!
+  exclusion_error_paths.uniq!
 
   checks = []
 
@@ -662,18 +690,39 @@ def check_done_signals(scopes: nil)
     )
   end
 
-  # savepoint_operational (intent 211, NEW): missing savepoint.md or missing Done echo -
-  # repairable via maintenance-run --tool rebuild-savepoint, so this stays warn+fixable.
-  if operational_gaps.empty?
+  # savepoint_operational (intent 211; intent 274 adds the per-store doctor-exclusions index):
+  # missing savepoint.md or missing Done echo - repairable via maintenance-run --tool
+  # rebuild-savepoint for most gaps, or knowingly excluded for the ones 219 D6 forbids ever
+  # repairing (no real outcome.md to echo a disposition from). Three branches (spec D4/D5):
+  # a malformed exclusion file can never report pass (loud), a clean remaining gap set reports
+  # pass with the exclusion count folded in, and a real remaining gap set stays warn, same as
+  # before intent 274, with the same count folded in when exclusions applied.
+  exclusion_suffix = excluded.empty? ? "" : " (#{excluded.size} excluded via #{exclusion_paths.join(", ")})"
+
+  if exclusion_errors.any?
+    checks << check(
+      category: "done_signals", name: "savepoint_operational", status: "warn",
+      message: "#{operational_gaps.size} terminal intent#{operational_gaps.size == 1 ? "" : "s"} " \
+               "missing an operational savepoint.md or its Done echo, and " \
+               "#{exclusion_errors.size} doctor-exclusions error#{exclusion_errors.size == 1 ? "" : "s"} " \
+               "(a malformed exclusion file never suppresses a finding)#{exclusion_suffix}",
+      details: operational_gaps + exclusion_errors, fixable: true,
+      fix_hint: "Fix the malformed doctor-exclusions file(s) (#{exclusion_error_paths.join(", ")}) - " \
+                "format `rule_name id id id`, blank lines and # comments ignored - then reconstruct " \
+                "any remaining real gap via `maintenance-run --tool rebuild-savepoint --intent <id> " \
+                "--apply` (197-conformant: receipt-before-write via RevisionsWriter, one intent per " \
+                "invocation, owner-approval-gated)."
+    )
+  elsif operational_gaps.empty?
     checks << check(
       category: "done_signals", name: "savepoint_operational", status: "pass",
-      message: "No terminal intent is missing an operational savepoint.md or its Done echo"
+      message: "No terminal intent is missing an operational savepoint.md or its Done echo#{exclusion_suffix}"
     )
   else
     checks << check(
       category: "done_signals", name: "savepoint_operational", status: "warn",
       message: "#{operational_gaps.size} terminal intent#{operational_gaps.size == 1 ? "" : "s"} " \
-               "missing an operational savepoint.md or its Done echo (reconstructible)",
+               "missing an operational savepoint.md or its Done echo (reconstructible)#{exclusion_suffix}",
       details: operational_gaps, fixable: true,
       fix_hint: "Reconstruct the minimal two-line started/Done echo via " \
                 "`maintenance-run --tool rebuild-savepoint --intent <id> --apply` (197-conformant: " \
