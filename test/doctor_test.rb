@@ -701,6 +701,79 @@ class DoctorAgentRegistrationTest < Minitest::Test
            "the diff must name the missing plastic-check-update: #{registry_check[:details].inspect}"
   end
 
+  # --- shape tolerance on hand-edited settings.json (review finding, 276) --
+  # settings.json is hand-editable, so "hooks" (or any nested value) need
+  # not be the Hash shape HookRegistry always emits. Before this fix,
+  # hooks_match_registry raised TypeError (String has no #dig) as soon as
+  # "hooks" itself was not a Hash.
+
+  def test_hooks_match_registry_survives_a_non_hash_hooks_value
+    write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+    File.write(File.join(DOCTOR_TEST_CLAUDE, "settings.json"),
+               JSON.pretty_generate({ "hooks" => "not-a-hash" }))
+
+    checks = doctor.check_agent_registration("claude")
+    registry_check = checks.find { |c| c[:name] == "hooks_match_registry" }
+
+    refute_nil registry_check
+    assert_equal "fail", registry_check[:status],
+                 "nothing is registered, so this must fail cleanly rather than raise"
+  end
+
+  # Before this fix, a per-event value that is not an Array raised
+  # NoMethodError (String has no #select) inside live.select.
+  def test_hooks_match_registry_survives_a_non_array_event_value
+    write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"]["SessionStart"] = "not-an-array"
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    registry_check = checks.find { |c| c[:name] == "hooks_match_registry" }
+
+    refute_nil registry_check
+    assert_equal "fail", registry_check[:status]
+  end
+
+  # Before this fix, a non-Hash entry inside a live hook group's "hooks"
+  # array raised NoMethodError (nil has no #[]) inside the got computation.
+  def test_hooks_match_registry_survives_a_non_hash_hook_entry
+    write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"]["SessionStart"].first["hooks"] << nil
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    registry_check = checks.find { |c| c[:name] == "hooks_match_registry" }
+
+    refute_nil registry_check
+    assert_equal "pass", registry_check[:status],
+                 "the stray nil entry adds nothing and removes nothing already matching; this must not raise"
+  end
+
+  # each_hook_command (shared by hooks_entries_owned_check and the Codex
+  # sibling) walks the same hand-editable data; it must not raise either.
+  def test_hooks_entries_owned_survives_a_non_hash_hooks_value
+    write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+    File.write(File.join(DOCTOR_TEST_CLAUDE, "settings.json"),
+               JSON.pretty_generate({ "hooks" => "not-a-hash" }))
+
+    checks = doctor.check_agent_registration("claude")
+    owned_check = checks.find { |c| c[:name] == "hooks_entries_owned" }
+
+    refute_nil owned_check
+    assert_equal "pass", owned_check[:status],
+                 "nothing to walk, so this must report pass rather than raise"
+  end
+
   # intent 115 (AC3): a stray Plastic hook the registry does not define must
   # still be reported. Stray detection is untouched by the aggregation fix.
   #
@@ -1152,6 +1225,17 @@ class DoctorCodexHooksEntriesOwnedTest < Minitest::Test
 
     check = owned_check
     refute_nil check, "codex registration must include codex_hooks_entries_owned"
+    assert_equal "pass", check[:status]
+    assert_empty Array(check[:details])
+  end
+
+  # Shape tolerance (review finding, 276): hooks.json is hand-editable too;
+  # each_hook_command must not raise when "hooks" is not a Hash.
+  def test_codex_hooks_entries_owned_survives_a_non_hash_hooks_value
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => "not-a-hash" }))
+
+    check = owned_check
+    refute_nil check
     assert_equal "pass", check[:status]
     assert_empty Array(check[:details])
   end

@@ -123,7 +123,9 @@ class Doctor
   # Every (event, command) pair, unfiltered (intent 276): the walk
   # hooks_registered/hooks_match_registry cannot do.
   def each_hook_command(hooks_hash)
-    (hooks_hash || {}).each do |event, groups|
+    return unless hooks_hash.is_a?(Hash)
+
+    hooks_hash.each do |event, groups|
       Array(groups).each do |g|
         next unless g.is_a?(Hash) && g["hooks"].is_a?(Array)
 
@@ -371,21 +373,27 @@ class Doctor
       # dead once already.
       expected = HookRegistry.claude_settings_hooks(hook_dir: hooks_dir)
       diffs = []
+      # settings.json is hand-editable: "hooks" or a per-event value can be
+      # any JSON shape, not only what HookRegistry emits. Guard both here
+      # rather than trust .dig / .select on an assumed Hash/Array.
+      hooks_value = settings["hooks"].is_a?(Hash) ? settings["hooks"] : {}
       expected.each do |event, group|
         groups = group.is_a?(Array) ? group : [group]
-        live = settings.dig("hooks", event) || []
+        live = hooks_value[event]
+        live = [] unless live.is_a?(Array)
         groups.each do |g|
           matches = live.select { |h| h.is_a?(Hash) && h["matcher"] == g["matcher"] }
           wanted = g["hooks"].map { |h| h["command"] }
-          got = matches.flat_map { |m| Array(m["hooks"]).map { |h| h["command"] } }
+          got = matches.flat_map { |m| Array(m["hooks"]).select { |h| h.is_a?(Hash) }.map { |h| h["command"] } }
           missing = wanted - got
           diffs << "#{event}[#{g['matcher']}] missing: #{missing.join(', ')}" unless missing.empty?
         end
       end
-      live_plastic = (settings["hooks"] || {}).flat_map do |event, groups|
+      live_plastic = hooks_value.flat_map do |event, groups|
         Array(groups).flat_map do |g|
           next [] unless g.is_a?(Hash) && g["hooks"].is_a?(Array)
-          g["hooks"].map { |h| h["command"].to_s }.select { |c| HookRegistry.claude_purge_command?(c) }
+          g["hooks"].select { |h| h.is_a?(Hash) }.map { |h| h["command"].to_s }
+                    .select { |c| HookRegistry.claude_purge_command?(c) }
                     .map { |c| "#{event}: #{c}" }
         end
       end
