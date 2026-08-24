@@ -453,4 +453,150 @@ class MaintenanceRunTest < Minitest::Test
     global_loaded = DoctorExclusions.load(File.join(@home, "INDEX.md"))
     refute_includes(global_loaded[:rules]["savepoint_operational"] || [], "40")
   end
+
+  # --- register-exclusions --prune (intent 280): removes exactly the rows DoctorExclusions.dead_rows
+  # reports as suppressing nothing, through the same walk, the same comment-preserving writer,
+  # and the same dry-run/--apply gate as the add direction.
+
+  def commit_all(message)
+    git("add", "-A")
+    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", message)
+  end
+
+  def test_prune_dry_run_writes_nothing
+    seed_register_exclusions_fixture
+    File.write(File.join(@home, "doctor-exclusions"), "savepoint_operational 40 999\n")
+    commit_all("seed dead row fixture")
+    before = File.read(File.join(@home, "doctor-exclusions"))
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--prune", "--plastic-home", @home)
+    assert_equal 0, status.exitstatus, out
+    assert_equal before, File.read(File.join(@home, "doctor-exclusions"))
+    assert_match(/DRY RUN/, out)
+    assert_match(/999/, out)
+  end
+
+  def test_prune_apply_removes_exactly_the_dead_rows
+    seed_register_exclusions_fixture
+    File.write(File.join(@home, "doctor-exclusions"), "savepoint_operational 40 999\n")
+    commit_all("seed dead row fixture")
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--prune", "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+
+    loaded = DoctorExclusions.load(File.join(@home, "INDEX.md"))
+    assert_empty loaded[:errors]
+    assert_equal ["40"], loaded[:rules]["savepoint_operational"]
+  end
+
+  # Mirrors test_register_exclusions_preserves_hand_written_comments_on_apply (F2), prune direction.
+  def test_prune_preserves_hand_written_comments
+    seed_register_exclusions_fixture
+    hand_written = "# 999 is exempt: pre-convention intent, no real outcome.md ever existed\n" \
+                   "# approved by owner 2026-08-01\n" \
+                   "savepoint_operational 40 999\n"
+    File.write(File.join(@home, "doctor-exclusions"), hand_written)
+    commit_all("hand-add 999 with comments")
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--prune", "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+
+    content = File.read(File.join(@home, "doctor-exclusions"))
+    assert_includes content, "# 999 is exempt: pre-convention intent, no real outcome.md ever existed\n"
+    assert_includes content, "# approved by owner 2026-08-01\n"
+
+    loaded = DoctorExclusions.load(File.join(@home, "INDEX.md"))
+    assert_equal ["40"], loaded[:rules]["savepoint_operational"]
+  end
+
+  # D6: a fresh delivery lock on the registered intent's own dir leaves it out of BOTH consumed
+  # and known_ids in the walk, which would otherwise read as dead. The lock skip must hold it
+  # harmless rather than prune it.
+  def test_prune_never_removes_an_id_whose_intent_holds_a_fresh_lock
+    seed_register_exclusions_fixture
+    File.write(File.join(@home, "doctor-exclusions"), "savepoint_operational 40\n")
+    commit_all("seed exclusion for 40")
+    File.write(File.join(@home, "store", "40--store-graph", "delivery.lock"),
+               '{"owner_session":"someone-else"}')
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--prune", "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+    assert_match(/40--store-graph skipped/, out)
+
+    loaded = DoctorExclusions.load(File.join(@home, "INDEX.md"))
+    assert_equal ["40"], loaded[:rules]["savepoint_operational"]
+  end
+
+  # D6a: savepoint_operational only fires on a terminal intent, so a row naming a live
+  # non-terminal (## Active) intent has nothing to suppress YET. Prune must leave it and name it
+  # as kept, distinct from D6's lock-skip wording.
+  def test_prune_never_removes_an_id_whose_intent_is_not_terminal
+    seed_register_exclusions_fixture
+    plastic_index = File.join(@home, "projects", "plastic", "INDEX.md")
+    body = +"# Index\n\n## Active\n- [12 — t](store/12--grandchild/12--grandchild.md) — t\n\n" \
+           "## Future\n\n## Clusters\n\n## Abandoned\n\n## Completed\n" \
+           "- [11 — t](store/11--child/11--child.md) — t\n"
+    File.write(plastic_index, body)
+    File.write(File.join(@home, "projects", "plastic", "doctor-exclusions"), "savepoint_operational 11 12\n")
+    commit_all("seed non-terminal exclusion")
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--prune", "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+    assert_match(/12 kept \(protected, still live\)/, out)
+
+    loaded = DoctorExclusions.load(plastic_index)
+    assert_includes loaded[:rules]["savepoint_operational"], "12"
+  end
+
+  # D7: a rule left with zero ids after pruning is dropped from the file entirely, rather than
+  # rendered as a bare `rule_name` line - DoctorExclusions.parse rejects that shape outright.
+  def test_prune_drops_a_rule_whose_ids_are_all_dead
+    seed_register_exclusions_fixture
+    File.write(File.join(@home, "doctor-exclusions"), "savepoint_operational 999\n")
+    commit_all("seed all-dead rule fixture")
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--prune", "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+
+    content = File.read(File.join(@home, "doctor-exclusions"))
+    refute_match(/^savepoint_operational\s*$/, content)
+
+    loaded = DoctorExclusions.load(File.join(@home, "INDEX.md"))
+    assert_empty loaded[:errors]
+    refute loaded[:rules].key?("savepoint_operational")
+  end
+
+  # D8 restated for the prune direction: no revisions.md entries anywhere, since this tool
+  # modifies no intent directory, only a store-level table.
+  def test_prune_writes_no_revisions_entries
+    seed_register_exclusions_fixture
+    File.write(File.join(@home, "doctor-exclusions"), "savepoint_operational 40 999\n")
+    commit_all("seed dead row fixture")
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--prune", "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+
+    refute File.exist?(File.join(@home, "store", "40--store-graph", "revisions.md"))
+    refute File.exist?(File.join(@home, "projects", "plastic", "store", "11--child", "revisions.md"))
+  end
+
+  def test_prune_with_nothing_dead_exits_zero_and_writes_nothing
+    seed_register_exclusions_fixture
+    File.write(File.join(@home, "doctor-exclusions"), "savepoint_operational 40\n")
+    commit_all("seed live-only exclusion")
+    before = File.read(File.join(@home, "doctor-exclusions"))
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--prune", "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+    assert_match(/no dead savepoint_operational exclusion rows to prune/, out)
+    assert_equal before, File.read(File.join(@home, "doctor-exclusions"))
+  end
 end

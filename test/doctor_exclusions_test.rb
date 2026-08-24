@@ -159,4 +159,42 @@ class DoctorExclusionsTest < Minitest::Test
     assert_equal File.join(@home, "projects", "plastic", "doctor-exclusions"),
       DoctorExclusions.path_for(project_index)
   end
+
+  # --- dead_rows (pure, intent 280) ---
+  #
+  # `loaded` is built by hand rather than via `parse` in the per-rule case: EXCLUDABLE_CHECKS
+  # stays `savepoint_operational`-only in v1 (spec Non-Goals), so `parse` would reject a second
+  # rule name outright. `dead_rows` itself is rule-generic by construction and does not care.
+
+  def test_dead_rows_is_empty_when_every_registered_id_is_consumed
+    loaded = DoctorExclusions.parse("savepoint_operational 1 2\n")
+    result = DoctorExclusions.dead_rows(loaded, consumed: { "savepoint_operational" => ["1", "2"] },
+                                                 known_ids: ["1", "2"])
+    assert_empty result
+  end
+
+  def test_dead_rows_reports_no_finding_for_a_known_id_that_consumed_nothing
+    loaded = DoctorExclusions.parse("savepoint_operational 1\n")
+    result = DoctorExclusions.dead_rows(loaded, consumed: {}, known_ids: ["1"])
+    assert_equal [{ rule: "savepoint_operational", id: "1", reason: :no_finding }], result
+  end
+
+  def test_dead_rows_reports_no_intent_for_an_id_that_names_no_walked_directory
+    loaded = DoctorExclusions.parse("savepoint_operational 1\n")
+    result = DoctorExclusions.dead_rows(loaded, consumed: {}, known_ids: [])
+    assert_equal [{ rule: "savepoint_operational", id: "1", reason: :no_intent }], result
+  end
+
+  def test_dead_rows_is_per_rule
+    loaded = { rules: { "savepoint_operational" => ["1"], "hooks_registered" => ["1"] }, errors: [] }
+    result = DoctorExclusions.dead_rows(
+      loaded, consumed: { "savepoint_operational" => ["1"] }, known_ids: ["1"]
+    )
+    assert_equal [{ rule: "hooks_registered", id: "1", reason: :no_finding }], result
+  end
+
+  def test_dead_rows_never_raises_on_empty_inputs
+    loaded = { rules: {}, errors: [] }
+    assert_equal [], DoctorExclusions.dead_rows(loaded)
+  end
 end

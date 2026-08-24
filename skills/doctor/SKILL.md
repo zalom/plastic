@@ -233,6 +233,14 @@ without writing anything. Review the output, then re-run with `--apply` to write
 land one scoped git commit. It unions with any existing hand-added ids (never drops one) and
 skips, rather than aborts on, any intent dir holding a fresh delivery lock.
 
+**Dead-row notice.** A registered row can go dead (gap repaired, id mistyped, or the intent
+directory gone). When any row is dead, the message adds a second suffix next to the exclusion
+count naming the count, the file, and the prune command - purely informational, status and exit
+code unchanged. Prune it the same way, dry-run first: register-exclusions --prune [--apply]. It
+removes exactly the dead rows through the same writer and commit, but holds back an id whose
+intent dir carries a fresh lock or has not gone terminal yet (nothing to suppress there yet),
+naming both as kept.
+
 ## References
 
 - Read `references/gates-stuck-detection.md` for the full gate enforcement table, bridge file pattern, and the recorded stuck-detection signals when diagnosing gate failures or stuck agents

@@ -393,4 +393,100 @@ class DoctorDoneSignalsTest < Minitest::Test
     refute_includes operational[:message], "excluded"
     assert(operational[:details].any? { |d| d.include?("45") })
   end
+
+  # --- dead exclusion rows (intent 280) -------------------------------------------------
+
+  # FALSIFIABILITY (208): a terminal intent with a real outcome.md AND a Done savepoint,
+  # registered under savepoint_operational, suppresses nothing this run - the row is dead.
+  # Reported informationally in the details AND the message, status stays "pass".
+  def test_dead_exclusion_row_is_reported_when_the_gap_is_gone
+    write_index("50", section: "Completed")
+    write_intent_dir("50")
+    write_outcome("50")
+    write_savepoint_done("50")
+    write_exclusions("savepoint_operational 50\n")
+
+    operational = check("savepoint_operational")
+    assert_equal "pass", operational[:status]
+    assert_includes operational[:message], "1 dead row"
+    assert(operational[:details].any? { |d| d.include?("50") && d.include?(File.join(@home, "doctor-exclusions")) })
+  end
+
+  # A registered id that matches no walked intent directory at all reports distinct wording
+  # from case 6 above ("no current ... finding" vs "no live intent directory").
+  def test_dead_exclusion_row_for_an_unknown_id_reports_no_live_intent
+    write_index("51", section: "Completed")
+    write_intent_dir("51")
+    write_outcome("51")
+    write_savepoint_done("51")
+    write_exclusions("savepoint_operational 999\n")
+
+    operational = check("savepoint_operational")
+    assert(operational[:details].any? { |d| d.include?("999") && d.include?("no live intent directory") })
+    refute(operational[:details].any? { |d| d.include?("999") && d.include?("no current") })
+  end
+
+  # FALSE-POSITIVE GUARD: two terminal intents both missing their savepoint entirely, only one
+  # registered. The registered id is a LIVE exclusion (it still suppresses a real gap) and must
+  # never be reported as a dead row.
+  def test_a_live_exclusion_row_is_never_reported_dead
+    write_index_multi(["52", "53"], section: "Completed")
+    write_intent_dir("52")
+    write_outcome("52")
+    write_intent_dir("53")
+    write_outcome("53")
+    write_exclusions("savepoint_operational 52\n")
+
+    operational = check("savepoint_operational")
+    assert_includes operational[:message], "1 excluded"
+    refute_includes operational[:message], "dead row"
+    refute(operational[:details].any? { |d| d.include?("52") && d.include?("dead row") })
+  end
+
+  # Dead rows are informational only: status stays "pass" exactly as it would with zero dead
+  # rows, because the gap they name is truly gone.
+  def test_dead_rows_do_not_change_the_check_status
+    write_index("54", section: "Completed")
+    write_intent_dir("54")
+    write_outcome("54")
+    write_savepoint_done("54")
+    write_exclusions("savepoint_operational 54\n")
+
+    operational = check("savepoint_operational")
+    assert_equal "pass", operational[:status]
+    assert_includes operational[:message], "No terminal intent is missing an operational savepoint.md or its Done echo"
+  end
+
+  # A dead row and a real, unregistered remaining gap coexist in the same run: status stays
+  # "warn" (the real gap governs status), and both counts are reported, separately and correctly.
+  def test_dead_rows_are_reported_alongside_remaining_gaps
+    write_index_multi(["55", "56"], section: "Completed")
+    write_intent_dir("55")
+    write_outcome("55")
+    write_savepoint_done("55") # registered but fully clean - the dead row
+    write_intent_dir("56")
+    write_outcome("56") # savepoint.md missing entirely, never registered - the real gap
+    write_exclusions("savepoint_operational 55\n")
+
+    operational = check("savepoint_operational")
+    assert_equal "warn", operational[:status]
+    assert_includes operational[:message], "1 terminal intent"
+    assert_includes operational[:message], "1 dead row"
+    assert(operational[:details].any? { |d| d.include?("55") && d.include?("no current") })
+    assert(operational[:details].any? { |d| d.include?("56") && d.include?("missing entirely") })
+  end
+
+  # With zero dead rows the message and the exclusion count are unchanged (D8's precedent
+  # restated for the dead-row axis).
+  def test_no_dead_rows_leaves_the_message_unchanged
+    write_index("57", section: "Completed")
+    write_intent_dir("57")
+    write_outcome("57")
+    write_exclusions("savepoint_operational 57\n")
+
+    operational = check("savepoint_operational")
+    assert_equal "pass", operational[:status]
+    refute_includes operational[:message], "dead row"
+    assert_includes operational[:message], "1 excluded"
+  end
 end

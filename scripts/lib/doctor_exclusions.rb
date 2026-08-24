@@ -21,6 +21,10 @@ require_relative "rule_catalog"
 # excludes anything (fail milder than the bug: a typo must not silently suppress a real
 # regression) and contributes one error string naming its 1-based line number. An unreadable
 # file contributes one error and zero exclusions. This module NEVER raises.
+#
+# The file is also the input to a drift check (intent 280): `dead_rows` below reports rows that
+# suppress nothing this run, so a governance record that only ever grows does not silently decay
+# into an unreviewable list.
 module DoctorExclusions
   module_function
 
@@ -89,5 +93,26 @@ module DoctorExclusions
   # Rule names excluding `intent_id` in an already-`load`ed result. [] when none.
   def rules_for(loaded, intent_id)
     loaded[:rules].select { |_rule, ids| ids.include?(intent_id) }.keys
+  end
+
+  # PURE (intent 280). Dead rows: registered (rule, id) pairs that suppressed nothing this run.
+  #
+  # `consumed` is { rule_name => [intent_id] }, built by the CALLER from findings that actually
+  # fired during its own directory walk. `known_ids` is every intent id whose directory the caller
+  # actually walked. Neither is derived from the exclusion file: this function is handed both and
+  # has no way to reach the file, which is what keeps it from becoming the intent 200 self-diff
+  # (a check that only ever proves the file agrees with itself - see 208).
+  #
+  # Returns [{ rule:, id:, reason: }], reason being :no_finding (the id names a walked intent that
+  # produced no finding for this rule) or :no_intent (the id names no walked intent directory at
+  # all - a typo, or the intent was deleted). Order is stable: rule name, then id.
+  def dead_rows(loaded, consumed: {}, known_ids: [])
+    known = known_ids.to_a
+    loaded[:rules].keys.sort.flat_map do |rule|
+      live = (consumed[rule] || [])
+      (loaded[:rules][rule] - live).sort.map do |id|
+        { rule: rule, id: id, reason: known.include?(id) ? :no_finding : :no_intent }
+      end
+    end
   end
 end

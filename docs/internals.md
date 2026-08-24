@@ -313,6 +313,29 @@ structurally edit an intent's own files) does not apply here, and writing one wo
 every touched Completed intent directory, which the standing rule that completed intents are
 immutable forbids. The scoped git commit plus the diffable exclusion file itself are the receipt.
 
+A registered row can go dead: the intent's gap got repaired, the id was mistyped when the row was
+written, or the intent directory is gone. Left alone, the exclusion file only ever grows into an
+unreviewable list. Intent 280 has `check_done_signals` diff the loaded table against the same
+INDEX/directory/finding walk it already runs, via one pure predicate,
+`DoctorExclusions.dead_rows(loaded, consumed:, known_ids:)`, that is handed the walk's results and
+has no access to the file itself - the same self-diff trap 208 named for a different check stays
+structurally impossible here. A dead row reports as one of two buckets: `:no_finding` (the id
+names an intent doctor walked, but the rule fired nothing to suppress this run) or `:no_intent`
+(the id names no walked directory at all - a typo, or a deleted intent; the two are
+indistinguishable from the data available, and the remedy is the same either way). The count, the
+buckets, and the file path fold into `savepoint_operational`'s message and `details` exactly the
+way the exclusion count already does; the notice is purely informational and never moves the
+check off `pass` or changes doctor's exit code - a stale governance-record row is bookkeeping
+drift, not a store regression. `maintenance-run --tool register-exclusions --prune [--apply]` is
+the owner-gated remedy: dry-run by default, it calls the same `dead_rows` predicate and the same
+comment-preserving writer as the add direction. Two classes of row that would otherwise read as
+dead are held harmless before anything is written: an id whose dir was skipped for a fresh
+delivery lock (the skip would leave it out of the walk entirely), and an id whose intent has not
+reached a terminal state yet (`savepoint_operational` only fires on a terminal intent, so the row
+has nothing to suppress *yet*). A rule left with zero ids after pruning is dropped from the file
+rather than rendered as a bare `rule_name` line, which the loader would reject. Like the add
+direction, `--prune` writes no `revisions.md` entries.
+
 Session resolution feeds the bridge that the gate hooks read (intent 52). Claude Code does
 not export a session id env var into the hook environment; it passes `session_id` on the hook
 stdin JSON. So the bash wrappers parse `session_id` out of stdin (in Ruby, never in bash) and

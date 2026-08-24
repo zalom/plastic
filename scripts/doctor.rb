@@ -546,10 +546,16 @@ class Doctor
 # :operational_gap when "savepoint_operational" is in that set; the :gap bucket (signals_complete,
 # the outcome.md check) never consults it, which is what keeps the exclusion key (intent_id,
 # rule) rather than just intent_id (see test/doctor_done_signals_test.rb case 12).
+#
+# `:excluded_rules_fired` (intent 280) names the rules that actually suppressed a finding for
+# this dir - not merely the rules registered for it. The caller uses this to build the `consumed`
+# set `DoctorExclusions.dead_rows` needs: a registered rule that never fires here (nothing to
+# suppress) is exactly what makes the row dead.
 def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, active:, excluded_rules: [])
   outcome = File.join(dir, "outcome.md")
   outcome_real = Bridge.stage_file_present?(outcome)
-  findings = { conflict: nil, phantom: nil, gap: [], operational_gap: [], excluded: [], stalled: nil }
+  findings = { conflict: nil, phantom: nil, gap: [], operational_gap: [], excluded: [],
+               excluded_rules_fired: [], stalled: nil }
 
   # HARD conflict: the deliverable exists but INDEX still says Active. This
   # is the one true INDEX-wins disagreement, so it stays a fail.
@@ -586,7 +592,8 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
     # reconstructible via maintenance-run --tool rebuild-savepoint, so this is repairable and
     # reported as a fixable warn (savepoint_operational).
     savepoint = File.join(dir, "savepoint.md")
-    bucket = excluded_rules.include?("savepoint_operational") ? findings[:excluded] : findings[:operational_gap]
+    suppressed = excluded_rules.include?("savepoint_operational")
+    bucket = suppressed ? findings[:excluded] : findings[:operational_gap]
     if !File.exist?(savepoint)
       bucket << "#{label}: terminal in INDEX but savepoint.md is missing " \
                 "entirely (operational - reconstructible)"
@@ -594,6 +601,7 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
       bucket << "#{label}: terminal in INDEX but savepoint.md has no " \
                 "`Done delivered|abandoned` line (operational - reconstructible)"
     end
+    findings[:excluded_rules_fired] << "savepoint_operational" if suppressed && findings[:excluded].any?
 
     # Stalled completion: unchanged, never consulted amnesty.
     if File.exist?(Lock.path(dir))
@@ -614,6 +622,8 @@ def check_done_signals(scopes: nil)
   exclusion_errors = []   # malformed doctor-exclusions lines, scope-tagged
   exclusion_error_paths = []
   exclusion_paths = []    # files that actually contributed a live exclusion
+  dead_rows = []          # exclusion rows that suppressed nothing this run (intent 280)
+  dead_row_paths = []
   stalled = []
   phantoms = []
 
@@ -624,6 +634,9 @@ def check_done_signals(scopes: nil)
       exclusion_error_paths << exclusions[:path]
     end
 
+    consumed = Hash.new { |h, k| h[k] = [] }
+    known_ids = []
+
     index_sections_by_dir(store[:index]).each do |dirname, in_sections|
       dir = File.join(store[:store_dir], dirname)
       next unless File.directory?(dir)
@@ -632,6 +645,7 @@ def check_done_signals(scopes: nil)
       active = in_sections.include?("Active") && !terminal
       label = "#{store[:scope]} store/#{dirname}"
       intent_id = dirname.split("--", 2).first
+      known_ids << intent_id
       excluded_rules = DoctorExclusions.rules_for(exclusions, intent_id)
 
       findings = done_signal_findings_for_dir(
@@ -646,11 +660,26 @@ def check_done_signals(scopes: nil)
         excluded.concat(findings[:excluded])
         exclusion_paths << exclusions[:path]
       end
+      findings[:excluded_rules_fired].each { |fired| consumed[fired] << intent_id }
       stalled << findings[:stalled] if findings[:stalled]
+    end
+
+    # Drift in the governance record itself (intent 280): rows naming a pair that produced no
+    # finding this run. Computed by set subtraction against the walk above, never re-derived from
+    # the exclusion file (208; the intent 200 self-diff).
+    DoctorExclusions.dead_rows(exclusions, consumed: consumed, known_ids: known_ids).each do |row|
+      reason = if row[:reason] == :no_intent
+                 "names no live intent directory (a typo, or the intent was deleted)"
+               else
+                 "names an intent with no current #{row[:rule]} finding"
+               end
+      dead_rows << "#{store[:scope]}: #{exclusions[:path]}: #{row[:rule]} #{row[:id]} - #{reason}"
+      dead_row_paths << exclusions[:path]
     end
   end
   exclusion_paths.uniq!
   exclusion_error_paths.uniq!
+  dead_row_paths.uniq!
 
   checks = []
 
@@ -697,7 +726,15 @@ def check_done_signals(scopes: nil)
   # a malformed exclusion file can never report pass (loud), a clean remaining gap set reports
   # pass with the exclusion count folded in, and a real remaining gap set stays warn, same as
   # before intent 274, with the same count folded in when exclusions applied.
+  #
+  # `dead_suffix` (intent 280) folds in a second, independent drift notice: exclusion rows that
+  # suppressed nothing this run. It is purely informational, exactly like `exclusion_suffix` - it
+  # never changes status on any of the three branches below, because a stale governance-record row
+  # is bookkeeping drift, not a store regression (219 D6 is untouched: no disposition is invented).
   exclusion_suffix = excluded.empty? ? "" : " (#{excluded.size} excluded via #{exclusion_paths.join(", ")})"
+  dead_suffix = dead_rows.empty? ? "" : " (#{dead_rows.size} dead row#{dead_rows.size == 1 ? "" : "s"} " \
+                                        "in #{dead_row_paths.join(", ")}, suppressing nothing - prune with " \
+                                        "`maintenance-run --tool register-exclusions --prune`)"
 
   if exclusion_errors.any?
     checks << check(
@@ -705,8 +742,8 @@ def check_done_signals(scopes: nil)
       message: "#{operational_gaps.size} terminal intent#{operational_gaps.size == 1 ? "" : "s"} " \
                "missing an operational savepoint.md or its Done echo, and " \
                "#{exclusion_errors.size} doctor-exclusions error#{exclusion_errors.size == 1 ? "" : "s"} " \
-               "(a malformed exclusion file never suppresses a finding)#{exclusion_suffix}",
-      details: operational_gaps + exclusion_errors, fixable: true,
+               "(a malformed exclusion file never suppresses a finding)#{exclusion_suffix}#{dead_suffix}",
+      details: operational_gaps + exclusion_errors + dead_rows, fixable: true,
       fix_hint: "Fix the malformed doctor-exclusions file(s) (#{exclusion_error_paths.join(", ")}) - " \
                 "format `rule_name id id id`, blank lines and # comments ignored - then reconstruct " \
                 "any remaining real gap via `maintenance-run --tool rebuild-savepoint --intent <id> " \
@@ -716,14 +753,17 @@ def check_done_signals(scopes: nil)
   elsif operational_gaps.empty?
     checks << check(
       category: "done_signals", name: "savepoint_operational", status: "pass",
-      message: "No terminal intent is missing an operational savepoint.md or its Done echo#{exclusion_suffix}"
+      message: "No terminal intent is missing an operational savepoint.md or its Done echo" \
+               "#{exclusion_suffix}#{dead_suffix}",
+      details: dead_rows
     )
   else
     checks << check(
       category: "done_signals", name: "savepoint_operational", status: "warn",
       message: "#{operational_gaps.size} terminal intent#{operational_gaps.size == 1 ? "" : "s"} " \
-               "missing an operational savepoint.md or its Done echo (reconstructible)#{exclusion_suffix}",
-      details: operational_gaps, fixable: true,
+               "missing an operational savepoint.md or its Done echo (reconstructible)" \
+               "#{exclusion_suffix}#{dead_suffix}",
+      details: operational_gaps + dead_rows, fixable: true,
       fix_hint: "Reconstruct the minimal two-line started/Done echo via " \
                 "`maintenance-run --tool rebuild-savepoint --intent <id> --apply` (197-conformant: " \
                 "receipt-before-write via RevisionsWriter, one intent per invocation, owner-approval-gated)."
