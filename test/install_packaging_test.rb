@@ -481,4 +481,44 @@ class InstallPackagingTest < Minitest::Test
     assert File.file?(File.join(REPO, "skills", "agent-advisor", "references", "advisor-protocol.md")),
       "skills/agent-advisor/references/advisor-protocol.md must exist in the repo"
   end
+
+  # --- Require-closure guard (intent 274): a new scripts/lib/*.rb that is required by a
+  # shipped script but never registered in core_files installs as a LoadError on every
+  # doctor run for every user, and nothing caught that before this guard. Starting from every
+  # core_files key under scripts/, transitively resolve every require_relative target and
+  # assert each resolved repo-relative path is itself a core_files key. Measured against the
+  # current tree on 2026-08-24: 93 registered scripts, 0 holes, so this lands green - and it
+  # is what permanently closes the "new lib file was never registered" trap for the next one.
+
+  def test_require_closure_every_transitively_required_file_is_core_registered
+    installer = InstallerCore.new(package_root: REPO, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
+    core_keys = installer.core_files.keys.select { |k| k.start_with?("scripts/") }
+
+    visited = {}
+    unregistered = []
+
+    resolve = lambda do |repo_relative_path|
+      next if visited[repo_relative_path]
+      visited[repo_relative_path] = true
+
+      abs_path = File.join(REPO, repo_relative_path)
+      next unless File.file?(abs_path)
+
+      File.read(abs_path).scan(/require_relative\s+["']([^"']+)["']/) do |(target)|
+        target = "#{target}.rb" unless target.end_with?(".rb")
+        abs_target = File.expand_path(File.join(REPO, File.dirname(repo_relative_path), target))
+        resolved = abs_target.sub("#{REPO}/", "")
+
+        unregistered << "#{repo_relative_path} -> #{resolved}" unless core_keys.include?(resolved)
+
+        resolve.call(resolved)
+      end
+    end
+
+    core_keys.each { |key| resolve.call(key) }
+
+    assert_empty unregistered,
+      "require_relative target(s) not registered in core_files (source -> unregistered target):\n" \
+      "#{unregistered.join("\n")}"
+  end
 end

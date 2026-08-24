@@ -21,7 +21,12 @@ require_relative "../scripts/lib/lock"
 # outcome.md delivery-claim bucket (always status "pass", informational); a
 # new savepoint_operational check takes the operational bucket (missing
 # savepoint.md, or missing its Done echo), warn+fixable, routed to
-# maintenance-run --tool rebuild-savepoint. No injectable suppression seam survives.
+# maintenance-run --tool rebuild-savepoint.
+#
+# Intent 274: a per-store doctor-exclusions file, read via DoctorExclusions and keyed on
+# (intent_id, rule), lets an operational-gap finding that can never legitimately close
+# (219 D6 forbids inventing a disposition) leave the details list entirely. The count stays
+# honest: doctor always reports how many findings were suppressed and where the file lives.
 class DoctorDoneSignalsTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("plastic-doctor-done-signals")
@@ -69,6 +74,24 @@ class DoctorDoneSignalsTest < Minitest::Test
   def write_savepoint_done(id, disposition: "delivered")
     File.write(File.join(intent_dir(id), "savepoint.md"),
                "2026-07-03T00:00:00Z  Done  #{disposition}\n")
+  end
+
+  # The global store's doctor-exclusions file, sibling to INDEX.md (intent 274, spec D6).
+  def write_exclusions(text)
+    File.write(File.join(@home, "doctor-exclusions"), text)
+  end
+
+  # write_index (above) writes exactly one id per call, overwriting the whole file - fine for
+  # every existing single-id test. The precision-pin case (274) needs two ids in the SAME
+  # section of the SAME INDEX.md, so this variant lists every id in `ids`.
+  def write_index_multi(ids, section:)
+    body = +"# Index\n\n"
+    ["Active", "Future", "Clusters", "Abandoned", "Completed"].each do |s|
+      body << "## #{s}\n"
+      ids.each { |id| body << "- [#{id} — t](store/#{id}--slug/#{id}--slug.md) — t\n" } if s == section
+      body << "\n"
+    end
+    File.write(File.join(@home, "INDEX.md"), body)
   end
 
   # A clean terminal intent: real outcome.md, Done savepoint, no lock.
@@ -252,6 +275,8 @@ class DoctorDoneSignalsTest < Minitest::Test
 
   # Intent 211: the generic operational-gap predicate warns for ANY terminal intent missing
   # the Done bookend, with no allowlist axis left to consult (170a's amnesty is fully removed).
+  # Intent 274 reopens a per-store, per-pair suppression axis (doctor-exclusions), but it is
+  # opt-in and explicit: an intent not named in that file still warns.
   def test_savepoint_operational_warns_for_any_terminal_missing_echo
     write_index("30", section: "Completed")
     write_intent_dir("30")
@@ -260,7 +285,7 @@ class DoctorDoneSignalsTest < Minitest::Test
                "2026-07-03T00:00:00Z  Exec  started\n")
 
     operational = check("savepoint_operational")
-    assert_equal "warn", operational[:status], "no allowlist exists anymore to suppress this"
+    assert_equal "warn", operational[:status], "no exclusion is registered for 30, so it still warns"
   end
 
   # Regression pin for the intent 222 extraction (done_signal_findings_for_dir): a terminal
@@ -280,5 +305,78 @@ class DoctorDoneSignalsTest < Minitest::Test
     assert_equal "warn", operational[:status]
     assert(complete[:details].any? { |d| d.include?("33") && d.include?("outcome.md is missing") })
     assert(operational[:details].any? { |d| d.include?("33") && d.include?("no `Done delivered|abandoned` line") })
+  end
+
+  # --- doctor-exclusions (intent 274) ---------------------------------------------------
+
+  # An intent registered under savepoint_operational leaves the details list entirely and the
+  # check reaches "pass"; the count stays honest in the message.
+  def test_excluded_pair_clears_the_warning
+    write_index("40", section: "Completed")
+    write_intent_dir("40")
+    write_outcome("40")
+    write_exclusions("savepoint_operational 40\n")
+
+    operational = check("savepoint_operational")
+    assert_equal "pass", operational[:status]
+    assert_empty operational[:details]
+    assert_includes operational[:message], "1 excluded"
+  end
+
+  # PRECISION PIN (the 32-style regression): two terminal intents both missing their savepoint,
+  # only one is registered. The check stays warn, details name only the unregistered id, and
+  # the message reports exactly one exclusion.
+  def test_precision_pin_only_the_registered_id_is_suppressed
+    write_index_multi(["41", "42"], section: "Completed")
+    write_intent_dir("41")
+    write_outcome("41")
+    write_intent_dir("42")
+    write_outcome("42")
+    write_exclusions("savepoint_operational 41\n")
+
+    operational = check("savepoint_operational")
+    assert_equal "warn", operational[:status]
+    refute(operational[:details].any? { |d| d.include?("41") }, "the registered id must not appear in details")
+    assert(operational[:details].any? { |d| d.include?("42") }, "the unregistered id must still appear")
+    assert_includes operational[:message], "1 excluded"
+  end
+
+  # PER-PAIR PRECISION: the key is (intent_id, rule), never bare intent_id. An intent
+  # registered under savepoint_operational and missing BOTH outcome.md and savepoint.md still
+  # shows up in signals_complete (which never consults the exclusion file).
+  def test_exclusion_is_per_pair_not_per_intent
+    write_index("43", section: "Completed")
+    write_intent_dir("43")
+    write_exclusions("savepoint_operational 43\n")
+
+    assert_equal "pass", check("savepoint_operational")[:status]
+    complete = check("signals_complete")
+    assert(complete[:details].any? { |d| d.include?("43") }, "signals_complete must still report 43")
+  end
+
+  # LOUD LOADER (spec D5): a malformed exclusion file forces a warn even when there are zero
+  # real operational gaps in the store, with the loader error surfaced in details.
+  def test_malformed_exclusions_file_forces_warn_with_zero_real_gaps
+    write_index("44", section: "Completed")
+    write_intent_dir("44")
+    write_outcome("44")
+    write_savepoint_done("44")
+    write_exclusions("not_a_real_rule 44\n")
+
+    operational = check("savepoint_operational")
+    assert_equal "warn", operational[:status]
+    assert(operational[:details].any? { |d| d.include?("unknown or non-excludable rule") })
+  end
+
+  # FAIL-OPEN (spec D5): no exclusion file at all leaves behavior identical to before intent 274.
+  def test_no_exclusions_file_is_byte_identical_to_before
+    write_index("45", section: "Completed")
+    write_intent_dir("45")
+    write_outcome("45")
+
+    operational = check("savepoint_operational")
+    assert_equal "warn", operational[:status]
+    refute_includes operational[:message], "excluded"
+    assert(operational[:details].any? { |d| d.include?("45") })
   end
 end

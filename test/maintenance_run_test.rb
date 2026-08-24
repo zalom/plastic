@@ -6,6 +6,8 @@ require "tmpdir"
 require "fileutils"
 require "open3"
 
+require_relative "../scripts/lib/doctor_exclusions"
+
 class MaintenanceRunTest < Minitest::Test
   MAINTENANCE_RUN = File.expand_path("../scripts/maintenance-run", __dir__)
 
@@ -274,5 +276,128 @@ class MaintenanceRunTest < Minitest::Test
                                        "--plastic-home", @home, "--apply")
     assert_equal 2, status.exitstatus
     assert_match(/deferred/, out + err)
+  end
+
+  # --- register-exclusions (intent 274, spec D7/D8): computes violations through Doctor's
+  # OWN done_signal_findings_for_dir, unions with any pre-existing hand-added file content,
+  # skips a fresh-locked intent rather than aborting, writes ALL stores in one scoped commit,
+  # and writes no revisions.md entries (it edits no intent directory, only a store-level table).
+
+  # A doctor-shaped INDEX.md (## Active/Future/Clusters/Abandoned/Completed), distinct from
+  # this file's project-links-shaped write_index: register-exclusions walks the SAME
+  # index_sections_by_dir doctor itself uses, so the fixture must carry real section headers.
+  def write_doctor_index(path, completed_dirnames: [])
+    body = +"# Index\n\n## Active\n\n## Future\n\n## Clusters\n\n## Abandoned\n\n## Completed\n"
+    completed_dirnames.each do |dirname|
+      id = dirname.split("--", 2).first
+      body << "- [#{id} — t](store/#{dirname}/#{dirname}.md) — t\n"
+    end
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, body)
+  end
+
+  # Marks the fixture's global "40--store-graph" and plastic-project "11--child" Completed
+  # (both already lack savepoint.md, so both are real savepoint_operational violations), and
+  # gitignores *.lock the way a real ~/.plastic install does (scripts/lib/lock.rb), so a
+  # written-but-uncommitted delivery.lock never trips MaintenanceGit's clean-tree precondition.
+  def seed_register_exclusions_fixture
+    File.write(File.join(@home, ".gitignore"), "*.lock\n")
+    write_doctor_index(File.join(@home, "INDEX.md"), completed_dirnames: ["40--store-graph"])
+    write_doctor_index(File.join(@home, "projects", "plastic", "INDEX.md"), completed_dirnames: ["11--child"])
+    git("add", "-A")
+    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "seed register-exclusions fixture")
+  end
+
+  def test_register_exclusions_dry_run_writes_nothing
+    seed_register_exclusions_fixture
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--plastic-home", @home)
+    assert_equal 0, status.exitstatus, out
+    refute File.exist?(File.join(@home, "doctor-exclusions"))
+    refute File.exist?(File.join(@home, "projects", "plastic", "doctor-exclusions"))
+  end
+
+  def test_register_exclusions_dry_run_names_scope_and_ids
+    seed_register_exclusions_fixture
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--plastic-home", @home)
+    assert_equal 0, status.exitstatus, out
+    assert_match(/global/, out)
+    assert_match(/\b40\b/, out)
+    assert_match(/project:plastic/, out)
+    assert_match(/\b11\b/, out)
+  end
+
+  def test_register_exclusions_bad_rule_is_a_usage_error
+    seed_register_exclusions_fixture
+
+    _out, err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--rule", "bogus", "--plastic-home", @home)
+    assert_equal 1, status.exitstatus
+    assert_match(/not excludable/, err)
+    assert_match(/savepoint_operational/, err)
+  end
+
+  def test_register_exclusions_apply_writes_and_commits_once_across_stores
+    seed_register_exclusions_fixture
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+
+    global_loaded = DoctorExclusions.load(File.join(@home, "INDEX.md"))
+    assert_empty global_loaded[:errors]
+    assert_equal ["40"], global_loaded[:rules]["savepoint_operational"]
+
+    plastic_loaded = DoctorExclusions.load(File.join(@home, "projects", "plastic", "INDEX.md"))
+    assert_empty plastic_loaded[:errors]
+    assert_equal ["11"], plastic_loaded[:rules]["savepoint_operational"]
+
+    log, = Open3.capture3("git", "-C", @home, "log", "--oneline")
+    assert_equal 1, log.lines.count { |l| l =~ /register doctor exclusions/ }
+
+    status_out, = Open3.capture3("git", "-C", @home, "status", "--porcelain")
+    assert_empty status_out.strip
+  end
+
+  def test_register_exclusions_unions_with_a_preexisting_hand_added_id
+    seed_register_exclusions_fixture
+    File.write(File.join(@home, "doctor-exclusions"), "savepoint_operational 999\n")
+    git("add", "-A")
+    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "hand-add 999")
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+
+    loaded = DoctorExclusions.load(File.join(@home, "INDEX.md"))
+    assert_equal ["40", "999"], loaded[:rules]["savepoint_operational"].sort
+  end
+
+  def test_register_exclusions_writes_no_revisions_entries
+    seed_register_exclusions_fixture
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+
+    refute File.exist?(File.join(@home, "store", "40--store-graph", "revisions.md"))
+    refute File.exist?(File.join(@home, "projects", "plastic", "store", "11--child", "revisions.md"))
+  end
+
+  def test_register_exclusions_skips_a_fresh_locked_intent_and_still_exits_zero
+    seed_register_exclusions_fixture
+    File.write(File.join(@home, "store", "40--store-graph", "delivery.lock"),
+               '{"owner_session":"someone-else"}')
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+    assert_match(/40--store-graph skipped/, out)
+
+    global_loaded = DoctorExclusions.load(File.join(@home, "INDEX.md"))
+    refute_includes(global_loaded[:rules]["savepoint_operational"] || [], "40")
   end
 end
