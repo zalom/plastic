@@ -401,6 +401,34 @@ class MaintenanceRunTest < Minitest::Test
     assert_equal ["40", "999"], loaded[:rules]["savepoint_operational"].sort
   end
 
+  # Review F5 regression: render_exclusions_file's caller reads the existing file with a raw
+  # File.read, separate from DoctorExclusions.load's own internal scrub, so a byte invalid in
+  # the file's declared encoding raised Encoding::CompatibilityError in BOTH dry-run and
+  # --apply, even though `existing` (loaded via DoctorExclusions.load) already reported that
+  # same file clean. Reproduced first (both modes raised at maintenance-run's
+  # render_exclusions_file line-scan), then fixed by scrubbing that raw read too.
+  def test_register_exclusions_never_raises_on_an_invalid_byte_in_an_existing_comment
+    seed_register_exclusions_fixture
+    File.binwrite(File.join(@home, "doctor-exclusions"),
+                  "# a comment with a bad byte caf\xE9\nsavepoint_operational 999\n")
+    git("add", "-A")
+    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "seed bad-byte comment fixture")
+
+    dry_out, _err, dry_status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                                "--plastic-home", @home)
+    assert_equal 0, dry_status.exitstatus, dry_out
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+
+    content = File.read(File.join(@home, "doctor-exclusions"))
+    assert_includes content, "a comment with a bad byte caf"
+
+    loaded = DoctorExclusions.load(File.join(@home, "INDEX.md"))
+    assert_equal ["40", "999"], loaded[:rules]["savepoint_operational"].sort
+  end
+
   def test_register_exclusions_writes_no_revisions_entries
     seed_register_exclusions_fixture
 

@@ -331,7 +331,13 @@ def run_register_exclusions(home, rule, store, apply)
       abort_loud("#{s[:scope]}: existing doctor-exclusions is malformed, refusing to rewrite " \
                  "it (#{existing[:errors].join("; ")})", 1)
     end
-    existing_text = File.exist?(existing[:path]) ? File.read(existing[:path]) : nil
+    # scrub: DoctorExclusions.load already scrubs internally (never raises, D5), but this
+    # raw read feeds render_exclusions_file's own line scan below, which was NOT going
+    # through that scrub - an invalid byte in a hand-written comment raised
+    # Encoding::CompatibilityError here on every register-exclusions run, dry-run included,
+    # even though `existing` itself (loaded via DoctorExclusions.load) reported the file
+    # clean. Scrub this read the same way so both paths agree.
+    existing_text = File.exist?(existing[:path]) ? File.read(existing[:path]).scrub : nil
 
     found_ids = []
     doctor.index_sections_by_dir(s[:index]).each do |dirname, in_sections|
