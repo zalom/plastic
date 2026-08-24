@@ -206,7 +206,7 @@ class InstallerCore
   def statusline_choice(settings_path, argv: [], input: $stdin, reinstall: false)
     existing_command = read_json_safe(settings_path)&.dig("statusLine", "command").to_s
     return :plastic if existing_command.empty?
-    return :plastic if existing_command.include?("plastic-")
+    return :plastic if HookRegistry.claude_purge_command?(existing_command)
 
     idx = argv.index("--statusline")
     flag = idx && argv[idx + 1]
@@ -941,14 +941,16 @@ class InstallerCore
 
   # ~/.codex/hooks.json merge (intent 102). Guide-settled shape [guide Part 3]:
   # top-level {"hooks": {<Event>: [...]}}, identical to Claude's settings.json
-  # hooks shape, so this mirrors merge_claude_hooks against a different file and
-  # a different purge predicate (the dispatcher command contains "codex-hook",
-  # not the "plastic-" substring merge_claude_hooks matches, since the path is
-  # "~/.plastic/scripts/codex-hook", not "~/.claude/hooks/plastic-<name>").
+  # hooks shape, so this mirrors merge_claude_hooks against a different file.
+  # Both harnesses now match ownership by registry (intent 275), not a
+  # substring: Codex by dispatcher filename equality, because its hooks are
+  # arguments to one shared dispatcher command rather than per-hook launcher
+  # files the way Claude's plastic-<name> launchers are.
   def merge_codex_hooks(hooks_json_path)
     data = read_json_safe(hooks_json_path) || {}
     hooks = data["hooks"] ||= {}
-    purge_stale_codex_hooks(hooks)
+    removed = purge_stale_codex_hooks(hooks)
+    report_removed_hook_entries(removed, "hooks.json")
     plastic = HookRegistry.codex_hooks_json(dispatcher_path: codex_dispatcher_path)
     plastic.each do |event, groups|
       hooks[event] ||= []
@@ -957,23 +959,34 @@ class InstallerCore
     write_json_atomic(hooks_json_path, data)
   end
 
+  # Returns [[event, command], ...] for every entry removed, mirroring
+  # purge_stale_plastic_hooks. Ownership comes from HookRegistry (intent 275).
   def purge_stale_codex_hooks(hooks)
-    codex_cmd = ->(cmd) { cmd.to_s.include?("codex-hook") }
+    removed = []
 
     hooks.each do |event, groups|
       next unless groups.is_a?(Array)
 
       hooks[event] = groups.map do |group|
         if group.is_a?(Hash) && group["hooks"].is_a?(Array)
-          group["hooks"].reject! { |h| codex_cmd.call(h["command"]) }
+          group["hooks"].reject! do |h|
+            HookRegistry.codex_purge_command?(h["command"]) && (removed << [event, h["command"]])
+          end
           group unless group["hooks"].empty?
         elsif group.is_a?(Hash) && group["command"]
-          codex_cmd.call(group["command"]) ? nil : group
+          if HookRegistry.codex_purge_command?(group["command"])
+            removed << [event, group["command"]]
+            nil
+          else
+            group
+          end
         else
           group
         end
       end.compact
     end
+
+    removed
   end
 
   def install_hermes(config, force)
@@ -1202,6 +1215,32 @@ class InstallerCore
     path.sub(Dir.home, "~")
   end
 
+  def report_removed_hook_entries(removed, file_label)
+    return if removed.nil? || removed.empty?
+
+    puts "  \u{1f9f9} Removed #{removed.size} stale Plastic hook entr#{removed.size == 1 ? "y" : "ies"} from #{file_label}:"
+    removed.each { |event, command| puts "     - #{event}: #{tilde(command.to_s)}" }
+  end
+
+  # The other half of intent 275: a hook the purge KEPT because the registry does not
+  # know it, but whose name carries Plastic's prefix. Silence here is what let the
+  # 1.11.0 update delete the owner's plastic-writing-style hook unnoticed; now the
+  # update says the prefix is reserved and the hook stays.
+  def report_reserved_prefix_hooks(hooks)
+    kept = hooks.flat_map do |_event, groups|
+      next [] unless groups.is_a?(Array)
+
+      groups.flat_map { |g| g.is_a?(Hash) ? Array(g["hooks"]).map { |h| h["command"] } + [g["command"]] : [] }
+    end.compact.select { |cmd| cmd.to_s.include?("plastic-") }.uniq
+
+    return if kept.empty?
+
+    puts "  \u{2139}\u{fe0f}  Kept #{kept.size} hook(s) Plastic does not own, named with the reserved plastic- prefix:"
+    kept.each { |cmd| puts "     - #{tilde(cmd.to_s)}" }
+    puts "     The plastic- prefix is reserved for Plastic's own hooks. Rename yours (for"
+    puts "     example ~/.claude/hooks/writing-style) so a future update never mistakes it."
+  end
+
   # --- settings.json merge (read-modify-write, never clobber) ---
 
   def merge_claude_hooks(settings_path, choice: :plastic)
@@ -1211,7 +1250,9 @@ class InstallerCore
     hooks = settings["hooks"] ||= {}
     hook_dir = File.join(Dir.home, ".claude", "hooks")
 
-    purge_stale_plastic_hooks(hooks)
+    removed = purge_stale_plastic_hooks(hooks)
+    report_removed_hook_entries(removed, "settings.json")
+    report_reserved_prefix_hooks(hooks)
 
     # Single source of truth (intent 108, D7): registrations live in
     # HookRegistry; this merge only translates them into settings.json.
@@ -1228,7 +1269,7 @@ class InstallerCore
       groups.each do |g|
         existing = hooks[event].find do |h|
           h.is_a?(Hash) && h["matcher"] == g["matcher"] &&
-            h["hooks"].is_a?(Array) && h["hooks"].any? { |x| x["command"].to_s.include?("plastic-") }
+            h["hooks"].is_a?(Array) && h["hooks"].any? { |x| HookRegistry.claude_purge_command?(x["command"]) }
         end
 
         if existing
@@ -1240,7 +1281,7 @@ class InstallerCore
     end
 
     existing_status = settings["statusLine"]
-    if existing_status && !existing_status.dig("command").to_s.include?("plastic-")
+    if existing_status && !HookRegistry.claude_purge_command?(existing_status["command"])
       cache_dir = File.join(plastic_home, ".cache")
       FileUtils.mkdir_p(cache_dir)
       File.write(File.join(cache_dir, "original-statusline.json"), JSON.pretty_generate(existing_status))
@@ -1254,9 +1295,10 @@ class InstallerCore
     write_json_atomic(settings_path, settings)
   end
 
+  # Returns [[event, command], ...] for every entry removed, so merge_claude_hooks
+  # can report it. Ownership comes from HookRegistry (intent 275), never a substring.
   def purge_stale_plastic_hooks(hooks)
-    plastic_cmd = ->(cmd) { cmd.to_s.include?("plastic-") }
-
+    removed = []
     hooks.delete("statusLine")
 
     hooks.each do |event, groups|
@@ -1264,15 +1306,24 @@ class InstallerCore
 
       hooks[event] = groups.map do |group|
         if group.is_a?(Hash) && group["hooks"].is_a?(Array)
-          group["hooks"].reject! { |h| plastic_cmd.call(h["command"]) }
+          group["hooks"].reject! do |h|
+            HookRegistry.claude_purge_command?(h["command"]) && (removed << [event, h["command"]])
+          end
           group unless group["hooks"].empty?
         elsif group.is_a?(Hash) && group["command"]
-          plastic_cmd.call(group["command"]) ? nil : group
+          if HookRegistry.claude_purge_command?(group["command"])
+            removed << [event, group["command"]]
+            nil
+          else
+            group
+          end
         else
           group
         end
       end.compact
     end
+
+    removed
   end
 
   # --- Codex AGENTS.md marked-section injection (22a/Beads pattern) ---
@@ -1445,10 +1496,10 @@ class InstallerCore
 
       settings["hooks"][event] = groups.map do |group|
         if group.is_a?(Hash) && group["hooks"].is_a?(Array)
-          group["hooks"].reject! { |h| h["command"].to_s.include?("plastic-") }
+          group["hooks"].reject! { |h| HookRegistry.claude_purge_command?(h["command"]) }
           group unless group["hooks"].empty?
         elsif group.is_a?(Hash) && group["command"]
-          group["command"].to_s.include?("plastic-") ? nil : group
+          HookRegistry.claude_purge_command?(group["command"]) ? nil : group
         else
           group
         end
@@ -1457,7 +1508,7 @@ class InstallerCore
 
     settings["hooks"].delete_if { |_, v| v.is_a?(Array) && v.empty? }
     settings.delete("hooks") if settings["hooks"]&.empty?
-    if settings.dig("statusLine", "command").to_s.include?("plastic-")
+    if HookRegistry.claude_purge_command?(settings.dig("statusLine", "command"))
       settings.delete("statusLine")
       original_path = File.join(plastic_home, ".cache", "original-statusline.json")
       if File.exist?(original_path)
@@ -1491,7 +1542,7 @@ class InstallerCore
       data["hooks"][event] = groups.map do |g|
         next g unless g.is_a?(Hash) && Array(g["hooks"]).is_a?(Array)
 
-        g["hooks"] = Array(g["hooks"]).reject { |h| h["command"].to_s.include?("codex-hook") }
+        g["hooks"] = Array(g["hooks"]).reject { |h| HookRegistry.codex_purge_command?(h["command"]) }
         g["hooks"].empty? ? nil : g
       end.compact
     end

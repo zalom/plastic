@@ -19,7 +19,7 @@ when the trigger in the second column applies to the work in front of you.
 | `references/knowledge-graph.md` | when creating, linking, curating, or indexing intents and you need the sources-vs-chain doctrine, the tiers of influence, the `## Links` projection, or branch-vs-root directory semantics |
 | `references/lifecycle-and-savepoints.md` | when running a lifecycle stage or a savepoint and you need the subagent report-home contract for how an insight reaches the intent |
 | `references/tiers-and-dispatch.md` | when sizing an intent, choosing agent models, routing to the advisor, or writing an auto-mode human report |
-| `references/gates-and-enforcement.md` | when a transition gate blocks you, or before using an audited escape, for the gate mechanics and the logging contract |
+| `references/gates-and-enforcement.md` | when a transition gate blocks you, or before using an audited escape, for the gate mechanics and the logging contract, or when naming, registering, or retiring a hook |
 | `references/locks-and-worktrees.md` | before taking or releasing a delivery lock, and when working with claims, worktrees, solo mode, or the station ledger |
 | `references/completion-and-done.md` | when ending an intent, for what "intent done" means and the End-stage tail |
 | `references/maintenance-and-revisions.md` | before any structural maintenance edit, for WORK vs MAINTENANCE, the `revisions.md` move-and-record contract, the violation-tag catalog, and the context-economy measurement buckets |

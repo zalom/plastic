@@ -1125,6 +1125,48 @@ twin of `codex_hooks_implemented_check`: it reads `scripts/hook-edit-gates` as p
 passing) if the extraction finds no recognizable gate names at all, the same self-checking
 posture as its Codex counterpart.
 
+## installer: hook purge by registry (intent 275)
+
+`purge_stale_plastic_hooks` decided ownership of a settings.json hook entry with
+`cmd.to_s.include?("plastic-")`: any command carrying that substring anywhere was deleted
+before the merge rewrote Plastic's own registrations. On 2026-08-23 the 1.11.0 update applied
+this to the owner's own SessionStart hook, `~/.claude/hooks/plastic-writing-style`, registered
+outside `HookRegistry` (global intent 32b). The entry vanished from settings.json with no
+message, and the writing-style skill stopped loading in every session until `/plastic-doctor`
+found the orphaned launcher a day later. Three sibling functions carried the identical shape:
+`purge_stale_codex_hooks` (`cmd.include?("codex-hook")`), `remove_claude_hooks`, and
+`remove_codex_hooks`.
+
+Ownership is now registry membership, never a substring. `HookRegistry.claude_purge_command?`
+tokenizes a settings.json command (splitting on whitespace, stripping quotes, dropping a
+trailing `.rb`) and checks each token's basename against
+`claude_purgeable_launcher_names` -- the union of `claude_launcher_names` (what Plastic
+registers now), `CLAUDE_NON_HOOK_LAUNCHERS` (installer-placed launchers `events` does not
+cover, e.g. `plastic-statusline`), and `RETIRED_CLAUDE_LAUNCHERS`. `HookRegistry.codex_purge_command?`
+checks the first token's basename against `CODEX_DISPATCHER_BASENAMES` (`codex-hook`):
+every Codex entry is an argument to one shared dispatcher command, so the dispatcher's own
+filename, not the argument, is what identifies an entry as Plastic's.
+
+`HookRegistry::RETIRED_HOOK_NAMES` is a hand-kept, frozen list of hook names Plastic has
+registered and no longer does (`code-gate`, `create-gate`, `links-gate`, `lock-gate`,
+`savepoint-pre`, `qmd-search`, `retrieval-gate`, `model-instructions`, `opus-manual`), seeded
+from git history. It exists because an old install's settings.json can carry an entry for a
+launcher `events` no longer mentions, and nothing else can prove that entry was ever Plastic's.
+It is purge-only and stays disjoint from `claude_launcher_names`: folding retired names into
+the current list would make `hooks_exist` demand launchers that no longer ship.
+**Maintenance duty:** renaming or removing a hook from `events` requires adding its old name to
+`RETIRED_HOOK_NAMES` in the same change, or every existing install keeps a dead registration no
+update will ever clean up.
+
+Both merges now report in both directions instead of failing silently.
+`purge_stale_plastic_hooks`/`purge_stale_codex_hooks` return every entry they removed, and
+`merge_claude_hooks`/`merge_codex_hooks` print a header plus one line per removal (the
+`migrate_legacy_plugin` shape, silent when nothing was removed). `merge_claude_hooks`
+additionally scans its post-purge output for any surviving `plastic-`-prefixed command the
+registry did not recognize, and prints it under its own header naming the reserved-prefix
+rule. Had that existed in 1.11.0, the update would have said "kept `plastic-writing-style`,
+the prefix is reserved" instead of deleting the hook without a word.
+
 ## living-document
 
 This is a living document. When Plastic's architecture, lifecycle, conventions,

@@ -70,7 +70,7 @@ class MergeClaudeHooksTest < Minitest::Test
           {
             "matcher" => "",
             "hooks" => [
-              { "type" => "command", "command" => "ruby /Users/test/.claude/hooks/plastic-user-prompt.rb" },
+              { "type" => "command", "command" => "ruby /Users/test/.claude/hooks/plastic-continue.rb" },
             ],
           },
         ],
@@ -158,6 +158,226 @@ class MergeClaudeHooksTest < Minitest::Test
 
     assert_nil settings["hooks"], "All plastic hooks should be removed"
     assert_nil settings["statusLine"], "statusLine should be removed"
+  end
+
+  # Intent 275, the exact 32b regression: a user-owned SessionStart hook named
+  # ~/.claude/hooks/plastic-writing-style is NOT a registry launcher, so it must
+  # survive the purge. Written and run FIRST against the unmodified substring
+  # predicate to prove the bug (see checklist.md Task 6b).
+  def test_user_hook_with_plastic_prefix_survives_merge
+    existing = {
+      "hooks" => {
+        "SessionStart" => [
+          {
+            "matcher" => "",
+            "hooks" => [
+              { "type" => "command", "command" => "~/.claude/hooks/plastic-writing-style" },
+            ],
+          },
+        ],
+      },
+    }
+
+    File.write(@settings_path, JSON.pretty_generate(existing))
+    @installer.merge_claude_hooks(@settings_path)
+
+    settings = JSON.parse(File.read(@settings_path))
+    all_commands = settings["hooks"].flat_map do |_, groups|
+      groups.flat_map { |g| (g["hooks"] || []).map { |h| h["command"] } }
+    end
+
+    assert all_commands.any? { |c| c.include?("plastic-writing-style") },
+           "A user hook merely sharing the plastic- prefix must survive the merge: #{all_commands.inspect}"
+  end
+
+  def test_user_hook_with_plastic_prefix_survives_in_rb_form
+    existing = {
+      "hooks" => {
+        "SessionStart" => [
+          {
+            "matcher" => "",
+            "hooks" => [
+              { "type" => "command", "command" => "ruby /Users/test/.claude/hooks/plastic-writing-style.rb" },
+            ],
+          },
+        ],
+      },
+    }
+
+    File.write(@settings_path, JSON.pretty_generate(existing))
+    @installer.merge_claude_hooks(@settings_path)
+
+    settings = JSON.parse(File.read(@settings_path))
+    all_commands = settings["hooks"].flat_map do |_, groups|
+      groups.flat_map { |g| (g["hooks"] || []).map { |h| h["command"] } }
+    end
+
+    assert all_commands.any? { |c| c.include?("plastic-writing-style.rb") },
+           "The .rb-suffixed form of the user hook must also survive: #{all_commands.inspect}"
+  end
+
+  # The line-1231 second-order bug: before the fix, a user plastic-prefixed
+  # hook sitting in a group whose matcher equals Plastic's own made `existing`
+  # truthy via the substring test, and existing["hooks"] = g["hooks"]
+  # OVERWROTE the user's hook with Plastic's SessionStart group. After the
+  # fix, the user hook survives in its own group AND Plastic's group is
+  # registered alongside it.
+  def test_user_plastic_prefixed_hook_in_matching_group_is_not_clobbered
+    existing = {
+      "hooks" => {
+        "SessionStart" => [
+          {
+            "matcher" => "",
+            "hooks" => [
+              { "type" => "command", "command" => "~/.claude/hooks/plastic-writing-style" },
+            ],
+          },
+        ],
+      },
+    }
+
+    File.write(@settings_path, JSON.pretty_generate(existing))
+    @installer.merge_claude_hooks(@settings_path)
+
+    settings = JSON.parse(File.read(@settings_path))
+    session_start_commands = settings["hooks"]["SessionStart"].flat_map { |g| (g["hooks"] || []).map { |h| h["command"] } }
+
+    assert session_start_commands.any? { |c| c.include?("plastic-writing-style") },
+           "The user hook must survive: #{session_start_commands.inspect}"
+    assert session_start_commands.any? { |c| c.include?("plastic-session-start") },
+           "Plastic's own SessionStart group must still be registered alongside it: #{session_start_commands.inspect}"
+  end
+
+  def test_retired_launcher_entry_is_purged
+    existing = {
+      "hooks" => {
+        "SessionStart" => [
+          {
+            "matcher" => "",
+            "hooks" => [
+              { "type" => "command", "command" => "~/.claude/hooks/plastic-lock-gate" },
+            ],
+          },
+        ],
+      },
+    }
+
+    File.write(@settings_path, JSON.pretty_generate(existing))
+    @installer.merge_claude_hooks(@settings_path)
+
+    settings = JSON.parse(File.read(@settings_path))
+    all_commands = settings["hooks"].flat_map do |_, groups|
+      groups.flat_map { |g| (g["hooks"] || []).map { |h| h["command"] } }
+    end
+
+    assert all_commands.none? { |c| c.include?("plastic-lock-gate") },
+           "A retired launcher entry must be purged: #{all_commands.inspect}"
+  end
+
+  def test_merge_prints_every_removed_entry
+    existing = {
+      "hooks" => {
+        "SessionStart" => [
+          { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "~/.claude/hooks/plastic-lock-gate" }] },
+        ],
+        "UserPromptSubmit" => [
+          { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "~/.claude/hooks/plastic-code-gate" }] },
+        ],
+      },
+    }
+    File.write(@settings_path, JSON.pretty_generate(existing))
+
+    original_stdout = $stdout
+    $stdout = StringIO.new
+    @installer.merge_claude_hooks(@settings_path)
+    output = $stdout.string
+    $stdout = original_stdout
+
+    assert_includes output, "plastic-lock-gate"
+    assert_includes output, "plastic-code-gate"
+  end
+
+  def test_merge_prints_reserved_prefix_notice_for_kept_hooks
+    existing = {
+      "hooks" => {
+        "SessionStart" => [
+          { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "~/.claude/hooks/plastic-writing-style" }] },
+        ],
+      },
+    }
+    File.write(@settings_path, JSON.pretty_generate(existing))
+
+    original_stdout = $stdout
+    $stdout = StringIO.new
+    @installer.merge_claude_hooks(@settings_path)
+    output = $stdout.string
+    $stdout = original_stdout
+
+    assert_includes output, "plastic-writing-style"
+    assert_match(/reserved/i, output)
+    assert_match(/prefix/i, output)
+  end
+
+  def test_merge_prints_nothing_when_nothing_removed
+    File.write(@settings_path, "{}")
+
+    original_stdout = $stdout
+    $stdout = StringIO.new
+    @installer.merge_claude_hooks(@settings_path)
+    output = $stdout.string
+    $stdout = original_stdout
+
+    refute_match(/Removed/, output)
+  end
+
+  def test_remove_claude_hooks_keeps_user_plastic_prefixed_hook
+    existing = {
+      "hooks" => {
+        "SessionStart" => [
+          { "matcher" => "", "hooks" => [
+            { "type" => "command", "command" => "~/.claude/hooks/plastic-writing-style" },
+            { "type" => "command", "command" => "~/.claude/hooks/plastic-session-start" },
+          ] },
+        ],
+      },
+    }
+    File.write(@settings_path, JSON.pretty_generate(existing))
+    @installer.remove_claude_hooks(@settings_path)
+
+    settings = JSON.parse(File.read(@settings_path))
+    remaining = settings.dig("hooks", "SessionStart")&.flat_map { |g| (g["hooks"] || []).map { |h| h["command"] } } || []
+
+    assert remaining.any? { |c| c.include?("plastic-writing-style") }, "User hook must survive: #{remaining.inspect}"
+    assert remaining.none? { |c| c.include?("plastic-session-start") }, "Plastic's own hook must be removed: #{remaining.inspect}"
+  end
+
+  def test_retired_launchers_are_disjoint_from_current
+    overlap = HookRegistry.claude_launcher_names & HookRegistry::RETIRED_CLAUDE_LAUNCHERS
+    assert_empty overlap, "Retired launchers must never overlap current ones: #{overlap.inspect}"
+  end
+
+  def test_claude_purge_predicate_truth_table
+    assert HookRegistry.claude_purge_command?("/Users/x/.claude/hooks/plastic-session-start")
+    assert HookRegistry.claude_purge_command?("ruby /Users/x/.claude/hooks/plastic-session-start.rb")
+    assert HookRegistry.claude_purge_command?("/Users/x/.claude/hooks/plastic-lock-gate")
+    assert HookRegistry.claude_purge_command?("/Users/x/.claude/hooks/plastic-statusline")
+
+    refute HookRegistry.claude_purge_command?("~/.claude/hooks/plastic-writing-style")
+    refute HookRegistry.claude_purge_command?("ruby ~/.claude/hooks/plastic-writing-style.rb")
+    refute HookRegistry.claude_purge_command?("serena-hooks activate --client=claude-code")
+  end
+
+  # Drift pin: every command claude_settings_hooks builds must be matched by
+  # claude_purge_command?, or a re-merge would stop being idempotent (a fresh
+  # registration would never be recognised as ours on the next purge pass).
+  def test_every_registered_claude_command_is_purgeable
+    commands = HookRegistry.claude_settings_hooks(hook_dir: "/tmp/h").values.flatten.flat_map do |g|
+      g["hooks"].map { |h| h["command"] }
+    end
+    refute_empty commands
+    commands.each do |cmd|
+      assert HookRegistry.claude_purge_command?(cmd), "#{cmd} must be purgeable"
+    end
   end
 
   def test_hook_scripts_rewrite_relative_paths

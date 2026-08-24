@@ -2,6 +2,15 @@
 
 This chapter holds the escape-and-logging depth for each transition gate.
 
+#### Hook naming and ownership
+
+The `plastic-` prefix on an installed hook launcher is reserved for hooks `HookRegistry`
+registers. A user-owned hook must never take it: the installer purges Plastic's registrations
+from the agent's hook config on every update, matching by registry launcher name (current plus
+`RETIRED_HOOK_NAMES`), and doctor's `hooks_no_orphans` reports any unregistered `plastic-*`
+launcher on disk. Renaming or removing a hook from `events` means adding its old name to
+`RETIRED_HOOK_NAMES` in the same change, or every existing install keeps a dead registration.
+
 #### The gates by name
 
 Each gate guards one thing. `scripts/lib/hook_registry.rb` is the single source of truth for

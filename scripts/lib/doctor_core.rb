@@ -32,7 +32,9 @@ class Doctor
   # (intent 204): plastic-statusline is the settings["statusLine"] command, wired
   # outside HookRegistry.events entirely, so it must be excluded from the
   # orphan-launcher scan below or a correct install would report a false orphan.
-  CLAUDE_NON_HOOK_LAUNCHERS = %w[plastic-statusline].freeze
+  # Defined in HookRegistry (intent 275) so the installer's purge can read it too;
+  # this is an alias, not a second source of truth.
+  CLAUDE_NON_HOOK_LAUNCHERS = HookRegistry::CLAUDE_NON_HOOK_LAUNCHERS
 
   REQUIRED_SCRIPTS = %w[
     folgezettel-id
@@ -243,7 +245,10 @@ class Doctor
         message: "#{orphans.size} hook launcher(s) on disk are not registered in HookRegistry",
         details: orphans.map { |h| "#{tilde(hooks_dir)}/#{h}" },
         fixable: true,
-        fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest --claude (prunes stale launchers)"
+        fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest --claude (prunes " \
+                  "stale launchers). The plastic- prefix is reserved for Plastic's own hooks: " \
+                  "if one of these is yours, rename it (for example to ~/.claude/hooks/" \
+                  "writing-style) and re-register it in settings.json before re-running."
       )
     end
 

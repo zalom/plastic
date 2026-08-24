@@ -186,6 +186,85 @@ module HookRegistry
           .uniq.sort.map { |name| "plastic-#{name}" }
   end
 
+  # Launchers the installer places in the agent's hooks dir that `events` does not
+  # register (intent 204): plastic-statusline is the settings["statusLine"] command.
+  # Defined here rather than in doctor_core so the installer's purge can recognise it
+  # without depending on the doctor; Doctor::CLAUDE_NON_HOOK_LAUNCHERS aliases it.
+  CLAUDE_NON_HOOK_LAUNCHERS = %w[plastic-statusline].freeze
+
+  # Hook names Plastic HAS registered and no longer does (intent 275). Purge-only:
+  # an old install still carries these entries in settings.json / hooks.json, and
+  # nothing else can tell us they were ever ours.
+  #
+  # MAINTENANCE DUTY: renaming or removing a hook from `events` means adding its old
+  # name here in the SAME change. Skip it and every existing install keeps a dead
+  # registration no update will ever clean up.
+  #
+  # Never fold these into claude_launcher_names: that method is what doctor's
+  # hooks_exist demands be present on disk, so a retired name there makes a correct
+  # install report missing launchers.
+  RETIRED_HOOK_NAMES = %w[
+    code-gate create-gate links-gate lock-gate savepoint-pre
+    qmd-search retrieval-gate model-instructions opus-manual
+  ].freeze
+
+  RETIRED_CLAUDE_LAUNCHERS = RETIRED_HOOK_NAMES.map { |n| "plastic-#{n}" }.freeze
+
+  # Filenames of Plastic's Codex dispatcher, current and retired. Codex hooks are
+  # not per-hook launcher files: every command is `"<dispatcher>" <name>`, so the
+  # dispatcher's own filename is what identifies an entry as ours.
+  CODEX_DISPATCHER_BASENAMES = %w[codex-hook].freeze
+
+  # Every launcher name the installer may purge from settings.json: what we register
+  # now, the non-hook launchers we place, and what we used to register.
+  def claude_purgeable_launcher_names
+    (claude_launcher_names + CLAUDE_NON_HOOK_LAUNCHERS + RETIRED_CLAUDE_LAUNCHERS).uniq.sort
+  end
+
+  # Current Codex hook names, from the same sources codex_hooks_json builds from.
+  def codex_hook_names
+    live = CODEX_LIVE_STATE_EVENTS.flat_map do |event|
+      events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    end
+    (CODEX_PRE_HOOKS + CODEX_POST_HOOKS + CODEX_BASH_HOOKS + live).uniq.sort
+  end
+
+  def codex_purgeable_hook_names
+    (codex_hook_names + RETIRED_HOOK_NAMES).uniq.sort
+  end
+
+  # Is this settings.json hook command one of OURS? (intent 275)
+  #
+  # Ownership is registry membership, never a substring: the substring test this
+  # replaced deleted a user's own ~/.claude/hooks/plastic-writing-style hook on
+  # update. Tokenised rather than first-token-only because legacy entries take the
+  # form `ruby <path>/plastic-<name>.rb`, and those must still be purged.
+  def claude_purge_command?(cmd)
+    known = claude_purgeable_launcher_names
+    command_basenames(cmd).any? { |name| known.include?(name) }
+  end
+
+  # Is this ~/.codex/hooks.json command one of ours? Every Plastic Codex entry
+  # invokes our dispatcher by path (`"<plastic_home>/scripts/codex-hook" <name>`),
+  # so the dispatcher's filename identifies it. Basename EQUALITY, so a user's
+  # ~/bin/codex-hook-wrapper is not ours; the argument is not filtered on, because
+  # a command that already runs our dispatcher is ours whatever gate it names, and
+  # filtering would strand any name we forgot to retire.
+  def codex_purge_command?(cmd)
+    first = cmd.to_s.split(/\s+/).reject(&:empty?).first
+    return false unless first
+
+    CODEX_DISPATCHER_BASENAMES.include?(File.basename(first.delete("\"'")))
+  end
+
+  # Each whitespace-separated token reduced to a comparable launcher name:
+  # quotes stripped, directories dropped, a trailing .rb removed.
+  def command_basenames(cmd)
+    cmd.to_s.split(/\s+/).reject(&:empty?).map do |token|
+      File.basename(token.delete("\"'")).sub(/\.rb\z/, "")
+    end
+  end
+
   # The settings.json shape merge_claude_hooks expects: single-group events map
   # to a Hash, multi-group events to an Array (the merge loop handles both).
   def claude_settings_hooks(hook_dir:)
