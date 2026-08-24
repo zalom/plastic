@@ -176,9 +176,9 @@ meant to catch).
 (intent 274) is the one narrow exception to the "every maintenance action is recorded in
 `revisions.md`" rule above. It populates each store's `doctor-exclusions` file (the per-store
 record of knowingly-exempt `(intent_id, rule)` pairs `doctor`'s `savepoint_operational` check
-honors - see `skills/doctor/SKILL.md`) by computing violations through `Doctor#done_signal_
-findings_for_dir` directly, the same function `check_done_signals` itself calls, so the
-registry can never disagree with the checker about what counts as a violation.
+honors - see `skills/doctor/SKILL.md`) by computing violations through
+`Doctor#done_signal_findings_for_dir` directly, the same function `check_done_signals` itself
+calls, so the registry can never disagree with the checker about what counts as a violation.
 
 The carve-out: this tool modifies no intent directory at all. It writes exactly one
 store-level table per store (`doctor-exclusions`, sibling to `INDEX.md`), never an intent's

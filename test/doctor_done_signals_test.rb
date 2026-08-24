@@ -368,6 +368,20 @@ class DoctorDoneSignalsTest < Minitest::Test
     assert(operational[:details].any? { |d| d.include?("unknown or non-excludable rule") })
   end
 
+  # Review F1 regression: a doctor-exclusions file carrying a byte invalid in its declared
+  # encoding must not crash the whole doctor run - check_done_signals must still return a
+  # result (loud warn via the loader error, per D5), never raise.
+  def test_invalid_byte_in_exclusions_file_does_not_crash_doctor
+    write_index("46", section: "Completed")
+    write_intent_dir("46")
+    write_outcome("46")
+    write_savepoint_done("46")
+    File.binwrite(File.join(@home, "doctor-exclusions"), "# bad byte caf\xE9\nsavepoint_operational 46\n")
+
+    operational = check("savepoint_operational")
+    assert_equal "pass", operational[:status]
+  end
+
   # FAIL-OPEN (spec D5): no exclusion file at all leaves behavior identical to before intent 274.
   def test_no_exclusions_file_is_byte_identical_to_before
     write_index("45", section: "Completed")

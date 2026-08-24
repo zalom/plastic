@@ -274,14 +274,25 @@ end
 
 # Renders one store's canonical doctor-exclusions content (spec D6/D7): a leading comment
 # block documenting the format, then one `rule_name id id id` line per rule, ids sorted. Pure.
-def render_exclusions_file(rules)
-  lines = []
-  lines << "# doctor-exclusions - knowingly-exempt (intent_id, rule) pairs (intent 274)."
-  lines << "# Format: rule_name id id id  (one line per rule, ids space-separated)."
-  lines << "# Blank lines and lines starting with # are ignored. Ids only, never any other"
-  lines << "# content - doctor reports how many findings this file suppressed and where"
-  lines << "# this file lives, so the count always stays honest."
-  lines << ""
+# `existing_text:` (review F2) is the file's raw content BEFORE this run, or nil when the
+# file does not exist yet. A hand-edited exclusion file's comments are the only home for an
+# exemption's justification (D8: no revisions.md receipt exists for this tool), so an update
+# preserves every comment and blank line from `existing_text` verbatim, in original order,
+# ahead of the freshly rendered rule lines - it never re-renders over them. The boilerplate
+# header is written only when there is no existing file to preserve anything from.
+def render_exclusions_file(rules, existing_text: nil)
+  if existing_text
+    lines = existing_text.each_line.select { |l| l.strip.empty? || l.strip.start_with?("#") }.map(&:chomp)
+  else
+    lines = [
+      "# doctor-exclusions - knowingly-exempt (intent_id, rule) pairs (intent 274).",
+      "# Format: rule_name id id id  (one line per rule, ids space-separated).",
+      "# Blank lines and lines starting with # are ignored. Ids only, never any other",
+      "# content - doctor reports how many findings this file suppressed and where",
+      "# this file lives, so the count always stays honest.",
+      "",
+    ]
+  end
   rules.keys.sort.each do |rule_name|
     lines << "#{rule_name} #{rules[rule_name].sort.join(" ")}"
   end
@@ -320,6 +331,7 @@ def run_register_exclusions(home, rule, store, apply)
       abort_loud("#{s[:scope]}: existing doctor-exclusions is malformed, refusing to rewrite " \
                  "it (#{existing[:errors].join("; ")})", 1)
     end
+    existing_text = File.exist?(existing[:path]) ? File.read(existing[:path]) : nil
 
     found_ids = []
     doctor.index_sections_by_dir(s[:index]).each do |dirname, in_sections|
@@ -347,7 +359,7 @@ def run_register_exclusions(home, rule, store, apply)
     next if added.empty?
 
     merged_rules = existing[:rules].merge(rule => (already | found_ids).sort)
-    plan[s] = { content: render_exclusions_file(merged_rules), added: added.sort }
+    plan[s] = { content: render_exclusions_file(merged_rules, existing_text: existing_text), added: added.sort }
   end
 
   puts skip_lines.join("\n") unless skip_lines.empty?

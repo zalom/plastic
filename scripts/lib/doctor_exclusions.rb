@@ -36,14 +36,21 @@ module DoctorExclusions
 
   # PURE. { rules: { rule_name => [ids] }, errors: [String] }. A line producing any error
   # contributes nothing to rules; duplicate rule lines union their ids without an error.
+  #
+  # `scrub` (never raises) before any regex/String op: a hand-edited file can carry a byte
+  # sequence invalid in its declared encoding (e.g. a stray Latin-1 byte in a comment), and
+  # String#strip/split/=~ all raise Encoding::CompatibilityError on that input. Scrubbing
+  # replaces the invalid byte with U+FFFD and keeps this module's never-raises contract (D5)
+  # true for every input, not just well-formed UTF-8.
   def parse(text)
     rules = {}
     errors = []
 
-    text.to_s.each_line.with_index(1) do |raw_line, n|
+    text.to_s.scrub.each_line.with_index(1) do |raw_line, n|
       line = raw_line.strip
       next if line.empty? || line.start_with?("#")
 
+      line = line.sub(/(?:\A|\s)#.*\z/, "").rstrip
       tokens = line.split
       rule = tokens.shift
       line_errors = []

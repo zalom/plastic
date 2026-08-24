@@ -67,6 +67,49 @@ class DoctorExclusionsTest < Minitest::Test
     assert_empty result[:errors]
   end
 
+  # --- inline comments (review F3): docs say comments are ignored, so a trailing "# ..." on
+  # an otherwise well-formed rule line must not drop the whole line, just the comment.
+
+  def test_inline_trailing_comment_on_a_rule_line_is_stripped
+    result = DoctorExclusions.parse("savepoint_operational 1 1a  # why\n")
+    assert_equal({ "savepoint_operational" => ["1", "1a"] }, result[:rules])
+    assert_empty result[:errors]
+  end
+
+  def test_hash_glued_to_a_token_with_no_preceding_whitespace_is_not_treated_as_a_comment
+    # "1#stray" has no whitespace before "#", so it stays one token and correctly fails the
+    # Folgezettel check, rather than being silently truncated to a bare "1".
+    result = DoctorExclusions.parse("savepoint_operational 1#stray\n")
+    assert_empty result[:rules]
+    assert_equal 1, result[:errors].size
+    assert_match(/"1#stray" is not a Folgezettel intent id/, result[:errors].first)
+  end
+
+  # --- invalid byte sequences (review F1): a hand-edited file can carry a byte invalid in
+  # its declared encoding. String#strip/split/=~ all raise Encoding::CompatibilityError on
+  # that input; load/parse must never raise (D5's never-raises contract covers every input,
+  # not just well-formed UTF-8). Reproduced first against pre-fix code (raised
+  # Encoding::CompatibilityError at doctor_exclusions.rb:44's String#strip), fixed via scrub.
+
+  def test_load_never_raises_on_an_invalid_byte_in_a_comment_line
+    path = File.join(@home, "doctor-exclusions")
+    File.binwrite(path, "# a comment with a bad byte caf\xE9\nsavepoint_operational 1\n")
+
+    result = DoctorExclusions.load(File.join(@home, "INDEX.md"))
+    assert_equal({ "savepoint_operational" => ["1"] }, result[:rules])
+    assert_empty result[:errors]
+  end
+
+  def test_load_never_raises_on_an_invalid_byte_in_a_rule_line
+    path = File.join(@home, "doctor-exclusions")
+    File.binwrite(path, "savepoint_operational 1\xFF\n")
+
+    result = DoctorExclusions.load(File.join(@home, "INDEX.md"))
+    assert_empty result[:rules]
+    assert_equal 1, result[:errors].size
+    assert_match(/is not a Folgezettel intent id/, result[:errors].first)
+  end
+
   # --- load (IO) ---
 
   def test_missing_file_yields_empty_rules_and_empty_errors

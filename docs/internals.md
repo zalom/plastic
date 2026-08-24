@@ -273,8 +273,9 @@ a sibling `savepoint_truthful` advisory (pass when clean, warn and never fail, m
 Some `savepoint_operational` gaps can never legitimately close: a terminal intent with no real
 `outcome.md` has no disposition to echo, and 219 D6 forbids ever inventing one, so the warning
 would otherwise recur forever. Intent 274 gives each store a `doctor-exclusions` file, sibling to
-that store's `INDEX.md` (`~/.plastic/doctor-exclusions` globally, `~/.plastic/projects/<slug>/
-doctor-exclusions` per project), recording knowingly-exempt `(intent_id, rule)` pairs. The format
+that store's `INDEX.md` (`~/.plastic/doctor-exclusions` globally,
+`~/.plastic/projects/<slug>/doctor-exclusions` per project), recording knowingly-exempt
+`(intent_id, rule)` pairs. The format
 is `/etc/hosts`-shaped: one `rule_name id id id` line per rule, blank lines and `#` comments
 ignored, duplicate rule lines unioned. It is a plain-text config table, not a markdown document
 (no `.md` extension), and it never ships in the npm package: `scripts/lib/rule_catalog.rb`

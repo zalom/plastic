@@ -376,6 +376,31 @@ class MaintenanceRunTest < Minitest::Test
     assert_equal ["40", "999"], loaded[:rules]["savepoint_operational"].sort
   end
 
+  # Review F2 regression: render_exclusions_file rebuilds the rule lines from parsed rules on
+  # every run, which would otherwise silently discard a hand-written file's comment lines -
+  # under D8 this tool writes no revisions.md receipt, so a comment is the only home for an
+  # exemption's justification, and losing it on the next --apply would be a real data loss.
+  def test_register_exclusions_preserves_hand_written_comments_on_apply
+    seed_register_exclusions_fixture
+    hand_written = "# 999 is exempt: pre-convention intent, no real outcome.md ever existed\n" \
+                   "# approved by owner 2026-08-01\n" \
+                   "savepoint_operational 999\n"
+    File.write(File.join(@home, "doctor-exclusions"), hand_written)
+    git("add", "-A")
+    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "hand-add 999 with comments")
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+
+    content = File.read(File.join(@home, "doctor-exclusions"))
+    assert_includes content, "# 999 is exempt: pre-convention intent, no real outcome.md ever existed\n"
+    assert_includes content, "# approved by owner 2026-08-01\n"
+
+    loaded = DoctorExclusions.load(File.join(@home, "INDEX.md"))
+    assert_equal ["40", "999"], loaded[:rules]["savepoint_operational"].sort
+  end
+
   def test_register_exclusions_writes_no_revisions_entries
     seed_register_exclusions_fixture
 
