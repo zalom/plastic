@@ -250,11 +250,16 @@ module HookRegistry
   # ~/bin/codex-hook-wrapper is not ours; the argument is not filtered on, because
   # a command that already runs our dispatcher is ours whatever gate it names, and
   # filtering would strand any name we forgot to retire.
+  #
+  # Tokenised the same way claude_purge_command? is (command_basenames), NOT a
+  # naive cmd.split.first: a first-token split breaks whenever plastic_home
+  # contains a space, since the shell-quoted dispatcher path then splits across
+  # multiple whitespace tokens and the true first token is only half the path.
+  # command_basenames strips quote characters per token, so whichever token
+  # carries the dispatcher's trailing `/codex-hook"` still resolves to the bare
+  # basename "codex-hook" after its trailing quote is stripped.
   def codex_purge_command?(cmd)
-    first = cmd.to_s.split(/\s+/).reject(&:empty?).first
-    return false unless first
-
-    CODEX_DISPATCHER_BASENAMES.include?(File.basename(first.delete("\"'")))
+    command_basenames(cmd).any? { |name| CODEX_DISPATCHER_BASENAMES.include?(name) }
   end
 
   # Each whitespace-separated token reduced to a comparable launcher name:

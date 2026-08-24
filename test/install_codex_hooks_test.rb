@@ -127,10 +127,14 @@ class MergeCodexHooksTest < Minitest::Test
     File.write(@hooks_json_path, JSON.pretty_generate(existing))
 
     original_stdout = $stdout
-    $stdout = StringIO.new
-    @installer.merge_codex_hooks(@hooks_json_path)
-    output = $stdout.string
-    $stdout = original_stdout
+    output = nil
+    begin
+      $stdout = StringIO.new
+      @installer.merge_codex_hooks(@hooks_json_path)
+      output = $stdout.string
+    ensure
+      $stdout = original_stdout
+    end
 
     assert_includes output, "lock-gate"
   end
@@ -173,6 +177,52 @@ class MergeCodexHooksTest < Minitest::Test
 
     assert_nil result, "a hooks.json with only user entries must be a true no-op"
     assert_equal before, File.read(@hooks_json_path)
+  end
+
+  # Intent 275 regression: codex_purge_command? originally split the command
+  # on whitespace and took the FIRST token as the dispatcher path. A
+  # plastic_home containing a space (a real, if unusual, macOS home directory
+  # -- e.g. "/Users/My Name/.plastic") breaks that: the shell-quoted dispatcher
+  # path splits across multiple whitespace tokens, so the naive first token is
+  # only half the path and never matches. mktmpdir paths never contain a
+  # space, which is why this escaped every prior test. Constructing a spaced
+  # subdirectory here reproduces the real shape.
+  def test_codex_purge_handles_dispatcher_path_containing_a_space
+    spaced_home = File.join(@dir, "plastic home")
+    FileUtils.mkdir_p(spaced_home)
+    installer = InstallerCore.new(package_root: "/tmp/plastic-test-pkg", plastic_home: spaced_home, version: "1.0.0-test")
+    dispatcher = installer.codex_dispatcher_path
+    assert_includes dispatcher, " ", "fixture assumption: the dispatcher path must contain a space"
+
+    forms = [
+      "\"#{dispatcher}\" edit-gates",        # quoted, the exact shape codex_hooks_json emits
+      "ruby \"#{dispatcher}\" edit-gates",   # interpreter-prefixed
+      "FOO=bar \"#{dispatcher}\" edit-gates", # env-prefixed
+    ]
+
+    forms.each do |cmd|
+      assert HookRegistry.codex_purge_command?(cmd), "#{cmd.inspect} must be purgeable"
+    end
+
+    # Truth table must stay intact: a user command is still never mistaken for ours.
+    refute HookRegistry.codex_purge_command?("/Users/test/bin/codex-hook-wrapper --sync")
+    refute HookRegistry.codex_purge_command?("my-codex-hooks activate")
+  end
+
+  def test_merge_twice_under_spaced_plastic_home_produces_no_duplicates
+    spaced_home = File.join(@dir, "plastic home")
+    FileUtils.mkdir_p(spaced_home)
+    installer = InstallerCore.new(package_root: "/tmp/plastic-test-pkg", plastic_home: spaced_home, version: "1.0.0-test")
+
+    File.write(@hooks_json_path, "{}")
+    installer.merge_codex_hooks(@hooks_json_path)
+    once = JSON.parse(File.read(@hooks_json_path))
+
+    installer.merge_codex_hooks(@hooks_json_path)
+    twice = JSON.parse(File.read(@hooks_json_path))
+
+    assert_equal all_commands(once).size, all_commands(twice).size,
+                 "a re-merge under a spaced plastic_home must not duplicate entries: #{all_commands(twice).inspect}"
   end
 
   # Drift pin: every command codex_hooks_json builds must be matched by

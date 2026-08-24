@@ -288,10 +288,14 @@ class MergeClaudeHooksTest < Minitest::Test
     File.write(@settings_path, JSON.pretty_generate(existing))
 
     original_stdout = $stdout
-    $stdout = StringIO.new
-    @installer.merge_claude_hooks(@settings_path)
-    output = $stdout.string
-    $stdout = original_stdout
+    output = nil
+    begin
+      $stdout = StringIO.new
+      @installer.merge_claude_hooks(@settings_path)
+      output = $stdout.string
+    ensure
+      $stdout = original_stdout
+    end
 
     assert_includes output, "plastic-lock-gate"
     assert_includes output, "plastic-code-gate"
@@ -308,10 +312,14 @@ class MergeClaudeHooksTest < Minitest::Test
     File.write(@settings_path, JSON.pretty_generate(existing))
 
     original_stdout = $stdout
-    $stdout = StringIO.new
-    @installer.merge_claude_hooks(@settings_path)
-    output = $stdout.string
-    $stdout = original_stdout
+    output = nil
+    begin
+      $stdout = StringIO.new
+      @installer.merge_claude_hooks(@settings_path)
+      output = $stdout.string
+    ensure
+      $stdout = original_stdout
+    end
 
     assert_includes output, "plastic-writing-style"
     assert_match(/reserved/i, output)
@@ -322,10 +330,14 @@ class MergeClaudeHooksTest < Minitest::Test
     File.write(@settings_path, "{}")
 
     original_stdout = $stdout
-    $stdout = StringIO.new
-    @installer.merge_claude_hooks(@settings_path)
-    output = $stdout.string
-    $stdout = original_stdout
+    output = nil
+    begin
+      $stdout = StringIO.new
+      @installer.merge_claude_hooks(@settings_path)
+      output = $stdout.string
+    ensure
+      $stdout = original_stdout
+    end
 
     refute_match(/Removed/, output)
   end

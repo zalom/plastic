@@ -696,6 +696,16 @@ class DoctorAgentRegistrationTest < Minitest::Test
 
   # intent 115 (AC3): a stray Plastic hook the registry does not define must
   # still be reported. Stray detection is untouched by the aggregation fix.
+  #
+  # Intent 275 note: the fixture command changed from an invented
+  # "plastic-bogus-hook" to the real retired launcher "plastic-lock-gate".
+  # Stray detection now runs through HookRegistry.claude_purge_command? (the
+  # same registry-membership test the installer purge uses), and an invented
+  # name that Plastic never registered is -- correctly, per Decision 2's
+  # forgotten-retirement tradeoff -- now indistinguishable from a foreign
+  # hook, not a stray. A RETIRED name is still recognised as ours by the
+  # registry while absent from the current expected set, which is exactly
+  # the drift AC3 means to catch.
   def test_stray_plastic_hook_still_reported
     write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
     settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
@@ -704,7 +714,7 @@ class DoctorAgentRegistrationTest < Minitest::Test
 
     settings = JSON.parse(File.read(settings_path))
     settings["hooks"]["SessionStart"].first["hooks"] << {
-      "type" => "command", "command" => "/opt/plastic/hooks/plastic-bogus-hook"
+      "type" => "command", "command" => "/opt/plastic/hooks/plastic-lock-gate"
     }
     File.write(settings_path, JSON.pretty_generate(settings))
 
@@ -712,8 +722,70 @@ class DoctorAgentRegistrationTest < Minitest::Test
     registry_check = checks.find { |c| c[:name] == "hooks_match_registry" }
 
     assert_equal "fail", registry_check[:status]
-    assert registry_check[:details].any? { |d| d.include?("stray") && d.include?("plastic-bogus-hook") },
+    assert registry_check[:details].any? { |d| d.include?("stray") && d.include?("plastic-lock-gate") },
            "the diff must report the stray plastic hook: #{registry_check[:details].inspect}"
+  end
+
+  # Intent 275 regression: hooks_match_registry and hooks_registered used a
+  # bare `cmd.include?("plastic-")` ownership test, the same substring bug the
+  # installer purge carried. A user-owned SessionStart hook that merely shares
+  # the plastic- prefix (the exact 32b shape) must never be treated as a
+  # Plastic registration by either check.
+  #
+  # The fixture is built with write_claude_settings (HookRegistry.claude_settings_hooks
+  # against DOCTOR_TEST_CLAUDE's own hooks dir), then the user hook is added
+  # alongside it in the same SessionStart group -- exactly the shape the FIXED
+  # merge_claude_hooks leaves behind (pinned directly by
+  # test_user_plastic_prefixed_hook_in_matching_group_is_not_clobbered in
+  # install_hooks_test.rb). merge_claude_hooks itself is not called here: it
+  # hardcodes hook_dir to the real Dir.home, not an injectable agent dir, so
+  # driving it directly would write real-$HOME paths into this tmpdir fixture
+  # and produce a false mismatch against DOCTOR_TEST_CLAUDE's expected paths.
+  def test_user_plastic_prefixed_hook_is_not_a_stray_after_a_real_merge
+    write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"]["SessionStart"].first["hooks"] << {
+      "type" => "command", "command" => "~/.claude/hooks/plastic-writing-style"
+    }
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    registry_check = checks.find { |c| c[:name] == "hooks_match_registry" }
+
+    assert_equal "pass", registry_check[:status],
+                 "a user hook sharing the plastic- prefix must not register as a stray: #{Array(registry_check[:details]).inspect}"
+    assert(Array(registry_check[:details]).none? { |d| d.include?("plastic-writing-style") })
+  end
+
+  # The other half of the same regression: a settings.json carrying ONLY a
+  # user-owned plastic-prefixed hook (no real Plastic registration at all)
+  # must NOT satisfy hooks_registered for that event. Before the fix, the
+  # substring test let the user hook count as "Plastic is registered here".
+  def test_hooks_registered_does_not_count_a_lone_user_plastic_prefixed_hook
+    write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    File.write(settings_path, JSON.pretty_generate({
+      "hooks" => {
+        "SessionStart" => [
+          { "matcher" => "", "hooks" => [
+            { "type" => "command", "command" => "~/.claude/hooks/plastic-writing-style" },
+          ] },
+        ],
+      },
+    }))
+
+    checks = doctor.check_agent_registration("claude")
+    registered_check = checks.find { |c| c[:name] == "hooks_registered" }
+
+    assert_equal "fail", registered_check[:status]
+    assert_includes registered_check[:details], "SessionStart",
+                     "a lone user hook must not satisfy the SessionStart requirement: #{registered_check[:details].inspect}"
   end
 
   def test_missing_skills_directory_fails

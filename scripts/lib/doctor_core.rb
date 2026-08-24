@@ -276,7 +276,7 @@ class Doctor
 
         groups.any? do |group|
           group.is_a?(Hash) && group["hooks"].is_a?(Array) &&
-            group["hooks"].any? { |h| h["command"].to_s.include?("plastic-") }
+            group["hooks"].any? { |h| HookRegistry.claude_purge_command?(h["command"]) }
         end
       end
 
@@ -314,7 +314,7 @@ class Doctor
       live_plastic = (settings["hooks"] || {}).flat_map do |event, groups|
         Array(groups).flat_map do |g|
           next [] unless g.is_a?(Hash) && g["hooks"].is_a?(Array)
-          g["hooks"].map { |h| h["command"].to_s }.select { |c| c.include?("plastic-") }
+          g["hooks"].map { |h| h["command"].to_s }.select { |c| HookRegistry.claude_purge_command?(c) }
                     .map { |c| "#{event}: #{c}" }
         end
       end
