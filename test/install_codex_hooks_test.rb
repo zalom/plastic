@@ -179,6 +179,63 @@ class MergeCodexHooksTest < Minitest::Test
     assert_equal before, File.read(@hooks_json_path)
   end
 
+  def test_remove_prints_every_removed_codex_entry
+    existing = {
+      "hooks" => {
+        "PreToolUse" => [
+          { "matcher" => "apply_patch", "hooks" => [
+            { "type" => "command", "command" => "\"#{dispatcher_path}\" edit-gates" },
+            { "type" => "command", "command" => "/Users/test/bin/codex-hook-wrapper --sync" },
+          ] },
+        ],
+      },
+    }
+    File.write(@hooks_json_path, JSON.pretty_generate(existing))
+
+    original_stdout = $stdout
+    output = nil
+    begin
+      $stdout = StringIO.new
+      @installer.remove_codex_hooks(@hooks_json_path)
+      output = $stdout.string
+    ensure
+      $stdout = original_stdout
+    end
+
+    assert_includes output, "edit-gates"
+    assert_includes output, "PreToolUse"
+    assert_match(/hooks\.json/, output)
+    refute_match(/stale/i, output)
+    refute_includes output, "codex-hook-wrapper"
+  end
+
+  def test_remove_codex_hooks_prints_nothing_on_no_op
+    existing = {
+      "hooks" => {
+        "PreToolUse" => [
+          { "matcher" => "apply_patch", "hooks" => [
+            { "type" => "command", "command" => "/Users/test/bin/codex-hook-wrapper --sync" },
+          ] },
+        ],
+      },
+    }
+    File.write(@hooks_json_path, JSON.pretty_generate(existing))
+
+    original_stdout = $stdout
+    output = nil
+    result = nil
+    begin
+      $stdout = StringIO.new
+      result = @installer.remove_codex_hooks(@hooks_json_path)
+      output = $stdout.string
+    ensure
+      $stdout = original_stdout
+    end
+
+    refute_match(/Removed/, output)
+    assert_nil result
+  end
+
   # Intent 275 regression: codex_purge_command? originally split the command
   # on whitespace and took the FIRST token as the dispatcher path. A
   # plastic_home containing a space (a real, if unusual, macOS home directory
