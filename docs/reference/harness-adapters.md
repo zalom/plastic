@@ -277,8 +277,9 @@ resolves `~/.plastic` off `$HOME` on its own and reads only the common stdin fie
 (`user_prompt` for the four `UserPromptSubmit` hooks) the official Codex hooks doc confirms
 match Claude's schema for these events. The dispatcher's only adaptation is threading the
 payload's `session_id` into `CLAUDE_CODE_SESSION_ID` (Codex's own process env never carries
-it) and bounding the call with a timeout (`hooks/check-update` backgrounds a real network
-call without redirecting its output, and Codex invokes hooks synchronously), then relaying
+it) and bounding the call with a timeout (`hooks/check-update`'s backgrounded network call no
+longer leaks the dispatcher's pipes, fixed at the root in intent 289; the bound stays because
+Codex invokes hooks synchronously and some other launcher could still leak them), then relaying
 stdout, stderr, and exit code unchanged, the same "drive the body, relay its output" pattern
 already used for the file-mutation gates. `SubagentStart` is still not wired: no Plastic
 hook exists for it on any harness today.

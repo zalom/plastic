@@ -471,7 +471,7 @@ class CodexHooksTest < Minitest::Test
     bin = stub_npm_bin(10)
 
     out, status = run_hook("check-update", state_payload(event: "SessionStart"),
-                           extra_env: path_with(bin))
+                           plastic_home: plastic_home, extra_env: path_with(bin))
     assert_equal 0, status.exitstatus
     assert_empty out.strip, "check-update only writes a background cache file, never additionalContext"
   end
@@ -488,7 +488,7 @@ class CodexHooksTest < Minitest::Test
 
     started = Time.now
     out, status = run_hook("check-update", state_payload(event: "SessionStart"),
-                           extra_env: path_with(bin))
+                           plastic_home: plastic_home, extra_env: path_with(bin))
     elapsed = Time.now - started
 
     assert_equal 0, status.exitstatus
@@ -515,13 +515,17 @@ class CodexHooksTest < Minitest::Test
     File.write(launcher, "#!/bin/bash\n( sleep 10 ) &\nexit 0\n")
     File.chmod(0o755, launcher)
 
+    started = Time.now
     out, status = run_hook("check-update", state_payload(event: "SessionStart"),
                            script: dispatcher)
+    elapsed = Time.now - started
 
     assert_equal 0, status.exitstatus,
       "a timed-out launcher must still fail open with exit 0"
     assert_empty out.strip,
       "the timeout path must print no Open3 reader-thread backtrace (stream closed in another thread)"
+    assert_operator elapsed, :>=, 4.0,
+      "the fixture must actually hold the pipes past STATE_TIMEOUT, or this test proves nothing"
   end
 
   def test_continue_hook_returns_dashboard_context

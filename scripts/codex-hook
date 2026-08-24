@@ -56,14 +56,15 @@ STATE_HOOKS = %w[session-start check-update continue future-intent-check auto-ar
 STATE_TIMEOUT = 5
 SHELL_HOOKS = %w[bash-gate].freeze
 
-# One capture path for both relayed-launcher branches (intent 289). The 5 s bound stays:
-# Codex invokes hooks synchronously, so an unbounded launcher would hang the session. What
-# is added is silence on the timeout path. A launcher that leaks THIS process's stdout and
-# stderr into a longer-lived background child (hooks/check-update did exactly that before
-# 289) leaves Open3's reader threads blocked in IO#read; when Timeout unwinds and popen3's
-# ensure closes those pipes underneath them, both threads raise IOError and Ruby prints a
-# backtrace to real stderr, which any caller merging our stdout and stderr then reads as
-# hook output. Thread#report_on_exception is seeded from the class default AT THREAD
+# One capture path for both relayed-launcher branches (intent 289). The 5 s bound covers a
+# launcher that leaks THIS process's stdout and stderr into a longer-lived background child
+# (hooks/check-update did exactly that before 289): it does not bound a launcher that simply
+# never exits in the foreground, since Open3.popen3's ensure joins the child's wait thread on
+# the way out regardless of Timeout. What is added here is silence on the timeout path. A
+# leaked-pipe launcher leaves Open3's reader threads blocked in IO#read; when Timeout unwinds
+# and popen3's ensure closes those pipes underneath them, both threads raise IOError and Ruby
+# prints a backtrace to real stderr, which any caller merging our stdout and stderr then reads
+# as hook output. Thread#report_on_exception is seeded from the class default AT THREAD
 # CREATION and capture3 creates its readers inside this block (open3.rb:664-665), so
 # clearing the default here is enough. Restored in ensure: nothing else in this process,
 # including a genuinely unexpected exception later, loses its report.
