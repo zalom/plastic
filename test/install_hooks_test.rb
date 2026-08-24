@@ -500,6 +500,111 @@ class MergeClaudeHooksTest < Minitest::Test
       "Original statusline should be restored on uninstall"
   end
 
+  def test_remove_prints_every_removed_entry
+    mixed = {
+      "hooks" => {
+        "SessionStart" => [
+          { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "serena-hooks activate" }] },
+          { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "/path/plastic-session-start" }] },
+        ],
+      },
+      "statusLine" => { "type" => "command", "command" => "/path/plastic-statusline" },
+    }
+    File.write(@settings_path, JSON.pretty_generate(mixed))
+
+    original_stdout = $stdout
+    output = nil
+    begin
+      $stdout = StringIO.new
+      @installer.remove_claude_hooks(@settings_path)
+      output = $stdout.string
+    ensure
+      $stdout = original_stdout
+    end
+
+    assert_includes output, "plastic-session-start"
+    assert_includes output, "SessionStart"
+    assert_match(/Removed 1 Plastic hook entry from settings\.json/, output)
+    refute_match(/stale/i, output)
+    refute_includes output, "serena-hooks"
+  end
+
+  def test_remove_prints_nothing_when_nothing_removed
+    existing = {
+      "hooks" => {
+        "SessionStart" => [
+          { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "serena-hooks activate" }] },
+        ],
+      },
+    }
+    File.write(@settings_path, JSON.pretty_generate(existing))
+
+    original_stdout = $stdout
+    output = nil
+    begin
+      $stdout = StringIO.new
+      @installer.remove_claude_hooks(@settings_path)
+      output = $stdout.string
+    ensure
+      $stdout = original_stdout
+    end
+
+    refute_match(/Removed/, output)
+  end
+
+  def test_remove_prints_statusline_restore
+    cache_dir = File.join(PLASTIC_TEST_HOME, ".cache")
+    FileUtils.mkdir_p(cache_dir)
+    File.write(File.join(cache_dir, "original-statusline.json"),
+      JSON.pretty_generate({ "type" => "command", "command" => "/Users/test/.claude/statusline.rb" }))
+
+    File.write(@settings_path, JSON.pretty_generate({
+      "hooks" => {},
+      "statusLine" => { "type" => "command", "command" => "/path/plastic-statusline" },
+    }))
+
+    original_stdout = $stdout
+    output = nil
+    begin
+      $stdout = StringIO.new
+      @installer.remove_claude_hooks(@settings_path)
+      output = $stdout.string
+    ensure
+      $stdout = original_stdout
+    end
+
+    assert_match(/statusLine/i, output)
+    assert_includes output, "/Users/test/.claude/statusline.rb"
+    assert_match(/restored/i, output)
+  end
+
+  def test_remove_does_not_print_kept_user_hook
+    existing = {
+      "hooks" => {
+        "SessionStart" => [
+          { "matcher" => "", "hooks" => [
+            { "type" => "command", "command" => "~/.claude/hooks/plastic-writing-style" },
+            { "type" => "command", "command" => "~/.claude/hooks/plastic-session-start" },
+          ] },
+        ],
+      },
+    }
+    File.write(@settings_path, JSON.pretty_generate(existing))
+
+    original_stdout = $stdout
+    output = nil
+    begin
+      $stdout = StringIO.new
+      @installer.remove_claude_hooks(@settings_path)
+      output = $stdout.string
+    ensure
+      $stdout = original_stdout
+    end
+
+    refute_includes output, "plastic-writing-style"
+    assert_includes output, "plastic-session-start"
+  end
+
   def test_merge_no_backup_when_no_existing_statusline
     File.write(@settings_path, "{}")
     @installer.merge_claude_hooks(@settings_path)

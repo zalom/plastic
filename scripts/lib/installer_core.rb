@@ -1215,11 +1215,21 @@ class InstallerCore
     path.sub(Dir.home, "~")
   end
 
-  def report_removed_hook_entries(removed, file_label)
+  def report_removed_hook_entries(removed, file_label, qualifier: "stale Plastic")
     return if removed.nil? || removed.empty?
 
-    puts "  \u{1f9f9} Removed #{removed.size} stale Plastic hook entr#{removed.size == 1 ? "y" : "ies"} from #{file_label}:"
+    puts "  \u{1f9f9} Removed #{removed.size} #{qualifier} hook entr#{removed.size == 1 ? "y" : "ies"} from #{file_label}:"
     removed.each { |event, command| puts "     - #{event}: #{tilde(command.to_s)}" }
+  end
+
+  # The statusline swap-back on uninstall is not an [event, command] pair: it is a
+  # value restored, not an entry deleted. It gets its own line rather than being
+  # forced into the entry list (intent 278).
+  def report_removed_statusline(restored_command)
+    puts "  \u{1f9f9} Removed Plastic's statusLine from settings.json."
+    return if restored_command.nil? || restored_command.to_s.empty?
+
+    puts "     - restored your original statusLine: #{tilde(restored_command.to_s)}"
   end
 
   # The other half of intent 275: a hook the purge KEPT because the registry does not
@@ -1491,15 +1501,24 @@ class InstallerCore
     settings = read_json_safe(settings_path)
     return unless settings && settings["hooks"]
 
+    removed = []
+
     settings["hooks"].each do |event, groups|
       next unless groups.is_a?(Array)
 
       settings["hooks"][event] = groups.map do |group|
         if group.is_a?(Hash) && group["hooks"].is_a?(Array)
-          group["hooks"].reject! { |h| HookRegistry.claude_purge_command?(h["command"]) }
+          group["hooks"].reject! do |h|
+            HookRegistry.claude_purge_command?(h["command"]) && (removed << [event, h["command"]])
+          end
           group unless group["hooks"].empty?
         elsif group.is_a?(Hash) && group["command"]
-          HookRegistry.claude_purge_command?(group["command"]) ? nil : group
+          if HookRegistry.claude_purge_command?(group["command"])
+            removed << [event, group["command"]]
+            nil
+          else
+            group
+          end
         else
           group
         end
@@ -1508,12 +1527,19 @@ class InstallerCore
 
     settings["hooks"].delete_if { |_, v| v.is_a?(Array) && v.empty? }
     settings.delete("hooks") if settings["hooks"]&.empty?
+
+    statusline_removed = false
+    restored_statusline = nil
     if HookRegistry.claude_purge_command?(settings.dig("statusLine", "command"))
       settings.delete("statusLine")
+      statusline_removed = true
       original_path = File.join(plastic_home, ".cache", "original-statusline.json")
       if File.exist?(original_path)
         original = JSON.parse(File.read(original_path)) rescue nil
-        settings["statusLine"] = original if original
+        if original
+          settings["statusLine"] = original
+          restored_statusline = original["command"]
+        end
       end
     end
 
@@ -1523,7 +1549,10 @@ class InstallerCore
       settings.delete("enabledPlugins") if settings["enabledPlugins"].empty?
     end
 
-    write_json_atomic(settings_path, settings)
+    result = write_json_atomic(settings_path, settings)
+    report_removed_hook_entries(removed, "settings.json", qualifier: "Plastic")
+    report_removed_statusline(restored_statusline) if statusline_removed
+    result
   end
 
   # Remove exactly Plastic's entries from ~/.codex/hooks.json (intent 102), mirrors
@@ -1535,6 +1564,7 @@ class InstallerCore
     return nil unless data && data["hooks"]
 
     before = JSON.generate(data)
+    removed = []
 
     data["hooks"].each do |event, groups|
       next unless groups.is_a?(Array)
@@ -1542,7 +1572,9 @@ class InstallerCore
       data["hooks"][event] = groups.map do |g|
         next g unless g.is_a?(Hash) && Array(g["hooks"]).is_a?(Array)
 
-        g["hooks"] = Array(g["hooks"]).reject { |h| HookRegistry.codex_purge_command?(h["command"]) }
+        g["hooks"] = Array(g["hooks"]).reject do |h|
+          HookRegistry.codex_purge_command?(h["command"]) && (removed << [event, h["command"]])
+        end
         g["hooks"].empty? ? nil : g
       end.compact
     end
@@ -1555,6 +1587,7 @@ class InstallerCore
     else
       write_json_atomic(hooks_json_path, data)
     end
+    report_removed_hook_entries(removed, "hooks.json", qualifier: "Plastic")
     hooks_json_path
   end
 
