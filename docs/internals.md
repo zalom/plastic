@@ -376,7 +376,7 @@ its intent is terminal: its id is no longer in its store's `INDEX.md` `## Active
 at the parent of the `store/` directory), scans only the `## Active` section, and reports whether
 the bridge's `intent.id` is listed. An Active intent's bridge is kept unconditionally, because
 while the intent is live the bridge is load-bearing: it is the continuation signal (a parked or
-interrupted run resumes from it) and the anti-collision lock that keys the per-session statusline.
+interrupted run resumes from it) and the anti-collision lock for parallel deliveries on one store.
 The current session's own bridge is never purged (preserving the `disarm_auto` contract that it
 stays readable), and a bridge that cannot be parsed or that carries no `intent.id` or
 `intent.store` is treated as junk and removed. An age window was the wrong axis: it left dead
@@ -1232,6 +1232,14 @@ additionally scans its post-purge output for any surviving `plastic-`-prefixed c
 registry did not recognize, and prints it under its own header naming the reserved-prefix
 rule. Had that existed in 1.11.0, the update would have said "kept `plastic-writing-style`,
 the prefix is reserved" instead of deleting the hook without a word.
+
+Intent 278 extended the same reporting to the two remove paths.
+`remove_claude_hooks` and `remove_codex_hooks` collect the entries they delete the same
+way the purges do and print them through `report_removed_hook_entries`, which took a
+`qualifier:` argument so an uninstall reads "Removed 3 Plastic hook entries" instead of
+the merge's "stale" wording. The statusline swap-back, which is a restored value rather
+than a deleted entry, reports on its own line. No Plastic edit to a user's hook
+configuration is silent now, on either harness, on either path.
 
 ## living-document
 

@@ -37,8 +37,9 @@ module Bridge
   # `## Active` block); such bridges are purged. An Active intent's bridge is kept
   # unconditionally, because while the intent is live the bridge is still load-
   # bearing: it is the continuation signal (a parked or interrupted run resumes
-  # from it) and the anti-collision lock (it keys the per-session statusline so
-  # parallel sessions do not overwrite each other). An age window was the wrong
+  # from it) and the anti-collision lock for parallel deliveries on one store,
+  # keeping each session's gate checks and locks from overwriting another's. An
+  # age window was the wrong
   # axis: it left dead bridges resident for ~2 days AND could reap bridges of
   # interrupted-but-still-active intents, which are exactly the ones to preserve.
 
@@ -121,7 +122,7 @@ module Bridge
   # The CLAUDE_CODE_SESSION_ID fallback (intent 79) carries the bg/headless real
   # session id (Claude Code passes session_id on stdin, not via an env var; the
   # headless id lives in CLAUDE_CODE_SESSION_ID). Keying by the real id (instead of
-  # a derived hash) lets the statusline, which receives that same id on stdin, find
+  # a derived hash) lets the gate hooks, which receive that same id on stdin, find
   # the bridge by direct filename lookup.
   def self.resolve_session(explicit, intent_id:, store:)
     return explicit.to_s.strip unless blank?(explicit)
