@@ -108,11 +108,13 @@ class CodexHooksTest < Minitest::Test
     payload
   end
 
-  def run_hook(gate, payload_hash, session: nil, chdir: @store, home: @fake_home, plastic_home: nil)
+  def run_hook(gate, payload_hash, session: nil, chdir: @store, home: @fake_home,
+               plastic_home: nil, script: SCRIPT, extra_env: {})
     env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_CODE_SESSION_ID" => session, "HOME" => home }
     env["PLASTIC_HOME"] = plastic_home if plastic_home
+    env.merge!(extra_env)
     out = nil
-    IO.popen(env, [RbConfig.ruby, SCRIPT, gate], "r+", err: [:child, :out], chdir: chdir) do |io|
+    IO.popen(env, [RbConfig.ruby, script, gate], "r+", err: [:child, :out], chdir: chdir) do |io|
       io.write(payload_hash.nil? ? "" : JSON.generate(payload_hash))
       io.close_write
       out = io.read
@@ -432,6 +434,23 @@ class CodexHooksTest < Minitest::Test
     File.chmod(0o755, path)
   end
 
+  # hooks/check-update shells out to a real `npm view @zalom/plastic dist-tags`. Tests never
+  # call an external service, so PATH gets a fake npm that just sleeps: that is also exactly
+  # the slow-network condition intent 289 is about, made deterministic. Returns the bin dir
+  # to prepend to PATH.
+  def stub_npm_bin(sleep_seconds)
+    bin = File.join(@root, "stub-bin")
+    FileUtils.mkdir_p(bin)
+    path = File.join(bin, "npm")
+    File.write(path, "#!/bin/bash\nsleep #{sleep_seconds}\nexit 0\n")
+    File.chmod(0o755, path)
+    bin
+  end
+
+  def path_with(bin)
+    { "PATH" => "#{bin}:#{ENV["PATH"]}" }
+  end
+
   def test_session_start_returns_plastic_context
     plastic_home = File.join(@fake_home, ".plastic")
     FileUtils.mkdir_p(plastic_home)
@@ -449,10 +468,64 @@ class CodexHooksTest < Minitest::Test
     plastic_home = File.join(@fake_home, ".plastic")
     FileUtils.mkdir_p(plastic_home)
     File.write(File.join(plastic_home, "VERSION"), "1.0.0\n")
+    bin = stub_npm_bin(10)
 
-    out, status = run_hook("check-update", state_payload(event: "SessionStart"))
+    out, status = run_hook("check-update", state_payload(event: "SessionStart"),
+                           plastic_home: plastic_home, extra_env: path_with(bin))
     assert_equal 0, status.exitstatus
     assert_empty out.strip, "check-update only writes a background cache file, never additionalContext"
+  end
+
+  # Intent 289. The launcher's own exit must release this dispatcher's pipes. Before the
+  # fix, the backgrounded npm call held them, so capture3 blocked until the 5 s timeout,
+  # closed the pipes under its reader threads, and their IOError backtraces landed in the
+  # merged output this helper captures. That is the CI flake (run 32776005720).
+  def test_check_update_launcher_releases_dispatcher_pipes_immediately
+    plastic_home = File.join(@fake_home, ".plastic")
+    FileUtils.mkdir_p(plastic_home)
+    File.write(File.join(plastic_home, "VERSION"), "1.0.0\n")
+    bin = stub_npm_bin(10)
+
+    started = Time.now
+    out, status = run_hook("check-update", state_payload(event: "SessionStart"),
+                           plastic_home: plastic_home, extra_env: path_with(bin))
+    elapsed = Time.now - started
+
+    assert_equal 0, status.exitstatus
+    assert_empty out.strip,
+      "a slow background update check must never leak reader-thread noise into hook output"
+    assert_operator elapsed, :<, 3.0,
+      "the dispatcher must return when the launcher exits, not when the npm call finishes"
+  end
+
+  # Intent 289, belt. Any launcher that leaks the dispatcher's pipes, including an older
+  # installed copy, must time out SILENTLY. The dispatcher resolves a state-hook launcher as
+  # __dir__/../hooks/<gate> (scripts/codex-hook:66) and requires nothing outside stdlib on
+  # that branch, so copying the one file beside a fake hooks/ dir is enough to point it at a
+  # launcher of our choosing. The copy needs no exec bit: run_hook invokes it via RbConfig.ruby.
+  def test_state_hook_timeout_stays_silent
+    fake = File.join(@root, "fake-install")
+    FileUtils.mkdir_p(File.join(fake, "scripts"))
+    FileUtils.mkdir_p(File.join(fake, "hooks"))
+    dispatcher = File.join(fake, "scripts", "codex-hook")
+    FileUtils.cp(SCRIPT, dispatcher)
+    launcher = File.join(fake, "hooks", "check-update")
+    # Deliberately leaky: exits at once, leaves a child holding the inherited pipes. The
+    # exact shape hooks/check-update had before this intent.
+    File.write(launcher, "#!/bin/bash\n( sleep 10 ) &\nexit 0\n")
+    File.chmod(0o755, launcher)
+
+    started = Time.now
+    out, status = run_hook("check-update", state_payload(event: "SessionStart"),
+                           script: dispatcher)
+    elapsed = Time.now - started
+
+    assert_equal 0, status.exitstatus,
+      "a timed-out launcher must still fail open with exit 0"
+    assert_empty out.strip,
+      "the timeout path must print no Open3 reader-thread backtrace (stream closed in another thread)"
+    assert_operator elapsed, :>=, 4.0,
+      "the fixture must actually hold the pipes past STATE_TIMEOUT, or this test proves nothing"
   end
 
   def test_continue_hook_returns_dashboard_context

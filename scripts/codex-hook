@@ -33,11 +33,13 @@
 # unmodified, the identical "drive the body, relay its output" pattern used for
 # the live-state hooks. The one adaptation shared by both the live-state and
 # shell-tool paths is threading the payload's session_id into
-# CLAUDE_CODE_SESSION_ID, since Codex's own process env never carries it, plus
-# a bounded timeout: hooks/check-update backgrounds a real npm network call
-# without redirecting its output away from the inherited stdout/stderr pipes,
-# and Codex invokes hooks synchronously, so without a bound a slow network call
-# could hold this dispatcher's pipe open past the launcher's own (fast) exit.
+# CLAUDE_CODE_SESSION_ID, since Codex's own process env never carries it,
+# plus a bounded timeout: Codex invokes hooks synchronously, so a launcher
+# that never releases this dispatcher's pipes would hang the session.
+# hooks/check-update used to leak them by backgrounding an npm network call
+# with the inherited descriptors (fixed at the root in intent 289 by
+# redirecting that subshell to /dev/null); the bound stays for any other
+# launcher that misbehaves, and capture_launcher keeps the timeout path silent.
 require "json"
 require "open3"
 require "rbconfig"
@@ -54,6 +56,30 @@ STATE_HOOKS = %w[session-start check-update continue future-intent-check auto-ar
 STATE_TIMEOUT = 5
 SHELL_HOOKS = %w[bash-gate].freeze
 
+# One capture path for both relayed-launcher branches (intent 289). The 5 s bound covers a
+# launcher that leaks THIS process's stdout and stderr into a longer-lived background child
+# (hooks/check-update did exactly that before 289): it does not bound a launcher that simply
+# never exits in the foreground, since Open3.popen3's ensure joins the child's wait thread on
+# the way out regardless of Timeout. What is added here is silence on the timeout path. A
+# leaked-pipe launcher leaves Open3's reader threads blocked in IO#read; when Timeout unwinds
+# and popen3's ensure closes those pipes underneath them, both threads raise IOError and Ruby
+# prints a backtrace to real stderr, which any caller merging our stdout and stderr then reads
+# as hook output. Thread#report_on_exception is seeded from the class default AT THREAD
+# CREATION and capture3 creates its readers inside this block (open3.rb:664-665), so
+# clearing the default here is enough. Restored in ensure: nothing else in this process,
+# including a genuinely unexpected exception later, loses its report.
+def capture_launcher(env, *argv, raw:, cwd:)
+  previous = Thread.report_on_exception
+  Thread.report_on_exception = false
+  begin
+    Timeout.timeout(STATE_TIMEOUT) { Open3.capture3(env, *argv, stdin_data: raw, chdir: cwd) }
+  rescue StandardError
+    ["", "", nil] # fail open: launcher missing, unexecutable, crashed, or too slow
+  ensure
+    Thread.report_on_exception = previous
+  end
+end
+
 gate = ARGV[0].to_s
 raw = ($stdin.read rescue nil)
 exit 0 if raw.nil? || raw.strip.empty?
@@ -67,11 +93,7 @@ if STATE_HOOKS.include?(gate)
   cwd = payload["cwd"].to_s
   cwd = Dir.pwd if cwd.empty? || !Dir.exist?(cwd)
   env = { "CLAUDE_CODE_SESSION_ID" => (session.empty? ? nil : session) }
-  out, err, status = begin
-    Timeout.timeout(STATE_TIMEOUT) { Open3.capture3(env.merge("RUBYOPT" => nil), launcher, stdin_data: raw, chdir: cwd) }
-  rescue StandardError
-    ["", "", nil] # fail open: launcher missing, unexecutable, crashed, or too slow
-  end
+  out, err, status = capture_launcher(env.merge("RUBYOPT" => nil), launcher, raw: raw, cwd: cwd)
   print out unless out.to_s.empty?
   warn err unless err.to_s.empty?
   exit(status ? status.exitstatus : 0)
@@ -87,11 +109,7 @@ if SHELL_HOOKS.include?(gate)
   env = { "CLAUDE_CODE_SESSION_ID" => (session.empty? ? nil : session) }
   script = File.join(__dir__, "hook-#{gate}")
   argv = [script]
-  out, err, status = begin
-    Timeout.timeout(STATE_TIMEOUT) { Open3.capture3(env.merge("RUBYOPT" => nil), RbConfig.ruby, *argv, stdin_data: raw, chdir: cwd) }
-  rescue StandardError
-    ["", "", nil] # fail open: script missing, unexecutable, crashed, or too slow
-  end
+  out, err, status = capture_launcher(env.merge("RUBYOPT" => nil), RbConfig.ruby, *argv, raw: raw, cwd: cwd)
   print out unless out.to_s.empty?
   warn err unless err.to_s.empty?
   exit(status ? status.exitstatus : 0)
