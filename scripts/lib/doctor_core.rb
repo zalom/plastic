@@ -169,7 +169,7 @@ class Doctor
   # (optionally + ".rb"); nil if none appears.
   def launcher_name_end_position(raw, known_names)
     positions = known_names.filter_map do |name|
-      m = raw.match(/#{Regexp.escape(name)}(\.rb)?(?=["'\s]|\z)/)
+      m = raw.match(/(?<![\w.-])#{Regexp.escape(name)}(\.rb)?(?=["'\s]|\z)/)
       m && [m.begin(0), m.end(0)]
     end
     return nil if positions.empty?
@@ -193,7 +193,7 @@ class Doctor
       next unless candidate.start_with?("/")
 
       any_absolute = true
-      return true if File.exist?(candidate)
+      return true if File.file?(candidate)
     end
 
     !any_absolute
@@ -231,7 +231,7 @@ class Doctor
     return nil if candidate.empty?
 
     candidate = File.expand_path(candidate) if candidate.start_with?("~")
-    candidate if File.exist?(candidate)
+    candidate if File.file?(candidate)
   end
 
   def quote_aware_first_token(raw)
