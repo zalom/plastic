@@ -65,11 +65,8 @@ class StatuslineTest < Minitest::Test
 
   def ctx(used_percentage: 42, size: 200_000, current_usage: nil)
     {
-      "total_input_tokens" => 84_000,
-      "total_output_tokens" => 1_200,
       "context_window_size" => size,
       "used_percentage" => used_percentage,
-      "remaining_percentage" => used_percentage.nil? ? nil : 100 - used_percentage,
       "current_usage" => current_usage,
     }
   end
@@ -133,6 +130,24 @@ class StatuslineTest < Minitest::Test
     refute_includes out, "ctx"
   end
 
+  def test_context_window_size_at_one_million_renders_with_m
+    # Sizes and used counts below 1M keep "k"; at or above 1M they switch to "M".
+    out = render(stdin_json(context_window: ctx(
+      used_percentage: 42, size: 1_000_000,
+      current_usage: usage(input: 360_000, cache_creation: 40_000, cache_read: 20_000)
+    )))
+    assert_includes out, "ctx 42%"
+    assert_includes out, "(420k/1M)"
+  end
+
+  def test_context_omitted_for_exponent_notation
+    # Some JSON writers emit scientific notation for tiny fractions; the awk
+    # walker must not misread "8e-7" as a huge or wrong percentage, so it
+    # drops the field and the segment renders as absent.
+    raw = %({"model":{"display_name":"Opus"},"cwd":"#{@cwd}","context_window":{"used_percentage":8e-7}})
+    refute_includes render(raw), "ctx"
+  end
+
   def test_meters_render_with_threshold_colors
     quiet = render_raw(stdin_json(rate_limits: { "five_hour" => { "used_percentage" => 42 } }))
     assert_includes quiet.gsub(/\e\[[0-9;]*m/, ""), "5h 42%"
@@ -144,6 +159,34 @@ class StatuslineTest < Minitest::Test
 
     crit = render_raw(stdin_json(rate_limits: { "five_hour" => { "used_percentage" => 92 } }))
     assert_includes crit, "#{RED}5h 92%"
+  end
+
+  def test_meters_render_decimal_values_from_documented_payload
+    out = render(stdin_json(rate_limits: {
+      "five_hour" => { "used_percentage" => 23.5 },
+      "seven_day" => { "used_percentage" => 41.2 },
+    }))
+    assert_includes out, "5h 23%"
+    assert_includes out, "7d 41%"
+  end
+
+  def test_meter_color_boundaries
+    # D4: yellow at 70 and above, red at 90 and above; truncation (not rounding)
+    # decides which side of a decimal boundary a meter lands on.
+    red = render_raw(stdin_json(rate_limits: { "five_hour" => { "used_percentage" => 90 } }))
+    assert_includes red, "#{RED}5h 90%"
+
+    yellow_high = render_raw(stdin_json(rate_limits: { "five_hour" => { "used_percentage" => 89.6 } }))
+    assert_includes yellow_high, "#{YELLOW}5h 89%"
+    refute_includes yellow_high, "#{RED}5h"
+
+    yellow_low = render_raw(stdin_json(rate_limits: { "five_hour" => { "used_percentage" => 70 } }))
+    assert_includes yellow_low, "#{YELLOW}5h 70%"
+
+    default = render_raw(stdin_json(rate_limits: { "five_hour" => { "used_percentage" => 69.9 } }))
+    assert_includes default.gsub(/\e\[[0-9;]*m/, ""), "5h 69%"
+    refute_includes default, "#{YELLOW}5h"
+    refute_includes default, "#{RED}5h"
   end
 
   def test_meters_absent_without_rate_limits
@@ -166,6 +209,13 @@ class StatuslineTest < Minitest::Test
   def test_cost_renders_two_decimals
     out = render(stdin_json(cost: { "total_cost_usd" => 1.2345 }))
     assert_includes out, "$1.23"
+  end
+
+  def test_cost_hidden_for_exponent_notation
+    # A JSON writer can emit "1.2e-6" for a tiny cost; the awk walker must not
+    # misread that as a huge dollar figure, so it drops the field entirely.
+    raw = %({"model":{"display_name":"Opus"},"cwd":"#{@cwd}","cost":{"total_cost_usd":1.2e-6}})
+    refute_includes render(raw), "$"
   end
 
   def test_claudish_counts_only_this_session

@@ -1,12 +1,14 @@
 #!/bin/bash
 # plastic-hook-version: 4.0.0
 # StatusLine hook - Plastic owns the full statusline (no chaining).
-# Renders: {model} - ctx {pct}% ({used}k/{size}k) - 5h {p}% - 7d {p}% - ${cost}
+# Renders: {model} - ctx {pct}% ({used}/{size}) - 5h {p}% - 7d {p}% - ${cost}
 #          - claudish {n} rw / {tok} - Plastic {version}[ -> {next}] - {path}
 # Every segment but claudish and the Plastic version comes from the stdin payload.
-# Pure bash (macOS 3.2 compatible). No ruby, no jq. Reads stdin once; small file reads only.
+# Pure bash (macOS 3.2 compatible). No ruby, no jq. Reads stdin once; small file reads
+# only. The stdin JSON is walked in a single awk pass (below); nothing else in this
+# script forks a second process per field, which is what keeps a render cheap.
 
-INPUT=$(cat)
+IFS= read -r -d '' INPUT
 
 # --- Colors (ANSI-C quoting; bash 3.2 supports $'\033') ---
 C_MODEL=$'\033[38;2;90;140;220m'    # navy blue - model
@@ -23,61 +25,6 @@ C_SEP=$'\033[38;2;128;134;144m'     # gray      - separators
 RST=$'\033[0m'
 SEP="${C_SEP} "$'\302\267'" ${RST}"   # " . " middot, dim
 
-# --- Extract a flat JSON string field from stdin: json_str <key> ---
-json_str() {
-  printf '%s' "$INPUT" \
-    | grep -o "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" \
-    | head -1 \
-    | sed "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"//;s/\"$//"
-}
-
-# --- Extract the brace-balanced text of a named JSON object: json_obj <json> <key> ---
-# Joins the input into one buffer, so pretty-printed and single-line payloads parse
-# identically, then walks characters from the opening brace with a depth counter,
-# honoring string state so a brace inside a string cannot close the object early.
-# A sed line range cannot do this: context_window holds a nested current_usage
-# object whose closing brace would end the range too soon. The regex stops at the
-# colon and the brace is checked as a plain character, because a brace inside a
-# dynamic regex is not portable to the awk that ships with macOS. A null value
-# (current_usage is often null) fails that check and yields nothing, which is what
-# every caller wants.
-json_obj() {
-  printf '%s' "$1" | awk -v key="$2" '
-    { buf = buf $0 " " }
-    END {
-      pat = "\"" key "\"[ \t]*:[ \t]*"
-      if (match(buf, pat) == 0) exit
-      start = RSTART + RLENGTH
-      if (substr(buf, start, 1) != "{") exit
-      depth = 0; instr = 0; esc = 0
-      n = length(buf)
-      for (i = start; i <= n; i++) {
-        c = substr(buf, i, 1)
-        if (instr) {
-          if (esc) { esc = 0 }
-          else if (c == "\\") { esc = 1 }
-          else if (c == "\"") { instr = 0 }
-          continue
-        }
-        if (c == "\"") { instr = 1; continue }
-        if (c == "{") { depth++ }
-        else if (c == "}") {
-          depth--
-          if (depth == 0) { print substr(buf, start, i - start + 1); exit }
-        }
-      }
-    }'
-}
-
-# --- Read a numeric field out of a JSON fragment: json_num <fragment> <key> ---
-# Empty output means absent or null, which every caller reads as "no segment".
-json_num() {
-  printf '%s' "$1" \
-    | grep -o "\"$2\"[[:space:]]*:[[:space:]]*-\{0,1\}[0-9][0-9.]*" \
-    | head -1 \
-    | sed "s/.*:[[:space:]]*//"
-}
-
 # --- Truncate a JSON number to an integer ("42.5" -> "42"); empty stays empty ---
 to_int() {
   case "$1" in
@@ -88,31 +35,224 @@ to_int() {
   printf '%s' "$_i"
 }
 
-# --- Model (model.display_name) ---
-MODEL=$(json_str "display_name")
+# --- Format a non-negative integer token count with k/M, rounded to the nearest
+# unit; "M" once the count reaches 1,000,000, "k" below it. Empty stays empty. ---
+fmt_tok() {
+  case "$1" in
+    ''|*[!0-9]*) return ;;
+  esac
+  if [ "$1" -ge 1000000 ]; then
+    printf '%dM' "$(( ($1 + 500000) / 1000000 ))"
+  else
+    printf '%dk' "$(( ($1 + 500) / 1000 ))"
+  fi
+}
+
+# --- Round a JSON decimal string to two places ("1.2345" -> "1.23"); empty or
+# non-numeric (including anything with a stray sign or exponent letter) stays
+# empty, matching to_int's guard. Pure bash arithmetic, no awk/printf fork. ---
+fmt_money() {
+  case "$1" in
+    ''|*[!0-9.]*) return ;;
+  esac
+  _whole=${1%%.*}
+  case "$1" in
+    *.*) _frac=${1#*.} ;;
+    *) _frac="" ;;
+  esac
+  [ -z "$_whole" ] && _whole=0
+  _frac3="${_frac}000"
+  _frac3=${_frac3:0:3}
+  _cents=${_frac3:0:2}
+  _third=${_frac3:2:1}
+  [ -z "$_cents" ] && _cents=00
+  _cents=$((10#$_cents))
+  if [ "$_third" -ge 5 ]; then
+    _cents=$((_cents + 1))
+    if [ "$_cents" -ge 100 ]; then
+      _cents=0
+      _whole=$((_whole + 1))
+    fi
+  fi
+  printf '%d.%02d' "$_whole" "$_cents"
+}
+
+# --- Walk the stdin JSON exactly once and emit "path<TAB>value" for every field
+# this script reads. A recursive-descent walker (not a regex or a brace-balanced
+# line range) so nesting, pretty-printing, and single-line payloads all parse the
+# same way, and a value inside an array can never be mistaken for one of the
+# named top-level fields (an array suppresses emission for everything under it).
+# A number token containing "e"/"E" is treated as unsupported and dropped, so
+# scientific-notation input renders as absent rather than a wrong magnitude.
+FIELDS=$(printf '%s' "$INPUT" | awk '
+  function skip_ws() {
+    while (i <= n) {
+      c = substr(buf, i, 1)
+      if (c == " " || c == "\t" || c == "\n" || c == "\r") { i++ } else { break }
+    }
+  }
+  function parse_string(   c, esc, start, s) {
+    i++
+    start = i
+    esc = 0
+    while (i <= n) {
+      c = substr(buf, i, 1)
+      if (esc) { esc = 0; i++; continue }
+      if (c == "\\") { esc = 1; i++; continue }
+      if (c == "\"") { break }
+      i++
+    }
+    s = substr(buf, start, i - start)
+    i++
+    return s
+  }
+  function parse_number(   start, c) {
+    start = i
+    if (substr(buf, i, 1) == "-") { i++ }
+    while (i <= n) {
+      c = substr(buf, i, 1)
+      if (c ~ /[0-9]/) { i++; continue }
+      if (c == "." || c == "e" || c == "E" || c == "+" || c == "-") { i++; continue }
+      break
+    }
+    return substr(buf, start, i - start)
+  }
+  function parse_value(key, prefix, emit,   c, qp, val) {
+    skip_ws()
+    c = substr(buf, i, 1)
+    if (key != "") { qp = (prefix == "" ? key : prefix "." key) } else { qp = "" }
+    if (c == "{") {
+      parse_object(qp, emit)
+    } else if (c == "[") {
+      parse_array()
+    } else if (c == "\"") {
+      val = parse_string()
+      if (emit && qp != "" && (qp in wanted)) { print qp "\t" val }
+    } else if (c == "-" || (c >= "0" && c <= "9")) {
+      val = parse_number()
+      if (emit && qp != "" && (qp in wanted) && val !~ /[eE]/) { print qp "\t" val }
+    } else if (substr(buf, i, 4) == "true") {
+      i += 4
+    } else if (substr(buf, i, 5) == "false") {
+      i += 5
+    } else if (substr(buf, i, 4) == "null") {
+      i += 4
+    } else {
+      i++
+    }
+  }
+  function parse_object(prefix, emit,   c, key) {
+    i++
+    skip_ws()
+    if (substr(buf, i, 1) == "}") { i++; return }
+    while (i <= n) {
+      skip_ws()
+      if (substr(buf, i, 1) != "\"") {
+        if (substr(buf, i, 1) == "}") { i++; return }
+        i++
+        continue
+      }
+      key = parse_string()
+      skip_ws()
+      if (substr(buf, i, 1) == ":") { i++ }
+      parse_value(key, prefix, emit)
+      skip_ws()
+      c = substr(buf, i, 1)
+      if (c == ",") { i++; continue }
+      if (c == "}") { i++; return }
+      return
+    }
+  }
+  function parse_array(   c) {
+    i++
+    skip_ws()
+    if (substr(buf, i, 1) == "]") { i++; return }
+    while (i <= n) {
+      parse_value("", "", 0)
+      skip_ws()
+      c = substr(buf, i, 1)
+      if (c == ",") { i++; continue }
+      if (c == "]") { i++; return }
+      return
+    }
+  }
+  BEGIN {
+    wanted["model.display_name"] = 1
+    wanted["workspace.current_dir"] = 1
+    wanted["cwd"] = 1
+    wanted["session_id"] = 1
+    wanted["context_window.used_percentage"] = 1
+    wanted["context_window.context_window_size"] = 1
+    wanted["context_window.current_usage.input_tokens"] = 1
+    wanted["context_window.current_usage.cache_creation_input_tokens"] = 1
+    wanted["context_window.current_usage.cache_read_input_tokens"] = 1
+    wanted["cost.total_cost_usd"] = 1
+    wanted["rate_limits.five_hour.used_percentage"] = 1
+    wanted["rate_limits.seven_day.used_percentage"] = 1
+  }
+  { buf = buf $0 " " }
+  END {
+    n = length(buf)
+    i = 1
+    skip_ws()
+    if (substr(buf, i, 1) == "{") { parse_value("", "", 1) }
+  }
+')
+
+MODEL=""
+REAL_CWD=""
+CWD_TOP=""
+SID=""
+CW_PCT=""
+CW_SIZE=""
+CU_IN=""
+CU_CC=""
+CU_CR=""
+COST_RAW=""
+M5_PCT=""
+M7_PCT=""
+
+while IFS=$'\t' read -r k v; do
+  case "$k" in
+    model.display_name) MODEL="$v" ;;
+    workspace.current_dir) REAL_CWD="$v" ;;
+    cwd) CWD_TOP="$v" ;;
+    session_id) SID="$v" ;;
+    context_window.used_percentage) CW_PCT="$v" ;;
+    context_window.context_window_size) CW_SIZE="$v" ;;
+    context_window.current_usage.input_tokens) CU_IN="$v" ;;
+    context_window.current_usage.cache_creation_input_tokens) CU_CC="$v" ;;
+    context_window.current_usage.cache_read_input_tokens) CU_CR="$v" ;;
+    cost.total_cost_usd) COST_RAW="$v" ;;
+    rate_limits.five_hour.used_percentage) M5_PCT="$v" ;;
+    rate_limits.seven_day.used_percentage) M7_PCT="$v" ;;
+  esac
+done <<FIELDS_EOF
+$FIELDS
+FIELDS_EOF
 
 # --- Path (workspace.current_dir, fallback top-level cwd) ---
-REAL_CWD=$(json_str "current_dir")
-[ -z "$REAL_CWD" ] && REAL_CWD=$(json_str "cwd")
-# Abbreviate $HOME -> ~
+[ -z "$REAL_CWD" ] && REAL_CWD="$CWD_TOP"
 CWD="$REAL_CWD"
 case "$CWD" in
   "$HOME") CWD="~" ;;
   "$HOME"/*) CWD="~${CWD#"$HOME"}" ;;
 esac
 
-# --- Plastic version ---
+# --- Plastic version (read builtin, no tr fork) ---
 VERSION=""
-[ -f "$HOME/.plastic/VERSION" ] && VERSION=$(tr -d ' \t\n' < "$HOME/.plastic/VERSION")
+if [ -f "$HOME/.plastic/VERSION" ]; then
+  IFS= read -r VERSION < "$HOME/.plastic/VERSION"
+fi
 
-# --- Update (next version when one is available) ---
+# --- Update (next version when one is available); pure-bash regex, no fork ---
 NEXT=""
 CACHE_FILE="$HOME/.plastic/.cache/update-check.json"
 if [ -f "$CACHE_FILE" ]; then
-  if grep -q '"updateAvailable"[[:space:]]*:[[:space:]]*true' "$CACHE_FILE" 2>/dev/null; then
-    LATEST=$(grep -o '"latest"[[:space:]]*:[[:space:]]*"[^"]*"' "$CACHE_FILE" 2>/dev/null \
-      | head -1 | sed 's/.*"latest"[[:space:]]*:[[:space:]]*"//;s/"$//')
-    if [ -n "$LATEST" ]; then
+  IFS= read -r -d '' CACHE_JSON < "$CACHE_FILE" || true
+  if [[ "$CACHE_JSON" =~ \"updateAvailable\"[[:space:]]*:[[:space:]]*true ]]; then
+    if [[ "$CACHE_JSON" =~ \"latest\"[[:space:]]*:[[:space:]]*\"([^\"]*)\" ]]; then
+      LATEST="${BASH_REMATCH[1]}"
       case "$LATEST" in
         *-*) NEXT="${LATEST##*-}" ;;   # 1.0.0-beta.3 -> beta.3
         *)   NEXT="$LATEST" ;;
@@ -127,58 +267,46 @@ fi
 # from current_usage when it is present. Each derives the other when only one is
 # available; when both are null there is no ctx segment.
 CTX_SEG=""
-CW=$(json_obj "$INPUT" "context_window")
-if [ -n "$CW" ]; then
-  CW_SIZE=$(to_int "$(json_num "$CW" "context_window_size")")
-  CW_PCT=$(to_int "$(json_num "$CW" "used_percentage")")
-  CW_USED=""
-  CU=$(json_obj "$CW" "current_usage")
-  if [ -n "$CU" ]; then
-    U_IN=$(to_int "$(json_num "$CU" "input_tokens")")
-    U_CC=$(to_int "$(json_num "$CU" "cache_creation_input_tokens")")
-    U_CR=$(to_int "$(json_num "$CU" "cache_read_input_tokens")")
-    if [ -n "$U_IN$U_CC$U_CR" ]; then
-      CW_USED=$(( ${U_IN:-0} + ${U_CC:-0} + ${U_CR:-0} ))
-    fi
+CW_SIZE=$(to_int "$CW_SIZE")
+CW_PCT=$(to_int "$CW_PCT")
+CW_USED=""
+U_IN=$(to_int "$CU_IN")
+U_CC=$(to_int "$CU_CC")
+U_CR=$(to_int "$CU_CR")
+if [ -n "$U_IN$U_CC$U_CR" ]; then
+  CW_USED=$(( ${U_IN:-0} + ${U_CC:-0} + ${U_CR:-0} ))
+fi
+if [ -z "$CW_USED" ] && [ -n "$CW_PCT" ] && [ -n "$CW_SIZE" ] && [ "$CW_SIZE" -gt 0 ]; then
+  CW_USED=$(( CW_SIZE * CW_PCT / 100 ))
+fi
+if [ -z "$CW_PCT" ] && [ -n "$CW_USED" ] && [ -n "$CW_SIZE" ] && [ "$CW_SIZE" -gt 0 ]; then
+  CW_PCT=$(( CW_USED * 100 / CW_SIZE ))
+fi
+if [ -n "$CW_PCT" ]; then
+  CTX_SEG="${C_CTX}ctx ${CW_PCT}%"
+  if [ -n "$CW_USED" ] && [ -n "$CW_SIZE" ] && [ "$CW_SIZE" -gt 0 ]; then
+    CTX_SEG="${CTX_SEG} ($(fmt_tok "$CW_USED")/$(fmt_tok "$CW_SIZE"))"
   fi
-  if [ -z "$CW_USED" ] && [ -n "$CW_PCT" ] && [ -n "$CW_SIZE" ] && [ "$CW_SIZE" -gt 0 ]; then
-    CW_USED=$(( CW_SIZE * CW_PCT / 100 ))
-  fi
-  if [ -z "$CW_PCT" ] && [ -n "$CW_USED" ] && [ -n "$CW_SIZE" ] && [ "$CW_SIZE" -gt 0 ]; then
-    CW_PCT=$(( CW_USED * 100 / CW_SIZE ))
-  fi
-  if [ -n "$CW_PCT" ]; then
-    CTX_SEG="${C_CTX}ctx ${CW_PCT}%"
-    if [ -n "$CW_USED" ] && [ -n "$CW_SIZE" ] && [ "$CW_SIZE" -gt 0 ]; then
-      CTX_SEG="${CTX_SEG} ($(( (CW_USED + 500) / 1000 ))k/$(( CW_SIZE / 1000 ))k)"
-    fi
-    CTX_SEG="${CTX_SEG}${RST}"
-  fi
+  CTX_SEG="${CTX_SEG}${RST}"
 fi
 
 # --- Subscription meters (stdin rate_limits; absent for API-key sessions) ---
-meter_seg() {   # $1 = label, $2 = object key
-  _obj=$(json_obj "$INPUT" "$2")
-  [ -z "$_obj" ] && return
-  _p=$(to_int "$(json_num "$_obj" "used_percentage")")
+meter_seg() {   # $1 = label, $2 = raw percentage
+  _p=$(to_int "$2")
   [ -z "$_p" ] && return
   _c="$C_OK"
   [ "$_p" -ge 70 ] && _c="$C_WARN"
   [ "$_p" -ge 90 ] && _c="$C_CRIT"
   printf '%s' "${_c}$1 ${_p}%${RST}"
 }
-M5=$(meter_seg "5h" "five_hour")
-M7=$(meter_seg "7d" "seven_day")
+M5=$(meter_seg "5h" "$M5_PCT")
+M7=$(meter_seg "7d" "$M7_PCT")
 
 # --- Session cost (stdin cost.total_cost_usd); hidden when it renders as $0.00 ---
 COST_SEG=""
-CO=$(json_obj "$INPUT" "cost")
-if [ -n "$CO" ]; then
-  COST_RAW=$(json_num "$CO" "total_cost_usd")
-  if [ -n "$COST_RAW" ]; then
-    COST_FMT=$(awk -v c="$COST_RAW" 'BEGIN { if (c + 0 >= 0.005) printf "%.2f", c }')
-    [ -n "$COST_FMT" ] && COST_SEG="${C_COST}\$${COST_FMT}${RST}"
-  fi
+if [ -n "$COST_RAW" ]; then
+  COST_FMT=$(fmt_money "$COST_RAW")
+  [ -n "$COST_FMT" ] && [ "$COST_FMT" != "0.00" ] && COST_SEG="${C_COST}\$${COST_FMT}${RST}"
 fi
 
 # --- claudish rewrites for THIS session (fork ledger, optional) ---
@@ -186,7 +314,6 @@ fi
 # before that column existed have 9 or 10 fields and never match, so an old
 # ledger renders no segment instead of a wrong one.
 CL_SEG=""
-SID=$(json_str "session_id")
 CL_LOG="${CLAUDISH_LOCAL_DIR:-$HOME/.claude/claudish-local}/usage.log"
 if [ -n "$SID" ] && [ -f "$CL_LOG" ]; then
   CL=$(awk -F'\t' -v sid="$SID" '
