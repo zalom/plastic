@@ -79,13 +79,62 @@ class DoctorStraySkillsTest < Minitest::Test
     refute_includes check[:details], "plastic-doctor", "the tracked skill must not be named as a stray"
   end
 
-  def test_missing_manifest_defers_to_the_manifest_check
+  # Intent 276: a missing or unreadable manifest used to make this check
+  # return nil and vanish from the report entirely, exactly the state where
+  # stray-skill detection is needed most. It now warns loudly instead,
+  # naming the installed dirs it cannot verify ownership for.
+  def test_missing_manifest_warns_loudly_when_skills_are_installed
     install_skill("plastic-doctor")
     # No manifest.json written at all.
 
     check = doctor.stray_skills_check(@agent_dir, "--claude", manifest_path)
 
-    assert_nil check, "must defer to check_manifest_sync instead of double-reporting"
+    refute_nil check, "stray_skills_check must never return nil"
+    assert_equal "warn", check[:status]
+    assert_includes check[:details], "plastic-doctor"
+  end
+
+  # The other half of the same fix: no skills installed AND no manifest is a
+  # genuinely healthy "nothing to verify" state, not a second red alongside
+  # skills_exist's own fail for that state.
+  def test_missing_manifest_passes_when_nothing_is_installed
+    # No skills installed, no manifest.json.
+    check = doctor.stray_skills_check(@agent_dir, "--claude", manifest_path)
+
+    refute_nil check, "stray_skills_check must never return nil"
+    assert_equal "pass", check[:status]
+    assert_match(/nothing to verify/, check[:message])
+  end
+
+  # AC10: the stray message/fix_hint must name the reserved-prefix rule and
+  # the rename remedy, not just "stale, re-install". Asserted on a stable
+  # substring, not the whole sentence.
+  def test_stray_message_states_the_reserved_prefix_rule
+    install_skill("plastic-doctor")
+    write_manifest(["plastic-doctor"])
+    install_skill("plastic-creating-intent")
+
+    check = doctor.stray_skills_check(@agent_dir, "--claude", manifest_path)
+    text = "#{check[:message]} #{check[:fix_hint]}"
+
+    assert_includes text, "reserved"
+    assert_includes text, "rename"
+  end
+
+  # AC11: the missing-manifest fix reaches a non-Claude agent directory
+  # (Codex ~/.agents shape) through the same shared check_flat_skills_and_stray
+  # call path codex/hermes actually use, with no second implementation.
+  def test_missing_manifest_warns_through_a_non_claude_agent_dir
+    install_skill("plastic-doctor")
+    # No manifest.json written at all.
+
+    codex_doctor = Doctor.new(plastic_home: @home, agents: { "codex" => { name: "Codex CLI", dir: @agent_dir } })
+    checks = codex_doctor.check_flat_skills_and_stray("codex", @agent_dir)
+    stray_check = checks.find { |c| c[:name] == "stray_skills" }
+
+    refute_nil stray_check, "check_flat_skills_and_stray must include stray_skills"
+    assert_equal "warn", stray_check[:status]
+    assert_includes stray_check[:details], "plastic-doctor"
   end
 
   def test_wired_into_claude_registration_when_a_manifest_exists

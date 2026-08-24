@@ -58,6 +58,9 @@ Rules [A5]:
 5. Must not contain `anthropic` or `claude`.
 6. Prefer the gerund form, which reads as a capability (`processing-pdfs`, `creating-skills`,
    not `pdf-tool`).
+7. Never start with `plastic-`. That prefix is reserved for skills and hooks Plastic itself
+   ships; doctor's ownership checks (`stray_skills`) and the installer's purge both key off it,
+   so a user-authored skill carrying it reads as squatting on Plastic's own namespace.
 
 ## The `description` field (triggering)
 

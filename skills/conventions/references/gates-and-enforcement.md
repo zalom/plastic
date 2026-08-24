@@ -2,14 +2,19 @@
 
 This chapter holds the escape-and-logging depth for each transition gate.
 
-#### Hook naming and ownership
+#### Hook and skill naming and ownership
 
-The `plastic-` prefix on an installed hook launcher is reserved for hooks `HookRegistry`
-registers. A user-owned hook must never take it: the installer purges Plastic's registrations
-from the agent's hook config on every update, matching by registry launcher name (current plus
-`RETIRED_HOOK_NAMES`), and doctor's `hooks_no_orphans` reports any unregistered `plastic-*`
-launcher on disk. Renaming or removing a hook from `events` means adding its old name to
-`RETIRED_HOOK_NAMES` in the same change, or every existing install keeps a dead registration.
+The `plastic-` prefix is reserved for both surfaces: hooks `HookRegistry` registers and skills
+Plastic ships. A user-owned hook or skill must never take it: the installer purges Plastic's
+registrations from the agent's hook config on every update, matching by registry launcher name
+(current plus `RETIRED_HOOK_NAMES`), and doctor reports every violation it can find. On disk,
+`hooks_no_orphans` reports an unregistered `plastic-*` launcher file the registry does not know.
+In the live config, `hooks_entries_owned` (Claude) and `codex_hooks_entries_owned` (Codex)
+report a config entry that is neither a current registration nor recognizably ours, and,
+separately, a current registration whose launcher file is missing from disk. For skills,
+`stray_skills` reports a `plastic-*` skill directory the manifest does not track. Renaming or
+removing a hook from `events` means adding its old name to `RETIRED_HOOK_NAMES` in the same
+change, or every existing install keeps a dead registration.
 
 #### The gates by name
 
