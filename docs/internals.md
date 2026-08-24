@@ -1210,6 +1210,44 @@ registry did not recognize, and prints it under its own header naming the reserv
 rule. Had that existed in 1.11.0, the update would have said "kept `plastic-writing-style`,
 the prefix is reserved" instead of deleting the hook without a word.
 
+## doctor: unowned hook entries and stray skills (intent 276)
+
+Moving hook ownership to registry membership fixed the write side, but it narrowed the read
+side without replacing it. `hooks_registered` and `hooks_match_registry` both filter
+`settings.json` commands through an ownership predicate before comparing, so a command that
+fails the predicate never enters either comparison and is invisible by construction. Two real
+failure states fell through this gap: a `plastic-`-prefixed command the registry never
+registered (a hand-edit, a squatter, or a user hook that took the reserved prefix), and a live
+Plastic registration whose launcher file is gone from disk, which no-ops silently on every
+event.
+
+`hooks_entries_owned` (Claude) and `codex_hooks_entries_owned` (Codex) close this by walking
+every command in the live config with no pre-filter and classifying each one into one of two
+failure modes, or silence. Mode (a), an unowned `plastic-`-prefixed command, warns: it is a
+naming collision in someone else's file, Plastic will not touch it, and the remedy is a
+rename by its owner, mirroring the notice `merge_claude_hooks` already prints at merge time.
+Mode (b), a current registration whose launcher is missing from disk, fails: it is Plastic's
+own registration silently doing nothing. Mode (b) keys off `claude_current_command?`
+(current registrations only, intent 277), not `claude_purge_command?` (current plus retired
+plus non-hook launchers): testing against the purge predicate would fire on every install
+still carrying a retired entry, since a retired launcher's file is absent from every current
+install by design. That case already belongs to `hooks_match_registry`, so a retired entry is
+skipped here rather than double-reported. A third-party hook carrying no `plastic-` token is
+silent: it is none of Plastic's business, and warning on it would false-positive on every
+user with an unrelated hook.
+
+The skills half of the reserved prefix extends `stray_skills_check` (intent 158a) rather than
+duplicating it: the manifest-diff ownership test it already runs, a `plastic-*` skill
+directory the manifest does not track is a stray, was already correct. What 276 fixed is that
+a missing or unreadable manifest made the check return `nil` and vanish from the report
+entirely, exactly the state where stray-skill detection is needed most; it now returns `warn`
+when skills are installed and ownership cannot be verified, or `pass` naming that there was
+nothing to verify when none are. The message and `fix_hint` now state the reserved-prefix
+rule and the rename remedy, mirroring `hooks_no_orphans`'s post-275 wording. `plastic-` is
+reserved for hooks and skills alike, and `stray_skills` runs through the same shared
+`check_flat_skills_and_stray` call every non-Claude agent directory (Codex, Hermes) already
+uses, so the fix reaches them with no second implementation.
+
 ## living-document
 
 This is a living document. When Plastic's architecture, lifecycle, conventions,

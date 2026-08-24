@@ -120,6 +120,48 @@ class Doctor
     end
   end
 
+  # Every (event, command) pair, unfiltered (intent 276): the walk
+  # hooks_registered/hooks_match_registry cannot do.
+  def each_hook_command(hooks_hash)
+    (hooks_hash || {}).each do |event, groups|
+      Array(groups).each do |g|
+        next unless g.is_a?(Hash) && g["hooks"].is_a?(Array)
+
+        g["hooks"].each do |h|
+          cmd = h.is_a?(Hash) ? h["command"].to_s : ""
+          yield event, cmd unless cmd.empty?
+        end
+      end
+    end
+  end
+
+  # Mode (a): does any token's basename carry the reserved plastic- prefix?
+  def unowned_prefixed_command?(cmd)
+    HookRegistry.command_basenames(cmd).any? { |name| name.start_with?("plastic-") }
+  end
+
+  # Mode (b): true unless a known-name token names a file missing from disk.
+  # A bare token with no "/" is left untested (spec Decision 5: guessing at
+  # a PATH lookup produces a false fail).
+  def launcher_on_disk?(cmd, known_names)
+    token = cmd.to_s.split(/\s+/).reject(&:empty?).find do |t|
+      known_names.include?(File.basename(t.delete("\"'")).sub(/\.rb\z/, ""))
+    end
+    return true unless token
+
+    path = token.delete("\"'")
+    return true unless path.include?("/")
+
+    File.exist?(path.start_with?("~") ? File.expand_path(path) : path)
+  end
+
+  # Shared mode-(a) fix_hint text (intent 276), parametrized by the config
+  # file the rename gets re-registered in.
+  def unowned_hook_rename_hint(config_file)
+    "The plastic- prefix is reserved for Plastic's hooks and skills. Rename your hook and " \
+      "re-register it in #{config_file}."
+  end
+
   def check(category:, name:, status:, message:, details: [], fixable: false, fix_hint: nil)
     result = {
       category: category,
@@ -361,6 +403,9 @@ class Doctor
               details: diffs, fixable: true,
               fix_hint: "Re-run the installer merge: npx @zalom/plastic update (or ruby ~/.plastic/scripts/install.rb)")
       end
+
+      # hooks_entries_owned: unfiltered unowned/missing-launcher scan (intent 276).
+      checks << hooks_entries_owned_check(settings)
     end
 
     # skills_exist — flat, hyphen-namespaced personal skills (plastic-<name>/)
@@ -368,13 +413,65 @@ class Doctor
 
     # stray_skills — installed plastic-* skill dir with no manifest entry (a leftover,
     # e.g. an old-name copy after a rename; intent 158a AC15)
-    stray_check = stray_skills_check(agent_dir, "--claude", File.join(agent_dir, "plastic", "manifest.json"))
-    checks << stray_check if stray_check
+    checks << stray_skills_check(agent_dir, "--claude", File.join(agent_dir, "plastic", "manifest.json"))
 
     # agents_exist — auto-mode role files (plastic-*.md) synced into <dir>/agents
     checks << flat_agents_check(agent_dir, "--claude")
 
     checks
+  end
+
+  # Unfiltered classification (intent 276, spec Approach table): mode (a)
+  # unowned warns, mode (b) current-but-missing fails, a retired/non-hook
+  # launcher is skipped, a third-party hook stays silent.
+  def hooks_entries_owned_check(settings)
+    known_launchers = HookRegistry.claude_launcher_names
+    unowned = []
+    missing_launcher = []
+
+    each_hook_command(settings["hooks"]) do |event, cmd|
+      if HookRegistry.claude_current_command?(cmd)
+        missing_launcher << "missing launcher: #{event}: #{cmd} names a file that is not on disk" unless launcher_on_disk?(cmd, known_launchers)
+      elsif HookRegistry.claude_purge_command?(cmd)
+        next # retired or non-hook launcher; hooks_match_registry owns this case
+      elsif unowned_prefixed_command?(cmd)
+        unowned << "reserved prefix: #{event}: #{cmd} is not a hook Plastic registers"
+      end
+    end
+
+    hooks_entries_owned_result("hooks_entries_owned", unowned, missing_launcher,
+      pass_message: "Every settings.json hook entry is Plastic's and installed, or not ours",
+      rename_hint: unowned_hook_rename_hint("settings.json"),
+      missing_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest --claude."
+    )
+  end
+
+  # Fail on mode (b), else warn on mode (a), else pass (spec Decision 3).
+  def hooks_entries_owned_result(name, unowned, missing_launcher, pass_message:, rename_hint:, missing_hint:)
+    status = if !missing_launcher.empty?
+               "fail"
+             elsif !unowned.empty?
+               "warn"
+             else
+               "pass"
+             end
+
+    return check(category: "agent_registration", name: name, status: "pass", message: pass_message) if status == "pass"
+
+    clauses = []
+    clauses << "#{unowned.size} carry the reserved plastic- prefix without being Plastic's" unless unowned.empty?
+    clauses << "#{missing_launcher.size} name a launcher missing from disk" unless missing_launcher.empty?
+
+    hints = []
+    hints << rename_hint unless unowned.empty?
+    hints << missing_hint unless missing_launcher.empty?
+
+    check(
+      category: "agent_registration", name: name, status: status,
+      message: clauses.join("; "),
+      details: unowned + missing_launcher,
+      fixable: true, fix_hint: hints.join(" ")
+    )
   end
 
   def claude_dispatcher_gate_names(source)
@@ -460,34 +557,42 @@ class Doctor
     end
   end
 
+  # Manifest-diff stray-skill check (intent 158a), extended (intent 276) to
+  # never vanish on a missing manifest and to name the reserved-prefix rule.
   def stray_skills_check(agent_dir, installer_flag, manifest_path)
     skills_root = File.join(agent_dir, "skills")
-    manifest = read_json_safe(manifest_path)
-    files = manifest.is_a?(Hash) ? manifest["files"] : nil
-    return nil unless files.is_a?(Hash)
-
     installed = Dir.glob(File.join(skills_root, "plastic-*", "SKILL.md"))
                     .map { |f| File.basename(File.dirname(f)) }
-    tracked = files.keys
-                   .select { |p| p.start_with?("#{skills_root}/") }
-                   .map { |p| p.sub("#{skills_root}/", "").split("/").first }
-                   .uniq
+    manifest = read_json_safe(manifest_path)
+    files = manifest.is_a?(Hash) ? manifest["files"] : nil
 
-    strays = (installed - tracked).sort
-
-    if strays.empty?
-      check(
-        category: "agent_registration", name: "stray_skills", status: "pass",
-        message: "No stray plastic-* skill directories in #{tilde(skills_root)}"
-      )
-    else
-      check(
+    if !files.is_a?(Hash) && installed.empty?
+      return check(category: "agent_registration", name: "stray_skills", status: "pass",
+        message: "No plastic-* skills installed in #{tilde(skills_root)}; nothing to verify")
+    elsif !files.is_a?(Hash)
+      return check(
         category: "agent_registration", name: "stray_skills", status: "warn",
-        message: "#{strays.size} installed skill dir(s) not in the current manifest (stray, e.g. a leftover old-name copy)",
-        details: strays,
-        fixable: true, fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest #{installer_flag}"
+        message: "#{installed.size} plastic-* skill dir(s) installed but the manifest at " \
+                 "#{tilde(manifest_path)} is missing or unreadable, so ownership cannot be verified",
+        details: installed.sort, fixable: true,
+        fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest #{installer_flag}"
       )
     end
+
+    tracked = files.keys.select { |p| p.start_with?("#{skills_root}/") }
+                   .map { |p| p.sub("#{skills_root}/", "").split("/").first }.uniq
+    strays = (installed - tracked).sort
+    return check(category: "agent_registration", name: "stray_skills", status: "pass",
+      message: "No stray plastic-* skill directories in #{tilde(skills_root)}") if strays.empty?
+
+    check(
+      category: "agent_registration", name: "stray_skills", status: "warn",
+      message: "#{strays.size} installed skill dir(s) are not skills Plastic shipped",
+      details: strays, fixable: true,
+      fix_hint: "The plastic- prefix is reserved for hooks and skills Plastic ships: rename a skill " \
+                "of your own that carries it, or re-run the installer (npx @zalom/plastic@latest " \
+                "#{installer_flag}) to clear a genuine leftover."
+    )
   end
 
   def flat_agents_check(agent_dir, installer_flag)
@@ -516,8 +621,7 @@ class Doctor
 
     # stray_skills — installed plastic-* skill dir with no manifest entry (a leftover,
     # e.g. an old-name copy after a rename; intent 158a AC15)
-    stray_check = stray_skills_check(agent_dir, "--#{agent_key}", File.join(agent_dir, "plastic", "manifest.json"))
-    checks << stray_check if stray_check
+    checks << stray_skills_check(agent_dir, "--#{agent_key}", File.join(agent_dir, "plastic", "manifest.json"))
 
     checks
   end
@@ -567,6 +671,7 @@ class Doctor
 
     hooks_check = codex_hooks_registered_check(config)
     checks << hooks_check
+    codex_hooks_entries_owned_check(config).tap { |c| checks << c if c }
     checks << codex_hooks_implemented_check(config)
     checks << codex_hook_trust_advisory_check if hooks_check[:status] == "pass"
     codex_config_toml_advisory_check(config).tap { |c| checks << c if c }
@@ -671,6 +776,31 @@ class Doctor
         fixable: true, fix_hint: "Re-run the Plastic installer with --codex"
       )
     end
+  end
+
+  # Codex sibling of hooks_entries_owned_check: mode (b) is "the dispatcher
+  # is registered but scripts/codex-hook is missing" (intent 276). nil when
+  # hooks.json is missing: codex_hooks_registered_check owns that state.
+  def codex_hooks_entries_owned_check(config)
+    data = read_json_safe(File.join(config[:home_dir], "hooks.json"))
+    return nil if data.nil?
+
+    unowned = []
+    missing_dispatcher = []
+
+    each_hook_command(data["hooks"]) do |event, cmd|
+      if HookRegistry.codex_purge_command?(cmd)
+        missing_dispatcher << "missing launcher: #{event}: #{cmd} names a file that is not on disk" unless launcher_on_disk?(cmd, HookRegistry::CODEX_DISPATCHER_BASENAMES)
+      elsif unowned_prefixed_command?(cmd)
+        unowned << "reserved prefix: #{event}: #{cmd} is not a hook Plastic registers"
+      end
+    end
+
+    hooks_entries_owned_result("codex_hooks_entries_owned", unowned, missing_dispatcher,
+      pass_message: "Every hooks.json entry is Plastic's and installed, or not ours",
+      rename_hint: unowned_hook_rename_hint("hooks.json"),
+      missing_hint: "Re-run the Plastic installer with --codex."
+    )
   end
 
   # codex_hooks_implemented (intent 200): codex_hooks_registered_check above proves

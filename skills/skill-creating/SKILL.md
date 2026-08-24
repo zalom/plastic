@@ -40,6 +40,9 @@ routes each authoring task to the reference that holds the depth.
   them (use commas, periods, parentheses, colons). Existing internal files and the
   sanctioned template emissions (templates/index.md's INDEX line shape) are not
   violations.
+- The `plastic-` prefix is reserved for skills and hooks Plastic itself ships. A skill
+  authored outside Plastic's own tree takes a different name; doctor's ownership checks
+  and the installer's purge both key off the prefix.
 
 ## Route the authoring task to its reference
 

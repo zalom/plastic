@@ -536,6 +536,13 @@ class DoctorAgentRegistrationTest < Minitest::Test
 
   def test_all_hooks_present_and_executable_pass
     hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    # A real install ships a manifest.json before anything is tracked into
+    # it; without one here, stray_skills (intent 276) correctly warns that
+    # skill ownership cannot be verified.
+    agent_manifest = File.join(DOCTOR_TEST_CLAUDE, "plastic", "manifest.json")
+    FileUtils.mkdir_p(File.dirname(agent_manifest))
+    File.write(agent_manifest, JSON.pretty_generate({ "files" => {} }))
+
     write_claude_hooks(hooks_dir)
     write_claude_dispatcher(DOCTOR_TEST_HOME)
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
@@ -835,6 +842,134 @@ class DoctorAgentRegistrationTest < Minitest::Test
                  "current registrations must satisfy the check: #{Array(registered_check[:details]).inspect}"
   end
 
+  # --- hooks_entries_owned (intent 276) --------------------------------------
+  # hooks_registered and hooks_match_registry both filter settings.json
+  # commands through an ownership predicate before comparing, so a command
+  # that fails the predicate never enters either comparison. This check walks
+  # every command unfiltered and reports the two modes that gap hides.
+
+  def test_hooks_entries_owned_passes_on_a_clean_install
+    write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    checks = doctor.check_agent_registration("claude")
+    owned_check = checks.find { |c| c[:name] == "hooks_entries_owned" }
+
+    refute_nil owned_check, "agent_registration must include hooks_entries_owned"
+    assert_equal "pass", owned_check[:status]
+    assert_empty Array(owned_check[:details])
+  end
+
+  # The intent 32b survivor shape and the owner ruling's headline case: a user
+  # hook that merely shares the plastic- prefix, never registered by Plastic,
+  # warns as a naming collision — never reported as a missing launcher.
+  def test_unowned_plastic_prefixed_entry_warns_hooks_entries_owned
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    write_claude_hooks(hooks_dir)
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"]["SessionStart"].first["hooks"] << {
+      "type" => "command", "command" => File.join(hooks_dir, "plastic-writing-style"),
+    }
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    owned_check = checks.find { |c| c[:name] == "hooks_entries_owned" }
+
+    assert_equal "warn", owned_check[:status]
+    details = Array(owned_check[:details])
+    assert_equal 1, details.size
+    assert details.first.include?("reserved prefix"), "expected a reserved-prefix detail: #{details.inspect}"
+    refute details.any? { |d| d.include?("missing launcher") },
+           "a naming collision must not be reported as a missing launcher: #{details.inspect}"
+  end
+
+  def test_registered_launcher_missing_from_disk_fails_hooks_entries_owned
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    write_claude_hooks(hooks_dir)
+    write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+    File.delete(File.join(hooks_dir, "plastic-session-start"))
+
+    checks = doctor.check_agent_registration("claude")
+    owned_check = checks.find { |c| c[:name] == "hooks_entries_owned" }
+
+    assert_equal "fail", owned_check[:status]
+    details = Array(owned_check[:details])
+    assert_equal 1, details.size
+    assert details.first.include?("missing launcher"), "expected a missing-launcher detail: #{details.inspect}"
+    assert_includes details.first, "plastic-session-start"
+  end
+
+  def test_hooks_entries_owned_reports_both_modes_distinctly
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    write_claude_hooks(hooks_dir)
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    write_skills(DOCTOR_TEST_CLAUDE)
+    File.delete(File.join(hooks_dir, "plastic-session-start"))
+
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"]["SessionStart"].first["hooks"] << {
+      "type" => "command", "command" => File.join(hooks_dir, "plastic-writing-style"),
+    }
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    owned_check = checks.find { |c| c[:name] == "hooks_entries_owned" }
+
+    assert_equal "fail", owned_check[:status]
+    details = Array(owned_check[:details])
+    assert_equal 2, details.size
+    assert details.any? { |d| d.include?("reserved prefix") }, "missing the reserved-prefix detail: #{details.inspect}"
+    assert details.any? { |d| d.include?("missing launcher") }, "missing the missing-launcher detail: #{details.inspect}"
+  end
+
+  def test_third_party_hook_entry_is_not_flagged_by_hooks_entries_owned
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    write_claude_hooks(hooks_dir)
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"]["SessionStart"].first["hooks"] << {
+      "type" => "command", "command" => "~/bin/my-linter",
+    }
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    owned_check = checks.find { |c| c[:name] == "hooks_entries_owned" }
+
+    assert_equal "pass", owned_check[:status]
+    assert_empty Array(owned_check[:details])
+  end
+
+  def test_retired_launcher_entry_is_not_flagged_by_hooks_entries_owned
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    write_claude_hooks(hooks_dir)
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"]["SessionStart"].first["hooks"] << {
+      "type" => "command", "command" => "/opt/plastic/hooks/plastic-lock-gate",
+    }
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    owned_check = checks.find { |c| c[:name] == "hooks_entries_owned" }
+
+    assert_equal "pass", owned_check[:status],
+                 "a retired launcher belongs to hooks_match_registry, not hooks_entries_owned: #{Array(owned_check[:details]).inspect}"
+    assert_empty Array(owned_check[:details])
+  end
+
   def test_missing_skills_directory_fails
     hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
     write_claude_hooks(hooks_dir)
@@ -961,6 +1096,91 @@ class DoctorAgentRegistrationTest < Minitest::Test
     assert_equal "pass", hooks_check[:status]
     assert_equal "pass", exec_check[:status]
     assert_equal "pass", orphan_check[:status]
+  end
+end
+
+# ===========================================================================
+# 2a. codex_hooks_entries_owned (intent 276): the Codex sibling of
+# hooks_entries_owned. Codex has no per-launcher files, so mode (b) collapses
+# to "our dispatcher is registered but scripts/codex-hook is not on disk", and
+# mode (a) is the same reserved-prefix scan over tokens. DOCTOR_TEST_AGENTS
+# carries no home_dir for codex (see intent 33a), so this class builds its own
+# Doctor per codex_install_test.rb's doctor_for pattern rather than the shared
+# `doctor()` helper.
+# ===========================================================================
+
+class DoctorCodexHooksEntriesOwnedTest < Minitest::Test
+  include DoctorTestHelpers
+
+  def setup
+    @home = Dir.mktmpdir("codex-owned-home")
+    @agent_dir = Dir.mktmpdir("codex-owned-agents")
+    @codex_home = File.join(@home, "codex-home")
+    FileUtils.mkdir_p(@codex_home)
+    @dispatcher_path = File.join(@home, "scripts", "codex-hook")
+    FileUtils.mkdir_p(File.dirname(@dispatcher_path))
+    File.write(@dispatcher_path, "#!/usr/bin/env ruby\n")
+    File.chmod(0o755, @dispatcher_path)
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+    FileUtils.rm_rf(@agent_dir)
+  end
+
+  # Undetectable-but-fail-open runner (matches codex_install_test.rb): no real
+  # `codex` binary dependency, and the version-floor check this exercises
+  # incidentally is not what these tests are about.
+  def doctor_for
+    Doctor.new(plastic_home: @home,
+               agents: { "codex" => { name: "Codex CLI", dir: @agent_dir, home_dir: @codex_home } },
+               runner: ->(_args) { ["", false] })
+  end
+
+  def owned_check
+    doctor_for.check_codex_registration("codex", @agent_dir)
+              .find { |c| c[:name] == "codex_hooks_entries_owned" }
+  end
+
+  def write_hooks_json
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+  end
+
+  def test_codex_hooks_entries_owned_passes_on_a_clean_install
+    write_hooks_json
+
+    check = owned_check
+    refute_nil check, "codex registration must include codex_hooks_entries_owned"
+    assert_equal "pass", check[:status]
+    assert_empty Array(check[:details])
+  end
+
+  def test_unowned_plastic_prefixed_codex_entry_warns
+    write_hooks_json
+    hooks_json_path = File.join(@codex_home, "hooks.json")
+    data = JSON.parse(File.read(hooks_json_path))
+    data["hooks"]["SessionStart"].first["hooks"] << {
+      "type" => "command", "command" => File.join(@codex_home, "plastic-writing-style"),
+    }
+    File.write(hooks_json_path, JSON.pretty_generate(data))
+
+    check = owned_check
+    assert_equal "warn", check[:status]
+    details = Array(check[:details])
+    assert_equal 1, details.size
+    assert details.first.include?("reserved prefix"), "expected a reserved-prefix detail: #{details.inspect}"
+  end
+
+  def test_missing_codex_dispatcher_fails_codex_hooks_entries_owned
+    write_hooks_json
+    File.delete(@dispatcher_path)
+
+    check = owned_check
+    assert_equal "fail", check[:status]
+    details = Array(check[:details])
+    refute_empty details
+    assert details.all? { |d| d.include?("missing launcher") }, "expected only missing-launcher details: #{details.inspect}"
   end
 end
 
@@ -1464,6 +1684,14 @@ class DoctorIntegrationTest < Minitest::Test
     File.write(File.join(DOCTOR_TEST_HOME, "PLASTIC.md"), "# Plastic\n")
     File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "1.0.0")
     write_core_scripts(File.join(DOCTOR_TEST_HOME, "scripts"))
+
+    # Agent-side manifest.json, present before write_skills/write_agents so
+    # track_in_agent_manifest (a no-op without one) actually records what
+    # gets installed — a real install always ships this file, and
+    # stray_skills (intent 276) now warns when skills exist without one.
+    agent_manifest = File.join(DOCTOR_TEST_CLAUDE, "plastic", "manifest.json")
+    FileUtils.mkdir_p(File.dirname(agent_manifest))
+    File.write(agent_manifest, JSON.pretty_generate({ "files" => {} }))
 
     # Agent registration
     write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
