@@ -1,5 +1,5 @@
 #!/bin/bash
-# plastic-hook-version: 1.1.0
+# plastic-hook-version: 1.2.0
 # Runs on SessionStart — checks npm for a newer version on the installed
 # channel, writes cache. Channel-aware: queries dist-tags and picks the best
 # upgrade target instead of blindly trusting the `latest` tag.
@@ -23,7 +23,16 @@ if [ -z "$CURRENT" ]; then
   exit 0
 fi
 
-# Background check — don't block session start
+# Background check — don't block session start.
+#
+# The three redirects are load-bearing (intent 289). Without them this subshell inherits
+# the caller's stdout, stderr, and stdin. A caller that reads those pipes to EOF then
+# blocks for as long as the npm call takes, not for as long as this script takes:
+# scripts/codex-hook drives this launcher through Open3.capture3 under a 5 s timeout, and
+# a slow network made that timeout fire, close the pipes, and print Open3 reader-thread
+# backtraces into a hook's output channel. The body writes only to $CACHE_FILE, so
+# nothing is lost by sending its descriptors to /dev/null; what changes is that the
+# inherited pipes close at fork, so the last write end disappears when THIS script exits.
 (
   TAGS=$(npm view @zalom/plastic dist-tags --json 2>/dev/null)
 
@@ -41,6 +50,6 @@ fi
     printf '{"current":"%s","latest":"%s","checked":"%s","updateAvailable":false}\n' \
       "$CURRENT" "$CURRENT" "$CHECKED" > "$CACHE_FILE"
   fi
-) &
+) >/dev/null 2>&1 </dev/null &
 
 exit 0

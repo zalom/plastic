@@ -72,7 +72,7 @@ class RubyoptClearingTest < Minitest::Test
   SHELL_PLACEHOLDER = "PLASTIC_CLEARED_RUBY "
   SHELL_SPAWN_TOKEN = /(?<![\w.\/-])ruby(?=\s)/
 
-  RUBY_SPAWN_CALLS = ["system(", "Open3.capture3(", "IO.popen(", "Process.spawn("].freeze
+  RUBY_SPAWN_CALLS = ["system(", "Open3.capture3(", "IO.popen(", "Process.spawn(", "capture_launcher("].freeze
   BACKTICK_RUBY = /`\s*(env -u RUBYOPT\s+)?ruby\s/
 
   # Named, not enumerated: scripts/ holds many git and npm spawns plus two off-limits files.
