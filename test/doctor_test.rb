@@ -774,6 +774,121 @@ class DoctorAgentRegistrationTest < Minitest::Test
                  "nothing to walk, so this must report pass rather than raise"
   end
 
+  # --- launcher_path_from_command shape-aware resolution (review round 2) --
+  # A whitespace split treated a fragment of the real path as the whole
+  # path, so a hooks dir containing a space made every registered launcher
+  # report a false "missing launcher" fail forever (the remedy re-runs the
+  # installer, which rewrites the same spaced path).
+
+  def test_hooks_entries_owned_passes_with_a_spaced_hooks_dir_when_launcher_present
+    claude_dir = File.join(Dir.mktmpdir("plastic-doctor-claude-base"), "my plastic home")
+    FileUtils.mkdir_p(claude_dir)
+    hooks_dir = File.join(claude_dir, "hooks")
+    write_claude_hooks(hooks_dir)
+    write_claude_settings(File.join(claude_dir, "settings.json"))
+    write_skills(claude_dir)
+
+    d = Doctor.new(plastic_home: DOCTOR_TEST_HOME, agents: { "claude" => { name: "Claude Code", dir: claude_dir } })
+    checks = d.check_agent_registration("claude")
+    owned_check = checks.find { |c| c[:name] == "hooks_entries_owned" }
+
+    assert_equal "pass", owned_check[:status],
+                 "a spaced hooks dir with the launcher present must not report it missing: #{Array(owned_check[:details]).inspect}"
+  ensure
+    FileUtils.rm_rf(claude_dir) if claude_dir
+  end
+
+  def test_hooks_entries_owned_fails_with_a_spaced_hooks_dir_when_launcher_absent
+    claude_dir = File.join(Dir.mktmpdir("plastic-doctor-claude-base"), "my plastic home")
+    FileUtils.mkdir_p(claude_dir)
+    hooks_dir = File.join(claude_dir, "hooks")
+    write_claude_hooks(hooks_dir)
+    write_claude_settings(File.join(claude_dir, "settings.json"))
+    write_skills(claude_dir)
+    File.delete(File.join(hooks_dir, "plastic-session-start"))
+
+    d = Doctor.new(plastic_home: DOCTOR_TEST_HOME, agents: { "claude" => { name: "Claude Code", dir: claude_dir } })
+    checks = d.check_agent_registration("claude")
+    owned_check = checks.find { |c| c[:name] == "hooks_entries_owned" }
+
+    assert_equal "fail", owned_check[:status]
+    assert Array(owned_check[:details]).any? { |d| d.include?("missing launcher") }
+  ensure
+    FileUtils.rm_rf(claude_dir) if claude_dir
+  end
+
+  # --- unowned_prefixed_command? scans only the executable token ----------
+  # A third-party command whose ARGUMENT merely carries a plastic- token
+  # must stay silent: it names no hook of anyone's, and warning here told
+  # the owner to rename a hook that does not exist.
+  def test_argument_only_plastic_token_is_not_flagged_by_hooks_entries_owned
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    write_claude_hooks(hooks_dir)
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"]["SessionStart"].first["hooks"] << {
+      "type" => "command", "command" => "/opt/tools/my-linter --profile plastic-strict",
+    }
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    owned_check = checks.find { |c| c[:name] == "hooks_entries_owned" }
+
+    assert_equal "pass", owned_check[:status],
+                 "an argument-only plastic- token must not warn: #{Array(owned_check[:details]).inspect}"
+    assert_empty Array(owned_check[:details])
+  end
+
+  # --- each_hook_command shape tolerance (review round 2) -----------------
+
+  # A hand-edit that drops the array wrapper around a single hook entry
+  # (a bare Hash instead of a one-element Array) must not make the whole
+  # group invisible to this check.
+  def test_hooks_entries_owned_walks_a_hash_shaped_hooks_group
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    write_claude_hooks(hooks_dir)
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"]["SessionStart"] = [{
+      "matcher" => "",
+      "hooks" => { "type" => "command", "command" => File.join(hooks_dir, "plastic-writing-style") },
+    }]
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    owned_check = checks.find { |c| c[:name] == "hooks_entries_owned" }
+
+    assert_equal "warn", owned_check[:status],
+                 "a Hash-shaped hooks group must still be walked, not silently skipped"
+    assert Array(owned_check[:details]).any? { |d| d.include?("reserved prefix") }
+  end
+
+  # A relative command path is never resolved against the doctor process's
+  # own CWD -- it is left untested, never reported missing.
+  def test_hooks_entries_owned_does_not_fail_a_relative_command_path
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    write_claude_hooks(hooks_dir)
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"]["SessionStart"].first["hooks"].first["command"] = "hooks/plastic-session-start"
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    owned_check = checks.find { |c| c[:name] == "hooks_entries_owned" }
+
+    assert_equal "pass", owned_check[:status],
+                 "a relative command path must be silence, not a false missing-launcher fail: #{Array(owned_check[:details]).inspect}"
+  end
+
   # intent 115 (AC3): a stray Plastic hook the registry does not define must
   # still be reported. Stray detection is untouched by the aggregation fix.
   #
@@ -1265,6 +1380,61 @@ class DoctorCodexHooksEntriesOwnedTest < Minitest::Test
     details = Array(check[:details])
     refute_empty details
     assert details.all? { |d| d.include?("missing launcher") }, "expected only missing-launcher details: #{details.inspect}"
+  end
+
+  # Codex's dispatcher path is always quoted ("<dispatcher>" <name>), so a
+  # spaced plastic_home must resolve exactly as well as an unspaced one
+  # (review finding, round 2). Builds its own spaced home/dispatcher rather
+  # than the shared setup's unspaced fixtures.
+  def test_codex_hooks_entries_owned_passes_with_a_spaced_codex_home_when_dispatcher_present
+    home = File.join(Dir.mktmpdir("plastic-doctor-codex-base"), "my plastic home")
+    FileUtils.mkdir_p(home)
+    agent_dir = Dir.mktmpdir("plastic-doctor-codex-agents")
+    codex_home = File.join(home, "codex home")
+    FileUtils.mkdir_p(codex_home)
+    dispatcher_path = File.join(home, "scripts", "codex-hook")
+    FileUtils.mkdir_p(File.dirname(dispatcher_path))
+    File.write(dispatcher_path, "#!/usr/bin/env ruby\n")
+    File.chmod(0o755, dispatcher_path)
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: dispatcher_path)
+    File.write(File.join(codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    d = Doctor.new(plastic_home: home,
+                    agents: { "codex" => { name: "Codex CLI", dir: agent_dir, home_dir: codex_home } },
+                    runner: ->(_args) { ["", false] })
+    check = d.check_codex_registration("codex", agent_dir).find { |c| c[:name] == "codex_hooks_entries_owned" }
+
+    assert_equal "pass", check[:status],
+                 "a spaced codex home with the dispatcher present must not report it missing: #{Array(check[:details]).inspect}"
+  ensure
+    FileUtils.rm_rf(home) if home
+    FileUtils.rm_rf(agent_dir) if agent_dir
+  end
+
+  def test_codex_hooks_entries_owned_fails_with_a_spaced_codex_home_when_dispatcher_absent
+    home = File.join(Dir.mktmpdir("plastic-doctor-codex-base"), "my plastic home")
+    FileUtils.mkdir_p(home)
+    agent_dir = Dir.mktmpdir("plastic-doctor-codex-agents")
+    codex_home = File.join(home, "codex home")
+    FileUtils.mkdir_p(codex_home)
+    dispatcher_path = File.join(home, "scripts", "codex-hook")
+    FileUtils.mkdir_p(File.dirname(dispatcher_path))
+    File.write(dispatcher_path, "#!/usr/bin/env ruby\n")
+    File.chmod(0o755, dispatcher_path)
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: dispatcher_path)
+    File.write(File.join(codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+    File.delete(dispatcher_path)
+
+    d = Doctor.new(plastic_home: home,
+                    agents: { "codex" => { name: "Codex CLI", dir: agent_dir, home_dir: codex_home } },
+                    runner: ->(_args) { ["", false] })
+    check = d.check_codex_registration("codex", agent_dir).find { |c| c[:name] == "codex_hooks_entries_owned" }
+
+    assert_equal "fail", check[:status]
+    assert Array(check[:details]).any? { |d| d.include?("missing launcher") }
+  ensure
+    FileUtils.rm_rf(home) if home
+    FileUtils.rm_rf(agent_dir) if agent_dir
   end
 end
 

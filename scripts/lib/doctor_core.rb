@@ -120,16 +120,23 @@ class Doctor
     end
   end
 
-  # Every (event, command) pair, unfiltered (intent 276): the walk
-  # hooks_registered/hooks_match_registry cannot do.
+  # Every (event, command) pair, unfiltered (intent 276).
   def each_hook_command(hooks_hash)
     return unless hooks_hash.is_a?(Hash)
 
     hooks_hash.each do |event, groups|
       Array(groups).each do |g|
-        next unless g.is_a?(Hash) && g["hooks"].is_a?(Array)
+        next unless g.is_a?(Hash)
 
-        g["hooks"].each do |h|
+        # A bare Hash (array wrapper dropped by a hand-edit) is one entry,
+        # not a skipped group (review finding, 276).
+        hooks_list = case g["hooks"]
+                     when Array then g["hooks"]
+                     when Hash then [g["hooks"]]
+                     end
+        next unless hooks_list
+
+        hooks_list.each do |h|
           cmd = h.is_a?(Hash) ? h["command"].to_s : ""
           yield event, cmd unless cmd.empty?
         end
@@ -137,24 +144,43 @@ class Doctor
     end
   end
 
-  # Mode (a): does any token's basename carry the reserved plastic- prefix?
+  # Mode (a): does the EXECUTABLE token's basename carry the reserved
+  # plastic- prefix, never an argument's (review finding, 276)? The
+  # executable is the first token if it names a path, else the first that does.
   def unowned_prefixed_command?(cmd)
-    HookRegistry.command_basenames(cmd).any? { |name| name.start_with?("plastic-") }
+    tokens = cmd.to_s.split(/\s+/).reject(&:empty?).map { |t| t.delete("\"'") }
+    return false if tokens.empty?
+
+    executable = tokens.first.include?("/") ? tokens.first : (tokens.find { |t| t.include?("/") } || tokens.first)
+    File.basename(executable).sub(/\.rb\z/, "").start_with?("plastic-")
   end
 
-  # Mode (b): true unless a known-name token names a file missing from disk.
-  # A bare token with no "/" is left untested (spec Decision 5: guessing at
-  # a PATH lookup produces a false fail).
+  # Mode (b): true unless the launcher this command names is missing from
+  # disk. See launcher_path_from_command for how the path is derived.
   def launcher_on_disk?(cmd, known_names)
-    token = cmd.to_s.split(/\s+/).reject(&:empty?).find do |t|
-      known_names.include?(File.basename(t.delete("\"'")).sub(/\.rb\z/, ""))
-    end
-    return true unless token
+    path = launcher_path_from_command(cmd)
+    return true unless path
 
-    path = token.delete("\"'")
-    return true unless path.include?("/")
+    basename = File.basename(path).sub(/\.rb\z/, "")
+    return true unless known_names.include?(basename)
 
-    File.exist?(path.start_with?("~") ? File.expand_path(path) : path)
+    path = File.expand_path(path) if path.start_with?("~")
+    return true unless path.start_with?("/")
+
+    File.exist?(path)
+  end
+
+  # The real filesystem path a command names (review finding, 276: a
+  # whitespace split treats a fragment of a spaced path as the whole path).
+  # Codex always quotes its dispatcher path, verbatim; the legacy Claude
+  # shape prefixes a bare "ruby " word, stripped; the current Claude shape
+  # is nothing but the path.
+  def launcher_path_from_command(cmd)
+    raw = cmd.to_s
+    quoted = raw[/"([^"]*)"/, 1] || raw[/'([^']*)'/, 1]
+    path = quoted || (raw.start_with?("ruby ") ? raw.sub(/\Aruby\s+/, "") : raw)
+    path = path.delete("\"'").strip
+    path.empty? ? nil : path
   end
 
   # Shared mode-(a) fix_hint text (intent 276), parametrized by the config
@@ -467,7 +493,7 @@ class Doctor
     return check(category: "agent_registration", name: name, status: "pass", message: pass_message) if status == "pass"
 
     clauses = []
-    clauses << "#{unowned.size} carry the reserved plastic- prefix without being Plastic's" unless unowned.empty?
+    clauses << "#{unowned.size} #{unowned.size == 1 ? "carries" : "carry"} the reserved plastic- prefix without being Plastic's" unless unowned.empty?
     clauses << "#{missing_launcher.size} name a launcher missing from disk" unless missing_launcher.empty?
 
     hints = []
@@ -581,7 +607,7 @@ class Doctor
       return check(
         category: "agent_registration", name: "stray_skills", status: "warn",
         message: "#{installed.size} plastic-* skill dir(s) installed but the manifest at " \
-                 "#{tilde(manifest_path)} is missing or unreadable, so ownership cannot be verified",
+                 "#{tilde(manifest_path)} is missing, so ownership cannot be verified",
         details: installed.sort, fixable: true,
         fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest #{installer_flag}"
       )

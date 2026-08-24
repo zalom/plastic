@@ -192,14 +192,18 @@ class DoctorCoreSplitTest < Minitest::Test
   # test/plastic_core_budget_test.rb). T2 already pins the exact file set, so
   # this only catches one of the two allowed files quietly bloating in place.
   #
-  # Ceiling history: 65,000 originally; raised to 70,000 by intent 276, which
-  # added hooks_entries_owned, codex_hooks_entries_owned, and extended
+  # Ceiling history: 65,000 originally; raised by intent 276, which added
+  # hooks_entries_owned, codex_hooks_entries_owned, and extended
   # stray_skills_check to never return nil -- all three wired into
   # check_claude_registration/check_codex_registration, both already on the
-  # boot path, so the growth is load-bearing, not incidental. The new total
-  # sits near 66,700 bytes; the ceiling carries headroom above that, not
-  # against it, so the next genuine regrowth still trips this guard.
-  BOOT_PATH_BYTE_BUDGET = 70_000
+  # boot path, so the growth is load-bearing, not incidental. First measured
+  # at ~66,700 bytes (ceiling set to 70,000); a review pass then fixed a
+  # blocking path-resolution bug (a spaced PLASTIC_HOME or hooks dir made
+  # every launcher report a false "missing" fail) plus two narrower
+  # correctness gaps, which measured out to ~68,200 bytes. The ceiling
+  # carries headroom above that measured total, not against it, so the next
+  # genuine regrowth still trips this guard.
+  BOOT_PATH_BYTE_BUDGET = 69_000
 
   def test_core_require_stays_under_the_boot_path_byte_budget
     plastic_files = loaded_after_core_require.select { |i| i["path"].start_with?(ROOT) }
