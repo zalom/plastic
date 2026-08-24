@@ -315,14 +315,23 @@ end
 #
 # `prune:` (intent 280) reverses the direction: instead of adding newly-violating ids, it
 # removes rows that `DoctorExclusions.dead_rows` reports as suppressing nothing, through the
-# SAME walk, the SAME comment-preserving writer, and the SAME dry-run/--apply gate. Two classes
-# of row read as dead but are held harmless before anything is written (`protected_ids`): an id
-# whose dir was skipped for a fresh delivery lock (D6 - the skip would otherwise leave it out of
-# both `consumed` and `known_ids`), and an id whose intent has not reached a terminal state yet
-# (D6a - savepoint_operational only fires on a terminal intent, so the row has nothing to
-# suppress YET). A rule left with zero ids after pruning is dropped from the hash entirely (D7):
-# `render_exclusions_file` would otherwise write a bare `rule_name` line that `DoctorExclusions.parse`
-# rejects as "lists no intent ids".
+# SAME walk, the SAME comment-preserving writer, and the SAME dry-run/--apply gate. `known_ids`
+# (post-review fix) is resolved against a direct scan of the store's own directory listing, never
+# against which ids the INDEX walk happened to visit - an id can have a real directory without
+# being listed in INDEX at all (a de-indexed "ghost"), and walk membership alone misclassified
+# that as :no_intent (deleted) even though the directory plainly still exists. `evaluated_ids` is
+# the narrower set the walk DOES visit; an id with a real directory the walk never evaluated
+# carries no evidence either way, so `dead_rows` leaves it out of its result entirely - never
+# called dead by the reporter, so `prune` never sees it as a pruning candidate in the first
+# place. Three classes of row are additionally held harmless before anything is written
+# (`protected_ids`), belt-and-suspenders on top of that gate: an id whose dir was skipped for a
+# fresh delivery lock (D6 - the lock skip runs AFTER the id already lands in `evaluated_ids`, but
+# BEFORE it can ever reach `consumed`, since findings are never computed for it), an id whose
+# intent has not reached a terminal state yet (D6a - savepoint_operational only fires on a
+# terminal intent, so the row has nothing to suppress YET), and an id with a real directory that
+# is not in `evaluated_ids` at all (on disk, unindexed). A rule left with zero ids after pruning
+# is dropped from the hash entirely (D7): `render_exclusions_file` would otherwise write a bare
+# `rule_name` line that `DoctorExclusions.parse` rejects as "lists no intent ids".
 def run_register_exclusions(home, rule, store, apply, prune = false)
   rule ||= "savepoint_operational"
   unless RuleCatalog.excludable_check?(rule)
@@ -352,15 +361,30 @@ def run_register_exclusions(home, rule, store, apply, prune = false)
     existing_text = File.exist?(existing[:path]) ? File.read(existing[:path]).scrub : nil
 
     found_ids = []
-    consumed = Hash.new { |h, k| h[k] = [] }
-    known_ids = []
+    consumed = { "savepoint_operational" => [] }
     protected_ids = []
+
+    # `known_ids` (post-review fix): every id with a REAL DIRECTORY in this store, scanned
+    # directly from disk - not from the INDEX walk below. Mirrors doctor.rb's own fix: an id can
+    # have a directory on disk without being listed in INDEX (a de-indexed "ghost"), and the walk
+    # alone would never visit it, misclassifying that ghost as :no_intent (deleted) even though
+    # it plainly still exists.
+    known_ids = if File.directory?(s[:store_dir])
+                  Dir.children(s[:store_dir]).reject { |e| e.start_with?(".") }
+                     .select { |e| File.directory?(File.join(s[:store_dir], e)) }
+                     .map { |e| e.split("--", 2).first }
+                else
+                  []
+                end
+    # `evaluated_ids`: the narrower set the walk below actually judges (INDEX-listed and on disk).
+    evaluated_ids = []
+
     doctor.index_sections_by_dir(s[:index]).each do |dirname, in_sections|
       dir = File.join(s[:store_dir], dirname)
       next unless File.directory?(dir)
 
       walked_id = dirname.split("--", 2).first
-      known_ids << walked_id
+      evaluated_ids << walked_id
       # D6a: savepoint_operational only fires on a terminal intent, so a row naming a live
       # non-terminal intent has nothing to suppress YET. Doctor reports it; prune leaves it.
       protected_ids << walked_id unless (in_sections & ["Completed", "Abandoned"]).any?
@@ -370,8 +394,11 @@ def run_register_exclusions(home, rule, store, apply, prune = false)
 
       if Lock.fresh?(dir)
         skip_lines << "#{s[:scope]}: #{dirname} skipped (fresh delivery lock)"
-        # Prune direction (intent 280 D6): an id whose dir is skipped for a fresh lock lands in
-        # neither consumed nor known_ids, so it would read as dead. Hold it harmless.
+        # Prune direction (intent 280 D6, post-review fix): the lock skip runs AFTER
+        # evaluated_ids already recorded this id (just above) but BEFORE findings are computed,
+        # so it never reaches `consumed` - dead_rows would read it as :no_finding (evaluated,
+        # nothing consumed) purely because we never checked. Hold it harmless via protected_ids
+        # regardless of what dead_rows would report.
         protected_ids << walked_id
         next
       end
@@ -385,8 +412,16 @@ def run_register_exclusions(home, rule, store, apply, prune = false)
       # `excluded_rules: []` is passed here, so nothing ever fires via this drain; consumed[rule]
       # is instead built from found_ids below for the prune direction. Kept anyway so both
       # directions stay one shape if `excluded_rules:` is ever threaded through this call.
-      findings[:excluded_rules_fired].each { |fired| consumed[fired] << walked_id }
+      findings[:excluded_rules_fired].each { |fired| (consumed[fired] ||= []) << walked_id }
     end
+
+    # Post-review fix: an id with a real directory that INDEX never lists at all is walked by
+    # neither branch above, so its terminal state is unknowable here. Hold it harmless the same
+    # way D6a holds a not-yet-terminal id harmless - protected, never pruned, named as kept (this
+    # is defense-in-depth: dead_rows's own evaluated_ids gate already excludes such an id from
+    # `dead` in the first place, so this list should never actually need to intervene, but the
+    # protection stays explicit rather than relying solely on that gate).
+    protected_ids.concat(known_ids - evaluated_ids)
 
     already = existing[:rules][rule] || []
 
@@ -394,10 +429,11 @@ def run_register_exclusions(home, rule, store, apply, prune = false)
       # This tool calls done_signal_findings_for_dir with excluded_rules: [], so a registered id
       # that still has a gap shows up in found_ids rather than in the :excluded bucket. found_ids
       # IS the consumed set for this rule.
-      dead = DoctorExclusions.dead_rows(existing, consumed: { rule => found_ids }, known_ids: known_ids)
+      dead = DoctorExclusions.dead_rows(existing, consumed: { rule => found_ids }, known_ids: known_ids,
+                                          evaluated_ids: evaluated_ids)
                              .select { |row| row[:rule] == rule }
                              .map { |row| row[:id] }
-      held = dead & protected_ids # D6 (fresh lock) + D6a (not terminal)
+      held = dead & protected_ids # D6 (fresh lock) + D6a (not terminal) + on-disk-but-unindexed
       held.each { |id| skip_lines << "#{s[:scope]}: #{id} kept (protected, still live)" }
       dead -= held
       next if dead.empty?

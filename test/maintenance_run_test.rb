@@ -599,4 +599,31 @@ class MaintenanceRunTest < Minitest::Test
     assert_match(/no dead savepoint_operational exclusion rows to prune/, out)
     assert_equal before, File.read(File.join(@home, "doctor-exclusions"))
   end
+
+  # REGRESSION (post-review fix item 1): "70--ghost" has a REAL directory on disk under the
+  # global store but is never referenced anywhere in INDEX.md - a de-indexed "ghost". The buggy
+  # v1 predicate derived known_ids from index_sections_by_dir walk membership alone, so this
+  # exact fixture (registered, on disk, absent from INDEX) got silently pruned: the file was
+  # rewritten to drop "70" even though its directory plainly still existed, a silent loss of a
+  # governance row that is its own only audit trail (D8 - no revisions.md receipt exists for
+  # this tool). The fix resolves known_ids against a direct scan of the store's own directory
+  # listing, and separately protects any id in that gap via protected_ids as defense-in-depth.
+  def test_prune_never_removes_an_id_with_a_real_directory_absent_from_index
+    seed_register_exclusions_fixture
+    ghost_dir = File.join(@home, "store", "70--ghost")
+    FileUtils.mkdir_p(ghost_dir)
+    File.write(File.join(@home, "doctor-exclusions"), "savepoint_operational 40 70\n")
+    commit_all("seed ghost-directory fixture")
+
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
+                                        "--prune", "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+
+    loaded = DoctorExclusions.load(File.join(@home, "INDEX.md"))
+    assert_includes loaded[:rules]["savepoint_operational"], "70",
+      "an id whose directory genuinely exists, just unindexed, must survive prune"
+    assert_includes loaded[:rules]["savepoint_operational"], "40",
+      "the genuinely live id (a real, unregistered-elsewhere gap) must also survive"
+    assert File.directory?(ghost_dir), "the ghost directory itself must be left untouched"
+  end
 end

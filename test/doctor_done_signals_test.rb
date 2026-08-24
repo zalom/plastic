@@ -489,4 +489,32 @@ class DoctorDoneSignalsTest < Minitest::Test
     refute_includes operational[:message], "dead row"
     assert_includes operational[:message], "1 excluded"
   end
+
+  # REGRESSION (post-review fix item 1): "59--ghost" has a REAL directory on disk but is never
+  # referenced anywhere in INDEX.md - a de-indexed "ghost". The buggy v1 predicate derived
+  # known_ids from walk membership alone, so this id's directory being real did not matter: it
+  # was never visited by the walk, and its registered row was misclassified :no_intent ("a typo,
+  # or the intent was deleted") even though the directory plainly still existed. The fix resolves
+  # known_ids against a direct scan of the store's own directory listing, and additionally
+  # leaves an unevaluated-but-known id out of the dead-row report entirely (no evidence either
+  # way) - so doctor must never call "59" dead, under either reason.
+  def test_ghost_directory_absent_from_index_is_never_reported_as_a_dead_row
+    write_index("58", section: "Completed")
+    write_intent_dir("58")
+    write_outcome("58")
+    write_savepoint_done("58") # a genuinely repaired gap - the flagship falsifiability case (6)
+    FileUtils.mkdir_p(File.join(global_store, "59--ghost"))
+    write_exclusions("savepoint_operational 58 59\n")
+
+    operational = check("savepoint_operational")
+    assert_equal "pass", operational[:status]
+    # Matches the exact "rule id" substring the detail-line format produces (`"#{rule} #{id} -
+    # #{reason}"`), not a bare "59" - a random tmpdir suffix from Dir.mktmpdir can otherwise
+    # spuriously contain that digit sequence and make this assertion flaky.
+    refute(operational[:details].any? { |d| d.include?("savepoint_operational 59") },
+      "a real, on-disk directory absent from INDEX carries no evidence and must never be called dead")
+    assert(operational[:details].any? { |d| d.include?("savepoint_operational 58") && d.include?("no current") },
+      "the genuinely repaired id (58) must still be reported dead, with the :no_finding wording")
+    assert_includes operational[:message], "1 dead row"
+  end
 end

@@ -634,8 +634,23 @@ def check_done_signals(scopes: nil)
       exclusion_error_paths << exclusions[:path]
     end
 
-    consumed = Hash.new { |h, k| h[k] = [] }
-    known_ids = []
+    consumed = { "savepoint_operational" => [] }
+    # `known_ids` (post-review fix): every intent id with a REAL DIRECTORY in this store, scanned
+    # directly from disk - independent of INDEX.md. An id can have a directory on disk without
+    # being listed in INDEX (a de-indexed "ghost"), and the walk below alone would never visit it;
+    # deriving known_ids from walk membership misclassified that ghost as :no_intent (deleted)
+    # even though the directory plainly still exists.
+    known_ids = if File.directory?(store[:store_dir])
+                  Dir.children(store[:store_dir]).reject { |e| e.start_with?(".") }
+                     .select { |e| File.directory?(File.join(store[:store_dir], e)) }
+                     .map { |e| e.split("--", 2).first }
+                else
+                  []
+                end
+    # `evaluated_ids`: the narrower set the walk below actually judges (INDEX-listed and on
+    # disk). An id with a real directory that this run never evaluated (on disk, unindexed)
+    # carries no evidence either way and must never be called dead - dead_rows leaves it out.
+    evaluated_ids = []
 
     index_sections_by_dir(store[:index]).each do |dirname, in_sections|
       dir = File.join(store[:store_dir], dirname)
@@ -645,7 +660,7 @@ def check_done_signals(scopes: nil)
       active = in_sections.include?("Active") && !terminal
       label = "#{store[:scope]} store/#{dirname}"
       intent_id = dirname.split("--", 2).first
-      known_ids << intent_id
+      evaluated_ids << intent_id
       excluded_rules = DoctorExclusions.rules_for(exclusions, intent_id)
 
       findings = done_signal_findings_for_dir(
@@ -660,14 +675,17 @@ def check_done_signals(scopes: nil)
         excluded.concat(findings[:excluded])
         exclusion_paths << exclusions[:path]
       end
-      findings[:excluded_rules_fired].each { |fired| consumed[fired] << intent_id }
+      findings[:excluded_rules_fired].each { |fired| (consumed[fired] ||= []) << intent_id }
       stalled << findings[:stalled] if findings[:stalled]
     end
 
     # Drift in the governance record itself (intent 280): rows naming a pair that produced no
     # finding this run. Computed by set subtraction against the walk above, never re-derived from
-    # the exclusion file (208; the intent 200 self-diff).
-    DoctorExclusions.dead_rows(exclusions, consumed: consumed, known_ids: known_ids).each do |row|
+    # the exclusion file (208; the intent 200 self-diff). `:no_intent` below only ever fires when
+    # `known_ids` (a real directory scan) truly has no entry for the id - never merely because the
+    # walk did not visit it.
+    DoctorExclusions.dead_rows(exclusions, consumed: consumed, known_ids: known_ids,
+                                evaluated_ids: evaluated_ids).each do |row|
       reason = if row[:reason] == :no_intent
                  "names no live intent directory (a typo, or the intent was deleted)"
                else
