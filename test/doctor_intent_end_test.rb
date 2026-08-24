@@ -71,6 +71,24 @@ class DoctorIntentEndTest < Minitest::Test
 
   def find(checks, name) = checks.find { |c| c[:name] == name }
 
+  # INDEX.md for one store root, in the shape index_sections_by_dir parses: a `## Section`
+  # heading followed by lines carrying a `store/<dirname>/...` reference.
+  # sections: { "Completed" => ["45--demo"], "Active" => [...] }
+  def write_index(sections, root: @home)
+    body = +"# Index\n\n"
+    sections.each do |name, dirnames|
+      body << "## #{name}\n"
+      dirnames.each { |d| body << "- [#{d}](store/#{d}/#{d}.md)\n" }
+      body << "\n"
+    end
+    File.write(File.join(root, "INDEX.md"), body)
+  end
+
+  # The store's doctor-exclusions table, sibling to that store's INDEX.md (274 D6).
+  def write_exclusions(lines, root: @home)
+    File.write(File.join(root, "doctor-exclusions"), lines.join("\n") + "\n")
+  end
+
   # --- intent_structure -------------------------------------------------------
 
   def test_intent_structure_fails_on_malformed_frontmatter
@@ -183,6 +201,122 @@ class DoctorIntentEndTest < Minitest::Test
 
     overall = doctor.run_intent_check("45")
     assert_equal "warn", overall[:status], "a savepoint-only phantom must never escalate the OVERALL verdict to fail"
+  end
+
+  # --- intent_savepoint_truthful: doctor-exclusions honored (intent 281) --------
+
+  # The coverage this file lacked before intent 281: a plain missing savepoint.md with no
+  # INDEX and no exclusions file must still warn exactly as it always has. This is the
+  # baseline the excluded/registered cases below are measured against.
+  def test_savepoint_truthful_warns_when_savepoint_is_missing_entirely
+    dir = write_clean_intent(id: "50")
+    File.delete(File.join(dir, "savepoint.md"))
+
+    checks = doctor.check_intent_end("50")
+    result = find(checks, "intent_savepoint_truthful")
+    assert_equal "warn", result[:status]
+    assert_equal "savepoint.md is missing", result[:message]
+    assert_empty result[:details].to_a
+  end
+
+  # A terminal intent whose id is registered under savepoint_operational (281 D1) reaches
+  # pass, with the honest count and the exclusions path folded into the message (274 D4's
+  # wording) and nothing in details.
+  def test_missing_savepoint_is_excluded_for_a_terminal_registered_intent
+    dir = write_clean_intent(id: "51")
+    File.delete(File.join(dir, "savepoint.md"))
+    write_index({ "Completed" => ["51--demo"] })
+    write_exclusions(["savepoint_operational 51"])
+
+    checks = doctor.check_intent_end("51")
+    result = find(checks, "intent_savepoint_truthful")
+    assert_equal "pass", result[:status]
+    assert_match(/1 excluded via/, result[:message])
+    assert_match(/doctor-exclusions/, result[:message])
+    assert_empty result[:details].to_a
+  end
+
+  # Precision pin, the per-intent mirror of doctor_done_signals_test.rb's case 11: a
+  # registration naming a DIFFERENT id must never suppress this intent's own warning. Proves
+  # the fix keys on the id, not on the mere existence of the exclusions file.
+  def test_missing_savepoint_still_warns_when_another_intent_is_registered
+    dir = write_clean_intent(id: "52")
+    File.delete(File.join(dir, "savepoint.md"))
+    write_index({ "Completed" => ["52--demo"] })
+    write_exclusions(["savepoint_operational 99"])
+
+    checks = doctor.check_intent_end("52")
+    result = find(checks, "intent_savepoint_truthful")
+    assert_equal "warn", result[:status]
+    assert_equal "savepoint.md is missing", result[:message]
+  end
+
+  # 281 D3: the exclusion is honored only when the intent is terminal in its store's INDEX.
+  # A still-Active intent's missing-savepoint warning must never be silenced by a
+  # registration, because scripts/end-intent's pre-write gate runs against exactly this
+  # state and its warning must stay live and repairable.
+  def test_missing_savepoint_still_warns_for_a_non_terminal_intent
+    dir = write_clean_intent(id: "53")
+    File.delete(File.join(dir, "savepoint.md"))
+    write_index({ "Active" => ["53--demo"] })
+    write_exclusions(["savepoint_operational 53"])
+
+    checks = doctor.check_intent_end("53")
+    result = find(checks, "intent_savepoint_truthful")
+    assert_equal "warn", result[:status]
+  end
+
+  # Intent 211, 281 D2: the phantom-line branch is permanently non-suppressible by id or
+  # scope, even for an intent excluded and terminal. Pins a standing ruling against a future
+  # "just exclude the whole check" edit.
+  def test_phantom_line_still_warns_for_an_excluded_terminal_intent
+    dir = write_clean_intent(id: "54")
+    File.write(File.join(dir, "savepoint.md"), <<~SP)
+      2026-07-01T00:00:00Z  What  54--demo.md
+      2026-07-01T00:01:00Z  Why  spec.md created
+      2026-07-01T00:02:00Z  Why  spec.md created
+    SP
+    write_index({ "Completed" => ["54--demo"] })
+    write_exclusions(["savepoint_operational 54"])
+
+    checks = doctor.check_intent_end("54")
+    result = find(checks, "intent_savepoint_truthful")
+    assert_equal "warn", result[:status]
+    assert(result[:details].any? { |d| d =~ /phantom/ }, "expected a phantom-line detail, got #{result[:details].inspect}")
+  end
+
+  # 281 D5: a malformed line never suppresses anything, even when a valid registration for
+  # this same id sits in the same file. Loud on the branch that consulted the file: the
+  # parse error lands in details and the exclusions path is named in fix_hint.
+  def test_malformed_exclusion_line_never_suppresses_and_is_loud
+    dir = write_clean_intent(id: "55")
+    File.delete(File.join(dir, "savepoint.md"))
+    write_index({ "Completed" => ["55--demo"] })
+    write_exclusions(["savepoint_operational 55", "bogus_rule 55"])
+
+    checks = doctor.check_intent_end("55")
+    result = find(checks, "intent_savepoint_truthful")
+    assert_equal "warn", result[:status]
+    refute_empty result[:details].to_a
+    assert(result[:details].any? { |d| d =~ /line 2/ }, "expected a line-2 parse error, got #{result[:details].inspect}")
+    assert_match(/doctor-exclusions/, result[:fix_hint].to_s)
+  end
+
+  # Scope threading: check_intent_end must resolve the INTENT'S OWN project store's INDEX and
+  # exclusions, not the global store's, even when the global store has no matching state at
+  # all. The only case that proves the fix threads the correct store key through.
+  def test_exclusions_are_read_from_the_intents_own_project_store
+    proj_root = File.join(@home, "projects", "proj1")
+    proj_store = File.join(proj_root, "store")
+    FileUtils.mkdir_p(proj_store)
+    write_clean_intent(id: "56", slug: "projdemo", store_dir: proj_store)
+    File.delete(File.join(proj_store, "56--projdemo", "savepoint.md"))
+    write_index({ "Completed" => ["56--projdemo"] }, root: proj_root)
+    write_exclusions(["savepoint_operational 56"], root: proj_root)
+
+    checks = doctor.check_intent_end("56")
+    result = find(checks, "intent_savepoint_truthful")
+    assert_equal "pass", result[:status]
   end
 
   # --- --intent / --store disambiguation ----------------------------------------

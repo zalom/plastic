@@ -218,6 +218,12 @@ folds in the count and the file's path, e.g. `"... (3 excluded via ~/.plastic/do
 A malformed line in the file forces the check to `warn` with the parse error in `details`, even
 when zero real gaps remain, so a broken file is never silently permissive.
 
+**Both surfaces, one line.** A registration is honored by the store-wide `savepoint_operational`
+check and by the per-intent `doctor.rb --intent <id>` run, which reports the same missing
+`savepoint.md` under the check name `intent_savepoint_truthful`. Register the id once. The
+per-intent run honors it only for an intent that is terminal in `INDEX.md`, and never suppresses
+a phantom-savepoint-line finding.
+
 **Hand-editing.** The file is plain text; add a line (or append ids to an existing rule line) and
 save. No installer step, no reindex, and no `revisions.md` entry is required or written.
 

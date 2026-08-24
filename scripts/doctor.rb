@@ -940,12 +940,19 @@ end
       )]
     end
 
+    # The owning store's INDEX.md, resolved from `scope` through the memoized store_discovery
+    # (same {key:, index:} shape done_signal_stores enumerates). intent_savepoint_truthful_check
+    # needs it to reach that store's doctor-exclusions table and to ask INDEX whether this
+    # intent is terminal (intent 281 D3/D6). nil when the scope resolves to no known store,
+    # which restores the pre-281 behavior exactly.
+    index_path = store_discovery[:stores].find { |s| s[:key] == scope }&.fetch(:index, nil)
+
     [
       intent_structure_check(intent_dir),
       intent_lifecycle_artifacts_check(intent_dir, disposition),
       intent_checklist_complete_check(intent_dir),
       intent_links_projection_check_for(id, scope),
-      intent_savepoint_truthful_check(intent_dir),
+      intent_savepoint_truthful_check(intent_dir, index_path: index_path),
     ]
   end
 
@@ -1056,11 +1063,67 @@ end
     end
   end
 
+  # Whether this one intent's missing-savepoint finding is knowingly excluded, for the
+  # per-intent surface (intent 281). Returns {excluded:, errors:, path:}.
+  #
+  # Same rule id as the store-wide sweep, `savepoint_operational` (281 D1): the fact is
+  # identical (a terminal intent with no savepoint.md), so one registration in one
+  # doctor-exclusions file covers both surfaces and the owner never learns a second name for
+  # one gap. RuleCatalog is deliberately NOT extended.
+  #
+  # Terminal-gated (281 D3): done_signal_findings_for_dir only ever produces this finding
+  # inside `if terminal`, so honoring the exclusion for a still-Active intent would suppress a
+  # strictly larger set of facts than the rule id names - and would let a mistyped id silence
+  # the live, repairable warning scripts/end-intent's pre-write gate exists to raise.
+  #
+  # Never raises: DoctorExclusions is fail-open by contract (274 D5) and index_sections_by_dir
+  # returns an empty map for a missing INDEX.
+  def savepoint_exclusion_for(intent_dir, index_path)
+    none = { excluded: false, errors: [], path: nil }
+    return none unless index_path
+
+    dirname = File.basename(intent_dir)
+    return none unless (index_sections_by_dir(index_path)[dirname] & ["Completed", "Abandoned"]).any?
+
+    loaded = DoctorExclusions.load(index_path)
+    rules = DoctorExclusions.rules_for(loaded, dirname.split("--", 2).first)
+    { excluded: rules.include?("savepoint_operational"), errors: loaded[:errors], path: loaded[:path] }
+  end
+
   # WARN-only, per intent 134 (savepoint truthfulness is advisory, never a hard gate). Do not
   # change this to FAIL: it would silently contradict a standing, binding ruling.
-  def intent_savepoint_truthful_check(intent_dir)
+  #
+  # `index_path:` (intent 281) is the owning store's INDEX.md, threaded from check_intent_end.
+  # It makes this surface honor the same doctor-exclusions registration check_done_signals
+  # already honors for the same fact, under the same rule id (281 D1). Only the missing-file
+  # branch below is excludable: the phantom-line branch is permanently non-suppressible by id
+  # or scope (intent 211, 281 D2). Omitting index_path restores the pre-281 behavior exactly.
+  def intent_savepoint_truthful_check(intent_dir, index_path: nil)
     savepoint = File.join(intent_dir, "savepoint.md")
     unless File.exist?(savepoint)
+      exclusion = savepoint_exclusion_for(intent_dir, index_path)
+
+      # A loader error never suppresses anything (274 D5: fail milder than the bug), and the
+      # check that consulted the file is where the error is reported.
+      if exclusion[:errors].any?
+        return check(
+          category: "intent_end", name: "intent_savepoint_truthful", status: "warn",
+          message: "savepoint.md is missing, and #{exclusion[:errors].size} doctor-exclusions " \
+                   "error#{exclusion[:errors].size == 1 ? "" : "s"} " \
+                   "(a malformed exclusion file never suppresses a finding)",
+          details: exclusion[:errors], fixable: true,
+          fix_hint: "Fix the malformed doctor-exclusions file (#{exclusion[:path]}) - format " \
+                    "`rule_name id id id`, blank lines and # comments ignored - then re-run."
+        )
+      end
+
+      # Excluded: the fact stays in the message with the honest count and the file that caused
+      # the suppression, and nothing lands in details (274 D4's wording, N is always 1 here).
+      if exclusion[:excluded]
+        return check(category: "intent_end", name: "intent_savepoint_truthful", status: "pass",
+                     message: "savepoint.md is missing (1 excluded via #{exclusion[:path]})")
+      end
+
       return check(category: "intent_end", name: "intent_savepoint_truthful", status: "warn",
                     message: "savepoint.md is missing")
     end
