@@ -72,10 +72,12 @@ No commit anywhere, store or project repo, uses `git add -A`; every maintenance 
 commit stages only the paths it actually changed (`scripts/end-intent`'s `store_commit`,
 `scripts/maintenance-run`).
 
-The one condition on every maintenance action, with no exception, is that it is recorded.
-Every maintenance action, whether run by a tool or made by hand, must leave an append-only
-`revisions.md` entry on its target intent (`## Revision vN`, a `Why ... [rule: tag]` line, a
-`Prior location`, and the change itself). If the file already exists, a new run appends
+The one condition on every maintenance action that STRUCTURALLY EDITS AN INTENT'S OWN FILES is
+that it is recorded. (One narrow carve-out exists for a tool that edits no intent directory at
+all - see `register-exclusions` below.) Every such maintenance action, whether run by a tool or
+made by hand, must leave an append-only `revisions.md` entry on its target intent (`## Revision
+vN`, a `Why ... [rule: tag]` line, a `Prior location`, and the change itself). If the file
+already exists, a new run appends
 `vN+1`; it never overwrites an earlier entry (precedent: intent 124's `revisions.md` v3
 corrects v2 by appending a correction entry and explicitly leaving v2 in place). This is
 tool-enforced, not prose alone: `scripts/project-links`, `scripts/rebuild-graph`, and
@@ -159,6 +161,38 @@ Violation tags (starter set, free-text tags allowed):
 - `misplaced-content`: content that belongs in a different artifact or section
 - `links-projection`: a tool-authored `## Links` regeneration (project-links; intent 197)
 - `graph-rebuild`: a tool-authored sources/chain frontmatter rebuild (rebuild-graph; intent 197)
+
+This is a starter set; free-text tags are allowed. `RuleCatalog::REVISION_RULES`
+(`scripts/lib/rule_catalog.rb`, intent 274) is the canonical, currently-in-use vocabulary,
+measured from live store data rather than hand-curated, and `test/rule_catalog_test.rb` pins
+every `[rule:]` literal hardcoded under `scripts/` as a registered member - so an unregistered
+tag is caught before it ships, without `RevisionsWriter.append!` itself ever refusing to write
+one (a receipt writer that refuses on an unrecognized tag would fail harder than the bug it is
+meant to catch).
+
+#### register-exclusions: a maintenance tool that writes no revisions.md entry
+
+`scripts/maintenance-run --tool register-exclusions [--rule <name>] [--store <key>] [--apply]`
+(intent 274) is the one narrow exception to the "every maintenance action is recorded in
+`revisions.md`" rule above. It populates each store's `doctor-exclusions` file (the per-store
+record of knowingly-exempt `(intent_id, rule)` pairs `doctor`'s `savepoint_operational` check
+honors - see `skills/doctor/SKILL.md`) by computing violations through
+`Doctor#done_signal_findings_for_dir` directly, the same function `check_done_signals` itself
+calls, so the registry can never disagree with the checker about what counts as a violation.
+
+The carve-out: this tool modifies no intent directory at all. It writes exactly one
+store-level table per store (`doctor-exclusions`, sibling to `INDEX.md`), never an intent's
+own files, so the receipt rule above - which covers tools that structurally edit an intent's
+own files - does not apply to it. Writing a `revisions.md` receipt anyway would mean editing
+every touched Completed intent directory, which the standing rule that completed intents are
+immutable forbids outright. The receipt is instead the scoped git commit
+(`MaintenanceGit.run_scoped`) plus the exclusion file itself, where every line is its own
+durable, diffable record - not a missing safeguard, a deliberate substitution for a receipt
+shape that would otherwise require an illegal write.
+
+Like every other tool behind `maintenance-run`, it dry-runs by default (the owner-approval
+gate), unions with any existing hand-edited file content so a manually added id is never
+dropped, and skips (never aborts on) any intent dir holding a fresh delivery lock.
 
 ### Context-economy measurement buckets (84a)
 

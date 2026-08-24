@@ -270,6 +270,49 @@ evidence) stays reserved for an explicit human grant. `doctor.rb`'s `check_done_
 a sibling `savepoint_truthful` advisory (pass when clean, warn and never fail, mirroring
 `signals_complete`) that runs the same detector across every intent dir the check already visits.
 
+Some `savepoint_operational` gaps can never legitimately close: a terminal intent with no real
+`outcome.md` has no disposition to echo, and 219 D6 forbids ever inventing one, so the warning
+would otherwise recur forever. Intent 274 gives each store a `doctor-exclusions` file, sibling to
+that store's `INDEX.md` (`~/.plastic/doctor-exclusions` globally,
+`~/.plastic/projects/<slug>/doctor-exclusions` per project), recording knowingly-exempt
+`(intent_id, rule)` pairs. The format
+is `/etc/hosts`-shaped: one `rule_name id id id` line per rule, blank lines and `#` comments
+ignored, duplicate rule lines unioned. It is a plain-text config table, not a markdown document
+(no `.md` extension), and it never ships in the npm package: `scripts/lib/rule_catalog.rb`
+(`RuleCatalog::EXCLUDABLE_CHECKS`, one key in v1, `savepoint_operational`) is the vocabulary of
+doctor check names an exclusion file may name, and `scripts/lib/doctor_exclusions.rb`
+(`DoctorExclusions.load`/`.parse`/`.rules_for`) is the pure-parse-plus-thin-IO loader, never
+raising. A missing file is the normal case (zero exclusions, zero errors, identical to before
+this file existed); a malformed line contributes one error naming its line number and excludes
+nothing (fail milder than the bug: a typo must never silently suppress a real regression); any
+loader error forces `savepoint_operational` to `warn` with the error text in `details`, so a
+broken exclusion file is loud rather than silently permissive. `check_done_signals` loads one
+exclusion file per store and routes a suppressed `savepoint_operational` finding to a dedicated
+`:excluded` bucket inside `done_signal_findings_for_dir` rather than a post-filter over rendered
+`details` strings (keeping intent 222's single-source-of-truth guarantee intact); the key is
+`(intent_id, rule)`, never bare `intent_id`, so excluding `savepoint_operational` for an intent
+has no effect on `signals_complete`'s independent report for that same intent. The check's
+message always folds in the honest count and the file's path once any exclusion applies, and
+reaches `pass` once every remaining gap is excluded. `RuleCatalog::REVISION_RULES` shares the
+same file as a second, unrelated axis: the `[rule: <tag>]` vocabulary every `revisions.md` entry
+carries (see the maintenance-and-revisions reference). It is enforced by
+`test/rule_catalog_test.rb`, never at `RevisionsWriter` runtime, because a receipt writer that
+refuses to write on an unrecognized tag would fail harder than the bug it is meant to catch.
+
+`scripts/maintenance-run --tool register-exclusions [--rule <name>] [--store <key>] [--apply]`
+is the one-time population tool (197-conformant, dry-run by default): it computes violations by
+calling `Doctor#done_signal_findings_for_dir` directly, the same function `check_done_signals`
+itself calls, so the registry can never disagree with the checker about what counts as a
+violation. It processes every store in one invocation by default (all stores already live in
+the single `~/.plastic` git repo, so a cross-store write is still one repo and one scoped
+commit), unions with any existing hand-edited file content so a manually added id is never
+dropped, and skips (never aborts on) any intent dir holding a fresh delivery lock, reporting the
+skip. It writes no `revisions.md` entries: the tool modifies no intent directory, only one
+store-level table per store, so 197's receipt-before-write rule (which covers tools that
+structurally edit an intent's own files) does not apply here, and writing one would mean editing
+every touched Completed intent directory, which the standing rule that completed intents are
+immutable forbids. The scoped git commit plus the diffable exclusion file itself are the receipt.
+
 Session resolution feeds the bridge that the gate hooks read (intent 52). Claude Code does
 not export a session id env var into the hook environment; it passes `session_id` on the hook
 stdin JSON. So the bash wrappers parse `session_id` out of stdin (in Ruby, never in bash) and
