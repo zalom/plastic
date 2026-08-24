@@ -269,6 +269,35 @@ class HookRegistryTest < Minitest::Test
     end
   end
 
+  # Intent 277: the current-only predicate hooks_registered needs. Rows two and
+  # three are the ones that separate it from claude_purge_command?, which answers
+  # true for both.
+  def test_claude_current_predicate_truth_table
+    assert HookRegistry.claude_current_command?("/Users/x/.claude/hooks/plastic-session-start")
+    assert HookRegistry.claude_current_command?("ruby /Users/x/.claude/hooks/plastic-session-start.rb")
+    assert HookRegistry.claude_current_command?("\"/Users/x/my hooks/plastic-savepoint\"")
+
+    refute HookRegistry.claude_current_command?("/Users/x/.claude/hooks/plastic-lock-gate")
+    refute HookRegistry.claude_current_command?("/Users/x/.claude/hooks/plastic-statusline")
+    refute HookRegistry.claude_current_command?("~/.claude/hooks/plastic-writing-style")
+    refute HookRegistry.claude_current_command?("serena-hooks activate --client=claude-code")
+    refute HookRegistry.claude_current_command?("")
+  end
+
+  # Drift pin, the mirror of install_hooks_test.rb's
+  # test_every_registered_claude_command_is_purgeable: every command the registry
+  # generates must read as current, or a freshly-merged settings.json would fail
+  # doctor's hooks_registered the moment the installer finished writing it.
+  def test_every_registered_claude_command_is_current
+    commands = HookRegistry.claude_settings_hooks(hook_dir: "/tmp/h").values.flatten.flat_map do |g|
+      g["hooks"].map { |h| h["command"] }
+    end
+    refute_empty commands
+    commands.each do |cmd|
+      assert HookRegistry.claude_current_command?(cmd), "#{cmd} must read as a current registration"
+    end
+  end
+
   private
 
   # `"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook" code-gate` -> "code-gate";
