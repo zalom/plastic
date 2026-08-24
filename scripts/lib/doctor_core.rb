@@ -107,6 +107,19 @@ class Doctor
     path.sub(Dir.home, "~")
   end
 
+  # Every hook command string registered under one settings.json event, flattened
+  # across that event's matcher groups. Shape-tolerant on purpose: settings.json is
+  # hand-editable and may carry anything at all under an event key.
+  def event_commands(groups)
+    return [] unless groups.is_a?(Array)
+
+    groups.flat_map do |group|
+      next [] unless group.is_a?(Hash) && group["hooks"].is_a?(Array)
+
+      group["hooks"].map { |h| h.is_a?(Hash) ? h["command"].to_s : "" }
+    end
+  end
+
   def check(category:, name:, status:, message:, details: [], fixable: false, fix_hint: nil)
     result = {
       category: category,
@@ -270,14 +283,30 @@ class Doctor
       )
     else
       hooks = settings["hooks"] || {}
-      missing_events = CLAUDE_HOOK_EVENTS.reject do |event|
-        groups = hooks[event]
-        next false unless groups.is_a?(Array)
 
-        groups.any? do |group|
-          group.is_a?(Hash) && group["hooks"].is_a?(Array) &&
-            group["hooks"].any? { |h| HookRegistry.claude_purge_command?(h["command"]) }
-        end
+      # A live registration is a launcher Plastic ships TODAY (intent 277).
+      # claude_purge_command?, which this replaced, answers "was this ever ours":
+      # right for the installer's purge, wrong here, because a SessionStart
+      # carrying only the retired plastic-lock-gate satisfied the event while
+      # nothing shipped to run it.
+      missing_events = CLAUDE_HOOK_EVENTS.reject do |event|
+        event_commands(hooks[event]).any? { |cmd| HookRegistry.claude_current_command?(cmd) }
+      end
+
+      # Name the launcher when a missing event still carries a Plastic-owned
+      # command. Inside a missing event every such command is by construction not
+      # a current one, and a bare "SessionStart" reads as "nothing registered" to
+      # someone looking at a settings.json that plainly holds a plastic- entry.
+      # Events with no Plastic entry keep the bare name: two tests compare details
+      # by element equality and by count.
+      missing_details = missing_events.map do |event|
+        stale = event_commands(hooks[event])
+                .flat_map { |cmd| HookRegistry.command_basenames(cmd) }
+                .select { |name| HookRegistry.claude_purgeable_launcher_names.include?(name) }
+                .uniq
+        next event if stale.empty?
+
+        "#{event} (registered command is not a current Plastic hook: #{stale.join(', ')})"
       end
 
       if missing_events.empty?
@@ -289,7 +318,7 @@ class Doctor
         checks << check(
           category: "agent_registration", name: "hooks_registered", status: "fail",
           message: "#{missing_events.size} hook event(s) not registered in settings.json",
-          details: missing_events,
+          details: missing_details,
           fixable: true, fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest --claude"
         )
       end

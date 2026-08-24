@@ -788,6 +788,53 @@ class DoctorAgentRegistrationTest < Minitest::Test
                      "a lone user hook must not satisfy the SessionStart requirement: #{registered_check[:details].inspect}"
   end
 
+  # Intent 277: the other half of ownership. 275 moved this check off the
+  # `plastic-` substring and onto HookRegistry.claude_purge_command?, whose set
+  # is current PLUS retired PLUS non-hook launchers, because that is what the
+  # installer's purge needs. A liveness check needs the narrower question: a
+  # SessionStart carrying only plastic-lock-gate (retired with intent 244) has
+  # nothing left on disk to run, so the event is not registered.
+  def test_hooks_registered_does_not_count_a_lone_retired_launcher
+    write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    File.write(settings_path, JSON.pretty_generate({
+      "hooks" => {
+        "SessionStart" => [
+          { "matcher" => "", "hooks" => [
+            { "type" => "command", "command" => "/opt/plastic/hooks/plastic-lock-gate" },
+          ] },
+        ],
+      },
+    }))
+
+    checks = doctor.check_agent_registration("claude")
+    registered_check = checks.find { |c| c[:name] == "hooks_registered" }
+
+    assert_equal "fail", registered_check[:status]
+    details = Array(registered_check[:details])
+    assert details.any? { |d| d.include?("SessionStart") },
+           "a lone retired launcher must not satisfy the SessionStart requirement: #{details.inspect}"
+    assert details.any? { |d| d.include?("plastic-lock-gate") },
+           "the failure must name the retired launcher it found: #{details.inspect}"
+  end
+
+  # The pass side of the same predicate, which nothing pinned before intent 277:
+  # a settings.json carrying the registrations HookRegistry defines today must
+  # satisfy every required event.
+  def test_hooks_registered_passes_on_a_full_current_registration
+    write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
+    write_skills(DOCTOR_TEST_CLAUDE)
+
+    checks = doctor.check_agent_registration("claude")
+    registered_check = checks.find { |c| c[:name] == "hooks_registered" }
+
+    assert_equal "pass", registered_check[:status],
+                 "current registrations must satisfy the check: #{Array(registered_check[:details]).inspect}"
+  end
+
   def test_missing_skills_directory_fails
     hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
     write_claude_hooks(hooks_dir)

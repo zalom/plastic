@@ -244,6 +244,26 @@ module HookRegistry
     command_basenames(cmd).any? { |name| known.include?(name) }
   end
 
+  # Is this settings.json hook command one Plastic registers TODAY? (intent 277)
+  #
+  # The narrower twin of claude_purge_command?. The purge asks "was this ever
+  # ours", because it has to recognise an old entry in order to remove it. A
+  # liveness check asks "is there something here that still runs", and the two
+  # sets differ by exactly the entries that make the answers disagree: a
+  # SessionStart carrying only plastic-lock-gate satisfied doctor's
+  # hooks_registered while no such launcher ships anymore.
+  #
+  # Sourced from claude_launcher_names alone, so RETIRED_CLAUDE_LAUNCHERS is out
+  # (that is the bug) and CLAUDE_NON_HOOK_LAUNCHERS is out too: plastic-statusline
+  # is settings["statusLine"], not a hook of any event, so a group whose only
+  # Plastic entry is the statusline command has no hook registered in it.
+  # Tokenised through command_basenames like the purge predicate, so a quoted
+  # path or the legacy `ruby <path>/plastic-<name>.rb` form still resolves.
+  def claude_current_command?(cmd)
+    known = claude_launcher_names
+    command_basenames(cmd).any? { |name| known.include?(name) }
+  end
+
   # Is this ~/.codex/hooks.json command one of ours? Every Plastic Codex entry
   # invokes our dispatcher by path (`"<plastic_home>/scripts/codex-hook" <name>`),
   # so the dispatcher's filename identifies it. Basename EQUALITY, so a user's
