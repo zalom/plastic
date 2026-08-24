@@ -1,21 +1,25 @@
 #!/bin/bash
-# plastic-hook-version: 3.0.0
+# plastic-hook-version: 4.0.0
 # StatusLine hook - Plastic owns the full statusline (no chaining).
-# Renders: {model} - Plastic {version}[ -> {next}] - {path} - [{project}: {id} {title}]
+# Renders: {model} - ctx {pct}% ({used}k/{size}k) - 5h {p}% - 7d {p}% - ${cost}
+#          - claudish {n} rw / {tok} - Plastic {version}[ -> {next}] - {path}
+# Every segment but claudish and the Plastic version comes from the stdin payload.
 # Pure bash (macOS 3.2 compatible). No ruby, no jq. Reads stdin once; small file reads only.
 
 INPUT=$(cat)
 
 # --- Colors (ANSI-C quoting; bash 3.2 supports $'\033') ---
-C_MODEL=$'\033[38;2;90;140;220m'   # navy blue - model (lightened for legibility)
-C_VER=$'\033[37m'                  # white     - "Plastic {version}" and update arrow
-C_NEXT=$'\033[33m'                 # yellow    - next version
-C_PATH=$'\033[38;2;128;134;144m'   # gray      - path (matches dim UI text)
-C_BRACK=$'\033[33m'                # yellow    - work-unit brackets
-C_PROJ=$'\033[38;2;249;140;30m'    # orange    - project name
-C_ID=$'\033[38;2;45;212;191m'      # teal      - intent id (accent between orange + yellow)
-C_INTENT=$'\033[33m'               # yellow    - intent title
-C_SEP=$'\033[38;2;128;134;144m'    # gray      - separators
+C_MODEL=$'\033[38;2;90;140;220m'    # navy blue - model
+C_CTX=$'\033[38;2;45;212;191m'      # teal      - context window
+C_OK=''                             # default   - meter below 70%
+C_WARN=$'\033[33m'                  # yellow    - meter at 70% and above
+C_CRIT=$'\033[38;2;231;76;60m'      # red       - meter at 90% and above
+C_COST=$'\033[37m'                  # white     - session cost
+C_CLAUDISH=$'\033[38;2;249;140;30m' # orange    - claudish rewrites
+C_VER=$'\033[37m'                   # white     - "Plastic {version}" and update arrow
+C_NEXT=$'\033[33m'                  # yellow    - next version
+C_PATH=$'\033[38;2;128;134;144m'    # gray      - path (matches dim UI text)
+C_SEP=$'\033[38;2;128;134;144m'     # gray      - separators
 RST=$'\033[0m'
 SEP="${C_SEP} "$'\302\267'" ${RST}"   # " . " middot, dim
 
@@ -25,6 +29,63 @@ json_str() {
     | grep -o "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" \
     | head -1 \
     | sed "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"//;s/\"$//"
+}
+
+# --- Extract the brace-balanced text of a named JSON object: json_obj <json> <key> ---
+# Joins the input into one buffer, so pretty-printed and single-line payloads parse
+# identically, then walks characters from the opening brace with a depth counter,
+# honoring string state so a brace inside a string cannot close the object early.
+# A sed line range cannot do this: context_window holds a nested current_usage
+# object whose closing brace would end the range too soon. The regex stops at the
+# colon and the brace is checked as a plain character, because a brace inside a
+# dynamic regex is not portable to the awk that ships with macOS. A null value
+# (current_usage is often null) fails that check and yields nothing, which is what
+# every caller wants.
+json_obj() {
+  printf '%s' "$1" | awk -v key="$2" '
+    { buf = buf $0 " " }
+    END {
+      pat = "\"" key "\"[ \t]*:[ \t]*"
+      if (match(buf, pat) == 0) exit
+      start = RSTART + RLENGTH
+      if (substr(buf, start, 1) != "{") exit
+      depth = 0; instr = 0; esc = 0
+      n = length(buf)
+      for (i = start; i <= n; i++) {
+        c = substr(buf, i, 1)
+        if (instr) {
+          if (esc) { esc = 0 }
+          else if (c == "\\") { esc = 1 }
+          else if (c == "\"") { instr = 0 }
+          continue
+        }
+        if (c == "\"") { instr = 1; continue }
+        if (c == "{") { depth++ }
+        else if (c == "}") {
+          depth--
+          if (depth == 0) { print substr(buf, start, i - start + 1); exit }
+        }
+      }
+    }'
+}
+
+# --- Read a numeric field out of a JSON fragment: json_num <fragment> <key> ---
+# Empty output means absent or null, which every caller reads as "no segment".
+json_num() {
+  printf '%s' "$1" \
+    | grep -o "\"$2\"[[:space:]]*:[[:space:]]*-\{0,1\}[0-9][0-9.]*" \
+    | head -1 \
+    | sed "s/.*:[[:space:]]*//"
+}
+
+# --- Truncate a JSON number to an integer ("42.5" -> "42"); empty stays empty ---
+to_int() {
+  case "$1" in
+    ''|*[!0-9.]*) return ;;
+  esac
+  _i=${1%%.*}
+  [ -z "$_i" ] && _i=0
+  printf '%s' "$_i"
 }
 
 # --- Model (model.display_name) ---
@@ -60,144 +121,101 @@ if [ -f "$CACHE_FILE" ]; then
   fi
 fi
 
-# --- Scope resolution: cwd -> registered project store, else global ---
-# Match the longest registered project path that prefixes the real cwd.
-PROJECTS_YML="$HOME/.plastic/projects.yml"
-SLUG=""
-if [ -n "$REAL_CWD" ] && [ -f "$PROJECTS_YML" ]; then
-  SLUG=$(awk -v cwd="$REAL_CWD" '
-    /^  [A-Za-z0-9_.-]+:[[:space:]]*$/ { s=$1; sub(/:$/,"",s); next }
-    /^    path:/ {
-      p=$0; sub(/^[[:space:]]*path:[[:space:]]*/,"",p); gsub(/"/,"",p);
-      if (length(p)>0 && (cwd==p || index(cwd, p"/")==1) && length(p)>best) { best=length(p); win=s }
-    }
-    END { if (win!="") print win }
-  ' "$PROJECTS_YML")
+# --- Context window (stdin context_window) ---
+# used_percentage is the documented input-side figure (input + cache creation +
+# cache read), so it wins for the percentage. The token count in parentheses comes
+# from current_usage when it is present. Each derives the other when only one is
+# available; when both are null there is no ctx segment.
+CTX_SEG=""
+CW=$(json_obj "$INPUT" "context_window")
+if [ -n "$CW" ]; then
+  CW_SIZE=$(to_int "$(json_num "$CW" "context_window_size")")
+  CW_PCT=$(to_int "$(json_num "$CW" "used_percentage")")
+  CW_USED=""
+  CU=$(json_obj "$CW" "current_usage")
+  if [ -n "$CU" ]; then
+    U_IN=$(to_int "$(json_num "$CU" "input_tokens")")
+    U_CC=$(to_int "$(json_num "$CU" "cache_creation_input_tokens")")
+    U_CR=$(to_int "$(json_num "$CU" "cache_read_input_tokens")")
+    if [ -n "$U_IN$U_CC$U_CR" ]; then
+      CW_USED=$(( ${U_IN:-0} + ${U_CC:-0} + ${U_CR:-0} ))
+    fi
+  fi
+  if [ -z "$CW_USED" ] && [ -n "$CW_PCT" ] && [ -n "$CW_SIZE" ] && [ "$CW_SIZE" -gt 0 ]; then
+    CW_USED=$(( CW_SIZE * CW_PCT / 100 ))
+  fi
+  if [ -z "$CW_PCT" ] && [ -n "$CW_USED" ] && [ -n "$CW_SIZE" ] && [ "$CW_SIZE" -gt 0 ]; then
+    CW_PCT=$(( CW_USED * 100 / CW_SIZE ))
+  fi
+  if [ -n "$CW_PCT" ]; then
+    CTX_SEG="${C_CTX}ctx ${CW_PCT}%"
+    if [ -n "$CW_USED" ] && [ -n "$CW_SIZE" ] && [ "$CW_SIZE" -gt 0 ]; then
+      CTX_SEG="${CTX_SEG} ($(( (CW_USED + 500) / 1000 ))k/$(( CW_SIZE / 1000 ))k)"
+    fi
+    CTX_SEG="${CTX_SEG}${RST}"
+  fi
 fi
 
-if [ -n "$SLUG" ]; then
-  INDEX="$HOME/.plastic/projects/$SLUG/INDEX.md"
-  PROJ_LABEL="$SLUG"
-else
-  INDEX="$HOME/.plastic/INDEX.md"
-  PROJ_LABEL="global"
-fi
-INDEX_DIR=$(dirname "$INDEX")
+# --- Subscription meters (stdin rate_limits; absent for API-key sessions) ---
+meter_seg() {   # $1 = label, $2 = object key
+  _obj=$(json_obj "$INPUT" "$2")
+  [ -z "$_obj" ] && return
+  _p=$(to_int "$(json_num "$_obj" "used_percentage")")
+  [ -z "$_p" ] && return
+  _c="$C_OK"
+  [ "$_p" -ge 70 ] && _c="$C_WARN"
+  [ "$_p" -ge 90 ] && _c="$C_CRIT"
+  printf '%s' "${_c}$1 ${_p}%${RST}"
+}
+M5=$(meter_seg "5h" "five_hour")
+M7=$(meter_seg "7d" "seven_day")
 
-# --- Current-session work-unit: the live bridge wins over savepoint recency ---
-# The statusline receives the real session_id on stdin. A session can now own
-# SEVERAL per-intent bridges at once (intent 131, plastic-{session_id}--{id}.json),
-# one per concurrent delivery, so the statusline must pick which of them to show:
-# prefer a candidate whose worktree.code (or intent dir) prefixes REAL_CWD, else
-# the newest by mtime (ls -t is 3.2-safe); tolerate a legacy single-key
-# plastic-{session_id}.json when no per-intent file exists. This beats the shared,
-# savepoint-recency heuristic so parallel sessions on one store no longer
-# overwrite each other's line. grep/sed/ls only - no jq, no ruby.
-WORK=""
+# --- Session cost (stdin cost.total_cost_usd); hidden when it renders as $0.00 ---
+COST_SEG=""
+CO=$(json_obj "$INPUT" "cost")
+if [ -n "$CO" ]; then
+  COST_RAW=$(json_num "$CO" "total_cost_usd")
+  if [ -n "$COST_RAW" ]; then
+    COST_FMT=$(awk -v c="$COST_RAW" 'BEGIN { if (c + 0 >= 0.005) printf "%.2f", c }')
+    [ -n "$COST_FMT" ] && COST_SEG="${C_COST}\$${COST_FMT}${RST}"
+  fi
+fi
+
+# --- claudish rewrites for THIS session (fork ledger, optional) ---
+# Tab separated, one call per line; column 11 is the session id. Rows written
+# before that column existed have 9 or 10 fields and never match, so an old
+# ledger renders no segment instead of a wrong one.
+CL_SEG=""
 SID=$(json_str "session_id")
-
-if [ -n "$SID" ]; then
-  BR_TMP="${PLASTIC_TMP:-/tmp}"
-  BRIDGE=""
-  CANDIDATES=$(ls -1t "${BR_TMP}"/plastic-"${SID}"--*.json 2>/dev/null)
-  if [ -n "$CANDIDATES" ]; then
-    while IFS= read -r cand; do
-      [ -z "$cand" ] && continue
-      WT_BLOCK=$(sed -n '/"worktree"[[:space:]]*:[[:space:]]*{/,/}/p' "$cand" 2>/dev/null)
-      WC=$(printf '%s\n' "$WT_BLOCK" | grep -o '"code"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 \
-        | sed 's/.*"code"[[:space:]]*:[[:space:]]*"//;s/"$//')
-      IN_BLOCK=$(sed -n '/"intent"[[:space:]]*:[[:space:]]*{/,/}/p' "$cand" 2>/dev/null)
-      ISTORE=$(printf '%s\n' "$IN_BLOCK" | grep -o '"store"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 \
-        | sed 's/.*"store"[[:space:]]*:[[:space:]]*"//;s/"$//')
-      IDIR=$(printf '%s\n' "$IN_BLOCK" | grep -o '"dir"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 \
-        | sed 's/.*"dir"[[:space:]]*:[[:space:]]*"//;s/"$//')
-      MATCH=""
-      if [ -n "$WC" ] && [ -n "$REAL_CWD" ]; then
-        case "$REAL_CWD" in "$WC"|"$WC"/*) MATCH=1 ;; esac
-      fi
-      if [ -z "$MATCH" ] && [ -n "$ISTORE" ] && [ -n "$IDIR" ] && [ -n "$REAL_CWD" ]; then
-        IPATH="$ISTORE/$IDIR"
-        case "$REAL_CWD" in "$IPATH"|"$IPATH"/*) MATCH=1 ;; esac
-      fi
-      if [ -n "$MATCH" ]; then
-        BRIDGE="$cand"
-        break
-      fi
-    done <<BRIDGE_CAND_EOF
-$CANDIDATES
-BRIDGE_CAND_EOF
-    # No cwd/worktree signal on any candidate: fail open to the newest (ls -t
-    # already sorted CANDIDATES newest-first).
-    [ -z "$BRIDGE" ] && BRIDGE=$(printf '%s\n' "$CANDIDATES" | head -1)
-  else
-    # Legacy tolerance: no per-intent bridge for this session, but an old
-    # single-key file may still exist.
-    LEGACY="${BR_TMP}/plastic-${SID}.json"
-    [ -f "$LEGACY" ] && BRIDGE="$LEGACY"
-  fi
-
-  if [ -n "$BRIDGE" ] && [ -f "$BRIDGE" ]; then
-    # Bridge JSON is pretty-printed (one field per line). Scope extraction to the
-    # "intent" object so a sibling top-level "id"/"name" can never win (the intent
-    # object holds only string fields, so the first "}" closes it). grep/sed only.
-    INTENT_BLOCK=$(sed -n '/"intent"[[:space:]]*:[[:space:]]*{/,/}/p' "$BRIDGE" 2>/dev/null)
-    B_ID=$(printf '%s\n' "$INTENT_BLOCK" | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 \
-      | sed 's/.*"id"[[:space:]]*:[[:space:]]*"//;s/"$//')
-    B_NAME=$(printf '%s\n' "$INTENT_BLOCK" | grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 \
-      | sed 's/.*"name"[[:space:]]*:[[:space:]]*"//;s/"$//')
-    if [ -n "$B_ID" ] && [ -n "$B_NAME" ]; then
-      EMDASH=$'\342\200\224'
-      WORK="${B_ID} ${EMDASH} ${B_NAME}"
-    fi
-  fi
-fi
-
-# --- Most-recently-accessed active intent (mirror dashboard: last savepoint ts) ---
-# Fallback only: runs when no session bridge resolved a work-unit above.
-if [ -z "$WORK" ] && [ -f "$INDEX" ]; then
-  BEST_TS=""
-  while IFS= read -r line; do
-    [ -z "$line" ] && continue
-    inside=${line#*[}; inside=${inside%%]*}             # "{id} - {title}"
-    dir=${line#*](store/}; dir=${dir%%/*}              # intent directory name
-    [ -z "$dir" ] && continue
-    sp="$INDEX_DIR/store/$dir/savepoint.md"
-    ts=""
-    if [ -f "$sp" ]; then
-      ts=$(grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z' "$sp" 2>/dev/null | tail -1)
-    fi
-    # ISO8601 sorts lexicographically; keep the newest. Empty ts sorts lowest.
-    if [ -z "$BEST_TS" ] || { [ -n "$ts" ] && [ "$ts" \> "$BEST_TS" ]; }; then
-      BEST_TS="$ts"
-      WORK="$inside"
-    fi
-  done <<EOF
-$(sed -n '/^## Active$/,/^## /{/^- \[/p;}' "$INDEX")
-EOF
-fi
-
-# --- Build the work-unit "[{project}: {id} {title}]" with title truncation ---
-WORK_SEG=""
-if [ -n "$WORK" ]; then
-  # Split "{id} - {title}" on the em-dash (U+2014).
-  EMDASH=$'\342\200\224'
-  id=${WORK%% $EMDASH *}
-  title=${WORK#* $EMDASH }
-  # Fallback if the em-dash form is absent: split on first space.
-  if [ "$id" = "$WORK" ]; then id=${WORK%% *}; title=${WORK#* }; fi
-  # Truncate long titles (~40 chars).
-  if [ ${#title} -gt 40 ]; then title="$(printf '%.40s' "$title")..."; fi
-  WORK_SEG="${C_BRACK}[${RST}${C_PROJ}${PROJ_LABEL}${RST}${C_INTENT}: ${RST}${C_ID}${id}${RST}${C_INTENT} ${title}${RST}${C_BRACK}]${RST}"
+CL_LOG="${CLAUDISH_LOCAL_DIR:-$HOME/.claude/claudish-local}/usage.log"
+if [ -n "$SID" ] && [ -f "$CL_LOG" ]; then
+  CL=$(awk -F'\t' -v sid="$SID" '
+    NF >= 11 && $11 == sid { n++; t += $5 + $6 }
+    END {
+      if (n > 0) {
+        if (t >= 1000) {
+          s = sprintf("%.1f", t / 1000); sub(/\.0$/, "", s); printf "%d %sk", n, s
+        } else {
+          printf "%d %d", n, t
+        }
+      }
+    }' "$CL_LOG" 2>/dev/null)
+  [ -n "$CL" ] && CL_SEG="${C_CLAUDISH}claudish ${CL%% *} rw / ${CL#* }${RST}"
 fi
 
 # --- Assemble segments in order, joined by " . " ---
 PARTS=""
 add() { [ -z "$1" ] && return; if [ -z "$PARTS" ]; then PARTS="$1"; else PARTS="$PARTS$SEP$1"; fi; }
 
-# Order: stable values first (model, work-unit), then the volatile-length
-# values last (version, path) so the line does not visually jump as they change.
+# Order: identity first (model), then this session's spend (context, meters, cost,
+# rewrites), then the volatile-length values last (version, path) so the line does
+# not visually jump as they change.
 [ -n "$MODEL" ] && add "${C_MODEL}${MODEL}${RST}"
-[ -n "$WORK_SEG" ] && add "$WORK_SEG"
+add "$CTX_SEG"
+add "$M5"
+add "$M7"
+add "$COST_SEG"
+add "$CL_SEG"
 if [ -n "$VERSION" ]; then
   vseg="${C_VER}Plastic ${VERSION}${RST}"
   [ -n "$NEXT" ] && vseg="${vseg}${C_VER} "$'\342\206\222'" ${RST}${C_NEXT}${NEXT}${RST}"

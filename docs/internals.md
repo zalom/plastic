@@ -310,7 +310,7 @@ its intent is terminal: its id is no longer in its store's `INDEX.md` `## Active
 at the parent of the `store/` directory), scans only the `## Active` section, and reports whether
 the bridge's `intent.id` is listed. An Active intent's bridge is kept unconditionally, because
 while the intent is live the bridge is load-bearing: it is the continuation signal (a parked or
-interrupted run resumes from it) and the anti-collision lock that keys the per-session statusline.
+interrupted run resumes from it) and the anti-collision lock for parallel deliveries on one store.
 The current session's own bridge is never purged (preserving the `disarm_auto` contract that it
 stays readable), and a bridge that cannot be parsed or that carries no `intent.id` or
 `intent.store` is treated as junk and removed. An age window was the wrong axis: it left dead
