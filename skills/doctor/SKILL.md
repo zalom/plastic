@@ -218,6 +218,12 @@ folds in the count and the file's path, e.g. `"... (3 excluded via ~/.plastic/do
 A malformed line in the file forces the check to `warn` with the parse error in `details`, even
 when zero real gaps remain, so a broken file is never silently permissive.
 
+**Both surfaces, one line.** A registration is honored by the store-wide `savepoint_operational`
+check and by the per-intent `doctor.rb --intent <id>` run, which reports the same missing
+`savepoint.md` under the check name `intent_savepoint_truthful`. Register the id once. The
+per-intent run honors it only for an intent that is terminal in `INDEX.md`, and never suppresses
+a phantom-savepoint-line finding.
+
 **Hand-editing.** The file is plain text; add a line (or append ids to an existing rule line) and
 save. No installer step, no reindex, and no `revisions.md` entry is required or written.
 
@@ -232,6 +238,14 @@ via `--store <key>`), through doctor's own finding function, and prints what it 
 without writing anything. Review the output, then re-run with `--apply` to write the file(s) and
 land one scoped git commit. It unions with any existing hand-added ids (never drops one) and
 skips, rather than aborts on, any intent dir holding a fresh delivery lock.
+
+**Dead-row notice.** A registered row can go dead (gap repaired, id mistyped, or the intent
+directory gone). When any row is dead, the message adds a second suffix next to the exclusion
+count naming the count, the file, and the prune command - purely informational, status and exit
+code unchanged. Prune it the same way, dry-run first: register-exclusions --prune [--apply]. It
+removes exactly the dead rows through the same writer and commit, but holds back an id whose
+intent dir carries a fresh lock or has not gone terminal yet (nothing to suppress there yet),
+naming both as kept.
 
 ## References
 

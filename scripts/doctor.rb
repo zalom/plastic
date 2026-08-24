@@ -546,10 +546,16 @@ class Doctor
 # :operational_gap when "savepoint_operational" is in that set; the :gap bucket (signals_complete,
 # the outcome.md check) never consults it, which is what keeps the exclusion key (intent_id,
 # rule) rather than just intent_id (see test/doctor_done_signals_test.rb case 12).
+#
+# `:excluded_rules_fired` (intent 280) names the rules that actually suppressed a finding for
+# this dir - not merely the rules registered for it. The caller uses this to build the `consumed`
+# set `DoctorExclusions.dead_rows` needs: a registered rule that never fires here (nothing to
+# suppress) is exactly what makes the row dead.
 def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, active:, excluded_rules: [])
   outcome = File.join(dir, "outcome.md")
   outcome_real = Bridge.stage_file_present?(outcome)
-  findings = { conflict: nil, phantom: nil, gap: [], operational_gap: [], excluded: [], stalled: nil }
+  findings = { conflict: nil, phantom: nil, gap: [], operational_gap: [], excluded: [],
+               excluded_rules_fired: [], stalled: nil }
 
   # HARD conflict: the deliverable exists but INDEX still says Active. This
   # is the one true INDEX-wins disagreement, so it stays a fail.
@@ -586,7 +592,8 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
     # reconstructible via maintenance-run --tool rebuild-savepoint, so this is repairable and
     # reported as a fixable warn (savepoint_operational).
     savepoint = File.join(dir, "savepoint.md")
-    bucket = excluded_rules.include?("savepoint_operational") ? findings[:excluded] : findings[:operational_gap]
+    suppressed = excluded_rules.include?("savepoint_operational")
+    bucket = suppressed ? findings[:excluded] : findings[:operational_gap]
     if !File.exist?(savepoint)
       bucket << "#{label}: terminal in INDEX but savepoint.md is missing " \
                 "entirely (operational - reconstructible)"
@@ -594,6 +601,7 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
       bucket << "#{label}: terminal in INDEX but savepoint.md has no " \
                 "`Done delivered|abandoned` line (operational - reconstructible)"
     end
+    findings[:excluded_rules_fired] << "savepoint_operational" if suppressed && findings[:excluded].any?
 
     # Stalled completion: unchanged, never consulted amnesty.
     if File.exist?(Lock.path(dir))
@@ -614,6 +622,8 @@ def check_done_signals(scopes: nil)
   exclusion_errors = []   # malformed doctor-exclusions lines, scope-tagged
   exclusion_error_paths = []
   exclusion_paths = []    # files that actually contributed a live exclusion
+  dead_rows = []          # exclusion rows that suppressed nothing this run (intent 280)
+  dead_row_paths = []
   stalled = []
   phantoms = []
 
@@ -624,6 +634,25 @@ def check_done_signals(scopes: nil)
       exclusion_error_paths << exclusions[:path]
     end
 
+    consumed = { "savepoint_operational" => [] }
+    # `known_ids` (post-review fix): every intent id with a REAL DIRECTORY in this store, scanned
+    # directly from disk - independent of INDEX.md. An id can have a directory on disk without
+    # being listed in INDEX (a de-indexed "ghost"), and the walk below alone would never visit it;
+    # deriving known_ids from walk membership misclassified that ghost as :no_intent (deleted)
+    # even though the directory plainly still exists.
+    # Shares `store_intent_dirs` (159, intent 189's store-discovery helper) rather than
+    # reimplementing the same directory scan (review fix): one predicate for "what is an intent
+    # directory in this store", never two that could drift apart.
+    known_ids = if File.directory?(store[:store_dir])
+                  store_intent_dirs(store[:store_dir]).map { |e| e.split("--", 2).first }
+                else
+                  []
+                end
+    # `evaluated_ids`: the narrower set the walk below actually judges (INDEX-listed and on
+    # disk). An id with a real directory that this run never evaluated (on disk, unindexed)
+    # carries no evidence either way and must never be called dead - dead_rows leaves it out.
+    evaluated_ids = []
+
     index_sections_by_dir(store[:index]).each do |dirname, in_sections|
       dir = File.join(store[:store_dir], dirname)
       next unless File.directory?(dir)
@@ -632,6 +661,7 @@ def check_done_signals(scopes: nil)
       active = in_sections.include?("Active") && !terminal
       label = "#{store[:scope]} store/#{dirname}"
       intent_id = dirname.split("--", 2).first
+      evaluated_ids << intent_id
       excluded_rules = DoctorExclusions.rules_for(exclusions, intent_id)
 
       findings = done_signal_findings_for_dir(
@@ -646,11 +676,29 @@ def check_done_signals(scopes: nil)
         excluded.concat(findings[:excluded])
         exclusion_paths << exclusions[:path]
       end
+      findings[:excluded_rules_fired].each { |fired| (consumed[fired] ||= []) << intent_id }
       stalled << findings[:stalled] if findings[:stalled]
+    end
+
+    # Drift in the governance record itself (intent 280): rows naming a pair that produced no
+    # finding this run. Computed by set subtraction against the walk above, never re-derived from
+    # the exclusion file (208; the intent 200 self-diff). `:no_intent` below only ever fires when
+    # `known_ids` (a real directory scan) truly has no entry for the id - never merely because the
+    # walk did not visit it.
+    DoctorExclusions.dead_rows(exclusions, consumed: consumed, known_ids: known_ids,
+                                evaluated_ids: evaluated_ids).each do |row|
+      reason = if row[:reason] == :no_intent
+                 "names no live intent directory (a typo, or the intent was deleted)"
+               else
+                 "names an intent with no current #{row[:rule]} finding"
+               end
+      dead_rows << "#{store[:scope]}: #{exclusions[:path]}: #{row[:rule]} #{row[:id]} - #{reason}"
+      dead_row_paths << exclusions[:path]
     end
   end
   exclusion_paths.uniq!
   exclusion_error_paths.uniq!
+  dead_row_paths.uniq!
 
   checks = []
 
@@ -697,7 +745,15 @@ def check_done_signals(scopes: nil)
   # a malformed exclusion file can never report pass (loud), a clean remaining gap set reports
   # pass with the exclusion count folded in, and a real remaining gap set stays warn, same as
   # before intent 274, with the same count folded in when exclusions applied.
+  #
+  # `dead_suffix` (intent 280) folds in a second, independent drift notice: exclusion rows that
+  # suppressed nothing this run. It is purely informational, exactly like `exclusion_suffix` - it
+  # never changes status on any of the three branches below, because a stale governance-record row
+  # is bookkeeping drift, not a store regression (219 D6 is untouched: no disposition is invented).
   exclusion_suffix = excluded.empty? ? "" : " (#{excluded.size} excluded via #{exclusion_paths.join(", ")})"
+  dead_suffix = dead_rows.empty? ? "" : " (#{dead_rows.size} dead row#{dead_rows.size == 1 ? "" : "s"} " \
+                                        "in #{dead_row_paths.join(", ")}, suppressing nothing - prune with " \
+                                        "`maintenance-run --tool register-exclusions --prune`)"
 
   if exclusion_errors.any?
     checks << check(
@@ -705,8 +761,8 @@ def check_done_signals(scopes: nil)
       message: "#{operational_gaps.size} terminal intent#{operational_gaps.size == 1 ? "" : "s"} " \
                "missing an operational savepoint.md or its Done echo, and " \
                "#{exclusion_errors.size} doctor-exclusions error#{exclusion_errors.size == 1 ? "" : "s"} " \
-               "(a malformed exclusion file never suppresses a finding)#{exclusion_suffix}",
-      details: operational_gaps + exclusion_errors, fixable: true,
+               "(a malformed exclusion file never suppresses a finding)#{exclusion_suffix}#{dead_suffix}",
+      details: operational_gaps + exclusion_errors + dead_rows, fixable: true,
       fix_hint: "Fix the malformed doctor-exclusions file(s) (#{exclusion_error_paths.join(", ")}) - " \
                 "format `rule_name id id id`, blank lines and # comments ignored - then reconstruct " \
                 "any remaining real gap via `maintenance-run --tool rebuild-savepoint --intent <id> " \
@@ -716,14 +772,17 @@ def check_done_signals(scopes: nil)
   elsif operational_gaps.empty?
     checks << check(
       category: "done_signals", name: "savepoint_operational", status: "pass",
-      message: "No terminal intent is missing an operational savepoint.md or its Done echo#{exclusion_suffix}"
+      message: "No terminal intent is missing an operational savepoint.md or its Done echo" \
+               "#{exclusion_suffix}#{dead_suffix}",
+      details: dead_rows
     )
   else
     checks << check(
       category: "done_signals", name: "savepoint_operational", status: "warn",
       message: "#{operational_gaps.size} terminal intent#{operational_gaps.size == 1 ? "" : "s"} " \
-               "missing an operational savepoint.md or its Done echo (reconstructible)#{exclusion_suffix}",
-      details: operational_gaps, fixable: true,
+               "missing an operational savepoint.md or its Done echo (reconstructible)" \
+               "#{exclusion_suffix}#{dead_suffix}",
+      details: operational_gaps + dead_rows, fixable: true,
       fix_hint: "Reconstruct the minimal two-line started/Done echo via " \
                 "`maintenance-run --tool rebuild-savepoint --intent <id> --apply` (197-conformant: " \
                 "receipt-before-write via RevisionsWriter, one intent per invocation, owner-approval-gated)."
@@ -881,12 +940,19 @@ end
       )]
     end
 
+    # The owning store's INDEX.md, resolved from `scope` through the memoized store_discovery
+    # (same {key:, index:} shape done_signal_stores enumerates). intent_savepoint_truthful_check
+    # needs it to reach that store's doctor-exclusions table and to ask INDEX whether this
+    # intent is terminal (intent 281 D3/D6). nil when the scope resolves to no known store,
+    # which restores the pre-281 behavior exactly.
+    index_path = store_discovery[:stores].find { |s| s[:key] == scope }&.fetch(:index, nil)
+
     [
       intent_structure_check(intent_dir),
       intent_lifecycle_artifacts_check(intent_dir, disposition),
       intent_checklist_complete_check(intent_dir),
       intent_links_projection_check_for(id, scope),
-      intent_savepoint_truthful_check(intent_dir),
+      intent_savepoint_truthful_check(intent_dir, index_path: index_path),
     ]
   end
 
@@ -997,11 +1063,67 @@ end
     end
   end
 
+  # Whether this one intent's missing-savepoint finding is knowingly excluded, for the
+  # per-intent surface (intent 281). Returns {excluded:, errors:, path:}.
+  #
+  # Same rule id as the store-wide sweep, `savepoint_operational` (281 D1): the fact is
+  # identical (a terminal intent with no savepoint.md), so one registration in one
+  # doctor-exclusions file covers both surfaces and the owner never learns a second name for
+  # one gap. RuleCatalog is deliberately NOT extended.
+  #
+  # Terminal-gated (281 D3): done_signal_findings_for_dir only ever produces this finding
+  # inside `if terminal`, so honoring the exclusion for a still-Active intent would suppress a
+  # strictly larger set of facts than the rule id names - and would let a mistyped id silence
+  # the live, repairable warning scripts/end-intent's pre-write gate exists to raise.
+  #
+  # Never raises: DoctorExclusions is fail-open by contract (274 D5) and index_sections_by_dir
+  # returns an empty map for a missing INDEX.
+  def savepoint_exclusion_for(intent_dir, index_path)
+    none = { excluded: false, errors: [], path: nil }
+    return none unless index_path
+
+    dirname = File.basename(intent_dir)
+    return none unless (index_sections_by_dir(index_path)[dirname] & ["Completed", "Abandoned"]).any?
+
+    loaded = DoctorExclusions.load(index_path)
+    rules = DoctorExclusions.rules_for(loaded, dirname.split("--", 2).first)
+    { excluded: rules.include?("savepoint_operational"), errors: loaded[:errors], path: loaded[:path] }
+  end
+
   # WARN-only, per intent 134 (savepoint truthfulness is advisory, never a hard gate). Do not
   # change this to FAIL: it would silently contradict a standing, binding ruling.
-  def intent_savepoint_truthful_check(intent_dir)
+  #
+  # `index_path:` (intent 281) is the owning store's INDEX.md, threaded from check_intent_end.
+  # It makes this surface honor the same doctor-exclusions registration check_done_signals
+  # already honors for the same fact, under the same rule id (281 D1). Only the missing-file
+  # branch below is excludable: the phantom-line branch is permanently non-suppressible by id
+  # or scope (intent 211, 281 D2). Omitting index_path restores the pre-281 behavior exactly.
+  def intent_savepoint_truthful_check(intent_dir, index_path: nil)
     savepoint = File.join(intent_dir, "savepoint.md")
     unless File.exist?(savepoint)
+      exclusion = savepoint_exclusion_for(intent_dir, index_path)
+
+      # A loader error never suppresses anything (274 D5: fail milder than the bug), and the
+      # check that consulted the file is where the error is reported.
+      if exclusion[:errors].any?
+        return check(
+          category: "intent_end", name: "intent_savepoint_truthful", status: "warn",
+          message: "savepoint.md is missing, and #{exclusion[:errors].size} doctor-exclusions " \
+                   "error#{exclusion[:errors].size == 1 ? "" : "s"} " \
+                   "(a malformed exclusion file never suppresses a finding)",
+          details: exclusion[:errors], fixable: true,
+          fix_hint: "Fix the malformed doctor-exclusions file (#{exclusion[:path]}) - format " \
+                    "`rule_name id id id`, blank lines and # comments ignored - then re-run."
+        )
+      end
+
+      # Excluded: the fact stays in the message with the honest count and the file that caused
+      # the suppression, and nothing lands in details (274 D4's wording, N is always 1 here).
+      if exclusion[:excluded]
+        return check(category: "intent_end", name: "intent_savepoint_truthful", status: "pass",
+                     message: "savepoint.md is missing (1 excluded via #{exclusion[:path]})")
+      end
+
       return check(category: "intent_end", name: "intent_savepoint_truthful", status: "warn",
                     message: "savepoint.md is missing")
     end

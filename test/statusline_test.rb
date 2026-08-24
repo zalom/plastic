@@ -4,205 +4,252 @@ require "tmpdir"
 require "fileutils"
 require "json"
 
-# Hermetic tests for hooks/statusline (intent 79: per-session resolution via the
-# live Bridge). The repo script is run as a subprocess with crafted stdin JSON and
-# an isolated HOME + PLASTIC_TMP (Dir.mktmpdir) so nothing touches the real store
-# or /tmp. We assert on ANSI-stripped output. Pure-bash dependency injection:
-# HOME and PLASTIC_TMP, no monkeypatching, no eval.
+# Hermetic tests for hooks/statusline (intent 279: the line reports what this
+# session is spending, not which intent it is on). The repo script runs as a
+# subprocess with crafted stdin JSON and an isolated HOME plus CLAUDISH_LOCAL_DIR
+# (Dir.mktmpdir), so nothing touches the real store, /tmp, or the real claudish
+# ledger. Pure-bash dependency injection through the environment: no
+# monkeypatching, no eval.
 class StatuslineTest < Minitest::Test
   STATUSLINE = File.expand_path("../hooks/statusline", __dir__)
-  EMDASH = "—"
+  YELLOW = "\e[33m"
+  RED = "\e[38;2;231;76;60m"
 
   def setup
     @home = Dir.mktmpdir("statusline-home")
-    @tmp = Dir.mktmpdir("statusline-tmp")
+    @claudish = Dir.mktmpdir("statusline-claudish")
     @cwd = File.join(@home, "apps", "plastic")
     FileUtils.mkdir_p(@cwd)
-
-    @slug = "plastic"
-    @project_dir = File.join(@home, ".plastic", "projects", @slug)
-    @store = File.join(@project_dir, "store")
-    FileUtils.mkdir_p(@store)
-
-    # projects.yml mapping cwd -> this project store, so scope resolves to @slug.
-    File.write(File.join(@home, ".plastic", "projects.yml"), <<~YML)
-      projects:
-        #{@slug}:
-          path: "#{@cwd}"
-    YML
-
+    FileUtils.mkdir_p(File.join(@home, ".plastic"))
     # A VERSION file so the version segment renders (keeps the line realistic).
     File.write(File.join(@home, ".plastic", "VERSION"), "1.2.3\n")
   end
 
   def teardown
     FileUtils.rm_rf(@home)
-    FileUtils.rm_rf(@tmp)
+    FileUtils.rm_rf(@claudish)
   end
 
   # --- helpers ---------------------------------------------------------------
 
-  def render(stdin_json)
+  def render_raw(stdin_json)
     out = nil
-    IO.popen({ "HOME" => @home, "PLASTIC_TMP" => @tmp },
+    IO.popen({ "HOME" => @home, "CLAUDISH_LOCAL_DIR" => @claudish },
              [STATUSLINE], "r+") do |io|
       io.write(stdin_json)
       io.close_write
       out = io.read
     end
-    out.gsub(/\e\[[0-9;]*m/, "") # strip ANSI
+    out
   end
 
-  def stdin_json(session_id: nil, cwd: @cwd)
+  def render(stdin_json)
+    render_raw(stdin_json).gsub(/\e\[[0-9;]*m/, "") # strip ANSI
+  end
+
+  # Build the statusline stdin payload. A section passed as nil is omitted, which
+  # is how an API-key session (no rate_limits) and a costless session arrive.
+  def stdin_json(session_id: nil, cwd: @cwd, context_window: nil,
+                 rate_limits: nil, cost: nil, pretty: false)
     payload = {
       "model" => { "display_name" => "Opus" },
       "workspace" => { "current_dir" => cwd },
       "cwd" => cwd,
     }
     payload["session_id"] = session_id if session_id
-    JSON.generate(payload)
+    payload["context_window"] = context_window if context_window
+    payload["rate_limits"] = rate_limits if rate_limits
+    payload["cost"] = cost if cost
+    pretty ? JSON.pretty_generate(payload) : JSON.generate(payload)
   end
 
-  # Add an active intent to the project INDEX and create its dir + savepoint.
-  def add_active_intent(id:, slug:, title:, savepoint_ts: nil)
-    index = File.join(@project_dir, "INDEX.md")
-    header = File.exist?(index) ? File.read(index) : "## Active\n"
-    line = "- [#{id} #{EMDASH} #{title}](store/#{id}--#{slug}/#{id}--#{slug}.md)\n"
-    File.write(index, header + line)
-
-    intent_dir = File.join(@store, "#{id}--#{slug}")
-    FileUtils.mkdir_p(intent_dir)
-    if savepoint_ts
-      File.write(File.join(intent_dir, "savepoint.md"),
-                 "#{savepoint_ts}  Why  spec.md created\n")
-    end
-    intent_dir
-  end
-
-  def write_bridge(session_id:, id:, name:, store: @store)
-    data = {
-      "session" => session_id,
-      "intent" => { "id" => id, "dir" => "#{id}--x", "store" => store, "name" => name },
-      "build" => { "auto" => true, "stage" => "exec" },
+  def ctx(used_percentage: 42, size: 200_000, current_usage: nil)
+    {
+      "context_window_size" => size,
+      "used_percentage" => used_percentage,
+      "current_usage" => current_usage,
     }
-    File.write(File.join(@tmp, "plastic-#{session_id}.json"), JSON.pretty_generate(data))
   end
 
-  # Per-intent bridge (intent 131): plastic-<session>--<id>.json, optionally
-  # carrying a worktree.code and an explicit mtime (so mtime ordering is
-  # deterministic, independent of write order and clock resolution).
-  def write_bridge_per_intent(session_id:, id:, name:, code: nil, store: @store, mtime: nil)
-    data = {
-      "session" => session_id,
-      "intent" => { "id" => id, "dir" => "#{id}--x", "store" => store, "name" => name },
-      "build" => { "auto" => true, "stage" => "exec" },
-      "worktree" => { "code" => code, "provisioned" => !code.nil? },
+  # 60000 + 4000 + 20000 = 84000 input-side tokens, 42% of a 200k window.
+  def usage(input: 60_000, cache_creation: 4_000, cache_read: 20_000, output: 1_200)
+    {
+      "input_tokens" => input,
+      "output_tokens" => output,
+      "cache_creation_input_tokens" => cache_creation,
+      "cache_read_input_tokens" => cache_read,
     }
-    path = File.join(@tmp, "plastic-#{session_id}--#{id}.json")
-    File.write(path, JSON.pretty_generate(data))
-    File.utime(mtime, mtime, path) if mtime
-    path
+  end
+
+  # One claudish ledger row. 11 tab separated columns, session id last; pass
+  # columns: 9 for a row written before that column existed.
+  def ledger_row(session_id, input, output, columns: 11)
+    row = [Time.now.to_i, "rewrite.sh", "anthropic", "200", input, output,
+           "", "", "", "", session_id]
+    row = row.first(9) if columns == 9
+    row.join("\t")
+  end
+
+  def write_ledger(*rows)
+    File.write(File.join(@claudish, "usage.log"), rows.join("\n") + "\n")
   end
 
   # --- cases -----------------------------------------------------------------
 
-  def test_session_bridge_wins_over_newer_savepoint
-    # Intent 49 has the NEWEST savepoint (would win the shared heuristic),
-    # but THIS session's bridge points at intent 79.
-    add_active_intent(id: "49", slug: "other", title: "Other thing",
-                      savepoint_ts: "2026-06-22T23:59:59Z")
-    add_active_intent(id: "79", slug: "per-session", title: "Per-session statusline via Bridge",
-                      savepoint_ts: "2020-01-01T00:00:00Z")
-
-    sid = "sess-A"
-    write_bridge(session_id: sid, id: "79", name: "Per-session statusline via Bridge")
-
-    out = render(stdin_json(session_id: sid))
-    assert_includes out, "79"
-    assert_includes out, "Per-session statusline via Bridge"
-    refute_includes out, "49"
-    refute_includes out, "Other thing"
+  def test_renders_model_version_and_path
+    out = render(stdin_json)
+    assert_includes out, "Opus"
+    assert_includes out, "Plastic 1.2.3"
+    assert_includes out, "~/apps/plastic"
   end
 
-  def test_two_sessions_no_crosstalk
-    add_active_intent(id: "49", slug: "other", title: "Other thing",
-                      savepoint_ts: "2026-06-22T23:59:59Z")
-
-    write_bridge(session_id: "sess-A", id: "79", name: "Alpha intent")
-    write_bridge(session_id: "sess-B", id: "49", name: "Beta intent")
-
-    out_a = render(stdin_json(session_id: "sess-A"))
-    assert_includes out_a, "79"
-    assert_includes out_a, "Alpha intent"
-    refute_includes out_a, "Beta intent"
-
-    out_b = render(stdin_json(session_id: "sess-B"))
-    assert_includes out_b, "49"
-    assert_includes out_b, "Beta intent"
-    refute_includes out_b, "Alpha intent"
+  def test_context_window_from_current_usage
+    out = render(stdin_json(context_window: ctx(current_usage: usage)))
+    assert_includes out, "ctx 42%"
+    assert_includes out, "(84k/200k)"
   end
 
-  def test_falls_back_to_savepoint_when_no_bridge
-    add_active_intent(id: "49", slug: "other", title: "Older intent",
-                      savepoint_ts: "2020-01-01T00:00:00Z")
-    add_active_intent(id: "79", slug: "newer", title: "Newest savepoint",
-                      savepoint_ts: "2026-06-22T23:59:59Z")
-
-    # session_id present but NO matching bridge file -> savepoint-recency wins.
-    out = render(stdin_json(session_id: "no-bridge-here"))
-    assert_includes out, "79"
-    assert_includes out, "Newest savepoint"
-    refute_includes out, "Older intent"
+  def test_context_window_reads_pretty_printed_json
+    # The extractor must not depend on layout: context_window holds a nested
+    # current_usage object, which a sed line range would close too early.
+    flat = render(stdin_json(context_window: ctx(current_usage: usage)))
+    pretty = render(stdin_json(context_window: ctx(current_usage: usage), pretty: true))
+    assert_includes pretty, "ctx 42%"
+    assert_includes pretty, "(84k/200k)"
+    assert_equal flat, pretty
   end
 
-  def test_glob_picks_per_intent_bridge_by_cwd_worktree
-    # Intent 131: a session owns SEVERAL per-intent bridges. cwd inside
-    # worktree A must select A's bridge over a NEWER sibling B (worktree beats
-    # mtime), exercising the new plastic-<sid>--*.json glob-pick branch.
-    wt_a = File.join(@home, "repo", ".claude", "worktrees", "79--a")
-    wt_b = File.join(@home, "repo", ".claude", "worktrees", "80--b")
-    sid = "sess-C"
-    write_bridge_per_intent(session_id: sid, id: "79", name: "Alpha work",
-                            code: wt_a, mtime: Time.now - 100)
-    write_bridge_per_intent(session_id: sid, id: "80", name: "Beta work",
-                            code: wt_b, mtime: Time.now) # newer, must NOT win from cwd A
-
-    out = render(stdin_json(session_id: sid, cwd: wt_a))
-    assert_includes out, "79"
-    assert_includes out, "Alpha work"
-    refute_includes out, "Beta work"
-
-    out_b = render(stdin_json(session_id: sid, cwd: wt_b))
-    assert_includes out_b, "80"
-    assert_includes out_b, "Beta work"
-    refute_includes out_b, "Alpha work"
+  def test_context_window_derives_percentage_from_usage
+    out = render(stdin_json(context_window: ctx(used_percentage: nil, current_usage: usage)))
+    assert_includes out, "ctx 42%"
+    assert_includes out, "(84k/200k)"
   end
 
-  def test_glob_falls_back_to_newest_without_cwd_signal
-    # No candidate's worktree/intent dir prefixes cwd: newest per-intent bridge
-    # wins (ls -1t order), still exercising the glob branch (not the legacy one).
-    sid = "sess-D"
-    unrelated = File.join(@home, "somewhere", "unrelated")
-    write_bridge_per_intent(session_id: sid, id: "79", name: "Older work",
-                            code: File.join(@home, "repo", "wt79"), mtime: Time.now - 100)
-    write_bridge_per_intent(session_id: sid, id: "80", name: "Newer work",
-                            code: File.join(@home, "repo", "wt80"), mtime: Time.now)
-
-    out = render(stdin_json(session_id: sid, cwd: unrelated))
-    assert_includes out, "80"
-    assert_includes out, "Newer work"
-    refute_includes out, "Older work"
+  def test_context_window_omitted_when_percentage_and_usage_are_null
+    out = render(stdin_json(context_window: ctx(used_percentage: nil, current_usage: nil)))
+    refute_includes out, "ctx"
   end
 
-  def test_legacy_single_key_bridge_still_renders
-    # No per-intent bridge for the session, only a legacy plastic-<sid>.json:
-    # the legacy tolerance branch must still render the work-unit.
-    sid = "sess-E"
-    write_bridge(session_id: sid, id: "79", name: "Legacy work")
+  def test_context_window_size_at_one_million_renders_with_m
+    # Sizes and used counts below 1M keep "k"; at or above 1M they switch to "M".
+    out = render(stdin_json(context_window: ctx(
+      used_percentage: 42, size: 1_000_000,
+      current_usage: usage(input: 360_000, cache_creation: 40_000, cache_read: 20_000)
+    )))
+    assert_includes out, "ctx 42%"
+    assert_includes out, "(420k/1M)"
+  end
 
-    out = render(stdin_json(session_id: sid))
-    assert_includes out, "79"
-    assert_includes out, "Legacy work"
+  def test_context_omitted_for_exponent_notation
+    # Some JSON writers emit scientific notation for tiny fractions; the awk
+    # walker must not misread "8e-7" as a huge or wrong percentage, so it
+    # drops the field and the segment renders as absent.
+    raw = %({"model":{"display_name":"Opus"},"cwd":"#{@cwd}","context_window":{"used_percentage":8e-7}})
+    refute_includes render(raw), "ctx"
+  end
+
+  def test_meters_render_with_threshold_colors
+    quiet = render_raw(stdin_json(rate_limits: { "five_hour" => { "used_percentage" => 42 } }))
+    assert_includes quiet.gsub(/\e\[[0-9;]*m/, ""), "5h 42%"
+    refute_includes quiet, "#{YELLOW}5h"
+    refute_includes quiet, "#{RED}5h"
+
+    warn = render_raw(stdin_json(rate_limits: { "five_hour" => { "used_percentage" => 70 } }))
+    assert_includes warn, "#{YELLOW}5h 70%"
+
+    crit = render_raw(stdin_json(rate_limits: { "five_hour" => { "used_percentage" => 92 } }))
+    assert_includes crit, "#{RED}5h 92%"
+  end
+
+  def test_meters_render_decimal_values_from_documented_payload
+    out = render(stdin_json(rate_limits: {
+      "five_hour" => { "used_percentage" => 23.5 },
+      "seven_day" => { "used_percentage" => 41.2 },
+    }))
+    assert_includes out, "5h 23%"
+    assert_includes out, "7d 41%"
+  end
+
+  def test_meter_color_boundaries
+    # D4: yellow at 70 and above, red at 90 and above; truncation (not rounding)
+    # decides which side of a decimal boundary a meter lands on.
+    red = render_raw(stdin_json(rate_limits: { "five_hour" => { "used_percentage" => 90 } }))
+    assert_includes red, "#{RED}5h 90%"
+
+    yellow_high = render_raw(stdin_json(rate_limits: { "five_hour" => { "used_percentage" => 89.6 } }))
+    assert_includes yellow_high, "#{YELLOW}5h 89%"
+    refute_includes yellow_high, "#{RED}5h"
+
+    yellow_low = render_raw(stdin_json(rate_limits: { "five_hour" => { "used_percentage" => 70 } }))
+    assert_includes yellow_low, "#{YELLOW}5h 70%"
+
+    default = render_raw(stdin_json(rate_limits: { "five_hour" => { "used_percentage" => 69.9 } }))
+    assert_includes default.gsub(/\e\[[0-9;]*m/, ""), "5h 69%"
+    refute_includes default, "#{YELLOW}5h"
+    refute_includes default, "#{RED}5h"
+  end
+
+  def test_meters_absent_without_rate_limits
+    out = render(stdin_json)
+    refute_includes out, "5h"
+    refute_includes out, "7d"
+  end
+
+  def test_seven_day_renders_without_five_hour
+    out = render(stdin_json(rate_limits: { "seven_day" => { "used_percentage" => 13 } }))
+    assert_includes out, "7d 13%"
+    refute_includes out, "5h"
+  end
+
+  def test_cost_hidden_when_zero_or_absent
+    refute_includes render(stdin_json(cost: { "total_cost_usd" => 0 })), "$"
+    refute_includes render(stdin_json), "$"
+  end
+
+  def test_cost_renders_two_decimals
+    out = render(stdin_json(cost: { "total_cost_usd" => 1.2345 }))
+    assert_includes out, "$1.23"
+  end
+
+  def test_cost_hidden_for_exponent_notation
+    # A JSON writer can emit "1.2e-6" for a tiny cost; the awk walker must not
+    # misread that as a huge dollar figure, so it drops the field entirely.
+    raw = %({"model":{"display_name":"Opus"},"cwd":"#{@cwd}","cost":{"total_cost_usd":1.2e-6}})
+    refute_includes render(raw), "$"
+  end
+
+  def test_claudish_counts_only_this_session
+    write_ledger(ledger_row("sess-A", 1_000, 0),
+                 ledger_row("sess-B", 5_000, 0),
+                 ledger_row("sess-A", 2_000, 0),
+                 ledger_row("sess-A", 3_000, 0))
+    out = render(stdin_json(session_id: "sess-A"))
+    assert_includes out, "claudish 3 rw / 6k"
+
+    write_ledger(ledger_row("sess-A", 200, 50))
+    out = render(stdin_json(session_id: "sess-A"))
+    assert_includes out, "claudish 1 rw / 250"
+  end
+
+  def test_claudish_absent_for_legacy_rows_or_missing_ledger
+    write_ledger(ledger_row("sess-A", 1_000, 0, columns: 9))
+    refute_includes render(stdin_json(session_id: "sess-A")), "claudish"
+
+    FileUtils.rm_f(File.join(@claudish, "usage.log"))
+    refute_includes render(stdin_json(session_id: "sess-A")), "claudish"
+  end
+
+  def test_no_intent_resolution_remains
+    code = File.read(STATUSLINE)
+    ["projects.yml", "INDEX.md", "savepoint", "PLASTIC_TMP", "plastic-${SID}"].each do |token|
+      refute_includes code, token,
+                      "statusline must not resolve an active intent any more (intent 279)"
+    end
+  end
+
+  def test_header_declares_hook_version_4
+    header = File.read(STATUSLINE).lines.first(6).join
+    assert_includes header, "plastic-hook-version: 4.0.0"
   end
 
   def test_no_ruby_or_jq_invoked

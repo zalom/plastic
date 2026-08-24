@@ -293,7 +293,18 @@ exclusion file per store and routes a suppressed `savepoint_operational` finding
 `(intent_id, rule)`, never bare `intent_id`, so excluding `savepoint_operational` for an intent
 has no effect on `signals_complete`'s independent report for that same intent. The check's
 message always folds in the honest count and the file's path once any exclusion applies, and
-reaches `pass` once every remaining gap is excluded. `RuleCatalog::REVISION_RULES` shares the
+reaches `pass` once every remaining gap is excluded.
+
+The same registration also holds on doctor's per-intent surface: `doctor.rb --intent <id>`'s
+`intent_savepoint_truthful` check (intent 222) reports the same fact for one intent, so intent
+281 routes its missing-`savepoint.md` branch through the same loader under the same rule id,
+`savepoint_operational`, rather than minting a second rule name for one gap. That surface
+honors the exclusion only when the intent is terminal in its store's `INDEX.md`, which is the
+condition the store-wide sweep already applies, so a stray id can never silence the live,
+repairable warning `scripts/end-intent`'s pre-write gate raises on a still-Active intent. The
+phantom-line half of that check stays non-suppressible by id or scope, per intent 211.
+
+`RuleCatalog::REVISION_RULES` shares the
 same file as a second, unrelated axis: the `[rule: <tag>]` vocabulary every `revisions.md` entry
 carries (see the maintenance-and-revisions reference). It is enforced by
 `test/rule_catalog_test.rb`, never at `RevisionsWriter` runtime, because a receipt writer that
@@ -312,6 +323,29 @@ store-level table per store, so 197's receipt-before-write rule (which covers to
 structurally edit an intent's own files) does not apply here, and writing one would mean editing
 every touched Completed intent directory, which the standing rule that completed intents are
 immutable forbids. The scoped git commit plus the diffable exclusion file itself are the receipt.
+
+A registered row can go dead: the intent's gap got repaired, the id was mistyped when the row was
+written, or the intent directory is gone. Left alone, the exclusion file only ever grows into an
+unreviewable list. Intent 280 has `check_done_signals` diff the loaded table against the same
+INDEX/directory/finding walk it already runs, via one pure predicate,
+`DoctorExclusions.dead_rows(loaded, consumed:, known_ids:)`, that is handed the walk's results and
+has no access to the file itself - the same self-diff trap 208 named for a different check stays
+structurally impossible here. A dead row reports as one of two buckets: `:no_finding` (the id
+names an intent doctor walked, but the rule fired nothing to suppress this run) or `:no_intent`
+(the id names no walked directory at all - a typo, or a deleted intent; the two are
+indistinguishable from the data available, and the remedy is the same either way). The count, the
+buckets, and the file path fold into `savepoint_operational`'s message and `details` exactly the
+way the exclusion count already does; the notice is purely informational and never moves the
+check off `pass` or changes doctor's exit code - a stale governance-record row is bookkeeping
+drift, not a store regression. `maintenance-run --tool register-exclusions --prune [--apply]` is
+the owner-gated remedy: dry-run by default, it calls the same `dead_rows` predicate and the same
+comment-preserving writer as the add direction. Two classes of row that would otherwise read as
+dead are held harmless before anything is written: an id whose dir was skipped for a fresh
+delivery lock (the skip would leave it out of the walk entirely), and an id whose intent has not
+reached a terminal state yet (`savepoint_operational` only fires on a terminal intent, so the row
+has nothing to suppress *yet*). A rule left with zero ids after pruning is dropped from the file
+rather than rendered as a bare `rule_name` line, which the loader would reject. Like the add
+direction, `--prune` writes no `revisions.md` entries.
 
 Session resolution feeds the bridge that the gate hooks read (intent 52). Claude Code does
 not export a session id env var into the hook environment; it passes `session_id` on the hook
@@ -353,7 +387,7 @@ its intent is terminal: its id is no longer in its store's `INDEX.md` `## Active
 at the parent of the `store/` directory), scans only the `## Active` section, and reports whether
 the bridge's `intent.id` is listed. An Active intent's bridge is kept unconditionally, because
 while the intent is live the bridge is load-bearing: it is the continuation signal (a parked or
-interrupted run resumes from it) and the anti-collision lock that keys the per-session statusline.
+interrupted run resumes from it) and the anti-collision lock for parallel deliveries on one store.
 The current session's own bridge is never purged (preserving the `disarm_auto` contract that it
 stays readable), and a bridge that cannot be parsed or that carries no `intent.id` or
 `intent.store` is treated as junk and removed. An age window was the wrong axis: it left dead
@@ -1209,6 +1243,14 @@ additionally scans its post-purge output for any surviving `plastic-`-prefixed c
 registry did not recognize, and prints it under its own header naming the reserved-prefix
 rule. Had that existed in 1.11.0, the update would have said "kept `plastic-writing-style`,
 the prefix is reserved" instead of deleting the hook without a word.
+
+Intent 278 extended the same reporting to the two remove paths.
+`remove_claude_hooks` and `remove_codex_hooks` collect the entries they delete the same
+way the purges do and print them through `report_removed_hook_entries`, which took a
+`qualifier:` argument so an uninstall reads "Removed 3 Plastic hook entries" instead of
+the merge's "stale" wording. The statusline swap-back, which is a restored value rather
+than a deleted entry, reports on its own line. No Plastic edit to a user's hook
+configuration is silent now, on either harness, on either path.
 
 ## doctor: unowned hook entries and stray skills (intent 276)
 
