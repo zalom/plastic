@@ -626,4 +626,50 @@ class MaintenanceRunTest < Minitest::Test
       "the genuinely live id (a real, unregistered-elsewhere gap) must also survive"
     assert File.directory?(ghost_dir), "the ghost directory itself must be left untouched"
   end
+
+  # REGRESSION (post-review fix item 1, third pass): the prune walk only ever evaluates
+  # savepoint_operational's own finding bucket, regardless of --rule - reproduced by the reviewer
+  # with a scratch second EXCLUDABLE_CHECKS entry, which is otherwise unreachable in v1 (exactly
+  # one excludable rule). Passing --prune --rule <scratch> without the guard computed found_ids
+  # from the unrelated savepoint_operational check and subtracted it against <scratch>'s own
+  # registered ids, misreporting every one of them dead and rewriting the file to drop them.
+  #
+  # This test reproduces the scratch catalog entry the same way the reviewer did, but against an
+  # ISOLATED COPY of scripts/ in a tmpdir rather than the real, shared, git-tracked
+  # rule_catalog.rb - maintenance-run runs as a real subprocess (Open3), so an in-process
+  # monkeypatch of the frozen EXCLUDABLE_CHECKS constant would never reach it, and patching the
+  # actual checked-out file on disk would risk colliding with any other concurrent process
+  # reading it.
+  def test_prune_refuses_a_rule_the_walk_does_not_evaluate
+    parent = Dir.mktmpdir("scratch-rule-scripts")
+    FileUtils.cp_r(File.expand_path("../scripts", __dir__), parent)
+    scripts_copy = File.join(parent, "scripts")
+    catalog_path = File.join(scripts_copy, "lib", "rule_catalog.rb")
+    original = File.read(catalog_path)
+    scratch = original.sub(
+      "\"savepoint_operational\" =>",
+      "\"scratch_rule\" => \"test-only scratch entry, never a real doctor check\",\n    " \
+      "\"savepoint_operational\" =>"
+    )
+    raise "scratch catalog patch made no change" if scratch == original
+    File.write(catalog_path, scratch)
+    maintenance_run_copy = File.join(scripts_copy, "maintenance-run")
+
+    seed_register_exclusions_fixture
+    File.write(File.join(@home, "doctor-exclusions"), "scratch_rule 40\n")
+    commit_all("seed scratch-rule fixture")
+    # Compared as raw bytes below, not via DoctorExclusions.load: THIS test process still has the
+    # real, unpatched RuleCatalog in memory (loaded once at file-require time), which does not
+    # know "scratch_rule" is excludable - only the isolated subprocess copy does.
+    before = File.read(File.join(@home, "doctor-exclusions"))
+
+    out, err, status = Open3.capture3(RbConfig.ruby, maintenance_run_copy, "--tool", "register-exclusions",
+                                       "--rule", "scratch_rule", "--prune", "--plastic-home", @home, "--apply")
+    assert_equal 1, status.exitstatus, out + err
+    assert_match(/prune evaluates only savepoint_operational/, err)
+    assert_equal before, File.read(File.join(@home, "doctor-exclusions")),
+      "the file must be byte-unchanged when --prune refuses"
+  ensure
+    FileUtils.remove_entry(parent) if parent && Dir.exist?(parent)
+  end
 end

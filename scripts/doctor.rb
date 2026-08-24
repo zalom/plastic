@@ -640,10 +640,11 @@ def check_done_signals(scopes: nil)
     # being listed in INDEX (a de-indexed "ghost"), and the walk below alone would never visit it;
     # deriving known_ids from walk membership misclassified that ghost as :no_intent (deleted)
     # even though the directory plainly still exists.
+    # Shares `store_intent_dirs` (159, intent 189's store-discovery helper) rather than
+    # reimplementing the same directory scan (review fix): one predicate for "what is an intent
+    # directory in this store", never two that could drift apart.
     known_ids = if File.directory?(store[:store_dir])
-                  Dir.children(store[:store_dir]).reject { |e| e.start_with?(".") }
-                     .select { |e| File.directory?(File.join(store[:store_dir], e)) }
-                     .map { |e| e.split("--", 2).first }
+                  store_intent_dirs(store[:store_dir]).map { |e| e.split("--", 2).first }
                 else
                   []
                 end

@@ -323,20 +323,41 @@ end
 # the narrower set the walk DOES visit; an id with a real directory the walk never evaluated
 # carries no evidence either way, so `dead_rows` leaves it out of its result entirely - never
 # called dead by the reporter, so `prune` never sees it as a pruning candidate in the first
-# place. Three classes of row are additionally held harmless before anything is written
-# (`protected_ids`), belt-and-suspenders on top of that gate: an id whose dir was skipped for a
-# fresh delivery lock (D6 - the lock skip runs AFTER the id already lands in `evaluated_ids`, but
-# BEFORE it can ever reach `consumed`, since findings are never computed for it), an id whose
-# intent has not reached a terminal state yet (D6a - savepoint_operational only fires on a
-# terminal intent, so the row has nothing to suppress YET), and an id with a real directory that
-# is not in `evaluated_ids` at all (on disk, unindexed). A rule left with zero ids after pruning
-# is dropped from the hash entirely (D7): `render_exclusions_file` would otherwise write a bare
-# `rule_name` line that `DoctorExclusions.parse` rejects as "lists no intent ids".
+# place.
+#
+# The walk here only ever evaluates `savepoint_operational`'s own finding bucket
+# (`findings[:operational_gap]`), regardless of `--rule`: `run_register_exclusions` refuses
+# `--prune --rule <other>` outright (a second review fix) rather than silently computing
+# `found_ids` from an unrelated check and misreporting every row under `<other>` dead.
+#
+# Three classes of row are additionally held harmless before anything is written
+# (`protected_ids`), belt-and-suspenders on top of the `evaluated_ids` gate: an id whose dir was
+# skipped for a fresh delivery lock (D6 - the lock skip runs AFTER the id already lands in
+# `evaluated_ids`, but BEFORE it can ever reach `found_ids`, since findings are never computed
+# for it), an id whose intent has not reached a terminal state yet (D6a - savepoint_operational
+# only fires on a terminal intent, so the row has nothing to suppress YET), and an id with a real
+# directory that is not in `evaluated_ids` at all (on disk, unindexed - this last class never
+# actually reaches `held` in practice, since `dead_rows`'s own gate already excludes it; the
+# protection stays explicit anyway rather than relying solely on that gate). A rule left with
+# zero ids after pruning is dropped from the hash entirely (D7): `render_exclusions_file` would
+# otherwise write a bare `rule_name` line that `DoctorExclusions.parse` rejects as "lists no
+# intent ids".
 def run_register_exclusions(home, rule, store, apply, prune = false)
   rule ||= "savepoint_operational"
   unless RuleCatalog.excludable_check?(rule)
     abort_loud("--rule #{rule.inspect} is not excludable (expected one of: " \
                "#{RuleCatalog::EXCLUDABLE_CHECKS.keys.join(", ")})")
+  end
+  # Review fix: the walk below only ever evaluates savepoint_operational's own finding bucket
+  # (`findings[:operational_gap]`), regardless of --rule. Passing --prune --rule <other> would
+  # compute `found_ids` from an entirely unrelated check and subtract it against <other>'s
+  # registered ids, misreporting every one of them dead. Unreachable in v1 (EXCLUDABLE_CHECKS
+  # carries exactly one key) but one catalog entry away, so refuse it explicitly rather than
+  # silently mis-pruning the day a second excludable check exists.
+  if prune && rule != "savepoint_operational"
+    abort_loud("--prune evaluates only savepoint_operational; #{rule.inspect} rows are left " \
+               "untouched (the walk this tool runs only ever checks that one rule's finding " \
+               "bucket, regardless of --rule)")
   end
 
   doctor = Doctor.new(plastic_home: home)
@@ -361,7 +382,6 @@ def run_register_exclusions(home, rule, store, apply, prune = false)
     existing_text = File.exist?(existing[:path]) ? File.read(existing[:path]).scrub : nil
 
     found_ids = []
-    consumed = { "savepoint_operational" => [] }
     protected_ids = []
 
     # `known_ids` (post-review fix): every id with a REAL DIRECTORY in this store, scanned
@@ -369,10 +389,11 @@ def run_register_exclusions(home, rule, store, apply, prune = false)
     # have a directory on disk without being listed in INDEX (a de-indexed "ghost"), and the walk
     # alone would never visit it, misclassifying that ghost as :no_intent (deleted) even though
     # it plainly still exists.
+    # Shares doctor.store_intent_dirs (doctor.rb:159, intent 189's store-discovery helper)
+    # rather than reimplementing the same directory scan (review fix): one predicate for "what
+    # is an intent directory in this store", never two that could drift apart.
     known_ids = if File.directory?(s[:store_dir])
-                  Dir.children(s[:store_dir]).reject { |e| e.start_with?(".") }
-                     .select { |e| File.directory?(File.join(s[:store_dir], e)) }
-                     .map { |e| e.split("--", 2).first }
+                  doctor.store_intent_dirs(s[:store_dir]).map { |e| e.split("--", 2).first }
                 else
                   []
                 end
@@ -409,18 +430,16 @@ def run_register_exclusions(home, rule, store, apply, prune = false)
         terminal: terminal, active: active, excluded_rules: []
       )
       found_ids << walked_id if findings[:operational_gap].any?
-      # `excluded_rules: []` is passed here, so nothing ever fires via this drain; consumed[rule]
-      # is instead built from found_ids below for the prune direction. Kept anyway so both
-      # directions stay one shape if `excluded_rules:` is ever threaded through this call.
-      findings[:excluded_rules_fired].each { |fired| (consumed[fired] ||= []) << walked_id }
     end
 
     # Post-review fix: an id with a real directory that INDEX never lists at all is walked by
-    # neither branch above, so its terminal state is unknowable here. Hold it harmless the same
-    # way D6a holds a not-yet-terminal id harmless - protected, never pruned, named as kept (this
-    # is defense-in-depth: dead_rows's own evaluated_ids gate already excludes such an id from
-    # `dead` in the first place, so this list should never actually need to intervene, but the
-    # protection stays explicit rather than relying solely on that gate).
+    # neither branch above, so its terminal state is unknowable here. PURE DEFENSE-IN-DEPTH:
+    # `dead_rows`'s own `evaluated_ids` gate already excludes such an id from `dead` entirely (it
+    # is neither :no_finding nor :no_intent - no evidence either way), so `held` below never
+    # actually contains one and this concat's protection never needs to fire. Unlike D6 (fresh
+    # lock) and D6a (not yet terminal), which DO reach `held` and print "kept (protected, still
+    # live)", an unindexed id is never named in that skip output - it was never a live pruning
+    # candidate to begin with.
     protected_ids.concat(known_ids - evaluated_ids)
 
     already = existing[:rules][rule] || []
