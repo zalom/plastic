@@ -293,7 +293,18 @@ exclusion file per store and routes a suppressed `savepoint_operational` finding
 `(intent_id, rule)`, never bare `intent_id`, so excluding `savepoint_operational` for an intent
 has no effect on `signals_complete`'s independent report for that same intent. The check's
 message always folds in the honest count and the file's path once any exclusion applies, and
-reaches `pass` once every remaining gap is excluded. `RuleCatalog::REVISION_RULES` shares the
+reaches `pass` once every remaining gap is excluded.
+
+The same registration also holds on doctor's per-intent surface: `doctor.rb --intent <id>`'s
+`intent_savepoint_truthful` check (intent 222) reports the same fact for one intent, so intent
+281 routes its missing-`savepoint.md` branch through the same loader under the same rule id,
+`savepoint_operational`, rather than minting a second rule name for one gap. That surface
+honors the exclusion only when the intent is terminal in its store's `INDEX.md`, which is the
+condition the store-wide sweep already applies, so a stray id can never silence the live,
+repairable warning `scripts/end-intent`'s pre-write gate raises on a still-Active intent. The
+phantom-line half of that check stays non-suppressible by id or scope, per intent 211.
+
+`RuleCatalog::REVISION_RULES` shares the
 same file as a second, unrelated axis: the `[rule: <tag>]` vocabulary every `revisions.md` entry
 carries (see the maintenance-and-revisions reference). It is enforced by
 `test/rule_catalog_test.rb`, never at `RevisionsWriter` runtime, because a receipt writer that
