@@ -1290,6 +1290,73 @@ reserved for hooks and skills alike, and `stray_skills` runs through the same sh
 `check_flat_skills_and_stray` call every non-Claude agent directory (Codex, Hermes) already
 uses, so the fix reaches them with no second implementation.
 
+## the day ledger and append-ledger (intent 297)
+
+The session intent day ledger is one shared ledger per calendar day per person, in the
+global store, project agnostic, with every line tagged by the session and project that
+wrote it. `scripts/lib/session_ledger.rb` is the pure library behind it: every method takes
+its paths as arguments and reads no environment variable. `scripts/new-intent --tmp` and
+`scripts/append-ledger` are its two CLIs, and only they read the environment.
+
+**The line formats**, byte exact:
+
+```
+- [~] [b7137962] [plastic] Change how titles appear on the resume page
+- [ ] [b7137962] [plastic] Change how titles appear on the resume page
+- [x] [b7137962] [plastic] Change how titles appear on the resume page
+2026-08-29T13:26:52Z  Item  [b7137962] [plastic] Change how titles appear on the resume page
+```
+
+The first three are `checklist.md` lines: pending, open, and done, in that order. The state
+marker is fixed width across all three states (`~`, a space, or `x`, always inside `[ ]`),
+which is what makes a promote or a tick a one-byte write at a known offset rather than a
+whole-file rewrite. The fourth is a `savepoint.md` line: two-space separators so
+`split(/\s{2,}/)` yields three parts, exactly as every other savepoint line in the store
+does, with the event column one of `Item` (promoted), `Done` (ticked), or `Note` (free
+text). The day id in a directory name is local wall clock; every instant inside a line stays
+UTC, an intentional asymmetry.
+
+**The lock protocol.** The lock is on the target file itself, `checklist.md` or
+`savepoint.md`, never a sibling lock file, and never an inode replaced by a rename, because a
+rename swaps the inode out from under a holder. An append opens
+`File::WRONLY | File::APPEND | File::CREAT` at mode `0644`, takes a blocking
+`flock(File::LOCK_EX)`, writes one full line, then unlocks. The first append checks for size
+zero after taking the lock, which is what lets exactly one racer write the header even though
+`O_CREAT` without `O_EXCL` hands every racer the same inode. A promote or a tick opens
+`File::RDWR`, takes `LOCK_EX`, scans by byte offset, `pwrite`s one byte, flushes, and unlocks.
+There is no timeout and no polling: a hold covers exactly one write, and the kernel releases
+an flock automatically when its holder dies, so an orphan hold cannot exist. On a filesystem
+without flock support, an append proceeds unlocked, since a single `O_APPEND` write still
+lands whole there; an in-place edit refuses with exit 3 rather than risk a torn
+read-modify-write. This is deliberately not `Lock.with_write_guard`'s polling exclusive
+pattern, which exists for multi-second read-modify-write holds a ledger append never has.
+
+**The scaffold.** `SessionLedger.open_day` is the single scaffold implementation. Create
+versus join is decided by opening `<day>.md` with `File::CREAT | File::EXCL`: the winner
+renders `templates/session-intent.md` and reports `created`, every loser reports `joined`,
+and a crash mid-scaffold with no md file yet is repaired by the same path on its next call.
+Both callers use it: `new-intent --tmp` is its CLI, and `append-ledger` calls it directly
+whenever it finds the day directory missing, so a capture that crosses midnight never fails
+and never needs a second process. The rendered file passes `IntentValidator.validate` in
+full, which is possible because that validator reads only the intent's own markdown file and
+its five sanctioned sections. `## Links` carries `LinksProjection::EMPTY_COMMENT` verbatim,
+so no cross-store map build ever runs at session start.
+
+**The consumer list.** Who builds on this contract, and what each one needs:
+
+- intent 298: the session-start and post-tool hooks, the per-session pointer and heartbeat
+  under `.tmp/<session>/`, and capture and record.
+- intent 300: `session-commit`, which appends one `Note` savepoint line per commit.
+- intent 301: close, `file-session-intent`, `promote-session-item`, and the carry-forward of
+  open items, which is why `append-ledger item` exists alongside `pending`.
+- batch 4: `write-handoff` and `day-summary`.
+
+A recorded hazard, so intent 301 does not discover it mid-Exec: `LinksProjection` resolves a
+ref by scanning store-root children, so a later intent whose `sources` names a day id raises
+`UnresolvedRef`, its `## Links` goes unwritten, and doctor's links check may flag it. The fix
+is either a resolver that knows `.sessions/` or a frontmatter-only link that projection
+skips, and it belongs to intent 301, not here.
+
 ## living-document
 
 This is a living document. When Plastic's architecture, lifecycle, conventions,
