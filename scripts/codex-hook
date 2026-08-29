@@ -3,9 +3,9 @@
 # frozen_string_literal: true
 #
 # Usage: codex-hook <gate>
-#   file-mutation gates: edit-gates | gate-check
-#   live-state hooks (intent 199): session-start | check-update | continue |
-#     future-intent-check | auto-arm | power-tools | savepoint
+#   file-mutation gates: edit-gates | record
+#   live-state hooks (intent 199, capture/record collapse by 298):
+#     session-start | check-update | capture | power-tools | savepoint
 #   shell-tool gate (intent 203): bash-gate
 #
 # The Codex input adapter (intent 102, extended by 199, 203, and collapsed by
@@ -52,7 +52,7 @@ require "timeout"
 # caller that merges the dispatcher's own stdout and stderr.
 $stdout.sync = true
 
-STATE_HOOKS = %w[session-start check-update continue future-intent-check auto-arm power-tools savepoint].freeze
+STATE_HOOKS = %w[session-start check-update capture power-tools savepoint].freeze
 STATE_TIMEOUT = 5
 SHELL_HOOKS = %w[bash-gate].freeze
 
@@ -123,10 +123,6 @@ ops = ApplyPatchEnvelope.parse(command)
 exit 0 if ops.empty? # fail-open: nothing parseable to gate
 
 CORES = __dir__ # ~/.plastic/scripts
-def run_core(name, *argv)
-  out = IO.popen([{ "RUBYOPT" => nil }, RbConfig.ruby, File.join(CORES, name), *argv], "r", err: [:child, :out], &:read)
-  [out, $?.exitstatus]
-end
 
 case gate
 when "edit-gates"
@@ -149,17 +145,23 @@ when "edit-gates"
     exit 0
   end
 
-when "gate-check"
-  last_allow = nil
+when "record"
+  # hook-record (intent 298) reads one stdin JSON payload; it takes no ARGV, unlike
+  # the hook-gate-check CLI it replaced. One apply_patch call can bundle several file
+  # operations, so this synthesizes one Claude-shaped PostToolUse payload per op and
+  # pipes it to hook-record in-process, mirroring the "drive the body" pattern used
+  # for the live-state hooks. record never blocks and never prints anything (D3), so
+  # there is nothing to relay: every op's failure is independently rescued and the
+  # dispatcher always exits 0.
+  cwd_val = payload["cwd"].to_s
   ops.each do |o|
-    out, code = run_core("hook-gate-check", o.path, session)
-    if code == 2
-      print out # {"decision":"block",...}
-      exit 2
+    synth = JSON.generate("session_id" => session, "tool_input" => { "file_path" => o.path }, "cwd" => cwd_val)
+    begin
+      Open3.capture3({ "RUBYOPT" => nil }, RbConfig.ruby, File.join(CORES, "hook-record"), stdin_data: synth)
+    rescue StandardError
+      nil
     end
-    last_allow = out unless out.to_s.strip.empty?
   end
-  print last_allow if last_allow
   exit 0
 
 else

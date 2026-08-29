@@ -1267,8 +1267,9 @@ class CodexInstallTest < Minitest::Test
       "fixture assumption: scripts/codex-hook must still declare STATE_HOOKS as a %w[...] literal"
 
     names = literal.split
-    assert_operator names.size, :>=, 7,
-      "expected at least the seven live-state hooks, got: #{names.inspect}"
+    assert_operator names.size, :>=, 5,
+      "expected at least the five live-state hooks (intent 298 merged continue, " \
+      "future-intent-check, and auto-arm into capture), got: #{names.inspect}"
 
     names.each do |name|
       path = File.join(@home, "hooks", name)

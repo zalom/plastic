@@ -1,0 +1,242 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# Usage: hook-capture (reads the UserPromptSubmit stdin JSON payload)
+# Intent 298. One UserPromptSubmit process replacing hook-continue,
+# hook-future-intent-check, and hook-auto-arm: it appends a pending line to
+# the session day ledger, detects "continue" and "auto" prompts, and hints at
+# matching Future intents. Every job runs in its own rescue and the hook
+# always exits 0 (spec D2).
+
+require "json"
+require "yaml"
+require "open3"
+require "fileutils"
+require_relative "lib/session_ledger"
+require_relative "lib/dashboard_banner"
+
+raw = begin
+  $stdin.read
+rescue StandardError
+  nil
+end
+exit 0 if raw.nil? || raw.strip.empty?
+
+payload = begin
+  JSON.parse(raw)
+rescue StandardError
+  nil
+end
+exit 0 unless payload.is_a?(Hash)
+
+session_id = payload["session_id"].to_s
+prompt = payload["user_prompt"].to_s
+cwd = payload["cwd"].to_s
+cwd = Dir.pwd if cwd.empty?
+
+plastic_home = File.expand_path(ENV["PLASTIC_HOME"] || "~/.plastic")
+store = File.join(plastic_home, "store")
+templates = File.expand_path("../templates", __dir__)
+sid = SessionLedger.short_session_id(nil, session_id)
+today = SessionLedger.day_id
+
+# --- Extracted matching logic, shared by both the global and project store
+# passes of job (f) below (mirrors hook-future-intent-check verbatim). ---
+def future_intent_matches(store_root, message)
+  index_path = File.join(store_root, "INDEX.md")
+  return [] unless File.exist?(index_path)
+
+  lines = File.readlines(index_path)
+  future_dirs = []
+  section = nil
+
+  lines.each do |line|
+    section = :future if line.start_with?("## Future")
+    section = nil if line.start_with?("## ") && !line.start_with?("## Future")
+    next unless section == :future && line.strip.start_with?("- [")
+
+    future_dirs << $1 if line =~ /store\/([\w-]+)\//
+  end
+  return [] if future_dirs.empty?
+
+  matches = []
+  message_words = message.split(/\W+/).reject { |w| w.length < 4 }
+
+  future_dirs.each do |dir|
+    intent_path = File.join(store_root, "store", dir, "#{dir}.md")
+    next unless File.exist?(intent_path)
+
+    content = File.read(intent_path)
+
+    tags = []
+    tags = $1.split(",").map(&:strip).map(&:downcase) if content =~ /^tags:\s*\[([^\]]+)\]/
+
+    intent_name = ""
+    intent_name = $1.downcase if content =~ /^intent:\s*["']?(.+?)["']?\s*$/
+
+    keywords = (tags + intent_name.split(/\W+/).reject { |w| w.length < 4 }).map(&:downcase).uniq
+
+    matched_keywords = keywords.select { |kw| message.include?(kw) }
+    name_matches = message_words.select { |w| intent_name.include?(w) }
+    matched_keywords = (matched_keywords + name_matches).uniq
+
+    next if matched_keywords.empty?
+
+    index_line = lines.find { |l| l.include?(dir) }&.strip || "#{dir} - #{intent_name}"
+    matches << { "index_line" => index_line, "keywords" => matched_keywords }
+  end
+  matches
+end
+
+# The store_root that carries the current project's own store, resolved from
+# cwd through projects.yml, mirroring SessionLedger.project_slug's matching
+# but returning nil (not "global") when nothing matches, since there is then
+# no distinct second store to hint against.
+def resolve_project_store_root(cwd, plastic_home)
+  projects_path = File.join(plastic_home, "projects.yml")
+  return nil unless File.exist?(projects_path)
+
+  data = begin
+    YAML.safe_load(File.read(projects_path))
+  rescue StandardError
+    nil
+  end
+  data = {} unless data.is_a?(Hash)
+  projects = data["projects"].is_a?(Hash) ? data["projects"] : {}
+  expanded_cwd = File.expand_path(cwd)
+
+  matches = projects.filter_map do |slug, info|
+    next unless info.is_a?(Hash) && slug.is_a?(String)
+
+    path = info["path"]
+    next unless path
+
+    root = File.expand_path(path)
+    next unless expanded_cwd == root || expanded_cwd.start_with?("#{root}#{File::SEPARATOR}")
+
+    [root.length, slug]
+  end
+
+  best = matches.max_by { |(length, _slug)| length }
+  best ? File.join(plastic_home, "projects", best[1]) : nil
+end
+
+def truncate(text, max)
+  return text if text.length <= max
+
+  "#{text[0, max - 3]}..."
+end
+
+# --- (a) tmp root + heartbeat, unconditional -------------------------------
+begin
+  SessionLedger.ensure_tmp_root(store)
+  FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store, sid))
+  File.write(SessionLedger.heartbeat_path(store, sid), "#{Time.now.utc.iso8601}\n")
+rescue StandardError
+  nil
+end
+
+# --- (b) read the pointer -----------------------------------------------
+skip_day_ledger = false
+begin
+  pointer = SessionLedger.pointer_path(store, sid)
+  if File.exist?(pointer)
+    current = File.read(pointer).strip
+    skip_day_ledger = !current.empty? && current != today
+  end
+rescue StandardError
+  nil
+end
+
+# --- (c) pending checklist line -------------------------------------------
+unless skip_day_ledger
+  begin
+    project = SessionLedger.project_slug(cwd, plastic_home: plastic_home)
+    clean = truncate(SessionLedger.sanitize_summary(prompt), 120)
+    if clean.length >= 10
+      SessionLedger.open_day(store: store, day: today, templates: templates, author: sid)
+      line = SessionLedger.checklist_line(:pending, sid, project, clean)
+      SessionLedger.append_line(SessionLedger.checklist_path(store, today), line,
+                                 header: SessionLedger.checklist_header(today))
+    end
+  rescue StandardError
+    nil
+  end
+end
+
+context_parts = []
+system_message = nil
+
+# --- (d) "continue" cockpit -------------------------------------------------
+begin
+  if prompt.match?(/\bcontinue\b/i)
+    dashboard = File.expand_path("dashboard.rb", __dir__)
+    if File.exist?(dashboard)
+      cockpit, _err, status = Open3.capture3({ "RUBYOPT" => nil }, "ruby", dashboard, "continue")
+      if status.success? && !cockpit.strip.empty?
+        context_parts << (cockpit.rstrip +
+          "\n\nFollow the plastic-continuing skill workflow to resume: " \
+          "if active intents exist, read their state and resume; otherwise surface the " \
+          "most-valuable next work and any stale or triage intents from the board above.")
+
+        begin
+          data_json, _data_err, data_status = Open3.capture3({ "RUBYOPT" => nil }, "ruby", dashboard,
+                                                               "continue", "--data")
+          if data_status.success?
+            banner = DashboardBanner.render(JSON.parse(data_json))
+            system_message = banner if banner
+          end
+        rescue StandardError
+          nil
+        end
+      end
+    end
+  end
+rescue StandardError
+  nil
+end
+
+# --- (e) auto-trigger steering (hook-auto-arm job 1 only) ------------------
+begin
+  message_lower = prompt.downcase
+  auto_triggers = ["take it from here", "deliver this", "/plastic-auto", "auto mode"].freeze
+  triggered = auto_triggers.any? { |p| message_lower.include?(p) } || message_lower.match?(/\bauto\b/)
+  if triggered
+    context_parts << "Auto-mode request detected. Invoke the plastic-auto skill to deliver the " \
+                      "active intent autonomously - it arms the lifecycle gate so project code " \
+                      "cannot be edited before plan.md + checklist.md exist."
+  end
+rescue StandardError
+  nil
+end
+
+# --- (f) Future-intent hint, global store then the project's own store -----
+begin
+  message = prompt.to_s.downcase
+  if message.strip.length >= 10 && message.strip != "continue"
+    matches = future_intent_matches(plastic_home, message)
+    project_root = resolve_project_store_root(cwd, plastic_home)
+    matches += future_intent_matches(project_root, message) if project_root
+
+    if matches.any?
+      parts = ["PLASTIC - Future intents related to this message:\n"]
+      matches.each { |m| parts << "#{m["index_line"]} (matched: #{m["keywords"].join(", ")})" }
+      parts << "\nConsider asking the user if they want to activate any of these, or note the connection."
+      context_parts << parts.join("\n")
+    end
+  end
+rescue StandardError
+  nil
+end
+
+exit 0 if context_parts.empty?
+
+payload_out = {
+  "hookSpecificOutput" => {
+    "hookEventName" => "UserPromptSubmit",
+    "additionalContext" => context_parts.join("\n\n")
+  }
+}
+payload_out["systemMessage"] = system_message if system_message
+puts JSON.generate(payload_out)

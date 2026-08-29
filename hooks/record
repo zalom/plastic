@@ -1,0 +1,4 @@
+#!/bin/bash
+INPUT=$(cat)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+echo "$INPUT" | env -u RUBYOPT ruby "$SCRIPT_DIR/../scripts/hook-record"

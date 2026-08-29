@@ -40,9 +40,8 @@ class Doctor
     folgezettel-id
     read-config
     hook-session-start
-    hook-continue
-    hook-future-intent-check
-    hook-gate-check
+    hook-capture
+    hook-record
     validate-intent
     doctor.rb
   ].freeze

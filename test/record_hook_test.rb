@@ -71,10 +71,18 @@ class RecordHookTest < Minitest::Test
     SessionLedger.savepoint_path(@store, day)
   end
 
+  # Tags the line with the SAME short session id hook-record derives internally
+  # (SessionLedger.short_session_id(nil, session)), so set_state's session match
+  # actually lines up: a raw "sess-1" written verbatim here would never equal
+  # hook-record's own short-form "sess1" tag.
   def seed_pending_line(session, summary, day: SessionLedger.day_id, project: "plastic")
     FileUtils.mkdir_p(File.dirname(checklist_path(day)))
-    line = SessionLedger.checklist_line(:pending, session, project, summary)
+    line = SessionLedger.checklist_line(:pending, sid_for(session), project, summary)
     SessionLedger.append_line(checklist_path(day), line, header: SessionLedger.checklist_header(day))
+  end
+
+  def sid_for(session)
+    SessionLedger.short_session_id(nil, session)
   end
 
   # --- malformed stdin, no file_path -----------------------------------------
@@ -207,7 +215,7 @@ class RecordHookTest < Minitest::Test
     assert File.exist?(seam_calls), "the seam must have been called"
     call = File.read(seam_calls)
     assert_includes call, "About the widget page"
-    assert_includes call, "sess-1"
+    assert_includes call, sid_for("sess-1")
   end
 
   # --- (c) project file, no pending line ---------------------------------------
