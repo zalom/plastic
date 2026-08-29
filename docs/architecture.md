@@ -106,6 +106,10 @@ A day directory's members appear in order as the day is used, not all at once:
 
 The day id is the local wall-clock date, digits only with no hyphen, so it satisfies every id pattern in the store with no special case. One day directory is shared by every session that touches that day, project agnostic, with each checklist and savepoint line tagged by session and project. A day ledger has no `INDEX.md` entry. `scripts/append-ledger` is the only writer of `checklist.md` and `savepoint.md` inside a day directory.
 
+### the session branch model and session-commit
+
+A verified checklist item becomes one commit through `scripts/session-commit` (intent 300), which resolves the repository containing `--cwd`, loads that repository's `flow:` setting from its `project.yml`, and applies the branch model: under `mode: direct` (the default) it commits to a session branch cut from the repository's own base branch and fast-forwards the base into that commit; under `mode: pull_request` it cuts a small branch and PR per item instead. The five flow knobs (`mode`, `base`, `branch_template`, `ticket_source`, `workspace`) are documented in `templates/project.yml` and validated by `scripts/lib/project_validator.rb`. `session-commit` is fail-open throughout: no repository, a detached HEAD, a clean tree, an agent-owned branch, a refused push, a missing `gh`, or a rejected commit-msg hook all degrade to no commit plus one `Note` savepoint line, never a non-zero exit. Every outcome writes exactly one `Item` or `Note` line to the day's `savepoint.md` through `SessionLedger`. See [internals](internals.md#the-session-branch-model-and-session-commit-intent-300) for the mechanics.
+
 ## identity and the knowledge graph
 
 Intents are addressed by Folgezettel IDs, following Luhmann's alternating convention. Assigning an ID requires only reading the existing IDs in the store:
