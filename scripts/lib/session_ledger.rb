@@ -31,7 +31,7 @@ module SessionLedger
   TMP_DIR = ".tmp"
   DAY_ID = /\A\d{8}\z/
   EVENTS = %w[Item Done Note]
-  STATES = { pending: "~", open: " ", done: "x" }.freeze
+  STATES = { pending: "~", open: " ", done: "x", moved: ">", dropped: "-", promoted: "^" }.freeze
 
   # Project slugs and session tags are restricted to this character class
   # (spec D4). Used both to filter a slug read out of projects.yml
@@ -332,7 +332,7 @@ module SessionLedger
 
       content.each_line do |raw_line|
         parsed = parse_checklist_line(raw_line)
-        if parsed && parsed[:session] == session && parsed[:state] == from &&
+        if parsed && (session.nil? || parsed[:session] == session) && parsed[:state] == from &&
            (match.nil? || parsed[:summary].include?(match))
           target_offset = offset + 3 # past the "- [" prefix
           target_summary = parsed[:summary]
@@ -351,6 +351,55 @@ module SessionLedger
         handle.flush
         target_summary
       end
+    ensure
+      begin
+        handle.flock(File::LOCK_UN)
+      rescue SystemCallError
+        nil
+      end
+      handle.close
+    end
+  end
+
+  # Flip every checklist line in state `from` to state `to` for one session
+  # (or any session when `session` is nil), narrowed to summaries containing
+  # `match` when given (intent 301). Same lock discipline as #set_state: one
+  # LOCK_EX for the whole read-scan-write, one pwrite of one byte per
+  # flipped line at its measured offset, never a whole-file rewrite, and a
+  # LockUnavailableError rather than any unlocked write. Returns the count of
+  # lines flipped, 0 when the file is absent or nothing matches.
+  def flip_all(path, from:, to:, session: nil, match: nil, flock: DEFAULT_FLOCK)
+    return 0 unless File.exist?(path)
+
+    STATES.fetch(from)
+    to_marker = STATES.fetch(to)
+    handle = File.open(path, File::RDWR)
+    locked = true
+    begin
+      flock.call(handle, File::LOCK_EX)
+    rescue SystemCallError
+      locked = false
+    end
+    unless locked
+      handle.close
+      raise LockUnavailableError, "cannot take an exclusive lock on #{path}"
+    end
+
+    begin
+      content = handle.read
+      offsets = []
+      offset = 0
+      content.each_line do |raw_line|
+        parsed = parse_checklist_line(raw_line)
+        if parsed && (session.nil? || parsed[:session] == session) && parsed[:state] == from &&
+           (match.nil? || parsed[:summary].include?(match))
+          offsets << offset + 3
+        end
+        offset += raw_line.bytesize
+      end
+      offsets.each { |o| handle.pwrite(to_marker, o) }
+      handle.flush unless offsets.empty?
+      offsets.size
     ensure
       begin
         handle.flock(File::LOCK_UN)
