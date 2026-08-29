@@ -1,0 +1,61 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# file-session-intent (intent 301): backfill and close one session day ledger,
+# carrying its open items into a target day.
+#
+# Usage:
+#   file-session-intent --day <YYYYMMDD> [--carry-to <YYYYMMDD>] [--store <dir>]
+#                       [--templates <dir>] [--author <name>]
+#
+# --store defaults to $PLASTIC_HOME/store ($PLASTIC_HOME defaults to ~/.plastic).
+# Prints one line: `filed <day>` or `skipped <day>: closed`. Exit 0 on success
+# and on any filing error (reported on stderr; the next boot tries again), 2 on
+# a usage error.
+
+require_relative "lib/session_ledger"
+require_relative "lib/session_backfill"
+
+def usage_abort(message)
+  warn "file-session-intent: #{message}"
+  exit 2
+end
+
+def next_value!(argv, i, flag)
+  value = argv[i + 1]
+  usage_abort("#{flag} needs a value") if value.nil? || value.start_with?("--")
+  value
+end
+
+opts = { day: nil, carry_to: nil, store: nil, templates: nil, author: "session" }
+i = 0
+while i < ARGV.length
+  case ARGV[i]
+  when "--day"       then opts[:day] = next_value!(ARGV, i, "--day"); i += 1
+  when "--carry-to"  then opts[:carry_to] = next_value!(ARGV, i, "--carry-to"); i += 1
+  when "--store"     then opts[:store] = next_value!(ARGV, i, "--store"); i += 1
+  when "--templates" then opts[:templates] = next_value!(ARGV, i, "--templates"); i += 1
+  when "--author"    then opts[:author] = next_value!(ARGV, i, "--author"); i += 1
+  else usage_abort("unknown argument #{ARGV[i].inspect}")
+  end
+  i += 1
+end
+
+usage_abort("--day is required") if opts[:day].nil?
+usage_abort("--day must be a real calendar date, YYYYMMDD") unless SessionLedger.valid_day_id?(opts[:day])
+if opts[:carry_to] && !SessionLedger.valid_day_id?(opts[:carry_to])
+  usage_abort("--carry-to must be a real calendar date, YYYYMMDD")
+end
+
+store = opts[:store] || File.join(File.expand_path(ENV.fetch("PLASTIC_HOME", "~/.plastic")), "store")
+templates = opts[:templates] || File.expand_path("../templates", __dir__)
+
+begin
+  result = SessionBackfill.file_day(store: store, day: opts[:day], templates: templates,
+                                    author: opts[:author], carry_to: opts[:carry_to])
+  puts(result == :closed ? "skipped #{opts[:day]}: closed" : "filed #{opts[:day]}")
+rescue StandardError => e
+  warn "file-session-intent: #{opts[:day]} not filed: #{e.class}: #{e.message}"
+end
+exit 0
