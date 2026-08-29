@@ -7,6 +7,7 @@ require "open3"
 require_relative "../scripts/lib/boot_banner"
 require_relative "../scripts/lib/qmd_sync"
 require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/session_ledger"
 
 # Unit coverage for the pure boot-banner renderer (intent 36a). Health is
 # injected, so these are fully hermetic — no doctor run, no ~/.claude, no ENV.
@@ -275,5 +276,97 @@ class SessionStartBridgePathTest < Minitest::Test
            "a live Active intent's bridge must survive purge_done_bridges"
     refute Bridge.intent_active?("231", store: @home),
            "home as the store field is what made a live intent look inactive"
+  end
+end
+
+# Intent 298, spec D4: hook-session-start opens or joins the day ledger and
+# writes the per-session pointer and heartbeat. Hermetic: PLASTIC_TMP isolates
+# the bridge write and CLAUDE_CODE_SESSION_ID is set explicitly per test.
+class SessionStartDayLedgerTest < Minitest::Test
+  HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
+
+  def setup
+    @home = Dir.mktmpdir("session-start-ledger-home")
+    @tmp = Dir.mktmpdir("session-start-ledger-tmp")
+    @index = File.join(@home, "INDEX.md")
+    File.write(@index, "# Index\n\n## Active\n\n## Future\n")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+    FileUtils.rm_rf(@tmp)
+  end
+
+  def store
+    File.join(@home, "store")
+  end
+
+  def run_hook(session_id: "sess-boot")
+    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => session_id },
+                   "ruby", HOOK, @index, @home, "global")
+  end
+
+  def test_first_boot_creates_day_file_writes_pointer_and_heartbeat
+    day = SessionLedger.day_id
+    out, _err, status = run_hook(session_id: "sess-boot-1")
+    assert_equal 0, status.exitstatus
+
+    assert File.exist?(SessionLedger.day_file(store, day)), ".sessions/<day>/<day>.md must be created"
+
+    sid = SessionLedger.short_session_id(nil, "sess-boot-1")
+    pointer = SessionLedger.pointer_path(store, sid)
+    assert File.exist?(pointer), "the per-session pointer must be written"
+    assert_equal day, File.read(pointer).strip, "current must be today's day id on first boot"
+    assert File.exist?(SessionLedger.heartbeat_path(store, sid)), "the heartbeat must be written"
+
+    ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+    assert_includes ctx, "day ledger #{day} joined"
+  end
+
+  def test_second_boot_joins_current_untouched_and_counts_are_correct
+    day = SessionLedger.day_id
+    run_hook(session_id: "sess-boot-2") # first boot: scaffolds the day and writes current
+
+    SessionLedger.append_line(SessionLedger.checklist_path(store, day),
+                               SessionLedger.checklist_line(:open, "aaaaaaaa", "global", "An open item"),
+                               header: SessionLedger.checklist_header(day))
+    SessionLedger.append_line(SessionLedger.checklist_path(store, day),
+                               SessionLedger.checklist_line(:pending, "aaaaaaaa", "global", "A pending item"),
+                               header: nil)
+
+    sid = SessionLedger.short_session_id(nil, "sess-boot-2")
+    pointer = SessionLedger.pointer_path(store, sid)
+    before = File.read(pointer)
+
+    out, _err, status = run_hook(session_id: "sess-boot-2") # second boot: joins
+    assert_equal 0, status.exitstatus
+    assert_equal before, File.read(pointer), "current must be untouched on a second boot"
+
+    ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+    assert_includes ctx, "1 open items, 1 pending"
+  end
+
+  def test_current_already_naming_an_intent_is_left_as_is
+    sid = SessionLedger.short_session_id(nil, "sess-boot-3")
+    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store, sid))
+    File.write(SessionLedger.pointer_path(store, sid), "42--some-intent\n")
+
+    out, _err, status = run_hook(session_id: "sess-boot-3")
+    assert_equal 0, status.exitstatus, out
+    assert_equal "42--some-intent", File.read(SessionLedger.pointer_path(store, sid)).strip,
+                 "current already names an intent; session-start must not overwrite it"
+  end
+
+  # hook-session-start takes its inputs as positional ARGV, never stdin, so this
+  # proves it boots cleanly with nothing on stdin at all and still derives a
+  # session id (env cleared here, so from the hook's own Process.pid).
+  def test_no_stdin_still_derives_a_session_id_and_exits_zero
+    out, _err, status = Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil },
+                                        "ruby", HOOK, @index, @home, "global")
+    assert_equal 0, status.exitstatus
+    assert JSON.parse(out)
+
+    entries = Dir.exist?(SessionLedger.tmp_root(store)) ? Dir.children(SessionLedger.tmp_root(store)) : []
+    refute_empty entries, "a session id must be derived from env or the hook's own pid, never skipped"
   end
 end

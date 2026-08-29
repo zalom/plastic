@@ -11,7 +11,7 @@ require_relative "../scripts/lib/bridge"
 # delivery.lock mtime through the write-path hooks. Hermetic: bridges live in
 # an injected PLASTIC_TMP; the intent store lives in a mktmpdir.
 class LockHeartbeatTest < Minitest::Test
-  GATE_CHECK = File.expand_path("../scripts/hook-gate-check", __dir__)
+  RECORD = File.expand_path("../scripts/hook-record", __dir__)
   LOCK_GATE = File.expand_path("../scripts/hook-lock-gate", __dir__)
 
   def setup
@@ -46,13 +46,24 @@ class LockHeartbeatTest < Minitest::Test
                    RbConfig.ruby, script, file, "sess-1")
   end
 
-  def test_gate_check_write_refreshes_the_lease
+  def run_record(file)
+    payload = JSON.generate("session_id" => "sess-1", "tool_input" => { "file_path" => file }, "cwd" => @home)
+    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil, "HOME" => @home },
+                   RbConfig.ruby, RECORD, stdin_data: payload)
+  end
+
+  # Intent 298, spec D3: record reads stdin JSON, never calls Bridge.discover_bridge,
+  # check_gate, or Lock.heartbeat for a write inside an intent directory (it stops
+  # after the decoupled savepoint append). The lease is refreshed upstream instead,
+  # by lock-gate's own PreToolUse allow path (test_lock_gate_allow_path_refreshes_the_lease
+  # below), which fires before every edit reaches record.
+  def test_record_write_inside_an_intent_dir_does_not_refresh_the_lease
     file = File.join(@intent_dir, "resources", "note.md")
     FileUtils.mkdir_p(File.dirname(file))
     File.write(file, "x")
-    run_hook(GATE_CHECK, file)
-    assert File.mtime(Lock.path(@intent_dir)) > @old,
-           "PostToolUse gate-check must heartbeat the owner's lock"
+    run_record(file)
+    assert_equal @old.to_i, File.mtime(Lock.path(@intent_dir)).to_i,
+                 "record no longer heartbeats the lock directly; lock-gate's PreToolUse allow path does"
   end
 
   def test_lock_gate_allow_path_refreshes_the_lease

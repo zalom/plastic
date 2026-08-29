@@ -168,7 +168,7 @@ trigger, not a new mechanism).
 
 The cycle-step savepoint ledger (intent 34) is a clear instance of this. `savepoint.md`
 is no longer a hand-written prose note; it is a deterministic, append-only, one-line-per-
-milestone ledger (newest at the bottom) that the `gate-check` hook writes automatically at
+milestone ledger (newest at the bottom) that the `record` hook writes automatically at
 each lifecycle boundary. That is the existing hook mechanism bound to the artifact-write
 trigger, with the ledger as a derived form-fix on top. It is sugar over the conventions,
 never a source of truth: state stays derivable from files-on-disk and the ledger is
@@ -184,7 +184,7 @@ a `(stage, milestone)` pair for idempotency (`Bridge.savepoint_recorded_pairs`):
   even a freshly parked future intent carries the first bookend deterministically;
 - **`started` pre-stage lines** (`Why started`, `How started`), appended by the PreToolUse
   `hook-savepoint-pre` the moment a stage's artifact is first written, plus an `Exec started`
-  companion emitted by `gate-check` when `checklist.md` lands (How ends, Exec begins, one event);
+  companion emitted by `record` when `checklist.md` lands (How ends, Exec begins, one event);
 - a **terminal `Done delivered|abandoned` line**, written by the completion path
   (`Bridge.append_terminal_savepoint`) as the intent transfers into INDEX's Completed/Abandoned
   section. Disposition lives in INDEX (no frontmatter status); the ledger echoes it.
@@ -357,11 +357,11 @@ hand it to the gate scripts as a second argument. `Bridge.resolve_session` then 
 first non-empty of three sources, in precedence order: the explicit stdin `session_id`, the
 `CLAUDE_CODE_SESSION_ID` environment variable, and a derived `auto-<digest>` key
 (`Bridge.derive_key`, a short SHA256 of `store/intent_id`). The derived key is deterministic,
-so a session-less arm and a later session-less gate-check resolve to the same bridge file
+so a session-less arm and a later session-less record resolve to the same bridge file
 instead of writing `plastic-.json` with a null session. `Bridge.write` now refuses an empty
 session, so a null-session bridge can never be persisted.
 
-The savepoint write is decoupled from bridge resolution (intent 52). `hook-gate-check` derives
+The savepoint write is decoupled from bridge resolution (intent 52). `hook-record` derives
 the intent directory straight from the written file path via `Bridge.intent_dir_for` (it walks
 up to the first ancestor matching `.../store/<id>--<slug>`) and appends the savepoint there
 BEFORE any bridge lookup. A missing bridge, an unset session, or a headless background run can
@@ -483,7 +483,7 @@ binary: success produces one line, error produces one line with a prompt to run
 `/plastic-doctor`. Sharing one renderer means the visible line and the model-facing line
 cannot drift.
 
-`hook-continue` follows the same two-channel shape for the dashboard (intent 125): it keeps
+`hook-capture` follows the same two-channel shape for the dashboard (intent 125): it keeps
 its existing `additionalContext` cockpit dump unchanged, and now also emits a top-level
 `systemMessage` one-line summary (counts, and the next big thing when there is one) from a
 pure `DashboardBanner` renderer. It degrades silently on any failure (subprocess, JSON,
@@ -503,7 +503,7 @@ axis (hard-block beats soft-steer beats advisory):
 Two honest caveats about the existing harnesses:
 
 - **The lifecycle gate runs after the write lands.** The strongest stage-gate
-  mechanism in the framework, `gate-check`, is wired as a PostToolUse hook: it
+  mechanism in the framework, `record`, is wired as a PostToolUse hook: it
   rejects the write *after* the file already exists on disk, so a brain that
   ignores the block leaves a half-written artifact behind. It checks lifecycle file
   *presence* (sentinel-aware since intent 60b), not the section form of those
@@ -727,9 +727,10 @@ Four coordinated pieces deliver that.
   or any session id, so it runs unconditionally including in headless and
   background sessions, which dissolves intent 60's D6 objection (the 60-era design
   no-opped without a bridge). It validates only the intent file, never
-  the sentinel placeholder lifecycle files. It coexists with the PostToolUse 4a1c1
-  backstop in `hook-gate-check`: the PreToolUse block makes the PostToolUse path a
-  no-op for the create case, so they never double-report.
+  the sentinel placeholder lifecycle files. Intent 298 dropped the PostToolUse
+  4a1c1 backstop this PreToolUse block used to coexist with (it was a duplicate
+  `IntentValidator` check inside `hook-gate-check`, now `record`): create-gate
+  is the sole validity check on the create path.
 - **Section-structure arm on `IntentValidator`.** `SANCTIONED_SECTIONS`
   (`## Intent`, `## Context`, `## Outcome`, `## Insights`, `## Links`, in order)
   plus a pure `validate_sections(body)` flag any unknown top-level `##` heading and
@@ -966,8 +967,10 @@ own isolation instead, deterministic and cwd-independent.
   (O_EXCL) and returns
   `:acquired/:owned/:held/:stale/:excluded/:corrupt`; freshness is the file
   mtime against `Lock::TTL_SECONDS` (1800 seconds), refreshed by
-  `Lock.heartbeat` from the write-path hooks (`hook-gate-check` and the
-  lock-gate allow path). The mtime is the sole heartbeat and freshness truth;
+  `Lock.heartbeat` from the lock-gate allow path (intent 298 dropped the
+  PostToolUse `record` hook's own heartbeat call: it never resolves a bridge,
+  so lock-gate's PreToolUse allow path, which fires before every edit, is the
+  sole refresh point now). The mtime is the sole heartbeat and freshness truth;
   provenance timestamps are descriptive only. `arm` acquires the lock, raising
   `Bridge::LockHeldError` with the resolving `plastic-lock` verb when it
   cannot, and fills the bridge's `lock` block as a cache; `disarm_auto`
@@ -1149,7 +1152,7 @@ close that gap.
   SAME `scripts/lib/edit_gates.rb` functions Claude's `hook-edit-gates` drives,
   so the two harnesses cannot drift. Two Codex-specific rules live only in that
   library: create-gate applies to Add operations only (Update, Delete, and Move
-  defer to the PostToolUse `gate-check` backstop), and savepoint-pre runs as its
+  defer to the PostToolUse `record` backstop), and savepoint-pre runs as its
   own first pass over every operation so its ledger line lands even when a
   later gate blocks the call. The five `scripts/hook-<gate>` CLI wrappers lose
   their last production caller but are retained on purpose as the per-gate

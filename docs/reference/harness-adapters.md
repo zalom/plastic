@@ -174,7 +174,7 @@ directory before any bridge lookup, so a milestone is recorded even when no brid
 session exists. The stage gates (Why needs the What complete, How needs `spec.md`, and
 so on) block out-of-order writes.
 
-`IntentValidator` is the artifact-validity backstop, run inside `hook-gate-check`
+`IntentValidator` is the artifact-validity backstop, run inside `hook-record`
 (built in intent 4a1c1). When the written file IS the intent file itself (the
 `<id>--<slug>.md` directly inside `store/<id>--<slug>/`, NOT `spec.md`, `plan.md`,
 `checklist.md`, `outcome.md`, or `savepoint.md`), the hook validates its frontmatter.
@@ -259,7 +259,7 @@ skills and agents checks.
 ### L2 live state (intent 199)
 
 `SessionStart` fires `session-start` and `check-update`; `UserPromptSubmit` fires
-`continue`, `future-intent-check`, `auto-arm`, and `power-tools`; `PreCompact` fires
+`capture` and `power-tools`; `PreCompact` fires
 `savepoint`. Each hook name is projected straight off the single `HookRegistry.events`
 source (108 D7), the same total-projection shape as the file-mutation gates above: a hook
 added to any of these three events on the Claude side lands in Codex's `hooks.json`
@@ -270,11 +270,11 @@ added to or renamed in any of these three events must be added there by hand. A 
 
 The stdin shape for these three events differs from `apply_patch`'s diff envelope: no
 `tool_input` at all, since none of the three is a tool call. `scripts/codex-hook` reuses the
-exact launcher files Claude already runs for these seven hooks (`hooks/session-start`,
-`hooks/check-update`, `hooks/continue`, `hooks/future-intent-check`, `hooks/auto-arm`,
-`hooks/power-tools`, `hooks/savepoint`) unmodified: each is already harness-agnostic, since it
+exact launcher files Claude already runs for these five hooks (`hooks/session-start`,
+`hooks/check-update`, `hooks/capture`, `hooks/power-tools`, `hooks/savepoint`) unmodified:
+each is already harness-agnostic, since it
 resolves `~/.plastic` off `$HOME` on its own and reads only the common stdin fields
-(`user_prompt` for the four `UserPromptSubmit` hooks) the official Codex hooks doc confirms
+(`user_prompt` for the `UserPromptSubmit` hook) the official Codex hooks doc confirms
 match Claude's schema for these events. The dispatcher's only adaptation is threading the
 payload's `session_id` into `CLAUDE_CODE_SESSION_ID` (Codex's own process env never carries
 it) and bounding the call with a timeout (`hooks/check-update`'s backgrounded network call no
@@ -339,7 +339,7 @@ for either yet.
 Registration writes `~/.codex/hooks.json` at USER scope (defeats the open worktree-scoped
 hook bug), derived from the single `HookRegistry` source so the Codex registration can never
 drift from Claude's independently of it. Every file-mutation gate (`code-gate`, `lock-gate`,
-`savepoint-pre`, `create-gate`) and the `gate-check` savepoint backstop collapse onto ONE
+`savepoint-pre`, `create-gate`) and the `record` savepoint backstop collapse onto ONE
 matcher, `apply_patch`, because it is Codex's sole file-mutation tool (every Codex edit
 reports `tool_name: "apply_patch"`; there is no `Edit`/`Write` tool to match). `hooks.json`
 is a partial-ownership file exactly like `AGENTS.md`: merged on install (a pre-existing user
@@ -353,9 +353,9 @@ once, and runs all five gates in-process through `scripts/lib/codex_edit_gates.r
 drives the same `scripts/lib/edit_gates.rb` functions Claude's `hook-edit-gates` drives. The
 cost went from eight processes per PreToolUse event (five registered commands, three of which
 started a nested child per file operation via `run_core`) to one; Codex's PostToolUse
-`gate-check` is unchanged and still costs two processes. Two Codex-specific rules live in the
+`record` is unchanged and still costs two processes. Two Codex-specific rules live in the
 Codex library and nowhere else: create-gate applies to Add operations only (Update, Delete,
-and Move defer to the PostToolUse `gate-check` backstop), and savepoint-pre runs as its own
+and Move defer to the PostToolUse `record` backstop), and savepoint-pre runs as its own
 first pass over every operation so its ledger line lands even when a later gate blocks the
 call. `HookRegistry.codex_hooks_json` derives the single `edit-gates` command's
 `statusMessage` from `events["PreToolUse"]` directly, the same source Claude's own registration
@@ -379,14 +379,14 @@ per file operation and runs the SAME `scripts/lib/edit_gates.rb` decision functi
 merged dispatcher runs, in-process, so the two harnesses cannot drift (intent 251). Their
 output contracts were already Codex-compatible verbatim (`permissionDecision:"deny"` for
 `lock-gate`, exit 2 for `code-gate`/`create-gate`, `decision:"block"` for the PostToolUse
-`gate-check` backstop, still a separate two-process path), and the dispatcher still relays
+`record` backstop, still a separate two-process path), and the dispatcher still relays
 stdout, stderr, and exit code unchanged. Evaluation runs in two passes over the ops:
 savepoint-pre first over every op (its ledger append stays unconditional even when a later
 op is denied), then the four denying gates per op, first deny wins, in Claude's fixed order.
 On a multi-file patch, a PreToolUse veto still denies the whole `apply_patch` call on the
 first violating file. `create-gate` validates born-complete content inline for Add operations
 on intent files only; Update, Delete, and Move operations defer to the PostToolUse
-`gate-check` backstop, which re-validates the intent file after the write lands, so nothing
+`record` backstop, which re-validates the intent file after the write lands, so nothing
 goes unchecked.
 
 `links-gate` (one of the five gates named in `HookRegistry::CODEX_GATE_TOOLS` since intent 251,

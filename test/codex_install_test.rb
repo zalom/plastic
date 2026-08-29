@@ -848,7 +848,7 @@ class CodexInstallTest < Minitest::Test
     # Intent 251: the five per-gate commands collapsed into one edit-gates
     # dispatcher command.
     assert commands.any? { |c| c.include?("codex-hook") && c.include?("edit-gates") }
-    assert commands.any? { |c| c.include?("codex-hook") && c.include?("gate-check") }
+    assert commands.any? { |c| c.include?("codex-hook") && c.include?("record") }
 
     pre_group = data["hooks"]["PreToolUse"].find { |g| g["matcher"] == "apply_patch" }
     refute_nil pre_group, "PreToolUse must register under the apply_patch matcher"
@@ -861,7 +861,7 @@ class CodexInstallTest < Minitest::Test
 
     data = JSON.parse(File.read(hooks_json_path))
     commands = all_codex_hook_commands(data)
-    %w[session-start check-update continue future-intent-check auto-arm power-tools savepoint].each do |name|
+    %w[session-start check-update capture power-tools savepoint].each do |name|
       assert commands.any? { |c| c.include?("codex-hook") && c.include?(name) },
         "expected a codex-hook command for '#{name}', got: #{commands.inspect}"
     end
@@ -1048,19 +1048,20 @@ class CodexInstallTest < Minitest::Test
   end
 
   # Intent 251: the case statement's arms collapsed from five per-gate names
-  # to exactly two, edit-gates and gate-check (spec D8, the dispatcher-shape
-  # constraint doctor's extractor is read against). edit-gates is no longer
-  # the LAST arm before the trailing else (gate-check is), so this fixture
-  # cuts from the edit-gates arm's start to the NEXT when clause's start,
-  # removing only that one arm and leaving gate-check and else intact.
+  # to exactly two, edit-gates and record (renamed from gate-check by intent
+  # 298, spec D8, the dispatcher-shape constraint doctor's extractor is read
+  # against). edit-gates is no longer the LAST arm before the trailing else
+  # (record is), so this fixture cuts from the edit-gates arm's start to the
+  # NEXT when clause's start, removing only that one arm and leaving record
+  # and else intact.
   def test_doctor_codex_hooks_implemented_fails_when_a_registered_gate_has_no_dispatcher_branch
     @core.distribute(:install) # copies the REAL scripts/codex-hook into plastic_home
     @core.install_for_agent("codex", false)
     content = File.read(codex_hook_path)
     branch_start = content.index('when "edit-gates"')
     refute_nil branch_start, "fixture assumption: scripts/codex-hook must still carry an edit-gates branch"
-    next_when_start = content.index('when "gate-check"', branch_start)
-    refute_nil next_when_start, "fixture assumption: scripts/codex-hook must still carry a gate-check branch"
+    next_when_start = content.index('when "record"', branch_start)
+    refute_nil next_when_start, "fixture assumption: scripts/codex-hook must still carry a record branch"
     File.write(codex_hook_path, content[0...branch_start] + content[next_when_start..])
 
     checks = doctor_for(@codex_home).check_agent_registration("codex")
@@ -1266,8 +1267,9 @@ class CodexInstallTest < Minitest::Test
       "fixture assumption: scripts/codex-hook must still declare STATE_HOOKS as a %w[...] literal"
 
     names = literal.split
-    assert_operator names.size, :>=, 7,
-      "expected at least the seven live-state hooks, got: #{names.inspect}"
+    assert_operator names.size, :>=, 5,
+      "expected at least the five live-state hooks (intent 298 merged continue, " \
+      "future-intent-check, and auto-arm into capture), got: #{names.inspect}"
 
     names.each do |name|
       path = File.join(@home, "hooks", name)

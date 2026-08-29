@@ -80,13 +80,13 @@ class HookRegistryTest < Minitest::Test
     HookRegistry::CODEX_GATE_TOOLS.each_value { |tools| assert_equal %w[apply_patch], tools }
   end
 
-  def test_codex_hooks_json_emits_post_tool_use_gate_check_under_apply_patch
+  def test_codex_hooks_json_emits_post_tool_use_record_under_apply_patch
     codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
 
     post_group = codex["PostToolUse"].first
     assert_equal "apply_patch", post_group["matcher"]
     names = post_group["hooks"].map { |h| h["command"][/codex-hook" (\S+)/, 1] }
-    assert_equal %w[gate-check], names
+    assert_equal %w[record], names
   end
 
   def test_codex_hooks_json_emits_bash_gate_under_bash_matcher
