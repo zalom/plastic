@@ -87,15 +87,13 @@ module HookRegistry
         ] },
       ],
       "PostToolUse" => [
-        { "matcher" => "Write|Edit", "hooks" => [
-          { "name" => "gate-check", "status" => "Checking lifecycle gates..." },
+        { "matcher" => WRITE_MATCHER, "hooks" => [
+          { "name" => "record", "status" => "Recording Plastic session state..." },
         ] },
       ],
       "UserPromptSubmit" => [
         { "matcher" => "", "hooks" => [
-          { "name" => "continue", "status" => "Checking for continue..." },
-          { "name" => "future-intent-check", "status" => "Checking future intents..." },
-          { "name" => "auto-arm", "status" => "Checking auto mode..." },
+          { "name" => "capture", "status" => "Capturing prompt into the session ledger..." },
           { "name" => "power-tools", "status" => "Checking power tools..." },
         ] },
       ],
@@ -119,7 +117,7 @@ module HookRegistry
   # top-level plus three nested run_core children); one dispatcher process
   # reaches the same five gate decisions.
   CODEX_PRE_HOOKS  = %w[edit-gates].freeze
-  CODEX_POST_HOOKS = %w[gate-check].freeze
+  CODEX_POST_HOOKS = %w[record].freeze
 
   # Codex's shell-tool gate hole (intent 203): bash-gate (denies a shell write to
   # project code before How) belongs on the Bash matcher, and ONLY Bash: the
@@ -206,6 +204,7 @@ module HookRegistry
   RETIRED_HOOK_NAMES = %w[
     code-gate create-gate links-gate lock-gate savepoint-pre
     qmd-search retrieval-gate model-instructions opus-manual
+    continue future-intent-check auto-arm gate-check
   ].freeze
 
   RETIRED_CLAUDE_LAUNCHERS = RETIRED_HOOK_NAMES.map { |n| "plastic-#{n}" }.freeze

@@ -283,13 +283,15 @@ class CodexHooksTest < Minitest::Test
     assert_equal 0, status.exitstatus, "trailing # plastic-ok must allow the edit"
   end
 
-  # ---- gate-check ----
+  # ---- record ----
 
-  def test_gate_check_blocks_out_of_order_plan
+  # Intent 298: record never blocks. A plan.md-before-spec.md write that used to
+  # trip gate-check's exit 2 now exits 0 with no decision key at all.
+  def test_record_never_blocks_a_condition_that_used_to_gate
     intent_dir = File.join(@store, "97--demo")
     FileUtils.mkdir_p(intent_dir)
     File.write(File.join(intent_dir, "97--demo.md"), "## Intent\nDemo\n")
-    File.write(File.join(@root, "INDEX.md"), "## Active\n- [97 — demo](97--demo/97--demo.md)\n\n## Future\n")
+    File.write(File.join(@root, "INDEX.md"), "## Active\n- [97 - demo](97--demo/97--demo.md)\n\n## Future\n")
 
     session = "test-#{Process.pid}-#{object_id}"
     silence_stderr do
@@ -298,12 +300,12 @@ class CodexHooksTest < Minitest::Test
 
     plan = File.join(intent_dir, "plan.md")
     body = patch(add_section(plan, "# Plan\n"))
-    out, status = run_hook("gate-check", codex_payload(body, session_id: session, event: "PostToolUse"), session: session)
-    assert_equal 2, status.exitstatus, "plan.md before spec.md must block: #{out}"
-    assert_includes out, '"decision":"block"'
+    out, status = run_hook("record", codex_payload(body, session_id: session, event: "PostToolUse"), session: session)
+    assert_equal 0, status.exitstatus, "record must never block: #{out}"
+    refute_includes out, '"decision"'
   end
 
-  def test_gate_check_allows_valid_stage_write_and_appends_savepoint
+  def test_record_allows_valid_stage_write_and_appends_savepoint
     intent_dir = File.join(@store, "98--demo")
     FileUtils.mkdir_p(intent_dir)
     File.write(File.join(intent_dir, "98--demo.md"), "## Intent\nDemo\n")
@@ -311,7 +313,7 @@ class CodexHooksTest < Minitest::Test
     File.write(spec, "# Spec\nreal\n")
 
     body = patch(add_section(spec, "# Spec\nreal\n"))
-    _out, status = run_hook("gate-check", codex_payload(body))
+    _out, status = run_hook("record", codex_payload(body))
     assert_equal 0, status.exitstatus
 
     ledger = File.read(File.join(intent_dir, "savepoint.md"))
@@ -528,19 +530,21 @@ class CodexHooksTest < Minitest::Test
       "the fixture must actually hold the pipes past STATE_TIMEOUT, or this test proves nothing"
   end
 
-  def test_continue_hook_returns_dashboard_context
+  # ---- capture (intent 298 merges continue, future-intent-check, auto-arm) ----
+
+  def test_capture_continue_returns_dashboard_context
     plastic_home = File.join(@fake_home, ".plastic")
     FileUtils.mkdir_p(File.join(plastic_home, "store"))
     File.write(File.join(plastic_home, "INDEX.md"), "# Index\n\n## Active\n\n## Future\n")
 
     payload = state_payload(event: "UserPromptSubmit", user_prompt: "continue")
-    out, status = run_hook("continue", payload)
+    out, status = run_hook("capture", payload)
     assert_equal 0, status.exitstatus
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
     assert_includes ctx, "plastic-continuing skill workflow"
   end
 
-  def test_future_intent_check_matches_a_future_intent_keyword
+  def test_capture_matches_a_future_intent_keyword
     plastic_home = File.join(@fake_home, ".plastic")
     intent_dir = File.join(plastic_home, "store", "50--demo-widget")
     FileUtils.mkdir_p(intent_dir)
@@ -559,16 +563,16 @@ class CodexHooksTest < Minitest::Test
       "# Index\n\n## Active\n\n## Future\n- [50 - Demo widget feature](store/50--demo-widget/50--demo-widget.md)\n")
 
     payload = state_payload(event: "UserPromptSubmit", user_prompt: "let's talk about the widget feature today")
-    out, status = run_hook("future-intent-check", payload)
+    out, status = run_hook("capture", payload)
     assert_equal 0, status.exitstatus
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
     assert_includes ctx, "Future intents related to this message"
     assert_includes ctx, "widget"
   end
 
-  def test_auto_arm_flags_auto_trigger_phrase
+  def test_capture_flags_auto_trigger_phrase
     payload = state_payload(event: "UserPromptSubmit", user_prompt: "take it from here")
-    out, status = run_hook("auto-arm", payload)
+    out, status = run_hook("capture", payload)
     assert_equal 0, status.exitstatus
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
     assert_includes ctx, "Invoke the plastic-auto skill"
@@ -693,7 +697,7 @@ class CodexHooksTest < Minitest::Test
   def test_state_hook_missing_session_id_does_not_crash
     payload = state_payload(event: "UserPromptSubmit", user_prompt: "hello there friend, nothing to see")
     payload.delete("session_id")
-    out, status = run_hook("auto-arm", payload)
+    out, status = run_hook("capture", payload)
     assert_equal 0, status.exitstatus
     assert_empty out.strip, "no trigger phrase and no session bridge -> silent, never a crash"
   end

@@ -6,10 +6,12 @@
 require "json"
 require "date"
 require "yaml"
+require "fileutils"
 require_relative "lib/bridge"
 require_relative "lib/boot_banner"
 require_relative "lib/qmd_sync"
 require_relative "lib/doctor_core"
+require_relative "lib/session_ledger"
 
 index_path, plastic_home, mode, plugin_root = ARGV
 exit 0 unless index_path && plastic_home && mode
@@ -300,6 +302,41 @@ end
 
 if update_notice
   parts.unshift("! #{update_notice}\n")
+end
+
+# --- Session day ledger: open or join today, write the per-session pointer
+# and heartbeat (intent 298, spec D4). Best-effort: any failure here degrades
+# to no ledger context line, never blocks the session.
+begin
+  templates = File.expand_path("../templates", __dir__)
+  day = SessionLedger.day_id
+  author = `"#{read_config}" author`.strip
+  author = "session" if author.empty?
+  SessionLedger.open_day(store: store_dir, day: day, templates: templates, author: author)
+
+  session = ENV["CLAUDE_CODE_SESSION_ID"] || Process.pid.to_s
+  sid = SessionLedger.short_session_id(nil, session)
+  SessionLedger.ensure_tmp_root(store_dir)
+  FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store_dir, sid))
+  File.write(SessionLedger.heartbeat_path(store_dir, sid), "#{Time.now.utc.iso8601}\n")
+  pointer = SessionLedger.pointer_path(store_dir, sid)
+  File.write(pointer, "#{day}\n") unless File.exist?(pointer)
+
+  checklist = SessionLedger.checklist_path(store_dir, day)
+  open_count = 0
+  pending_count = 0
+  if File.exist?(checklist)
+    File.readlines(checklist).each do |line|
+      parsed = SessionLedger.parse_checklist_line(line)
+      next unless parsed
+
+      open_count += 1 if parsed[:state] == :open
+      pending_count += 1 if parsed[:state] == :pending
+    end
+  end
+  parts << "PLASTIC: day ledger #{day} joined (#{open_count} open items, #{pending_count} pending)"
+rescue StandardError
+  nil
 end
 
 # Emit nothing when there is genuinely nothing to surface (no conventions,
