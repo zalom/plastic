@@ -62,39 +62,16 @@ intents, then open the authoritative intent file for the hit you take over. The 
 when QMD is absent, so fall back to the existing INDEX.md / file scan. (This is discovery; the
 reindex step under Completion is separate.)
 
-## Tiers (proportional auto sizing)
+## Sizing (there is only work)
 
-Auto mode sizes every intent S/M/L at Why, deterministically, then matches agent topology
-and artifact depth to that size. Extended walkthrough: `references/tiers.md`.
-
-1. **Sizing rule.** S = single mechanism or file cluster (hours). M = one subsystem (a
-   day). L = cross-cutting or novel design.
-2. **Two levers.** Speed comes only from artifact content DEPTH and agent TOPOLOGY. The
-   same-structure invariant (same file set, stage order, gates, savepoint ledger) holds at
-   every tier and in both modes. A three-line spec.md is still a spec.md, in the same
-   place, under the same gate.
-3. **Per-tier topology.** S/M: one thinker agent, one boot, two stations, sonnet
-   executor; the thinker writes at least one real action file (one consolidated
-   `actions/ACTION_1.md`), never an empty `actions/`. That executor runs as ONE dispatch
-   for the whole consolidated action, with no per-task two-stage review loop
-   (`plastic-intent-executing` holds that gate). S cuts two more things: it skips the QMD
-   discovery deposit when chain and sources are both empty AND a size of S is already on
-   record (a stamped `Tier: S` line in spec.md), which a first activation does not have,
-   and it sends ONE mid-flight owner briefing, at How. M and L send all four. L: today's
-   full team (`## Team Spin-Up` below), one `actions/ACTION_N.md` per task, and a per-task
-   implementer plus two-stage review.
-4. **Never-cut list**, any tier or mode: the independent reviewer (separate agent, fresh
-   context, never the maker), `outcome.md` as truth of delivery, the delivery lock,
-   worktree isolation, intent creation via skill, INDEX as status truth, the QMD reindex
-   at End. Lightness is about ceremony, never about these guarantees.
-5. **Tier record.** `Tier: S|M|L` at the top of spec.md. Convention-only: read by the
-   orchestrator, never validated by any gate or by doctor. A separate
-   `Settled: yes (<reason>)` line may sit directly beneath the `Tier:` line; an absent
-   line means not settled, and settledness is independent of scope.
-
-Read `../plastic-conventions/references/tiers-and-dispatch.md` for tier sizing, agent-model
-config, advisor routing, and the auto-mode human report contract behind the sizing above. This
-path resolves relative to this skill's own installed directory.
+There is no intent tier (removed in 2.0, intent 304). Every auto delivery runs the same
+shape: the orchestrator writes the action files from the spec, one executor dispatch
+implements the consolidated action, a separate reviewer with fresh context reviews the result.
+Depth follows the work, not a letter: a three-line spec.md is still a spec.md, in the same
+place. The never-cut list, any mode: the independent reviewer (separate agent, fresh context,
+never the maker), `outcome.md` as truth of delivery, the delivery lock, worktree isolation,
+intent creation via skill, INDEX as status truth, the QMD reindex at End. Lightness is about
+ceremony, never about these guarantees.
 
 ## Arm the Lifecycle Gate (do this FIRST)
 
@@ -130,23 +107,19 @@ single-owner lock, claims, worktrees, solo mode, and the station ledger behind t
 
 ## Team Spin-Up
 
-This is the L-tier shape (see `## Tiers` above); S/M collapse it to one thinker agent.
-
 Auto mode spins up exactly ONE enforcer-led team per intent. The plastic-enforcer IS this orchestrator (you), not a separately dispatched agent, which avoids the who-gates-the-gater regress.
 
-Roster (one role per cycle stage):
+Roster (the stage agents were removed in 2.0, intent 304):
 
-- **plastic-brainstorming** (Why exploration): enriches `## Context` + `### Decisions`
-- **plastic-spec-specialist** (`spec.md`)
-- **plastic-planner** (`plan.md` + `actions/` + `checklist.md`)
+- **plastic-enforcer** (orchestrates, writes the Why and How artifacts itself; that is YOU)
 - **plastic-executor** (code + checklist + `## Insights`)
-- **plastic-enforcer** (orchestrates + gates; that is YOU)
+- the on-request reviewer, dispatched from `plastic-intent-executing`'s reviewer prompts
 
 Dispatch rule: sequential, one specialist per stage on one branch (the deliverables share files). Gate each deliverable against the stage's exit criteria before handing off. The How and Exec phases below default to Plastic's native dispatch (`plastic-intent-executing`) and delegate to the superpowers skills only when they are available or the user asks; do not restate the phase mechanics here.
 
 Spawn preamble (live-state injection): before dispatching any specialist, run `scripts/spawn-preamble <intent_dir> --role <role>` and PREPEND its output to that specialist's prompt. The preamble is a deterministic, filesystem-only snapshot of the active intent (id, intent line, current stage, and the provisioned code worktree path when one exists on disk) plus the honoring instruction, so every spawned agent boots with accurate live state instead of guessing. This is the authoritative L2 mechanism for harnesses whose sub-agents do not inherit a top-level session event (see [`harness-adapters.md`](https://github.com/zalom/plastic/blob/main/docs/reference/harness-adapters.md)).
 
-Dispatch-time model contract (belt-and-braces): alongside the preamble, resolve each specialist's model through the config chain (`read-config agents.models.<basename> --project <repo>`: project override, then global, then the shipped tier default) and pass it explicitly at dispatch. Never rely on the dispatched role's frontmatter alone; a resolved subagent model is never Fable,
+Dispatch-time model contract (belt-and-braces): alongside the preamble, resolve each specialist's model through the config chain (`read-config agents.models.<basename> --project <repo>`: project override, then global, then the shipped default) and pass it explicitly at dispatch. Never rely on the dispatched role's frontmatter alone; a resolved subagent model is never Fable,
 unless an explicit `agents.models.<name>` config override names Fable for that role, in which
 case the override is honored as written. The two advisors, `plastic-advisor` and
 `plastic-faux-advisor`, are not lifecycle stage roles: the never-Fable rule governs stage
@@ -251,21 +224,21 @@ Then proceed to How.
 
 ## How Phase
 
-Every tier runs all four steps below (see `## Tiers` above). The `actions/` directory is
-scaffolded (with a `.gitkeep`) at intent birth; the planner then writes at least one REAL
-`ACTION_N.md` into it at every tier. The tier only changes step 3's granularity: S/M write
-one consolidated `actions/ACTION_1.md`, L writes one `actions/ACTION_N.md` per task. A
-`.gitkeep`-only or empty `actions/` fails the How gate.
+Every delivery runs all four steps below. The `actions/` directory is scaffolded (with a
+`.gitkeep`) at intent birth; the orchestrator then writes at least one REAL `ACTION_N.md` into
+it, one consolidated `actions/ACTION_1.md` by default, one per task only when the tasks are
+independent enough to dispatch in parallel. A `.gitkeep`-only or empty `actions/` is not a
+finished How.
 
 1. If `superpowers:writing-plans` is available as a skill, delegate plan creation to it. Tell it the plan saves to the active intent's directory (not `docs/superpowers/plans/`).
 2. Otherwise, write `plan.md` directly - implementation plan with numbered tasks
-3. Write at least one real `ACTION_N.md` into the existing `actions/` directory, self-contained (S/M: one consolidated `ACTION_1.md`; L: one per task)
+3. Write at least one real `ACTION_N.md` into the existing `actions/` directory, self-contained (one consolidated `ACTION_1.md` by default)
 4. Write `checklist.md` - execution registry with checkboxes covering all actions
-5. Notify user (How briefing, every tier): brief per `references/human-report-contract.md`
+5. Notify user (How briefing): brief per `references/human-report-contract.md`
    (State: the plan shape, task count and what it builds; Risk: the riskiest task or
-   dependency; Call: approve the plan to build). At S this is the ONE mid-flight briefing:
-   fold into the same three lines what the What and Why briefings would have said (the work
-   picked up, the approach chosen), and send it here, with the plan ready and before any
+   dependency; Call: approve the plan to build). For small work this is the ONE mid-flight
+   briefing: fold into the same three lines what the What and Why briefings would have said
+   (the work picked up, the approach chosen), and send it here, with the plan ready and before any
    code is written.
 
 Then proceed to Exec.
@@ -355,11 +328,11 @@ the End-stage tail the steps below walk through.
    lock, so exit 0 means both are done. Pass
    `--session` (this session's id, or rely on the `CLAUDE_CODE_SESSION_ID` fallback) so
    disarm resolves the right bridge, and `--index-note` with a rich Completed/Abandoned entry
-   description (mode/tier, what shipped or why abandoned, suite result):
+   description (mode, what shipped or why abandoned, suite result):
    ```bash
    ruby ~/.plastic/scripts/end-intent --store <store_path> --id <ID> --disposition delivered \
      --session "$CLAUDE_CODE_SESSION_ID" \
-     --index-note "<mode, tier>; <what shipped>; <suite result>"
+     --index-note "<mode>; <what shipped>; <suite result>"
    ```
    (Use `--disposition abandoned` when the intent is being moved to `## Abandoned`.) A
    non-zero exit needs attention before moving on: 4 means a live foreign session holds the
@@ -382,8 +355,7 @@ If the agent gets stuck (can't resolve a gap, dependency is missing, tests fail 
 
 ## References
 
-- Read `references/agent-architecture.md` for the full team model (the 5-role enforcer-led team, per-stage handoffs, gate ownership, headless note, solo fallback) and the orchestrator hierarchy (Main Orchestrator, Project Orchestrators, coordination loop) when spinning up the team or understanding autonomous delivery scope
-- Read `references/tiers.md` for the extended per-tier walkthrough (S/M/L worked examples, the collapsed one-thinker flow, the QMD-skip case for S) and rationale
+- Read `references/agent-architecture.md` for the team model (the enforcer-led team, handoffs, headless note, solo fallback) and the orchestrator hierarchy (Main Orchestrator, Project Orchestrators, coordination loop) when spinning up the team or understanding autonomous delivery scope
 - Read `references/human-report-contract.md` for the human-facing per-stage briefing (the
   State/Risk/Call skeleton used at each "Notify user" step above, and how it differs from the
   internal `agent-report-contract.md`)

@@ -59,10 +59,6 @@ class CodexInstallContentTest < Minitest::Test
   # survive on a Codex install). An entry that stops matching anything is a dead entry
   # and fails test_no_dead_allowlist_entries below.
   ALLOWED = [
-    ["plastic-skill-creating/references/hooks.md", "${CLAUDE_PLUGIN_ROOT}",
-     "Spec D3. These two lines explain Claude Code's placeholder convention TO SKILL " \
-     "AUTHORS. Rewriting the token would turn a true sentence into a false one, and " \
-     "nothing on Codex executes them."],
     ["plastic-uninstall/SKILL.md", "~/.claude/hooks/plastic-*",
      "Spec D5. Codex installs no per-agent hook launchers, so there is no Codex path to " \
      "substitute. The correct Codex text is a rewrite of the surrounding sentence, which " \
@@ -126,12 +122,6 @@ class CodexInstallContentTest < Minitest::Test
     refute_includes auto_skill, "CLAUDE_PLUGIN_ROOT"
   end
 
-  def test_skill_authoring_docs_keep_the_placeholder
-    installed = File.join(@skills_root, "plastic-skill-creating", "references", "hooks.md")
-    source = File.join(SKILLS_SRC, "skill-creating", "references", "hooks.md")
-    assert_equal Digest::SHA256.file(source).hexdigest, Digest::SHA256.file(installed).hexdigest
-  end
-
   def test_claude_roots_are_rewritten
     uninstall_skill = File.read(File.join(@skills_root, "plastic-uninstall", "SKILL.md"))
     doctor_skill = File.read(File.join(@skills_root, "plastic-doctor", "SKILL.md"))
@@ -146,14 +136,12 @@ class CodexInstallContentTest < Minitest::Test
 
   def test_near_miss_paths_survive_untouched
     auto_skill = File.read(File.join(@skills_root, "plastic-auto", "SKILL.md"))
-    gates_stuck = File.read(File.join(@skills_root, "plastic-doctor", "references", "gates-stuck-detection.md"))
 
     assert_includes auto_skill, "../plastic-conventions/references/"
-    assert_includes gates_stuck, "/tmp/plastic-{session}.json"
   end
 
   def test_shared_fragments_are_never_transformed
-    %w[_active-intent-gate.md _decision-tables.md].each do |name|
+    %w[_decision-tables.md].each do |name|
       installed = File.join(@home, name)
       source = File.join(SKILLS_SRC, name)
       assert_equal Digest::SHA256.file(source).hexdigest, Digest::SHA256.file(installed).hexdigest,

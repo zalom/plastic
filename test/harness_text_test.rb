@@ -7,7 +7,7 @@ require_relative "../scripts/lib/harness_text"
 # Intent 239: the Codex install-time text transform. Pure String to String, no IO.
 class HarnessTextTest < Minitest::Test
   NAMES = %w[auto conventions dashboard doctor intent-creating intent-continuing
-             continuing skill-creating uninstall].freeze
+             uninstall].freeze
 
   def codex(text, rel_path: "auto/SKILL.md")
     HarnessText.for_codex(text, rel_path: rel_path, skill_names: NAMES)
@@ -24,11 +24,6 @@ class HarnessTextTest < Minitest::Test
   def test_template_path
     assert_equal "from $HOME/.plastic/templates/outcome.md.",
       codex('from ${CLAUDE_PLUGIN_ROOT}/templates/outcome.md.')
-  end
-
-  def test_d3_exemption
-    text = '${CLAUDE_PLUGIN_ROOT}'
-    assert_equal text, codex(text, rel_path: "skill-creating/references/hooks.md")
   end
 
   def test_skills_root
@@ -85,7 +80,7 @@ class HarnessTextTest < Minitest::Test
   end
 
   def test_no_trailing_hyphen_bleed
-    text = "/plastic-continuing-x"
+    text = "/plastic-doctor-x"
     assert_equal text, codex(text)
   end
 

@@ -9,7 +9,7 @@ require "json"
 require_relative "../scripts/doctor"
 
 # Intent 110 - the section_structure and graph_i4_danglers doctor checks must
-# route to the sanctioned 107 remedy: dispatch plastic-store-curating to relocate
+# route to the sanctioned 107 remedy: relocate
 # the item into the intent's revisions.md via move-and-record. doctor.rb stays
 # read-only (emits fix_hint only). Hermetic temp homes, no eval, no ENV seam.
 class DoctorRevisionsRemedyTest < Minitest::Test
@@ -58,7 +58,7 @@ class DoctorRevisionsRemedyTest < Minitest::Test
     assert_equal true, check[:fixable]
     assert check[:fix_hint], "expected a fix_hint on the section_structure warn"
     assert_includes check[:fix_hint], "revisions.md"
-    assert_includes check[:fix_hint], "plastic-store-curating"
+    assert_includes check[:fix_hint], "move-and-record"
   end
 
   # A dangling chain/sources edge makes graph_i4_danglers a warn whose fix_hint
@@ -73,7 +73,7 @@ class DoctorRevisionsRemedyTest < Minitest::Test
     assert_equal true, check[:fixable]
     assert check[:fix_hint], "expected a fix_hint on the graph_i4_danglers warn"
     assert_includes check[:fix_hint], "revisions.md"
-    assert_includes check[:fix_hint], "plastic-store-curating"
+    assert_includes check[:fix_hint], "move-and-record"
   end
 
   # A clean store keeps both checks green (no false positives from the fixtures).

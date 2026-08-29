@@ -14,7 +14,7 @@ require "yaml"
 # `project.yml` (from templates/project.yml). Re-running never clobbers existing
 # files. The logic was migrated here from the orphaned
 # `InstallerCore#bootstrap_project_store` so there is one definition that the
-# `provision-project-store` CLI, the `plastic-store-provisioning` skill, the
+# `provision-project-store` CLI, the `plastic-doctor` skill's provisioning section, the
 # doctor fix hint, and the project skills all consult.
 #
 # Pure filesystem and dependency-injected: `provision` accepts an injectable

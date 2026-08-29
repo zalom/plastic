@@ -1,8 +1,8 @@
 # Per-Section Fill Rules
 
-The single shared method for turning the enriched Why into `spec.md`. Both
-`plastic-intent-speccing` (guided) and the `plastic-spec-specialist` agent (auto) point here;
-neither restates these rules. One fill rule per template section, in template order.
+The single shared method for turning the rulings into `spec.md`. `plastic-intent-speccing`
+(the thinking conversation) and the auto orchestrator both point here; neither restates these
+rules. One fill rule per template section, in template order.
 
 Read the ruling ledger first (built in step 2 of the SKILL.md sequence): `## Context` plus
 `### Decisions`, then `## Insights` newest-last (a later ruling supersedes an earlier
@@ -24,7 +24,7 @@ delivering a specific outcome.
 
 One bullet per goal, each a concrete, observable outcome the delivery must reach. Encode every
 Decision that commits to an outcome as its own bullet, do not compress two Decisions into one
-vague goal. A single-line collapsed Goals section (S/M tier) is complete if it names every
+vague goal. A single-line collapsed Goals section is complete if it names every
 outcome; do not pad it with restated Problem text.
 
 ## 3. Non-Goals

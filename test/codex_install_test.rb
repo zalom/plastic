@@ -377,7 +377,7 @@ class CodexInstallTest < Minitest::Test
   end
 
   def test_reasoning_roles_get_stronger_model_and_higher_effort_than_executors
-    reasoning = @core.codex_model_fields(AgentModels::TIER_DEFAULTS["plastic-planner"])  # opus
+    reasoning = @core.codex_model_fields(AgentModels::TIER_DEFAULTS["plastic-enforcer"])  # opus
     executor  = @core.codex_model_fields(AgentModels::TIER_DEFAULTS["plastic-executor"]) # sonnet
     assert_includes reasoning, 'model = "gpt-5.6-sol"'
     assert_includes reasoning, 'model_reasoning_effort = "high"'

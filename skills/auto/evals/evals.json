@@ -132,13 +132,13 @@
       "scope": "triggering",
       "set": "validation",
       "prompt": "what's the status of my active intents?",
-      "expected_output": "Does NOT activate plastic-auto; this is a read/intent-continuing/store-indexing query.",
+      "expected_output": "Does NOT activate plastic-auto; this is a read/intent-continuing query.",
       "files": [],
       "assertions": [
         {
           "type": "code",
           "check": "router CHOICE != plastic-auto",
-          "observed": "plastic-store-indexing",
+          "observed": "plastic-intent-continuing",
           "result": "pass"
         }
       ]
@@ -170,12 +170,12 @@
       "scope": "behavior",
       "set": "train",
       "prompt": "Active intent X exists. Deliver it in auto mode on a harness that supports subagents.",
-      "expected_output": "Spins up one enforcer-led team per intent (brainstorming, spec-specialist, planner, executor, plastic-enforcer). The enforcer IS the orchestrator. Dispatches one specialist per stage sequentially on one branch, gating each deliverable (Context+Decisions, then spec.md, then plan.md+actions+checklist, then code) against the stage exit criteria before handoff, and dispatches an independent reviewer subagent at the final gate only.",
+      "expected_output": "Spins up one enforcer-led team per intent (plastic-enforcer, executor, an on-request reviewer). The enforcer IS the orchestrator: it writes spec.md, the action files, and checklist.md itself, dispatches one executor for the consolidated action on one branch, and dispatches an independent reviewer subagent at the final gate only.",
       "files": [],
       "assertions": [
         {
           "type": "human",
-          "check": "five-role roster spun up; specialists dispatched stage-sequentially with per-stage gating; independent reviewer only at final gate",
+          "check": "enforcer writes Why and How itself; one executor dispatched; independent reviewer only at final gate",
           "observed": "dogfood: intents 60-62 delivered by exactly this enforcer-led team on a shared branch",
           "result": "pass"
         },

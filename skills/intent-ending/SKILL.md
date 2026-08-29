@@ -65,7 +65,7 @@ for orchestrator-owned or completion-tracking items.
    - links projection - run
      `ruby ~/.plastic/scripts/maintenance-run --tool project-links --intent <id> --apply`.
    - a savepoint issue - advisory only (WARN, never blocks): run
-     `plastic-intent-savepoint` to rebuild via `Savepoint.rebuild_savepoint` if
+     `Savepoint.rebuild_savepoint` if
      you want it clean, but it never refuses the close on its own.
    Then re-run `scripts/end-intent`.
 
@@ -77,7 +77,7 @@ place): copy `templates/outcome.md`, set the frontmatter to
 `## Delivered`, `## Verification`, `## Follow-ups`. On abandon, `## Summary`
 states the abandonment reason and the trail (see Pivot below). Also author
 the rich INDEX entry note now (a short line in the store's existing
-Completed/Abandoned convention: mode/tier, what shipped or why it was
+Completed/Abandoned convention: mode, what shipped or why it was
 abandoned, suite result, merge/spawn notes); content authoring stays with
 you, `--index-note` only appends what you write.
 
@@ -171,8 +171,7 @@ historical record of what was planned.
 
 ## Routing
 
-`plastic-releasing`, `plastic-auto`, `plastic-intent-executing`, the curator
-agent, `store-curating`, and `store-indexing` all delegate their mechanical
+`plastic-releasing`, `plastic-auto`, and `plastic-intent-executing` all delegate their mechanical
 close to this skill (or call `scripts/end-intent` directly for steps 1-5).
 None of them restate the outcome/INDEX/savepoint/disarm prose inline any
 more; if you find one that does, that surface has drifted and should route

@@ -12,13 +12,7 @@ module AgentModels
   # file basenames without the `.md` extension.
   TIER_DEFAULTS = {
     "plastic-enforcer" => "opus",
-    "plastic-brainstorming" => "opus",
-    "plastic-planner" => "opus",
-    "plastic-spec-specialist" => "sonnet",
-    "plastic-executor" => "sonnet",
-    "plastic-intent-curator" => "sonnet",
-    "plastic-future-intent-researcher" => "sonnet",
-    "plastic-intent-discovery" => "sonnet"
+    "plastic-executor" => "sonnet"
   }.freeze
 
   # The two advisor agents (intent 185 final design): plastic-advisor (the real

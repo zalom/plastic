@@ -135,7 +135,7 @@ class CaptureHookTest < Minitest::Test
     assert_equal 0, status.exitstatus, out
     parsed = JSON.parse(out)
     assert_equal "UserPromptSubmit", parsed.dig("hookSpecificOutput", "hookEventName")
-    assert_includes parsed.dig("hookSpecificOutput", "additionalContext"), "plastic-continuing skill workflow"
+    assert_includes parsed.dig("hookSpecificOutput", "additionalContext"), "plastic-intent-continuing skill workflow"
     assert parsed.key?("systemMessage")
   end
 
@@ -244,7 +244,7 @@ class CaptureHookTest < Minitest::Test
 
     assert_equal 0, status.exitstatus, out
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext").to_s
-    refute_includes ctx, "plastic-continuing skill workflow",
+    refute_includes ctx, "plastic-intent-continuing skill workflow",
                     "no dashboard.rb means no cockpit context"
     assert_includes ctx, "Invoke the plastic-auto skill",
                     "a missing dashboard must not suppress another job's context"

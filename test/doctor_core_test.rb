@@ -510,12 +510,12 @@ class DoctorAgentModelDriftTest < Minitest::Test
   end
 
   def test_sanctioned_override_is_listed_as_pass_even_when_frontmatter_differs
-    default = AgentModels::TIER_DEFAULTS["plastic-brainstorming"]
-    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-brainstorming", model: default)
+    default = AgentModels::TIER_DEFAULTS["plastic-executor"]
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-executor", model: default)
     # Sanctioned override differs from both the shipped default and the
     # installed frontmatter (mirrors the real ~/.plastic/config.yml override,
-    # mihradesign intent 24: plastic-brainstorming -> fable).
-    write_global_config("plastic-brainstorming" => "fable")
+    # mihradesign intent 24: plastic-executor -> fable).
+    write_global_config("plastic-executor" => "fable")
 
     checks = doctor.check_agent_model_drift("claude")
     drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
@@ -523,7 +523,7 @@ class DoctorAgentModelDriftTest < Minitest::Test
     refute_nil drift_check
     assert_equal "pass", drift_check[:status],
       "a sanctioned override must never be flagged, even if frontmatter has not caught up yet"
-    assert drift_check[:details].any? { |d| d.include?("plastic-brainstorming") && d.include?("fable") },
+    assert drift_check[:details].any? { |d| d.include?("plastic-executor") && d.include?("fable") },
       "expected the sanctioned override to be LISTED, got: #{drift_check[:details].inspect}"
   end
 

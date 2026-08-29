@@ -36,9 +36,9 @@ class InstallerAgentModelsTest < Minitest::Test
   end
 
   def test_global_override_applies_absent_project
-    g = { "agents" => { "models" => { "plastic-planner" => "haiku" } } }
+    g = { "agents" => { "models" => { "plastic-executor" => "haiku" } } }
     map = AgentModels.override_map(project_config: {}, global_config: g)
-    assert_equal "haiku", map["plastic-planner"]
+    assert_equal "haiku", map["plastic-executor"]
   end
 
   def test_unknown_agent_key_is_ignored_without_raising

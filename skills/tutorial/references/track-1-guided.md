@@ -35,7 +35,7 @@ tool, never written by hand.
 
 ### 2. Board the intent
 
-Type `/plastic-intent-starting`.
+Type `/plastic-intent-continuing` and name the intent.
 
 Artifact: a delivery lock (a `delivery.lock` file in the intent directory) naming this
 session as the one owner, and a line in `savepoint.md` recording the stage. The agent then
@@ -46,8 +46,8 @@ sessions from editing the same intent at the same time.
 
 ### 3. Why, rulings one at a time
 
-Type `/plastic-intent-brainstorming` (or `/plastic-intent-grilling` for a harder,
-interview-style pass over the same ground). It asks conversational prose questions, one at a
+Type `/plastic-intent-speccing` (say "grill me" for a harder, interview-style pass over
+the same ground). It asks conversational prose questions, one at a
 time, never a multiple-choice menu, and answers them one at a time in return.
 
 Artifact: `## Context` and `### Decisions` in the intent file fill in as each answer lands, and
@@ -62,21 +62,19 @@ is already sitting in `### Decisions` and in `## Insights`, in writing.
 
 Type `/plastic-intent-speccing`.
 
-Artifact: `spec.md`, stamped with a tier (`S`, for this small worked example) and its eight
-sections filled from the rulings recorded in station 3.
+Artifact: `spec.md`, its eight sections filled from the rulings recorded in station 3.
 
-Checkpoint: name the stamped tier and point at one sentence in `spec.md` that traces back to
-an answer given in station 3.
+Checkpoint: point at one sentence in `spec.md` that traces back to an answer given in
+station 3.
 
 ### 5. Plan
 
-Type `/plastic-intent-planning`.
+Ask the same conversation to write the action files and the plan.
 
-Artifact: `plan.md`, `checklist.md`, and at least one real `actions/ACTION_N.md`. At the S
-tier used here, the planner consolidates the whole delivery into a single
-`actions/ACTION_1.md` (the ordered steps plus the exact changes); the L tier (many
-independent tasks, dispatched in parallel) instead gets one `actions/ACTION_N.md` file per
-task. `checklist.md` follows a fixed form: tasks start under `## In Progress`, move to
+Artifact: `plan.md`, `checklist.md`, and at least one real `actions/ACTION_N.md`. A small
+delivery like this one consolidates the whole delivery into a single `actions/ACTION_1.md`
+(the ordered steps plus the exact changes); many independent tasks, dispatched in parallel,
+instead get one `actions/ACTION_N.md` file per task. `checklist.md` follows a fixed form: tasks start under `## In Progress`, move to
 `## Completed` as they land, and a `## Session Log` table records what happened each session.
 A task that depends on an owner decision landing first (a destructive step, a structural
 ruling) gets an `[ORCHESTRATOR]` prefix and blocks every other item until that decision is

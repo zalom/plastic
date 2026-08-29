@@ -73,8 +73,8 @@ of influence (sources/chain/tags) and the `## Links` projection rules.
 | Stage | Section | Deliverable | Detail |
 |-------|---------|-------------|--------|
 | **What** | `## Intent` | `{ID}--{slug}.md` | `plastic-intent-creating` |
-| **Why** | `## Context` + Decisions | `spec.md` | `plastic-intent-brainstorming` enriches Context/Decisions; `plastic-intent-speccing` writes `spec.md` |
-| **How** | Planning | `plan.md` + `actions/ACTION_N.md` (at least one) + `checklist.md` | `plastic-intent-planning` |
+| **Why** | `## Context` + Decisions | `spec.md` | `plastic-intent-speccing` records the rulings and writes `spec.md` |
+| **How** | Planning | `plan.md` + `actions/ACTION_N.md` (at least one) + `checklist.md` | `plastic-intent-speccing` writes the action files |
 | **Exec** | Execution | `outcome.md` | `plastic-intent-executing` |
 
 Invoke a skill for your harness: Claude Code uses the slash form (`/plastic-intent-creating`);
@@ -90,7 +90,7 @@ never prepend.** This ordering is a hard convention: Insights are the semantic t
 intent, and a consistent newest-last order keeps that trace readable across every intent.
 
 Every entry leads with a fixed, machine-parseable prefix `{utc-iso8601} · {stage} · {author}`,
-for example `2026-06-24T08:13:05Z · Why · plastic-brainstorming (autonomous)`. The UTC ISO8601
+for example `2026-06-24T08:13:05Z · Why · plastic-enforcer (autonomous)`. The UTC ISO8601
 timestamp (to the second, trailing `Z`) is the same convention the savepoint ledger uses, so
 the store has one timestamp convention. This per-entry prefix is not prepending the entry:
 entries stay append-only, newest at the bottom; the prefix only stamps each line with when,
@@ -105,36 +105,16 @@ See `plastic-conventions > references/lifecycle-and-savepoints.md` for the subag
 report-home contract (how an insight reaches the intent when the writer cannot write the file
 itself) and `savepoint.md`'s role.
 
-## Tiers (proportional auto sizing)
-
-Auto mode sizes every intent S/M/L at Why: S = single mechanism or file cluster (hours);
-M = one subsystem (about a day); L = cross-cutting or novel design.
-
-Tier is recorded as a `Tier: S|M|L` line at the top of spec.md. It is convention-only,
-read by the orchestrator, not enforced by any gate or by doctor.
-
-Settledness is recorded separately, as a `Settled: yes (<reason>)` line directly beneath the
-`Tier:` line, above the `# Spec:` heading. It records that a design has already done its
-thinking, so a later stage can trust it without deriving it again. An absent line means not
-settled; there is no `Settled: no` form. Settledness and scope are independent, so a large
-intent can be settled and never becomes a smaller tier. `scripts/lib/spec_header.rb` is the
-only parser of both lines; nothing else reads the grammar.
-
-See `plastic-conventions > references/tiers-and-dispatch.md` for topology by tier, what never
-gets cut, and guided mode.
-
 ## Agent Models and Dispatch (intent 116)
 
-| Stage | Agent |
+| Role | Agent |
 |---|---|
-| What | `plastic-intent-discovery` |
-| Why | `plastic-brainstorming` + `plastic-spec-specialist` |
-| How | `plastic-planner` |
+| Orchestrator (writes Why and How, reviews handoffs) | `plastic-enforcer` |
 | Exec | `plastic-executor` |
-| Done | `plastic-intent-curator` |
 
-See `plastic-conventions > references/tiers-and-dispatch.md` for the advisor, model
-configuration, the dispatch contract, and the spawn preamble.
+The stage agents and the tier were removed in 2.0 (intent 304). Model configuration lives in
+`agents.models.<harness>.<agent>`; the spawn preamble is described in the auto skill's
+`references/agent-architecture.md`.
 
 ## Operational Skills
 
@@ -212,8 +192,6 @@ A Zettelkasten structure note, not a table of contents. Clusters by meaning.
 
 Sections: `## Active`, `## Future`, `## Clusters`, `## Abandoned`, `## Completed`.
 
-For index maintenance, use `plastic-store-indexing`.
-
 One-line entry convention. Each index entry is ONE line: `- [<id> <terse title>](<dir>) <tags>`.
 The title is the title, not a summary: aim for about 80 characters, no multi-sentence
 descriptions. This is a self-check, not a gate.
@@ -273,8 +251,7 @@ is exempt from this rule.
 
 QMD, Enola, and Serena are recommendations, not obligations. The deterministic entry point
 is `scripts/qmd-sync` (detect, register, reindex, status, search). Intent delivery reindexes
-the store; see `plastic-conventions > references/gates-and-enforcement.md` for gate
-mechanics.
+the store.
 
 ## Transition Gates
 
@@ -307,9 +284,6 @@ order with the first deny winning; what each gate checks is unchanged.
 - **gate-check** (PostToolUse) enforces lifecycle stage order after each write.
 - **future-intent-check** (UserPromptSubmit) surfaces parked future intents whose keywords
   match the user's message; it informs and never denies.
-
-See `plastic-conventions > references/gates-and-enforcement.md` for the escape and logging
-detail.
 
 ## Delivery Isolation and the Single-Owner Lock
 

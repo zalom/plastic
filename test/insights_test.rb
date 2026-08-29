@@ -94,7 +94,7 @@ class InsightsTest < Minitest::Test
 
   def test_validator_accept
     assert Insights.valid_insight_prefix?(
-      "2026-06-24T08:13:05Z · Why · plastic-brainstorming (autonomous)"
+      "2026-06-24T08:13:05Z · Why · plastic-enforcer (autonomous)"
     )
   end
 

@@ -5,7 +5,6 @@ require "minitest/autorun"
 
 class AutoSkillContractTest < Minitest::Test
   SKILL = File.expand_path("../skills/auto/SKILL.md", __dir__)
-  STARTING_SKILL = File.expand_path("../skills/intent-starting/SKILL.md", __dir__)
 
   def test_delegate_return_is_classified_before_the_next_handoff
     body = File.read(SKILL)
@@ -19,7 +18,7 @@ class AutoSkillContractTest < Minitest::Test
   end
 
   def test_boarding_snippets_pass_only_trusted_runtime_identity
-    [SKILL, STARTING_SKILL].each do |path|
+    [SKILL].each do |path|
       body = File.read(path)
       assert_includes body, 'ENV["CODEX_THREAD_ID"].to_s.strip'
       assert_includes body, 'ENV["CLAUDE_CODE_SESSION_ID"].to_s.strip'

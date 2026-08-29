@@ -41,12 +41,12 @@ class SpawnPreambleTest < Minitest::Test
   end
 
   def test_preamble_contains_intent_id_name_stage_and_instruction
-    out = run_script("--role", "plastic-planner")
+    out = run_script("--role", "plastic-executor")
 
     assert_includes out, "4a1c1", "preamble must surface the intent id"
     assert_includes out, "Agent harness foundation", "preamble must surface the intent name"
     assert_includes out, "spec.md created", "preamble must surface the current stage (savepoint line)"
-    assert_includes out, "plastic-planner", "preamble must surface the role"
+    assert_includes out, "plastic-executor", "preamble must surface the role"
     assert_includes out,
       "do not hallucinate intents or stages",
       "preamble must carry the no-hallucinate honoring instruction"
@@ -56,7 +56,7 @@ class SpawnPreambleTest < Minitest::Test
   # completion report. Assert the verbatim REPORT_CONTRACT wording is emitted, so
   # the contract doc and role prompts have a single source of truth to agree with.
   def test_preamble_carries_report_contract
-    out = run_script("--role", "plastic-planner")
+    out = run_script("--role", "plastic-executor")
 
     assert_includes out,
       "END your turn with a structured completion report as your FINAL MESSAGE",

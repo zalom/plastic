@@ -19,9 +19,10 @@ module HarnessText
   # form the install_claude hook rewrite already writes.
   PLUGIN_ROOT_CODEX = "$HOME/.plastic"
 
-  # Spec D3: these files document Claude's placeholder convention TO SKILL AUTHORS.
-  # Rewriting the token there turns true sentences false, so the file is exempt by path.
-  PLUGIN_ROOT_EXEMPT = ["skill-creating/references/hooks.md"].freeze
+  # Spec D3: files that document Claude's placeholder convention TO SKILL AUTHORS are
+  # exempt by path. The skill-authoring reference left the installed tree in 2.0
+  # (intent 304), so the list is empty; the seam stays for the next such file.
+  PLUGIN_ROOT_EXEMPT = [].freeze
 
   # Spec D4: an explicit root table, not one regex. The ~/.claude lines in the skill
   # corpus carry four different meanings; only these three have an exact Codex
@@ -46,7 +47,7 @@ module HarnessText
   #   "~/.claude/hooks/plastic-session-start");
   #   the name alternation, built from the real skills/ directory listing, rejects
   #   anything that is not an installed skill ("/plastic-lock" is a CLI script,
-  #   "/plastic-intent-curator" is an agent role).
+  #   "/plastic-enforcer" is an agent role).
   # Longest name first so /plastic-intent-continuing cannot match "continuing".
   def rewrite_skill_prefix(text, skill_names, prefix)
     return text if skill_names.nil? || skill_names.empty?

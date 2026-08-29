@@ -19,8 +19,8 @@
 # Steps performed:
 #   0. Resolve inputs: the intent dir, normalize --home, resolve the calling session
 #      (--session, else CLAUDE_CODE_SESSION_ID, else the existing delivery.lock's own
-#      recorded owner_session when non-blank, else nil; unlike start-intent, the
-#      lock-owner fallback IS used here, matching end-intent's teardown resolution order).
+#      recorded owner_session when non-blank, else nil; the lock-owner fallback IS
+#      used here, matching end-intent's teardown resolution order).
 #      Load the bridge (Bridge.read); a nil bridge means there is nothing to finish (exit
 #      0, loud: the worktree this intent provisioned, if any, was NOT removed). No
 #      worktree.code on the bridge means nothing was provisioned (exit 0).

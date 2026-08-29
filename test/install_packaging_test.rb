@@ -50,7 +50,7 @@ class InstallPackagingTest < Minitest::Test
     FileUtils.mkdir_p(File.join(src, "auto"))
     File.write(File.join(src, "doctor", "SKILL.md"), "doc")
     File.write(File.join(src, "auto", "SKILL.md"), "auto")
-    File.write(File.join(src, "_active-intent-gate.md"), "gate")
+    File.write(File.join(src, "_probe-fragment.md"), "gate")
     File.write(File.join(src, "_decision-tables.md"), "tables")
 
     skills_root = File.join(@dir, "skills")
@@ -59,11 +59,11 @@ class InstallPackagingTest < Minitest::Test
     assert File.file?(File.join(skills_root, "plastic-doctor", "SKILL.md"))
     assert File.file?(File.join(skills_root, "plastic-auto", "SKILL.md"))
     refute File.directory?(File.join(skills_root, "plastic")), "no nested plastic/ dir"
-    # gate file is relocated to PLASTIC_HOME, not the skills tree
-    assert File.file?(File.join(PKG_TEST_HOME, "_active-intent-gate.md"))
-    refute File.exist?(File.join(skills_root, "_active-intent-gate.md"))
-    assert_includes installed, File.join(PKG_TEST_HOME, "_active-intent-gate.md")
-    # any top-level underscore markdown fragment relocates the same way, not just the gate
+    # an underscore fragment is relocated to PLASTIC_HOME, not the skills tree
+    assert File.file?(File.join(PKG_TEST_HOME, "_probe-fragment.md"))
+    refute File.exist?(File.join(skills_root, "_probe-fragment.md"))
+    assert_includes installed, File.join(PKG_TEST_HOME, "_probe-fragment.md")
+    # any top-level underscore markdown fragment relocates the same way
     assert File.file?(File.join(PKG_TEST_HOME, "_decision-tables.md"))
     refute File.exist?(File.join(skills_root, "_decision-tables.md"))
     assert_includes installed, File.join(PKG_TEST_HOME, "_decision-tables.md")
@@ -173,7 +173,7 @@ class InstallPackagingTest < Minitest::Test
   # under plastic_home, not under store/ or projects/ (like the shared underscore
   # fragments install_skills_flat relocates there), stays prunable.
   def test_prune_removed_files_still_prunes_a_file_directly_under_plastic_home
-    fragment = File.join(PKG_TEST_HOME, "_active-intent-gate.md")
+    fragment = File.join(PKG_TEST_HOME, "_probe-fragment.md")
     File.write(fragment, "gate")
 
     removed = @installer.prune_removed_files([fragment], root: [PKG_TEST_HOME, fragment])
@@ -327,7 +327,7 @@ class InstallPackagingTest < Minitest::Test
   def test_install_agents_copies_and_returns_every_agent
     pkg_root = File.join(@dir, "pkg")
     FileUtils.mkdir_p(File.join(pkg_root, "agents"))
-    %w[plastic-planner.md plastic-enforcer.md].each do |name|
+    %w[plastic-executor.md plastic-enforcer.md].each do |name|
       File.write(File.join(pkg_root, "agents", name), "# #{name}")
     end
     installer = InstallerCore.new(package_root: pkg_root, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
@@ -335,7 +335,7 @@ class InstallPackagingTest < Minitest::Test
     agents_root = File.join(@dir, "agents")
     installed = installer.install_agents(agents_root)
 
-    %w[plastic-planner.md plastic-enforcer.md].each do |name|
+    %w[plastic-executor.md plastic-enforcer.md].each do |name|
       dest = File.join(agents_root, name)
       assert File.file?(dest), "#{name} must be copied into the agent dir"
       assert_includes installed, dest, "returned paths must include #{name}"

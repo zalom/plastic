@@ -92,13 +92,13 @@ class WriteConfigTest < Minitest::Test
   # NOTE on write-config safety (intent 194): the owner's real config.yml has
   # no comments (it is machine-generated), so a whole-file YAML.dump rewrite
   # loses nothing. It does carry a legacy flat key
-  # (agents.models.plastic-brainstorming: fable) and a nil
+  # (agents.models.plastic-executor: fable) and a nil
   # (architect.style:). This proves both survive a write-config round trip
   # untouched.
   def test_preserves_legacy_flat_key_and_nil_value
     write_config(
       "version" => 3,
-      "agents" => { "models" => { "plastic-brainstorming" => "fable" } },
+      "agents" => { "models" => { "plastic-executor" => "fable" } },
       "architect" => { "style" => nil },
     )
 
@@ -106,7 +106,7 @@ class WriteConfigTest < Minitest::Test
     assert status.success?
 
     config = read_config
-    assert_equal "fable", config["agents"]["models"]["plastic-brainstorming"]
+    assert_equal "fable", config["agents"]["models"]["plastic-executor"]
     assert config["architect"].key?("style")
     assert_nil config["architect"]["style"]
   end

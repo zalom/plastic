@@ -74,15 +74,12 @@ note in the Codex worked example below), so the two are independently maintained
 2. Hermes copies skills and agent files and wires nothing else. It is a packaging target,
    not a working adapter.
 3. Codex receives its skill text with paths and command prefixes rewritten at install time
-   (intent 239), so the instructions resolve on a Codex machine. Eleven lines still speak
+   (intent 239), so the instructions resolve on a Codex machine. Four lines still speak
    Claude Code afterward, all disclosed and none executable: four instruction lines that
    name Claude's hook launcher directory, left as they are because Codex installs no
-   per-agent launchers and there is no Codex path to point at; two lines in a
-   skill-authoring reference that document Claude's own placeholder convention TO SKILL
-   AUTHORS, where rewriting the token would turn a true sentence false; one line in the
-   shared `~/.plastic/_active-intent-gate.md` fragment, installed byte-identical to every
-   harness; and four lines inside skill `evals/evals.json` fixtures, which are test
-   scaffolding read by nothing at install or run time, not agent-facing instructions.
+   per-agent launchers and there is no Codex path to point at. The skill-authoring
+   reference, the shared underscore gate fragment, and the evals fixtures that carried
+   Claude paths left the installed tree in 2.0 (intent 304).
 4. Codex has no statusline and no subagent dispatch. Both are gaps, not stated non-goals.
 
 ## Per-harness version truth (intent 210)

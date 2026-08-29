@@ -13,7 +13,9 @@ require "fileutils"
 # reports "pass"). This test makes the test suite the enforcement mechanism
 # instead, because the suite already blocks a commit and a release.
 #
-# Part A asserts the core budget ceiling (500 lines AND 5000 estimated
+# Part A asserts the core budget ceiling (320 lines AND 3000 estimated,
+# tightened by intent 304; CoreBudget::Measurement keeps skill-lint's 500 and 5000 so its
+# can-fail fixtures still mirror the linter; only the two assertions below carry the tighter bar;
 # tokens). Part B asserts the chapter wiring: every
 # skills/conventions/references/*.md chapter has a consumer load line, and
 # every load line in the skills/ tree resolves to a real chapter file.
@@ -102,14 +104,14 @@ class PlasticCoreBudgetTest < Minitest::Test
 
   def test_live_core_is_under_the_line_ceiling
     measurement = CoreBudget.measure(File.read(PLASTIC_MD))
-    assert_operator measurement.lines, :<, 500,
-      "PLASTIC.md is #{measurement.lines} lines; must stay under the 500-line ceiling (D7)"
+    assert_operator measurement.lines, :<, 320,
+      "PLASTIC.md is #{measurement.lines} lines; must stay under the 320-line ceiling (D7, tightened by 304)"
   end
 
   def test_live_core_is_under_the_token_ceiling
     measurement = CoreBudget.measure(File.read(PLASTIC_MD))
-    assert_operator measurement.tokens, :<, 5000,
-      "PLASTIC.md is about #{measurement.tokens} estimated tokens; must stay under the 5000-token ceiling (D7)"
+    assert_operator measurement.tokens, :<, 3000,
+      "PLASTIC.md is about #{measurement.tokens} estimated tokens; must stay under the 3000-token ceiling (D7, tightened by 304)"
   end
 
   # Can-fail proof (intent 208): the budget check must be observed failing on
@@ -154,13 +156,11 @@ class PlasticChapterWiringTest < Minitest::Test
   # test pins the ruled shape itself.
   RULED_CHAPTERS = %w[
     completion-and-done.md
-    gates-and-enforcement.md
     knowledge-graph.md
     lifecycle-and-savepoints.md
     locks-and-worktrees.md
     maintenance-and-revisions.md
     roadmaps.md
-    tiers-and-dispatch.md
   ].sort.freeze
 
   def live_wiring
@@ -182,7 +182,7 @@ class PlasticChapterWiringTest < Minitest::Test
 
   def test_chapter_set_is_the_ruled_set
     assert_equal RULED_CHAPTERS, live_wiring.chapter_basenames.sort,
-      "skills/conventions/references/ chapter set drifted from the ruled 8-chapter set (spec.md)"
+      "skills/conventions/references/ chapter set drifted from the ruled 6-chapter set (spec.md; two chapters removed in 2.0, intent 304)"
   end
 
   # Build a minimal skills tree in a Dir.mktmpdir shaped like the real one

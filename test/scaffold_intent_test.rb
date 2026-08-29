@@ -7,7 +7,6 @@ require "fileutils"
 require "open3"
 require_relative "../scripts/lib/scaffold_intent"
 require_relative "../scripts/lib/savepoint"
-require_relative "../scripts/lib/spec_header"
 require_relative "../scripts/lib/outcome_guard"
 
 # scaffold-intent (intent 213): drives the LIB in process for the logic assertions (a
@@ -169,15 +168,14 @@ class ScaffoldIntentTest < Minitest::Test
     assert_equal ScaffoldIntent::SPEC_SECTIONS, headings
   end
 
-  # --- 3: Tier/Settled header lines, scaffolded spec is not settled -------------
+  # --- 3: no header line: the file opens at the Spec heading (tiers removed in 2.0, 304) ---
 
-  def test_spec_header_lines_and_not_settled
+  def test_spec_has_no_header_line
     intent_dir = build_intent
     result = ScaffoldIntent.scaffold_spec(intent_dir: intent_dir, force: false)
     lines = File.read(result[:path]).lines
-    assert_equal "Tier: S|M|L\n", lines[0]
-    assert_match(/\A<!-- Settled: yes /, lines[1])
-    assert_equal false, SpecHeader.parse_file(result[:path])[:settled]
+    assert_match(/\A# Spec: /, lines[0])
+    refute lines.any? { |l| l.start_with?("Tier:") || l.include?("Settled:") }
   end
 
   # --- 4: other sections keep the template's stub text ---------------------------

@@ -431,7 +431,7 @@ class Doctor
         message: "#{bad_sections.size} intent file(s) have non-sanctioned ## sections",
         details: bad_sections.map { |b| "#{b[:dir]}: #{b[:issues].join(", ")}" },
         fixable: true,
-        fix_hint: "Dispatch plastic-store-curating to relocate each unsanctioned section into the " \
+        fix_hint: "Relocate each unsanctioned section into the " \
                   "intent's revisions.md via move-and-record (a missing required section is restored " \
                   "or reprojected instead); see plastic-conventions > references/maintenance-and-revisions.md"
       )
@@ -818,7 +818,7 @@ def check_done_signals(scopes: nil)
       message: "#{phantoms.size} intent#{phantoms.size == 1 ? "" : "s"} carry savepoint.md " \
                "line(s) contradicted by disk (advisory; terminal history stays report-only)",
       details: phantoms, fixable: true,
-      fix_hint: "For a live (Active) intent, run plastic-intent-savepoint to rebuild via " \
+      fix_hint: "For a live (Active) intent, rebuild the ledger via " \
                 "Savepoint.rebuild_savepoint. Terminal (Completed/Abandoned) intents are immutable: " \
                 "a phantom there stays advisory unless an explicit human grant authorizes the " \
                 "124a manual Done-bookend repair."
@@ -1147,7 +1147,7 @@ end
       check(category: "intent_end", name: "intent_savepoint_truthful", status: "warn",
             message: "#{problems.size} savepoint truthfulness issue(s) (advisory, never blocking)",
             details: problems,
-            fixable: true, fix_hint: "Run plastic-intent-savepoint to rebuild via Savepoint.rebuild_savepoint")
+            fixable: true, fix_hint: "Rebuild the ledger via Savepoint.rebuild_savepoint")
     end
   end
 
@@ -1270,7 +1270,7 @@ end
     checks << graph_finding_check(
       "graph_i4_danglers", i4,
       "Every sources/chain id resolves to a real intent (I4)",
-      "Dispatch plastic-store-curating to record the dangling sources/chain edge as a " \
+      "Record the dangling sources/chain edge as a " \
       "broken-source/broken-chain move-and-record entry in the intent's revisions.md (see " \
       "plastic-conventions > references/maintenance-and-revisions.md), or restore the missing intent"
     )
@@ -1395,7 +1395,7 @@ end
   # Classification per installed agent basename, checked in this order:
   #   1. an `agents.models.<basename>` override IS configured -> sanctioned,
   #      pass/informational, LISTED regardless of whether frontmatter matches
-  #      (that mismatch is the override working, e.g. plastic-brainstorming: fable).
+  #      (that mismatch is the override working, e.g. plastic-executor: fable).
   #   2. no override AND basename is a TIER_DEFAULTS key -> compare frontmatter
   #      to that default; match is pass (clean), mismatch is real drift (warn).
   #   3. no override AND basename is a CONSULTATION_AGENTS member -> not a

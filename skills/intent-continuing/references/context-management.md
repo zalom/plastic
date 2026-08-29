@@ -25,4 +25,4 @@ step looks stale):
    unchecked item.
 
 The general "land on the board / priority order / stale future intents" flow now lives in
-`plastic-project-continuing`; this file no longer duplicates it.
+`plastic-intent-continuing`; this file no longer duplicates it.

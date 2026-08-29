@@ -391,13 +391,10 @@ class InstallerCore
       "scripts/uninstall.rb" => "scripts/uninstall.rb",
       "scripts/rollback.rb" => "scripts/rollback.rb",
       "scripts/lib/outcome_guard.rb" => "scripts/lib/outcome_guard.rb",
-      "scripts/lib/spec_header.rb" => "scripts/lib/spec_header.rb",
       "scripts/lib/scaffold_intent.rb" => "scripts/lib/scaffold_intent.rb",
       "scripts/scaffold-intent" => "scripts/scaffold-intent",
       "scripts/lib/verify_intent.rb" => "scripts/lib/verify_intent.rb",
       "scripts/verify-intent" => "scripts/verify-intent",
-      "scripts/lib/start_intent.rb" => "scripts/lib/start_intent.rb",
-      "scripts/start-intent" => "scripts/start-intent",
       "scripts/lib/exec_worktree.rb" => "scripts/lib/exec_worktree.rb",
       "scripts/exec-worktree" => "scripts/exec-worktree",
       "scripts/doctor.rb" => "scripts/doctor.rb",
@@ -716,7 +713,7 @@ class InstallerCore
   end
 
   # `install_skills_flat` relocates any top-level underscore-prefixed markdown
-  # fragment (today: `_active-intent-gate.md`, `_decision-tables.md`) out of the
+  # fragment (today: `_decision-tables.md`) out of the
   # per-agent skills tree and into `plastic_home` directly, then lists them in
   # `installed`, so they are manifest-tracked and eligible for prune. But
   # `install_for_agent`'s prune roots are `[config[:dir], config[:home_dir]]`,
@@ -1010,7 +1007,7 @@ class InstallerCore
 
   # Copy each skills/<name>/ to <skills_root>/plastic-<name>/ (flat, namespaced by
   # directory name -- the only personal-skill namespacing Claude Code supports).
-  # Any top-level underscore-prefixed markdown fragment (e.g. `_active-intent-gate.md`,
+  # Any top-level underscore-prefixed markdown fragment (e.g. `_decision-tables.md`,
   # `_decision-tables.md`) is a shared non-skill fragment and relocates to ~/.plastic/
   # instead, so every skill can read it from one shared location. `exclude` skips
   # named top-level skill directories entirely (intent 185: the agent-advisor skill

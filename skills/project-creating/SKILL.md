@@ -77,7 +77,7 @@ writes `INDEX.md` and `project.yml` only if missing. It is idempotent, so it is
 safe even when the tactical mirror in step 5 already created the store directory.
 Do not create the store with an inline `mkdir`; the provisioner is the only place
 a store is made. For a project that is already registered but store-less, use the
-`plastic-store-provisioning` skill instead.
+`plastic-doctor` skill's provisioning section instead.
 
 ### 8. Mark Global Intent(s) Completed
 

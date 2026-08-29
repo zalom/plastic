@@ -11,7 +11,7 @@ require "fileutils"
 # body within the line budget, no em-dashes or en-dashes anywhere).
 class CreatingSkillsScaffoldTest < Minitest::Test
   SCRIPT = File.expand_path(
-    "../skills/skill-creating/scripts/scaffold.rb", __dir__
+    "../docs/skill-authoring/creating/scripts/scaffold.rb", __dir__
   )
   LINE_BUDGET = 500
   EM_DASH = "\u2014"

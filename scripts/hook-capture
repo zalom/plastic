@@ -176,7 +176,7 @@ begin
       cockpit, _err, status = Open3.capture3({ "RUBYOPT" => nil }, "ruby", dashboard, "continue")
       if status.success? && !cockpit.strip.empty?
         context_parts << (cockpit.rstrip +
-          "\n\nFollow the plastic-continuing skill workflow to resume: " \
+          "\n\nFollow the plastic-intent-continuing skill workflow to resume: " \
           "if active intents exist, read their state and resume; otherwise surface the " \
           "most-valuable next work and any stale or triage intents from the board above.")
 

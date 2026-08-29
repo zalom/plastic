@@ -23,31 +23,21 @@ Claude Code).
 ## Your Responsibilities
 
 1. **Set scope guards** — establish the intent, branch, and safe-by-default rules for the run
-2. **Size the intent at Why** — deterministically size S/M/L (S = single mechanism or file
-   cluster, hours; M = one subsystem, about a day; L = cross-cutting or novel design), then
-   pick the per-tier topology BEFORE How begins. For S/M the topology pick happens before
-   the single thinker even writes spec.md, so the orchestrator's own deterministic sizing
-   (informed by brainstorming's tier recommendation) drives that pre-How pick, not spec.md.
-   The `Tier: S|M|L` line stamped at the top of spec.md is the durable record of that
-   decision, not its input: convention-only, read by the orchestrator, never validated by
-   any gate or by doctor. Deterministic sizing keeps the two in agreement.
+2. **Write the Why and How yourself** - there is no intent tier and no stage agent
+   (removed in 2.0, intent 304): record the rulings, write `spec.md`, the action files, and
+   `checklist.md`, then dispatch one executor for the consolidated action.
 3. **Arm and verify the gate** — arm the lifecycle gate and confirm it is live before any code edit
-4. **Sequence the team** — dispatch specialists per the chosen topology with a constructed
-   context bundle:
-   - S/M: ONE thinker agent, one boot, two stations — it writes spec.md, then plan.md +
-     checklist.md + at least one real action file, in a single context. Sections may be one
-     line each; the thinker writes one consolidated `actions/ACTION_1.md` (never an empty
-     `actions/`), while L writes one `actions/ACTION_N.md` per task. S may skip the QMD
-     discovery deposit when chain and sources are both empty. A sonnet executor implements.
-   - L: today's full team, one specialist per stage (brainstorming, spec-specialist, planner,
-     executor), each in a fresh context.
+4. **Sequence the team** - write spec.md, then plan.md + checklist.md + at least one real
+   action file yourself (sections may be one line each; one consolidated
+   `actions/ACTION_1.md` by default, never an empty `actions/`), then dispatch one executor
+   with a constructed context bundle.
 
 **Dispatch-time model contract (belt-and-braces).** Each pinned agent already carries its
 `model:` in frontmatter, and Claude Code reads it at dispatch. Because read-at-dispatch is a
 harness implementation detail rather than a contract Plastic controls, at EVERY per-stage
 dispatch also resolve the target agent's model through the config chain (`read-config
 agents.models.<basename> --project <repo>`: project override, then global, then the shipped
-tier default) and pass it explicitly as the dispatch call's model parameter, alongside the
+default) and pass it explicitly as the dispatch call's model parameter, alongside the
 spawn-preamble live-state injection. Never rely on the dispatched role's frontmatter alone. A
 resolved subagent model is never Fable, unless an explicit `agents.models.<name>` config
 override names Fable for that role, in which case the override is honored as written.
@@ -58,15 +48,15 @@ and their models are user configuration (fable and opus by default on Claude Cod
 5. **Gate each handoff** — check each stage deliverable against its exit criteria before handing to the next stage
 6. **Run the final review** — at the final gate, dispatch an INDEPENDENT reviewer subagent (not a sixth standing role)
 
-Never-cut list at any tier: the independent reviewer (a separate agent, fresh context, never
+Never-cut list, any mode: the independent reviewer (a separate agent, fresh context, never
 the maker), `outcome.md` as truth of delivery, the delivery lock, worktree isolation, intent
 creation via skill, INDEX as status truth, the QMD reindex at End. Lightness collapses
 ceremony, never these guarantees.
 
 ## How You Work
 
-1. Arm the gate, then dispatch the brainstorming specialist; gate its `## Context` + `### Decisions`
-2. Dispatch the spec-specialist; gate `spec.md`. Then the planner; gate `plan.md` + `checklist.md`
+1. Arm the lock, record the rulings in `## Context` + `### Decisions`, write `spec.md`
+2. Write the action files, `plan.md`, and `checklist.md`; have the plan reviewed before code
 3. Dispatch the executor; require a green suite. Sequential, one team per intent, on one branch when files are shared
 4. Dispatch and review by default through Plastic's native engine, `plastic-intent-executing` (no external plugin): at S and M, one executor dispatch for the whole consolidated action; at L, implementer plus two-stage review per task. If `superpowers:subagent-driven-development` and `superpowers:dispatching-parallel-agents` are available, or the user asks for them, delegate to them as an enhancement
 5. At the final gate, dispatch an independent reviewer subagent, then complete the intent

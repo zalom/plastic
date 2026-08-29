@@ -5,7 +5,6 @@ require "fileutils"
 require_relative "worktree"
 require_relative "bridge"
 require_relative "savepoint"
-require_relative "spec_header"
 require_relative "intent_validator"
 
 # ScaffoldIntent - all logic for `scripts/scaffold-intent` (intent 213). Three
@@ -34,9 +33,6 @@ module ScaffoldIntent
     "## Alternatives Considered", "## Decisions",
     "## Acceptance Criteria", "## Open Questions",
   ].freeze
-
-  SETTLED_PLACEHOLDER_COMMENT =
-    "<!-- Settled: yes (<reason>)  optional, add this line only when the design is settled -->\n"
 
   # --- path resolution (pure) --------------------------------------------------
 
@@ -220,9 +216,6 @@ module ScaffoldIntent
     template_sections = sections_from(template_text)
 
     out = []
-    out << SpecHeader.render(tier: nil, settled_reason: nil)
-    out << SETTLED_PLACEHOLDER_COMMENT
-    out << "\n"
     out << "# Spec: #{intent_name}\n"
     out << "\n"
 

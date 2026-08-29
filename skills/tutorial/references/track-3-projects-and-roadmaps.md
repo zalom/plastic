@@ -21,10 +21,10 @@ one this tutorial keeps or ships.
 ### 1. Start from a founding implementation intent
 
 Create and board an intent the same way as track 1, stations 1 and 2: `/plastic-intent-creating`,
-then `/plastic-intent-starting`. Describe something meant to grow into a small real project,
+then `/plastic-intent-continuing`. Describe something meant to grow into a small real project,
 for example "build a personal todo app."
 
-Then type `/plastic-intent-brainstorming` and record a couple of real rulings on this founding
+Then type `/plastic-intent-speccing` and record a couple of real rulings on this founding
 intent, for example the language or how tasks get stored. Keep it short: this intent only
 needs enough decisions for the new project to inherit, not a full design.
 
