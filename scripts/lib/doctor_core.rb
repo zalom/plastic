@@ -328,7 +328,7 @@ class Doctor
     hooks_dir = File.join(agent_dir, "hooks")
 
     # Derived from HookRegistry.events (intent 204), not a hand-kept list, so
-    # every registered hook (all 15, including the enforcement gates) is checked.
+    # every registered hook is checked.
     expected_launchers = HookRegistry.claude_launcher_names
 
     # hooks_exist
@@ -395,12 +395,6 @@ class Doctor
       )
     end
 
-    # claude_hooks_implemented (intent 244): the edit-path gates now live as
-    # branches inside one dispatcher (scripts/hook-edit-gates), which is
-    # exactly the shape that let links-gate ship registered and dead on
-    # Codex (intent 200's failure class, one level up).
-    checks << claude_hooks_implemented_check
-
     # hooks_registered — settings.json has Plastic hooks for required events
     settings_path = File.join(agent_dir, "settings.json")
     settings = read_json_safe(settings_path)
@@ -455,7 +449,7 @@ class Doctor
 
       # hooks_match_registry (intent 108, D7): the live settings must carry
       # EXACTLY the registrations HookRegistry defines; any drift (a missing
-      # gate, a stray plastic hook, a stale matcher) is how bash-gate shipped
+      # hook, a stray plastic hook, a stale matcher) is how a hook shipped
       # dead once already.
       expected = HookRegistry.claude_settings_hooks(hook_dir: hooks_dir)
       diffs = []
@@ -565,71 +559,6 @@ class Doctor
       message: clauses.join("; "),
       details: unowned + missing_launcher,
       fixable: true, fix_hint: hints.join(" ")
-    )
-  end
-
-  def claude_dispatcher_gate_names(source)
-    case_start = source.index(/^\s*case gate\b/)
-    return nil unless case_start
-
-    case_body = source[case_start..-1]
-    end_idx = case_body.index(/^\s*end\b/)
-    scanned = end_idx ? case_body[0...end_idx] : case_body
-    names = scanned.scan(/^\s*when\s+"([^"]+)"/).flatten.uniq
-    names.empty? ? nil : names
-  end
-
-  def claude_hooks_implemented_check
-    dispatcher_path = File.join(plastic_home, "scripts", "hook-edit-gates")
-
-    unless File.exist?(dispatcher_path)
-      return check(
-        category: "agent_registration", name: "claude_hooks_implemented", status: "fail",
-        message: "scripts/hook-edit-gates not found at #{tilde(dispatcher_path)}; cannot verify " \
-                 "the edit-path gate registry and dispatcher agree",
-        fixable: true, fix_hint: "Re-run the Plastic installer"
-      )
-    end
-
-    dispatcher_names = claude_dispatcher_gate_names(File.read(dispatcher_path))
-
-    if dispatcher_names.nil?
-      return check(
-        category: "agent_registration", name: "claude_hooks_implemented", status: "fail",
-        message: "Could not read any gate names out of #{tilde(dispatcher_path)}: the `case gate` " \
-                 "statement no longer matches the shape this check expects, so the registry was " \
-                 "never actually checked against the real dispatcher. Update " \
-                 "claude_dispatcher_gate_names in doctor.rb to the file's new shape.",
-        fixable: false
-      )
-    end
-
-    registry_names = HookRegistry::GATE_TOOLS.keys
-    missing_branch = registry_names - dispatcher_names
-    dead_branch = dispatcher_names - registry_names
-
-    if missing_branch.empty? && dead_branch.empty?
-      return check(
-        category: "agent_registration", name: "claude_hooks_implemented", status: "pass",
-        message: "Every registered edit-path gate has a scripts/hook-edit-gates branch, and every " \
-                 "dispatcher branch is registered"
-      )
-    end
-
-    details = missing_branch.map do |name|
-      "#{name} is in HookRegistry::GATE_TOOLS but scripts/hook-edit-gates has no branch for it, " \
-        "so the dispatcher skips it on every edit and it never blocks anything"
-    end
-    details += dead_branch.map do |name|
-      "#{name} has a branch in scripts/hook-edit-gates but is not in HookRegistry::GATE_TOOLS, so " \
-        "the dispatcher never reaches it and it is dead code"
-    end
-
-    check(
-      category: "agent_registration", name: "claude_hooks_implemented", status: "fail",
-      message: "The edit-path gate registry and scripts/hook-edit-gates disagree on " \
-               "#{details.size} gate(s)",
-      details: details, fixable: false
     )
   end
 
@@ -906,22 +835,20 @@ class Doctor
   # by hand), or a dispatcher branch nobody registers (bash-gate's shape, intent
   # 203, in the opposite direction). This check closes both directions at once.
 
-  # The Codex gate names HookRegistry actually registers: the six apply_patch-gated
-  # names (CODEX_PRE_HOOKS + CODEX_POST_HOOKS), the two Bash-matcher shell gates
-  # (CODEX_BASH_HOOKS), and the live-state hook names Codex inherits whole from
-  # `events` (CODEX_LIVE_STATE_EVENTS). No parsing needed: these are HookRegistry's
-  # own Ruby constants.
+  # The Codex hook names HookRegistry actually registers: the apply_patch record
+  # hook (CODEX_POST_HOOKS) and the live-state hook names Codex inherits whole from
+  # `events` (CODEX_LIVE_STATE_EVENTS). The PreToolUse gate names left in 2.0
+  # (intent 302). No parsing needed: these are HookRegistry's own Ruby constants.
   def codex_registry_gate_names
     live_state = HookRegistry::CODEX_LIVE_STATE_EVENTS.flat_map do |event|
       HookRegistry.events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
     end
-    (HookRegistry::CODEX_PRE_HOOKS + HookRegistry::CODEX_POST_HOOKS +
-     HookRegistry::CODEX_BASH_HOOKS + live_state).uniq
+    (HookRegistry::CODEX_POST_HOOKS + live_state).uniq
   end
 
   def codex_dispatcher_gate_names(source)
     names = []
-    %w[STATE_HOOKS SHELL_HOOKS].each do |const|
+    %w[STATE_HOOKS].each do |const|
       m = source.match(/^#{const}\s*=\s*%w\[([^\]]*)\]/)
       names.concat(m[1].split(/\s+/)) if m
     end
@@ -959,7 +886,7 @@ class Doctor
       return check(
         category: "agent_registration", name: "codex_hooks_implemented", status: "fail",
         message: "Could not read any gate names out of #{tilde(dispatcher_path)}: the " \
-                 "STATE_HOOKS/SHELL_HOOKS constants and the `case gate` statement no longer " \
+                 "STATE_HOOKS constant and the `case gate` statement no longer " \
                  "match the shape this check expects, so the registry could not be checked " \
                  "against the real dispatcher. This is exactly the silent-pass failure this " \
                  "check exists to prevent; update codex_dispatcher_gate_names in doctor.rb " \
@@ -1004,8 +931,8 @@ class Doctor
     toml = File.read(config_toml) rescue ""
     warns = []
     # guide Part 3: `codex_hooks` is a deprecated alias for `[features] hooks`; catch both.
-    warns << "hooks are disabled ([features] hooks = false); Plastic gates will not fire" if toml.match?(/^\s*(?:codex_)?hooks\s*=\s*false/)
-    warns << "sandbox_mode = \"read-only\"; apply_patch writes (and gates) cannot run" if toml.match?(/^\s*sandbox_mode\s*=\s*["']read-only["']/)
+    warns << "hooks are disabled ([features] hooks = false); Plastic hooks will not fire" if toml.match?(/^\s*(?:codex_)?hooks\s*=\s*false/)
+    warns << "sandbox_mode = \"read-only\"; apply_patch writes (and the record hook) cannot run" if toml.match?(/^\s*sandbox_mode\s*=\s*["']read-only["']/)
     return nil if warns.empty?
 
     check(

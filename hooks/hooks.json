@@ -41,28 +41,6 @@
         ]
       }
     ],
-    "PreToolUse": [
-      {
-        "matcher": "Write|Edit|NotebookEdit|mcp__serena__replace_content|mcp__serena__replace_symbol_body|mcp__serena__insert_after_symbol|mcp__serena__insert_before_symbol|mcp__serena__safe_delete_symbol|mcp__serena__rename_symbol",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" edit-gates",
-            "statusMessage": "Checking Plastic gates..."
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" bash-gate",
-            "statusMessage": "Checking lifecycle gate..."
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit|NotebookEdit|mcp__serena__replace_content|mcp__serena__replace_symbol_body|mcp__serena__insert_after_symbol|mcp__serena__insert_before_symbol|mcp__serena__safe_delete_symbol|mcp__serena__rename_symbol",

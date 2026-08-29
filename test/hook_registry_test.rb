@@ -8,7 +8,7 @@ require_relative "../scripts/lib/hook_registry"
 class HookRegistryTest < Minitest::Test
   def test_no_pre_tool_use_event_is_registered
     refute HookRegistry.events.key?("PreToolUse"), "the edit-path gates were removed in 2.0 (intent 302)"
-    %i[GATE_TOOLS CODEX_GATE_TOOLS CODEX_PRE_HOOKS CODEX_BASH_HOOKS].each do |const|
+    %i[GATE_TOOLS CODEX_GATE_TOOLS CODEX_PRE_HOOKS CODEX_BASH_HOOKS].each do |const| # removed in 2.0
       refute HookRegistry.const_defined?(const), "HookRegistry::#{const} must be gone with the gates"
     end
   end

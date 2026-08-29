@@ -2,8 +2,9 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# exec-worktree (intent 213, group 2) - finish an intent's code worktree: an order
-# precondition, then Worktree.finish (delivered merges + removes, abandoned removes only).
+# exec-worktree (intent 213, group 2) - finish an intent's code worktree: the dirty-worktree
+# guard, then Worktree.finish (delivered merges + removes, abandoned removes only). The order
+# precondition it once ran first was removed in 2.0 with the gates (intent 302).
 #
 # Usage:
 #   exec-worktree --store <path> --id <intent_id> --home <plastic_home> \
@@ -23,21 +24,12 @@
 #      Load the bridge (Bridge.read); a nil bridge means there is nothing to finish (exit
 #      0, loud: the worktree this intent provisioned, if any, was NOT removed). No
 #      worktree.code on the bridge means nothing was provisioned (exit 0).
-#   1. The order precondition (delivered only): calls the EXISTING
-#      Bridge.code_gate_decision predicate exactly as it exists. On an auto bridge that
-#      has not reached How, this BLOCKS (exit 2). Bridge.code_gate_decision returns nil
-#      UNCONDITIONALLY on a guided bridge (build.auto != true), so on a guided bridge
-#      this precondition is ADVISORY ONLY: it always passes and the run proceeds. This
-#      script is NOT the enforcement point either way; the hook layer
-#      (scripts/lib/bridge.rb code_gate_decision, wired through scripts/lib/edit_gates.rb)
-#      remains the actual gate. See scripts/lib/exec_worktree.rb's module doc for why the
-#      auto-only condition is never relaxed and never duplicated here.
-#   2. The dirty-worktree guard (delivered only): git status --porcelain on the code
+#   1. The dirty-worktree guard (delivered only): git status --porcelain on the code
 #      worktree. Not clean, or the check itself fails, fails CLOSED (exit 3), mirroring
 #      end-intent's dirty-worktree handling. abandoned skips this guard entirely: the
 #      branch survives and can be reclaimed, so a dirty worktree is not a reason to
 #      refuse.
-#   3. Finish: Worktree.finish(bridge_data, home:, runner:, merge: disposition ==
+#   2. Finish: Worktree.finish(bridge_data, home:, runner:, merge: disposition ==
 #      "delivered"). Worktree.finish is fail-open and never raises, so failure is
 #      detected by checking, for a delivered disposition only, whether the worktree
 #      directory still exists on disk afterward (release removes it on success).
@@ -49,8 +41,7 @@
 #   0  finished (merged or removed per disposition), or nothing to finish (no bridge
 #      resolved, or no code worktree recorded on the bridge)
 #   1  usage or path-resolution failure
-#   2  the order precondition blocked a delivered disposition (auto bridge, How not
-#      reached)
+#   2  retired in 2.0 (intent 302): was the order precondition; never emitted, never reused
 #   3  the worktree is not clean, or the merge/removal did not complete (delivered only)
 #   4  lock or session resolution failure
 

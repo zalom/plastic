@@ -606,23 +606,23 @@ class DoctorAgentRegistrationTest < Minitest::Test
     assert_equal "pass", registry_check[:status]
   end
 
-  def test_settings_missing_the_bash_group_fail_hooks_match_registry
+  def test_settings_missing_the_record_group_fail_hooks_match_registry
     write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
     settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
     write_claude_settings(settings_path)
     write_skills(DOCTOR_TEST_CLAUDE)
 
-    # Drop the bash-gate group: the exact divergence that shipped it dead.
+    # Drop the PostToolUse record group: the one write-path hook left (intent 302).
     settings = JSON.parse(File.read(settings_path))
-    settings["hooks"]["PreToolUse"].reject! { |g| g["matcher"] == "Bash" }
+    settings["hooks"].delete("PostToolUse")
     File.write(settings_path, JSON.pretty_generate(settings))
 
     checks = doctor.check_agent_registration("claude")
     registry_check = checks.find { |c| c[:name] == "hooks_match_registry" }
 
     assert_equal "fail", registry_check[:status]
-    assert registry_check[:details].any? { |d| d.include?("bash-gate") },
-           "the diff must name the missing bash-gate: #{registry_check[:details].inspect}"
+    assert registry_check[:details].any? { |d| d.include?("record") },
+           "the diff must name the missing record hook: #{registry_check[:details].inspect}"
   end
 
   # intent 115 (AC1): a foreign tool (Serena) occupies the FIRST SessionStart
@@ -1463,16 +1463,14 @@ class DoctorAgentRegistrationTest < Minitest::Test
   # --- hooks_exist / hooks_no_orphans derive from HookRegistry, not a
   # hand-kept list (intent 204) ---
 
-  # Under the old hand-kept CLAUDE_HOOK_SCRIPTS (7 names) this launcher was
-  # never inspected, so a missing gate launcher would have gone unnoticed.
-  # The derived set covers everything HookRegistry.events registers, so this
-  # still fails. Intent 244 collapsed the five edit-path gates into one
-  # registered launcher, edit-gates, which is now the launcher this test
-  # deletes to prove the derived check still catches a missing one.
-  def test_missing_previously_unchecked_gate_launcher_fails_hooks_exist
+  # The derived set covers everything HookRegistry.events registers, so a
+  # missing launcher fails. Since intent 302 the write-path launcher is record,
+  # which is the launcher this test deletes to prove the derived check still
+  # catches a missing one.
+  def test_missing_record_launcher_fails_hooks_exist
     hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
     write_claude_hooks(hooks_dir)
-    File.delete(File.join(hooks_dir, "plastic-edit-gates"))
+    File.delete(File.join(hooks_dir, "plastic-record"))
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
 
@@ -1480,7 +1478,7 @@ class DoctorAgentRegistrationTest < Minitest::Test
     hooks_check = checks.find { |c| c[:name] == "hooks_exist" }
 
     assert_equal "fail", hooks_check[:status]
-    assert_includes hooks_check[:details].join, "plastic-edit-gates"
+    assert_includes hooks_check[:details].join, "plastic-record"
   end
 
   def test_orphan_launcher_not_in_registry_fails_hooks_no_orphans
@@ -1530,12 +1528,11 @@ class DoctorAgentRegistrationTest < Minitest::Test
     exec_check = checks.find { |c| c[:name] == "hooks_executable" }
     orphan_check = checks.find { |c| c[:name] == "hooks_no_orphans" }
 
-    # Intent 244 collapsed the five edit-path gates (code-gate, lock-gate,
-    # savepoint-pre, links-gate, create-gate) into one registered launcher,
-    # edit-gates: 14 - 5 + 1 = 10. Intent 298 then collapsed continue,
-    # future-intent-check, and auto-arm into capture, and renamed gate-check to
-    # record: 10 - 3 + 1 = 8.
-    assert_equal 8, HookRegistry.claude_launcher_names.size
+    # Intent 244 collapsed the five edit-path gates into one launcher (10),
+    # intent 298 collapsed three prompt hooks into capture and renamed
+    # gate-check to record (8), intent 301 added close (9), and intent 302
+    # removed edit-gates and bash-gate: 7 launchers.
+    assert_equal 7, HookRegistry.claude_launcher_names.size
     assert_equal "pass", hooks_check[:status]
     assert_equal "pass", exec_check[:status]
     assert_equal "pass", orphan_check[:status]

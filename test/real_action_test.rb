@@ -78,15 +78,4 @@ class RealActionTest < Minitest::Test
     write_action("ACTION_1.md", "# Action 1\nreal steps\n")
     assert_equal "exec", Bridge.derive_stage(@intent_dir)
   end
-
-  # --- check_gate: checklist.md write path -----------------------------------
-
-  # --- code_gate_decision ----------------------------------------------------
-
-  def code_bridge
-    {
-      "build" => { "auto" => true },
-      "intent" => { "id" => "133", "store" => @root, "dir" => "133--demo" },
-    }
-  end
 end

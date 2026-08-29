@@ -816,7 +816,7 @@ class MergeClaudeHooksTest < Minitest::Test
   # An install that predates intent 302 still carries the merged edit-gates
   # dispatcher and bash-gate under PreToolUse. The purge must remove both and
   # register nothing in their place.
-  def test_merge_purges_the_retired_edit_gates_and_bash_gate_registrations
+  def test_merge_purges_the_retired_pretooluse_registrations
     settings = {
       "hooks" => {
         "PreToolUse" => [

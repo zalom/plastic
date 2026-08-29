@@ -2,44 +2,34 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 #
-# Usage: codex-hook <gate>
-#   file-mutation gates: edit-gates | record
+# Usage: codex-hook <hook>
+#   file-mutation hook: record (PostToolUse on apply_patch)
 #   live-state hooks (intent 199, capture/record collapse by 298):
 #     session-start | check-update | capture | power-tools | savepoint
-#   shell-tool gate (intent 203): bash-gate
 #
-# The Codex input adapter (intent 102, extended by 199, 203, and collapsed by
-# 251). Reads a Codex hook stdin payload once. Three shapes exist and the gate
-# name alone selects which path runs (Codex's own hooks.json registration
-# guarantees they never cross): the apply_patch path reads session_id at top
-# level and the apply_patch command in tool_input.command [guide Part 4],
-# parses the diff envelope once via ApplyPatchEnvelope, and runs all five gates
-# (savepoint-pre, lock-gate, code-gate, links-gate, create-gate) IN-PROCESS
-# through scripts/lib/codex_edit_gates.rb, which drives the same
-# scripts/lib/edit_gates.rb functions Claude's merged dispatcher drives
-# (mirroring intent 244). This replaced five registered PreToolUse commands and
-# three nested run_core children with one process. The live-state hooks carry
-# no tool_input at all (they are not tool calls); the dispatcher execs the SAME
-# launcher file Claude already runs for that hook (hooks/<name>), which is
-# already harness-agnostic (resolves ~/.plastic off $HOME, reads only the
-# common stdin fields the guide confirms Codex shares with Claude for these
-# three events), so the body is reused, not rewritten (D3). The shell-tool gate
-# (bash-gate) reports tool_name: "Bash" with the command in tool_input.command,
-# but MUST NOT be routed through ApplyPatchEnvelope.parse below: a plain shell
-# command has no *** Begin Patch/*** End Patch envelope, so it would parse to
-# an empty op list and hit this file's own `exit 0 if ops.empty?` line,
-# silently allowing every Bash call and reopening the exact hole intent 203
-# closes. So it execs the SAME scripts/hook-bash-gate file Claude already runs,
-# unmodified, the identical "drive the body, relay its output" pattern used for
-# the live-state hooks. The one adaptation shared by both the live-state and
-# shell-tool paths is threading the payload's session_id into
-# CLAUDE_CODE_SESSION_ID, since Codex's own process env never carries it,
-# plus a bounded timeout: Codex invokes hooks synchronously, so a launcher
-# that never releases this dispatcher's pipes would hang the session.
-# hooks/check-update used to leak them by backgrounding an npm network call
-# with the inherited descriptors (fixed at the root in intent 289 by
-# redirecting that subshell to /dev/null); the bound stays for any other
-# launcher that misbehaves, and capture_launcher keeps the timeout path silent.
+# The Codex input adapter (intent 102, extended by 199, collapsed by 251, cut to
+# the record hook by 302). Reads a Codex hook stdin payload once. Two shapes
+# exist and the hook name alone selects which path runs (Codex's own hooks.json
+# registration guarantees they never cross): the apply_patch path reads
+# session_id at top level and the apply_patch command in tool_input.command
+# [guide Part 4] and parses the diff envelope once via ApplyPatchEnvelope; the
+# live-state hooks carry no tool_input at all (they are not tool calls), so the
+# dispatcher execs the SAME launcher file Claude already runs for that hook
+# (hooks/<name>), which is already harness-agnostic (resolves ~/.plastic off
+# $HOME, reads only the common stdin fields the guide confirms Codex shares with
+# Claude for these events), so the body is reused, not rewritten (D3). The one
+# adaptation on the live-state path is threading the payload's session_id into
+# CLAUDE_CODE_SESSION_ID, since Codex's own process env never carries it, plus a
+# bounded timeout: Codex invokes hooks synchronously, so a launcher that never
+# releases this dispatcher's pipes would hang the session. hooks/check-update
+# used to leak them by backgrounding an npm network call with the inherited
+# descriptors (fixed at the root in intent 289 by redirecting that subshell to
+# /dev/null); the bound stays for any other launcher that misbehaves, and
+# capture_launcher keeps the timeout path silent.
+#
+# The PreToolUse edit-path gates and the Bash-matcher shell gate were removed in
+# 2.0 (intent 302). An older ~/.codex/hooks.json that still names one of them
+# reaches the fail-open `else` below: exit 0, no output, no decision.
 require "json"
 require "open3"
 require "rbconfig"
@@ -54,9 +44,8 @@ $stdout.sync = true
 
 STATE_HOOKS = %w[session-start check-update capture power-tools savepoint].freeze
 STATE_TIMEOUT = 5
-SHELL_HOOKS = %w[bash-gate].freeze
 
-# One capture path for both relayed-launcher branches (intent 289). The 5 s bound covers a
+# One capture path for the relayed-launcher branch (intent 289). The 5 s bound covers a
 # launcher that leaks THIS process's stdout and stderr into a longer-lived background child
 # (hooks/check-update did exactly that before 289): it does not bound a launcher that simply
 # never exits in the foreground, since Open3.popen3's ensure joins the child's wait thread on
@@ -99,60 +88,23 @@ if STATE_HOOKS.include?(gate)
   exit(status ? status.exitstatus : 0)
 end
 
-if SHELL_HOOKS.include?(gate)
-  # bash-gate (intent 203): a shell command has no apply_patch diff envelope, so
-  # this branch execs the SAME scripts/hook-bash-gate file Claude already runs,
-  # unmodified, and relays its exit code and stderr. It must never fall through
-  # to ApplyPatchEnvelope.parse below (see header comment).
-  cwd = payload["cwd"].to_s
-  cwd = Dir.pwd if cwd.empty? || !Dir.exist?(cwd)
-  env = { "CLAUDE_CODE_SESSION_ID" => (session.empty? ? nil : session) }
-  script = File.join(__dir__, "hook-#{gate}")
-  argv = [script]
-  out, err, status = capture_launcher(env.merge("RUBYOPT" => nil), RbConfig.ruby, *argv, raw: raw, cwd: cwd)
-  print out unless out.to_s.empty?
-  warn err unless err.to_s.empty?
-  exit(status ? status.exitstatus : 0)
-end
-
 require_relative "lib/apply_patch_envelope"
 
 command = payload.dig("tool_input", "command") || payload.dig("tool_params", "command")
-exit 0 if command.nil? # fail-open: no tool_input at all (unrecognized gate name or non-tool-call payload)
+exit 0 if command.nil? # fail-open: no tool_input at all (unrecognized hook name or non-tool-call payload)
 ops = ApplyPatchEnvelope.parse(command)
-exit 0 if ops.empty? # fail-open: nothing parseable to gate
+exit 0 if ops.empty? # fail-open: nothing parseable to record
 
 CORES = __dir__ # ~/.plastic/scripts
 
 case gate
-when "edit-gates"
-  # The ONE registered PreToolUse command on the apply_patch matcher (intent
-  # 251). Five gates, in-process, in Claude's evaluation order, first deny wins,
-  # each deny shape reproduced exactly: stderr plus exit 2 for code-gate,
-  # links-gate and create-gate; stdout permissionDecision JSON plus exit 0 for
-  # lock-gate. Fail-open at both levels, per gate inside EditGates.dispatch and
-  # again at this file's own top level.
-  begin
-    require_relative "lib/codex_edit_gates"
-    exit CodexEditGates.dispatch(ops: ops, payload: payload)
-  rescue StandardError, ScriptError => e
-    # Dispatcher-internal failure: never impersonate a deny. ScriptError (a
-    # sibling of StandardError, not a subclass) covers LoadError: a future
-    # manifest gap (a lib file required here but not distributed, exactly the
-    # bug the full suite caught during this intent's own delivery) must fail
-    # open with a gate decision, never exit 1 with no decision at all.
-    $stderr.puts "plastic codex edit-gates error: #{e.message}"
-    exit 0
-  end
-
 when "record"
-  # hook-record (intent 298) reads one stdin JSON payload; it takes no ARGV, unlike
-  # the hook-gate-check CLI it replaced. One apply_patch call can bundle several file
-  # operations, so this synthesizes one Claude-shaped PostToolUse payload per op and
-  # pipes it to hook-record in-process, mirroring the "drive the body" pattern used
-  # for the live-state hooks. record never blocks and never prints anything (D3), so
-  # there is nothing to relay: every op's failure is independently rescued and the
-  # dispatcher always exits 0.
+  # hook-record (intent 298) reads one stdin JSON payload; it takes no ARGV. One
+  # apply_patch call can bundle several file operations, so this synthesizes one
+  # Claude-shaped PostToolUse payload per op and pipes it to hook-record in-process,
+  # mirroring the "drive the body" pattern used for the live-state hooks. record
+  # never blocks and never prints anything (D3), so there is nothing to relay: every
+  # op's failure is independently rescued and the dispatcher always exits 0.
   cwd_val = payload["cwd"].to_s
   ops.each do |o|
     synth = JSON.generate("session_id" => session, "tool_input" => { "file_path" => o.path }, "cwd" => cwd_val)
