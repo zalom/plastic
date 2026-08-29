@@ -1,0 +1,189 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# append-ledger (intent 297) - the only writer of a session day ledger's
+# shared files. Every verb either appends a line to checklist.md or
+# savepoint.md, or flips one checklist line's state marker byte, always
+# under an exclusive lock on the target file itself (spec D6, D7, D8). When
+# the day directory is missing, this script scaffolds it itself through
+# SessionLedger.open_day, so a capture that crosses midnight never fails and
+# never needs a second process (spec D12).
+#
+# Usage:
+#   append-ledger pending <summary> [common flags]
+#   append-ledger item <summary> [common flags]
+#   append-ledger promote [--match <substring>] [--savepoint] [common flags]
+#   append-ledger tick [--match <substring>] [--savepoint] [common flags]
+#   append-ledger savepoint --event Item|Done|Note <summary> [common flags]
+#
+# Common flags:
+#   --store <dir>      defaults to $PLASTIC_HOME/store ($PLASTIC_HOME defaults to ~/.plastic)
+#   --day <YYYYMMDD>    defaults to SessionLedger.day_id (today, local wall clock)
+#   --session <id>      defaults to $CLAUDE_CODE_SESSION_ID, then "local"
+#   --project <slug>    defaults to the project_slug derived from --cwd
+#   --cwd <dir>         defaults to Dir.pwd
+#   --templates <dir>   defaults to the templates/ dir shipped next to this script
+#
+# Exit codes:
+#   0 - done
+#   2 - usage error, or promote/tick found nothing to address (no write happens)
+#   3 - promote/tick could not take an exclusive lock (filesystem without flock support)
+
+require_relative "lib/session_ledger"
+
+VERBS = %w[pending item promote tick savepoint].freeze
+
+def usage_abort(message)
+  warn "append-ledger: #{message}"
+  exit 2
+end
+
+def parse_args(argv)
+  opts = {
+    match: nil, savepoint: false, event: nil,
+    store: nil, day: nil, session: nil, project: nil, cwd: nil, templates: nil,
+  }
+  positional = []
+  i = 0
+  while i < argv.length
+    arg = argv[i]
+    case arg
+    when "--match"     then opts[:match] = argv[i += 1]
+    when "--event"     then opts[:event] = argv[i += 1]
+    when "--store"     then opts[:store] = argv[i += 1]
+    when "--day"       then opts[:day] = argv[i += 1]
+    when "--session"   then opts[:session] = argv[i += 1]
+    when "--project"   then opts[:project] = argv[i += 1]
+    when "--cwd"       then opts[:cwd] = argv[i += 1]
+    when "--templates" then opts[:templates] = argv[i += 1]
+    when "--savepoint" then opts[:savepoint] = true
+    else
+      usage_abort("unknown flag #{arg.inspect}") if arg.start_with?("--")
+
+      positional << arg
+    end
+    i += 1
+  end
+
+  opts[:verb] = positional.shift
+  opts[:summary] = positional.shift
+  opts
+end
+
+def expand(path)
+  File.expand_path(path.to_s.sub(/\A~/, Dir.home))
+end
+
+# Sibling of this script's dir. Works in-repo (<repo>/scripts/append-ledger
+# -> <repo>/templates) and installed (~/.plastic/scripts/append-ledger ->
+# ~/.plastic/templates when present).
+def default_templates_dir
+  File.expand_path("../templates", __dir__)
+end
+
+def sanitized_summary(raw)
+  usage_abort("a summary is required") if raw.nil?
+
+  clean = SessionLedger.sanitize_summary(raw)
+  usage_abort("summary is empty after sanitizing") if clean.empty?
+  clean
+end
+
+def append_checklist_line(state, store, day, session, project, summary)
+  clean = sanitized_summary(summary)
+  line = SessionLedger.checklist_line(state, session, project, clean)
+  path = SessionLedger.checklist_path(store, day)
+  SessionLedger.append_line(path, line, header: SessionLedger.checklist_header(day))
+end
+
+# Find the summary of the newest line matching `state`/`session`/`match`,
+# read under a shared lock. Mirrors the selection SessionLedger.set_state
+# performs internally, so the --savepoint line names the same line that
+# set_state is about to flip (or has just flipped).
+def find_target_summary(path, state, session, match)
+  content = SessionLedger.read_locked(path)
+  target = nil
+
+  content.each_line do |raw_line|
+    parsed = SessionLedger.parse_checklist_line(raw_line)
+    next unless parsed && parsed[:session] == session && parsed[:state] == state
+    next if match && !parsed[:summary].include?(match)
+
+    target = parsed[:summary]
+  end
+
+  target
+end
+
+def run_transition(from, to, event, store, day, session, project, opts)
+  path = SessionLedger.checklist_path(store, day)
+  target_summary = find_target_summary(path, from, session, opts[:match])
+
+  changed =
+    begin
+      SessionLedger.set_state(path, from: from, to: to, session: session, match: opts[:match])
+    rescue SessionLedger::LockUnavailableError => e
+      warn "append-ledger: #{e.message}"
+      exit 3
+    end
+
+  unless changed
+    warn "append-ledger: nothing to address"
+    exit 2
+  end
+
+  return unless opts[:savepoint]
+
+  line = SessionLedger.savepoint_line(event, session, project, target_summary.to_s, now: Time.now)
+  SessionLedger.append_line(SessionLedger.savepoint_path(store, day), line, header: nil)
+end
+
+def run_savepoint(store, day, session, project, opts)
+  unless SessionLedger::EVENTS.include?(opts[:event])
+    usage_abort("--event must be one of #{SessionLedger::EVENTS.join(", ")}, got #{opts[:event].inspect}")
+  end
+
+  clean = sanitized_summary(opts[:summary])
+  line = SessionLedger.savepoint_line(opts[:event], session, project, clean, now: Time.now)
+  SessionLedger.append_line(SessionLedger.savepoint_path(store, day), line, header: nil)
+end
+
+def main(argv)
+  opts = parse_args(argv)
+  usage_abort("verb must be one of #{VERBS.join(", ")}, got #{opts[:verb].inspect}") unless VERBS.include?(opts[:verb])
+
+  plastic_home = expand(ENV.fetch("PLASTIC_HOME", "~/.plastic"))
+  store = opts[:store] ? expand(opts[:store]) : File.join(plastic_home, "store")
+  templates = opts[:templates] ? expand(opts[:templates]) : default_templates_dir
+  cwd = opts[:cwd] ? expand(opts[:cwd]) : Dir.pwd
+
+  day = opts[:day] || SessionLedger.day_id
+  unless SessionLedger.valid_day_id?(day)
+    usage_abort("--day must be eight digits parsing as a real date, got #{day.inspect}")
+  end
+
+  session = SessionLedger.short_session_id(opts[:session], ENV["CLAUDE_CODE_SESSION_ID"])
+  project = opts[:project] || SessionLedger.project_slug(cwd, plastic_home: plastic_home)
+
+  unless Dir.exist?(SessionLedger.day_dir(store, day))
+    SessionLedger.open_day(store: store, day: day, templates: templates, author: session)
+  end
+
+  case opts[:verb]
+  when "pending"
+    append_checklist_line(:pending, store, day, session, project, opts[:summary])
+  when "item"
+    append_checklist_line(:open, store, day, session, project, opts[:summary])
+  when "promote"
+    run_transition(:pending, :open, "Item", store, day, session, project, opts)
+  when "tick"
+    run_transition(:open, :done, "Done", store, day, session, project, opts)
+  when "savepoint"
+    run_savepoint(store, day, session, project, opts)
+  end
+
+  exit 0
+end
+
+main(ARGV) if $PROGRAM_NAME == __FILE__
