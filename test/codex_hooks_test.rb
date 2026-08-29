@@ -319,7 +319,7 @@ class CodexHooksTest < Minitest::Test
     out, status = run_hook("capture", payload)
     assert_equal 0, status.exitstatus
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
-    assert_includes ctx, "plastic-continuing skill workflow"
+    assert_includes ctx, "plastic-intent-continuing skill workflow"
   end
 
   def test_capture_matches_a_future_intent_keyword

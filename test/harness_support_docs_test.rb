@@ -53,18 +53,16 @@ class HarnessSupportDocsTest < Minitest::Test
 
   # Intent 239 review: the published note previously said only "Four instruction
   # lines... are left as they are", undercounting the real residue. The full count on
-  # a Codex install is 11: the 4 hook-launcher lines (D5), 2 CLAUDE_PLUGIN_ROOT lines
-  # in the skill-authoring reference (D3), 1 line in the shared
-  # _active-intent-gate.md fragment (D8), and 4 lines inside skill evals/evals.json
-  # fixtures (D7). Pins the corrected claim so it cannot silently regress to
+  # a Codex install is 4 since 2.0 (intent 304; the skill-authoring reference, the shared
+  # underscore gate fragment, and the evals fixtures that carried Claude paths were
+  # removed in 2.0 or moved to docs): the 4 hook-launcher lines (D5), which are also the
+  # only entries codex_install_content_test's allowlist still carries. Pins the corrected claim so it cannot silently regress to
   # understating the residue again.
   def test_support_matrix_discloses_the_full_residue_count
     section = harness_support_section.gsub(/\s+/, " ")
-    assert_includes section, "Eleven lines still speak Claude Code afterward"
+    assert_includes section, "Four lines still speak Claude Code afterward"
     assert_includes section, "four instruction lines that name Claude's hook launcher directory"
-    assert_includes section, "two lines in a skill-authoring reference"
-    assert_includes section, "_active-intent-gate.md"
-    assert_includes section, "four lines inside skill `evals/evals.json` fixtures"
+    assert_includes section, "left the installed tree in 2.0"
   end
 
   def test_support_matrix_names_no_plugin_install_path

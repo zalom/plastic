@@ -35,7 +35,7 @@ class GatesRemovedTest < Minitest::Test
   ].freeze
 
   # Inside the cut ranges but still called by a live file (plan review A1, A2), or
-  # called by start_intent.rb and hook-record.
+  # called by hook-record.
   KEPT_BRIDGE_METHODS = %i[
     deep_merge intent_id_from_dir read_project_config intent_active?
   ].freeze

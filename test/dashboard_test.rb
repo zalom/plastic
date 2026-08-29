@@ -417,7 +417,7 @@ class DashboardTest < Minitest::Test
     Claim.acquire_claim(claude_dir, "spec.md", session: "claude-session",
                         delegate: "writer-session", now: now)
     Lock.acquire(File.join(demo, "x--codex-owner"), session: "codex-session",
-                 harness: "codex", agent: "plastic-planner", now: now)
+                 harness: "codex", agent: "plastic-executor", now: now)
     legacy_dir = File.join(demo, "l--legacy")
     File.write(File.join(legacy_dir, "delivery.lock"), JSON.generate(
       "type" => "delivery", "owner_session" => "legacy-session", "host" => "test",
@@ -450,7 +450,7 @@ class DashboardTest < Minitest::Test
       rows = JSON.parse(out)["active"].to_h { |row| [row["id"], row] }
       assert_equal "plastic-enforcer · Claude", rows["c"]["worker"]
       assert_equal "Fresh · writer writer-session", rows["c"]["activity"]
-      assert_equal "plastic-planner · Codex", rows["x"]["worker"]
+      assert_equal "plastic-executor · Codex", rows["x"]["worker"]
       assert_equal "Fresh", rows["x"]["activity"]
       assert_equal "Unknown · Unknown", rows["l"]["worker"]
       assert_equal "Fresh", rows["l"]["activity"]
@@ -544,7 +544,7 @@ class DashboardTest < Minitest::Test
                          .gsub("{{active.rows}}", rows)
       assert_includes markdown, "| Id | What | Stage | Worker | Activity |"
       assert_includes markdown, "| c | Claude enriched | Exec | plastic-enforcer · Claude | Fresh · writer writer-session |"
-      assert_includes markdown, "| x | Codex enriched | How | plastic-planner · Codex | Fresh |"
+      assert_includes markdown, "| x | Codex enriched | How | plastic-executor · Codex | Fresh |"
       markdown.lines.grep(/^\| [cxl] \|/).each do |line|
         assert_equal 6, line.count("|"), "expected exactly five Markdown cells: #{line.inspect}"
       end

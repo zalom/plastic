@@ -60,7 +60,7 @@ class DoctorIntentEndTest < Minitest::Test
       ## Links
       <!-- No sources or chain; this intent has no graph edges to project. -->
     MD
-    File.write(File.join(dir, "spec.md"), "Tier: S\n\n# Spec: Demo intent #{id}\n")
+    File.write(File.join(dir, "spec.md"), "# Spec: Demo intent #{id}\n")
     File.write(File.join(dir, "plan.md"), "# Plan: Demo intent #{id}\n\n- [x] Step 1\n")
     File.write(File.join(dir, "checklist.md"), "# Checklist: Demo intent #{id}\n\n- [x] Step 1\n")
     File.write(File.join(dir, "outcome.md"),

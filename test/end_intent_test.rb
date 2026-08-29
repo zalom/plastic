@@ -89,7 +89,7 @@ class EndIntentTest < Minitest::Test
     # runs ahead of the outcome guard and checks these are present too, so a fixture meant
     # to exercise ONLY the outcome-guard scenarios must otherwise present a clean, fully
     # delivered intent (matching the real shape end-intent is actually called against).
-    File.write(File.join(intent_dir, "spec.md"), "Tier: S\n\n# Spec: Demo intent\n")
+    File.write(File.join(intent_dir, "spec.md"), "# Spec: Demo intent\n")
     File.write(File.join(intent_dir, "plan.md"), "# Plan: Demo intent\n\n- [x] Step 1\n")
     File.write(File.join(intent_dir, "checklist.md"), "# Checklist: Demo intent\n\n- [x] Step 1\n")
 

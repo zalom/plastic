@@ -336,7 +336,7 @@ class PlasticLockCliTest < Minitest::Test
                  harness: "codex", agent: "plastic-enforcer", model: "gpt-5",
                  thread: "thread-a", run_mode: "auto")
     Lock.add_delegate(@intent_dir, delegate: "delegate-1", session: "sess-a", now: now,
-                      harness: "codex", agent: "plastic-planner", model: "gpt-5",
+                      harness: "codex", agent: "plastic-executor", model: "gpt-5",
                       thread: "thread-d")
     Claim.acquire_claim(@intent_dir, "plan.md", session: "sess-a",
                         delegate: "delegate-1", now: now)
@@ -355,7 +355,7 @@ class PlasticLockCliTest < Minitest::Test
       Session: sess-a
       Heartbeat: #{now.iso8601}
       Claims: plan.md by delegate-1
-      Delegate: plastic-planner via Codex, active
+      Delegate: plastic-executor via Codex, active
     TEXT
     paths.each do |path|
       assert_equal before[path][0], File.binread(path), "who changed bytes for #{path}"
@@ -491,18 +491,18 @@ class PlasticLockCliTest < Minitest::Test
   def test_cli_delegate_records_metadata_and_owner_marks_terminal_status
     Lock.acquire(@intent_dir, session: "sess-1")
     _out, err, st = cli("delegate", "--delegate", "sub-1", "--harness", "codex",
-                        "--agent", "plastic-planner", "--model", "gpt-5", "--thread", "thread-d")
+                        "--agent", "plastic-executor", "--model", "gpt-5", "--thread", "thread-d")
     assert st.success?, err
     activity = Lock.read(@intent_dir)["delegate_activity"].last
-    assert_equal %w[codex plastic-planner gpt-5 thread-d active],
+    assert_equal %w[codex plastic-executor gpt-5 thread-d active],
                  activity.values_at("harness", "agent", "model", "thread", "status")
 
     _out, err, st = cli("delegate", "--delegate", "sub-1", "--status", "finished",
-                        "--harness", "codex", "--agent", "plastic-planner",
+                        "--harness", "codex", "--agent", "plastic-executor",
                         "--model", "gpt-5", "--thread", "thread-d")
     assert st.success?, err
     activity = Lock.read(@intent_dir)["delegate_activity"].last
-    assert_equal %w[codex plastic-planner gpt-5 thread-d finished],
+    assert_equal %w[codex plastic-executor gpt-5 thread-d finished],
                  activity.values_at("harness", "agent", "model", "thread", "status")
     assert_includes Lock.read(@intent_dir)["delegates"], "sub-1"
   end

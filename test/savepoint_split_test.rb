@@ -20,7 +20,7 @@ class SavepointSplitTest < Minitest::Test
     intent_file intent_dir_for stage_file_present? has_real_action?
     derive_stage has_files missing_for_stage savepoint_milestone savepoint_recorded_milestones
     savepoint_recorded_pairs append_savepoint_line append_savepoint savepoint_started_milestone
-    append_started_savepoint append_exec_started append_terminal_savepoint savepoint_tier
+    append_started_savepoint append_exec_started append_terminal_savepoint
     rebuild_savepoint savepoint_file_landing_pairs savepoint_phantom_lines
   ].freeze
 
@@ -45,7 +45,7 @@ class SavepointSplitTest < Minitest::Test
 
   MOVED_RE = Regexp.new('Bridge(\.|::)(' + (MOVED_METHODS + MOVED_CONSTS).map { |n| Regexp.escape(n.to_s) }.join("|") + ')(?![A-Za-z0-9_?!])').freeze
 
-  def test_savepoint_loads_standalone_with_exactly_spec_header_from_the_project
+  def test_savepoint_loads_standalone_with_no_other_project_file
     Dir.mktmpdir("savepoint-split") do |tmp|
       env = { "RUBYOPT" => nil, "PLASTIC_TMP" => tmp, "CLAUDE_CODE_SESSION_ID" => nil }
       lib = File.join(REPO, "scripts", "lib", "savepoint.rb")
@@ -53,7 +53,7 @@ class SavepointSplitTest < Minitest::Test
       assert status.success?, "savepoint.rb does not load: #{err}"
       loaded = out.lines.map(&:strip)
       project = loaded.select { |f| f.start_with?("#{REPO}/") }.map { |f| f.sub("#{REPO}/", "") }.sort
-      assert_equal %w[scripts/lib/savepoint.rb scripts/lib/spec_header.rb], project
+      assert_equal %w[scripts/lib/savepoint.rb], project
       leaked = loaded.grep(%r{/(bridge|lock|worktree)\.rb\z|/yaml(\.rb)?\z|/socket\.rb\z|/digest\.rb\z})
       assert_empty leaked, "savepoint.rb pulled in the bridge's dependencies: #{leaked.inspect}"
     end
@@ -164,13 +164,6 @@ class SavepointSplitTest < Minitest::Test
       offenders << path.sub("#{REPO}/", "")
     end
     assert_empty offenders, "uses Savepoint without requiring it: #{offenders.inspect}"
-  end
-
-  # savepoint.rb requires spec_header.rb (savepoint_tier delegates to it until 304 deletes
-  # both), so spec_header.rb must stay free of require_relative or the two form a cycle.
-  def test_spec_header_stays_require_free
-    src = File.read(File.join(REPO, "scripts", "lib", "spec_header.rb"))
-    refute_match(/^require_relative/, src)
   end
 
   def test_bridge_shrank_and_the_manifest_ships_savepoint

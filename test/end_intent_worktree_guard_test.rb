@@ -92,7 +92,7 @@ class EndIntentWorktreeGuardTest < Minitest::Test
     # Real, complete spec/plan/checklist (intent 222): the per-intent structure gate now
     # runs ahead of the dirty-worktree guard too, so a fixture exercising that guard must
     # otherwise present a clean, fully delivered intent.
-    File.write(File.join(intent_dir, "spec.md"), "Tier: S\n\n# Spec: Demo intent\n")
+    File.write(File.join(intent_dir, "spec.md"), "# Spec: Demo intent\n")
     File.write(File.join(intent_dir, "plan.md"), "# Plan: Demo intent\n\n- [x] Step 1\n")
     File.write(File.join(intent_dir, "checklist.md"), "# Checklist: Demo intent\n\n- [x] Step 1\n")
     intent_dir
