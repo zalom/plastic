@@ -5,6 +5,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require_relative "../scripts/lib/session_ledger"
+require_relative "../scripts/lib/worktree"
 
 # Intent 300: `scripts/session-commit`, driven as a real subprocess. Every
 # spawn is hermetic: a Dir.mktmpdir PLASTIC_HOME (and store), an explicit

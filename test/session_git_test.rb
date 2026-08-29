@@ -101,7 +101,7 @@ class SessionGitTest < Minitest::Test
     nested = File.join(repo, "a", "b")
     FileUtils.mkdir_p(nested)
 
-    assert_equal repo, SessionGit.resolve_repo(nested, runner: RUNNER)
+    assert_equal File.realpath(repo), SessionGit.resolve_repo(nested, runner: RUNNER)
   ensure
     FileUtils.rm_rf(repo)
   end
@@ -485,7 +485,9 @@ class SessionGitTest < Minitest::Test
 
     assert_equal "Note", result.event
     assert_includes result.message, "no thanks"
-    assert_match(/^\?\? work\.txt/, git(repo, "status", "--porcelain").stdout.to_s)
+    # `git add -A` ran before the rejected commit, so the file stays staged
+    # (not committed, not reverted) for the owner to inspect or retry.
+    assert_match(/^A  work\.txt/, git(repo, "status", "--porcelain").stdout.to_s)
   ensure
     FileUtils.rm_rf(repo)
   end

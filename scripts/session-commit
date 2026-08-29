@@ -1,0 +1,91 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# session-commit (intent 300) - makes one commit for a verified checklist
+# item on the right branch of the repo that contains `--cwd`, applying the
+# branch model and per-repo flow settings in `scripts/lib/session_git.rb`.
+# Idempotent and fail-open: no repository, a detached HEAD, a clean tree, an
+# agent-owned branch, a refused push, a missing `gh`, or a rejected
+# commit-msg hook all degrade to no commit plus a Note savepoint line,
+# never a non-zero exit (spec D1).
+#
+# Usage:
+#   session-commit --cwd <dir> --summary <text> [--session <id>] [--day <YYYYMMDD>]
+#                   [--store <dir>] [--plastic-home <dir>]
+#
+# Exit codes:
+#   0 - always, except a usage error
+#   2 - usage error (missing --cwd or --summary); nothing is written
+
+require_relative "lib/session_git"
+require_relative "lib/session_ledger"
+
+def usage_abort(message)
+  warn "session-commit: #{message}"
+  exit 2
+end
+
+def next_value!(argv, i, flag)
+  usage_abort("#{flag} requires a value") if i + 1 >= argv.length
+  argv[i + 1]
+end
+
+def parse_args(argv)
+  opts = { cwd: nil, summary: nil, session: nil, day: nil, store: nil, plastic_home: nil }
+  i = 0
+  while i < argv.length
+    arg = argv[i]
+    case arg
+    when "--cwd"          then opts[:cwd] = next_value!(argv, i, arg); i += 1
+    when "--summary"      then opts[:summary] = next_value!(argv, i, arg); i += 1
+    when "--session"      then opts[:session] = next_value!(argv, i, arg); i += 1
+    when "--day"          then opts[:day] = next_value!(argv, i, arg); i += 1
+    when "--store"        then opts[:store] = next_value!(argv, i, arg); i += 1
+    when "--plastic-home" then opts[:plastic_home] = next_value!(argv, i, arg); i += 1
+    else
+      usage_abort("unknown flag #{arg.inspect}")
+    end
+    i += 1
+  end
+  opts
+end
+
+def expand(path)
+  File.expand_path(path.to_s.sub(/\A~/, Dir.home))
+end
+
+# Sibling of this script's dir, matching append-ledger's own resolution:
+# in-repo (<repo>/scripts/session-commit -> <repo>/templates) and installed
+# (~/.plastic/scripts/session-commit -> ~/.plastic/templates).
+def default_templates_dir
+  File.expand_path("../templates", __dir__)
+end
+
+def main(argv)
+  opts = parse_args(argv)
+  usage_abort("--cwd is required") if opts[:cwd].nil?
+  usage_abort("--summary is required") if opts[:summary].nil?
+
+  plastic_home = expand(opts[:plastic_home] || ENV.fetch("PLASTIC_HOME", "~/.plastic"))
+  store = opts[:store] ? expand(opts[:store]) : File.join(plastic_home, "store")
+  cwd = expand(opts[:cwd])
+
+  day = opts[:day] || SessionLedger.day_id
+  session = SessionLedger.short_session_id(opts[:session], ENV["CLAUDE_CODE_SESSION_ID"])
+  project = SessionLedger.project_slug(cwd, plastic_home: plastic_home)
+
+  templates = default_templates_dir
+  SessionLedger.open_day(store: store, day: day, templates: templates, author: session) if Dir.exist?(templates)
+
+  result = SessionGit.commit!(cwd: cwd, summary: opts[:summary], day: day, session: session,
+                               plastic_home: plastic_home, store: store)
+
+  line = SessionLedger.savepoint_line(result.event, session, project, result.message, now: Time.now)
+  SessionLedger.append_line(SessionLedger.savepoint_path(store, day), line, header: nil)
+
+  puts result.message
+  exit 0
+end
+
+main(ARGV) if $PROGRAM_NAME == __FILE__

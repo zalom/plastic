@@ -3,3 +3,10 @@ governing_docs:
 
 release:
   on_complete: commit
+
+# flow:
+#   mode: direct               # direct | pull_request
+#   base: main                 # defaults to origin/HEAD, then main, then master
+#   branch_template: "session/{{day}}"   # {{day}}, {{ticket}}, {{slug}} tokens
+#   ticket_source: intent_id   # intent_id (the session pointer's intent id, else the day id)
+#   workspace: checkout        # checkout | worktree (worktree applies to direct mode only)
