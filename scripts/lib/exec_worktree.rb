@@ -99,8 +99,7 @@ module ExecWorktree
     false
   end
 
-  # Session resolution order (mirrors scripts/end-intent:418-426, not
-  # scripts/start-intent's no-fallback order): explicit --session, else
+  # Session resolution order (mirrors scripts/end-intent:418-426): explicit --session, else
   # CLAUDE_CODE_SESSION_ID (passed in as env_session, never read from ENV here), else
   # the existing delivery.lock's own recorded owner_session when non-blank, else nil.
   # The lock-owner fallback is correct here: this is a teardown step on an intent this
@@ -114,7 +113,7 @@ module ExecWorktree
     Bridge.blank?(owner) ? nil : owner
   end
 
-  # --- result builders (mirror StartIntent's exit_code/stdout/stderr shape) --------
+  # --- result builders (the exit_code/stdout/stderr shape the thin CLIs share) --------
 
   def usage_result(message)
     { exit_code: EXIT_USAGE, stderr: ["exec-worktree: #{message}"], stdout: [] }

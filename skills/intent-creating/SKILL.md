@@ -12,7 +12,7 @@ user-invocable: true
 - User explicitly says "new intent" or "create intent"
 - An agent discovers work needed during implementation
 
-## Determine Tier
+## Determine the store
 
 **Global intent** (strategic): created when working outside a registered project, or when the user expresses a high-level goal. Stored in `~/.plastic/store/`.
 
@@ -79,7 +79,7 @@ rule and the tool.
 frontmatter edge and reproject. Links are decided by context influence (a `chain` edge has a high
 bar: the candidate's context must materially help deliver this intent), not by shared files or a
 similarity score. To gather candidates with their context and record an edge, use the
-`plastic-intent-linking` skill and `scripts/link-suggest`.
+`scripts/link-suggest` and `scripts/project-links`.
 
 Read `../plastic-conventions/references/knowledge-graph.md` for the full linking doctrine: the
 tiers of influence, sources versus chain, and how the `## Links` projection is derived. This path

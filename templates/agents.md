@@ -55,11 +55,8 @@ Plastic has its own lifecycle skills. When a Plastic skill exists for the curren
 | Phase | Skill | Produces |
 |-------|-------|----------|
 | What | `plastic-intent-creating` | Intent file |
-| Why | `plastic-intent-brainstorming` | Enriched `## Context` + `### Decisions` |
-| Why | `plastic-intent-speccing` | `spec.md` |
-| Why | `plastic-intent-researching` | `resources/*.md` |
-| Why | `plastic-intent-grilling` | Deep interrogation |
-| How | `plastic-intent-planning` | `plan.md`, `checklist.md`, `actions/` |
+| Why | `plastic-intent-speccing` | Rulings as insights, `resources/*.md`, `spec.md` |
+| How | `plastic-intent-speccing` | `actions/`, `plan.md`, `checklist.md` |
 | Exec | `plastic-intent-executing` | Code + `outcome.md` |
 | Done | `plastic-intent-ending` | Lifecycle transition |
 

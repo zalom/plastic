@@ -13,9 +13,6 @@
 # requires the bridge.
 require "fileutils"
 require "time" # Time#iso8601 for the ledger timestamps
-# savepoint_tier delegates the `Tier:` header grammar to SpecHeader; 304 deletes both
-# with tiers. spec_header.rb has no requires of its own, so there is no cycle.
-require_relative "spec_header"
 
 module Savepoint
   # Placeholder sentinel (intent 60b). A scaffolded lifecycle file
@@ -230,25 +227,11 @@ module Savepoint
     append_savepoint_line(intent_dir, "Done", disposition, now)
   end
 
-  # --- Tier convenience line (intent 130, D-A) ------------------------------
-  #
-  # spec.md's top `Tier: S|M|L` line is the single authoritative record of an
-  # intent's proportional-auto-sizing tier (see PLASTIC.md `## Tiers`). This
-  # reads that line only; it never validates or enforces it (convention-only,
-  # matching the skill and agent contracts). Returns nil when spec.md is
-  # absent, empty, or its first line does not match, so a missing/malformed
-  # Tier line changes nothing about existing rebuild behavior.
-  # The grammar itself now lives in SpecHeader (scripts/lib/spec_header.rb, intent 213);
-  # this method is a thin read on top of it.
-  def self.savepoint_tier(intent_dir)
-    SpecHeader.parse_file(File.join(intent_dir, "spec.md"))[:tier]
-  end
-
   # Reconstruct the ledger from files on disk (timestamps from mtimes), in
   # stage order, overwriting savepoint.md. Returns the number of lines written.
-  # When spec.md carries a Tier line, one convenience `Tier  <value>` line is
-  # echoed right after the spec.md milestone line (same mtime), so the tier
-  # survives a rebuild without becoming a new source of truth.
+  # A Plastic 1.x ledger may carry a `Tier  <value>` line after the spec.md
+  # milestone (removed in 2.0, intent 304); a rebuild drops it, and the phantom
+  # detector ignores it, so a 1.x store reads clean.
   def self.rebuild_savepoint(intent_dir)
     ordered = [
       File.basename(intent_file(intent_dir)),
@@ -260,12 +243,7 @@ module Savepoint
       stage, milestone = savepoint_milestone(intent_dir, basename)
       next [] unless milestone
       stamp = File.mtime(path).utc.iso8601
-      entry = "#{stamp}  #{stage}  #{milestone}\n"
-      if basename == "spec.md" && (tier = savepoint_tier(intent_dir))
-        [entry, "#{stamp}  Tier  #{tier}\n"]
-      else
-        [entry]
-      end
+      ["#{stamp}  #{stage}  #{milestone}\n"]
     end
     File.write(File.join(intent_dir, SAVEPOINT_FILE), lines.join)
     lines.length

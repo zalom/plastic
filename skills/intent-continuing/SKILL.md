@@ -1,103 +1,145 @@
 ---
 name: plastic-intent-continuing
 description: >-
-  Use when a specific intent is named to resume, by id or by description, or on `continuing
-  --intent {id}`. Reads that intent's savepoint ledger and hands off to plastic-intent-starting.
-  The general "continue" / new-session triggers belong to the plastic-continuing router, not
-  here, so a bare "continue" does not settle on this skill directly. Boot (health check, core
-  context, version, statusline) is owned by the SessionStart hook, not this skill. Does not
-  drive work autonomously (that is plastic-auto).
+  The front door for resuming work. Use when the user says "continue", "resume", "pick up
+  where we left off", "where was I", "what should I work on", names a specific intent to
+  resume (by id or description, or `--intent {id}`), or names a roadmap or delivery batch to
+  resume (`--roadmap {slug}`, "where is the roadmap", "where did that batch land"). Presents
+  state and resumes at the last delivered station; it never asks auto or guided, never boots
+  (the SessionStart hook owns boot), and never drives work autonomously (plastic-auto does).
+  Absorbs the former continuing, project-continuing, and roadmap-continuing skills and the
+  read half of the former intent-starting skill (intent 304).
 user-invocable: true
 ---
 
-# Continuing (intent route)
+# Continuing: the front door for resuming work
 
-`plastic-intent-continuing` is the intent route of `plastic-continuing`. It resumes ONE
-specific intent by its savepoint ledger, then hands off to `plastic-intent-starting`. It does
-NOT land on a dashboard and does NOT execute work autonomously (that is `plastic-auto`); both
-of those are other routes' jobs.
+One skill with three routes. It reads state and presents it; the work itself continues in
+whatever mode the session is in (direct by default, `plastic-auto` when the owner says auto).
+There is no lock to take and no mode to ask here: locks exist only for auto teams, and the
+mode is the owner's word, not a question this skill puts.
 
-**Boot is not this skill's job.** The `hook-session-start` hook already runs by construction on
-every session start: it runs the core health check (`doctor --core`), primes `PLASTIC.md` +
-store/project state, and prints the `Plastic Core loaded - v{version}` banner. The
-`plastic-statusline` hook sets the statusline. So by the time this skill runs, core is loaded
-and healthy (or the banner already warned otherwise). This skill picks up from there and
-resumes the named intent. This is the seam future continue-flags build on (see [[39]]).
+**Boot is not this skill's job.** `hook-session-start` runs on every session start: the core
+health check (`doctor --core`), `PLASTIC.md` and store or project state, the
+`Plastic Core loaded - v{version}` banner. By the time this skill runs, core is loaded and
+healthy or the banner already warned.
 
-## When to Use
-- A specific intent is named to resume, by id or by description
-- `continuing --intent {id}`
+## Route
 
-## Determine Store
+| Args or context | Route |
+|---|---|
+| `--intent {id}`, or the user names one specific intent to resume (by id or description) | Intent route (below) |
+| `--roadmap {slug}`, or the user asks to continue or resume a roadmap or delivery batch | Roadmap route (below) |
+| bare "continue", "resume", "what should I work on", or no target (the default) | Project route (below) |
 
-1. **Global store** - `~/.plastic/INDEX.md` exists → global mode.
-2. **Local store** - a project store under `~/.plastic/projects/{slug}/` whose registered
-   path (in `~/.plastic/projects.yml`) matches the current working directory → project mode.
-   The SessionStart hook already detects this; here you only need the slug to scope the
-   named intent's store.
-3. If neither exists → announce "No Plastic store found. Run /plastic-install."
+State the chosen route in one line before doing anything ("Landing on the project board: no
+specific intent or roadmap named.").
 
-## Conditional Ledger-Resume
+## Determine store
 
-Fires ONLY when the user explicitly asks to continue a SPECIFIC intent, or an agent is
-instructed to continue one. It is not part of every boot.
+1. A project store under `~/.plastic/projects/{slug}/` whose registered path in
+   `~/.plastic/projects.yml` matches the working directory means project mode; the
+   SessionStart hook already detected this, the slug scopes the reads below.
+2. Otherwise the global store, `~/.plastic/store/`.
+3. Neither exists: announce "No Plastic store found. Run /plastic-install." and stop.
 
-QMD-first (when available): when the user names the intent by description rather than id, before
-scanning the store with grep/Read run `ruby ~/.plastic/scripts/qmd-sync search "<terms>"` to
-surface the candidate intent, then open the authoritative intent file for the hit you resume. The
-command is a no-op when QMD is absent, so fall back to the existing INDEX.md / file scan.
+## Project route: land on the board
 
-Read `../plastic-conventions/references/lifecycle-and-savepoints.md` for the subagent
-report-home contract behind the resume below. This path resolves relative to this skill's own
-installed directory.
+Land on the Markdown board through the `plastic-dashboard` skill; rendering belongs there.
+Run the data payload and fill the matching template:
+- project loaded: `ruby ~/.plastic/scripts/dashboard.rb project <slug> --data`
+- otherwise (the global fallback): `ruby ~/.plastic/scripts/dashboard.rb continue --data`
 
-For that intent's directory:
+Fill the template from `plastic-dashboard`'s `templates/` and present the filled Markdown in
+your reply, every time: tool-call stdout and hook context are invisible to the user. Read
+`references/board-fill.md` for the fill mechanics and the store-health line when filling the
+board. The board load runs the scoped store check (`doctor --store <scope>`); its result
+arrives in the payload as `store_health` and is shown as one line of data, never a blocker.
 
-1. **Read `savepoint.md` FIRST (intent 81).** It is a deterministic, append-only ledger
-   (one line per event, newest at the bottom): `{utc-iso8601}  {Stage}  {milestone}`. Classify
-   the state from the **last line** alone, then verify ONLY that line's artifact. The bookends
-   are fixed: first line `What  created`, last line either a cycle position or
-   `Done  delivered|abandoned`.
+Priority order on the board: active intents first, then project context (governing plus
+tactical intents in a registered project), then stale future intents for triage, then fresh
+future intents as next work. A future intent older than `stale_threshold_days` (default 3) is
+surfaced for triage without action: activate, abandon, or leave. Activating moves it to
+`## Active` in `INDEX.md` and auto-commits. The board's ranked next-work order is computed by
+`dashboard.rb`; cite the rule names only (Effort, Value, Flags, Override, Caps) and read
+`plastic-dashboard`'s `references/classification.md` for their definitions.
 
-   | Last line | State | Verify only |
-   |---|---|---|
-   | `What  {id}--{slug}.md` | born / parked | intent file exists |
-   | `Why  started` | Why entered, no spec yet | spec.md not yet real; continue Why |
-   | `Why  spec.md created` | Why done | spec.md present; continue to How |
-   | `How  started` / `How  plan.md created` | How in progress | plan.md; continue How |
-   | `How  checklist.md created` / `Exec  started` | ready for / in Exec | plan.md + checklist.md present; continue Exec |
-   | `Exec  outcome.md created` | Exec done | outcome.md present; ready to complete |
-   | `Done  delivered` / `Done  abandoned` | terminal | do NOT cycle-resume; INDEX is authoritative |
+When the tier root (the directory holding `INDEX.md`) has a mid-flight roadmap
+(`ruby ~/.plastic/scripts/roadmap-next --roadmaps-dir <root>/roadmaps` reports a `state`
+other than `none`), say so in one line and offer the roadmap route; the board still presents
+project state and stops.
 
-2. **Verify the stage file.** Confirm only the last line's artifact exists and is non-empty
-   (ledger `How  plan.md created` → `plan.md` must be present and non-empty). Do not re-probe
-   every lifecycle file.
-3. **Drift handling.** If the ledger's last line disagrees with files-on-disk, rebuild the
-   ledger from filesystem state and note the correction. A rebuilt ledger is the file-landing
-   skeleton (no `started`/`Done` lines), which still pins cycle position:
+Then stop: "here is the state, what next?". Do not start executing work. When the user names
+an intent, take the intent route.
+
+## Intent route: resume one intent from its ledger
+
+QMD-first when the intent is named by description: run
+`ruby ~/.plastic/scripts/qmd-sync search "<terms>"` to find the candidate, then open the
+authoritative intent file. The command is a no-op when QMD is absent; fall back to
+`INDEX.md`.
+
+If the intent is terminal (`## Completed` or `## Abandoned` in `INDEX.md`): report only.
+Summarize its `outcome.md` and ask what is next; never reopen it.
+
+For a live intent's directory:
+
+1. **Read `savepoint.md` first.** It is a deterministic, append-only ledger, one line per
+   event, newest at the bottom: `{utc-iso8601}  {Stage}  {milestone}`. Classify the station
+   from the last line alone (the table in `references/boarding-matrix.md`, read when
+   classifying), then verify only that line's artifact is real (sentinel-aware:
+   `Savepoint.stage_file_present?`). Do not re-probe every lifecycle file.
+2. **Drift.** When the last line disagrees with the files on disk, rebuild the ledger from
+   disk and note the correction. A rebuilt ledger is the file-landing skeleton, which still
+   pins the station:
    ```bash
    ruby -r ~/.plastic/scripts/lib/savepoint -e 'Savepoint.rebuild_savepoint("<intent_dir>")'
    ```
-4. **Derive the next step:**
-   - First unchecked item in `checklist.md` if it exists, else
-   - "advance to the next lifecycle stage" (e.g. ledger shows Why/spec.md → next is How).
-   - The newest `## Insights` entry supplies human-readable context (Insights are
-     append-only, newest at the bottom).
-5. **Announce, then hand off to `plastic-intent-starting`:**
+3. **Read the hand-off.** When `resources/handoff--*.md` exists, its newest file is the prior
+   session's own account of where things stand; read it after the ledger, never instead of it.
+4. **Derive the next step:** the first unchecked item in `checklist.md` when it exists, else
+   the next thing the station needs (see the matrix). The newest `## Insights` entry supplies
+   the human-readable context; an entry marked `(autonomous)` means an auto team was
+   delivering it, so say so and offer to hand back to `plastic-auto`.
+5. **Announce, then continue at that station:**
    ```
    Resuming intent [ID] - [name]
-   Store: [global | project:<slug> | local]
-   Stage: [from ledger last line]
-   Next step: [first unchecked checklist item | advance to <stage>]
-   Context: [newest ## Insights entry]
-   Drift: [none | ledger rebuilt from filesystem]
+   Store: [global | project:<slug>]
+   Station: [from the ledger's last line]
+   Next step: [first unchecked checklist item | what the station needs]
+   Context: [newest ## Insights entry | hand-off summary]
+   Drift: [none | ledger rebuilt from disk]
    ```
-   Hand off to `plastic-intent-starting`: it takes the lock, boards at this station, and is
-   where the single "auto or guided?" ask for the intent route lives, asked there exactly
-   once and never duplicated here. Its auto branch is the one that hands off to `plastic-auto`;
-   this skill never hands to `plastic-auto` directly.
+   Then continue the work in the session's current mode. In auto mode the running team
+   already holds the delivery lock; if a lock is held by a session that is gone, the
+   `plastic-doctor` skill's lock section repairs or reclaims it.
+
+## Roadmap route: resume the mid-flight roadmap
+
+1. Resolve the tier root (project or global) and run the shared reader in which mode:
+   ```bash
+   ruby ~/.plastic/scripts/roadmap-next --roadmaps-dir <root>/roadmaps --which
+   ```
+   Read `state` and the winning `roadmap`. A `tie` lists `tie_candidates` to present side by
+   side and let the user pick; never pick silently. The reader ranks liveness the way
+   `references/liveness-ranking.md` describes (read it when a ranking needs explaining): a
+   `delivering` or `blocked` entry wins, else the newest ledger or `## Log` timestamp.
+   `roadmaps/<slug>.savepoint.md` is a derived signal read here, never a status field;
+   `INDEX.md` stays the sole status writer.
+2. **Present state:** the roadmap's `## Goal`, the current batch with each entry's mirrored
+   status, the ledger's newest line beside the newest `## Log` line. Read
+   `../plastic-conventions/references/roadmaps.md` for the file format and the status-mirror
+   rule when a roadmap file needs interpreting.
+3. Then continue with the next dispatchable entry in the session's mode: direct work on it,
+   or `plastic-auto` when the owner says auto. The coordinator that drives a batch appends
+   to `roadmaps/<slug>.savepoint.md` at its dispatch, merge, park, and handoff points with
+   `ruby ~/.plastic/scripts/roadmap-savepoint append`; this skill only reads it.
 
 ## References
 
-- Read `references/context-management.md` for the save/continue protocol and for
-  debugging the resume flow.
+| Trigger | Read |
+|---|---|
+| Filling the board on the project route | `references/board-fill.md` |
+| Classifying the station from the ledger's last line | `references/boarding-matrix.md` |
+| Explaining why one roadmap ranked above another | `references/liveness-ranking.md` |
+| Saving or restoring context across a long session, or debugging a resume | `references/context-management.md` |

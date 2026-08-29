@@ -1,5 +1,7 @@
 # What the gates are telling you
 
+> The gates this guide describes were removed in 2.0 (intent 302), and the skills it names to unblock them were merged or removed in 2.0 (intent 304). It stays for readers of a Plastic 1.x install.
+
 Who this is for: someone who just tried to do something in Plastic, got
 stopped with a message they do not recognize, and wants to know what to do
 next.
@@ -27,10 +29,10 @@ searches over the intent stores are never blocked, by any gate, ever.
 **No lock held yet.** You tried to write to an intent's files without boarding
 it first.
 
-> no delivery lock held for intent {id}; run /plastic-intent-starting to lock
+> no delivery lock held for intent {id}; run /plastic-intent-continuing to lock
 > and begin
 
-Fix: run `/plastic-intent-starting`.
+Fix: run `/plastic-intent-continuing`.
 
 **Lock held by another session.** Someone (or something) else is already
 delivering this intent.
@@ -67,9 +69,9 @@ existed. The message reads, punctuation aside:
 
 > intent {id} has not reached How: write plan.md + checklist.md and at least
 > one real actions/ACTION_N.md before editing project code. Run plastic-auto
-> or plastic-intent-planning first. (blocked edit: {path})
+> or plastic-intent-planning first. (blocked edit: {path}) (removed in 2.0, intent 304)
 
-Fix: `plastic-auto` or `plastic-intent-planning`. Another choice of two: either
+Fix: `plastic-auto` or `plastic-intent-planning`. Another choice of two: either (removed in 2.0, intent 304)
 one writes the missing plan and checklist, then editing is allowed.
 
 **Create gate.** Someone tried to write an intent file by hand instead of

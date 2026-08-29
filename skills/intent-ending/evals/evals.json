@@ -53,7 +53,7 @@
       "scope": "triggering",
       "set": "validation",
       "prompt": "Start work on intent 87.",
-      "expected_output": "Does NOT activate plastic-intent-ending; this is a boarding request (plastic-intent-starting), the opposite end of the lifecycle from a close.",
+      "expected_output": "Does NOT activate plastic-intent-ending; this is a resume request (plastic-intent-continuing), the opposite end of the lifecycle from a close.",
       "files": [],
       "assertions": [
         { "type": "code", "check": "router CHOICE != plastic-intent-ending", "result": "expect-pass" }

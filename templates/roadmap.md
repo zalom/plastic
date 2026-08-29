@@ -1,6 +1,6 @@
 # Roadmap: <name>
 
-(one-line meta: what this roadmap delivers, and which tier it lives in. `roadmaps/` is a sibling
+(one-line meta: what this roadmap delivers, and whether it is a project or the global roadmap. `roadmaps/` is a sibling
 of `INDEX.md` — a project's root or the global `~/.plastic/`, never inside `store/`. When this
 roadmap's goal is reached, move this file from `roadmaps/{slug}.md` to
 `roadmaps/archived/{slug}.md`; `roadmaps/` itself lists only live roadmaps.)

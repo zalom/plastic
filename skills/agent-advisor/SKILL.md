@@ -33,7 +33,7 @@ when the ordering decides where you spend the next day.
 Never buy a consultation for: anything a tool can answer (search, reading code, running
 tests, documentation), writing code at volume, confirming a decision you already made,
 style or naming a linter would settle, or anything reversible and cheap you have not
-tried first. The full buy/never-buy list, the tier table, and the entry test live in
+tried first. The full buy/never-buy list, the effort table, and the entry test live in
 `references/advisor-protocol.md`; read it before writing a brief for the first time in
 a session.
 
@@ -50,7 +50,7 @@ a session.
    advisor is disabled and point at "Setting the default" below.
 4. Dispatch the resolved agent with a brief built per `references/advisor-protocol.md`
    section 4 (natural prose, the block is a completeness check, not a form to fill).
-   State TIER (S, M, or L) and EFFORT explicitly; classify low and prove your way up,
+   State EFFORT and the answer shape explicitly; classify low and prove your way up,
    never open high "to be safe".
 5. Consume the answer per the protocol's section 5: run the Operating Manual's
    five-question self-test on the advisor's plan before executing it. Advice is input,
@@ -86,7 +86,7 @@ the new default back to the user in one line.
 ## References
 
 - `references/advisor-protocol.md`: the full shipped Advisor Protocol (what to buy,
-  tiers and effort, the entry test, how to write a brief that earns its cost, the
+  effort and answer shape, the entry test, how to write a brief that earns its cost, the
   answer contract, session economics, anti-patterns). Read it before the first
   consultation in a session; the second consultation in the same advisor thread costs a
   fraction of the first, so keep follow-ups on one thread rather than opening a new one.

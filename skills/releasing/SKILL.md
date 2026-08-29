@@ -279,14 +279,14 @@ A release IS a delivery. The active intent that drove this work must be complete
       ruby ~/.plastic/scripts/end-intent --store <store_path> --id <ID> --disposition delivered \
         --session "$CLAUDE_CODE_SESSION_ID" \
         --outcome-summary "delivered in <tag-name>: <one-line summary>" \
-        --index-note "<tag-name>, <mode/tier>; <what shipped>; <suite result>"
+        --index-note "<tag-name>, <mode>; <what shipped>; <suite result>"
       ```
       A non-zero exit needs attention: 4 means a live foreign session holds the lock (back
       off), 5 means the code worktree is still dirty (should not happen here, since step 8
       already removed it; investigate before overriding with `--discard-worktree-changes`),
       3 means disarm ran but the lock is still present (run `/plastic-doctor check the lock
       status`).
-   d. Update clusters to show `_(completed)_` (the store-curating skill's job on its next pass).
+   d. Update clusters to show `_(completed)_`.
 
 **If no active intent exists for this release**, that itself is a problem - work happened outside the intent system. Log it and move on, but flag it.
 

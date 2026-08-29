@@ -5,9 +5,9 @@
 *Adapted for Plastic (intent 185): this is the shipped reference copy the
 `plastic-agent-advisor` skill teaches from. Two named agents carry it,
 `plastic-advisor` (the real advisor) and `plastic-faux-advisor` (the cheaper
-imitation, the same discipline at a fraction of the cost); TIER and EFFORT
-below shape the brief and the answer on whichever one you dispatch, never
-which file to pick, since there is no longer one file per tier. The
+imitation, the same discipline at a fraction of the cost); EFFORT and the
+answer shape below shape the brief and the answer on whichever one you
+dispatch, never which file to pick. The
 `plastic-agent-advisor` skill reads harness-scoped config
 (`advisor.claude.default`, falling back to `secondary`, then to
 `plastic-faux-advisor`) to route your consultation automatically; name a
@@ -53,26 +53,26 @@ You own the work and the outcome. Fable owns the hardest thinking, on demand.
 
 ---
 
-## 2. Tiers and effort
+## 2. Effort and answer shape
 
-Classify every consultation before sending it. Default to S and prove your way
-up. Never open at a higher effort "to be safe": effort follows the cost of being
+Classify every consultation before sending it. Default to the smallest shape and
+prove your way up. Never open at a higher effort "to be safe": effort follows the cost of being
 wrong, not the importance the task feels like it has.
 
-| Tier | Coding | Business | Research | Effort | Brief size | Expected return |
+| Shape | Coding | Business | Research | Effort | Brief size | Expected return |
 |------|--------|----------|----------|--------|------------|-----------------|
-| **S** | Verdict on one step; choose between two named implementations | Pick between two options you already compared (vendor, pricing point) | Judge whether one source or result is trustworthy enough to build on | `low` | Under 300 words | Verdict, one paragraph of reasoning, the single biggest risk |
-| **M** | Plan a feature inside one system; review a full plan for holes; design one interface; rank root causes | Positioning or pricing decision from a compiled evidence pack; review a proposal before sending it | Design a research plan for a bounded question; rank competing explanations of the data you gathered | `medium`, or `high` if an irreversible step is inside | Up to one page | Decision, numbered plan with per-step checks, risk map |
-| **L** | Cross-system architecture; migration with one-way doors; deadlock after two failed attempts; security-critical design | Build-vs-buy, market entry, or any commitment measured in months; strategy where reversal is expensive | Synthesis across many sources where the conclusion drives a large bet; contested questions with conflicting evidence | `xhigh`; `max` only when being wrong means data loss, a broken contract, or weeks of rework | Full evidence brief | Decision, plan, risk register, kill criteria, list of what could not be verified |
+| **Verdict** | Verdict on one step; choose between two named implementations | Pick between two options you already compared (vendor, pricing point) | Judge whether one source or result is trustworthy enough to build on | `low` | Under 300 words | Verdict, one paragraph of reasoning, the single biggest risk |
+| **Plan** | Plan a feature inside one system; review a full plan for holes; design one interface; rank root causes | Positioning or pricing decision from a compiled evidence pack; review a proposal before sending it | Design a research plan for a bounded question; rank competing explanations of the data you gathered | `medium`, or `high` if an irreversible step is inside | Up to one page | Decision, numbered plan with per-step checks, risk map |
+| **Architecture** | Cross-system architecture; migration with one-way doors; deadlock after two failed attempts; security-critical design | Build-vs-buy, market entry, or any commitment measured in months; strategy where reversal is expensive | Synthesis across many sources where the conclusion drives a large bet; contested questions with conflicting evidence | `xhigh`; `max` only when being wrong means data loss, a broken contract, or weeks of rework | Full evidence brief | Decision, plan, risk register, kill criteria, list of what could not be verified |
 
-**Escalate one tier when any of these holds:**
+**Escalate one shape when any of these holds:**
 
 - Two attempts failed and you cannot explain why.
 - The next step is irreversible.
 - The scope crossed a system boundary since you last consulted.
 - Your confidence has stopped tracking your evidence.
 
-**Front-load.** One L consultation at plan time is cheaper than five M
+**Front-load.** One architecture consultation at plan time is cheaper than five plan
 consultations during execution. Spend early, at the point of maximum leverage.
 
 ---
@@ -142,7 +142,7 @@ briefing described above; use the block as your completeness check before
 sending. Fable must never need to explore.
 
 ```
-TIER: S | M | L        EFFORT: low | medium | high | xhigh | max
+SHAPE: verdict | plan | architecture        EFFORT: low | medium | high | xhigh | max
 DOMAIN: coding | business | research
 GOAL: <target state in one sentence, and the decision this answer feeds>
 QUESTIONS:
@@ -186,7 +186,7 @@ reformat, then work with what you have.
    verify before starting, which failure mode from the Manual's section 8 that
    step invites, and the observation that means stop and come back. The plan is
    written for you to execute at your best, not just to be correct on paper.
-7. **L tier only, kill criteria:** the observation that means abandon this plan.
+7. **Architecture shape only, kill criteria:** the observation that means abandon this plan.
 
 **Consuming the answer:**
 
@@ -210,12 +210,12 @@ reformat, then work with what you have.
   consultation on all of them. Five separate S calls that were really one M
   question is the most common way to overpay.
 - **Cadence for large work:** at most three consultations. One after
-  exploration, for plan design (L). One before the irreversible step, for risk
-  review (S or M). One after implementation, for adversarial review of the
-  result (M). Everything between those points is your own work.
-- **Keep a ledger.** For each consultation record the question, the tier, the
-  first line of the answer, and what it changed in your actions. If a tier's
-  answers never change what you do, you are over-buying that tier. Stop.
+  exploration, for plan design (architecture). One before the irreversible step, for risk
+  review (verdict or plan). One after implementation, for adversarial review of the
+  result (plan). Everything between those points is your own work.
+- **Keep a ledger.** For each consultation record the question, the shape, the
+  first line of the answer, and what it changed in your actions. If a shape's
+  answers never change what you do, you are over-buying that shape. Stop.
 
 ---
 

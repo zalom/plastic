@@ -82,8 +82,8 @@ already exists, a new run appends
 corrects v2 by appending a correction entry and explicitly leaving v2 in place). This is
 tool-enforced, not prose alone: `scripts/project-links`, `scripts/rebuild-graph`, and
 `scripts/restore-intent-v1` each write this receipt in the SAME write as the structural
-change, or refuse to proceed without one (`scripts/lib/revisions_writer.rb`); the intent
-curator (`agents/plastic-intent-curator.md`) holds itself to the identical rule by hand.
+change, or refuse to proceed without one (`scripts/lib/revisions_writer.rb`); a hand-applied
+relocation holds itself to the identical rule.
 
 Doctor stays a detector: core and full checks, every installed agent, both global and project
 stores. It gains no write path of its own. The "Fix all" prompt
@@ -144,7 +144,7 @@ not a revision.
 #### Structural maintenance and revisions.md
 
 When a delivered intent accumulates structural junk (an unsanctioned section, a stray file, a
-frontmatter edge to an intent that no longer exists), the intent-curator relocates it into
+frontmatter edge to an intent that no longer exists), a relocation moves it into
 `revisions.md` instead of reopening the work. Each entry is a versioned, dated header
 (`## Revision vN - YYYY-MM-DD-HH:MM`) plus `Why` (one sentence naming the broken rule, ending
 with `[rule: <tag>]`), `Prior location`, and either `Content held` (the verbatim removed

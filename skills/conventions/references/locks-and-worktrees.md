@@ -28,7 +28,7 @@ delivery, delegate registration authorizes a child session, and a claim selects 
 writer for one artifact. Disarm clears the lock; the End tail is ordered: verify, merge and remove
 worktrees, clear the lock, and only then is the bridge purge-eligible. Repair is one
 idempotent function with two entry points: the `plastic-lock` command (`who`, status, fix,
-release, reclaim, delegate) and `/plastic-intent-starting`, so boarding self-heals. `who` is
+release, reclaim, delegate) and the `plastic-doctor` skill's lock section, so repair self-heals. `who` is
 read-only and reports the controller, mtime heartbeat, delegates, and claims from durable files.
 This is
 mandatory, not a convention.

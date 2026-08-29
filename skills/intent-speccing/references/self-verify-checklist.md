@@ -22,8 +22,7 @@ these.
 5. **No template placeholder text remains.** No literal `<intent name>`, `<alternative>`, `...`,
    sample bracket text, or other template filler from `templates/spec.md` survives anywhere in
    the artifact.
-6. **Tier stamp is the top line.** `Tier: S|M|L` is the literal first line of the file, above the
-   `# Spec:` heading, not folded into a section body.
+6. **No header line.** The file starts at the `# Spec:` heading; there is no `Tier:` line (removed in 2.0, intent 304).
 7. **All 8 sections present, in template order.** Problem, Goals, Non-Goals, Approach,
    Alternatives Considered, Decisions, Acceptance Criteria, Open Questions, each present once, in
    that order, none merged into another.

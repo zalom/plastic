@@ -19,7 +19,7 @@ state → byte-identical payload, regardless of model. Do NOT hand-summarize int
 
 - User invokes `/plastic-dashboard`
 - User asks "where are we", "what's next", "what should I work on", "show me the intents"
-- `plastic-project-continuing` lands on the board on resume
+- `plastic-intent-continuing` lands on the board on a bare resume
 - `plastic-auto` reads `--json` to choose the next dispatchable intent
 
 ## Procedure (the Markdown board — default human surface)

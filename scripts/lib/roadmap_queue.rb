@@ -20,10 +20,10 @@ class FileOrderRanker
   end
 end
 
-# RoadmapQueue - the one deterministic reader the auto loop and plastic-roadmap-continuing
+# RoadmapQueue - the one deterministic reader the auto loop and plastic-intent-continuing
 # both call (intent 148). Constructor-DI, hermetic: clock and paths injected, no eval, no ENV
 # or global config seam. It does two things: liveness-ranks a tier's roadmaps/*.md files
-# (porting plastic-roadmap-continuing's read-time algorithm), and, within the winning
+# (porting plastic-intent-continuing's read-time algorithm), and, within the winning
 # roadmap, selects the frontier wave plus its dispatchable set (D-b), value-ordered by the
 # injected ranker (default FileOrderRanker, the intent-173 swap seam). Every frontier token is
 # reconciled against INDEX.md first, INDEX wins. Reads through the 134 ledger via the public
@@ -181,7 +181,7 @@ class RoadmapQueue
     File.join(File.dirname(@roadmaps_dir), "INDEX.md")
   end
 
-  # --- liveness ranking (ports plastic-roadmap-continuing's read-time algorithm) -
+  # --- liveness ranking (ports plastic-intent-continuing's read-time algorithm) -
 
   def rank_candidates(parsed_list)
     parsed_list.map do |c|

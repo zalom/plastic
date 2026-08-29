@@ -1,8 +1,8 @@
 # Human Report Contract (per-stage EM-to-CTO briefing)
 
 This doc defines how the orchestrator briefs the human at each of the five stage boundaries
-(What, Why, How, Exec, Done) in auto mode, at M and L; at S only the How boundary fires (see
-`## Depth at Tier S`). It is the outward, human-facing counterpart to the
+(What, Why, How, Exec, Done) in auto mode; for small work only the How boundary fires (see
+`## Depth for small work`). It is the outward, human-facing counterpart to the
 internal report contract in `references/agent-report-contract.md`. Voice: an engineering
 manager briefing a CTO. Lead with impact, name the risk, leave the decision.
 
@@ -30,12 +30,12 @@ short. The words can flex to fit the stage.
 - **Done**: State = the delivered impact. Risk = residual risk. Call = the decision left to you
   (merge, release, accept).
 
-## Depth at Tier S
+## Depth for small work
 
-At Tier S in auto mode the mid-flight briefings collapse to one. Only the How briefing fires, and
+For small work in auto mode the mid-flight briefings collapse to one. Only the How briefing fires, and
 it folds in what the What and Why briefings would have said: the work picked up and the approach
-chosen go into its State line. The Exec briefing folds into the final owner report at End. M and L
-send all four. The shape does not change: still State, then Risk, then Call, and the per-stage
+chosen go into its State line. The Exec briefing folds into the final owner report at End. Larger
+work sends all four. The shape does not change: still State, then Risk, then Call, and the per-stage
 content above still says what each line covers. This is a depth cut, not a new report. A delivery
 still ends with `outcome.md` plus one owner report.
 
@@ -66,7 +66,7 @@ Apply the `writing-style` skill for the wording.
 In guided mode, the briefing lands at each stage boundary and the human acts on the Call line
 before the next stage starts.
 
-In auto mode, at M and L the orchestrator still emits the briefing at each boundary, as a running
-EM-to-CTO account. At S only the How briefing fires; see `## Depth at Tier S` above for what it
+In auto mode, for larger work the orchestrator still emits the briefing at each boundary, as a
+running EM-to-CTO account. For small work only the How briefing fires; see `## Depth for small work` above for what it
 folds in. The Call line becomes the go-ahead the orchestrator takes itself and moves on, except at
 the existing hard stops (destructive action without a safe alternative, project-path confirm).

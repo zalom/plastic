@@ -33,7 +33,7 @@ module StoreDiscovery
   # INDEX.md path. Sorted by slug (global first) for deterministic output.
   #
   # `missing` lists every projects.yml slug with no `store/` directory on disk: legal
-  # (plastic-store-provisioning exists for exactly this state), reported so callers never
+  # (the plastic-doctor provisioning section exists for exactly this state), reported so callers never
   # mistake it for a store with zero intents.
   def discover(plastic_home)
     stores = []

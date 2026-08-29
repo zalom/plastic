@@ -675,7 +675,7 @@ module Bridge
   # without a pid. NEVER touches a fresh foreign lock (reports "held"); a
   # stale foreign lock reports "stale" and is taken only by the explicit
   # reclaim verb (Lock.takeover). Two entry points call this: the
-  # plastic-lock CLI and /plastic-intent-starting (self-healing boarding).
+  # plastic-lock CLI and the plastic-doctor lock section (self-healing repair).
   def self.repair_lock(session, intent_id:, intent_dir:, store:, name:,
                        now: Time.now, tmp: tmp_dir, harness: nil,
                        agent: nil, model: nil, thread: nil, run_mode: nil,

@@ -71,9 +71,9 @@ goldens.
 **Where looseness concentrates.** In the prose skills that produce *written
 deliverables*. Determinism is weakest exactly where Plastic ships prose that asks
 a brain to author an artifact. The brain-loose 5 are the design and judgement
-skills (`intent-brainstorming`, `intent-grilling`) and the curator surfaces
+skills (`intent-speccing`) and the curator surfaces
 (the `store-curating` skill, renamed from `intent-curator` at 158a while its
-agent counterpart `plastic-intent-curator` kept its name, plus
+agent counterpart `plastic-intent-curator` kept its name, plus (removed in 2.0, intent 304)
 `future-intent-researcher`).
 These produce INDEX or cluster reorganizations with no output template at all:
 section set, ordering, depth, cluster naming, and orphan thresholds all drift.
@@ -86,7 +86,7 @@ behind it, deciding by judgement which of five routes a prompt takes, with
 only its `references/request-signals.md` table to constrain the call.
 
 Auto mode adds five more agent surfaces, the role files that ship in `agents/`:
-`plastic-brainstorming`, `plastic-spec-specialist`, `plastic-planner`,
+`plastic-brainstorming`, `plastic-spec-specialist`, `plastic-planner`, (removed in 2.0, intent 304)
 `plastic-executor`, and `plastic-enforcer`. They are thin handoff contracts (one
 role per cycle stage) rather than free-prose producers: each names what it consumes
 and produces, and the enforcer (which is the auto orchestrator itself) sequences and
@@ -176,7 +176,7 @@ trigger, with the ledger as a derived form-fix on top. It is sugar over the conv
 never a source of truth: state stays derivable from files-on-disk and the ledger is
 rebuildable via `Savepoint.rebuild_savepoint`. The ledger and the stage derivation it rests on
 live in `scripts/lib/savepoint.rb` (intent 303), apart from the session pointer in `bridge.rb`.
-The `plastic-intent-savepoint` skill is now a thin
+The `plastic-intent-savepoint` skill is now a thin (removed in 2.0, intent 304)
 reader/verifier, not a writer.
 
 State-from-ledger (intent 81) makes the ledger the read-once answer to "what stage, and is it
@@ -226,7 +226,7 @@ the roadmap's grouping section (`## Batches`, or legacy `## Waves`) and the tier
 matching `merged` line in the Log gets one backfilled from INDEX, timestamped only from an
 on-disk source and never invented (an entry with no recoverable source anywhere is silently
 dropped, not fabricated). The `plastic-roadmap` skill's verbs call `append` at the same
-closing-step slot each already uses for its QMD reindex; `plastic-roadmap-continuing` reads the
+closing-step slot each already uses for its QMD reindex; `plastic-intent-continuing` reads the
 ledger's last line as a cheap last-event signal, purely as a read. `INDEX.md` stays the single
 status writer throughout; the ledger, like the intent-dir one, is sugar, never a source of truth.
 
@@ -234,7 +234,7 @@ The roadmap read path (intent 148) sits on top of that ledger. `scripts/lib/road
 (`RoadmapQueue`, constructor-DI and hermetic: clock and paths injected, no eval, no ENV or global
 config seam; a thin `scripts/roadmap-next` CLI wraps it, both registered in
 `InstallerCore#core_files` and covered by a hermetic test) is the one reader the auto loop and
-`plastic-roadmap-continuing` share. It does two things: liveness-ranks the tier's `roadmaps/*.md`
+`plastic-intent-continuing` share. It does two things: liveness-ranks the tier's `roadmaps/*.md`
 (a `delivering` or `blocked` entry wins, else the newest ledger or `## Log` timestamp, read
 through `RoadmapSavepoint.ledger_path_for`), and within the winning roadmap selects the frontier
 batch. The frontier batch is the first batch, top to bottom, holding a `queued` or `delivering`
@@ -247,7 +247,7 @@ INDEX already shows Completed or Abandoned can never be dispatched. The CLI emit
 `dispatchable_queue` array shaped to match the dashboard's, plus `in_flight`, `blocked`, and
 `tie_candidates`. It runs in two modes: queue mode (the default, for the loop) breaks ties
 deterministically (newest ledger line, then slug ascending) and flags `tie: true`; which mode
-(`--which`, for `plastic-roadmap-continuing`) returns `tie_candidates` so the skill's single ask
+(`--which`, for `plastic-intent-continuing`) returns `tie_candidates` so the skill's single ask
 resolves the tie. The design is file-based throughout (roadmap `.md`, the 134 ledger, INDEX.md),
 DB-ready but not DB-dependent: `RoadmapQueue` is the single seam a future 147 DB-backed read
 swaps behind without changing either caller. A sibling seam covers ranking itself: dispatchable
@@ -266,7 +266,7 @@ stage prerequisite (the PRECEDING stage's real artifact, not its own, since a `s
 legitimately fires before its own stage's file is real) is absent on disk. The bug-131 bridge
 clobber and the 124a out-of-band merge are the two live precedents this guards against: either
 can leave a phantom or dropped line that nothing previously detected. The
-`plastic-intent-savepoint` skill's verify step runs the detector and, on a hit, auto-rebuilds via
+`plastic-intent-savepoint` skill's verify step runs the detector and, on a hit, auto-rebuilds via (removed in 2.0, intent 304)
 `Savepoint.rebuild_savepoint` for a live (INDEX Active) intent; for a terminal (Completed/Abandoned)
 intent it reports and stops, since completed intents are immutable, and the 124a manual
 Done-bookend repair (rebuild the skeleton, then re-append the terminal line from git or mtime
@@ -687,7 +687,7 @@ test results, the diff). Everything else stays judgment and stays with the agent
 scripts, each a thin CLI over its own `scripts/lib/` module, apply that rule to the four
 lifecycle steps that qualify.
 
-`scripts/start-intent` composes `Bridge.arm_auto` or `Bridge.arm_guided`, then reads the four
+`scripts/start-intent` composes `Bridge.arm_auto` or `Bridge.arm_guided`, then reads the four (removed in 2.0, intent 304)
 lifecycle files and prints a resume-station report. It never releases or takes over a lock.
 
 `scripts/scaffold-intent` is one CLI with three subcommands, `spec`, `checklist`, and
@@ -701,8 +701,8 @@ of Exec.
 caller-supplied suite command into one verdict. It does not invent a project test-command
 config.
 
-`scripts/lib/spec_header.rb` is the only parser of the `Tier:` and `Settled:` lines at the
-top of spec.md. `Savepoint.savepoint_tier` delegates to it.
+`scripts/lib/spec_header.rb` is the only parser of the `Tier:` and `Settled:` lines at the (removed in 2.0, intent 304)
+top of spec.md. `Savepoint.savepoint_tier` delegates to it. (removed in 2.0, intent 304)
 
 ## project store provisioning
 
@@ -723,7 +723,7 @@ one shared definition of store creation that creation and repair both consult.
   0 on success, non-zero with a report when the slug is unregistered or on usage
   error); the `plastic-intent-creating` and `plastic-project-creating` skills (each
   calls the verb after `projects.yml` registration instead of an inline `mkdir`);
-  the `plastic-store-provisioning` skill (resolve slug, run the verb, then the
+  the `plastic-doctor` skill (resolve slug, run the verb, then the
   separate optional `qmd-sync register --store` step); and doctor's read-only
   `project_store_dir` check (warns and is fixable via the verb).
 - **Scope boundary**: the provisioner is pure filesystem. It never mutates qmd,
@@ -734,13 +734,13 @@ one shared definition of store creation that creation and repair both consult.
 
 Every subagent in `agents/*.md` pins an explicit Claude Code model alias (`opus`,
 `sonnet`, or `haiku`) in its own frontmatter, tiered by role: `plastic-enforcer`,
-`plastic-brainstorming`, and `plastic-planner` are `opus`; `plastic-spec-specialist`,
-`plastic-executor`, `plastic-intent-curator`, `plastic-future-intent-researcher`, and
-`plastic-intent-discovery` are `sonnet`. None is ever `inherit` and none is ever
+`plastic-brainstorming`, and `plastic-planner` are `opus`; `plastic-spec-specialist`, (removed in 2.0, intent 304)
+`plastic-executor`, `plastic-intent-curator`, `plastic-future-intent-researcher`, and (removed in 2.0, intent 304)
+`plastic-intent-discovery` are `sonnet`. None is ever `inherit` and none is ever (removed in 2.0, intent 304)
 Fable by default. Fable is named in three places, and only three: the auto-mode advisory
 notice below (about the human's main session, never a dispatched subagent), an
 explicit `agents.models.<name>` config override, which is honored as written for a
-dispatched subagent when one is configured (e.g. `plastic-brainstorming: fable`,
+dispatched subagent when one is configured (e.g. `plastic-brainstorming: fable`, (removed in 2.0, intent 304)
 mihradesign intent 24, a sanctioned, permanent override, not drift), and the shipped
 default of one of the two consultation agents (`plastic-advisor`; its sibling
 `plastic-faux-advisor` ships `opus`, not Fable). The two advisors, `plastic-advisor`
@@ -801,9 +801,9 @@ models are user configuration (fable and opus by default on Claude Code).
   frontmatter at dispatch time is a harness implementation detail rather than a
   contract Plastic controls, every dispatch site (the enforcer's per-stage
   dispatches, `skills/auto/SKILL.md`'s dispatch mechanics, the
-  `plastic-intent-discovery` dispatch inside `plastic-intent-starting`, and the
-  `plastic-project-continuing` stale-future-intent triage's dispatch of
-  `plastic-future-intent-researcher` (which does not itself spawn further
+  `plastic-intent-discovery` dispatch inside `plastic-intent-continuing`, and the (removed in 2.0, intent 304)
+  `plastic-intent-continuing` stale-future-intent triage's dispatch of
+  `plastic-future-intent-researcher` (which does not itself spawn further (removed in 2.0, intent 304)
   sub-agents)) also resolves the target agent's model through the same chain
   (`read-config agents.models.<basename> --project <repo>`) and passes it
   explicitly as the dispatch call's model parameter, never relying on the
@@ -820,9 +820,9 @@ models are user configuration (fable and opus by default on Claude Code).
   stage agents only. Neither is ever dispatched by the auto pipeline; they are
   consultation roles summoned deliberately by the user or the main session, and their
   models are user configuration (fable and opus by default on Claude Code).
-- **What-stage discovery agent**: `plastic-intent-discovery` (paired with the
-  `skills/intent-discovering/SKILL.md` workflow) closes the What-stage gap in the
-  one-agent-per-stage table. It fires inside `plastic-intent-starting`, right after
+- **What-stage discovery agent**: `plastic-intent-discovery` (paired with the (removed in 2.0, intent 304)
+  `skills/intent-discovering/SKILL.md` (removed in 2.0, intent 304) workflow) closes the What-stage gap in the
+  one-agent-per-stage table. It fires inside `plastic-intent-continuing`, right after
   an intent is activated (moved from `## Future` to `## Active`) and the bridge is
   armed, running under that lock as the owner session (it does not acquire the
   lock itself and is not blocked by it): it reads the intent's `chain`/`sources`
@@ -831,7 +831,7 @@ models are user configuration (fable and opus by default on Claude Code).
   and deposits its findings to `resources/discovery--<slug>.md` in the intent
   directory ONLY. It never writes the intent file, `spec.md`, or any other lifecycle
   deliverable, so the lock-owner-only write rule stays intact; the Why-stage
-  `plastic-brainstorming` agent is the one that reads the deposit and enriches
+  `plastic-brainstorming` agent is the one that reads the deposit and enriches (removed in 2.0, intent 304)
   `## Context`.
 
 ## worktree provisioning and the delivery lock (intent 73c)
@@ -1315,3 +1315,5 @@ Three pieces close the loop the day ledger (intent 297) and the capture and reco
 `SessionLedger::STATES` gained `moved: ">"`, `dropped: "-"`, and `promoted: "^"`; `set_state`
 accepts `session: nil` for any-session addressing; `flip_all` flips every matching line under one
 lock with one `pwrite` per line.
+
+The skill-authoring guides live under `docs/skill-authoring/` since 2.0 (intent 304); they are reference material, not installed skills.

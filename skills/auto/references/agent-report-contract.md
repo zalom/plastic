@@ -53,26 +53,9 @@ Multi-item payload fields (ordered actions, insights, checklist deltas) default 
 Each role appends a payload that fulfils its place in the What, Why, How, Exec cycle (decision
 D2). The payload is what makes the report useful to the orchestrator beyond the envelope.
 
-### brainstorming (Why exploration)
-- Decisions recorded in `### Decisions`, each with its one-line rationale.
-- Context enriched: what was researched and the key findings.
-- Open questions resolved, and any deliberately left for the spec.
-- Insights: durable discoveries from the Why exploration, reported in the `insights:` field.
-
-### spec-specialist (Why to How boundary)
-- Spec sections produced (Problem, Goals, Non-Goals, Approach, Decisions, Acceptance Criteria).
-- How the recorded decisions resolved into the chosen approach.
-- Acceptance-criteria count, so the planner knows the surface to cover.
-- Insights: durable discoveries from consolidating the spec, reported in the `insights:` field.
-
-### planner (How): worked exemplar
-The planner report EXPLAINS THE PLAN BACK TO THE ORCHESTRATOR. It carries:
-- The ordered actions, one line each: what the action does and how it is verified.
-- Decomposition rationale: why this order, and why the actions are independent.
-- Checklist coverage: item count and that every action plus suite-green is covered.
-This is the exemplar because the plan is an argument, and the orchestrator gates on whether that
-argument is sound before any code is written.
-- Insights: durable discoveries from planning, reported in the `insights:` field.
+The stage-agent role sections (brainstorming, spec-specialist, planner) were removed in 2.0
+(intent 304): the orchestrator writes the Why and How artifacts itself and reports nothing to
+itself. Two dispatched roles remain.
 
 ### executor (Exec)
 - Actions implemented this turn, mapped to checklist items checked off (checked / total).

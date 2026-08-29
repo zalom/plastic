@@ -13,7 +13,7 @@ Doctor has three scopes. Pick the right one for the situation:
 | Scope | Flag | When it runs | States |
 |-------|------|--------------|--------|
 | Core check | `--core` | SessionStart hook (automatic), also available on demand | Binary: pass or error |
-| Store check | `--store [global\|<slug>]` | Dashboard load, `plastic-project-continuing` | Three-state: pass / warn / fail |
+| Store check | `--store [global\|<slug>]` | Dashboard load, the project route of `plastic-intent-continuing` | Three-state: pass / warn / fail |
 | Full check | (no flag) | After every update (automatic), or `/plastic-doctor` | Three-state: pass / warn / fail |
 
 ### `--core` (binary, operational-readiness only)
@@ -86,10 +86,6 @@ per-project finding**; that is `--store <slug>`'s job (see above). This is what
 - When hooks aren't firing, skills aren't loading, or something seems broken
 - When the user says "check plastic", "diagnose", "what's wrong with plastic"
 
-Read `../plastic-conventions/references/gates-and-enforcement.md` for the transition-gate
-mechanics, the audited escape, and gate logging before diagnosing a stuck or misbehaving gate.
-This path resolves relative to this skill's own installed directory.
-
 ## Procedure
 
 ### Step 1: Run the diagnostic script
@@ -159,10 +155,10 @@ Use the `fix_hint` value to determine the correct action:
 | "Add missing entries to INDEX.md" | Add orphaned intents to the appropriate INDEX.md section |
 | "Remove stale references from INDEX.md" | Edit INDEX.md to remove ghost references |
 | "Inject the missing required frontmatter field(s)" | Edit the intent's `{ID}--{slug}.md` frontmatter to add the missing key (e.g. `chain: []`) without touching other keys |
-| "Run: provision-project-store {slug}" | Run `provision-project-store <slug>` (or invoke the `plastic-store-provisioning` skill) to create the missing store |
+| "Run: provision-project-store {slug}" | Run `provision-project-store <slug>` (see Provisioning a project store below) to create the missing store |
 | "Re-run installer" | Run `npx -y @zalom/plastic@<channel> install --claude` (or `--codex`/`--hermes`/`--all` for that agent; channel: -alpha->@alpha, -beta->@beta, else @latest) |
 | "Run the Plastic installer to bootstrap the store" | Run `npx -y @zalom/plastic@<channel> install --claude` (or `--codex`/`--hermes`/`--all`; channel: -alpha->@alpha, -beta->@beta, else @latest) to restore the global store's plastic_home directory or INDEX.md |
-| "Dispatch plastic-store-curating ... revisions.md ..." | Invoke the `plastic-store-curating` (or the agent) to relocate the flagged section or ref into the intent's `revisions.md` via move-and-record (one dated, `[rule: <tag>]`-tagged entry per item), per plastic-conventions > references/maintenance-and-revisions.md. For a missing required section, restore or reproject it instead. |
+| "Relocate ... revisions.md ..." | Relocate the flagged section or ref into the intent's `revisions.md` via move-and-record (one dated, `[rule: <tag>]`-tagged entry per item), per plastic-conventions > references/maintenance-and-revisions.md. For a missing required section, restore or reproject it instead. |
 | "Run scripts/project-links ... PRESERVES ... --drop-unbacked-links" | Run `ruby ~/.plastic/scripts/maintenance-run --tool project-links --intent <id> --apply` for the one flagged id (never run bare `project-links` against a real store outside the rare owner-approved batch exception, D2) |
 
 For fixes the agent cannot handle automatically, explain what the user needs
@@ -247,6 +243,50 @@ removes exactly the dead rows through the same writer and commit, but holds back
 intent dir carries a fresh lock or has not gone terminal yet (nothing to suppress there yet),
 naming both as kept.
 
-## References
+## Locks (auto teams only)
 
-- Read `references/gates-stuck-detection.md` for the full gate enforcement table, bridge file pattern, and the recorded stuck-detection signals when diagnosing gate failures or stuck agents
+Locks exist for auto teams: a `delivery.lock` file in the intent directory names the owning
+session, and the `record` hook refreshes its mtime on every edit (the lease heartbeat; stale
+means older than the TTL). Direct work takes no lock. When a lock reads held by a session
+that is gone, when work resumes after a crash, reboot, or `/tmp` wipe, or when the user says
+"fix the lock", "who holds the lock", or "reclaim the lock", use the CLI (intent 304 folded
+the former locking skill here):
+
+| Verb | What it does | When |
+|---|---|---|
+| `who` | Owner, heartbeat, claims, delegates, from durable files only | Safe inspection; needs `--intent-dir` |
+| `status` | Lock file, pointer cache, freshness, agreement | Always safe; run first |
+| `fix` | Idempotent repair from disk truth for this session; never touches a fresh foreign lock | Interrupted work, corrupt state, `/tmp` wiped |
+| `release` | The owner clears the lock | Ending or abandoning an auto delivery |
+| `reclaim` | Explicit takeover of a stale lock; appends an audit line to `savepoint.md` | The owner is gone and the lease expired |
+| `delegate` | The owner registers a subagent session, or marks it `finished` or `failed` | Auto-team orchestration |
+
+```
+ruby ~/.plastic/scripts/plastic-lock status --intent-dir <store>/<id>--<slug>
+ruby ~/.plastic/scripts/plastic-lock who --intent-dir <store>/<id>--<slug>
+ruby ~/.plastic/scripts/plastic-lock fix --intent-dir <store>/<id>--<slug>
+ruby ~/.plastic/scripts/plastic-lock reclaim --intent-dir <store>/<id>--<slug>
+```
+
+`fix` exits non-zero when another session holds a fresh lock: back off, `status` shows the
+owner. `reclaim` refuses a fresh lock; every takeover is audited. The lock file's mtime is the
+sole freshness truth. Never delete a lock file by hand. Read
+`../plastic-conventions/references/locks-and-worktrees.md` when a lock question goes beyond
+these verbs (claims, worktrees, the station ledger).
+
+## Provisioning a project store
+
+When a project is registered in `~/.plastic/projects.yml` but has no store on disk (doctor
+reports `project_store_dir`), provision it (intent 304 folded the former provisioning skill
+here). The slug is the project's key under `projects`; an unregistered slug exits non-zero and
+creates nothing, and this procedure never edits `projects.yml`.
+
+```bash
+ruby ~/.plastic/scripts/provision-project-store <slug>
+ruby ~/.plastic/scripts/qmd-sync register --store ~/.plastic/projects/<slug>/store
+```
+
+The provisioner is pure filesystem and idempotent: it creates
+`~/.plastic/projects/<slug>/store/` with `.gitkeep`, writes `INDEX.md` and `project.yml` only
+when missing, and never clobbers. The QMD registration is a separate, optional step that
+no-ops when QMD is absent. New projects are provisioned by `plastic-project-creating`, not here.

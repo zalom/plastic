@@ -23,17 +23,15 @@ IS the auto orchestrator itself, not a separately dispatched agent. Making the
 orchestrator the enforcer avoids the who-gates-the-gater regress (the gate-keeper
 can never be ungated).
 
-The team has five roles, one per place in the What, Why, How, Exec cycle:
+The team has two standing roles plus an on-request reviewer (the four stage agents were
+removed in 2.0, intent 304; the enforcer writes the Why and How artifacts itself):
 
-- **plastic-brainstorming** (Why exploration): enriches `## Context` and records
-  `### Decisions` with rationale.
-- **plastic-spec-specialist** (Why-to-How boundary): consolidates the Why into
-  `spec.md` (Problem, Goals, Non-Goals, Approach, Decisions, Acceptance Criteria).
-- **plastic-planner** (How): produces `plan.md`, `actions/ACTION_N.md`, and
-  `checklist.md`.
+- **plastic-enforcer** (spans the whole cycle): orchestrates, writes `spec.md`, the action
+  files, and `checklist.md`, and reviews each handoff.
 - **plastic-executor** (Exec): writes the code, checks off `checklist.md`, appends
   `## Insights`, and drives the suite green.
-- **plastic-enforcer** (spans the whole cycle): orchestrates and gates.
+- the reviewer: a separate agent with fresh context, dispatched from
+  `plastic-intent-executing`'s reviewer prompts, never the maker.
 
 ### Handoff Contracts
 
@@ -163,3 +161,12 @@ When "work on Project X":
 4. Load global INDEX.md, find hub intents tagged `project-<name>`
 5. Load project INDEX.md, find tactical intents
 6. The coordinator has the full picture, spins up an enforcer-led team per intent
+
+## Spawn preamble (intent 152)
+
+`scripts/spawn-preamble` emits a live-state block purely from filesystem state: the active
+intent, stage, role/cycle-step, the honor instruction, and the report contract. When the
+intent's code worktree is resolvable and exists on disk, it also appends the worktree's
+absolute path plus a verbatim instruction to `cd` there directly, for harnesses whose
+`EnterWorktree` cannot discover a nested repo from a non-repo launch directory. Output is
+byte-identical when no worktree resolves.

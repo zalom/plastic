@@ -8,7 +8,7 @@ user-invocable: true
 
 ## Overview
 
-Load plan from the active intent's `plan.md`, execute all tasks, review per the tier gate below, report when complete.
+Load plan from the active intent's `plan.md`, execute all tasks, review as below, report when complete.
 
 ## Step 0: Sync Worktree First
 
@@ -40,12 +40,9 @@ If `superpowers:subagent-driven-development` is available as a skill, delegate t
 - Superpowers skills respect "user preferences for plan/spec location"; Plastic IS that preference
 
 ### Subagent-Driven (Default)
-Dispatches subagents to do the work. The controller never implements. It dispatches, reviews, and tracks progress. How many dispatches it makes depends on the tier stamped at the top of `spec.md` (the `Tier:` line, the single authoritative record). `plan.md` carries a bold `**Tier:**` field copied from it, a convenience only:
+Dispatches subagents to do the work. The controller never implements. It dispatches, reviews, and tracks progress. By default one executor dispatch implements the whole consolidated action from `plan.md` plus `checklist.md` in one pass, with no per-task implementer-then-two-reviewers loop. Only when `actions/` holds several independent action files does a fresh subagent take each one, with a two-stage review after each: spec compliance first, then code quality.
 
-- **S or M:** one executor dispatch implements the whole consolidated action from `plan.md` plus `checklist.md` in one pass. There is no per-task implementer-then-two-reviewers loop.
-- **L:** a fresh subagent per task, and a two-stage review after each task: spec compliance first, then code quality.
-
-The final independent review in Step 3 runs at every tier. It is a separate agent with fresh context, and it is never the maker.
+The final independent review in Step 3 runs on every delivery. It is a separate agent with fresh context, and it is never the maker.
 
 ### Inline (Fallback)
 Executes tasks sequentially in the current session. Use when subagents aren't available or user explicitly requests inline mode.
@@ -62,18 +59,18 @@ Run Step 0 (Sync Worktree First) before this step.
 
 ### Step 2: Execute Each Task
 
-Read the `Tier:` line stamped at the top of `spec.md` first (the authority), then follow the matching branch. `plan.md`'s bold `**Tier:**` field is a convenience copy of the same value, useful when `spec.md` is not already open.
+Count the real files under `actions/` first, then follow the matching branch.
 
-#### At S or M: one executor dispatch
+#### One consolidated action: one executor dispatch
 
 Dispatch ONE executor subagent and give it the whole delivery: every task's full text from `plan.md` (pasted in, never a file reference), the checklist items it must tick, the project context from CLAUDE.md, and the active intent context from `{ID}--{slug}.md`. In auto mode this is the `plastic-executor` agent; elsewhere use the `implementer-prompt.md` template. The executor implements the consolidated action in order, ticks each item as it lands (see `## Tick-as-you-land`), and drives the test suite green.
 
 Read its response by code:
-- DONE or DONE_WITH_CONCERNS → proceed to Step 3. Run no per-task spec review and no per-task quality review at these tiers; Step 3's final review covers the work.
+- DONE or DONE_WITH_CONCERNS → proceed to Step 3. Run no per-task spec review and no per-task quality review here; Step 3's final review covers the work.
 - NEEDS_CONTEXT → provide the missing context, re-dispatch the executor.
 - BLOCKED → stop, report to the user, wait for resolution.
 
-#### At L: one subagent per task
+#### Several independent actions: one subagent per task
 
 For each task sequentially (never parallel: conflict risk):
 
@@ -101,7 +98,7 @@ Only after spec compliance passes. Reviews clean code, testing, architecture. Pa
 Follow `## Tick-as-you-land` below: move the task's checklist item to `## Completed` and add a `## Session Log` row in the same edit.
 
 ### Step 3: Final Review
-After all tasks complete, dispatch a final reviewer for the entire implementation. This runs at every tier, S, M, and L. The reviewer is a separate agent with fresh context and is never the maker. At S and M this is the only review the work gets, so if it returns changes, re-dispatch the executor to fix them, then re-review.
+After all tasks complete, dispatch a final reviewer for the entire implementation. This runs on every delivery. The reviewer is a separate agent with fresh context and is never the maker. For a consolidated action this is the only review the work gets, so if it returns changes, re-dispatch the executor to fix them, then re-review.
 
 ### Step 4: Update Intent and Complete
 Capture observations in `## Insights`. When ALL checklist items are checked:
@@ -149,9 +146,6 @@ verify it. Grep or run the artifact the work just produced (the test suite,
 the changed file, the installed output) rather than restating the intended
 change. Never present an unverified claim to the owner. If verification
 fails, fix it before the gate, not after.
-
-Read `../plastic-conventions/references/gates-and-enforcement.md` for the transition-gate
-mechanics, the audited escape, and gate logging behind every owner gate named here.
 
 ## Methods report (audits and sweeps)
 
