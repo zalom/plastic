@@ -4,14 +4,17 @@
 
 # Usage: hook-record (reads the PostToolUse stdin JSON payload)
 # Intent 298. Replaces hook-gate-check: never blocks, keeps the decoupled
-# intent-dir savepoint append byte for byte, promotes the session's newest
-# pending day-ledger line when a project file lands, and calls the
-# session-commit seam when that script exists. Always exits 0 (spec D3).
+# intent-dir savepoint append byte for byte, refreshes the delivery-lock lease
+# for the owning session (intent 302, the lock gate's old allow-path job),
+# promotes the session's newest pending day-ledger line when a project file
+# lands, and calls the session-commit seam when that script exists. Always
+# exits 0 (spec D3).
 
 require "json"
 require "timeout"
 require "fileutils"
 require_relative "lib/bridge"
+require_relative "lib/lock"
 require_relative "lib/session_ledger"
 
 raw = begin
@@ -47,6 +50,15 @@ begin
       if File.basename(file_path_abs) == "checklist.md" && Bridge.stage_file_present?(file_path_abs)
         Bridge.append_exec_started(intent_dir_abs)
       end
+    rescue StandardError
+      nil
+    end
+    # The lease heartbeat (intent 302, spec D10): the lock gate's allow path used
+    # to refresh delivery.lock on every edit; record does it now. Lock.heartbeat
+    # refuses a session that does not hold the lock, so a stranger's write never
+    # refreshes the owner's lease.
+    begin
+      Lock.heartbeat(intent_dir_abs, session: session_id) unless session_id.empty?
     rescue StandardError
       nil
     end

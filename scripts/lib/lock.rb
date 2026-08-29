@@ -49,11 +49,11 @@ module Lock
   DELEGATE_ACTIVITY_LIMIT = 20
   DELEGATE_STATUSES = %w[active finished failed].freeze
 
-  # Lease TTL. Heartbeats fire from the write-path hooks (PostToolUse
-  # gate-check and the lock-gate allow path), so a delivering session
-  # refreshes constantly; 30 minutes tolerates long read-only stretches
-  # without opening a takeover window mid-delivery. Reclaim is explicit
-  # either way (takeover), so the TTL only bounds WHEN takeover is allowed.
+  # Lease TTL. Heartbeats fire from the PostToolUse record hook on every write
+  # inside the intent dir (intent 302), so a delivering session refreshes
+  # constantly; 30 minutes tolerates long read-only stretches without opening
+  # a takeover window mid-delivery. Reclaim is explicit either way (takeover),
+  # so the TTL only bounds WHEN takeover is allowed.
   TTL_SECONDS = 1800
 
   # The write guard is a mutex, not a lock in the Plastic sense: it carries no
@@ -122,7 +122,7 @@ module Lock
     Array(data["delegates"]).map(&:to_s).include?(session.to_s)
   end
 
-  # The one question gates ask: does session hold this intent's lock?
+  # The one question the write path asks: does session hold this intent's lock?
   # Owner/delegate on an EXISTING lock counts even when stale (a stale lock is
   # still theirs until an explicit takeover replaces it); freshness only
   # guards AGAINST other sessions.
@@ -676,24 +676,4 @@ module Claim
     end
   end
 
-  # Second, independent write gate at the artifact grain (intent 111 D7). Returns a
-  # deny reason String to BLOCK, or nil to ALLOW. Composes UNDER the delivery-lock
-  # gate: only reached after the session already holds the intent's delivery lock.
-  # ENGAGES only when a claim file exists (dormant otherwise, so single-owner flows
-  # and the existing suite stay green, AC7). Fails open on stale/corrupt via
-  # fail_open?, the named contract.
-  def claim_gate_reason(intent_dir, artifact, session:, ttl: Lock::TTL_SECONDS, now: Time.now,
-                        harness: :claude)
-    return nil if Lock.blank?(artifact)
-    return nil unless File.exist?(path(intent_dir, artifact))   # dormant: no claim
-    return nil if holds_claim?(intent_dir, artifact, session: session)  # you hold it
-    return nil if fail_open?(intent_dir, artifact, ttl: ttl, now: now)  # stale/corrupt: yield
-    data = read(intent_dir, artifact)
-    holder = data && data["owner_session"]
-    since = data && data["acquired_at"]
-    "artifact #{artifact} is claimed by #{holder} since #{since}; another writer holds " \
-      "it. Back off or run #{Lock.skill_ref('plastic-doctor', harness: harness)} check the " \
-      "lock status. If you are a distinct delegate, the owner must register you: " \
-      "plastic-lock delegate --intent-dir #{intent_dir} --session <your-session-id>"
-  end
 end

@@ -10,9 +10,8 @@
 module HookRegistry
   module_function
 
-  # MCP tools that MUTATE files. Every write/lock/create gate must match them,
-  # or symbolic edits bypass the whole gate layer (the universal MCP-edit
-  # bypass found in 108's gate inventory).
+  # MCP tools that MUTATE files. The record hook must match them, or a symbolic
+  # edit never reaches the savepoint ledger or the day ledger.
   SERENA_EDIT_TOOLS = %w[
     mcp__serena__replace_content
     mcp__serena__replace_symbol_body
@@ -23,40 +22,6 @@ module HookRegistry
   ].freeze
 
   WRITE_MATCHER = (%w[Write Edit NotebookEdit] + SERENA_EDIT_TOOLS).join("|")
-
-  # Per-gate tool applicability for the merged edit-path dispatcher (intent 244,
-  # spec D-d/D-l). Registration collapses to ONE PreToolUse hook on WRITE_MATCHER
-  # (a strict superset of the three former matcher groups), and this table is what
-  # keeps each gate's own coverage exactly what it was: scripts/hook-edit-gates
-  # reads tool_name off the payload and skips any gate whose list excludes it.
-  # Key order IS the evaluation order (spec D-a): savepoint-pre first because it
-  # never denies and its ledger append must stay unconditional; lock-gate leads
-  # the deniers because holding the delivery lock is the precondition the other
-  # rules assume. A test pins this table against today's three matcher groups, so
-  # no gate's coverage can widen or narrow silently.
-  GATE_TOOLS = {
-    "savepoint-pre" => %w[Write Edit].freeze,
-    "lock-gate"     => (%w[Write Edit NotebookEdit] + SERENA_EDIT_TOOLS).freeze,
-    "code-gate"     => (%w[Write Edit NotebookEdit] + SERENA_EDIT_TOOLS).freeze,
-    "links-gate"    => %w[Write Edit].freeze,
-    "create-gate"   => (%w[Write Edit] + SERENA_EDIT_TOOLS).freeze,
-  }.freeze
-
-  # Per-gate tool applicability for the merged CODEX edit-path dispatcher (intent
-  # 251, spec D1). Codex reports exactly one file-mutation tool name, apply_patch
-  # (intent 181 F4), so every value is the same single-entry list. The table is
-  # NOT decoration: EditGates.tool_applies? builds a regex from these values, and
-  # reusing GATE_TOOLS here would match none of them against "apply_patch" and
-  # silently skip all five gates. Key order IS the evaluation order and is the
-  # SAME order GATE_TOOLS uses (spec D5), so the two harnesses evaluate the five
-  # gates in one order, not two.
-  CODEX_GATE_TOOLS = {
-    "savepoint-pre" => %w[apply_patch].freeze,
-    "lock-gate"     => %w[apply_patch].freeze,
-    "code-gate"     => %w[apply_patch].freeze,
-    "links-gate"    => %w[apply_patch].freeze,
-    "create-gate"   => %w[apply_patch].freeze,
-  }.freeze
 
   # event => ordered list of { "matcher" =>, "hooks" => [{ "name" =>, "status" => }] }
   # The name is the hooks/<name> launcher; the flat install ships it as
@@ -72,18 +37,6 @@ module HookRegistry
       "PreCompact" => [
         { "matcher" => "", "hooks" => [
           { "name" => "savepoint", "status" => "Saving Plastic intent state..." },
-        ] },
-      ],
-      "PreToolUse" => [
-        # ONE registered edit-path hook (intent 244, spec D-d). WRITE_MATCHER is a
-        # strict superset of the three matcher groups this replaces; per-gate tool
-        # applicability lives in GATE_TOOLS above and is read by
-        # scripts/hook-edit-gates, so no gate's coverage widened or narrowed.
-        { "matcher" => WRITE_MATCHER, "hooks" => [
-          { "name" => "edit-gates", "status" => "Checking Plastic gates..." },
-        ] },
-        { "matcher" => "Bash", "hooks" => [
-          { "name" => "bash-gate", "status" => "Checking lifecycle gate..." },
         ] },
       ],
       "PostToolUse" => [
@@ -106,46 +59,26 @@ module HookRegistry
   end
 
   # Codex registration (~/.codex/hooks.json, intent 102). Derived from `events`:
-  # the file-mutation PreToolUse gate/savepoint hooks collapse from Claude's
-  # multi-tool matchers onto Codex's single apply_patch tool (181 F4: apply_patch
-  # is Codex's sole file-mutation tool; tool_name always reports apply_patch), plus
-  # the PostToolUse gate-check. Command invokes the codex-hook dispatcher with the
-  # gate name. Guide-settled shape [guide Part 3]: top-level {"hooks":{<Event>:
-  # [{"matcher","hooks":[{"type":"command","command","statusMessage"}]}]}},
-  # identical to Claude's shape, string command. Single source of truth (108 D7):
-  # any drift from `events` is a bug, pinned by test.
-  #
-  # Codex's apply_patch matcher carries ONE dispatcher command, edit-gates,
-  # which runs all five gates in-process through scripts/lib/codex_edit_gates.rb
-  # (intent 251), mirroring what intent 244 did for Claude. Five separately
-  # registered commands used to cost eight OS processes per edit (five
-  # top-level plus three nested run_core children); one dispatcher process
-  # reaches the same five gate decisions.
-  CODEX_PRE_HOOKS  = %w[edit-gates].freeze
+  # the PostToolUse record hook collapses from Claude's multi-tool matcher onto
+  # Codex's single apply_patch tool (181 F4: apply_patch is Codex's sole
+  # file-mutation tool; tool_name always reports apply_patch), and the live-state
+  # events project through whole. Since intent 302 there is no PreToolUse group at
+  # all: the edit-path gates are gone on both harnesses. Command invokes the
+  # codex-hook dispatcher with the hook name. Guide-settled shape [guide Part 3]:
+  # top-level {"hooks":{<Event>: [{"matcher","hooks":[{"type":"command","command",
+  # "statusMessage"}]}]}}, identical to Claude's shape, string command. Single
+  # source of truth (108 D7): any drift from `events` is a bug, pinned by test.
   CODEX_POST_HOOKS = %w[record].freeze
 
-  # Codex's shell-tool gate hole (intent 203): bash-gate (denies a shell write to
-  # project code before How) belongs on the Bash matcher, and ONLY Bash: the
-  # official Codex hooks doc's PreToolUse event catalog enumerates exactly Bash,
-  # apply_patch, and MCP tool calls, and neither it nor the two prior Codex
-  # research passes (198's official-docs research, 181's deep research)
-  # documents a discrete Read, Grep, or Glob tool name (D3). Registering a tool
-  # name Codex never reports would be dead weight that looks alive, the exact
-  # defect this intent exists to fix.
-  CODEX_BASH_HOOKS = %w[bash-gate].freeze
-
-  # Live-state events registered WHOLE (intent 199), unlike CODEX_PRE_HOOKS/
-  # CODEX_POST_HOOKS above: Codex's SessionStart/UserPromptSubmit/PreCompact already
-  # match Claude's shape exactly, one matcher group each ("", no tool to collapse
-  # onto), so every hook `events` lists under these three events projects straight
-  # through with no allowlist to keep in sync. A hook added to any of them on the
-  # Claude side registers for Codex automatically.
+  # Live-state events registered WHOLE (intent 199): Codex's SessionStart/
+  # UserPromptSubmit/PreCompact already match Claude's shape exactly, one matcher
+  # group each ("", no tool to collapse onto), so every hook `events` lists under
+  # these three events projects straight through with no allowlist to keep in
+  # sync. A hook added to any of them on the Claude side registers for Codex
+  # automatically.
   CODEX_LIVE_STATE_EVENTS = %w[SessionStart UserPromptSubmit PreCompact].freeze
 
   def codex_hooks_json(dispatcher_path:)
-    # Every Codex hook name is now a name `events` itself carries (intent 251,
-    # spec D9): edit-gates is Claude's own PreToolUse hook name, so there is
-    # nothing left to merge in from a separate status table.
     status_by_name = events.values.flatten.flat_map { |g| g["hooks"] }
                            .each_with_object({}) { |h, m| m[h["name"]] = h["status"] }
     cmd = ->(name) {
@@ -153,21 +86,11 @@ module HookRegistry
         "command" => "\"#{dispatcher_path}\" #{name}",
         "statusMessage" => status_by_name[name].to_s }
     }
-    # Preserve the order these hook names appear across the PreToolUse groups in `events`.
-    pre_order = events["PreToolUse"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
-    # The Codex apply_patch matcher carries the same edit-gates name Claude's own
-    # PreToolUse group carries (intent 251, spec D9), so the intersection with
-    # pre_order validates the Codex gate name against the single source of truth,
-    # `events`, rather than against a table of Claude tool applicability.
-    pre = (CODEX_PRE_HOOKS & pre_order).map { |n| cmd.call(n) }
-    bash = (pre_order & CODEX_BASH_HOOKS).map { |n| cmd.call(n) }
-    post = CODEX_POST_HOOKS.map { |n| cmd.call(n) }
+    # Validate the Codex name against the single source of truth, `events`.
+    post_order = events["PostToolUse"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    post = (CODEX_POST_HOOKS & post_order).map { |n| cmd.call(n) }
 
     result = {
-      "PreToolUse"  => [
-        { "matcher" => "apply_patch", "hooks" => pre },
-        { "matcher" => "Bash", "hooks" => bash },
-      ],
       "PostToolUse" => [{ "matcher" => "apply_patch", "hooks" => post }],
     }
     CODEX_LIVE_STATE_EVENTS.each do |event|
@@ -182,8 +105,7 @@ module HookRegistry
   # installed as ~/.claude/hooks/plastic-<name>. The single derivation doctor's
   # hooks_exist/hooks_executable/hooks_no_orphans checks read from, so a
   # hand-kept list of launchers can never drift out of step with `events`
-  # again (the gap that let 8 of 15 launchers, all the enforcement gates, go
-  # unchecked).
+  # again (the gap that once let 8 of 15 launchers go unchecked).
   def claude_launcher_names
     events.values.flatten.flat_map { |g| g["hooks"].map { |h| h["name"] } }
           .uniq.sort.map { |name| "plastic-#{name}" }
@@ -207,7 +129,7 @@ module HookRegistry
   # hooks_exist demands be present on disk, so a retired name there makes a correct
   # install report missing launchers.
   RETIRED_HOOK_NAMES = %w[
-    code-gate create-gate links-gate lock-gate savepoint-pre
+    edit-gates bash-gate code-gate create-gate links-gate lock-gate savepoint-pre
     qmd-search retrieval-gate model-instructions opus-manual
     continue future-intent-check auto-arm gate-check
   ].freeze
@@ -230,7 +152,7 @@ module HookRegistry
     live = CODEX_LIVE_STATE_EVENTS.flat_map do |event|
       events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
     end
-    (CODEX_PRE_HOOKS + CODEX_POST_HOOKS + CODEX_BASH_HOOKS + live).uniq.sort
+    (CODEX_POST_HOOKS + live).uniq.sort
   end
 
   def codex_purgeable_hook_names

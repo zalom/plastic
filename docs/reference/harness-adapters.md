@@ -16,8 +16,8 @@ Plastic is for reasoning agents, in two shapes:
 Both shapes assume a reasoning agent on the other side. Plastic targets reasoning
 agents only. It is not a library you call from ordinary application code, and it does
 not target non-reasoning automation. A harness adapter is the glue that makes one
-specific agent harness load Plastic's conventions, honor its decisions, and enforce
-its gates.
+specific agent harness load Plastic's conventions, honor its decisions, and record
+its lifecycle.
 
 ## The contract
 
@@ -30,7 +30,7 @@ includes artifact validity).
 |---|---|---|---|
 | L1 standing conventions | Convention docs (PLASTIC.md, AGENTS.md, CLAUDE.md) auto-inject into the agent's context at start | The conventions frame every decision; the agent reads them as standing rules | None at this layer: conventions persuade, they do not block |
 | L2 live state | The active intent's id, stage, and role arrive at the point of work (session event and/or spawn preamble) | The live snapshot tells the agent where it is in the cycle so it acts in-stage | None directly; feeds the L3 gates that do block |
-| L3 lifecycle gates + savepoints | Gate and savepoint hooks fire on file writes within the intent dir | Gate context nudges the next correct lifecycle move | Stage gates block out-of-order writes; the artifact-validity backstop rejects an intent file that is not born complete; savepoints record each milestone |
+| L3 savepoints | The record hook fires on file writes within the intent dir | The savepoint and day ledgers record the move | Stage gates block out-of-order writes; the artifact-validity backstop rejects an intent file that is not born complete; savepoints record each milestone |
 
 ### Lock provenance contract
 
@@ -52,7 +52,7 @@ authorization. Plastic bounds finished or failed activity history to the 20 most
 Each adapter's users invoke a Plastic skill with a different literal prefix in front of the bare
 skill name (for example `plastic-doctor`). `InstallerCore::DEFAULT_AGENTS` carries this as each
 entry's `skill_prefix`, the documented source both `Bridge.skill_ref` (`scripts/lib/lock.rb`) and
-this table cite; the gate scripts do not read `DEFAULT_AGENTS` at runtime (see the L1 dependency
+this table cite; the hook scripts do not read `DEFAULT_AGENTS` at runtime (see the L1 dependency
 note in the Codex worked example below), so the two are independently maintained by hand.
 
 | Adapter | Invocation |
@@ -63,10 +63,10 @@ note in the Codex worked example below), so the two are independently maintained
 
 ## Harness support
 
-| Harness | Install | Standing conventions | Live state | Write gates | Statusline | Subagent teams |
+| Harness | Install | Standing conventions | Live state | Write hook | Statusline | Subagent teams |
 |---|---|---|---|---|---|---|
-| Claude Code | npm, `plastic-install --claude` | native `CLAUDE.md` | ten hooks through `settings.json` | pre-write veto on intent creation, post-write backstop on in-place edits | yes | yes |
-| Codex CLI | npm, `plastic-install --codex` | marked section injected into `~/.codex/AGENTS.md` | ten hooks through `~/.codex/hooks.json`, all dispatched by one command | pre-write veto on `apply_patch`, fails open on an envelope it cannot parse | no | no, a single agent walks the whole cycle |
+| Claude Code | npm, `plastic-install --claude` | native `CLAUDE.md` | ten hooks through `settings.json` | post-write `record` (savepoint, lock heartbeat, day ledger) | yes | yes |
+| Codex CLI | npm, `plastic-install --codex` | marked section injected into `~/.codex/AGENTS.md` | ten hooks through `~/.codex/hooks.json`, all dispatched by one command | post-write `record` on `apply_patch` | no | no, a single agent walks the whole cycle |
 | Hermes | npm, `plastic-install --hermes` | none | none | none | no | no |
 
 1. Plastic installs from npm only, for every harness above (owner ruling of 2026-08-08).
@@ -108,18 +108,17 @@ set, then removes it; the version-truth path above is what every adapter converg
 
 An adapter declares the strongest tier it can honestly support.
 
-- **Tier A (full parity).** All three layers load AND hard-enforcement is real at L3:
-  out-of-order writes are blocked, artifact validity is enforced, child and parent
-  agents are distinguished, and the gates cannot be silently bypassed.
+- **Tier A (full parity).** All three layers load AND L3 is real: every write inside an
+  intent directory reaches the ledger, child and parent agents are distinguished, and the
+  lock heartbeat cannot be silently skipped.
 - **Tier B (parity-with-caveat).** All three layers load and shape decisions, but at
-  least one hard-enforcement edge has a structural caveat (for example, enforcement
-  fires after the write rather than preventing it, so the block is a loud signal
-  rather than a true veto). Conventions and live-state are reliable; gates work but
-  carry a documented asterisk.
-- **Tier C (conventions reliable, child gates best-effort).** L1 conventions load
+  least one L3 edge has a structural caveat (for example, the record hook fires on a
+  coarser tool name). Conventions and live-state are reliable; the record hook works
+  but carries a documented asterisk.
+- **Tier C (conventions reliable, child hooks best-effort).** L1 conventions load
   reliably and shape decisions, but L2/L3 for spawned child agents are best-effort:
-  live state and gates may not reach every child, so child-agent enforcement cannot
-  be relied upon.
+  live state and the record hook may not reach every child, so the ledger cannot be
+  relied upon for them.
 
 ## Per-agent layer x mechanism table
 
@@ -130,7 +129,7 @@ Empty here; adapters populate their own copy.
 |---|---|---|---|
 | L1 standing conventions | | | |
 | L2 live state | | | |
-| L3 lifecycle gates + savepoints | | | |
+| L3 savepoints | | | |
 
 ## Worked example: Claude Code (interactive only)
 
@@ -166,47 +165,23 @@ verbatim report contract (intent 74: the agent must end with a structured comple
 report as its final message). The auto-mode enforcer prepends this preamble to every
 dispatched specialist's prompt, so each spawned agent boots with accurate live state.
 
-### L3 lifecycle gates and savepoints
+### L3 savepoints
 
-The gate and savepoint hooks key off the stdin `session_id`. The savepoint ledger is
-decoupled from bridge resolution: it is derived from the written file's intent
-directory before any bridge lookup, so a milestone is recorded even when no bridge or
-session exists. The stage gates (Why needs the What complete, How needs `spec.md`, and
-so on) block out-of-order writes.
-
-`IntentValidator` is the artifact-validity backstop, run inside `hook-record`
-(built in intent 4a1c1). When the written file IS the intent file itself (the
-`<id>--<slug>.md` directly inside `store/<id>--<slug>/`, NOT `spec.md`, `plan.md`,
-`checklist.md`, `outcome.md`, or `savepoint.md`), the hook validates its frontmatter.
-An invalid intent file produces a loud stderr warning that names the failing field(s)
-and a non-zero exit. PostToolUse caveat: the hook runs AFTER the write, so it cannot
-prevent the file from landing on disk. The non-zero exit is the rejection signal, not
-a true veto. A valid intent file (or any non-intent lifecycle file) preserves the
-existing behavior exactly: the savepoint is appended and the hook exits 0.
-
-The create gate (PreToolUse, matching Write, Edit, and the six Serena MCP edit tools, intent
-60b) is the defense-in-depth complement on the create path. On Claude it is one of five checks
-the merged `hooks/edit-gates` -> `scripts/hook-edit-gates` dispatcher runs in-process (intent
-244); on Codex it runs in-process too, through the `scripts/lib/codex_edit_gates.rb`
-dispatcher (intent 251). The `scripts/hook-create-gate` CLI wrapper survives only as the
-isolation surface that the 15 hook contract tests in `test/create_gate_hook_test.rb` drive
-directly. When
-the target path is an intent file inside its own equally-named dir
-(`store/**/<id>--<slug>/<id>--<slug>.md`), it validates the PROPOSED content from the hook
-stdin payload (`tool_input.content`) before the write lands, using `IntentValidator` for
-born-complete frontmatter plus the sanctioned `##` section set, and blocks with exit 2 on
-failure. It depends only on the stdin path plus content, never on the session bridge or any
-session id, so it enforces even in headless and background runs. It is Claude-Code-only
-defense-in-depth: the `new-intent` CLI plus the creating-intent instruction are the portable
-lever that works on any harness (intent 60b D9). The PreToolUse block makes the PostToolUse
-backstop a no-op for the create case, so the two never double-report.
-
-Child versus parent agents are distinguished via `agent_id`.
+Removed in 2.0 (intent 302): the five edit-path gates (edit, bash, code, lock, links), the
+create gate, and the stage-transition gates are gone, together with their `PreToolUse`
+registrations. Nothing blocks a write any more. What remains at L3 is one `PostToolUse` hook,
+`record` (`hooks/record` -> `scripts/hook-record`), on the full write matcher (Write, Edit,
+NotebookEdit, and the six Serena edit tools). It keys off the stdin `session_id`, appends the
+intent-dir savepoint line from the written path alone (no bridge lookup), refreshes the
+delivery-lock lease for the owning session (`Lock.heartbeat` refuses any other session), and
+promotes the day-ledger line when a project file lands. Intent-file content is still validated,
+at create time by `new-intent` and at close time by `end-intent`'s structure check. Doctor checks
+replace enforcement (intent 308).
 
 ### Tier
 
 Claude Code interactive is **Tier B (parity-with-caveat)**. All three layers load and
-shape decisions. For an intent-file create the PreToolUse create gate is a true veto
+shape decisions. For an intent-file create `new-intent` validates the file at create time
 (it blocks before the write); for in-place edits the L3 artifact-validity enforcement
 stays a PostToolUse backstop that fires after the write and signals loudly rather than
 preventing it.
@@ -215,12 +190,12 @@ preventing it.
 
 This worked example is interactive only. The `--bare`, headless, and CI execution
 paths are explicitly OUT of scope here: the session id may be unset in those runs,
-so the session-keyed gate falls back to the derived key, and the enforcer falls back to
+so the session-keyed record hook falls back to the derived key, and the enforcer falls back to
 manual gating. Those paths get their own treatment elsewhere.
 
 ## Worked example: Codex CLI
 
-Codex CLI is rated **Tier A (full parity)**: `PreToolUse` hooks gate `apply_patch`, giving
+Codex CLI is rated **Tier A (full parity)**: `PostToolUse` hooks observe `apply_patch`, giving
 a true pre-write veto for both create-path and in-place edits. This is the one axis
 where Codex sits above Claude Code interactive, whose in-place-edit enforcement stays a
 post-write backstop (see Tier B above). The verdict carries two caveats, both config
@@ -228,7 +203,7 @@ discipline rather than tier ceilings: register hooks and skills at USER scope so
 survive Plastic's per-intent worktree, and clear headless hook-trust (managed hooks or
 `--dangerously-bypass-hook-trust`), since an untrusted hook is silently skipped rather
 than blocking. One more caveat sits underneath the veto itself: the grammar behind it is
-primary-sourced as of intent 239 (see below), but the gate still fails open on any
+primary-sourced as of intent 239 (see below), but the hook still fails open on any
 envelope its parser cannot read, so the veto is real only for envelopes the parser
 understands.
 
@@ -261,7 +236,7 @@ skills and agents checks.
 `SessionStart` fires `session-start` and `check-update`; `UserPromptSubmit` fires
 `capture` and `power-tools`; `PreCompact` fires
 `savepoint`. Each hook name is projected straight off the single `HookRegistry.events`
-source (108 D7), the same total-projection shape as the file-mutation gates above: a hook
+source (108 D7), the same total-projection shape as the file-mutation record hook above: a hook
 added to any of these three events on the Claude side lands in Codex's `hooks.json`
 automatically. One thing does not follow automatically. `scripts/codex-hook` carries its own
 `STATE_HOOKS` literal, which decides which names the dispatcher will actually relay, so a hook
@@ -281,7 +256,7 @@ it) and bounding the call with a timeout (`hooks/check-update`'s backgrounded ne
 longer leaks the dispatcher's pipes, fixed at the root in intent 289; the bound stays because
 Codex invokes hooks synchronously and some other launcher could still leak them), then relaying
 stdout, stderr, and exit code unchanged, the same "drive the body, relay its output" pattern
-already used for the file-mutation gates. `SubagentStart` is still not wired: no Plastic
+already used for the file-mutation record hook. `SubagentStart` is still not wired: no Plastic
 hook exists for it on any harness today.
 
 The shell-tool write hole this once left open, `bash-gate` never reaching Codex's shell tool,
@@ -334,145 +309,20 @@ to `gpt-5.6-terra` at `high`) but emission stays deferred: `generate_codex_agent
 skips both `AgentModels::CONSULTATION_AGENTS` files by name, so no Codex TOML is written
 for either yet.
 
-### L3 lifecycle gates and savepoints (intent 102)
+### L3 savepoints (intent 102, cut to the record hook in intent 302)
 
-Registration writes `~/.codex/hooks.json` at USER scope (defeats the open worktree-scoped
-hook bug), derived from the single `HookRegistry` source so the Codex registration can never
-drift from Claude's independently of it. Every file-mutation gate (`code-gate`, `lock-gate`,
-`savepoint-pre`, `create-gate`) and the `record` savepoint backstop collapse onto ONE
-matcher, `apply_patch`, because it is Codex's sole file-mutation tool (every Codex edit
-reports `tool_name: "apply_patch"`; there is no `Edit`/`Write` tool to match). `hooks.json`
-is a partial-ownership file exactly like `AGENTS.md`: merged on install (a pre-existing user
-hook entry survives untouched) and surgically stripped on uninstall, never manifest-tracked.
-
-Claude and Codex now collapse the same way. Claude merged its five edit-path gates into one
-registered hook (`hooks/edit-gates` -> `scripts/hook-edit-gates`, one process per Write/Edit,
-intent 244); Codex's `apply_patch` PreToolUse matcher carries ONE command, `codex-hook
-edit-gates` (intent 251). That one process parses stdin once, parses the apply_patch envelope
-once, and runs all five gates in-process through `scripts/lib/codex_edit_gates.rb`, which
-drives the same `scripts/lib/edit_gates.rb` functions Claude's `hook-edit-gates` drives. The
-cost went from eight processes per PreToolUse event (five registered commands, three of which
-started a nested child per file operation via `run_core`) to one; Codex's PostToolUse
-`record` is unchanged and still costs two processes. Two Codex-specific rules live in the
-Codex library and nowhere else: create-gate applies to Add operations only (Update, Delete,
-and Move defer to the PostToolUse `record` backstop), and savepoint-pre runs as its own
-first pass over every operation so its ledger line lands even when a later gate blocks the
-call. `HookRegistry.codex_hooks_json` derives the single `edit-gates` command's
-`statusMessage` from `events["PreToolUse"]` directly, the same source Claude's own registration
-reads, since `edit-gates` is a name `events` itself carries.
-
-The one real translation cost is the payload shape. Claude hands a hook a clean
-`tool_input.file_path` plus `tool_input.content`; Codex hands a diff envelope in
-`tool_input.command` (the `apply_patch` V4A patch text), and one `apply_patch` call can
-bundle several file operations (Add, Update, Delete, Move/rename). `ApplyPatchEnvelope.parse`
-is the one new translation piece: a pure parser that walks the `*** Begin Patch` /
-`*** End Patch` envelope and returns an ordered list of `{op:, path:, added_content:}` for
-every `*** Add/Update/Delete File:` section, folding a trailing `*** Move to:` into the
-op's effective path. It fails open (returns an empty list and warns to stderr) on any
-missing or unparseable envelope, so a gate can never hard-crash on a payload shape it does
-not recognize.
-
-One Ruby dispatcher, `scripts/codex-hook <gate>`, reads the Codex hook stdin once
-(`session_id` at top level, the envelope in `tool_input.command`), parses it, and for
-`edit-gates` drives `scripts/lib/codex_edit_gates.rb`, which builds one `EditGates::Context`
-per file operation and runs the SAME `scripts/lib/edit_gates.rb` decision functions Claude's
-merged dispatcher runs, in-process, so the two harnesses cannot drift (intent 251). Their
-output contracts were already Codex-compatible verbatim (`permissionDecision:"deny"` for
-`lock-gate`, exit 2 for `code-gate`/`create-gate`, `decision:"block"` for the PostToolUse
-`record` backstop, still a separate two-process path), and the dispatcher still relays
-stdout, stderr, and exit code unchanged. Evaluation runs in two passes over the ops:
-savepoint-pre first over every op (its ledger append stays unconditional even when a later
-op is denied), then the four denying gates per op, first deny wins, in Claude's fixed order.
-On a multi-file patch, a PreToolUse veto still denies the whole `apply_patch` call on the
-first violating file. `create-gate` validates born-complete content inline for Add operations
-on intent files only; Update, Delete, and Move operations defer to the PostToolUse
-`record` backstop, which re-validates the intent file after the write lands, so nothing
-goes unchecked.
-
-`links-gate` (one of the five gates named in `HookRegistry::CODEX_GATE_TOOLS` since intent 251,
-registered under the single `edit-gates` command; covered by the old `CODEX_PRE_HOOKS` literal
-since intent 192, but with no dispatcher branch until intent 198) is the write-time belt for
-the PLASTIC.md `## Links`
-contract: it reuses the exact same `LinksGate.decision` Claude's `hook-links-gate` drives, so
-both harnesses share one decision function and can never disagree by construction.
-`before_content` is the real on-disk file; `after_content` is the Update op's `added_content`.
-This is a disclosed, narrower judgment than Claude's version: `ApplyPatchEnvelope.parse` only
-ever captures a diff's added lines, never its removed or context lines, so for an Update whose
-diff is a partial hunk rather than a full-file rewrite, `after_content` may not be the complete
-proposed file. This is the same class of disclosed limitation the envelope parser's header
-comment and `create-gate`'s own Update/Delete/Move handling already carry (best effort, never a
-hard crash); running the same best-effort compare on Update ops here is strictly more coverage
-than the total fail-open that shipped in v1.4.0.
-
-The `apply_patch` V4A envelope's inner grammar (the exact shape of `*** Add/Update/Delete
-File:` sections, `*** Move to:`, and the `+`/`-`/context line prefixes) is now
-primary-sourced (intent 239): it is embedded verbatim in the native codex binary, and was
-extracted from codex-cli 0.146.0 into `test/fixtures/codex-v4a-grammar.txt`, which carries
-the binary's path, size, and SHA256 in its header. `test/codex_v4a_grammar_test.rb` checks
-the parser's markers against that grammar, and a live test in the same file re-extracts
-from an installed binary on every run so the fixture cannot drift silently (it skips
-cleanly on a machine with no codex binary). The parser is deliberately laxer than codex on
-marker position: codex requires the envelope's first line to be `*** Begin Patch` and its
-last to be `*** End Patch`, while this parser scans for the markers on any line of the
-payload, not only the first and last, and it ignores `*** Environment ID:` lines rather
-than parsing them, since they name no file operation. Both markers still must form a
-whole line: a content line such as `+*** End Patch` is legal file content under
-`add_line: "+" /(.*)/ LF`, never a terminator, so the parser anchors both markers to
-line boundaries instead of doing a bare substring search. Anything else unparseable
-still fails open (returns no operations and warns), so a gate can never hard-crash on a
-payload shape it does not recognize. The
-owner's first real validation is a fresh `plastic-install --codex` followed by a `doctor`
-run; `doctor`'s `codex_hooks_registered` check confirms `hooks.json` carries exactly what
-`HookRegistry.codex_hooks_json` defines, with a fix hint pointing back at the installer on
-any drift.
-
-`codex_hooks_registered` only proves that `hooks.json`'s content agrees with what
-`HookRegistry` would emit; both sides of that comparison come from the registry, so a pass
-proves the registry agrees with itself, not that a registered gate actually does anything.
-That gap let `links-gate` ship registered and reported healthy for its whole life in v1.4.0
-with no dispatcher branch (found by hand in intent 198), and let `bash-gate` ship with a
-working dispatcher branch never registered on Codex (intent 203), in the opposite direction.
-`codex_hooks_implemented` (intent 200) closes both directions at once: it reads
-`scripts/codex-hook`'s `STATE_HOOKS`/`SHELL_HOOKS` constants and its top-level `case gate`
-statement as plain text, never `require`d or executed (the dispatcher reads `$stdin` and calls
-`exit` at the top level, so loading it as Ruby would hang on stdin or exit before doctor got an
-answer), the same plain-text-over-parser choice `codex_agent_toml_well_formed?` already makes
-for Codex's agent TOML files, and diffs the extracted names against `HookRegistry`'s Codex
-names in both directions: a name the registry emits with no dispatcher branch (registered, not
-implemented, the `links-gate` shape) and a dispatcher branch nobody registers (implemented, not
-registered, the `bash-gate` shape, plus dead code as a free byproduct). The extraction is
-line-shape dependent, not AST-safe, and disclosed as such: if a future edit reshapes the
-dispatcher (combined `when "a", "b"` arms, a multi-line array, a Hash-dispatch rewrite) so the
-extractor recognizes zero gate names, the check fails loudly by design rather than silently
-reporting a clean pass, since a check that finds nothing and calls that healthy would be this
-exact disease one level up. `scripts/codex-hook`'s runtime behavior is unchanged: it still
-exits 0 on an unrecognized gate; the loud failure lives only in doctor.
-
-### Shell-tool gate: Bash matcher (intent 203)
-
-Codex's shell tool reports `tool_name: "Bash"`, confirmed against the official Codex hooks
-doc, with the command in `tool_input.command`. One more hook Claude already wires on its
-`Bash` matcher now reaches Codex the same way: `bash-gate`, which denies a shell write to
-project code before the active intent reaches How, the same lifecycle discipline the
-`apply_patch` gates above already enforce.
-
-The Codex matcher is `Bash` alone: the official Codex hooks doc's PreToolUse event catalog
-enumerates exactly `Bash`, `apply_patch`, and MCP tool calls, and neither it nor the two prior
-Codex research passes (198's official-docs research, 181's deep research) documents a discrete
-`Read`, `Grep`, or `Glob` tool name. Registering a tool name Codex never reports would be dead
-weight that looks alive, so `HookRegistry::CODEX_BASH_HOOKS` intersects against the same `Bash`
-matcher Claude already uses (see `HookRegistry.events`).
-
-The dispatch is a third payload category in `scripts/codex-hook`, a peer to the file-mutation
-`apply_patch` gates and the live-state hooks, not folded into either. A shell command carries
-no `apply_patch` diff envelope, so routing it through `ApplyPatchEnvelope.parse` would yield an
-empty op list and hit the dispatcher's own `exit 0 if ops.empty?` fail-open line, silently
-reopening the exact hole this intent closes. Instead `bash-gate` execs the SAME
-`scripts/hook-bash-gate` file Claude already runs, unmodified, relaying Codex's raw stdin,
-exit code, and stderr, the identical "drive the body, relay its output" pattern intent 199
-used for the live-state hooks. Because the gate body runs unchanged, the audited
-`# plastic-ok` escape (logged to
-`~/.plastic/.cache/gate-escapes.log`) works on Codex with no new code.
+Removed in 2.0 (intent 302): the Codex `apply_patch` `PreToolUse` gates and the `Bash`-matcher
+shell gate are gone with Claude's; `HookRegistry.codex_hooks_json` emits no `PreToolUse` group.
+What remains is the `PostToolUse` `record` hook on the `apply_patch` matcher: `scripts/codex-hook
+record` reads the Codex stdin once, parses the apply_patch envelope once
+(`scripts/lib/apply_patch_envelope.rb`, fail-open on a missing or unparseable envelope), and
+synthesizes one Claude-shaped `PostToolUse` payload per file operation for `scripts/hook-record`,
+so the savepoint ledger, the lock heartbeat, and the day ledger land the same way on both
+harnesses. A stale `edit-gates` or `bash-gate` entry in an older `~/.codex/hooks.json` falls
+through the dispatcher's fail-open `else` (exit 0, no output) until the installer purges it
+(`HookRegistry::RETIRED_HOOK_NAMES`). Doctor's `codex_hooks_implemented` check still diffs the
+dispatcher's `STATE_HOOKS` literal and `case` labels against the registry in both directions,
+so a registered hook with no dispatcher branch, or a branch nobody registers, is reported.
 
 ### config.toml (deferred, read-only advisory)
 
@@ -484,7 +334,7 @@ additive, so either or both may be present); Plastic documents this as the alter
 does not write to, not something it merges into. `doctor` runs a READ-ONLY scan of
 `config.toml` and warns when `[features] hooks = false` (or the deprecated `codex_hooks =
 false` alias) or `sandbox_mode = "read-only"` is present, since either would silently stop
-Plastic's gates from firing; it never writes the file.
+Plastic's hooks from firing; it never writes the file.
 
 ### Headless hook trust
 
@@ -496,7 +346,7 @@ trust artifact of its own.
 
 Since intent 198, the installer itself prints the `/hooks` step after a successful Codex
 install (`scripts/install.rb`'s `print_results`), so a user is told to trust the hooks instead
-of discovering silently that no gate ever fires. `doctor`'s `check_codex_registration` adds a
+of discovering silently that no hook ever fires. `doctor`'s `check_codex_registration` adds a
 `codex_hooks_trust` advisory (`warn`, never `pass` or `fail`) once hooks are registered as
 expected: whether Codex persists a queryable trust record anywhere under `~/.codex` is
 undocumented and unverified, so this can never be a real pass or fail check, only a reminder.
@@ -515,7 +365,7 @@ worktree-scoping bug.
 Later adapters extend this contract to other harnesses. They arrive as new ROOT
 intents (not children of this one) with `sources: ["4a1c1", "7"]`, where intent 7 is
 the harness-adapters umbrella and 4a1c1 is this foundation. Codex's L1 core (skills copy
-plus AGENTS.md standing-conventions injection, intent 33a), L3 hooks and gates
+plus AGENTS.md standing-conventions injection, intent 33a), L3 hooks
 (`hooks.json` registration, the `apply_patch` envelope parser, the dispatcher, intent 102),
 and per-agent model mapping (`~/.codex/agents/*.toml` generation, intent 102a) have all
 landed. Intent 198 closed the gap between "shipped" and "actually works on a first install":

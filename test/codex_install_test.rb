@@ -845,13 +845,11 @@ class CodexInstallTest < Minitest::Test
 
     data = JSON.parse(File.read(hooks_json_path))
     commands = all_codex_hook_commands(data)
-    # Intent 251: the five per-gate commands collapsed into one edit-gates
-    # dispatcher command.
-    assert commands.any? { |c| c.include?("codex-hook") && c.include?("edit-gates") }
+    # Intent 302: the edit-path gates are gone; record is the one apply_patch hook.
     assert commands.any? { |c| c.include?("codex-hook") && c.include?("record") }
+    refute commands.any? { |c| c.include?("edit-gates") || c.include?("bash-gate") }
 
-    pre_group = data["hooks"]["PreToolUse"].find { |g| g["matcher"] == "apply_patch" }
-    refute_nil pre_group, "PreToolUse must register under the apply_patch matcher"
+    refute data["hooks"].key?("PreToolUse"), "no PreToolUse group may be registered (intent 302)"
     post_group = data["hooks"]["PostToolUse"].find { |g| g["matcher"] == "apply_patch" }
     refute_nil post_group, "PostToolUse must register under the apply_patch matcher"
   end
@@ -892,8 +890,10 @@ class CodexInstallTest < Minitest::Test
     refute_nil user_group, "the pre-existing user hook group must survive the merge"
     assert_equal "/usr/local/bin/my-hook", user_group["hooks"].first["command"]
 
-    plastic_group = data["hooks"]["PreToolUse"].find { |g| g["matcher"] == "apply_patch" }
-    refute_nil plastic_group, "Plastic's apply_patch group must be added alongside the user's"
+    refute data["hooks"]["PreToolUse"].any? { |g| g["matcher"] == "apply_patch" },
+           "no Plastic apply_patch PreToolUse group may be added (intent 302)"
+    plastic_group = data["hooks"]["PostToolUse"].find { |g| g["matcher"] == "apply_patch" }
+    refute_nil plastic_group, "Plastic's apply_patch record group must be added alongside the user's"
   end
 
   def test_install_codex_is_idempotent_on_rerun
@@ -904,8 +904,8 @@ class CodexInstallTest < Minitest::Test
     second = JSON.parse(File.read(hooks_json_path))
 
     assert_equal first, second, "re-running install must not duplicate hook groups"
-    pre_groups = second["hooks"]["PreToolUse"].select { |g| g["matcher"] == "apply_patch" }
-    assert_equal 1, pre_groups.size, "exactly one apply_patch PreToolUse group after re-run"
+    post_groups = second["hooks"]["PostToolUse"].select { |g| g["matcher"] == "apply_patch" }
+    assert_equal 1, post_groups.size, "exactly one apply_patch PostToolUse group after re-run"
   end
 
   def test_install_codex_does_not_manifest_track_hooks_json
@@ -1013,12 +1013,12 @@ class CodexInstallTest < Minitest::Test
   def test_doctor_codex_hooks_registered_fails_when_drifted
     @core.install_for_agent("codex", false)
     data = JSON.parse(File.read(hooks_json_path))
-    # Simulate drift: drop the edit-gates command from the live file. Intent
-    # 251 collapsed the apply_patch PreToolUse matcher to this one command, so
-    # dropping it is the only way left to simulate a drifted apply_patch group.
-    data["hooks"]["PreToolUse"].each do |g|
+    # Simulate drift: drop the record command from the live file. Since intent
+    # 302 the apply_patch matcher carries only this one PostToolUse command, so
+    # dropping it is the way to simulate a drifted apply_patch group.
+    data["hooks"]["PostToolUse"].each do |g|
       next unless g["matcher"] == "apply_patch"
-      g["hooks"].reject! { |h| h["command"].include?("edit-gates") }
+      g["hooks"].reject! { |h| h["command"].include?("record") }
     end
     File.write(hooks_json_path, JSON.pretty_generate(data))
 
@@ -1027,7 +1027,7 @@ class CodexInstallTest < Minitest::Test
 
     refute_nil hooks_check
     assert_equal "fail", hooks_check[:status]
-    assert(hooks_check[:details].any? { |d| d.include?("edit-gates") })
+    assert(hooks_check[:details].any? { |d| d.include?("record") })
   end
 
   # --- Intent 200: doctor codex_hooks_implemented_check (registry vs. dispatcher) ---
@@ -1047,22 +1047,19 @@ class CodexInstallTest < Minitest::Test
     assert_equal "pass", implemented_check[:status]
   end
 
-  # Intent 251: the case statement's arms collapsed from five per-gate names
-  # to exactly two, edit-gates and record (renamed from gate-check by intent
-  # 298, spec D8, the dispatcher-shape constraint doctor's extractor is read
-  # against). edit-gates is no longer the LAST arm before the trailing else
-  # (record is), so this fixture cuts from the edit-gates arm's start to the
-  # NEXT when clause's start, removing only that one arm and leaving record
-  # and else intact.
-  def test_doctor_codex_hooks_implemented_fails_when_a_registered_gate_has_no_dispatcher_branch
+  # Intent 302: the case statement carries exactly one arm, record (the edit-gates
+  # arm left with the gates), followed by the trailing else. This fixture cuts the
+  # record arm up to the else, so the registry names a hook the dispatcher has no
+  # branch for.
+  def test_doctor_codex_hooks_implemented_fails_when_a_registered_hook_has_no_dispatcher_branch
     @core.distribute(:install) # copies the REAL scripts/codex-hook into plastic_home
     @core.install_for_agent("codex", false)
     content = File.read(codex_hook_path)
-    branch_start = content.index('when "edit-gates"')
-    refute_nil branch_start, "fixture assumption: scripts/codex-hook must still carry an edit-gates branch"
-    next_when_start = content.index('when "record"', branch_start)
-    refute_nil next_when_start, "fixture assumption: scripts/codex-hook must still carry a record branch"
-    File.write(codex_hook_path, content[0...branch_start] + content[next_when_start..])
+    branch_start = content.index('when "record"')
+    refute_nil branch_start, "fixture assumption: scripts/codex-hook must still carry a record branch"
+    else_start = content.index(/^else\b/, branch_start)
+    refute_nil else_start, "fixture assumption: scripts/codex-hook must still carry a trailing else"
+    File.write(codex_hook_path, content[0...branch_start] + content[else_start..])
 
     checks = doctor_for(@codex_home).check_agent_registration("codex")
     implemented_check = checks.find { |c| c[:name] == "codex_hooks_implemented" }
@@ -1070,8 +1067,8 @@ class CodexInstallTest < Minitest::Test
     refute_nil implemented_check
     assert_equal "fail", implemented_check[:status]
     assert(implemented_check[:details].any? { |d|
-      d.include?("edit-gates") && d.include?("registered") && d.include?("allows")
-    }, "expected an edit-gates detail naming the direction and the fail-open runtime effect, got: #{implemented_check[:details].inspect}")
+      d.include?("record") && d.include?("registered") && d.include?("allows")
+    }, "expected a record detail naming the direction and the fail-open runtime effect, got: #{implemented_check[:details].inspect}")
   end
 
   def test_doctor_codex_hooks_implemented_fails_when_the_dispatcher_has_a_branch_nobody_registers
@@ -1079,10 +1076,10 @@ class CodexInstallTest < Minitest::Test
     @core.install_for_agent("codex", false)
     content = File.read(codex_hook_path)
     updated = content.sub(
-      "SHELL_HOOKS = %w[bash-gate].freeze",
-      "SHELL_HOOKS = %w[bash-gate phantom-gate].freeze"
+      "STATE_HOOKS = %w[session-start check-update capture power-tools savepoint].freeze",
+      "STATE_HOOKS = %w[session-start check-update capture power-tools savepoint phantom-gate].freeze"
     )
-    refute_equal content, updated, "fixture assumption: the SHELL_HOOKS literal must still match this exact text"
+    refute_equal content, updated, "fixture assumption: the STATE_HOOKS literal must still match this exact text"
     File.write(codex_hook_path, updated)
 
     checks = doctor_for(@codex_home).check_agent_registration("codex")
@@ -1099,7 +1096,7 @@ class CodexInstallTest < Minitest::Test
     @core.install_for_agent("codex", false)
     reshaped = <<~RUBY
       #!/usr/bin/env ruby
-      # Reshaped fixture: no STATE_HOOKS/SHELL_HOOKS constants, no `case gate`
+      # Reshaped fixture: no STATE_HOOKS constant, no `case gate`
       # statement, so the extractor must find zero names and doctor must fail
       # loudly rather than silently pass.
       GATES = {

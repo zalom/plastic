@@ -1297,18 +1297,6 @@ end
 
 
 
-  # claude_hooks_implemented (intent 244, the Claude twin of intent 200's Codex
-  # check): the edit-path gates now live as branches inside one dispatcher,
-  # which is exactly the shape that let links-gate ship registered and dead on
-  # Codex. HookRegistry::GATE_TOOLS is the registry side; scripts/hook-edit-gates
-  # is the implementation side. Checked in BOTH directions, so a registered gate
-  # with no branch (always allows, silently) and a branch nobody registers
-  # (dead code) are both reported.
-  #
-  # Read as plain text, never required: the dispatcher has top-level side effects
-  # (it reads $stdin and exits), the same reason codex_dispatcher_gate_names reads
-  # scripts/codex-hook as text.
-
   # Plastic skills install as ~/.claude/skills/plastic-<name>/SKILL.md. Pass if at
   # least one such skill is present.
 
@@ -1357,7 +1345,7 @@ end
   # dispatcher is an executable script with real top-level side effects (it reads
   # $stdin and may exit), so it can never be required or executed to introspect it,
   # only read as plain text, mirroring codex_agent_toml_well_formed? above. Pulls
-  # gate names from the STATE_HOOKS and SHELL_HOOKS %w[] literals, plus the `when
+  # hook names from the STATE_HOOKS %w[] literal, plus the `when
   # "<name>"` labels of the top-level `case gate` statement (stopping at its
   # trailing `else`). Line-shape dependent, not AST-safe, disclosed as such in
   # docs; the healthy-install pass test against the REAL dispatcher is what proves

@@ -128,23 +128,4 @@ class StageFilePresentTest < Minitest::Test
     File.write(File.join(intent_dir, "spec.md"), "# Spec\nreal\n")
     assert Bridge.append_savepoint(intent_dir, File.join(intent_dir, "spec.md"))
   end
-
-  def test_code_gate_does_not_unlock_on_placeholder_plan_checklist
-    intent_dir = scaffold_intent
-    store = @dir
-    bridge = {
-      "build" => { "auto" => true },
-      "intent" => { "id" => "60", "store" => store, "dir" => "60--demo" },
-    }
-    target = File.join(@dir, "project", "app.rb")
-    refute_nil Bridge.code_gate_decision(bridge, target, home: @dir)
-
-    File.write(File.join(intent_dir, "plan.md"), "# Plan\nreal\n")
-    File.write(File.join(intent_dir, "checklist.md"), "# Checklist\nreal\n")
-    # Intent 133a: real plan + checklist but an empty actions/ still blocks the gate.
-    refute_nil Bridge.code_gate_decision(bridge, target, home: @dir)
-
-    File.write(File.join(intent_dir, "actions", "ACTION_1.md"), "# Action 1\nreal\n")
-    assert_nil Bridge.code_gate_decision(bridge, target, home: @dir)
-  end
 end

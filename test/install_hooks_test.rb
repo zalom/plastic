@@ -651,101 +651,19 @@ class MergeClaudeHooksTest < Minitest::Test
     refute File.exist?(backup_path), "No backup should be created when there was no existing statusline"
   end
 
-  def pretooluse_commands(settings)
-    settings["hooks"]["PreToolUse"].flat_map { |g| (g["hooks"] || []).map { |h| h["command"] } }
+  def posttooluse_commands(settings)
+    settings["hooks"]["PostToolUse"].flat_map { |g| (g["hooks"] || []).map { |h| h["command"] } }
+  end
+
+  def plastic_commands(settings, event)
+    Array(settings["hooks"][event]).flat_map { |g| (g["hooks"] || []).map { |h| h["command"].to_s } }
+                                  .select { |c| c.include?("plastic-") }
   end
 
   def merged_settings
     File.write(@settings_path, "{}")
     @installer.merge_claude_hooks(@settings_path)
     JSON.parse(File.read(@settings_path))
-  end
-
-  def test_pretooluse_registers_the_edit_gates_dispatcher
-    settings = merged_settings
-
-    commands = pretooluse_commands(settings)
-    assert commands.any? { |c| c.include?("plastic-edit-gates") }, "edit-gates must be registered"
-
-    group = settings["hooks"]["PreToolUse"].find { |g| g["hooks"].any? { |h| h["command"].include?("plastic-edit-gates") } }
-    assert_equal HookRegistry::WRITE_MATCHER, group["matcher"]
-  end
-
-  # Intent 108, D7: the merge consumes HookRegistry, so the two hooks that the
-  # old hand-rolled literal dropped (bash-gate shipped dead) are now wired.
-  # Intent 244: savepoint-pre no longer has its own registered command; it is a
-  # gate the edit-gates dispatcher runs in-process, so this asserts it did not
-  # ship dead by checking GATE_TOOLS instead.
-  def test_merge_registers_bash_gate_and_savepoint_pre
-    settings = merged_settings
-    cmds = pretooluse_commands(settings)
-    assert cmds.any? { |c| c.include?("plastic-bash-gate") }, "bash-gate must ship wired (D7)"
-    assert cmds.any? { |c| c.include?("plastic-edit-gates") }, "edit-gates must ship wired"
-    assert_includes HookRegistry::GATE_TOOLS.keys, "savepoint-pre"
-  end
-
-  def test_merge_write_matcher_includes_mcp_edit_tools
-    settings = merged_settings
-    gate_group = settings["hooks"]["PreToolUse"].find do |g|
-      g["hooks"].any? { |h| h["command"].include?("plastic-edit-gates") }
-    end
-    assert_includes gate_group["matcher"], "mcp__serena__replace_content"
-  end
-
-  # The whole PreToolUse list carries exactly the registry's groups, and merging
-  # twice never duplicates one. Gate-agnostic on purpose: it is derived from
-  # HookRegistry.events, so a removed gate cannot linger and a new one cannot
-  # be dropped, as gates are added, removed, or merged (intent 226, spec D6).
-  def test_pretooluse_carries_exactly_the_registry_groups_across_two_merges
-    File.write(@settings_path, "{}")
-    @installer.merge_claude_hooks(@settings_path)
-    @installer.merge_claude_hooks(@settings_path)
-    settings = JSON.parse(File.read(@settings_path))
-
-    plastic_groups = settings["hooks"]["PreToolUse"].select do |g|
-      g["hooks"].any? { |h| h["command"].to_s.include?("plastic-") }
-    end
-    assert_equal HookRegistry.events["PreToolUse"].size, plastic_groups.size,
-                 "PreToolUse must carry exactly the registry's groups"
-  end
-
-  def test_pretooluse_edit_gates_is_idempotent_across_two_merges
-    File.write(@settings_path, "{}")
-    @installer.merge_claude_hooks(@settings_path)
-    @installer.merge_claude_hooks(@settings_path)
-    settings = JSON.parse(File.read(@settings_path))
-
-    edit_gates_commands = pretooluse_commands(settings).select { |c| c.include?("plastic-edit-gates") }
-    assert_equal 1, edit_gates_commands.size, "edit-gates must not duplicate across merges"
-  end
-
-  # Intent 96 / 244: code-gate and lock-gate (and now savepoint-pre, links-gate,
-  # create-gate) all collapsed into exactly ONE write-matcher group carrying
-  # exactly one hook, edit-gates (NOT several same-matcher groups, which the
-  # merge loop would collapse anyway).
-  def test_pretooluse_registers_edit_gates_as_the_sole_write_matcher_hook
-    settings = merged_settings
-
-    commands = pretooluse_commands(settings)
-    assert commands.any? { |c| c.include?("plastic-edit-gates") }, "edit-gates must be registered"
-
-    wen_groups = settings["hooks"]["PreToolUse"].select { |g| g["matcher"] == HookRegistry::WRITE_MATCHER }
-    assert_equal 1, wen_groups.size, "exactly ONE write-matcher group (no matcher collision)"
-    group_commands = wen_groups.first["hooks"].map { |h| h["command"] }
-    assert_equal 1, group_commands.size, "exactly one hook in the write group"
-    assert group_commands.any? { |c| c.include?("plastic-edit-gates") }, "edit-gates in the write group"
-  end
-
-  def test_pretooluse_edit_gates_group_is_idempotent_across_two_merges
-    File.write(@settings_path, "{}")
-    @installer.merge_claude_hooks(@settings_path)
-    @installer.merge_claude_hooks(@settings_path)
-    settings = JSON.parse(File.read(@settings_path))
-
-    edit_gates_commands = pretooluse_commands(settings).select { |c| c.include?("plastic-edit-gates") }
-    assert_equal 1, edit_gates_commands.size, "edit-gates must not duplicate across merges"
-    wen_groups = settings["hooks"]["PreToolUse"].select { |g| g["matcher"] == HookRegistry::WRITE_MATCHER }
-    assert_equal 1, wen_groups.size, "still exactly ONE write-matcher group after re-merge"
   end
 
   def test_user_prompt_submit_includes_the_power_tools_hook
@@ -858,5 +776,61 @@ class MergeClaudeHooksTest < Minitest::Test
     installed.each do |dest|
       assert_equal "755", format("%o", File.stat(dest).mode & 0o777), "#{dest} must install at 0755"
     end
+  end
+  # Intent 302: the edit-path gates are gone, so a fresh merge registers NO
+  # PreToolUse group at all.
+  def test_merge_registers_no_pretooluse_group
+    settings = merged_settings
+    assert_empty plastic_commands(settings, "PreToolUse"), "no Plastic PreToolUse hook may ship"
+  end
+
+  # The one write-path hook is record, under PostToolUse, on the full WRITE_MATCHER
+  # (NotebookEdit and the six Serena edit tools included; the narrower savepoint-pre
+  # coverage left with the gates, spec D3 and review B5).
+  def test_merge_registers_record_as_the_sole_write_matcher_hook
+    settings = merged_settings
+    commands = posttooluse_commands(settings)
+    assert commands.any? { |c| c.include?("plastic-record") }, "record must be registered"
+
+    groups = settings["hooks"]["PostToolUse"].select { |g| g["matcher"] == HookRegistry::WRITE_MATCHER }
+    assert_equal 1, groups.size, "exactly ONE write-matcher group (no matcher collision)"
+    assert_equal 1, groups.first["hooks"].size, "exactly one hook in the write group"
+    assert_includes groups.first["matcher"], "mcp__serena__replace_content"
+    assert_includes groups.first["matcher"], "NotebookEdit"
+  end
+
+  def test_posttooluse_carries_exactly_the_registry_groups_across_two_merges
+    File.write(@settings_path, "{}")
+    @installer.merge_claude_hooks(@settings_path)
+    @installer.merge_claude_hooks(@settings_path)
+    settings = JSON.parse(File.read(@settings_path))
+
+    plastic_groups = settings["hooks"]["PostToolUse"].select do |g|
+      g["hooks"].any? { |h| h["command"].to_s.include?("plastic-") }
+    end
+    assert_equal HookRegistry.events["PostToolUse"].size, plastic_groups.size
+    assert_equal 1, posttooluse_commands(settings).count { |c| c.include?("plastic-record") },
+                 "record must not duplicate across merges"
+  end
+
+  # An install that predates intent 302 still carries the merged edit-gates
+  # dispatcher and bash-gate under PreToolUse. The purge must remove both and
+  # register nothing in their place.
+  def test_merge_purges_the_retired_pretooluse_registrations
+    settings = {
+      "hooks" => {
+        "PreToolUse" => [
+          { "matcher" => HookRegistry::WRITE_MATCHER,
+            "hooks" => [{ "type" => "command", "command" => "~/.claude/hooks/plastic-edit-gates" }] },
+          { "matcher" => "Bash",
+            "hooks" => [{ "type" => "command", "command" => "~/.claude/hooks/plastic-bash-gate" }] },
+        ],
+      },
+    }
+    File.write(@settings_path, JSON.pretty_generate(settings))
+    @installer.merge_claude_hooks(@settings_path)
+    merged = JSON.parse(File.read(@settings_path))
+    assert_empty plastic_commands(merged, "PreToolUse"),
+                 "retired PreToolUse gates must be purged: #{merged["hooks"]["PreToolUse"].inspect}"
   end
 end

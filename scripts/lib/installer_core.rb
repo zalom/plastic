@@ -332,7 +332,6 @@ class InstallerCore
       "scripts/hook-capture" => "scripts/hook-capture",
       "scripts/hook-record" => "scripts/hook-record",
       "scripts/hook-close" => "scripts/hook-close",
-      "scripts/hook-savepoint-pre" => "scripts/hook-savepoint-pre",
       "scripts/hook-power-tools" => "scripts/hook-power-tools",
       "scripts/lib/qmd_hook.rb" => "scripts/lib/qmd_hook.rb",
       "scripts/lib/power_tools.rb" => "scripts/lib/power_tools.rb",
@@ -340,9 +339,6 @@ class InstallerCore
       "scripts/lib/agent_models.rb" => "scripts/lib/agent_models.rb",
       "scripts/lib/config_asks.rb" => "scripts/lib/config_asks.rb",
       "scripts/lib/release_guard.rb" => "scripts/lib/release_guard.rb",
-      "scripts/hook-code-gate" => "scripts/hook-code-gate",
-      "scripts/hook-lock-gate" => "scripts/hook-lock-gate",
-      "scripts/hook-bash-gate" => "scripts/hook-bash-gate",
       "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
       "scripts/lib/lock.rb" => "scripts/lib/lock.rb",
       "scripts/plastic-lock" => "scripts/plastic-lock",
@@ -379,13 +375,7 @@ class InstallerCore
       "scripts/validate-intent" => "scripts/validate-intent",
       "scripts/new-intent" => "scripts/new-intent",
       "scripts/end-intent" => "scripts/end-intent",
-      "scripts/hook-create-gate" => "scripts/hook-create-gate",
-      "scripts/hook-links-gate" => "scripts/hook-links-gate",
-      "scripts/lib/links_gate.rb" => "scripts/lib/links_gate.rb",
-      "scripts/lib/edit_gates.rb" => "scripts/lib/edit_gates.rb",
-      "scripts/hook-edit-gates" => "scripts/hook-edit-gates",
       "scripts/lib/apply_patch_envelope.rb" => "scripts/lib/apply_patch_envelope.rb",
-      "scripts/lib/codex_edit_gates.rb" => "scripts/lib/codex_edit_gates.rb",
       "scripts/lib/harness_text.rb" => "scripts/lib/harness_text.rb",
       "scripts/codex-hook" => "scripts/codex-hook",
       "scripts/spawn-preamble" => "scripts/spawn-preamble",
@@ -1280,8 +1270,8 @@ class InstallerCore
     plastic_hooks.each do |event, group|
       hooks[event] ||= []
 
-      # An event may map to a LIST of plastic groups (PreToolUse carries the
-      # code-gate AND the create-gate). The purge pass above already removed all
+      # An event may map to a LIST of plastic groups (none does since the edit-path
+      # gates left in 2.0, intent 302; the shape stays). The purge pass above already removed all
       # prior plastic groups, so appending each desired group fresh is idempotent
       # across re-runs and never collapses two matchers into one group.
       groups = group.is_a?(Array) ? group : [group]

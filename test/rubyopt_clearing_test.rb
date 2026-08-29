@@ -87,10 +87,8 @@ class RubyoptClearingTest < Minitest::Test
 
   # Rename guard only. The hooks scan below enumerates the directory, it does not read this.
   KNOWN_SHELL_LAUNCHERS = %w[
-    hooks/bash-gate
     hooks/capture
     hooks/check-update
-    hooks/edit-gates
     hooks/power-tools
     hooks/record
     hooks/session-start
@@ -175,11 +173,11 @@ class RubyoptClearingTest < Minitest::Test
     recognized = shell_files.sum { |rel| scannable_lines(rel).count { |line, _i| line =~ SHELL_SPAWN_TOKEN } }
 
     # Intent 298 replaced continue, future-intent-check, auto-arm, and gate-check
-    # with capture and record, moving the baseline from 14 to 7 recognized spawn
-    # lines (bash-gate, capture, check-update, edit-gates, power-tools, record,
-    # session-start).
-    assert_equal 7, recognized,
-      "the shell scan should recognize 7 ruby command words across hooks/, all already " \
+    # with capture and record; intent 301 added close; intent 302 removed the
+    # edit-gates and bash-gate launchers, so the baseline is 6 recognized spawn
+    # lines (capture, check-update, close, power-tools, record, session-start).
+    assert_equal 6, recognized,
+      "the shell scan should recognize 6 ruby command words across hooks/, all already " \
       "cleared; if this number drops, SHELL_SPAWN_TOKEN stopped matching and the hooks test " \
       "above is vacuous"
   end
@@ -208,10 +206,11 @@ class RubyoptClearingTest < Minitest::Test
       "scripts/maintenance-run" => 5,
       "scripts/restore-intent-v1" => 1,
       "scripts/hook-capture" => 2,
-      # 2, not 3: the third spawn site (the live-state branch) execs a BASH launcher, so its
-      # line names neither RbConfig.ruby nor "ruby" and ruby_spawn_line? does not see it. It is
-      # cleared anyway (intent 249), it just is not counted here.
-      "scripts/codex-hook" => 2,
+      # 1, not 2: the live-state branch execs a BASH launcher, so its line names neither
+      # RbConfig.ruby nor "ruby" and ruby_spawn_line? does not see it. It is cleared anyway
+      # (intent 249), it just is not counted here. The second ruby spawn (the bash-gate relay)
+      # left with the gates in intent 302.
+      "scripts/codex-hook" => 1,
     }
 
     expected.each do |rel, count|

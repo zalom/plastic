@@ -101,6 +101,8 @@ recorded `evals.json` files (fixed schema, brain-written assertions).
 
 ## the-harness-system
 
+Removed in 2.0 (intent 302): the edit-path gates (edit, bash, code, lock, links), the create gate, and the stage-transition gates are gone with their code. The paragraphs and list items of this section that described them were removed with them; what remains is the `record` hook (savepoint line, lock heartbeat, day ledger) and the doctor checks that replace enforcement (intent 308).
+
 A **harness** is anything that constrains a brain step toward blueprint-conforming
 form. Harnesses come in two layers, distinguished by *who needs them*.
 
@@ -182,9 +184,6 @@ a `(stage, milestone)` pair for idempotency (`Bridge.savepoint_recorded_pairs`):
 
 - a **born `What` line**, stamped by `new-intent` at creation (not left to a gate firing), so
   even a freshly parked future intent carries the first bookend deterministically;
-- **`started` pre-stage lines** (`Why started`, `How started`), appended by the PreToolUse
-  `hook-savepoint-pre` the moment a stage's artifact is first written, plus an `Exec started`
-  companion emitted by `record` when `checklist.md` lands (How ends, Exec begins, one event);
 - a **terminal `Done delivered|abandoned` line**, written by the completion path
   (`Bridge.append_terminal_savepoint`) as the intent transfers into INDEX's Completed/Abandoned
   section. Disposition lives in INDEX (no frontmatter status); the ledger echoes it.
@@ -361,26 +360,6 @@ so a session-less arm and a later session-less record resolve to the same bridge
 instead of writing `plastic-.json` with a null session. `Bridge.write` now refuses an empty
 session, so a null-session bridge can never be persisted.
 
-The savepoint write is decoupled from bridge resolution (intent 52). `hook-record` derives
-the intent directory straight from the written file path via `Bridge.intent_dir_for` (it walks
-up to the first ancestor matching `.../store/<id>--<slug>`) and appends the savepoint there
-BEFORE any bridge lookup. A missing bridge, an unset session, or a headless background run can
-no longer skip the ledger. Bridge discovery is strictly per-session (intent 90): `Bridge.discover_bridge`
-prefers an exact-session match, and when the caller `session` is present it keeps ONLY
-candidates whose own `session` equals the caller (own-session, and the derived-key headless
-case reduces to the same equality). A foreign session's bridge is never resolved; when the
-caller has a session and owns no bridge, discovery returns `nil` so every gate fails open
-(no-op) for that session instead of inheriting another session's armed intent. Before that per-session filter, one opt-in carve-out (intent 168) applies only when hook-code-gate passes `edited_path`: if the edited file lies inside a provisioned code worktree (`<repo>/.claude/worktrees/{id}--{slug}`), discovery resolves the candidate whose `worktree.code` owns that directory (newest mtime on a tie), or `nil` when none owns it, and never the session-matched sibling. Every other caller passes no `edited_path`, so its resolution is unchanged. With a session
-present, cwd/store narrowing is a hard filter (a non-matching store excludes the candidate,
-never reverting to the unfiltered pool). Only when the caller has NO session at all (the
-intent 52 headless / derived-key path) does it keep the degraded scan of `/tmp/plastic-*.json`:
-valid bridges only, preferring auto-armed ones, then those whose `intent.store` matches the
-current working directory, breaking ties by newest mtime, with the best-effort cwd revert
-retained so a lone armed bridge is still found. This fixes the cross-session freeze (intents
-49, 66) that intent 79 (exact-match keying) and intent 80 (terminal cleanup) deliberately left
-in the fallback. The `/tmp` directory is injectable so the scan is testable against a fake
-directory.
-
 Because that scan parses every `plastic-*.json` on each fire, the temp directory has to stay
 small or the per-fire cost grows without bound (intent 67). `Bridge.purge_done_bridges` runs
 on `arm_auto` and on `disarm_auto`, so every auto run cleans up dead bridges at its start and
@@ -491,6 +470,8 @@ renderer), so a broken or slow dashboard call never crashes `UserPromptSubmit`.
 
 ## what-exists-today-vs-what-is-missing
 
+Removed in 2.0 (intent 302): the edit-path gates (edit, bash, code, lock, links), the create gate, and the stage-transition gates are gone with their code. The paragraphs and list items of this section that described them were removed with them; what remains is the `record` hook (savepoint line, lock heartbeat, day ledger) and the doctor checks that replace enforcement (intent 308).
+
 Plastic ships **23** harness entries today. By strength on the form-determinism
 axis (hard-block beats soft-steer beats advisory):
 
@@ -502,15 +483,6 @@ axis (hard-block beats soft-steer beats advisory):
 
 Two honest caveats about the existing harnesses:
 
-- **The lifecycle gate runs after the write lands.** The strongest stage-gate
-  mechanism in the framework, `record`, is wired as a PostToolUse hook: it
-  rejects the write *after* the file already exists on disk, so a brain that
-  ignores the block leaves a half-written artifact behind. It checks lifecycle file
-  *presence* (sentinel-aware since intent 60b), not the section form of those
-  files. For the intent file specifically, the intent-60b create gate
-  (`hook-create-gate`) closes this gap on the create path: it is a PreToolUse hook
-  that blocks *before* the write and validates frontmatter plus the sanctioned `##`
-  section set (see the sanctioned-creation-path section below).
 - **The eval suites do not run.** Both `evals.json` files are advisory records.
   One carries triggering and one sequencing case; the other has empty assertion
   arrays (`assertions: []`) on every case. There is no runner that asserts
@@ -669,6 +641,8 @@ Per-intent validation cannot see asymmetry between intents, so the cross-intent
 
 ## sanctioned creation path (intent 60b)
 
+Removed in 2.0 (intent 302): the edit-path gates (edit, bash, code, lock, links), the create gate, and the stage-transition gates are gone with their code. The paragraphs and list items of this section that described them were removed with them; what remains is the `record` hook (savepoint line, lock heartbeat, day ledger) and the doctor checks that replace enforcement (intent 308).
+
 Intent 60 enforced the born-complete OUTCOME but not the PROCESS: an agent could
 bypass `plastic-intent-creating` and hand-author intent files with the same Write
 primitive the skill uses. Process-purity is unprovable (the skill and a
@@ -677,23 +651,6 @@ INVARIANT (every intent file is born complete and structurally sanctioned) plus
 the ERGONOMICS (the sanctioned path is the cheapest action an agent can take).
 Four coordinated pieces deliver that.
 
-- **Placeholder sentinel plus one shared predicate.** A scaffolded lifecycle file
-  (`spec.md`/`plan.md`/`checklist.md`/`outcome.md`) carries the exact first line
-  `<!-- plastic:placeholder -->` until an agent fills it and deletes the sentinel.
-  `Bridge.stage_file_present?(path)` is the single present-and-real predicate: it
-  returns false when the file is missing OR its head carries the sentinel, and it
-  reads only the file head (never the whole file) so the dashboard stays fast
-  across many intents. It replaced every bare lifecycle-file `File.exist?` in stage
-  detection (`derive_stage`, `has_files`), the gates (`check_gate`,
-  `code_gate_decision`), and the savepoint trio (`append_savepoint`,
-  `rebuild_savepoint`), plus `dashboard.rb` (`parse_intent` flags and the
-  completed-on-`outcome.md` status, `lifecycle_stage`) and doctor via the loader.
-  This solves the crux: a script can pre-create all lifecycle files at once without
-  any stage detector, gate, or savepoint consumer reading a brand-new intent as
-  advanced or finished. The intent file (`<id>--<slug>.md`) is never sentineled; it
-  is born complete. The match is exact first-line only, so a real file that merely
-  contains an HTML comment later is unaffected and a partially-edited sentinel reads
-  as real rather than sticking as a placeholder.
 - **`scripts/new-intent` (the one-call scaffolding contract).** A single invocation
   allocates the id via `folgezettel-id` (root, or a branch of `--parent`), creates
   `<store>/<id>--<slug>/` plus `actions/` and `resources/`, renders the
@@ -704,33 +661,6 @@ Four coordinated pieces deliver that.
   `plastic-intent-creating`, which is now a thin wrapper that keeps tier/store
   detection and the branch-vs-root judgement and delegates scaffolding to one
   `new-intent` call.
-- **create-gate (PreToolUse check, applies to Write plus Edit plus the
-  Serena MCP edit tools, per `HookRegistry::GATE_TOOLS["create-gate"]`).**
-  On Claude it runs as one of five in-process checks inside the merged
-  `scripts/hook-edit-gates` dispatcher (intent 244); on Codex it runs the same
-  way inside `scripts/lib/codex_edit_gates.rb` (intent 251), add-only there
-  (Update, Delete, and Move defer to the PostToolUse backstop).
-  `scripts/hook-create-gate` is retained as a thin CLI wrapper over the same
-  `EditGates.create_gate` logic, with no production caller on either harness
-  anymore, kept as the isolation surface `test/create_gate_hook_test.rb`
-  drives directly. When the target
-  path is an intent file inside its own equally-named dir
-  (`store/**/<id>--<slug>/<id>--<slug>.md`), it judges the payload with
-  `IntentValidator.validate_content` and blocks with exit 2 on failure. Three
-  payload shapes (intent 108): a Write validates the PROPOSED
-  `tool_input.content`; an Edit simulates the replacement (`old_string` to
-  `new_string`, `sub` or `gsub` per `replace_all`) against the on-disk file and
-  validates the RESULT, blocking when the file does not exist; a pathless MCP
-  mutation validates the CURRENT on-disk file (a valid file passes, since the
-  PostToolUse backstop validates the result; a missing or invalid one blocks).
-  It depends only on the stdin path plus payload, never on the auto-bridge
-  or any session id, so it runs unconditionally including in headless and
-  background sessions, which dissolves intent 60's D6 objection (the 60-era design
-  no-opped without a bridge). It validates only the intent file, never
-  the sentinel placeholder lifecycle files. Intent 298 dropped the PostToolUse
-  4a1c1 backstop this PreToolUse block used to coexist with (it was a duplicate
-  `IntentValidator` check inside `hook-gate-check`, now `record`): create-gate
-  is the sole validity check on the create path.
 - **Section-structure arm on `IntentValidator`.** `SANCTIONED_SECTIONS`
   (`## Intent`, `## Context`, `## Outcome`, `## Insights`, `## Links`, in order)
   plus a pure `validate_sections(body)` flag any unknown top-level `##` heading and
@@ -746,6 +676,8 @@ portable lever that works on any harness; the PreToolUse create gate is
 Claude-Code-only defense-in-depth, not the primary lock.
 
 ## The four delivery scripts (intent 213)
+
+Removed in 2.0 (intent 302): the edit-path gates (edit, bash, code, lock, links), the create gate, and the stage-transition gates are gone with their code. The paragraphs and list items of this section that described them were removed with them; what remains is the `record` hook (savepoint line, lock heartbeat, day ledger) and the doctor checks that replace enforcement (intent 308).
 
 `AGENTS.md` states the classification rule: a step becomes a script only when its output is
 a pure function of already-committed artifacts (spec.md, plan.md, checklist.md, outcome.md,
@@ -766,11 +698,6 @@ of Exec.
 (the first standing implementation of that check), a diffstat, and an optional
 caller-supplied suite command into one verdict. It does not invent a project test-command
 config.
-
-`scripts/exec-worktree` wraps `Worktree.finish`. Its only net-new logic is an order
-precondition that calls `Bridge.code_gate_decision`. The precondition is a friendly early
-error, not the enforcement point: the hook layer remains the gate, and on a guided bridge the
-precondition is advisory only.
 
 `scripts/lib/spec_header.rb` is the only parser of the `Tier:` and `Settled:` lines at the
 top of spec.md. `Bridge.savepoint_tier` delegates to it.
@@ -907,6 +834,8 @@ models are user configuration (fable and opus by default on Claude Code).
 
 ## worktree provisioning and the delivery lock (intent 73c)
 
+Removed in 2.0 (intent 302): the edit-path gates (edit, bash, code, lock, links), the create gate, and the stage-transition gates are gone with their code. The paragraphs and list items of this section that described them were removed with them; what remains is the `record` hook (savepoint line, lock heartbeat, day ledger) and the doctor checks that replace enforcement (intent 308).
+
 The harness worktree tool assumes the current directory IS the repo root, which
 is false for Plastic (cwd is often the parent of the repo subdir). When that
 mismatch occurred the tool silently degraded to a feature branch on the shared
@@ -957,53 +886,6 @@ own isolation instead, deterministic and cwd-independent.
   store's plastic-home segment is literally named `.plastic` (a sandbox home
   like `/tmp/x/.plastic` works; an arbitrarily named root does not, and
   `provision` falls back to the passed `home:`).
-- **The lock file is the truth, the bridge is a cache** (intent 108):
-  `scripts/lib/lock.rb` owns the durable `delivery.lock` JSON file inside the
-  intent directory. `owner_session` is authorization; the controller's
-  `harness`, `agent`, `model`, `thread`, and `mode` are descriptive provenance
-  supplied explicitly by the harness. Missing legacy values remain unknown and
-  are never reconstructed from transcript locations, session-id formats, or
-  other heuristics. The file never carries a pid. `Lock.acquire` is atomic
-  (O_EXCL) and returns
-  `:acquired/:owned/:held/:stale/:excluded/:corrupt`; freshness is the file
-  mtime against `Lock::TTL_SECONDS` (1800 seconds), refreshed by
-  `Lock.heartbeat` from the lock-gate allow path (intent 298 dropped the
-  PostToolUse `record` hook's own heartbeat call: it never resolves a bridge,
-  so lock-gate's PreToolUse allow path, which fires before every edit, is the
-  sole refresh point now). The mtime is the sole heartbeat and freshness truth;
-  provenance timestamps are descriptive only. `arm` acquires the lock, raising
-  `Bridge::LockHeldError` with the resolving `plastic-lock` verb when it
-  cannot, and fills the bridge's `lock` block as a cache; `disarm_auto`
-  releases the worktrees, clears the lock, and only then is the bridge
-  purge-eligible (`purge_done_bridges` also skips any bridge whose intent dir
-  still holds a `delivery.lock`). This makes the post-done access window
-  lock-bounded, `[INDEX terminal to Lock.release]` (intent 93): while the lock
-  is held the completing session keeps full read and write access to the
-  terminal directory and no purge can fire, and once `Lock.release` runs the
-  window closes, the bridge is purged, and the directory is frozen. A crash
-  mid-tail is recovered by reclaiming the stale lock and finishing the tail;
-  `doctor` (the `done_signals` check) surfaces this as a stalled completion
-  (terminal in INDEX but the lock is still present or stale). Finishing the tail
-  is finishing a completion, never a reactivation: a done intent is never moved
-  back to `## Active`. Gates decide from the lock file:
-  `Bridge.lock_gate_decision` reads the TARGET intent dir's lock, admits the
-  owner or a registered delegate (even on a stale lock, which stays its
-  owner's until an explicit takeover), and every deny names the resolving
-  command. Rearming the same session preserves authority and refreshes supplied
-  provenance. A stale foreign lock is taken only by `Lock.takeover`, which
-  replaces the controller and appends an audit line to the intent's savepoint.md.
-  `Worktree.lock_held_by_other?` asks the same file, so `/tmp` bridges are
-  never consulted for ownership and no code probes a pid.
-  `Bridge.repair_lock` is the one idempotent repair: it rebuilds the lock and
-  the bridge cache from disk, migrates legacy pid-stamped bridges, and never
-  touches a fresh foreign lock. It also provisions the worktrees the same way
-  `arm` does (intent 136), so a repaired bridge always carries `worktree.code`
-  instead of wiping it back to derive's unprovisioned default; `plastic-lock
-  fix`, `plastic-lock reclaim`, and the boarding skill's self-heal all inherit
-  this since they call `repair_lock`. The `plastic-lock` CLI exposes it
-  (verbs: who, status, fix, release, reclaim, delegate). `who` reads only the
-  durable lock, its mtime, and claim files. It never repairs state, consults the
-  bridge, or searches harness transcripts.
 
 - **Three distinct evidence layers and bounded delegate history** (intent 108a):
   the controller record proves whole-intent authority; a registered delegate record
@@ -1014,37 +896,9 @@ own isolation instead, deterministic and cwd-independent.
   authorized until a separate removal mechanism exists. Finished and failed activity
   history is capped at the 20 most recent terminal entries.
 
-- **Solo-mode advisory relaxation** (intent 128): `Bridge.lock_gate_decision`
-  and `Bridge.worktree_gate_decision` are ARBITRATION gates, not the
-  stage-ordering gate, so they only matter when a second writer might exist.
-  `Bridge.solo_delivery?(scan_roots:, session:, ttl:, now:)` scans the durable
-  `delivery.lock` files under the injected `scan_roots` (dependency-injected,
-  no ENV seam) and returns true only on a positive, confident solo
-  determination: exactly one fresh lock across the scan, owned by `session`,
-  with an empty `delegates` array. More than one fresh lock (even several
-  under the same `owner_session`, which still counts as parallel-in-play), a
-  foreign owner, a non-empty `delegates` array, a blank/unresolvable session,
-  or any scan error all return false, preserving today's fail-closed behavior.
-  Both gates compute this once (scan roots: the target intent's store plus the
-  global store under an injected `home:`) and, on a confirmed solo, return
-  `nil` (allow, with one terse stderr line) at every arbitration deny point
-  instead of the deny string. `code_gate_decision` (the stage-ordering gate)
-  and `Claim.claim_gate_reason` (the per-artifact claim gate) are never
-  touched by this: a solo context still enforces How before code edits, and
-  the claim gate's single-writer guarantee is unaffected.
-  Two hardenings keep the detection strictly conservative. First, a fresh
-  lock file that fails to parse (corrupt) is real ambiguity, not an absence:
-  `solo_delivery?` treats any unreadable-but-fresh lock as disqualifying,
-  never as a lock to silently drop from the count. Second,
-  `worktree_gate_decision`'s scan_roots always include the EDIT TARGET's own
-  store, not just the acting bridge's own store plus the global store, so a
-  live rival lock on an intent in a different project is never invisible to
-  the scan just because that project is not the acting session's own; this
-  makes rule 2 (non-owner store edit) fail-closed against cross-project
-  rivals too. Both changes only add scan coverage or narrow the true-case, so
-  they can only make solo detection stricter, never looser.
-
 ## per-artifact claim tokens (intent 111)
+
+Removed in 2.0 (intent 302): the edit-path gates (edit, bash, code, lock, links), the create gate, and the stage-transition gates are gone with their code. The paragraphs and list items of this section that described them were removed with them; what remains is the `record` hook (savepoint line, lock heartbeat, day ledger) and the doctor checks that replace enforcement (intent 308).
 
 The delivery lock above resolves ownership at the whole-intent grain: it answers
 who may work an intent at all, not who may write one specific lifecycle file
@@ -1073,16 +927,6 @@ close that gap.
   `:held` and names the holder, even when the caller shares the holder's
   session id. A fresh claim is never idempotently re-granted; a genuine sole
   writer acquires once and keeps the claim alive with `Claim.heartbeat`.
-- **Composition, not replacement.** A lifecycle write must hold BOTH the
-  intent's delivery lock (owner or delegate, `Lock.holds?`, unchanged) AND the
-  specific artifact's claim. `Claim.claim_gate_reason` is the second,
-  independent gate: it is DORMANT (returns nil, allow) when no claim file
-  exists for the artifact, so every existing single-owner flow and the prior
-  lock/bridge suite stay green unless two writers actually contend for the
-  same file. `scripts/hook-lock-gate` runs the claim gate only after the
-  existing `Bridge.lock_gate_decision` already allows, refreshes the caller's
-  own claim heartbeat on the allow path, and denies with the holder's session
-  and the artifact name when a fresh foreign claim is found.
 - **Fail open, always, as a named contract.** `Claim.fail_open?(intent_dir,
   artifact, ttl:, now:)` is the one place this behavior is defined and tested:
   true only when a claim FILE exists but is unresolvable (stale past the TTL,
@@ -1101,34 +945,6 @@ close that gap.
   owner session or delegate, acquired-at time, and whether it is still fresh,
   so an orchestrator checking status before respawning a helper can see a live
   writer on an artifact and skip the respawn.
-- **Scope of this pass.** The claim gate wires into `hook-lock-gate`, the
-  Write/Edit/NotebookEdit lifecycle-write surface (the exact path of the 108
-  collision this closes). The bash-write path is a deliberate follow-up, kept
-  out to hold this change to a tight, low-risk surface. Contention is
-  reject-with-surface only; queuing a second writer behind the first is a
-  possible future option, not built here.
-- **Hook registration single source of truth** (intent 108, D7):
-  `scripts/lib/hook_registry.rb` defines every event, matcher, and hook name.
-  `InstallerCore#merge_claude_hooks` translates it into settings.json,
-  `hooks/hooks.json` is pinned to it by test, and doctor's
-  `hooks_match_registry` check flags any drift (a missing gate, a stray
-  plastic hook, a stale matcher). `merge_claude_hooks` also takes a `choice:`
-  kwarg (`:plastic` or `:keep`) that gates only the `statusLine` overwrite;
-  hook merging itself is unaffected by the choice. `InstallerCore#statusline_choice`
-  computes that choice as a pure function of the settings file, `argv`,
-  `input`, and `reinstall`: no existing line or an already-Plastic line always
-  resolves to `:plastic`; otherwise it reads a `--statusline keep|plastic`
-  flag, then falls back to `:keep` on `--reinstall`, an interactive prompt
-  (`prompt_statusline`) on a tty, or `:keep` as the safe non-interactive
-  default. Claude's five edit-path gates (code-gate, lock-gate, savepoint-pre,
-  links-gate, create-gate) register as ONE PreToolUse hook, `edit-gates`
-  (`hooks/edit-gates` -> `scripts/hook-edit-gates`), on the union write matcher
-  (Write, Edit, NotebookEdit, and the Serena MCP edit tools; intent 244). The
-  gates themselves did not go away: the dispatcher parses the PreToolUse stdin
-  payload once and runs all five in-process, in the fixed order savepoint-pre,
-  lock-gate, code-gate, links-gate, create-gate, with the first deny ending
-  evaluation. Per-gate tool applicability, which used to be encoded by three
-  separate matcher groups, now lives in `HookRegistry::GATE_TOOLS`:
 
   | Gate | Applies to |
   |---|---|
@@ -1138,39 +954,9 @@ close that gap.
   | links-gate | Write, Edit |
   | create-gate | Write, Edit, Serena edit tools |
 
-  bash-gate stays registered separately on its own `Bash` matcher (the old
-  hand-rolled merge literal had once dropped it, so it shipped dead; that gap
-  is what the derived registration exists to prevent). A crash inside any one
-  gate's logic is isolated (its own rescue, one stderr line, evaluation
-  continues) and never denies the call by itself. Each gate's own deny shape
-  is unchanged: stderr plus exit 2 for code-gate, links-gate, and create-gate;
-  stdout `permissionDecision` JSON plus exit 0 for lock-gate; savepoint-pre
-  never denies. Codex collapsed the same way (intent 251): its `apply_patch`
-  matcher carries ONE registered command, `edit-gates`, and `scripts/codex-hook`
-  parses stdin once, parses the apply_patch envelope once, and runs all five
-  gates in-process through `scripts/lib/codex_edit_gates.rb`, which drives the
-  SAME `scripts/lib/edit_gates.rb` functions Claude's `hook-edit-gates` drives,
-  so the two harnesses cannot drift. Two Codex-specific rules live only in that
-  library: create-gate applies to Add operations only (Update, Delete, and Move
-  defer to the PostToolUse `record` backstop), and savepoint-pre runs as its
-  own first pass over every operation so its ledger line lands even when a
-  later gate blocks the call. The five `scripts/hook-<gate>` CLI wrappers lose
-  their last production caller but are retained on purpose as the per-gate
-  isolation surface for the hook contract tests that drive them. The bash gate
-  composes the code gate AND the lock gate over every write target, including
-  interpreter one-liners (`ruby -e`, `python -c`, `perl -e`, `node -e`
-  carrying a write verb plus a quoted absolute path); a trailing `# plastic-ok`
-  comment allows a sanctioned command and logs it to
-  `~/.plastic/.cache/gate-escapes.log` (the escape is scoped to code-gate
-  only; lock-gate, links-gate, and create-gate still evaluate normally). The
-  worktree gate confines only paths inside the project repo (derived from the
-  code worktree path). Reads and searches are never gated.
-- **Scope boundary**: `worktree.rb` is pure provisioning and lock-state logic. It
-  never edits `projects.yml` and never mutates qmd. The PreToolUse gate that
-  blocks edits outside the active worktree, and the cleanup policy that decides
-  merge-vs-remove on the completion path, are layered on top by sibling intents.
-
 ## doctor: Codex hook registry vs. dispatcher agreement (intent 200)
+
+Removed in 2.0 (intent 302): the edit-path gates (edit, bash, code, lock, links), the create gate, and the stage-transition gates are gone with their code. The paragraphs and list items of this section that described them were removed with them; what remains is the `record` hook (savepoint line, lock heartbeat, day ledger) and the doctor checks that replace enforcement (intent 308).
 
 `codex_hooks_registered_check` (`doctor.rb`) only diffs `~/.codex/hooks.json`'s content
 against what `HookRegistry.codex_hooks_json` would emit; both sides come from the registry,
@@ -1192,21 +978,6 @@ unrecognized gate; the loud failure belongs to `doctor` alone. The extraction is
 self-checking: if it finds zero gate names (a future reshape of the dispatcher the regex no
 longer matches), the check fails loudly and says the dispatcher could not be read, rather
 than silently reporting the healthy pass a zero-name read would otherwise produce.
-
-**Claude closed its own version of the same hole (intent 244).** At the time intent 200
-shipped, Claude registered every edit-path gate as its own launcher file, so "is it
-implemented" was answered by a different, existing shape (`hooks_exist`/`hooks_executable`)
-and this class of check did not apply. Intent 244 collapsed the five edit-path gates
-(code-gate, lock-gate, savepoint-pre, links-gate, create-gate) into one registered hook,
-`hooks/edit-gates` -> `scripts/hook-edit-gates`, which reopened exactly the same hole one
-level up: a gate could ship registered in `HookRegistry::GATE_TOOLS` with no real branch in
-the dispatcher's `case gate` statement (always allows, silently), or a dispatcher branch
-nobody registers (dead code). `claude_hooks_implemented_check` (`doctor.rb`) is the Claude
-twin of `codex_hooks_implemented_check`: it reads `scripts/hook-edit-gates` as plain text
-(`claude_dispatcher_gate_names`, the file's `when "<gate>"` labels), compares that against
-`HookRegistry::GATE_TOOLS.keys` in both directions, and fails loudly (rather than silently
-passing) if the extraction finds no recognizable gate names at all, the same self-checking
-posture as its Codex counterpart.
 
 ## installer: hook purge by registry (intent 275)
 

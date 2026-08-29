@@ -206,7 +206,7 @@ class Install < InstallerCore
     return if codex_like.none? { |a| installed.any? { |r| r[:agent] == a[:name] } }
 
     puts "   Codex: open Codex, run /hooks, and trust the Plastic hook definitions."
-    puts "   Plastic's gates will not fire until you do.\n\n"
+    puts "   Plastic's hooks will not fire until you do.\n\n"
   end
 
   def show_help
