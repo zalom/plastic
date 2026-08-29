@@ -1,0 +1,134 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# promote-session-item (intent 301): turn one session day-ledger line into a
+# registered intent through scripts/new-intent (never hand-authored), record
+# the day of origin in the new intent, and mark the line promoted.
+#
+# Usage:
+#   promote-session-item --day <YYYYMMDD> --match <substring> [--session <id>]
+#                        [--store <dir>] [--project <slug>] [--templates <dir>]
+#                        [--plastic-home <dir>] [--no-reindex]
+#
+# Target: the newest open line, else the newest pending line, whose summary
+# contains --match, tagged with --session when given, any session otherwise.
+# The intent lands in the project's store when --project names a registered
+# project, else in --store ($PLASTIC_HOME/store by default). No graph edge to
+# the day id is written (the day ledger is not a store node); the origin is
+# the `session_day:` frontmatter key plus a line under ## Context.
+#
+# Exit codes: 0 promoted (prints the intent dir last), 1 new-intent failed,
+# 2 usage error or nothing to promote.
+
+require "open3"
+require "yaml"
+require_relative "lib/session_ledger"
+require_relative "lib/session_backfill"
+require_relative "lib/store_provisioning"
+
+def usage_abort(message)
+  warn "promote-session-item: #{message}"
+  exit 2
+end
+
+def next_value!(argv, i, flag)
+  value = argv[i + 1]
+  usage_abort("#{flag} needs a value") if value.nil? || value.start_with?("--")
+  value
+end
+
+opts = { day: nil, match: nil, session: nil, store: nil, project: nil, templates: nil,
+         plastic_home: nil, reindex: true }
+i = 0
+while i < ARGV.length
+  case ARGV[i]
+  when "--day"          then opts[:day] = next_value!(ARGV, i, "--day"); i += 1
+  when "--match"        then opts[:match] = next_value!(ARGV, i, "--match"); i += 1
+  when "--session"      then opts[:session] = next_value!(ARGV, i, "--session"); i += 1
+  when "--store"        then opts[:store] = next_value!(ARGV, i, "--store"); i += 1
+  when "--project"      then opts[:project] = next_value!(ARGV, i, "--project"); i += 1
+  when "--templates"    then opts[:templates] = next_value!(ARGV, i, "--templates"); i += 1
+  when "--plastic-home" then opts[:plastic_home] = next_value!(ARGV, i, "--plastic-home"); i += 1
+  when "--no-reindex"   then opts[:reindex] = false
+  else usage_abort("unknown argument #{ARGV[i].inspect}")
+  end
+  i += 1
+end
+
+usage_abort("--day is required") if opts[:day].nil?
+usage_abort("--day must be a real calendar date, YYYYMMDD") unless SessionLedger.valid_day_id?(opts[:day])
+usage_abort("--match is required") if opts[:match].nil? || opts[:match].empty?
+
+plastic_home = File.expand_path(opts[:plastic_home] || ENV.fetch("PLASTIC_HOME", "~/.plastic"))
+store = opts[:store] || File.join(plastic_home, "store")
+templates = opts[:templates] || File.expand_path("../templates", __dir__)
+session = opts[:session] ? SessionLedger.short_session_id(opts[:session]) : nil
+
+target_store = store
+if opts[:project]
+  projects = StoreProvisioning.load_projects(plastic_home)
+  usage_abort("--project #{opts[:project]} is not a registered project") unless projects.key?(opts[:project])
+  target_store = File.join(plastic_home, "projects", opts[:project], "store")
+end
+
+# --- pick the target line ---------------------------------------------------
+
+day_dir = SessionLedger.day_dir(store, opts[:day])
+checklist = SessionLedger.checklist_path(store, opts[:day])
+items = SessionBackfill.read_items(day_dir)
+candidates = items.select do |item|
+  (session.nil? || item[:session] == session) && item[:summary].include?(opts[:match])
+end
+target = candidates.reverse.find { |item| item[:state] == :open } ||
+         candidates.reverse.find { |item| item[:state] == :pending }
+usage_abort("nothing to promote in #{opts[:day]} matching #{opts[:match].inspect}") if target.nil?
+
+# --- scaffold through new-intent ---------------------------------------------
+
+def slug_for(summary)
+  words = summary.downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-+|-+\z/, "").split("-").reject(&:empty?)
+  slug = words.first(5).join("-")
+  slug.empty? ? "item" : slug
+end
+
+new_intent = File.expand_path("new-intent", __dir__)
+out, err, status = Open3.capture3({ "RUBYOPT" => nil }, RbConfig.ruby, new_intent,
+                                  "--store", target_store, "--intent", target[:summary],
+                                  "--slug", slug_for(target[:summary]), "--templates", templates)
+unless status.success?
+  warn "promote-session-item: new-intent failed:"
+  warn err
+  warn out
+  exit 1
+end
+intent_dir = out.lines.last.to_s.strip
+usage_abort("new-intent printed no intent dir") if intent_dir.empty? || !Dir.exist?(intent_dir)
+intent_id = File.basename(intent_dir).split("--", 2).first
+
+# --- record the origin in the new intent (one atomic rewrite) -----------------
+
+intent_file = File.join(intent_dir, "#{File.basename(intent_dir)}.md")
+content = File.read(intent_file)
+parts = content.split(/^(---\s*\n)/, 3)
+if parts.length >= 4
+  parts[2] += "session_day: \"#{opts[:day]}\"\n"
+  content = parts[0] + parts[1] + parts[2] + parts[3] + parts[4].to_s
+end
+origin = "Promoted from the session ledger of #{opts[:day]}: #{target[:summary]}\n"
+content = content.sub(/^## Context\n/) { |heading| heading + origin }
+SessionBackfill.write_atomic(intent_dir, File.basename(intent_file), content)
+
+# --- mark the line, note it, reindex ---------------------------------------------
+
+SessionLedger.set_state(checklist, from: target[:state], to: :promoted, session: target[:session],
+                        match: target[:summary])
+SessionLedger.append_line(SessionLedger.savepoint_path(store, opts[:day]),
+                          SessionLedger.savepoint_line("Note", target[:session], target[:project],
+                                                       "promoted \"#{target[:summary]}\" to intent #{intent_id}",
+                                                       now: Time.now))
+if opts[:reindex]
+  qmd_sync = File.expand_path("qmd-sync", __dir__)
+  system({ "RUBYOPT" => nil }, RbConfig.ruby, qmd_sync, "reindex", out: File::NULL, err: File::NULL) if File.exist?(qmd_sync)
+end
+puts intent_dir
