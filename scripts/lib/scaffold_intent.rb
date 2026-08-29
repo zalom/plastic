@@ -4,6 +4,7 @@
 require "fileutils"
 require_relative "worktree"
 require_relative "bridge"
+require_relative "savepoint"
 require_relative "spec_header"
 require_relative "intent_validator"
 
@@ -96,7 +97,7 @@ module ScaffoldIntent
   # True iff `target` exists, carries real (non-sentinel) content, and `force` was not
   # passed: the caller must refuse to write and leave the file untouched.
   def refuse_without_force?(target, force)
-    File.exist?(target) && Bridge.stage_file_present?(target) && !force
+    File.exist?(target) && Savepoint.stage_file_present?(target) && !force
   end
 
   # --- generic section helpers (pure) --------------------------------------------
@@ -188,7 +189,7 @@ module ScaffoldIntent
     target = File.join(intent_dir, "spec.md")
     return refuse_result(target) if refuse_without_force?(target, force)
 
-    intent_file = Bridge.intent_file(intent_dir)
+    intent_file = Savepoint.intent_file(intent_dir)
     return error_result("the intent file is missing at #{intent_file}") unless File.exist?(intent_file)
 
     intent_content = File.read(intent_file)
@@ -245,14 +246,14 @@ module ScaffoldIntent
     return refuse_result(target) if refuse_without_force?(target, force)
 
     spec_path = File.join(intent_dir, "spec.md")
-    unless File.exist?(spec_path) && Bridge.stage_file_present?(spec_path)
+    unless File.exist?(spec_path) && Savepoint.stage_file_present?(spec_path)
       return error_result("spec.md is missing or still the scaffold placeholder at #{spec_path}")
     end
 
     ac_body, ac_err = extract_acceptance_criteria(File.read(spec_path))
     return error_result(ac_err) if ac_body.nil?
 
-    intent_file = Bridge.intent_file(intent_dir)
+    intent_file = Savepoint.intent_file(intent_dir)
     fm = IntentValidator.parse_frontmatter(intent_file)
     intent_name = fm.is_a?(Hash) ? fm["intent"] : nil
     if Bridge.blank?(intent_name)
@@ -325,7 +326,7 @@ module ScaffoldIntent
     target = File.join(intent_dir, "outcome.md")
     return refuse_result(target) if refuse_without_force?(target, force)
 
-    intent_file = Bridge.intent_file(intent_dir)
+    intent_file = Savepoint.intent_file(intent_dir)
     return error_result("the intent file is missing at #{intent_file}") unless File.exist?(intent_file)
 
     fm = IntentValidator.parse_frontmatter(intent_file)

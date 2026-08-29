@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require_relative "bridge"
+require_relative "savepoint"
 require_relative "lock"
 require_relative "intent_validator"
 require_relative "spec_header"
@@ -44,7 +45,7 @@ module StartIntent
   # field, or the directory basename when the frontmatter is unreadable or blank. Never
   # invents a name.
   def resolve_name(intent_dir)
-    fm = IntentValidator.parse_frontmatter(Bridge.intent_file(intent_dir))
+    fm = IntentValidator.parse_frontmatter(Savepoint.intent_file(intent_dir))
     name = fm.is_a?(Hash) ? fm["intent"] : nil
     Bridge.blank?(name) ? File.basename(intent_dir) : name
   end
@@ -137,11 +138,11 @@ module StartIntent
 
   # Count-only helper for the printed "actions/: <n> real action file(s)" line. The
   # STATION gate (whether How is delivered) is decided exclusively by
-  # Bridge.has_real_action?, called separately in build_report; this exists only to render
+  # Savepoint.has_real_action?, called separately in build_report; this exists only to render
   # a number and must never be used for any pass/fail decision.
   def real_action_count(intent_dir)
     Dir.glob("#{intent_dir}/actions/*.md").count do |f|
-      File.file?(f) && File.size(f) > 0 && Bridge.stage_file_present?(f)
+      File.file?(f) && File.size(f) > 0 && Savepoint.stage_file_present?(f)
     end
   rescue StandardError
     0
@@ -163,7 +164,7 @@ module StartIntent
   # close"; this never re-derives that definition.
   def classify_outcome(intent_dir)
     outcome_path = File.join(intent_dir, "outcome.md")
-    return ["not_started", nil] unless Bridge.stage_file_present?(outcome_path)
+    return ["not_started", nil] unless Savepoint.stage_file_present?(outcome_path)
 
     delivered_reason = OutcomeGuard.reason(intent_dir, "delivered")
     return ["authored", nil] if delivered_reason.nil?
@@ -184,7 +185,7 @@ module StartIntent
   end
 
   # Build the resume-station report. Every value comes from already-committed files
-  # (Bridge.stage_file_present?, Bridge.has_real_action?, SpecHeader, OutcomeGuard) or from
+  # (Savepoint.stage_file_present?, Savepoint.has_real_action?, SpecHeader, OutcomeGuard) or from
   # `data`, the Hash Bridge.arm_* itself returned. No model inference, no free text beyond
   # the fixed shape below.
   def build_report(intent_dir:, mode:, data:)
@@ -192,10 +193,10 @@ module StartIntent
     plan_path = File.join(intent_dir, "plan.md")
     checklist_path = File.join(intent_dir, "checklist.md")
 
-    spec_delivered = Bridge.stage_file_present?(spec_path)
-    plan_delivered = Bridge.stage_file_present?(plan_path)
-    checklist_delivered = Bridge.stage_file_present?(checklist_path)
-    has_action = Bridge.has_real_action?(intent_dir)
+    spec_delivered = Savepoint.stage_file_present?(spec_path)
+    plan_delivered = Savepoint.stage_file_present?(plan_path)
+    checklist_delivered = Savepoint.stage_file_present?(checklist_path)
+    has_action = Savepoint.has_real_action?(intent_dir)
     how_triple = plan_delivered && checklist_delivered && has_action
 
     outcome_state, outcome_reason = classify_outcome(intent_dir)

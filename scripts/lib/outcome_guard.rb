@@ -1,7 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-require_relative "bridge"
+require_relative "savepoint"
 require_relative "intent_validator"
 
 # OutcomeGuard - the single definition of "is outcome.md real and disposition-matched for
@@ -23,7 +23,7 @@ module OutcomeGuard
 
     content = File.read(path)
     first_line = content.each_line.first.to_s.chomp
-    if first_line == Bridge::PLACEHOLDER_SENTINEL
+    if first_line == Savepoint::PLACEHOLDER_SENTINEL
       return "outcome.md is still the scaffold placeholder (first line is the sentinel)"
     end
 

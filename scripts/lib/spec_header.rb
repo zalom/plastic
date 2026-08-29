@@ -3,7 +3,7 @@
 
 # SpecHeader - the single implementation that parses the `Tier:` and `Settled:` lines out
 # of a spec.md's header block (intent 213). No script, skill, or hook re-implements this
-# grammar anywhere else; Bridge.savepoint_tier delegates here instead of carrying its own
+# grammar anywhere else; Savepoint.savepoint_tier delegates here instead of carrying its own
 # copy of the Tier regex.
 #
 # Grammar (both lines live above the `# ` level-1 heading):
@@ -20,9 +20,9 @@
 module SpecHeader
   module_function
 
-  # Mirrors Bridge::PLACEHOLDER_SENTINEL (scripts/lib/bridge.rb:22). Not required in from
-  # bridge.rb to avoid a require cycle: bridge.rb requires spec_header.rb, so spec_header.rb
-  # must have zero require_relative dependencies of its own.
+  # Mirrors Savepoint::PLACEHOLDER_SENTINEL (scripts/lib/savepoint.rb). Not required in from
+  # savepoint.rb to avoid a require cycle: savepoint.rb requires spec_header.rb, so
+  # spec_header.rb must have zero require_relative dependencies of its own.
   PLACEHOLDER_SENTINEL = "<!-- plastic:placeholder -->"
 
   HEADER_BLOCK_MAX_LINES = 10

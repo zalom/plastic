@@ -21,7 +21,7 @@ require_relative "lib/store_discovery"
 require_relative "lib/links_projection"
 require_relative "lib/links_section"
 require_relative "lib/lock"
-require_relative "lib/bridge"
+require_relative "lib/savepoint"
 require_relative "lib/agent_models"
 require_relative "lib/outcome_guard"
 require_relative "lib/skill_lint"
@@ -553,7 +553,7 @@ class Doctor
 # suppress) is exactly what makes the row dead.
 def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, active:, excluded_rules: [])
   outcome = File.join(dir, "outcome.md")
-  outcome_real = Bridge.stage_file_present?(outcome)
+  outcome_real = Savepoint.stage_file_present?(outcome)
   findings = { conflict: nil, phantom: nil, gap: [], operational_gap: [], excluded: [],
                excluded_rules_fired: [], stalled: nil }
 
@@ -569,7 +569,7 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
   # the generic replacement for the frozen 170a amnesty list is simply "never suppress" -
   # the message already labels a terminal phantom report-only, so dropping the id-based
   # suppression is strictly more general and needs no per-store state at all).
-  phantom_lines = Bridge.savepoint_phantom_lines(dir)
+  phantom_lines = Savepoint.savepoint_phantom_lines(dir)
   if phantom_lines.any?
     detail = phantom_lines.map { |line, reason| "#{line} (#{reason})" }.join("; ")
     scope_note = terminal ? "terminal in INDEX, report-only (immutable history)" : "live intent, auto-rebuildable"
@@ -819,7 +819,7 @@ def check_done_signals(scopes: nil)
                "line(s) contradicted by disk (advisory; terminal history stays report-only)",
       details: phantoms, fixable: true,
       fix_hint: "For a live (Active) intent, run plastic-intent-savepoint to rebuild via " \
-                "Bridge.rebuild_savepoint. Terminal (Completed/Abandoned) intents are immutable: " \
+                "Savepoint.rebuild_savepoint. Terminal (Completed/Abandoned) intents are immutable: " \
                 "a phantom there stays advisory unless an explicit human grant authorizes the " \
                 "124a manual Done-bookend repair."
     )
@@ -991,9 +991,9 @@ end
   INTENT_END_LIFECYCLE_FILES = %w[spec.md plan.md checklist.md outcome.md].freeze
 
   def intent_lifecycle_artifacts_check(intent_dir, disposition)
-    missing = INTENT_END_LIFECYCLE_FILES.select { |f| !Bridge.stage_file_present?(File.join(intent_dir, f)) }
-    unless Bridge.stage_file_present?(Bridge.intent_file(intent_dir))
-      missing = [File.basename(Bridge.intent_file(intent_dir))] + missing
+    missing = INTENT_END_LIFECYCLE_FILES.select { |f| !Savepoint.stage_file_present?(File.join(intent_dir, f)) }
+    unless Savepoint.stage_file_present?(Savepoint.intent_file(intent_dir))
+      missing = [File.basename(Savepoint.intent_file(intent_dir))] + missing
     end
 
     outcome_note = nil
@@ -1014,7 +1014,7 @@ end
 
   def intent_checklist_complete_check(intent_dir)
     path = File.join(intent_dir, "checklist.md")
-    unless Bridge.stage_file_present?(path)
+    unless Savepoint.stage_file_present?(path)
       return check(category: "intent_end", name: "intent_checklist_complete", status: "pass",
                     message: "n/a: checklist.md absent or placeholder (flagged above if that is a gap)")
     end
@@ -1131,9 +1131,9 @@ end
     first_line = File.read(savepoint).each_line.find { |l| !l.strip.empty? }.to_s.strip
     parts = first_line.split(/\s{2,}/)
     born_pair = parts.length >= 3 ? [parts[1], parts[2]] : nil
-    expected_pair = Bridge.savepoint_milestone(intent_dir, File.basename(Bridge.intent_file(intent_dir)))
+    expected_pair = Savepoint.savepoint_milestone(intent_dir, File.basename(Savepoint.intent_file(intent_dir)))
 
-    phantoms = Bridge.savepoint_phantom_lines(intent_dir)
+    phantoms = Savepoint.savepoint_phantom_lines(intent_dir)
     problems = []
     problems << "born line #{born_pair.inspect} does not match the expected #{expected_pair.inspect}" \
       if born_pair != expected_pair
@@ -1147,7 +1147,7 @@ end
       check(category: "intent_end", name: "intent_savepoint_truthful", status: "warn",
             message: "#{problems.size} savepoint truthfulness issue(s) (advisory, never blocking)",
             details: problems,
-            fixable: true, fix_hint: "Run plastic-intent-savepoint to rebuild via Bridge.rebuild_savepoint")
+            fixable: true, fix_hint: "Run plastic-intent-savepoint to rebuild via Savepoint.rebuild_savepoint")
     end
   end
 

@@ -48,10 +48,10 @@ This path resolves relative to this skill's own installed directory.
    taken first. Reuse the arm one-liner shape from `plastic-auto`:
    ```bash
    # guided (lock only):
-   ruby -r ~/.plastic/scripts/lib/bridge -e \
+   ruby -r ~/.plastic/scripts/lib/savepoint -e \
      'codex=ENV["CODEX_THREAD_ID"].to_s.strip; claude=ENV["CLAUDE_CODE_SESSION_ID"].to_s.strip; harness=!codex.empty? ? "codex" : (!claude.empty? ? "claude" : nil); session=!codex.empty? ? codex : (!claude.empty? ? claude : nil); Bridge.arm_guided(session, intent_id: "<ID>", intent_dir: "<STORE>/<dir>", store: "<STORE>", name: "<name>", harness: harness, agent: "plastic-enforcer", thread: (!codex.empty? ? codex : nil))'
    # auto (lock + auto), then hand to plastic-auto:
-   ruby -r ~/.plastic/scripts/lib/bridge -e \
+   ruby -r ~/.plastic/scripts/lib/savepoint -e \
      'codex=ENV["CODEX_THREAD_ID"].to_s.strip; claude=ENV["CLAUDE_CODE_SESSION_ID"].to_s.strip; harness=!codex.empty? ? "codex" : (!claude.empty? ? "claude" : nil); session=!codex.empty? ? codex : (!claude.empty? ? claude : nil); Bridge.arm_auto(session, intent_id: "<ID>", intent_dir: "<STORE>/<dir>", store: "<STORE>", name: "<name>", harness: harness, agent: "plastic-enforcer", thread: (!codex.empty? ? codex : nil))'
    ```
    Replace `<ID>`, `<STORE>` (`~/.plastic/projects/<slug>/store` or `~/.plastic/store`),
@@ -100,11 +100,11 @@ that message, never delete a lock file by hand.
 ## Confirm delivery state
 
 Read `savepoint.md` and classify from the **last line** alone, then verify ONLY that line's
-artifact is real (sentinel-aware via `Bridge.stage_file_present?`). On drift (the last line
+artifact is real (sentinel-aware via `Savepoint.stage_file_present?`). On drift (the last line
 disagrees with files on disk), rebuild the ledger from disk and note the correction. Do not
 inline the rebuild; the `plastic-intent-savepoint` skill owns it:
 ```bash
-ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.rebuild_savepoint("<intent_dir>")'
+ruby -r ~/.plastic/scripts/lib/savepoint -e 'Savepoint.rebuild_savepoint("<intent_dir>")'
 ```
 
 ## Report + ask "auto or guided?" ONCE

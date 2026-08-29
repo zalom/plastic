@@ -37,7 +37,7 @@
 #      always EMITS the real em dash on write. An id that resolves to neither
 #      `## Active` nor the terminal section is a loud failure (exit 1); an id
 #      already correctly in the terminal section is a quiet, idempotent success.
-#   3. Append the savepoint `Done` bookend (Bridge.append_terminal_savepoint).
+#   3. Append the savepoint `Done` bookend (Savepoint.append_terminal_savepoint).
 #   4. Commit the store repo, unless --no-commit.
 #   5. Disarm (intent 188, D2/D16): check the code worktree (resolved from the
 #      bridge) for uncommitted changes first (exit 5 if dirty, unless
@@ -73,6 +73,7 @@ require "date"
 require "open3"
 require "pathname"
 require_relative "lib/bridge"
+require_relative "lib/savepoint"
 require_relative "lib/lock"
 require_relative "lib/intent_validator"
 require_relative "lib/outcome_guard"
@@ -182,7 +183,7 @@ end
 # Disposition is deliberately NOT passed to the real gate call (intent 222 executor
 # decision): the existing outcome-only guard immediately following this call already owns
 # disposition-matching (exit 2), and intent_lifecycle_artifacts unconditionally checks
-# outcome.md PRESENCE via Bridge.stage_file_present? regardless of disposition, so passing
+# outcome.md PRESENCE via Savepoint.stage_file_present? regardless of disposition, so passing
 # it here would make this gate re-check the SAME disposition match the old guard already
 # owns, needlessly widening which exit-2 fixtures become exit-6. doctor.rb --intent called
 # directly (with --disposition) still exercises the fold-in per D2/acceptance criteria.
@@ -655,7 +656,7 @@ def main(argv)
 
   # 1b. Intent-file `## Outcome` summary stamp (no-op unless given).
   if opts[:outcome_summary]
-    intent_file = Bridge.intent_file(intent_dir)
+    intent_file = Savepoint.intent_file(intent_dir)
     if File.exist?(intent_file)
       original = File.read(intent_file)
       updated = stamp_outcome_summary(original, opts[:outcome_summary])
@@ -682,7 +683,7 @@ def main(argv)
   end
 
   # 3. Savepoint Done bookend (idempotent).
-  Bridge.append_terminal_savepoint(intent_dir, disposition)
+  Savepoint.append_terminal_savepoint(intent_dir, disposition)
 
   # 4. Store auto-commit, unless --no-commit. Scoped to this intent's own paths (D17):
   # never git add -A.

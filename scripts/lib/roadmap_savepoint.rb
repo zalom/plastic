@@ -102,7 +102,7 @@ module RoadmapSavepoint
   # entry has a `merged` line. Every timestamp comes from an on-disk source (the Log, or INDEX
   # `## Completed`); an entry with no recoverable timestamp is not emitted (D4, never invented).
   # Overwrites the ledger (the one operation allowed to rewrite it, matching
-  # `Bridge.rebuild_savepoint`). Returns the number of lines written.
+  # `Savepoint.rebuild_savepoint`). Returns the number of lines written.
   def rebuild(roadmap_path)
     text = File.read(roadmap_path)
     log_lines = classify_log(section_body(text, "Log"))

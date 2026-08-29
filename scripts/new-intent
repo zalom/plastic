@@ -37,7 +37,7 @@
 
 require "fileutils"
 require "date"
-require_relative "lib/bridge"
+require_relative "lib/savepoint"
 require_relative "lib/intent_validator"
 require_relative "lib/graph_rebuild"
 require_relative "lib/links_projection"
@@ -397,7 +397,7 @@ def main(argv)
     template_path = File.join(templates, name)
     body = File.exist?(template_path) ? File.read(template_path) : ""
     body = render_tokens(body, { "INTENT_NAME" => opts[:intent] })
-    File.write(File.join(intent_dir, name), "#{Bridge::PLACEHOLDER_SENTINEL}\n#{body}")
+    File.write(File.join(intent_dir, name), "#{Savepoint::PLACEHOLDER_SENTINEL}\n#{body}")
   end
 
   # 6. Stamp the born savepoint line (intent 81). The first ledger line is the
@@ -406,7 +406,7 @@ def main(argv)
   # sessions / harnesses). The intent file is never a sentinel placeholder, so
   # append_savepoint records `What  {id}--{slug}.md`. Idempotent: a later gate
   # fire adds nothing.
-  Bridge.append_savepoint(intent_dir, intent_file)
+  Savepoint.append_savepoint(intent_dir, intent_file)
 
   # 7. Self-validate (frontmatter + sanctioned sections), including that every
   # sources/chain cross-store token names a real store (intent 189 D3).

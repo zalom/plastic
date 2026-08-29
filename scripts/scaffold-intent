@@ -31,7 +31,7 @@
 #
 # outcome is an end-of-Exec step. Run it once the diff and the test summary exist, right
 # before plastic-intent-ending writes the narrative. Writing outcome.md makes the intent
-# read as Done to any stage-derived display (Bridge.derive_stage keys on outcome.md's
+# read as Done to any stage-derived display (Savepoint.derive_stage keys on outcome.md's
 # presence). This does NOT purge a bridge:
 # Bridge.purge_done_bridges keys on INDEX Active status plus lock presence, never on the
 # derived stage.

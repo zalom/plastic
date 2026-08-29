@@ -340,6 +340,7 @@ class InstallerCore
       "scripts/lib/config_asks.rb" => "scripts/lib/config_asks.rb",
       "scripts/lib/release_guard.rb" => "scripts/lib/release_guard.rb",
       "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
+      "scripts/lib/savepoint.rb" => "scripts/lib/savepoint.rb",
       "scripts/lib/lock.rb" => "scripts/lib/lock.rb",
       "scripts/plastic-lock" => "scripts/plastic-lock",
       "scripts/lib/hook_registry.rb" => "scripts/lib/hook_registry.rb",

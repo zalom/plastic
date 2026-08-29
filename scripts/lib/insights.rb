@@ -7,14 +7,13 @@
 #
 # Every entry leads with a fixed, machine-parseable prefix
 # `{utc-iso8601} · {stage} · {author}` where the timestamp is `now.utc.iso8601`,
-# the SAME convention `Bridge.append_savepoint_line` uses, so the store has one
+# the SAME convention `Savepoint.append_savepoint_line` uses, so the store has one
 # timestamp convention across both ledgers. Entries are append-only, newest at
 # the BOTTOM (the [[34]] ordering law): the per-entry prefix is not prepending
 # the entry, and existing entries are never reordered.
 
 require "time"
-require_relative "bridge"
-
+require_relative "savepoint"
 module Insights
   HEADING = "## Insights"
   # The middle dot (U+00B7) with a single space on each side separates the
@@ -35,7 +34,7 @@ module Insights
     end
 
     entry = "#{prefix} — #{text}"
-    path = Bridge.intent_file(intent_dir)
+    path = Savepoint.intent_file(intent_dir)
     File.write(path, with_entry(File.exist?(path) ? File.read(path) : "", entry))
     entry
   end

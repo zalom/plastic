@@ -44,9 +44,9 @@ Read the active store's `INDEX.md` and extract intents under `## Active`.
 ### 2. For Each Active Intent — verify the ledger
 - Read `savepoint.md`. Confirm it exists and is non-empty.
 - Confirm the **last line's stage** matches the stage derived from files-on-disk
-  (`Bridge.derive_stage`). If they disagree, or the file is missing/empty, the ledger has
+  (`Savepoint.derive_stage`). If they disagree, or the file is missing/empty, the ledger has
   drifted.
-- Run `Bridge.savepoint_phantom_lines(intent_dir)` (pure, disk-only, no bridge or session
+- Run `Savepoint.savepoint_phantom_lines(intent_dir)` (pure, disk-only, no bridge or session
   resolution; intent 134). It flags a line disk evidence contradicts: a file-landing milestone
   whose file is absent or still a sentinel placeholder, a duplicate `(stage, milestone)` pair, or
   a state line (`How  started` / `Exec  started`) whose stage prerequisites are absent. If it
@@ -63,8 +63,8 @@ Read the active store's `INDEX.md` and extract intents under `## Active`.
 Reconstruct from the filesystem rather than hand-editing:
 
 ```bash
-ruby -r ~/.plastic/scripts/lib/bridge -e \
-  'Bridge.rebuild_savepoint("<intent_dir>")'
+ruby -r ~/.plastic/scripts/lib/savepoint -e \
+  'Savepoint.rebuild_savepoint("<intent_dir>")'
 ```
 
 This rewrites `savepoint.md` from the milestone files present (timestamps from mtimes),

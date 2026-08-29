@@ -22,7 +22,7 @@
 #
 # Exit codes: 0 (preamble emitted), 2 (usage).
 
-require_relative "lib/bridge"
+require_relative "lib/savepoint"
 require_relative "lib/worktree"
 
 # Verbatim honoring instruction. Kept as one constant so the contract doc and the
@@ -90,7 +90,7 @@ end
 # id/intent we report match what the rest of Plastic sees. Returns a Hash (possibly
 # empty) — never raises.
 def frontmatter_for(intent_dir)
-  ifile = Bridge.intent_file(intent_dir)
+  ifile = Savepoint.intent_file(intent_dir)
   return {} unless File.exist?(ifile)
 
   content = File.read(ifile)
@@ -116,12 +116,12 @@ STAGE_LABELS = {
 }.freeze
 
 def current_stage(intent_dir)
-  ledger = File.join(intent_dir, Bridge::SAVEPOINT_FILE)
+  ledger = File.join(intent_dir, Savepoint::SAVEPOINT_FILE)
   if File.exist?(ledger)
     last = File.read(ledger).each_line.map(&:strip).reject(&:empty?).last
     return last if last
   end
-  STAGE_LABELS.fetch(Bridge.derive_stage(intent_dir), Bridge.derive_stage(intent_dir))
+  STAGE_LABELS.fetch(Savepoint.derive_stage(intent_dir), Savepoint.derive_stage(intent_dir))
 end
 
 intent_dir_arg, role, step = parse_args(ARGV)
