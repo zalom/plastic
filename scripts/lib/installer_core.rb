@@ -421,6 +421,8 @@ class InstallerCore
       "scripts/lib/feedback_report.rb" => "scripts/lib/feedback_report.rb",
       "scripts/append-ledger" => "scripts/append-ledger",
       "scripts/lib/session_ledger.rb" => "scripts/lib/session_ledger.rb",
+      "scripts/session-commit" => "scripts/session-commit",
+      "scripts/lib/session_git.rb" => "scripts/lib/session_git.rb",
     }
   end
 

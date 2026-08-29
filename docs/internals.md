@@ -1361,7 +1361,8 @@ start.
 
 - intent 298: the session-start and post-tool hooks, the per-session pointer and heartbeat
   under `.tmp/<session>/`, and capture and record.
-- intent 300: `session-commit`, which appends one `Note` savepoint line per commit.
+- intent 300 (delivered): `scripts/session-commit`, which appends one `Item` or `Note`
+  savepoint line per commit. See "the session branch model and session-commit" below.
 - intent 301: close, `file-session-intent`, `promote-session-item`, and the carry-forward of
   open items, which is why `append-ledger item` exists alongside `pending`.
 - batch 4: `write-handoff` and `day-summary`.
@@ -1371,6 +1372,132 @@ ref by scanning store-root children, so a later intent whose `sources` names a d
 `UnresolvedRef`, its `## Links` goes unwritten, and doctor's links check may flag it. The fix
 is either a resolver that knows `.sessions/` or a frontmatter-only link that projection
 skips, and it belongs to intent 301, not here.
+
+## the session branch model and session-commit (intent 300)
+
+`scripts/session-commit --cwd <dir> --summary <text>` is how a verified checklist item
+becomes exactly one git commit. `scripts/lib/session_git.rb` is the pure library behind it:
+every git call goes through an injected `runner:` (`Worktree::ShellRunner` by default, the
+same seam `Worktree` itself uses), every `gh` call goes through a separate injected
+`gh_runner:` (`SessionGit::GhRunner` by default, since `gh` is not `git` and needs its own
+seam), and the library reads no environment variable anywhere; only the CLI reads the
+environment and passes what it read in as arguments.
+
+**Repo resolution and the guards shared by both modes.** The repo root is
+`git -C <cwd> rev-parse --show-toplevel`; none means the outcome `no repo`. Three checks then
+run before the mode is even read, so `mode: direct` and `mode: pull_request` share exactly one
+implementation of each (an independent review found these living only inside the direct-mode
+path, so `pull_request` could switch a checkout holding another agent's uncommitted work, or
+commit on a detached HEAD): the branch HEAD points to is read with
+`git symbolic-ref --quiet --short HEAD`, which -- unlike `git rev-parse --abbrev-ref HEAD` --
+succeeds on an UNBORN branch (a fresh `git init`, zero commits) as well as a normal one, and
+fails only when HEAD is genuinely detached (reported as the literal string `HEAD`); a detached
+`H` commits nothing; a `H` an agent owns -- its name starts with `plastic/` (every Plastic
+intent worktree's branch), or `cwd` itself is a worktree checked out under
+`.claude/worktrees/` -- is left completely untouched; and a repository with zero commits yet
+(`git rev-parse --verify --quiet HEAD` fails) reports "no commits yet" rather than attempting a
+base-branch dance that cannot resolve.
+
+**Flow resolution.** The project slug is the longest `projects.yml` path match (the same idiom
+`SessionLedger.project_slug` already uses for the day ledger). The flow is read from
+`~/.plastic/projects/<slug>/project.yml`'s `flow:` block when the project and the key both
+exist, else every knob defaults: `mode: direct`, `base:` from
+`ScaffoldIntent.detect_base_branch` (origin/HEAD, then `main`, then `master`),
+`branch_template: "session/{{day}}"`, `ticket_source: intent_id`, `workspace: checkout`. An
+unknown `mode` or `workspace` value falls back to its default and always turns the whole
+outcome into a `Note`, even when the git operation underneath it succeeds: an unrecognized
+flow value is itself a degradation from the configured intent, and `SessionGit.commit!` folds
+both facts into the one savepoint line a caller gets to write. `workspace: worktree` gets the
+same treatment even though it IS a recognized value: see below.
+
+**Direct mode, the branch rule.** Let `S` be the rendered session branch and `B` the base. A
+clean tree is `nothing to commit`; an empty summary (blank after truncation) commits nothing
+either, rather than reach git at all and surface as a misleading commit-msg-hook rejection. The
+configured `base` must actually exist (`branch_exists?`) or the outcome is a Note naming it --
+a silently-missing base used to fall through to whatever branch happened to be checked out. A
+`branch_template` that references `{{ticket}}` or `{{slug}}` is rejected before rendering:
+direct mode never populates those tokens, so such a template would render an incomplete ref
+(`quick/` for `quick/{{ticket}}`). The rendered `S` is validated with
+`git check-ref-format --branch` as a second, general safety net. Only past all of that: when
+`H` is `B` or `S`, `S` is created from `B`'s tip if it does not exist yet (reused, never
+recreated, when it already does) and the checkout moves to `S` -- and BOTH of those git calls
+have their exit status checked (an independent review found them ignored: a conflicting dirty
+file, or `S` already checked out in a sibling worktree, made `git branch`/`git checkout` fail
+silently, after which staging and committing ran anyway in whatever branch was actually
+checked out, landing the item straight on `B` while the Note claimed `S`). A failure at either
+step is a Note naming the real git failure, and nothing is staged or committed. Only once the
+checkout is confirmed to have landed on `S` (`current_branch` is re-read, not assumed) does the
+dirty tree get staged and committed there, and `B` is fast-forwarded to `S`'s new tip via
+`git push . S:B` -- a local push that only ever succeeds when it is a genuine fast-forward. A
+`H` that is neither `B` nor `S` (a `feature/x` the owner happened to be on) still gets
+committed, on `H`, with the deviation named in the `Note`. A push refused because `B` moved
+ahead independently (not a fast-forward) leaves the new commit sitting on `S` and reports the
+refusal as a `Note`; the commit is not lost, only not yet integrated.
+
+**workspace: worktree is not implemented in this release.** Spec D8 originally shipped a
+`git stash push`/`pop` relocation into a dedicated worktree at
+`.claude/worktrees/session-<day>`, so `cwd`'s own checkout never had to switch onto `S`. An
+independent review found it unsafe as written: a failed `git worktree add`, a stash pop that
+conflicts with independent changes on `B`, or a rejecting commit-msg hook each left the
+mechanism permanently wedged for the rest of the day (every later item failed the same way,
+self-heal absent), and the commit-msg-hook case silently moved the owner's uncommitted file out
+of their own working tree into the hidden worktree with no notice in the Note. The mechanism is
+removed rather than hardened. `workspace: worktree` stays a valid, accepted config value (the
+validator does not reject it), but `SessionGit.load_flow` now treats it as `checkout` and adds
+`SessionGit::WORKSPACE_WORKTREE_NOTE` to the notes it returns, which folds into a `Note`
+savepoint line the same way an unknown flow value does. The item still commits, through the
+checkout, exactly as `workspace: checkout` would; only the ledger line differs, recording that
+the configured workspace was not honored. A real worktree-based session workspace, if wanted, is
+a follow-up intent.
+
+**Pull request mode.** Shares the repo-existence, detached-HEAD, agent-lock, and unborn-repo
+guards above, plus the empty-summary and missing/nonexistent-base checks direct mode has. The
+branch name renders `branch_template` with three tokens: `{{day}}`, `{{ticket}}`, and
+`{{slug}}` (the summary's first five words, kebab-cased), validated with
+`git check-ref-format --branch` the same way direct mode's session branch is. `{{ticket}}` is
+the intent id named by the session's pointer file (`.tmp/<session>/current`) when
+`ticket_source` is `intent_id`; per intent 298's spec D6 that pointer holds exactly one line,
+either today's day id or an intent id, so a day id found there resolves to the day id anyway
+(the two are the same value in that case) and any other non-blank content is treated as the
+intent id. The branch is cut from `B`'s tip and checked out, both with their exit status
+checked the same way direct mode's are; `gh pr create --base B --head <branch> --fill` runs,
+inside the resolved repository (`gh_runner.available?(repo)` and `gh_runner.run(..., dir:
+repo)`), when `gh` is on PATH. Without an explicit working directory, `gh` resolves its target
+repository from the calling process's own `Dir.pwd`, not `--cwd`'s repo, which an independent
+review found to be the one place this library could otherwise act on a repository other than
+the one it was asked about -- the normal case for a hook firing from the session's own cwd, not
+the repo the item is in. When `gh` is missing, the Note names the branch and short sha the
+commit actually landed on, since dropping them left the owner with no way to find the commit
+from the ledger line alone. The session branch is never touched in this mode. Whether `gh`
+succeeds, fails, or is missing, the checkout returns to whatever branch was checked out before
+the call.
+
+**Commit message.** The message is the summary's first line only, truncated to 72
+characters, no trailer; a blank result (after truncation) commits nothing at all rather than
+attempt a git commit with an empty message, which git itself would refuse and this library
+would otherwise misreport as a rejecting commit-msg hook. The repository's own `commit-msg`
+hook runs exactly as it would for the owner, and a hook rejection degrades to a `Note`
+carrying the hook's diagnosis: its stderr, or its stdout when stderr is empty, since git and a
+hook script can write their explanation to either stream and an empty diagnosis serves no one.
+
+**Item versus Note.** Every outcome writes exactly one savepoint line. Only the two full
+happy paths -- a direct commit that lands on the session branch AND successfully
+fast-forwards (or merges) the base, and a pull-request commit that successfully opens its PR
+-- are `Item`, with the summary format `<commit subject> (<short sha>)`. Every other outcome,
+including ones where a commit did land (a wrong-branch commit, a refused push, a missing
+`gh`), is a `Note`: whether the branch model reached its fully-integrated end state decides
+the event, not merely whether a commit object exists.
+
+**The CLI's own fail-open guarantee.** `SessionGit.commit!` is fail-open by construction, but
+`scripts/session-commit` also wraps `SessionLedger.open_day` and the savepoint append in their
+own rescues, and `main` carries a top-level one: a store or ledger failure (a read-only store
+directory, an installed layout missing `templates/`) used to sit outside every rescue, so the
+CLI could exit 1 with a raw Ruby backtrace on stderr and zero savepoint lines, even after the
+git commit itself had already landed -- breaking the exit-0-always contract for a caller like
+intent 298's `record` hook, which never expects a git-commit tool to crash the calling process.
+The savepoint append also no longer depends on `open_day` having run: it calls
+`FileUtils.mkdir_p` on the day directory itself first, so a damaged install that cannot open
+the day ledger can still write its one savepoint line.
 
 ## living-document
 

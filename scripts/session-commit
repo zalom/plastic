@@ -1,0 +1,116 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# session-commit (intent 300) - makes one commit for a verified checklist
+# item on the right branch of the repo that contains `--cwd`, applying the
+# branch model and per-repo flow settings in `scripts/lib/session_git.rb`.
+# Idempotent and fail-open: no repository, a detached HEAD, a clean tree, an
+# agent-owned branch, a refused push, a missing `gh`, or a rejected
+# commit-msg hook all degrade to no commit plus a Note savepoint line,
+# never a non-zero exit (spec D1).
+#
+# Usage:
+#   session-commit --cwd <dir> --summary <text> [--session <id>] [--day <YYYYMMDD>]
+#                   [--store <dir>] [--plastic-home <dir>]
+#
+# Exit codes:
+#   0 - always, except a usage error
+#   2 - usage error (missing --cwd or --summary); nothing is written
+
+require "fileutils"
+require_relative "lib/session_git"
+require_relative "lib/session_ledger"
+
+def usage_abort(message)
+  warn "session-commit: #{message}"
+  exit 2
+end
+
+def next_value!(argv, i, flag)
+  usage_abort("#{flag} requires a value") if i + 1 >= argv.length
+  argv[i + 1]
+end
+
+def parse_args(argv)
+  opts = { cwd: nil, summary: nil, session: nil, day: nil, store: nil, plastic_home: nil }
+  i = 0
+  while i < argv.length
+    arg = argv[i]
+    case arg
+    when "--cwd"          then opts[:cwd] = next_value!(argv, i, arg); i += 1
+    when "--summary"      then opts[:summary] = next_value!(argv, i, arg); i += 1
+    when "--session"      then opts[:session] = next_value!(argv, i, arg); i += 1
+    when "--day"          then opts[:day] = next_value!(argv, i, arg); i += 1
+    when "--store"        then opts[:store] = next_value!(argv, i, arg); i += 1
+    when "--plastic-home" then opts[:plastic_home] = next_value!(argv, i, arg); i += 1
+    else
+      usage_abort("unknown flag #{arg.inspect}")
+    end
+    i += 1
+  end
+  opts
+end
+
+def expand(path)
+  File.expand_path(path.to_s.sub(/\A~/, Dir.home))
+end
+
+# Sibling of this script's dir, matching append-ledger's own resolution:
+# in-repo (<repo>/scripts/session-commit -> <repo>/templates) and installed
+# (~/.plastic/scripts/session-commit -> ~/.plastic/templates).
+def default_templates_dir
+  File.expand_path("../templates", __dir__)
+end
+
+# The fail-open guarantee (spec D1: exit 0 always, except a usage error)
+# must survive a store or ledger failure too (review R2), not only a git
+# failure: a read-only store, a damaged install missing templates/, or any
+# other write failure used to sit outside every rescue, so the CLI could
+# exit 1 with a raw Ruby backtrace on stderr and zero savepoint lines, even
+# after the git commit itself had already landed. `main`'s own body is
+# wrapped so nothing here can turn into a crash; the ledger write is a
+# second, inner rescue so a lost savepoint line never also swallows the
+# result the caller already needs on stdout.
+def main(argv)
+  opts = parse_args(argv)
+  usage_abort("--cwd is required") if opts[:cwd].nil?
+  usage_abort("--summary is required") if opts[:summary].nil?
+
+  plastic_home = expand(opts[:plastic_home] || ENV.fetch("PLASTIC_HOME", "~/.plastic"))
+  store = opts[:store] ? expand(opts[:store]) : File.join(plastic_home, "store")
+  cwd = expand(opts[:cwd])
+
+  day = opts[:day] || SessionLedger.day_id
+  session = SessionLedger.short_session_id(opts[:session], ENV["CLAUDE_CODE_SESSION_ID"])
+  project = SessionLedger.project_slug(cwd, plastic_home: plastic_home)
+
+  begin
+    templates = default_templates_dir
+    SessionLedger.open_day(store: store, day: day, templates: templates, author: session) if Dir.exist?(templates)
+  rescue StandardError => e
+    warn "session-commit: could not open the day ledger: #{e.message}"
+  end
+
+  result = SessionGit.commit!(cwd: cwd, summary: opts[:summary], day: day, session: session,
+                               plastic_home: plastic_home, store: store)
+
+  begin
+    # Does not depend on open_day having run: a damaged install with no
+    # templates/, or a store error above, must not also block the append.
+    savepoint_path = SessionLedger.savepoint_path(store, day)
+    FileUtils.mkdir_p(File.dirname(savepoint_path))
+    line = SessionLedger.savepoint_line(result.event, session, project, result.message, now: Time.now)
+    SessionLedger.append_line(savepoint_path, line, header: nil)
+  rescue StandardError => e
+    warn "session-commit: could not write the savepoint line: #{e.message}"
+  end
+
+  puts result.message
+  exit 0
+rescue StandardError => e
+  warn "session-commit: #{e.message}"
+  exit 0
+end
+
+main(ARGV) if $PROGRAM_NAME == __FILE__
