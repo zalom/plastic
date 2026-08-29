@@ -419,6 +419,8 @@ class InstallerCore
       "scripts/lib/skill_lint.rb" => "scripts/lib/skill_lint.rb",
       "scripts/feedback-report" => "scripts/feedback-report",
       "scripts/lib/feedback_report.rb" => "scripts/lib/feedback_report.rb",
+      "scripts/append-ledger" => "scripts/append-ledger",
+      "scripts/lib/session_ledger.rb" => "scripts/lib/session_ledger.rb",
     }
   end
 

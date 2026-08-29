@@ -78,6 +78,34 @@ ID--slug/
 
 Lifecycle artifacts use those exact reserved names and live directly in the intent folder, never in subfolders and never renamed. All other supporting material goes in `resources/`. State is not stored in a status field; it is derived from which files and sections exist (for example, an empty `## Context` means the intent is still fleeting, and the presence of `outcome.md` means it is done). `revisions.md` is not a lifecycle artifact: it appears only when structural maintenance relocated a misplaced section, file, or ref out of a delivered intent, so its existence signals structural (not conceptual) change.
 
+### the session day ledger
+
+Alongside a store's intent directories, the global store carries two dot-prefixed paths (intent 297): `.sessions/`, one shared day ledger per calendar date, and `.tmp/`, a per-session scratch area. Both are invisible to every store walker precisely because of the leading dot, so neither one is, or ever becomes, an intent:
+
+```
+~/.plastic/
+  INDEX.md
+  config.yml
+  projects.yml
+  store/
+    ID--slug/
+    .sessions/
+      YYYYMMDD/
+    .tmp/
+      <session-id>/
+```
+
+A day directory's members appear in order as the day is used, not all at once:
+
+```
+.sessions/YYYYMMDD/
+  YYYYMMDD.md    # the only file at scaffold time
+  checklist.md   # on the first append, header written under the lock
+  savepoint.md   # on the first append, no header
+```
+
+The day id is the local wall-clock date, digits only with no hyphen, so it satisfies every id pattern in the store with no special case. One day directory is shared by every session that touches that day, project agnostic, with each checklist and savepoint line tagged by session and project. A day ledger has no `INDEX.md` entry. `scripts/append-ledger` is the only writer of `checklist.md` and `savepoint.md` inside a day directory.
+
 ## identity and the knowledge graph
 
 Intents are addressed by Folgezettel IDs, following Luhmann's alternating convention. Assigning an ID requires only reading the existing IDs in the store:

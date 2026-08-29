@@ -21,6 +21,19 @@
 #              [--tags tag,tag] [--templates <dir>]
 #
 # Exit codes: 0 (born complete), 1 (scaffold failed self-validation or bad input).
+#
+# A second, unrelated mode (intent 297):
+#   new-intent --tmp [--store <dir>] [--day YYYYMMDD] [--author <name>] \
+#              [--templates <dir>]
+#
+# `--tmp` scaffolds the shared session intent day ledger under the global
+# store's `.sessions/<YYYYMMDD>/` instead of allocating a real intent id. It
+# is a thin CLI over SessionLedger.open_day (the single scaffold
+# implementation, spec D12) and never touches the id-allocation path above:
+# no folgezettel-id call, no actions/ or resources/ dirs, no sentinel
+# placeholders, no born savepoint stamp, no Links projection. Stdout is
+# exactly one line, `created <dir>` or `joined <dir>`; exit 0 either way,
+# exit 1 on bad input or failed self-validation.
 
 require "fileutils"
 require "date"
@@ -30,13 +43,15 @@ require_relative "lib/graph_rebuild"
 require_relative "lib/links_projection"
 require_relative "lib/links_section"
 require_relative "lib/store_discovery"
+require_relative "lib/session_ledger"
 
 # --- Explicit flag parsing (no eval, no global injection) ------------------
 
 def parse_args(argv)
   opts = {
     store: nil, intent: nil, slug: nil, parent: nil,
-    author: "claude-code", sources: [], tags: [], templates: nil
+    author: "claude-code", sources: [], tags: [], templates: nil,
+    tmp: false, day: nil
   }
   i = 0
   while i < argv.length
@@ -50,6 +65,8 @@ def parse_args(argv)
     when "--sources"   then opts[:sources] = split_list(argv[i += 1])
     when "--tags"      then opts[:tags] = split_list(argv[i += 1])
     when "--templates" then opts[:templates] = argv[i += 1]
+    when "--tmp"       then opts[:tmp] = true
+    when "--day"       then opts[:day] = argv[i += 1]
     else
       abort "new-intent: unknown argument #{arg.inspect}"
     end
@@ -253,8 +270,50 @@ def project_links_for(file_path, referer_store_key, maps)
   true
 end
 
+# The --tmp branch (intent 297, spec D1): scaffold the shared session intent
+# day ledger instead of a real intent. A thin CLI over
+# SessionLedger.open_day, the single scaffold implementation (spec D12); this
+# method never allocates a folgezettel id, never creates actions/ or
+# resources/, never writes a sentinel placeholder, never stamps a savepoint
+# line, and never runs the Links projection build.
+def run_tmp(opts)
+  { intent: "--intent", slug: "--slug", parent: "--parent" }.each do |key, flag|
+    abort "new-intent: #{flag} is not valid with --tmp" if opts[key] && !opts[key].to_s.empty?
+  end
+  abort "new-intent: --sources is not valid with --tmp" unless opts[:sources].empty?
+  abort "new-intent: --tags is not valid with --tmp" unless opts[:tags].empty?
+
+  store = opts[:store] ? expand(opts[:store]) : expand(File.join(ENV.fetch("PLASTIC_HOME", "~/.plastic"), "store"))
+  templates = opts[:templates] ? expand(opts[:templates]) : default_templates_dir
+  abort "new-intent: templates dir not found: #{templates}" unless Dir.exist?(templates)
+
+  day = opts[:day] || SessionLedger.day_id
+  unless SessionLedger.valid_day_id?(day)
+    abort "new-intent: --day must be eight digits parsing as a real date, got #{opts[:day].inspect}"
+  end
+
+  result = SessionLedger.open_day(store: store, day: day, templates: templates, author: opts[:author], now: Time.now)
+
+  plastic_home, = store_context(store)
+  known_stores = StoreDiscovery.known_slugs(plastic_home)
+  validation = IntentValidator.validate(result[:dir], known_stores: known_stores)
+  unless validation[:ok]
+    warn "new-intent: scaffolded day ledger is NOT born complete:"
+    validation[:missing].each { |f| warn "  missing field: #{f}" }
+    validation[:errors].each { |e| warn "  #{e}" }
+    exit 1
+  end
+
+  puts "#{result[:created] ? "created" : "joined"} #{result[:dir]}"
+  exit 0
+end
+
 def main(argv)
   opts = parse_args(argv)
+  return run_tmp(opts) if opts[:tmp]
+
+  abort "new-intent: --day is only valid with --tmp" if opts[:day]
+
   abort "new-intent: --store is required" if opts[:store].nil? || opts[:store].empty?
   abort "new-intent: --intent is required" if opts[:intent].nil? || opts[:intent].empty?
   abort "new-intent: --slug is required" if opts[:slug].nil? || opts[:slug].empty?
