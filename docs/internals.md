@@ -1507,3 +1507,38 @@ the day ledger can still write its one savepoint line.
 This is a living document. When Plastic's architecture, lifecycle, conventions,
 skills, hooks, or harnesses change, this file and `architecture.md` must be
 updated in the same change.
+
+## the session close path and the next-day sweep (intent 301)
+
+Three pieces close the loop the day ledger (intent 297) and the capture and record hooks
+(intent 298) opened.
+
+- `hooks/close` and `scripts/hook-close` run at `SessionEnd` (Claude Code only until intent 309
+  wires Codex). The script reads `session_id`, `cwd`, and `reason` from the hook's stdin JSON and
+  takes the Plastic home from argv. It is a no-op for the reasons `clear` and `resume`, which do
+  not end a session. Otherwise it flips this session's pending `[~]` lines to dropped `[-]`,
+  writes one `Note` when it dropped any, removes `.tmp/<session-id>/`, and, when the session's
+  pointer names a day before today, spawns `file-session-intent` detached so a slow filing never
+  blocks the harness shutdown. `scripts/lib/session_close.rb` holds the logic with an injected
+  spawner; the script always exits 0.
+- `scripts/file-session-intent --day <YYYYMMDD> [--carry-to <YYYYMMDD>]` files a day: pending
+  lines become dropped, open lines are carried into the target day once (deduplicated against
+  the target before the append, flipped to moved `[>]` after it, so a rerun after a crash never
+  duplicates), the four documents `spec.md`, `plan.md`, `actions/ACTION_1.md`, and `outcome.md`
+  are regenerated from the ledger alone (`scripts/lib/session_backfill.rb`), and the day file
+  gains a `closed:` timestamp. A day whose checklist is newer than its `closed:` stamp is filed
+  again. Prints `filed <day>` or `skipped <day>: closed`; a filing error goes to stderr and the
+  next boot tries again.
+- `scripts/promote-session-item --day <YYYYMMDD> --match <substring>` turns the newest open
+  (else pending) matching line into a registered intent through `scripts/new-intent`, records the
+  origin as `session_day:` frontmatter plus a line under `## Context`, registers it under
+  `## Future` in the store's INDEX, flips the line to promoted `[^]`, and writes a `Note`. No graph
+  edge points at the day id: the day ledger is not a store node.
+- The first-boot sweep in `scripts/hook-session-start` runs before today's ledger is joined: every
+  `.sessions/<day>` directory with a real date before today that is not closed (or was reopened
+  by later lines) is filed with `--carry-to <today>`, oldest first, at most three per boot within
+  a five-second budget; the context line names how many were filed and how many wait.
+
+`SessionLedger::STATES` gained `moved: ">"`, `dropped: "-"`, and `promoted: "^"`; `set_state`
+accepts `session: nil` for any-session addressing; `flip_all` flips every matching line under one
+lock with one `pwrite` per line.

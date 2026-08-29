@@ -372,7 +372,7 @@ class SessionLedgerWritesTest < Minitest::Test
     assert_equal ".tmp", SessionLedger::TMP_DIR
     assert_equal(/\A\d{8}\z/, SessionLedger::DAY_ID)
     assert_equal %w[Item Done Note], SessionLedger::EVENTS
-    assert_equal({ pending: "~", open: " ", done: "x" }, SessionLedger::STATES)
+    assert_equal({ pending: "~", open: " ", done: "x", moved: ">", dropped: "-", promoted: "^" }, SessionLedger::STATES)
     assert_equal(/\A[a-z0-9-]+\z/, SessionLedger::SLUG_RE)
   end
 

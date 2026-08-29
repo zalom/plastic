@@ -1,0 +1,34 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# hook-close (intent 301): the SessionEnd hook. Reads the harness payload from
+# stdin (session_id, cwd, reason), takes the Plastic home from argv, and runs
+# SessionClose with the detached filer spawner. Always exits 0, prints nothing.
+#
+# Usage: hook-close <plastic_home>   (stdin: the hook JSON)
+
+require "json"
+require_relative "lib/session_ledger"
+require_relative "lib/session_close"
+
+plastic_home = ARGV[0]
+exit 0 if plastic_home.nil? || plastic_home.empty?
+
+payload =
+  begin
+    raw = $stdin.tty? ? "" : $stdin.read
+    raw.to_s.strip.empty? ? {} : JSON.parse(raw)
+  rescue JSON::ParserError
+    {}
+  end
+
+store = File.join(File.expand_path(plastic_home), "store")
+filer = File.expand_path("file-session-intent", __dir__)
+begin
+  SessionClose.run(payload: payload, store: store, today: SessionLedger.day_id,
+                   spawner: SessionClose.default_spawner(filer))
+rescue StandardError
+  nil
+end
+exit 0

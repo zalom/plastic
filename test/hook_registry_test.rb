@@ -37,6 +37,15 @@ class HookRegistryTest < Minitest::Test
 
   # hooks.json (the legacy plugin surface) is pinned to the registry so the two
   # surfaces can never drift again (the divergence that shipped bash-gate dead).
+  def test_session_end_registers_close_for_claude_and_hooks_json_carries_it
+    names = HookRegistry.events["SessionEnd"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    assert_equal ["close"], names
+    raw = JSON.parse(File.read(File.expand_path("../hooks/hooks.json", __dir__)))
+    json_names = raw["hooks"]["SessionEnd"].flat_map { |g| g["hooks"].map { |h| hook_name(h["command"]) } }
+    assert_equal ["close"], json_names
+    refute_includes HookRegistry::CODEX_LIVE_STATE_EVENTS, "SessionEnd", "Codex SessionEnd wiring belongs to intent 309"
+  end
+
   def test_hooks_json_matches_the_registry
     raw = JSON.parse(File.read(File.expand_path("../hooks/hooks.json", __dir__)))
     json_pre = raw["hooks"]["PreToolUse"].map do |g|
