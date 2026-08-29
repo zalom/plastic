@@ -118,7 +118,7 @@ class SessionGitTest < Minitest::Test
       "base" => "trunk",
       "branch_template" => "quick/{{ticket}}",
       "ticket_source" => "intent_id",
-      "workspace" => "worktree",
+      "workspace" => "checkout",
     })
 
     flow, notes = SessionGit.load_flow(cwd: repo, repo: repo, plastic_home: @plastic_home, runner: RUNNER)
@@ -127,7 +127,7 @@ class SessionGitTest < Minitest::Test
     assert_equal "trunk", flow["base"]
     assert_equal "quick/{{ticket}}", flow["branch_template"]
     assert_equal "intent_id", flow["ticket_source"]
-    assert_equal "worktree", flow["workspace"]
+    assert_equal "checkout", flow["workspace"]
     assert_empty notes
   ensure
     FileUtils.rm_rf(repo)
@@ -161,6 +161,22 @@ class SessionGitTest < Minitest::Test
     FileUtils.rm_rf(repo)
   end
 
+  # BLOCKER 3 ruling: workspace: worktree is a valid, recognized value (unlike the
+  # "moon-base" case above), but its real implementation is a follow-up, so it always
+  # degrades to checkout with a Note explaining why.
+  def test_load_flow_workspace_worktree_degrades_to_checkout_with_a_note
+    repo = build_repo
+    register_project("demo", repo)
+    write_flow("demo", { "workspace" => "worktree" })
+
+    flow, notes = SessionGit.load_flow(cwd: repo, repo: repo, plastic_home: @plastic_home, runner: RUNNER)
+
+    assert_equal "checkout", flow["workspace"]
+    assert_includes notes, SessionGit::WORKSPACE_WORKTREE_NOTE
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
   # --- flow: no project match -> defaults, base falls through the chain ----
 
   def test_load_flow_no_project_match_uses_defaults_and_detects_base
@@ -176,6 +192,34 @@ class SessionGitTest < Minitest::Test
     assert_empty notes
   ensure
     FileUtils.rm_rf(repo)
+  end
+
+  # N4: the previous test only proved the `main` branch of the fallback chain (the
+  # repo's only branch, so it is not much of a race). Exercise the other two links.
+  def test_load_flow_base_detection_falls_back_to_master_when_no_main_exists
+    repo = build_repo("master")
+
+    flow, = SessionGit.load_flow(cwd: repo, repo: repo, plastic_home: @plastic_home, runner: RUNNER)
+
+    assert_equal "master", flow["base"]
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  def test_load_flow_base_detection_prefers_origin_head_when_present
+    upstream = build_repo("develop")
+    clone = Dir.mktmpdir("session-git-clone")
+    FileUtils.rmdir(clone)
+    RUNNER.run("clone", "-q", upstream, clone)
+    git(clone, "config", "user.email", "test@example.com")
+    git(clone, "config", "user.name", "Test")
+
+    flow, = SessionGit.load_flow(cwd: clone, repo: clone, plastic_home: @plastic_home, runner: RUNNER)
+
+    assert_equal "develop", flow["base"]
+  ensure
+    FileUtils.rm_rf(upstream)
+    FileUtils.rm_rf(clone)
   end
 
   # --- direct: on base, dirty tree ------------------------------------------
@@ -452,7 +496,9 @@ class SessionGitTest < Minitest::Test
 
     result = commit!(repo, "should commit through the checkout")
 
-    assert_equal "Item", result.event
+    # The ruling: session-commit writes a Note, even though the commit itself lands
+    # cleanly through the checkout, because the configured workspace was not honored.
+    assert_equal "Note", result.event
     assert_includes result.message, "workspace: worktree is not implemented in this release"
     assert_includes result.message, "committed through the checkout"
     refute Dir.exist?(File.join(repo, ".claude", "worktrees", "session-#{@day}")),
@@ -475,7 +521,8 @@ class SessionGitTest < Minitest::Test
 
     result = commit!(repo, "Item after flipping to worktree")
 
-    assert_equal "Item", result.event
+    assert_equal "Note", result.event
+    assert_includes result.message, "workspace: worktree is not implemented in this release"
     assert_equal "session/#{@day}", current_branch(repo)
     assert_equal "", git(repo, "status", "--porcelain").stdout.to_s.strip
   ensure
@@ -544,9 +591,10 @@ class SessionGitTest < Minitest::Test
 
     commit!(repo, "gh must run inside the repo", gh_runner: gh)
 
-    assert_equal [repo], gh.available_dirs
+    resolved = File.realpath(repo) # resolve_repo returns git's own toplevel, past any tmp symlink
+    assert_equal [resolved], gh.available_dirs
     refute_empty gh.calls
-    assert_equal repo, gh.calls.first[:dir]
+    assert_equal resolved, gh.calls.first[:dir]
   ensure
     FileUtils.rm_rf(repo)
   end

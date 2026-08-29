@@ -28,20 +28,28 @@ module SessionGit
   MAX_SUBJECT_LENGTH = 72
 
   DEFAULT_BRANCH_TEMPLATE = "session/{{day}}"
+  WORKSPACE_WORKTREE_NOTE = "workspace: worktree is not implemented in this release; " \
+                            "committed through the checkout"
 
   # One outcome, always. `event` is "Item" (a commit landed on the happy
   # path: the session branch was fast-forwarded into the base, or a PR
   # opened) or "Note" (every degradation: no repo, nothing to commit, an
-  # agent-owned branch, a wrong branch, a refused push, a missing `gh`, a
-  # rejected commit-msg hook, or an unknown flow value). `message` is both
-  # the CLI's stdout line and the ledger's savepoint summary (spec D1: "the
-  # same text as a Note or Item savepoint line").
+  # agent-owned branch, a wrong branch, a refused push or checkout, a
+  # missing `gh`, a rejected commit-msg hook, an unknown or unimplemented
+  # flow value). `message` is both the CLI's stdout line and the ledger's
+  # savepoint summary (spec D1: "the same text as a Note or Item savepoint
+  # line").
   Result = Struct.new(:message, :event, keyword_init: true)
 
   # The default `gh` seam. `gh` is a different executable than `git`, so it
-  # cannot reuse Worktree::ShellRunner's git-only `run`. `available?` probes
-  # PATH the same way a shell would (no environment-variable read: `system`
-  # resolves PATH itself via the OS, the same as typing `gh` at a prompt).
+  # cannot reuse Worktree::ShellRunner's git-only `run`. Every call takes an
+  # explicit `dir:` and runs there (review R1): without it, `gh pr create`
+  # resolves its target repository from the calling process's own working
+  # directory, not `--cwd`'s repo, which is the one place this library could
+  # otherwise act on a repository other than the one it was asked about.
+  # `available?` probes PATH the same way a shell would (no
+  # environment-variable read: `system` resolves PATH itself via the OS, the
+  # same as typing `gh` at a prompt).
   class GhRunner
     Result = Struct.new(:status, :stdout, :stderr) do
       def success?
@@ -49,19 +57,35 @@ module SessionGit
       end
     end
 
-    def available?
-      system("gh", "--version", out: File::NULL, err: File::NULL) == true
+    def available?(dir = nil)
+      opts = dir ? { chdir: dir } : {}
+      system("gh", "--version", out: File::NULL, err: File::NULL, **opts) == true
     end
 
-    def run(*args)
+    def run(*args, dir: nil)
       require "open3"
-      out, err, status = Open3.capture3("gh", *args.map(&:to_s))
+      opts = dir ? { chdir: dir } : {}
+      out, err, status = Open3.capture3("gh", *args.map(&:to_s), **opts)
       Result.new(status.exitstatus.to_i, out, err)
     end
   end
 
   def blank?(value)
     value.nil? || value.to_s.strip.empty?
+  end
+
+  def note(message)
+    Result.new(message: message, event: "Note")
+  end
+
+  # `res.stderr`, falling back to `res.stdout` when stderr is empty (review
+  # N2): a hook or a git subcommand can write its explanation to either
+  # stream, and an empty diagnosis is worse than a stdout-sourced one.
+  def diagnose(res)
+    text = res.stderr.to_s.strip
+    return text unless text.empty?
+
+    res.stdout.to_s.strip
   end
 
   # --- repo resolution --------------------------------------------------------
@@ -81,8 +105,10 @@ module SessionGit
   # [flow_hash, notes]. `flow_hash` always carries all five knobs (spec D2):
   # mode, base, branch_template, ticket_source, workspace. `notes` is a list
   # of human-readable strings for every unknown `mode` or `workspace` value
-  # found in the project's `flow:` block, each of which degrades the whole
-  # outcome to a Note savepoint line (see SessionGit.commit!).
+  # found in the project's `flow:` block, plus `workspace: worktree` itself
+  # (review BLOCKER 3 ruling: the knob stays a valid config value, but its
+  # real implementation is a follow-up, so it is treated as `checkout` and
+  # always degrades the outcome to a Note). See SessionGit.commit!.
   def load_flow(cwd:, repo:, plastic_home:, runner:)
     notes = []
     slug = SessionLedger.project_slug(cwd, plastic_home: plastic_home)
@@ -109,6 +135,11 @@ module SessionGit
 
       apply_enum_knob!(flow, notes, project_flow, key: "mode", allowed: MODES, default: "direct")
       apply_enum_knob!(flow, notes, project_flow, key: "workspace", allowed: WORKSPACES, default: "checkout")
+    end
+
+    if flow["workspace"] == "worktree"
+      flow["workspace"] = "checkout"
+      notes << WORKSPACE_WORKTREE_NOTE
     end
 
     [flow, notes]
@@ -185,11 +216,29 @@ module SessionGit
 
   # --- git primitives (all use -C, never cwd) -------------------------------------
 
+  # The branch HEAD points to, even on an unborn branch (review R3: a fresh
+  # `git init`, zero commits). `git rev-parse --abbrev-ref HEAD` FAILS on an
+  # unborn branch (there is no commit for it to resolve yet), which the old
+  # implementation misread as "cannot determine a branch" and folded into
+  # the detached-HEAD case. `git symbolic-ref --quiet --short HEAD` succeeds
+  # on both a normal AND an unborn branch (HEAD is a symbolic ref to
+  # `refs/heads/<name>` in both cases) and only fails when HEAD is
+  # genuinely detached, which is exactly the distinction this method needs.
+  # Returns the literal string "HEAD" for a detached HEAD (matched by
+  # callers below), and the real branch name otherwise.
   def current_branch(repo, runner:)
-    res = runner.run("-C", repo, "rev-parse", "--abbrev-ref", "HEAD")
-    return nil unless res.success?
+    sym = runner.run("-C", repo, "symbolic-ref", "--quiet", "--short", "HEAD")
+    return sym.stdout.to_s.strip if sym.success?
 
-    res.stdout.to_s.strip
+    "HEAD"
+  end
+
+  # True iff `repo` has at least one commit. An unborn branch (current_branch
+  # returns a real name, but there is nothing to commit onto as a base yet)
+  # is otherwise indistinguishable from a normal repo until a git command
+  # that needs a resolvable HEAD is attempted and fails partway through.
+  def has_commits?(repo, runner:)
+    runner.run("-C", repo, "rev-parse", "--verify", "--quiet", "HEAD").success?
   end
 
   def dirty?(repo, runner:)
@@ -201,28 +250,27 @@ module SessionGit
     runner.run("-C", repo, "rev-parse", "--verify", "--quiet", branch).success?
   end
 
+  # True iff `name` is a syntactically valid git branch name (review
+  # BLOCKER 2): a `branch_template` that renders an empty or malformed ref
+  # (a stray `{{ticket}}` left unpopulated in direct mode, for one) must
+  # never reach `git branch`/`git checkout`, whose failure this library
+  # already has to handle regardless, but which is cheaper and clearer to
+  # catch before ever attempting.
+  def valid_branch_name?(name, runner:)
+    return false if blank?(name)
+
+    runner.run("check-ref-format", "--branch", name.to_s).success?
+  end
+
   # True iff `branch` is a branch an agent owns and this library must never
   # touch (spec D3b): its name starts with `plastic/` (every Plastic intent
   # worktree's branch, per Worktree.paths), or `repo` itself is a worktree
-  # checked out under `.claude/worktrees/` on some OTHER name. The session's
-  # own worktree (`.claude/worktrees/session-<day>`, spec D8) is deliberately
-  # exempted from the second clause: it is this library's own workspace, not
-  # another agent's, so its basename is matched and excluded here rather than
-  # flagged as a lock on itself.
+  # checked out under `.claude/worktrees/`.
   def agent_owned?(repo, branch)
     return true if branch.to_s.start_with?("plastic/")
 
     parts = File.expand_path(repo.to_s).split(File::SEPARATOR)
-    parts.each_cons(2).any? do |a, b|
-      a == ".claude" && b == "worktrees" && !session_worktree_name?(parts.last)
-    end
-  end
-
-  SESSION_WORKTREE_NAME = /\Asession-\d{8}\z/.freeze
-  private_constant :SESSION_WORKTREE_NAME
-
-  def session_worktree_name?(name)
-    SESSION_WORKTREE_NAME.match?(name.to_s)
+    parts.each_cons(2).any? { |a, b| a == ".claude" && b == "worktrees" }
   end
 
   def stage_and_commit(dir, subject, runner:)
@@ -243,11 +291,22 @@ module SessionGit
   # the one Result the caller writes to the ledger. Fail-open throughout:
   # every branch of this method returns a Result, never raises, and the CLI
   # always exits 0 (spec D1).
+  #
+  # The detached-HEAD, agent-lock, and unborn-repo guards run here, BEFORE
+  # the mode dispatch (review BLOCKER 1): they used to live only inside
+  # commit_direct, so `mode: pull_request` skipped them entirely and could
+  # switch a checkout holding another agent's uncommitted work, or commit on
+  # a detached HEAD. Both modes now share exactly one check of each.
   def commit!(cwd:, summary:, day:, session:, plastic_home:, store: nil,
               runner: Worktree::ShellRunner.new, gh_runner: GhRunner.new)
     effective_store = store || File.join(plastic_home, "store")
     repo = resolve_repo(cwd, runner: runner)
-    return Result.new(message: "no repo", event: "Note") if repo.nil?
+    return note("no repo") if repo.nil?
+
+    branch_now = current_branch(repo, runner: runner)
+    return note("detached HEAD: no commit") if branch_now == "HEAD"
+    return note("left branch #{branch_now} untouched: agent lock") if agent_owned?(repo, branch_now)
+    return note("repository has no commits yet: no commit") unless has_commits?(repo, runner: runner)
 
     flow, flow_notes = load_flow(cwd: cwd, repo: repo, plastic_home: plastic_home, runner: runner)
     subject = subject_for(summary)
@@ -255,127 +314,93 @@ module SessionGit
     result =
       if flow["mode"] == "pull_request"
         commit_pull_request(repo: repo, subject: subject, day: day, session: session,
-                             store: effective_store, flow: flow, runner: runner, gh_runner: gh_runner)
+                             store: effective_store, flow: flow, branch_now: branch_now,
+                             runner: runner, gh_runner: gh_runner)
       else
-        commit_direct(repo: repo, subject: subject, day: day, flow: flow, runner: runner)
+        commit_direct(repo: repo, subject: subject, day: day, flow: flow, branch_now: branch_now, runner: runner)
       end
 
     return result if flow_notes.empty?
 
-    # An unknown mode or workspace value is itself a degradation (spec D2),
-    # so it always turns the outcome into a Note, folding both facts into
-    # the single savepoint line spec D7 allows.
+    # An unknown mode/workspace value, or workspace: worktree's degradation
+    # to checkout, is itself a degradation (spec D2, BLOCKER 3 ruling), so
+    # it always turns the outcome into a Note, folding both facts into the
+    # single savepoint line spec D7 allows.
     Result.new(message: "#{flow_notes.join('; ')}; #{result.message}", event: "Note")
   end
 
   # --- direct mode (spec D3) --------------------------------------------------------
 
-  def commit_direct(repo:, subject:, day:, flow:, runner:)
-    branch_now = current_branch(repo, runner: runner)
-    return note("detached HEAD: no commit") if blank?(branch_now) || branch_now == "HEAD"
-    return note("left branch #{branch_now} untouched: agent lock") if agent_owned?(repo, branch_now)
+  def commit_direct(repo:, subject:, day:, flow:, branch_now:, runner:)
     return note("nothing to commit") unless dirty?(repo, runner: runner)
+    return note("summary is empty after truncation: no commit") if blank?(subject)
 
     base = flow["base"]
     return note("no base branch detected") if blank?(base)
+    return note("configured base #{base} does not exist") unless branch_exists?(repo, base, runner: runner)
 
-    session_branch = render_branch(flow["branch_template"], day: day, ticket: "", slug: "")
+    template = flow["branch_template"]
+    if template.to_s.include?("{{ticket}}") || template.to_s.include?("{{slug}}")
+      return note("branch_template #{template} needs {{ticket}} or {{slug}}, which direct mode " \
+                   "leaves empty; configure a {{day}}-only template for direct mode")
+    end
+
+    session_branch = render_branch(template, day: day, ticket: "", slug: "")
+    unless valid_branch_name?(session_branch, runner: runner)
+      return note("rendered branch name #{session_branch.inspect} is not a valid git ref; check branch_template")
+    end
 
     if branch_now == base || branch_now == session_branch
-      if flow["workspace"] == "worktree"
-        commit_on_session_worktree(repo: repo, subject: subject, base: base,
-                                    session_branch: session_branch, day: day, runner: runner)
-      else
-        commit_on_session_branch(repo: repo, subject: subject, base: base,
-                                  session_branch: session_branch, branch_now: branch_now, runner: runner)
-      end
+      commit_on_session_branch(repo: repo, subject: subject, base: base,
+                                session_branch: session_branch, branch_now: branch_now, runner: runner)
     else
       commit_on_other_branch(repo: repo, subject: subject, branch_now: branch_now, runner: runner)
     end
   end
 
-  def note(message)
-    Result.new(message: message, event: "Note")
-  end
-
+  # Every state-changing git call is checked (review BLOCKER 2): a
+  # `git branch` or `git checkout` failure (a conflicting dirty file, the
+  # session branch already checked out in a sibling worktree, and so on)
+  # used to be ignored, so staging and committing ran unconditionally in
+  # `repo` regardless of which branch was actually checked out afterward,
+  # landing the item straight on the base branch while the Note claimed the
+  # session branch. `current_branch` is re-read after the switch and used
+  # for the commit message instead of trusting the branch this method
+  # intended to reach.
   def commit_on_session_branch(repo:, subject:, base:, session_branch:, branch_now:, runner:)
-    runner.run("-C", repo, "branch", session_branch, base.to_s) unless branch_exists?(repo, session_branch, runner: runner)
-    runner.run("-C", repo, "checkout", session_branch) unless branch_now == session_branch
-
-    commit_and_push(dir: repo, push_dir: repo, subject: subject, from: session_branch, base: base, runner: runner)
-  end
-
-  # workspace: worktree (spec D8): the item's dirty tree, physically sitting
-  # in `repo`'s own checkout, is relocated into a dedicated worktree for the
-  # session branch via `git stash` (which is repo-wide, shared across every
-  # worktree of the same repository, so a stash pushed in `repo` can be
-  # popped in the sibling worktree) rather than switching `repo`'s own
-  # checkout onto the session branch, which is exactly what workspace:
-  # worktree exists to avoid (296's research: a checked-out branch switch
-  # under the owner's feet costs dev-server/port/database visibility).
-  def commit_on_session_worktree(repo:, subject:, base:, session_branch:, day:, runner:)
-    worktree_path = File.join(repo, ".claude", "worktrees", "session-#{day}")
-
-    unless Dir.exist?(worktree_path)
-      Worktree.ensure_gitignored(repo, ".claude/worktrees/", runner: runner)
-      if branch_exists?(repo, session_branch, runner: runner)
-        runner.run("-C", repo, "worktree", "add", worktree_path, session_branch)
-      else
-        runner.run("-C", repo, "worktree", "add", worktree_path, "-b", session_branch, base.to_s)
-      end
+    unless branch_exists?(repo, session_branch, runner: runner)
+      create = runner.run("-C", repo, "branch", session_branch, base.to_s)
+      return note("could not create session branch #{session_branch}: #{diagnose(create)}") unless create.success?
     end
 
-    stash = runner.run("-C", repo, "stash", "push", "--include-untracked", "-m", "session-commit")
-    return note("nothing to commit") unless stash.success? && !stash.stdout.to_s.include?("No local changes to save")
-
-    pop = runner.run("-C", worktree_path, "stash", "pop")
-    unless pop.success?
-      runner.run("-C", repo, "stash", "pop")
-      return note("workspace: worktree relocation failed: #{pop.stderr.to_s.strip}")
+    if branch_now != session_branch
+      switch = runner.run("-C", repo, "checkout", session_branch)
+      return note("could not check out session branch #{session_branch}: #{diagnose(switch)}") unless switch.success?
     end
 
-    finish_worktree_commit(worktree_path: worktree_path, repo: repo, subject: subject,
-                            session_branch: session_branch, base: base, runner: runner)
-  end
-
-  # `repo` (the main checkout) stays on `base` throughout workspace: worktree
-  # (that is the point of the knob), so integrating the worktree's new
-  # commit cannot go through `git push . S:B` the way the plain checkout
-  # path does: git unconditionally refuses a push into a branch checked out
-  # in ANOTHER working tree of the same repository, fast-forward or not
-  # (`! [remote rejected] ... (branch is currently checked out)`). Since
-  # `repo`'s working tree is clean at this point (its dirty files were
-  # already relocated into the worktree above), a plain `git merge --ff-only`
-  # run FROM `repo` both moves `base` and updates `repo`'s working tree in
-  # the one git-native operation designed for exactly this.
-  def finish_worktree_commit(worktree_path:, repo:, subject:, session_branch:, base:, runner:)
-    res = stage_and_commit(worktree_path, subject, runner: runner)
-    return note("commit rejected by commit-msg hook: #{res.stderr.to_s.strip}") unless res.success?
-
-    sha = short_sha(worktree_path, runner: runner)
-    merge = runner.run("-C", repo, "merge", "--ff-only", session_branch)
-    if merge.success?
-      Result.new(message: "#{subject} (#{sha})", event: "Item")
-    else
-      note("committed #{subject} (#{sha}) on #{session_branch}, push to #{base} refused: not a fast-forward")
+    actual_branch = current_branch(repo, runner: runner)
+    unless actual_branch == session_branch
+      return note("expected to be on #{session_branch} but the checkout is on #{actual_branch.inspect}")
     end
+
+    commit_and_push(dir: repo, push_dir: repo, subject: subject, from: actual_branch, base: base, runner: runner)
   end
 
   def commit_on_other_branch(repo:, subject:, branch_now:, runner:)
     res = stage_and_commit(repo, subject, runner: runner)
-    return note("commit rejected by commit-msg hook: #{res.stderr.to_s.strip}") unless res.success?
+    return note("commit rejected by commit-msg hook: #{diagnose(res)}") unless res.success?
 
     sha = short_sha(repo, runner: runner)
     note("committed #{subject} (#{sha}) on #{branch_now}, not the session branch")
   end
 
   # Stage, commit, and (attempt to) fast-forward `base` from `from` in one
-  # shared tail, used by both the checkout and the worktree happy paths. A
-  # non-fast-forward push (spec D3, "base moved ahead independently") stays
-  # a Note: the commit itself already landed on the session branch.
+  # shared tail. A non-fast-forward push (spec D3, "base moved ahead
+  # independently") stays a Note: the commit itself already landed on the
+  # session branch.
   def commit_and_push(dir:, push_dir:, subject:, from:, base:, runner:)
     res = stage_and_commit(dir, subject, runner: runner)
-    return note("commit rejected by commit-msg hook: #{res.stderr.to_s.strip}") unless res.success?
+    return note("commit rejected by commit-msg hook: #{diagnose(res)}") unless res.success?
 
     sha = short_sha(dir, runner: runner)
     push = runner.run("-C", push_dir, "push", ".", "#{from}:#{base}")
@@ -389,30 +414,41 @@ module SessionGit
 
   # --- pull request mode (spec D4) ------------------------------------------------
 
-  def commit_pull_request(repo:, subject:, day:, session:, store:, flow:, runner:, gh_runner:)
-    previous_branch = current_branch(repo, runner: runner)
+  def commit_pull_request(repo:, subject:, day:, session:, store:, flow:, branch_now:, runner:, gh_runner:)
     return note("nothing to commit") unless dirty?(repo, runner: runner)
+    return note("summary is empty after truncation: no commit") if blank?(subject)
 
     base = flow["base"]
     return note("no base branch detected") if blank?(base)
+    return note("configured base #{base} does not exist") unless branch_exists?(repo, base, runner: runner)
 
     ticket = resolve_ticket(day: day, store: store, session: session, ticket_source: flow["ticket_source"])
     slug = summary_slug(subject)
     branch = render_branch(flow["branch_template"], day: day, ticket: ticket, slug: slug)
+    unless valid_branch_name?(branch, runner: runner)
+      return note("rendered branch name #{branch.inspect} is not a valid git ref; check branch_template")
+    end
 
-    runner.run("-C", repo, "branch", branch, base.to_s) unless branch_exists?(repo, branch, runner: runner)
-    runner.run("-C", repo, "checkout", branch) unless previous_branch == branch
+    unless branch_exists?(repo, branch, runner: runner)
+      create = runner.run("-C", repo, "branch", branch, base.to_s)
+      return note("could not create branch #{branch}: #{diagnose(create)}") unless create.success?
+    end
+
+    if branch_now != branch
+      switch = runner.run("-C", repo, "checkout", branch)
+      return note("could not check out branch #{branch}: #{diagnose(switch)}") unless switch.success?
+    end
 
     res = stage_and_commit(repo, subject, runner: runner)
     outcome =
       if res.success?
         pull_request_outcome(repo: repo, subject: subject, branch: branch, base: base, gh_runner: gh_runner, runner: runner)
       else
-        note("commit rejected by commit-msg hook: #{res.stderr.to_s.strip}")
+        note("commit rejected by commit-msg hook: #{diagnose(res)}")
       end
 
-    if previous_branch && previous_branch != "HEAD" && previous_branch != branch
-      runner.run("-C", repo, "checkout", previous_branch)
+    if branch_now != branch
+      runner.run("-C", repo, "checkout", branch_now)
     end
 
     outcome
@@ -420,14 +456,14 @@ module SessionGit
 
   def pull_request_outcome(repo:, subject:, branch:, base:, gh_runner:, runner:)
     sha = short_sha(repo, runner: runner)
-    return note("gh missing") unless gh_runner.available?
+    return note("gh missing: commit #{subject} (#{sha}) is on #{branch}") unless gh_runner.available?(repo)
 
-    pr = gh_runner.run("pr", "create", "--base", base.to_s, "--head", branch, "--fill")
+    pr = gh_runner.run("pr", "create", "--base", base.to_s, "--head", branch, "--fill", dir: repo)
     if pr.success?
       url = pr.stdout.to_s.strip.lines.last.to_s.strip
       Result.new(message: "pr #{url}", event: "Item")
     else
-      note("committed #{subject} (#{sha}) on #{branch}: gh pr create failed: #{pr.stderr.to_s.strip}")
+      note("committed #{subject} (#{sha}) on #{branch}: gh pr create failed: #{diagnose(pr)}")
     end
   end
 end

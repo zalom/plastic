@@ -18,6 +18,7 @@
 #   0 - always, except a usage error
 #   2 - usage error (missing --cwd or --summary); nothing is written
 
+require "fileutils"
 require_relative "lib/session_git"
 require_relative "lib/session_ledger"
 
@@ -62,6 +63,15 @@ def default_templates_dir
   File.expand_path("../templates", __dir__)
 end
 
+# The fail-open guarantee (spec D1: exit 0 always, except a usage error)
+# must survive a store or ledger failure too (review R2), not only a git
+# failure: a read-only store, a damaged install missing templates/, or any
+# other write failure used to sit outside every rescue, so the CLI could
+# exit 1 with a raw Ruby backtrace on stderr and zero savepoint lines, even
+# after the git commit itself had already landed. `main`'s own body is
+# wrapped so nothing here can turn into a crash; the ledger write is a
+# second, inner rescue so a lost savepoint line never also swallows the
+# result the caller already needs on stdout.
 def main(argv)
   opts = parse_args(argv)
   usage_abort("--cwd is required") if opts[:cwd].nil?
@@ -75,16 +85,31 @@ def main(argv)
   session = SessionLedger.short_session_id(opts[:session], ENV["CLAUDE_CODE_SESSION_ID"])
   project = SessionLedger.project_slug(cwd, plastic_home: plastic_home)
 
-  templates = default_templates_dir
-  SessionLedger.open_day(store: store, day: day, templates: templates, author: session) if Dir.exist?(templates)
+  begin
+    templates = default_templates_dir
+    SessionLedger.open_day(store: store, day: day, templates: templates, author: session) if Dir.exist?(templates)
+  rescue StandardError => e
+    warn "session-commit: could not open the day ledger: #{e.message}"
+  end
 
   result = SessionGit.commit!(cwd: cwd, summary: opts[:summary], day: day, session: session,
                                plastic_home: plastic_home, store: store)
 
-  line = SessionLedger.savepoint_line(result.event, session, project, result.message, now: Time.now)
-  SessionLedger.append_line(SessionLedger.savepoint_path(store, day), line, header: nil)
+  begin
+    # Does not depend on open_day having run: a damaged install with no
+    # templates/, or a store error above, must not also block the append.
+    savepoint_path = SessionLedger.savepoint_path(store, day)
+    FileUtils.mkdir_p(File.dirname(savepoint_path))
+    line = SessionLedger.savepoint_line(result.event, session, project, result.message, now: Time.now)
+    SessionLedger.append_line(savepoint_path, line, header: nil)
+  rescue StandardError => e
+    warn "session-commit: could not write the savepoint line: #{e.message}"
+  end
 
   puts result.message
+  exit 0
+rescue StandardError => e
+  warn "session-commit: #{e.message}"
   exit 0
 end
 
