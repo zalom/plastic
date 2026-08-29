@@ -119,6 +119,22 @@ origin = "Promoted from the session ledger of #{opts[:day]}: #{target[:summary]}
 content = content.sub(/^## Context\n/) { |heading| heading + origin }
 SessionBackfill.write_atomic(intent_dir, File.basename(intent_file), content)
 
+# --- register the intent under ## Future in the store's INDEX.md ----------------
+
+def register_in_index(index_path, intent_id, intent_dir, summary)
+  return unless File.exist?(index_path)
+
+  relative = "store/#{File.basename(intent_dir)}/#{File.basename(intent_dir)}.md"
+  entry = "- [#{intent_id} - #{summary}](#{relative}) - promoted from a session ledger\n"
+  content = File.read(index_path)
+  return if content.include?("(#{relative})")
+
+  updated = content.sub(/^## Future\n(?:\(no future intents\)\n)?/) { |heading| heading.sub(/\(no future intents\)\n/, "") + entry }
+  SessionBackfill.write_atomic(File.dirname(index_path), File.basename(index_path), updated)
+end
+
+register_in_index(File.join(File.dirname(target_store), "INDEX.md"), intent_id, intent_dir, target[:summary])
+
 # --- mark the line, note it, reindex ---------------------------------------------
 
 SessionLedger.set_state(checklist, from: target[:state], to: :promoted, session: target[:session],

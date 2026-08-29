@@ -20,7 +20,7 @@ class PromoteSessionItemTest < Minitest::Test
     @tmp = Dir.mktmpdir("promote-scratch")
     @store = File.join(@home, "store")
     FileUtils.mkdir_p(@store)
-    File.write(File.join(@store, "INDEX.md"), File.read(File.join(TEMPLATES, "index.md")))
+    File.write(File.join(@home, "INDEX.md"), File.read(File.join(TEMPLATES, "index.md")))
     File.write(File.join(@home, "projects.yml"), "projects: {}\n")
     SessionLedger.open_day(store: @store, day: DAY, templates: TEMPLATES, author: "t")
   end
@@ -66,7 +66,9 @@ class PromoteSessionItemTest < Minitest::Test
     assert_includes body, "Promoted from the session ledger of #{DAY}: Change how titles appear on the resume page"
     assert_equal ["- [^]"], markers
     assert_includes File.read(SessionLedger.savepoint_path(@store, DAY)), "promoted \"Change how titles appear on the resume page\" to intent "
-    assert_match(/^- \[/, File.read(File.join(@store, "INDEX.md")))
+    future = File.read(File.join(@home, "INDEX.md"))[/## Future\n(.*?)\n## /m, 1]
+    assert_match(%r{^- \[\d+ - Change how titles appear on the resume page\]\(store/\d+--[a-z0-9-]+/\d+--[a-z0-9-]+\.md\)}, future)
+    refute_includes future, "(no future intents)"
   end
 
   def test_promotes_a_pending_line_when_no_open_line_matches
@@ -121,7 +123,7 @@ class PromoteSessionItemTest < Minitest::Test
   def test_project_flag_lands_the_intent_in_that_projects_store
     project_store = File.join(@home, "projects", "demo", "store")
     FileUtils.mkdir_p(project_store)
-    File.write(File.join(project_store, "INDEX.md"), File.read(File.join(TEMPLATES, "index.md")))
+    File.write(File.join(@home, "projects", "demo", "INDEX.md"), File.read(File.join(TEMPLATES, "index.md")))
     File.write(File.join(@home, "projects.yml"),
                YAML.dump("projects" => { "demo" => { "path" => File.join(@home, "demo-repo") } }))
     append(:open, "a project item")
