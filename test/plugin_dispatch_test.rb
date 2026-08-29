@@ -130,8 +130,8 @@ class PluginDispatchTest < Minitest::Test
 
   def test_every_hooks_json_command_resolves_to_an_executable_file
     commands = hooks_json_commands(@plugin_root)
-    assert_operator commands.size, :>=, 10,
-                    "fixture floor: hooks.json declares at least 10 commands; an empty walk is not a pass"
+    assert_operator commands.size, :>=, 8,
+                    "fixture floor: hooks.json declares at least 8 commands; an empty walk is not a pass"
 
     bad = unresolved_commands(@plugin_root)
           .select { |c| TARGET_LEVEL_KINDS.include?(c.kind) }
@@ -155,8 +155,8 @@ class PluginDispatchTest < Minitest::Test
 
   def test_every_hooks_json_command_uses_the_plugin_root_variable
     commands = hooks_json_commands(REPO)
-    assert_operator commands.size, :>=, 10,
-                    "fixture floor: hooks.json declares at least 10 commands; an empty walk is not a pass"
+    assert_operator commands.size, :>=, 8,
+                    "fixture floor: hooks.json declares at least 8 commands; an empty walk is not a pass"
 
     commands.each do |command|
       assert_includes command, "${CLAUDE_PLUGIN_ROOT}/hooks/",
@@ -252,37 +252,21 @@ class PluginDispatchTest < Minitest::Test
 
   # --- AC9: one real launcher, end to end, with real stdin JSON ---
 
-  # hooks/continue's bash body has two branches: run scripts/hook-continue (the
-  # scripts/ leg this test is meant to cover) and, only if that produces
-  # nothing, fall back to a hardcoded heredoc carrying its own
-  # "PLASTIC CONTINUE" JSON. Both branches satisfy a bare hookEventName
-  # assertion, so that alone does not prove the Ruby path ran. The refute
-  # below pins out to NOT be the bash fallback, which is only true when
-  # scripts/hook-continue actually executed and rendered the dashboard.
-  BASH_FALLBACK_MARKER = "PLASTIC CONTINUE: The user wants to resume previous work"
-
-  def test_the_continue_launcher_runs_end_to_end_through_run_hook
-    # Self-validation for the refute below: if hooks/continue's fallback text
-    # ever changes, BASH_FALLBACK_MARKER goes stale and the refute becomes
-    # vacuously true (it would never match anything, pass or fail). Pin the
-    # marker's presence in the shipped source so a text change here breaks
-    # loudly instead of the coverage rotting silently.
-    assert_includes File.read(File.join(plugin_hooks_dir, "continue")), BASH_FALLBACK_MARKER,
-                    "fixture assumption: hooks/continue must still carry this literal fallback text, " \
-                    "or the refute below is checking for something that can no longer appear"
-
+  # hooks/capture's bash body pipes stdin straight to scripts/hook-capture with
+  # no bash-side fallback (intent 298 collapsed continue/future-intent-check/
+  # auto-arm into this one launcher), so a bare hookEventName assertion here
+  # is already proof the Ruby path ran.
+  def test_the_capture_launcher_runs_end_to_end_through_run_hook
     FileUtils.mkdir_p(File.join(@home, ".plastic", "store"))
     File.write(File.join(@home, ".plastic", "INDEX.md"), "# Intent Index\n\n## Active\n\n## Future\n")
     payload = JSON.generate("session_id" => "sess-234", "user_prompt" => "continue")
 
     out, _err, status = Open3.capture3(hook_env, File.join(plugin_hooks_dir, "run-hook"),
-                                       "continue", stdin_data: payload)
+                                       "capture", stdin_data: payload)
 
     assert_equal 0, status.exitstatus
-    refute_empty out.strip, "the continue launcher must emit context when a store INDEX exists"
+    refute_empty out.strip, "the capture launcher must emit context on a continue prompt"
     parsed = JSON.parse(out)
     assert_equal "UserPromptSubmit", parsed.dig("hookSpecificOutput", "hookEventName")
-    refute_includes out, BASH_FALLBACK_MARKER,
-                    "must reach scripts/hook-continue's dashboard render, not the bash heredoc fallback"
   end
 end

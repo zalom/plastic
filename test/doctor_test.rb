@@ -1554,8 +1554,10 @@ class DoctorAgentRegistrationTest < Minitest::Test
 
     # Intent 244 collapsed the five edit-path gates (code-gate, lock-gate,
     # savepoint-pre, links-gate, create-gate) into one registered launcher,
-    # edit-gates: 14 - 5 + 1 = 10.
-    assert_equal 10, HookRegistry.claude_launcher_names.size
+    # edit-gates: 14 - 5 + 1 = 10. Intent 298 then collapsed continue,
+    # future-intent-check, and auto-arm into capture, and renamed gate-check to
+    # record: 10 - 3 + 1 = 8.
+    assert_equal 8, HookRegistry.claude_launcher_names.size
     assert_equal "pass", hooks_check[:status]
     assert_equal "pass", exec_check[:status]
     assert_equal "pass", orphan_check[:status]

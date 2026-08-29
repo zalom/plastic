@@ -80,21 +80,19 @@ class RubyoptClearingTest < Minitest::Test
     scripts/link-suggest
     scripts/maintenance-run
     scripts/restore-intent-v1
-    scripts/hook-continue
+    scripts/hook-capture
     scripts/lib/verify_intent.rb
     scripts/codex-hook
   ].freeze
 
   # Rename guard only. The hooks scan below enumerates the directory, it does not read this.
   KNOWN_SHELL_LAUNCHERS = %w[
-    hooks/auto-arm
     hooks/bash-gate
+    hooks/capture
     hooks/check-update
-    hooks/continue
     hooks/edit-gates
-    hooks/future-intent-check
-    hooks/gate-check
     hooks/power-tools
+    hooks/record
     hooks/session-start
   ].freeze
 
@@ -176,8 +174,12 @@ class RubyoptClearingTest < Minitest::Test
   def test_the_shell_detector_still_recognizes_the_spawn_sites_it_is_meant_to_cover
     recognized = shell_files.sum { |rel| scannable_lines(rel).count { |line, _i| line =~ SHELL_SPAWN_TOKEN } }
 
-    assert_equal 14, recognized,
-      "the shell scan should recognize 14 ruby command words across hooks/, all already " \
+    # Intent 298 replaced continue, future-intent-check, auto-arm, and gate-check
+    # with capture and record, moving the baseline from 14 to 7 recognized spawn
+    # lines (bash-gate, capture, check-update, edit-gates, power-tools, record,
+    # session-start).
+    assert_equal 7, recognized,
+      "the shell scan should recognize 7 ruby command words across hooks/, all already " \
       "cleared; if this number drops, SHELL_SPAWN_TOKEN stopped matching and the hooks test " \
       "above is vacuous"
   end
@@ -205,7 +207,7 @@ class RubyoptClearingTest < Minitest::Test
       "scripts/link-suggest" => 1,
       "scripts/maintenance-run" => 5,
       "scripts/restore-intent-v1" => 1,
-      "scripts/hook-continue" => 2,
+      "scripts/hook-capture" => 2,
       # 2, not 3: the third spawn site (the live-state branch) execs a BASH launcher, so its
       # line names neither RbConfig.ruby nor "ruby" and ruby_spawn_line? does not see it. It is
       # cleared anyway (intent 249), it just is not counted here.
