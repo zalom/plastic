@@ -106,6 +106,16 @@ A day directory's members appear in order as the day is used, not all at once:
 
 The day id is the local wall-clock date, digits only with no hyphen, so it satisfies every id pattern in the store with no special case. One day directory is shared by every session that touches that day, project agnostic, with each checklist and savepoint line tagged by session and project. A day ledger has no `INDEX.md` entry. `scripts/append-ledger` is the only writer of `checklist.md` and `savepoint.md` inside a day directory.
 
+### the session close path and the next-day sweep
+
+At `SessionEnd` the `close` hook drops the session's never-acted-on pending lines, removes its
+`.tmp/<session-id>/` scratch, and, if the session crossed midnight, files yesterday in the
+background. The real backstop is the first boot of a new day: `hook-session-start` files every
+unclosed prior day (backfilled `spec.md`, `plan.md`, `actions/ACTION_1.md`, `outcome.md` from the
+ledger, open items carried into today, a `closed:` stamp), three days per boot at most.
+`promote-session-item` turns one ledger line into a registered intent. See `docs/internals.md`,
+"the session close path and the next-day sweep".
+
 ### the session branch model and session-commit
 
 A verified checklist item becomes one commit through `scripts/session-commit` (intent 300), which resolves the repository containing `--cwd`, loads that repository's `flow:` setting from its `project.yml`, and applies the branch model: under `mode: direct` (the default) it commits to a session branch cut from the repository's own base branch and fast-forwards the base into that commit; under `mode: pull_request` it cuts a small branch and PR per item instead. The five flow knobs (`mode`, `base`, `branch_template`, `ticket_source`, `workspace`) are documented in `templates/project.yml` and validated by `scripts/lib/project_validator.rb`; `workspace: worktree` is an accepted value but not yet implemented, and degrades to `checkout` with a Note (see internals for why). `session-commit` is fail-open throughout: no repository, a detached HEAD, an unborn repository, a clean tree, an agent-owned branch, a refused checkout or push, a missing `gh`, or a rejected commit-msg hook all degrade to no commit plus one `Note` savepoint line, never a non-zero exit, and the same holds for a store or ledger write failure. Every outcome writes exactly one `Item` or `Note` line to the day's `savepoint.md` through `SessionLedger`. See [internals](internals.md#the-session-branch-model-and-session-commit-intent-300) for the mechanics.
