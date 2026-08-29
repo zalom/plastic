@@ -304,6 +304,52 @@ if update_notice
   parts.unshift("! #{update_notice}\n")
 end
 
+# --- First-boot sweep (intent 301, spec D9): file every unclosed prior day
+# ledger into today, oldest first, at most 3 per boot within a 5-second
+# budget. Each day runs the sibling file-session-intent in its own rescue;
+# the boot never blocks on it.
+begin
+  require "open3"
+  require "timeout"
+  require_relative "lib/session_backfill"
+
+  sweep_today = SessionLedger.day_id
+  sweep_root = SessionLedger.sessions_root(store_dir)
+  sweep_filer = File.expand_path("file-session-intent", __dir__)
+  sweep_templates = File.expand_path("../templates", __dir__)
+  candidates = []
+  if Dir.exist?(sweep_root) && File.exist?(sweep_filer)
+    candidates = Dir.children(sweep_root).select do |name|
+      File.directory?(File.join(sweep_root, name)) && SessionLedger.valid_day_id?(name) &&
+        name < sweep_today && !SessionBackfill.closed?(store_dir, name)
+    end.sort
+  end
+  filed = 0
+  budget_end = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+  candidates.first(3).each do |day|
+    break if Process.clock_gettime(Process::CLOCK_MONOTONIC) > budget_end
+
+    begin
+      Timeout.timeout(5) do
+        _out, _err, sweep_status = Open3.capture3({ "RUBYOPT" => nil }, RbConfig.ruby, sweep_filer,
+                                                  "--day", day, "--carry-to", sweep_today,
+                                                  "--store", store_dir, "--templates", sweep_templates)
+        filed += 1 if sweep_status.success? && SessionBackfill.closed?(store_dir, day)
+      end
+    rescue StandardError
+      nil
+    end
+  end
+  if filed.positive?
+    line = "PLASTIC: filed #{filed} prior day ledger(s) into #{sweep_today}"
+    remaining = candidates.size - filed
+    line += ", #{remaining} more wait for the next boot" if remaining.positive?
+    parts << line
+  end
+rescue StandardError
+  nil
+end
+
 # --- Session day ledger: open or join today, write the per-session pointer
 # and heartbeat (intent 298, spec D4). Best-effort: any failure here degrades
 # to no ledger context line, never blocks the session.

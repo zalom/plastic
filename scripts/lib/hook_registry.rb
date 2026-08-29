@@ -91,6 +91,11 @@ module HookRegistry
           { "name" => "record", "status" => "Recording Plastic session state..." },
         ] },
       ],
+      "SessionEnd" => [
+        { "matcher" => "", "hooks" => [
+          { "name" => "close", "status" => "Closing the Plastic session..." },
+        ] },
+      ],
       "UserPromptSubmit" => [
         { "matcher" => "", "hooks" => [
           { "name" => "capture", "status" => "Capturing prompt into the session ledger..." },

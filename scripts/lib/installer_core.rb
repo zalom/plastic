@@ -331,6 +331,7 @@ class InstallerCore
       "scripts/hook-session-start" => "scripts/hook-session-start",
       "scripts/hook-capture" => "scripts/hook-capture",
       "scripts/hook-record" => "scripts/hook-record",
+      "scripts/hook-close" => "scripts/hook-close",
       "scripts/hook-savepoint-pre" => "scripts/hook-savepoint-pre",
       "scripts/hook-power-tools" => "scripts/hook-power-tools",
       "scripts/lib/qmd_hook.rb" => "scripts/lib/qmd_hook.rb",
@@ -420,6 +421,10 @@ class InstallerCore
       "scripts/append-ledger" => "scripts/append-ledger",
       "scripts/lib/session_ledger.rb" => "scripts/lib/session_ledger.rb",
       "scripts/session-commit" => "scripts/session-commit",
+      "scripts/file-session-intent" => "scripts/file-session-intent",
+      "scripts/promote-session-item" => "scripts/promote-session-item",
+      "scripts/lib/session_backfill.rb" => "scripts/lib/session_backfill.rb",
+      "scripts/lib/session_close.rb" => "scripts/lib/session_close.rb",
       "scripts/lib/session_git.rb" => "scripts/lib/session_git.rb",
     }
   end
