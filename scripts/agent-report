@@ -21,8 +21,7 @@
 #
 # Exit codes: 0 (report emitted), 2 (usage).
 
-require_relative "lib/bridge"
-
+require_relative "lib/savepoint"
 def parse_args(argv)
   role = nil
   positional = []
@@ -43,7 +42,7 @@ end
 # Read the intent file frontmatter via the same path spawn-preamble uses, so the
 # id/intent we report match what the rest of Plastic sees. Never raises.
 def frontmatter_for(intent_dir)
-  ifile = Bridge.intent_file(intent_dir)
+  ifile = Savepoint.intent_file(intent_dir)
   return {} unless File.exist?(ifile)
 
   content = File.read(ifile)
@@ -69,19 +68,19 @@ STAGE_LABELS = {
 }.freeze
 
 def current_stage(intent_dir)
-  ledger = File.join(intent_dir, Bridge::SAVEPOINT_FILE)
+  ledger = File.join(intent_dir, Savepoint::SAVEPOINT_FILE)
   if File.exist?(ledger)
     last = File.read(ledger).each_line.map(&:strip).reject(&:empty?).last
     return last if last
   end
-  STAGE_LABELS.fetch(Bridge.derive_stage(intent_dir), Bridge.derive_stage(intent_dir))
+  STAGE_LABELS.fetch(Savepoint.derive_stage(intent_dir), Savepoint.derive_stage(intent_dir))
 end
 
 # checklist.md checked/total: count GFM task-list items. Returns "n/a" when there
 # is no checklist (a checklist is only meaningful from How onward).
 def checklist_progress(intent_dir)
   path = File.join(intent_dir, "checklist.md")
-  return "n/a" unless Bridge.stage_file_present?(path)
+  return "n/a" unless Savepoint.stage_file_present?(path)
 
   lines = File.readlines(path)
   total = lines.count { |l| l =~ /^\s*- \[[ xX]\]/ }
@@ -95,7 +94,7 @@ end
 # non-heading content line), else a placeholder. Pure read of the intent dir.
 def outcome_line(intent_dir)
   path = File.join(intent_dir, "outcome.md")
-  return "(no outcome yet)" unless Bridge.stage_file_present?(path)
+  return "(no outcome yet)" unless Savepoint.stage_file_present?(path)
 
   lines = File.readlines(path).map(&:rstrip)
   start = lines.index { |l| l.strip.downcase == "## summary" }
@@ -112,7 +111,7 @@ end
 # (the newest nugget, since entries are append-only newest-at-bottom), else
 # `(none)`. Pure read of the intent dir, no clock.
 def insights_line(intent_dir)
-  ifile = Bridge.intent_file(intent_dir)
+  ifile = Savepoint.intent_file(intent_dir)
   return "(none)" unless File.exist?(ifile)
 
   lines = File.read(ifile).split("\n", -1)
@@ -145,7 +144,7 @@ intent_name = "(unknown)" if intent_name.empty?
 
 stage = current_stage(intent_dir)
 role_label = (role && !role.empty?) ? role : stage
-artifacts = Bridge.has_files(intent_dir)
+artifacts = Savepoint.has_files(intent_dir)
 artifacts_str = artifacts.empty? ? "(none)" : artifacts.join(", ")
 
 lines = []

@@ -174,18 +174,20 @@ milestone ledger (newest at the bottom) that the `record` hook writes automatica
 each lifecycle boundary. That is the existing hook mechanism bound to the artifact-write
 trigger, with the ledger as a derived form-fix on top. It is sugar over the conventions,
 never a source of truth: state stays derivable from files-on-disk and the ledger is
-rebuildable via `Bridge.rebuild_savepoint`. The `plastic-intent-savepoint` skill is now a thin
+rebuildable via `Savepoint.rebuild_savepoint`. The ledger and the stage derivation it rests on
+live in `scripts/lib/savepoint.rb` (intent 303), apart from the session pointer in `bridge.rb`.
+The `plastic-intent-savepoint` skill is now a thin
 reader/verifier, not a writer.
 
 State-from-ledger (intent 81) makes the ledger the read-once answer to "what stage, and is it
 done", so a resuming agent reads `savepoint.md` first instead of probing which files exist. The
 grammar gains three line classes on top of intent 34's artifact-landing milestones, all keyed by
-a `(stage, milestone)` pair for idempotency (`Bridge.savepoint_recorded_pairs`):
+a `(stage, milestone)` pair for idempotency (`Savepoint.savepoint_recorded_pairs`):
 
 - a **born `What` line**, stamped by `new-intent` at creation (not left to a gate firing), so
   even a freshly parked future intent carries the first bookend deterministically;
 - a **terminal `Done delivered|abandoned` line**, written by the completion path
-  (`Bridge.append_terminal_savepoint`) as the intent transfers into INDEX's Completed/Abandoned
+  (`Savepoint.append_terminal_savepoint`) as the intent transfers into INDEX's Completed/Abandoned
   section. Disposition lives in INDEX (no frontmatter status); the ledger echoes it.
 
 The bookends are fixed and recognizable: the first line is `What created`, the last line is
@@ -254,7 +256,7 @@ order), reported as `ranking_strategy` in the payload, so intent 173's decision-
 recommendation can replace the ordering rule without reworking parsing, frontier detection, or
 the rest of the JSON contract.
 
-A companion rule keeps the intent-dir ledger itself honest. `Bridge.savepoint_phantom_lines`
+A companion rule keeps the intent-dir ledger itself honest. `Savepoint.savepoint_phantom_lines`
 (intent 134) is pure and disk-only, no bridge or session resolution and no writes, matching
 intent 52's decoupling precedent: it flags a `savepoint.md` line that disk evidence contradicts,
 in three classes: a file-landing milestone (built from the same map `savepoint_milestone` uses)
@@ -265,7 +267,7 @@ legitimately fires before its own stage's file is real) is absent on disk. The b
 clobber and the 124a out-of-band merge are the two live precedents this guards against: either
 can leave a phantom or dropped line that nothing previously detected. The
 `plastic-intent-savepoint` skill's verify step runs the detector and, on a hit, auto-rebuilds via
-`Bridge.rebuild_savepoint` for a live (INDEX Active) intent; for a terminal (Completed/Abandoned)
+`Savepoint.rebuild_savepoint` for a live (INDEX Active) intent; for a terminal (Completed/Abandoned)
 intent it reports and stops, since completed intents are immutable, and the 124a manual
 Done-bookend repair (rebuild the skeleton, then re-append the terminal line from git or mtime
 evidence) stays reserved for an explicit human grant. `doctor.rb`'s `check_done_signals` carries
@@ -397,7 +399,7 @@ what the readers can PARSE has widened.
 The `plastic-intent-continuing` skill consumes that ledger on the resume path (intent 36): when the
 user or an agent asks to continue a specific intent, the skill reads the last ledger line as
 the current stage, confirms the named stage file is present and non-empty, calls
-`Bridge.rebuild_savepoint` when the ledger and the filesystem disagree, and derives the next
+`Savepoint.rebuild_savepoint` when the ledger and the filesystem disagree, and derives the next
 step from the first unchecked checklist item. Continue runs this only on demand, not on every
 boot, since continue is about loading and presenting choices while `plastic-auto` owns
 autonomous execution.
@@ -700,7 +702,7 @@ caller-supplied suite command into one verdict. It does not invent a project tes
 config.
 
 `scripts/lib/spec_header.rb` is the only parser of the `Tier:` and `Settled:` lines at the
-top of spec.md. `Bridge.savepoint_tier` delegates to it.
+top of spec.md. `Savepoint.savepoint_tier` delegates to it.
 
 ## project store provisioning
 

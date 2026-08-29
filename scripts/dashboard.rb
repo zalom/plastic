@@ -25,7 +25,7 @@ require "json"
 require "yaml"
 require "date"
 require_relative "doctor"
-require_relative "lib/bridge"
+require_relative "lib/savepoint"
 require_relative "lib/lock"
 
 PLASTIC_HOME = ENV.fetch("PLASTIC_HOME") { File.join(Dir.home, ".plastic") }
@@ -163,7 +163,7 @@ end
 
 # True iff the savepoint ledger's last non-blank line shows real post-birth
 # activity, not just the one-line birth stamp every intent gets at creation
-# (scripts/new-intent's Bridge.append_savepoint call, stage "What"). Reads the
+# (scripts/new-intent's Savepoint.append_savepoint call, stage "What"). Reads the
 # last line, extracts the stage token (second whitespace-separated field, same
 # ledger shape last_accessed_at already parses), and treats any stage other
 # than "What" as progress. Returns false when the file is missing/empty.
@@ -192,7 +192,7 @@ def parse_intent(store_info, dir_name, status_index)
   # Sentinel-aware presence for lifecycle files (intent 60b): a scaffolded
   # placeholder spec/plan/checklist/outcome reads as absent, so a freshly
   # scaffolded intent reports What/Why and is never marked completed/advanced.
-  real = ->(f) { Bridge.stage_file_present?(File.join(dir, f)) }
+  real = ->(f) { Savepoint.stage_file_present?(File.join(dir, f)) }
   body = File.exist?(md) ? File.read(md) : ""
 
   status =

@@ -13,7 +13,7 @@
 require "json"
 require "timeout"
 require "fileutils"
-require_relative "lib/bridge"
+require_relative "lib/savepoint"
 require_relative "lib/lock"
 require_relative "lib/session_ledger"
 
@@ -43,12 +43,12 @@ file_path_abs = File.expand_path(file_path)
 # --- (a) decoupled savepoint ledger, byte for byte -------------------------
 intent_dir_abs = nil
 begin
-  intent_dir_abs = Bridge.intent_dir_for(file_path_abs)
+  intent_dir_abs = Savepoint.intent_dir_for(file_path_abs)
   if intent_dir_abs
     begin
-      Bridge.append_savepoint(intent_dir_abs, file_path_abs)
-      if File.basename(file_path_abs) == "checklist.md" && Bridge.stage_file_present?(file_path_abs)
-        Bridge.append_exec_started(intent_dir_abs)
+      Savepoint.append_savepoint(intent_dir_abs, file_path_abs)
+      if File.basename(file_path_abs) == "checklist.md" && Savepoint.stage_file_present?(file_path_abs)
+        Savepoint.append_exec_started(intent_dir_abs)
       end
     rescue StandardError
       nil

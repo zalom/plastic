@@ -76,7 +76,7 @@ For that intent's directory:
    ledger from filesystem state and note the correction. A rebuilt ledger is the file-landing
    skeleton (no `started`/`Done` lines), which still pins cycle position:
    ```bash
-   ruby -r ~/.plastic/scripts/lib/bridge -e 'Bridge.rebuild_savepoint("<intent_dir>")'
+   ruby -r ~/.plastic/scripts/lib/savepoint -e 'Savepoint.rebuild_savepoint("<intent_dir>")'
    ```
 4. **Derive the next step:**
    - First unchecked item in `checklist.md` if it exists, else

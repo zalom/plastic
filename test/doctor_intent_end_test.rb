@@ -6,7 +6,7 @@ require "tmpdir"
 require "fileutils"
 
 require_relative "../scripts/doctor"
-require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/outcome_guard"
 
 # Intent 222 - doctor's fourth check scope, `--intent <id>`, verifies ONE intent's structure
@@ -178,7 +178,7 @@ class DoctorIntentEndTest < Minitest::Test
 
   # --- intent_savepoint_truthful (WARN-only, intent 134) ------------------------
 
-  # A duplicate (stage, milestone) pair is a phantom (Bridge.savepoint_phantom_lines) that
+  # A duplicate (stage, milestone) pair is a phantom (Savepoint.savepoint_phantom_lines) that
   # requires no lifecycle file to be absent, so it is the only phantom class that can appear
   # on an otherwise fully clean intent - the exact scenario the WARN-never-FAIL contract (D2/
   # D8, intent 134) needs to prove: every OTHER of the 5 checks stays "pass", so the overall

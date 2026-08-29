@@ -37,7 +37,7 @@ require "time"
 require_relative "lib/store_discovery"
 require_relative "lib/lock"
 require_relative "lib/maintenance_git"
-require_relative "lib/bridge"
+require_relative "lib/savepoint"
 require_relative "lib/revisions_writer"
 require_relative "doctor" # safe: doctor.rb's CLI is behind $PROGRAM_NAME == __FILE__
 
@@ -233,7 +233,7 @@ def run_rebuild_savepoint(home, intent, store, apply)
   check_not_fresh!(dir, intent)
 
   outcome_path = File.join(dir, "outcome.md")
-  unless Bridge.stage_file_present?(outcome_path)
+  unless Savepoint.stage_file_present?(outcome_path)
     abort_loud("intent #{intent}'s outcome.md is missing or a placeholder; the 124a recipe " \
                "requires a real disposition to echo, and 219 D6 forbids ever inventing one", 1)
   end
@@ -244,7 +244,7 @@ def run_rebuild_savepoint(home, intent, store, apply)
 
   unless apply
     puts "maintenance-run: DRY RUN, would reconstruct savepoint.md for #{intent} " \
-         "(Bridge.rebuild_savepoint + Done #{disposition} echo)"
+         "(Savepoint.rebuild_savepoint + Done #{disposition} echo)"
     exit 0
   end
 
@@ -253,15 +253,15 @@ def run_rebuild_savepoint(home, intent, store, apply)
       repo_dir: home, branch_name: "maintenance/rebuild-savepoint-#{intent}-#{stamp}",
       commit_message: "chore: maintenance - rebuild-savepoint #{intent}"
     ) do
-      Bridge.rebuild_savepoint(dir)
-      Bridge.append_terminal_savepoint(dir, disposition)
+      Savepoint.rebuild_savepoint(dir)
+      Savepoint.append_terminal_savepoint(dir, disposition)
       RevisionsWriter.append!(
         dir,
         why: "reconstruct missing operational savepoint.md (generic operational-gap predicate)",
         rule: "savepoint-operational-reconstruction",
         prior_location: "#{intent}/savepoint.md",
-        change: "savepoint.md rebuilt from disk (Bridge.rebuild_savepoint) plus Done " \
-                "#{disposition} echo appended (Bridge.append_terminal_savepoint); disposition " \
+        change: "savepoint.md rebuilt from disk (Savepoint.rebuild_savepoint) plus Done " \
+                "#{disposition} echo appended (Savepoint.append_terminal_savepoint); disposition " \
                 "read from outcome.md's own frontmatter, never invented"
       )
     end

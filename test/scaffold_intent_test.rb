@@ -6,7 +6,7 @@ require "tmpdir"
 require "fileutils"
 require "open3"
 require_relative "../scripts/lib/scaffold_intent"
-require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/spec_header"
 require_relative "../scripts/lib/outcome_guard"
 
@@ -17,7 +17,7 @@ require_relative "../scripts/lib/outcome_guard"
 # network, no ambient session id, no real ~/.plastic read.
 class ScaffoldIntentTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/scaffold-intent", __dir__)
-  SENTINEL = Bridge::PLACEHOLDER_SENTINEL
+  SENTINEL = Savepoint::PLACEHOLDER_SENTINEL
 
   # Fake git runner (Worktree::ShellRunner's `run(*args) -> Result` contract): drives
   # resolve_repo_dir / detect_base_branch / diffstat without ever touching real git.
@@ -403,10 +403,10 @@ class ScaffoldIntentTest < Minitest::Test
 
     out, status = run_scaffold("spec", "--store", @store, "--id", "213y")
     assert_equal 0, status, out
-    assert Bridge.stage_file_present?(File.join(intent_dir, "spec.md"))
+    assert Savepoint.stage_file_present?(File.join(intent_dir, "spec.md"))
 
     out, status = run_scaffold("checklist", "--store", @store, "--id", "213y")
     assert_equal 0, status, out
-    assert Bridge.stage_file_present?(File.join(intent_dir, "checklist.md"))
+    assert Savepoint.stage_file_present?(File.join(intent_dir, "checklist.md"))
   end
 end

@@ -5,6 +5,7 @@ require "json"
 require "digest"
 require_relative "../scripts/lib/bridge"
 
+require_relative "../scripts/lib/savepoint"
 # Tests for session resolution, derived keys, write guards, intent-dir discovery,
 # and /tmp bridge discovery added in intent 52 (session-id-less bridge).
 class BridgeResolveTest < Minitest::Test
@@ -134,14 +135,14 @@ class BridgeResolveTest < Minitest::Test
     intent = File.join(real_store, "52--demo")
     FileUtils.mkdir_p(File.join(intent, "actions"))
     target = File.join(intent, "actions", "x.md")
-    assert_equal intent, Bridge.intent_dir_for(target)
+    assert_equal intent, Savepoint.intent_dir_for(target)
   end
 
   def test_intent_dir_for_returns_nil_outside_store
     file = File.join(@store, "random", "file.rb")
     FileUtils.mkdir_p(File.dirname(file))
     File.write(file, "x")
-    assert_nil Bridge.intent_dir_for(file)
+    assert_nil Savepoint.intent_dir_for(file)
   end
 
   # --- bridge_valid? ---------------------------------------------------------

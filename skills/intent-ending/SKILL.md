@@ -65,7 +65,7 @@ for orchestrator-owned or completion-tracking items.
    - links projection - run
      `ruby ~/.plastic/scripts/maintenance-run --tool project-links --intent <id> --apply`.
    - a savepoint issue - advisory only (WARN, never blocks): run
-     `plastic-intent-savepoint` to rebuild via `Bridge.rebuild_savepoint` if
+     `plastic-intent-savepoint` to rebuild via `Savepoint.rebuild_savepoint` if
      you want it clean, but it never refuses the close on its own.
    Then re-run `scripts/end-intent`.
 

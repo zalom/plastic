@@ -4,7 +4,7 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
-require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/intent_validator"
 require_relative "../scripts/lib/links_section"
 require_relative "../scripts/doctor"
@@ -94,7 +94,7 @@ class NewIntentTest < Minitest::Test
 
   def test_scaffolded_intent_never_advances_past_why
     dir, = run_new_intent("--store", @store, "--intent", "Demo", "--slug", "demo")
-    assert_equal "why", Bridge.derive_stage(dir)
+    assert_equal "why", Savepoint.derive_stage(dir)
   end
 
   def test_reciprocal_link_is_wired_and_idempotent
@@ -389,7 +389,7 @@ class NewIntentTest < Minitest::Test
     dir, = run_new_intent("--store", @store, "--intent", "Demo", "--slug", "demo")
     intent_file = File.join(dir, "#{File.basename(dir)}.md")
     # A later gate fire on the same intent file must not add a duplicate What line.
-    Bridge.append_savepoint(dir, intent_file)
+    Savepoint.append_savepoint(dir, intent_file)
     lines = File.read(File.join(dir, "savepoint.md")).split("\n").reject(&:empty?)
     assert_equal 1, lines.length
   end

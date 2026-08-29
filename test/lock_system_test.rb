@@ -3,6 +3,7 @@ require "tmpdir"
 require "fileutils"
 require "json"
 require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/worktree"
 require_relative "../scripts/lib/lock"
 
@@ -282,9 +283,9 @@ class LockSystemTest < Minitest::Test
 
     spec = File.join(@dir96, "spec.md")
     File.write(spec, "real spec content\n")
-    assert_equal "how", Bridge.derive_stage(@dir96),
+    assert_equal "how", Savepoint.derive_stage(@dir96),
                  "stage derivation reads the MAIN intent dir"
-    Bridge.append_savepoint(@dir96, spec)
+    Savepoint.append_savepoint(@dir96, spec)
     assert File.exist?(File.join(@dir96, "savepoint.md")),
            "the savepoint ledger lands in the MAIN intent dir"
   end
