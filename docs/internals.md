@@ -1323,8 +1323,13 @@ rename swaps the inode out from under a holder. An append opens
 `flock(File::LOCK_EX)`, writes one full line, then unlocks. The first append checks for size
 zero after taking the lock, which is what lets exactly one racer write the header even though
 `O_CREAT` without `O_EXCL` hands every racer the same inode. A promote or a tick opens
-`File::RDWR`, takes `LOCK_EX`, scans by byte offset, `pwrite`s one byte, flushes, and unlocks.
-There is no timeout and no polling: a hold covers exactly one write, and the kernel releases
+`File::RDWR`, takes `LOCK_EX`, scans by byte offset to find the target line, `pwrite`s its one
+byte, flushes, and unlocks, all inside that single hold: identifying the target line and
+flipping it are never two separate locked steps, since a caller (`append-ledger`'s
+`--savepoint`) needs to know exactly which line it flipped, and a separately-locked lookup
+before the flip can go stale under concurrency. `SessionLedger.set_state` returns the flipped
+line's own summary (or `nil` when nothing matched) for exactly this reason. There is no
+timeout and no polling: a hold covers exactly one write, and the kernel releases
 an flock automatically when its holder dies, so an orphan hold cannot exist. On a filesystem
 without flock support, an append proceeds unlocked, since a single `O_APPEND` write still
 lands whole there; an in-place edit refuses with exit 3 rather than risk a torn
@@ -1334,13 +1339,20 @@ pattern, which exists for multi-second read-modify-write holds a ledger append n
 **The scaffold.** `SessionLedger.open_day` is the single scaffold implementation. Create
 versus join is decided by opening `<day>.md` with `File::CREAT | File::EXCL`: the winner
 renders `templates/session-intent.md` and reports `created`, every loser reports `joined`,
-and a crash mid-scaffold with no md file yet is repaired by the same path on its next call.
-Both callers use it: `new-intent --tmp` is its CLI, and `append-ledger` calls it directly
-whenever it finds the day directory missing, so a capture that crosses midnight never fails
-and never needs a second process. The rendered file passes `IntentValidator.validate` in
-full, which is possible because that validator reads only the intent's own markdown file and
-its five sanctioned sections. `## Links` carries `LinksProjection::EMPTY_COMMENT` verbatim,
-so no cross-store map build ever runs at session start.
+and a crash mid-scaffold with no md file yet is repaired by the same path on its next call. If
+the render itself fails partway (a missing or relocated templates dir), the file just created
+is unlinked before the error re-raises, so no zero-byte file is left behind to wedge every
+later call onto the "already exists" branch with nothing to repair. `created:` in the
+rendered frontmatter comes from `now` (when the scaffold call actually ran), not from `day`
+(the calendar day the ledger is for): the two differ exactly when a repair or a
+midnight-crossing capture scaffolds a past day's file today. Both callers use it: `new-intent
+--tmp` is its CLI, and `append-ledger` calls it on every invocation, not only when the day
+directory looks missing, since a directory that exists without its `<day>.md` (a crashed
+scaffold, or a failed render) would otherwise never be repaired. The rendered file passes
+`IntentValidator.validate` in full, which is possible because that validator reads only the
+intent's own markdown file and its five sanctioned sections. `## Links` carries
+`LinksProjection::EMPTY_COMMENT` verbatim, so no cross-store map build ever runs at session
+start.
 
 **The consumer list.** Who builds on this contract, and what each one needs:
 

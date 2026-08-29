@@ -3,7 +3,7 @@ id: "{{DAY}}"
 intent: "Session ledger for {{DATE}}"
 sources: []
 chain: []
-created: {{DATE}}
+created: {{CREATED}}
 author: {{AUTHOR}}
 tags: ["session"]
 mode: direct

@@ -33,6 +33,20 @@ module SessionLedger
   EVENTS = %w[Item Done Note]
   STATES = { pending: "~", open: " ", done: "x" }.freeze
 
+  # Project slugs and session tags are restricted to this character class
+  # (spec D4). Used both to filter a slug read out of projects.yml
+  # (#project_slug) and, by append-ledger, to validate an explicit --project.
+  SLUG_RE = /\A[a-z0-9-]+\z/.freeze
+
+  # Default lock strategy for #append_line and #set_state: a real flock call
+  # on the handle. Tests inject a replacement lambda here (never a global or
+  # an environment-variable flag, per the library's no-environment-read rule)
+  # to simulate a SystemCallError from a filesystem without flock support,
+  # proving the unlocked-append fallback and the LockUnavailableError -> exit
+  # 3 mapping hermetically, with no need for a real flock-less filesystem.
+  DEFAULT_FLOCK = ->(handle, mode) { handle.flock(mode) }
+  private_constant :DEFAULT_FLOCK
+
   # The first append to checklist.md writes this header, then a blank line,
   # before any checklist content (spec D9). savepoint.md never gets a header.
   def checklist_header(day)
@@ -78,7 +92,10 @@ module SessionLedger
   # The slug of the registered `projects.yml` path that is the longest match
   # for `cwd` (equal to, or nested under, that path). Falls back to the
   # literal `"global"` when nothing matches: an invented slug (from a
-  # directory basename) would name no real store.
+  # directory basename) would name no real store. A candidate slug that does
+  # not match SLUG_RE (spec D4: `[a-z0-9-]` only) is skipped rather than
+  # returned, since it would corrupt a ledger line that embeds it verbatim;
+  # the "global" fallback is always safe by construction.
   def project_slug(cwd, plastic_home:)
     expanded_cwd = File.expand_path(cwd)
     projects = StoreProvisioning.load_projects(plastic_home)
@@ -86,6 +103,7 @@ module SessionLedger
 
     matches = projects.filter_map do |slug, info|
       next unless info.is_a?(Hash)
+      next unless slug.is_a?(String) && SLUG_RE.match?(slug)
 
       path = info["path"]
       next unless path
@@ -195,7 +213,12 @@ module SessionLedger
   private_constant :CHECKLIST_LINE_RE
 
   def parse_checklist_line(line)
-    match = CHECKLIST_LINE_RE.match(line.to_s.chomp)
+    # #scrub replaces any invalid byte with U+FFFD so a stray non-UTF-8 byte
+    # anywhere in checklist.md never raises ArgumentError out of the regex
+    # match; it only ever affects that one line's parsed summary. Callers
+    # that need byte-exact offsets (namely #set_state) must measure against
+    # the UNSCRUBBED line, since #scrub can change a line's bytesize.
+    match = CHECKLIST_LINE_RE.match(line.to_s.chomp.scrub)
     return nil unless match
 
     marker, session, project, summary = match.captures
@@ -227,17 +250,21 @@ module SessionLedger
   # only: on a filesystem without flock support, the append proceeds
   # unlocked, since a single O_APPEND write still lands whole there. Always
   # returns true.
-  def append_line(path, line, header: nil)
+  def append_line(path, line, header: nil, flock: DEFAULT_FLOCK)
     handle = File.open(path, File::WRONLY | File::APPEND | File::CREAT, 0o644)
     begin
       begin
-        handle.flock(File::LOCK_EX)
+        flock.call(handle, File::LOCK_EX)
       rescue SystemCallError
         nil
       end
 
       handle.write(header) if header && handle.size.zero?
       handle.write(line)
+      # Flush explicitly before unlocking. MRI happens to flush a writable
+      # handle's buffer as a side effect inside rb_file_flock, but that is
+      # undocumented behavior, so flush on purpose rather than depend on it.
+      handle.flush
 
       begin
         handle.flock(File::LOCK_UN)
@@ -258,13 +285,28 @@ module SessionLedger
   # plus 3, past the "- [" prefix) is overwritten with `IO#pwrite`, so every
   # other byte in the file stays identical: this is exactly why the pending
   # marker is `[~]`, a fixed width shared with `[ ]` and `[x]`, rather than a
-  # bare tilde. Returns false, writing nothing, when the file does not exist
-  # or nothing matches. Raises LockUnavailableError, refusing to write at
-  # all, when the flock cannot be taken (filesystem without flock support):
-  # unlike an append, an in-place edit cannot fall back to unlocked, since a
-  # racing writer could tear the read-modify-write.
-  def set_state(path, from:, to:, session:, match: nil)
-    return false unless File.exist?(path)
+  # bare tilde.
+  #
+  # Identifying the target line and flipping it happen inside the SAME
+  # LOCK_EX hold, on purpose: an earlier version identified the target under
+  # a released LOCK_SH, in a separate call, then re-identified and flipped it
+  # under a fresh LOCK_EX. Two concurrent promoters could both read the same
+  # "newest pending" line before either flipped anything, each then flip a
+  # DIFFERENT line under their own (correctly serialized) LOCK_EX, and the
+  # caller's earlier lookup would go stale, naming the wrong line in a
+  # --savepoint entry. Returning the flipped line's own summary from inside
+  # this lock is what makes that identify-and-flip atomic, so a caller never
+  # needs a second, separately-locked read to learn what it just changed.
+  #
+  # Returns the flipped line's summary (a String) when a byte changed, or nil
+  # (writing nothing) when the file does not exist or nothing matches. Raises
+  # LockUnavailableError, refusing to write at all, when the flock cannot be
+  # taken (filesystem without flock support): unlike an append, an in-place
+  # edit cannot fall back to unlocked, since a racing writer could tear the
+  # read-modify-write. `flock:` is a test seam (see DEFAULT_FLOCK); production
+  # callers never pass it.
+  def set_state(path, from:, to:, session:, match: nil, flock: DEFAULT_FLOCK)
+    return nil unless File.exist?(path)
 
     STATES.fetch(from)
     to_marker = STATES.fetch(to)
@@ -272,7 +314,7 @@ module SessionLedger
     handle = File.open(path, File::RDWR)
     locked = true
     begin
-      handle.flock(File::LOCK_EX)
+      flock.call(handle, File::LOCK_EX)
     rescue SystemCallError
       locked = false
     end
@@ -285,6 +327,7 @@ module SessionLedger
     begin
       content = handle.read
       target_offset = nil
+      target_summary = nil
       offset = 0
 
       content.each_line do |raw_line|
@@ -292,16 +335,21 @@ module SessionLedger
         if parsed && parsed[:session] == session && parsed[:state] == from &&
            (match.nil? || parsed[:summary].include?(match))
           target_offset = offset + 3 # past the "- [" prefix
+          target_summary = parsed[:summary]
         end
+        # Accumulate over the UNSCRUBBED raw_line, never the copy
+        # #parse_checklist_line scrubs internally for matching: #scrub can
+        # change a line's bytesize, and pwrite below must land at the true
+        # on-disk byte offset.
         offset += raw_line.bytesize
       end
 
       if target_offset.nil?
-        false
+        nil
       else
         handle.pwrite(to_marker, target_offset)
         handle.flush
-        true
+        target_summary
       end
     ensure
       begin
@@ -340,9 +388,10 @@ module SessionLedger
   # --- The day scaffold (spec D12) --------------------------------------------
 
   # The one and only scaffold implementation. `new-intent --tmp` is its CLI,
-  # and `append-ledger` calls it directly whenever it finds the day directory
-  # missing, so a capture that crosses midnight never fails and never needs a
-  # second process. Creates exactly `<day>/<day>.md`: no checklist.md, no
+  # and `append-ledger` calls it directly on EVERY invocation (cheap and
+  # idempotent, so there is no cheaper-but-wrong guard to key on instead), so
+  # a capture that crosses midnight never fails and never needs a second
+  # process. Creates exactly `<day>/<day>.md`: no checklist.md, no
   # savepoint.md, no actions/, no resources/. `checklist.md` and
   # `savepoint.md` come into existence on first append, written by
   # append-ledger under the lock, which is why this method never touches
@@ -352,9 +401,20 @@ module SessionLedger
   # File::CREAT | File::EXCL: the winner renders the template and returns
   # created: true; every loser, including a repair of a crashed
   # mid-scaffold with no md file yet, returns created: false without
-  # changing a byte. `now:` is accepted for test injection and symmetry with
-  # the other library methods; DATE is derived from `day`, not from `now`, so
-  # an explicit --day renders its own date rather than today's.
+  # changing a byte. DATE (the day's own calendar date, used in the `intent:`
+  # line) is derived from `day`, not from `now`, so an explicit --day renders
+  # its own date rather than today's; `now:` instead sources CREATED, the
+  # `created:` frontmatter field, since that field records when the scaffold
+  # FILE was actually written, which can differ from the day it is for (a
+  # repair or a midnight-crossing capture can scaffold a past day's file
+  # today). Defaults to Time.now; tests inject a fixed `now:` to make the
+  # scaffold's `created:` value deterministic.
+  #
+  # If rendering fails partway (a missing or relocated templates dir, a bad
+  # day), the file this call just created is unlinked before the error
+  # re-raises, so no zero-byte or partial <day>.md is left behind to wedge
+  # every later #open_day call onto the Errno::EEXIST "already exists"
+  # branch with no file to repair.
   def open_day(store:, day:, templates:, author:, now: Time.now)
     dir = day_dir(store, day)
     FileUtils.mkdir_p(dir)
@@ -369,12 +429,18 @@ module SessionLedger
     return { dir: dir, created: false } unless handle
 
     begin
-      date = Date.strptime(day, "%Y%m%d").iso8601
-      template = File.read(File.join(templates, "session-intent.md"))
-      rendered = render_tokens(template, "DAY" => day, "DATE" => date, "AUTHOR" => author)
-      handle.write(rendered)
+      begin
+        date = Date.strptime(day, "%Y%m%d").iso8601
+        created = now.strftime("%Y-%m-%d")
+        template = File.read(File.join(templates, "session-intent.md"))
+        rendered = render_tokens(template, "DAY" => day, "DATE" => date, "CREATED" => created, "AUTHOR" => author)
+        handle.write(rendered)
+      rescue StandardError
+        File.delete(file) if File.exist?(file)
+        raise
+      end
     ensure
-      handle.close
+      handle.close unless handle.closed?
     end
 
     { dir: dir, created: true }

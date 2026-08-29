@@ -34,6 +34,16 @@ class NewIntentTest < Minitest::Test
     File.open(path, &:gets).to_s.chomp
   end
 
+  # Nit 8: --day was added to the shared parser for --tmp's sake; the classic
+  # id-allocation path (no --tmp) must still reject it, the same strictness
+  # it gives every other unknown argument, rather than silently ignoring it.
+  def test_day_flag_is_rejected_on_the_classic_id_allocation_path
+    out, status = run_new_intent("--store", @store, "--intent", "Build the thing", "--slug", "build-thing",
+      "--day", "20260829")
+    refute_equal 0, status, "expected a non-zero exit, got: #{out}"
+    assert_includes out, "--day"
+  end
+
   def test_single_invocation_scaffolds_complete_intent
     dir, status = run_new_intent("--store", @store, "--intent", "Build the thing", "--slug", "build-thing")
     assert_equal 0, status, "expected exit 0, got: #{dir}"

@@ -135,6 +135,28 @@ class SessionLedgerTest < Minitest::Test
     assert_equal "global", SessionLedger.project_slug(@store, plastic_home: home)
   end
 
+  def test_project_slug_skips_a_matching_but_invalid_slug_and_falls_back_to_global
+    home = File.join(@store, "home5")
+    outer = File.join(@store, "outer5")
+    FileUtils.mkdir_p(outer)
+    write_projects_yml(home, { "Not_A-Valid Slug" => { "path" => outer } })
+
+    assert_equal "global", SessionLedger.project_slug(outer, plastic_home: home)
+  end
+
+  def test_project_slug_matches_the_next_best_valid_slug_when_the_longer_match_is_invalid
+    home = File.join(@store, "home6")
+    outer = File.join(@store, "outer6")
+    inner = File.join(outer, "inner6")
+    FileUtils.mkdir_p(inner)
+    write_projects_yml(home, {
+      "outer-project" => { "path" => outer },
+      "not valid" => { "path" => inner },
+    })
+
+    assert_equal "outer-project", SessionLedger.project_slug(File.join(inner, "sub"), plastic_home: home)
+  end
+
   # --- day paths ---------------------------------------------------------------
 
   def test_day_path_helpers_return_exact_joins

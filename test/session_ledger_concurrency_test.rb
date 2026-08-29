@@ -159,4 +159,72 @@ class SessionLedgerConcurrencyTest < Minitest::Test
     found = lines.map { |line| line.chomp.split(/\s{2,}/).last.sub(/\A\[[^\]]+\] \[[^\]]+\] /, "") }
     assert_equal notes.sort, found.sort
   end
+
+  # --- promote --savepoint names the line it actually flipped (finding 1) ---------------
+  #
+  # Two `append-ledger promote --savepoint` processes, same session tag, race
+  # against a checklist seeded with two pending lines belonging to that
+  # session. Both promote (one item each, since only one can be "newest
+  # pending" at a time), and both append a savepoint Item line. Before the
+  # fix, identifying the target line (a separately-locked read) and flipping
+  # it (a separately-locked write) were two different critical sections, so
+  # both processes could identify the SAME "newest pending" summary before
+  # either flipped anything, then each flip a DIFFERENT line under their own
+  # correctly-serialized lock: the savepoint line would then name the wrong
+  # item, sometimes twice, sometimes never naming the item actually
+  # promoted. The invariant checked below is exact regardless of which
+  # process wins the race: the multiset of "Item" summaries appended to
+  # savepoint.md must equal the multiset of summaries that actually ended up
+  # open in checklist.md.
+  def test_concurrent_promote_savepoint_always_names_the_line_it_actually_flipped
+    trials = 40
+    mismatches = 0
+
+    trials.times do
+      home = Dir.mktmpdir("promote-race-home")
+      tmp = Dir.mktmpdir("promote-race-tmp")
+      store = File.join(home, "store")
+      FileUtils.mkdir_p(store)
+      day = "20260829"
+      session = "cccccccc"
+      env = { "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_HOME" => home, "PLASTIC_TMP" => tmp }
+
+      run_append_ledger = lambda do |*args|
+        full = [RbConfig.ruby, APPEND_LEDGER, "--store", store, "--templates", TEMPLATES,
+                "--day", day, "--session", session, "--project", "plastic", *args]
+        IO.popen(env, full, err: [:child, :out], &:read)
+      end
+
+      run_append_ledger.call("pending", "First item")
+      run_append_ledger.call("pending", "Second item")
+
+      handles = 2.times.map do
+        IO.popen(env, [RbConfig.ruby, APPEND_LEDGER, "--store", store, "--templates", TEMPLATES,
+                       "--day", day, "--session", session, "--project", "plastic",
+                       "promote", "--savepoint"], err: [:child, :out])
+      end
+      handles.each do |io|
+        io.read
+        io.close
+        refute_equal false, $?.success?, "a promote --savepoint process exited non-zero"
+      end
+
+      checklist = File.read(SessionLedger.checklist_path(store, day))
+      open_summaries = checklist.lines.map { |l| SessionLedger.parse_checklist_line(l) }.compact
+        .select { |h| h[:state] == :open }.map { |h| h[:summary] }.sort
+
+      savepoint_content = File.read(SessionLedger.savepoint_path(store, day))
+      item_summaries = savepoint_content.lines.map { |l| l.chomp.split(/\s{2,}/) }
+        .select { |parts| parts[1] == "Item" }
+        .map { |parts| parts[2].sub(/\A\[[^\]]+\] \[[^\]]+\] /, "") }.sort
+
+      mismatches += 1 unless open_summaries == ["First item", "Second item"] && item_summaries == open_summaries
+    ensure
+      FileUtils.rm_rf(home)
+      FileUtils.rm_rf(tmp)
+    end
+
+    assert_equal 0, mismatches,
+      "#{mismatches}/#{trials} trials produced a savepoint line naming the wrong (or a missing) item"
+  end
 end

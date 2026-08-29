@@ -312,6 +312,8 @@ def main(argv)
   opts = parse_args(argv)
   return run_tmp(opts) if opts[:tmp]
 
+  abort "new-intent: --day is only valid with --tmp" if opts[:day]
+
   abort "new-intent: --store is required" if opts[:store].nil? || opts[:store].empty?
   abort "new-intent: --intent is required" if opts[:intent].nil? || opts[:intent].empty?
   abort "new-intent: --slug is required" if opts[:slug].nil? || opts[:slug].empty?

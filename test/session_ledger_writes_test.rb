@@ -111,6 +111,68 @@ class SessionLedgerWritesTest < Minitest::Test
     assert_equal before, after
   end
 
+  # --- the atomic identify-and-flip return value ---------------------------------
+
+  def test_set_state_returns_the_flipped_lines_own_summary
+    append_checklist_line(:pending, "b7137962", "plastic", "First item")
+    append_checklist_line(:pending, "b7137962", "plastic", "Second item")
+
+    result = SessionLedger.set_state(checklist_path, from: :pending, to: :open, session: "b7137962")
+
+    assert_equal "Second item", result
+  end
+
+  def test_set_state_returns_nil_when_the_file_does_not_exist
+    assert_nil SessionLedger.set_state(checklist_path, from: :pending, to: :open, session: "b7137962")
+  end
+
+  # --- a stray non-UTF-8 byte does not wedge promote/tick (finding 3) --------------
+
+  def test_set_state_survives_an_invalid_utf8_byte_on_an_earlier_line
+    FileUtils.mkdir_p(File.dirname(checklist_path))
+    bad_line = "- [~] [bbbbbbbb] [plastic] bad \xFF byte\n"
+    good_line = SessionLedger.checklist_line(:pending, "b7137962", "plastic", "Good item")
+    File.binwrite(checklist_path, SessionLedger.checklist_header(@day) + bad_line + good_line)
+
+    result = SessionLedger.set_state(checklist_path, from: :pending, to: :open, session: "b7137962")
+
+    assert_equal "Good item", result
+    parsed = SessionLedger.parse_checklist_line(File.read(checklist_path).lines.last)
+    assert_equal :open, parsed[:state]
+  end
+
+  def test_parse_checklist_line_scrubs_an_invalid_byte_instead_of_raising
+    line = "- [~] [bbbbbbbb] [plastic] bad \xFF byte\n"
+    result = SessionLedger.parse_checklist_line(line)
+    refute_nil result
+    assert_equal :pending, result[:state]
+  end
+
+  # --- flock failure, injected via the flock: seam (finding/nit 7) ----------------
+
+  def test_set_state_raises_lock_unavailable_error_when_flock_fails
+    append_checklist_line(:pending, "b7137962", "plastic", "First item")
+    before = File.binread(checklist_path)
+    failing_flock = ->(_handle, _mode) { raise Errno::ENOLCK, "no locks available" }
+
+    assert_raises(SessionLedger::LockUnavailableError) do
+      SessionLedger.set_state(checklist_path, from: :pending, to: :open, session: "b7137962", flock: failing_flock)
+    end
+
+    assert_equal before, File.binread(checklist_path), "a refused lock must write nothing"
+  end
+
+  def test_append_line_falls_back_to_unlocked_append_when_flock_fails
+    FileUtils.mkdir_p(File.dirname(checklist_path))
+    failing_flock = ->(_handle, _mode) { raise Errno::ENOLCK, "no locks available" }
+    line = SessionLedger.checklist_line(:pending, "b7137962", "plastic", "First item")
+
+    result = SessionLedger.append_line(checklist_path, line, header: SessionLedger.checklist_header(@day), flock: failing_flock)
+
+    assert result
+    assert_equal SessionLedger.checklist_header(@day) + line, File.read(checklist_path)
+  end
+
   # --- the header ---------------------------------------------------------------
 
   def test_first_append_writes_the_checklist_header_then_blank_line
@@ -255,6 +317,33 @@ class SessionLedgerWritesTest < Minitest::Test
     assert File.exist?(SessionLedger.day_file(@store, @day))
   end
 
+  # --- a failed template render leaves no file behind, and a retry succeeds (finding 4) --
+
+  def test_open_day_leaves_no_file_when_the_template_render_fails
+    missing_templates = File.join(@store, "no-such-templates-dir")
+
+    assert_raises(Errno::ENOENT) do
+      SessionLedger.open_day(store: @store, day: @day, templates: missing_templates, author: "tester")
+    end
+
+    refute File.exist?(SessionLedger.day_file(@store, @day)),
+      "a failed render must not leave a zero-byte or partial day file behind"
+  end
+
+  def test_open_day_retry_with_a_good_templates_dir_succeeds_after_a_failed_render
+    missing_templates = File.join(@store, "no-such-templates-dir")
+    assert_raises(Errno::ENOENT) do
+      SessionLedger.open_day(store: @store, day: @day, templates: missing_templates, author: "tester")
+    end
+
+    result = SessionLedger.open_day(store: @store, day: @day, templates: TEMPLATES, author: "tester")
+
+    assert result[:created], "the retry must see created: true, not a stale join against a dead file"
+    assert File.exist?(SessionLedger.day_file(@store, @day))
+    validation = IntentValidator.validate(result[:dir])
+    assert validation[:ok], validation[:errors].join(", ")
+  end
+
   # --- no environment read in the library --------------------------------------------------------
 
   def test_library_source_has_no_env_or_eval_token
@@ -271,7 +360,7 @@ class SessionLedgerWritesTest < Minitest::Test
       sessions_root day_dir day_file checklist_path savepoint_path
       tmp_root session_tmp_dir pointer_path heartbeat_path ensure_tmp_root
       open_day
-      sanitize_summary checklist_line savepoint_line parse_checklist_line
+      sanitize_summary checklist_line savepoint_line parse_checklist_line checklist_header
       append_line set_state read_locked
     ].each do |method_name|
       assert SessionLedger.respond_to?(method_name), "SessionLedger does not respond to #{method_name}"
@@ -284,5 +373,24 @@ class SessionLedgerWritesTest < Minitest::Test
     assert_equal(/\A\d{8}\z/, SessionLedger::DAY_ID)
     assert_equal %w[Item Done Note], SessionLedger::EVENTS
     assert_equal({ pending: "~", open: " ", done: "x" }, SessionLedger::STATES)
+    assert_equal(/\A[a-z0-9-]+\z/, SessionLedger::SLUG_RE)
+  end
+
+  # --- created: sourced from now, not from day (nit 9) ------------------------------
+
+  def test_open_day_created_field_comes_from_now_not_from_day
+    fixed_now = Time.new(2026, 8, 30, 9, 0, 0)
+    result = SessionLedger.open_day(store: @store, day: @day, templates: TEMPLATES, author: "tester", now: fixed_now)
+
+    fm = IntentValidator.parse_frontmatter(SessionLedger.day_file(@store, @day))
+    # @day is "20260829"; now is a day later, and created: must reflect now
+    # (when the scaffold FILE was actually written), not day (what it is for).
+    assert_equal "2026-08-30", fm["created"].to_s
+    assert_includes File.read(SessionLedger.day_file(@store, @day)), "Session ledger for 2026-08-29"
+    assert validation_ok?(result[:dir])
+  end
+
+  def validation_ok?(dir)
+    IntentValidator.validate(dir)[:ok]
   end
 end
