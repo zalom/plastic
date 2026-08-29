@@ -202,7 +202,7 @@ Solo fallback: if the harness has no subagent dispatch, fall back to a single ag
 
 Read the active intent's `savepoint.md` FIRST (intent 81): the last line classifies the stage,
 and you then verify only that line's artifact before entering. Fall back to the filesystem probe
-below only when the ledger is missing (then rebuild it with `Bridge.rebuild_savepoint`).
+below only when the ledger is missing (then rebuild it with `Savepoint.rebuild_savepoint`).
 
 | Ledger last line | Enter |
 |---|---|
