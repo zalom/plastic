@@ -116,4 +116,25 @@ class SessionCommitTest < Minitest::Test
   ensure
     FileUtils.rm_rf(repo)
   end
+
+  # --- REAL R2: the fail-open guarantee must survive a store/ledger error too ------
+
+  # P25: a read-only store directory makes SessionLedger.open_day raise Errno::EACCES.
+  # Before this fix that error sat outside any rescue and `main` had no top-level
+  # handler, so the CLI exited 1 with a raw Ruby backtrace on stderr, breaking the
+  # exit-0-always contract (spec D1) for a caller like intent 298's `record` hook that
+  # never expects a git-commit tool to crash the calling process.
+  def test_a_read_only_store_still_exits_0_with_no_backtrace
+    repo = build_repo
+    File.write(File.join(repo, "work.txt"), "changed\n")
+    FileUtils.chmod(0o500, @store)
+
+    out, status = run_session_commit("--cwd", repo, "--summary", "Item into a read-only store")
+
+    assert_equal 0, status, out
+    refute_match(/\.rb:\d+:in /, out, "must never leak a Ruby backtrace to the caller")
+  ensure
+    FileUtils.chmod(0o700, @store)
+    FileUtils.rm_rf(repo)
+  end
 end

@@ -23,14 +23,16 @@ class SessionGitTest < Minitest::Test
     RUNNER.run("-C", dir, *args)
   end
 
-  def build_repo
+  def build_repo(branch = "main", commit: true)
     dir = Dir.mktmpdir("session-git-repo")
-    git(dir, "init", "-q", "-b", "main")
+    git(dir, "init", "-q", "-b", branch)
     git(dir, "config", "user.email", "test@example.com")
     git(dir, "config", "user.name", "Test")
-    File.write(File.join(dir, "README.md"), "hello\n")
-    git(dir, "add", "-A")
-    git(dir, "commit", "-q", "-m", "initial")
+    if commit
+      File.write(File.join(dir, "README.md"), "hello\n")
+      git(dir, "add", "-A")
+      git(dir, "commit", "-q", "-m", "initial")
+    end
     dir
   end
 
@@ -326,23 +328,155 @@ class SessionGitTest < Minitest::Test
     FileUtils.rm_rf(repo)
   end
 
-  # --- direct: workspace: worktree ----------------------------------------------
+  # --- BLOCKER 2: git checkout/branch exit status must be checked ------------------
 
-  def test_direct_workspace_worktree_cuts_the_session_branch_into_a_worktree
+  # P7: H is base, session/<day> exists but is behind base, and the owner's OWN dirty
+  # file collides with the branch switch, so `git checkout session/<day>` refuses.
+  # Before this fix the exit status was never checked: staging and committing ran
+  # unconditionally in `repo` regardless of which branch was actually checked out, so
+  # the commit landed directly on the base branch while the Note claimed the session
+  # branch, which is exactly the "never commit straight to base" prohibition (296
+  # ruling row 1) and a savepoint line that names the wrong branch.
+  def test_direct_checkout_conflict_is_a_note_not_a_commit_on_base
+    repo = build_repo
+    git(repo, "branch", "session/#{@day}", "main")
+    File.write(File.join(repo, "README.md"), "advanced on main\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "advance main")
+    main_before = git(repo, "rev-parse", "main").stdout.to_s.strip
+
+    # the owner's own uncommitted edit collides with what checkout would need to do
+    File.write(File.join(repo, "README.md"), "owner's uncommitted work\n")
+    result = commit!(repo, "Owner item on base")
+
+    assert_equal "Note", result.event
+    assert_includes result.message, "could not check out"
+    assert_equal "main", current_branch(repo)
+    assert_equal main_before, git(repo, "rev-parse", "main").stdout.to_s.strip,
+      "base must be untouched; the commit must never land on base when the switch to the session branch failed"
+    assert_equal "owner's uncommitted work\n", File.read(File.join(repo, "README.md")),
+      "the owner's uncommitted edit must be left exactly where it was, not committed anywhere"
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  # P21: a project's branch_template references {{ticket}} or {{slug}}, which direct
+  # mode never populates, rendering an invalid ref like "quick/" (trailing slash).
+  # Before this fix, `git branch`/`git checkout` failures were ignored the same way,
+  # so the item committed straight onto main.
+  def test_direct_rejects_a_template_that_needs_ticket_or_slug
+    repo = build_repo
+    register_project("demo", repo)
+    write_flow("demo", { "branch_template" => "quick/{{ticket}}" })
+    main_before = git(repo, "rev-parse", "main").stdout.to_s.strip
+    write_dirty_file(repo)
+
+    result = commit!(repo, "Templated direct item")
+
+    assert_equal "Note", result.event
+    assert_includes result.message, "branch_template"
+    assert_equal "main", current_branch(repo)
+    assert_equal main_before, git(repo, "rev-parse", "main").stdout.to_s.strip
+    assert_match(/^\?\? work\.txt/, git(repo, "status", "--porcelain").stdout.to_s)
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  # P31: the session branch is checked out in a SIBLING worktree (exactly what the old
+  # workspace: worktree mechanism created), so a plain checkout-mode call cannot switch
+  # onto it either. Same exit-status bug, reached with no race and no template needed.
+  def test_direct_checkout_refused_when_session_branch_is_checked_out_elsewhere
+    repo = build_repo
+    wt = File.join(repo, ".claude", "worktrees", "session-#{@day}")
+    git(repo, "worktree", "add", "-q", wt, "-b", "session/#{@day}", "main")
+    main_before = git(repo, "rev-parse", "main").stdout.to_s.strip
+    write_dirty_file(repo, "w.txt", "owner work on main\n")
+
+    result = commit!(repo, "Item while the session branch is checked out elsewhere")
+
+    assert_equal "Note", result.event
+    assert_includes result.message, "could not check out"
+    assert_equal "main", current_branch(repo)
+    assert_equal main_before, git(repo, "rev-parse", "main").stdout.to_s.strip
+    assert_equal "initial", git(repo, "log", "-1", "--format=%s", "session/#{@day}").stdout.to_s.strip
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  # --- REAL R3: an unborn branch (no commits yet) must not be misread as detached --
+
+  def test_direct_on_an_unborn_branch_is_not_misread_as_detached
+    repo = build_repo("main", commit: false)
+    File.write(File.join(repo, "work.txt"), "first ever change\n")
+
+    result = commit!(repo, "First ever change")
+
+    refute_includes result.message, "detached HEAD",
+      "an unborn branch (git init, zero commits) is not a detached HEAD"
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  # --- REAL R4: a configured base that does not exist must not silently degrade -----
+
+  def test_direct_a_missing_configured_base_is_a_note_not_a_silent_commit_on_whatever_branch
+    repo = build_repo
+    register_project("demo", repo)
+    write_flow("demo", { "base" => "trunk" })
+    write_dirty_file(repo)
+
+    result = commit!(repo, "Item")
+
+    assert_equal "Note", result.event
+    assert_includes result.message, "trunk"
+    assert_includes result.message, "does not exist"
+    assert_equal "main", current_branch(repo)
+    assert_match(/^\?\? work\.txt/, git(repo, "status", "--porcelain").stdout.to_s)
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  # --- direct: workspace: worktree (BLOCKER 3 ruling: removed, degrades to checkout) --
+
+  # Ruling on review BLOCKER 3: the stash-relocation mechanism wedged permanently and
+  # silently moved the owner's uncommitted files out of their working tree (P10, P16,
+  # P18, P34). It is removed entirely. workspace: worktree stays a valid config value
+  # (the validator still accepts it), but session-commit treats it as checkout and
+  # writes a Note saying so. The real implementation is a follow-up (see intent 300's
+  # Insights and spec D8).
+  def test_direct_workspace_worktree_degrades_to_checkout_with_a_note
     repo = build_repo
     register_project("demo", repo)
     write_flow("demo", { "workspace" => "worktree" })
     write_dirty_file(repo)
 
-    result = commit!(repo, "worktree-routed item")
+    result = commit!(repo, "should commit through the checkout")
 
     assert_equal "Item", result.event
-    wt_path = File.join(repo, ".claude", "worktrees", "session-#{@day}")
-    assert Dir.exist?(wt_path), "expected the session worktree at #{wt_path}"
-    assert_equal "session/#{@day}", current_branch(wt_path)
-    assert_equal head_sha(wt_path), git(repo, "rev-parse", "main").stdout.to_s.strip
-    # the original checkout stays on main, untouched by a branch switch
-    assert_equal "main", current_branch(repo)
+    assert_includes result.message, "workspace: worktree is not implemented in this release"
+    assert_includes result.message, "committed through the checkout"
+    refute Dir.exist?(File.join(repo, ".claude", "worktrees", "session-#{@day}")),
+      "no hidden worktree must ever be created now that the relocation mechanism is removed"
+    assert_equal "session/#{@day}", current_branch(repo)
+    assert_equal head_sha(repo), git(repo, "rev-parse", "main").stdout.to_s.strip
+    assert_equal "", git(repo, "status", "--porcelain").stdout.to_s.strip
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  # P34: flipping to workspace: worktree while the checkout already sits on
+  # session/<day> (the state checkout mode leaves behind) must not wedge either.
+  def test_direct_workspace_worktree_reuses_an_already_checked_out_session_branch
+    repo = build_repo
+    register_project("demo", repo)
+    write_flow("demo", { "workspace" => "worktree" })
+    git(repo, "checkout", "-q", "-b", "session/#{@day}")
+    write_dirty_file(repo)
+
+    result = commit!(repo, "Item after flipping to worktree")
+
+    assert_equal "Item", result.event
+    assert_equal "session/#{@day}", current_branch(repo)
     assert_equal "", git(repo, "status", "--porcelain").stdout.to_s.strip
   ensure
     FileUtils.rm_rf(repo)
@@ -361,16 +495,18 @@ class SessionGitTest < Minitest::Test
       @available = available
       @pr_result = pr_result || Result.new(0, "https://github.com/example/repo/pull/1\n", "")
       @calls = []
+      @available_dirs = []
     end
 
-    attr_reader :calls
+    attr_reader :calls, :available_dirs
 
-    def available?
+    def available?(dir = nil)
+      @available_dirs << dir
       @available
     end
 
-    def run(*args)
-      @calls << args
+    def run(*args, dir: nil)
+      @calls << { args: args, dir: dir }
       @pr_result
     end
   end
@@ -390,7 +526,27 @@ class SessionGitTest < Minitest::Test
     expected_branch = "pr/#{@day}-fix-the-login-bug"
     assert git(repo, "rev-parse", "--verify", "--quiet", expected_branch).success?
     refute_empty gh.calls
-    assert_equal ["pr", "create", "--base", "main", "--head", expected_branch, "--fill"], gh.calls.first
+    assert_equal ["pr", "create", "--base", "main", "--head", expected_branch, "--fill"], gh.calls.first[:args]
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  # REAL R1: `gh` must run inside the repo `--cwd` resolved to, not the calling
+  # process's own working directory. Without a `chdir:`, `gh pr create` resolves its
+  # target repository from Dir.pwd, so it can silently act on a repository other than
+  # the one containing --cwd whenever session-commit is invoked from elsewhere.
+  def test_pr_mode_runs_gh_inside_the_resolved_repo
+    repo = build_repo
+    register_project("demo", repo)
+    write_flow("demo", { "mode" => "pull_request" })
+    write_dirty_file(repo)
+    gh = FakeGhRunner.new(available: true)
+
+    commit!(repo, "gh must run inside the repo", gh_runner: gh)
+
+    assert_equal [repo], gh.available_dirs
+    refute_empty gh.calls
+    assert_equal repo, gh.calls.first[:dir]
   ensure
     FileUtils.rm_rf(repo)
   end
@@ -407,11 +563,66 @@ class SessionGitTest < Minitest::Test
     result = commit!(repo, "Fix without gh", gh_runner: gh)
 
     assert_equal "Note", result.event
-    assert_equal "gh missing", result.message
+    assert_includes result.message, "gh missing"
     assert_equal "main", current_branch(repo)
     assert_empty gh.calls
     branch = "session/#{@day}" # branch_template default; day-only, no ticket/slug in default template
     assert git(repo, "rev-parse", "--verify", "--quiet", branch).success?
+    # N6: the branch and sha must be findable from the ledger line, not dropped.
+    tip_subject = git(repo, "log", "-1", "--format=%s", branch).stdout.to_s.strip
+    assert_includes result.message, branch
+    assert_includes result.message, tip_subject
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  # --- BLOCKER 1: both guards must run before mode dispatch, so pull_request shares them --
+
+  # P8: mode pull_request while the checkout is on an agent-owned plastic/ branch with
+  # uncommitted work. The whole point of the agent-lock guard is to never touch a branch
+  # another agent owns; before this fix it ran only inside commit_direct, so PR mode
+  # switched the checkout off plastic/123--x and committed the agent's WIP onto a new
+  # branch, leaving plastic/123--x's own tip untouched (the work silently moved).
+  def test_pr_mode_never_touches_an_agent_owned_branch
+    repo = build_repo
+    register_project("demo", repo)
+    write_flow("demo", { "mode" => "pull_request" })
+    git(repo, "checkout", "-q", "-b", "plastic/123--x")
+    write_dirty_file(repo, "work.txt", "agent work in progress\n")
+    gh = FakeGhRunner.new(available: false)
+
+    result = commit!(repo, "PR mode over an agent branch", gh_runner: gh)
+
+    assert_equal "Note", result.event
+    assert_includes result.message, "left branch plastic/123--x untouched: agent lock"
+    assert_equal "plastic/123--x", current_branch(repo)
+    assert_equal "initial", git(repo, "log", "-1", "--format=%s", "plastic/123--x").stdout.to_s.strip
+    assert_match(/^\?\? work\.txt/, git(repo, "status", "--porcelain").stdout.to_s)
+    assert_empty gh.calls
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  # P9: mode pull_request on a detached HEAD. Spec D1 says a detached HEAD commits
+  # nothing regardless of mode; before this fix only commit_direct checked for it, so
+  # PR mode created a session branch, checked out onto it, and committed there.
+  def test_pr_mode_commits_nothing_on_a_detached_head
+    repo = build_repo
+    register_project("demo", repo)
+    write_flow("demo", { "mode" => "pull_request" })
+    sha = head_sha(repo)
+    git(repo, "checkout", "-q", sha)
+    write_dirty_file(repo)
+    gh = FakeGhRunner.new(available: false)
+
+    result = commit!(repo, "PR mode detached", gh_runner: gh)
+
+    assert_equal "Note", result.event
+    assert_includes result.message, "detached HEAD"
+    assert_equal "HEAD", current_branch(repo)
+    refute git(repo, "rev-parse", "--verify", "--quiet", "session/#{@day}").success?,
+      "no session branch should be created for a detached HEAD"
+    assert_empty gh.calls
   ensure
     FileUtils.rm_rf(repo)
   end
