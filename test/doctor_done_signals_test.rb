@@ -6,7 +6,7 @@ require "tmpdir"
 require "fileutils"
 
 require_relative "../scripts/doctor"
-require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/lock"
 
 # Intent 93 - the done_signals doctor check reconciles the three done-signals
@@ -68,7 +68,7 @@ class DoctorDoneSignalsTest < Minitest::Test
 
   def write_placeholder_outcome(id)
     File.write(File.join(intent_dir(id), "outcome.md"),
-               "#{Bridge::PLACEHOLDER_SENTINEL}\n")
+               "#{Savepoint::PLACEHOLDER_SENTINEL}\n")
   end
 
   def write_savepoint_done(id, disposition: "delivered")

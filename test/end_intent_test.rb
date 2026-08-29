@@ -7,7 +7,7 @@ require "fileutils"
 require "open3"
 require "date"
 require "json"
-require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/lock"
 
 # end-intent (intent 161): the mechanical core of the Done procedure (D2 steps
@@ -18,7 +18,7 @@ require_relative "../scripts/lib/lock"
 # every fixture still lives under Dir.mktmpdir).
 class EndIntentTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/end-intent", __dir__)
-  SENTINEL = Bridge::PLACEHOLDER_SENTINEL
+  SENTINEL = Savepoint::PLACEHOLDER_SENTINEL
 
   def setup
     @home = Dir.mktmpdir("end-intent-home")
@@ -157,7 +157,7 @@ class EndIntentTest < Minitest::Test
   # --- (b) missing / placeholder outcome.md -> exit 6; wrong-disposition -> exit 2 [AC4] --
   #
   # Intent 222 executor note: the new per-intent structure gate (its intent_lifecycle_artifacts
-  # check) unconditionally verifies outcome.md PRESENCE via Bridge.stage_file_present?, and runs
+  # check) unconditionally verifies outcome.md PRESENCE via Savepoint.stage_file_present?, and runs
   # BEFORE the old outcome-only guard below. A missing or still-placeholder outcome.md is
   # therefore now caught by the STRONGER, EARLIER gate (exit 6), not the old guard (exit 2):
   # this is the intended artifact-completeness-at-close enforcement 219/222 call for, not a
@@ -303,7 +303,7 @@ class EndIntentTest < Minitest::Test
   def test_dry_run_changes_nothing
     intent_dir = build_intent
     write_index
-    intent_file = Bridge.intent_file(intent_dir)
+    intent_file = Savepoint.intent_file(intent_dir)
     outcome_file = File.join(intent_dir, "outcome.md")
 
     before_intent = File.read(intent_file)
@@ -385,7 +385,7 @@ class EndIntentTest < Minitest::Test
     run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index,
                     "--no-commit", "--outcome-summary", "Shipped the demo end to end.")
 
-    body = File.read(Bridge.intent_file(intent_dir))
+    body = File.read(Savepoint.intent_file(intent_dir))
     assert_includes body, "## Outcome\nShipped the demo end to end.\n"
   end
 
@@ -441,7 +441,7 @@ class EndIntentTest < Minitest::Test
     write_index(id: "161")
     Lock.acquire(intent_dir, session: "owner-session")
     before_index = File.read(@index)
-    before_intent_file = File.read(Bridge.intent_file(intent_dir))
+    before_intent_file = File.read(Savepoint.intent_file(intent_dir))
     before_outcome = File.read(File.join(intent_dir, "outcome.md"))
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
@@ -449,7 +449,7 @@ class EndIntentTest < Minitest::Test
     assert_equal 4, status
     assert_match(/held/i, out)
     assert_equal before_index, File.read(@index), "INDEX.md must be left untouched"
-    assert_equal before_intent_file, File.read(Bridge.intent_file(intent_dir))
+    assert_equal before_intent_file, File.read(Savepoint.intent_file(intent_dir))
     assert_equal before_outcome, File.read(File.join(intent_dir, "outcome.md"))
     assert_empty savepoint_lines(intent_dir), "savepoint.md must be left untouched"
     assert File.exist?(Lock.path(intent_dir)), "the foreign lock must be left exactly as found"
@@ -622,7 +622,7 @@ class EndIntentTest < Minitest::Test
     write_index(id: "161")
     File.write(Lock.path(intent_dir), "{ this is not valid json at all")
     before_index = File.read(@index)
-    before_intent_file = File.read(Bridge.intent_file(intent_dir))
+    before_intent_file = File.read(Savepoint.intent_file(intent_dir))
     before_outcome = File.read(File.join(intent_dir, "outcome.md"))
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
@@ -630,7 +630,7 @@ class EndIntentTest < Minitest::Test
     assert_equal 4, status, "a FRESH corrupt lock must refuse exactly like a fresh foreign lock: #{out}"
     assert_match(/corrupt/i, out)
     assert_equal before_index, File.read(@index), "INDEX.md must be left untouched"
-    assert_equal before_intent_file, File.read(Bridge.intent_file(intent_dir))
+    assert_equal before_intent_file, File.read(Savepoint.intent_file(intent_dir))
     assert_equal before_outcome, File.read(File.join(intent_dir, "outcome.md"))
     assert_empty savepoint_lines(intent_dir), "savepoint.md must be left untouched"
     assert File.exist?(Lock.path(intent_dir)), "the corrupt lock file must be left exactly as found"
@@ -723,7 +723,7 @@ class EndIntentTest < Minitest::Test
 
     before_index = File.read(@index)
     before_outcome = File.read(File.join(intent_dir, "outcome.md"))
-    before_intent_file = File.read(Bridge.intent_file(intent_dir))
+    before_intent_file = File.read(Savepoint.intent_file(intent_dir))
     refute File.exist?(File.join(intent_dir, "savepoint.md")), "no savepoint yet in this fixture"
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
@@ -731,7 +731,7 @@ class EndIntentTest < Minitest::Test
     assert_match(/intent_checklist_complete/, out)
     assert_equal before_index, File.read(@index), "INDEX.md must be untouched by a refused close"
     assert_equal before_outcome, File.read(File.join(intent_dir, "outcome.md")), "outcome.md must be untouched"
-    assert_equal before_intent_file, File.read(Bridge.intent_file(intent_dir)), "the intent file must be untouched"
+    assert_equal before_intent_file, File.read(Savepoint.intent_file(intent_dir)), "the intent file must be untouched"
     refute File.exist?(File.join(intent_dir, "savepoint.md")), "a refused close must author no savepoint line"
 
     File.write(File.join(intent_dir, "checklist.md"), "# Checklist\n\n- [x] finish the thing\n")

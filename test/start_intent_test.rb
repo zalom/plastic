@@ -8,6 +8,7 @@ require "json"
 require "open3"
 require_relative "../scripts/lib/start_intent"
 require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/lock"
 
 # start-intent (intent 213, group 2): arms the delivery lock (via Bridge's real arm
@@ -18,7 +19,7 @@ require_relative "../scripts/lib/lock"
 # real bridge.
 class StartIntentTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/start-intent", __dir__)
-  SENTINEL = Bridge::PLACEHOLDER_SENTINEL
+  SENTINEL = Savepoint::PLACEHOLDER_SENTINEL
 
   def setup
     @home = Dir.mktmpdir("start-intent-home")
