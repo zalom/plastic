@@ -98,27 +98,6 @@ module DoctorTestHelpers
     end
   end
 
-  # Build a minimal but structurally real scripts/hook-edit-gates, so
-  # claude_hooks_implemented_check (intent 244) has a `case gate` shape to
-  # read a `when "<gate>"` label for every HookRegistry::GATE_TOOLS key,
-  # matching how write_claude_hooks derives its launcher set from the
-  # registry rather than a hand-kept list.
-  def write_claude_dispatcher(plastic_home)
-    scripts_dir = File.join(plastic_home, "scripts")
-    FileUtils.mkdir_p(scripts_dir)
-    whens = HookRegistry::GATE_TOOLS.keys.map { |name| "  when \"#{name}\" then nil" }.join("\n")
-    path = File.join(scripts_dir, "hook-edit-gates")
-    File.write(path, <<~RUBY)
-      #!/usr/bin/env ruby
-      def route(gate, ctx)
-        case gate
-      #{whens}
-        end
-      end
-    RUBY
-    File.chmod(0o755, path)
-  end
-
   # Build a valid Claude settings.json carrying exactly the HookRegistry
   # registrations (intent 108, D7): the hooks_match_registry check compares
   # live settings against the registry, so "healthy" fixtures mirror it.
@@ -544,7 +523,6 @@ class DoctorAgentRegistrationTest < Minitest::Test
     File.write(agent_manifest, JSON.pretty_generate({ "files" => {} }))
 
     write_claude_hooks(hooks_dir)
-    write_claude_dispatcher(DOCTOR_TEST_HOME)
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
     write_agents(DOCTOR_TEST_CLAUDE)
@@ -1750,124 +1728,6 @@ class DoctorCodexHooksEntriesOwnedTest < Minitest::Test
   end
 end
 
-# ===========================================================================
-# 3a. claude_hooks_implemented_check (intent 244, the Claude twin of intent
-# 200's codex_hooks_implemented_check): scripts/hook-edit-gates now holds
-# every edit-path gate as a `case gate` branch, which is the exact shape
-# that let a registered gate ship with no dispatcher branch on Codex
-# (links-gate, intent 198). Mirrors CodexInstallTest's
-# codex_hooks_implemented fixtures in test/codex_install_test.rb: real
-# files distributed into a tmp plastic_home via InstallerCore, then
-# mutated on disk to force each failure mode.
-# ===========================================================================
-
-class DoctorClaudeHooksImplementedTest < Minitest::Test
-  WORKTREE = File.expand_path("../../", __FILE__)
-
-  def setup
-    @home = Dir.mktmpdir("claude-hooks-implemented-home")
-    @agent_dir = Dir.mktmpdir("claude-hooks-implemented-agent")
-    @agents = [{ key: "claude", name: "Claude Code", dir: @agent_dir, flag: "--claude", skill_prefix: "/" }]
-    @core = InstallerCore.new(package_root: WORKTREE, plastic_home: @home,
-                               agents: @agents, version: "1.0.0-test")
-  end
-
-  def teardown
-    FileUtils.rm_rf(@home)
-    FileUtils.rm_rf(@agent_dir)
-  end
-
-  def dispatcher_path
-    File.join(@home, "scripts", "hook-edit-gates")
-  end
-
-  def doctor_for(agent_dir)
-    Doctor.new(plastic_home: @home, agents: { "claude" => { name: "Claude Code", dir: agent_dir } })
-  end
-
-  def test_claude_hooks_implemented_passes_on_the_real_healthy_dispatcher
-    @core.distribute(:install) # copies the REAL scripts/hook-edit-gates into plastic_home
-    @core.install_for_agent("claude", false)
-
-    checks = doctor_for(@agent_dir).check_agent_registration("claude")
-    implemented_check = checks.find { |c| c[:name] == "claude_hooks_implemented" }
-
-    refute_nil implemented_check
-    assert_equal "pass", implemented_check[:status]
-  end
-
-  def test_claude_hooks_implemented_fails_when_a_registered_gate_has_no_dispatcher_branch
-    @core.distribute(:install)
-    @core.install_for_agent("claude", false)
-    content = File.read(dispatcher_path)
-    branch_start = content.index('when "links-gate"')
-    refute_nil branch_start, "fixture assumption: scripts/hook-edit-gates must still carry a links-gate branch"
-    # Remove just the links-gate `when` arm up to (not including) the next
-    # `when` or the case's closing `end`, whichever comes first.
-    next_when = content.index(/\n\s*when /, branch_start + 1)
-    end_line = content.index(/\n\s*end\b/, branch_start)
-    cut_end = [next_when, end_line].compact.min
-    refute_nil cut_end, "fixture assumption: the case statement must still be findable"
-    File.write(dispatcher_path, content[0...branch_start] + content[cut_end..])
-
-    checks = doctor_for(@agent_dir).check_agent_registration("claude")
-    implemented_check = checks.find { |c| c[:name] == "claude_hooks_implemented" }
-
-    refute_nil implemented_check
-    assert_equal "fail", implemented_check[:status]
-    assert(implemented_check[:details].any? { |d|
-      d.include?("links-gate") && d.include?("GATE_TOOLS") && d.include?("never blocks anything")
-    }, "expected a links-gate detail naming the direction and the fail-open runtime effect, got: #{implemented_check[:details].inspect}")
-  end
-
-  def test_claude_hooks_implemented_fails_when_the_dispatcher_has_a_branch_nobody_registers
-    @core.distribute(:install)
-    @core.install_for_agent("claude", false)
-    content = File.read(dispatcher_path)
-    marker = 'when "create-gate"'
-    idx = content.index(marker)
-    refute_nil idx, "fixture assumption: scripts/hook-edit-gates must still carry a create-gate branch"
-    updated = content[0...idx] + "when \"phantom-gate\"\n      nil\n    " + content[idx..]
-    File.write(dispatcher_path, updated)
-
-    checks = doctor_for(@agent_dir).check_agent_registration("claude")
-    implemented_check = checks.find { |c| c[:name] == "claude_hooks_implemented" }
-
-    refute_nil implemented_check
-    assert_equal "fail", implemented_check[:status]
-    assert(implemented_check[:details].any? { |d| d.include?("phantom-gate") && d.include?("dead code") },
-      "expected a phantom-gate detail naming it as dead/unreachable code, got: #{implemented_check[:details].inspect}")
-  end
-
-  def test_claude_hooks_implemented_fails_loudly_when_the_dispatcher_cannot_be_read
-    @core.distribute(:install)
-    @core.install_for_agent("claude", false)
-    reshaped = <<~RUBY
-      #!/usr/bin/env ruby
-      # Reshaped fixture: no `case gate` statement, so the extractor must find
-      # zero names and doctor must fail loudly rather than silently pass.
-      GATES = {
-        "code-gate" => ->(_x) { exit 0 },
-        "lock-gate" => ->(_x) { exit 0 },
-      }
-      handler = GATES[ARGV[0]] || ->(_x) { exit(0) }
-      handler.call(nil)
-    RUBY
-    File.write(dispatcher_path, reshaped)
-
-    checks = doctor_for(@agent_dir).check_agent_registration("claude")
-    implemented_check = checks.find { |c| c[:name] == "claude_hooks_implemented" }
-
-    refute_nil implemented_check
-    assert_equal "fail", implemented_check[:status]
-    assert_includes implemented_check[:message], "Could not read"
-  end
-
-  def test_claude_dispatcher_gate_names_returns_nil_on_no_recognizable_names
-    doctor = doctor_for(@agent_dir)
-    assert_nil doctor.claude_dispatcher_gate_names("# nothing recognizable here\nexit 0\n")
-  end
-end
 
 # ===========================================================================
 # 4. Core Files checks
@@ -2261,7 +2121,6 @@ class DoctorIntegrationTest < Minitest::Test
 
     # Agent registration
     write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
-    write_claude_dispatcher(DOCTOR_TEST_HOME)
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
     write_agents(DOCTOR_TEST_CLAUDE)

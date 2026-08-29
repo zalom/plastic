@@ -93,10 +93,6 @@ class LockSystemTest < Minitest::Test
     auto ? Bridge.arm_auto(session, **args) : Bridge.arm_guided(session, **args)
   end
 
-  def gate(file, session:)
-    Bridge.lock_gate_decision(nil, file, session: session, home: @home)
-  end
-
   def repair(session)
     Bridge.repair_lock(session, intent_id: "96", intent_dir: @dir96,
                        store: @store, name: "demo", tmp: @tmp)
@@ -131,13 +127,11 @@ class LockSystemTest < Minitest::Test
 
   # --- 3. delegation end to end -------------------------------------------------
 
-  def test_delegate_passes_the_gate_stranger_denied_with_routing
+  def test_delegate_holds_the_lock_and_a_stranger_does_not
     arm("owner-a")
     assert Lock.add_delegate(@dir96, delegate: "sub", session: "owner-a")
-    assert_nil gate("#{@dir96}/plan.md", session: "sub")
-    reason = gate("#{@dir96}/plan.md", session: "stranger")
-    refute_nil reason
-    assert_includes reason, "plastic-lock delegate"
+    assert Lock.holds?(@dir96, session: "sub")
+    refute Lock.holds?(@dir96, session: "stranger")
   end
 
   # --- 4. session resolution: all three fallbacks -------------------------------
@@ -171,10 +165,10 @@ class LockSystemTest < Minitest::Test
     arm("a", id: "96", dir: @dir96)
     arm("b", id: "97", dir: @dir97)
 
-    assert_nil gate("#{@dir96}/plan.md", session: "a")
-    assert_nil gate("#{@dir97}/plan.md", session: "b")
-    refute_nil gate("#{@dir96}/plan.md", session: "b"), "b must not write into a's intent"
-    refute_nil gate("#{@dir97}/plan.md", session: "a"), "a must not write into b's intent"
+    assert Lock.holds?(@dir96, session: "a")
+    assert Lock.holds?(@dir97, session: "b")
+    refute Lock.holds?(@dir96, session: "b"), "b does not hold a's intent"
+    refute Lock.holds?(@dir97, session: "a"), "a does not hold b's intent"
 
     assert Worktree.lock_held_by_other?(intent_id: "96", store: @store,
                                         current_session: "b", home: @home)
@@ -201,14 +195,7 @@ class LockSystemTest < Minitest::Test
     gitignore = File.read(File.join(@home, ".plastic", ".gitignore"))
     assert_includes gitignore.lines.map(&:strip), "*.lock"
 
-    # Enforcement: shared checkout blocked (names the worktree), worktree
-    # path allowed, outside-repo path allowed (ACTION-10 contract).
     bridge["session"] = "a"
-    shared = Bridge.worktree_gate_decision(bridge, File.join(@repo, "lib", "app.rb"), home: @home)
-    refute_nil shared
-    assert_includes shared, code_wt
-    assert_nil Bridge.worktree_gate_decision(bridge, File.join(code_wt, "lib", "app.rb"), home: @home)
-    assert_nil Bridge.worktree_gate_decision(bridge, File.join(@home, "elsewhere", "x.md"), home: @home)
 
     # Merge-remove: finish(merge: true) merges the code branch, then removes
     # the worktree and clears the block.
@@ -248,43 +235,13 @@ class LockSystemTest < Minitest::Test
     assert File.exist?(locked), "a held delivery.lock blocks the purge (D6)"
   end
 
-  # --- 8. per-gate deny/allow matrix ----------------------------------------------
-
-  def test_gate_matrix_denials_name_the_resolving_command
-    project_file = File.join(@home, "apps", "demo", "app.rb")
-
-    # code-gate: auto armed, pre-How -> deny naming the plan skills; post-How -> allow.
-    auto_bridge = arm("a", auto: true)
-    pre = Bridge.code_gate_decision(auto_bridge, project_file, home: @home)
-    refute_nil pre
-    assert_includes pre, "plastic-intent-planning"
-    File.write(File.join(@dir96, "plan.md"), "plan body\n")
-    FileUtils.mkdir_p(File.join(@dir96, "actions"))
-    File.write(File.join(@dir96, "actions", "ACTION_1.md"), "# Action 1\nreal\n")
-    File.write(File.join(@dir96, "checklist.md"), "- [ ] x\n")
-    assert_nil Bridge.code_gate_decision(auto_bridge, project_file, home: @home)
-
-    # lock-gate: no lock -> deny naming intent-starting; owner -> allow.
-    refute_nil gate("#{@dir97}/plan.md", session: "nobody")
-    assert_includes gate("#{@dir97}/plan.md", session: "nobody"), "/plastic-intent-starting"
-    assert_nil gate("#{@dir96}/plan.md", session: "a")
-
-    # bash-gate: interpreter write into another session's locked intent -> deny
-    # routed at plastic-lock; the escape tag is recognized.
-    cmd = "ruby -e 'File.write(#{"#{@dir96}/plan.md".inspect}, \"x\")'"
-    reason = Bridge.bash_gate_decision(nil, cmd, cwd: "/", session: "intruder")
-    refute_nil reason
-    assert_includes reason, "plastic-lock"
-    assert Bridge.bash_escape?("#{cmd} # plastic-ok")
-  end
-
   # --- 9-11. recovery ---------------------------------------------------------------
 
   def test_corrupted_bridge_recovery
     arm("a")
     File.write(Bridge.path("a", intent_id: "96", tmp: @tmp), "}{ not json")
-    assert_nil gate("#{@dir96}/plan.md", session: "a"),
-               "a clobbered bridge cannot strand the owner: the lock file wins (D2)"
+    assert Lock.holds?(@dir96, session: "a"),
+           "a clobbered bridge cannot strand the owner: the lock file wins (D2)"
     report = repair("a")
     assert_equal "repaired", report["status"]
     bridge = Bridge.read("a", intent_id: "96", tmp: @tmp)
@@ -294,19 +251,18 @@ class LockSystemTest < Minitest::Test
 
   def test_corrupted_lock_recovery
     File.write(Lock.path(@dir96), "{ nope")
-    reason = gate("#{@dir96}/plan.md", session: "a")
-    assert_includes reason, "/plastic-doctor fix the lock"
+    assert Lock.corrupt?(@dir96)
     report = repair("a")
     assert_equal "repaired", report["status"]
     assert_equal "a", Lock.read(@dir96)["owner_session"]
-    assert_nil gate("#{@dir96}/plan.md", session: "a")
+    assert Lock.holds?(@dir96, session: "a")
   end
 
   def test_missing_bridge_tmp_wiped_recovery
     arm("a")
     File.delete(Bridge.path("a", intent_id: "96", tmp: @tmp))
-    assert_nil gate("#{@dir96}/plan.md", session: "a"),
-               "a wiped /tmp cannot strand the owner"
+    assert Lock.holds?(@dir96, session: "a"),
+           "a wiped /tmp cannot strand the owner"
     report = repair("a")
     assert_equal "repaired", report["status"]
     refute_nil Bridge.read("a", intent_id: "96", tmp: @tmp), "repair rebuilds the bridge cache"

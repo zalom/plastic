@@ -144,18 +144,6 @@ class BridgeCollisionTest < Minitest::Test
     found = Bridge.discover_bridge(session: session, cwd: code_a, tmp: @tmp)
     assert_equal "201", found.dig("intent", "id")
 
-    shared_checkout_file = File.join(@home, "repo", "lib", "app.rb")
-
-    wt_reason = Bridge.worktree_gate_decision(found, shared_checkout_file, home: @home)
-    refute_nil wt_reason, "editing the shared checkout while a worktree is provisioned must block"
-    assert_includes wt_reason, "intent 201"
-    refute_includes wt_reason, "intent 202"
-    assert_includes wt_reason, code_a
-
-    code_reason = Bridge.code_gate_decision(found, shared_checkout_file, home: @home)
-    refute_nil code_reason, "pre-How auto-armed code edit must block"
-    assert_includes code_reason, "intent 201"
-    refute_includes code_reason, "intent 202"
   end
 
   # --- 5. purge keeps every own-session bridge --------------------------------

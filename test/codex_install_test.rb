@@ -845,13 +845,11 @@ class CodexInstallTest < Minitest::Test
 
     data = JSON.parse(File.read(hooks_json_path))
     commands = all_codex_hook_commands(data)
-    # Intent 251: the five per-gate commands collapsed into one edit-gates
-    # dispatcher command.
-    assert commands.any? { |c| c.include?("codex-hook") && c.include?("edit-gates") }
+    # Intent 302: the edit-path gates are gone; record is the one apply_patch hook.
     assert commands.any? { |c| c.include?("codex-hook") && c.include?("record") }
+    refute commands.any? { |c| c.include?("edit-gates") || c.include?("bash-gate") }
 
-    pre_group = data["hooks"]["PreToolUse"].find { |g| g["matcher"] == "apply_patch" }
-    refute_nil pre_group, "PreToolUse must register under the apply_patch matcher"
+    refute data["hooks"].key?("PreToolUse"), "no PreToolUse group may be registered (intent 302)"
     post_group = data["hooks"]["PostToolUse"].find { |g| g["matcher"] == "apply_patch" }
     refute_nil post_group, "PostToolUse must register under the apply_patch matcher"
   end
@@ -892,8 +890,10 @@ class CodexInstallTest < Minitest::Test
     refute_nil user_group, "the pre-existing user hook group must survive the merge"
     assert_equal "/usr/local/bin/my-hook", user_group["hooks"].first["command"]
 
-    plastic_group = data["hooks"]["PreToolUse"].find { |g| g["matcher"] == "apply_patch" }
-    refute_nil plastic_group, "Plastic's apply_patch group must be added alongside the user's"
+    refute data["hooks"]["PreToolUse"].any? { |g| g["matcher"] == "apply_patch" },
+           "no Plastic apply_patch PreToolUse group may be added (intent 302)"
+    plastic_group = data["hooks"]["PostToolUse"].find { |g| g["matcher"] == "apply_patch" }
+    refute_nil plastic_group, "Plastic's apply_patch record group must be added alongside the user's"
   end
 
   def test_install_codex_is_idempotent_on_rerun
@@ -904,8 +904,8 @@ class CodexInstallTest < Minitest::Test
     second = JSON.parse(File.read(hooks_json_path))
 
     assert_equal first, second, "re-running install must not duplicate hook groups"
-    pre_groups = second["hooks"]["PreToolUse"].select { |g| g["matcher"] == "apply_patch" }
-    assert_equal 1, pre_groups.size, "exactly one apply_patch PreToolUse group after re-run"
+    post_groups = second["hooks"]["PostToolUse"].select { |g| g["matcher"] == "apply_patch" }
+    assert_equal 1, post_groups.size, "exactly one apply_patch PostToolUse group after re-run"
   end
 
   def test_install_codex_does_not_manifest_track_hooks_json

@@ -178,6 +178,24 @@ class EndIntentTest < Minitest::Test
     assert_empty savepoint_lines(intent_dir)
   end
 
+  # Intent 302: the write-time create gate is gone; the intent-file content check
+  # survives at close time through the structure gate's IntentValidator run. Pin it:
+  # a required frontmatter field missing from the intent file refuses with exit 6,
+  # names the field, and writes nothing (no Done line, INDEX untouched).
+  def test_intent_file_missing_a_required_field_refuses_with_exit_6
+    intent_dir = build_intent
+    ifile = File.join(intent_dir, "161--demo.md")
+    File.write(ifile, File.read(ifile).sub(/^author: .*\n/, ""))
+    write_index
+    index_before = File.read(@index)
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
+    assert_equal 6, status
+    assert_match(/author/, out)
+    assert_empty savepoint_lines(intent_dir)
+    assert_equal index_before, File.read(@index)
+  end
+
   def test_placeholder_outcome_refuses_with_exit_6_via_the_structure_gate
     intent_dir = build_intent(sentinel: true, outcome_disposition: "delivered|abandoned")
     write_index

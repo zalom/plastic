@@ -10,12 +10,12 @@ require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/lock"
 require_relative "../scripts/lib/worktree"
 
-# exec-worktree (intent 213, group 2): the order precondition then Worktree.finish.
-# Hermetic: every fixture lives under Dir.mktmpdir, PLASTIC_TMP isolates the bridge dir,
-# and no test creates, merges, or removes a real git worktree (the finisher seam is always
-# injected; the two tests that reach the real Bridge.code_gate_decision predicate exercise
-# only its file-presence check, never git). See test/worktree_test.rb and
-# test/worktree_cleanup_test.rb for the house-style reference this mirrors.
+# exec-worktree (intent 213, group 2; the order precondition left with the gates in
+# intent 302): the dirty-worktree guard, then Worktree.finish. Hermetic: every fixture
+# lives under Dir.mktmpdir, PLASTIC_TMP isolates the bridge dir, and no test creates,
+# merges, or removes a real git worktree (the finisher seam is always injected).
+# See test/worktree_test.rb and test/worktree_cleanup_test.rb for the house-style
+# reference this mirrors.
 class ExecWorktreeTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("exec-wt-home")
@@ -59,8 +59,7 @@ class ExecWorktreeTest < Minitest::Test
 
   # Writes a bridge file directly (never through Bridge.arm_*, so no lock is acquired and
   # no real Worktree.provision runs). auto: nil omits build.auto entirely (a guided
-  # bridge never sets the key on arm_guided-shaped data either way; code_gate_decision
-  # treats absence exactly like false).
+  # bridge never sets the key on arm_guided-shaped data either way).
   def write_bridge(id: "213", slug: "demo", auto:, worktree_code:, session: @session)
     data = {
       "session" => session,
@@ -140,12 +139,6 @@ class ExecWorktreeTest < Minitest::Test
     end
   end
 
-  def unreachable_gate
-    lambda do |*_args|
-      flunk "gate seam must not be called for an abandoned disposition"
-    end
-  end
-
   # Spy finisher: records every call, and simulates the REAL Worktree.finish contract
   # (mutates bridge_data, deletes the "worktree" key) by removing the worktree dir from
   # disk when `remove:` is true, never touching real git.
@@ -192,110 +185,7 @@ class ExecWorktreeTest < Minitest::Test
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "abandoned", finisher: finisher,
-                               status_checker: unreachable_status_checker,
-                               gate: unreachable_gate)
-    assert_equal 0, result[:exit_code]
-    assert_equal 1, calls.length
-    assert_equal false, calls.first[:merge]
-  end
-
-  # --- 2: the order precondition blocks an AUTO bridge that has not reached How ------
-
-  def test_precondition_blocks_when_plan_missing
-    dir = build_intent_dir
-    File.write(File.join(dir, "checklist.md"), "# Checklist\nreal\n")
-    File.write(File.join(dir, "actions", "ACTION_1.md"), "# Action 1\nreal\n")
-    code = worktree_code_path
-    FileUtils.mkdir_p(code)
-    write_bridge(auto: true, worktree_code: code)
-    finisher, calls = spy_finisher
-
-    result = run_exec_worktree(disposition: "delivered", finisher: finisher,
                                status_checker: unreachable_status_checker)
-    assert_equal 2, result[:exit_code]
-    assert_empty calls
-    assert_match(/has not reached How/, result[:stderr].join)
-  end
-
-  def test_precondition_blocks_when_checklist_missing
-    dir = build_intent_dir
-    File.write(File.join(dir, "plan.md"), "# Plan\nreal\n")
-    File.write(File.join(dir, "actions", "ACTION_1.md"), "# Action 1\nreal\n")
-    code = worktree_code_path
-    FileUtils.mkdir_p(code)
-    write_bridge(auto: true, worktree_code: code)
-    finisher, calls = spy_finisher
-
-    result = run_exec_worktree(disposition: "delivered", finisher: finisher,
-                               status_checker: unreachable_status_checker)
-    assert_equal 2, result[:exit_code]
-    assert_empty calls
-  end
-
-  # The intent-133a case: actions/ holds ONLY a .gitkeep, never a real action file.
-  def test_precondition_blocks_when_actions_is_gitkeep_only
-    dir = build_intent_dir
-    File.write(File.join(dir, "plan.md"), "# Plan\nreal\n")
-    File.write(File.join(dir, "checklist.md"), "# Checklist\nreal\n")
-    File.write(File.join(dir, "actions", ".gitkeep"), "")
-    code = worktree_code_path
-    FileUtils.mkdir_p(code)
-    write_bridge(auto: true, worktree_code: code)
-    finisher, calls = spy_finisher
-
-    result = run_exec_worktree(disposition: "delivered", finisher: finisher,
-                               status_checker: unreachable_status_checker)
-    assert_equal 2, result[:exit_code]
-    assert_empty calls
-    assert_match(/has not reached How/, result[:stderr].join)
-  end
-
-  # --- 3: the order precondition passes when an AUTO bridge HAS reached How ---------
-
-  def test_precondition_passes_on_auto_bridge_that_reached_how
-    build_intent_dir(how_complete: true)
-    code = worktree_code_path
-    FileUtils.mkdir_p(code)
-    write_bridge(auto: true, worktree_code: code)
-    finisher, calls = spy_finisher
-
-    result = run_exec_worktree(disposition: "delivered", finisher: finisher,
-                               status_checker: clean_status_checker, runner: merged_runner)
-    assert_equal 0, result[:exit_code]
-    assert_equal 1, calls.length
-    assert_match(/precondition: passed/, result[:stdout].join("\n"))
-  end
-
-  # --- 4: on a GUIDED bridge the precondition is advisory only, never the gate -------
-
-  def test_guided_bridge_precondition_is_advisory_not_the_enforcement_point
-    build_intent_dir # How deliberately NOT reached; a guided bridge must still proceed
-    code = worktree_code_path
-    FileUtils.mkdir_p(code)
-    write_bridge(auto: false, worktree_code: code)
-    finisher, calls = spy_finisher
-
-    result = run_exec_worktree(disposition: "delivered", finisher: finisher,
-                               status_checker: clean_status_checker, runner: merged_runner)
-    assert_equal 0, result[:exit_code]
-    assert_equal 1, calls.length
-    output = result[:stdout].join("\n")
-    assert_match(/precondition: advisory \(guided bridge\)/, output)
-    assert_match(/not the enforcement point/, output)
-    assert_match(/advisory only/, output)
-  end
-
-  # --- 5: abandoned NEVER runs the precondition --------------------------------------
-
-  def test_abandoned_never_calls_the_gate_seam
-    build_intent_dir # How not reached; irrelevant for abandoned
-    code = worktree_code_path
-    FileUtils.mkdir_p(code)
-    write_bridge(auto: true, worktree_code: code)
-    finisher, calls = spy_finisher
-
-    result = run_exec_worktree(disposition: "abandoned", finisher: finisher,
-                               gate: unreachable_gate, status_checker: unreachable_status_checker)
     assert_equal 0, result[:exit_code]
     assert_equal 1, calls.length
     assert_equal false, calls.first[:merge]
@@ -307,7 +197,7 @@ class ExecWorktreeTest < Minitest::Test
     build_intent_dir
     code = worktree_code_path
     FileUtils.mkdir_p(code)
-    write_bridge(auto: false, worktree_code: code) # guided: precondition is advisory-nil
+    write_bridge(auto: false, worktree_code: code)
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", finisher: finisher,
@@ -391,8 +281,7 @@ class ExecWorktreeTest < Minitest::Test
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "abandoned", finisher: finisher,
-                               status_checker: unreachable_status_checker,
-                               gate: unreachable_gate)
+                               status_checker: unreachable_status_checker)
     assert_equal 0, result[:exit_code]
     assert_equal 1, calls.length
     assert_equal false, calls.first[:merge]
@@ -405,8 +294,7 @@ class ExecWorktreeTest < Minitest::Test
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", session: "nobody-armed-this",
-                               finisher: finisher, status_checker: unreachable_status_checker,
-                               gate: unreachable_gate)
+                               finisher: finisher, status_checker: unreachable_status_checker)
     assert_equal 0, result[:exit_code]
     assert_empty calls
     assert_match(/no bridge resolved/, result[:stdout].join)
@@ -415,14 +303,13 @@ class ExecWorktreeTest < Minitest::Test
 
   # --- 10: no code worktree recorded ---------------------------------------------------
 
-  def test_no_code_worktree_exits_0_precondition_skipped_finisher_never_called
+  def test_no_code_worktree_exits_0_finisher_never_called
     build_intent_dir
     write_bridge(auto: true, worktree_code: nil)
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", finisher: finisher,
-                               status_checker: unreachable_status_checker,
-                               gate: unreachable_gate)
+                               status_checker: unreachable_status_checker)
     assert_equal 0, result[:exit_code]
     assert_empty calls
     assert_match(/nothing was provisioned/, result[:stdout].join)
@@ -440,8 +327,7 @@ class ExecWorktreeTest < Minitest::Test
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", session: nil, env_session: nil,
-                               finisher: finisher, status_checker: unreachable_status_checker,
-                               gate: unreachable_gate)
+                               finisher: finisher, status_checker: unreachable_status_checker)
     assert_equal 4, result[:exit_code]
     assert_empty calls
   end

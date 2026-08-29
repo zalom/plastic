@@ -3,10 +3,10 @@ require "tmpdir"
 require "fileutils"
 require_relative "../scripts/lib/bridge"
 
-# Intent 133a: the How gate requires at least one REAL action file in actions/
+# Intent 133a: How is reached only with at least one REAL action file in actions/
 # (non-.gitkeep, non-empty, non-sentinel) at every tier. These tests exercise the
 # pure bridge helpers directly, so no hook or session resolution is needed.
-class ActionGateTest < Minitest::Test
+class RealActionTest < Minitest::Test
   SENTINEL = Bridge::PLACEHOLDER_SENTINEL
 
   def setup
@@ -81,19 +81,6 @@ class ActionGateTest < Minitest::Test
 
   # --- check_gate: checklist.md write path -----------------------------------
 
-  def test_check_gate_blocks_checklist_when_actions_empty
-    msg = Bridge.check_gate(@intent_dir, File.join(@intent_dir, "checklist.md"))
-    refute_nil msg
-    assert_includes msg, "actions/"
-    assert_includes msg, "ACTION_N.md"
-    assert_includes msg, "planner"
-  end
-
-  def test_check_gate_allows_checklist_with_real_action
-    write_action("ACTION_1.md", "# Action 1\nreal steps\n")
-    assert_nil Bridge.check_gate(@intent_dir, File.join(@intent_dir, "checklist.md"))
-  end
-
   # --- code_gate_decision ----------------------------------------------------
 
   def code_bridge
@@ -101,16 +88,5 @@ class ActionGateTest < Minitest::Test
       "build" => { "auto" => true },
       "intent" => { "id" => "133", "store" => @root, "dir" => "133--demo" },
     }
-  end
-
-  def test_code_gate_blocks_edit_until_real_action_exists
-    target = File.join(@root, "project", "app.rb")
-    reason = Bridge.code_gate_decision(code_bridge, target, home: @root)
-    refute_nil reason, "an empty actions/ must not open the code gate"
-    assert_includes reason, "ACTION_N.md"
-
-    write_action("ACTION_1.md", "# Action 1\nreal steps\n")
-    assert_nil Bridge.code_gate_decision(code_bridge, target, home: @root),
-               "a real action file opens the code gate"
   end
 end

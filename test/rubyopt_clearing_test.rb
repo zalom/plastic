@@ -87,10 +87,8 @@ class RubyoptClearingTest < Minitest::Test
 
   # Rename guard only. The hooks scan below enumerates the directory, it does not read this.
   KNOWN_SHELL_LAUNCHERS = %w[
-    hooks/bash-gate
     hooks/capture
     hooks/check-update
-    hooks/edit-gates
     hooks/power-tools
     hooks/record
     hooks/session-start
@@ -175,11 +173,11 @@ class RubyoptClearingTest < Minitest::Test
     recognized = shell_files.sum { |rel| scannable_lines(rel).count { |line, _i| line =~ SHELL_SPAWN_TOKEN } }
 
     # Intent 298 replaced continue, future-intent-check, auto-arm, and gate-check
-    # with capture and record, moving the baseline from 14 to 7 recognized spawn
-    # lines (bash-gate, capture, check-update, edit-gates, power-tools, record,
-    # session-start).
-    assert_equal 7, recognized,
-      "the shell scan should recognize 7 ruby command words across hooks/, all already " \
+    # with capture and record (14 to 7); intent 302 removed the edit-gates and
+    # bash-gate launchers, so the baseline is 5 recognized spawn lines (capture,
+    # check-update, power-tools, record, session-start).
+    assert_equal 5, recognized,
+      "the shell scan should recognize 5 ruby command words across hooks/, all already " \
       "cleared; if this number drops, SHELL_SPAWN_TOKEN stopped matching and the hooks test " \
       "above is vacuous"
   end
