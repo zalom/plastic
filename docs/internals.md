@@ -82,7 +82,7 @@ through a fixed eight-section template (`templates/spec.md` plus
 `references/per-section-fill-rules.md`), so `spec.md` is no longer the
 least-constrained artifact in the framework. Intent 299 adds `direct` to the
 group, taking it to six: it is a prose router with no script and no template
-behind it, deciding by judgement which of three responses a prompt gets, with
+behind it, deciding by judgement which of five routes a prompt takes, with
 only its `references/request-signals.md` table to constrain the call.
 
 Auto mode adds five more agent surfaces, the role files that ship in `agents/`:

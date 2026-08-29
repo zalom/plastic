@@ -1,9 +1,10 @@
 # Request signals
 
-The table below is reproduced verbatim from `296/resources/research--request-analysis.md`, the
-request-analysis research deposit of intent 296. Read it when a prompt sits on the boundary
-between two routes. That deposit also carries seven worked examples, one per boundary, for a
-reader who wants them.
+The table below is reproduced from
+`296--make-plastic-faster-small-work/resources/research--request-analysis.md`, the
+request-analysis research deposit of intent 296, with its source column renumbered against the
+eight-source list below. Read it when a prompt sits on the boundary between two routes. That
+deposit also carries seven worked examples, one per boundary, for a reader who wants them.
 
 ## The signal table
 
@@ -25,9 +26,11 @@ reader who wants them.
 | The request implies running tests or a build step the agent can run itself as part of verification | "Fix the failing test in user_test.rb." | execute now | D15 |
 | The prompt changes nothing on disk and produces no artifact | "What does the PaymentProcessor class do?" | execute now (answered inline; never admitted as a checklist item) | D17 |
 
+Row 8 uses the deposit's wording. Ruling D13 makes the help-needed route grill plus a thinking conversation, as `SKILL.md` section 3 states.
+
 ## Rulings, not findings
 
-Four things in this file are owner rulings with no literature behind them. Apply them, and know
+Four things in the table above are owner rulings with no literature behind them. Apply them, and know
 they are policy knobs the owner can turn, not measured results.
 
 - The five-minute total and the one-minute-per-target budget. Task-complexity research (sources 7
