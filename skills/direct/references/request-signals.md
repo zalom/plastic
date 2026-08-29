@@ -26,12 +26,13 @@ deposit also carries seven worked examples, one per boundary, for a reader who w
 | The request implies running tests or a build step the agent can run itself as part of verification | "Fix the failing test in user_test.rb." | execute now | D15 |
 | The prompt changes nothing on disk and produces no artifact | "What does the PaymentProcessor class do?" | execute now (answered inline; never admitted as a checklist item) | D17 |
 
-Row 8 uses the deposit's wording. Ruling D13 makes the help-needed route grill plus a thinking conversation, as `SKILL.md` section 3 states.
+Row 8 uses the deposit's wording. Ruling D13 makes the help-needed route grill plus a
+thinking conversation, as `SKILL.md` section 3 states.
 
 ## Rulings, not findings
 
-Four things in the table above are owner rulings with no literature behind them. Apply them, and know
-they are policy knobs the owner can turn, not measured results.
+Four things in the table above are owner rulings with no literature behind them. Apply
+them, and know they are policy knobs the owner can turn, not measured results.
 
 - The five-minute total and the one-minute-per-target budget. Task-complexity research (sources 7
   and 8) correlates target count and search depth with lower agent success, which supports

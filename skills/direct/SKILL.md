@@ -22,8 +22,8 @@ Judge the prompt alone, before doing any of the work:
 5. A bounded sum above five minutes, offer a dedicated intent.
 6. An unknown target, or a change described only by its outcome, cannot be bounded. Ask one
    question when one answer would supply the missing operation or target. Otherwise offer a
-   thinking intent. A target that only investigation can find is not settled by one question;
-   offer a thinking intent.
+   thinking intent. A target that only investigation can find is never settled by one
+   question.
 
 Tests or a build the prompt implies do not count against the budget. Verification is part of
 direct work, not a reason to leave direct mode.
