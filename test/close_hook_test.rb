@@ -153,13 +153,13 @@ class CloseHookTest < Minitest::Test
     assert_empty calls
   end
 
-  def test_pointer_naming_an_intent_never_hands_off
+  def test_pointer_naming_an_intent_hands_off_today
     SessionLedger.ensure_tmp_root(@store)
     FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, SHORT))
     File.write(SessionLedger.pointer_path(@store, SHORT), "297\n")
     calls = []
-    run_close_with_handoff(handoff: ->(*a) { calls << a })
-    assert_empty calls
+    run_close_with_handoff(handoff: ->(_s, day, _sid) { calls << day })
+    assert_equal [TODAY], calls
   end
 
   def test_handoff_failure_is_swallowed_and_the_rest_of_close_runs

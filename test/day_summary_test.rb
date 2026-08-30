@@ -50,14 +50,16 @@ class DaySummaryTest < Minitest::Test
     File.write(path, body)
   end
 
-  def intent(store, dirname, lock_age: nil, savepoint: nil)
+  def intent(store, dirname, lock_age: nil, savepoint: nil, run_mode: "auto")
     dir = File.join(store, dirname)
     FileUtils.mkdir_p(dir)
     File.write(File.join(dir, "#{dirname}.md"), "---\nid: \"#{dirname.split('--').first}\"\n---\n")
     File.write(File.join(dir, "savepoint.md"), savepoint) if savepoint
     if lock_age
       lock = File.join(dir, "delivery.lock")
-      File.write(lock, JSON.generate("type" => "delivery", "owner_session" => "x", "run_mode" => "auto"))
+      data = { "type" => "delivery", "owner_session" => "x" }
+      data["run_mode"] = run_mode if run_mode
+      File.write(lock, JSON.generate(data))
       FileUtils.touch(lock, mtime: NOW - lock_age)
     end
     dir
@@ -184,6 +186,35 @@ class DaySummaryTest < Minitest::Test
     refute_includes live, "42 stale", "a stale lock is not live"
     refute_includes live, "43 future", "a Future intent is never live"
     refute_includes live, "99"
+  end
+
+  def test_guided_lock_is_excluded_and_a_lock_without_run_mode_counts_as_auto
+    index(File.join(@home, "INDEX.md"), active: %w[44--guided 45--legacy])
+    intent(@store, "44--guided", lock_age: 10, run_mode: "guided", savepoint: "2026-08-30T11:00:00Z  Exec  by hand\n")
+    intent(@store, "45--legacy", lock_age: 10, run_mode: nil, savepoint: "2026-08-30T11:00:00Z  Exec  old team\n")
+    live = part(build, "Live auto intents:")
+    refute_includes live, "44 guided"
+    assert_includes live, "- 45 legacy: 2026-08-30T11:00:00Z  Exec  old team"
+  end
+
+  def test_long_summaries_and_savepoint_lines_are_clipped
+    item(:open, "b" * 200)
+    index(File.join(@home, "INDEX.md"), active: %w[46--long])
+    intent(@store, "46--long", lock_age: 10, savepoint: "2026-08-30T11:00:00Z  Exec  #{'y' * 200}\n")
+    text = build
+    assert_includes text, "- [#{SELF}] [plastic] #{'b' * 80}..."
+    assert_equal 100, part(text, "Live auto intents:").lines[1].chomp.sub("- 46 long: ", "").length
+  end
+
+  def test_full_caps_fit_inside_the_budget_without_trimming
+    10.times { |i| item(:open, "open #{i} #{'x' * 190}", session: format("s%07d", i)) }
+    5.times { |i| event("Done", "done #{i} #{'x' * 190}", at: NOW + i) }
+    index(File.join(@home, "INDEX.md"), active: (1..5).map { |i| "#{i}--slug-#{i}" })
+    (1..5).each { |i| intent(@store, "#{i}--slug-#{i}", lock_age: 5, savepoint: "2026-08-30T11:00:00Z  Exec  #{'z' * 150}\n") }
+    10.times { |i| session_tmp(format("h%07d", i), heartbeat: NOW - i, current: "311--handoff-and-day-summary") }
+    text = build
+    assert_operator text.bytesize, :<=, DaySummary::BUDGET
+    refute_match(/\(\+\d+ more\)/, text)
   end
 
   def test_live_intent_without_a_savepoint_renders_a_placeholder

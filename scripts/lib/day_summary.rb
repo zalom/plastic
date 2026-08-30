@@ -16,13 +16,15 @@ require_relative "lock"
 module DaySummary
   module_function
 
-  BUDGET = 2048
+  # Every part at its cap with 80-character summaries is about 2.8 KB; the
+  # budget is the safety net above that, not the working limit.
+  BUDGET = 3072
   HEARTBEAT_TTL = 3600
   OPEN_CAP = 10
   DONE_CAP = 5
   LIVE_CAP = 5
   SESSIONS_CAP = 10
-  LINE_MAX = 160
+  LINE_MAX = 100
   # Trimmed first when the budget is exceeded; Open is the last to shrink.
   TRIM_ORDER = %i[others live done open].freeze
   TITLES = {
@@ -66,13 +68,13 @@ module DaySummary
   def open_items(store, day)
     Handoff.read_items(store, day)
            .select { |i| Handoff::OPEN_STATES.include?(i[:state]) }
-           .map { |i| "- [#{i[:session]}] [#{i[:project]}] #{i[:summary]}" }
+           .map { |i| "- [#{i[:session]}] [#{i[:project]}] #{Handoff.clip(i[:summary])}" }
   end
 
   def last_done(store, day)
     Handoff.read_savepoint(store, day)
            .select { |e| e[:event] == "Done" }
-           .map { |e| "- [#{e[:session]}] [#{e[:project]}] #{e[:summary]}" }
+           .map { |e| "- [#{e[:session]}] [#{e[:project]}] #{Handoff.clip(e[:summary])}" }
   end
 
   # The global store plus every projects/<slug>/store, each with its INDEX
@@ -110,6 +112,9 @@ module DaySummary
       active_dirs(index_path).filter_map do |dirname|
         dir = File.join(store_dir, dirname)
         next unless File.directory?(dir) && Lock.fresh?(dir, now: now)
+        # A guided session's lock is live but not autonomous; a lock with no
+        # run_mode (a 1.14 auto team) counts as auto.
+        next if (Lock.read(dir) || {})["run_mode"].to_s == "guided"
 
         id, slug = dirname.split("--", 2)
         "- #{id} #{slug}: #{last_savepoint_line(dir)}"

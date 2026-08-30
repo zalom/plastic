@@ -465,9 +465,13 @@ class CodexHooksTest < Minitest::Test
     path = File.join(@fake_home, ".plastic", "store", ".sessions", day, "handoff--b7137962.md")
     assert File.exist?(path), "the relayed PreCompact hook must write the hand-off"
     assert_includes File.read(path), "at precompact"
+    assert_includes JSON.parse(out)["systemMessage"], "handoff--b7137962.md",
+                    "the message names the written file"
 
-    static, = run_hook("savepoint", state_payload(event: "PreCompact"))
-    assert_equal JSON.parse(static), JSON.parse(out), "the message must not vary with the session"
+    claude_launcher = File.expand_path("../hooks/savepoint", __dir__)
+    expected, = Open3.capture3({ "HOME" => @fake_home }, claude_launcher,
+                               stdin_data: JSON.generate(state_payload(event: "PreCompact", session_id: "b7137962-codex")))
+    assert_equal JSON.parse(expected), JSON.parse(out), "both harnesses produce the same message for the same payload"
   end
 
   # ---- live-state adversarial fail-open (intent 199, mirrors Decision 14) ----

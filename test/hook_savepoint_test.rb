@@ -81,16 +81,15 @@ class HookSavepointTest < Minitest::Test
     message = message_of(out)
     assert_includes message, "PLASTIC SAVEPOINT"
     assert_includes message, "handoff--<session>.md"
-    assert_includes message, "<day>"
     assert_includes message, "say continue"
+    assert_includes message, "This session's file: #{handoff_path}"
   end
 
-  def test_message_is_identical_across_sessions_and_days
-    pointer(DAY)
-    first, = run_script(payload)
-    pointer("20260829", session: "cafe1234")
-    second, = run_script(payload(session_id: "cafe1234-x"))
-    assert_equal first, second, "the PreCompact message must be static"
+  def test_message_without_a_session_is_the_fixed_text_and_names_no_file
+    first, = run_script("")
+    second, = run_script(payload(session_id: ""))
+    assert_equal first, second, "the message must not vary when no session resolves"
+    refute_includes message_of(first), "This session's file"
   end
 
   def test_malformed_stdin_exits_0_prints_the_message_and_writes_nothing
@@ -116,12 +115,16 @@ class HookSavepointTest < Minitest::Test
     refute File.exist?(Handoff.path_for(@store, DAY, "local"))
   end
 
-  def test_pointer_naming_an_intent_writes_nothing
+  # An auto team's session points at its intent; its hand-off goes to today's
+  # day directory, the same fallback the close uses (review finding 1).
+  def test_pointer_naming_an_intent_writes_todays_handoff
     pointer("311--handoff-and-day-summary")
     out, _err, status = run_script(payload)
     assert_equal 0, status.exitstatus
     assert_includes message_of(out), "PLASTIC SAVEPOINT"
-    refute File.exist?(handoff_path)
+    today = SessionLedger.day_id
+    assert File.exist?(Handoff.path_for(@store, today, SHORT)), "hand-off must land in today's day dir"
+    refute File.exist?(handoff_path) unless today == DAY
   end
 
   def test_missing_plastic_home_argument_still_prints_the_message
@@ -146,6 +149,7 @@ class HookSavepointTest < Minitest::Test
     refute_includes src, "Build/Observe"
     refute_includes src, "savepoint procedure"
     assert_includes src, "scripts/hook-savepoint"
+    assert_includes src, "[ -t 0 ] || INPUT=$(cat)", "the launcher must not block on a tty"
   end
 
   # --- the prose the hook depends on -----------------------------------------------

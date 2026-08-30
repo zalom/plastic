@@ -142,13 +142,34 @@ class HandoffTest < Minitest::Test
     assert_includes text, "## Open"
   end
 
-  def test_caps_apply_before_the_budget
+  def test_caps_apply_before_the_budget_and_keep_the_newest
     30.times { |i| item(:open, "o#{i}") }
     30.times { |i| item(:done, "d#{i}") }
     text = render
     assert_equal 20, section(text, "Open").scan(/^- \[/).size
-    assert_equal 20, section(text, "Done").scan(/^- \[/).size
+    assert_equal 10, section(text, "Done").scan(/^- \[/).size
     assert_includes section(text, "Open"), "(+10 more)"
+    assert_includes section(text, "Done"), "(+20 more)"
+    assert_includes section(text, "Open"), "o29"
+    refute_includes section(text, "Open"), "o9\n"
+  end
+
+  def test_full_caps_fit_inside_the_budget_without_trimming
+    20.times { |i| item(:open, "open #{i} #{'x' * 190}") }
+    10.times { |i| item(:done, "done #{i} #{'x' * 190}") }
+    10.times { |i| event("Item", "event #{i} #{'x' * 190}", at: NOW + i) }
+    10.times { |i| item(:open, "o", session: format("s%07d", i)) }
+    text = render
+    assert_operator text.bytesize, :<=, Handoff::BUDGET
+    assert_equal 20, section(text, "Open").scan(/^- \[/).size
+    assert_equal 10, section(text, "Done").scan(/^- \[/).size
+    refute_match(/\(\+\d+ more\)/, text)
+  end
+
+  def test_long_summaries_are_clipped_to_eighty_characters
+    item(:open, "a" * 200)
+    line = section(render, "Open").lines.find { |l| l.start_with?("- [plastic] ") }
+    assert_equal "- [plastic] #{'a' * 80}...", line.chomp
   end
 
   def test_unknown_trigger_raises
@@ -166,6 +187,29 @@ class HandoffTest < Minitest::Test
     assert_includes File.read(path), "mine"
     leftovers = Dir.children(SessionLedger.day_dir(@store, DAY)).grep(/\A\.handoff/)
     assert_empty leftovers, "temp file must not remain"
+  end
+
+  def test_two_concurrent_writes_for_one_session_leave_one_valid_file_and_no_residue
+    50.times { |i| item(:open, "item #{i}") }
+    threads = 4.times.map do
+      Thread.new do
+        5.times { Handoff.write(store: @store, day: DAY, session: SID, trigger: "tick", templates: TEMPLATES, now: NOW) }
+      end
+    end
+    threads.each(&:join)
+    day_dir = SessionLedger.day_dir(@store, DAY)
+    assert_empty Dir.children(day_dir).grep(/\A\.handoff/), "no temp residue"
+    assert_equal 1, Dir.children(day_dir).grep(/\Ahandoff--/).size
+    text = File.read(Handoff.path_for(@store, DAY, SID))
+    assert text.start_with?("# Hand-off: session #{SID}, #{DAY}")
+    assert text.end_with?("#{Handoff::RESUME}\n"), "the file must be complete"
+  end
+
+  def test_others_is_capped_at_ten_sessions
+    15.times { |i| item(:open, "o", session: format("s%07d", i)) }
+    others = section(render, "Others today")
+    assert_equal 10, others.scan(/^- s/).size
+    assert_includes others, "(+5 more)"
   end
 
   def test_write_opens_a_day_that_does_not_exist_yet
@@ -188,14 +232,14 @@ class HandoffTest < Minitest::Test
 
   # --- the pointer day -------------------------------------------------------------
 
-  def test_day_for_returns_the_pointer_day_today_when_no_pointer_and_nil_for_an_intent
+  def test_day_for_returns_the_pointer_day_and_today_when_no_pointer_or_an_intent_pointer
     assert_equal DAY, Handoff.day_for(@store, SID, today: DAY)
     SessionLedger.ensure_tmp_root(@store)
     FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, SID))
     File.write(SessionLedger.pointer_path(@store, SID), "20260829\n")
     assert_equal "20260829", Handoff.day_for(@store, SID, today: DAY)
     File.write(SessionLedger.pointer_path(@store, SID), "311--handoff-and-day-summary\n")
-    assert_nil Handoff.day_for(@store, SID, today: DAY)
+    assert_equal DAY, Handoff.day_for(@store, SID, today: DAY)
   end
 end
 

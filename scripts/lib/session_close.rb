@@ -46,7 +46,6 @@ module SessionClose
     return report if session.empty?
 
     pointer_day = safely { read_pointer_day(store, session) } || today
-    intent_pointer = safely { intent_pointer?(store, session) } || false
     project = "global"
 
     report[:dropped] = safely do
@@ -62,8 +61,8 @@ module SessionClose
 
     # The hand-off (intent 311, spec D6) is written after the drop, so it
     # reflects it, and before the tmp dir goes, since the pointer lives there.
-    # A session whose pointer names an intent has no day-ledger share.
-    if handoff && !intent_pointer
+    # An intent pointer falls back to today, the same as the drop above.
+    if handoff
       report[:handoff] = safely do
         handoff.call(store, pointer_day, session)
         true
@@ -95,14 +94,6 @@ module SessionClose
 
     value = File.read(path).strip
     SessionLedger.valid_day_id?(value) ? value : nil
-  end
-
-  # True when a pointer exists and names something other than a day id.
-  def intent_pointer?(store, session)
-    path = SessionLedger.pointer_path(store, session)
-    return false unless File.exist?(path)
-
-    !SessionLedger.valid_day_id?(File.read(path).strip)
   end
 
   def safely

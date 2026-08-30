@@ -14,9 +14,14 @@ module Handoff
   module_function
 
   TRIGGERS = %w[tick precompact close].freeze
-  BUDGET = 4096
-  LIST_CAP = 20
+  BUDGET = 6144
+  OPEN_CAP = 20
+  DONE_CAP = 10
   RECENT_CAP = 10
+  OTHERS_CAP = 10
+  # A ledger summary may run to 200 characters; a hand-off line shows the
+  # first 80, so the caps above are reachable inside the byte budget.
+  SUMMARY_MAX = 80
   OPEN_STATES = %i[open pending].freeze
   # Trimmed first when the budget is exceeded; Open is the last to shrink.
   TRIM_ORDER = %i[others recent done open].freeze
@@ -29,15 +34,20 @@ module Handoff
     File.join(SessionLedger.day_dir(store, day), "handoff--#{session}.md")
   end
 
-  # The day this session's hand-off belongs to: the pointer's day id, today
-  # when no pointer exists, nil when the pointer names an intent (an auto
-  # team owns that session's record, so the day ledger has nothing of it).
+  # The day this session's hand-off belongs to: the pointer's day id when
+  # the pointer holds one, else today (no pointer, or a pointer naming an
+  # intent), the same fallback SessionClose uses for the drop at close.
   def day_for(store, session, today:)
     path = SessionLedger.pointer_path(store, session)
     return today unless File.exist?(path)
 
     value = File.read(path).strip
-    SessionLedger.valid_day_id?(value) ? value : nil
+    SessionLedger.valid_day_id?(value) ? value : today
+  end
+
+  def clip(summary)
+    text = summary.to_s
+    text.length > SUMMARY_MAX ? "#{text[0, SUMMARY_MAX]}..." : text
   end
 
   # --- readers ---------------------------------------------------------------------
@@ -78,9 +88,13 @@ module Handoff
       others: others_lines(items, session),
     }
     hidden = Hash.new(0)
-    cap!(lists, hidden, :open, LIST_CAP)
-    cap!(lists, hidden, :done, LIST_CAP)
+    cap!(lists, hidden, :open, OPEN_CAP)
+    cap!(lists, hidden, :done, DONE_CAP)
     cap!(lists, hidden, :recent, RECENT_CAP)
+    if lists[:others].size > OTHERS_CAP
+      hidden[:others] += lists[:others].size - OTHERS_CAP
+      lists[:others] = lists[:others].first(OTHERS_CAP)
+    end
 
     header = [
       "# Hand-off: session #{session}, #{day}",
@@ -129,11 +143,11 @@ module Handoff
   end
 
   def item_line(item)
-    "- [#{item[:project]}] #{item[:summary]}"
+    "- [#{item[:project]}] #{clip(item[:summary])}"
   end
 
   def recent_line(event)
-    "- #{event[:time][11, 5]}Z #{event[:event]} #{event[:summary]}"
+    "- #{event[:time][11, 5]}Z #{event[:event]} #{clip(event[:summary])}"
   end
 
   def others_lines(items, session)
@@ -150,9 +164,10 @@ module Handoff
   # --- writing -------------------------------------------------------------------
 
   # Opens the day first (a tick after midnight never fails), renders, and
-  # writes through a temp file and rename so a crash leaves no partial
-  # hand-off. Returns the path. With `templates: nil` the day is not
-  # scaffolded, only its directory ensured.
+  # writes through a per-process temp file and rename, so a crash leaves no
+  # partial hand-off and two writers for one session (a tick overlapping a
+  # PreCompact) never share a temp name. Returns the path. With
+  # `templates: nil` the day is not scaffolded, only its directory ensured.
   def write(store:, day:, session:, trigger:, templates:, now: Time.now)
     if templates
       SessionLedger.open_day(store: store, day: day, templates: templates, author: session)
@@ -161,7 +176,7 @@ module Handoff
     end
     text = render(store: store, day: day, session: session, trigger: trigger, now: now)
     target = path_for(store, day, session)
-    tmp = File.join(File.dirname(target), ".handoff-#{session}.tmp")
+    tmp = File.join(File.dirname(target), ".handoff-#{session}-#{Process.pid}-#{Thread.current.object_id}.tmp")
     File.write(tmp, text)
     File.rename(tmp, target)
     target

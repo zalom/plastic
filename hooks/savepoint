@@ -1,5 +1,6 @@
 #!/bin/bash
-INPUT=$(cat)
+INPUT=""
+[ -t 0 ] || INPUT=$(cat)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "$INPUT" | env -u RUBYOPT ruby "$SCRIPT_DIR/../scripts/hook-savepoint" "$HOME/.plastic"
 exit 0

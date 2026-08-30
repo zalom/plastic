@@ -107,7 +107,7 @@ lost or stale copy costs nothing.
   `day ledger <day> joined` line. It carries the open items across every session, the last
   five done, the live auto intents (an Active intent holding a fresh `delivery.lock`, with its
   latest savepoint line), and the other sessions alive by their heartbeat. It never carries
-  the raw ledger, only this summary, and it stays under two kilobytes. To see it outside a
+  the raw ledger, only this summary, and it stays under three kilobytes. To see it outside a
   boot, run `ruby ~/.plastic/scripts/day-summary`.
 
 ## When you see a lock

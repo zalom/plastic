@@ -143,7 +143,7 @@ the per-session pointer (`.tmp/<session-id>/current`) and heartbeat. `UserPrompt
 (`hooks/capture`) appends the prompt as a pending day-ledger line, detects `auto` and
 `continue`, and hints at matching parked intents. `PreCompact` (`hooks/savepoint` ->
 `scripts/hook-savepoint`) writes the session's hand-off into the day ledger
-(`.sessions/<day>/handoff--<session>.md`) and prints one static message; `SessionEnd`
+(`.sessions/<day>/handoff--<session>.md`) and prints one message naming that file; `SessionEnd`
 (`hooks/close`) writes it once more, then closes the session. The same hand-off is written
 at every ticked day-ledger item, and the session-start hook injects the day summary after the
 joined line.
