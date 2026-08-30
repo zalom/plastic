@@ -40,9 +40,9 @@ class HarnessInvocationDocsTest < Minitest::Test
     assert_includes body, "On Codex CLI, invoke the same skill with a dollar prefix instead (`$plastic-<name>`)"
   end
 
-  def test_what_the_gates_are_telling_you_names_both_prefixes
-    body = normalized("docs/guides/what-the-gates-are-telling-you.md")
-    assert_includes body, "On Codex CLI, invoke the same fix with a dollar prefix instead (for example `$plastic-doctor`)"
+  def test_reading_the_ledgers_names_both_prefixes
+    body = normalized("docs/guides/reading-the-ledgers.md")
+    assert_includes body, "On Codex CLI, invoke the same skill with a dollar prefix instead (for example `$plastic-doctor`)"
   end
 
   def test_plastic_md_names_both_prefixes_once

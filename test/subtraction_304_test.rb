@@ -68,7 +68,7 @@ class Subtraction304Test < Minitest::Test
   ].freeze
 
   SCAN_ROOTS = %w[scripts hooks test skills agents templates PLASTIC.md README.md docs/architecture.md
-                  docs/internals.md docs/guides/what-the-gates-are-telling-you.md].freeze
+                  docs/internals.md docs/guides/reading-the-ledgers.md].freeze
   REMOVAL_NOTE = /removed in 2\.0|retired in 2\.0|left with the gates/.freeze
 
   # Other senses of the word "tier" that the cut must leave alone (plan review A2): the store
