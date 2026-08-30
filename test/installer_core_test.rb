@@ -303,4 +303,49 @@ class InstallerCoreTest < Minitest::Test
   ensure
     FileUtils.rm_rf(dir)
   end
+
+  # --- read_package_version fallback (row B, spec 315b) -----------------------
+  #
+  # The installed rollback.rb/update.rb construct InstallerCore with
+  # package_root: ~/.plastic, which carries VERSION but never package.json
+  # (the installer never copies that file). Before this fallback,
+  # InstallerCore.new crashed there with a raw Errno::ENOENT.
+
+  def test_b1_reads_package_json_when_present
+    dir = Dir.mktmpdir("read-package-version-b1")
+    File.write(File.join(dir, "package.json"), JSON.generate("version" => "9.9.9"))
+
+    assert_equal "9.9.9", InstallerCore.new(package_root: dir, plastic_home: @home).version
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
+  def test_b2_falls_back_to_version_file_when_package_json_absent
+    dir = Dir.mktmpdir("read-package-version-b2")
+    File.write(File.join(dir, "VERSION"), "2.0.0-alpha.5\n")
+
+    assert_equal "2.0.0-alpha.5", InstallerCore.new(package_root: dir, plastic_home: @home).version
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
+  def test_b3_raises_a_named_error_when_neither_file_exists
+    dir = Dir.mktmpdir("read-package-version-b3")
+
+    error = assert_raises(RuntimeError) { InstallerCore.new(package_root: dir, plastic_home: @home) }
+    assert_includes error.message, "package.json"
+    assert_includes error.message, "VERSION"
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
+  def test_b4_constructor_succeeds_against_a_version_only_root
+    dir = Dir.mktmpdir("read-package-version-b4")
+    File.write(File.join(dir, "VERSION"), "1.14.1\n")
+
+    core = InstallerCore.new(package_root: dir, plastic_home: @home)
+    assert_equal "1.14.1", core.version
+  ensure
+    FileUtils.rm_rf(dir)
+  end
 end

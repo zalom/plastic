@@ -18,6 +18,24 @@ require_relative "lib/day_summary"
 index_path, plastic_home, mode, plugin_root = ARGV
 exit 0 unless index_path && plastic_home && mode
 
+# --- session id: the stdin payload's session_id, then the env var, then the
+# pid (spec 298 D1, row G, spec D4). Guarded on $stdin.tty? so a human running
+# this hook by hand at a real terminal never blocks on a read that never gets
+# an EOF; every real harness invocation pipes the SessionStart JSON payload,
+# never attaches a tty. Malformed or empty stdin (or no payload id) falls
+# through to the same env-var-then-pid chain this always had.
+stdin_payload = begin
+  if $stdin.tty?
+    nil
+  else
+    raw = $stdin.read
+    raw && !raw.strip.empty? ? JSON.parse(raw) : nil
+  end
+rescue StandardError
+  nil
+end
+payload_session_id = stdin_payload.is_a?(Hash) ? stdin_payload["session_id"].to_s : ""
+
 # Plastic home and the store are two different paths (intent 231). The shim passes
 # home (~/.plastic) as argument 2; the store lives one level below it. Compose the
 # store exactly once here, so no later line re-derives it and no path can gain a
@@ -361,7 +379,11 @@ begin
   author = "session" if author.empty?
   SessionLedger.open_day(store: store_dir, day: day, templates: templates, author: author)
 
-  session = ENV["CLAUDE_CODE_SESSION_ID"] || Process.pid.to_s
+  session = if !payload_session_id.empty?
+              payload_session_id
+            else
+              ENV["CLAUDE_CODE_SESSION_ID"] || Process.pid.to_s
+            end
   sid = SessionLedger.short_session_id(nil, session)
   SessionLedger.ensure_tmp_root(store_dir)
   FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store_dir, sid))

@@ -291,4 +291,98 @@ class SessionLedgerTest < Minitest::Test
     assert_equal %w[Item Done Note], SessionLedger::EVENTS
     assert_equal({ pending: "~", open: " ", done: "x", moved: ">", dropped: "-", promoted: "^" }, SessionLedger::STATES)
   end
+
+  # --- capture_worthy? (spec D2, D7; supersedes 298 D2(c); matrix row A) ----------------
+  #
+  # A pure predicate deciding whether a prompt earns a pending checklist line. Bias is
+  # ACCEPT: it rejects only on four named rules (10-char floor, whole-prompt harness
+  # envelope, bare trigger, and a bare question/remark carrying no work marker).
+  # Over-rejecting real work is worse than the bug this predicate fixes (D2).
+
+  def test_a1_rejects_a_bare_question
+    refute SessionLedger.capture_worthy?("what does the arm verb do to the worktree?")
+  end
+
+  def test_a2_rejects_a_whole_prompt_harness_envelope
+    refute SessionLedger.capture_worthy?("<task-notification>a background job finished</task-notification>")
+    refute SessionLedger.capture_worthy?("<system-reminder>some injected reminder text here</system-reminder>")
+  end
+
+  def test_a3_rejects_a_bare_remark
+    refute SessionLedger.capture_worthy?("that release went smoother than the last one")
+  end
+
+  def test_a4_accepts_an_imperative_work_prompt
+    assert SessionLedger.capture_worthy?("fix the dashboard date parser for the wikilink form")
+  end
+
+  def test_a5_accepts_a_work_shaped_question
+    assert SessionLedger.capture_worthy?("can you fix the dashboard date parser?")
+    assert SessionLedger.capture_worthy?("could you add a test for the wikilink form?")
+  end
+
+  def test_a6_accepts_an_envelope_followed_by_real_work
+    prompt = "<system-reminder>ignore me</system-reminder>\nfix the dashboard date parser"
+    assert SessionLedger.capture_worthy?(prompt)
+  end
+
+  def test_a7_rejects_a_bare_trigger_whole_prompt_only
+    refute SessionLedger.capture_worthy?("continue")
+    refute SessionLedger.capture_worthy?("auto")
+    refute SessionLedger.capture_worthy?("  Continue  ")
+    refute SessionLedger.capture_worthy?("AUTO")
+    assert SessionLedger.capture_worthy?("continue the dashboard fix and then release")
+  end
+
+  def test_a8_keeps_the_ten_character_floor
+    refute SessionLedger.capture_worthy?("fix it")
+  end
+
+  # --- post-execution review BLOCKER: inflected work markers + over-broad ---
+  # --- interrogative openers wrongly reject real work (spec D2, D7) --------
+  #
+  # Reviewer measured 17/43 invented and 5/27 real day-ledger summaries as
+  # wrongly rejected: WORK_MARKER_RE only matched exact stems (not "fixed",
+  # "updated", "added"), and QUESTION_STARTERS treated ordinary command
+  # openers ("do", "when", "where", "will", "was", "were", "did", "shall",
+  # "should") as interrogatives.
+
+  def test_blocker_do_the_release_now_is_accepted
+    assert SessionLedger.capture_worthy?("do the release now for alpha.5")
+  end
+
+  def test_blocker_when_you_are_done_tag_the_release_is_accepted
+    assert SessionLedger.capture_worthy?("when you are done, tag the release")
+  end
+
+  def test_blocker_will_you_push_that_branch_is_accepted
+    assert SessionLedger.capture_worthy?("will you push that branch to staging please")
+  end
+
+  def test_blocker_should_i_bump_the_version_files_is_accepted
+    assert SessionLedger.capture_worthy?("should I bump the version files before tagging")
+  end
+
+  def test_blocker_inflected_work_marker_is_accepted
+    assert SessionLedger.capture_worthy?("I fixed the parser, now push it")
+    assert SessionLedger.capture_worthy?("the docs were updated and added to the release notes")
+  end
+
+  # A1/A3 must still reject after the blocker fix (reviewer's own regression guard).
+  def test_blocker_a1_and_a3_still_reject
+    refute SessionLedger.capture_worthy?("what does the arm verb do to the worktree?")
+    refute SessionLedger.capture_worthy?("that release went smoother than the last one")
+  end
+
+  # --- SHOULD-FIX item 3: envelope on BOTH sides must not swallow the middle work ---
+  def test_should3_envelope_work_envelope_is_accepted
+    prompt = "<system-reminder>ignore this</system-reminder>\nfix the dashboard date parser\n" \
+             "<task-notification>a background job finished</task-notification>"
+    assert SessionLedger.capture_worthy?(prompt)
+  end
+
+  def test_should3_two_envelopes_and_nothing_else_is_rejected
+    prompt = "<system-reminder>ignore this</system-reminder>\n<task-notification>job finished</task-notification>"
+    refute SessionLedger.capture_worthy?(prompt)
+  end
 end

@@ -38,12 +38,13 @@ class DoctorSessionLedgerTest < Minitest::Test
   def check(name) = checks.find { |c| c[:name] == name }
 
   # A .tmp/<session>/ dir. `heartbeat:` is nil (no file), a Time (ISO-8601 content), or a
-  # String written verbatim. `mtime:` backdates the dir and the heartbeat file.
-  def write_session_tmp(session, heartbeat: @now, mtime: nil)
+  # String written verbatim. `mtime:` backdates the dir and the heartbeat file. `pointer:`
+  # false skips writing `current` at all (row H's no-pointer class, spec D9).
+  def write_session_tmp(session, heartbeat: @now, mtime: nil, pointer: true)
     SessionLedger.ensure_tmp_root(global_store)
     dir = SessionLedger.session_tmp_dir(global_store, session)
     FileUtils.mkdir_p(dir)
-    File.write(SessionLedger.pointer_path(global_store, session), "20260830\n")
+    File.write(SessionLedger.pointer_path(global_store, session), "20260830\n") if pointer
     unless heartbeat.nil?
       content = heartbeat.is_a?(Time) ? "#{heartbeat.utc.iso8601}\n" : heartbeat
       File.write(SessionLedger.heartbeat_path(global_store, session), content)
@@ -65,8 +66,8 @@ class DoctorSessionLedgerTest < Minitest::Test
 
   # --- orphaned_session_tmp --------------------------------------------------------------
 
-  def test_both_checks_pass_when_neither_directory_exists
-    assert_equal %w[orphaned_session_tmp day_ledger_shape], checks.map { |c| c[:name] }
+  def test_all_checks_pass_when_neither_directory_exists
+    assert_equal %w[orphaned_session_tmp no_pointer_session_tmp day_ledger_shape], checks.map { |c| c[:name] }
     assert(checks.all? { |c| c[:status] == "pass" }, checks.inspect)
     assert(checks.all? { |c| c[:category] == "session_ledger" })
   end
@@ -127,6 +128,32 @@ class DoctorSessionLedgerTest < Minitest::Test
     SessionLedger.ensure_tmp_root(global_store)
     File.write(File.join(SessionLedger.tmp_root(global_store), "stray"), "x")
     assert_equal "pass", check("orphaned_session_tmp")[:status]
+  end
+
+  # --- no_pointer_session_tmp (row H, spec D9) -----------------------------------------
+
+  def test_h1_no_pointer_dir_under_the_short_ttl_passes
+    write_session_tmp("nopt0001", heartbeat: @now - 60, pointer: false)
+    assert_equal "pass", check("no_pointer_session_tmp")[:status]
+  end
+
+  def test_h2_no_pointer_dir_past_the_short_ttl_warns_distinctly_and_leaves_the_24h_check_alone
+    old = @now - Doctor::NO_POINTER_TTL_SECONDS - 60
+    dir = write_session_tmp("nopt0002", heartbeat: old, pointer: false)
+    no_pointer_check = check("no_pointer_session_tmp")
+
+    assert_equal "warn", no_pointer_check[:status]
+    assert_equal 1, no_pointer_check[:details].size
+    assert_includes no_pointer_check[:details].first, dir
+    assert_includes no_pointer_check[:details].first, "nopt0002"
+    refute_equal check("orphaned_session_tmp")[:message], no_pointer_check[:message]
+    assert_equal "pass", check("orphaned_session_tmp")[:status],
+                 "a no-pointer dir well under 24h old must not affect the 24-hour orphan count"
+  end
+
+  def test_h3_a_healthy_young_session_with_a_pointer_is_not_flagged
+    write_session_tmp("live0001", heartbeat: @now)
+    assert_equal "pass", check("no_pointer_session_tmp")[:status]
   end
 
   # --- day_ledger_shape ------------------------------------------------------------------

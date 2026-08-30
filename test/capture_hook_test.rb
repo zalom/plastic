@@ -76,12 +76,56 @@ class CaptureHookTest < Minitest::Test
 
   # --- prompt under 10 chars ----------------------------------------------------
 
+  # Amended for spec D9: the no-pointer guard (row H) now skips the heartbeat
+  # write (and the tmp dir) entirely when session start never wrote a
+  # pointer, so this pinned case writes the pointer in the fixture first,
+  # exactly like a real booted session, and still proves the short prompt
+  # itself earns no pending line.
   def test_prompt_under_ten_chars_no_pending_line_heartbeat_still_rewritten
+    sid = sid_for("sess-short")
+    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, sid))
+    File.write(SessionLedger.pointer_path(@store, sid), "#{SessionLedger.day_id}\n")
+
     out, status = run_hook("hi there", session: "sess-short")
     assert_equal 0, status.exitstatus
     assert_empty parsed_checklist_lines
     assert File.exist?(heartbeat_path("sess-short")), "heartbeat must still be rewritten"
     assert_empty out.strip
+  end
+
+  # --- row H9 sibling: no pointer at all means no directory, either ----------------
+
+  def test_no_pointer_at_all_creates_no_tmp_directory_or_heartbeat
+    refute File.exist?(SessionLedger.session_tmp_dir(@store, sid_for("sess-orphan"))),
+           "fixture must start with no session tmp dir"
+
+    out, status = run_hook("hi there", session: "sess-orphan")
+    assert_equal 0, status.exitstatus
+    refute File.exist?(SessionLedger.session_tmp_dir(@store, sid_for("sess-orphan"))),
+           "no pointer means no .tmp/<sid>/ directory at all, not just no heartbeat"
+    assert_empty out.strip
+  end
+
+  # --- row A9: the hook actually gates on SessionLedger.capture_worthy? -----------
+
+  def test_capture_worthy_gate_bare_question_adds_no_pending_line
+    sid = sid_for("sess-a9-question")
+    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, sid))
+    File.write(SessionLedger.pointer_path(@store, sid), "#{SessionLedger.day_id}\n")
+
+    out, status = run_hook("what does the arm verb do to the worktree?", session: "sess-a9-question")
+    assert_equal 0, status.exitstatus, out
+    lines = parsed_checklist_lines.select { |l| l[:session] == sid }
+    assert_empty lines, "a bare question must not earn a pending line"
+  end
+
+  def test_capture_worthy_gate_imperative_prompt_adds_exactly_one_pending_line
+    sid = sid_for("sess-a9-work")
+    out, status = run_hook("fix the dashboard date parser for the wikilink form", session: "sess-a9-work")
+    assert_equal 0, status.exitstatus, out
+    lines = parsed_checklist_lines.select { |l| l[:session] == sid }
+    assert_equal 1, lines.length
+    assert_equal :pending, lines.first[:state]
   end
 
   # --- normal prompt -------------------------------------------------------------

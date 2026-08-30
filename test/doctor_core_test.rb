@@ -662,3 +662,200 @@ class DoctorAgentModelDriftTest < Minitest::Test
     File.write(File.join(agent_version_dir, "VERSION"), "1.0.0")
   end
 end
+
+# ===========================================================================
+# Row E (spec D8, spec 315b): doctor passed over ten stale 1.14.1 Codex
+# registrations because #check_core_files's version_match only ever checks
+# the SELECTED harness, and codex_hooks_registered_check's `want - got` scan
+# can only see a MISSING registration, never an extra one parked in a
+# retired event.
+# ===========================================================================
+
+class DoctorHarnessVersionsTest < Minitest::Test
+  include DoctorTestHelpers
+
+  def setup
+    FileUtils.rm_rf([DOCTOR_TEST_HOME, DOCTOR_TEST_CLAUDE, DOCTOR_TEST_CODEX])
+    FileUtils.mkdir_p(DOCTOR_TEST_HOME)
+    FileUtils.mkdir_p(DOCTOR_TEST_CLAUDE)
+    FileUtils.mkdir_p(DOCTOR_TEST_CODEX)
+    File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "2.0.0-alpha.5")
+  end
+
+  def teardown
+    FileUtils.rm_rf([DOCTOR_TEST_HOME, DOCTOR_TEST_CLAUDE, DOCTOR_TEST_CODEX])
+  end
+
+  def write_agent_version(dir, version)
+    FileUtils.mkdir_p(File.join(dir, "plastic"))
+    File.write(File.join(dir, "plastic", "VERSION"), version)
+  end
+
+  # E1: the comparison runs for every installed harness, not only the selected one.
+  def test_e1_version_match_runs_for_every_installed_harness
+    write_agent_version(DOCTOR_TEST_CLAUDE, "2.0.0-alpha.5")
+    write_agent_version(DOCTOR_TEST_CODEX, "1.14.1")
+
+    checks = doctor.check_harness_versions
+    names = checks.map { |c| c[:name] }
+    assert_includes names, "version_match_claude"
+    assert_includes names, "version_match_codex"
+
+    codex_check = checks.find { |c| c[:name] == "version_match_codex" }
+    assert_equal "warn", codex_check[:status]
+    assert_includes codex_check[:message], "2.0.0-alpha.5"
+    assert_includes codex_check[:message], "1.14.1"
+  end
+
+  def test_e1_matching_versions_pass
+    write_agent_version(DOCTOR_TEST_CLAUDE, "2.0.0-alpha.5")
+    checks = doctor.check_harness_versions
+    check = checks.find { |c| c[:name] == "version_match_claude" }
+    assert_equal "pass", check[:status]
+  end
+
+  # E4: nothing named version_match_* reaches the binary core tier.
+  def test_e4_run_core_checks_gains_no_version_match_prefixed_check
+    write_agent_version(DOCTOR_TEST_CLAUDE, "2.0.0-alpha.5")
+    write_agent_version(DOCTOR_TEST_CODEX, "1.14.1")
+    names = doctor.run_core_checks("claude")[:checks].map { |c| c[:name] }
+    refute names.any? { |n| n.start_with?("version_match_") },
+           "no per-harness version_match_* check may reach the binary core tier"
+  end
+end
+
+class DoctorCodexStaleRegistrationsTest < Minitest::Test
+  include DoctorTestHelpers
+
+  def setup
+    @home = Dir.mktmpdir("codex-stale-home")
+    @agent_dir = Dir.mktmpdir("codex-stale-agent")
+    @codex_home = File.join(@home, "codex-home")
+    FileUtils.mkdir_p(@codex_home)
+    @dispatcher_path = File.join(@home, "scripts", "codex-hook")
+    FileUtils.mkdir_p(File.dirname(@dispatcher_path))
+    File.write(@dispatcher_path, "#!/usr/bin/env ruby\n")
+    File.chmod(0o755, @dispatcher_path)
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+    FileUtils.rm_rf(@agent_dir)
+  end
+
+  def doctor_for
+    Doctor.new(plastic_home: @home,
+               agents: { "codex" => { name: "Codex CLI", dir: @agent_dir, home_dir: @codex_home } })
+  end
+
+  # E3: a stale registration parked in a RETIRED event (not in HookRegistry's
+  # expected key set at all) is invisible to `want - got` over `expected.each`,
+  # but visible over the union of expected and live event keys.
+  def test_e3_stale_registration_in_a_retired_event_is_reported
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    hooks["PreToolUse"] = [
+      { "matcher" => "apply_patch",
+        "hooks" => [{ "type" => "command", "command" => "\"#{@dispatcher_path}\" retired-gate" }] },
+    ]
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    checks = doctor_for.check_codex_stale_registrations
+    check = checks.find { |c| c[:name] == "codex_stale_registrations" }
+    refute_nil check
+    assert_equal "warn", check[:status]
+    details = Array(check[:details])
+    assert details.any? { |d| d.include?("retired-gate") }, details.inspect
+    assert details.any? { |d| d.include?("PreToolUse") }, details.inspect
+  end
+
+  def test_e3_no_stale_registrations_passes
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    checks = doctor_for.check_codex_stale_registrations
+    check = checks.find { |c| c[:name] == "codex_stale_registrations" }
+    assert_equal "pass", check[:status]
+  end
+
+  # A non-Plastic command under a retired event must not be flagged: only
+  # commands that match HookRegistry.codex_purge_command? are ours to police.
+  def test_e3_a_non_plastic_command_in_a_retired_event_is_not_flagged
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    hooks["PreToolUse"] = [
+      { "matcher" => "apply_patch",
+        "hooks" => [{ "type" => "command", "command" => "/usr/bin/some-other-tool" }] },
+    ]
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    checks = doctor_for.check_codex_stale_registrations
+    check = checks.find { |c| c[:name] == "codex_stale_registrations" }
+    assert_equal "pass", check[:status]
+  end
+
+  def test_e4_run_core_checks_gains_no_codex_stale_registrations_check
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    hooks["PreToolUse"] = [
+      { "matcher" => "apply_patch",
+        "hooks" => [{ "type" => "command", "command" => "\"#{@dispatcher_path}\" retired-gate" }] },
+    ]
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    names = doctor_for.run_core_checks("codex")[:checks].map { |c| c[:name] }
+    refute_includes names, "codex_stale_registrations"
+  end
+
+  # --- SHOULD-FIX item 5: name-only comparison goes blind to two real cases --------
+
+  # (a) the SAME (event, name) pair registered twice: a name-only "is it expected"
+  # check can never see this, since the name alone is legitimately expected.
+  def test_should5a_a_duplicate_event_name_pair_is_reported
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    hooks["PostToolUse"].first["hooks"] << {
+      "type" => "command", "command" => "\"#{@dispatcher_path}\" record",
+    }
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    checks = doctor_for.check_codex_stale_registrations
+    check = checks.find { |c| c[:name] == "codex_stale_registrations" }
+    refute_nil check
+    assert_equal "warn", check[:status]
+    details = Array(check[:details])
+    assert details.any? { |d| d.include?("PostToolUse") && d.include?("record") }, details.inspect
+  end
+
+  # (b) a correctly-named command whose dispatcher path is an OLD install, different
+  # from the path every other Plastic entry in this same file actually uses.
+  def test_should5b_a_dispatcher_path_that_differs_from_the_files_other_entries_is_reported
+    old_dispatcher = File.join(@home, "old-install", "scripts", "codex-hook")
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    stale_check_update = { "type" => "command", "command" => "\"#{old_dispatcher}\" check-update" }
+    hooks["SessionStart"].first["hooks"] = hooks["SessionStart"].first["hooks"].map do |h|
+      h["command"].include?("check-update") ? stale_check_update : h
+    end
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    checks = doctor_for.check_codex_stale_registrations
+    check = checks.find { |c| c[:name] == "codex_stale_registrations" }
+    refute_nil check
+    assert_equal "warn", check[:status]
+    details = Array(check[:details])
+    assert details.any? { |d| d.include?("check-update") && d.include?("old-install") }, details.inspect
+  end
+
+  def test_should5_a_single_consistent_install_still_passes
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    checks = doctor_for.check_codex_stale_registrations
+    check = checks.find { |c| c[:name] == "codex_stale_registrations" }
+    assert_equal "pass", check[:status]
+  end
+
+  # --- NIT item 8: a non-Hash top-level hooks.json must not crash the doctor run ---
+  def test_nit8_a_non_hash_top_level_hooks_json_does_not_crash
+    File.write(File.join(@codex_home, "hooks.json"), JSON.generate([1, 2, 3]))
+
+    checks = doctor_for.check_codex_stale_registrations
+    assert_equal [], checks
+  end
+end

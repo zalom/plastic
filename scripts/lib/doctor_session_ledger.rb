@@ -18,6 +18,18 @@ require_relative "session_ledger"
 module DoctorSessionLedger
   ORPHAN_TTL_SECONDS = 24 * 60 * 60
 
+  # Row H (spec D9): a `.tmp/<sid>/` directory with no `current` pointer is a
+  # DIFFERENT orphan class than ORPHAN_TTL_SECONDS's -- a session where
+  # session start never ran at all (a `-p` print session, a resumed
+  # background job, an unregistered SessionStart hook), not a session that
+  # ran and then never closed. No choice of session id ever creates a
+  # pointer for that class, so it would otherwise stay invisible for the
+  # full 24 hours (or forever, once hook-capture/hook-record stop creating
+  # it at all). Short relative to ORPHAN_TTL_SECONDS on purpose: a session
+  # between its own start and its first pointer write is normal and must not
+  # be flagged, but that window is seconds, not hours.
+  NO_POINTER_TTL_SECONDS = 5 * 60
+
   # Seconds since the session's last heartbeat: the ISO-8601 content of `heartbeat`,
   # else that file's mtime, else the directory's mtime.
   def heartbeat_age(dir, now)
@@ -37,6 +49,7 @@ module DoctorSessionLedger
 
     store_dir = File.join(plastic_home, "store")
     orphans = orphaned_session_dirs(store_dir, now)
+    no_pointer = no_pointer_session_dirs(store_dir, now)
     shape = day_ledger_shape_problems(store_dir)
 
     checks = []
@@ -53,6 +66,20 @@ module DoctorSessionLedger
                       fix_hint: "Remove each listed .tmp/<session>/ directory after confirming that " \
                                 "session is gone: a live session rewrites its heartbeat on every " \
                                 "prompt and edit, so only a listed directory may be removed, by hand.")
+              end
+    checks << if no_pointer.empty?
+                check(category: "session_ledger", name: "no_pointer_session_tmp", status: "pass",
+                      message: "No .tmp/<session>/ directory has gone without a `current` pointer for " \
+                               "longer than #{NO_POINTER_TTL_SECONDS} seconds")
+              else
+                check(category: "session_ledger", name: "no_pointer_session_tmp", status: "warn",
+                      message: "#{no_pointer.size} .tmp/<session>/ director#{no_pointer.size == 1 ? "y" : "ies"} " \
+                               "with no `current` pointer for longer than #{NO_POINTER_TTL_SECONDS} seconds " \
+                               "(session start never ran for this session)",
+                      details: no_pointer, fixable: true,
+                      fix_hint: "Remove each listed .tmp/<session>/ directory after confirming that " \
+                                "session never started: no `current` pointer means session start never " \
+                                "ran for it, so this is not a live session missing a checklist entry.")
               end
     checks << if shape.empty?
                 check(category: "session_ledger", name: "day_ledger_shape", status: "pass",
@@ -81,6 +108,31 @@ module DoctorSessionLedger
       next if age <= ORPHAN_TTL_SECONDS
 
       "global: #{dir} (session #{name}, last heartbeat #{(age / 3600).floor}h ago)"
+    end
+  rescue SystemCallError
+    [] # unreadable .tmp/: nothing to report, never a crash
+  end
+
+  # Row H (spec D9): `.tmp/<sid>/` directories with no `current` pointer, past
+  # NO_POINTER_TTL_SECONDS. A different signal than #orphaned_session_dirs:
+  # that one is age-only and blind to whether a pointer exists at all, so a
+  # young no-pointer dir (a session between its start and its first pointer
+  # write) must not appear here even though it may well appear there once it
+  # ages past ORPHAN_TTL_SECONDS -- the two checks answer different questions
+  # and a dir can legitimately show up in neither, either, or both.
+  def no_pointer_session_dirs(store_dir, now)
+    tmp_root = SessionLedger.tmp_root(store_dir)
+    return [] unless File.directory?(tmp_root)
+
+    Dir.children(tmp_root).sort.filter_map do |name|
+      dir = File.join(tmp_root, name)
+      next unless File.directory?(dir)
+      next if File.exist?(File.join(dir, "current"))
+
+      age = heartbeat_age(dir, now)
+      next if age <= NO_POINTER_TTL_SECONDS
+
+      "global: #{dir} (session #{name}, no `current` pointer, last heartbeat #{age.round}s ago)"
     end
   rescue SystemCallError
     [] # unreadable .tmp/: nothing to report, never a crash

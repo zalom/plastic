@@ -381,9 +381,10 @@ class SessionStartDayLedgerTest < Minitest::Test
     end
   end
 
-  # hook-session-start takes its inputs as positional ARGV, never stdin, so this
-  # proves it boots cleanly with nothing on stdin at all and still derives a
-  # session id (env cleared here, so from the hook's own Process.pid).
+  # hook-session-start takes its main inputs as positional ARGV; this proves it
+  # boots cleanly with nothing usable on stdin either (env cleared here, so the
+  # session id falls all the way back to the hook's own Process.pid, spec D4
+  # row G3).
   def test_no_stdin_still_derives_a_session_id_and_exits_zero
     out, _err, status = Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil },
                                         "ruby", HOOK, @index, @home, "global")
@@ -392,5 +393,83 @@ class SessionStartDayLedgerTest < Minitest::Test
 
     entries = Dir.exist?(SessionLedger.tmp_root(store)) ? Dir.children(SessionLedger.tmp_root(store)) : []
     refute_empty entries, "a session id must be derived from env or the hook's own pid, never skipped"
+  end
+
+  # --- row G: the stdin payload's session_id (spec 298 D1, spec D4) -----------------
+
+  def run_hook_with_stdin(stdin_data:, env_session_id: nil)
+    env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => env_session_id }
+    Open3.capture3(env, "ruby", HOOK, @index, @home, "global", stdin_data: stdin_data)
+  end
+
+  def test_g1_prefers_the_payloads_session_id_over_a_different_env_var
+    payload = JSON.generate("session_id" => "payload-sid-g1")
+    out, _err, status = run_hook_with_stdin(stdin_data: payload, env_session_id: "env-sid-g1")
+    assert_equal 0, status.exitstatus
+    assert JSON.parse(out)
+
+    sid = SessionLedger.short_session_id(nil, "payload-sid-g1")
+    other_sid = SessionLedger.short_session_id(nil, "env-sid-g1")
+    assert File.exist?(SessionLedger.pointer_path(store, sid)),
+           "the pointer must be created under the payload's session id"
+    refute File.exist?(SessionLedger.pointer_path(store, other_sid)),
+           "the env var's session id must not be used when the payload names one"
+  end
+
+  def test_g2_falls_back_to_the_env_var_when_the_payload_carries_no_id
+    payload = JSON.generate("prompt" => "irrelevant, no session_id key at all")
+    out, _err, status = run_hook_with_stdin(stdin_data: payload, env_session_id: "env-sid-g2")
+    assert_equal 0, status.exitstatus
+    assert JSON.parse(out)
+
+    sid = SessionLedger.short_session_id(nil, "env-sid-g2")
+    assert File.exist?(SessionLedger.pointer_path(store, sid)),
+           "the env var must be used when the stdin payload names no session_id"
+  end
+
+  def test_g3_falls_back_to_the_pid_with_no_payload_and_no_env_var
+    env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil }
+    child_pid = nil
+    out = nil
+    status = nil
+    Open3.popen3(env, "ruby", HOOK, @index, @home, "global") do |stdin, stdout, _stderr, wait_thr|
+      child_pid = wait_thr.pid
+      stdin.write("not valid json{{{")
+      stdin.close
+      out = stdout.read
+      status = wait_thr.value
+    end
+    assert_equal 0, status.exitstatus
+    assert JSON.parse(out)
+
+    expected_sid = SessionLedger.short_session_id(nil, child_pid.to_s)
+    assert File.exist?(SessionLedger.pointer_path(store, expected_sid)),
+           "with no payload id and no env var, the session must be keyed by the hook's own pid " \
+           "(#{expected_sid}), not skipped or left to some other fallback"
+  end
+
+  def test_g4_the_stdin_read_never_blocks_on_a_terminal
+    require "pty"
+    require "timeout"
+
+    out = +""
+    PTY.spawn({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-tty-guard" },
+              "ruby", HOOK, @index, @home, "global") do |r, _w, spawned_pid|
+      begin
+        Timeout.timeout(5) do
+          loop { out << r.readpartial(4096) }
+        end
+      rescue EOFError
+        nil
+      end
+      begin
+        Process.wait(spawned_pid)
+      rescue Errno::ECHILD
+        nil
+      end
+    end
+    assert JSON.parse(out), "the hook must still emit valid JSON when stdin is a tty"
+  rescue Errno::EIO
+    assert JSON.parse(out), "the hook must still emit valid JSON when stdin is a tty"
   end
 end

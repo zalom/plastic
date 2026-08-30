@@ -288,6 +288,167 @@ class Doctor
   # content scanning. check_global_store (above) is store/full-scope and includes
   # orphaned_intents / ghost_references, both explicitly forbidden at core by D1.
 
+  # Row E (spec D8, spec 315b): #check_core_files's own `version_match` only ever
+  # compares the SELECTED harness's `<dir>/plastic/VERSION` against the global
+  # VERSION, so a second installed harness left behind on an old version is never
+  # version-checked at all -- exactly how ten stale 1.14.1 Codex registrations
+  # survived a `pass`. This runs the same comparison for EVERY installed harness
+  # (agent_dir on disk), named `version_match_<key>` so the existing `version_match`
+  # name and position stay reserved for the selected harness (pinned tests:
+  # test/doctor_test.rb:1846,1861,1873). Full tier only (`run_checks`); never
+  # `run_core_checks`, which is `binary: true` and runs on the session-start boot
+  # path, where a second-harness warn would become a boot-time error for every user.
+  def check_harness_versions
+    global_version = read_version
+    return [] unless global_version
+
+    agents.filter_map do |key, config|
+      next unless config.is_a?(Hash) && File.directory?(config[:dir].to_s)
+
+      agent_version_path = File.join(config[:dir], "plastic", "VERSION")
+      name = "version_match_#{key}"
+
+      if !File.exist?(agent_version_path)
+        check(
+          category: "core_files", name: name, status: "warn",
+          message: "#{config[:name]}'s agent-side VERSION file not found at #{tilde(agent_version_path)}",
+          fixable: true,
+          fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or plastic-rollback to a prior version"
+        )
+      else
+        agent_version = File.read(agent_version_path).strip
+        if global_version == agent_version
+          check(
+            category: "core_files", name: name, status: "pass",
+            message: "Global VERSION (#{global_version}) matches #{config[:name]}'s agent-side VERSION"
+          )
+        else
+          check(
+            category: "core_files", name: name, status: "warn",
+            message: "Version mismatch for #{config[:name]}: global=#{global_version}, agent=#{agent_version}",
+            details: [
+              "#{tilde(File.join(plastic_home, "VERSION"))}: #{global_version}",
+              "#{tilde(agent_version_path)}: #{agent_version}",
+            ],
+            fixable: true,
+            fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or plastic-rollback to a prior version"
+          )
+        end
+      end
+    end
+  end
+
+  # The Codex hook NAME expected per event, keyed off HookRegistry's own
+  # constants rather than a full built command string: naming it, not the
+  # literal dispatcher path, is what #check_codex_stale_registrations needs,
+  # so this never depends on plastic_home resolving to the same install the
+  # live hooks.json's commands were written under.
+  def codex_expected_names_by_event
+    names = {}
+    post_order = HookRegistry.events["PostToolUse"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    names["PostToolUse"] = HookRegistry::CODEX_POST_HOOKS & post_order
+
+    HookRegistry::CODEX_LIVE_STATE_EVENTS.each do |event|
+      names[event] = HookRegistry.events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    end
+
+    end_order = HookRegistry.events["SessionEnd"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    names["SessionEnd"] = HookRegistry::CODEX_SESSION_END_HOOKS & end_order
+    names
+  end
+
+  # Row E (spec D8, spec 315b): #codex_hooks_registered_check computes
+  # `want - got` and iterates `expected.each`, so it can see a MISSING registration
+  # but never an EXTRA one, and it can never even visit an event `expected` does not
+  # list at all (a retired event such as PreToolUse, which a stale ~/.codex/hooks.json
+  # can still carry). This scans the UNION of expected and live event keys instead, so
+  # a stale registration parked in a retired event is visible. Compares hook NAMES
+  # (see #codex_expected_names_by_event), not full command strings: a full-command
+  # comparison would embed this Doctor instance's own `plastic_home` in the expected
+  # dispatcher path, which is only guaranteed to match the live hooks.json's own
+  # dispatcher path in a real, single install, never a test that fakes one without the
+  # other. Full tier only (`run_checks`); never `run_core_checks` (D8).
+  #
+  # Post-execution review item 5: name-only comparison alone is blind to two real
+  # cases, both closed here without reintroducing any plastic_home coupling: (a) the
+  # SAME (event, name) pair registered more than once (each copy's name is
+  # individually expected, so a "not in the expected set" scan never sees the
+  # duplicate), and (b) a correctly-named entry whose dispatcher path is an OLD
+  # install, different from the path every OTHER Plastic entry in this same file
+  # actually uses -- the "correct" path here is whichever path the file's own
+  # majority of entries already agrees on, never a path this Doctor instance derives
+  # from its own plastic_home.
+  def check_codex_stale_registrations
+    config = agents["codex"]
+    return [] unless config.is_a?(Hash) && File.directory?(config[:dir].to_s)
+
+    home_dir = config[:home_dir] || config[:dir]
+    hooks_json = File.join(home_dir, "hooks.json")
+    data = read_json_safe(hooks_json)
+    return [] if data.nil? || !data.is_a?(Hash)
+
+    expected_names = codex_expected_names_by_event
+    live = data["hooks"].is_a?(Hash) ? data["hooks"] : {}
+
+    # One pass over every live Plastic entry (event, hook name, and the literal
+    # dispatcher-path token it actually invokes), shared by all three checks below.
+    entries = []
+    (expected_names.keys | live.keys).each do |event|
+      Array(live[event]).each do |group|
+        Array(group["hooks"]).each do |h|
+          cmd = h["command"]
+          next unless HookRegistry.codex_purge_command?(cmd)
+
+          dispatcher_path = cmd.to_s.split(/\s+/).reject(&:empty?).first.to_s.delete("\"'")
+          name = HookRegistry.command_basenames(cmd).last
+          entries << { event: event, name: name, dispatcher_path: dispatcher_path, cmd: cmd }
+        end
+      end
+    end
+
+    stale = []
+
+    # Not in the expected name set for this event at all (the original check).
+    entries.each do |e|
+      want_names = Array(expected_names[e[:event]])
+      stale << "#{e[:event]}: #{e[:cmd]}" unless want_names.include?(e[:name])
+    end
+
+    # (a) the same (event, name) pair registered more than once.
+    entries.group_by { |e| [e[:event], e[:name]] }.each_value do |group|
+      next if group.size <= 1
+
+      group.each { |e| stale << "#{e[:event]}: #{e[:cmd]} (duplicate registration of #{e[:name]})" }
+    end
+
+    # (b) a dispatcher path that differs from the path every other Plastic entry in
+    # this same file actually uses.
+    unless entries.empty?
+      majority_path = entries.map { |e| e[:dispatcher_path] }.tally.max_by { |(_path, count)| count }&.first
+      entries.each do |e|
+        next if e[:dispatcher_path] == majority_path
+
+        stale << "#{e[:event]}: #{e[:cmd]} (dispatcher path #{e[:dispatcher_path]} differs from " \
+                  "this file's other Plastic entries at #{majority_path})"
+      end
+    end
+
+    stale.uniq!
+
+    if stale.empty?
+      [check(
+        category: "agent_registration", name: "codex_stale_registrations", status: "pass",
+        message: "No stale Plastic Codex registrations found outside the expected hook set"
+      )]
+    else
+      [check(
+        category: "agent_registration", name: "codex_stale_registrations", status: "warn",
+        message: "#{stale.size} stale Codex registration(s) found outside the expected hook set",
+        details: stale, fixable: true,
+        fix_hint: "Re-run the Plastic installer with --codex --reinstall to purge stale entries"
+      )]
+    end
+  end
   # --- Check category 2: Conventions ---
 
   # When `scopes` is a non-nil Array of scope strings (e.g. ["global"] or
@@ -2235,6 +2396,8 @@ end
     all_checks += check_conventions(scopes: ["global"])
     all_checks += check_agent_registration(agent_key)
     all_checks += check_core_files(agent_key)
+    all_checks += check_harness_versions
+    all_checks += check_codex_stale_registrations
     all_checks += check_deprecations
     all_checks += check_config_asks(agent_key)
     all_checks += check_qmd

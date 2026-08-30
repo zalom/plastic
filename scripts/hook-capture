@@ -129,11 +129,20 @@ def truncate(text, max)
   "#{text[0, max - 3]}..."
 end
 
-# --- (a) tmp root + heartbeat, unconditional -------------------------------
+# --- (a) tmp root + heartbeat, guarded on the pointer (spec D9) ------------
+# Session start writes the `current` pointer; a capture with no pointer yet
+# means session start never ran for this session at all (a `-p` print
+# session, a resumed background job, an unregistered SessionStart hook), so
+# neither the per-session dir nor its heartbeat is created. UserPromptSubmit
+# fires before PostToolUse, so capture is the FIRST creator of every orphan
+# `.tmp/<sid>/` this guard prevents; hook-record carries the same guard for
+# its own (later) heartbeat write.
 begin
-  SessionLedger.ensure_tmp_root(store)
-  FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store, sid))
-  File.write(SessionLedger.heartbeat_path(store, sid), "#{Time.now.utc.iso8601}\n")
+  if File.exist?(SessionLedger.pointer_path(store, sid))
+    SessionLedger.ensure_tmp_root(store)
+    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store, sid))
+    File.write(SessionLedger.heartbeat_path(store, sid), "#{Time.now.utc.iso8601}\n")
+  end
 rescue StandardError
   nil
 end
@@ -151,11 +160,14 @@ rescue StandardError
 end
 
 # --- (c) pending checklist line -------------------------------------------
+# Gated on SessionLedger.capture_worthy?(prompt) (spec D2), a pure predicate
+# over the RAW prompt so it sees the true first character and multi-line
+# shape; the line text itself is still the sanitized, truncated copy.
 unless skip_day_ledger
   begin
-    project = SessionLedger.project_slug(cwd, plastic_home: plastic_home)
-    clean = truncate(SessionLedger.sanitize_summary(prompt), 120)
-    if clean.length >= 10
+    if SessionLedger.capture_worthy?(prompt)
+      project = SessionLedger.project_slug(cwd, plastic_home: plastic_home)
+      clean = truncate(SessionLedger.sanitize_summary(prompt), 120)
       SessionLedger.open_day(store: store, day: today, templates: templates, author: sid)
       line = SessionLedger.checklist_line(:pending, sid, project, clean)
       SessionLedger.append_line(SessionLedger.checklist_path(store, today), line,

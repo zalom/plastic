@@ -192,17 +192,37 @@ class RecordHookTest < Minitest::Test
 
   # --- (b) inside ~/.plastic but not an intent dir: nothing but heartbeat -----
 
+  # Amended for spec D9 (row H4): the no-pointer guard now skips both the
+  # per-session tmp directory and its heartbeat when session start never
+  # wrote a pointer, so this fixture writes the pointer first, exactly like
+  # a real booted session, before asserting the heartbeat lands.
   def test_file_inside_plastic_home_not_an_intent_dir_writes_only_heartbeat
     plain = File.join(@plastic_home, "PLASTIC.md")
     File.write(plain, "conventions")
     sid = SessionLedger.short_session_id(nil, "sess-1")
+    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, sid))
+    File.write(SessionLedger.pointer_path(@store, sid), "#{SessionLedger.day_id}\n")
     heartbeat = SessionLedger.heartbeat_path(@store, sid)
 
     out, status = run_hook(plain, session: "sess-1")
     assert_equal 0, status.exitstatus, out
-    assert File.exist?(heartbeat), "heartbeat must still be written"
+    assert File.exist?(heartbeat), "heartbeat must still be written when a pointer exists"
     refute File.exist?(checklist_path), "no day-ledger write for a plain ~/.plastic file"
     refute File.exist?(File.join(@intent_dir, "savepoint.md")), "no savepoint for a non-intent-dir file"
+  end
+
+  # --- row H4: no pointer at all means no directory, either --------------------
+
+  def test_no_pointer_at_all_creates_no_tmp_directory_or_heartbeat
+    plain = File.join(@plastic_home, "PLASTIC.md")
+    File.write(plain, "conventions")
+    sid = SessionLedger.short_session_id(nil, "sess-orphan")
+    refute File.exist?(SessionLedger.session_tmp_dir(@store, sid)), "fixture must start with no tmp dir"
+
+    out, status = run_hook(plain, session: "sess-orphan")
+    assert_equal 0, status.exitstatus, out
+    refute File.exist?(SessionLedger.session_tmp_dir(@store, sid)),
+           "no pointer means no .tmp/<sid>/ directory at all, not just no heartbeat"
   end
 
   # --- (c) project file, pending line exists -----------------------------------
@@ -253,6 +273,63 @@ class RecordHookTest < Minitest::Test
     assert_equal 0, status.exitstatus, out
     refute File.exist?(seam_calls), "the seam must not be called with no pending line"
     refute File.exist?(savepoint_path), "no Item savepoint line without a pending match"
+  end
+
+  # --- row A10: a rejected prompt disables the turn's auto-commit (spec D7) ---
+  #
+  # SessionLedger.set_state promotes only a checklist line matching the session
+  # id, and hook-record spawns session-commit only on a promotion. A prompt
+  # capture_worthy? rejects never gets a pending line in the first place, so
+  # its turn gets no Item savepoint line and no session-commit spawn either --
+  # intended (D7), not a bug, and pinned here end to end through the real
+  # hook-capture script.
+
+  def capture_script
+    File.expand_path("../scripts/hook-capture", __dir__)
+  end
+
+  def run_capture(prompt, session:)
+    payload = { "session_id" => session, "user_prompt" => prompt, "cwd" => @root }
+    env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
+    Open3.capture2(env, "ruby", capture_script, stdin_data: JSON.generate(payload))
+  end
+
+  def test_a10_rejected_prompt_yields_no_pending_line_no_item_no_seam_call
+    run_capture("what does the arm verb do to the worktree?", session: "sess-rejected")
+    refute File.exist?(checklist_path), "a rejected prompt must not scaffold a pending line"
+
+    seam_calls = File.join(@root, "seam-calls.log")
+    File.write(SEAM_PATH, "#!/bin/bash\necho called >> #{seam_calls}\nexit 0\n")
+    FileUtils.chmod(0o755, SEAM_PATH)
+
+    project_file = File.join(@root, "code", "app.rb")
+    FileUtils.mkdir_p(File.dirname(project_file))
+    File.write(project_file, "puts 1\n")
+
+    out, status = run_hook(project_file, session: "sess-rejected", cwd: @root)
+    assert_equal 0, status.exitstatus, out
+    refute File.exist?(seam_calls), "no session-commit for a turn whose prompt was rejected"
+    refute File.exist?(savepoint_path), "no Item savepoint line for a rejected prompt's turn"
+  end
+
+  def test_a10_accepted_prompt_yields_a_pending_line_an_item_and_a_seam_call
+    run_capture("fix the dashboard date parser for the wikilink form", session: "sess-accepted")
+    lines = File.read(checklist_path).lines.map { |l| SessionLedger.parse_checklist_line(l) }.compact
+    assert(lines.any? { |l| l[:session] == sid_for("sess-accepted") && l[:state] == :pending },
+           "an accepted prompt must scaffold a pending line")
+
+    seam_calls = File.join(@root, "seam-calls.log")
+    File.write(SEAM_PATH, "#!/bin/bash\necho called >> #{seam_calls}\nexit 0\n")
+    FileUtils.chmod(0o755, SEAM_PATH)
+
+    project_file = File.join(@root, "code", "app.rb")
+    FileUtils.mkdir_p(File.dirname(project_file))
+    File.write(project_file, "puts 1\n")
+
+    out, status = run_hook(project_file, session: "sess-accepted", cwd: @root)
+    assert_equal 0, status.exitstatus, out
+    assert File.exist?(seam_calls), "the seam must be called for a turn whose prompt was accepted"
+    assert File.exist?(savepoint_path), "an Item savepoint line must land for an accepted prompt's turn"
   end
 
   # --- seam missing, hangs, or exits 1: exit 0 in every case -------------------

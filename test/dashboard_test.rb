@@ -917,6 +917,68 @@ class DashboardTest < Minitest::Test
     end
   end
 
+  # --- row F: the wikilink completion-date form (mihradesign's INDEX.md shape) -------
+
+  def test_f1_completion_dates_parses_the_wikilink_form
+    completion_dates_fixture(
+      "- [[71]] retheme-admin-color-and-link-findings #{em} Admin retheme complete, " \
+      "rolled out to every surface (2026-07-11; auto M-tier, verified live).\n"
+    ) do |path|
+      dates = completion_dates(path)
+      assert_equal "2026-07-11", dates["71"]
+    end
+  end
+
+  def test_f2_completion_dates_parses_a_mixed_section_both_forms
+    completion_dates_fixture(
+      "- [200 #{em} Doctor must verify hooks](store/200--doctor/200--doctor.md) #{em} 2026-07-14 auto.\n" \
+      "- [[71]] retheme-admin-color-and-link-findings #{em} Admin retheme complete " \
+      "(2026-07-11; auto M-tier).\n"
+    ) do |path|
+      dates = completion_dates(path)
+      assert_equal "2026-07-14", dates["200"]
+      assert_equal "2026-07-11", dates["71"]
+    end
+  end
+
+  def test_f3_index_section_ids_parses_bare_ids_from_the_wikilink_form
+    Dir.mktmpdir("plastic-dash-index-section") do |dir|
+      path = File.join(dir, "INDEX.md")
+      File.write(path, "# Index\n## Completed\n- [[71]] retheme-admin-color-and-link-findings " \
+                       "#{em} done (2026-07-11; auto).\n")
+      assert_equal ["71"], index_section_ids(path, "## Completed")
+    end
+  end
+
+  def test_f4a_completion_dates_never_lets_a_parenthesized_note_date_beat_the_canonical_one
+    completion_dates_fixture(
+      "- [55 #{em} Something](store/55--x/55--x.md) #{em} 2026-07-10 note about an earlier " \
+      "attempt (2026-01-01) that failed.\n"
+    ) do |path|
+      dates = completion_dates(path)
+      assert_equal "2026-07-10", dates["55"]
+    end
+  end
+
+  def test_f4b_completion_dates_yields_nothing_for_a_link_entry_with_only_a_note_date
+    completion_dates_fixture(
+      "- [56 #{em} Something](store/56--x/56--x.md) referenced on (2026-02-02) previously.\n"
+    ) do |path|
+      dates = completion_dates(path)
+      assert_nil dates["56"]
+    end
+  end
+
+  def test_f5_index_section_ids_covers_active_and_future_wikilink_sections
+    Dir.mktmpdir("plastic-dash-index-section") do |dir|
+      path = File.join(dir, "INDEX.md")
+      File.write(path, "# Index\n## Active\n- [[80]] something active #{em} in progress\n" \
+                       "## Future\n- [[81]] something future #{em} queued\n")
+      assert_equal ["80"], index_section_ids(path, "## Active")
+      assert_equal ["81"], index_section_ids(path, "## Future")
+    end
+  end
+
   # Board-level proof: the reported bug named a stale intent from weeks earlier as "most
   # recently delivered" because a new-format entry's date was silently invisible to the
   # summary. With the fix, a new-format completion dated TODAY correctly outranks an
