@@ -60,7 +60,7 @@ end
 # "]" and whitespace) so this can never match a wikilink line's OWN opening
 # bracket and key it as "[71" (row F, spec 315b): "- [[71]] ..." fails this
 # pattern outright (the character right after "- [" is itself "[", which the
-# class disallows), leaving it to LINK_ID_RE below.
+# class disallows), leaving it to WIKILINK_ID_RE below.
 LINK_ID_RE = /^- \[([^\[\]\s]+)/
 
 # The wikilink form's id: "- [[id]] name (em dash) description (date; ...)",

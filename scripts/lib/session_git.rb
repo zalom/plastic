@@ -211,12 +211,19 @@ module SessionGit
   # MAX_SUBJECT_LENGTH characters, falling back to the hard slice when no
   # boundary exists at or before the limit (spec D6, amends spec 300 D5's
   # unconditional `first_line[0, MAX_SUBJECT_LENGTH]`, which cut mid-word).
-  # A subject at or under the limit is returned unchanged.
+  # A subject at or under the limit is returned unchanged. Post-execution
+  # review item 7: when the character immediately after the 72-char prefix
+  # is ITSELF a space, the prefix already ends exactly on a word boundary and
+  # needs no trimming at all -- checked before consulting `rindex`, because
+  # an earlier internal space inside the 72-char prefix would otherwise make
+  # `rindex` walk back past a whole trailing word that fit perfectly.
   def subject_for(summary)
     first_line = summary.to_s.split(/\r?\n/, 2).first.to_s.strip
     return first_line if first_line.length <= MAX_SUBJECT_LENGTH
 
     cut = first_line[0, MAX_SUBJECT_LENGTH]
+    return cut if first_line[MAX_SUBJECT_LENGTH] == " "
+
     boundary = cut.rindex(" ")
     boundary ? cut[0, boundary] : cut
   end
@@ -224,9 +231,13 @@ module SessionGit
   # The commit body for `summary`/`subject` (spec D6): the full summary when
   # `subject` is a cut-down copy of it, nil when the subject already carries
   # the summary whole (no redundant body on a short, single-line summary).
+  # Post-execution review item 4: compares the STRIPPED raw summary, not the
+  # raw summary verbatim -- a summary with only trailing/leading whitespace
+  # around an otherwise-identical subject must not repeat the same sentence
+  # twice as a redundant body.
   def body_for(summary, subject)
     raw = summary.to_s
-    raw == subject ? nil : raw
+    raw.strip == subject ? nil : raw
   end
 
   # --- git primitives (all use -C, never cwd) -------------------------------------

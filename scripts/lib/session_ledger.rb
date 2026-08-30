@@ -188,13 +188,15 @@ module SessionLedger
 
   # --- capture_worthy? (spec D2, D7; supersedes 298 D2(c)) -------------------
 
-  # A whole (stripped) prompt that is exactly one harness envelope tag: opens
-  # with "<name...>", closes with "</name>", and nothing else surrounds it.
-  # A prompt that opens with an envelope and then carries real work does NOT
-  # match (the trailing text after the closing tag breaks the \z anchor), so
-  # only a prompt that is nothing BUT the envelope is caught here.
-  ENVELOPE_RE = /\A<([A-Za-z][\w-]*)(?:\s[^>]*)?>.*<\/\1>\z/m
-  private_constant :ENVELOPE_RE
+  # One complete top-level harness envelope tag block: "<name ...>...</name>".
+  # Non-greedy (.*?) so sibling blocks are each matched on their own rather
+  # than one match spanning from the first block's opening tag all the way to
+  # the LAST block's closing tag (post-execution review item 3: an envelope
+  # on both sides of real work, "<system-reminder>...</system-reminder>\nfix
+  # the parser\n<task-notification>...</task-notification>", must not be
+  # read as one giant envelope swallowing the work in the middle).
+  ENVELOPE_BLOCK_RE = /<([A-Za-z][\w-]*)(?:\s[^>]*)?>.*?<\/\1>/m
+  private_constant :ENVELOPE_BLOCK_RE
 
   # The whole prompt, case- and whitespace-insensitively, and nothing else
   # (rule 3, D2): a trigger word inside a longer real instruction ("continue
@@ -206,7 +208,10 @@ module SessionLedger
   # hatch, D2's accept bias). Deliberately excludes common nouns that also
   # read as everyday verbs in casual remarks (e.g. "release", "ship", "plan"):
   # including them would make ordinary conversation about a past release or
-  # plan look like a work request.
+  # plan look like a work request. Matched with an optional inflection suffix
+  # (post-execution review BLOCKER): the bare stems alone missed "fixed",
+  # "updated", "added", "reviewed", "implemented" -- exactly the past-tense
+  # and -ing forms real work summaries use.
   WORK_MARKER_WORDS = %w[
     fix add remove delete update upgrade implement write build create refactor
     debug investigate review test deploy commit merge revert rename configure
@@ -220,14 +225,21 @@ module SessionLedger
   ].freeze
   private_constant :WORK_MARKER_PHRASES
 
-  WORK_MARKER_RE = /\b(?:#{WORK_MARKER_WORDS.join("|")})\b/i
+  WORK_MARKER_RE = /\b(?:#{WORK_MARKER_WORDS.join("|")})(?:s|d|ed|ing)?\b/i
   private_constant :WORK_MARKER_RE
 
   # A first word that reads as an interrogative opener, checked case-
   # insensitively against the prompt's first whitespace-separated token.
+  # Post-execution review BLOCKER: trimmed from the original, wider list
+  # (which also carried "how", "when", "where", "was", "were", "do", "did",
+  # "will", "shall", "should") down to words that open a genuine QUESTION at
+  # least as often as an ordinary command or request. Measured against 43
+  # invented and 27 real day-ledger prompts: the dropped words open ordinary
+  # work requests ("do the release now...", "when you are done, tag the
+  # release...", "will you push that branch...", "should I bump the version
+  # files...") far more often than they open a bare question worth rejecting.
   QUESTION_STARTERS = %w[
-    what why how who whom whose when where which is are am was were do does did
-    can could would should will shall
+    what why who whom whose which is are am does can could would
   ].freeze
   private_constant :QUESTION_STARTERS
 
@@ -243,8 +255,13 @@ module SessionLedger
   ].freeze
   private_constant :REMARK_PATTERNS
 
+  # True iff nothing but harness envelope tag block(s) -- and whitespace --
+  # remain once every complete top-level block is stripped out. A prompt
+  # that is one envelope alone, or several envelopes with no other content,
+  # matches; a prompt carrying real work anywhere outside an envelope (before,
+  # after, or between several of them) does not.
   def whole_prompt_envelope?(stripped)
-    stripped.start_with?("<") && ENVELOPE_RE.match?(stripped)
+    stripped.gsub(ENVELOPE_BLOCK_RE, "").strip.empty?
   end
 
   def bare_trigger?(stripped)
@@ -268,6 +285,10 @@ module SessionLedger
   def bare_remark?(stripped)
     REMARK_PATTERNS.any? { |re| re.match?(stripped) }
   end
+
+  # Internal helpers only: #capture_worthy? is the sole public contract
+  # (post-execution review item 9).
+  private_class_method :whole_prompt_envelope?, :bare_trigger?, :work_marker?, :interrogative?, :bare_remark?
 
   # Whether `prompt` earns a pending checklist line (spec D2). Bias is
   # ACCEPT: this rejects only on four named rules -- the 10-char floor (on

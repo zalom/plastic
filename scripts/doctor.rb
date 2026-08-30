@@ -368,6 +368,16 @@ class Doctor
   # dispatcher path, which is only guaranteed to match the live hooks.json's own
   # dispatcher path in a real, single install, never a test that fakes one without the
   # other. Full tier only (`run_checks`); never `run_core_checks` (D8).
+  #
+  # Post-execution review item 5: name-only comparison alone is blind to two real
+  # cases, both closed here without reintroducing any plastic_home coupling: (a) the
+  # SAME (event, name) pair registered more than once (each copy's name is
+  # individually expected, so a "not in the expected set" scan never sees the
+  # duplicate), and (b) a correctly-named entry whose dispatcher path is an OLD
+  # install, different from the path every OTHER Plastic entry in this same file
+  # actually uses -- the "correct" path here is whichever path the file's own
+  # majority of entries already agrees on, never a path this Doctor instance derives
+  # from its own plastic_home.
   def check_codex_stale_registrations
     config = agents["codex"]
     return [] unless config.is_a?(Hash) && File.directory?(config[:dir].to_s)
@@ -375,26 +385,55 @@ class Doctor
     home_dir = config[:home_dir] || config[:dir]
     hooks_json = File.join(home_dir, "hooks.json")
     data = read_json_safe(hooks_json)
-    return [] if data.nil?
+    return [] if data.nil? || !data.is_a?(Hash)
 
     expected_names = codex_expected_names_by_event
     live = data["hooks"].is_a?(Hash) ? data["hooks"] : {}
 
-    stale = []
+    # One pass over every live Plastic entry (event, hook name, and the literal
+    # dispatcher-path token it actually invokes), shared by all three checks below.
+    entries = []
     (expected_names.keys | live.keys).each do |event|
-      want_names = Array(expected_names[event])
       Array(live[event]).each do |group|
         Array(group["hooks"]).each do |h|
           cmd = h["command"]
           next unless HookRegistry.codex_purge_command?(cmd)
 
+          dispatcher_path = cmd.to_s.split(/\s+/).reject(&:empty?).first.to_s.delete("\"'")
           name = HookRegistry.command_basenames(cmd).last
-          next if want_names.include?(name)
-
-          stale << "#{event}: #{cmd}"
+          entries << { event: event, name: name, dispatcher_path: dispatcher_path, cmd: cmd }
         end
       end
     end
+
+    stale = []
+
+    # Not in the expected name set for this event at all (the original check).
+    entries.each do |e|
+      want_names = Array(expected_names[e[:event]])
+      stale << "#{e[:event]}: #{e[:cmd]}" unless want_names.include?(e[:name])
+    end
+
+    # (a) the same (event, name) pair registered more than once.
+    entries.group_by { |e| [e[:event], e[:name]] }.each_value do |group|
+      next if group.size <= 1
+
+      group.each { |e| stale << "#{e[:event]}: #{e[:cmd]} (duplicate registration of #{e[:name]})" }
+    end
+
+    # (b) a dispatcher path that differs from the path every other Plastic entry in
+    # this same file actually uses.
+    unless entries.empty?
+      majority_path = entries.map { |e| e[:dispatcher_path] }.tally.max_by { |(_path, count)| count }&.first
+      entries.each do |e|
+        next if e[:dispatcher_path] == majority_path
+
+        stale << "#{e[:event]}: #{e[:cmd]} (dispatcher path #{e[:dispatcher_path]} differs from " \
+                  "this file's other Plastic entries at #{majority_path})"
+      end
+    end
+
+    stale.uniq!
 
     if stale.empty?
       [check(
