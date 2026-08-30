@@ -6,7 +6,8 @@ This chapter holds the delivery lock, claims, worktrees, the fail-safe doctrine,
 
 Locks and worktrees exist only for auto teams. An interactive session working direct or
 thinking takes no lock: it records into the day ledger, or into the intent its per-session
-pointer names (`~/.plastic/store/.tmp/<session-id>/current`; absent means the day ledger).
+pointer names (`~/.plastic/store/.tmp/<session>/current`, where `<session>` is the first eight
+characters of the session id; the file holds today's day id or an intent id).
 
 For an auto team, exactly one team develops an intent's delivery at a time. Ownership is
 session-keyed and durable: arming acquires `delivery.lock` inside the intent directory
