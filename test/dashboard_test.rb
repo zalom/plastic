@@ -870,7 +870,7 @@ class DashboardTest < Minitest::Test
   def test_completion_dates_parses_new_index_note_format
     completion_dates_fixture(
       "- [200 #{em} Doctor must verify hooks](store/200--doctor/200--doctor.md) #{em} " \
-      "2026-07-14 auto, M tier. Long note prose follows right after the date.\n"
+      "2026-07-14 auto. Long note prose follows right after the date.\n"
     ) do |path|
       dates = completion_dates(path)
       assert_equal "2026-07-14", dates["200"]
@@ -941,7 +941,7 @@ class DashboardTest < Minitest::Test
     File.write(File.join(@home, "projects", "demo", "INDEX.md"),
       "# Index\n## Active\n## Future\n## Clusters\n## Abandoned\n## Completed\n" \
       "- [31 #{em} Todays delivery](store/31--todays-delivery/31--todays-delivery.md) #{em} " \
-      "#{TODAY} auto, M tier. Delivered via end-intent --index-note today.\n" \
+      "#{TODAY} auto. Delivered via end-intent --index-note today.\n" \
       "- [30 #{em} Older delivery](store/30--older-delivery/30--older-delivery.md) #{em} 2026-05-01\n")
 
     yield

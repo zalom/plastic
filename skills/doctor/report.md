@@ -59,7 +59,7 @@ Checked at: {{timestamp}}
 - [PASS] Claude Code adapter registered
 - [FAIL] 2 hook scripts not executable
   - ~/.claude/hooks/plastic-session-start
-  - ~/.claude/hooks/plastic-gate-check
+  - ~/.claude/hooks/plastic-record
 
 <!-- =====================================================================
   Repeat the above pattern for each category found in the checks array.

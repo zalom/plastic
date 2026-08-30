@@ -258,12 +258,12 @@ class EndIntentTest < Minitest::Test
 
     _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
                                    "--index", @index, "--no-commit",
-                                   "--index-note", "(guided, Tier S). Shipped end to end. Suite 42/100/0/0.")
+                                   "--index-note", "(auto). Shipped end to end. Suite 42/100/0/0.")
     assert_equal 0, status
 
     content = File.read(@index)
     expected_line = "- [161 — Demo intent](store/161--demo/161--demo.md) — " \
-                    "#{Date.today.iso8601} (guided, Tier S). Shipped end to end. Suite 42/100/0/0.\n"
+                    "#{Date.today.iso8601} (auto). Shipped end to end. Suite 42/100/0/0.\n"
     assert_includes content, expected_line
     completed_head = content.lines.drop_while { |l| l.strip != "## Completed" }.take(3).join
     refute_match(/_\(none\)_/, completed_head, "the placeholder must not survive alongside the rich entry")
@@ -272,7 +272,7 @@ class EndIntentTest < Minitest::Test
   def test_index_note_idempotency_holds_with_the_flag
     build_intent
     write_index
-    note = "(guided, Tier S). Shipped end to end. Suite 42/100/0/0."
+    note = "(auto). Shipped end to end. Suite 42/100/0/0."
 
     run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
                     "--index", @index, "--no-commit", "--index-note", note)

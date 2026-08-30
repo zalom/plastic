@@ -388,7 +388,7 @@ class NewIntentTest < Minitest::Test
   def test_born_savepoint_is_idempotent_with_later_append
     dir, = run_new_intent("--store", @store, "--intent", "Demo", "--slug", "demo")
     intent_file = File.join(dir, "#{File.basename(dir)}.md")
-    # A later gate fire on the same intent file must not add a duplicate What line.
+    # A later hook fire on the same intent file must not add a duplicate What line.
     Savepoint.append_savepoint(dir, intent_file)
     lines = File.read(File.join(dir, "savepoint.md")).split("\n").reject(&:empty?)
     assert_equal 1, lines.length

@@ -51,7 +51,7 @@ class HarnessTextTest < Minitest::Test
   end
 
   def test_unknown_name_left_alone
-    text = "a lock-gate deny names /plastic-lock"
+    text = "a stale lock names /plastic-lock"
     assert_equal text, codex(text)
   end
 

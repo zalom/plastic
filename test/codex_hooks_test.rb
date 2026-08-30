@@ -107,13 +107,13 @@ class CodexHooksTest < Minitest::Test
     payload
   end
 
-  def run_hook(gate, payload_hash, session: nil, chdir: @store, home: @fake_home,
+  def run_hook(hook_name, payload_hash, session: nil, chdir: @store, home: @fake_home,
                plastic_home: nil, script: SCRIPT, extra_env: {})
     env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_CODE_SESSION_ID" => session, "HOME" => home }
     env["PLASTIC_HOME"] = plastic_home if plastic_home
     env.merge!(extra_env)
     out = nil
-    IO.popen(env, [RbConfig.ruby, script, gate], "r+", err: [:child, :out], chdir: chdir) do |io|
+    IO.popen(env, [RbConfig.ruby, script, hook_name], "r+", err: [:child, :out], chdir: chdir) do |io|
       io.write(payload_hash.nil? ? "" : JSON.generate(payload_hash))
       io.close_write
       out = io.read
@@ -280,7 +280,7 @@ class CodexHooksTest < Minitest::Test
 
   # Intent 289, belt. Any launcher that leaks the dispatcher's pipes, including an older
   # installed copy, must time out SILENTLY. The dispatcher resolves a state-hook launcher as
-  # __dir__/../hooks/<gate> (scripts/codex-hook:66) and requires nothing outside stdlib on
+  # __dir__/../hooks/<hook_name> (scripts/codex-hook:66) and requires nothing outside stdlib on
   # that branch, so copying the one file beside a fake hooks/ dir is enough to point it at a
   # launcher of our choosing. The copy needs no exec bit: run_hook invokes it via RbConfig.ruby.
   def test_state_hook_timeout_stays_silent
@@ -438,7 +438,7 @@ class CodexHooksTest < Minitest::Test
   def test_unknown_gate_arg_fails_open
     intent_path = File.join(@store, "1--demo", "1--demo.md")
     body = patch(add_section(intent_path, valid_intent_content))
-    _out, status = run_hook("not-a-real-gate", codex_payload(body))
+    _out, status = run_hook("not-a-real-hook", codex_payload(body))
     assert_equal 0, status.exitstatus
   end
 

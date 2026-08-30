@@ -42,7 +42,7 @@ class InstallPackagingTest < Minitest::Test
     assert_nil settings["extraKnownMarketplaces"], "must not write a marketplace source"
   end
 
-  # --- Flat hyphen skill layout + gate relocation ---
+  # --- Flat hyphen skill layout + shared-fragment relocation ---
 
   def test_install_skills_flat_produces_hyphen_dirs
     src = File.join(@dir, "skills-src")
