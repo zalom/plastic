@@ -14,6 +14,9 @@ require_relative "lib/agent_models"
 DEFAULTS = {
   "version" => 3,
   "stale_threshold_days" => 3,
+  # Absolute token counts for a 1M window, 35 and 50 percent (intent 312, 296 D38).
+  "context_offer_tokens" => 350_000,
+  "context_insist_tokens" => 500_000,
   "execution_mode" => "subagent-driven",
   "hash_length" => 6,
   "hash_algorithm" => "sha256-base36",

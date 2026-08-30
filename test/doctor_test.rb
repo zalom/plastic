@@ -2170,6 +2170,7 @@ class DoctorIntegrationTest < Minitest::Test
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
     write_agents(DOCTOR_TEST_CLAUDE)
+    write_claude_compact_section(DOCTOR_TEST_CLAUDE)
 
     # Agent-side VERSION
     agent_plastic = File.join(DOCTOR_TEST_CLAUDE, "plastic")

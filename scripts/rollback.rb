@@ -118,6 +118,12 @@ class Rollback < InstallerCore
           remove_claude_hooks(path)
           stripped << path
         end
+        # The compact-instructions block (intent 312), for the same reason: no older
+        # package knows the section exists, so nothing there would ever replace or
+        # remove it. The Codex AGENTS.md section needs no equivalent: every older
+        # package knows that one and rewrites it on the downgrade install.
+        claude_md = strip_claude_compact_section(File.join(agent[:dir], "CLAUDE.md"))
+        stripped << claude_md if claude_md
       when "codex"
         path = agent[:home_dir] && File.join(agent[:home_dir], "hooks.json")
         if path && File.exist?(path)

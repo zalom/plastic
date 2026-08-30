@@ -9,6 +9,7 @@ require "time"
 require_relative "hook_registry"
 require_relative "agent_models"
 require_relative "harness_text"
+require_relative "compact_instructions"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/rollback) and their tests can run
@@ -32,6 +33,15 @@ class InstallerCore
 
   # Regex matching exactly one managed section (BEGIN line .. END line), non-greedy.
   CODEX_SECTION_RE = /^<!-- BEGIN PLASTIC INTEGRATION.*?-->\n.*?\n<!-- END PLASTIC INTEGRATION -->\n?/m
+
+  # Claude CLAUDE.md marked-section markers (intent 312). A pair of its own, not the
+  # Codex literals: the two managed files can be one file (a user who symlinks
+  # ~/.claude/CLAUDE.md at ~/.codex/AGENTS.md, or the reverse), and a shared literal
+  # would let one body silently replace the other and an uninstall of one strip both.
+  # doctor_core.rb matches these literals structurally, so keep the two in sync by hand.
+  CLAUDE_SECTION_BEGIN_PREFIX = "<!-- BEGIN PLASTIC COMPACT"
+  CLAUDE_SECTION_END = "<!-- END PLASTIC COMPACT -->"
+  CLAUDE_SECTION_RE = /^<!-- BEGIN PLASTIC COMPACT.*?-->\n.*?\n<!-- END PLASTIC COMPACT -->\n?/m
 
   # Curated essentials plus a pointer to ~/.plastic/PLASTIC.md and the plastic-conventions
   # skill, injected into ~/.codex/AGENTS.md. Not a slice of PLASTIC.md itself: AGENTS.md is
@@ -336,6 +346,7 @@ class InstallerCore
       "scripts/lib/lock.rb" => "scripts/lib/lock.rb",
       "scripts/plastic-lock" => "scripts/plastic-lock",
       "scripts/lib/hook_registry.rb" => "scripts/lib/hook_registry.rb",
+      "scripts/lib/compact_instructions.rb" => "scripts/lib/compact_instructions.rb",
       "scripts/agent-report" => "scripts/agent-report",
       "scripts/lib/insights.rb" => "scripts/lib/insights.rb",
       "scripts/insight-append" => "scripts/insight-append",
@@ -421,6 +432,8 @@ class InstallerCore
       version: 3
       execution_mode: subagent-driven
       stale_threshold_days: 3
+      context_offer_tokens: 350000
+      context_insist_tokens: 500000
       hash_length: 6
       hash_algorithm: sha256-base36
       max_slug_words: 5
@@ -778,6 +791,11 @@ class InstallerCore
     settings_path = File.join(config[:dir], "settings.json")
     choice = statusline_choice(settings_path, argv: argv, input: input, reinstall: reinstall)
     merge_claude_hooks(settings_path, choice: choice)
+
+    # Instruction injection (intent 312): the compact-instructions block into
+    # ~/.claude/CLAUDE.md. A partial-ownership user file, so it is NOT manifest-tracked
+    # (stripped surgically on uninstall), the same treatment ~/.codex/AGENTS.md gets.
+    inject_claude_compact_md(File.join(config[:dir], "CLAUDE.md"))
 
     # Write manifest
     manifest_path = File.join(plastic_dir, "manifest.json")
@@ -1344,14 +1362,28 @@ class InstallerCore
     raise e
   end
 
-  def codex_section(body: CODEX_AGENTS_MD_BODY)
+  # A managed instruction file may be a symlink into a dotfiles repo. write_text_atomic
+  # renames a temp file over its argument, which would replace the link with a regular
+  # file and silently detach it, so every read and write resolves the link first and the
+  # change lands on its target (intent 312).
+  def resolve_managed_path(path)
+    File.symlink?(path) ? File.realpath(path) : path
+  rescue Errno::ENOENT
+    path
+  end
+
+  def marked_section(body: CODEX_AGENTS_MD_BODY, begin_prefix: CODEX_SECTION_BEGIN_PREFIX,
+                     end_marker: CODEX_SECTION_END)
     hash = Digest::SHA256.hexdigest(body)[0, 12]
-    "#{CODEX_SECTION_BEGIN_PREFIX} hash:#{hash} -->\n#{body.strip}\n#{CODEX_SECTION_END}\n"
+    "#{begin_prefix} hash:#{hash} -->\n#{body.strip}\n#{end_marker}\n"
   end
 
   # Returns :created / :appended / :replaced / :refused. Never raises on a normal user file.
-  def inject_codex_agents_md(path, body: CODEX_AGENTS_MD_BODY)
-    section = codex_section(body: body)
+  def inject_marked_section(path, body: CODEX_AGENTS_MD_BODY,
+                            begin_prefix: CODEX_SECTION_BEGIN_PREFIX,
+                            end_marker: CODEX_SECTION_END, section_re: CODEX_SECTION_RE)
+    section = marked_section(body: body, begin_prefix: begin_prefix, end_marker: end_marker)
+    path = resolve_managed_path(path)
 
     unless File.exist?(path)
       FileUtils.mkdir_p(File.dirname(path))
@@ -1360,14 +1392,14 @@ class InstallerCore
     end
 
     content = File.read(path)
-    has_begin = content.include?(CODEX_SECTION_BEGIN_PREFIX)
-    has_end = content.include?(CODEX_SECTION_END)
+    has_begin = content.include?(begin_prefix)
+    has_end = content.include?(end_marker)
 
     # 22a safety rule: never write if the existing section cannot be parsed.
     return :refused if has_begin && !has_end
 
     if has_begin
-      write_text_atomic(path, content.sub(CODEX_SECTION_RE, section))
+      write_text_atomic(path, content.sub(section_re, section))
       :replaced
     else
       base = content.end_with?("\n") ? content : content + "\n"
@@ -1376,18 +1408,41 @@ class InstallerCore
     end
   end
 
+  # --- The two blocks Plastic ships, each with its own marker pair ---
+
+  def codex_section(body: CODEX_AGENTS_MD_BODY)
+    marked_section(body: body)
+  end
+
+  def inject_codex_agents_md(path, body: CODEX_AGENTS_MD_BODY)
+    inject_marked_section(path, body: body)
+  end
+
+  # The compact-instructions block for ~/.claude/CLAUDE.md (intent 312).
+  def claude_compact_section(body: CompactInstructions::BODY)
+    marked_section(body: body, begin_prefix: CLAUDE_SECTION_BEGIN_PREFIX,
+                   end_marker: CLAUDE_SECTION_END)
+  end
+
+  def inject_claude_compact_md(path, body: CompactInstructions::BODY)
+    inject_marked_section(path, body: body, begin_prefix: CLAUDE_SECTION_BEGIN_PREFIX,
+                          end_marker: CLAUDE_SECTION_END, section_re: CLAUDE_SECTION_RE)
+  end
+
   # Remove exactly Plastic's managed section from a user-owned AGENTS.md. Preserve all other
   # content. Delete the file only if Plastic created it and nothing else remains. Returns the
   # path when it acted, nil on no-op. Mirrors remove_claude_hooks: dedicated surgical strip,
   # never the manifest whole-file-delete path.
-  def strip_codex_section(path)
+  def strip_marked_section(path, begin_prefix: CODEX_SECTION_BEGIN_PREFIX,
+                           section_re: CODEX_SECTION_RE)
+    path = resolve_managed_path(path)
     return nil unless File.exist?(path)
     content = File.read(path)
-    return nil unless content.include?(CODEX_SECTION_BEGIN_PREFIX)
+    return nil unless content.include?(begin_prefix)
 
     # Remove the section plus the single separator newline the append introduced, so a
     # standard user file round-trips byte-identical.
-    stripped = content.sub(/\n?#{CODEX_SECTION_RE}/, "")
+    stripped = content.sub(/\n?#{section_re}/, "")
 
     if stripped.strip.empty?
       File.delete(path)                 # Plastic-created file: nothing else left
@@ -1396,6 +1451,15 @@ class InstallerCore
       write_text_atomic(path, stripped)
     end
     path
+  end
+
+  def strip_codex_section(path)
+    strip_marked_section(path)
+  end
+
+  def strip_claude_compact_section(path)
+    strip_marked_section(path, begin_prefix: CLAUDE_SECTION_BEGIN_PREFIX,
+                         section_re: CLAUDE_SECTION_RE)
   end
 
   # --- Uninstall ---
@@ -1424,6 +1488,7 @@ class InstallerCore
     puts "     ls ~/.claude/skills | grep '^plastic-'      # → no output"
     puts "     ls ~/.claude/hooks | grep '^plastic-'       # → no output"
     puts "     grep -c plastic ~/.claude/settings.json     # → only hook refs gone"
+    puts "     grep 'PLASTIC COMPACT' ~/.claude/CLAUDE.md  # → no output"
     puts "\n  To also delete your intent store: rm -rf #{tilde(plastic_home)}\n\n"
   end
 
@@ -1470,6 +1535,11 @@ class InstallerCore
       settings_path = File.join(config[:dir], "settings.json")
       remove_claude_hooks(settings_path) if File.exist?(settings_path)
       removed.concat(migrate_legacy_plugin(config[:dir]))
+
+      # The compact-instructions block in the user-owned CLAUDE.md (intent 312): a
+      # surgical strip, never the manifest whole-file-delete path above.
+      stripped = strip_claude_compact_section(File.join(config[:dir], "CLAUDE.md"))
+      removed << stripped if stripped
     end
 
     # Codex: surgically strip Plastic's marked section from the user-owned AGENTS.md

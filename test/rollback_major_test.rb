@@ -142,8 +142,9 @@ class RollbackMajorTest < Minitest::Test
     stripped = nil
     capture_io { stripped = v.prepare_switch("1.14.1", "2.0.0-alpha.1") }
     assert_equal [settings, hooks_json, claude_md].sort, stripped.sort
-    refute_includes File.read(claude_md), InstallerCore::CLAUDE_SECTION_BEGIN_PREFIX,
-                    "intent 312: an older package cannot see the compact section, so the downgrade strips it"
+    refute(File.exist?(claude_md) && File.read(claude_md).include?(InstallerCore::CLAUDE_SECTION_BEGIN_PREFIX),
+           "intent 312: an older package cannot see the compact section, so the downgrade strips it " \
+           "(a Plastic-created CLAUDE.md with nothing else in it is removed outright)")
     after = File.read(settings)
     refute_match(/plastic-/, after, "every Plastic registration is gone")
     assert_match(%r{~/bin/my-own-hook}, after, "the user's own hook survives")
