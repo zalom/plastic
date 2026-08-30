@@ -419,6 +419,11 @@ class InstallerCore
       "scripts/lib/session_backfill.rb" => "scripts/lib/session_backfill.rb",
       "scripts/lib/session_close.rb" => "scripts/lib/session_close.rb",
       "scripts/lib/session_git.rb" => "scripts/lib/session_git.rb",
+      "scripts/lib/handoff.rb" => "scripts/lib/handoff.rb",
+      "scripts/lib/day_summary.rb" => "scripts/lib/day_summary.rb",
+      "scripts/write-handoff" => "scripts/write-handoff",
+      "scripts/day-summary" => "scripts/day-summary",
+      "scripts/hook-savepoint" => "scripts/hook-savepoint",
     }
   end
 

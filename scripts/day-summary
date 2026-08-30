@@ -1,0 +1,53 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# day-summary (intent 311): print the block SessionStart injects at boot
+# (open items, the last five done, live auto intents, other active
+# sessions). Prints nothing when there is nothing to say.
+#
+# Usage:
+#   day-summary [--store <dir>] [--day <YYYYMMDD>] [--session <id>] [--home <dir>]
+#
+# Defaults: the home is $PLASTIC_HOME (~/.plastic), the store is <home>/store,
+# the day is today (local wall clock), the session is $CLAUDE_CODE_SESSION_ID.
+#
+# Exit codes: 0 done; 2 usage error.
+
+require_relative "lib/session_ledger"
+require_relative "lib/day_summary"
+
+def usage_abort(message)
+  warn "day-summary: #{message}"
+  exit 2
+end
+
+def expand(path)
+  File.expand_path(path.to_s.sub(/\A~/, Dir.home))
+end
+
+def parse_args(argv)
+  opts = {}
+  i = 0
+  while i < argv.length
+    flag = argv[i]
+    usage_abort("unknown argument #{flag.inspect}") unless flag.start_with?("--")
+    usage_abort("#{flag} requires a value") if i + 1 >= argv.length
+    key = flag.delete_prefix("--").to_sym
+    usage_abort("unknown flag #{flag.inspect}") unless %i[store day session home].include?(key)
+    opts[key] = argv[i + 1]
+    i += 2
+  end
+  opts
+end
+
+opts = parse_args(ARGV)
+home = opts[:home] ? expand(opts[:home]) : expand(ENV.fetch("PLASTIC_HOME", "~/.plastic"))
+store = opts[:store] ? expand(opts[:store]) : File.join(home, "store")
+day = opts[:day] || SessionLedger.day_id
+usage_abort("--day must be eight digits parsing as a real date, got #{day.inspect}") unless SessionLedger.valid_day_id?(day)
+session = SessionLedger.short_session_id(opts[:session], ENV["CLAUDE_CODE_SESSION_ID"])
+
+text = DaySummary.build(store: store, day: day, session: session, home: home)
+puts text unless text.empty?
+exit 0

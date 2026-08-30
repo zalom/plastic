@@ -92,6 +92,24 @@ Each live session keeps two small files under `~/.plastic/store/.tmp/<session>/`
 Nothing in `.tmp/` is durable or committed (it carries its own `.gitignore`). Losing it costs
 nothing; the next session start recreates it.
 
+## The hand-off and the day summary
+
+Two renderings sit on top of the day ledger. Neither is a ledger of its own: both are
+rebuilt in full from `checklist.md` and `savepoint.md` every time they are written, so a
+lost or stale copy costs nothing.
+
+- **The hand-off**, `handoff--<session>.md` in the day directory, one file per session. It is
+  written at every ticked item, at the moment before a compaction, and at session close. It
+  lists that session's open and done items, its last ten events, a one-line count for each
+  other session that day, and how to resume. After a compaction or a new session, read the
+  newest one for the day; it is the prior session's own account of where things stand.
+- **The day summary**, the block the session-start hook injects right after the
+  `day ledger <day> joined` line. It carries the open items across every session, the last
+  five done, the live auto intents (an Active intent holding a fresh `delivery.lock`, with its
+  latest savepoint line), and the other sessions alive by their heartbeat. It never carries
+  the raw ledger, only this summary, and it stays under three kilobytes. To see it outside a
+  boot, run `ruby ~/.plastic/scripts/day-summary`.
+
 ## When you see a lock
 
 `delivery.lock` appears in an intent directory only when an auto team is delivering that

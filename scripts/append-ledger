@@ -31,6 +31,7 @@
 #   3 - promote/tick could not take an exclusive lock (filesystem without flock support)
 
 require_relative "lib/session_ledger"
+require_relative "lib/handoff"
 
 VERBS = %w[pending item promote tick savepoint].freeze
 
@@ -129,10 +130,21 @@ def run_transition(from, to, event, store, day, session, project, opts)
     exit 2
   end
 
-  return unless opts[:savepoint]
+  if opts[:savepoint]
+    line = SessionLedger.savepoint_line(event, session, project, target_summary, now: Time.now)
+    SessionLedger.append_line(SessionLedger.savepoint_path(store, day), line, header: nil)
+  end
 
-  line = SessionLedger.savepoint_line(event, session, project, target_summary, now: Time.now)
-  SessionLedger.append_line(SessionLedger.savepoint_path(store, day), line, header: nil)
+  return unless to == :done
+
+  # The hand-off at every tick (intent 311, spec D4): derived and
+  # regenerable, so a failure here never fails the tick that was recorded.
+  begin
+    Handoff.write(store: store, day: day, session: session, trigger: "tick",
+                  templates: opts[:templates] || default_templates_dir)
+  rescue StandardError
+    nil
+  end
 end
 
 def run_savepoint(store, day, session, project, opts)
@@ -153,6 +165,7 @@ def main(argv)
   store = opts[:store] ? expand(opts[:store]) : File.join(plastic_home, "store")
   templates = opts[:templates] ? expand(opts[:templates]) : default_templates_dir
   usage_abort("templates dir not found: #{templates}") unless Dir.exist?(templates)
+  opts[:templates] = templates
   cwd = opts[:cwd] ? expand(opts[:cwd]) : Dir.pwd
 
   day = opts[:day] || SessionLedger.day_id

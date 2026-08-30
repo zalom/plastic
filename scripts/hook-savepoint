@@ -1,0 +1,45 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# hook-savepoint (intent 311): the PreCompact hook body. Reads the harness
+# payload from stdin (session_id, cwd), takes the Plastic home from argv,
+# writes this session's hand-off for the pointer's day, and prints one
+# message: the fixed text, plus the written file's path when a session
+# resolved (both harnesses relay the same launcher and the Codex pin feeds
+# both sides the same payload, so the two stay equal). Always exits 0,
+# always prints the message.
+#
+# Usage: hook-savepoint <plastic_home>   (stdin: the hook JSON)
+
+require "json"
+require_relative "lib/session_ledger"
+require_relative "lib/handoff"
+
+MESSAGE = "PLASTIC SAVEPOINT - context is being compacted. The hand-off for this " \
+          "session is written in today's day ledger " \
+          "(store/.sessions/<day>/handoff--<session>.md). " \
+          "After compaction say continue to resume from it."
+
+written = nil
+begin
+  plastic_home = ARGV[0].to_s
+  raw = $stdin.tty? ? "" : $stdin.read.to_s
+  payload = raw.strip.empty? ? {} : JSON.parse(raw)
+  payload = {} unless payload.is_a?(Hash)
+  session_id = payload["session_id"].to_s
+
+  unless plastic_home.empty? || session_id.strip.empty?
+    store = File.join(File.expand_path(plastic_home), "store")
+    session = SessionLedger.short_session_id(session_id, nil)
+    day = Handoff.day_for(store, session, today: SessionLedger.day_id)
+    written = Handoff.write(store: store, day: day, session: session, trigger: "precompact",
+                            templates: File.expand_path("../templates", __dir__))
+  end
+rescue StandardError, JSON::ParserError
+  nil
+end
+
+message = written ? "#{MESSAGE} This session's file: #{written}" : MESSAGE
+puts JSON.generate("systemMessage" => message)
+exit 0

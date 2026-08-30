@@ -1,0 +1,60 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# write-handoff (intent 311): render and write one session's hand-off into
+# the day directory (.sessions/<day>/handoff--<session>.md). Derived from the
+# day ledger, so it can be regenerated at any time. Prints the path.
+#
+# Usage:
+#   write-handoff --trigger tick|precompact|close [--store <dir>] [--day <YYYYMMDD>]
+#                 [--session <id>] [--templates <dir>]
+#
+# Defaults match append-ledger: the store is $PLASTIC_HOME/store, the day is
+# today (local wall clock), the session is $CLAUDE_CODE_SESSION_ID, and the
+# templates dir is the one shipped next to this script.
+#
+# Exit codes: 0 done; 2 usage error.
+
+require_relative "lib/session_ledger"
+require_relative "lib/handoff"
+
+def usage_abort(message)
+  warn "write-handoff: #{message}"
+  exit 2
+end
+
+def expand(path)
+  File.expand_path(path.to_s.sub(/\A~/, Dir.home))
+end
+
+def parse_args(argv)
+  opts = {}
+  i = 0
+  while i < argv.length
+    flag = argv[i]
+    usage_abort("unknown argument #{flag.inspect}") unless flag.start_with?("--")
+    usage_abort("#{flag} requires a value") if i + 1 >= argv.length
+    key = flag.delete_prefix("--").to_sym
+    usage_abort("unknown flag #{flag.inspect}") unless %i[store day session trigger templates].include?(key)
+    opts[key] = argv[i + 1]
+    i += 2
+  end
+  opts
+end
+
+opts = parse_args(ARGV)
+usage_abort("--trigger is required (#{Handoff::TRIGGERS.join(', ')})") unless opts[:trigger]
+usage_abort("--trigger must be one of #{Handoff::TRIGGERS.join(', ')}") unless Handoff::TRIGGERS.include?(opts[:trigger])
+
+plastic_home = expand(ENV.fetch("PLASTIC_HOME", "~/.plastic"))
+store = opts[:store] ? expand(opts[:store]) : File.join(plastic_home, "store")
+templates = opts[:templates] ? expand(opts[:templates]) : File.expand_path("../templates", __dir__)
+usage_abort("templates dir not found: #{templates}") unless Dir.exist?(templates)
+
+day = opts[:day] || SessionLedger.day_id
+usage_abort("--day must be eight digits parsing as a real date, got #{day.inspect}") unless SessionLedger.valid_day_id?(day)
+session = SessionLedger.short_session_id(opts[:session], ENV["CLAUDE_CODE_SESSION_ID"])
+
+puts Handoff.write(store: store, day: day, session: session, trigger: opts[:trigger], templates: templates)
+exit 0

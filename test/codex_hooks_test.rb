@@ -9,6 +9,7 @@ require "stringio"
 require "rbconfig"
 require "open3"
 require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/session_ledger"
 require_relative "../scripts/lib/arm"
 require_relative "../scripts/lib/worktree"
 
@@ -445,13 +446,32 @@ class CodexHooksTest < Minitest::Test
 
   def test_savepoint_hook_matches_claude_static_payload
     claude_launcher = File.expand_path("../hooks/savepoint", __dir__)
-    expected, _err, _claude_status = Open3.capture3(claude_launcher)
+    expected, _err, _claude_status = Open3.capture3({ "HOME" => @fake_home }, claude_launcher)
 
     out, status = run_hook("savepoint", state_payload(event: "PreCompact"))
     assert_equal 0, status.exitstatus
     assert_equal JSON.parse(expected), JSON.parse(out),
       "Codex's PreCompact savepoint hook must produce the identical payload Claude's PreCompact hook produces"
     assert_includes JSON.parse(out)["systemMessage"], "PLASTIC SAVEPOINT"
+  end
+
+  # Intent 311: the relayed launcher writes the session's hand-off into the
+  # day ledger under $HOME/.plastic, and the message stays the static one.
+  def test_savepoint_relay_writes_the_handoff_for_a_session_payload
+    out, status = run_hook("savepoint", state_payload(event: "PreCompact", session_id: "b7137962-codex"))
+    assert_equal 0, status.exitstatus
+    assert_includes JSON.parse(out)["systemMessage"], "PLASTIC SAVEPOINT"
+    day = SessionLedger.day_id
+    path = File.join(@fake_home, ".plastic", "store", ".sessions", day, "handoff--b7137962.md")
+    assert File.exist?(path), "the relayed PreCompact hook must write the hand-off"
+    assert_includes File.read(path), "at precompact"
+    assert_includes JSON.parse(out)["systemMessage"], "handoff--b7137962.md",
+                    "the message names the written file"
+
+    claude_launcher = File.expand_path("../hooks/savepoint", __dir__)
+    expected, = Open3.capture3({ "HOME" => @fake_home }, claude_launcher,
+                               stdin_data: JSON.generate(state_payload(event: "PreCompact", session_id: "b7137962-codex")))
+    assert_equal JSON.parse(expected), JSON.parse(out), "both harnesses produce the same message for the same payload"
   end
 
   # ---- live-state adversarial fail-open (intent 199, mirrors Decision 14) ----
