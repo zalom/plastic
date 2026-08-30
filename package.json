@@ -1,6 +1,6 @@
 {
   "name": "@zalom/plastic",
-  "version": "1.14.1",
+  "version": "2.0.0-alpha.1",
   "description": "Intent-driven idea development system for AI coding agents",
   "type": "module",
   "bin": {
@@ -38,6 +38,7 @@
     "agents/",
     "templates/",
     "PLASTIC.md",
-    "deprecations.yml"
+    "deprecations.yml",
+    "config_asks.yml"
   ]
 }
