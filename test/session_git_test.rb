@@ -238,6 +238,38 @@ class SessionGitTest < Minitest::Test
     FileUtils.rm_rf(repo)
   end
 
+  # --- row C4: the full summary lands as the commit body (spec D6) ------------------
+
+  def test_c4_a_long_summary_carries_the_full_summary_as_the_commit_body
+    repo = build_repo
+    write_dirty_file(repo)
+    long_summary = "Fix the dashboard date parser so wikilink completion dates parse " \
+                   "correctly across every project store, not only the link form"
+
+    result = commit!(repo, long_summary)
+
+    assert_equal "Item", result.event
+    body = git(repo, "log", "-1", "--format=%B", "session/#{@day}").stdout.to_s.strip
+    assert_includes body, long_summary
+    refute_equal long_summary, body, "the subject line alone must not equal the raw summary"
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  def test_c4_a_short_summary_has_no_redundant_body
+    repo = build_repo
+    write_dirty_file(repo)
+    short_summary = "Change how titles appear"
+
+    result = commit!(repo, short_summary)
+
+    assert_equal "Item", result.event
+    body = git(repo, "log", "-1", "--format=%B", "session/#{@day}").stdout.to_s.strip
+    assert_equal short_summary, body
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
   # --- direct: on session branch already ------------------------------------
 
   def test_direct_on_session_branch_already_is_reused_not_recreated
@@ -723,6 +755,34 @@ class SessionGitTest < Minitest::Test
   def test_subject_for_a_multiline_summary_keeps_only_the_first_line
     subject = SessionGit.subject_for("First line of the summary\nSecond line never appears")
     assert_equal "First line of the summary", subject
+  end
+
+  # --- row C1/C2/C3/C5: word-boundary cut (spec D6, amends spec 300 D5) --------------
+
+  def test_c1_cuts_a_120_char_summary_at_a_word_boundary
+    long = ("word " * 20).strip
+    subject = SessionGit.subject_for(long)
+    assert_operator subject.length, :<=, SessionGit::MAX_SUBJECT_LENGTH
+    assert long.start_with?(subject), "the cut must be a prefix of the full summary"
+    assert_equal " ", long[subject.length],
+                 "must cut exactly before a space boundary, never mid-word"
+  end
+
+  def test_c2_hard_slice_fallback_when_no_boundary_exists
+    long = "x" * 100
+    subject = SessionGit.subject_for(long)
+    assert_equal 72, subject.length
+    assert_equal "x" * 72, subject
+  end
+
+  def test_c3_a_short_subject_is_returned_byte_identical
+    short = "x" * 40
+    assert_equal short, SessionGit.subject_for(short)
+  end
+
+  def test_c5_summary_slug_is_unmoved_for_a_five_word_summary
+    subject = "Fix the dashboard date parser for wikilinks"
+    assert_equal "fix-the-dashboard-date-parser", SessionGit.summary_slug(subject)
   end
 
   # --- commit: repository commit-msg hook rejects ------------------------------------
