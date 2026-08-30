@@ -17,8 +17,8 @@ class RuleCatalogTest < Minitest::Test
 
   # A pin, not a tautology: extending EXCLUDABLE_CHECKS beyond v1's one key must be a
   # deliberate edit to this test (spec D3: signals_complete stays out).
-  def test_excludable_checks_is_exactly_savepoint_operational_in_v1
-    assert_equal ["savepoint_operational"], RuleCatalog::EXCLUDABLE_CHECKS.keys
+  def test_excludable_checks_is_exactly_the_two_registered_rules
+    assert_equal %w[backfilled_complete savepoint_operational], RuleCatalog::EXCLUDABLE_CHECKS.keys.sort
   end
 
   # Every key of EXCLUDABLE_CHECKS must be a check name doctor actually emits, so an exclusion

@@ -106,7 +106,7 @@ class DoctorCoreFlagTest < Minitest::Test
     result = doctor.run_checks("claude")
     categories = result[:checks].map { |c| c[:category] }.uniq
 
-    %w[global_store conventions deprecations].each do |cat|
+    %w[global_store conventions deprecations session_ledger done_signals].each do |cat|
       assert_includes categories, cat, "full doctor must still run '#{cat}' category"
     end
   end

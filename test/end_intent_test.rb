@@ -51,7 +51,8 @@ class EndIntentTest < Minitest::Test
 
   # --- fixture builders ------------------------------------------------------
 
-  def build_intent(id: "161", slug: "demo", outcome_disposition: "delivered", sentinel: false)
+  def build_intent(id: "161", slug: "demo", outcome_disposition: "delivered", sentinel: false,
+                   sentinel_docs: false)
     intent_dir = File.join(@store, "#{id}--#{slug}")
     FileUtils.mkdir_p(intent_dir)
     File.write(File.join(intent_dir, "#{id}--#{slug}.md"), <<~MD)
@@ -92,6 +93,14 @@ class EndIntentTest < Minitest::Test
     File.write(File.join(intent_dir, "spec.md"), "# Spec: Demo intent\n")
     File.write(File.join(intent_dir, "plan.md"), "# Plan: Demo intent\n\n- [x] Step 1\n")
     File.write(File.join(intent_dir, "checklist.md"), "# Checklist: Demo intent\n\n- [x] Step 1\n")
+
+    # Intent 308: a fixture whose judgment documents are still the scaffold placeholders,
+    # the shape a direct-mode intent has at close before end-intent backfills them.
+    if sentinel_docs
+      %w[spec.md plan.md outcome.md].each { |f| File.write(File.join(intent_dir, f), "#{SENTINEL}\n") }
+      FileUtils.mkdir_p(File.join(intent_dir, "actions"))
+      File.write(File.join(intent_dir, "actions", ".gitkeep"), "")
+    end
 
     intent_dir
   end
@@ -138,78 +147,171 @@ class EndIntentTest < Minitest::Test
     assert_equal 1, done_lines_after.length, "a second run must not duplicate the Done bookend"
   end
 
-  # --- (b) missing / placeholder outcome.md -> exit 6; wrong-disposition -> exit 2 [AC4] --
-  #
-  # Intent 222 executor note: the new per-intent structure gate (its intent_lifecycle_artifacts
-  # check) unconditionally verifies outcome.md PRESENCE via Savepoint.stage_file_present?, and runs
-  # BEFORE the old outcome-only guard below. A missing or still-placeholder outcome.md is
-  # therefore now caught by the STRONGER, EARLIER gate (exit 6), not the old guard (exit 2):
-  # this is the intended artifact-completeness-at-close enforcement 219/222 call for, not a
-  # regression. The old guard's exit-2 path stays byte-identical for what it alone still
-  # owns: disposition MATCHING (see test_wrong_disposition_.../test_scaffolded_outcome_...
-  # below), since end-intent's own gate call deliberately omits `disposition:` (see
-  # scripts/end-intent's gate comment) so it never re-checks disposition itself.
+  # --- (b) backfill at close (intent 308): a missing or placeholder document is written
+  # from the record, and the structure check plus the outcome guard REPORT and proceed.
+  # Exit 6 (the structure gate, intent 222) and exit 2 (the outcome guard) were retired in
+  # 2.0 (intent 308): a close is never refused for a document end-intent can write itself.
 
-  def test_missing_outcome_refuses_with_exit_6_via_the_structure_gate
+  def test_bare_intent_dir_is_backfilled_reported_and_closed
     intent_dir = File.join(@store, "161--demo")
     FileUtils.mkdir_p(intent_dir)
     File.write(File.join(intent_dir, "161--demo.md"), "## Intent\nDemo\n")
     write_index
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 6, status
-    assert_match(/missing/i, out)
-    assert_empty savepoint_lines(intent_dir)
+    assert_equal 0, status, out
+    %w[spec.md plan.md actions/ACTION_1.md outcome.md].each do |rel|
+      assert_match(/backfilled #{Regexp.escape(rel)}/, out)
+      assert Savepoint.stage_file_present?(File.join(intent_dir, rel)), "#{rel} must be real after the close"
+    end
+    assert_match(/structure check: intent_structure/, out, "the malformed intent file is reported, not refused")
+    assert_match(/^## Completed\n- \[161 /, File.read(@index))
+    assert(savepoint_lines(intent_dir).any? { |l| l.include?("Done") && l.include?("delivered") })
   end
 
-  # Intent 302: the write-time create gate is gone; the intent-file content check
-  # survives at close time through the structure gate's IntentValidator run. Pin it:
-  # a required frontmatter field missing from the intent file refuses with exit 6,
-  # names the field, and writes nothing (no Done line, INDEX untouched).
-  def test_intent_file_missing_a_required_field_refuses_with_exit_6
+  def test_placeholder_docs_are_backfilled_from_the_record_and_never_overwrite_real_ones
+    intent_dir = build_intent(sentinel_docs: true)
+    File.write(File.join(intent_dir, "plan.md"), "# Plan: mine\n\n- [x] hand written\n")
+    write_index
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                  "--index", @index, "--outcome-summary", "Closed by the test.")
+    assert_equal 0, status, out
+    assert_match(/backfilled spec\.md/, out)
+    assert_match(/backfilled outcome\.md/, out)
+    refute_match(/backfilled plan\.md/, out)
+    assert_equal "# Plan: mine\n\n- [x] hand written\n", File.read(File.join(intent_dir, "plan.md"))
+    outcome = File.read(File.join(intent_dir, "outcome.md"))
+    assert_match(/\A---\ndisposition: delivered\n---\n/, outcome)
+    assert_includes outcome, "## Summary\nClosed by the test.\n"
+    assert_includes File.read(File.join(intent_dir, "spec.md")), "<!-- backfilled from the record by end-intent on "
+    refute_includes File.read(File.join(intent_dir, "spec.md")), SENTINEL
+  end
+
+  def test_dry_run_prints_would_backfill_and_writes_nothing
+    intent_dir = build_intent(sentinel_docs: true)
+    write_index
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                  "--index", @index, "--dry-run")
+    assert_equal 0, status, out
+    assert_match(%r{would backfill: spec\.md, plan\.md, actions/ACTION_1\.md, outcome\.md}, out)
+    refute_match(/structure check:/, out, "a dry run reports no gap the real run would have closed")
+    assert_equal "#{SENTINEL}\n", File.read(File.join(intent_dir, "spec.md"))
+    refute File.exist?(File.join(intent_dir, "actions", "ACTION_1.md"))
+  end
+
+  def test_fresh_foreign_lock_refuses_before_the_backfill
+    intent_dir = build_intent(sentinel_docs: true)
+    write_index
+    Lock.acquire(intent_dir, session: "owner-session")
+
+    _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                   "--index", @index, "--no-commit", session: "someone-else")
+    assert_equal 4, status
+    assert_equal "#{SENTINEL}\n", File.read(File.join(intent_dir, "spec.md"))
+    refute File.exist?(File.join(intent_dir, "actions", "ACTION_1.md"))
+  end
+
+  def test_stale_foreign_lock_is_taken_over_before_the_backfill_writes
+    intent_dir = build_intent(sentinel_docs: true)
+    write_index
+    Lock.acquire(intent_dir, session: "owner-session")
+    FileUtils.touch(Lock.path(intent_dir), mtime: Time.now - 4000)
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                  "--index", @index, "--no-commit", session: "someone-else")
+    assert_equal 0, status, out
+    lines = savepoint_lines(intent_dir)
+    takeover = lines.index { |l| l.include?("takeover") }
+    backfill = lines.index { |l| l.include?("backfilled spec.md") }
+    refute_nil takeover
+    refute_nil backfill
+    assert takeover < backfill, "the takeover audit must precede the backfill line: #{lines.inspect}"
+    assert Savepoint.stage_file_present?(File.join(intent_dir, "spec.md"))
+  end
+
+  def test_backfill_crash_warns_and_the_close_proceeds
+    intent_dir = build_intent(sentinel_docs: true)
+    File.delete(File.join(intent_dir, "checklist.md"))
+    FileUtils.mkdir_p(File.join(intent_dir, "checklist.md"))
+    write_index
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
+    assert_equal 0, status, out
+    assert_match(/backfill crashed .*; proceeding without it/, out)
+    assert_match(/^## Completed\n- \[161 /, File.read(@index))
+  end
+
+  def test_backfilled_files_land_in_the_store_commit
+    intent_dir = build_intent(sentinel_docs: true)
+    write_index
+    Open3.capture3("git", "init", "-q", @home)
+    Open3.capture3("git", "-C", @home, "add", "-A")
+    Open3.capture3("git", "-C", @home, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "seed")
+
+    _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
+    assert_equal 0, status
+    files, _err, st = Open3.capture3("git", "-C", @home, "show", "--name-only", "--format=", "HEAD")
+    assert st.success?
+    %w[spec.md plan.md actions/ACTION_1.md outcome.md].each do |rel|
+      assert_includes files, "store/161--demo/#{rel}", "the close commit must carry #{rel}"
+    end
+    refute File.exist?(File.join(intent_dir, "delivery.lock"))
+  end
+
+  # Intent 302 moved the intent-file content check to close time; intent 308 made it a
+  # report. A required frontmatter field missing from the intent file is named on stderr
+  # and the close still lands (Done line, INDEX moved).
+  def test_intent_file_missing_a_required_field_is_reported_and_the_close_proceeds
     intent_dir = build_intent
     ifile = File.join(intent_dir, "161--demo.md")
     File.write(ifile, File.read(ifile).sub(/^author: .*\n/, ""))
     write_index
-    index_before = File.read(@index)
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 6, status
-    assert_match(/author/, out)
-    assert_empty savepoint_lines(intent_dir)
-    assert_equal index_before, File.read(@index)
+    assert_equal 0, status, out
+    assert_match(/structure check: intent_structure.*author/, out)
+    assert_match(/^## Completed\n- \[161 /, File.read(@index))
+    assert(savepoint_lines(intent_dir).any? { |l| l.include?("Done") && l.include?("delivered") })
   end
 
-  def test_placeholder_outcome_refuses_with_exit_6_via_the_structure_gate
-    intent_dir = build_intent(sentinel: true, outcome_disposition: "delivered|abandoned")
+  def test_placeholder_outcome_is_backfilled_with_the_close_disposition
+    intent_dir = build_intent
+    template = File.read(File.expand_path("../templates/outcome.md", __dir__))
+    File.write(File.join(intent_dir, "outcome.md"), "#{SENTINEL}\n#{template}")
     write_index
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 6, status
-    assert_match(/placeholder/i, out)
-    assert_empty savepoint_lines(intent_dir)
+    assert_equal 0, status, out
+    assert_match(/backfilled outcome\.md/, out)
+    assert_nil OutcomeGuard.reason(intent_dir, "delivered")
+    assert(savepoint_lines(intent_dir).any? { |l| l.include?("Done") && l.include?("delivered") })
   end
 
-  def test_scaffolded_outcome_is_refused_by_the_disposition_literal_too
-    # Belt-and-braces: even without the sentinel, the scaffold's literal
-    # "delivered|abandoned" frontmatter value fails the exact-match check.
+  def test_real_outcome_with_the_scaffold_disposition_literal_is_reported_not_refused
+    # Without the sentinel the file is real content: it is kept as written, the mismatch
+    # is reported, and the close still lands. doctor --intent keeps reporting it after.
     intent_dir = build_intent(outcome_disposition: "delivered|abandoned")
     write_index
+    before = File.read(File.join(intent_dir, "outcome.md"))
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 2, status
-    assert_match(/disposition/i, out)
-    assert_empty savepoint_lines(intent_dir)
+    assert_equal 0, status, out
+    assert_match(/outcome\.md: .*disposition.*\(proceeding/i, out)
+    assert_equal before, File.read(File.join(intent_dir, "outcome.md"))
+    assert(savepoint_lines(intent_dir).any? { |l| l.include?("Done") && l.include?("delivered") })
   end
 
-  def test_wrong_disposition_outcome_refuses_with_exit_2_and_no_done_line
+  def test_wrong_disposition_outcome_is_reported_and_the_close_proceeds
     intent_dir = build_intent(outcome_disposition: "abandoned")
     write_index
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 2, status
+    assert_equal 0, status, out
     assert_match(/disposition/i, out)
-    assert_empty savepoint_lines(intent_dir)
+    assert_match(/\A---\ndisposition: abandoned\n/, File.read(File.join(intent_dir, "outcome.md")))
+    assert_match(/^## Completed\n- \[161 /, File.read(@index))
   end
 
   # --- (c) INDEX line moves Active -> terminal, idempotently [AC5] -----------
@@ -684,13 +786,12 @@ class EndIntentTest < Minitest::Test
     assert_match(/^## Completed\n- \[161 — Demo intent\]/, content, "the first match must still have moved")
   end
 
-  # --- structure gate (intent 222): refuse-then-succeed end-to-end -----------
+  # --- structure check (intent 222; a report since intent 308) end-to-end -----------
 
-  # An unchecked checklist item is now a hard refusal (exit 6) at the structure gate, BEFORE
-  # any of steps 1-4 write anything; checking the box (the only change) then re-running the
-  # identical invocation must close normally: exit 0, INDEX moves, the savepoint gains the
-  # Done bookend, and the store commits.
-  def test_structure_gate_refuses_on_unchecked_checklist_item_then_succeeds_once_checked
+  # An unchecked checklist item is named on stderr and the close still lands: exit 0, INDEX
+  # moves, the savepoint gains the Done bookend, and the store commits. Nothing is refused
+  # for a gap end-intent cannot fix by writing a document (the box is the owner's).
+  def test_unchecked_checklist_item_is_reported_and_the_close_proceeds
     intent_dir = build_intent(id: "161")
     File.write(File.join(intent_dir, "checklist.md"), "# Checklist\n\n- [ ] finish the thing\n")
     write_index
@@ -699,32 +800,20 @@ class EndIntentTest < Minitest::Test
     Open3.capture3("git", "-C", @home, "-c", "user.name=t", "-c", "user.email=t@t",
                    "commit", "-q", "-m", "seed")
 
-    before_index = File.read(@index)
-    before_outcome = File.read(File.join(intent_dir, "outcome.md"))
-    before_intent_file = File.read(Savepoint.intent_file(intent_dir))
-    refute File.exist?(File.join(intent_dir, "savepoint.md")), "no savepoint yet in this fixture"
-
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 6, status, "an unchecked checklist item must refuse via the structure gate: #{out}"
-    assert_match(/intent_checklist_complete/, out)
-    assert_equal before_index, File.read(@index), "INDEX.md must be untouched by a refused close"
-    assert_equal before_outcome, File.read(File.join(intent_dir, "outcome.md")), "outcome.md must be untouched"
-    assert_equal before_intent_file, File.read(Savepoint.intent_file(intent_dir)), "the intent file must be untouched"
-    refute File.exist?(File.join(intent_dir, "savepoint.md")), "a refused close must author no savepoint line"
-
-    File.write(File.join(intent_dir, "checklist.md"), "# Checklist\n\n- [x] finish the thing\n")
-
-    out2, status2 = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 0, status2, "checking the box must let the identical invocation close cleanly: #{out2}"
+    assert_equal 0, status, out
+    assert_match(/structure check: intent_checklist_complete/, out)
+    assert_equal "# Checklist\n\n- [ ] finish the thing\n", File.read(File.join(intent_dir, "checklist.md")),
+                 "the checklist is the owner's record; end-intent never edits it"
     content = File.read(@index)
     refute_match(/^- \[161 /, content.lines.take_while { |l| l.strip != "## Completed" }.join,
                  "the Active section must no longer carry the 161 entry")
     assert_match(/^## Completed\n- \[161 /, content)
     assert(savepoint_lines(intent_dir).any? { |l| l.include?("Done") && l.include?("delivered") },
-           "the savepoint must gain the Done bookend on the successful close")
+           "the savepoint must gain the Done bookend")
 
     log, _err, log_status = Open3.capture3("git", "-C", @home, "log", "--oneline")
     assert log_status.success?
-    assert_match(/complete intent 161/, log, "the successful close must still commit the store")
+    assert_match(/complete intent 161/, log, "the close must still commit the store")
   end
 end
