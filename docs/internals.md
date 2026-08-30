@@ -1265,6 +1265,62 @@ The savepoint append also no longer depends on `open_day` having run: it calls
 `FileUtils.mkdir_p` on the day directory itself first, so a damaged install that cannot open
 the day ledger can still write its one savepoint line.
 
+## compaction thresholds and the compact-instructions block (intent 312)
+
+Two config keys and one installed block tell a session when to compact and what to do
+about it. Nothing in Plastic reads the keys at runtime: the harness reports how much of
+the window is used, and the model acts on the installed block. The keys exist so a user
+can retune the numbers that block states.
+
+```yaml
+context_offer_tokens: 350000    # offer a compaction
+context_insist_tokens: 500000   # insist on one
+```
+
+They are absolute token counts, not percentages, and they resolve through the ordinary
+`scripts/read-config` path (project, then global, then the `DEFAULTS` in that script).
+Intent 296's D38 settled the numbers from `research--context-thresholds.md`: models are
+reliable only to roughly 50 to 65 percent of advertised context, and the mechanisms
+behind that are architectural, so a percentage that is right at a 200k window would let
+five times as many raw tokens pile up before firing at 1M. The three places the numbers
+live (the `DEFAULTS` hash, `templates/config.yml`, and `InstallerCore#bootstrap`'s seeded
+config) are pinned equal by `test/compact_instructions_test.rb`.
+
+The block itself is `CompactInstructions::BODY` in `scripts/lib/compact_instructions.rb`,
+installed into `~/.claude/CLAUDE.md` as a marked section:
+
+```
+<!-- BEGIN PLASTIC COMPACT hash:<12 hex> -->
+...the block...
+<!-- END PLASTIC COMPACT -->
+```
+
+`InstallerCore#inject_marked_section` is the same three-state merge (create, append,
+replace) that puts Plastic's standing conventions into `~/.codex/AGENTS.md`, with the
+markers as parameters. The Claude block gets its own pair rather than reusing
+`PLASTIC INTEGRATION`, because the two managed files can be the same file: a user who
+symlinks `~/.claude/CLAUDE.md` at `~/.codex/AGENTS.md` would otherwise have one body
+silently replace the other, and an uninstall of either would strip both. Both inject and
+strip resolve a symlink to its target before writing, so the atomic rename lands on the
+target and a dotfiles-managed file stays a symlink.
+
+`~/.claude/CLAUDE.md` is a partial-ownership user file, so it is never manifest-tracked.
+It is stripped surgically on uninstall (`strip_claude_compact_section`), which preserves
+everything the user wrote and deletes the file only when Plastic created it and nothing
+else remains. `Rollback#prepare_switch` strips it too before a downgrade hands off to an
+older package: no older installer knows the section exists, so nothing there would ever
+replace or remove it. The Codex `AGENTS.md` section needs no such treatment, because
+every older package knows that one and rewrites it on the downgrade install.
+
+The doctor check `claude_compact_instructions` (in `check_claude_registration`) reports
+the block present, well formed, and current, comparing the `hash:` in the BEGIN marker
+against `CompactInstructions.body_hash` so a block an older version left behind is
+reported rather than trusted. The Codex `codex_agents_md` check stops at well formed;
+that difference is deliberate, not an oversight. `doctor_core.rb` keeps its own copy of
+the two marker literals, as it does for Codex, but the body and its hash come from the
+shared lib, so the text has exactly one home.
+
+
 ## living-document
 
 This is a living document. When Plastic's architecture, lifecycle, conventions,

@@ -15,6 +15,7 @@ require "digest"
 require "rubygems"
 
 require_relative "hook_registry"
+require_relative "compact_instructions"
 
 class Doctor
   DEFAULT_PLASTIC_HOME = File.join(Dir.home, ".plastic")
@@ -508,7 +509,54 @@ class Doctor
     # agents_exist — auto-mode role files (plastic-*.md) synced into <dir>/agents
     checks << flat_agents_check(agent_dir, "--claude")
 
+    # compact-instructions block in CLAUDE.md (intent 312)
+    checks << claude_compact_instructions_check(agent_dir)
+
     checks
+  end
+
+  # Claude CLAUDE.md marker literals. Keep in sync with
+  # InstallerCore::CLAUDE_SECTION_BEGIN_PREFIX / CLAUDE_SECTION_END (doctor does not
+  # require installer_core, so the literals are duplicated, exactly as for Codex). The
+  # BODY and its hash are NOT duplicated: they come from the shared CompactInstructions.
+  CLAUDE_COMPACT_BEGIN_PREFIX = "<!-- BEGIN PLASTIC COMPACT"
+  CLAUDE_COMPACT_END = "<!-- END PLASTIC COMPACT -->"
+
+  # Present, well formed, and current. The Codex AGENTS.md check stops at well formed;
+  # this one also compares the hash in the BEGIN marker against the shipped body, so a
+  # block an older version left behind is reported rather than trusted.
+  def claude_compact_instructions_check(agent_dir)
+    claude_md = File.join(agent_dir, "CLAUDE.md")
+    name = "claude_compact_instructions"
+    hint = "Re-run the Plastic installer with --claude"
+
+    unless File.exist?(claude_md)
+      return check(category: "agent_registration", name: name, status: "fail",
+                   message: "CLAUDE.md not found at #{tilde(claude_md)}, so the compaction instructions are not installed",
+                   fixable: true, fix_hint: hint)
+    end
+
+    content = File.read(claude_md)
+    b = content.index(CLAUDE_COMPACT_BEGIN_PREFIX)
+    e = content.index(CLAUDE_COMPACT_END)
+    well_formed = b && e && e > b && content[b...e].include?("-->")
+
+    unless well_formed
+      return check(category: "agent_registration", name: name, status: "fail",
+                   message: "CLAUDE.md is missing the compact-instructions block or its section is malformed",
+                   fixable: true, fix_hint: hint)
+    end
+
+    installed_hash = content[b..][/hash:(\w+)/, 1]
+    if installed_hash != CompactInstructions.body_hash
+      return check(category: "agent_registration", name: name, status: "fail",
+                   message: "the compact-instructions block in CLAUDE.md is stale " \
+                            "(hash:#{installed_hash}, current is hash:#{CompactInstructions.body_hash})",
+                   fixable: true, fix_hint: hint)
+    end
+
+    check(category: "agent_registration", name: name, status: "pass",
+          message: "CLAUDE.md carries the current compact-instructions block")
   end
 
   # Unfiltered classification (intent 276, spec Approach table): mode (a)

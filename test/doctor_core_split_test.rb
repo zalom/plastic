@@ -145,7 +145,14 @@ class DoctorCoreSplitTest < Minitest::Test
   # attaches itself to scripts/lib/doctor_core.rb's require chain fails this
   # test by name, with no hand-kept list of "known non-core libs" for a
   # human to keep in sync as the codebase grows.
-  CORE_REQUIRE_ALLOWED_BASENAMES = %w[doctor_core.rb hook_registry.rb].freeze
+  #
+  # compact_instructions.rb joined the list deliberately in intent 312. The
+  # claude_compact_instructions check lives in check_claude_registration, which
+  # run_core_checks calls, so the boot path genuinely needs the shipped body's hash
+  # to tell a current block from one an older version left behind. The file is
+  # constants only (two integers, one 860-byte string, one hash method), it requires
+  # nothing but digest, and the byte budget below was NOT raised to accommodate it.
+  CORE_REQUIRE_ALLOWED_BASENAMES = %w[compact_instructions.rb doctor_core.rb hook_registry.rb].freeze
 
   def loaded_after_core_require
     return @loaded_after_core_require if defined?(@loaded_after_core_require)

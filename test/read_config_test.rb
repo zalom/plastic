@@ -37,6 +37,25 @@ class ReadConfigTest < Minitest::Test
     File.write(File.join(@project_store, "config.yml"), YAML.dump(data))
   end
 
+  # Intent 312: the two absolute-token compaction thresholds resolve from DEFAULTS
+  # with no config file present, and a config value wins over them.
+  def test_context_thresholds_fall_back_to_the_shipped_defaults
+    out, _, status = run_script("context_offer_tokens")
+    assert status.success?
+    assert_equal "350000", out
+
+    out, _, status = run_script("context_insist_tokens")
+    assert status.success?
+    assert_equal "500000", out
+  end
+
+  def test_a_configured_context_threshold_wins_over_the_default
+    write_global_config("version" => 3, "context_offer_tokens" => 120_000,
+                        "context_insist_tokens" => 180_000)
+    assert_equal "120000", run_script("context_offer_tokens").first
+    assert_equal "180000", run_script("context_insist_tokens").first
+  end
+
   def test_reads_top_level_key_from_global
     write_global_config("version" => 3, "stale_threshold_days" => 5)
     out, _, status = run_script("stale_threshold_days")
