@@ -7,6 +7,7 @@ require "fileutils"
 require "date"
 require_relative "../scripts/lib/session_ledger"
 require_relative "../scripts/lib/intent_validator"
+require_relative "../scripts/lib/handoff"
 
 # append-ledger has no .rb extension (it is a chmod +x script with a shebang),
 # so require_relative cannot resolve it; `load` takes the literal path. Its
@@ -307,6 +308,51 @@ class AppendLedgerTest < Minitest::Test
     assert_equal 3, exit_code
   ensure
     SessionLedger.define_singleton_method(:set_state, original_set_state) if original_set_state
+  end
+
+  # --- the hand-off at tick (intent 311, spec D4) ----------------------------------------
+
+  def handoff_path
+    File.join(SessionLedger.day_dir(@store, @day), "handoff--#{SESSION}.md")
+  end
+
+  def test_tick_writes_the_handoff_and_promote_does_not
+    run_append("pending", "seed")
+    _out, status = run_append("promote")
+    assert_equal 0, status
+    refute File.exist?(handoff_path), "promote must not write a hand-off"
+
+    _out, status = run_append("tick", "--savepoint")
+    assert_equal 0, status
+    assert File.exist?(handoff_path), "tick must write the hand-off"
+    text = File.read(handoff_path)
+    assert_includes text, "at tick"
+    assert_includes text, "seed"
+    assert_includes text.split("## Done").last.to_s, "seed"
+  end
+
+  def test_handoff_write_failure_never_fails_the_tick
+    FileUtils.mkdir_p(SessionLedger.day_dir(@store, @day))
+    line = SessionLedger.checklist_line(:open, SESSION, "plastic", "seed")
+    File.write(checklist_path, SessionLedger.checklist_header(@day) + line)
+
+    original_write = Handoff.method(:write)
+    Handoff.define_singleton_method(:write) { |**| raise IOError, "disk full" }
+
+    opts = { match: nil, savepoint: true, templates: TEMPLATES }
+    exit_code =
+      begin
+        run_transition(:open, :done, "Done", @store, @day, SESSION, "plastic", opts)
+        nil
+      rescue SystemExit => e
+        e.status
+      end
+
+    assert_nil exit_code
+    assert_includes File.read(checklist_path), "- [x] [#{SESSION}]"
+    assert_includes File.read(savepoint_path), "Done  [#{SESSION}] [plastic] seed"
+  ensure
+    Handoff.define_singleton_method(:write, original_write) if original_write
   end
 
   # --- no sibling lock file ------------------------------------------------------------

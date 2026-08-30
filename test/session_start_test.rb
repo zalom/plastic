@@ -321,6 +321,66 @@ class SessionStartDayLedgerTest < Minitest::Test
                  "current already names an intent; session-start must not overwrite it"
   end
 
+  # --- the day summary (intent 311, spec D8) ------------------------------------------
+
+  def summary_of(ctx)
+    ctx.split("Day summary ", 2).last.to_s
+  end
+
+  def test_first_boot_on_an_empty_day_injects_the_joined_line_and_no_summary
+    out, _err, status = run_hook(session_id: "sess-boot-4")
+    assert_equal 0, status.exitstatus
+    ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+    assert_includes ctx, "day ledger #{SessionLedger.day_id} joined"
+    refute_includes ctx, "Day summary"
+  end
+
+  def test_boot_injects_the_four_part_day_summary_after_the_joined_line
+    day = SessionLedger.day_id
+    run_hook(session_id: "sess-boot-5")
+    checklist = SessionLedger.checklist_path(store, day)
+    SessionLedger.append_line(checklist, SessionLedger.checklist_line(:open, "aaaaaaaa", "global", "An open item"),
+                              header: SessionLedger.checklist_header(day))
+    SessionLedger.append_line(checklist, SessionLedger.checklist_line(:pending, "bbbbbbbb", "global", "A pending item"),
+                              header: nil)
+    SessionLedger.append_line(SessionLedger.savepoint_path(store, day),
+                              SessionLedger.savepoint_line("Done", "aaaaaaaa", "global", "Something finished", now: Time.now),
+                              header: nil)
+
+    dir = File.join(store, "231--live-intent")
+    FileUtils.mkdir_p(dir)
+    File.write(File.join(dir, "231--live-intent.md"), "---\nid: \"231\"\n---\n")
+    File.write(@index, "# Index\n\n## Active\n- [231 - Live](store/231--live-intent/231--live-intent.md) - t\n\n## Future\n")
+    File.write(File.join(dir, "savepoint.md"), "2026-08-30T09:00:00Z  Exec  executor running\n")
+    lock = File.join(dir, "delivery.lock")
+    File.write(lock, JSON.generate("type" => "delivery", "owner_session" => "x", "run_mode" => "auto"))
+
+    other = "cccccccc"
+    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store, other))
+    File.write(SessionLedger.heartbeat_path(store, other), "#{Time.now.utc.iso8601}\n")
+    File.write(SessionLedger.pointer_path(store, other), "#{day}\n")
+
+    out, _err, status = run_hook(session_id: "sess-boot-5")
+    assert_equal 0, status.exitstatus
+    ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+    joined = "day ledger #{day} joined (1 open items, 1 pending)"
+    assert_includes ctx, joined
+    assert_operator ctx.index(joined), :<, ctx.index("Day summary #{day}:")
+    summary = summary_of(ctx)
+    assert_includes summary, "Open:"
+    assert_includes summary, "- [aaaaaaaa] [global] An open item"
+    assert_includes summary, "Done, last five:"
+    assert_includes summary, "Something finished"
+    assert_includes summary, "Live auto intents:"
+    assert_includes summary, "- 231 live-intent: 2026-08-30T09:00:00Z  Exec  executor running"
+    assert_includes summary, "Other active sessions:"
+    assert_includes summary, "- #{other} ("
+    refute_includes summary, SessionLedger.short_session_id(nil, "sess-boot-5")
+    summary.each_line do |line|
+      refute_match(/\A- \[[ ~x>\-^]\] \[/, line, "raw ledger line injected: #{line.inspect}")
+    end
+  end
+
   # hook-session-start takes its inputs as positional ARGV, never stdin, so this
   # proves it boots cleanly with nothing on stdin at all and still derives a
   # session id (env cleared here, so from the hook's own Process.pid).

@@ -121,6 +121,81 @@ class CloseHookTest < Minitest::Test
     assert_empty @spawned
   end
 
+  # --- the hand-off at close (intent 311, spec D6) ------------------------------------
+
+  def run_close_with_handoff(reason: "other", handoff:)
+    payload = { "session_id" => SID, "cwd" => @home }
+    payload["reason"] = reason unless reason.nil?
+    SessionClose.run(payload: payload, store: @store, today: TODAY, spawner: @spawner, handoff: handoff)
+  end
+
+  def test_close_hands_off_the_pointer_day_before_removing_the_tmp_dir
+    pointer(YESTERDAY)
+    calls = []
+    recorder = lambda do |store, day, session|
+      calls << [store, day, session, File.exist?(SessionLedger.pointer_path(@store, SHORT))]
+    end
+    run_close_with_handoff(handoff: recorder)
+    assert_equal [[@store, YESTERDAY, SHORT, true]], calls
+    refute Dir.exist?(SessionLedger.session_tmp_dir(@store, SHORT))
+  end
+
+  def test_close_without_a_pointer_hands_off_today
+    calls = []
+    run_close_with_handoff(handoff: ->(_s, day, _sid) { calls << day })
+    assert_equal [TODAY], calls
+  end
+
+  def test_clear_and_resume_never_hand_off
+    pointer(TODAY)
+    calls = []
+    %w[clear resume].each { |reason| run_close_with_handoff(reason: reason, handoff: ->(*a) { calls << a }) }
+    assert_empty calls
+  end
+
+  def test_pointer_naming_an_intent_never_hands_off
+    SessionLedger.ensure_tmp_root(@store)
+    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, SHORT))
+    File.write(SessionLedger.pointer_path(@store, SHORT), "297\n")
+    calls = []
+    run_close_with_handoff(handoff: ->(*a) { calls << a })
+    assert_empty calls
+  end
+
+  def test_handoff_failure_is_swallowed_and_the_rest_of_close_runs
+    append(TODAY, :pending, "mine")
+    pointer(TODAY)
+    report = run_close_with_handoff(handoff: ->(*) { raise IOError, "disk full" })
+    assert_equal 1, report[:dropped]
+    assert report[:removed_tmp]
+  end
+
+  def test_default_handoff_writes_the_file_with_the_close_trigger
+    pointer(TODAY)
+    append(TODAY, :open, "mine open")
+    handoff = SessionClose.default_handoff(TEMPLATES)
+    run_close_with_handoff(handoff: handoff)
+    path = File.join(SessionLedger.day_dir(@store, TODAY), "handoff--#{SHORT}.md")
+    assert File.exist?(path), "the default hand-off must write the day file"
+    assert_includes File.read(path), "at close"
+    assert_includes File.read(path), "mine open"
+  end
+
+  def test_script_writes_the_handoff_for_a_real_payload
+    pointer(TODAY)
+    append(TODAY, :open, "mine open")
+    env = { "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_HOME" => @home, "PLASTIC_TMP" => @tmp, "HOME" => @tmp }
+    IO.popen(env, [RbConfig.ruby, SCRIPT, @home], "r+", err: [:child, :out]) do |io|
+      io.write(JSON.generate("session_id" => SID, "cwd" => @home, "reason" => "other"))
+      io.close_write
+      io.read
+    end
+    assert_equal 0, $?.exitstatus
+    path = File.join(SessionLedger.day_dir(@store, TODAY), "handoff--#{SHORT}.md")
+    assert File.exist?(path), "hook-close must write the hand-off"
+    assert_includes File.read(path), "at close"
+  end
+
   def test_script_reads_stdin_and_the_store_from_argv_and_ignores_malformed_input
     append(TODAY, :pending, "mine")
     pointer(TODAY)
