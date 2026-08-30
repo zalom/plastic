@@ -63,7 +63,7 @@ independently maintained by hand.
 
 | Harness | Install | Standing conventions | Live state | Record | Statusline | Subagent teams |
 |---|---|---|---|---|---|---|
-| Claude Code | npm, `plastic-install --claude` | native `CLAUDE.md` | six hooks through `settings.json` | post-write `record` (savepoint, lock heartbeat, day ledger) | yes | yes |
+| Claude Code | npm, `plastic-install --claude` | native `CLAUDE.md`, plus the compact-instructions marked section injected into `~/.claude/CLAUDE.md` | six hooks through `settings.json` | post-write `record` (savepoint, lock heartbeat, day ledger) | yes | yes |
 | Codex CLI | npm, `plastic-install --codex` | marked section injected into `~/.codex/AGENTS.md` | six hooks through `~/.codex/hooks.json`, all dispatched by one command | post-write `record` on `apply_patch` | no | no, a single agent walks the whole cycle |
 | Hermes | npm, `plastic-install --hermes` | none | none | none | no | no |
 
@@ -141,8 +141,12 @@ standing rules.
 opens or joins today's day ledger under `~/.plastic/store/.sessions/<YYYYMMDD>/`, and writes
 the per-session pointer (`.tmp/<session-id>/current`) and heartbeat. `UserPromptSubmit`
 (`hooks/capture`) appends the prompt as a pending day-ledger line, detects `auto` and
-`continue`, and hints at matching parked intents. `PreCompact` (`hooks/savepoint`) and
-`SessionEnd` (`hooks/close`) bracket the session.
+`continue`, and hints at matching parked intents. `PreCompact` (`hooks/savepoint` ->
+`scripts/hook-savepoint`) writes the session's hand-off into the day ledger
+(`.sessions/<day>/handoff--<session>.md`) and prints one message naming that file; `SessionEnd`
+(`hooks/close`) writes it once more, then closes the session. The same hand-off is written
+at every ticked day-ledger item, and the session-start hook injects the day summary after the
+joined line.
 
 `SessionStart` is a top-level-only event: it fires for the main session, not for sub-agents.
 Sub-agents fire `SubagentStart`, which Plastic does not use. So the session event alone cannot

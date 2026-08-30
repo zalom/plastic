@@ -32,6 +32,16 @@ module DoctorTestHelpers
     Doctor.new(plastic_home: plastic_home, agents: agents)
   end
 
+  # Intent 312: a healthy Claude install carries the compact-instructions block in
+  # <dir>/CLAUDE.md, so every "intact install" fixture writes it or the new
+  # claude_compact_instructions check correctly reports the install incomplete.
+  def write_claude_compact_section(agent_dir)
+    core = InstallerCore.new(package_root: File.expand_path("../../", __FILE__),
+                             plastic_home: DOCTOR_TEST_HOME)
+    FileUtils.mkdir_p(agent_dir)
+    File.write(File.join(agent_dir, "CLAUDE.md"), core.claude_compact_section)
+  end
+
   # Build a minimal valid INDEX.md with all required sections
   def write_index(path, extras: "", store_refs: [])
     refs = store_refs.map { |r| "- [intent](#{r})" }.join("\n")
@@ -526,11 +536,49 @@ class DoctorAgentRegistrationTest < Minitest::Test
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
     write_agents(DOCTOR_TEST_CLAUDE)
+    write_claude_compact_section(DOCTOR_TEST_CLAUDE)
 
     checks = doctor.check_agent_registration("claude")
     statuses = checks.map { |c| c[:status] }
 
     assert statuses.all? { |s| s == "pass" }, "All checks should pass, got: #{checks.map { |c| [c[:name], c[:status]] }}"
+  end
+
+  # --- intent 312: the compact-instructions block ---
+
+  def compact_check
+    doctor.check_claude_registration(DOCTOR_TEST_CLAUDE)
+          .find { |c| c[:name] == "claude_compact_instructions" }
+  end
+
+  def test_compact_instructions_pass_on_a_correct_section
+    write_claude_compact_section(DOCTOR_TEST_CLAUDE)
+    assert_equal "pass", compact_check[:status]
+  end
+
+  def test_compact_instructions_fail_when_claude_md_is_missing
+    FileUtils.mkdir_p(DOCTOR_TEST_CLAUDE)
+    c = compact_check
+    assert_equal "fail", c[:status]
+    assert c[:fixable]
+    assert_includes c[:fix_hint], "--claude"
+  end
+
+  def test_compact_instructions_fail_on_a_malformed_section
+    FileUtils.mkdir_p(DOCTOR_TEST_CLAUDE)
+    File.write(File.join(DOCTOR_TEST_CLAUDE, "CLAUDE.md"),
+               "#{InstallerCore::CLAUDE_SECTION_BEGIN_PREFIX} hash:deadbeef1234 -->\nhalf a block\n")
+    assert_equal "fail", compact_check[:status]
+  end
+
+  def test_compact_instructions_fail_on_a_stale_hash_from_an_older_version
+    write_claude_compact_section(DOCTOR_TEST_CLAUDE)
+    path = File.join(DOCTOR_TEST_CLAUDE, "CLAUDE.md")
+    File.write(path, File.read(path).sub(/hash:\w+/, "hash:0123456789ab"))
+
+    c = compact_check
+    assert_equal "fail", c[:status]
+    assert_match(/stale|current|older/i, c[:message])
   end
 
   def test_missing_hook_scripts_fails
@@ -2122,6 +2170,7 @@ class DoctorIntegrationTest < Minitest::Test
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
     write_agents(DOCTOR_TEST_CLAUDE)
+    write_claude_compact_section(DOCTOR_TEST_CLAUDE)
 
     # Agent-side VERSION
     agent_plastic = File.join(DOCTOR_TEST_CLAUDE, "plastic")

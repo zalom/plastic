@@ -277,6 +277,7 @@ class DoctorManifestSyncTest < Minitest::Test
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
     write_agents(DOCTOR_TEST_CLAUDE)
+    write_claude_compact_section(DOCTOR_TEST_CLAUDE)
     File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "1.0.0")
     write_core_scripts(File.join(DOCTOR_TEST_HOME, "scripts"))
     File.write(File.join(DOCTOR_TEST_HOME, "projects.yml"), YAML.dump("projects" => {}))

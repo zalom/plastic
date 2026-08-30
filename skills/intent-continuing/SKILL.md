@@ -95,8 +95,9 @@ For a live intent's directory:
    ```bash
    ruby -r ~/.plastic/scripts/lib/savepoint -e 'Savepoint.rebuild_savepoint("<intent_dir>")'
    ```
-3. **Read the hand-off.** When `resources/handoff--*.md` exists, its newest file is the prior
-   session's own account of where things stand; read it after the ledger, never instead of it.
+3. **Read the hand-off.** The newest `~/.plastic/store/.sessions/<day>/handoff--*.md` (today,
+   else the newest prior day) is the prior session's own account of where things stand; read
+   it after the ledger, never instead of it.
 4. **Derive the next step:** the first unchecked item in `checklist.md` when it exists, else
    the next thing the station needs (see the matrix). The newest `## Insights` entry supplies
    the human-readable context; an entry marked `(autonomous)` means an auto team was

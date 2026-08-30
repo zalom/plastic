@@ -13,6 +13,7 @@ require_relative "lib/boot_banner"
 require_relative "lib/qmd_sync"
 require_relative "lib/doctor_core"
 require_relative "lib/session_ledger"
+require_relative "lib/day_summary"
 
 index_path, plastic_home, mode, plugin_root = ARGV
 exit 0 unless index_path && plastic_home && mode
@@ -381,6 +382,16 @@ begin
     end
   end
   parts << "PLASTIC: day ledger #{day} joined (#{open_count} open items, #{pending_count} pending)"
+
+  # The day summary (intent 311, spec D8): open items, the last five done,
+  # live auto intents, other active sessions. Never the raw ledger. A
+  # failure here leaves the joined line alone.
+  begin
+    summary = DaySummary.build(store: store_dir, day: day, session: sid, home: plastic_home, now: Time.now)
+    parts << summary unless summary.empty?
+  rescue StandardError
+    nil
+  end
 rescue StandardError
   nil
 end

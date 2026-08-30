@@ -9,11 +9,21 @@
 
 require "fileutils"
 require_relative "session_ledger"
+require_relative "handoff"
 
 module SessionClose
   module_function
 
   NOOP_REASONS = %w[clear resume].freeze
+
+  # The default hand-off writer (intent 311, spec D6): renders this session's
+  # share of the pointer day into handoff--<session>.md before the tmp dir
+  # goes. The hook script builds it with the shipped templates dir.
+  def default_handoff(templates)
+    lambda do |store, day, session|
+      Handoff.write(store: store, day: day, session: session, trigger: "close", templates: templates)
+    end
+  end
 
   # The default spawner starts the day filer detached so a slow filing never
   # blocks the harness shutdown (Codex kills a SessionEnd hook after 3 s).
@@ -26,8 +36,8 @@ module SessionClose
   end
 
   # Returns a small report hash; never raises.
-  def run(payload:, store:, today:, spawner:, now: Time.now)
-    report = { reason: nil, dropped: 0, removed_tmp: false, spawned: nil }
+  def run(payload:, store:, today:, spawner:, handoff: nil, now: Time.now)
+    report = { reason: nil, dropped: 0, removed_tmp: false, spawned: nil, handoff: false }
     reason = payload.is_a?(Hash) ? payload["reason"].to_s : ""
     report[:reason] = reason
     return report if NOOP_REASONS.include?(reason)
@@ -48,6 +58,16 @@ module SessionClose
       end
       count
     end || 0
+
+    # The hand-off (intent 311, spec D6) is written after the drop, so it
+    # reflects it, and before the tmp dir goes, since the pointer lives there.
+    # An intent pointer falls back to today, the same as the drop above.
+    if handoff
+      report[:handoff] = safely do
+        handoff.call(store, pointer_day, session)
+        true
+      end || false
+    end
 
     report[:removed_tmp] = safely do
       dir = SessionLedger.session_tmp_dir(store, session)
