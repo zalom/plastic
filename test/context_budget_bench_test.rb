@@ -249,9 +249,13 @@ class ContextBudgetBootTest < Minitest::Test
     assert_includes report.context, "(30 days)"
   end
 
+  # The two QMD status lines the hook can emit (hook-session-start's qmd block).
+  # Not the bare word "QMD", which PLASTIC.md itself uses in its own doctrine.
   def test_no_host_state_leaks_into_the_measurement
-    refute_includes report.context, "QMD",
+    refute_includes report.context, "Plastic collections indexed",
       "a host with qmd on PATH must not change the measured bytes"
+    refute_includes report.context, "qmd-sync register --all",
+      "a host without a registered qmd must not change the measured bytes either"
     refute_includes report.context, "update available",
       "a real update-check cache must not change the measured bytes"
   end

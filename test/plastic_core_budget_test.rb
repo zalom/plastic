@@ -37,7 +37,8 @@ require_relative "../bin/lib/context_budget"
 # wrapper around SkillLint: check_body_budget is a private method entangled
 # with violation-record construction over a full skills_dir tree, not a
 # reusable pure function, so this small DI class ports the identical
-# arithmetic rather than reaching into SkillLint's internals.
+# arithmetic through ContextBudget (intent 313) rather than reaching into
+# SkillLint's internals.
 class CoreBudget
   Measurement = Struct.new(:lines, :tokens, :bytes) do
     def over_line_ceiling?
@@ -55,10 +56,13 @@ class CoreBudget
     end
   end
 
+  # Intent 313, D2: the arithmetic itself now lives in ContextBudget, the
+  # bench's shared estimator, so this test and bin/plastic-bench can never
+  # report different numbers for the same file. Only the projection to
+  # (lines, tokens, bytes) and the predicate boundaries above belong to 223.
   def self.measure(body)
-    lines = body.lines.count
-    tokens = (body.split(/\s+/).reject(&:empty?).length * 1.3).round
-    Measurement.new(lines, tokens, body.bytesize)
+    shared = ContextBudget.measure(body)
+    Measurement.new(shared.lines, shared.tokens, shared.bytes)
   end
 end
 
