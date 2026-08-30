@@ -803,4 +803,59 @@ class DoctorCodexStaleRegistrationsTest < Minitest::Test
     names = doctor_for.run_core_checks("codex")[:checks].map { |c| c[:name] }
     refute_includes names, "codex_stale_registrations"
   end
+
+  # --- SHOULD-FIX item 5: name-only comparison goes blind to two real cases --------
+
+  # (a) the SAME (event, name) pair registered twice: a name-only "is it expected"
+  # check can never see this, since the name alone is legitimately expected.
+  def test_should5a_a_duplicate_event_name_pair_is_reported
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    hooks["PostToolUse"].first["hooks"] << {
+      "type" => "command", "command" => "\"#{@dispatcher_path}\" record",
+    }
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    checks = doctor_for.check_codex_stale_registrations
+    check = checks.find { |c| c[:name] == "codex_stale_registrations" }
+    refute_nil check
+    assert_equal "warn", check[:status]
+    details = Array(check[:details])
+    assert details.any? { |d| d.include?("PostToolUse") && d.include?("record") }, details.inspect
+  end
+
+  # (b) a correctly-named command whose dispatcher path is an OLD install, different
+  # from the path every other Plastic entry in this same file actually uses.
+  def test_should5b_a_dispatcher_path_that_differs_from_the_files_other_entries_is_reported
+    old_dispatcher = File.join(@home, "old-install", "scripts", "codex-hook")
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    stale_check_update = { "type" => "command", "command" => "\"#{old_dispatcher}\" check-update" }
+    hooks["SessionStart"].first["hooks"] = hooks["SessionStart"].first["hooks"].map do |h|
+      h["command"].include?("check-update") ? stale_check_update : h
+    end
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    checks = doctor_for.check_codex_stale_registrations
+    check = checks.find { |c| c[:name] == "codex_stale_registrations" }
+    refute_nil check
+    assert_equal "warn", check[:status]
+    details = Array(check[:details])
+    assert details.any? { |d| d.include?("check-update") && d.include?("old-install") }, details.inspect
+  end
+
+  def test_should5_a_single_consistent_install_still_passes
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    checks = doctor_for.check_codex_stale_registrations
+    check = checks.find { |c| c[:name] == "codex_stale_registrations" }
+    assert_equal "pass", check[:status]
+  end
+
+  # --- NIT item 8: a non-Hash top-level hooks.json must not crash the doctor run ---
+  def test_nit8_a_non_hash_top_level_hooks_json_does_not_crash
+    File.write(File.join(@codex_home, "hooks.json"), JSON.generate([1, 2, 3]))
+
+    checks = doctor_for.check_codex_stale_registrations
+    assert_equal [], checks
+  end
 end

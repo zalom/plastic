@@ -785,6 +785,29 @@ class SessionGitTest < Minitest::Test
     assert_equal "fix-the-dashboard-date-parser", SessionGit.summary_slug(subject)
   end
 
+  # --- SHOULD-FIX item 4: body_for must not repeat the subject verbatim when the
+  # raw summary only differs from the subject by trailing whitespace -----------------
+  def test_should4_body_for_strips_trailing_whitespace_before_comparing
+    subject = "fix the dashboard date parser"
+    assert_nil SessionGit.body_for("fix the dashboard date parser\n", subject)
+    assert_nil SessionGit.body_for("  fix the dashboard date parser  ", subject)
+  end
+
+  # --- NIT item 7: a cut landing exactly on a space boundary must not drop a word ---
+  # 72 chars: two words separated by ONE internal space, with the natural word
+  # boundary landing exactly at index 72 (long[72] == " "). A naive rindex-based
+  # trim finds the EARLIER internal space (between the two words) and wrongly
+  # drops the whole second word, even though nothing needed trimming at all.
+  def test_nit7_cut_exactly_at_the_boundary_keeps_the_full_72_chars
+    first_word = "a" * 30
+    second_word = "b" * 41
+    head = "#{first_word} #{second_word}" # 30 + 1 + 41 = 72
+    long = "#{head} droppedword"
+    subject = SessionGit.subject_for(long)
+    assert_equal head, subject
+    assert_equal 72, subject.length
+  end
+
   # --- commit: repository commit-msg hook rejects ------------------------------------
 
   def test_commit_msg_hook_rejection_is_a_note_not_an_exit_failure
