@@ -95,6 +95,35 @@ class MergeCodexHooksTest < Minitest::Test
     assert commands.any? { |c| c.include?("my-codex-hooks") }, "my-codex-hooks must survive: #{commands.inspect}"
   end
 
+  # Intent 309: a pre-309 hooks.json (power-tools registered, no SessionEnd) migrates on
+  # merge: the retired name is purged and the SessionEnd close group lands.
+  def test_pre_309_hooks_json_migrates_on_merge
+    existing = {
+      "hooks" => {
+        "UserPromptSubmit" => [
+          { "matcher" => "", "hooks" => [
+            { "type" => "command", "command" => "\"#{dispatcher_path}\" capture" },
+            { "type" => "command", "command" => "\"#{dispatcher_path}\" power-tools" },
+          ] },
+        ],
+        "SessionStart" => [
+          { "matcher" => "", "hooks" => [
+            { "type" => "command", "command" => "\"#{dispatcher_path}\" session-start" },
+          ] },
+        ],
+      },
+    }
+    File.write(@hooks_json_path, JSON.pretty_generate(existing))
+    @installer.merge_codex_hooks(@hooks_json_path)
+
+    data = JSON.parse(File.read(@hooks_json_path))
+    commands = all_commands(data)
+    refute commands.any? { |c| c.include?("power-tools") }, "retired power-tools must be purged: #{commands.inspect}"
+    assert commands.any? { |c| c.include?("\" close") }, "SessionEnd close must be registered: #{commands.inspect}"
+    refute_nil data["hooks"]["SessionEnd"], "the SessionEnd group must exist after the migration"
+    assert_equal 1, commands.count { |c| c.include?("\" capture") }, "no duplicate capture entry: #{commands.inspect}"
+  end
+
   def test_retired_codex_gate_command_is_purged
     existing = {
       "hooks" => {

@@ -89,7 +89,7 @@ class RubyoptClearingTest < Minitest::Test
   KNOWN_SHELL_LAUNCHERS = %w[
     hooks/capture
     hooks/check-update
-    hooks/power-tools
+    hooks/close
     hooks/record
     hooks/session-start
   ].freeze
@@ -174,10 +174,11 @@ class RubyoptClearingTest < Minitest::Test
 
     # Intent 298 replaced continue, future-intent-check, auto-arm, and gate-check
     # with capture and record; intent 301 added close; intent 302 removed the
-    # edit-gates and bash-gate launchers, so the baseline is 6 recognized spawn
-    # lines (capture, check-update, close, power-tools, record, session-start).
-    assert_equal 6, recognized,
-      "the shell scan should recognize 6 ruby command words across hooks/, all already " \
+    # edit-gates and bash-gate launchers, and intent 309 retired power-tools, so the
+    # baseline is 5 recognized spawn lines (capture, check-update, close, record,
+    # session-start).
+    assert_equal 5, recognized,
+      "the shell scan should recognize 5 ruby command words across hooks/, all already " \
       "cleared; if this number drops, SHELL_SPAWN_TOKEN stopped matching and the hooks test " \
       "above is vacuous"
   end

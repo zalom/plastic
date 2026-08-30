@@ -1530,9 +1530,10 @@ class DoctorAgentRegistrationTest < Minitest::Test
 
     # Intent 244 collapsed the five edit-path gates into one launcher (10),
     # intent 298 collapsed three prompt hooks into capture and renamed
-    # gate-check to record (8), intent 301 added close (9), and intent 302
-    # removed edit-gates and bash-gate: 7 launchers.
-    assert_equal 7, HookRegistry.claude_launcher_names.size
+    # gate-check to record (8), intent 301 added close (9), intent 302
+    # removed edit-gates and bash-gate (7), and intent 309 retired power-tools:
+    # 6 launchers.
+    assert_equal 6, HookRegistry.claude_launcher_names.size
     assert_equal "pass", hooks_check[:status]
     assert_equal "pass", exec_check[:status]
     assert_equal "pass", orphan_check[:status]

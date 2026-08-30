@@ -666,14 +666,21 @@ class MergeClaudeHooksTest < Minitest::Test
     JSON.parse(File.read(@settings_path))
   end
 
-  def test_user_prompt_submit_includes_the_power_tools_hook
-    File.write(@settings_path, "{}")
+  # Intent 309: power-tools is retired. UserPromptSubmit registers capture only, and an
+  # old plastic-power-tools entry is purged on merge.
+  def test_user_prompt_submit_registers_capture_only_and_purges_power_tools
+    existing = { "hooks" => { "UserPromptSubmit" => [
+      { "matcher" => "", "hooks" => [
+        { "type" => "command", "command" => "~/.claude/hooks/plastic-power-tools" },
+      ] },
+    ] } }
+    File.write(@settings_path, JSON.pretty_generate(existing))
     @installer.merge_claude_hooks(@settings_path)
     settings = JSON.parse(File.read(@settings_path))
-    group = settings["hooks"]["UserPromptSubmit"].first
-    commands = group["hooks"].map { |h| h["command"] }
-    assert commands.any? { |c| c.include?("plastic-power-tools") },
-           "UserPromptSubmit must register plastic-power-tools: #{commands.inspect}"
+    commands = Array(settings["hooks"]["UserPromptSubmit"]).flat_map { |g| g["hooks"].map { |h| h["command"] } }
+    assert commands.any? { |c| c.end_with?("plastic-capture") }, commands.inspect
+    refute commands.any? { |c| c.include?("plastic-power-tools") },
+           "the retired power-tools entry must be purged: #{commands.inspect}"
   end
 
   def test_statusline_no_existing_line_installs_plastic_silently

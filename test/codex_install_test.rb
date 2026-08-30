@@ -859,10 +859,13 @@ class CodexInstallTest < Minitest::Test
 
     data = JSON.parse(File.read(hooks_json_path))
     commands = all_codex_hook_commands(data)
-    %w[session-start check-update capture power-tools savepoint].each do |name|
+    %w[session-start check-update capture savepoint close].each do |name|
       assert commands.any? { |c| c.include?("codex-hook") && c.include?(name) },
         "expected a codex-hook command for '#{name}', got: #{commands.inspect}"
     end
+    refute commands.any? { |c| c.include?("power-tools") }, "power-tools is retired (intent 309)"
+    end_group = data["hooks"]["SessionEnd"]&.find { |g| g["matcher"] == "" }
+    refute_nil end_group, "SessionEnd must register under an empty matcher (intent 309)"
 
     session_group = data["hooks"]["SessionStart"]&.find { |g| g["matcher"] == "" }
     refute_nil session_group, "SessionStart must register under an empty matcher"
@@ -1076,8 +1079,8 @@ class CodexInstallTest < Minitest::Test
     @core.install_for_agent("codex", false)
     content = File.read(codex_hook_path)
     updated = content.sub(
-      "STATE_HOOKS = %w[session-start check-update capture power-tools savepoint].freeze",
-      "STATE_HOOKS = %w[session-start check-update capture power-tools savepoint phantom-gate].freeze"
+      "STATE_HOOKS = %w[session-start check-update capture savepoint close].freeze",
+      "STATE_HOOKS = %w[session-start check-update capture savepoint close phantom-gate].freeze"
     )
     refute_equal content, updated, "fixture assumption: the STATE_HOOKS literal must still match this exact text"
     File.write(codex_hook_path, updated)
@@ -1089,6 +1092,26 @@ class CodexInstallTest < Minitest::Test
     assert_equal "fail", implemented_check[:status]
     assert(implemented_check[:details].any? { |d| d.include?("phantom-gate") && d.include?("dead code") },
       "expected a phantom-gate detail naming it as dead/unreachable code, got: #{implemented_check[:details].inspect}")
+  end
+
+  # Intent 309: close is expected in the dispatcher because CODEX_SESSION_END_HOOKS
+  # registers it; dropping it from STATE_HOOKS is a missing branch doctor must name.
+  def test_doctor_codex_hooks_implemented_fails_when_close_is_missing_from_the_dispatcher
+    @core.distribute(:install)
+    @core.install_for_agent("codex", false)
+    content = File.read(codex_hook_path)
+    updated = content.sub(
+      "STATE_HOOKS = %w[session-start check-update capture savepoint close].freeze",
+      "STATE_HOOKS = %w[session-start check-update capture savepoint].freeze"
+    )
+    refute_equal content, updated, "fixture assumption: the STATE_HOOKS literal must still match this exact text"
+    File.write(codex_hook_path, updated)
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    implemented_check = checks.find { |c| c[:name] == "codex_hooks_implemented" }
+    assert_equal "fail", implemented_check[:status]
+    assert(implemented_check[:details].any? { |d| d.include?("close") && d.include?("no branch") },
+      "expected a detail naming close as a missing branch, got: #{implemented_check[:details].inspect}")
   end
 
   def test_doctor_codex_hooks_implemented_fails_loudly_when_the_dispatcher_cannot_be_read
