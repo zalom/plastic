@@ -55,9 +55,9 @@ meaning an active agent is delivering that intent. Maintenance DETECTS this lock
 ACQUIRES it, even transiently, because a maintenance-held lock could be mistaken by a resuming
 or continuation session for an active delivery. Maintenance leaves no lock behind: there is
 nothing to clean up afterward, and no ambiguity about who, if anyone, holds the one lock.
-`bridge.rb:1195`'s `lock_gate_decision` already allows any write once an intent is not in
-INDEX `## Active` - there is no enforced freeze gate in the codebase today, and there never
-was one that shipped (see the corrected history below).
+No code freezes a terminal intent: since 2.0 (intent 302) nothing blocks a write anywhere,
+and before that the lock check already allowed any write once an intent left INDEX
+`## Active`. There never was a shipped freeze (see the corrected history below).
 
 Stranding and clobbering are avoided by construction, not by a second lock: a maintenance
 action creates a fresh branch from the CURRENT state of store main, applies only its own
@@ -94,9 +94,9 @@ those tools perform the mutation and write the `revisions.md` receipt - never do
 
 Corrected history (D18): an earlier version of this section described a terminal-immutability
 gate "intent 112 enforces" and a two-lock model. Intent 112 built that gate in full and was
-then ABANDONED before merge on a design pivot; nothing from it ever shipped. `bridge.rb:1195`
-confirms no such gate runs today: a write to a terminal intent is allowed unconditionally once
-the intent leaves INDEX `## Active`. The deadlock that stopped intents 189, 192, and 195 from
+then ABANDONED before merge on a design pivot; nothing from it ever shipped. No such check
+runs today: a write to a terminal intent is allowed unconditionally, as is every other write
+since 2.0 (intent 302). The deadlock that stopped intents 189, 192, and 195 from
 repairing three live `graph_links_projection` violations was self-imposed discipline (agents
 and the owner both treating undocumented doctrine as a real gate), not a technical one. This
 section is the corrected doctrine; intent 112's own history stays in INDEX as an abandoned,
@@ -115,8 +115,8 @@ legitimately accrued chain edge was destroyed by a hand-run restore and went und
 week).
 
 Fail-safe lock doctrine (the contract intent 111 implements): the lock system never traps a
-session or burns credits. When a gate cannot verify lock integrity it fails open, degrading
-to advisory (warn) rather than hard-blocking. Repair is orchestrator-driven: on a lock-issue
+session or burns credits. When a check cannot verify lock integrity it fails open, degrading
+to advisory (warn) rather than refusing. Repair is orchestrator-driven: on a lock-issue
 signal the orchestrator inspects and repairs the lock automatically, and the human
 `plastic-lock` command is a fallback path, not the trigger. Intent 93 states this doctrine;
 intent 111 builds the fail-open behavior, the lock-liveness surface, the lock-issue message,
@@ -212,7 +212,7 @@ dropped, and skips (never aborts on) any intent dir holding a fresh delivery loc
 
 Intent 84 defines three buckets for sibling 84a to audit against; 84 does not run the audit.
 
-- (a) gate-hook prose tokens: the per-transition narration emitted by the gate hook.
+- (a) hook prose tokens: the narration the lifecycle hooks emit into context.
 - (b) main-loop store-read tokens: tokens the main agent spends reading or grepping the store
   in the transcript.
 - (c) authored-section sizes: sizes of authored artifacts (INDEX entries and the like).

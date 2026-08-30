@@ -1,4 +1,4 @@
-# Deterministic cycle-step ledger, written automatically by the gate hook.
+# Deterministic cycle-step ledger, written automatically by the record hook.
 # One line per lifecycle milestone, append-only, newest at the bottom:
 #
 #   {UTC-iso8601}  {Stage}  {milestone}

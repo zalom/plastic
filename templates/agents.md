@@ -45,8 +45,8 @@ Active/Future/Completed placement is managed in INDEX.md, not in frontmatter.
 Create through the `plastic-intent-creating` skill, which scaffolds with one call:
 `ruby ~/.plastic/scripts/new-intent --store .plastic/store --intent "<one-line>" --slug <slug> [--sources <governing-id>]`.
 It allocates the Folgezettel ID, creates `.plastic/store/ID--slug/ID--slug.md` born
-complete, and wires the links. Never hand-author the files: the write-time create gate
-rejects an incomplete or malformed intent file.
+complete, and wires the links. Never hand-author the files: `new-intent` validates the
+intent file it writes, and `end-intent` checks it again at close.
 
 ## Lifecycle Skills
 

@@ -1,6 +1,6 @@
 ---
 name: plastic-intent-executing
-description: Use when you have a written implementation plan to execute. Default mode is subagent-driven (at L a fresh subagent per task with two-stage review, at S and M one executor dispatch for the whole consolidated action). Fallback mode is inline execution for environments without subagent support. If superpowers:subagent-driven-development or superpowers:executing-plans are available, delegates to them.
+description: Use when you have a written implementation plan to execute. Default mode is subagent-driven (one executor dispatch for the whole consolidated action; a fresh subagent per task with two-stage review when the plan asks for it). Fallback mode is inline execution for environments without subagent support. If superpowers:subagent-driven-development or superpowers:executing-plans are available, delegates to them.
 user-invocable: true
 ---
 
@@ -139,19 +139,19 @@ row (Date, Items Completed, Notes). Do not batch several tasks' worth of
 checklist updates into one later edit; tick the moment the task is verified,
 before moving to the next task.
 
-## Verify before every owner gate
+## Verify before every owner review
 
 Hard rule: before presenting any completed work to the owner, independently
 verify it. Grep or run the artifact the work just produced (the test suite,
 the changed file, the installed output) rather than restating the intended
 change. Never present an unverified claim to the owner. If verification
-fails, fix it before the gate, not after.
+fails, fix it before the review, not after.
 
 ## Methods report (audits and sweeps)
 
 When the work is an audit or a sweep (checking many files or many instances of
 something rather than building one artifact), deposit a methods report to
-`{intent_dir}/resources/` before the gate: what was checked, how it was
+`{intent_dir}/resources/` before the review: what was checked, how it was
 checked, and what was found. This lets the owner review the method, not just
 the conclusion.
 
@@ -169,7 +169,7 @@ When presenting a batch of Exec decisions for the owner to rule, read
 `~/.plastic/_decision-tables.md` and follow the numbered-table procedure,
 persisting each ruling with `--stage Exec`.
 
-## Gate position
+## Position in the cycle
 
 - **Before:** `plan.md` and `checklist.md` exist; the worktree is armed.
 - **Produces:** code changes, a ticked checklist, and (for audits or sweeps) a methods report in `resources/`.
