@@ -82,8 +82,6 @@ class Rollback < InstallerCore
     File.exist?(path) ? File.read(path).strip : nil
   end
 
-  private
-
   def flag_value(argv, name)
     i = argv.index(name)
     return nil unless i && argv[i + 1]
@@ -93,9 +91,50 @@ class Rollback < InstallerCore
   def switch_to(target, current)
     action = action_for(target, current)
     puts "#{action == "downgrade" ? "\u{23ea}" : "\u{23e9}"}  #{current} \u{2192} #{target} (#{action})"
-    cmd = ["npx", "#{PKG}@#{target}", "install", "--reinstall", "--ledger-action", action, "--claude"]
+    prepare_switch(target, current)
+    cmd = ["npx", "#{PKG}@#{target}", "install", "--reinstall", "--ledger-action", action, *harness_flags]
     puts "  $ #{cmd.join(" ")}"
     system(*cmd) ? 0 : 1
+  end
+
+  # Before handing off to an older package (a downgrade), strip Plastic's own current hook
+  # registrations from every installed harness (intent 310, cut-inventory R2). The older
+  # installer purges only the names its own registry knows, so an entry this version
+  # registered would otherwise survive while the older manifest diff deletes its launcher,
+  # and the older doctor would then report an unowned plastic- command. The older installer
+  # registers its own set fresh on the cleaned file. Returns the paths it stripped.
+  def prepare_switch(target, current)
+    return [] unless action_for(target, current) == "downgrade"
+
+    stripped = []
+    installed_agents.each do |key|
+      agent = agents.find { |a| a[:key] == key }
+      next unless agent
+
+      case key
+      when "claude"
+        path = File.join(agent[:dir], "settings.json")
+        if File.exist?(path)
+          remove_claude_hooks(path)
+          stripped << path
+        end
+      when "codex"
+        path = agent[:home_dir] && File.join(agent[:home_dir], "hooks.json")
+        if path && File.exist?(path)
+          remove_codex_hooks(path)
+          stripped << path
+        end
+      end
+    end
+    stripped
+  end
+
+  # The install flags for every harness with a per-agent record (intent 310); Claude alone
+  # when nothing is recorded, matching the first-install default.
+  def harness_flags
+    keys = installed_agents
+    keys = ["claude"] if keys.empty?
+    keys.map { |k| "--#{k}" }
   end
 
   def print_table(ledger, current)

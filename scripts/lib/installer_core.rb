@@ -174,13 +174,6 @@ class InstallerCore
     keys.uniq
   end
 
-  def channel_from(argv, default: "latest")
-    return "alpha" if argv.include?("--alpha")
-    return "beta" if argv.include?("--beta")
-    return "latest" if argv.include?("--latest")
-    default
-  end
-
   def prompt_agents(input: $stdin)
     return ["claude"] unless input.tty?
 

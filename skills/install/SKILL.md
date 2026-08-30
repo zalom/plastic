@@ -16,8 +16,10 @@ user-invocable: true
 
 If Plastic is installed, derive `<channel>` from `~/.plastic/VERSION`: a version containing
 `-alpha` means `@alpha`, `-beta` means `@beta`, otherwise `@latest`. If not installed
-(first install), default to `@latest`. The user can always override with
-`--alpha` / `--beta` / `--latest`.
+(first install), default to `@latest`. To change channel, pin the package instead of
+passing a flag: `npx -y @zalom/plastic@alpha install --claude` (or a version such as
+`@2.0.0-alpha.1`); the `--alpha`, `--beta`, and `--latest` flags were removed in 2.0
+(intent 310) because they never selected a package.
 
 ## Re-install / repair
 
@@ -31,13 +33,13 @@ npx -y @zalom/plastic@<channel> install --reinstall --claude
 
 Then **run `/plastic-doctor`** and report what it found.
 
-## Channel Flags
+## Channels
 
-| Flag | Behavior |
-|------|----------|
-| `--latest` | Install from the stable channel (default on a first install) |
-| `--beta` | Install from the beta channel |
-| `--alpha` | Install from the alpha channel |
+| Package | Channel |
+|---------|---------|
+| `@zalom/plastic@latest` | stable (default on a first install) |
+| `@zalom/plastic@beta` | beta |
+| `@zalom/plastic@alpha` | alpha; `npx -y @zalom/plastic@alpha install --claude` is the 2.0 alpha path |
 
 When invoked from within Claude Code (re-install or channel switch), the skill
 runs the appropriate npx command:
