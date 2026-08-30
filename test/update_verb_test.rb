@@ -45,6 +45,46 @@ class UpdateVerbTest < Minitest::Test
     assert_equal :cross_bleeding, r[:kind]
   end
 
+  # Intent 310 (296 Open Question 6): a 2.0.0-alpha.1 resolves to the alpha channel with no
+  # prerelease case. A stable install is up to date with no flag (never nudged onto the
+  # alpha), reaches it only by asking (--alpha, a confirmed :cross_bleeding move), and the
+  # alpha itself is up to date on its own channel.
+  MAJOR_TAGS = { "latest" => "1.14.1", "alpha" => "2.0.0-alpha.1" }.freeze
+
+  def test_new_major_alpha_resolves_to_the_alpha_channel_as_the_code_stands
+    assert_equal "alpha", @u.channel_for("2.0.0-alpha.1")
+    assert_equal 1, @u.semver_compare("2.0.0-alpha.1", "1.14.1")
+
+    quiet = @u.compute_target(installed_version: "1.14.1", dist_tags: MAJOR_TAGS)
+    assert_equal :up_to_date, quiet[:status], "a stable install must never be nudged onto the alpha"
+
+    asked = @u.compute_target(installed_version: "1.14.1", dist_tags: MAJOR_TAGS, requested_channel: "alpha")
+    assert_equal :ok, asked[:status]
+    assert_equal "2.0.0-alpha.1", asked[:target]
+    assert_equal :cross_bleeding, asked[:kind]
+
+    on_alpha = @u.compute_target(installed_version: "2.0.0-alpha.1", dist_tags: MAJOR_TAGS)
+    assert_equal :up_to_date, on_alpha[:status]
+  end
+
+  # Intent 310: --yes confirms a bleeding-edge switch without a tty, so `update --alpha --yes`
+  # works from a script or an agent; without it a non-tty run still aborts.
+  def test_yes_confirms_bleeding_switch_without_a_tty
+    u = Update.new(package_root: ".", plastic_home: @home, version: "x")
+    assert u.send(:confirm_bleeding, "1.14.1", "2.0.0-alpha.1", ["--alpha", "--yes"])
+    refute u.send(:confirm_bleeding, "1.14.1", "2.0.0-alpha.1", ["--alpha"]), "no tty and no --yes must not confirm"
+
+    switched = nil
+    u.define_singleton_method(:installed_version) { "1.14.1" }
+    u.define_singleton_method(:fetch_dist_tags) { MAJOR_TAGS }
+    u.define_singleton_method(:perform_switch) { |target, _flags| switched = target; 0 }
+    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| nil }
+    u.define_singleton_method(:announce_pending_config_asks) { |**_kwargs| nil }
+    out, = capture_io { assert_equal 0, u.cli(["--alpha", "--yes"]) }
+    assert_equal "2.0.0-alpha.1", switched
+    refute_match(/Aborted/, out)
+  end
+
   def test_unknown_channel_when_tag_absent
     r = @u.compute_target(installed_version: "1.0.0-alpha.18", dist_tags: { "alpha" => "1.0.0-alpha.18" }, requested_channel: "beta")
     assert_equal :unknown_channel, r[:status]
