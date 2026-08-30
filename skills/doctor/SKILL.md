@@ -51,8 +51,12 @@ Each manifest maps a file path to its SHA256.
 
 Checks the operations Plastic itself depends on in one store: QMD search reachability (scoped
 to that store's own collection; global uses `plastic-global`, a project slug uses
-`plastic-<slug>`), sources/chain resolution, cross-store resolution, INDEX parsing, and links
-projection. A project slug also checks tool readiness (Serena, Enola): each is a pass whether
+`plastic-<slug>`), sources/chain resolution, cross-store resolution, INDEX parsing, links
+projection, done signals (including `backfilled_complete`: a terminal intent still missing a
+real spec.md, plan.md, or action file), and, for the global store only, the session ledger
+(`orphaned_session_tmp`: a `.tmp/<session>/` directory whose heartbeat is older than 24
+hours; `day_ledger_shape`: a `.sessions/` entry that is not a `YYYYMMDD` day directory with
+its `<day>.md`). A project slug also checks tool readiness (Serena, Enola): each is a pass whether
 present or absent, present naming it available, absent noting it as an optional integration
 never installed by doctor. Scope options:
 
@@ -159,6 +163,9 @@ Use the `fix_hint` value to determine the correct action:
 | "Re-run installer" | Run `npx -y @zalom/plastic@<channel> install --claude` (or `--codex`/`--hermes`/`--all` for that agent; channel: -alpha->@alpha, -beta->@beta, else @latest) |
 | "Run the Plastic installer to bootstrap the store" | Run `npx -y @zalom/plastic@<channel> install --claude` (or `--codex`/`--hermes`/`--all`; channel: -alpha->@alpha, -beta->@beta, else @latest) to restore the global store's plastic_home directory or INDEX.md |
 | "Relocate ... revisions.md ..." | Relocate the flagged section or ref into the intent's `revisions.md` via move-and-record (one dated, `[rule: <tag>]`-tagged entry per item), per plastic-conventions > references/maintenance-and-revisions.md. For a missing required section, restore or reproject it instead. |
+| "Write the missing documents from the record via `scaffold-intent backfill ...`" | Run `ruby ~/.plastic/scripts/scaffold-intent backfill --store <store> --id <id> --disposition <delivered\|abandoned>` for each listed intent; it fills only missing or placeholder files and never touches real content |
+| "Remove each listed .tmp/<session>/ directory after confirming that session is gone" | For each listed directory, confirm no live session uses it (a live session rewrites its heartbeat on every prompt and edit), then remove that directory by hand; never remove an unlisted one |
+| "For a day directory missing its <day>.md, run `file-session-intent --day <day> ...`" | Run `ruby ~/.plastic/scripts/file-session-intent --day <day> --carry-to <today> --store <store>` for the named day; rename or remove an entry that is not a `YYYYMMDD` day directory |
 | "Run scripts/project-links ... PRESERVES ... --drop-unbacked-links" | Run `ruby ~/.plastic/scripts/maintenance-run --tool project-links --intent <id> --apply` for the one flagged id (never run bare `project-links` against a real store outside the rare owner-approved batch exception, D2) |
 
 For fixes the agent cannot handle automatically, explain what the user needs

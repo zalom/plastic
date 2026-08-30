@@ -76,6 +76,36 @@ class DoctorDoneSignalsTest < Minitest::Test
                "2026-07-03T00:00:00Z  Done  #{disposition}\n")
   end
 
+  # Intent 308 builders: the backfillable documents of a terminal intent.
+  def write_sentinel_doc(id, name)
+    File.write(File.join(intent_dir(id), name), "#{Savepoint::PLACEHOLDER_SENTINEL}\n")
+  end
+
+  def write_real_doc(id, name)
+    File.write(File.join(intent_dir(id), name), "# #{name}\n\nreal\n")
+  end
+
+  def write_real_action(id)
+    FileUtils.mkdir_p(File.join(intent_dir(id), "actions"))
+    File.write(File.join(intent_dir(id), "actions", "ACTION_1.md"), "# ACTION_1\n\nreal\n")
+  end
+
+  def write_gitkeep_actions(id)
+    FileUtils.mkdir_p(File.join(intent_dir(id), "actions"))
+    File.write(File.join(intent_dir(id), "actions", ".gitkeep"), "")
+  end
+
+  # A fully backfilled terminal intent: real spec, plan, one action, outcome, Done echo.
+  def write_backfilled_terminal(id, section: "Completed")
+    write_index(id, section: section)
+    write_intent_dir(id)
+    write_real_doc(id, "spec.md")
+    write_real_doc(id, "plan.md")
+    write_real_action(id)
+    write_outcome(id)
+    write_savepoint_done(id)
+  end
+
   # The global store's doctor-exclusions file, sibling to INDEX.md (intent 274, spec D6).
   def write_exclusions(text)
     File.write(File.join(@home, "doctor-exclusions"), text)
@@ -516,5 +546,103 @@ class DoctorDoneSignalsTest < Minitest::Test
     assert(operational[:details].any? { |d| d.include?("savepoint_operational 58") && d.include?("no current") },
       "the genuinely repaired id (58) must still be reported dead, with the :no_finding wording")
     assert_includes operational[:message], "1 dead row"
+  end  # --- backfilled_complete (intent 308) ----------------------------------------------------
+
+  def test_backfilled_complete_passes_on_a_fully_backfilled_terminal_intent
+    write_backfilled_terminal("308a")
+    c = check("backfilled_complete")
+
+    assert_equal "pass", c[:status], c.inspect
+    assert_equal "done_signals", c[:category]
+  end
+
+  def test_backfilled_complete_ignores_active_and_future_intents
+    write_index("308b", section: "Active")
+    write_intent_dir("308b")
+    write_sentinel_doc("308b", "spec.md")
+    write_gitkeep_actions("308b")
+
+    assert_equal "pass", check("backfilled_complete")[:status]
+  end
+
+  def test_backfilled_complete_warns_on_a_sentinel_spec_or_plan_or_gitkeep_only_actions
+    write_backfilled_terminal("308c")
+    write_sentinel_doc("308c", "plan.md")
+    c = check("backfilled_complete")
+
+    assert_equal "warn", c[:status]
+    assert c[:fixable]
+    assert_equal 1, c[:details].size
+    assert_includes c[:details].first, "308c--slug"
+    assert_includes c[:details].first, "plan.md"
+    assert_match(/scaffold-intent backfill --store <store> --id <id> --disposition/, c[:fix_hint])
+
+    FileUtils.rm_rf(File.join(intent_dir("308c"), "actions"))
+    write_gitkeep_actions("308c")
+    File.delete(File.join(intent_dir("308c"), "spec.md"))
+    c2 = check("backfilled_complete")
+    assert_equal 1, c2[:details].size
+    assert_includes c2[:details].first, "spec.md, plan.md, actions/"
+  end
+
+  def test_backfilled_complete_honors_its_exclusion_row_and_reports_the_count
+    write_backfilled_terminal("308d")
+    write_sentinel_doc("308d", "spec.md")
+    write_exclusions("backfilled_complete 308d\n")
+    c = check("backfilled_complete")
+
+    assert_equal "pass", c[:status], c.inspect
+    assert_match(/1 excluded via/, c[:message])
+    assert_equal "pass", check("savepoint_operational")[:status]
+  end
+
+  def test_backfilled_complete_dead_row_is_reported_not_consumed
+    write_backfilled_terminal("308e")
+    write_exclusions("backfilled_complete 308e\n")
+    c = check("backfilled_complete")
+
+    assert_equal "pass", c[:status]
+    assert_match(/1 dead row/, c[:message])
+    assert(c[:details].any? { |d| d.include?("backfilled_complete 308e") })
+  end
+
+  def test_exclusions_and_dead_rows_never_cross_between_the_two_rules
+    write_backfilled_terminal("308g")
+    write_sentinel_doc("308g", "spec.md")
+    write_backfilled_terminal("308h")
+    write_index_multi(%w[308g 308h], section: "Completed")
+    write_exclusions("backfilled_complete 308g\nbackfilled_complete 308h\n")
+
+    backfill = check("backfilled_complete")
+    savepoint = check("savepoint_operational")
+
+    assert_equal "pass", backfill[:status]
+    assert_match(/1 excluded via/, backfill[:message])
+    assert_match(/1 dead row/, backfill[:message])
+    assert_equal "pass", savepoint[:status]
+    refute_match(/excluded via/, savepoint[:message], "a backfill exclusion must not count for savepoint_operational")
+    refute_match(/dead row/, savepoint[:message], "a backfill dead row must not count for savepoint_operational")
+    assert_empty savepoint[:details]
+  end
+
+  def test_a_savepoint_row_never_appears_in_the_backfill_check
+    write_backfilled_terminal("308i")
+    write_exclusions("savepoint_operational 308i\n")
+
+    backfill = check("backfilled_complete")
+    savepoint = check("savepoint_operational")
+
+    assert_match(/1 dead row/, savepoint[:message])
+    refute_match(/dead row/, backfill[:message])
+    assert_empty backfill[:details]
+  end
+
+  def test_backfilled_complete_is_loud_on_a_malformed_exclusion_file
+    write_backfilled_terminal("308f")
+    write_exclusions("this line has no rule shape\n")
+    c = check("backfilled_complete")
+
+    assert_equal "warn", c[:status]
+    assert_match(/doctor-exclusions error/, c[:message])
   end
 end

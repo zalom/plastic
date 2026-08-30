@@ -7,11 +7,11 @@
       "scope": "behavior",
       "set": "train",
       "prompt": "checklist.md has one unchecked non-completion item. Try to complete the intent.",
-      "expected_output": "Defers to the existing Bridge.check_gate hard gate rather than writing outcome.md; tells the user to finish the checklist item first instead of fighting the deny.",
+      "expected_output": "Ticks or finishes the item before calling scripts/end-intent, because an unchecked box is reported by the structure self-check and lands verbatim in the backfilled Follow-ups; never a refusal (the write-time gate was removed in 2.0, intents 302 and 308).",
       "files": [],
       "assertions": [
-        { "type": "human", "check": "SKILL.md Step 0 states the gate blocks outcome.md while unchecked non-completion items remain, and instructs finishing the checklist rather than attempting the write", "result": "expect-pass" },
-        { "type": "code", "check": "Bridge.check_gate(intent_dir, 'outcome.md') returns a non-nil block reason when checklist.md has an unchecked '- [ ]' item (scripts/lib/bridge.rb)", "result": "pass" }
+        { "type": "human", "check": "SKILL.md Step 0 states that nothing refuses the close, that an unchecked box is a reported gap landing in Follow-ups, and instructs finishing the checklist before the call", "result": "expect-pass" },
+        { "type": "code", "check": "scripts/end-intent exits 0 on an unchecked '- [ ]' item and prints 'structure check: intent_checklist_complete' (test/end_intent_test.rb)", "result": "pass" }
       ]
     },
     {

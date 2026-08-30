@@ -24,7 +24,7 @@ installed directory.
 | # | Step | Who does it |
 |---|---|---|
 | 0 | Precondition check | You, before touching outcome.md |
-| 1 | outcome.md + intent-file `## Outcome` summary | `scripts/end-intent` |
+| 1 | backfill spec/plan/action/outcome from the record, self-check, intent-file `## Outcome` summary | `scripts/end-intent` |
 | 2 | INDEX.md terminal move (Active -> Completed/Abandoned) | `scripts/end-intent` |
 | 3 | savepoint `Done` bookend | `scripts/end-intent` |
 | 4 | store auto-commit | `scripts/end-intent` |
@@ -39,43 +39,34 @@ deliveries; separately, one session delivered four intents back to back and
 never ran the old step-5 one-liner at all, intent 188). Never restate
 outcome/INDEX/savepoint/disarm prose inline again; call `scripts/end-intent`.
 
-### Step 0. Precondition (the gate is section-blind, not selective)
+### Step 0. Precondition (the record is what gets backfilled)
 
-`Bridge.check_gate` (scripts/lib/bridge.rb) is LIVE code already wired into
-the write-time hook. Its outcome.md rule is a blind scan of the WHOLE
-checklist.md: `content.scan(/^- \[ \]/)` counts every unchecked box, in
-every section, with no awareness of which section a box lives in. ANY
-unchecked box anywhere blocks the outcome.md write; there is no exemption
-for orchestrator-owned or completion-tracking items.
+Nothing refuses the close any more (the 1.x write-time gate and `end-intent`'s
+exit-6 structure gate were retired in 2.0, intents 302 and 308). What you leave
+on disk is what the record becomes, so before the call:
 
 1. Read checklist.md. Tick every item as it is actually performed, including
    an item that describes the close itself: running this very procedure IS
-   what that item describes, so tick it at the moment you begin the close,
-   before authoring outcome.md. By the time outcome.md is written,
-   checklist.md must read 100 percent checked; there is no other way past
-   the gate.
+   what that item describes. An unchecked box is not a refusal, it is a
+   reported gap that lands verbatim in the backfilled `## Follow-ups`.
 2. Confirm every acceptance criterion in spec.md is verifiable (tests pass,
    or the manual check described in its HOW line was actually run).
-3. The structure gate (intent 222) now enforces this: `scripts/end-intent`
-   refuses with exit 6 and names the exact unchecked box (or any other
-   structural gap: intent-file validity, lifecycle-artifact presence,
-   `## Links` projection). On a refusal, fix via the OWNING tool, never a
-   hand edit of the check's own output:
-   - checklist/outcome content - finish it yourself, the same as before.
-   - links projection - run
-     `ruby ~/.plastic/scripts/maintenance-run --tool project-links --intent <id> --apply`.
-   - a savepoint issue - advisory only (WARN, never blocks): run
-     `Savepoint.rebuild_savepoint` if
-     you want it clean, but it never refuses the close on its own.
-   Then re-run `scripts/end-intent`.
+3. Decide what you have to say. A spec.md, plan.md, action file, or outcome.md
+   left as the scaffold placeholder is written from the record by
+   `scripts/end-intent` (the intent file's `## Intent`, `### Decisions`, and
+   `## Insights`, the checklist, the diff on the intent's own worktree). A
+   file you wrote, even under a still-present sentinel, is never touched.
+   Write outcome.md yourself when the summary deserves more than the
+   `--outcome-summary` line; otherwise let the backfill carry it.
 
 ### Step 1-5. Run `scripts/end-intent`
 
-First author outcome.md for real (never leave the scaffold placeholder in
-place): copy `templates/outcome.md`, set the frontmatter to
-`disposition: delivered` or `disposition: abandoned`, and fill `## Summary`,
-`## Delivered`, `## Verification`, `## Follow-ups`. On abandon, `## Summary`
-states the abandonment reason and the trail (see Pivot below). Also author
+Author outcome.md yourself when it deserves prose: copy `templates/outcome.md`,
+set the frontmatter to `disposition: delivered` or `disposition: abandoned`, and
+fill `## Summary`, `## Delivered`, `## Verification`, `## Follow-ups`. On
+abandon, `## Summary` states the abandonment reason and the trail (see Pivot
+below). A placeholder outcome.md is backfilled from the record instead, with the
+close's disposition and the `--outcome-summary` line as its summary. Also author
 the rich INDEX entry note now (a short line in the store's existing
 Completed/Abandoned convention: mode, what shipped or why it was
 abandoned, suite result, merge/spawn notes); content authoring stays with
@@ -91,9 +82,11 @@ ruby ~/.plastic/scripts/end-intent \
   --index-note "<rich Completed/Abandoned entry description>"
 ```
 
-This does all of steps 1-5 in order: guards outcome.md (a missing or
-still-placeholder file is caught by the structure gate first and exits 6; a
-wrong-disposition file exits 2; either way it authors nothing), stamps the
+This does all of steps 1-5 in order: backfills every missing or placeholder
+spec.md, plan.md, action file, and outcome.md from the record (never a file
+you wrote), runs doctor's per-intent structure check and the outcome guard as
+a self-check that reports on stderr and proceeds (an unchecked box, a
+malformed intent file, a wrong-disposition outcome.md you wrote), stamps the
 intent file's `## Outcome` section, moves the INDEX.md
 line from `## Active` to `## Completed` or `## Abandoned` (dated today,
 idempotent, accepting either a real em dash or a plain hyphen as the id/
@@ -127,8 +120,7 @@ correctly, for the first time on that path (D7).
 
 Exit codes: 0 success (the intent is closed AND its delivery lock is gone);
 1 a usage or resolution failure, OR an INDEX id that resolves to neither
-`## Active` nor the terminal section; 2 the outcome.md guard refusing (fix
-outcome.md and re-run, nothing was written); 3 steps 1-4 already committed
+`## Active` nor the terminal section; 3 steps 1-4 already committed
 but disarm could not verify the lock is gone afterward (run `/plastic-doctor
 check the lock status`); 4 a live foreign session holds the lock (back off);
 5 the code worktree is dirty (commit/stash first, or pass
