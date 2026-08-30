@@ -141,8 +141,12 @@ standing rules.
 opens or joins today's day ledger under `~/.plastic/store/.sessions/<YYYYMMDD>/`, and writes
 the per-session pointer (`.tmp/<session-id>/current`) and heartbeat. `UserPromptSubmit`
 (`hooks/capture`) appends the prompt as a pending day-ledger line, detects `auto` and
-`continue`, and hints at matching parked intents. `PreCompact` (`hooks/savepoint`) and
-`SessionEnd` (`hooks/close`) bracket the session.
+`continue`, and hints at matching parked intents. `PreCompact` (`hooks/savepoint` ->
+`scripts/hook-savepoint`) writes the session's hand-off into the day ledger
+(`.sessions/<day>/handoff--<session>.md`) and prints one static message; `SessionEnd`
+(`hooks/close`) writes it once more, then closes the session. The same hand-off is written
+at every ticked day-ledger item, and the session-start hook injects the day summary after the
+joined line.
 
 `SessionStart` is a top-level-only event: it fires for the main session, not for sub-agents.
 Sub-agents fire `SubagentStart`, which Plastic does not use. So the session event alone cannot

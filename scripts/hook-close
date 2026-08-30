@@ -25,9 +25,11 @@ payload =
 
 store = File.join(File.expand_path(plastic_home), "store")
 filer = File.expand_path("file-session-intent", __dir__)
+templates = File.expand_path("../templates", __dir__)
 begin
   SessionClose.run(payload: payload, store: store, today: SessionLedger.day_id,
-                   spawner: SessionClose.default_spawner(filer))
+                   spawner: SessionClose.default_spawner(filer),
+                   handoff: SessionClose.default_handoff(templates))
 rescue StandardError
   nil
 end

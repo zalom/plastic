@@ -1128,7 +1128,10 @@ start.
   savepoint line per commit. See "the session branch model and session-commit" below.
 - intent 301: close, `file-session-intent`, `promote-session-item`, and the carry-forward of
   open items, which is why `append-ledger item` exists alongside `pending`.
-- batch 4: `write-handoff` and `day-summary`.
+- intent 311 (delivered): `write-handoff` (the per-session hand-off in the day directory,
+  written at every tick, at PreCompact through `hook-savepoint`, and at close) and
+  `day-summary` (the bounded block the session-start hook injects after the joined line).
+  Both are renderers over the same two files, regenerated in full on every write.
 
 A recorded hazard, so intent 301 does not discover it mid-Exec: `LinksProjection` resolves a
 ref by scanning store-root children, so a later intent whose `sources` names a day id raises

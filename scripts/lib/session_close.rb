@@ -9,11 +9,21 @@
 
 require "fileutils"
 require_relative "session_ledger"
+require_relative "handoff"
 
 module SessionClose
   module_function
 
   NOOP_REASONS = %w[clear resume].freeze
+
+  # The default hand-off writer (intent 311, spec D6): renders this session's
+  # share of the pointer day into handoff--<session>.md before the tmp dir
+  # goes. The hook script builds it with the shipped templates dir.
+  def default_handoff(templates)
+    lambda do |store, day, session|
+      Handoff.write(store: store, day: day, session: session, trigger: "close", templates: templates)
+    end
+  end
 
   # The default spawner starts the day filer detached so a slow filing never
   # blocks the harness shutdown (Codex kills a SessionEnd hook after 3 s).
@@ -26,8 +36,8 @@ module SessionClose
   end
 
   # Returns a small report hash; never raises.
-  def run(payload:, store:, today:, spawner:, now: Time.now)
-    report = { reason: nil, dropped: 0, removed_tmp: false, spawned: nil }
+  def run(payload:, store:, today:, spawner:, handoff: nil, now: Time.now)
+    report = { reason: nil, dropped: 0, removed_tmp: false, spawned: nil, handoff: false }
     reason = payload.is_a?(Hash) ? payload["reason"].to_s : ""
     report[:reason] = reason
     return report if NOOP_REASONS.include?(reason)
@@ -36,6 +46,7 @@ module SessionClose
     return report if session.empty?
 
     pointer_day = safely { read_pointer_day(store, session) } || today
+    intent_pointer = safely { intent_pointer?(store, session) } || false
     project = "global"
 
     report[:dropped] = safely do
@@ -48,6 +59,16 @@ module SessionClose
       end
       count
     end || 0
+
+    # The hand-off (intent 311, spec D6) is written after the drop, so it
+    # reflects it, and before the tmp dir goes, since the pointer lives there.
+    # A session whose pointer names an intent has no day-ledger share.
+    if handoff && !intent_pointer
+      report[:handoff] = safely do
+        handoff.call(store, pointer_day, session)
+        true
+      end || false
+    end
 
     report[:removed_tmp] = safely do
       dir = SessionLedger.session_tmp_dir(store, session)
@@ -74,6 +95,14 @@ module SessionClose
 
     value = File.read(path).strip
     SessionLedger.valid_day_id?(value) ? value : nil
+  end
+
+  # True when a pointer exists and names something other than a day id.
+  def intent_pointer?(store, session)
+    path = SessionLedger.pointer_path(store, session)
+    return false unless File.exist?(path)
+
+    !SessionLedger.valid_day_id?(File.read(path).strip)
   end
 
   def safely
