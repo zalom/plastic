@@ -423,6 +423,8 @@ class InstallerCore
       "scripts/lib/day_summary.rb" => "scripts/lib/day_summary.rb",
       "scripts/write-handoff" => "scripts/write-handoff",
       "scripts/day-summary" => "scripts/day-summary",
+      "scripts/lib/intent_screen.rb" => "scripts/lib/intent_screen.rb",
+      "scripts/intent-screen" => "scripts/intent-screen",
       "scripts/hook-savepoint" => "scripts/hook-savepoint",
     }
   end

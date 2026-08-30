@@ -86,7 +86,7 @@ class IntentScreenTest < Minitest::Test
   end
 
   def step_rows(screen)
-    screen.lines.select { |l| l =~ /^\| S\d+ \|/ || l.start_with?("| | |") }
+    screen.lines.select { |l| l =~ /^\| S\d+ \|/ || l.start_with?("| | | no steps yet") }
   end
 
   # --- progress ----------------------------------------------------------------
@@ -169,6 +169,15 @@ class IntentScreenTest < Minitest::Test
     assert_includes screen, "| S2 | open | do thing 2 |"
     refute_includes screen, "Step 2 -"
   end
+
+def test_next_shows_first_clause_full_text_in_table
+  root = tier_root(:project)
+  cl = "# Checklist\n\n## In Progress\n- [ ] Step 1 - Doctor full on the real install; OPEN: codex_integrity passes although the registrations are stale\n"
+  dir = make_intent(root, checklist: cl, savepoint: HOW_LEDGER)
+  screen = render(dir, root)
+  assert_equal "S1 · Doctor full on the real install", row(screen, "Next")[:value]
+  assert_includes screen, "| S1 | open | Doctor full on the real install; OPEN: codex_integrity passes although the registrations are stale |"
+end
 
   # --- store and title -----------------------------------------------------------
 

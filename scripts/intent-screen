@@ -1,0 +1,52 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+# intent-screen (intent 316) - prints the intent screen for one intent directory:
+# the title, the field table (Store, Status, Stage, Savepoint, Progress, Next,
+# Insight, each with a note), and the Steps table, filled from the record by
+# scripts/lib/intent_screen.rb. The session adds the What-this-means bullets and
+# the close; it never edits the numbers.
+#
+# Usage:
+#   intent-screen <intent_dir> [--template <path>]
+#
+# The store root is the directory two levels above the intent (<root>/store/<id--slug>);
+# the template defaults to templates/intent-screen.md next to this script's dir,
+# in-repo (<repo>/scripts -> <repo>/templates) and installed (~/.plastic/scripts ->
+# ~/.plastic/templates) alike.
+#
+# Exit codes:
+#   0 - the screen is on stdout
+#   2 - usage error, or the path is not an intent directory (one line on stderr)
+
+require_relative "lib/intent_screen"
+
+def usage_abort(message)
+  warn "intent-screen: #{message}"
+  exit 2
+end
+
+args = ARGV.dup
+template_path = nil
+positional = []
+while (arg = args.shift)
+  case arg
+  when "--template"
+    template_path = args.shift or usage_abort("--template needs a path")
+  else
+    usage_abort("unknown flag #{arg.inspect}") if arg.start_with?("--")
+    positional << arg
+  end
+end
+
+usage_abort("usage: intent-screen <intent_dir> [--template <path>]") unless positional.length == 1
+intent_dir = File.expand_path(positional.first)
+usage_abort("#{intent_dir} is not an intent directory") unless IntentScreen.intent_dir?(intent_dir)
+
+store_root = File.expand_path("../..", intent_dir)
+template_path ||= File.expand_path("../templates/intent-screen.md", __dir__)
+usage_abort("template not found at #{template_path}") unless File.exist?(template_path)
+
+$stdout.write IntentScreen.render(intent_dir: intent_dir, store_root: store_root,
+                                  template: File.read(template_path))
+exit 0

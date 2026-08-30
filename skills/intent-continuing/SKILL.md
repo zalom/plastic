@@ -109,7 +109,7 @@ For a live intent's directory:
    write **What this means** as two to four bullets in plain words (what the intent is for,
    what has landed, what is left, any defect named by step), then close with
    **needs input:** naming the first open step. The screen's shape is
-   `templates/intent-screen.md`; the script fills it, the session never edits the numbers.
+   `~/.plastic/templates/intent-screen.md`; the script fills it, the session never edits the numbers.
    Then continue the work in the session's current mode. In auto mode the running team
    already holds the delivery lock; if a lock is held by a session that is gone, the
    `plastic-doctor` skill's lock section repairs or reclaims it.
