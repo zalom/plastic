@@ -7,17 +7,18 @@ require_relative "bridge"
 require_relative "savepoint"
 require_relative "intent_validator"
 
-# ScaffoldIntent - all logic for `scripts/scaffold-intent` (intent 213). Three
-# subcommands (spec|checklist|outcome), each writes one lifecycle artifact by copying or
-# mechanically deriving it from an already-committed source: the intent file's
-# `### Decisions` list, spec.md's `## Acceptance Criteria` list, or a `git diff --stat`
-# plus an optional supplied test-summary file. No subcommand interprets or invents prose;
-# a field this module cannot derive mechanically is left as the template's own stub text
-# instead of being guessed at.
+# ScaffoldIntent - the shared, pure helpers behind `scripts/scaffold-intent` (intent 213)
+# and its callers: path and template resolution, section splitting, the intent file's
+# `### Decisions` extraction, and the git-derived diffstat (`build_verification_body`).
+# BackfillIntent (scripts/lib/backfill_intent.rb, intent 308) composes these into the
+# one writer that fills an intent's judgment documents from its record; verify_intent,
+# exec_worktree, and session_git use the repo and base-branch helpers directly.
 #
-# `scaffold-intent` does not scaffold `actions/` in any form (intent 133a, D11): actions
-# require judgment and stay entirely with the planner. No method here creates the
-# directory, writes a `.gitkeep`, or writes a sentinel-only `ACTION_*.md`.
+# The three per-file subcommands this module once carried were removed in 2.0 (intent
+# 308): `scaffold_spec` and `scaffold_checklist` (removed in 2.0), `scaffold_outcome` with
+# `--force` and `--test-summary` (removed in 2.0). The backfill writer covers their
+# derivable targets, and nothing else called them. Nothing here invents prose: every derived field is a verbatim
+# copy or a mechanical rendering of a committed artifact.
 #
 # Pure and dependency-injected: never calls `exit` or `abort`, never reads `ARGV` or
 # `ENV` directly (only via the ambient `Dir.home` default, matching Bridge/Worktree
@@ -27,12 +28,6 @@ require_relative "intent_validator"
 # returned result to an exit code.
 module ScaffoldIntent
   module_function
-
-  SPEC_SECTIONS = [
-    "## Problem", "## Goals", "## Non-Goals", "## Approach",
-    "## Alternatives Considered", "## Decisions",
-    "## Acceptance Criteria", "## Open Questions",
-  ].freeze
 
   # --- path resolution (pure) --------------------------------------------------
 
@@ -81,19 +76,8 @@ module ScaffoldIntent
     { status: :ok, code: 0, message: nil, path: path }
   end
 
-  def refuse_result(path)
-    { status: :refused, code: 2, path: path,
-      message: "#{path} already has real content; pass --force to overwrite it deliberately" }
-  end
-
   def error_result(message)
     { status: :error, code: 3, message: message, path: nil }
-  end
-
-  # True iff `target` exists, carries real (non-sentinel) content, and `force` was not
-  # passed: the caller must refuse to write and leave the file untouched.
-  def refuse_without_force?(target, force)
-    File.exist?(target) && Savepoint.stage_file_present?(target) && !force
   end
 
   # --- generic section helpers (pure) --------------------------------------------
@@ -153,120 +137,9 @@ module ScaffoldIntent
     [body_lines.join, nil]
   end
 
-  # --- `## Acceptance Criteria` extraction from spec.md (pure) --------------------
-
-  # Byte-for-byte body of `## Acceptance Criteria` in `spec_content`. Returns
-  # [body, nil] on success, or [nil, message] when the heading is absent or its body
-  # holds no `- [ ]` line.
-  def extract_acceptance_criteria(spec_content)
-    lines = spec_content.lines
-    idx = lines.index { |l| l.rstrip == "## Acceptance Criteria" }
-    return [nil, "spec.md has no ## Acceptance Criteria section to copy"] if idx.nil?
-
-    stop = idx + 1
-    stop += 1 while stop < lines.length && !lines[stop].start_with?("## ")
-    body_lines = strip_blank_edges(lines[(idx + 1)...stop])
-
-    unless body_lines.any? { |l| l =~ /^\s*- \[ \]/ }
-      return [nil, "spec.md's ## Acceptance Criteria has no checklist items (no line matching '- [ ]')"]
-    end
-
-    [body_lines.join, nil]
-  end
-
   def strip_blank_edges(lines)
     lines = lines.drop_while { |l| l.strip.empty? }
     lines.reverse.drop_while { |l| l.strip.empty? }.reverse
-  end
-
-  # --- spec subcommand ------------------------------------------------------------
-
-  def scaffold_spec(intent_dir:, force:, templates_dir: nil, home: Dir.home)
-    target = File.join(intent_dir, "spec.md")
-    return refuse_result(target) if refuse_without_force?(target, force)
-
-    intent_file = Savepoint.intent_file(intent_dir)
-    return error_result("the intent file is missing at #{intent_file}") unless File.exist?(intent_file)
-
-    intent_content = File.read(intent_file)
-    fm = IntentValidator.parse_frontmatter_text(intent_content)
-    intent_name = fm.is_a?(Hash) ? fm["intent"] : nil
-    if Bridge.blank?(intent_name)
-      return error_result("the intent file at #{intent_file} has no frontmatter intent name")
-    end
-
-    decisions_body, decisions_err = extract_decisions(intent_content)
-    return error_result(decisions_err) if decisions_body.nil?
-
-    tdir = templates_dir || resolve_templates_dir(home: home)
-    return error_result(templates_missing_message(home: home)) if tdir.nil?
-
-    spec_template_path = File.join(tdir, "spec.md")
-    return error_result("spec.md template not found at #{spec_template_path}") unless File.exist?(spec_template_path)
-
-    written = build_spec_content(intent_name: intent_name, decisions_body: decisions_body,
-                                  template_text: File.read(spec_template_path))
-
-    FileUtils.mkdir_p(intent_dir)
-    File.write(target, written)
-    ok_result(target)
-  end
-
-  def build_spec_content(intent_name:, decisions_body:, template_text:)
-    template_sections = sections_from(template_text)
-
-    out = []
-    out << "# Spec: #{intent_name}\n"
-    out << "\n"
-
-    SPEC_SECTIONS.each do |heading|
-      out << "#{heading}\n"
-      if heading == "## Decisions"
-        out << decisions_body
-        out << "\n"
-      else
-        out << (template_sections[heading] || "")
-      end
-    end
-
-    out.join
-  end
-
-  # --- checklist subcommand --------------------------------------------------------
-
-  def scaffold_checklist(intent_dir:, force:, templates_dir: nil, home: Dir.home)
-    target = File.join(intent_dir, "checklist.md")
-    return refuse_result(target) if refuse_without_force?(target, force)
-
-    spec_path = File.join(intent_dir, "spec.md")
-    unless File.exist?(spec_path) && Savepoint.stage_file_present?(spec_path)
-      return error_result("spec.md is missing or still the scaffold placeholder at #{spec_path}")
-    end
-
-    ac_body, ac_err = extract_acceptance_criteria(File.read(spec_path))
-    return error_result(ac_err) if ac_body.nil?
-
-    intent_file = Savepoint.intent_file(intent_dir)
-    fm = IntentValidator.parse_frontmatter(intent_file)
-    intent_name = fm.is_a?(Hash) ? fm["intent"] : nil
-    if Bridge.blank?(intent_name)
-      return error_result("the intent file at #{intent_file} has no frontmatter intent name")
-    end
-
-    tdir = templates_dir || resolve_templates_dir(home: home)
-    return error_result(templates_missing_message(home: home)) if tdir.nil?
-
-    checklist_template_path = File.join(tdir, "checklist.md")
-    unless File.exist?(checklist_template_path)
-      return error_result("checklist.md template not found at #{checklist_template_path}")
-    end
-
-    template_text = File.read(checklist_template_path).sub("{{INTENT_NAME}}", intent_name)
-    written = replace_section_body(template_text, "## In Progress", [ac_body, "\n"])
-
-    FileUtils.mkdir_p(intent_dir)
-    File.write(target, written)
-    ok_result(target)
   end
 
   # --- repo / base-branch resolution (shared with ACTION_3) -----------------------
@@ -312,40 +185,7 @@ module ScaffoldIntent
     [res.stdout.to_s, nil]
   end
 
-  # --- outcome subcommand -----------------------------------------------------------
-
-  def scaffold_outcome(intent_dir:, force:, store:, id:, test_summary: nil,
-                       home: Dir.home, runner: Worktree::ShellRunner.new, templates_dir: nil)
-    target = File.join(intent_dir, "outcome.md")
-    return refuse_result(target) if refuse_without_force?(target, force)
-
-    intent_file = Savepoint.intent_file(intent_dir)
-    return error_result("the intent file is missing at #{intent_file}") unless File.exist?(intent_file)
-
-    fm = IntentValidator.parse_frontmatter(intent_file)
-    intent_name = fm.is_a?(Hash) ? fm["intent"] : nil
-    if Bridge.blank?(intent_name)
-      return error_result("the intent file at #{intent_file} has no frontmatter intent name")
-    end
-
-    tdir = templates_dir || resolve_templates_dir(home: home)
-    return error_result(templates_missing_message(home: home)) if tdir.nil?
-
-    outcome_template_path = File.join(tdir, "outcome.md")
-    unless File.exist?(outcome_template_path)
-      return error_result("outcome.md template not found at #{outcome_template_path}")
-    end
-
-    verification_body = build_verification_body(store: store, id: id, intent_dir: intent_dir,
-                                                 home: home, runner: runner, test_summary: test_summary)
-
-    content = File.read(outcome_template_path).sub("# Outcome: <intent name>", "# Outcome: #{intent_name}")
-    written = replace_section_body(content, "## Verification", [verification_body, "\n"])
-
-    FileUtils.mkdir_p(intent_dir)
-    File.write(target, written)
-    ok_result(target)
-  end
+  # --- verification body (diffstat plus an optional test summary) ----------------------
 
   def build_verification_body(store:, id:, intent_dir:, home:, runner:, test_summary:)
     repo = resolve_repo_dir(store: store, id: id, intent_dir: intent_dir, home: home, runner: runner)

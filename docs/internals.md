@@ -690,11 +690,14 @@ lifecycle steps that qualify.
 `scripts/start-intent` composes `Bridge.arm_auto` or `Bridge.arm_guided`, then reads the four (removed in 2.0, intent 304)
 lifecycle files and prints a resume-station report. It never releases or takes over a lock.
 
-`scripts/scaffold-intent` is one CLI with three subcommands, `spec`, `checklist`, and
-`outcome`. Each writes only what is mechanically derivable from a committed artifact and
-leaves every judgment section as the template's stub. It never scaffolds `actions/`. Running
-the `outcome` subcommand makes the derived stage read as done, so run it only at the true end
-of Exec.
+`scripts/scaffold-intent` is one CLI with one verb, `backfill` (its `spec`, `checklist`, and
+`outcome` subcommands were removed in 2.0, intent 308). It runs `BackfillIntent`
+(`scripts/lib/backfill_intent.rb`), the writer `scripts/end-intent` runs at every close: each
+of spec.md, plan.md, `actions/ACTION_1.md`, and outcome.md that is missing or still the
+placeholder is written from the record (the intent file, the checklist, the diff on the
+intent's own worktree), every judgment section keeps the template's stub, and a file with
+hand-written content is never touched. `end-intent` then runs doctor's per-intent structure
+check as a self-check that reports and proceeds; the exit-6 refusal is gone.
 
 `scripts/verify-intent` folds doctor scoped to the intent, the added-line em-dash diff guard
 (the first standing implementation of that check), a diffstat, and an optional

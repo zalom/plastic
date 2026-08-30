@@ -6,9 +6,11 @@ require_relative "intent_validator"
 
 # OutcomeGuard - the single definition of "is outcome.md real and disposition-matched for
 # THIS close" (intent 222). Extracted verbatim from scripts/end-intent's own
-# outcome_guard_reason (intent 161/188) so end-intent's existing exit-2 path and doctor's new
-# per-intent check (intent_lifecycle_artifacts) can never independently drift on what counts
-# as a valid outcome.md. Pure, read-only: authors nothing regardless of outcome.
+# outcome_guard_reason (intent 161/188) so its two callers, doctor's per-intent check
+# (intent_lifecycle_artifacts) and end-intent's post-backfill self-check, can never drift on
+# what counts as a valid outcome.md. Since intent 308 nothing blocks on it: end-intent
+# backfills a missing or placeholder outcome.md first, prints a non-nil reason, and proceeds.
+# Pure, read-only: authors nothing regardless of outcome.
 module OutcomeGuard
   module_function
 

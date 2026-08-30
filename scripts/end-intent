@@ -28,8 +28,12 @@
 #      file that exists while no session identity resolves from ANY source
 #      also refuses (exit 4) rather than ever reaching Lock.takeover with a
 #      blank session, which would delete the lock file and then crash.
-#   1. Guard outcome.md (exit 2, authors nothing, on any failure), then stamp
-#      the intent file's `## Outcome` section with --outcome-summary if given.
+#   1. Backfill (intent 308): write spec.md, plan.md, actions/ACTION_1.md, and
+#      outcome.md from the record wherever a file is missing or still the
+#      placeholder (BackfillIntent; real content is never touched). Then run
+#      doctor's per-intent structure check and OutcomeGuard as a self-check
+#      that reports on stderr and proceeds. Then stamp the intent file's
+#      `## Outcome` section with --outcome-summary if given.
 #   2. Move the intent's INDEX.md line from `## Active` into `## Completed`
 #      (delivered) or `## Abandoned` (abandoned), dated today, appending
 #      --index-note (if given). Accepts a real em dash OR a plain hyphen as
@@ -51,7 +55,7 @@
 #   0  ok - the intent is closed and no delivery.lock remains.
 #   1  usage/resolution failure, OR an id that resolves to neither ## Active
 #      nor the terminal section (D11). Deliberately double duty; see plan.md.
-#   2  the outcome.md guard refused; authors nothing.
+#   2  retired in 2.0 (intent 308): the outcome.md guard reports and proceeds.
 #   3  steps 1-4 already committed, but the delivery lock genuinely could not
 #      be cleared (not a bridge cache miss; see step 5 above).
 #   4  pre-flight refusal: a FRESH foreign lock is held by a live,
@@ -61,10 +65,7 @@
 #      (git status itself failed: corrupt index, git missing, not a repo);
 #      refused before removal; pass --discard-worktree-changes to override
 #      deliberately.
-#   6  the doctor per-intent structure gate refused (checklist incomplete,
-#      links out of projection, intent-file malformed, or a lifecycle artifact
-#      missing/placeholder); named reasons on stderr; authors nothing
-#      (intent 222).
+#   6  retired in 2.0 (intent 308): the structure check reports and proceeds.
 
 require "fileutils"
 require "date"
@@ -76,6 +77,7 @@ require_relative "lib/savepoint"
 require_relative "lib/lock"
 require_relative "lib/intent_validator"
 require_relative "lib/outcome_guard"
+require_relative "lib/backfill_intent"
 
 DISPOSITIONS = %w[delivered abandoned].freeze
 
@@ -169,44 +171,41 @@ def resolve_plastic_home_and_scope(store)
   end
 end
 
-# Doctor's per-intent structure gate (intent 222), a pre-write step: FAIL refuses the close
-# (exit 6, authors nothing), WARN prints an advisory note and proceeds, PASS proceeds
-# silently, and an unexpected exception from the gate call itself is rescued and treated as
-# a skipped gate (fail-open on a crash: a broken gate must never wedge a close).
+# Backfill (intent 308): write the judgment documents that are missing or still the
+# placeholder from the record (BackfillIntent). Fail-open: a crash here warns and the
+# close proceeds, the same contract as the structure check below.
+def run_backfill(intent_dir, store:, id:, disposition:, summary:)
+  result = BackfillIntent.run(intent_dir: intent_dir, store: store, id: id,
+                              disposition: disposition, summary: summary)
+  result[:written].each { |rel| warn "end-intent: backfilled #{rel} from the record" }
+  result[:notes].each { |note| warn "end-intent: backfill note: #{note}" }
+rescue StandardError => e
+  warn "end-intent: backfill crashed (#{e.message}); proceeding without it"
+end
+
+# Doctor's per-intent structure check (intent 222; a self-check since intent 308). Runs
+# after the backfill and REPORTS: every FAIL or WARN check prints its named reason on
+# stderr and the close proceeds. Nothing here exits; a gap end-intent cannot write itself
+# (an unchecked box, a malformed intent file, links out of projection) is the owner's to
+# fix afterward, and doctor --intent keeps reporting it. A crash is rescued the same way.
+# Injected `gate:` seam: tests drive the real Doctor against a hermetic home, or a raising
+# stub to prove the fail-open contract, with no eval/ENV/global seam.
 #
-# `gate:` is an injected seam (mirrors run_disarm's own bridge_reader:/disarm: pattern
-# below) defaulting to the real Doctor.new(...).run_intent_check(...) call; tests load this
-# script in-process (as test/end_intent_disarm_toctou_test.rb already does for run_disarm)
-# and inject a raising stub to prove the fail-open contract, with no eval/ENV/global seam.
-#
-# Disposition is deliberately NOT passed to the real gate call (intent 222 executor
-# decision): the existing outcome-only guard immediately following this call already owns
-# disposition-matching (exit 2), and intent_lifecycle_artifacts unconditionally checks
-# outcome.md PRESENCE via Savepoint.stage_file_present? regardless of disposition, so passing
-# it here would make this gate re-check the SAME disposition match the old guard already
-# owns, needlessly widening which exit-2 fixtures become exit-6. doctor.rb --intent called
-# directly (with --disposition) still exercises the fold-in per D2/acceptance criteria.
-def run_structure_gate(id, store:, gate: ->(gate_home, gate_scope) {
+# Disposition is deliberately NOT passed to the real gate call: OutcomeGuard.reason,
+# called right after this in main, already owns disposition-matching, and
+# intent_lifecycle_artifacts checks outcome.md PRESENCE regardless of disposition.
+def run_structure_check(id, store:, gate: ->(gate_home, gate_scope) {
   require_relative "doctor"
   Doctor.new(plastic_home: gate_home).run_intent_check(id, store: gate_scope)
 })
   gate_home, gate_scope = resolve_plastic_home_and_scope(store)
-  gate_verdict = gate.call(gate_home, gate_scope)
-  case gate_verdict[:status]
-  when "fail"
-    gate_verdict[:checks].select { |c| c[:status] == "fail" }.each do |c|
-      detail = Array(c[:details]).any? ? " (#{Array(c[:details]).join("; ")})" : ""
-      warn "end-intent: structure gate refused: #{c[:name]}: #{c[:message]}#{detail}"
-    end
-    exit 6
-  when "warn"
-    gate_verdict[:checks].select { |c| c[:status] == "warn" }.each do |c|
-      detail = Array(c[:details]).any? ? " (#{Array(c[:details]).join("; ")})" : ""
-      warn "end-intent: structure gate warning (proceeding): #{c[:name]}: #{c[:message]}#{detail}"
-    end
+  verdict = gate.call(gate_home, gate_scope)
+  verdict[:checks].select { |c| %w[fail warn].include?(c[:status]) }.each do |c|
+    detail = Array(c[:details]).any? ? " (#{Array(c[:details]).join("; ")})" : ""
+    warn "end-intent: structure check: #{c[:name]}: #{c[:message]}#{detail}"
   end
 rescue StandardError => e
-  warn "end-intent: structure gate crashed (#{e.message}); proceeding without it"
+  warn "end-intent: structure check crashed (#{e.message}); proceeding without it"
 end
 
 # outcome.md guard: see OutcomeGuard.reason (scripts/lib/outcome_guard.rb, extracted intent 222)
@@ -620,16 +619,10 @@ def main(argv)
     exit 4
   end
 
-  run_structure_gate(id, store: store)
-
-  reason = OutcomeGuard.reason(intent_dir, disposition)
-  if reason
-    warn "end-intent: #{reason}"
-    exit 2
-  end
-
   if opts[:dry_run]
     puts "end-intent: dry run for #{File.basename(intent_dir)} (#{disposition})"
+    targets = BackfillIntent.targets_for(intent_dir)
+    puts "  would backfill: #{targets.empty? ? "(nothing)" : targets.join(", ")}"
     puts "  would stamp ## Outcome: #{opts[:outcome_summary].inspect}" if opts[:outcome_summary]
     puts "  would move INDEX.md entry from ## Active to #{index_target_heading(disposition)} (#{index_path})"
     puts "  would append index note: #{opts[:index_note].inspect}" if opts[:index_note]
@@ -651,6 +644,15 @@ def main(argv)
       exit 4
     end
   end
+
+  # 1. Backfill from the record (intent 308), then the structure self-check and the
+  # outcome guard, both report-only since 308.
+  run_backfill(intent_dir, store: store, id: id, disposition: disposition,
+               summary: opts[:outcome_summary])
+  run_structure_check(id, store: store)
+
+  reason = OutcomeGuard.reason(intent_dir, disposition)
+  warn "end-intent: outcome.md: #{reason} (proceeding; doctor --intent #{id} reports it)" if reason
 
   # 1b. Intent-file `## Outcome` summary stamp (no-op unless given).
   if opts[:outcome_summary]

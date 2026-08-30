@@ -29,6 +29,7 @@ require_relative "lib/config_asks"
 require_relative "lib/power_tools"
 require_relative "lib/preflight"
 require_relative "lib/ruby_probe"
+require_relative "lib/doctor_session_ledger"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -37,6 +38,7 @@ require_relative "lib/ruby_probe"
 # store, conventions, intent and CLI halves, so Doctor stays one class with one
 # public surface.
 class Doctor
+  include DoctorSessionLedger
 
   REQUIRED_INDEX_SECTIONS = ["## Active", "## Future", "## Clusters", "## Abandoned", "## Completed"].freeze
 
@@ -555,7 +557,7 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
   outcome = File.join(dir, "outcome.md")
   outcome_real = Savepoint.stage_file_present?(outcome)
   findings = { conflict: nil, phantom: nil, gap: [], operational_gap: [], excluded: [],
-               excluded_rules_fired: [], stalled: nil }
+               excluded_rules_fired: [], stalled: nil, unbackfilled: [], excluded_backfill: [] }
 
   # HARD conflict: the deliverable exists but INDEX still says Active. This
   # is the one true INDEX-wins disagreement, so it stays a fail.
@@ -583,7 +585,7 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
   if terminal && !outcome_real
     state = File.exist?(outcome) ? "still a placeholder" : "missing"
     findings[:gap] << "#{label}: terminal in INDEX but outcome.md is #{state} " \
-                     "(delivery claim - never fabricated)"
+                     "(delivery claim; written at close by end-intent since intent 308)"
   end
 
   if terminal
@@ -602,6 +604,21 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
                 "`Done delivered|abandoned` line (operational - reconstructible)"
     end
     findings[:excluded_rules_fired] << "savepoint_operational" if suppressed && findings[:excluded].any?
+
+    # Unbackfilled documents (intent 308): spec.md or plan.md missing or still the
+    # placeholder, or no real action file, on a terminal intent. Every one of these is
+    # written from the record by `scaffold-intent backfill`, so this is repairable and
+    # reported as a fixable warn (backfilled_complete). Its exclusions go to their OWN
+    # bucket so savepoint_operational's consumed/dead-row bookkeeping above never sees them.
+    backfill_gaps = %w[spec.md plan.md].reject { |f| Savepoint.stage_file_present?(File.join(dir, f)) }
+    backfill_gaps << "actions/" unless Savepoint.has_real_action?(dir)
+    if backfill_gaps.any?
+      suppressed_backfill = excluded_rules.include?("backfilled_complete")
+      target = suppressed_backfill ? findings[:excluded_backfill] : findings[:unbackfilled]
+      target << "#{label}: terminal in INDEX but #{backfill_gaps.join(", ")} " \
+                "#{backfill_gaps.size == 1 ? "is" : "are"} missing or still a placeholder (backfillable)"
+      findings[:excluded_rules_fired] << "backfilled_complete" if suppressed_backfill
+    end
 
     # Stalled completion: unchanged, never consulted amnesty.
     if File.exist?(Lock.path(dir))
@@ -626,6 +643,9 @@ def check_done_signals(scopes: nil)
   dead_row_paths = []
   stalled = []
   phantoms = []
+  unbackfilled = []       # spec/plan/actions gaps on terminal intents (intent 308) - repairable
+  excluded_backfill = []  # backfill gaps knowingly exempted via doctor-exclusions (intent 308)
+  dead_rows_by_rule = Hash.new { |h, k| h[k] = [] }
 
   done_signal_stores(scopes).each do |store|
     exclusions = DoctorExclusions.load(store[:index])
@@ -634,7 +654,7 @@ def check_done_signals(scopes: nil)
       exclusion_error_paths << exclusions[:path]
     end
 
-    consumed = { "savepoint_operational" => [] }
+    consumed = { "savepoint_operational" => [], "backfilled_complete" => [] }
     # `known_ids` (post-review fix): every intent id with a REAL DIRECTORY in this store, scanned
     # directly from disk - independent of INDEX.md. An id can have a directory on disk without
     # being listed in INDEX (a de-indexed "ghost"), and the walk below alone would never visit it;
@@ -672,6 +692,11 @@ def check_done_signals(scopes: nil)
       phantoms << findings[:phantom] if findings[:phantom]
       gaps.concat(findings[:gap])
       operational_gaps.concat(findings[:operational_gap])
+      unbackfilled.concat(findings[:unbackfilled])
+      if findings[:excluded_backfill].any?
+        excluded_backfill.concat(findings[:excluded_backfill])
+        exclusion_paths << exclusions[:path]
+      end
       if findings[:excluded].any?
         excluded.concat(findings[:excluded])
         exclusion_paths << exclusions[:path]
@@ -692,7 +717,9 @@ def check_done_signals(scopes: nil)
                else
                  "names an intent with no current #{row[:rule]} finding"
                end
-      dead_rows << "#{store[:scope]}: #{exclusions[:path]}: #{row[:rule]} #{row[:id]} - #{reason}"
+      dead_row = "#{store[:scope]}: #{exclusions[:path]}: #{row[:rule]} #{row[:id]} - #{reason}"
+      dead_rows << dead_row
+      dead_rows_by_rule[row[:rule]] << dead_row
       dead_row_paths << exclusions[:path]
     end
   end
@@ -733,7 +760,7 @@ def check_done_signals(scopes: nil)
     checks << check(
       category: "done_signals", name: "signals_complete", status: "pass",
       message: "#{gaps.size} terminal intent#{gaps.size == 1 ? "" : "s"} missing a real outcome.md " \
-               "(delivery claim - never fabricated; informational only, does not affect doctor's exit code)",
+               "(delivery claim; end-intent writes outcome.md at close since intent 308, so this is pre-308 history or a close outside end-intent; informational only, does not affect doctor's exit code)",
       details: gaps
     )
   end
@@ -750,10 +777,19 @@ def check_done_signals(scopes: nil)
   # suppressed nothing this run. It is purely informational, exactly like `exclusion_suffix` - it
   # never changes status on any of the three branches below, because a stale governance-record row
   # is bookkeeping drift, not a store regression (219 D6 is untouched: no disposition is invented).
-  exclusion_suffix = excluded.empty? ? "" : " (#{excluded.size} excluded via #{exclusion_paths.join(", ")})"
-  dead_suffix = dead_rows.empty? ? "" : " (#{dead_rows.size} dead row#{dead_rows.size == 1 ? "" : "s"} " \
-                                        "in #{dead_row_paths.join(", ")}, suppressing nothing - prune with " \
-                                        "`maintenance-run --tool register-exclusions --prune`)"
+  # Per rule (intent 308): savepoint_operational and backfilled_complete each fold in only
+  # their own exclusions and dead rows, so one check never carries the other's counts.
+  suffixes = lambda do |excluded_rows, dead|
+    ex = excluded_rows.empty? ? "" : " (#{excluded_rows.size} excluded via #{exclusion_paths.join(", ")})"
+    dd = dead.empty? ? "" : " (#{dead.size} dead row#{dead.size == 1 ? "" : "s"} " \
+                            "in #{dead_row_paths.join(", ")}, suppressing nothing - prune with " \
+                            "`maintenance-run --tool register-exclusions --prune`)"
+    [ex, dd]
+  end
+  savepoint_dead = dead_rows_by_rule["savepoint_operational"]
+  backfill_dead = dead_rows_by_rule["backfilled_complete"]
+  exclusion_suffix, dead_suffix = suffixes.call(excluded, savepoint_dead)
+  backfill_exclusion_suffix, backfill_dead_suffix = suffixes.call(excluded_backfill, backfill_dead)
 
   if exclusion_errors.any?
     checks << check(
@@ -762,7 +798,7 @@ def check_done_signals(scopes: nil)
                "missing an operational savepoint.md or its Done echo, and " \
                "#{exclusion_errors.size} doctor-exclusions error#{exclusion_errors.size == 1 ? "" : "s"} " \
                "(a malformed exclusion file never suppresses a finding)#{exclusion_suffix}#{dead_suffix}",
-      details: operational_gaps + exclusion_errors + dead_rows, fixable: true,
+      details: operational_gaps + exclusion_errors + savepoint_dead, fixable: true,
       fix_hint: "Fix the malformed doctor-exclusions file(s) (#{exclusion_error_paths.join(", ")}) - " \
                 "format `rule_name id id id`, blank lines and # comments ignored - then reconstruct " \
                 "any remaining real gap via `maintenance-run --tool rebuild-savepoint --intent <id> " \
@@ -774,7 +810,7 @@ def check_done_signals(scopes: nil)
       category: "done_signals", name: "savepoint_operational", status: "pass",
       message: "No terminal intent is missing an operational savepoint.md or its Done echo" \
                "#{exclusion_suffix}#{dead_suffix}",
-      details: dead_rows
+      details: savepoint_dead
     )
   else
     checks << check(
@@ -782,10 +818,47 @@ def check_done_signals(scopes: nil)
       message: "#{operational_gaps.size} terminal intent#{operational_gaps.size == 1 ? "" : "s"} " \
                "missing an operational savepoint.md or its Done echo (reconstructible)" \
                "#{exclusion_suffix}#{dead_suffix}",
-      details: operational_gaps + dead_rows, fixable: true,
+      details: operational_gaps + savepoint_dead, fixable: true,
       fix_hint: "Reconstruct the minimal two-line started/Done echo via " \
                 "`maintenance-run --tool rebuild-savepoint --intent <id> --apply` (197-conformant: " \
                 "receipt-before-write via RevisionsWriter, one intent per invocation, owner-approval-gated)."
+    )
+  end
+
+  # backfilled_complete (intent 308): spec.md, plan.md, or a real action file missing on a
+  # terminal intent. Same three branches as savepoint_operational: a malformed exclusion
+  # file is always loud, a clean set passes with its own exclusion and dead-row counts
+  # folded in, a real gap set warns with the backfill verb as the fix.
+  backfill_hint = "Write the missing documents from the record via " \
+                  "`scaffold-intent backfill --store <store> --id <id> --disposition " \
+                  "<delivered|abandoned>` (never touches real content, one intent per invocation)."
+  if exclusion_errors.any?
+    checks << check(
+      category: "done_signals", name: "backfilled_complete", status: "warn",
+      message: "#{unbackfilled.size} terminal intent#{unbackfilled.size == 1 ? "" : "s"} " \
+               "missing a backfillable document, and #{exclusion_errors.size} doctor-exclusions " \
+               "error#{exclusion_errors.size == 1 ? "" : "s"} (a malformed exclusion file never " \
+               "suppresses a finding)#{backfill_exclusion_suffix}#{backfill_dead_suffix}",
+      details: unbackfilled + exclusion_errors + backfill_dead, fixable: true,
+      fix_hint: "Fix the malformed doctor-exclusions file(s) (#{exclusion_error_paths.join(", ")}), " \
+                "then write the missing documents from the record via `scaffold-intent backfill " \
+                "--store <store> --id <id> --disposition <delivered|abandoned>`."
+    )
+  elsif unbackfilled.empty?
+    checks << check(
+      category: "done_signals", name: "backfilled_complete", status: "pass",
+      message: "Every terminal intent carries a real spec.md, plan.md, and action file" \
+               "#{backfill_exclusion_suffix}#{backfill_dead_suffix}",
+      details: backfill_dead
+    )
+  else
+    checks << check(
+      category: "done_signals", name: "backfilled_complete", status: "warn",
+      message: "#{unbackfilled.size} terminal intent#{unbackfilled.size == 1 ? "" : "s"} " \
+               "missing a backfillable document (spec.md, plan.md, or a real action file)" \
+               "#{backfill_exclusion_suffix}#{backfill_dead_suffix}",
+      details: unbackfilled + backfill_dead, fixable: true,
+      fix_hint: backfill_hint
     )
   end
 
@@ -1074,7 +1147,8 @@ end
   # Terminal-gated (281 D3): done_signal_findings_for_dir only ever produces this finding
   # inside `if terminal`, so honoring the exclusion for a still-Active intent would suppress a
   # strictly larger set of facts than the rule id names - and would let a mistyped id silence
-  # the live, repairable warning scripts/end-intent's pre-write gate exists to raise.
+  # the live, repairable warning scripts/end-intent's structure self-check exists to raise
+  # (a report, never a refusal, since intent 308).
   #
   # Never raises: DoctorExclusions is fail-open by contract (274 D5) and index_sections_by_dir
   # returns an empty map for a missing INDEX.
@@ -2166,6 +2240,7 @@ end
     all_checks += check_qmd
     all_checks += check_ruby_runtime
     all_checks += check_done_signals(scopes: ["global"])
+    all_checks += check_session_ledger(scopes: ["global"])
     all_checks += check_skill_lint
     all_checks += check_install_integrity
 
@@ -2216,10 +2291,10 @@ end
       case store
       when :all
         check_global_store + check_project_stores + check_conventions + check_done_signals +
-          check_qmd(detector: qmd_detector, runner: qmd_runner)
+          check_session_ledger + check_qmd(detector: qmd_detector, runner: qmd_runner)
       when :global
         check_global_store + check_conventions(scopes: ["global"]) +
-          check_done_signals(scopes: ["global"]) +
+          check_done_signals(scopes: ["global"]) + check_session_ledger(scopes: ["global"]) +
           check_qmd(detector: qmd_detector, runner: qmd_runner, collection: "plastic-global")
       else
         all_checks_for_project_slug(store, qmd_detector: qmd_detector, qmd_runner: qmd_runner,

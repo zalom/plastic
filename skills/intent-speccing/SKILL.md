@@ -105,7 +105,10 @@ When the rulings are enough to build from:
    later ruling supersedes an earlier one, then `resources/discovery--<slug>.md`, then any
    other `resources/*.md`. Encode every ruling into its section; a collapsed single-line
    section is complete when it names everything. If a section cannot be filled from the
-   ledger, stop and ask for the missing ruling; never invent scope.
+   ledger, stop and ask for the missing ruling; never invent scope. A spec.md left as the
+   placeholder is backfilled from the record at close (`## Problem`, `## Decisions`,
+   `## Acceptance Criteria`; the rest stays stub text), so consolidate only when the
+   rulings say more than the record already does.
 3. **Self-verify.** Read `references/self-verify-checklist.md` before presenting; fix any
    failing check and re-verify from the top.
 4. **Present and hand off.** Present `spec.md` and the action files. Then offer the routes:
