@@ -26,7 +26,9 @@ class Doctor
     "hermes" => { name: "Hermes",      dir: File.join(Dir.home, ".hermes") },
   }.freeze
 
-  CLAUDE_HOOK_EVENTS = %w[SessionStart PreCompact PostToolUse UserPromptSubmit].freeze
+  # The Claude events hooks_registered expects in settings.json: the five-event map of
+  # cut-inventory 3b (intent 309 added SessionEnd, registered for close since intent 301).
+  CLAUDE_HOOK_EVENTS = %w[SessionStart PreCompact PostToolUse UserPromptSubmit SessionEnd].freeze
 
   # Launchers the installer places in the agent's hooks dir that are NOT hooks
   # (intent 204): plastic-statusline is the settings["statusLine"] command, wired
@@ -837,13 +839,14 @@ class Doctor
 
   # The Codex hook names HookRegistry actually registers: the apply_patch record
   # hook (CODEX_POST_HOOKS) and the live-state hook names Codex inherits whole from
-  # `events` (CODEX_LIVE_STATE_EVENTS). The PreToolUse gate names left in 2.0
-  # (intent 302). No parsing needed: these are HookRegistry's own Ruby constants.
+  # `events` (CODEX_LIVE_STATE_EVENTS), plus the SessionEnd close hook (intent 309,
+  # CODEX_SESSION_END_HOOKS). The PreToolUse gate names left in 2.0 (intent 302). No
+  # parsing needed: these are HookRegistry's own Ruby constants.
   def codex_registry_gate_names
     live_state = HookRegistry::CODEX_LIVE_STATE_EVENTS.flat_map do |event|
       HookRegistry.events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
     end
-    (HookRegistry::CODEX_POST_HOOKS + live_state).uniq
+    (HookRegistry::CODEX_POST_HOOKS + live_state + HookRegistry::CODEX_SESSION_END_HOOKS).uniq
   end
 
   def codex_dispatcher_gate_names(source)

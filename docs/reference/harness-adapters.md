@@ -63,7 +63,7 @@ independently maintained by hand.
 
 | Harness | Install | Standing conventions | Live state | Record | Statusline | Subagent teams |
 |---|---|---|---|---|---|---|
-| Claude Code | npm, `plastic-install --claude` | native `CLAUDE.md` | seven hooks through `settings.json` | post-write `record` (savepoint, lock heartbeat, day ledger) | yes | yes |
+| Claude Code | npm, `plastic-install --claude` | native `CLAUDE.md` | six hooks through `settings.json` | post-write `record` (savepoint, lock heartbeat, day ledger) | yes | yes |
 | Codex CLI | npm, `plastic-install --codex` | marked section injected into `~/.codex/AGENTS.md` | six hooks through `~/.codex/hooks.json`, all dispatched by one command | post-write `record` on `apply_patch` | no | no, a single agent walks the whole cycle |
 | Hermes | npm, `plastic-install --hermes` | none | none | none | no | no |
 
@@ -78,9 +78,8 @@ independently maintained by hand.
    per-agent launchers and there is no Codex path to point at. The skill-authoring
    reference, the shared underscore fragment, and the evals fixtures that carried
    Claude paths left the installed tree in 2.0 (intent 304).
-4. Codex has no statusline and no subagent dispatch. Both are gaps, not stated non-goals. The
-   Codex dispatcher does not yet relay `SessionEnd`, so the close hook runs on Claude Code
-   only until intent 309 aligns the hook registry across harnesses.
+4. Codex has no statusline and no subagent dispatch. Both are gaps, not stated non-goals.
+   The close hook runs on both harnesses since intent 309.
 
 ## Per-harness version truth (intent 210)
 
@@ -219,21 +218,30 @@ both install and uninstall untouched. `doctor` verifies the section is present a
 
 ### L2 live state (intent 199)
 
-`SessionStart` fires `session-start` and `check-update`; `UserPromptSubmit` fires `capture`
-and `power-tools`; `PreCompact` fires `savepoint`. Each hook name is projected straight off
-the single `HookRegistry.events` source (108 D7), the same total-projection shape as the
-record hook: a hook added to any of these three events on the Claude side lands in Codex's
-`hooks.json` automatically. One thing does not follow automatically. `scripts/codex-hook`
-carries its own `STATE_HOOKS` literal (the five names above: live state, the update check,
-and the power-tools reminder), which decides which names the dispatcher will actually relay,
-so a hook added to or renamed in any of these three events must be added there by hand. A cross-check in `test/hook_registry_test.rb` fails when the two disagree (intent 246).
-`SessionEnd` is not in the Codex projection yet, so the close hook does not run on Codex
-until intent 309.
+`SessionStart` fires `session-start` and `check-update`; `UserPromptSubmit` fires `capture`;
+`PreCompact` fires `savepoint`. Each hook name is projected straight off the single
+`HookRegistry.events` source (108 D7), the same total-projection shape as the record hook: a
+hook added to any of these three events on the Claude side lands in Codex's `hooks.json`
+automatically. `SessionEnd` fires `close` on Codex too (intent 309), projected from its own
+constant, `HookRegistry::CODEX_SESSION_END_HOOKS`, never as a fourth live-state event, because
+its dispatch differs: Codex kills a `SessionEnd` hook after 3 seconds (`SESSION_END_MAX_TIMEOUT_SEC`
+in codex-rs), so `scripts/codex-hook` hands `close` to `hooks/close` in a detached child (own
+process group, stdin from a pipe, output to `/dev/null`) and returns at once; the close hook's
+own detached day filer does the slow part. Codex's current stable release ships both `Stop`
+and `SessionEnd` (sourced against the codex-rs/hooks crate at rust-v0.149.1 and the official
+hook docs); 296's cut inventory said it had neither, and that claim is superseded. The design
+uses `SessionEnd` on both harnesses, since `Stop` fires per turn. One thing does not follow
+automatically. `scripts/codex-hook` carries its own `STATE_HOOKS` literal (the four live-state
+names plus `close`), which decides which names the dispatcher will actually relay, so a hook
+added to or renamed in any of these events must be added there by hand. A cross-check in
+`test/hook_registry_test.rb` fails when the two disagree (intent 246). The per-prompt
+`power-tools` reminder was removed in 2.0 (intent 309); its name stays in
+`RETIRED_HOOK_NAMES` so old registrations purge on update.
 
 The stdin shape for these events differs from `apply_patch`'s diff envelope: no `tool_input`
 at all, since none of them is a tool call. `scripts/codex-hook` reuses the exact launcher files
 Claude already runs (`hooks/session-start`, `hooks/check-update`, `hooks/capture`,
-`hooks/power-tools`, `hooks/savepoint`) unmodified: each is already harness-agnostic, since it
+`hooks/savepoint`, and `hooks/close` through the detached hand-off) unmodified: each is already harness-agnostic, since it
 resolves `~/.plastic` off `$HOME` on its own and reads only the common stdin fields
 (`user_prompt` for the `UserPromptSubmit` hook) the official Codex hooks doc confirms match
 Claude's schema for these events. The dispatcher's only adaptation is threading the payload's
@@ -341,6 +349,8 @@ standing-conventions injection, intent 33a), L3 hooks (`hooks.json` registration
 (`~/.codex/agents/*.toml` generation, intent 102a) have all landed. Intent 198 closed the gap
 between "shipped" and "actually works on a first install"; intent 199 closed Codex's L2
 live-state gap; intent 302 removed the edit-path and stage-transition enforcement on both
-harnesses, leaving the record hook. Intent 309 regenerates the hook registry for every
-harness, including Codex's `SessionEnd` wiring. The current line of sight for the remaining
-harnesses is Hermes, then OpenClaw. All of them target reasoning agents only.
+harnesses, leaving the record hook; intent 309 aligned the five-event map on both harnesses,
+wired Codex's `SessionEnd`, and retired the per-prompt power-tools reminder. Kimi Code and
+Hermes adapters are carried by intents 102, 102a, and 73d, informed by 296's
+`research--cross-harness-teams.md`; the line of sight after them is OpenClaw. All of them
+target reasoning agents only.

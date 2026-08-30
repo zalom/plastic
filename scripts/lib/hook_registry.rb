@@ -52,7 +52,6 @@ module HookRegistry
       "UserPromptSubmit" => [
         { "matcher" => "", "hooks" => [
           { "name" => "capture", "status" => "Capturing prompt into the session ledger..." },
-          { "name" => "power-tools", "status" => "Checking power tools..." },
         ] },
       ],
     }
@@ -78,6 +77,15 @@ module HookRegistry
   # automatically.
   CODEX_LIVE_STATE_EVENTS = %w[SessionStart UserPromptSubmit PreCompact].freeze
 
+  # SessionEnd on Codex (intent 309): projected from its own constant, never as a fourth
+  # live-state event, because the dispatch differs. Codex kills a SessionEnd hook after
+  # 3 seconds, so scripts/codex-hook hands `close` to its launcher detached and returns at
+  # once instead of the synchronous relay the live-state hooks get. Codex ships both Stop
+  # and SessionEnd (codex-rs/hooks at rust-v0.149.1); the design uses SessionEnd on both
+  # harnesses. Like STATE_HOOKS, the dispatcher's list is hand-kept and cross-checked by
+  # test/hook_registry_test.rb.
+  CODEX_SESSION_END_HOOKS = %w[close].freeze
+
   def codex_hooks_json(dispatcher_path:)
     status_by_name = events.values.flatten.flat_map { |g| g["hooks"] }
                            .each_with_object({}) { |h, m| m[h["name"]] = h["status"] }
@@ -97,6 +105,8 @@ module HookRegistry
       names = events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
       result[event] = [{ "matcher" => "", "hooks" => names.map { |n| cmd.call(n) } }]
     end
+    end_order = events["SessionEnd"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    result["SessionEnd"] = [{ "matcher" => "", "hooks" => (CODEX_SESSION_END_HOOKS & end_order).map { |n| cmd.call(n) } }]
     result
   end
 
@@ -132,6 +142,7 @@ module HookRegistry
     edit-gates bash-gate code-gate create-gate links-gate lock-gate savepoint-pre
     qmd-search retrieval-gate model-instructions opus-manual
     continue future-intent-check auto-arm gate-check
+    power-tools
   ].freeze
 
   RETIRED_CLAUDE_LAUNCHERS = RETIRED_HOOK_NAMES.map { |n| "plastic-#{n}" }.freeze
@@ -152,7 +163,7 @@ module HookRegistry
     live = CODEX_LIVE_STATE_EVENTS.flat_map do |event|
       events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
     end
-    (CODEX_POST_HOOKS + live).uniq.sort
+    (CODEX_POST_HOOKS + live + CODEX_SESSION_END_HOOKS).uniq.sort
   end
 
   def codex_purgeable_hook_names

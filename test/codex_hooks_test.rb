@@ -357,17 +357,90 @@ class CodexHooksTest < Minitest::Test
     assert_includes ctx, "Invoke the plastic-auto skill"
   end
 
-  def test_power_tools_hook_never_blocks_regardless_of_qmd_presence
-    plastic_home = File.join(@fake_home, ".plastic")
-    FileUtils.mkdir_p(plastic_home)
-    File.write(File.join(plastic_home, "INDEX.md"), "# Index\n\n## Active\n\n## Future\n")
-
-    payload = state_payload(event: "UserPromptSubmit", user_prompt: "what should I work on next in this project")
+  # Intent 309: power-tools is retired on both harnesses. An old ~/.codex/hooks.json that
+  # still names it reaches the fail-open else: exit 0, no output.
+  def test_retired_power_tools_name_falls_through_silently
+    payload = state_payload(event: "UserPromptSubmit", user_prompt: "what should I work on next")
     out, status = run_hook("power-tools", payload)
     assert_equal 0, status.exitstatus
-    # qmd may or may not be on PATH in the run environment; either way the dispatcher
-    # must relay valid JSON or nothing, never crash, never hang.
-    JSON.parse(out) unless out.to_s.strip.empty?
+    assert_empty out.to_s.strip
+  end
+
+  # --- SessionEnd close, handed off detached (intent 309, spec D2) --------------------
+
+  def close_fixture(session_id)
+    plastic_home = File.join(@fake_home, ".plastic")
+    store = File.join(plastic_home, "store")
+    tmp_dir = File.join(store, ".tmp", session_id)
+    FileUtils.mkdir_p(tmp_dir)
+    File.write(File.join(store, ".tmp", ".gitignore"), "*\n")
+    File.write(File.join(tmp_dir, "heartbeat"), "#{Time.now.utc.iso8601}\n")
+    File.write(File.join(tmp_dir, "current"), "20260830\n")
+    day_dir = File.join(store, ".sessions", "20260830")
+    FileUtils.mkdir_p(day_dir)
+    File.write(File.join(day_dir, "checklist.md"),
+               "# Checklist: session ledger 20260830\n\n- [~] [#{session_id}] [global] still pending at close\n")
+    tmp_dir
+  end
+
+  def wait_until(seconds)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + seconds
+    loop do
+      return true if yield
+      return false if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+
+      sleep 0.05
+    end
+  end
+
+  def test_close_is_handed_off_detached_within_the_ceiling
+    tmp_dir = close_fixture("abcd1234")
+    payload = state_payload(event: "SessionEnd", session_id: "abcd1234").merge("reason" => "other")
+
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    out, status = run_hook("close", payload)
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+
+    assert_equal 0, status.exitstatus
+    assert_empty out.to_s.strip, "the hand-off prints nothing"
+    assert_operator elapsed, :<, 1.5, "the dispatcher must return well inside Codex's 3-second ceiling"
+    assert wait_until(5) { !Dir.exist?(tmp_dir) },
+           "the detached close hook must remove the session's tmp dir after the dispatcher exited"
+    checklist = File.join(@fake_home, ".plastic", "store", ".sessions", "20260830", "checklist.md")
+    assert wait_until(5) { File.read(checklist).include?("- [-] [abcd1234] [global] still pending at close") },
+           "the close hook's ledger half must flip this session's pending line to dropped"
+  end
+
+  def test_close_with_an_unexecutable_launcher_fails_open_silently
+    close_fixture("abcd1234")
+    broken = Dir.mktmpdir("codex-broken-hooks")
+    FileUtils.mkdir_p(File.join(broken, "scripts"))
+    FileUtils.cp(SCRIPT, File.join(broken, "scripts", "codex-hook"))
+    FileUtils.mkdir_p(File.join(broken, "hooks"))
+    File.write(File.join(broken, "hooks", "close"), "#!/bin/bash\nexit 0\n")
+    File.chmod(0o644, File.join(broken, "hooks", "close"))
+
+    out, status = run_hook("close", state_payload(event: "SessionEnd", session_id: "abcd1234"),
+                           script: File.join(broken, "scripts", "codex-hook"))
+    assert_equal 0, status.exitstatus
+    assert_empty out.to_s.strip, "a spawn failure must never reach stderr"
+  ensure
+    FileUtils.rm_rf(broken) if broken
+  end
+
+  def test_close_with_malformed_stdin_or_a_missing_launcher_fails_open
+    _out, status = run_hook("close", nil)
+    assert_equal 0, status.exitstatus
+
+    out = nil
+    env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_CODE_SESSION_ID" => nil, "HOME" => @fake_home }
+    IO.popen(env, [RbConfig.ruby, SCRIPT, "close"], "r+", err: [:child, :out], chdir: @store) do |io|
+      io.write("{not json")
+      io.close_write
+      out = io.read
+    end
+    assert_equal 0, $?.exitstatus
+    assert_empty out.to_s.strip
   end
 
   def test_savepoint_hook_matches_claude_static_payload

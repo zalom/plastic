@@ -30,12 +30,10 @@ present, search it before re-deriving an existing decision, spec, or outcome.
 - **Search before re-deriving.** Look in the stores for prior decisions, specs, and
   outcomes before re-deriving them. The stores are the memory.
 - **Power tools are recommended when present.** When QMD (for intents), Enola, or Serena
-  (for code navigation) is present, prefer them: the UserPromptSubmit hook appends one
-  combined recommendation line covering QMD and at most one code-navigation tool,
-  Enola-first when both code-navigation tools are present (one code-navigation slot,
-  Enola wins over Serena), and the per-skill
-  QMD-first steps run `qmd-sync search` before grep/Read, then open the authoritative
-  intent file. Use the deterministic `scripts/qmd-sync search "<terms>"` helper, which
+  (for code navigation) is present, prefer them. `PLASTIC.md` carries that recommendation
+  (Enola-first when both code-navigation tools are present); no hook repeats it per prompt
+  (the power-tools hook was removed in 2.0, intent 309), and the per-skill QMD-first steps
+  run `qmd-sync search` before grep/Read, then open the authoritative intent file. Use the deterministic `scripts/qmd-sync search "<terms>"` helper, which
   scopes collections for you and is a clean no-op when QMD is absent.
 - **Completion fires an async reindex.** Intent delivery reindexes the delivering store's
   collection in the background (non-blocking), so the index stays fresh while

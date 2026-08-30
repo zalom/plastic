@@ -130,8 +130,8 @@ class PluginDispatchTest < Minitest::Test
 
   def test_every_hooks_json_command_resolves_to_an_executable_file
     commands = hooks_json_commands(@plugin_root)
-    assert_operator commands.size, :>=, 7,
-                    "fixture floor: hooks.json declares at least 7 commands; an empty walk is not a pass"
+    assert_operator commands.size, :>=, 6,
+                    "fixture floor: hooks.json declares at least 6 commands (power-tools retired in 2.0, intent 309); an empty walk is not a pass"
 
     bad = unresolved_commands(@plugin_root)
           .select { |c| TARGET_LEVEL_KINDS.include?(c.kind) }
@@ -140,8 +140,8 @@ class PluginDispatchTest < Minitest::Test
 
   def test_every_run_hook_target_resolves_to_an_executable_launcher
     wrapped = hooks_json_commands(@plugin_root).select { |c| c.include?("run-hook") }
-    assert_operator wrapped.size, :>=, 6,
-                    "fixture floor: at least 6 commands dispatch through run-hook"
+    assert_operator wrapped.size, :>=, 5,
+                    "fixture floor: at least 5 commands dispatch through run-hook (power-tools retired in 2.0, intent 309)"
 
     # Everything that is not a target-level complaint is a run-hook-level one
     # by construction (see TARGET_LEVEL_KINDS): missing_name, missing_launcher,
@@ -155,8 +155,8 @@ class PluginDispatchTest < Minitest::Test
 
   def test_every_hooks_json_command_uses_the_plugin_root_variable
     commands = hooks_json_commands(REPO)
-    assert_operator commands.size, :>=, 7,
-                    "fixture floor: hooks.json declares at least 7 commands; an empty walk is not a pass"
+    assert_operator commands.size, :>=, 6,
+                    "fixture floor: hooks.json declares at least 6 commands (power-tools retired in 2.0, intent 309); an empty walk is not a pass"
 
     commands.each do |command|
       assert_includes command, "${CLAUDE_PLUGIN_ROOT}/hooks/",

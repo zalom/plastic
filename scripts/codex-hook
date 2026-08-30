@@ -5,7 +5,8 @@
 # Usage: codex-hook <hook>
 #   file-mutation hook: record (PostToolUse on apply_patch)
 #   live-state hooks (intent 199, capture/record collapse by 298):
-#     session-start | check-update | capture | power-tools | savepoint
+#     session-start | check-update | capture | savepoint
+#   session-end hook (intent 309): close, handed off detached
 #
 # The Codex input adapter (intent 102, extended by 199, collapsed by 251, cut to
 # the record hook by 302). Reads a Codex hook stdin payload once. Two shapes
@@ -28,8 +29,14 @@
 # capture_launcher keeps the timeout path silent.
 #
 # The PreToolUse edit-path gates and the Bash-matcher shell gate were removed in
-# 2.0 (intent 302). An older ~/.codex/hooks.json that still names one of them
-# reaches the fail-open `else` below: exit 0, no output, no decision.
+# 2.0 (intent 302), and the power-tools reminder in intent 309. An older
+# ~/.codex/hooks.json that still names one of them reaches the fail-open `else`
+# below: exit 0, no output, no decision.
+#
+# SessionEnd (intent 309): Codex kills a SessionEnd hook after 3 seconds, so `close`
+# is never relayed synchronously. The dispatcher hands the payload to hooks/close in a
+# detached child (own process group, stdin from a pipe, stdout and stderr to /dev/null)
+# and exits at once; the close hook's own detached filer does the slow part.
 require "json"
 require "open3"
 require "rbconfig"
@@ -42,8 +49,9 @@ require "timeout"
 # caller that merges the dispatcher's own stdout and stderr.
 $stdout.sync = true
 
-STATE_HOOKS = %w[session-start check-update capture power-tools savepoint].freeze
+STATE_HOOKS = %w[session-start check-update capture savepoint close].freeze
 STATE_TIMEOUT = 5
+DETACHED_HOOKS = %w[close].freeze
 
 # One capture path for the relayed-launcher branch (intent 289). The 5 s bound covers a
 # launcher that leaks THIS process's stdout and stderr into a longer-lived background child
@@ -69,6 +77,28 @@ def capture_launcher(env, *argv, raw:, cwd:)
   end
 end
 
+# Hand a launcher its payload and return without waiting (intent 309). The child gets its
+# own process group so the harness's teardown of this dispatcher never reaches it, reads
+# the payload from a pipe this process fills without blocking and closes, and writes
+# nowhere. Every failure (a missing or unexecutable launcher, a closed pipe) is rescued
+# silently, so nothing ever reaches Codex's stderr from this path.
+def detach_launcher(env, launcher, raw:, cwd:)
+  reader, writer = IO.pipe
+  pid = Process.spawn(env, launcher, in: reader, out: File::NULL, err: File::NULL,
+                      chdir: cwd, pgroup: true)
+  reader.close
+  begin
+    writer.write_nonblock(raw) # a hook payload fits the pipe buffer; a larger one is truncated
+  rescue IO::WaitWritable, SystemCallError
+    nil
+  ensure
+    writer.close
+  end
+  Process.detach(pid)
+rescue StandardError
+  nil # fail open: a close that cannot start is a close the next-day sweep files
+end
+
 gate = ARGV[0].to_s
 raw = ($stdin.read rescue nil)
 exit 0 if raw.nil? || raw.strip.empty?
@@ -82,6 +112,10 @@ if STATE_HOOKS.include?(gate)
   cwd = payload["cwd"].to_s
   cwd = Dir.pwd if cwd.empty? || !Dir.exist?(cwd)
   env = { "CLAUDE_CODE_SESSION_ID" => (session.empty? ? nil : session) }
+  if DETACHED_HOOKS.include?(gate)
+    detach_launcher(env.merge("RUBYOPT" => nil), launcher, raw: raw, cwd: cwd) if File.file?(launcher)
+    exit 0
+  end
   out, err, status = capture_launcher(env.merge("RUBYOPT" => nil), launcher, raw: raw, cwd: cwd)
   print out unless out.to_s.empty?
   warn err unless err.to_s.empty?

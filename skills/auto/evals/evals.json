@@ -208,13 +208,13 @@
       "scope": "behavior",
       "set": "validation",
       "prompt": "A power-tool is present (qmd on PATH, or a .serena marker / serena on PATH). A substantive prompt arrives in auto mode.",
-      "expected_output": "The UserPromptSubmit power-tools hook appends a MANDATORY obligation per present tool: a MUST-use-QMD line when qmd is present (to check for an existing or related intent before treating work as new), and a MUST-use-Serena line when serena is present (symbolic tools before grep/Read). No search hits are injected: intent 246 removed the per-prompt qmd hit search, so the hook emits the mandate and nothing else.",
+      "expected_output": "The agent prefers the present tool because PLASTIC.md (loaded at session start) recommends QMD for intents and Enola, or Serena when Enola is absent, for code navigation. No hook appends a per-prompt line: the power-tools hook was removed in 2.0 (intent 309).",
       "files": [],
       "assertions": [
         {
           "type": "code",
-          "check": "PowerTools.mandate returns MUST/MANDATORY lines for each present tool; QmdHook.run appends the mandate",
-          "observed": "power_tools_test.rb + qmd_hook_test.rb assert MUST wording; serena line gated on the serena detector; qmd_hook_test.rb test_no_retrieval_hits_are_ever_injected asserts no hit header for any tool combination",
+          "check": "PLASTIC.md carries the recommendation (doctrine_305_test) and PowerTools presence probes still back doctor's readiness checks (power_tools_test.rb)",
+          "observed": "doctrine_305_test test_plastic_md_carries_the_power_tools_mandate_as_a_recommendation; power_tools_test.rb presence probes",
           "result": "pass"
         }
       ]
@@ -224,13 +224,13 @@
       "scope": "behavior",
       "set": "validation",
       "prompt": "Neither qmd nor serena is present (no qmd on PATH, no .serena marker, no serena on PATH). A substantive prompt arrives.",
-      "expected_output": "Detect-then-degrade: the hook emits nothing (silent no-op, exit 0). No mandate text appears. Nothing is required to install.",
+      "expected_output": "Detect-then-degrade: PLASTIC.md's recommendation applies only when a tool is present, so nothing is required to install and no per-prompt line appears (there is no hook to emit one since intent 309).",
       "files": [],
       "assertions": [
         {
           "type": "code",
-          "check": "PowerTools.mandate returns nil and QmdHook.run returns nil when neither tool is present",
-          "observed": "power_tools_test.rb test_mandate_neither_is_nil + qmd_hook_test.rb test_nil_when_neither_tool_present",
+          "check": "PowerTools.mandate returns nil when neither tool is present",
+          "observed": "power_tools_test.rb test_mandate_neither_is_nil",
           "result": "pass"
         }
       ]

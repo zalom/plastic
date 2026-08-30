@@ -51,7 +51,15 @@ class HookRegistryTest < Minitest::Test
     raw = JSON.parse(File.read(File.expand_path("../hooks/hooks.json", __dir__)))
     json_names = raw["hooks"]["SessionEnd"].flat_map { |g| g["hooks"].map { |h| hook_name(h["command"]) } }
     assert_equal ["close"], json_names
-    refute_includes HookRegistry::CODEX_LIVE_STATE_EVENTS, "SessionEnd", "Codex SessionEnd wiring belongs to intent 309"
+    # Intent 309: Codex's SessionEnd projection is its own constant (CODEX_SESSION_END_HOOKS),
+    # never a fourth live-state event: the close hook is handed off detached, not relayed.
+    refute_includes HookRegistry::CODEX_LIVE_STATE_EVENTS, "SessionEnd"
+    assert_equal %w[close], HookRegistry::CODEX_SESSION_END_HOOKS
+    codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
+    group = codex["SessionEnd"].first
+    assert_equal "", group["matcher"]
+    assert_equal ["close"], group["hooks"].map { |h| h["command"][/codex-hook" (\S+)/, 1] }
+    assert_equal "Closing the Plastic session...", group["hooks"].first["statusMessage"]
   end
 
   # hooks.json (the legacy plugin surface) is pinned to the registry so the two
@@ -71,7 +79,7 @@ class HookRegistryTest < Minitest::Test
 
   def test_codex_hooks_json_has_no_pre_tool_use_group
     codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
-    assert_equal %w[PostToolUse PreCompact SessionStart UserPromptSubmit], codex.keys.sort
+    assert_equal %w[PostToolUse PreCompact SessionEnd SessionStart UserPromptSubmit], codex.keys.sort
   end
 
   def test_codex_hooks_json_emits_post_tool_use_record_under_apply_patch
@@ -99,7 +107,7 @@ class HookRegistryTest < Minitest::Test
   end
 
   def test_codex_hook_names_are_the_six_live_names
-    assert_equal %w[capture check-update power-tools record savepoint session-start],
+    assert_equal %w[capture check-update close record savepoint session-start],
                  HookRegistry.codex_hook_names
   end
 
@@ -115,7 +123,7 @@ class HookRegistryTest < Minitest::Test
   # Intent 302: every gate name Plastic ever registered is purge-only now, and none
   # of them may read as a current launcher.
   def test_retired_hook_names_carry_every_removed_gate
-    %w[edit-gates bash-gate savepoint-pre code-gate lock-gate links-gate create-gate gate-check].each do |name|
+    %w[edit-gates bash-gate savepoint-pre code-gate lock-gate links-gate create-gate gate-check power-tools].each do |name|
       assert_includes HookRegistry::RETIRED_HOOK_NAMES, name
       refute_includes HookRegistry.claude_launcher_names, "plastic-#{name}"
     end
@@ -164,6 +172,9 @@ class HookRegistryTest < Minitest::Test
     literal = src[/^STATE_HOOKS\s*=\s*%w\[([^\]]*)\]/, 1]
     refute_nil literal, "STATE_HOOKS literal not found in scripts/codex-hook"
     relayed = literal.split
+    HookRegistry::CODEX_SESSION_END_HOOKS.each do |name|
+      assert_includes relayed, name, "scripts/codex-hook STATE_HOOKS must relay '#{name}' (SessionEnd, intent 309)"
+    end
     HookRegistry::CODEX_LIVE_STATE_EVENTS.each do |event|
       names = HookRegistry.events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
       names.each do |name|
@@ -182,7 +193,7 @@ class HookRegistryTest < Minitest::Test
     live_events = HookRegistry::CODEX_LIVE_STATE_EVENTS
     registered = live_events.flat_map do |event|
       HookRegistry.events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
-    end
+    end + HookRegistry::CODEX_SESSION_END_HOOKS
     literal.split.each do |name|
       assert_includes registered, name,
         "scripts/codex-hook STATE_HOOKS relays '#{name}', but no hook by that name is " \

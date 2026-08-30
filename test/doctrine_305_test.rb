@@ -118,7 +118,7 @@ class Doctrine305Test < Minitest::Test
   def test_adapters_doc_names_the_record_hook_and_the_shell_write_caveat
     body = normalized(ADAPTERS)
     assert_includes body, "`record`"
-    assert_includes body, "seven hooks through `settings.json`"
+    assert_includes body, "six hooks through `settings.json`"
     assert_includes body, "does not include `Bash`"
   end
 
