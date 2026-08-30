@@ -1,9 +1,10 @@
 ---
 name: plastic-auto
 description: >-
-  Autonomous intent delivery - agent takes over How and Exec. Use when user says
-  "auto", "take it from here", "deliver this", or when brainstorming-grill-me concludes
-  and user confirms autonomous execution. Requires an active intent in INDEX.md.
+  Autonomous intent delivery - a background team takes a registered intent from How to Done.
+  Use when user says "auto", "take it from here", "deliver this", or when a thinking
+  conversation concludes and the user confirms autonomous execution. Requires an active intent
+  in INDEX.md.
 user-invocable: true
 ---
 
@@ -11,148 +12,128 @@ user-invocable: true
 
 Announce: "Taking over intent [ID] - [name] for autonomous delivery."
 
-**Advisory (not a gate).** At auto-mode start, recommend once that the user run this
+**Advisory (not a rule).** At auto-mode start, recommend once that the user run this
 orchestrating main session on the best available thinking model (Fable, Opus, or whatever
-supersedes them) for the sharpest gating and synthesis. This is advice only: it changes no
-behavior and blocks nothing if ignored. It concerns the human's MAIN session; dispatched
-subagents keep their pinned tier and never resolve to Fable, unless an explicit
-`agents.models.<name>` config override names Fable for that role, in which case the override
-is honored as written. The two advisors, `plastic-advisor` and `plastic-faux-advisor`, are not
-lifecycle stage roles: the never-Fable rule governs stage agents only. Neither is ever
-dispatched by the auto pipeline; they are consultation roles summoned deliberately by the user
-or the main session, and their models are user configuration (fable and opus by default on
-Claude Code).
+supersedes them). This is advice only: it changes no behavior. Dispatched agents keep their
+configured model and never resolve to Fable unless an explicit `agents.models.<name>` config
+override names Fable for that role. The two advisors, `plastic-advisor` and
+`plastic-faux-advisor`, are consultation roles the user or the main session summons
+deliberately; the auto pipeline never dispatches them.
 
 ## Precondition
 
-An active intent MUST exist in INDEX.md. If none exists, refuse: "No active intent found. Create one first with /plastic-intent-creating."
+An active intent MUST exist in INDEX.md. If none exists, refuse: "No active intent found.
+Create one first with /plastic-intent-creating."
 
-If multiple active intents exist, ask the user which one to deliver (the one question auto asks at boarding, before delivery starts).
+If several active intents exist, ask the user which one to deliver (the one question auto asks
+at boarding, before delivery starts).
 
-**Picking work when no intent is specified.** If the user says "auto" without naming an
-intent and none is active, consult the roadmap first (the primary planning surface), then
-fall back to the dashboard queue. Read the tier's mid-flight roadmap:
+**Picking work when no intent is specified.** If the user says "auto" without naming an intent
+and none is active, consult the roadmap first (the primary planning surface), then fall back to
+the dashboard queue:
 
 ```bash
 ruby ~/.plastic/scripts/roadmap-next --roadmaps-dir <tier>/roadmaps
 ```
 
-Branch on `state`:
-- `dispatchable`: work its `dispatchable_queue` in `rank` order (the head is the next batch
-  entry). These are the current batch's `queued` intents, parallel-safe within the batch.
-- `in_flight`: the frontier batch is still delivering. Report it and wait. Do NOT dispatch a
-  later batch and do NOT fall through to the dashboard, the roadmap is live.
-- `none` or `exhausted`: no roadmap, or nothing left to dispatch. Fall back to the dashboard
-  queue below. (The global store has no roadmap, so it always reports `none` and falls back.)
+Branch on `state`: `dispatchable` means work its `dispatchable_queue` in `rank` order (the
+current batch's `queued` intents, parallel-safe within the batch); `in_flight` means the
+frontier batch is still delivering, report it and wait, never dispatch a later batch; `none` or
+`exhausted` means fall back to `ruby ~/.plastic/scripts/dashboard.rb all --json` and work its
+`dispatchable_queue` in `rank` order, leaving `human_only` and `next_big_thing` for the user.
 
-Dashboard fallback:
+QMD-first (when available): when the user describes the work rather than naming an intent, run
+`ruby ~/.plastic/scripts/qmd-sync search "<terms>"` before scanning the store, then open the
+authoritative intent file for the hit you take over. The command is a no-op when QMD is absent.
 
-```bash
-ruby ~/.plastic/scripts/dashboard.rb all --json
-```
+## Take the intent (do this FIRST)
 
-Work `dispatchable_queue` in `rank` order (these are `defer`/`research` dispositions -
-safe to deliver autonomously). Leave `human_only` and `next_big_thing` for the user - those
-are `drive`/`triage` items the human should lead. See the `plastic-dashboard` skill.
-
-QMD-first (when available): when the user describes the work to deliver rather than naming an
-intent, before scanning the store with grep/Read run
-`ruby ~/.plastic/scripts/qmd-sync search "<terms>"` to surface candidate, prior, or duplicate
-intents, then open the authoritative intent file for the hit you take over. The command is a no-op
-when QMD is absent, so fall back to the existing INDEX.md / file scan. (This is discovery; the
-reindex step under Completion is separate.)
-
-## Sizing (there is only work)
-
-There is no intent tier (removed in 2.0, intent 304). Every auto delivery runs the same
-shape: the orchestrator writes the action files from the spec, one executor dispatch
-implements the consolidated action, a separate reviewer with fresh context reviews the result.
-Depth follows the work, not a letter: a three-line spec.md is still a spec.md, in the same
-place. The never-cut list, any mode: the independent reviewer (separate agent, fresh context,
-never the maker), `outcome.md` as truth of delivery, the delivery lock, worktree isolation,
-intent creation via skill, INDEX as status truth, the QMD reindex at End. Lightness is about
-ceremony, never about these guarantees.
-
-## Arm the Lifecycle Gate (do this FIRST)
-
-Immediately after selecting the intent - before any other work - arm auto mode. This
-writes the session bridge that makes the code-edit gate live, so project code cannot be
-edited before the plan exists (the gate applies to YOU, the orchestrator):
+Immediately after selecting the intent, take it for this session. One verb acquires the durable
+`delivery.lock` in the intent directory (stamped `run_mode: auto`), provisions the code worktree
+at `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`, and points this
+session at the intent (`~/.plastic/store/.tmp/<session>/current`), so the record hook writes
+savepoint lines and heartbeats for it instead of the day ledger:
 
 ```bash
-ruby -r ~/.plastic/scripts/lib/bridge -e \
-  'codex=ENV["CODEX_THREAD_ID"].to_s.strip; claude=ENV["CLAUDE_CODE_SESSION_ID"].to_s.strip; harness=!codex.empty? ? "codex" : (!claude.empty? ? "claude" : nil); session=!codex.empty? ? codex : (!claude.empty? ? claude : nil); Bridge.arm_auto(session, intent_id: "<ID>", intent_dir: "<STORE>/<dir>", store: "<STORE>", name: "<name>", harness: harness, agent: "plastic-enforcer", thread: (!codex.empty? ? codex : nil))'
+codex="${CODEX_THREAD_ID:-}"; claude="${CLAUDE_CODE_SESSION_ID:-}"
+ruby ~/.plastic/scripts/plastic-lock arm --intent-dir "<STORE>/<dir>" --mode auto \
+  --agent plastic-enforcer \
+  ${codex:+--harness codex --session "$codex" --thread "$codex"} \
+  ${claude:+--harness claude --session "$claude"}
 ```
 
-Replace `<ID>`, `<STORE>` (e.g. `~/.plastic/projects/<slug>/store` or `~/.plastic/store`),
-`<dir>` (the `ID--slug` directory), and `<name>`. The first argument is the session id you
-want the bridge keyed by: pass the hook stdin `session_id` when you have it. The executable
-snippet trusts a nonblank `CODEX_THREAD_ID` as Codex, otherwise a nonblank
-`CLAUDE_CODE_SESSION_ID` as Claude, otherwise leaves harness and thread unknown. Never guess
-identity from an absent runtime variable. Arming always succeeds and acquires the
-durable `delivery.lock` in the intent dir. For the `resolve_session` fallback chain
-(why arming never needs a non-empty session env var, and what the lock ownership model
-implies for later tool calls) read `references/end-tail.md`.
+Replace `<STORE>` (`~/.plastic/projects/<slug>/store` or `~/.plastic/store`) and `<dir>` (the
+`ID--slug` directory). The snippet trusts a nonblank `CODEX_THREAD_ID` as Codex, otherwise a
+nonblank `CLAUDE_CODE_SESSION_ID` as Claude, otherwise passes no identity and the verb keys the
+lock by a derived session key. Never guess identity from an absent runtime variable; an
+unknown harness or thread stays unknown. Exit 1 means the lock is held, stale, excluded, or
+corrupt; the message names the `plastic-doctor` verb that resolves it. Do not proceed as the
+owner after an exit 1.
 
-**Hard rule for the rest of this run:** do NOT edit project code (anything outside the
-intent directory / `~/.plastic/`) until `plan.md` AND `checklist.md` exist for the intent.
-Honor the cycle: What → Why (spec.md) → How (plan.md + actions/ + checklist.md) → Exec.
+Read `../plastic-conventions/references/locks-and-worktrees.md` for what the lock and the
+worktree mean and the station table behind them. Code edits happen only inside the worktree.
 
-Read `../plastic-conventions/references/locks-and-worktrees.md` for delivery isolation: the
-single-owner lock, claims, worktrees, solo mode, and the station ledger behind the arming above.
+## The shape (five steps, two agent boots)
 
-## Flags
+Every auto delivery runs the same shape, ruled by the owner on 2026-08-29. There is no intent
+tier and no stage agent; depth follows the work.
 
-- `--skip-permissions` - bypass hard stops on destructive actions on existing projects. Full trust mode. Default: off.
+| Step | Who | What lands |
+|---|---|---|
+| 1. The lead writes How | this session | `plan.md`, at least one `actions/ACTION_N.md` carrying a failure-mode matrix (one row per operation: the failure and the test that catches it), `checklist.md` |
+| 2. Adversarial plan review | boot 1, a fresh agent on `plan-reviewer-prompt.md` | a review file; the lead folds every finding into the spec, the matrix, and the tests |
+| 3. Execute, tests first | boot 2, `plastic-executor` | the red commit (the matrix's tests, failing), then the code, then a green suite |
+| 4. Review by risk | boot 3 only when risk calls for it (below) | a pass or a list of fixes the executor applies |
+| 5. One suite run, then close | this session | `outcome.md`, `end-intent`, the roadmap ledger |
 
-## Team Spin-Up
+Two boots is the normal delivery; the third is the exception the risk rule names. The lead is
+this session (the `plastic-enforcer` role), never a dispatched agent.
 
-Auto mode spins up exactly ONE enforcer-led team per intent. The plastic-enforcer IS this orchestrator (you), not a separately dispatched agent, which avoids the who-gates-the-gater regress.
+## Team
 
-Roster (the stage agents were removed in 2.0, intent 304):
+- **plastic-enforcer**: this session. Writes the Why and How record, dispatches, folds reviews,
+  verifies, closes.
+- **plastic-executor**: one dispatch per intent, implements the consolidated action tests first,
+  ticks the checklist, appends `## Insights`, drives the suite green.
+- **the plan reviewer**: one dispatch before code, from `plastic-intent-executing`'s
+  `plan-reviewer-prompt.md`; a fresh agent, never the lead.
+- **the post-execution reviewer**: dispatched only by the risk rule, from
+  `code-quality-reviewer-prompt.md`; a fresh agent, never the maker.
 
-- **plastic-enforcer** (orchestrates, writes the Why and How artifacts itself; that is YOU)
-- **plastic-executor** (code + checklist + `## Insights`)
-- the on-request reviewer, dispatched from `plastic-intent-executing`'s reviewer prompts
+Spawn preamble (live-state injection): before dispatching any agent, run
+`scripts/spawn-preamble <intent_dir> --role <role>` and PREPEND its output to the prompt. The
+preamble is a deterministic, filesystem-only snapshot of the intent (id, intent line, current
+stage, the worktree path when it exists) plus the honoring instruction and the report contract.
 
-Dispatch rule: sequential, one specialist per stage on one branch (the deliverables share files). Gate each deliverable against the stage's exit criteria before handing off. The How and Exec phases below default to Plastic's native dispatch (`plastic-intent-executing`) and delegate to the superpowers skills only when they are available or the user asks; do not restate the phase mechanics here.
+Dispatch-time model contract: resolve each agent's model through the config chain
+(`read-config agents.models.<basename> --project <repo>`: project override, then global, then
+the shipped default) and pass it explicitly at dispatch; never rely on the role's frontmatter
+alone.
 
-Spawn preamble (live-state injection): before dispatching any specialist, run `scripts/spawn-preamble <intent_dir> --role <role>` and PREPEND its output to that specialist's prompt. The preamble is a deterministic, filesystem-only snapshot of the active intent (id, intent line, current stage, and the provisioned code worktree path when one exists on disk) plus the honoring instruction, so every spawned agent boots with accurate live state instead of guessing. This is the authoritative L2 mechanism for harnesses whose sub-agents do not inherit a top-level session event (see [`harness-adapters.md`](https://github.com/zalom/plastic/blob/main/docs/reference/harness-adapters.md)).
+Completion report (require, then synthesize): every dispatched agent MUST end with a structured
+completion report as its final message (`references/agent-report-contract.md`). When an agent
+returns no usable report, run `scripts/agent-report <intent_dir> --role <role>` to synthesize a
+deterministic filesystem-derived one, so the handoff account always exists.
 
-Dispatch-time model contract (belt-and-braces): alongside the preamble, resolve each specialist's model through the config chain (`read-config agents.models.<basename> --project <repo>`: project override, then global, then the shipped default) and pass it explicitly at dispatch. Never rely on the dispatched role's frontmatter alone; a resolved subagent model is never Fable,
-unless an explicit `agents.models.<name>` config override names Fable for that role, in which
-case the override is honored as written. The two advisors, `plastic-advisor` and
-`plastic-faux-advisor`, are not lifecycle stage roles: the never-Fable rule governs stage
-agents only. Neither is ever dispatched by the auto pipeline; they are consultation roles
-summoned deliberately by the user or the main session, and their models are user configuration
-(fable and opus by default on Claude Code).
+### Delegation (agents writing under the owner's lock)
 
-Completion report (require-then-synthesize): every dispatched specialist MUST end with a structured completion report as its final message. The preamble's `REPORT_CONTRACT` injects this and the role prompts carry the per-role format (see `references/agent-report-contract.md`). Because child-agent honor is best-effort across harnesses, this is decision-shaping, not a hard block. When a specialist returns no usable report (it went idle, emitted only a bare ping, or its message was lost to a mid-run interjection), run `scripts/agent-report <intent_dir> --role <role>` to synthesize a deterministic filesystem-derived report so the handoff account always exists. Use the agent-authored report when present, the synthesized one otherwise.
+This session owns the delivery lock. A dispatched agent runs in its own session, so register
+each one as a delegate before (or when) it needs to write into the intent dir:
 
-Final-gate review: dispatch an independent reviewer subagent at the final gate only, not as a standing role.
-
-### Delegation (subagents writing under the owner's lock)
-
-The enforcer's session owns the delivery lock. Per-stage specialists run in
-their own sessions and would be denied by the lock gate, so register each one
-as a delegate before (or when) it needs to write into the intent dir:
-
-1. Instruct each spawned specialist to report its session id and runtime identity in its first
+1. Instruct each spawned agent to report its session id and runtime identity in its first
    message: `CODEX_THREAD_ID` for Codex, or `CLAUDE_CODE_SESSION_ID` for Claude. Use the
-   specialist/hook identity when known; never infer a harness or model from missing context.
+   agent's own identity when known; never infer a harness or model from missing context.
 2. As the lock owner, run:
    `ruby ~/.plastic/scripts/plastic-lock delegate --intent-dir <intent-dir> --delegate <specialist-session-id> --harness <specialist-harness-when-known> --agent <role> --model <resolved-model-when-known> --thread <reported-CODEX_THREAD_ID-when-Codex>`
    Omit `--harness`, `--model`, or `--thread` when that value is unknown; `--agent <role>` is
-   always known from the dispatch roster.
-3. If a specialist hits a lock-gate deny, the deny message names this exact
-   command; run it and have the specialist retry.
-4. Immediately after the specialist returns, and before validating or dispatching
+   always known from the roster.
+3. Immediately after the specialist returns, and before validating or dispatching
    the next handoff, classify the return and record its activity status as the owner:
    - `finished` means the specialist returned a usable completion report, whether
      agent-authored or synthesized through `scripts/agent-report`.
    - `failed` means the specialist returned blocked, errored, or without a usable
      completion report that can be synthesized.
-5. Record the classification with exactly one of:
+4. Record the classification with exactly one of:
    ```bash
    ruby ~/.plastic/scripts/plastic-lock delegate --intent-dir <intent-dir> \
      --delegate <specialist-session-id> --status finished --harness <same-specialist-harness-when-known> \
@@ -161,203 +142,151 @@ as a delegate before (or when) it needs to write into the intent dir:
      --delegate <specialist-session-id> --status failed --harness <same-specialist-harness-when-known> \
      --agent <same-role> --model <same-resolved-model-when-known> --thread <same-CODEX_THREAD_ID-when-Codex>
    ```
-   Apply the same omission rule to unknown values on terminal status commands.
-   A failed specialist stops that handoff under the normal blocker/error procedure;
-   never dispatch the next specialist first.
+   Apply the same omission rule to unknown values on terminal status commands. A failed agent
+   stops that handoff under the error procedure; never dispatch the next agent first.
 
 Only the owner can delegate. Delegates cannot re-delegate or release.
 
-Headless manual gate: when running headless or in the background, still enforce gates manually rather than relying on hooks alone. The PostToolUse gate hook reads `session_id` from hook stdin, and the savepoint ledger write is decoupled from the bridge (derived from the file path, so it fires even with no session id) - these do NOT no-op. What can degrade is the bridge-keyed stage enforcement: if no session id reaches the bridge and no matching bridge is discovered, the stage-gate enforcement step exits without acting, so verify state yourself. The bridge still resolves arming via `CLAUDE_CODE_SESSION_ID` or the derived-key fallback (see the arm-gate note above).
+Headless note: in a headless or background run the session id may be unset; the arm verb then
+keys the lock by a derived key and the record hook still writes the savepoint ledger from the
+written path. Verify the lock with `plastic-lock status` rather than assuming.
 
-Solo fallback: if the harness has no subagent dispatch, fall back to a single agent walking the full What, Why, How, Exec cycle yourself. This preserves current behavior.
+Solo fallback: on a harness with no agent dispatch (Codex CLI today), this session walks the
+five steps itself: it still writes the matrix, still writes the tests first, and reviews its own
+plan against the matrix before code, saying so in `## Insights`.
 
 ## Stage-Aware Entry
 
-Read the active intent's `savepoint.md` FIRST (intent 81): the last line classifies the stage,
-and you then verify only that line's artifact before entering. Fall back to the filesystem probe
-below only when the ledger is missing (then rebuild it with `Savepoint.rebuild_savepoint`).
+Read the active intent's `savepoint.md` FIRST: the last line classifies the stage, and you
+verify only that line's artifact before entering. Fall back to the filesystem probe when the
+ledger is missing (then rebuild it with `Savepoint.rebuild_savepoint`).
 
 | Ledger last line | Enter |
 |---|---|
-| `What  {id}--{slug}.md` (born) or no spec | Start / complete Why (write spec.md) |
-| `Why  spec.md created` | Enter How |
-| `How  plan.md created` / `How  checklist.md created` / `Exec  started` | Enter Exec (verify plan + checklist) |
+| `What  {id}--{slug}.md` (born) or no spec | Why (write spec.md) |
+| `Why  spec.md created` | How |
+| `How  plan.md created` / `How  checklist.md created` / `Exec  started` | Exec (verify plan, matrix, checklist) |
 | `Exec  outcome.md created` | Exec done; complete the intent |
 | `Done  delivered|abandoned` | Terminal; do not resume |
 
-Filesystem fallback (ledger missing only):
+Filesystem fallback, in order: `checklist.md` with items checked means resume Exec from the
+first unchecked item; `plan.md` plus `checklist.md` means enter Exec; `spec.md` alone means
+enter How; `## Context` with content means complete Why; only `## Intent` means start Why.
 
-| Check (in order) | Stage |
-|---|---|
-| `checklist.md` exists with some items checked | Resume Exec from last unchecked item |
-| `plan.md` + `checklist.md` exist (no items checked) | Enter Exec |
-| `spec.md` exists, no `plan.md` | Enter How |
-| `## Context` has content in intent file, no `spec.md` | Complete Why (fill gaps, write spec.md) |
-| Only `## Intent` exists | Start Why from scratch |
+Announce which stage you are entering and why.
 
-Announce which stage you're entering and why.
+## Why (the lead)
 
-Notify user (What briefing, M and L only): brief per `references/human-report-contract.md`
-(State: the work picked up and why it matters now; Risk: scope uncertainty; Call: confirm
-this is worth doing, or proceed). At S this briefing does not fire; the How briefing carries it.
+1. Read `## Context` and `### Decisions`; assess the gaps.
+2. Research yourself: code, docs, related intents through `## Links`, the web if needed. No
+   questions to the human.
+3. Decide: pick the best option per gap, record it in `## Context > ### Decisions` with the
+   rationale, and log it in `## Insights` with the `(autonomous)` marker through
+   `scripts/insight-append`.
+4. Write `spec.md`.
 
-## Why Completion (Autonomous)
+Then How.
 
-When entering at Why stage:
+## How (the lead), then the plan review
 
-1. Read existing `## Context` and `### Decisions` from the intent file
-2. Assess gaps - what decisions are missing? What context is incomplete?
-3. Self-directed research - read code, search docs, explore related intents (via wikilinks in `## Links`), web search if needed. NO questions to human.
-4. Adaptive budget - assess complexity and set your own research budget:
-   - Simple (config change, small feature): 2-3 research steps
-   - Medium (new feature, integration): 5-8 research steps
-   - Complex (new project, architecture): 10-15 research steps
-5. Make decisions - pick best option, document in `## Context > ### Decisions` with rationale
-6. Log all autonomous decisions in `## Insights` with `(autonomous)` marker: "Decision: chose X because Y (autonomous)"
-7. Write `spec.md` - consolidated specification
-8. Notify user (Why briefing, M and L only): brief per `references/human-report-contract.md`
-   (State: the approach chosen, one line; Risk: the main trade-off; Call: the one decision
-   needed, approve or pick an option). At S this briefing does not fire; the How briefing
-   carries it.
+1. Write `plan.md`: numbered steps.
+2. Write at least one real `actions/ACTION_N.md` (one consolidated `ACTION_1.md` by default;
+   several only when the work splits into independent, parallel-safe actions). Each action
+   carries the failure-mode matrix: one row per operation, the failure mode, and the test that
+   catches it. A `.gitkeep`-only `actions/` is not a finished How.
+3. Write `checklist.md` covering every action.
+4. Dispatch the plan reviewer (boot 1) with `plastic-intent-executing`'s
+   `plan-reviewer-prompt.md`, the spawn preamble, and the intent directory. Fold every finding
+   into the spec, the matrix, and the tests; record what was dropped and why in the action
+   file's review fold. A REVISE verdict is folded and not re-reviewed unless a finding changes
+   a decision.
+5. Notify the user (the one mid-flight briefing, per `references/human-report-contract.md`):
+   State, the plan shape and what it builds; Risk, the riskiest row of the matrix; Call,
+   proceeding to build. In auto mode this briefing informs; it does not wait.
 
-Then proceed to How.
+Then Exec.
 
-## How Phase
+## Exec (the executor)
 
-Every delivery runs all four steps below. The `actions/` directory is scaffolded (with a
-`.gitkeep`) at intent birth; the orchestrator then writes at least one REAL `ACTION_N.md` into
-it, one consolidated `actions/ACTION_1.md` by default, one per task only when the tasks are
-independent enough to dispatch in parallel. A `.gitkeep`-only or empty `actions/` is not a
-finished How.
+1. Dispatch `plastic-executor` (boot 2) through `plastic-intent-executing` with the whole
+   consolidated action pasted in: the spec decisions, the matrix, the checklist items, the
+   worktree path from the preamble. Tests first: the executor commits the matrix's tests red,
+   then builds, then drives the full suite green.
+2. Read its return by code: DONE or DONE_WITH_CONCERNS proceeds; NEEDS_CONTEXT re-dispatches
+   with the missing context; BLOCKED stops under the error procedure.
+3. Tick the checklist as items land (the executor does this; verify it).
 
-1. If `superpowers:writing-plans` is available as a skill, delegate plan creation to it. Tell it the plan saves to the active intent's directory (not `docs/superpowers/plans/`).
-2. Otherwise, write `plan.md` directly - implementation plan with numbered tasks
-3. Write at least one real `ACTION_N.md` into the existing `actions/` directory, self-contained (one consolidated `ACTION_1.md` by default)
-4. Write `checklist.md` - execution registry with checkboxes covering all actions
-5. Notify user (How briefing): brief per `references/human-report-contract.md`
-   (State: the plan shape, task count and what it builds; Risk: the riskiest task or
-   dependency; Call: approve the plan to build). For small work this is the ONE mid-flight
-   briefing: fold into the same three lines what the What and Why briefings would have said
-   (the work picked up, the approach chosen), and send it here, with the plan ready and before any
-   code is written.
+## Review by risk (boot 3, only when a rule fires)
 
-Then proceed to Exec.
+Dispatch the post-execution reviewer with `code-quality-reviewer-prompt.md` when any of these
+holds, each checkable from disk with no judgment; otherwise the green suite is the review:
 
-## Project Creation Gate
+1. `git diff --name-only <red-commit>..HEAD` touches a path on the risk list in
+   `references/agent-architecture.md` (hooks, the lock, the arming module, the installer, a
+   release file).
+2. A row of any `actions/ACTION_N.md` failure-mode matrix names a test file that is not in that
+   diff, or a test the green run did not execute.
+3. The executor's completion report carries a status other than `delivered`, or a non-empty
+   `deviations` or `blockers` field.
 
-If the plan calls for creating a new project (the intent is an implementation intent that needs a new codebase):
+The reviewer returns a pass or a list of fixes; the executor (re-dispatched) applies them, then
+the suite runs once more.
+## Project Creation
 
-1. Determine project path from `~/.plastic/config.yml` `project_roots` or from intent context
-2. **Confirm path with user** - the one human interaction added mid-delivery, and only when this gate fires:
-   > "Creating project `<slug>` at `<path>`. Confirm path, or provide alternative."
-3. Invoke `plastic-project-creating` skill
-4. The global intent is now Completed (creating-project handles this)
-5. The tactical mirror in the project store becomes the active intent
-6. Continue execution from the project directory using the tactical intent
-
-## Exec Phase
-
-1. If `superpowers:subagent-driven-development` or `superpowers:executing-plans` is available, delegate execution to it
-2. Otherwise invoke `plastic-intent-executing`
-3. Execute actions from checklist sequentially
-4. Check off items in `checklist.md` as completed
-5. Append observations to `## Insights` with `(autonomous)` marker
-6. Sub-agents can be spawned for parallel actions (one agent per action)
-7. Notify user (Exec briefing, M and L only): brief per `references/human-report-contract.md`
-   (State: what got built and the test result; Risk: residual failures or deviations;
-   Call: go to review, or done). At S this briefing does not fire; the final owner report at
-   End carries what it would have said.
+If the plan calls for creating a new project, determine the path from `~/.plastic/config.yml`
+`project_roots` or the intent context, confirm the path with the user (the one human
+interaction added mid-delivery), invoke `plastic-project-creating`, and continue from the
+project directory on the tactical intent.
 
 ## Permission Model - Safe-by-Default
 
-The agent MUST prefer non-destructive routes:
-
-| Instead of... | Do this... |
-|---|---|
-| Drop table | Rename to `_deprecated_<table>`, flag for cleanup |
-| Delete files | Move to `.archive/` or backup branch |
-| Alter column | Additive migration - new column + backfill |
-| Remove feature | Feature flag off, code stays until human confirms |
-| Database migration | Backup before migration, keep rollback path |
-
-### Hard Stop (without `--skip-permissions`)
-
-When a genuinely destructive action on an existing project has NO safe alternative:
-1. Log the proposed action in `## Insights`
-2. Notify user: "Blocked on destructive action: [description]. Approve to continue, or provide alternative direction."
-3. **STOP and wait for human response.** Do not proceed.
-
-With `--skip-permissions`, the agent logs the action in Insights but proceeds without stopping.
-
-### Greenfield Exception
-
-During initial project creation, all decisions are non-destructive by definition (there's nothing to destroy). The agent has full autonomy for greenfield choices - DB engine, framework, gems, architecture.
+Prefer non-destructive routes: rename instead of drop, additive migrations plus backfill, move
+files instead of deleting them, feature flags off instead of removed code, a backup before a
+migration. When a destructive action on an existing project has no safe alternative, log it in
+`## Insights`, notify the user ("Blocked on destructive action: ..."), and STOP unless
+`--skip-permissions` was given, in which case log and proceed. During initial project creation
+every choice is non-destructive and the team has full autonomy.
 
 ## Completion
 
-Read `../plastic-conventions/references/completion-and-done.md` for what "intent done" means and
-the End-stage tail the steps below walk through.
+Read `../plastic-conventions/references/completion-and-done.md` for what "intent done" means.
 
-1. Verify all checklist items are checked
-2. Write `outcome.md` with detailed results, from `~/.plastic/templates/outcome.md`.
-   Set the frontmatter `disposition: delivered` (this is the delivered terminal). `outcome.md`
-   is mandatory at every terminal and self-declares its disposition (see the canonical done-marker
-   and End tail in PLASTIC.md `## Delivery Isolation and the Single-Owner Lock`).
-3. **Release (if configured)**
-   1. Detect project - match CWD against paths in `~/.plastic/projects.yml` to find the project slug. If no match, skip to step 4 (default commit-only behavior).
-   2. Read `~/.plastic/projects/{slug}/project.yml`. If the file doesn't exist or has no `release` key, skip to step 4.
-   3. Based on `release.on_complete`:
-      - `commit` - git add + commit (same as default, proceed to step 4)
-      - `commit_and_push` - git add + commit + push
-      - `manual` - skip auto-commit, notify user: "Release configured as manual - commit when ready."
-   4. If `release.verify` is set, run the verify command (e.g. `bundle exec rake test`):
-      - **Exit 0 (green):** proceed to sub-step 5
-      - **Non-zero (red):** check `release.on_red`:
-        - `fix_and_retry` - attempt to fix the failure, re-run verify (max 2 retries)
-        - `stop` - write `savepoint.md` with current state, notify user: "Verify failed - savepoint written.", **STOP**
-        - `manual` - notify user: "Verify failed: [summary]. Resolve manually."
-   5. If `release.on_green` has items, invoke `plastic-releasing` to handle them (tag, changelog, publish, etc.). Do NOT duplicate release logic - delegate entirely.
-4. Review `## Insights` for observations that should spawn future intents. If any:
-   - Create them (using `plastic-intent-creating` conventions)
-   - Update `chain` in the current intent's frontmatter
-5. Run the mechanical close through `plastic-intent-ending`: it owns steps 1-7 of the Done
-   procedure (outcome/INDEX/savepoint/commit, disarm, the QMD reindex last, and the single
-   EM-to-CTO owner report) as ONE delegation, not a series of separate one-liners restated
-   here. `scripts/end-intent` now performs steps 1-5 itself, INCLUDING disarm (worktree
-   release plus clearing `delivery.lock`): a single call closes the intent AND clears its
-   lock, so exit 0 means both are done. Pass
-   `--session` (this session's id, or rely on the `CLAUDE_CODE_SESSION_ID` fallback) so
-   disarm resolves the right bridge, and `--index-note` with a rich Completed/Abandoned entry
-   description (mode, what shipped or why abandoned, suite result):
+1. Verify every checklist item is checked and the suite is green once on the branch.
+2. Write `outcome.md` from `~/.plastic/templates/outcome.md` with `disposition: delivered`.
+3. Release, if configured: match the working directory against `~/.plastic/projects.yml`, read
+   `project.yml`'s `release` block, and act on `on_complete` (`commit`, `commit_and_push`,
+   `manual`), `verify` (green proceeds; red follows `on_red`: `fix_and_retry` up to twice,
+   `stop`, or `manual`), and `on_green` (delegate entirely to `plastic-releasing`).
+4. Review `## Insights` for observations that should become future intents; create them through
+   `plastic-intent-creating` and update `chain`.
+5. Close through `plastic-intent-ending`, which runs `scripts/end-intent`: outcome, INDEX,
+   savepoint, the store commit, and the disarm (the worktree released, `delivery.lock` cleared,
+   the session pointer back on the day ledger), then the QMD reindex last and the single owner
+   report. Pass `--session` and `--index-note`:
    ```bash
    ruby ~/.plastic/scripts/end-intent --store <store_path> --id <ID> --disposition delivered \
      --session "$CLAUDE_CODE_SESSION_ID" \
-     --index-note "<mode>; <what shipped>; <suite result>"
+     --index-note "<what shipped>; <suite result>"
    ```
-   (Use `--disposition abandoned` when the intent is being moved to `## Abandoned`.) A
-   non-zero exit needs attention before moving on: 4 means a live foreign session holds the
-   lock (back off), 5 means the code worktree is dirty (commit/stash first, or pass
-   `--discard-worktree-changes` deliberately), 3 means disarm ran but the lock is still
-   present (run `/plastic-doctor check the lock status`), 6 means the structure gate refused
-   (see the named reason on stderr; fix via the owning tool named above, then re-run). Two
-   steps remain as separate actions after this call succeeds: Step 6 (QMD reindex, async,
-   last) and Step 7 (the EM-to-CTO owner report, the single report the owner reads).
-   Never leave an orphaned worktree; run `git worktree prune` on a stale reference. If any of
-   this ever needs to change, change `plastic-intent-ending`, not this skill.
+   Exit 4 means a live foreign session holds the lock; 5 means the worktree is dirty (commit
+   first, or pass `--discard-worktree-changes` deliberately); 3 means the lock survived the
+   disarm (`/plastic-doctor check the lock status`); 6 means the structure check refused. Never
+   leave an orphaned worktree; run `git worktree prune` on a stale reference.
 
 ## Error Handling
 
-If the agent gets stuck (can't resolve a gap, dependency is missing, tests fail persistently):
-1. Log the blocker in `## Insights`
-2. Write `savepoint.md` with current state
-3. Notify user: "Blocked on intent [ID] - [name]: [description]. Savepoint written."
-4. **STOP.** Do not attempt workarounds that could leave the project in a broken state.
+If the team gets stuck (an unresolvable gap, a missing dependency, a suite that stays red):
+log the blocker in `## Insights`, make sure `savepoint.md` reflects the state, notify the user
+("Blocked on intent [ID] - [name]: ..."), and STOP. Never work around a blocker in a way that
+leaves the project broken.
 
 ## References
 
-- Read `references/agent-architecture.md` for the team model (the enforcer-led team, handoffs, headless note, solo fallback) and the orchestrator hierarchy (Main Orchestrator, Project Orchestrators, coordination loop) when spinning up the team or understanding autonomous delivery scope
-- Read `references/human-report-contract.md` for the human-facing per-stage briefing (the
-  State/Risk/Call skeleton used at each "Notify user" step above, and how it differs from the
-  internal `agent-report-contract.md`)
-- Read `references/end-tail.md` for the `resolve_session` fallback chain and the disarm
-  ordering / worktree cleanup / QMD reindex rationale referenced above
+- Read `references/agent-architecture.md` for the team model, the risk list, the headless note,
+  and the solo fallback when dispatching or when a harness has no agent dispatch.
+- Read `references/human-report-contract.md` for the State/Risk/Call briefing before sending the
+  How briefing.
+- Read `references/agent-report-contract.md` for the completion report format when reading a
+  dispatched agent's return or synthesizing one.
+- Read `references/end-tail.md` for what `Arm.disarm` does at the End tail and why the reindex
+  runs last, before closing an intent.

@@ -3,6 +3,7 @@
 
 require "open3"
 require_relative "bridge"
+require_relative "arm"
 require_relative "lock"
 require_relative "worktree"
 require_relative "scaffold_intent"
@@ -135,15 +136,9 @@ module ExecWorktree
       "recorded owner are all blank); refusing rather than guessing."
   end
 
-  def no_bridge_message(intent_dir, session, id)
-    "exec-worktree: no bridge resolved for session #{session.inspect} and intent " \
-      "#{id.inspect} (#{File.basename(intent_dir)}); any worktree this intent provisioned " \
-      "was NOT removed. Run /plastic-doctor to check for an orphaned worktree."
-  end
-
   def nothing_provisioned_message(intent_dir)
-    "exec-worktree: #{File.basename(intent_dir)} has no code worktree recorded on its " \
-      "bridge (no code worktree); nothing was provisioned, nothing " \
+    "exec-worktree: #{File.basename(intent_dir)} has no code worktree on disk " \
+      "(projects.yml and the intent id resolve none); nothing was provisioned, nothing " \
       "to finish."
   end
 
@@ -229,9 +224,7 @@ module ExecWorktree
       return deny_result(EXIT_UNRESOLVED, no_session_message(intent_dir))
     end
 
-    bridge_data = Bridge.blank?(key_session) ? nil : Bridge.read(key_session, intent_id: id)
-    return ok_result(no_bridge_message(intent_dir, key_session, id)) if bridge_data.nil?
-
+    bridge_data = Arm.bridge_hash(intent_dir: intent_dir, home: normalized_home)
     worktree_code = bridge_data.dig("worktree", "code")
     return ok_result(nothing_provisioned_message(intent_dir)) if Bridge.blank?(worktree_code)
 

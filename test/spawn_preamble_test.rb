@@ -62,7 +62,7 @@ class SpawnPreambleTest < Minitest::Test
       "END your turn with a structured completion report as your FINAL MESSAGE",
       "preamble must carry the mandatory completion-report contract"
     assert_includes out,
-      "the planner explains the plan back to the orchestrator",
+      "the executor reports what was built and the test result",
       "report contract must name the per-role payload exemplar"
     # Intent 84: reports are prose-stripped (envelope + payload only).
     assert_includes out, "prose-stripped",

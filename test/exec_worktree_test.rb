@@ -21,10 +21,13 @@ class ExecWorktreeTest < Minitest::Test
     @home = Dir.mktmpdir("exec-wt-home")
     @plastic_home = File.join(@home, ".plastic")
     FileUtils.mkdir_p(@plastic_home)
-    @store = File.join(@plastic_home, "store")
+    # A project store plus projects.yml: the worktree block is derived from them
+    # (intent 307), so the intent must belong to a registered project.
+    @store = File.join(@plastic_home, "projects", "demo", "store")
     FileUtils.mkdir_p(@store)
     @repo = File.join(@home, "repo")
     FileUtils.mkdir_p(@repo)
+    File.write(File.join(@plastic_home, "projects.yml"), "projects:\n  demo:\n    path: #{@repo}\n")
 
     @bridge_tmp = Dir.mktmpdir("exec-wt-bridge")
     @saved_tmp = ENV["PLASTIC_TMP"]
@@ -55,23 +58,6 @@ class ExecWorktreeTest < Minitest::Test
 
   def worktree_code_path(id: "213", slug: "demo")
     File.join(@repo, ".claude", "worktrees", "#{id}--#{slug}")
-  end
-
-  # Writes a bridge file directly (never through Bridge.arm_*, so no lock is acquired and
-  # no real Worktree.provision runs). auto: nil omits build.auto entirely (a guided
-  # bridge never sets the key on arm_guided-shaped data either way).
-  def write_bridge(id: "213", slug: "demo", auto:, worktree_code:, session: @session)
-    data = {
-      "session" => session,
-      "intent" => { "id" => id, "dir" => "#{id}--#{slug}", "store" => @store, "name" => slug },
-      "build" => { "auto" => auto },
-      "worktree" => worktree_code ? {
-        "code" => worktree_code, "code_branch" => "plastic/#{id}--#{slug}", "provisioned" => true,
-      } : { "code" => nil, "code_branch" => nil, "provisioned" => false },
-      "lock" => {},
-    }
-    Bridge.write(session, data)
-    data
   end
 
   class FakeStatus
@@ -166,7 +152,6 @@ class ExecWorktreeTest < Minitest::Test
     build_intent_dir(how_complete: true)
     code = worktree_code_path
     FileUtils.mkdir_p(code)
-    write_bridge(auto: true, worktree_code: code)
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", finisher: finisher,
@@ -181,7 +166,6 @@ class ExecWorktreeTest < Minitest::Test
     build_intent_dir
     code = worktree_code_path
     FileUtils.mkdir_p(code)
-    write_bridge(auto: true, worktree_code: code)
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "abandoned", finisher: finisher,
@@ -197,7 +181,6 @@ class ExecWorktreeTest < Minitest::Test
     build_intent_dir
     code = worktree_code_path
     FileUtils.mkdir_p(code)
-    write_bridge(auto: false, worktree_code: code)
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", finisher: finisher,
@@ -213,7 +196,6 @@ class ExecWorktreeTest < Minitest::Test
     build_intent_dir
     code = worktree_code_path
     FileUtils.mkdir_p(code)
-    write_bridge(auto: false, worktree_code: code)
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", finisher: finisher,
@@ -235,7 +217,6 @@ class ExecWorktreeTest < Minitest::Test
     build_intent_dir(how_complete: true)
     code = worktree_code_path
     FileUtils.mkdir_p(code)
-    write_bridge(auto: true, worktree_code: code)
     # spy_finisher simulates the real fail-open finisher exactly: it removes the
     # worktree from disk regardless of whether the merge landed.
     finisher, calls = spy_finisher
@@ -258,7 +239,6 @@ class ExecWorktreeTest < Minitest::Test
     build_intent_dir(how_complete: true)
     code = worktree_code_path
     FileUtils.mkdir_p(code)
-    write_bridge(auto: true, worktree_code: code)
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", finisher: finisher,
@@ -277,7 +257,6 @@ class ExecWorktreeTest < Minitest::Test
     build_intent_dir
     code = worktree_code_path
     FileUtils.mkdir_p(code)
-    write_bridge(auto: true, worktree_code: code)
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "abandoned", finisher: finisher,
@@ -289,23 +268,23 @@ class ExecWorktreeTest < Minitest::Test
 
   # --- 9: no bridge resolves ----------------------------------------------------------
 
-  def test_no_bridge_resolves_exits_0_loudly_finisher_never_called
+  def test_never_provisioned_project_intent_exits_0_finisher_never_called
     build_intent_dir
     finisher, calls = spy_finisher
 
+    # The derived path exists on nobody's disk: a registered project whose worktree was
+    # never created must read as nothing provisioned, not as a dirty worktree (review A5).
     result = run_exec_worktree(disposition: "delivered", session: "nobody-armed-this",
                                finisher: finisher, status_checker: unreachable_status_checker)
     assert_equal 0, result[:exit_code]
     assert_empty calls
-    assert_match(/no bridge resolved/, result[:stdout].join)
-    assert_match(/orphan/, result[:stdout].join)
+    assert_match(/nothing was provisioned/, result[:stdout].join)
   end
 
   # --- 10: no code worktree recorded ---------------------------------------------------
 
   def test_no_code_worktree_exits_0_finisher_never_called
     build_intent_dir
-    write_bridge(auto: true, worktree_code: nil)
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", finisher: finisher,
@@ -387,7 +366,6 @@ class ExecWorktreeTest < Minitest::Test
     build_intent_dir(how_complete: true)
     code = worktree_code_path
     FileUtils.mkdir_p(code)
-    write_bridge(auto: true, worktree_code: code)
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", home: @plastic_home,
@@ -401,7 +379,6 @@ class ExecWorktreeTest < Minitest::Test
     build_intent_dir(how_complete: true)
     code = worktree_code_path
     FileUtils.mkdir_p(code)
-    write_bridge(auto: true, worktree_code: code)
     finisher, calls = spy_finisher
 
     result = run_exec_worktree(disposition: "delivered", home: @home,

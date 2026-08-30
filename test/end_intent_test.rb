@@ -116,22 +116,6 @@ class EndIntentTest < Minitest::Test
     File.exist?(path) ? File.read(path).lines.map(&:strip).reject(&:empty?) : []
   end
 
-  # Write a minimal, valid bridge JSON for `session`/`id` directly into the
-  # isolated @tmp_bridge dir (never through the real arm/auto seam - these
-  # fixtures stay fully hermetic and never touch the real /tmp). No "worktree" key by
-  # default, so Worktree.release's real git/HOME resolution is never reached
-  # (see scripts/lib/worktree.rb: `return bridge_data unless block.is_a?(Hash)`).
-  def write_bridge(session:, id:, slug: "demo")
-    data = {
-      "session" => session,
-      "intent" => { "id" => id, "dir" => "#{id}--#{slug}", "store" => @store, "name" => slug },
-      "build" => { "auto" => false },
-      "lock" => { "owner_session" => session, "acquired_at" => Time.now.utc.iso8601,
-                  "host" => "test", "type" => "delivery", "delegates" => [] },
-    }
-    File.write(File.join(@tmp_bridge, "plastic-#{session}--#{id}.json"), JSON.pretty_generate(data))
-  end
-
   # --- (a) Done bookend lands once and is idempotent [AC3] -------------------
 
   def test_done_bookend_lands_once_and_is_idempotent
@@ -414,7 +398,6 @@ class EndIntentTest < Minitest::Test
     intent_dir = build_intent(id: "161")
     write_index(id: "161")
     Lock.acquire(intent_dir, session: "sess-1")
-    write_bridge(session: "sess-1", id: "161")
 
     _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
                                    "--index", @index, "--no-commit", session: "sess-1")
@@ -426,7 +409,6 @@ class EndIntentTest < Minitest::Test
     intent_dir = build_intent(id: "161", outcome_disposition: "abandoned")
     write_index(id: "161")
     Lock.acquire(intent_dir, session: "sess-1")
-    write_bridge(session: "sess-1", id: "161")
 
     _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "abandoned",
                                    "--index", @index, "--no-commit", session: "sess-1")
@@ -460,7 +442,6 @@ class EndIntentTest < Minitest::Test
     write_index(id: "161")
     Lock.acquire(intent_dir, session: "owner-session")
     FileUtils.touch(Lock.path(intent_dir), mtime: Time.now - 4000) # older than Lock::TTL_SECONDS (1800)
-    write_bridge(session: "someone-else", id: "161")
 
     _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
                                    "--index", @index, "--no-commit", session: "someone-else")
@@ -525,20 +506,17 @@ class EndIntentTest < Minitest::Test
   # --- wiped /tmp or a resumed job under a new session id must never strand --
   # --- a committed, terminal intent still holding its lock) ------------------
 
-  def test_ac13_no_bridge_at_all_still_clears_an_owned_lock_with_a_loud_warning
+  def test_ac13_a_global_store_intent_with_no_worktree_still_clears_an_owned_lock
     intent_dir = build_intent(id: "161")
     write_index(id: "161")
     Lock.acquire(intent_dir, session: "sess-1")
-    # Deliberately NO write_bridge call: the /tmp bridge cannot resolve at all
-    # (a wiped /tmp, or a resumed job running under a new session id).
+    # A global-store intent resolves no project repo, so the derived worktree block is
+    # empty (the /tmp bridge this case once modelled was removed in 2.0, intent 307).
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
                                   "--index", @index, "--no-commit", session: "sess-1")
-    assert_equal 0, status, "AC13: no bridge must still exit 0 when the lock is directly releasable: #{out}"
-    refute File.exist?(Lock.path(intent_dir)), "AC13: the durable lock must be cleared even with no bridge"
-    assert_match(/no bridge resolved/i, out)
-    assert_match(/NOT removed/i, out)
-    assert_match(/orphaned worktree/i, out)
+    assert_equal 0, status, "AC13: an intent with no worktree must still exit 0: #{out}"
+    refute File.exist?(Lock.path(intent_dir)), "AC13: the durable lock must be cleared"
   end
 
   # --- AC4: a hyphen Active line moves; the write still emits a real em dash --

@@ -1,6 +1,6 @@
 ---
 name: plastic-intent-executing
-description: Use when you have a written implementation plan to execute. Default mode is subagent-driven (one executor dispatch for the whole consolidated action; a fresh subagent per task with two-stage review when the plan asks for it). Fallback mode is inline execution for environments without subagent support. If superpowers:subagent-driven-development or superpowers:executing-plans are available, delegates to them.
+description: Use when you have a written implementation plan to execute. Default mode is subagent-driven (one executor dispatch for the whole consolidated action, tests first, reviewed by risk). Fallback mode is inline execution for environments without subagent support. If superpowers:subagent-driven-development or superpowers:executing-plans are available, delegates to them.
 user-invocable: true
 ---
 
@@ -40,9 +40,9 @@ If `superpowers:subagent-driven-development` is available as a skill, delegate t
 - Superpowers skills respect "user preferences for plan/spec location"; Plastic IS that preference
 
 ### Subagent-Driven (Default)
-Dispatches subagents to do the work. The controller never implements. It dispatches, reviews, and tracks progress. By default one executor dispatch implements the whole consolidated action from `plan.md` plus `checklist.md` in one pass, with no per-task implementer-then-two-reviewers loop. Only when `actions/` holds several independent action files does a fresh subagent take each one, with a two-stage review after each: spec compliance first, then code quality.
+Dispatches subagents to do the work. The controller never implements. It dispatches, reviews, and tracks progress. One executor dispatch implements the whole consolidated action from `plan.md`, the action file's failure-mode matrix, and `checklist.md` in one pass, tests first: the matrix's tests are committed red before the code. Several independent action files are handed to the same executor in order; they are not a reason for a per-task review loop (removed in 2.0, intent 307).
 
-The final independent review in Step 3 runs on every delivery. It is a separate agent with fresh context, and it is never the maker.
+The post-execution review in Step 3 runs by risk (the rule lives in the auto skill). When it runs, the reviewer is a separate agent with fresh context, never the maker. The plan itself is reviewed before code by the adversarial plan reviewer (`plan-reviewer-prompt.md`), dispatched by the lead at How.
 
 ### Inline (Fallback)
 Executes tasks sequentially in the current session. Use when subagents aren't available or user explicitly requests inline mode.
@@ -59,46 +59,15 @@ Run Step 0 (Sync Worktree First) before this step.
 
 ### Step 2: Execute Each Task
 
-Count the real files under `actions/` first, then follow the matching branch.
-
-#### One consolidated action: one executor dispatch
-
-Dispatch ONE executor subagent and give it the whole delivery: every task's full text from `plan.md` (pasted in, never a file reference), the checklist items it must tick, the project context from CLAUDE.md, and the active intent context from `{ID}--{slug}.md`. In auto mode this is the `plastic-executor` agent; elsewhere use the `implementer-prompt.md` template. The executor implements the consolidated action in order, ticks each item as it lands (see `## Tick-as-you-land`), and drives the test suite green.
+Dispatch ONE executor subagent and give it the whole delivery: every task's full text from `plan.md` (pasted in, never a file reference), every action file with its failure-mode matrix, the checklist items it must tick, the project context from CLAUDE.md, the active intent context from `{ID}--{slug}.md`, and the worktree path. In auto mode this is the `plastic-executor` agent; elsewhere use the `implementer-prompt.md` template. The executor writes the matrix's tests and commits them red, implements the consolidated action in order, ticks each item as it lands (see `## Tick-as-you-land`), and drives the test suite green.
 
 Read its response by code:
-- DONE or DONE_WITH_CONCERNS → proceed to Step 3. Run no per-task spec review and no per-task quality review here; Step 3's final review covers the work.
+- DONE or DONE_WITH_CONCERNS → proceed to Step 3.
 - NEEDS_CONTEXT → provide the missing context, re-dispatch the executor.
 - BLOCKED → stop, report to the user, wait for resolution.
 
-#### Several independent actions: one subagent per task
-
-For each task sequentially (never parallel: conflict risk):
-
-**a. Dispatch implementer subagent**
-Use the Agent tool with the implementer prompt template. Include:
-- Full task text (pasted in, not file reference)
-- Project context from CLAUDE.md
-- Active intent context from `{ID}--{slug}.md`
-
-**b. Handle implementer response**
-- DONE → proceed to spec review
-- DONE_WITH_CONCERNS → note concerns, proceed to spec review
-- NEEDS_CONTEXT → provide missing context, re-dispatch
-- BLOCKED → stop, report to user, wait for resolution
-
-**c. Dispatch spec compliance reviewer**
-Use the Agent tool with spec-reviewer prompt. The reviewer reads actual code and compares against the task requirements. Pass/fail.
-- If fail: implementer fixes, spec reviewer re-reviews (loop until pass)
-
-**d. Dispatch code quality reviewer**
-Only after spec compliance passes. Reviews clean code, testing, architecture. Pass/fail.
-- If fail: implementer fixes, quality reviewer re-reviews (loop until pass)
-
-**e. Tick as it lands, then move to next**
-Follow `## Tick-as-you-land` below: move the task's checklist item to `## Completed` and add a `## Session Log` row in the same edit.
-
-### Step 3: Final Review
-After all tasks complete, dispatch a final reviewer for the entire implementation. This runs on every delivery. The reviewer is a separate agent with fresh context and is never the maker. For a consolidated action this is the only review the work gets, so if it returns changes, re-dispatch the executor to fix them, then re-review.
+### Step 3: Review by Risk
+Apply the auto skill's risk rule to the executor's return and the diff: a matrix row no test could prove, a diff touching a hook, the lock, the worktree code, the installer, or a release file, a DONE_WITH_CONCERNS or a deviation from the matrix, or an owner-facing surface no test pins. When a rule fires, dispatch the post-execution reviewer with `code-quality-reviewer-prompt.md` (a separate agent with fresh context, never the maker); if it returns changes, re-dispatch the executor to fix them, then run the suite once more. When no rule fires, the green suite is the review.
 
 ### Step 4: Update Intent and Complete
 Capture observations in `## Insights`. When ALL checklist items are checked:

@@ -11,4 +11,4 @@
 #   2026-06-16T16:40:00Z  Exec  outcome.md created
 #
 # This file is sugar on top of the conventions, not a source of truth. It is
-# rebuildable from files-on-disk via Bridge.rebuild_savepoint. Do not hand-edit.
+# rebuildable from files-on-disk via Savepoint.rebuild_savepoint. Do not hand-edit.

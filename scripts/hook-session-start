@@ -8,6 +8,7 @@ require "date"
 require "yaml"
 require "fileutils"
 require_relative "lib/bridge"
+require_relative "lib/savepoint"
 require_relative "lib/boot_banner"
 require_relative "lib/qmd_sync"
 require_relative "lib/doctor_core"
@@ -50,16 +51,20 @@ lines.each do |line|
   end
 end
 
-# --- Derive bridge for active intent ---
+# --- Stage of the single active intent (the /tmp bridge this once derived was removed in 2.0, intent 307) ---
 
-bridge_data = nil
+stage_line = nil
 if active.length == 1 && active.first =~ /store\/([\w-]+)\//
   dir_name = $1
   intent_dir = "#{store_dir}/#{dir_name}"
-  session = ENV["CLAUDE_CODE_SESSION_ID"] || Process.pid.to_s
-  intent_id = dir_name.split("--").first
-  intent_name = active.first[/\[([^\]]+)\]/, 1] || "unknown"
-  bridge_data = Bridge.derive(session, intent_id: intent_id, intent_dir: intent_dir, store: store_dir, name: intent_name)
+  begin
+    stage = Savepoint.derive_stage(intent_dir)
+    missing = Savepoint.missing_for_stage(stage, intent_dir)
+    missing_str = missing.empty? ? "none" : missing.join(", ")
+    stage_line = "Stage: #{stage} | Next: #{missing_str}"
+  rescue StandardError
+    stage_line = nil
+  end
 end
 
 # --- Detect stale future intents ---
@@ -253,12 +258,7 @@ if plastic_md
   if all_active.any?
     parts << "Active intents:\n"
     all_active.each { |a| parts << a }
-    if bridge_data
-      stage = bridge_data["build"]["stage"]
-      missing = bridge_data["build"]["missing"]
-      missing_str = missing.empty? ? "none" : missing.join(", ")
-      parts << "Stage: #{stage} | Next: #{missing_str}"
-    end
+    parts << stage_line if stage_line
     parts << ""
   else
     parts << "No active intents. #{future.length} future intents available.\n"

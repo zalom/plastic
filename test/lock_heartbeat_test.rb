@@ -26,19 +26,11 @@ class LockHeartbeatTest < Minitest::Test
     @old = Time.now - 900
     Lock.acquire(@intent_dir, session: "sess-1")
     FileUtils.touch(Lock.path(@intent_dir), mtime: @old)
-    Bridge.write("sess-1", bridge_data, tmp: @tmp)
   end
 
   def teardown
     FileUtils.rm_rf(@tmp)
     FileUtils.rm_rf(@home)
-  end
-
-  def bridge_data
-    { "session" => "sess-1",
-      "intent" => { "id" => "96", "dir" => "96--demo", "store" => @store,
-                    "name" => "demo" },
-      "build" => { "stage" => "why", "auto" => false } }
   end
 
   def run_record(file, session: "sess-1")

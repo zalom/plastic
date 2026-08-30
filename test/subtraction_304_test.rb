@@ -107,7 +107,7 @@ class Subtraction304Test < Minitest::Test
     offenders = []
     scan_files(%w[scripts hooks test skills agents templates PLASTIC.md]).each do |path|
       File.foreach(path).with_index(1) do |line, n|
-        next unless line.match?(/^Tier: |Tier: S|S\|M\|L|per-tier|Settled: yes|\bSpecHeader\b|savepoint_tier|TIER: S/)
+        next unless line.match?(/^Tier: |Tier: S|S\|M\|L|\bS\/M\b|\bat S and M\b|\bat L\b|two-stage review|per-tier|Settled: yes|\bSpecHeader\b|savepoint_tier|TIER: S/)
         next if line.match?(REMOVAL_NOTE)
         offenders << "#{path.sub("#{REPO}/", "")}:#{n}"
       end

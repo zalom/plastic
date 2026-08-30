@@ -204,8 +204,8 @@ begin
   triggered = auto_triggers.any? { |p| message_lower.include?(p) } || message_lower.match?(/\bauto\b/)
   if triggered
     context_parts << "Auto-mode request detected. Invoke the plastic-auto skill to deliver the " \
-                      "active intent autonomously - it arms the lifecycle gate so project code " \
-                      "cannot be edited before plan.md + checklist.md exist."
+                      "active intent autonomously - it takes the intent under a lock and a worktree " \
+                      "and points this session at it."
   end
 rescue StandardError
   nil

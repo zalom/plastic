@@ -12,66 +12,66 @@ The Main Orchestrator manages the global store (Main Knowledge Base). It:
 
 Project Orchestrators manage project stores (Project Knowledge Bases). They:
 - Care about intents and execution within their project
-- Spin up an enforcer-led team to deliver an intent
+- Lead an auto team to deliver an intent
 - Contribute back to the Main Orchestrator when new intents are born
   that could enrich the Main Knowledge Base
 
 ## The Auto-Mode Team
 
-Auto mode spins up exactly ONE enforcer-led team per intent. The plastic-enforcer
-IS the auto orchestrator itself, not a separately dispatched agent. Making the
-orchestrator the enforcer avoids the who-gates-the-gater regress (the gate-keeper
-can never be ungated).
+Auto mode runs exactly ONE team per intent, led by the orchestrating session itself: the
+plastic-enforcer IS the lead, not a separately dispatched agent. The team has two standing
+roles plus two reviewer prompts dispatched as fresh agents (the four stage agents were removed
+in 2.0, intent 304; the lead writes the Why and How record itself):
 
-The team has two standing roles plus an on-request reviewer (the four stage agents were
-removed in 2.0, intent 304; the enforcer writes the Why and How artifacts itself):
+- **plastic-enforcer** (the lead, spans the whole cycle): takes the intent, writes `spec.md`,
+  `plan.md`, the action files with their failure-mode matrix, and `checklist.md`; has the plan
+  reviewed before code; dispatches the executor; applies the risk rule; closes.
+- **plastic-executor** (Exec): commits the matrix's tests red, writes the code, checks off
+  `checklist.md`, appends `## Insights`, and drives the suite green.
+- **the plan reviewer**: a fresh agent on `plastic-intent-executing`'s
+  `plan-reviewer-prompt.md`, dispatched once before any code exists.
+- **the post-execution reviewer**: a fresh agent on `code-quality-reviewer-prompt.md`,
+  dispatched only when the auto skill's risk rule fires; never the maker.
 
-- **plastic-enforcer** (spans the whole cycle): orchestrates, writes `spec.md`, the action
-  files, and `checklist.md`, and reviews each handoff.
-- **plastic-executor** (Exec): writes the code, checks off `checklist.md`, appends
-  `## Insights`, and drives the suite green.
-- the reviewer: a separate agent with fresh context, dispatched from
-  `plastic-intent-executing`'s reviewer prompts, never the maker.
+Two agent boots is the normal delivery (the plan reviewer, the executor); the post-execution
+reviewer is the third only when risk calls for it.
 
 ### Handoff Contracts
 
-Each specialist receives the prior stage's deliverable and produces the next stage's
-input. The enforcer dispatches one specialist per stage with a constructed context
-bundle, gates that deliverable against the stage's exit criteria, and only then hands
-off to the next stage. Dispatch is sequential on a single branch, because the stage
-deliverables share files (a parked spec, plan, and checklist all live in the same
-intent directory).
+The lead hands the executor one constructed context bundle: the spec decisions, the plan, the
+action files with their matrix, the checklist, and the worktree path. The executor hands back
+the code, the red and green commits, a checked-off checklist, `## Insights`, and its completion
+report. Dispatch is sequential on a single branch, because the deliverables share files.
 
-The chain: intent `## Intent` / `## Context`, then enriched `## Context` plus
-`### Decisions`, then `spec.md`, then `plan.md` plus `actions/` plus `checklist.md`,
-then the code changes plus a checked-off checklist plus `## Insights`.
+The chain: intent `## Intent` / `## Context`, then enriched `## Context` plus `### Decisions`,
+then `spec.md`, then `plan.md` plus `actions/` plus `checklist.md`, then the plan review, then
+the code changes plus a checked-off checklist plus `## Insights`.
 
 ### Spawn Preamble (L2 live-state injection)
 
-Every dispatched specialist is booted with a spawn preamble: the enforcer runs
-`scripts/spawn-preamble <intent_dir> --role <role>` and prepends its output to the
-specialist's prompt. The preamble is a pure function of the intent directory on disk
-(no network, no clock, no randomness), so it is deterministic and rebuildable. It
-carries the active intent id and intent line, the current lifecycle stage (the last
-savepoint line, else stage derived from which lifecycle files exist), the cycle
-role, and the honoring instruction that the agent must emit valid lifecycle artifacts
-and not hallucinate intents or stages. This is the standard L2 live-state mechanism
-for harnesses whose spawned sub-agents do not inherit the top-level session event. See
-[`harness-adapters.md`](https://github.com/zalom/plastic/blob/main/docs/reference/harness-adapters.md) for how it slots into the per-harness contract.
+Every dispatched agent is booted with a spawn preamble: the lead runs
+`scripts/spawn-preamble <intent_dir> --role <role>` and prepends its output to the agent's
+prompt. The preamble is a pure function of the intent directory on disk (no network, no clock,
+no randomness), so it is deterministic and rebuildable. It carries the active intent id and
+intent line, the current lifecycle stage (the last savepoint line, else the stage derived from
+which lifecycle files exist), the cycle role, and the honoring instruction that the agent must
+emit valid lifecycle artifacts and not hallucinate intents or stages. This is the standard L2
+live-state mechanism for harnesses whose spawned sub-agents do not inherit the top-level
+session event. See [`harness-adapters.md`](https://github.com/zalom/plastic/blob/main/docs/reference/harness-adapters.md) for how it slots into the per-harness contract.
 
 ### Completion Reports
 
-Every dispatched specialist ends its turn with a structured completion report as its final
-message (its return value), so the agent that did the work is the one that accounts for it. The
-report carries a common envelope plus a role-specific payload that fulfils the agent's place in
-the cycle; the planner explains the plan back to the orchestrator, the executor reports what was
-built and the test result, and so on. The format lives in `references/agent-report-contract.md`,
-and the verbatim instruction is injected once via the spawn preamble's `REPORT_CONTRACT`
-constant, which the role prompts reproduce.
+Every dispatched agent ends its turn with a structured completion report as its final message
+(its return value), so the agent that did the work is the one that accounts for it. The report
+carries a common envelope plus a role-specific payload that fulfils the agent's place in the
+cycle; the executor reports what was built and the test result, a reviewer reports its verdict
+and findings. The format lives in `references/agent-report-contract.md`, and the verbatim
+instruction is injected once via the spawn preamble's `REPORT_CONTRACT` constant, which the
+role prompts reproduce.
 
 Enforcement is require-report then synthesize-fallback. The preamble and prompts make the report
 mandatory (decision-shaping), but child-agent honor is best-effort across harnesses (Tier B/C),
-so it is never a hard block. When a specialist returns no usable report, the enforcer runs
+so it is never a hard block. When an agent returns no usable report, the lead runs
 `scripts/agent-report <intent_dir> --role <role>`, a pure function of the intent dir (no network,
 clock, or randomness, mirroring `spawn-preamble`) that emits a filesystem-derived report from the
 savepoint, the artifacts present, the checklist checked/total, and the outcome line. A handoff
@@ -79,77 +79,82 @@ account therefore always exists: agent-authored when present, deterministically 
 otherwise. This structures the finish notification only; in-flight observations stay in
 `## Insights`, no progress chatter is added.
 
-Immediately after a specialist returns and before the next handoff, the enforcer records the
+Immediately after an agent returns and before the next handoff, the lead records the
 delegate's activity through `plastic-lock delegate --intent-dir <intent-dir> --delegate <id>
 --status finished|failed`. `finished` requires a usable agent-authored or synthesized completion
 report. A blocked or errored return, or one with no report that can be synthesized, is `failed`
 and stops the handoff under the normal error procedure. Activity status is descriptive and does
 not revoke the registered delegate's authorization.
 
-### Gate Ownership
+### Review Ownership
 
-The enforcer arms and verifies the lifecycle gate, then gates every stage transition.
-It never delegates gate ownership. At the final gate only, it dispatches an
-INDEPENDENT reviewer subagent to review the delivered work. That reviewer is not a
-permanent sixth role, it exists only for the final review.
+The lead owns every review decision: it dispatches the plan reviewer before code, folds the
+findings itself, and decides from the risk rule whether the post-execution reviewer runs. It
+never delegates that decision, and neither reviewer is ever the maker of what it reviews.
+Nothing blocks a write in 2.0 (the gate hooks were removed, intent 302); the lock, the
+worktree, and the record are how the team keeps one delivery in one place.
 
-### Headless Manual Gate
+### The risk list
 
-When running headless or in the background, the enforcer enforces gates manually rather
-than relying on hooks alone. The savepoint ledger and PostToolUse gate hook still fire
-(the gate hook reads `session_id` from stdin; the savepoint write is path-derived and
-bridge-independent), so they do not blanket no-op. Only the bridge-keyed stage-enforcement
-step degrades when no session id reaches the bridge and no bridge is discovered. The
-enforcer arms via `CLAUDE_CODE_SESSION_ID` or the bridge's derived-key fallback and
-verifies state itself.
+The post-execution reviewer runs when the executor's diff touches any of these paths, or when
+the auto skill's other two risk clauses fire:
+
+- `hooks/`, `scripts/hook-*`, `scripts/lib/hook_registry.rb`
+- `scripts/lib/lock.rb`, `scripts/lib/arm.rb`, `scripts/plastic-lock`, `scripts/end-intent`
+- `scripts/lib/installer_core.rb`, `scripts/install*`, `scripts/update.rb`
+- `package.json`, `.claude-plugin/*.json`, `CHANGELOG.md`
+
+Grow this list here, not in the skill body.
+
+### Headless Note
+
+In a headless or background run the session id may be unset. `plastic-lock arm` then keys the
+lock by a derived session key, the record hook still writes the savepoint ledger from the
+written path, and the lead verifies state from the files (`plastic-lock status`,
+`savepoint.md`, the diff) rather than from a hook it assumes fired.
 
 ### Delegation
 
-The roles are thin handoff contracts, not a spawning engine. Dispatch and review run
-by default through Plastic's own engine, `plastic-intent-executing` (implementer plus
-two-stage review, no external plugin). When `superpowers:subagent-driven-development`
-and `superpowers:dispatching-parallel-agents` are available, or the user asks for them,
-they delegate to those as an enhancement. The team model defines who hands what to whom
-and where the gates sit; the dispatch engine, native or superpowers, does the actual
-spawning.
+The roles are thin handoff contracts, not a spawning engine. Dispatch runs through Plastic's
+own engine, `plastic-intent-executing`: one executor for the consolidated action, the two
+reviewer prompts as fresh agents. The team model defines who hands what to whom and where the
+reviews sit; the engine does the actual spawning.
 
 ### Fallback by Case
 
-The default is always Plastic's native engine, so a user without superpowers still gets
-the full behavior. If the harness supports subagents but superpowers is absent, auto
-mode dispatches through `plastic-intent-executing`. If the harness has no subagent dispatch
-at all, auto mode falls back to a single agent walking the full What, Why, How, Exec
-cycle itself. The enforcer's gate discipline still applies in every case.
+If the harness supports agent dispatch, auto mode dispatches through
+`plastic-intent-executing`. If the harness has no agent dispatch at all (Codex CLI today), the
+lead walks the five steps itself: it still writes the matrix and the tests first, and reviews
+its own plan against the matrix before code, saying so in `## Insights`.
 
 ### Dogfood Proof
 
-Intents 60, 61, and 62 were delivered by exactly this enforcer-led team on a shared
-branch, which is the dogfooded proof that the model works end to end.
+Intents 60, 61, and 62 were delivered by the enforcer-led team on a shared branch, and the
+simplify-plastic roadmap's batch 2 (intents 302 to 306) was delivered in the ruled two-boot
+shape: the lead wrote the matrix, one adversarial plan reviewer read it, the lead built inline
+tests first, one suite run per intent.
 
 ## Two Modes
 
-- **Human-driven:** Human chats with the Main Orchestrator, creates intents,
-  brainstorms, then the Main Orchestrator dispatches Project Orchestrators and teams
-  for execution.
-- **Autonomous:** Human gives the Main Orchestrator a starting intent with defined
-  outcomes. The enforcer-led team runs the full cycle (the specialists do the
-  lifecycle, the enforcer reviews Insights and gates), then the orchestrator spawns
-  next intents and dispatches again.
+- **Human-driven:** Human chats with the Main Orchestrator, creates intents, thinks them
+  through, then the Main Orchestrator dispatches Project Orchestrators and teams for execution.
+- **Autonomous:** Human gives the Main Orchestrator a starting intent with defined outcomes.
+  The auto team runs the full cycle, then the orchestrator spawns next intents and dispatches
+  again.
 
 ## Autonomous Delivery
 
-Human owns What and Why for human-initiated intents. The team assists (research,
-exploration) but the human drives until handoff. When Why is complete, or the human
-triggers `plastic-auto`, the enforcer-led team takes over How and Exec autonomously.
+Human owns What and Why for human-initiated intents. The team assists (research, exploration)
+but the human drives until handoff. When Why is complete, or the human triggers `plastic-auto`,
+the auto team takes over How and Exec autonomously.
 
-- **Safe-by-default:** the executor always prefers non-destructive routes (rename vs
-  delete, additive migrations, backups before changes). Destructive actions on
-  existing projects require human approval unless `--skip-permissions` is set.
-- **Notification only on:** finish or hard stop (blocked on destructive action,
-  unresolvable error). No progress reports, `## Insights` tracks everything.
-- **Greenfield autonomy:** during initial project creation, all decisions are
-  non-destructive (nothing to destroy), so the team has full autonomy for greenfield
-  choices.
+- **Safe-by-default:** the executor always prefers non-destructive routes (rename vs delete,
+  additive migrations, backups before changes). Destructive actions on existing projects
+  require human approval unless `--skip-permissions` is set.
+- **Notification only on:** the How briefing, finish, or hard stop (blocked on destructive
+  action, unresolvable error). No progress reports, `## Insights` tracks everything.
+- **Greenfield autonomy:** during initial project creation, all decisions are non-destructive
+  (nothing to destroy), so the team has full autonomy for greenfield choices.
 - **Autonomous decisions** are logged in `## Insights` with the `(autonomous)` marker.
 
 ## Coordinator Loop
@@ -160,7 +165,7 @@ When "work on Project X":
 3. Load project config (overrides)
 4. Load global INDEX.md, find hub intents tagged `project-<name>`
 5. Load project INDEX.md, find tactical intents
-6. The coordinator has the full picture, spins up an enforcer-led team per intent
+6. The coordinator has the full picture, leads an auto team per intent
 
 ## Spawn preamble (intent 152)
 

@@ -17,16 +17,21 @@ class AutoSkillContractTest < Minitest::Test
     assert_includes body, "failed` means the specialist returned blocked, errored"
   end
 
-  def test_boarding_snippets_pass_only_trusted_runtime_identity
-    [SKILL].each do |path|
-      body = File.read(path)
-      assert_includes body, 'ENV["CODEX_THREAD_ID"].to_s.strip'
-      assert_includes body, 'ENV["CLAUDE_CODE_SESSION_ID"].to_s.strip'
-      assert_includes body, 'harness: harness, agent: "plastic-enforcer"'
-      assert_includes body, 'thread: (!codex.empty? ? codex : nil)'
-      assert_includes body, "Never"
-      assert_match(/unknown/i, body)
-    end
+  # The arming snippet is a `plastic-lock arm` call (intent 307): it passes a
+  # Codex thread as the session, the harness, and the thread only when
+  # CODEX_THREAD_ID is set, a Claude session only when CLAUDE_CODE_SESSION_ID
+  # is set, and nothing otherwise, so the CLI keys the lock by a derived key.
+  def test_boarding_snippet_passes_only_trusted_runtime_identity
+    body = File.read(SKILL)
+    assert_includes body, "plastic-lock arm"
+    assert_includes body, "--mode auto"
+    assert_includes body, "--agent plastic-enforcer"
+    assert_includes body, 'codex="${CODEX_THREAD_ID:-}"'
+    assert_includes body, 'claude="${CLAUDE_CODE_SESSION_ID:-}"'
+    assert_includes body, '--harness codex --session "$codex" --thread "$codex"'
+    assert_includes body, '--harness claude --session "$claude"'
+    assert_includes body, "Never guess identity from an absent runtime variable"
+    assert_match(/unknown/i, body)
   end
 
   def test_delegate_snippets_carry_known_role_and_runtime_identity

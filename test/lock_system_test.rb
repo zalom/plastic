@@ -2,7 +2,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "json"
-require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/arm"
 require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/worktree"
 require_relative "../scripts/lib/lock"
@@ -89,25 +89,27 @@ class LockSystemTest < Minitest::Test
     File.write(File.join(File.dirname(@store), "INDEX.md"), lines.join("\n") + "\n")
   end
 
+  # Arm.arm (intent 307) returns a status instead of raising; the lock, the
+  # worktree stubs, and the tmp home are the same surface the bridge era armed.
   def arm(session, id: "96", dir: @dir96, auto: false)
-    args = { intent_id: id, intent_dir: dir, store: @store, name: "demo" }
-    auto ? Bridge.arm_auto(session, **args) : Bridge.arm_guided(session, **args)
+    Arm.arm(intent_dir: dir, session: session, mode: auto ? "auto" : "guided", home: @home)
   end
 
   def repair(session)
-    Bridge.repair_lock(session, intent_id: "96", intent_dir: @dir96,
-                       store: @store, name: "demo", tmp: @tmp)
+    Arm.repair(intent_dir: @dir96, session: session, home: @home)
   end
 
   # --- 1. single owner ---------------------------------------------------------
 
   def test_single_owner_second_session_refused_owner_idempotent
     arm("a")
-    err = assert_raises(Bridge::LockHeldError) { arm("b") }
-    assert_includes err.message, "/plastic-doctor"
+    refused = arm("b")
+    assert_equal :held, refused[:status]
+    assert_equal "a", refused[:lock]["owner_session"]
 
     data = arm("a") # idempotent re-arm, :owned path
-    assert_equal "a", data["lock"]["owner_session"]
+    assert_equal :owned, data[:status]
+    assert_equal "a", data[:lock]["owner_session"]
     assert_equal "a", Lock.read(@dir96)["owner_session"]
   end
 
@@ -137,27 +139,26 @@ class LockSystemTest < Minitest::Test
 
   # --- 4. session resolution: all three fallbacks -------------------------------
 
-  def test_explicit_session_keys_the_bridge
+  def test_explicit_session_keys_the_lock
     arm("explicit-sid")
-    assert File.exist?(File.join(@tmp, "plastic-explicit-sid--96.json"))
     assert_equal "explicit-sid", Lock.read(@dir96)["owner_session"]
   end
 
-  def test_env_session_keys_the_bridge_when_no_explicit
-    ENV["CLAUDE_CODE_SESSION_ID"] = "env-sid"
-    arm(nil)
-    assert File.exist?(File.join(@tmp, "plastic-env-sid--96.json"))
+  def test_env_session_keys_the_lock_when_no_explicit
+    # Arm reads no environment: the env id is an argument (intent 307), so the
+    # CLI is what passes CLAUDE_CODE_SESSION_ID through. The library contract
+    # is the resolution order itself.
+    key = Arm.resolve_session(nil, env: "env-sid", store: @store, intent_id: "96")
+    assert_equal "env-sid", key
+    Arm.arm(intent_dir: @dir96, session: key, mode: "guided", home: @home)
     assert_equal "env-sid", Lock.read(@dir96)["owner_session"]
-  ensure
-    ENV["CLAUDE_CODE_SESSION_ID"] = nil
   end
 
-  def test_derived_key_when_both_blank_and_warns
-    derived = Bridge.derive_key(@store, "96")
-    _out, err = capture_io { arm(nil) }
-    assert File.exist?(File.join(@tmp, "plastic-#{derived}--96.json"))
+  def test_derived_key_when_both_blank
+    derived = Arm.derive_key(@store, "96")
+    result = arm(nil)
     assert_equal derived, Lock.read(@dir96)["owner_session"]
-    assert_match(/derived bridge key/, err)
+    assert_nil result[:pointer], "a derived key gets no session pointer: no hook would read it"
   end
 
   # --- 5. concurrent parallel sessions ------------------------------------------
@@ -211,44 +212,7 @@ class LockSystemTest < Minitest::Test
     assert_nil result["worktree"]
   end
 
-  # --- 7. purge on terminal, with the lock guard ---------------------------------
-
-  def test_purge_terminal_respects_lock_and_current_session
-    write_index_active([]) # both intents are terminal now
-    seed = lambda do |session, id, dir|
-      Bridge.write(session, { "session" => session,
-                              "intent" => { "id" => id, "dir" => File.basename(dir),
-                                            "store" => @store, "name" => "demo" },
-                              "build" => { "auto" => false } }, tmp: @tmp)
-      Bridge.path(session, intent_id: id, tmp: @tmp)
-    end
-
-    terminal = seed.call("t-sess", "96", @dir96) # terminal, no lock -> purges
-    locked = seed.call("l-sess", "97", @dir97)   # terminal, lock held -> kept
-    current = seed.call("current", "96", @dir96)
-    Lock.acquire(@dir97, session: "l-sess")
-
-    removed = Bridge.purge_done_bridges(session: "current", tmp: @tmp)
-    assert_includes removed, terminal, "a terminal intent's bridge purges"
-    refute File.exist?(terminal)
-    assert File.exist?(current), "the current session's bridge never purges"
-    refute_includes removed, locked
-    assert File.exist?(locked), "a held delivery.lock blocks the purge (D6)"
-  end
-
   # --- 9-11. recovery ---------------------------------------------------------------
-
-  def test_corrupted_bridge_recovery
-    arm("a")
-    File.write(Bridge.path("a", intent_id: "96", tmp: @tmp), "}{ not json")
-    assert Lock.holds?(@dir96, session: "a"),
-           "a clobbered bridge cannot strand the owner: the lock file wins (D2)"
-    report = repair("a")
-    assert_equal "repaired", report["status"]
-    bridge = Bridge.read("a", intent_id: "96", tmp: @tmp)
-    assert_equal "96", bridge.dig("intent", "id")
-    assert_equal "a", bridge.dig("lock", "owner_session")
-  end
 
   def test_corrupted_lock_recovery
     File.write(Lock.path(@dir96), "{ nope")
@@ -257,16 +221,6 @@ class LockSystemTest < Minitest::Test
     assert_equal "repaired", report["status"]
     assert_equal "a", Lock.read(@dir96)["owner_session"]
     assert Lock.holds?(@dir96, session: "a")
-  end
-
-  def test_missing_bridge_tmp_wiped_recovery
-    arm("a")
-    File.delete(Bridge.path("a", intent_id: "96", tmp: @tmp))
-    assert Lock.holds?(@dir96, session: "a"),
-           "a wiped /tmp cannot strand the owner"
-    report = repair("a")
-    assert_equal "repaired", report["status"]
-    refute_nil Bridge.read("a", intent_id: "96", tmp: @tmp), "repair rebuilds the bridge cache"
   end
 
   # --- 12. D9: lifecycle writes read only the MAIN store dir -----------------------

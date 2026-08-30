@@ -9,6 +9,7 @@ require "stringio"
 require "rbconfig"
 require "open3"
 require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/arm"
 require_relative "../scripts/lib/worktree"
 
 # Codex dispatcher shim (intent 102, Step 3): drives the real scripts/codex-hook
@@ -168,7 +169,7 @@ class CodexHooksTest < Minitest::Test
 
     session = "test-#{Process.pid}-#{object_id}"
     silence_stderr do
-      Bridge.arm_guided(session, intent_id: "97", intent_dir: intent_dir, store: @store, name: "demo")
+      Arm.arm(intent_dir: intent_dir, session: session, mode: "guided", home: @fake_home)
     end
 
     plan = File.join(intent_dir, "plan.md")

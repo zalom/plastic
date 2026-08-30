@@ -29,7 +29,7 @@ fields stay exactly as below); it does not remove any required field.
 
 Every role report, whatever the stage, carries these fields:
 
-- **Role**: which specialist produced this (brainstorming, spec, planner, executor, reviewer).
+- **Role**: which agent produced this (executor, plan reviewer, post-execution reviewer).
 - **Intent id and stage**: the active intent id and the cycle stage just completed.
 - **Status**: `delivered` or `blocked`.
 - **Artifacts written**: the files produced or changed (store paths, and project paths for the

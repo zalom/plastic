@@ -27,13 +27,13 @@ class SavepointSplitTest < Minitest::Test
   MOVED_CONSTS = %i[PLACEHOLDER_SENTINEL SAVEPOINT_FILE TERMINAL_DISPOSITIONS SAVEPOINT_STATE_PREREQUISITES].freeze
 
   # Pointer-side names that stay on Bridge (spec D2; intent_id_from_dir per review B1).
+  # The seven helpers left on Bridge after the bridge JSON itself went (intent 307).
   STAYING_METHODS = %i[
-    intent_id_from_dir deep_merge read_project_config intent_active? derive_data derive
-    resolve_session discover_bridge read write arm_auto arm_guided disarm_auto repair_lock
+    intent_id_from_dir deep_merge read_project_config intent_active? index_entry_match blank? skill_ref
   ].freeze
 
   # Bridge names the moved code must never call bare (they stayed behind).
-  STAYING_NAMES = %w[blank? index_entry_match tmp_dir skill_ref intent_active? derive_key lock_cache].freeze
+  STAYING_NAMES = %w[blank? index_entry_match skill_ref intent_active?].freeze
 
   # Files whose only bridge use was a moved name: they require savepoint, not bridge.
   BRIDGE_FREE = %w[
@@ -90,7 +90,7 @@ class SavepointSplitTest < Minitest::Test
     refute_match(/\bBridge\b/, sp, "savepoint.rb must not reference Bridge")
     refute_match(/require_relative\s+["'](bridge|lock|worktree)["']/, sp)
     br = File.read(File.join(REPO, "scripts", "lib", "bridge.rb"))
-    assert_match(/require_relative\s+["']savepoint["']/, br, "bridge.rb must require savepoint")
+    refute_match(/require_relative\s+["']savepoint["']/, br, "bridge.rb needs no savepoint since the bridge JSON went (intent 307)")
     refute_match(/^require\s+["'](socket|tempfile)["']/, br, "bridge.rb keeps a dead require")
   end
 

@@ -91,8 +91,9 @@ Rules for any agent (or human) contributing to this repository.
 - Single owner, mandatory. Exactly one session or agent develops an intent's delivery at a
   time. Ownership is a session-keyed `delivery.lock` file in the intent directory; liveness
   is a lease (the owner's hooks refresh the file mtime on tool activity, stale means the
-  heartbeat is older than the TTL). The /tmp session bridge is only a cache: on any
-  disagreement the lock file wins. If you find a fresh lock owned by another session, back
+  heartbeat is older than the TTL). The per-session pointer
+  (`~/.plastic/store/.tmp/<session>/current`) names the intent a session records into; the
+  lock file is the truth of ownership. If you find a fresh lock owned by another session, back
   off. A stale lock is reclaimed only through `plastic-lock reclaim` (audited in
   savepoint.md); disarm clears the lock, and `plastic-lock fix` is the repair path for
   corrupt or legacy state.
