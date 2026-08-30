@@ -47,8 +47,8 @@ class DoctorRevisionsRemedyTest < Minitest::Test
   end
 
   # An unsanctioned ## section makes section_structure a fixable warn whose
-  # fix_hint names the curator + revisions.md move-and-record remedy.
-  def test_unsanctioned_section_yields_curator_revisions_fix_hint
+  # fix_hint names the revisions.md move-and-record remedy (the curator agent left in 2.0).
+  def test_unsanctioned_section_yields_revisions_fix_hint
     write_index(File.join(@home, "INDEX.md"))
     write_intent("11", extra_section: "Scratchpad")
 
@@ -62,8 +62,8 @@ class DoctorRevisionsRemedyTest < Minitest::Test
   end
 
   # A dangling chain/sources edge makes graph_i4_danglers a warn whose fix_hint
-  # names the curator + revisions.md move-and-record remedy.
-  def test_dangling_chain_ref_yields_curator_revisions_fix_hint
+  # names the revisions.md move-and-record remedy (the curator agent left in 2.0).
+  def test_dangling_chain_ref_yields_revisions_fix_hint
     write_index(File.join(@home, "INDEX.md"))
     write_intent("11", chain: ["999"]) # 999 does not exist -> dangler
 

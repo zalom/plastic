@@ -70,7 +70,7 @@ class CodexInstallContentTest < Minitest::Test
     ["plastic-doctor/report.md", "~/.claude/hooks/plastic-session-start",
      "Spec D5. Sample doctor OUTPUT, printed inside the report template as an example " \
      "of the format for a Claude install. Not an instruction to the agent."],
-    ["plastic-doctor/report.md", "~/.claude/hooks/plastic-gate-check",
+    ["plastic-doctor/report.md", "~/.claude/hooks/plastic-record",
      "Spec D5. Same sample output block."],
   ].freeze
 

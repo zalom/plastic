@@ -1216,8 +1216,8 @@ class CodexInstallTest < Minitest::Test
 
   # --- Intent 249: the INSTALLED dispatcher must reach an INSTALLED launcher ---
   #
-  # scripts/codex-hook:66 resolves a live-state launcher at __dir__/../hooks/<gate>, which is
-  # ~/.plastic/hooks/<gate> once installed. Before intent 249 nothing created that directory:
+  # scripts/codex-hook:66 resolves a live-state launcher at __dir__/../hooks/<hook_name>, which is
+  # ~/.plastic/hooks/<hook_name> once installed. Before intent 249 nothing created that directory:
   # Open3.capture3 raised Errno::ENOENT, the rescue on line 72 swallowed it, and all seven
   # STATE_HOOKS silently exited 0 on every real Codex install. It went unseen because every
   # other test drives the dispatcher from the PACKAGE ROOT (test/codex_hooks_test.rb:24 pins

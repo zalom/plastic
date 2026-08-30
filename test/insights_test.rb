@@ -50,11 +50,11 @@ class InsightsTest < Minitest::Test
 
   def test_append_to_existing_section
     write_intent("## Intent\nDemo\n\n## Insights\n2026-06-23T10:00:00Z · Why · seed — first\n")
-    Insights.append_insight(@dir, "new nugget", stage: "How", author: "planner", now: T)
+    Insights.append_insight(@dir, "new nugget", stage: "How", author: "executor", now: T)
     lines = insight_lines
     assert_equal 2, lines.length
     assert_includes lines[0], "first"
-    assert_equal "2026-06-24T08:13:05Z · How · planner — new nugget", lines[1]
+    assert_equal "2026-06-24T08:13:05Z · How · executor — new nugget", lines[1]
   end
 
   def test_append_when_section_missing
@@ -137,7 +137,7 @@ class InsightAppendCliTest < Minitest::Test
   end
 
   def test_appends_well_formed_entry
-    out = run_script(@dir, "a nugget", "--stage", "How", "--author", "planner")
+    out = run_script(@dir, "a nugget", "--stage", "How", "--author", "executor")
     assert_equal 0, $?.exitstatus
     assert_includes out, "appended:"
     content = File.read(@intent_file)
@@ -145,11 +145,11 @@ class InsightAppendCliTest < Minitest::Test
     refute_nil line
     prefix = line.split(" — ", 2).first
     assert Insights.valid_insight_prefix?(prefix)
-    assert_includes prefix, " · How · planner"
+    assert_includes prefix, " · How · executor"
   end
 
   def test_usage_error_without_stage
-    out = run_script(@dir, "a nugget", "--author", "planner")
+    out = run_script(@dir, "a nugget", "--author", "executor")
     assert_includes out, "usage:"
     refute_equal 0, $?.exitstatus
   end
@@ -161,7 +161,7 @@ class InsightAppendCliTest < Minitest::Test
   end
 
   def test_usage_error_without_text
-    out = run_script(@dir, "--stage", "How", "--author", "planner")
+    out = run_script(@dir, "--stage", "How", "--author", "executor")
     assert_includes out, "usage:"
     refute_equal 0, $?.exitstatus
   end
