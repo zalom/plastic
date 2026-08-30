@@ -85,6 +85,26 @@ class RecordHookTest < Minitest::Test
     SessionLedger.short_session_id(nil, session)
   end
 
+  # --- the pointer names an intent (intent 307) --------------------------------
+
+  # While a session is armed on an intent the pointer holds that intent's id, so
+  # the day ledger goes quiet: no pending line is promoted and no Item savepoint
+  # line lands. The lock and session heartbeats still run.
+  def test_pointer_naming_an_intent_skips_the_day_ledger_but_keeps_the_heartbeat
+    seed_pending_line("sess-1", "do the thing")
+    sid = sid_for("sess-1")
+    SessionLedger.ensure_tmp_root(@store)
+    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, sid))
+    File.write(SessionLedger.pointer_path(@store, sid), "52\n")
+    before = File.read(checklist_path)
+
+    _out, status = run_hook(File.join(@root, "app.rb"), session: "sess-1")
+    assert_equal 0, status.exitstatus
+    assert_equal before, File.read(checklist_path), "no pending line is promoted while the pointer names an intent"
+    refute File.exist?(savepoint_path), "no Item line lands in the day ledger"
+    assert File.exist?(SessionLedger.heartbeat_path(@store, sid)), "the session heartbeat still runs"
+  end
+
   # --- malformed stdin, no file_path -----------------------------------------
 
   def test_malformed_stdin_exits_zero_nothing_written

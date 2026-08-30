@@ -7,6 +7,7 @@ require "open3"
 require_relative "../scripts/lib/boot_banner"
 require_relative "../scripts/lib/qmd_sync"
 require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/session_ledger"
 
 # Unit coverage for the pure boot-banner renderer (intent 36a). Health is
@@ -165,15 +166,12 @@ end
 
 # Intent 231: Plastic home and the store are two different paths. hooks/session-start
 # passes home (~/.plastic) as argument 2, so the hook itself must compose the store
-# before handing anything to Bridge.derive. No test reached this path before: the
-# SessionStartHookTest fixture above seeds an EMPTY "## Active" section, so the
-# active.length == 1 guard never fires and the bridge is never derived. These tests
-# seed a real Active entry and read the bridge the hook actually wrote.
+# before reading the single Active intent. Since intent 307 the hook derives the stage
+# line from the intent directory's files (Savepoint) and writes no bridge at all.
 #
-# Hermetic per test/hermeticity_guard_test.rb: PLASTIC_TMP points the bridge write at
-# a private tmpdir, and CLAUDE_CODE_SESSION_ID is cleared so the hook keys the bridge
-# by its own pid and never touches a live session's file.
-class SessionStartBridgePathTest < Minitest::Test
+# Hermetic per test/hermeticity_guard_test.rb: PLASTIC_TMP and CLAUDE_CODE_SESSION_ID
+# are set explicitly so nothing keys off the live session.
+class SessionStartStagePathTest < Minitest::Test
   HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
   SHIM = File.expand_path("../hooks/session-start", __dir__)
   DIR_NAME = "231--session-start-home-vs-store".freeze
@@ -189,6 +187,9 @@ class SessionStartBridgePathTest < Minitest::Test
                "\n## Future\n")
     File.write(File.join(@intent_dir, "#{DIR_NAME}.md"),
                "---\nid: \"231\"\n---\n\n## Intent\nHome and store are two paths.\n")
+    # The banner branch that carries the stage line runs only when the core
+    # conventions file is present beside INDEX.md.
+    File.write(File.join(@home, "PLASTIC.md"), "# Plastic: Conventions\n")
   end
 
   def teardown
@@ -202,41 +203,25 @@ class SessionStartBridgePathTest < Minitest::Test
                    "ruby", HOOK, File.join(@home, "INDEX.md"), @home, "global")
   end
 
-  def bridge_files
-    Dir[File.join(@tmp, "plastic-*.json")]
-  end
-
-  def bridge
-    files = bridge_files
-    assert_equal 1, files.length, "hook must write exactly one bridge"
-    JSON.parse(File.read(files.first))
-  end
-
-  def test_bridge_store_field_is_the_store_not_home
-    _out, _err, status = run_hook
+  def context
+    out, _err, status = run_hook
     assert_equal 0, status.exitstatus
-    data = bridge
-    assert_equal File.join(@home, "store"), data.dig("intent", "store"),
-                 "bridge must record the store path, not Plastic home"
-    refute_equal @home, data.dig("intent", "store"),
-                 "Plastic home must never be written as the bridge store field"
+    JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
   end
 
-  def test_bridge_dir_field_is_the_bare_intent_dir_name
-    run_hook
-    data = bridge
-    assert_equal DIR_NAME, data.dig("intent", "dir")
-    refute_includes data.dig("intent", "dir"), "store/",
-                    "dir is relative to the store, so it carries no store/ prefix"
+  def test_stage_line_is_derived_from_the_intent_directory
+    expected_stage = Savepoint.derive_stage(@intent_dir)
+    assert_includes context, "Stage: #{expected_stage} | Next: "
   end
 
-  def test_no_doubled_store_segment_is_ever_constructed
+  def test_no_bridge_file_is_written
     run_hook
-    data = bridge
-    refute_includes data.dig("intent", "store"), "store/store"
-    assert_equal @intent_dir, Bridge.bridge_intent_dir(data),
-                 "store plus dir must recompose to the real intent directory"
-    refute_includes Bridge.bridge_intent_dir(data), "store/store"
+    assert_empty Dir[File.join(@tmp, "plastic-*.json")], "the /tmp bridge was removed in 2.0 (intent 307)"
+  end
+
+  def test_hook_no_longer_derives_a_bridge
+    src = File.read(HOOK)
+    refute_includes src, "Bridge.derive"
   end
 
   # The tempting one-line repair is to make the shim pass $HOME/.plastic/store. That
@@ -250,32 +235,11 @@ class SessionStartBridgePathTest < Minitest::Test
                     "the split belongs inside the hook, never in the shim"
   end
 
-  # Intent 230 split Bridge.derive into a pure derive_data plus a writing derive, and
-  # kept session start on the writing form on purpose. Both halves of that contract.
-  def test_bridge_is_persisted_immediately
-    _out, _err, status = run_hook
-    assert_equal 0, status.exitstatus
-    assert_equal 1, bridge_files.length,
-                 "session start persists the bridge on the spot (intent 230 contract)"
-  end
-
-  def test_hook_still_calls_the_writing_derive
-    src = File.read(HOOK)
-    assert_includes src, "Bridge.derive(session,",
-                    "session start must keep the writing derive, not derive_data"
-  end
-
-  # The cost of the bug: intent_active? resolves the INDEX as the PARENT of the store
-  # dir, so a bridge carrying home looks inactive and purge_done_bridges deletes a live
-  # session's bridge. The second assertion is the negative control that pins the old
-  # failure mode.
-  def test_purge_sees_a_live_active_intent_as_active
-    run_hook
-    data = bridge
-    assert Bridge.intent_active?("231", store: data.dig("intent", "store")),
-           "a live Active intent's bridge must survive purge_done_bridges"
-    refute Bridge.intent_active?("231", store: @home),
-           "home as the store field is what made a live intent look inactive"
+  # intent_active? resolves the INDEX as the PARENT of the store dir; home as the store
+  # is what once made a live intent look inactive.
+  def test_intent_active_resolves_the_index_from_the_store_not_home
+    assert Bridge.intent_active?("231", store: File.join(@home, "store"))
+    refute Bridge.intent_active?("231", store: @home)
   end
 end
 

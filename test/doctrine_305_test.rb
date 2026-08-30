@@ -206,8 +206,8 @@ class Doctrine305Test < Minitest::Test
 
   def test_intent_executing_carries_no_tier_grammar_and_no_gate
     body = read(EXECUTING)
-    refute_includes body, "at L "
-    refute_includes body, "at S and M"
+    refute_includes body, "at L " # removed in 2.0 (intent 304)
+    refute_includes body, "at S and M" # removed in 2.0 (intent 304)
     refute_match(/\bgates?\b/i, body, "intent-executing must not tell the executor to wait for a gate")
   end
 end

@@ -120,21 +120,6 @@ class EndIntentWorktreeGuardTest < Minitest::Test
     path
   end
 
-  def write_bridge(session:, id:, slug: "demo", worktree_code:)
-    data = {
-      "session" => session,
-      "intent" => { "id" => id, "dir" => "#{id}--#{slug}", "store" => @store, "name" => slug },
-      "build" => { "auto" => false },
-      "worktree" => {
-        "code" => worktree_code, "code_branch" => "plastic/#{id}--#{slug}",
-        "provisioned" => true,
-      },
-      "lock" => { "owner_session" => session, "acquired_at" => Time.now.utc.iso8601,
-                  "host" => "test", "type" => "delivery", "delegates" => [] },
-    }
-    File.write(File.join(@tmp_bridge, "plastic-#{session}--#{id}.json"), JSON.pretty_generate(data))
-  end
-
   # --- AC11: dirty worktree refuses; --discard-worktree-changes overrides ----
 
   def test_ac11_dirty_worktree_refuses_then_discard_flag_overrides
@@ -144,7 +129,6 @@ class EndIntentWorktreeGuardTest < Minitest::Test
     Lock.acquire(intent_dir, session: "sess-1")
     worktree_path = build_worktree(id: id)
     File.write(File.join(worktree_path, "scratch.txt"), "uncommitted\n")
-    write_bridge(session: "sess-1", id: id, worktree_code: worktree_path)
 
     out, status = run_end_intent("--store", @store, "--id", id, "--disposition", "delivered",
                                   "--index", @index, "--no-commit", session: "sess-1")
@@ -178,11 +162,15 @@ class EndIntentWorktreeGuardTest < Minitest::Test
     write_index(id: id)
     Lock.acquire(intent_dir, session: "sess-1")
 
-    not_a_repo = File.join(@home, "not-a-git-repo")
+    # The derived worktree path (projects.yml plus the intent id) exists on disk but is
+    # not a git worktree at all, so `git status` there fails outright.
+    not_a_repo = File.join(@repo, ".claude", "worktrees", "#{id}--demo")
     FileUtils.mkdir_p(not_a_repo)
+    # A `.git` file pointing at a gitdir that does not exist makes `git status` fail
+    # outright inside this directory, which is the inconclusive case the guard must refuse.
+    File.write(File.join(not_a_repo, ".git"), "gitdir: #{File.join(@home, 'no-such-gitdir')}\n")
     marker = File.join(not_a_repo, "scratch.txt")
     File.write(marker, "uncommitted work that must survive\n")
-    write_bridge(session: "sess-1", id: id, worktree_code: not_a_repo)
 
     out, status = run_end_intent("--store", @store, "--id", id, "--disposition", "delivered",
                                   "--index", @index, "--no-commit", session: "sess-1")
@@ -201,12 +189,7 @@ class EndIntentWorktreeGuardTest < Minitest::Test
     intent_dir = build_intent(id: id)
     write_index(id: id)
     Lock.acquire(intent_dir, session: "sess-1")
-    data = {
-      "session" => "sess-1",
-      "intent" => { "id" => id, "dir" => "#{id}--demo", "store" => @store, "name" => "demo" },
-      "lock" => { "owner_session" => "sess-1" },
-    }
-    File.write(File.join(@tmp_bridge, "plastic-sess-1--#{id}.json"), JSON.pretty_generate(data))
+    # No worktree directory exists for this intent, so the derived block is empty.
 
     _out, status = run_end_intent("--store", @store, "--id", id, "--disposition", "delivered",
                                    "--index", @index, "--no-commit", session: "sess-1")
@@ -220,7 +203,6 @@ class EndIntentWorktreeGuardTest < Minitest::Test
     write_index(id: id)
     Lock.acquire(intent_dir, session: "sess-1")
     gone_path = File.join(@repo, ".claude", "worktrees", "#{id}--demo") # never created on disk
-    write_bridge(session: "sess-1", id: id, worktree_code: gone_path)
 
     _out, status = run_end_intent("--store", @store, "--id", id, "--disposition", "delivered",
                                    "--index", @index, "--no-commit", session: "sess-1")

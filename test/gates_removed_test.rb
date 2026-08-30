@@ -37,7 +37,7 @@ class GatesRemovedTest < Minitest::Test
   # Inside the cut ranges but still called by a live file (plan review A1, A2), or
   # called by hook-record.
   KEPT_BRIDGE_METHODS = %i[
-    deep_merge intent_id_from_dir read_project_config intent_active?
+    blank? index_entry_match intent_active? intent_id_from_dir deep_merge read_project_config skill_ref
   ].freeze
 
   # Names that may appear nowhere in the scanned roots except on a line that carries
