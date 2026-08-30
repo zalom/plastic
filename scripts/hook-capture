@@ -31,7 +31,8 @@ end
 exit 0 unless payload.is_a?(Hash)
 
 session_id = payload["session_id"].to_s
-prompt = payload["user_prompt"].to_s
+prompt = payload["prompt"].to_s
+prompt = payload["user_prompt"].to_s if prompt.empty?
 cwd = payload["cwd"].to_s
 cwd = Dir.pwd if cwd.empty?
 
