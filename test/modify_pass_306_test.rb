@@ -31,7 +31,7 @@ class ModifyPass306Test < Minitest::Test
 
   # Stale fixture text, comment wording, and test names the pass corrected,
   # per touched file. Every literal names something removed in 2.0 (intents
-  # 302 and 304): a hook the fixtures called a gate, the S/M/L tier vocabulary,
+  # 302 and 304): a hook the fixtures called a gate, the S/M/L tier vocabulary, # removed in 2.0 (intent 304)
   # the lock-gate, the curator agent, the fragment once called a gate, the
   # planner role used as an example author. None of these literals is on
   # gates_removed_test's or subtraction_304_test's removed-name lists (verified

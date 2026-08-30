@@ -2,19 +2,29 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 #
-# plastic-lock: inspect and repair the durable delivery lock (intent 108, D5),
-# and take/free per-artifact claim tokens (intent 111 D1/D5).
+# plastic-lock: take, inspect, repair, and give back the durable delivery lock
+# (intent 108, D5; intent 307), and take/free per-artifact claim tokens
+# (intent 111 D1/D5).
 #
-# Usage: plastic-lock <status|who|fix|release|reclaim|delegate|claim|release-claim>
+# Usage: plastic-lock <arm|status|who|fix|release|reclaim|delegate|claim|release-claim>
 #          [--intent-dir DIR] [--session SID] [--delegate SID] [--artifact NAME]
+#          [--harness claude|codex] [--agent NAME] [--model MODEL] [--thread ID]
+#          [--mode auto|guided] [--status finished|failed]
 #
 # Verbs:
+#   arm           take the intent for this session (intent 307): acquire
+#                 delivery.lock stamped with --mode (default auto) and the
+#                 provenance flags, provision the code worktree, and point the
+#                 session at the intent; exit 1 on a held, stale, excluded, or
+#                 corrupt lock with the resolving doctor hint
 #   who           compact, read-only durable owner/activity view
-#   status        report the lock file, the bridge cache, their agreement,
-#                 and any live per-artifact claims
-#   fix           idempotent repair: rebuild lock + bridge from disk truth for
-#                 the current session; never touches a fresh foreign lock
-#   release       owner clears the lock (End tail / abandoning a boarding)
+#   status        report the lock file, its freshness, the derived worktree,
+#                 whether this session's pointer names the intent, and any
+#                 live per-artifact claims
+#   fix           idempotent repair of the lock for the current session; never
+#                 touches a fresh foreign lock
+#   release       owner clears the lock and points the session back at the day
+#                 ledger (End tail / abandoning a boarding)
 #   reclaim       explicit takeover of a stale lock, audited in savepoint.md
 #   delegate      owner registers a subagent session under the lock (D4)
 #   claim         acquire the named --artifact's claim token (intent 111);
@@ -22,15 +32,23 @@
 #                 including this same session; takes over a stale claim
 #   release-claim free the named --artifact's claim token
 #
-# Without --intent-dir the intent is resolved from this session's bridge.
-# Exit 0 on success/report; exit 1 when the verb is blocked (held elsewhere).
+# Without --intent-dir the intent is resolved from this session's pointer
+# (~/.plastic/store/.tmp/<session>/current) when it names an intent id, looked
+# up in the working directory's project store and then the global store. The
+# /tmp bridge JSON this CLI used to resolve through was removed in 2.0
+# (intent 307). Exit 0 on success/report; exit 1 when the verb is blocked.
 
 require "json"
+require "yaml"
 require_relative "lib/bridge"
 require_relative "lib/lock"
+require_relative "lib/arm"
+require_relative "lib/session_ledger"
+
+VERBS = %w[arm status who fix release reclaim delegate claim release-claim].freeze
 
 def usage!
-  warn "usage: plastic-lock <status|who|fix|release|reclaim|delegate|claim|release-claim> " \
+  warn "usage: plastic-lock <#{VERBS.join('|')}> " \
        "[--intent-dir DIR] [--session SID] [--delegate SID] [--artifact NAME] " \
        "[--harness claude|codex] [--agent NAME] [--model MODEL] [--thread ID] " \
        "[--mode auto|guided] [--status finished|failed]"
@@ -38,7 +56,7 @@ def usage!
 end
 
 verb = ARGV.shift
-usage! unless %w[status who fix release reclaim delegate claim release-claim].include?(verb)
+usage! unless VERBS.include?(verb)
 
 opts = {}
 until ARGV.empty?
@@ -64,15 +82,29 @@ session = opts[:session]
 session = ENV["CLAUDE_CODE_SESSION_ID"] if session.nil? || session.strip.empty?
 harness = opts[:harness]
 hint_harness = harness || "claude"
+# The plastic home every hook uses (PLASTIC_HOME, else ~/.plastic); Arm takes the
+# OS home above it, the same convention Worktree resolves projects.yml from.
+plastic_home_env = ENV["PLASTIC_HOME"].to_s.strip
+home = plastic_home_env.empty? ? Dir.home : File.dirname(File.expand_path(plastic_home_env))
+
+# The stores this session's pointer is resolved against: the project store of
+# the working directory (projects.yml, longest path match), then the global one.
+def candidate_stores(home, cwd)
+  plastic_home = File.join(home, ".plastic")
+  stores = []
+  slug = SessionLedger.project_slug(cwd, plastic_home: plastic_home)
+  stores << File.join(plastic_home, "projects", slug, "store") if slug && slug != "global"
+  stores << File.join(plastic_home, "store")
+  stores
+end
 
 dir = opts[:dir]
 if dir.nil? || dir.strip.empty?
-  if verb == "who"
-    warn "plastic-lock: who is strictly durable-state only; pass --intent-dir <intent dir>"
+  if %w[who arm].include?(verb)
+    warn "plastic-lock: #{verb} needs --intent-dir <intent dir>"
     exit 1
   end
-  bridge = Bridge.discover_bridge(session: session, cwd: Dir.pwd)
-  dir = Bridge.bridge_intent_dir(bridge)
+  dir = Arm.intent_dir_from_pointer(session, home: home, stores: candidate_stores(home, Dir.pwd))
 end
 if dir.nil?
   warn "plastic-lock: no intent resolved; pass --intent-dir <intent dir>"
@@ -85,7 +117,7 @@ if verb == "who"
   basename = File.basename(dir)
   intent_id, slug = basename.split("--", 2)
   display = ->(value) { value.nil? || value.to_s.strip.empty? || value == "unknown" ? "Unknown" : value.to_s }
-  harness = ->(value) {
+  harness_name = ->(value) {
     shown = display.call(value)
     shown == "Unknown" ? shown : shown.sub(/\A./) { |char| char.upcase }
   }
@@ -99,12 +131,12 @@ if verb == "who"
 
   puts "#{intent_id} · #{slug || basename}"
   puts "State: #{view['state']}"
-  puts "Controller: #{display.call(owner['agent'])} via #{harness.call(owner['harness'])}"
+  puts "Controller: #{display.call(owner['agent'])} via #{harness_name.call(owner['harness'])}"
   puts "Session: #{display.call(view['owner_session'])}"
   puts "Heartbeat: #{view['heartbeat_at'] || 'none'}"
   puts "Claims: #{claim_text.empty? ? 'none' : claim_text.join(', ')}"
   if delegate
-    puts "Delegate: #{display.call(delegate['agent'])} via #{harness.call(delegate['harness'])}, #{display.call(delegate['status'])}"
+    puts "Delegate: #{display.call(delegate['agent'])} via #{harness_name.call(delegate['harness'])}, #{display.call(delegate['status'])}"
   else
     puts "Delegate: none"
   end
@@ -113,31 +145,59 @@ end
 
 intent_id = Bridge.intent_id_from_dir(dir)
 store = File.dirname(dir)
-name = File.basename(dir)
-key = Bridge.resolve_session(session, intent_id: intent_id, store: store)
+key = Arm.resolve_session(session, store: store, intent_id: intent_id)
+
+def doctor_hint(verb_text, harness)
+  "run #{Lock.skill_ref('plastic-doctor', harness: harness)} #{verb_text}"
+end
 
 case verb
+when "arm"
+  result = Arm.arm(intent_dir: dir, session: key, mode: opts[:mode] || "auto", home: home,
+                   harness: harness, agent: opts[:agent], model: opts[:model], thread: opts[:thread])
+  case result[:status]
+  when :acquired, :owned
+    wt = result[:worktree] || {}
+    puts JSON.pretty_generate(
+      "intent_dir" => dir, "session" => result[:session], "status" => result[:status].to_s,
+      "run_mode" => result[:lock] && result[:lock]["run_mode"],
+      "worktree" => wt, "pointer" => result[:pointer]
+    )
+  when :held
+    warn "plastic-lock: delivery lock for intent #{intent_id} is held by session " \
+         "#{result[:lock] && result[:lock]['owner_session']}; #{doctor_hint('check the lock status', hint_harness)}"
+    exit 1
+  when :stale
+    warn "plastic-lock: delivery lock for intent #{intent_id} is stale (owner " \
+         "#{result[:lock] && result[:lock]['owner_session']}); #{doctor_hint('reclaim the lock to take it over with an audit', hint_harness)}"
+    exit 1
+  when :excluded
+    warn "plastic-lock: a #{result[:lock] && result[:lock]['type']} lock is active on intent " \
+         "#{intent_id}; #{doctor_hint('check the lock status', hint_harness)}"
+    exit 1
+  when :corrupt
+    warn "plastic-lock: delivery.lock for intent #{intent_id} is unreadable; #{doctor_hint('fix the lock', hint_harness)}"
+    exit 1
+  end
 when "status"
   lock = Lock.read(dir)
-  bridge = Bridge.read(key, intent_id: intent_id)
+  pointer = Arm.read_pointer(key, home: home)
   report = {
     "intent_dir" => dir,
     "session" => key,
     "lock" => lock,
     "lock_fresh" => Lock.fresh?(dir),
     "lock_corrupt" => Lock.corrupt?(dir),
-    "bridge_present" => !bridge.nil?,
-    "agreement" => (lock && bridge) ?
-      (lock["owner_session"] == bridge.dig("lock", "owner_session")) : nil,
+    "worktree" => Arm.worktree_block(intent_dir: dir, home: home),
+    "pointer" => pointer,
+    "pointer_names_intent" => pointer == intent_id,
     "claims" => Claim.claims_status(dir),
   }
   puts JSON.pretty_generate(report)
 when "fix"
-  report = Bridge.repair_lock(key, intent_id: intent_id, intent_dir: dir,
-                              store: store, name: name, harness: harness,
-                              agent: opts[:agent], model: opts[:model], thread: opts[:thread],
-                              run_mode: opts[:mode],
-                              hint_harness: hint_harness)
+  report = Arm.repair(intent_dir: dir, session: key, home: home, harness: harness,
+                      agent: opts[:agent], model: opts[:model], thread: opts[:thread],
+                      run_mode: opts[:mode], hint_harness: hint_harness)
   puts JSON.pretty_generate(report)
   unless report["status"] == "repaired"
     warn "plastic-lock: #{report['status']} by #{report['owner']}" \
@@ -150,12 +210,7 @@ when "release"
     warn "plastic-lock: not the owner; run plastic-lock status"
     exit 1
   end
-  data = Bridge.read(key, intent_id: intent_id)
-  if data
-    data["lock"] = { "owner_session" => nil, "acquired_at" => nil,
-                     "host" => nil, "type" => nil, "delegates" => [] }
-    Bridge.write(key, data)
-  end
+  Arm.reset_pointer(key, intent_id, home: home)
   puts "released (#{result})"
 when "reclaim"
   status, lock_data = Lock.takeover(dir, session: key, harness: harness,
@@ -166,11 +221,9 @@ when "reclaim"
          "back off (no silent reclaim)"
     exit 1
   end
-  report = Bridge.repair_lock(key, intent_id: intent_id, intent_dir: dir,
-                              store: store, name: name, harness: harness,
-                              agent: opts[:agent], model: opts[:model], thread: opts[:thread],
-                              run_mode: opts[:mode],
-                              hint_harness: hint_harness)
+  report = Arm.repair(intent_dir: dir, session: key, home: home, harness: harness,
+                      agent: opts[:agent], model: opts[:model], thread: opts[:thread],
+                      run_mode: opts[:mode], hint_harness: hint_harness)
   puts JSON.pretty_generate(report)
 when "delegate"
   usage! if opts[:delegate].nil?

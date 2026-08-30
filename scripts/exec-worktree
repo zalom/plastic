@@ -21,9 +21,9 @@
 #      (--session, else CLAUDE_CODE_SESSION_ID, else the existing delivery.lock's own
 #      recorded owner_session when non-blank, else nil; the lock-owner fallback IS
 #      used here, matching end-intent's teardown resolution order).
-#      Load the bridge (Bridge.read); a nil bridge means there is nothing to finish (exit
-#      0, loud: the worktree this intent provisioned, if any, was NOT removed). No
-#      worktree.code on the bridge means nothing was provisioned (exit 0).
+#      Derive the worktree block from projects.yml and the intent id (Arm.worktree_block;
+#      the /tmp bridge this once read was removed in 2.0, intent 307). No code worktree on
+#      disk means nothing was provisioned (exit 0).
 #   1. The dirty-worktree guard (delivered only): git status --porcelain on the code
 #      worktree. Not clean, or the check itself fails, fails CLOSED (exit 3), mirroring
 #      end-intent's dirty-worktree handling. abandoned skips this guard entirely: the

@@ -39,15 +39,13 @@
 #      already correctly in the terminal section is a quiet, idempotent success.
 #   3. Append the savepoint `Done` bookend (Savepoint.append_terminal_savepoint).
 #   4. Commit the store repo, unless --no-commit.
-#   5. Disarm (intent 188, D2/D16): check the code worktree (resolved from the
-#      bridge) for uncommitted changes first (exit 5 if dirty, unless
-#      --discard-worktree-changes); call the disarm seam (default
-#      Bridge.disarm_auto); verify the durable lock file is actually gone
-#      afterward. The /tmp bridge is only a cache (AGENTS.md): when no bridge
-#      resolves at all (a wiped /tmp, a resumed job under a new session id),
-#      the durable lock file is released directly instead, LOUDLY (a warning
-#      that a worktree may be orphaned), rather than stranding a committed,
-#      terminal intent still holding its lock.
+#   5. Disarm (intent 188, D2/D16; intent 307): check the code worktree (derived
+#      from projects.yml and the intent id, Arm.worktree_block) for uncommitted
+#      changes first (exit 5 if dirty, unless --discard-worktree-changes); call the
+#      disarm seam (default Arm.disarm: worktree released, lock cleared, the session
+#      pointer back on the day ledger); verify the durable lock file is actually gone
+#      afterward, and release it directly when a foreign-keyed disarm left it (the
+#      /tmp bridge this step once read was removed in 2.0, intent 307).
 #
 # Exit codes:
 #   0  ok - the intent is closed and no delivery.lock remains.
@@ -73,6 +71,7 @@ require "date"
 require "open3"
 require "pathname"
 require_relative "lib/bridge"
+require_relative "lib/arm"
 require_relative "lib/savepoint"
 require_relative "lib/lock"
 require_relative "lib/intent_validator"
@@ -460,21 +459,21 @@ end
 
 # --- step 5: disarm (D2/D16, intent 188) ------------------------------------
 #
-# Injected seams (D2): bridge_reader defaults to the real Bridge.read (so the
-# dirty-worktree check can resolve the code worktree path without disarming
-# first), disarm defaults to the real Bridge.disarm_auto. Tests may inject
+# Injected seams (D2, re-pointed by intent 307): worktree_reader defaults to
+# Arm.worktree_block (so the dirty-worktree check can resolve the code worktree
+# path without disarming first), disarm defaults to Arm.disarm. Tests may inject
 # fakes for in-process unit coverage of this function; the subprocess-driven
 # end-to-end tests exercise the real defaults against a hermetic tmp home.
 #
 # Returns :ok, :dirty (exit 5), or :lock_remains (exit 3). A blank session
 # (D3's "no lock at all" fallback case) is a clean no-op: :ok, nothing touched.
 def run_disarm(intent_dir, id, session, discard_worktree_changes:,
-               bridge_reader: ->(sess, iid) { Bridge.read(sess, intent_id: iid) },
-               disarm: ->(sess, iid) { Bridge.disarm_auto(sess, intent_id: iid) })
+               worktree_reader: ->(dir) { Arm.worktree_block(intent_dir: dir) },
+               disarm: ->(sess, dir) { Arm.disarm(intent_dir: dir, session: sess) })
   return :ok if Bridge.blank?(session)
 
-  data = bridge_reader.call(session, id)
-  worktree_code = data.is_a?(Hash) ? data.dig("worktree", "code") : nil
+  block = worktree_reader.call(intent_dir)
+  worktree_code = block.is_a?(Hash) ? block["code"] : nil
 
   if worktree_code && Dir.exist?(worktree_code)
     begin
@@ -506,16 +505,15 @@ def run_disarm(intent_dir, id, session, discard_worktree_changes:,
     end
   end
 
-  disarm.call(session, id)
+  disarm.call(session, intent_dir)
 
-  # The /tmp bridge is only a cache; the durable lock file is the truth
-  # (AGENTS.md). `disarm_auto` no-ops entirely when no bridge resolves (a wiped
-  # /tmp, a resumed job under a new session id), which would otherwise strand a
-  # committed, terminal intent still holding its lock: the exact stalled
-  # completion this intent forbids. Pre-flight has already established that this
-  # session is the owner, a delegate, or the post-takeover owner, so clearing
-  # the durable lock directly IS safe, PROVIDED the lock actually present here
-  # is still ours to clear.
+  # The durable lock file is the truth (AGENTS.md). Arm.disarm releases as the
+  # lock's recorded owner, so a lock a delegate or a post-takeover owner is
+  # closing under a different key can survive it; that would strand a committed,
+  # terminal intent still holding its lock, the exact stalled completion this
+  # intent forbids. Pre-flight has already established that this session is the
+  # owner, a delegate, or the post-takeover owner, so clearing the durable lock
+  # directly IS safe, PROVIDED the lock actually present here is still ours to clear.
   #
   # TOCTOU fix (post-review hardening, intent 188): the first version of this
   # fallback read the lock's OWN recorded owner and handed it straight back to
@@ -557,8 +555,8 @@ def run_disarm(intent_dir, id, session, discard_worktree_changes:,
   end
 
   unless File.exist?(Lock.path(intent_dir))
-    if data.nil?
-      warn "end-intent: no bridge resolved for session #{session.inspect} (intent #{id}); " \
+    if block.nil?
+      warn "end-intent: no worktree block could be derived for intent #{id}; " \
            "the delivery lock was cleared directly from disk, but any worktree this intent " \
            "provisioned was NOT removed. Run /plastic-doctor to check for an orphaned worktree."
     end

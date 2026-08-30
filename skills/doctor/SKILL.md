@@ -255,7 +255,7 @@ the former locking skill here):
 | Verb | What it does | When |
 |---|---|---|
 | `who` | Owner, heartbeat, claims, delegates, from durable files only | Safe inspection; needs `--intent-dir` |
-| `status` | Lock file, pointer cache, freshness, agreement | Always safe; run first |
+| `status` | Lock file, freshness, the derived worktree, whether this session's pointer names the intent, claims | Always safe; run first |
 | `fix` | Idempotent repair from disk truth for this session; never touches a fresh foreign lock | Interrupted work, corrupt state, `/tmp` wiped |
 | `release` | The owner clears the lock | Ending or abandoning an auto delivery |
 | `reclaim` | Explicit takeover of a stale lock; appends an audit line to `savepoint.md` | The owner is gone and the lease expired |

@@ -235,6 +235,8 @@ Each roadmap carries the same kind of ledger for the same reason (intent 134): a
 
 ## the session bridge and the record hook
 
+Removed in 2.0 (intent 307): the `/tmp` bridge JSON, `Bridge.arm_auto`, `arm_guided`, `disarm_auto`, `repair_lock`, and `discover_bridge`. The per-session pointer (`~/.plastic/store/.tmp/<session>/current`) plus `delivery.lock` in the intent directory is the whole bridge; `scripts/lib/arm.rb` behind `plastic-lock arm` is how a team takes and gives back an intent. The paragraphs below describe the 1.x cache as it was.
+
 Removed in 2.0 (intent 302): the edit-path gates (edit, bash, code, lock, links), the create gate, and the stage-transition gates. No hook blocks a write any more; the record hook is the only write-path hook, and doctor checks (intent 308) replace enforcement.
 
 The record hook (`PostToolUse`, on Write, Edit, NotebookEdit, and the six Serena edit tools) derives the intent directory directly from the written file path (it walks up to the first ancestor that looks like `.../store/ID--slug`) and appends the savepoint line there before any bridge lookup, so a missing bridge, an unset session, or a headless background run never skips the ledger. For a write inside a locked intent directory it also refreshes the delivery-lock lease for the owning session (`Lock.heartbeat`, which refuses any session that does not hold the lock). For a project-file write it promotes the session's pending day-ledger line and calls the session-commit seam (see the session branch model above).

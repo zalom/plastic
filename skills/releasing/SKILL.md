@@ -250,16 +250,15 @@ This is the release branch of `plastic-intent-ending`'s Step 5 disarm (`merge: t
 separate concern: a release is the merge-then-remove path for the intent's worktree (intent
 73c3), so the intent's code branch is merged back into the default branch BEFORE the worktree
 is removed. Drive it through `Worktree.finish` with `merge: true`, which merges the code
-branch, then removes the worktree, prunes the repo, and clears the worktree block from the
-bridge:
+branch, then removes the worktree, and prunes the repo:
 
 ```bash
-ruby -r ~/.plastic/scripts/lib/worktree -r ~/.plastic/scripts/lib/bridge -e \
-  'b = Bridge.discover_bridge(session: ENV["CLAUDE_CODE_SESSION_ID"], cwd: Dir.pwd); Worktree.finish(b, merge: true) if b'
+ruby -r ~/.plastic/scripts/lib/worktree -r ~/.plastic/scripts/lib/arm -e \
+  'Worktree.finish(Arm.bridge_hash(intent_dir: "<STORE>/<dir>"), merge: true)'
 ```
 
-(Uses `discover_bridge`, not a bare session-keyed `Bridge.read`, because a session can own more
-than one live bridge now (intent 131) and `discover_bridge` resolves the right one for this cwd.)
+(The worktree block is derived from `projects.yml` and the intent id, so the one-liner needs
+only the intent directory; the `/tmp` bridge it once discovered was removed in 2.0, intent 307.)
 
 Honor the worktree-cleanup rule: never leave an orphaned worktree, and run `git worktree
 prune` in the affected repo if you hit a stale reference. For why this is the one place the

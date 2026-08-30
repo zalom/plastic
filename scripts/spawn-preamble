@@ -56,7 +56,7 @@ REPORT_CONTRACT =
   "insights field carrying 0..N durable nuggets (what I discovered worth keeping, " \
   "the most interesting residue of this turn; none if there were none); plus a " \
   "role-specific payload that fulfils your place in the What, Why, How, Exec cycle " \
-  "(for example the planner explains the plan back to the orchestrator). Populate " \
+  "(for example the executor reports what was built and the test result). Populate " \
   "the insights field even when you cannot write the intent file yourself: a " \
   "background or dispatched agent carries each nugget home in the report and the " \
   "orchestrator persists it via scripts/insight-append, so an insight never " \

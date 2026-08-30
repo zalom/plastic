@@ -351,7 +351,7 @@ has nothing to suppress *yet*). A rule left with zero ids after pruning is dropp
 rather than rendered as a bare `rule_name` line, which the loader would reject. Like the add
 direction, `--prune` writes no `revisions.md` entries.
 
-Session resolution feeds the record hook and the lock (intent 52; the gate hooks it once fed were removed in 2.0, intent 302). Claude Code does
+Removed in 2.0 (intent 307): the `/tmp` bridge JSON and every `Bridge` method that read or wrote it; the session pointer plus `delivery.lock` replaced it, through `scripts/lib/arm.rb`. The bridge prose in this document describes the 1.x cache as it was. Session resolution feeds the record hook and the lock (intent 52; the gate hooks it once fed were removed in 2.0, intent 302). Claude Code does
 not export a session id env var into the hook environment; it passes `session_id` on the hook
 stdin JSON. So the bash wrappers parse `session_id` out of stdin (in Ruby, never in bash) and
 hand it to the hook scripts as a second argument. `Bridge.resolve_session` then takes the
