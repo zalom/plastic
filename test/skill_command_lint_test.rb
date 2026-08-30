@@ -95,19 +95,27 @@ class SkillCommandLintTest < Minitest::Test
 
     define_method("test_#{name}_skill_explicit_override_sentence_intact") do
       content = normalize_ws(File.read(skill_path(name)))
-      assert_includes content,
-        "The user can always override with `--alpha` / `--beta` / `--latest`.",
-        "#{name}/SKILL.md's explicit-override sentence changed"
+      if name == "install"
+        # Intent 310: install's channel flags never selected a package and are gone; the
+        # override is the package pin. update keeps its flags (they do switch channels).
+        assert_includes content, "pin the package instead of passing a flag",
+          "install/SKILL.md must route a channel change through the package pin"
+        refute_includes content, "The user can always override with `--alpha`"
+      else
+        assert_includes content,
+          "The user can always override with `--alpha` / `--beta` / `--latest`.",
+          "#{name}/SKILL.md's explicit-override sentence changed"
+      end
     end
   end
 
-  def test_install_skill_flags_table_marks_latest_as_first_install_default
+  # Intent 310: the flags table became a package table; @latest stays the first-install default.
+  def test_install_skill_channels_table_marks_latest_as_first_install_default
     content = File.read(skill_path("install"))
-    assert_includes content,
-      "| `--latest` | Install from the stable channel (default on a first install) |"
-    assert_includes content, "| `--beta` | Install from the beta channel |"
-    refute_includes content,
-      "| `--beta` | Install from the beta channel (default on a first install) |"
+    assert_includes content, "| `@zalom/plastic@latest` | stable (default on a first install) |"
+    assert_includes content, "| `@zalom/plastic@beta` | beta |"
+    assert_includes content, "| `@zalom/plastic@alpha` | alpha;"
+    refute_match(/\| `--(alpha|beta|latest)` \|/, content, "no channel-flag row may survive")
   end
 
   # --- doctor skill (intent 38) ---

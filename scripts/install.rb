@@ -3,7 +3,11 @@
 # frozen_string_literal: true
 
 # Plastic — `install` verb. Runs via `npx @zalom/plastic install` (bin/plastic.js) or directly.
-# Usage: ruby scripts/install.rb [--claude|--codex|--hermes|--all] [--alpha|--beta|--latest] [--reinstall] [--force] [--help]
+# Usage: ruby scripts/install.rb [--claude|--codex|--hermes|--all] [--reinstall] [--force] [--help]
+#
+# The package version selects the channel: `npx @zalom/plastic@alpha install --claude` (or
+# a pinned `@2.0.0-alpha.1`). The channel flags this verb once listed never selected a
+# package and were removed in 2.0 (intent 310).
 #
 # One-shot by design:
 #   - no install present  -> fresh install + bootstrap store
@@ -223,10 +227,8 @@ class Install < InstallerCore
         --hermes      Install for Hermes
         --all         Install for all supported agents
 
-      Channel options:
-        --latest      Stable channel (default)
-        --beta        Beta channel
-        --alpha       Alpha channel
+      Channel: pin the package, e.g. `npx @zalom/plastic@alpha install --claude`
+        (@latest is stable and the default; @beta and @alpha are the other channels)
 
       Other options:
         --reinstall          Re-sync core files for the installed version (repair). Store untouched.
