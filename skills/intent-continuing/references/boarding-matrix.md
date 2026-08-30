@@ -1,8 +1,8 @@
-# Boarding matrix: which station a resume lands at
+# Boarding matrix: which stage a resume lands at
 
-The station is derived from `savepoint.md`'s last line plus the real artifacts on disk.
+The stage is derived from `savepoint.md`'s last line plus the real artifacts on disk.
 Classify from the last line alone, then verify only that line's artifact is real
-(sentinel-aware). On drift, rebuild the ledger from disk and note it.
+(sentinel-aware). When the ledger is stale, rebuild it from disk and note it.
 
 | savepoint last line | latest delivered | lands at | continue with |
 |---|---|---|---|
@@ -10,11 +10,11 @@ Classify from the last line alone, then verify only that line's artifact is real
 | `Why  started` (spec still sentinel) | What | **Why** | continue the conversation; rulings land as insights |
 | `Why  spec.md created` | Why | **How** | the action files, `plan.md`, `checklist.md` |
 | `How  started` / `How  plan.md created` | (How in progress) | **How** | finish `plan.md` and `checklist.md` |
-| `How  checklist.md created` / `Exec  started` | How | **Exec** | do the work, tick the checklist |
+| `How  checklist.md created` / `Exec  started` | How | **Exec** | do the work, check off the checklist |
 | `Exec  outcome.md created` | Exec | **ready to complete** | the ending procedure (`plastic-intent-ending`) |
 | `Done  delivered` / `Done  abandoned` | terminal | **report only** | immutable; ask what is next |
 
-## Per-station behaviour (what "continue" means)
+## Per-stage behaviour (what "continue" means)
 
 - **Why**: continue the conversation, or run the work directly when the request is already
   clear; every ruling is recorded as it lands.

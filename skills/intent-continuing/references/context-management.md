@@ -19,7 +19,7 @@ step looks stale):
    (see `SKILL.md`'s `## Conditional Ledger-Resume` for the full state table).
 2. Confirm the artifact that line implies (`plan.md`, `checklist.md`, `outcome.md`, ...) is
    present and non-empty on disk.
-3. If the two disagree, the ledger has drifted: rebuild it rather than hand-editing:
+3. If the two disagree, the ledger is stale: rebuild it rather than hand-editing:
    `ruby -r ~/.plastic/scripts/lib/savepoint -e 'Savepoint.rebuild_savepoint("<intent_dir>")'`
 4. Re-read the rebuilt last line and re-derive the next step from `checklist.md`'s first
    unchecked item.

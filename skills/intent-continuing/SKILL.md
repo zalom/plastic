@@ -5,7 +5,7 @@ description: >-
   where we left off", "where was I", "what should I work on", names a specific intent to
   resume (by id or description, or `--intent {id}`), or names a roadmap or delivery batch to
   resume (`--roadmap {slug}`, "where is the roadmap", "where did that batch land"). Presents
-  state and resumes at the last delivered station; it never asks auto or guided, never boots
+  state and resumes at the last delivered stage; it never asks auto or guided, never boots
   (the SessionStart hook owns boot), and never drives work autonomously (plastic-auto does).
   Absorbs the former continuing, project-continuing, and roadmap-continuing skills and the
   read half of the former intent-starting skill (intent 304).
@@ -79,19 +79,20 @@ QMD-first when the intent is named by description: run
 authoritative intent file. The command is a no-op when QMD is absent; fall back to
 `INDEX.md`.
 
-If the intent is terminal (`## Completed` or `## Abandoned` in `INDEX.md`): report only.
-Summarize its `outcome.md` and ask what is next; never reopen it.
+If the intent is terminal (`## Completed` or `## Abandoned` in `INDEX.md`): print the
+intent screen (Status shows the terminal section, Next is empty), summarize its
+`outcome.md`, and ask what is next; never reopen it.
 
 For a live intent's directory:
 
 1. **Read `savepoint.md` first.** It is a deterministic, append-only ledger, one line per
-   event, newest at the bottom: `{utc-iso8601}  {Stage}  {milestone}`. Classify the station
+   event, newest at the bottom: `{utc-iso8601}  {Stage}  {milestone}`. Classify the stage
    from the last line alone (the table in `references/boarding-matrix.md`, read when
    classifying), then verify only that line's artifact is real (sentinel-aware:
    `Savepoint.stage_file_present?`). Do not re-probe every lifecycle file.
-2. **Drift.** When the last line disagrees with the files on disk, rebuild the ledger from
+2. **Stale ledger.** When the last line disagrees with the files on disk, rebuild the ledger from
    disk and note the correction. A rebuilt ledger is the file-landing skeleton, which still
-   pins the station:
+   pins the stage:
    ```bash
    ruby -r ~/.plastic/scripts/lib/savepoint -e 'Savepoint.rebuild_savepoint("<intent_dir>")'
    ```
@@ -99,18 +100,16 @@ For a live intent's directory:
    else the newest prior day) is the prior session's own account of where things stand; read
    it after the ledger, never instead of it.
 4. **Derive the next step:** the first unchecked item in `checklist.md` when it exists, else
-   the next thing the station needs (see the matrix). The newest `## Insights` entry supplies
+   the next thing the stage needs (see the matrix). The newest `## Insights` entry supplies
    the human-readable context; an entry marked `(autonomous)` means an auto team was
    delivering it, so say so and offer to hand back to `plastic-auto`.
-5. **Announce, then continue at that station:**
-   ```
-   Resuming intent [ID] - [name]
-   Store: [global | project:<slug>]
-   Station: [from the ledger's last line]
-   Next step: [first unchecked checklist item | what the station needs]
-   Context: [newest ## Insights entry | hand-off summary]
-   Drift: [none | ledger rebuilt from disk]
-   ```
+5. **Print the intent screen, then continue at that stage.** Run
+   `ruby ~/.plastic/scripts/intent-screen <intent_dir>` and print its output as it is: the
+   title, the field table, and the Steps table come from the record, never by eye. Under it
+   write **What this means** as two to four bullets in plain words (what the intent is for,
+   what has landed, what is left, any defect named by step), then close with
+   **needs input:** naming the first open step. The screen's shape is
+   `templates/intent-screen.md`; the script fills it, the session never edits the numbers.
    Then continue the work in the session's current mode. In auto mode the running team
    already holds the delivery lock; if a lock is held by a session that is gone, the
    `plastic-doctor` skill's lock section repairs or reclaims it.
@@ -141,6 +140,6 @@ For a live intent's directory:
 | Trigger | Read |
 |---|---|
 | Filling the board on the project route | `references/board-fill.md` |
-| Classifying the station from the ledger's last line | `references/boarding-matrix.md` |
+| Classifying the stage from the ledger's last line | `references/boarding-matrix.md` |
 | Explaining why one roadmap ranked above another | `references/liveness-ranking.md` |
 | Saving or restoring context across a long session, or debugging a resume | `references/context-management.md` |
