@@ -161,6 +161,69 @@ class CaptureHookTest < Minitest::Test
     assert_includes ctx, "Invoke the plastic-auto skill"
   end
 
+# --- the prompt key (intent 315a) -------------------------------------------------
+# Claude Code's UserPromptSubmit payload carries the text under "prompt";
+# "user_prompt" is the older key the tests above and the Codex relay use.
+
+def run_payload(payload)
+  env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
+  Open3.capture2(env, "ruby", SCRIPT, stdin_data: JSON.generate(payload))
+end
+
+def test_prompt_key_appends_pending_line
+  out, status = run_payload("session_id" => "sess-pk", "cwd" => @home,
+                            "prompt" => "add a check to the doctor for the prompt key")
+  assert_equal 0, status.exitstatus, out
+  lines = parsed_checklist_lines.select { |l| l[:session] == sid_for("sess-pk") }
+  assert_equal 1, lines.length, "a prompt-keyed payload must land one pending line"
+  assert_equal :pending, lines.first[:state]
+end
+
+def test_user_prompt_key_still_appends_pending_line
+  out, status = run_payload("session_id" => "sess-upk", "cwd" => @home,
+                            "user_prompt" => "add a check to the doctor for the old key")
+  assert_equal 0, status.exitstatus, out
+  lines = parsed_checklist_lines.select { |l| l[:session] == sid_for("sess-upk") }
+  assert_equal 1, lines.length, "the user_prompt fallback must keep landing a pending line"
+end
+
+def test_prompt_key_wins_over_user_prompt
+  out, status = run_payload("session_id" => "sess-both", "cwd" => @home,
+                            "prompt" => "harness text wins the pending line",
+                            "user_prompt" => "relay text must not be recorded")
+  assert_equal 0, status.exitstatus, out
+  lines = parsed_checklist_lines.select { |l| l[:session] == sid_for("sess-both") }
+  assert_equal 1, lines.length
+  assert_includes lines.first[:summary], "harness text wins"
+  refute_includes lines.first[:summary], "relay text"
+end
+
+def test_empty_prompt_key_falls_back_to_user_prompt
+  out, status = run_payload("session_id" => "sess-empty", "cwd" => @home,
+                            "prompt" => "",
+                            "user_prompt" => "fallback text lands when prompt is empty")
+  assert_equal 0, status.exitstatus, out
+  lines = parsed_checklist_lines.select { |l| l[:session] == sid_for("sess-empty") }
+  assert_equal 1, lines.length
+  assert_includes lines.first[:summary], "fallback text lands"
+end
+
+def test_continue_under_prompt_key_yields_cockpit_context
+  out, status = run_payload("session_id" => "sess-pk-continue", "cwd" => @home, "prompt" => "continue")
+  assert_equal 0, status.exitstatus, out
+  parsed = JSON.parse(out)
+  assert_includes parsed.dig("hookSpecificOutput", "additionalContext").to_s,
+                  "plastic-intent-continuing skill workflow"
+end
+
+def test_auto_under_prompt_key_yields_steer_text
+  out, status = run_payload("session_id" => "sess-pk-auto", "cwd" => @home,
+                            "prompt" => "take it from here please")
+  assert_equal 0, status.exitstatus, out
+  ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext").to_s
+  assert_includes ctx, "Invoke the plastic-auto skill"
+end
+
   def test_automation_substring_does_not_trigger
     out, status = run_hook("what is the automation strategy here anyway", session: "sess-noauto")
     assert_equal 0, status.exitstatus, out
