@@ -76,8 +76,25 @@ class InstallerCore
     @agents = agents
   end
 
+  # Reads the package version from `package.json` when present (the source
+  # tree, and any dev checkout), falling back to the bare `VERSION` file the
+  # installer copies to `~/.plastic` (row B, spec 315b): an installed system
+  # carries VERSION but never package.json, so `rollback.rb` and `update.rb`
+  # constructing an InstallerCore with `package_root: ~/.plastic` crashed with
+  # a raw Errno::ENOENT before this fallback existed. Raises a named error,
+  # not a bare ENOENT, when neither file exists, so the caller is not
+  # misdirected toward the wrong missing file.
   def read_package_version(root)
-    File.read(File.join(root, "package.json")).then { |s| JSON.parse(s)["version"] }
+    package_json = File.join(root, "package.json")
+    version_file = File.join(root, "VERSION")
+
+    if File.exist?(package_json)
+      JSON.parse(File.read(package_json))["version"]
+    elsif File.exist?(version_file)
+      File.read(version_file).strip
+    else
+      raise "cannot determine the package version: neither #{package_json} nor #{version_file} exists"
+    end
   end
 
   # --- Channel derivation (the channel is encoded in the version string) ---

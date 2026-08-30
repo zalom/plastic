@@ -135,13 +135,21 @@ unless skip_day_ledger
   end
 end
 
-# --- (d) heartbeat, always -------------------------------------------------
+# --- (d) heartbeat, guarded on the pointer (spec D9) -----------------------
+# Session start writes the `current` pointer; with no pointer at all, session
+# start never ran for this session (a `-p` print session, a resumed
+# background job, an unregistered SessionStart hook), so neither the
+# per-session dir nor its heartbeat is created here -- guarding only the
+# write would still leave an empty directory that heartbeat_age's mtime
+# fallback reports as an orphan just the same.
 begin
   store ||= File.join(plastic_home, "store")
   sid ||= SessionLedger.short_session_id(nil, session_id)
-  SessionLedger.ensure_tmp_root(store)
-  FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store, sid))
-  File.write(SessionLedger.heartbeat_path(store, sid), "#{Time.now.utc.iso8601}\n")
+  if File.exist?(SessionLedger.pointer_path(store, sid))
+    SessionLedger.ensure_tmp_root(store)
+    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store, sid))
+    File.write(SessionLedger.heartbeat_path(store, sid), "#{Time.now.utc.iso8601}\n")
+  end
 rescue StandardError
   nil
 end

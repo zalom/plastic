@@ -207,11 +207,26 @@ module SessionGit
 
   # --- commit message ------------------------------------------------------------
 
-  # The first line of `summary`, truncated to MAX_SUBJECT_LENGTH characters,
-  # with no trailer (spec D5).
+  # The first line of `summary`, cut at the last word boundary at or before
+  # MAX_SUBJECT_LENGTH characters, falling back to the hard slice when no
+  # boundary exists at or before the limit (spec D6, amends spec 300 D5's
+  # unconditional `first_line[0, MAX_SUBJECT_LENGTH]`, which cut mid-word).
+  # A subject at or under the limit is returned unchanged.
   def subject_for(summary)
     first_line = summary.to_s.split(/\r?\n/, 2).first.to_s.strip
-    first_line[0, MAX_SUBJECT_LENGTH]
+    return first_line if first_line.length <= MAX_SUBJECT_LENGTH
+
+    cut = first_line[0, MAX_SUBJECT_LENGTH]
+    boundary = cut.rindex(" ")
+    boundary ? cut[0, boundary] : cut
+  end
+
+  # The commit body for `summary`/`subject` (spec D6): the full summary when
+  # `subject` is a cut-down copy of it, nil when the subject already carries
+  # the summary whole (no redundant body on a short, single-line summary).
+  def body_for(summary, subject)
+    raw = summary.to_s
+    raw == subject ? nil : raw
   end
 
   # --- git primitives (all use -C, never cwd) -------------------------------------
@@ -273,9 +288,11 @@ module SessionGit
     parts.each_cons(2).any? { |a, b| a == ".claude" && b == "worktrees" }
   end
 
-  def stage_and_commit(dir, subject, runner:)
+  def stage_and_commit(dir, subject, runner:, body: nil)
     runner.run("-C", dir, "add", "-A")
-    runner.run("-C", dir, "commit", "-m", subject)
+    args = ["-C", dir, "commit", "-m", subject]
+    args += ["-m", body] if body
+    runner.run(*args)
   end
 
   def short_sha(dir, runner:)
@@ -310,14 +327,16 @@ module SessionGit
 
     flow, flow_notes = load_flow(cwd: cwd, repo: repo, plastic_home: plastic_home, runner: runner)
     subject = subject_for(summary)
+    body = body_for(summary, subject)
 
     result =
       if flow["mode"] == "pull_request"
-        commit_pull_request(repo: repo, subject: subject, day: day, session: session,
+        commit_pull_request(repo: repo, subject: subject, body: body, day: day, session: session,
                              store: effective_store, flow: flow, branch_now: branch_now,
                              runner: runner, gh_runner: gh_runner)
       else
-        commit_direct(repo: repo, subject: subject, day: day, flow: flow, branch_now: branch_now, runner: runner)
+        commit_direct(repo: repo, subject: subject, body: body, day: day, flow: flow, branch_now: branch_now,
+                       runner: runner)
       end
 
     return result if flow_notes.empty?
@@ -331,7 +350,7 @@ module SessionGit
 
   # --- direct mode (spec D3) --------------------------------------------------------
 
-  def commit_direct(repo:, subject:, day:, flow:, branch_now:, runner:)
+  def commit_direct(repo:, subject:, day:, flow:, branch_now:, runner:, body: nil)
     return note("nothing to commit") unless dirty?(repo, runner: runner)
     return note("summary is empty after truncation: no commit") if blank?(subject)
 
@@ -351,10 +370,10 @@ module SessionGit
     end
 
     if branch_now == base || branch_now == session_branch
-      commit_on_session_branch(repo: repo, subject: subject, base: base,
+      commit_on_session_branch(repo: repo, subject: subject, base: base, body: body,
                                 session_branch: session_branch, branch_now: branch_now, runner: runner)
     else
-      commit_on_other_branch(repo: repo, subject: subject, branch_now: branch_now, runner: runner)
+      commit_on_other_branch(repo: repo, subject: subject, body: body, branch_now: branch_now, runner: runner)
     end
   end
 
@@ -367,7 +386,7 @@ module SessionGit
   # session branch. `current_branch` is re-read after the switch and used
   # for the commit message instead of trusting the branch this method
   # intended to reach.
-  def commit_on_session_branch(repo:, subject:, base:, session_branch:, branch_now:, runner:)
+  def commit_on_session_branch(repo:, subject:, base:, session_branch:, branch_now:, runner:, body: nil)
     unless branch_exists?(repo, session_branch, runner: runner)
       create = runner.run("-C", repo, "branch", session_branch, base.to_s)
       return note("could not create session branch #{session_branch}: #{diagnose(create)}") unless create.success?
@@ -383,11 +402,12 @@ module SessionGit
       return note("expected to be on #{session_branch} but the checkout is on #{actual_branch.inspect}")
     end
 
-    commit_and_push(dir: repo, push_dir: repo, subject: subject, from: actual_branch, base: base, runner: runner)
+    commit_and_push(dir: repo, push_dir: repo, subject: subject, body: body, from: actual_branch, base: base,
+                     runner: runner)
   end
 
-  def commit_on_other_branch(repo:, subject:, branch_now:, runner:)
-    res = stage_and_commit(repo, subject, runner: runner)
+  def commit_on_other_branch(repo:, subject:, branch_now:, runner:, body: nil)
+    res = stage_and_commit(repo, subject, runner: runner, body: body)
     return note("commit rejected by commit-msg hook: #{diagnose(res)}") unless res.success?
 
     sha = short_sha(repo, runner: runner)
@@ -398,8 +418,8 @@ module SessionGit
   # shared tail. A non-fast-forward push (spec D3, "base moved ahead
   # independently") stays a Note: the commit itself already landed on the
   # session branch.
-  def commit_and_push(dir:, push_dir:, subject:, from:, base:, runner:)
-    res = stage_and_commit(dir, subject, runner: runner)
+  def commit_and_push(dir:, push_dir:, subject:, from:, base:, runner:, body: nil)
+    res = stage_and_commit(dir, subject, runner: runner, body: body)
     return note("commit rejected by commit-msg hook: #{diagnose(res)}") unless res.success?
 
     sha = short_sha(dir, runner: runner)
@@ -414,7 +434,7 @@ module SessionGit
 
   # --- pull request mode (spec D4) ------------------------------------------------
 
-  def commit_pull_request(repo:, subject:, day:, session:, store:, flow:, branch_now:, runner:, gh_runner:)
+  def commit_pull_request(repo:, subject:, day:, session:, store:, flow:, branch_now:, runner:, gh_runner:, body: nil)
     return note("nothing to commit") unless dirty?(repo, runner: runner)
     return note("summary is empty after truncation: no commit") if blank?(subject)
 
@@ -439,7 +459,7 @@ module SessionGit
       return note("could not check out branch #{branch}: #{diagnose(switch)}") unless switch.success?
     end
 
-    res = stage_and_commit(repo, subject, runner: runner)
+    res = stage_and_commit(repo, subject, runner: runner, body: body)
     outcome =
       if res.success?
         pull_request_outcome(repo: repo, subject: subject, branch: branch, base: base, gh_runner: gh_runner, runner: runner)

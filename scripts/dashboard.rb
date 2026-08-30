@@ -56,13 +56,26 @@ rescue StandardError
   nil
 end
 
-# Returns the set of intent ids listed under a given INDEX.md section.
+# The link form's id: "- [id](path)...". The class excludes "[" (as well as
+# "]" and whitespace) so this can never match a wikilink line's OWN opening
+# bracket and key it as "[71" (row F, spec 315b): "- [[71]] ..." fails this
+# pattern outright (the character right after "- [" is itself "[", which the
+# class disallows), leaving it to LINK_ID_RE below.
+LINK_ID_RE = /^- \[([^\[\]\s]+)/
+
+# The wikilink form's id: "- [[id]] name (em dash) description (date; ...)",
+# the shape mihradesign's INDEX.md and others use. Bare id, no brackets.
+WIKILINK_ID_RE = /^- \[\[([^\[\]]+)\]\]/
+
+# Returns the set of intent ids listed under a given INDEX.md section, link
+# form and wikilink form alike (row F5: Active, Abandoned, Completed, and a
+# store's Future section can all mix both forms).
 def index_section_ids(index_path, header)
   return [] unless File.exist?(index_path)
   body = File.read(index_path)
   seg = body[/^#{Regexp.escape(header)}\s*\n(.*?)(?=^## |\z)/m, 1]
   return [] unless seg
-  seg.scan(/^- \[([^\]\s]+)/).flatten
+  seg.scan(LINK_ID_RE).flatten + seg.scan(WIKILINK_ID_RE).flatten
 end
 
 # Bug found at intent 202's gate review: the date used to be anchored to the END of the
@@ -77,21 +90,37 @@ end
 # (end-intent's own Bridge.index_entry_match accepts either on read). Because regex
 # alternation is leftmost-first, this only ever matches the date immediately after the
 # link. It never continues scanning into the note prose, so a second date mentioned
-# later in a note's free text cannot be mistaken for the completion date.
-COMPLETION_DATE_RE = /^- \[([^\]\s]+).*?\)\s*[\u2014-]\s*(\d{4}-\d{2}-\d{2})\b/
+# later in a note's free text cannot be mistaken for the completion date. The id class
+# excludes "[" (row F) so this can never fire on a wikilink line's own opening bracket.
+COMPLETION_DATE_RE = /^- \[([^\[\]\s]+).*?\)\s*[\u2014-]\s*(\d{4}-\d{2}-\d{2})\b/
+
+# The wikilink form's completion date: "- [[id]] name (em dash) description
+# (date; other notes)". Real shape (mihradesign's INDEX.md): the date is the
+# first thing inside the entry's trailing parenthetical. A SEPARATE regex
+# from COMPLETION_DATE_RE (row F review finding), not one four-group
+# alternation: a four-group `scan` breaks `String#scan(...).to_h`, and a bare
+# `\(` alternative on the link form would harvest a date out of note prose on
+# an entry with no canonical date of its own.
+WIKILINK_COMPLETION_DATE_RE = /^- \[\[([^\[\]]+)\]\].*?\((\d{4}-\d{2}-\d{2})\b/
 
 # Map of intent id -> completion date string, parsed from the "## Completed" section
-# (lines like "- [12 (em dash) title](link) (em dash) 2026-06-10 optional note text").
-# Deterministic, content-derived. Observability: a populated "## Completed" section that
-# yields not one single dated entry is a parser regression, not a legitimately empty
-# result, so it is surfaced with a stderr warning rather than rotting invisibly (the same
-# silent-failure class intent 202's gate review caught this file already committing).
+# (lines like "- [12 (em dash) title](link) (em dash) 2026-06-10 optional note text",
+# or the wikilink form "- [[12]] title (em dash) description (2026-06-10; notes)").
+# Deterministic, content-derived. Two regexes scanned separately and merged into one
+# hash (row F), so each form's own matching rules stay independent: the wikilink
+# alternative can never steal a date out of a link-form entry's note prose, because it
+# never even looks at a link-form line (its "- [[" anchor cannot match a line whose
+# second character is not itself "["). Observability: a populated "## Completed"
+# section that yields not one single dated entry is a parser regression, not a
+# legitimately empty result, so it is surfaced with a stderr warning rather than
+# rotting invisibly (the same silent-failure class intent 202's gate review caught this
+# file already committing).
 def completion_dates(index_path)
   return {} unless File.exist?(index_path)
   body = File.read(index_path)
   seg = body[/^## Completed\s*\n(.*?)(?=^## |\z)/m, 1] || ""
   entry_count = seg.scan(/^- \[/).size
-  dates = seg.scan(COMPLETION_DATE_RE).to_h
+  dates = seg.scan(COMPLETION_DATE_RE).to_h.merge(seg.scan(WIKILINK_COMPLETION_DATE_RE).to_h)
   if entry_count.positive? && dates.empty?
     warn "dashboard: completion_dates parsed 0/#{entry_count} dates from the " \
          "\"## Completed\" section of #{index_path}; treat this as a parser regression, " \

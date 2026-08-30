@@ -186,6 +186,109 @@ module SessionLedger
     "#{collapsed[0, 197]}..."
   end
 
+  # --- capture_worthy? (spec D2, D7; supersedes 298 D2(c)) -------------------
+
+  # A whole (stripped) prompt that is exactly one harness envelope tag: opens
+  # with "<name...>", closes with "</name>", and nothing else surrounds it.
+  # A prompt that opens with an envelope and then carries real work does NOT
+  # match (the trailing text after the closing tag breaks the \z anchor), so
+  # only a prompt that is nothing BUT the envelope is caught here.
+  ENVELOPE_RE = /\A<([A-Za-z][\w-]*)(?:\s[^>]*)?>.*<\/\1>\z/m
+  private_constant :ENVELOPE_RE
+
+  # The whole prompt, case- and whitespace-insensitively, and nothing else
+  # (rule 3, D2): a trigger word inside a longer real instruction ("continue
+  # the dashboard fix and then release") must not match this.
+  BARE_TRIGGERS = %w[continue auto].freeze
+  private_constant :BARE_TRIGGERS
+
+  # Words whose presence marks a prompt as actionable work (rule 4's escape
+  # hatch, D2's accept bias). Deliberately excludes common nouns that also
+  # read as everyday verbs in casual remarks (e.g. "release", "ship", "plan"):
+  # including them would make ordinary conversation about a past release or
+  # plan look like a work request.
+  WORK_MARKER_WORDS = %w[
+    fix add remove delete update upgrade implement write build create refactor
+    debug investigate review test deploy commit merge revert rename configure
+    install migrate document generate draft resolve help need want make change
+    setup
+  ].freeze
+  private_constant :WORK_MARKER_WORDS
+
+  WORK_MARKER_PHRASES = [
+    "can you", "could you", "would you", "let's", "let us", "set up", "look into", "figure out",
+  ].freeze
+  private_constant :WORK_MARKER_PHRASES
+
+  WORK_MARKER_RE = /\b(?:#{WORK_MARKER_WORDS.join("|")})\b/i
+  private_constant :WORK_MARKER_RE
+
+  # A first word that reads as an interrogative opener, checked case-
+  # insensitively against the prompt's first whitespace-separated token.
+  QUESTION_STARTERS = %w[
+    what why how who whom whose when where which is are am was were do does did
+    can could would should will shall
+  ].freeze
+  private_constant :QUESTION_STARTERS
+
+  # A narrow set of retrospective-remark shapes ("that release went smoother
+  # than the last one"): comparative or evaluative observations about how
+  # something already went. Deliberately narrow (D2's accept bias): a broad
+  # "any declarative sentence with no recognized verb" rule would also catch
+  # ordinary work summaries like "harness text wins the pending line", which
+  # must stay accepted.
+  REMARK_PATTERNS = [
+    /\bwent\s+\w+\s+than\b/i,
+    /\bwent\s+(?:well|badly|smoothly|great|poorly|terribly)\b/i,
+  ].freeze
+  private_constant :REMARK_PATTERNS
+
+  def whole_prompt_envelope?(stripped)
+    stripped.start_with?("<") && ENVELOPE_RE.match?(stripped)
+  end
+
+  def bare_trigger?(stripped)
+    BARE_TRIGGERS.include?(stripped.downcase)
+  end
+
+  def work_marker?(text)
+    return true if WORK_MARKER_RE.match?(text)
+
+    downcased = text.downcase
+    WORK_MARKER_PHRASES.any? { |p| downcased.include?(p) }
+  end
+
+  def interrogative?(stripped)
+    return true if stripped.end_with?("?")
+
+    first_word = stripped.split(/\s+/).first.to_s.downcase.gsub(/[^a-z]/, "")
+    QUESTION_STARTERS.include?(first_word)
+  end
+
+  def bare_remark?(stripped)
+    REMARK_PATTERNS.any? { |re| re.match?(stripped) }
+  end
+
+  # Whether `prompt` earns a pending checklist line (spec D2). Bias is
+  # ACCEPT: this rejects only on four named rules -- the 10-char floor (on
+  # its own collapsed copy), a whole-prompt harness envelope, a bare
+  # continue/auto trigger, and an interrogative or bare-remark prompt
+  # carrying no work marker -- and accepts everything else, including a
+  # work-shaped question and an envelope followed by real work. Takes the
+  # RAW prompt (not the sanitized/truncated line text) so rule 2 sees the
+  # prompt's true first character and multi-line shape.
+  def capture_worthy?(prompt)
+    raw = prompt.to_s
+    return false if sanitize_summary(raw).length < 10
+
+    stripped = raw.strip
+    return false if whole_prompt_envelope?(stripped)
+    return false if bare_trigger?(stripped)
+    return false if !work_marker?(stripped) && (interrogative?(stripped) || bare_remark?(stripped))
+
+    true
+  end
+
   # One LF-terminated checklist line, byte exact per spec D5. The state
   # marker is fixed width across all three states, which is what lets a later
   # promote or tick be a one-byte write at a known offset.
