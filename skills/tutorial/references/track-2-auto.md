@@ -51,16 +51,15 @@ mixed up in what it tells you.
 
 Checkpoint: name one thing auto will always stop and ask about, rather than decide alone.
 
-### 3. Walking the gates
+### 3. Walking the record
 
-No new command. Auto still honors every hard gate a guided session would hit: the delivery
-lock (one owner at a time), the code gate (shut until `plan.md` and `checklist.md` exist),
-the create gate (intents only come from the tool that makes them, never hand-authored), the
-links gate (a `## Links` section changes only to match the file's own frontmatter), and the
-bash gate (a shell command cannot write project code the code gate would have blocked).
+No new command. Auto keeps one delivery in one place and writes down every move: the delivery
+lock (one owner at a time, a `delivery.lock` file in the intent directory), the worktree (code
+edits land on the intent's own branch), the savepoint ledger (one line per lifecycle file the
+team writes), and the day ledger (the request that started this run moves from pending to open
+when the first project file lands). Nothing blocks the team; the record is how you follow it.
 
-Checkpoint: read one gate message from the run so far and name which of the five gates it
-came from.
+Checkpoint: open the intent's `savepoint.md` and name the stage its last line records.
 
 ### 4. Reading the per-stage reports
 
@@ -86,11 +85,11 @@ at and how that matched what was actually on disk.
 
 ## Wrap and where to go next
 
-Auto keeps the same stages and the same gates as guided; the only difference is who steers.
-Read [`pick-your-mode.md`](https://github.com/zalom/plastic/blob/main/docs/guides/pick-your-mode.md) for the honest trade-off between guided and auto, and
+Auto keeps the same stages and the same record as thinking; the only difference is who steers.
+Read [`pick-your-mode.md`](https://github.com/zalom/plastic/blob/main/docs/guides/pick-your-mode.md) for the honest trade-off between the three modes, and
 [`using-plastic-with-claude-code.md`](https://github.com/zalom/plastic/blob/main/docs/guides/using-plastic-with-claude-code.md) for how that choice feels day to day and how
-it connects to roadmap-driven delivery. For denial messages met along the way, read
-[`what-the-gates-are-telling-you.md`](https://github.com/zalom/plastic/blob/main/docs/guides/what-the-gates-are-telling-you.md).
+it connects to roadmap-driven delivery. For where the team wrote its work down, read
+[`reading-the-ledgers.md`](https://github.com/zalom/plastic/blob/main/docs/guides/reading-the-ledgers.md).
 
 Note on terms: "guided" means the user starts each stage with a command and the agent
 narrows the thinking inside it, the same shape track 1 walked. "Manual", editing project

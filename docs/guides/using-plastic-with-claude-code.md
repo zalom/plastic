@@ -3,36 +3,36 @@
 Who this is for: someone ready to use Plastic day to day inside Claude Code,
 past their first single intent, who wants to see the bigger picture.
 
-After this guide you will understand the guided-versus-auto ladder in more
-depth, and how Plastic ships a whole batch of related work through a
-roadmap.
+After this guide you will understand the three modes in more depth, and how
+Plastic ships a whole batch of related work through a roadmap.
 
-## The ladder: guided and auto
+## The ladder: direct, thinking, and auto
 
-You already met the choice in
-[pick-your-mode.md](pick-your-mode.md): guided or auto. Here is what that
-choice feels like in practice, day to day.
+You already met the three modes in [pick-your-mode.md](pick-your-mode.md).
+Here is what each one feels like in practice, day to day.
 
-In guided mode, the agent briefs you at every stage boundary: what it is about
-to do, what could go wrong, and what decision is left to you. You act on that,
-then type the next stage's command yourself: `/plastic-intent-speccing`, for
-example, to turn a ruled-on design into `spec.md`, or `/plastic-intent-ending`
-to close the intent out once Exec is done. It reads like a short conversation
-at each step: a state of play, a risk if any, and a call to make. This is
-deliberately slow. It is the right choice when you want to watch each decision
-as it happens.
+Direct is most of a day. You ask for a change, the agent makes it in the same
+session, verifies it (the tests, the page, or you), and the request lands as a
+line in the day ledger with a commit behind it. There is nothing to approve
+and nothing to type next; the next prompt is the next item.
 
-In auto mode, the agent briefs you as it goes: at every stage for a medium or
-large intent, and once before it starts building for a small one (Plastic sizes
-each intent small, medium, or large). Then it takes the call itself and keeps
-moving, except at a small number of hard stops: confirming a project path, or
-before an action with no safe way back. You get the full story as it happens,
-but you are only pulled in when it truly matters.
+Thinking is a conversation before the work. The agent asks one question at a
+time and records each answer as an insight in the intent, then writes the
+action files that say how the work will be done, then works as in direct. You
+can close the conversation into `spec.md` with `/plastic-intent-speccing`, and
+the intent with `/plastic-intent-ending` once Exec is done. This is
+deliberately slower. It is the right choice when you want to watch each
+decision as it happens.
+
+In auto mode, a background team takes a registered intent and keeps moving,
+except at a small number of hard stops: confirming a project path, or before an
+action with no safe way back. You get the full story as it happens, but you
+are only pulled in when it truly matters.
 
 One way to describe the difference: the agent always carries the machinery,
-the arming, the gates, the actual work of each stage. In guided mode, you also
-carry the decisions. In auto mode, the agent carries those too, except at the
-few moments built to need you.
+the record, the actual work of each item. In direct and thinking modes, you
+also carry the decisions. In auto mode, the agent carries those too, except at
+the few moments built to need you.
 
 ## Roadmap-driven delivery
 
@@ -50,8 +50,8 @@ next to your `INDEX.md`) with four parts:
 - A **Log**: a running, dated diary of what happened, written so a person
   outside the work can follow along.
 
-Nothing new needs to run this: no new lock, no new gate, no new hook. It is
-just a file that gets read and edited as work moves forward.
+Nothing new needs to run this: no new lock, no new hook. It is just a file
+that gets read and edited as work moves forward.
 
 ### A real example
 

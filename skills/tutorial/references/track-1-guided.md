@@ -39,9 +39,9 @@ Type `/plastic-intent-continuing` and name the intent.
 
 Artifact: a delivery lock (a `delivery.lock` file in the intent directory) naming this
 session as the one owner, and a line in `savepoint.md` recording the stage. The agent then
-asks exactly one question: "auto or guided?"
+resumes at the last delivered station and asks nothing.
 
-Checkpoint: answer "guided." Explain in one sentence why the lock matters: it stops two
+Checkpoint: explain in one sentence why the lock matters: it stops two
 sessions from editing the same intent at the same time.
 
 ### 3. Why, rulings one at a time
@@ -84,7 +84,7 @@ Checkpoint: open `checklist.md`. Every task in `plan.md` has a matching checkbox
 `## In Progress`; that checklist, not `plan.md` itself, is what gets ticked off and moved to
 `## Completed` during Exec.
 
-### 6. Exec, verify before the gate
+### 6. Exec, verify before you report
 
 Type `/plastic-intent-executing`.
 
@@ -119,5 +119,5 @@ two, exactly the README section (or note) just delivered.
 
 That is the full cycle once: create, board, decide, spec, plan, build, done. Read
 [`your-first-intent-in-10-minutes.md`](https://github.com/zalom/plastic/blob/main/docs/guides/your-first-intent-in-10-minutes.md) for the same path condensed to a single
-read, and [`what-the-gates-are-telling-you.md`](https://github.com/zalom/plastic/blob/main/docs/guides/what-the-gates-are-telling-you.md) for what to do if a station denies
-an action instead of completing it.
+read, and [`reading-the-ledgers.md`](https://github.com/zalom/plastic/blob/main/docs/guides/reading-the-ledgers.md) for where each station wrote its
+work down.

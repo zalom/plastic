@@ -66,8 +66,8 @@ Rules for any agent (or human) contributing to this repository.
   straight to code.
 - Create intents through `scripts/new-intent` (or the `plastic-intent-creating` skill that
   wraps it), never by hand-authoring the files. One call scaffolds a born-complete intent
-  plus sentinel placeholder lifecycle files. The write-time create gate blocks an incomplete
-  or malformed intent file, so hand-authoring is both rejected and unnecessary.
+  plus sentinel placeholder lifecycle files. `new-intent` validates the file it writes and
+  `end-intent` checks it again at close, so hand-authoring is unnecessary.
 - Plans, specs, checklists, and outcomes live in the intent directory under `~/.plastic/`,
   never in the project tree.
 - A step becomes a script only when its output is a pure function of already-committed

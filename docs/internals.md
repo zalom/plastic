@@ -10,7 +10,7 @@ how tight that guarantee actually is today, and what is still missing.
 Plastic splits every unit of work into two parts.
 
 - **The blueprint** is the deterministic part: conventions, templates, directory
-  structure, lifecycle stages, gates, IDs, and linking rules. It describes *how
+  structure, lifecycle stages, the record, IDs, and linking rules. It describes *how
   to fill in the work*.
 - **The brain** is the non-deterministic part: the human or LLM that does the
   actual thinking. Plastic never replaces it. It only steers the brain's input
@@ -36,8 +36,8 @@ An audit classified all **93** user-facing surfaces of Plastic against this
 model. Each surface is one of three classes:
 
 - **deterministic-now**: produces identical form regardless of which brain runs
-  it (script output, a frontmatter schema, directory naming, a blocking gate
-  hook, a hardcoded instruction string).
+  it (script output, a frontmatter schema, directory naming, a record hook
+  line, a hardcoded instruction string).
 - **mixed**: a deterministic skeleton with brain-loose pockets (a template fixes
   most sections, but some section content or format is left to brain judgement).
 - **brain-loose**: defined only by skill prose that an LLM interprets, so layout,
@@ -54,7 +54,7 @@ About **75%** of Plastic (70 of 93 surfaces) is already deterministic by
 construction.
 
 **What makes the 75% deterministic.** The entire executable layer: every script,
-hook, and test, plus the gate hooks that block on filesystem preconditions, the
+hook, and test, plus the record hook that writes the ledgers from filesystem state, the
 frontmatter and directory schema, the fixed templates, and the script-output
 skills that show a renderer's output verbatim (dashboard, continuing, uninstall,
 versions). Where Plastic ships *code*, the form is owned by code and cannot
@@ -90,7 +90,7 @@ Auto mode adds five more agent surfaces, the role files that ship in `agents/`:
 `plastic-executor`, and `plastic-enforcer`. They are thin handoff contracts (one
 role per cycle stage) rather than free-prose producers: each names what it consumes
 and produces, and the enforcer (which is the auto orchestrator itself) sequences and
-gates them. The installer syncs `agents/` into each harness agent directory and
+reviews them. The installer syncs `agents/` into each harness agent directory and
 tracks the role files in the manifest, so they prune on update and uninstall with the
 skills and hooks. The team model lives in `skills/auto/references/agent-architecture.md`.
 
@@ -110,7 +110,7 @@ form. Harnesses come in two layers, distinguished by *who needs them*.
 learns them and walks the cycles in order; they constrain everyone identically.
 Three mechanisms:
 
-- **Convention**: the rules a brain must obey (the ID algorithm, slug shape, gate
+- **Convention**: the rules a brain must obey (the ID algorithm, slug shape, stage
   order, state-from-files derivation, INDEX placement and cluster threshold, link
   rules). A fixed written rule whose output is determined by its input.
 - **Template**: the form of a produced artifact (its frontmatter schema, required
@@ -184,7 +184,7 @@ done", so a resuming agent reads `savepoint.md` first instead of probing which f
 grammar gains three line classes on top of intent 34's artifact-landing milestones, all keyed by
 a `(stage, milestone)` pair for idempotency (`Savepoint.savepoint_recorded_pairs`):
 
-- a **born `What` line**, stamped by `new-intent` at creation (not left to a gate firing), so
+- a **born `What` line**, stamped by `new-intent` at creation (not left to a hook firing), so
   even a freshly parked future intent carries the first bookend deterministically;
 - a **terminal `Done delivered|abandoned` line**, written by the completion path
   (`Savepoint.append_terminal_savepoint`) as the intent transfers into INDEX's Completed/Abandoned
@@ -305,7 +305,7 @@ The same registration also holds on doctor's per-intent surface: `doctor.rb --in
 `savepoint_operational`, rather than minting a second rule name for one gap. That surface
 honors the exclusion only when the intent is terminal in its store's `INDEX.md`, which is the
 condition the store-wide sweep already applies, so a stray id can never silence the live,
-repairable warning `scripts/end-intent`'s pre-write gate raises on a still-Active intent. The
+repairable warning `scripts/end-intent`'s pre-write structure check raises on a still-Active intent. The
 phantom-line half of that check stays non-suppressible by id or scope, per intent 211.
 
 `RuleCatalog::REVISION_RULES` shares the
@@ -351,10 +351,10 @@ has nothing to suppress *yet*). A rule left with zero ids after pruning is dropp
 rather than rendered as a bare `rule_name` line, which the loader would reject. Like the add
 direction, `--prune` writes no `revisions.md` entries.
 
-Session resolution feeds the bridge that the gate hooks read (intent 52). Claude Code does
+Session resolution feeds the record hook and the lock (intent 52; the gate hooks it once fed were removed in 2.0, intent 302). Claude Code does
 not export a session id env var into the hook environment; it passes `session_id` on the hook
 stdin JSON. So the bash wrappers parse `session_id` out of stdin (in Ruby, never in bash) and
-hand it to the gate scripts as a second argument. `Bridge.resolve_session` then takes the
+hand it to the hook scripts as a second argument. `Bridge.resolve_session` then takes the
 first non-empty of three sources, in precedence order: the explicit stdin `session_id`, the
 `CLAUDE_CODE_SESSION_ID` environment variable, and a derived `auto-<digest>` key
 (`Bridge.derive_key`, a short SHA256 of `store/intent_id`). The derived key is deterministic,
@@ -481,7 +481,7 @@ axis (hard-block beats soft-steer beats advisory):
 |----------|-------|----------|
 | hard-block | 7 | the lifecycle gate, the code gate, the ID and hash scripts, the dashboard renderer, config resolution |
 | soft-steer | 10 | the prompt hooks, the savepoint hook, the intent/checklist/plan/savepoint/index templates |
-| advisory | 6 | session-start and statusline hooks, the PLASTIC.md and active-intent-gate conventions, both `evals.json` files |
+| advisory | 6 | session-start and statusline hooks, the PLASTIC.md conventions (the active-intent-gate fragment was removed in 2.0, intent 304), both `evals.json` files |
 
 Two honest caveats about the existing harnesses:
 
@@ -595,8 +595,8 @@ one shared definition of "born complete" that creation and diagnosis both consul
 - **Section structure (intent 60b)**: the validator also carries
   `SANCTIONED_SECTIONS` plus a pure `validate_sections`, folded into `validate`, so
   born-complete now means frontmatter complete AND the sanctioned `##` section set
-  present with no unknown sections. The same three consumers (CLI, gate, doctor)
-  plus the create gate share this one definition. See the sanctioned-creation-path
+  present with no unknown sections. The same consumers (the CLI, `end-intent`, doctor)
+  share this one definition (the create gate that once shared it was removed in 2.0, intent 302). See the sanctioned-creation-path
   section below.
 - **Scope boundary**: this is per-intent frontmatter and section validity only.
   Store-wide `sources`/`chain` symmetry across intents is owned by intent 49 (below).

@@ -13,12 +13,15 @@ require "fileutils"
 # reports "pass"). This test makes the test suite the enforcement mechanism
 # instead, because the suite already blocks a commit and a release.
 #
-# Part A asserts the core budget ceiling (320 lines AND 3000 estimated,
-# tightened by intent 304; CoreBudget::Measurement keeps skill-lint's 500 and 5000 so its
-# can-fail fixtures still mirror the linter; only the two assertions below carry the tighter bar;
-# tokens). Part B asserts the chapter wiring: every
-# skills/conventions/references/*.md chapter has a consumer load line, and
-# every load line in the skills/ tree resolves to a real chapter file.
+# Part A asserts the core budget ceilings: under 200 lines, under 1600
+# estimated tokens, and under 8192 bytes (the ruled ceiling, intent 296; all
+# three tightened by intent 305 in the same change that shrank the block).
+# CoreBudget::Measurement keeps skill-lint's 500 and 5000 so its can-fail
+# fixtures still mirror the linter; only the live assertions carry the tighter
+# line and token bar, while the byte boundary IS the ruling. Part B asserts
+# the chapter wiring: every skills/conventions/references/*.md chapter has a
+# consumer load line, and every load line in the skills/ tree resolves to a
+# real chapter file. Part C (intent 305) asserts the per-boot doctrine read.
 #
 # Hermetic and DI throughout: CoreBudget.measure and ChapterWiring take a
 # string or a path argument, so the exact same code measures the live tree
@@ -28,14 +31,13 @@ require "fileutils"
 # CoreBudget: measures a body's line count and estimated token count using
 # the SAME two-line arithmetic as SkillLint#check_body_budget
 # (scripts/lib/skill_lint.rb:93-111), so the core-budget check and skill-lint
-# never disagree. Not a wrapper around SkillLint: check_body_budget is a
-# private method entangled with violation-record construction over a full
-# skills_dir tree, not a reusable pure function, so this small DI class ports
-# the identical arithmetic rather than reaching into SkillLint's internals
-# (scripts/lib/skill_lint.rb and scripts/doctor.rb are left untouched, per
-# the action's constraint).
+# never disagree, plus the body's byte size (the unit the ruling is in). Not a
+# wrapper around SkillLint: check_body_budget is a private method entangled
+# with violation-record construction over a full skills_dir tree, not a
+# reusable pure function, so this small DI class ports the identical
+# arithmetic rather than reaching into SkillLint's internals.
 class CoreBudget
-  Measurement = Struct.new(:lines, :tokens) do
+  Measurement = Struct.new(:lines, :tokens, :bytes) do
     def over_line_ceiling?
       lines >= 500
     end
@@ -43,12 +45,18 @@ class CoreBudget
     def over_token_ceiling?
       tokens >= 5000
     end
+
+    # The ruled core ceiling is in bytes (intent 296: under 8 KB), so the byte
+    # sub-check uses the ruling itself as its boundary.
+    def over_byte_ceiling?
+      bytes >= 8192
+    end
   end
 
   def self.measure(body)
     lines = body.lines.count
     tokens = (body.split(/\s+/).reject(&:empty?).length * 1.3).round
-    Measurement.new(lines, tokens)
+    Measurement.new(lines, tokens, body.bytesize)
   end
 end
 
@@ -104,26 +112,33 @@ class PlasticCoreBudgetTest < Minitest::Test
 
   def test_live_core_is_under_the_line_ceiling
     measurement = CoreBudget.measure(File.read(PLASTIC_MD))
-    assert_operator measurement.lines, :<, 320,
-      "PLASTIC.md is #{measurement.lines} lines; must stay under the 320-line ceiling (D7, tightened by 304)"
+    assert_operator measurement.lines, :<, 200,
+      "PLASTIC.md is #{measurement.lines} lines; must stay under the 200-line ceiling (intent 305)"
   end
 
   def test_live_core_is_under_the_token_ceiling
     measurement = CoreBudget.measure(File.read(PLASTIC_MD))
-    assert_operator measurement.tokens, :<, 3000,
-      "PLASTIC.md is about #{measurement.tokens} estimated tokens; must stay under the 3000-token ceiling (D7, tightened by 304)"
+    assert_operator measurement.tokens, :<, 1600,
+      "PLASTIC.md is about #{measurement.tokens} estimated tokens; must stay under the 1600-token ceiling (intent 305)"
+  end
+
+  def test_live_core_is_under_the_byte_ceiling
+    measurement = CoreBudget.measure(File.read(PLASTIC_MD))
+    assert_operator measurement.bytes, :<, 8192,
+      "PLASTIC.md is #{measurement.bytes} bytes; the ruled core ceiling is 8192 bytes (intent 296, enforced since 305)"
   end
 
   # Can-fail proof (intent 208): the budget check must be observed failing on
   # a deliberate over-budget file, on each sub-check independently, so one
   # cannot mask the other. Uses the real boundary (skill-lint treats >= 500
-  # and >= 5000 as violations), not a rounded one.
+  # and >= 5000 as violations; the ruling treats >= 8192 bytes as one), not a
+  # rounded one.
   def test_oversized_fixtures_trip_each_sub_check_independently
     Dir.mktmpdir("plastic-core-budget-test") do |dir|
       over_lines_path = File.join(dir, "over_lines.md")
       # 600 lines, one short word each: lines = 600 (>= 500 ceiling), words =
-      # 600 so tokens = 780 (well under the 5000 ceiling). Trips ONLY the
-      # line sub-check.
+      # 600 so tokens = 780 (well under the 5000 ceiling), bytes = 1199 (well
+      # under 8192). Trips ONLY the line sub-check.
       File.write(over_lines_path, (["x"] * 600).join("\n"))
       over_lines = CoreBudget.measure(File.read(over_lines_path))
       assert over_lines.over_line_ceiling?,
@@ -131,11 +146,15 @@ class PlasticCoreBudgetTest < Minitest::Test
       refute over_lines.over_token_ceiling?,
         "fixture #{over_lines_path} unexpectedly tripped the token ceiling too (#{over_lines.tokens} tokens); " \
         "the line sub-check must be provable in isolation"
+      refute over_lines.over_byte_ceiling?,
+        "fixture #{over_lines_path} unexpectedly tripped the byte ceiling too (#{over_lines.bytes} bytes)"
 
       over_tokens_path = File.join(dir, "over_tokens.md")
       # 100 lines, 40 words each: lines = 100 (well under the 500 ceiling),
-      # words = 4000 so tokens = 5200 (>= 5000 ceiling). Trips ONLY the
-      # token sub-check.
+      # words = 4000 so tokens = 5200 (>= 5000 ceiling). Trips the token
+      # sub-check and not the line sub-check (bytes trip too, by construction:
+      # 4000 five-byte words cannot fit in 8192 bytes, which is exactly why the
+      # byte fixture below is the one that isolates bytes from lines).
       words_per_line = (["word"] * 40).join(" ")
       File.write(over_tokens_path, (["#{words_per_line}"] * 100).join("\n"))
       over_tokens = CoreBudget.measure(File.read(over_tokens_path))
@@ -144,7 +163,49 @@ class PlasticCoreBudgetTest < Minitest::Test
       refute over_tokens.over_line_ceiling?,
         "fixture #{over_tokens_path} unexpectedly tripped the line ceiling too (#{over_tokens.lines} lines); " \
         "the token sub-check must be provable in isolation"
+
+      over_bytes_path = File.join(dir, "over_bytes.md")
+      # 10 lines of one 900-byte word each: lines = 10, words = 10 so tokens =
+      # 13, bytes = 9010 (>= 8192). Trips ONLY the byte sub-check.
+      File.write(over_bytes_path, (["y" * 900] * 10).join("\n") + "\n")
+      over_bytes = CoreBudget.measure(File.read(over_bytes_path))
+      assert over_bytes.over_byte_ceiling?,
+        "fixture #{over_bytes_path} has #{over_bytes.bytes} bytes; expected it to trip the >= 8192 byte ceiling"
+      refute over_bytes.over_line_ceiling?,
+        "fixture #{over_bytes_path} unexpectedly tripped the line ceiling too (#{over_bytes.lines} lines)"
+      refute over_bytes.over_token_ceiling?,
+        "fixture #{over_bytes_path} unexpectedly tripped the token ceiling too (#{over_bytes.tokens} tokens); " \
+        "the byte sub-check must be provable in isolation"
     end
+  end
+end
+
+# Part C (intent 305): the per-boot doctrine read. Only PLASTIC.md is injected
+# at boot (scripts/hook-session-start); skills/_decision-tables.md is the one
+# doctrine fragment installed beside it in ~/.plastic/, read on demand by two
+# skills, and is counted here as the installed sibling, not as boot input.
+# The ruling is "per-boot read under 15 KB" (intent 296), whose inventory sum
+# included a median skill body; skill bodies are skill-lint's, and intent 313
+# measures them. With the two-file definition a 15,000 ceiling could never
+# fail (8,192 + 2,429 = 10,621), so the ceiling here is 11,000: the ruled core
+# ceiling plus the fragment plus about 380 bytes of headroom. It can fail.
+class PlasticPerBootReadTest < Minitest::Test
+  REPO = File.expand_path("../../", __FILE__)
+  DOCTRINE_FILES = %w[PLASTIC.md skills/_decision-tables.md].freeze
+  CEILING = 11_000
+
+  def test_every_doctrine_file_exists
+    DOCTRINE_FILES.each do |rel|
+      assert File.file?(File.join(REPO, rel)), "expected #{rel} to exist"
+    end
+  end
+
+  def test_per_boot_doctrine_read_is_under_the_ceiling
+    sizes = DOCTRINE_FILES.map { |rel| [rel, File.size(File.join(REPO, rel))] }
+    total = sizes.sum { |(_, size)| size }
+    detail = sizes.map { |rel, size| "#{rel}=#{size}" }.join(", ")
+    assert_operator total, :<, CEILING,
+      "per-boot doctrine read is #{total} bytes (#{detail}); must stay under #{CEILING}"
   end
 end
 

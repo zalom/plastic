@@ -21,7 +21,7 @@ reference. Every checkpoint inside a track is prose, never another menu.
 
 1. **Guided**: deliver a first intent, stage by stage, approving each step yourself. Routes to
    `references/track-1-guided.md`.
-2. **Auto**: hand delivery to the agent and watch the gates and reports as it works. Routes to
+2. **Auto**: hand delivery to the agent and watch the record and reports as it works. Routes to
    `references/track-2-auto.md`.
 3. **Projects and roadmaps**: grow a founding intent into a small real project, add more
    intents, and plan a delivery batch with a roadmap. Routes to
@@ -35,7 +35,7 @@ showing the menu again.
 
 Narrate one step at a time: say what the next station does, then hand control back so the
 user types the real command themselves. After they run it, look at what appeared (a file, a
-gate message, a report) and debrief in plain words before moving to the next station. Never
+ledger line, a report) and debrief in plain words before moving to the next station. Never
 run a station's command on the user's behalf; the tutorial teaches the shape of the work, it
 does not do the work.
 

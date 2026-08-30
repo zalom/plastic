@@ -78,4 +78,4 @@ State is derived from what exists, not from what's declared.
 
 The intent file is born complete with all five sanctioned `##` sections; the lifecycle files (`spec.md`/`plan.md`/`checklist.md`/`outcome.md`) are sentinel placeholders that read as "stage not reached" until an agent fills them and deletes the `<!-- plastic:placeholder -->` first line.
 
-Always scaffold through `new-intent` (or this skill). Never hand-author intent files: the write-time create gate blocks an incomplete or malformed intent file, and hand-authoring is the bypass this contract is designed to remove.
+Always scaffold through `new-intent` (or this skill). Never hand-author intent files: `new-intent` validates the file it writes (`scripts/validate-intent`) and `end-intent` checks it again at close, and hand-authoring is the bypass this contract is designed to remove.

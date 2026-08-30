@@ -152,10 +152,10 @@ plan a machine can build from exactly. Read
   target for now. See [harness support](docs/reference/harness-adapters.md).
 - Plain Markdown plus Git. The work stays in files you own.
 - Personal stores by default.
-- Guided delivery with a human at every gate, or autonomous delivery when you
-  ask for it.
+- Direct work in the session, a thinking conversation when the work needs one,
+  or autonomous delivery by an agent team when you ask for it.
 - Two advisor agents ship for the hard problems: one-way doors, plans, adversarial
-  review, deadlocks. Summon one deliberately, state S, M, or L in the brief; nobody's
+  review, deadlocks. Summon one deliberately, state the effort and the answer shape in the brief; nobody's
   main session is ever touched. Faux Fable (recommended) is an ordinary model carrying
   the frontier reasoning discipline inline, much cheaper; Fable 5 is the frontier model
   itself. Choose the default at install, switch it any time.

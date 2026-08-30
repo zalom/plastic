@@ -1,44 +1,42 @@
 # Harness Adapters
 
-How a reasoning agent harness loads, honors, and enforces Plastic. This is the
-contract every adapter fills in, the capability tiers an adapter can claim, and one
-fully worked example (Claude Code, interactive).
+How a reasoning agent harness loads, honors, and records Plastic. This is the contract every
+adapter fills in, the capability tiers an adapter can claim, and two worked examples (Claude
+Code interactive, Codex CLI).
 
 ## Purpose and use model
 
 Plastic is for reasoning agents, in two shapes:
 
-1. A user working directly inside a reasoning agent, using Plastic as the operating
-   scaffold for their own thinking and delivery.
+1. A user working directly inside a reasoning agent, using Plastic as the operating scaffold
+   for their own thinking and delivery.
 2. A user instructing a reasoning agent to use Plastic to deliver the user's intents,
    producing a human-legible system of intents, specs, plans, and outcomes.
 
-Both shapes assume a reasoning agent on the other side. Plastic targets reasoning
-agents only. It is not a library you call from ordinary application code, and it does
-not target non-reasoning automation. A harness adapter is the glue that makes one
-specific agent harness load Plastic's conventions, honor its decisions, and record
-its lifecycle.
+Both shapes assume a reasoning agent on the other side. Plastic targets reasoning agents only.
+It is not a library you call from ordinary application code, and it does not target
+non-reasoning automation. A harness adapter is the glue that makes one specific agent harness
+load Plastic's conventions, honor its decisions, and record its work.
 
 ## The contract
 
-Plastic reaches an agent across three layers. An adapter is judged on how each layer
-arrives and how strongly it is honored. "Honor" splits in two: decision-shaping makes
-the agent CHOOSE to follow, hard-enforcement BLOCKS the agent when it does not (and
-includes artifact validity).
+Plastic reaches an agent across three layers. An adapter is judged on how each layer arrives
+and how it is honored. Since 2.0 nothing blocks a write: conventions persuade, live state
+orients, and the record hook writes down what happened.
 
-| Layer | Load (does it arrive) | Honor: decision-shaping (agent chooses to follow) | Honor: hard-enforcement (block when it doesn't) |
-|---|---|---|---|
-| L1 standing conventions | Convention docs (PLASTIC.md, AGENTS.md, CLAUDE.md) auto-inject into the agent's context at start | The conventions frame every decision; the agent reads them as standing rules | None at this layer: conventions persuade, they do not block |
-| L2 live state | The active intent's id, stage, and role arrive at the point of work (session event and/or spawn preamble) | The live snapshot tells the agent where it is in the cycle so it acts in-stage | None directly; feeds the L3 gates that do block |
-| L3 savepoints | The record hook fires on file writes within the intent dir | The savepoint and day ledgers record the move | Stage gates block out-of-order writes; the artifact-validity backstop rejects an intent file that is not born complete; savepoints record each milestone |
+| Layer | Load (does it arrive) | Honor (what the agent does with it) |
+|---|---|---|
+| L1 standing conventions | Convention docs (PLASTIC.md, AGENTS.md, CLAUDE.md) inject into the agent's context at start | The conventions frame every decision; the agent reads them as standing rules |
+| L2 live state | The day ledger, the session pointer, and the active intent's stage arrive at the point of work (session event and/or spawn preamble) | The live snapshot tells the agent where it records and where it is in the cycle |
+| L3 the record | The record hook fires after every file write; the capture hook on every prompt; the close hook at session end | The savepoint and day ledgers record the move; the delivery-lock lease is refreshed for an auto team |
 
 ### Lock provenance contract
 
-Every adapter passes lock provenance explicitly when it knows it. `harness` uses the
-adapter's canonical value, such as `claude`, `codex`, or `hermes`; `agent`, `model`, and
-`thread` use the harness's actual values. Unknown harness, role, model, or thread values stay
-`Unknown`. Adapters must not infer them from transcript paths, session-id formats, process
-names, or model defaults.
+Locks exist for auto teams. Every adapter passes lock provenance explicitly when it knows it.
+`harness` uses the adapter's canonical value, such as `claude`, `codex`, or `hermes`; `agent`,
+`model`, and `thread` use the harness's actual values. Unknown harness, role, model, or thread
+values stay `Unknown`. Adapters must not infer them from transcript paths, session-id formats,
+process names, or model defaults.
 
 Provenance is descriptive. The session id remains the authorization identity, and the
 `delivery.lock` file mtime remains the sole heartbeat and freshness truth. Controller,
@@ -52,8 +50,8 @@ authorization. Plastic bounds finished or failed activity history to the 20 most
 Each adapter's users invoke a Plastic skill with a different literal prefix in front of the bare
 skill name (for example `plastic-doctor`). `InstallerCore::DEFAULT_AGENTS` carries this as each
 entry's `skill_prefix`, the documented source both `Bridge.skill_ref` (`scripts/lib/lock.rb`) and
-this table cite; the hook scripts do not read `DEFAULT_AGENTS` at runtime (see the L1 dependency
-note in the Codex worked example below), so the two are independently maintained by hand.
+this table cite; the hook scripts do not read `DEFAULT_AGENTS` at runtime, so the two are
+independently maintained by hand.
 
 | Adapter | Invocation |
 |---|---|
@@ -63,10 +61,10 @@ note in the Codex worked example below), so the two are independently maintained
 
 ## Harness support
 
-| Harness | Install | Standing conventions | Live state | Write hook | Statusline | Subagent teams |
+| Harness | Install | Standing conventions | Live state | Record | Statusline | Subagent teams |
 |---|---|---|---|---|---|---|
-| Claude Code | npm, `plastic-install --claude` | native `CLAUDE.md` | ten hooks through `settings.json` | post-write `record` (savepoint, lock heartbeat, day ledger) | yes | yes |
-| Codex CLI | npm, `plastic-install --codex` | marked section injected into `~/.codex/AGENTS.md` | ten hooks through `~/.codex/hooks.json`, all dispatched by one command | post-write `record` on `apply_patch` | no | no, a single agent walks the whole cycle |
+| Claude Code | npm, `plastic-install --claude` | native `CLAUDE.md` | seven hooks through `settings.json` | post-write `record` (savepoint, lock heartbeat, day ledger) | yes | yes |
+| Codex CLI | npm, `plastic-install --codex` | marked section injected into `~/.codex/AGENTS.md` | six hooks through `~/.codex/hooks.json`, all dispatched by one command | post-write `record` on `apply_patch` | no | no, a single agent walks the whole cycle |
 | Hermes | npm, `plastic-install --hermes` | none | none | none | no | no |
 
 1. Plastic installs from npm only, for every harness above (owner ruling of 2026-08-08).
@@ -78,9 +76,11 @@ note in the Codex worked example below), so the two are independently maintained
    Claude Code afterward, all disclosed and none executable: four instruction lines that
    name Claude's hook launcher directory, left as they are because Codex installs no
    per-agent launchers and there is no Codex path to point at. The skill-authoring
-   reference, the shared underscore gate fragment, and the evals fixtures that carried
+   reference, the shared underscore fragment, and the evals fixtures that carried
    Claude paths left the installed tree in 2.0 (intent 304).
-4. Codex has no statusline and no subagent dispatch. Both are gaps, not stated non-goals.
+4. Codex has no statusline and no subagent dispatch. Both are gaps, not stated non-goals. The
+   Codex dispatcher does not yet relay `SessionEnd`, so the close hook runs on Claude Code
+   only until intent 309 aligns the hook registry across harnesses.
 
 ## Per-harness version truth (intent 210)
 
@@ -96,37 +96,32 @@ no adapter can be silently skipped by a Claude-only default.
 | Codex CLI | `~/.agents/plastic/VERSION` | `~/.agents` |
 | Hermes | `~/.hermes/plastic/VERSION` | `~/.hermes` |
 
-Codex and Hermes previously wrote a flat `<agent-dir>/plastic-manifest.json` with no
-per-agent `VERSION` file at all, so `update` could only ever act on Claude by default. A
-one-time migration on next install unions the old flat manifest's files into the prune
-set, then removes it; the version-truth path above is what every adapter converges on.
-
 ## Capability tiers
 
-An adapter declares the strongest tier it can honestly support.
+An adapter declares the strongest tier it can honestly support. The tiers are about the
+record: whether what the agent did reaches the ledgers.
 
-- **Tier A (full parity).** All three layers load AND L3 is real: every write inside an
-  intent directory reaches the ledger, child and parent agents are distinguished, and the
-  lock heartbeat cannot be silently skipped.
-- **Tier B (parity-with-caveat).** All three layers load and shape decisions, but at
-  least one L3 edge has a structural caveat (for example, the record hook fires on a
-  coarser tool name). Conventions and live-state are reliable; the record hook works
-  but carries a documented asterisk.
-- **Tier C (conventions reliable, child hooks best-effort).** L1 conventions load
-  reliably and shape decisions, but L2/L3 for spawned child agents are best-effort:
-  live state and the record hook may not reach every child, so the ledger cannot be
-  relied upon for them.
+- **Tier A (full record).** All three layers load, and L3 is complete: every write inside an
+  intent directory reaches the savepoint ledger, every project write promotes its day-ledger
+  line, child and parent agents are distinguished, and the lock heartbeat cannot be silently
+  skipped.
+- **Tier B (record-with-caveat).** All three layers load and shape decisions, but at least one
+  L3 edge has a structural caveat (for example, a write path the record hook does not observe,
+  or an envelope it cannot parse). The record lands, with a documented asterisk.
+- **Tier C (conventions reliable, record best-effort).** L1 conventions load reliably and
+  shape decisions, but L2 and L3 for spawned child agents are best-effort: live state and the
+  record hook may not reach every child, so the ledgers cannot be relied upon for them.
 
 ## Per-agent layer x mechanism table
 
 Each adapter fills this shape with the concrete mechanism it uses at each layer.
 Empty here; adapters populate their own copy.
 
-| Layer | Load mechanism | Decision-shaping mechanism | Hard-enforcement mechanism |
-|---|---|---|---|
-| L1 standing conventions | | | |
-| L2 live state | | | |
-| L3 savepoints | | | |
+| Layer | Load mechanism | Honor mechanism |
+|---|---|---|
+| L1 standing conventions | | |
+| L2 live state | | |
+| L3 the record | | |
 
 ## Worked example: Claude Code (interactive only)
 
@@ -135,74 +130,70 @@ runs are explicitly out of scope (see the scope note below).
 
 ### L1 standing conventions
 
-`CLAUDE.md` and `PLASTIC.md` auto-inject into the top-level agent and into
-general-purpose and custom sub-agents, so the standing conventions arrive without any
-per-call wiring. Exception: the built-in Explore and Plan sub-agents skip `CLAUDE.md`,
-so they do not receive the conventions. Do not route Plastic-bound work to Explore or
-Plan; they will act without the standing rules.
+`CLAUDE.md` and `PLASTIC.md` inject into the top-level agent and into general-purpose and
+custom sub-agents, so the standing conventions arrive without any per-call wiring. Exception:
+the built-in Explore and Plan sub-agents skip `CLAUDE.md`, so they do not receive the
+conventions. Do not route Plastic-bound work to Explore or Plan; they will act without the
+standing rules.
 
 ### L2 live state
 
-`SessionStart` is a top-level-only event: it fires for the main session, not for
-sub-agents. Sub-agents fire `SubagentStart`, which Plastic does not use. So the
-session event alone cannot carry live state into a spawned agent. The authoritative
-live-state mechanism for spawned agents is the spawn preamble, `scripts/spawn-preamble`
-(built in intent 4a1c1).
+`SessionStart` (`hooks/session-start` -> `scripts/hook-session-start`) injects `PLASTIC.md`,
+opens or joins today's day ledger under `~/.plastic/store/.sessions/<YYYYMMDD>/`, and writes
+the per-session pointer (`.tmp/<session-id>/current`) and heartbeat. `UserPromptSubmit`
+(`hooks/capture`) appends the prompt as a pending day-ledger line, detects `auto` and
+`continue`, and hints at matching parked intents. `PreCompact` (`hooks/savepoint`) and
+`SessionEnd` (`hooks/close`) bracket the session.
 
-`scripts/spawn-preamble <intent_dir> [--role ROLE] [--step STEP]` emits a deterministic
-block built purely from the intent directory on disk: no network, no randomness, no
-clock read, so two runs over the same state are byte-identical. It reports the active
-intent id and intent line (read from the intent file frontmatter), the current stage
-(the last non-empty line of `savepoint.md` when present, else the stage derived from
-which lifecycle files exist), the cycle role or step (from `--role`/`--step`, else the
-derived stage), the verbatim honoring instruction (the agent must emit valid
-lifecycle artifacts, must not hallucinate intents or stages, and its primary output is
-valid lifecycle artifacts which it closes with a structured report about), and the
-verbatim report contract (intent 74: the agent must end with a structured completion
-report as its final message). The auto-mode enforcer prepends this preamble to every
-dispatched specialist's prompt, so each spawned agent boots with accurate live state.
+`SessionStart` is a top-level-only event: it fires for the main session, not for sub-agents.
+Sub-agents fire `SubagentStart`, which Plastic does not use. So the session event alone cannot
+carry live state into a spawned agent. The authoritative live-state mechanism for spawned
+agents is the spawn preamble, `scripts/spawn-preamble <intent_dir> [--role ROLE] [--step STEP]`:
+a deterministic block built purely from the intent directory on disk (no network, no
+randomness, no clock read), reporting the active intent id and intent line, the current stage
+(the last non-empty line of `savepoint.md` when present, else the stage derived from which
+lifecycle files exist), the cycle role or step, the verbatim honoring instruction, and the
+verbatim report contract (intent 74). The auto team lead prepends this preamble to every
+dispatched agent's prompt.
 
-### L3 savepoints
+### L3 the record
 
-Removed in 2.0 (intent 302): the five edit-path gates (edit, bash, code, lock, links), the
-create gate, and the stage-transition gates are gone, together with their `PreToolUse`
-registrations. Nothing blocks a write any more. What remains at L3 is one `PostToolUse` hook,
-`record` (`hooks/record` -> `scripts/hook-record`), on the full write matcher (Write, Edit,
-NotebookEdit, and the six Serena edit tools). It keys off the stdin `session_id`, appends the
-intent-dir savepoint line from the written path alone (no bridge lookup), refreshes the
+One `PostToolUse` hook, `record` (`hooks/record` -> `scripts/hook-record`), on the full write
+matcher (Write, Edit, NotebookEdit, and the six Serena edit tools). It keys off the stdin
+`session_id`, appends the intent-dir savepoint line from the written path alone, refreshes the
 delivery-lock lease for the owning session (`Lock.heartbeat` refuses any other session), and
-promotes the day-ledger line when a project file lands. Intent-file content is still validated,
-at create time by `new-intent` and at close time by `end-intent`'s structure check. Doctor checks
-replace enforcement (intent 308).
+promotes the day-ledger line when a project file lands. It never blocks and always exits 0.
+Intent-file content is validated at create time by `new-intent` and at close time by
+`end-intent`'s structure check; doctor checks report on the record (intent 308).
 
 ### Tier
 
-Claude Code interactive is **Tier B (parity-with-caveat)**. All three layers load and
-shape decisions. For an intent-file create `new-intent` validates the file at create time
-(it blocks before the write); for in-place edits the L3 artifact-validity enforcement
-stays a PostToolUse backstop that fires after the write and signals loudly rather than
-preventing it.
+Claude Code interactive is **Tier B (record-with-caveat)**. All three layers load and shape
+decisions. The caveat is at L3: the record hook's matcher is `Write|Edit|NotebookEdit` plus the
+six Serena edit tools and does not include `Bash`, so a write made through a shell one-liner
+into an intent directory never reaches the ledger and never refreshes the lock lease (the shell
+matcher that once covered that path left with the gates in 2.0, intent 302). A second, L2 note:
+a spawned agent receives live state only through the spawn preamble, never through the
+session event, so a dispatch that skips the preamble boots an agent with no live state.
 
 ### Scope note
 
-This worked example is interactive only. The `--bare`, headless, and CI execution
-paths are explicitly OUT of scope here: the session id may be unset in those runs,
-so the session-keyed record hook falls back to the derived key, and the enforcer falls back to
-manual gating. Those paths get their own treatment elsewhere.
+This worked example is interactive only. The `--bare`, headless, and CI execution paths are
+explicitly OUT of scope here: the session id may be unset in those runs, so the session-keyed
+record hook falls back to the derived key. Those paths get their own treatment elsewhere.
 
 ## Worked example: Codex CLI
 
-Codex CLI is rated **Tier A (full parity)**: `PostToolUse` hooks observe `apply_patch`, giving
-a true pre-write veto for both create-path and in-place edits. This is the one axis
-where Codex sits above Claude Code interactive, whose in-place-edit enforcement stays a
-post-write backstop (see Tier B above). The verdict carries two caveats, both config
-discipline rather than tier ceilings: register hooks and skills at USER scope so they
-survive Plastic's per-intent worktree, and clear headless hook-trust (managed hooks or
-`--dangerously-bypass-hook-trust`), since an untrusted hook is silently skipped rather
-than blocking. One more caveat sits underneath the veto itself: the grammar behind it is
-primary-sourced as of intent 239 (see below), but the hook still fails open on any
-envelope its parser cannot read, so the veto is real only for envelopes the parser
-understands.
+Codex CLI is **Tier B (record-with-caveat)**, down from the Tier A it held while its
+`PreToolUse` hooks could refuse a write before it landed (that mechanism was removed in 2.0,
+intent 302, so no harness can claim it). The `PostToolUse` record hook observes `apply_patch`,
+Codex's sole file-mutation tool, so every file operation reaches the record; the caveat is
+that the hook fails open on any envelope its parser cannot read (the grammar is
+primary-sourced as of intent 239, `test/fixtures/codex-v4a-grammar.txt`), so an operation the
+parser does not understand leaves no ledger line. Two configuration disciplines apply:
+register hooks and skills at USER scope so they survive Plastic's per-intent worktree, and
+clear headless hook trust (managed hooks or `--dangerously-bypass-hook-trust`), since an
+untrusted hook is silently skipped.
 
 ### L1 standing conventions
 
@@ -211,135 +202,118 @@ The installer's first-install presence probe tests `~/.codex` (Codex's own home,
 AgentSkills-compliant tool can already have created). `~/.agents` itself is created by the
 install when it does not yet exist (`install_skills_flat` and `generate_codex_agents` both
 `mkdir_p` their own nested paths), so a machine with Codex installed but no other
-AgentSkills-compliant tool no longer aborts on a missing directory it never owned (intent 198
-fixed a defect that made every fresh Codex-only install fail before this).
+AgentSkills-compliant tool no longer aborts on a missing directory it never owned (intent 198).
 
 Skills copy flat and unmodified to `~/.agents/skills/plastic-<name>/` (copy-not-transform,
 settled by 23 and reconfirmed by 181). Plastic's standing conventions inject into
-`~/.codex/AGENTS.md` as a marked section: a small curated body (work flows through
-intents, `~/.plastic/PLASTIC.md` is the source of truth and is never edited, skills are
-the operational procedures, intent artifacts live under `~/.plastic/`), wrapped in
-`<!-- BEGIN PLASTIC INTEGRATION hash:... -->` and `<!-- END PLASTIC INTEGRATION -->`
-markers. The injector is three-state (create the file, append the section, or replace it
-in place) and idempotent: re-injecting the same body reproduces the file byte for byte.
-Uninstall strips exactly that section through a dedicated surgical pair, mirroring
-Claude Code's `settings.json` hooks strip, so any content the user added elsewhere in
-`AGENTS.md` survives both install and uninstall untouched. `doctor` verifies the section
-is present and well formed (matched BEGIN and END markers) alongside the existing
-skills and agents checks.
+`~/.codex/AGENTS.md` as a marked section: a small curated body (work flows through intents,
+`~/.plastic/PLASTIC.md` is the source of truth and is never edited, skills are the operational
+procedures, intent artifacts live under `~/.plastic/`), wrapped in
+`<!-- BEGIN PLASTIC INTEGRATION hash:... -->` and `<!-- END PLASTIC INTEGRATION -->` markers.
+The injector is three-state (create the file, append the section, or replace it in place) and
+idempotent: re-injecting the same body reproduces the file byte for byte. Uninstall strips
+exactly that section through a dedicated surgical pair, mirroring Claude Code's
+`settings.json` hooks strip, so any content the user added elsewhere in `AGENTS.md` survives
+both install and uninstall untouched. `doctor` verifies the section is present and well formed
+(matched BEGIN and END markers) alongside the existing skills and agents checks.
 
 ### L2 live state (intent 199)
 
-`SessionStart` fires `session-start` and `check-update`; `UserPromptSubmit` fires
-`capture` and `power-tools`; `PreCompact` fires
-`savepoint`. Each hook name is projected straight off the single `HookRegistry.events`
-source (108 D7), the same total-projection shape as the file-mutation record hook above: a hook
-added to any of these three events on the Claude side lands in Codex's `hooks.json`
-automatically. One thing does not follow automatically. `scripts/codex-hook` carries its own
-`STATE_HOOKS` literal, which decides which names the dispatcher will actually relay, so a hook
-added to or renamed in any of these three events must be added there by hand. A cross-check in
-`test/hook_registry_test.rb` fails when the two disagree (intent 246).
+`SessionStart` fires `session-start` and `check-update`; `UserPromptSubmit` fires `capture`
+and `power-tools`; `PreCompact` fires `savepoint`. Each hook name is projected straight off
+the single `HookRegistry.events` source (108 D7), the same total-projection shape as the
+record hook: a hook added to any of these three events on the Claude side lands in Codex's
+`hooks.json` automatically. One thing does not follow automatically. `scripts/codex-hook`
+carries its own `STATE_HOOKS` literal (the five names above: live state, the update check,
+and the power-tools reminder), which decides which names the dispatcher will actually relay,
+so a hook added to or renamed in any of these three events must be added there by hand. A cross-check in `test/hook_registry_test.rb` fails when the two disagree (intent 246).
+`SessionEnd` is not in the Codex projection yet, so the close hook does not run on Codex
+until intent 309.
 
-The stdin shape for these three events differs from `apply_patch`'s diff envelope: no
-`tool_input` at all, since none of the three is a tool call. `scripts/codex-hook` reuses the
-exact launcher files Claude already runs for these five hooks (`hooks/session-start`,
-`hooks/check-update`, `hooks/capture`, `hooks/power-tools`, `hooks/savepoint`) unmodified:
-each is already harness-agnostic, since it
+The stdin shape for these events differs from `apply_patch`'s diff envelope: no `tool_input`
+at all, since none of them is a tool call. `scripts/codex-hook` reuses the exact launcher files
+Claude already runs (`hooks/session-start`, `hooks/check-update`, `hooks/capture`,
+`hooks/power-tools`, `hooks/savepoint`) unmodified: each is already harness-agnostic, since it
 resolves `~/.plastic` off `$HOME` on its own and reads only the common stdin fields
-(`user_prompt` for the `UserPromptSubmit` hook) the official Codex hooks doc confirms
-match Claude's schema for these events. The dispatcher's only adaptation is threading the
-payload's `session_id` into `CLAUDE_CODE_SESSION_ID` (Codex's own process env never carries
-it) and bounding the call with a timeout (`hooks/check-update`'s backgrounded network call no
-longer leaks the dispatcher's pipes, fixed at the root in intent 289; the bound stays because
-Codex invokes hooks synchronously and some other launcher could still leak them), then relaying
-stdout, stderr, and exit code unchanged, the same "drive the body, relay its output" pattern
-already used for the file-mutation record hook. `SubagentStart` is still not wired: no Plastic
-hook exists for it on any harness today.
-
-The shell-tool write hole this once left open, `bash-gate` never reaching Codex's shell tool,
-is now closed; see the Bash matcher subsection under L3 below.
+(`user_prompt` for the `UserPromptSubmit` hook) the official Codex hooks doc confirms match
+Claude's schema for these events. The dispatcher's only adaptation is threading the payload's
+`session_id` into `CLAUDE_CODE_SESSION_ID` (Codex's own process env never carries it) and
+bounding the call with a timeout (intent 289 fixed the leaking background call at the root;
+the bound stays because Codex invokes hooks synchronously), then relaying stdout, stderr, and
+exit code unchanged. `SubagentStart` is still not wired: no Plastic hook exists for it on any
+harness today.
 
 ### Per-agent model mapping (intent 102a)
 
 Each Plastic role file in `agents/*.md` installs on Codex as a whole-file, Plastic-owned,
-manifest-tracked `~/.codex/agents/<name>.toml`, generated at install time instead of the
-prior dead `~/.agents/agents/*.md` copy (that root is the cross-tool skills standard, not
-an agents root, and Codex's native subagent loader never read it). `name` and
+manifest-tracked `~/.codex/agents/<name>.toml`, generated at install time. `name` and
 `description` come from the source file's frontmatter; `developer_instructions` is the
 Markdown body verbatim, escaped for a TOML multi-line basic string (backslash and quote
 escaping so no `"""` delimiter collision can form, CRLF normalized to LF, C0 controls
 escaped). Output is deterministic and byte-identical on regenerate.
 
-The shipped tier alias (`opus`, `sonnet`, `haiku`) resolves to BOTH a `model` line and a
+The shipped model alias (`opus`, `sonnet`, `haiku`) resolves to BOTH a `model` line and a
 `model_reasoning_effort` line, model first (intent 186, `AgentModels::CODEX_MODEL_BY_ALIAS`
-paired with the existing `AgentModels::EFFORT_BY_ALIAS`): opus roles to `gpt-5.6-sol` at
-`high`, sonnet roles to `gpt-5.6-terra` at `medium`, haiku roles to `gpt-5.6-luna` at `low`.
-Codex has no vendor alias layer of its own, so a Codex model id rots on every release
-(Codex ships multiple releases per week); Plastic resolves that by owning the alias itself,
-centralizing every id in one map, so a Codex deprecation costs a single line plus a Plastic
-release rather than a per-role file edit. An existing `agents.models.<name>` config override
-is honored by shape: a tier word maps to model and effort together exactly like the default;
-any other value is written verbatim as a literal `model` id only, with no effort line (the
-user owns that value and its staleness). An empty value emits nothing, so an agent with no
-override and no shipped tier alias cleanly inherits the user's globally configured Codex
-model. `doctor`'s codex check validates the generated `.toml` files (presence plus a
-structural check for the mandatory fields) in place of the flat `.md` check, which no
-longer applies to codex. Hermes and `~/.codex/config.toml` are untouched by this slice.
+paired with `AgentModels::EFFORT_BY_ALIAS`): opus roles to `gpt-5.6-sol` at `high`, sonnet
+roles to `gpt-5.6-terra` at `medium`, haiku roles to `gpt-5.6-luna` at `low`. Codex has no
+vendor alias layer of its own, so a Codex model id rots on every release; Plastic resolves that
+by owning the alias itself, centralizing every id in one map. An existing
+`agents.models.<name>` config override is honored by shape: an alias word maps to model and
+effort together exactly like the default; any other value is written verbatim as a literal
+`model` id only, with no effort line (the user owns that value and its staleness). An empty
+value emits nothing, so an agent with no override and no shipped alias cleanly inherits the
+user's globally configured Codex model. `doctor`'s codex check validates the generated `.toml`
+files (presence plus a structural check for the mandatory fields).
 
 `doctor`'s model-drift check (`check_agent_model_drift`) has a Codex-specific path since
-intent 198, widened at intent 216: it reads `~/.codex/agents/plastic-*.toml` directly (the
-same plain string matching `codex_agents_toml_check` already uses, no TOML parser
-dependency) and reads the `model` and `model_reasoning_effort` lines as two separate values,
-through independent regexes, so the model line is always opened rather than skipped by a
-fallback. It compares the model value against the tier's resolved Codex model id and the
-effort value against the tier's resolved effort, each comparison skipped when its expected
-value is absent, so a tier with no mapped Codex model id never reads as drift; detail lines
-name which field drifted. An `agents.models.codex.<name>` override stays sanctioned and is
-never compared, because model and effort are user configuration per harness and per
-project. The check validates only, it never enforces and it never fails the boot. Previously
-this check globbed a path Codex never writes and always passed silently without opening a
-single Codex file, so a drifted override could never be caught.
+intent 198, widened at intent 216: it reads `~/.codex/agents/plastic-*.toml` directly (plain
+string matching, no TOML parser dependency) and reads the `model` and `model_reasoning_effort`
+lines as two separate values, through independent regexes, so the model line is always opened
+rather than skipped by a fallback. It compares the model value against the tier's resolved
+Codex model id and the effort value against the tier's resolved effort, each comparison
+skipped when its expected value is absent, so an alias with no mapped Codex model id never
+reads as drift; detail lines name which field drifted. An `agents.models.codex.<name>`
+override stays sanctioned and is never compared, because model and effort are user
+configuration per harness and per project. The check validates only, it never enforces and it
+never fails the boot.
 
 The two advisor agents (`plastic-advisor`, `plastic-faux-advisor`) have a Codex pairing
 defined at intent 186 (`plastic-advisor` to `gpt-5.6-sol` at `xhigh`, `plastic-faux-advisor`
 to `gpt-5.6-terra` at `high`) but emission stays deferred: `generate_codex_agents` still
-skips both `AgentModels::CONSULTATION_AGENTS` files by name, so no Codex TOML is written
-for either yet.
+skips both `AgentModels::CONSULTATION_AGENTS` files by name, so no Codex TOML is written for
+either yet.
 
-### L3 savepoints (intent 102, cut to the record hook in intent 302)
+### L3 the record (intent 102, cut to the record hook in intent 302)
 
-Removed in 2.0 (intent 302): the Codex `apply_patch` `PreToolUse` gates and the `Bash`-matcher
-shell gate are gone with Claude's; `HookRegistry.codex_hooks_json` emits no `PreToolUse` group.
-What remains is the `PostToolUse` `record` hook on the `apply_patch` matcher: `scripts/codex-hook
-record` reads the Codex stdin once, parses the apply_patch envelope once
-(`scripts/lib/apply_patch_envelope.rb`, fail-open on a missing or unparseable envelope), and
-synthesizes one Claude-shaped `PostToolUse` payload per file operation for `scripts/hook-record`,
-so the savepoint ledger, the lock heartbeat, and the day ledger land the same way on both
-harnesses. A stale `edit-gates` or `bash-gate` entry in an older `~/.codex/hooks.json` falls
-through the dispatcher's fail-open `else` (exit 0, no output) until the installer purges it
-(`HookRegistry::RETIRED_HOOK_NAMES`). Doctor's `codex_hooks_implemented` check still diffs the
-dispatcher's `STATE_HOOKS` literal and `case` labels against the registry in both directions,
-so a registered hook with no dispatcher branch, or a branch nobody registers, is reported.
+`HookRegistry.codex_hooks_json` emits no `PreToolUse` group. The `PostToolUse` `record` hook
+on the `apply_patch` matcher is the whole of L3: `scripts/codex-hook record` reads the Codex
+stdin once, parses the apply_patch envelope once (`scripts/lib/apply_patch_envelope.rb`,
+fail-open on a missing or unparseable envelope), and synthesizes one Claude-shaped
+`PostToolUse` payload per file operation for `scripts/hook-record`, so the savepoint ledger,
+the lock heartbeat, and the day ledger land the same way on both harnesses. A stale hook entry
+from an older `~/.codex/hooks.json` falls through the dispatcher's fail-open `else` (exit 0,
+no output) until the installer purges it (`HookRegistry::RETIRED_HOOK_NAMES`). Doctor's
+`codex_hooks_implemented` check still diffs the dispatcher's `STATE_HOOKS` literal and `case`
+labels against the registry in both directions, so a registered hook with no dispatcher
+branch, or a branch nobody registers, is reported.
 
 ### config.toml (deferred, read-only advisory)
 
-Plastic does not write `~/.codex/config.toml` this slice, and has no TOML writer: the
-deferred settings (`[features] hooks = true`, `sandbox_mode = "workspace-write"` with
-`writable_roots`, `approval_policy`) stay owner-managed. Codex additionally loads an
-inline `config.toml [hooks]` table as an equivalent to `hooks.json` (hook sources are
-additive, so either or both may be present); Plastic documents this as the alternative it
-does not write to, not something it merges into. `doctor` runs a READ-ONLY scan of
-`config.toml` and warns when `[features] hooks = false` (or the deprecated `codex_hooks =
-false` alias) or `sandbox_mode = "read-only"` is present, since either would silently stop
-Plastic's hooks from firing; it never writes the file.
+Plastic does not write `~/.codex/config.toml`, and has no TOML writer: the deferred settings
+(`[features] hooks = true`, `sandbox_mode = "workspace-write"` with `writable_roots`,
+`approval_policy`) stay owner-managed. Codex additionally loads an inline `config.toml
+[hooks]` table as an equivalent to `hooks.json` (hook sources are additive, so either or both
+may be present); Plastic documents this as the alternative it does not write to. `doctor` runs
+a READ-ONLY scan of `config.toml` and warns when `[features] hooks = false` (or the deprecated
+`codex_hooks = false` alias) or `sandbox_mode = "read-only"` is present, since either would
+silently stop Plastic's hooks from firing; it never writes the file.
 
 ### Headless hook trust
 
 Codex reviews hook trust by hash, at user scope too, and re-reviews on any change to the
 hook's command. Interactive sessions trust the installed hooks via `/hooks`. Headless runs
-(`codex exec`) need either `--dangerously-bypass-hook-trust` or a managed
-`requirements.toml` shipped ahead of time; this slice documents both paths and ships no
-trust artifact of its own.
+(`codex exec`) need either `--dangerously-bypass-hook-trust` or a managed `requirements.toml`
+shipped ahead of time; Plastic documents both paths and ships no trust artifact of its own.
 
 Since intent 198, the installer itself prints the `/hooks` step after a successful Codex
 install (`scripts/install.rb`'s `print_results`), so a user is told to trust the hooks instead
@@ -359,18 +333,14 @@ worktree-scoping bug.
 
 ## Roadmap
 
-Later adapters extend this contract to other harnesses. They arrive as new ROOT
-intents (not children of this one) with `sources: ["4a1c1", "7"]`, where intent 7 is
-the harness-adapters umbrella and 4a1c1 is this foundation. Codex's L1 core (skills copy
-plus AGENTS.md standing-conventions injection, intent 33a), L3 hooks
-(`hooks.json` registration, the `apply_patch` envelope parser, the dispatcher, intent 102),
-and per-agent model mapping (`~/.codex/agents/*.toml` generation, intent 102a) have all
-landed. Intent 198 closed the gap between "shipped" and "actually works on a first install":
-the directory-presence probe, the missing links-gate dispatcher branch, the hook-trust
-reminder, and the Codex model-drift check. Intent 199 closed Codex's L2 live-state gap:
-`SessionStart`, `UserPromptSubmit`, and `PreCompact` now reach Codex the same way they reach
-Claude. Intent 203 closed the shell-tool gate hole: `bash-gate` now reaches Codex's `Bash`
-tool, matched on `Bash` alone since that is the one shell-tool name the official Codex hooks
-doc confirms (no discrete `Read`, `Grep`, or `Glob` tool is documented). The
-current line of sight for the remaining harnesses is Hermes, then OpenClaw. All of them target
-reasoning agents only.
+Later adapters extend this contract to other harnesses. They arrive as new ROOT intents (not
+children of this one) with `sources: ["4a1c1", "7"]`, where intent 7 is the harness-adapters
+umbrella and 4a1c1 is this foundation. Codex's L1 core (skills copy plus AGENTS.md
+standing-conventions injection, intent 33a), L3 hooks (`hooks.json` registration, the
+`apply_patch` envelope parser, the dispatcher, intent 102), and per-agent model mapping
+(`~/.codex/agents/*.toml` generation, intent 102a) have all landed. Intent 198 closed the gap
+between "shipped" and "actually works on a first install"; intent 199 closed Codex's L2
+live-state gap; intent 302 removed the edit-path and stage-transition enforcement on both
+harnesses, leaving the record hook. Intent 309 regenerates the hook registry for every
+harness, including Codex's `SessionEnd` wiring. The current line of sight for the remaining
+harnesses is Hermes, then OpenClaw. All of them target reasoning agents only.

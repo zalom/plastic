@@ -10,7 +10,7 @@ without it, and why nothing in Plastic's core cycle depends on either tool.
 ## The short answer
 
 QMD, Enola, and Serena are recommendations, not requirements. Plastic works
-fully without them. Nothing in the intent lifecycle, the locks, or the gates
+fully without them. Nothing in the intent lifecycle, the locks, or the record
 depends on any of them being present.
 
 ## What QMD is for
@@ -45,20 +45,19 @@ Two small things, both about convenience, not capability:
 
 - A one-line reminder that these tools exist, shown once after install if
   they are detected on your system.
-- A search hint on some content searches, suggesting you search through QMD
-  instead of scanning files. This hint never blocks anything. It is the same
-  advisory gate covered in
-  [what-the-gates-are-telling-you.md](what-the-gates-are-telling-you.md): it
-  always allows the search to run.
+- A recommendation line in the core conventions (`PLASTIC.md`), plus a per-prompt
+  reminder hook, suggesting you search through QMD instead of scanning files.
+  Neither blocks anything; the search always runs.
 
 ## What still works, no matter what
 
 - Reading and searching the intent stores, through the built-in fallback
   (scanning the index and files directly).
-- Every lifecycle skill: creating intents, boarding them, running guided or
-  auto mode.
-- Every lock, code, and create gate. These do not know or care whether QMD or
-  Serena exist.
+- Every lifecycle skill: creating intents, direct and thinking work, auto
+  delivery.
+- The delivery lock and the record hook. These do not know or care whether QMD
+  or Serena exist. Where the record lands is described in
+  [reading-the-ledgers.md](reading-the-ledgers.md).
 - The complete auto-delivery cycle, start to finish.
 
 So if you are working without QMD and Serena, you are not missing any part of
