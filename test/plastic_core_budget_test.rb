@@ -5,6 +5,8 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 
+require_relative "../bin/lib/context_budget"
+
 # PlasticCoreBudgetTest (intent 223, D7/D12): the regrowth-enforcement
 # mechanism. Two prior splits (intents 13b, 127) each shrank PLASTIC.md once
 # and it regrew both times because nothing measured it. skill-lint measures
@@ -35,7 +37,8 @@ require "fileutils"
 # wrapper around SkillLint: check_body_budget is a private method entangled
 # with violation-record construction over a full skills_dir tree, not a
 # reusable pure function, so this small DI class ports the identical
-# arithmetic rather than reaching into SkillLint's internals.
+# arithmetic through ContextBudget (intent 313) rather than reaching into
+# SkillLint's internals.
 class CoreBudget
   Measurement = Struct.new(:lines, :tokens, :bytes) do
     def over_line_ceiling?
@@ -53,10 +56,13 @@ class CoreBudget
     end
   end
 
+  # Intent 313, D2: the arithmetic itself now lives in ContextBudget, the
+  # bench's shared estimator, so this test and bin/plastic-bench can never
+  # report different numbers for the same file. Only the projection to
+  # (lines, tokens, bytes) and the predicate boundaries above belong to 223.
   def self.measure(body)
-    lines = body.lines.count
-    tokens = (body.split(/\s+/).reject(&:empty?).length * 1.3).round
-    Measurement.new(lines, tokens, body.bytesize)
+    shared = ContextBudget.measure(body)
+    Measurement.new(shared.lines, shared.tokens, shared.bytes)
   end
 end
 
@@ -126,6 +132,35 @@ class PlasticCoreBudgetTest < Minitest::Test
     measurement = CoreBudget.measure(File.read(PLASTIC_MD))
     assert_operator measurement.bytes, :<, 8192,
       "PLASTIC.md is #{measurement.bytes} bytes; the ruled core ceiling is 8192 bytes (intent 296, enforced since 305)"
+  end
+
+  # Intent 313, D2: CoreBudget's arithmetic is now ContextBudget's, so the bench
+  # and this test can never report different numbers for the same file. The
+  # delegation must not move the predicate boundaries: skill-lint's 500 and 5000
+  # stay on the predicates (they mirror the linter's can-fail fixtures) while the
+  # live assertions above carry the tighter 200 and 1600, and 8192 is the ruling.
+  def test_core_budget_delegates_to_the_shared_arithmetic
+    body = File.read(PLASTIC_MD)
+    mine = CoreBudget.measure(body)
+    shared = ContextBudget.measure(body)
+
+    assert_equal shared.lines, mine.lines
+    assert_equal shared.tokens, mine.tokens
+    assert_equal shared.bytes, mine.bytes
+  end
+
+  def test_predicate_boundaries_are_unchanged
+    at_line_boundary = CoreBudget::Measurement.new(500, 0, 0)
+    at_token_boundary = CoreBudget::Measurement.new(0, 5000, 0)
+    at_byte_boundary = CoreBudget::Measurement.new(0, 0, 8192)
+
+    assert at_line_boundary.over_line_ceiling?, "the line predicate boundary is skill-lint's 500"
+    assert at_token_boundary.over_token_ceiling?, "the token predicate boundary is skill-lint's 5000"
+    assert at_byte_boundary.over_byte_ceiling?, "the byte predicate boundary is the ruled 8192"
+
+    refute CoreBudget::Measurement.new(499, 4999, 8191).over_line_ceiling?
+    refute CoreBudget::Measurement.new(499, 4999, 8191).over_token_ceiling?
+    refute CoreBudget::Measurement.new(499, 4999, 8191).over_byte_ceiling?
   end
 
   # Can-fail proof (intent 208): the budget check must be observed failing on

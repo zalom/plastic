@@ -1363,3 +1363,66 @@ accepts `session: nil` for any-session addressing; `flip_all` flips every matchi
 lock with one `pwrite` per line.
 
 The skill-authoring guides live under `docs/skill-authoring/` since 2.0 (intent 304); they are reference material, not installed skills.
+
+## the context budget bench (intent 313)
+
+Intent 296 ruled two numbers for how much doctrine a session reads at boot: the core block
+under 8,192 bytes, and the whole per-boot read under 15,000. Until intent 313 both were
+estimates in a design document, and the only enforcement on disk measured two static files
+without ever running the thing that injects context. `bin/plastic-bench` measures it instead.
+
+```
+bin/plastic-bench                      # 5 boots against a fixed fixture, the default
+bin/plastic-bench --repeat 20          # more samples
+bin/plastic-bench --core-file PATH     # measure PATH as the core block (proves a ceiling can fail)
+bin/plastic-bench --repo PATH          # measure another Plastic checkout
+```
+
+It exits 0 when every ceiling holds, 1 when one is crossed, and 2 on bad usage.
+`test/context_budget_bench_test.rb` runs the same module inside the suite with three repeats,
+so a crossed ceiling is a red suite, not a report nobody ran.
+
+**How the fixture is built.** A `Dir.mktmpdir` home, a real `scripts/install.rb --claude` into
+it, then a fixed store on top: one active and two future global intents, one active and one
+future project intent, the future ones created exactly 30 days before today so the rendered
+stale line never drifts with the calendar. The install is what makes the measurement faithful:
+without `~/.claude`, `Doctor#check_agent_registration` fails, the rest of the core checks
+short-circuit, and the boot banner reads `error` instead of the `success` a real session sees.
+
+The child process gets `HOME`, `PLASTIC_HOME` and `PLASTIC_TMP` inside the fixture, a fixed
+session id, no `RUBYOPT`, and a `PATH` of exactly one entry: the running interpreter's
+directory. That last one is load-bearing twice. `hook-session-start` shells out to
+`scripts/read-config` three times and `read-config`'s shebang is `#!/usr/bin/env ruby`, so any
+`PATH` carrying `/usr/bin` would run those reads under the system Ruby while the report named a
+different interpreter; and with nothing else on `PATH`, `qmd` is unfindable on every host, so
+the optional QMD status line can never move the byte count between machines.
+
+**What it measures, and what is enforced.**
+
+| Row | What it is | Ceiling |
+|---|---|---|
+| core block | `PLASTIC.md` bytes | **under 8,192**, intent 296's ruling |
+| boot injection | the `additionalContext` `hook-session-start` emits for the fixture | **under 15,000**, intent 296's whole-read ruling |
+| skill catalog | every `skills/*/SKILL.md` frontmatter `name` + `description` value the harness loads | reported |
+| boot injection + skill catalog | the two above | **under 17,500**, a 313 ratchet, lower it, never raise it |
+| median skill body | the median `SKILL.md` body, frontmatter excluded | reported |
+| doctrine working set | boot injection + `skills/_decision-tables.md` + the median skill body | reported against the 15,000 target, with its gap |
+
+Bytes are the budget; two token estimates ride along, a word-based one (`words * 1.3`, the same
+arithmetic as `scripts/lib/skill_lint.rb`, so the bench and the linter can never disagree) and
+`bytes / 4`. Neither is a tokenizer. Rows that are arithmetic over other rows print `-` for the
+word estimate rather than a number that looks measured and is not.
+
+**Why the working set is reported and not enforced.** The cut inventory's own composition for
+the 15,000 (core + fragments + a median skill body) sums to 17,621 in its own after-column, and
+its "median skill in play" row is a per-skill *directory* measure, not one file. The working set
+therefore stands above the ruled target today, and the gap is the skill bodies: three skills sit
+over 15 KB and pull the median up. Enforcing 15,000 there would turn the suite red for work no
+intent owns, and enforcing a ratchet would turn it red on a median that steps by about a
+kilobyte whenever a skill is added or removed. So the bench prints the number and the gap on
+every run, and the ceiling stays on the boot injection, the one quantity that is read on every
+boot and can be measured exactly.
+
+The bench is a maintainer tool. It lives under `bin/` beside `bin/test`, is deliberately absent
+from `installer_core.rb`'s manifest, and is never installed into `~/.plastic`: it reads this
+repository's own files and a fixture it builds, so it has no meaning on an installed copy.
