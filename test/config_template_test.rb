@@ -27,6 +27,14 @@ class ConfigTemplateTest < Minitest::Test
     assert_equal 3, @config["stale_threshold_days"]
   end
 
+  # Intent 312 (296 D38): absolute token counts for a 1M window, 35 and 50 percent.
+  def test_has_context_thresholds
+    assert_kind_of Integer, @config["context_offer_tokens"]
+    assert_kind_of Integer, @config["context_insist_tokens"]
+    assert_equal 350_000, @config["context_offer_tokens"]
+    assert_equal 500_000, @config["context_insist_tokens"]
+  end
+
   def test_has_project_roots
     assert_kind_of Array, @config["project_roots"]
     assert_includes @config["project_roots"], "~/.plastic/projects"

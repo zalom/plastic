@@ -98,6 +98,22 @@ class RollbackMajorTest < Minitest::Test
     assert_empty v.switch_calls
   end
 
+  # Intent 312: prepare_switch reports the CLAUDE.md path only when it actually stripped
+  # something, so the exact-list assertion above cannot be satisfied by a phantom entry.
+  def test_prepare_switch_reports_no_claude_md_when_no_compact_section_is_present
+    settings = File.join(@claude_dir, "settings.json")
+    record_agent(@claude_dir, "2.0.0-alpha.1")
+    core = InstallerCore.new(package_root: REPO, plastic_home: @home, agents: @agents, version: "2.0.0-alpha.1")
+    File.write(settings, JSON.pretty_generate("hooks" => {}))
+    capture_io { core.merge_claude_hooks(settings) }
+
+    v = rollback
+    stripped = nil
+    capture_io { stripped = v.prepare_switch("1.14.1", "2.0.0-alpha.1") }
+
+    assert_equal [settings], stripped
+  end
+
   # --- (b) the rollback prepare step strips 2.0's own registrations -------------------------
 
   def test_prepare_switch_strips_current_registrations_on_a_downgrade_only
@@ -112,8 +128,12 @@ class RollbackMajorTest < Minitest::Test
     capture_io { core.merge_claude_hooks(settings) }
     File.write(hooks_json, "{}")
     capture_io { core.merge_codex_hooks(hooks_json) }
+    claude_md = File.join(@claude_dir, "CLAUDE.md")
+    core.inject_claude_compact_md(claude_md)
     assert_match(/plastic-close/, File.read(settings), "fixture: 2.0 registered its hooks")
     assert_match(/close/, File.read(hooks_json), "fixture: 2.0 registered Codex hooks")
+    assert_includes File.read(claude_md), InstallerCore::CLAUDE_SECTION_BEGIN_PREFIX,
+                    "fixture: 2.0 installed the compact-instructions block"
 
     v = rollback
     capture_io { assert_equal [], v.prepare_switch("2.0.0-alpha.1", "1.14.1"), "an upgrade strips nothing" }
@@ -121,7 +141,9 @@ class RollbackMajorTest < Minitest::Test
 
     stripped = nil
     capture_io { stripped = v.prepare_switch("1.14.1", "2.0.0-alpha.1") }
-    assert_equal [settings, hooks_json].sort, stripped.sort
+    assert_equal [settings, hooks_json, claude_md].sort, stripped.sort
+    refute_includes File.read(claude_md), InstallerCore::CLAUDE_SECTION_BEGIN_PREFIX,
+                    "intent 312: an older package cannot see the compact section, so the downgrade strips it"
     after = File.read(settings)
     refute_match(/plastic-/, after, "every Plastic registration is gone")
     assert_match(%r{~/bin/my-own-hook}, after, "the user's own hook survives")

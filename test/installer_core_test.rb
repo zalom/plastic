@@ -3,6 +3,7 @@ require "tmpdir"
 require "fileutils"
 require "json"
 require "digest"
+require "yaml"
 
 require_relative "../scripts/lib/installer_core"
 
@@ -256,6 +257,32 @@ class InstallerCoreTest < Minitest::Test
   ensure
     FileUtils.rm_rf(claude_dir)
     FileUtils.rm_rf(codex_dir)
+  end
+
+  # --- intent 312: the seeded config and the compact-instructions block ---
+
+  def test_bootstrap_seeds_the_two_context_thresholds
+    capture_io { @core.bootstrap }
+    config = YAML.safe_load(File.read(File.join(@home, "config.yml")))
+
+    assert_equal 350_000, config["context_offer_tokens"]
+    assert_equal 500_000, config["context_insist_tokens"]
+  end
+
+  def test_install_claude_injects_the_compact_block_and_never_tracks_claude_md
+    dir = Dir.mktmpdir("install-claude-compact")
+    capture_io { @core.install_claude({ name: "Claude Code", dir: dir }, false, argv: ["--no-statusline"]) }
+
+    claude_md = File.join(dir, "CLAUDE.md")
+    assert File.exist?(claude_md), "install_claude must write the compact-instructions block"
+    assert_includes File.read(claude_md), InstallerCore::CLAUDE_SECTION_BEGIN_PREFIX
+
+    manifest = JSON.parse(File.read(File.join(dir, "plastic", "manifest.json")))
+    tracked = (manifest["files"] || {}).keys
+    refute_includes tracked, claude_md,
+      "CLAUDE.md is a partial-ownership user file: tracking it would delete it wholesale on uninstall"
+  ensure
+    FileUtils.rm_rf(dir)
   end
 
   def test_agent_version_for_reads_the_stripped_version_string
