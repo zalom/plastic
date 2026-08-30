@@ -546,33 +546,17 @@ trigger lives at a fixed point:
   ~2GB of models qmd lazily downloads on first embed/rerank are present. The index
   itself lives under `~/.cache` and is never committed to the `~/.plastic` git.
 
-The power-tools `UserPromptSubmit` hook (`hooks/power-tools` ->
-`scripts/hook-power-tools`, decision logic in `scripts/lib/qmd_hook.rb`) runs on
-every turn and emits one thing: the recommendation string from
-`scripts/lib/power_tools.rb` (`PowerTools.mandate`), a "prefer QMD" reminder for
-finding intents when qmd is present and a "prefer Serena's symbolic tools"
-reminder for code navigation when Serena is present, or, when Enola is also
-present, that slot names Enola instead of Serena (Enola-first, one code-navigation
-slot; `PowerTools.enola?` checks a `.enola` marker or `enola` on PATH). When qmd
-and a code-navigation tool are both present, the two collapse into ONE combined
-line naming both, not one line per tool. Serena presence is detected by a
-`.serena` marker in the working directory or an ancestor, or `serena` on PATH
-(`PowerTools.serena?`); qmd presence by `PowerTools.qmd?`. These are
-recommendations, not mandates (intent 108, D8): the agent is reminded, never
-obliged. All three probes are PATH and marker-file walks
-with no subprocess, so the whole hook costs about a tenth of a second. A 2s timeout
-plus rescue-all keeps anything unexpected from blocking the turn; when no tool is
-present the hook is a silent no-op. It registers as a fourth `UserPromptSubmit`
-entry in `merge_claude_hooks`, ships via `core_files`, and its launcher is covered
-by doctor's `HookRegistry`-derived hook checks.
-
-Until intent 246 this hook also injected scored `qmd search` hits ahead of the
-mandate, gated on a substantive prompt. Intent 225 measured that injection at 0.24
-intent-level recall@3 against a plain ripgrep control at 0.18, while agent-driven
-`qmd query` scored 0.71, and both of the hook's expensive subprocesses lived inside
-that block. It was removed because the failure was recall, not latency, which is
-also why caching and async were rejected. `QmdSync.search` is untouched and still
-backs the read-only `scripts/qmd-sync search` CLI verb.
+The power-tools `UserPromptSubmit` hook was removed in 2.0 (intent 309): `PLASTIC.md`
+carries the "prefer QMD, prefer Enola or Serena" recommendation once per session (intent
+305), so a per-prompt reminder only repeated it. `scripts/lib/power_tools.rb` stays: doctor's
+Serena and Enola readiness checks use its presence probes (`PowerTools.qmd?`,
+`PowerTools.serena?`, `PowerTools.enola?`, PATH and marker-file walks with no subprocess).
+The name `power-tools` is in `HookRegistry::RETIRED_HOOK_NAMES`, so an old settings.json or
+`~/.codex/hooks.json` entry is purged on the next install or update. History: until intent
+246 this hook also injected scored `qmd search` hits; intent 225 measured that injection at
+0.24 intent-level recall@3 against a plain ripgrep control at 0.18, while agent-driven
+`qmd query` scored 0.71, so the injection went first and the reminder last.
+`QmdSync.search` is untouched and still backs the read-only `scripts/qmd-sync search` verb.
 
 ### intent born-complete validation
 
@@ -1289,8 +1273,8 @@ updated in the same change.
 Three pieces close the loop the day ledger (intent 297) and the capture and record hooks
 (intent 298) opened.
 
-- `hooks/close` and `scripts/hook-close` run at `SessionEnd` (Claude Code only until intent 309
-  wires Codex). The script reads `session_id`, `cwd`, and `reason` from the hook's stdin JSON and
+- `hooks/close` and `scripts/hook-close` run at `SessionEnd` on both harnesses (Codex since
+  intent 309, through `scripts/codex-hook`'s detached hand-off). The script reads `session_id`, `cwd`, and `reason` from the hook's stdin JSON and
   takes the Plastic home from argv. It is a no-op for the reasons `clear` and `resume`, which do
   not end a session. Otherwise it flips this session's pending `[~]` lines to dropped `[-]`,
   writes one `Note` when it dropped any, removes `.tmp/<session-id>/`, and, when the session's

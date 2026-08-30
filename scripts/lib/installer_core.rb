@@ -332,8 +332,6 @@ class InstallerCore
       "scripts/hook-capture" => "scripts/hook-capture",
       "scripts/hook-record" => "scripts/hook-record",
       "scripts/hook-close" => "scripts/hook-close",
-      "scripts/hook-power-tools" => "scripts/hook-power-tools",
-      "scripts/lib/qmd_hook.rb" => "scripts/lib/qmd_hook.rb",
       "scripts/lib/power_tools.rb" => "scripts/lib/power_tools.rb",
       "scripts/lib/ruby_probe.rb" => "scripts/lib/ruby_probe.rb",
       "scripts/lib/agent_models.rb" => "scripts/lib/agent_models.rb",
