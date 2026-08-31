@@ -59,6 +59,37 @@ independently maintained by hand.
 | Codex CLI | `$plastic-<name>` (dollar), explicit; Codex may also select a skill implicitly by matching its `description` |
 | Hermes | not yet defined (future adapter, see Roadmap below) |
 
+## The harness-agnostic core and the Claude adapter
+
+The intent screen (intent 316a, refined by intent 316a1) splits into two halves, named the same
+way in code, docs and spec so the boundary cannot rot silently. Each file in the split carries one
+of two exact header lines, and no core file may justify a choice by any one harness's behavior.
+
+**Harness-agnostic core** — `scripts/lib/intent_screen.rb`, `scripts/lib/intent_screen_ansi.rb`,
+and `scripts/intent-screen` (it holds the plain/ANSI selection, so it belongs on the core side too).
+Header line: `Harness-agnostic core: no harness assumption lives here.`
+
+**Claude adapter** — `scripts/lib/message_display.rb`, `scripts/hook-message-display`, and
+`hooks/message-display`. Header line:
+`Claude adapter: Claude Code only; the core is harness-agnostic.`
+
+The only Claude-driven choice the core used to make on its own — stripping backticks and `*`/`__`
+emphasis runs before text reaches a raw ANSI block, because Claude Code still Markdown-processes
+`displayContent` even inside one — is now an option the adapter supplies rather than a default the
+core imposes. `IntentScreenAnsi.render` takes `markdown_safe:`, defaulting to `false`: the
+harness-neutral default, because the core's other renderer (`IntentScreen.render`) is itself a
+Markdown surface that preserves backticks, and stripping a user's own text is a concession one
+harness needs, not a service every harness needs. The Claude adapter passes `markdown_safe: true`
+at its sole call site, `scripts/lib/message_display.rb`'s `finalize`.
+
+This supersedes 316a's D6 ("Claude Code only, no Codex projection", read as an architectural
+stance) with intent 316a1's D3, cross-harness architecture. The *behavior* Claude Code gets did
+not change and was proven live before this split; only where the decision to strip Markdown lives
+did.
+
+`resources/evidence--harness-surfaces.md` in intent 316a1's own record carries the per-harness
+display-surface matrix this split makes it possible to ask honestly about a second harness.
+
 ## Harness support
 
 | Harness | Install | Standing conventions | Live state | Record | Statusline | Subagent teams |

@@ -12,6 +12,8 @@
 # text cut mid-sentence. `step_text`, `insight_fields` and `next_fields` are
 # public so the ANSI renderer reuses the exact same trims (D3) rather than
 # re-deriving them and drifting.
+#
+# Harness-agnostic core: no harness assumption lives here.
 module IntentScreen
   BAR_WIDTH = 20
   ON = "█"

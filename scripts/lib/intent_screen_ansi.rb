@@ -15,6 +15,13 @@ require_relative "intent_screen"
 # `color:` is a constructor/call argument, never an environment read (D18):
 # the plain path (`color: false`) is one call away and testable without
 # touching NO_COLOR or a TTY. No ENV, no Dir.pwd, no Dir.home.
+#
+# Harness-agnostic core: no harness assumption lives here. `markdown_safe:`
+# (intent 316a1, D3/D5) is the one choice a caller supplies rather than a
+# choice this module makes for itself: a display surface that passes raw
+# ANSI through untouched should not inherit a concession it never needed.
+# See docs/reference/harness-adapters.md for which caller asks for it and
+# why.
 module IntentScreenAnsi
   ESC = "\e"
   RESET = "#{ESC}[0m".freeze
@@ -32,7 +39,7 @@ module IntentScreenAnsi
 
   ELLIPSIS = "…"
 
-  def self.render(intent_dir:, store_root:, color: true, width: DEFAULT_WIDTH)
+  def self.render(intent_dir:, store_root:, color: true, width: DEFAULT_WIDTH, markdown_safe: false)
     base = File.basename(intent_dir)
     id = base.split("--", 2).first
     intent_text = File.read(File.join(intent_dir, "#{base}.md"))
@@ -49,7 +56,7 @@ module IntentScreenAnsi
     fields.merge!(IntentScreen.progress_fields(items))
     fields.merge!(IntentScreen.next_fields(items, status, checklist_present: IntentScreen.items_present?(intent_dir), escape_pipes: false))
     fields.merge!(IntentScreen.insight_fields(intent_text, escape_pipes: false))
-    fields.transform_values! { |v| clean(v) }
+    fields.transform_values! { |v| markdown_safe ? clean(v) : v }
 
     done_n = fields["progress.done"].to_i
     total_n = fields["progress.total"].to_i
@@ -103,7 +110,8 @@ module IntentScreenAnsi
         badge = status_cell(item[:done], color)
         prefix_plain = "  #{num}  [ #{item[:done] ? 'done' : 'open'} ]  "
         text_budget = [width - prefix_plain.length, 0].max
-        text = fit_plain(clean(IntentScreen.step_text(item[:text])), text_budget)
+        step = IntentScreen.step_text(item[:text])
+        text = fit_plain(markdown_safe ? clean(step) : step, text_budget)
         out << "  #{num}  [#{badge}]  #{text}\n"
       end
     end
@@ -111,12 +119,13 @@ module IntentScreenAnsi
     out
   end
 
-  # --- markdown-noise stripping (intent 316a, S1 answer 5 / matrix 19b) ------
+  # --- markdown-noise stripping, adapter-optional (intent 316a1, D3/D5) ------
   #
-  # `displayContent` is still Markdown-processed by Claude Code even inside a
-  # raw ANSI block (a live capture showed backticks silently stripped from
-  # step text). Strip backticks and neutralise `*`/`_` runs from every value
-  # before it reaches the block, so nothing is left for that pass to act on.
+  # Not every display surface passes text through a Markdown renderer, so
+  # stripping is not this module's call to make (see `markdown_safe:` on
+  # `render` above; the justification for WHY a caller would ever ask for
+  # this lives with that caller, in scripts/lib/message_display.rb). When
+  # asked, strips backticks and neutralises `*`/`_` runs from a value.
   # Single underscores are left alone: they are common inside ordinary words
   # (`intent_screen.rb`) and GFM does not treat an intraword underscore as
   # emphasis; only a run of 2+ (the bold marker `__`) is markdown-active.
@@ -126,9 +135,11 @@ module IntentScreenAnsi
 
   # --- width cap (D15, matrix 18) --------------------------------------------
 
-  # Truncates `text` (already markdown-clean) to `max` visible columns with a
-  # trailing ellipsis when cut, then yields the truncated plain text to the
-  # block for coloring. Coloring never adds visible width.
+  # Truncates `text` to `max` visible columns with a trailing ellipsis when
+  # cut, then yields the truncated plain text to the block for coloring.
+  # Coloring never adds visible width. The cap itself is harness-neutral: a
+  # fixed width, not a re-flow, is what lets a column layout survive whatever
+  # display eventually shows it — no display's own wrapping is assumed here.
   def self.fit(text, max)
     plain = fit_plain(text, max)
     block_given? ? yield(plain) : plain
