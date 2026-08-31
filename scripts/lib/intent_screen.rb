@@ -1,9 +1,17 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 # IntentScreen (intent 316) - fills templates/intent-screen.md from one intent's
-# record: the intent file, the tier's INDEX.md, savepoint.md, and checklist.md.
+# record: the intent file, the tier's INDEX.md, savepoint.md and checklist.md.
 # Every number on the screen comes from here so the session never writes one by
 # eye. Pure: explicit paths in, a Markdown string out; no ENV, no Dir.pwd.
+#
+# Intent 316a fixed three defects the field code inherited into both the plain
+# renderer and the ANSI renderer (scripts/lib/intent_screen_ansi.rb): the
+# Insight row dumping a multi-clause remainder into the note column, an empty
+# "What this means" heading rendering bold with nothing under it, and step
+# text cut mid-sentence. `step_text`, `insight_fields` and `next_fields` are
+# public so the ANSI renderer reuses the exact same trims (D3) rather than
+# re-deriving them and drifting.
 module IntentScreen
   BAR_WIDTH = 20
   ON = "█"
@@ -11,9 +19,24 @@ module IntentScreen
   PLACEHOLDER_SENTINEL = "<!-- plastic:placeholder -->"
   SECTIONS = %w[Active Future Completed Abandoned].freeze
   ITEM_RE = /^\s*- \[([ xX])\]\s+(.*)$/
-  STEP_PREFIX_RE = /\A(?:Step|S)\s*\d+\s*[-:·]\s*/i
+  # Em dash and en dash added (intent 316a O1e): a checklist item written
+  # "S1 — text" (the em dash every checklist this intent writes, and the one a
+  # reviewer reads, uses) kept its prefix under the old character class and
+  # rendered "S1  [ open ]  S1 — text" on screen.
+  STEP_PREFIX_RE = /\A(?:Step|S)\s*\d+\s*[-:·—–]\s*/i
   INSIGHT_RE = /\A(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ)\s+·\s+\S+\s+·\s+.+?\s+—\s+(.+)\z/
   SAVEPOINT_RE = /\A(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ)\s{2,}(\S+)\s{2,}(.+?)\s*\z/
+
+  # Word-boundary truncation caps (intent 316a D3/O1a/O1c). Never a clause
+  # trim: a clause trim on step text destroys a pinned `OPEN:` row
+  # (test/intent_screen_test.rb:171-178) that a mid-sentence cut would eat.
+  INSIGHT_VALUE_MAX = 72
+  INSIGHT_NOTE_MAX = 96
+  NEXT_VALUE_MAX = 72
+  STEP_TEXT_MAX = 110
+
+  MEANING_BLOCK_RE = /\n\*\*What this means\*\*\n\{\{meaning\}\}\n/
+  CLOSE_BLOCK_RE = /\n\{\{close\}\}\s*\z/
 
   # Where a resume lands, from the ledger's last line (the boarding matrix).
   def self.landing_stage(stage, milestone)
@@ -58,6 +81,11 @@ module IntentScreen
     fields["close"] = ""
 
     out = template.dup
+    # O1b: an empty "What this means" heading, or an empty {{close}}, must not
+    # render at all — the heading alone was a bold line over nothing. Dropping
+    # both moves the session's own bullets below the Steps table (D14).
+    out = out.sub(MEANING_BLOCK_RE, "\n") if fields["meaning"].to_s.empty?
+    out = out.sub(CLOSE_BLOCK_RE, "\n") if fields["close"].to_s.empty?
     fields.each { |k, v| out = out.gsub("{{#{k}}}", v.to_s) }
     out.gsub(/\n{3,}/, "\n\n")
   end
@@ -171,7 +199,10 @@ module IntentScreen
       "progress.note" => note }
   end
 
-  def self.next_fields(items, status, checklist_present:)
+  # `escape:` (intent 316a O1d, default true) keeps the plain Markdown table's
+  # pipe-escaping; the ANSI renderer, which never emits a table, passes
+  # `escape: false` to get the raw value instead of a literal `\|`.
+  def self.next_fields(items, status, checklist_present:, escape: true)
     return { "next" => "", "next.note" => "" } if %w[Completed Abandoned].include?(status)
     return { "next" => "write checklist.md", "next.note" => "How" } unless checklist_present
 
@@ -179,15 +210,23 @@ module IntentScreen
     return { "next" => "", "next.note" => "all steps done" } unless idx
 
     head, = split_first_clause(items[idx][:text])
-    { "next" => "S#{idx + 1} · #{escape(head)}", "next.note" => "first open step" }
+    head = truncate_words(head, NEXT_VALUE_MAX)
+    head = IntentScreen.escape(head) if escape
+    { "next" => "S#{idx + 1} · #{head}", "next.note" => "first open step" }
   end
 
   def self.steps_rows(items)
     return "| | | no steps yet |" if items.empty?
 
     items.each_with_index.map do |item, i|
-      "| S#{i + 1} | #{item[:done] ? 'done' : 'open'} | #{escape(item[:text])} |"
+      "| S#{i + 1} | #{item[:done] ? 'done' : 'open'} | #{escape(step_text(item[:text]))} |"
     end.join("\n")
+  end
+
+  # Public (intent 316a O1c) so the ANSI renderer trims step text identically:
+  # word-boundary truncation only, never a clause trim, at STEP_TEXT_MAX.
+  def self.step_text(text)
+    truncate_words(text, STEP_TEXT_MAX)
   end
 
   def self.escape(text)
@@ -196,26 +235,58 @@ module IntentScreen
 
   # --- ## Insights ----------------------------------------------------------------
 
-  def self.insight_fields(intent_text)
+  def self.insight_fields(intent_text, escape: true)
     section = intent_text.split(/^## Insights\s*$/, 2)[1].to_s.split(/^## /, 2)[0].to_s
     entry = section.lines.map(&:strip).reverse.map { |l| l.match(INSIGHT_RE) }.compact.first
     return { "insight" => "none yet", "insight.note" => "" } unless entry
 
     ts, text = entry[1], entry[2].strip
     head, tail = split_first_clause(text)
+    value = truncate_words(head, INSIGHT_VALUE_MAX)
+    tail = tail.empty? ? "" : truncate_words(tail, INSIGHT_NOTE_MAX)
     note = tail.empty? ? human_time(ts) : "#{human_time(ts)} · #{tail}"
-    { "insight" => escape(head), "insight.note" => escape(note) }
+    if escape
+      { "insight" => IntentScreen.escape(value), "insight.note" => IntentScreen.escape(note) }
+    else
+      { "insight" => value, "insight.note" => note }
+    end
   end
 
+  # First clause of `text`, and at most one following clause as the tail.
+  # Anything past the second clause is discarded (intent 316a O1a): the old
+  # behavior dumped the ENTIRE remainder into the note (an 800-character
+  # real-world tail starting mid-list). Boundary is a `.` or `;` immediately
+  # followed by whitespace-then-more or end of string, so "alpha.2" and "2.0"
+  # are never mistaken for clause ends.
   def self.split_first_clause(text)
-    m = text.match(/\A(.+?)[.;](\s+.*|\z)/m)
-    head = m ? m[1] : text
-    tail = m ? m[2].to_s.strip : ""
-    if head.length > 60
-      cut = head[0, 60].rindex(" ") || 60
-      tail = "#{head[cut..].strip} #{tail}".strip
-      head = head[0, cut].strip
-    end
+    head, rest = clause_and_rest(text)
+    return [head, ""] unless rest
+
+    second, more = clause_and_rest(rest)
+    tail = more ? second : rest
     [head, tail]
+  end
+
+  # Returns [clause_without_terminal_punctuation, remainder_or_nil]. `nil` for
+  # the remainder means either no boundary exists at all, or the boundary
+  # sits at the absolute end of `text` (a single trailing clause with nothing
+  # after it) — both cases where there is no SECOND clause to fold in.
+  def self.clause_and_rest(text)
+    m = text.match(/\A(.+?)[.;](\s+(.*)|\z)/m)
+    return [text, nil] unless m
+
+    remainder = m[2].to_s.strip
+    remainder.empty? ? [m[1], nil] : [m[1], remainder]
+  end
+
+  # Word-boundary truncation with a trailing "…" when cut, never mid-word and
+  # never a clause trim (intent 316a D3).
+  def self.truncate_words(text, max)
+    return text if text.length <= max
+    return "…" if max <= 1
+
+    cut = text[0, max - 1].rindex(" ")
+    cut = max - 1 if cut.nil? || cut.zero?
+    "#{text[0, cut].rstrip}…"
   end
 end

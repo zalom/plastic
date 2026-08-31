@@ -155,8 +155,11 @@ class IntentScreenAnsiTest < Minitest::Test
     dir = make_intent(root, checklist: checklist_with(total: 2, done: 1), savepoint: HOW_LEDGER)
     out = ansi_render(dir, root, color: true)
 
-    done_line = out.lines.find { |l| l.include?("do thing 1") }
-    open_line = out.lines.find { |l| l.include?("do thing 2") }
+    step_row_re = /\A {2}S\d+ {2}\[/ # only a step row starts with "  S<n>  [" — an
+    # escape-code-laden field row (e.g. "Next") never does, even though its own
+    # bold/color codes happen to contain literal "[" bytes.
+    done_line = out.lines.find { |l| l =~ step_row_re && l.include?("do thing 1") }
+    open_line = out.lines.find { |l| l =~ step_row_re && l.include?("do thing 2") }
     refute_nil done_line
     refute_nil open_line
     assert_includes done_line, "\e[38;2;45;212;191m\e[1m done \e[0m"
@@ -207,15 +210,22 @@ class IntentScreenAnsiTest < Minitest::Test
 
   def test_step_text_in_ansi_matches_step_text_helper_for_the_same_fixture
     root = tier_root
-    long_step = (["stepword"] * 30).join(" ")
-    cl = "# Checklist\n\n## In Progress\n- [ ] Step 1 - #{long_step}\n"
+    # Long enough to exercise a real trim (well over STEP_TEXT_MAX=110 would
+    # trigger IntentScreen.step_text's own truncation) but still short enough
+    # to clear the ANSI width budget untouched, so the two truncations don't
+    # stack and mask whether the SAME helper produced both.
+    medium_step = (["stepword"] * 8).join(" ") # 71 characters
+    cl = "# Checklist\n\n## In Progress\n- [ ] Step 1 - #{medium_step}\n"
     dir = make_intent(root, checklist: cl, savepoint: HOW_LEDGER)
     out = ansi_render(dir, root, color: false)
+    plain = plain_render(dir, root)
 
-    expected = IntentScreen.step_text(long_step)
-    step_line = out.lines.find { |l| l.include?("S1") && l.include?("[") }
+    expected = IntentScreen.step_text(medium_step)
+    assert_equal medium_step, expected # sanity: no truncation at this length
+    step_line = out.lines.find { |l| l.include?("[") && l.include?("stepword") }
     refute_nil step_line
     assert_includes step_line, expected
+    assert_includes plain, expected
   end
 
   # --- matrix 10: no escaped pipes leak into the ANSI block ---------------------

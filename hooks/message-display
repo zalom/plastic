@@ -1,0 +1,37 @@
+#!/bin/bash
+# hooks/message-display (intent 316a, O6): the MessageDisplay launcher. Fires
+# on every streamed chunk of every assistant message (D11), so the common
+# case — an ordinary chunk of an ordinary message — must decide with shell
+# builtins alone and fork nothing. Only a candidate message hands off to
+# Ruby (scripts/hook-message-display), which is the one place allowed to do
+# real work.
+#
+# No command substitution, no backticks, no sed/jq/cat: case, [, parameter
+# expansion and printf are all builtins. Deliberately does NOT copy hooks/
+# capture's SCRIPT_DIR-via-subshell pattern (cd into dirname of $0, inside a
+# command substitution, then pwd) — that forks a subshell on every single
+# invocation, which is exactly the cost this hook cannot carry.
+IFS= read -r -d '' INPUT          # returns 1 at EOF: do NOT set -e
+case $INPUT in *'"message_id"'*) ;; *) exit 0 ;; esac
+rest=${INPUT#*\"message_id\"}; rest=${rest#*\"}; mid=${rest%%\"*}
+rest=${INPUT#*\"session_id\"}; rest=${rest#*\"}; sid=${rest%%\"*}
+
+SCRIPT_DIR=${0%/*}
+TMP_ROOT=${PLASTIC_TMP:-${TMPDIR:-/tmp}}
+BUFFER="$TMP_ROOT/plastic-message-display/$sid/$mid"
+
+# Hand off when a buffer already exists for this session/message (chunk > 0
+# of a message chunk 0 already engaged), or when this chunk plausibly opens
+# a screen: a bare "#" first delta, in either JSON spacing. Must be a single
+# "#", not "##" — a real screen's own first delta can be as short as "## " —
+# a "##" glob would filter out exactly the message this hook exists to
+# recognize.
+handoff=0
+[ -f "$BUFFER" ] && handoff=1
+case $INPUT in
+  *'"delta":"#'*|*'"delta": "#'*) handoff=1 ;;
+esac
+
+[ "$handoff" = 1 ] || exit 0
+
+printf '%s' "$INPUT" | env -u RUBYOPT ruby "$SCRIPT_DIR/../scripts/hook-message-display"

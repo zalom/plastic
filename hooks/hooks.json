@@ -64,6 +64,18 @@
           }
         ]
       }
+    ],
+    "MessageDisplay": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" message-display",
+            "statusMessage": ""
+          }
+        ]
+      }
     ]
   }
 }

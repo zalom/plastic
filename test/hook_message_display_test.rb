@@ -3,6 +3,7 @@ require "tmpdir"
 require "fileutils"
 require "json"
 require "time"
+require "yaml"
 require "open3"
 require_relative "../scripts/lib/message_display"
 require_relative "../scripts/lib/intent_screen"
@@ -41,10 +42,22 @@ class HookMessageDisplayTest < Minitest::Test
     root
   end
 
+  # A project's cwd-matching root is its REAL checkout path (projects.yml's
+  # own "path:", e.g. ~/apps/personal/plastic) — a different directory from
+  # StoreDiscovery's `root` (~/.plastic/projects/<slug>, which only holds
+  # INDEX.md and store/). checkout_dir is that real path.
   def build_project_store(slug: "demo")
     root = File.join(plastic_home, "projects", slug)
     FileUtils.mkdir_p(File.join(root, "store"))
     write_index(root)
+
+    checkout_dir = File.join(@home, "checkouts", slug)
+    FileUtils.mkdir_p(checkout_dir)
+    projects_yml = File.join(plastic_home, "projects.yml")
+    existing = File.exist?(projects_yml) ? YAML.safe_load(File.read(projects_yml)) : { "projects" => {} }
+    existing["projects"][slug] = { "path" => checkout_dir }
+    File.write(projects_yml, YAML.dump(existing))
+
     root
   end
 
@@ -298,9 +311,10 @@ class HookMessageDisplayTest < Minitest::Test
     plain = plain_screen(File.join(project, "store", "50--slug"), project)
     buffered = plain + "**What this means**\n- x\n\nneeds input: S1\n"
 
+    real_cwd = File.join(@home, "checkouts", "demo", "somewhere")
     h = handler(plastic_home)
-    h.handle(payload(index: 0, final: false, cwd: File.join(project, "somewhere"), delta: buffered[0, 12]))
-    out = h.handle(payload(index: 1, final: true, cwd: File.join(project, "somewhere"), delta: buffered[12..-1]))
+    h.handle(payload(index: 0, final: false, cwd: real_cwd, delta: buffered[0, 12]))
+    out = h.handle(payload(index: 1, final: true, cwd: real_cwd, delta: buffered[12..-1]))
 
     assert_includes out, "\e[1m"
     assert_includes out, "project:demo"
@@ -323,13 +337,16 @@ class HookMessageDisplayTest < Minitest::Test
   # --- matrix 37: no fork on the common path (source assertions) ------------
 
   def test_launcher_source_forks_nothing_on_the_common_path
-    src = File.read(LAUNCHER)
-    refute_includes src, "$("
-    refute_includes src, "`"
-    refute_match(/\bsed\b/, src)
-    refute_match(/\bjq\b/, src)
-    refute_match(/\bcat\b/, src)
-    refute_includes src, 'SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"'
+    # Scan CODE lines only — the launcher's own header comment documents, by
+    # name, the pattern it deliberately does not use, and a naive whole-file
+    # scan would trip on the documentation rather than the code.
+    code = File.readlines(LAUNCHER).reject { |l| l.strip.start_with?("#") }.join
+    refute_includes code, "$("
+    refute_includes code, "`"
+    refute_match(/\bsed\b/, code)
+    refute_match(/\bjq\b/, code)
+    refute_match(/\bcat\b/, code)
+    refute_match(/\$\(cd .*&&\s*pwd\)/, code)
   end
 
   # --- matrix 38: install rewrite token --------------------------------------
