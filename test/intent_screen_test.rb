@@ -334,4 +334,78 @@ end
     assert_includes out, "| **Progress** | #{'█' * 5}#{'░' * 15} 1 / 4 | 3 steps open |"
     assert_includes out, "| S4 | open | do thing 4 |"
   end
+
+  # --- O3, matrix rows 20-22: --ansi, the default, and the two degrades ---------
+
+  # Row 20: the CLI stops defaulting to plain.
+  def test_cli_default_has_no_flag_stays_plain
+    root = tier_root(:project, slug: "demo")
+    dir = make_intent(root, checklist: checklist_with(total: 1, done: 0), savepoint: HOW_LEDGER)
+    out, err, status = Open3.capture3("ruby", CLI, dir)
+    assert_equal 0, status.exitstatus, err
+    refute_includes out, "\e"
+  end
+
+  # Row 21, first half: --ansi under Open3 is piped (never a TTY), so D18's
+  # non-TTY degrade already applies and this alone cannot distinguish "the
+  # flag is wired" from "the flag is a no-op" — a real PTY is required to
+  # observe the styled path at all (see test_cli_ansi_emits_styled_block_on_a_real_tty).
+  # Row 21, second half: an unknown flag still exits 2 now that --ansi is a
+  # recognized one.
+  def test_cli_unknown_flag_still_exits_two
+    root = tier_root(:project, slug: "demo")
+    dir = make_intent(root, checklist: checklist_with(total: 1, done: 0), savepoint: HOW_LEDGER)
+    out, err, status = Open3.capture3("ruby", CLI, dir, "--bogus")
+    assert_equal 2, status.exitstatus
+    assert_empty out
+    assert_match(/unknown flag/, err)
+  end
+
+  # Row 21, proven on a real TTY: --ansi actually emits the styled block when
+  # stdout really is a terminal. PTY.spawn gives the child a real pseudo-
+  # terminal, exactly what a live `claude` session provides and what Open3's
+  # pipes never do.
+  def test_cli_ansi_emits_styled_block_on_a_real_tty
+    root = tier_root(:project, slug: "demo")
+    dir = make_intent(root, checklist: checklist_with(total: 1, done: 0), savepoint: HOW_LEDGER)
+    require "pty"
+    out = +""
+    PTY.spawn({ "NO_COLOR" => nil }, "ruby", CLI, dir, "--ansi") do |r, _w, pid|
+      begin
+        loop { out << r.readpartial(4096) }
+      rescue Errno::EIO, EOFError
+        nil
+      end
+      Process.wait(pid)
+    end
+    assert_includes out, "\e[1m"
+  rescue LoadError, RuntimeError, Errno::ENXIO => e
+    skip "PTY unavailable in this environment: #{e.class}: #{e.message}"
+  end
+
+  # Row 22: NO_COLOR forces the plain Markdown screen even with --ansi, and it
+  # equals the no-flag output exactly (D18: the true default form, not
+  # IntentScreenAnsi's own uncoloured layout).
+  def test_cli_no_color_with_ansi_flag_equals_the_plain_default
+    root = tier_root(:project, slug: "demo")
+    dir = make_intent(root, checklist: checklist_with(total: 1, done: 0), savepoint: HOW_LEDGER)
+    plain_out, = Open3.capture3("ruby", CLI, dir)
+    ansi_out, err, status = Open3.capture3({ "NO_COLOR" => "1" }, "ruby", CLI, dir, "--ansi")
+    assert_equal 0, status.exitstatus, err
+    refute_includes ansi_out, "\e"
+    assert_equal plain_out, ansi_out
+  end
+
+  # Row 22, the other half of D18: a non-TTY stdout (Open3's pipe, exactly
+  # like every test above) forces plain even with --ansi and even without
+  # NO_COLOR set.
+  def test_cli_non_tty_with_ansi_flag_equals_the_plain_default
+    root = tier_root(:project, slug: "demo")
+    dir = make_intent(root, checklist: checklist_with(total: 1, done: 0), savepoint: HOW_LEDGER)
+    plain_out, = Open3.capture3("ruby", CLI, dir)
+    ansi_out, err, status = Open3.capture3({ "NO_COLOR" => nil }, "ruby", CLI, dir, "--ansi")
+    assert_equal 0, status.exitstatus, err
+    refute_includes ansi_out, "\e"
+    assert_equal plain_out, ansi_out
+  end
 end
