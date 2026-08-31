@@ -187,9 +187,11 @@ module ScreenPaint
   end
 
   # A field table ("| | | |" scaffold, "| **Key** | value | note |" rows)
-  # re-lays as the intent screen's vertical field block: bold key, value,
-  # mid-grey note on its own line. A data table re-lays as padded columns
-  # with a bold header, done/open cells colored, no pipes anywhere.
+  # re-lays as the intent screen's three-column field block: bold key,
+  # value, and a mid-grey note that shares the line when it fits, dropping
+  # to its own line only as a fallback (D9-D11). A data table re-lays as
+  # padded columns with a bold header, done/open cells colored, no pipes
+  # anywhere.
   def paint_table(rows, color:, width:, markdown_safe:)
     rows = rows.reject { |r| SEPARATOR_RE.match?(r) || r.gsub(/[\s|]/, "").empty? }
     return "" if rows.empty?
@@ -202,46 +204,19 @@ module ScreenPaint
   end
 
   # Intent 317a1 (O3, D9-D11, D14, D15): the same three-column geometry as
-  # IntentScreenAnsi.render's field-row loop, on the same helpers - notes
-  # arrive as plain text here, so visible_width equals length, but the same
-  # helper is used anyway so both renderers read identically.
+  # IntentScreenAnsi.render's field-row loop, on the SAME implementation
+  # (D12) - `IntentScreenAnsi.field_table_lines` - so the two renderers
+  # cannot drift apart. Notes arrive as plain text here, so `visible_width`
+  # equals `length`, but the shared helper is used anyway so both renderers
+  # read identically.
   def paint_field_table(rows, color:, width:, markdown_safe:)
     key_w = rows.map { |r| cells_of(r).first.to_s.gsub("*", "").length }.max
-    prefix_width = key_w + 4
-
-    rendered_rows = rows.map do |row|
+    field_rows = rows.map do |row|
       key, value, note = cells_of(row)
       key = key.to_s.gsub("*", "")
-      value_budget = [width - prefix_width, 0].max
-      value_text = A.fit_plain(clean(value.to_s, markdown_safe), value_budget)
-      [key, value_text, clean(note.to_s, markdown_safe)]
+      [key, clean(value.to_s, markdown_safe), clean(note.to_s, markdown_safe)]
     end
-
-    noted_widths = rendered_rows.filter_map { |_, value_text, note| A.visible_width(value_text) unless note.empty? }
-    value_col = [noted_widths.max.to_i, A::VALUE_COL_MAX].min
-    value_col = 0 if value_col.negative?
-    note_budget = width - prefix_width - value_col - 2
-
-    out = +""
-    rendered_rows.each do |key, value_text, note|
-      row = "  #{A.styled(key.ljust(key_w), color, A::BOLD)}  #{value_text}"
-      if note.empty?
-        out << row.rstrip << "\n"
-        next
-      end
-
-      value_fits = A.visible_width(value_text) <= value_col
-      note_overflows = A.visible_width(note) > note_budget
-      if value_fits && !(note_overflows && A.visible_width(note) > A::NOTE_FLOOR)
-        pad = value_col - A.visible_width(value_text)
-        out << row << (" " * pad) << "  " << A.fit(note, note_budget) { |s| A.styled(s, color, A::MIDGREY) } << "\n"
-      else
-        out << row.rstrip << "\n"
-        own_budget = [width - prefix_width, 0].max
-        out << (" " * prefix_width) << A.fit(note, own_budget) { |s| A.styled(s, color, A::MIDGREY) } << "\n"
-      end
-    end
-    out
+    A.field_table_lines(field_rows, width: width, color: color, key_width: key_w)
   end
 
   # Intent 317a1 (O4, D3-D5): a data table's kind and note columns are chosen
@@ -261,6 +236,11 @@ module ScreenPaint
       last_ci = cols.length - 1
       cells = cols.each_with_index.map do |cell, ci|
         padded = ci == last_ci ? cell.to_s : cell.to_s.ljust(widths[ci] || 0)
+        # An empty cell never gets styled (317a1 post-exec review, finding
+        # 1): `A.styled("", ...)` still emits a color-open/RESET pair around
+        # nothing visible, and that hides the join separator's own trailing
+        # spaces from `.rstrip` below, on the very line the reader sees.
+        next padded if cell.to_s.empty?
         if ri.zero?
           A.styled(padded, color, A::BOLD)
         elsif ci == kind_col && EVIDENCE_PROOF_KINDS.include?(cell)
