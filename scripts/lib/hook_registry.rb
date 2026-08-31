@@ -54,6 +54,20 @@ module HookRegistry
           { "name" => "capture", "status" => "Capturing prompt into the session ledger..." },
         ] },
       ],
+      # This entry belongs to the Claude adapter half of Plastic's
+      # harness-agnostic-core / Claude-adapter split (intent 316a1, D3
+      # supersedes 316a's D6): MessageDisplay is not one of
+      # CODEX_LIVE_STATE_EVENTS, so codex_hooks_json (below) never picks it
+      # up; codex_hook_names stays exactly what it was (pinned by
+      # test/hook_registry_test.rb:82 and :110-111). Fires on every streamed
+      # chunk of every assistant message (D11); the launcher (hooks/message-
+      # display) decides with shell builtins and forks nothing on the common
+      # case, execing Ruby only for a candidate message.
+      "MessageDisplay" => [
+        { "matcher" => "", "hooks" => [
+          { "name" => "message-display", "status" => "" },
+        ] },
+      ],
     }
   end
 

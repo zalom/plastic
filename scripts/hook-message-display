@@ -1,0 +1,67 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# hook-message-display (intent 316a, O4): the MessageDisplay hook CLI. Reads
+# the harness's per-chunk JSON payload from stdin, hands it to MessageDisplay
+# (the pure handler class), and prints the hookSpecificOutput envelope when a
+# String comes back. Always exits 0, whatever happens — a raised exception
+# here must never surface as a non-zero exit or stray stderr on an ordinary
+# chunk of an ordinary message (matrix 31).
+#
+# This script is the one place in the O4 stack allowed to read ENV, the
+# clock, or Dir.tmpdir: MessageDisplay itself takes tmp_root/plastic_home/
+# color/now as constructor arguments and touches none of them directly.
+#
+# Claude adapter: Claude Code only; the core is harness-agnostic.
+
+require "json"
+require "time"
+require "tmpdir"
+require "yaml"
+require_relative "lib/message_display"
+
+def color_enabled?(plastic_home)
+  return false unless ENV["NO_COLOR"].to_s.empty?
+
+  cfg_path = File.join(plastic_home, "config.yml")
+  return true unless File.exist?(cfg_path)
+
+  cfg = YAML.safe_load(File.read(cfg_path))
+  display = cfg.is_a?(Hash) ? cfg["display"] : nil
+  return true unless display.is_a?(Hash)
+
+  display.fetch("ansi_screen", true) != false
+rescue StandardError
+  true
+end
+
+begin
+  raw = $stdin.tty? ? "" : $stdin.read
+  payload = raw.to_s.strip.empty? ? nil : JSON.parse(raw)
+
+  if payload.is_a?(Hash)
+    tmp_root = ENV["PLASTIC_TMP"].to_s.empty? ? Dir.tmpdir : ENV["PLASTIC_TMP"]
+    plastic_home = File.expand_path(ENV["PLASTIC_HOME"] || "~/.plastic")
+
+    handler = MessageDisplay.new(
+      tmp_root: tmp_root,
+      plastic_home: plastic_home,
+      color: color_enabled?(plastic_home),
+      now: Time.now,
+    )
+    result = handler.handle(payload)
+
+    if result.is_a?(String)
+      puts JSON.generate(
+        "hookSpecificOutput" => {
+          "hookEventName" => "MessageDisplay",
+          "displayContent" => result,
+        },
+      )
+    end
+  end
+rescue StandardError
+  nil
+end
+exit 0

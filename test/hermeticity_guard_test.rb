@@ -193,13 +193,17 @@ class HermeticityGuardTest < Minitest::Test
   # keyed by the ambient session id. A test that spawns either without env
   # isolation clobbers the live session's /tmp bridge (the exact 107/110
   # incident, reproduced by deprecation_display_test before this guard).
-  # Spawning tests must inject PLASTIC_TMP.
+  # Spawning tests must inject PLASTIC_TMP. hook-message-display (intent
+  # 316a) joined this list: it buffers streamed chunks under
+  # <tmp_root>/plastic-message-display/<session_id>/<message_id>, and
+  # without PLASTIC_TMP a spawning test would write real buffer directories
+  # into the live session's own /tmp.
   def test_every_bridge_writing_hook_spawn_isolates_its_tmp
     offenders = Dir[File.expand_path("../*_test.rb", __FILE__)].select do |f|
       next false if File.basename(f) == File.basename(__FILE__)
       next false if NON_SPAWNING_SOURCE_SCANNERS.include?(File.basename(f))
       src = File.read(f)
-      src.match?(/hook-(session-start|record)/) &&
+      src.match?(/hook-(session-start|record|message-display)/) &&
         src.match?(/Open3|IO\.popen|\bsystem\(/) &&
         !src.include?("PLASTIC_TMP")
     end

@@ -446,6 +446,14 @@ class InstallerCore
       "scripts/lib/intent_screen.rb" => "scripts/lib/intent_screen.rb",
       "scripts/intent-screen" => "scripts/intent-screen",
       "scripts/hook-savepoint" => "scripts/hook-savepoint",
+      # Intent 316a: hooks/* only glob-copies scripts/*, never scripts/lib/*
+      # (see hook_files above), so the two lib files a require_relative
+      # between themselves are unguarded there — these three literal
+      # entries are their only protection (test/install_sync_test.rb:23-29
+      # greps installer_core.rb's own source text for "scripts/<name>").
+      "scripts/lib/intent_screen_ansi.rb" => "scripts/lib/intent_screen_ansi.rb",
+      "scripts/lib/message_display.rb" => "scripts/lib/message_display.rb",
+      "scripts/hook-message-display" => "scripts/hook-message-display",
     }
   end
 

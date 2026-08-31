@@ -8,18 +8,31 @@
 # the close; it never edits the numbers.
 #
 # Usage:
-#   intent-screen <intent_dir> [--template <path>]
+#   intent-screen <intent_dir> [--template <path>] [--ansi]
 #
 # The store root is the directory two levels above the intent (<root>/store/<id--slug>);
 # the template defaults to templates/intent-screen.md next to this script's dir,
 # in-repo (<repo>/scripts -> <repo>/templates) and installed (~/.plastic/scripts ->
 # ~/.plastic/templates) alike.
 #
+# --ansi (intent 316a, O3): emits scripts/lib/intent_screen_ansi.rb's styled
+# truecolor block instead of the plain Markdown screen. Plain stays the
+# default with no flag. Two things force plain even WITH --ansi (D18): NO_COLOR
+# present in the environment (any value counts), or a non-TTY stdout — the
+# true default form of D2, not IntentScreenAnsi's own uncoloured layout. The
+# library (scripts/lib/intent_screen_ansi.rb) is pure and never reads either;
+# this script is the one place allowed to.
+#
 # Exit codes:
 #   0 - the screen is on stdout
 #   2 - usage error, or the path is not an intent directory (one line on stderr)
+#
+# Harness-agnostic core: no harness assumption lives here. This script holds
+# the plain/ANSI selection (intent 316a1, D3) and belongs to the same
+# harness-agnostic core as lib/intent_screen.rb and lib/intent_screen_ansi.rb.
 
 require_relative "lib/intent_screen"
+require_relative "lib/intent_screen_ansi"
 
 def usage_abort(message)
   warn "intent-screen: #{message}"
@@ -28,18 +41,21 @@ end
 
 args = ARGV.dup
 template_path = nil
+ansi = false
 positional = []
 while (arg = args.shift)
   case arg
   when "--template"
     template_path = args.shift or usage_abort("--template needs a path")
+  when "--ansi"
+    ansi = true
   else
     usage_abort("unknown flag #{arg.inspect}") if arg.start_with?("--")
     positional << arg
   end
 end
 
-usage_abort("usage: intent-screen <intent_dir> [--template <path>]") unless positional.length == 1
+usage_abort("usage: intent-screen <intent_dir> [--template <path>] [--ansi]") unless positional.length == 1
 intent_dir = File.expand_path(positional.first)
 usage_abort("#{intent_dir} is not an intent directory") unless IntentScreen.intent_dir?(intent_dir)
 
@@ -47,6 +63,15 @@ store_root = File.expand_path("../..", intent_dir)
 template_path ||= File.expand_path("../templates/intent-screen.md", __dir__)
 usage_abort("template not found at #{template_path}") unless File.exist?(template_path)
 
-$stdout.write IntentScreen.render(intent_dir: intent_dir, store_root: store_root,
-                                  template: File.read(template_path))
+plain = -> { IntentScreen.render(intent_dir: intent_dir, store_root: store_root, template: File.read(template_path)) }
+
+degrade_to_plain = ENV.key?("NO_COLOR") || !$stdout.tty?
+
+$stdout.write(
+  if ansi && !degrade_to_plain
+    IntentScreenAnsi.render(intent_dir: intent_dir, store_root: store_root, color: true)
+  else
+    plain.call
+  end
+)
 exit 0
