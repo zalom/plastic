@@ -30,6 +30,14 @@ module ScreenPaint
   COUNT_LINE_RE = /\A\d+ open( · .*)?\z/.freeze
   BOLD_LEAD_RE = /\A\*\*([^*]+)\*\*(.*)\z/.freeze
 
+  # Intent 317a1 (D3, D4, D5): the data-table palette. Kind and note columns
+  # are chosen by the table's own header, never by position; a cell whose
+  # text is exactly "not recorded" greys wherever it appears.
+  EVIDENCE_PROOF_KINDS = %w[suite red ship doctor deposits verdict].freeze
+  EVIDENCE_DEVIATION_KINDS = %w[deviates].freeze
+  NOTE_HEADERS = %w[Source Why].freeze
+  NOT_RECORDED = "not recorded"
+
   module_function
 
   # The classifier both paint and region_end share. `idx`/`opener_idx` give
@@ -98,6 +106,7 @@ module ScreenPaint
     out = +""
     table = []
     ok = true
+    indent_run = 0
 
     flush = lambda do
       next if table.empty?
@@ -107,6 +116,11 @@ module ScreenPaint
 
     lines.each_with_index do |line, idx|
       kind = classify(line, idx: idx, opener_idx: first_idx)
+      # Intent 317a1 (O6, D8): the run counter tracks consecutive :indented
+      # lines so only the SECOND and later lines under a heading like
+      # "**Asked**" grey as a note; a :table line (which `next`s below) must
+      # reset it too, so a later unrelated indented block starts fresh.
+      indent_run = kind == :indented ? indent_run + 1 : 0
       if kind == :table
         table << line.strip
         next
@@ -123,7 +137,8 @@ module ScreenPaint
         head = A.styled(clean(m[1], markdown_safe), color, A::BOLD, A::NEARWHITE)
         out << head << clean(m[2], markdown_safe) << "\n"
       when :indented
-        out << A.fit_plain(clean(line.chomp, markdown_safe), width) << "\n"
+        text = A.fit_plain(clean(line.chomp, markdown_safe), width)
+        out << (indent_run > 1 ? A.styled(text, color, A::MIDGREY) : text) << "\n"
       when :field
         m = FIELD_LINE_RE.match(line.chomp)
         out << A.styled(m[1].ljust(8), color, A::BOLD) << "  " << clean(m[3], markdown_safe) << "\n"
@@ -132,9 +147,16 @@ module ScreenPaint
         badge = A.status_cell(m[2] == "done", color)
         out << "#{m[1].ljust(4)} [#{badge}]  #{A.fit_plain(clean(m[3], markdown_safe), width - 12)}\n"
       when :timeline
+        # Intent 317a1 (O5, D6, D7): the time carries no escape at all; the
+        # kind label carries the color - amber for the review turning point,
+        # teal for a landed commit, mid-grey (no bold) otherwise.
         m = TIMELINE_RE.match(line.chomp)
-        out << A.styled(m[1], color, A::MIDGREY) << "  " << A.styled(m[2].ljust(6), color, A::BOLD) \
-            << "  " << clean(m[3], markdown_safe) << "\n"
+        codes = case m[2]
+                when "Review" then [A::BOLD, A::AMBER]
+                when "Commit" then [A::BOLD, A::TEAL]
+                else [A::MIDGREY]
+                end
+        out << m[1] << "  " << A.styled(m[2].ljust(6), color, *codes) << "  " << clean(m[3], markdown_safe) << "\n"
       when :count
         out << A.fit(line.strip, width) { |s| A.styled(s, color, A::MIDGREY) } << "\n"
       when :closer
@@ -173,30 +195,86 @@ module ScreenPaint
     return "" if rows.empty?
 
     if cells_of(rows.first).first.to_s.start_with?("**")
-      out = +""
-      key_w = rows.map { |r| cells_of(r).first.to_s.gsub("*", "").length }.max
-      rows.each do |row|
-        key, value, note = cells_of(row)
-        key = key.to_s.gsub("*", "")
-        out << "  #{A.styled(key.ljust(key_w), color, A::BOLD)}  #{clean(value.to_s, markdown_safe)}\n"
-        next if note.to_s.empty?
-        out << (" " * (key_w + 4)) << A.fit(clean(note, markdown_safe), width - key_w - 4) { |s| A.styled(s, color, A::MIDGREY) } << "\n"
-      end
-      return out
+      return paint_field_table(rows, color: color, width: width, markdown_safe: markdown_safe)
     end
 
+    paint_data_table(rows, color: color, markdown_safe: markdown_safe)
+  end
+
+  # Intent 317a1 (O3, D9-D11, D14, D15): the same three-column geometry as
+  # IntentScreenAnsi.render's field-row loop, on the same helpers - notes
+  # arrive as plain text here, so visible_width equals length, but the same
+  # helper is used anyway so both renderers read identically.
+  def paint_field_table(rows, color:, width:, markdown_safe:)
+    key_w = rows.map { |r| cells_of(r).first.to_s.gsub("*", "").length }.max
+    prefix_width = key_w + 4
+
+    rendered_rows = rows.map do |row|
+      key, value, note = cells_of(row)
+      key = key.to_s.gsub("*", "")
+      value_budget = [width - prefix_width, 0].max
+      value_text = A.fit_plain(clean(value.to_s, markdown_safe), value_budget)
+      [key, value_text, clean(note.to_s, markdown_safe)]
+    end
+
+    noted_widths = rendered_rows.filter_map { |_, value_text, note| A.visible_width(value_text) unless note.empty? }
+    value_col = [noted_widths.max.to_i, A::VALUE_COL_MAX].min
+    value_col = 0 if value_col.negative?
+    note_budget = width - prefix_width - value_col - 2
+
+    out = +""
+    rendered_rows.each do |key, value_text, note|
+      row = "  #{A.styled(key.ljust(key_w), color, A::BOLD)}  #{value_text}"
+      if note.empty?
+        out << row.rstrip << "\n"
+        next
+      end
+
+      value_fits = A.visible_width(value_text) <= value_col
+      note_overflows = A.visible_width(note) > note_budget
+      if value_fits && !(note_overflows && A.visible_width(note) > A::NOTE_FLOOR)
+        pad = value_col - A.visible_width(value_text)
+        out << row << (" " * pad) << "  " << A.fit(note, note_budget) { |s| A.styled(s, color, A::MIDGREY) } << "\n"
+      else
+        out << row.rstrip << "\n"
+        own_budget = [width - prefix_width, 0].max
+        out << (" " * prefix_width) << A.fit(note, own_budget) { |s| A.styled(s, color, A::MIDGREY) } << "\n"
+      end
+    end
+    out
+  end
+
+  # Intent 317a1 (O4, D3-D5): a data table's kind and note columns are chosen
+  # by the header, never by position; a cell whose text is exactly "not
+  # recorded" greys wherever it appears. `widths[ci] || 0` (rather than a
+  # bare `widths[ci]`) is the ragged-row guard: `ReportScreen.escape` writes
+  # `\|` while `cells_of` still splits on every `|`, so a row can carry more
+  # cells than its header without either side ever raising.
+  def paint_data_table(rows, color:, markdown_safe:)
     grid = rows.map { |r| cells_of(r).map { |c| clean(c, markdown_safe) } }
     widths = grid.first.each_index.map { |i| grid.map { |r| r[i].to_s.length }.max }
+    kind_col = grid.first.first == "Kind" ? 0 : nil
+    note_col = grid.first.index { |h| NOTE_HEADERS.include?(h) }
+
     out = +""
     grid.each_with_index do |cols, ri|
+      last_ci = cols.length - 1
       cells = cols.each_with_index.map do |cell, ci|
-        padded = cell.to_s.ljust(widths[ci])
+        padded = ci == last_ci ? cell.to_s : cell.to_s.ljust(widths[ci] || 0)
         if ri.zero?
           A.styled(padded, color, A::BOLD)
+        elsif ci == kind_col && EVIDENCE_PROOF_KINDS.include?(cell)
+          A.styled(padded, color, A::TEAL, A::BOLD)
+        elsif ci == kind_col && EVIDENCE_DEVIATION_KINDS.include?(cell)
+          A.styled(padded, color, A::AMBER, A::BOLD)
+        elsif ci == note_col
+          A.styled(padded, color, A::MIDGREY)
         elsif cell == "done"
           A.styled(padded, color, A::TEAL)
         elsif cell == "open"
           A.styled(padded, color, A::AMBER)
+        elsif cell == NOT_RECORDED
+          A.styled(padded, color, A::MIDGREY)
         else
           padded
         end

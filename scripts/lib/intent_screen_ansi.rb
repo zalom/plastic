@@ -35,9 +35,25 @@ module IntentScreenAnsi
   BAR_CELLS = 24
   EIGHTHS = [" ", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"].freeze
 
-  DEFAULT_WIDTH = 100
+  # Intent 317a1 (D14): the approved design is a 115-column layout, measured
+  # from design--terminal-output.html:52-58 with its tags stripped.
+  DEFAULT_WIDTH = 115
 
   ELLIPSIS = "…"
+
+  # Intent 317a1 (D9-D11, D15): the three-column field table's geometry.
+  # ANSI_RE strips escapes so padding measures what the terminal actually
+  # draws (D10); VALUE_COL_MAX is the design's own value-column figure and
+  # the owner's "50 chars" (mockup--report-screen.md:74); NOTE_FLOOR is the
+  # minimum note length that earns the own-line fallback when the note alone
+  # (not the value) is what overflows the same-line budget.
+  ANSI_RE = /\e\[[0-9;]*m/.freeze
+  VALUE_COL_MAX = 50
+  NOTE_FLOOR = 24
+
+  def self.visible_width(text)
+    text.to_s.gsub(ANSI_RE, "").length
+  end
 
   def self.render(intent_dir:, store_root:, color: true, width: DEFAULT_WIDTH, markdown_safe: false)
     base = File.basename(intent_dir)
@@ -83,15 +99,38 @@ module IntentScreenAnsi
     key_width = field_rows.map { |k, _, _, _| k.length }.max
     prefix_width = key_width + 4 # "  " + key.ljust + "  "
 
-    field_rows.each do |key, value, note, prebuilt|
+    # Intent 317a1 (D9-D11, D14, D15): notes become a third column, padded to
+    # the widest RENDERED noted value (capped, D15) so every note starts at
+    # one raw-text position; a row whose value or note will not fit drops to
+    # the note-on-its-own-line form instead of squeezing anything invisibly.
+    rendered_rows = field_rows.map do |key, value, note, prebuilt|
       value_budget = [width - prefix_width, 0].max
       value_text = prebuilt ? value : fit_plain(value, value_budget)
-      out << "  #{styled(key.ljust(key_width), color, BOLD)}  #{value_text}\n"
-      next if note.to_s.empty?
+      [key, value_text, note.to_s]
+    end
 
-      note_budget = [width - prefix_width, 0].max
-      indent = " " * prefix_width
-      out << "#{indent}#{fit(note, note_budget) { |t| styled(t, color, MIDGREY) }}\n"
+    noted_widths = rendered_rows.filter_map { |_, value_text, note| visible_width(value_text) unless note.empty? }
+    value_col = [noted_widths.max.to_i, VALUE_COL_MAX].min
+    value_col = 0 if value_col.negative?
+    note_budget = width - prefix_width - value_col - 2
+
+    rendered_rows.each do |key, value_text, note|
+      row = "  #{styled(key.ljust(key_width), color, BOLD)}  #{value_text}"
+      if note.empty?
+        out << row.rstrip << "\n"
+        next
+      end
+
+      value_fits = visible_width(value_text) <= value_col
+      note_overflows = visible_width(note) > note_budget
+      if value_fits && !(note_overflows && visible_width(note) > NOTE_FLOOR)
+        pad = value_col - visible_width(value_text)
+        out << row << (" " * pad) << "  " << fit(note, note_budget) { |t| styled(t, color, MIDGREY) } << "\n"
+      else
+        out << row.rstrip << "\n"
+        own_budget = [width - prefix_width, 0].max
+        out << (" " * prefix_width) << fit(note, own_budget) { |t| styled(t, color, MIDGREY) } << "\n"
+      end
     end
 
     out << "\n"
