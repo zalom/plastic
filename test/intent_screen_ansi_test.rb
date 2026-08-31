@@ -390,6 +390,17 @@ class IntentScreenAnsiTest < Minitest::Test
     assert_includes next_line, "first open step"
   end
 
+  def test_note_never_silently_drops_at_narrow_width # review fix item 4
+    # Same defect as ScreenPaint's own narrow-width guard, exercised
+    # directly on the shared IntentScreenAnsi.field_table_lines helper
+    # (317a1 post-exec review, finding 4): at width 20 the same-line note
+    # budget collapses to 0, and an unguarded same-line branch fed
+    # `fit(note, 0)` returns "" with no ellipsis - a silent drop, not a cut.
+    out = IntentScreenAnsi.field_table_lines([["Stage", "Execution", "short"]], width: 20, color: true, key_width: 5)
+    plain = visible(out)
+    assert_includes plain, "short"
+  end
+
   def test_wide_width_preserves_everything_narrow_width_only_ellipsis_cuts # M28
     root = tier_root
     insight_tail = (["longclauseword"] * 10).join(" ")

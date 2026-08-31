@@ -215,6 +215,14 @@ class ScreenPaintTest < Minitest::Test
     delivered_painted = ScreenPaint.paint(wrap_screen("| Row | What | Proven by |", "| --- | --- | --- |",
                                                         "| S1 | the plan deviates from spec | 1 test |"), color: true)
     refute_includes delivered_painted, A::AMBER
+
+    # A Kind-headed table proves exact matching, not substring: the prior
+    # fixture above has no "Kind" header at all, so the kind-coloring branch
+    # never ran and the negative assertion passed for the wrong reason
+    # (317a1 post-exec review, finding 2). "deviates from spec" contains the
+    # word but is not the word.
+    kind_substring_painted = ScreenPaint.paint(wrap_screen(*evidence_table_lines([["deviates from spec", "x", "y"]])), color: true)
+    refute_includes kind_substring_painted, A::AMBER
   end
 
   def test_unrecognized_kind_stays_plain # M3, pin
@@ -229,17 +237,28 @@ class ScreenPaintTest < Minitest::Test
                                        "| A | did the thing | 1 test |"), color: true)
     n = ScreenPaint.paint(wrap_screen("| N | What | Why |", "| --- | --- | --- |",
                                        "| N1 | pick one | ask the owner |"), color: true)
+    # "suite" is a real proof-kind word (EVIDENCE_PROOF_KINDS); this table
+    # has no "Kind" header, so it must stay plain. Without this row the
+    # first-column check above never exercises a value the kind rule would
+    # actually color, so a `kind_col = 0` unconditionally mutation survives
+    # (317a1 post-exec review, finding 2).
+    s = ScreenPaint.paint(wrap_screen("| Row | What | Proven by |", "| --- | --- | --- |",
+                                       "| suite | ran the tests | outcome.md |"), color: true)
     d_row = d.lines.find { |l| l.include?("did the thing") }
     n_row = n.lines.find { |l| l.include?("pick one") }
+    s_row = s.lines.find { |l| l.include?("ran the tests") }
     # The kind-coloring rule only fires for a header literally named "Kind";
-    # neither table has one, so the "A"/"N1" labels must stay unwrapped by
-    # TEAL/AMBER even though Needs-you's own "Why" column legitimately greys.
+    # none of these tables has one, so "A"/"N1"/"suite" must all stay
+    # unwrapped by TEAL/AMBER even though Needs-you's own "Why" column
+    # legitimately greys.
     refute_match(/\e\[[0-9;]*mA\e\[0m/, d_row)
     refute_match(/\e\[[0-9;]*mN1\e\[0m/, n_row)
     refute_includes d_row, A::TEAL
     refute_includes d_row, A::AMBER
     refute_includes n_row, A::TEAL
     refute_includes n_row, A::AMBER
+    refute_includes s_row, A::TEAL
+    refute_includes s_row, A::AMBER
   end
 
   def test_note_column_is_header_driven_not_last_column # M5 (part 1)
@@ -300,13 +319,25 @@ class ScreenPaintTest < Minitest::Test
   end
 
   def test_no_trailing_whitespace_hides_inside_color_escape # M10
-    text = wrap_screen(*evidence_table_lines([["suite", "x", "y"], ["wat", "z", "w"]]))
+    # Column widths differ so a padded last cell (row 2's "w", short next to
+    # row 1's much longer source) and an EMPTY last cell (row 3) both have
+    # something to hide behind a color escape if the guard regresses.
+    text = wrap_screen(*evidence_table_lines([["suite", "x", "a longer source value"],
+                                               ["wat", "z", "w"],
+                                               ["suite", "empty source cell", ""]]))
     painted = ScreenPaint.paint(text, color: true)
     # Padding inside a non-last cell (e.g. "Kind    ") legitimately sits
     # before that cell's own RESET, with more content still to follow on the
-    # line; only trailing whitespace at the very END of the line - where the
-    # last (unpadded) cell's RESET hides it from a plain .rstrip - is the bug.
-    painted.each_line { |line| refute_match(/[ \t]\n\z/, line) }
+    # line; only trailing whitespace on the VISIBLE text - what strip_ansi
+    # reveals once the escape codes are gone - is the bug. A raw end-of-line
+    # check stays green even when a short or empty styled last cell leaves
+    # real trailing spaces hidden behind its own color escape (317a1
+    # post-exec review, finding 1); asserting on the raw string is what made
+    # the assertion inert. Reverting the "last column stays unpadded" guard
+    # (screen_paint.rb's `ci == last_ci` branch) must fail this.
+    painted.each_line do |line|
+      refute_match(/[ \t]\z/, strip_ansi(line.chomp))
+    end
   end
 
   def test_ragged_row_from_escaped_pipe_does_not_raise # M10b
@@ -445,6 +476,18 @@ class ScreenPaintTest < Minitest::Test
     plain = strip_ansi(painted)
     assert_includes plain, long_note
     refute_includes plain, "#{long_note[0, long_note.length - 1]}…"
+  end
+
+  def test_note_never_silently_drops_at_narrow_width # review fix item 4
+    # At width 20 the same-line note budget collapses to 0 (prefix_width 9 +
+    # value_col 9 + 2 == 20). An unguarded same-line branch still thought
+    # the note "fit" (its length is under NOTE_FLOOR) and fed it to
+    # `fit(note, 0)`, which returns "" with no ellipsis - the note vanished
+    # outright rather than being cut (317a1 post-exec review, finding 4).
+    rows = ["| **Stage** | Execution | short |"]
+    painted = ScreenPaint.paint_table(rows, color: true, width: 20, markdown_safe: false)
+    plain = strip_ansi(painted)
+    assert_includes plain, "short"
   end
 
   def test_content_survives_in_full_at_generous_width_and_only_ellipsis_marks_a_cut # M24, M28
