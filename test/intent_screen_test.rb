@@ -179,6 +179,70 @@ def test_next_shows_first_clause_full_text_in_table
   assert_includes screen, "| S1 | open | Doctor full on the real install; OPEN: codex_integrity passes although the registrations are stale |"
 end
 
+  # O1c, matrix row 8 (second half): a step well over STEP_TEXT_MAX (110) is cut
+  # at a word boundary with a trailing "…", never mid-word — and never via a
+  # clause trim, which the pinned row above already proves would be wrong.
+  def test_long_step_text_word_boundary_truncated_at_110
+    root = tier_root(:project)
+    long_text = (["word"] * 30).join(" ") # 149 characters, no punctuation at all
+    cl = "# Checklist\n\n## In Progress\n- [ ] Step 1 - #{long_text}\n"
+    dir = make_intent(root, checklist: cl, savepoint: HOW_LEDGER)
+    rows = step_rows(render(dir, root)).map(&:strip)
+    cell = rows.first[/\A\| S1 \| open \| (.*) \|\z/, 1]
+    refute_nil cell
+    assert cell.length <= 110, "expected <= 110 chars, got #{cell.length}: #{cell.inspect}"
+    assert cell.end_with?("…"), "expected a trailing ellipsis: #{cell.inspect}"
+    refute_match(/\Aword(?: word)*\z/, cell) # sanity: it really was cut, not left whole
+  end
+
+  # O1e, matrix row 10b: an em dash or en dash separator kept its prefix under
+  # the old character class ([-:·]) and rendered "S1  [ open ]  S1 — text".
+  def test_em_dash_and_en_dash_step_prefixes_are_stripped
+    root = tier_root(:project)
+    cl = "# Checklist\n\n## In Progress\n- [ ] S1 — Live evidence first\n- [ ] S2 – another one\n"
+    dir = make_intent(root, checklist: cl, savepoint: HOW_LEDGER)
+    screen = render(dir, root)
+    assert_includes screen, "| S1 | open | Live evidence first |"
+    assert_includes screen, "| S2 | open | another one |"
+    refute_includes screen, "S1 — Live evidence first"
+    refute_includes screen, "S2 – another one"
+  end
+
+  # --- insight: the multi-clause defect (O1a, matrix rows 1-3) -----------------
+
+  def test_insight_value_ends_on_whole_clause_within_72_with_ellipsis
+    root = tier_root(:project)
+    entries = [multi_clause_insight_entry]
+    dir = make_intent(root, checklist: checklist_with(total: 1, done: 0), savepoint: HOW_LEDGER, insights: entries)
+    r = row(render(dir, root), "Insight")
+
+    assert r[:value].length <= 72, "value exceeded 72: #{r[:value].inspect}"
+    assert r[:value].end_with?("…"), "expected a truncation ellipsis: #{r[:value].inspect}"
+    refute_includes r[:value], "THIRDCLAUSEMARKER"
+    refute_includes r[:value], "row D was ruled"
+  end
+
+  def test_insight_note_carries_at_most_one_clause_within_96
+    root = tier_root(:project)
+    entries = [multi_clause_insight_entry]
+    dir = make_intent(root, checklist: checklist_with(total: 1, done: 0), savepoint: HOW_LEDGER, insights: entries)
+    r = row(render(dir, root), "Insight")
+
+    assert_match(/\A2026-08-30 20:51 UTC · /, r[:note])
+    clause = r[:note].sub("2026-08-30 20:51 UTC · ", "")
+    assert clause.length <= 96, "note clause exceeded 96: #{clause.inspect}"
+    refute_includes r[:note], "THIRDCLAUSEMARKER"
+    # never more than one clause: only one "·" separator (the timestamp's own)
+    assert_equal 1, r[:note].scan(" · ").length
+  end
+
+  def multi_clause_insight_entry
+    clause1 = "Doctor delivered the seven code rows A, B, C, E, F, G, H found by this whole verification pass"
+    clause2 = "row D was ruled configuration rather than a defect because flow base already overrides origin detection reliably every time"
+    clause3 = "THIRDCLAUSEMARKER must never reach the rendered screen no matter what"
+    "2026-08-30T20:51:18Z · Exec · orchestrator (autonomous) — #{clause1}. #{clause2}; #{clause3}."
+  end
+
   # --- store and title -----------------------------------------------------------
 
   def test_project_path_shows_project_slug
@@ -230,8 +294,24 @@ end
     dir = make_intent(root, checklist: checklist_with(total: 2, done: 1), savepoint: HOW_LEDGER)
     screen = render(dir, root)
     refute_match(/\{\{[a-z.]+\}\}/, screen)
-    assert_includes screen, "**What this means**"
+    # O1b (intent 316a): the "What this means" heading is omitted entirely when
+    # meaning is empty (always true here, since render() never fills it), rather
+    # than rendering as a bold heading over nothing. Rewritten, not deleted: this
+    # still proves no {{meaning}}/{{close}} token survives.
+    refute_includes screen, "**What this means**"
+    refute_includes screen, "{{meaning}}"
+    refute_includes screen, "{{close}}"
     assert_includes screen, "| Step | Status | What |"
+  end
+
+  # O1b, matrix row 6: a blank-line assertion proves nothing (render already
+  # collapses \n{3,}); assert the exact text on both sides of the dropped
+  # "What this means" section instead. Steps follows the Insight row directly.
+  def test_meaning_section_dropped_steps_follows_insight_directly
+    root = tier_root(:project)
+    dir = make_intent(root, checklist: checklist_with(total: 1, done: 0), savepoint: HOW_LEDGER)
+    screen = render(dir, root)
+    assert_includes screen, "| **Insight** | none yet |  |\n\n**Steps**\n\n| Step | Status | What |"
   end
 
   # --- CLI ---------------------------------------------------------------------

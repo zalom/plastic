@@ -13,6 +13,16 @@ class HookRegistryTest < Minitest::Test
     end
   end
 
+  # Intent 316a (matrix row 42): MessageDisplay is registered for Claude only,
+  # matcher "" (the registry's uniform shape), one hook named message-display.
+  def test_message_display_is_registered_for_claude_with_empty_matcher
+    groups = HookRegistry.events["MessageDisplay"]
+    refute_nil groups, "MessageDisplay must be registered in events"
+    assert_equal 1, groups.size
+    assert_equal "", groups.first["matcher"]
+    assert_equal ["message-display"], groups.first["hooks"].map { |h| h["name"] }
+  end
+
   def test_write_matcher_covers_mcp_edit_tools
     assert_includes HookRegistry::WRITE_MATCHER, "mcp__serena__replace_content"
     assert_includes HookRegistry::WRITE_MATCHER, "mcp__serena__replace_symbol_body"
