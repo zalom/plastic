@@ -68,8 +68,11 @@ class HarnessCoreAdapterNamingTest < Minitest::Test
   def test_no_file_carries_either_phrase_without_being_registered
     expected = (CORE + ADAPTER).map { |p| File.expand_path(p, ROOT) }.sort
     claimants = all_scripts_and_hooks_files.select do |f|
-      content = File.read(f)
-      content.include?(CORE_PHRASE) || content.include?(ADAPTER_PHRASE)
+      # Binary-safe: a non-UTF-8 or binary file added under scripts/ or
+      # hooks/ later must fail this check by not matching, never by raising
+      # ArgumentError out of String#include? on invalid byte sequences.
+      content = File.read(f, mode: "rb")
+      content.include?(CORE_PHRASE.b) || content.include?(ADAPTER_PHRASE.b)
     end.sort
     assert_equal expected, claimants
   end
@@ -80,7 +83,13 @@ class HarnessCoreAdapterNamingTest < Minitest::Test
   # twice.
 
   def test_adapter_passes_markdown_safe_true_at_the_call_site
-    assert_includes text_for("scripts/lib/message_display.rb"), "markdown_safe: true"
+    # Anchored on the render CALL itself, not the bare string: the same
+    # change that added this literal to the call also added it to two
+    # nearby comments (see the class-level comment and the one above this
+    # call in `finalize`), so a plain `assert_includes` for the string
+    # passes even after the argument is deleted from the actual call.
+    assert_match(/IntentScreenAnsi\.render\([^\n]*markdown_safe: true/,
+                 text_for("scripts/lib/message_display.rb"))
   end
 
   # --- matrix 8: stale comment corrected ---------------------------------------

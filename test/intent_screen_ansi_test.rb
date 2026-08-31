@@ -260,8 +260,18 @@ class IntentScreenAnsiTest < Minitest::Test
     dir = make_intent(root, checklist: cl, savepoint: HOW_LEDGER, insights: [note])
     out = ansi_render(dir, root, color: true)
 
-    assert_includes out, "`scripts/lib/intent_screen.rb`"
-    assert_includes out, "**bold**"
+    # The Next field's value is the SAME step text ("...intent_screen.rb`
+    # and **bold**..."), so an assert_includes against the whole `out`
+    # string is satisfied by the Next row alone even if the Steps section's
+    # OWN call site (a separate `clean` call, see intent_screen_ansi.rb) were
+    # wrongly cleaning unconditionally. Isolate the "S1" row itself so this
+    # pin actually exercises the step-text call site, not just the field
+    # row that happens to carry the same text.
+    step_line = out.lines.find { |line| line =~ /^\s*S1\b/ }
+    refute_nil step_line, "expected an S1 step row in the rendered output"
+    assert_includes step_line, "`scripts/lib/intent_screen.rb`"
+    assert_includes step_line, "**bold**"
+
     assert_includes out, "`backtick_path`"
     assert_includes out, "**also bold**"
   end

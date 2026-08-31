@@ -88,7 +88,7 @@ not change and was proven live before this split; only where the decision to str
 did.
 
 `resources/evidence--harness-surfaces.md` in intent 316a1's own record carries the per-harness
-display-surface matrix this split makes it possible to ask honestly about a second harness.
+display-surface matrix. This split is what makes it possible to ask honestly about a second harness.
 
 ## Harness support
 
