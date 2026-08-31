@@ -302,9 +302,15 @@ class HookMessageDisplayTest < Minitest::Test
   # PLASTIC_HOME entirely (always resolving to its own repo checkout) and
   # this whole path silently failed open to "displayContent":"" too, on
   # every fixture-based spawn test that never set PLASTIC_HOME.
+  # markdown_safe: true at the adapter's sole call site (matrix 4, intent
+  # 316a1): the checklist step carries a backtick, and this asserts on the
+  # PARSED displayContent (the ANSI-rendered replacement), not raw stdout —
+  # the record itself would still show it, only the substituted block must
+  # not.
   def test_cli_honours_plastic_home_and_emits_the_ansi_block
     root = build_global_store
-    dir = make_intent(root, checklist: checklist_with(total: 1, done: 0))
+    cl = "# Checklist: Demo\n\n## In Progress\n- [ ] Step 1 - see `backtick_path` here\n\n## Completed\n\n## Session Log\n"
+    dir = make_intent(root, checklist: cl)
     plain = plain_screen(dir, root)
     delta = plain + "**What this means**\n- x\n\nneeds input: S1\n"
     json = JSON.generate("message_id" => "envtest", "session_id" => "envsess", "index" => 0,
@@ -319,6 +325,7 @@ class HookMessageDisplayTest < Minitest::Test
     content = parsed.dig("hookSpecificOutput", "displayContent")
     refute_nil content
     assert_includes content, "\e[1m"
+    refute_includes content, "`"
   end
 
   def test_render_raise_at_final_returns_the_buffered_original
