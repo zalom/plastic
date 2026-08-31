@@ -56,8 +56,9 @@ class ReportScreenSkillContractTest < Minitest::Test
 
   def test_intent_executing_names_savepoint_note_for_both_kinds
     text = read("skills/intent-executing/SKILL.md")
-    assert_includes text, "savepoint-note --kind Commit"
-    assert_includes text, "savepoint-note --kind Review"
+    assert_includes text, "savepoint-note"
+    assert_includes text, "--kind Commit"
+    assert_includes text, "--kind Review"
   end
 
   # --- row 92: the D19 heading convention is written into the executing skill -

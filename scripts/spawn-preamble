@@ -24,6 +24,7 @@
 
 require_relative "lib/savepoint"
 require_relative "lib/worktree"
+require_relative "lib/intent_screen"
 
 # Verbatim honoring instruction. Kept as one constant so the contract doc and the
 # test assert against the exact same string.
@@ -115,11 +116,22 @@ STAGE_LABELS = {
   "exec" => "Exec", "done" => "Done"
 }.freeze
 
+# Intent 317, D6: a dispatched agent's "Current stage:" line must name the last
+# LIFECYCLE line (What/Why/How/Exec/Done), never a trailing Lock/Review/Commit
+# line - the bug spawn-preamble shared with IntentScreen.savepoint_fields
+# before this guard (plan review finding B1).
+def lifecycle_line?(line)
+  parts = line.split(/\s{2,}/)
+  parts.length >= 2 && IntentScreen::LIFECYCLE_STAGES.include?(parts[1])
+end
+
 def current_stage(intent_dir)
   ledger = File.join(intent_dir, Savepoint::SAVEPOINT_FILE)
   if File.exist?(ledger)
-    last = File.read(ledger).each_line.map(&:strip).reject(&:empty?).last
-    return last if last
+    lines = File.read(ledger).each_line.map(&:strip).reject(&:empty?)
+    lifecycle = lines.select { |l| lifecycle_line?(l) }
+    return lifecycle.last if lifecycle.any?
+    return lines.last if lines.any?
   end
   STAGE_LABELS.fetch(Savepoint.derive_stage(intent_dir), Savepoint.derive_stage(intent_dir))
 end

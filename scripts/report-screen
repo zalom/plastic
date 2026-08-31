@@ -1,0 +1,106 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# report-screen - the three delivery-report screens (intent 317): mid-delivery
+# state, post-delivery delivered, and delay. Each fills from the record via
+# scripts/lib/report_screen.rb; no number here is written by eye.
+#
+# Usage:
+#   report-screen state <intent_dir> [--changed "<text>"] [--ansi]
+#   report-screen state --all <store_root> [--changed "<text>"] [--ansi]
+#   report-screen delivered <intent_dir> [--ansi]
+#   report-screen delay <intent_dir> [--ansi]
+#
+# --ansi delegates to 316a's renderer conventions when that file is present
+# (D2) and prints plain otherwise, so this never blocks on 316a and never
+# breaks when it lands; NO_COLOR forces plain regardless of --ansi.
+#
+# Exit codes:
+#   0 - the screen is on stdout
+#   2 - usage error, or the path/store is not what the verb expects (one line
+#       on stderr, stdout empty)
+
+require_relative "lib/report_screen"
+require_relative "lib/intent_screen"
+
+def usage_abort(message)
+  warn "report-screen: #{message}"
+  exit 2
+end
+
+args = ARGV.dup
+verb = args.shift
+changed = nil
+ansi = false
+template_path = nil
+renderer_path = nil
+positional = []
+
+while (arg = args.shift)
+  case arg
+  when "--changed"
+    usage_abort("--changed needs a value") if args.empty?
+    changed = args.shift
+  when "--ansi"
+    ansi = true
+  when "--all"
+    positional << "--all"
+  when "--template"
+    template_path = args.shift or usage_abort("--template needs a path")
+  when "--renderer-path"
+    renderer_path = args.shift or usage_abort("--renderer-path needs a path")
+  else
+    usage_abort("unknown flag #{arg.inspect}") if arg.start_with?("--") && arg != "--all"
+    positional << arg
+  end
+end
+
+usage_abort("usage: report-screen state|delivered|delay <intent_dir> [--changed \"<text>\"] [--ansi]") unless verb
+
+all_mode = positional.delete("--all") ? true : false
+target = positional.first
+
+renderer_path ||= File.expand_path("../lib/intent_screen_ansi.rb", __dir__)
+ansi_enabled = ansi && ENV["NO_COLOR"].to_s.empty?
+
+def paint(text, ansi_enabled, renderer_path)
+  ReportScreen.maybe_paint(text, renderer_path: renderer_path, enabled: ansi_enabled)
+end
+
+case verb
+when "state"
+  if all_mode
+    usage_abort("usage: report-screen state --all <store_root>") unless target
+    store_root = File.expand_path(target)
+    usage_abort("#{store_root} is not a store (no INDEX.md)") unless File.exist?(File.join(store_root, "INDEX.md"))
+    out = ReportScreen.render_roster(store_root, changed: changed)
+    $stdout.write paint(out, ansi_enabled, renderer_path)
+  else
+    usage_abort("usage: report-screen state <intent_dir> [--changed \"<text>\"]") unless target
+    intent_dir = File.expand_path(target)
+    usage_abort("#{intent_dir} is not an intent directory") unless IntentScreen.intent_dir?(intent_dir)
+    store_root = File.expand_path("../..", intent_dir)
+    template_path ||= File.expand_path("../templates/report-state.md", __dir__)
+    usage_abort("template not found at #{template_path}") unless File.exist?(template_path)
+    out = ReportScreen.render_state(intent_dir: intent_dir, store_root: store_root, changed: changed,
+                                     template: File.read(template_path))
+    $stdout.write paint(out, ansi_enabled, renderer_path)
+  end
+when "delivered"
+  usage_abort("usage: report-screen delivered <intent_dir>") unless target
+  intent_dir = File.expand_path(target)
+  usage_abort("#{intent_dir} is not an intent directory") unless IntentScreen.intent_dir?(intent_dir)
+  out = ReportScreen.render_delivered(intent_dir: intent_dir)
+  $stdout.write paint(out, ansi_enabled, renderer_path)
+when "delay"
+  usage_abort("usage: report-screen delay <intent_dir>") unless target
+  intent_dir = File.expand_path(target)
+  usage_abort("#{intent_dir} is not an intent directory") unless IntentScreen.intent_dir?(intent_dir)
+  out = ReportScreen.render_delay(intent_dir: intent_dir)
+  $stdout.write paint(out, ansi_enabled, renderer_path)
+else
+  usage_abort("unknown verb #{verb.inspect} (use state|delivered|delay)")
+end
+
+exit 0

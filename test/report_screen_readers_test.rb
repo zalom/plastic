@@ -10,12 +10,13 @@ require_relative "../scripts/lib/report_screen"
 # "not recorded" (D14), never a guess or a blank.
 class ReportScreenReadersTest < Minitest::Test
   def setup
-    @dir = Dir.mktmpdir("report-screen-readers")
+    @root = Dir.mktmpdir("report-screen-readers")
+    @dir = File.join(@root, "12--slug")
     FileUtils.mkdir_p(File.join(@dir, "actions"))
   end
 
   def teardown
-    FileUtils.rm_rf(@dir)
+    FileUtils.rm_rf(@root)
   end
 
   def write(name, body)

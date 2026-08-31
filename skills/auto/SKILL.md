@@ -200,9 +200,10 @@ Then How.
    into the spec, the matrix, and the tests; record what was dropped and why in the action
    file's review fold. A REVISE verdict is folded and not re-reviewed unless a finding changes
    a decision.
-5. Notify the user (the one mid-flight briefing, per `references/human-report-contract.md`):
-   State, the plan shape and what it builds; Risk, the riskiest row of the matrix; Call,
-   proceeding to build. In auto mode this briefing informs; it does not wait.
+5. Print `ruby ~/.plastic/scripts/report-screen state <intent_dir> --changed "How written, plan review next"`
+   (D15; see `references/human-report-contract.md` for the full trigger list). This replaces
+   the old prose State/Risk/Call briefing at this boundary. In auto mode the screen informs;
+   it does not wait.
 
 Then Exec.
 
@@ -272,6 +273,8 @@ Read `../plastic-conventions/references/completion-and-done.md` for what "intent
    first, or pass `--discard-worktree-changes` deliberately); 3 means the lock survived the
    disarm (`/plastic-doctor check the lock status`); 6 means the structure check refused. Never
    leave an orphaned worktree; run `git worktree prune` on a stale reference.
+6. Print `ruby ~/.plastic/scripts/report-screen delivered <intent_dir>` once (D15): this is the
+   owner report at End, replacing the old prose Done briefing.
 
 ## Error Handling
 
@@ -284,8 +287,8 @@ leaves the project broken.
 
 - Read `references/agent-architecture.md` for the team model, the risk list, the headless note,
   and the solo fallback when dispatching or when a harness has no agent dispatch.
-- Read `references/human-report-contract.md` for the State/Risk/Call briefing before sending the
-  How briefing.
+- Read `references/human-report-contract.md` for the three report screens and the five
+  triggers before printing the How or Completion screen above.
 - Read `references/agent-report-contract.md` for the completion report format when reading a
   dispatched agent's return or synthesizing one.
 - Read `references/end-tail.md` for what `Arm.disarm` does at the End tail and why the reindex

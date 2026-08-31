@@ -29,21 +29,32 @@ Open `savepoint.md` in any intent directory. Every line has the same shape: a UT
 a stage, and a milestone, separated by two spaces.
 
 ```
-2026-06-16T14:02:00Z  What  ID--slug.md
-2026-06-16T14:20:00Z  Why   spec.md created
-2026-06-16T15:10:00Z  How   plan.md created
-2026-06-16T15:11:00Z  How   checklist.md created
-2026-06-16T16:40:00Z  Exec  outcome.md created
-2026-06-16T16:41:00Z  Done  delivered
+2026-06-16T14:02:00Z  What    ID--slug.md
+2026-06-16T14:20:00Z  Why     spec.md created
+2026-06-16T15:10:00Z  How     plan.md created
+2026-06-16T15:11:00Z  How     checklist.md created
+2026-06-16T15:45:00Z  Review  plan REVISE, folded
+2026-06-16T16:20:00Z  Commit  abc1234 tests red
+2026-06-16T16:35:00Z  Commit  def5678 2460 runs, 0 failures
+2026-06-16T16:40:00Z  Exec    outcome.md created
+2026-06-16T16:41:00Z  Done    delivered
 ```
 
 - The first line is stamped when the intent is created. The last line, `Done delivered` or
   `Done abandoned`, is stamped when it is closed. Between them, one line lands each time a
   lifecycle file (`spec.md`, `plan.md`, `checklist.md`, `outcome.md`) is written.
-- The stage names are What, Why, How, and Exec. They describe the shape of the record, not
-  checkpoints you had to pass.
-- The last non-empty line is the intent's current stage. That is what the dashboard and the
-  spawn preamble read.
+- The stage names are What, Why, How, Exec, and Done. They describe the shape of the record,
+  not checkpoints you had to pass.
+- Two more kinds record delivery mechanics rather than a stage: `Review` (one line per
+  plan-review or post-execution-review verdict) and `Commit` (one line per commit landing
+  during Exec), written through `scripts/savepoint-note --kind Review|Commit --text "..."`
+  (intent 317). They keep the same line shape as every other kind and feed the delay report
+  (`report-screen delay`); readers that pick the current STAGE (the dashboard, the spawn
+  preamble, `report-screen state`) skip over them and use the last lifecycle line instead.
+- The last LIFECYCLE line (What/Why/How/Exec/Done) is the intent's current stage. That is
+  what the dashboard and the spawn preamble read. The last line of ANY kind is still what the
+  intent screen's `Savepoint` field shows, since that field answers "when did this ledger
+  last move," not "what stage is this."
 - The file is rebuildable from the files on disk. If it looks wrong, run `/plastic-doctor` and
   ask it to rebuild the savepoint rather than editing the file by hand.
 

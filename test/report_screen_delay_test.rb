@@ -8,7 +8,8 @@ require_relative "../scripts/lib/report_screen"
 # everything traces to savepoint.md and outcome.md (D14).
 class ReportScreenDelayTest < Minitest::Test
   def setup
-    @dir = Dir.mktmpdir("report-screen-delay")
+    @root = Dir.mktmpdir("report-screen-delay")
+    @dir = File.join(@root, "12--slug")
     FileUtils.mkdir_p(File.join(@dir, "actions"))
     File.write(File.join(@dir, "12--slug.md"), <<~MD)
       ---
@@ -22,7 +23,7 @@ class ReportScreenDelayTest < Minitest::Test
   end
 
   def teardown
-    FileUtils.rm_rf(@dir)
+    FileUtils.rm_rf(@root)
   end
 
   def write(name, body)

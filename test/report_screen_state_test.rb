@@ -151,10 +151,13 @@ class ReportScreenStateTest < Minitest::Test
       ["Next", "a|b", "note one"],
       ["Insight", "cd", "note two"],
     ])
-    next_line = lines.find { |l| l.include?("Next") }
-    value_cell = next_line.split("|")[2]
-    # "a|b" escapes to "a\|b" (4 chars); the column must be at least that wide.
-    assert value_cell.strip.length >= "a\\|b".length
+    # "a|b" escapes to "a\|b" (4 raw chars), wider than "cd" (2 chars): the
+    # value column must pad to 4, computed on the ESCAPED text, not the
+    # 3-char unescaped "a|b". A naive split("|") cannot read the escaped
+    # value cell directly (it would also split on the escaped pipe), so this
+    # is asserted through the shorter Insight row's padding instead.
+    insight_line = lines.find { |l| l.include?("Insight") }
+    assert_includes insight_line, "cd  ", "Insight's value must pad out to width 4 (the escaped Next value's width)"
   end
 
   def test_pipe_in_value_still_aligns_through_render_state
@@ -175,7 +178,7 @@ class ReportScreenStateTest < Minitest::Test
     dir = make_intent(root, checklist: cl, savepoint: HOW_LEDGER)
     screen = ReportScreen.render_state(intent_dir: dir, store_root: root, changed: "x", template: File.read(TEMPLATE))
     field_lines = screen.lines.select { |l| l.start_with?("| **") }
-    field_lines.each { |l| assert_equal 5, l.count("|"), "row is not a well-formed 3-cell table row: #{l}" }
+    field_lines.each { |l| assert_equal 4, l.count("|") - l.scan("\\|").length, "row is not a well-formed 3-cell table row: #{l}" }
   end
 
   # =============================================================================

@@ -12,5 +12,8 @@ disposition: delivered|abandoned
 ## Verification
 - <acceptance criterion> — verified by ... → result
 
+## Needs you
+None
+
 ## Follow-ups
 None

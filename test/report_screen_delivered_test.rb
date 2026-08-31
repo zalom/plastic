@@ -11,12 +11,13 @@ require_relative "../scripts/lib/report_screen"
 # owner's hand-written illustration.
 class ReportScreenDeliveredTest < Minitest::Test
   def setup
-    @dir = Dir.mktmpdir("report-screen-delivered")
+    @root = Dir.mktmpdir("report-screen-delivered")
+    @dir = File.join(@root, "12--slug")
     FileUtils.mkdir_p(File.join(@dir, "actions"))
   end
 
   def teardown
-    FileUtils.rm_rf(@dir)
+    FileUtils.rm_rf(@root)
   end
 
   def write(name, body)

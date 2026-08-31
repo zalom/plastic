@@ -213,6 +213,20 @@ module Savepoint
     append_savepoint_line(intent_dir, "Exec", "started", now)
   end
 
+  # Append a `Review` line: one per plan-review or post-execution-review verdict
+  # (intent 317, D5/D17). Same shape as every other line, through the shared
+  # append_savepoint_line primitive, so dedup and the timestamp format never
+  # drift from the one line-writer every other kind already uses.
+  def self.append_review_savepoint(intent_dir, text, now: Time.now)
+    append_savepoint_line(intent_dir, "Review", text, now)
+  end
+
+  # Append a `Commit` line: one per commit landing during Exec (intent 317,
+  # D5/D17). Same primitive as append_review_savepoint above.
+  def self.append_commit_savepoint(intent_dir, text, now: Time.now)
+    append_savepoint_line(intent_dir, "Commit", text, now)
+  end
+
   TERMINAL_DISPOSITIONS = %w[delivered abandoned].freeze
 
   # Append the terminal bookend `Done  delivered|abandoned`, written by the
