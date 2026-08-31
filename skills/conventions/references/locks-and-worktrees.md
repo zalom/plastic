@@ -103,3 +103,15 @@ what gets written down.
 | Exec | code on the intent branch, checklist checked off | heartbeat; code edits confined to the provisioned worktree; delegates write under the owner's lock | checklist boxes; savepoint milestones; the day-ledger line promotes when a project file lands |
 | End (done) | mandatory `outcome.md` (`disposition: delivered\|abandoned`), INDEX moves to Completed or Abandoned | ordered End tail: verify, merge and remove worktrees, disarm clears `delivery.lock`, then the pointer is purge-eligible, and the QMD reindex runs LAST (after purge); `end-intent` backfills a placeholder `outcome.md` from the record and its structure check reports (never refuses) | savepoint `Done delivered` (or `abandoned`); takeover audits, if any, remain in savepoint.md |
 | Maintenance (Future, Terminal, or Active-with-a-stale-or-no-lock) | `revisions.md` move-and-record entries | detects (never acquires) `delivery.lock`; defers and reports while the target's lock is FRESH (`Lock.fresh?`); a stale or absent lock is not-active, maintenance proceeds | append-only, rule-tagged `revisions.md` entry written in the same operation as the change, or the change is refused; lands via a fresh branch off store main merged back as one closed op, never `git add -A` |
+
+## The write guard is not residue
+
+`<type>.write.lock` (usually `delivery.write.lock`) is a deliberate sibling
+inode used only for `flock`: no owner, no timestamp, no content, and it is
+NEVER unlinked - deleting it while a writer holds the flock hands the next
+writer a fresh inode at the same path, so two writers hold "the" guard at
+once (see `scripts/lib/lock.rb`, the write-guard comment). A zero-byte
+`*.write.lock` in a completed intent directory is by design; no cleaner may
+sweep it, and it is already inside the store's `*.lock` gitignore rule.
+(Intent 317a, A2: a review misread it as stale residue and nearly shipped
+the sweep.)

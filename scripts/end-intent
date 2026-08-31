@@ -66,6 +66,8 @@
 #      refused before removal; pass --discard-worktree-changes to override
 #      deliberately.
 #   6  retired in 2.0 (intent 308): the structure check reports and proceeds.
+#   7  hollow delivered report refused (317a D7) - intent 308's one deliberate
+#      exception to report-and-proceed; --allow-hollow-report overrides.
 
 require "fileutils"
 require "date"
@@ -77,6 +79,7 @@ require_relative "lib/savepoint"
 require_relative "lib/lock"
 require_relative "lib/intent_validator"
 require_relative "lib/outcome_guard"
+require_relative "lib/report_screen"
 require_relative "lib/backfill_intent"
 
 DISPOSITIONS = %w[delivered abandoned].freeze
@@ -99,6 +102,7 @@ def parse_args(argv)
   opts = {
     store: nil, id: nil, disposition: nil, index: nil,
     outcome_summary: nil, index_note: nil, no_commit: false, dry_run: false,
+    allow_hollow_report: false,
     session: nil, discard_worktree_changes: false,
   }
   i = 0
@@ -115,6 +119,7 @@ def parse_args(argv)
     when "--discard-worktree-changes" then opts[:discard_worktree_changes] = true
     when "--no-commit"                then opts[:no_commit] = true
     when "--dry-run"                  then opts[:dry_run] = true
+    when "--allow-hollow-report"      then opts[:allow_hollow_report] = true
     else
       usage_abort("unknown argument #{arg.inspect}")
     end
@@ -215,7 +220,75 @@ end
 # Replace the body of the intent file's `## Outcome` section with `summary`,
 # leaving every other section and the frontmatter untouched. No-op (returns
 # content unchanged) when summary is blank or the section is not found.
+# 317a S9 (D7): the self-render gate. Renders the delivered screen's sources on
+# the intent's own record and names what would come out hollow. This is intent
+# 308's ONE deliberate exception to report-and-proceed: a hollow DELIVERED
+# close is refused with exit 7 (--allow-hollow-report overrides), because 317
+# closed exactly this way and the owner read a screen full of "not recorded".
+# Abandoned closes and machine-backfilled outcomes (the backfill marker) are
+# exempt: the reader cannot expect labels the writer never had.
+def hollow_report_reason(intent_dir, disposition)
+  return nil unless disposition == "delivered"
+
+  outcome = File.join(intent_dir, "outcome.md")
+  return nil unless File.exist?(outcome)
+  text = File.read(outcome)
+  return nil if text.include?("<!-- backfilled from the record by end-intent on ")
+
+  # The gate's evidence bar (A7/B7): it judges only records that CLAIM the
+  # modern convention - at least one actions/*.md heading carrying an S-label.
+  # A terse legacy close with no labeled matrix stays report-and-proceed.
+  heading_labels = Dir.glob(File.join(intent_dir, "actions", "*.md")).sort.flat_map do |path|
+    ReportScreen.split_by_headings(File.read(path)).filter_map do |heading, _body|
+      heading.to_s.sub(/\A#+\s*/, "").split(/[^A-Za-z0-9]+/).find { |tok| tok.match?(/\AS\d+\z/) }
+    end
+  end.uniq
+  return nil if heading_labels.empty?
+
+  rows = ReportScreen.delivered_rows(intent_dir)
+  return "outcome.md ## Delivered renders no rows although a labeled action matrix exists" if rows.empty?
+
+  needs = ReportScreen.section_of(text, "## Needs you").gsub(/<!--.*?-->/m, "").strip
+  if !needs.empty? && needs != "None" && ReportScreen.needs_you_rows(intent_dir).empty?
+    return "## Needs you has content that would render as None"
+  end
+
+  labels = rows.map { |r| r[:label] }
+  if (labels & heading_labels).empty?
+    return "delivered row labels (#{labels.first(3).join(', ')}...) match no action-file heading (#{heading_labels.first(3).join(', ')}...)"
+  end
+  if rows.all? { |r| ReportScreen.proven_by(intent_dir, r[:label]) == ReportScreen::NOT_RECORDED }
+    return "every Proven-by cell renders not recorded although labeled action headings exist"
+  end
+
+  nil
+rescue StandardError => e
+  warn "end-intent: hollow-report gate crashed (#{e.message}); proceeding without it"
+  nil
+end
+
+# 317a S7 (D5, A8): stamp the live lock's run_mode into outcome.md frontmatter
+# INSIDE the close step - after the gate, before the INDEX move and the store
+# commit - so the stamped file rides the close commit and mode survives disarm.
+def stamp_outcome_mode(intent_dir)
+  data = Lock.read(intent_dir)
+  run_mode = data && data["run_mode"].to_s
+  return if run_mode.nil? || run_mode.empty?
+
+  path = File.join(intent_dir, "outcome.md")
+  return unless File.exist?(path)
+  text = File.read(path)
+  return unless text.start_with?("---")
+  head, body = text[3..].split("---", 2)
+  return if body.nil? || head.match?(/^mode:/)
+
+  File.write(path, "---#{head}mode: #{run_mode}\n---#{body}")
+rescue StandardError => e
+  warn "end-intent: mode stamp failed (#{e.message}); proceeding without it"
+end
+
 def stamp_outcome_summary(content, summary)
+
   return content if summary.nil? || summary.to_s.strip.empty?
 
   lines = content.lines
@@ -653,6 +726,26 @@ def main(argv)
 
   reason = OutcomeGuard.reason(intent_dir, disposition)
   warn "end-intent: outcome.md: #{reason} (proceeding; doctor --intent #{id} reports it)" if reason
+
+  # 1a2. The self-render gate (317a S9, D7): refuse a hollow delivered close
+  # BEFORE any terminal mutation - INDEX, savepoint, and store stay untouched
+  # on exit 7 (A9).
+  hollow = hollow_report_reason(intent_dir, disposition)
+  if hollow
+    if opts[:allow_hollow_report]
+      warn "end-intent: hollow delivered report overridden (--allow-hollow-report): #{hollow}"
+    else
+      warn "end-intent: refusing a hollow delivered close: #{hollow}"
+      warn "end-intent: write outcome.md's ## Delivered as the labeled | Row | What | table " \
+           "matching the action-file headings (templates/outcome.md shows the shape), " \
+           "or pass --allow-hollow-report to close anyway"
+      exit 7
+    end
+  end
+
+  # 1a3. Mode stamp (317a S7, D5): run_mode into outcome frontmatter while the
+  # lock still exists, so the stamped file rides the close commit.
+  stamp_outcome_mode(intent_dir)
 
   # 1b. Intent-file `## Outcome` summary stamp (no-op unless given).
   if opts[:outcome_summary]

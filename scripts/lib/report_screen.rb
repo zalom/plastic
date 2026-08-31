@@ -267,7 +267,25 @@ module ReportScreen
   def self.mode(intent_dir)
     data = Lock.read(intent_dir)
     value = data && data["run_mode"]
+    return value.to_s if value && !value.to_s.empty?
+
+    # 317a S7 (D5): after the close the lock is gone; end-intent stamps the
+    # run_mode into outcome.md frontmatter, so mode stops being unknowable
+    # retrospectively. Live lock first - it is the source of truth mid-flight.
+    value = outcome_frontmatter(intent_dir)["mode"]
     value && !value.to_s.empty? ? value.to_s : NOT_RECORDED
+  end
+
+  def self.outcome_frontmatter(intent_dir)
+    text = outcome_text(intent_dir)
+    return {} unless text && text.start_with?("---")
+    parts = text.split("---", 3)
+    return {} if parts.length < 3
+    require "yaml"
+    require "date"
+    YAML.safe_load(parts[1], permitted_classes: [Date, Time]) || {}
+  rescue StandardError
+    {}
   end
 
   # --- evidence rows (rows 28-33, 37) --------------------------------------------
