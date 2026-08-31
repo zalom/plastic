@@ -12,6 +12,8 @@
 # This script is the one place in the O4 stack allowed to read ENV, the
 # clock, or Dir.tmpdir: MessageDisplay itself takes tmp_root/plastic_home/
 # color/now as constructor arguments and touches none of them directly.
+#
+# Claude adapter: Claude Code only; the core is harness-agnostic.
 
 require "json"
 require "time"

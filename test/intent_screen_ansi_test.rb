@@ -210,13 +210,16 @@ class IntentScreenAnsiTest < Minitest::Test
 
   # --- matrix 18: width cap -----------------------------------------------------
 
+  # markdown_safe: false (matrix 7, intent 316a1): with stripping off, values
+  # carrying backticks and `**` are longer than their stripped form, so the
+  # cap must still hold on the raw, un-stripped text.
   def test_no_line_exceeds_the_width_cap
     root = tier_root
-    long_step = (["stepword"] * 30).join(" ")
+    long_step = (["`stepword`", "**bold**"] * 15).join(" ")
     cl = "# Checklist\n\n## In Progress\n- [ ] Step 1 - #{long_step}\n"
-    long_note = "2026-08-30T20:51:18Z · Exec · orchestrator (direct) — " + (["clausewordthatisquitelong"] * 20).join(" ") + "."
+    long_note = "2026-08-30T20:51:18Z · Exec · orchestrator (direct) — " + (["`clauseword`", "**thatisquitelong**"] * 10).join(" ") + "."
     dir = make_intent(root, checklist: cl, savepoint: HOW_LEDGER, insights: [long_note])
-    out = ansi_render(dir, root, color: true, width: 100)
+    out = ansi_render(dir, root, color: true, width: 100, markdown_safe: false)
 
     out.lines.each do |line|
       vis = visible(line.chomp)
@@ -233,19 +236,44 @@ class IntentScreenAnsiTest < Minitest::Test
     refute_includes out, "\e"
   end
 
-  # --- matrix 19b: markdown noise stripped (S1 answer 5, live capture) ---------
+  # --- matrix 1/2/3/6: markdown_safe: default false, conditional clean, both
+  # call sites (field value AND step text), split from the pre-316a1 single
+  # test that asserted stripping unconditionally (intent 316a1, O1) ----------
 
-  def test_backticks_and_asterisks_never_reach_the_block
+  def test_markdown_safe_true_strips_backticks_and_asterisks_at_both_call_sites
+    root = tier_root
+    cl = "# Checklist\n\n## In Progress\n- [ ] Step 1 - see `scripts/lib/intent_screen.rb` and **bold** text\n"
+    note = "2026-08-30T20:51:18Z · Exec · orchestrator (direct) — uses `backtick_path` and **also bold** here."
+    dir = make_intent(root, checklist: cl, savepoint: HOW_LEDGER, insights: [note])
+    out = ansi_render(dir, root, color: true, markdown_safe: true)
+
+    refute_includes out, "`"
+    refute_includes out, "*"
+    assert_includes out, "scripts/lib/intent_screen.rb"
+    assert_includes out, "bold text"
+  end
+
+  def test_markdown_safe_default_false_leaves_backticks_and_asterisks_intact_at_both_call_sites
     root = tier_root
     cl = "# Checklist\n\n## In Progress\n- [ ] Step 1 - see `scripts/lib/intent_screen.rb` and **bold** text\n"
     note = "2026-08-30T20:51:18Z · Exec · orchestrator (direct) — uses `backtick_path` and **also bold** here."
     dir = make_intent(root, checklist: cl, savepoint: HOW_LEDGER, insights: [note])
     out = ansi_render(dir, root, color: true)
 
-    refute_includes out, "`"
-    refute_includes out, "*"
-    assert_includes out, "scripts/lib/intent_screen.rb"
-    assert_includes out, "bold text"
+    # The Next field's value is the SAME step text ("...intent_screen.rb`
+    # and **bold**..."), so an assert_includes against the whole `out`
+    # string is satisfied by the Next row alone even if the Steps section's
+    # OWN call site (a separate `clean` call, see intent_screen_ansi.rb) were
+    # wrongly cleaning unconditionally. Isolate the "S1" row itself so this
+    # pin actually exercises the step-text call site, not just the field
+    # row that happens to carry the same text.
+    step_line = out.lines.find { |line| line =~ /^\s*S1\b/ }
+    refute_nil step_line, "expected an S1 step row in the rendered output"
+    assert_includes step_line, "`scripts/lib/intent_screen.rb`"
+    assert_includes step_line, "**bold**"
+
+    assert_includes out, "`backtick_path`"
+    assert_includes out, "**also bold**"
   end
 
   # --- matrix 9: shared step-text helper (D3) -----------------------------------

@@ -24,6 +24,8 @@
 # ALWAYS handed off, whatever it looks like, since it is the one that must
 # not race. Ruby is the one place that actually waits (bounded, injectable
 # for tests); this script only ever decides once, fast, and never sleeps.
+#
+# Claude adapter: Claude Code only; the core is harness-agnostic.
 IFS= read -r -d '' INPUT          # returns 1 at EOF: do NOT set -e
 case $INPUT in *'"message_id"'*) ;; *) exit 0 ;; esac
 rest=${INPUT#*\"message_id\"}; rest=${rest#*\"}; mid=${rest%%\"*}

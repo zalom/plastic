@@ -15,6 +15,11 @@ require_relative "store_provisioning"
 # the real Time.now/Kernel#sleep — the thin CLI (scripts/hook-message-display)
 # is the one place allowed to read any of those.
 #
+# Claude adapter: Claude Code only; the core is harness-agnostic. (intent
+# 316a1, D3 supersedes 316a's D6.) This is the sole caller that asks
+# IntentScreenAnsi.render for `markdown_safe: true` (scripts/lib/
+# intent_screen_ansi.rb) — see `finalize` below for why.
+#
 # A live run under a real pty (round 3) found that Claude Code fires the
 # per-chunk hook processes CONCURRENTLY, not strictly in order. Chunk 0 is
 # the one that recognizes the screen and creates the buffer (D13), and it can
@@ -230,7 +235,13 @@ class MessageDisplay
   def finalize(buffered, decision)
     intent_dir = decision[:intent_dir]
     store_root = decision[:store_root]
-    ansi = IntentScreenAnsi.render(intent_dir: intent_dir, store_root: store_root, color: true)
+    # markdown_safe: true (intent 316a1, D5) - Claude Code still Markdown-
+    # processes displayContent even inside a raw ANSI block (316a's live
+    # capture showed backticks silently stripped from step text), so the
+    # Claude adapter asks the harness-agnostic core to strip markdown noise
+    # before it ever reaches the block. A harness whose display surface
+    # passes raw ANSI through untouched would ask for false instead.
+    ansi = IntentScreenAnsi.render(intent_dir: intent_dir, store_root: store_root, color: true, markdown_safe: true)
     plain = IntentScreen.render(intent_dir: intent_dir, store_root: store_root, template: File.read(template_path))
     splice(buffered, plain, ansi)
   end

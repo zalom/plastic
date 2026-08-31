@@ -26,6 +26,10 @@
 # Exit codes:
 #   0 - the screen is on stdout
 #   2 - usage error, or the path is not an intent directory (one line on stderr)
+#
+# Harness-agnostic core: no harness assumption lives here. This script holds
+# the plain/ANSI selection (intent 316a1, D3) and belongs to the same
+# harness-agnostic core as lib/intent_screen.rb and lib/intent_screen_ansi.rb.
 
 require_relative "lib/intent_screen"
 require_relative "lib/intent_screen_ansi"
