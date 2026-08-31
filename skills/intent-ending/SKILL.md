@@ -63,8 +63,11 @@ on disk is what the record becomes, so before the call:
 
 Author outcome.md yourself when it deserves prose: copy `templates/outcome.md`,
 set the frontmatter to `disposition: delivered` or `disposition: abandoned`, and
-fill `## Summary`, `## Delivered`, `## Verification`, `## Follow-ups`. On
-abandon, `## Summary` states the abandonment reason and the trail (see Pivot
+fill `## Summary`, `## Delivered`, `## Verification`, `## Follow-ups`. Each
+`## Delivered` row is one thing delivered in plain wording a reader recognizes,
+not a method name or an implementation summary (that detail belongs in
+`## Summary`) - it becomes a row of `report-screen delivered`'s post-delivery
+screen. On abandon, `## Summary` states the abandonment reason and the trail (see Pivot
 below). A placeholder outcome.md is backfilled from the record instead, with the
 close's disposition and the `--outcome-summary` line as its summary. Also author
 the rich INDEX entry note now (a short line in the store's existing

@@ -1,72 +1,78 @@
-# Human Report Contract (per-stage EM-to-CTO briefing)
+# Human Report Contract (the three report screens, intent 317)
 
-This doc defines how the orchestrator briefs the human at each of the five stage boundaries
-(What, Why, How, Exec, Done) in auto mode; for small work only the How boundary fires (see
-`## Depth for small work`). It is the outward, human-facing counterpart to the
-internal report contract in `references/agent-report-contract.md`. Voice: an engineering
-manager briefing a CTO. Lead with impact, name the risk, leave the decision.
+D15: the prose EM-to-CTO briefing this doc used to define is retired. The orchestrator now
+prints one of three report screens, filled from the record by `scripts/report-screen`, never
+written by eye:
 
-## The skeleton
+- **`report-screen state <intent_dir> [--changed "<text>"]`** - the mid-delivery report. One
+  intent's field table (Store, Status, Stage, Savepoint, Progress, Next, Insight) plus a
+  `Changed` row naming what caused the print, and its Steps table.
+- **`report-screen state --all <store_root>`** - the roster across every in-delivery intent,
+  most recently changed first, then one collapsed block (Stage, Next, Changed, first three
+  open steps) per intent.
+- **`report-screen delivered <intent_dir>`** - the post-delivery report, printed once at close:
+  Asked, Delivered (with a Proven-by column), Evidence, Needs you.
+- **`report-screen delay <intent_dir>`** - printed only on request ("why did X take so long"):
+  the delivery as a timeline plus the derived `Where the time went` line.
 
-One fixed 3-line shape, reused at every stage:
+## The five triggers for `state`
 
-1. **State**: what happened and what it means, impact first, one line.
-2. **Risk**: the one thing that could bite, or "nothing flagged."
-3. **Call**: the decision left to you, or the go-ahead I am taking.
+Print `state` (one intent, or `--all` for the roster) on any of these; a checklist tick alone,
+an executor's intermediate commit, or an agent going idle is NOT one of them:
 
-This is a shape, not a rigid template. Keep the order (State, then Risk, then Call) and keep it
-short. The words can flex to fit the stage.
+| Trigger | Scope |
+|---|---|
+| A savepoint line lands (a stage boundary: Why, How, Exec started, outcome written, Done) | that intent |
+| A review verdict returns (plan review or post-execution review), naming what it changed | that intent |
+| A blocker or needs-input is logged | that intent |
+| A merge or a release lands | that intent |
+| The owner asks ("where are we", "state of X", "continue X") | all in delivery, or the one named |
 
-## Per-stage content
+`delivered` prints exactly once, at Completion. `delay` prints only when the owner asks why a
+delivery took long.
 
-- **What**: State = the work I picked up and why it matters now. Risk = scope uncertainty.
-  Call = confirm this is worth doing, or I proceed.
-- **Why**: State = the approach I chose, one line. Risk = the main trade-off. Call = the one
-  decision I need (approve, or pick an option).
-- **How**: State = the plan shape (task count and what it builds). Risk = the riskiest task or
-  dependency. Call = approve the plan to build.
-- **Exec**: State = what got built and the test result. Risk = residual failures or deviations.
-  Call = go to review, or done.
-- **Done**: State = the delivered impact. Risk = residual risk. Call = the decision left to you
-  (merge, release, accept).
+Every verb prints the same plain Markdown on every harness (owner ruling 2026-08-31); where a
+harness can paint it (Claude Code, through 316a's message-display hook), it substitutes a
+painted rendering of that same output, never a different one, and no skill or script branches
+on harness name to decide.
 
 ## Depth for small work
 
-For small work in auto mode the mid-flight briefings collapse to one. Only the How briefing fires, and
-it folds in what the What and Why briefings would have said: the work picked up and the approach
-chosen go into its State line. The Exec briefing folds into the final owner report at End. Larger
-work sends all four. The shape does not change: still State, then Risk, then Call, and the per-stage
-content above still says what each line covers. This is a depth cut, not a new report. A delivery
-still ends with `outcome.md` plus one owner report.
+For small work in auto mode, only the How-boundary `state` screen prints mid-flight (its
+`Changed` row names what the What and Why steps did, since there is no separate briefing per
+stage any more). Larger work prints `state` at every trigger in the table above. This is a
+depth cut, not a different report: the screen's shape never changes, only how often it fires.
+A delivery still ends with `outcome.md` plus one `delivered` screen.
 
 ## One report per audience
 
 A delivery produces exactly two artifacts: `outcome.md` (authored by `plastic-intent-ending`)
-and one EM-to-CTO owner report at the End stage. No stage or skill restates a delivery
-already written to `outcome.md`; point at it instead. Skills do not open with a banner that
-names the skill or restates the intent id and name the owner just typed. Announce only what
-the reader cannot already know: an error, a result, a choice with its reason, or a handoff.
+and one `delivered` screen at the End stage. No stage or skill restates a delivery already
+written to `outcome.md`; point at it instead. Skills do not open with a banner that names the
+skill or restates the intent id and name the owner just typed. Announce only what the reader
+cannot already know: an error, a result, a choice with its reason, or a handoff.
 
 ## Boundary vs intent 74
 
 Intent 74's report contract (`references/agent-report-contract.md`) is the INTERNAL,
 machine-checked handoff from a dispatched specialist back to the orchestrator: a structured
-envelope plus a per-role payload. This contract is the OUTWARD human briefing, orchestrator to
-user, in prose. Different direction, different audience, different form. The orchestrator
-CONSUMES the intent 74 report to WRITE the human briefing defined here. The two never merge.
+envelope plus a per-role payload. This contract is the OUTWARD screen shown to the owner.
+Different direction, different audience, different form. The orchestrator reads the intent 74
+report and reflects it into the record (savepoint, outcome.md) that `report-screen` then
+renders. The two never merge.
 
 ## Brevity: point, don't repeat
 
-Surface rules are owned by the `writing-style` skill. This contract does not restate them, in full
-or in summary. It defines the report's shape only: what to say, in what order, and when to stop.
-Apply the `writing-style` skill for the wording.
+Surface rules are owned by the `writing-style` skill. This contract does not restate them. Its
+job is naming which screen prints when, not the wording inside it - `report-screen` derives
+every cell from the record (D14), so there is no prose left to style here.
 
 ## Emission: guided vs auto
 
-In guided mode, the briefing lands at each stage boundary and the human acts on the Call line
-before the next stage starts.
+In guided mode, `state` prints at each stage boundary and the human decides before the next
+stage starts.
 
-In auto mode, for larger work the orchestrator still emits the briefing at each boundary, as a
-running EM-to-CTO account. For small work only the How briefing fires; see `## Depth for small work` above for what it
-folds in. The Call line becomes the go-ahead the orchestrator takes itself and moves on, except at
-the existing hard stops (destructive action without a safe alternative, project-path confirm).
+In auto mode, `state` prints at every trigger for larger work; for small work only the How
+boundary prints (see `## Depth for small work` above). The orchestrator takes the go-ahead
+itself and moves on, except at the existing hard stops (destructive action without a safe
+alternative, project-path confirm).

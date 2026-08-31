@@ -103,20 +103,25 @@ For a live intent's directory:
    the next thing the stage needs (see the matrix). The newest `## Insights` entry supplies
    the human-readable context; an entry marked `(autonomous)` means an auto team was
    delivering it, so say so and offer to hand back to `plastic-auto`.
-5. **Print the intent screen as the first thing in the reply, then continue at that stage.**
+5. **Print the report screen as the first thing in the reply, then continue at that stage.**
    The screen must open the message with nothing before it. On Claude Code, a fail-open
    `MessageDisplay` hook recognizes a reply that opens this way and substitutes a styled ANSI
    rendering for it there; the transcript and every other harness keep exactly this plain
-   form, and nothing about how the screen is printed here ever changes. Run
-   `ruby ~/.plastic/scripts/intent-screen <intent_dir>` and print its output as it is: the
-   title, the field table, and the Steps table come from the record, never by eye. Under it
+   form. For "where are we" on one named intent, run
+   `ruby ~/.plastic/scripts/report-screen state <intent_dir>` and print its output as it is:
+   the title, the field table, the `Changed` row, and the Steps table come from the record,
+   never by eye. For "where are we" with no intent named, run
+   `ruby ~/.plastic/scripts/report-screen state --all <store_root>` for the roster across every
+   in-delivery intent. Route "why did X take so long" to
+   `ruby ~/.plastic/scripts/report-screen delay <intent_dir>` instead - every verb prints the
+   same plain screen on any harness, painted only where the harness supports it, with no
+   branching on harness name. Under the `state` screen
    write **What this means** as two to four bullets in plain words (what the intent is for,
-   what has landed, what is left, any defect named by step), then close with
-   **needs input:** naming the first open step. The screen's shape is
-   `~/.plastic/templates/intent-screen.md`; the script fills it, the session never edits the numbers.
-   Then continue the work in the session's current mode. In auto mode the running team
-   already holds the delivery lock; if a lock is held by a session that is gone, the
-   `plastic-doctor` skill's lock section repairs or reclaims it.
+   what has landed, what is left, any defect named by step), then close with **needs input:**
+   naming the first open step. Then continue the work in the
+   session's current mode. In auto mode the running team already holds the delivery lock; if a
+   lock is held by a session that is gone, the `plastic-doctor` skill's lock section repairs or
+   reclaims it.
 
 ## Roadmap route: resume the mid-flight roadmap
 

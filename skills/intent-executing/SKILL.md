@@ -61,6 +61,8 @@ Run Step 0 (Sync Worktree First) before this step.
 
 Dispatch ONE executor subagent and give it the whole delivery: every task's full text from `plan.md` (pasted in, never a file reference), every action file with its failure-mode matrix, the checklist items it must tick, the project context from CLAUDE.md, the active intent context from `{ID}--{slug}.md`, and the worktree path. In auto mode this is the `plastic-executor` agent; elsewhere use the `implementer-prompt.md` template. The executor writes the matrix's tests and commits them red, implements the consolidated action in order, ticks each item as it lands (see `## Tick-as-you-land`), and drives the test suite green.
 
+After each commit lands (the red commit and every commit after it), append a `Commit` line to the savepoint ledger: `ruby ~/.plastic/scripts/savepoint-note <intent_dir> --kind Commit --text "<sha> <what it proves>"` (intent 317, D17). This is what feeds `report-screen delay`; a commit with no line is a gap the delay report cannot explain.
+
 Read its response by code:
 - DONE or DONE_WITH_CONCERNS → proceed to Step 3.
 - NEEDS_CONTEXT → provide the missing context, re-dispatch the executor.
@@ -68,6 +70,10 @@ Read its response by code:
 
 ### Step 3: Review by Risk
 Apply the auto skill's risk rule to the executor's return and the diff: a matrix row no test could prove, a diff touching a hook, the lock, the worktree code, the installer, or a release file, a DONE_WITH_CONCERNS or a deviation from the matrix, or an owner-facing surface no test pins. When a rule fires, dispatch the post-execution reviewer with `code-quality-reviewer-prompt.md` (a separate agent with fresh context, never the maker); if it returns changes, re-dispatch the executor to fix them, then run the suite once more. When no rule fires, the green suite is the review.
+
+Whenever a review verdict returns - the plan review before code, or the post-execution review above - the lead appends a `Review` line: `ruby ~/.plastic/scripts/savepoint-note <intent_dir> --kind Review --text "<verdict, what changed>"` (intent 317, D17). This is the other half of what `report-screen delay` reads.
+
+**The D19 heading convention.** An action file's `## Delivered` row (in `outcome.md`) is proven by whichever `actions/ACTION_N.md` heading carries that row's label as a standalone token - `### Row A -` proves row A, `### S1 -` proves row S1. Write action-file section headings so the label they prove is unambiguous (never a substring another label could also match, like `A` inside `AB`); `report-screen delivered`'s Proven-by column renders `not recorded` when no heading matches.
 
 ### Step 4: Update Intent and Complete
 Capture observations in `## Insights`. When ALL checklist items are checked:

@@ -22,6 +22,8 @@
 # Exit codes: 0 (report emitted), 2 (usage).
 
 require_relative "lib/savepoint"
+require_relative "lib/intent_screen"
+
 def parse_args(argv)
   role = nil
   positional = []
@@ -67,11 +69,15 @@ STAGE_LABELS = {
   "exec" => "Exec", "done" => "Done"
 }.freeze
 
+# Intent 317, D6: name the last LIFECYCLE line, never a trailing Lock/Review/
+# Commit line (same guard as spawn-preamble; plan review finding B1).
 def current_stage(intent_dir)
   ledger = File.join(intent_dir, Savepoint::SAVEPOINT_FILE)
   if File.exist?(ledger)
-    last = File.read(ledger).each_line.map(&:strip).reject(&:empty?).last
-    return last if last
+    lines = File.read(ledger).each_line.map(&:strip).reject(&:empty?)
+    lifecycle = lines.select { |l| IntentScreen.lifecycle_line?(l) }
+    return lifecycle.last if lifecycle.any?
+    return lines.last if lines.any?
   end
   STAGE_LABELS.fetch(Savepoint.derive_stage(intent_dir), Savepoint.derive_stage(intent_dir))
 end

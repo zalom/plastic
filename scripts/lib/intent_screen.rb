@@ -28,6 +28,19 @@ module IntentScreen
   STEP_PREFIX_RE = /\A(?:Step|S)\s*\d+\s*[-:·—–]\s*/i
   INSIGHT_RE = /\A(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ)\s+·\s+\S+\s+·\s+.+?\s+—\s+(.+)\z/
   SAVEPOINT_RE = /\A(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ)\s{2,}(\S+)\s{2,}(.+?)\s*\z/
+  # Intent 317, D6: field-2 tokens that are genuine lifecycle stages. A ledger
+  # can also carry non-lifecycle lines (`Lock  takeover: ...`, and 317's own
+  # `Review`/`Commit`); those must never be mistaken for the current stage.
+  # Placed here, clear of STEP_PREFIX_RE above (316a edits that one).
+  LIFECYCLE_STAGES = %w[What Why How Exec Done].freeze
+
+  # True iff a raw savepoint ledger line's field 2 is a genuine lifecycle
+  # stage (post-execution-review finding 5: centralizes what spawn-preamble
+  # and agent-report used to each copy-paste beside the constant above).
+  def self.lifecycle_line?(line)
+    parts = line.to_s.split(/\s{2,}/)
+    parts.length >= 2 && LIFECYCLE_STAGES.include?(parts[1])
+  end
 
   # Word-boundary truncation caps (intent 316a D3/O1a/O1c). Never a clause
   # trim: a clause trim on step text destroys a pinned `OPEN:` row
@@ -126,14 +139,22 @@ module IntentScreen
   def self.savepoint_fields(intent_dir, intent_text)
     path = File.join(intent_dir, "savepoint.md")
     lines = File.exist?(path) ? File.readlines(path).map(&:strip).reject(&:empty?) : []
-    last = lines.reverse.map { |l| l.match(SAVEPOINT_RE) }.compact.first
+    matched = lines.reverse.map { |l| l.match(SAVEPOINT_RE) }.compact
+    last = matched.first
     unless last
       return { "stage" => "Why", "stage.note" => "no savepoint line yet",
                "savepoint" => "none", "savepoint.note" => "" }
     end
 
+    # D6: the STAGE PICK is guarded to the last LIFECYCLE line (What/Why/How/
+    # Exec/Done), so a trailing Lock/Review/Commit line cannot be mistaken for
+    # the stage. The Savepoint field below still shows the TRUE last line,
+    # whatever its kind - that is what a savepoint is.
+    lifecycle_last = matched.find { |m| LIFECYCLE_STAGES.include?(m[2]) }
+    stage_source = lifecycle_last || last
+
     ts, stage, milestone = last[1], last[2], last[3]
-    landing = landing_stage(stage, milestone)
+    landing = landing_stage(stage_source[2], stage_source[3])
     delivered = lines.map { |l| l.match(SAVEPOINT_RE) }.compact.map { |m| m[2] }.uniq
     delivered &= %w[What Why How Exec]
     note = if landing == "Done"
