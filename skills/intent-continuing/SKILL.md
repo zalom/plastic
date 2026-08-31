@@ -103,7 +103,11 @@ For a live intent's directory:
    the next thing the stage needs (see the matrix). The newest `## Insights` entry supplies
    the human-readable context; an entry marked `(autonomous)` means an auto team was
    delivering it, so say so and offer to hand back to `plastic-auto`.
-5. **Print the intent screen, then continue at that stage.** Run
+5. **Print the intent screen as the first thing in the reply, then continue at that stage.**
+   The screen must open the message with nothing before it. On Claude Code, a fail-open
+   `MessageDisplay` hook recognizes a reply that opens this way and substitutes a styled ANSI
+   rendering for it there; the transcript and every other harness keep exactly this plain
+   form, and nothing about how the screen is printed here ever changes. Run
    `ruby ~/.plastic/scripts/intent-screen <intent_dir>` and print its output as it is: the
    title, the field table, and the Steps table come from the record, never by eye. Under it
    write **What this means** as two to four bullets in plain words (what the intent is for,

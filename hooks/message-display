@@ -1,0 +1,71 @@
+#!/bin/bash
+# hooks/message-display (intent 316a, O6, round 3 concurrency fix): the
+# MessageDisplay launcher. Fires on every streamed chunk of every assistant
+# message (D11), so the common case — an ordinary chunk of an ordinary
+# message — must decide with shell builtins alone and fork nothing. Only a
+# candidate message hands off to Ruby (scripts/hook-message-display), which
+# is the one place allowed to do real work.
+#
+# No command substitution, no backticks, no sed/jq/cat: case, [, parameter
+# expansion and printf are all builtins. Deliberately does NOT copy hooks/
+# capture's SCRIPT_DIR-via-subshell pattern (cd into dirname of $0, inside a
+# command substitution, then pwd) — that forks a subshell on every single
+# invocation, which is exactly the cost this hook cannot carry.
+#
+# A live run under a real pty found Claude Code fires these chunk processes
+# CONCURRENTLY: a chunk with index > 0 can arrive, and be judged here,
+# before chunk 0 ever runs. The OLD hand-off test — "does a buffer already
+# exist for this message" — answered no in that race and silently dropped
+# the chunk before Ruby ever saw it, no matter what MessageDisplay's own
+# (correct) polling logic would have done. So a later chunk is now also
+# handed off when its OWN delta looks like it could be part of a screen
+# (leading "|" or "**Steps**", or blank — the same cheap test Ruby itself
+# uses to decide whether a wait is worth paying for), and the final chunk is
+# ALWAYS handed off, whatever it looks like, since it is the one that must
+# not race. Ruby is the one place that actually waits (bounded, injectable
+# for tests); this script only ever decides once, fast, and never sleeps.
+IFS= read -r -d '' INPUT          # returns 1 at EOF: do NOT set -e
+case $INPUT in *'"message_id"'*) ;; *) exit 0 ;; esac
+rest=${INPUT#*\"message_id\"}; rest=${rest#*\"}; mid=${rest%%\"*}
+rest=${INPUT#*\"session_id\"}; rest=${rest#*\"}; sid=${rest%%\"*}
+
+SCRIPT_DIR=${0%/*}
+TMP_ROOT=${PLASTIC_TMP:-${TMPDIR:-/tmp}}
+export PLASTIC_TMP="$TMP_ROOT"
+MSGDIR="$TMP_ROOT/plastic-message-display/$sid/$mid"
+
+is_index_zero=0
+case $INPUT in *'"index":0'*|*'"index": 0'*) is_index_zero=1 ;; esac
+
+is_final=0
+case $INPUT in *'"final":true'*|*'"final": true'*) is_final=1 ;; esac
+
+handoff=0
+if [ "$is_index_zero" = 1 ]; then
+  # Chunk 0 decides synchronously; a bare "#" first delta, in either JSON
+  # spacing, is the only shape that can possibly open a screen. Must be a
+  # single "#", not "##" — a real screen's own first delta can be as short
+  # as "## " — a "##" glob would filter out exactly the message this hook
+  # exists to recognize.
+  case $INPUT in
+    *'"delta":"#'*|*'"delta": "#'*) handoff=1 ;;
+  esac
+else
+  # A later chunk: hand off when this message's directory already exists
+  # (chunk 0 already left a decision or a chunk file), when this chunk is
+  # final (it must always be checked, whatever it looks like), or when its
+  # own delta is shaped like part of a screen — a Markdown table row, the
+  # "**Steps**" heading, or a blank line, in either JSON spacing.
+  [ -d "$MSGDIR" ] && handoff=1
+  [ "$is_final" = 1 ] && handoff=1
+  case $INPUT in
+    *'"delta":"|'*|*'"delta": "|'*) handoff=1 ;;
+    *'"delta":"**Steps**'*|*'"delta": "**Steps**'*) handoff=1 ;;
+    *'"delta":""'*|*'"delta": ""'*) handoff=1 ;;
+    *'"delta":"\n"'*|*'"delta": "\n"'*) handoff=1 ;;
+  esac
+fi
+
+[ "$handoff" = 1 ] || exit 0
+
+printf '%s' "$INPUT" | env -u RUBYOPT ruby "$SCRIPT_DIR/../scripts/hook-message-display"

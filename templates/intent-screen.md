@@ -10,13 +10,8 @@
 | **Next** | {{next}} | {{next.note}} |
 | **Insight** | {{insight}} | {{insight.note}} |
 
-**What this means**
-{{meaning}}
-
 **Steps**
 
 | Step | Status | What |
 | --- | --- | --- |
 {{steps.rows}}
-
-{{close}}
