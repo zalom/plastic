@@ -7,6 +7,8 @@ disposition: delivered|abandoned
 (what was delivered)
 
 ## Delivered
+<!-- One row per thing delivered, in plain wording a reader recognizes, not
+an implementation summary; the technical detail belongs in ## Summary. -->
 - ...
 
 ## Verification

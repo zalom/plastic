@@ -94,7 +94,7 @@ class ReportScreenDeliveredTest < Minitest::Test
     full_fixture
     out = ReportScreen.render_delivered(intent_dir: @dir, tag_reader: ->(_d) { "2.0.0-alpha.5" })
     lines = out.lines
-    assert_equal "✔ 12 · Fix regressions, tests first, shipped as alpha.5 · delivered\n", lines[0]
+    assert_equal "## ✔ 12 · Fix regressions, tests first, shipped as alpha.5 · delivered\n", lines[0]
     # mode is "not recorded" absent a live lock (this fixture has none); the
     # four segments (timestamp, mode, duration, version) must still all appear
     # in that fixed order.
@@ -154,6 +154,7 @@ class ReportScreenDeliveredTest < Minitest::Test
     assert_includes out, "| Row | What | Proven by |"
     assert_includes out, "| Kind | What | Source |"
 
+    assert out.lines.first.start_with?("## \u2714 "), "the title line must carry the ## prefix the approved plain form uses"
     title_idx = 0
     asked_idx = out.index("**Asked**")
     delivered_idx = out.index("**Delivered**")

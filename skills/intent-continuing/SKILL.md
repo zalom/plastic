@@ -109,7 +109,9 @@ For a live intent's directory:
    record, never by eye. For "where are we" with no intent named, run
    `ruby ~/.plastic/scripts/report-screen state --all <store_root>` for the roster across every
    in-delivery intent. Route "why did X take so long" to
-   `ruby ~/.plastic/scripts/report-screen delay <intent_dir>` instead. Under the `state` screen
+   `ruby ~/.plastic/scripts/report-screen delay <intent_dir>` instead - every verb prints the
+   same plain screen on any harness, painted only where the harness supports it (Claude Code,
+   through 316a's hook), with no branching on harness name. Under the `state` screen
    write **What this means** as two to four bullets in plain words (what the intent is for,
    what has landed, what is left, any defect named by step). Then continue the work in the
    session's current mode. In auto mode the running team already holds the delivery lock; if a

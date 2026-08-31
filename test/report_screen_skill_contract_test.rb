@@ -67,4 +67,18 @@ class ReportScreenSkillContractTest < Minitest::Test
     text = read("skills/intent-executing/SKILL.md")
     assert_includes text, "standalone token"
   end
+
+  # --- item 10 (owner ruling 2026-08-31): cross-harness by construction, not
+  # by branching - one sentence in each place a screen is printed.
+
+  def test_human_report_contract_states_cross_harness_neutrality
+    text = read("skills/auto/references/human-report-contract.md")
+    assert_includes text, "every harness"
+    assert_includes text, "harness name"
+  end
+
+  def test_intent_continuing_states_cross_harness_neutrality
+    text = read("skills/intent-continuing/SKILL.md")
+    assert_includes text, "harness name"
+  end
 end

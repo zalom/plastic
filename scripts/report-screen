@@ -29,6 +29,18 @@ def usage_abort(message)
   exit 2
 end
 
+# The one place allowed to shell out (D2/D20): resolves the nearest git tag
+# reachable from the repo this script lives in, so `render_delivered`'s
+# version field and the `ship` evidence row are never invented. The pure
+# module never reads git itself; this is injected as `tag_reader:`.
+def git_tag_reader(repo_root)
+  lambda do |_intent_dir|
+    return nil unless File.exist?(File.join(repo_root, ".git"))
+    tag = `git -C #{repo_root} describe --tags --abbrev=0 2>/dev/null`.strip
+    tag.empty? ? nil : tag
+  end
+end
+
 args = ARGV.dup
 verb = args.shift
 changed = nil
@@ -91,7 +103,8 @@ when "delivered"
   usage_abort("usage: report-screen delivered <intent_dir>") unless target
   intent_dir = File.expand_path(target)
   usage_abort("#{intent_dir} is not an intent directory") unless IntentScreen.intent_dir?(intent_dir)
-  out = ReportScreen.render_delivered(intent_dir: intent_dir)
+  repo_root = File.expand_path("..", __dir__)
+  out = ReportScreen.render_delivered(intent_dir: intent_dir, tag_reader: git_tag_reader(repo_root))
   $stdout.write paint(out, ansi_enabled, renderer_path)
 when "delay"
   usage_abort("usage: report-screen delay <intent_dir>") unless target

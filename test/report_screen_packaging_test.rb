@@ -25,6 +25,28 @@ class ReportScreenPackagingTest < Minitest::Test
     assert_includes section, "None"
   end
 
+  # --- item 8 (post-execution review): the plain-wording convention for
+  # ## Delivered rows must land where outcome.md is authored, not in the
+  # reader (D14: the reader renders its source; the source is where the
+  # ruling belongs).
+
+  def test_outcome_template_states_the_plain_wording_convention_for_delivered_rows
+    text = File.read(File.join(REPO, "templates", "outcome.md"))
+    delivered_idx = text.index("## Delivered")
+    verification_idx = text.index("## Verification")
+    refute_nil delivered_idx
+    refute_nil verification_idx
+    section = text[delivered_idx...verification_idx]
+    assert_includes section, "plain wording"
+    assert_includes section, "## Summary"
+  end
+
+  def test_intent_ending_skill_states_the_plain_wording_convention
+    text = File.read(File.join(REPO, "skills", "intent-ending", "SKILL.md"))
+    assert_includes text, "plain wording"
+    assert text.lines.length <= 300, "skills/intent-ending/SKILL.md must stay at or under 300 lines"
+  end
+
   # --- row 82/83: core_files registers the two new scripts ---------------------
 
   def test_core_files_registers_report_screen
@@ -58,6 +80,23 @@ class ReportScreenPackagingTest < Minitest::Test
       assert File.exist?(path), "#{rel} is missing"
       mode = File.stat(path).mode & 0o777
       assert_equal 0o755, mode, "#{rel} must install executable (0755), got #{mode.to_s(8)}"
+    end
+  end
+
+  # --- item 9 (owner ruling 2026-08-31): the TUI delivery is cross-harness.
+  # ANSI selection is by capability (--ansi flag, NO_COLOR, TTY), never by
+  # harness name; a Claude-only branch here would be the regression this
+  # ruling targets. Crude but exact: no source file names a harness.
+
+  def test_no_source_file_branches_on_a_harness_name
+    %w[
+      scripts/lib/report_screen.rb
+      scripts/report-screen
+      scripts/savepoint-note
+      templates/report-state.md
+    ].each do |rel|
+      text = File.read(File.join(REPO, rel))
+      refute_match(/claude|codex/i, text, "#{rel} must not name a harness (ANSI selection is by capability, not by name)")
     end
   end
 end

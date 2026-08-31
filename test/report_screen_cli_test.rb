@@ -93,6 +93,31 @@ class ReportScreenCliTest < Minitest::Test
     assert_equal "PAINTED:#{plain}", painted
   end
 
+  # --- fix 7 (post-execution review): 316a's real contract is
+  # IntentScreenAnsi.render(intent_dir:, store_root:, color:, width:), a
+  # re-render from the record - NOT paint(text). Today's fallback-to-plain
+  # is pinned via a fresh subprocess (avoids polluting the shared
+  # IntentScreenAnsi constant across tests in this same process) so the gap
+  # is visible rather than silently "working" against the wrong contract.
+
+  def test_ansi_falls_back_to_plain_when_renderer_defines_render_not_paint
+    root = File.join(@home, "store_root")
+    dir = make_intent(root)
+    renderer = File.join(@home, "stub_renderer_render_only.rb")
+    File.write(renderer, <<~RB)
+      module IntentScreenAnsi
+        def self.render(intent_dir:, store_root:, color: true, width: 100)
+          "RENDERED-NOT-PAINTED"
+        end
+      end
+    RB
+    out, err, status = Open3.capture3("ruby", CLI, "state", dir, "--ansi", "--renderer-path", renderer)
+    assert_equal 0, status.exitstatus, err
+    refute_equal "RENDERED-NOT-PAINTED", out.strip
+    refute_empty out
+    refute_match(/\e\[/, out)
+  end
+
   # --- row 79: NO_COLOR forces plain even with --ansi ---------------------------
 
   def test_no_color_forces_plain
@@ -101,6 +126,30 @@ class ReportScreenCliTest < Minitest::Test
     out, err, status = Open3.capture3({ "NO_COLOR" => "1" }, "ruby", CLI, "state", dir, "--ansi")
     assert_equal 0, status.exitstatus, err
     refute_match(/\e\[/, out)
+  end
+
+  # --- fix 1 (post-execution review): the CLI must inject a REAL tag reader,
+  # not the module's no-op default, so `delivered`'s version reaches the title
+  # line and the ship row from production, not just from an injected test double.
+
+  def test_delivered_cli_injects_a_real_git_tag_reader
+    root = File.join(@home, "store_root")
+    dir = make_intent(root, id: "12")
+    File.write(File.join(dir, "spec.md"), "# Spec\n\n## Decisions\n- D1 x\n")
+    File.write(File.join(dir, "outcome.md"), "---\ndisposition: delivered\n---\n\n## Summary\nx\n")
+    File.write(File.join(dir, "savepoint.md"), "2026-08-30T12:00:00Z  What  12--slug.md\n2026-08-30T12:10:00Z  Done  delivered\n")
+
+    expected = `git -C #{REPO} describe --tags --abbrev=0 2>/dev/null`.strip
+    out, err, status = Open3.capture3("ruby", CLI, "delivered", dir)
+    assert_equal 0, status.exitstatus, err
+    version_segment = out.lines[1].to_s.split(" \u00b7 ").last.to_s.strip
+    if expected.empty?
+      assert_equal "not recorded", version_segment
+    else
+      refute_equal "not recorded", version_segment,
+                   "the CLI must inject a real tag reader, not the module's no-op default: #{out.lines[1]}"
+      assert_includes version_segment, expected.sub(/\Av/, "")
+    end
   end
 
   # --- row 80: template resolution, repo-shaped and install-shaped -------------

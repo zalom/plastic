@@ -31,6 +31,11 @@ an executor's intermediate commit, or an agent going idle is NOT one of them:
 `delivered` prints exactly once, at Completion. `delay` prints only when the owner asks why a
 delivery took long.
 
+Every verb prints the same plain Markdown on every harness (owner ruling 2026-08-31); where a
+harness can paint it (Claude Code, through 316a's message-display hook), it substitutes a
+painted rendering of that same output, never a different one, and no skill or script branches
+on harness name to decide.
+
 ## Depth for small work
 
 For small work in auto mode, only the How-boundary `state` screen prints mid-flight (its

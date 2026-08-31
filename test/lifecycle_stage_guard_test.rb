@@ -60,6 +60,13 @@ class LifecycleStageGuardTest < Minitest::Test
     assert_equal %w[What Why How Exec Done], IntentScreen::LIFECYCLE_STAGES
   end
 
+  # fix 5 (post-execution review): the predicate spawn-preamble and
+  # agent-report both used to copy-paste is now one centralized method.
+  def test_lifecycle_line_predicate_is_centralized
+    assert_equal true, IntentScreen.lifecycle_line?("2026-08-30T12:00:00Z  How  checklist.md created")
+    assert_equal false, IntentScreen.lifecycle_line?("2026-08-30T12:00:00Z  Commit  abc1234 tests green")
+  end
+
   # --- row 12: a trailing Lock line must not become the stage -----------------
 
   def test_trailing_lock_line_does_not_become_the_stage

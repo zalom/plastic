@@ -178,7 +178,7 @@ module ReportScreen
     _heading, body = matching_action_heading(intent_dir, label)
     return NOT_RECORDED unless body
     n = table_rows(body).length
-    n.positive? ? "#{n} tests" : NOT_RECORDED
+    n.positive? ? "#{n} test#{n == 1 ? '' : 's'}" : NOT_RECORDED
   end
 
   # Row 34: outcome.md's ## Needs you, our own N1..NN numbering (never the
@@ -430,7 +430,11 @@ module ReportScreen
       table << "| #{e[:id]} | #{savepoint['stage']} | #{progress['progress.bar']} #{progress['progress.done']} / #{progress['progress.total']} | #{escape(ch)} | #{lead(e[:dir])} |"
     end
     blocks = entries.map { |e| render_collapsed_block(e[:dir], store_root, changed: changed) }
-    "#{([header, ""] + table + [""] + blocks).join("\n")}\n"
+    head_and_table = ([header, ""] + table).join("\n")
+    # Each collapsed block already has its own internal "\n"; a blank line
+    # separates block from block (design--delivery-reports.html:137-152),
+    # so they read as distinct entries instead of running together.
+    "#{head_and_table}\n\n#{blocks.join("\n\n")}\n"
   end
 
   # --- S6: the delivered verb ------------------------------------------------------
@@ -451,7 +455,7 @@ module ReportScreen
     ver_text = version && !version.to_s.empty? ? "v#{version.to_s.sub(/\Av/, '')}" : NOT_RECORDED
 
     lines = []
-    lines << "✔ #{id} · #{name} · delivered"
+    lines << "## ✔ #{id} · #{name} · delivered"
     lines << "#{ts} · #{m} · #{dur} · #{ver_text}"
     lines << ""
     lines << "**Asked**"

@@ -118,6 +118,32 @@ class ReportScreenDelayTest < Minitest::Test
     assert_includes out, "**Outcome**   not recorded"
   end
 
+  # --- fix 2 (post-execution review): ## Summary prose is hand-wrapped across
+  # several physical lines; the first PARAGRAPH must join with single spaces,
+  # and a second paragraph (after a blank line) must never bleed in.
+
+  def test_outcome_line_joins_a_wrapped_paragraph_and_excludes_the_next_one
+    write("savepoint.md", "2026-08-30T19:00:00Z  What  12--slug.md\n2026-08-30T19:10:00Z  Done  delivered\n")
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+      # Outcome
+
+      ## Summary
+
+      The first line of a paragraph
+      that wraps across three
+      physical lines in the source.
+
+      A second paragraph that must never
+      bleed into the Outcome line.
+    MD
+    out = ReportScreen.render_delay(intent_dir: @dir)
+    assert_includes out, "**Outcome**   The first line of a paragraph that wraps across three physical lines in the source."
+    refute_includes out, "bleed into"
+  end
+
   # --- row 72 (A7, 315b's real case): honest about an unkept review/commit ledger
 
   def test_no_review_or_commit_lines_says_the_ledger_was_not_kept

@@ -157,7 +157,7 @@ class ReportScreenReadersTest < Minitest::Test
       | 1 | x | y | z |
     MD
     assert_equal "2 tests", ReportScreen.proven_by(@dir, "A")
-    assert_equal "1 tests", ReportScreen.proven_by(@dir, "AB")
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "AB")
   end
 
   def test_proven_by_no_match_renders_not_recorded
@@ -184,7 +184,7 @@ class ReportScreenReadersTest < Minitest::Test
       | 1 | a |
     MD
     assert_equal "3 tests", ReportScreen.proven_by(@dir, "S1")
-    assert_equal "1 tests", ReportScreen.proven_by(@dir, "S2")
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "S2")
   end
 
   # --- row 28: evidence_rows - suite -------------------------------------------

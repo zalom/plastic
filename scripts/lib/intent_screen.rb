@@ -20,6 +20,14 @@ module IntentScreen
   # Placed here, clear of STEP_PREFIX_RE above (316a edits that one).
   LIFECYCLE_STAGES = %w[What Why How Exec Done].freeze
 
+  # True iff a raw savepoint ledger line's field 2 is a genuine lifecycle
+  # stage (post-execution-review finding 5: centralizes what spawn-preamble
+  # and agent-report used to each copy-paste beside the constant above).
+  def self.lifecycle_line?(line)
+    parts = line.to_s.split(/\s{2,}/)
+    parts.length >= 2 && LIFECYCLE_STAGES.include?(parts[1])
+  end
+
   # Where a resume lands, from the ledger's last line (the boarding matrix).
   def self.landing_stage(stage, milestone)
     case stage

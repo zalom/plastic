@@ -318,4 +318,20 @@ class ReportScreenStateTest < Minitest::Test
     refute_includes out, "| Intent |"
     assert_equal 1, out.strip.lines.length
   end
+
+  # --- fix 4 (post-execution review): collapsed blocks in the roster must be
+  # separated by a blank line, or they run together (design--delivery-reports.html:137-152).
+
+  def test_roster_separates_collapsed_blocks_with_a_blank_line
+    root = tier_root
+    write_index(root, [["10", "First", "Active"], ["11", "Second", "Active"]])
+    make_intent(root, id: "10", title: "First", checklist: checklist_with(total: 1, done: 0),
+                savepoint: "2026-08-30T10:00:00Z  What  10--slug.md\n")
+    make_intent(root, id: "11", title: "Second", checklist: checklist_with(total: 1, done: 0),
+                savepoint: "2026-08-30T09:00:00Z  What  11--slug.md\n")
+    out = ReportScreen.render_roster(root, changed: nil, now: Time.utc(2026, 8, 31, 11, 30, 0))
+    first_block_end = out.index("\u25b6 11")
+    refute_nil first_block_end
+    assert_equal "\n\n", out[(first_block_end - 2)...first_block_end]
+  end
 end
