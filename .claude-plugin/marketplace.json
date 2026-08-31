@@ -9,7 +9,7 @@
     {
       "name": "plastic",
       "description": "Intent-driven state management for AI coding sessions",
-      "version": "2.0.0-alpha.6",
+      "version": "2.0.0-alpha.7",
       "source": "./",
       "author": {
         "name": "Zlatko Alomerovic",
