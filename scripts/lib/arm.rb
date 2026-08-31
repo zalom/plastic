@@ -94,7 +94,20 @@ module Arm
     }
   end
 
+  # Owner rule 2026-08-31: does this session already have a live top-level
+  # pointer pointing SOMEWHERE ELSE (the day ledger or another intent)? A
+  # pointer already on this intent is the owner re-arming mid-delivery and
+  # stays idempotent. True means a
+  # conversation session. Reads only; rescues to false (fail open).
+  def preexisting_pointer?(session, home:)
+    path = pointer_path(session, home: home)
+    File.exist?(path) && !File.read(path).to_s.strip.empty?
+  rescue StandardError
+    false
+  end
+
   # --- the pointer -------------------------------------------------------------
+
 
   def pointer_path(session, home:)
     store = global_store(home)
@@ -125,11 +138,23 @@ module Arm
   # lock data read and touches nothing.
   def arm(intent_dir:, session:, mode: "auto", home: Dir.home, harness: nil,
           agent: nil, model: nil, thread: nil, now: Time.now, runner: Worktree::ShellRunner.new,
-          host: Socket.gethostname)
+          host: Socket.gethostname, allow_inline: false)
     raise ArgumentError, "mode must be auto or guided" unless %w[auto guided].include?(mode.to_s)
     dir = File.expand_path(intent_dir)
     key = resolve_session(session, store: store_for(dir), intent_id: intent_id_for(dir))
     h = home_for(dir, home: home)
+
+    # Owner rule 2026-08-31: the main session never delivers an intent inline.
+    # A session that already carries a top-level session pointer is a
+    # conversation session (SessionStart wrote it at boot); arming there is
+    # inline delivery and is refused BEFORE any lock is taken. A dispatched or
+    # headless session has no pre-existing pointer and arms freely.
+    # --allow-inline is the explicit owner override. Fail open on read errors:
+    # a broken pointer file must never block a legitimate delivery.
+    if !allow_inline && preexisting_pointer?(key, home: h) &&
+       read_pointer(key, home: h).to_s.strip != intent_id_for(dir)
+      return { status: :inline_refused, lock: nil, worktree: nil, session: key, pointer: nil }
+    end
 
     status, lock = Lock.acquire(dir, session: key, host: host, now: now,
                                 harness: harness, agent: agent, model: model,

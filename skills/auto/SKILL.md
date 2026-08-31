@@ -67,8 +67,9 @@ Replace `<STORE>` (`~/.plastic/projects/<slug>/store` or `~/.plastic/store`) and
 nonblank `CLAUDE_CODE_SESSION_ID` as Claude, otherwise passes no identity and the verb keys the
 lock by a derived session key. Never guess identity from an absent runtime variable; an
 unknown harness or thread stays unknown. Exit 1 means the lock is held, stale, excluded, or
-corrupt; the message names the `plastic-doctor` verb that resolves it. Do not proceed as the
-owner after an exit 1.
+corrupt - or `inline_refused`: a conversation session may not arm an intent at all (owner rule
+2026-08-31); dispatch the delivery team instead. `--allow-inline` exists only for an explicit
+owner override. Do not proceed as the owner after an exit 1.
 
 Read `../plastic-conventions/references/locks-and-worktrees.md` for what the lock and the
 worktree mean and the station table behind them. Code edits happen only inside the worktree.

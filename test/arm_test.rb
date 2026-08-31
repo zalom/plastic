@@ -311,4 +311,32 @@ class ArmTest < Minitest::Test
     assert_nil Arm.intent_dir_from_pointer("sess-a", home: @home, stores: [@store, @global])
     assert_nil Arm.intent_dir_from_pointer("nobody", home: @home, stores: [@store])
   end
+
+  # --- owner rule 2026-08-31 (day-ledger direct item): no inline delivery ----
+  # A session that already carries a top-level session pointer is a
+  # conversation session (SessionStart wrote the pointer at boot); arming an
+  # intent there is inline delivery and is refused. A dispatched or headless
+  # session has no pre-existing pointer and arms freely. --allow-inline is the
+  # explicit owner override.
+
+  def test_arm_refuses_a_session_with_a_preexisting_pointer
+    Arm.write_pointer("sess-a", "day-ledger", home: @home)
+    result = Arm.arm(intent_dir: @dir, session: "sess-a", home: @home, runner: FakeRunner.new)
+    assert_equal :inline_refused, result[:status]
+    refute File.exist?(File.join(@dir, "delivery.lock")),
+           "a refused arm must not leave a lock behind"
+  end
+
+  def test_arm_allow_inline_overrides_the_refusal
+    Arm.write_pointer("sess-a", "day-ledger", home: @home)
+    result = Arm.arm(intent_dir: @dir, session: "sess-a", home: @home,
+                     runner: FakeRunner.new, allow_inline: true)
+    assert_equal :acquired, result[:status]
+  end
+
+  def test_arm_without_a_preexisting_pointer_still_acquires
+    result = Arm.arm(intent_dir: @dir, session: "dispatched-x", home: @home, runner: FakeRunner.new)
+    assert_equal :acquired, result[:status]
+  end
+
 end

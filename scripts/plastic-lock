@@ -70,6 +70,7 @@ until ARGV.empty?
   when "--model" then opts[:model] = ARGV.shift
   when "--thread" then opts[:thread] = ARGV.shift
   when "--mode" then opts[:mode] = ARGV.shift
+  when "--allow-inline" then opts[:allow_inline] = true
   when "--status" then opts[:status] = ARGV.shift
   else
     warn "unknown flag #{flag}"
@@ -154,7 +155,8 @@ end
 case verb
 when "arm"
   result = Arm.arm(intent_dir: dir, session: key, mode: opts[:mode] || "auto", home: home,
-                   harness: harness, agent: opts[:agent], model: opts[:model], thread: opts[:thread])
+                   harness: harness, agent: opts[:agent], model: opts[:model], thread: opts[:thread],
+                   allow_inline: opts[:allow_inline] || false)
   case result[:status]
   when :acquired, :owned
     wt = result[:worktree] || {}
@@ -177,6 +179,11 @@ when "arm"
     exit 1
   when :corrupt
     warn "plastic-lock: delivery.lock for intent #{intent_id} is unreadable; #{doctor_hint('fix the lock', hint_harness)}"
+    exit 1
+  when :inline_refused
+    warn "plastic-lock: refusing to arm intent #{intent_id} from a conversation session " \
+         "(owner rule 2026-08-31: no inline intent delivery). Dispatch the delivery team " \
+         "instead (plastic-auto), or pass --allow-inline with explicit owner approval."
     exit 1
   end
 when "status"
