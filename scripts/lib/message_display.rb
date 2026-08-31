@@ -7,46 +7,59 @@ require_relative "intent_screen_ansi"
 require_relative "store_discovery"
 require_relative "store_provisioning"
 
-# MessageDisplay (intent 316a, O4/O5) - the Claude Code MessageDisplay hook
-# handler. One process per streamed chunk of every assistant message
-# (D11), so it must be cheap and decide fast. Pure: every dependency
-# (tmp_root, plastic_home, color, now) is a constructor argument, never an
-# ENV read, a Dir.pwd/Dir.home read, or the real Time.now — the thin CLI
-# (scripts/hook-message-display) is the only place allowed to read any of
-# those.
+# MessageDisplay (intent 316a, O4/O5, round 3 concurrency fix) - the Claude
+# Code MessageDisplay hook handler. One process per streamed chunk of every
+# assistant message (D11), so it must be cheap and decide fast. Pure: every
+# dependency (tmp_root, plastic_home, color, now, wait_ms, poll_ms, sleeper)
+# is a constructor argument, never an ENV read, a Dir.pwd/Dir.home read, or
+# the real Time.now/Kernel#sleep — the thin CLI (scripts/hook-message-display)
+# is the one place allowed to read any of those.
 #
-# Protocol (D13): chunk 0 decides, once, and nothing is ever blanked
-# speculatively.
-#   - Chunk 0 matches "## ▶ <id> · " (after leading whitespace only) AND the
-#     id resolves to a real intent (O5) -> engage: buffer the delta, return
-#     "" (or splice immediately if also final). Resolution is cheap and
-#     happens here, before anything is buffered or blanked.
-#   - Chunk 0 does not match, or matches but the id does not resolve, for any
-#     reason (a clean mismatch, a delta too short to tell, or an unresolvable
-#     id) -> no buffer is ever created, so this message renders plain and
-#     every later chunk of it (index > 0, no buffer found) passes through
-#     untouched. These "does not engage" cases collapse into one code path
-#     deliberately: none of them is ever revisited once chunk 0 has run, so
-#     there is nothing to distinguish them on later chunks.
-#   - Engaged, not final -> append the delta to the buffer, return "".
-#   - Engaged, final -> resolve the intent directory (O5), render the ANSI
-#     block, splice it over the plain screen's prefix inside the buffered
-#     message (D16), delete the buffer, return the spliced whole message.
-#   - Any failure while finalizing returns the buffered ORIGINAL, never nil
-#     and never "" (D10): earlier chunks were already blanked, so passing
-#     through at that point would leave a blank message where the answer was.
-#   - `color: false` passes through from chunk 0 unconditionally and never
-#     buffers or blanks anything (D12).
+# A live run under a real pty (round 3) found that Claude Code fires the
+# per-chunk hook processes CONCURRENTLY, not strictly in order. Chunk 0 is
+# the one that recognizes the screen and creates the buffer (D13), and it can
+# lose the race to chunks with a higher index: they would find no buffer yet
+# and pass their raw Markdown straight through, producing a half plain /
+# half styled screen. This class now survives that:
+#
+#   - One file per chunk (index-named), written atomically (temp name in the
+#     same directory, then File.rename), so reassembly never depends on
+#     arrival order — only on the index each chunk already carries.
+#   - A decision file written BEFORE anything slow: chunk 0 writes SCREEN
+#     (the resolved intent dir + store root) the moment it engages, or
+#     NOSCREEN the moment it does not, so later chunks can decide without
+#     redoing any of chunk 0's work.
+#   - A later chunk asks a cheap, local question before ever waiting: could
+#     this delta plausibly be part of a screen (leading "|", "**Steps**", or
+#     blank)? An ordinary prose chunk arriving before SCREEN/NOSCREEN exists
+#     passes through at once, at zero cost. A chunk shaped like part of a
+#     screen polls for the decision, bounded (wait_ms/poll_ms), then fails
+#     open. The final chunk always waits for the decision, whatever its own
+#     shape, since it is the one that must not race — and it additionally
+#     waits (same budget) for every earlier chunk file to exist before it
+#     splices, returning whatever it does have rather than nothing when the
+#     budget runs out.
+#
+# Protocol (D13, preserved): chunk 0 still decides, once, before anything is
+# buffered or blanked. D10 (any failure while finalizing returns the
+# buffered original, never nil, never "") and D12 (color: false never
+# buffers or blanks anything) are unchanged.
 class MessageDisplay
   MARKER_RE = /\A## ▶ (\S+) · /.freeze
   BUFFER_DIR_NAME = "plastic-message-display"
   BUFFER_MAX_AGE_SECONDS = 3600
+  SCREEN_FILE = "SCREEN"
+  NOSCREEN_FILE = "NOSCREEN"
 
-  def initialize(tmp_root:, plastic_home:, color:, now:)
+  def initialize(tmp_root:, plastic_home:, color:, now:, wait_ms: 300, poll_ms: 20,
+                 sleeper: ->(seconds) { sleep(seconds) })
     @tmp_root = tmp_root
     @plastic_home = plastic_home
     @color = color
     @now = now
+    @wait_ms = wait_ms
+    @poll_ms = poll_ms
+    @sleeper = sleeper
   end
 
   def handle(payload)
@@ -64,71 +77,159 @@ class MessageDisplay
 
     return nil if message_id.empty? || session_id.empty?
 
-    path = self.class.buffer_path(tmp_root: @tmp_root, session_id: session_id, message_id: message_id)
+    dir = self.class.buffer_path(tmp_root: @tmp_root, session_id: session_id, message_id: message_id)
 
     if index == 0
-      stripped = delta.sub(/\A[ \t]+/, "")
-      m = stripped.match(MARKER_RE)
-      return nil unless m
-
-      # Resolve before engaging (matrix new, lead's F4): resolution is cheap,
-      # so pay it here, while nothing has been suppressed yet. An id that
-      # cannot be resolved must never buffer and never blank a single chunk —
-      # deferring this check to `finalize` meant a message could be blanked
-      # for its whole duration only to discover at the end it was
-      # unresolvable, with no way back to the original text.
-      return nil unless resolve_intent_dir(m[1], cwd)
-
-      FileUtils.mkdir_p(File.dirname(path))
-      File.write(path, delta)
+      handle_chunk_zero(dir, delta, cwd, final)
     else
-      return nil unless File.exist?(path)
-
-      File.open(path, "a") { |f| f.write(delta) }
-    end
-
-    return "" unless final
-
-    begin
-      buffered = File.read(path)
-      finalize(buffered, cwd)
-    rescue StandardError
-      buffered
-    ensure
-      FileUtils.rm_f(path)
+      handle_later_chunk(dir, index, delta, final)
     end
   end
 
-  # The buffer file path both this class and the bash launcher (hooks/message-
-  # display) must agree on byte for byte (matrix 40): the launcher checks this
-  # exact path's existence to decide whether chunk > 0 of an engaged message
-  # gets handed to Ruby at all.
+  # The message directory both this class and the bash launcher (hooks/
+  # message-display) must agree on byte for byte (matrix 40): the launcher
+  # checks this exact path's existence to decide whether chunk > 0 of an
+  # engaged message gets handed to Ruby at all.
   def self.buffer_path(tmp_root:, session_id:, message_id:)
     File.join(tmp_root, BUFFER_DIR_NAME, session_id, message_id)
   end
 
+  def self.chunk_path(tmp_root:, session_id:, message_id:, index:)
+    File.join(buffer_path(tmp_root: tmp_root, session_id: session_id, message_id: message_id), index.to_s)
+  end
+
+  def self.screen_path(tmp_root:, session_id:, message_id:)
+    File.join(buffer_path(tmp_root: tmp_root, session_id: session_id, message_id: message_id), SCREEN_FILE)
+  end
+
+  def self.noscreen_path(tmp_root:, session_id:, message_id:)
+    File.join(buffer_path(tmp_root: tmp_root, session_id: session_id, message_id: message_id), NOSCREEN_FILE)
+  end
+
   private
 
-  def finalize(buffered, cwd)
-    # Same "after leading whitespace only" rule chunk 0 used to engage in the
-    # first place (matched on the stripped delta, but the buffer keeps every
-    # byte verbatim for the splice) — without stripping here too, a message
-    # chunk 0 correctly recognized could still fail to yield an id here.
-    m = buffered.sub(/\A[ \t]+/, "").match(MARKER_RE)
-    return buffered unless m
+  # Chunk 0 decides, synchronously, before anything else touches this
+  # message: recognize the marker (after leading whitespace only) AND
+  # resolve the id, both before anything is buffered or blanked (F4). Either
+  # failure writes NOSCREEN so every later chunk can decide instantly rather
+  # than waiting out its own budget for a decision that will never arrive.
+  def handle_chunk_zero(dir, delta, cwd, final)
+    stripped = delta.sub(/\A[ \t]+/, "")
+    m = stripped.match(MARKER_RE)
+    resolved = m && resolve_intent_dir(m[1], cwd)
 
-    id = m[1]
-    resolved = resolve_intent_dir(id, cwd)
-    return buffered unless resolved
+    unless resolved
+      write_noscreen(dir)
+      return nil
+    end
 
-    intent_dir = resolved[:intent_dir]
-    # IntentScreen/IntentScreenAnsi's store_root: is the TIER root (what HOLDS
-    # store/ — e.g. .../projects/<slug> or plastic_home itself), never the
-    # store/ directory itself. store_fields tells "global" from "project:x"
-    # by checking whether store_root's OWN parent is named "projects"; handing
-    # it the store/ directory shifts that check one level and always reads
-    # "global", even for a real project (caught by matrix 36's own test).
-    store_root = resolved[:root]
+    write_screen(dir, resolved)
+    write_chunk(dir, 0, delta)
+    final ? finalize_final(dir, 0) : ""
+  end
+
+  # A later chunk (index > 0) never redoes chunk 0's work: it only asks
+  # whether a decision already exists, waiting for one (bounded) when it
+  # does not and the chunk looks like it could matter. The final chunk
+  # always waits for the decision regardless of its own shape.
+  def handle_later_chunk(dir, index, delta, final)
+    decision = wait_for_decision(dir, gate_delta: final ? nil : delta)
+
+    return nil unless decision == :screen
+
+    write_chunk(dir, index, delta)
+    final ? finalize_final(dir, index) : ""
+  end
+
+  # Checks for an existing decision first (free) and only pays the cheap
+  # shape test, then the bounded poll, when neither SCREEN nor NOSCREEN is
+  # there yet. `gate_delta: nil` (the final chunk) skips the shape test
+  # entirely and always polls for the decision.
+  def wait_for_decision(dir, gate_delta:)
+    decision = read_decision_now(dir)
+    return decision if decision
+
+    return :timeout if gate_delta && !maybe_screen?(gate_delta)
+
+    max_polls_for_budget.times do
+      @sleeper.call(@poll_ms / 1000.0)
+      decision = read_decision_now(dir)
+      return decision if decision
+    end
+
+    :timeout
+  end
+
+  def read_decision_now(dir)
+    return :screen if File.exist?(File.join(dir, SCREEN_FILE))
+    return :noscreen if File.exist?(File.join(dir, NOSCREEN_FILE))
+
+    nil
+  end
+
+  # Cheap, local, no file I/O: could this chunk's own delta plausibly be
+  # part of an intent screen (ignoring leading whitespace)? Every chunk of
+  # every ordinary prose message answers no, at zero cost.
+  def maybe_screen?(delta)
+    stripped = delta.lstrip
+    stripped.empty? || stripped.start_with?("|") || stripped.start_with?("**Steps**")
+  end
+
+  # The final chunk additionally waits (same budget) for every earlier chunk
+  # file to exist before it reassembles and splices. On timeout it proceeds
+  # anyway with whatever is there (matrix, lead's guard): never nil, never
+  # swallowed.
+  def finalize_final(dir, index)
+    wait_for_chunk_files(dir, index)
+
+    buffered = nil
+    begin
+      buffered = read_buffered_chunks(dir, index)
+      decision = read_screen_decision(dir)
+      finalize(buffered, decision)
+    rescue StandardError
+      buffered
+    ensure
+      FileUtils.rm_rf(dir)
+    end
+  end
+
+  def wait_for_chunk_files(dir, index)
+    return if index <= 0
+
+    needed = (0...index).map(&:to_s)
+    max_polls_for_budget.times do
+      return if needed.all? { |n| File.exist?(File.join(dir, n)) }
+
+      @sleeper.call(@poll_ms / 1000.0)
+    end
+  end
+
+  def max_polls_for_budget
+    return 0 unless @poll_ms.to_f.positive?
+
+    (@wait_ms / @poll_ms.to_f).ceil
+  end
+
+  # Whatever chunk files exist, in index order, concatenated -- gaps (a
+  # chunk that never arrived, or arrived too late) are skipped rather than
+  # blocking reassembly (lead's guard: never return nothing).
+  def read_buffered_chunks(dir, index)
+    (0..index).filter_map do |i|
+      path = File.join(dir, i.to_s)
+      File.exist?(path) ? File.read(path) : nil
+    end.join
+  end
+
+  def read_screen_decision(dir)
+    content = File.read(File.join(dir, SCREEN_FILE))
+    intent_dir, store_root = content.split("\n")
+    { intent_dir: intent_dir, store_root: store_root }
+  end
+
+  def finalize(buffered, decision)
+    intent_dir = decision[:intent_dir]
+    store_root = decision[:store_root]
     ansi = IntentScreenAnsi.render(intent_dir: intent_dir, store_root: store_root, color: true)
     plain = IntentScreen.render(intent_dir: intent_dir, store_root: store_root, template: File.read(template_path))
     splice(buffered, plain, ansi)
@@ -138,12 +239,35 @@ class MessageDisplay
     File.expand_path("../../templates/intent-screen.md", __dir__)
   end
 
+  def write_chunk(dir, index, delta)
+    atomic_write(File.join(dir, index.to_s), delta)
+  end
+
+  # IntentScreen/IntentScreenAnsi's store_root: is the TIER root (what HOLDS
+  # store/ — e.g. .../projects/<slug> or plastic_home itself), never the
+  # store/ directory itself; resolve_intent_dir's `root:` is already that.
+  def write_screen(dir, resolved)
+    atomic_write(File.join(dir, SCREEN_FILE), "#{resolved[:intent_dir]}\n#{resolved[:root]}\n")
+  end
+
+  def write_noscreen(dir)
+    atomic_write(File.join(dir, NOSCREEN_FILE), "")
+  end
+
+  def atomic_write(path, content)
+    FileUtils.mkdir_p(File.dirname(path))
+    tmp_path = "#{path}.tmp#{Process.pid}-#{rand(1_000_000)}"
+    File.write(tmp_path, content)
+    File.rename(tmp_path, path)
+  end
+
   # D16: replace the plain render's own text wherever it sits in the buffered
   # message, keeping everything after it verbatim. Falls back to a line-based
   # boundary (the "## ▶ " line through the last line starting with "|") only
   # when the buffered text does not start with the plain render exactly (the
-  # model reformatted something) — the fallback also has to work for a
-  # checklist-less intent, whose only Steps row is "| | | no steps yet |".
+  # model reformatted something, or a chunk gap broke the exact match) — the
+  # fallback also has to work for a checklist-less intent, whose only Steps
+  # row is "| | | no steps yet |".
   def splice(buffered, plain, ansi)
     suffix =
       if buffered.start_with?(plain)
