@@ -139,6 +139,31 @@ module ReportScreen
     body.empty? ? NOT_RECORDED : body
   end
 
+  PLACEHOLDER_SENTINEL = "<!-- plastic:placeholder -->"
+
+  # 317a S3 (A6): the note under Asked. Bulleted decisions in a real spec keep
+  # the historic "N decisions in spec.md"; a prose ## Decisions falls back to
+  # the highest D<n> it names; a placeholder spec falls through to the intent
+  # record's "### Decisions" (which section_of's "^## " anchor cannot reach);
+  # nothing anywhere says "decisions not recorded" - never a false 0, and the
+  # scaffold's "- ..." never counts as 1.
+  def self.decision_note(intent_dir)
+    spec = spec_text(intent_dir)
+    if spec && !spec.lstrip.start_with?(PLACEHOLDER_SENTINEL)
+      n = decisions_in(section_of(spec, "## Decisions"))
+      return "#{n} decisions in spec.md" if n.positive?
+    end
+    n = decisions_in(intent_text(intent_dir).to_s.split(/^### Decisions\s*$/, 2)[1].to_s.split(/^#+ /, 2)[0])
+    return "#{n} decisions in the intent record" if n.positive?
+    "decisions not recorded"
+  end
+
+  def self.decisions_in(body)
+    bullets = body.to_s.lines.count { |l| s = l.lstrip; s.start_with?("- ") && s.strip != "- ..." }
+    return bullets if bullets.positive?
+    body.to_s.scan(/\bD(\d{1,3})\b/).flatten.map(&:to_i).max.to_i
+  end
+
   # Row 22: bullets under spec.md's ## Decisions only.
   def self.decision_count(intent_dir)
     text = spec_text(intent_dir)
@@ -156,10 +181,28 @@ module ReportScreen
     rows = table_rows(section)
     return rows.map { |cells| { label: cells[0].to_s, text: cells[1].to_s } } if rows.any?
 
-    bullets = section.lines.select { |l| l.lstrip.start_with?("- ") }
-    bullets.each_with_index.map do |line, i|
-      { label: (i + 1).to_s, text: line.lstrip.sub(/\A-\s*/, "").strip }
+    bullet_rows(section).each_with_index.map do |text, i|
+      { label: (i + 1).to_s, text: text }
     end
+  end
+
+  # 317a S1 (matrix S1a/S1b): a bullet row is its "- " line PLUS its wrapped
+  # continuation lines - outcome prose is hand-wrapped at ~100 columns, and
+  # taking one physical line truncated every real record mid-sentence. A blank
+  # line or a heading ends the row; prose after a blank is never swept in.
+  def self.bullet_rows(section)
+    rows = []
+    section.to_s.each_line do |line|
+      stripped = line.strip
+      if line.lstrip.start_with?("- ")
+        rows << line.lstrip.sub(/\A-\s*/, "").strip
+      elsif stripped.empty? || line.start_with?("#")
+        rows << nil unless rows.empty? || rows.last.nil?
+      elsif !rows.empty? && !rows.last.nil?
+        rows[rows.length - 1] = "#{rows.last} #{stripped}"
+      end
+    end
+    rows.compact
   end
 
   # Rows 25-27: D19 - the label must appear as a standalone token in an action
@@ -189,9 +232,21 @@ module ReportScreen
     return [] unless text.include?("## Needs you")
     section = section_of(text, "## Needs you")
     rows = table_rows(section)
-    rows.each_with_index.map do |cells, i|
-      { n: "N#{i + 1}", what: cells[1].to_s, why: cells[2].to_s }
+    if rows.any?
+      return rows.each_with_index.map do |cells, i|
+        { n: "N#{i + 1}", what: cells[1].to_s, why: cells[2].to_s }
+      end
     end
+
+    # 317a S2 (matrix S2a): prose that exists must never render as None - the
+    # 317 record hid three owner picks behind exactly that. One joined row,
+    # why "not recorded"; a literal None (or an empty section) stays [].
+    content = section.gsub(/<!--.*?-->/m, "").strip
+    return [] if content.empty? || content == "None"
+
+    what = content.lines.map(&:strip).reject(&:empty?)
+                  .join(" ").sub(/\A-\s*/, "").squeeze(" ")
+    [{ n: "N1", what: what, why: NOT_RECORDED }]
   end
 
   # Row 35: first-to-last savepoint timestamp, "1 h 51 min" / "n min".
@@ -212,7 +267,25 @@ module ReportScreen
   def self.mode(intent_dir)
     data = Lock.read(intent_dir)
     value = data && data["run_mode"]
+    return value.to_s if value && !value.to_s.empty?
+
+    # 317a S7 (D5): after the close the lock is gone; end-intent stamps the
+    # run_mode into outcome.md frontmatter, so mode stops being unknowable
+    # retrospectively. Live lock first - it is the source of truth mid-flight.
+    value = outcome_frontmatter(intent_dir)["mode"]
     value && !value.to_s.empty? ? value.to_s : NOT_RECORDED
+  end
+
+  def self.outcome_frontmatter(intent_dir)
+    text = outcome_text(intent_dir)
+    return {} unless text && text.start_with?("---")
+    parts = text.split("---", 3)
+    return {} if parts.length < 3
+    require "yaml"
+    require "date"
+    YAML.safe_load(parts[1], permitted_classes: [Date, Time]) || {}
+  rescue StandardError
+    {}
   end
 
   # --- evidence rows (rows 28-33, 37) --------------------------------------------
@@ -460,7 +533,7 @@ module ReportScreen
     lines << ""
     lines << "**Asked**"
     lines << "  #{asked(intent_dir)}"
-    lines << "  #{decision_count(intent_dir)} decisions in spec.md"
+    lines << "  #{decision_note(intent_dir)}"
     lines << ""
     lines << "**Delivered**"
     lines << "| Row | What | Proven by |"
@@ -470,10 +543,18 @@ module ReportScreen
     end
     lines << ""
     lines << "**Evidence**"
-    lines << "| Kind | What | Source |"
-    lines << "| --- | --- | --- |"
-    evidence_rows(intent_dir, tag_reader: tag_reader).each do |r|
-      lines << "| #{r[:kind]} | #{escape(r[:what])} | #{escape(r[:source])} |"
+    ev = evidence_rows(intent_dir, tag_reader: tag_reader)
+    if ev.empty?
+      # 317a S4 (matrix S4a): a header-only table (319's live rendering) says
+      # nothing; the honest floor is the same phrase every other absent source
+      # prints.
+      lines << NOT_RECORDED
+    else
+      lines << "| Kind | What | Source |"
+      lines << "| --- | --- | --- |"
+      ev.each do |r|
+        lines << "| #{r[:kind]} | #{escape(r[:what])} | #{escape(r[:source])} |"
+      end
     end
     lines << ""
     needsyou = needs_you_rows(intent_dir)
@@ -564,23 +645,4 @@ module ReportScreen
   # A renderer file, when present, is expected to define IntentScreenAnsi.paint
   # (one plain-text string in, one string out). Wiring the real contract 316a
   # ships is left to a follow-up step once that file exists (see checklist S14).
-  def self.maybe_paint(text, renderer_path:, enabled:)
-    return text unless enabled
-    return text unless renderer_path && File.exist?(renderer_path)
-
-    begin
-      require renderer_path
-    rescue LoadError, StandardError
-      return text
-    end
-
-    mod = Object.const_get(:IntentScreenAnsi) if Object.const_defined?(:IntentScreenAnsi)
-    return text unless mod && mod.respond_to?(:paint)
-
-    begin
-      mod.paint(text)
-    rescue StandardError
-      text
-    end
-  end
 end

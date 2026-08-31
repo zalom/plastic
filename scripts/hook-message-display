@@ -15,11 +15,18 @@
 #
 # Claude adapter: Claude Code only; the core is harness-agnostic.
 
-require "json"
-require "time"
-require "tmpdir"
-require "yaml"
-require_relative "lib/message_display"
+# 317a (B1): the requires sit inside their own rescue - a missing or broken
+# lib file must never surface as a non-zero exit or stderr on a chunk of an
+# ordinary message (LoadError is a ScriptError, outside StandardError).
+begin
+  require "json"
+  require "time"
+  require "tmpdir"
+  require "yaml"
+  require_relative "lib/message_display"
+rescue ScriptError, StandardError
+  exit 0
+end
 
 def color_enabled?(plastic_home)
   return false unless ENV["NO_COLOR"].to_s.empty?

@@ -81,4 +81,14 @@ class ReportScreenSkillContractTest < Minitest::Test
     text = read("skills/intent-continuing/SKILL.md")
     assert_includes text, "harness name"
   end
+
+  # --- 317a S6 (matrix S6c): the ending skill, which drives the outcome
+  # backfill, must teach the label convention the readers match on.
+
+  def test_ending_skill_teaches_the_labeled_table_convention
+    text = read("skills/intent-ending/SKILL.md")
+    assert_includes text, "| Row | What |"
+    assert_includes text, "action-file heading"
+  end
+
 end

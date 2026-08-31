@@ -57,6 +57,12 @@ class ReportScreenPackagingTest < Minitest::Test
     assert_includes core_lib, %("scripts/savepoint-note")
   end
 
+  # 317a S14 (B1): the painter lib ships, or report-screen --ansi and the
+  # MessageDisplay hook LoadError on every real install.
+  def test_core_files_registers_screen_paint
+    assert_includes core_lib, %("scripts/lib/screen_paint.rb")
+  end
+
   # --- row 84 [guard]: the script installs with its module ---------------------
 
   def test_core_files_registers_report_screen_lib
@@ -99,4 +105,23 @@ class ReportScreenPackagingTest < Minitest::Test
       refute_match(/claude|codex/i, text, "#{rel} must not name a harness (ANSI selection is by capability, not by name)")
     end
   end
+
+  # --- 317a S6 (matrix S6a): the template writes the labeled-table shape the
+  # readers consume; 317 shipped a template that guaranteed "not recorded".
+
+  def test_outcome_template_delivered_is_a_labeled_table
+    text = File.read(File.join(REPO, "templates", "outcome.md"))
+    section = text[text.index("## Delivered")...text.index("## Verification")]
+    assert_includes section, "| Row | What |"
+    assert_includes section, "standalone token"
+    assert_includes section, "Proven-by"
+  end
+
+  def test_outcome_template_needs_you_names_the_table_shape
+    text = File.read(File.join(REPO, "templates", "outcome.md"))
+    section = text[text.index("## Needs you")...text.index("## Follow-ups")]
+    assert_includes section, "| N | What | Why |"
+    assert_includes section, "None"
+  end
+
 end

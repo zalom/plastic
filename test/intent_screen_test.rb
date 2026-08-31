@@ -408,4 +408,39 @@ end
     refute_includes ansi_out, "\e"
     assert_equal plain_out, ansi_out
   end
+  
+  # 317a S5 (A1): the real-world duplication bug is the SPACE separator -
+  # "S1 text", the shape 317a own checklist used - which the dash-only
+  # character class never stripped, so next_fields doubled the label:
+  # "S1 · S1 delivered_rows ...". Separator becomes optional, whitespace
+  # required; a bare label ("S1") is prose and stays.
+  def test_step_prefix_space_separator_stripped
+    root = tier_root(:project)
+    cl = "# Checklist
+  
+  ## In Progress
+  - [ ] S1 delivered_rows joins wrapped bullet lines
+  - [ ] S10 tenth step text
+  "
+    dir = make_intent(root, checklist: cl, savepoint: HOW_LEDGER)
+    screen = render(dir, root)
+    assert_equal "S1 · delivered_rows joins wrapped bullet lines", row(screen, "Next")[:value]
+    assert_includes screen, "| S1 | open | delivered_rows joins wrapped bullet lines |"
+    assert_includes screen, "| S2 | open | tenth step text |"
+    refute_includes screen, "S1 · S1 "
+  end
+  
+  def test_bare_step_label_is_left_alone
+    root = tier_root(:project)
+    cl = "# Checklist
+  
+  ## In Progress
+  - [ ] S1
+  - [ ] S3 and S4 interplay checked
+  "
+    dir = make_intent(root, checklist: cl, savepoint: HOW_LEDGER)
+    screen = render(dir, root)
+    assert_includes screen, "| S1 | open | S1 |"
+  end
+
 end

@@ -389,3 +389,17 @@ wired Codex's `SessionEnd`, and retired the per-prompt power-tools reminder. Kim
 Hermes adapters are carried by intents 102, 102a, and 73d, informed by 296's
 `research--cross-harness-teams.md`; the line of sight after them is OpenClaw. All of them
 target reasoning agents only.
+
+## ScreenPaint: the paint seam (intent 317a)
+
+`scripts/lib/screen_paint.rb` is the harness-agnostic paint seam 317's
+follow-up named: a parser and re-layouter that turns any emitted plain screen
+(intent, state, roster, delivered, delay) into the ANSI layout, reusing
+IntentScreenAnsi's palette and fit helpers. The MessageDisplay adapter paints
+the printed text through it (no intent-id resolution; grammar decides), and
+`report-screen --ansi` delegates to it under the capability guards (TTY or
+`PLASTIC_FORCE_COLOR=1`, `NO_COLOR` wins). `IntentScreenAnsi.render` remains
+the record-driven renderer behind `intent-screen --ansi`. A screen the painter
+cannot parse falls open: the CLI prints the plain text, the hook returns the
+buffered original when chunks were already blanked and no envelope at all when
+nothing engaged.

@@ -57,6 +57,23 @@ class InstallSyncTest < Minitest::Test
       "scripts require_relative lib files missing from core_files (installed boot would LoadError): #{missing.join(", ")}"
   end
 
+  # 317a (B1): the scan above sees only scripts/* -> lib requires; a
+  # lib-to-lib require (message_display -> screen_paint -> intent_screen_ansi)
+  # was invisible, so a new lib could pass the whole suite while absent from
+  # every real install. Walk the libs too.
+  def test_every_lib_to_lib_require_is_distributed
+    missing = []
+    Dir.glob(File.join(REPO, "scripts", "lib", "*.rb")).each do |path|
+      next unless core_lib.include?(%("scripts/lib/#{File.basename(path)}"))
+      File.read(path).scan(/require_relative\s+["'](\w+)["']/).flatten.uniq.each do |libname|
+        rel = "scripts/lib/#{libname}.rb"
+        missing << "#{File.basename(path)} -> #{rel}" unless core_lib.include?(%("#{rel}"))
+      end
+    end
+    assert_empty missing,
+      "registered libs require_relative lib files missing from core_files: #{missing.join(", ")}"
+  end
+
   # Every hook wrapper that delegates to ../scripts/hook-<name> must reference a
   # script that actually exists in the repo.
   def test_every_wrapper_references_an_existing_script

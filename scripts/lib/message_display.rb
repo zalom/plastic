@@ -2,10 +2,7 @@
 # frozen_string_literal: true
 
 require "fileutils"
-require_relative "intent_screen"
-require_relative "intent_screen_ansi"
-require_relative "store_discovery"
-require_relative "store_provisioning"
+require_relative "screen_paint"
 
 # MessageDisplay (intent 316a, O4/O5, round 3 concurrency fix) - the Claude
 # Code MessageDisplay hook handler. One process per streamed chunk of every
@@ -50,7 +47,10 @@ require_relative "store_provisioning"
 # buffered original, never nil, never "") and D12 (color: false never
 # buffers or blanks anything) are unchanged.
 class MessageDisplay
-  MARKER_RE = /\A## ▶ (\S+) · /.freeze
+  # 317a (A4): engagement is grammar, not identity - any screen-family
+  # opener engages, with NO intent-id resolution (the roster and delay
+  # screens have none to resolve). ScreenPaint owns the full grammar.
+  ENGAGE_RE = /\A(?:##? )?[▶✔] /.freeze
   BUFFER_DIR_NAME = "plastic-message-display"
   BUFFER_MAX_AGE_SECONDS = 3600
   SCREEN_FILE = "SCREEN"
@@ -118,17 +118,14 @@ class MessageDisplay
   # resolve the id, both before anything is buffered or blanked (F4). Either
   # failure writes NOSCREEN so every later chunk can decide instantly rather
   # than waiting out its own budget for a decision that will never arrive.
-  def handle_chunk_zero(dir, delta, cwd, final)
+  def handle_chunk_zero(dir, delta, _cwd, final)
     stripped = delta.sub(/\A[ \t]+/, "")
-    m = stripped.match(MARKER_RE)
-    resolved = m && resolve_intent_dir(m[1], cwd)
-
-    unless resolved
+    unless ENGAGE_RE.match?(stripped)
       write_noscreen(dir)
       return nil
     end
 
-    write_screen(dir, resolved)
+    write_screen(dir)
     write_chunk(dir, 0, delta)
     final ? finalize_final(dir, 0) : ""
   end
@@ -177,7 +174,7 @@ class MessageDisplay
   # every ordinary prose message answers no, at zero cost.
   def maybe_screen?(delta)
     stripped = delta.lstrip
-    stripped.empty? || stripped.start_with?("|") || stripped.start_with?("**Steps**")
+    stripped.empty? || stripped.start_with?("|") || stripped.start_with?("**")
   end
 
   # The final chunk additionally waits (same budget) for every earlier chunk
@@ -190,8 +187,7 @@ class MessageDisplay
     buffered = nil
     begin
       buffered = read_buffered_chunks(dir, index)
-      decision = read_screen_decision(dir)
-      finalize(buffered, decision)
+      finalize(buffered, nil)
     rescue StandardError
       buffered
     ensure
@@ -226,28 +222,31 @@ class MessageDisplay
     end.join
   end
 
-  def read_screen_decision(dir)
-    content = File.read(File.join(dir, SCREEN_FILE))
-    intent_dir, store_root = content.split("\n")
-    { intent_dir: intent_dir, store_root: store_root }
-  end
+  # 317a (D1/B10): paint what was printed. The buffered message's screen
+  # region - located and bounded by ScreenPaint's own grammar - is re-laid in
+  # the ANSI vocabulary; prose before and after survives verbatim. A region
+  # the painter cannot parse returns the buffered original (A3: chunks were
+  # already blanked, so nil here would truncate the message to its final
+  # delta; nil is only for the never-engaged path in handle).
+  #
+  # markdown_safe: true (intent 316a1, D5) - Claude Code still Markdown-
+  # processes displayContent even inside a raw ANSI block, so the Claude
+  # adapter asks the harness-agnostic core to strip markdown noise. A harness
+  # whose display surface passes raw ANSI through untouched would ask for
+  # false instead.
+  def finalize(buffered, _decision)
+    lines = buffered.lines
+    start = lines.index { |l| ScreenPaint.classify(l) == :opener }
+    return buffered unless start
 
-  def finalize(buffered, decision)
-    intent_dir = decision[:intent_dir]
-    store_root = decision[:store_root]
-    # markdown_safe: true (intent 316a1, D5) - Claude Code still Markdown-
-    # processes displayContent even inside a raw ANSI block (316a's live
-    # capture showed backticks silently stripped from step text), so the
-    # Claude adapter asks the harness-agnostic core to strip markdown noise
-    # before it ever reaches the block. A harness whose display surface
-    # passes raw ANSI through untouched would ask for false instead.
-    ansi = IntentScreenAnsi.render(intent_dir: intent_dir, store_root: store_root, color: true, markdown_safe: true)
-    plain = IntentScreen.render(intent_dir: intent_dir, store_root: store_root, template: File.read(template_path))
-    splice(buffered, plain, ansi)
-  end
+    stop = ScreenPaint.region_end(lines, start)
+    painted = ScreenPaint.paint(lines[start...stop].join, color: true, markdown_safe: true)
+    return buffered unless painted
 
-  def template_path
-    File.expand_path("../../templates/intent-screen.md", __dir__)
+    suffix = lines[stop..].to_a.join.sub(/\A\n+/, "")
+    out = +"#{lines[0...start].join}#{painted.rstrip}\n"
+    out << "\n#{suffix}" unless suffix.empty?
+    out
   end
 
   def write_chunk(dir, index, delta)
@@ -257,8 +256,8 @@ class MessageDisplay
   # IntentScreen/IntentScreenAnsi's store_root: is the TIER root (what HOLDS
   # store/ — e.g. .../projects/<slug> or plastic_home itself), never the
   # store/ directory itself; resolve_intent_dir's `root:` is already that.
-  def write_screen(dir, resolved)
-    atomic_write(File.join(dir, SCREEN_FILE), "#{resolved[:intent_dir]}\n#{resolved[:root]}\n")
+  def write_screen(dir)
+    atomic_write(File.join(dir, SCREEN_FILE), "")
   end
 
   def write_noscreen(dir)
@@ -272,98 +271,7 @@ class MessageDisplay
     File.rename(tmp_path, path)
   end
 
-  # D16: replace the plain render's own text wherever it sits in the buffered
-  # message, keeping everything after it verbatim. Falls back to a line-based
-  # boundary (the "## ▶ " line through the last line starting with "|") only
-  # when the buffered text does not start with the plain render exactly (the
-  # model reformatted something, or a chunk gap broke the exact match) — the
-  # fallback also has to work for a checklist-less intent, whose only Steps
-  # row is "| | | no steps yet |".
-  def splice(buffered, plain, ansi)
-    suffix =
-      if buffered.start_with?(plain)
-        buffered[plain.length..]
-      else
-        line_based_suffix(buffered, plain)
-      end
-    return buffered if suffix.nil?
 
-    "#{ansi.rstrip}\n\n#{suffix}"
-  end
-
-  # Bounded fallback (matrix, lead's B1): walk forward from the "## ▶ " line
-  # only through the screen's OWN contiguous run of blank lines, "|"-prefixed
-  # table rows and the "**Steps**" heading, and stop at the first line that is
-  # none of those. The boundary is the last "|" line seen before that stop —
-  # never the last "|" line anywhere in the message. Scanning to the end
-  # unbounded (the old behavior) swallows any prose the model wrote between
-  # the screen and an unrelated Markdown table further down (a real hazard:
-  # Plastic replies carry tables often).
-  def line_based_suffix(buffered, plain)
-    lines = buffered.lines
-    start_idx = lines.index { |l| l.start_with?("## ▶ ") }
-    return nil unless start_idx
-
-    last_pipe_idx = nil
-    i = start_idx + 1
-    while i < lines.length
-      line = lines[i]
-      stripped = line.strip
-      break unless stripped.empty? || line.start_with?("|") || stripped == "**Steps**"
-
-      last_pipe_idx = i if line.start_with?("|")
-      i += 1
-    end
-    return nil unless last_pipe_idx
-
-    # Guard: never let the bounded scan consume more lines than the freshly
-    # rendered plain screen itself has. If it would, something about the
-    # buffered text does not match the shape splice() expects at all — pass
-    # the original through rather than risk eating real prose.
-    consumed = last_pipe_idx + 1 - start_idx
-    return nil if consumed > plain.lines.length
-
-    lines[(last_pipe_idx + 1)..].join
-  end
-
-  # O5: candidates are every discovered store holding a "<id>--*" directory.
-  # A single candidate resolves outright (no ambiguity to break). With two or
-  # more, the store whose project root is a path prefix of the payload's cwd
-  # decides; if that narrows to anything other than exactly one, pass through
-  # rather than guess (matrix 36).
-  #
-  # "cwd is a path prefix" is checked against the project's REAL checkout
-  # path (projects.yml's own `path:`, e.g. ~/apps/personal/plastic) — never
-  # against StoreDiscovery's `root` (~/.plastic/projects/<slug>, which only
-  # holds INDEX.md and store/). Those are two different directories; a real
-  # session's cwd lives under the former, never the latter. The global store
-  # has no such checkout path, so it never wins by cwd — only by being the
-  # sole candidate.
-  def resolve_intent_dir(id, cwd)
-    pattern = "#{glob_escape(id)}--*"
-    candidates = StoreDiscovery.discover(@plastic_home)[:stores].filter_map do |s|
-      dir = Dir.glob(File.join(s[:store], pattern)).find { |d| File.directory?(d) }
-      dir && { slug: s[:slug], root: s[:root], intent_dir: dir }
-    end
-    return nil if candidates.empty?
-    return candidates.first if candidates.length == 1
-
-    registered = StoreProvisioning.load_projects(@plastic_home)
-    cwd_matches = candidates.select do |c|
-      real_path = registered.dig(c[:slug], "path")
-      real_path && (cwd == real_path || cwd.start_with?("#{real_path}#{File::SEPARATOR}"))
-    end
-    return cwd_matches.first if cwd_matches.length == 1
-
-    nil
-  end
-
-  # A recognized id should just be [A-Za-z0-9]+, but the id comes out of the
-  # assistant's own streamed text, not a trusted schema — escape glob
-  # metacharacters rather than assume it is well-formed.
-  def glob_escape(str)
-    str.gsub(/([*?\[\]{}])/) { "\\#{Regexp.last_match(1)}" }
-  end
 
   def prune_old_buffers
     root = File.join(@tmp_root, BUFFER_DIR_NAME)

@@ -253,7 +253,8 @@ every choice is non-destructive and the team has full autonomy.
 Read `../plastic-conventions/references/completion-and-done.md` for what "intent done" means.
 
 1. Verify every checklist item is checked and the suite is green once on the branch.
-2. Write `outcome.md` from `~/.plastic/templates/outcome.md` with `disposition: delivered`.
+2. Write `outcome.md` from `~/.plastic/templates/outcome.md` with `disposition: delivered`,
+   `## Delivered` as the labeled table whose row labels match the action-file headings (317a).
 3. Release, if configured: match the working directory against `~/.plastic/projects.yml`, read
    `project.yml`'s `release` block, and act on `on_complete` (`commit`, `commit_and_push`,
    `manual`), `verify` (green proceeds; red follows `on_red`: `fix_and_retry` up to twice,

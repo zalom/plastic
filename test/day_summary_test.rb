@@ -307,4 +307,15 @@ class DaySummaryCliTest < Minitest::Test
     assert_includes src, 'require_relative "lib/day_summary"'
     assert_operator src.lines.size, :<=, 120
   end
+
+  # 317a S7c (B9): the guided skip must consult the outcome-frontmatter mode
+  # stamp when the live lock carries no run_mode, so a guided close never
+  # counts as auto. Source-level pin plus the shared helper is unit-tested in
+  # report_screen_forgiving_readers_test.
+  def test_guided_skip_consults_the_outcome_frontmatter_stamp
+    src = File.read(File.expand_path("../scripts/lib/day_summary.rb", __dir__))
+    assert_includes src, "outcome_frontmatter"
+    assert_match(/run_mode == "guided"/, src)
+  end
+
 end

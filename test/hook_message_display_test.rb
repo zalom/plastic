@@ -246,26 +246,26 @@ class HookMessageDisplayTest < Minitest::Test
     assert_includes out, "\e[1m"
   end
 
-  def test_a_boundary_that_would_consume_more_lines_than_the_plain_screen_returns_the_original
+  def test_extra_pipe_rows_paint_as_rows_and_the_suffix_survives
     root = build_global_store
     dir = make_intent(root, checklist: checklist_with(total: 1, done: 0))
     plain = plain_screen(dir, root)
-    reformatted = plain.sub("the global store", "the global store ") # breaks the exact prefix match
-    # Extra pipe rows glued directly onto the screen's own table, with no
-    # blank or non-pipe line separating them: the bounded scan cannot tell
-    # them apart from the screen's own rows by shape alone, so it would walk
-    # past the real screen boundary without the guard. The guard compares
-    # against the freshly rendered plain screen's own line count and bails
-    # rather than silently swallow those two rows into the replaced prefix.
+    # 317a (B10): rows glued onto the screen's own table are indistinguishable
+    # by shape, so the painter paints them as rows - content survival, nothing
+    # dropped - while the non-grammar suffix stays verbatim.
     extra_rows = "| extra | pipe | row |\n| another | pipe | row |\n"
     suffix = "**What this means**\n- a bullet\n\nneeds input: S1\n"
-    buffered = reformatted + extra_rows + suffix
+    buffered = plain + extra_rows + suffix
     h = handler(root)
 
     h.handle(payload(index: 0, final: false, delta: buffered[0, 15]))
     out = h.handle(payload(index: 1, final: true, delta: buffered[15..-1]))
 
-    assert_equal buffered, out
+    plain_out = out.gsub(/\e\[[0-9;]*m/, "")
+    assert_includes out, "\e["
+    assert_includes plain_out, "extra"
+    assert_includes plain_out, "another"
+    assert_includes out, suffix
   end
 
   # --- matrix 31/32: fail open ------------------------------------------------
@@ -328,18 +328,20 @@ class HookMessageDisplayTest < Minitest::Test
     refute_includes content, "`"
   end
 
-  def test_render_raise_at_final_returns_the_buffered_original
+  def test_paint_raise_at_final_returns_the_buffered_original
     root = build_global_store
-    # "99--broken" exists as a directory but carries no "99--broken.md" —
-    # File.read inside IntentScreenAnsi.render raises, which finalize must
-    # rescue by returning the buffered original, never nil, never "".
-    FileUtils.mkdir_p(File.join(root, "store", "99--broken"))
     h = handler(root)
-    buffered = "## ▶ 99 · Broken thing\nsome streamed text\n"
+    buffered = "## ▶ 99 · Broken thing · here\nsome streamed text\n"
 
-    h.handle(payload(index: 0, final: false, delta: buffered[0, 10]))
-    out = h.handle(payload(index: 1, final: true, delta: buffered[10..-1]))
-    assert_equal buffered, out
+    original = ScreenPaint.method(:paint)
+    ScreenPaint.define_singleton_method(:paint) { |*_a, **_k| raise "boom" }
+    begin
+      h.handle(payload(index: 0, final: false, delta: buffered[0, 10]))
+      out = h.handle(payload(index: 1, final: true, delta: buffered[10..-1]))
+      assert_equal buffered, out
+    ensure
+      ScreenPaint.define_singleton_method(:paint, original)
+    end
     refute File.exist?(MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
   end
 
@@ -446,38 +448,31 @@ class HookMessageDisplayTest < Minitest::Test
     assert_includes out, "project:demo"
   end
 
-  def test_ambiguous_id_with_no_cwd_match_passes_through
-    build_global_store
-    make_intent(plastic_home, id: "50", title: "Global fifty")
-    project = build_project_store
-    make_intent(project, id: "50", title: "Project fifty")
-    buffered = "## ▶ 50 · Whatever the model wrote\nsome text\n"
-
-    # F4: resolution now happens at chunk 0, before anything engages. An
-    # ambiguous id with no cwd match fails resolution immediately, so chunk 0
-    # itself passes through (never buffers, never blanks) rather than
-    # deferring the failure to the final chunk.
-    h = handler(plastic_home)
-    out0 = h.handle(payload(index: 0, final: false, cwd: "/nowhere/related", delta: buffered[0, 12]))
-    assert_nil out0
-    # round 3 (R2): chunk 0's failed resolution writes NOSCREEN rather than
-    # nothing, so later chunks decide instantly rather than waiting.
-    refute File.exist?(MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "s1", message_id: "m1", index: 0))
-    assert File.exist?(MessageDisplay.noscreen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
-
-    out = h.handle(payload(index: 1, final: true, cwd: "/nowhere/related", delta: buffered[12..-1]))
-    assert_nil out
+  def test_ambiguous_or_unknown_ids_paint_without_resolution
+    # 317a (A4): engagement is grammar, not identity - the roster and delay
+    # screens carry no id at all, so nothing resolves ids anymore. A screen
+    # whose id matches no store (or many) still paints exactly as printed.
+    root = build_global_store
+    h = handler(root)
+    text = "## ▶ 999 · No such intent · anywhere\n\n| | | |\n| --- | --- | --- |\n| **Stage** | Exec | open |\n"
+    out = nil
+    text.lines.each_with_index do |line, i|
+      out = h.handle(payload(index: i, final: i == text.lines.length - 1, delta: line))
+    end
+    refute_nil out
+    assert_includes out, "\e["
+    assert_includes out.gsub(/\e\[[0-9;]*m/, ""), "No such intent"
   end
 
   # --- lead's F4: resolve before engaging, at chunk 0 -------------------------
 
-  def test_chunk_zero_with_an_unresolvable_id_passes_through_and_never_buffers
+  def test_chunk_zero_prose_never_buffers_and_never_blanks
     root = build_global_store
     h = handler(root)
-    out = h.handle(payload(index: 0, final: false, delta: "## ▶ 999 · No such intent\n"))
+    out = h.handle(payload(index: 0, final: false, delta: "Here is what I found today.\n"))
     assert_nil out
     refute File.exist?(MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "s1", message_id: "m1", index: 0)),
-      "an id that resolves to nothing must never create a chunk file, so nothing is ever blanked for it"
+      "prose must never create a chunk file, so nothing is ever blanked for it"
     assert File.exist?(MessageDisplay.noscreen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
   end
 
@@ -702,19 +697,23 @@ class HookMessageDisplayTest < Minitest::Test
     assert_equal 0, sleep_calls, "an ordinary prose chunk must never enter the poll loop at all"
   end
 
-  def test_final_chunk_arriving_before_an_earlier_chunk_file_returns_whats_present
+  def test_final_chunk_arriving_before_an_earlier_chunk_file_paints_whats_present
     root = build_global_store
     make_intent(root)
     h = MessageDisplay.new(tmp_root: @tmp, plastic_home: root, color: true,
                             now: Time.parse("2026-08-30T12:00:00Z"), wait_ms: 0, poll_ms: 20)
 
     h.handle(payload(index: 0, final: false, delta: "## ▶ 50 · Demo intent\n"))
-    # Chunk 1 never arrives; the final chunk (index 2) shows up anyway.
+    # Chunk 1 never arrives; the final chunk (index 2) shows up anyway. What
+    # is present still paints (317a: the title region), and the trailing text
+    # survives verbatim - never nil, never "".
     out = h.handle(payload(index: 2, final: true, delta: "trailing text\n"))
 
     refute_nil out
     refute_equal "", out
-    assert_equal "## ▶ 50 · Demo intent\ntrailing text\n", out
+    assert_includes out, "\e["
+    assert_includes out.gsub(/\e\[[0-9;]*m/, ""), "Demo intent"
+    assert_includes out, "trailing text\n"
   end
 
   def test_noscreen_short_circuits_later_chunks_immediately
@@ -725,11 +724,134 @@ class HookMessageDisplayTest < Minitest::Test
                             now: Time.parse("2026-08-30T12:00:00Z"),
                             wait_ms: 300, poll_ms: 20, sleeper: sleeper)
 
-    h.handle(payload(index: 0, final: false, delta: "## ▶ 999 · No such intent\n"))
+    # 317a (A4): an ordinary prose chunk 0 writes NOSCREEN - grammar decides,
+    # not id resolution, and prose is not grammar.
+    h.handle(payload(index: 0, final: false, delta: "Sure, here is a summary.\n"))
     assert File.exist?(MessageDisplay.noscreen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
 
     out = h.handle(payload(index: 1, final: false, delta: "| some | row |\n"))
     assert_nil out
     assert_equal 0, sleep_calls, "NOSCREEN already exists, so a later chunk decides without polling"
   end
+
+  # --- 317a S12 (A3/A4/B10): grammar engagement, no id resolution ------------
+
+  def drive(handler_obj, text, message_id: "m317")
+    lines = text.lines
+    out = nil
+    lines.each_with_index do |line, i|
+      final = i == lines.length - 1
+      out = handler_obj.handle(payload(message_id: message_id, index: i, final: final, delta: line))
+    end
+    out
+  end
+
+  def test_roster_screen_paints_end_to_end_without_resolution
+    root = build_global_store
+    text = "▶ In delivery · 2 intents · 2026-08-31 17:00 UTC\n\n" \
+           "| Intent | Stage | Progress | Changed | Lead |\n| --- | --- | --- | --- | --- |\n" \
+           "| 317 | Exec | ███░░ 3 / 5 | on request | idle |\n"
+    out = drive(handler(root), text)
+    refute_nil out
+    assert_includes out, "\e["
+    assert_includes out, "In delivery"
+    refute_match(/^\s*\|/, out.gsub(/\e\[[0-9;]*m/, ""))
+  end
+
+  def test_delay_screen_paints_end_to_end
+    root = build_global_store
+    text = "✔ 315b · Fix regressions · delivered in 1 h 51 min\n\n" \
+           "19:00  What  315b--fix-regressions.md\n20:51  Done  delivered\n\n" \
+           "**Where the time went**   longest gap 111 min\n"
+    out = drive(handler(root), text)
+    refute_nil out
+    assert_includes out, "\e["
+    assert_includes out.gsub(/\e\[[0-9;]*m/, ""), "Where the time went"
+  end
+
+  def test_delivered_screen_paints_end_to_end
+    root = build_global_store
+    text = "## ✔ 317 · Delivery reports · delivered\n" \
+           "2026-08-31 17:02 UTC · auto · 7 h 51 min · v2.0.0-alpha.8\n\n" \
+           "**Asked**\n  the ask body\n  3 decisions in spec.md\n\n" \
+           "**Delivered**\n| Row | What | Proven by |\n| --- | --- | --- |\n| S1 | a thing | 4 tests |\n\n" \
+           "**Needs you**\nNone\n"
+    out = drive(handler(root), text)
+    refute_nil out
+    assert_includes out, "\e["
+    plain = out.gsub(/\e\[[0-9;]*m/, "")
+    assert_includes plain, "a thing"
+    refute_match(/^\s*\|/, plain)
+  end
+
+  def test_state_screen_keeps_its_changed_row
+    root = build_global_store
+    text = "## ▶ 316a · ANSI intent screen\n\n" \
+           "| | | |\n| --- | --- | --- |\n" \
+           "| **Stage** | Exec | the work is open |\n" \
+           "| **Changed** | How written, review next | the reason this screen printed |\n"
+    out = drive(handler(root), text)
+    refute_nil out
+    assert_includes out.gsub(/\e\[[0-9;]*m/, ""), "How written, review next"
+  end
+
+  def test_engaged_prose_message_keeps_its_prose_verbatim
+    root = build_global_store
+    text = "▶ Odd · opener line\nplain prose that is not screen grammar at all\nmore prose\n"
+    out = drive(handler(root), text)
+    refute_nil out
+    plain_out = out.gsub(/\e\[[0-9;]*m/, "")
+    assert_includes plain_out, "plain prose that is not screen grammar at all\nmore prose\n"
+  end
+
+  def test_prose_after_the_painted_screen_survives
+    root = build_global_store
+    text = "## ✔ 9 · Tiny · delivered\n2026-08-31 · auto · 1 min · v1\n\n**Needs you**\nNone\n\n" \
+           "In plain words: it shipped.\n"
+    out = drive(handler(root), text)
+    refute_nil out
+    assert_includes out, "In plain words: it shipped."
+    assert_includes out, "\e["
+  end
+
+  # --- 317a S12e (B1): a missing lib must not break every chunk --------------
+
+  def test_missing_screen_paint_lib_fails_open_exit_zero_silent
+    broken = File.join(@home, "brokencopy")
+    FileUtils.mkdir_p(File.join(broken, "scripts"))
+    FileUtils.cp(File.join(REPO, "scripts", "hook-message-display"), File.join(broken, "scripts", "hook-message-display"))
+    payload_json = JSON.generate(payload(index: 0, final: true, delta: "## ▶ 50 · x"))
+    out, err, status = Open3.capture3({ "PLASTIC_TMP" => @tmp },
+                                      RbConfig.ruby, File.join(broken, "scripts", "hook-message-display"),
+                                      stdin_data: payload_json)
+    assert_equal 0, status.exitstatus
+    assert_empty out
+    assert_empty err
+  end
+
+  # --- 317a S13 (B11): the launcher hands off bare ▶/✔ and escaped forms -----
+
+  def test_launcher_hands_off_on_screen_opener_deltas
+    [%q<{"message_id":"m1","session_id":"s1","index":0,"final":false,"delta":"▶ In delivery · 2"}>,
+     %q<{"message_id":"m1","session_id":"s1","index":0,"final":false,"delta":"✔ 315b · Fix"}>,
+     %q<{"message_id":"m1","session_id":"s1","index":0,"final":false,"delta":"▶ In delivery"}>,
+     %q<{"message_id":"m1","session_id":"s1","index":0,"final":false,"delta":"✔ 315b · Fix"}>,
+     %q<{"message_id":"m1","session_id":"s1","index":0, "final":false, "delta": "▶ roster"}>].each do |json|
+      run = launcher_run(json)
+      assert run, "launcher must hand off screen opener delta: #{json}"
+    end
+  end
+
+  def test_launcher_source_carries_the_bold_section_glob
+    src = File.read(LAUNCHER)
+    assert_includes src, %q<*'"delta":"**'*>
+    assert_includes src, %q<*'"delta": "**'*>
+  end
+
+  def launcher_run(json)
+    out, status = Open3.capture2({ "PLASTIC_TMP" => @tmp }, "bash", LAUNCHER, stdin_data: json)
+    return false unless status.exitstatus.zero?
+    out.include?('"displayContent":""')
+  end
+
 end

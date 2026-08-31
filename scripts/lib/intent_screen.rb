@@ -24,8 +24,11 @@ module IntentScreen
   # Em dash and en dash added (intent 316a O1e): a checklist item written
   # "S1 — text" (the em dash every checklist this intent writes, and the one a
   # reviewer reads, uses) kept its prefix under the old character class and
-  # rendered "S1  [ open ]  S1 — text" on screen.
-  STEP_PREFIX_RE = /\A(?:Step|S)\s*\d+\s*[-:·—–]\s*/i
+  # rendered "S1  [ open ]  S1 — text" on screen. Intent 317a (A1) made the
+  # separator optional with required whitespace: "S1 text" (the shape real
+  # checklists use) kept its label and doubled in next_fields; a bare "S1"
+  # has no following text and stays prose.
+  STEP_PREFIX_RE = /\A(?:Step|S)\s*\d+\s*(?:[-:·—–]\s*|\s+)(?=\S)/i
   INSIGHT_RE = /\A(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ)\s+·\s+\S+\s+·\s+.+?\s+—\s+(.+)\z/
   SAVEPOINT_RE = /\A(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ)\s{2,}(\S+)\s{2,}(.+?)\s*\z/
   # Intent 317, D6: field-2 tokens that are genuine lifecycle stages. A ledger

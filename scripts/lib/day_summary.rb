@@ -12,6 +12,7 @@ require "time"
 require_relative "session_ledger"
 require_relative "handoff"
 require_relative "lock"
+require_relative "report_screen"
 
 module DaySummary
   module_function
@@ -113,8 +114,12 @@ module DaySummary
         dir = File.join(store_dir, dirname)
         next unless File.directory?(dir) && Lock.fresh?(dir, now: now)
         # A guided session's lock is live but not autonomous; a lock with no
-        # run_mode (a 1.14 auto team) counts as auto.
-        next if (Lock.read(dir) || {})["run_mode"].to_s == "guided"
+        # run_mode (a 1.14 auto team) counts as auto. 317a (B9): when the lock
+        # carries no run_mode, the outcome frontmatter stamp (D5) is asked
+        # before defaulting, so a guided close never reads as auto.
+        run_mode = (Lock.read(dir) || {})["run_mode"].to_s
+        run_mode = ReportScreen.outcome_frontmatter(dir)["mode"].to_s if run_mode.empty?
+        next if run_mode == "guided"
 
         id, slug = dirname.split("--", 2)
         "- #{id} #{slug}: #{last_savepoint_line(dir)}"

@@ -12,9 +12,11 @@
 #   report-screen delivered <intent_dir> [--ansi]
 #   report-screen delay <intent_dir> [--ansi]
 #
-# --ansi delegates to 316a's renderer conventions when that file is present
-# (D2) and prints plain otherwise, so this never blocks on 316a and never
-# breaks when it lands; NO_COLOR forces plain regardless of --ansi.
+# --ansi delegates to ScreenPaint (intent 317a, D1), the parser/re-layouter
+# in the shared TUI core. Selection is by capability, never by harness:
+# NO_COLOR forces plain, a non-TTY stdout stays plain unless
+# PLASTIC_FORCE_COLOR=1 (the test seam), and an unparseable screen falls
+# open to the plain text untouched.
 #
 # Exit codes:
 #   0 - the screen is on stdout
@@ -23,6 +25,7 @@
 
 require_relative "lib/report_screen"
 require_relative "lib/intent_screen"
+require_relative "lib/screen_paint"
 
 def usage_abort(message)
   warn "report-screen: #{message}"
@@ -46,7 +49,6 @@ verb = args.shift
 changed = nil
 ansi = false
 template_path = nil
-renderer_path = nil
 positional = []
 
 while (arg = args.shift)
@@ -60,8 +62,6 @@ while (arg = args.shift)
     positional << "--all"
   when "--template"
     template_path = args.shift or usage_abort("--template needs a path")
-  when "--renderer-path"
-    renderer_path = args.shift or usage_abort("--renderer-path needs a path")
   else
     usage_abort("unknown flag #{arg.inspect}") if arg.start_with?("--") && arg != "--all"
     positional << arg
@@ -73,11 +73,12 @@ usage_abort("usage: report-screen state|delivered|delay <intent_dir> [--changed 
 all_mode = positional.delete("--all") ? true : false
 target = positional.first
 
-renderer_path ||= File.expand_path("../lib/intent_screen_ansi.rb", __dir__)
-ansi_enabled = ansi && ENV["NO_COLOR"].to_s.empty?
+ansi_enabled = ansi && ENV["NO_COLOR"].to_s.empty? &&
+               ($stdout.tty? || ENV["PLASTIC_FORCE_COLOR"] == "1")
 
-def paint(text, ansi_enabled, renderer_path)
-  ReportScreen.maybe_paint(text, renderer_path: renderer_path, enabled: ansi_enabled)
+def paint(text, ansi_enabled, _renderer_path = nil)
+  return text unless ansi_enabled
+  ScreenPaint.paint(text, color: true) || text
 end
 
 case verb
@@ -87,7 +88,7 @@ when "state"
     store_root = File.expand_path(target)
     usage_abort("#{store_root} is not a store (no INDEX.md)") unless File.exist?(File.join(store_root, "INDEX.md"))
     out = ReportScreen.render_roster(store_root, changed: changed)
-    $stdout.write paint(out, ansi_enabled, renderer_path)
+    $stdout.write paint(out, ansi_enabled)
   else
     usage_abort("usage: report-screen state <intent_dir> [--changed \"<text>\"]") unless target
     intent_dir = File.expand_path(target)
@@ -97,7 +98,7 @@ when "state"
     usage_abort("template not found at #{template_path}") unless File.exist?(template_path)
     out = ReportScreen.render_state(intent_dir: intent_dir, store_root: store_root, changed: changed,
                                      template: File.read(template_path))
-    $stdout.write paint(out, ansi_enabled, renderer_path)
+    $stdout.write paint(out, ansi_enabled)
   end
 when "delivered"
   usage_abort("usage: report-screen delivered <intent_dir>") unless target
@@ -105,13 +106,13 @@ when "delivered"
   usage_abort("#{intent_dir} is not an intent directory") unless IntentScreen.intent_dir?(intent_dir)
   repo_root = File.expand_path("..", __dir__)
   out = ReportScreen.render_delivered(intent_dir: intent_dir, tag_reader: git_tag_reader(repo_root))
-  $stdout.write paint(out, ansi_enabled, renderer_path)
+  $stdout.write paint(out, ansi_enabled)
 when "delay"
   usage_abort("usage: report-screen delay <intent_dir>") unless target
   intent_dir = File.expand_path(target)
   usage_abort("#{intent_dir} is not an intent directory") unless IntentScreen.intent_dir?(intent_dir)
   out = ReportScreen.render_delay(intent_dir: intent_dir)
-  $stdout.write paint(out, ansi_enabled, renderer_path)
+  $stdout.write paint(out, ansi_enabled)
 else
   usage_abort("unknown verb #{verb.inspect} (use state|delivered|delay)")
 end

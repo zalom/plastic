@@ -452,6 +452,7 @@ class InstallerCore
       # entries are their only protection (test/install_sync_test.rb:23-29
       # greps installer_core.rb's own source text for "scripts/<name>").
       "scripts/lib/intent_screen_ansi.rb" => "scripts/lib/intent_screen_ansi.rb",
+      "scripts/lib/screen_paint.rb" => "scripts/lib/screen_paint.rb",
       "scripts/lib/message_display.rb" => "scripts/lib/message_display.rb",
       "scripts/hook-message-display" => "scripts/hook-message-display",
     }
