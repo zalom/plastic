@@ -35,9 +35,25 @@ module IntentScreenAnsi
   BAR_CELLS = 24
   EIGHTHS = [" ", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"].freeze
 
-  DEFAULT_WIDTH = 100
+  # Intent 317a1 (D14): the approved design is a 115-column layout, measured
+  # from design--terminal-output.html:52-58 with its tags stripped.
+  DEFAULT_WIDTH = 115
 
   ELLIPSIS = "…"
+
+  # Intent 317a1 (D9-D11, D15): the three-column field table's geometry.
+  # ANSI_RE strips escapes so padding measures what the terminal actually
+  # draws (D10); VALUE_COL_MAX is the design's own value-column figure and
+  # the owner's "50 chars" (mockup--report-screen.md:74); NOTE_FLOOR is the
+  # minimum note length that earns the own-line fallback when the note alone
+  # (not the value) is what overflows the same-line budget.
+  ANSI_RE = /\e\[[0-9;]*m/.freeze
+  VALUE_COL_MAX = 50
+  NOTE_FLOOR = 24
+
+  def self.visible_width(text)
+    text.to_s.gsub(ANSI_RE, "").length
+  end
 
   def self.render(intent_dir:, store_root:, color: true, width: DEFAULT_WIDTH, markdown_safe: false)
     base = File.basename(intent_dir)
@@ -81,18 +97,8 @@ module IntentScreenAnsi
       ["Insight", fields["insight"], fields["insight.note"], false],
     ]
     key_width = field_rows.map { |k, _, _, _| k.length }.max
-    prefix_width = key_width + 4 # "  " + key.ljust + "  "
 
-    field_rows.each do |key, value, note, prebuilt|
-      value_budget = [width - prefix_width, 0].max
-      value_text = prebuilt ? value : fit_plain(value, value_budget)
-      out << "  #{styled(key.ljust(key_width), color, BOLD)}  #{value_text}\n"
-      next if note.to_s.empty?
-
-      note_budget = [width - prefix_width, 0].max
-      indent = " " * prefix_width
-      out << "#{indent}#{fit(note, note_budget) { |t| styled(t, color, MIDGREY) }}\n"
-    end
+    out << field_table_lines(field_rows, width: width, color: color, key_width: key_width)
 
     out << "\n"
     out << fit("Steps", width) { |t| styled(t, color, BOLD, NEARWHITE) }
@@ -116,6 +122,61 @@ module IntentScreenAnsi
       end
     end
 
+    out
+  end
+
+  # --- shared field-table geometry (D9-D12, D14, D15) ------------------------
+
+  # The field table's basis, cap, budget arithmetic, both fallbacks, and the
+  # right-strip, shared by `render` above and `ScreenPaint.paint_table`'s
+  # `**Key**` branch, so the two renderers can never drift apart (D12) - the
+  # duplication this replaced was character-for-character identical apart
+  # from the module prefix. `rows` is `[key, value, note]`, or `[key, value,
+  # note, true]` when `value` is already a finished, pre-fit string (the
+  # Progress bar) rather than raw text still needing `fit_plain`.
+  #
+  # Notes become a third column, padded to the widest RENDERED noted value
+  # (capped at VALUE_COL_MAX, D15) so every note starts at one raw-text
+  # position; a row whose value or note will not fit drops to the
+  # note-on-its-own-line form instead of squeezing anything invisibly. When
+  # the same-line budget has already collapsed to zero or less, the note
+  # falls straight to its own line rather than being fed to `fit` and
+  # silently returning "" - the note must be cut with a visible ellipsis or
+  # kept whole, never dropped outright (317a1 post-exec review, finding 4).
+  def self.field_table_lines(rows, width:, color:, key_width:)
+    prefix_width = key_width + 4 # "  " + key.ljust + "  "
+
+    rendered_rows = rows.map do |key, value, note, prebuilt|
+      value_budget = [width - prefix_width, 0].max
+      value_text = prebuilt ? value : fit_plain(value.to_s, value_budget)
+      [key.to_s, value_text, note.to_s]
+    end
+
+    noted_widths = rendered_rows.filter_map { |_, value_text, note| visible_width(value_text) unless note.empty? }
+    value_col = [noted_widths.max.to_i, VALUE_COL_MAX].min
+    note_budget = width - prefix_width - value_col - 2
+
+    out = +""
+    rendered_rows.each do |key, value_text, note|
+      row = "  #{styled(key.ljust(key_width), color, BOLD)}  #{value_text}"
+      if note.empty?
+        out << row.rstrip << "\n"
+        next
+      end
+
+      value_fits = visible_width(value_text) <= value_col
+      note_width = visible_width(note)
+      note_overflows = note_width > note_budget
+      note_fits = !note_overflows || (note_budget.positive? && note_width <= NOTE_FLOOR)
+      if value_fits && note_fits
+        pad = value_col - visible_width(value_text)
+        out << row << (" " * pad) << "  " << fit(note, note_budget) { |t| styled(t, color, MIDGREY) } << "\n"
+      else
+        out << row.rstrip << "\n"
+        own_budget = [width - prefix_width, 0].max
+        out << (" " * prefix_width) << fit(note, own_budget) { |t| styled(t, color, MIDGREY) } << "\n"
+      end
+    end
     out
   end
 

@@ -311,4 +311,113 @@ class IntentScreenAnsiTest < Minitest::Test
     refute_includes out, "\\|"
     assert_includes out, "a table cell with a | pipe in it"
   end
+
+  # === intent 317a1: geometry (D14, D15) and the three-column field table =====
+
+  def test_default_width_is_115 # D14
+    assert_equal 115, IntentScreenAnsi::DEFAULT_WIDTH
+  end
+
+  # M22: the fixture makes the Progress row's rendered value (bar + count)
+  # the widest NOTED value on the screen, so padding computed with a naive
+  # String#length (which counts the bar's ANSI escapes) would badly
+  # misalign every other note. Only visible_width gets this right.
+  def test_padding_uses_visible_width_not_naive_length_for_progress_row
+    root = tier_root(slug: "demo")
+    cl = checklist_with(total: 4, done: 1)
+    sp = "2026-08-30T12:00:00Z  How  x\n2026-08-30T12:10:02Z  Exec  x\n"
+    insight = "2026-08-30T12:10:02Z · Exec · orchestrator (direct) — ok. fine"
+    dir = make_intent(root, checklist: cl, savepoint: sp, insights: [insight])
+    out = ansi_render(dir, root, color: true)
+    plain = visible(out)
+
+    store_line = plain.lines.find { |l| l.include?("the demo project store") }
+    progress_line = plain.lines.find { |l| l.include?("3 steps open") }
+    refute_nil store_line
+    refute_nil progress_line
+
+    store_col = store_line.index("the demo project store")
+    progress_col = progress_line.index("3 steps open")
+    assert_equal store_col, progress_col
+  end
+
+  def test_wide_value_drops_note_to_its_own_line_in_full # M23
+    root = tier_root
+    long_step_text = (["word"] * 12).join(" ") # 59 chars, over the 50-column value cap
+    cl = "# Checklist\n\n## In Progress\n- [ ] Step 1 - #{long_step_text}\n"
+    dir = make_intent(root, checklist: cl, savepoint: HOW_LEDGER)
+    out = ansi_render(dir, root, color: true)
+    plain = visible(out)
+
+    assert_includes plain, long_step_text
+    note_line = plain.lines.find { |l| l.strip == "first open step" }
+    refute_nil note_line, "expected the Next note alone on its own line, in full"
+  end
+
+  def test_note_longer_than_budget_and_floor_drops_to_its_own_line_uncut # M23b
+    root = tier_root
+    insight_tail = (["clauseword"] * 7).join(" ") # 76 chars, under IntentScreen's own 96 cap
+    insight = "2026-08-30T12:10:02Z · Exec · orchestrator (direct) — ok. #{insight_tail}"
+    dir = make_intent(root, checklist: checklist_with(total: 2, done: 1), savepoint: HOW_LEDGER, insights: [insight])
+    out = ansi_render(dir, root, color: true)
+    plain = visible(out)
+
+    expected_note = "2026-08-30 12:10 UTC · #{insight_tail}"
+    assert_includes plain, expected_note
+    refute_includes plain, "#{expected_note[0, expected_note.length - 1]}…"
+  end
+
+  def test_field_table_line_never_exceeds_width_cap_under_new_layout # M24
+    root = tier_root
+    cl = checklist_with(total: 2, done: 1)
+    insight_tail = (["longclauseword"] * 10).join(" ")
+    insight = "2026-08-30T12:10:02Z · Exec · orchestrator (direct) — ok. #{insight_tail}"
+    dir = make_intent(root, checklist: cl, savepoint: HOW_LEDGER, insights: [insight])
+    out = ansi_render(dir, root, color: true, width: 115)
+    out.lines.each do |line|
+      vis = visible(line.chomp)
+      assert vis.length <= 115, "line exceeded 115 visible columns (#{vis.length}): #{vis.inspect}"
+    end
+  end
+
+  def test_field_row_note_renders_on_the_same_line_as_its_key # M25
+    root = tier_root
+    dir = make_intent(root, checklist: checklist_with(total: 2, done: 1), savepoint: HOW_LEDGER)
+    out = ansi_render(dir, root, color: true)
+    plain = visible(out)
+    next_line = plain.lines.find { |l| l.start_with?("  Next") }
+    refute_nil next_line
+    assert_includes next_line, "first open step"
+  end
+
+  def test_note_never_silently_drops_at_narrow_width # review fix item 4
+    # Same defect as ScreenPaint's own narrow-width guard, exercised
+    # directly on the shared IntentScreenAnsi.field_table_lines helper
+    # (317a1 post-exec review, finding 4): at width 20 the same-line note
+    # budget collapses to 0, and an unguarded same-line branch fed
+    # `fit(note, 0)` returns "" with no ellipsis - a silent drop, not a cut.
+    out = IntentScreenAnsi.field_table_lines([["Stage", "Execution", "short"]], width: 20, color: true, key_width: 5)
+    plain = visible(out)
+    assert_includes plain, "short"
+  end
+
+  def test_wide_width_preserves_everything_narrow_width_only_ellipsis_cuts # M28
+    root = tier_root
+    insight_tail = (["longclauseword"] * 10).join(" ")
+    insight = "2026-08-30T12:10:02Z · Exec · orchestrator (direct) — ok. #{insight_tail}"
+    dir = make_intent(root, checklist: checklist_with(total: 2, done: 1), savepoint: HOW_LEDGER, insights: [insight])
+    intent_text = File.read(File.join(dir, "#{File.basename(dir)}.md"))
+    note_text = IntentScreen.insight_fields(intent_text, escape_pipes: false)["insight.note"]
+
+    wide = visible(ansi_render(dir, root, color: false, width: 900))
+    assert_includes wide, note_text
+
+    narrow = visible(ansi_render(dir, root, color: false, width: 115))
+    refute_includes narrow, note_text
+    narrow.lines.each do |line|
+      vis = line.chomp
+      next if vis.length < 115
+      assert vis.end_with?("…"), "expected ellipsis on a maxed-out line: #{vis.inspect}"
+    end
+  end
 end
