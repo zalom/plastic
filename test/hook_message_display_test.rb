@@ -732,4 +732,123 @@ class HookMessageDisplayTest < Minitest::Test
     assert_nil out
     assert_equal 0, sleep_calls, "NOSCREEN already exists, so a later chunk decides without polling"
   end
+
+  # --- 317a S12 (A3/A4/B10): grammar engagement, no id resolution ------------
+
+  def drive(handler_obj, text, message_id: "m317")
+    lines = text.lines
+    out = nil
+    lines.each_with_index do |line, i|
+      final = i == lines.length - 1
+      out = handler_obj.handle(payload(message_id: message_id, index: i, final: final, delta: line))
+    end
+    out
+  end
+
+  def test_roster_screen_paints_end_to_end_without_resolution
+    root = build_global_store
+    text = "▶ In delivery · 2 intents · 2026-08-31 17:00 UTC\n\n" \
+           "| Intent | Stage | Progress | Changed | Lead |\n| --- | --- | --- | --- | --- |\n" \
+           "| 317 | Exec | ███░░ 3 / 5 | on request | idle |\n"
+    out = drive(handler(root), text)
+    refute_nil out
+    assert_includes out, "\e["
+    assert_includes out, "In delivery"
+    refute_match(/^\s*\|/, out.gsub(/\e\[[0-9;]*m/, ""))
+  end
+
+  def test_delay_screen_paints_end_to_end
+    root = build_global_store
+    text = "✔ 315b · Fix regressions · delivered in 1 h 51 min\n\n" \
+           "19:00  What  315b--fix-regressions.md\n20:51  Done  delivered\n\n" \
+           "**Where the time went**   longest gap 111 min\n"
+    out = drive(handler(root), text)
+    refute_nil out
+    assert_includes out, "\e["
+    assert_includes out.gsub(/\e\[[0-9;]*m/, ""), "Where the time went"
+  end
+
+  def test_delivered_screen_paints_end_to_end
+    root = build_global_store
+    text = "## ✔ 317 · Delivery reports · delivered\n" \
+           "2026-08-31 17:02 UTC · auto · 7 h 51 min · v2.0.0-alpha.8\n\n" \
+           "**Asked**\n  the ask body\n  3 decisions in spec.md\n\n" \
+           "**Delivered**\n| Row | What | Proven by |\n| --- | --- | --- |\n| S1 | a thing | 4 tests |\n\n" \
+           "**Needs you**\nNone\n"
+    out = drive(handler(root), text)
+    refute_nil out
+    assert_includes out, "\e["
+    plain = out.gsub(/\e\[[0-9;]*m/, "")
+    assert_includes plain, "a thing"
+    refute_match(/^\s*\|/, plain)
+  end
+
+  def test_state_screen_keeps_its_changed_row
+    root = build_global_store
+    text = "## ▶ 316a · ANSI intent screen\n\n" \
+           "| | | |\n| --- | --- | --- |\n" \
+           "| **Stage** | Exec | the work is open |\n" \
+           "| **Changed** | How written, review next | the reason this screen printed |\n"
+    out = drive(handler(root), text)
+    refute_nil out
+    assert_includes out.gsub(/\e\[[0-9;]*m/, ""), "How written, review next"
+  end
+
+  def test_engaged_unparseable_screen_returns_the_buffered_original
+    root = build_global_store
+    text = "▶ Odd · opener line\nplain prose that is not screen grammar at all\nmore prose\n"
+    out = drive(handler(root), text)
+    assert_equal text, out
+  end
+
+  def test_prose_after_the_painted_screen_survives
+    root = build_global_store
+    text = "## ✔ 9 · Tiny · delivered\n2026-08-31 · auto · 1 min · v1\n\n**Needs you**\nNone\n\n" \
+           "In plain words: it shipped.\n"
+    out = drive(handler(root), text)
+    refute_nil out
+    assert_includes out, "In plain words: it shipped."
+    assert_includes out, "\e["
+  end
+
+  # --- 317a S12e (B1): a missing lib must not break every chunk --------------
+
+  def test_missing_screen_paint_lib_fails_open_exit_zero_silent
+    broken = File.join(@home, "brokencopy")
+    FileUtils.mkdir_p(File.join(broken, "scripts"))
+    FileUtils.cp(File.join(REPO, "scripts", "hook-message-display"), File.join(broken, "scripts", "hook-message-display"))
+    payload_json = JSON.generate(payload(index: 0, final: true, delta: "## ▶ 50 · x"))
+    out, err, status = Open3.capture3({ "PLASTIC_TMP" => @tmp },
+                                      RbConfig.ruby, File.join(broken, "scripts", "hook-message-display"),
+                                      stdin_data: payload_json)
+    assert_equal 0, status.exitstatus
+    assert_empty out
+    assert_empty err
+  end
+
+  # --- 317a S13 (B11): the launcher hands off bare ▶/✔ and escaped forms -----
+
+  def test_launcher_hands_off_on_screen_opener_deltas
+    [%q<{"message_id":"m1","session_id":"s1","index":0,"final":false,"delta":"▶ In delivery · 2"}>,
+     %q<{"message_id":"m1","session_id":"s1","index":0,"final":false,"delta":"✔ 315b · Fix"}>,
+     %q<{"message_id":"m1","session_id":"s1","index":0,"final":false,"delta":"▶ In delivery"}>,
+     %q<{"message_id":"m1","session_id":"s1","index":0,"final":false,"delta":"✔ 315b · Fix"}>,
+     %q<{"message_id":"m1","session_id":"s1","index":0, "final":false, "delta": "▶ roster"}>].each do |json|
+      run = launcher_run(json)
+      assert run, "launcher must hand off screen opener delta: #{json}"
+    end
+  end
+
+  def test_launcher_source_carries_the_bold_section_glob
+    src = File.read(LAUNCHER)
+    assert_includes src, %q<*'"delta":"**'*>
+    assert_includes src, %q<*'"delta": "**'*>
+  end
+
+  def launcher_run(json)
+    out, status = Open3.capture2({ "PLASTIC_TMP" => @tmp }, "bash", LAUNCHER, stdin_data: json)
+    return false unless status.exitstatus.zero?
+    out.include?('"displayContent":""')
+  end
+
 end

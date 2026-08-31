@@ -645,23 +645,4 @@ module ReportScreen
   # A renderer file, when present, is expected to define IntentScreenAnsi.paint
   # (one plain-text string in, one string out). Wiring the real contract 316a
   # ships is left to a follow-up step once that file exists (see checklist S14).
-  def self.maybe_paint(text, renderer_path:, enabled:)
-    return text unless enabled
-    return text unless renderer_path && File.exist?(renderer_path)
-
-    begin
-      require renderer_path
-    rescue LoadError, StandardError
-      return text
-    end
-
-    mod = Object.const_get(:IntentScreenAnsi) if Object.const_defined?(:IntentScreenAnsi)
-    return text unless mod && mod.respond_to?(:paint)
-
-    begin
-      mod.paint(text)
-    rescue StandardError
-      text
-    end
-  end
 end

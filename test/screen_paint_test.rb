@@ -69,7 +69,7 @@ class ScreenPaintTest < Minitest::Test
     MD
     File.write(File.join(@dir, "actions", "ACTION_1.md"),
                "# ACTION_1\n\n### S1 - first\n| Row | Failure | Test |\n| --- | --- | --- |\n| S1a | breaks | test |\n")
-    File.write(File.join(@store, "INDEX.md"),
+    File.write(File.join(@root, "INDEX.md"),
                "# INDEX\n\n## Active\n- [21 - Paint demo](store/21--paint/21--paint.md) - demo\n\n## Completed\n")
     @state_template = File.read(File.expand_path("../templates/report-state.md", __dir__))
   end
@@ -83,7 +83,7 @@ class ScreenPaintTest < Minitest::Test
   end
 
   def state_screen
-    ReportScreen.render_state(intent_dir: @dir, store_root: @store,
+    ReportScreen.render_state(intent_dir: @dir, store_root: @root,
                               changed: "test print", template: @state_template)
   end
 
@@ -94,7 +94,7 @@ class ScreenPaintTest < Minitest::Test
     refute_nil painted
     assert_includes painted, ESC
     plain = strip_ansi(painted)
-    ["21", "Paint demo", "project:store", "Active", "test print",
+    ["21", "Paint demo", "Active", "test print",
      "the reason this screen printed", "first step done", "second step open"].each do |v|
       assert_includes plain, v
     end
@@ -128,7 +128,7 @@ class ScreenPaintTest < Minitest::Test
   end
 
   def test_roster_screen_paints
-    out = ReportScreen.render_roster(@store, changed: nil)
+    out = ReportScreen.render_roster(@root, changed: nil)
     painted = ScreenPaint.paint(out, color: true)
     refute_nil painted
     plain = strip_ansi(painted)
@@ -139,7 +139,7 @@ class ScreenPaintTest < Minitest::Test
 
   def test_intent_screen_paints
     template = File.read(File.expand_path("../templates/intent-screen.md", __dir__))
-    out = IntentScreen.render(intent_dir: @dir, store_root: @store, template: template)
+    out = IntentScreen.render(intent_dir: @dir, store_root: @root, template: template)
     painted = ScreenPaint.paint(out, color: true)
     refute_nil painted
     assert_includes strip_ansi(painted), "Paint demo"
@@ -179,6 +179,9 @@ class ScreenPaintTest < Minitest::Test
     start = lines.index { |l| l.start_with?("## ✔") }
     stop = ScreenPaint.region_end(lines, start)
     assert_operator stop, :>, start
-    assert_equal "In plain words, this is prose.\n", lines[stop]
+    suffix = lines[stop..].join
+    assert_includes suffix, "In plain words, this is prose."
+    assert_includes suffix, "- a prose bullet"
+    refute_includes suffix, "Needs you"
   end
 end

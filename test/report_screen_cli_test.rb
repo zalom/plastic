@@ -73,49 +73,32 @@ class ReportScreenCliTest < Minitest::Test
     refute_match(/\e\[/, out, "no raw ANSI escapes should leak from a fallback")
   end
 
-  # --- row 78: --ansi with an injected renderer_path, DI proves the seam ------
+  # --- 317a S11 (B3/B4): --ansi delegates to ScreenPaint; the TTY guard keeps
+  # pipes plain and PLASTIC_FORCE_COLOR=1 is the test seam that stands in for
+  # a real terminal. maybe_paint and --renderer-path retired with the old
+  # render-not-paint gap. ------------------------------------------------------
 
-  def test_ansi_renderer_path_di_seam
+  def test_force_color_seam_paints_all_four_verbs
     root = File.join(@home, "store_root")
     dir = make_intent(root)
-    plain = ReportScreen.render_state(intent_dir: dir, store_root: root, changed: nil,
-                                       template: File.read(File.join(REPO, "templates", "report-state.md")))
-
-    renderer = File.join(@home, "stub_renderer.rb")
-    File.write(renderer, <<~RB)
-      module IntentScreenAnsi
-        def self.paint(text)
-          "PAINTED:" + text
-        end
-      end
-    RB
-    painted = ReportScreen.maybe_paint(plain, renderer_path: renderer, enabled: true)
-    assert_equal "PAINTED:#{plain}", painted
+    env = { "PLASTIC_FORCE_COLOR" => "1" }
+    [["state", dir], ["delivered", dir], ["delay", dir]].each do |verb, target|
+      out, err, status = Open3.capture3(env, "ruby", CLI, verb, target, "--ansi")
+      assert_equal 0, status.exitstatus, err
+      assert_match(/\e\[/, out, "#{verb} --ansi under the force seam must paint")
+      refute_match(/^\s*\|/, out.gsub(/\e\[[0-9;]*m/, ""), "#{verb} painted output must re-lay tables")
+    end
+    out, err, status = Open3.capture3(env, "ruby", CLI, "state", "--all", root, "--ansi")
+    assert_equal 0, status.exitstatus, err
+    assert_match(/\e\[/, out, "roster --ansi under the force seam must paint")
   end
 
-  # --- fix 7 (post-execution review): 316a's real contract is
-  # IntentScreenAnsi.render(intent_dir:, store_root:, color:, width:), a
-  # re-render from the record - NOT paint(text). Today's fallback-to-plain
-  # is pinned via a fresh subprocess (avoids polluting the shared
-  # IntentScreenAnsi constant across tests in this same process) so the gap
-  # is visible rather than silently "working" against the wrong contract.
-
-  def test_ansi_falls_back_to_plain_when_renderer_defines_render_not_paint
+  def test_renderer_path_flag_is_retired
     root = File.join(@home, "store_root")
     dir = make_intent(root)
-    renderer = File.join(@home, "stub_renderer_render_only.rb")
-    File.write(renderer, <<~RB)
-      module IntentScreenAnsi
-        def self.render(intent_dir:, store_root:, color: true, width: 100)
-          "RENDERED-NOT-PAINTED"
-        end
-      end
-    RB
-    out, err, status = Open3.capture3("ruby", CLI, "state", dir, "--ansi", "--renderer-path", renderer)
-    assert_equal 0, status.exitstatus, err
-    refute_equal "RENDERED-NOT-PAINTED", out.strip
-    refute_empty out
-    refute_match(/\e\[/, out)
+    _out, err, status = Open3.capture3("ruby", CLI, "state", dir, "--renderer-path", "/tmp/x.rb")
+    assert_equal 2, status.exitstatus
+    assert_match(/unknown flag/, err)
   end
 
   # --- row 79: NO_COLOR forces plain even with --ansi ---------------------------
@@ -164,6 +147,8 @@ class ReportScreenCliTest < Minitest::Test
       FileUtils.cp(File.join(REPO, "scripts", "lib", "intent_screen.rb"), File.join(tmp_root, "scripts", "lib", "intent_screen.rb"))
       FileUtils.cp(File.join(REPO, "scripts", "lib", "savepoint.rb"), File.join(tmp_root, "scripts", "lib", "savepoint.rb"))
       FileUtils.cp(File.join(REPO, "scripts", "lib", "lock.rb"), File.join(tmp_root, "scripts", "lib", "lock.rb"))
+      FileUtils.cp(File.join(REPO, "scripts", "lib", "screen_paint.rb"), File.join(tmp_root, "scripts", "lib", "screen_paint.rb"))
+      FileUtils.cp(File.join(REPO, "scripts", "lib", "intent_screen_ansi.rb"), File.join(tmp_root, "scripts", "lib", "intent_screen_ansi.rb"))
       FileUtils.cp(File.join(REPO, "templates", "report-state.md"), File.join(tmp_root, "templates", "report-state.md"))
 
       root = File.join(tmp_root, "store_root")
