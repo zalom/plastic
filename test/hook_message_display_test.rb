@@ -115,8 +115,12 @@ class HookMessageDisplayTest < Minitest::Test
     h = handler(root)
     out = h.handle(payload(index: 0, final: false, delta: "Sure — here's the state.\n\n## ▶ 50 · Demo"))
     assert_nil out
-    refute File.exist?(MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
-    # every later chunk of this message also passes through: no buffer exists
+    # round 3 (R2): a clean mismatch at chunk 0 writes NOSCREEN rather than
+    # leaving no state at all, so a later chunk can decide instantly instead
+    # of waiting out its own budget for a decision that will never arrive.
+    refute File.exist?(MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "s1", message_id: "m1", index: 0))
+    assert File.exist?(MessageDisplay.noscreen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
+    # every later chunk of this message also passes through: NOSCREEN decides it
     out2 = h.handle(payload(index: 1, final: false, delta: " intent\n\nmore text"))
     assert_nil out2
   end
@@ -127,7 +131,8 @@ class HookMessageDisplayTest < Minitest::Test
     h = handler(root)
     out = h.handle(payload(index: 0, final: false, delta: "#"))
     assert_nil out
-    refute File.exist?(MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
+    refute File.exist?(MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "s1", message_id: "m1", index: 0))
+    assert File.exist?(MessageDisplay.noscreen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
   end
 
   def test_single_chunk_double_hash_message_passes_through
@@ -338,20 +343,22 @@ class HookMessageDisplayTest < Minitest::Test
     make_intent(root)
     h = handler(root)
     h.handle(payload(index: 0, final: false, delta: "## ▶ 50 · Demo intent\n"))
-    path = MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "s1", message_id: "m1")
-    assert File.exist?(path)
+    dir = MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "s1", message_id: "m1")
+    chunk0 = MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "s1", message_id: "m1", index: 0)
+    assert File.exist?(chunk0)
 
-    # Write-only: the append at index 1 still succeeds, but the read this
-    # class must perform at `final` fails. Before the fix, `File.read` sat
-    # OUTSIDE the begin/rescue, so this raised straight out of #handle,
-    # skipped the `ensure`, and left the buffer file behind forever.
-    File.chmod(0o200, path)
+    # Write-only: chunk 1's own write still succeeds, but reassembling the
+    # chunks at `final` must read chunk 0 back, and that read fails. Before
+    # the round-3 fix, that read sat OUTSIDE the begin/rescue, so this raised
+    # straight out of #handle, skipped the `ensure`, and left the message
+    # directory behind forever.
+    File.chmod(0o200, chunk0)
     begin
       out = h.handle(payload(index: 1, final: true, delta: "more text"))
       assert_nil out
-      refute File.exist?(path), "the buffer must be removed even when reading it at final raises"
+      refute File.exist?(dir), "the message directory must be removed even when reading a chunk at final raises"
     ensure
-      File.chmod(0o600, path) if File.exist?(path)
+      File.chmod(0o600, chunk0) if File.exist?(chunk0)
     end
   end
 
@@ -446,7 +453,10 @@ class HookMessageDisplayTest < Minitest::Test
     h = handler(plastic_home)
     out0 = h.handle(payload(index: 0, final: false, cwd: "/nowhere/related", delta: buffered[0, 12]))
     assert_nil out0
-    refute File.exist?(MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
+    # round 3 (R2): chunk 0's failed resolution writes NOSCREEN rather than
+    # nothing, so later chunks decide instantly rather than waiting.
+    refute File.exist?(MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "s1", message_id: "m1", index: 0))
+    assert File.exist?(MessageDisplay.noscreen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
 
     out = h.handle(payload(index: 1, final: true, cwd: "/nowhere/related", delta: buffered[12..-1]))
     assert_nil out
@@ -459,8 +469,9 @@ class HookMessageDisplayTest < Minitest::Test
     h = handler(root)
     out = h.handle(payload(index: 0, final: false, delta: "## ▶ 999 · No such intent\n"))
     assert_nil out
-    refute File.exist?(MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "s1", message_id: "m1")),
-      "an id that resolves to nothing must never create a buffer, so nothing is ever blanked for it"
+    refute File.exist?(MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "s1", message_id: "m1", index: 0)),
+      "an id that resolves to nothing must never create a chunk file, so nothing is ever blanked for it"
+    assert File.exist?(MessageDisplay.noscreen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
   end
 
   # --- matrix 37: no fork on the common path (source assertions) ------------
@@ -522,14 +533,16 @@ class HookMessageDisplayTest < Minitest::Test
     src = File.read(LAUNCHER)
     assert_includes src, MessageDisplay::BUFFER_DIR_NAME
 
-    path = MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "sX", message_id: "mY")
-    FileUtils.mkdir_p(File.dirname(path))
-    File.write(path, "## ▶ 50 · Demo intent\n")
+    dir = MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "sX", message_id: "mY")
+    screen = MessageDisplay.screen_path(tmp_root: @tmp, session_id: "sX", message_id: "mY")
+    FileUtils.mkdir_p(dir)
+    File.write(screen, "/some/intent/dir\n/some/store/root\n")
 
-    # index > 0, an ordinary (non-#) delta: the ONLY way the launcher hands
-    # off is by finding a buffer at the path IT computed. If that path ever
-    # disagreed with Ruby's own formula, this would hand off to nothing (ruby
-    # would also miss its own buffer) and stdout would stay empty.
+    # index > 0, an ordinary (non-pipe, non-Steps, non-blank) delta: the ONLY
+    # way the launcher hands off is by finding the message directory IT
+    # computed already on disk. If that path ever disagreed with Ruby's own
+    # formula, this would hand off to nothing (ruby would also miss its own
+    # decision) and stdout would stay empty.
     out, status = Open3.capture2(
       { "PLASTIC_TMP" => @tmp }, "bash", LAUNCHER,
       stdin_data: JSON.generate("message_id" => "mY", "session_id" => "sX", "index" => 1,
@@ -590,9 +603,126 @@ class HookMessageDisplayTest < Minitest::Test
     assert_equal 0, status.exitstatus
     assert_includes out, '"displayContent":""'
 
-    buffer = MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "bigsess", message_id: "big1")
-    assert File.exist?(buffer)
-    assert_equal delta.bytesize, File.read(buffer).bytesize,
-      "the full payload must reach the buffer, not a truncated read"
+    chunk0 = MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "bigsess", message_id: "big1", index: 0)
+    assert File.exist?(chunk0)
+    assert_equal delta.bytesize, File.read(chunk0).bytesize,
+      "the full payload must reach the chunk file, not a truncated read"
+  end
+
+  # --- round 3: Claude Code fires the per-chunk hook processes concurrently -
+
+  # No real sleeping anywhere below: the injected sleeper is either a no-op
+  # counter (proves a chunk never waits), or a lambda that performs "chunk
+  # 0's work" as its side effect (simulating chunk 0's decision landing
+  # while a later chunk is mid-poll), which is deterministic without threads
+  # or wall-clock time.
+
+  def test_out_of_order_chunks_reassemble_in_index_order
+    root = build_global_store
+    dir = make_intent(root, checklist: checklist_with(total: 3, done: 1))
+    plain = plain_screen(dir, root)
+    suffix = "**What this means**\n- x\n\nneeds input: S2\n"
+    full = plain + suffix
+
+    lines = plain.lines
+    table_lines = lines[2..-1]
+    third = (table_lines.length / 3.0).ceil
+    c0 = lines[0] + lines[1]
+    c1 = table_lines[0, third].join
+    c2 = table_lines[third, third].join
+    c3 = table_lines[(third * 2)..-1].join
+    c4 = suffix
+    assert_equal full, c0 + c1 + c2 + c3 + c4, "fixture slicing must partition `full` exactly"
+
+    h = nil
+    chunk_zero_ran = false
+    sleeper = lambda do |_seconds|
+      next if chunk_zero_ran
+
+      chunk_zero_ran = true
+      # Chunk 0's decision lands DURING chunk 1's poll -- the exact race
+      # from the live capture, reproduced deterministically.
+      h.handle(payload(index: 0, final: false, delta: c0))
+    end
+    h = MessageDisplay.new(tmp_root: @tmp, plastic_home: root, color: true,
+                            now: Time.parse("2026-08-30T12:00:00Z"),
+                            wait_ms: 300, poll_ms: 20, sleeper: sleeper)
+
+    out1 = h.handle(payload(index: 1, final: false, delta: c1))
+    out2 = h.handle(payload(index: 2, final: false, delta: c2))
+    out3 = h.handle(payload(index: 3, final: false, delta: c3))
+    out4 = h.handle(payload(index: 4, final: true, delta: c4))
+
+    assert_equal "", out1
+    assert_equal "", out2
+    assert_equal "", out3
+    assert_includes out4, "\e[1m"
+    assert_includes out4, suffix
+  end
+
+  def test_wait_budget_exhausted_before_chunk_zero_decides_passes_through
+    root = build_global_store
+    make_intent(root)
+    sleep_calls = 0
+    sleeper = ->(_seconds) { sleep_calls += 1 }
+    h = MessageDisplay.new(tmp_root: @tmp, plastic_home: root, color: true,
+                            now: Time.parse("2026-08-30T12:00:00Z"),
+                            wait_ms: 300, poll_ms: 20, sleeper: sleeper)
+
+    # Chunk 0 never runs in this test at all: the decision never arrives.
+    out1 = h.handle(payload(index: 1, final: false, delta: "| --- | --- |\n"))
+    assert_nil out1
+    assert_equal 15, sleep_calls, "the full (300 / 20).ceil poll budget must be paid, and no more"
+
+    out2 = h.handle(payload(index: 2, final: false, delta: "| a | b |\n"))
+    assert_nil out2
+
+    refute File.exist?(MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "s1", message_id: "m1", index: 1)),
+      "a chunk that gave up waiting must never have buffered its delta"
+  end
+
+  def test_ordinary_prose_message_out_of_order_never_waits
+    root = build_global_store
+    make_intent(root)
+    sleep_calls = 0
+    sleeper = ->(_seconds) { sleep_calls += 1 }
+    h = MessageDisplay.new(tmp_root: @tmp, plastic_home: root, color: true,
+                            now: Time.parse("2026-08-30T12:00:00Z"),
+                            wait_ms: 300, poll_ms: 20, sleeper: sleeper)
+
+    out = h.handle(payload(index: 1, final: false, delta: "Sure, here is more of the summary."))
+    assert_nil out
+    assert_equal 0, sleep_calls, "an ordinary prose chunk must never enter the poll loop at all"
+  end
+
+  def test_final_chunk_arriving_before_an_earlier_chunk_file_returns_whats_present
+    root = build_global_store
+    make_intent(root)
+    h = MessageDisplay.new(tmp_root: @tmp, plastic_home: root, color: true,
+                            now: Time.parse("2026-08-30T12:00:00Z"), wait_ms: 0, poll_ms: 20)
+
+    h.handle(payload(index: 0, final: false, delta: "## ▶ 50 · Demo intent\n"))
+    # Chunk 1 never arrives; the final chunk (index 2) shows up anyway.
+    out = h.handle(payload(index: 2, final: true, delta: "trailing text\n"))
+
+    refute_nil out
+    refute_equal "", out
+    assert_equal "## ▶ 50 · Demo intent\ntrailing text\n", out
+  end
+
+  def test_noscreen_short_circuits_later_chunks_immediately
+    root = build_global_store
+    sleep_calls = 0
+    sleeper = ->(_seconds) { sleep_calls += 1 }
+    h = MessageDisplay.new(tmp_root: @tmp, plastic_home: root, color: true,
+                            now: Time.parse("2026-08-30T12:00:00Z"),
+                            wait_ms: 300, poll_ms: 20, sleeper: sleeper)
+
+    h.handle(payload(index: 0, final: false, delta: "## ▶ 999 · No such intent\n"))
+    assert File.exist?(MessageDisplay.noscreen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
+
+    out = h.handle(payload(index: 1, final: false, delta: "| some | row |\n"))
+    assert_nil out
+    assert_equal 0, sleep_calls, "NOSCREEN already exists, so a later chunk decides without polling"
   end
 end
