@@ -40,7 +40,7 @@ begin
 
   if payload.is_a?(Hash)
     tmp_root = ENV["PLASTIC_TMP"].to_s.empty? ? Dir.tmpdir : ENV["PLASTIC_TMP"]
-    plastic_home = File.expand_path("..", __dir__)
+    plastic_home = File.expand_path(ENV["PLASTIC_HOME"] || "~/.plastic")
 
     handler = MessageDisplay.new(
       tmp_root: tmp_root,

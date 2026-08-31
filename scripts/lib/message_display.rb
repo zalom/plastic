@@ -17,15 +17,17 @@ require_relative "store_provisioning"
 #
 # Protocol (D13): chunk 0 decides, once, and nothing is ever blanked
 # speculatively.
-#   - Chunk 0 matches "## ▶ <id> · " (after leading whitespace only)
-#     -> engage: buffer the delta, return "" (or splice immediately if also
-#        final).
-#   - Chunk 0 does not match, for any reason (a clean mismatch or a delta too
-#     short to tell) -> no buffer is ever created, so this message renders
-#     plain and every later chunk of it (index > 0, no buffer found) passes
-#     through untouched. The two "does not engage" cases collapse into one
-#     code path deliberately: neither one is ever revisited once chunk 0 has
-#     run, so there is nothing to distinguish them on later chunks.
+#   - Chunk 0 matches "## ▶ <id> · " (after leading whitespace only) AND the
+#     id resolves to a real intent (O5) -> engage: buffer the delta, return
+#     "" (or splice immediately if also final). Resolution is cheap and
+#     happens here, before anything is buffered or blanked.
+#   - Chunk 0 does not match, or matches but the id does not resolve, for any
+#     reason (a clean mismatch, a delta too short to tell, or an unresolvable
+#     id) -> no buffer is ever created, so this message renders plain and
+#     every later chunk of it (index > 0, no buffer found) passes through
+#     untouched. These "does not engage" cases collapse into one code path
+#     deliberately: none of them is ever revisited once chunk 0 has run, so
+#     there is nothing to distinguish them on later chunks.
 #   - Engaged, not final -> append the delta to the buffer, return "".
 #   - Engaged, final -> resolve the intent directory (O5), render the ANSI
 #     block, splice it over the plain screen's prefix inside the buffered
@@ -66,7 +68,16 @@ class MessageDisplay
 
     if index == 0
       stripped = delta.sub(/\A[ \t]+/, "")
-      return nil unless stripped.match?(MARKER_RE)
+      m = stripped.match(MARKER_RE)
+      return nil unless m
+
+      # Resolve before engaging (matrix new, lead's F4): resolution is cheap,
+      # so pay it here, while nothing has been suppressed yet. An id that
+      # cannot be resolved must never buffer and never blank a single chunk —
+      # deferring this check to `finalize` meant a message could be blanked
+      # for its whole duration only to discover at the end it was
+      # unresolvable, with no way back to the original text.
+      return nil unless resolve_intent_dir(m[1], cwd)
 
       FileUtils.mkdir_p(File.dirname(path))
       File.write(path, delta)
@@ -78,8 +89,8 @@ class MessageDisplay
 
     return "" unless final
 
-    buffered = File.read(path)
     begin
+      buffered = File.read(path)
       finalize(buffered, cwd)
     rescue StandardError
       buffered
@@ -138,23 +149,44 @@ class MessageDisplay
       if buffered.start_with?(plain)
         buffered[plain.length..]
       else
-        line_based_suffix(buffered)
+        line_based_suffix(buffered, plain)
       end
     return buffered if suffix.nil?
 
     "#{ansi.rstrip}\n\n#{suffix}"
   end
 
-  def line_based_suffix(buffered)
+  # Bounded fallback (matrix, lead's B1): walk forward from the "## ▶ " line
+  # only through the screen's OWN contiguous run of blank lines, "|"-prefixed
+  # table rows and the "**Steps**" heading, and stop at the first line that is
+  # none of those. The boundary is the last "|" line seen before that stop —
+  # never the last "|" line anywhere in the message. Scanning to the end
+  # unbounded (the old behavior) swallows any prose the model wrote between
+  # the screen and an unrelated Markdown table further down (a real hazard:
+  # Plastic replies carry tables often).
+  def line_based_suffix(buffered, plain)
     lines = buffered.lines
     start_idx = lines.index { |l| l.start_with?("## ▶ ") }
     return nil unless start_idx
 
     last_pipe_idx = nil
-    lines.each_with_index do |l, i|
-      last_pipe_idx = i if i > start_idx && l.start_with?("|")
+    i = start_idx + 1
+    while i < lines.length
+      line = lines[i]
+      stripped = line.strip
+      break unless stripped.empty? || line.start_with?("|") || stripped == "**Steps**"
+
+      last_pipe_idx = i if line.start_with?("|")
+      i += 1
     end
     return nil unless last_pipe_idx
+
+    # Guard: never let the bounded scan consume more lines than the freshly
+    # rendered plain screen itself has. If it would, something about the
+    # buffered text does not match the shape splice() expects at all — pass
+    # the original through rather than risk eating real prose.
+    consumed = last_pipe_idx + 1 - start_idx
+    return nil if consumed > plain.lines.length
 
     lines[(last_pipe_idx + 1)..].join
   end

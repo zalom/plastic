@@ -35,9 +35,6 @@ module IntentScreen
   NEXT_VALUE_MAX = 72
   STEP_TEXT_MAX = 110
 
-  MEANING_BLOCK_RE = /\n\*\*What this means\*\*\n\{\{meaning\}\}\n/
-  CLOSE_BLOCK_RE = /\n\{\{close\}\}\s*\z/
-
   # Where a resume lands, from the ledger's last line (the boarding matrix).
   def self.landing_stage(stage, milestone)
     case stage
@@ -77,15 +74,8 @@ module IntentScreen
     fields.merge!(next_fields(items, status, checklist_present: items_present?(intent_dir)))
     fields.merge!(insight_fields(intent_text))
     fields["steps.rows"] = steps_rows(items)
-    fields["meaning"] = ""
-    fields["close"] = ""
 
     out = template.dup
-    # O1b: an empty "What this means" heading, or an empty {{close}}, must not
-    # render at all — the heading alone was a bold line over nothing. Dropping
-    # both moves the session's own bullets below the Steps table (D14).
-    out = out.sub(MEANING_BLOCK_RE, "\n") if fields["meaning"].to_s.empty?
-    out = out.sub(CLOSE_BLOCK_RE, "\n") if fields["close"].to_s.empty?
     fields.each { |k, v| out = out.gsub("{{#{k}}}", v.to_s) }
     out.gsub(/\n{3,}/, "\n\n")
   end
@@ -199,10 +189,11 @@ module IntentScreen
       "progress.note" => note }
   end
 
-  # `escape:` (intent 316a O1d, default true) keeps the plain Markdown table's
-  # pipe-escaping; the ANSI renderer, which never emits a table, passes
-  # `escape: false` to get the raw value instead of a literal `\|`.
-  def self.next_fields(items, status, checklist_present:, escape: true)
+  # `escape_pipes:` (intent 316a O1d, default true) keeps the plain Markdown
+  # table's pipe-escaping; the ANSI renderer, which never emits a table,
+  # passes `escape_pipes: false` to get the raw value instead of a literal
+  # `\|`. Named to not shadow the module's own `escape` method.
+  def self.next_fields(items, status, checklist_present:, escape_pipes: true)
     return { "next" => "", "next.note" => "" } if %w[Completed Abandoned].include?(status)
     return { "next" => "write checklist.md", "next.note" => "How" } unless checklist_present
 
@@ -211,7 +202,7 @@ module IntentScreen
 
     head, = split_first_clause(items[idx][:text])
     head = truncate_words(head, NEXT_VALUE_MAX)
-    head = IntentScreen.escape(head) if escape
+    head = escape(head) if escape_pipes
     { "next" => "S#{idx + 1} · #{head}", "next.note" => "first open step" }
   end
 
@@ -235,7 +226,7 @@ module IntentScreen
 
   # --- ## Insights ----------------------------------------------------------------
 
-  def self.insight_fields(intent_text, escape: true)
+  def self.insight_fields(intent_text, escape_pipes: true)
     section = intent_text.split(/^## Insights\s*$/, 2)[1].to_s.split(/^## /, 2)[0].to_s
     entry = section.lines.map(&:strip).reverse.map { |l| l.match(INSIGHT_RE) }.compact.first
     return { "insight" => "none yet", "insight.note" => "" } unless entry
@@ -245,8 +236,8 @@ module IntentScreen
     value = truncate_words(head, INSIGHT_VALUE_MAX)
     tail = tail.empty? ? "" : truncate_words(tail, INSIGHT_NOTE_MAX)
     note = tail.empty? ? human_time(ts) : "#{human_time(ts)} · #{tail}"
-    if escape
-      { "insight" => IntentScreen.escape(value), "insight.note" => IntentScreen.escape(note) }
+    if escape_pipes
+      { "insight" => escape(value), "insight.note" => escape(note) }
     else
       { "insight" => value, "insight.note" => note }
     end

@@ -47,32 +47,38 @@ module IntentScreenAnsi
     fields.merge!(IntentScreen.savepoint_fields(intent_dir, intent_text))
     items = IntentScreen.checklist_items(intent_dir)
     fields.merge!(IntentScreen.progress_fields(items))
-    fields.merge!(IntentScreen.next_fields(items, status, checklist_present: IntentScreen.items_present?(intent_dir), escape: false))
-    fields.merge!(IntentScreen.insight_fields(intent_text, escape: false))
+    fields.merge!(IntentScreen.next_fields(items, status, checklist_present: IntentScreen.items_present?(intent_dir), escape_pipes: false))
+    fields.merge!(IntentScreen.insight_fields(intent_text, escape_pipes: false))
     fields.transform_values! { |v| clean(v) }
 
     done_n = fields["progress.done"].to_i
     total_n = fields["progress.total"].to_i
 
     out = +""
-    out << fit("▶ #{fields['id']} · #{fields['name']}", width - 0) { |t| styled(t, color, BOLD, NEARWHITE) }
+    out << fit("▶ #{fields['id']} · #{fields['name']}", width) { |t| styled(t, color, BOLD, NEARWHITE) }
     out << "\n\n"
 
+    # The 4th column marks a row whose value is already a finished, pre-fit
+    # string (the Progress bar, built above from styled glyphs plus a count)
+    # rather than raw field text still needing `fit_plain`. Naming that
+    # explicitly here reads better than testing the value for a leading ESC
+    # byte further down, which is really just asking "is this the Progress
+    # row?" through a type check.
     field_rows = [
-      ["Store", fields["store"], fields["store.note"]],
-      ["Status", fields["status"], fields["status.note"]],
-      ["Stage", fields["stage"], fields["stage.note"]],
-      ["Savepoint", fields["savepoint"], fields["savepoint.note"]],
-      ["Progress", "#{render_bar(done_n, total_n, color)}  #{done_n} / #{total_n}", fields["progress.note"]],
-      ["Next", fields["next"], fields["next.note"]],
-      ["Insight", fields["insight"], fields["insight.note"]],
+      ["Store", fields["store"], fields["store.note"], false],
+      ["Status", fields["status"], fields["status.note"], false],
+      ["Stage", fields["stage"], fields["stage.note"], false],
+      ["Savepoint", fields["savepoint"], fields["savepoint.note"], false],
+      ["Progress", "#{render_bar(done_n, total_n, color)}  #{done_n} / #{total_n}", fields["progress.note"], true],
+      ["Next", fields["next"], fields["next.note"], false],
+      ["Insight", fields["insight"], fields["insight.note"], false],
     ]
-    key_width = field_rows.map { |k, _, _| k.length }.max
+    key_width = field_rows.map { |k, _, _, _| k.length }.max
     prefix_width = key_width + 4 # "  " + key.ljust + "  "
 
-    field_rows.each do |key, value, note|
+    field_rows.each do |key, value, note, prebuilt|
       value_budget = [width - prefix_width, 0].max
-      value_text = value.start_with?(ESC) ? value : fit_plain(value, value_budget)
+      value_text = prebuilt ? value : fit_plain(value, value_budget)
       out << "  #{styled(key.ljust(key_width), color, BOLD)}  #{value_text}\n"
       next if note.to_s.empty?
 
@@ -88,8 +94,12 @@ module IntentScreenAnsi
     if items.empty?
       out << "  no steps yet\n"
     else
+      # Padded to the widest label (matrix B2): at 10+ steps "S10" is one
+      # column wider than "S1..S9", and without padding every badge past S9
+      # drifts out of column with the rows above it.
+      label_width = "S#{items.size}".length
       items.each_with_index do |item, i|
-        num = "S#{i + 1}"
+        num = "S#{i + 1}".ljust(label_width)
         badge = status_cell(item[:done], color)
         prefix_plain = "  #{num}  [ #{item[:done] ? 'done' : 'open'} ]  "
         text_budget = [width - prefix_plain.length, 0].max
