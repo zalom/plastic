@@ -204,6 +204,65 @@ class HookMessageDisplayTest < Minitest::Test
     assert_includes out, "\e[1m"
   end
 
+  # --- lead's B1: the fallback is bounded to the screen's own table ----------
+
+  def test_reformatted_screen_with_prose_and_an_unrelated_table_keeps_the_heading_and_bullets
+    root = build_global_store
+    dir = make_intent(root, checklist: checklist_with(total: 1, done: 0))
+    plain = plain_screen(dir, root)
+    # Breaks the exact-prefix match, same as the sibling fallback test above.
+    reformatted = plain.sub("the global store", "the global store ")
+    suffix = <<~MD
+      **What this means**
+      - one bullet
+      - another bullet
+
+      | Col A | Col B |
+      | --- | --- |
+      | x | y |
+
+      needs input: S1
+    MD
+    buffered = reformatted + suffix
+    h = handler(root)
+
+    h.handle(payload(index: 0, final: false, delta: buffered[0, 15]))
+    out = h.handle(payload(index: 1, final: true, delta: buffered[15..-1]))
+
+    # The OLD unbounded scan found the last "|" line ANYWHERE in the message
+    # -- inside the unrelated table further down -- and dropped everything
+    # before it, including the heading and both bullets. The bounded scan
+    # must stop at the screen's own table and keep all of this verbatim.
+    assert_includes out, "**What this means**"
+    assert_includes out, "- one bullet"
+    assert_includes out, "- another bullet"
+    assert_includes out, "| Col A | Col B |"
+    assert_includes out, "needs input: S1"
+    assert_includes out, "\e[1m"
+  end
+
+  def test_a_boundary_that_would_consume_more_lines_than_the_plain_screen_returns_the_original
+    root = build_global_store
+    dir = make_intent(root, checklist: checklist_with(total: 1, done: 0))
+    plain = plain_screen(dir, root)
+    reformatted = plain.sub("the global store", "the global store ") # breaks the exact prefix match
+    # Extra pipe rows glued directly onto the screen's own table, with no
+    # blank or non-pipe line separating them: the bounded scan cannot tell
+    # them apart from the screen's own rows by shape alone, so it would walk
+    # past the real screen boundary without the guard. The guard compares
+    # against the freshly rendered plain screen's own line count and bails
+    # rather than silently swallow those two rows into the replaced prefix.
+    extra_rows = "| extra | pipe | row |\n| another | pipe | row |\n"
+    suffix = "**What this means**\n- a bullet\n\nneeds input: S1\n"
+    buffered = reformatted + extra_rows + suffix
+    h = handler(root)
+
+    h.handle(payload(index: 0, final: false, delta: buffered[0, 15]))
+    out = h.handle(payload(index: 1, final: true, delta: buffered[15..-1]))
+
+    assert_equal buffered, out
+  end
+
   # --- matrix 31/32: fail open ------------------------------------------------
 
   def test_missing_ids_pass_through
@@ -228,6 +287,35 @@ class HookMessageDisplayTest < Minitest::Test
     assert_equal 0, status.exitstatus
   end
 
+  # --- lead's F1: the CLI must honour PLASTIC_HOME, not just its own repo ---
+
+  # Every OTHER spawn test above asserts `"displayContent":""` -- the
+  # pre-resolution, still-buffering branch. None of them ever reached the
+  # branch that actually resolves an intent and renders the ANSI block
+  # through a real subprocess, which is exactly why the S10+ misalignment
+  # (matrix B2) shipped unnoticed: the CLI's own `plastic_home` ignored
+  # PLASTIC_HOME entirely (always resolving to its own repo checkout) and
+  # this whole path silently failed open to "displayContent":"" too, on
+  # every fixture-based spawn test that never set PLASTIC_HOME.
+  def test_cli_honours_plastic_home_and_emits_the_ansi_block
+    root = build_global_store
+    dir = make_intent(root, checklist: checklist_with(total: 1, done: 0))
+    plain = plain_screen(dir, root)
+    delta = plain + "**What this means**\n- x\n\nneeds input: S1\n"
+    json = JSON.generate("message_id" => "envtest", "session_id" => "envsess", "index" => 0,
+                          "final" => true, "delta" => delta, "cwd" => root)
+
+    out, status = Open3.capture2(
+      { "PLASTIC_TMP" => @tmp, "PLASTIC_HOME" => root },
+      "ruby", CLI, stdin_data: json,
+    )
+    assert_equal 0, status.exitstatus
+    parsed = JSON.parse(out)
+    content = parsed.dig("hookSpecificOutput", "displayContent")
+    refute_nil content
+    assert_includes content, "\e[1m"
+  end
+
   def test_render_raise_at_final_returns_the_buffered_original
     root = build_global_store
     # "99--broken" exists as a directory but carries no "99--broken.md" —
@@ -241,6 +329,30 @@ class HookMessageDisplayTest < Minitest::Test
     out = h.handle(payload(index: 1, final: true, delta: buffered[10..-1]))
     assert_equal buffered, out
     refute File.exist?(MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
+  end
+
+  # --- lead's F3: a read failure at final is caught, buffer still removed ---
+
+  def test_read_failure_at_final_is_caught_and_the_buffer_is_still_removed
+    root = build_global_store
+    make_intent(root)
+    h = handler(root)
+    h.handle(payload(index: 0, final: false, delta: "## ▶ 50 · Demo intent\n"))
+    path = MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "s1", message_id: "m1")
+    assert File.exist?(path)
+
+    # Write-only: the append at index 1 still succeeds, but the read this
+    # class must perform at `final` fails. Before the fix, `File.read` sat
+    # OUTSIDE the begin/rescue, so this raised straight out of #handle,
+    # skipped the `ensure`, and left the buffer file behind forever.
+    File.chmod(0o200, path)
+    begin
+      out = h.handle(payload(index: 1, final: true, delta: "more text"))
+      assert_nil out
+      refute File.exist?(path), "the buffer must be removed even when reading it at final raises"
+    ensure
+      File.chmod(0o600, path) if File.exist?(path)
+    end
   end
 
   # --- matrix 33: non-interactive, one payload, no state left behind --------
@@ -327,11 +439,28 @@ class HookMessageDisplayTest < Minitest::Test
     make_intent(project, id: "50", title: "Project fifty")
     buffered = "## ▶ 50 · Whatever the model wrote\nsome text\n"
 
+    # F4: resolution now happens at chunk 0, before anything engages. An
+    # ambiguous id with no cwd match fails resolution immediately, so chunk 0
+    # itself passes through (never buffers, never blanks) rather than
+    # deferring the failure to the final chunk.
     h = handler(plastic_home)
-    h.handle(payload(index: 0, final: false, cwd: "/nowhere/related", delta: buffered[0, 12]))
-    out = h.handle(payload(index: 1, final: true, cwd: "/nowhere/related", delta: buffered[12..-1]))
+    out0 = h.handle(payload(index: 0, final: false, cwd: "/nowhere/related", delta: buffered[0, 12]))
+    assert_nil out0
+    refute File.exist?(MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
 
-    assert_equal buffered, out
+    out = h.handle(payload(index: 1, final: true, cwd: "/nowhere/related", delta: buffered[12..-1]))
+    assert_nil out
+  end
+
+  # --- lead's F4: resolve before engaging, at chunk 0 -------------------------
+
+  def test_chunk_zero_with_an_unresolvable_id_passes_through_and_never_buffers
+    root = build_global_store
+    h = handler(root)
+    out = h.handle(payload(index: 0, final: false, delta: "## ▶ 999 · No such intent\n"))
+    assert_nil out
+    refute File.exist?(MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "s1", message_id: "m1")),
+      "an id that resolves to nothing must never create a buffer, so nothing is ever blanked for it"
   end
 
   # --- matrix 37: no fork on the common path (source assertions) ------------
@@ -361,6 +490,9 @@ class HookMessageDisplayTest < Minitest::Test
   def test_launcher_hands_off_on_a_single_hash_delta_both_json_spacings
     root = build_global_store
     make_intent(root)
+    # PLASTIC_HOME must point at the fixture store: chunk 0 now resolves the
+    # intent before engaging (F4), and the CLI honours PLASTIC_HOME (F1)
+    # rather than always resolving to its own repo checkout.
 
     delta = "## ▶ 50 · Demo intent"
     tight = JSON.generate("message_id" => "m1", "session_id" => "s1", "index" => 0,
@@ -368,7 +500,7 @@ class HookMessageDisplayTest < Minitest::Test
     spaced = tight.gsub('":"', '": "').gsub('":0', '": 0').gsub('":false', '": false')
 
     [tight, spaced].each do |json|
-      out, status = Open3.capture2({ "PLASTIC_TMP" => @tmp }, "bash", LAUNCHER, stdin_data: json)
+      out, status = Open3.capture2({ "PLASTIC_TMP" => @tmp, "PLASTIC_HOME" => root }, "bash", LAUNCHER, stdin_data: json)
       assert_equal 0, status.exitstatus
       assert_includes out, '"displayContent":""', "expected a hand-off for: #{json}"
     end
@@ -407,6 +539,43 @@ class HookMessageDisplayTest < Minitest::Test
     assert_includes out, '"displayContent":""'
   end
 
+  # --- lead's F2: the launcher's own TMP_ROOT formula wins by construction --
+
+  def test_launcher_exports_the_computed_tmp_root_so_ruby_agrees
+    # Ruby's Dir.tmpdir requires the candidate directory to already exist and
+    # be writable, so a NONEXISTENT TMPDIR is silently skipped there and it
+    # falls back to /tmp; bash's own "${TMPDIR:-/tmp}" takes it literally,
+    # with no existence check at all. Before the fix, chunk 0 (ruby, no
+    # PLASTIC_TMP set) would buffer under /tmp while chunk 1 (bash, deciding
+    # hand-off by checking its OWN computed BUFFER path under the nonexistent
+    # TMPDIR) would never find it and never forward — the message would
+    # display with its opening chunk gone forever. Exporting PLASTIC_TMP from
+    # the root bash itself computed makes one formula win, so this can no
+    # longer diverge.
+    nonexistent_tmpdir = File.join(@tmp, "does-not-exist-yet")
+    root = build_global_store
+    make_intent(root)
+    env = { "PLASTIC_TMP" => nil, "TMPDIR" => nonexistent_tmpdir, "PLASTIC_HOME" => root }
+
+    json0 = JSON.generate("message_id" => "tmpmatch", "session_id" => "tmpsess", "index" => 0,
+                           "final" => false, "delta" => "## ▶ 50 · Demo intent\n", "cwd" => root)
+    out0, status0 = Open3.capture2(env, "bash", LAUNCHER, stdin_data: json0)
+    assert_equal 0, status0.exitstatus
+    assert_includes out0, '"displayContent":""'
+
+    buffer = File.join(nonexistent_tmpdir, "plastic-message-display", "tmpsess", "tmpmatch")
+    assert File.exist?(buffer), "ruby should have honoured the bash-computed TMP_ROOT via the exported PLASTIC_TMP"
+
+    json1 = JSON.generate("message_id" => "tmpmatch", "session_id" => "tmpsess", "index" => 1,
+                           "final" => true, "delta" => " more streamed text", "cwd" => root)
+    out1, status1 = Open3.capture2(env, "bash", LAUNCHER, stdin_data: json1)
+    assert_equal 0, status1.exitstatus
+    parsed = JSON.parse(out1)
+    content = parsed.dig("hookSpecificOutput", "displayContent")
+    refute_nil content, "chunk 1 must still be forwarded once the buffer exists at the agreed-upon path"
+    refute_empty content
+  end
+
   # --- matrix 41: stdin may arrive in more than one underlying read ---------
 
   def test_launcher_handles_a_large_payload
@@ -417,7 +586,7 @@ class HookMessageDisplayTest < Minitest::Test
     json = JSON.generate("message_id" => "big1", "session_id" => "bigsess", "index" => 0,
                           "final" => false, "delta" => delta, "cwd" => root)
 
-    out, status = Open3.capture2({ "PLASTIC_TMP" => @tmp }, "bash", LAUNCHER, stdin_data: json)
+    out, status = Open3.capture2({ "PLASTIC_TMP" => @tmp, "PLASTIC_HOME" => root }, "bash", LAUNCHER, stdin_data: json)
     assert_equal 0, status.exitstatus
     assert_includes out, '"displayContent":""'
 

@@ -76,21 +76,38 @@ class IntentScreenAnsiTest < Minitest::Test
 
   # --- matrix 12/13: field reuse, bar excepted ---------------------------------
 
+  # T2: the expected set is DERIVED from IntentScreen's own field methods,
+  # not four hand-picked literals — a hand-picked set can happen to dodge
+  # every value that would actually catch a real reuse defect.
   def test_every_value_except_the_bar_appears_in_the_plain_render
     root = tier_root
+    insight_line = "2026-08-30T12:10:02Z · Exec · orchestrator (direct) — Codex re-synced to alpha.2; both harnesses share the 2.0 core."
     dir = make_intent(root, checklist: checklist_with(total: 4, done: 1), savepoint: HOW_LEDGER,
-                       insights: ["2026-08-30T12:10:02Z · Exec · orchestrator (direct) — Codex re-synced to alpha.2; both harnesses share the 2.0 core."])
+                       insights: [insight_line])
     plain = plain_render(dir, root)
     ansi = visible(ansi_render(dir, root, color: false))
 
-    assert_includes plain, "project:demo"
-    assert_includes ansi, "project:demo"
-    assert_includes plain, "Codex re-synced to alpha.2"
-    assert_includes ansi, "Codex re-synced to alpha.2"
-    assert_includes plain, "do thing 4"
-    assert_includes ansi, "do thing 4"
-    assert_includes plain, "Demo intent"
-    assert_includes ansi, "Demo intent"
+    id = File.basename(dir).split("--", 2).first
+    intent_text = File.read(File.join(dir, "#{File.basename(dir)}.md"))
+    status, title = IntentScreen.index_fields(root, id)
+    items = IntentScreen.checklist_items(dir)
+
+    fields = {}
+    fields.merge!(IntentScreen.store_fields(root))
+    fields["status"] = status
+    fields["name"] = title || IntentScreen.fallback_name(intent_text)
+    fields.merge!(IntentScreen.savepoint_fields(dir, intent_text))
+    fields.merge!(IntentScreen.next_fields(items, status, checklist_present: IntentScreen.items_present?(dir), escape_pipes: false))
+    fields.merge!(IntentScreen.insight_fields(intent_text, escape_pipes: false))
+    fields["last_step_text"] = IntentScreen.step_text(items.last[:text])
+
+    values = fields.values.map(&:to_s).reject(&:empty?)
+    refute_empty values
+
+    values.each do |value|
+      assert_includes plain, value, "expected the plain render to include #{value.inspect}"
+      assert_includes ansi, value, "expected the ansi render to include #{value.inspect}"
+    end
   end
 
   def test_bar_is_20_cells_plain_and_24_eighths_ansi_with_matching_counts
@@ -137,6 +154,17 @@ class IntentScreenAnsiTest < Minitest::Test
     assert_includes partial, "#{'#' * 12}#{'.' * 12}  2 / 4"
   end
 
+  # T3: the bar that actually ships (color: true) had no cell-count
+  # assertion at all -- both tests above run color: false and only exercise
+  # the ASCII fallback, leaving render_bar's coloured branch (the divmod(8),
+  # EIGHTHS[rem], the clamp, the track arithmetic) unexercised.
+  def test_render_bar_coloured_branch_has_24_visible_cells_and_the_right_partial_glyph
+    out = IntentScreenAnsi.render_bar(1, 7, true) # 27/192 units -> divmod(8) == [3, 3]
+    bar = visible(out)
+    assert_equal 24, bar.length
+    assert_equal "#{'█' * 3}▍#{' ' * 20}", bar
+  end
+
   # --- matrix 16: frozen constants, no mutation across calls -------------------
 
   def test_rendering_twice_does_not_mutate_the_palette_constants
@@ -164,6 +192,20 @@ class IntentScreenAnsiTest < Minitest::Test
     refute_nil open_line
     assert_includes done_line, "\e[38;2;45;212;191m\e[1m done \e[0m"
     assert_includes open_line, "\e[38;2;245;158;11m\e[1m open \e[0m"
+  end
+
+  # --- lead's B2: step label padded so the badge column aligns past S9 --------
+
+  def test_step_label_padded_so_the_badge_column_aligns_at_ten_or_more_steps
+    root = tier_root
+    dir = make_intent(root, checklist: checklist_with(total: 12, done: 3), savepoint: HOW_LEDGER)
+    out = ansi_render(dir, root, color: false)
+
+    step_lines = out.lines.select { |l| l =~ /\A {2}S\d+/ }
+    assert_equal 12, step_lines.length
+    badge_columns = step_lines.map { |l| l.index("[") }
+    assert_equal [badge_columns.first] * badge_columns.length, badge_columns,
+      "expected every step row's badge to start at the same column: #{badge_columns.inspect}"
   end
 
   # --- matrix 18: width cap -----------------------------------------------------
@@ -210,20 +252,23 @@ class IntentScreenAnsiTest < Minitest::Test
 
   def test_step_text_in_ansi_matches_step_text_helper_for_the_same_fixture
     root = tier_root
-    # Long enough to exercise a real trim (well over STEP_TEXT_MAX=110 would
-    # trigger IntentScreen.step_text's own truncation) but still short enough
-    # to clear the ANSI width budget untouched, so the two truncations don't
-    # stack and mask whether the SAME helper produced both.
-    medium_step = (["stepword"] * 8).join(" ") # 71 characters
-    cl = "# Checklist\n\n## In Progress\n- [ ] Step 1 - #{medium_step}\n"
+    # T1: over STEP_TEXT_MAX=110 so IntentScreen.step_text ACTUALLY trims —
+    # at 71 characters (the old fixture) step_text is the identity function,
+    # so the assertion below would stay green even with the shared-helper
+    # call deleted from the renderer entirely. A generous `width:` keeps the
+    # ANSI renderer's OWN width cap from firing a second time on top, so the
+    # two truncations can't stack and mask which one produced the result.
+    long_step = (["stepword"] * 20).join(" ") # 179 characters, well over 110
+    cl = "# Checklist\n\n## In Progress\n- [ ] Step 1 - #{long_step}\n"
     dir = make_intent(root, checklist: cl, savepoint: HOW_LEDGER)
-    out = ansi_render(dir, root, color: false)
+    out = ansi_render(dir, root, color: false, width: 300)
     plain = plain_render(dir, root)
 
-    expected = IntentScreen.step_text(medium_step)
-    assert_equal medium_step, expected # sanity: no truncation at this length
+    expected = IntentScreen.step_text(long_step)
+    refute_equal long_step, expected # sanity: a real trim actually happened
     step_line = out.lines.find { |l| l.include?("[") && l.include?("stepword") }
     refute_nil step_line
+    assert_equal "  S1  [ open ]  #{expected}\n", step_line
     assert_includes step_line, expected
     assert_includes plain, expected
   end
