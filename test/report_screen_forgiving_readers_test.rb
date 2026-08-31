@@ -173,4 +173,24 @@ class ReportScreenForgivingReadersTest < Minitest::Test
     assert_match(/\*\*Evidence\*\*\nnot recorded/, out)
     refute_match(/\*\*Evidence\*\*\n\| Kind \| What \| Source \|\n\| --- \| --- \| --- \|\n\n/, out)
   end
+
+  # --- S7a (317a): mode falls back to outcome frontmatter after the close ---
+
+  def test_mode_reads_outcome_frontmatter_when_lock_is_gone
+    write("outcome.md", "---
+disposition: delivered
+mode: guided
+---
+
+## Summary
+x
+")
+    assert_equal "guided", ReportScreen.mode(@dir)
+  end
+
+  def test_mode_without_lock_or_frontmatter_stays_not_recorded
+    outcome
+    assert_equal "not recorded", ReportScreen.mode(@dir)
+  end
+
 end
