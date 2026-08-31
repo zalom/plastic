@@ -49,8 +49,16 @@ if [ "$is_index_zero" = 1 ]; then
   # single "#", not "##" — a real screen's own first delta can be as short
   # as "## " — a "##" glob would filter out exactly the message this hook
   # exists to recognize.
+  # 317a (B11): a screen can open with "## " (state, delivered), a bare "▶"
+  # (roster), or a bare "✔" (delay); the JSON may carry the glyph raw or
+  # \u-escaped depending on the encoder. All globs are literal bytes - case
+  # matching is byte-wise, so multibyte literals are safe under bash 3.2.
   case $INPUT in
     *'"delta":"#'*|*'"delta": "#'*) handoff=1 ;;
+    *'"delta":"▶'*|*'"delta": "▶'*) handoff=1 ;;
+    *'"delta":"✔'*|*'"delta": "✔'*) handoff=1 ;;
+    *'"delta":"▶'*|*'"delta": "▶'*) handoff=1 ;;
+    *'"delta":"✔'*|*'"delta": "✔'*) handoff=1 ;;
   esac
 else
   # A later chunk: hand off when this message's directory already exists
@@ -62,7 +70,7 @@ else
   [ "$is_final" = 1 ] && handoff=1
   case $INPUT in
     *'"delta":"|'*|*'"delta": "|'*) handoff=1 ;;
-    *'"delta":"**Steps**'*|*'"delta": "**Steps**'*) handoff=1 ;;
+    *'"delta":"**'*|*'"delta": "**'*) handoff=1 ;;
     *'"delta":""'*|*'"delta": ""'*) handoff=1 ;;
     *'"delta":"\n"'*|*'"delta": "\n"'*) handoff=1 ;;
   esac

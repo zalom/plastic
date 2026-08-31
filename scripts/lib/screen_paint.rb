@@ -13,7 +13,7 @@ require_relative "intent_screen_ansi"
 # is invented, and text it does not recognize returns nil so every caller
 # fails open to plain.
 #
-# Harness-agnostic core: no ENV, no TTY, no harness name. Color, width, and
+# Harness-agnostic core: no harness assumption lives here. No ENV, no TTY. Color, width, and
 # markdown_safe are caller arguments, exactly like IntentScreenAnsi before it
 # (316a1); the 318 ceiling holds - the palette is IntentScreenAnsi's, no new
 # colors, no box borders.
@@ -60,11 +60,30 @@ module ScreenPaint
     while i < lines.length
       kind = classify(lines[i], idx: i, opener_idx: start_idx)
       break if kind == :unknown
+      # A bare "**Section**" head belongs to the screen only when what follows
+      # is still grammar; "**What this means**" over prose bullets is the
+      # model's own commentary and stays outside, unsplit (B10).
+      if kind == :bold && bare_bold?(lines[i]) && !grammar_follows?(lines, i, start_idx)
+        break
+      end
       i += 1
     end
     # Trailing blanks belong to the message, not the screen.
     i -= 1 while i > start_idx + 1 && lines[i - 1].strip.empty?
     i
+  end
+
+  def bare_bold?(line)
+    m = BOLD_LEAD_RE.match(line.strip)
+    m && m[2].to_s.strip.empty?
+  end
+
+  def grammar_follows?(lines, idx, opener_idx)
+    j = idx + 1
+    j += 1 while j < lines.length && lines[j].strip.empty?
+    return false if j >= lines.length
+    kind = classify(lines[j], idx: j, opener_idx: opener_idx)
+    kind != :unknown && kind != :opener
   end
 
   # The painter. Returns the ANSI (or plain re-laid, when color: false) text,

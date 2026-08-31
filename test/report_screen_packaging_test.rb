@@ -57,6 +57,12 @@ class ReportScreenPackagingTest < Minitest::Test
     assert_includes core_lib, %("scripts/savepoint-note")
   end
 
+  # 317a S14 (B1): the painter lib ships, or report-screen --ansi and the
+  # MessageDisplay hook LoadError on every real install.
+  def test_core_files_registers_screen_paint
+    assert_includes core_lib, %("scripts/lib/screen_paint.rb")
+  end
+
   # --- row 84 [guard]: the script installs with its module ---------------------
 
   def test_core_files_registers_report_screen_lib

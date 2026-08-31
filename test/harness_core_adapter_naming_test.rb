@@ -18,6 +18,7 @@ class HarnessCoreAdapterNamingTest < Minitest::Test
   CORE = %w[
     scripts/lib/intent_screen.rb
     scripts/lib/intent_screen_ansi.rb
+    scripts/lib/screen_paint.rb
     scripts/intent-screen
   ].freeze
 
@@ -88,7 +89,7 @@ class HarnessCoreAdapterNamingTest < Minitest::Test
     # nearby comments (see the class-level comment and the one above this
     # call in `finalize`), so a plain `assert_includes` for the string
     # passes even after the argument is deleted from the actual call.
-    assert_match(/IntentScreenAnsi\.render\([^\n]*markdown_safe: true/,
+    assert_match(/ScreenPaint\.paint\([^\n]*markdown_safe: true/,
                  text_for("scripts/lib/message_display.rb"))
   end
 
