@@ -9,7 +9,7 @@
 # Usage:
 #   report-screen state <intent_dir> [--changed "<text>"] [--ansi]
 #   report-screen state --all <store_root> [--changed "<text>"] [--ansi]
-#   report-screen delivered <intent_dir> [--ansi]
+#   report-screen delivered <intent_dir> [--ansi] [--repo <dir>]
 #   report-screen delay <intent_dir> [--ansi]
 #
 # --ansi delegates to ScreenPaint (intent 317a, D1), the parser/re-layouter
@@ -23,6 +23,8 @@
 #   2 - usage error, or the path/store is not what the verb expects (one line
 #       on stderr, stdout empty)
 
+require "yaml"
+require "shellwords"
 require_relative "lib/report_screen"
 require_relative "lib/intent_screen"
 require_relative "lib/screen_paint"
@@ -32,15 +34,47 @@ def usage_abort(message)
   exit 2
 end
 
-# The one place allowed to shell out (D2/D20): resolves the nearest git tag
-# reachable from the repo this script lives in, so `render_delivered`'s
-# version field and the `ship` evidence row are never invented. The pure
-# module never reads git itself; this is injected as `tag_reader:`.
-def git_tag_reader(repo_root)
-  lambda do |_intent_dir|
-    return nil unless File.exist?(File.join(repo_root, ".git"))
-    tag = `git -C #{repo_root} describe --tags --abbrev=0 2>/dev/null`.strip
-    tag.empty? ? nil : tag
+# The one place allowed to shell out (D2/D20): resolves the tag that CONTAINS
+# the intent's merge commit, in the project's own repository, so the version
+# on the delivered screen is the release that merge shipped in. The
+# repository comes from --repo, else from projects.yml beside the store (the
+# installed layout, <home>/projects/<slug>/store/<id>), else the repository
+# this script lives in (the in-repo layout). No merge sha, no repository, or
+# no containing tag all answer nil, and the screen says "not recorded"
+# rather than guessing from HEAD (D14). The pure module never reads git.
+def resolve_repo(intent_dir, explicit_repo, script_dir)
+  candidates = []
+  candidates << File.expand_path(explicit_repo) if explicit_repo
+  if (m = intent_dir.match(%r{\A(.*)/projects/([^/]+)/store/[^/]+\z}))
+    home, slug = m[1], m[2]
+    projects_yml = File.join(home, "projects.yml")
+    if File.exist?(projects_yml)
+      data = begin
+        YAML.safe_load(File.read(projects_yml))
+      rescue StandardError
+        nil
+      end
+      entry = data.is_a?(Hash) && data["projects"].is_a?(Hash) ? data["projects"][slug] : nil
+      path = entry.is_a?(Hash) ? entry["path"].to_s : ""
+      candidates << File.expand_path(path) unless path.empty?
+    end
+  end
+  candidates << File.expand_path("..", script_dir)
+  candidates.find { |c| File.exist?(File.join(c, ".git")) }
+end
+
+def git_tag_reader(explicit_repo:, script_dir:)
+  lambda do |intent_dir|
+    sha = ReportScreen.merge_sha(intent_dir)
+    return nil unless sha
+    repo = resolve_repo(intent_dir, explicit_repo, script_dir)
+    return nil unless repo
+    tags = `git -C #{repo.shellescape} tag --contains #{sha.shellescape} 2>/dev/null`
+    versions = tags.lines.map(&:strip).reject(&:empty?).filter_map do |tag|
+      v = tag.sub(/\Av/, "")
+      Gem::Version.correct?(v) ? [Gem::Version.new(v), tag] : nil
+    end
+    versions.min_by(&:first)&.last
   end
 end
 
@@ -49,6 +83,7 @@ verb = args.shift
 changed = nil
 ansi = false
 template_path = nil
+repo_flag = nil
 positional = []
 
 while (arg = args.shift)
@@ -60,6 +95,8 @@ while (arg = args.shift)
     ansi = true
   when "--all"
     positional << "--all"
+  when "--repo"
+    repo_flag = args.shift or usage_abort("--repo needs a path")
   when "--template"
     template_path = args.shift or usage_abort("--template needs a path")
   else
@@ -104,8 +141,8 @@ when "delivered"
   usage_abort("usage: report-screen delivered <intent_dir>") unless target
   intent_dir = File.expand_path(target)
   usage_abort("#{intent_dir} is not an intent directory") unless IntentScreen.intent_dir?(intent_dir)
-  repo_root = File.expand_path("..", __dir__)
-  out = ReportScreen.render_delivered(intent_dir: intent_dir, tag_reader: git_tag_reader(repo_root))
+  out = ReportScreen.render_delivered(intent_dir: intent_dir,
+                                      tag_reader: git_tag_reader(explicit_repo: repo_flag, script_dir: __dir__))
   $stdout.write paint(out, ansi_enabled)
 when "delay"
   usage_abort("usage: report-screen delay <intent_dir>") unless target
