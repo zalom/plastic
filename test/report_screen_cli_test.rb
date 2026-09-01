@@ -111,29 +111,85 @@ class ReportScreenCliTest < Minitest::Test
     refute_match(/\e\[/, out)
   end
 
-  # --- fix 1 (post-execution review): the CLI must inject a REAL tag reader,
-  # not the module's no-op default, so `delivered`'s version reaches the title
-  # line and the ship row from production, not just from an injected test double.
+# --- fix (2026-09-01): the CLI's git tag reader ------------------------------
+# The installed copy lives in ~/.plastic/scripts, whose parent has a .git with
+# no tags, so the old reader (git describe next to the script) always answered
+# "not recorded"; in-repo it answered with the tag nearest HEAD, the wrong
+# version for every older intent. The reader must resolve the project's repo
+# and pick the lowest tag that CONTAINS the intent's merge commit.
 
-  def test_delivered_cli_injects_a_real_git_tag_reader
-    root = File.join(@home, "store_root")
-    dir = make_intent(root, id: "12")
-    File.write(File.join(dir, "spec.md"), "# Spec\n\n## Decisions\n- D1 x\n")
-    File.write(File.join(dir, "outcome.md"), "---\ndisposition: delivered\n---\n\n## Summary\nx\n")
-    File.write(File.join(dir, "savepoint.md"), "2026-08-30T12:00:00Z  What  12--slug.md\n2026-08-30T12:10:00Z  Done  delivered\n")
+def make_tagged_repo
+  repo = File.join(@home, "repo")
+  FileUtils.mkdir_p(repo)
+  env = { "GIT_AUTHOR_NAME" => "t", "GIT_AUTHOR_EMAIL" => "t@x", "GIT_COMMITTER_NAME" => "t", "GIT_COMMITTER_EMAIL" => "t@x" }
+  git = ->(*a) { out, err, st = Open3.capture3(env, "git", "-C", repo, *a); raise "git #{a.join(' ')}: #{err}" unless st.success?; out.strip }
+  git.call("init", "-q", "-b", "alpha")
+  git.call("config", "commit.gpgsign", "false")
+  File.write(File.join(repo, "a.txt"), "a\n")
+  git.call("add", "."); git.call("commit", "-q", "-m", "first")
+  first_sha = git.call("rev-parse", "--short", "HEAD")
+  git.call("tag", "v1.0.0-alpha.1")
+  File.write(File.join(repo, "b.txt"), "b\n")
+  git.call("add", "."); git.call("commit", "-q", "-m", "second")
+  git.call("tag", "v1.0.0-alpha.2")
+  [repo, first_sha]
+end
 
-    expected = `git -C #{REPO} describe --tags --abbrev=0 2>/dev/null`.strip
-    out, err, status = Open3.capture3("ruby", CLI, "delivered", dir)
-    assert_equal 0, status.exitstatus, err
-    version_segment = out.lines[1].to_s.split(" \u00b7 ").last.to_s.strip
-    if expected.empty?
-      assert_equal "not recorded", version_segment
-    else
-      refute_equal "not recorded", version_segment,
-                   "the CLI must inject a real tag reader, not the module's no-op default: #{out.lines[1]}"
-      assert_includes version_segment, expected.sub(/\Av/, "")
-    end
-  end
+def delivered_intent(root, outcome_body)
+  dir = make_intent(root, id: "12")
+  File.write(File.join(dir, "spec.md"), "# Spec\n\n## Decisions\n- D1 x\n")
+  File.write(File.join(dir, "savepoint.md"), "2026-08-30T12:00:00Z  What  12--slug.md\n2026-08-30T12:10:00Z  Done  delivered\n")
+  File.write(File.join(dir, "outcome.md"), "---\ndisposition: delivered\n---\n\n## Delivered\n#{outcome_body}\n")
+  dir
+end
+
+def version_segment(out)
+  out.lines[1].to_s.split(" · ").last.to_s.strip
+end
+
+def test_delivered_cli_picks_the_tag_containing_the_merge_not_the_tag_nearest_head
+  repo, first_sha = make_tagged_repo
+  dir = delivered_intent(File.join(@home, "store_root"), "- Merged into alpha at #{first_sha}.")
+  out, err, status = Open3.capture3("ruby", CLI, "delivered", dir, "--repo", repo)
+  assert_equal 0, status.exitstatus, err
+  assert_equal "v1.0.0-alpha.1", version_segment(out), out.lines[1]
+  ship = out.lines.find { |l| l.start_with?("| ship") }
+  assert_includes ship.to_s, "v1.0.0-alpha.1"
+end
+
+def test_delivered_cli_record_version_beats_git
+  repo, first_sha = make_tagged_repo
+  dir = delivered_intent(File.join(@home, "store_root"), "- Shipped as `v9.9.9`: merged into alpha as `#{first_sha}`.")
+  out, err, status = Open3.capture3("ruby", CLI, "delivered", dir, "--repo", repo)
+  assert_equal 0, status.exitstatus, err
+  assert_equal "v9.9.9", version_segment(out), out.lines[1]
+end
+
+def test_delivered_cli_never_guesses_from_head_without_a_merge_sha
+  repo, _first_sha = make_tagged_repo
+  dir = delivered_intent(File.join(@home, "store_root"), "- nothing shipped yet")
+  out, err, status = Open3.capture3("ruby", CLI, "delivered", dir, "--repo", repo)
+  assert_equal 0, status.exitstatus, err
+  assert_equal "not recorded", version_segment(out), out.lines[1]
+end
+
+def test_delivered_cli_resolves_the_repo_from_projects_yml_next_to_the_store
+  repo, first_sha = make_tagged_repo
+  home = File.join(@home, "plastic_home")
+  root = File.join(home, "projects", "demo")
+  dir = delivered_intent(root, "- Merged into alpha at #{first_sha}.")
+  File.write(File.join(home, "projects.yml"), "---\nprojects:\n  demo:\n    path: \"#{repo}\"\n")
+  out, err, status = Open3.capture3("ruby", CLI, "delivered", dir)
+  assert_equal 0, status.exitstatus, err
+  assert_equal "v1.0.0-alpha.1", version_segment(out), out.lines[1]
+end
+
+def test_delivered_cli_reads_not_recorded_when_no_repo_can_be_found
+  dir = delivered_intent(File.join(@home, "store_root"), "- Merged into alpha at 0123abc.")
+  out, err, status = Open3.capture3("ruby", CLI, "delivered", dir)
+  assert_equal 0, status.exitstatus, err
+  assert_equal "not recorded", version_segment(out), out.lines[1]
+end
 
   # --- row 80: template resolution, repo-shaped and install-shaped -------------
 
