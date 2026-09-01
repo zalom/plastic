@@ -256,82 +256,84 @@ class ReportScreenReadersTest < Minitest::Test
     assert_nil rows.find { |r| r[:kind] == "ship" }
   end
 
-# --- fix (2026-09-01): the shipped version comes from the RECORD first --------
-# The delivered screen printed "not recorded" for 317a1 although outcome.md says
-# "Shipped as `v2.0.0-alpha.10`". The record is the truth of delivery; git is the
-# fallback, never the first source (D14: never a guess).
+  # --- fix (2026-09-01): the shipped version comes from the RECORD first --------
+  # The delivered screen printed "not recorded" for 317a1 although outcome.md says
+  # "Shipped as `v2.0.0-alpha.10`". The record is the truth of delivery; git is the
+  # fallback, never the first source (D14: never a guess).
 
-def test_shipped_version_reads_the_record_before_the_tag_reader
-  write("outcome.md", <<~MD)
-    ---
-    disposition: delivered
-    ---
-    ## Delivered
-    - Shipped as `v2.0.0-alpha.10`: merged into `alpha` as `17cf928`, tagged, pushed.
-  MD
-  rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { nil })
-  ship = rows.find { |r| r[:kind] == "ship" }
-  refute_nil ship
-  assert_includes ship[:what], "17cf928"
-  assert_includes ship[:what], "v2.0.0-alpha.10"
-  refute_includes ship[:what], "not recorded"
-end
-
-def test_shipped_version_parses_every_phrasing_the_real_outcomes_use
-  {
-    "Shipped as `v2.0.0-alpha.10`: merged into alpha" => "2.0.0-alpha.10",
-    "shipped as 2.0.0-alpha.7 (merge bb32ab8)" => "2.0.0-alpha.7",
-    "Shipped in v2.0.0-alpha.8 on 2026-08-31" => "2.0.0-alpha.8",
-    "Merged to `alpha` at **06bd20d**, released as **v2.0.0-alpha.5** (`e21809e`)." => "2.0.0-alpha.5",
-    "Merged --no-ff into alpha (604b87f); released v2.0.0-alpha.9" => "2.0.0-alpha.9",
-    "Shipped as 2.0.0-alpha.6" => "2.0.0-alpha.6",
-    "Tagged v1.14.1 and published" => "1.14.1",
-  }.each do |line, expected|
-    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- #{line}\n")
-    assert_equal expected, ReportScreen.shipped_version(@dir), "phrase not parsed: #{line.inspect}"
+  def test_shipped_version_reads_the_record_before_the_tag_reader
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+      ## Delivered
+      - Shipped as `v2.0.0-alpha.10`: merged into `alpha` as `17cf928`, tagged, pushed.
+    MD
+    rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { nil })
+    ship = rows.find { |r| r[:kind] == "ship" }
+    refute_nil ship
+    assert_includes ship[:what], "17cf928"
+    assert_includes ship[:what], "v2.0.0-alpha.10"
+    refute_includes ship[:what], "not recorded"
   end
-end
 
-def test_shipped_version_record_wins_over_the_tag_reader
-  write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- shipped as 2.0.0-alpha.7 (merge bb32ab8)\n")
-  rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { "2.0.0-alpha.9" })
-  ship = rows.find { |r| r[:kind] == "ship" }
-  assert_includes ship[:what], "v2.0.0-alpha.7"
-  refute_includes ship[:what], "alpha.9"
-end
+  def test_shipped_version_parses_every_phrasing_the_real_outcomes_use
+    {
+      "Shipped as `v2.0.0-alpha.10`: merged into alpha" => "2.0.0-alpha.10",
+      "shipped as 2.0.0-alpha.7 (merge bb32ab8)" => "2.0.0-alpha.7",
+      "Shipped in v2.0.0-alpha.8 on 2026-08-31" => "2.0.0-alpha.8",
+      "Merged to `alpha` at **06bd20d**, released as **v2.0.0-alpha.5** (`e21809e`)." => "2.0.0-alpha.5",
+      "Merged --no-ff into alpha (604b87f); released v2.0.0-alpha.9" => "2.0.0-alpha.9",
+      "Shipped as 2.0.0-alpha.6" => "2.0.0-alpha.6",
+      "Tagged v1.14.1 and published" => "1.14.1",
+      "Delivered in v2.0.0-alpha.4. On continue, the screen prints" => "2.0.0-alpha.4",
+      "Release v2.0.0-alpha.4 (b8bfadb): tag, GitHub Latest, npm alpha" => "2.0.0-alpha.4",
+    }.each do |line, expected|
+      write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- #{line}\n")
+      assert_equal expected, ReportScreen.shipped_version(@dir), "phrase not parsed: #{line.inspect}"
+    end
+  end
 
-def test_shipped_version_falls_back_to_the_tag_reader_when_the_record_is_silent
-  write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- Merged into alpha at 06bd20d.\n")
-  rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { "2.0.0-alpha.3" })
-  ship = rows.find { |r| r[:kind] == "ship" }
-  assert_includes ship[:what], "06bd20d"
-  assert_includes ship[:what], "v2.0.0-alpha.3"
-end
+  def test_shipped_version_record_wins_over_the_tag_reader
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- shipped as 2.0.0-alpha.7 (merge bb32ab8)\n")
+    rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { "2.0.0-alpha.9" })
+    ship = rows.find { |r| r[:kind] == "ship" }
+    assert_includes ship[:what], "v2.0.0-alpha.7"
+    refute_includes ship[:what], "alpha.9"
+  end
 
-def test_shipped_version_ignores_version_strings_without_a_ship_verb
-  write("outcome.md", "---\ndisposition: delivered\n---\n\n## Verification\n- Updated the install from 1.14.1 to the alpha channel; merged at 06bd20d.\n")
-  assert_nil ReportScreen.shipped_version(@dir)
-  rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { nil })
-  ship = rows.find { |r| r[:kind] == "ship" }
-  assert_includes ship[:what], "not recorded"
-end
+  def test_shipped_version_falls_back_to_the_tag_reader_when_the_record_is_silent
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- Merged into alpha at 06bd20d.\n")
+    rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { "2.0.0-alpha.3" })
+    ship = rows.find { |r| r[:kind] == "ship" }
+    assert_includes ship[:what], "06bd20d"
+    assert_includes ship[:what], "v2.0.0-alpha.3"
+  end
 
-def test_merge_sha_reads_the_merge_line_and_is_nil_without_one
-  write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- Shipped as `v2.0.0-alpha.10`: merged into `alpha` as `17cf928`.\n")
-  assert_equal "17cf928", ReportScreen.merge_sha(@dir)
-  write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- nothing shipped yet\n")
-  assert_nil ReportScreen.merge_sha(@dir)
-end
+  def test_shipped_version_ignores_version_strings_without_a_ship_verb
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Verification\n- Updated the install from 1.14.1 to the alpha channel; merged at 06bd20d.\n")
+    assert_nil ReportScreen.shipped_version(@dir)
+    rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { nil })
+    ship = rows.find { |r| r[:kind] == "ship" }
+    assert_includes ship[:what], "not recorded"
+  end
 
-def test_render_delivered_header_carries_the_record_version
-  base_intent_file
-  write("spec.md", "# Spec\n\n## Decisions\n- D1 x\n")
-  write("savepoint.md", "2026-08-30T12:00:00Z  What  12--slug.md\n2026-08-30T12:10:00Z  Done  delivered\n")
-  write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- Shipped as `v2.0.0-alpha.10`: merged into `alpha` as `17cf928`.\n")
-  out = ReportScreen.render_delivered(intent_dir: @dir, tag_reader: ->(_dir) { nil })
-  assert_includes out.lines[1], "v2.0.0-alpha.10"
-  refute_includes out.lines[1], "not recorded"
-end
+  def test_merge_sha_reads_the_merge_line_and_is_nil_without_one
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- Shipped as `v2.0.0-alpha.10`: merged into `alpha` as `17cf928`.\n")
+    assert_equal "17cf928", ReportScreen.merge_sha(@dir)
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- nothing shipped yet\n")
+    assert_nil ReportScreen.merge_sha(@dir)
+  end
+
+  def test_render_delivered_header_carries_the_record_version
+    base_intent_file
+    write("spec.md", "# Spec\n\n## Decisions\n- D1 x\n")
+    write("savepoint.md", "2026-08-30T12:00:00Z  What  12--slug.md\n2026-08-30T12:10:00Z  Done  delivered\n")
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- Shipped as `v2.0.0-alpha.10`: merged into `alpha` as `17cf928`.\n")
+    out = ReportScreen.render_delivered(intent_dir: @dir, tag_reader: ->(_dir) { nil })
+    assert_includes out.lines[1], "v2.0.0-alpha.10"
+    assert_equal "v2.0.0-alpha.10", out.lines[1].split(" · ").last.strip
+  end
 
   # --- row 31: evidence_rows - doctor --------------------------------------------
 

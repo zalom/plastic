@@ -303,10 +303,33 @@ module ReportScreen
     { kind: "red", what: "#{sha} proven test-only and red", source: "outcome.md ## Verification" }
   end
 
-  def self.ship_row(text, intent_dir, tag_reader)
-    line = text.to_s.lines.find { |l| l =~ /\bmerge(d)?\b/i && l =~ /\b[0-9a-f]{7,40}\b/ }
-    sha = line && line.match(/\b([0-9a-f]{7,40})\b/)[1]
-    version = tag_reader.call(intent_dir)
+  # Fix 2026-09-01: the record is the truth of delivery (D14: never a guess).
+  # The shipped version comes from outcome.md's own ship line first ("Shipped
+  # as `v2.0.0-alpha.10`", "released as **v2.0.0-alpha.5**", "released
+  # v2.0.0-alpha.9", "Tagged v1.14.1", "Delivered in", "Release v"); the injected tag reader (git) is the
+  # fallback when the record is silent. A bare version with no ship verb
+  # ("from 1.14.1") is not a shipped version.
+  SHIP_VERSION_RE = /\b(?:shipped|released?|delivered|tagged)\b(?:\s+(?:as|in))?[\s`*]*v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?)/i.freeze
+
+  def self.shipped_version(intent_dir)
+    text = outcome_text(intent_dir)
+    return nil unless text
+    m = text.match(SHIP_VERSION_RE)
+    m && m[1]
+  end
+
+  # The merge commit named on outcome.md's merge line, or nil. The CLI's tag
+  # reader asks git which tag contains it; the ship row prints it.
+  def self.merge_sha(intent_dir)
+    text = outcome_text(intent_dir)
+    return nil unless text
+    line = text.lines.find { |l| l =~ /\bmerge(d)?\b/i && l =~ /\b[0-9a-f]{7,40}\b/ }
+    line && line.match(/\b([0-9a-f]{7,40})\b/)[1]
+  end
+
+  def self.ship_row(_text, intent_dir, tag_reader)
+    sha = merge_sha(intent_dir)
+    version = shipped_version(intent_dir) || tag_reader.call(intent_dir)
     return nil if sha.nil? && (version.nil? || version.to_s.empty?)
     ver_text = version && !version.to_s.empty? ? "v#{version.to_s.sub(/\Av/, '')}" : NOT_RECORDED
     sha_text = sha || NOT_RECORDED
@@ -524,7 +547,7 @@ module ReportScreen
     ts = delivered_timestamp(intent_dir)
     m = mode(intent_dir)
     dur = duration(intent_dir)
-    version = tag_reader.call(intent_dir)
+    version = shipped_version(intent_dir) || tag_reader.call(intent_dir)
     ver_text = version && !version.to_s.empty? ? "v#{version.to_s.sub(/\Av/, '')}" : NOT_RECORDED
 
     lines = []

@@ -204,7 +204,8 @@ Then How.
 5. Print `ruby ~/.plastic/scripts/report-screen state <intent_dir> --changed "How written, plan review next"`
    (D15; see `references/human-report-contract.md` for the full trigger list). This replaces
    the old prose State/Risk/Call briefing at this boundary. In auto mode the screen informs;
-   it does not wait.
+   it does not wait. The screen opens the reply with nothing before it and no code fence: the
+   `MessageDisplay` hook paints only a reply whose first characters are the screen marker.
 
 Then Exec.
 
@@ -276,7 +277,8 @@ Read `../plastic-conventions/references/completion-and-done.md` for what "intent
    disarm (`/plastic-doctor check the lock status`); 6 means the structure check refused. Never
    leave an orphaned worktree; run `git worktree prune` on a stale reference.
 6. Print `ruby ~/.plastic/scripts/report-screen delivered <intent_dir>` once (D15): this is the
-   owner report at End, replacing the old prose Done briefing.
+   owner report at End, replacing the old prose Done briefing. Print it as the first thing in
+   the reply, nothing before it and no code fence, or the hook cannot paint it.
 
 ## Error Handling
 
