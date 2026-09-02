@@ -2,8 +2,8 @@
 # plastic-hook-version: 4.0.0
 # StatusLine hook - Plastic owns the full statusline (no chaining).
 # Renders: {model} - ctx {pct}% ({used}/{size}) - 5h {p}% - 7d {p}% - ${cost}
-#          - claudish {n} rw / {tok} - Plastic {version}[ -> {next}] - {path}
-# Every segment but claudish and the Plastic version comes from the stdin payload.
+#          - Plastic {version}[ -> {next}] - {path}
+# Every segment but the Plastic version comes from the stdin payload.
 # Pure bash (macOS 3.2 compatible). No ruby, no jq. Reads stdin once; small file reads
 # only. The stdin JSON is walked in a single awk pass (below); nothing else in this
 # script forks a second process per field, which is what keeps a render cheap.
@@ -17,7 +17,6 @@ C_OK=''                             # default   - meter below 70%
 C_WARN=$'\033[33m'                  # yellow    - meter at 70% and above
 C_CRIT=$'\033[38;2;231;76;60m'      # red       - meter at 90% and above
 C_COST=$'\033[37m'                  # white     - session cost
-C_CLAUDISH=$'\033[38;2;249;140;30m' # orange    - claudish rewrites
 C_VER=$'\033[37m'                   # white     - "Plastic {version}" and update arrow
 C_NEXT=$'\033[33m'                  # yellow    - next version
 C_PATH=$'\033[38;2;128;134;144m'    # gray      - path (matches dim UI text)
@@ -309,40 +308,18 @@ if [ -n "$COST_RAW" ]; then
   [ -n "$COST_FMT" ] && [ "$COST_FMT" != "0.00" ] && COST_SEG="${C_COST}\$${COST_FMT}${RST}"
 fi
 
-# --- claudish rewrites for THIS session (fork ledger, optional) ---
-# Tab separated, one call per line; column 11 is the session id. Rows written
-# before that column existed have 9 or 10 fields and never match, so an old
-# ledger renders no segment instead of a wrong one.
-CL_SEG=""
-CL_LOG="${CLAUDISH_LOCAL_DIR:-$HOME/.claude/claudish-local}/usage.log"
-if [ -n "$SID" ] && [ -f "$CL_LOG" ]; then
-  CL=$(awk -F'\t' -v sid="$SID" '
-    NF >= 11 && $11 == sid { n++; t += $5 + $6 }
-    END {
-      if (n > 0) {
-        if (t >= 1000) {
-          s = sprintf("%.1f", t / 1000); sub(/\.0$/, "", s); printf "%d %sk", n, s
-        } else {
-          printf "%d %d", n, t
-        }
-      }
-    }' "$CL_LOG" 2>/dev/null)
-  [ -n "$CL" ] && CL_SEG="${C_CLAUDISH}claudish ${CL%% *} rw / ${CL#* }${RST}"
-fi
-
 # --- Assemble segments in order, joined by " . " ---
 PARTS=""
 add() { [ -z "$1" ] && return; if [ -z "$PARTS" ]; then PARTS="$1"; else PARTS="$PARTS$SEP$1"; fi; }
 
-# Order: identity first (model), then this session's spend (context, meters, cost,
-# rewrites), then the volatile-length values last (version, path) so the line does
+# Order: identity first (model), then this session's spend (context, meters, cost),
+# then the volatile-length values last (version, path) so the line does
 # not visually jump as they change.
 [ -n "$MODEL" ] && add "${C_MODEL}${MODEL}${RST}"
 add "$CTX_SEG"
 add "$M5"
 add "$M7"
 add "$COST_SEG"
-add "$CL_SEG"
 if [ -n "$VERSION" ]; then
   vseg="${C_VER}Plastic ${VERSION}${RST}"
   [ -n "$NEXT" ] && vseg="${vseg}${C_VER} "$'\342\206\222'" ${RST}${C_NEXT}${NEXT}${RST}"
