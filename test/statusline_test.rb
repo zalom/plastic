@@ -7,9 +7,8 @@ require "json"
 # Hermetic tests for hooks/statusline (intent 279: the line reports what this
 # session is spending, not which intent it is on). The repo script runs as a
 # subprocess with crafted stdin JSON and an isolated HOME (Dir.mktmpdir), so nothing
-# touches the real store or /tmp
-# ledger. Pure-bash dependency injection through the environment: no
-# monkeypatching, no eval.
+# touches the real store or /tmp. Pure-bash dependency injection through the
+# environment: no monkeypatching, no eval.
 class StatuslineTest < Minitest::Test
   STATUSLINE = File.expand_path("../hooks/statusline", __dir__)
   YELLOW = "\e[33m"
