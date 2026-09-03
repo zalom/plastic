@@ -220,6 +220,8 @@ module SkillCensus
       :calls_main, :calls_agent, :other_skills,
       :loads, :attributed, :mentions, :scripts, :agents,
       :transcript_typed, :self_generated, :corroboration,
+      :self_generated_calls, :self_generated_loads,
+      :self_generated_attributed, :self_generated_mentions,
       keyword_init: true
     )
 
@@ -242,9 +244,12 @@ module SkillCensus
       {
         files_top: 0, files_subagent: 0, record_count: 0, unparsable_lines: 0,
         first_seen: nil, last_seen: nil,
-        calls_main: [], calls_agent: [], other_skills: Hash.new(0),
+        calls_main: [], calls_agent: [],
+        other_skills: Hash.new { |h, k| h[k] = { calls: 0, loads: 0, attributed: 0 } },
         loads: [], attributed: Hash.new(0), mentions: [], scripts: Hash.new(0), agents: Hash.new(0),
         transcript_typed: [], self_generated: [],
+        self_generated_calls: 0, self_generated_loads: 0,
+        self_generated_attributed: 0, self_generated_mentions: 0,
         seen_tool_use_ids: Set.new, seen_uuids: Set.new,
         corroboration_by_id: Hash.new { |h, k| h[k] = {} },
       }
@@ -280,11 +285,17 @@ module SkillCensus
       record_is_subagent = file_is_subagent || record["isSidechain"] == true || record.key?("agentId")
 
       if (attribution = record["attributionSkill"])
-        state[:attributed][attribution] += 1 unless after_cutoff
+        if after_cutoff
+          state[:self_generated_attributed] += 1
+        elsif plastic_name?(attribution)
+          state[:attributed][attribution] += 1
+        else
+          state[:other_skills][attribution][:attributed] += 1
+        end
       end
 
-      classify_tool_use(record, path, date, record_is_subagent, state) if record["type"] == "assistant"
-      classify_tool_result(record, state)
+      classify_tool_use(record, path, date, record_is_subagent, after_cutoff, state) if record["type"] == "assistant"
+      classify_tool_result(record, after_cutoff, state)
 
       return unless record["type"] == "user"
 
@@ -298,12 +309,20 @@ module SkillCensus
       state[:last_seen] = date if state[:last_seen].nil? || date > state[:last_seen]
     end
 
-    def classify_tool_use(record, path, date, record_is_subagent, state)
+    def classify_tool_use(record, path, date, record_is_subagent, after_cutoff, state)
       each_content_block(record) do |block|
         next unless block.is_a?(Hash) && block["type"] == "tool_use" && block["name"] == "Skill"
 
         raw = block.dig("input", "skill").to_s
         next if raw.empty?
+
+        # A post-cutoff block is counted only in the self-generated bucket and
+        # never touches seen_tool_use_ids, so it cannot consume an id a
+        # pre-cutoff block would later need (D16).
+        if after_cutoff
+          state[:self_generated_calls] += 1
+          next
+        end
 
         id = block["id"]
         next if id && !state[:seen_tool_use_ids].add?(id)
@@ -316,12 +335,14 @@ module SkillCensus
         if plastic_name?(name)
           (record_is_subagent ? state[:calls_agent] : state[:calls_main]) << call
         else
-          state[:other_skills][name] += 1
+          state[:other_skills][name][:calls] += 1
         end
       end
     end
 
-    def classify_tool_result(record, state)
+    def classify_tool_result(record, after_cutoff, state)
+      return if after_cutoff
+
       content = message_content(record)
       return unless content.is_a?(Array)
 
@@ -347,7 +368,13 @@ module SkillCensus
       return if text.nil? || text.empty?
 
       if (load_name = load_name_from(text))
-        state[:loads] << Event.new(name: load_name, date: date, file: path)
+        if after_cutoff
+          state[:self_generated_loads] += 1
+        elsif plastic_name?(load_name)
+          state[:loads] << Event.new(name: load_name, date: date, file: path)
+        else
+          state[:other_skills][load_name][:loads] += 1
+        end
         remainder = text.sub(/\A.*#{Regexp.escape(LOAD_PREFIX)}[^\n]*\n?/m, "")
         scan_occurrences(remainder, path, date, after_cutoff, state)
         return
@@ -366,9 +393,13 @@ module SkillCensus
     end
 
     def scan_occurrences(text, path, date, after_cutoff, state)
-      return if after_cutoff
+      matches = text.scan(MENTION_SCAN_RE)
+      if after_cutoff
+        state[:self_generated_mentions] += matches.length
+        return
+      end
 
-      text.scan(MENTION_SCAN_RE).each do |raw|
+      matches.each do |raw|
         name = SkillCensus.normalize(raw)
         if SCRIPTS.include?(name)
           state[:scripts][name] += 1
@@ -397,7 +428,10 @@ module SkillCensus
         loads: state[:loads], attributed: state[:attributed], mentions: state[:mentions],
         scripts: state[:scripts], agents: state[:agents],
         transcript_typed: state[:transcript_typed], self_generated: state[:self_generated],
-        corroboration: Corroboration.new(matched: matched, disagreements: disagreements)
+        corroboration: Corroboration.new(matched: matched, disagreements: disagreements),
+        self_generated_calls: state[:self_generated_calls], self_generated_loads: state[:self_generated_loads],
+        self_generated_attributed: state[:self_generated_attributed],
+        self_generated_mentions: state[:self_generated_mentions]
       )
     end
 
@@ -645,9 +679,11 @@ module SkillCensus
 
       lines << "## Other skills"
       lines << ""
-      lines << "| skill | calls |"
-      lines << "| --- | --- |"
-      transcript.other_skills.sort.each { |name, count| lines << "| #{name} | #{count} |" }
+      lines << "| skill | calls | loads | attributed |"
+      lines << "| --- | --- | --- | --- |"
+      transcript.other_skills.sort.each do |name, counts|
+        lines << "| #{name} | #{counts[:calls]} | #{counts[:loads]} | #{counts[:attributed]} |"
+      end
       lines << ""
 
       lines << "## Scripts"
@@ -669,6 +705,9 @@ module SkillCensus
       lines << "| raw name | folds to | observed |"
       lines << "| --- | --- | --- |"
       built.map_coverage.each { |entry| lines << "| #{entry[:raw]} | #{entry[:target]} | #{entry[:observed]} |" }
+      lines << ""
+      lines << "Observed sums typed, calls (main plus agent), loads, and attributed occurrences for " \
+      "that raw name; it is not a single dimension."
       lines << ""
       lines
     end
@@ -697,12 +736,22 @@ module SkillCensus
 
     def self_generated_section(built)
       history_self = built.history.self_generated
-      transcript_self = built.transcript.self_generated
+      transcript = built.transcript
       [
         "## Self-generated",
         "",
         "History records excluded by the cutoff: #{history_self.length}.",
-        "Transcript records excluded by the cutoff: #{transcript_self.length}.",
+        "",
+        "Transcript records excluded by the cutoff, per dimension (D16: the cutoff gates " \
+        "every count, not only typed commands):",
+        "",
+        "| dimension | excluded |",
+        "| --- | --- |",
+        "| typed | #{transcript.self_generated.length} |",
+        "| mentions | #{transcript.self_generated_mentions.to_i} |",
+        "| calls | #{transcript.self_generated_calls.to_i} |",
+        "| loads | #{transcript.self_generated_loads.to_i} |",
+        "| attributed | #{transcript.self_generated_attributed.to_i} |",
         "",
       ]
     end
@@ -751,6 +800,10 @@ module SkillCensus
           "agents" => built.transcript.agents,
           "transcript_typed" => built.transcript.transcript_typed.length,
           "self_generated" => built.transcript.self_generated.length,
+          "self_generated_mentions" => built.transcript.self_generated_mentions.to_i,
+          "self_generated_calls" => built.transcript.self_generated_calls.to_i,
+          "self_generated_loads" => built.transcript.self_generated_loads.to_i,
+          "self_generated_attributed" => built.transcript.self_generated_attributed.to_i,
           "corroboration_matched" => built.transcript.corroboration.matched,
           "corroboration_disagreements" => built.transcript.corroboration.disagreements,
         },

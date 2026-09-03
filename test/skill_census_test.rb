@@ -389,8 +389,8 @@ class SkillCensusCallsTest < Minitest::Test
 
       result = SkillCensus::TranscriptScanner.new(dir, cutoff: "2026-09-02").scan
 
-      assert_equal 1, result.other_skills["writing-style"]
-      assert_equal 1, result.other_skills["claudish-to-english:claudish"]
+      assert_equal 1, result.other_skills["writing-style"][:calls]
+      assert_equal 1, result.other_skills["claudish-to-english:claudish"][:calls]
       assert_empty result.calls_main
     end
   end
@@ -503,6 +503,82 @@ class SkillCensusLoadsAttributionMentionsTest < Minitest::Test
 
       assert_equal 1, result.record_count
       assert_equal 1, result.calls_main.length
+    end
+  end
+
+  # D16 leaked on three dimensions (lead, post-exec review 2026-09-03): a
+  # post-cutoff Skill call, load, and tool_result corroboration all still
+  # landed in the live counts. This proves the fix.
+  def test_cutoff_excludes_calls_loads_and_corroboration
+    Dir.mktmpdir("skill-census-s5") do |dir|
+      write_jsonl(dir, "proj/s1.jsonl", [
+        { "type" => "assistant", "uuid" => "a1", "timestamp" => "2026-09-02T00:00:00Z",
+          "message" => { "role" => "assistant", "content" => [{ "type" => "tool_use", "id" => "post1", "name" => "Skill", "input" => { "skill" => "plastic-auto" } }] } },
+        { "type" => "user", "uuid" => "u1", "timestamp" => "2026-09-02T00:01:00Z",
+          "message" => { "role" => "user", "content" => "Base directory for this skill: /some/path/plastic-auto" } },
+        { "type" => "user", "uuid" => "u2", "timestamp" => "2026-09-02T00:02:00Z",
+          "toolUseResult" => { "success" => true, "commandName" => "plastic-auto" },
+          "message" => { "role" => "user", "content" => [{ "type" => "tool_result", "tool_use_id" => "post1", "content" => "done" }] } },
+      ])
+
+      result = SkillCensus::TranscriptScanner.new(dir, cutoff: "2026-09-02").scan
+
+      assert_empty result.calls_main
+      assert_empty result.calls_agent
+      assert_empty result.loads
+      assert_equal 0, result.corroboration.matched
+      assert_equal 1, result.self_generated_calls
+      assert_equal 1, result.self_generated_loads
+    end
+  end
+
+  def test_self_generated_counts_are_per_dimension
+    Dir.mktmpdir("skill-census-s5") do |dir|
+      write_jsonl(dir, "proj/s1.jsonl", [
+        { "type" => "assistant", "uuid" => "a1", "timestamp" => "2026-09-02T00:00:00Z",
+          "message" => { "role" => "assistant", "content" => [{ "type" => "tool_use", "id" => "post1", "name" => "Skill", "input" => { "skill" => "plastic-auto" } }] } },
+        { "type" => "user", "uuid" => "u1", "timestamp" => "2026-09-02T00:01:00Z",
+          "message" => { "role" => "user", "content" => "Base directory for this skill: /some/path/plastic-auto" } },
+        { "type" => "assistant", "uuid" => "a2", "timestamp" => "2026-09-02T00:02:00Z",
+          "attributionSkill" => "plastic-auto",
+          "message" => { "role" => "assistant", "content" => [{ "type" => "text", "text" => "working" }] } },
+        { "type" => "user", "uuid" => "u2", "timestamp" => "2026-09-02T00:03:00Z",
+          "message" => { "role" => "user", "content" => "<command-message>plastic-auto</command-message>\n<command-name>/plastic-auto</command-name>" } },
+      ])
+
+      roster = SkillCensus::Roster.load(FIXTURE_SKILLS)
+      history_scan = SkillCensus::HistoryScanner.new(FIXTURE_HISTORY, cutoff: "2026-09-02").scan
+      transcript_scan = SkillCensus::TranscriptScanner.new(dir, cutoff: "2026-09-02").scan
+      built = SkillCensus::Tally.new(history_scan, transcript_scan, roster).build
+
+      md = SkillCensus::Report.markdown(built, cutoff: "2026-09-02")
+
+      assert_includes md, "| typed | 1 |"
+      assert_includes md, "| calls | 1 |"
+      assert_includes md, "| loads | 1 |"
+      assert_includes md, "| attributed | 1 |"
+    end
+  end
+
+  def test_non_plastic_loads_and_attribution_go_to_other_skills
+    Dir.mktmpdir("skill-census-s5") do |dir|
+      write_jsonl(dir, "proj/s1.jsonl", [
+        { "type" => "user", "uuid" => "u1", "timestamp" => "2026-07-01T00:00:00Z",
+          "message" => { "role" => "user", "content" => "Base directory for this skill: /some/path/writing-style" } },
+        { "type" => "assistant", "uuid" => "a1", "timestamp" => "2026-07-01T00:01:00Z",
+          "attributionSkill" => "writing-style",
+          "message" => { "role" => "assistant", "content" => [{ "type" => "text", "text" => "working" }] } },
+      ])
+
+      roster = SkillCensus::Roster.load(FIXTURE_SKILLS)
+      history_scan = SkillCensus::HistoryScanner.new(FIXTURE_HISTORY, cutoff: "2026-09-02").scan
+      transcript_scan = SkillCensus::TranscriptScanner.new(dir, cutoff: "2026-09-02").scan
+      built = SkillCensus::Tally.new(history_scan, transcript_scan, roster).build
+
+      assert_equal 0, built.unmapped.loads
+      assert_equal 0, built.unmapped.attributed
+      assert_equal 1, transcript_scan.other_skills["writing-style"][:loads]
+      assert_equal 1, transcript_scan.other_skills["writing-style"][:attributed]
     end
   end
 end
