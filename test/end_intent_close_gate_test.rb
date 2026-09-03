@@ -172,4 +172,124 @@ class EndIntentCloseGateTest < Minitest::Test
 
   # --- S9c/S9d live in end_intent_test.rb: abandoned and backfill-only closes
   # keep exiting 0; those existing tests are this gate's exemption proof. ---
+
+  # --- intent 322 S4: the gate keeps firing on a hollow record after the
+  # Proven-by resolver changes, through the resolver alone (end-intent itself
+  # is never edited) ------------------------------------------------------
+
+  HEADINGS_WITHOUT_TABLES_ACTION = <<~MD.freeze
+    # ACTION_1
+
+    ## S1 design pins
+
+    Prose only, no table.
+
+    ## S2 notes
+
+    Prose only, no table.
+  MD
+
+  HEADINGS_WITHOUT_TABLES_OUTCOME = <<~MD.freeze
+    ---
+    disposition: delivered
+    ---
+    # Outcome: Gate demo
+
+    ## Summary
+    shipped
+
+    ## Delivered
+    | Row | What |
+    | --- | --- |
+    | S1 | the first thing |
+    | S2 | the second thing |
+
+    ## Verification
+    - suite green
+
+    ## Needs you
+    None
+
+    ## Follow-ups
+    None
+  MD
+
+  def test_headings_without_tables_still_refuse_with_exit_7
+    build_intent(outcome: HEADINGS_WITHOUT_TABLES_OUTCOME, action: HEADINGS_WITHOUT_TABLES_ACTION)
+    out, status = run_end_intent
+    assert_equal 7, status, out
+    assert_match(/hollow/, out)
+    assert_match(/every Proven-by cell renders not recorded/, out)
+  end
+
+  ROW_CELL_FALLBACK_ACTION = <<~MD.freeze
+    # ACTION_1
+
+    ## S1 design pins
+
+    Prose only, no table.
+
+    ## S2 notes
+
+    Prose only, no table.
+
+    ## How to run this action
+
+    | Label | Step |
+    | --- | --- |
+    | S1 | write tests |
+    | S2 | implement |
+  MD
+
+  def test_row_cell_fallback_does_not_pass_the_close_gate
+    build_intent(outcome: HEADINGS_WITHOUT_TABLES_OUTCOME, action: ROW_CELL_FALLBACK_ACTION)
+    out, status = run_end_intent
+    assert_equal 7, status, out
+    assert_match(/hollow/, out)
+    assert_match(/every Proven-by cell renders not recorded/, out)
+  end
+
+  PRE_MATRIX_HEADING_ACTION = <<~MD.freeze
+    # ACTION_1
+
+    ## S1 design pins
+
+    Prose only, no table.
+
+    ### S1 - the real matrix
+
+    | Row | Failure mode | Test |
+    | --- | --- | --- |
+    | S1a | it breaks | a test |
+  MD
+
+  PRE_MATRIX_HEADING_OUTCOME = <<~MD.freeze
+    ---
+    disposition: delivered
+    ---
+    # Outcome: Gate demo
+
+    ## Summary
+    shipped
+
+    ## Delivered
+    | Row | What |
+    | --- | --- |
+    | S1 | the thing, delivered |
+
+    ## Verification
+    - suite green
+
+    ## Needs you
+    None
+
+    ## Follow-ups
+    None
+  MD
+
+  def test_pre_matrix_heading_close_passes_the_gate
+    build_intent(outcome: PRE_MATRIX_HEADING_OUTCOME, action: PRE_MATRIX_HEADING_ACTION)
+    out, status = run_end_intent
+    assert_equal 0, status, out
+  end
 end

@@ -91,4 +91,21 @@ class ReportScreenSkillContractTest < Minitest::Test
     assert_includes text, "action-file heading"
   end
 
+  # --- intent 322 S5: the contract names the owner-of-the-table rule ---------
+
+  def test_outcome_template_names_the_owning_heading
+    text = read("templates/outcome.md")
+    assert_includes text, "owns the matrix table"
+  end
+
+  def test_executing_skill_names_the_owning_heading
+    text = read("skills/intent-executing/SKILL.md")
+    assert_includes text, "owns the matrix table"
+  end
+
+  def test_ending_skill_names_the_owning_heading
+    text = read("skills/intent-ending/SKILL.md")
+    assert_includes text, "owns the matrix table"
+  end
+
 end
