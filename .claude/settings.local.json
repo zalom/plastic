@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/Users/zlatko/.claude/plugins/cache/plastic/plastic/1.0.0-alpha.4/scripts/folgezettel-id *)"
+    ]
+  },
+  "worktree": {
+    "bgIsolation": "none"
+  },
+  "enabledMcpjsonServers": [
+    "enola"
+  ]
+}
