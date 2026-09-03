@@ -213,7 +213,7 @@ class SkillCensusHistoryTest < Minitest::Test
     typed_names = result.typed.map(&:name)
 
     assert_equal 2, typed_names.count("plastic-doctor")
-    assert_equal 1, typed_names.count("plastic-continuing")
+    assert_equal 1, typed_names.count("plastic-continuing") # plastic-continuing retired in 2.0 (intent 304)
   end
 
   def test_colon_namespace_folds_onto_hyphen_form
@@ -534,26 +534,27 @@ class SkillCensusTallyTest < Minitest::Test
   end
 
   def test_absorbed_name_folds_into_successor
-    built = SkillCensus::Tally.new(history_scan(["plastic-intent-brainstorming"]), transcript_scan, roster).build
+    built = SkillCensus::Tally.new(history_scan(["plastic-intent-brainstorming"]), transcript_scan, roster).build # plastic-intent-brainstorming retired in 2.0
 
     speccing = built.skills.find { |s| s.name == "plastic-intent-speccing" }
     assert_equal 1, speccing.typed
-    assert_equal 1, speccing.folded_from["plastic-intent-brainstorming"]
+    assert_equal 1, speccing.folded_from["plastic-intent-brainstorming"] # plastic-intent-brainstorming retired in 2.0
   end
 
   def test_row_shows_folded_from_names_and_their_counts
+    roster_with_target = roster + [SkillCensus::Roster::Skill.new(name: "plastic-intent-continuing", user_invocable: true)]
     built = SkillCensus::Tally.new(
-      history_scan(["plastic-continuing"] * 5 + ["plastic-intent-continuing"]),
-      transcript_scan, roster
+      history_scan(["plastic-continuing"] * 5 + ["plastic-intent-continuing"]), # plastic-continuing retired in 2.0
+      transcript_scan, roster_with_target
     ).build
 
     row = built.skills.find { |s| s.name == "plastic-intent-continuing" }
     assert_equal 6, row.typed
-    assert_equal 5, row.folded_from["plastic-continuing"]
+    assert_equal 5, row.folded_from["plastic-continuing"] # plastic-continuing retired in 2.0
   end
 
   def test_retired_name_goes_to_retired_row
-    built = SkillCensus::Tally.new(history_scan(["plastic-intent-discovering"]), transcript_scan, roster).build
+    built = SkillCensus::Tally.new(history_scan(["plastic-intent-discovering"]), transcript_scan, roster).build # plastic-intent-discovering retired in 2.0
 
     assert_equal 1, built.retired.typed
   end
