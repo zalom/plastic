@@ -64,15 +64,23 @@ class TickWithCommitContractTest < Minitest::Test
     assert_includes body_of(IMPLEMENTER_PROMPT), "mark its box `[x]` and move the line to `## Completed`"
   end
 
-  # D11, hard constraint: lines 20 and 34-40 already carry em dashes; the edit must never
-  # reflow or re-add them as added lines. Pins them byte-for-byte (raw lines, not squeezed).
+  # D11, hard constraint: these five lines already carried em dashes before this intent's
+  # edit (originally lines 20 and 34-40); the edit must never reflow or re-add them as added
+  # lines. Pins them byte-for-byte by content, not by a line index the edit may shift.
   def test_implementer_prompt_keeps_its_existing_em_dash_lines_verbatim
     lines = File.readlines(IMPLEMENTER_PROMPT, chomp: true)
-    assert_equal "2. Implement exactly what the task specifies #{EM_DASH} nothing more, nothing less.", lines[19]
-    assert_equal "**DONE** #{EM_DASH} All steps completed, tests pass, code committed.", lines[33]
-    assert_equal "**DONE_WITH_CONCERNS** #{EM_DASH} Completed but I noticed: [describe concerns].", lines[35]
-    assert_equal "**NEEDS_CONTEXT** #{EM_DASH} I need clarification on: [specific questions].", lines[37]
-    assert_equal "**BLOCKED** #{EM_DASH} Cannot proceed because: [describe blocker].", lines[39]
+    find_line = ->(prefix) { lines.find { |l| l.start_with?(prefix) } }
+
+    assert_equal "2. Implement exactly what the task specifies #{EM_DASH} nothing more, nothing less.",
+                 find_line.call("2. Implement exactly what the task specifies")
+    assert_equal "**DONE** #{EM_DASH} All steps completed, tests pass, code committed.",
+                 find_line.call("**DONE**")
+    assert_equal "**DONE_WITH_CONCERNS** #{EM_DASH} Completed but I noticed: [describe concerns].",
+                 find_line.call("**DONE_WITH_CONCERNS**")
+    assert_equal "**NEEDS_CONTEXT** #{EM_DASH} I need clarification on: [specific questions].",
+                 find_line.call("**NEEDS_CONTEXT**")
+    assert_equal "**BLOCKED** #{EM_DASH} Cannot proceed because: [describe blocker].",
+                 find_line.call("**BLOCKED**")
   end
 
   # --- O3: agents/plastic-executor.md (M7, M8, M9, M10) ---------------------------------
