@@ -111,11 +111,13 @@ For a live intent's directory:
    `ruby ~/.plastic/scripts/report-screen state <intent_dir>` and print its output as it is:
    the title, the field table, the `Changed` row, and the Steps table come from the record,
    never by eye. For "where are we" with no intent named, run
-   `ruby ~/.plastic/scripts/report-screen state --all <store_root>` for the roster across every
-   in-delivery intent. Route "why did X take so long" to
-   `ruby ~/.plastic/scripts/report-screen delay <intent_dir>` instead - every verb prints the
-   same plain screen on any harness, painted only where the harness supports it, with no
-   branching on harness name. Under the `state` screen
+   `ruby ~/.plastic/scripts/report-screen session <tier_root>` (intent 330): it prints one
+   `delivered` screen per intent this session actually completed, oldest first, then the same
+   roster `report-screen state --all <store_root>` prints on its own - `state --all` stays the
+   right call when only the in-flight roster is wanted, with nothing delivered above it. Route
+   "why did X take so long" to `ruby ~/.plastic/scripts/report-screen delay <intent_dir>`
+   instead - every verb prints the same plain screen on any harness, painted only where the
+   harness supports it, with no branching on harness name. Under the `state` screen
    write **What this means** as two to four bullets in plain words (what the intent is for,
    what has landed, what is left, any defect named by step), then close with **needs input:**
    naming the first open step. Then continue the work in the

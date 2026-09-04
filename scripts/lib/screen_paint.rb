@@ -56,7 +56,7 @@ module ScreenPaint
     return :step if STEP_LINE_RE.match?(text)
     return :timeline if TIMELINE_RE.match?(text)
     return :count if COUNT_LINE_RE.match?(stripped)
-    return :closer if ["None", "not recorded", "No intents in delivery."].include?(stripped)
+    return :closer if ["None", "not recorded", "No intents in delivery.", "No intents delivered in this session."].include?(stripped)
     :unknown
   end
 
@@ -101,7 +101,10 @@ module ScreenPaint
     lines = text.to_s.lines
     first_idx = lines.index { |l| !l.strip.empty? }
     return nil if first_idx.nil?
-    return nil unless classify(lines[first_idx]) == :opener
+    # Intent 330 (D7/O3.26): a screen that is nothing but a single known
+    # closer line (e.g. "No intents delivered in this session.") has no
+    # opener to require - it is already the whole, honest message.
+    return nil unless %i[opener closer].include?(classify(lines[first_idx]))
 
     out = +""
     table = []

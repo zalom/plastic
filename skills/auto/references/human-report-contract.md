@@ -14,6 +14,10 @@ written by eye:
   Asked, Delivered (with a Proven-by column), Evidence, Needs you.
 - **`report-screen delay <intent_dir>`** - printed only on request ("why did X take so long"):
   the delivery as a timeline plus the derived `Where the time went` line.
+- **`report-screen session <tier_root>`** - the answer to an UNNAMED status ask ("where are we
+  with delivery", "what is the status"): one `delivered` screen per intent this session
+  completed, oldest first, then the `state --all` roster. Intent 330's ruling: a status ask
+  answers with what actually shipped, not the in-flight roster alone.
 
 ## The five triggers for `state`
 

@@ -277,8 +277,9 @@ Read `../plastic-conventions/references/completion-and-done.md` for what "intent
    disarm (`/plastic-doctor check the lock status`); 6 means the structure check refused. Never
    leave an orphaned worktree; run `git worktree prune` on a stale reference.
 6. Print `ruby ~/.plastic/scripts/report-screen delivered <intent_dir>` once (D15): this is the
-   owner report at End, replacing the old prose Done briefing. Print it as the first thing in
-   the reply, nothing before it and no code fence, or the hook cannot paint it.
+   owner report at End, replacing the old prose Done briefing; a mid-batch status ask instead
+   runs `ruby ~/.plastic/scripts/report-screen session <tier_root>`. Print it as the first
+   thing in the reply, nothing before it and no code fence, or the hook cannot paint it.
 
 ## Error Handling
 
