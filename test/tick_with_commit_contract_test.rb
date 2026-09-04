@@ -64,6 +64,13 @@ class TickWithCommitContractTest < Minitest::Test
     assert_includes body_of(IMPLEMENTER_PROMPT), "mark its box `[x]` and move the line to `## Completed`"
   end
 
+  # Intent 329 post-execution fix: the executor prompt every implementer actually reads must
+  # itself require the savepoint `Commit` line, not just skills/intent-executing/SKILL.md.
+  def test_implementer_prompt_requires_the_savepoint_commit_line
+    assert_includes body_of(IMPLEMENTER_PROMPT),
+      'scripts/savepoint-note <intent_dir> --kind Commit --text "<sha> <what it proves>"'
+  end
+
   # D11, hard constraint: these five lines already carried em dashes before this intent's
   # edit (originally lines 20 and 34-40); the edit must never reflow or re-add them as added
   # lines. Pins them byte-for-byte by content, not by a line index the edit may shift.
@@ -98,6 +105,13 @@ class TickWithCommitContractTest < Minitest::Test
 
   def test_executor_workflow_ticks_as_each_action_lands
     assert_includes body_of(EXECUTOR), "ticking its checklist item in the same commit that lands it"
+  end
+
+  # Intent 329 post-execution fix: the same requirement, named in the executor agent body
+  # itself, so an executor that never opens the skill still sees it.
+  def test_executor_requires_the_savepoint_commit_line
+    assert_includes body_of(EXECUTOR),
+      'scripts/savepoint-note <intent_dir> --kind Commit --text "<sha> <what it proves>"'
   end
 
   # D12, hard constraint: the frontmatter `description:` block feeds the context-budget
