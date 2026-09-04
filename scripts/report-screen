@@ -2,15 +2,19 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# report-screen - the three delivery-report screens (intent 317): mid-delivery
-# state, post-delivery delivered, and delay. Each fills from the record via
-# scripts/lib/report_screen.rb; no number here is written by eye.
+# report-screen - the four delivery-report screens: mid-delivery state,
+# post-delivery delivered, and delay (intent 317), plus session, the whole of
+# one session's delivered work followed by the roster (intent 330). Each fills
+# from the record via scripts/lib/report_screen.rb; no number here is written
+# by eye.
 #
 # Usage:
 #   report-screen state <intent_dir> [--changed "<text>"] [--ansi]
 #   report-screen state --all <store_root> [--changed "<text>"] [--ansi]
 #   report-screen delivered <intent_dir> [--ansi] [--repo <dir>]
 #   report-screen delay <intent_dir> [--ansi]
+#   report-screen session <tier_root> [--session <id>] [--since <iso>]
+#                                     [--ledger-root <dir>] [--ansi]
 #
 # --ansi delegates to ScreenPaint (intent 317a, D1), the parser/re-layouter
 # in the shared TUI core. Selection is by capability, never by harness:
@@ -197,11 +201,30 @@ when "session"
   session_id = session_flag || ENV[SessionLedger::SESSION_ID_ENV_KEY]
   ledger_root = ledger_root_flag ? File.expand_path(ledger_root_flag) : ReportScreen.default_ledger_root(store_root)
 
+  if since_flag
+    begin
+      Time.parse(since_flag)
+    rescue ArgumentError
+      usage_abort("--since needs an ISO timestamp, got #{since_flag.inspect}")
+    end
+  end
+
   dirs, skipped = ReportScreen.session_delivered_dirs(ledger_root: ledger_root, tier_root: store_root,
                                                        session: session_id, since: since_flag, now: now)
-  note = if session_id.nil? || session_id.to_s.strip.empty?
-           ReportScreen.window_note(ReportScreen.fallback_day(ledger_root, SessionLedger.day_id(now)))
-         end
+  # D17: the widened window is announced whether the id was missing or simply
+  # matched nothing. A resumed background job carries a session id that is not
+  # the one on the ledger lines, and that case must not answer silently. An
+  # explicit --since is the caller naming the window, so it needs no note.
+  note =
+    if since_flag
+      nil
+    elsif session_id.nil? || session_id.to_s.strip.empty?
+      ReportScreen.window_note(ReportScreen.fallback_day(ledger_root, SessionLedger.day_id(now)),
+                               "no session id given")
+    elsif !ReportScreen.session_tagged?(ledger_root: ledger_root, session: session_id, now: now)
+      ReportScreen.window_note(ReportScreen.fallback_day(ledger_root, SessionLedger.day_id(now)),
+                               "this session has no line in the day ledger")
+    end
 
   out = ReportScreen.render_session(
     dirs: dirs, skipped: skipped, store_root: store_root,

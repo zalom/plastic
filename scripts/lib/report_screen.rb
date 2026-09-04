@@ -419,11 +419,16 @@ module ReportScreen
     # carries the shipped identity, and naming the absence twice on one screen
     # is the defect this intent was opened to remove, not a floor worth keeping.
     what << " · v#{version.to_s.sub(/\Av/, '')}" if version && !version.to_s.empty?
-    source = if branch && !branch.to_s.empty?
-               flow_base(intent_dir) == branch ? "outcome.md; project.yml" : "outcome.md; git refs"
-             else
-               "outcome.md; git tags"
-             end
+    # D14: the cell names every file the row actually came from. The branch and
+    # the version have different origins, so when both contributed, both are
+    # named rather than only the branch's.
+    sources = ["outcome.md"]
+    if branch && !branch.to_s.empty?
+      sources << (flow_base(intent_dir) == branch ? "project.yml" : "git refs")
+    end
+    sources << "git tags" if version && !version.to_s.empty? && shipped_version(intent_dir).nil?
+    sources << "git tags" if sources.length == 1
+    source = sources.join("; ")
     { kind: "ship", what: what, source: source }
   end
 
@@ -823,8 +828,28 @@ module ReportScreen
   # D17: the visible note printed above the screens when no session id was
   # given at all, so the whole-day, tier-only fallback never looks like a
   # real, narrower answer.
-  def self.window_note(day)
-    "Window: the whole of #{Date.strptime(day, '%Y%m%d').iso8601} (no session id given)."
+  # D17: shaped as a screen opener ("▶ ... · ...") on purpose. The note is the
+  # first line of the reply, and both ScreenPaint's OPENER_RE and the
+  # MessageDisplay hook's first-character gate require that shape; a plain
+  # sentence here would leave the whole session report unpainted.
+  def self.window_note(day, reason)
+    "▶ Window · the whole of #{Date.strptime(day, '%Y%m%d').iso8601} · #{reason}"
+  end
+
+  # True when the day ledger actually carries a line for this session, across
+  # the same two day directories the window search reads. The CLI asks so it
+  # can tell "no session id given" apart from "this session id matches no
+  # ledger line": D17 exists to stop the second one answering silently, and a
+  # resumed background job carries exactly that kind of unmatched id.
+  def self.session_tagged?(ledger_root:, session:, now:)
+    return false if session.nil? || session.to_s.strip.empty?
+
+    short = SessionLedger.short_session_id(session)
+    today = SessionLedger.day_id(now)
+    yesterday = SessionLedger.day_id(now - 86_400)
+    [yesterday, today].any? do |d|
+      session_ledger_lines(ledger_root, d).any? { |l| l[:session] == short }
+    end
   end
 
   # D4: local midnight of `day`, converted to UTC, using `sample_now`'s OWN

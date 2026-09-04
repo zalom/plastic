@@ -55,6 +55,19 @@ class ReportScreenFenceTest < Minitest::Test
     assert_equal 2, ReportScreen.table_rows(body).length
   end
 
+  # --- O1.11: a marker line with trailing content does not close the fence ---
+  #
+  # D12 says the closing marker carries nothing but whitespace. Added at the
+  # post-execution review, which proved that rule could be deleted from the
+  # walker without failing a test.
+
+  def test_a_fence_marker_with_trailing_content_does_not_close
+    text = "### O1 the section\n\n```\n``` still inside\n# not a heading\n```\n\n| R | W |\n| --- | --- |\n| 1 | a |\n"
+    sections = ReportScreen.split_by_headings(text)
+    assert_equal 1, sections.length
+    assert_equal 1, ReportScreen.table_rows(sections.first[1]).length
+  end
+
   # --- O1.2: a real heading after a CLOSED fence still starts a section ------
 
   def test_heading_after_a_closed_fence_starts_a_section
@@ -481,6 +494,44 @@ class ReportScreenSessionVerbTest < Minitest::Test
     assert_equal %w[2--slug 3--slug 1--slug], dirs.map { |d| File.basename(d) }
   end
 
+  # --- O3.4a: the "global" slug maps to <home>, proved from a PROJECT tier ----
+  #
+  # Added at the post-execution review. The original O3.4 test named `global`
+  # while passing the global tier root, so the D5 mapping was covered by "the
+  # tier root is always scanned" and deleting the mapping broke no test.
+  # Here the tier root is the PROJECT, so only the mapping can reach the
+  # global intent.
+
+  def test_the_global_slug_maps_to_the_home_store_from_a_project_tier
+    project_home = File.join(@home, "projects", "demo")
+    write_index(@home, completed: [["1", "Global"]])
+    write_intent(@home, "1", done_ts: "2026-09-04T05:00:00Z")
+    write_index(project_home, completed: [])
+    write_ledger_line("20260904", ts: "2026-09-04T00:30:00Z", session: "abc12345", slug: "global")
+
+    dirs, = ReportScreen.session_delivered_dirs(
+      ledger_root: @ledger_root, tier_root: project_home, session: "abc12345", since: nil,
+      now: Time.parse("2026-09-04T12:00:00Z"),
+    )
+    assert_equal ["1--slug"], dirs.map { |d| File.basename(d) }
+  end
+
+  # --- O3.2a: the window's upper bound is closed at `now` ---------------------
+  #
+  # Added at the post-execution review: no fixture had a Done in the future, so
+  # dropping `done_ts <= now` broke nothing.
+
+  def test_a_done_after_now_is_excluded
+    write_index(@home, completed: [["1", "Past"], ["2", "Future"]])
+    write_intent(@home, "1", done_ts: "2026-09-04T05:00:00Z")
+    write_intent(@home, "2", done_ts: "2026-09-04T23:00:00Z")
+    dirs, = ReportScreen.session_delivered_dirs(
+      ledger_root: @ledger_root, tier_root: @home, session: nil, since: "2026-09-04T00:00:00Z",
+      now: Time.parse("2026-09-04T12:00:00Z"),
+    )
+    assert_equal ["1--slug"], dirs.map { |d| File.basename(d) }
+  end
+
   # --- O3.4/O3.5/O3.6/O3.7: which stores get scanned ---------------------------
 
   def test_every_store_the_session_touched_is_scanned
@@ -667,9 +718,25 @@ class ReportScreenSessionVerbTest < Minitest::Test
 
   def test_cli_session_accepts_ansi
     write_index(@home, completed: [])
-    out, err, status = Open3.capture3("ruby", CLI, "session", @home, "--ansi", "--since", "2026-09-04T00:00:00Z")
+    out, err, status = Open3.capture3({ "PLASTIC_FORCE_COLOR" => nil, "NO_COLOR" => nil },
+                                      "ruby", CLI, "session", @home, "--ansi", "--since", "2026-09-04T00:00:00Z")
     assert_equal 0, status.exitstatus, err
     refute_match(/\e\[/, out)
+  end
+
+  # --- O3.18a: a malformed --since is a usage error, not a backtrace ---------
+  #
+  # Added at the post-execution review: Time.parse raised through the CLI,
+  # giving exit 1 and five frames of Ruby where the header promises exit 2 and
+  # one line on stderr.
+
+  def test_cli_session_rejects_a_malformed_since
+    write_index(@home, completed: [])
+    out, err, status = Open3.capture3("ruby", CLI, "session", @home, "--since", "not-a-time")
+    assert_equal 2, status.exitstatus
+    assert_empty out
+    assert_match(/--since needs an ISO timestamp/, err)
+    refute_match(/report_screen\.rb:\d+:in/, err)
   end
 
   # --- O3.20: session_delivered_dirs never reads the ambient clock ------------
@@ -692,13 +759,23 @@ class ReportScreenSessionVerbTest < Minitest::Test
 
   def test_no_session_id_does_not_silently_widen_the_window
     write_index(@home, completed: [])
+    write_ledger_line("20260904", ts: "2026-09-04T00:30:00Z", session: "abc12345", slug: "global")
     out_no_session, err, status = Open3.capture3({ "CLAUDE_CODE_SESSION_ID" => nil }, "ruby", CLI, "session", @home)
     assert_equal 0, status.exitstatus, err
-    assert_match(/\AWindow: the whole of/, out_no_session)
+    # The note names the day the LEDGER supplied, never the clock's own day,
+    # and opens with the screen marker so the painter and the harness hook can
+    # both recognize it. Both pinned here at the post-execution review.
+    assert_match(%r{\A▶ Window · the whole of 2026-09-04 · no session id given}, out_no_session)
 
     out_with_session, err2, status2 = Open3.capture3({ "CLAUDE_CODE_SESSION_ID" => "abc12345" }, "ruby", CLI, "session", @home)
     assert_equal 0, status2.exitstatus, err2
-    refute_match(/\AWindow: the whole of/, out_with_session)
+    refute_match(/Window · the whole of/, out_with_session)
+
+    # An id that matches NO ledger line is the case D17 exists for: it must
+    # announce the widened window rather than answer like a real session.
+    out_unmatched, err3, status3 = Open3.capture3({ "CLAUDE_CODE_SESSION_ID" => nil }, "ruby", CLI, "session", @home, "--session", "nosuchid")
+    assert_equal 0, status3.exitstatus, err3
+    assert_match(%r{\A▶ Window · .* · this session has no line in the day ledger}, out_unmatched)
   end
 
   # --- O3.22: the default ledger root -------------------------------------------
@@ -762,17 +839,26 @@ class ReportScreenSessionVerbTest < Minitest::Test
 
   # --- O3.27: a completed intent with no Done bookend is counted, not hidden -
 
+  # An abandoned intent counts too (D22 reads both closed sections), and the
+  # count spans every store scanned, not just the tier root. Both halves were
+  # added at the post-execution review, which proved each could be deleted
+  # from the production code without failing a test.
   def test_completed_intents_without_a_done_bookend_are_counted_in_a_footer
-    write_index(@home, completed: [["1", "A"], ["2", "B"]])
+    project_home = File.join(@home, "projects", "demo")
+    write_index(@home, completed: [["1", "A"], ["2", "B"]], abandoned: [["3", "C"]])
     write_intent(@home, "1", done_ts: "2026-09-04T05:00:00Z")
     write_intent(@home, "2", done_ts: nil)
+    write_intent(@home, "3", done_ts: nil)
+    write_index(project_home, completed: [["4", "D"]])
+    write_intent(project_home, "4", done_ts: nil)
+    write_ledger_line("20260904", ts: "2026-09-04T00:30:00Z", session: "abc12345", slug: "demo")
     dirs, skipped = ReportScreen.session_delivered_dirs(
-      ledger_root: @ledger_root, tier_root: @home, session: nil, since: "2026-09-04T00:00:00Z",
+      ledger_root: @ledger_root, tier_root: @home, session: "abc12345", since: "2026-09-04T00:00:00Z",
       now: Time.parse("2026-09-04T12:00:00Z"),
     )
-    assert_equal 1, skipped
+    assert_equal 3, skipped
     out = ReportScreen.render_session(dirs: dirs, skipped: skipped, store_root: @home)
-    assert_includes out, "1 completed intent skipped"
+    assert_includes out, "3 completed intents skipped"
   end
 
   def test_footer_absent_when_nothing_was_skipped
@@ -792,5 +878,8 @@ class ReportScreenSessionVerbTest < Minitest::Test
     out = ReportScreen.render_session(dirs: [dir1, dir2], skipped: 0, store_root: @home, tag_reader: boom)
     assert_includes out, "✔ 2 · "
     assert_includes out, "No intents in delivery."
+    # The failure is REPORTED, not swallowed: a silently dropped screen would
+    # satisfy the two assertions above. Added at the post-execution review.
+    assert_includes out, "could not render"
   end
 end

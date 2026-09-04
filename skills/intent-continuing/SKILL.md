@@ -111,7 +111,9 @@ For a live intent's directory:
    `ruby ~/.plastic/scripts/report-screen state <intent_dir>` and print its output as it is:
    the title, the field table, the `Changed` row, and the Steps table come from the record,
    never by eye. For "where are we" with no intent named, run
-   `ruby ~/.plastic/scripts/report-screen session <tier_root>` (intent 330): it prints one
+   `ruby ~/.plastic/scripts/report-screen session <tier_root> --session <this session's id>`
+   (intent 330; pass the id your harness gives you, or the screen widens to the whole day and
+   says so): it prints one
    `delivered` screen per intent this session actually completed, oldest first, then the same
    roster `report-screen state --all <store_root>` prints on its own - `state --all` stays the
    right call when only the in-flight roster is wanted, with nothing delivered above it. Route
