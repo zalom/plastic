@@ -119,7 +119,7 @@ class TickWithCommitContractTest < Minitest::Test
 
   def test_enforcer_verifies_ticks_at_review_and_merge
     assert_includes body_of(ENFORCER),
-      "you verify tick-versus-diff at the post-execution review and again at the merge gate"
+      "you verify tick-versus-diff at the post-execution review and again before the merge"
   end
 
   def test_enforcer_treats_a_mismatch_as_a_finding

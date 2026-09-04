@@ -217,8 +217,7 @@ Then Exec.
    then builds, then drives the full suite green.
 2. Read its return by code: DONE or DONE_WITH_CONCERNS proceeds; NEEDS_CONTEXT re-dispatches
    with the missing context; BLOCKED stops under the error procedure.
-3. Tick the checklist as items land (the executor does this); verify tick-versus-diff
-   against the diff. A mismatch is a review finding, not a lead cleanup.
+3. Tick the checklist as items land (the executor does this); verify tick-versus-diff against the diff. A mismatch is a review finding, not a lead cleanup.
 
 ## Review by risk (boot 3, only when a rule fires)
 
@@ -255,8 +254,7 @@ every choice is non-destructive and the team has full autonomy.
 
 Read `../plastic-conventions/references/completion-and-done.md` for what "intent done" means.
 
-1. This is the merge gate: verify every checklist item is checked, verify tick-versus-diff
-   against the diff, and confirm the suite is green once on the branch.
+1. This is the merge gate: verify every checklist item is checked, verify tick-versus-diff against the diff, and confirm the suite is green once on the branch.
 2. Write `outcome.md` from `~/.plastic/templates/outcome.md` with `disposition: delivered`,
    `## Delivered` as the labeled table whose row labels match the action-file headings (317a).
 3. Release, if configured: match the working directory against `~/.plastic/projects.yml`, read

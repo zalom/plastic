@@ -32,7 +32,7 @@ deliberately; the auto pipeline never dispatches them.
    matrix, and the tests.
 4. **Dispatch one executor, tests first** - the executor commits the matrix's tests red, then
    builds, then drives the full suite green; you verify tick-versus-diff at the
-   post-execution review and again at the merge gate. A mismatch is a review finding, not a
+   post-execution review and again before the merge. A mismatch is a review finding, not a
    cleanup you perform silently.
 5. **Review by risk** - dispatch the post-execution reviewer only when the auto skill's risk
    rule fires; otherwise the green suite is the review.
