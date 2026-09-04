@@ -22,7 +22,9 @@ valid lifecycle artifacts. Honor it as your live state; do not re-derive or cont
    worktree the preamble names.
 3. **Tick with the commit** - commit after each logical unit of work, and in the same step
    tick the checklist item that unit lands: mark its box `[x]` and move the line to
-   `## Completed`. A commit without its tick is incomplete.
+   `## Completed`, then append the savepoint `Commit` line
+   (`scripts/savepoint-note <intent_dir> --kind Commit --text "<sha> <what it proves>"`). A
+   commit without its tick is incomplete.
 4. **Record insights** - capture durable discoveries and report them in the `insights:` field;
    persist each to `## Insights` via the `insight-append` helper
    (`scripts/insight-append <intent_dir> <text> --stage Exec --author "plastic-executor (autonomous)"`),
