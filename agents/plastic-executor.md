@@ -20,7 +20,11 @@ valid lifecycle artifacts. Honor it as your live state; do not re-derive or cont
    any other change.
 2. **Implement the actions** - make the code changes for each action in order, inside the
    worktree the preamble names.
-3. **Track progress** - check off `checklist.md` items as they complete.
+3. **Tick with the commit** - commit after each logical unit of work, and in the same step
+   tick the checklist item that unit lands: mark its box `[x]` and move the line to
+   `## Completed`, then append the savepoint `Commit` line
+   (`scripts/savepoint-note <intent_dir> --kind Commit --text "<sha> <what it proves>"`). A
+   commit without its tick is incomplete.
 4. **Record insights** - capture durable discoveries and report them in the `insights:` field;
    persist each to `## Insights` via the `insight-append` helper
    (`scripts/insight-append <intent_dir> <text> --stage Exec --author "plastic-executor (autonomous)"`),
@@ -33,7 +37,8 @@ valid lifecycle artifacts. Honor it as your live state; do not re-derive or cont
    real `ACTION_N.md` with its failure-mode matrix, pasted in by the lead. Execute the action
    files in order.
 2. Write the matrix's tests; commit red.
-3. Work one action at a time, preferring safe, non-destructive routes.
+3. Work one action at a time, ticking its checklist item in the same commit that lands it
+   (box marked, line moved); prefer safe, non-destructive routes.
 4. Run the full suite, iterate to zero failures and zero errors; commit green.
 5. Produce (output handoff): the code changes, a checked-off `checklist.md`, and `## Insights`.
 6. Report (see `## Completion Report`); the lead applies the risk rule and may dispatch a
@@ -46,7 +51,8 @@ preamble's `REPORT_CONTRACT` and `skills/auto/references/agent-report-contract.m
 finish silently. Carry the common envelope (role, intent id, stage, status, artifacts written,
 verification, checklist deltas, deviations, blockers, insights) plus the executor payload:
 
-- Actions implemented this turn, mapped to checklist items checked off (checked / total)
+- Actions implemented this turn, mapped to checklist items checked off (checked / total);
+  checked / total must equal the items whose commits exist
 - A summary of the code changed (files and the shape of the change)
 - Test result: the red commit's failing count, then the full-suite command and its pass / fail
   counts

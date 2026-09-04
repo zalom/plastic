@@ -11,10 +11,12 @@ require_relative "../scripts/lib/outcome_guard"
 
 # Intent 222 - doctor's fourth check scope, `--intent <id>`, verifies ONE intent's structure
 # at the moment it is about to close: intent-file validity, lifecycle-artifact presence,
-# checklist completeness, ## Links projection, and savepoint truthfulness. Four FAIL-severity
-# checks plus one WARN-only (intent_savepoint_truthful, per intent 134's binding advisory-only
-# ruling - see the WARN-not-FAIL test below). Hermetic: own Dir.mktmpdir store, no ambient
-# session, no eval, no ENV/global-constant seam.
+# checklist completeness, ## Links projection, savepoint truthfulness, and (intent 329) a
+# lagging checklist tick. Four FAIL-severity checks plus two WARN-only
+# (intent_savepoint_truthful, per intent 134's binding advisory-only ruling; and
+# intent_ticks_lag, per intent 329's ruling that a lagging tick warns rather than blocks) -
+# see the WARN-not-FAIL tests below. Hermetic: own Dir.mktmpdir store, no ambient session, no
+# eval, no ENV/global-constant seam.
 class DoctorIntentEndTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("plastic-doctor-intent-end")
@@ -126,7 +128,7 @@ class DoctorIntentEndTest < Minitest::Test
                "---\ndisposition: abandoned\n---\n# Outcome\n\n## Summary\nDid it.\n")
 
     checks = doctor.check_intent_end("42", disposition: "delivered")
-    assert_equal 5, checks.size
+    assert_equal 6, checks.size
     lifecycle_checks = checks.select { |c| c[:name] == "intent_lifecycle_artifacts" }
     assert_equal 1, lifecycle_checks.size, "the disposition mismatch must fold into the SAME check, not a second one"
 
@@ -316,6 +318,142 @@ class DoctorIntentEndTest < Minitest::Test
 
     checks = doctor.check_intent_end("56")
     result = find(checks, "intent_savepoint_truthful")
+    assert_equal "pass", result[:status]
+  end
+
+  # --- intent_ticks_lag (WARN-only, intent 329) ---------------------------------
+
+  # V1: the exact case the ruling named - commits recorded, nothing ticked.
+  def test_ticks_lag_warns_with_commits_recorded_and_no_ticks
+    dir = write_clean_intent(id: "70")
+    File.write(File.join(dir, "checklist.md"), "# Checklist\n\n- [ ] Step 1\n- [ ] Step 2\n")
+    File.write(File.join(dir, "savepoint.md"), <<~SP)
+      2026-07-01T00:00:00Z  What  70--demo.md
+      2026-07-01T00:05:00Z  Commit  abc123 landed step 1
+    SP
+
+    checks = doctor.check_intent_end("70")
+    result = find(checks, "intent_ticks_lag")
+    assert_equal "warn", result[:status]
+    assert_match(/ticks lag the branch/, result[:message])
+  end
+
+  # V2: a delivery that ticked as it went must never warn, even with commits recorded.
+  def test_ticks_lag_passes_when_items_are_ticked
+    dir = write_clean_intent(id: "71")
+    File.write(File.join(dir, "savepoint.md"), <<~SP)
+      2026-07-01T00:00:00Z  What  71--demo.md
+      2026-07-01T00:05:00Z  Commit  abc123 landed step 1
+    SP
+
+    checks = doctor.check_intent_end("71")
+    result = find(checks, "intent_ticks_lag")
+    assert_equal "pass", result[:status]
+  end
+
+  # V3: a freshly armed intent, no commit yet, must not warn even though nothing is ticked.
+  def test_ticks_lag_passes_with_no_commit_lines
+    dir = write_clean_intent(id: "72")
+    File.write(File.join(dir, "checklist.md"), "# Checklist\n\n- [ ] Step 1\n")
+
+    checks = doctor.check_intent_end("72")
+    result = find(checks, "intent_ticks_lag")
+    assert_equal "pass", result[:status]
+  end
+
+  # V4: a checklist with no items to tick is the skip condition, not zero ticks, regardless
+  # of commits. Four shapes count as "no items" (IntentScreen.checklist_items returns []
+  # for all of them): the file is absent, it carries only the placeholder sentinel, it is
+  # empty, or it has prose but no `- [ ]` line at all.
+  def test_ticks_lag_skips_a_checklist_with_no_items
+    {
+      "73" => ->(dir) { File.delete(File.join(dir, "checklist.md")) },
+      "73p" => ->(dir) { File.write(File.join(dir, "checklist.md"), "#{IntentScreen::PLACEHOLDER_SENTINEL}\n") },
+      "73e" => ->(dir) { File.write(File.join(dir, "checklist.md"), "") },
+      "73i" => ->(dir) { File.write(File.join(dir, "checklist.md"), "# Checklist\n\nNo items yet.\n") },
+    }.each do |id, mutate_checklist|
+      dir = write_clean_intent(id: id)
+      mutate_checklist.call(dir)
+      File.write(File.join(dir, "savepoint.md"), <<~SP)
+        2026-07-01T00:00:00Z  What  #{id}--demo.md
+        2026-07-01T00:05:00Z  Commit  abc123 landed
+      SP
+
+      checks = doctor.check_intent_end(id)
+      result = find(checks, "intent_ticks_lag")
+      assert_equal "pass", result[:status], "expected the #{id.inspect} shape to pass"
+      assert_match(%r{n/a}, result[:message], "expected the #{id.inspect} shape to report n/a")
+    end
+  end
+
+  # V5: WARN, never FAIL, and the overall rollup must never escalate past warn on this
+  # check's account. An indented, unchecked sub-item is the one shape that lets every OTHER
+  # check stay clean while ticks_lag fires: intent_checklist_complete's own regex requires no
+  # leading whitespace, so it never sees this line, while IntentScreen::ITEM_RE (which
+  # ticks_lag reuses) does.
+  def test_ticks_lag_is_warn_never_fail
+    dir = write_clean_intent(id: "74")
+    File.write(File.join(dir, "checklist.md"), "# Checklist\n\n  - [ ] Sub-item never checked\n")
+    File.write(File.join(dir, "savepoint.md"), <<~SP)
+      2026-07-01T00:00:00Z  What  74--demo.md
+      2026-07-01T00:05:00Z  Commit  abc123 landed
+    SP
+
+    checks = doctor.check_intent_end("74")
+    other_names = %w[intent_structure intent_lifecycle_artifacts intent_checklist_complete
+                      intent_links_projection intent_savepoint_truthful]
+    other_names.each { |name| assert_equal "pass", find(checks, name)[:status], "expected #{name} to stay clean" }
+
+    result = find(checks, "intent_ticks_lag")
+    assert_equal "warn", result[:status]
+
+    overall = doctor.run_intent_check("74")
+    assert_equal "warn", overall[:status]
+  end
+
+  # V6: only `Commit`-kind lines count; `Review`, `Lock`, and malformed lines never do, even
+  # when the word "Commit" appears inside a `Review` line's own text, the shape most likely
+  # to miscount a naive substring search.
+  def test_ticks_lag_counts_only_commit_kind_lines
+    dir = write_clean_intent(id: "75")
+    File.write(File.join(dir, "checklist.md"), "# Checklist\n\n- [ ] Step 1\n")
+    File.write(File.join(dir, "savepoint.md"), <<~SP)
+      2026-07-01T00:00:00Z  What  75--demo.md
+      2026-07-01T00:05:00Z  Review  Commit abc123 was reviewed
+      2026-07-01T00:06:00Z  Lock  takeover: session xyz
+      not a valid savepoint line at all
+    SP
+
+    checks = doctor.check_intent_end("75")
+    result = find(checks, "intent_ticks_lag")
+    assert_equal "pass", result[:status]
+    assert_match(/0 commit\(s\) recorded/, result[:message])
+  end
+
+  # V7: an indented `  - [x]` sub-item must count the same way it counts for the Progress
+  # bar (both go through IntentScreen.checklist_items), or the two surfaces contradict.
+  def test_ticks_lag_agrees_with_the_progress_bar_on_indented_items
+    dir = write_clean_intent(id: "76")
+    File.write(File.join(dir, "checklist.md"), "# Checklist\n\n  - [x] Indented sub-item, ticked\n")
+    File.write(File.join(dir, "savepoint.md"), <<~SP)
+      2026-07-01T00:00:00Z  What  76--demo.md
+      2026-07-01T00:05:00Z  Commit  abc123 landed
+    SP
+
+    checks = doctor.check_intent_end("76")
+    result = find(checks, "intent_ticks_lag")
+    assert_equal "pass", result[:status]
+    assert_match(/1 of 1 ticked/, result[:message])
+  end
+
+  # V9: a missing savepoint.md counts as zero commits, never a raise.
+  def test_ticks_lag_treats_a_missing_savepoint_as_no_commits
+    dir = write_clean_intent(id: "77")
+    File.write(File.join(dir, "checklist.md"), "# Checklist\n\n- [ ] Step 1\n")
+    File.delete(File.join(dir, "savepoint.md"))
+
+    checks = doctor.check_intent_end("77")
+    result = find(checks, "intent_ticks_lag")
     assert_equal "pass", result[:status]
   end
 

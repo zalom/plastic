@@ -15,7 +15,8 @@
 # other flags exist.
 #
 # Checks, all run every invocation (the fourth only when --suite is given):
-#   1. doctor    - Doctor#run_intent_check(id, store: scope), fail-open on a crash
+#   1. doctor    - Doctor#run_intent_check(id, store: scope), fail-open on a crash; the doctor
+#                  scan includes the intent_ticks_lag warning (intent 329)
 #   2. em-dash   - added lines only of `git diff <base>...HEAD`, never the whole tree
 #   3. diffstat  - `git diff --stat <base>...HEAD`, never a failure on its own
 #   4. suite     - the supplied --suite command, run with RUBYOPT cleared

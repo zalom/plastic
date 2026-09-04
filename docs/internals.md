@@ -686,7 +686,8 @@ check as a self-check that reports and proceeds; the exit-6 refusal is gone.
 `scripts/verify-intent` folds doctor scoped to the intent, the added-line em-dash diff guard
 (the first standing implementation of that check), a diffstat, and an optional
 caller-supplied suite command into one verdict. It does not invent a project test-command
-config.
+config. The doctor scan includes the `intent_ticks_lag` warning (intent 329): a WARN when the
+savepoint's `Commit` ledger has entries and no checklist item is ticked.
 
 `scripts/lib/spec_header.rb` is the only parser of the `Tier:` and `Settled:` lines at the (removed in 2.0, intent 304)
 top of spec.md. `Savepoint.savepoint_tier` delegates to it. (removed in 2.0, intent 304)
