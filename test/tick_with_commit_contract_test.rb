@@ -23,9 +23,17 @@ class TickWithCommitContractTest < Minitest::Test
   # only test/fixtures/ is exempt). Mirrors scripts/lib/verify_intent.rb's own EM_DASH constant.
   EM_DASH = "\u2014"
 
+  # Markdown soft-wraps a paragraph across raw newlines; collapse all whitespace runs
+  # (including those newlines) to a single space before substring-matching prose, so a wording
+  # check does not depend on where a line happens to break.
+  def squeeze(text) = text.gsub(/\s+/, " ")
+
   def section(body, heading)
-    body[/^#{Regexp.escape(heading)}\n(.*?)(?=\n#+ |\z)/m, 1] || ""
+    raw = body[/^#{Regexp.escape(heading)}\n(.*?)(?=\n#+ |\z)/m, 1] || ""
+    squeeze(raw)
   end
+
+  def body_of(path) = squeeze(File.read(path))
 
   # --- O1: skills/intent-executing/SKILL.md `## Tick-as-you-land` (M1, M2) ---------------
 
@@ -44,23 +52,20 @@ class TickWithCommitContractTest < Minitest::Test
   # --- O2: implementer-prompt.md step 5 (M3, M4, M5, M6) --------------------------------
 
   def test_implementer_prompt_ties_the_tick_to_the_commit
-    body = File.read(IMPLEMENTER_PROMPT)
-    assert_includes body,
+    assert_includes body_of(IMPLEMENTER_PROMPT),
       "Commit after each logical unit of work, and in the same step tick the checklist item that unit lands"
   end
 
   def test_implementer_prompt_names_the_incomplete_condition
-    body = File.read(IMPLEMENTER_PROMPT)
-    assert_includes body, "A commit without its tick is incomplete."
+    assert_includes body_of(IMPLEMENTER_PROMPT), "A commit without its tick is incomplete."
   end
 
   def test_implementer_prompt_names_both_halves_of_a_tick
-    body = File.read(IMPLEMENTER_PROMPT)
-    assert_includes body, "mark its box `[x]` and move the line to `## Completed`"
+    assert_includes body_of(IMPLEMENTER_PROMPT), "mark its box `[x]` and move the line to `## Completed`"
   end
 
   # D11, hard constraint: lines 20 and 34-40 already carry em dashes; the edit must never
-  # reflow or re-add them as added lines. Pins them byte-for-byte.
+  # reflow or re-add them as added lines. Pins them byte-for-byte (raw lines, not squeezed).
   def test_implementer_prompt_keeps_its_existing_em_dash_lines_verbatim
     lines = File.readlines(IMPLEMENTER_PROMPT, chomp: true)
     assert_equal "2. Implement exactly what the task specifies #{EM_DASH} nothing more, nothing less.", lines[19]
@@ -73,20 +78,18 @@ class TickWithCommitContractTest < Minitest::Test
   # --- O3: agents/plastic-executor.md (M7, M8, M9, M10) ---------------------------------
 
   def test_executor_responsibility_ties_the_tick_to_the_commit
-    body = File.read(EXECUTOR)
+    body = body_of(EXECUTOR)
     assert_includes body, "**Tick with the commit**"
     assert_includes body, "A commit without its tick is incomplete."
     refute_includes body, "check off `checklist.md` items as they complete"
   end
 
   def test_executor_report_requires_ticks_to_match_commits
-    body = File.read(EXECUTOR)
-    assert_includes body, "checked / total must equal the items whose commits exist"
+    assert_includes body_of(EXECUTOR), "checked / total must equal the items whose commits exist"
   end
 
   def test_executor_workflow_ticks_as_each_action_lands
-    body = File.read(EXECUTOR)
-    assert_includes body, "ticking its checklist item in the same commit that lands it"
+    assert_includes body_of(EXECUTOR), "ticking its checklist item in the same commit that lands it"
   end
 
   # D12, hard constraint: the frontmatter `description:` block feeds the context-budget
@@ -107,13 +110,12 @@ class TickWithCommitContractTest < Minitest::Test
   # --- O4: agents/plastic-enforcer.md (M11, M12) ----------------------------------------
 
   def test_enforcer_verifies_ticks_at_review_and_merge
-    body = File.read(ENFORCER)
-    assert_includes body, "you verify tick-versus-diff at the post-execution review and again at the merge gate"
+    assert_includes body_of(ENFORCER),
+      "you verify tick-versus-diff at the post-execution review and again at the merge gate"
   end
 
   def test_enforcer_treats_a_mismatch_as_a_finding
-    body = File.read(ENFORCER)
-    assert_includes body, "A mismatch is a review finding, not a cleanup you perform silently."
+    assert_includes body_of(ENFORCER), "A mismatch is a review finding, not a cleanup you perform silently."
   end
 
   # --- O5: skills/auto/SKILL.md Exec step and Completion gate (M13, M14) ----------------
@@ -133,7 +135,7 @@ class TickWithCommitContractTest < Minitest::Test
   # --- O7: docs/internals.md (M15) -------------------------------------------------------
 
   def test_internals_doc_names_the_tick_lag_warning
-    body = File.read(INTERNALS)
+    body = body_of(INTERNALS)
     assert_includes body, "intent_ticks_lag"
     assert_match(/doctor scan includes/i, body)
   end
