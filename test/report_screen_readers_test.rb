@@ -315,7 +315,11 @@ class ReportScreenReadersTest < Minitest::Test
     assert_nil ReportScreen.shipped_version(@dir)
     rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { nil })
     ship = rows.find { |r| r[:kind] == "ship" }
-    assert_includes ship[:what], "not recorded"
+    # Intent 330 D10: with no version anywhere, the segment is omitted rather
+    # than filled with NOT_RECORDED. Before 330 this cell read
+    # "06bd20d -> alpha . not recorded"; the subject of this test is the
+    # assert_nil above, and the row now says only what it knows.
+    assert_equal "06bd20d", ship[:what]
   end
 
   def test_merge_sha_reads_the_merge_line_and_is_nil_without_one

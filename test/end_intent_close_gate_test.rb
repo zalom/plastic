@@ -172,4 +172,82 @@ class EndIntentCloseGateTest < Minitest::Test
 
   # --- S9c/S9d live in end_intent_test.rb: abandoned and backfill-only closes
   # keep exiting 0; those existing tests are this gate's exemption proof. ---
+
+  # --- intent 330, O1.8/O1.9: the fence fix moves the gate in both
+  # directions (D13) ------------------------------------------------------
+
+  FENCED_LABEL_ACTION = <<~MD.freeze
+    # ACTION_1
+
+    ```text
+    ### S1 - shown only as a fenced example, never a real heading
+    ```
+
+    ### T1 - the real heading, no S-label at all
+    | Row | Op |
+    | --- | --- |
+    | 1 | a |
+  MD
+
+  # O1.8: an S-label heading that lives ONLY inside a fenced example must
+  # never arm the hollow gate - the record never claims the labeled
+  # convention (no REAL S-labeled heading exists), so a hollow-shaped
+  # outcome still closes clean rather than being refused on a phantom label.
+  def test_hollow_gate_ignores_an_s_label_heading_inside_a_fence
+    build_intent(outcome: HOLLOW_OUTCOME, action: FENCED_LABEL_ACTION)
+    out, status = run_end_intent
+    assert_equal 0, status, out
+  end
+
+  MATRIX_AFTER_FENCE_ACTION = <<~MD.freeze
+    # ACTION_1
+
+    ### S1 - the real heading
+
+    a worked example:
+
+    ```ruby
+    # a comment that looks like a heading
+    def x; end
+    ```
+
+    | Row | Failure mode | Test |
+    | --- | --- | --- |
+    | 1 | it breaks | a test |
+  MD
+
+  MATRIX_AFTER_FENCE_OUTCOME = <<~MD.freeze
+    ---
+    disposition: delivered
+    ---
+    # Outcome: Gate demo
+
+    ## Summary
+    shipped
+
+    ## Delivered
+    | Row | What |
+    | --- | --- |
+    | S1 | the thing, delivered |
+
+    ## Verification
+    - suite green
+
+    ## Needs you
+    None
+
+    ## Follow-ups
+    None
+  MD
+
+  # O1.9: before the fence fix, a "#" comment inside the worked example cut
+  # S1's section short, losing the matrix that follows the fence, and
+  # proven_by(S1) rendered "not recorded" - refusing a record that is
+  # genuinely proven. The fence-aware reader must see the matrix and close
+  # clean.
+  def test_hollow_gate_counts_a_matrix_after_a_closed_fence
+    build_intent(outcome: MATRIX_AFTER_FENCE_OUTCOME, action: MATRIX_AFTER_FENCE_ACTION)
+    out, status = run_end_intent
+    assert_equal 0, status, out
+  end
 end

@@ -184,11 +184,14 @@ class ReportScreenCliTest < Minitest::Test
     assert_equal "v1.0.0-alpha.1", version_segment(out), out.lines[1]
   end
 
-  def test_delivered_cli_reads_not_recorded_when_no_repo_can_be_found
+  # Intent 330 (D11): the header no longer collapses a known merge sha into
+  # "not recorded" just because no tag was found for it - the last segment
+  # names WHICH kind of identity it is, "merge <sha>" here.
+  def test_delivered_cli_falls_back_to_the_merge_sha_when_no_repo_can_be_found
     dir = delivered_intent(File.join(@home, "store_root"), "- Merged into alpha at 0123abc.")
     out, err, status = Open3.capture3("ruby", CLI, "delivered", dir)
     assert_equal 0, status.exitstatus, err
-    assert_equal "not recorded", version_segment(out), out.lines[1]
+    assert_equal "merge 0123abc", version_segment(out), out.lines[1]
   end
 
   # --- row 80: template resolution, repo-shaped and install-shaped -------------
@@ -205,6 +208,8 @@ class ReportScreenCliTest < Minitest::Test
       FileUtils.cp(File.join(REPO, "scripts", "lib", "lock.rb"), File.join(tmp_root, "scripts", "lib", "lock.rb"))
       FileUtils.cp(File.join(REPO, "scripts", "lib", "screen_paint.rb"), File.join(tmp_root, "scripts", "lib", "screen_paint.rb"))
       FileUtils.cp(File.join(REPO, "scripts", "lib", "intent_screen_ansi.rb"), File.join(tmp_root, "scripts", "lib", "intent_screen_ansi.rb"))
+      FileUtils.cp(File.join(REPO, "scripts", "lib", "session_ledger.rb"), File.join(tmp_root, "scripts", "lib", "session_ledger.rb"))
+      FileUtils.cp(File.join(REPO, "scripts", "lib", "store_provisioning.rb"), File.join(tmp_root, "scripts", "lib", "store_provisioning.rb"))
       FileUtils.cp(File.join(REPO, "templates", "report-state.md"), File.join(tmp_root, "templates", "report-state.md"))
 
       root = File.join(tmp_root, "store_root")

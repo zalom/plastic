@@ -91,4 +91,37 @@ class ReportScreenSkillContractTest < Minitest::Test
     assert_includes text, "action-file heading"
   end
 
+  # --- intent 330, O4: an unnamed status ask routes to the session verb -------
+
+  # O4.1
+  def test_continuing_skill_routes_a_status_ask_to_the_session_verb
+    text = read("skills/intent-continuing/SKILL.md")
+    assert_includes text, "report-screen session"
+  end
+
+  # O4.2
+  def test_continuing_skill_keeps_the_named_and_delay_routes
+    text = read("skills/intent-continuing/SKILL.md")
+    assert_includes text, "report-screen state <intent_dir>"
+    assert_includes text, "report-screen delay"
+  end
+
+  # O4.3
+  def test_auto_skill_names_the_session_verb
+    text = read("skills/auto/SKILL.md")
+    assert_includes text, "report-screen session"
+  end
+
+  # O4.5
+  def test_human_report_contract_names_the_session_screen
+    text = read("skills/auto/references/human-report-contract.md")
+    assert_includes text, "report-screen session"
+  end
+
+  # O4.7: a shipped test already pins "state --all" as the roster-alone verb;
+  # the session-verb rewrite must never drop that string.
+  def test_continuing_skill_still_names_the_roster_verb
+    text = read("skills/intent-continuing/SKILL.md")
+    assert_includes text, "state --all"
+  end
 end

@@ -10,8 +10,10 @@
 # renderer path as `renderer_path:` (D2).
 require "time"
 require "json"
+require "date"
 require_relative "intent_screen"
 require_relative "lock"
+require_relative "session_ledger"
 
 module ReportScreen
   NOT_RECORDED = "not recorded"
@@ -73,10 +75,52 @@ module ReportScreen
     Array(frontmatter(intent_dir)["tags"]).map(&:to_s).include?("research")
   end
 
+  # Intent 330 (D12): the shared fence walker feeding split_by_headings AND
+  # table_rows. A line matching \A\s{0,3}(```+|~~~+) while closed opens a
+  # fence and remembers the marker character and its length; while open, a
+  # line whose marker is the SAME character and at least as long, with only
+  # whitespace after it, closes the fence. Inside a fence every line is body
+  # - a leading "#" or a leading "|" included. A four-space-indented block is
+  # deliberately never a fence (the cap is 0-3 leading whitespace chars),
+  # which is the CommonMark indented-code case, out of scope on purpose
+  # (D12's stated limit). Yields [line, fenced] for every line, in order.
+  FENCE_LINE_RE = /\A\s{0,3}(`{3,}|~{3,})/.freeze
+
+  def self.each_fence_line(text)
+    return enum_for(:each_fence_line, text) unless block_given?
+
+    marker = nil # [character, length] of the currently open fence, or nil
+    text.to_s.each_line do |line|
+      if marker
+        yield line, true
+        m = line.match(FENCE_LINE_RE)
+        next unless m && m[1][0] == marker[0] && m[1].length >= marker[1]
+        next unless line.sub(FENCE_LINE_RE, "").strip.empty?
+
+        marker = nil
+      else
+        m = line.match(FENCE_LINE_RE)
+        if m
+          marker = [m[1][0], m[1].length]
+          yield line, true
+        else
+          yield line, false
+        end
+      end
+    end
+  end
+
   # Markdown pipe-table data rows (header + separator skipped), each an array
-  # of trimmed cell strings. Tolerates leading prose before the table.
+  # of trimmed cell strings. Tolerates leading prose before the table. Fence-
+  # aware (D12/O1.7): a pipe row inside a fenced example is never counted.
   def self.table_rows(text)
-    lines = text.to_s.lines.map(&:strip).select { |l| l.start_with?("|") }
+    lines = []
+    each_fence_line(text) do |line, fenced|
+      next if fenced
+
+      stripped = line.strip
+      lines << stripped if stripped.start_with?("|")
+    end
     sep_idx = lines.index { |l| l.match?(/\A\|[\s:|-]+\|?\z/) }
     return [] unless sep_idx
     lines[(sep_idx + 1)..].map { |l| l.split("|", -1).map(&:strip)[1..-2].to_a }
@@ -84,13 +128,14 @@ module ReportScreen
 
   # Every [heading_line, body] pair in a Markdown file, split on ANY heading
   # line (any level). Used by proven_by (D19) so a section's own matrix rows
-  # are never confused with a sibling section's.
+  # are never confused with a sibling section's. Fence-aware (D12): a "#"
+  # line inside a fenced example never starts a new section.
   def self.split_by_headings(text)
     sections = []
     heading = nil
     body = +""
-    text.to_s.each_line do |line|
-      if line.start_with?("#")
+    each_fence_line(text) do |line, fenced|
+      if !fenced && line.start_with?("#")
         sections << [heading, body] if heading
         heading = line.strip
         body = +""
@@ -327,13 +372,64 @@ module ReportScreen
     line && line.match(/\b([0-9a-f]{7,40})\b/)[1]
   end
 
-  def self.ship_row(_text, intent_dir, tag_reader)
+  # Intent 330 (D9): reads `flow: base:` from a project's project.yml when
+  # `intent_dir` sits in the installed project layout
+  # (<home>/projects/<slug>/store/<id--slug>); nil otherwise (a global-store
+  # intent, a project with no `flow:` key, or malformed YAML). Pure: no git,
+  # no shell-out, just the one file this intent's own layout already reads.
+  PROJECT_LAYOUT_RE = %r{\A(.*)/projects/([^/]+)/store/[^/]+\z}.freeze
+
+  def self.flow_base(intent_dir)
+    m = intent_dir.to_s.match(PROJECT_LAYOUT_RE)
+    return nil unless m
+
+    home, slug = m[1], m[2]
+    path = File.join(home, "projects", slug, "project.yml")
+    return nil unless File.exist?(path)
+
+    require "yaml"
+    data = YAML.safe_load(File.read(path))
+    return nil unless data.is_a?(Hash)
+
+    flow = data["flow"]
+    return nil unless flow.is_a?(Hash)
+
+    base = flow["base"]
+    base.is_a?(String) && !base.empty? ? base : nil
+  rescue StandardError
+    nil
+  end
+
+  # Intent 330 (D9/D10/D23): the ship row's WHAT cell is the merge sha, then
+  # " → <branch>" only when `branch_reader` answers one (never the "alpha"
+  # literal), then " · v<version>" or the existing not-recorded fallback. The
+  # Source cell names WHERE the branch came from (D23): project.yml when
+  # flow_base itself supplied that exact branch, else git refs, so the row
+  # never keeps the stale "git tags" literal for a branch git never answered.
+  def self.ship_row(_text, intent_dir, tag_reader, branch_reader: ->(_dir) { nil })
     sha = merge_sha(intent_dir)
     version = shipped_version(intent_dir) || tag_reader.call(intent_dir)
     return nil if sha.nil? && (version.nil? || version.to_s.empty?)
-    ver_text = version && !version.to_s.empty? ? "v#{version.to_s.sub(/\Av/, '')}" : NOT_RECORDED
+    branch = branch_reader.call(intent_dir)
     sha_text = sha || NOT_RECORDED
-    { kind: "ship", what: "#{sha_text} → alpha · #{ver_text}", source: "outcome.md; git tags" }
+    what = +sha_text
+    what << " → #{branch}" if branch && !branch.to_s.empty?
+    # D10: the version segment is omitted, not filled with NOT_RECORDED. A
+    # repository with no release line has no version, the header already
+    # carries the shipped identity, and naming the absence twice on one screen
+    # is the defect this intent was opened to remove, not a floor worth keeping.
+    what << " · v#{version.to_s.sub(/\Av/, '')}" if version && !version.to_s.empty?
+    # D14: the cell names every file the row actually came from. The branch and
+    # the version have different origins, so when both contributed, both are
+    # named rather than only the branch's.
+    sources = ["outcome.md"]
+    if branch && !branch.to_s.empty?
+      sources << (flow_base(intent_dir) == branch ? "project.yml" : "git refs")
+    end
+    sources << "git tags" if version && !version.to_s.empty? && shipped_version(intent_dir).nil?
+    sources << "git tags" if sources.length == 1
+    source = sources.join("; ")
+    { kind: "ship", what: what, source: source }
   end
 
   def self.doctor_row(text)
@@ -362,7 +458,7 @@ module ReportScreen
     { kind: "verdict", what: m[1].strip, source: "outcome.md" }
   end
 
-  def self.evidence_rows(intent_dir, tag_reader: ->(_dir) { nil })
+  def self.evidence_rows(intent_dir, tag_reader: ->(_dir) { nil }, branch_reader: ->(_dir) { nil })
     text = outcome_text(intent_dir)
     return [] unless text
     verification = section_of(text, "## Verification")
@@ -370,7 +466,7 @@ module ReportScreen
     rows = []
     rows << suite_row(verification)
     rows << red_row(verification)
-    rows << (research_intent?(intent_dir) ? nil : ship_row(text, intent_dir, tag_reader))
+    rows << (research_intent?(intent_dir) ? nil : ship_row(text, intent_dir, tag_reader, branch_reader: branch_reader))
     if research_intent?(intent_dir)
       rows << deposits_row(text)
       rows << verdict_row(text)
@@ -444,7 +540,11 @@ module ReportScreen
 
   # --- roster (D7/D8) -------------------------------------------------------------
 
-  def self.active_dirnames(index_path)
+  # The dirnames named under one "## <section_name>" heading of an INDEX.md.
+  # active_dirnames used to hardcode "Active"; intent 330's session verb (D22)
+  # reuses this to find Completed/Abandoned dirnames for the no-bookend
+  # footer, so the section is now a parameter.
+  def self.dirnames_in_section(index_path, section_name)
     return [] unless File.exist?(index_path)
     dirnames = []
     section = nil
@@ -453,11 +553,22 @@ module ReportScreen
         section = line[3..].strip
         next
       end
-      next unless section == "Active"
+      next unless section == section_name
       m = line.match(%r{\(store/([^/]+)/})
       dirnames << m[1] if m
     end
     dirnames
+  end
+
+  def self.active_dirnames(index_path)
+    dirnames_in_section(index_path, "Active")
+  end
+
+  # Intent 330 (D22): both terminal sections count as "completed" for the
+  # no-bookend footer - a closed intent the reader cannot expect a Done
+  # savepoint line from, since the convention predates end-intent writing it.
+  def self.completed_dirnames(index_path)
+    dirnames_in_section(index_path, "Completed") + dirnames_in_section(index_path, "Abandoned")
   end
 
   def self.newest_savepoint_ts(intent_dir)
@@ -541,18 +652,31 @@ module ReportScreen
     done ? human_time(done[0]) : NOT_RECORDED
   end
 
-  def self.render_delivered(intent_dir:, tag_reader: ->(_dir) { nil })
+  # Intent 330 (D11): the header's last segment is the shipped identity, and
+  # says which kind it is - v<version> when a version is known, else
+  # "merge <sha>" (never a bare, ambiguous hash), else the exact NOT_RECORDED
+  # string when neither exists.
+  def self.header_ship_segment(intent_dir, tag_reader)
+    version = shipped_version(intent_dir) || tag_reader.call(intent_dir)
+    return "v#{version.to_s.sub(/\Av/, '')}" if version && !version.to_s.empty?
+
+    sha = merge_sha(intent_dir)
+    return "merge #{sha}" if sha && !sha.to_s.empty?
+
+    NOT_RECORDED
+  end
+
+  def self.render_delivered(intent_dir:, tag_reader: ->(_dir) { nil }, branch_reader: ->(_dir) { nil })
     id = intent_id(intent_dir)
     name = title_for(intent_dir, default_store_root(intent_dir))
     ts = delivered_timestamp(intent_dir)
     m = mode(intent_dir)
     dur = duration(intent_dir)
-    version = shipped_version(intent_dir) || tag_reader.call(intent_dir)
-    ver_text = version && !version.to_s.empty? ? "v#{version.to_s.sub(/\Av/, '')}" : NOT_RECORDED
+    ship_segment = header_ship_segment(intent_dir, tag_reader)
 
     lines = []
     lines << "## ✔ #{id} · #{name} · delivered"
-    lines << "#{ts} · #{m} · #{dur} · #{ver_text}"
+    lines << "#{ts} · #{m} · #{dur} · #{ship_segment}"
     lines << ""
     lines << "**Asked**"
     lines << "  #{asked(intent_dir)}"
@@ -566,7 +690,7 @@ module ReportScreen
     end
     lines << ""
     lines << "**Evidence**"
-    ev = evidence_rows(intent_dir, tag_reader: tag_reader)
+    ev = evidence_rows(intent_dir, tag_reader: tag_reader, branch_reader: branch_reader)
     if ev.empty?
       # 317a S4 (matrix S4a): a header-only table (319's live rendering) says
       # nothing; the honest floor is the same phrase every other absent source
@@ -659,6 +783,184 @@ module ReportScreen
     lines << ""
     lines << "**Outcome**   #{delay_outcome_line(intent_dir)}"
     "#{lines.join("\n")}\n"
+  end
+
+  # --- S9: the session verb (intent 330) -------------------------------------------
+  #
+  # `report-screen session <tier_root>` - the delivered screens for every intent
+  # this session completed, oldest first, then the state --all roster (D1).
+  # Membership is the savepoint Done bookend inside [window_start, now] (D2),
+  # never the delivery lock (a dispatched lead's derived auto- key is not the
+  # owner's session id). The pure functions below take the clock and the
+  # ledger root as arguments (D8): no Time.now, no git, no ENV read here.
+
+  # <home> for a tier root, by the same layout discriminator IntentScreen
+  # uses elsewhere: a project tier root's parent directory is "projects".
+  def self.home_for_tier_root(tier_root)
+    File.basename(File.dirname(tier_root)) == "projects" ? File.expand_path("../..", tier_root) : tier_root
+  end
+
+  # D18: <home>/store/.sessions, derived from the tier root through the SAME
+  # discriminator - deriving it unconditionally from tier_root would answer
+  # "/Users" for the global tier (~/.plastic itself has no "store" segment
+  # to strip).
+  def self.default_ledger_root(tier_root)
+    File.join(home_for_tier_root(tier_root), "store", ".sessions")
+  end
+
+  # D5: "global" is <home> itself; any other slug is <home>/projects/<slug>.
+  def self.store_for_slug(home, slug)
+    slug == "global" ? home : File.join(home, "projects", slug)
+  end
+
+  # D4: the newest valid day directory that is not in the future, when
+  # `today`'s own day directory does not exist. No ledger at all (D3.13)
+  # answers `today` unchanged rather than raising - there is simply nothing
+  # to scan, not an error.
+  def self.fallback_day(ledger_root, today)
+    return today if Dir.exist?(File.join(ledger_root, today))
+    return today unless Dir.exist?(ledger_root)
+
+    candidates = Dir.children(ledger_root).select { |d| SessionLedger.valid_day_id?(d) && d <= today }
+    candidates.max || today
+  end
+
+  # D17: the visible note printed above the screens when no session id was
+  # given at all, so the whole-day, tier-only fallback never looks like a
+  # real, narrower answer.
+  # D17: shaped as a screen opener ("▶ ... · ...") on purpose. The note is the
+  # first line of the reply, and both ScreenPaint's OPENER_RE and the
+  # MessageDisplay hook's first-character gate require that shape; a plain
+  # sentence here would leave the whole session report unpainted.
+  def self.window_note(day, reason)
+    "▶ Window · the whole of #{Date.strptime(day, '%Y%m%d').iso8601} · #{reason}"
+  end
+
+  # True when the day ledger actually carries a line for this session, across
+  # the same two day directories the window search reads. The CLI asks so it
+  # can tell "no session id given" apart from "this session id matches no
+  # ledger line": D17 exists to stop the second one answering silently, and a
+  # resumed background job carries exactly that kind of unmatched id.
+  def self.session_tagged?(ledger_root:, session:, now:)
+    return false if session.nil? || session.to_s.strip.empty?
+
+    short = SessionLedger.short_session_id(session)
+    today = SessionLedger.day_id(now)
+    yesterday = SessionLedger.day_id(now - 86_400)
+    [yesterday, today].any? do |d|
+      session_ledger_lines(ledger_root, d).any? { |l| l[:session] == short }
+    end
+  end
+
+  # D4: local midnight of `day`, converted to UTC, using `sample_now`'s OWN
+  # utc_offset - never a literal UTC midnight, and never the machine's
+  # ambient zone outside what the injected clock itself carries.
+  def self.local_midnight_utc(day, sample_now)
+    date = Date.strptime(day, "%Y%m%d")
+    Time.new(date.year, date.month, date.day, 0, 0, 0, sample_now.utc_offset)
+  end
+
+  # One day's session-tagged savepoint lines: "{ts}  {Event}  [{session}]
+  # [{slug}] {summary}" (SessionLedger.savepoint_line's own shape). Missing
+  # file, or a line that does not match, is silently skipped.
+  SESSION_LEDGER_LINE_RE = /\A(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ)\s{2,}\S+\s{2,}\[([^\]]*)\]\s\[([^\]]*)\]/.freeze
+
+  def self.session_ledger_lines(ledger_root, day)
+    path = File.join(ledger_root, day, "savepoint.md")
+    return [] unless File.exist?(path)
+
+    File.readlines(path).filter_map do |line|
+      m = line.match(SESSION_LEDGER_LINE_RE)
+      m ? { ts: m[1], session: m[2], slug: m[3] } : nil
+    end
+  end
+
+  def self.store_intent_dirs(store)
+    Dir.glob(File.join(store, "store", "*")).select { |d| IntentScreen.intent_dir?(d) }
+  end
+
+  def self.last_done_ts(intent_dir)
+    lines = savepoint_lines(intent_dir)
+    done = lines.reverse.find { |_ts, kind, _text| kind == "Done" }
+    done ? Time.parse(done[0]) : nil
+  end
+
+  # D2/D3/D4/D5/D22: the intent directories completed inside the session's
+  # window, oldest Done bookend first, plus the count of completed intents
+  # (D22: Completed or Abandoned in INDEX.md) that carry no Done bookend at
+  # all and so cannot be placed in any window.
+  def self.session_delivered_dirs(ledger_root:, tier_root:, session:, since:, now:)
+    today = SessionLedger.day_id(now)
+    yesterday = SessionLedger.day_id(now - 86_400)
+    short = session && !session.to_s.strip.empty? ? SessionLedger.short_session_id(session) : nil
+
+    tagged = short ? [yesterday, today].flat_map { |d| session_ledger_lines(ledger_root, d) }
+                         .select { |l| l[:session] == short } : []
+    slugs = tagged.map { |l| l[:slug] }.uniq
+
+    window_start =
+      if since
+        Time.parse(since.to_s)
+      elsif tagged.any?
+        tagged.map { |l| Time.parse(l[:ts]) }.min
+      else
+        local_midnight_utc(fallback_day(ledger_root, today), now)
+      end
+
+    home = home_for_tier_root(tier_root)
+    stores = ([tier_root] + slugs.map { |s| store_for_slug(home, s) }).uniq
+    stores = stores.select { |s| File.exist?(File.join(s, "INDEX.md")) }
+
+    entries = []
+    skipped = 0
+    stores.each do |store|
+      completed = completed_dirnames(File.join(store, "INDEX.md"))
+      store_intent_dirs(store).each do |dir|
+        done_ts = last_done_ts(dir)
+        if done_ts
+          entries << [dir, done_ts] if done_ts >= window_start && done_ts <= now
+        elsif completed.include?(File.basename(dir))
+          skipped += 1
+        end
+      end
+    end
+
+    [entries.sort_by { |_dir, ts| ts }.map(&:first), skipped]
+  end
+
+  # D1/D7/D21/D22: one delivered screen per directory (oldest first, one
+  # blank line apart), the roster last, and the skipped-count footer between
+  # them when non-zero. `painter` is applied to each block SEPARATELY (D21):
+  # a screen ScreenPaint cannot parse falls back to its own plain text
+  # without touching its neighbours; the default is the identity function,
+  # so a caller that never paints gets the plain screens verbatim. A
+  # directory whose delivered screen cannot be rendered (O3.28) never sinks
+  # the rest of the report.
+  def self.render_session(dirs:, skipped:, store_root:, tag_reader: ->(_dir) { nil },
+                           branch_reader: ->(_dir) { nil }, note: nil, changed: nil,
+                           now: Time.now, painter: ->(text) { text })
+    blocks = []
+    blocks << note if note && !note.to_s.empty?
+
+    if dirs.empty?
+      blocks << "No intents delivered in this session."
+    else
+      dirs.each do |dir|
+        blocks << begin
+          render_delivered(intent_dir: dir, tag_reader: tag_reader, branch_reader: branch_reader).chomp
+        rescue StandardError => e
+          "## #{intent_id(dir)} · could not render (#{e.message})"
+        end
+      end
+    end
+
+    if skipped.positive?
+      blocks << "#{skipped} completed intent#{skipped == 1 ? '' : 's'} skipped: no Done bookend in savepoint.md."
+    end
+
+    blocks << render_roster(store_root, changed: changed, now: now).chomp
+
+    "#{blocks.map { |b| painter.call(b) }.join("\n\n")}\n"
   end
 
   # --- S8: --ansi passthrough (D2) -----------------------------------------------
