@@ -30,6 +30,7 @@ require_relative "lib/power_tools"
 require_relative "lib/preflight"
 require_relative "lib/ruby_probe"
 require_relative "lib/doctor_session_ledger"
+require_relative "lib/intent_screen"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -1185,6 +1186,7 @@ end
       intent_structure_check(intent_dir),
       intent_lifecycle_artifacts_check(intent_dir, disposition),
       intent_checklist_complete_check(intent_dir),
+      intent_ticks_lag_check(intent_dir),
       intent_links_projection_check_for(id, scope),
       intent_savepoint_truthful_check(intent_dir, index_path: index_path),
     ]
@@ -1260,6 +1262,45 @@ end
     else
       check(category: "intent_end", name: "intent_checklist_complete", status: "fail",
             message: "#{unchecked.size} unchecked checklist item(s) remain", details: unchecked)
+    end
+  end
+
+  # Intent 329: the checklist is the only input to the state screen's Progress bar, so an
+  # intent whose commit ledger has entries and whose checklist has no ticked item is
+  # reporting 0 progress on work that already landed. Advisory only (WARN), like
+  # intent_savepoint_truthful: a lagging tick is a lead's review finding, never a machine
+  # refusal. The commit count comes from this intent's own savepoint.md Commit ledger
+  # (intent 317 D17), never from git: git's detected base is the repo default branch, which
+  # is not the base a 2.0 intent branch forks from.
+  def intent_ticks_lag_check(intent_dir)
+    items = IntentScreen.checklist_items(intent_dir)
+    if items.empty?
+      return check(category: "intent_end", name: "intent_ticks_lag", status: "pass",
+                   message: "n/a: checklist.md has no items to tick")
+    end
+
+    ticked = items.count { |i| i[:done] }
+    commits = savepoint_commit_count(intent_dir)
+
+    if commits.positive? && ticked.zero?
+      check(category: "intent_end", name: "intent_ticks_lag", status: "warn",
+            message: "ticks lag the branch: #{commits} commit(s) recorded, " \
+                     "0 of #{items.size} checklist items ticked")
+    else
+      check(category: "intent_end", name: "intent_ticks_lag", status: "pass",
+            message: "#{ticked} of #{items.size} ticked, #{commits} commit(s) recorded")
+    end
+  end
+
+  # Count `Commit` lines in the intent's savepoint ledger, through the one regex that parses
+  # a savepoint line (IntentScreen::SAVEPOINT_RE; field 2 is the kind).
+  def savepoint_commit_count(intent_dir)
+    path = File.join(intent_dir, "savepoint.md")
+    return 0 unless File.exist?(path)
+
+    File.readlines(path).count do |line|
+      m = line.strip.match(IntentScreen::SAVEPOINT_RE)
+      m && m[2] == "Commit"
     end
   end
 
