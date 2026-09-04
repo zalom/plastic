@@ -1162,9 +1162,11 @@ end
   #
   # Doctor's fourth check scope, invoked by `--intent <id>`. Never a store-wide sweep:
   # resolves exactly one intent directory (mirrors scripts/end-intent's resolve_intent_dir /
-  # scripts/project-links's --intent disambiguation) and returns five checks, four
-  # FAIL-severity, one WARN-severity (intent_savepoint_truthful stays WARN per intent 134's
-  # binding advisory-only ruling; see spec.md D2/D8 - do NOT escalate it to FAIL).
+  # scripts/project-links's --intent disambiguation) and returns six checks, four
+  # FAIL-severity, two WARN-severity: intent_savepoint_truthful stays WARN per intent 134's
+  # binding advisory-only ruling (see spec.md D2/D8 - do NOT escalate it to FAIL), and
+  # intent_ticks_lag is WARN-only per intent 329's ruling that a lagging tick warns rather
+  # than blocks.
   def check_intent_end(id, store: nil, disposition: nil)
     intent_dir, scope = resolve_single_intent_dir(id, store: store)
     unless intent_dir

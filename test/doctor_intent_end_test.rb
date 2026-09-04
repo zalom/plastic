@@ -361,19 +361,29 @@ class DoctorIntentEndTest < Minitest::Test
     assert_equal "pass", result[:status]
   end
 
-  # V4: an absent checklist.md is the skip condition, not zero ticks, regardless of commits.
+  # V4: a checklist with no items to tick is the skip condition, not zero ticks, regardless
+  # of commits. Four shapes count as "no items" (IntentScreen.checklist_items returns []
+  # for all of them): the file is absent, it carries only the placeholder sentinel, it is
+  # empty, or it has prose but no `- [ ]` line at all.
   def test_ticks_lag_skips_a_checklist_with_no_items
-    dir = write_clean_intent(id: "73")
-    File.delete(File.join(dir, "checklist.md"))
-    File.write(File.join(dir, "savepoint.md"), <<~SP)
-      2026-07-01T00:00:00Z  What  73--demo.md
-      2026-07-01T00:05:00Z  Commit  abc123 landed
-    SP
+    {
+      "73" => ->(dir) { File.delete(File.join(dir, "checklist.md")) },
+      "73p" => ->(dir) { File.write(File.join(dir, "checklist.md"), "#{IntentScreen::PLACEHOLDER_SENTINEL}\n") },
+      "73e" => ->(dir) { File.write(File.join(dir, "checklist.md"), "") },
+      "73i" => ->(dir) { File.write(File.join(dir, "checklist.md"), "# Checklist\n\nNo items yet.\n") },
+    }.each do |id, mutate_checklist|
+      dir = write_clean_intent(id: id)
+      mutate_checklist.call(dir)
+      File.write(File.join(dir, "savepoint.md"), <<~SP)
+        2026-07-01T00:00:00Z  What  #{id}--demo.md
+        2026-07-01T00:05:00Z  Commit  abc123 landed
+      SP
 
-    checks = doctor.check_intent_end("73")
-    result = find(checks, "intent_ticks_lag")
-    assert_equal "pass", result[:status]
-    assert_match(%r{n/a}, result[:message])
+      checks = doctor.check_intent_end(id)
+      result = find(checks, "intent_ticks_lag")
+      assert_equal "pass", result[:status], "expected the #{id.inspect} shape to pass"
+      assert_match(%r{n/a}, result[:message], "expected the #{id.inspect} shape to report n/a")
+    end
   end
 
   # V5: WARN, never FAIL, and the overall rollup must never escalate past warn on this
@@ -401,13 +411,15 @@ class DoctorIntentEndTest < Minitest::Test
     assert_equal "warn", overall[:status]
   end
 
-  # V6: only `Commit`-kind lines count; `Review`, `Lock`, and malformed lines never do.
+  # V6: only `Commit`-kind lines count; `Review`, `Lock`, and malformed lines never do, even
+  # when the word "Commit" appears inside a `Review` line's own text, the shape most likely
+  # to miscount a naive substring search.
   def test_ticks_lag_counts_only_commit_kind_lines
     dir = write_clean_intent(id: "75")
     File.write(File.join(dir, "checklist.md"), "# Checklist\n\n- [ ] Step 1\n")
     File.write(File.join(dir, "savepoint.md"), <<~SP)
       2026-07-01T00:00:00Z  What  75--demo.md
-      2026-07-01T00:05:00Z  Review  plan approved
+      2026-07-01T00:05:00Z  Review  Commit abc123 was reviewed
       2026-07-01T00:06:00Z  Lock  takeover: session xyz
       not a valid savepoint line at all
     SP
