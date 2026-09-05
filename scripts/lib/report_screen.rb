@@ -1169,11 +1169,31 @@ module ReportScreen
     "#{closed_part} · #{all_entries.length} intents · #{duration}"
   end
 
-  # R10: the Merged cell reads `merged` events only, matching the entry id as a whole word - a
-  # `handoff` or `dispatched` line naming the same id never fills it - and takes the first
-  # hex-with-at-least-one-digit token of 7-40 characters as the sha.
+  # The regex RoadmapSavepoint::KEYWORD_TABLE pairs with an event word - read from the table
+  # rather than copied, so the Merged cell's vocabulary never drifts from rebuild's own.
+  def self.roadmap_savepoint_keyword_regex(event)
+    RoadmapSavepoint::KEYWORD_TABLE.find { |_re, ev| ev == event }.first
+  end
+
+  # R10/R21/R22: the Merged cell reads a line only when the entry id is its SUBJECT - the first
+  # whitespace-delimited token of the detail, never a whole word anywhere in it (R21: a real
+  # ledger line names one entry's id as its subject and a SECOND entry's id in passing, and the
+  # second entry has no merge line of its own to fill this row with). Among subject-matching
+  # lines, one is read when the ledger's own event is `merged` OR its detail matches
+  # KEYWORD_TABLE's merged pattern (R22: the appender sometimes files a real per-entry merge
+  # under a different event word, `dispatched`, because the rest of the line was other news),
+  # and refused when the event is `handoff` or the detail matches KEYWORD_TABLE's handoff
+  # pattern - stricter than R10's original guarantee, never weaker. The sha is the first
+  # hex-with-at-least-one-digit token of 7-40 characters in the matched line.
   def self.roadmap_merged_cell(id, events)
-    line = events.find { |_t, event, detail| event == "merged" && detail.to_s =~ /(?:\A|\W)#{Regexp.escape(id)}(?:\z|\W)/ }
+    merged_re = roadmap_savepoint_keyword_regex("merged")
+    handoff_re = roadmap_savepoint_keyword_regex("handoff")
+
+    line = events.find do |_t, event, detail|
+      next false unless detail.to_s.strip.split(/\s+/).first == id
+      next false if event == "handoff" || detail.to_s =~ handoff_re
+      event == "merged" || detail.to_s =~ merged_re
+    end
     return NOT_RECORDED unless line
 
     m = line[2].match(/\b(?=[0-9a-f]*\d)[0-9a-f]{7,40}\b/i)

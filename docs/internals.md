@@ -1506,10 +1506,17 @@ only on the line immediately after the opener (`idx == opener_idx + 1`); the
 the title with no blank line between, or `ScreenPaint.paint` returns `nil` and the whole screen
 falls back to plain.
 
-**The Merged cell** matches an entry's id as a whole word inside a `merged` event's detail only
-(never a `handoff` or `dispatched` line naming the same id) and takes the first hex token of 7-40
-characters carrying at least one digit as the sha - the same shape a real `git` short or full hash
-takes, distinguishing it from an all-letter word that happens to be valid hex.
+**The Merged cell** matches a line only when the entry's id is its SUBJECT - the first
+whitespace-delimited token of the ledger detail, never a whole word anywhere in it, because a
+real ledger line can name one entry's id as its subject and a second entry's id in passing (a
+post-execution-review fold: the second entry's row was picking up the first entry's sha). Among
+subject-matching lines, one is read when the ledger's own event is `merged` or the detail matches
+`RoadmapSavepoint::KEYWORD_TABLE`'s own merged pattern - a real per-entry merge is sometimes filed
+under a different event word (`dispatched`, in the real `codex-fixes` ledger, because the rest of
+the line carried other dispatch news) - and refused when the event is `handoff` or the detail
+matches the table's handoff pattern. The sha is still the first hex token of 7-40 characters
+carrying at least one digit, the same shape a real `git` short or full hash takes, distinguishing
+it from an all-letter word that happens to be valid hex.
 
 **Paint kinds.** `scripts/lib/screens/roadmap.rb` registers `:roadmap_plan`, `:roadmap_state`, and
 `:roadmap_delivered` (331a's registry, a file rather than a diff to `screen_paint.rb`), openers
