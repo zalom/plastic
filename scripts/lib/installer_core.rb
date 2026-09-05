@@ -468,6 +468,11 @@ class InstallerCore
       "scripts/lib/intent_screen_ansi.rb" => "scripts/lib/intent_screen_ansi.rb",
       "scripts/lib/screen_paint.rb" => "scripts/lib/screen_paint.rb",
       "scripts/lib/message_display.rb" => "scripts/lib/message_display.rb",
+      # Intent 331d (A1): scripts/dashboard.rb require_relatives this lib
+      # directly; templates/dashboard-screen.md and scripts/lib/screens/
+      # dashboard.rb are glob-derived (template_files, screen_files above)
+      # and need no entry here.
+      "scripts/lib/dashboard_screen.rb" => "scripts/lib/dashboard_screen.rb",
       "scripts/hook-message-display" => "scripts/hook-message-display",
     }
   end
