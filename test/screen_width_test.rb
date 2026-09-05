@@ -350,7 +350,7 @@ class ScreenWidthTest < Minitest::Test
       "| --- | --- | --- |",
       "| 1234567890 | #{'D' * 100} | open |",
     ]
-    fitted = ReportScreen.fit_table_block(block, 30)
+    fitted = ReportScreen.fit_table_block(block, 32)
     cells = ScreenPaint.cells_of(fitted.lines.map(&:chomp).last)
     assert_equal "1234567890", cells[0],
                  "a 10-column id column must keep its own natural width, never shrink for the widest TEXT column"

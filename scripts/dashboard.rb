@@ -1112,12 +1112,12 @@ end
 
 # The Intent cell fitted to what the row has left. `others` are the already
 # rendered sibling cells; the scaffolding is the leading "| ", a " | " between
-# every pair of cells, and the trailing " |".
+# every pair of cells, and the trailing " |". Intent 331f1: the one implementation now lives
+# on ReportScreen (fit_row_cell), measured in DISPLAY columns rather than String#length - an
+# `others` cell carrying a progress bar costs two columns per glyph, not one (RC1) - so
+# roadmap_state_entries_table's own Intent cell spends the same budget by the same rule.
 def screen_fit_intent(title, others)
-  scaffolding = 2 + (3 * others.length) + 2
-  budget = SCREEN_ROW_MAX_COLUMNS - scaffolding - others.sum { |c| c.to_s.length }
-  return "" if budget <= 0
-  truncate_on_word_boundary(title, budget)
+  ReportScreen.fit_row_cell(title, others, max: SCREEN_ROW_MAX_COLUMNS)
 end
 
 # D6: last_accessed_at descending, then id, capped at SCREEN_ACTIVE_CAP.

@@ -533,7 +533,7 @@ class ReportScreenRoadmapTest < Minitest::Test
     write_index(future: %w[1101])
 
     out = render(roadmap_path("demo"), "state")
-    row = out.lines.find { |l| l.include?("1101") }
+    row = out.lines.find { |l| l.include?("| 1101 |") }
     refute_nil row
     assert_equal 8, row.count("|"), "an escaped pipe must never add or drop a column in the 6-column table"
   end

@@ -61,38 +61,87 @@ module ScreenPaint
 
   module_function
 
-  # Truncate `text` to at most `max_chars`, cutting at the last whitespace at or before the
-  # limit (never mid-word) and appending a single ellipsis when truncation happens. The one
-  # shared implementation (intent 331f, finding 1): ReportScreen.truncate_on_word_boundary and
-  # dashboard.rb's own helper of the same name both delegate here.
+  # Intent 331f1 (spec.md's acceptance rule): the conservative terminal cost used ONLY to
+  # enforce the 115-column bound - ANSI escapes stripped, then every character at or above
+  # U+1100 (the East Asian Wide/Ambiguous threshold; a block glyph like "█"/"░" sits well past
+  # it) counts two columns, everything else one. `IntentScreenAnsi.visible_width` stays a
+  # plain ANSI-stripped `.length` because it drives PADDING, not the bound - a terminal that
+  # draws "█" one column wide would misalign if padding used this conservative cost.
+  # Over-bounding only ever makes a row narrower, never wraps one, so using this rule for the
+  # bound alone is always safe.
+  WIDE_CODEPOINT_MIN = 0x1100
+
+  def display_columns(text)
+    text.to_s.gsub(A::ANSI_RE, "").each_char.sum { |c| c.ord >= WIDE_CODEPOINT_MIN ? 2 : 1 }
+  end
+
+  # Truncate `text` to at most `max_chars` DISPLAY COLUMNS, cutting at the last whitespace at
+  # or before the limit (never mid-word) and appending a single ellipsis when truncation
+  # happens. The one shared implementation (intent 331f, finding 1; intent 331f1 finding A1):
+  # ReportScreen.truncate_on_word_boundary and dashboard.rb's own helper of the same name both
+  # delegate here. The ellipsis (U+2026) itself sits above WIDE_CODEPOINT_MIN, so it costs TWO
+  # display columns even though it is one character - the budget reserves that display width,
+  # not `ellipsis.length`, or every truncated cell lands one column over (finding A1). Any
+  # ellipsis already trailing the word-boundary slice is dropped before the fresh one is
+  # appended, so a value truncated twice (the assembled-row backstop truncating a cell that
+  # was already cut) never stacks a second ellipsis onto the first.
   def truncate_on_word_boundary(text, max_chars)
     t = text.to_s
-    return t if t.length <= max_chars
-    ellipsis = "…"
-    limit = [max_chars - ellipsis.length, 0].max
-    slice = t[0, limit]
+    return t if display_columns(t) <= max_chars
+    ellipsis = A::ELLIPSIS
+    budget = [max_chars - display_columns(ellipsis), 0].max
+    # Walk characters accumulating DISPLAY columns, not a raw character index: the row-level
+    # backstop calls this on an ALREADY-ASSEMBLED row that can carry several prior per-cell
+    # ellipses (each one two display columns for one character), so a plain `t[0, limit]`
+    # character slice can under-cut and still land over budget once its own wide characters
+    # are counted.
+    cols = 0
+    cut_at = 0
+    t.each_char do |c|
+      w = c.ord >= WIDE_CODEPOINT_MIN ? 2 : 1
+      break if cols + w > budget
+      cols += w
+      cut_at += 1
+    end
+    slice = t[0, cut_at]
     cut = slice.rindex(/\s/)
     slice = slice[0, cut] if cut && cut.positive?
-    "#{slice.rstrip}#{ellipsis}"
+    slice = slice.rstrip
+    slice = slice.chomp(ellipsis) while slice.end_with?(ellipsis)
+    "#{slice}#{ellipsis}"
   end
 
   # Shrinks a row of column `widths` until their sum fits `budget`: the widest shrinkable
   # column loses one column at a time, ties break toward the leftmost column, no column ever
-  # drops below FIT_COLUMN_FLOOR, and a column flagged in `bar_columns` (it carries a progress
-  # bar) is never touched. The one shared shrink (intent 331f, finding 1):
-  # ReportScreen.fit_table_block's markdown row and ScreenPaint.paint_data_table's painted row
-  # both bound through this rather than carrying two loops that could drift apart. Returns a
-  # new array; the caller's own `widths` is left untouched.
-  def shrink_column_widths(widths, budget, bar_columns:)
+  # drops below its own `floors[i]` (FIT_COLUMN_FLOOR for every column when `floors` is
+  # omitted, the original behavior), and a column flagged in `bar_columns` (it carries a
+  # progress bar) is never touched regardless of its floor. The one shared shrink (intent
+  # 331f, finding 1; intent 331f1, S3): ReportScreen.fit_table_block's markdown row and
+  # ScreenPaint.paint_data_table's painted row both bound through this rather than carrying
+  # two loops that could drift apart. Returns a new array; the caller's own `widths` is left
+  # untouched.
+  def shrink_column_widths(widths, budget, bar_columns:, floors: nil)
+    floors ||= Array.new(widths.length, FIT_COLUMN_FLOOR)
     widths = widths.dup
     loop do
       break if widths.sum <= budget
-      candidates = widths.each_index.select { |ci| !bar_columns[ci] && widths[ci] > FIT_COLUMN_FLOOR }
+      candidates = widths.each_index.select { |ci| !bar_columns[ci] && widths[ci] > floors[ci] }
       break if candidates.empty?
       target = candidates.max_by { |ci| [widths[ci], -ci] }
       widths[target] -= 1
     end
     widths
+  end
+
+  # Intent 331f1, S3 (brief 4): the per-column floor a data-table shrink never crosses - a
+  # column never shrinks below its own header cell, below its natural width when that is at
+  # most 10 columns (the id case: an id column is already narrow, so "natural width" IS its
+  # floor and a uniform 8-column floor could still crush it), or below a bar cell (bar columns
+  # are handled separately, by `bar_columns:` above, but a caller may still pass a natural
+  # width here too - `[header_len, base].max` never fights that).
+  def column_floor(header_len, natural_width)
+    base = natural_width <= 10 ? natural_width : FIT_COLUMN_FLOOR
+    [header_len, base].max
   end
 
   # Registers a screen kind's opener grammar (a Regexp or a callable taking
@@ -274,8 +323,17 @@ module ScreenPaint
     row.split("|", -1).map(&:strip)[1..-2].to_a
   end
 
+  # Intent 331f1 (finding A3): the ONE classifier, called by both this painter and
+  # ReportScreen.fit_table_block's field-vs-data dispatch, so a table is never fitted by one
+  # rule and painted by another. A block is a field table when EVERY non-separator,
+  # non-blank-scaffold row's first cell is bold - not just the first row (the old rule):
+  # a data table whose header cell happens to be bold (e.g. "**Kind**") still has ordinary,
+  # unbold data rows underneath it, so it stays a data table. A block with nothing left after
+  # stripping separators/scaffolding classifies as neither (false).
   def field_table?(rows)
-    rows.first&.gsub(/[\s|]/, "") == "" || cells_of(rows.first).first.to_s.start_with?("**")
+    candidates = rows.reject { |r| SEPARATOR_RE.match?(r) || r.gsub(/[\s|]/, "").empty? }
+    return false if candidates.empty?
+    candidates.all? { |r| cells_of(r).first.to_s.start_with?("**") }
   end
 
   # A field table ("| | | |" scaffold, "| **Key** | value | note |" rows)
@@ -288,7 +346,7 @@ module ScreenPaint
     rows = rows.reject { |r| SEPARATOR_RE.match?(r) || r.gsub(/[\s|]/, "").empty? }
     return "" if rows.empty?
 
-    if cells_of(rows.first).first.to_s.start_with?("**")
+    if field_table?(rows)
       return paint_field_table(rows, color: color, width: width, markdown_safe: markdown_safe)
     end
 
@@ -329,8 +387,21 @@ module ScreenPaint
     ncols = grid.first.length
     widths = (0...ncols).map { |i| grid.map { |r| r[i].to_s.length }.max }
     bar_columns = (0...ncols).map { |i| grid.any? { |r| r[i].to_s =~ PROGRESS_BAR_CHARS_RE } }
-    budget = width - (2 + 2 * (ncols - 1))
-    widths = shrink_column_widths(widths, budget, bar_columns: bar_columns)
+    # Intent 331f1 (finding A2/RC1): a bar column never shrinks, but its DISPLAY cost (every
+    # block glyph counts two columns under the acceptance rule) can still exceed its own
+    # CHARACTER width - reserve that overage out of the budget up front so the remaining
+    # (shrinkable) columns give up enough room for the row to actually stay under `width`
+    # once it is rendered, not just once its character count is summed.
+    bar_overage = (0...ncols).sum do |i|
+      next 0 unless bar_columns[i]
+      grid.map { |r| display_columns(r[i].to_s) - r[i].to_s.length }.max || 0
+    end
+    # Intent 331f1, S3 (brief 4): per-column minimums - never below the header cell, never
+    # below a natural width of 10 or less (the id case).
+    header_len = (0...ncols).map { |i| grid.first[i].to_s.length }
+    floors = (0...ncols).map { |i| bar_columns[i] ? widths[i] : column_floor(header_len[i], widths[i]) }
+    budget = width - (2 + 2 * (ncols - 1)) - bar_overage
+    widths = shrink_column_widths(widths, budget, bar_columns: bar_columns, floors: floors)
     kind_col = grid.first.first == "Kind" ? 0 : nil
     note_col = grid.first.index { |h| NOTE_HEADERS.include?(h) }
 
