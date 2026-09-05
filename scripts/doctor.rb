@@ -2488,14 +2488,14 @@ end
 
   # display_hook_paints (D1, R1/R2/R3): replays the shipped fixture through
   # the INSTALLED launcher (`<agent_dir>/hooks/plastic-message-display`,
-  # never this package's own hooks/message-display — R1's whole point: an
+  # never this package's own hooks/message-display. That is R1's whole point: an
   # installed launcher can predate the package's, and replaying the wrong
   # one reports pass while the real stack is stale) and expects a painted
   # (ANSI) screen back.
   #
   # A known defeater active (NO_COLOR, or display.ansi_screen: false) turns
   # a no-SGR result into a PASS, naming the defeater and noting it reflects
-  # this invocation's own environment (R3) — display_not_defeated is what
+  # this invocation's own environment (R3). display_not_defeated is what
   # warns about a defeater; this check never fails because of one.
   def check_display_paints(agent_key, no_color: ENV["NO_COLOR"],
                             tmp_dir_factory: -> { Dir.mktmpdir("plastic-doctor-display") },
@@ -2535,7 +2535,7 @@ end
                            env: { "PLASTIC_HOME" => plastic_home }, timeout: timeout_seconds)
       rescue StandardError => e
         # Process.spawn (inside HookReplay) can raise before a pid ever
-        # exists — a permissions race, a launcher that vanishes between the
+        # exists: a permissions race, or a launcher that vanishes between the
         # executable? check above and the spawn, or any other unexpected
         # error. Unlike this codebase's defensive style elsewhere
         # (read_json_safe, load_yaml_safe), nothing here degraded that into
@@ -2584,8 +2584,8 @@ end
   end
 
   # display_not_defeated (D1, R3/R4): warns, never fails, on each active
-  # defeater, naming the setting and its effect. Every result — pass or warn
-  # — also names the verbose transcript view (Ctrl+O, R4): it redraws every
+  # defeater, naming the setting and its effect. Every result, pass or warn alike,
+  # names the verbose transcript view (Ctrl+O, R4): it redraws every
   # screen as plain tables too, but it has no on-disk setting doctor can
   # read, so its absence from these warnings is never proof that view paints.
   def check_display_not_defeated(agent_key, no_color: ENV["NO_COLOR"])
@@ -2629,14 +2629,14 @@ end
   end
 
   # display_surfaces_documented (D1/D4): the harness-adapters doc names the
-  # three surface classes. Reads the package's own shipped doc — static
-  # content, not a runtime path — same shape as check_skill_lint reading the
+  # three surface classes. Reads the package's own shipped doc: static
+  # content, not a runtime path, the same shape as check_skill_lint reading the
   # package's own skills/ tree.
   #
   # `docs/` ships in NEITHER package.json's `files` list NOR
   # InstallerCore's manifest (grep confirms zero references), so on every
   # real install `package_root` resolves to a `~/.plastic` that has no
-  # `docs/` tree at all — only a repo checkout carries it. Absence of the
+  # `docs/` tree at all; only a repo checkout carries it. Absence of the
   # doc there is therefore not a defect to report; it is this install
   # having nothing to verify, the same skip-as-pass vocabulary D3 and R3
   # already use elsewhere in this category. This check fails only when the

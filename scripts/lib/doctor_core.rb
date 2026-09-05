@@ -93,7 +93,7 @@ class Doctor
   rescue JSON::ParserError
     # The comment/trailing-comma-stripped retry below can itself raise
     # JSON::ParserError on genuinely malformed content (a truncated file, or
-    # plain garbage) — a nested begin/rescue is required here because a
+    # plain garbage). A nested begin/rescue is required here because a
     # method-level `rescue` clause never catches an exception raised from
     # INSIDE a sibling rescue clause's own body (only from the main body).
     # Without this nesting a malformed settings.json crashes doctor instead
@@ -1279,7 +1279,7 @@ class Doctor
   # display_hook_registered (intent 331e, D1, category "display"): the Claude
   # settings carry the plastic-message-display command, on-disk, executable.
   # Boot-path safe: resolves everything from the injected `agents` hash and
-  # `plastic_home`, never Dir.home or a real ~/.claude (E18) — the same
+  # `plastic_home`, never Dir.home or a real ~/.claude (E18). This is the same
   # discipline check_claude_registration already follows.
   #
   # D3: a harness Doctor knows carries no display hook (Codex, Hermes) is a
@@ -1301,7 +1301,7 @@ class Doctor
     if settings.nil?
       return [check(
         category: "display", name: "display_hook_registered", status: "fail",
-        message: "Cannot read #{tilde(settings_path)} — file missing or invalid",
+        message: "Cannot read #{tilde(settings_path)}: file missing or invalid",
         fixable: true, fix_hint: DISPLAY_HOOK_FIX_HINT
       )]
     end

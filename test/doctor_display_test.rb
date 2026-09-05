@@ -19,7 +19,7 @@ require_relative "support/hook_replay"
 # Hermetic throughout: every fixture lives in a Dir.mktmpdir, every replay
 # passes PLASTIC_TMP via HookReplay and an explicit PLASTIC_HOME, no eval, no
 # reliance on ENV (no_color is DI'd), no reads of the real ~/.plastic or
-# ~/.claude — display_hook_registered's own E18 test exists specifically to
+# ~/.claude. display_hook_registered's own E18 test exists specifically to
 # prove that.
 class DoctorDisplayTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
@@ -176,7 +176,7 @@ class DoctorDisplayTest < Minitest::Test
       claude_dir = File.join(dir, "claude")
       FileUtils.mkdir_p(claude_dir)
       # No settings.json, no launcher: on THIS machine the real ~/.claude has
-      # MessageDisplay registered (established fact) — a check that secretly
+      # MessageDisplay registered (established fact), so a check that secretly
       # fell back to Dir.home instead of the injected agent_dir would report
       # pass here. Only reading the injected dir reports fail.
 
@@ -193,7 +193,7 @@ class DoctorDisplayTest < Minitest::Test
       write_launcher(claude_dir) # present and executable at the injected agent_dir
       # settings.json is intentionally never written in the injected dir.
       # On this machine the real ~/.claude has MessageDisplay registered AND
-      # a working launcher (established fact) — a settings-only fallback
+      # a working launcher (established fact), so a settings-only fallback
       # such as `read_json_safe(settings_path) || read_json_safe(real_path)`
       # would find that real registration, and because the injected
       # agent_dir now ALSO carries a valid launcher file, nothing downstream
@@ -293,7 +293,7 @@ class DoctorDisplayTest < Minitest::Test
   end
 
   # A launcher that records which copy of itself actually ran, into a
-  # shared marker log, then also paints a colored screen naming itself — the
+  # shared marker log, then also paints a colored screen naming itself. The
   # color alone would pass either way (R1's regression paints too), so the
   # marker log is the real proof of WHICH launcher got replayed.
   def write_marked_launcher(dir, basename, marker, marker_log)
@@ -322,7 +322,7 @@ class DoctorDisplayTest < Minitest::Test
           # Two DISTINCT launcher stubs. The installed one lives under the
           # injected agent_dir at its real launcher name
           # (plastic-message-display); the other lives under a decoy
-          # package_root at the package's own bare name (message-display) —
+          # package_root at the package's own bare name (message-display),
           # the wrong file R1 warns against ever replaying.
           write_marked_launcher(agent_dir, "plastic-message-display", "INSTALLED-MARKER", marker_log)
           write_marked_launcher(package_root, "message-display", "PACKAGE-MARKER", marker_log)
@@ -378,7 +378,7 @@ class DoctorDisplayTest < Minitest::Test
 
       d = Doctor.new(plastic_home: home, agents: agents_for(claude_dir))
       # Deletes the launcher AFTER check_display_paints's own executable?
-      # check passed but BEFORE the replay's Process.spawn — the race F6
+      # check passed but BEFORE the replay's Process.spawn: the race F6
       # describes. Process.spawn raises Errno::ENOENT before a pid exists;
       # without a rescue around the replay that exception would crash the
       # entire doctor run instead of failing just this one check.
@@ -540,7 +540,7 @@ class DoctorDisplayTest < Minitest::Test
   end
 
   # E23: the existing test_core_require_loads_exactly_the_allowed_repo_files
-  # (test/doctor_core_split_test.rb) must stay green UNCHANGED — proof that
+  # (test/doctor_core_split_test.rb) must stay green UNCHANGED. That is proof that
   # display_hook_registered adds no new require to the boot path. This test
   # file does not duplicate that guard; it only asserts the two full-run
   # checks that DO need Open3/Timeout are absent from doctor_core.rb's own
@@ -567,7 +567,7 @@ class DoctorDisplayTest < Minitest::Test
   end
 
   # The regex-against-the-real-doc test above proves the real doc is honest,
-  # but it never calls check_display_surfaces_documented itself — a reviewer
+  # but it never calls check_display_surfaces_documented itself. A reviewer
   # stubbed that method to `return pass` and the suite stayed green (F3).
   # These exercise the production method directly against synthetic
   # package_root fixtures, one per branch.
