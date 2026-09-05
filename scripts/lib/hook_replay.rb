@@ -56,6 +56,76 @@ module HookReplay
     end
   end
 
+  # replay_concurrent (intent 331a1) - streams `text` through `hook_path` the
+  # way `replay` does, but fires every chunk in its OWN thread, staggered by
+  # `gap_ms` (plus up to half a gap of jitter when `jitter` is true) rather
+  # than run sequentially. This is what reproduces the decision-race defect
+  # 331a1 fixes: Claude Code fires the per-chunk hook processes CONCURRENTLY
+  # in production, and `replay`'s strictly-sequential default never puts two
+  # chunks in flight at once, so it could never have reproduced the race in
+  # the first place.
+  #
+  # `gap_ms: 5` plus jitter is the default on purpose, not "fire everything
+  # at once": firing all 335 chunks of the live session capture with no
+  # stagger at all takes about 8 s of wall clock on this 8-core machine,
+  # because EACH chunk boots its own real Ruby process and the completions
+  # cluster at the tail once every core is saturated - a load real streaming
+  # never produces (a real stream delivers a chunk every few tens of
+  # milliseconds, one at a time). One Ruby process per streamed chunk is the
+  # actual throughput ceiling here, not something this method works around.
+  #
+  # `replay`'s own signature and sequential default are UNCHANGED by this
+  # method's existence (`scripts/doctor.rb:2571` calls `replay` directly and
+  # must keep working exactly as it does today) - this is a sibling method
+  # in the same module, never a replacement.
+  #
+  # Returns the SAME result shape `replay` returns (one Hash per chunk, keys
+  # index/exitstatus/stdout/stderr/final), ordered by index regardless of
+  # the order the threads actually finish in.
+  def replay_concurrent(hook_path:, tmp_root:, text:, chunk: 40, session_id: "s-replay",
+                         message_id: "replay", env: {}, gap_ms: 5, jitter: true)
+    chunks = text.scan(/.{1,#{chunk}}/m)
+    chunks = [""] if chunks.empty?
+    full_env = { "PLASTIC_TMP" => tmp_root }.merge(env)
+    gap = gap_ms / 1000.0
+
+    results = Array.new(chunks.length)
+    threads = chunks.each_with_index.map do |delta, i|
+      payload = {
+        "session_id" => session_id, "message_id" => message_id, "index" => i,
+        "final" => i == chunks.length - 1, "delta" => delta, "cwd" => tmp_root,
+        "hook_event_name" => "MessageDisplay",
+      }
+      Thread.new do
+        delay = i * gap
+        delay += (rand * gap / 2.0) if jitter
+        sleep(delay)
+        out, err, exitstatus = run_one(hook_path, payload, full_env, tmp_root, nil)
+        results[i] = { index: i, exitstatus: exitstatus, stdout: out, stderr: err, final: payload["final"] }
+      end
+    end
+    threads.each(&:join)
+    results
+  end
+
+  # Indices of the chunks that reached the terminal as raw Markdown: a
+  # non-final chunk that emitted nothing at all, after the engaging chunk.
+  # A chunk "passed through" when its stdout is empty; a chunk was
+  # "blanked" (correctly buffered, not shown raw) when its stdout contains
+  # `"displayContent":""`. Only chunks with an index greater than the
+  # engaging chunk's own index count - the engaging chunk is the first one
+  # (at or after `start_index`) whose stdout is non-empty, and chunks
+  # before it already reached the terminal live, verbatim, through the
+  # ordinary passthrough path (they were never candidates for buffering at
+  # all, so an empty stdout from one of them is not this defect).
+  def passthrough_indices(outs, start_index: 0)
+    engaging = outs.find { |o| o[:index] >= start_index && !o[:stdout].to_s.empty? }
+    return [] unless engaging
+
+    outs.select { |o| o[:index] > engaging[:index] && o[:final] != true && o[:stdout].to_s.empty? }
+        .map { |o| o[:index] }
+  end
+
   def run_one(hook_path, payload, full_env, tmp_root, timeout)
     return capture(hook_path, payload, full_env) unless timeout
 
