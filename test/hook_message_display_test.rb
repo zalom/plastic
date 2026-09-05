@@ -7,6 +7,7 @@ require "yaml"
 require "open3"
 require_relative "../scripts/lib/message_display"
 require_relative "../scripts/lib/intent_screen"
+require_relative "support/hook_replay"
 
 # Intent 316a, O4/O5/O6: the MessageDisplay hook end to end. MessageDisplay is
 # the pure handler class (D13: chunk 0 decides, nothing is ever blanked
@@ -109,20 +110,28 @@ class HookMessageDisplayTest < Minitest::Test
     assert File.exist?(MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
   end
 
-  def test_chunk_zero_with_prose_before_the_heading_passes_through
+  # 331a (D1/M4): a chunk carrying an opener engages the message FROM THAT
+  # OPENER ON, whatever its own index -- superseding the round-3 test above
+  # (this rewrites it: all three of its assertions flip). The text before
+  # the opener, inside this SAME chunk, is the displayContent; everything
+  # from the opener onward is buffered at this chunk's own index, and SCREEN
+  # now carries that index instead of an empty marker.
+  def test_engaging_chunk_returns_prefix_and_buffers_rest
     root = build_global_store
     make_intent(root)
     h = handler(root)
     out = h.handle(payload(index: 0, final: false, delta: "Sure — here's the state.\n\n## ▶ 50 · Demo"))
-    assert_nil out
-    # round 3 (R2): a clean mismatch at chunk 0 writes NOSCREEN rather than
-    # leaving no state at all, so a later chunk can decide instantly instead
-    # of waiting out its own budget for a decision that will never arrive.
-    refute File.exist?(MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "s1", message_id: "m1", index: 0))
-    assert File.exist?(MessageDisplay.noscreen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
-    # every later chunk of this message also passes through: NOSCREEN decides it
+    assert_equal "Sure — here's the state.\n\n", out
+    chunk0 = MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "s1", message_id: "m1", index: 0)
+    assert File.exist?(chunk0)
+    assert_equal "## ▶ 50 · Demo", File.read(chunk0)
+    refute File.exist?(MessageDisplay.noscreen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
+    screen = MessageDisplay.screen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1")
+    assert File.exist?(screen)
+    assert_equal "0", File.read(screen).strip
+    # every later chunk of this now-engaged message is blanked, not passed through
     out2 = h.handle(payload(index: 1, final: false, delta: " intent\n\nmore text"))
-    assert_nil out2
+    assert_equal "", out2
   end
 
   def test_bare_hash_first_chunk_is_undecided_and_never_engages
@@ -852,6 +861,364 @@ class HookMessageDisplayTest < Minitest::Test
     out, status = Open3.capture2({ "PLASTIC_TMP" => @tmp }, "bash", LAUNCHER, stdin_data: json)
     return false unless status.exitstatus.zero?
     out.include?('"displayContent":""')
+  end
+
+  # =========================================================================
+  # Intent 331a: the hook engages anywhere. A chunk carrying a screen opener
+  # engages the message from that chunk on, whatever its own index -- not
+  # only chunk 0. SCREEN now carries the engaging chunk's index (D1/D2/D6);
+  # the final chunk waits for chunk files from that index onward, not from 0
+  # (D3); a fence immediately wrapping the opener is dropped (D4); NOSCREEN
+  # is replaceable once a later opener lands (D2).
+  # =========================================================================
+
+  # --- T1: the hermetic replay harness (test/support/hook_replay.rb) -------
+
+  def test_replay_fixture_takes_hook_path_and_tmp_root_as_arguments
+    assert_raises(ArgumentError) { HookReplay.replay(text: "hi") }
+
+    tmp = Dir.mktmpdir("hook-replay-hermetic")
+    begin
+      outs = HookReplay.replay(hook_path: LAUNCHER, tmp_root: tmp, text: "Sure, here's an ordinary summary.\n")
+      assert_nil HookReplay.final_display_content(outs), "ordinary prose never engages"
+      refute Dir.exist?(File.join(@tmp, "plastic-message-display")),
+        "the replay must write only under the tmp_root it was given, never the ambient suite tmp"
+    ensure
+      FileUtils.rm_rf(tmp)
+    end
+  end
+
+  # --- T2: the chunk-0 golden, captured at the alpha base before any source
+  # file was touched (test/fixtures/golden_chunk_zero_state.txt) -----------
+
+  def test_chunk_zero_opener_is_byte_identical_to_golden
+    root = build_global_store
+    dir = make_intent(root, checklist: checklist_with(total: 2, done: 1))
+    plain = plain_screen(dir, root)
+    suffix = "**What this means**\n- a bullet\n\nneeds input: S2\n"
+    buffered = plain + suffix
+    h = handler(root)
+
+    out = h.handle(payload(index: 0, final: true, delta: buffered))
+    golden = File.read(File.join(REPO, "test", "fixtures", "golden_chunk_zero_state.txt"))
+    assert_equal golden, out, "a real regression in the already-shipped chunk-0 path must not hide behind a self-comparison"
+  end
+
+  # --- M1: prose chunk 0, opener in chunk 3 --------------------------------
+
+  def test_late_opener_engages_and_paints_final
+    root = build_global_store
+    make_intent(root)
+    h = handler(root)
+
+    out0 = h.handle(payload(index: 0, final: false, delta: "Here is where 50 stands today.\n"))
+    out1 = h.handle(payload(index: 1, final: false, delta: "A little more scene setting.\n"))
+    out2 = h.handle(payload(index: 2, final: false, delta: "Still just talking.\n"))
+    assert_nil out0
+    assert_nil out1
+    assert_nil out2
+    assert File.exist?(MessageDisplay.noscreen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
+
+    out3 = h.handle(payload(index: 3, final: false, delta: "## ▶ 50 · Demo intent\n"))
+    assert_equal "", out3
+    refute File.exist?(MessageDisplay.noscreen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
+    screen = MessageDisplay.screen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1")
+    assert File.exist?(screen)
+    assert_equal "3", File.read(screen).strip
+
+    out4 = h.handle(payload(index: 4, final: true, delta: "trailing text after the screen\n"))
+    refute_nil out4
+    assert_includes out4, "\e[1m"
+    assert_includes out4.gsub(/\e\[[0-9;]*m/, ""), "Demo intent"
+    assert_includes out4, "trailing text after the screen\n"
+  end
+
+  # --- M3: 30 prose chunks, no opener ---------------------------------------
+
+  def test_prose_only_message_never_buffers
+    root = build_global_store
+    make_intent(root)
+    h = handler(root)
+
+    outs = (0...30).map do |i|
+      h.handle(payload(index: i, final: i == 29, delta: "Just more ordinary prose, sentence #{i}.\n"))
+    end
+
+    assert(outs.all?(&:nil?), "every chunk of an unengaged 30-chunk prose message must pass through")
+    (0...30).each do |i|
+      refute File.exist?(MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "s1", message_id: "m1", index: i)),
+        "chunk #{i} must never be buffered when the message never engages"
+    end
+    assert File.exist?(MessageDisplay.noscreen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
+  end
+
+  # --- M5: the final chunk waits only from the start index -------------------
+
+  def test_final_waits_only_from_start_index
+    root = build_global_store
+    make_intent(root)
+    sleep_calls = 0
+    sleeper = ->(_seconds) { sleep_calls += 1 }
+    h = MessageDisplay.new(tmp_root: @tmp, plastic_home: root, color: true,
+                            now: Time.parse("2026-08-30T12:00:00Z"),
+                            wait_ms: 300, poll_ms: 20, sleeper: sleeper)
+
+    h.handle(payload(index: 0, final: false, delta: "Prose before anything screen-shaped.\n"))
+    h.handle(payload(index: 1, final: false, delta: "Still prose.\n"))
+    h.handle(payload(index: 2, final: false, delta: "Still prose.\n"))
+    h.handle(payload(index: 3, final: false, delta: "## ▶ 50 · Demo intent\n"))
+    assert_equal 0, sleep_calls, "engaging never polls; the opener is found in the chunk's own delta"
+
+    out4 = h.handle(payload(index: 4, final: true, delta: "trailing text\n"))
+    assert_equal 0, sleep_calls,
+      "waiting from the start index (3), not 0, costs no poll: chunk 3's own file is already on disk"
+    refute_nil out4
+    assert_includes out4, "trailing text\n"
+  end
+
+  # --- M5a: the start index round-trips across process boundaries ----------
+
+  def test_screen_file_round_trips_the_start_index_across_instances
+    root = build_global_store
+    make_intent(root)
+    h1 = handler(root)
+    h1.handle(payload(index: 0, final: false, delta: "Prose stands here.\n"))
+    h1.handle(payload(index: 1, final: false, delta: "## ▶ 50 · Demo intent\n"))
+
+    screen = MessageDisplay.screen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1")
+    assert_equal "1", File.read(screen).strip
+
+    # A brand new instance -- a separate process in production -- must read
+    # the same start index back off disk rather than trusting in-memory state.
+    h2 = handler(root)
+    out = h2.handle(payload(index: 2, final: true, delta: "trailing\n"))
+    refute_nil out
+    assert_includes out, "trailing\n"
+    assert_includes out, "\e[1m"
+  end
+
+  # --- M6: NOSCREEN written by chunk 0, opener at chunk 2 -------------------
+
+  def test_noscreen_is_replaced_by_later_opener
+    root = build_global_store
+    make_intent(root)
+    h = handler(root)
+    h.handle(payload(index: 0, final: false, delta: "Ordinary prose.\n"))
+    noscreen = MessageDisplay.noscreen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1")
+    screen = MessageDisplay.screen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1")
+    assert File.exist?(noscreen)
+    refute File.exist?(screen)
+
+    out = h.handle(payload(index: 2, final: false, delta: "## ▶ 50 · Demo intent\n"))
+    assert_equal "", out
+    refute File.exist?(noscreen), "NOSCREEN must be removed once a later chunk engages"
+    assert File.exist?(screen)
+    assert_equal "2", File.read(screen).strip
+  end
+
+  # --- M9: a screen-shaped chunk exhausts its budget before the opener lands -
+
+  def test_budget_exhausted_chunk_is_absent_from_the_final_splice
+    root = build_global_store
+    make_intent(root)
+    sleep_calls = 0
+    sleeper = ->(_seconds) { sleep_calls += 1 }
+    h = MessageDisplay.new(tmp_root: @tmp, plastic_home: root, color: true,
+                            now: Time.parse("2026-08-30T12:00:00Z"),
+                            wait_ms: 300, poll_ms: 20, sleeper: sleeper)
+
+    # Chunk 2 looks screen-shaped (a table row) and arrives while nothing has
+    # decided yet; the opener (chunk 3) never runs during this test, so
+    # chunk 2 exhausts its poll budget and gives up.
+    lost_delta = "| a | b |\n"
+    out2 = h.handle(payload(index: 2, final: false, delta: lost_delta))
+    assert_nil out2
+    assert_equal 15, sleep_calls, "the full (300 / 20).ceil poll budget must be paid before giving up"
+    refute File.exist?(MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "s1", message_id: "m1", index: 2))
+
+    h.handle(payload(index: 3, final: false, delta: "## ▶ 50 · Demo intent\n"))
+    out4 = h.handle(payload(index: 4, final: true, delta: "trailing text\n"))
+
+    refute_nil out4
+    plain_out4 = out4.gsub(/\e\[[0-9;]*m/, "")
+    refute_includes plain_out4, "a | b"
+    # Measured residual (report this number back): exactly the one chunk
+    # that timed out is lost entirely from the final splice.
+    residual_chunks = 1
+    residual_bytes = lost_delta.bytesize
+    assert_equal 1, residual_chunks
+    assert_equal 10, residual_bytes
+  end
+
+  # --- M10: the painter raises, on the LATE-engaged path --------------------
+
+  def test_finalize_error_returns_buffered_original
+    root = build_global_store
+    h = handler(root)
+
+    out0 = h.handle(payload(index: 0, final: false, delta: "Prose stands here first.\n"))
+    assert_nil out0
+    out1 = h.handle(payload(index: 1, final: false, delta: "## ▶ 99 · Broken thing · here\n"))
+    assert_equal "", out1
+
+    original = ScreenPaint.method(:paint)
+    ScreenPaint.define_singleton_method(:paint) { |*_a, **_k| raise "boom" }
+    begin
+      out2 = h.handle(payload(index: 2, final: true, delta: "some streamed text\n"))
+      assert_equal "## ▶ 99 · Broken thing · here\nsome streamed text\n", out2
+    ensure
+      ScreenPaint.define_singleton_method(:paint, original)
+    end
+    refute File.exist?(MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
+  end
+
+  # --- M11: color: false never engages late ---------------------------------
+
+  def test_color_false_never_engages_late
+    root = build_global_store
+    make_intent(root)
+    h = handler(root, color: false)
+
+    out0 = h.handle(payload(index: 0, final: false, delta: "Prose before anything.\n"))
+    out1 = h.handle(payload(index: 1, final: true, delta: "## ▶ 50 · Demo intent\n"))
+    assert_nil out0
+    assert_nil out1
+    refute File.exist?(MessageDisplay.buffer_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
+  end
+
+  # --- M13: an opener split across two deltas falls back to plain -----------
+
+  def test_opener_split_across_deltas_falls_back_to_plain
+    root = build_global_store
+    make_intent(root)
+    h = handler(root)
+
+    # Split right after the glyph, before its required trailing space: chunk
+    # 0's own delta ends in "## ▶" (no space, so ENGAGE_RE cannot match it),
+    # and chunk 1's own delta starts with a bare " 50 · Demo intent" (no
+    # marker at all once its leading space is stripped for the test). Neither
+    # chunk's delta matches alone -- a known, accepted limitation (331a
+    # matrix M13): late engagement only ever looks at ONE chunk's delta at a
+    # time, never a cross-chunk reassembly, before deciding.
+    out0 = h.handle(payload(index: 0, final: false, delta: "Some prose.\n\n## ▶"))
+    out1 = h.handle(payload(index: 1, final: true, delta: " 50 · Demo intent\n"))
+
+    assert_nil out0
+    assert_nil out1
+    refute File.exist?(MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "s1", message_id: "m1", index: 0))
+    refute File.exist?(MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "s1", message_id: "m1", index: 1))
+    assert File.exist?(MessageDisplay.noscreen_path(tmp_root: @tmp, session_id: "s1", message_id: "m1"))
+  end
+
+  # --- M7: a fence line immediately before the opener, same chunk -----------
+
+  def test_fence_before_opener_in_same_chunk_is_dropped
+    root = build_global_store
+    make_intent(root)
+    h = handler(root)
+
+    out = h.handle(payload(index: 0, final: false, delta: "```\n## ▶ 50 · Demo intent\n"))
+    assert_equal "", out, "the lone fence line immediately before the opener must be dropped, leaving no visible prefix"
+
+    final_out = h.handle(payload(index: 1, final: true, delta: "trailing text\n"))
+    refute_includes final_out, "```"
+    assert_includes final_out, "trailing text"
+  end
+
+  # --- M8: a closing fence right after the region ---------------------------
+
+  def test_closing_fence_after_region_is_dropped
+    root = build_global_store
+    make_intent(root)
+    h = handler(root)
+
+    h.handle(payload(index: 0, final: false, delta: "## ▶ 50 · Demo intent\n"))
+    out = h.handle(payload(index: 1, final: true, delta: "```\nafter the screen\n"))
+
+    refute_includes out, "```"
+    assert_includes out, "after the screen"
+  end
+
+  # --- M8a: a fence opened in an EARLIER chunk is left alone ----------------
+
+  def test_fence_in_an_earlier_chunk_is_left_alone
+    root = build_global_store
+    make_intent(root)
+    h = handler(root)
+
+    out0 = h.handle(payload(index: 0, final: false, delta: "```\nsome earlier fenced example\n```\n"))
+    assert_nil out0, "an earlier, unengaged chunk's own fence is not this class's concern at all"
+
+    out1 = h.handle(payload(index: 1, final: false, delta: "## ▶ 50 · Demo intent\n"))
+    assert_equal "", out1
+
+    out2 = h.handle(payload(index: 2, final: true, delta: "trailing\n"))
+    refute_nil out2
+    assert_includes out2, "trailing\n"
+    refute_includes out2, "```"
+  end
+
+  # --- M8b: an unrelated code fence elsewhere survives verbatim -------------
+
+  def test_unrelated_code_fence_survives_verbatim
+    root = build_global_store
+    make_intent(root)
+    h = handler(root)
+
+    h.handle(payload(index: 0, final: false, delta: "## ▶ 50 · Demo intent\n"))
+    suffix = "**What this means**\n- see the example below\n\n```ruby\nputs 'hi'\n```\n"
+    out = h.handle(payload(index: 1, final: true, delta: suffix))
+
+    assert_includes out, "```ruby"
+    assert_includes out, "puts 'hi'"
+    assert_includes out, "```\n"
+  end
+
+  # --- M12a: a chunk at index > 0 whose delta carries an opener anywhere ----
+
+  def test_launcher_hands_off_a_late_opener_at_any_index
+    raw = [
+      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"the intent stands.\n\n## ▶ 50 · Demo intent"}>,
+      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"the intent stands.\n\n## ✔ 50 · Demo intent · delivered"}>,
+      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"still talking, then ▶ In delivery · 2 intents"}>,
+      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"and finally ✔ 5 done"}>,
+    ]
+    escaped = [
+      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"the intent stands.\n\n## ▶ 50 · Demo intent"}>,
+      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"the intent stands.\n\n## ✔ 50 · Demo intent · delivered"}>,
+      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"still talking, then ▶ In delivery · 2 intents"}>,
+      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"and finally ✔ 5 done"}>,
+    ]
+    (raw + escaped).each do |json|
+      out, status = Open3.capture2({ "PLASTIC_TMP" => @tmp }, "bash", LAUNCHER, stdin_data: json)
+      assert_equal 0, status.exitstatus
+      assert_includes out, '"hookSpecificOutput"', "launcher must hand off a late opener at any index: #{json}"
+    end
+  end
+
+  # --- M12b: the permissive bare-# chunk-0 arm must be JOINED, not replaced -
+
+  def test_launcher_keeps_the_bare_hash_chunk_zero_glob
+    src = File.read(LAUNCHER)
+    assert_includes src, %q<*'"delta":"#'*|*'"delta": "#'*) handoff=1 ;;>,
+      "the existing chunk-0 bare-# arm must survive verbatim"
+    assert_includes src, "## ▶", "the new any-index opener glob must join it, not replace it"
+  end
+
+  # --- M12d: ordinary prose merely mentioning a glyph still hands off, and
+  # Ruby's own (stricter) grammar fails open rather than mis-painting it -----
+
+  def test_prose_mentioning_a_glyph_hands_off_and_ruby_fails_open
+    json = JSON.generate("message_id" => "m1", "session_id" => "s1", "index" => 3,
+                          "final" => true, "delta" => "## ▶ this is not a real screen, just chevrons\n")
+    out, status = Open3.capture2({ "PLASTIC_TMP" => @tmp }, "bash", LAUNCHER, stdin_data: json)
+    assert_equal 0, status.exitstatus
+    refute_empty out, "the launcher cannot distinguish a real opener from prose merely shaped like one, so it hands off"
+    parsed = JSON.parse(out)
+    content = parsed.dig("hookSpecificOutput", "displayContent")
+    refute_includes content, "\e[",
+      "Ruby's own grammar finds no real opener (no id/name separator anywhere), so it fails open to the original text"
+    assert_equal "## ▶ this is not a real screen, just chevrons\n", content
   end
 
 end

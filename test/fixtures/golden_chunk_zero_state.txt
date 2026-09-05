@@ -1,0 +1,20 @@
+[1m[38;2;243;244;246m▶ 50 · Demo intent[0m
+
+  [1mStore    [0m  global                      [38;2;148;163;184mthe global store[0m
+  [1mStatus   [0m  Active                      [38;2;148;163;184mlisted under ## Active in INDEX.md[0m
+  [1mStage    [0m  Exec                        [38;2;148;163;184mWhat, How delivered; the work is open[0m
+  [1mSavepoint[0m  How · checklist.md created  [38;2;148;163;184m2026-08-30 12:10 UTC[0m
+  [1mProgress [0m  [38;2;45;212;191m██████████[0m[38;2;148;163;184m░░░░░░░░░░[0m 1 / 2  [38;2;148;163;184m1 steps open[0m
+  [1mNext     [0m  S2 · do thing 2             [38;2;148;163;184mfirst open step[0m
+  [1mInsight  [0m  none yet
+
+[1m[38;2;243;244;246mSteps[0m
+
+  [1mStep[0m  [1mStatus[0m  [1mWhat[0m
+  S1    [38;2;45;212;191mdone  [0m  do thing 1
+  S2    [38;2;245;158;11mopen  [0m  do thing 2
+
+**What this means**
+- a bullet
+
+needs input: S2

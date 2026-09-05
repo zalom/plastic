@@ -1,4 +1,7 @@
 require "minitest/autorun"
+require "tmpdir"
+require "fileutils"
+require "open3"
 require_relative "../scripts/lib/installer_core"
 
 # Intent 317, D11/D17: templates/outcome.md gains ## Needs you; the installer
@@ -122,6 +125,38 @@ class ReportScreenPackagingTest < Minitest::Test
     section = text[text.index("## Needs you")...text.index("## Follow-ups")]
     assert_includes section, "| N | What | Why |"
     assert_includes section, "None"
+  end
+
+  # --- intent 331a (D6, R7/R8): scripts/lib/screens/*.rb ships, and
+  # report-screen tolerates its absence ---------------------------------------
+
+  # R7: a file under scripts/lib/screens/ must reach an installed ~/.plastic.
+  # Behavioral, not a source scan: the mechanism is a glob, so a fixture
+  # package_root with a fake kind file proves InstallerCore#core_files picks
+  # it up without any hand-written entry naming that file.
+  def test_screens_dir_is_glob_registered_for_install
+    Dir.mktmpdir("screens-glob-pkg-331a") do |fake_root|
+      screens_dir = File.join(fake_root, "scripts", "lib", "screens")
+      FileUtils.mkdir_p(screens_dir)
+      File.write(File.join(screens_dir, "demo.rb"), "# demo kind\n")
+
+      installer = InstallerCore.new(package_root: fake_root,
+                                     plastic_home: Dir.mktmpdir("screens-glob-home-331a"),
+                                     version: "1.0.0-test")
+      assert_includes installer.core_files.keys, "scripts/lib/screens/demo.rb"
+    end
+  end
+
+  # R8: report-screen glob-requires scripts/lib/screens/*.rb and must not
+  # raise when that directory is absent or empty (this repo has none yet).
+  def test_report_screen_glob_requires_screens_and_tolerates_an_empty_dir
+    src = File.read(File.join(REPO, "scripts", "report-screen"))
+    assert_includes src, %(Dir.glob(File.join(__dir__, "lib", "screens", "*.rb")))
+
+    out, err, status = Open3.capture3("ruby", File.join(REPO, "scripts", "report-screen"))
+    assert_equal 2, status.exitstatus, "a bare invocation is a usage error, not a crash"
+    refute_includes err, "LoadError"
+    assert_empty out
   end
 
 end
