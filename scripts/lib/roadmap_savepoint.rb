@@ -66,6 +66,25 @@ module RoadmapSavepoint
     File.read(ledger_path).each_line.filter_map { |line| parse_pair(line) }
   end
 
+  # Public (intent 331c): a roadmap's own ledger, parsed into `[Time, event, detail]` triples in
+  # file order - so a screen reader never re-derives the "<iso>  <event>  <detail>" line shape.
+  # `roadmap_path` is the roadmap `.md` file, never the `.savepoint.md` sibling directly (mirrors
+  # `ledger_path_for`'s own convention). No paired ledger file -> `[]`, never an invented event.
+  def ledger_entries(roadmap_path)
+    ledger_path = ledger_path_for(roadmap_path)
+    return [] unless File.exist?(ledger_path)
+
+    File.readlines(ledger_path).filter_map do |line|
+      parts = line.strip.split(/\s{2,}/, 3)
+      next nil unless parts.length == 3
+      begin
+        [Time.iso8601(parts[0]), parts[1], parts[2]]
+      rescue ArgumentError
+        nil
+      end
+    end
+  end
+
   def parse_pair(line)
     parts = line.strip.split(/\s{2,}/)
     parts.length >= 3 ? [parts[1], parts[2]] : nil
@@ -141,11 +160,13 @@ module RoadmapSavepoint
   end
   private_class_method :parse_log_time
 
+  # Public (intent 331c): the Log table on a roadmap's `delivered` screen classifies every
+  # `## Log` line through this same keyword vocabulary, so a screen reader never grows a second
+  # copy of KEYWORD_TABLE.
   def classify_event(text)
     hit = KEYWORD_TABLE.find { |regex, _event| text =~ regex }
     hit && hit[1]
   end
-  private_class_method :classify_event
 
   WAVE_ENTRY = /\A-\s*\[([ xX])\]\s+(\S+)\s+.+—\s*(\S+)\s*\z/.freeze
 
@@ -217,13 +238,21 @@ module RoadmapSavepoint
   # already calling `ledger_path_for`), so this is the smaller diff than a new shared module.
   # Raises MissingGroupingHeading, naming the offending path, when neither heading is present.
   def grouping_section_body(text, path: nil)
-    GROUPING_HEADINGS.each do |heading|
-      m = text.match(/^##\s+#{Regexp.escape(heading)}\s*$(.*?)(?=^##\s|\z)/m)
-      return m[1] if m
+    heading = grouping_heading(text)
+    unless heading
+      raise MissingGroupingHeading,
+            "#{path || '(unknown roadmap file)'}: found neither '## Batches' (canonical) nor " \
+            "'## Waves' (legacy) grouping heading"
     end
-    raise MissingGroupingHeading,
-          "#{path || '(unknown roadmap file)'}: found neither '## Batches' (canonical) nor " \
-          "'## Waves' (legacy) grouping heading"
+    text.match(/^##\s+#{Regexp.escape(heading)}\s*$(.*?)(?=^##\s|\z)/m)[1]
+  end
+
+  # Public (intent 331c): "Batches" or "Waves", whichever grouping heading `text` carries - the
+  # one owner of that label so a screen's own field row (and its entries table's column header)
+  # never hand-picks between them a second way. nil when neither heading is present (mirrors
+  # grouping_section_body's own detection, one call site cheaper than two).
+  def grouping_heading(text)
+    GROUPING_HEADINGS.find { |heading| text.match?(/^##\s+#{Regexp.escape(heading)}\s*$/) }
   end
 
   # Stable dedup on the `(event, detail)` pair, keeping the first occurrence in the given

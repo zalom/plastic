@@ -14,6 +14,8 @@ require "date"
 require_relative "intent_screen"
 require_relative "lock"
 require_relative "session_ledger"
+require_relative "roadmap_queue"
+require_relative "roadmap_savepoint"
 
 module ReportScreen
   NOT_RECORDED = "not recorded"
@@ -961,6 +963,277 @@ module ReportScreen
     blocks << render_roster(store_root, changed: changed, now: now).chomp
 
     "#{blocks.map { |b| painter.call(b) }.join("\n\n")}\n"
+  end
+
+  # --- S10: the roadmap verb (intent 331c) -----------------------------------------
+  #
+  # `report-screen roadmap <roadmap.md> plan|state|delivered` - a roadmap's own three reports,
+  # the counterpart to an intent's state/delivered. Every entry comes from RoadmapQueue's public
+  # `roadmap` reader (D6/R1): no second parser here ever re-derives its grammar, its INDEX
+  # reconciliation, or its frontier selection.
+
+  ROADMAP_VERBS = %w[plan state delivered].freeze
+
+  # D6/R17: the tier root for a roadmap path is the parent of `roadmaps/`, one extra parent when
+  # the file sits under `roadmaps/archived/` - the SAME rule RoadmapSavepoint.index_path_for
+  # uses (that method is private, so this is the rule's second, agreeing owner; a test pins them
+  # together).
+  def self.roadmap_tier_root(path)
+    dir = File.dirname(path)
+    dir = File.dirname(dir) if File.basename(dir) == "archived"
+    File.dirname(dir)
+  end
+
+  def self.roadmap_default_template_path(verb)
+    File.expand_path("../../templates/report-roadmap-#{verb}.md", __dir__)
+  end
+
+  # D6/R1: the parsed, INDEX-reconciled entries for one roadmap file, obtained from
+  # RoadmapQueue's own public reader - never a second parser.
+  def self.roadmap_entries(path:, store_root:)
+    index_path = File.join(store_root, "INDEX.md")
+    RoadmapQueue.new(roadmaps_dir: File.dirname(path), index_path: index_path).roadmap(path)
+  end
+
+  # R4/R15: the first sentence of `## Goal`, joined across wrapped source lines. Splits on a
+  # period only (never IntentScreen.clause_and_rest's `[.;]` - a semicolon inside a real goal is
+  # common and must survive, R15); a period with no following whitespace or end-of-string (a
+  # version number like "2.0.0", never followed by a space mid-number) is never mistaken for a
+  # sentence boundary (R4).
+  def self.roadmap_goal(text)
+    section = section_of(text, "## Goal").strip
+    return NOT_RECORDED if section.empty?
+
+    joined = section.lines.map(&:strip).join(" ").squeeze(" ")
+    m = joined.match(/\A(.*?\.)(?=\s|\z)/)
+    (m ? m[1] : joined).strip
+  end
+
+  # R16: the ledger's own entries when the paired `.savepoint.md` carries any; otherwise the
+  # `## Log` lines classified through RoadmapSavepoint.classify_event (the same KEYWORD_TABLE,
+  # no second vocabulary), each timestamped from its own Log line's date and time. A roadmap with
+  # neither source (no ledger file, no classifiable Log line) answers `[]`, never an invented
+  # event - callers reading it print `not recorded`.
+  def self.roadmap_events(path)
+    ledger = RoadmapSavepoint.ledger_entries(path)
+    return ledger.sort_by { |t, _, _| t } if ledger.any?
+
+    text = File.exist?(path) ? File.read(path) : nil
+    return [] unless text
+
+    section_of(text, "## Log").each_line.filter_map do |line|
+      m = line.strip.match(RoadmapSavepoint::LOG_LINE)
+      next nil unless m
+      event = RoadmapSavepoint.classify_event(m[3])
+      next nil unless event
+      [Time.parse("#{m[1]}T#{m[2]}:00Z"), event, m[3].strip]
+    end
+  end
+
+  # Every `## Log` line, classified for the delivered screen's Log table: an unclassifiable line
+  # still renders, with `not recorded` in its Event cell (never dropped, unlike roadmap_events'
+  # fallback, which only wants events it can act on).
+  def self.roadmap_log_rows(text)
+    section_of(text, "## Log").each_line.filter_map do |line|
+      m = line.strip.match(RoadmapSavepoint::LOG_LINE)
+      next nil unless m
+      { when: human_time("#{m[1]}T#{m[2]}:00Z"), event: RoadmapSavepoint.classify_event(m[3]) || NOT_RECORDED, what: m[3].strip }
+    end
+  end
+
+  # R7: idle unless the entry's own delivery lock is fresh as of `now:` - a stale lock (the
+  # heartbeat older than the TTL) never masquerades as a live lead.
+  def self.roadmap_lead(intent_dir, now:)
+    return "idle" unless intent_dir && Lock.fresh?(intent_dir, now: now)
+    lead(intent_dir)
+  end
+
+  def self.roadmap_intent_dir(store_root, id)
+    Dir.glob(File.join(store_root, "store", "#{id}--*")).sort.find { |d| IntentScreen.intent_dir?(d) }
+  end
+
+  def self.roadmap_entry_progress(dir)
+    return NOT_RECORDED unless dir
+    items = IntentScreen.checklist_items(dir)
+    fields = IntentScreen.progress_fields(items)
+    "#{fields['progress.bar']} #{fields['progress.done']} / #{fields['progress.total']}"
+  end
+
+  def self.roadmap_progress_bar(done, total)
+    on = total.zero? ? 0 : (done * IntentScreen::BAR_WIDTH) / total
+    (IntentScreen::ON * on) + (IntentScreen::OFF * (IntentScreen::BAR_WIDTH - on))
+  end
+
+  # "Batch" or "Wave" (singular): the entries table's own first column header (R3 - a legacy
+  # Waves roadmap reads "Wave", never "Batch").
+  def self.roadmap_batch_label(data)
+    data[:grouping] == "Waves" ? "Wave" : "Batch"
+  end
+
+  def self.roadmap_all_entries(data)
+    data[:batches].flat_map { |b| b[:entries] }
+  end
+
+  # --- plan (D2) ---------------------------------------------------------------
+
+  def self.roadmap_plan_fields(text, data, events)
+    all_entries = roadmap_all_entries(data)
+    order = data[:batches].map { |b| b[:heading] }.join(" → ")
+    created = events.empty? ? NOT_RECORDED : human_time(events.first[0].utc.iso8601)
+    [
+      ["Goal", roadmap_goal(text), ""],
+      [data[:grouping], "#{data[:batches].length} #{data[:grouping].downcase}, #{all_entries.length} intents", ""],
+      ["Order", order, ""],
+      ["Created", created, ""],
+    ]
+  end
+
+  def self.roadmap_plan_entries_table(data)
+    label = roadmap_batch_label(data)
+    rows = ["| #{label} | Intent | What | Status |", "| --- | --- | --- | --- |"]
+    data[:batches].each do |batch|
+      batch[:entries].each do |e|
+        rows << "| #{escape(batch[:heading])} | #{escape(e[:id])} | #{escape(e[:text])} | #{escape(e[:status])} |"
+      end
+    end
+    rows.join("\n")
+  end
+
+  # --- state (D3) ---------------------------------------------------------------
+
+  def self.roadmap_state_fields(text, data, events, store_root, now)
+    all_entries = roadmap_all_entries(data)
+    total = all_entries.length
+    delivered = all_entries.count { |e| e[:status] == "delivered" }
+    bar = roadmap_progress_bar(delivered, total)
+
+    frontier = data[:frontier]
+    frontier_value = frontier ? frontier[:heading] : NOT_RECORDED
+    frontier_note =
+      if frontier.nil?
+        ""
+      elsif frontier[:in_flight].any?
+        "in flight"
+      else
+        "queued"
+      end
+
+    delivering_value =
+      if frontier && frontier[:in_flight].any?
+        frontier[:in_flight].map do |e|
+          dir = roadmap_intent_dir(store_root, e["id"])
+          "#{e['id']} (#{roadmap_lead(dir, now: now)})"
+        end.join(", ")
+      else
+        NOT_RECORDED
+      end
+
+    next_entry = all_entries.find { |e| e[:status] == "queued" }
+    next_value = next_entry ? "#{next_entry[:id]} #{next_entry[:text]}".strip : NOT_RECORDED
+
+    changed_value = events.empty? ? NOT_RECORDED : "#{events.last[1]} · #{human_time(events.last[0].utc.iso8601)}"
+
+    [
+      ["Goal", roadmap_goal(text), ""],
+      ["Progress", "#{bar} #{delivered} / #{total}", ""],
+      ["Frontier", frontier_value, frontier_note],
+      ["Delivering", delivering_value, ""],
+      ["Next", next_value, ""],
+      ["Changed", changed_value, ""],
+    ]
+  end
+
+  def self.roadmap_state_entries_table(data, store_root, now)
+    label = roadmap_batch_label(data)
+    rows = ["| #{label} | Intent | Status | Progress | Lead |", "| --- | --- | --- | --- | --- |"]
+    data[:batches].each do |batch|
+      batch[:entries].each do |e|
+        dir = roadmap_intent_dir(store_root, e[:id])
+        rows << "| #{escape(batch[:heading])} | #{escape(e[:id])} | #{escape(e[:status])} | " \
+                "#{escape(roadmap_entry_progress(dir))} | #{escape(roadmap_lead(dir, now: now))} |"
+      end
+    end
+    rows.join("\n")
+  end
+
+  # --- delivered (D4) ------------------------------------------------------------
+
+  def self.roadmap_delivered_meta(data, events)
+    all_entries = roadmap_all_entries(data)
+    closed = events.reverse.find { |_t, event, _d| event == "closed" }
+    closed_part = closed ? human_time(closed[0].utc.iso8601) : "in progress"
+
+    merged = events.select { |_t, event, _d| event == "merged" }
+    duration = events.empty? || merged.empty? ? NOT_RECORDED : format_duration((merged.last[0] - events.first[0]).to_i)
+
+    "#{closed_part} · #{all_entries.length} intents · #{duration}"
+  end
+
+  # R10: the Merged cell reads `merged` events only, matching the entry id as a whole word - a
+  # `handoff` or `dispatched` line naming the same id never fills it - and takes the first
+  # hex-with-at-least-one-digit token of 7-40 characters as the sha.
+  def self.roadmap_merged_cell(id, events)
+    line = events.find { |_t, event, detail| event == "merged" && detail.to_s =~ /(?:\A|\W)#{Regexp.escape(id)}(?:\z|\W)/ }
+    return NOT_RECORDED unless line
+
+    m = line[2].match(/\b(?=[0-9a-f]*\d)[0-9a-f]{7,40}\b/i)
+    m ? m[0] : NOT_RECORDED
+  end
+
+  def self.roadmap_delivered_table(data, events)
+    label = roadmap_batch_label(data)
+    rows = ["| #{label} | Intent | What | Merged |", "| --- | --- | --- | --- |"]
+    data[:batches].each do |batch|
+      batch[:entries].each do |e|
+        rows << "| #{escape(batch[:heading])} | #{escape(e[:id])} | #{escape(e[:text])} | " \
+                "#{escape(roadmap_merged_cell(e[:id], events))} |"
+      end
+    end
+    rows.join("\n")
+  end
+
+  def self.roadmap_log_table(text)
+    log_rows = roadmap_log_rows(text)
+    return NOT_RECORDED if log_rows.empty?
+
+    rows = ["| When | Event | What |", "| --- | --- | --- |"]
+    log_rows.each { |r| rows << "| #{escape(r[:when])} | #{escape(r[:event])} | #{escape(r[:what])} |" }
+    rows.join("\n")
+  end
+
+  # --- render ---------------------------------------------------------------------
+
+  # D6: `ReportScreen.render_roadmap(path:, verb:, store_root: nil, now: Time.now, template:
+  # nil)`. No ENV, no git; `now:` is used only for lock freshness (R7). `store_root` defaults to
+  # the derived tier root; `template` defaults to the installed-or-in-repo
+  # `templates/report-roadmap-<verb>.md`.
+  def self.render_roadmap(path:, verb:, store_root: nil, now: Time.now, template: nil)
+    verb = verb.to_s
+    raise ArgumentError, "verb must be one of #{ROADMAP_VERBS.join(', ')}, got #{verb.inspect}" unless ROADMAP_VERBS.include?(verb)
+
+    store_root ||= roadmap_tier_root(path)
+    text = File.read(path)
+    data = roadmap_entries(path: path, store_root: store_root)
+    events = roadmap_events(path)
+    template ||= File.read(roadmap_default_template_path(verb))
+
+    out = template.dup
+    out = out.gsub("{{slug}}", data[:slug])
+
+    case verb
+    when "plan"
+      out = out.gsub("{{fields.rows}}", state_rows(roadmap_plan_fields(text, data, events)).join("\n"))
+      out = out.gsub("{{entries.table}}", roadmap_plan_entries_table(data))
+    when "state"
+      out = out.gsub("{{fields.rows}}", state_rows(roadmap_state_fields(text, data, events, store_root, now)).join("\n"))
+      out = out.gsub("{{entries.table}}", roadmap_state_entries_table(data, store_root, now))
+    when "delivered"
+      out = out.gsub("{{meta}}", roadmap_delivered_meta(data, events))
+      out = out.gsub("{{delivered.table}}", roadmap_delivered_table(data, events))
+      out = out.gsub("{{log.table}}", roadmap_log_table(text))
+    end
+
+    out.gsub(/\n{3,}/, "\n\n")
   end
 
   # --- S8: --ansi passthrough (D2) -----------------------------------------------
