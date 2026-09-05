@@ -824,9 +824,9 @@ class ReportScreenSessionVerbTest < Minitest::Test
     env = { "PLASTIC_FORCE_COLOR" => "1" }
     out, err, status = Open3.capture3(env, "ruby", CLI, "session", @home, "--since", "2026-09-04T00:00:00Z", "--ansi")
     assert_equal 0, status.exitstatus, err
-    # The skipped-footer line is plain prose ScreenPaint cannot parse as a
-    # screen; it must still survive verbatim beside the painted delivered
-    # screen and roster (D21: one bad block never costs the others).
+    # The skipped-footer line has classified as :count via SKIP_NOTE_RE since 331a1 - it must
+    # still render correctly beside the painted delivered screen and roster (D21: one bad
+    # block never costs the others).
     assert_match(/\e\[/, out)
     assert_includes out, "completed intent skipped"
   end
