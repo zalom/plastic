@@ -1,6 +1,8 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "report_screen"
+
 # DashboardScreen (intent 331d) - the presentation half of the dashboard
 # screen. scripts/dashboard.rb's screen_fields sources every fact (Active, In
 # delivery, Delivered, Roadmap, Sessions, Changed, the two capped row lists)
@@ -25,14 +27,14 @@ module DashboardScreen
     out = out.gsub("{{changed}}", fields.fetch(:changed).to_s)
     out = out.gsub("{{where_we_are.rows}}", where_we_are_rows(fields.fetch(:where_we_are, [])))
     out = out.gsub("{{where_we_go_next.rows}}", where_we_go_next_rows(fields.fetch(:where_we_go_next, [])))
-    out.gsub(/\n{3,}/, "\n\n")
+    ReportScreen.fit_screen(out.gsub(/\n{3,}/, "\n\n"))
   end
 
   def where_we_are_rows(rows)
-    rows.map { |r| "| #{r[:intent]} | #{r[:stage]} | #{r[:progress]} | #{r[:lead]} |" }.join("\n")
+    rows.map { |r| "| #{r[:graph_id]} | #{r[:intent]} | #{r[:stage]} | #{r[:progress]} | #{r[:lead]} |" }.join("\n")
   end
 
   def where_we_go_next_rows(rows)
-    rows.map { |r| "| #{r[:rank]} | #{r[:intent]} | #{r[:what]} | #{r[:why]} |" }.join("\n")
+    rows.map { |r| "| #{r[:rank]} | #{r[:graph_id]} | #{r[:intent]} | #{r[:reason]} |" }.join("\n")
   end
 end

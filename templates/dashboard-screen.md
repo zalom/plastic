@@ -11,12 +11,12 @@
 
 **Where we are**
 
-| Intent | Stage | Progress | Lead |
-| --- | --- | --- | --- |
+| Graph ID | Intent | Stage | Progress | Lead |
+| --- | --- | --- | --- | --- |
 {{where_we_are.rows}}
 
 **Where we go next**
 
-| Rank | Intent | What | Why |
+| Rank | Graph ID | Intent | Reason |
 | --- | --- | --- | --- |
 {{where_we_go_next.rows}}

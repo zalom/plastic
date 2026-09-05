@@ -16,6 +16,7 @@ require_relative "lock"
 require_relative "session_ledger"
 require_relative "roadmap_queue"
 require_relative "roadmap_savepoint"
+require_relative "screen_paint"
 
 module ReportScreen
   NOT_RECORDED = "not recorded"
@@ -59,6 +60,128 @@ module ReportScreen
 
   def self.escape(text)
     text.to_s.gsub("|", "\\|")
+  end
+
+  # --- width bound (D7, intent 331f) --------------------------------------------
+  #
+  # ReportScreen.fit_screen(text, limit:) is the one shared pass every public render entry
+  # point in this file (and dashboard.rb's screen renderer) calls last, so no rendered row
+  # ever passes the limit. Input unchanged byte for byte when nothing is over the limit.
+
+  FIT_SCREEN_DEFAULT_LIMIT = 115
+  FIT_SCREEN_COLUMN_FLOOR = 8
+  PROGRESS_BAR_CHARS_RE = /[█░]/.freeze
+
+  # Truncate `text` to at most `max_chars`, cutting at the last whitespace at or before the
+  # limit (never mid-word) and appending a single ellipsis when truncation happens. The one
+  # shared implementation; dashboard.rb's own helper of the same name delegates here.
+  def self.truncate_on_word_boundary(text, max_chars)
+    t = text.to_s
+    return t if t.length <= max_chars
+    ellipsis = "…"
+    limit = [max_chars - ellipsis.length, 0].max
+    slice = t[0, limit]
+    cut = slice.rindex(/\s/)
+    slice = slice[0, cut] if cut && cut.positive?
+    "#{slice.rstrip}#{ellipsis}"
+  end
+
+  # Split on every pipe, escaped or not - the SAME rule ScreenPaint.cells_of uses (R3), so the
+  # fitter and the painter can never count a row's columns differently. Raw (unstripped) cells,
+  # so callers can still tell a padded column from an unpadded one.
+  def self.raw_cells_of(row)
+    row.split("|", -1)[1..-2].to_a
+  end
+
+  def self.title_before_colon(text, max: 120)
+    head = text.to_s.split(":", 2).first.to_s.strip
+    truncate_on_word_boundary(head, max)
+  end
+
+  def self.fit_screen(text, limit: FIT_SCREEN_DEFAULT_LIMIT)
+    lines = text.to_s.lines
+    return text if lines.all? { |l| l.chomp.length <= limit }
+
+    out = +""
+    i = 0
+    while i < lines.length
+      if lines[i].lstrip.start_with?("|")
+        block = []
+        while i < lines.length && lines[i].lstrip.start_with?("|")
+          block << lines[i]
+          i += 1
+        end
+        out << fit_table_block(block, limit)
+      else
+        out << fit_plain_line(lines[i], limit)
+        i += 1
+      end
+    end
+    out
+  end
+
+  def self.fit_plain_line(line, limit)
+    body = line.chomp
+    return line if body.length <= limit
+    ending = line[body.length..].to_s
+    "#{truncate_on_word_boundary(body, limit)}#{ending}"
+  end
+
+  def self.fit_table_block(block, limit)
+    return block.join if block.all? { |l| l.chomp.length <= limit }
+
+    rows = block.map(&:chomp)
+    is_sep = rows.map { |r| r.match?(ScreenPaint::SEPARATOR_RE) }
+    raw_rows = rows.map { |r| raw_cells_of(r) }
+    ncols = raw_rows.map(&:length).max.to_i
+    return block.join if ncols.zero?
+
+    stripped_cols = Array.new(ncols) { [] }
+    raw_rows.each_with_index do |cells, ri|
+      next if is_sep[ri]
+      cells.each_with_index { |c, ci| stripped_cols[ci] << c.strip if ci < ncols }
+    end
+    widths = stripped_cols.map { |col| col.map(&:length).max.to_i }
+
+    bar_column = Array.new(ncols) { |ci| stripped_cols[ci].any? { |c| c =~ PROGRESS_BAR_CHARS_RE } }
+    # A column is "padded" when at least one non-last, non-separator raw cell carries more
+    # than the one mandatory space before its closing pipe - the ljust convention several
+    # tables in this file already use (state_rows, roster). Only such a column is re-padded
+    # after a shrink; an unpadded table stays unpadded.
+    padded_column = Array.new(ncols) do |ci|
+      next false if ci == ncols - 1
+      raw_rows.each_with_index.any? { |cells, ri| !is_sep[ri] && cells[ci].to_s.end_with?("  ") }
+    end
+
+    budget = limit - (4 + 3 * (ncols - 1))
+    loop do
+      break if widths.sum <= budget
+      candidates = (0...ncols).select { |ci| !bar_column[ci] && widths[ci] > FIT_SCREEN_COLUMN_FLOOR }
+      break if candidates.empty?
+      target = candidates.max_by { |ci| [widths[ci], -ci] }
+      widths[target] -= 1
+    end
+
+    fitted_rows = raw_rows.each_with_index.map do |cells, ri|
+      if is_sep[ri]
+        "| #{widths.map { |w| "-" * [w, 3].max }.join(" | ")} |"
+      else
+        rendered = cells.each_with_index.map do |c, ci|
+          next c.to_s.strip if ci >= ncols
+          value = c.to_s.strip
+          value = truncate_on_word_boundary(value, widths[ci]) if value.length > widths[ci]
+          padded_column[ci] && ci != ncols - 1 ? value.ljust(widths[ci]) : value
+        end
+        "| #{rendered.join(' | ')} |"
+      end
+    end
+
+    # F28: the unconditional backstop. Every shrinkable column may already sit at its floor
+    # and the assembled row can still be over the limit; truncate the whole row on a word
+    # boundary rather than let it survive past 115.
+    fitted_rows.map! { |r| r.length > limit ? truncate_on_word_boundary(r, limit) : r }
+
+    "#{fitted_rows.join("\n")}\n"
   end
 
   def self.frontmatter(intent_dir)
@@ -545,7 +668,7 @@ module ReportScreen
     out = out.gsub("{{name}}", data[:name])
     out = out.gsub("{{fields.rows}}", state_rows(data[:rows]).join("\n"))
     out = out.gsub("{{steps.rows}}", IntentScreen.steps_rows(data[:items]))
-    out.gsub(/\n{3,}/, "\n\n")
+    fit_screen(out.gsub(/\n{3,}/, "\n\n"))
   end
 
   # --- roster (D7/D8) -------------------------------------------------------------
@@ -599,15 +722,34 @@ module ReportScreen
     entries.sort_by { |e| [-(e[:ts] ? Time.parse(e[:ts]).to_i : 0), e[:id]] }
   end
 
-  def self.lead(intent_dir)
-    data = Lock.read(intent_dir)
-    return "idle" unless data
-    agent = data["owner_agent"].to_s
-    session = data["owner_session"].to_s
-    return "idle" if agent.empty? && session.empty?
-    "#{agent.empty? ? 'unknown' : agent} · #{session[0, 8]}"
+  # D6/R5, intent 331f: one freshness rule for every Lead cell, on the SAME primitive
+  # (Lock.who) every call site now shares - a fresh lock prints "agent · key" (this file's
+  # own long-standing format), an older lock prints "stale · N min", never idle; no lock, or
+  # one that will not read, prints "idle". Lock.who is called ONCE: it already returns the
+  # heartbeat timestamp alongside the state, so nothing stats the lock file a second time.
+  def self.lead_cell(intent_dir, now: Time.now)
+    data = Lock.who(intent_dir, now: now)
+    case data["state"]
+    when "fresh"
+      owner = data["owner"] || {}
+      agent = owner["agent"].to_s
+      agent = "unknown" if agent.empty? || agent == "unknown"
+      session = data["owner_session"].to_s
+      "#{agent} · #{session[0, 8]}"
+    when "stale"
+      mins = [((now - Time.parse(data["heartbeat_at"])) / 60).to_i, 0].max
+      "stale · #{mins} min"
+    else
+      "idle"
+    end
   rescue StandardError
     "idle"
+  end
+
+  # The roster's own call site (unchanged name/signature at the call sites below); `now:`
+  # defaults so a caller that never passed a clock keeps working exactly as before.
+  def self.lead(intent_dir, now: Time.now)
+    lead_cell(intent_dir, now: now)
   end
 
   def self.collapsed_open_steps_note(count)
@@ -637,21 +779,21 @@ module ReportScreen
 
     header = "▶ In delivery · #{entries.length} #{entries.length == 1 ? 'intent' : 'intents'} · " \
              "#{now.utc.strftime('%Y-%m-%d %H:%M UTC')}"
-    table = ["| Intent | Stage | Progress | Changed | Lead |", "| --- | --- | --- | --- | --- |"]
+    table = ["| Graph ID | Stage | Progress | Changed | Lead |", "| --- | --- | --- | --- | --- |"]
     entries.each do |e|
       text = intent_text(e[:dir]).to_s
       savepoint = IntentScreen.savepoint_fields(e[:dir], text)
       items = IntentScreen.checklist_items(e[:dir])
       progress = IntentScreen.progress_fields(items)
       ch = state_fields(intent_dir: e[:dir], store_root: store_root, changed: changed)[:rows].find { |l, _, _| l == "Changed" }[1]
-      table << "| #{e[:id]} | #{savepoint['stage']} | #{progress['progress.bar']} #{progress['progress.done']} / #{progress['progress.total']} | #{escape(ch)} | #{lead(e[:dir])} |"
+      table << "| #{e[:id]} | #{savepoint['stage']} | #{progress['progress.bar']} #{progress['progress.done']} / #{progress['progress.total']} | #{escape(ch)} | #{lead(e[:dir], now: now)} |"
     end
     blocks = entries.map { |e| render_collapsed_block(e[:dir], store_root, changed: changed) }
     head_and_table = ([header, ""] + table).join("\n")
     # Each collapsed block already has its own internal "\n"; a blank line
     # separates block from block (design--delivery-reports.html:137-152),
     # so they read as distinct entries instead of running together.
-    "#{head_and_table}\n\n#{blocks.join("\n\n")}\n"
+    fit_screen("#{head_and_table}\n\n#{blocks.join("\n\n")}\n")
   end
 
   # --- S6: the delivered verb ------------------------------------------------------
@@ -693,7 +835,7 @@ module ReportScreen
     lines << "  #{decision_note(intent_dir)}"
     lines << ""
     lines << "**Delivered**"
-    lines << "| Row | What | Proven by |"
+    lines << "| Row | Detail | Proven by |"
     lines << "| --- | --- | --- |"
     delivered_rows(intent_dir).each do |r|
       lines << "| #{r[:label]} | #{escape(r[:text])} | #{escape(proven_by(intent_dir, r[:label]))} |"
@@ -707,7 +849,7 @@ module ReportScreen
       # prints.
       lines << NOT_RECORDED
     else
-      lines << "| Kind | What | Source |"
+      lines << "| Kind | Detail | Source |"
       lines << "| --- | --- | --- |"
       ev.each do |r|
         lines << "| #{r[:kind]} | #{escape(r[:what])} | #{escape(r[:source])} |"
@@ -719,11 +861,11 @@ module ReportScreen
     if needsyou.empty?
       lines << "None"
     else
-      lines << "| N | What | Why |"
+      lines << "| N | Need | Reason |"
       lines << "| --- | --- | --- |"
       needsyou.each { |r| lines << "| #{r[:n]} | #{escape(r[:what])} | #{escape(r[:why])} |" }
     end
-    "#{lines.join("\n")}\n"
+    fit_screen("#{lines.join("\n")}\n")
   end
 
   # --- S7: the delay verb -----------------------------------------------------------
@@ -792,7 +934,7 @@ module ReportScreen
     lines << "**Where the time went**   #{where_time_went(timeline)}"
     lines << ""
     lines << "**Outcome**   #{delay_outcome_line(intent_dir)}"
-    "#{lines.join("\n")}\n"
+    fit_screen("#{lines.join("\n")}\n")
   end
 
   # --- the plan verb (intent 331b): the PRE-delivery report -----------------------
@@ -825,6 +967,17 @@ module ReportScreen
     collapsed = body.gsub(/\s+/, " ").strip
     head, rest = IntentScreen.clause_and_rest(collapsed)
     rest ? "#{head}…" : head
+  end
+
+  # D5, intent 331f: the plan screen's own Asked row - the intent title before its first
+  # colon (F21), never the whole `## Intent` body asked_first_sentence above reads. Most real
+  # intent lines read "Short title: the elaborated ask...", so this is the short title; a body
+  # with no colon at all (a short intent with no title/elaboration split) renders unchanged,
+  # word-boundary truncated the same way every other title cell in the family is.
+  def self.plan_asked_title(intent_dir)
+    body = asked(intent_dir)
+    return NOT_RECORDED if body == NOT_RECORDED
+    title_before_colon(body.gsub(/\s+/, " ").strip)
   end
 
   # spec.md F4: keeps checklist.md's own file order and each line's DECLARED
@@ -897,7 +1050,7 @@ module ReportScreen
 
   def self.plan_fields(intent_dir)
     [
-      ["Asked", asked_first_sentence(intent_dir), "## Intent"],
+      ["Asked", plan_asked_title(intent_dir), "## Intent"],
       ["Decisions", decision_note(intent_dir), "-"],
       ["Steps", "#{plan_steps(intent_dir).length} planned", "checklist.md"],
       ["Mode", plan_mode(intent_dir), "the delivery lock"],
@@ -935,7 +1088,7 @@ module ReportScreen
         "None"
       else
         rows = risks.each_with_index.map { |r, i| "| #{i + 1} | #{escape(r)} |" }
-        (["| N | What |", "| --- | --- |"] + rows).join("\n")
+        (["| N | Risk |", "| --- | --- |"] + rows).join("\n")
       end
 
     out = template.dup
@@ -944,7 +1097,7 @@ module ReportScreen
     out = out.gsub("{{fields.rows}}", state_rows(plan_fields(intent_dir)).join("\n"))
     out = out.gsub("{{steps.rows}}", steps_rows)
     out = out.gsub("{{risks.block}}", risks_block)
-    out.gsub(/\n{3,}/, "\n\n")
+    fit_screen(out.gsub(/\n{3,}/, "\n\n"))
   end
 
   # --- S9: the session verb (intent 330) -------------------------------------------
@@ -1204,8 +1357,8 @@ module ReportScreen
   # R7: idle unless the entry's own delivery lock is fresh as of `now:` - a stale lock (the
   # heartbeat older than the TTL) never masquerades as a live lead.
   def self.roadmap_lead(intent_dir, now:)
-    return "idle" unless intent_dir && Lock.fresh?(intent_dir, now: now)
-    lead(intent_dir)
+    return "idle" unless intent_dir
+    lead_cell(intent_dir, now: now)
   end
 
   def self.roadmap_intent_dir(store_root, id)
@@ -1250,7 +1403,7 @@ module ReportScreen
 
   def self.roadmap_plan_entries_table(data)
     label = roadmap_batch_label(data)
-    rows = ["| #{label} | Intent | What | Status |", "| --- | --- | --- | --- |"]
+    rows = ["| #{label} | Graph ID | Intent | Status |", "| --- | --- | --- | --- |"]
     data[:batches].each do |batch|
       batch[:entries].each do |e|
         rows << "| #{escape(batch[:heading])} | #{escape(e[:id])} | #{escape(e[:text])} | #{escape(e[:status])} |"
@@ -1305,7 +1458,7 @@ module ReportScreen
 
   def self.roadmap_state_entries_table(data, store_root, now)
     label = roadmap_batch_label(data)
-    rows = ["| #{label} | Intent | Status | Progress | Lead |", "| --- | --- | --- | --- | --- |"]
+    rows = ["| #{label} | Graph ID | Status | Progress | Lead |", "| --- | --- | --- | --- | --- |"]
     data[:batches].each do |batch|
       batch[:entries].each do |e|
         dir = roadmap_intent_dir(store_root, e[:id])
@@ -1362,7 +1515,7 @@ module ReportScreen
 
   def self.roadmap_delivered_table(data, events)
     label = roadmap_batch_label(data)
-    rows = ["| #{label} | Intent | What | Merged |", "| --- | --- | --- | --- |"]
+    rows = ["| #{label} | Graph ID | Intent | Merged |", "| --- | --- | --- | --- |"]
     data[:batches].each do |batch|
       batch[:entries].each do |e|
         rows << "| #{escape(batch[:heading])} | #{escape(e[:id])} | #{escape(e[:text])} | " \
@@ -1376,7 +1529,7 @@ module ReportScreen
     log_rows = roadmap_log_rows(text)
     return NOT_RECORDED if log_rows.empty?
 
-    rows = ["| When | Event | What |", "| --- | --- | --- |"]
+    rows = ["| When | Event | Detail |", "| --- | --- | --- |"]
     log_rows.each { |r| rows << "| #{escape(r[:when])} | #{escape(r[:event])} | #{escape(r[:what])} |" }
     rows.join("\n")
   end
@@ -1413,7 +1566,7 @@ module ReportScreen
       out = out.gsub("{{log.table}}", roadmap_log_table(text))
     end
 
-    out.gsub(/\n{3,}/, "\n\n")
+    fit_screen(out.gsub(/\n{3,}/, "\n\n"))
   end
 
   # --- S8: --ansi passthrough (D2) -----------------------------------------------

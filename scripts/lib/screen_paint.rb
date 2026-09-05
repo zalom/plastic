@@ -45,7 +45,9 @@ module ScreenPaint
   # text is exactly "not recorded" greys wherever it appears.
   EVIDENCE_PROOF_KINDS = %w[suite red ship doctor deposits verdict].freeze
   EVIDENCE_DEVIATION_KINDS = %w[deviates].freeze
-  NOTE_HEADERS = %w[Source Why].freeze
+  # "Reason" is the current header (D5, intent 331f); "Why" stays too so a screen captured
+  # before the rename still paints (the header map's own forgiving-reader guarantee).
+  NOTE_HEADERS = %w[Source Why Reason].freeze
   NOT_RECORDED = "not recorded"
 
   @registry = {}

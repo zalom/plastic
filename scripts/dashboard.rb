@@ -682,15 +682,10 @@ end
 # recent_delivery_summary (D1 fix) uses this twice: once per intent label, so a
 # paragraph-long `intent` field collapses to a short name, and once on the fully assembled
 # summary string, the hard budget cap that holds no matter how the per-label math adds up.
+# Intent 331f: the one implementation now lives on ReportScreen; this delegates so dashboard.rb
+# and every ReportScreen render entry point share it.
 def truncate_on_word_boundary(text, max_chars)
-  t = text.to_s
-  return t if t.length <= max_chars
-  ellipsis = "…"
-  limit = [max_chars - ellipsis.length, 0].max
-  slice = t[0, limit]
-  cut = slice.rindex(/\s/)
-  slice = slice[0, cut] if cut && cut.positive?
-  "#{slice.rstrip}#{ellipsis}"
+  ReportScreen.truncate_on_word_boundary(text, max_chars)
 end
 
 # D3 fix (intent 202 gate review): completion dates only carry day granularity, and many
@@ -1086,14 +1081,12 @@ def screen_changed_field(scoped)
   t.utc.strftime("%Y-%m-%d %H:%M UTC")
 end
 
-# A3: Lead is honest about staleness. A stale (or absent) lock must never
-# contradict the In delivery count on the same screen, so this reads
-# Lock.who itself rather than trusting ReportScreen.lead's own no-freshness
-# "idle" fallback, which is worded for a different screen.
+# D6, intent 331f: the one Lead freshness rule every screen shares - fresh prints
+# "agent · key", a stale lock prints "stale · N min" (never "not recorded" or a bare "idle",
+# which would either hide the staleness or contradict a live In-delivery count with a dead
+# lead), and no lock (or one that will not read) prints "idle".
 def screen_lead_field(rec, now:)
-  view = Lock.who(rec[:intent_dir], now: now)
-  return SCREEN_NOT_RECORDED unless view["state"] == "fresh"
-  ReportScreen.lead(rec[:intent_dir])
+  ReportScreen.lead_cell(rec[:intent_dir], now: now)
 end
 
 # D6: last_accessed_at descending, then id, capped at SCREEN_ACTIVE_CAP.
@@ -1104,7 +1097,8 @@ def screen_where_we_are(scoped, now:)
     items = IntentScreen.checklist_items(r[:intent_dir])
     progress = IntentScreen.progress_fields(items)
     {
-      intent: cell(truncate_on_word_boundary("#{r[:id]} #{r[:intent]}", INTENT_LINE_MAX_CHARS)),
+      graph_id: r[:id],
+      intent: cell(ReportScreen.title_before_colon(r[:intent], max: INTENT_LINE_MAX_CHARS)),
       stage: r[:lifecycle].to_s.capitalize,
       progress: "#{progress['progress.bar']} #{progress['progress.done']} / #{progress['progress.total']}",
       lead: screen_lead_field(r, now: now),
@@ -1126,9 +1120,9 @@ def screen_where_we_go_next(scope_records)
   pool.each_with_index.map do |r, i|
     {
       rank: i + 1,
-      intent: r[:id],
-      what: cell(truncate_on_word_boundary(r[:intent], INTENT_LINE_MAX_CHARS)),
-      why: r[:quadrant],
+      graph_id: r[:id],
+      intent: cell(ReportScreen.title_before_colon(r[:intent], max: INTENT_LINE_MAX_CHARS)),
+      reason: r[:quadrant],
     }
   end.first(SCREEN_NEXT_CAP)
 end
