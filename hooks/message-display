@@ -107,4 +107,28 @@ fi
 
 [ "$handoff" = 1 ] || exit 0
 
+# 331a1 (D1): chunk 0 is about to hand off to Ruby, which takes on the
+# order of 150 ms to boot before it ever writes SCREEN or NOSCREEN. Claude
+# Code fires the per-chunk hook PROCESSES CONCURRENTLY (see the header
+# comment above), so a later chunk landing inside that window used to find
+# no message directory at all, fail this script's own cheap shape test,
+# and pass through as raw Markdown - measured at 15 to 21 chunks of every
+# screen, against a stream-realistic 5 ms stagger. Staking a PENDING
+# marker here, the instant the handoff gate above passes, closes that
+# window down to microseconds: a later chunk's own "does the directory
+# exist" check (below, unchanged) now finds it almost at once, and
+# MessageDisplay polls for the real decision instead of judging the
+# chunk's own shape. mkdir is the one non-builtin on this whole path - it
+# forks, unlike everything else in this file - but it runs ONLY here,
+# after the handoff gate, so the ordinary (non-candidate) chunk that is
+# the overwhelming common case still forks nothing (matrix L8). A failed
+# mkdir or printf (an unwritable tmp root, a race with another process) is
+# silently swallowed: it must never change this script's own exit status
+# or skip the Ruby handoff below - Ruby's own polling already fails open
+# (D5) when no decision ever appears.
+if [ "$is_index_zero" = 1 ]; then
+  mkdir -p "$MSGDIR" 2>/dev/null
+  printf '' > "$MSGDIR/PENDING" 2>/dev/null
+fi
+
 printf '%s' "$INPUT" | env -u RUBYOPT ruby "$SCRIPT_DIR/../scripts/hook-message-display"
