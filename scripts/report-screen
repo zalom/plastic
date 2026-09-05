@@ -15,6 +15,7 @@
 #   report-screen delay <intent_dir> [--ansi]
 #   report-screen session <tier_root> [--session <id>] [--since <iso>]
 #                                     [--ledger-root <dir>] [--ansi]
+#   report-screen roadmap <roadmap.md> plan|state|delivered [--ansi] [--store-root <dir>]
 #
 # --ansi delegates to ScreenPaint (intent 317a, D1), the parser/re-layouter
 # in the shared TUI core. Selection is by capability, never by harness:
@@ -126,6 +127,7 @@ repo_flag = nil
 session_flag = nil
 since_flag = nil
 ledger_root_flag = nil
+store_root_flag = nil
 positional = []
 
 while (arg = args.shift)
@@ -147,6 +149,8 @@ while (arg = args.shift)
     since_flag = args.shift or usage_abort("--since needs a value")
   when "--ledger-root"
     ledger_root_flag = args.shift or usage_abort("--ledger-root needs a path")
+  when "--store-root"
+    store_root_flag = args.shift or usage_abort("--store-root needs a path")
   else
     usage_abort("unknown flag #{arg.inspect}") if arg.start_with?("--") && arg != "--all"
     positional << arg
@@ -240,8 +244,20 @@ when "session"
     note: note, now: now, painter: ->(text) { paint(text, ansi_enabled) }
   )
   $stdout.write out
+when "roadmap"
+  usage_abort("usage: report-screen roadmap <roadmap.md> plan|state|delivered [--ansi] [--store-root <dir>]") if positional.empty?
+  roadmap_path = File.expand_path(positional[0])
+  usage_abort("#{roadmap_path} does not exist") unless File.exist?(roadmap_path)
+  sub_verb = positional[1]
+  usage_abort("usage: report-screen roadmap <roadmap.md> plan|state|delivered") unless sub_verb
+  unless %w[plan state delivered].include?(sub_verb)
+    usage_abort("unknown sub-verb #{sub_verb.inspect} (use plan|state|delivered)")
+  end
+  roadmap_store_root = store_root_flag ? File.expand_path(store_root_flag) : nil
+  out = ReportScreen.render_roadmap(path: roadmap_path, verb: sub_verb, store_root: roadmap_store_root)
+  $stdout.write paint(out, ansi_enabled)
 else
-  usage_abort("unknown verb #{verb.inspect} (use state|delivered|delay|session)")
+  usage_abort("unknown verb #{verb.inspect} (use state|delivered|delay|session|roadmap)")
 end
 
 exit 0

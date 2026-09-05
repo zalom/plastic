@@ -210,6 +210,8 @@ class ReportScreenCliTest < Minitest::Test
       FileUtils.cp(File.join(REPO, "scripts", "lib", "intent_screen_ansi.rb"), File.join(tmp_root, "scripts", "lib", "intent_screen_ansi.rb"))
       FileUtils.cp(File.join(REPO, "scripts", "lib", "session_ledger.rb"), File.join(tmp_root, "scripts", "lib", "session_ledger.rb"))
       FileUtils.cp(File.join(REPO, "scripts", "lib", "store_provisioning.rb"), File.join(tmp_root, "scripts", "lib", "store_provisioning.rb"))
+      FileUtils.cp(File.join(REPO, "scripts", "lib", "roadmap_queue.rb"), File.join(tmp_root, "scripts", "lib", "roadmap_queue.rb"))
+      FileUtils.cp(File.join(REPO, "scripts", "lib", "roadmap_savepoint.rb"), File.join(tmp_root, "scripts", "lib", "roadmap_savepoint.rb"))
       FileUtils.cp(File.join(REPO, "templates", "report-state.md"), File.join(tmp_root, "templates", "report-state.md"))
 
       root = File.join(tmp_root, "store_root")
