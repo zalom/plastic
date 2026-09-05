@@ -1,9 +1,12 @@
-# Human Report Contract (the three report screens, intent 317)
+# Human Report Contract (the report screens, intent 317)
 
 D15: the prose EM-to-CTO briefing this doc used to define is retired. The orchestrator now
-prints one of three report screens, filled from the record by `scripts/report-screen`, never
+prints one of these report screens, filled from the record by `scripts/report-screen`, never
 written by eye:
 
+- **`report-screen plan <intent_dir>`** - the pre-delivery report (intent 331b), printed once
+  at the How boundary, before the executor is dispatched: Asked, Decisions, Steps, Mode,
+  Reviewer, then the Steps table (Step, Action, What) and the Risks table.
 - **`report-screen state <intent_dir> [--changed "<text>"]`** - the mid-delivery report. One
   intent's field table (Store, Status, Stage, Savepoint, Progress, Next, Insight) plus a
   `Changed` row naming what caused the print, and its Steps table.
@@ -23,6 +26,26 @@ written by eye:
   Where-we-go-next tables. A separate script from the other four (`dashboard.rb`, not
   `report-screen`), since it aggregates across a whole store or project rather than one
   intent; it prints on `continue` and on loading a project, not as a delivery trigger.
+
+## A roadmap's own three reports (intent 331c)
+
+A roadmap gets the same pre-, in-, and post-delivery shape as an intent, through
+`report-screen roadmap <roadmap.md> plan|state|delivered [--ansi] [--store-root <dir>]`:
+
+- **`roadmap plan`** - the pre-delivery report: the Goal's first sentence, the batch (or legacy
+  wave) count and intent count, the batch order, and when the roadmap was created; then the
+  full entries table.
+- **`roadmap state`** - the in-delivery report: Goal, a Progress bar over intents delivered of
+  intents total (never batches), the frontier batch, who is delivering it and their lead, the
+  next queued entry, and the last ledger event; then the entries table with each entry's own
+  checklist progress and lead.
+- **`roadmap delivered`** - the post-delivery report: a meta line (closed time, or `in progress`
+  when the goal is not yet reached; intent count; duration) directly under the title, the
+  delivered table with each entry's merge sha, and the `## Log` table.
+
+Every cell traces to the roadmap file, `INDEX.md` (which always wins on status), the roadmap's
+own savepoint ledger, or (falling back when no ledger file exists) the roadmap's `## Log` -
+never a second parser: `RoadmapQueue`'s own public `roadmap` reader supplies every entry.
 
 ## The five triggers for `state`
 

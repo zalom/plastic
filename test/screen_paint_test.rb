@@ -701,4 +701,97 @@ class ScreenPaintTest < Minitest::Test
       assert_includes plain, value, "expected #{value.inspect} to survive painting"
     end
   end
+  # --- intent 331c: roadmap screen kinds (D7) -----------------------------------
+
+  # R13: without scripts/lib/screens/roadmap.rb, the roadmap screen kinds are not
+  # registered at all - a future custom palette for one of them would have nowhere to live.
+  def test_roadmap_kinds_paint
+    require_relative "../scripts/lib/screens/roadmap"
+    %i[roadmap_plan roadmap_state roadmap_delivered].each do |kind|
+      assert_includes ScreenPaint.kinds, kind, "#{kind} must be registered so its opener is recognized"
+    end
+  end
+
+  # R19: the delivered template's meta line sits directly under the title (no blank line, the
+  # plan review's binding finding 5); a real render of all three roadmap verbs must paint, never
+  # silently fall back to plain because a blank line defeated ScreenPaint.classify's :meta rule.
+  def test_rendered_roadmap_screens_all_paint
+    Dir.mktmpdir("roadmap-paint-331c") do |home|
+      roadmaps = File.join(home, "roadmaps")
+      FileUtils.mkdir_p(roadmaps)
+      File.write(File.join(roadmaps, "demo.md"), <<~MD)
+        # Roadmap: Demo
+        ## Goal
+        test goal.
+        ## Batches
+        ### Batch 1
+        - [x] 1 Alpha — delivered
+        ## Log
+        - 2026-07-10 00:00 UTC created.
+      MD
+      File.write(File.join(home, "INDEX.md"), <<~IDX)
+        # Index
+
+        ## Active
+
+        ## Future
+
+        ## Completed
+        - [1 — Alpha](store/1--alpha/1--alpha.md) — 2026-07-10 delivered.
+
+        ## Abandoned
+      IDX
+      File.write(File.join(roadmaps, "demo.savepoint.md"), <<~LEDGER)
+        2026-07-10T00:00:00Z  created  demo
+        2026-07-10T00:10:00Z  merged  1 merged into alpha at abc1234
+        2026-07-10T00:20:00Z  closed  demo closed
+      LEDGER
+
+      %w[plan state delivered].each do |verb|
+        out = ReportScreen.render_roadmap(path: File.join(roadmaps, "demo.md"), verb: verb, store_root: home)
+        painted = ScreenPaint.paint(out, color: true)
+        refute_nil painted, "#{verb} roadmap screen must paint, never silently fall back to plain"
+      end
+    end
+  end
+
+  # --- intent 331b: the plan kind (scripts/lib/screens/plan.rb) ---------------
+
+  def plan_screen
+    require_relative "../scripts/lib/screens/plan"
+    template = File.read(File.expand_path("../templates/report-plan.md", __dir__))
+    ReportScreen.render_plan(intent_dir: @dir, store_root: @root, template: template)
+  end
+
+  def test_plan_screen_paints_through_the_shared_pipeline # P10
+    painted = ScreenPaint.paint(plan_screen, color: true)
+    refute_nil painted
+    plain = strip_ansi(painted)
+    assert_includes plain, "plan"
+    refute_match(/^\s*\|/, plain)
+  end
+
+  def test_plan_registration_leaves_the_five_shipped_kinds_resolving_as_before # P10a
+    require_relative "../scripts/lib/screens/plan"
+    assert_equal :intent, ScreenPaint.opener_kind("## ▶ 21 · Paint demo")
+    # :intent's opener already matches this shape too (pre-existing, before
+    # :plan ever registers) - the same shadowing F1 documents for the plan
+    # title; :plan must not change that.
+    assert_equal :intent, ScreenPaint.opener_kind("## ✔ 21 · Paint demo · delivered")
+    assert_equal :roster, ScreenPaint.opener_kind("▶ In delivery · 1 open")
+    assert_equal :delay, ScreenPaint.opener_kind("✔ 21 · Paint demo · delivered in 10 min")
+    # F1: :intent's opener already matches a plan title, so :plan (registered
+    # last) is shadowed - the fact D4 rests on, never accidentally reversed by
+    # narrowing :intent's opener from screens/plan.rb.
+    assert_equal :intent, ScreenPaint.opener_kind("## ▶ 21 · Paint demo · plan")
+    assert_includes ScreenPaint.kinds, :plan
+  end
+
+  def test_plan_kind_registers_without_editing_screen_paint # P10b
+    lib_path = File.expand_path("../scripts/lib/screen_paint.rb", __dir__)
+    before = File.read(lib_path)
+    require_relative "../scripts/lib/screens/plan"
+    assert_includes ScreenPaint.kinds, :plan
+    assert_equal before, File.read(lib_path)
+  end
 end

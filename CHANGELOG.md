@@ -5,6 +5,29 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 331c (branch of 331): a roadmap gets its own three reports, the counterpart to an intent's:
+  `report-screen roadmap <roadmap.md> plan|state|delivered [--ansi] [--store-root <dir>]`. `plan`
+  prints the Goal's first sentence, the batch (or legacy wave) and intent counts, the batch
+  order, when the roadmap was created, and the full entries table; `state` prints a Progress bar
+  over intents delivered of intents total (never batches), the frontier batch with who is
+  delivering it and their lead, the next queued entry, and the last ledger event; `delivered`
+  prints a meta line (closed time, or `in progress` when the goal is not yet reached; intent
+  count; duration) directly under the title, the delivered table with each entry's merge sha, and
+  the `## Log` table. Every entry comes from `RoadmapQueue`'s new public `roadmap` reader - no
+  second parser, and INDEX.md still wins on status; events come from the roadmap's own savepoint
+  ledger, falling back to its `## Log` (classified through the same keyword vocabulary) when no
+  ledger file exists, so a fully-shipped archived roadmap with no ledger reads its real closed
+  time instead of `in progress`. Three new paint kinds (`roadmap_plan`, `roadmap_state`,
+  `roadmap_delivered`) register in `scripts/lib/screens/roadmap.rb`, reusing the shared palette
+  with no changes to `screen_paint.rb`. Twenty failure-mode tests, landed red before the code.
+- 331b (branch of 331): `report-screen plan <intent_dir> [--ansi]`, the pre-delivery report -
+  printed once at the How boundary, before the executor is dispatched. It fills Asked,
+  Decisions, Steps, Mode (the live delivery lock's `run_mode`, or `not armed`), and Reviewer
+  (the last plan-review savepoint line's verdict, or `not reviewed`) from the record, then a
+  Steps table naming each checklist step's own declared label and the action file whose
+  heading proves it, and a Risks table from `plan.md`'s own bullets. Registers as the `plan`
+  kind through 331a's `ScreenPaint` registry (`scripts/lib/screens/plan.rb`), no edit to
+  `screen_paint.rb`.
 - 331a (branch of 331): the MessageDisplay hook engages a screen anywhere in a reply, not only
   when it opens chunk 0. A chunk carrying a screen opener now engages the message from that
   chunk on, whatever its own index: chunk 0 still decides fast (no opener means NOSCREEN, as

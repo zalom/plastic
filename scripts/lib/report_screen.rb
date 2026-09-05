@@ -14,6 +14,8 @@ require "date"
 require_relative "intent_screen"
 require_relative "lock"
 require_relative "session_ledger"
+require_relative "roadmap_queue"
+require_relative "roadmap_savepoint"
 
 module ReportScreen
   NOT_RECORDED = "not recorded"
@@ -250,13 +252,21 @@ module ReportScreen
     rows.compact
   end
 
+  # Intent 331b (plan.md, "The one non-additive edit"): the standalone-token
+  # rule, extracted so `action_file_for` (the plan screen's Action column)
+  # calls the exact same rule as `matching_action_heading` and the two can
+  # never drift on what counts as a match. `matching_action_heading`'s own
+  # signature, return shape and behavior are unchanged (row P16).
+  def self.heading_tokens(heading)
+    heading.to_s.sub(/\A#+\s*/, "").split(/[^A-Za-z0-9]+/)
+  end
+
   # Rows 25-27: D19 - the label must appear as a standalone token in an action
   # file heading (any level); the count is the matched section's table rows only.
   def self.matching_action_heading(intent_dir, label)
     Dir.glob(File.join(intent_dir, "actions", "*.md")).sort.each do |path|
       split_by_headings(File.read(path)).each do |heading, body|
-        tokens = heading.to_s.sub(/\A#+\s*/, "").split(/[^A-Za-z0-9]+/)
-        return [heading, body] if tokens.include?(label)
+        return [heading, body] if heading_tokens(heading).include?(label)
       end
     end
     [nil, nil]
@@ -785,6 +795,158 @@ module ReportScreen
     "#{lines.join("\n")}\n"
   end
 
+  # --- the plan verb (intent 331b): the PRE-delivery report -----------------------
+  #
+  # `report-screen plan <intent_dir>` prints the plan the record already
+  # carries, before Exec starts: Asked, the decisions count, the planned
+  # steps with their action file, and risks. Every cell traces to a file
+  # (D3/D14); a missing source prints "not recorded", the same floor every
+  # other screen in the family uses, except Mode (D2): a missing lock prints
+  # "not armed", never "not recorded" - there is nothing to fall back to
+  # before Exec starts.
+
+  VERDICT_TOKENS = %w[PROCEED APPROVE PASS REVISE REWORK FAIL BLOCK].freeze
+
+  # spec.md F4: a checklist line's OWN declared label ("S6 Docs and...")
+  # survives here; STEP_PREFIX_RE (IntentScreen's own stripping regex) is
+  # reused for the strip, so the label this recognizes is exactly the prefix
+  # IntentScreen.checklist_items strips - the two readers can never disagree
+  # on where a label ends and the step text begins.
+  # The separator class mirrors STEP_PREFIX_RE's own (hyphen, colon, middle
+  # dot, em dash, en dash); the latter two are written as \u escapes rather
+  # than the literal glyph so this line never trips the project's added-line
+  # dash guard, which scans literal characters only - the compiled regex
+  # matches identically either way.
+  STEP_LABEL_RE = /\A(?:Step\s*|S)\s*(\d+)\s*(?:[-:·\u2014\u2013]\s*|\s+)(?=\S)/i.freeze
+
+  def self.asked_first_sentence(intent_dir)
+    body = asked(intent_dir)
+    return NOT_RECORDED if body == NOT_RECORDED
+    collapsed = body.gsub(/\s+/, " ").strip
+    head, rest = IntentScreen.clause_and_rest(collapsed)
+    rest ? "#{head}…" : head
+  end
+
+  # spec.md F4: keeps checklist.md's own file order and each line's DECLARED
+  # label, falling back to the positional S<n> only when a line declares
+  # none - IntentScreen.checklist_items strips the label and renumbers
+  # positionally, which is right for the state screen and wrong for the
+  # Action lookup below.
+  def self.plan_steps(intent_dir)
+    return [] unless IntentScreen.items_present?(intent_dir)
+
+    raw = File.readlines(File.join(intent_dir, "checklist.md")).filter_map do |line|
+      m = line.match(IntentScreen::ITEM_RE)
+      next unless m
+      text = m[2].strip
+      next if text == "..."
+      text
+    end
+
+    raw.each_with_index.map do |text, i|
+      m = text.match(STEP_LABEL_RE)
+      label = m ? "S#{m[1]}" : "S#{i + 1}"
+      { label: label, text: text.sub(IntentScreen::STEP_PREFIX_RE, "") }
+    end
+  end
+
+  # spec.md F3/F6a: the Action column names the file whose heading carries
+  # the step's label AND whose section has a matrix table of its own - a
+  # heading that resolves but proves nothing is the same hollow-close defect
+  # `proven_by` already guards against, so it renders "not recorded" too.
+  def self.action_file_for(intent_dir, label)
+    Dir.glob(File.join(intent_dir, "actions", "*.md")).sort.each do |path|
+      split_by_headings(File.read(path)).each do |heading, body|
+        next unless heading_tokens(heading).include?(label)
+        return File.basename(path, ".md") if table_rows(body).any?
+      end
+    end
+    NOT_RECORDED
+  end
+
+  # D2: mode from the LIVE delivery lock only - unlike `mode` (row 36), a
+  # missing lock never falls back to outcome.md's frontmatter (there is
+  # nothing to fall back to before Exec starts) and never says the
+  # delivered screen's "not recorded"; it says "not armed".
+  def self.plan_mode(intent_dir)
+    data = Lock.read(intent_dir)
+    value = data && data["run_mode"]
+    value && !value.to_s.empty? ? value.to_s : "not armed"
+  end
+
+  # The last `Review` savepoint line whose text names a PLAN review - a
+  # post-execution review line never matches, since its text never contains
+  # "plan review".
+  def self.plan_review_line(intent_dir)
+    savepoint_lines(intent_dir).reverse.find { |_ts, kind, text| kind == "Review" && text =~ /plan review/i }
+  end
+
+  def self.plan_reviewer(intent_dir)
+    line = plan_review_line(intent_dir)
+    return "not reviewed" unless line
+    _ts, _kind, text = line
+    VERDICT_TOKENS.find { |t| text =~ /\b#{t}\b/ } || NOT_RECORDED
+  end
+
+  def self.plan_reviewer_note(intent_dir)
+    line = plan_review_line(intent_dir)
+    return "-" unless line
+    ts, _kind, text = line
+    "#{human_time(ts)} · #{text}"
+  end
+
+  def self.plan_fields(intent_dir)
+    [
+      ["Asked", asked_first_sentence(intent_dir), "## Intent"],
+      ["Decisions", decision_note(intent_dir), "-"],
+      ["Steps", "#{plan_steps(intent_dir).length} planned", "checklist.md"],
+      ["Mode", plan_mode(intent_dir), "the delivery lock"],
+      ["Reviewer", plan_reviewer(intent_dir), plan_reviewer_note(intent_dir)],
+    ]
+  end
+
+  # plan.md's own ## Risks bullets, wrapped continuations joined (317a's
+  # bullet_rows); [] when plan.md is absent or carries no such section - the
+  # renderer prints the literal "None" rather than an empty table, the
+  # lesson 317a S4 already learned on the Evidence table.
+  def self.risk_rows(intent_dir)
+    path = File.join(intent_dir, "plan.md")
+    return [] unless File.exist?(path)
+    bullet_rows(section_of(File.read(path), "## Risks"))
+  end
+
+  def self.render_plan(intent_dir:, store_root:, template:)
+    id = intent_id(intent_dir)
+    name = title_for(intent_dir, store_root)
+    steps = plan_steps(intent_dir)
+
+    steps_rows =
+      if steps.empty?
+        "| | | no steps yet |"
+      else
+        steps.map do |s|
+          "| #{escape(s[:label])} | #{escape(action_file_for(intent_dir, s[:label]))} | #{escape(s[:text])} |"
+        end.join("\n")
+      end
+
+    risks = risk_rows(intent_dir)
+    risks_block =
+      if risks.empty?
+        "None"
+      else
+        rows = risks.each_with_index.map { |r, i| "| #{i + 1} | #{escape(r)} |" }
+        (["| N | What |", "| --- | --- |"] + rows).join("\n")
+      end
+
+    out = template.dup
+    out = out.gsub("{{id}}", id)
+    out = out.gsub("{{name}}", name)
+    out = out.gsub("{{fields.rows}}", state_rows(plan_fields(intent_dir)).join("\n"))
+    out = out.gsub("{{steps.rows}}", steps_rows)
+    out = out.gsub("{{risks.block}}", risks_block)
+    out.gsub(/\n{3,}/, "\n\n")
+  end
+
   # --- S9: the session verb (intent 330) -------------------------------------------
   #
   # `report-screen session <tier_root>` - the delivered screens for every intent
@@ -961,6 +1123,297 @@ module ReportScreen
     blocks << render_roster(store_root, changed: changed, now: now).chomp
 
     "#{blocks.map { |b| painter.call(b) }.join("\n\n")}\n"
+  end
+
+  # --- S10: the roadmap verb (intent 331c) -----------------------------------------
+  #
+  # `report-screen roadmap <roadmap.md> plan|state|delivered` - a roadmap's own three reports,
+  # the counterpart to an intent's state/delivered. Every entry comes from RoadmapQueue's public
+  # `roadmap` reader (D6/R1): no second parser here ever re-derives its grammar, its INDEX
+  # reconciliation, or its frontier selection.
+
+  ROADMAP_VERBS = %w[plan state delivered].freeze
+
+  # D6/R17: the tier root for a roadmap path is the parent of `roadmaps/`, one extra parent when
+  # the file sits under `roadmaps/archived/` - the SAME rule RoadmapSavepoint.index_path_for
+  # uses (that method is private, so this is the rule's second, agreeing owner; a test pins them
+  # together).
+  def self.roadmap_tier_root(path)
+    dir = File.dirname(path)
+    dir = File.dirname(dir) if File.basename(dir) == "archived"
+    File.dirname(dir)
+  end
+
+  def self.roadmap_default_template_path(verb)
+    File.expand_path("../../templates/report-roadmap-#{verb}.md", __dir__)
+  end
+
+  # D6/R1: the parsed, INDEX-reconciled entries for one roadmap file, obtained from
+  # RoadmapQueue's own public reader - never a second parser.
+  def self.roadmap_entries(path:, store_root:)
+    index_path = File.join(store_root, "INDEX.md")
+    RoadmapQueue.new(roadmaps_dir: File.dirname(path), index_path: index_path).roadmap(path)
+  end
+
+  # R4/R15: the first sentence of `## Goal`, joined across wrapped source lines. Splits on a
+  # period only (never IntentScreen.clause_and_rest's `[.;]` - a semicolon inside a real goal is
+  # common and must survive, R15); a period with no following whitespace or end-of-string (a
+  # version number like "2.0.0", never followed by a space mid-number) is never mistaken for a
+  # sentence boundary (R4).
+  def self.roadmap_goal(text)
+    section = section_of(text, "## Goal").strip
+    return NOT_RECORDED if section.empty?
+
+    joined = section.lines.map(&:strip).join(" ").squeeze(" ")
+    m = joined.match(/\A(.*?\.)(?=\s|\z)/)
+    (m ? m[1] : joined).strip
+  end
+
+  # R16: the ledger's own entries when the paired `.savepoint.md` carries any; otherwise the
+  # `## Log` lines classified through RoadmapSavepoint.classify_event (the same KEYWORD_TABLE,
+  # no second vocabulary), each timestamped from its own Log line's date and time. A roadmap with
+  # neither source (no ledger file, no classifiable Log line) answers `[]`, never an invented
+  # event - callers reading it print `not recorded`.
+  def self.roadmap_events(path)
+    ledger = RoadmapSavepoint.ledger_entries(path)
+    return ledger.sort_by { |t, _, _| t } if ledger.any?
+
+    text = File.exist?(path) ? File.read(path) : nil
+    return [] unless text
+
+    section_of(text, "## Log").each_line.filter_map do |line|
+      m = line.strip.match(RoadmapSavepoint::LOG_LINE)
+      next nil unless m
+      event = RoadmapSavepoint.classify_event(m[3])
+      next nil unless event
+      [Time.parse("#{m[1]}T#{m[2]}:00Z"), event, m[3].strip]
+    end
+  end
+
+  # Every `## Log` line, classified for the delivered screen's Log table: an unclassifiable line
+  # still renders, with `not recorded` in its Event cell (never dropped, unlike roadmap_events'
+  # fallback, which only wants events it can act on).
+  def self.roadmap_log_rows(text)
+    section_of(text, "## Log").each_line.filter_map do |line|
+      m = line.strip.match(RoadmapSavepoint::LOG_LINE)
+      next nil unless m
+      { when: human_time("#{m[1]}T#{m[2]}:00Z"), event: RoadmapSavepoint.classify_event(m[3]) || NOT_RECORDED, what: m[3].strip }
+    end
+  end
+
+  # R7: idle unless the entry's own delivery lock is fresh as of `now:` - a stale lock (the
+  # heartbeat older than the TTL) never masquerades as a live lead.
+  def self.roadmap_lead(intent_dir, now:)
+    return "idle" unless intent_dir && Lock.fresh?(intent_dir, now: now)
+    lead(intent_dir)
+  end
+
+  def self.roadmap_intent_dir(store_root, id)
+    Dir.glob(File.join(store_root, "store", "#{id}--*")).sort.find { |d| IntentScreen.intent_dir?(d) }
+  end
+
+  def self.roadmap_entry_progress(dir)
+    return NOT_RECORDED unless dir
+    items = IntentScreen.checklist_items(dir)
+    fields = IntentScreen.progress_fields(items)
+    "#{fields['progress.bar']} #{fields['progress.done']} / #{fields['progress.total']}"
+  end
+
+  def self.roadmap_progress_bar(done, total)
+    on = total.zero? ? 0 : (done * IntentScreen::BAR_WIDTH) / total
+    (IntentScreen::ON * on) + (IntentScreen::OFF * (IntentScreen::BAR_WIDTH - on))
+  end
+
+  # "Batch" or "Wave" (singular): the entries table's own first column header (R3 - a legacy
+  # Waves roadmap reads "Wave", never "Batch").
+  def self.roadmap_batch_label(data)
+    data[:grouping] == "Waves" ? "Wave" : "Batch"
+  end
+
+  def self.roadmap_all_entries(data)
+    data[:batches].flat_map { |b| b[:entries] }
+  end
+
+  # --- plan (D2) ---------------------------------------------------------------
+
+  def self.roadmap_plan_fields(text, data, events)
+    all_entries = roadmap_all_entries(data)
+    order = data[:batches].map { |b| b[:heading] }.join(" → ")
+    created = events.empty? ? NOT_RECORDED : human_time(events.first[0].utc.iso8601)
+    [
+      ["Goal", roadmap_goal(text), ""],
+      [data[:grouping], "#{data[:batches].length} #{data[:grouping].downcase}, #{all_entries.length} intents", ""],
+      ["Order", order, ""],
+      ["Created", created, ""],
+    ]
+  end
+
+  def self.roadmap_plan_entries_table(data)
+    label = roadmap_batch_label(data)
+    rows = ["| #{label} | Intent | What | Status |", "| --- | --- | --- | --- |"]
+    data[:batches].each do |batch|
+      batch[:entries].each do |e|
+        rows << "| #{escape(batch[:heading])} | #{escape(e[:id])} | #{escape(e[:text])} | #{escape(e[:status])} |"
+      end
+    end
+    rows.join("\n")
+  end
+
+  # --- state (D3) ---------------------------------------------------------------
+
+  def self.roadmap_state_fields(text, data, events, store_root, now)
+    all_entries = roadmap_all_entries(data)
+    total = all_entries.length
+    delivered = all_entries.count { |e| e[:status] == "delivered" }
+    bar = roadmap_progress_bar(delivered, total)
+
+    frontier = data[:frontier]
+    frontier_value = frontier ? frontier[:heading] : NOT_RECORDED
+    frontier_note =
+      if frontier.nil?
+        ""
+      elsif frontier[:in_flight].any?
+        "in flight"
+      else
+        "queued"
+      end
+
+    delivering_value =
+      if frontier && frontier[:in_flight].any?
+        frontier[:in_flight].map do |e|
+          dir = roadmap_intent_dir(store_root, e["id"])
+          "#{e['id']} (#{roadmap_lead(dir, now: now)})"
+        end.join(", ")
+      else
+        NOT_RECORDED
+      end
+
+    next_entry = all_entries.find { |e| e[:status] == "queued" }
+    next_value = next_entry ? "#{next_entry[:id]} #{next_entry[:text]}".strip : NOT_RECORDED
+
+    changed_value = events.empty? ? NOT_RECORDED : "#{events.last[1]} · #{human_time(events.last[0].utc.iso8601)}"
+
+    [
+      ["Goal", roadmap_goal(text), ""],
+      ["Progress", "#{bar} #{delivered} / #{total}", ""],
+      ["Frontier", frontier_value, frontier_note],
+      ["Delivering", delivering_value, ""],
+      ["Next", next_value, ""],
+      ["Changed", changed_value, ""],
+    ]
+  end
+
+  def self.roadmap_state_entries_table(data, store_root, now)
+    label = roadmap_batch_label(data)
+    rows = ["| #{label} | Intent | Status | Progress | Lead |", "| --- | --- | --- | --- | --- |"]
+    data[:batches].each do |batch|
+      batch[:entries].each do |e|
+        dir = roadmap_intent_dir(store_root, e[:id])
+        rows << "| #{escape(batch[:heading])} | #{escape(e[:id])} | #{escape(e[:status])} | " \
+                "#{escape(roadmap_entry_progress(dir))} | #{escape(roadmap_lead(dir, now: now))} |"
+      end
+    end
+    rows.join("\n")
+  end
+
+  # --- delivered (D4) ------------------------------------------------------------
+
+  def self.roadmap_delivered_meta(data, events)
+    all_entries = roadmap_all_entries(data)
+    closed = events.reverse.find { |_t, event, _d| event == "closed" }
+    closed_part = closed ? human_time(closed[0].utc.iso8601) : "in progress"
+
+    merged = events.select { |_t, event, _d| event == "merged" }
+    duration = events.empty? || merged.empty? ? NOT_RECORDED : format_duration((merged.last[0] - events.first[0]).to_i)
+
+    "#{closed_part} · #{all_entries.length} intents · #{duration}"
+  end
+
+  # The regex RoadmapSavepoint::KEYWORD_TABLE pairs with an event word - read from the table
+  # rather than copied, so the Merged cell's vocabulary never drifts from rebuild's own.
+  def self.roadmap_savepoint_keyword_regex(event)
+    RoadmapSavepoint::KEYWORD_TABLE.find { |_re, ev| ev == event }.first
+  end
+
+  # R10/R21/R22: the Merged cell reads a line only when the entry id is its SUBJECT - the first
+  # whitespace-delimited token of the detail, never a whole word anywhere in it (R21: a real
+  # ledger line names one entry's id as its subject and a SECOND entry's id in passing, and the
+  # second entry has no merge line of its own to fill this row with). Among subject-matching
+  # lines, one is read when the ledger's own event is `merged` OR its detail matches
+  # KEYWORD_TABLE's merged pattern (R22: the appender sometimes files a real per-entry merge
+  # under a different event word, `dispatched`, because the rest of the line was other news),
+  # and refused when the event is `handoff` or the detail matches KEYWORD_TABLE's handoff
+  # pattern - stricter than R10's original guarantee, never weaker. The sha is the first
+  # hex-with-at-least-one-digit token of 7-40 characters in the matched line.
+  def self.roadmap_merged_cell(id, events)
+    merged_re = roadmap_savepoint_keyword_regex("merged")
+    handoff_re = roadmap_savepoint_keyword_regex("handoff")
+
+    line = events.find do |_t, event, detail|
+      next false unless detail.to_s.strip.split(/\s+/).first == id
+      next false if event == "handoff" || detail.to_s =~ handoff_re
+      event == "merged" || detail.to_s =~ merged_re
+    end
+    return NOT_RECORDED unless line
+
+    m = line[2].match(/\b(?=[0-9a-f]*\d)[0-9a-f]{7,40}\b/i)
+    m ? m[0] : NOT_RECORDED
+  end
+
+  def self.roadmap_delivered_table(data, events)
+    label = roadmap_batch_label(data)
+    rows = ["| #{label} | Intent | What | Merged |", "| --- | --- | --- | --- |"]
+    data[:batches].each do |batch|
+      batch[:entries].each do |e|
+        rows << "| #{escape(batch[:heading])} | #{escape(e[:id])} | #{escape(e[:text])} | " \
+                "#{escape(roadmap_merged_cell(e[:id], events))} |"
+      end
+    end
+    rows.join("\n")
+  end
+
+  def self.roadmap_log_table(text)
+    log_rows = roadmap_log_rows(text)
+    return NOT_RECORDED if log_rows.empty?
+
+    rows = ["| When | Event | What |", "| --- | --- | --- |"]
+    log_rows.each { |r| rows << "| #{escape(r[:when])} | #{escape(r[:event])} | #{escape(r[:what])} |" }
+    rows.join("\n")
+  end
+
+  # --- render ---------------------------------------------------------------------
+
+  # D6: `ReportScreen.render_roadmap(path:, verb:, store_root: nil, now: Time.now, template:
+  # nil)`. No ENV, no git; `now:` is used only for lock freshness (R7). `store_root` defaults to
+  # the derived tier root; `template` defaults to the installed-or-in-repo
+  # `templates/report-roadmap-<verb>.md`.
+  def self.render_roadmap(path:, verb:, store_root: nil, now: Time.now, template: nil)
+    verb = verb.to_s
+    raise ArgumentError, "verb must be one of #{ROADMAP_VERBS.join(', ')}, got #{verb.inspect}" unless ROADMAP_VERBS.include?(verb)
+
+    store_root ||= roadmap_tier_root(path)
+    text = File.read(path)
+    data = roadmap_entries(path: path, store_root: store_root)
+    events = roadmap_events(path)
+    template ||= File.read(roadmap_default_template_path(verb))
+
+    out = template.dup
+    out = out.gsub("{{slug}}", data[:slug])
+
+    case verb
+    when "plan"
+      out = out.gsub("{{fields.rows}}", state_rows(roadmap_plan_fields(text, data, events)).join("\n"))
+      out = out.gsub("{{entries.table}}", roadmap_plan_entries_table(data))
+    when "state"
+      out = out.gsub("{{fields.rows}}", state_rows(roadmap_state_fields(text, data, events, store_root, now)).join("\n"))
+      out = out.gsub("{{entries.table}}", roadmap_state_entries_table(data, store_root, now))
+    when "delivered"
+      out = out.gsub("{{meta}}", roadmap_delivered_meta(data, events))
+      out = out.gsub("{{delivered.table}}", roadmap_delivered_table(data, events))
+      out = out.gsub("{{log.table}}", roadmap_log_table(text))
+    end
+
+    out.gsub(/\n{3,}/, "\n\n")
   end
 
   # --- S8: --ansi passthrough (D2) -----------------------------------------------
