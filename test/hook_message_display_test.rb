@@ -1183,11 +1183,15 @@ class HookMessageDisplayTest < Minitest::Test
       %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"still talking, then ▶ In delivery · 2 intents"}>,
       %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"and finally ✔ 5 done"}>,
     ]
+    # Literal 6-character \uXXXX text, not an actual multibyte glyph -- the
+    # shape a JSON encoder that escapes non-ASCII would produce. %q<> does
+    # not process backslash escapes (only \\ and the delimiter), so two
+    # backslashes here are one literal backslash in the resulting string.
     escaped = [
-      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"the intent stands.\n\n## ▶ 50 · Demo intent"}>,
-      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"the intent stands.\n\n## ✔ 50 · Demo intent · delivered"}>,
-      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"still talking, then ▶ In delivery · 2 intents"}>,
-      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"and finally ✔ 5 done"}>,
+      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"the intent stands.\n\n## \\u25b6 50 \\u00b7 Demo intent"}>,
+      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"the intent stands.\n\n## \\u2714 50 \\u00b7 Demo intent \\u00b7 delivered"}>,
+      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"still talking, then \\u25b6 In delivery \\u00b7 2 intents"}>,
+      %q<{"session_id":"s1","message_id":"m1","index":3,"final":false,"delta":"and finally \\u2714 5 done"}>,
     ]
     (raw + escaped).each do |json|
       out, status = Open3.capture2({ "PLASTIC_TMP" => @tmp }, "bash", LAUNCHER, stdin_data: json)

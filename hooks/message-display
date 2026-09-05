@@ -74,6 +74,25 @@ else
     *'"delta":""'*|*'"delta": ""'*) handoff=1 ;;
     *'"delta":"\n"'*|*'"delta": "\n"'*) handoff=1 ;;
   esac
+  # 331a (D5): the hook engages anywhere. An opener can now fall ANYWHERE
+  # inside a later chunk's own delta, not only at its start (the shape
+  # tests just above), so these globs search the delta value rather than
+  # anchor to its opening quote. Still anchored to the "delta":" key itself
+  # (never dropped, matrix M12d) so an ordinary field elsewhere in the
+  # payload can never be mistaken for the delta's own text; within that,
+  # every shipped opener (## ▶, ## ✔, ▶ In delivery, ✔ + digit) contains a
+  # bare ▶ or ✔, so matching the bare glyph anywhere covers all four at
+  # once. Prose that merely shapes like an opener still hands off this way
+  # (an accepted over-match: Ruby's own grammar is the final, stricter
+  # arbiter and fails open on anything that is not a real one). Raw glyph
+  # and \u-escaped forms both count, since the encoder's choice is not ours
+  # to predict.
+  case $INPUT in
+    *'"delta":"'*'▶'*|*'"delta": "'*'▶'*) handoff=1 ;;
+    *'"delta":"'*'✔'*|*'"delta": "'*'✔'*) handoff=1 ;;
+    *'"delta":"'*'\u25b6'*|*'"delta": "'*'\u25b6'*) handoff=1 ;;
+    *'"delta":"'*'\u2714'*|*'"delta": "'*'\u2714'*) handoff=1 ;;
+  esac
 fi
 
 [ "$handoff" = 1 ] || exit 0
