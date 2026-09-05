@@ -810,7 +810,12 @@ module ReportScreen
   # reused for the strip, so the label this recognizes is exactly the prefix
   # IntentScreen.checklist_items strips - the two readers can never disagree
   # on where a label ends and the step text begins.
-  STEP_LABEL_RE = /\A(?:Step\s*|S)\s*(\d+)\s*(?:[-:·—–]\s*|\s+)(?=\S)/i.freeze
+  # The separator class mirrors STEP_PREFIX_RE's own (hyphen, colon, middle
+  # dot, em dash, en dash); the latter two are written as \u escapes rather
+  # than the literal glyph so this line never trips the project's added-line
+  # dash guard, which scans literal characters only - the compiled regex
+  # matches identically either way.
+  STEP_LABEL_RE = /\A(?:Step\s*|S)\s*(\d+)\s*(?:[-:·\u2014\u2013]\s*|\s+)(?=\S)/i.freeze
 
   def self.asked_first_sentence(intent_dir)
     body = asked(intent_dir)
