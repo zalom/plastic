@@ -1,0 +1,109 @@
+## ✔ 331a · Hook engages anywhere · delivered
+2026-09-05 10:07 UTC · auto · 1 h 28 min · v2.0.0-alpha.14
+
+**Asked**
+  Hook engages anywhere: the MessageDisplay hook paints a screen wherever it sits in the reply (prose before it…
+  7 decisions in spec.md
+
+**Delivered**
+| Row | Detail | Proven by |
+| --- | --------------------------------------------------------------------------------------------- | --------- |
+| S1 | The failure-mode matrix landed as tests before any code, with the replay harness and the… | 4 tests |
+| S2 | The launcher hands a chunk to Ruby whenever its delta carries a screen opener anywhere… | 6 tests |
+| S3 | MessageDisplay engages late: the start index is written and read back, NOSCREEN is… | 11 tests |
+| S4 | ScreenPaint has a registry, so a new screen kind is a new file rather than a diff to the… | 8 tests |
+| S5 | A fence wrapping the screen is dropped where it can still be dropped, and an unrelated… | 4 tests |
+| S6 | The engagement contract and the registry are documented, and the CHANGELOG carries the… | 3 tests |
+| S7 | The suite is green on the branch and on alpha after the merge | 4 tests |
+
+**Evidence**
+| Kind | Detail | Source |
+| --- | --- | --- |
+| suite | 2868 runs · 14605 assertions · 0 failures | outcome.md ## Verification |
+| ship | b862c38 → alpha · v2.0.0-alpha.14 | outcome.md; project.yml; git tags |
+
+**Needs you**
+| N | Need | Reason |
+| --- | --------------------------------------------------- |…
+| N1 | Print a state screen in a live session with one… | Only a real terminal settles the on-screen half.… |
+
+## ✔ 331b · Plan screen, the pre-delivery report · delivered
+2026-09-05 11:05 UTC · auto · 2 h 26 min · v2.0.0-alpha.14
+
+**Asked**
+  Plan screen, the pre-delivery report: report-screen plan <intent_dir> prints Asked, the decisions count, the…
+  4 decisions in spec.md
+
+**Delivered**
+| Row | Detail | Proven by |
+| --- | --- | --- |
+| S1 | The failure-mode tests, committed red before any code existed | 1 test |
+| S2 | The plan screen's readers and renderer, and its template | 17 tests |
+| S3 | The plan paint kind, added as a file, with no edit to the painter | 3 tests |
+| S4 | The `report-screen plan` verb, with `--ansi` under the same guards as its siblings | 4 tests |
+| S5 | The pre-delivery report named in the human report contract, the internals doc, and the CHANGELOG | 3 tests |
+| S6 | Suite green on the branch and on alpha, merged, guards clean | 2 tests |
+
+**Evidence**
+| Kind | Detail | Source |
+| --- | --- | --- |
+| suite | 2898 runs · 14677 assertions · 0 failures | outcome.md ## Verification |
+| red | a908c62 proven test-only and red | outcome.md ## Verification |
+| ship | 1df2bfe → alpha · v2.0.0-alpha.14 | outcome.md; project.yml; git tags |
+
+**Needs you**
+None
+
+## ✔ 331c · Roadmap screens · delivered
+2026-09-05 11:18 UTC · auto · 2 h 39 min · v2.0.0-alpha.14
+
+**Asked**
+  Roadmap screens: report-screen roadmap <roadmap.md> plan|state|delivered prints the pre-delivery plan (goal,…
+  6 decisions in spec.md
+
+**Delivered**
+| Row | Detail | Proven by |
+| --- | --- | --- |
+| S1 | Every failure mode in the matrix has a test, and they all landed red before any code | 22 tests |
+| S2 | The three roadmap screens and the readers behind them, plus their templates | 17 tests |
+| S3 | The three roadmap paint kinds, registered from their own file | 2 tests |
+| S4 | The `roadmap` verb on `report-screen`, with `--ansi` and `--store-root` | 2 tests |
+| S5 | The four doc surfaces and the changelog say what the code does | 1 test |
+| S6 | Green on the branch, merged into alpha, green again on alpha | 4 tests |
+
+**Evidence**
+| Kind | Detail | Source |
+| --- | --- | --- |
+| suite | 2921 runs · 14788 assertions · 0 failures | outcome.md ## Verification |
+| ship | 8b07e89 → alpha · v2.0.0-alpha.14 | outcome.md; project.yml; git tags |
+
+**Needs you**
+None
+
+## ✔ 331d · Dashboard screen · delivered
+2026-09-05 11:26 UTC · auto · 2 h 47 min · v2.0.0-alpha.14
+
+**Asked**
+  Dashboard screen: dashboard.rb continue and dashboard.rb project <slug> print a screen (where we are, where we…
+  3 decisions in spec.md
+
+**Delivered**
+| Row | Detail | Proven by |
+| --- | --------------------------------------------------------------------------------------------- | --------- |
+| S1 | The seventeen-row failure-mode matrix landed as tests before any code, in their own red… | 17 tests |
+| S2 | `--screen` and `--ansi` on `dashboard.rb`, the field sources, the renderer module, the… | 17 tests |
+| S3 | `scripts/lib/screens/dashboard.rb` registers the `dashboard` kind with its own opener… | 1 test |
+| S4 | The continuing and dashboard skills name the verb as the first print on the project route | 2 tests |
+| S5 | The verb is recorded in `docs/internals.md`, the human-report contract, and the CHANGELOG | 1 test |
+| S6 | Suite green on the branch and on alpha after the merge, store commit scoped | 3 tests |
+
+**Evidence**
+| Kind | Detail | Source |
+| --- | --- | --- |
+| suite | 2938 runs · 14871 assertions · 0 failures | outcome.md ## Verification |
+| ship | 496570d → alpha · v2.0.0-alpha.14 | outcome.md; project.yml; git tags |
+
+**Needs you**
+None
+
+## ✔ 331d1 · Dashboard screen column vocabulary · deliv

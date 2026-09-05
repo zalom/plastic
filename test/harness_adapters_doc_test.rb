@@ -43,4 +43,12 @@ class HarnessAdaptersDocTest < Minitest::Test
     assert_includes body, "ScreenPaint.register"
     assert_includes body, "scripts/lib/screens/"
   end
+
+  # Intent 331a1 (L9): the engagement contract names the decision marker
+  # itself, and says explicitly when the launcher writes it.
+  def test_adapters_doc_names_pending_marker
+    body = normalized_body
+    assert_includes body, "PENDING"
+    assert_includes body, "before Ruby boots"
+  end
 end

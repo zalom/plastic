@@ -1,0 +1,24 @@
+## ▶ 331 · Reporting improvements V2
+
+| | | |
+| --- | --- | --- |
+| **Store**     | project:plastic            | the plastic project store |
+| **Status**    | Active                     | listed under ## Active in INDEX.md |
+| **Stage**     | Why                        | What delivered; the work is open |
+| **Savepoint** | What ·…                    | 2026-09-05 08:27 UTC |
+| **Progress**  | ███████████░░░░░░░░░ 4 / 7 | 3 steps open |
+| **Next**      | S5 · Batch 3 delivered:…   | first open step |
+| **Insight**   | Process finding…           | 2026-09-05 14:10 UTC · the orchestrator… |
+| **Changed**   | live capture               | the reason this screen printed |
+
+**Steps**
+
+| Step | Status | Detail |
+| --- | --- | --- |
+| S1 | done | Evidence and record on disk (evidence file, probes, spec D1-D12, Context, sources and chain) |
+| S2 | done | Roadmap reporting-v2 and branch intents 331a-331g with orchestrator-written How |
+| S3 | done | Batch 1 delivered: 331a on alpha (b862c38, suite 2868 runs 0 failures) |
+| S4 | done | Batch 2 delivered: 331b, 331c, 331d on alpha (1df2bfe, 8b07e89, 496570d) |
+| S5 | open | Batch 3 delivered: 331e, 331f on alpha |
+| S6 | open | Batch 4 delivered: 331g captures, owner check, alpha cut |
+| S7 | open | Close: outcome.md, evidence and catalog updated, roadmap archived |
