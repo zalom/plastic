@@ -258,18 +258,53 @@ class DoctorDisplayTest < Minitest::Test
     end
   end
 
-  def test_paints_replays_the_installed_launcher # E20
-    source = File.read(File.join(ROOT, "scripts", "doctor.rb"))
-    body = source[/def check_display_paints\(.*?\n  end\n/m]
-    refute_nil body, "expected to find check_display_paints in scripts/doctor.rb"
+  # A launcher that records which copy of itself actually ran, into a
+  # shared marker log, then also paints a colored screen naming itself — the
+  # color alone would pass either way (R1's regression paints too), so the
+  # marker log is the real proof of WHICH launcher got replayed.
+  def write_marked_launcher(dir, basename, marker, marker_log)
+    path = File.join(dir, "hooks", basename)
+    FileUtils.mkdir_p(File.dirname(path))
+    script = <<~RUBY
+      #!/usr/bin/env ruby
+      require "json"
+      $stdin.read
+      File.open(#{marker_log.inspect}, "a") { |f| f.puts(#{marker.inspect}) }
+      puts JSON.generate("hookSpecificOutput" => { "hookEventName" => "MessageDisplay",
+        "displayContent" => "\\e[1m#{marker}\\e[0m"})
+    RUBY
+    File.write(path, script)
+    File.chmod(0o755, path)
+    path
+  end
 
-    assert_match(/agent_dir/, body,
-      "check_display_paints must resolve the launcher from the injected agent_dir")
-    refute_match(/["']message-display["']/, body,
-      "check_display_paints must never hardcode the package's own hooks/message-display " \
-      "launcher name; it must derive the installed launcher (plastic-message-display) via " \
-      "display_hook_launcher_name, so it is the INSTALLED launcher that gets replayed, " \
-      "never the package's own copy (R1)")
+  def test_paints_replays_the_installed_launcher # E20
+    Dir.mktmpdir("plastic-display-e20-home") do |home|
+      Dir.mktmpdir("plastic-display-e20-agent") do |agent_dir|
+        Dir.mktmpdir("plastic-display-e20-pkg") do |package_root|
+          write_fixture(home)
+          marker_log = File.join(home, "marker.log")
+
+          # Two DISTINCT launcher stubs. The installed one lives under the
+          # injected agent_dir at its real launcher name
+          # (plastic-message-display); the other lives under a decoy
+          # package_root at the package's own bare name (message-display) —
+          # the wrong file R1 warns against ever replaying.
+          write_marked_launcher(agent_dir, "plastic-message-display", "INSTALLED-MARKER", marker_log)
+          write_marked_launcher(package_root, "message-display", "PACKAGE-MARKER", marker_log)
+
+          d = Doctor.new(plastic_home: home, agents: { "claude" => { name: "Claude Code", dir: agent_dir } })
+          check = d.check_display_paints("claude", no_color: nil, package_root: package_root).first
+
+          assert_equal "pass", check[:status]
+          marker_content = File.read(marker_log)
+          assert_includes marker_content, "INSTALLED-MARKER",
+            "the installed launcher under agent_dir must have run"
+          refute_includes marker_content, "PACKAGE-MARKER",
+            "the package's own hooks/message-display must never be replayed (R1)"
+        end
+      end
+    end
   end
 
   def test_paints_skips_on_hookless_harness # E5
