@@ -34,7 +34,9 @@ class RoadmapQueue
   # Entry line parser, anchored on the status vocabulary rather than end of line, so a trailing
   # parenthetical ("delivering (owner ruling...)") does not defeat the match. Accepts the em
   # dash or a hyphen as the separator; roadmap .md files are store-internal and use the em dash.
-  ENTRY = /\A-\s*\[([ xX])\]\s+(\S+)\s+.*?[—-]\s*(queued|delivering|delivered|abandoned|blocked)\b/.freeze
+  # Intent 331c: group 3 captures the entry's own title text (between the id and the status
+  # separator), so a screen reader has it without a second parser; group 4 (was 3) is the status.
+  ENTRY = /\A-\s*\[([ xX])\]\s+(\S+)\s+(.*?)[—-]\s*(queued|delivering|delivered|abandoned|blocked)\b/.freeze
 
   WAVE_HEADING = /\A###\s+(.+?)\s*\z/.freeze
 
@@ -55,6 +57,21 @@ class RoadmapQueue
   # Continuing mode: return tie_candidates instead of breaking a tie.
   def which
     analyze(mode: "which")
+  end
+
+  # Intent 331c (D6/R1): the one public reader for ONE roadmap's parsed, INDEX-reconciled shape,
+  # so a screen never carries a second parser that can drift from this class's own grammar. Same
+  # reconciliation (`reconcile`) and the same frontier selection (`frontier_for`, R17) `queue`/
+  # `which` use for the whole tier, scoped to the single file at `path`.
+  def roadmap(path)
+    parsed = reconcile([parse_roadmap(path)]).first
+    {
+      slug: parsed[:slug],
+      path: parsed[:path],
+      grouping: RoadmapSavepoint.grouping_heading(File.read(path)),
+      batches: parsed[:waves],
+      frontier: frontier_for(parsed),
+    }
   end
 
   private
@@ -124,7 +141,7 @@ class RoadmapQueue
         current = { heading: m[1], entries: [] }
         waves << current
       elsif current && (em = stripped.match(ENTRY))
-        current[:entries] << { id: em[2], raw_status: em[3].downcase }
+        current[:entries] << { id: em[2], text: em[3].strip, raw_status: em[4].downcase }
       end
     end
     waves

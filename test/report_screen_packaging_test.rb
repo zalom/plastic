@@ -103,6 +103,10 @@ class ReportScreenPackagingTest < Minitest::Test
       scripts/report-screen
       scripts/savepoint-note
       templates/report-state.md
+      templates/report-roadmap-plan.md
+      templates/report-roadmap-state.md
+      templates/report-roadmap-delivered.md
+      scripts/lib/screens/roadmap.rb
     ].each do |rel|
       text = File.read(File.join(REPO, rel))
       refute_match(/claude|codex/i, text, "#{rel} must not name a harness (ANSI selection is by capability, not by name)")
