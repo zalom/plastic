@@ -801,4 +801,52 @@ class ScreenPaintTest < Minitest::Test
     assert_includes ScreenPaint.kinds, :plan
     assert_equal before, File.read(lib_path)
   end
+
+  # --- 331a1 acceptance (L18-L20): a reply carrying MORE THAN ONE screen ------
+  #
+  # The session report is many delivered screens in one message. `classify`
+  # returned :meta only when the line sat one past the FIRST opener, so the
+  # timestamp under the SECOND delivered screen fell through to :unknown,
+  # `region_end` stopped there, and everything after reached the terminal as
+  # plain Markdown. The positional rule is "the line right after a title",
+  # which means the NEAREST preceding title, not the first one in the message.
+
+  def session_capture_lines
+    File.readlines(File.join(__dir__, "fixtures", "live_capture_session_trimmed.txt"))
+  end
+
+  def test_meta_line_of_a_later_region_classifies
+    lines = session_capture_lines
+    opener_idx = lines.each_index.select { |i| ScreenPaint.classify(lines[i]) == :opener }[1]
+    refute_nil opener_idx, "the fixture must carry a second opener"
+
+    meta_idx = opener_idx + 1
+    assert_match(/ · /, lines[meta_idx], "the line under the second title is the meta line")
+    assert_equal :meta,
+                 ScreenPaint.classify(lines[meta_idx], idx: meta_idx, opener_idx: opener_idx),
+                 "a later region's meta line must classify against its OWN opener"
+  end
+
+  def test_region_end_spans_every_region_of_the_session_capture
+    lines = session_capture_lines
+    start = lines.index { |l| ScreenPaint.classify(l) == :opener }
+
+    assert_equal lines.length, ScreenPaint.region_end(lines, start),
+      "the region must cover every one of the capture's screens, not stop at the second title"
+  end
+
+  def test_paint_covers_the_whole_session_capture
+    lines = session_capture_lines
+    start = lines.index { |l| ScreenPaint.classify(l) == :opener }
+    stop = ScreenPaint.region_end(lines, start)
+    painted = ScreenPaint.paint(lines[start...stop].join, color: true, markdown_safe: true)
+
+    refute_nil painted, "a multi-screen reply must paint rather than fall back to plain"
+    plain = painted.gsub(/\e\[[0-9;]*m/, "")
+    titles = lines.select { |l| ScreenPaint.classify(l) == :opener }
+    titles.each do |t|
+      assert_includes plain, t.strip.sub(/\A## /, ""),
+        "every screen's title must survive into the painted output"
+    end
+  end
 end
