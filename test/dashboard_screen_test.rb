@@ -108,10 +108,19 @@ class DashboardScreenTest < Minitest::Test
     IDX
   end
 
+# A frontmatter value written so YAML reads it back whole. An intent line
+# carries colons, and unquoted that breaks the very document the fixture is
+# writing, so the record disappears before the assertion ever runs.
+def yaml_scalar(v)
+  return "[#{v.join(', ')}]" if v.is_a?(Array)
+  return v.to_s unless v.is_a?(String)
+  %("#{v.gsub('\\', '\\\\\\\\').gsub('"', '\\"')}")
+end
+
   def write_intent(store, id, slug, frontmatter, files: {})
     dir = File.join(store, "#{id}--#{slug}")
     FileUtils.mkdir_p(dir)
-    fm = frontmatter.map { |k, v| "#{k}: #{v.is_a?(Array) ? "[#{v.join(', ')}]" : v}" }.join("\n")
+    fm = frontmatter.map { |k, v| "#{k}: #{yaml_scalar(v)}" }.join("\n")
     File.write(File.join(dir, "#{id}--#{slug}.md"),
                "---\n#{fm}\n---\n\n## Intent\n#{frontmatter[:intent]}\n")
     files.each { |name, content| File.write(File.join(dir, name), content) }
@@ -322,7 +331,7 @@ class DashboardScreenTest < Minitest::Test
     rows = screen_where_we_go_next(scoped)
 
     assert_equal %w[3 2 1], json_queue.map { |r| r[:id] }, "fixture sanity: expected rank order"
-    assert_equal json_queue.map { |r| r[:id] }, rows.map { |r| r[:intent] }
+    assert_equal json_queue.map { |r| r[:id] }, rows.map { |r| r[:graph_id] }
     assert_equal json_queue.map { |r| r[:rank] }, rows.map { |r| r[:rank] }
   end
 
@@ -427,7 +436,7 @@ class DashboardScreenTest < Minitest::Test
 
     fields = screen_fields(records, "global", plastic_home: @home, now: NOW)
     assert_equal 2, fields[:active], "global Active must sum across every store, not just one"
-    assert_equal %w[2 1], fields[:where_we_are].map { |r| r[:intent][/\A(\S+)/, 1] },
+    assert_equal %w[2 1], fields[:where_we_are].map { |r| r[:graph_id] },
                  "Where we are must carry intents from both projects"
     assert_equal "global-roadmap · Wave G", fields[:roadmap],
                  "the global tier root, not a projects/global path, must be read"
@@ -452,8 +461,8 @@ class DashboardScreenTest < Minitest::Test
     scoped = screen_scoped_records(records_for(@home), "project:demo")
     rows = screen_where_we_go_next(scoped)
 
-    refute_includes rows.map { |r| r[:intent] }, "1"
-    assert_includes rows.map { |r| r[:intent] }, "2"
+    refute_includes rows.map { |r| r[:graph_id] }, "1"
+    assert_includes rows.map { |r| r[:graph_id] }, "2"
   end
 
   # --- D13: the What column escapes a literal pipe and truncates a long title -
@@ -467,14 +476,14 @@ class DashboardScreenTest < Minitest::Test
 
     scoped = screen_scoped_records(records_for(@home), "project:demo")
     rows = screen_where_we_go_next(scoped)
-    row = rows.find { |r| r[:intent] == "1" }
+    row = rows.find { |r| r[:graph_id] == "1" }
     refute_nil row
 
-    rendered = "| #{row[:rank]} | #{row[:intent]} | #{row[:what]} | #{row[:why]} |"
+    rendered = "| #{row[:rank]} | #{row[:graph_id]} | #{row[:intent]} | #{row[:reason]} |"
     without_escapes = rendered.gsub('\\|', "")
     assert_equal 5, without_escapes.count("|"), "an unescaped pipe must not add a column: #{rendered.inspect}"
-    assert_match(/…\z/, row[:what])
-    refute_operator row[:what].length, :>, 120
+    assert_match(/…\z/, row[:intent])
+    refute_operator rendered.length, :>, 115
   end
 
   # --- D14: a stale lock's Lead reads "not recorded", never a named lead -----

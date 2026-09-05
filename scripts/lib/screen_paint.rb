@@ -45,7 +45,7 @@ module ScreenPaint
   # text is exactly "not recorded" greys wherever it appears.
   EVIDENCE_PROOF_KINDS = %w[suite red ship doctor deposits verdict].freeze
   EVIDENCE_DEVIATION_KINDS = %w[deviates].freeze
-  NOTE_HEADERS = %w[Source Why].freeze
+  NOTE_HEADERS = %w[Source Why Reason].freeze
   NOT_RECORDED = "not recorded"
 
   @registry = {}

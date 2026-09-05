@@ -1096,6 +1096,34 @@ def screen_lead_field(rec, now:)
   ReportScreen.lead(rec[:intent_dir])
 end
 
+# D3 (331d1): the owner ruled no rendered row exceeds 115 visible columns.
+# The bound is on the WHOLE pipe-delimited row, not on one cell, so the
+# Intent cell gets whatever the other cells leave it. A cell short enough on
+# its own still drifts the row past the bound once the bar, the lead and the
+# scaffolding are added, which is the failure this measures away.
+SCREEN_ROW_MAX_COLUMNS = 115
+
+# D2 (331d1): the Intent cell carries the intent line up to but not including
+# its first colon. A Plastic intent line opens with a short name and then
+# explains itself after a colon, so the lead IS the name; a line with no
+# colon is already a name and passes through whole. Escaping happens here, so
+# the budget below measures what actually reaches the row.
+def screen_intent_title(rec)
+  line = rec[:intent].to_s
+  lead = line.include?(":") ? line.split(":", 2).first : line
+  cell(lead)
+end
+
+# The Intent cell fitted to what the row has left. `others` are the already
+# rendered sibling cells; the scaffolding is the leading "| ", a " | " between
+# every pair of cells, and the trailing " |".
+def screen_fit_intent(title, others)
+  scaffolding = 2 + (3 * others.length) + 2
+  budget = SCREEN_ROW_MAX_COLUMNS - scaffolding - others.sum { |c| c.to_s.length }
+  return "" if budget <= 0
+  truncate_on_word_boundary(title, budget)
+end
+
 # D6: last_accessed_at descending, then id, capped at SCREEN_ACTIVE_CAP.
 def screen_where_we_are(scoped, now:)
   active = scoped.select { |r| r[:status] == "active" }
@@ -1103,11 +1131,16 @@ def screen_where_we_are(scoped, now:)
   ordered.first(SCREEN_ACTIVE_CAP).map do |r|
     items = IntentScreen.checklist_items(r[:intent_dir])
     progress = IntentScreen.progress_fields(items)
+    graph_id = r[:id].to_s
+    stage = r[:lifecycle].to_s.capitalize
+    bar = "#{progress['progress.bar']} #{progress['progress.done']} / #{progress['progress.total']}"
+    lead = screen_lead_field(r, now: now)
     {
-      intent: cell(truncate_on_word_boundary("#{r[:id]} #{r[:intent]}", INTENT_LINE_MAX_CHARS)),
-      stage: r[:lifecycle].to_s.capitalize,
-      progress: "#{progress['progress.bar']} #{progress['progress.done']} / #{progress['progress.total']}",
-      lead: screen_lead_field(r, now: now),
+      graph_id: graph_id,
+      intent: screen_fit_intent(screen_intent_title(r), [graph_id, stage, bar, lead]),
+      stage: stage,
+      progress: bar,
+      lead: lead,
     }
   end
 end
@@ -1124,11 +1157,14 @@ end
 def screen_where_we_go_next(scope_records)
   pool = screen_dispatchable_pool(scope_records)
   pool.each_with_index.map do |r, i|
+    rank = i + 1
+    graph_id = r[:id].to_s
+    reason = r[:quadrant].to_s
     {
-      rank: i + 1,
-      intent: r[:id],
-      what: cell(truncate_on_word_boundary(r[:intent], INTENT_LINE_MAX_CHARS)),
-      why: r[:quadrant],
+      rank: rank,
+      graph_id: graph_id,
+      intent: screen_fit_intent(screen_intent_title(r), [rank.to_s, graph_id, reason]),
+      reason: reason,
     }
   end.first(SCREEN_NEXT_CAP)
 end
