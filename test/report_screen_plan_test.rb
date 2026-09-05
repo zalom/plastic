@@ -112,7 +112,20 @@ class ReportScreenPlanTest < Minitest::Test
     assert_equal "REVISE", ReportScreen.plan_reviewer(@dir)
   end
 
-  def test_reviewer_verdict_not_recorded_when_the_line_names_none # P5a
+  # P5b (post-execution review, finding A1): an intent re-reviewed after a
+# REVISE carries TWO plan-review lines, and the newest is the live verdict.
+# Without this row a regression from `.reverse.find` to `.find` would keep
+# reporting the stale REVISE forever and no test would fail.
+def test_reviewer_takes_the_last_plan_review_line # P5b
+  write("savepoint.md", <<~SP)
+    2026-08-30T12:00:00Z  Review  plan review REVISE: two findings folded
+    2026-08-30T13:00:00Z  Review  post-execution review FAIL: reproduced by the lead
+    2026-08-30T14:00:00Z  Review  plan review PROCEED: the findings are folded
+  SP
+  assert_equal "PROCEED", ReportScreen.plan_reviewer(@dir)
+end
+
+def test_reviewer_verdict_not_recorded_when_the_line_names_none # P5a
     write("savepoint.md", "2026-08-30T12:00:00Z  Review  plan review: no verdict word here\n")
     assert_equal "not recorded", ReportScreen.plan_reviewer(@dir)
   end
