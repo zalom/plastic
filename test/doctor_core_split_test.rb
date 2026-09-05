@@ -214,7 +214,19 @@ class DoctorCoreSplitTest < Minitest::Test
   # comment-trimming passes. The ceiling carries headroom above that
   # measured total, not against it, so the next genuine regrowth still
   # trips this guard.
-  BOOT_PATH_BYTE_BUDGET = 70_500
+  #
+  # Intent 331e added `check_display_registration` (category `display`) to
+  # the boot path, plus `display_hook_launcher_name`, because D5 puts this
+  # one check under `--core`: the settings.json/launcher liveness check is
+  # cheap and belongs with the other agent-registration liveness checks
+  # already there. The other three display checks (`display_hook_paints`,
+  # `display_not_defeated`, `display_surfaces_documented`) deliberately stay
+  # in scripts/doctor.rb, never doctor_core.rb, since they need Open3/Timeout
+  # to spawn a real subprocess and must never attach the paint stack to the
+  # boot path — T2 above is what proves that. Measured 72,679 bytes; ceiling
+  # raised to 73,500 (headroom ~800 bytes above the measured total, in line
+  # with prior raises).
+  BOOT_PATH_BYTE_BUDGET = 73_500
 
   def test_core_require_stays_under_the_boot_path_byte_budget
     plastic_files = loaded_after_core_require.select { |i| i["path"].start_with?(ROOT) }

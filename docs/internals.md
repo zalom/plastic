@@ -427,9 +427,24 @@ autonomous execution.
 
 - **Full run (no flag)**: three-state. Walks every check category (global store,
   conventions across all intents, agent registration, core files, project stores,
-  deprecations, runtime). This is what `/plastic-doctor` invokes. It also runs automatically
-  after every `plastic-update` (informational: prints the report but does not block
-  or revert the update).
+  deprecations, runtime, display). This is what `/plastic-doctor` invokes. It also runs
+  automatically after every `plastic-update` (informational: prints the report but does not
+  block or revert the update).
+
+The `display` category (intent 331e) holds four checks. `display_hook_registered` (defined in
+`scripts/lib/doctor_core.rb`, the SessionStart boot path) catches the MessageDisplay hook
+missing from settings.json, registered to a foreign command, or registered but pointing at a
+launcher that is missing or not executable; it is the only display check `--core` runs.
+`display_hook_paints`, `display_not_defeated`, and `display_surfaces_documented` (all three in
+`scripts/doctor.rb`, never the boot path, since they need `Open3`/`Timeout` to spawn a real
+subprocess) run only in the full doctor. `display_hook_paints` replays a shipped fixture
+(`templates/display-fixture.md`) through the INSTALLED launcher and expects a painted (ANSI)
+screen back; when a known defeater is active (`NO_COLOR`, or `display.ansi_screen: false`) it
+reports a pass naming the defeater instead of failing, since a deliberate setting is never a
+broken hook. `display_not_defeated` is the check that actually warns about those defeaters, one
+warning per active setting, and `display_surfaces_documented` confirms
+`docs/reference/harness-adapters.md` still names all three surface classes (see its own
+"Surfaces" section).
 
 The `runtime` category holds one check, `ruby_floor`: it spawns bare `ruby` the way a hook
 launcher does and asks the resolved interpreter for its own version and absolute path. It

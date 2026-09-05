@@ -10,8 +10,13 @@
 # Read-only — never modifies files.
 
 require "date"
+require "open3"
+require "timeout"
+require "fileutils"
+require "tmpdir"
 
 require_relative "lib/doctor_core"
+require_relative "lib/hook_replay"
 
 require_relative "lib/doctor_exclusions"
 require_relative "lib/qmd_sync"
@@ -46,6 +51,13 @@ class Doctor
   # Single source of truth for the required-field list lives in IntentValidator
   # (intent 60). Alias it here so the two can never drift.
   REQUIRED_FRONTMATTER_FIELDS = IntentValidator::REQUIRED_FIELDS
+
+  # Repo root, for the three display checks below that read shipped, static
+  # package content (the fixture fallback, the harness-adapters doc) rather
+  # than a runtime plastic_home path. Same derivation as
+  # StoreProvisioning::PACKAGE_ROOT (intent 61): scripts/doctor.rb lives one
+  # level under the root.
+  PACKAGE_ROOT = File.expand_path("..", __dir__)
 
 
 
@@ -2431,6 +2443,207 @@ end
     end
   end
 
+  # --- Check category: display (intent 331e, D1) ---
+  #
+  # Three of the four `display` checks live HERE, not in doctor_core.rb: they
+  # need Open3/Timeout to spawn the installed hook as a real subprocess, and
+  # that must never attach to the SessionStart boot path
+  # (test/doctor_core_split_test.rb T2 pins doctor_core.rb's require set
+  # exactly). check_display_registration (the fourth, --core-scoped) lives in
+  # doctor_core.rb instead, alongside display_hook_launcher_name, which this
+  # file's check_display_paints reuses to name the SAME installed launcher.
+
+  # The ambient defeater active for THIS invocation, or nil. `no_color` is
+  # DI'd (default ENV["NO_COLOR"]) rather than read deep inside this method,
+  # so a test can force it on or off without touching the real process
+  # environment. Shared by check_display_paints (a defeater turns a
+  # would-be fail into a pass, R3) and check_display_not_defeated (a
+  # defeater is what it warns about).
+  def active_display_defeater(no_color: ENV["NO_COLOR"])
+    return "NO_COLOR" unless no_color.to_s.empty?
+
+    cfg = load_yaml_safe(File.join(plastic_home, "config.yml"))
+    display_cfg = cfg.is_a?(Hash) ? cfg["display"] : nil
+    return "display.ansi_screen: false in config.yml" if display_cfg.is_a?(Hash) &&
+                                                          display_cfg.fetch("ansi_screen", true) == false
+
+    nil
+  end
+
+  # The shipped fixture's path: plastic_home's own templates/ first (a real
+  # install), the package's own templates/ otherwise (running from a repo
+  # checkout, or an install whose templates/ predates this fixture). Neither
+  # existing means no fixture at all.
+  def display_fixture_path(package_root: PACKAGE_ROOT)
+    [File.join(plastic_home, "templates", "display-fixture.md"),
+     File.join(package_root, "templates", "display-fixture.md")].find { |p| File.file?(p) }
+  end
+
+  # The fixture's replayable text: its header comment (see
+  # templates/display-fixture.md) is for a human reading the file on disk,
+  # never sent through the hook.
+  def display_fixture_text(path)
+    File.read(path).sub(/\A<!--.*?-->\n\n?/m, "")
+  end
+
+  # display_hook_paints (D1, R1/R2/R3): replays the shipped fixture through
+  # the INSTALLED launcher (`<agent_dir>/hooks/plastic-message-display`,
+  # never this package's own hooks/message-display — R1's whole point: an
+  # installed launcher can predate the package's, and replaying the wrong
+  # one reports pass while the real stack is stale) and expects a painted
+  # (ANSI) screen back.
+  #
+  # A known defeater active (NO_COLOR, or display.ansi_screen: false) turns
+  # a no-SGR result into a PASS, naming the defeater and noting it reflects
+  # this invocation's own environment (R3) — display_not_defeated is what
+  # warns about a defeater; this check never fails because of one.
+  def check_display_paints(agent_key, no_color: ENV["NO_COLOR"],
+                            tmp_dir_factory: -> { Dir.mktmpdir("plastic-doctor-display") },
+                            timeout_seconds: 10, package_root: PACKAGE_ROOT)
+    config = agents[agent_key]
+    unless agent_key == "claude"
+      return [check(
+        category: "display", name: "display_hook_paints", status: "pass",
+        message: "#{config[:name]} is plain by contract; no display hook to replay"
+      )]
+    end
+
+    fixture_path = display_fixture_path(package_root: package_root)
+    unless fixture_path
+      return [check(
+        category: "display", name: "display_hook_paints", status: "fail",
+        message: "Shipped display fixture is missing (templates/display-fixture.md)",
+        fixable: false
+      )]
+    end
+
+    agent_dir = config[:dir]
+    launcher_path = File.join(agent_dir, "hooks", display_hook_launcher_name)
+    unless File.file?(launcher_path) && File.executable?(launcher_path)
+      return [check(
+        category: "display", name: "display_hook_paints", status: "fail",
+        message: "Installed launcher #{tilde(launcher_path)} is missing or not executable; cannot replay",
+        fixable: true, fix_hint: DISPLAY_HOOK_FIX_HINT
+      )]
+    end
+
+    text = display_fixture_text(fixture_path)
+    tmp_dir = tmp_dir_factory.call
+    outs =
+      begin
+        HookReplay.replay(hook_path: launcher_path, tmp_root: tmp_dir, text: text,
+                           env: { "PLASTIC_HOME" => plastic_home }, timeout: timeout_seconds)
+      ensure
+        FileUtils.remove_entry(tmp_dir) if tmp_dir && File.exist?(tmp_dir)
+      end
+
+    if HookReplay.timed_out?(outs)
+      return [check(
+        category: "display", name: "display_hook_paints", status: "fail",
+        message: "Replaying the installed launcher timed out after #{timeout_seconds}s; painting could not be verified",
+        fixable: false
+      )]
+    end
+
+    defeater = active_display_defeater(no_color: no_color)
+    if defeater
+      return [check(
+        category: "display", name: "display_hook_paints", status: "pass",
+        message: "Painting is defeated by #{defeater} for this invocation; the replay's plain " \
+                  "output reflects that setting, not a broken hook"
+      )]
+    end
+
+    content = HookReplay.final_display_content(outs)
+    if content.to_s.include?("\e[")
+      [check(
+        category: "display", name: "display_hook_paints", status: "pass",
+        message: "The installed hook returned a painted (ANSI) screen"
+      )]
+    else
+      [check(
+        category: "display", name: "display_hook_paints", status: "fail",
+        message: "The installed hook returned no ANSI escape sequence; painting may be broken",
+        fixable: true, fix_hint: DISPLAY_HOOK_FIX_HINT
+      )]
+    end
+  end
+
+  # display_not_defeated (D1, R3/R4): warns, never fails, on each active
+  # defeater, naming the setting and its effect. Every result — pass or warn
+  # — also names the verbose transcript view (Ctrl+O, R4): it redraws every
+  # screen as plain tables too, but it has no on-disk setting doctor can
+  # read, so its absence from these warnings is never proof that view paints.
+  def check_display_not_defeated(agent_key, no_color: ENV["NO_COLOR"])
+    config = agents[agent_key]
+    unless agent_key == "claude"
+      return [check(
+        category: "display", name: "display_not_defeated", status: "pass",
+        message: "#{config[:name]} is plain by contract; no display defeaters apply"
+      )]
+    end
+
+    warnings = []
+    warnings << "NO_COLOR is set: forces every screen to plain text for this invocation" unless no_color.to_s.empty?
+
+    cfg = load_yaml_safe(File.join(plastic_home, "config.yml"))
+    display_cfg = cfg.is_a?(Hash) ? cfg["display"] : nil
+    if display_cfg.is_a?(Hash) && display_cfg.fetch("ansi_screen", true) == false
+      warnings << "config.yml sets display.ansi_screen: false: forces every screen to plain text"
+    end
+
+    settings = read_json_safe(File.join(config[:dir], "settings.json"))
+    if settings.is_a?(Hash) && settings["verbose"] == true
+      warnings << "settings.json sets verbose: true: the verbose transcript view (Ctrl+O) redraws every screen as plain tables"
+    end
+
+    transcript_note = "The Ctrl+O verbose transcript view also redraws every screen as plain " \
+                      "tables and has no on-disk setting; its absence above is never proof that view paints."
+
+    if warnings.empty?
+      [check(
+        category: "display", name: "display_not_defeated", status: "pass",
+        message: "No known display defeaters active", details: [transcript_note]
+      )]
+    else
+      [check(
+        category: "display", name: "display_not_defeated", status: "warn",
+        message: "#{warnings.size} display defeater(s) active",
+        details: warnings + [transcript_note]
+      )]
+    end
+  end
+
+  # display_surfaces_documented (D1/D4): the harness-adapters doc names the
+  # three surface classes. Reads the package's own shipped doc — static
+  # content, not a runtime path — same shape as check_skill_lint reading the
+  # package's own skills/ tree.
+  def check_display_surfaces_documented(package_root: PACKAGE_ROOT)
+    doc_path = File.join(package_root, "docs", "reference", "harness-adapters.md")
+    content = File.file?(doc_path) ? File.read(doc_path) : ""
+    section = content[/^## Surfaces\n(.*?)(?=\n## |\z)/m, 1].to_s
+
+    required = ["Claude Code normal view", "agents view", "Codex", "claude -p", "verbose transcript view"]
+    missing = required.reject { |literal| section.include?(literal) }
+
+    if section.empty?
+      [check(
+        category: "display", name: "display_surfaces_documented", status: "fail",
+        message: "docs/reference/harness-adapters.md has no ## Surfaces section", fixable: false
+      )]
+    elsif missing.empty?
+      [check(
+        category: "display", name: "display_surfaces_documented", status: "pass",
+        message: "harness-adapters.md documents every display surface class"
+      )]
+    else
+      [check(
+        category: "display", name: "display_surfaces_documented", status: "fail",
+        message: "## Surfaces section is missing: #{missing.join(', ')}", details: missing, fixable: false
+      )]
+    end
+  end
+
   # --- Run all checks ---
 
   def run_checks(agent_key)
@@ -2449,6 +2662,10 @@ end
     all_checks += check_session_ledger(scopes: ["global"])
     all_checks += check_skill_lint
     all_checks += check_install_integrity
+    all_checks += check_display_registration(agent_key)
+    all_checks += check_display_paints(agent_key)
+    all_checks += check_display_not_defeated(agent_key)
+    all_checks += check_display_surfaces_documented
 
     summarize(all_checks, agent_key)
   end

@@ -5,6 +5,18 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 331e (branch of 331): plastic-doctor gains a `display` category with four checks:
+  `display_hook_registered` catches the MessageDisplay hook missing, registered to a foreign
+  command, or pointing at a missing or non-executable launcher, with a fix hint naming the
+  installer repair (`--core` runs this one only); `display_hook_paints` replays the shipped
+  `templates/display-fixture.md` fixture through the INSTALLED MessageDisplay launcher and
+  expects a painted (ANSI) screen back, reporting a pass naming the defeater instead of a fail
+  when `NO_COLOR` or `display.ansi_screen: false` is active; `display_not_defeated` warns, one
+  line per active defeater (`NO_COLOR`, `display.ansi_screen: false`, `verbose: true`), and
+  always names the verbose transcript view (Ctrl+O) as a surface with no on-disk signal;
+  `display_surfaces_documented` confirms `docs/reference/harness-adapters.md` still names all
+  three surface classes in its new "Surfaces" section (paints, owner-verified, plain by
+  contract). Twenty-four failure-mode tests, landed red before the code.
 - 331c (branch of 331): a roadmap gets its own three reports, the counterpart to an intent's:
   `report-screen roadmap <roadmap.md> plan|state|delivered [--ansi] [--store-root <dir>]`. `plan`
   prints the Goal's first sentence, the batch (or legacy wave) and intent counts, the batch
