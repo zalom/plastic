@@ -12,6 +12,11 @@ require_relative "../scripts/lib/screen_paint"
 require_relative "../scripts/lib/lock"
 require_relative "../scripts/dashboard"
 
+# Intent 331a2 (D5, S4): mirror scripts/report-screen's own glob explicitly rather than relying
+# on the kind registry being populated incidentally through dashboard.rb's require chain, so a
+# future require reshuffle cannot silently shrink the registry this census tests against.
+Dir.glob(File.join(File.expand_path("../scripts/lib/screens", __dir__), "*.rb")).sort.each { |f| require_relative f }
+
 # Intent 331f1: the acceptance rule this intent adds - ScreenPaint.display_columns (ANSI
 # stripped, every character at or above U+1100 counts two columns, everything else one) is
 # the one bound every rendered row is measured against, replacing the character-count check
@@ -241,11 +246,228 @@ class ScreenWidthTest < Minitest::Test
     screens["roadmap state"] = ReportScreen.render_roadmap(path: roadmap_path, verb: "state", store_root: root, now: NOW)
     screens["roadmap delivered"] = ReportScreen.render_roadmap(path: roadmap_path, verb: "delivered", store_root: root)
     screens["dashboard"] = render_screen(records_for(@home), "project:demo", plastic_home: @home, now: NOW)
+    # 331a2 (D5, S2 leg 3): the eleventh verb. The :intent kind has been registered since
+    # screen_paint.rb:543 and fed to the hook (test/hook_message_display_test.rb:89), but this
+    # census never rendered it - a new key, added here without touching any of the ten already
+    # measured above. dir19 (a short title), not dir12 (LONG_TITLE): IntentScreen.render never
+    # calls ReportScreen.fit_screen, so a 300-character title here would blow the 115-column
+    # bound on a pre-existing gap this action's kill criterion puts out of scope - a renderer
+    # change, not a classify grammar rule.
+    screens["intent"] = IntentScreen.render(intent_dir: dir19, store_root: root,
+                                             template: File.read(File.join(templates, "intent-screen.md")))
     screens
   end
 
   def strip_ansi(text)
     text.to_s.gsub(/\e\[[0-9;]*m/, "")
+  end
+
+  # ==========================================================================================
+  # 331a2 (D5): the screen census GUARD. Every defect this guard exists to catch (331a1's two
+  # grammar gaps, 331f1's two width gaps) shipped invisible to the ten-verb happy-path census
+  # above, because its fixtures never fired a renderer's conditional branches: one delivered
+  # dir, skipped: 0. This section widens the SAME census - every fixture below feeds the
+  # classifier the HOOK actually calls (message_display.rb:475-483: find the first opener,
+  # walk one region over the WHOLE reply), not the CLI's per-block painting, which can never
+  # fail this way.
+  # ==========================================================================================
+
+  # --- S2: the derived site table, kept alive as running assertions rather than a comment ----
+  #
+  # Leg 1: `grep -n '<< "' scripts/lib/report_screen.rb` (47 sites at 4e4b96e) and the same
+  # over scripts/dashboard.rb (42 sites, all outside the painter's path - dashboard.rb has no
+  # painted-screen emission at all; DashboardScreen.render builds the dashboard SCREEN by
+  # substitution and has zero `<<` sites of its own).
+  #
+  # Leg 2: `grep -n '<<' report_screen.rb | grep -v '<< "' | grep -v '<<~'` (28 hits) misses
+  # five sites that append a method call or constant rather than a literal, and two of those
+  # five are exactly F5's own shape:
+  #   973  collapsed_open_steps_note - "N open" / "N open · showing the first three" (:count)
+  #   1052 NOT_RECORDED when Evidence is empty (:closer)
+  #   1460 the session `note:` block, free text ABOVE the first opener (T2)
+  #   1466 the rescue card `## <id> · could not render (<msg>)` - :unknown today (F5)
+  #   1478 the roster, appended to every session report (:opener + roster grammar)
+  #
+  # Leg 3: seven screen templates built by substitution (zero `<<` sites): intent-screen.md,
+  # report-state.md, report-plan.md, dashboard-screen.md, and the three report-roadmap-*.md
+  # templates. `intent-screen.md` is the one this action adds as an eleventh verb.
+  def literal_append_lines(path)
+    File.readlines(path).each_with_index.select { |line, _| line.include?('<< "') }.map { |_, i| i + 1 }
+  end
+
+  def non_literal_append_lines(path)
+    File.readlines(path).each_with_index
+        .select { |line, _| line.include?("<<") && !line.include?('<< "') && !line.include?("<<~") }
+        .map { |_, i| i + 1 }
+  end
+
+  def test_leg1_report_screen_literal_append_count_matches_the_repo
+    assert_equal 47, literal_append_lines(File.join(REPO, "scripts", "lib", "report_screen.rb")).length,
+                 "the derived site table's leg 1 count has drifted from the repo - re-derive it " \
+                 "before trusting the rest of this file's fixtures"
+  end
+
+  def test_leg1_dashboard_literal_append_count_is_the_exemption_bound
+    assert_equal 42, literal_append_lines(File.join(REPO, "scripts", "dashboard.rb")).length,
+                 "dashboard.rb's literal-append count is the exemption bound the board tests below assert against"
+  end
+
+  def test_leg2_non_literal_append_sites_include_every_screen_emission
+    lines = non_literal_append_lines(File.join(REPO, "scripts", "lib", "report_screen.rb"))
+    assert_equal 28, lines.length,
+                 "the derived site table's leg 2 count has drifted from the repo - re-derive it"
+    [973, 1052, 1460, 1466, 1478].each do |line|
+      assert_includes lines, line, "leg 2 must still carry the screen-emitting non-literal append at line #{line}"
+    end
+  end
+
+  def test_screen_paint_is_called_from_exactly_three_places
+    callers = %w[report-screen dashboard.rb message_display.rb].flat_map do |base|
+      path = Dir.glob(File.join(REPO, "scripts", "**", base)).find { |f| File.file?(f) }
+      File.readlines(path).each_with_index.select { |line, _| line.include?("ScreenPaint.paint(") }
+    end
+    assert_equal 3, callers.length,
+                 "every ScreenPaint.paint caller must be accounted for - a new one needs this census's coverage too"
+  end
+
+  # --- fixtures the ten-verb happy-path census never fired -----------------------------------
+
+  # F1/F2/F4/T1/T3: two SHORT delivered dirs (deliberately not dir19's 300-character LONG_NOTE
+  # content - S4 warns a second dir carrying that content is the obvious way to blow the
+  # 115-column bound for the wrong reason). DONE_LEDGER on both dirs reproduces the exact meta
+  # line the plan review measured: "2026-08-30 13:51 UTC · not recorded · 1 h 51 min · not
+  # recorded".
+  def two_delivered_dirs_session_text(skipped: 0, tag_reader: ->(_dir) { nil })
+    root = tier_root
+    write_index(root, active: [], completed: [["40", "Short A"], ["41", "Short B"]])
+    dir_a = make_intent(root, id: "40", title: "Short A", checklist: "# Checklist\n\n- [x] S1 done\n", savepoint: DONE_LEDGER)
+    dir_b = make_intent(root, id: "41", title: "Short B", checklist: "# Checklist\n\n- [x] S1 done\n", savepoint: DONE_LEDGER)
+    ReportScreen.render_session(dirs: [dir_a, dir_b], skipped: skipped, store_root: root, tag_reader: tag_reader)
+  end
+
+  # F5/T3: the raising dir is the SECOND one. Prior art (report_screen_session_test.rb:873)
+  # raises for the FIRST dir, which the plan review proved is the wrong order - with no opener
+  # above the cards, first_rejected returns nil no matter what the grammar says.
+  def rescue_card_session_text
+    root = tier_root
+    write_index(root, active: [], completed: [["70", "First"], ["71", "Second boom"]])
+    dir_first = make_intent(root, id: "70", title: "First", checklist: "# Checklist\n\n- [x] S1 done\n", savepoint: DONE_LEDGER)
+    dir_second = make_intent(root, id: "71", title: "Second boom", checklist: "# Checklist\n\n- [x] S1 done\n", savepoint: DONE_LEDGER)
+    boom = ->(d) { raise "boom" if d == dir_second }
+    ReportScreen.render_session(dirs: [dir_first, dir_second], skipped: 0, store_root: root, tag_reader: boom)
+  end
+
+  # T2: render_session emits three lines the region walk can never reach - the `note:` block,
+  # the empty-session closer, and the skip note - because with `dirs: []` they sit ABOVE the
+  # roster's opener. A live intent keeps the roster non-empty so an opener still exists
+  # somewhere in the reply, matching the plan review's own measured shape (first opener at
+  # index 4, lines 0-3 never walked).
+  def zero_dirs_session_text(skipped:, note: nil)
+    root = tier_root
+    write_index(root, active: [["50", "Live intent"]], completed: [])
+    make_intent(root, id: "50", title: "Live intent", checklist: "# Checklist\n\n- [ ] S1 open\n", savepoint: HOW_LEDGER)
+    ReportScreen.render_session(dirs: [], skipped: skipped, store_root: root, note: note)
+  end
+
+  # S2 leg 2 line 973, both forks: an intent with <=3 open items prints "N open"; one with >3
+  # prints "N open · showing the first three". A roster with several collapsed blocks is also
+  # the fixture spec.md's F2 note explicitly DROPS from the F2 proof: its blocks classify
+  # under :field/:step, independent of opener_idx, and carry no meta line at all.
+  def roster_with_multiple_blocks_text
+    root = tier_root
+    write_index(root, active: [["60", "One open item"], ["61", "Two open items"], ["62", "Four open items"]], completed: [])
+    make_intent(root, id: "60", title: "One open item", checklist: "# Checklist\n\n- [ ] S1 open\n", savepoint: HOW_LEDGER)
+    make_intent(root, id: "61", title: "Two open items", checklist: "# Checklist\n\n- [ ] S1 open\n- [ ] S2 open\n", savepoint: HOW_LEDGER)
+    make_intent(root, id: "62", title: "Four open items",
+                checklist: "# Checklist\n\n- [ ] S1 open\n- [ ] S2 open\n- [ ] S3 open\n- [ ] S4 open\n", savepoint: HOW_LEDGER)
+    ReportScreen.render_roster(root)
+  end
+
+  def opener_titles(text)
+    text.lines.select { |l| ScreenPaint.classify(l) == :opener }.map { |l| l.strip.sub(/\A## /, "") }
+  end
+
+  # Acceptance 1: the HOOK path. Walk from the FIRST opener over the WHOLE reply - exactly
+  # finalize() does at message_display.rb:475-483 - and name the offending line when the
+  # grammar rejects one. Both first_rejected AND region_end are asserted (T1): the plan review
+  # proved they carry SEPARATE copies of the nearest-opener rule, so mutating only one leaves
+  # the other green.
+  def assert_region_covers_the_whole_reply(verb, text)
+    lines = text.lines
+    start_idx = lines.index { |l| ScreenPaint.classify(l) == :opener }
+    refute_nil start_idx, "#{verb}: no opener line found to anchor the hook's region walk"
+
+    rejected = ScreenPaint.first_rejected(lines, start_idx)
+    assert_nil rejected,
+               "#{verb}: first_rejected named line #{rejected && rejected[0]} - #{rejected && rejected[1].inspect}"
+
+    region_end = ScreenPaint.region_end(lines, start_idx)
+    assert_equal lines.length, region_end,
+                 "#{verb}: region_end stopped at #{region_end} of #{lines.length} - " \
+                 "offending line: #{lines[region_end].to_s.chomp.inspect}"
+  end
+
+  # F1, F2, F5, T2 (passthrough), and the F2 roster fixture's grammar coverage - every verb
+  # the ten-verb census already renders, plus every conditional fixture that census's
+  # happy-path data never fired.
+  def test_census_region_walk_covers_every_verb_over_conditional_fixtures
+    build_all_screens.each { |verb, text| assert_region_covers_the_whole_reply(verb, text) }
+
+    assert_region_covers_the_whole_reply("session skipped singular", two_delivered_dirs_session_text(skipped: 1))
+    assert_region_covers_the_whole_reply("session skipped plural", two_delivered_dirs_session_text(skipped: 2))
+    assert_region_covers_the_whole_reply("session two delivered dirs", two_delivered_dirs_session_text(skipped: 0))
+    assert_region_covers_the_whole_reply("session rescue card", rescue_card_session_text)
+    assert_region_covers_the_whole_reply("session note above the opener",
+                                          zero_dirs_session_text(skipped: 0, note: "Some free-form note the model wrote."))
+    assert_region_covers_the_whole_reply("roster multi-block", roster_with_multiple_blocks_text)
+  end
+
+  # Acceptance 3 / T2: lines a renderer emits ABOVE the first opener are invisible to the
+  # region walk (dirs: [] puts them there), so they get a direct ScreenPaint.classify
+  # assertion instead of walk coverage the census does not actually have.
+  def test_lines_above_the_first_opener_are_classified_directly
+    assert_equal :closer, ScreenPaint.classify("No intents delivered in this session.")
+    assert_equal :count, ScreenPaint.classify("1 completed intent skipped: no Done bookend in savepoint.md.")
+    assert_equal :count, ScreenPaint.classify("3 completed intents skipped: no Done bookend in savepoint.md.")
+  end
+
+  # F4: a region can classify fully and still lose content in paint. Every opener title a
+  # renderer genuinely emits must survive, verbatim, into the painted output. Short titles
+  # only (not the ten-verb census's 300-character LONG_TITLE fixtures), so a legitimate
+  # width-fitter truncation is never mistaken for the genuine loss this assertion exists to
+  # catch.
+  def test_every_opener_title_survives_painting
+    fixtures = {
+      "two delivered dirs" => two_delivered_dirs_session_text(skipped: 0),
+      "roster multi-block" => roster_with_multiple_blocks_text,
+    }
+    fixtures.each do |verb, text|
+      titles = opener_titles(text)
+      refute_empty titles, "#{verb}: fixture must carry at least one opener title to prove survival"
+      painted = strip_ansi(ScreenPaint.paint(text, color: true).to_s)
+      titles.each do |title|
+        assert_includes painted, title, "#{verb}: opener title #{title.inspect} did not survive into the painted output"
+      end
+    end
+  end
+
+  # The dashboard.rb exemption, asserted rather than claimed (S2): the five board renderers -
+  # the TTY board and the plain fallbacks - never carry a registered opener. If anyone later
+  # gives a board an opener, this fails loudly instead of rotting into a blind spot.
+  def test_dashboard_board_renderers_are_exempt_from_the_painter
+    fixtures = {
+      "continue" => render_continue([]),
+      "project" => render_project([], "demo"),
+      "all" => render_all([]),
+      "plain project" => render_plain_project([], "demo"),
+      "plain global" => render_plain_global([]),
+    }
+    fixtures.each do |board, text|
+      first_line = text.lines.map(&:strip).find { |l| !l.empty? }
+      assert_nil ScreenPaint.opener_kind(first_line.to_s),
+                 "#{board}: a board renderer must never gain a registered opener silently: #{first_line.inspect}"
+      assert_nil ScreenPaint.paint(text), "#{board}: a board renderer's output must never be claimed by the painter"
+    end
   end
 
   # --- W6/W9: all ten verbs, plain and painted, bounded in DISPLAY COLUMNS -----------------
