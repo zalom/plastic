@@ -7,7 +7,8 @@ user-invocable: false
 # Dashboard — Plastic Work Cockpit
 
 A deterministic overview of the intent store(s). It answers three questions at a glance:
-**where we are** (recently worked), **where we go next** (the most-valuable next work), and
+**where we are** (recently worked; `Graph ID | Intent | Stage | Progress | Lead`),
+**where we go next** (the most-valuable next work; `Rank | Graph ID | Intent | Reason`), and
 **how to conduct it** (a disposition per intent). The human-facing surface is **Markdown**,
 because the user's UI renders Markdown natively but collapses raw tool-call stdout.
 

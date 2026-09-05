@@ -1511,6 +1511,23 @@ the shared field-table/data-table grammar. Its opener is a strict subset of the 
 regardless; the registration exists so `ScreenPaint.kinds` is complete and the opener's own
 grammar (which scope forms it accepts, and that it rejects a plain intent title) is directly
 testable.
+
+**Column vocabulary (intent 331d1, an owner ruling).** Where-we-are is `Graph ID | Intent |
+Stage | Progress | Lead`; Where-we-go-next is `Rank | Graph ID | Intent | Reason`. The id
+stands in its own `Graph ID` cell rather than glued to the front of the title. The `Intent`
+cell carries the intent line up to but not including its first colon, which is where a
+Plastic intent line stops naming itself and starts explaining, then word-boundary truncated
+with an ellipsis. `What` names no column anywhere on a screen, because What is a lifecycle
+stage; `Why` is `Reason` for the same reason. `ScreenPaint::NOTE_HEADERS` lists `Reason`
+beside `Source` and `Why`, so the renamed column keeps its greyed note styling instead of
+losing it to the rename.
+
+**The 115-column bound.** No rendered row exceeds 115 visible columns. The bound is measured
+on the whole pipe-delimited row, never on one cell: `screen_fit_intent` renders every other
+cell first, subtracts their width and the table scaffolding, and gives the Intent cell what
+is left. A cell short enough on its own still drifts the row past the bound once the progress
+bar, the lead and the separators are added, which is exactly what measuring the row prevents.
+
 ## roadmap screens: the roadmap verb, `RoadmapQueue#roadmap`, and the Log fallback (intent 331c)
 
 A roadmap gets the same three reports an intent has (`report-screen roadmap <roadmap.md>

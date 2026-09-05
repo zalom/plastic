@@ -29,10 +29,10 @@ module DashboardScreen
   end
 
   def where_we_are_rows(rows)
-    rows.map { |r| "| #{r[:intent]} | #{r[:stage]} | #{r[:progress]} | #{r[:lead]} |" }.join("\n")
+    rows.map { |r| "| #{r[:graph_id]} | #{r[:intent]} | #{r[:stage]} | #{r[:progress]} | #{r[:lead]} |" }.join("\n")
   end
 
   def where_we_go_next_rows(rows)
-    rows.map { |r| "| #{r[:rank]} | #{r[:intent]} | #{r[:what]} | #{r[:why]} |" }.join("\n")
+    rows.map { |r| "| #{r[:rank]} | #{r[:graph_id]} | #{r[:intent]} | #{r[:reason]} |" }.join("\n")
   end
 end
