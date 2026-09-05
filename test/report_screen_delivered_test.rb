@@ -168,4 +168,33 @@ class ReportScreenDeliveredTest < Minitest::Test
     assert delivered_idx < evidence_idx
     assert evidence_idx < needs_idx
   end
+
+  # --- 331f1a X1: the data-table branch's separator survives overflow --------------
+  #
+  # The live 331f1 defect: the Needs-you table's header cells are short (N=1, Need=4,
+  # Reason=6 characters) while its Why cell overflows past 115 display columns.
+  # `fit_table_block`'s data-table branch used to rebuild the separator from the
+  # shrunk widths and then let the row backstop cut it, landing as a 40-column
+  # fragment. D1/D2 (refined by the plan-review ruling) say the separator passes
+  # through byte-identical whenever its own unfitted form already fits the bound.
+  def test_delivered_separators_survive_overflow
+    write("12--slug.md", "---\nid: \"12\"\nintent: \"x\"\n---\n\n## Intent\nx\n")
+    write("savepoint.md", "2026-08-30T19:00:00Z  What  12--slug.md\n2026-08-30T19:10:00Z  Done  delivered\n")
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+
+      ## Needs you
+      | N | What | Why |
+      | --- | --- | --- |
+      | N1 | Do the thing | #{"W" * 260} |
+    MD
+    out = ReportScreen.render_delivered(intent_dir: @dir)
+    lines = out.lines.map(&:chomp)
+    header_idx = lines.index("| N | Need | Reason |")
+    refute_nil header_idx, "the Needs-you table must render"
+    assert_equal "| --- | --- | --- |", lines[header_idx + 1],
+                 "the Needs-you separator must pass through byte-identical, never cut or widened"
+  end
 end
