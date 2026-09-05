@@ -56,6 +56,16 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   or "none", never a guess; a stale lock's Lead never contradicts an In-delivery count of zero.
   The continuing and dashboard skills name the verb as the eventual first print on `continue`;
   the mechanical wiring lands in 331f.
+- 331d1 (branch of 331d, an owner ruling on its vocabulary): the two dashboard-screen tables
+  rename their columns. Where-we-are is now `Graph ID | Intent | Stage | Progress | Lead`,
+  Where-we-go-next is `Rank | Graph ID | Intent | Reason`. The id, glued to the title before,
+  is its own Graph ID cell; Intent carries the intent line up to (not including) its first
+  colon, word-boundary truncated with an ellipsis, budgeted so the whole rendered row never
+  exceeds 115 visible columns - measured on the full row, not the Intent cell alone. `What`
+  never names a column, because What is a lifecycle stage; `Why` becomes `Reason`.
+  `ScreenPaint::NOTE_HEADERS` gains `Reason` alongside `Source` and `Why` so the renamed
+  column keeps its greyed styling. The classification pipeline stays untouched; only the
+  screen renderer changes. Eight failure-mode tests, landed red before the code.
 
 ## Released
 
