@@ -437,6 +437,7 @@ class InstallerCore
       "scripts/exec-worktree" => "scripts/exec-worktree",
       "scripts/doctor.rb" => "scripts/doctor.rb",
       "scripts/lib/doctor_core.rb" => "scripts/lib/doctor_core.rb",
+      "scripts/lib/hook_replay.rb" => "scripts/lib/hook_replay.rb",
       "scripts/lib/rule_catalog.rb" => "scripts/lib/rule_catalog.rb",
       "scripts/lib/doctor_exclusions.rb" => "scripts/lib/doctor_exclusions.rb",
       "scripts/lib/doctor_session_ledger.rb" => "scripts/lib/doctor_session_ledger.rb",

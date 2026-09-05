@@ -81,7 +81,7 @@ checks, install-integrity checks, skill-lint (advisory), QMD reachability (unsco
 collection), the global store's own conventions/done-signals content, and the `display`
 category (intent 331e): `display_hook_registered` (also runs at `--core`), `display_hook_paints`
 (replays the shipped display fixture through the installed MessageDisplay hook and expects a
-painted screen back — a pass when a known defeater like `NO_COLOR` is active, never a fail),
+painted screen back, a pass when a known defeater like `NO_COLOR` is active, never a fail),
 `display_not_defeated` (warns per active defeater and always names the undetectable verbose
 transcript view), and `display_surfaces_documented` (the harness-adapters doc still names every
 surface class). **Never carries a per-project finding**; that is `--store <slug>`'s job (see
