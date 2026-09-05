@@ -396,11 +396,16 @@ class ReportScreenReadersTest < Minitest::Test
     assert_equal "not recorded", ReportScreen.proven_by(@dir, "S1")
   end
 
-  # 322 follow-up (spec.md Non-Goals): split_by_headings is fence-blind, so a
-  # "#" line inside a fenced code block still opens a pseudo-section and
-  # orphans the table that follows it from the real heading. Fixing this would
-  # move counts on records this intent never examined; pinned here instead.
-  def test_proven_by_is_blind_to_headings_inside_a_fence
+  # 322 recorded fence-blindness as a Non-Goal: a "#" line inside a fenced code
+  # block opened a pseudo-section and orphaned the table that followed it, so
+  # this pinned "not recorded" as the accepted wrong answer.
+  #
+  # Merge note (322 into alpha, 2026-09-05): intent 330 (D12) shipped the shared
+  # fence walker that feeds both split_by_headings and table_rows, which is
+  # exactly the fix 322 declined to make. The table now belongs to its real
+  # heading, so the count is 2. The Non-Goal is superseded, not regressed; the
+  # test is kept, with its expectation flipped, so the improvement stays pinned.
+  def test_proven_by_sees_a_table_after_a_fenced_heading_comment
     write("actions/ACTION_1.md", <<~MD)
       # Action
 
@@ -415,7 +420,7 @@ class ReportScreenReadersTest < Minitest::Test
       | 1 | a |
       | 2 | a |
     MD
-    assert_equal "not recorded", ReportScreen.proven_by(@dir, "S1")
+    assert_equal "2 tests", ReportScreen.proven_by(@dir, "S1")
   end
 
   # 322 follow-up (spec.md Non-Goals): table_rows does not stop at the end of
@@ -741,7 +746,11 @@ class ReportScreenReadersTest < Minitest::Test
     assert_nil ReportScreen.shipped_version(@dir)
     rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { nil })
     ship = rows.find { |r| r[:kind] == "ship" }
-    assert_includes ship[:what], "not recorded"
+    # Intent 330 D10: with no version anywhere, the segment is omitted rather
+    # than filled with NOT_RECORDED. Before 330 this cell read
+    # "06bd20d -> alpha . not recorded"; the subject of this test is the
+    # assert_nil above, and the row now says only what it knows.
+    assert_equal "06bd20d", ship[:what]
   end
 
   def test_merge_sha_reads_the_merge_line_and_is_nil_without_one

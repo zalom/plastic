@@ -1,0 +1,199 @@
+## ✔ 331a · Hook engages anywhere · delivered
+2026-09-05 10:07 UTC · auto · 1 h 28 min · v2.0.0-alpha.14
+
+**Asked**
+  Hook engages anywhere: the MessageDisplay hook paints a screen wherever it sits in the reply (prose before it…
+  7 decisions in spec.md
+
+**Delivered**
+| Row | Detail | Proven by |
+| --- | --- | --- |
+| S1 | The failure-mode matrix landed as tests before any code, with the replay harness and the… | 4 tests |
+| S2 | The launcher hands a chunk to Ruby whenever its delta carries a screen opener anywhere… | 6 tests |
+| S3 | MessageDisplay engages late: the start index is written and read back, NOSCREEN is… | 11 tests |
+| S4 | ScreenPaint has a registry, so a new screen kind is a new file rather than a diff to the… | 8 tests |
+| S5 | A fence wrapping the screen is dropped where it can still be dropped, and an unrelated… | 4 tests |
+| S6 | The engagement contract and the registry are documented, and the CHANGELOG carries the… | 3 tests |
+| S7 | The suite is green on the branch and on alpha after the merge | 4 tests |
+
+**Evidence**
+| Kind | Detail | Source |
+| --- | --- | --- |
+| suite | 2868 runs · 14605 assertions · 0 failures | outcome.md ## Verification |
+| ship | b862c38 → alpha · v2.0.0-alpha.14 | outcome.md; project.yml; git tags |
+
+**Needs you**
+| N | Need | Reason |
+| --- | --- | --- |
+| N1 | Print a state screen in a live session with one… | Only a real terminal settles the on-screen half.… |
+
+## ✔ 331b · Plan screen, the pre-delivery report · delivered
+2026-09-05 11:05 UTC · auto · 2 h 26 min · v2.0.0-alpha.14
+
+**Asked**
+  Plan screen, the pre-delivery report: report-screen plan <intent_dir> prints Asked, the decisions count, the…
+  4 decisions in spec.md
+
+**Delivered**
+| Row | Detail | Proven by |
+| --- | --- | --- |
+| S1 | The failure-mode tests, committed red before any code existed | 1 test |
+| S2 | The plan screen's readers and renderer, and its template | 17 tests |
+| S3 | The plan paint kind, added as a file, with no edit to the painter | 3 tests |
+| S4 | The `report-screen plan` verb, with `--ansi` under the same guards as its siblings | 4 tests |
+| S5 | The pre-delivery report named in the human report contract, the internals doc, and the CHANGELOG | 3 tests |
+| S6 | Suite green on the branch and on alpha, merged, guards clean | 2 tests |
+
+**Evidence**
+| Kind | Detail | Source |
+| --- | --- | --- |
+| suite | 2898 runs · 14677 assertions · 0 failures | outcome.md ## Verification |
+| red | a908c62 proven test-only and red | outcome.md ## Verification |
+| ship | 1df2bfe → alpha · v2.0.0-alpha.14 | outcome.md; project.yml; git tags |
+
+**Needs you**
+None
+
+## ✔ 331c · Roadmap screens · delivered
+2026-09-05 11:18 UTC · auto · 2 h 39 min · v2.0.0-alpha.14
+
+**Asked**
+  Roadmap screens: report-screen roadmap <roadmap.md> plan|state|delivered prints the pre-delivery plan (goal,…
+  6 decisions in spec.md
+
+**Delivered**
+| Row | Detail | Proven by |
+| --- | --- | --- |
+| S1 | Every failure mode in the matrix has a test, and they all landed red before any code | 22 tests |
+| S2 | The three roadmap screens and the readers behind them, plus their templates | 17 tests |
+| S3 | The three roadmap paint kinds, registered from their own file | 2 tests |
+| S4 | The `roadmap` verb on `report-screen`, with `--ansi` and `--store-root` | 2 tests |
+| S5 | The four doc surfaces and the changelog say what the code does | 1 test |
+| S6 | Green on the branch, merged into alpha, green again on alpha | 4 tests |
+
+**Evidence**
+| Kind | Detail | Source |
+| --- | --- | --- |
+| suite | 2921 runs · 14788 assertions · 0 failures | outcome.md ## Verification |
+| ship | 8b07e89 → alpha · v2.0.0-alpha.14 | outcome.md; project.yml; git tags |
+
+**Needs you**
+None
+
+## ✔ 331d · Dashboard screen · delivered
+2026-09-05 11:26 UTC · auto · 2 h 47 min · v2.0.0-alpha.14
+
+**Asked**
+  Dashboard screen: dashboard.rb continue and dashboard.rb project <slug> print a screen (where we are, where we…
+  3 decisions in spec.md
+
+**Delivered**
+| Row | Detail | Proven by |
+| --- | --- | --- |
+| S1 | The seventeen-row failure-mode matrix landed as tests before any code, in their own red… | 17 tests |
+| S2 | `--screen` and `--ansi` on `dashboard.rb`, the field sources, the renderer module, the… | 17 tests |
+| S3 | `scripts/lib/screens/dashboard.rb` registers the `dashboard` kind with its own opener… | 1 test |
+| S4 | The continuing and dashboard skills name the verb as the first print on the project route | 2 tests |
+| S5 | The verb is recorded in `docs/internals.md`, the human-report contract, and the CHANGELOG | 1 test |
+| S6 | Suite green on the branch and on alpha after the merge, store commit scoped | 3 tests |
+
+**Evidence**
+| Kind | Detail | Source |
+| --- | --- | --- |
+| suite | 2938 runs · 14871 assertions · 0 failures | outcome.md ## Verification |
+| ship | 496570d → alpha · v2.0.0-alpha.14 | outcome.md; project.yml; git tags |
+
+**Needs you**
+None
+
+
+112 completed intents skipped: no Done bookend in savepoint.md.
+
+▶ In delivery · 10 intents · 2026-09-05 17:48 UTC
+
+| Graph ID | Stage | Progress | Changed | Lead |
+| --- | --- | --- | --- | --- |
+| 331a1 | Exec | █████████████████░░░ 6 / 7 | on request | stale · 93 min |
+| 327 | Exec | ████████████████████ 8 / 8 | on request | idle |
+| 331g | Why | █████████████░░░░░░░ 4 / 6 | on request | idle |
+| 331 | Why | ███████████░░░░░░░░░ 4 / 7 | on request | stale · 557 min |
+| 324 | Exec | █████████████████░░░ 13 / 15 | on request | stale · 3557 min |
+| 325 | Exec | ░░░░░░░░░░░░░░░░░░░░ 0 / 6 | on request | stale · 3562 min |
+| 321 | Exec | ████████████████████ 8 / 8 | on request | stale · 3563 min |
+| 322 | Exec | ████████████████████ 9 / 9 | on request | stale · 3557 min |
+| 315 | Exec | ██████░░░░░░░░░░░░░░ 7 / 23 | on request | idle |
+| 267 | Why | ░░░░░░░░░░░░░░░░░░░░ 0 / 0 | on request | stale · 21136 min |
+
+▶ 331a1 · Decision marker in the launcher
+Stage      Exec
+Next       S1 · Suite green on branch and alpha, merged, store commit scoped
+Changed    on request
+1 open
+S1   [ open ]  Suite green on branch and alpha, merged, store commit scoped
+
+▶ 327 · Graph of work under the roadmap
+Stage      Exec
+Next       
+Changed    on request
+0 open
+
+▶ 331g · Live verification and release
+Stage      Why
+Next       S2 · Ten screens captured painted, capture table in 331's evidence file
+Changed    on request
+2 open
+S2   [ open ]  Ten screens captured painted, capture table in 331's evidence file
+S6   [ open ]  331 closed, roadmap archived
+
+▶ 331 · Reporting improvements V2
+Stage      Why
+Next       S5 · Batch 3 delivered: 331e, 331f on alpha
+Changed    on request
+3 open
+S5   [ open ]  Batch 3 delivered: 331e, 331f on alpha
+S6   [ open ]  Batch 4 delivered: 331g captures, owner check, alpha cut
+S7   [ open ]  Close: outcome.md, evidence and catalog updated, roadmap archived
+
+▶ 324 · Skill usage census from transcripts
+Stage      Exec
+Next       S14 · Lead: report artifact published, critic verdict folded,…
+Changed    on request
+2 open
+S14   [ open ]  Lead: report artifact published, critic verdict folded, `resources/decisions--D19-per-skill.md`…
+S15   [ open ]  Lead: outcome.md with both URLs, merged into alpha, suite green on alpha, pushed, end-intent
+
+▶ 325 · Architecture pass before and in alpha
+Stage      Exec
+Next       S1 · Evidence base: Enola coverage stated, three measurements re-run with…
+Changed    on request
+6 open · showing the first three
+S1   [ open ]  Evidence base: Enola coverage stated, three measurements re-run with commands and the 2026-09-03…
+S2   [ open ]  Component sections: eight sections with six parts each, citations resolve, 1.x versus 2.0…
+S3   [ open ]  Rulings ledger: every section names its ruling; contradictions listed as D25-plus in…
+
+▶ 321 · Bg-isolation Edit guard vs Bash seam
+Stage      Exec
+Next       
+Changed    on request
+0 open
+
+▶ 322 · report-screen Proven-by heading resolver
+Stage      Exec
+Next       
+Changed    on request
+0 open
+
+▶ 315 · Verify 2.0.0-alpha.2 on the real install
+Stage      Exec
+Next       S3 · Doctor full on the real install: 44 pass, 2 warn…
+Changed    on request
+16 open · showing the first three
+S3   [ open ]  Doctor full on the real install: 44 pass, 2 warn (savepoint_operational 4, backfilled_complete 9,…
+S5   [ open ]  Session start (298): pointer and heartbeat written for t315boot, banner reads v2.0.0-alpha.2…
+S6   [ open ]  Session start sweep (301): a prior unclosed day is filed (spec, plan, action, outcome backfilled)…
+
+▶ 267 · Plastic web dashboard
+Stage      Why
+Next       write checklist.md
+Changed    on request
+0 open

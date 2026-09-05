@@ -116,7 +116,7 @@ class ReportScreenDeliveredTest < Minitest::Test
   def test_delivered_table_has_three_columns_proof_beside_row
     full_fixture
     out = ReportScreen.render_delivered(intent_dir: @dir)
-    assert_includes out, "| Row | What | Proven by |"
+    assert_includes out, "| Row | Detail | Proven by |"
     row_a = out.lines.find { |l| l.start_with?("| A |") }
     refute_nil row_a
     assert_includes row_a, "Ledger captures only actionable work"
@@ -151,8 +151,11 @@ class ReportScreenDeliveredTest < Minitest::Test
     headers = out.scan(/^\*\*(.+?)\*\*/).flatten
     assert_equal %w[Asked Delivered Evidence Needs\ you], headers
 
-    assert_includes out, "| Row | What | Proven by |"
-    assert_includes out, "| Kind | What | Source |"
+    assert_includes out, "| Row | Detail | Proven by |"
+    assert_includes out, "| Kind | Detail | Source |"
+    # Post-exec review finding 3: the S5 header map renamed this header too, but no test ever
+    # pinned it against real rendered output; full_fixture already populates an N1 row.
+    assert_includes out, "| N | Need | Reason |"
 
     assert out.lines.first.start_with?("## \u2714 "), "the title line must carry the ## prefix the approved plain form uses"
     title_idx = 0
@@ -221,5 +224,34 @@ class ReportScreenDeliveredTest < Minitest::Test
     assert_equal 9, c_lines.length
     c_lines.each { |l| assert_includes l, "1 test" }
     refute(c_lines.any? { |l| l.include?("not recorded") })
+  end
+
+  # --- 331f1a X1: the data-table branch's separator survives overflow --------------
+  #
+  # The live 331f1 defect: the Needs-you table's header cells are short (N=1, Need=4,
+  # Reason=6 characters) while its Why cell overflows past 115 display columns.
+  # `fit_table_block`'s data-table branch used to rebuild the separator from the
+  # shrunk widths and then let the row backstop cut it, landing as a 40-column
+  # fragment. D1/D2 (refined by the plan-review ruling) say the separator passes
+  # through byte-identical whenever its own unfitted form already fits the bound.
+  def test_delivered_separators_survive_overflow
+    write("12--slug.md", "---\nid: \"12\"\nintent: \"x\"\n---\n\n## Intent\nx\n")
+    write("savepoint.md", "2026-08-30T19:00:00Z  What  12--slug.md\n2026-08-30T19:10:00Z  Done  delivered\n")
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+
+      ## Needs you
+      | N | What | Why |
+      | --- | --- | --- |
+      | N1 | Do the thing | #{"W" * 260} |
+    MD
+    out = ReportScreen.render_delivered(intent_dir: @dir)
+    lines = out.lines.map(&:chomp)
+    header_idx = lines.index("| N | Need | Reason |")
+    refute_nil header_idx, "the Needs-you table must render"
+    assert_equal "| --- | --- | --- |", lines[header_idx + 1],
+                 "the Needs-you separator must pass through byte-identical, never cut or widened"
   end
 end

@@ -201,11 +201,9 @@ Then How.
    into the spec, the matrix, and the tests; record what was dropped and why in the action
    file's review fold. A REVISE verdict is folded and not re-reviewed unless a finding changes
    a decision.
-5. Print `ruby ~/.plastic/scripts/report-screen state <intent_dir> --changed "How written, plan review next"`
-   (D15; see `references/human-report-contract.md` for the full trigger list). This replaces
-   the old prose State/Risk/Call briefing at this boundary. In auto mode the screen informs;
-   it does not wait. The screen opens the reply with nothing before it and no code fence: the
-   `MessageDisplay` hook paints only a reply whose first characters are the screen marker.
+5. Print `ruby ~/.plastic/scripts/report-screen plan <intent_dir>` as the first characters of
+   the reply, nothing before it, no fence, before dispatching the executor (see
+   `references/human-report-contract.md` for the full binding table). It informs; it does not wait.
 
 Then Exec.
 
@@ -217,7 +215,7 @@ Then Exec.
    then builds, then drives the full suite green.
 2. Read its return by code: DONE or DONE_WITH_CONCERNS proceeds; NEEDS_CONTEXT re-dispatches
    with the missing context; BLOCKED stops under the error procedure.
-3. Tick the checklist as items land (the executor does this; verify it).
+3. Tick the checklist as items land (the executor does this); verify tick-versus-diff against the diff. A mismatch is a review finding, not a lead cleanup.
 
 ## Review by risk (boot 3, only when a rule fires)
 
@@ -254,7 +252,7 @@ every choice is non-destructive and the team has full autonomy.
 
 Read `../plastic-conventions/references/completion-and-done.md` for what "intent done" means.
 
-1. Verify every checklist item is checked and the suite is green once on the branch.
+1. This is the merge gate: verify every checklist item is checked, verify tick-versus-diff against the diff, and confirm the suite is green once on the branch.
 2. Write `outcome.md` from `~/.plastic/templates/outcome.md` with `disposition: delivered`,
    `## Delivered` as the labeled table whose row labels match the action-file headings (317a).
 3. Release, if configured: match the working directory against `~/.plastic/projects.yml`, read
@@ -272,13 +270,16 @@ Read `../plastic-conventions/references/completion-and-done.md` for what "intent
      --session "$CLAUDE_CODE_SESSION_ID" \
      --index-note "<what shipped>; <suite result>"
    ```
-   Exit 4 means a live foreign session holds the lock; 5 means the worktree is dirty (commit
-   first, or pass `--discard-worktree-changes` deliberately); 3 means the lock survived the
-   disarm (`/plastic-doctor check the lock status`); 6 means the structure check refused. Never
-   leave an orphaned worktree; run `git worktree prune` on a stale reference.
-6. Print `ruby ~/.plastic/scripts/report-screen delivered <intent_dir>` once (D15): this is the
-   owner report at End, replacing the old prose Done briefing. Print it as the first thing in
-   the reply, nothing before it and no code fence, or the hook cannot paint it.
+   Exit 4: a live foreign session holds the lock. 5: the worktree is dirty (commit first, or
+   pass `--discard-worktree-changes` deliberately). 3: the lock survived the disarm
+   (`/plastic-doctor check the lock status`). 6: the structure check refused. Never leave an
+   orphaned worktree; run `git worktree prune` on a stale reference.
+6. Print `ruby ~/.plastic/scripts/report-screen delivered <intent_dir>` once (D15/331f), and
+   `report-screen state` at each of the five triggers in `references/human-report-contract.md`
+   (a review verdict, a blocker, a merge/release, or an owner status ask; a mid-batch ask
+   instead runs `report-screen session <tier_root> --session "$CLAUDE_CODE_SESSION_ID"`, intent
+   330). Print each as the first characters of the reply: nothing before it, no fence, or the
+   hook cannot paint it.
 
 ## Error Handling
 

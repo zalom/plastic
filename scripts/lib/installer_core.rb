@@ -331,12 +331,26 @@ class InstallerCore
     end
   end
 
+  # Intent 331a (D6/R7): a screen kind file (scripts/lib/screens/<kind>.rb)
+  # must reach an installed ~/.plastic the same way a new template or hook
+  # does - glob-derived, so "add a file, not a diff" is actually true for an
+  # installed Plastic, not just an in-repo one. This repo ships none yet;
+  # the glob answers {} until one exists.
+  def screen_files
+    Dir.glob(File.join(package_root, "scripts", "lib", "screens", "*.rb")).each_with_object({}) do |path, acc|
+      next unless File.file?(path)
+
+      rel = File.join("scripts", "lib", "screens", File.basename(path))
+      acc[rel] = rel
+    end
+  end
+
   # Files copied into ~/.plastic on install/update. Every verb script + the shared lib
   # must be here so the installed ~/.plastic/scripts copy is self-complete (sync-guarded
-  # by install_sync_test). The templates half is glob-derived (template_files above); the
-  # rest stays a hand-written literal.
+  # by install_sync_test). The templates and screen-kind halves are glob-derived
+  # (template_files, screen_files above); the rest stays a hand-written literal.
   def core_files
-    hand_registered_files.merge(template_files).merge(hook_files)
+    hand_registered_files.merge(template_files).merge(hook_files).merge(screen_files)
   end
 
   def hand_registered_files
@@ -423,6 +437,7 @@ class InstallerCore
       "scripts/exec-worktree" => "scripts/exec-worktree",
       "scripts/doctor.rb" => "scripts/doctor.rb",
       "scripts/lib/doctor_core.rb" => "scripts/lib/doctor_core.rb",
+      "scripts/lib/hook_replay.rb" => "scripts/lib/hook_replay.rb",
       "scripts/lib/rule_catalog.rb" => "scripts/lib/rule_catalog.rb",
       "scripts/lib/doctor_exclusions.rb" => "scripts/lib/doctor_exclusions.rb",
       "scripts/lib/doctor_session_ledger.rb" => "scripts/lib/doctor_session_ledger.rb",
@@ -454,6 +469,11 @@ class InstallerCore
       "scripts/lib/intent_screen_ansi.rb" => "scripts/lib/intent_screen_ansi.rb",
       "scripts/lib/screen_paint.rb" => "scripts/lib/screen_paint.rb",
       "scripts/lib/message_display.rb" => "scripts/lib/message_display.rb",
+      # Intent 331d (A1): scripts/dashboard.rb require_relatives this lib
+      # directly; templates/dashboard-screen.md and scripts/lib/screens/
+      # dashboard.rb are glob-derived (template_files, screen_files above)
+      # and need no entry here.
+      "scripts/lib/dashboard_screen.rb" => "scripts/lib/dashboard_screen.rb",
       "scripts/hook-message-display" => "scripts/hook-message-display",
     }
   end

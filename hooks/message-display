@@ -57,8 +57,18 @@ if [ "$is_index_zero" = 1 ]; then
     *'"delta":"#'*|*'"delta": "#'*) handoff=1 ;;
     *'"delta":"▶'*|*'"delta": "▶'*) handoff=1 ;;
     *'"delta":"✔'*|*'"delta": "✔'*) handoff=1 ;;
-    *'"delta":"▶'*|*'"delta": "▶'*) handoff=1 ;;
-    *'"delta":"✔'*|*'"delta": "✔'*) handoff=1 ;;
+  esac
+  # 331a review fix (M12e): chunk 0 is not exempt from D5 either. The
+  # intent's own flagship shape -- a lead-in sentence and the opener in the
+  # SAME first chunk -- never starts with "#", "▶", or "✔", so the arm
+  # above alone never sees it. Joins it with the identical opener-anywhere
+  # globs used for a later chunk (M12a) rather than replacing anything:
+  # same reasoning as the comment at that site applies verbatim here.
+  case $INPUT in
+    *'"delta":"'*'▶'*|*'"delta": "'*'▶'*) handoff=1 ;;
+    *'"delta":"'*'✔'*|*'"delta": "'*'✔'*) handoff=1 ;;
+    *'"delta":"'*'\u25b6'*|*'"delta": "'*'\u25b6'*) handoff=1 ;;
+    *'"delta":"'*'\u2714'*|*'"delta": "'*'\u2714'*) handoff=1 ;;
   esac
 else
   # A later chunk: hand off when this message's directory already exists
@@ -74,8 +84,51 @@ else
     *'"delta":""'*|*'"delta": ""'*) handoff=1 ;;
     *'"delta":"\n"'*|*'"delta": "\n"'*) handoff=1 ;;
   esac
+  # 331a (D5): the hook engages anywhere. An opener can now fall ANYWHERE
+  # inside a later chunk's own delta, not only at its start (the shape
+  # tests just above), so these globs search the delta value rather than
+  # anchor to its opening quote. Still anchored to the "delta":" key itself
+  # (never dropped, matrix M12d) so an ordinary field elsewhere in the
+  # payload can never be mistaken for the delta's own text; within that,
+  # every shipped opener (## ▶, ## ✔, ▶ In delivery, ✔ + digit) contains a
+  # bare ▶ or ✔, so matching the bare glyph anywhere covers all four at
+  # once. Prose that merely shapes like an opener still hands off this way
+  # (an accepted over-match: Ruby's own grammar is the final, stricter
+  # arbiter and fails open on anything that is not a real one). Raw glyph
+  # and \u-escaped forms both count, since the encoder's choice is not ours
+  # to predict.
+  case $INPUT in
+    *'"delta":"'*'▶'*|*'"delta": "'*'▶'*) handoff=1 ;;
+    *'"delta":"'*'✔'*|*'"delta": "'*'✔'*) handoff=1 ;;
+    *'"delta":"'*'\u25b6'*|*'"delta": "'*'\u25b6'*) handoff=1 ;;
+    *'"delta":"'*'\u2714'*|*'"delta": "'*'\u2714'*) handoff=1 ;;
+  esac
 fi
 
 [ "$handoff" = 1 ] || exit 0
+
+# 331a1 (D1): chunk 0 is about to hand off to Ruby, which takes on the
+# order of 150 ms to boot before it ever writes SCREEN or NOSCREEN. Claude
+# Code fires the per-chunk hook PROCESSES CONCURRENTLY (see the header
+# comment above), so a later chunk landing inside that window used to find
+# no message directory at all, fail this script's own cheap shape test,
+# and pass through as raw Markdown - measured at 15 to 21 chunks of every
+# screen, against a stream-realistic 5 ms stagger. Staking a PENDING
+# marker here, the instant the handoff gate above passes, closes that
+# window down to microseconds: a later chunk's own "does the directory
+# exist" check (below, unchanged) now finds it almost at once, and
+# MessageDisplay polls for the real decision instead of judging the
+# chunk's own shape. mkdir is the one non-builtin on this whole path - it
+# forks, unlike everything else in this file - but it runs ONLY here,
+# after the handoff gate, so the ordinary (non-candidate) chunk that is
+# the overwhelming common case still forks nothing (matrix L8). A failed
+# mkdir or printf (an unwritable tmp root, a race with another process) is
+# silently swallowed: it must never change this script's own exit status
+# or skip the Ruby handoff below - Ruby's own polling already fails open
+# (D5) when no decision ever appears.
+if [ "$is_index_zero" = 1 ]; then
+  mkdir -p "$MSGDIR" 2>/dev/null
+  printf '' > "$MSGDIR/PENDING" 2>/dev/null
+fi
 
 printf '%s' "$INPUT" | env -u RUBYOPT ruby "$SCRIPT_DIR/../scripts/hook-message-display"

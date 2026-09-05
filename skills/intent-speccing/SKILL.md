@@ -111,10 +111,13 @@ When the rulings are enough to build from:
    rulings say more than the record already does.
 3. **Self-verify.** Read `references/self-verify-checklist.md` before presenting; fix any
    failing check and re-verify from the top.
-4. **Present and hand off.** Present `spec.md` and the action files. Then offer the routes:
-   run it now inline when the work is small enough for direct mode; hand to `plastic-auto`
-   when the owner says auto and the checklist above passes (all decisions resolved, scope
-   bounded, dependencies named, success criteria defined); or keep thinking.
+4. **Present and hand off.** Print `ruby ~/.plastic/scripts/report-screen plan <intent_dir>` as
+   the first characters of the reply: nothing before it, no fence, or the hook cannot paint it.
+   It carries Asked, Decisions, Steps, Mode, Reviewer, then the Steps and Risks tables, filled
+   from `spec.md` and the action files just written, never restated by eye. Then offer the
+   routes: run it now inline when the work is small enough for direct mode; hand to
+   `plastic-auto` when the owner says auto and the checklist above passes (all decisions
+   resolved, scope bounded, dependencies named, success criteria defined); or keep thinking.
 
 Report, in this order: which files were written (`spec.md` new or rewritten, the action
 files), the count of acceptance criteria, which `## Insights` rulings superseded an earlier

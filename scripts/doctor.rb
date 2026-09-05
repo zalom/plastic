@@ -10,8 +10,13 @@
 # Read-only — never modifies files.
 
 require "date"
+require "open3"
+require "timeout"
+require "fileutils"
+require "tmpdir"
 
 require_relative "lib/doctor_core"
+require_relative "lib/hook_replay"
 
 require_relative "lib/doctor_exclusions"
 require_relative "lib/qmd_sync"
@@ -30,6 +35,7 @@ require_relative "lib/power_tools"
 require_relative "lib/preflight"
 require_relative "lib/ruby_probe"
 require_relative "lib/doctor_session_ledger"
+require_relative "lib/intent_screen"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -45,6 +51,13 @@ class Doctor
   # Single source of truth for the required-field list lives in IntentValidator
   # (intent 60). Alias it here so the two can never drift.
   REQUIRED_FRONTMATTER_FIELDS = IntentValidator::REQUIRED_FIELDS
+
+  # Repo root, for the three display checks below that read shipped, static
+  # package content (the fixture fallback, the harness-adapters doc) rather
+  # than a runtime plastic_home path. Same derivation as
+  # StoreProvisioning::PACKAGE_ROOT (intent 61): scripts/doctor.rb lives one
+  # level under the root.
+  PACKAGE_ROOT = File.expand_path("..", __dir__)
 
 
 
@@ -1161,9 +1174,12 @@ end
   #
   # Doctor's fourth check scope, invoked by `--intent <id>`. Never a store-wide sweep:
   # resolves exactly one intent directory (mirrors scripts/end-intent's resolve_intent_dir /
-  # scripts/project-links's --intent disambiguation) and returns five checks, four
-  # FAIL-severity, one WARN-severity (intent_savepoint_truthful stays WARN per intent 134's
-  # binding advisory-only ruling; see spec.md D2/D8 - do NOT escalate it to FAIL).
+  # scripts/project-links's --intent disambiguation) and returns seven checks, four
+  # FAIL-severity, three WARN-severity: intent_savepoint_truthful stays WARN per intent 134's
+  # binding advisory-only ruling (see spec.md D2/D8 - do NOT escalate it to FAIL),
+  # intent_ticks_lag is WARN-only per intent 329's ruling that a lagging tick warns rather
+  # than blocks, and intent_reports_printed is WARN-only per intent 331f (never re-litigates
+  # a ledger predating the Report kind).
   def check_intent_end(id, store: nil, disposition: nil)
     intent_dir, scope = resolve_single_intent_dir(id, store: store)
     unless intent_dir
@@ -1185,6 +1201,8 @@ end
       intent_structure_check(intent_dir),
       intent_lifecycle_artifacts_check(intent_dir, disposition),
       intent_checklist_complete_check(intent_dir),
+      intent_ticks_lag_check(intent_dir),
+      intent_reports_printed_check(intent_dir),
       intent_links_projection_check_for(id, scope),
       intent_savepoint_truthful_check(intent_dir, index_path: index_path),
     ]
@@ -1260,6 +1278,80 @@ end
     else
       check(category: "intent_end", name: "intent_checklist_complete", status: "fail",
             message: "#{unchecked.size} unchecked checklist item(s) remain", details: unchecked)
+    end
+  end
+
+  # Intent 329: the checklist is the only input to the state screen's Progress bar, so an
+  # intent whose commit ledger has entries and whose checklist has no ticked item is
+  # reporting 0 progress on work that already landed. Advisory only (WARN), like
+  # intent_savepoint_truthful: a lagging tick is a lead's review finding, never a machine
+  # refusal. The commit count comes from this intent's own savepoint.md Commit ledger
+  # (intent 317 D17), never from git: git's detected base is the repo default branch, which
+  # is not the base a 2.0 intent branch forks from.
+  def intent_ticks_lag_check(intent_dir)
+    items = IntentScreen.checklist_items(intent_dir)
+    if items.empty?
+      return check(category: "intent_end", name: "intent_ticks_lag", status: "pass",
+                   message: "n/a: checklist.md has no items to tick")
+    end
+
+    ticked = items.count { |i| i[:done] }
+    commits = savepoint_commit_count(intent_dir)
+
+    if commits.positive? && ticked.zero?
+      check(category: "intent_end", name: "intent_ticks_lag", status: "warn",
+            message: "ticks lag the branch: #{commits} commit(s) recorded, " \
+                     "0 of #{items.size} checklist items ticked")
+    else
+      check(category: "intent_end", name: "intent_ticks_lag", status: "pass",
+            message: "#{ticked} of #{items.size} ticked, #{commits} commit(s) recorded")
+    end
+  end
+
+  # Intent 331f: every skill that shows state during Exec is bound to print a report screen and
+  # log a `Report` savepoint line (`savepoint-note --kind Report`). A commit landed with no
+  # Report line anywhere in the ledger is the exact defect this check exists to catch - the
+  # delivery ran but nothing on disk proves a screen was ever printed. WARN-only, like
+  # intent_ticks_lag: a lead's review finding, never a machine refusal. R6: never re-litigate
+  # history - an intent whose newest Commit line predates the day the Report kind shipped
+  # (Savepoint::REPORT_KIND_SINCE) passes, so every pre-existing ledger keeps passing
+  # `doctor --intent` (which exits 1 on an overall warn).
+  def intent_reports_printed_check(intent_dir)
+    path = File.join(intent_dir, "savepoint.md")
+    lines = File.exist?(path) ? File.readlines(path) : []
+    kinds = lines.filter_map { |l| l.strip.match(IntentScreen::SAVEPOINT_RE) }
+
+    commit_timestamps = kinds.select { |m| m[2] == "Commit" }.map { |m| m[1] }
+    if commit_timestamps.empty?
+      return check(category: "intent_end", name: "intent_reports_printed", status: "pass",
+                    message: "n/a: no commits recorded")
+    end
+
+    if kinds.any? { |m| m[2] == "Report" }
+      return check(category: "intent_end", name: "intent_reports_printed", status: "pass",
+                    message: "a Report line is recorded")
+    end
+
+    newest_commit_date = commit_timestamps.max[0, 10]
+    if newest_commit_date < Savepoint::REPORT_KIND_SINCE
+      return check(category: "intent_end", name: "intent_reports_printed", status: "pass",
+                    message: "n/a: newest commit (#{newest_commit_date}) predates the Report " \
+                             "kind (#{Savepoint::REPORT_KIND_SINCE})")
+    end
+
+    check(category: "intent_end", name: "intent_reports_printed", status: "warn",
+          message: "commits are recorded and no Report line exists")
+  end
+
+  # Count `Commit` lines in the intent's savepoint ledger, through the one regex that parses
+  # a savepoint line (IntentScreen::SAVEPOINT_RE; field 2 is the kind).
+  def savepoint_commit_count(intent_dir)
+    path = File.join(intent_dir, "savepoint.md")
+    return 0 unless File.exist?(path)
+
+    File.readlines(path).count do |line|
+      m = line.strip.match(IntentScreen::SAVEPOINT_RE)
+      m && m[2] == "Commit"
     end
   end
 
@@ -2388,6 +2480,240 @@ end
     end
   end
 
+  # --- Check category: display (intent 331e, D1) ---
+  #
+  # Three of the four `display` checks live HERE, not in doctor_core.rb: they
+  # need Open3/Timeout to spawn the installed hook as a real subprocess, and
+  # that must never attach to the SessionStart boot path
+  # (test/doctor_core_split_test.rb T2 pins doctor_core.rb's require set
+  # exactly). check_display_registration (the fourth, --core-scoped) lives in
+  # doctor_core.rb instead, alongside display_hook_launcher_name, which this
+  # file's check_display_paints reuses to name the SAME installed launcher.
+
+  # The ambient defeater active for THIS invocation, or nil. `no_color` is
+  # DI'd (default ENV["NO_COLOR"]) rather than read deep inside this method,
+  # so a test can force it on or off without touching the real process
+  # environment. Shared by check_display_paints (a defeater turns a
+  # would-be fail into a pass, R3) and check_display_not_defeated (a
+  # defeater is what it warns about).
+  def active_display_defeater(no_color: ENV["NO_COLOR"])
+    return "NO_COLOR" unless no_color.to_s.empty?
+
+    cfg = load_yaml_safe(File.join(plastic_home, "config.yml"))
+    display_cfg = cfg.is_a?(Hash) ? cfg["display"] : nil
+    return "display.ansi_screen: false in config.yml" if display_cfg.is_a?(Hash) &&
+                                                          display_cfg.fetch("ansi_screen", true) == false
+
+    nil
+  end
+
+  # The shipped fixture's path: plastic_home's own templates/ first (a real
+  # install), the package's own templates/ otherwise (running from a repo
+  # checkout, or an install whose templates/ predates this fixture). Neither
+  # existing means no fixture at all.
+  def display_fixture_path(package_root: PACKAGE_ROOT)
+    [File.join(plastic_home, "templates", "display-fixture.md"),
+     File.join(package_root, "templates", "display-fixture.md")].find { |p| File.file?(p) }
+  end
+
+  # The fixture's replayable text: its header comment (see
+  # templates/display-fixture.md) is for a human reading the file on disk,
+  # never sent through the hook.
+  def display_fixture_text(path)
+    File.read(path).sub(/\A<!--.*?-->\n\n?/m, "")
+  end
+
+  # display_hook_paints (D1, R1/R2/R3): replays the shipped fixture through
+  # the INSTALLED launcher (`<agent_dir>/hooks/plastic-message-display`,
+  # never this package's own hooks/message-display. That is R1's whole point: an
+  # installed launcher can predate the package's, and replaying the wrong
+  # one reports pass while the real stack is stale) and expects a painted
+  # (ANSI) screen back.
+  #
+  # A known defeater active (NO_COLOR, or display.ansi_screen: false) turns
+  # a no-SGR result into a PASS, naming the defeater and noting it reflects
+  # this invocation's own environment (R3). display_not_defeated is what
+  # warns about a defeater; this check never fails because of one.
+  def check_display_paints(agent_key, no_color: ENV["NO_COLOR"],
+                            tmp_dir_factory: -> { Dir.mktmpdir("plastic-doctor-display") },
+                            timeout_seconds: 10, package_root: PACKAGE_ROOT)
+    config = agents[agent_key]
+    unless agent_key == "claude"
+      return [check(
+        category: "display", name: "display_hook_paints", status: "pass",
+        message: "#{config[:name]} is plain by contract; no display hook to replay"
+      )]
+    end
+
+    fixture_path = display_fixture_path(package_root: package_root)
+    unless fixture_path
+      return [check(
+        category: "display", name: "display_hook_paints", status: "fail",
+        message: "Shipped display fixture is missing (templates/display-fixture.md)",
+        fixable: false
+      )]
+    end
+
+    agent_dir = config[:dir]
+    launcher_path = File.join(agent_dir, "hooks", display_hook_launcher_name)
+    unless File.file?(launcher_path) && File.executable?(launcher_path)
+      return [check(
+        category: "display", name: "display_hook_paints", status: "fail",
+        message: "Installed launcher #{tilde(launcher_path)} is missing or not executable; cannot replay",
+        fixable: true, fix_hint: DISPLAY_HOOK_FIX_HINT
+      )]
+    end
+
+    text = display_fixture_text(fixture_path)
+    tmp_dir = tmp_dir_factory.call
+    outs =
+      begin
+        HookReplay.replay(hook_path: launcher_path, tmp_root: tmp_dir, text: text,
+                           env: { "PLASTIC_HOME" => plastic_home }, timeout: timeout_seconds)
+      rescue StandardError => e
+        # Process.spawn (inside HookReplay) can raise before a pid ever
+        # exists: a permissions race, or a launcher that vanishes between the
+        # executable? check above and the spawn, or any other unexpected
+        # error. Unlike this codebase's defensive style elsewhere
+        # (read_json_safe, load_yaml_safe), nothing here degraded that into
+        # a clean check result, so an unlucky replay crashed the entire
+        # doctor run instead of failing just this one check (intent 331e,
+        # F6). `return` still runs the `ensure` below before unwinding.
+        return [check(
+          category: "display", name: "display_hook_paints", status: "fail",
+          message: "Replaying the installed launcher raised #{e.class}: #{e.message}",
+          fixable: false
+        )]
+      ensure
+        FileUtils.remove_entry(tmp_dir) if tmp_dir && File.exist?(tmp_dir)
+      end
+
+    if HookReplay.timed_out?(outs)
+      return [check(
+        category: "display", name: "display_hook_paints", status: "fail",
+        message: "Replaying the installed launcher timed out after #{timeout_seconds}s; painting could not be verified",
+        fixable: false
+      )]
+    end
+
+    defeater = active_display_defeater(no_color: no_color)
+    if defeater
+      return [check(
+        category: "display", name: "display_hook_paints", status: "pass",
+        message: "Painting is defeated by #{defeater} for this invocation; the replay's plain " \
+                  "output reflects that setting, not a broken hook"
+      )]
+    end
+
+    content = HookReplay.final_display_content(outs)
+    if content.to_s.include?("\e[")
+      [check(
+        category: "display", name: "display_hook_paints", status: "pass",
+        message: "The installed hook returned a painted (ANSI) screen"
+      )]
+    else
+      [check(
+        category: "display", name: "display_hook_paints", status: "fail",
+        message: "The installed hook returned no ANSI escape sequence; painting may be broken",
+        fixable: true, fix_hint: DISPLAY_HOOK_FIX_HINT
+      )]
+    end
+  end
+
+  # display_not_defeated (D1, R3/R4): warns, never fails, on each active
+  # defeater, naming the setting and its effect. Every result, pass or warn alike,
+  # names the verbose transcript view (Ctrl+O, R4): it redraws every
+  # screen as plain tables too, but it has no on-disk setting doctor can
+  # read, so its absence from these warnings is never proof that view paints.
+  def check_display_not_defeated(agent_key, no_color: ENV["NO_COLOR"])
+    config = agents[agent_key]
+    unless agent_key == "claude"
+      return [check(
+        category: "display", name: "display_not_defeated", status: "pass",
+        message: "#{config[:name]} is plain by contract; no display defeaters apply"
+      )]
+    end
+
+    warnings = []
+    warnings << "NO_COLOR is set: forces every screen to plain text for this invocation" unless no_color.to_s.empty?
+
+    cfg = load_yaml_safe(File.join(plastic_home, "config.yml"))
+    display_cfg = cfg.is_a?(Hash) ? cfg["display"] : nil
+    if display_cfg.is_a?(Hash) && display_cfg.fetch("ansi_screen", true) == false
+      warnings << "config.yml sets display.ansi_screen: false: forces every screen to plain text"
+    end
+
+    settings = read_json_safe(File.join(config[:dir], "settings.json"))
+    if settings.is_a?(Hash) && settings["verbose"] == true
+      warnings << "settings.json sets verbose: true: the verbose transcript view (Ctrl+O) redraws every screen as plain tables"
+    end
+
+    transcript_note = "The Ctrl+O verbose transcript view also redraws every screen as plain " \
+                      "tables and has no on-disk setting; its absence above is never proof that view paints."
+
+    if warnings.empty?
+      [check(
+        category: "display", name: "display_not_defeated", status: "pass",
+        message: "No known display defeaters active", details: [transcript_note]
+      )]
+    else
+      [check(
+        category: "display", name: "display_not_defeated", status: "warn",
+        message: "#{warnings.size} display defeater(s) active",
+        details: warnings + [transcript_note]
+      )]
+    end
+  end
+
+  # display_surfaces_documented (D1/D4): the harness-adapters doc names the
+  # three surface classes. Reads the package's own shipped doc: static
+  # content, not a runtime path, the same shape as check_skill_lint reading the
+  # package's own skills/ tree.
+  #
+  # `docs/` ships in NEITHER package.json's `files` list NOR
+  # InstallerCore's manifest (grep confirms zero references), so on every
+  # real install `package_root` resolves to a `~/.plastic` that has no
+  # `docs/` tree at all; only a repo checkout carries it. Absence of the
+  # doc there is therefore not a defect to report; it is this install
+  # having nothing to verify, the same skip-as-pass vocabulary D3 and R3
+  # already use elsewhere in this category. This check fails only when the
+  # doc DOES exist (a repo checkout) but has rotted: no `## Surfaces`
+  # section, or one missing a required literal.
+  def check_display_surfaces_documented(package_root: PACKAGE_ROOT)
+    doc_path = File.join(package_root, "docs", "reference", "harness-adapters.md")
+
+    unless File.file?(doc_path)
+      return [check(
+        category: "display", name: "display_surfaces_documented", status: "pass",
+        message: "Reference docs are not shipped to this install (#{tilde(doc_path)} absent); " \
+                  "nothing to verify"
+      )]
+    end
+
+    content = File.read(doc_path)
+    section = content[/^## Surfaces\n(.*?)(?=\n## |\z)/m, 1].to_s
+
+    required = ["Claude Code normal view", "agents view", "Codex", "claude -p", "verbose transcript view"]
+    missing = required.reject { |literal| section.include?(literal) }
+
+    if section.empty?
+      [check(
+        category: "display", name: "display_surfaces_documented", status: "fail",
+        message: "docs/reference/harness-adapters.md has no ## Surfaces section", fixable: false
+      )]
+    elsif missing.empty?
+      [check(
+        category: "display", name: "display_surfaces_documented", status: "pass",
+        message: "harness-adapters.md documents every display surface class"
+      )]
+    else
+      [check(
+        category: "display", name: "display_surfaces_documented", status: "fail",
+        message: "## Surfaces section is missing: #{missing.join(', ')}", details: missing, fixable: false
+      )]
+    end
+  end
+
   # --- Run all checks ---
 
   def run_checks(agent_key)
@@ -2406,6 +2732,10 @@ end
     all_checks += check_session_ledger(scopes: ["global"])
     all_checks += check_skill_lint
     all_checks += check_install_integrity
+    all_checks += check_display_registration(agent_key)
+    all_checks += check_display_paints(agent_key)
+    all_checks += check_display_not_defeated(agent_key)
+    all_checks += check_display_surfaces_documented
 
     summarize(all_checks, agent_key)
   end

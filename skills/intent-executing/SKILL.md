@@ -63,6 +63,8 @@ Dispatch ONE executor subagent and give it the whole delivery: every task's full
 
 After each commit lands (the red commit and every commit after it), append a `Commit` line to the savepoint ledger: `ruby ~/.plastic/scripts/savepoint-note <intent_dir> --kind Commit --text "<sha> <what it proves>"` (intent 317, D17). This is what feeds `report-screen delay`; a commit with no line is a gap the delay report cannot explain.
 
+Print `ruby ~/.plastic/scripts/report-screen state <intent_dir> --changed "<what just landed>"` as the first characters of the reply, nothing before it, no fence, right after the red commit and again once the suite goes green (intent 331f).
+
 Read its response by code:
 - DONE or DONE_WITH_CONCERNS → proceed to Step 3.
 - NEEDS_CONTEXT → provide the missing context, re-dispatch the executor.
@@ -108,11 +110,15 @@ Capture observations in `## Insights`. When ALL checklist items are checked:
 
 ## Tick-as-you-land
 
-As each task lands, in the same edit: move its checklist item from `## In
-Progress` to `## Completed` in `checklist.md`, and add one `## Session Log`
-row (Date, Items Completed, Notes). Do not batch several tasks' worth of
-checklist updates into one later edit; tick the moment the task is verified,
-before moving to the next task.
+A tick is two edits, made together: mark the item's box `[x]`, and move its
+checklist item from `## In Progress` to `## Completed` in `checklist.md`;
+then add one `## Session Log` row (Date, Items Completed, Notes). The box is
+the half the state screen's Progress bar reads: `IntentScreen::ITEM_RE` and
+`progress_fields` count `[x]`, not which section the line sits in, so a line
+moved to `## Completed` with its box left unmarked still reads as zero
+progress. Do not batch several tasks' worth of checklist updates into one
+later edit; tick the moment the task is verified, before moving to the next
+task.
 
 ## Verify before every owner review
 

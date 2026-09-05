@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require "json"
 require_relative "screen_paint"
 
 # MessageDisplay (intent 316a, O4/O5, round 3 concurrency fix) - the Claude
@@ -46,25 +47,87 @@ require_relative "screen_paint"
 # buffered or blanked. D10 (any failure while finalizing returns the
 # buffered original, never nil, never "") and D12 (color: false never
 # buffers or blanks anything) are unchanged.
+#
+# Intent 331a: engagement is late-capable. A chunk carrying a screen opener
+# engages the message from that chunk on, whatever its own index - not only
+# chunk 0. Chunks before it pass through untouched (they already reached the
+# terminal live, via the ordinary passthrough path). The engaging chunk
+# returns the text before the opener as its displayContent and buffers the
+# opener onward at its OWN index; SCREEN now carries that index (a decimal
+# integer, not an empty marker) so the final chunk - a separate process in
+# production - knows where to start waiting and splicing (D3/D6), and so
+# NOSCREEN, no longer a final answer (D2), can be replaced once a later
+# chunk engages. A fence line immediately wrapping the opener is dropped
+# (D4): a lone fence in the engaging chunk's own prefix, and a lone closing
+# fence right after the painted region in `finalize`. Neither ever reaches
+# back into an earlier, already-displayed chunk.
+#
+# Intent 331a1: the decision marker (D1-D3). 331a's own comment above already
+# names the concurrency; what it did not close is chunk 0's own boot time.
+# Chunk 0's Ruby process takes on the order of 150 ms to boot before it ever
+# writes SCREEN or NOSCREEN - long enough, under a fast real stream, for a
+# dozen or more later chunks to be judged with nothing on disk at all, so
+# every one of them fell back to the cheap shape test and, being ordinary
+# non-table prose, passed straight through plain. The bash launcher (hooks/
+# message-display) now stakes a PENDING file with builtins the instant
+# chunk 0 is handed off, before Ruby ever starts, so a later chunk finds the
+# message directory within microseconds instead of after Ruby's own boot.
+# While PENDING exists, a later chunk polls for the real decision WHATEVER
+# ITS OWN SHAPE looks like - `maybe_screen?` is not consulted at all, because
+# a decision is certainly coming, and the cheap shape gate exists only for
+# the "nothing at all exists yet, is a wait even worth paying for" case,
+# which no longer applies once something IS on disk. A PENDING whose mtime
+# is already older than THIS chunk's own poll budget reads as NOSCREEN (D2,
+# fail open): chunk 0 must have died or hung, and waiting out a whole budget
+# for a decision that is provably not coming would only delay every chunk
+# behind it. That staleness check runs ONCE, before any polling, since a
+# file's mtime never changes while this process looks at it. The poll
+# budget itself scales with the chunk's own index (`budget_ms`, D3): base
+# wait_ms plus index_wait_ms per index, capped at max_wait_ms, so the final
+# chunk of a long streamed message (335 chunks, in the live capture that
+# reproduced this) is allowed to wait for a decision that is certainly on
+# its way, while chunk 1 of an ordinary short message still fails open
+# quickly. Chunk 0 removes PENDING the moment it writes SCREEN or NOSCREEN
+# (`write_screen`/`write_noscreen`), on both paths, so "a decision already
+# exists" and "PENDING is still there" are never both true for long.
 class MessageDisplay
   # 317a (A4): engagement is grammar, not identity - any screen-family
   # opener engages, with NO intent-id resolution (the roster and delay
-  # screens have none to resolve). ScreenPaint owns the full grammar.
+  # screens have none to resolve). ScreenPaint owns the full grammar. Used
+  # per LINE (331a), not only against the start of a whole delta: a chunk's
+  # own text is scanned line by line for the first line that opens a screen,
+  # wherever it falls.
   ENGAGE_RE = /\A(?:##? )?[▶✔] /.freeze
+  # 331a (D4): a lone fence line, opening (optional info string) or closing
+  # (never one), by itself on its own line.
+  FENCE_OPEN_RE = /\A```[^\n]*\z/.freeze
+  FENCE_CLOSE_RE = /\A```\z/.freeze
   BUFFER_DIR_NAME = "plastic-message-display"
   BUFFER_MAX_AGE_SECONDS = 3600
   SCREEN_FILE = "SCREEN"
   NOSCREEN_FILE = "NOSCREEN"
+  # 331a1 (D1): staked by the bash launcher, with builtins, the instant
+  # chunk 0 is handed off - before Ruby ever boots. Replaced by SCREEN or
+  # NOSCREEN (D2), never read by this class as a decision in its own right.
+  PENDING_FILE = "PENDING"
 
+  # `trace` (331a1): an optional callable taking one Hash per chunk. The class
+  # stays pure - it never reads PLASTIC_HOOK_TRACE, never opens a file of its
+  # own; the CLI reads the variable and injects `file_trace`. nil, the
+  # default, costs the common path one `unless` and nothing else.
   def initialize(tmp_root:, plastic_home:, color:, now:, wait_ms: 300, poll_ms: 20,
-                 sleeper: ->(seconds) { sleep(seconds) })
+                 index_wait_ms: 20, max_wait_ms: 2000,
+                 sleeper: ->(seconds) { sleep(seconds) }, trace: nil)
     @tmp_root = tmp_root
     @plastic_home = plastic_home
     @color = color
     @now = now
     @wait_ms = wait_ms
     @poll_ms = poll_ms
+    @index_wait_ms = index_wait_ms
+    @max_wait_ms = max_wait_ms
     @sleeper = sleeper
+    @trace = trace
   end
 
   def handle(payload)
@@ -84,11 +147,28 @@ class MessageDisplay
 
     dir = self.class.buffer_path(tmp_root: @tmp_root, session_id: session_id, message_id: message_id)
 
-    if index == 0
-      handle_chunk_zero(dir, delta, cwd, final)
-    else
-      handle_later_chunk(dir, index, delta, final)
-    end
+    @trace_detail = {}
+    result =
+      if index == 0
+        handle_chunk_zero(dir, delta, cwd, final)
+      else
+        handle_later_chunk(dir, index, delta, final)
+      end
+
+    emit_trace(index, final, result)
+    result
+  end
+
+  # One row per chunk, only when a sink was injected. Never raises: a trace
+  # is a diagnostic and must not be able to change what the hook returns.
+  def emit_trace(index, final, result)
+    return unless @trace
+
+    row = { "index" => index, "final" => final,
+            "displayed_bytes" => result.is_a?(String) ? result.bytesize : nil }
+    @trace.call(row.merge(@trace_detail.to_h))
+  rescue StandardError
+    nil
   end
 
   # The message directory both this class and the bash launcher (hooks/
@@ -107,35 +187,73 @@ class MessageDisplay
     File.join(buffer_path(tmp_root: tmp_root, session_id: session_id, message_id: message_id), SCREEN_FILE)
   end
 
+  # A trace sink that appends one JSON object per chunk to `path`. Every
+  # failure is swallowed: an unwritable path must never turn a diagnostic
+  # into a broken hook (D5, fail open).
+  def self.file_trace(path)
+    lambda do |row|
+      File.open(path, "a") { |f| f.puts(JSON.generate(row)) }
+    rescue StandardError
+      nil
+    end
+  end
+
   def self.noscreen_path(tmp_root:, session_id:, message_id:)
     File.join(buffer_path(tmp_root: tmp_root, session_id: session_id, message_id: message_id), NOSCREEN_FILE)
+  end
+
+  # 331a1 (matrix L1): the bash launcher (hooks/message-display) and this
+  # class must agree, byte for byte, on where PENDING lives - the same
+  # contract `buffer_path` already carries for SCREEN/NOSCREEN (matrix 40).
+  def self.pending_path(tmp_root:, session_id:, message_id:)
+    File.join(buffer_path(tmp_root: tmp_root, session_id: session_id, message_id: message_id), PENDING_FILE)
   end
 
   private
 
   # Chunk 0 decides, synchronously, before anything else touches this
-  # message: recognize the marker (after leading whitespace only) AND
-  # resolve the id, both before anything is buffered or blanked (F4). Either
-  # failure writes NOSCREEN so every later chunk can decide instantly rather
-  # than waiting out its own budget for a decision that will never arrive.
+  # message: does ITS OWN delta carry an opener anywhere (331a; used to be
+  # only at the very start)? No opener writes NOSCREEN so every later chunk
+  # can decide instantly rather than waiting out its own budget for a
+  # decision that will never arrive - but NOSCREEN is no longer final (D2):
+  # a later chunk carrying an opener still replaces it.
   def handle_chunk_zero(dir, delta, _cwd, final)
-    stripped = delta.sub(/\A[ \t]+/, "")
-    unless ENGAGE_RE.match?(stripped)
+    split = split_at_opener(delta)
+    unless split
+      @trace_detail["decision"] = "noscreen"
       write_noscreen(dir)
       return nil
     end
 
-    write_screen(dir)
-    write_chunk(dir, 0, delta)
-    final ? finalize_final(dir, 0) : ""
+    @trace_detail["decision"] = "engage"
+    engage(dir, 0, split, final)
   end
 
-  # A later chunk (index > 0) never redoes chunk 0's work: it only asks
-  # whether a decision already exists, waiting for one (bounded) when it
-  # does not and the chunk looks like it could matter. The final chunk
-  # always waits for the decision regardless of its own shape.
+  # A later chunk (index > 0) tests its OWN delta for an opener FIRST,
+  # before consulting any existing decision (331a, D2): an opener engages
+  # the message whatever the current decision says, including when NOSCREEN
+  # is already on disk. Only once its own delta carries no opener does it
+  # fall back to the original decision-driven wait.
   def handle_later_chunk(dir, index, delta, final)
-    decision = wait_for_decision(dir, gate_delta: final ? nil : delta)
+    # 331a1: an opener engages only a message that is NOT already a screen.
+    # 331a's late engagement exists for the prose-first reply, where chunk 0
+    # wrote NOSCREEN and a later chunk carries the title; it must not fire
+    # again once SCREEN is on disk. A reply can hold several screens back to
+    # back - the roster is a table then ten cards, the session report is many
+    # delivered screens - and re-engaging on each one returned that chunk's
+    # own prefix as raw Markdown and rewrote the start index, so the final
+    # chunk spliced from the LAST opener and everything before it reached the
+    # terminal unpainted. Inside an engaged message a later opener is simply
+    # content: it is buffered like any other line and the painter, which
+    # already understands a run of screens, lays all of them out.
+    split = split_at_opener(delta)
+    if split && !engaged?(dir)
+      @trace_detail["decision"] = "engage"
+      return engage(dir, index, split, final)
+    end
+
+    decision = wait_for_decision(dir, gate_delta: final ? nil : delta, index: index)
+    @trace_detail["decision"] = decision.to_s
 
     return nil unless decision == :screen
 
@@ -143,17 +261,83 @@ class MessageDisplay
     final ? finalize_final(dir, index) : ""
   end
 
-  # Checks for an existing decision first (free) and only pays the cheap
-  # shape test, then the bounded poll, when neither SCREEN nor NOSCREEN is
-  # there yet. `gate_delta: nil` (the final chunk) skips the shape test
-  # entirely and always polls for the decision.
-  def wait_for_decision(dir, gate_delta:)
+  def engaged?(dir)
+    File.exist?(File.join(dir, SCREEN_FILE))
+  end
+
+  # Engages the message starting at THIS chunk (whatever its index): writes
+  # SCREEN carrying this chunk's index (replacing any NOSCREEN, D2/D6),
+  # buffers the opener onward at this chunk's own index, and returns the
+  # text before the opener (fence-stripped, D4) as the displayContent. When
+  # this chunk is also final, the prefix is prepended to whatever `finalize`
+  # produces (painted, or the buffered original on a fail-open) rather than
+  # dropped.
+  def engage(dir, index, split, final)
+    prefix, rest = split
+    prefix = strip_preceding_fence(prefix)
+    write_screen(dir, index)
+    remove_noscreen(dir)
+    write_chunk(dir, index, rest)
+
+    return prefix unless final
+
+    finalized = finalize_final(dir, index)
+    prefix.empty? ? finalized : "#{prefix}#{finalized}"
+  end
+
+  # Scans `delta` line by line for the first line that opens a screen
+  # (331a: an opener can fall anywhere in a chunk's own delta, not only at
+  # its start). Returns [prefix, rest] - the text before that line, and the
+  # line onward - or nil when no line in this delta engages.
+  def split_at_opener(delta)
+    lines = delta.each_line.to_a
+    idx = lines.index { |line| ENGAGE_RE.match?(line.sub(/\A[ \t]+/, "")) }
+    return nil unless idx
+
+    [lines[0...idx].join, lines[idx..].join]
+  end
+
+  # 331a (D4): a lone fence line immediately preceding the opener, inside
+  # THIS SAME chunk's own prefix, is dropped - it never reaches the screen
+  # (it would otherwise print directly above the painted block). A fence in
+  # an earlier chunk is never touched: it was already displayed, verbatim,
+  # by that earlier chunk's own return value.
+  def strip_preceding_fence(prefix)
+    lines = prefix.each_line.to_a
+    return prefix if lines.empty?
+    return prefix unless FENCE_OPEN_RE.match?(lines.last.strip)
+
+    lines[0...-1].join
+  end
+
+  # Checks for an existing decision first (free). Then, 331a1 (D1/D2), the
+  # whole fix: when PENDING exists, a decision is certainly coming, so this
+  # chunk polls for it WHATEVER ITS OWN SHAPE looks like - `maybe_screen?`
+  # is never even consulted on this branch - unless PENDING is already
+  # stale (older than this chunk's own budget), which reads as NOSCREEN at
+  # once, fail open, without ever polling. Only when there is no PENDING
+  # AT ALL (chunk 0 has not even been handed off to the bash launcher yet,
+  # or this replay never wrote one) does today's original behavior apply:
+  # the cheap shape test gates whether a bounded poll is worth paying for.
+  # `gate_delta: nil` (the final chunk) skips that shape test entirely and
+  # always polls.
+  def wait_for_decision(dir, gate_delta:, index:)
     decision = read_decision_now(dir)
     return decision if decision
 
+    if pending?(dir)
+      return :noscreen if pending_stale?(dir, index)
+
+      return poll_for_decision(dir, index)
+    end
+
     return :timeout if gate_delta && !maybe_screen?(gate_delta)
 
-    max_polls_for_budget.times do
+    poll_for_decision(dir, index)
+  end
+
+  def poll_for_decision(dir, index)
+    max_polls_for_budget(index).times do
       @sleeper.call(@poll_ms / 1000.0)
       decision = read_decision_now(dir)
       return decision if decision
@@ -169,6 +353,38 @@ class MessageDisplay
     nil
   end
 
+  def pending?(dir)
+    File.exist?(File.join(dir, PENDING_FILE))
+  end
+
+  # Checked ONCE, before any polling - a file's mtime never changes while
+  # this process is looking at it, so re-checking inside the poll loop
+  # would only ever repeat the same answer. Any error reading the mtime
+  # (a race where PENDING vanished between `pending?` and here, most
+  # likely because the real decision just landed) is NOT staleness: it
+  # falls through to the ordinary poll, which will pick up that decision
+  # on its very next read.
+  def pending_stale?(dir, index)
+    age_ms = (@now.to_f - File.mtime(File.join(dir, PENDING_FILE)).to_f) * 1000
+    age_ms > budget_ms(index)
+  rescue StandardError
+    false
+  end
+
+  # 331a (M5a): the start index crosses process boundaries through SCREEN's
+  # own content, never in-memory state - the final chunk is routinely a
+  # SEPARATE process from the one that engaged. An empty or missing file
+  # reads back as 0 (chunk 0 engaged, today's shape, so nothing that ever
+  # wrote an empty SCREEN breaks).
+  def read_start_index(dir)
+    path = File.join(dir, SCREEN_FILE)
+    return 0 unless File.exist?(path)
+
+    File.read(path).to_i
+  rescue StandardError
+    0
+  end
+
   # Cheap, local, no file I/O: could this chunk's own delta plausibly be
   # part of an intent screen (ignoring leading whitespace)? Every chunk of
   # every ordinary prose message answers no, at zero cost.
@@ -177,46 +393,70 @@ class MessageDisplay
     stripped.empty? || stripped.start_with?("|") || stripped.start_with?("**")
   end
 
-  # The final chunk additionally waits (same budget) for every earlier chunk
-  # file to exist before it reassembles and splices. On timeout it proceeds
-  # anyway with whatever is there (matrix, lead's guard): never nil, never
-  # swallowed.
+  # The final chunk additionally waits (same budget) for every chunk file
+  # from the start index onward to exist before it reassembles and splices
+  # (331a, D3/M5: from the start index, not from 0 - chunks before the
+  # engaging one were never buffered at all, so waiting for them would only
+  # ever burn the whole budget for files that will never appear). On
+  # timeout it proceeds anyway with whatever is there (matrix, lead's
+  # guard): never nil, never swallowed.
   def finalize_final(dir, index)
-    wait_for_chunk_files(dir, index)
+    start_index = read_start_index(dir)
+    wait_for_chunk_files(dir, start_index, index)
 
     buffered = nil
     begin
-      buffered = read_buffered_chunks(dir, index)
+      buffered = read_buffered_chunks(dir, start_index, index)
       finalize(buffered, nil)
     rescue StandardError
-      buffered
+      # A read failing inside the assignment above leaves `buffered` at its
+      # nil default (the assignment never completes), which the review pass
+      # caught: D8/D10 promise the buffered original on any finalize
+      # failure, never nil, once chunks were blanked. `||=` covers exactly
+      # that gap without touching the ordinary case (buffered already holds
+      # the real chunks read before `finalize` itself raised).
+      buffered ||= ""
     ensure
       FileUtils.rm_rf(dir)
     end
   end
 
-  def wait_for_chunk_files(dir, index)
-    return if index <= 0
+  # 331a1 (D3): index-scaled too, same as the decision poll - the final
+  # chunk of a long streamed message (335 chunks, in the live capture that
+  # reproduced this) must be allowed to wait long enough for the earlier
+  # chunk files to land, not just the base wait_ms an ordinary short
+  # message gets by with.
+  def wait_for_chunk_files(dir, start_index, index)
+    return if index <= start_index
 
-    needed = (0...index).map(&:to_s)
-    max_polls_for_budget.times do
+    needed = (start_index...index).map(&:to_s)
+    max_polls_for_budget(index).times do
       return if needed.all? { |n| File.exist?(File.join(dir, n)) }
 
       @sleeper.call(@poll_ms / 1000.0)
     end
   end
 
-  def max_polls_for_budget
-    return 0 unless @poll_ms.to_f.positive?
-
-    (@wait_ms / @poll_ms.to_f).ceil
+  # 331a1 (D3): base wait_ms plus index_wait_ms per chunk index, capped at
+  # max_wait_ms - a chunk deep into a long streamed message is certainly
+  # going to see its decision eventually, so it is allowed to wait longer
+  # than chunk 1 of an ordinary short message.
+  def budget_ms(index)
+    [@wait_ms + @index_wait_ms * index.to_i, @max_wait_ms].min
   end
 
-  # Whatever chunk files exist, in index order, concatenated -- gaps (a
-  # chunk that never arrived, or arrived too late) are skipped rather than
-  # blocking reassembly (lead's guard: never return nothing).
-  def read_buffered_chunks(dir, index)
-    (0..index).filter_map do |i|
+  def max_polls_for_budget(index)
+    return 0 unless @poll_ms.to_f.positive?
+
+    (budget_ms(index) / @poll_ms.to_f).ceil
+  end
+
+  # Whatever chunk files exist FROM THE START INDEX onward, in index order,
+  # concatenated -- gaps (a chunk that never arrived, or arrived too late)
+  # are skipped rather than blocking reassembly (lead's guard: never return
+  # nothing).
+  def read_buffered_chunks(dir, start_index, index)
+    (start_index..index).filter_map do |i|
       path = File.join(dir, i.to_s)
       File.exist?(path) ? File.read(path) : nil
     end.join
@@ -239,29 +479,85 @@ class MessageDisplay
     start = lines.index { |l| ScreenPaint.classify(l) == :opener }
     return buffered unless start
 
-    stop = ScreenPaint.region_end(lines, start)
-    painted = ScreenPaint.paint(lines[start...stop].join, color: true, markdown_safe: true)
+    region_stop = ScreenPaint.region_end(lines, start)
+    painted = ScreenPaint.paint(lines[start...region_stop].join, color: true, markdown_safe: true)
+    trace_region(buffered, lines, start, region_stop, painted)
     return buffered unless painted
 
-    suffix = lines[stop..].to_a.join.sub(/\A\n+/, "")
+    # 331a (D4): a lone CLOSING fence immediately after the painted region is
+    # dropped - never the painting boundary itself (region_stop, used above,
+    # is untouched), only where the suffix starts. An unrelated fenced code
+    # block further down, with prose or a blank line between it and the
+    # region, is never adjacent, so it always survives verbatim (M8b); a
+    # closing fence never carries an info string, so an adjacent OPENING
+    # fence of a real code block (which usually does) is never mistaken for
+    # it either.
+    suffix_start = region_stop
+    suffix_start += 1 if suffix_start < lines.length && FENCE_CLOSE_RE.match?(lines[suffix_start].strip)
+
+    suffix = lines[suffix_start..].to_a.join.sub(/\A\n+/, "")
     out = +"#{lines[0...start].join}#{painted.rstrip}\n"
     out << "\n#{suffix}" unless suffix.empty?
     out
+  end
+
+  # What the final chunk actually painted, for the opt-in trace: how much was
+  # buffered, where the region ran, and the first line the grammar rejected -
+  # the one fact a terminal capture cannot give you. Computed only when a
+  # sink was injected, so an ordinary run pays nothing.
+  def trace_region(buffered, lines, start, region_stop, painted)
+    return unless @trace
+
+    rejected = ScreenPaint.first_rejected(lines, start)
+    @trace_detail.merge!(
+      "buffered_bytes" => buffered.bytesize,
+      "buffered_lines" => lines.length,
+      "region_start" => start,
+      "region_stop" => region_stop,
+      "painted" => !painted.nil?,
+      "first_rejected_line" => rejected && { "index" => rejected[0], "text" => rejected[1][0, 200] },
+    )
+  rescue StandardError
+    nil
   end
 
   def write_chunk(dir, index, delta)
     atomic_write(File.join(dir, index.to_s), delta)
   end
 
-  # IntentScreen/IntentScreenAnsi's store_root: is the TIER root (what HOLDS
-  # store/ — e.g. .../projects/<slug> or plastic_home itself), never the
-  # store/ directory itself; resolve_intent_dir's `root:` is already that.
-  def write_screen(dir)
-    atomic_write(File.join(dir, SCREEN_FILE), "")
+  # SCREEN's content is the engaging chunk's own index, as a decimal integer
+  # (331a, D6) - read back by `read_start_index` so the final chunk (a
+  # separate process, in production) knows where to start waiting and
+  # splicing, and so `finalize_final` never touches chunks that were passed
+  # through untouched before engagement.
+  # 331a1 (D2): the decision REPLACES PENDING, on this path too, whichever
+  # chunk turns out to be the one that engages.
+  def write_screen(dir, index)
+    atomic_write(File.join(dir, SCREEN_FILE), "#{index}\n")
+    remove_pending(dir)
   end
 
+  # 331a1 (D2): same replacement on the NOSCREEN path, so a later chunk
+  # never finds both PENDING and NOSCREEN and has to choose between them.
   def write_noscreen(dir)
     atomic_write(File.join(dir, NOSCREEN_FILE), "")
+    remove_pending(dir)
+  end
+
+  # 331a (D2/D6): NOSCREEN is no longer a final answer - a later chunk that
+  # engages replaces it with SCREEN and, for safety, removes NOSCREEN so a
+  # stale marker can never be read back once the real decision exists.
+  def remove_noscreen(dir)
+    FileUtils.rm_f(File.join(dir, NOSCREEN_FILE))
+  end
+
+  # 331a1 (D2): removal must never raise - a decision was already written
+  # successfully by the time this runs, and a stray filesystem error here
+  # must never turn a successful decision into an unhandled exception.
+  def remove_pending(dir)
+    FileUtils.rm_f(File.join(dir, PENDING_FILE))
+  rescue StandardError
+    nil
   end
 
   def atomic_write(path, content)

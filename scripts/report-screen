@@ -2,15 +2,21 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# report-screen - the three delivery-report screens (intent 317): mid-delivery
-# state, post-delivery delivered, and delay. Each fills from the record via
+# report-screen - the pre-delivery plan (intent 331b), the four delivery
+# reports: mid-delivery state, post-delivery delivered, and delay (intent
+# 317), plus session, the whole of one session's delivered work followed by
+# the roster (intent 330). Each fills from the record via
 # scripts/lib/report_screen.rb; no number here is written by eye.
 #
 # Usage:
+#   report-screen plan <intent_dir> [--ansi]
 #   report-screen state <intent_dir> [--changed "<text>"] [--ansi]
 #   report-screen state --all <store_root> [--changed "<text>"] [--ansi]
 #   report-screen delivered <intent_dir> [--ansi] [--repo <dir>]
 #   report-screen delay <intent_dir> [--ansi]
+#   report-screen session <tier_root> [--session <id>] [--since <iso>]
+#                                     [--ledger-root <dir>] [--ansi]
+#   report-screen roadmap <roadmap.md> plan|state|delivered [--ansi] [--store-root <dir>]
 #
 # --ansi delegates to ScreenPaint (intent 317a, D1), the parser/re-layouter
 # in the shared TUI core. Selection is by capability, never by harness:
@@ -28,6 +34,14 @@ require "shellwords"
 require_relative "lib/report_screen"
 require_relative "lib/intent_screen"
 require_relative "lib/screen_paint"
+require_relative "lib/session_ledger"
+
+# Intent 331a (D6/R8): every caller-added screen kind file registers itself
+# on load (ScreenPaint.register), so this glob is the ONLY wiring a new kind
+# needs - no edit here, no edit to screen_paint.rb. Sorted for a
+# deterministic load order; tolerates the directory being absent or empty
+# (Dir.glob answers [] either way), which is this repo's own state today.
+Dir.glob(File.join(__dir__, "lib", "screens", "*.rb")).sort.each { |f| require_relative f }
 
 def usage_abort(message)
   warn "report-screen: #{message}"
@@ -39,10 +53,13 @@ end
 # on the delivered screen is the release that merge shipped in. The
 # repository comes from --repo, else from projects.yml beside the store (the
 # installed layout, <home>/projects/<slug>/store/<id>), else the repository
-# this script lives in (the in-repo layout). No merge sha, no repository, or
-# no containing tag all answer nil, and the screen says "not recorded"
-# rather than guessing from HEAD (D14). The pure module never reads git.
-def resolve_repo(intent_dir, explicit_repo, script_dir)
+# this script lives in (the in-repo layout, `include_self: true`) - unless
+# `include_self: false` (the branch reader, D23), in which case a global
+# intent's repo never falls back to the script's own repository, since that
+# is not the intent's repository at all. No merge sha, no repository, or no
+# containing tag all answer nil, and the screen says "not recorded" rather
+# than guessing from HEAD (D14). The pure module never reads git.
+def resolve_repo(intent_dir, explicit_repo, script_dir, include_self: true)
   candidates = []
   candidates << File.expand_path(explicit_repo) if explicit_repo
   if (m = intent_dir.match(%r{\A(.*)/projects/([^/]+)/store/[^/]+\z}))
@@ -59,7 +76,7 @@ def resolve_repo(intent_dir, explicit_repo, script_dir)
       candidates << File.expand_path(path) unless path.empty?
     end
   end
-  candidates << File.expand_path("..", script_dir)
+  candidates << File.expand_path("..", script_dir) if include_self
   candidates.find { |c| File.exist?(File.join(c, ".git")) }
 end
 
@@ -78,12 +95,40 @@ def git_tag_reader(explicit_repo:, script_dir:)
   end
 end
 
+# D9/D23: the injected branch reader. flow_base (a pure YAML read, never
+# git) wins when the intent's project names a flow base; otherwise the
+# repository's remote HEAD, else whichever of main/master exists. Resolves
+# the repo with `include_self: false` (D23): a global-store intent must
+# never fall back to the script's OWN repository (~/.plastic itself, on
+# "main" in the installed layout) and print a confident, wrong branch.
+def git_branch_reader(explicit_repo:, script_dir:)
+  lambda do |intent_dir|
+    flow = ReportScreen.flow_base(intent_dir)
+    next flow if flow && !flow.to_s.empty?
+
+    repo = resolve_repo(intent_dir, explicit_repo, script_dir, include_self: false)
+    next nil unless repo
+
+    branch = `git -C #{repo.shellescape} symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null`.strip
+    branch = branch.sub(%r{\Aorigin/}, "")
+    next branch unless branch.empty?
+
+    %w[main master].find do |b|
+      system("git", "-C", repo, "rev-parse", "--verify", "--quiet", b, out: File::NULL, err: File::NULL)
+    end
+  end
+end
+
 args = ARGV.dup
 verb = args.shift
 changed = nil
 ansi = false
 template_path = nil
 repo_flag = nil
+session_flag = nil
+since_flag = nil
+ledger_root_flag = nil
+store_root_flag = nil
 positional = []
 
 while (arg = args.shift)
@@ -99,13 +144,21 @@ while (arg = args.shift)
     repo_flag = args.shift or usage_abort("--repo needs a path")
   when "--template"
     template_path = args.shift or usage_abort("--template needs a path")
+  when "--session"
+    session_flag = args.shift or usage_abort("--session needs a value")
+  when "--since"
+    since_flag = args.shift or usage_abort("--since needs a value")
+  when "--ledger-root"
+    ledger_root_flag = args.shift or usage_abort("--ledger-root needs a path")
+  when "--store-root"
+    store_root_flag = args.shift or usage_abort("--store-root needs a path")
   else
     usage_abort("unknown flag #{arg.inspect}") if arg.start_with?("--") && arg != "--all"
     positional << arg
   end
 end
 
-usage_abort("usage: report-screen state|delivered|delay <intent_dir> [--changed \"<text>\"] [--ansi]") unless verb
+usage_abort("usage: report-screen plan|state|delivered|delay|session <intent_dir> [--changed \"<text>\"] [--ansi]") unless verb
 
 all_mode = positional.delete("--all") ? true : false
 target = positional.first
@@ -119,6 +172,16 @@ def paint(text, ansi_enabled, _renderer_path = nil)
 end
 
 case verb
+when "plan"
+  usage_abort("usage: report-screen plan <intent_dir> [--ansi]") unless target
+  intent_dir = File.expand_path(target)
+  usage_abort("#{intent_dir} is not an intent directory") unless IntentScreen.intent_dir?(intent_dir)
+  store_root = File.expand_path("../..", intent_dir)
+  template_path ||= File.expand_path("../templates/report-plan.md", __dir__)
+  usage_abort("template not found at #{template_path}") unless File.exist?(template_path)
+  out = ReportScreen.render_plan(intent_dir: intent_dir, store_root: store_root,
+                                  template: File.read(template_path))
+  $stdout.write paint(out, ansi_enabled)
 when "state"
   if all_mode
     usage_abort("usage: report-screen state --all <store_root>") unless target
@@ -142,7 +205,8 @@ when "delivered"
   intent_dir = File.expand_path(target)
   usage_abort("#{intent_dir} is not an intent directory") unless IntentScreen.intent_dir?(intent_dir)
   out = ReportScreen.render_delivered(intent_dir: intent_dir,
-                                      tag_reader: git_tag_reader(explicit_repo: repo_flag, script_dir: __dir__))
+                                      tag_reader: git_tag_reader(explicit_repo: repo_flag, script_dir: __dir__),
+                                      branch_reader: git_branch_reader(explicit_repo: repo_flag, script_dir: __dir__))
   $stdout.write paint(out, ansi_enabled)
 when "delay"
   usage_abort("usage: report-screen delay <intent_dir>") unless target
@@ -150,8 +214,61 @@ when "delay"
   usage_abort("#{intent_dir} is not an intent directory") unless IntentScreen.intent_dir?(intent_dir)
   out = ReportScreen.render_delay(intent_dir: intent_dir)
   $stdout.write paint(out, ansi_enabled)
+when "session"
+  usage_abort("usage: report-screen session <tier_root> [--session <id>] [--since <iso>] [--ledger-root <dir>] [--ansi]") unless target
+  store_root = File.expand_path(target)
+  usage_abort("#{store_root} is not a store (no INDEX.md)") unless File.exist?(File.join(store_root, "INDEX.md"))
+
+  now = Time.now
+  session_id = session_flag || ENV[SessionLedger::SESSION_ID_ENV_KEY]
+  ledger_root = ledger_root_flag ? File.expand_path(ledger_root_flag) : ReportScreen.default_ledger_root(store_root)
+
+  if since_flag
+    begin
+      Time.parse(since_flag)
+    rescue ArgumentError
+      usage_abort("--since needs an ISO timestamp, got #{since_flag.inspect}")
+    end
+  end
+
+  dirs, skipped = ReportScreen.session_delivered_dirs(ledger_root: ledger_root, tier_root: store_root,
+                                                       session: session_id, since: since_flag, now: now)
+  # D17: the widened window is announced whether the id was missing or simply
+  # matched nothing. A resumed background job carries a session id that is not
+  # the one on the ledger lines, and that case must not answer silently. An
+  # explicit --since is the caller naming the window, so it needs no note.
+  note =
+    if since_flag
+      nil
+    elsif session_id.nil? || session_id.to_s.strip.empty?
+      ReportScreen.window_note(ReportScreen.fallback_day(ledger_root, SessionLedger.day_id(now)),
+                               "no session id given")
+    elsif !ReportScreen.session_tagged?(ledger_root: ledger_root, session: session_id, now: now)
+      ReportScreen.window_note(ReportScreen.fallback_day(ledger_root, SessionLedger.day_id(now)),
+                               "this session has no line in the day ledger")
+    end
+
+  out = ReportScreen.render_session(
+    dirs: dirs, skipped: skipped, store_root: store_root,
+    tag_reader: git_tag_reader(explicit_repo: nil, script_dir: __dir__),
+    branch_reader: git_branch_reader(explicit_repo: nil, script_dir: __dir__),
+    note: note, now: now, painter: ->(text) { paint(text, ansi_enabled) }
+  )
+  $stdout.write out
+when "roadmap"
+  usage_abort("usage: report-screen roadmap <roadmap.md> plan|state|delivered [--ansi] [--store-root <dir>]") if positional.empty?
+  roadmap_path = File.expand_path(positional[0])
+  usage_abort("#{roadmap_path} does not exist") unless File.exist?(roadmap_path)
+  sub_verb = positional[1]
+  usage_abort("usage: report-screen roadmap <roadmap.md> plan|state|delivered") unless sub_verb
+  unless %w[plan state delivered].include?(sub_verb)
+    usage_abort("unknown sub-verb #{sub_verb.inspect} (use plan|state|delivered)")
+  end
+  roadmap_store_root = store_root_flag ? File.expand_path(store_root_flag) : nil
+  out = ReportScreen.render_roadmap(path: roadmap_path, verb: sub_verb, store_root: roadmap_store_root)
+  $stdout.write paint(out, ansi_enabled)
 else
-  usage_abort("unknown verb #{verb.inspect} (use state|delivered|delay)")
+  usage_abort("unknown verb #{verb.inspect} (use plan|state|delivered|delay|session|roadmap)")
 end
 
 exit 0

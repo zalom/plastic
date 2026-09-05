@@ -108,4 +108,168 @@ class ReportScreenSkillContractTest < Minitest::Test
     assert_includes text, "owns the matrix table"
   end
 
+  # --- intent 330, O4: an unnamed status ask routes to the session verb -------
+
+  # O4.1
+  def test_continuing_skill_routes_a_status_ask_to_the_session_verb
+    text = read("skills/intent-continuing/SKILL.md")
+    assert_includes text, "report-screen session"
+  end
+
+  # O4.2
+  def test_continuing_skill_keeps_the_named_and_delay_routes
+    text = read("skills/intent-continuing/SKILL.md")
+    assert_includes text, "report-screen state <intent_dir>"
+    assert_includes text, "report-screen delay"
+  end
+
+  # O4.3
+  def test_auto_skill_names_the_session_verb
+    text = read("skills/auto/SKILL.md")
+    assert_includes text, "report-screen session"
+  end
+
+  # O4.5
+  def test_human_report_contract_names_the_session_screen
+    text = read("skills/auto/references/human-report-contract.md")
+    assert_includes text, "report-screen session"
+  end
+
+  # O4.7: a shipped test already pins "state --all" as the roster-alone verb;
+  # the session-verb rewrite must never drop that string.
+  def test_continuing_skill_still_names_the_roster_verb
+    text = read("skills/intent-continuing/SKILL.md")
+    assert_includes text, "state --all"
+  end
+
+  # --- intent 331b: the plan verb, the PRE-delivery report ---------------------
+
+  def test_human_report_contract_names_the_plan_screen # P12
+    text = read("skills/auto/references/human-report-contract.md")
+    assert_includes text, "report-screen plan"
+    assert_includes text, "pre-delivery"
+    assert_includes text, "How boundary"
+  end
+
+  def test_changelog_names_the_plan_screen # P13
+    # A cut moves the Unreleased bullets into one Released line, so the pin
+    # reads the whole changelog: the intent id and the verb must appear somewhere.
+    text = read("CHANGELOG.md")
+    assert_includes text, "331b"
+    assert_includes text, "report-screen plan"
+  end
+
+  # --- intent 331f: skills bound to reports (S2/S3) --------------------------
+
+  # F1
+  def test_continuing_project_route_prints_dashboard_first
+    text = read("skills/intent-continuing/SKILL.md")
+    assert_includes text, "dashboard.rb project <slug> --screen"
+  end
+
+  # F2
+  def test_continuing_named_intent_prints_state
+    text = read("skills/intent-continuing/SKILL.md")
+    assert_includes text, "report-screen state <intent_dir>"
+  end
+
+  # F3
+  def test_continuing_status_ask_prints_session
+    text = read("skills/intent-continuing/SKILL.md")
+    assert_includes text, "report-screen session"
+  end
+
+  # F4
+  def test_continuing_roadmap_route_prints_roadmap_state
+    text = read("skills/intent-continuing/SKILL.md")
+    assert_includes text, "report-screen roadmap <roadmap.md> state"
+  end
+
+  # F5
+  def test_auto_prints_plan_before_executor
+    text = read("skills/auto/SKILL.md")
+    before_exec = text.split(/^## Exec/, 2).first
+    assert_includes before_exec, "report-screen plan"
+  end
+
+  # F6
+  def test_auto_prints_state_at_triggers
+    text = read("skills/auto/SKILL.md")
+    assert_includes text, "report-screen state"
+    assert_includes text, "human-report-contract.md"
+  end
+
+  # F7
+  def test_auto_prints_delivered_once
+    text = read("skills/auto/SKILL.md")
+    assert_equal 1, text.scan("report-screen delivered").length
+  end
+
+  # F8
+  def test_ending_prints_delivered
+    text = read("skills/intent-ending/SKILL.md")
+    assert_includes text, "report-screen delivered <intent_dir>"
+  end
+
+  # F9
+  def test_speccing_prints_plan
+    text = read("skills/intent-speccing/SKILL.md")
+    assert_includes text, "report-screen plan <intent_dir>"
+  end
+
+  # F10
+  def test_roadmap_skill_prints_roadmap_screens
+    text = read("skills/roadmap/SKILL.md")
+    assert_includes text, "report-screen roadmap <roadmap.md> plan"
+    assert_includes text, "report-screen roadmap <roadmap.md> state"
+    assert_includes text, "report-screen roadmap <roadmap.md> delivered"
+  end
+
+  # F11
+  def test_dashboard_skill_prints_screen
+    text = read("skills/dashboard/SKILL.md")
+    assert_includes text, "default surface on every invocation"
+    assert_includes text, "dashboard.rb project <slug> --screen"
+  end
+
+  # F12
+  def test_executing_prints_state
+    text = read("skills/intent-executing/SKILL.md")
+    assert_includes text, "report-screen state <intent_dir>"
+    assert_includes text, "red commit"
+    assert_includes text, "suite goes green"
+  end
+
+  BOUND_SKILL_FILES = %w[
+    skills/intent-continuing/SKILL.md
+    skills/auto/SKILL.md
+    skills/intent-ending/SKILL.md
+    skills/intent-speccing/SKILL.md
+    skills/roadmap/SKILL.md
+    skills/dashboard/SKILL.md
+    skills/intent-executing/SKILL.md
+  ].freeze
+
+  # F13
+  def test_bound_skills_carry_first_print_rule
+    BOUND_SKILL_FILES.each do |f|
+      text = read(f).gsub(/\s+/, " ")
+      assert_includes text, "first characters of the reply", "#{f} lacks the no-fence rule"
+    end
+  end
+
+  # F14
+  def test_bound_skills_under_300_lines
+    BOUND_SKILL_FILES.each do |f|
+      lines = read(f).lines.length
+      assert lines <= 300, "#{f} grew to #{lines} lines, over the 300-line cap"
+    end
+  end
+
+  # F23
+  def test_contract_states_column_vocabulary
+    text = read("skills/auto/references/human-report-contract.md").gsub(/\s+/, " ")
+    assert_includes text, "Graph ID"
+    assert_includes text, "before its first colon"
+  end
 end
