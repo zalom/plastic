@@ -2,6 +2,13 @@
 
 Intent-driven state management for AI coding sessions.
 
+## Broken data: fix it or remove it, never build around it
+
+Wrong data (a blank record, a junk field, a failed fetch or import) is fixed first. When it
+cannot be fixed, the erroneous records are removed. Never design, code, test, or screenshot
+around broken data. A legitimately absent value is not broken data. Owner ruling 2026-09-05,
+global rule.
+
 ## Stack
 - Language: Ruby (scripts), JavaScript/Node.js (npm package, installer)
 - Framework: npm package (CLI installer), flat personal skills
