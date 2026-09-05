@@ -412,4 +412,57 @@ class ReportScreenHeaderAndWidthTest < Minitest::Test
       assert_operator line.chomp.length, :<=, 115, "backstop failed to bound: #{line.inspect}"
     end
   end
+
+  # --- D8 (orchestrator ruling, 2026-09-05): where a title actually ends -------
+  #
+  # The title ends at the first colon FOLLOWED BY A SPACE, so a URL or a clock time inside a
+  # title survives. With no such colon the title is its first sentence, and with no sentence
+  # either it is the whole line. The live case is zlatkocodes intent 4, whose line opens
+  # "About page redesign and header navigation order. Rebuild https://zlatkocodes.com/about/
+  # (src/about.md) in the current template styling: ..." - splitting on any colon cuts it at
+  # "https" and names nothing a reader recognizes.
+
+  ZLATKOCODES_4 = "About page redesign and header navigation order. Rebuild " \
+                  "https://zlatkocodes.com/about/ (src/about.md) in the current template " \
+                  "styling: centered circular photo of the owner"
+
+  def test_title_ends_at_a_colon_followed_by_a_space # D8.1
+    assert_equal "Skills bound to reports",
+                 ReportScreen.title_before_colon("Skills bound to reports: every skill that shows state")
+  end
+
+  def test_a_colon_inside_a_url_does_not_end_the_title # D8.2
+    title = ReportScreen.title_before_colon(ZLATKOCODES_4)
+    assert_equal "About page redesign and header navigation order.", title
+    refute_includes title, "https", "a colon inside a URL must not end the title"
+  end
+
+  def test_a_colon_inside_a_clock_time_does_not_end_the_title # D8.3
+    assert_equal "Capture the boot banner at 06:55Z and diff it",
+                 ReportScreen.title_before_colon("Capture the boot banner at 06:55Z and diff it")
+  end
+
+  def test_a_title_with_no_qualifying_colon_falls_back_to_its_first_sentence # D8.4
+    assert_equal "One sentence stands alone.",
+                 ReportScreen.title_before_colon("One sentence stands alone. A second one follows it.")
+  end
+
+  def test_a_title_with_neither_colon_nor_sentence_is_the_whole_line # D8.5
+    assert_equal "A bare title with nothing to split on",
+                 ReportScreen.title_before_colon("A bare title with nothing to split on")
+  end
+
+  def test_a_title_opening_with_its_colon_still_names_something # D8.6
+    refute_empty ReportScreen.title_before_colon(": opens with its colon")
+    assert_includes ReportScreen.title_before_colon(": opens with its colon"), "opens with its colon"
+  end
+
+  def test_the_dashboard_reads_titles_through_the_one_helper # D8.7
+    source = File.read(File.expand_path("../scripts/dashboard.rb", __dir__))
+    body = source[/def screen_intent_title.*?\nend/m]
+    refute_nil body, "screen_intent_title is gone; the assertion needs rewriting"
+    assert_includes body, "ReportScreen.title_before_colon",
+                    "the dashboard must read titles through the one helper, not a second split"
+    refute_match(/split\(":"/, body, "a second colon rule lives in dashboard.rb")
+  end
 end
