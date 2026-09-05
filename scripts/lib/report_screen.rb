@@ -92,9 +92,24 @@ module ReportScreen
     row.split("|", -1)[1..-2].to_a
   end
 
+  # Where a title ends (D8, orchestrator ruling 2026-09-05). A title ends at the first colon
+  # FOLLOWED BY A SPACE, which is how a person writes a label before its explanation. Any
+  # colon would also cut inside a URL or a clock time and leave a name no reader recognizes:
+  # zlatkocodes intent 4 opens "About page redesign and header navigation order. Rebuild
+  # https://zlatkocodes.com/about/ ... styling: ..." and used to render as "... Rebuild https".
+  # A title can carry both boundaries, and then the earlier one is the name: zlatkocodes 4 also
+  # has a real label colon, 130 characters in, long after its opening sentence ends. With
+  # neither boundary the title is the whole line.
+  # A line that opens with its colon has no label to take, so it falls back the same way. The
+  # one implementation: dashboard.rb reads titles through this rather than splitting again.
+  TITLE_LABEL_RE = /\A(.*?): /m.freeze
+  TITLE_SENTENCE_RE = /\A(.*?[.!?])(?:\s|\z)/m.freeze
+
   def self.title_before_colon(text, max: 120)
-    head = text.to_s.split(":", 2).first.to_s.strip
-    truncate_on_word_boundary(head, max)
+    line = text.to_s.strip
+    candidates = [TITLE_LABEL_RE, TITLE_SENTENCE_RE].filter_map { |re| line[re, 1]&.strip }
+                                                    .reject(&:empty?)
+    truncate_on_word_boundary(candidates.min_by(&:length) || line, max)
   end
 
   # Intent 331f1 (RC1): every bound check below measures in DISPLAY COLUMNS
