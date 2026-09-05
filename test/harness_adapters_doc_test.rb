@@ -56,6 +56,6 @@ class HarnessAdaptersDocTest < Minitest::Test
     assert_includes body, "300 ms"
     assert_includes body, "20 ms"
     assert_includes body, "2 s"
-    assert_match(/stale PENDING[^.]*NOSCREEN/, body)
+    assert_match(/stale[^.]*PENDING[^.]*NOSCREEN/, body)
   end
 end

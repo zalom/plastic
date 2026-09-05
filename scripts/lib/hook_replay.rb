@@ -97,14 +97,27 @@ module HookReplay
         "hook_event_name" => "MessageDisplay",
       }
       Thread.new do
-        delay = i * gap
-        delay += (rand * gap / 2.0) if jitter
-        sleep(delay)
-        out, err, exitstatus = run_one(hook_path, payload, full_env, tmp_root, nil)
-        results[i] = { index: i, exitstatus: exitstatus, stdout: out, stderr: err, final: payload["final"] }
+        begin
+          delay = i * gap
+          delay += (rand * gap / 2.0) if jitter
+          sleep(delay)
+          out, err, exitstatus = run_one(hook_path, payload, full_env, tmp_root, nil)
+          results[i] = { index: i, exitstatus: exitstatus, stdout: out, stderr: err, final: payload["final"] }
+        rescue StandardError => e
+          # A raise inside a thread body is invisible until join, and an
+          # unrescued one aborts `threads.each(&:join)` at the first dead
+          # thread: every later thread is then never joined and outlives the
+          # call, racing whatever the caller does next (typically removing
+          # the very tmp root those threads are still writing under). Report
+          # the failure as this chunk's own result instead, so the array is
+          # always complete, every thread is always joined, and a replay
+          # tells its caller what went wrong rather than throwing at it.
+          results[i] = { index: i, exitstatus: nil, stdout: "", stderr: e.message,
+                         final: payload["final"] }
+        end
       end
     end
-    threads.each(&:join)
+    threads.each { |thread| thread.join }
     results
   end
 
