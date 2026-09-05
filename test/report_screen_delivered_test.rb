@@ -153,6 +153,9 @@ class ReportScreenDeliveredTest < Minitest::Test
 
     assert_includes out, "| Row | Detail | Proven by |"
     assert_includes out, "| Kind | Detail | Source |"
+    # Post-exec review finding 3: the S5 header map renamed this header too, but no test ever
+    # pinned it against real rendered output; full_fixture already populates an N1 row.
+    assert_includes out, "| N | Need | Reason |"
 
     assert out.lines.first.start_with?("## \u2714 "), "the title line must carry the ## prefix the approved plain form uses"
     title_idx = 0

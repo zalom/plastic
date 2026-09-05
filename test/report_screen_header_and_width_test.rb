@@ -88,6 +88,10 @@ class ReportScreenHeaderAndWidthTest < Minitest::Test
   # Every header this sweep must never see again.
   FORBIDDEN_WHAT_HEADER_RE = /\|\s*What\s*\|/.freeze
 
+  def strip_ansi(text)
+    text.to_s.gsub(/\e\[[0-9;]*m/, "")
+  end
+
   # --- F19/F20: no screen carries a "What" header; the id column reads "Graph ID" -----------
 
   def test_no_screen_carries_a_what_header
@@ -105,7 +109,51 @@ class ReportScreenHeaderAndWidthTest < Minitest::Test
                                             template: File.read(File.join(REPO, "templates", "report-plan.md")))
     roster_screen = ReportScreen.render_roster(root)
 
-    [intent_screen, state_screen, plan_screen, roster_screen].each do |screen|
+    # Post-exec review finding 2: this sweep claimed "every verb" but only ever rendered four
+    # of them. A second, delivered intent gives delivered/delay/session something real to
+    # render, and a roadmap fixture built on the same store gives the three roadmap verbs the
+    # same chance to leak a "What" header.
+    delivered_dir = make_intent(root, id: "19", title: "Demo delivered",
+                                 checklist: checklist_with(total: 1, done: 1), savepoint: DONE_LEDGER,
+                                 outcome_body: <<~MD)
+                                   ---
+                                   disposition: delivered
+                                   ---
+                                   # Outcome
+
+                                   ## Delivered
+                                   | Row | What |
+                                   | --- | --- |
+                                   | S1 | shipped it |
+
+                                   ## Needs you
+                                   | N | What | Why |
+                                   | --- | --- | --- |
+                                   | N1 | pick a seam | waits on owner |
+                                 MD
+    delivered_screen = ReportScreen.render_delivered(intent_dir: delivered_dir)
+    delay_screen = ReportScreen.render_delay(intent_dir: delivered_dir)
+    session_screen = ReportScreen.render_session(dirs: [delivered_dir], skipped: 0, store_root: root)
+
+    roadmaps_dir = File.join(root, "roadmaps")
+    FileUtils.mkdir_p(roadmaps_dir)
+    roadmap_path = File.join(roadmaps_dir, "demo.md")
+    File.write(roadmap_path, <<~MD)
+      # Roadmap: Demo
+      ## Goal
+      test.
+      ## Batches
+      ### Batch 1
+      - [x] 19 Demo delivered - delivered
+      ## Log
+      - 2026-07-10 02:55 UTC roadmap closed.
+    MD
+    roadmap_plan = ReportScreen.render_roadmap(path: roadmap_path, verb: "plan", store_root: root)
+    roadmap_state = ReportScreen.render_roadmap(path: roadmap_path, verb: "state", store_root: root)
+    roadmap_delivered = ReportScreen.render_roadmap(path: roadmap_path, verb: "delivered", store_root: root)
+
+    [intent_screen, state_screen, plan_screen, roster_screen, delivered_screen, delay_screen,
+     session_screen, roadmap_plan, roadmap_state, roadmap_delivered].each do |screen|
       refute_match(FORBIDDEN_WHAT_HEADER_RE, screen, "a screen still carries a What header:\n#{screen}")
     end
 
@@ -159,6 +207,46 @@ class ReportScreenHeaderAndWidthTest < Minitest::Test
     assert_includes plain, "Need"
     assert_includes plain, "Reason"
     refute_match(/^\s*\|/, plain)
+
+    # Post-exec review finding 4: a hand-typed fixture only proves the painter recognizes a
+    # header shape someone wrote by hand for the test. Paint the SAME renamed headers through
+    # a real render_delivered and render_state call, sourced from files on disk, so the
+    # header-driven kind detection is proven against what the renderers actually emit.
+    root = tier_root
+    write_index(root, id: "22", title: "Painter real render demo")
+    dir = make_intent(root, id: "22", title: "Painter real render demo",
+                       checklist: checklist_with(total: 1, done: 0), savepoint: DONE_LEDGER,
+                       outcome_body: <<~MD)
+                         ---
+                         disposition: delivered
+                         ---
+                         # Outcome
+
+                         ## Delivered
+                         | Row | What |
+                         | --- | --- |
+                         | S1 | shipped it |
+
+                         ## Needs you
+                         | N | What | Why |
+                         | --- | --- | --- |
+                         | N1 | pick a seam | waits on owner |
+                       MD
+
+    real_delivered = ReportScreen.render_delivered(intent_dir: dir)
+    painted_delivered = ScreenPaint.paint(real_delivered, color: true)
+    refute_nil painted_delivered, "the painter must recognize a real render_delivered screen"
+    plain_delivered = painted_delivered.gsub(/\e\[[0-9;]*m/, "")
+    assert_includes plain_delivered, "Detail"
+    assert_includes plain_delivered, "Need"
+    assert_includes plain_delivered, "Reason"
+
+    real_state = ReportScreen.render_state(intent_dir: dir, store_root: root, changed: nil,
+                                            template: File.read(File.join(REPO, "templates", "report-state.md")))
+    painted_state = ScreenPaint.paint(real_state, color: true)
+    refute_nil painted_state, "the painter must recognize a real render_state screen"
+    plain_state = painted_state.gsub(/\e\[[0-9;]*m/, "")
+    assert_includes plain_state, "Detail"
   end
 
   # --- F25: lead_cell is one freshness rule for every screen --------------------------------
@@ -190,11 +278,57 @@ class ReportScreenHeaderAndWidthTest < Minitest::Test
     assert_equal "idle", ReportScreen.lead_cell(dir, now: now)
   end
 
+  # --- header renames pinned against real rendered output (post-exec review finding 3) -------
+
+  def test_plan_risks_header_renders_from_real_plan_md
+    root = tier_root
+    write_index(root, id: "20", title: "Risk demo")
+    dir = make_intent(root, id: "20", title: "Risk demo", checklist: checklist_with(total: 1, done: 0),
+                       savepoint: HOW_LEDGER)
+    File.write(File.join(dir, "plan.md"), <<~MD)
+      # Plan
+
+      ## Risks
+      - the migration might run twice
+    MD
+
+    plan_screen = ReportScreen.render_plan(intent_dir: dir, store_root: root,
+                                            template: File.read(File.join(REPO, "templates", "report-plan.md")))
+    assert_includes plan_screen, "| N | Risk |"
+  end
+
+  def test_roadmap_log_and_delivered_headers_render_from_real_roadmap_md
+    root = tier_root
+    write_index(root, id: "21", title: "Roadmap demo entry", section: "Completed")
+
+    roadmaps_dir = File.join(root, "roadmaps")
+    FileUtils.mkdir_p(roadmaps_dir)
+    roadmap_path = File.join(roadmaps_dir, "demo.md")
+    File.write(roadmap_path, <<~MD)
+      # Roadmap: Demo
+      ## Goal
+      test.
+      ## Batches
+      ### Batch 1
+      - [x] 21 Roadmap demo entry - delivered
+      ## Log
+      - 2026-07-10 02:55 UTC roadmap closed.
+    MD
+
+    delivered = ReportScreen.render_roadmap(path: roadmap_path, verb: "delivered", store_root: root)
+    assert_includes delivered, "| Batch | Graph ID | Intent | Merged |"
+    assert_includes delivered, "| When | Event | Detail |"
+  end
+
   # --- F26: no rendered row passes 115 visible columns --------------------------------------
 
   def test_no_screen_row_passes_115_columns
     root = tier_root
-    long_goal = "G" * 300
+    # Word-separated, not a single unbroken run: a title with no whitespace at all pushes
+    # ReportScreen.truncate_on_word_boundary back to the last (very early) space it can find,
+    # which can mangle the opener's own " · " grammar - a real intent title always carries
+    # spaces, so this keeps the fixture realistic while still forcing truncation.
+    long_goal = (["Goal"] * 60).join(" ")
     write_index(root, id: "16", title: long_goal)
     dir = make_intent(root, id: "16", title: long_goal, checklist: checklist_with(total: 1, done: 0),
                        savepoint: HOW_LEDGER,
@@ -211,6 +345,12 @@ class ReportScreenHeaderAndWidthTest < Minitest::Test
 
                          ## Verification
                          - suite green
+
+                         ## Needs you
+                         | N | What | Why |
+                         | --- | --- | --- |
+                         | N1 | #{"D" * 80} | #{"x" * 10} |
+                         | N2 | #{"x" * 10} | #{"D" * 80} |
                        MD
     File.write(File.join(dir, "savepoint.md"), DONE_LEDGER)
 
@@ -219,9 +359,22 @@ class ReportScreenHeaderAndWidthTest < Minitest::Test
     delivered_screen = ReportScreen.render_delivered(intent_dir: dir)
     roster_screen = ReportScreen.render_roster(root)
 
+    # Post-exec review finding 1: the painter is a rendered path too, and D7 binds every
+    # RENDERED row, not only the plain markdown fit_screen already bounds. The Needs-you rows
+    # above are the reproduction - a different row is the longest in each column (N1's Need
+    # cell 80 chars against a 10-char Why, N2 the other way round), which the plain markdown
+    # table already bounds correctly (each row un-padded, so its own length carries), but a
+    # painter that pads every cell to the widest value ACROSS ALL ROWS can paint a row wider
+    # than 115 even though the plain row it started from never was.
     [state_screen, delivered_screen, roster_screen].each do |screen|
       screen.each_line do |line|
         assert_operator line.chomp.length, :<=, 115, "row over 115 columns: #{line.inspect}"
+      end
+
+      painted = ScreenPaint.paint(screen, color: true)
+      refute_nil painted, "the painter must recognize this screen:\n#{screen}"
+      strip_ansi(painted).each_line do |line|
+        assert_operator line.chomp.length, :<=, 115, "painted row over 115 columns: #{line.inspect}"
       end
     end
   end
