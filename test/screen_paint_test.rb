@@ -643,4 +643,41 @@ class ScreenPaintTest < Minitest::Test
   ensure
     teardown_registry(:demo_r6_331a)
   end
+
+  # --- intent 331b: the plan kind (scripts/lib/screens/plan.rb) ---------------
+
+  def plan_screen
+    require_relative "../scripts/lib/screens/plan"
+    template = File.read(File.expand_path("../templates/report-plan.md", __dir__))
+    ReportScreen.render_plan(intent_dir: @dir, store_root: @root, template: template)
+  end
+
+  def test_plan_screen_paints_through_the_shared_pipeline # P10
+    painted = ScreenPaint.paint(plan_screen, color: true)
+    refute_nil painted
+    plain = strip_ansi(painted)
+    assert_includes plain, "plan"
+    refute_match(/^\s*\|/, plain)
+  end
+
+  def test_plan_registration_leaves_the_five_shipped_kinds_resolving_as_before # P10a
+    require_relative "../scripts/lib/screens/plan"
+    assert_equal :intent, ScreenPaint.opener_kind("## ▶ 21 · Paint demo")
+    assert_equal :delivered, ScreenPaint.opener_kind("## ✔ 21 · Paint demo · delivered")
+    assert_equal :roster, ScreenPaint.opener_kind("▶ In delivery · 1 open")
+    assert_equal :delay, ScreenPaint.opener_kind("✔ 21 · Paint demo · delivered in 10 min")
+    # F1: :intent's opener already matches a plan title, so :plan (registered
+    # last) is shadowed - the fact D4 rests on, never accidentally reversed by
+    # narrowing :intent's opener from screens/plan.rb.
+    assert_equal :intent, ScreenPaint.opener_kind("## ▶ 21 · Paint demo · plan")
+    assert_includes ScreenPaint.kinds, :plan
+  end
+
+  def test_plan_kind_registers_without_editing_screen_paint # P10b
+    lib_path = File.expand_path("../scripts/lib/screen_paint.rb", __dir__)
+    before = File.read(lib_path)
+    require_relative "../scripts/lib/screens/plan"
+    assert_includes ScreenPaint.kinds, :plan
+    assert_equal before, File.read(lib_path)
+  end
 end
