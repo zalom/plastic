@@ -2533,6 +2533,20 @@ end
       begin
         HookReplay.replay(hook_path: launcher_path, tmp_root: tmp_dir, text: text,
                            env: { "PLASTIC_HOME" => plastic_home }, timeout: timeout_seconds)
+      rescue StandardError => e
+        # Process.spawn (inside HookReplay) can raise before a pid ever
+        # exists — a permissions race, a launcher that vanishes between the
+        # executable? check above and the spawn, or any other unexpected
+        # error. Unlike this codebase's defensive style elsewhere
+        # (read_json_safe, load_yaml_safe), nothing here degraded that into
+        # a clean check result, so an unlucky replay crashed the entire
+        # doctor run instead of failing just this one check (intent 331e,
+        # F6). `return` still runs the `ensure` below before unwinding.
+        return [check(
+          category: "display", name: "display_hook_paints", status: "fail",
+          message: "Replaying the installed launcher raised #{e.class}: #{e.message}",
+          fixable: false
+        )]
       ensure
         FileUtils.remove_entry(tmp_dir) if tmp_dir && File.exist?(tmp_dir)
       end

@@ -368,6 +368,34 @@ class DoctorDisplayTest < Minitest::Test
     end
   end
 
+  def test_paints_fails_when_replay_raises # F6
+    Dir.mktmpdir("plastic-display-f6") do |dir|
+      home = File.join(dir, "home")
+      claude_dir = File.join(dir, "claude")
+      FileUtils.mkdir_p(home)
+      write_fixture(home)
+      launcher_path = write_working_launcher(claude_dir, color: true)
+
+      d = Doctor.new(plastic_home: home, agents: agents_for(claude_dir))
+      # Deletes the launcher AFTER check_display_paints's own executable?
+      # check passed but BEFORE the replay's Process.spawn — the race F6
+      # describes. Process.spawn raises Errno::ENOENT before a pid exists;
+      # without a rescue around the replay that exception would crash the
+      # entire doctor run instead of failing just this one check.
+      check = d.check_display_paints(
+        "claude", no_color: nil,
+        tmp_dir_factory: lambda {
+          File.delete(launcher_path)
+          Dir.mktmpdir("plastic-doctor-display")
+        }
+      ).first
+
+      assert_equal "display_hook_paints", check[:name]
+      assert_equal "fail", check[:status]
+      assert_match(/raised/i, check[:message])
+    end
+  end
+
   def test_paints_fails_when_fixture_missing # E22
     Dir.mktmpdir("plastic-display-e22-home") do |home|
       Dir.mktmpdir("plastic-display-e22-pkg") do |empty_pkg|
