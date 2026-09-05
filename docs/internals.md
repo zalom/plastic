@@ -1465,10 +1465,11 @@ ordinary passthrough path). A lone fence line immediately wrapping the opener �
 it in the engaging chunk's own prefix, one right after the painted region in `finalize` — is
 dropped; a fence in an earlier, already-displayed chunk is never touched, and an unrelated code
 block elsewhere in the message survives verbatim. `hooks/message-display` mirrors this at the
-shell layer: a later chunk (index > 0) is now also handed off to Ruby when its own delta value
-contains a bare `▶` or `✔` anywhere, raw or `\u`-escaped — every shipped opener contains one of
-those two glyphs, so this one pair of globs covers all four opener shapes at once, still
-anchored to the `"delta":"` key itself so an unrelated payload field is never mistaken for the
-delta's own text. An opener split across two chunks' own deltas, with neither half matching
-alone, still falls back to plain — a known, accepted limitation, since late engagement only ever
-looks at one chunk's delta at a time, never a cross-chunk reassembly, before deciding.
+shell layer: a chunk is handed off to Ruby, whatever its index — chunk 0 included, not only a
+later one — when its own delta value contains a bare `▶` or `✔` anywhere, raw or `\u`-escaped —
+every shipped opener contains one of those two glyphs, so this one pair of globs covers all four
+opener shapes at once, still anchored to the `"delta":"` key itself so an unrelated payload field
+is never mistaken for the delta's own text. An opener split across two chunks' own deltas, with
+neither half matching alone, still falls back to plain — a known, accepted limitation, since late
+engagement only ever looks at one chunk's delta at a time, never a cross-chunk reassembly, before
+deciding.
