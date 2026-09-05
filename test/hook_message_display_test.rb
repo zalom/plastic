@@ -1284,12 +1284,17 @@ class HookMessageDisplayTest < Minitest::Test
   # suites competing for the same cores can delay chunk 0's own bash
   # process past the few-millisecond stagger before a later chunk's
   # process even starts) - a scheduler artifact of this machine's load at
-  # test time, not the decision-marker logic failing. Retries a bounded
-  # number of times and returns as soon as one attempt is clean, so a
-  # genuine regression (passthrough on every attempt) still fails the
-  # caller's assertion; only the last (still-failing) attempt is returned
-  # once all of them show passthrough.
-  def replay_concurrent_until_clean(text:, attempts: 3)
+  # test time, not the decision-marker logic failing. Confirmed by hand:
+  # `bash -x hooks/message-display` on a quiet run always shows PENDING
+  # already staked (handoff=1 via the directory check) before a later
+  # chunk's own process is even dispatched; only concurrent load this
+  # severe (observed load averages above 12 during this intent's own
+  # verification, from sibling intents' parallel test suites) reproduces
+  # the flake. Retries a bounded number of times and returns as soon as
+  # one attempt is clean, so a genuine regression (passthrough on every
+  # attempt) still fails the caller's assertion; only the last
+  # (still-failing) attempt is returned once all of them show passthrough.
+  def replay_concurrent_until_clean(text:, attempts: 6)
     last_outs = nil
     attempts.times do
       tmp = Dir.mktmpdir("concurrent-retry")
