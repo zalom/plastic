@@ -1511,6 +1511,7 @@ the shared field-table/data-table grammar. Its opener is a strict subset of the 
 regardless; the registration exists so `ScreenPaint.kinds` is complete and the opener's own
 grammar (which scope forms it accepts, and that it rejects a plain intent title) is directly
 testable.
+
 **Column vocabulary (intent 331d1, an owner ruling).** Where-we-are is `Graph ID | Intent |
 Stage | Progress | Lead`; Where-we-go-next is `Rank | Graph ID | Intent | Reason`. The id
 stands in its own `Graph ID` cell rather than glued to the front of the title. The `Intent`

@@ -608,6 +608,22 @@ end
     refute_empty row[:intent]
   end
 
+# --- V6a: a line that opens with its colon still names something ----------
+
+def test_intent_column_falls_back_when_the_lead_is_empty # V6a
+  store = project_store("demo")
+  write_intent(store, "1", "colon-first",
+               { id: 1, intent: ": opens with its colon", author: "agent",
+                 tags: [], created: "2026-06-01" })
+  write_index(File.dirname(store), active: [["1", "colon-first", "Colon first"]])
+
+  scoped = screen_scoped_records(records_for(@home), "project:demo")
+  row = screen_where_we_are(scoped, now: NOW).first
+  refute_nil row
+  refute_empty row[:intent], "an empty pre-colon lead must fall back to the whole line"
+  assert_includes row[:intent], "opens with its colon"
+end
+
   def test_no_rendered_row_exceeds_115_columns # V7
     store = project_store("demo")
     long_title = "A very long intent title that goes on and on and on " * 5

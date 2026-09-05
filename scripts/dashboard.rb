@@ -1111,6 +1111,9 @@ SCREEN_ROW_MAX_COLUMNS = 115
 def screen_intent_title(rec)
   line = rec[:intent].to_s
   lead = line.include?(":") ? line.split(":", 2).first : line
+  # A line that opens with its colon has no lead to take, and an empty cell
+  # names nothing. Fall back to the whole line rather than render a blank.
+  lead = line if lead.strip.empty?
   cell(lead)
 end
 
