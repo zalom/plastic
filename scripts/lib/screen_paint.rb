@@ -38,6 +38,13 @@ module ScreenPaint
   STEP_LINE_RE = /\A(S\d+)\s+\[ (open|done) \]\s+(.*)\z/.freeze
   TIMELINE_RE = /\A(\d\d:\d\d)\s{2}(\S+)\s{2}(.*)\z/.freeze
   COUNT_LINE_RE = /\A\d+ open( · .*)?\z/.freeze
+  # 331a1: the session verb prints this note between the delivered screens and
+  # the roster (report_screen.rb, render_session). It is our own output, so the
+  # painter must not reject it - the live hook trace caught the region stopping
+  # dead on it, with the whole roster below reaching the terminal as plain
+  # Markdown. Pinned to the exact shape rather than "any sentence": region_end
+  # exists to stop at the model's own prose, and a loose rule would swallow it.
+  SKIP_NOTE_RE = /\A\d+ completed intents? skipped: .+\z/.freeze
   BOLD_LEAD_RE = /\A\*\*([^*]+)\*\*(.*)\z/.freeze
 
   # Intent 317a1 (D3, D4, D5): the data-table palette. Kind and note columns
@@ -199,7 +206,7 @@ module ScreenPaint
     return :field if FIELD_LINE_RE.match?(text)
     return :step if STEP_LINE_RE.match?(text)
     return :timeline if TIMELINE_RE.match?(text)
-    return :count if COUNT_LINE_RE.match?(stripped)
+    return :count if COUNT_LINE_RE.match?(stripped) || SKIP_NOTE_RE.match?(stripped)
     return :closer if ["None", "not recorded", "No intents in delivery.", "No intents delivered in this session."].include?(stripped)
     :unknown
   end
@@ -207,11 +214,22 @@ module ScreenPaint
   # Where the screen region ends inside a larger message (B10): walk from the
   # opener while every line classifies; the first unknown line - ordinary
   # prose, a prose bullet - is the boundary. Never consumes past the screen.
+  #
+  # 331a1: `opener_idx` tracks the NEAREST preceding opener, not the first
+  # one in the message. A reply can carry several screens back to back - the
+  # roster is a table then ten cards, the session report is many delivered
+  # screens - and `classify`'s positional rule is "the line right after a
+  # title", which means the title above it. Testing every line against the
+  # message's first opener made the timestamp under the SECOND screen
+  # :unknown, and the region stopped there: 30 lines of a 350-line session
+  # report painted, the rest reaching the terminal as plain Markdown.
   def region_end(lines, start_idx)
     i = start_idx + 1
+    opener_idx = start_idx
     while i < lines.length
-      kind = classify(lines[i], idx: i, opener_idx: start_idx)
+      kind = classify(lines[i], idx: i, opener_idx: opener_idx)
       break if kind == :unknown
+      opener_idx = i if kind == :opener
       # A bare "**Section**" head belongs to the screen only when what follows
       # is still grammar; "**What this means**" over prose bullets is the
       # model's own commentary and stays outside, unsplit (B10).
@@ -223,6 +241,22 @@ module ScreenPaint
     # Trailing blanks belong to the message, not the screen.
     i -= 1 while i > start_idx + 1 && lines[i - 1].strip.empty?
     i
+  end
+
+  # The first line the grammar rejects, walking from the opener under the same
+  # nearest-opener rule region_end uses. Returns [index, line] or nil when the
+  # whole run classifies. 331a1: this is what the opt-in hook trace reports,
+  # so a live run says which line stopped the region instead of leaving it to
+  # be guessed from a terminal capture.
+  def first_rejected(lines, start_idx)
+    opener_idx = start_idx
+    ((start_idx + 1)...lines.length).each do |i|
+      kind = classify(lines[i], idx: i, opener_idx: opener_idx)
+      return [i, lines[i].to_s.rstrip] if kind == :unknown
+
+      opener_idx = i if kind == :opener
+    end
+    nil
   end
 
   def bare_bold?(line)
@@ -271,8 +305,14 @@ module ScreenPaint
       table.clear
     end
 
+    # 331a1: the same nearest-opener rule region_end uses - a reply carrying
+    # several screens must classify each one's meta line against its own
+    # title, not against the first title in the message.
+    opener_idx = first_idx
+
     lines.each_with_index do |line, idx|
-      kind = classify(line, idx: idx, opener_idx: first_idx)
+      kind = classify(line, idx: idx, opener_idx: opener_idx)
+      opener_idx = idx if kind == :opener
       # Intent 317a1 (O6, D8): the run counter tracks consecutive :indented
       # lines so only the SECOND and later lines under a heading like
       # "**Asked**" grey as a note; a :table line (which `next`s below) must

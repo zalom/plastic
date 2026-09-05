@@ -452,3 +452,23 @@ chunk's own poll budget, reads as NOSCREEN (fail open). The poll budget is
 300 ms plus 20 ms per chunk index, capped at 2 s, so a chunk deep into a
 long streamed message is allowed to wait for a decision that is certainly on
 its way.
+
+A reply can carry more than one screen (intent 331a1). The roster is a table
+then a card per intent; the session report is a delivered screen per intent,
+a note, then the roster. Two rules keep such a reply whole. An opener engages
+only a message that is not already a screen: late engagement exists for the
+prose-first reply, where chunk 0 wrote NOSCREEN, and firing it again inside an
+engaged message would return that chunk's own prefix as raw Markdown and move
+the start index to the last opener, losing everything above it. And the
+positional rules in `ScreenPaint.classify` resolve against the NEAREST
+preceding opener, so the meta line under the second screen is a meta line
+rather than prose that ends the region.
+
+`PLASTIC_HOOK_TRACE=<file>` (opt-in, off by default) appends one JSON object
+per streamed chunk: the index, whether it was final, the decision, and how
+many bytes it displayed; the final chunk's row adds the buffered size, the
+region bounds, whether the paint succeeded, and the first line the grammar
+rejected. That last field is the one fact a terminal capture cannot give you,
+and it is how the session report's own skip note was found stopping the region
+at line 260 of 350. `MessageDisplay` stays pure: the CLI reads the variable and
+injects the sink.

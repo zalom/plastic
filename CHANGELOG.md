@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 331a1: a reply carrying several screens now paints whole. The live roster and session reports still arrived plain on alpha.15 for three reasons the decision marker did not touch: an opener re-engaged a message that was already a screen, so the final chunk spliced from the last opener and everything above it reached the terminal as raw Markdown; a later screen's meta line did not classify, because the positional rule tested against the message's first opener rather than the nearest one, stopping the region at line 30 of 350; and the session verb's own skip note was outside the grammar, stopping it again at line 260. `PLASTIC_HOOK_TRACE=<file>` is a new opt-in trace, one JSON row per chunk, naming the decision, the region bounds and the first rejected line.
+
 ## Released
 
 - `2.0.0-alpha.15` - shipped 2026-09-05 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); collected the acceptance fixes of roadmap reporting-v2 (intent 331): 331a1 (the MessageDisplay launcher stakes a PENDING decision marker with shell builtins before Ruby boots, later chunks poll on it and the budget scales with chunk depth, so long screens such as the roster and the session report paint whole under real streaming; the concurrent replay harness joined the suite) and 331f1a (separator rows pass through the data-table fitter whole whenever they fit), plus two release fixes (the alpha.14 changelog line names the four doctor display checks; the plan-screen changelog pin reads the whole file). Per-intent detail in each intent's outcome.md.

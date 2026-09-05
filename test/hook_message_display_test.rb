@@ -1470,6 +1470,121 @@ class HookMessageDisplayTest < Minitest::Test
     assert_equal 20, sleep_calls, "index 5 must poll 20 times end to end, not just in the pure formula"
   end
 
+
+  # --- 331a1 acceptance (L16, L17, L21): a reply carrying MORE THAN ONE screen
+  #
+  # 331a made engagement late-capable so a prose-first reply could still
+  # paint: a later chunk carrying an opener engages whatever the current
+  # decision says. That is right when the message is NOT yet a screen, and
+  # wrong once it already is. The roster (a table then ten cards) and the
+  # session report (many delivered screens) both carry several openers, so
+  # every later one used to re-engage: `engage` returns that chunk's own
+  # prefix - everything before the opener in that delta - as raw
+  # displayContent, and rewrites SCREEN with its own index, so the final
+  # chunk splices from the LAST opener and the rest reaches the terminal as
+  # plain Markdown. That is the box-drawn table the owner saw on alpha.15.
+
+  def stream_deltas(text, size: 220)
+    text.scan(/.{1,#{size}}/m)
+  end
+
+  def drive_whole_message(text, handler_obj, message_id:)
+    deltas = stream_deltas(text)
+    deltas.each_with_index.map do |delta, i|
+      handler_obj.handle(payload(message_id: message_id, session_id: "multi-s", index: i,
+                                  final: i == deltas.length - 1, delta: delta))
+    end
+  end
+
+  def test_later_opener_does_not_reengage_an_engaged_message
+    text = File.read(File.join(REPO, "test", "fixtures", "live_capture_roster.txt"))
+    outs = drive_whole_message(text, handler(plastic_home), message_id: "roster-multi")
+
+    leaked = outs[0..-2].each_index.select { |i| !outs[i].to_s.empty? }
+    assert_empty leaked,
+      "once a message is engaged, no later chunk may display raw text: leaked at #{leaked.inspect}"
+
+    painted = outs.last.to_s
+    refute_empty painted, "the final chunk must return the painted screen"
+    plain = painted.gsub(/\e\[[0-9;]*m/, "")
+    text.lines.select { |l| ScreenPaint.classify(l) == :opener }.each do |title|
+      assert_includes plain, title.strip.sub(/\A## /, ""),
+        "every card's title must survive into the painted final"
+    end
+  end
+
+  def test_later_opener_still_engages_after_noscreen
+    # 331a's prose-first path, pinned so the guard above cannot regress it:
+    # chunk 0 is ordinary prose (NOSCREEN), and a later opener must still
+    # engage the message from that chunk on.
+    h = handler(plastic_home)
+    assert_nil h.handle(payload(message_id: "late-1", index: 0, final: false,
+                                 delta: "Sure, here is what I found.\n"))
+    out = h.handle(payload(message_id: "late-1", index: 1, final: false,
+                            delta: "\n## ▶ 50 · Demo intent\n"))
+    refute_nil out, "an opener after NOSCREEN must still engage"
+    assert_equal "\n", out, "the engaging chunk returns only its own prefix"
+  end
+
+  def test_live_captures_paint_whole
+    %w[roster session_trimmed].each do |name|
+      text = File.read(File.join(REPO, "test", "fixtures", "live_capture_#{name}.txt"))
+      outs = drive_whole_message(text, handler(plastic_home), message_id: "whole-#{name}")
+      plain = outs.last.to_s.gsub(/\e\[[0-9;]*m/, "")
+
+      titles = text.lines.select { |l| ScreenPaint.classify(l) == :opener }
+      assert_operator titles.length, :>, 1, "#{name} must carry more than one screen"
+      titles.each do |title|
+        assert_includes plain, title.strip.sub(/\A## /, ""),
+          "#{name}: every title must reach the painted final"
+      end
+    end
+  end
+
+  # --- 331a1 (L22, L23): the opt-in hook trace ------------------------------
+
+  def trace_lines(path)
+    File.exist?(path) ? File.readlines(path).map { |l| JSON.parse(l) } : []
+  end
+
+  def test_trace_records_decision_region_and_first_rejected_line
+    path = File.join(@tmp, "trace.jsonl")
+    text = File.read(File.join(REPO, "test", "fixtures", "live_capture_session_trimmed.txt"))
+    h = MessageDisplay.new(tmp_root: @tmp, plastic_home: plastic_home, color: true,
+                            now: Time.parse("2026-08-30T12:00:00Z"),
+                            trace: MessageDisplay.file_trace(path))
+    drive_whole_message(text, h, message_id: "traced")
+
+    rows = trace_lines(path)
+    refute_empty rows, "the trace must record one row per chunk"
+    assert(rows.all? { |r| r.key?("index") && r.key?("final") && r.key?("decision") },
+           "every row carries index, final and decision")
+
+    final_row = rows.find { |r| r["final"] == true }
+    refute_nil final_row, "the final chunk is traced"
+    %w[buffered_bytes region_start region_stop].each do |key|
+      assert final_row.key?(key), "the final row carries #{key}"
+    end
+    assert final_row.key?("first_rejected_line"),
+      "the final row names the first line the grammar rejected, or nil when none"
+  end
+
+  def test_trace_absent_is_silent_and_costs_nothing
+    h = handler(plastic_home)
+    assert_nil h.handle(payload(message_id: "untraced", index: 0, final: false,
+                                 delta: "Sure, here is a summary.\n"))
+    assert_empty Dir.glob(File.join(@tmp, "*.jsonl")), "no trace file appears when none was asked for"
+  end
+
+  def test_unwritable_trace_path_never_breaks_the_hook
+    path = File.join(@tmp, "no-such-dir", "trace.jsonl")
+    h = MessageDisplay.new(tmp_root: @tmp, plastic_home: plastic_home, color: true,
+                            now: Time.parse("2026-08-30T12:00:00Z"),
+                            trace: MessageDisplay.file_trace(path))
+    assert_nil h.handle(payload(message_id: "badtrace", index: 0, final: false,
+                                 delta: "Sure, here is a summary.\n"))
+  end
+
   # --- L6: a concurrent, staggered replay of state and roster shows zero
   # late passthrough after the fix -------------------------------------------
 
@@ -1507,14 +1622,12 @@ class HookMessageDisplayTest < Minitest::Test
 
       # A "session" capture is itself a composite of several delivered
       # screens printed back to back in one reply (that is what the
-      # session verb does), so a later chunk can legitimately carry a
-      # SECOND opener mid-delta and re-engage (331a's own, pre-existing
-      # late-engagement behavior) - its stdout is real buffered prefix
-      # text then, not a blank "". Either way is fine: what must never
-      # happen is a raw, untouched passthrough (empty stdout), already
-      # the stronger claim `passthrough_indices` checked above.
-      refute_empty o[:stdout],
-        "chunk #{o[:index]} must be blanked or buffered (via a legitimate re-engagement), never a raw passthrough"
+      # session verb does). Before 331a1's acceptance fix a later chunk
+      # carrying a SECOND opener re-engaged and returned real prefix text
+      # here; now (L16) an already-engaged message never re-engages, so
+      # every one of these chunks is blanked outright.
+      assert_includes o[:stdout], '"displayContent":""',
+        "chunk #{o[:index]} must be blanked, never a re-engagement or a raw passthrough"
     end
   end
 

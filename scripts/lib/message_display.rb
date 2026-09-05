@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require "json"
 require_relative "screen_paint"
 
 # MessageDisplay (intent 316a, O4/O5, round 3 concurrency fix) - the Claude
@@ -110,9 +111,13 @@ class MessageDisplay
   # NOSCREEN (D2), never read by this class as a decision in its own right.
   PENDING_FILE = "PENDING"
 
+  # `trace` (331a1): an optional callable taking one Hash per chunk. The class
+  # stays pure - it never reads PLASTIC_HOOK_TRACE, never opens a file of its
+  # own; the CLI reads the variable and injects `file_trace`. nil, the
+  # default, costs the common path one `unless` and nothing else.
   def initialize(tmp_root:, plastic_home:, color:, now:, wait_ms: 300, poll_ms: 20,
                  index_wait_ms: 20, max_wait_ms: 2000,
-                 sleeper: ->(seconds) { sleep(seconds) })
+                 sleeper: ->(seconds) { sleep(seconds) }, trace: nil)
     @tmp_root = tmp_root
     @plastic_home = plastic_home
     @color = color
@@ -122,6 +127,7 @@ class MessageDisplay
     @index_wait_ms = index_wait_ms
     @max_wait_ms = max_wait_ms
     @sleeper = sleeper
+    @trace = trace
   end
 
   def handle(payload)
@@ -141,11 +147,28 @@ class MessageDisplay
 
     dir = self.class.buffer_path(tmp_root: @tmp_root, session_id: session_id, message_id: message_id)
 
-    if index == 0
-      handle_chunk_zero(dir, delta, cwd, final)
-    else
-      handle_later_chunk(dir, index, delta, final)
-    end
+    @trace_detail = {}
+    result =
+      if index == 0
+        handle_chunk_zero(dir, delta, cwd, final)
+      else
+        handle_later_chunk(dir, index, delta, final)
+      end
+
+    emit_trace(index, final, result)
+    result
+  end
+
+  # One row per chunk, only when a sink was injected. Never raises: a trace
+  # is a diagnostic and must not be able to change what the hook returns.
+  def emit_trace(index, final, result)
+    return unless @trace
+
+    row = { "index" => index, "final" => final,
+            "displayed_bytes" => result.is_a?(String) ? result.bytesize : nil }
+    @trace.call(row.merge(@trace_detail.to_h))
+  rescue StandardError
+    nil
   end
 
   # The message directory both this class and the bash launcher (hooks/
@@ -162,6 +185,17 @@ class MessageDisplay
 
   def self.screen_path(tmp_root:, session_id:, message_id:)
     File.join(buffer_path(tmp_root: tmp_root, session_id: session_id, message_id: message_id), SCREEN_FILE)
+  end
+
+  # A trace sink that appends one JSON object per chunk to `path`. Every
+  # failure is swallowed: an unwritable path must never turn a diagnostic
+  # into a broken hook (D5, fail open).
+  def self.file_trace(path)
+    lambda do |row|
+      File.open(path, "a") { |f| f.puts(JSON.generate(row)) }
+    rescue StandardError
+      nil
+    end
   end
 
   def self.noscreen_path(tmp_root:, session_id:, message_id:)
@@ -186,10 +220,12 @@ class MessageDisplay
   def handle_chunk_zero(dir, delta, _cwd, final)
     split = split_at_opener(delta)
     unless split
+      @trace_detail["decision"] = "noscreen"
       write_noscreen(dir)
       return nil
     end
 
+    @trace_detail["decision"] = "engage"
     engage(dir, 0, split, final)
   end
 
@@ -199,15 +235,34 @@ class MessageDisplay
   # is already on disk. Only once its own delta carries no opener does it
   # fall back to the original decision-driven wait.
   def handle_later_chunk(dir, index, delta, final)
+    # 331a1: an opener engages only a message that is NOT already a screen.
+    # 331a's late engagement exists for the prose-first reply, where chunk 0
+    # wrote NOSCREEN and a later chunk carries the title; it must not fire
+    # again once SCREEN is on disk. A reply can hold several screens back to
+    # back - the roster is a table then ten cards, the session report is many
+    # delivered screens - and re-engaging on each one returned that chunk's
+    # own prefix as raw Markdown and rewrote the start index, so the final
+    # chunk spliced from the LAST opener and everything before it reached the
+    # terminal unpainted. Inside an engaged message a later opener is simply
+    # content: it is buffered like any other line and the painter, which
+    # already understands a run of screens, lays all of them out.
     split = split_at_opener(delta)
-    return engage(dir, index, split, final) if split
+    if split && !engaged?(dir)
+      @trace_detail["decision"] = "engage"
+      return engage(dir, index, split, final)
+    end
 
     decision = wait_for_decision(dir, gate_delta: final ? nil : delta, index: index)
+    @trace_detail["decision"] = decision.to_s
 
     return nil unless decision == :screen
 
     write_chunk(dir, index, delta)
     final ? finalize_final(dir, index) : ""
+  end
+
+  def engaged?(dir)
+    File.exist?(File.join(dir, SCREEN_FILE))
   end
 
   # Engages the message starting at THIS chunk (whatever its index): writes
@@ -426,6 +481,7 @@ class MessageDisplay
 
     region_stop = ScreenPaint.region_end(lines, start)
     painted = ScreenPaint.paint(lines[start...region_stop].join, color: true, markdown_safe: true)
+    trace_region(buffered, lines, start, region_stop, painted)
     return buffered unless painted
 
     # 331a (D4): a lone CLOSING fence immediately after the painted region is
@@ -443,6 +499,26 @@ class MessageDisplay
     out = +"#{lines[0...start].join}#{painted.rstrip}\n"
     out << "\n#{suffix}" unless suffix.empty?
     out
+  end
+
+  # What the final chunk actually painted, for the opt-in trace: how much was
+  # buffered, where the region ran, and the first line the grammar rejected -
+  # the one fact a terminal capture cannot give you. Computed only when a
+  # sink was injected, so an ordinary run pays nothing.
+  def trace_region(buffered, lines, start, region_stop, painted)
+    return unless @trace
+
+    rejected = ScreenPaint.first_rejected(lines, start)
+    @trace_detail.merge!(
+      "buffered_bytes" => buffered.bytesize,
+      "buffered_lines" => lines.length,
+      "region_start" => start,
+      "region_stop" => region_stop,
+      "painted" => !painted.nil?,
+      "first_rejected_line" => rejected && { "index" => rejected[0], "text" => rejected[1][0, 200] },
+    )
+  rescue StandardError
+    nil
   end
 
   def write_chunk(dir, index, delta)
