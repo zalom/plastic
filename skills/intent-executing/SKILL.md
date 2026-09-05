@@ -63,6 +63,8 @@ Dispatch ONE executor subagent and give it the whole delivery: every task's full
 
 After each commit lands (the red commit and every commit after it), append a `Commit` line to the savepoint ledger: `ruby ~/.plastic/scripts/savepoint-note <intent_dir> --kind Commit --text "<sha> <what it proves>"` (intent 317, D17). This is what feeds `report-screen delay`; a commit with no line is a gap the delay report cannot explain.
 
+Print `ruby ~/.plastic/scripts/report-screen state <intent_dir> --changed "<what just landed>"` as the first characters of the reply, nothing before it, no fence, right after the red commit and again once the suite goes green (intent 331f).
+
 Read its response by code:
 - DONE or DONE_WITH_CONCERNS → proceed to Step 3.
 - NEEDS_CONTEXT → provide the missing context, re-dispatch the executor.
