@@ -110,7 +110,7 @@ module DoctorTestHelpers
 
   # Intent 331e: doctor's display_hook_paints check replays the installed
   # MessageDisplay launcher for real, so a "healthy install" fixture needs
-  # one that actually returns a painted screen — the generic exit-0 stub
+  # one that actually returns a painted screen; the generic exit-0 stub
   # every other hook gets (write_claude_hooks, above) would report a
   # legitimate display_hook_paints failure.
   def write_working_display_hook(hooks_dir)
@@ -2170,7 +2170,7 @@ class DoctorIntegrationTest < Minitest::Test
     FileUtils.mkdir_p(DOCTOR_TEST_CLAUDE)
     # display_hook_paints/display_not_defeated (intent 331e) read the
     # ambient NO_COLOR by design (R3: the full run reports on THIS
-    # invocation's own environment) — neutralized here, save/restore, so
+    # invocation's own environment). Neutralized here, save and restore, so
     # "a healthy install is all-pass" does not flip to warn/fail on a
     # runner that happens to export NO_COLOR.
     @saved_no_color = ENV.delete("NO_COLOR")

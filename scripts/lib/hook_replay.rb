@@ -27,15 +27,15 @@ module HookReplay
   # `env` (intent 331e): extra child-process environment, merged over the
   # PLASTIC_TMP entry every call already sets (a caller's own key wins). A
   # `nil` value unsets that variable in the child (Process.spawn's own
-  # convention) — how a caller forces NO_COLOR off regardless of the ambient
+  # convention) is how a caller forces NO_COLOR off regardless of the ambient
   # environment. Default `{}` keeps every existing caller's behavior
   # unchanged: this is an extension, not a fork.
   #
   # `timeout` (intent 331e): when given, bounds EACH chunk's spawn to that
   # many seconds. A bare `Timeout.timeout` around `Open3.capture3` does not
-  # reliably bound a genuinely hanging child — capture3's own wait still
+  # reliably bound a genuinely hanging child: capture3's own wait still
   # blocks on Process.waitpid for the child regardless of the raised
-  # Timeout::Error (the same gotcha scripts/hook-record works around) — so a
+  # Timeout::Error (the same gotcha scripts/hook-record works around), so a
   # timeout here spawns directly and kills the child on expiry instead.
   # Default `nil` keeps every existing caller on the original unbounded
   # Open3.capture3 path.
@@ -69,7 +69,7 @@ module HookReplay
 
   # Spawn directly (never Open3.capture3) so a timeout can actually kill the
   # child, with stdin/stdout/stderr routed through scratch files under the
-  # caller's own tmp_root — never pipes, so a stalled or oversized write can
+  # caller's own tmp_root, and never pipes, so a stalled or oversized write can
   # never deadlock the read side, and never anywhere outside tmp_root, so a
   # bounded replay carries the same "writes only under the injected tmp
   # root" guarantee as the unbounded path.

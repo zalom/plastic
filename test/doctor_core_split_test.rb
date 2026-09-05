@@ -223,10 +223,12 @@ class DoctorCoreSplitTest < Minitest::Test
   # `display_not_defeated`, `display_surfaces_documented`) deliberately stay
   # in scripts/doctor.rb, never doctor_core.rb, since they need Open3/Timeout
   # to spawn a real subprocess and must never attach the paint stack to the
-  # boot path — T2 above is what proves that. Measured 72,679 bytes; ceiling
-  # raised to 73,500 (headroom ~800 bytes above the measured total, in line
-  # with prior raises).
-  BOOT_PATH_BYTE_BUDGET = 73_500
+  # boot path; T2 above is what proves that. First measured at 72,679 bytes,
+  # then 73,219 after the intent's own review pass, which hardened
+  # read_json_safe against a malformed-JSON retry that used to escape its
+  # rescue and crash doctor outright. Ceiling raised to 74,000 (headroom
+  # ~780 bytes above the measured total, in line with prior raises).
+  BOOT_PATH_BYTE_BUDGET = 74_000
 
   def test_core_require_stays_under_the_boot_path_byte_budget
     plastic_files = loaded_after_core_require.select { |i| i["path"].start_with?(ROOT) }
