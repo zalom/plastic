@@ -117,6 +117,20 @@ class DoctorDisplayTest < Minitest::Test
     end
   end
 
+  def test_registered_fails_when_settings_unparseable # E14
+    Dir.mktmpdir("plastic-display-e14b") do |dir|
+      claude_dir = File.join(dir, "claude")
+      write_launcher(claude_dir)
+      FileUtils.mkdir_p(claude_dir)
+      File.write(File.join(claude_dir, "settings.json"), "{ not valid json at all")
+
+      d = Doctor.new(plastic_home: File.join(dir, "home"), agents: agents_for(claude_dir))
+      check = d.check_display_registration("claude").first
+
+      assert_equal "fail", check[:status]
+    end
+  end
+
   def test_registered_fails_on_empty_hooks_array # E15
     Dir.mktmpdir("plastic-display-e15") do |dir|
       claude_dir = File.join(dir, "claude")
@@ -165,6 +179,26 @@ class DoctorDisplayTest < Minitest::Test
       # MessageDisplay registered (established fact) — a check that secretly
       # fell back to Dir.home instead of the injected agent_dir would report
       # pass here. Only reading the injected dir reports fail.
+
+      d = Doctor.new(plastic_home: File.join(dir, "home"), agents: agents_for(claude_dir))
+      check = d.check_display_registration("claude").first
+
+      assert_equal "fail", check[:status]
+    end
+  end
+
+  def test_registered_reads_only_the_injected_agent_dir_even_with_a_valid_launcher # E18
+    Dir.mktmpdir("plastic-display-e18b") do |dir|
+      claude_dir = File.join(dir, "claude")
+      write_launcher(claude_dir) # present and executable at the injected agent_dir
+      # settings.json is intentionally never written in the injected dir.
+      # On this machine the real ~/.claude has MessageDisplay registered AND
+      # a working launcher (established fact) — a settings-only fallback
+      # such as `read_json_safe(settings_path) || read_json_safe(real_path)`
+      # would find that real registration, and because the injected
+      # agent_dir now ALSO carries a valid launcher file, nothing downstream
+      # would catch the leak: the whole check would wrongly report pass.
+      # Only reading the injected settings.json (absent here) reports fail.
 
       d = Doctor.new(plastic_home: File.join(dir, "home"), agents: agents_for(claude_dir))
       check = d.check_display_registration("claude").first
@@ -258,18 +292,53 @@ class DoctorDisplayTest < Minitest::Test
     end
   end
 
-  def test_paints_replays_the_installed_launcher # E20
-    source = File.read(File.join(ROOT, "scripts", "doctor.rb"))
-    body = source[/def check_display_paints\(.*?\n  end\n/m]
-    refute_nil body, "expected to find check_display_paints in scripts/doctor.rb"
+  # A launcher that records which copy of itself actually ran, into a
+  # shared marker log, then also paints a colored screen naming itself — the
+  # color alone would pass either way (R1's regression paints too), so the
+  # marker log is the real proof of WHICH launcher got replayed.
+  def write_marked_launcher(dir, basename, marker, marker_log)
+    path = File.join(dir, "hooks", basename)
+    FileUtils.mkdir_p(File.dirname(path))
+    script = <<~RUBY
+      #!/usr/bin/env ruby
+      require "json"
+      $stdin.read
+      File.open(#{marker_log.inspect}, "a") { |f| f.puts(#{marker.inspect}) }
+      puts JSON.generate("hookSpecificOutput" => { "hookEventName" => "MessageDisplay",
+        "displayContent" => "\\e[1m#{marker}\\e[0m"})
+    RUBY
+    File.write(path, script)
+    File.chmod(0o755, path)
+    path
+  end
 
-    assert_match(/agent_dir/, body,
-      "check_display_paints must resolve the launcher from the injected agent_dir")
-    refute_match(/["']message-display["']/, body,
-      "check_display_paints must never hardcode the package's own hooks/message-display " \
-      "launcher name; it must derive the installed launcher (plastic-message-display) via " \
-      "display_hook_launcher_name, so it is the INSTALLED launcher that gets replayed, " \
-      "never the package's own copy (R1)")
+  def test_paints_replays_the_installed_launcher # E20
+    Dir.mktmpdir("plastic-display-e20-home") do |home|
+      Dir.mktmpdir("plastic-display-e20-agent") do |agent_dir|
+        Dir.mktmpdir("plastic-display-e20-pkg") do |package_root|
+          write_fixture(home)
+          marker_log = File.join(home, "marker.log")
+
+          # Two DISTINCT launcher stubs. The installed one lives under the
+          # injected agent_dir at its real launcher name
+          # (plastic-message-display); the other lives under a decoy
+          # package_root at the package's own bare name (message-display) —
+          # the wrong file R1 warns against ever replaying.
+          write_marked_launcher(agent_dir, "plastic-message-display", "INSTALLED-MARKER", marker_log)
+          write_marked_launcher(package_root, "message-display", "PACKAGE-MARKER", marker_log)
+
+          d = Doctor.new(plastic_home: home, agents: { "claude" => { name: "Claude Code", dir: agent_dir } })
+          check = d.check_display_paints("claude", no_color: nil, package_root: package_root).first
+
+          assert_equal "pass", check[:status]
+          marker_content = File.read(marker_log)
+          assert_includes marker_content, "INSTALLED-MARKER",
+            "the installed launcher under agent_dir must have run"
+          refute_includes marker_content, "PACKAGE-MARKER",
+            "the package's own hooks/message-display must never be replayed (R1)"
+        end
+      end
+    end
   end
 
   def test_paints_skips_on_hookless_harness # E5
@@ -296,6 +365,34 @@ class DoctorDisplayTest < Minitest::Test
 
       assert_equal "fail", check[:status]
       assert_match(/time/i, check[:message])
+    end
+  end
+
+  def test_paints_fails_when_replay_raises # F6
+    Dir.mktmpdir("plastic-display-f6") do |dir|
+      home = File.join(dir, "home")
+      claude_dir = File.join(dir, "claude")
+      FileUtils.mkdir_p(home)
+      write_fixture(home)
+      launcher_path = write_working_launcher(claude_dir, color: true)
+
+      d = Doctor.new(plastic_home: home, agents: agents_for(claude_dir))
+      # Deletes the launcher AFTER check_display_paints's own executable?
+      # check passed but BEFORE the replay's Process.spawn — the race F6
+      # describes. Process.spawn raises Errno::ENOENT before a pid exists;
+      # without a rescue around the replay that exception would crash the
+      # entire doctor run instead of failing just this one check.
+      check = d.check_display_paints(
+        "claude", no_color: nil,
+        tmp_dir_factory: lambda {
+          File.delete(launcher_path)
+          Dir.mktmpdir("plastic-doctor-display")
+        }
+      ).first
+
+      assert_equal "display_hook_paints", check[:name]
+      assert_equal "fail", check[:status]
+      assert_match(/raised/i, check[:message])
     end
   end
 
@@ -466,6 +563,70 @@ class DoctorDisplayTest < Minitest::Test
     refute_nil section, "expected a top-level ## Surfaces section in harness-adapters.md"
     ["Claude Code normal view", "agents view", "Codex", "claude -p", "verbose transcript view"].each do |literal|
       assert_includes section, literal, "## Surfaces section missing #{literal.inspect}"
+    end
+  end
+
+  # The regex-against-the-real-doc test above proves the real doc is honest,
+  # but it never calls check_display_surfaces_documented itself — a reviewer
+  # stubbed that method to `return pass` and the suite stayed green (F3).
+  # These exercise the production method directly against synthetic
+  # package_root fixtures, one per branch.
+
+  REQUIRED_SURFACE_LITERALS = ["Claude Code normal view", "agents view", "Codex", "claude -p",
+                               "verbose transcript view"].freeze
+
+  def write_surfaces_doc(package_root, body)
+    path = File.join(package_root, "docs", "reference", "harness-adapters.md")
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, body)
+  end
+
+  def surfaces_doctor(package_root)
+    Doctor.new(plastic_home: File.join(package_root, "home"),
+               agents: agents_for(File.join(package_root, "claude")))
+  end
+
+  def test_surfaces_documented_passes_when_docs_not_shipped # E25 (F1)
+    Dir.mktmpdir("plastic-display-e25") do |package_root|
+      # docs/reference/harness-adapters.md is deliberately never written:
+      # this is what every real install looks like (docs/ ships in neither
+      # package.json's files list nor InstallerCore's manifest).
+      check = surfaces_doctor(package_root).check_display_surfaces_documented(package_root: package_root).first
+
+      assert_equal "pass", check[:status]
+      assert_includes check[:message], "not shipped"
+    end
+  end
+
+  def test_surfaces_documented_fails_without_surfaces_heading # E9
+    Dir.mktmpdir("plastic-display-e9-no-heading") do |package_root|
+      write_surfaces_doc(package_root, "# Harness adapters\n\nNo Surfaces heading in this doc.\n")
+      check = surfaces_doctor(package_root).check_display_surfaces_documented(package_root: package_root).first
+
+      assert_equal "fail", check[:status]
+      assert_includes check[:message], "no ## Surfaces section"
+    end
+  end
+
+  def test_surfaces_documented_fails_missing_one_literal # E9
+    Dir.mktmpdir("plastic-display-e9-missing-literal") do |package_root|
+      body = "# Harness adapters\n\n## Surfaces\n\n" +
+             (REQUIRED_SURFACE_LITERALS - ["Codex"]).join("\n") + "\n"
+      write_surfaces_doc(package_root, body)
+      check = surfaces_doctor(package_root).check_display_surfaces_documented(package_root: package_root).first
+
+      assert_equal "fail", check[:status]
+      assert_includes check[:message], "Codex"
+    end
+  end
+
+  def test_surfaces_documented_passes_with_complete_synthetic_doc # E9
+    Dir.mktmpdir("plastic-display-e9-complete") do |package_root|
+      body = "# Harness adapters\n\n## Surfaces\n\n" + REQUIRED_SURFACE_LITERALS.join("\n") + "\n"
+      write_surfaces_doc(package_root, body)
+      check = surfaces_doctor(package_root).check_display_surfaces_documented(package_root: package_root).first
+
+      assert_equal "pass", check[:status]
     end
   end
 

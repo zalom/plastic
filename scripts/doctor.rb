@@ -2533,6 +2533,20 @@ end
       begin
         HookReplay.replay(hook_path: launcher_path, tmp_root: tmp_dir, text: text,
                            env: { "PLASTIC_HOME" => plastic_home }, timeout: timeout_seconds)
+      rescue StandardError => e
+        # Process.spawn (inside HookReplay) can raise before a pid ever
+        # exists — a permissions race, a launcher that vanishes between the
+        # executable? check above and the spawn, or any other unexpected
+        # error. Unlike this codebase's defensive style elsewhere
+        # (read_json_safe, load_yaml_safe), nothing here degraded that into
+        # a clean check result, so an unlucky replay crashed the entire
+        # doctor run instead of failing just this one check (intent 331e,
+        # F6). `return` still runs the `ensure` below before unwinding.
+        return [check(
+          category: "display", name: "display_hook_paints", status: "fail",
+          message: "Replaying the installed launcher raised #{e.class}: #{e.message}",
+          fixable: false
+        )]
       ensure
         FileUtils.remove_entry(tmp_dir) if tmp_dir && File.exist?(tmp_dir)
       end
@@ -2618,9 +2632,28 @@ end
   # three surface classes. Reads the package's own shipped doc — static
   # content, not a runtime path — same shape as check_skill_lint reading the
   # package's own skills/ tree.
+  #
+  # `docs/` ships in NEITHER package.json's `files` list NOR
+  # InstallerCore's manifest (grep confirms zero references), so on every
+  # real install `package_root` resolves to a `~/.plastic` that has no
+  # `docs/` tree at all — only a repo checkout carries it. Absence of the
+  # doc there is therefore not a defect to report; it is this install
+  # having nothing to verify, the same skip-as-pass vocabulary D3 and R3
+  # already use elsewhere in this category. This check fails only when the
+  # doc DOES exist (a repo checkout) but has rotted: no `## Surfaces`
+  # section, or one missing a required literal.
   def check_display_surfaces_documented(package_root: PACKAGE_ROOT)
     doc_path = File.join(package_root, "docs", "reference", "harness-adapters.md")
-    content = File.file?(doc_path) ? File.read(doc_path) : ""
+
+    unless File.file?(doc_path)
+      return [check(
+        category: "display", name: "display_surfaces_documented", status: "pass",
+        message: "Reference docs are not shipped to this install (#{tilde(doc_path)} absent); " \
+                  "nothing to verify"
+      )]
+    end
+
+    content = File.read(doc_path)
     section = content[/^## Surfaces\n(.*?)(?=\n## |\z)/m, 1].to_s
 
     required = ["Claude Code normal view", "agents view", "Codex", "claude -p", "verbose transcript view"]

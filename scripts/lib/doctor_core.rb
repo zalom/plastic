@@ -91,8 +91,19 @@ class Doctor
 
     JSON.parse(File.read(path))
   rescue JSON::ParserError
-    content = File.read(path).gsub(%r{//[^\n]*}, "").gsub(/,(\s*[}\]])/, '\1')
-    JSON.parse(content)
+    # The comment/trailing-comma-stripped retry below can itself raise
+    # JSON::ParserError on genuinely malformed content (a truncated file, or
+    # plain garbage) — a nested begin/rescue is required here because a
+    # method-level `rescue` clause never catches an exception raised from
+    # INSIDE a sibling rescue clause's own body (only from the main body).
+    # Without this nesting a malformed settings.json crashes doctor instead
+    # of reporting a clean fail (intent 331e, F5).
+    begin
+      content = File.read(path).gsub(%r{//[^\n]*}, "").gsub(/,(\s*[}\]])/, '\1')
+      JSON.parse(content)
+    rescue
+      nil
+    end
   rescue
     nil
   end
