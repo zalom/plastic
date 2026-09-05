@@ -1102,12 +1102,9 @@ SCREEN_ROW_MAX_COLUMNS = 115
 # colon is already a name and passes through whole. Escaping happens here, so
 # the budget below measures what actually reaches the row.
 def screen_intent_title(rec)
-  line = rec[:intent].to_s
-  lead = line.include?(":") ? line.split(":", 2).first : line
-  # A line that opens with its colon has no lead to take, and an empty cell
-  # names nothing. Fall back to the whole line rather than render a blank.
-  lead = line if lead.strip.empty?
-  cell(lead)
+  # D8: one colon rule for every screen, on ReportScreen. `max:` is the whole line here
+  # because screen_fit_intent does this cell's own width budgeting a moment later.
+  cell(ReportScreen.title_before_colon(rec[:intent], max: rec[:intent].to_s.length + 1))
 end
 
 # The Intent cell fitted to what the row has left. `others` are the already

@@ -465,4 +465,18 @@ class ReportScreenHeaderAndWidthTest < Minitest::Test
                     "the dashboard must read titles through the one helper, not a second split"
     refute_match(/split\(":"/, body, "a second colon rule lives in dashboard.rb")
   end
+
+  def test_the_earlier_of_the_two_boundaries_is_the_title # D8.8
+    # zlatkocodes 4 carries both: a sentence 47 characters in and a real label colon 130
+    # characters in. The sentence is what names the work, so the earlier boundary wins.
+    both = "A short opening sentence. Then a long clause that finally reaches its label: the rest"
+    assert_equal "A short opening sentence.", ReportScreen.title_before_colon(both)
+  end
+
+  def test_the_earlier_of_the_two_boundaries_is_the_title # D8.8
+    # zlatkocodes 4 carries both: a sentence 47 characters in and a real label colon 130
+    # characters in. The sentence is what names the work, so the earlier boundary wins.
+    both = "A short opening sentence. Then a long clause that finally reaches its label: the rest"
+    assert_equal "A short opening sentence.", ReportScreen.title_before_colon(both)
+  end
 end
