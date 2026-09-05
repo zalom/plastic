@@ -469,6 +469,70 @@ class DoctorDisplayTest < Minitest::Test
     end
   end
 
+  # The regex-against-the-real-doc test above proves the real doc is honest,
+  # but it never calls check_display_surfaces_documented itself — a reviewer
+  # stubbed that method to `return pass` and the suite stayed green (F3).
+  # These exercise the production method directly against synthetic
+  # package_root fixtures, one per branch.
+
+  REQUIRED_SURFACE_LITERALS = ["Claude Code normal view", "agents view", "Codex", "claude -p",
+                               "verbose transcript view"].freeze
+
+  def write_surfaces_doc(package_root, body)
+    path = File.join(package_root, "docs", "reference", "harness-adapters.md")
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, body)
+  end
+
+  def surfaces_doctor(package_root)
+    Doctor.new(plastic_home: File.join(package_root, "home"),
+               agents: agents_for(File.join(package_root, "claude")))
+  end
+
+  def test_surfaces_documented_passes_when_docs_not_shipped # E25 (F1)
+    Dir.mktmpdir("plastic-display-e25") do |package_root|
+      # docs/reference/harness-adapters.md is deliberately never written:
+      # this is what every real install looks like (docs/ ships in neither
+      # package.json's files list nor InstallerCore's manifest).
+      check = surfaces_doctor(package_root).check_display_surfaces_documented(package_root: package_root).first
+
+      assert_equal "pass", check[:status]
+      assert_includes check[:message], "not shipped"
+    end
+  end
+
+  def test_surfaces_documented_fails_without_surfaces_heading # E9
+    Dir.mktmpdir("plastic-display-e9-no-heading") do |package_root|
+      write_surfaces_doc(package_root, "# Harness adapters\n\nNo Surfaces heading in this doc.\n")
+      check = surfaces_doctor(package_root).check_display_surfaces_documented(package_root: package_root).first
+
+      assert_equal "fail", check[:status]
+      assert_includes check[:message], "no ## Surfaces section"
+    end
+  end
+
+  def test_surfaces_documented_fails_missing_one_literal # E9
+    Dir.mktmpdir("plastic-display-e9-missing-literal") do |package_root|
+      body = "# Harness adapters\n\n## Surfaces\n\n" +
+             (REQUIRED_SURFACE_LITERALS - ["Codex"]).join("\n") + "\n"
+      write_surfaces_doc(package_root, body)
+      check = surfaces_doctor(package_root).check_display_surfaces_documented(package_root: package_root).first
+
+      assert_equal "fail", check[:status]
+      assert_includes check[:message], "Codex"
+    end
+  end
+
+  def test_surfaces_documented_passes_with_complete_synthetic_doc # E9
+    Dir.mktmpdir("plastic-display-e9-complete") do |package_root|
+      body = "# Harness adapters\n\n## Surfaces\n\n" + REQUIRED_SURFACE_LITERALS.join("\n") + "\n"
+      write_surfaces_doc(package_root, body)
+      check = surfaces_doctor(package_root).check_display_surfaces_documented(package_root: package_root).first
+
+      assert_equal "pass", check[:status]
+    end
+  end
+
   def test_internals_names_the_display_category # E24
     body = File.read(File.join(ROOT, "docs", "internals.md"))
     %w[display_hook_registered display_hook_paints display_not_defeated display_surfaces_documented].each do |name|
