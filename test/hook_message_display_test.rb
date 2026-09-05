@@ -370,10 +370,16 @@ class HookMessageDisplayTest < Minitest::Test
     # the round-3 fix, that read sat OUTSIDE the begin/rescue, so this raised
     # straight out of #handle, skipped the `ensure`, and left the message
     # directory behind forever.
+    #
+    # 331a review fix: D8/D10 promise the buffered original is returned on
+    # ANY finalize failure, never nil, once chunks were blanked. When the
+    # very read that assembles `buffered` is what raises, the rescue used to
+    # hand back the still-nil local -- a real, if narrower, nil. `out` must
+    # be the empty string (nothing could be read back), not nil.
     File.chmod(0o200, chunk0)
     begin
       out = h.handle(payload(index: 1, final: true, delta: "more text"))
-      assert_nil out
+      assert_equal "", out
       refute File.exist?(dir), "the message directory must be removed even when reading a chunk at final raises"
     ensure
       File.chmod(0o600, chunk0) if File.exist?(chunk0)
@@ -1197,6 +1203,39 @@ class HookMessageDisplayTest < Minitest::Test
       out, status = Open3.capture2({ "PLASTIC_TMP" => @tmp }, "bash", LAUNCHER, stdin_data: json)
       assert_equal 0, status.exitstatus
       assert_includes out, '"hookSpecificOutput"', "launcher must hand off a late opener at any index: #{json}"
+    end
+  end
+
+  # --- M12e: the chunk-0 arm must get the SAME opener-anywhere globs. The
+  # intent's own flagship shape -- a lead-in sentence and the opener in the
+  # SAME first (index 0) chunk -- must reach Ruby too, not only a later
+  # chunk (M12a). Drives the real bash launcher, not `handle`: this is
+  # exactly the arm that stayed unfixed after the first pass.
+
+  def test_launcher_hands_off_an_opener_embedded_in_chunk_zeros_own_delta
+    root = build_global_store
+    dir = make_intent(root, checklist: checklist_with(total: 1, done: 0))
+    plain = plain_screen(dir, root)
+    prose = "Here is the state.\n\n"
+
+    tight = JSON.generate("message_id" => "m1", "session_id" => "s1", "index" => 0,
+                           "final" => true, "delta" => "#{prose}#{plain}", "cwd" => root)
+    spaced = tight.gsub('":0', '": 0').gsub('":true', '": true').gsub('":"', '": "')
+    # Literal 6-character \uXXXX text, not an actual multibyte glyph -- see
+    # M12a's escaped fixtures for why this is the shape a JSON encoder that
+    # escapes non-ASCII would produce, and why a plain string#gsub with a
+    # single-quoted replacement is enough (no backslash processing to fight).
+    escape_glyph = ->(json) { json.gsub("▶", %q<\u25b6>).gsub("✔", %q<\u2714>) }
+
+    [tight, spaced, escape_glyph.call(tight), escape_glyph.call(spaced)].each do |json|
+      out, status = Open3.capture2({ "PLASTIC_TMP" => @tmp, "PLASTIC_HOME" => root }, "bash", LAUNCHER, stdin_data: json)
+      assert_equal 0, status.exitstatus
+      assert_includes out, '"hookSpecificOutput"',
+        "launcher must hand off a chunk-0 opener embedded mid-delta: #{json}"
+      content = JSON.parse(out).dig("hookSpecificOutput", "displayContent")
+      assert_includes content, prose, "the prose lead-in must survive: #{json}"
+      assert_includes content, "\e[1m",
+        "the opener must actually reach Ruby and get painted, not merely echoed back: #{json}"
     end
   end
 
