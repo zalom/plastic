@@ -1541,15 +1541,70 @@ class HookMessageDisplayTest < Minitest::Test
     FileUtils.chmod(0o755, mkdir_stub)
 
     env = { "PLASTIC_TMP" => @tmp, "PATH" => "#{stub_dir}:#{ENV["PATH"]}" }
-    json = JSON.generate("message_id" => "ord1", "session_id" => "ords1", "index" => 3,
-                          "final" => false, "delta" => "an ordinary streamed sentence", "cwd" => @home)
-    out, status = Open3.capture2(env, "bash", LAUNCHER, stdin_data: json)
 
-    assert_equal 0, status.exitstatus
-    assert_empty out
-    assert_empty File.read(log_path), "an ordinary non-candidate chunk must never invoke mkdir"
+    # L8b (post-execution review): BOTH an ordinary later chunk and an
+    # ordinary CHUNK 0 must leave the fork-free path untouched. Chunk 0 is
+    # the one that stakes the marker when it engages, so it is the path a
+    # careless edit would most easily push mkdir onto for every message.
+    [0, 3].each do |index|
+      json = JSON.generate("message_id" => "ord#{index}", "session_id" => "ords1", "index" => index,
+                            "final" => false, "delta" => "an ordinary streamed sentence", "cwd" => @home)
+      out, status = Open3.capture2(env, "bash", LAUNCHER, stdin_data: json)
+
+      assert_equal 0, status.exitstatus
+      assert_empty out
+      assert_empty File.read(log_path),
+        "an ordinary non-candidate chunk (index #{index}) must never invoke mkdir"
+    end
   ensure
     FileUtils.rm_rf(stub_dir) if stub_dir
+  end
+
+  # --- L15: a raising thread never escapes replay_concurrent ---------------
+
+  # Post-execution review: `Thread.new` bodies had no rescue, so a raise
+  # inside one surfaced at `threads.each(&:join)`, aborted the join loop at
+  # the first dead thread, and left every later thread running after the
+  # method had already returned control to its caller by raising. A test
+  # that then ran its own `ensure FileUtils.rm_rf(tmp)` raced live threads
+  # still writing under that directory.
+  def test_replay_concurrent_never_leaks_a_thread
+    before = Thread.list.size
+    original = HookReplay.method(:run_one)
+    calls = []
+
+    HookReplay.singleton_class.send(:define_method, :run_one) do |hook_path, payload, env, tmp, timeout|
+      calls << payload["index"]
+      raise "boom" if payload["index"] == 0
+
+      sleep 0.4
+      ["", "", 0]
+    end
+
+    tmp = Dir.mktmpdir("leak-probe")
+    begin
+      outs = nil
+      assert_silent_of_raise = begin
+        outs = HookReplay.replay_concurrent(hook_path: "/nonexistent", tmp_root: tmp,
+                                            text: "aaaa" * 8, chunk: 4, gap_ms: 0, jitter: false)
+        true
+      rescue StandardError
+        false
+      end
+
+      assert assert_silent_of_raise, "a raising chunk must not escape replay_concurrent"
+      assert_equal 8, outs.length
+      refute_includes outs, nil, "every index must carry a result, even the raising one"
+      assert_equal "boom", outs[0][:stderr], "the raised message is reported as that chunk's stderr"
+      assert_nil outs[0][:exitstatus], "a raising chunk carries no exit status"
+      assert_equal (0...8).to_a, outs.map { |o| o[:index] }, "results stay in index order"
+      assert_operator Thread.list.size, :<=, before,
+        "no replay thread may still be alive once replay_concurrent has returned"
+    ensure
+      FileUtils.rm_rf(tmp)
+    end
+  ensure
+    HookReplay.singleton_class.send(:define_method, :run_one, original)
   end
 
   # --- L11: the concurrent replay mode staggers by gap_ms, it does not fire

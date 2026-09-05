@@ -46,9 +46,16 @@ class HarnessAdaptersDocTest < Minitest::Test
 
   # Intent 331a1 (L9): the engagement contract names the decision marker
   # itself, and says explicitly when the launcher writes it.
+  # L9b (post-execution review): the substring "PENDING" alone passes even
+  # after the documented budget has rotted away from the code, so the numbers
+  # D3 fixes and the staleness rule D2 fixes are pinned here too.
   def test_adapters_doc_names_pending_marker
     body = normalized_body
     assert_includes body, "PENDING"
     assert_includes body, "before Ruby boots"
+    assert_includes body, "300 ms"
+    assert_includes body, "20 ms"
+    assert_includes body, "2 s"
+    assert_match(/stale PENDING[^.]*NOSCREEN/, body)
   end
 end
