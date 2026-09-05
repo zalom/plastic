@@ -26,4 +26,21 @@ class HarnessAdaptersDocTest < Minitest::Test
       "| Codex CLI | `$plastic-<name>` (dollar), explicit; Codex may also select a skill " \
       "implicitly by matching its `description` |"
   end
+
+  # Intent 331a (X1): the engagement contract is late-capable now, not
+  # chunk-0-only -- a chunk carrying an opener engages the message from that
+  # chunk on, whatever its index.
+  def test_documents_late_capable_engagement
+    body = normalized_body
+    assert_includes body, "engages the message from that chunk on, whatever its index"
+  end
+
+  # Intent 331a (X2): docs/internals.md documents the ScreenPaint registry.
+  INTERNALS = File.join(ROOT, "docs", "internals.md")
+
+  def test_internals_documents_the_screen_registry
+    body = File.read(INTERNALS).gsub(/\s+/, " ")
+    assert_includes body, "ScreenPaint.register"
+    assert_includes body, "scripts/lib/screens/"
+  end
 end

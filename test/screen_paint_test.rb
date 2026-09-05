@@ -575,4 +575,72 @@ class ScreenPaintTest < Minitest::Test
     line = painted.lines.find { |l| l.include?("None") }
     assert_includes line, A::MIDGREY
   end
+
+  # === intent 331a (D6): the ScreenPaint registry ============================
+  #
+  # register(kind, opener:, paint: nil) plus a kind-agnostic classify/paint
+  # so a new screen kind lives in scripts/lib/screens/<kind>.rb and calls
+  # register on load, never editing this file. paint: is optional and
+  # defaults to the shared pipeline below - no shipped kind has its own
+  # palette (D6 refinement).
+
+  def teardown_registry(kind)
+    ScreenPaint.instance_variable_get(:@registry)&.delete(kind)
+  end
+
+  def test_register_is_idempotent_by_kind # R1
+    ScreenPaint.register(:demo_r1_331a, opener: /\A~~ first ~~/)
+    ScreenPaint.register(:demo_r1_331a, opener: /\A~~ second ~~/)
+    assert_equal 1, ScreenPaint.kinds.count(:demo_r1_331a)
+  ensure
+    teardown_registry(:demo_r1_331a)
+  end
+
+  def test_registered_opener_classifies_as_opener # R2
+    ScreenPaint.register(:demo_r2_331a, opener: /\A~~ demo ~~ /)
+    assert_equal :opener, ScreenPaint.classify("~~ demo ~~ hello\n")
+  ensure
+    teardown_registry(:demo_r2_331a)
+  end
+
+  def test_registry_paint_entry_is_invoked_for_its_kind # R3
+    sentinel = "PAINTED-BY-DEMO-KIND-331A"
+    ScreenPaint.register(:demo_r3_331a, opener: /\A~~ demo3 ~~/, paint: ->(_text, **_opts) { sentinel })
+    out = ScreenPaint.paint("~~ demo3 ~~ hello\nmore body\n", color: true)
+    assert_equal sentinel, out
+  ensure
+    teardown_registry(:demo_r3_331a)
+  end
+
+  def test_five_shipped_kinds_are_registered # R4
+    %i[intent state roster delivered delay].each do |kind|
+      assert_includes ScreenPaint.kinds, kind
+    end
+  end
+
+  def test_new_kind_file_registers_without_painter_edit # R5
+    lib_path = File.expand_path("../scripts/lib/screen_paint.rb", __dir__)
+    before = File.read(lib_path)
+    Dir.mktmpdir("screen-kind-331a") do |dir|
+      path = File.join(dir, "demo_kind_331a.rb")
+      File.write(path, <<~RUBY)
+        require "#{lib_path}"
+        ScreenPaint.register(:demo_file_kind_331a, opener: /\\A~~ demo file ~~/)
+      RUBY
+      require path
+    end
+    assert_includes ScreenPaint.kinds, :demo_file_kind_331a
+    assert_equal before, File.read(lib_path)
+  ensure
+    teardown_registry(:demo_file_kind_331a)
+  end
+
+  def test_region_end_stops_at_prose_for_registered_kind # R6
+    ScreenPaint.register(:demo_r6_331a, opener: /\A~~ demo6 ~~/)
+    text = "~~ demo6 ~~ hello\n| a | b |\nordinary trailing prose, not grammar\n"
+    stop = ScreenPaint.region_end(text.lines, 0)
+    assert_equal 2, stop
+  ensure
+    teardown_registry(:demo_r6_331a)
+  end
 end

@@ -403,3 +403,20 @@ the record-driven renderer behind `intent-screen --ansi`. A screen the painter
 cannot parse falls open: the CLI prints the plain text, the hook returns the
 buffered original when chunks were already blanked and no envelope at all when
 nothing engaged.
+
+Engagement is late-capable (intent 331a): a chunk carrying a screen opener
+engages the message from that chunk on, whatever its index, not only chunk 0.
+A prose-first or fenced reply - the model talks before printing the screen,
+or wraps it in a code fence - used to leave chunk 0's fast decision final and
+the whole message unpainted; now chunk 0 still decides fast (no opener means
+NOSCREEN, as before), but NOSCREEN is no longer final, and a later opener
+replaces it. The engaging chunk's own prefix (the prose before the opener,
+inside that same chunk) is returned as displayContent; everything from the
+opener onward is buffered at that chunk's own index, which the shared decision
+file now records so the final chunk - routinely a separate process - knows
+where to start waiting and splicing, instead of burning its whole budget on
+chunks that were never buffered at all. A lone fence wrapping the opener (one
+line immediately before it, one immediately after the painted region) is
+dropped; a fence in an earlier, already-displayed chunk is never touched, and
+an opener split across two chunks' own deltas, with neither half matching
+alone, still falls back to plain - a known, accepted limitation.

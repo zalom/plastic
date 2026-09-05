@@ -17,11 +17,21 @@ require_relative "intent_screen_ansi"
 # markdown_safe are caller arguments, exactly like IntentScreenAnsi before it
 # (316a1); the 318 ceiling holds - the palette is IntentScreenAnsi's, no new
 # colors, no box borders.
+#
+# Intent 331a (D6): a registry, so a new screen KIND is a new file
+# (scripts/lib/screens/<kind>.rb, calling `register` on load), never a diff
+# to this one. `paint:` is optional and defaults to the shared pipeline
+# below - no shipped kind has its own palette; `classify`/`paint` branch on
+# LINE SHAPE, never on kind. The registry's job is only that a new kind's
+# opener is recognized without editing this file, and that a kind CAN
+# supply its own paint lambda on the rare day one needs one.
 module ScreenPaint
   A = IntentScreenAnsi
 
   # A screen's first line: "## ▶ id · name", "## ✔ id · name · delivered",
-  # "▶ In delivery · ...", "✔ id · name · delivered in ...".
+  # "▶ In delivery · ...", "✔ id · name · delivered in ...". Retained for
+  # reference (and as the union every shipped kind below decomposes into);
+  # `classify`/`paint` consult the registry, not this constant, directly.
   OPENER_RE = /\A(?:## )?[▶✔] .+ · /.freeze
 
   FIELD_LINE_RE = /\A(Stage|Next|Changed|Lead|Progress)(\s{2,})(.*)\z/.freeze
@@ -38,7 +48,33 @@ module ScreenPaint
   NOTE_HEADERS = %w[Source Why].freeze
   NOT_RECORDED = "not recorded"
 
+  @registry = {}
+
   module_function
+
+  # Registers a screen kind's opener grammar (a Regexp or a callable taking
+  # the stripped opener line and returning truthy/falsy), plus an optional
+  # `paint:` lambda for a kind that needs its own palette (`call(text,
+  # color:, width:, markdown_safe:)`). Idempotent by kind: registering the
+  # same kind again replaces its entry rather than adding a second one.
+  def register(kind, opener:, paint: nil)
+    @registry[kind.to_sym] = { opener: opener, paint: paint }
+  end
+
+  # Every registered kind's name, shipped and caller-added alike.
+  def kinds
+    @registry.keys
+  end
+
+  # The first registered kind whose opener matches `text` (an already
+  # stripped, single line), or nil.
+  def opener_kind(text)
+    @registry.find { |_, entry| opener_matches?(entry[:opener], text) }&.first
+  end
+
+  def opener_matches?(opener, text)
+    opener.respond_to?(:call) ? !!opener.call(text) : !!opener.match?(text)
+  end
 
   # The classifier both paint and region_end share. `idx`/`opener_idx` give
   # the positional rule its footing: the line right after a title is the meta
@@ -47,7 +83,7 @@ module ScreenPaint
     text = line.chomp
     stripped = text.strip
     return :blank if stripped.empty?
-    return :opener if OPENER_RE.match?(stripped) && text == stripped
+    return :opener if text == stripped && !opener_kind(stripped).nil?
     return :table if text.lstrip.start_with?("|")
     return :bold if BOLD_LEAD_RE.match?(stripped) && text == stripped
     return :meta if idx && opener_idx && idx == opener_idx + 1 && stripped.include?(" · ")
@@ -101,10 +137,20 @@ module ScreenPaint
     lines = text.to_s.lines
     first_idx = lines.index { |l| !l.strip.empty? }
     return nil if first_idx.nil?
+
+    kind = opener_kind(lines[first_idx].strip)
     # Intent 330 (D7/O3.26): a screen that is nothing but a single known
     # closer line (e.g. "No intents delivered in this session.") has no
     # opener to require - it is already the whole, honest message.
-    return nil unless %i[opener closer].include?(classify(lines[first_idx]))
+    return nil unless kind || classify(lines[first_idx]) == :closer
+
+    # Intent 331a (D6): a registered kind MAY supply its own paint lambda;
+    # when it does, this whole call delegates to it instead of the shared
+    # pipeline below. No shipped kind does.
+    if kind
+      custom = @registry[kind][:paint]
+      return custom.call(text, color: color, width: width, markdown_safe: markdown_safe) if custom
+    end
 
     out = +""
     table = []
@@ -276,4 +322,21 @@ module ScreenPaint
   def clean(text, markdown_safe)
     markdown_safe ? A.clean(text) : text
   end
+
+  # --- the five shipped kinds (intent 331a, D6) -----------------------------
+  #
+  # Each opener is a strict subset of OPENER_RE, decomposed by shape rather
+  # than by any per-kind palette: `intent`/`state` share the exact template
+  # line (templates/intent-screen.md and templates/report-state.md both open
+  # with "## ▶ {{id}} · {{name}}"); `delivered` narrows to the "## ✔ id ·
+  # name · delivered" shape report_screen.rb emits; `roster` and `delay`
+  # cover every bare (no "## ") glyph line, which is exactly ScreenPaint's
+  # original, single OPENER_RE decomposed into its "## "-prefixed half and
+  # its bare half - the union is unchanged, so no existing screen stops
+  # being recognized.
+  register(:intent, opener: /\A## [▶✔] .+ · /)
+  register(:state, opener: /\A## [▶✔] .+ · /)
+  register(:delivered, opener: /\A## ✔ .+ · /)
+  register(:roster, opener: /\A▶ .+ · /)
+  register(:delay, opener: /\A✔ .+ · /)
 end
