@@ -50,9 +50,50 @@ module ScreenPaint
   NOTE_HEADERS = %w[Source Why Reason].freeze
   NOT_RECORDED = "not recorded"
 
+  # Intent 331f (finding 1, post-exec review): the width bound a column shrink never crosses,
+  # and the glyphs that mark a column as a progress bar, never itself shrunk. Shared with
+  # ReportScreen.fit_table_block (report_screen.rb requires this file, not the other way
+  # around) so a markdown row and a painted row bound their columns the same way.
+  FIT_COLUMN_FLOOR = 8
+  PROGRESS_BAR_CHARS_RE = /[█░]/.freeze
+
   @registry = {}
 
   module_function
+
+  # Truncate `text` to at most `max_chars`, cutting at the last whitespace at or before the
+  # limit (never mid-word) and appending a single ellipsis when truncation happens. The one
+  # shared implementation (intent 331f, finding 1): ReportScreen.truncate_on_word_boundary and
+  # dashboard.rb's own helper of the same name both delegate here.
+  def truncate_on_word_boundary(text, max_chars)
+    t = text.to_s
+    return t if t.length <= max_chars
+    ellipsis = "…"
+    limit = [max_chars - ellipsis.length, 0].max
+    slice = t[0, limit]
+    cut = slice.rindex(/\s/)
+    slice = slice[0, cut] if cut && cut.positive?
+    "#{slice.rstrip}#{ellipsis}"
+  end
+
+  # Shrinks a row of column `widths` until their sum fits `budget`: the widest shrinkable
+  # column loses one column at a time, ties break toward the leftmost column, no column ever
+  # drops below FIT_COLUMN_FLOOR, and a column flagged in `bar_columns` (it carries a progress
+  # bar) is never touched. The one shared shrink (intent 331f, finding 1):
+  # ReportScreen.fit_table_block's markdown row and ScreenPaint.paint_data_table's painted row
+  # both bound through this rather than carrying two loops that could drift apart. Returns a
+  # new array; the caller's own `widths` is left untouched.
+  def shrink_column_widths(widths, budget, bar_columns:)
+    widths = widths.dup
+    loop do
+      break if widths.sum <= budget
+      candidates = widths.each_index.select { |ci| !bar_columns[ci] && widths[ci] > FIT_COLUMN_FLOOR }
+      break if candidates.empty?
+      target = candidates.max_by { |ci| [widths[ci], -ci] }
+      widths[target] -= 1
+    end
+    widths
+  end
 
   # Registers a screen kind's opener grammar (a Regexp or a callable taking
   # the stripped opener line and returning truthy/falsy), plus an optional
@@ -251,7 +292,7 @@ module ScreenPaint
       return paint_field_table(rows, color: color, width: width, markdown_safe: markdown_safe)
     end
 
-    paint_data_table(rows, color: color, markdown_safe: markdown_safe)
+    paint_data_table(rows, color: color, width: width, markdown_safe: markdown_safe)
   end
 
   # Intent 317a1 (O3, D9-D11, D14, D15): the same three-column geometry as
@@ -276,9 +317,20 @@ module ScreenPaint
   # bare `widths[ci]`) is the ragged-row guard: `ReportScreen.escape` writes
   # `\|` while `cells_of` still splits on every `|`, so a row can carry more
   # cells than its header without either side ever raising.
-  def paint_data_table(rows, color:, markdown_safe:)
+  #
+  # Intent 331f (finding 1, post-exec review): padding every cell to its column's max across
+  # ALL rows can paint a row wider than `width` even when every plain row on its own measured
+  # under the bound (D7 is on the RENDERED row) - a row short in one column but maximal in
+  # another paints wider than its own plain row ever was. `width` bounds the column widths the
+  # same way ReportScreen.fit_table_block bounds a markdown row's, through the one shared
+  # shrink, before any cell is padded or joined.
+  def paint_data_table(rows, color:, width:, markdown_safe:)
     grid = rows.map { |r| cells_of(r).map { |c| clean(c, markdown_safe) } }
-    widths = grid.first.each_index.map { |i| grid.map { |r| r[i].to_s.length }.max }
+    ncols = grid.first.length
+    widths = (0...ncols).map { |i| grid.map { |r| r[i].to_s.length }.max }
+    bar_columns = (0...ncols).map { |i| grid.any? { |r| r[i].to_s =~ PROGRESS_BAR_CHARS_RE } }
+    budget = width - (2 + 2 * (ncols - 1))
+    widths = shrink_column_widths(widths, budget, bar_columns: bar_columns)
     kind_col = grid.first.first == "Kind" ? 0 : nil
     note_col = grid.first.index { |h| NOTE_HEADERS.include?(h) }
 
@@ -286,7 +338,10 @@ module ScreenPaint
     grid.each_with_index do |cols, ri|
       last_ci = cols.length - 1
       cells = cols.each_with_index.map do |cell, ci|
-        padded = ci == last_ci ? cell.to_s : cell.to_s.ljust(widths[ci] || 0)
+        text = cell.to_s
+        w = widths[ci]
+        text = truncate_on_word_boundary(text, w) if w && text.length > w
+        padded = ci == last_ci ? text : text.ljust(w || 0)
         # An empty cell never gets styled (317a1 post-exec review, finding
         # 1): `A.styled("", ...)` still emits a color-open/RESET pair around
         # nothing visible, and that hides the join separator's own trailing

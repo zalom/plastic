@@ -69,21 +69,20 @@ module ReportScreen
   # ever passes the limit. Input unchanged byte for byte when nothing is over the limit.
 
   FIT_SCREEN_DEFAULT_LIMIT = 115
-  FIT_SCREEN_COLUMN_FLOOR = 8
-  PROGRESS_BAR_CHARS_RE = /[█░]/.freeze
+  # The column floor and the progress-bar glyph regex are ScreenPaint's own (intent 331f,
+  # finding 1): ScreenPaint.paint_data_table shrinks a painted row's columns through the same
+  # rule this file's own fit_table_block uses, so both aliases point at the one definition
+  # rather than carrying a second copy that could drift.
+  FIT_SCREEN_COLUMN_FLOOR = ScreenPaint::FIT_COLUMN_FLOOR
+  PROGRESS_BAR_CHARS_RE = ScreenPaint::PROGRESS_BAR_CHARS_RE
 
   # Truncate `text` to at most `max_chars`, cutting at the last whitespace at or before the
   # limit (never mid-word) and appending a single ellipsis when truncation happens. The one
-  # shared implementation; dashboard.rb's own helper of the same name delegates here.
+  # shared implementation now lives on ScreenPaint (intent 331f, finding 1); dashboard.rb's own
+  # helper of the same name delegates here, and this delegates onward so neither caller's own
+  # name has to change.
   def self.truncate_on_word_boundary(text, max_chars)
-    t = text.to_s
-    return t if t.length <= max_chars
-    ellipsis = "…"
-    limit = [max_chars - ellipsis.length, 0].max
-    slice = t[0, limit]
-    cut = slice.rindex(/\s/)
-    slice = slice[0, cut] if cut && cut.positive?
-    "#{slice.rstrip}#{ellipsis}"
+    ScreenPaint.truncate_on_word_boundary(text, max_chars)
   end
 
   # Split on every pipe, escaped or not - the SAME rule ScreenPaint.cells_of uses (R3), so the
@@ -154,13 +153,7 @@ module ReportScreen
     end
 
     budget = limit - (4 + 3 * (ncols - 1))
-    loop do
-      break if widths.sum <= budget
-      candidates = (0...ncols).select { |ci| !bar_column[ci] && widths[ci] > FIT_SCREEN_COLUMN_FLOOR }
-      break if candidates.empty?
-      target = candidates.max_by { |ci| [widths[ci], -ci] }
-      widths[target] -= 1
-    end
+    widths = ScreenPaint.shrink_column_widths(widths, budget, bar_columns: bar_column)
 
     fitted_rows = raw_rows.each_with_index.map do |cells, ri|
       if is_sep[ri]
