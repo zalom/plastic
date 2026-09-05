@@ -134,11 +134,12 @@ class ReportScreenSkillContractTest < Minitest::Test
     assert_includes text, "How boundary"
   end
 
-  def test_changelog_unreleased_names_the_plan_screen # P13
+  def test_changelog_names_the_plan_screen # P13
+    # A cut moves the Unreleased bullets into one Released line, so the pin
+    # reads the whole changelog: the intent id and the verb must appear somewhere.
     text = read("CHANGELOG.md")
-    unreleased = text.split(/^## Released/, 2).first
-    assert_includes unreleased, "331b"
-    assert_includes unreleased, "plan"
+    assert_includes text, "331b"
+    assert_includes text, "report-screen plan"
   end
 
   # --- intent 331f: skills bound to reports (S2/S3) --------------------------
