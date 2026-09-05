@@ -403,8 +403,10 @@ class ScreenWidthTest < Minitest::Test
     ]
     fitted = ReportScreen.fit_field_table_block(rows, 60)
     lines = fitted.lines.map(&:chomp)
-    label1 = ScreenPaint.cells_of(lines[2])[0]
-    label2 = ScreenPaint.cells_of(lines[3])[0]
+    # ScreenPaint.cells_of strips each cell, which would hide the very padding under test -
+    # ReportScreen.raw_cells_of keeps it, exactly like fit_table_block's own padded_column rule.
+    label1 = ReportScreen.raw_cells_of(lines[2])[0]
+    label2 = ReportScreen.raw_cells_of(lines[3])[0]
     assert_equal label2.length, label1.length,
                  "a fitted field table must keep its rows' label column ljust-aligned, like an unfitted one"
   end
@@ -453,17 +455,21 @@ class ScreenWidthTest < Minitest::Test
   # column) or a bar was never paid for - the live 116-column `roadmap state`/`dashboard`
   # rows.
   def test_padded_cell_overage_is_charged_to_the_budget
-    bar = ("█" * 40) + ("░" * 10)
+    # The live shape: ReportScreen.fit_row_cell already truncated the Intent cell to an
+    # ellipsis before paint_data_table ever sees it; padding that cell to the column's shared
+    # width (across every row) must charge the ellipsis's own display overage against the
+    # budget, or the row lands one column over once painted.
+    intent = ("A" * 89) + "…"
     rows = [
-      "| Id | Detail | Note |",
+      "| Batch | Intent | Lead |",
       "| --- | --- | --- |",
-      "| 1 | #{bar} | short note here |",
-      "| 2 | #{'D' * 60} | #{'n' * 60} |",
+      "| Batch 3 | #{intent} | agent-name-here-longer · abcd1234 |",
+      "| Batch 1 | Short intent title | idle |",
     ]
     painted = ScreenPaint.paint_table(rows, color: false, width: 115, markdown_safe: false)
     painted.each_line do |line|
       assert_operator ScreenPaint.display_columns(line.chomp), :<=, 115,
-                       "a painted row with a padded bar/ellipsis cell must stay within 115: #{line.inspect}"
+                       "a painted row with a padded ellipsis cell must stay within 115: #{line.inspect}"
     end
   end
 

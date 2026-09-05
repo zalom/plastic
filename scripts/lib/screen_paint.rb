@@ -144,6 +144,22 @@ module ScreenPaint
     [header_len, base].max
   end
 
+  # Intent 331f1 (post-execution review, findings P2/P3): a padded cell renders as its column
+  # width (characters, from `ljust`) plus that cell's own DISPLAY overage -
+  # `display_columns(cell) - cell.length` - because a progress-bar glyph or an already-embedded
+  # ellipsis costs more display columns than characters. Crediting overage only to columns
+  # flagged `bar_columns:` (the old rule) misses a padded cell that carries an ellipsis in an
+  # ordinary text column - exactly what ReportScreen.fit_row_cell hands roadmap_state's Intent
+  # column - so the assembled row can still land over the bound even though every column width
+  # was computed correctly. The real cost is per ROW, not per column: `rows_of_cells` is an
+  # array of rows, each an array of already-stripped, not-yet-padded/truncated cell strings, and
+  # this returns the worst row's total overage - the one number ScreenPaint.paint_data_table,
+  # ReportScreen.fit_table_block, and ReportScreen.fit_field_table_block all reserve out of their
+  # budget, so the three renderers spend one rule rather than three copies that can drift.
+  def row_display_overage(rows_of_cells)
+    rows_of_cells.map { |cells| cells.sum { |c| display_columns(c.to_s) - c.to_s.length } }.max || 0
+  end
+
   # Registers a screen kind's opener grammar (a Regexp or a callable taking
   # the stripped opener line and returning truthy/falsy), plus an optional
   # `paint:` lambda for a kind that needs its own palette (`call(text,
@@ -387,20 +403,15 @@ module ScreenPaint
     ncols = grid.first.length
     widths = (0...ncols).map { |i| grid.map { |r| r[i].to_s.length }.max }
     bar_columns = (0...ncols).map { |i| grid.any? { |r| r[i].to_s =~ PROGRESS_BAR_CHARS_RE } }
-    # Intent 331f1 (finding A2/RC1): a bar column never shrinks, but its DISPLAY cost (every
-    # block glyph counts two columns under the acceptance rule) can still exceed its own
-    # CHARACTER width - reserve that overage out of the budget up front so the remaining
-    # (shrinkable) columns give up enough room for the row to actually stay under `width`
-    # once it is rendered, not just once its character count is summed.
-    bar_overage = (0...ncols).sum do |i|
-      next 0 unless bar_columns[i]
-      grid.map { |r| display_columns(r[i].to_s) - r[i].to_s.length }.max || 0
-    end
+    # Intent 331f1 (post-exec review, P2/P3): the shared row-overage rule, not a per-column bar
+    # credit - see ScreenPaint.row_display_overage's own comment for why the bar-only credit
+    # missed a padded cell carrying an ellipsis.
+    overage = row_display_overage(grid)
     # Intent 331f1, S3 (brief 4): per-column minimums - never below the header cell, never
     # below a natural width of 10 or less (the id case).
     header_len = (0...ncols).map { |i| grid.first[i].to_s.length }
     floors = (0...ncols).map { |i| bar_columns[i] ? widths[i] : column_floor(header_len[i], widths[i]) }
-    budget = width - (2 + 2 * (ncols - 1)) - bar_overage
+    budget = width - (2 + 2 * (ncols - 1)) - overage
     widths = shrink_column_widths(widths, budget, bar_columns: bar_columns, floors: floors)
     kind_col = grid.first.first == "Kind" ? 0 : nil
     note_col = grid.first.index { |h| NOTE_HEADERS.include?(h) }
@@ -408,11 +419,38 @@ module ScreenPaint
     out = +""
     grid.each_with_index do |cols, ri|
       last_ci = cols.length - 1
-      cells = cols.each_with_index.map do |cell, ci|
+      texts = cols.each_with_index.map do |cell, ci|
         text = cell.to_s
         w = widths[ci]
         text = truncate_on_word_boundary(text, w) if w && text.length > w
-        padded = ci == last_ci ? text : text.ljust(w || 0)
+        ci == last_ci ? text : text.ljust(w || 0)
+      end
+
+      # Intent 331f1 (post-exec review, P4): the row-level backstop. Even with every column
+      # pinned at its floor, the assembled PLAIN row can still exceed `width` once padding/bar/
+      # ellipsis overage is counted - shrink the widest SHRINKABLE cell's PLAIN TEXT (never a
+      # bar column, and always before styling, since truncating an already-styled string cuts
+      # ANSI escapes mid-sequence) until the row fits or nothing is left to shrink.
+      loop do
+        row_dw = display_columns(("  " + texts.join("  ")).rstrip)
+        break if row_dw <= width
+        excess = row_dw - width
+        shrinkable = (0...ncols).reject { |ci| bar_columns[ci] }
+        break if shrinkable.empty?
+        target = shrinkable.max_by { |ci| display_columns(texts[ci]) }
+        cur_dw = display_columns(texts[target])
+        # A bare ellipsis alone already costs 2 display columns; below that floor there is
+        # nothing left to cut. Also bail the moment a cut makes no progress (a text already at
+        # or under the ellipsis floor re-truncates to the same "…" forever) - a row this wide
+        # even at every floor is the documented extreme case, not an infinite loop.
+        break if cur_dw <= 2
+        shrunk = truncate_on_word_boundary(texts[target].rstrip, [cur_dw - excess, 2].max)
+        break if display_columns(shrunk) >= cur_dw
+        texts[target] = shrunk
+      end
+
+      cells = texts.each_with_index.map do |padded, ci|
+        cell = cols[ci]
         # An empty cell never gets styled (317a1 post-exec review, finding
         # 1): `A.styled("", ...)` still emits a color-open/RESET pair around
         # nothing visible, and that hides the join separator's own trailing

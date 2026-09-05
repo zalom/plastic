@@ -150,22 +150,21 @@ module ReportScreen
     return block.join if ncols.zero?
 
     stripped_cols = Array.new(ncols) { [] }
+    stripped_rows = []
     header_idx = raw_rows.each_index.find { |ri| !is_sep[ri] }
     raw_rows.each_with_index do |cells, ri|
       next if is_sep[ri]
-      cells.each_with_index { |c, ci| stripped_cols[ci] << c.strip if ci < ncols }
+      row = (0...ncols).map { |ci| cells[ci].to_s.strip }
+      row.each_with_index { |c, ci| stripped_cols[ci] << c }
+      stripped_rows << row
     end
     widths = stripped_cols.map { |col| col.map(&:length).max.to_i }
 
     bar_column = Array.new(ncols) { |ci| stripped_cols[ci].any? { |c| c =~ PROGRESS_BAR_CHARS_RE } }
-    # Intent 331f1 (finding A2/RC1): reserve a bar column's DISPLAY overage (its block glyphs
-    # cost two columns each under the acceptance rule, but the column itself never shrinks)
-    # out of the budget up front, the same way ScreenPaint.paint_data_table does, so the two
-    # renderers cannot drift apart on what "fits" means.
-    bar_overage = (0...ncols).sum do |ci|
-      next 0 unless bar_column[ci]
-      (stripped_cols[ci].map { |c| ScreenPaint.display_columns(c) - c.length }.max || 0)
-    end
+    # Intent 331f1 (post-exec review, P3): the shared row-overage rule (ScreenPaint.
+    # row_display_overage), not a per-column bar credit - the same fix as paint_data_table's
+    # own P2, so the two renderers cannot drift apart on what "fits" means.
+    overage = ScreenPaint.row_display_overage(stripped_rows)
     # Intent 331f1, S3 (brief 4): per-column minimums - never below the header cell, never
     # below a natural width of 10 or less (the id case).
     header_len = Array.new(ncols) { |ci| header_idx ? raw_rows[header_idx][ci].to_s.strip.length : 0 }
@@ -180,7 +179,7 @@ module ReportScreen
       raw_rows.each_with_index.any? { |cells, ri| !is_sep[ri] && cells[ci].to_s.end_with?("  ") }
     end
 
-    budget = limit - (4 + 3 * (ncols - 1)) - bar_overage
+    budget = limit - (4 + 3 * (ncols - 1)) - overage
     widths = ScreenPaint.shrink_column_widths(widths, budget, bar_columns: bar_column, floors: floors)
 
     fitted_rows = raw_rows.each_with_index.map do |cells, ri|
@@ -218,6 +217,20 @@ module ReportScreen
   # never crossed even then, so the row may still exceed `limit` in that extreme case -
   # there is no row-level backstop here (that backstop is the data-table branch's own, and
   # it must never touch a field table's label cell).
+  #
+  # Intent 331f1 (post-exec review, P1): `label_w`/`value_w`/`note_w` and `budget` are character
+  # counts spent against the 115 DISPLAY-column bound - a bar row's glyphs (2 columns each) or
+  # an embedded ellipsis cost more display columns than characters, so a row can pass this
+  # arithmetic while still landing well over the real bound. `ScreenPaint.row_display_overage`
+  # reserves the worst row's own overage up front (P1-P3's shared fix); a fresh ellipsis this
+  # function's OWN truncation adds where none existed before can still leave a small residual,
+  # which the corrective loop below closes by re-measuring the actual assembled row and shrinking
+  # note (then value, never below its floor) by the exact excess.
+  #
+  # Intent 331f1 (P5): the label (and, when flagged, the value) column is re-padded exactly the
+  # way `fit_table_block`'s own `padded_column` rule would - ljust in CHARACTERS, never display
+  # columns, so a terminal drawing a bar glyph one column wide stays aligned - restoring the
+  # alignment a fitted field table lost.
   def self.fit_field_table_block(block, limit)
     return block.join if block.all? { |l| ScreenPaint.display_columns(l.chomp) <= limit }
 
@@ -226,6 +239,7 @@ module ReportScreen
     content_idx = rows.each_index.reject { |ri| is_sep[ri] }
     return block.join if content_idx.empty?
 
+    raw_content = content_idx.map { |ri| raw_cells_of(rows[ri]) }
     parsed = content_idx.map { |ri| ScreenPaint.cells_of(rows[ri]) }
     ncols = parsed.map(&:length).max.to_i
     return block.join if ncols.zero?
@@ -242,7 +256,8 @@ module ReportScreen
     note_w = note_texts.map(&:length).max.to_i
 
     gaps = ncols - 1
-    budget = limit - (4 + 3 * gaps)
+    overage = ScreenPaint.row_display_overage(parsed.map { |c| (0...ncols).map { |ci| c[ci].to_s } })
+    budget = limit - (4 + 3 * gaps) - overage
     overflow = (label_w + value_w + note_w) - budget
 
     if overflow.positive?
@@ -264,26 +279,66 @@ module ReportScreen
       end
     end
 
-    fitted = rows.each_index.map do |ri|
-      next rows[ri] if is_sep[ri]
-      cells = ScreenPaint.cells_of(rows[ri])
-      label = cells[0].to_s
-      value = cells[1].to_s
-      note = has_note ? cells[2].to_s : ""
+    # P5: a column (never the last) is "padded" when at least one non-separator RAW cell already
+    # ends with two spaces before its closing pipe - the same `padded_column` convention
+    # `fit_table_block` uses (state_rows, roster).
+    padded_label = raw_content.any? { |cells| cells[0].to_s.end_with?("  ") }
+    padded_value = ncols > 2 && raw_content.any? { |cells| cells[1].to_s.end_with?("  ") }
 
-      value = truncate_on_word_boundary(value, value_w) if value.length > value_w && value !~ PROGRESS_BAR_CHARS_RE
-      note = truncate_on_word_boundary(note, note_w) if has_note && note.length > note_w
+    render = lambda do
+      rows.each_index.map do |ri|
+        next rows[ri] if is_sep[ri]
+        cells = ScreenPaint.cells_of(rows[ri])
+        label = cells[0].to_s
+        value = cells[1].to_s
+        note = has_note ? cells[2].to_s : ""
 
-      if has_note
-        "| #{label} | #{value} | #{note} |"
-      elsif ncols > 2
-        "| #{label} | #{value} | |"
-      else
-        "| #{label} | #{value} |"
+        value = truncate_on_word_boundary(value, value_w) if value.length > value_w && value !~ PROGRESS_BAR_CHARS_RE
+        note = truncate_on_word_boundary(note, note_w) if has_note && note.length > note_w
+
+        label = label.ljust(label_w) if padded_label
+        value = value.ljust(value_w) if padded_value
+
+        if has_note
+          "| #{label} | #{value} | #{note} |"
+        elsif ncols > 2
+          "| #{label} | #{value} | |"
+        else
+          "| #{label} | #{value} |"
+        end
       end
     end
 
-    "#{fitted.join("\n")}\n"
+    # The corrective pass (P1): measure what actually got assembled, and if it still runs over
+    # `limit`, shrink note (then value, down to its floor) by the exact excess and re-render.
+    # Bounded: each pass either shrinks a column or breaks, and there are at most two columns
+    # left to shrink once the label is fixed.
+    loop do
+      candidate = render.call
+      max_dw = content_idx.map { |ri| ScreenPaint.display_columns(candidate[ri]) }.max.to_i
+      break if max_dw <= limit
+
+      excess = max_dw - limit
+      progressed = false
+      if has_note && note_w.positive?
+        cut = [excess, note_w].min
+        note_w -= cut
+        excess -= cut
+        progressed = true if cut.positive?
+        if note_w < FIT_SCREEN_COLUMN_FLOOR
+          has_note = false
+          note_w = 0
+        end
+      end
+      if excess.positive? && value_w > value_floor
+        cut = [excess, value_w - value_floor].min
+        value_w -= cut
+        progressed = true if cut.positive?
+      end
+      break unless progressed
+    end
+
+    "#{render.call.join("\n")}\n"
   end
 
   # Intent 331f1 (design's final bullet): the shared budget dashboard.rb's screen_fit_intent
