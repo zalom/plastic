@@ -117,6 +117,20 @@ class DoctorDisplayTest < Minitest::Test
     end
   end
 
+  def test_registered_fails_when_settings_unparseable # E14
+    Dir.mktmpdir("plastic-display-e14b") do |dir|
+      claude_dir = File.join(dir, "claude")
+      write_launcher(claude_dir)
+      FileUtils.mkdir_p(claude_dir)
+      File.write(File.join(claude_dir, "settings.json"), "{ not valid json at all")
+
+      d = Doctor.new(plastic_home: File.join(dir, "home"), agents: agents_for(claude_dir))
+      check = d.check_display_registration("claude").first
+
+      assert_equal "fail", check[:status]
+    end
+  end
+
   def test_registered_fails_on_empty_hooks_array # E15
     Dir.mktmpdir("plastic-display-e15") do |dir|
       claude_dir = File.join(dir, "claude")
