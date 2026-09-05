@@ -219,4 +219,89 @@ class ReportScreenCliTest < Minitest::Test
       refute_empty out, "#{layout}: template did not resolve"
     end
   end
+
+  # --- intent 331c: the roadmap verb (R14/R18) ---------------------------------
+
+  def write_roadmap_fixture(root, slug: "demo")
+    roadmaps = File.join(root, "roadmaps")
+    FileUtils.mkdir_p(roadmaps)
+    path = File.join(roadmaps, "#{slug}.md")
+    File.write(path, <<~MD)
+      # Roadmap: Demo
+      ## Goal
+      test goal.
+      ## Batches
+      ### Batch 1
+      - [ ] 1 Alpha — queued
+      ## Log
+    MD
+    File.write(File.join(root, "INDEX.md"), <<~IDX)
+      # Index
+
+      ## Active
+
+      ## Future
+      - [1 — Alpha](store/1--alpha/1--alpha.md) — 2026-07-10 note.
+
+      ## Completed
+
+      ## Abandoned
+    IDX
+    path
+  end
+
+  # R14: a missing file, a missing sub-verb, or an unknown sub-verb all exit 2 with an
+  # empty stdout, never a silent success.
+  def test_roadmap_verb_exits_2_on_bad_subverb
+    root = File.join(@home, "store_root")
+    path = write_roadmap_fixture(root)
+    out, err, status = Open3.capture3("ruby", CLI, "roadmap", path, "bogus")
+    assert_equal 2, status.exitstatus
+    assert_empty out
+    assert_equal 1, err.lines.length
+    assert_match(/sub-verb/, err, "the roadmap verb must validate its own sub-verb, not fall through a generic unknown-verb message")
+  end
+
+  def test_roadmap_verb_exits_2_on_missing_file
+    out, err, status = Open3.capture3("ruby", CLI, "roadmap", File.join(@home, "nope.md"), "plan")
+    assert_equal 2, status.exitstatus
+    assert_empty out
+    assert_match(/does not exist/, err)
+  end
+
+  def test_roadmap_verb_exits_2_on_missing_subverb
+    root = File.join(@home, "store_root")
+    path = write_roadmap_fixture(root)
+    out, err, status = Open3.capture3("ruby", CLI, "roadmap", path)
+    assert_equal 2, status.exitstatus
+    assert_empty out
+    assert_match(/plan\|state\|delivered/, err)
+  end
+
+  # R18: --store-root overrides the derived tier root, resolving entries against the
+  # explicitly named store rather than the roadmap file's own parent directory.
+  def test_roadmap_verb_honors_store_root_flag
+    root = File.join(@home, "store_root")
+    path = write_roadmap_fixture(root)
+    other_root = File.join(@home, "other_root")
+    FileUtils.mkdir_p(other_root)
+    File.write(File.join(other_root, "INDEX.md"), <<~IDX)
+      # Index
+
+      ## Active
+
+      ## Future
+
+      ## Completed
+      - [1 — Alpha](store/1--alpha/1--alpha.md) — 2026-07-10 delivered.
+
+      ## Abandoned
+    IDX
+
+    out, err, status = Open3.capture3("ruby", CLI, "roadmap", path, "plan", "--store-root", other_root)
+    assert_equal 0, status.exitstatus, err
+    row = out.lines.find { |l| l.include?("| 1 |") }
+    assert_includes row, "delivered",
+      "--store-root must be consulted for INDEX reconciliation, not the roadmap's own derived tier root"
+  end
 end

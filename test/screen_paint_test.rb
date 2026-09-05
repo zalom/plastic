@@ -643,4 +643,58 @@ class ScreenPaintTest < Minitest::Test
   ensure
     teardown_registry(:demo_r6_331a)
   end
+
+  # --- intent 331c: roadmap screen kinds (D7) -----------------------------------
+
+  # R13: without scripts/lib/screens/roadmap.rb, the roadmap screen kinds are not
+  # registered at all - a future custom palette for one of them would have nowhere to live.
+  def test_roadmap_kinds_paint
+    require_relative "../scripts/lib/screens/roadmap"
+    %i[roadmap_plan roadmap_state roadmap_delivered].each do |kind|
+      assert_includes ScreenPaint.kinds, kind, "#{kind} must be registered so its opener is recognized"
+    end
+  end
+
+  # R19: the delivered template's meta line sits directly under the title (no blank line, the
+  # plan review's binding finding 5); a real render of all three roadmap verbs must paint, never
+  # silently fall back to plain because a blank line defeated ScreenPaint.classify's :meta rule.
+  def test_rendered_roadmap_screens_all_paint
+    Dir.mktmpdir("roadmap-paint-331c") do |home|
+      roadmaps = File.join(home, "roadmaps")
+      FileUtils.mkdir_p(roadmaps)
+      File.write(File.join(roadmaps, "demo.md"), <<~MD)
+        # Roadmap: Demo
+        ## Goal
+        test goal.
+        ## Batches
+        ### Batch 1
+        - [x] 1 Alpha — delivered
+        ## Log
+        - 2026-07-10 00:00 UTC created.
+      MD
+      File.write(File.join(home, "INDEX.md"), <<~IDX)
+        # Index
+
+        ## Active
+
+        ## Future
+
+        ## Completed
+        - [1 — Alpha](store/1--alpha/1--alpha.md) — 2026-07-10 delivered.
+
+        ## Abandoned
+      IDX
+      File.write(File.join(roadmaps, "demo.savepoint.md"), <<~LEDGER)
+        2026-07-10T00:00:00Z  created  demo
+        2026-07-10T00:10:00Z  merged  1 merged into alpha at abc1234
+        2026-07-10T00:20:00Z  closed  demo closed
+      LEDGER
+
+      %w[plan state delivered].each do |verb|
+        out = ReportScreen.render_roadmap(path: File.join(roadmaps, "demo.md"), verb: verb, store_root: home)
+        painted = ScreenPaint.paint(out, color: true)
+        refute_nil painted, "#{verb} roadmap screen must paint, never silently fall back to plain"
+      end
+    end
+  end
 end
