@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 331a1: under real streaming, chunks arrive faster than chunk 0's Ruby process can write the SCREEN decision, so a stream-realistic concurrent replay showed 15 to 21 chunks of every long screen reaching the terminal plain; the bash launcher now stakes a `PENDING` marker with builtins the moment chunk 0 is handed off, before Ruby boots, a later chunk polls for the decision while `PENDING` exists whatever its own shape, a stale `PENDING` reads as NOSCREEN, and the poll budget scales with the chunk index, capped at 2 s.
+
 ## Released
 
 - `2.0.0-alpha.14` - shipped 2026-09-05 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); collected roadmap reporting-v2 under intent 331: 331a (the MessageDisplay hook paints a screen wherever it sits in a reply; ScreenPaint kind registry), 331b (`report-screen plan`, the pre-delivery report), 331c (`report-screen roadmap plan|state|delivered`), 331d and 331d1 (`dashboard.rb --screen` with Graph ID and Intent columns), 331e (doctor `display` category: `display_hook_registered`, `display_hook_paints`, `display_not_defeated`, `display_surfaces_documented`, replayed through the installed launcher), 331f (every state-showing skill bound to its report verb, Report savepoint kind, column vocabulary, one lead freshness rule, 115-column bound), 331f1 (fitter never truncates labels or separators; roadmap state Intent column), 331f2 (title ends at the first colon followed by a space). Per-intent detail in each intent's outcome.md.

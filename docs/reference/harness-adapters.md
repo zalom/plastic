@@ -437,3 +437,18 @@ line immediately before it, one immediately after the painted region) is
 dropped; a fence in an earlier, already-displayed chunk is never touched, and
 an opener split across two chunks' own deltas, with neither half matching
 alone, still falls back to plain - a known, accepted limitation.
+
+The decision marker (intent 331a1) closes a race late-capable engagement did
+not: Claude Code fires the per-chunk hook processes CONCURRENTLY, and chunk
+0's Ruby process takes on the order of 150 ms to boot before it ever writes
+the SCREEN or NOSCREEN decision, long enough for a dozen or more later
+chunks to be judged with nothing on disk at all and pass through plain. The
+bash launcher now stakes a `PENDING` file with builtins (`mkdir`, `printf`)
+the instant chunk 0 is handed off, before Ruby boots. A later chunk that
+finds the message directory polls for the decision whatever its own shape
+looks like, rather than judging its own delta first - a decision is
+certainly coming once `PENDING` exists. A stale `PENDING`, older than the
+chunk's own poll budget, reads as NOSCREEN (fail open). The poll budget is
+300 ms plus 20 ms per chunk index, capped at 2 s, so a chunk deep into a
+long streamed message is allowed to wait for a decision that is certainly on
+its way.

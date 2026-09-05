@@ -1491,6 +1491,19 @@ neither half matching alone, still falls back to plain - a known, accepted limit
 engagement only ever looks at one chunk's delta at a time, never a cross-chunk reassembly, before
 deciding.
 
+**The decision marker (intent 331a1).** Claude Code's concurrent chunk processes race chunk 0's
+own Ruby boot (about 150 ms), and a later chunk judged before SCREEN or NOSCREEN exists used to
+fall back to the cheap shape test and pass through plain whenever it wasn't. `hooks/message-
+display` now stakes a `PENDING` file with builtins the moment chunk 0 is handed off, before Ruby
+starts; a later chunk that finds the message directory polls for the real decision whatever its
+own shape looks like, since a decision is certainly coming once `PENDING` is there. A `PENDING`
+whose mtime is already older than that chunk's own poll budget reads as NOSCREEN (fail open,
+checked once, never inside the poll loop, since mtime never changes). `MessageDisplay#budget_ms`
+scales the poll budget with the chunk's own index - base `wait_ms` plus `index_wait_ms` per
+index, capped at `max_wait_ms` - so a chunk deep into a long streamed message waits long enough
+for a decision that is certainly on its way, and `write_screen`/`write_noscreen` both remove
+`PENDING` the moment they run, so it is never both there and stale at once for long.
+
 ## the dashboard screen (intent 331d)
 
 `dashboard.rb continue|project <slug> --screen [--ansi]` prints the dashboard as a screen
