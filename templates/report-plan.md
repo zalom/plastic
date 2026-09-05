@@ -6,7 +6,7 @@
 
 **Steps**
 
-| Step | Action | What |
+| Step | Action | Detail |
 | --- | --- | --- |
 {{steps.rows}}
 

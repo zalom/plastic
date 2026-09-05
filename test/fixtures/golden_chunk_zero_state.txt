@@ -10,7 +10,7 @@
 
 [1m[38;2;243;244;246mSteps[0m
 
-  [1mStep[0m  [1mStatus[0m  [1mWhat[0m
+  [1mStep[0m  [1mStatus[0m  [1mDetail[0m
   S1    [38;2;45;212;191mdone  [0m  do thing 1
   S2    [38;2;245;158;11mopen  [0m  do thing 2
 

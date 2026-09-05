@@ -201,11 +201,9 @@ Then How.
    into the spec, the matrix, and the tests; record what was dropped and why in the action
    file's review fold. A REVISE verdict is folded and not re-reviewed unless a finding changes
    a decision.
-5. Print `ruby ~/.plastic/scripts/report-screen state <intent_dir> --changed "How written, plan review next"`
-   (D15; see `references/human-report-contract.md` for the full trigger list). This replaces
-   the old prose State/Risk/Call briefing at this boundary. In auto mode the screen informs;
-   it does not wait. The screen opens the reply with nothing before it and no code fence: the
-   `MessageDisplay` hook paints only a reply whose first characters are the screen marker.
+5. Print `ruby ~/.plastic/scripts/report-screen plan <intent_dir>` as the first characters of
+   the reply, nothing before it, no fence, before dispatching the executor (see
+   `references/human-report-contract.md` for the full binding table). It informs; it does not wait.
 
 Then Exec.
 
@@ -276,10 +274,12 @@ Read `../plastic-conventions/references/completion-and-done.md` for what "intent
    pass `--discard-worktree-changes` deliberately). 3: the lock survived the disarm
    (`/plastic-doctor check the lock status`). 6: the structure check refused. Never leave an
    orphaned worktree; run `git worktree prune` on a stale reference.
-6. Print `ruby ~/.plastic/scripts/report-screen delivered <intent_dir>` once (D15): the owner
-   report at End, replacing the old prose Done briefing. A mid-batch status ask instead runs
-   `report-screen session <tier_root> --session "$CLAUDE_CODE_SESSION_ID"` (intent 330). Print
-   it as the first thing in the reply, no code fence, or the hook cannot paint it.
+6. Print `ruby ~/.plastic/scripts/report-screen delivered <intent_dir>` once (D15/331f), and
+   `report-screen state` at each of the five triggers in `references/human-report-contract.md`
+   (a review verdict, a blocker, a merge/release, or an owner status ask; a mid-batch ask
+   instead runs `report-screen session <tier_root> --session "$CLAUDE_CODE_SESSION_ID"`, intent
+   330). Print each as the first characters of the reply: nothing before it, no fence, or the
+   hook cannot paint it.
 
 ## Error Handling
 

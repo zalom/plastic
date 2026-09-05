@@ -45,39 +45,29 @@ specific intent or roadmap named.").
 
 ## Project route: land on the board
 
-Land on the Markdown board through the `plastic-dashboard` skill; rendering belongs there.
-`dashboard.rb project <slug> --screen` (or `continue --screen` for the global fallback) prints
-the same state as a screen instead - a title, six fields (Active, In delivery, Delivered,
-Roadmap, Sessions, Changed), then the Where-we-are and Where-we-go-next tables (intent 331d).
-It is not yet the mechanical default here; the wiring that makes it print first in the reply,
-the way the intent screen already does on the intent route below, lands in intent 331f. Until
-then, fill the Markdown template below as the route's own surface.
+Print `ruby ~/.plastic/scripts/dashboard.rb project <slug> --screen` (or `continue --screen`
+for the global fallback) as the first characters of the reply: nothing before it, no fence, or
+the hook cannot paint it (intent 331d/331f). It carries a title, six fields (Active, In
+delivery, Delivered, Roadmap, Sessions, Changed), then the Where-we-are and Where-we-go-next
+tables. The board load runs the scoped store check (`doctor --store <scope>`); its result
+rides in the payload as `store_health` and prints as one line of data, never a blocker.
 
-Run the data payload and fill the matching template:
-- project loaded: `ruby ~/.plastic/scripts/dashboard.rb project <slug> --data`
-- otherwise (the global fallback): `ruby ~/.plastic/scripts/dashboard.rb continue --data`
-
-Fill the template from `plastic-dashboard`'s `templates/` and present the filled Markdown in
-your reply, every time: tool-call stdout and hook context are invisible to the user. Read
-`references/board-fill.md` for the fill mechanics and the store-health line when filling the
-board. The board load runs the scoped store check (`doctor --store <scope>`); its result
-arrives in the payload as `store_health` and is shown as one line of data, never a blocker.
-
-Priority order on the board: active intents first, then project context (governing plus
-tactical intents in a registered project), then stale future intents for triage, then fresh
-future intents as next work. A future intent older than `stale_threshold_days` (default 3) is
-surfaced for triage without action: activate, abandon, or leave. Activating moves it to
+Priority order on the underlying data: active intents first, then project context (governing
+plus tactical intents in a registered project), then stale future intents for triage, then
+fresh future intents as next work. A future intent older than `stale_threshold_days` (default
+3) is surfaced for triage without action: activate, abandon, or leave. Activating moves it to
 `## Active` in `INDEX.md` and auto-commits. The board's ranked next-work order is computed by
 `dashboard.rb`; cite the rule names only (Effort, Value, Flags, Override, Caps) and read
 `plastic-dashboard`'s `references/classification.md` for their definitions.
 
 When the tier root (the directory holding `INDEX.md`) has a mid-flight roadmap
 (`ruby ~/.plastic/scripts/roadmap-next --roadmaps-dir <root>/roadmaps` reports a `state`
-other than `none`), say so in one line and offer the roadmap route; the board still presents
+other than `none`), say so in one line and offer the roadmap route; the screen still presents
 project state and stops.
 
 Then stop: "here is the state, what next?". Do not start executing work. When the user names
-an intent, take the intent route.
+an intent, take the intent route. Read `references/board-fill.md` only when the reader asks
+for the deeper prose board (`plastic-dashboard`'s Markdown surface still exists for that ask).
 
 ## Intent route: resume one intent from its ledger
 
@@ -146,10 +136,11 @@ For a live intent's directory:
    `delivering` or `blocked` entry wins, else the newest ledger or `## Log` timestamp.
    `roadmaps/<slug>.savepoint.md` is a derived signal read here, never a status field;
    `INDEX.md` stays the sole status writer.
-2. **Present state:** the roadmap's `## Goal`, the current batch with each entry's mirrored
-   status, the ledger's newest line beside the newest `## Log` line. Read
-   `../plastic-conventions/references/roadmaps.md` for the file format and the status-mirror
-   rule when a roadmap file needs interpreting.
+2. **Print state.** Print `ruby ~/.plastic/scripts/report-screen roadmap <roadmap.md> state` as
+   the first characters of the reply: nothing before it, no fence, or the hook cannot paint it.
+   It carries Goal, Progress, Frontier, Delivering, Next, and Changed, then the entries table -
+   never hand-typed. Read `../plastic-conventions/references/roadmaps.md` for the file format
+   and the status-mirror rule when a roadmap file needs interpreting.
 3. Then continue with the next dispatchable entry in the session's mode: direct work on it,
    or `plastic-auto` when the owner says auto. The coordinator that drives a batch appends
    to `roadmaps/<slug>.savepoint.md` at its dispatch, merge, park, and handoff points with

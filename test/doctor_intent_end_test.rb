@@ -128,7 +128,7 @@ class DoctorIntentEndTest < Minitest::Test
                "---\ndisposition: abandoned\n---\n# Outcome\n\n## Summary\nDid it.\n")
 
     checks = doctor.check_intent_end("42", disposition: "delivered")
-    assert_equal 6, checks.size
+    assert_equal 7, checks.size
     lifecycle_checks = checks.select { |c| c[:name] == "intent_lifecycle_artifacts" }
     assert_equal 1, lifecycle_checks.size, "the disposition mismatch must fold into the SAME check, not a second one"
 
@@ -455,6 +455,72 @@ class DoctorIntentEndTest < Minitest::Test
     checks = doctor.check_intent_end("77")
     result = find(checks, "intent_ticks_lag")
     assert_equal "pass", result[:status]
+  end
+
+  # --- intent_reports_printed (WARN-only, intent 331f) --------------------------
+
+  # F18: the exact defect this check exists for - commits landed, a delivery
+  # dated on/after the Report kind's ship day, and no Report line anywhere.
+  def test_doctor_warns_reports_printed
+    dir = write_clean_intent(id: "80")
+    File.write(File.join(dir, "savepoint.md"), <<~SP)
+      2026-09-05T00:00:00Z  What  80--demo.md
+      2026-09-05T00:05:00Z  Commit  abc123 landed step 1
+    SP
+
+    checks = doctor.check_intent_end("80")
+    result = find(checks, "intent_reports_printed")
+    assert_equal "warn", result[:status]
+    assert_match(/no Report line/, result[:message])
+  end
+
+  # A Report line anywhere in the ledger clears the warning.
+  def test_reports_printed_passes_when_a_report_line_exists
+    dir = write_clean_intent(id: "81")
+    File.write(File.join(dir, "savepoint.md"), <<~SP)
+      2026-09-05T00:00:00Z  What  81--demo.md
+      2026-09-05T00:05:00Z  Commit  abc123 landed step 1
+      2026-09-05T00:06:00Z  Report  state
+    SP
+
+    checks = doctor.check_intent_end("81")
+    result = find(checks, "intent_reports_printed")
+    assert_equal "pass", result[:status]
+  end
+
+  # No commits at all is the skip condition, exactly like intent_ticks_lag.
+  def test_reports_printed_passes_with_no_commit_lines
+    dir = write_clean_intent(id: "82")
+    File.write(File.join(dir, "savepoint.md"), "2026-09-05T00:00:00Z  What  82--demo.md\n")
+
+    checks = doctor.check_intent_end("82")
+    result = find(checks, "intent_reports_printed")
+    assert_equal "pass", result[:status]
+  end
+
+  # F31: a ledger whose newest Commit predates the Report kind's ship day must
+  # never newly fail an intent delivered before the kind existed.
+  def test_reports_printed_passes_for_a_pre_report_ledger
+    dir = write_clean_intent(id: "83")
+    File.write(File.join(dir, "savepoint.md"), <<~SP)
+      2026-07-01T00:00:00Z  What  83--demo.md
+      2026-07-02T00:05:00Z  Commit  abc123 landed step 1
+    SP
+
+    checks = doctor.check_intent_end("83")
+    result = find(checks, "intent_reports_printed")
+    assert_equal "pass", result[:status]
+
+    overall = doctor.run_intent_check("83")
+    assert_equal "pass", overall[:status]
+  end
+
+  # F32: check_intent_end's array carries the new check, seven total.
+  def test_check_intent_end_returns_seven_checks
+    write_clean_intent(id: "84")
+    checks = doctor.check_intent_end("84")
+    assert_equal 7, checks.size
+    assert(checks.any? { |c| c[:name] == "intent_reports_printed" })
   end
 
   # --- --intent / --store disambiguation ----------------------------------------

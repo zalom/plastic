@@ -5,6 +5,22 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 331f (branch of 331): every skill that shows state names its own report verb and prints the
+  screen as the first characters of the reply, no fence - a binding table in
+  `human-report-contract.md` names one verb per skill and trigger (continuing, auto, ending,
+  speccing, roadmap, dashboard, executing), so a status ask can no longer be answered in prose.
+  A new `Report` savepoint kind (`savepoint-note --kind Report`) records each print;
+  `verify-intent` surfaces those lines, and `doctor`'s new `intent_reports_printed` WARN-only
+  check flags a delivery with commits but no Report line, never re-litigating a ledger dated
+  before the kind shipped. Column vocabulary, owner ruling 2026-09-05: no rendered header reads
+  "What" any more (the id column is "Graph ID", the title column is "Intent", Steps read
+  `Step | Status | Detail`, Risks read `N | Risk`, Needs-you reads `N | Need | Reason`), the
+  plan screen's Asked row is the intent title before its first colon, and every Lead cell
+  (roster, roadmap, dashboard) shares one freshness rule through `ReportScreen.lead_cell`: a
+  stale lock names its own staleness rather than showing a dead session as live. A width bound,
+  owner ruling 2026-09-05: `ReportScreen.fit_screen(text, limit: 115)` keeps every rendered row
+  at or under 115 visible columns, shrinking a table's widest column before ever truncating a
+  whole row.
 - 331e (branch of 331): plastic-doctor gains a `display` category with four checks:
   `display_hook_registered` catches the MessageDisplay hook missing, registered to a foreign
   command, or pointing at a missing or non-executable launcher, with a fix hint naming the

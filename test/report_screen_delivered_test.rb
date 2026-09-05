@@ -116,7 +116,7 @@ class ReportScreenDeliveredTest < Minitest::Test
   def test_delivered_table_has_three_columns_proof_beside_row
     full_fixture
     out = ReportScreen.render_delivered(intent_dir: @dir)
-    assert_includes out, "| Row | What | Proven by |"
+    assert_includes out, "| Row | Detail | Proven by |"
     row_a = out.lines.find { |l| l.start_with?("| A |") }
     refute_nil row_a
     assert_includes row_a, "Ledger captures only actionable work"
@@ -151,8 +151,11 @@ class ReportScreenDeliveredTest < Minitest::Test
     headers = out.scan(/^\*\*(.+?)\*\*/).flatten
     assert_equal %w[Asked Delivered Evidence Needs\ you], headers
 
-    assert_includes out, "| Row | What | Proven by |"
-    assert_includes out, "| Kind | What | Source |"
+    assert_includes out, "| Row | Detail | Proven by |"
+    assert_includes out, "| Kind | Detail | Source |"
+    # Post-exec review finding 3: the S5 header map renamed this header too, but no test ever
+    # pinned it against real rendered output; full_fixture already populates an N1 row.
+    assert_includes out, "| N | Need | Reason |"
 
     assert out.lines.first.start_with?("## \u2714 "), "the title line must carry the ## prefix the approved plain form uses"
     title_idx = 0

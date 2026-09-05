@@ -1509,8 +1509,22 @@ identical scope, so Where-we-go-next's rank order is always `render_json`'s
 data-free module: `DashboardScreen.render(fields)` fills `templates/dashboard-screen.md` from
 already-computed values, exactly like `IntentScreen.render` and `ReportScreen.render_state`
 fill their own templates. A missing source (no roadmap, no lock, no savepoint) prints "not
-recorded" or "none", never a guess; Lead is read straight from `Lock.who(dir, now:)` so a stale
-lock never shows a named lead while In delivery counts it as zero.
+recorded" or "none", never a guess; Lead reads through `ReportScreen.lead_cell` (intent 331f,
+D6) - the one freshness rule every Lead cell on every screen shares, so a stale lock never
+shows a named lead while In delivery counts it as zero, and the reader is told the lock is
+stale ("stale · N min") rather than merely absent.
+
+**Column vocabulary and the width bound (intent 331f, D5/D7).** No rendered header across the
+family reads "What" any more: the id column is "Graph ID", the title column is "Intent", every
+Steps table reads `Step | Status | Detail`, the plan screen's own reads
+`Step | Action | Detail`, Risks read `N | Risk`, and the `delivered` screen's own three tables
+read `Row | Detail | Proven by`, `Kind | Detail | Source`, and `N | Need | Reason`.
+`ScreenPaint::NOTE_HEADERS` gained `Reason` and kept `Why`, so a screen captured before the
+rename still paints. `ReportScreen.fit_screen(text, limit: 115)` is the one shared pass every
+public render entry point (and `dashboard.rb`'s screen renderer) calls last: a fitting screen
+returns byte-identical, an over-limit table shrinks its widest shrinkable column first (floor
+8, a progress-bar column never shrinks, ties break leftmost), and a row that is still over the
+limit after every column hits its floor truncates on a word boundary as a last-resort backstop.
 
 **Sessions and Roadmap resolve per tier.** Sessions are always read from the global store's
 `.tmp/` heartbeats (`DaySummary.active_sessions`, `session: nil` so the calling session's own
