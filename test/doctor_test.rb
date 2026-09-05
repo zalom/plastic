@@ -108,6 +108,23 @@ module DoctorTestHelpers
     end
   end
 
+  # Intent 331e: doctor's display_hook_paints check replays the installed
+  # MessageDisplay launcher for real, so a "healthy install" fixture needs
+  # one that actually returns a painted screen — the generic exit-0 stub
+  # every other hook gets (write_claude_hooks, above) would report a
+  # legitimate display_hook_paints failure.
+  def write_working_display_hook(hooks_dir)
+    path = File.join(hooks_dir, "plastic-message-display")
+    File.write(path, <<~RUBY)
+      #!/usr/bin/env ruby
+      require "json"
+      $stdin.read
+      puts JSON.generate("hookSpecificOutput" => { "hookEventName" => "MessageDisplay",
+        "displayContent" => "\\e[1mHello\\e[0m" })
+    RUBY
+    File.chmod(0o755, path)
+  end
+
   # Build a valid Claude settings.json carrying exactly the HookRegistry
   # registrations (intent 108, D7): the hooks_match_registry check compares
   # live settings against the registry, so "healthy" fixtures mirror it.
@@ -2151,11 +2168,18 @@ class DoctorIntegrationTest < Minitest::Test
     FileUtils.rm_rf(DOCTOR_TEST_CLAUDE)
     FileUtils.mkdir_p(DOCTOR_TEST_HOME)
     FileUtils.mkdir_p(DOCTOR_TEST_CLAUDE)
+    # display_hook_paints/display_not_defeated (intent 331e) read the
+    # ambient NO_COLOR by design (R3: the full run reports on THIS
+    # invocation's own environment) — neutralized here, save/restore, so
+    # "a healthy install is all-pass" does not flip to warn/fail on a
+    # runner that happens to export NO_COLOR.
+    @saved_no_color = ENV.delete("NO_COLOR")
   end
 
   def teardown
     FileUtils.rm_rf(DOCTOR_TEST_HOME)
     FileUtils.rm_rf(DOCTOR_TEST_CLAUDE)
+    ENV["NO_COLOR"] = @saved_no_color if @saved_no_color
   end
 
   def build_healthy_installation
@@ -2180,6 +2204,7 @@ class DoctorIntegrationTest < Minitest::Test
 
     # Agent registration
     write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
+    write_working_display_hook(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
     write_agents(DOCTOR_TEST_CLAUDE)
