@@ -696,6 +696,8 @@ class ScreenPaintTest < Minitest::Test
         refute_nil painted, "#{verb} roadmap screen must paint, never silently fall back to plain"
       end
     end
+  end
+
   # --- intent 331b: the plan kind (scripts/lib/screens/plan.rb) ---------------
 
   def plan_screen

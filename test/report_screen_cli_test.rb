@@ -305,6 +305,8 @@ class ReportScreenCliTest < Minitest::Test
     row = out.lines.find { |l| l.include?("| 1 |") }
     assert_includes row, "delivered",
       "--store-root must be consulted for INDEX reconciliation, not the roadmap's own derived tier root"
+  end
+
   # --- intent 331b: the plan verb ----------------------------------------------
 
   def test_plan_verb_exits_2_on_non_intent_dir # P11
