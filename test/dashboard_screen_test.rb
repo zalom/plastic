@@ -486,9 +486,9 @@ end
     refute_operator rendered.length, :>, 115
   end
 
-  # --- D14: a stale lock's Lead reads "not recorded", never a named lead -----
+  # --- D14, and D6 of intent 331f: a stale lock's Lead names its own staleness ---
 
-  def test_lead_not_recorded_on_stale_lock
+  def test_lead_names_staleness_on_a_stale_lock
     store = project_store("demo")
     dir = write_intent(store, "1", "stale-active",
                         { id: 1, intent: "Stale active intent", author: "agent", tags: [],
@@ -500,7 +500,10 @@ end
     scoped = screen_scoped_records(records_for(@home), "project:demo")
     assert_equal 0, screen_in_delivery_count(scoped, now: NOW)
     row = screen_where_we_are(scoped, now: NOW).first
-    assert_equal "not recorded", row[:lead]
+    # Intent 331f, D6: one freshness rule everywhere. A stale lock names its own staleness
+    # rather than the ambiguous "not recorded", which reads identical to no lock at all, and
+    # it never shows the dead session's own agent name.
+    assert_equal "stale · 120 min", row[:lead]
     refute_match(/claude/i, row[:lead])
   end
 
