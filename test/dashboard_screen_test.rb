@@ -108,10 +108,19 @@ class DashboardScreenTest < Minitest::Test
     IDX
   end
 
+# A frontmatter value written so YAML reads it back whole. An intent line
+# carries colons, and unquoted that breaks the very document the fixture is
+# writing, so the record disappears before the assertion ever runs.
+def yaml_scalar(v)
+  return "[#{v.join(', ')}]" if v.is_a?(Array)
+  return v.to_s unless v.is_a?(String)
+  %("#{v.gsub('\\', '\\\\\\\\').gsub('"', '\\"')}")
+end
+
   def write_intent(store, id, slug, frontmatter, files: {})
     dir = File.join(store, "#{id}--#{slug}")
     FileUtils.mkdir_p(dir)
-    fm = frontmatter.map { |k, v| "#{k}: #{v.is_a?(Array) ? "[#{v.join(', ')}]" : v}" }.join("\n")
+    fm = frontmatter.map { |k, v| "#{k}: #{yaml_scalar(v)}" }.join("\n")
     File.write(File.join(dir, "#{id}--#{slug}.md"),
                "---\n#{fm}\n---\n\n## Intent\n#{frontmatter[:intent]}\n")
     files.each { |name, content| File.write(File.join(dir, name), content) }
@@ -456,7 +465,7 @@ class DashboardScreenTest < Minitest::Test
     assert_includes rows.map { |r| r[:graph_id] }, "2"
   end
 
-  # --- D13: the Intent column escapes a literal pipe and truncates a long title -
+  # --- D13: the What column escapes a literal pipe and truncates a long title -
 
   def test_next_what_escapes_pipes_and_truncates
     store = project_store("demo")
@@ -474,10 +483,10 @@ class DashboardScreenTest < Minitest::Test
     without_escapes = rendered.gsub('\\|', "")
     assert_equal 5, without_escapes.count("|"), "an unescaped pipe must not add a column: #{rendered.inspect}"
     assert_match(/…\z/, row[:intent])
-    refute_operator row[:intent].length, :>, 120
+    refute_operator rendered.length, :>, 115
   end
 
-  # --- D14/D6 (intent 331f): a stale lock's Lead reads "stale · N min", never a named lead ---
+  # --- D14: a stale lock's Lead reads "not recorded", never a named lead -----
 
   def test_lead_not_recorded_on_stale_lock
     store = project_store("demo")
@@ -491,10 +500,7 @@ class DashboardScreenTest < Minitest::Test
     scoped = screen_scoped_records(records_for(@home), "project:demo")
     assert_equal 0, screen_in_delivery_count(scoped, now: NOW)
     row = screen_where_we_are(scoped, now: NOW).first
-    # Intent 331f, D6: one freshness rule everywhere - a stale lock names its own staleness
-    # rather than the ambiguous "not recorded" (which reads identical to no lock at all), and
-    # never the dead session's own agent name.
-    assert_equal "stale · 120 min", row[:lead]
+    assert_equal "not recorded", row[:lead]
     refute_match(/claude/i, row[:lead])
   end
 
@@ -523,6 +529,116 @@ class DashboardScreenTest < Minitest::Test
                                        "--screen", "--ansi")
     assert_equal 0, status.exitstatus, err
     refute_match(/\e\[/, out, "NO_COLOR must force plain even under the force seam")
+  end
+
+  # --- intent 331d1: ruled column vocabulary (Graph ID / Intent / Reason) -----
+
+  # Reads the header row printed directly under a "**<heading>**" section, so
+  # a check against it proves the RENDERED header, never the whole text
+  # (V3 needs exactly this: a legitimate title may contain the word "What").
+  def header_cells(text, heading)
+    lines = text.lines.map(&:chomp)
+    start = lines.index { |l| l.strip == "**#{heading}**" }
+    refute_nil start, "expected a #{heading.inspect} section in:\n#{text}"
+    header_line = lines[(start + 1)..].find { |l| l.start_with?("|") }
+    refute_nil header_line, "expected a header row under #{heading.inspect}"
+    header_line.split("|").map(&:strip).reject(&:empty?)
+  end
+
+  def test_where_we_are_headers_are_ruled_vocabulary # V1
+    project_store("demo")
+    text = render_screen(records_for(@home), "project:demo", plastic_home: @home, now: NOW)
+    assert_equal ["Graph ID", "Intent", "Stage", "Progress", "Lead"], header_cells(text, "Where we are")
+  end
+
+  def test_where_we_go_next_headers_are_ruled_vocabulary # V2
+    project_store("demo")
+    text = render_screen(records_for(@home), "project:demo", plastic_home: @home, now: NOW)
+    assert_equal ["Rank", "Graph ID", "Intent", "Reason"], header_cells(text, "Where we go next")
+  end
+
+  def test_no_column_is_named_what # V3
+    store = project_store("demo")
+    write_intent(store, "1", "title-with-what",
+                 { id: 1, intent: "What are we doing here", author: "agent", tags: %w[bugfix],
+                   created: "2026-06-01" })
+    write_index(File.dirname(store), future: [["1", "title-with-what", "What are we doing here"]])
+
+    text = render_screen(records_for(@home), "project:demo", plastic_home: @home, now: NOW)
+    headers = header_cells(text, "Where we are") + header_cells(text, "Where we go next")
+    refute_includes headers, "What"
+    assert_includes text, "What are we doing here",
+                    "sanity: a legitimate title may still contain the word, just never as a header"
+  end
+
+  def test_graph_id_column_carries_the_bare_id # V4
+    store = project_store("demo")
+    write_intent(store, "42", "some-slug", { id: 42, intent: "Some intent title", author: "agent",
+                                              tags: [], created: "2026-06-01" })
+    write_index(File.dirname(store), active: [["42", "some-slug", "Some intent title"]])
+
+    scoped = screen_scoped_records(records_for(@home), "project:demo")
+    row = screen_where_we_are(scoped, now: NOW).first
+    assert_equal "42", row[:graph_id]
+    refute_match(/\A42\b/, row[:intent])
+  end
+
+  def test_intent_column_takes_the_pre_colon_lead # V5
+    store = project_store("demo")
+    write_intent(store, "1", "colon-title",
+                 { id: 1, intent: "Dashboard screen: everything after the colon", author: "agent",
+                   tags: [], created: "2026-06-01" })
+    write_index(File.dirname(store), active: [["1", "colon-title", "Dashboard screen: everything after the colon"]])
+
+    scoped = screen_scoped_records(records_for(@home), "project:demo")
+    row = screen_where_we_are(scoped, now: NOW).first
+    assert_equal "Dashboard screen", row[:intent]
+    refute_includes row[:intent], "everything after the colon"
+  end
+
+  def test_intent_column_renders_a_colonless_title_whole # V6
+    store = project_store("demo")
+    write_intent(store, "1", "no-colon", { id: 1, intent: "A colonless title", author: "agent",
+                                            tags: [], created: "2026-06-01" })
+    write_index(File.dirname(store), active: [["1", "no-colon", "A colonless title"]])
+
+    scoped = screen_scoped_records(records_for(@home), "project:demo")
+    row = screen_where_we_are(scoped, now: NOW).first
+    assert_equal "A colonless title", row[:intent]
+    refute_empty row[:intent]
+  end
+
+# --- V6a: a line that opens with its colon still names something ----------
+
+def test_intent_column_falls_back_when_the_lead_is_empty # V6a
+  store = project_store("demo")
+  write_intent(store, "1", "colon-first",
+               { id: 1, intent: ": opens with its colon", author: "agent",
+                 tags: [], created: "2026-06-01" })
+  write_index(File.dirname(store), active: [["1", "colon-first", "Colon first"]])
+
+  scoped = screen_scoped_records(records_for(@home), "project:demo")
+  row = screen_where_we_are(scoped, now: NOW).first
+  refute_nil row
+  refute_empty row[:intent], "an empty pre-colon lead must fall back to the whole line"
+  assert_includes row[:intent], "opens with its colon"
+end
+
+  def test_no_rendered_row_exceeds_115_columns # V7
+    store = project_store("demo")
+    long_title = "A very long intent title that goes on and on and on " * 5
+    write_intent(store, "1", "long-active", { id: 1, intent: long_title, author: "agent", tags: [],
+                                               created: "2026-06-01" },
+                 files: { "savepoint.md" => "2026-09-01T08:00:00Z  How  touched\n" })
+    write_intent(store, "2", "long-next", { id: 2, intent: long_title, author: "agent",
+                                             tags: %w[bugfix], created: "2026-06-01" })
+    write_index(File.dirname(store), active: [["1", "long-active", "Long"]],
+                future: [["2", "long-next", "Long"]])
+
+    text = render_screen(records_for(@home), "project:demo", plastic_home: @home, now: NOW)
+    data_rows = text.lines.map(&:chomp).select { |l| l.start_with?("|") && !l.start_with?("| ---") }
+    refute_empty data_rows
+    data_rows.each { |line| assert_operator line.length, :<=, 115, "row exceeded budget: #{line.inspect}" }
   end
 
   private

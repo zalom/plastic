@@ -21,6 +21,18 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   owner ruling 2026-09-05: `ReportScreen.fit_screen(text, limit: 115)` keeps every rendered row
   at or under 115 visible columns, shrinking a table's widest column before ever truncating a
   whole row.
+- 331e (branch of 331): plastic-doctor gains a `display` category with four checks:
+  `display_hook_registered` catches the MessageDisplay hook missing, registered to a foreign
+  command, or pointing at a missing or non-executable launcher, with a fix hint naming the
+  installer repair (`--core` runs this one only); `display_hook_paints` replays the shipped
+  `templates/display-fixture.md` fixture through the INSTALLED MessageDisplay launcher and
+  expects a painted (ANSI) screen back, reporting a pass naming the defeater instead of a fail
+  when `NO_COLOR` or `display.ansi_screen: false` is active; `display_not_defeated` warns, one
+  line per active defeater (`NO_COLOR`, `display.ansi_screen: false`, `verbose: true`), and
+  always names the verbose transcript view (Ctrl+O) as a surface with no on-disk signal;
+  `display_surfaces_documented` confirms `docs/reference/harness-adapters.md` still names all
+  three surface classes in its new "Surfaces" section (paints, owner-verified, plain by
+  contract). Twenty-four failure-mode tests, landed red before the code.
 - 331c (branch of 331): a roadmap gets its own three reports, the counterpart to an intent's:
   `report-screen roadmap <roadmap.md> plan|state|delivered [--ansi] [--store-root <dir>]`. `plan`
   prints the Goal's first sentence, the batch (or legacy wave) and intent counts, the batch
@@ -72,6 +84,16 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   or "none", never a guess; a stale lock's Lead never contradicts an In-delivery count of zero.
   The continuing and dashboard skills name the verb as the eventual first print on `continue`;
   the mechanical wiring lands in 331f.
+- 331d1 (branch of 331d, an owner ruling on its vocabulary): the two dashboard-screen tables
+  rename their columns. Where-we-are is now `Graph ID | Intent | Stage | Progress | Lead`,
+  Where-we-go-next is `Rank | Graph ID | Intent | Reason`. The id, glued to the title before,
+  is its own Graph ID cell; Intent carries the intent line up to (not including) its first
+  colon, word-boundary truncated with an ellipsis, budgeted so the whole rendered row never
+  exceeds 115 visible columns - measured on the full row, not the Intent cell alone. `What`
+  never names a column, because What is a lifecycle stage; `Why` becomes `Reason`.
+  `ScreenPaint::NOTE_HEADERS` gains `Reason` alongside `Source` and `Why` so the renamed
+  column keeps its greyed styling. The classification pipeline stays untouched; only the
+  screen renderer changes. Eight failure-mode tests, landed red before the code.
 
 ## Released
 

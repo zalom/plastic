@@ -427,9 +427,24 @@ autonomous execution.
 
 - **Full run (no flag)**: three-state. Walks every check category (global store,
   conventions across all intents, agent registration, core files, project stores,
-  deprecations, runtime). This is what `/plastic-doctor` invokes. It also runs automatically
-  after every `plastic-update` (informational: prints the report but does not block
-  or revert the update).
+  deprecations, runtime, display). This is what `/plastic-doctor` invokes. It also runs
+  automatically after every `plastic-update` (informational: prints the report but does not
+  block or revert the update).
+
+The `display` category (intent 331e) holds four checks. `display_hook_registered` (defined in
+`scripts/lib/doctor_core.rb`, the SessionStart boot path) catches the MessageDisplay hook
+missing from settings.json, registered to a foreign command, or registered but pointing at a
+launcher that is missing or not executable; it is the only display check `--core` runs.
+`display_hook_paints`, `display_not_defeated`, and `display_surfaces_documented` (all three in
+`scripts/doctor.rb`, never the boot path, since they need `Open3`/`Timeout` to spawn a real
+subprocess) run only in the full doctor. `display_hook_paints` replays a shipped fixture
+(`templates/display-fixture.md`) through the INSTALLED launcher and expects a painted (ANSI)
+screen back; when a known defeater is active (`NO_COLOR`, or `display.ansi_screen: false`) it
+reports a pass naming the defeater instead of failing, since a deliberate setting is never a
+broken hook. `display_not_defeated` is the check that actually warns about those defeaters, one
+warning per active setting, and `display_surfaces_documented` confirms
+`docs/reference/harness-adapters.md` still names all three surface classes (see its own
+"Surfaces" section).
 
 The `runtime` category holds one check, `ruby_floor`: it spawns bare `ruby` the way a hook
 launcher does and asks the resolved interpreter for its own version and absolute path. It
@@ -1525,6 +1540,23 @@ the shared field-table/data-table grammar. Its opener is a strict subset of the 
 regardless; the registration exists so `ScreenPaint.kinds` is complete and the opener's own
 grammar (which scope forms it accepts, and that it rejects a plain intent title) is directly
 testable.
+
+**Column vocabulary (intent 331d1, an owner ruling).** Where-we-are is `Graph ID | Intent |
+Stage | Progress | Lead`; Where-we-go-next is `Rank | Graph ID | Intent | Reason`. The id
+stands in its own `Graph ID` cell rather than glued to the front of the title. The `Intent`
+cell carries the intent line up to but not including its first colon, which is where a
+Plastic intent line stops naming itself and starts explaining, then word-boundary truncated
+with an ellipsis. `What` names no column anywhere on a screen, because What is a lifecycle
+stage; `Why` is `Reason` for the same reason. `ScreenPaint::NOTE_HEADERS` lists `Reason`
+beside `Source` and `Why`, so the renamed column keeps its greyed note styling instead of
+losing it to the rename.
+
+**The 115-column bound.** No rendered row exceeds 115 visible columns. The bound is measured
+on the whole pipe-delimited row, never on one cell: `screen_fit_intent` renders every other
+cell first, subtracts their width and the table scaffolding, and gives the Intent cell what
+is left. A cell short enough on its own still drifts the row past the bound once the progress
+bar, the lead and the separators are added, which is exactly what measuring the row prevents.
+
 ## roadmap screens: the roadmap verb, `RoadmapQueue#roadmap`, and the Log fallback (intent 331c)
 
 A roadmap gets the same three reports an intent has (`report-screen roadmap <roadmap.md>

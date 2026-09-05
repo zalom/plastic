@@ -287,6 +287,13 @@ class ScreenPaintTest < Minitest::Test
     assert_includes row, A::MIDGREY
   end
 
+  def test_reason_column_paints_as_a_note # V8 (331d1)
+    n = ScreenPaint.paint(wrap_screen("| Rank | Graph ID | Intent | Reason |", "| --- | --- | --- | --- |",
+                                       "| 1 | 42 | Ship the thing | defer |"), color: true)
+    row = n.lines.find { |l| l.include?("defer") }
+    assert_includes row, A::MIDGREY
+  end
+
   def test_roster_lead_column_plain_and_bars_stay_colored # M7, pin
     roster_text = "▶ In delivery · 1 intent · 2026-08-31 12:00 UTC\n\n" \
       "| Intent | Stage | Progress | Changed | Lead |\n| --- | --- | --- | --- | --- |\n" \
