@@ -663,6 +663,11 @@ class ScreenPaintTest < Minitest::Test
     assert opener.match?("## ▶ global · dashboard"), "must match the global scope form"
     assert opener.match?("## ▶ project:plastic · dashboard"), "must match the project scope form"
     refute opener.match?("## ▶ 331d · Dashboard screen"), "must reject a plain intent title"
+    # The grammar's own comment calls it a STRICT subset of :intent's opener
+    # (global or project:<slug> only); a widened scope alternation (e.g. the
+    # generic ".+" every intent title also matches) would let these through.
+    refute opener.match?("## ▶ bogus · dashboard"), "must reject a scope that is neither global nor project:<slug>"
+    refute opener.match?("## ▶ project:Demo · dashboard"), "must reject an uppercase slug"
 
     text = <<~MD
       ## ▶ project:plastic · dashboard

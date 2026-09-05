@@ -133,10 +133,10 @@ class DashboardScreenTest < Minitest::Test
     File.utime(mtime, mtime, path)
   end
 
-  def heartbeat(session_id, age_seconds:)
+  def heartbeat(session_id, age_seconds:, now: NOW)
     dir = File.join(@home, "store", ".tmp", session_id)
     FileUtils.mkdir_p(dir)
-    File.write(File.join(dir, "heartbeat"), (NOW - age_seconds).utc.iso8601)
+    File.write(File.join(dir, "heartbeat"), (now - age_seconds).utc.iso8601)
   end
 
   # --- D1: Active counts index active only, never future or completed ---------
@@ -178,22 +178,39 @@ class DashboardScreenTest < Minitest::Test
 
   def test_delivered_uses_completion_dates
     store = project_store("demo")
-    # created is INSIDE the 7-day window, completed_on is OUTSIDE it: must be excluded.
-    write_intent(store, "1", "recent-created-old-done",
-                 { id: 1, intent: "Recent created, old completion", author: "agent", tags: [],
-                   created: "2026-09-04" },
-                 files: { "outcome.md" => "done" })
-    # created is far OUTSIDE the window, completed_on is INSIDE it: must be included.
-    write_intent(store, "2", "old-created-recent-done",
-                 { id: 2, intent: "Old created, recent completion", author: "agent", tags: [],
+    # A count-only assertion over two records can't tell "reads completion
+    # dates" from "reads created dates": swapping the source just relabels
+    # which single record counts, so a third record breaks the symmetry -
+    # correct (completion-date) reading counts 2, created-date reading
+    # counts only 1.
+    #
+    # completed_on INSIDE the window, created far OUTSIDE it: counted only
+    # by the correct reading.
+    write_intent(store, "1", "old-created-recent-done",
+                 { id: 1, intent: "Old created, recent completion", author: "agent", tags: [],
                    created: "2026-01-01" },
                  files: { "outcome.md" => "done" })
+    # completed_on OUTSIDE the window, created INSIDE it: counted only by a
+    # created-date misread.
+    write_intent(store, "2", "recent-created-old-done",
+                 { id: 2, intent: "Recent created, old completion", author: "agent", tags: [],
+                   created: "2026-09-04" },
+                 files: { "outcome.md" => "done" })
+    # completed_on INSIDE the window, created far OUTSIDE it: a second
+    # record counted only by the correct reading, so the two readings can
+    # never coincidentally agree on the total.
+    write_intent(store, "3", "old-created-recent-done-2",
+                 { id: 3, intent: "Old created, recent completion again", author: "agent", tags: [],
+                   created: "2026-02-01" },
+                 files: { "outcome.md" => "done" })
     write_index(File.dirname(store),
-                completed: [["1", "recent-created-old-done", "Recent created, old completion", "2026-08-01"],
-                            ["2", "old-created-recent-done", "Old created, recent completion", "2026-09-03"]])
+                completed: [["1", "old-created-recent-done", "Old created, recent completion", "2026-09-03"],
+                            ["2", "recent-created-old-done", "Recent created, old completion", "2026-08-01"],
+                            ["3", "old-created-recent-done-2", "Old created, recent completion again",
+                             "2026-09-02"]])
 
     scoped = screen_scoped_records(records_for(@home), "project:demo")
-    assert_equal 1, screen_delivered_count(scoped, now: NOW)
+    assert_equal 2, screen_delivered_count(scoped, now: NOW)
   end
 
   # --- D4: Roadmap field renders "none" without a roadmaps dir, no crash -------
@@ -273,29 +290,38 @@ class DashboardScreenTest < Minitest::Test
 
   def test_next_matches_json_queue_order
     store = project_store("demo")
-    # QUICK WIN: value:high + has plan -> defer.
-    write_intent(store, "1", "quick-win",
-                 { id: 1, intent: "Quick high value win", author: "agent", tags: [], value: "high",
-                   created: "2026-06-01" },
-                 files: { "plan.md" => "p", "checklist.md" => "- [ ] x\n" })
-    # DEFER: bugfix -> low + small -> defer.
-    write_intent(store, "2", "small-bug",
-                 { id: 2, intent: "Small bug", author: "agent", tags: %w[bugfix], created: "2026-06-01" })
-    # RESEARCH band.
-    write_intent(store, "3", "research-it",
-                 { id: 3, intent: "Research a thing", author: "agent", tags: %w[research],
+    # Rank order here is a full reversal of both id order and directory
+    # (insertion) order, so a deleted sort_by cannot hide behind a fixture
+    # that happens to already be in rank order.
+    #
+    # LOWEST id, low value, no flags -> ranks LAST.
+    write_intent(store, "1", "small-bug",
+                 { id: 1, intent: "Small bug", author: "agent", tags: %w[bugfix],
                    created: "2026-06-01" })
+    # MIDDLE id, low value but an in-progress flag beats a plain low-value
+    # entry -> ranks SECOND.
+    write_intent(store, "2", "research-it",
+                 { id: 2, intent: "Research a thing", author: "agent", tags: %w[research],
+                   created: "2026-06-01" },
+                 files: { "savepoint.md" => "2026-07-01T08:00:00Z  Why  touched\n" })
+    # HIGHEST id, high value AND an in-progress flag -> ranks FIRST.
+    write_intent(store, "3", "quick-win",
+                 { id: 3, intent: "Quick high value win", author: "agent", tags: [], value: "high",
+                   created: "2026-06-01" },
+                 files: { "plan.md" => "p", "checklist.md" => "- [ ] x\n",
+                          "savepoint.md" => "2026-07-01T08:00:00Z  How  touched\n" })
     # TRIAGE (excluded): agent root, implementation, no plan -> low + big -> triage.
     write_intent(store, "4", "triage-me",
                  { id: 4, intent: "Triage candidate", author: "agent", tags: [], created: "2026-06-01" })
     write_index(File.dirname(store),
-                future: [["1", "quick-win", "Quick high value win"], ["2", "small-bug", "Small bug"],
-                         ["3", "research-it", "Research a thing"], ["4", "triage-me", "Triage candidate"]])
+                future: [["1", "small-bug", "Small bug"], ["2", "research-it", "Research a thing"],
+                         ["3", "quick-win", "Quick high value win"], ["4", "triage-me", "Triage candidate"]])
 
     scoped = screen_scoped_records(records_for(@home), "project:demo")
     json_queue = render_json(scoped, "project:demo")[:dispatchable_queue]
     rows = screen_where_we_go_next(scoped)
 
+    assert_equal %w[3 2 1], json_queue.map { |r| r[:id] }, "fixture sanity: expected rank order"
     assert_equal json_queue.map { |r| r[:id] }, rows.map { |r| r[:intent] }
     assert_equal json_queue.map { |r| r[:rank] }, rows.map { |r| r[:rank] }
   end
@@ -326,24 +352,85 @@ class DashboardScreenTest < Minitest::Test
 
   def test_render_screen_is_byte_identical
     store = project_store("demo")
-    write_intent(store, "1", "active-one", { id: 1, intent: "Active thing", author: "agent", tags: [],
-                                              created: "2026-06-01" },
-                 files: { "savepoint.md" => "2026-09-01T08:00:00Z  How  touched\n" })
+    # A5: two calls sharing the SAME injected now: stay byte-identical even
+    # if a helper secretly reads Time.now instead of the parameter - two
+    # calls a few milliseconds apart almost never straddle a freshness
+    # boundary, so a plain byte-identical comparison can't tell the two
+    # apart. Placing the injected clock far from the real wall clock closes
+    # that gap: a Time.now leak then reads this fixture's lock and heartbeat
+    # (fresh only near fixed_now) as many months stale, changing the counted
+    # values rather than merely risking a race.
+    fixed_now = Time.utc(2026, 1, 1, 12, 0, 0)
+    dir = write_intent(store, "1", "active-one", { id: 1, intent: "Active thing", author: "agent", tags: [],
+                                                    created: "2025-12-01" },
+                        files: { "savepoint.md" => "2025-12-31T08:00:00Z  How  touched\n" })
     write_index(File.dirname(store), active: [["1", "active-one", "Active thing"]])
+    lock_file(dir, mtime: fixed_now - 60)
+    heartbeat("session-abc", age_seconds: 60, now: fixed_now)
 
     records = records_for(@home)
-    first = render_screen(records, "project:demo", plastic_home: @home, now: NOW)
-    second = render_screen(records, "project:demo", plastic_home: @home, now: NOW)
+    first = render_screen(records, "project:demo", plastic_home: @home, now: fixed_now)
+    second = render_screen(records, "project:demo", plastic_home: @home, now: fixed_now)
     assert_equal first, second
+
+    fields = screen_fields(records, "project:demo", plastic_home: @home, now: fixed_now)
+    assert_equal 1, fields[:in_delivery], "the fixture's lock is fresh only under the injected clock"
+    assert_equal 1, fields[:sessions], "the fixture's heartbeat is fresh only under the injected clock"
   end
 
   # --- D10: the global scope renders without a project-only helper crashing --
 
   def test_global_scope_renders
-    project_store("demo")
+    # An opener-only assertion passes even if the `scope == "global"`
+    # short-circuit is dropped from screen_scoped_records or
+    # screen_tier_root, since the header string comes straight from
+    # fields.fetch(:scope). Prove correct aggregation instead: seed TWO
+    # project stores plus a roadmap that lives at the GLOBAL tier (never a
+    # per-project one), and assert on data only a correct global read can
+    # produce.
+    store_a = project_store("proj-a")
+    store_b = project_store("proj-b")
+    write_intent(store_a, "1", "alpha", { id: 1, intent: "Alpha work", author: "agent", tags: [],
+                                           created: "2026-06-01" },
+                 files: { "savepoint.md" => "2026-09-01T08:00:00Z  How  touched\n" })
+    write_intent(store_b, "2", "beta", { id: 2, intent: "Beta work", author: "agent", tags: [],
+                                          created: "2026-06-01" },
+                 files: { "savepoint.md" => "2026-09-02T08:00:00Z  Why  touched\n" })
+    write_index(File.dirname(store_a), active: [["1", "alpha", "Alpha work"]])
+    write_index(File.dirname(store_b), active: [["2", "beta", "Beta work"]])
+
+    # Lives directly under @home (the global tier root), NOT under
+    # @home/projects/global - the path screen_tier_root would derive if its
+    # own "global" short-circuit were dropped.
+    roadmaps_dir = File.join(@home, "roadmaps")
+    FileUtils.mkdir_p(roadmaps_dir)
+    File.write(File.join(roadmaps_dir, "global-roadmap.md"), <<~MD)
+      # Roadmap: global-roadmap
+
+      Test roadmap.
+
+      ## Goal
+      Test goal.
+
+      ## Batches
+
+      ### Wave G
+      - [ ] 71 Some queued item - queued
+
+      ## Log
+      - 2026-09-01 09:00 UTC created
+    MD
+
     records = records_for(@home)
     text = render_screen(records, "global", plastic_home: @home, now: NOW)
     assert_match(/\A## ▶ global · dashboard/, text)
+
+    fields = screen_fields(records, "global", plastic_home: @home, now: NOW)
+    assert_equal 2, fields[:active], "global Active must sum across every store, not just one"
+    assert_equal %w[2 1], fields[:where_we_are].map { |r| r[:intent][/\A(\S+)/, 1] },
+                 "Where we are must carry intents from both projects"
+    assert_equal "global-roadmap · Wave G", fields[:roadmap],
+                 "the global tier root, not a projects/global path, must be read"
   end
 
   # --- D12: Where we go next excludes drive and triage dispositions -----------
