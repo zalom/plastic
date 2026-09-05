@@ -78,10 +78,15 @@ project alone.
 Runs the install-wide surface: agent registration, core files (including config-honoring
 drift), manifest sync is core-only and not part of this run, deprecation checks, config-ask
 checks, install-integrity checks, skill-lint (advisory), QMD reachability (unscoped, every
-collection), and the global store's own conventions/done-signals content. **Never carries a
-per-project finding**; that is `--store <slug>`'s job (see above). This is what
-`/plastic-doctor` invokes, and it also runs automatically after every `plastic-update`
-(informational, does not block or revert the update).
+collection), the global store's own conventions/done-signals content, and the `display`
+category (intent 331e): `display_hook_registered` (also runs at `--core`), `display_hook_paints`
+(replays the shipped display fixture through the installed MessageDisplay hook and expects a
+painted screen back — a pass when a known defeater like `NO_COLOR` is active, never a fail),
+`display_not_defeated` (warns per active defeater and always names the undetectable verbose
+transcript view), and `display_surfaces_documented` (the harness-adapters doc still names every
+surface class). **Never carries a per-project finding**; that is `--store <slug>`'s job (see
+above). This is what `/plastic-doctor` invokes, and it also runs automatically after every
+`plastic-update` (informational, does not block or revert the update).
 
 ## When to Use
 
@@ -167,6 +172,7 @@ Use the `fix_hint` value to determine the correct action:
 | "Remove each listed .tmp/<session>/ directory after confirming that session is gone" | For each listed directory, confirm no live session uses it (a live session rewrites its heartbeat on every prompt and edit), then remove that directory by hand; never remove an unlisted one |
 | "For a day directory missing its <day>.md, run `file-session-intent --day <day> ...`" | Run `ruby ~/.plastic/scripts/file-session-intent --day <day> --carry-to <today> --store <store>` for the named day; rename or remove an entry that is not a `YYYYMMDD` day directory |
 | "Run scripts/project-links ... PRESERVES ... --drop-unbacked-links" | Run `ruby ~/.plastic/scripts/maintenance-run --tool project-links --intent <id> --apply` for the one flagged id (never run bare `project-links` against a real store outside the rare owner-approved batch exception, D2) |
+| "Re-run the Plastic installer to repair the hook registration ... (plastic-install --repair)" (`display_hook_registered`) | Run `npx -y @zalom/plastic@<channel> install --reinstall --claude` (the `plastic-install` skill's repair mode), then re-run doctor |
 
 For fixes the agent cannot handle automatically, explain what the user needs
 to do manually. The `revisions.md` remedy is curator-applied (a move-and-record

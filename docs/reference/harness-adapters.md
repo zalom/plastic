@@ -390,6 +390,23 @@ Hermes adapters are carried by intents 102, 102a, and 73d, informed by 296's
 `research--cross-harness-teams.md`; the line of sight after them is OpenClaw. All of them
 target reasoning agents only.
 
+## Surfaces
+
+Every place a Plastic screen can render falls into one of three classes (intent 331e). Doctor's
+`display` category checks the first two on disk where it can and states the third as a known
+gap; the harness-adapters roadmap above is the reason the set can grow.
+
+| Class | Surfaces | How doctor knows |
+| --- | --- | --- |
+| Paints | Claude Code normal view | `display_hook_paints` replays the installed MessageDisplay hook and expects an ANSI screen back |
+| Owner-verified | The agents view (bg-pty-host); confirmed painting by the owner on 2026-09-05 | No on-disk signal exists for this surface; the owner's own confirmation is the record |
+| Plain by contract | Codex, `claude -p`, and the Claude Code verbose transcript view (Ctrl+O) | These redraw every screen as plain tables by design; doctor reports them as a pass, never a failure to chase |
+
+The verbose transcript view has no on-disk setting doctor can read (no `~/.claude/settings.json`
+key distinguishes "verbose mode is on" from "verbose mode is on AND the transcript view is
+currently open"), so `display_not_defeated`'s message always names it explicitly: the absence of
+a warning about it is never proof that the transcript view paints.
+
 ## ScreenPaint: the paint seam (intent 317a)
 
 `scripts/lib/screen_paint.rb` is the harness-agnostic paint seam 317's
