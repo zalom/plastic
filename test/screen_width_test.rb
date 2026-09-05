@@ -518,4 +518,87 @@ class ScreenWidthTest < Minitest::Test
                        "the fixture's own bar+long-note row must fit, matching the live store repro"
     end
   end
+
+  # --- 331f1a: separator rows on the data-table path --------------------------------
+  #
+  # The measured root cause (ACTION_1): `fit_table_block`'s data-table branch rebuilt
+  # every separator row from the SHRUNK widths (with a `[w, 3].max` floor), so it
+  # assembled wider than any data row and was the only row that ever tripped the
+  # unconditional row backstop (F28), landing as a cut fragment - or, when the rebuilt
+  # form happened to still fit under 115, as a row wider than its own "---" input
+  # (WIDENED, not byte-identical either). The lead ruling: a separator passes through
+  # byte-identical whenever its OWN unfitted input already fits the 115 bound; only
+  # when even that unmodified input cannot fit does the backstop apply to it - so the
+  # exemption never reopens test_fit_screen_backstops_an_unshrinkable_row (above) or
+  # test_unshrinkable_data_table_is_still_bounded, both of which build a 20-column
+  # table whose minimal separator (6n+1 = 121 characters) already exceeds 115 on its
+  # own, unfitted.
+
+  # X3: the fix must not let a DATA row (as opposed to the separator) slip past 115 -
+  # a regression guard on the same three-column, 1/4/6-header shape X1/X2 use.
+  def test_data_rows_still_fit
+    header = "| N | Need | Reason |"
+    sep = "| --- | --- | --- |"
+    row = "| N1 | Do the thing | #{'W' * 260} |"
+    fitted = ReportScreen.fit_screen("#{header}\n#{sep}\n#{row}\n")
+    fitted.each_line do |line|
+      next if line.chomp.match?(ScreenPaint::SEPARATOR_RE)
+      assert_operator ScreenPaint.display_columns(line.chomp), :<=, 115,
+                       "a data row must stay within 115 after the separator fix: #{line.inspect}"
+    end
+  end
+
+  # X5: a table whose minimal separator ("| --- | ... |") ITSELF already exceeds 115
+  # before any shrink must still be backstopped, never exempted just because it is a
+  # separator - the bound wins where the two rules cannot both hold. Unlike the two
+  # protected tests above, the data row here is short, isolating the separator's own
+  # unconditional-exemption risk from the "widest row" mechanics those two exercise.
+  def test_separator_wider_than_the_bound_is_still_backstopped
+    cols = 20
+    header = "| " + (1..cols).map { |i| "H#{i}" }.join(" | ") + " |"
+    sep = "| " + (["---"] * cols).join(" | ") + " |"
+    row = "| " + (["short"] * cols).join(" | ") + " |"
+    fitted = ReportScreen.fit_screen("#{header}\n#{sep}\n#{row}\n")
+    lines = fitted.lines
+    assert_equal 3, lines.length, "the fixture's three rows must not wrap into more lines"
+    # Found by position, not by SEPARATOR_RE: a row the backstop truncates ends in an
+    # ellipsis, which SEPARATOR_RE (correctly) no longer recognizes as a separator.
+    sep_line = lines[1]
+    assert_operator ScreenPaint.display_columns(sep_line.chomp), :<=, 115,
+                     "a separator whose minimal form itself exceeds 115 must still be backstopped"
+  end
+
+  # X6: the WIDENED failure shape - not cut, but rebuilt wider than its own input,
+  # which D1 forbids just as much as a cut. This asserts byte-identity against the
+  # UNFITTED separator, which a mere "not truncated" check would miss. The shape:
+  # a three-column table (mirroring the live session Evidence table's Kind/Detail/
+  # Source order) where every column's natural width is already >= 3, so the old
+  # `[w, 3].max` floor never inflates any column - the rebuilt separator lands
+  # exactly at the 115 budget, comfortably under the bound and so never backstopped,
+  # yet still not the original "---" the input actually wrote.
+  def test_session_separators_are_byte_identical
+    header = "| Kind | Detail | Source |"
+    sep = "| --- | --- | --- |"
+    row = "| ship | #{'D' * 150} | outcome.md |"
+    fitted = ReportScreen.fit_screen("#{header}\n#{sep}\n#{row}\n")
+    sep_line = fitted.lines.find { |l| l.chomp.match?(ScreenPaint::SEPARATOR_RE) }
+    refute_nil sep_line
+    assert_equal sep, sep_line.chomp,
+                 "a separator that already fits must render byte-identical to its input, not rebuilt wider"
+  end
+
+  # X7: a blank `| | | |` scaffold row reaching the data-table branch (ScreenPaint.
+  # field_table? routes every shipped scaffold to the field-table branch first, so this
+  # is a documented edge, not a live defect) must also pass through unchanged rather
+  # than being rewritten as a dashed rule - the same fitting-input-already-fits rule
+  # that fixes the separator applies to it, since `is_sep` classifies it identically.
+  def test_blank_scaffold_row_passes_through
+    header = "| N | Need | Reason |"
+    blank = "| | | |"
+    row = "| N1 | Do the thing | #{'W' * 260} |"
+    fitted = ReportScreen.fit_table_block([header, blank, row], 115)
+    lines = fitted.lines.map(&:chomp)
+    assert_includes lines, blank,
+                     "a blank scaffold row reaching the data-table branch must pass through unchanged"
+  end
 end
