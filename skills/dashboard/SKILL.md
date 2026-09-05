@@ -22,6 +22,16 @@ state → byte-identical payload, regardless of model. Do NOT hand-summarize int
 - `plastic-intent-continuing` lands on the board on a bare resume
 - `plastic-auto` reads `--json` to choose the next dispatchable intent
 
+## The screen surface (intent 331d)
+
+`dashboard.rb project <slug> --screen` (or `continue --screen` for the global board) prints the
+same state as a screen with its own grammar and painted form instead of a filled Markdown
+template - a title, six fields (Active, In delivery, Delivered, Roadmap, Sessions, Changed),
+then the Where-we-are and Where-we-go-next tables. `plastic-intent-continuing`'s project route
+names it as the eventual first print on `continue`; the mechanical wiring that makes it print
+first lands in intent 331f. Until then, the Markdown board below stays the human-facing
+default.
+
 ## Procedure (the Markdown board — default human surface)
 
 ### Step 1 — Get the data payload
