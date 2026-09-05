@@ -27,6 +27,18 @@ require "date"
 require_relative "doctor"
 require_relative "lib/savepoint"
 require_relative "lib/lock"
+require_relative "lib/dashboard_screen"
+require_relative "lib/intent_screen"
+require_relative "lib/report_screen"
+require_relative "lib/roadmap_queue"
+require_relative "lib/day_summary"
+require_relative "lib/screen_paint"
+
+# Intent 331a (D6/R8): every caller-added screen kind file registers itself on
+# load, so this glob is the only wiring a new kind needs (scripts/report-screen:42
+# does the identical glob for the same reason). Sorted for a deterministic load
+# order; tolerates the directory being absent or empty.
+Dir.glob(File.join(__dir__, "lib", "screens", "*.rb")).sort.each { |f| require_relative f }
 
 PLASTIC_HOME = ENV.fetch("PLASTIC_HOME") { File.join(Dir.home, ".plastic") }
 
@@ -970,6 +982,177 @@ def render_json(records, scope_label)
 end
 
 # ---------------------------------------------------------------------------
+# Screen renderer (intent 331d) - dashboard.rb continue|project <slug> --screen.
+#
+# Sources every fact through the same helpers report-screen and DaySummary
+# already use (Resolved contract, ACTION_1): a missing source prints "not
+# recorded" or "none", never a guess or a crash (R1). The classification
+# pipeline above (classify, rank_key, actionable?, QUADRANTS, disposition_of)
+# is read here, never edited: the screen is a new renderer over the same
+# records (D3), so every count and rank matches what --json already reports
+# for the identical scope.
+# ---------------------------------------------------------------------------
+
+SCREEN_ACTIVE_CAP = 8
+SCREEN_NEXT_CAP = 6
+SCREEN_NOT_RECORDED = "not recorded"
+
+def screen_scope_slug(scope)
+  scope.sub(/\Aproject:/, "")
+end
+
+# Tier root: PLASTIC_HOME for "global", PLASTIC_HOME/projects/<slug> for
+# "project:<slug>" (Resolved contract) - the same tier scripts/lib/qmd_sync.rb
+# already derives from a store path. Global's own roadmaps/INDEX.md sit
+# directly under PLASTIC_HOME, with no intervening "store" segment.
+def screen_tier_root(plastic_home, scope)
+  return plastic_home if scope == "global"
+  File.join(plastic_home, "projects", screen_scope_slug(scope))
+end
+
+# "global" spans every store (the same aggregate render_continue and --json's
+# continue-mode subset already read); a project scope narrows to its own
+# records. Never a project-only helper on the unscoped path (D10).
+def screen_scoped_records(records, scope)
+  return records if scope == "global"
+  records.select { |r| r[:scope] == scope }
+end
+
+def screen_active_count(scoped)
+  scoped.count { |r| r[:status] == "active" }
+end
+
+# D2: a stale or absent lock never counts as delivering.
+def screen_in_delivery_count(scoped, now:)
+  scoped.count do |r|
+    r[:status] == "active" && Lock.who(r[:intent_dir], now: now)["state"] == "fresh"
+  end
+end
+
+# D3: completed_on (the INDEX.md completion date) is the source of truth,
+# rec[:done_at] (the savepoint's own Done timestamp) the fallback when a
+# completed intent has no dated INDEX entry yet. `created` is never read.
+def screen_completion_date(rec)
+  raw = rec[:completed_on].to_s
+  raw = rec[:done_at].to_s if raw.empty?
+  return nil if raw.empty?
+  begin
+    Date.parse(raw)
+  rescue ArgumentError, TypeError
+    nil
+  end
+end
+
+def screen_delivered_count(scoped, now:)
+  today_date = now.to_date
+  scoped.count do |r|
+    next false unless r[:status] == "completed"
+    date = screen_completion_date(r)
+    next false unless date
+    diff = (today_date - date).to_i
+    diff >= 0 && diff <= 7
+  end
+end
+
+# "none" on state none/tie/exhausted or a missing roadmaps dir (R1, D4); the
+# live frontier otherwise (D17). RoadmapQueue itself tolerates an absent
+# directory (Dir.exist? guard), so this never crashes on a bare tier.
+def screen_roadmap_field(plastic_home, scope, now:)
+  tier = screen_tier_root(plastic_home, scope)
+  reader = RoadmapQueue.new(roadmaps_dir: File.join(tier, "roadmaps"),
+                             index_path: File.join(tier, "INDEX.md"), now: now)
+  payload = reader.which
+  return "none" if %w[none tie exhausted].include?(payload["state"])
+  "#{payload['roadmap']} · #{payload['frontier_wave']}"
+end
+
+# Sessions are global, never per-project (Resolved contract): always the
+# PLASTIC_HOME/store tmp root, and `session: nil` (A6) so the calling
+# session's own live heartbeat counts rather than being excluded as "self".
+def screen_sessions_count(plastic_home, now:)
+  store = File.join(plastic_home, "store")
+  DaySummary.active_sessions(store, nil, now: now, ttl: DaySummary::HEARTBEAT_TTL).size
+end
+
+def screen_changed_field(scoped)
+  latest = scoped.map { |r| r[:last_accessed_at].to_s }.reject(&:empty?).max
+  return SCREEN_NOT_RECORDED unless latest
+  t = begin
+    Time.parse(latest)
+  rescue ArgumentError, TypeError
+    nil
+  end
+  return SCREEN_NOT_RECORDED unless t
+  t.utc.strftime("%Y-%m-%d %H:%M UTC")
+end
+
+# A3: Lead is honest about staleness. A stale (or absent) lock must never
+# contradict the In delivery count on the same screen, so this reads
+# Lock.who itself rather than trusting ReportScreen.lead's own no-freshness
+# "idle" fallback, which is worded for a different screen.
+def screen_lead_field(rec, now:)
+  view = Lock.who(rec[:intent_dir], now: now)
+  return SCREEN_NOT_RECORDED unless view["state"] == "fresh"
+  ReportScreen.lead(rec[:intent_dir])
+end
+
+# D6: last_accessed_at descending, then id, capped at SCREEN_ACTIVE_CAP.
+def screen_where_we_are(scoped, now:)
+  active = scoped.select { |r| r[:status] == "active" }
+  ordered = active.sort_by { |r| [invert_ts(r[:last_accessed_at]), r[:id]] }
+  ordered.first(SCREEN_ACTIVE_CAP).map do |r|
+    items = IntentScreen.checklist_items(r[:intent_dir])
+    progress = IntentScreen.progress_fields(items)
+    {
+      intent: cell(truncate_on_word_boundary("#{r[:id]} #{r[:intent]}", INTENT_LINE_MAX_CHARS)),
+      stage: r[:lifecycle].to_s.capitalize,
+      progress: "#{progress['progress.bar']} #{progress['progress.done']} / #{progress['progress.total']}",
+      lead: screen_lead_field(r, now: now),
+    }
+  end
+end
+
+# A2: the exact pool render_json's dispatchable_queue ranks - actionable?
+# records, rank_key order, filtered to disposition defer/research (D12
+# excludes drive/triage). Rank is that queue's own 1-based position, so a
+# capped display row's rank always agrees with the uncapped --json contract.
+def screen_dispatchable_pool(scope_records)
+  ranked = scope_records.select { |r| actionable?(r) }.sort_by { |r| rank_key(r) }
+  ranked.select { |r| %w[defer research].include?(r[:disposition]) }
+end
+
+def screen_where_we_go_next(scope_records)
+  pool = screen_dispatchable_pool(scope_records)
+  pool.each_with_index.map do |r, i|
+    {
+      rank: i + 1,
+      intent: r[:id],
+      what: cell(truncate_on_word_boundary(r[:intent], INTENT_LINE_MAX_CHARS)),
+      why: r[:quadrant],
+    }
+  end.first(SCREEN_NEXT_CAP)
+end
+
+def screen_fields(records, scope, plastic_home:, now: Time.now)
+  scoped = screen_scoped_records(records, scope)
+  {
+    scope: scope,
+    active: screen_active_count(scoped),
+    in_delivery: screen_in_delivery_count(scoped, now: now),
+    delivered: screen_delivered_count(scoped, now: now),
+    roadmap: screen_roadmap_field(plastic_home, scope, now: now),
+    sessions: screen_sessions_count(plastic_home, now: now),
+    changed: screen_changed_field(scoped),
+    where_we_are: screen_where_we_are(scoped, now: now),
+    where_we_go_next: screen_where_we_go_next(scoped),
+  }
+end
+
+def render_screen(records, scope, plastic_home: PLASTIC_HOME, now: Time.now)
+  DashboardScreen.render(screen_fields(records, scope, plastic_home: plastic_home, now: now))
+end
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -997,6 +1180,8 @@ def main(argv)
   json = argv.delete("--json")
   data = argv.delete("--data")
   plain = argv.delete("--plain")
+  screen = argv.delete("--screen")
+  ansi = argv.delete("--ansi")
   all = argv.delete("--all")
   limit_active = extract_flag_value(argv, "--limit-active")
   limit_next = extract_flag_value(argv, "--limit-next")
@@ -1044,6 +1229,22 @@ def main(argv)
     payload[:store_health] = store_health(slug) if mode == "project"
     payload[:store_health] = store_health(:global) if mode == "continue"
     puts canonical_pretty_json(payload)
+    return 0
+  end
+
+  if screen
+    if mode == "project" && (slug.nil? || slug.empty?)
+      warn "usage: dashboard.rb project <slug> --screen"
+      return 2
+    end
+    scope = mode == "project" ? "project:#{slug}" : "global"
+    text = render_screen(records, scope, plastic_home: PLASTIC_HOME, now: Time.now)
+    # A4: the identical capability guard scripts/report-screen:161 applies -
+    # NO_COLOR always wins to plain; a non-tty stdout stays plain unless the
+    # PLASTIC_FORCE_COLOR test seam is set.
+    ansi_enabled = ansi && ENV["NO_COLOR"].to_s.empty? &&
+                   ($stdout.tty? || ENV["PLASTIC_FORCE_COLOR"] == "1")
+    print(ansi_enabled ? (ScreenPaint.paint(text, color: true) || text) : text)
     return 0
   end
 

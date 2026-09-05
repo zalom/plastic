@@ -46,6 +46,13 @@ specific intent or roadmap named.").
 ## Project route: land on the board
 
 Land on the Markdown board through the `plastic-dashboard` skill; rendering belongs there.
+`dashboard.rb project <slug> --screen` (or `continue --screen` for the global fallback) prints
+the same state as a screen instead - a title, six fields (Active, In delivery, Delivered,
+Roadmap, Sessions, Changed), then the Where-we-are and Where-we-go-next tables (intent 331d).
+It is not yet the mechanical default here; the wiring that makes it print first in the reply,
+the way the intent screen already does on the intent route below, lands in intent 331f. Until
+then, fill the Markdown template below as the route's own surface.
+
 Run the data payload and fill the matching template:
 - project loaded: `ruby ~/.plastic/scripts/dashboard.rb project <slug> --data`
 - otherwise (the global fallback): `ruby ~/.plastic/scripts/dashboard.rb continue --data`

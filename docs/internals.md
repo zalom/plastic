@@ -1476,6 +1476,41 @@ neither half matching alone, still falls back to plain - a known, accepted limit
 engagement only ever looks at one chunk's delta at a time, never a cross-chunk reassembly, before
 deciding.
 
+## the dashboard screen (intent 331d)
+
+`dashboard.rb continue|project <slug> --screen [--ansi]` prints the dashboard as a screen
+instead of the Markdown board `plastic-dashboard` fills by hand: a title (`## ▶ {scope} ·
+dashboard`, scope `global` or `project:<slug>`), six fields (Active, In delivery, Delivered,
+Roadmap, Sessions, Changed), then a Where-we-are table (the active records, most recently
+touched first, capped at 8) and a Where-we-go-next table (the dispatchable queue in rank
+order, capped at 6). `--data`, `--plain`, and `--json` are unaffected; flag precedence in
+`main` is `--data`, `--plain`, `--json`, `--screen`, then the default text renderers.
+
+**Same records, a new renderer.** The classification pipeline (`load_all`, `classify`,
+`rank_key`, `QUADRANTS`, `disposition_of`) is untouched; `screen_fields` (in `dashboard.rb`,
+beside `render_json`) reads the same classified records `--json` already reports for the
+identical scope, so Where-we-go-next's rank order is always `render_json`'s
+`dispatchable_queue` order for that scope. `scripts/lib/dashboard_screen.rb` is a small,
+data-free module: `DashboardScreen.render(fields)` fills `templates/dashboard-screen.md` from
+already-computed values, exactly like `IntentScreen.render` and `ReportScreen.render_state`
+fill their own templates. A missing source (no roadmap, no lock, no savepoint) prints "not
+recorded" or "none", never a guess; Lead is read straight from `Lock.who(dir, now:)` so a stale
+lock never shows a named lead while In delivery counts it as zero.
+
+**Sessions and Roadmap resolve per tier.** Sessions are always read from the global store's
+`.tmp/` heartbeats (`DaySummary.active_sessions`, `session: nil` so the calling session's own
+heartbeat counts), never per-project. Roadmap resolves the tier root - `PLASTIC_HOME` for
+`global`, `PLASTIC_HOME/projects/<slug>` for a project - and asks `RoadmapQueue#which` for its
+frontier; a missing `roadmaps/` directory or a `none`/`tie`/`exhausted` state renders "none"
+rather than crashing.
+
+**The `:dashboard` kind.** `scripts/lib/screens/dashboard.rb` registers `:dashboard` with
+`ScreenPaint.register`, no custom `paint:` lambda: every line of the screen classifies under
+the shared field-table/data-table grammar. Its opener is a strict subset of the already-shipped
+`:intent` opener (registered first), so a live paint call resolves through `:intent`'s path
+regardless; the registration exists so `ScreenPaint.kinds` is complete and the opener's own
+grammar (which scope forms it accepts, and that it rejects a plain intent title) is directly
+testable.
 ## roadmap screens: the roadmap verb, `RoadmapQueue#roadmap`, and the Log fallback (intent 331c)
 
 A roadmap gets the same three reports an intent has (`report-screen roadmap <roadmap.md>

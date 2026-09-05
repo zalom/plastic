@@ -21,6 +21,11 @@ written by eye:
   with delivery", "what is the status"): one `delivered` screen per intent this session
   completed, oldest first, then the `state --all` roster. Intent 330's ruling: a status ask
   answers with what actually shipped, not the in-flight roster alone.
+- **`dashboard.rb continue|project <slug> --screen`** - the dashboard screen (intent 331d):
+  Active, In delivery, Delivered, Roadmap, Sessions, Changed, then the Where-we-are and
+  Where-we-go-next tables. A separate script from the other four (`dashboard.rb`, not
+  `report-screen`), since it aggregates across a whole store or project rather than one
+  intent; it prints on `continue` and on loading a project, not as a delivery trigger.
 
 ## A roadmap's own three reports (intent 331c)
 

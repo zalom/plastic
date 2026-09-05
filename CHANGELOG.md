@@ -44,6 +44,18 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   diff to `screen_paint.rb`; the five shipped kinds (intent, state, roster, delivered, delay)
   register there. An opener split across two chunks, with neither half matching alone, still
   falls back to plain -- a known, accepted limitation.
+- 331d (branch of 331): `dashboard.rb continue|project <slug> --screen [--ansi]` prints the
+  dashboard as a screen instead of the Markdown board `plastic-dashboard` fills by hand: a
+  title, six fields (Active, In delivery, Delivered, Roadmap, Sessions, Changed), then a
+  Where-we-are table (active intents, most recently touched first, capped at 8) and a
+  Where-we-go-next table (the dispatchable queue in rank order, capped at 6, matching
+  `--json`'s order exactly for the same scope). The classification pipeline is untouched; the
+  new `scripts/lib/dashboard_screen.rb` module fills `templates/dashboard-screen.md` from
+  already-computed values, and `scripts/lib/screens/dashboard.rb` registers the `:dashboard`
+  paint kind. A missing source (no roadmap, no fresh lock, no savepoint) prints "not recorded"
+  or "none", never a guess; a stale lock's Lead never contradicts an In-delivery count of zero.
+  The continuing and dashboard skills name the verb as the eventual first print on `continue`;
+  the mechanical wiring lands in 331f.
 
 ## Released
 

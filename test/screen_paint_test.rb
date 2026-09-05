@@ -644,6 +644,63 @@ class ScreenPaintTest < Minitest::Test
     teardown_registry(:demo_r6_331a)
   end
 
+  # === intent 331d (D11): the dashboard screen kind ===========================
+  #
+  # R2: the "## ▶ ... · " shape already matches :intent (registered first),
+  # so opener_kind always answers :intent for a dashboard screen and the
+  # shared pipeline paints it through that path - this test asserts the
+  # constant's OWN grammar instead, which is the thing that can actually
+  # fail. R3: no custom paint lambda, so the assembled screen must survive
+  # the shared field/data-table pipeline unedited.
+
+  DASHBOARD_KIND_PATH = File.expand_path("../scripts/lib/screens/dashboard.rb", __dir__)
+
+  def test_dashboard_kind_paints
+    require DASHBOARD_KIND_PATH
+    assert_includes ScreenPaint.kinds, :dashboard
+
+    opener = Screens::Dashboard::OPENER
+    assert opener.match?("## ▶ global · dashboard"), "must match the global scope form"
+    assert opener.match?("## ▶ project:plastic · dashboard"), "must match the project scope form"
+    refute opener.match?("## ▶ 331d · Dashboard screen"), "must reject a plain intent title"
+    # The grammar's own comment calls it a STRICT subset of :intent's opener
+    # (global or project:<slug> only); a widened scope alternation (e.g. the
+    # generic ".+" every intent title also matches) would let these through.
+    refute opener.match?("## ▶ bogus · dashboard"), "must reject a scope that is neither global nor project:<slug>"
+    refute opener.match?("## ▶ project:Demo · dashboard"), "must reject an uppercase slug"
+
+    text = <<~MD
+      ## ▶ project:plastic · dashboard
+
+      | | | |
+      | --- | --- | --- |
+      | **Active**      | 8 | intents |
+      | **In delivery** | 3 | with a fresh lock |
+      | **Delivered**   | 5 | in the last 7 days |
+      | **Roadmap**     | reporting-v2 · Batch 2 | frontier batch |
+      | **Sessions**    | 2 | alive |
+      | **Changed**     | 2026-09-05 10:44 UTC | newest savepoint |
+
+      **Where we are**
+
+      | Intent | Stage | Progress | Lead |
+      | --- | --- | --- | --- |
+      | 331d Dashboard screen | Exec | ████████████░░░░░░░░ 4 / 6 | not recorded |
+
+      **Where we go next**
+
+      | Rank | Intent | What | Why |
+      | --- | --- | --- | --- |
+      | 1 | 42 | Build Plastic MCP server | defer |
+    MD
+
+    painted = ScreenPaint.paint(text, color: true)
+    refute_nil painted
+    plain = painted.gsub(/\e\[[0-9;]*m/, "")
+    ["8", "3", "5", "reporting-v2", "Batch 2", "2", "not recorded", "331d", "Exec", "42", "defer"].each do |value|
+      assert_includes plain, value, "expected #{value.inspect} to survive painting"
+    end
+  end
   # --- intent 331c: roadmap screen kinds (D7) -----------------------------------
 
   # R13: without scripts/lib/screens/roadmap.rb, the roadmap screen kinds are not
