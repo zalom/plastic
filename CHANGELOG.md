@@ -5,6 +5,23 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 331a (branch of 331): the MessageDisplay hook engages a screen anywhere in a reply, not only
+  when it opens chunk 0. A chunk carrying a screen opener now engages the message from that
+  chunk on, whatever its own index: chunk 0 still decides fast (no opener means NOSCREEN, as
+  before), but NOSCREEN is no longer final, and a later chunk's own opener replaces it. The
+  engaging chunk's own prefix (the prose before the opener) becomes its displayContent; the
+  opener onward is buffered at that chunk's own index, which the shared SCREEN decision file now
+  records so the final chunk -- routinely a separate process -- waits and splices only from
+  there, instead of burning its whole poll budget on chunks that were never buffered. A lone
+  fence wrapping the opener is dropped; an earlier chunk's own fence, and an unrelated code block
+  elsewhere in the message, are never touched. `hooks/message-display` hands off a later chunk
+  whose own delta carries a bare `▶` or `✔` anywhere, raw or `\u`-escaped, joining (not
+  replacing) the existing chunk-0 bare-`#` arm. `ScreenPaint` gains a `register(kind, opener:,
+  paint: nil)` registry so a new screen kind is a file under `scripts/lib/screens/`, never a
+  diff to `screen_paint.rb`; the five shipped kinds (intent, state, roster, delivered, delay)
+  register there. An opener split across two chunks, with neither half matching alone, still
+  falls back to plain -- a known, accepted limitation.
+
 ## Released
 
 - `2.0.0-alpha.13` - shipped 2026-09-05 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); collected 330 (a status ask prints the session: `report-screen session <tier_root>` prints one delivered screen per intent completed in the session window, oldest first, across every store the day ledger says the session touched, then the in-flight roster; the continuing and auto skills route every unnamed status ask through it; one shared fence walker now feeds both the heading splitter and the table reader, so a `#` comment inside a fenced code block no longer blanks a Proven-by cell or fabricates a test count; the ship identity on the delivered screen reads the project's `flow.base` instead of an `alpha` literal, so a jobext intent reads `1d1f8db -> main`; owner ruling 2026-09-04). Suite 2837 runs green on alpha.

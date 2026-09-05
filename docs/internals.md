@@ -1427,3 +1427,48 @@ boot and can be measured exactly.
 The bench is a maintainer tool. It lives under `bin/` beside `bin/test`, is deliberately absent
 from `installer_core.rb`'s manifest, and is never installed into `~/.plastic`: it reads this
 repository's own files and a fixture it builds, so it has no meaning on an installed copy.
+
+## the ScreenPaint registry, and late-capable engagement (intent 331a)
+
+Before 331a, `scripts/lib/screen_paint.rb` recognized a screen's opening line against one
+hard-coded `OPENER_RE`, and `MessageDisplay` (the `hooks/message-display` adapter) let only
+chunk 0 decide whether a message was a screen at all — a prose-first or fenced reply left that
+decision final, wrong, and unpainted for the rest of the message.
+
+**The registry.** `ScreenPaint.register(kind, opener:, paint: nil)` adds one entry (a Regexp or
+a callable) to a module-level registry; `ScreenPaint.kinds` lists every registered name, and
+`classify`/`paint` consult the registry instead of a single constant to decide whether a line
+opens a screen. `paint:` is optional and defaults to the shared pipeline everything else in the
+file already implements — no shipped kind carries its own palette; the registry's only job is
+that a new kind's opener is recognized without editing this file, and that a kind CAN supply its
+own paint lambda on the rare day one needs one. The five shipped kinds (`intent`, `state`,
+`roster`, `delivered`, `delay`) register at the bottom of `screen_paint.rb` itself, decomposed
+from the original `OPENER_RE` into its `"## "`-prefixed half and its bare-glyph half, so the
+set of lines recognized as an opener is unchanged. A caller-added kind lives in its own file,
+`scripts/lib/screens/<kind>.rb`, calling `ScreenPaint.register` on load; `scripts/report-screen`
+glob-requires `lib/screens/*.rb` (sorted, tolerating an absent or empty directory), and
+`installer_core.rb`'s glob-derived `screen_files` (mirroring `template_files`/`hook_files`)
+ships that file to an installed `~/.plastic` — "add a file, not a diff" is otherwise false for
+an installed copy, not just an in-repo one.
+
+**Late-capable engagement.** `MessageDisplay#handle_chunk_zero` and `#handle_later_chunk` both
+scan their own chunk's delta, line by line, for the first line that opens a screen
+(`split_at_opener`) — not only at chunk 0, and not only at the very start of a delta. A chunk
+that engages (the FIRST one whose own text carries an opener, whatever its index) writes the
+shared `SCREEN` decision file with ITS OWN INDEX as a decimal integer (replacing any `NOSCREEN`,
+which is no longer a final answer once a later chunk engages), returns the text before the
+opener as `displayContent`, and buffers the opener onward at its own index. The final chunk —
+routinely a separate process — reads that index back off `SCREEN` and waits, and later splices,
+only from there, rather than burning its whole poll budget on chunks before the engaging one
+that were never buffered at all (they already reached the terminal, unmodified, through the
+ordinary passthrough path). A lone fence line immediately wrapping the opener — one right before
+it in the engaging chunk's own prefix, one right after the painted region in `finalize` — is
+dropped; a fence in an earlier, already-displayed chunk is never touched, and an unrelated code
+block elsewhere in the message survives verbatim. `hooks/message-display` mirrors this at the
+shell layer: a later chunk (index > 0) is now also handed off to Ruby when its own delta value
+contains a bare `▶` or `✔` anywhere, raw or `\u`-escaped — every shipped opener contains one of
+those two glyphs, so this one pair of globs covers all four opener shapes at once, still
+anchored to the `"delta":"` key itself so an unrelated payload field is never mistaken for the
+delta's own text. An opener split across two chunks' own deltas, with neither half matching
+alone, still falls back to plain — a known, accepted limitation, since late engagement only ever
+looks at one chunk's delta at a time, never a cross-chunk reassembly, before deciding.
