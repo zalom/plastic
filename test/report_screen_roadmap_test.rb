@@ -373,6 +373,51 @@ class ReportScreenRoadmapTest < Minitest::Test
     refute_includes meta, "in progress"
   end
 
+  # --- R21: an id mentioned in passing in ANOTHER entry's merge line never fills this row -------
+
+  def test_merged_column_ignores_an_id_mentioned_in_another_entrys_line
+    write_roadmap("demo", <<~MD)
+      # Roadmap: Demo
+      ## Goal
+      test.
+      ## Batches
+      ### Batch 1
+      - [x] 216 Alpha — delivered
+      - [x] 239 Beta — delivered
+    MD
+    write_index(completed: %w[216 239])
+    write_ledger("demo", [
+      "2026-08-12T15:43:19Z  merged  216 delivered and completed (merged b6ad017); doc sentence routed to 239; only 239 remains",
+    ])
+
+    out = render(roadmap_path("demo"), "delivered")
+    row_216 = out.lines.find { |l| l.include?("| 216 |") }
+    row_239 = out.lines.find { |l| l.include?("| 239 |") }
+    assert_includes row_216, "b6ad017"
+    assert_includes row_239, "not recorded"
+  end
+
+  # --- R22: a real per-entry merge filed under another event word is still read -----------------
+
+  def test_merged_column_reads_a_merge_recorded_under_another_event_word
+    write_roadmap("demo", <<~MD)
+      # Roadmap: Demo
+      ## Goal
+      test.
+      ## Batches
+      ### Batch 1
+      - [x] 249 Gamma — delivered
+    MD
+    write_index(completed: %w[249])
+    write_ledger("demo", [
+      "2026-08-12T12:49:25Z  dispatched  249 delivered and completed (merged 92cc32d); blind spot parked as 261; 250 activated with 257-corrected scope and dispatched",
+    ])
+
+    out = render(roadmap_path("demo"), "delivered")
+    row = out.lines.find { |l| l.include?("| 249 |") }
+    assert_includes row, "92cc32d"
+  end
+
   # --- R17: state Frontier agrees with RoadmapQueue's own frontier selection --------
 
   def test_state_frontier_matches_roadmap_queue_frontier
