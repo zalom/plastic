@@ -45,6 +45,12 @@ module ScreenPaint
   # Markdown. Pinned to the exact shape rather than "any sentence": region_end
   # exists to stop at the model's own prose, and a loose rule would swallow it.
   SKIP_NOTE_RE = /\A\d+ completed intents? skipped: .+\z/.freeze
+  # 331a2 (D5, S3): render_session's own rescue card when a directory's delivered screen
+  # raises (report_screen.rb:1466-1468) - our own output, not model prose. The census (331a2)
+  # proved it classified :unknown, orphaning the roster below it in a real reply. `:meta`, not
+  # a new kind: it is a one-line grey note under a title and paint's `:meta` arm reads only
+  # `line.strip`, with no positional dependency.
+  RESCUE_CARD_RE = /\A## \S+ · could not render \(.*\)\z/.freeze
   BOLD_LEAD_RE = /\A\*\*([^*]+)\*\*(.*)\z/.freeze
 
   # Intent 317a1 (D3, D4, D5): the data-table palette. Kind and note columns
@@ -202,6 +208,7 @@ module ScreenPaint
     return :table if text.lstrip.start_with?("|")
     return :bold if BOLD_LEAD_RE.match?(stripped) && text == stripped
     return :meta if idx && opener_idx && idx == opener_idx + 1 && stripped.include?(" · ")
+    return :meta if RESCUE_CARD_RE.match?(stripped)
     return :indented if text.start_with?("  ")
     return :field if FIELD_LINE_RE.match?(text)
     return :step if STEP_LINE_RE.match?(text)
