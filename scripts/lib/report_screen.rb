@@ -197,9 +197,25 @@ module ReportScreen
     budget = limit - (4 + 3 * (ncols - 1)) - overage
     widths = ScreenPaint.shrink_column_widths(widths, budget, bar_columns: bar_column, floors: floors)
 
+    # 331f1a (D1/D2, plan-review ruling): a separator row passes through byte-identical
+    # whenever its OWN unfitted input already fits the bound - rebuilding it from the
+    # shrunk widths (with the `[w, 3].max` floor below) is what made it assemble wider
+    # than any data row in the first place, landing it as the only row the backstop ever
+    # cut (or, when the rebuilt form happened to still fit, wider than its own "---"
+    # input, which D1 forbids just as much). Only when even the unmodified input cannot
+    # fit does the old rebuild-and-backstop path apply - the bound wins there, which is
+    # exactly what test_fit_screen_backstops_an_unshrinkable_row and
+    # test_unshrinkable_data_table_is_still_bounded pin. A blank "| | | |" scaffold
+    # reaching this branch is classified as a separator by the same regex, so it gets
+    # the identical pass-through rule.
     fitted_rows = raw_rows.each_with_index.map do |cells, ri|
       if is_sep[ri]
-        "| #{widths.map { |w| "-" * [w, 3].max }.join(" | ")} |"
+        original = rows[ri]
+        if ScreenPaint.display_columns(original) <= limit
+          original
+        else
+          "| #{widths.map { |w| "-" * [w, 3].max }.join(" | ")} |"
+        end
       else
         rendered = cells.each_with_index.map do |c, ci|
           next c.to_s.strip if ci >= ncols
@@ -215,7 +231,8 @@ module ReportScreen
     # and the assembled row can still be over the limit; truncate the whole row on a word
     # boundary rather than let it survive past 115 - a data table's separator row included
     # (test_fit_screen_backstops_an_unshrinkable_row), unlike the field-table fitter's own
-    # separator, which always passes through untouched (W2).
+    # separator, which always passes through untouched (W2). A separator already passed
+    # through byte-identical above never trips this (it already fits by construction).
     fitted_rows.map! { |r| ScreenPaint.display_columns(r) > limit ? truncate_on_word_boundary(r, limit) : r }
 
     "#{fitted_rows.join("\n")}\n"
