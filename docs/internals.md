@@ -1473,3 +1473,45 @@ is never mistaken for the delta's own text. An opener split across two chunks' o
 neither half matching alone, still falls back to plain - a known, accepted limitation, since late
 engagement only ever looks at one chunk's delta at a time, never a cross-chunk reassembly, before
 deciding.
+
+## roadmap screens: the roadmap verb, `RoadmapQueue#roadmap`, and the Log fallback (intent 331c)
+
+A roadmap gets the same three reports an intent has (`report-screen roadmap <roadmap.md>
+plan|state|delivered [--ansi] [--store-root <dir>]`), read entirely from files already on disk:
+the roadmap `.md` itself, `INDEX.md` (which always wins on status), and the roadmap's own
+savepoint ledger.
+
+**One reader, never two parsers.** `RoadmapQueue#roadmap(path)` is the public counterpart to the
+private `queue`/`which` the auto loop already calls: for ONE roadmap file it returns the slug,
+path, grouping label (`RoadmapSavepoint.grouping_heading`, "Batches" or "Waves"), the batches with
+each entry's id, title text, and INDEX-reconciled status, and the frontier
+(`RoadmapQueue`'s own private `frontier_for`, unchanged - a screen never re-derives which batch is
+live). `ENTRY`'s regex gained a capture group for the entry's own title text between the id and
+the status separator; `parse_waves`' group indices moved with it, and `test/roadmap_queue_test.rb`
+stayed green unchanged, since nothing public in `queue`/`which` reads that new group.
+
+**The events a screen reads.** `RoadmapSavepoint.ledger_entries(roadmap_path)` parses a roadmap's
+paired `.savepoint.md` into `[Time, event, detail]` triples in file order - the format
+`RoadmapQueue`'s own liveness ranking already parses inline, now a public reader so a screen never
+re-derives the "<iso>  <event>  <detail>" line shape a second way. When a roadmap carries no ledger
+file at all (an archived roadmap moved before intent 134 shipped a ledger for it, `manual-first.md`
+among them), `ReportScreen.roadmap_events` falls back to the `## Log` lines, classified through
+`RoadmapSavepoint.classify_event` (made public; same `KEYWORD_TABLE`, no second vocabulary) and
+timestamped from each Log line's own date and time - so a fully-shipped roadmap with no ledger file
+reads its real closed time, not `in progress`.
+
+**The delivered meta line's placement is load-bearing.** `ScreenPaint.classify` recognizes `:meta`
+only on the line immediately after the opener (`idx == opener_idx + 1`); the
+`templates/report-roadmap-delivered.md` template's meta placeholder sits on the line directly under
+the title with no blank line between, or `ScreenPaint.paint` returns `nil` and the whole screen
+falls back to plain.
+
+**The Merged cell** matches an entry's id as a whole word inside a `merged` event's detail only
+(never a `handoff` or `dispatched` line naming the same id) and takes the first hex token of 7-40
+characters carrying at least one digit as the sha - the same shape a real `git` short or full hash
+takes, distinguishing it from an all-letter word that happens to be valid hex.
+
+**Paint kinds.** `scripts/lib/screens/roadmap.rb` registers `:roadmap_plan`, `:roadmap_state`, and
+`:roadmap_delivered` (331a's registry, a file rather than a diff to `screen_paint.rb`), openers
+that are strict subsets of the shipped `intent`/`delivered` openers. No `paint:` lambda: the
+palette stays `IntentScreenAnsi`'s shared pipeline, exactly like every shipped kind before it.

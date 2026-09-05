@@ -19,6 +19,26 @@ written by eye:
   completed, oldest first, then the `state --all` roster. Intent 330's ruling: a status ask
   answers with what actually shipped, not the in-flight roster alone.
 
+## A roadmap's own three reports (intent 331c)
+
+A roadmap gets the same pre-, in-, and post-delivery shape as an intent, through
+`report-screen roadmap <roadmap.md> plan|state|delivered [--ansi] [--store-root <dir>]`:
+
+- **`roadmap plan`** - the pre-delivery report: the Goal's first sentence, the batch (or legacy
+  wave) count and intent count, the batch order, and when the roadmap was created; then the
+  full entries table.
+- **`roadmap state`** - the in-delivery report: Goal, a Progress bar over intents delivered of
+  intents total (never batches), the frontier batch, who is delivering it and their lead, the
+  next queued entry, and the last ledger event; then the entries table with each entry's own
+  checklist progress and lead.
+- **`roadmap delivered`** - the post-delivery report: a meta line (closed time, or `in progress`
+  when the goal is not yet reached; intent count; duration) directly under the title, the
+  delivered table with each entry's merge sha, and the `## Log` table.
+
+Every cell traces to the roadmap file, `INDEX.md` (which always wins on status), the roadmap's
+own savepoint ledger, or (falling back when no ledger file exists) the roadmap's `## Log` -
+never a second parser: `RoadmapQueue`'s own public `roadmap` reader supplies every entry.
+
 ## The five triggers for `state`
 
 Print `state` (one intent, or `--all` for the roster) on any of these; a checklist tick alone,
