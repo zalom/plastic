@@ -276,7 +276,13 @@ class MessageDisplay
       buffered = read_buffered_chunks(dir, start_index, index)
       finalize(buffered, nil)
     rescue StandardError
-      buffered
+      # A read failing inside the assignment above leaves `buffered` at its
+      # nil default (the assignment never completes), which the review pass
+      # caught: D8/D10 promise the buffered original on any finalize
+      # failure, never nil, once chunks were blanked. `||=` covers exactly
+      # that gap without touching the ordinary case (buffered already holds
+      # the real chunks read before `finalize` itself raised).
+      buffered ||= ""
     ensure
       FileUtils.rm_rf(dir)
     end

@@ -57,8 +57,18 @@ if [ "$is_index_zero" = 1 ]; then
     *'"delta":"#'*|*'"delta": "#'*) handoff=1 ;;
     *'"delta":"▶'*|*'"delta": "▶'*) handoff=1 ;;
     *'"delta":"✔'*|*'"delta": "✔'*) handoff=1 ;;
-    *'"delta":"▶'*|*'"delta": "▶'*) handoff=1 ;;
-    *'"delta":"✔'*|*'"delta": "✔'*) handoff=1 ;;
+  esac
+  # 331a review fix (M12e): chunk 0 is not exempt from D5 either. The
+  # intent's own flagship shape -- a lead-in sentence and the opener in the
+  # SAME first chunk -- never starts with "#", "▶", or "✔", so the arm
+  # above alone never sees it. Joins it with the identical opener-anywhere
+  # globs used for a later chunk (M12a) rather than replacing anything:
+  # same reasoning as the comment at that site applies verbatim here.
+  case $INPUT in
+    *'"delta":"'*'▶'*|*'"delta": "'*'▶'*) handoff=1 ;;
+    *'"delta":"'*'✔'*|*'"delta": "'*'✔'*) handoff=1 ;;
+    *'"delta":"'*'\u25b6'*|*'"delta": "'*'\u25b6'*) handoff=1 ;;
+    *'"delta":"'*'\u2714'*|*'"delta": "'*'\u2714'*) handoff=1 ;;
   esac
 else
   # A later chunk: hand off when this message's directory already exists
