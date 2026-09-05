@@ -882,4 +882,33 @@ class ReportScreenSessionVerbTest < Minitest::Test
     # satisfy the two assertions above. Added at the post-execution review.
     assert_includes out, "could not render"
   end
+
+  # --- 331f1a X2: render_session's own Needs-you table survives overflow -----------
+  #
+  # Same defect as X1, proven through the session verb (`render_session(dirs:, skipped:,
+  # store_root:)` takes resolved directories directly, no day-ledger fixture needed - the
+  # precedent is test_render_session_separates_screens_with_a_blank_line above). The
+  # fixture reproduces the live shape: a three-column table with header cells of about 1,
+  # 4 and 6 characters and one data cell of 250+ characters - uniform short cells would
+  # trigger neither the cut nor the widened shape.
+  def test_session_separators_survive_overflow
+    write_index(@home, completed: [["7", "Big"]])
+    dir = write_intent(@home, "7", done_ts: "2026-09-04T05:00:00Z")
+    File.write(File.join(dir, "outcome.md"), <<~MD)
+      ---
+      disposition: delivered
+      ---
+
+      ## Needs you
+      | N | What | Why |
+      | --- | --- | --- |
+      | N1 | Do the thing | #{"W" * 260} |
+    MD
+    out = ReportScreen.render_session(dirs: [dir], skipped: 0, store_root: @home)
+    lines = out.lines.map(&:chomp)
+    header_idx = lines.index("| N | Need | Reason |")
+    refute_nil header_idx, "the Needs-you table must render"
+    assert_equal "| --- | --- | --- |", lines[header_idx + 1],
+                 "the session screen's Needs-you separator must pass through byte-identical"
+  end
 end
