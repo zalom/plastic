@@ -250,13 +250,21 @@ module ReportScreen
     rows.compact
   end
 
+  # Intent 331b (plan.md, "The one non-additive edit"): the standalone-token
+  # rule, extracted so `action_file_for` (the plan screen's Action column)
+  # calls the exact same rule as `matching_action_heading` and the two can
+  # never drift on what counts as a match. `matching_action_heading`'s own
+  # signature, return shape and behavior are unchanged (row P16).
+  def self.heading_tokens(heading)
+    heading.to_s.sub(/\A#+\s*/, "").split(/[^A-Za-z0-9]+/)
+  end
+
   # Rows 25-27: D19 - the label must appear as a standalone token in an action
   # file heading (any level); the count is the matched section's table rows only.
   def self.matching_action_heading(intent_dir, label)
     Dir.glob(File.join(intent_dir, "actions", "*.md")).sort.each do |path|
       split_by_headings(File.read(path)).each do |heading, body|
-        tokens = heading.to_s.sub(/\A#+\s*/, "").split(/[^A-Za-z0-9]+/)
-        return [heading, body] if tokens.include?(label)
+        return [heading, body] if heading_tokens(heading).include?(label)
       end
     end
     [nil, nil]
@@ -783,6 +791,158 @@ module ReportScreen
     lines << ""
     lines << "**Outcome**   #{delay_outcome_line(intent_dir)}"
     "#{lines.join("\n")}\n"
+  end
+
+  # --- the plan verb (intent 331b): the PRE-delivery report -----------------------
+  #
+  # `report-screen plan <intent_dir>` prints the plan the record already
+  # carries, before Exec starts: Asked, the decisions count, the planned
+  # steps with their action file, and risks. Every cell traces to a file
+  # (D3/D14); a missing source prints "not recorded", the same floor every
+  # other screen in the family uses, except Mode (D2): a missing lock prints
+  # "not armed", never "not recorded" - there is nothing to fall back to
+  # before Exec starts.
+
+  VERDICT_TOKENS = %w[PROCEED APPROVE PASS REVISE REWORK FAIL BLOCK].freeze
+
+  # spec.md F4: a checklist line's OWN declared label ("S6 Docs and...")
+  # survives here; STEP_PREFIX_RE (IntentScreen's own stripping regex) is
+  # reused for the strip, so the label this recognizes is exactly the prefix
+  # IntentScreen.checklist_items strips - the two readers can never disagree
+  # on where a label ends and the step text begins.
+  # The separator class mirrors STEP_PREFIX_RE's own (hyphen, colon, middle
+  # dot, em dash, en dash); the latter two are written as \u escapes rather
+  # than the literal glyph so this line never trips the project's added-line
+  # dash guard, which scans literal characters only - the compiled regex
+  # matches identically either way.
+  STEP_LABEL_RE = /\A(?:Step\s*|S)\s*(\d+)\s*(?:[-:·\u2014\u2013]\s*|\s+)(?=\S)/i.freeze
+
+  def self.asked_first_sentence(intent_dir)
+    body = asked(intent_dir)
+    return NOT_RECORDED if body == NOT_RECORDED
+    collapsed = body.gsub(/\s+/, " ").strip
+    head, rest = IntentScreen.clause_and_rest(collapsed)
+    rest ? "#{head}…" : head
+  end
+
+  # spec.md F4: keeps checklist.md's own file order and each line's DECLARED
+  # label, falling back to the positional S<n> only when a line declares
+  # none - IntentScreen.checklist_items strips the label and renumbers
+  # positionally, which is right for the state screen and wrong for the
+  # Action lookup below.
+  def self.plan_steps(intent_dir)
+    return [] unless IntentScreen.items_present?(intent_dir)
+
+    raw = File.readlines(File.join(intent_dir, "checklist.md")).filter_map do |line|
+      m = line.match(IntentScreen::ITEM_RE)
+      next unless m
+      text = m[2].strip
+      next if text == "..."
+      text
+    end
+
+    raw.each_with_index.map do |text, i|
+      m = text.match(STEP_LABEL_RE)
+      label = m ? "S#{m[1]}" : "S#{i + 1}"
+      { label: label, text: text.sub(IntentScreen::STEP_PREFIX_RE, "") }
+    end
+  end
+
+  # spec.md F3/F6a: the Action column names the file whose heading carries
+  # the step's label AND whose section has a matrix table of its own - a
+  # heading that resolves but proves nothing is the same hollow-close defect
+  # `proven_by` already guards against, so it renders "not recorded" too.
+  def self.action_file_for(intent_dir, label)
+    Dir.glob(File.join(intent_dir, "actions", "*.md")).sort.each do |path|
+      split_by_headings(File.read(path)).each do |heading, body|
+        next unless heading_tokens(heading).include?(label)
+        return File.basename(path, ".md") if table_rows(body).any?
+      end
+    end
+    NOT_RECORDED
+  end
+
+  # D2: mode from the LIVE delivery lock only - unlike `mode` (row 36), a
+  # missing lock never falls back to outcome.md's frontmatter (there is
+  # nothing to fall back to before Exec starts) and never says the
+  # delivered screen's "not recorded"; it says "not armed".
+  def self.plan_mode(intent_dir)
+    data = Lock.read(intent_dir)
+    value = data && data["run_mode"]
+    value && !value.to_s.empty? ? value.to_s : "not armed"
+  end
+
+  # The last `Review` savepoint line whose text names a PLAN review - a
+  # post-execution review line never matches, since its text never contains
+  # "plan review".
+  def self.plan_review_line(intent_dir)
+    savepoint_lines(intent_dir).reverse.find { |_ts, kind, text| kind == "Review" && text =~ /plan review/i }
+  end
+
+  def self.plan_reviewer(intent_dir)
+    line = plan_review_line(intent_dir)
+    return "not reviewed" unless line
+    _ts, _kind, text = line
+    VERDICT_TOKENS.find { |t| text =~ /\b#{t}\b/ } || NOT_RECORDED
+  end
+
+  def self.plan_reviewer_note(intent_dir)
+    line = plan_review_line(intent_dir)
+    return "-" unless line
+    ts, _kind, text = line
+    "#{human_time(ts)} · #{text}"
+  end
+
+  def self.plan_fields(intent_dir)
+    [
+      ["Asked", asked_first_sentence(intent_dir), "## Intent"],
+      ["Decisions", decision_note(intent_dir), "-"],
+      ["Steps", "#{plan_steps(intent_dir).length} planned", "checklist.md"],
+      ["Mode", plan_mode(intent_dir), "the delivery lock"],
+      ["Reviewer", plan_reviewer(intent_dir), plan_reviewer_note(intent_dir)],
+    ]
+  end
+
+  # plan.md's own ## Risks bullets, wrapped continuations joined (317a's
+  # bullet_rows); [] when plan.md is absent or carries no such section - the
+  # renderer prints the literal "None" rather than an empty table, the
+  # lesson 317a S4 already learned on the Evidence table.
+  def self.risk_rows(intent_dir)
+    path = File.join(intent_dir, "plan.md")
+    return [] unless File.exist?(path)
+    bullet_rows(section_of(File.read(path), "## Risks"))
+  end
+
+  def self.render_plan(intent_dir:, store_root:, template:)
+    id = intent_id(intent_dir)
+    name = title_for(intent_dir, store_root)
+    steps = plan_steps(intent_dir)
+
+    steps_rows =
+      if steps.empty?
+        "| | | no steps yet |"
+      else
+        steps.map do |s|
+          "| #{escape(s[:label])} | #{escape(action_file_for(intent_dir, s[:label]))} | #{escape(s[:text])} |"
+        end.join("\n")
+      end
+
+    risks = risk_rows(intent_dir)
+    risks_block =
+      if risks.empty?
+        "None"
+      else
+        rows = risks.each_with_index.map { |r, i| "| #{i + 1} | #{escape(r)} |" }
+        (["| N | What |", "| --- | --- |"] + rows).join("\n")
+      end
+
+    out = template.dup
+    out = out.gsub("{{id}}", id)
+    out = out.gsub("{{name}}", name)
+    out = out.gsub("{{fields.rows}}", state_rows(plan_fields(intent_dir)).join("\n"))
+    out = out.gsub("{{steps.rows}}", steps_rows)
+    out = out.gsub("{{risks.block}}", risks_block)
+    out.gsub(/\n{3,}/, "\n\n")
   end
 
   # --- S9: the session verb (intent 330) -------------------------------------------

@@ -2,13 +2,14 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# report-screen - the four delivery-report screens: mid-delivery state,
-# post-delivery delivered, and delay (intent 317), plus session, the whole of
-# one session's delivered work followed by the roster (intent 330). Each fills
-# from the record via scripts/lib/report_screen.rb; no number here is written
-# by eye.
+# report-screen - the pre-delivery plan (intent 331b), the four delivery
+# reports: mid-delivery state, post-delivery delivered, and delay (intent
+# 317), plus session, the whole of one session's delivered work followed by
+# the roster (intent 330). Each fills from the record via
+# scripts/lib/report_screen.rb; no number here is written by eye.
 #
 # Usage:
+#   report-screen plan <intent_dir> [--ansi]
 #   report-screen state <intent_dir> [--changed "<text>"] [--ansi]
 #   report-screen state --all <store_root> [--changed "<text>"] [--ansi]
 #   report-screen delivered <intent_dir> [--ansi] [--repo <dir>]
@@ -153,7 +154,7 @@ while (arg = args.shift)
   end
 end
 
-usage_abort("usage: report-screen state|delivered|delay|session <intent_dir> [--changed \"<text>\"] [--ansi]") unless verb
+usage_abort("usage: report-screen plan|state|delivered|delay|session <intent_dir> [--changed \"<text>\"] [--ansi]") unless verb
 
 all_mode = positional.delete("--all") ? true : false
 target = positional.first
@@ -167,6 +168,16 @@ def paint(text, ansi_enabled, _renderer_path = nil)
 end
 
 case verb
+when "plan"
+  usage_abort("usage: report-screen plan <intent_dir> [--ansi]") unless target
+  intent_dir = File.expand_path(target)
+  usage_abort("#{intent_dir} is not an intent directory") unless IntentScreen.intent_dir?(intent_dir)
+  store_root = File.expand_path("../..", intent_dir)
+  template_path ||= File.expand_path("../templates/report-plan.md", __dir__)
+  usage_abort("template not found at #{template_path}") unless File.exist?(template_path)
+  out = ReportScreen.render_plan(intent_dir: intent_dir, store_root: store_root,
+                                  template: File.read(template_path))
+  $stdout.write paint(out, ansi_enabled)
 when "state"
   if all_mode
     usage_abort("usage: report-screen state --all <store_root>") unless target
@@ -241,7 +252,7 @@ when "session"
   )
   $stdout.write out
 else
-  usage_abort("unknown verb #{verb.inspect} (use state|delivered|delay|session)")
+  usage_abort("unknown verb #{verb.inspect} (use plan|state|delivered|delay|session)")
 end
 
 exit 0

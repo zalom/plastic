@@ -1449,7 +1449,9 @@ set of lines recognized as an opener is unchanged. A caller-added kind lives in 
 glob-requires `lib/screens/*.rb` (sorted, tolerating an absent or empty directory), and
 `installer_core.rb`'s glob-derived `screen_files` (mirroring `template_files`/`hook_files`)
 ships that file to an installed `~/.plastic` - "add a file, not a diff" is otherwise false for
-an installed copy, not just an in-repo one.
+an installed copy, not just an in-repo one. Intent 331b's `plan` kind (`report-screen plan
+<intent_dir>`, the pre-delivery report) is the first caller-added kind built this way, in
+`scripts/lib/screens/plan.rb`.
 
 **Late-capable engagement.** `MessageDisplay#handle_chunk_zero` and `#handle_later_chunk` both
 scan their own chunk's delta, line by line, for the first line that opens a screen

@@ -1,9 +1,12 @@
-# Human Report Contract (the three report screens, intent 317)
+# Human Report Contract (the report screens, intent 317)
 
 D15: the prose EM-to-CTO briefing this doc used to define is retired. The orchestrator now
-prints one of three report screens, filled from the record by `scripts/report-screen`, never
+prints one of these report screens, filled from the record by `scripts/report-screen`, never
 written by eye:
 
+- **`report-screen plan <intent_dir>`** - the pre-delivery report (intent 331b), printed once
+  at the How boundary, before the executor is dispatched: Asked, Decisions, Steps, Mode,
+  Reviewer, then the Steps table (Step, Action, What) and the Risks table.
 - **`report-screen state <intent_dir> [--changed "<text>"]`** - the mid-delivery report. One
   intent's field table (Store, Status, Stage, Savepoint, Progress, Next, Insight) plus a
   `Changed` row naming what caused the print, and its Steps table.

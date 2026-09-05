@@ -5,6 +5,14 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 331b (branch of 331): `report-screen plan <intent_dir> [--ansi]`, the pre-delivery report -
+  printed once at the How boundary, before the executor is dispatched. It fills Asked,
+  Decisions, Steps, Mode (the live delivery lock's `run_mode`, or `not armed`), and Reviewer
+  (the last plan-review savepoint line's verdict, or `not reviewed`) from the record, then a
+  Steps table naming each checklist step's own declared label and the action file whose
+  heading proves it, and a Risks table from `plan.md`'s own bullets. Registers as the `plan`
+  kind through 331a's `ScreenPaint` registry (`scripts/lib/screens/plan.rb`), no edit to
+  `screen_paint.rb`.
 - 331a (branch of 331): the MessageDisplay hook engages a screen anywhere in a reply, not only
   when it opens chunk 0. A chunk carrying a screen opener now engages the message from that
   chunk on, whatever its own index: chunk 0 still decides fast (no opener means NOSCREEN, as
