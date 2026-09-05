@@ -134,9 +134,9 @@ class ReportScreenRoadmapTest < Minitest::Test
     write_index(completed: %w[158a])
 
     out = render(roadmap_path("legacy"), "plan")
-    assert_includes out, "| Wave | Intent | What | Status |"
+    assert_includes out, "| Wave | Graph ID | Intent | Status |"
     assert_includes out, "| Wave 1 | 158a | Group-first skill renames | delivered |"
-    refute_includes out, "| Batch | Intent | What | Status |"
+    refute_includes out, "| Batch | Graph ID | Intent | Status |"
   end
 
   # --- R4: plan Goal is the first sentence, never the whole paragraph ---------------
@@ -199,7 +199,7 @@ class ReportScreenRoadmapTest < Minitest::Test
     refute_includes row, "1 / 1", "one batch must never be reported as the total"
   end
 
-  # --- R7: state Delivering ignores a stale delivery lock ----------------------------
+  # --- R7/D6: state Delivering never shows a dead lock as a live lead ---------------
 
   def test_state_lead_ignores_stale_lock
     write_roadmap("demo", <<~MD)
@@ -217,7 +217,9 @@ class ReportScreenRoadmapTest < Minitest::Test
 
     out = render(roadmap_path("demo"), "state")
     row = out.lines.find { |l| l.start_with?("| **Delivering**") }
-    assert_includes row, "idle"
+    # Intent 331f, D6: a stale lock reads "stale · N min", never a bare "idle" (which would
+    # look identical to no lock at all) and never the dead session's own key.
+    assert_includes row, "stale · 120 min"
     refute_includes row, "stale-session"
   end
 
