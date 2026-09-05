@@ -663,7 +663,10 @@ class ScreenPaintTest < Minitest::Test
   def test_plan_registration_leaves_the_five_shipped_kinds_resolving_as_before # P10a
     require_relative "../scripts/lib/screens/plan"
     assert_equal :intent, ScreenPaint.opener_kind("## ▶ 21 · Paint demo")
-    assert_equal :delivered, ScreenPaint.opener_kind("## ✔ 21 · Paint demo · delivered")
+    # :intent's opener already matches this shape too (pre-existing, before
+    # :plan ever registers) - the same shadowing F1 documents for the plan
+    # title; :plan must not change that.
+    assert_equal :intent, ScreenPaint.opener_kind("## ✔ 21 · Paint demo · delivered")
     assert_equal :roster, ScreenPaint.opener_kind("▶ In delivery · 1 open")
     assert_equal :delay, ScreenPaint.opener_kind("✔ 21 · Paint demo · delivered in 10 min")
     # F1: :intent's opener already matches a plan title, so :plan (registered
