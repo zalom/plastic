@@ -7,7 +7,7 @@
 
 **Delivered**
 | Row | Detail | Proven by |
-| --- | --------------------------------------------------------------------------------------------- | --------- |
+| --- | --- | --- |
 | S1 | The failure-mode matrix landed as tests before any code, with the replay harness and the… | 4 tests |
 | S2 | The launcher hands a chunk to Ruby whenever its delta carries a screen opener anywhere… | 6 tests |
 | S3 | MessageDisplay engages late: the start index is written and read back, NOSCREEN is… | 11 tests |
@@ -24,7 +24,7 @@
 
 **Needs you**
 | N | Need | Reason |
-| --- | --------------------------------------------------- |…
+| --- | --- | --- |
 | N1 | Print a state screen in a live session with one… | Only a real terminal settles the on-screen half.… |
 
 ## ✔ 331b · Plan screen, the pre-delivery report · delivered
@@ -89,7 +89,7 @@ None
 
 **Delivered**
 | Row | Detail | Proven by |
-| --- | --------------------------------------------------------------------------------------------- | --------- |
+| --- | --- | --- |
 | S1 | The seventeen-row failure-mode matrix landed as tests before any code, in their own red… | 17 tests |
 | S2 | `--screen` and `--ansi` on `dashboard.rb`, the field sources, the renderer module, the… | 17 tests |
 | S3 | `scripts/lib/screens/dashboard.rb` registers the `dashboard` kind with its own opener… | 1 test |
@@ -106,4 +106,94 @@ None
 **Needs you**
 None
 
-## ✔ 331d1 · Dashboard screen column vocabulary · deliv
+
+112 completed intents skipped: no Done bookend in savepoint.md.
+
+▶ In delivery · 10 intents · 2026-09-05 17:48 UTC
+
+| Graph ID | Stage | Progress | Changed | Lead |
+| --- | --- | --- | --- | --- |
+| 331a1 | Exec | █████████████████░░░ 6 / 7 | on request | stale · 93 min |
+| 327 | Exec | ████████████████████ 8 / 8 | on request | idle |
+| 331g | Why | █████████████░░░░░░░ 4 / 6 | on request | idle |
+| 331 | Why | ███████████░░░░░░░░░ 4 / 7 | on request | stale · 557 min |
+| 324 | Exec | █████████████████░░░ 13 / 15 | on request | stale · 3557 min |
+| 325 | Exec | ░░░░░░░░░░░░░░░░░░░░ 0 / 6 | on request | stale · 3562 min |
+| 321 | Exec | ████████████████████ 8 / 8 | on request | stale · 3563 min |
+| 322 | Exec | ████████████████████ 9 / 9 | on request | stale · 3557 min |
+| 315 | Exec | ██████░░░░░░░░░░░░░░ 7 / 23 | on request | idle |
+| 267 | Why | ░░░░░░░░░░░░░░░░░░░░ 0 / 0 | on request | stale · 21136 min |
+
+▶ 331a1 · Decision marker in the launcher
+Stage      Exec
+Next       S1 · Suite green on branch and alpha, merged, store commit scoped
+Changed    on request
+1 open
+S1   [ open ]  Suite green on branch and alpha, merged, store commit scoped
+
+▶ 327 · Graph of work under the roadmap
+Stage      Exec
+Next       
+Changed    on request
+0 open
+
+▶ 331g · Live verification and release
+Stage      Why
+Next       S2 · Ten screens captured painted, capture table in 331's evidence file
+Changed    on request
+2 open
+S2   [ open ]  Ten screens captured painted, capture table in 331's evidence file
+S6   [ open ]  331 closed, roadmap archived
+
+▶ 331 · Reporting improvements V2
+Stage      Why
+Next       S5 · Batch 3 delivered: 331e, 331f on alpha
+Changed    on request
+3 open
+S5   [ open ]  Batch 3 delivered: 331e, 331f on alpha
+S6   [ open ]  Batch 4 delivered: 331g captures, owner check, alpha cut
+S7   [ open ]  Close: outcome.md, evidence and catalog updated, roadmap archived
+
+▶ 324 · Skill usage census from transcripts
+Stage      Exec
+Next       S14 · Lead: report artifact published, critic verdict folded,…
+Changed    on request
+2 open
+S14   [ open ]  Lead: report artifact published, critic verdict folded, `resources/decisions--D19-per-skill.md`…
+S15   [ open ]  Lead: outcome.md with both URLs, merged into alpha, suite green on alpha, pushed, end-intent
+
+▶ 325 · Architecture pass before and in alpha
+Stage      Exec
+Next       S1 · Evidence base: Enola coverage stated, three measurements re-run with…
+Changed    on request
+6 open · showing the first three
+S1   [ open ]  Evidence base: Enola coverage stated, three measurements re-run with commands and the 2026-09-03…
+S2   [ open ]  Component sections: eight sections with six parts each, citations resolve, 1.x versus 2.0…
+S3   [ open ]  Rulings ledger: every section names its ruling; contradictions listed as D25-plus in…
+
+▶ 321 · Bg-isolation Edit guard vs Bash seam
+Stage      Exec
+Next       
+Changed    on request
+0 open
+
+▶ 322 · report-screen Proven-by heading resolver
+Stage      Exec
+Next       
+Changed    on request
+0 open
+
+▶ 315 · Verify 2.0.0-alpha.2 on the real install
+Stage      Exec
+Next       S3 · Doctor full on the real install: 44 pass, 2 warn…
+Changed    on request
+16 open · showing the first three
+S3   [ open ]  Doctor full on the real install: 44 pass, 2 warn (savepoint_operational 4, backfilled_complete 9,…
+S5   [ open ]  Session start (298): pointer and heartbeat written for t315boot, banner reads v2.0.0-alpha.2…
+S6   [ open ]  Session start sweep (301): a prior unclosed day is filed (spec, plan, action, outcome backfilled)…
+
+▶ 267 · Plastic web dashboard
+Stage      Why
+Next       write checklist.md
+Changed    on request
+0 open

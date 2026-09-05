@@ -815,6 +815,41 @@ class ScreenPaintTest < Minitest::Test
     File.readlines(File.join(__dir__, "fixtures", "live_capture_session_trimmed.txt"))
   end
 
+
+  # --- 331a1 (L24): every line our OWN session renderer emits must classify --
+  #
+  # Found by the opt-in hook trace on a live run: the region stopped at line
+  # 260 of a 350-line session report and the trace named the line,
+  # "112 completed intents skipped: no Done bookend in savepoint.md.".
+  # `report_screen.rb` emits that note, and "No intents delivered in this
+  # session.", between the delivered screens and the roster. Neither was in
+  # the grammar, so the painter stopped there and the whole roster below it
+  # reached the terminal as plain Markdown.
+
+  def test_session_verb_note_lines_classify
+    [
+      "112 completed intents skipped: no Done bookend in savepoint.md.",
+      "1 completed intent skipped: no Done bookend in savepoint.md.",
+      "No intents delivered in this session.",
+    ].each do |line|
+      refute_equal :unknown, ScreenPaint.classify(line),
+        "the session verb emits #{line.inspect}; the painter must not reject its own output"
+    end
+  end
+
+  def test_ordinary_prose_still_ends_the_region
+    # The note shapes above are pinned tightly on purpose: a sentence that
+    # merely looks like prose must still stop the region, or region_end
+    # would swallow the model's commentary after a screen.
+    [
+      "Here is what I found while reading the file.",
+      "112 things happened today.",
+      "No intents were harmed.",
+    ].each do |line|
+      assert_equal :unknown, ScreenPaint.classify(line), "#{line.inspect} must stay outside the grammar"
+    end
+  end
+
   def test_meta_line_of_a_later_region_classifies
     lines = session_capture_lines
     opener_idx = lines.each_index.select { |i| ScreenPaint.classify(lines[i]) == :opener }[1]
