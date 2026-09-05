@@ -70,6 +70,10 @@ module VerifyIntent
     lines.concat(diffstat_lines)
     checks[:diffstat] = diffstat_check
 
+    report_lines_out, report_check = run_report_lines_check(intent_dir: intent_dir)
+    lines.concat(report_lines_out)
+    checks[:report] = report_check
+
     if Worktree.blank?(suite)
       checks[:suite] = { status: "skipped" }
     else
@@ -232,6 +236,35 @@ module VerifyIntent
       lines = ["diffstat against #{base}:"]
       lines.concat(stat.each_line.map(&:chomp))
       [lines, { status: "pass", stat: stat }]
+    end
+  end
+
+  # --- check: the Report savepoint lines (intent 331f, F17) ------------------------
+
+  REPORT_LINE_RE = /\A(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ)\s{2,}(\S+)\s{2,}(.+?)\s*\z/.freeze
+
+  # Every `Report`-kind savepoint line for this intent, oldest first: [timestamp, text].
+  # Never fails or gates anything (D3: the diffstat check already prints a summary block,
+  # this folds into the same verdict so verify-intent surfaces them too) - a delivery with
+  # no Report line is visible to `doctor`'s intent_reports_printed_check instead.
+  def report_lines(intent_dir)
+    path = File.join(intent_dir, "savepoint.md")
+    return [] unless File.exist?(path)
+
+    File.readlines(path).filter_map do |line|
+      m = line.strip.match(REPORT_LINE_RE)
+      next nil unless m && m[2] == "Report"
+      [m[1], m[3]]
+    end
+  end
+
+  def run_report_lines_check(intent_dir:)
+    entries = report_lines(intent_dir)
+    if entries.empty?
+      [["report lines: none recorded"], { status: "pass", lines: [] }]
+    else
+      lines = ["report lines:"] + entries.map { |ts, text| "#{ts}  Report  #{text}" }
+      [lines, { status: "pass", lines: entries }]
     end
   end
 

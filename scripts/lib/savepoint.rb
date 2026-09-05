@@ -227,6 +227,18 @@ module Savepoint
     append_savepoint_line(intent_dir, "Commit", text, now)
   end
 
+  # The day the Report kind (below) shipped. `doctor`'s intent_reports_printed_check reads
+  # this so it never re-litigates a ledger recorded before the kind existed (intent 331f, R6).
+  REPORT_KIND_SINCE = "2026-09-05"
+
+  # Append a `Report` line: one per report screen printed (intent 331f, D2/D3). Same primitive
+  # as append_review_savepoint/append_commit_savepoint above, so the line shape, dedup, and
+  # timestamp format never drift. `savepoint_milestone` maps FILENAMES only, so a Report line
+  # is never mistaken for a file-landing lifecycle line by construction.
+  def self.append_report_savepoint(intent_dir, text, now: Time.now)
+    append_savepoint_line(intent_dir, "Report", text, now)
+  end
+
   TERMINAL_DISPOSITIONS = %w[delivered abandoned].freeze
 
   # Append the terminal bookend `Done  delivered|abandoned`, written by the

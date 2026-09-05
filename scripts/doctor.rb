@@ -1162,11 +1162,12 @@ end
   #
   # Doctor's fourth check scope, invoked by `--intent <id>`. Never a store-wide sweep:
   # resolves exactly one intent directory (mirrors scripts/end-intent's resolve_intent_dir /
-  # scripts/project-links's --intent disambiguation) and returns six checks, four
-  # FAIL-severity, two WARN-severity: intent_savepoint_truthful stays WARN per intent 134's
-  # binding advisory-only ruling (see spec.md D2/D8 - do NOT escalate it to FAIL), and
+  # scripts/project-links's --intent disambiguation) and returns seven checks, four
+  # FAIL-severity, three WARN-severity: intent_savepoint_truthful stays WARN per intent 134's
+  # binding advisory-only ruling (see spec.md D2/D8 - do NOT escalate it to FAIL),
   # intent_ticks_lag is WARN-only per intent 329's ruling that a lagging tick warns rather
-  # than blocks.
+  # than blocks, and intent_reports_printed is WARN-only per intent 331f (never re-litigates
+  # a ledger predating the Report kind).
   def check_intent_end(id, store: nil, disposition: nil)
     intent_dir, scope = resolve_single_intent_dir(id, store: store)
     unless intent_dir
@@ -1189,6 +1190,7 @@ end
       intent_lifecycle_artifacts_check(intent_dir, disposition),
       intent_checklist_complete_check(intent_dir),
       intent_ticks_lag_check(intent_dir),
+      intent_reports_printed_check(intent_dir),
       intent_links_projection_check_for(id, scope),
       intent_savepoint_truthful_check(intent_dir, index_path: index_path),
     ]
@@ -1292,6 +1294,41 @@ end
       check(category: "intent_end", name: "intent_ticks_lag", status: "pass",
             message: "#{ticked} of #{items.size} ticked, #{commits} commit(s) recorded")
     end
+  end
+
+  # Intent 331f: every skill that shows state during Exec is bound to print a report screen and
+  # log a `Report` savepoint line (`savepoint-note --kind Report`). A commit landed with no
+  # Report line anywhere in the ledger is the exact defect this check exists to catch - the
+  # delivery ran but nothing on disk proves a screen was ever printed. WARN-only, like
+  # intent_ticks_lag: a lead's review finding, never a machine refusal. R6: never re-litigate
+  # history - an intent whose newest Commit line predates the day the Report kind shipped
+  # (Savepoint::REPORT_KIND_SINCE) passes, so every pre-existing ledger keeps passing
+  # `doctor --intent` (which exits 1 on an overall warn).
+  def intent_reports_printed_check(intent_dir)
+    path = File.join(intent_dir, "savepoint.md")
+    lines = File.exist?(path) ? File.readlines(path) : []
+    kinds = lines.filter_map { |l| l.strip.match(IntentScreen::SAVEPOINT_RE) }
+
+    commit_timestamps = kinds.select { |m| m[2] == "Commit" }.map { |m| m[1] }
+    if commit_timestamps.empty?
+      return check(category: "intent_end", name: "intent_reports_printed", status: "pass",
+                    message: "n/a: no commits recorded")
+    end
+
+    if kinds.any? { |m| m[2] == "Report" }
+      return check(category: "intent_end", name: "intent_reports_printed", status: "pass",
+                    message: "a Report line is recorded")
+    end
+
+    newest_commit_date = commit_timestamps.max[0, 10]
+    if newest_commit_date < Savepoint::REPORT_KIND_SINCE
+      return check(category: "intent_end", name: "intent_reports_printed", status: "pass",
+                    message: "n/a: newest commit (#{newest_commit_date}) predates the Report " \
+                             "kind (#{Savepoint::REPORT_KIND_SINCE})")
+    end
+
+    check(category: "intent_end", name: "intent_reports_printed", status: "warn",
+          message: "commits are recorded and no Report line exists")
   end
 
   # Count `Commit` lines in the intent's savepoint ledger, through the one regex that parses
