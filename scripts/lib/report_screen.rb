@@ -577,30 +577,69 @@ module ReportScreen
     rows.compact
   end
 
-  # Intent 331b (plan.md, "The one non-additive edit"): the standalone-token
-  # rule, extracted so `action_file_for` (the plan screen's Action column)
-  # calls the exact same rule as `matching_action_heading` and the two can
-  # never drift on what counts as a match. `matching_action_heading`'s own
-  # signature, return shape and behavior are unchanged (row P16).
-  def self.heading_tokens(heading)
-    heading.to_s.sub(/\A#+\s*/, "").split(/[^A-Za-z0-9]+/)
-  end
+# Intent 331b (plan.md, "The one non-additive edit"): the standalone-token
+# rule, extracted so `action_file_for` (the plan screen's Action column)
+# calls the exact same rule as `matching_action_heading` and the two can
+# never drift on what counts as a match.
+def self.heading_tokens(heading)
+  heading.to_s.sub(/\A#+\s*/, "").split(/[^A-Za-z0-9]+/)
+end
 
-  # Rows 25-27: D19 - the label must appear as a standalone token in an action
-  # file heading (any level); the count is the matched section's table rows only.
-  def self.matching_action_heading(intent_dir, label)
-    Dir.glob(File.join(intent_dir, "actions", "*.md")).sort.each do |path|
-      split_by_headings(File.read(path)).each do |heading, body|
-        return [heading, body] if heading_tokens(heading).include?(label)
+# Rows 25-27: D19/D1r - the label must appear as a standalone token in an
+# action file heading (any level), AND that heading must own at least one
+# matrix data row - a heading that only names the label, with no table
+# beneath it (or a table with a separator but no data row), is skipped and
+# the walk keeps going. Lexicographic path order (D8), then file order.
+#
+# Merge note (322 into alpha, 2026-09-05): 322's table-owning rule and 331b's
+# extracted `heading_tokens` are both kept. The token split now comes from the
+# shared helper so `action_file_for` cannot drift from this walk, while the
+# `table_rows(body).any?` guard stays the thing that decides the match.
+def self.matching_action_heading(intent_dir, label)
+  Dir.glob(File.join(intent_dir, "actions", "*.md")).sort.each do |path|
+    split_by_headings(File.read(path)).each do |heading, body|
+      next unless heading_tokens(heading).include?(label)
+      return [heading, body] if table_rows(body).any?
       end
     end
     [nil, nil]
   end
 
+  # D3r: the row-cell fallback, for the shape where the label never appears in
+  # a heading at all, only as the first cell of a matrix data row. Restricted
+  # to tables under a heading that names itself a matrix (/matrix/i) - never a
+  # step list or any other table - so it cannot answer for a record that has
+  # no matrix anywhere (the close-gate defeat the plan review measured).
+  # Emphasis (bold/italic/code) is stripped from the compared cell; the count
+  # sums matching rows across every matrix heading, in every action file.
+  def self.matching_matrix_rows(intent_dir, label)
+    count = 0
+    Dir.glob(File.join(intent_dir, "actions", "*.md")).sort.each do |path|
+      split_by_headings(File.read(path)).each do |heading, body|
+        next unless heading.to_s.match?(/matrix/i)
+        table_rows(body).each do |cells|
+          cell = cells[0].to_s.gsub(/[*_`]/, "").strip
+          count += 1 if cell == label
+        end
+      end
+    end
+    count
+  end
+
+  # D7: a label with no letter never resolves, on either path - it is a
+  # bullet-derived Delivered number (delivered_rows), never a label anyone
+  # wrote, and would otherwise fabricate proof from a numbered heading like
+  # "## 1. What this intent is" or from a numbered matrix row-cell column.
   def self.proven_by(intent_dir, label)
+    return NOT_RECORDED unless label.to_s.match?(/[A-Za-z]/)
+
     _heading, body = matching_action_heading(intent_dir, label)
-    return NOT_RECORDED unless body
-    n = table_rows(body).length
+    if body
+      n = table_rows(body).length
+      return n.positive? ? "#{n} test#{n == 1 ? '' : 's'}" : NOT_RECORDED
+    end
+
+    n = matching_matrix_rows(intent_dir, label)
     n.positive? ? "#{n} test#{n == 1 ? '' : 's'}" : NOT_RECORDED
   end
 

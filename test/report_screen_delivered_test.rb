@@ -169,6 +169,63 @@ class ReportScreenDeliveredTest < Minitest::Test
     assert evidence_idx < needs_idx
   end
 
+  # --- intent 322 S6: goldens for the two recorded shapes ----------------------
+
+  # claudechat 1d: a table-less heading names the label first, and the real
+  # 15-row matrix sits under a later heading with the same token.
+  def test_delivered_golden_pre_matrix_section
+    full_fixture
+    action = +"# Action\n\n## S1 design pins\n\nProse only, no table.\n\n" \
+              "### S1 - the real matrix\n\n| # | Op |\n|---|---|\n"
+    15.times { |i| action << "| #{i + 1} | a |\n" }
+    action << "\n### S2 - second matrix\n\n| # | Op |\n|---|---|\n"
+    5.times { |i| action << "| #{i + 1} | a |\n" }
+    write("actions/ACTION_1.md", action)
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+      # Outcome
+
+      ## Delivered
+      | Row | What |
+      |---|---|
+      | S1 | first section |
+      | S2 | second section |
+
+      ## Verification
+      - ok
+    MD
+    out = ReportScreen.render_delivered(intent_dir: @dir)
+    s1_line = out.lines.find { |l| l.start_with?("| S1 |") }
+    s2_line = out.lines.find { |l| l.start_with?("| S2 |") }
+    refute_nil s1_line
+    refute_nil s2_line
+    assert_includes s1_line, "15 tests"
+    assert_includes s2_line, "5 tests"
+  end
+
+  # claudechat 6: one matrix, no labeled heading at all, labels only as the
+  # first cell of each data row.
+  def test_delivered_golden_single_table_row_labels
+    full_fixture
+    action = +"# Action\n\n## Failure-mode matrix\n\n| Label | Operation |\n|---|---|\n"
+    (1..9).each { |i| action << "| C#{i} | a |\n" }
+    write("actions/ACTION_1.md", action)
+    outcome = +"---\ndisposition: delivered\n---\n# Outcome\n\n## Delivered\n| Row | What |\n|---|---|\n"
+    (1..9).each { |i| outcome << "| C#{i} | thing #{i} |\n" }
+    outcome << "\n## Verification\n- ok\n"
+    write("outcome.md", outcome)
+    out = ReportScreen.render_delivered(intent_dir: @dir)
+    # full_fixture carries no delivery lock, so the title line's mode renders
+    # "not recorded" too - scope the refute to the C-row lines, never the
+    # whole block, or it would fail for that unrelated reason.
+    c_lines = out.lines.select { |l| l.start_with?("| C") }
+    assert_equal 9, c_lines.length
+    c_lines.each { |l| assert_includes l, "1 test" }
+    refute(c_lines.any? { |l| l.include?("not recorded") })
+  end
+
   # --- 331f1a X1: the data-table branch's separator survives overflow --------------
   #
   # The live 331f1 defect: the Needs-you table's header cells are short (N=1, Need=4,

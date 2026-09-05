@@ -75,7 +75,7 @@ Apply the auto skill's risk rule to the executor's return and the diff: a matrix
 
 Whenever a review verdict returns - the plan review before code, or the post-execution review above - the lead appends a `Review` line: `ruby ~/.plastic/scripts/savepoint-note <intent_dir> --kind Review --text "<verdict, what changed>"` (intent 317, D17). This is the other half of what `report-screen delay` reads.
 
-**The D19 heading convention.** An action file's `## Delivered` row (in `outcome.md`) is proven by whichever `actions/ACTION_N.md` heading carries that row's label as a standalone token - `### Row A -` proves row A, `### S1 -` proves row S1. Write action-file section headings so the label they prove is unambiguous (never a substring another label could also match, like `A` inside `AB`); `report-screen delivered`'s Proven-by column renders `not recorded` when no heading matches.
+**The D19 heading convention.** An action file's `## Delivered` row (in `outcome.md`) is proven by the first `actions/ACTION_N.md` heading that carries that row's label as a standalone token AND owns the matrix table (322 D1r) - `### Row A -` with a table beneath it proves row A, `### S1 -` proves row S1; a heading that only names the label, with no table under it, is skipped. Write action-file section headings so the label they prove is unambiguous (never a substring another label could also match, like `A` inside `AB`); `report-screen delivered`'s Proven-by column renders `not recorded` when no heading owns a matching table and no matrix row cell carries the label either.
 
 ### Step 4: Update Intent and Complete
 Capture observations in `## Insights`. When ALL checklist items are checked:

@@ -316,7 +316,10 @@ class ScreenWidthTest < Minitest::Test
     lines = non_literal_append_lines(File.join(REPO, "scripts", "lib", "report_screen.rb"))
     assert_equal 28, lines.length,
                  "the derived site table's leg 2 count has drifted from the repo - re-derive it"
-    [973, 1052, 1460, 1466, 1478].each do |line|
+    # Re-derived 2026-09-05 when 322 merged into alpha: 322 adds code above these
+    # sites, so every one shifted by the same offset (973->1012, 1052->1091,
+    # 1460->1499, 1466->1505, 1478->1517). Same five sites, matched by content.
+    [1012, 1091, 1499, 1505, 1517].each do |line|
       assert_includes lines, line, "leg 2 must still carry the screen-emitting non-literal append at line #{line}"
     end
   end
