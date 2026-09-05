@@ -173,6 +173,26 @@ class DoctorDisplayTest < Minitest::Test
     end
   end
 
+  def test_registered_reads_only_the_injected_agent_dir_even_with_a_valid_launcher # E18
+    Dir.mktmpdir("plastic-display-e18b") do |dir|
+      claude_dir = File.join(dir, "claude")
+      write_launcher(claude_dir) # present and executable at the injected agent_dir
+      # settings.json is intentionally never written in the injected dir.
+      # On this machine the real ~/.claude has MessageDisplay registered AND
+      # a working launcher (established fact) — a settings-only fallback
+      # such as `read_json_safe(settings_path) || read_json_safe(real_path)`
+      # would find that real registration, and because the injected
+      # agent_dir now ALSO carries a valid launcher file, nothing downstream
+      # would catch the leak: the whole check would wrongly report pass.
+      # Only reading the injected settings.json (absent here) reports fail.
+
+      d = Doctor.new(plastic_home: File.join(dir, "home"), agents: agents_for(claude_dir))
+      check = d.check_display_registration("claude").first
+
+      assert_equal "fail", check[:status]
+    end
+  end
+
   def test_registered_passes_on_a_correctly_registered_install
     Dir.mktmpdir("plastic-display-e-pass") do |dir|
       claude_dir = File.join(dir, "claude")
