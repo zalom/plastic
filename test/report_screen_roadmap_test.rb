@@ -449,4 +449,111 @@ class ReportScreenRoadmapTest < Minitest::Test
     assert_includes row, "Batch 3"
     refute_includes row, "Batch 2", "state's own frontier rule must never disagree with RoadmapQueue's"
   end
+
+  # --- W8: state's Batches table carries the same Intent title column plan's already does ---
+
+  def test_roadmap_state_batches_has_intent_column
+    write_roadmap("demo", <<~MD)
+      # Roadmap: Demo
+      ## Goal
+      test.
+      ## Batches
+      ### Batch 1
+      - [ ] 501 Alpha title — queued
+      ## Log
+    MD
+    write_index(future: %w[501])
+
+    out = render(roadmap_path("demo"), "state")
+    assert_includes out, "| Batch | Graph ID | Intent | Status | Progress | Lead |"
+    row = out.lines.find { |l| l.include?("| 501 |") }
+    refute_nil row
+    assert_includes row, "Alpha title"
+  end
+
+  # --- W8a: the Intent cell spends whatever the row's other cells leave it, never a fixed width -
+
+  def test_roadmap_state_intent_cell_takes_what_is_left
+    long_title = (["Title"] * 60).join(" ")
+    write_roadmap("demo", <<~MD)
+      # Roadmap: Demo
+      ## Goal
+      test.
+      ## Batches
+      ### Batch 1
+      - [ ] 601 #{long_title} — queued
+      ## Log
+    MD
+    write_index(future: %w[601])
+    make_entry_dir("601", done: 1, total: 2)
+
+    out = render(roadmap_path("demo"), "state")
+    row = out.lines.find { |l| l.include?("| 601 |") }
+    refute_nil row
+    assert_operator ScreenPaint.display_columns(row.chomp), :<=, 115,
+                     "the row must stay bounded once the bar and lead are added"
+    assert_includes row, "…", "a title this long must be truncated to leave room for the bar and lead"
+  end
+
+  # --- W8b: one long row's table-wide shrink must never re-truncate another row's own budget -
+
+  def test_roadmap_state_rows_keep_their_own_intent_budget
+    long_title = (["Title"] * 60).join(" ")
+    write_roadmap("demo", <<~MD)
+      # Roadmap: Demo
+      ## Goal
+      test.
+      ## Batches
+      ### Batch 1
+      - [ ] 701 #{long_title} — queued
+      - [ ] 702 Short — queued
+      ## Log
+    MD
+    write_index(future: %w[701 702])
+
+    out = render(roadmap_path("demo"), "state")
+    row_short = out.lines.find { |l| l.include?("| 702 |") }
+    refute_nil row_short
+    assert_includes row_short, "| Short |",
+                     "a short row's Intent cell must not be re-truncated just because another row is long"
+  end
+
+  # --- W8c/A6: an escaped pipe never adds or drops a column in the widened 6-column table ---
+
+  def test_roadmap_state_row_keeps_six_columns_with_a_piped_title
+    write_roadmap("demo", <<~MD)
+      # Roadmap: Demo
+      ## Goal
+      test.
+      ## Batches
+      ### Batch 1
+      - [ ] 1101 Title with a | pipe — queued
+      ## Log
+    MD
+    write_index(future: %w[1101])
+
+    out = render(roadmap_path("demo"), "state")
+    row = out.lines.find { |l| l.include?("1101") }
+    refute_nil row
+    assert_equal 8, row.count("|"), "an escaped pipe must never add or drop a column in the 6-column table"
+  end
+
+  # --- W8d/B1: the old 5-column Batches header must never survive anywhere -------------------
+
+  def test_roadmap_state_never_prints_the_old_batches_header
+    write_roadmap("demo", <<~MD)
+      # Roadmap: Demo
+      ## Goal
+      test.
+      ## Batches
+      ### Batch 1
+      - [ ] 1201 Solo — queued
+      ## Log
+    MD
+    write_index(future: %w[1201])
+
+    out = render(roadmap_path("demo"), "state")
+    refute_includes out, "| Batch | Graph ID | Status | Progress | Lead |"
+    refute_includes out, "| Wave | Graph ID | Status | Progress | Lead |"
+  end
 end
