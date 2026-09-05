@@ -333,7 +333,7 @@ class InstallerCore
 
   # Intent 331a (D6/R7): a screen kind file (scripts/lib/screens/<kind>.rb)
   # must reach an installed ~/.plastic the same way a new template or hook
-  # does — glob-derived, so "add a file, not a diff" is actually true for an
+  # does - glob-derived, so "add a file, not a diff" is actually true for an
   # installed Plastic, not just an in-repo one. This repo ships none yet;
   # the glob answers {} until one exists.
   def screen_files

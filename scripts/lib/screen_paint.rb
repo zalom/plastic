@@ -21,7 +21,7 @@ require_relative "intent_screen_ansi"
 # Intent 331a (D6): a registry, so a new screen KIND is a new file
 # (scripts/lib/screens/<kind>.rb, calling `register` on load), never a diff
 # to this one. `paint:` is optional and defaults to the shared pipeline
-# below — no shipped kind has its own palette; `classify`/`paint` branch on
+# below - no shipped kind has its own palette; `classify`/`paint` branch on
 # LINE SHAPE, never on kind. The registry's job is only that a new kind's
 # opener is recognized without editing this file, and that a kind CAN
 # supply its own paint lambda on the rare day one needs one.
@@ -332,7 +332,7 @@ module ScreenPaint
   # name · delivered" shape report_screen.rb emits; `roster` and `delay`
   # cover every bare (no "## ") glyph line, which is exactly ScreenPaint's
   # original, single OPENER_RE decomposed into its "## "-prefixed half and
-  # its bare half — the union is unchanged, so no existing screen stops
+  # its bare half - the union is unchanged, so no existing screen stops
   # being recognized.
   register(:intent, opener: /\A## [▶✔] .+ · /)
   register(:state, opener: /\A## [▶✔] .+ · /)

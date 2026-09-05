@@ -120,8 +120,8 @@ class HookMessageDisplayTest < Minitest::Test
     root = build_global_store
     make_intent(root)
     h = handler(root)
-    out = h.handle(payload(index: 0, final: false, delta: "Sure — here's the state.\n\n## ▶ 50 · Demo"))
-    assert_equal "Sure — here's the state.\n\n", out
+    out = h.handle(payload(index: 0, final: false, delta: "Sure - here's the state.\n\n## ▶ 50 · Demo"))
+    assert_equal "Sure - here's the state.\n\n", out
     chunk0 = MessageDisplay.chunk_path(tmp_root: @tmp, session_id: "s1", message_id: "m1", index: 0)
     assert File.exist?(chunk0)
     assert_equal "## ▶ 50 · Demo", File.read(chunk0)

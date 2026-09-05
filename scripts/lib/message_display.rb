@@ -48,13 +48,13 @@ require_relative "screen_paint"
 # buffers or blanks anything) are unchanged.
 #
 # Intent 331a: engagement is late-capable. A chunk carrying a screen opener
-# engages the message from that chunk on, whatever its own index — not only
+# engages the message from that chunk on, whatever its own index - not only
 # chunk 0. Chunks before it pass through untouched (they already reached the
 # terminal live, via the ordinary passthrough path). The engaging chunk
 # returns the text before the opener as its displayContent and buffers the
 # opener onward at its OWN index; SCREEN now carries that index (a decimal
-# integer, not an empty marker) so the final chunk — a separate process in
-# production — knows where to start waiting and splicing (D3/D6), and so
+# integer, not an empty marker) so the final chunk - a separate process in
+# production - knows where to start waiting and splicing (D3/D6), and so
 # NOSCREEN, no longer a final answer (D2), can be replaced once a later
 # chunk engages. A fence line immediately wrapping the opener is dropped
 # (D4): a lone fence in the engaging chunk's own prefix, and a lone closing
@@ -138,7 +138,7 @@ class MessageDisplay
   # message: does ITS OWN delta carry an opener anywhere (331a; used to be
   # only at the very start)? No opener writes NOSCREEN so every later chunk
   # can decide instantly rather than waiting out its own budget for a
-  # decision that will never arrive — but NOSCREEN is no longer final (D2):
+  # decision that will never arrive - but NOSCREEN is no longer final (D2):
   # a later chunk carrying an opener still replaces it.
   def handle_chunk_zero(dir, delta, _cwd, final)
     split = split_at_opener(delta)
@@ -189,8 +189,8 @@ class MessageDisplay
 
   # Scans `delta` line by line for the first line that opens a screen
   # (331a: an opener can fall anywhere in a chunk's own delta, not only at
-  # its start). Returns [prefix, rest] — the text before that line, and the
-  # line onward — or nil when no line in this delta engages.
+  # its start). Returns [prefix, rest] - the text before that line, and the
+  # line onward - or nil when no line in this delta engages.
   def split_at_opener(delta)
     lines = delta.each_line.to_a
     idx = lines.index { |line| ENGAGE_RE.match?(line.sub(/\A[ \t]+/, "")) }
@@ -200,7 +200,7 @@ class MessageDisplay
   end
 
   # 331a (D4): a lone fence line immediately preceding the opener, inside
-  # THIS SAME chunk's own prefix, is dropped — it never reaches the screen
+  # THIS SAME chunk's own prefix, is dropped - it never reaches the screen
   # (it would otherwise print directly above the painted block). A fence in
   # an earlier chunk is never touched: it was already displayed, verbatim,
   # by that earlier chunk's own return value.
@@ -239,7 +239,7 @@ class MessageDisplay
   end
 
   # 331a (M5a): the start index crosses process boundaries through SCREEN's
-  # own content, never in-memory state — the final chunk is routinely a
+  # own content, never in-memory state - the final chunk is routinely a
   # SEPARATE process from the one that engaged. An empty or missing file
   # reads back as 0 (chunk 0 engaged, today's shape, so nothing that ever
   # wrote an empty SCREEN breaks).
@@ -262,7 +262,7 @@ class MessageDisplay
 
   # The final chunk additionally waits (same budget) for every chunk file
   # from the start index onward to exist before it reassembles and splices
-  # (331a, D3/M5: from the start index, not from 0 — chunks before the
+  # (331a, D3/M5: from the start index, not from 0 - chunks before the
   # engaging one were never buffered at all, so waiting for them would only
   # ever burn the whole budget for files that will never appear). On
   # timeout it proceeds anyway with whatever is there (matrix, lead's
@@ -338,7 +338,7 @@ class MessageDisplay
     return buffered unless painted
 
     # 331a (D4): a lone CLOSING fence immediately after the painted region is
-    # dropped — never the painting boundary itself (region_stop, used above,
+    # dropped - never the painting boundary itself (region_stop, used above,
     # is untouched), only where the suffix starts. An unrelated fenced code
     # block further down, with prose or a blank line between it and the
     # region, is never adjacent, so it always survives verbatim (M8b); a
@@ -359,7 +359,7 @@ class MessageDisplay
   end
 
   # SCREEN's content is the engaging chunk's own index, as a decimal integer
-  # (331a, D6) — read back by `read_start_index` so the final chunk (a
+  # (331a, D6) - read back by `read_start_index` so the final chunk (a
   # separate process, in production) knows where to start waiting and
   # splicing, and so `finalize_final` never touches chunks that were passed
   # through untouched before engagement.
@@ -371,7 +371,7 @@ class MessageDisplay
     atomic_write(File.join(dir, NOSCREEN_FILE), "")
   end
 
-  # 331a (D2/D6): NOSCREEN is no longer a final answer — a later chunk that
+  # 331a (D2/D6): NOSCREEN is no longer a final answer - a later chunk that
   # engages replaces it with SCREEN and, for safety, removes NOSCREEN so a
   # stale marker can never be read back once the real decision exists.
   def remove_noscreen(dir)

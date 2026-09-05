@@ -36,7 +36,7 @@ require_relative "lib/session_ledger"
 
 # Intent 331a (D6/R8): every caller-added screen kind file registers itself
 # on load (ScreenPaint.register), so this glob is the ONLY wiring a new kind
-# needs — no edit here, no edit to screen_paint.rb. Sorted for a
+# needs - no edit here, no edit to screen_paint.rb. Sorted for a
 # deterministic load order; tolerates the directory being absent or empty
 # (Dir.glob answers [] either way), which is this repo's own state today.
 Dir.glob(File.join(__dir__, "lib", "screens", "*.rb")).sort.each { |f| require_relative f }
