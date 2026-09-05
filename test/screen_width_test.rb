@@ -93,6 +93,17 @@ class ScreenWidthTest < Minitest::Test
     dir
   end
 
+  # W9a: a fresh delivery lock so ReportScreen.lead_cell renders "agent - session" rather than
+  # "idle" - the mtime is pinned to just before NOW (not real wall-clock time) so freshness
+  # never depends on when the suite actually runs.
+  def write_fresh_lock(dir, agent:, session:)
+    path = File.join(dir, "delivery.lock")
+    File.write(path, JSON.generate("owner_session" => session, "owner_harness" => "claude",
+                                    "owner_agent" => agent, "owner_model" => "sonnet",
+                                    "owner_thread" => "main", "run_mode" => "auto"))
+    File.utime(NOW - 60, NOW - 60, path)
+  end
+
   HOW_LEDGER = "2026-08-30T12:00:00Z  What  12--slug.md\n2026-08-30T12:10:02Z  How  checklist.md created\n".freeze
   DONE_LEDGER = "2026-08-30T12:00:00Z  What  19--slug.md\n2026-08-30T13:51:42Z  Done  delivered\n".freeze
 
@@ -178,6 +189,21 @@ class ScreenWidthTest < Minitest::Test
       | N2 | #{"x" * 10} | #{"D" * 80} |
     MD
 
+    # W9a: ten Batches rows with heterogeneous Status and Lead lengths, the live store's own
+    # shape (P2's actual failure: painted `roadmap state` at 116 columns). 20 and 21 carry a
+    # fresh delivery lock each, with agent names of different lengths, so the Lead column is
+    # never a single repeated width; 22-27 have no intent directory at all (an "idle" Lead),
+    # and the five raw statuses plus "delivering"/"delivered" span the full STATUSES length
+    # range (6 to 10 characters).
+    dir20 = make_intent(root, id: "20", title: "Short title one", checklist: "# Checklist\n\n- [ ] S1 open\n",
+                         savepoint: HOW_LEDGER)
+    dir21 = make_intent(root, id: "21", title: "A somewhat longer intent title here",
+                         checklist: "# Checklist\n\n- [ ] S1 open\n", savepoint: HOW_LEDGER)
+    dir22 = make_intent(root, id: "22", title: "Another intent with a mid length title",
+                         checklist: "# Checklist\n\n- [ ] S1 open\n", savepoint: HOW_LEDGER)
+    write_fresh_lock(dir20, agent: "executor", session: "sess-2020-aaaa")
+    write_fresh_lock(dir21, agent: "plastic-enforcer-fix-round-two", session: "sess-2121-bbbb")
+
     roadmaps_dir = File.join(root, "roadmaps")
     FileUtils.mkdir_p(roadmaps_dir)
     roadmap_path = File.join(roadmaps_dir, "demo.md")
@@ -189,6 +215,15 @@ class ScreenWidthTest < Minitest::Test
       ### Batch 1
       - [ ] 12 #{LONG_TITLE} - delivering
       - [x] 19 Demo delivered - delivered
+      - [ ] 20 Short title one - queued
+      - [ ] 21 A somewhat longer intent title here - blocked
+      - [ ] 22 Another intent with a mid length title - abandoned
+      ### Batch 2
+      - [ ] 23 Yet another intent title of a medium length - delivering
+      - [ ] 24 Short - queued
+      - [ ] 25 Delivered already, a rather descriptive title - delivered
+      - [ ] 26 Blocked intent with a fairly long descriptive title - blocked
+      - [ ] 27 Final queued intent in the batch - queued
       ## Log
       - 2026-09-01 00:00 UTC created.
     MD
@@ -342,6 +377,38 @@ class ScreenWidthTest < Minitest::Test
     assert_includes fitted, "**Key**"
   end
 
+  # Post-execution review, P1: `fit_field_table_block` spent width/budget arithmetic in
+  # characters against the 115 DISPLAY-column bound - a bar row's glyphs (2 columns each) plus
+  # a long note in the SAME row renders 134 columns while every width in the arithmetic reads
+  # under 115. The exact repro from the review.
+  def test_bar_row_with_a_long_note_fits
+    bar = ("█" * 11) + ("░" * 9)
+    text = "| | | |\n| --- | --- | --- |\n| **Progress** | #{bar} 4 / 7 | #{'note ' * 22}|\n"
+    fitted = ReportScreen.fit_screen(text)
+    fitted.each_line do |line|
+      assert_operator ScreenPaint.display_columns(line.chomp), :<=, 115,
+                       "a field row with a progress bar AND a long note must still fit: #{line.inspect}"
+    end
+  end
+
+  # Post-execution review, P5: `fit_field_table_block` dropped the re-pad `fit_table_block`'s
+  # own `padded_column` rule already does, so a fitted field table prints unaligned where an
+  # unfitted (or alpha-shipped) one prints its label column ljust-padded to the widest label.
+  def test_fitted_field_table_keeps_its_padding
+    rows = [
+      "| | | |",
+      "| --- | --- | --- |",
+      "| **Stage**    | value one | #{'n' * 200} |",
+      "| **Progress** | value two | short |",
+    ]
+    fitted = ReportScreen.fit_field_table_block(rows, 60)
+    lines = fitted.lines.map(&:chomp)
+    label1 = ScreenPaint.cells_of(lines[2])[0]
+    label2 = ScreenPaint.cells_of(lines[3])[0]
+    assert_equal label2.length, label1.length,
+                 "a fitted field table must keep its rows' label column ljust-aligned, like an unfitted one"
+  end
+
   # --- W7-W7b: the painter/plain data-table shrink minimums --------------------------------
 
   def test_shrink_picks_widest_text_column
@@ -377,6 +444,72 @@ class ScreenWidthTest < Minitest::Test
     fitted.each_line do |line|
       assert_operator ScreenPaint.display_columns(line.chomp), :<=, 115,
                        "an unshrinkable data table must still be bounded by the row backstop"
+    end
+  end
+
+  # Post-execution review, P2/P3: `paint_data_table`/`fit_table_block` credited overage only to
+  # columns flagged as bar columns, so a padded cell carrying an ellipsis (added upstream by
+  # ReportScreen.fit_row_cell, exactly as roadmap_state_entries_table does for the Intent
+  # column) or a bar was never paid for - the live 116-column `roadmap state`/`dashboard`
+  # rows.
+  def test_padded_cell_overage_is_charged_to_the_budget
+    bar = ("█" * 40) + ("░" * 10)
+    rows = [
+      "| Id | Detail | Note |",
+      "| --- | --- | --- |",
+      "| 1 | #{bar} | short note here |",
+      "| 2 | #{'D' * 60} | #{'n' * 60} |",
+    ]
+    painted = ScreenPaint.paint_table(rows, color: false, width: 115, markdown_safe: false)
+    painted.each_line do |line|
+      assert_operator ScreenPaint.display_columns(line.chomp), :<=, 115,
+                       "a painted row with a padded bar/ellipsis cell must stay within 115: #{line.inspect}"
+    end
+  end
+
+  # Post-execution review, P4: `paint_data_table` had no row-level backstop at all, so a table
+  # whose columns are all pinned at their floor (the painted twin of
+  # test_unshrinkable_data_table_is_still_bounded) rendered straight past 115.
+  def test_painted_data_table_is_backstopped
+    cols = 20
+    header = "| " + (1..cols).map { |i| "Column#{i}" }.join(" | ") + " |"
+    sep = "| " + (["---"] * cols).join(" | ") + " |"
+    row = "| " + (["XXXXXXXXXXXXXXXXXXXX"] * cols).join(" | ") + " |"
+    painted = ScreenPaint.paint_table([header, sep, row], color: true, width: 115, markdown_safe: false)
+    painted.each_line do |line|
+      assert_operator ScreenPaint.display_columns(line.chomp), :<=, 115,
+                       "a painted data table must be bounded even when every column sits at its floor"
+    end
+  end
+
+  # Post-execution review, D: the fixture must actually reproduce what the live store does -
+  # a Batches table with at least ten rows and heterogeneous Status/Lead lengths (never a
+  # single repeated width, which would hide a partial-credit overage bug), plus its own bar
+  # row with a long note.
+  def test_wide_fixture_matches_the_live_store_shape
+    lines = build_all_screens["roadmap state"].lines
+    header_idx = lines.index { |l| l.include?("Graph ID") && l.include?("Intent") && l.include?("Status") }
+    refute_nil header_idx, "roadmap state must carry the Batches table header"
+
+    block = []
+    i = header_idx
+    while i < lines.length && lines[i].lstrip.start_with?("|")
+      block << lines[i].chomp
+      i += 1
+    end
+    data_rows = block.reject { |l| l.match?(ScreenPaint::SEPARATOR_RE) }[1..].to_a
+
+    assert_operator data_rows.length, :>=, 10, "the Batches table needs at least ten intent rows"
+    statuses = data_rows.map { |r| ScreenPaint.cells_of(r)[3] }
+    leads = data_rows.map { |r| ScreenPaint.cells_of(r)[5] }
+    assert_operator statuses.uniq.length, :>=, 3, "Status lengths must be heterogeneous, like the live store"
+    assert_operator leads.uniq.length, :>=, 3, "Lead lengths must be heterogeneous, like the live store"
+
+    bar = ("█" * 11) + ("░" * 9)
+    bar_and_note = "| | | |\n| --- | --- | --- |\n| **Progress** | #{bar} 4 / 7 | #{'note ' * 22}|\n"
+    ReportScreen.fit_screen(bar_and_note).each_line do |line|
+      assert_operator ScreenPaint.display_columns(line.chomp), :<=, 115,
+                       "the fixture's own bar+long-note row must fit, matching the live store repro"
     end
   end
 end
