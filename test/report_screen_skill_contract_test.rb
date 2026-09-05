@@ -124,4 +124,20 @@ class ReportScreenSkillContractTest < Minitest::Test
     text = read("skills/intent-continuing/SKILL.md")
     assert_includes text, "state --all"
   end
+
+  # --- intent 331b: the plan verb, the PRE-delivery report ---------------------
+
+  def test_human_report_contract_names_the_plan_screen # P12
+    text = read("skills/auto/references/human-report-contract.md")
+    assert_includes text, "report-screen plan"
+    assert_includes text, "pre-delivery"
+    assert_includes text, "How boundary"
+  end
+
+  def test_changelog_unreleased_names_the_plan_screen # P13
+    text = read("CHANGELOG.md")
+    unreleased = text.split(/^## Released/, 2).first
+    assert_includes unreleased, "331b"
+    assert_includes unreleased, "plan"
+  end
 end

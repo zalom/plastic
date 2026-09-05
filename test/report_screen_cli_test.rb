@@ -305,5 +305,34 @@ class ReportScreenCliTest < Minitest::Test
     row = out.lines.find { |l| l.include?("| 1 |") }
     assert_includes row, "delivered",
       "--store-root must be consulted for INDEX reconciliation, not the roadmap's own derived tier root"
+  # --- intent 331b: the plan verb ----------------------------------------------
+
+  def test_plan_verb_exits_2_on_non_intent_dir # P11
+    out, _err, status = Open3.capture3("ruby", CLI, "plan", @home)
+    assert_equal 2, status.exitstatus
+    assert_empty out
+  end
+
+  def test_plan_ansi_paints_under_force_color # P11a
+    root = File.join(@home, "store_root")
+    dir = make_intent(root)
+    out, err, status = Open3.capture3({ "PLASTIC_FORCE_COLOR" => "1" }, "ruby", CLI, "plan", dir, "--ansi")
+    assert_equal 0, status.exitstatus, err
+    assert_match(/\e\[/, out)
+    assert_includes out.gsub(/\e\[[0-9;]*m/, ""), "Demo"
+  end
+
+  def test_plan_ansi_is_plain_under_no_color # P11b
+    root = File.join(@home, "store_root")
+    dir = make_intent(root)
+    out, err, status = Open3.capture3({ "NO_COLOR" => "1" }, "ruby", CLI, "plan", dir, "--ansi")
+    assert_equal 0, status.exitstatus, err
+    refute_match(/\e\[/, out)
+  end
+
+  def test_unknown_verb_usage_names_the_plan_verb # P11c
+    _out, err, status = Open3.capture3("ruby", CLI, "bogus", @home)
+    assert_equal 2, status.exitstatus
+    assert_match(/plan/, err)
   end
 end
