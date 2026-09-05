@@ -46,11 +46,32 @@ require_relative "screen_paint"
 # buffered or blanked. D10 (any failure while finalizing returns the
 # buffered original, never nil, never "") and D12 (color: false never
 # buffers or blanks anything) are unchanged.
+#
+# Intent 331a: engagement is late-capable. A chunk carrying a screen opener
+# engages the message from that chunk on, whatever its own index — not only
+# chunk 0. Chunks before it pass through untouched (they already reached the
+# terminal live, via the ordinary passthrough path). The engaging chunk
+# returns the text before the opener as its displayContent and buffers the
+# opener onward at its OWN index; SCREEN now carries that index (a decimal
+# integer, not an empty marker) so the final chunk — a separate process in
+# production — knows where to start waiting and splicing (D3/D6), and so
+# NOSCREEN, no longer a final answer (D2), can be replaced once a later
+# chunk engages. A fence line immediately wrapping the opener is dropped
+# (D4): a lone fence in the engaging chunk's own prefix, and a lone closing
+# fence right after the painted region in `finalize`. Neither ever reaches
+# back into an earlier, already-displayed chunk.
 class MessageDisplay
   # 317a (A4): engagement is grammar, not identity - any screen-family
   # opener engages, with NO intent-id resolution (the roster and delay
-  # screens have none to resolve). ScreenPaint owns the full grammar.
+  # screens have none to resolve). ScreenPaint owns the full grammar. Used
+  # per LINE (331a), not only against the start of a whole delta: a chunk's
+  # own text is scanned line by line for the first line that opens a screen,
+  # wherever it falls.
   ENGAGE_RE = /\A(?:##? )?[▶✔] /.freeze
+  # 331a (D4): a lone fence line, opening (optional info string) or closing
+  # (never one), by itself on its own line.
+  FENCE_OPEN_RE = /\A```[^\n]*\z/.freeze
+  FENCE_CLOSE_RE = /\A```\z/.freeze
   BUFFER_DIR_NAME = "plastic-message-display"
   BUFFER_MAX_AGE_SECONDS = 3600
   SCREEN_FILE = "SCREEN"
@@ -114,33 +135,81 @@ class MessageDisplay
   private
 
   # Chunk 0 decides, synchronously, before anything else touches this
-  # message: recognize the marker (after leading whitespace only) AND
-  # resolve the id, both before anything is buffered or blanked (F4). Either
-  # failure writes NOSCREEN so every later chunk can decide instantly rather
-  # than waiting out its own budget for a decision that will never arrive.
+  # message: does ITS OWN delta carry an opener anywhere (331a; used to be
+  # only at the very start)? No opener writes NOSCREEN so every later chunk
+  # can decide instantly rather than waiting out its own budget for a
+  # decision that will never arrive — but NOSCREEN is no longer final (D2):
+  # a later chunk carrying an opener still replaces it.
   def handle_chunk_zero(dir, delta, _cwd, final)
-    stripped = delta.sub(/\A[ \t]+/, "")
-    unless ENGAGE_RE.match?(stripped)
+    split = split_at_opener(delta)
+    unless split
       write_noscreen(dir)
       return nil
     end
 
-    write_screen(dir)
-    write_chunk(dir, 0, delta)
-    final ? finalize_final(dir, 0) : ""
+    engage(dir, 0, split, final)
   end
 
-  # A later chunk (index > 0) never redoes chunk 0's work: it only asks
-  # whether a decision already exists, waiting for one (bounded) when it
-  # does not and the chunk looks like it could matter. The final chunk
-  # always waits for the decision regardless of its own shape.
+  # A later chunk (index > 0) tests its OWN delta for an opener FIRST,
+  # before consulting any existing decision (331a, D2): an opener engages
+  # the message whatever the current decision says, including when NOSCREEN
+  # is already on disk. Only once its own delta carries no opener does it
+  # fall back to the original decision-driven wait.
   def handle_later_chunk(dir, index, delta, final)
+    split = split_at_opener(delta)
+    return engage(dir, index, split, final) if split
+
     decision = wait_for_decision(dir, gate_delta: final ? nil : delta)
 
     return nil unless decision == :screen
 
     write_chunk(dir, index, delta)
     final ? finalize_final(dir, index) : ""
+  end
+
+  # Engages the message starting at THIS chunk (whatever its index): writes
+  # SCREEN carrying this chunk's index (replacing any NOSCREEN, D2/D6),
+  # buffers the opener onward at this chunk's own index, and returns the
+  # text before the opener (fence-stripped, D4) as the displayContent. When
+  # this chunk is also final, the prefix is prepended to whatever `finalize`
+  # produces (painted, or the buffered original on a fail-open) rather than
+  # dropped.
+  def engage(dir, index, split, final)
+    prefix, rest = split
+    prefix = strip_preceding_fence(prefix)
+    write_screen(dir, index)
+    remove_noscreen(dir)
+    write_chunk(dir, index, rest)
+
+    return prefix unless final
+
+    finalized = finalize_final(dir, index)
+    prefix.empty? ? finalized : "#{prefix}#{finalized}"
+  end
+
+  # Scans `delta` line by line for the first line that opens a screen
+  # (331a: an opener can fall anywhere in a chunk's own delta, not only at
+  # its start). Returns [prefix, rest] — the text before that line, and the
+  # line onward — or nil when no line in this delta engages.
+  def split_at_opener(delta)
+    lines = delta.each_line.to_a
+    idx = lines.index { |line| ENGAGE_RE.match?(line.sub(/\A[ \t]+/, "")) }
+    return nil unless idx
+
+    [lines[0...idx].join, lines[idx..].join]
+  end
+
+  # 331a (D4): a lone fence line immediately preceding the opener, inside
+  # THIS SAME chunk's own prefix, is dropped — it never reaches the screen
+  # (it would otherwise print directly above the painted block). A fence in
+  # an earlier chunk is never touched: it was already displayed, verbatim,
+  # by that earlier chunk's own return value.
+  def strip_preceding_fence(prefix)
+    lines = prefix.each_line.to_a
+    return prefix if lines.empty?
+    return prefix unless FENCE_OPEN_RE.match?(lines.last.strip)
+
+    lines[0...-1].join
   end
 
   # Checks for an existing decision first (free) and only pays the cheap
@@ -169,6 +238,20 @@ class MessageDisplay
     nil
   end
 
+  # 331a (M5a): the start index crosses process boundaries through SCREEN's
+  # own content, never in-memory state — the final chunk is routinely a
+  # SEPARATE process from the one that engaged. An empty or missing file
+  # reads back as 0 (chunk 0 engaged, today's shape, so nothing that ever
+  # wrote an empty SCREEN breaks).
+  def read_start_index(dir)
+    path = File.join(dir, SCREEN_FILE)
+    return 0 unless File.exist?(path)
+
+    File.read(path).to_i
+  rescue StandardError
+    0
+  end
+
   # Cheap, local, no file I/O: could this chunk's own delta plausibly be
   # part of an intent screen (ignoring leading whitespace)? Every chunk of
   # every ordinary prose message answers no, at zero cost.
@@ -177,16 +260,20 @@ class MessageDisplay
     stripped.empty? || stripped.start_with?("|") || stripped.start_with?("**")
   end
 
-  # The final chunk additionally waits (same budget) for every earlier chunk
-  # file to exist before it reassembles and splices. On timeout it proceeds
-  # anyway with whatever is there (matrix, lead's guard): never nil, never
-  # swallowed.
+  # The final chunk additionally waits (same budget) for every chunk file
+  # from the start index onward to exist before it reassembles and splices
+  # (331a, D3/M5: from the start index, not from 0 — chunks before the
+  # engaging one were never buffered at all, so waiting for them would only
+  # ever burn the whole budget for files that will never appear). On
+  # timeout it proceeds anyway with whatever is there (matrix, lead's
+  # guard): never nil, never swallowed.
   def finalize_final(dir, index)
-    wait_for_chunk_files(dir, index)
+    start_index = read_start_index(dir)
+    wait_for_chunk_files(dir, start_index, index)
 
     buffered = nil
     begin
-      buffered = read_buffered_chunks(dir, index)
+      buffered = read_buffered_chunks(dir, start_index, index)
       finalize(buffered, nil)
     rescue StandardError
       buffered
@@ -195,10 +282,10 @@ class MessageDisplay
     end
   end
 
-  def wait_for_chunk_files(dir, index)
-    return if index <= 0
+  def wait_for_chunk_files(dir, start_index, index)
+    return if index <= start_index
 
-    needed = (0...index).map(&:to_s)
+    needed = (start_index...index).map(&:to_s)
     max_polls_for_budget.times do
       return if needed.all? { |n| File.exist?(File.join(dir, n)) }
 
@@ -212,11 +299,12 @@ class MessageDisplay
     (@wait_ms / @poll_ms.to_f).ceil
   end
 
-  # Whatever chunk files exist, in index order, concatenated -- gaps (a
-  # chunk that never arrived, or arrived too late) are skipped rather than
-  # blocking reassembly (lead's guard: never return nothing).
-  def read_buffered_chunks(dir, index)
-    (0..index).filter_map do |i|
+  # Whatever chunk files exist FROM THE START INDEX onward, in index order,
+  # concatenated -- gaps (a chunk that never arrived, or arrived too late)
+  # are skipped rather than blocking reassembly (lead's guard: never return
+  # nothing).
+  def read_buffered_chunks(dir, start_index, index)
+    (start_index..index).filter_map do |i|
       path = File.join(dir, i.to_s)
       File.exist?(path) ? File.read(path) : nil
     end.join
@@ -239,11 +327,22 @@ class MessageDisplay
     start = lines.index { |l| ScreenPaint.classify(l) == :opener }
     return buffered unless start
 
-    stop = ScreenPaint.region_end(lines, start)
-    painted = ScreenPaint.paint(lines[start...stop].join, color: true, markdown_safe: true)
+    region_stop = ScreenPaint.region_end(lines, start)
+    painted = ScreenPaint.paint(lines[start...region_stop].join, color: true, markdown_safe: true)
     return buffered unless painted
 
-    suffix = lines[stop..].to_a.join.sub(/\A\n+/, "")
+    # 331a (D4): a lone CLOSING fence immediately after the painted region is
+    # dropped — never the painting boundary itself (region_stop, used above,
+    # is untouched), only where the suffix starts. An unrelated fenced code
+    # block further down, with prose or a blank line between it and the
+    # region, is never adjacent, so it always survives verbatim (M8b); a
+    # closing fence never carries an info string, so an adjacent OPENING
+    # fence of a real code block (which usually does) is never mistaken for
+    # it either.
+    suffix_start = region_stop
+    suffix_start += 1 if suffix_start < lines.length && FENCE_CLOSE_RE.match?(lines[suffix_start].strip)
+
+    suffix = lines[suffix_start..].to_a.join.sub(/\A\n+/, "")
     out = +"#{lines[0...start].join}#{painted.rstrip}\n"
     out << "\n#{suffix}" unless suffix.empty?
     out
@@ -253,15 +352,24 @@ class MessageDisplay
     atomic_write(File.join(dir, index.to_s), delta)
   end
 
-  # IntentScreen/IntentScreenAnsi's store_root: is the TIER root (what HOLDS
-  # store/ — e.g. .../projects/<slug> or plastic_home itself), never the
-  # store/ directory itself; resolve_intent_dir's `root:` is already that.
-  def write_screen(dir)
-    atomic_write(File.join(dir, SCREEN_FILE), "")
+  # SCREEN's content is the engaging chunk's own index, as a decimal integer
+  # (331a, D6) — read back by `read_start_index` so the final chunk (a
+  # separate process, in production) knows where to start waiting and
+  # splicing, and so `finalize_final` never touches chunks that were passed
+  # through untouched before engagement.
+  def write_screen(dir, index)
+    atomic_write(File.join(dir, SCREEN_FILE), "#{index}\n")
   end
 
   def write_noscreen(dir)
     atomic_write(File.join(dir, NOSCREEN_FILE), "")
+  end
+
+  # 331a (D2/D6): NOSCREEN is no longer a final answer — a later chunk that
+  # engages replaces it with SCREEN and, for safety, removes NOSCREEN so a
+  # stale marker can never be read back once the real decision exists.
+  def remove_noscreen(dir)
+    FileUtils.rm_f(File.join(dir, NOSCREEN_FILE))
   end
 
   def atomic_write(path, content)
