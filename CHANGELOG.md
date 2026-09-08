@@ -5,6 +5,20 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 335 (G2, graph-ready plan Batch 1): ledger transitions with refusals. `savepoint.md` now carries
+  node and intent transition lines beside the existing stage milestones: a closed 10-state
+  vocabulary (`planned`, `running`, `done`, `failed_verification`, `needs_decision`, `blocked`,
+  `deferred`, `superseded`, `abandoned`, `reclaimed`), typed evidence fields required per state,
+  and no dedup, so a retry after a failed verification writes a real line instead of being
+  silently dropped. `GuardedAppend` (new) is the shared fail-closed write guard behind it: an
+  exclusive non-blocking lock, five attempts, read-decide-append under one hold, nothing written
+  on a refusal or a give-up. `NodeLedger` (new) owns the line format, torn- and
+  unattributed-line detection, and status as the last line per subject in file order.
+  `node-transition` (new command) refuses `running` without readiness or lock ownership, `done`
+  without evidence, and `reclaimed` before expiry. The existing stage ledger, its rebuild, and
+  its phantom detector keep working unchanged beside the new lines; `RoadmapSavepoint` now writes
+  through the same guard and keeps its own scope.
+
 ## Released
 
 - `2.0.0-alpha.17` - shipped 2026-09-05 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); collected 322, the Proven-by heading resolver. `report-screen delivered` filled the Proven-by column from the FIRST action-file heading carrying the row label as a standalone token, whatever sat under it, so a heading that named the label but owned no table won the search and the cell read `not recorded` while the real matrix sat under a later heading. The resolver now walks every token-matching heading and keeps the first one whose body actually holds a table data row; table-less headings, and headings whose table has a separator but no data row, are skipped. Where no heading owns a table, a restricted fallback reads matrix rows whose first cell equals the label, but only under a heading naming itself a matrix and only for labels carrying a letter, so a bare number cannot fabricate proof. Verified on the two records that motivated it: claudechat 1d went from `not recorded` to `15 tests` on S1, and claudechat 6 from nine blank cells to `1 test` each. Built 2026-09-03 and merged today across 121 commits of drift; the merge kept both 322's table-owning rule and 331b's shared `heading_tokens` helper, and retired one of 322's own Non-Goals that intent 330's fence walker had already fixed. Suite 3121 runs, 17195 assertions, 0 failures. Known open: 331a1a, unchanged from alpha.16.
