@@ -13,6 +13,7 @@ Classify from the last line alone, then verify only that line's artifact is real
 | `How  checklist.md created` / `Exec  started` | How | **Exec** | do the work, check off the checklist |
 | `Exec  outcome.md created` | Exec | **ready to complete** | the ending procedure (`plastic-intent-ending`) |
 | `Done  delivered` / `Done  abandoned` | terminal | **report only** | immutable; ask what is next |
+| A node or `Intent` transition line (`n1  running ...`, `Intent  needs_decision ...`) | Exec | **Exec** | a graph delivery is in progress; read node status through `NodeLedger.status`, never re-derive it by eye |
 
 ## Per-stage behaviour (what "continue" means)
 

@@ -21,14 +21,16 @@ class LedgerCoexistenceTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
 
   def setup
-    @store = Dir.mktmpdir("ledger-coexistence")
+    @home = Dir.mktmpdir("ledger-coexistence")
+    @store = File.join(@home, "store")
     @dir = File.join(@store, "1--demo")
     FileUtils.mkdir_p(@dir)
     File.write(File.join(@dir, "1--demo.md"), "---\nid: \"1\"\nintent: \"t\"\n---\n\n## Intent\nbody\n")
+    File.write(File.join(@home, "INDEX.md"), "# Index\n\n## Relocated\n(none)\n\n## Completed\n")
   end
 
   def teardown
-    FileUtils.remove_entry(@store) if @store && Dir.exist?(@store)
+    FileUtils.remove_entry(@home) if @home && Dir.exist?(@home)
   end
 
   def savepoint_path
@@ -169,7 +171,7 @@ class LedgerCoexistenceTest < Minitest::Test
 
   # --- 4.11-4.13: doctor ------------------------------------------------------------
 
-  def doctor(plastic_home: @store) = Doctor.new(plastic_home: plastic_home)
+  def doctor(plastic_home: @home) = Doctor.new(plastic_home: plastic_home)
 
   def find(checks, name) = checks.find { |c| c[:name] == name }
 

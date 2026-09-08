@@ -288,6 +288,17 @@ module Savepoint
   # A Plastic 1.x ledger may carry a `Tier  <value>` line after the spec.md
   # milestone (removed in 2.0, intent 304); a rebuild drops it, and the phantom
   # detector ignores it, so a 1.x store reads clean.
+  #
+  # Every transition line (intent 335, spec D13) is preserved VERBATIM, in its
+  # original relative order, after the reconstructed stage skeleton. It is
+  # never dropped and never refused: a transition line's evidence fields
+  # (`holder=`, `expires=`, `gates=`, ...) have no file-mtime analog to
+  # reconstruct from, so refusing instead of preserving would make this method
+  # destroy the graph's only status on every intent that carries one. Relative
+  # order BETWEEN a stage line and a transition line is not preserved (safe:
+  # status is computed per subject, and the two families share no subject);
+  # relative order WITHIN the transition lines is preserved, which is what
+  # "last line per subject in file order" depends on.
   def self.rebuild_savepoint(intent_dir)
     ordered = [
       File.basename(intent_file(intent_dir)),
@@ -301,7 +312,14 @@ module Savepoint
       stamp = File.mtime(path).utc.iso8601
       ["#{stamp}  #{stage}  #{milestone}\n"]
     end
-    File.write(File.join(intent_dir, SAVEPOINT_FILE), lines.join)
+
+    savepoint_path = File.join(intent_dir, SAVEPOINT_FILE)
+    if File.exist?(savepoint_path)
+      transition_lines = File.read(savepoint_path).each_line.select { |raw| transition_candidate?(raw) }
+      lines += transition_lines.map { |raw| raw.end_with?("\n") ? raw : "#{raw}\n" }
+    end
+
+    File.write(savepoint_path, lines.join)
     lines.length
   end
 
@@ -350,6 +368,10 @@ module Savepoint
     File.read(path).each_line do |raw|
       line = raw.strip
       next if line.empty?
+      # A transition line (intent 335) is never a stage phantom candidate: its
+      # own repeated-line semantics (dedup-free by design, spec D11) are
+      # NodeLedger's concern, not this detector's.
+      next if transition_candidate?(line)
       parts = line.split(/\s{2,}/)
       next if parts.length < 3
       pair = [parts[1], parts[2]]
