@@ -279,7 +279,7 @@ class NodeTransitionTest < Minitest::Test
   def test_report_prints_torn_and_unattributed_lines
     append_raw(@intent_dir, "2026-09-08T18:00:00Z  n1  running holder=auto-ce5") # torn
     append_line(@intent_dir, subject: "n2", state: "done", fields: { gates: "suite", commit: "abc" }) # unattributed
-    out, err, status = run_cli(@intent_dir, "report", @intent_dir)
+    out, err, status = run_cli("report", @intent_dir)
     assert_equal 0, status.exitstatus, err
     assert_match(/torn/, out)
     assert_match(/unattributed/, out)
