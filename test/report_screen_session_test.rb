@@ -763,8 +763,9 @@ class ReportScreenSessionVerbTest < Minitest::Test
     # this test alone shells out to the real CLI with no injected `now:`, so
     # a hardcoded day rots the moment the calendar turns over. Every other
     # test in this file injects `now:` and stays hermetic.
-    day = Time.now.utc.strftime("%Y%m%d")
-    label = Time.now.utc.strftime("%Y-%m-%d")
+    now = Time.now
+    day = SessionLedger.day_id(now)
+    label = now.strftime("%Y-%m-%d")
     write_ledger_line(day, ts: "#{label}T00:30:00Z", session: "abc12345", slug: "global")
     out_no_session, err, status = Open3.capture3({ "CLAUDE_CODE_SESSION_ID" => nil }, "ruby", CLI, "session", @home)
     assert_equal 0, status.exitstatus, err

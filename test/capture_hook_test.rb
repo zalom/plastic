@@ -193,6 +193,7 @@ class CaptureHookTest < Minitest::Test
   def test_padded_and_capitalised_continue_still_yields_the_cockpit
     out, status = run_hook("  Continue  ", session: "sess-continue-pad")
     assert_equal 0, status.exitstatus, out
+    refute_empty out.strip, "an over-narrowing mutation must fail here readably, not on an empty-string JSON.parse"
     parsed = JSON.parse(out)
     assert_includes parsed.dig("hookSpecificOutput", "additionalContext"), "plastic-intent-continuing skill workflow"
   end
