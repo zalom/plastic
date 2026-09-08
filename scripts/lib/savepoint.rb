@@ -57,16 +57,25 @@ module Savepoint
     File.exist?(path)
   end
 
-  # True iff actions/ holds AT LEAST ONE real action file: a non-empty *.md whose
-  # first line is not the placeholder sentinel. A `.gitkeep` (no .md extension)
-  # never counts, an empty *.md never counts, and a sentinel-only *.md never
-  # counts. Pure and side-effect-free so the gate stays unit-testable. Fail-open:
-  # a missing actions/ dir globs to nothing and returns false (the gate then
-  # reports it needs a real action file); it never raises.
-  def self.has_real_action?(intent_dir)
-    Dir.glob("#{intent_dir}/actions/*.md").any? do |f|
+  # True iff DIR_NAME (actions/ or nodes/) holds AT LEAST ONE real *.md file: non-empty,
+  # first line not the placeholder sentinel. A `.gitkeep` (no .md extension) never counts.
+  # Pure and side-effect-free; fail-open (a missing dir globs to nothing, never raises).
+  def self.has_real_files_in?(dir_name, intent_dir)
+    Dir.glob("#{intent_dir}/#{dir_name}/*.md").any? do |f|
       File.file?(f) && File.size(f) > 0 && stage_file_present?(f)
     end
+  rescue StandardError
+    false
+  end
+
+  # True iff the intent has at least one real action file, whether delivered as
+  # legacy actions/*.md or as a node graph's nodes/*.md (intent 334, G1, D10r):
+  # an intent delivered as nodes is exactly as real as one delivered as
+  # actions, so doctor and the exec-stage gate never report a backfill gap on
+  # a fully delivered node-graph intent. Checks actions/ first (the common
+  # path today), falling through to nodes/ only when actions/ has nothing.
+  def self.has_real_action?(intent_dir)
+    has_real_files_in?("actions", intent_dir) || has_real_files_in?("nodes", intent_dir)
   rescue StandardError
     false
   end
@@ -90,16 +99,27 @@ module Savepoint
     ["spec.md", "plan.md", "checklist.md", "outcome.md"].each do |f|
       files << f if stage_file_present?("#{intent_dir}/#{f}")
     end
-    files << "actions/" if has_real_action?(intent_dir)
+    # Name the directory that actually exists (fold B3): a nodes-only intent
+    # must never claim the literal "actions/" artifact it does not have.
+    # Checks actions/ first, matching D15r's read order.
+    if has_real_files_in?("actions", intent_dir)
+      files << "actions/"
+    elsif has_real_files_in?("nodes", intent_dir)
+      files << "nodes/"
+    end
     files
   end
 
   def self.missing_for_stage(stage, intent_dir = nil)
     ifile = intent_dir ? File.basename(intent_file(intent_dir)) : "intent.md"
+    # A How-stage intent that already started a nodes/ directory is named
+    # accordingly, so the next-step hint never tells a node-graph intent to
+    # go make an actions/ directory it will never use (fold B3).
+    action_label = intent_dir && File.directory?(File.join(intent_dir, "nodes")) ? "nodes/" : "actions/"
     case stage
     when "what" then [ifile]
     when "why" then ["spec.md"]
-    when "how" then ["plan.md", "actions/", "checklist.md"]
+    when "how" then ["plan.md", action_label, "checklist.md"]
     when "exec" then ["outcome.md"]
     else []
     end

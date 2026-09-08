@@ -227,6 +227,13 @@ end
 # closed exactly this way and the owner read a screen full of "not recorded".
 # Abandoned closes and machine-backfilled outcomes (the backfill marker) are
 # exempt: the reader cannot expect labels the writer never had.
+#
+# Intent 334 (G1, fold A3): an id-shaped heading token is either the legacy
+# "S3" label or a node id (kind prefix n/v/d/r plus digits, D1r) - never a
+# generic word, so an ordinary heading like "### The v2 rewrite" never grows
+# a phantom label unless "v2" really is a node id somewhere in this intent.
+ID_LABEL_RE = /\A(?:S\d+|[nvdr][1-9]\d*)\z/.freeze
+
 def hollow_report_reason(intent_dir, disposition)
   return nil unless disposition == "delivered"
 
@@ -235,12 +242,23 @@ def hollow_report_reason(intent_dir, disposition)
   text = File.read(outcome)
   return nil if text.include?("<!-- backfilled from the record by end-intent on ")
 
-  # The gate's evidence bar (A7/B7): it judges only records that CLAIM the
-  # modern convention - at least one actions/*.md heading carrying an S-label.
-  # A terse legacy close with no labeled matrix stays report-and-proceed.
-  heading_labels = Dir.glob(File.join(intent_dir, "actions", "*.md")).sort.flat_map do |path|
-    ReportScreen.split_by_headings(File.read(path)).filter_map do |heading, _body|
-      heading.to_s.sub(/\A#+\s*/, "").split(/[^A-Za-z0-9]+/).find { |tok| tok.match?(/\AS\d+\z/) }
+  # The gate's evidence bar (A7/B7): it judges only records that CLAIM a
+  # labeled convention - at least one actions/*.md OR nodes/*.md heading
+  # carrying an id-shaped token: the legacy "S3" label, or a node id ("n1",
+  # "v2", "d3", "r4"). A terse legacy close with no labeled matrix stays
+  # report-and-proceed (intent 334, G1, D10r).
+  #
+  # Every matching token per heading is kept, not just the first (fold A3):
+  # a legacy heading can carry BOTH an S-label and a node-shaped word
+  # ("### The v2 rewrite (S3)" - "v2" now also matches the widened regex).
+  # Taking the first would drop the heading's real "S3" label the moment the
+  # id-shaped grammar widened to include node ids, refusing a legacy close
+  # for the wrong reason.
+  action_paths = Dir.glob(File.join(intent_dir, "actions", "*.md")).sort
+  node_paths = Dir.glob(File.join(intent_dir, "nodes", "*.md")).sort
+  heading_labels = (action_paths + node_paths).flat_map do |path|
+    ReportScreen.split_by_headings(File.read(path)).flat_map do |heading, _body|
+      heading.to_s.sub(/\A#+\s*/, "").split(/[^A-Za-z0-9]+/).select { |tok| tok.match?(ID_LABEL_RE) }
     end
   end.uniq
   return nil if heading_labels.empty?
