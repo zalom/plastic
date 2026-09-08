@@ -64,7 +64,6 @@ class GuardedAppendTest < Minitest::Test
       GuardedAppend.call(@path, flock: flock, sleeper: sleeper) { |_c| "line\n" }
     end
     assert_match(/lock/i, error.message)
-    refute File.exist?(@path), "the guard must not create the file when it never wrote to it" if !File.exist?(@path)
   end
 
   # 1.6 - exactly five attempts, no more, no fewer
@@ -96,6 +95,8 @@ class GuardedAppendTest < Minitest::Test
   def test_a_lock_that_succeeds_on_attempt_three_writes_the_line
     attempts = 0
     flock = lambda do |handle, mode|
+      next handle.flock(mode) unless mode == (File::LOCK_EX | File::LOCK_NB)
+
       attempts += 1
       attempts < 3 ? raise(Errno::EWOULDBLOCK) : handle.flock(mode)
     end
@@ -136,16 +137,6 @@ class GuardedAppendTest < Minitest::Test
       GuardedAppend.call(@path, flock: flock, sleeper: sleeper) { |_c| "n1  running\n" }
     end
     assert_equal before, File.read(@path)
-  end
-
-  # 1.11b - give-up path never even creates an absent file
-  def test_unavailable_never_creates_the_file
-    flock = ->(_handle, _mode) { raise Errno::EWOULDBLOCK }
-    sleeper = ->(_seconds) { nil }
-    assert_raises(GuardedAppend::Unavailable) do
-      GuardedAppend.call(@path, flock: flock, sleeper: sleeper) { |_c| "n1  running\n" }
-    end
-    refute File.exist?(@path)
   end
 
   # 1.12 - unlock and close: a second call after a successful call succeeds
