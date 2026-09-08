@@ -14,7 +14,7 @@ require_relative "../scripts/lib/installer_core"
 # `next unless File.file?(path)`, so a subdirectory would reach no install
 # at all - the intent 190 failure exactly.
 class NodeTemplatesTest < Minitest::Test
-  REPO = File.expand_path("../..", __dir__)
+  REPO = File.expand_path("..", __dir__)
   TEMPLATES_DIR = File.join(REPO, "templates")
 
   KIND_TEMPLATES = {
