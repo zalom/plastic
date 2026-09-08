@@ -8,9 +8,9 @@ require_relative "../scripts/lib/session_ledger"
 
 # Intent 298: hook-capture replaces hook-continue, hook-future-intent-check,
 # and hook-auto-arm. One UserPromptSubmit process that appends a pending line
-# to the session day ledger, detects "continue" and "auto" prompts, and hints
-# at matching Future intents. Every job is best-effort and the hook always
-# exits 0 (spec D2).
+# to the session day ledger and detects "continue" and "auto" prompts. Every
+# job is best-effort and the hook always exits 0 (spec D2). Intent 345 (D7,
+# 323) removed the per-prompt Future-intent hint step entirely.
 class CaptureHookTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/hook-capture", __dir__)
 
@@ -161,12 +161,17 @@ class CaptureHookTest < Minitest::Test
 
   # --- current names an intent id -------------------------------------------------
 
+  # 345: the prompt used to read "please continue with the important work",
+  # which relied on the old \bcontinue\b cockpit trigger to produce context.
+  # Under the exact-match cockpit (D34) that prompt now yields nothing, so
+  # the prompt is changed to one that still earns context through job (e)'s
+  # auto-trigger phrase "take it from here", keeping both assertions honest.
   def test_current_names_an_intent_id_no_pending_line_context_still_produced
     sid = sid_for("sess-1")
     FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, sid))
     File.write(SessionLedger.pointer_path(@store, sid), "42--some-intent\n")
 
-    out, status = run_hook("please continue with the important work", session: "sess-1")
+    out, status = run_hook("please continue with the important work, take it from here", session: "sess-1")
     assert_equal 0, status.exitstatus, out
     assert_empty parsed_checklist_lines, "current names an intent, so no pending line"
     refute_empty out.strip, "the continue context must still be produced"
@@ -181,6 +186,36 @@ class CaptureHookTest < Minitest::Test
     assert_equal "UserPromptSubmit", parsed.dig("hookSpecificOutput", "hookEventName")
     assert_includes parsed.dig("hookSpecificOutput", "additionalContext"), "plastic-intent-continuing skill workflow"
     assert parsed.key?("systemMessage")
+  end
+
+  # --- D34 (325): the cockpit fires only on the trimmed prompt "continue" ----
+
+  def test_padded_and_capitalised_continue_still_yields_the_cockpit
+    out, status = run_hook("  Continue  ", session: "sess-continue-pad")
+    assert_equal 0, status.exitstatus, out
+    refute_empty out.strip, "an over-narrowing mutation must fail here readably, not on an empty-string JSON.parse"
+    parsed = JSON.parse(out)
+    assert_includes parsed.dig("hookSpecificOutput", "additionalContext"), "plastic-intent-continuing skill workflow"
+  end
+
+  def test_continue_inside_a_sentence_yields_no_cockpit
+    out, status = run_hook("continue the roadmap work on 327", session: "sess-continue-sentence")
+    assert_equal 0, status.exitstatus, out
+    refute_includes out.to_s, "plastic-intent-continuing skill workflow"
+  end
+
+  def test_please_continue_yields_no_cockpit
+    out, status = run_hook("please continue", session: "sess-please-continue")
+    assert_equal 0, status.exitstatus, out
+    refute_includes out.to_s, "plastic-intent-continuing skill workflow"
+  end
+
+  # Under the old /\bcontinue\b/i trigger this fired; under the exact match
+  # it must not, since the trimmed prompt is "continue." not "continue".
+  def test_continue_with_trailing_punctuation_yields_no_cockpit
+    out, status = run_hook("continue.", session: "sess-continue-punct")
+    assert_equal 0, status.exitstatus, out
+    assert_empty out.strip
   end
 
   def test_bare_continue_prompt_produces_no_pending_line
@@ -268,15 +303,26 @@ def test_auto_under_prompt_key_yields_steer_text
   assert_includes ctx, "Invoke the plastic-auto skill"
 end
 
+  # 345: after the hint cut, an ordinary prompt with no trigger word takes the
+  # `exit 0 if context_parts.empty?` path almost every time, where before the
+  # cut it was rare. The old body's `if out.strip.empty? then assert true`
+  # branch was vacuous post-cut (it always took that branch and never
+  # exercised the `else`), so this asserts the one true thing directly.
   def test_automation_substring_does_not_trigger
     out, status = run_hook("what is the automation strategy here anyway", session: "sess-noauto")
     assert_equal 0, status.exitstatus, out
-    if out.strip.empty?
-      assert true
-    else
-      ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext").to_s
-      refute_includes ctx, "Invoke the plastic-auto skill"
-    end
+    assert_empty out.strip
+  end
+
+  # --- the empty-output path is now the common case (345) ---------------------
+
+  def test_an_ordinary_prompt_emits_no_envelope_and_still_logs
+    out, status = run_hook("fix the dashboard date parser bug that keeps recurring", session: "sess-ordinary-nolog")
+    assert_equal 0, status.exitstatus, out
+    assert_empty out.strip, "an ordinary prompt with no trigger word must emit nothing at all"
+
+    lines = parsed_checklist_lines.select { |l| l[:session] == sid_for("sess-ordinary-nolog") }
+    assert_equal 1, lines.length, "the pending ledger line must still be written on the empty-output path"
   end
 
   # --- Future-intent keyword hit in global and project store -----------------------
@@ -300,7 +346,9 @@ end
                "- [#{id} - #{name}](store/#{dir_name}/#{dir_name}.md)\n")
   end
 
-  def test_future_intent_hint_lists_matches_from_global_and_project_store
+  # 345 (D7, 323): step (f) is gone, so a prompt matching many Future intents
+  # by shared four-letter words must emit nothing at all, not a trimmed hint.
+  def test_a_prompt_matching_many_future_intents_emits_nothing_and_still_logs
     write_future_intent(@plastic_home, "50--widget-global", id: "50", name: "Widget global feature",
                          tags: ["widget"])
 
@@ -315,10 +363,79 @@ end
 
     out, status = run_hook("let's talk about the widget feature plan today", session: "sess-hint", cwd: project_cwd)
     assert_equal 0, status.exitstatus, out
-    ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
-    assert_includes ctx, "Future intents related to this message"
-    assert_includes ctx, "Widget global feature"
-    assert_includes ctx, "Widget project feature"
+    assert_empty out.strip, "no hint of any shape must survive the cut"
+
+    lines = parsed_checklist_lines.select { |l| l[:session] == sid_for("sess-hint") }
+    assert_equal 1, lines.length, "the pending ledger line must still be written"
+  end
+
+  # S1c: guards against a helper left behind as dead code, or the hint
+  # returning under a different name.
+  def test_the_hint_helpers_are_gone_from_the_source
+    src = File.read(SCRIPT)
+    refute_includes src, "future_intent_matches"
+    refute_includes src, "resolve_project_store_root"
+    refute_includes src, "Future intents related"
+    refute_includes src, "require \"yaml\""
+  end
+
+  # --- per-prompt context budget (345 S4) -------------------------------------------
+
+  # write_future_intent overwrites INDEX.md on every call with a single-entry
+  # index, so a loop calling it would leave the fixture holding only its last
+  # entry. This builder appends all 100 index lines in one pass instead.
+  def build_hundred_future_intents(store_root)
+    index_lines = ["# Index", "", "## Active", "", "## Future"]
+    100.times do |i|
+      id = "5#{i.to_s.rjust(3, "0")}"
+      dir = "#{id}--future-planning-work-#{i}"
+      name = "Future planning work item #{i} about ordinary tasks"
+      intent_dir = File.join(store_root, "store", dir)
+      FileUtils.mkdir_p(intent_dir)
+      File.write(File.join(intent_dir, "#{dir}.md"), <<~MD)
+        ---
+        id: "#{id}"
+        intent: "#{name}"
+        tags: [planning, work, ordinary]
+        created: 2026-01-01
+        author: test
+        ---
+        ## Intent
+        #{name}
+      MD
+      index_lines << "- [#{id} - #{name}](store/#{dir}/#{dir}.md)"
+    end
+    FileUtils.mkdir_p(store_root)
+    File.write(File.join(store_root, "INDEX.md"), "#{index_lines.join("\n")}\n")
+  end
+
+  # Measured 2026-09-08 against this fixture: pre-cut additionalContext is
+  # 11,649 bytes, post-cut it is 0 bytes with empty stdout and exit 0.
+  # Against the real ~/.plastic store the pre-cut number was 43,253 bytes.
+  def test_an_ordinary_prompt_in_a_hundred_future_intent_store_emits_nothing
+    project_root = File.join(@plastic_home, "projects", "bigstore")
+    build_hundred_future_intents(project_root)
+
+    future_entries = File.readlines(File.join(project_root, "INDEX.md")).count { |l| l.strip.start_with?("- [") }
+    assert_equal 100, future_entries, "the fixture must really hold 100 Future entries before measuring anything"
+
+    File.write(File.join(@plastic_home, "projects.yml"),
+               YAML.dump("projects" => { "bigstore" => { "path" => File.join(@home, "code", "bigstore") } }))
+    project_cwd = File.join(@home, "code", "bigstore")
+    FileUtils.mkdir_p(project_cwd)
+
+    prompt = "let's talk about the ordinary planning work today, what steps make sense for this " \
+             "task and what the team thinks about the plan before we go further with everything, " \
+             "and whether the schedule still holds up given what we learned this week"
+    assert_operator prompt.length, :>=, 200, "the fixture prompt must be the ordinary 200-character shape"
+
+    out, status = run_hook(prompt, session: "sess-bigstore", cwd: project_cwd)
+    assert_equal 0, status.exitstatus, out
+    assert_empty out.strip, "the real pin: the hook emits nothing at all for an ordinary prompt"
+
+    additional_context_bytes = out.strip.empty? ? 0 : JSON.parse(out).dig("hookSpecificOutput", "additionalContext").to_s.bytesize
+    assert_operator additional_context_bytes, :<, 1500,
+                     "secondary ceiling that survives if a future step legitimately starts emitting a little"
   end
 
   # --- dashboard.rb missing or failing -----------------------------------------------
@@ -341,18 +458,38 @@ end
     root
   end
 
-  def test_dashboard_missing_still_exits_zero_other_parts_still_emitted
+  # 345 S6: under the old /\bcontinue\b/i trigger, "continue and take it from
+  # here" fired both the cockpit and the auto steer in one prompt, so this
+  # single test exercised job (d)'s missing-dashboard guard and job (e)'s
+  # steer together. Under the exact-match rule the two triggers are mutually
+  # exclusive (a prompt equal to "continue" carries no auto trigger, and an
+  # auto-trigger prompt is not equal to "continue"), so the old prompt no
+  # longer fires the cockpit at all and the test went vacuous rather than
+  # red. Split into two, each against the same dashboard-less fixture.
+
+  def test_dashboard_missing_on_a_bare_continue_exits_zero_and_emits_nothing
     root = isolated_capture_without_dashboard
     script = File.join(root, "scripts", "hook-capture")
-    payload = { "session_id" => "sess-mixed", "user_prompt" => "continue and take it from here",
-                "cwd" => @home }
+    payload = { "session_id" => "sess-nodash-continue", "user_prompt" => "continue", "cwd" => @home }
+    env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
+    out, status = Open3.capture2(env, "ruby", script, stdin_data: JSON.generate(payload))
+
+    assert_equal 0, status.exitstatus, out
+    assert_empty out.strip,
+                 "the cockpit is the only job a bare continue could fire, and the missing dashboard is why it did not"
+  ensure
+    FileUtils.rm_rf(root) if root
+  end
+
+  def test_dashboard_missing_does_not_suppress_the_auto_steer
+    root = isolated_capture_without_dashboard
+    script = File.join(root, "scripts", "hook-capture")
+    payload = { "session_id" => "sess-nodash-auto", "user_prompt" => "take it from here", "cwd" => @home }
     env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
     out, status = Open3.capture2(env, "ruby", script, stdin_data: JSON.generate(payload))
 
     assert_equal 0, status.exitstatus, out
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext").to_s
-    refute_includes ctx, "plastic-intent-continuing skill workflow",
-                    "no dashboard.rb means no cockpit context"
     assert_includes ctx, "Invoke the plastic-auto skill",
                     "a missing dashboard must not suppress another job's context"
   ensure
