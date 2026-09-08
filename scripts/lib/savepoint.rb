@@ -23,6 +23,36 @@ module Savepoint
   # (<id>--<slug>.md) is never sentineled; it is born complete.
   PLACEHOLDER_SENTINEL = "<!-- plastic:placeholder -->"
 
+  # --- Node-graph transition subject vocabulary (intent 335, spec D17) -------
+  #
+  # Owned HERE, not on NodeLedger, because test/savepoint_split_test.rb:57 pins
+  # savepoint.rb to loading no other project file: NodeLedger requires this
+  # file and reuses these three names rather than duplicating them, so the
+  # dependency runs one way only. Intent 334 (G1) mints node ids and must
+  # agree with NODE_SUBJECT_RE: it is the single seam for the node id shape.
+
+  # The literal subject token for an intent-scope transition line ("Intent
+  # needs_decision question=..."), as opposed to a node-scope line.
+  INTENT_SUBJECT = "Intent"
+
+  # A node id: one or two lowercase letters (the node's kind prefix, e.g. "n"
+  # for work, "v" for verify) followed by digits.
+  NODE_SUBJECT_RE = /\A[a-z]{1,2}\d+\z/.freeze
+
+  # True iff a raw savepoint ledger line's subject (field 2, split on
+  # /\s{2,}/) is a transition candidate: the literal Intent token or a node
+  # id. A stage line ("How  checklist.md created") or a Lock takeover audit
+  # line never matches, by construction (spec Acceptance Criteria: "no stage
+  # token this tree writes collides with Intent or with the node id
+  # pattern").
+  def self.transition_candidate?(line)
+    parts = line.to_s.split(/\s{2,}/)
+    return false unless parts.length >= 2
+
+    subject = parts[1]
+    subject == INTENT_SUBJECT || subject.match?(NODE_SUBJECT_RE)
+  end
+
   def self.intent_file(intent_dir)
     dir_name = File.basename(intent_dir)
     "#{intent_dir}/#{dir_name}.md"

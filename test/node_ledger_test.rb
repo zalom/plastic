@@ -7,6 +7,7 @@ require "fileutils"
 require "open3"
 require "rbconfig"
 
+require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/node_ledger"
 
 # Intent 335 (G2), S2: the transition line and its reader. Matrix rows 2.1-2.45 in
