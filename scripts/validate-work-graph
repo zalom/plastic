@@ -2,7 +2,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# validate-work-graph — deterministic CLI over WorkGraphValidator (intent 334, n4).
+# validate-work-graph - deterministic CLI over WorkGraphValidator (intent 334, n4).
 #
 # Checks whether one intent directory's graph.md and nodes/ form a valid work
 # graph: needs targets resolve, node files reconcile with the declared graph,
@@ -14,7 +14,7 @@
 #   validate-work-graph <intent_dir>
 #
 # Exit codes: 0 (valid), 1 (invalid or unreadable; report on stderr),
-# 2 (usage — no argument given).
+# 2 (usage - no argument given).
 
 require_relative "lib/work_graph_validator"
 
