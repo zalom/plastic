@@ -5,6 +5,19 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 334 (G1, roadmap graph-ready-plastic, batch 1) - the node file and `graph.md` shapes, in
+  code: `GraphEdges` parses a `## Graph` section's `needs` edges (loose about id grammar so a
+  roadmap and a node graph share one parser) and reports a cycle as the whole path; `NodeFile`
+  reads the envelope (`node`, `kind`, `files`, `budget`) and mints ids; `GraphFile` owns
+  `graph.md`'s four sections, the `verify: none` directive, and the `## Status`
+  writer/`## Decisions` appender, both atomic through a new `AtomicWrite`; `WorkGraphValidator`
+  and `scripts/validate-work-graph` reconcile the graph against `nodes/` and hold the
+  trivial-bar, matrix-bar, and verify-attachment rules; five flat templates ship one per
+  kind. The forward shim widens five globs and one regex so `Savepoint`, `ReportScreen`, and
+  `end-intent` treat a `nodes/`-delivered intent exactly as a real `actions/`-delivered one,
+  actions/ resolving before nodes/. This intent's own `graph.md` and `nodes/` validate through
+  `scripts/validate-work-graph`.
+
 ## Released
 
 - `2.0.0-alpha.17` - shipped 2026-09-05 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); collected 322, the Proven-by heading resolver. `report-screen delivered` filled the Proven-by column from the FIRST action-file heading carrying the row label as a standalone token, whatever sat under it, so a heading that named the label but owned no table won the search and the cell read `not recorded` while the real matrix sat under a later heading. The resolver now walks every token-matching heading and keeps the first one whose body actually holds a table data row; table-less headings, and headings whose table has a separator but no data row, are skipped. Where no heading owns a table, a restricted fallback reads matrix rows whose first cell equals the label, but only under a heading naming itself a matrix and only for labels carrying a letter, so a bare number cannot fabricate proof. Verified on the two records that motivated it: claudechat 1d went from `not recorded` to `15 tests` on S1, and claudechat 6 from nine blank cells to `1 test` each. Built 2026-09-03 and merged today across 121 commits of drift; the merge kept both 322's table-owning rule and 331b's shared `heading_tokens` helper, and retired one of 322's own Non-Goals that intent 330's fence walker had already fixed. Suite 3121 runs, 17195 assertions, 0 failures. Known open: 331a1a, unchanged from alpha.16.
