@@ -324,7 +324,10 @@ class CodexHooksTest < Minitest::Test
     assert_includes ctx, "plastic-intent-continuing skill workflow"
   end
 
-  def test_capture_matches_a_future_intent_keyword
+  # 345 (D7, 323): the Codex relay path shares scripts/hook-capture with the
+  # Claude Code launcher, so the same fixture that used to prove the hint
+  # fired now proves it emits nothing at all.
+  def test_capture_emits_no_future_intent_hint
     plastic_home = File.join(@fake_home, ".plastic")
     intent_dir = File.join(plastic_home, "store", "50--demo-widget")
     FileUtils.mkdir_p(intent_dir)
@@ -345,9 +348,7 @@ class CodexHooksTest < Minitest::Test
     payload = state_payload(event: "UserPromptSubmit", user_prompt: "let's talk about the widget feature today")
     out, status = run_hook("capture", payload)
     assert_equal 0, status.exitstatus
-    ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
-    assert_includes ctx, "Future intents related to this message"
-    assert_includes ctx, "widget"
+    assert_empty out.strip
   end
 
   def test_capture_flags_auto_trigger_phrase
