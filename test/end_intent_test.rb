@@ -9,6 +9,12 @@ require "date"
 require "json"
 require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/lock"
+require_relative "../scripts/lib/report_screen"
+# end-intent has no .rb extension (it is a CLI, not a library), so
+# require_relative cannot resolve it; load its top-level function
+# hollow_report_reason directly for n6's unit tests below (its
+# `main(ARGV) if $PROGRAM_NAME == __FILE__` guard never fires here).
+load File.expand_path("../scripts/end-intent", __dir__)
 
 # end-intent (intent 161): the mechanical core of the Done procedure (D2 steps
 # 1-4). Drives the real script as a subprocess against a hermetic tmp home
@@ -815,5 +821,121 @@ class EndIntentTest < Minitest::Test
     log, _err, log_status = Open3.capture3("git", "-C", @home, "log", "--oneline")
     assert log_status.success?
     assert_match(/complete intent 161/, log, "the close must still commit the store")
+  end
+
+  # --- n6 (334): the hollow-report gate reads nodes/ too (fold A2/A3) --------
+
+  def node_intent_dir(delivered_label: "n1", node_heading: "## n1 failure-mode matrix")
+    dir = Dir.mktmpdir("hollow-gate-nodes")
+    FileUtils.mkdir_p(File.join(dir, "nodes"))
+    File.write(File.join(dir, "nodes", "n1.md"), <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: [x.rb]
+      budget: 100000
+      ---
+      # n1 - a work node
+
+      #{node_heading}
+      | Operation | Failure mode | Test |
+      | --- | --- | --- |
+      | op | mode | some_test#test_x |
+
+      ## Steps
+      1. do it
+
+      ## Proven by
+      (filled at close)
+    MD
+    File.write(File.join(dir, "outcome.md"), <<~MD)
+      ---
+      disposition: delivered
+      ---
+      # Outcome: Demo
+
+      ## Summary
+      Did it.
+
+      ## Delivered
+      | Row | What |
+      | --- | --- |
+      | #{delivered_label} | shipped |
+
+      ## Verification
+      - suite green
+
+      ## Needs you
+      None
+
+      ## Follow-ups
+      None
+    MD
+    dir
+  end
+
+  def test_hollow_gate_engages_and_passes_on_a_node_intent
+    dir = node_intent_dir
+    assert_nil hollow_report_reason(dir, "delivered"),
+               "a correctly labeled node-delivered intent must pass the gate"
+
+    # Prove the gate actually looked at nodes/ rather than short-circuiting on
+    # an empty label set (fold A2): a mismatched label must now be refused.
+    mismatched = node_intent_dir(delivered_label: "bogus")
+    refute_nil hollow_report_reason(mismatched, "delivered"),
+               "the gate must engage on a node intent and catch a real mismatch"
+  ensure
+    FileUtils.rm_rf(dir) if dir
+    FileUtils.rm_rf(mismatched) if mismatched
+  end
+
+  def test_node_id_labels_are_recognized
+    dir = node_intent_dir(delivered_label: "n1", node_heading: "## n1 failure-mode matrix")
+    assert_nil hollow_report_reason(dir, "delivered"),
+               "an outcome row labelled n1 must match the nodes/n1.md heading that carries n1"
+    refute_equal ReportScreen::NOT_RECORDED, ReportScreen.proven_by(dir, "n1"),
+                 "Proven-by must read the nodes/ matrix, not render not recorded"
+  ensure
+    FileUtils.rm_rf(dir) if dir
+  end
+
+  def test_heading_with_both_token_shapes_keeps_the_s_label
+    dir = Dir.mktmpdir("hollow-gate-legacy")
+    FileUtils.mkdir_p(File.join(dir, "actions"))
+    File.write(File.join(dir, "actions", "ACTION_1.md"), <<~MD)
+      # ACTION_1
+
+      ### The v2 rewrite (S3)
+      | Row | Failure mode | Test |
+      | --- | --- | --- |
+      | S3a | it breaks | a_test#test_y |
+    MD
+    File.write(File.join(dir, "outcome.md"), <<~MD)
+      ---
+      disposition: delivered
+      ---
+      # Outcome: Demo
+
+      ## Summary
+      Did it.
+
+      ## Delivered
+      | Row | What |
+      | --- | --- |
+      | S3 | shipped |
+
+      ## Verification
+      - suite green
+
+      ## Needs you
+      None
+
+      ## Follow-ups
+      None
+    MD
+    assert_nil hollow_report_reason(dir, "delivered"),
+               "a legacy heading carrying both a node-shaped token (v2) and an S-label must keep S3"
+  ensure
+    FileUtils.rm_rf(dir) if dir
   end
 end

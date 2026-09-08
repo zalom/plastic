@@ -907,4 +907,108 @@ class ReportScreenReadersTest < Minitest::Test
     write("12--slug.md", "---\nid: \"12\"\n---\n\n## Context\nx\n")
     assert_equal "not recorded", ReportScreen.asked(@dir)
   end
+
+  # --- n6 (334): the three action-heading readers glob nodes/ too (D10r/D15r) ---
+
+  def test_matching_heading_reads_the_nodes_dir
+    FileUtils.rm_rf(File.join(@dir, "actions"))
+    write("nodes/n1.md", <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: []
+      budget: 100000
+      ---
+      # n1 - a work node
+
+      ## n1 failure-mode matrix
+      | Operation | Failure mode | Test |
+      | --- | --- | --- |
+      | op | mode | a_test#test_x |
+    MD
+    heading, body = ReportScreen.matching_action_heading(@dir, "n1")
+    refute_nil heading, "the delivered screen must find a heading for a node row"
+    assert_equal 1, ReportScreen.table_rows(body).length
+  end
+
+  def test_matrix_row_fallback_reads_the_nodes_dir
+    FileUtils.rm_rf(File.join(@dir, "actions"))
+    write("nodes/n1.md", <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: []
+      budget: 100000
+      ---
+      # n1 - a work node
+
+      ## Failure-mode matrix
+      | Label | Operation |
+      |---|---|
+      | n1 | a |
+    MD
+    assert_equal 1, ReportScreen.matching_matrix_rows(@dir, "n1")
+  end
+
+  def test_action_file_for_reads_the_nodes_dir
+    FileUtils.rm_rf(File.join(@dir, "actions"))
+    write("nodes/n1--slug.md", <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: []
+      budget: 100000
+      ---
+      # n1 - a work node
+
+      ## n1 failure-mode matrix
+      | Operation | Failure mode | Test |
+      | --- | --- | --- |
+      | op | mode | a_test#test_x |
+    MD
+    assert_equal "n1--slug", ReportScreen.action_file_for(@dir, "n1")
+  end
+
+  def test_actions_dir_still_matches
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ### S1 - real
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+    MD
+    heading, body = ReportScreen.matching_action_heading(@dir, "S1")
+    refute_nil heading, "an actions/-only intent must keep resolving exactly as before"
+    assert_equal 1, ReportScreen.table_rows(body).length
+  end
+
+  def test_actions_resolve_before_nodes
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ### n1 - from actions
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+      | 2 | a |
+    MD
+    write("nodes/n1.md", <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: []
+      budget: 100000
+      ---
+      # n1 - from nodes
+
+      ## n1 failure-mode matrix
+      | Operation | Failure mode | Test |
+      | --- | --- | --- |
+      | op | mode | a_test#test_x |
+    MD
+    heading, body = ReportScreen.matching_action_heading(@dir, "n1")
+    assert_includes heading, "from actions"
+    assert_equal 2, ReportScreen.table_rows(body).length
+  end
 end
