@@ -185,9 +185,7 @@ Announce which stage you are entering and why.
 3. Decide: pick the best option per gap, record it in `## Context > ### Decisions` with the
    rationale, and log it in `## Insights` with the `(autonomous)` marker through
    `scripts/insight-append`.
-4. Write `spec.md`.
-
-Then How.
+4. Write `spec.md`. Then How.
 
 ## How (the lead), then the plan review
 
