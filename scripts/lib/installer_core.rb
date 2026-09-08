@@ -481,6 +481,8 @@ class InstallerCore
       "scripts/lib/node_file.rb" => "scripts/lib/node_file.rb",
       "scripts/lib/atomic_write.rb" => "scripts/lib/atomic_write.rb",
       "scripts/lib/graph_file.rb" => "scripts/lib/graph_file.rb",
+      "scripts/lib/work_graph_validator.rb" => "scripts/lib/work_graph_validator.rb",
+      "scripts/validate-work-graph" => "scripts/validate-work-graph",
     }
   end
 
