@@ -88,20 +88,26 @@ class ActionShimLiveStoreTest < Minitest::Test
     out_of_bounds.each do |path|
       refute_includes node[:files], path, "out-of-bounds path #{path} leaked into files"
     end
-    # Harvesting stops at the first body line carrying a negation (D17),
-    # scanning only what precedes it. That line, in this action file's own
-    # "Files to touch" list, is the fifth bullet ("never edit an existing
-    # assertion" on test/work_graph_validator_test.rb): a coincidental
-    # negation about editing assertions inside a file, not about the file
-    # being out of bounds, but D17's rule is deliberately line-simple, not
-    # semantic, so it stops there too. Only the four bullets before it are
-    # scanned; none of the out-of-bounds paths past the negation, nor the
-    # bullets after it, come back.
-    in_bounds_first = %w[
-      scripts/lib/action_graph_shim.rb scripts/lib/work_graph_validator.rb
-      scripts/lib/installer_core.rb test/action_graph_shim_test.rb
+    # Harvesting stops at the first body line where a negation GOVERNS the
+    # line (D19): the match begins before the line's first backtick, or the
+    # line carries a negation with no backtick at all. The fifth bullet
+    # ("never edit an existing assertion" on test/work_graph_validator_test.rb)
+    # is an annotation, not an exclusion clause - "never" sits after the
+    # path's backtick, so it governs nothing and the path is kept. The real
+    # truncation point is the "Out of bounds, owned by leads running in
+    # parallel right now:" line, where the exclusion phrase precedes every
+    # backtick on the line. All eight in-bounds paths come back, in order.
+    in_bounds = %w[
+      scripts/lib/action_graph_shim.rb
+      scripts/lib/work_graph_validator.rb
+      scripts/lib/installer_core.rb
+      test/action_graph_shim_test.rb
+      test/work_graph_validator_test.rb
+      test/action_shim_live_store_test.rb
+      test/fixtures/legacy_intents/
+      CHANGELOG.md
     ]
-    assert_equal in_bounds_first, node[:files]
+    assert_equal in_bounds, node[:files]
   end
 
   def test_dogfood_record_key_set_matches_authored_node

@@ -206,6 +206,68 @@ class ActionGraphShimTest < Minitest::Test
     assert_equal ["scripts/lib/a.rb", "scripts/lib/b.rb"], files
   end
 
+  # --- a negation governs a line only when it precedes the paths (342, D19) ------
+
+  def test_a_negation_after_a_path_on_the_same_line_is_an_annotation
+    write_action("ACTION_1.md", <<~MD)
+      # Action 1
+
+      ## Files to touch
+
+      - `a.rb` (do NOT rename it)
+      - `b.rb`
+    MD
+    files = ActionGraphShim.nodes(@dir)[0][:files]
+    assert_equal ["a.rb", "b.rb"], files
+  end
+
+  def test_a_negation_before_the_paths_on_a_line_truncates
+    write_action("ACTION_1.md", <<~MD)
+      # Action 1
+
+      ## Files to touch
+
+      - `scripts/lib/a.rb`
+      - `scripts/lib/b.rb`
+
+      Out of bounds: `x.rb`, `y.rb`
+    MD
+    files = ActionGraphShim.nodes(@dir)[0][:files]
+    assert_equal ["scripts/lib/a.rb", "scripts/lib/b.rb"], files
+    refute_includes files, "x.rb"
+    refute_includes files, "y.rb"
+  end
+
+  def test_a_negation_line_with_no_path_truncates
+    write_action("ACTION_1.md", <<~MD)
+      # Action 1
+
+      ## Files to touch
+
+      - `scripts/lib/a.rb`
+
+      Do not touch anything below.
+
+      - `scripts/lib/b.rb`
+    MD
+    files = ActionGraphShim.nodes(@dir)[0][:files]
+    assert_equal ["scripts/lib/a.rb"], files
+  end
+
+  def test_out_of_bounds_phrase_is_an_exclusion_marker
+    write_action("ACTION_1.md", <<~MD)
+      # Action 1
+
+      ## Files to touch
+
+      - `scripts/lib/a.rb`
+
+      Out of bounds, owned by leads running in parallel right now: `scripts/lib/b.rb`
+    MD
+    files = ActionGraphShim.nodes(@dir)[0][:files]
+    assert_equal ["scripts/lib/a.rb"], files
+  end
+
   # --- fence-aware path extraction (342 review D18) -------------------------------
 
   def test_backticks_inside_a_fenced_block_are_not_paths
