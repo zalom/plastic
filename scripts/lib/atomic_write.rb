@@ -7,6 +7,10 @@
 # half-written target on disk. The temp file is a SIBLING in the same
 # directory as the target, never a system tmpdir, because File.rename can
 # raise EXDEV when the temp and the target live on different filesystems.
+# The temp name ends in .lock (post-execution review, non-blocking 5), the
+# same property Lock#write_temp_path documents: an orphan left by a crash
+# between the write and the rename is covered by the store's existing
+# *.lock gitignore rule rather than swept into its git add -A auto-commit.
 #
 # The renamer is injectable so the interrupted-write case (a rename that
 # raises) is testable with dependency injection, never eval or a global
@@ -16,7 +20,7 @@ module AtomicWrite
 
   def write(path, content, renamer: File.method(:rename))
     dir = File.dirname(path)
-    temp = File.join(dir, ".#{File.basename(path)}.tmp.#{Process.pid}.#{Time.now.to_f}.#{rand(0xFFFFFF)}")
+    temp = File.join(dir, ".#{File.basename(path)}.tmp.#{Process.pid}.#{Time.now.to_f}.#{rand(0xFFFFFF)}.lock")
     File.write(temp, content)
     renamer.call(temp, path)
     true
