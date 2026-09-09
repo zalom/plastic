@@ -45,7 +45,7 @@ class RoadmapQueueGraphTest < Minitest::Test
   end
 
   def write_index(active: [], future: [], completed: [], abandoned: [])
-    index_line = ->(id) { "- [#{id} — Title](store/#{id}--slug/#{id}--slug.md) — 2026-09-09 note." }
+    index_line = ->(id) { "- [#{id} - Title](store/#{id}--slug/#{id}--slug.md) - 2026-09-09 note." }
     lines = ["# Index", "", "## Active", ""]
     active.each { |id| lines << index_line.call(id) }
     lines += ["", "## Future", ""]
@@ -63,7 +63,7 @@ class RoadmapQueueGraphTest < Minitest::Test
 
   def test_graph_roadmap_dispatches_by_edges
     write_graph_roadmap(
-      waves: { "Batch 1" => ["101 First — queued", "102 Second — queued", "103 Third — queued"] },
+      waves: { "Batch 1" => ["101 First - queued", "102 Second - queued", "103 Third - queued"] },
       graph: "- 101 needs nothing\n- 102 needs nothing\n- 103 needs 101 102\n"
     )
     result = reader.queue
@@ -78,7 +78,7 @@ class RoadmapQueueGraphTest < Minitest::Test
       ## Batches
 
       ### Batch 1
-      - [ ] 101 First — queued
+      - [ ] 101 First - queued
 
       ## Graph (2026-09-01, superseded by the Nodes and Edges under ## Batches on 2026-09-04)
       - 101 needs 999
@@ -95,7 +95,7 @@ class RoadmapQueueGraphTest < Minitest::Test
       ## Batches
 
       ### Batch 1
-      - [ ] 101 First — queued
+      - [ ] 101 First - queued
 
       ## Graph
       Prose only, no real edge lines here.
@@ -162,8 +162,8 @@ class RoadmapQueueGraphTest < Minitest::Test
       ## Batches
 
       ### Batch 1
-      - [ ] 101 First — queued
-      - [ ] 102 Second — queued
+      - [ ] 101 First - queued
+      - [ ] 102 Second - queued
     MD
     write_roadmap("demo", body)
     result = reader.queue
@@ -172,7 +172,7 @@ class RoadmapQueueGraphTest < Minitest::Test
 
   def test_delivered_entry_satisfies_a_needs_edge
     write_graph_roadmap(
-      waves: { "Batch 1" => ["101 First — delivered", "102 Second — queued"] },
+      waves: { "Batch 1" => ["101 First - delivered", "102 Second - queued"] },
       graph: "- 101 needs nothing\n- 102 needs 101\n"
     )
     result = reader.queue
@@ -181,7 +181,7 @@ class RoadmapQueueGraphTest < Minitest::Test
 
   def test_index_still_wins_over_the_roadmap_token
     write_graph_roadmap(
-      waves: { "Batch 1" => ["101 First — queued", "102 Second — queued"] },
+      waves: { "Batch 1" => ["101 First - queued", "102 Second - queued"] },
       graph: "- 101 needs nothing\n- 102 needs 101\n"
     )
     write_index(completed: ["101"])
@@ -193,7 +193,7 @@ class RoadmapQueueGraphTest < Minitest::Test
     expected_keys = %w[generated_for mode scope state roadmap frontier_wave dispatchable_queue
                         in_flight blocked tie tie_candidates ranking_strategy generated_at]
     write_graph_roadmap(
-      waves: { "Batch 1" => ["101 First — queued"] },
+      waves: { "Batch 1" => ["101 First - queued"] },
       graph: "- 101 needs nothing\n"
     )
     assert_equal expected_keys.sort, reader.queue.keys.sort
@@ -201,7 +201,7 @@ class RoadmapQueueGraphTest < Minitest::Test
 
   def test_frontier_wave_names_the_batch_holding_the_first_dispatchable_entry
     write_graph_roadmap(
-      waves: { "Alpha" => ["101 First — queued"], "Beta" => ["102 Second — queued"] },
+      waves: { "Alpha" => ["101 First - queued"], "Beta" => ["102 Second - queued"] },
       graph: "- 101 needs nothing\n- 102 needs 101\n"
     )
     result = reader.queue
@@ -210,7 +210,7 @@ class RoadmapQueueGraphTest < Minitest::Test
 
   def test_cyclic_roadmap_graph_reports_an_error
     write_graph_roadmap(
-      waves: { "Batch 1" => ["101 First — queued", "102 Second — queued"] },
+      waves: { "Batch 1" => ["101 First - queued", "102 Second - queued"] },
       graph: "- 101 needs 102\n- 102 needs 101\n"
     )
     result = reader.queue
@@ -220,7 +220,7 @@ class RoadmapQueueGraphTest < Minitest::Test
 
   def test_graph_id_absent_from_batches_is_reported_not_dispatched
     write_graph_roadmap(
-      waves: { "Batch 1" => ["101 First — queued"] },
+      waves: { "Batch 1" => ["101 First - queued"] },
       graph: "- 101 needs 999\n- 999 needs nothing\n"
     )
     result = reader.queue
@@ -236,7 +236,7 @@ class RoadmapQueueGraphTest < Minitest::Test
   # moment the roadmap grows a ## Graph section.
   def test_a_batch_entry_the_graph_does_not_name_stays_dispatchable
     write_graph_roadmap(
-      waves: { "Batch 1" => ["101 First — delivered", "102 Second — queued"] },
+      waves: { "Batch 1" => ["101 First - delivered", "102 Second - queued"] },
       graph: "- 101 needs nothing\n"
     )
     result = reader.queue
@@ -252,7 +252,7 @@ class RoadmapQueueGraphTest < Minitest::Test
   # would read to auto mode.
   def test_a_queued_entry_stuck_behind_an_unreported_id_is_reported_too
     write_graph_roadmap(
-      waves: { "Batch 1" => ["101 First — queued"] },
+      waves: { "Batch 1" => ["101 First - queued"] },
       graph: "- 101 needs 999\n- 999 needs nothing\n"
     )
     result = reader.queue
@@ -268,7 +268,7 @@ class RoadmapQueueGraphTest < Minitest::Test
       ## Batches
 
       ### Batch 1
-      - [ ] 101 First — queued
+      - [ ] 101 First - queued
 
       ## Graph
       - 101 needs nothing
@@ -285,7 +285,7 @@ class RoadmapQueueGraphTest < Minitest::Test
 
   def test_ranker_injection_still_works
     write_graph_roadmap(
-      waves: { "Batch 1" => ["102 Second — queued", "101 First — queued"] },
+      waves: { "Batch 1" => ["102 Second - queued", "101 First - queued"] },
       graph: "- 101 needs nothing\n- 102 needs nothing\n"
     )
     reversed = Class.new do

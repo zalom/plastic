@@ -69,8 +69,8 @@ class DashboardAdvisoryFlagTest < Minitest::Test
     FileUtils.mkdir_p(store)
     File.write(File.join(@home, "projects.yml"), "---\nprojects:\n  demo:\n    path: \"/tmp/demo\"\n    status: active\n")
     File.write(File.join(@home, "projects", "demo", "INDEX.md"),
-               "# Index\n\n## Active\n\n## Future\n\n- [1 — Graph one](store/1--graph/1--graph.md) — note.\n" \
-               "- [2 — Plain one](store/2--plain/2--plain.md) — note.\n\n## Clusters\n\n" \
+               "# Index\n\n## Active\n\n## Future\n\n- [1 - Graph one](store/1--graph/1--graph.md) - note.\n" \
+               "- [2 - Plain one](store/2--plain/2--plain.md) - note.\n\n## Clusters\n\n" \
                "## Abandoned\n\n## Completed\n\n## Relocated\n(none)\n")
     dir1 = write_intent(store, "1", "graph", { id: "1", intent: "Graph one", author: "human", created: "2026-09-01",
                                                 tags: [] })
@@ -100,9 +100,9 @@ class DashboardAdvisoryFlagTest < Minitest::Test
     write_intent(store, "3", "waits", { id: "3", intent: "Waits on 1", author: "human", created: "2026-09-08",
                                           sources: ["1"], tags: [] })
     File.write(File.join(File.dirname(store), "INDEX.md"),
-               "# Index\n\n## Active\n\n## Future\n\n- [3 — Waits](store/3--waits/3--waits.md) — note.\n" \
+               "# Index\n\n## Active\n\n## Future\n\n- [3 - Waits](store/3--waits/3--waits.md) - note.\n" \
                "\n## Clusters\n\n## Abandoned\n\n## Completed\n\n" \
-               "- [1 — Graph one](store/1--graph/1--graph.md) — 2026-09-09 note.\n" \
+               "- [1 - Graph one](store/1--graph/1--graph.md) - 2026-09-09 note.\n" \
                "## Relocated\n(none)\n")
     out, status = run_dash("project", "demo", "--data", "--all")
     assert_equal 0, status
