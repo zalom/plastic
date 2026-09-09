@@ -7,6 +7,7 @@ require_relative "graph_file"
 require_relative "node_file"
 require_relative "node_ledger"
 require_relative "atomic_write"
+require_relative "report_screen"
 
 # OutcomeReport (intent 339, G6): the report model over graph.md, nodes/, and
 # the node ledger (n1), the generator and its command (n2), the plan-versus-
@@ -190,10 +191,37 @@ module OutcomeReport
     (sentence || joined).strip
   end
 
-  def render_delivered_section(model)
+  # D19 (S10): a delivered row is labelled by the S-label of the action
+  # heading that owns that node's own failure-mode matrix, falling back to
+  # the bare node id (D3's grammar) when no heading carries one. This keeps
+  # a generated record close-able under an already-installed core that only
+  # collects S-labels off action headings - the same core that, before this,
+  # found S-labels on the headings and node ids on the rows and refused with
+  # no intersection between the two (ruling D19's probe).
+  ACTION_S_LABEL_RE = /\AS\d+\z/.freeze
+
+  # Resolves through the exact same walk `ReportScreen.proven_by` reads
+  # against (`matching_action_heading` + `heading_tokens`), so the label this
+  # emits can never disagree with what a reader's Proven-by cell resolves.
+  # `intent_dir` is nil for an in-memory model with nothing on disk (rows
+  # 2.4/2.5) - that, like a node id absent from every heading, falls back to
+  # the node id unchanged.
+  def delivered_row_label(id, intent_dir)
+    return id.to_s unless intent_dir
+
+    heading, body = ReportScreen.matching_action_heading(intent_dir, id.to_s)
+    return id.to_s unless heading && body
+
+    s_label = ReportScreen.heading_tokens(heading).find { |t| t.match?(ACTION_S_LABEL_RE) }
+    s_label || id.to_s
+  end
+
+  def render_delivered_section(model, intent_dir: nil)
     rows = model[:nodes].select { |_, n| n[:kind] == "work" && n[:state] == "done" }
     lines = ["## Delivered", "| Row | What |", "| --- | --- |"]
-    sort_ids(rows.keys).each { |id| lines << "| #{id} | #{sanitize_cell(rows[id][:title])} |" }
+    sort_ids(rows.keys).each do |id|
+      lines << "| #{delivered_row_label(id, intent_dir)} | #{sanitize_cell(rows[id][:title])} |"
+    end
     "#{lines.join("\n")}\n"
   end
 
@@ -254,7 +282,7 @@ module OutcomeReport
   # `disposition`, `## Summary`, `## Needs you`, `## Follow-ups`. Regenerated
   # every time: `## Delivered`, `## Verification` (and, once n3/n4 wire them
   # in, `## Graph diff` and `## Findings`).
-  def render(model, disposition:, existing: nil, findings: [])
+  def render(model, disposition:, existing: nil, findings: [], intent_dir: nil)
     fm = existing_frontmatter(existing)
     fm["disposition"] = disposition
     fm_lines = ["---"] + frontmatter_lines(fm) + ["---"]
@@ -269,7 +297,7 @@ module OutcomeReport
     lines << "## Summary"
     lines << summary
     lines << ""
-    lines << render_delivered_section(model)
+    lines << render_delivered_section(model, intent_dir: intent_dir)
     lines << render_verification_section(model)
     lines << graph_diff(model)
     lines << render_findings_section(findings) unless findings.nil? || findings.empty?
@@ -405,7 +433,7 @@ module OutcomeReport
     outcome_path = File.join(intent_dir, "outcome.md")
     existing = File.exist?(outcome_path) ? File.read(outcome_path) : nil
     m = model(intent_dir)
-    text = render(m, disposition: disposition, existing: existing, findings: findings(intent_dir))
+    text = render(m, disposition: disposition, existing: existing, findings: findings(intent_dir), intent_dir: intent_dir)
     AtomicWrite.write(outcome_path, text, renamer: renamer)
     text
   end

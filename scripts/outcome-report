@@ -68,7 +68,7 @@ else
   outcome_path = File.join(intent_dir, "outcome.md")
   existing = File.exist?(outcome_path) ? File.read(outcome_path) : nil
   puts OutcomeReport.render(model, disposition: disposition, existing: existing,
-                                   findings: OutcomeReport.findings(intent_dir))
+                                   findings: OutcomeReport.findings(intent_dir), intent_dir: intent_dir)
 end
 
 exit 0
