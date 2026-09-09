@@ -302,7 +302,7 @@ class ScreenWidthTest < Minitest::Test
   end
 
   def test_leg1_report_screen_literal_append_count_matches_the_repo
-    assert_equal 47, literal_append_lines(File.join(REPO, "scripts", "lib", "report_screen.rb")).length,
+    assert_equal 52, literal_append_lines(File.join(REPO, "scripts", "lib", "report_screen.rb")).length,
                  "the derived site table's leg 1 count has drifted from the repo - re-derive it " \
                  "before trusting the rest of this file's fixtures"
   end
@@ -316,11 +316,16 @@ class ScreenWidthTest < Minitest::Test
     lines = non_literal_append_lines(File.join(REPO, "scripts", "lib", "report_screen.rb"))
     assert_equal 28, lines.length,
                  "the derived site table's leg 2 count has drifted from the repo - re-derive it"
-    # Re-derived 2026-09-09 when 334 (G1)'s post-execution review fixed
-    # matching_matrix_rows to stop at the first directory with a match: every
-    # site shifted by the same +8 offset (1022->1030, 1101->1109, 1509->1517,
-    # 1515->1523, 1527->1535). Same five sites, matched by content.
-    [1030, 1109, 1517, 1523, 1535].each do |line|
+    # Re-derived 2026-09-09 when 339 (G6) inserted render_archive above #roster
+    # and render_nodes_block after #render_delivered: the first insertion
+    # shifts every site below it by +26, the second (past render_delivered)
+    # by a further +36, for a cumulative +62 on the last three
+    # (1030->1056, 1109->1135, 1517->1579, 1523->1585, 1535->1597). Same five
+    # sites, matched by content, all five literal appends this intent adds
+    # (render_archive's row, render_nodes_block's node/findings rows) are
+    # leg 1 (literal `<< "`), not leg 2, so this list's five members are
+    # unchanged in kind, only in position.
+    [1056, 1135, 1579, 1585, 1597].each do |line|
       assert_includes lines, line, "leg 2 must still carry the screen-emitting non-literal append at line #{line}"
     end
   end

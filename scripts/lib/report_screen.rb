@@ -991,7 +991,7 @@ def self.matching_action_heading(intent_dir, label)
       disposition = NOT_RECORDED if disposition.nil? || disposition.to_s.empty?
       lines << "| #{escape(dirname)} | #{escape(disposition.to_s)} |"
     end
-    "#{lines.join("\n")}\n"
+    fit_screen("#{lines.join("\n")}\n")
   end
 
   def self.roster(store_root)

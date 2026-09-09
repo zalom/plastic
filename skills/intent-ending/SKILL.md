@@ -75,7 +75,8 @@ or `disposition: abandoned`, and fill `## Summary`, `## Delivered`, `## Verifica
 `## Follow-ups`. `## Delivered` is a `| Row | What |` table: one row per thing delivered,
 in plain wording a reader recognizes, not a method name or an implementation summary
 (that detail belongs in `## Summary`). Each row's label must appear as a standalone token
-in an action-file or node-file heading that owns the matrix table (`### S1 - ...` or
+in an action-file heading (or a node-file heading, for an intent whose graph replaces
+actions/ with nodes/) that owns the matrix table (`### S1 - ...` or
 `## n1 failure-mode matrix` with a table beneath it proves that row; a table-less
 heading naming the label is skipped); that heading's matrix rows become the row's
 Proven-by cell on `report-screen delivered`'s post-delivery screen. `## Needs you` is
