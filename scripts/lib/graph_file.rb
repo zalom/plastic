@@ -171,7 +171,7 @@ module GraphFile
       elsif !fenced && heading_start && offset > heading_start && line.match?(/\A##[^#]/)
         return [heading_start, offset]
       end
-      offset += line.bytesize
+      offset += line.length
     end
 
     heading_start ? [heading_start, offset] : nil

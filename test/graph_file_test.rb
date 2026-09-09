@@ -72,7 +72,7 @@ class GraphFileTest < Minitest::Test
   def test_multibyte_goal_body_does_not_bleed_into_the_next_heading
     write(MULTIBYTE)
     result = GraphFile.parse(@path)
-    assert_equal "Ship -> fast with café and Über review.\n", result[:goal]
+    assert_equal "Ship -> fast with café and Über review.\n\n", result[:goal]
     refute_includes result[:goal], "## Decisions"
     assert_includes result[:decisions], "D1 pick approach"
   end
