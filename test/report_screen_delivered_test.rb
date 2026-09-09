@@ -169,6 +169,51 @@ class ReportScreenDeliveredTest < Minitest::Test
     assert evidence_idx < needs_idx
   end
 
+  # --- intent 339 (G6, n5, row 5.3): a graph.md adds a Nodes block only ---------
+
+  # The pinned headers/table headers this test guards belong to intent 317's
+  # delivered screen and have nothing to do with this intent; a graph-bearing
+  # intent must add its Nodes block WITHOUT touching any of them.
+  def test_graph_intent_adds_nodes_block_only
+    full_fixture
+    write("graph.md", <<~MD)
+      # Graph: Test
+
+      ## Goal
+      Test goal.
+
+      ## Decisions
+      - D1 test
+
+      ## Graph
+      - n1 needs nothing
+
+      ## Status
+      | Node | State | Detail |
+      | --- | --- | --- |
+    MD
+    write("nodes/n1.md", <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: []
+      budget: 1000
+      ---
+      # n1 - Demo unit
+    MD
+    write("savepoint.md", "2026-08-30T19:00:00Z  What  12--slug.md\n2026-09-09T10:00:00Z  n1  done gates=tests commit=aaa1111\n")
+
+    out = ReportScreen.render_delivered(intent_dir: @dir, tag_reader: ->(_d) { "2.0.0-alpha.5" })
+
+    headers = out.scan(/^\*\*(.+?)\*\*/).flatten
+    assert_equal %w[Asked Delivered Evidence Needs\ you], headers
+    assert_includes out, "| Row | Detail | Proven by |"
+    assert_includes out, "| Kind | Detail | Source |"
+    assert_includes out, "| N | Need | Reason |"
+    assert_includes out, "### Nodes"
+    assert_includes out, "| n1 |"
+  end
+
   # --- intent 322 S6: goldens for the two recorded shapes ----------------------
 
   # claudechat 1d: a table-less heading names the label first, and the real
