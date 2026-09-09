@@ -785,7 +785,14 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
     # reported as a fixable warn (backfilled_complete). Its exclusions go to their OWN
     # bucket so savepoint_operational's consumed/dead-row bookkeeping above never sees them.
     backfill_gaps = %w[spec.md plan.md].reject { |f| Savepoint.stage_file_present?(File.join(dir, f)) }
-    backfill_gaps << "actions/" unless Savepoint.has_real_action?(dir)
+    # Name whichever directory the intent actually used (post-execution
+    # review, non-blocking 8), consistent with Savepoint.missing_for_stage:
+    # a nodes/ directory on disk means the intent chose the node-graph
+    # convention, so a gap here is a missing nodes/, never the literal
+    # actions/ has_real_action? no longer implies.
+    unless Savepoint.has_real_action?(dir)
+      backfill_gaps << (File.directory?(File.join(dir, "nodes")) ? "nodes/" : "actions/")
+    end
     if backfill_gaps.any?
       suppressed_backfill = excluded_rules.include?("backfilled_complete")
       target = suppressed_backfill ? findings[:excluded_backfill] : findings[:unbackfilled]
