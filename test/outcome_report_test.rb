@@ -511,7 +511,7 @@ class OutcomeReportTest < Minitest::Test
 
   def test_findings_read_from_insights_subsection
     write_intent_file(<<~MD)
-      2026-09-09T10:00:00Z · Exec · someone (autonomous) — some insight
+      2026-09-09T10:00:00Z · Exec · someone (autonomous) - some insight
 
       ### Findings
       - Finding one
@@ -537,7 +537,7 @@ class OutcomeReportTest < Minitest::Test
 
   def test_no_findings_omits_the_section
     write_intent_file(<<~MD)
-      2026-09-09T10:00:00Z · Exec · someone (autonomous) — some insight
+      2026-09-09T10:00:00Z · Exec · someone (autonomous) - some insight
     MD
     assert_equal [], OutcomeReport.findings(@dir)
     text = OutcomeReport.render(build_model, disposition: "delivered", findings: OutcomeReport.findings(@dir))
@@ -562,7 +562,7 @@ class OutcomeReportTest < Minitest::Test
 
   def test_insights_without_findings_subsection_returns_empty
     write_intent_file(<<~MD)
-      2026-09-09T10:00:00Z · Exec · someone (autonomous) — an insight with no findings subsection
+      2026-09-09T10:00:00Z · Exec · someone (autonomous) - an insight with no findings subsection
     MD
     assert_equal [], OutcomeReport.findings(@dir)
   end

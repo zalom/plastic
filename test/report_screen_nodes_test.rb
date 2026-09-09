@@ -117,7 +117,7 @@ class ReportScreenNodesTest < Minitest::Test
       Demo
 
       ## Insights
-      2026-09-09T10:00:00Z · Exec · someone (autonomous) — an insight
+      2026-09-09T10:00:00Z · Exec · someone (autonomous) - an insight
 
       ### Findings
       - A real finding worth keeping
