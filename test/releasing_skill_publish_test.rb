@@ -91,10 +91,23 @@ class ReleasingSkillPublishTest < Minitest::Test
     assert rows.any? { |r| r.include?("latest") }
   end
 
+  # Anchored on fenced-code-block context, not line start: a leading backtick
+  # (an inline code span reintroducing the command as `npm publish ...`
+  # rather than a bare shell line) defeats a ^\s*npm publish\b anchor while
+  # still instructing the session to publish locally. promotion-and-tagging.md:50
+  # legitimately carries an inline `npm publish --access public --tag <channel>`
+  # span in prose documenting the OTHER action (npm_publish); that line sits
+  # outside any fence and must still be accepted (review fold-in 3).
   def test_promotion_reference_has_no_local_publish_command
     content = File.read(PROMOTION_PATH)
-    offenders = content.lines.select { |l| l =~ /^\s*npm publish\b/ }
-    assert_empty offenders, "the promotion reference must not tell the session to publish locally: #{offenders.inspect}"
+    offenders = []
+    in_fence = false
+    content.each_line do |line|
+      in_fence = !in_fence if line.start_with?("```")
+      offenders << line if in_fence && line.include?("npm publish")
+    end
+    assert_empty offenders,
+      "the promotion reference must not tell the session to publish locally inside a fenced code block: #{offenders.inspect}"
   end
 
   def test_promotion_reference_keeps_its_rules

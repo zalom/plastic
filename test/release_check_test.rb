@@ -120,6 +120,11 @@ class ReleaseCheckCliTest < Minitest::Test
     end
   end
 
+  # Both a coerced-to-zero read and the degenerate-input guard exit 1 here, so
+  # exit status alone does not pin which branch caught it. Assert the
+  # diagnostic message too: "empty or not numeric" comes only from the
+  # degenerate-input check, never from the floor comparison, which would
+  # instead say "is below the 11.5.1 floor" (review fold-in 1).
   def test_rejects_an_empty_or_non_numeric_npm_version
     Dir.mktmpdir do |dir|
       build_repo(dir, version: "2.0.0-alpha.19")
@@ -127,10 +132,12 @@ class ReleaseCheckCliTest < Minitest::Test
       _out, err, status = run_cli(root: dir, tag: "v2.0.0-alpha.19", npm_version: "")
       refute status.success?, "an empty npm version must not pass: #{err}"
       assert_equal 1, status.exitstatus
+      assert_match(/empty or not numeric/, err, "expected the degenerate-input diagnostic, not a floor-comparison message")
 
       _out2, err2, status2 = run_cli(root: dir, tag: "v2.0.0-alpha.19", npm_version: "not-a-version")
       refute status2.success?, "a non-numeric npm version must not pass: #{err2}"
       assert_equal 1, status2.exitstatus
+      assert_match(/empty or not numeric/, err2, "expected the degenerate-input diagnostic, not a floor-comparison message")
     end
   end
 

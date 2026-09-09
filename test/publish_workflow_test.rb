@@ -122,8 +122,31 @@ class PublishWorkflowTest < Minitest::Test
     assert guard_index < publish_index, "the guard must run before the publish step"
   end
 
+  # D7: whether this step stays in publish.yml is a live decision made after
+  # watching test.yml on a hosted runner. Pin its presence and its position
+  # so a later edit that drops it, or reorders it outside the guard-then-
+  # publish window, is a red suite rather than a silent policy change.
+  def test_runs_the_full_suite_between_the_guard_and_the_publish
+    suite_step = steps.find { |s| s["run"].to_s.strip == "ruby bin/test" }
+    refute_nil suite_step, "expected a step that runs ruby bin/test"
+
+    guard_index = steps.index(guard_step)
+    suite_index = steps.index(suite_step)
+    publish_index = steps.index(publish_step)
+    assert guard_index < suite_index, "the suite must run after the guard"
+    assert suite_index < publish_index, "the suite must run before the publish step"
+  end
+
+  # The dispatch-or-pushed tag reaches the guard through env:, not interpolated
+  # straight into the run: string, so an untrusted value cannot land in a
+  # shell context even though nothing escalates today (pushing a v* tag or
+  # dispatching the workflow both already need write access; the job still
+  # holds id-token: write, so this is belt-and-suspenders) (review fold-in 4).
   def test_guard_reads_the_dispatch_tag_or_the_pushed_tag
-    assert_includes guard_step["run"], "${{ inputs.tag || github.ref_name }}"
+    assert_equal "${{ inputs.tag || github.ref_name }}", guard_step["env"]["TAG"]
+    assert_includes guard_step["run"], '--tag "$TAG"'
+    refute_includes guard_step["run"], "inputs.tag",
+      "the tag expression must reach the shell through env:, never interpolated straight into run:"
   end
 
   def test_checkout_uses_the_dispatch_tag_or_the_pushed_ref

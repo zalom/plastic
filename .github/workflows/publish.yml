@@ -44,9 +44,11 @@ jobs:
 
       - name: Guard the tag, the version files, and the npm floor
         id: guard
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: >
           ruby scripts/release-check
-          --tag "${{ inputs.tag || github.ref_name }}"
+          --tag "$TAG"
           --npm-version "$(npm --version)"
           --github-output "$GITHUB_OUTPUT"
 
