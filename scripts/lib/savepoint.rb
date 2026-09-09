@@ -114,8 +114,18 @@ module Savepoint
     ifile = intent_dir ? File.basename(intent_file(intent_dir)) : "intent.md"
     # A How-stage intent that already started a nodes/ directory is named
     # accordingly, so the next-step hint never tells a node-graph intent to
-    # go make an actions/ directory it will never use (fold B3).
-    action_label = intent_dir && File.directory?(File.join(intent_dir, "nodes")) ? "nodes/" : "actions/"
+    # go make an actions/ directory it will never use (fold B3). Mirrors
+    # has_real_files_in?'s actions-first order and its real-file requirement
+    # (post-execution review, non-blocking 4): an intent carrying real files
+    # in both directories, or a real actions/ file beside an empty or
+    # .gitkeep-only nodes/, is named actions/, never nodes/.
+    action_label = if intent_dir && has_real_files_in?("actions", intent_dir)
+      "actions/"
+    elsif intent_dir && has_real_files_in?("nodes", intent_dir)
+      "nodes/"
+    else
+      "actions/"
+    end
     case stage
     when "what" then [ifile]
     when "why" then ["spec.md"]
