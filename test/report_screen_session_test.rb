@@ -759,13 +759,20 @@ class ReportScreenSessionVerbTest < Minitest::Test
 
   def test_no_session_id_does_not_silently_widen_the_window
     write_index(@home, completed: [])
-    write_ledger_line("20260904", ts: "2026-09-04T00:30:00Z", session: "abc12345", slug: "global")
+    # Derived from the real clock rather than a hardcoded literal (345 S7):
+    # this test alone shells out to the real CLI with no injected `now:`, so
+    # a hardcoded day rots the moment the calendar turns over. Every other
+    # test in this file injects `now:` and stays hermetic.
+    now = Time.now
+    day = SessionLedger.day_id(now)
+    label = now.strftime("%Y-%m-%d")
+    write_ledger_line(day, ts: "#{label}T00:30:00Z", session: "abc12345", slug: "global")
     out_no_session, err, status = Open3.capture3({ "CLAUDE_CODE_SESSION_ID" => nil }, "ruby", CLI, "session", @home)
     assert_equal 0, status.exitstatus, err
     # The note names the day the LEDGER supplied, never the clock's own day,
     # and opens with the screen marker so the painter and the harness hook can
     # both recognize it. Both pinned here at the post-execution review.
-    assert_match(%r{\A▶ Window · the whole of 2026-09-04 · no session id given}, out_no_session)
+    assert_match(%r{\A▶ Window · the whole of #{Regexp.escape(label)} · no session id given}, out_no_session)
 
     out_with_session, err2, status2 = Open3.capture3({ "CLAUDE_CODE_SESSION_ID" => "abc12345" }, "ruby", CLI, "session", @home)
     assert_equal 0, status2.exitstatus, err2
