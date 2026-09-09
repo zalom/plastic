@@ -5,6 +5,20 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 338 (G5, roadmap graph-ready-plastic, batch 2) - `scripts/node-packet`, the command that
+  builds a stateless node agent's whole input from disk: the node, the ledger (its own
+  transition lines, predecessor evidence, lease, and landed commits after a reclaim), the
+  record (Intent, Decisions, last three Insights, kind-aware so a verify node never sees the
+  producer's own Findings), one capped one-level knowledge hop, and where to work. Retrieved
+  text is wrapped as labeled data by a new `PacketWrapper` (a per-packet boundary token
+  derived from the payloads, an escaping rule that survives a payload carrying the packet's
+  own marker, and the shared token estimator). A total token budget (default 8000) is spent
+  in a stated cut order - the hop whole, then Insights to one, then Decisions to the last
+  five - never touching the node, the ledger, or where to work; a packet still over budget is
+  refused with the exact `node-transition needs_decision` command to record. Packets are kept
+  per attempt at `packets/<node>--a<N>.packet` and hashed, so `packet=<sha>` on a `running`
+  line names an exact set of bytes an executor can be replayed from on any harness.
+
 - 342 (G9, roadmap graph-ready-plastic, batch 2) - a backward shim for legacy intents that
   never got a `graph.md`. `ActionGraphShim` reads an intent's `actions/*.md` files, in filename
   order, as a synthetic node chain, in the same record shape `NodeFile.parse` returns, so a
