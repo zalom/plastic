@@ -70,6 +70,14 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   block, both additive and only for an intent with a `graph.md`. `report-screen archive
   <store_root>` is a new, read-only view of a store's terminal intents with their dispositions,
   the reading half of intent 132; it moves nothing on disk.
+The close gate learned to judge a graph-era record at all: it collected only S-labels from
+action-file headings, so an action file headed by node id gave it an empty label set and it
+returned before judging anything, exempting every intent that carries a node graph. It now
+collects node-id segments alongside S-labels, while a record carrying no labelled matrix at
+all stays exempt as before. A verify node's Proven-by cell renders its criteria count instead
+of the absent-source phrase, because a verify node owns criteria rather than a failure-mode
+matrix; the cell is gated on the node file's declared kind, so a work node whose body happens
+to carry a criteria-shaped list still reports its matrix rows.
 
 - 335a: node ids never recycle (owner ruling, 2026-09-09). `NodeFile.mint_id` mints one past the
   highest id ever seen for a kind rather than the lowest free one, so deleting `n2` no longer
