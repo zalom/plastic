@@ -5,6 +5,9 @@ require_relative "node_file"
 require_relative "graph_file"
 require_relative "graph_edges"
 require_relative "node_ledger"
+# Savepoint::INTENT_SUBJECT is named directly below, so the require is direct
+# too: test/savepoint_split_test.rb:157 refuses a transitive one.
+require_relative "savepoint"
 
 # NodeIds (intent 335a): every node id one intent has EVER seen, gathered from
 # the three places an id can appear, so NodeFile.mint_id can mint one past the
