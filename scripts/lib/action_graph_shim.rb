@@ -62,6 +62,11 @@ module ActionGraphShim
         errors: synth[:errors],
       }
     else
+      # 342 post-execution review, should-fix 5: a nil intent_dir must never
+      # raise. shape(nil) is already nil-guarded, so `view` and `needs`
+      # honor the same contract rather than raising a File.join TypeError.
+      return GraphFile.failure(["graph file not found: #{intent_dir.inspect}"]) unless intent_dir
+
       GraphFile.parse(File.join(intent_dir, "graph.md"))
     end
   end
@@ -96,7 +101,13 @@ module ActionGraphShim
     parsed = GraphFile.parse(File.join(intent_dir, "graph.md"))
     edges = parsed.dig(:graph, :edges) || {}
 
-    Dir.glob(File.join(intent_dir, "nodes", "*.md")).sort.map do |path|
+    # 342 post-execution review, nit 8: sort_key numerically over the
+    # basename, the same key the synthetic chain uses, so an authored
+    # intent with ten or more nodes orders n10 after n9 rather than
+    # lexically between n1 and n2.
+    Dir.glob(File.join(intent_dir, "nodes", "*.md"))
+       .sort_by { |path| sort_key(File.basename(path)) }
+       .map do |path|
       nf = NodeFile.parse(path)
       nf.merge(
         needs: edges[nf[:node]] || [],

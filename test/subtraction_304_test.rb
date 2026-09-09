@@ -269,6 +269,6 @@ class Subtraction304Test < Minitest::Test
       p = File.join(REPO, root)
       File.file?(p) ? [p] : Dir[File.join(p, "**", "*")].select { |f| File.file?(f) }
     end.reject { |f| f == File.expand_path(__FILE__) }
-       .reject { |f| f.include?("test/fixtures/legacy_intents/") || f.include?("test/fixtures/dogfood_intent/") }
+       .reject { |f| f.start_with?(File.join(REPO, "test/fixtures/legacy_intents/")) || f.start_with?(File.join(REPO, "test/fixtures/dogfood_intent/")) }
   end
 end

@@ -176,7 +176,7 @@ module WorkGraphValidator
   # to meet a bar written for a graph authored under 327.
   def validate_actions_shape(intent_dir)
     errors = []
-    graph = ActionGraphShim.view(intent_dir)[:graph] || { nodes: [], edges: [], errors: [] }
+    graph = ActionGraphShim.view(intent_dir)[:graph] || { nodes: [], edges: {}, errors: [] }
     nodes = graph[:nodes]
     edges = graph[:edges]
 

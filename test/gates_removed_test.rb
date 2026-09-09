@@ -167,6 +167,6 @@ class GatesRemovedTest < Minitest::Test
       abs = File.join(REPO, root)
       File.directory?(abs) ? Dir[File.join(abs, "**", "*")].select { |f| File.file?(f) } : [abs]
     end.reject { |f| f == File.expand_path(__FILE__) }
-       .reject { |f| f.include?("test/fixtures/legacy_intents/") || f.include?("test/fixtures/dogfood_intent/") }
+       .reject { |f| f.start_with?(File.join(REPO, "test/fixtures/legacy_intents/")) || f.start_with?(File.join(REPO, "test/fixtures/dogfood_intent/")) }
   end
 end
