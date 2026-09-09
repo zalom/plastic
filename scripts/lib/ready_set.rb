@@ -157,27 +157,32 @@ module ReadySet
 
   # --- the disk-reading counterpart --------------------------------------------
 
-  # analyze(intent_dir, now:, caps:, max_paths:, ranker:) -> a Result hash
-  # over the whole graph: per-node view, batches, critical path(s), and the
-  # ranked ready order. Never raises across the boundary: a missing or cyclic
-  # graph.md, a malformed node file, or a node the graph declares with no
-  # file all become entries in `errors`, and analysis continues for every
-  # node it still can.
-  def analyze(intent_dir, now: Time.now, caps: DEFAULT_CAPS, max_paths: DEFAULT_MAX_PATHS, ranker: nil)
-    ranker ||= FinishFirstRanker.new
+  # load_graph(intent_dir) -> {ok:, edges:, nodes:, errors:}. The parse-once
+  # step every caller (analyze, node-transition, the roadmap frontier, the
+  # doctor rule) shares: graph.md through GraphFile (the one parser), each
+  # declared node's kind and files through NodeFile. Never raises: a missing
+  # or invalid graph.md, a cyclic graph, a malformed node file, or a node the
+  # graph declares with no file all become `ok: false` or an `errors` entry,
+  # never an exception across the boundary.
+  def load_graph(intent_dir)
     graph_path = File.join(intent_dir, "graph.md")
     parsed = GraphFile.parse(graph_path)
-    return error_result(parsed[:errors].empty? ? ["missing or invalid graph.md at #{graph_path}"] : parsed[:errors]) if parsed[:graph].nil?
+    if parsed[:graph].nil?
+      errors = parsed[:errors].empty? ? ["missing or invalid graph.md at #{graph_path}"] : parsed[:errors]
+      return { ok: false, edges: {}, nodes: {}, errors: errors }
+    end
 
     edges = parsed[:graph][:edges]
     errors = parsed[:graph][:errors].dup
 
     cyc = GraphEdges.cycle(edges)
-    return error_result(["cyclic graph, cannot compute readiness: #{cyc.join(' > ')}"]) if cyc
+    if cyc
+      return { ok: false, edges: edges, nodes: {},
+                errors: errors + ["cyclic graph, cannot compute readiness: #{cyc.join(' > ')}"] }
+    end
 
-    node_ids = parsed[:graph][:nodes]
     nodes = {}
-    node_ids.each do |id|
+    parsed[:graph][:nodes].each do |id|
       path = find_node_path(intent_dir, id)
       if path.nil?
         errors << "node #{id.inspect} is declared in graph.md but has no nodes/ file"
@@ -193,6 +198,23 @@ module ReadySet
         nodes[id] = { kind: nil, files: [] }
       end
     end
+
+    { ok: true, edges: edges, nodes: nodes, errors: errors }
+  end
+
+  # analyze(intent_dir, now:, caps:, max_paths:, ranker:) -> a Result hash
+  # over the whole graph: per-node view, batches, critical path(s), and the
+  # ranked ready order. Never raises across the boundary: everything
+  # #load_graph reports becomes an entry in `errors`, and analysis continues
+  # for every node it still can.
+  def analyze(intent_dir, now: Time.now, caps: DEFAULT_CAPS, max_paths: DEFAULT_MAX_PATHS, ranker: nil)
+    ranker ||= FinishFirstRanker.new
+    loaded = load_graph(intent_dir)
+    return error_result(loaded[:errors]) unless loaded[:ok]
+
+    edges = loaded[:edges]
+    nodes = loaded[:nodes]
+    errors = loaded[:errors]
 
     savepoint_path = File.join(intent_dir, "savepoint.md")
     content = File.exist?(savepoint_path) ? File.read(savepoint_path) : ""
