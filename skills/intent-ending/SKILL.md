@@ -67,9 +67,10 @@ fill `## Summary`, `## Delivered`, `## Verification`, `## Follow-ups`. `## Deliv
 `| Row | What |` table: one row per thing delivered, in plain wording a reader
 recognizes, not a method name or an implementation summary (that detail
 belongs in `## Summary`). Each row's label must appear as a standalone token
-in an action-file heading (`### S1 - ...` proves row S1); that heading's
-matrix rows become the row's Proven-by cell on `report-screen delivered`'s
-post-delivery screen. `## Needs you` is the literal None or a
+in an action-file heading that owns the matrix table (`### S1 - ...` with a
+table beneath it proves row S1; a table-less heading naming the label is
+skipped); that heading's matrix rows become the row's Proven-by cell on
+`report-screen delivered`'s post-delivery screen. `## Needs you` is the literal None or a
 `| N | What | Why |` table. On abandon, `## Summary` states the abandonment reason and the trail (see Pivot
 below). A placeholder outcome.md is backfilled from the record instead, with the
 close's disposition and the `--outcome-summary` line as its summary. Also author
@@ -144,11 +145,13 @@ ruby ~/.plastic/scripts/qmd-sync reindex --store <store-root> --async
 No-op when QMD is absent. Runs in the background so it never blocks the
 turn.
 
-### Step 7. EM-to-CTO report
+### Step 7. Print `delivered`
 
-Brief the human like an engineering manager to a CTO: impact and risk first,
-in plain language, the decision left to them (merge, release, or accept).
-See `outcome.md` for the details; do not restate it verbatim.
+Print `ruby ~/.plastic/scripts/report-screen delivered <intent_dir>` as the first characters
+of the reply: nothing before it, no fence, or the hook cannot paint it. Asked, Delivered (with
+its Proven-by column), Evidence, and Needs you come straight from the record - the EM-to-CTO
+report, impact and risk first, in plain language, with the decision left to the human (merge,
+release, or accept). See `outcome.md` for the details; do not restate it verbatim.
 
 ## Abandoned is the same procedure
 

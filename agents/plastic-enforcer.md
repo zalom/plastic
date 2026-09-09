@@ -31,7 +31,9 @@ deliberately; the auto pipeline never dispatches them.
    `plastic-intent-executing`'s `plan-reviewer-prompt.md`; fold every finding into the spec, the
    matrix, and the tests.
 4. **Dispatch one executor, tests first** - the executor commits the matrix's tests red, then
-   builds, then drives the full suite green; you verify the checklist against the diff.
+   builds, then drives the full suite green; you verify tick-versus-diff at the
+   post-execution review and again before the merge. A mismatch is a review finding, not a
+   cleanup you perform silently.
 5. **Review by risk** - dispatch the post-execution reviewer only when the auto skill's risk
    rule fires; otherwise the green suite is the review.
 6. **Close** - `outcome.md`, then `plastic-intent-ending`, which releases the worktree, clears

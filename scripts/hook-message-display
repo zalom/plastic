@@ -51,11 +51,18 @@ begin
     tmp_root = ENV["PLASTIC_TMP"].to_s.empty? ? Dir.tmpdir : ENV["PLASTIC_TMP"]
     plastic_home = File.expand_path(ENV["PLASTIC_HOME"] || "~/.plastic")
 
+    # PLASTIC_HOOK_TRACE=<file> (331a1): opt-in, off by default, one JSON
+    # object appended per chunk. This script is the only place allowed to
+    # read the environment; MessageDisplay takes the sink as an argument.
+    trace_path = ENV["PLASTIC_HOOK_TRACE"].to_s
+    trace = trace_path.empty? ? nil : MessageDisplay.file_trace(trace_path)
+
     handler = MessageDisplay.new(
       tmp_root: tmp_root,
       plastic_home: plastic_home,
       color: color_enabled?(plastic_home),
       now: Time.now,
+      trace: trace,
     )
     result = handler.handle(payload)
 

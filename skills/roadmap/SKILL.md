@@ -47,6 +47,15 @@ Read `../plastic-conventions/references/roadmaps.md` for the roadmap file format
 semantics, and the status-mirror rule that this skill's own file-format reference builds on. This
 path resolves relative to this skill's own installed directory.
 
+## Reports (intent 331f)
+
+Each verb prints its report screen as the first characters of the reply: nothing before it, no
+fence, or the hook cannot paint it.
+
+- Create prints `ruby ~/.plastic/scripts/report-screen roadmap <roadmap.md> plan`.
+- Read / consume prints `ruby ~/.plastic/scripts/report-screen roadmap <roadmap.md> state`.
+- Close / archive prints `ruby ~/.plastic/scripts/report-screen roadmap <roadmap.md> delivered`.
+
 ## Notes
 
 - File location and the four-section shape are identical across tiers; do not invent a different

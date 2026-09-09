@@ -542,7 +542,7 @@ class DashboardTest < Minitest::Test
                          .gsub("{{date}}", data["date"])
                          .gsub("{{summary}}", data["summary"])
                          .gsub("{{active.rows}}", rows)
-      assert_includes markdown, "| Id | What | Stage | Worker | Activity |"
+      assert_includes markdown, "| Graph ID | Intent | Stage | Worker | Activity |"
       assert_includes markdown, "| c | Claude enriched | Exec | plastic-enforcer · Claude | Fresh · writer writer-session |"
       assert_includes markdown, "| x | Codex enriched | How | plastic-executor · Codex | Fresh |"
       markdown.lines.grep(/^\| [cxl] \|/).each do |line|
@@ -601,12 +601,26 @@ class DashboardTest < Minitest::Test
 
   def test_project_markdown_template_has_worker_and_activity_columns
     template = File.read(File.expand_path("../skills/dashboard/templates/dashboard-project.md", __dir__))
-    assert_includes template, "| Id | What | Stage | Worker | Activity |"
+    assert_includes template, "| Graph ID | Intent | Stage | Worker | Activity |"
     assert_includes template, "| --- | --- | --- | --- | --- |"
 
     contract = File.read(File.expand_path("../skills/dashboard/SKILL.md", __dir__))
     assert_includes contract, "| {id} | {what} | {stage} | {worker} | {activity} |"
     assert_includes contract, "| _(none)_ | | | |"
+  end
+
+  # --- F29 (intent 331f, R1): neither board template heads an id column "Id" or a title
+  # column "What" any more - the owner ruled on column names, not on painting.
+
+  def test_dashboard_board_templates_use_graph_id_and_intent
+    project_template = File.read(File.expand_path("../skills/dashboard/templates/dashboard-project.md", __dir__))
+    global_template = File.read(File.expand_path("../skills/dashboard/templates/dashboard-global.md", __dir__))
+
+    refute_match(/\|\s*Id\s*\|\s*What\s*\|/, project_template)
+    refute_match(/\|\s*Id\s*\|\s*What\s*\|/, global_template)
+    assert_includes project_template, "| Graph ID | Intent | Stage | Worker | Activity |"
+    assert_includes project_template, "| Graph ID | Intent | Value | Disposition | Flags |"
+    assert_includes global_template, "| Graph ID | Intent | Value | Disposition | Flags |"
   end
 
   def test_cell_escapes_pipe_in_intent

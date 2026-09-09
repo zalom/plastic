@@ -96,6 +96,16 @@ The ledger is derived and rebuildable (`ruby ~/.plastic/scripts/roadmap-savepoin
 roadmaps/{slug}.md`, reconstructing it from `## Log`), never a status source: `INDEX.md` stays the
 single writer of intent status, exactly as for the roadmap file itself.
 
+## Screens read this format (intent 331c)
+
+`report-screen roadmap <roadmap.md> plan|state|delivered` reads exactly the shapes above and
+nothing else: `## Goal`'s first sentence, the `## Batches` (or legacy `## Waves`) grouping and its
+entries (through `RoadmapQueue`'s own reconciled reader - INDEX still wins), and the events from
+the savepoint ledger, falling back to `## Log` classified through the same keyword vocabulary when
+no ledger file exists (an archived roadmap moved before intent 134 shipped, `manual-first.md`
+among them). A screen never invents a status, a time, or a merge sha the file, `INDEX.md`, or the
+ledger did not already carry - the same `not recorded` floor the intent screens use.
+
 ## Worked example
 
 ```

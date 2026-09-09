@@ -60,28 +60,33 @@ class DoctorCoreFlagTest < Minitest::Test
     end
   end
 
-  def test_core_run_is_exactly_the_five_liveness_groups
+  # Intent 331e added a sixth group, check_display_registration (D5: the
+  # settings.json/launcher liveness check for the MessageDisplay hook is
+  # cheap and belongs at --core; the other three display checks stay off the
+  # boot path, see scripts/doctor.rb).
+  def test_core_run_is_exactly_the_six_liveness_groups
     d = doctor
     expected = (d.check_agent_registration("claude") +
                 d.check_core_files("claude", include_drift: false) +
                 d.check_manifest_sync("claude") +
                 d.check_registered_project_paths +
-                d.check_global_store_available)
+                d.check_global_store_available +
+                d.check_display_registration("claude"))
                .map { |c| c[:name] }
     actual = d.run_core_checks("claude")[:checks].map { |c| c[:name] }
 
     assert_equal expected, actual,
       "--core must be exactly agent_registration + core_files(no drift) + manifest_sync + " \
-      "registered_project_paths + global_store_available, in order"
+      "registered_project_paths + global_store_available + display_registration, in order"
   end
 
   def test_core_run_only_has_liveness_categories
     result = doctor.run_core_checks("claude")
     categories = result[:checks].map { |c| c[:category] }.uniq
 
-    assert_equal %w[agent_registration core_files global_store manifest_sync project_stores],
+    assert_equal %w[agent_registration core_files display global_store manifest_sync project_stores],
       categories.sort,
-      "--core categories should be agent_registration, core_files, global_store, " \
+      "--core categories should be agent_registration, core_files, display, global_store, " \
       "manifest_sync, and project_stores"
   end
 

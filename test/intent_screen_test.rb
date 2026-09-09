@@ -301,7 +301,7 @@ end
     refute_includes screen, "**What this means**"
     refute_includes screen, "{{meaning}}"
     refute_includes screen, "{{close}}"
-    assert_includes screen, "| Step | Status | What |"
+    assert_includes screen, "| Step | Status | Detail |"
   end
 
   # O1b, matrix row 6: a blank-line assertion proves nothing (render already
@@ -311,7 +311,7 @@ end
     root = tier_root(:project)
     dir = make_intent(root, checklist: checklist_with(total: 1, done: 0), savepoint: HOW_LEDGER)
     screen = render(dir, root)
-    assert_includes screen, "| **Insight** | none yet |  |\n\n**Steps**\n\n| Step | Status | What |"
+    assert_includes screen, "| **Insight** | none yet |  |\n\n**Steps**\n\n| Step | Status | Detail |"
   end
 
   # --- CLI ---------------------------------------------------------------------

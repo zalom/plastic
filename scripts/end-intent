@@ -227,6 +227,27 @@ end
 # closed exactly this way and the owner read a screen full of "not recorded".
 # Abandoned closes and machine-backfilled outcomes (the backfill marker) are
 # exempt: the reader cannot expect labels the writer never had.
+#
+# Intent 334 (G1, fold A3; post-execution review, blocking 2): the legacy
+# "S3" label grammar applies only to actions/*.md headings, and the node id
+# grammar (kind prefix n/v/d/r plus digits, D1r) applies only to nodes/*.md
+# headings - never both over both directories. This repo's own house words
+# for plan review and post-execution review are "v1" and "v2"; widening the
+# node-id alternative onto actions/ headings turned that prose into a
+# manufactured label and refused legitimate legacy closes at exit 7.
+ACTION_ID_LABEL_RE = /\AS\d+\z/.freeze
+NODE_ID_LABEL_RE = /\A[nvdr][1-9]\d*\z/.freeze
+
+# The id-shaped tokens found in `paths`' headings, matched against
+# `id_label_re` only - the caller picks the grammar for the directory.
+def heading_id_labels(paths, id_label_re)
+  paths.flat_map do |path|
+    ReportScreen.split_by_headings(File.read(path)).flat_map do |heading, _body|
+      heading.to_s.sub(/\A#+\s*/, "").split(/[^A-Za-z0-9]+/).select { |tok| tok.match?(id_label_re) }
+    end
+  end
+end
+
 def hollow_report_reason(intent_dir, disposition)
   return nil unless disposition == "delivered"
 
@@ -235,14 +256,22 @@ def hollow_report_reason(intent_dir, disposition)
   text = File.read(outcome)
   return nil if text.include?("<!-- backfilled from the record by end-intent on ")
 
-  # The gate's evidence bar (A7/B7): it judges only records that CLAIM the
-  # modern convention - at least one actions/*.md heading carrying an S-label.
-  # A terse legacy close with no labeled matrix stays report-and-proceed.
-  heading_labels = Dir.glob(File.join(intent_dir, "actions", "*.md")).sort.flat_map do |path|
-    ReportScreen.split_by_headings(File.read(path)).filter_map do |heading, _body|
-      heading.to_s.sub(/\A#+\s*/, "").split(/[^A-Za-z0-9]+/).find { |tok| tok.match?(/\AS\d+\z/) }
-    end
-  end.uniq
+  # The gate's evidence bar (A7/B7): it judges only records that CLAIM a
+  # labeled convention - at least one actions/*.md heading carrying an S-label,
+  # or at least one nodes/*.md heading carrying a node id ("n1", "v2", "d3",
+  # "r4"). A terse legacy close with no labeled matrix stays report-and-proceed
+  # (intent 334, G1, D10r).
+  #
+  # Every matching token per heading is kept, not just the first (fold A3):
+  # a legacy actions/ heading can carry BOTH an S-label and prose that reads
+  # like a node id ("### The v2 rewrite (S3)"). Restricting the node-id
+  # grammar to nodes/*.md headings (post-execution review, blocking 2) means
+  # "v2" in that heading is never even tested against it, so the heading's
+  # real "S3" label is never at risk.
+  action_paths = Dir.glob(File.join(intent_dir, "actions", "*.md")).sort
+  node_paths = Dir.glob(File.join(intent_dir, "nodes", "*.md")).sort
+  heading_labels = (heading_id_labels(action_paths, ACTION_ID_LABEL_RE) +
+                     heading_id_labels(node_paths, NODE_ID_LABEL_RE)).uniq
   return nil if heading_labels.empty?
 
   rows = ReportScreen.delivered_rows(intent_dir)

@@ -1,0 +1,285 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+require "time"
+require_relative "lib/savepoint"
+require_relative "lib/node_ledger"
+require_relative "lib/guarded_append"
+require_relative "lib/lock"
+require_relative "lib/arm"
+
+# node-transition - the CLI over NodeLedger that REFUSES what the graph does not
+# allow (intent 335, G2). An orchestrator can run this by hand today, before the
+# runner (intent 340) exists.
+#
+# Usage:
+#   node-transition <intent_dir> --node <id|Intent> --state <state> [--field k=v]...
+#                    [--comment "..."] [--needs a,b] [--session SID] [--now ISO8601]
+#   node-transition report <intent_dir>
+#
+# Exit codes (spec D18, matching the tree: scripts/append-ledger:125 uses 3 for a
+# guard that could not be taken, scripts/end-intent:675 uses 4 for a lock-ownership
+# refusal):
+#   0 - the line was appended
+#   2 - usage: not an intent directory, bad subject, unknown state, missing
+#       required field, a tab or newline in a value
+#   3 - the ledger guard was unavailable; nothing was written
+#   4 - running, and the caller does not hold delivery.lock
+#   5 - running, and the subject is not ready
+#   6 - reclaimed, and the subject's last running line has not expired
+module NodeTransition
+  module_function
+
+  # States eligible to become "running" (spec D15's "planned" precondition, read
+  # in light of matrix 3.11): `reclaimed` already resolves to `planned`
+  # (NodeLedger::RESOLUTION), and `failed_verification` must ALSO be eligible for
+  # re-dispatch - the spec Problem section names exactly this retry
+  # ("a node that fails verification and re-enters running") as the gap the old
+  # dedup ledger could not represent. Every other resolved state (running, done,
+  # needs_decision, blocked, deferred, superseded, abandoned) refuses.
+  READY_PRIOR_STATES = %w[planned failed_verification].freeze
+
+  # The readiness precondition for `running`, until 336 (G3) replaces this with
+  # the real ready function and adds the sibling overlapping `files:` rule this
+  # version does not implement (spec D15, named here on purpose so the next
+  # reader finds the seam). A subject is ready when its own resolved status is
+  # eligible (see READY_PRIOR_STATES above), and every `needs` target's LAST
+  # attributed, well-formed line in the same ledger has state `done`.
+  #
+  # Takes `content` (the ledger's raw text), never a path, so this method can
+  # be run twice: once as a cheap unguarded pre-check for a fast, readable
+  # refusal, and once - the AUTHORITATIVE decision - as the guard's
+  # precondition, evaluated against the exact content GuardedAppend just read
+  # under its lock hold (post-execution review row 7.1). A path-based re-read
+  # here would defeat the guard: two callers could each open their own handle,
+  # both see "planned", and both go on to append `running`, which is the exact
+  # failure the spec's Problem section names ("two runners can both decide a
+  # node is ready and both append running").
+  def readiness_check(content, subject, needs)
+    own_status = NodeLedger.status_for_content(content, subject)
+    unless READY_PRIOR_STATES.include?(own_status)
+      return [false, "#{subject} is #{own_status}, not eligible to enter running"]
+    end
+
+    entries = NodeLedger.entries_from_content(content)
+    needs.each do |target|
+      entry = entries.select { |e| e[:subject] == target && !e[:torn] }.last
+      unless entry && entry[:state] == "done" && NodeLedger.attributed?(entry)
+        return [false, "needs target #{target} has no attributed, well-formed done line"]
+      end
+    end
+    [true, nil]
+  end
+
+  # Session resolution per spec D16: an explicit --session is authoritative and
+  # NEVER falls through (an explicit non-owner is refused outright, never
+  # silently granted ownership through a fallback). Without it, try the
+  # environment's CLAUDE_CODE_SESSION_ID, then the derived `auto-` key, and keep
+  # the first candidate that actually HOLDS the lock (owner or delegate,
+  # Lock.holds?) - so the fallback can never grant ownership to a session that
+  # does not have it.
+  def resolve_owning_session(intent_dir, explicit:, env_session:)
+    if explicit && !explicit.to_s.strip.empty?
+      return Lock.holds?(intent_dir, session: explicit) ? explicit : nil
+    end
+
+    store = Arm.store_for(intent_dir)
+    intent_id = Arm.intent_id_for(intent_dir)
+    candidates = [env_session, Arm.derive_key(store, intent_id)].reject { |c| c.to_s.strip.empty? }
+    candidates.find { |c| Lock.holds?(intent_dir, session: c) }
+  end
+
+  def intent_directory?(dir)
+    dir && File.directory?(dir) && File.exist?(Savepoint.intent_file(dir))
+  end
+
+  def valid_subject?(subject)
+    subject == Savepoint::INTENT_SUBJECT || subject.to_s.match?(Savepoint::NODE_SUBJECT_RE)
+  end
+
+  def opt(args, name)
+    (i = args.index(name)) && args[i + 1]
+  end
+
+  def opt_all(args, name)
+    args.each_index.select { |i| args[i] == name }.map { |i| args[i + 1] }
+  end
+
+  def parse_fields(args)
+    opt_all(args, "--field").each_with_object({}) do |pair, memo|
+      key, value = pair.to_s.split("=", 2)
+      memo[key] = value if key && !key.empty?
+    end
+  end
+
+  def usage
+    warn "Usage: node-transition <intent_dir> --node <id|Intent> --state <state> " \
+         "[--field k=v]... [--comment \"...\"] [--needs a,b] [--session SID] [--now ISO8601]"
+    warn "       node-transition report <intent_dir>"
+  end
+
+  def run_report(intent_dir)
+    unless intent_directory?(intent_dir)
+      warn "node-transition: #{intent_dir.inspect} is not an intent directory"
+      usage
+      exit 2
+    end
+
+    savepoint_path = File.join(intent_dir, "savepoint.md")
+    anomalies = NodeLedger.anomalies(savepoint_path)
+    if anomalies.empty?
+      puts "node-transition report: no torn or unattributed transition lines"
+    else
+      anomalies.each { |a| puts "#{a[:reason]}: #{a[:line]}" }
+    end
+    exit 0
+  end
+
+  def main(argv)
+    args = argv.dup
+    head = args.shift
+
+    if head == "report"
+      report_dir_arg = args.shift
+      run_report(report_dir_arg && File.expand_path(report_dir_arg))
+      return
+    end
+
+    intent_dir_arg = head
+    unless intent_directory?(intent_dir_arg && File.expand_path(intent_dir_arg))
+      warn "node-transition: #{intent_dir_arg.inspect} is not an intent directory"
+      usage
+      exit 2
+    end
+    intent_dir = File.expand_path(intent_dir_arg)
+
+    subject = opt(args, "--node")
+    state = opt(args, "--state")
+    comment = opt(args, "--comment")
+    needs_flag = opt(args, "--needs")
+    session_flag = opt(args, "--session")
+    now_flag = opt(args, "--now")
+    fields = parse_fields(args)
+
+    if subject.nil? || state.nil?
+      warn "node-transition: --node and --state are required"
+      usage
+      exit 2
+    end
+
+    unless valid_subject?(subject)
+      warn "node-transition: #{subject.inspect} is neither #{Savepoint::INTENT_SUBJECT} nor a valid node id"
+      exit 2
+    end
+
+    unless NodeLedger::STATES.include?(state)
+      warn "node-transition: unknown state #{state.inspect}"
+      exit 2
+    end
+
+    now = begin
+      now_flag ? Time.iso8601(now_flag) : Time.now
+    rescue ArgumentError
+      warn "node-transition: --now must be ISO 8601"
+      exit 2
+    end
+
+    begin
+      fields.each_value { |v| NodeLedger.normalize_value(v) }
+      NodeLedger.normalize_value(comment) if comment
+    rescue ArgumentError => e
+      warn "node-transition: #{e.message}"
+      exit 2
+    end
+
+    missing = NodeLedger.missing_fields(state, fields)
+    unless missing.empty?
+      warn "node-transition: state #{state} requires #{missing.join(', ')}"
+      exit 2
+    end
+
+    savepoint_path = File.join(intent_dir, "savepoint.md")
+    precondition = nil
+
+    case state
+    when "running"
+      owning_session = resolve_owning_session(intent_dir, explicit: session_flag,
+                                                            env_session: ENV["CLAUDE_CODE_SESSION_ID"])
+      unless owning_session
+        warn "node-transition: the caller does not hold delivery.lock for #{intent_dir}"
+        exit 4
+      end
+
+      needs = if needs_flag
+                needs_flag.split(",").map(&:strip).reject(&:empty?)
+              else
+                NodeLedger.needs_from_graph(File.join(intent_dir, "graph.md"), subject)
+              end
+
+      # Fast, unguarded pre-check: a cheap, readable refusal for the common
+      # case, but NEVER the authoritative decision (post-execution review row
+      # 7.1). The authoritative check is the `precondition` below, run inside
+      # GuardedAppend's lock hold against the content it actually read.
+      precheck_content = File.exist?(savepoint_path) ? File.read(savepoint_path) : ""
+      ready, reason = readiness_check(precheck_content, subject, needs)
+      unless ready
+        warn "node-transition: #{reason}"
+        exit 5
+      end
+
+      precondition = ->(content) { readiness_check(content, subject, needs).first }
+    when "reclaimed"
+      running_entry = NodeLedger.last_running(savepoint_path, subject)
+      unless running_entry
+        warn "node-transition: #{subject} has no running line to reclaim"
+        exit 6
+      end
+
+      # Post-execution review row 7.4: expiry alone is not enough. A `done`
+      # node whose last `running` line's expires= happens to be in the past
+      # must not revert to `planned` and become re-dispatchable - reclaim is
+      # deliberately lock-free (spec D43), so this status check is the only
+      # thing that stops it. Row 7.5 pins that a genuinely running, expired
+      # subject is still reclaimable, so the crash sweep keeps working.
+      current_status = NodeLedger.status_for(savepoint_path, subject)
+      unless current_status == "running"
+        warn "node-transition: #{subject} is #{current_status}, not running; nothing to reclaim"
+        exit 6
+      end
+
+      expires_raw = (running_entry[:fields] || {})["expires"]
+      expiry_time = begin
+        expires_raw && Time.iso8601(expires_raw)
+      rescue ArgumentError
+        nil
+      end
+
+      unless expiry_time && now > expiry_time
+        warn "node-transition: #{subject}'s running line has not expired yet"
+        exit 6
+      end
+    end
+
+    result = begin
+      NodeLedger.append_transition(savepoint_path, subject: subject, state: state, fields: fields,
+                                    comment: comment, now: now, precondition: precondition)
+    rescue GuardedAppend::Unavailable => e
+      warn "node-transition: #{e.message}"
+      exit 3
+    rescue ArgumentError => e
+      warn "node-transition: #{e.message}"
+      exit 2
+    end
+
+    if result == :refused
+      warn "node-transition: #{subject} was no longer ready by the time the write lock was taken"
+      exit 5
+    end
+
+    puts "node-transition: appended #{state} for #{subject}"
+    exit 0
+  end
+end
+
+NodeTransition.main(ARGV) if $PROGRAM_NAME == __FILE__

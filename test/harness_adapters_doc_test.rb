@@ -26,4 +26,36 @@ class HarnessAdaptersDocTest < Minitest::Test
       "| Codex CLI | `$plastic-<name>` (dollar), explicit; Codex may also select a skill " \
       "implicitly by matching its `description` |"
   end
+
+  # Intent 331a (X1): the engagement contract is late-capable now, not
+  # chunk-0-only -- a chunk carrying an opener engages the message from that
+  # chunk on, whatever its index.
+  def test_documents_late_capable_engagement
+    body = normalized_body
+    assert_includes body, "engages the message from that chunk on, whatever its index"
+  end
+
+  # Intent 331a (X2): docs/internals.md documents the ScreenPaint registry.
+  INTERNALS = File.join(ROOT, "docs", "internals.md")
+
+  def test_internals_documents_the_screen_registry
+    body = File.read(INTERNALS).gsub(/\s+/, " ")
+    assert_includes body, "ScreenPaint.register"
+    assert_includes body, "scripts/lib/screens/"
+  end
+
+  # Intent 331a1 (L9): the engagement contract names the decision marker
+  # itself, and says explicitly when the launcher writes it.
+  # L9b (post-execution review): the substring "PENDING" alone passes even
+  # after the documented budget has rotted away from the code, so the numbers
+  # D3 fixes and the staleness rule D2 fixes are pinned here too.
+  def test_adapters_doc_names_pending_marker
+    body = normalized_body
+    assert_includes body, "PENDING"
+    assert_includes body, "before Ruby boots"
+    assert_includes body, "300 ms"
+    assert_includes body, "20 ms"
+    assert_includes body, "2 s"
+    assert_match(/stale[^.]*PENDING[^.]*NOSCREEN/, body)
+  end
 end

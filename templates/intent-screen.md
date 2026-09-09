@@ -12,6 +12,6 @@
 
 **Steps**
 
-| Step | Status | What |
+| Step | Status | Detail |
 | --- | --- | --- |
 {{steps.rows}}

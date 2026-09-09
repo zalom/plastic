@@ -63,6 +63,8 @@ Dispatch ONE executor subagent and give it the whole delivery: every task's full
 
 After each commit lands (the red commit and every commit after it), append a `Commit` line to the savepoint ledger: `ruby ~/.plastic/scripts/savepoint-note <intent_dir> --kind Commit --text "<sha> <what it proves>"` (intent 317, D17). This is what feeds `report-screen delay`; a commit with no line is a gap the delay report cannot explain.
 
+Print `ruby ~/.plastic/scripts/report-screen state <intent_dir> --changed "<what just landed>"` as the first characters of the reply, nothing before it, no fence, right after the red commit and again once the suite goes green (intent 331f).
+
 Read its response by code:
 - DONE or DONE_WITH_CONCERNS → proceed to Step 3.
 - NEEDS_CONTEXT → provide the missing context, re-dispatch the executor.
@@ -73,7 +75,7 @@ Apply the auto skill's risk rule to the executor's return and the diff: a matrix
 
 Whenever a review verdict returns - the plan review before code, or the post-execution review above - the lead appends a `Review` line: `ruby ~/.plastic/scripts/savepoint-note <intent_dir> --kind Review --text "<verdict, what changed>"` (intent 317, D17). This is the other half of what `report-screen delay` reads.
 
-**The D19 heading convention.** An action file's `## Delivered` row (in `outcome.md`) is proven by whichever `actions/ACTION_N.md` heading carries that row's label as a standalone token - `### Row A -` proves row A, `### S1 -` proves row S1. Write action-file section headings so the label they prove is unambiguous (never a substring another label could also match, like `A` inside `AB`); `report-screen delivered`'s Proven-by column renders `not recorded` when no heading matches.
+**The D19 heading convention.** An action file's `## Delivered` row (in `outcome.md`) is proven by the first `actions/ACTION_N.md` OR `nodes/*.md` heading that carries that row's label as a standalone token AND owns the matrix table (322 D1r, 334 D10r) - `### Row A -` with a table beneath it proves row A, `### S1 -` proves row S1, `## n1 failure-mode matrix` proves row n1; a heading that only names the label, with no table under it, is skipped. Readers check `actions/` first, then `nodes/` (334 D15r). Write action-file or node-file section headings so the label they prove is unambiguous (never a substring another label could also match, like `A` inside `AB`); `report-screen delivered`'s Proven-by column renders `not recorded` when no heading owns a matching table and no matrix row cell carries the label either.
 
 ### Step 4: Update Intent and Complete
 Capture observations in `## Insights`. When ALL checklist items are checked:
@@ -108,11 +110,15 @@ Capture observations in `## Insights`. When ALL checklist items are checked:
 
 ## Tick-as-you-land
 
-As each task lands, in the same edit: move its checklist item from `## In
-Progress` to `## Completed` in `checklist.md`, and add one `## Session Log`
-row (Date, Items Completed, Notes). Do not batch several tasks' worth of
-checklist updates into one later edit; tick the moment the task is verified,
-before moving to the next task.
+A tick is two edits, made together: mark the item's box `[x]`, and move its
+checklist item from `## In Progress` to `## Completed` in `checklist.md`;
+then add one `## Session Log` row (Date, Items Completed, Notes). The box is
+the half the state screen's Progress bar reads: `IntentScreen::ITEM_RE` and
+`progress_fields` count `[x]`, not which section the line sits in, so a line
+moved to `## Completed` with its box left unmarked still reads as zero
+progress. Do not batch several tasks' worth of checklist updates into one
+later edit; tick the moment the task is verified, before moving to the next
+task.
 
 ## Verify before every owner review
 

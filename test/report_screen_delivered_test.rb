@@ -116,7 +116,7 @@ class ReportScreenDeliveredTest < Minitest::Test
   def test_delivered_table_has_three_columns_proof_beside_row
     full_fixture
     out = ReportScreen.render_delivered(intent_dir: @dir)
-    assert_includes out, "| Row | What | Proven by |"
+    assert_includes out, "| Row | Detail | Proven by |"
     row_a = out.lines.find { |l| l.start_with?("| A |") }
     refute_nil row_a
     assert_includes row_a, "Ledger captures only actionable work"
@@ -151,8 +151,11 @@ class ReportScreenDeliveredTest < Minitest::Test
     headers = out.scan(/^\*\*(.+?)\*\*/).flatten
     assert_equal %w[Asked Delivered Evidence Needs\ you], headers
 
-    assert_includes out, "| Row | What | Proven by |"
-    assert_includes out, "| Kind | What | Source |"
+    assert_includes out, "| Row | Detail | Proven by |"
+    assert_includes out, "| Kind | Detail | Source |"
+    # Post-exec review finding 3: the S5 header map renamed this header too, but no test ever
+    # pinned it against real rendered output; full_fixture already populates an N1 row.
+    assert_includes out, "| N | Need | Reason |"
 
     assert out.lines.first.start_with?("## \u2714 "), "the title line must carry the ## prefix the approved plain form uses"
     title_idx = 0
@@ -164,5 +167,91 @@ class ReportScreenDeliveredTest < Minitest::Test
     assert asked_idx < delivered_idx
     assert delivered_idx < evidence_idx
     assert evidence_idx < needs_idx
+  end
+
+  # --- intent 322 S6: goldens for the two recorded shapes ----------------------
+
+  # claudechat 1d: a table-less heading names the label first, and the real
+  # 15-row matrix sits under a later heading with the same token.
+  def test_delivered_golden_pre_matrix_section
+    full_fixture
+    action = +"# Action\n\n## S1 design pins\n\nProse only, no table.\n\n" \
+              "### S1 - the real matrix\n\n| # | Op |\n|---|---|\n"
+    15.times { |i| action << "| #{i + 1} | a |\n" }
+    action << "\n### S2 - second matrix\n\n| # | Op |\n|---|---|\n"
+    5.times { |i| action << "| #{i + 1} | a |\n" }
+    write("actions/ACTION_1.md", action)
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+      # Outcome
+
+      ## Delivered
+      | Row | What |
+      |---|---|
+      | S1 | first section |
+      | S2 | second section |
+
+      ## Verification
+      - ok
+    MD
+    out = ReportScreen.render_delivered(intent_dir: @dir)
+    s1_line = out.lines.find { |l| l.start_with?("| S1 |") }
+    s2_line = out.lines.find { |l| l.start_with?("| S2 |") }
+    refute_nil s1_line
+    refute_nil s2_line
+    assert_includes s1_line, "15 tests"
+    assert_includes s2_line, "5 tests"
+  end
+
+  # claudechat 6: one matrix, no labeled heading at all, labels only as the
+  # first cell of each data row.
+  def test_delivered_golden_single_table_row_labels
+    full_fixture
+    action = +"# Action\n\n## Failure-mode matrix\n\n| Label | Operation |\n|---|---|\n"
+    (1..9).each { |i| action << "| C#{i} | a |\n" }
+    write("actions/ACTION_1.md", action)
+    outcome = +"---\ndisposition: delivered\n---\n# Outcome\n\n## Delivered\n| Row | What |\n|---|---|\n"
+    (1..9).each { |i| outcome << "| C#{i} | thing #{i} |\n" }
+    outcome << "\n## Verification\n- ok\n"
+    write("outcome.md", outcome)
+    out = ReportScreen.render_delivered(intent_dir: @dir)
+    # full_fixture carries no delivery lock, so the title line's mode renders
+    # "not recorded" too - scope the refute to the C-row lines, never the
+    # whole block, or it would fail for that unrelated reason.
+    c_lines = out.lines.select { |l| l.start_with?("| C") }
+    assert_equal 9, c_lines.length
+    c_lines.each { |l| assert_includes l, "1 test" }
+    refute(c_lines.any? { |l| l.include?("not recorded") })
+  end
+
+  # --- 331f1a X1: the data-table branch's separator survives overflow --------------
+  #
+  # The live 331f1 defect: the Needs-you table's header cells are short (N=1, Need=4,
+  # Reason=6 characters) while its Why cell overflows past 115 display columns.
+  # `fit_table_block`'s data-table branch used to rebuild the separator from the
+  # shrunk widths and then let the row backstop cut it, landing as a 40-column
+  # fragment. D1/D2 (refined by the plan-review ruling) say the separator passes
+  # through byte-identical whenever its own unfitted form already fits the bound.
+  def test_delivered_separators_survive_overflow
+    write("12--slug.md", "---\nid: \"12\"\nintent: \"x\"\n---\n\n## Intent\nx\n")
+    write("savepoint.md", "2026-08-30T19:00:00Z  What  12--slug.md\n2026-08-30T19:10:00Z  Done  delivered\n")
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+
+      ## Needs you
+      | N | What | Why |
+      | --- | --- | --- |
+      | N1 | Do the thing | #{"W" * 260} |
+    MD
+    out = ReportScreen.render_delivered(intent_dir: @dir)
+    lines = out.lines.map(&:chomp)
+    header_idx = lines.index("| N | Need | Reason |")
+    refute_nil header_idx, "the Needs-you table must render"
+    assert_equal "| --- | --- | --- |", lines[header_idx + 1],
+                 "the Needs-you separator must pass through byte-identical, never cut or widened"
   end
 end

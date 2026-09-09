@@ -287,6 +287,13 @@ class ScreenPaintTest < Minitest::Test
     assert_includes row, A::MIDGREY
   end
 
+  def test_reason_column_paints_as_a_note # V8 (331d1)
+    n = ScreenPaint.paint(wrap_screen("| Rank | Graph ID | Intent | Reason |", "| --- | --- | --- | --- |",
+                                       "| 1 | 42 | Ship the thing | defer |"), color: true)
+    row = n.lines.find { |l| l.include?("defer") }
+    assert_includes row, A::MIDGREY
+  end
+
   def test_roster_lead_column_plain_and_bars_stay_colored # M7, pin
     roster_text = "▶ In delivery · 1 intent · 2026-08-31 12:00 UTC\n\n" \
       "| Intent | Stage | Progress | Changed | Lead |\n| --- | --- | --- | --- | --- |\n" \
@@ -574,5 +581,307 @@ class ScreenPaintTest < Minitest::Test
     painted = ScreenPaint.paint(wrap_screen("**Needs you**", "None"), color: true)
     line = painted.lines.find { |l| l.include?("None") }
     assert_includes line, A::MIDGREY
+  end
+
+  # === intent 331a (D6): the ScreenPaint registry ============================
+  #
+  # register(kind, opener:, paint: nil) plus a kind-agnostic classify/paint
+  # so a new screen kind lives in scripts/lib/screens/<kind>.rb and calls
+  # register on load, never editing this file. paint: is optional and
+  # defaults to the shared pipeline below - no shipped kind has its own
+  # palette (D6 refinement).
+
+  def teardown_registry(kind)
+    ScreenPaint.instance_variable_get(:@registry)&.delete(kind)
+  end
+
+  def test_register_is_idempotent_by_kind # R1
+    ScreenPaint.register(:demo_r1_331a, opener: /\A~~ first ~~/)
+    ScreenPaint.register(:demo_r1_331a, opener: /\A~~ second ~~/)
+    assert_equal 1, ScreenPaint.kinds.count(:demo_r1_331a)
+  ensure
+    teardown_registry(:demo_r1_331a)
+  end
+
+  def test_registered_opener_classifies_as_opener # R2
+    ScreenPaint.register(:demo_r2_331a, opener: /\A~~ demo ~~ /)
+    assert_equal :opener, ScreenPaint.classify("~~ demo ~~ hello\n")
+  ensure
+    teardown_registry(:demo_r2_331a)
+  end
+
+  def test_registry_paint_entry_is_invoked_for_its_kind # R3
+    sentinel = "PAINTED-BY-DEMO-KIND-331A"
+    ScreenPaint.register(:demo_r3_331a, opener: /\A~~ demo3 ~~/, paint: ->(_text, **_opts) { sentinel })
+    out = ScreenPaint.paint("~~ demo3 ~~ hello\nmore body\n", color: true)
+    assert_equal sentinel, out
+  ensure
+    teardown_registry(:demo_r3_331a)
+  end
+
+  def test_five_shipped_kinds_are_registered # R4
+    %i[intent state roster delivered delay].each do |kind|
+      assert_includes ScreenPaint.kinds, kind
+    end
+  end
+
+  def test_new_kind_file_registers_without_painter_edit # R5
+    lib_path = File.expand_path("../scripts/lib/screen_paint.rb", __dir__)
+    before = File.read(lib_path)
+    Dir.mktmpdir("screen-kind-331a") do |dir|
+      path = File.join(dir, "demo_kind_331a.rb")
+      File.write(path, <<~RUBY)
+        require "#{lib_path}"
+        ScreenPaint.register(:demo_file_kind_331a, opener: /\\A~~ demo file ~~/)
+      RUBY
+      require path
+    end
+    assert_includes ScreenPaint.kinds, :demo_file_kind_331a
+    assert_equal before, File.read(lib_path)
+  ensure
+    teardown_registry(:demo_file_kind_331a)
+  end
+
+  def test_region_end_stops_at_prose_for_registered_kind # R6
+    ScreenPaint.register(:demo_r6_331a, opener: /\A~~ demo6 ~~/)
+    text = "~~ demo6 ~~ hello\n| a | b |\nordinary trailing prose, not grammar\n"
+    stop = ScreenPaint.region_end(text.lines, 0)
+    assert_equal 2, stop
+  ensure
+    teardown_registry(:demo_r6_331a)
+  end
+
+  # === intent 331d (D11): the dashboard screen kind ===========================
+  #
+  # R2: the "## ▶ ... · " shape already matches :intent (registered first),
+  # so opener_kind always answers :intent for a dashboard screen and the
+  # shared pipeline paints it through that path - this test asserts the
+  # constant's OWN grammar instead, which is the thing that can actually
+  # fail. R3: no custom paint lambda, so the assembled screen must survive
+  # the shared field/data-table pipeline unedited.
+
+  DASHBOARD_KIND_PATH = File.expand_path("../scripts/lib/screens/dashboard.rb", __dir__)
+
+  def test_dashboard_kind_paints
+    require DASHBOARD_KIND_PATH
+    assert_includes ScreenPaint.kinds, :dashboard
+
+    opener = Screens::Dashboard::OPENER
+    assert opener.match?("## ▶ global · dashboard"), "must match the global scope form"
+    assert opener.match?("## ▶ project:plastic · dashboard"), "must match the project scope form"
+    refute opener.match?("## ▶ 331d · Dashboard screen"), "must reject a plain intent title"
+    # The grammar's own comment calls it a STRICT subset of :intent's opener
+    # (global or project:<slug> only); a widened scope alternation (e.g. the
+    # generic ".+" every intent title also matches) would let these through.
+    refute opener.match?("## ▶ bogus · dashboard"), "must reject a scope that is neither global nor project:<slug>"
+    refute opener.match?("## ▶ project:Demo · dashboard"), "must reject an uppercase slug"
+
+    text = <<~MD
+      ## ▶ project:plastic · dashboard
+
+      | | | |
+      | --- | --- | --- |
+      | **Active**      | 8 | intents |
+      | **In delivery** | 3 | with a fresh lock |
+      | **Delivered**   | 5 | in the last 7 days |
+      | **Roadmap**     | reporting-v2 · Batch 2 | frontier batch |
+      | **Sessions**    | 2 | alive |
+      | **Changed**     | 2026-09-05 10:44 UTC | newest savepoint |
+
+      **Where we are**
+
+      | Intent | Stage | Progress | Lead |
+      | --- | --- | --- | --- |
+      | 331d Dashboard screen | Exec | ████████████░░░░░░░░ 4 / 6 | not recorded |
+
+      **Where we go next**
+
+      | Rank | Intent | What | Why |
+      | --- | --- | --- | --- |
+      | 1 | 42 | Build Plastic MCP server | defer |
+    MD
+
+    painted = ScreenPaint.paint(text, color: true)
+    refute_nil painted
+    plain = painted.gsub(/\e\[[0-9;]*m/, "")
+    ["8", "3", "5", "reporting-v2", "Batch 2", "2", "not recorded", "331d", "Exec", "42", "defer"].each do |value|
+      assert_includes plain, value, "expected #{value.inspect} to survive painting"
+    end
+  end
+  # --- intent 331c: roadmap screen kinds (D7) -----------------------------------
+
+  # R13: without scripts/lib/screens/roadmap.rb, the roadmap screen kinds are not
+  # registered at all - a future custom palette for one of them would have nowhere to live.
+  def test_roadmap_kinds_paint
+    require_relative "../scripts/lib/screens/roadmap"
+    %i[roadmap_plan roadmap_state roadmap_delivered].each do |kind|
+      assert_includes ScreenPaint.kinds, kind, "#{kind} must be registered so its opener is recognized"
+    end
+  end
+
+  # R19: the delivered template's meta line sits directly under the title (no blank line, the
+  # plan review's binding finding 5); a real render of all three roadmap verbs must paint, never
+  # silently fall back to plain because a blank line defeated ScreenPaint.classify's :meta rule.
+  def test_rendered_roadmap_screens_all_paint
+    Dir.mktmpdir("roadmap-paint-331c") do |home|
+      roadmaps = File.join(home, "roadmaps")
+      FileUtils.mkdir_p(roadmaps)
+      File.write(File.join(roadmaps, "demo.md"), <<~MD)
+        # Roadmap: Demo
+        ## Goal
+        test goal.
+        ## Batches
+        ### Batch 1
+        - [x] 1 Alpha — delivered
+        ## Log
+        - 2026-07-10 00:00 UTC created.
+      MD
+      File.write(File.join(home, "INDEX.md"), <<~IDX)
+        # Index
+
+        ## Active
+
+        ## Future
+
+        ## Completed
+        - [1 — Alpha](store/1--alpha/1--alpha.md) — 2026-07-10 delivered.
+
+        ## Abandoned
+      IDX
+      File.write(File.join(roadmaps, "demo.savepoint.md"), <<~LEDGER)
+        2026-07-10T00:00:00Z  created  demo
+        2026-07-10T00:10:00Z  merged  1 merged into alpha at abc1234
+        2026-07-10T00:20:00Z  closed  demo closed
+      LEDGER
+
+      %w[plan state delivered].each do |verb|
+        out = ReportScreen.render_roadmap(path: File.join(roadmaps, "demo.md"), verb: verb, store_root: home)
+        painted = ScreenPaint.paint(out, color: true)
+        refute_nil painted, "#{verb} roadmap screen must paint, never silently fall back to plain"
+      end
+    end
+  end
+
+  # --- intent 331b: the plan kind (scripts/lib/screens/plan.rb) ---------------
+
+  def plan_screen
+    require_relative "../scripts/lib/screens/plan"
+    template = File.read(File.expand_path("../templates/report-plan.md", __dir__))
+    ReportScreen.render_plan(intent_dir: @dir, store_root: @root, template: template)
+  end
+
+  def test_plan_screen_paints_through_the_shared_pipeline # P10
+    painted = ScreenPaint.paint(plan_screen, color: true)
+    refute_nil painted
+    plain = strip_ansi(painted)
+    assert_includes plain, "plan"
+    refute_match(/^\s*\|/, plain)
+  end
+
+  def test_plan_registration_leaves_the_five_shipped_kinds_resolving_as_before # P10a
+    require_relative "../scripts/lib/screens/plan"
+    assert_equal :intent, ScreenPaint.opener_kind("## ▶ 21 · Paint demo")
+    # :intent's opener already matches this shape too (pre-existing, before
+    # :plan ever registers) - the same shadowing F1 documents for the plan
+    # title; :plan must not change that.
+    assert_equal :intent, ScreenPaint.opener_kind("## ✔ 21 · Paint demo · delivered")
+    assert_equal :roster, ScreenPaint.opener_kind("▶ In delivery · 1 open")
+    assert_equal :delay, ScreenPaint.opener_kind("✔ 21 · Paint demo · delivered in 10 min")
+    # F1: :intent's opener already matches a plan title, so :plan (registered
+    # last) is shadowed - the fact D4 rests on, never accidentally reversed by
+    # narrowing :intent's opener from screens/plan.rb.
+    assert_equal :intent, ScreenPaint.opener_kind("## ▶ 21 · Paint demo · plan")
+    assert_includes ScreenPaint.kinds, :plan
+  end
+
+  def test_plan_kind_registers_without_editing_screen_paint # P10b
+    lib_path = File.expand_path("../scripts/lib/screen_paint.rb", __dir__)
+    before = File.read(lib_path)
+    require_relative "../scripts/lib/screens/plan"
+    assert_includes ScreenPaint.kinds, :plan
+    assert_equal before, File.read(lib_path)
+  end
+
+  # --- 331a1 acceptance (L18-L20): a reply carrying MORE THAN ONE screen ------
+  #
+  # The session report is many delivered screens in one message. `classify`
+  # returned :meta only when the line sat one past the FIRST opener, so the
+  # timestamp under the SECOND delivered screen fell through to :unknown,
+  # `region_end` stopped there, and everything after reached the terminal as
+  # plain Markdown. The positional rule is "the line right after a title",
+  # which means the NEAREST preceding title, not the first one in the message.
+
+  def session_capture_lines
+    File.readlines(File.join(__dir__, "fixtures", "live_capture_session_trimmed.txt"))
+  end
+
+
+  # --- 331a1 (L24): every line our OWN session renderer emits must classify --
+  #
+  # Found by the opt-in hook trace on a live run: the region stopped at line
+  # 260 of a 350-line session report and the trace named the line,
+  # "112 completed intents skipped: no Done bookend in savepoint.md.".
+  # `report_screen.rb` emits that note, and "No intents delivered in this
+  # session.", between the delivered screens and the roster. Neither was in
+  # the grammar, so the painter stopped there and the whole roster below it
+  # reached the terminal as plain Markdown.
+
+  def test_session_verb_note_lines_classify
+    [
+      "112 completed intents skipped: no Done bookend in savepoint.md.",
+      "1 completed intent skipped: no Done bookend in savepoint.md.",
+      "No intents delivered in this session.",
+    ].each do |line|
+      refute_equal :unknown, ScreenPaint.classify(line),
+        "the session verb emits #{line.inspect}; the painter must not reject its own output"
+    end
+  end
+
+  def test_ordinary_prose_still_ends_the_region
+    # The note shapes above are pinned tightly on purpose: a sentence that
+    # merely looks like prose must still stop the region, or region_end
+    # would swallow the model's commentary after a screen.
+    [
+      "Here is what I found while reading the file.",
+      "112 things happened today.",
+      "No intents were harmed.",
+    ].each do |line|
+      assert_equal :unknown, ScreenPaint.classify(line), "#{line.inspect} must stay outside the grammar"
+    end
+  end
+
+  def test_meta_line_of_a_later_region_classifies
+    lines = session_capture_lines
+    opener_idx = lines.each_index.select { |i| ScreenPaint.classify(lines[i]) == :opener }[1]
+    refute_nil opener_idx, "the fixture must carry a second opener"
+
+    meta_idx = opener_idx + 1
+    assert_match(/ · /, lines[meta_idx], "the line under the second title is the meta line")
+    assert_equal :meta,
+                 ScreenPaint.classify(lines[meta_idx], idx: meta_idx, opener_idx: opener_idx),
+                 "a later region's meta line must classify against its OWN opener"
+  end
+
+  def test_region_end_spans_every_region_of_the_session_capture
+    lines = session_capture_lines
+    start = lines.index { |l| ScreenPaint.classify(l) == :opener }
+
+    assert_equal lines.length, ScreenPaint.region_end(lines, start),
+      "the region must cover every one of the capture's screens, not stop at the second title"
+  end
+
+  def test_paint_covers_the_whole_session_capture
+    lines = session_capture_lines
+    start = lines.index { |l| ScreenPaint.classify(l) == :opener }
+    stop = ScreenPaint.region_end(lines, start)
+    painted = ScreenPaint.paint(lines[start...stop].join, color: true, markdown_safe: true)
+
+    refute_nil painted, "a multi-screen reply must paint rather than fall back to plain"
+    plain = painted.gsub(/\e\[[0-9;]*m/, "")
+    titles = lines.select { |l| ScreenPaint.classify(l) == :opener }
+    titles.each do |t|
+      assert_includes plain, t.strip.sub(/\A## /, ""),
+        "every screen's title must survive into the painted output"
+    end
   end
 end

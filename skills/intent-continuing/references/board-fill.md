@@ -41,3 +41,12 @@ The project route's default target is the project board. When no project is load
 case where this route is reached without a registered project in scope), fall back to the
 global board payload (`dashboard.rb continue --data`) rather than failing. This mirrors the
 router's D6 default: a bare "continue" always lands somewhere useful.
+
+## The screen surface (intent 331d)
+
+`dashboard.rb project <slug> --screen` (or `continue --screen`) prints the identical state -
+Active, In delivery, Delivered, Roadmap, Sessions, Changed, then the Where-we-are and
+Where-we-go-next tables - as a screen with its own grammar instead of a filled Markdown
+template. It replaces this fill mechanism once intent 331f wires the project route to print
+it first, the way the intent route already prints the intent screen first today; until then,
+this page's fill rules stay the route's own surface.

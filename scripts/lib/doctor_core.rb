@@ -91,8 +91,19 @@ class Doctor
 
     JSON.parse(File.read(path))
   rescue JSON::ParserError
-    content = File.read(path).gsub(%r{//[^\n]*}, "").gsub(/,(\s*[}\]])/, '\1')
-    JSON.parse(content)
+    # The comment/trailing-comma-stripped retry below can itself raise
+    # JSON::ParserError on genuinely malformed content (a truncated file, or
+    # plain garbage). A nested begin/rescue is required here because a
+    # method-level `rescue` clause never catches an exception raised from
+    # INSIDE a sibling rescue clause's own body (only from the main body).
+    # Without this nesting a malformed settings.json crashes doctor instead
+    # of reporting a clean fail (intent 331e, F5).
+    begin
+      content = File.read(path).gsub(%r{//[^\n]*}, "").gsub(/,(\s*[}\]])/, '\1')
+      JSON.parse(content)
+    rescue
+      nil
+    end
   rescue
     nil
   end
@@ -1245,8 +1256,92 @@ class Doctor
     all_checks += check_manifest_sync(agent_key)
     all_checks += check_registered_project_paths
     all_checks += check_global_store_available
+    all_checks += check_display_registration(agent_key)
 
     summarize(all_checks, agent_key, binary: true)
+  end
+
+  # The single `hooks/<name>` launcher basename for the MessageDisplay event,
+  # derived from HookRegistry rather than hand-kept (intent 331e), so a
+  # future rename of the hook stays in one place. Shared by
+  # check_display_registration (below, boot path) and scripts/doctor.rb's
+  # check_display_paints (full run), which resolves the SAME name under the
+  # agent_dir it was given.
+  def display_hook_launcher_name
+    group = HookRegistry.events["MessageDisplay"].first
+    "plastic-#{group['hooks'].first['name']}"
+  end
+
+  DISPLAY_HOOK_FIX_HINT = "Re-run the Plastic installer to repair the hook registration: " \
+                          "npx @zalom/plastic@<channel> install --reinstall --claude " \
+                          "(plastic-install --repair)".freeze
+
+  # display_hook_registered (intent 331e, D1, category "display"): the Claude
+  # settings carry the plastic-message-display command, on-disk, executable.
+  # Boot-path safe: resolves everything from the injected `agents` hash and
+  # `plastic_home`, never Dir.home or a real ~/.claude (E18). This is the same
+  # discipline check_claude_registration already follows.
+  #
+  # D3: a harness Doctor knows carries no display hook (Codex, Hermes) is a
+  # pass, not a fail, worded "plain by contract" like the paint check's own
+  # skip (scripts/doctor.rb's check_display_paints).
+  def check_display_registration(agent_key)
+    config = agents[agent_key]
+    unless agent_key == "claude"
+      return [check(
+        category: "display", name: "display_hook_registered", status: "pass",
+        message: "#{config[:name]} is plain by contract; no MessageDisplay hook to register"
+      )]
+    end
+
+    agent_dir = config[:dir]
+    settings_path = File.join(agent_dir, "settings.json")
+    settings = read_json_safe(settings_path)
+
+    if settings.nil?
+      return [check(
+        category: "display", name: "display_hook_registered", status: "fail",
+        message: "Cannot read #{tilde(settings_path)}: file missing or invalid",
+        fixable: true, fix_hint: DISPLAY_HOOK_FIX_HINT
+      )]
+    end
+
+    hooks = settings["hooks"].is_a?(Hash) ? settings["hooks"] : {}
+    commands = event_commands(hooks["MessageDisplay"])
+    launcher_name = display_hook_launcher_name
+
+    registered = commands.any? { |cmd| HookRegistry.command_basenames(cmd).include?(launcher_name) }
+
+    unless registered
+      return [check(
+        category: "display", name: "display_hook_registered", status: "fail",
+        message: "No MessageDisplay hook registered in #{tilde(settings_path)}",
+        fixable: true, fix_hint: DISPLAY_HOOK_FIX_HINT
+      )]
+    end
+
+    launcher_path = File.join(agent_dir, "hooks", launcher_name)
+
+    unless File.exist?(launcher_path)
+      return [check(
+        category: "display", name: "display_hook_registered", status: "fail",
+        message: "MessageDisplay is registered but #{tilde(launcher_path)} does not exist",
+        fixable: true, fix_hint: DISPLAY_HOOK_FIX_HINT
+      )]
+    end
+
+    unless File.executable?(launcher_path)
+      return [check(
+        category: "display", name: "display_hook_registered", status: "fail",
+        message: "#{tilde(launcher_path)} exists but is not executable",
+        fixable: true, fix_hint: DISPLAY_HOOK_FIX_HINT
+      )]
+    end
+
+    [check(
+      category: "display", name: "display_hook_registered", status: "pass",
+      message: "MessageDisplay hook registered and #{tilde(launcher_path)} is executable"
+    )]
   end
 
   def check_registered_project_paths

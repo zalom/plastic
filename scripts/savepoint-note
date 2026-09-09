@@ -2,15 +2,16 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# savepoint-note - the writer CLI for the two savepoint kinds intent 317 adds:
-# Review (one line per plan-review or post-execution-review verdict) and
-# Commit (one line per commit landing during Exec). D17: there is no automatic
-# seam for either (session-commit writes the day ledger, not the intent
-# ledger; the executor's own commits are plain git), so this is an explicit
-# thin wrapper on Savepoint.append_review_savepoint / append_commit_savepoint.
+# savepoint-note - the writer CLI for three savepoint kinds: Review (one line per
+# plan-review or post-execution-review verdict) and Commit (one line per commit landing
+# during Exec), both from intent 317, D17; and Report (one line per report screen printed,
+# intent 331f). None has an automatic seam (session-commit writes the day ledger, not the
+# intent ledger; the executor's own commits are plain git; a printed screen is a skill's own
+# reply, not a file write), so this is an explicit thin wrapper on
+# Savepoint.append_review_savepoint / append_commit_savepoint / append_report_savepoint.
 #
 # Usage:
-#   savepoint-note <intent_dir> --kind Review|Commit --text "<text>"
+#   savepoint-note <intent_dir> --kind Review|Commit|Report --text "<text>"
 #
 # --text is normalized (D21): runs of two or more spaces collapse to one, so a
 # free-text kind that happens to contain a double space cannot key the dedup
@@ -46,12 +47,12 @@ while (arg = args.shift)
   end
 end
 
-usage_abort("usage: savepoint-note <intent_dir> --kind Review|Commit --text \"<text>\"") unless positional.length == 1
+usage_abort("usage: savepoint-note <intent_dir> --kind Review|Commit|Report --text \"<text>\"") unless positional.length == 1
 
 intent_dir = File.expand_path(positional.first)
 usage_abort("#{intent_dir} is not an intent directory") unless File.exist?(Savepoint.intent_file(intent_dir))
 
-KINDS = %w[Review Commit].freeze
+KINDS = %w[Review Commit Report].freeze
 usage_abort("--kind must be one of #{KINDS.join(', ')}, got #{kind.inspect}") unless KINDS.include?(kind)
 usage_abort("--text is required") if text.nil? || text.empty?
 usage_abort("--text must not contain a newline") if text.include?("\n")
@@ -62,6 +63,7 @@ usage_abort("--text is empty after normalization") if normalized.empty?
 case kind
 when "Review" then Savepoint.append_review_savepoint(intent_dir, normalized)
 when "Commit" then Savepoint.append_commit_savepoint(intent_dir, normalized)
+when "Report" then Savepoint.append_report_savepoint(intent_dir, normalized)
 end
 
 exit 0

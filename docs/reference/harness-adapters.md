@@ -390,6 +390,23 @@ Hermes adapters are carried by intents 102, 102a, and 73d, informed by 296's
 `research--cross-harness-teams.md`; the line of sight after them is OpenClaw. All of them
 target reasoning agents only.
 
+## Surfaces
+
+Every place a Plastic screen can render falls into one of three classes (intent 331e). Doctor's
+`display` category checks the first two on disk where it can and states the third as a known
+gap; the harness-adapters roadmap above is the reason the set can grow.
+
+| Class | Surfaces | How doctor knows |
+| --- | --- | --- |
+| Paints | Claude Code normal view | `display_hook_paints` replays the installed MessageDisplay hook and expects an ANSI screen back |
+| Owner-verified | The agents view (bg-pty-host); confirmed painting by the owner on 2026-09-05 | No on-disk signal exists for this surface; the owner's own confirmation is the record |
+| Plain by contract | Codex, `claude -p`, and the Claude Code verbose transcript view (Ctrl+O) | These redraw every screen as plain tables by design; doctor reports them as a pass, never a failure to chase |
+
+The verbose transcript view has no on-disk setting doctor can read (no `~/.claude/settings.json`
+key distinguishes "verbose mode is on" from "verbose mode is on AND the transcript view is
+currently open"), so `display_not_defeated`'s message always names it explicitly: the absence of
+a warning about it is never proof that the transcript view paints.
+
 ## ScreenPaint: the paint seam (intent 317a)
 
 `scripts/lib/screen_paint.rb` is the harness-agnostic paint seam 317's
@@ -403,3 +420,55 @@ the record-driven renderer behind `intent-screen --ansi`. A screen the painter
 cannot parse falls open: the CLI prints the plain text, the hook returns the
 buffered original when chunks were already blanked and no envelope at all when
 nothing engaged.
+
+Engagement is late-capable (intent 331a): a chunk carrying a screen opener
+engages the message from that chunk on, whatever its index, not only chunk 0.
+A prose-first or fenced reply - the model talks before printing the screen,
+or wraps it in a code fence - used to leave chunk 0's fast decision final and
+the whole message unpainted; now chunk 0 still decides fast (no opener means
+NOSCREEN, as before), but NOSCREEN is no longer final, and a later opener
+replaces it. The engaging chunk's own prefix (the prose before the opener,
+inside that same chunk) is returned as displayContent; everything from the
+opener onward is buffered at that chunk's own index, which the shared decision
+file now records so the final chunk - routinely a separate process - knows
+where to start waiting and splicing, instead of burning its whole budget on
+chunks that were never buffered at all. A lone fence wrapping the opener (one
+line immediately before it, one immediately after the painted region) is
+dropped; a fence in an earlier, already-displayed chunk is never touched, and
+an opener split across two chunks' own deltas, with neither half matching
+alone, still falls back to plain - a known, accepted limitation.
+
+The decision marker (intent 331a1) closes a race late-capable engagement did
+not: Claude Code fires the per-chunk hook processes CONCURRENTLY, and chunk
+0's Ruby process takes on the order of 150 ms to boot before it ever writes
+the SCREEN or NOSCREEN decision, long enough for a dozen or more later
+chunks to be judged with nothing on disk at all and pass through plain. The
+bash launcher now stakes a `PENDING` file with builtins (`mkdir`, `printf`)
+the instant chunk 0 is handed off, before Ruby boots. A later chunk that
+finds the message directory polls for the decision whatever its own shape
+looks like, rather than judging its own delta first - a decision is
+certainly coming once `PENDING` exists. A stale `PENDING`, older than the
+chunk's own poll budget, reads as NOSCREEN (fail open). The poll budget is
+300 ms plus 20 ms per chunk index, capped at 2 s, so a chunk deep into a
+long streamed message is allowed to wait for a decision that is certainly on
+its way.
+
+A reply can carry more than one screen (intent 331a1). The roster is a table
+then a card per intent; the session report is a delivered screen per intent,
+a note, then the roster. Two rules keep such a reply whole. An opener engages
+only a message that is not already a screen: late engagement exists for the
+prose-first reply, where chunk 0 wrote NOSCREEN, and firing it again inside an
+engaged message would return that chunk's own prefix as raw Markdown and move
+the start index to the last opener, losing everything above it. And the
+positional rules in `ScreenPaint.classify` resolve against the NEAREST
+preceding opener, so the meta line under the second screen is a meta line
+rather than prose that ends the region.
+
+`PLASTIC_HOOK_TRACE=<file>` (opt-in, off by default) appends one JSON object
+per streamed chunk: the index, whether it was final, the decision, and how
+many bytes it displayed; the final chunk's row adds the buffered size, the
+region bounds, whether the paint succeeded, and the first line the grammar
+rejected. That last field is the one fact a terminal capture cannot give you,
+and it is how the session report's own skip note was found stopping the region
+at line 260 of 350. `MessageDisplay` stays pure: the CLI reads the variable and
+injects the sink.

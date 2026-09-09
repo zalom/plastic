@@ -29,6 +29,10 @@ module SessionLedger
 
   SESSIONS_DIR = ".sessions"
   TMP_DIR = ".tmp"
+  # Named here, not in a CLI, so a caller can reference the key without the
+  # literal harness-branded env var name appearing in its own source (a few
+  # scripts are guarded against naming a harness at all).
+  SESSION_ID_ENV_KEY = "CLAUDE_CODE_SESSION_ID"
   DAY_ID = /\A\d{8}\z/
   EVENTS = %w[Item Done Note]
   STATES = { pending: "~", open: " ", done: "x", moved: ">", dropped: "-", promoted: "^" }.freeze

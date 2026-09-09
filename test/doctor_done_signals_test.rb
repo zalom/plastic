@@ -95,6 +95,11 @@ class DoctorDoneSignalsTest < Minitest::Test
     File.write(File.join(intent_dir(id), "actions", ".gitkeep"), "")
   end
 
+  def write_gitkeep_nodes(id)
+    FileUtils.mkdir_p(File.join(intent_dir(id), "nodes"))
+    File.write(File.join(intent_dir(id), "nodes", ".gitkeep"), "")
+  end
+
   # A fully backfilled terminal intent: real spec, plan, one action, outcome, Done echo.
   def write_backfilled_terminal(id, section: "Completed")
     write_index(id, section: section)
@@ -583,6 +588,25 @@ class DoctorDoneSignalsTest < Minitest::Test
     c2 = check("backfilled_complete")
     assert_equal 1, c2[:details].size
     assert_includes c2[:details].first, "spec.md, plan.md, actions/"
+  end
+
+  # Post-execution review, non-blocking 8: a nodes-only intent with no real
+  # files anywhere must be told nodes/ is missing, not the literal actions/
+  # the widened has_real_action? predicate no longer names correctly.
+  def test_backfilled_complete_names_nodes_when_the_intent_used_the_nodes_convention
+    write_index("308e", section: "Completed")
+    write_intent_dir("308e")
+    write_real_doc("308e", "spec.md")
+    write_real_doc("308e", "plan.md")
+    write_gitkeep_nodes("308e")
+    write_outcome("308e")
+    write_savepoint_done("308e")
+
+    c = check("backfilled_complete")
+    assert_equal "warn", c[:status]
+    assert_equal 1, c[:details].size
+    assert_includes c[:details].first, "nodes/"
+    refute_includes c[:details].first, "actions/"
   end
 
   def test_backfilled_complete_honors_its_exclusion_row_and_reports_the_count

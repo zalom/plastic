@@ -427,9 +427,24 @@ autonomous execution.
 
 - **Full run (no flag)**: three-state. Walks every check category (global store,
   conventions across all intents, agent registration, core files, project stores,
-  deprecations, runtime). This is what `/plastic-doctor` invokes. It also runs automatically
-  after every `plastic-update` (informational: prints the report but does not block
-  or revert the update).
+  deprecations, runtime, display). This is what `/plastic-doctor` invokes. It also runs
+  automatically after every `plastic-update` (informational: prints the report but does not
+  block or revert the update).
+
+The `display` category (intent 331e) holds four checks. `display_hook_registered` (defined in
+`scripts/lib/doctor_core.rb`, the SessionStart boot path) catches the MessageDisplay hook
+missing from settings.json, registered to a foreign command, or registered but pointing at a
+launcher that is missing or not executable; it is the only display check `--core` runs.
+`display_hook_paints`, `display_not_defeated`, and `display_surfaces_documented` (all three in
+`scripts/doctor.rb`, never the boot path, since they need `Open3`/`Timeout` to spawn a real
+subprocess) run only in the full doctor. `display_hook_paints` replays a shipped fixture
+(`templates/display-fixture.md`) through the INSTALLED launcher and expects a painted (ANSI)
+screen back; when a known defeater is active (`NO_COLOR`, or `display.ansi_screen: false`) it
+reports a pass naming the defeater instead of failing, since a deliberate setting is never a
+broken hook. `display_not_defeated` is the check that actually warns about those defeaters, one
+warning per active setting, and `display_surfaces_documented` confirms
+`docs/reference/harness-adapters.md` still names all three surface classes (see its own
+"Surfaces" section).
 
 The `runtime` category holds one check, `ruby_floor`: it spawns bare `ruby` the way a hook
 launcher does and asks the resolved interpreter for its own version and absolute path. It
@@ -686,7 +701,8 @@ check as a self-check that reports and proceeds; the exit-6 refusal is gone.
 `scripts/verify-intent` folds doctor scoped to the intent, the added-line em-dash diff guard
 (the first standing implementation of that check), a diffstat, and an optional
 caller-supplied suite command into one verdict. It does not invent a project test-command
-config.
+config. The doctor scan includes the `intent_ticks_lag` warning (intent 329): a WARN when the
+savepoint's `Commit` ledger has entries and no checklist item is ticked.
 
 `scripts/lib/spec_header.rb` is the only parser of the `Tier:` and `Settled:` lines at the (removed in 2.0, intent 304)
 top of spec.md. `Savepoint.savepoint_tier` delegates to it. (removed in 2.0, intent 304)
@@ -1426,3 +1442,179 @@ boot and can be measured exactly.
 The bench is a maintainer tool. It lives under `bin/` beside `bin/test`, is deliberately absent
 from `installer_core.rb`'s manifest, and is never installed into `~/.plastic`: it reads this
 repository's own files and a fixture it builds, so it has no meaning on an installed copy.
+
+## the ScreenPaint registry, and late-capable engagement (intent 331a)
+
+Before 331a, `scripts/lib/screen_paint.rb` recognized a screen's opening line against one
+hard-coded `OPENER_RE`, and `MessageDisplay` (the `hooks/message-display` adapter) let only
+chunk 0 decide whether a message was a screen at all - a prose-first or fenced reply left that
+decision final, wrong, and unpainted for the rest of the message.
+
+**The registry.** `ScreenPaint.register(kind, opener:, paint: nil)` adds one entry (a Regexp or
+a callable) to a module-level registry; `ScreenPaint.kinds` lists every registered name, and
+`classify`/`paint` consult the registry instead of a single constant to decide whether a line
+opens a screen. `paint:` is optional and defaults to the shared pipeline everything else in the
+file already implements - no shipped kind carries its own palette; the registry's only job is
+that a new kind's opener is recognized without editing this file, and that a kind CAN supply its
+own paint lambda on the rare day one needs one. The five shipped kinds (`intent`, `state`,
+`roster`, `delivered`, `delay`) register at the bottom of `screen_paint.rb` itself, decomposed
+from the original `OPENER_RE` into its `"## "`-prefixed half and its bare-glyph half, so the
+set of lines recognized as an opener is unchanged. A caller-added kind lives in its own file,
+`scripts/lib/screens/<kind>.rb`, calling `ScreenPaint.register` on load; `scripts/report-screen`
+glob-requires `lib/screens/*.rb` (sorted, tolerating an absent or empty directory), and
+`installer_core.rb`'s glob-derived `screen_files` (mirroring `template_files`/`hook_files`)
+ships that file to an installed `~/.plastic` - "add a file, not a diff" is otherwise false for
+an installed copy, not just an in-repo one. Intent 331b's `plan` kind (`report-screen plan
+<intent_dir>`, the pre-delivery report) is the first caller-added kind built this way, in
+`scripts/lib/screens/plan.rb`.
+
+**Late-capable engagement.** `MessageDisplay#handle_chunk_zero` and `#handle_later_chunk` both
+scan their own chunk's delta, line by line, for the first line that opens a screen
+(`split_at_opener`) - not only at chunk 0, and not only at the very start of a delta. A chunk
+that engages (the FIRST one whose own text carries an opener, whatever its index) writes the
+shared `SCREEN` decision file with ITS OWN INDEX as a decimal integer (replacing any `NOSCREEN`,
+which is no longer a final answer once a later chunk engages), returns the text before the
+opener as `displayContent`, and buffers the opener onward at its own index. The final chunk -
+routinely a separate process - reads that index back off `SCREEN` and waits, and later splices,
+only from there, rather than burning its whole poll budget on chunks before the engaging one
+that were never buffered at all (they already reached the terminal, unmodified, through the
+ordinary passthrough path). A lone fence line immediately wrapping the opener - one right before
+it in the engaging chunk's own prefix, one right after the painted region in `finalize` - is
+dropped; a fence in an earlier, already-displayed chunk is never touched, and an unrelated code
+block elsewhere in the message survives verbatim. `hooks/message-display` mirrors this at the
+shell layer: a chunk is handed off to Ruby, whatever its index - chunk 0 included, not only a
+later one - when its own delta value contains a bare `▶` or `✔` anywhere, raw or `\u`-escaped -
+every shipped opener contains one of those two glyphs, so this one pair of globs covers all four
+opener shapes at once, still anchored to the `"delta":"` key itself so an unrelated payload field
+is never mistaken for the delta's own text. An opener split across two chunks' own deltas, with
+neither half matching alone, still falls back to plain - a known, accepted limitation, since late
+engagement only ever looks at one chunk's delta at a time, never a cross-chunk reassembly, before
+deciding.
+
+**The decision marker (intent 331a1).** Claude Code's concurrent chunk processes race chunk 0's
+own Ruby boot (about 150 ms), and a later chunk judged before SCREEN or NOSCREEN exists used to
+fall back to the cheap shape test and pass through plain whenever it wasn't. `hooks/message-
+display` now stakes a `PENDING` file with builtins the moment chunk 0 is handed off, before Ruby
+starts; a later chunk that finds the message directory polls for the real decision whatever its
+own shape looks like, since a decision is certainly coming once `PENDING` is there. A `PENDING`
+whose mtime is already older than that chunk's own poll budget reads as NOSCREEN (fail open,
+checked once, never inside the poll loop, since mtime never changes). `MessageDisplay#budget_ms`
+scales the poll budget with the chunk's own index - base `wait_ms` plus `index_wait_ms` per
+index, capped at `max_wait_ms` - so a chunk deep into a long streamed message waits long enough
+for a decision that is certainly on its way, and `write_screen`/`write_noscreen` both remove
+`PENDING` the moment they run, so it is never both there and stale at once for long.
+
+## the dashboard screen (intent 331d)
+
+`dashboard.rb continue|project <slug> --screen [--ansi]` prints the dashboard as a screen
+instead of the Markdown board `plastic-dashboard` fills by hand: a title (`## ▶ {scope} ·
+dashboard`, scope `global` or `project:<slug>`), six fields (Active, In delivery, Delivered,
+Roadmap, Sessions, Changed), then a Where-we-are table (the active records, most recently
+touched first, capped at 8) and a Where-we-go-next table (the dispatchable queue in rank
+order, capped at 6). `--data`, `--plain`, and `--json` are unaffected; flag precedence in
+`main` is `--data`, `--plain`, `--json`, `--screen`, then the default text renderers.
+
+**Same records, a new renderer.** The classification pipeline (`load_all`, `classify`,
+`rank_key`, `QUADRANTS`, `disposition_of`) is untouched; `screen_fields` (in `dashboard.rb`,
+beside `render_json`) reads the same classified records `--json` already reports for the
+identical scope, so Where-we-go-next's rank order is always `render_json`'s
+`dispatchable_queue` order for that scope. `scripts/lib/dashboard_screen.rb` is a small,
+data-free module: `DashboardScreen.render(fields)` fills `templates/dashboard-screen.md` from
+already-computed values, exactly like `IntentScreen.render` and `ReportScreen.render_state`
+fill their own templates. A missing source (no roadmap, no lock, no savepoint) prints "not
+recorded" or "none", never a guess; Lead reads through `ReportScreen.lead_cell` (intent 331f,
+D6) - the one freshness rule every Lead cell on every screen shares, so a stale lock never
+shows a named lead while In delivery counts it as zero, and the reader is told the lock is
+stale ("stale · N min") rather than merely absent.
+
+**Column vocabulary and the width bound (intent 331f, D5/D7).** No rendered header across the
+family reads "What" any more: the id column is "Graph ID", the title column is "Intent", every
+Steps table reads `Step | Status | Detail`, the plan screen's own reads
+`Step | Action | Detail`, Risks read `N | Risk`, and the `delivered` screen's own three tables
+read `Row | Detail | Proven by`, `Kind | Detail | Source`, and `N | Need | Reason`.
+`ScreenPaint::NOTE_HEADERS` gained `Reason` and kept `Why`, so a screen captured before the
+rename still paints. `ReportScreen.fit_screen(text, limit: 115)` is the one shared pass every
+public render entry point (and `dashboard.rb`'s screen renderer) calls last: a fitting screen
+returns byte-identical, an over-limit table shrinks its widest shrinkable column first (floor
+8, a progress-bar column never shrinks, ties break leftmost), and a row that is still over the
+limit after every column hits its floor truncates on a word boundary as a last-resort backstop.
+
+**Sessions and Roadmap resolve per tier.** Sessions are always read from the global store's
+`.tmp/` heartbeats (`DaySummary.active_sessions`, `session: nil` so the calling session's own
+heartbeat counts), never per-project. Roadmap resolves the tier root - `PLASTIC_HOME` for
+`global`, `PLASTIC_HOME/projects/<slug>` for a project - and asks `RoadmapQueue#which` for its
+frontier; a missing `roadmaps/` directory or a `none`/`tie`/`exhausted` state renders "none"
+rather than crashing.
+
+**The `:dashboard` kind.** `scripts/lib/screens/dashboard.rb` registers `:dashboard` with
+`ScreenPaint.register`, no custom `paint:` lambda: every line of the screen classifies under
+the shared field-table/data-table grammar. Its opener is a strict subset of the already-shipped
+`:intent` opener (registered first), so a live paint call resolves through `:intent`'s path
+regardless; the registration exists so `ScreenPaint.kinds` is complete and the opener's own
+grammar (which scope forms it accepts, and that it rejects a plain intent title) is directly
+testable.
+
+**Column vocabulary (intent 331d1, an owner ruling).** Where-we-are is `Graph ID | Intent |
+Stage | Progress | Lead`; Where-we-go-next is `Rank | Graph ID | Intent | Reason`. The id
+stands in its own `Graph ID` cell rather than glued to the front of the title. The `Intent`
+cell carries the intent line up to but not including its first colon, which is where a
+Plastic intent line stops naming itself and starts explaining, then word-boundary truncated
+with an ellipsis. `What` names no column anywhere on a screen, because What is a lifecycle
+stage; `Why` is `Reason` for the same reason. `ScreenPaint::NOTE_HEADERS` lists `Reason`
+beside `Source` and `Why`, so the renamed column keeps its greyed note styling instead of
+losing it to the rename.
+
+**The 115-column bound.** No rendered row exceeds 115 visible columns. The bound is measured
+on the whole pipe-delimited row, never on one cell: `screen_fit_intent` renders every other
+cell first, subtracts their width and the table scaffolding, and gives the Intent cell what
+is left. A cell short enough on its own still drifts the row past the bound once the progress
+bar, the lead and the separators are added, which is exactly what measuring the row prevents.
+
+## roadmap screens: the roadmap verb, `RoadmapQueue#roadmap`, and the Log fallback (intent 331c)
+
+A roadmap gets the same three reports an intent has (`report-screen roadmap <roadmap.md>
+plan|state|delivered [--ansi] [--store-root <dir>]`), read entirely from files already on disk:
+the roadmap `.md` itself, `INDEX.md` (which always wins on status), and the roadmap's own
+savepoint ledger.
+
+**One reader, never two parsers.** `RoadmapQueue#roadmap(path)` is the public counterpart to the
+private `queue`/`which` the auto loop already calls: for ONE roadmap file it returns the slug,
+path, grouping label (`RoadmapSavepoint.grouping_heading`, "Batches" or "Waves"), the batches with
+each entry's id, title text, and INDEX-reconciled status, and the frontier
+(`RoadmapQueue`'s own private `frontier_for`, unchanged - a screen never re-derives which batch is
+live). `ENTRY`'s regex gained a capture group for the entry's own title text between the id and
+the status separator; `parse_waves`' group indices moved with it, and `test/roadmap_queue_test.rb`
+stayed green unchanged, since nothing public in `queue`/`which` reads that new group.
+
+**The events a screen reads.** `RoadmapSavepoint.ledger_entries(roadmap_path)` parses a roadmap's
+paired `.savepoint.md` into `[Time, event, detail]` triples in file order - the format
+`RoadmapQueue`'s own liveness ranking already parses inline, now a public reader so a screen never
+re-derives the "<iso>  <event>  <detail>" line shape a second way. When a roadmap carries no ledger
+file at all (an archived roadmap moved before intent 134 shipped a ledger for it, `manual-first.md`
+among them), `ReportScreen.roadmap_events` falls back to the `## Log` lines, classified through
+`RoadmapSavepoint.classify_event` (made public; same `KEYWORD_TABLE`, no second vocabulary) and
+timestamped from each Log line's own date and time - so a fully-shipped roadmap with no ledger file
+reads its real closed time, not `in progress`.
+
+**The delivered meta line's placement is load-bearing.** `ScreenPaint.classify` recognizes `:meta`
+only on the line immediately after the opener (`idx == opener_idx + 1`); the
+`templates/report-roadmap-delivered.md` template's meta placeholder sits on the line directly under
+the title with no blank line between, or `ScreenPaint.paint` returns `nil` and the whole screen
+falls back to plain.
+
+**The Merged cell** matches a line only when the entry's id is its SUBJECT - the first
+whitespace-delimited token of the ledger detail, never a whole word anywhere in it, because a
+real ledger line can name one entry's id as its subject and a second entry's id in passing (a
+post-execution-review fold: the second entry's row was picking up the first entry's sha). Among
+subject-matching lines, one is read when the ledger's own event is `merged` or the detail matches
+`RoadmapSavepoint::KEYWORD_TABLE`'s own merged pattern - a real per-entry merge is sometimes filed
+under a different event word (`dispatched`, in the real `codex-fixes` ledger, because the rest of
+the line carried other dispatch news) - and refused when the event is `handoff` or the detail
+matches the table's handoff pattern. The sha is still the first hex token of 7-40 characters
+carrying at least one digit, the same shape a real `git` short or full hash takes, distinguishing
+it from an all-letter word that happens to be valid hex.
+
+**Paint kinds.** `scripts/lib/screens/roadmap.rb` registers `:roadmap_plan`, `:roadmap_state`, and
+`:roadmap_delivered` (331a's registry, a file rather than a diff to `screen_paint.rb`), openers
+that are strict subsets of the shipped `intent`/`delivered` openers. No `paint:` lambda: the
+palette stays `IntentScreenAnsi`'s shared pipeline, exactly like every shipped kind before it.

@@ -7,7 +7,8 @@ user-invocable: false
 # Dashboard — Plastic Work Cockpit
 
 A deterministic overview of the intent store(s). It answers three questions at a glance:
-**where we are** (recently worked), **where we go next** (the most-valuable next work), and
+**where we are** (recently worked; `Graph ID | Intent | Stage | Progress | Lead`),
+**where we go next** (the most-valuable next work; `Rank | Graph ID | Intent | Reason`), and
 **how to conduct it** (a disposition per intent). The human-facing surface is **Markdown**,
 because the user's UI renders Markdown natively but collapses raw tool-call stdout.
 
@@ -21,6 +22,16 @@ state → byte-identical payload, regardless of model. Do NOT hand-summarize int
 - User asks "where are we", "what's next", "what should I work on", "show me the intents"
 - `plastic-intent-continuing` lands on the board on a bare resume
 - `plastic-auto` reads `--json` to choose the next dispatchable intent
+
+## The screen surface (intent 331d/331f)
+
+`dashboard.rb project <slug> --screen` (or `continue --screen` for the global board) is the
+default surface on every invocation: print it as the first characters of the reply, nothing
+before it, no fence, or the hook cannot paint it. It carries a title, six fields (Active, In
+delivery, Delivered, Roadmap, Sessions, Changed), then the Where-we-are and Where-we-go-next
+tables, its own grammar and painted form standing in for the filled Markdown template below.
+`plastic-intent-continuing`'s project route prints it this way. The Markdown board (Step 1-4
+below) stays available as the deeper prose surface a reader can ask for.
 
 ## Procedure (the Markdown board — default human surface)
 
@@ -70,7 +81,7 @@ Fill mechanically, no rewriting, no re-sorting:
   re-truncate, or reword them. Never emit `<br>`.
   - `next_work` → `| {id} | {what} | {value} | {disposition} | {flags_label} |`
   - `active` → `| {id} | {what} | {stage} | {worker} | {activity} |`
-  Empty list → one full-width row with `_(none)_` in the Id column and every other cell blank,
+  Empty list → one full-width row with `_(none)_` in the Graph ID column and every other cell blank,
   matching that table's column count (e.g. `| _(none)_ | | | | |` for the 5-column next_work
   table, `| _(none)_ | | | |` for the 5-column active table). Neither list carries an overflow
   "+N more" row anymore (D5, intent 202): the true pool size rides on the payload as

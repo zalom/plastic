@@ -159,4 +159,31 @@ class SavepointReviewCommitTest < Minitest::Test
     assert_equal 2, status.exitstatus
     FileUtils.rm_rf(other)
   end
+
+  # --- intent 331f: the Report savepoint kind (S4) ----------------------------
+
+  # F15: savepoint-note accepts --kind Report and appends a Report line through
+  # the same append_savepoint_line primitive Review/Commit already use.
+  def test_savepoint_note_accepts_report_kind
+    out, err, status = Open3.capture3("ruby", CLI, @dir, "--kind", "Report", "--text", "state")
+    assert_equal 0, status.exitstatus, err
+    line = ledger_lines.last
+    m = line.match(IntentScreen::SAVEPOINT_RE)
+    refute_nil m, "line does not match SAVEPOINT_RE: #{line.inspect}"
+    assert_equal "Report", m[2]
+    assert_equal "state", m[3]
+  end
+
+  # F16: a Report line is never mistaken for a lifecycle line (What/Why/How/
+  # Exec/Done), so it can never hijack stage derivation or the boarding matrix.
+  def test_report_line_is_not_a_lifecycle_line
+    Savepoint.append_report_savepoint(@dir, "delivered", now: Time.utc(2026, 9, 5, 12, 0, 0))
+    line = ledger_lines.last
+    refute IntentScreen.lifecycle_line?(line), "a Report line must never read as a lifecycle line: #{line.inspect}"
+
+    # savepoint_milestone maps FILENAMES only, so it never answers a Report
+    # pair either - the file-landing writer and the Report writer are on
+    # two separate paths by construction.
+    assert_nil Savepoint.savepoint_milestone(@dir, "Report")
+  end
 end

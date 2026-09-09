@@ -11,7 +11,7 @@
 
 ## Most-valuable next work
 
-| Id | What | Value | Disposition | Flags |
+| Graph ID | Intent | Value | Disposition | Flags |
 | --- | --- | --- | --- | --- |
 {{next_work.rows}}
 
