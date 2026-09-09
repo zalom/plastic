@@ -5,6 +5,17 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 335a: node ids never recycle (owner ruling, 2026-09-09). `NodeFile.mint_id` mints one past the
+  highest id ever seen for a kind rather than the lowest free one, so deleting `n2` no longer
+  frees `n2`. Intent 335 keyed the work ledger on node id and deletion is not a transition, so a
+  reissued id silently inherited the dead node's whole history: its `done` line, its evidence,
+  its holder, and the successors that line released. A new `NodeIds.taken(intent_dir)` gathers
+  the ids an intent has ever seen from all three places one can appear - the `nodes/` files (both
+  the filename up to `--` and the envelope's `node:`), the nodes `graph.md` declares or targets,
+  and the ledger subjects in `savepoint.md`. Ledger subjects are read through
+  `NodeLedger.entries`, never by scanning for tokens that look like ids: a node id can sit inside
+  an ordinary milestone's free text, and 23 such tokens exist across the live store today.
+
 - 334 (G1, roadmap graph-ready-plastic, batch 1) - the node file and `graph.md` shapes, in
   code: `GraphEdges` parses a `## Graph` section's `needs` edges (loose about id grammar so a
   roadmap and a node graph share one parser) and reports a cycle as the whole path; `NodeFile`
