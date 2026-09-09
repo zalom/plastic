@@ -19,6 +19,7 @@
 
 require_relative "lib/outcome_report"
 require_relative "lib/intent_screen"
+require_relative "lib/outcome_guard"
 
 def usage_abort(message)
   warn "outcome-report: #{message}"
@@ -44,6 +45,12 @@ end
 
 target = positional.first
 usage_abort("usage: outcome-report <intent_dir> [--write] [--disposition delivered|abandoned]") unless target
+# Row v1f.9 (N3): refuse an unknown --disposition here rather than write a
+# record OutcomeGuard then refuses. OutcomeGuard::DISPOSITIONS is already
+# loaded in-process, so this is one comparison, not a duplicated list.
+unless OutcomeGuard::DISPOSITIONS.include?(disposition)
+  usage_abort("--disposition must be one of #{OutcomeGuard::DISPOSITIONS.join('|')}, got #{disposition.inspect}")
+end
 
 intent_dir = File.expand_path(target)
 usage_abort("#{intent_dir} is not an intent directory") unless IntentScreen.intent_dir?(intent_dir)

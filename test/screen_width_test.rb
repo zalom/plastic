@@ -317,15 +317,15 @@ class ScreenWidthTest < Minitest::Test
     assert_equal 28, lines.length,
                  "the derived site table's leg 2 count has drifted from the repo - re-derive it"
     # Re-derived 2026-09-09 when 339 (G6) inserted render_archive above #roster
-    # and render_nodes_block after #render_delivered: the first insertion
-    # shifts every site below it by +26, the second (past render_delivered)
-    # by a further +36, for a cumulative +62 on the last three
-    # (1030->1056, 1109->1135, 1517->1579, 1523->1585, 1535->1597). Same five
-    # sites, matched by content, all five literal appends this intent adds
-    # (render_archive's row, render_nodes_block's node/findings rows) are
-    # leg 1 (literal `<< "`), not leg 2, so this list's five members are
-    # unchanged in kind, only in position.
-    [1056, 1135, 1579, 1585, 1597].each do |line|
+    # and render_nodes_block after #render_delivered, then again the same day
+    # when the v1f fold (row v1f.10, N1) deleted the duplicated
+    # `archive_dirnames` method above `render_archive` - two fewer lines,
+    # shifting every site below that point by -2 (1056->1054, 1135->1133,
+    # 1579->1577, 1585->1583, 1597->1595). Same five sites, matched by
+    # content; leg 1's literal appends (render_archive's row,
+    # render_nodes_block's node/findings rows) are unaffected, so this list's
+    # five members are unchanged in kind, only in position.
+    [1054, 1133, 1577, 1583, 1595].each do |line|
       assert_includes lines, line, "leg 2 must still carry the screen-emitting non-literal append at line #{line}"
     end
   end

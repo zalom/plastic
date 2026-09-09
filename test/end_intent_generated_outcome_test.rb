@@ -206,6 +206,45 @@ class EndIntentGeneratedOutcomeTest < Minitest::Test
     assert_includes text, "backfilled from the record"
   end
 
+  # --- v1f.2 ordering (lead review) ---------------------------------------------
+
+  def test_real_outcome_survives_a_malformed_graph_with_no_parse_warning
+    dir = File.join(@store, "77--gate")
+    base_intent_files(dir)
+    File.write(File.join(dir, "graph.md"), <<~MD)
+      # Graph: x
+
+      ## Goal
+      Gate demo goal.
+
+      ## Decisions
+      - D1 demo
+
+      ## Graph
+      - n1 needs
+      - needs n1
+      !!! garbage
+
+      ## Status
+      | Node | State | Detail |
+      | --- | --- | --- |
+    MD
+    hand_written = "---\ndisposition: delivered\n---\n# Outcome: Gate demo\n\n## Summary\nHand-written summary, untouched.\n\n## Delivered\n| Row | What |\n| --- | --- |\n| n1 | The owner's own row, not the generator's |\n\n## Needs you\nNone\n\n## Follow-ups\nNone\n"
+    File.write(File.join(dir, "outcome.md"), hand_written)
+    write_ledger(dir, ["2026-09-09T10:00:00Z  n1  done gates=tests commit=abc1234\n"])
+
+    out, status = run_end_intent
+    assert_equal 0, status
+    # The model check runs AFTER the stage_file_present? guard: a real
+    # hand-written outcome.md returns at that guard regardless of graph.md's
+    # own health, so a close that was never going to generate anything must
+    # never print a parse warning about it.
+    refute_match(/graph\.md failed to parse/, out)
+    text = File.read(File.join(dir, "outcome.md"))
+    assert_includes text, "Hand-written summary, untouched."
+    assert_includes text, "| n1 | The owner's own row, not the generator's |"
+  end
+
   # --- 7.3 -------------------------------------------------------------------
 
   def test_intent_without_graph_uses_backfill

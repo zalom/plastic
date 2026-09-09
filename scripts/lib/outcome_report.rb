@@ -34,7 +34,11 @@ module OutcomeReport
   # (NodeLedger.entries' own shape), carried through so #graph_diff and
   # #stale_nodes can walk file order without a second read. Never raises
   # across its boundary (matrix 1.1, 1.6).
-  def model(intent_dir)
+  # `node_file_parser:` (row v1f.4, N4) is the injectable seam: tests drive a
+  # raising stub through it to prove this method's OWN rescue, rather than
+  # pinning one already owned by NodeFile.parse or NodeLedger.entries a layer
+  # down.
+  def model(intent_dir, node_file_parser: NodeFile.method(:parse))
     graph_path = File.join(intent_dir, "graph.md")
     unless File.exist?(graph_path)
       return { ok: false, errors: ["no graph.md at #{graph_path}"], goal: nil, edges: {}, nodes: {}, entries: [] }
@@ -47,11 +51,11 @@ module OutcomeReport
     ledger_path = File.join(intent_dir, "savepoint.md")
     entries = NodeLedger.entries(ledger_path)
     ledger_ids = entries.map { |e| e[:subject] }.uniq
-    file_ids = node_file_ids(intent_dir)
+    node_files = node_files_by_id(intent_dir, node_file_parser: node_file_parser)
 
-    all_ids = (declared_ids + ledger_ids + file_ids).uniq
+    all_ids = (declared_ids + ledger_ids + node_files.keys).uniq
     nodes = all_ids.each_with_object({}) do |id, memo|
-      memo[id] = node_entry(intent_dir, id, declared_ids, entries)
+      memo[id] = node_entry(id, declared_ids, entries, node_files[id])
     end
 
     { ok: parsed[:ok], errors: parsed[:errors] || [], goal: parsed[:goal], edges: edges, nodes: nodes,
@@ -60,21 +64,20 @@ module OutcomeReport
     { ok: false, errors: ["outcome report model crashed: #{e.message}"], goal: nil, edges: {}, nodes: {}, entries: [] }
   end
 
-  def node_file_ids(intent_dir)
-    Dir.glob(File.join(intent_dir, "nodes", "*.md")).sort.filter_map do |path|
-      NodeFile.parse(path)[:node]
+  # Row v1f.12 (N11): every nodes/*.md file is parsed exactly once here,
+  # id -> {path:, parsed:}, so `model` is linear in file count rather than
+  # quadratic (the old `node_file_path_for` re-globbed and re-parsed every
+  # file once per node id).
+  def node_files_by_id(intent_dir, node_file_parser: NodeFile.method(:parse))
+    Dir.glob(File.join(intent_dir, "nodes", "*.md")).sort.each_with_object({}) do |path, memo|
+      parsed = node_file_parser.call(path)
+      memo[parsed[:node]] = { path: path, parsed: parsed } if parsed[:node]
     end
   end
 
-  def node_file_path_for(intent_dir, id)
-    Dir.glob(File.join(intent_dir, "nodes", "*.md")).sort.find do |path|
-      NodeFile.parse(path)[:node] == id
-    end
-  end
-
-  def node_entry(intent_dir, id, declared_ids, entries)
-    file_path = node_file_path_for(intent_dir, id)
-    parsed = file_path ? NodeFile.parse(file_path) : nil
+  def node_entry(id, declared_ids, entries, file_entry)
+    file_path = file_entry && file_entry[:path]
+    parsed = file_entry && file_entry[:parsed]
     kind = (parsed && parsed[:kind]) || KIND_BY_PREFIX[id.to_s[0]]
     title = (parsed && title_from_body(parsed[:body])) || id.to_s
 
@@ -165,11 +168,19 @@ module OutcomeReport
     "#{done.length} of #{work.length} work node#{work.length == 1 ? '' : 's'} delivered."
   end
 
+  # Row v1f.11 (N10): a whole sentence, not the first LINE of the goal - a
+  # goal that wraps across source lines (this intent's own graph.md does)
+  # must not be cut mid-sentence at the wrap. Wrapped lines within the first
+  # paragraph are joined with spaces, then cut at the first sentence-ending
+  # punctuation; a paragraph with none is used whole.
   def title_text(model)
     goal = model[:goal].to_s.strip
     return "generated report" if goal.empty?
 
-    goal.each_line.first.to_s.strip
+    paragraph = goal.split(/\n[ \t]*\n/, 2).first.to_s
+    joined = paragraph.each_line.map(&:strip).join(" ")
+    sentence = joined[/\A.*?[.!?](?=\s|\z)/]
+    (sentence || joined).strip
   end
 
   def render_delivered_section(model)
@@ -218,6 +229,16 @@ module OutcomeReport
     lines.join("\n")
   end
 
+  # Row v1f.3 (B3): serialized with to_yaml, not `"#{k}: #{v}"`
+  # interpolation - a preserved value carrying a colon, a newline, or a
+  # leading/trailing space corrupted the whole frontmatter block under the
+  # old naive join, taking `disposition` down with it. Key order is
+  # Hash#to_yaml's own (insertion order), so the caller's last-writer-wins
+  # reassignment of `disposition` still lands at its original position.
+  def frontmatter_lines(fm)
+    fm.to_yaml.sub(/\A---\n/, "").rstrip.split("\n")
+  end
+
   # {ok:, errors:, goal:, edges:, nodes:} in, the whole `outcome.md` text out.
   # Preserved verbatim when authored (spec D2): every frontmatter key except
   # `disposition`, `## Summary`, `## Needs you`, `## Follow-ups`. Regenerated
@@ -226,7 +247,7 @@ module OutcomeReport
   def render(model, disposition:, existing: nil, findings: [])
     fm = existing_frontmatter(existing)
     fm["disposition"] = disposition
-    fm_lines = ["---"] + fm.map { |k, v| "#{k}: #{v}" } + ["---"]
+    fm_lines = ["---"] + frontmatter_lines(fm) + ["---"]
 
     summary = preserved_block(existing, "## Summary", placeholder: PLACEHOLDER_SUMMARY) || default_summary(model)
     needs_you = preserved_block(existing, "## Needs you") || render_needs_you_default(model)

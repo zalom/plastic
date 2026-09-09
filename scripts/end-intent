@@ -177,9 +177,6 @@ def resolve_plastic_home_and_scope(store)
   end
 end
 
-# Backfill (intent 308): write the judgment documents that are missing or still the
-# placeholder from the record (BackfillIntent). Fail-open: a crash here warns and the
-# close proceeds, the same contract as the structure check below.
 # --- outcome generation, before the backfill (intent 339, G6, spec D10) -----
 #
 # Generates outcome.md from graph.md, nodes/, and the ledger, BEFORE the
@@ -187,20 +184,34 @@ end
 # scaffold placeholder (`Savepoint.stage_file_present?` false) - a real,
 # hand-written outcome.md is never touched (row 7.2). Only when a graph.md
 # exists at all (row 7.3): every intent without one closes exactly as it did
-# before this intent. The generated text is checked against BOTH close
-# gates - `OutcomeGuard` and the hollow-report gate below - before being
-# adopted (row 7.4); when either would refuse it, the write is reverted and
-# the close falls through to intent 308's unchanged backfill (row 7.5), so no
-# close gains an exit 7 it did not have before this intent. Fails open on any
-# exception (row 7.6), the same report-and-proceed shape every other close
-# step in this file uses. `generator:` is the injectable seam (mirrors
-# run_structure_check's `gate:`).
+# before this intent. The model is parsed AFTER the `stage_file_present?`
+# guard, not before: a real hand-written outcome.md returns at that guard
+# regardless of graph.md's own health, so a close that was never going to
+# generate anything must never print a parse warning about it. Refuses a
+# report model that reports itself broken (row v1f.2, B2): a malformed
+# `## Graph` fails `model[:ok]` and the close falls straight through to the
+# backfill, rather than adopting parse damage as delivery fact - agreeing
+# with the shipped `outcome-report` CLI, which exits 3 on the same
+# directory. The generated text is then checked against
+# BOTH close gates - `OutcomeGuard` and the hollow-report gate below - before
+# being adopted (row 7.4); when either would refuse it, the write is
+# reverted and the close falls through to intent 308's unchanged backfill
+# (row 7.5), so no close gains an exit 7 it did not have before this intent.
+# Fails open on any exception (row 7.6), the same report-and-proceed shape
+# every other close step in this file uses. `generator:` is the injectable
+# seam (mirrors run_structure_check's `gate:`).
 def run_generate_outcome(intent_dir, disposition:, generator: OutcomeReport.method(:write))
   graph_path = File.join(intent_dir, "graph.md")
   return unless File.exist?(graph_path)
 
   outcome_path = File.join(intent_dir, "outcome.md")
   return if Savepoint.stage_file_present?(outcome_path)
+
+  report_model = OutcomeReport.model(intent_dir)
+  unless report_model[:ok]
+    warn "end-intent: graph.md failed to parse (#{report_model[:errors].join('; ')}); falling back to the backfill"
+    return
+  end
 
   original_exists = File.exist?(outcome_path)
   original_content = original_exists ? File.read(outcome_path) : nil
@@ -224,6 +235,9 @@ rescue StandardError => e
   warn "end-intent: outcome generation crashed (#{e.message}); proceeding without it"
 end
 
+# Backfill (intent 308): write the judgment documents that are missing or still the
+# placeholder from the record (BackfillIntent). Fail-open: a crash here warns and the
+# close proceeds, the same contract as the structure check below.
 def run_backfill(intent_dir, store:, id:, disposition:, summary:)
   result = BackfillIntent.run(intent_dir: intent_dir, store: store, id: id,
                               disposition: disposition, summary: summary)
