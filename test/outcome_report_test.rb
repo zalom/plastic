@@ -489,4 +489,81 @@ class OutcomeReportTest < Minitest::Test
     result = OutcomeReport.stale_nodes(entries: [], edges: {}, stale_fn: stub)
     assert_equal ["n7"], result
   end
+
+  # --- n4: findings, read and capped ------------------------------------------
+
+  def write_intent_file(insights_body)
+    write("12--slug.md", <<~MD)
+      ---
+      id: "12"
+      intent: "x"
+      ---
+
+      ## Intent
+      x
+
+      ## Insights
+      #{insights_body}
+    MD
+  end
+
+  # --- 4.1 -----------------------------------------------------------------
+
+  def test_findings_read_from_insights_subsection
+    write_intent_file(<<~MD)
+      2026-09-09T10:00:00Z · Exec · someone (autonomous) — some insight
+
+      ### Findings
+      - Finding one
+      - Finding two
+    MD
+    assert_equal ["Finding one", "Finding two"], OutcomeReport.findings(@dir)
+  end
+
+  # --- 4.2 -----------------------------------------------------------------
+
+  def test_finding_over_cap_is_truncated_with_ellipsis
+    long_text = "a" * 250
+    write_intent_file(<<~MD)
+      ### Findings
+      - #{long_text}
+    MD
+    result = OutcomeReport.findings(@dir).first
+    assert_operator result.length, :<=, OutcomeReport::FINDING_CAP
+    assert result.end_with?("..."), "expected #{result.inspect} to end with an ellipsis"
+  end
+
+  # --- 4.3 -----------------------------------------------------------------
+
+  def test_no_findings_omits_the_section
+    write_intent_file(<<~MD)
+      2026-09-09T10:00:00Z · Exec · someone (autonomous) — some insight
+    MD
+    assert_equal [], OutcomeReport.findings(@dir)
+    text = OutcomeReport.render(build_model, disposition: "delivered", findings: OutcomeReport.findings(@dir))
+    refute_includes text, "## Findings"
+  end
+
+  # --- 4.4 -----------------------------------------------------------------
+
+  def test_pipe_in_finding_reads_back_whole
+    write_intent_file(<<~MD)
+      ### Findings
+      - A finding | with a pipe in it
+    MD
+    findings = OutcomeReport.findings(@dir)
+    text = OutcomeReport.render(build_model, disposition: "delivered", findings: findings)
+    write("outcome.md", text)
+    rows = ReportScreen.table_rows(ReportScreen.section_of(File.read(File.join(@dir, "outcome.md")), "## Findings"))
+    assert_equal "A finding / with a pipe in it", rows.first[0]
+  end
+
+  # --- 4.5 -----------------------------------------------------------------
+
+  def test_insights_without_findings_subsection_returns_empty
+    write_intent_file(<<~MD)
+      2026-09-09T10:00:00Z · Exec · someone (autonomous) — an insight with no findings subsection
+    MD
+    assert_equal [], OutcomeReport.findings(@dir)
+  end
 end
