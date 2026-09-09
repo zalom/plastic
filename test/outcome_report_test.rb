@@ -215,10 +215,10 @@ class OutcomeReportTest < Minitest::Test
     { ok: true, errors: [], goal: goal, edges: edges, nodes: nodes }
   end
 
-  def a_node(kind: "work", state: "done", title: "Title", fields: {}, retries: 0,
+  def a_node(kind: "work", state: "done", title: "Title", fields: {}, failure_fields: {}, retries: 0,
              declared: true, file_present: true)
     { declared: declared, file_present: file_present, kind: kind, title: title,
-      state: state, fields: fields, retries: retries }
+      state: state, fields: fields, failure_fields: failure_fields, retries: retries }
   end
 
   # --- 2.1 -------------------------------------------------------------------
@@ -279,6 +279,27 @@ class OutcomeReportTest < Minitest::Test
     verification = text.split("## Verification", 2)[1].to_s
     assert_includes verification, "abc1234"
     assert_includes verification, "tests"
+  end
+
+  # --- v1f.14 (dogfood) --------------------------------------------------------
+
+  def test_failed_verification_line_cites_the_ledger_reason
+    # `node_entry` fills `fields` from the last DONE line only (row 1.4); a
+    # failed_verification node has no done line, so `fields` stays {} and
+    # `verification_line_for`'s old `fields['reason']` lookup could never
+    # succeed. The reason lives in a SEPARATE ledger line and must be read
+    # from there (this intent's own dogfood: v1's own record hit this).
+    write_graph("- v1 needs nothing\n")
+    write_node("v1", kind: "verify", title: "Review")
+    write_ledger([
+      "2026-09-09T10:00:00Z  v1  running holder=h expires=2026-09-09T11:00:00Z packet=A model=sonnet\n",
+      "2026-09-09T10:05:00Z  v1  failed_verification gates=tests reason=\"3 blocking: row 7.2 tautology hides the guard\"\n",
+    ])
+    model = OutcomeReport.model(@dir)
+    text = OutcomeReport.render(model, disposition: "delivered")
+    verification = text.split("## Verification", 2)[1].to_s
+    assert_includes verification, "3 blocking: row 7.2 tautology hides the guard"
+    refute_includes verification, "reason not recorded"
   end
 
   # --- 2.8 -------------------------------------------------------------------
