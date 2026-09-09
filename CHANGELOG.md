@@ -5,6 +5,29 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 336 (G3, roadmap graph-ready-plastic, batch 2): `ReadySet`, the one function that says what
+  runs next. A node is ready when its own state is eligible, every need is done under an
+  attributed non-torn line, no file-overlapping sibling is running, and its dispatch attempts
+  are under its kind's cap (work 3, verify 3, research 2, decision 2, injectable); every failed
+  condition names itself. Reports `failed_verification` counts, dead ends (transitively, through
+  a superseded or abandoned need), and a stale flag on a `done` node whose need was superseded
+  afterwards, read in file order. Batches are the topological layers of the `needs` edges; the
+  critical path is every maximal-length chain (capped, with the true total from a polynomial
+  count), `hops` counting nodes. `FinishFirstRanker` (default) and `CriticalPathRanker` share one
+  `#rank`/`#name` seam over frozen, telemetry-free rows.
+  `node-transition` now refuses `running` through `ReadySet`, parsed once before `GuardedAppend`'s
+  hold; `NodeLedger.needs_from_graph`, the temporary reader 335 shipped, is deleted, so `GraphFile`
+  is the one parser left. `GraphFile.parse` strips fenced blocks from `## Graph` before handing it
+  to `GraphEdges`, so a fenced example edge is never read as real. `RoadmapQueue`'s frontier
+  follows a roadmap's own `## Graph` section (an exact heading match, never a prefix) when it
+  carries real edges, falling back to wave order otherwise; a cyclic roadmap graph reports
+  `state: "error"`. `Savepoint.derive_stage` reads a real `graph.md` plus real node files as Exec
+  whether or not `spec.md` is real; doctor gains a rule reporting dead ends, stale done nodes, and
+  expired running leases from `scripts/doctor.rb` (never `doctor_core.rb`); the dashboard reads a
+  graph intent's ready node count, advisory, entirely separate from the `sources`-derived
+  "unblocked" flag. `scripts/ready-set` prints the ready order, blockers, batches and critical
+  paths, and emits JSON.
+
 - 335a: node ids never recycle (owner ruling, 2026-09-09). `NodeFile.mint_id` mints one past the
   highest id ever seen for a kind rather than the lowest free one, so deleting `n2` no longer
   frees `n2`. Intent 335 keyed the work ledger on node id and deletion is not a transition, so a
