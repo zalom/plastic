@@ -621,19 +621,27 @@ def self.matching_action_heading(intent_dir, label)
   # step list or any other table - so it cannot answer for a record that has
   # no matrix anywhere (the close-gate defeat the plan review measured).
   # Emphasis (bold/italic/code) is stripped from the compared cell; the count
-  # sums matching rows across every matrix heading, in every action file.
+  # sums matching rows within one directory, then stops at the first
+  # directory that yields a non-zero count (post-execution review,
+  # non-blocking 6) - actions/ before nodes/, mirroring the heading walk's
+  # first-hit rule, so an intent whose nodes/ files restate ACTION_1's own
+  # matrix under the same label is never double-counted.
   def self.matching_matrix_rows(intent_dir, label)
-    count = 0
-    action_and_node_paths(intent_dir).each do |path|
-      split_by_headings(File.read(path)).each do |heading, body|
-        next unless heading.to_s.match?(/matrix/i)
-        table_rows(body).each do |cells|
-          cell = cells[0].to_s.gsub(/[*_`]/, "").strip
-          count += 1 if cell == label
+    [Dir.glob(File.join(intent_dir, "actions", "*.md")).sort,
+     Dir.glob(File.join(intent_dir, "nodes", "*.md")).sort].each do |paths|
+      count = 0
+      paths.each do |path|
+        split_by_headings(File.read(path)).each do |heading, body|
+          next unless heading.to_s.match?(/matrix/i)
+          table_rows(body).each do |cells|
+            cell = cells[0].to_s.gsub(/[*_`]/, "").strip
+            count += 1 if cell == label
+          end
         end
       end
+      return count if count.positive?
     end
-    count
+    0
   end
 
   # D7: a label with no letter never resolves, on either path - it is a
