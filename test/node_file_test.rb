@@ -212,8 +212,43 @@ class NodeFileTest < Minitest::Test
     assert_equal "n2", NodeFile.mint_id("work", %w[n1])
   end
 
-  def test_mint_id_after_a_gap
-    assert_equal "n2", NodeFile.mint_id("work", %w[n1 n3])
+  # Intent 335a, owner ruling 2026-09-09: node ids NEVER recycle. This test was
+  # `test_mint_id_after_a_gap` and asserted "n2", the lowest free id. Intent 335
+  # keyed the work ledger on node id, so a reissued id silently inherits the
+  # dead node's transition history, evidence and holder included. The gap is a
+  # headstone, not free space.
+  def test_mint_id_does_not_fill_a_gap
+    assert_equal "n4", NodeFile.mint_id("work", %w[n1 n3])
+  end
+
+  def test_mint_id_on_no_taken_ids_is_one
+    assert_equal "n1", NodeFile.mint_id("work", [])
+    assert_equal "v1", NodeFile.mint_id("verify", [])
+  end
+
+  def test_mint_id_is_independent_per_kind
+    assert_equal "v1", NodeFile.mint_id("verify", %w[n1 n2 n3])
+    assert_equal "n4", NodeFile.mint_id("work", %w[n1 n2 n3 v9])
+  end
+
+  def test_mint_id_on_an_unknown_kind_is_nil
+    assert_nil NodeFile.mint_id("nope", %w[n1])
+  end
+
+  # Spec D11: the gatherer over-reserves on purpose, so the minter is handed ids
+  # its own per-kind grammar rejects and must ignore them without shifting.
+  def test_mint_id_ignores_ids_that_do_not_match_the_kind_grammar
+    assert_equal "n2", NodeFile.mint_id("work", %w[n0 nx n1 Intent v7])
+  end
+
+  # 1.8: the file must not still document the rule this intent removed.
+  def test_node_file_does_not_document_gap_filling
+    path = File.expand_path("../scripts/lib/node_file.rb", __dir__)
+    stale = File.readlines(path).each_with_index.filter_map do |line, i|
+      "#{i + 1}: #{line.strip}" if line.include?("next free one") ||
+                                   line.include?("is filled rather than skipped past")
+    end
+    assert_empty stale, "node_file.rb still documents the rule 335a removed"
   end
 
   def test_mint_id_past_ten
