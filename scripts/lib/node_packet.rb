@@ -2,12 +2,15 @@
 # frozen_string_literal: true
 
 require "yaml"
+require "digest"
+require "fileutils"
 require_relative "node_file"
 require_relative "graph_file"
 require_relative "node_ledger"
 require_relative "savepoint"
 require_relative "insights"
 require_relative "packet_wrapper"
+require_relative "atomic_write"
 require_relative "arm"
 
 # NodePacket (intent 338, G5): builds a node's whole input from disk, the
@@ -410,5 +413,275 @@ module NodePacket
       i += 1
     end
     out.join
+  end
+
+  # ===========================================================================
+  # n3: assembly, the budget, and the packet's identity
+  # ===========================================================================
+
+  # Block labels/sources for the wrapped (data) blocks, spec D3.
+  LEDGER_LABEL = "ledger"
+  RECORD_LABEL = "record"
+  HOP_LABEL = "knowledge hop"
+
+  # The whole "ledger" data block (spec block 2): the node's own transition
+  # lines, its predecessors' evidence, its lease, and any landed commits
+  # after a reclaim.
+  def full_ledger_text(intent_dir:, node:, files:, holder:, expires:, model:, repo_dir:, git_runner:)
+    landed = landed_commits_block(intent_dir: intent_dir, node: node, files: files, repo_dir: repo_dir,
+                                   git_runner: git_runner)
+    parts = [
+      "### Transitions",
+      ledger_lines_block(intent_dir: intent_dir, node: node),
+      "",
+      "### Predecessors",
+      predecessor_block(intent_dir: intent_dir, node: node),
+      "",
+      "### Lease",
+      lease_block(intent_dir: intent_dir, node: node, holder: holder, expires: expires, model: model),
+    ]
+    if landed
+      parts << ""
+      parts << "### Landed commits"
+      parts << landed
+    end
+    parts.join("\n")
+  end
+
+  # The record's Intent/Decisions/Insights rendered as one payload, over
+  # whatever (possibly already-cut) decisions/insights arrays the cut ladder
+  # is currently holding.
+  def render_record_text(intent:, decisions:, insights:)
+    parts = ["## Intent", intent.to_s.strip, ""]
+    parts << "## Decisions"
+    parts << (decisions.empty? ? "(none)" : decisions.join.rstrip)
+    parts << ""
+    parts << "## Insights"
+    parts << (insights.empty? ? "(none)" : insights.join.rstrip)
+    "#{parts.join("\n")}\n"
+  end
+
+  # One packet, node and where-to-work as plain instruction text, ledger,
+  # record and (when present) hop wrapped as labeled data sharing ONE
+  # boundary token computed over their raw payloads (spec D2-D4, matrix
+  # 3.1-3.3).
+  def render_packet(node_text:, ledger_text:, intent_text:, decisions:, insights:, hop:, where_text:)
+    record_text = render_record_text(intent: intent_text, decisions: decisions, insights: insights)
+    hop_text = hop && hop[:text]
+
+    payloads = [ledger_text, record_text]
+    payloads << hop_text if hop_text
+    token = PacketWrapper.boundary_token(payloads)
+
+    parts = [node_text.to_s.rstrip, ""]
+    parts << PacketWrapper.wrap(ledger_text, label: LEDGER_LABEL, source: "savepoint.md", token: token).rstrip
+    parts << ""
+    parts << PacketWrapper.wrap(record_text, label: RECORD_LABEL, source: "record", token: token).rstrip
+    parts << ""
+    if hop_text
+      parts << PacketWrapper.wrap(hop_text, label: HOP_LABEL, source: "sources", token: token).rstrip
+      parts << ""
+    end
+    parts << where_text.to_s.rstrip
+    "#{parts.join("\n")}\n"
+  end
+
+  def render_from_state(state)
+    render_packet(node_text: state[:node_text], ledger_text: state[:ledger_text], intent_text: state[:intent_text],
+                  decisions: state[:decisions], insights: state[:insights], hop: state[:hop],
+                  where_text: state[:where_text])
+  end
+  private_class_method :render_from_state
+
+  def estimate_rendered_tokens(rendered)
+    PacketWrapper.estimate_tokens(rendered)
+  end
+
+  # The C28 cut ladder: drop the hop whole, then cut Insights to the last
+  # one, then cut Decisions to the last five - applied only as far as
+  # needed, and only when a step actually shrinks the rendered bytes (matrix
+  # 3.23: a cut that would not reduce the render is skipped rather than
+  # counted as applied). The node, ledger and where-to-work blocks are never
+  # touched (matrix 3.9) because nothing here ever rewrites those keys.
+  def apply_cut_ladder(state, budget_tokens)
+    cuts = []
+    current = state
+    rendered = render_from_state(current)
+    tokens = estimate_rendered_tokens(rendered)
+    return [rendered, tokens, cuts] if tokens <= budget_tokens
+
+    if current[:hop] && current[:hop][:text]
+      candidate_state = current.merge(hop: { text: nil, tokens: 0 })
+      candidate = render_from_state(candidate_state)
+      if candidate.bytesize < rendered.bytesize
+        current, rendered = candidate_state, candidate
+        tokens = estimate_rendered_tokens(rendered)
+        cuts << :hop
+      end
+    end
+    return [rendered, tokens, cuts] if tokens <= budget_tokens
+
+    if current[:insights].length > 1
+      candidate_state = current.merge(insights: current[:insights].last(1))
+      candidate = render_from_state(candidate_state)
+      if candidate.bytesize < rendered.bytesize
+        current, rendered = candidate_state, candidate
+        tokens = estimate_rendered_tokens(rendered)
+        cuts << :insights
+      end
+    end
+    return [rendered, tokens, cuts] if tokens <= budget_tokens
+
+    if current[:decisions].length > DECISIONS_KEEP
+      candidate_state = current.merge(decisions: current[:decisions].last(DECISIONS_KEEP))
+      candidate = render_from_state(candidate_state)
+      if candidate.bytesize < rendered.bytesize
+        current, rendered = candidate_state, candidate
+        tokens = estimate_rendered_tokens(rendered)
+        cuts << :decisions
+      end
+    end
+
+    [rendered, tokens, cuts]
+  end
+  private_class_method :apply_cut_ladder
+
+  # Which never-cut-or-already-at-floor block is largest, so a refusal names
+  # what to shorten (matrix 3.24) rather than just saying "too big".
+  def name_oversized_block(state)
+    record_text = render_record_text(intent: state[:intent_text], decisions: state[:decisions],
+                                      insights: state[:insights])
+    candidates = {
+      "node" => state[:node_text],
+      "ledger" => state[:ledger_text],
+      "record" => record_text,
+      "where to work" => state[:where_text],
+    }
+    name, text = candidates.max_by { |_, t| PacketWrapper.estimate_tokens(t.to_s) }
+    [name, PacketWrapper.estimate_tokens(text.to_s)]
+  end
+  private_class_method :name_oversized_block
+
+  def lease_flag_given?(holder)
+    lease_present?(holder)
+  end
+  private_class_method :lease_flag_given?
+
+  # C21: the number of `running` lines already recorded for `node`, plus one
+  # when a lease is being supplied by flag (a NEW dispatch), floored at 1.
+  def compute_attempt_number(intent_dir:, node:, lease_flag_given:)
+    count = NodeLedger.entries(savepoint_path(intent_dir)).count do |e|
+      e[:subject] == node.to_s && e[:state] == "running"
+    end
+    [count + (lease_flag_given ? 1 : 0), 1].max
+  end
+
+  def packet_path(intent_dir:, node:, attempt:)
+    File.join(intent_dir, "packets", "#{node}--a#{attempt}.packet")
+  end
+
+  def summary_line(result)
+    "path=#{result[:path]} sha=#{result[:sha]} tokens=#{result[:tokens]} hop_tokens=#{result[:hop_tokens]} " \
+      "attempt=#{result[:attempt]}"
+  end
+
+  def running_command(intent_dir:, node:, sha:, hop_tokens:)
+    "node-transition #{intent_dir} --node #{node} --state running --field packet=#{sha} --field hop=#{hop_tokens}"
+  end
+
+  def needs_decision_command(intent_dir:, node:, question:)
+    escaped = question.to_s.gsub("\\", "\\\\\\\\").gsub('"', "\\\"")
+    "node-transition #{intent_dir} --node #{node} --state needs_decision --field question=\"#{escaped}\""
+  end
+
+  # Build one node's whole packet from disk (spec D1). Returns
+  # {ok:, exit_code:, path:, sha:, tokens:, hop_tokens:, attempt:,
+  # cuts_applied:, running_command:, errors:} on success, or
+  # {ok: false, exit_code:, errors:, needs_decision_command: (on overflow)}
+  # on refusal. Exit codes follow the node-transition family (spec D17): 2
+  # usage (unknown node), 3 unreadable/unparsable graph, node file or
+  # record, 4 overflow past the third cut, 5 an existing attempt whose bytes
+  # differ.
+  def build(intent_dir:, node:, budget_tokens: DEFAULT_BUDGET_TOKENS, hop_tokens: DEFAULT_HOP_TOKENS,
+            holder: nil, expires: nil, model: nil, attempt: nil, force: false,
+            renamer: File.method(:rename), git_runner: DEFAULT_GIT_RUNNER,
+            worktree_reader: Arm.method(:worktree_block), project_reader: method(:default_project_reader))
+    intent_dir = File.expand_path(intent_dir)
+
+    nb = node_block(intent_dir: intent_dir, node: node)
+    unless nb[:ok]
+      return { ok: false, exit_code: nb[:error_kind] == :unknown_node ? 2 : 3, errors: nb[:errors] }
+    end
+
+    record = record_block(intent_dir: intent_dir, kind: nb[:kind])
+    return { ok: false, exit_code: 3, errors: record[:errors] } unless record[:ok]
+
+    repo_dir = begin
+      info = worktree_reader.call(intent_dir: intent_dir)
+      info && info["code"]
+    rescue StandardError
+      nil
+    end
+    ledger_text = full_ledger_text(intent_dir: intent_dir, node: node, files: nb[:files], holder: holder,
+                                    expires: expires, model: model, repo_dir: repo_dir, git_runner: git_runner)
+
+    store_dir = File.dirname(intent_dir)
+    sources = record_sources(intent_dir)
+    hop_full = hop_block(store_dir: store_dir, sources: sources, hop_tokens: hop_tokens)
+
+    where_text = where_to_work_block(intent_dir: intent_dir, worktree_reader: worktree_reader,
+                                      project_reader: project_reader)
+
+    state = {
+      node_text: nb[:text], ledger_text: ledger_text, intent_text: record[:intent],
+      decisions: record[:decisions], insights: record[:insights], hop: hop_full, where_text: where_text,
+    }
+
+    rendered, tokens, cuts_applied = apply_cut_ladder(state, budget_tokens)
+
+    if tokens > budget_tokens
+      final_state = state.merge(
+        hop: cuts_applied.include?(:hop) ? { text: nil, tokens: 0 } : state[:hop],
+        insights: cuts_applied.include?(:insights) ? state[:insights].last(1) : state[:insights],
+        decisions: cuts_applied.include?(:decisions) ? state[:decisions].last(DECISIONS_KEEP) : state[:decisions],
+      )
+      oversized_name, oversized_tokens = name_oversized_block(final_state)
+      question = "packet for #{node} is #{tokens} tokens after every cut, over the #{budget_tokens}-token " \
+                 "budget; #{oversized_name} alone is #{oversized_tokens} tokens, shorten it"
+      return {
+        ok: false, exit_code: 4, tokens: tokens,
+        needs_decision_command: needs_decision_command(intent_dir: intent_dir, node: node, question: question),
+        errors: ["overflow: #{oversized_name} is #{oversized_tokens} tokens over the #{budget_tokens}-token budget"],
+      }
+    end
+
+    attempt_n = attempt || compute_attempt_number(intent_dir: intent_dir, node: node,
+                                                   lease_flag_given: lease_flag_given?(holder))
+    path = packet_path(intent_dir: intent_dir, node: node, attempt: attempt_n)
+    FileUtils.mkdir_p(File.dirname(path))
+
+    if File.exist?(path)
+      existing = File.binread(path)
+      if existing == rendered
+        # Rebuilding an unchanged attempt is a no-op (spec D11): the file on
+        # disk already IS these exact bytes.
+      elsif force
+        AtomicWrite.write(path, rendered, renamer: renamer)
+      else
+        return { ok: false, exit_code: 5, errors: ["attempt file exists with different bytes: #{path}"] }
+      end
+    else
+      AtomicWrite.write(path, rendered, renamer: renamer)
+    end
+
+    sha = Digest::SHA256.hexdigest(File.binread(path))[0, 12]
+    hop_tokens_measured = cuts_applied.include?(:hop) ? 0 : hop_full[:tokens].to_i
+
+    {
+      ok: true, exit_code: 0, path: path, sha: sha, tokens: tokens, hop_tokens: hop_tokens_measured,
+      attempt: attempt_n, cuts_applied: cuts_applied,
+      running_command: running_command(intent_dir: intent_dir, node: node, sha: sha, hop_tokens: hop_tokens_measured),
+      errors: [],
+    }
   end
 end

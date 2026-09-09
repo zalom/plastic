@@ -65,8 +65,9 @@ class NodePacketBudgetTest < Minitest::Test
     insights_body = if insights_count.zero?
                        "(observations captured throughout — raw material for future intents)\n"
                      else
+                       pad = "x" * 400
                        (1..insights_count).map do |i|
-                         "2026-09-0#{[i, 9].min}T12:00:00Z · Exec · tester — insight number #{i}\n"
+                         "2026-09-0#{[i, 9].min}T12:00:00Z · Exec · tester — insight number #{i} #{pad}\n"
                        end.join
                      end
     File.write(record_path, <<~MD)
@@ -164,14 +165,15 @@ class NodePacketBudgetTest < Minitest::Test
   end
 
   def big_decisions(n)
-    (1..n).map { |i| "- D#{i} decision number #{i} with some padding text to spend tokens" }
+    pad = "x" * 400
+    (1..n).map { |i| "- D#{i} decision number #{i} #{pad}" }
   end
 
   def test_the_first_cut_drops_the_hop_whole
     write_source("src-3", outcome: "x" * 20_000)
-    setup_minimal(intent_text: "Cut test intent.", decisions_items: big_decisions(3), insights_count: 2,
+    setup_minimal(intent_text: "Cut test intent.", decisions_items: big_decisions(9), insights_count: 3,
                    sources: ["src-3"])
-    result = build(budget_tokens: 6100, hop_tokens: 2000)
+    result = build(budget_tokens: 1600, hop_tokens: 2000)
     assert result[:ok]
     assert_includes result[:cuts_applied], :hop
     refute_includes result[:cuts_applied], :insights
@@ -182,9 +184,9 @@ class NodePacketBudgetTest < Minitest::Test
 
   def test_the_second_cut_leaves_exactly_one_insight
     write_source("src-4", outcome: "x" * 20_000)
-    setup_minimal(intent_text: "Cut test intent two.", decisions_items: big_decisions(3), insights_count: 3,
+    setup_minimal(intent_text: "Cut test intent two.", decisions_items: big_decisions(9), insights_count: 3,
                    sources: ["src-4"])
-    result = build(budget_tokens: 1650, hop_tokens: 2000)
+    result = build(budget_tokens: 1400, hop_tokens: 2000)
     assert result[:ok]
     assert_includes result[:cuts_applied], :hop
     assert_includes result[:cuts_applied], :insights
@@ -197,7 +199,7 @@ class NodePacketBudgetTest < Minitest::Test
     write_source("src-5", outcome: "x" * 20_000)
     setup_minimal(intent_text: "Cut test intent three.", decisions_items: big_decisions(9), insights_count: 3,
                    sources: ["src-5"])
-    result = build(budget_tokens: 950, hop_tokens: 2000)
+    result = build(budget_tokens: 1200, hop_tokens: 2000)
     assert result[:ok]
     assert_includes result[:cuts_applied], :decisions
     content = File.read(result[:path])
@@ -210,7 +212,7 @@ class NodePacketBudgetTest < Minitest::Test
     write_source("src-6", outcome: "x" * 20_000)
     setup_minimal(intent_text: "Never cut.", decisions_items: big_decisions(9), insights_count: 3,
                    sources: ["src-6"])
-    result = build(budget_tokens: 950, hop_tokens: 2000)
+    result = build(budget_tokens: 1200, hop_tokens: 2000)
     assert result[:ok]
     content = File.read(result[:path])
     assert_includes content, "Do the thing."
@@ -318,7 +320,8 @@ class NodePacketBudgetTest < Minitest::Test
 
     write_source("src-9", outcome: "some hop content")
     setup_minimal(intent_text: "Hop present.", sources: ["src-9"])
-    result2 = build(hop_tokens: 2000)
+    result2 = build(hop_tokens: 2000, force: true)
+    assert result2[:ok]
     assert_operator result2[:hop_tokens], :>, 0
   end
 
@@ -354,9 +357,11 @@ class NodePacketBudgetTest < Minitest::Test
     write_source("src-10", outcome: "x" * 20_000)
     setup_minimal(intent_text: "Skip cut.", decisions_items: big_decisions(3), insights_count: 1,
                    sources: ["src-10"])
-    result = build(budget_tokens: 6100, hop_tokens: 2000)
+    result = build(budget_tokens: 2000, hop_tokens: 2000)
     assert result[:ok]
     assert_includes result[:cuts_applied], :hop
+    # Insights already holds exactly one entry: cutting "to the last one"
+    # would not shrink anything, so it must never be listed as applied.
     refute_includes result[:cuts_applied], :insights
   end
 
