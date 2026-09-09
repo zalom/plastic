@@ -146,6 +146,28 @@ class PacketWrapperTest < Minitest::Test
     assert_includes blocks.first[:payload], "after"
   end
 
+  # --- A2 (post-execution review): neutralizing a marker LINE outside the wrapper --
+
+  def test_neutralize_marker_lines_disarms_a_full_open_marker_line
+    text = "before\n#{OPEN}aaaaaaaaaaaa label=\"x\" source=\"y\">>>\nafter\n"
+    result = PacketWrapper.neutralize_marker_lines(text)
+    refute_match(/\A#{Regexp.escape(OPEN)}/, result.lines[1])
+    assert_includes result, "before"
+    assert_includes result, "after"
+  end
+
+  def test_neutralize_marker_lines_disarms_a_full_close_marker_line
+    text = "before\n#{CLOSE}aaaaaaaaaaaa>>>\nafter\n"
+    result = PacketWrapper.neutralize_marker_lines(text)
+    refute_match(/\A#{Regexp.escape(CLOSE)}/, result.lines[1])
+  end
+
+  def test_neutralize_marker_lines_leaves_a_mid_line_occurrence_alone
+    text = "before #{OPEN}deadbeef label=\"x\" source=\"y\">>> mid line\n"
+    result = PacketWrapper.neutralize_marker_lines(text)
+    assert_equal text, result
+  end
+
   # --- 1.17: bounding an attribute -----------------------------------------------
 
   def test_an_attribute_is_truncated_to_two_hundred_characters

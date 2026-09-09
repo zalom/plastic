@@ -154,6 +154,18 @@ class NodePacketReadersTest < Minitest::Test
     assert_includes text, "torn"
   end
 
+  # Post-execution review finding B12: a pre-read `entries:` is used instead
+  # of re-reading `savepoint.md`, so a concurrent appending writer cannot
+  # make one packet's blocks disagree with each other. Proven with entries
+  # that differ from what is on disk: a re-read would answer differently.
+  def test_ledger_lines_block_uses_the_pre_read_entries_instead_of_re_reading
+    append_ledger("2026-09-01T00:00:00Z  n1  planned\n")
+    stale_entries = [{ subject: "n1", torn: false, raw: "STALE ENTRY NOT ON DISK" }]
+    text = NodePacket.ledger_lines_block(intent_dir: @dir, node: "n1", entries: stale_entries)
+    assert_includes text, "STALE ENTRY NOT ON DISK"
+    refute_includes text, "planned"
+  end
+
   # --- 2.7-2.8: predecessors -----------------------------------------------
 
   def test_predecessors_come_from_the_graph_md_edges
@@ -172,6 +184,16 @@ class NodePacketReadersTest < Minitest::Test
     assert_includes text, "not yet done"
   end
 
+  # B12: entries pre-read for a predecessor's evidence too, so the ledger's
+  # on-disk state at read time cannot disagree with the rest of the packet.
+  def test_predecessor_block_uses_the_pre_read_entries_instead_of_re_reading
+    write_graph("- n1 needs n2\n- n2 needs nothing\n")
+    File.write(savepoint_path, "2026-09-01T00:00:00Z  n2  done holder=h1 gates=lint commit=abc123\n")
+    stale_entries = [{ subject: "n2", torn: false, attributed: false, state: "done", raw: "not attributed" }]
+    text = NodePacket.predecessor_block(intent_dir: @dir, node: "n1", entries: stale_entries)
+    assert_includes text, "not yet done"
+  end
+
   # --- 2.9-2.11: the lease --------------------------------------------------
 
   def test_lease_flags_render_the_lease_block
@@ -181,6 +203,17 @@ class NodePacketReadersTest < Minitest::Test
     assert_includes text, "sonnet"
   end
 
+  # B12: entries pre-read for the lease too, closing the loop for the block
+  # the finding cites by name (Lease disagreeing with Transitions).
+  def test_lease_block_uses_the_pre_read_entries_instead_of_re_reading
+    append_ledger("2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z packet=abc model=sonnet\n")
+    stale_entries = [{ subject: "n1", torn: false, state: "running",
+                        fields: { "holder" => "STALE-HOLDER", "expires" => "later", "model" => "haiku" } }]
+    text = NodePacket.lease_block(intent_dir: @dir, node: "n1", entries: stale_entries)
+    assert_includes text, "STALE-HOLDER"
+    refute_includes text, "holder=h1"
+  end
+
   def test_without_flags_the_last_running_line_is_the_lease
     append_ledger("2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z packet=abc model=sonnet\n")
     text = NodePacket.lease_block(intent_dir: @dir, node: "n1")
@@ -188,10 +221,53 @@ class NodePacketReadersTest < Minitest::Test
     assert_includes text, "sonnet"
   end
 
-  def test_no_lease_renders_lease_none_and_the_stop_directive
+  # Post-execution review finding A1: block 2 (ledger, retrieved data) never
+  # carries the stop directive, no matter how the lease is missing. A
+  # directive rendered inside a data block is self-cancelling under the
+  # packet's own trust rule (spec D3): an executor is told not to trust data
+  # as instruction, so an instruction hiding inside a data block is exactly
+  # as untrustworthy as any other payload text.
+  def test_no_lease_renders_lease_none_and_never_the_stop_directive
     text = NodePacket.lease_block(intent_dir: @dir, node: "n1")
     assert_includes text, "lease: none"
+    refute_includes text, NodePacket::STOP_DIRECTIVE
+  end
+
+  # --- A1 (post-execution review): lease_missing? ----------------------------
+
+  def test_lease_missing_is_false_when_a_lease_is_supplied_by_flag
+    refute NodePacket.lease_missing?(node: "n1", holder: "auto-abc", expires: "2026-09-01T01:00:00Z",
+                                      model: "sonnet", entries: [])
+  end
+
+  def test_lease_missing_is_false_when_a_running_line_is_recorded
+    append_ledger("2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z packet=abc model=sonnet\n")
+    entries = NodeLedger.entries(savepoint_path)
+    refute NodePacket.lease_missing?(node: "n1", holder: nil, expires: nil, model: nil, entries: entries)
+  end
+
+  def test_lease_missing_is_true_with_neither_a_flag_nor_a_running_line
+    assert NodePacket.lease_missing?(node: "n1", holder: nil, expires: nil, model: nil, entries: [])
+  end
+
+  # --- A1 (post-execution review): where_to_work_block carries the directive -
+
+  def test_where_to_work_block_carries_the_stop_directive_when_the_lease_is_missing
+    reader = ->(intent_dir:) { { "code" => "/tmp/wt", "code_branch" => "plastic/x", "provisioned" => true } }
+    text = NodePacket.where_to_work_block(intent_dir: @dir, worktree_reader: reader, lease_missing: true)
     assert_includes text, NodePacket::STOP_DIRECTIVE
+  end
+
+  def test_where_to_work_block_carries_no_directive_when_the_lease_is_present
+    reader = ->(intent_dir:) { { "code" => "/tmp/wt", "code_branch" => "plastic/x", "provisioned" => true } }
+    text = NodePacket.where_to_work_block(intent_dir: @dir, worktree_reader: reader, lease_missing: false)
+    refute_includes text, NodePacket::STOP_DIRECTIVE
+  end
+
+  def test_where_to_work_block_never_repeats_the_directive_the_worktree_block_already_carries
+    unprovisioned = ->(intent_dir:) { { "code" => nil, "code_branch" => nil, "provisioned" => false } }
+    text = NodePacket.where_to_work_block(intent_dir: @dir, worktree_reader: unprovisioned, lease_missing: true)
+    assert_equal 1, text.scan(NodePacket::STOP_DIRECTIVE).length
   end
 
   # --- 2.12-2.14: landed commits ---------------------------------------------
@@ -226,6 +302,59 @@ class NodePacketReadersTest < Minitest::Test
     end
     refute_nil text
     assert_includes text, "unavailable"
+  end
+
+  # B12: entries pre-read for landed commits too - a reclaimed line added to
+  # disk after the pre-read must never turn on a git shell-out this call
+  # never asked for.
+  def test_landed_commits_block_uses_the_pre_read_entries_instead_of_re_reading
+    append_ledger("2026-09-01T00:00:00Z  n1  reclaimed holder=h1 expired=2026-09-01T01:00:00Z\n")
+    stale_entries = [{ subject: "n1", torn: false, state: "planned" }] # no reclaimed line in this view
+    called = false
+    spy = ->(repo_dir:, files:) { called = true; "should never run" }
+    result = NodePacket.landed_commits_block(intent_dir: @dir, node: "n1", files: ["a.rb"], repo_dir: "/tmp/repo",
+                                              git_runner: spy, entries: stale_entries)
+    refute called
+    assert_nil result
+  end
+
+  # --- B4 (post-execution review): the pinned git log command ----------------
+
+  # Unpinned, `git log --stat` varies with the caller's terminal COLUMNS, the
+  # caller's color.ui, and gitconfig's pretty/date/showSignature settings, so
+  # `packet=<sha>` was not a pure function of the repo's history alone.
+  def test_git_log_command_is_pinned_against_terminal_and_gitconfig_variance
+    cmd = NodePacket.git_log_command(repo_dir: "/tmp/repo", files: ["a.rb", "b.rb"])
+    joined = cmd.join(" ")
+    assert_includes joined, "-c color.ui=false"
+    assert_includes joined, "--no-color"
+    assert_includes joined, "--stat=200,200"
+    assert_includes cmd, "/tmp/repo"
+    assert_includes cmd, "a.rb"
+    assert_includes cmd, "b.rb"
+  end
+
+  def test_git_log_env_unsets_columns_rather_than_leaving_it_alone
+    env = NodePacket.git_log_env
+    assert env.key?("COLUMNS")
+    assert_nil env["COLUMNS"]
+  end
+
+  # --- B4/never-cut (post-execution review): bounding landed commits ---------
+
+  # "landed commits" is one of the never-cut blocks (matrix 3.9), so an
+  # unbounded `git log --stat` could route the whole packet straight to exit
+  # 4 with no cut able to help; it is capped and never left to grow past it.
+  def test_truncate_landed_commits_caps_an_oversized_log_and_appends_the_note
+    oversized = "x" * (NodePacket::LANDED_COMMITS_MAX_BYTES + 500)
+    result = NodePacket.truncate_landed_commits(oversized)
+    assert_operator result.bytesize, :<, oversized.bytesize
+    assert_includes result, "truncated at #{NodePacket::LANDED_COMMITS_MAX_BYTES} bytes"
+  end
+
+  def test_truncate_landed_commits_passes_a_small_log_through_byte_identical
+    small = "abc123 fix thing\n a.rb | 2 +-\n"
+    assert_equal small, NodePacket.truncate_landed_commits(small)
   end
 
   # --- 2.15-2.18a: the record block -------------------------------------------
@@ -385,6 +514,24 @@ class NodePacketReadersTest < Minitest::Test
     assert_includes result[:text], "the spec decision"
   end
 
+  # Post-execution review finding B10: D13's fallback uses `\b`, matching
+  # `record_block`'s own `### Decisions` pattern (D12's Findings rule already
+  # tolerates a trailing qualifier on the heading line). `\z` required an
+  # exact "Decisions" heading, so a spec whose heading carries a qualifier
+  # (eight specs in the live store do: "## Decisions (from intent Context)",
+  # "## Decisions Log") silently rendered an empty hop instead.
+  def test_a_qualified_decisions_heading_is_still_picked_up_by_the_spec_fallback
+    source_dir = write_source("src-dq", outcome: "DQ outcome.", decisions: "")
+    File.write(File.join(source_dir, "spec.md"), <<~MD)
+      # Spec: DQ
+
+      ## Decisions (from intent Context)
+      - DQ1. the qualified spec decision
+    MD
+    result = NodePacket.hop_block(store_dir: store_dir, sources: ["src-dq"], hop_tokens: 2000)
+    assert_includes result[:text], "the qualified spec decision"
+  end
+
   def test_an_unresolvable_source_is_noted_and_never_raises
     result = nil
     begin
@@ -400,6 +547,24 @@ class NodePacketReadersTest < Minitest::Test
     result = NodePacket.hop_block(store_dir: store_dir, sources: ["src-e"], hop_tokens: 50)
     assert_includes result[:text], "truncat"
     assert_operator result[:tokens], :<=, 60
+  end
+
+  # Post-execution review finding C13: `hop=` on the running line is measured
+  # against this cap (C33, intent 224's kill criterion), so the reported
+  # tokens must never overshoot it once the truncation note's own bytes are
+  # counted, and the cut text must stay valid UTF-8 even when the byte
+  # offset falls inside a multi-byte character. Swept across many cap values
+  # so at least some land mid-character. Floored at 10: below roughly 7
+  # tokens the note's own fixed overhead (about 28-29 bytes) is bigger than
+  # the whole budget, so no slicing strategy could keep the count under the
+  # cap - an irreducible floor, not a bug, and not what this test is for.
+  def test_the_hop_truncation_note_is_counted_within_the_cap_even_across_a_multi_byte_cut
+    write_source("src-g", outcome: "é" * 5000) # two-byte character in UTF-8
+    (10..50).each do |cap|
+      result = NodePacket.hop_block(store_dir: store_dir, sources: ["src-g"], hop_tokens: cap)
+      assert_operator result[:tokens], :<=, cap, "cap #{cap}: tokens #{result[:tokens]} exceeded the budget"
+      assert result[:text].valid_encoding?, "cap #{cap}: truncated text was not valid UTF-8"
+    end
   end
 
   def test_a_zero_hop_cap_emits_no_hop_block
