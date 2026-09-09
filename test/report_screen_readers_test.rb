@@ -950,6 +950,36 @@ class ReportScreenReadersTest < Minitest::Test
     assert_equal 1, ReportScreen.matching_matrix_rows(@dir, "n1")
   end
 
+  # Post-execution review, non-blocking 6: an intent whose nodes/ files
+  # restate ACTION_1's matrix under the same label must count once, not
+  # twice, matching the heading walk's first-hit rule.
+  def test_matrix_row_fallback_counts_once_when_both_dirs_have_the_same_row
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## Failure-mode matrix
+      | Label | Operation |
+      |---|---|
+      | n1 | a |
+    MD
+    write("nodes/n1.md", <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: []
+      budget: 100000
+      ---
+      # n1 - a work node
+
+      ## Failure-mode matrix
+      | Label | Operation |
+      |---|---|
+      | n1 | a |
+    MD
+    assert_equal 1, ReportScreen.matching_matrix_rows(@dir, "n1"),
+                 "an identical row restated in both directories must count once"
+  end
+
   def test_action_file_for_reads_the_nodes_dir
     FileUtils.rm_rf(File.join(@dir, "actions"))
     write("nodes/n1--slug.md", <<~MD)
