@@ -36,6 +36,23 @@ class AtomicWriteTest < Minitest::Test
     assert_equal before, after, "a temp file was left behind after the failed rename"
   end
 
+  # Post-execution review, non-blocking 5: Lock#write's temp name ends in
+  # .lock precisely so an orphan left by a crash between the write and the
+  # rename is covered by the store's *.lock gitignore rather than swept into
+  # its git add -A auto-commit. AtomicWrite must carry that same property.
+  def test_temp_file_ends_in_lock
+    seen_temp = nil
+    assert_raises(RuntimeError) do
+      AtomicWrite.write(@path, "new content\n", renamer: lambda { |temp, _target|
+        seen_temp = temp
+        raise "boom"
+      })
+    end
+    refute_nil seen_temp
+    assert seen_temp.end_with?(".lock"),
+           "the temp name must end in .lock so an orphan is covered by the store's *.lock gitignore rule"
+  end
+
   def test_temp_file_is_a_sibling
     seen_temp = nil
     AtomicWrite.write(@path, "new content\n", renamer: lambda { |temp, target|
