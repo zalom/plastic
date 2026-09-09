@@ -595,8 +595,18 @@ end
 # extracted `heading_tokens` are both kept. The token split now comes from the
 # shared helper so `action_file_for` cannot drift from this walk, while the
 # `table_rows(body).any?` guard stays the thing that decides the match.
+# Intent 334 (G1, D10r/D15r): the ordered list of files a "how was this
+# proven" reader walks - actions/*.md first (the common path today), then
+# nodes/*.md, lexicographic WITHIN each directory rather than across both, so
+# an intent carrying both (a G9 backfill in progress) resolves the same label
+# to whichever actions/ file already proves it, never to glob order.
+def self.action_and_node_paths(intent_dir)
+  Dir.glob(File.join(intent_dir, "actions", "*.md")).sort +
+    Dir.glob(File.join(intent_dir, "nodes", "*.md")).sort
+end
+
 def self.matching_action_heading(intent_dir, label)
-  Dir.glob(File.join(intent_dir, "actions", "*.md")).sort.each do |path|
+  action_and_node_paths(intent_dir).each do |path|
     split_by_headings(File.read(path)).each do |heading, body|
       next unless heading_tokens(heading).include?(label)
       return [heading, body] if table_rows(body).any?
@@ -611,19 +621,27 @@ def self.matching_action_heading(intent_dir, label)
   # step list or any other table - so it cannot answer for a record that has
   # no matrix anywhere (the close-gate defeat the plan review measured).
   # Emphasis (bold/italic/code) is stripped from the compared cell; the count
-  # sums matching rows across every matrix heading, in every action file.
+  # sums matching rows within one directory, then stops at the first
+  # directory that yields a non-zero count (post-execution review,
+  # non-blocking 6) - actions/ before nodes/, mirroring the heading walk's
+  # first-hit rule, so an intent whose nodes/ files restate ACTION_1's own
+  # matrix under the same label is never double-counted.
   def self.matching_matrix_rows(intent_dir, label)
-    count = 0
-    Dir.glob(File.join(intent_dir, "actions", "*.md")).sort.each do |path|
-      split_by_headings(File.read(path)).each do |heading, body|
-        next unless heading.to_s.match?(/matrix/i)
-        table_rows(body).each do |cells|
-          cell = cells[0].to_s.gsub(/[*_`]/, "").strip
-          count += 1 if cell == label
+    [Dir.glob(File.join(intent_dir, "actions", "*.md")).sort,
+     Dir.glob(File.join(intent_dir, "nodes", "*.md")).sort].each do |paths|
+      count = 0
+      paths.each do |path|
+        split_by_headings(File.read(path)).each do |heading, body|
+          next unless heading.to_s.match?(/matrix/i)
+          table_rows(body).each do |cells|
+            cell = cells[0].to_s.gsub(/[*_`]/, "").strip
+            count += 1 if cell == label
+          end
         end
       end
+      return count if count.positive?
     end
-    count
+    0
   end
 
   # D7: a label with no letter never resolves, on either path - it is a
@@ -1249,7 +1267,7 @@ def self.matching_action_heading(intent_dir, label)
   # heading that resolves but proves nothing is the same hollow-close defect
   # `proven_by` already guards against, so it renders "not recorded" too.
   def self.action_file_for(intent_dir, label)
-    Dir.glob(File.join(intent_dir, "actions", "*.md")).sort.each do |path|
+    action_and_node_paths(intent_dir).each do |path|
       split_by_headings(File.read(path)).each do |heading, body|
         next unless heading_tokens(heading).include?(label)
         return File.basename(path, ".md") if table_rows(body).any?

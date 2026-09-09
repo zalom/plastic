@@ -1,0 +1,39 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# validate-work-graph - deterministic CLI over WorkGraphValidator (intent 334, n4).
+#
+# Checks whether one intent directory's graph.md and nodes/ form a valid work
+# graph: needs targets resolve, node files reconcile with the declared graph,
+# per-kind body sections are present, and (above the trivial bar) a verify
+# node gates two or more work nodes with a failure-mode matrix per work node.
+# Modelled on scripts/validate-intent: errors to stderr, same exit-code shape.
+#
+# Usage:
+#   validate-work-graph <intent_dir>
+#
+# Exit codes: 0 (valid), 1 (invalid or unreadable; report on stderr),
+# 2 (usage - no argument given).
+
+require_relative "lib/work_graph_validator"
+
+intent_dir = ARGV.find { |a| !a.start_with?("--") }
+
+if intent_dir.nil?
+  warn "usage: validate-work-graph <intent_dir>"
+  exit 2
+end
+
+dir = File.expand_path(intent_dir)
+result = WorkGraphValidator.validate(dir)
+
+if result[:ok]
+  puts "OK: #{dir}"
+  exit 0
+end
+
+warn "INVALID: #{dir}"
+result[:missing].each { |m| warn "missing: #{m}" }
+result[:errors].each { |e| warn e }
+exit 1

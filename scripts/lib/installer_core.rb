@@ -478,6 +478,14 @@ class InstallerCore
       # and need no entry here.
       "scripts/lib/dashboard_screen.rb" => "scripts/lib/dashboard_screen.rb",
       "scripts/hook-message-display" => "scripts/hook-message-display",
+      # Intent 334 (G1): the node file and graph.md library, plus its
+      # validator and CLI (327 D40/D41).
+      "scripts/lib/graph_edges.rb" => "scripts/lib/graph_edges.rb",
+      "scripts/lib/node_file.rb" => "scripts/lib/node_file.rb",
+      "scripts/lib/atomic_write.rb" => "scripts/lib/atomic_write.rb",
+      "scripts/lib/graph_file.rb" => "scripts/lib/graph_file.rb",
+      "scripts/lib/work_graph_validator.rb" => "scripts/lib/work_graph_validator.rb",
+      "scripts/validate-work-graph" => "scripts/validate-work-graph",
     }
   end
 

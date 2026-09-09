@@ -5,6 +5,18 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 334 (G1, roadmap graph-ready-plastic, batch 1) - the node file and `graph.md` shapes, in
+  code: `GraphEdges` parses a `## Graph` section's `needs` edges (loose about id grammar so a
+  roadmap and a node graph share one parser) and reports a cycle as the whole path; `NodeFile`
+  reads the envelope (`node`, `kind`, `files`, `budget`) and mints ids; `GraphFile` owns
+  `graph.md`'s four sections, the `verify: none` directive, and the `## Status`
+  writer/`## Decisions` appender, both atomic through a new `AtomicWrite`; `WorkGraphValidator`
+  and `scripts/validate-work-graph` reconcile the graph against `nodes/` and hold the
+  trivial-bar, matrix-bar, and verify-attachment rules; five flat templates ship one per
+  kind. The forward shim widens five globs and one regex so `Savepoint`, `ReportScreen`, and
+  `end-intent` treat a `nodes/`-delivered intent exactly as a real `actions/`-delivered one,
+  actions/ resolving before nodes/. This intent's own `graph.md` and `nodes/` validate through
+  `scripts/validate-work-graph`.
 - 335 (G2, graph-ready plan Batch 1): ledger transitions with refusals. `savepoint.md` now carries
   node and intent transition lines beside the existing stage milestones: a closed 10-state
   vocabulary (`planned`, `running`, `done`, `failed_verification`, `needs_decision`, `blocked`,
@@ -32,6 +44,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   when the target did not previously exist.
 
 ## Released
+
+- `2.0.0-alpha.18` - shipped 2026-09-08 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); collected 345, the first step of the pre-graph context cut. The capture hook stopped paying for context nobody asked for on every prompt typed inside a Plastic project. Its step (f), the per-prompt Future-intent hint, is gone entirely, along with its `future_intent_matches` and `resolve_project_store_root` helpers (323 D7, option c): it matched Future intents on any shared four-letter word, so a plain 200-character prompt in the plastic repo carried 43,253 bytes of injected context, about 10.8k tokens, drawn from 100 unrelated Future intents. Nothing replaces it - the agent runs a QMD search when a prompt sounds like existing work, and `plastic-intent-creating` already does. The continue cockpit narrowed from any prompt containing the word to a prompt that IS the word after trim and downcase (325 D34, option a), so "continue the roadmap work on 327" no longer pays 25,469 bytes for a dashboard it never asked for while a bare `continue` still resumes exactly as before. Both absences are pinned by tests that landed red in their own commit first, including a budget pin that stands up a fixture project store of 100 Future intents and asserts an ordinary prompt now emits nothing at all. An adversarial plan review before the code caught that three tests would go red and two more would go VACUOUS, passing while proving nothing, and that the specified byte ceiling was unfalsifiable because the real post-cut answer is zero; a post-execution mutation battery then reverted each hunk against a scratch tree to prove every new test can actually fail. C23 of the G8 ceremony cut (intent 341) now applies to QMD hits only. One unrelated pre-existing red was fixed to make the release gate honest: the day-window report-screen test hardcoded a ledger day and shelled out to a CLI reading the real clock, so it rotted the moment the calendar turned, and it now derives its day from the same local wall clock the CLI uses. Full suite 3129 runs green.
 
 - `2.0.0-alpha.17` - shipped 2026-09-05 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); collected 322, the Proven-by heading resolver. `report-screen delivered` filled the Proven-by column from the FIRST action-file heading carrying the row label as a standalone token, whatever sat under it, so a heading that named the label but owned no table won the search and the cell read `not recorded` while the real matrix sat under a later heading. The resolver now walks every token-matching heading and keeps the first one whose body actually holds a table data row; table-less headings, and headings whose table has a separator but no data row, are skipped. Where no heading owns a table, a restricted fallback reads matrix rows whose first cell equals the label, but only under a heading naming itself a matrix and only for labels carrying a letter, so a bare number cannot fabricate proof. Verified on the two records that motivated it: claudechat 1d went from `not recorded` to `15 tests` on S1, and claudechat 6 from nine blank cells to `1 test` each. Built 2026-09-03 and merged today across 121 commits of drift; the merge kept both 322's table-owning rule and 331b's shared `heading_tokens` helper, and retired one of 322's own Non-Goals that intent 330's fence walker had already fixed. Suite 3121 runs, 17195 assertions, 0 failures. Known open: 331a1a, unchanged from alpha.16.
 
