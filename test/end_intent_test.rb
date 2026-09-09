@@ -938,4 +938,59 @@ class EndIntentTest < Minitest::Test
   ensure
     FileUtils.rm_rf(dir) if dir
   end
+
+  # Post-execution review, blocking 2: the node-id grammar must never apply to
+  # actions/*.md headings. "v1" and "v2" are this repo's own house words for
+  # plan review and post-execution review, so an ordinary legacy heading whose
+  # prose names one must never manufacture a label and refuse a real close.
+  def test_actions_heading_prose_word_v2_never_manufactures_a_node_label
+    dir = Dir.mktmpdir("hollow-gate-legacy-v2-prose")
+    FileUtils.mkdir_p(File.join(dir, "actions"))
+    File.write(File.join(dir, "actions", "ACTION_1.md"), <<~MD)
+      # ACTION_1
+
+      ### Ship v2 of the reporting pipeline
+      | Row | Failure mode | Test |
+      | --- | --- | --- |
+      | 1 | it breaks | a_test#test_y |
+    MD
+    File.write(File.join(dir, "outcome.md"), <<~MD)
+      ---
+      disposition: delivered
+      ---
+      # Outcome: Demo
+
+      ## Summary
+      Did it.
+
+      ## Delivered
+      | Row | What |
+      | --- | --- |
+      | 1 | shipped |
+      | 2 | shipped too |
+
+      ## Verification
+      - suite green
+
+      ## Needs you
+      None
+
+      ## Follow-ups
+      None
+    MD
+    assert_nil hollow_report_reason(dir, "delivered"),
+               "a heading whose prose contains v2, with no S-label, must never refuse a legacy close"
+  ensure
+    FileUtils.rm_rf(dir) if dir
+  end
+
+  # Post-execution review, blocking 2: restricting the node-id grammar to
+  # nodes/*.md must not break the case it exists to serve.
+  def test_real_node_id_heading_in_nodes_dir_still_resolves
+    dir = node_intent_dir
+    assert_nil hollow_report_reason(dir, "delivered"),
+               "a real node-id heading in nodes/*.md must still resolve after the grammar split"
+  ensure
+    FileUtils.rm_rf(dir) if dir
+  end
 end
