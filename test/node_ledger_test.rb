@@ -349,6 +349,42 @@ class NodeLedgerTest < Minitest::Test
     assert_equal [], NodeLedger.needs_from_graph(File.join(@dir, "no-such-graph.md"), "n1")
   end
 
+  # 334's `graph.md` grammar (`- n2 needs n1`, whitespace-separated targets,
+  # the literal `nothing` for a root) is the one that survives this seam. The
+  # temporary reader accepts it too, so one authored graph.md parses under both
+  # branches and the dogfood file does not become unreadable at the merge.
+  def test_needs_from_graph_reads_the_334_edge_grammar
+    graph_path = File.join(@dir, "graph.md")
+    File.write(graph_path, <<~MD)
+      # Graph
+
+      ## Decisions
+      - a decision line that also says n1 needs bogus (must never be read)
+
+      ## Graph
+      - n1 needs nothing
+      - n2 needs n1
+      - v1 needs n1 n2
+
+      ## Status
+      rendered from the ledger
+    MD
+    assert_equal [], NodeLedger.needs_from_graph(graph_path, "n1")
+    assert_equal ["n1"], NodeLedger.needs_from_graph(graph_path, "n2")
+    assert_equal %w[n1 n2], NodeLedger.needs_from_graph(graph_path, "v1")
+  end
+
+  def test_needs_from_graph_accepts_nothing_and_none_as_roots
+    graph_path = File.join(@dir, "graph.md")
+    File.write(graph_path, <<~MD)
+      ## Graph
+      - n1 needs nothing
+      - n2 (work) needs: none
+    MD
+    assert_equal [], NodeLedger.needs_from_graph(graph_path, "n1")
+    assert_equal [], NodeLedger.needs_from_graph(graph_path, "n2")
+  end
+
   # --- 2.44: encoding -------------------------------------------------------------
 
   def test_an_invalid_byte_in_the_ledger_does_not_raise
