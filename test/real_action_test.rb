@@ -111,4 +111,26 @@ class RealActionTest < Minitest::Test
     refute_includes result[:targets], "actions/ACTION_1.md",
                      "a nodes-only intent already has real work; backfill must not invent actions/ACTION_1.md"
   end
+
+  # --- n6 (post-execution review, non-blocking 4): missing_for_stage mirrors
+  # has_real_files_in?'s actions-first order and real-file requirement -----
+
+  def test_missing_for_stage_picks_actions_when_both_dirs_carry_real_files
+    write_action("ACTION_1.md", "# Action 1\nreal steps\n")
+    FileUtils.mkdir_p(File.join(@intent_dir, "nodes"))
+    File.write(File.join(@intent_dir, "nodes", "n1.md"), "---\nnode: n1\nkind: work\n---\n# n1\nreal\n")
+    missing = Savepoint.missing_for_stage("how", @intent_dir)
+    assert_includes missing, "actions/",
+                     "an intent with real files in both dirs must be told actions/, matching has_files' order"
+    refute_includes missing, "nodes/"
+  end
+
+  def test_missing_for_stage_picks_actions_when_nodes_is_empty
+    write_action("ACTION_1.md", "# Action 1\nreal steps\n")
+    FileUtils.mkdir_p(File.join(@intent_dir, "nodes"))
+    missing = Savepoint.missing_for_stage("how", @intent_dir)
+    assert_includes missing, "actions/",
+                     "an empty nodes/ dir must never win over a real actions/ file"
+    refute_includes missing, "nodes/"
+  end
 end
