@@ -307,4 +307,73 @@ class EndIntentGeneratedOutcomeTest < Minitest::Test
     # The placeholder is untouched - a crashing generator writes nothing.
     assert_includes File.read(File.join(dir, "outcome.md")), "plastic:placeholder"
   end
+
+  # --- S9 (v1g), D18: the close gate judges a graph-era record on merit -----
+  #
+  # Before this, `hollow_report_reason`'s heading scan matched an S-label only
+  # against actions/*.md headings. An action file headed by node id alone
+  # ("### n1 - Title", no S-label) yielded an empty label set, and the gate
+  # returned before judging anything - every such record closed unjudged by
+  # silent exemption. These build a bare actions/*.md + hand-written
+  # outcome.md directly (matching test/end_intent_test.rb's node_intent_dir
+  # style) rather than through the graph-generation flow, so the fixture
+  # isolates the heading-scan change from generation entirely.
+
+  def s9_gate_dir(action_heading:, delivered_label:)
+    dir = Dir.mktmpdir("hollow-gate-s9")
+    FileUtils.mkdir_p(File.join(dir, "actions"))
+    File.write(File.join(dir, "actions", "ACTION_1.md"), <<~MD)
+      # ACTION_1
+
+      #{action_heading}
+      | Row | Failure mode | Test |
+      | --- | --- | --- |
+      | 1 | it breaks | a_test#test_y |
+    MD
+    File.write(File.join(dir, "outcome.md"), <<~MD)
+      ---
+      disposition: delivered
+      ---
+      # Outcome: Demo
+
+      ## Summary
+      Did it.
+
+      ## Delivered
+      | Row | What |
+      | --- | --- |
+      | #{delivered_label} | shipped |
+
+      ## Verification
+      - suite green
+
+      ## Needs you
+      None
+
+      ## Follow-ups
+      None
+    MD
+    dir
+  end
+
+  def test_gate_judges_a_node_id_labelled_record
+    load SCRIPT
+    dir = s9_gate_dir(action_heading: "### n1 - The report model", delivered_label: "bogus")
+    refute_nil hollow_report_reason(dir, "delivered"),
+               "an action file headed by node id (no S-label) must be judged, not silently exempted"
+  ensure
+    FileUtils.rm_rf(dir) if dir
+  end
+
+  def test_unlabelled_legacy_record_stays_exempt
+    load SCRIPT
+    dir = s9_gate_dir(action_heading: "### Ship v2 of the reporting pipeline", delivered_label: "1")
+    action_paths = Dir.glob(File.join(dir, "actions", "*.md")).sort
+    assert_empty heading_node_id_segments(action_paths, NODE_ID_LABEL_RE),
+                 "a heading whose prose contains v2, not as its own ' - '-delimited segment, must never read as a node-id label"
+    assert_nil hollow_report_reason(dir, "delivered"),
+               "a genuinely unlabelled legacy record must stay exempt after the gate widens"
+  ensure
+    FileUtils.rm_rf(dir) if dir
+  end
 end

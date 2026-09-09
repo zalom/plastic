@@ -164,4 +164,60 @@ class ReportScreenNodesTest < Minitest::Test
     assert_includes row2, "planned"
     refute_includes row2, "done"
   end
+
+  # --- S9 (v1g), D17: a verify node is proven by its criteria -----------------
+
+  def test_verify_node_proven_by_reads_criteria_count
+    write_basics
+    write_graph("- v1 needs nothing\n")
+    write("nodes/v1.md", <<~MD)
+      ---
+      node: v1
+      kind: verify
+      files: []
+      budget: 1000
+      ---
+      # v1 - Adversarial review
+
+      The whole delivery is read by a fresh agent.
+
+      ## Criteria
+      - every matrix row has a test that fails before its fix
+      - the suite is green with zero failures
+      - the additive rule holds in every shared file
+    MD
+    assert_equal "3 criteria", ReportScreen.proven_by(@dir, "v1")
+  end
+
+  # Row 9.4: the criteria path is gated on the node file's own `kind:`
+  # envelope field, never guessed from the label prefix and never by
+  # sniffing the body for a criteria-shaped list - a work node whose body
+  # happens to carry one must still read its matrix, not the list.
+  def test_work_node_proven_by_still_reads_matrix_rows
+    write_basics
+    write_graph("- n1 needs nothing\n")
+    write("nodes/n1.md", <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: []
+      budget: 1000
+      ---
+      # n1 - Demo unit
+
+      ## Criteria
+      - a criterion that happens to sit in a work node's body
+      - a second one, so a sniffed count would read 2, not the matrix's 3
+
+      ## n1 failure-mode matrix
+      | Row | Operation | Failure mode | Test |
+      | --- | --- | --- | --- |
+      | 1.1 | a | b | c |
+      | 1.2 | d | e | f |
+      | 1.3 | g | h | i |
+    MD
+    assert_nil ReportScreen.verify_node_criteria_count(@dir, "n1"),
+               "a work node's kind must gate the criteria path off, even though its body carries a criteria-shaped list"
+    assert_equal "3 tests", ReportScreen.proven_by(@dir, "n1")
+  end
 end
