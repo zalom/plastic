@@ -1,0 +1,67 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# outcome-report - the CLI over scripts/lib/outcome_report.rb (intent 339, G6).
+# Prints the generated outcome.md by default; --write puts it on disk through
+# AtomicWrite. `end-intent` calls the library directly (never shells out to
+# this), so this command is for a human or an agent checking the generated
+# report before or instead of a close.
+#
+# Usage:
+#   outcome-report <intent_dir> [--write] [--disposition delivered|abandoned]
+#
+# Exit codes:
+#   0 - printed (or written) successfully
+#   2 - usage error: no path given, an unknown flag, or the path is not an
+#       intent directory
+#   3 - the report model could not be built (a malformed or absent graph.md)
+
+require_relative "lib/outcome_report"
+require_relative "lib/intent_screen"
+
+def usage_abort(message)
+  warn "outcome-report: #{message}"
+  exit 2
+end
+
+args = ARGV.dup
+write_flag = false
+disposition = "delivered"
+positional = []
+
+while (arg = args.shift)
+  case arg
+  when "--write"
+    write_flag = true
+  when "--disposition"
+    disposition = args.shift or usage_abort("--disposition needs a value")
+  else
+    usage_abort("unknown flag #{arg.inspect}") if arg.start_with?("--")
+    positional << arg
+  end
+end
+
+target = positional.first
+usage_abort("usage: outcome-report <intent_dir> [--write] [--disposition delivered|abandoned]") unless target
+
+intent_dir = File.expand_path(target)
+usage_abort("#{intent_dir} is not an intent directory") unless IntentScreen.intent_dir?(intent_dir)
+
+model = OutcomeReport.model(intent_dir)
+unless model[:ok]
+  warn "outcome-report: the report model could not be built: #{model[:errors].join('; ')}"
+  exit 3
+end
+
+if write_flag
+  OutcomeReport.write(intent_dir, disposition: disposition)
+  puts File.join(intent_dir, "outcome.md")
+else
+  outcome_path = File.join(intent_dir, "outcome.md")
+  existing = File.exist?(outcome_path) ? File.read(outcome_path) : nil
+  puts OutcomeReport.render(model, disposition: disposition, existing: existing,
+                                   findings: OutcomeReport.findings(intent_dir))
+end
+
+exit 0
