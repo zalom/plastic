@@ -65,6 +65,12 @@ module ReadySet
       blockers << "#{subject} is #{own_status}, not eligible to enter running"
     end
 
+    own_decl = nodes[subject.to_s] || {}
+    # Finding 1b: a node graph.md declares with no readable nodes/ file
+    # (missing, or a malformed envelope) carries this from load_graph and is
+    # never ready, regardless of what the other three conditions say.
+    blockers << own_decl[:file_error] if own_decl[:file_error]
+
     edges = (graph || {})[:edges] || {}
     needs = edges[subject.to_s] || []
     needs.each do |target|
@@ -74,7 +80,11 @@ module ReadySet
       end
     end
 
-    own_files = normalize_files((nodes[subject.to_s] || {})[:files])
+    if dead_end?(subject.to_s, edges, status_map)
+      blockers << "#{subject} is a dead end: a needed node is superseded or abandoned"
+    end
+
+    own_files = normalize_files(own_decl[:files])
     if own_files.any?
       overlapping = (nodes.keys - [subject.to_s]).select do |other|
         other_files = normalize_files((nodes[other] || {})[:files])
@@ -88,8 +98,15 @@ module ReadySet
       end
     end
 
-    kind = (nodes[subject.to_s] || {})[:kind]
-    cap = (caps || DEFAULT_CAPS)[kind]
+    # Finding 1a: an unknown or nil kind (a node the graph never declared,
+    # or one whose file could not be read) must never fall through to no
+    # cap at all - it gets the work cap, the widest of the four, rather
+    # than being skipped or refused outright. Preserves 335's shipped
+    # legacy path: no graph.md at all means an empty nodes map and a nil
+    # kind, which must keep dispatching, bounded by this fallback cap.
+    kind = own_decl[:kind]
+    caps_table = caps || DEFAULT_CAPS
+    cap = caps_table.fetch(kind) { caps_table["work"] }
     if cap
       attempts = attempts_count(entries, subject.to_s)
       blockers << "#{subject} is at its dispatch cap (#{attempts}/#{cap})" if attempts >= cap
@@ -185,8 +202,9 @@ module ReadySet
     parsed[:graph][:nodes].each do |id|
       path = find_node_path(intent_dir, id)
       if path.nil?
-        errors << "node #{id.inspect} is declared in graph.md but has no nodes/ file"
-        nodes[id] = { kind: nil, files: [] }
+        msg = "node #{id.inspect} is declared in graph.md but has no nodes/ file"
+        errors << msg
+        nodes[id] = { kind: nil, files: [], file_error: msg }
         next
       end
 
@@ -194,8 +212,9 @@ module ReadySet
       if nf[:ok]
         nodes[id] = { kind: nf[:kind], files: nf[:files] || [] }
       else
-        errors << "node #{id.inspect}'s file is malformed: #{nf[:errors].join('; ')}"
-        nodes[id] = { kind: nil, files: [] }
+        msg = "node #{id.inspect}'s file is malformed: #{nf[:errors].join('; ')}"
+        errors << msg
+        nodes[id] = { kind: nil, files: [], file_error: msg }
       end
     end
 

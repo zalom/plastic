@@ -26,7 +26,11 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   expired running leases from `scripts/doctor.rb` (never `doctor_core.rb`); the dashboard reads a
   graph intent's ready node count, advisory, entirely separate from the `sources`-derived
   "unblocked" flag. `scripts/ready-set` prints the ready order, blockers, batches and critical
-  paths, and emits JSON.
+  paths, and emits JSON. A post-execution review fold closed two silent gaps: a node whose kind
+  is unknown, or whose declared file is missing or malformed, now falls back to the work cap
+  (never no cap at all) and is never ready without a readable file; `RoadmapQueue`'s graph
+  frontier reports (in `blocked`) an id the graph names but no batch lists, and never drops a
+  batch entry the graph does not name, instead of silently reading the roadmap as exhausted.
 
 - Intent 347: npm trusted publishing (OIDC) via GitHub Actions. `.github/workflows/publish.yml` publishes `@zalom/plastic` from a pushed version tag using a short-lived, per-run credential instead of the laptop-held npm token that stalled the alpha.18 release; `scripts/release-check` guards the tag against `package.json`, the three version files against each other, and the runner's npm against the 11.5.1 OIDC floor before the package publishes with `--provenance --access public`. The planned suite step inside the publish job came out on evidence (D7): extending `test.yml` to `alpha` produced the first hosted-runner run since 2026-08-25 and it was red, on three test-hermeticity defects unrelated to the release path, so the suite keeps gating the release as `release.verify` before the tag is cut and a test pins the step's absence. The releasing skill's `npm_publish_workflow` action replaces the local `npm_publish` step for this project only.
 

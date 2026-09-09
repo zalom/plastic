@@ -622,7 +622,7 @@ class Doctor
     # flagged: validate_graph does not compute it.
     checks.concat(graph_invariant_checks(intent_dirs))
 
-    # node_graph — ReadySet's own view of every intent carrying a real graph.md
+    # node_graph - ReadySet's own view of every intent carrying a real graph.md
     # (intent 336, n7): dead ends, stale done nodes, and expired running leases,
     # none of which any other doctor rule surfaces. Lives here rather than
     # doctor_core.rb because test/doctor_core_split_test.rb pins that file's

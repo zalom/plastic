@@ -310,11 +310,14 @@ class RoadmapQueue
   # D15's edge-driven frontier: the topological layers of the graph's edges,
   # walked in order; the first layer holding a dispatchable (all needs
   # delivered) or in-flight entry is the frontier. An id the graph names but
-  # no wave lists is silently excluded, never a crash and never an invented
-  # entry with no title (never called on a cyclic graph: #analyze checks that
-  # first and reports "error" instead).
+  # no batch lists is reported in `blocked` (finding 2, R-2), never a crash
+  # and never an invented dispatchable entry with no title. An id a batch
+  # lists that the graph does not name is never dropped either: it keeps
+  # the pre-change wave behavior (the G4 partial-migration path) by being
+  # folded in as needing nothing (never called on a cyclic graph: #analyze
+  # checks that first and reports "error" instead).
   def graph_frontier_for(candidate)
-    edges = candidate[:graph_edges][:edges]
+    edges = candidate[:graph_edges][:edges].dup
     id_to_entry = {}
     wave_of_id = {}
     candidate[:waves].each do |wave|
@@ -323,6 +326,8 @@ class RoadmapQueue
         wave_of_id[e[:id]] = wave[:heading]
       end
     end
+
+    (id_to_entry.keys - all_graph_nodes(edges)).each { |id| edges[id] = [] }
 
     topological_layers(edges).each do |layer|
       layer_ids = layer.select { |id| id_to_entry.key?(id) }
@@ -375,11 +380,57 @@ class RoadmapQueue
   end
 
   def blocked_for(candidate)
-    candidate[:waves].flat_map do |wave|
+    explicit = candidate[:waves].flat_map do |wave|
       wave[:entries].select { |e| e[:status] == "blocked" }.map do |e|
         { "id" => e[:id], "roadmap" => candidate[:slug], "wave" => wave[:heading], "status" => "blocked" }
       end
     end
+    explicit + graph_reporting_blocked(candidate)
+  end
+
+  # R-2 (finding 2): a graph naming an id no batch lists is reported, not
+  # swallowed - both the unnamed id itself, and any batch entry whose own
+  # declared need points straight at it, which would otherwise sit queued
+  # forever with nothing in the payload explaining why. Keeps the invariant
+  # that `state` is never "exhausted" while a queued entry sits unaccounted
+  # for: an entry that can never resolve still shows up here.
+  def graph_reporting_blocked(candidate)
+    return [] unless candidate[:graph_edges]
+
+    edges = candidate[:graph_edges][:edges]
+    id_to_entry = candidate[:waves].flat_map { |w| w[:entries] }.each_with_object({}) { |e, h| h[e[:id]] = e }
+    unreported = all_graph_nodes(edges).reject { |id| id_to_entry.key?(id) }
+
+    reported = unreported.map do |id|
+      { "id" => id, "roadmap" => candidate[:slug], "wave" => nil, "status" => "unreported",
+        "reason" => "graph names #{id.inspect}, no batch entry" }
+    end
+
+    stuck = []
+    id_to_entry.each do |id, entry|
+      next unless entry[:status] == "queued"
+
+      (edges[id] || []).each do |target|
+        next unless unreported.include?(target)
+
+        stuck << { "id" => id, "roadmap" => candidate[:slug], "wave" => wave_heading_for(candidate, id),
+                   "status" => "unreported",
+                   "reason" => "#{id} needs #{target}, which the graph declares but no batch lists" }
+      end
+    end
+
+    reported + stuck
+  end
+
+  def wave_heading_for(candidate, id)
+    candidate[:waves].each { |w| return w[:heading] if w[:entries].any? { |e| e[:id] == id } }
+    nil
+  end
+
+  def all_graph_nodes(edges)
+    nodes = edges.keys.dup
+    edges.each_value { |targets| (targets || []).each { |t| nodes << t unless nodes.include?(t) } }
+    nodes
   end
 
   # --- scope + payload -----------------------------------------------------------
