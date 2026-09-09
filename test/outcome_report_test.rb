@@ -4,8 +4,10 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
+require "timeout"
 require_relative "../scripts/lib/outcome_report"
 require_relative "../scripts/lib/report_screen"
+require_relative "../scripts/lib/savepoint"
 
 # OutcomeReport (intent 339, G6): the report model over graph.md, nodes/, and
 # the node ledger (n1), the generator and its command (n2), the plan-versus-
@@ -353,5 +355,138 @@ class OutcomeReportTest < Minitest::Test
     })
     assert called
     assert File.exist?(File.join(@dir, "outcome.md"))
+  end
+
+  # --- n3: plan versus delivered, and stale -----------------------------------
+
+  def ledger_entries
+    NodeLedger.entries(File.join(@dir, "savepoint.md"))
+  end
+
+  # --- 3.1 -----------------------------------------------------------------
+
+  def test_diff_names_planned_node_not_done
+    model = build_model(nodes: { "n1" => a_node(state: "planned") })
+    model[:entries] = []
+    diff = OutcomeReport.graph_diff(model)
+    assert_includes diff, "n1 is planned, not done"
+  end
+
+  # --- 3.2 -----------------------------------------------------------------
+
+  def test_diff_names_undeclared_node
+    model = build_model(nodes: { "n9" => a_node(state: "done", declared: false) })
+    model[:entries] = []
+    diff = OutcomeReport.graph_diff(model)
+    assert_includes diff, "n9 was not declared in graph.md"
+  end
+
+  # --- 3.3 -----------------------------------------------------------------
+
+  def test_diff_names_retried_node_with_count
+    model = build_model(nodes: { "n1" => a_node(state: "done", retries: 2) })
+    model[:entries] = []
+    diff = OutcomeReport.graph_diff(model)
+    assert_includes diff, "n1 took 2 retries"
+  end
+
+  # --- 3.4 -----------------------------------------------------------------
+
+  def test_diff_marks_stale_node
+    write_ledger([
+      "2026-09-09T10:00:00Z  n2  done gates=tests commit=aaa1111\n",
+      "2026-09-09T10:01:00Z  n1  superseded by=n1b\n",
+    ])
+    model = build_model(nodes: { "n1" => a_node(state: "superseded"), "n2" => a_node(state: "done") },
+                         edges: { "n2" => ["n1"] })
+    model[:entries] = ledger_entries
+    diff = OutcomeReport.graph_diff(model)
+    assert_includes diff, "n2 is stale"
+  end
+
+  # --- 3.5 -----------------------------------------------------------------
+
+  def test_diff_with_no_divergence_renders_one_line
+    model = build_model(nodes: { "n1" => a_node(state: "done") })
+    model[:entries] = []
+    diff = OutcomeReport.graph_diff(model)
+    assert_includes diff, "Delivered matches the plan."
+  end
+
+  # --- 3.6 -----------------------------------------------------------------
+
+  def test_stale_uses_line_position_not_timestamp
+    write_ledger([
+      "2026-09-09T12:00:00Z  n2  done gates=tests commit=aaa1111\n",
+      "2026-09-09T08:00:00Z  n1  superseded by=n1b\n",
+    ])
+    stale = OutcomeReport.stale_nodes(entries: ledger_entries, edges: { "n2" => ["n1"] })
+    assert_includes stale, "n2"
+  end
+
+  # --- 3.7 -----------------------------------------------------------------
+
+  def test_stale_is_transitive_over_the_needs_closure
+    write_ledger([
+      "2026-09-09T10:00:00Z  n1  done gates=tests commit=aaa1111\n",
+      "2026-09-09T10:01:00Z  n3  superseded by=n3b\n",
+    ])
+    stale = OutcomeReport.stale_nodes(entries: ledger_entries, edges: { "n1" => ["n2"], "n2" => ["n3"] })
+    assert_includes stale, "n1"
+  end
+
+  # --- 3.8 -----------------------------------------------------------------
+
+  def test_cyclic_graph_reports_rather_than_loops
+    write_ledger(["2026-09-09T10:00:00Z  n1  done gates=tests commit=aaa1111\n"])
+    stale = nil
+    assert_equal 1, Timeout.timeout(5) { stale = OutcomeReport.stale_nodes(entries: ledger_entries, edges: { "n1" => ["n2"], "n2" => ["n1"] }); 1 }
+    assert_equal [], stale
+  end
+
+  # --- 3.9 -----------------------------------------------------------------
+
+  def test_superseded_then_reinstated_is_not_stale
+    write_ledger([
+      "2026-09-09T10:00:00Z  n2  done gates=tests commit=aaa1111\n",
+      "2026-09-09T10:01:00Z  n1  superseded by=n1b\n",
+      "2026-09-09T10:02:00Z  n1  running holder=h expires=2026-09-09T11:00:00Z packet=A model=sonnet\n",
+    ])
+    stale = OutcomeReport.stale_nodes(entries: ledger_entries, edges: { "n2" => ["n1"] })
+    refute_includes stale, "n2"
+  end
+
+  # --- 3.10 --------------------------------------------------------------------
+
+  def test_supersession_before_done_is_not_stale
+    write_ledger([
+      "2026-09-09T10:00:00Z  n1  superseded by=n1b\n",
+      "2026-09-09T10:01:00Z  n2  done gates=tests commit=aaa1111\n",
+    ])
+    stale = OutcomeReport.stale_nodes(entries: ledger_entries, edges: { "n2" => ["n1"] })
+    refute_includes stale, "n2"
+  end
+
+  # --- 3.11 --------------------------------------------------------------------
+
+  def test_stale_unchanged_across_rebuild_savepoint
+    write("12--slug.md", "---\nid: \"12\"\nintent: \"x\"\n---\n\n## Intent\nx\n")
+    write_ledger([
+      "2026-09-09T10:00:00Z  n2  done gates=tests commit=aaa1111\n",
+      "2026-09-09T10:01:00Z  n1  superseded by=n1b\n",
+    ])
+    edges = { "n2" => ["n1"] }
+    before = OutcomeReport.stale_nodes(entries: ledger_entries, edges: edges)
+    Savepoint.rebuild_savepoint(@dir)
+    after = OutcomeReport.stale_nodes(entries: ledger_entries, edges: edges)
+    assert_equal before, after
+  end
+
+  # --- 3.12 --------------------------------------------------------------------
+
+  def test_stale_fn_seam_is_injectable
+    stub = ->(entries:, edges:) { ["n7"] }
+    result = OutcomeReport.stale_nodes(entries: [], edges: {}, stale_fn: stub)
+    assert_equal ["n7"], result
   end
 end
