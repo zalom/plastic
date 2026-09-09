@@ -337,6 +337,26 @@ class NodePacketReadersTest < Minitest::Test
     File.dirname(@dir)
   end
 
+  # A real intent record's frontmatter carries a bare-date `created:` field
+  # (334 of 449 records in the live store do), which YAML.safe_load rejects
+  # by default (Psych::DisallowedClass) unless Date is permitted. Found by
+  # the n5 dogfood build against this intent's own record, whose frontmatter
+  # has exactly this shape: record_sources silently swallowed the exception
+  # and returned [], so the hop was empty for every real intent record.
+  def test_record_sources_reads_frontmatter_carrying_a_bare_date
+    File.write(record_path, <<~MD)
+      ---
+      id: "1"
+      sources: ["327"]
+      created: 2026-09-07
+      ---
+
+      ## Intent
+      Demo intent.
+    MD
+    assert_equal ["327"], NodePacket.record_sources(@dir)
+  end
+
   def test_the_hop_is_one_level_and_never_follows_a_sources_sources
     write_source("src-b", outcome: "B outcome text.")
     write_source("src-a", outcome: "A outcome text.", sources: ["src-b"])

@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "yaml"
+require "date"
 require "digest"
 require "fileutils"
 require_relative "node_file"
@@ -215,7 +216,7 @@ module NodePacket
     return [] if parts.length < 3
 
     fm = begin
-      YAML.safe_load(parts[1])
+      YAML.safe_load(parts[1], permitted_classes: [Date, Time])
     rescue StandardError
       nil
     end
