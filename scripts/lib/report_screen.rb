@@ -969,6 +969,31 @@ def self.matching_action_heading(intent_dir, label)
     lines.last&.first
   end
 
+  # report-screen archive <store_root> (intent 339, G6, n6, spec D9): a
+  # read-only VIEW of a store's terminal intents - the reading half of intent
+  # 132, declining the other three halves (moving directories, path
+  # resolution, doctor checks). Lists `## Completed` and `## Abandoned` only
+  # (row 6.1); each row's disposition comes from outcome.md's own
+  # frontmatter (row 6.2), never guessed from which INDEX section the
+  # dirname was found in, so a terminal intent with no outcome.md renders
+  # the absent-source phrase instead of a fabricated disposition (row 6.3).
+  # Reads only - moves nothing (row 6.4).
+  def self.archive_dirnames(index_path)
+    dirnames_in_section(index_path, "Completed") + dirnames_in_section(index_path, "Abandoned")
+  end
+
+  def self.render_archive(store_root)
+    index_path = File.join(store_root, "INDEX.md")
+    lines = ["# Archive: #{File.basename(store_root)}", "", "| Intent | Disposition |", "| --- | --- |"]
+    archive_dirnames(index_path).each do |dirname|
+      dir = File.join(store_root, "store", dirname)
+      disposition = outcome_frontmatter(dir)["disposition"]
+      disposition = NOT_RECORDED if disposition.nil? || disposition.to_s.empty?
+      lines << "| #{escape(dirname)} | #{escape(disposition.to_s)} |"
+    end
+    "#{lines.join("\n")}\n"
+  end
+
   def self.roster(store_root)
     index_path = File.join(store_root, "INDEX.md")
     entries = active_dirnames(index_path).filter_map do |dirname|

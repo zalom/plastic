@@ -51,6 +51,9 @@ a stage, and a milestone, separated by two spaces.
   (intent 317). They keep the same line shape as every other kind and feed the delay report
   (`report-screen delay`); readers that pick the current STAGE (the dashboard, the spawn
   preamble, `report-screen state`) skip over them and use the last lifecycle line instead.
+  `report-screen archive <store_root>` (intent 339) is the read-only counterpart for a whole
+  store: it lists the terminal intents (`## Completed`, `## Abandoned`) with the disposition
+  each one's `outcome.md` frontmatter carries, and moves nothing on disk.
 - The last LIFECYCLE line (What/Why/How/Exec/Done) is the intent's current stage. That is
   what the dashboard and the spawn preamble read. The last line of ANY kind is still what the
   intent screen's `Savepoint` field shows, since that field answers "when did this ledger

@@ -17,6 +17,7 @@
 #   report-screen session <tier_root> [--session <id>] [--since <iso>]
 #                                     [--ledger-root <dir>] [--ansi]
 #   report-screen roadmap <roadmap.md> plan|state|delivered [--ansi] [--store-root <dir>]
+#   report-screen archive <store_root> [--ansi]
 #
 # --ansi delegates to ScreenPaint (intent 317a, D1), the parser/re-layouter
 # in the shared TUI core. Selection is by capability, never by harness:
@@ -267,8 +268,14 @@ when "roadmap"
   roadmap_store_root = store_root_flag ? File.expand_path(store_root_flag) : nil
   out = ReportScreen.render_roadmap(path: roadmap_path, verb: sub_verb, store_root: roadmap_store_root)
   $stdout.write paint(out, ansi_enabled)
+when "archive"
+  usage_abort("usage: report-screen archive <store_root>") unless target
+  store_root = File.expand_path(target)
+  usage_abort("#{store_root} is not a store (no INDEX.md)") unless File.exist?(File.join(store_root, "INDEX.md"))
+  out = ReportScreen.render_archive(store_root)
+  $stdout.write paint(out, ansi_enabled)
 else
-  usage_abort("unknown verb #{verb.inspect} (use plan|state|delivered|delay|session|roadmap)")
+  usage_abort("unknown verb #{verb.inspect} (use plan|state|delivered|delay|session|roadmap|archive)")
 end
 
 exit 0

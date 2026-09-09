@@ -411,7 +411,7 @@ a warning about it is never proof that the transcript view paints.
 
 `scripts/lib/screen_paint.rb` is the harness-agnostic paint seam 317's
 follow-up named: a parser and re-layouter that turns any emitted plain screen
-(intent, state, roster, delivered, delay) into the ANSI layout, reusing
+(intent, state, roster, delivered, delay, archive) into the ANSI layout, reusing
 IntentScreenAnsi's palette and fit helpers. The MessageDisplay adapter paints
 the printed text through it (no intent-id resolution; grammar decides), and
 `report-screen --ansi` delegates to it under the capability guards (TTY or
