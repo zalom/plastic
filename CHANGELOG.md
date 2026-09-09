@@ -6,6 +6,22 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 ## Unreleased
 
 - Intent 347: npm trusted publishing (OIDC) via GitHub Actions. `.github/workflows/publish.yml` publishes `@zalom/plastic` from a pushed version tag using a short-lived, per-run credential instead of the laptop-held npm token that stalled the alpha.18 release; `scripts/release-check` guards the tag against `package.json`, the three version files against each other, and the runner's npm against the 11.5.1 OIDC floor before the package publishes with `--provenance --access public`. The planned suite step inside the publish job came out on evidence (D7): extending `test.yml` to `alpha` produced the first hosted-runner run since 2026-08-25 and it was red, on three test-hermeticity defects unrelated to the release path, so the suite keeps gating the release as `release.verify` before the tag is cut and a test pins the step's absence. The releasing skill's `npm_publish_workflow` action replaces the local `npm_publish` step for this project only.
+- 339 (G6, roadmap graph-ready-plastic, batch 2) - `outcome.md` is generated at the close
+  rather than authored by hand. `scripts/lib/outcome_report.rb` reads `graph.md`, `nodes/`,
+  and the node ledger into one model, and `scripts/outcome-report` (or `end-intent` itself,
+  before it backfills) renders the whole file: `## Delivered` rows are done work nodes labeled
+  by node id, `## Verification` cites the ledger's own evidence fields, `## Graph diff` names
+  every planned-but-not-done, undeclared, retried, or stale node, and `## Findings` renders the
+  intent record's `### Findings` under `## Insights`, capped at 200 characters each. An authored
+  `## Summary`, `## Needs you`, `## Follow-ups`, and every frontmatter key but `disposition`
+  survive a regeneration untouched. `end-intent` generates only into a missing or placeholder
+  `outcome.md`, only when the generated text passes both `OutcomeGuard` and the hollow-report
+  gate, and falls through to intent 308's backfill otherwise, so no close gains an exit 7 it did
+  not have before. `report-screen delivered` gained a `### Nodes` block (ledger state, a
+  `(stale)` marker for a done node whose dependency was superseded later) and a `### Findings`
+  block, both additive and only for an intent with a `graph.md`. `report-screen archive
+  <store_root>` is a new, read-only view of a store's terminal intents with their dispositions,
+  the reading half of intent 132; it moves nothing on disk.
 
 - 335a: node ids never recycle (owner ruling, 2026-09-09). `NodeFile.mint_id` mints one past the
   highest id ever seen for a kind rather than the lowest free one, so deleting `n2` no longer

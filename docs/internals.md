@@ -698,6 +698,17 @@ intent's own worktree), every judgment section keeps the template's stub, and a 
 hand-written content is never touched. `end-intent` then runs doctor's per-intent structure
 check as a self-check that reports and proceeds; the exit-6 refusal is gone.
 
+Before that backfill runs, `end-intent` calls `scripts/lib/outcome_report.rb` (`OutcomeReport`,
+intent 339): for an intent with a `graph.md`, it generates `outcome.md` from the graph, the
+`nodes/` files, and the node ledger - `## Delivered` rows are done work nodes labeled by node
+id, `## Verification` cites the ledger's typed evidence fields, `## Graph diff` names any
+planned-but-not-done, undeclared, retried, or stale node, and `## Findings` renders the intent
+record's `### Findings` under `## Insights`. Only into a file that is missing or still the
+placeholder, and only when the generated text passes both `OutcomeGuard` and the hollow-report
+gate; when it would not, the write is reverted and the close falls through to the backfill
+above unchanged. `scripts/outcome-report` is the same generator's standalone CLI, for
+checking or regenerating the file outside a close.
+
 `scripts/verify-intent` folds doctor scoped to the intent, the added-line em-dash diff guard
 (the first standing implementation of that check), a diffstat, and an optional
 caller-supplied suite command into one verdict. It does not invent a project test-command

@@ -81,6 +81,7 @@ require_relative "lib/intent_validator"
 require_relative "lib/outcome_guard"
 require_relative "lib/report_screen"
 require_relative "lib/backfill_intent"
+require_relative "lib/outcome_report"
 
 DISPOSITIONS = %w[delivered abandoned].freeze
 
@@ -179,6 +180,50 @@ end
 # Backfill (intent 308): write the judgment documents that are missing or still the
 # placeholder from the record (BackfillIntent). Fail-open: a crash here warns and the
 # close proceeds, the same contract as the structure check below.
+# --- outcome generation, before the backfill (intent 339, G6, spec D10) -----
+#
+# Generates outcome.md from graph.md, nodes/, and the ledger, BEFORE the
+# backfill step runs, and only into a file that is missing or still the
+# scaffold placeholder (`Savepoint.stage_file_present?` false) - a real,
+# hand-written outcome.md is never touched (row 7.2). Only when a graph.md
+# exists at all (row 7.3): every intent without one closes exactly as it did
+# before this intent. The generated text is checked against BOTH close
+# gates - `OutcomeGuard` and the hollow-report gate below - before being
+# adopted (row 7.4); when either would refuse it, the write is reverted and
+# the close falls through to intent 308's unchanged backfill (row 7.5), so no
+# close gains an exit 7 it did not have before this intent. Fails open on any
+# exception (row 7.6), the same report-and-proceed shape every other close
+# step in this file uses. `generator:` is the injectable seam (mirrors
+# run_structure_check's `gate:`).
+def run_generate_outcome(intent_dir, disposition:, generator: OutcomeReport.method(:write))
+  graph_path = File.join(intent_dir, "graph.md")
+  return unless File.exist?(graph_path)
+
+  outcome_path = File.join(intent_dir, "outcome.md")
+  return if Savepoint.stage_file_present?(outcome_path)
+
+  original_exists = File.exist?(outcome_path)
+  original_content = original_exists ? File.read(outcome_path) : nil
+
+  generator.call(intent_dir, disposition: disposition)
+
+  guard_reason = OutcomeGuard.reason(intent_dir, disposition)
+  hollow = hollow_report_reason(intent_dir, disposition)
+  if guard_reason || hollow
+    if original_exists
+      File.write(outcome_path, original_content)
+    elsif File.exist?(outcome_path)
+      File.delete(outcome_path)
+    end
+    warn "end-intent: generated outcome.md would be refused (#{[guard_reason, hollow].compact.join('; ')}); " \
+         "falling back to the backfill"
+  else
+    warn "end-intent: outcome.md generated from graph.md and the ledger"
+  end
+rescue StandardError => e
+  warn "end-intent: outcome generation crashed (#{e.message}); proceeding without it"
+end
+
 def run_backfill(intent_dir, store:, id:, disposition:, summary:)
   result = BackfillIntent.run(intent_dir: intent_dir, store: store, id: id,
                               disposition: disposition, summary: summary)
@@ -746,6 +791,11 @@ def main(argv)
       exit 4
     end
   end
+
+  # 0a. Generate outcome.md from graph.md and the ledger, when there is one
+  # (intent 339, G6, spec D10) - before the backfill, so a real graph never
+  # falls through to the terse backfill it exists to replace.
+  run_generate_outcome(intent_dir, disposition: disposition)
 
   # 1. Backfill from the record (intent 308), then the structure self-check and the
   # outcome guard, both report-only since 308.
