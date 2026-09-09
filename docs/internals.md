@@ -1592,8 +1592,11 @@ savepoint ledger.
 private `queue`/`which` the auto loop already calls: for ONE roadmap file it returns the slug,
 path, grouping label (`RoadmapSavepoint.grouping_heading`, "Batches" or "Waves"), the batches with
 each entry's id, title text, and INDEX-reconciled status, and the frontier
-(`RoadmapQueue`'s own private `frontier_for`, unchanged - a screen never re-derives which batch is
-live). `ENTRY`'s regex gained a capture group for the entry's own title text between the id and
+(`RoadmapQueue`'s own private `frontier_for` - a screen never re-derives which batch is live).
+Intent 336 (G3) taught `frontier_for` to follow a roadmap's own `## Graph` section when one
+carries real edges, falling back to wave order otherwise; `roadmap(path)` reads whichever path
+`frontier_for` takes with no change of its own. `ENTRY`'s regex gained a capture group for the
+entry's own title text between the id and
 the status separator; `parse_waves`' group indices moved with it, and `test/roadmap_queue_test.rb`
 stayed green unchanged, since nothing public in `queue`/`which` reads that new group.
 

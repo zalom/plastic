@@ -212,6 +212,11 @@ class ReportScreenCliTest < Minitest::Test
       FileUtils.cp(File.join(REPO, "scripts", "lib", "store_provisioning.rb"), File.join(tmp_root, "scripts", "lib", "store_provisioning.rb"))
       FileUtils.cp(File.join(REPO, "scripts", "lib", "roadmap_queue.rb"), File.join(tmp_root, "scripts", "lib", "roadmap_queue.rb"))
       FileUtils.cp(File.join(REPO, "scripts", "lib", "roadmap_savepoint.rb"), File.join(tmp_root, "scripts", "lib", "roadmap_savepoint.rb"))
+      # 336 (n6): roadmap_queue.rb reads a roadmap's own ## Graph section
+      # through GraphFile, so this hand-copied fixture layout needs it too.
+      FileUtils.cp(File.join(REPO, "scripts", "lib", "graph_file.rb"), File.join(tmp_root, "scripts", "lib", "graph_file.rb"))
+      FileUtils.cp(File.join(REPO, "scripts", "lib", "graph_edges.rb"), File.join(tmp_root, "scripts", "lib", "graph_edges.rb"))
+      FileUtils.cp(File.join(REPO, "scripts", "lib", "atomic_write.rb"), File.join(tmp_root, "scripts", "lib", "atomic_write.rb"))
       FileUtils.cp(File.join(REPO, "scripts", "lib", "guarded_append.rb"), File.join(tmp_root, "scripts", "lib", "guarded_append.rb"))
       # Intent 339 (G6): report_screen.rb now require_relatives outcome_report.rb,
       # which pulls in its own graph/node/ledger readers and AtomicWrite.

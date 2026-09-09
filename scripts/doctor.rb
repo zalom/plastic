@@ -28,6 +28,7 @@ require_relative "lib/links_section"
 require_relative "lib/lock"
 require_relative "lib/savepoint"
 require_relative "lib/node_ledger"
+require_relative "lib/ready_set"
 require_relative "lib/agent_models"
 require_relative "lib/outcome_guard"
 require_relative "lib/skill_lint"
@@ -620,6 +621,14 @@ class Doctor
     # I2 asymmetry (a relational chain entry with no reciprocal sources) is NEVER
     # flagged: validate_graph does not compute it.
     checks.concat(graph_invariant_checks(intent_dirs))
+
+    # node_graph - ReadySet's own view of every intent carrying a real graph.md
+    # (intent 336, n7): dead ends, stale done nodes, and expired running leases,
+    # none of which any other doctor rule surfaces. Lives here rather than
+    # doctor_core.rb because test/doctor_core_split_test.rb pins that file's
+    # boot path to exactly three project files and 781 bytes of headroom;
+    # ReadySet's own require chain is 65,648 bytes, far past that budget.
+    checks.concat(node_graph_checks(intent_dirs))
 
     # cross_store_resolution — RESOLVES (not just shape-checks) every cross-store
     # `store:id` ref against the FULL store family via the relocation map
@@ -1641,6 +1650,90 @@ end
         details: findings,
         fixable: name != "graph_i3_disjoint",
         fix_hint: fix_hint
+      )
+    end
+  end
+
+  # ReadySet over every intent carrying a real graph.md (intent 336, n7):
+  # dead ends, stale done nodes, and expired running leases. An intent with
+  # no real graph.md is skipped entirely (never touches ReadySet); a
+  # malformed or cyclic one is reported by name, never raised out of doctor.
+  def node_graph_checks(intent_dirs)
+    dead_ends = []
+    stale = []
+    expired = []
+    malformed = []
+
+    intent_dirs.each do |d|
+      graph_path = File.join(d[:path], "graph.md")
+      next unless Savepoint.stage_file_present?(graph_path)
+
+      analysis = ReadySet.analyze(d[:path])
+      unless analysis[:ok]
+        malformed << "#{d[:name]}: #{analysis[:errors].join('; ')}"
+        next
+      end
+
+      savepoint_path = File.join(d[:path], "savepoint.md")
+      analysis[:nodes].each do |id, view|
+        dead_ends << "#{d[:name]}/#{id}" if view[:dead_end]
+        stale << "#{d[:name]}/#{id}" if view[:stale]
+        expired << "#{d[:name]}/#{id}" if view[:state] == "running" && expired_running_lease?(savepoint_path, id)
+      end
+    end
+
+    [
+      node_graph_finding_check(
+        "node_graph_dead_ends", dead_ends,
+        "No node waits on a need that resolves to superseded or abandoned",
+        "Re-plan or supersede the dead-end node's need chain, or abandon the node itself"
+      ),
+      node_graph_finding_check(
+        "node_graph_stale_done", stale,
+        "No done node rests on a need superseded after it finished",
+        "Re-verify the stale node against the superseding work, or record the staleness in revisions.md"
+      ),
+      node_graph_finding_check(
+        "node_graph_expired_running_lease", expired,
+        "No running node's lease has expired unreclaimed",
+        "Run `node-transition <intent_dir> --node <id> --state reclaimed --field holder=<h> " \
+        "--field expired=<iso>` to sweep it"
+      ),
+      node_graph_finding_check(
+        "node_graph_malformed", malformed,
+        "Every intent's graph.md parses cleanly",
+        "Fix the malformed graph.md or nodes/ file named in the details"
+      ),
+    ]
+  end
+
+  # True iff `id`'s last running line in the ledger at `savepoint_path` carries
+  # an `expires=` strictly in the past. An unparseable or absent expires=
+  # never counts as expired (fail milder than the bug).
+  def expired_running_lease?(savepoint_path, id, now: Time.now)
+    entry = NodeLedger.last_running(savepoint_path, id)
+    return false unless entry
+
+    expires_raw = (entry[:fields] || {})["expires"]
+    expiry = begin
+      expires_raw && Time.iso8601(expires_raw)
+    rescue ArgumentError
+      nil
+    end
+    !!(expiry && now > expiry)
+  end
+
+  # One node-graph check: pass when `findings` is empty, otherwise warn
+  # (never fail, matching graph_finding_check's own precedent - an existing
+  # store never turns red on an advisory graph finding).
+  def node_graph_finding_check(name, findings, pass_message, fix_hint)
+    if findings.empty?
+      check(category: "conventions", name: name, status: "pass", message: pass_message)
+    else
+      check(
+        category: "conventions", name: name, status: "warn",
+        message: "#{findings.size} #{name} violation(s)",
+        details: findings, fixable: false, fix_hint: fix_hint
       )
     end
   end

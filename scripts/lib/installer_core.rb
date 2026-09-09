@@ -492,6 +492,12 @@ class InstallerCore
       # Intent 339 (G6): the generated outcome.md library and its CLI.
       "scripts/lib/outcome_report.rb" => "scripts/lib/outcome_report.rb",
       "scripts/outcome-report" => "scripts/outcome-report",
+      # Intent 336 (G3): ReadySet, the one function that says what may run
+      # next, and its CLI. node-transition requires the lib as of n5;
+      # registered here (rather than waiting for n8's own CLI/doc unit) so
+      # test/install_sync_test.rb stays green across every intermediate unit.
+      "scripts/lib/ready_set.rb" => "scripts/lib/ready_set.rb",
+      "scripts/ready-set" => "scripts/ready-set",
       # Intent 338 (G5): the node packet command - the trust-boundary wrapper,
       # the five-block gatherer/assembler, and the CLI 340's runner calls.
       "scripts/lib/packet_wrapper.rb" => "scripts/lib/packet_wrapper.rb",
