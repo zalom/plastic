@@ -122,19 +122,24 @@ class PublishWorkflowTest < Minitest::Test
     assert guard_index < publish_index, "the guard must run before the publish step"
   end
 
-  # D7: whether this step stays in publish.yml is a live decision made after
-  # watching test.yml on a hosted runner. Pin its presence and its position
-  # so a later edit that drops it, or reorders it outside the guard-then-
-  # publish window, is a red suite rather than a silent policy change.
-  def test_runs_the_full_suite_between_the_guard_and_the_publish
+  # D7, resolved 2026-09-09 against evidence. test.yml ran on a hosted runner
+  # for the first time since 2026-08-25, on the alpha merge of this intent:
+  # https://github.com/zalom/plastic/actions/runs/34335126166. It came back red
+  # with three failures that have nothing to do with the release path and
+  # everything to do with test hermeticity on Linux: session_start_test reads a
+  # real ~/.plastic/scripts/read-config that no runner has, capture_hook_test
+  # does not rewrite its heartbeat there, and maintenance_run_test's teardown
+  # cannot rmdir a .git/objects tree. Gating a publish on that suite would
+  # relocate the alpha.18 stall from the laptop to the runner, the exact failure
+  # this intent exists to remove, so the suite step comes out of the publish job.
+  # The suite still gates the release where it always did, as release.verify, run
+  # before the tag is cut. Pin the absence so restoring the step is a deliberate
+  # act taken with the runner green, not an accident.
+  def test_does_not_run_the_full_suite_in_the_publish_job
     suite_step = steps.find { |s| s["run"].to_s.strip == "ruby bin/test" }
-    refute_nil suite_step, "expected a step that runs ruby bin/test"
-
-    guard_index = steps.index(guard_step)
-    suite_index = steps.index(suite_step)
-    publish_index = steps.index(publish_step)
-    assert guard_index < suite_index, "the suite must run after the guard"
-    assert suite_index < publish_index, "the suite must run before the publish step"
+    assert_nil suite_step,
+      "the publish job must not run the suite while it is red on a hosted runner (D7); " \
+      "restore this step only once test.yml is green on alpha"
   end
 
   # The dispatch-or-pushed tag reaches the guard through env:, not interpolated
