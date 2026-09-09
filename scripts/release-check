@@ -1,0 +1,118 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# release-check - deterministic CLI over ReleaseGuard (intent 347).
+#
+# Guards a tagged publish before the workflow ever reaches `npm publish`:
+# the pushed tag must equal `v` plus the version in package.json, the three
+# repo version files must agree, and the runner's npm must meet the 11.5.1
+# floor npm requires for OIDC trusted publishing. Writes the derived
+# dist-tag and version to $GITHUB_OUTPUT, so the alpha/beta/latest rule has
+# exactly one implementation, ReleaseGuard.dist_tag, shared with the test
+# suite.
+#
+# Usage:
+#   release-check --tag <tag> --npm-version <version>
+#                  [--github-output <path>] [--root <dir>]
+#
+# Exit codes: 0 (clean), 1 (violations; reported on stderr, one per line,
+# each naming the specific thing that is wrong), 2 (usage).
+
+require "json"
+
+require_relative "lib/release_guard"
+
+NPM_FLOOR = [11, 5, 1].freeze
+KNOWN_FLAGS = %w[--tag --npm-version --github-output --root].freeze
+
+def usage
+  warn "usage: release-check --tag <tag> --npm-version <version> [--github-output <path>] [--root <dir>]"
+  exit 2
+end
+
+def parse_args(argv)
+  opts = {}
+  i = 0
+  while i < argv.length
+    flag = argv[i]
+    usage unless KNOWN_FLAGS.include?(flag)
+
+    value = argv[i + 1]
+    usage if value.nil?
+
+    opts[flag] = value
+    i += 2
+  end
+  opts
+end
+
+def read_version(path)
+  JSON.parse(File.read(path))["version"]
+rescue Errno::ENOENT, JSON::ParserError
+  nil
+end
+
+opts = parse_args(ARGV)
+usage unless opts["--tag"] && opts["--npm-version"]
+
+root = opts["--root"] ? File.expand_path(opts["--root"]) : File.expand_path("..", __dir__)
+package_json_path = File.join(root, "package.json")
+plugin_json_path = File.join(root, ".claude-plugin", "plugin.json")
+marketplace_json_path = File.join(root, ".claude-plugin", "marketplace.json")
+
+violations = []
+
+canonical_version = read_version(package_json_path)
+violations << "could not read a version from #{package_json_path}" if canonical_version.nil?
+
+tag = opts["--tag"].sub(%r{\Arefs/tags/}, "")
+dist_tag = nil
+
+if canonical_version
+  expected_tag = "v#{canonical_version}"
+  if tag != expected_tag
+    violations << "tag #{tag} does not match package.json version #{canonical_version} (expected #{expected_tag})"
+  end
+
+  dist_tag = ReleaseGuard.dist_tag(canonical_version)
+  stable = dist_tag == "latest"
+
+  result = ReleaseGuard.check(
+    package_json: package_json_path,
+    plugin_json: plugin_json_path,
+    marketplace_json: marketplace_json_path,
+    stable: stable
+  )
+
+  unless result.ok?
+    result.mismatches.each do |file|
+      violations << "version file #{file} does not agree with package.json (#{canonical_version})"
+    end
+    if stable && result.prerelease_suffix
+      violations << "stable cut #{canonical_version} carries the pre-release suffix -#{result.prerelease_suffix}"
+    end
+  end
+end
+
+npm_version = opts["--npm-version"].to_s.strip
+if npm_version.empty? || !npm_version.match?(/\A\d+(\.\d+)*\z/)
+  violations << "npm --version reported #{opts["--npm-version"].inspect}, which is empty or not numeric"
+elsif (npm_version.split(".").map(&:to_i) <=> NPM_FLOOR) < 0
+  violations << "npm #{npm_version} is below the 11.5.1 floor OIDC trusted publishing requires"
+end
+
+if violations.empty?
+  if opts["--github-output"]
+    File.open(opts["--github-output"], "a") do |f|
+      f.puts "version=#{canonical_version}"
+      f.puts "dist_tag=#{dist_tag}"
+    end
+  end
+  puts "OK: tag #{tag}, version #{canonical_version}, dist-tag #{dist_tag}"
+  exit 0
+end
+
+warn "VIOLATIONS:"
+violations.each { |v| warn "- #{v}" }
+exit 1
