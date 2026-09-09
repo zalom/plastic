@@ -220,4 +220,42 @@ class ReportScreenNodesTest < Minitest::Test
                "a work node's kind must gate the criteria path off, even though its body carries a criteria-shaped list"
     assert_equal "3 tests", ReportScreen.proven_by(@dir, "n1")
   end
+
+  # --- 10.4, D19: the S-label the Delivered row now carries must never leak
+  # into the "### Nodes" block or "## Graph diff" - both keep naming node
+  # ids, so the two halves of the report still line up for a reader.
+  def test_nodes_block_still_names_node_ids
+    write_basics
+    write_graph("- n9 needs nothing\n- n1 needs nothing\n")
+    write_node("n9", title: "Ninth thing")
+    write("actions/ACTION_1.md", <<~MD)
+      ### S10 - n9 - A delivered row carries the label its action heading owns
+
+      | Row | Operation | Failure mode | Test |
+      | --- | --- | --- | --- |
+      | 10.1 | a | b | c |
+
+      ### S1 - n1 - The report model
+
+      | Row | Operation | Failure mode | Test |
+      | --- | --- | --- | --- |
+      | 1.1 | a | b | c |
+    MD
+    write("savepoint.md", "2026-08-30T12:00:00Z  What  12--slug.md\n2026-09-09T10:00:00Z  n9  done gates=tests commit=aaa1111\n")
+    text = OutcomeReport.write(@dir, disposition: "delivered")
+    assert_includes text, "| S10 | Ninth thing |"
+    graph_diff = text.split("## Graph diff", 2)[1].to_s.split("## ", 2)[0]
+    assert_includes graph_diff, "n1 is planned, not done"
+    refute_includes graph_diff, "S1 "
+
+    out = ReportScreen.render_delivered(intent_dir: @dir)
+    delivered_block = out.split("**Delivered**", 2)[1].to_s.split("**Evidence**", 2)[0]
+    assert_includes delivered_block, "S10"
+
+    nodes_block = out.split("### Nodes", 2)[1].to_s
+    assert_includes nodes_block, "| n9 |"
+    assert_includes nodes_block, "| n1 |"
+    refute_includes nodes_block, "S10"
+    refute_includes nodes_block, "S1 "
+  end
 end

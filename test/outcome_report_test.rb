@@ -624,4 +624,57 @@ class OutcomeReportTest < Minitest::Test
     MD
     assert_equal [], OutcomeReport.findings(@dir)
   end
+
+  # --- 10.1 --------------------------------------------------------------------
+
+  # D19: a delivered row is labelled by the S-label of the action heading that
+  # owns the node's matrix. Today `render_delivered_section` has no way to
+  # consult `intent_dir` at all - it always emits the bare node id - so the
+  # generator's own output cannot close under an already-installed core that
+  # only knows S-labels.
+  def test_delivered_row_label_prefers_the_action_s_label
+    write("actions/ACTION_1.md", <<~MD)
+      ### S10 - n9 - A delivered row carries the label its action heading owns
+
+      | Row | Operation | Failure mode | Test |
+      | --- | --- | --- | --- |
+      | 10.1 | a | b | c |
+    MD
+    model = build_model(nodes: { "n9" => a_node(title: "Ninth thing") })
+    text = OutcomeReport.render_delivered_section(model, intent_dir: @dir)
+    assert_includes text, "| S10 | Ninth thing |"
+  end
+
+  # --- 10.2 --------------------------------------------------------------------
+
+  def test_delivered_row_label_falls_back_to_node_id
+    write("actions/ACTION_1.md", <<~MD)
+      ### n9 - A delivered row carries the label its action heading owns
+
+      | Row | Operation | Failure mode | Test |
+      | --- | --- | --- | --- |
+      | 9.1 | a | b | c |
+    MD
+    model = build_model(nodes: { "n9" => a_node(title: "Ninth thing") })
+    text = OutcomeReport.render_delivered_section(model, intent_dir: @dir)
+    assert_includes text, "| n9 | Ninth thing |"
+  end
+
+  # --- 10.3 --------------------------------------------------------------------
+
+  def test_emitted_label_resolves_through_proven_by
+    write("actions/ACTION_1.md", <<~MD)
+      ### S10 - n9 - A delivered row carries the label its action heading owns
+
+      | Row | Operation | Failure mode | Test |
+      | --- | --- | --- | --- |
+      | 10.1 | a | b | c |
+      | 10.2 | d | e | f |
+    MD
+    model = build_model(nodes: { "n9" => a_node(title: "Ninth thing") })
+    text = OutcomeReport.render_delivered_section(model, intent_dir: @dir)
+    emitted_label = text[/\|\s*(\S+)\s*\|\s*Ninth thing\s*\|/, 1]
+    assert_equal "S10", emitted_label
+    assert_equal "2 tests", ReportScreen.proven_by(@dir, emitted_label)
+  end
 end
