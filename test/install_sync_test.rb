@@ -103,6 +103,21 @@ class InstallSyncTest < Minitest::Test
     FileUtils.rm_rf(home)
   end
 
+  # Regression guard (intent 339, G6, row 7.7): scripts/lib/outcome_report.rb is pulled in
+  # transitively (report_screen.rb require_relatives it), but nothing forces the new
+  # top-level scripts/outcome-report COMMAND to be registered - it could ship absent from
+  # every install with a fully green suite otherwise.
+  def test_outcome_report_command_is_registered_for_install
+    home = Dir.mktmpdir("core-test")
+    core = InstallerCore.new(package_root: REPO, plastic_home: home, version: "1.0.0-test")
+    assert core.core_files.key?("scripts/outcome-report"),
+      "scripts/outcome-report missing from core_files (installed wrapper would point at nothing)"
+    assert core.core_files.key?("scripts/lib/outcome_report.rb"),
+      "scripts/lib/outcome_report.rb missing from core_files"
+  ensure
+    FileUtils.rm_rf(home)
+  end
+
   # Companion guard: registration alone isn't enough, distribute must actually land an
   # executable copy with a matching manifest entry, the same contract every other
   # core_files script gets.

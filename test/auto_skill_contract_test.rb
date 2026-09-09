@@ -44,4 +44,17 @@ class AutoSkillContractTest < Minitest::Test
     assert_includes body, "--status failed --harness <same-specialist-harness-when-known>"
     assert_includes body, "Omit `--harness`, `--model`, or `--thread`"
   end
+
+  # Intent 339 (G6, n7, row 7.8): `outcome.md` stopped being hand-authored at
+  # the close - `end-intent` generates it from graph.md and the ledger before
+  # it backfills (spec D10). skills/intent-ending/SKILL.md and this contract
+  # both said it was hand-authored; both must now say a generator writes it.
+  def test_ending_skill_names_the_generator
+    ending_skill = File.read(File.expand_path("../skills/intent-ending/SKILL.md", __dir__))
+    human_contract = File.read(File.expand_path("../skills/auto/references/human-report-contract.md", __dir__))
+
+    assert_match(/scripts\/outcome-report|outcome-report/, ending_skill)
+    refute_match(/outcome\.md.{0,10}\(authored by `plastic-intent-ending`\)/, human_contract)
+    assert_match(/generated/i, human_contract)
+  end
 end
