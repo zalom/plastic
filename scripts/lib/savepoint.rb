@@ -110,8 +110,24 @@ module Savepoint
     false
   end
 
+  # Intent 336 (G3, D13): a real graph.md is 327 D41's replacement for
+  # plan.md/checklist.md on the common path, so a node-shaped intent is
+  # judged on graph.md and nodes/ alone, whether or not spec.md is real - the
+  # graph IS the spec under D41. Checked using only this file's own
+  # primitives (stage_file_present?, has_real_files_in?), because
+  # test/savepoint_split_test.rb pins this file to loading no other project
+  # file and no YAML: GraphFile/NodeFile/ReadySet are never required here. An
+  # intent with no real graph.md (or a sentinel-placeholder one,
+  # stage_file_present? already reads that as absent) derives exactly what it
+  # derived before this intent.
   def self.derive_stage(intent_dir)
     return "done" if stage_file_present?("#{intent_dir}/outcome.md")
+
+    if stage_file_present?("#{intent_dir}/graph.md")
+      return "exec" if has_real_files_in?("nodes", intent_dir)
+      return "how"
+    end
+
     if stage_file_present?("#{intent_dir}/plan.md") &&
        has_real_action?(intent_dir) &&
        stage_file_present?("#{intent_dir}/checklist.md")
@@ -126,7 +142,7 @@ module Savepoint
     files = []
     ifile = File.basename(intent_file(intent_dir))
     files << ifile if File.exist?("#{intent_dir}/#{ifile}")
-    ["spec.md", "plan.md", "checklist.md", "outcome.md"].each do |f|
+    ["spec.md", "graph.md", "plan.md", "checklist.md", "outcome.md"].each do |f|
       files << f if stage_file_present?("#{intent_dir}/#{f}")
     end
     # Name the directory that actually exists (fold B3): a nodes-only intent
@@ -159,7 +175,16 @@ module Savepoint
     case stage
     when "what" then [ifile]
     when "why" then ["spec.md"]
-    when "how" then ["plan.md", action_label, "checklist.md"]
+    when "how"
+      # A node-shaped How intent (a real graph.md already) is named after its
+      # own two artifacts, never the three D41 removed from its path (fold
+      # B3, extended by 336 D13): checked via stage_file_present? alone, the
+      # same primitive derive_stage itself uses.
+      if intent_dir && stage_file_present?("#{intent_dir}/graph.md")
+        ["graph.md", "nodes/"]
+      else
+        ["plan.md", action_label, "checklist.md"]
+      end
     when "exec" then ["outcome.md"]
     else []
     end
