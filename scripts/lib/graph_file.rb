@@ -16,7 +16,6 @@ module GraphFile
 
   FENCE_LINE_RE = /\A\s{0,3}(`{3,}|~{3,})/.freeze
   DIRECTIVE_RE = /\A-\s*verify:\s*none(?:\s+reason=(.*))?\z/i.freeze
-  SECTIONS = %w[## Goal ## Decisions ## Graph ## Status].freeze
 
   # {ok:, goal:, decisions:, graph:, status:, verify:, errors:}. `graph` is
   # GraphEdges.parse's own Result hash, over the Graph section text with any
