@@ -6,6 +6,7 @@ require "tmpdir"
 require "fileutils"
 require "open3"
 require_relative "../scripts/lib/work_graph_validator"
+require_relative "../scripts/lib/report_screen"
 
 # WorkGraphValidator (intent 334, n4): the in-batch reader over graph.md and
 # nodes/ (327's rule for budget, files, and the decision/research kinds,
@@ -230,6 +231,27 @@ class WorkGraphValidatorTest < Minitest::Test
     result = WorkGraphValidator.validate(@dir)
     refute result[:ok]
     assert_operator result[:errors].length, :>=, 2
+  end
+
+  # --- drift pin (post-execution review, non-blocking 9) ----------------------------
+  #
+  # WorkGraphValidator.heading_tokens re-implements ReportScreen.heading_tokens
+  # (D7r's whole point is that the validator predicts the resolver's answer,
+  # so the two must never drift apart).
+
+  def test_heading_tokens_matches_report_screens_split_on_every_heading_shape
+    headings = [
+      "## n1 failure-mode matrix",
+      "### The v2 rewrite (S3)",
+      "## Criteria",
+      "###n3-no-space--slug",
+      "# Graph: Démo",
+      "## 1. What this intent is",
+    ]
+    headings.each do |heading|
+      assert_equal ReportScreen.heading_tokens(heading), WorkGraphValidator.heading_tokens(heading),
+                   "heading_tokens must split #{heading.inspect} identically in both places"
+    end
   end
 
   # --- CLI ---------------------------------------------------------------------------
