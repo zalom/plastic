@@ -489,6 +489,12 @@ class InstallerCore
       # Intent 335a: every id an intent has ever seen, so a deleted node's id
       # is never reissued to a new node with the dead one's ledger history.
       "scripts/lib/node_ids.rb" => "scripts/lib/node_ids.rb",
+      # Intent 336 (G3): ReadySet, the one function that says what may run
+      # next, and its CLI. node-transition requires the lib as of n5;
+      # registered here (rather than waiting for n8's own CLI/doc unit) so
+      # test/install_sync_test.rb stays green across every intermediate unit.
+      "scripts/lib/ready_set.rb" => "scripts/lib/ready_set.rb",
+      "scripts/ready-set" => "scripts/ready-set",
     }
   end
 

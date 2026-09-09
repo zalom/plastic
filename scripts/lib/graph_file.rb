@@ -40,7 +40,7 @@ module GraphFile
     directive, directive_errors, remaining = extract_verify_directive(graph_section)
     errors.concat(directive_errors)
 
-    parsed_graph = GraphEdges.parse(remaining)
+    parsed_graph = GraphEdges.parse(strip_fenced_blocks(remaining))
     errors.concat(parsed_graph[:errors])
     errors << "## Graph declares no nodes" if parsed_graph[:nodes].empty?
 
@@ -129,6 +129,15 @@ module GraphFile
 
     directive = present ? { reason: reason } : nil
     [directive, errors, remaining_lines.join]
+  end
+
+  # D18: drop every fenced line from `text`, so a fenced example edge inside a
+  # hand-written graph.md or roadmap ## Graph section is never handed to
+  # GraphEdges as real edge text. Non-fenced lines pass through unchanged.
+  def strip_fenced_blocks(text)
+    lines = []
+    each_fence_line(text) { |line, fenced| lines << line unless fenced }
+    lines.join
   end
 
   # --- fence-aware section location ---------------------------------------------

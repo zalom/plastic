@@ -4,6 +4,8 @@
 require "time"
 require "json"
 require_relative "roadmap_savepoint"
+require_relative "graph_file"
+require_relative "graph_edges"
 
 # FileOrderRanker - the default value-ordering strategy: today's roadmap file order,
 # unchanged. This is the intent-173 ranking-swap seam (sibling to the 147 DB-swap seam): a
@@ -98,6 +100,15 @@ class RoadmapQueue
 
     winner = ranked.first
     is_tie = tied.length > 1
+
+    cyc = winner[:graph_edges] && GraphEdges.cycle(winner[:graph_edges][:edges])
+    if cyc
+      return payload(mode: mode, state: "error", roadmap: winner[:slug],
+                      frontier_wave: "cyclic roadmap graph, cannot compute a frontier: #{cyc.join(' > ')}",
+                      dispatchable: [], in_flight: [], blocked: blocked_for(winner),
+                      tie: is_tie, tie_candidates: [])
+    end
+
     frontier = frontier_for(winner)
 
     state =
@@ -129,7 +140,28 @@ class RoadmapQueue
 
   def parse_roadmap(path)
     text = File.read(path)
-    { slug: File.basename(path, ".md"), path: path, waves: parse_waves(RoadmapSavepoint.grouping_section_body(text, path: path)) }
+    {
+      slug: File.basename(path, ".md"), path: path,
+      waves: parse_waves(RoadmapSavepoint.grouping_section_body(text, path: path)),
+      graph_edges: parse_roadmap_graph(text),
+    }
+  end
+
+  # D15: an exact "## Graph" heading line only, never a prefix - a live
+  # roadmap can carry "## Graph (2026-09-01, superseded by ...)", which
+  # GraphFile.section_body already treats as a non-match because it locates
+  # a section by an exact stripped-line comparison. A section that yields no
+  # real edge lines (GraphEdges.parse finds zero nodes) is treated the same
+  # as no section at all: the fallback to wave order, both silent (D15).
+  # Fence-aware (D18): a fenced example edge line is never read as real.
+  def parse_roadmap_graph(text)
+    section = GraphFile.section_body(text, "## Graph")
+    return nil if section.nil?
+
+    parsed = GraphEdges.parse(GraphFile.strip_fenced_blocks(section))
+    return nil if parsed[:nodes].empty?
+
+    parsed
   end
 
   def parse_waves(waves_body)
@@ -241,9 +273,17 @@ class RoadmapQueue
     Time.utc(y, mo, d, h, mi, 0)
   end
 
-  # --- frontier + dispatchable selection (D-b) ----------------------------------
+  # --- frontier + dispatchable selection (D-b, D15) -------------------------------
 
+  # D15: a candidate with a real ## Graph section dispatches by its edges
+  # (a delivered entry counts as done); one without, or whose graph section
+  # yields no edges (parse_roadmap_graph already returns nil for that case),
+  # keeps the wave-order behavior unchanged.
   def frontier_for(candidate)
+    candidate[:graph_edges] ? graph_frontier_for(candidate) : wave_frontier_for(candidate)
+  end
+
+  def wave_frontier_for(candidate)
     candidate[:waves].each do |wave|
       statuses = wave[:entries].map { |e| e[:status] }
       next unless statuses.any? { |s| %w[queued delivering].include?(s) }
@@ -265,6 +305,73 @@ class RoadmapQueue
       return { heading: wave[:heading], dispatchable: dispatchable, in_flight: in_flight }
     end
     nil
+  end
+
+  # D15's edge-driven frontier: the topological layers of the graph's edges,
+  # walked in order; the first layer holding a dispatchable (all needs
+  # delivered) or in-flight entry is the frontier. An id the graph names but
+  # no wave lists is silently excluded, never a crash and never an invented
+  # entry with no title (never called on a cyclic graph: #analyze checks that
+  # first and reports "error" instead).
+  def graph_frontier_for(candidate)
+    edges = candidate[:graph_edges][:edges]
+    id_to_entry = {}
+    wave_of_id = {}
+    candidate[:waves].each do |wave|
+      wave[:entries].each do |e|
+        id_to_entry[e[:id]] = e
+        wave_of_id[e[:id]] = wave[:heading]
+      end
+    end
+
+    topological_layers(edges).each do |layer|
+      layer_ids = layer.select { |id| id_to_entry.key?(id) }
+      next if layer_ids.empty?
+
+      queued_ready = layer_ids.select do |id|
+        entry = id_to_entry[id]
+        entry[:status] == "queued" &&
+          (edges[id] || []).all? { |t| id_to_entry[t] && id_to_entry[t][:status] == "delivered" }
+      end
+      delivering_ids = layer_ids.select { |id| id_to_entry[id][:status] == "delivering" }
+      next if queued_ready.empty? && delivering_ids.empty?
+
+      ordered = @ranker.rank(queued_ready.map { |id| id_to_entry[id] })
+      dispatchable = ordered.each_with_index.map do |e, i|
+        { "id" => e[:id], "scope" => scope_label, "roadmap" => candidate[:slug],
+          "wave" => wave_of_id[e[:id]], "status" => "queued", "rank" => i + 1 }
+      end
+      in_flight = delivering_ids.map do |id|
+        { "id" => id, "roadmap" => candidate[:slug], "wave" => wave_of_id[id], "status" => "delivering" }
+      end
+
+      heading = dispatchable.first ? dispatchable.first["wave"] : in_flight.first["wave"]
+      return { heading: heading, dispatchable: dispatchable, in_flight: in_flight }
+    end
+    nil
+  end
+
+  # Topological layers of `edges` ({id => [needs...]}): layer one is every
+  # id needing nothing, layer k is every id all of whose needs sit in layers
+  # below k. Never called on a cyclic graph (the caller checks first), so no
+  # cycle guard is needed here.
+  def topological_layers(edges)
+    nodes = edges.keys.dup
+    edges.each_value { |targets| (targets || []).each { |t| nodes << t unless nodes.include?(t) } }
+
+    layer = {}
+    assign = nil
+    assign = lambda do |node|
+      next layer[node] if layer.key?(node)
+
+      needs = edges[node] || []
+      layer[node] = needs.empty? ? 1 : 1 + needs.map { |t| assign.call(t) }.max
+    end
+    nodes.each { |n| assign.call(n) }
+
+    grouped = Hash.new { |h, k| h[k] = [] }
+    layer.each { |n, l| grouped[l] << n }
+    grouped.keys.sort.map { |l| grouped[l].sort }
   end
 
   def blocked_for(candidate)
