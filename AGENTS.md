@@ -123,7 +123,9 @@ Rules for any agent (or human) contributing to this repository.
   message, never work around the hook.
 - Use Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`).
 - Bump all version files listed in Defaults on every fix or feature release.
-- Release through the `plastic-releasing` workflow (tag, GitHub release, npm publish).
+- Release through the `plastic-releasing` workflow (tag, GitHub release). npm publish runs
+  from the pushed tag via `.github/workflows/publish.yml` (OIDC trusted publishing, intent
+  347), not from this session; do not run `npm publish` by hand.
 - Run the full test suite (see the Testing section) and confirm green before committing code changes.
 - Never push `~/.plastic/`. The global store is local-only and may contain private data.
 - Core Plastic intents carry no release numbers; the intent schema stays release-agnostic. A release is a collection of intents: a cut (tag) bundles whichever intents have landed since the previous cut and completes them. Which release an intent lands in, and the shipped release history, live in `CHANGELOG.md` at the repo root, not in the intent file and not in PLASTIC.md.
