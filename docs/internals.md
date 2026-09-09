@@ -1637,7 +1637,7 @@ publish, and renaming `publish.yml` silently breaks every future release, which 
 pins the path.
 
 **The guard.** `scripts/release-check`, a thin CLI over `scripts/lib/release_guard.rb`, runs
-before the suite and before the publish step. It asserts the pushed (or dispatched) tag equals
+before the publish step and is the only gate in the job. It asserts the pushed (or dispatched) tag equals
 `v` plus the version in `package.json`, that the three repo version files agree
 (`ReleaseGuard.check`, unchanged from the stable-cut guard the releasing skill already runs),
 and that the runner's npm meets the 11.5.1 floor OIDC requires, comparing version segments
@@ -1651,6 +1651,22 @@ an `-alpha` suffix, `beta` for `-beta`, `latest` for no suffix at all, and the r
 `${{ steps.guard.outputs.dist_tag }}`, never a literal, because the alternative - a second,
 untested implementation of the same rule in shell - is exactly the kind of drift that would put
 an alpha on `latest` and pull every stable user onto it at their next `plastic update`.
+
+**No suite step in the publish job (D7).** The plan called for `ruby bin/test` inside the
+publish job, between the guard and the publish, so the workflow rather than the releasing
+session would be the gate. Evidence removed it. `test.yml` had triggered only on `main`, and
+the whole 2.0 alpha line has never reached `main`, so the suite had not run on a hosted runner
+since 2026-08-25. Extending `test.yml` to `alpha` and merging this intent produced the first
+such run, [34335126166](https://github.com/zalom/plastic/actions/runs/34335126166), and it came
+back red: three failures with nothing to do with the release path and everything to do with
+test hermeticity on Linux. `session_start_test` reads a real `~/.plastic/scripts/read-config`
+that no runner has, `capture_hook_test` does not rewrite its heartbeat there, and
+`maintenance_run_test`'s teardown cannot `rmdir` a `.git/objects` tree. Gating a publish on
+that suite would have moved the alpha.18 stall from the laptop to the runner, which is the
+failure this intent exists to remove, so the step came out. The suite still gates the release
+where it always did, as `release.verify`, run before the tag is cut. A test pins the absence,
+so restoring the step is a deliberate act taken once the runner is green rather than an
+accident.
 
 **No GitHub environment.** The npmjs.com trusted-publisher configuration's Environment name
 field stays blank. On a single-maintainer repository the only approver a deployment gate could

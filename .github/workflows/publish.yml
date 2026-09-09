@@ -52,8 +52,5 @@ jobs:
           --npm-version "$(npm --version)"
           --github-output "$GITHUB_OUTPUT"
 
-      - name: Run the full suite
-        run: ruby bin/test
-
       - name: Publish to npm
         run: npm publish --provenance --access public --tag "${{ steps.guard.outputs.dist_tag }}"
