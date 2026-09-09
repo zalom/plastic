@@ -96,6 +96,16 @@ class OutcomeReportCliTest < Minitest::Test
     assert File.exist?(File.join(@dir, "outcome.md"))
   end
 
+  # --- v1f.9 (N3) --------------------------------------------------------------
+
+  def test_unknown_disposition_exits_2
+    make_real_intent
+    _out, err, status = Open3.capture3("ruby", CLI, @dir, "--write", "--disposition", "banana")
+    assert_equal 2, status.exitstatus
+    assert_match(/disposition/, err)
+    refute File.exist?(File.join(@dir, "outcome.md"))
+  end
+
   # --- 2.17 --------------------------------------------------------------------
 
   def test_non_intent_dir_exits_2

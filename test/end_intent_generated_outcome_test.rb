@@ -134,7 +134,13 @@ class EndIntentGeneratedOutcomeTest < Minitest::Test
     base_intent_files(dir)
     write_graph(dir)
     write_ledger(dir, ["2026-09-09T10:00:00Z  n1  done gates=tests commit=abc1234\n"])
-    hand_written = "---\ndisposition: delivered\n---\n# Outcome: Gate demo\n\n## Summary\nHand-written summary.\n\n## Delivered\n| Row | What |\n| --- | --- |\n| n1 | Demo unit |\n\n## Verification\n- checked\n\n## Needs you\nNone\n\n## Follow-ups\nNone\n"
+    # The row text is deliberately NOT what the generator would emit for n1
+    # (the node file's own title is "Demo unit"): a fixture whose authored
+    # text coincides with generated text proves nothing (post-execution
+    # review B1). "## Verification" and "## Evidence appendix" are asserted
+    # too, since the guard under test protects the WHOLE file, not one
+    # preserved section.
+    hand_written = "---\ndisposition: delivered\n---\n# Outcome: Gate demo\n\n## Summary\nHand-written summary.\n\n## Delivered\n| Row | What |\n| --- | --- |\n| n1 | The owner wrote this row by hand, word for word |\n\n## Verification\n- checked\n\n## Evidence appendix\n- a section the generator never emits\n\n## Needs you\nNone\n\n## Follow-ups\nNone\n"
     File.write(File.join(dir, "outcome.md"), hand_written)
 
     _out, status = run_end_intent
@@ -143,7 +149,61 @@ class EndIntentGeneratedOutcomeTest < Minitest::Test
     # end-intent's own mode stamp (317a S7) touches the frontmatter even on a
     # real file; everything the human wrote must survive that stamp intact.
     assert_includes text, "Hand-written summary."
-    assert_includes text, "| n1 | Demo unit |"
+    assert_includes text, "| n1 | The owner wrote this row by hand, word for word |"
+    assert_includes text, "- checked"
+    assert_includes text, "## Evidence appendix"
+    assert_includes text, "- a section the generator never emits"
+  end
+
+  # --- v1f.2 (B2) --------------------------------------------------------------
+
+  def test_malformed_graph_falls_through_to_backfill
+    dir = File.join(@store, "77--gate")
+    base_intent_files(dir)
+    File.write(File.join(dir, "graph.md"), <<~MD)
+      # Graph: x
+
+      ## Goal
+      Gate demo goal.
+
+      ## Decisions
+      - D1 demo
+
+      ## Graph
+      - n1 needs
+      - needs n1
+      !!! garbage
+
+      ## Status
+      | Node | State | Detail |
+      | --- | --- | --- |
+    MD
+    File.write(File.join(dir, "nodes", "n1.md"), <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: []
+      budget: 1000
+      ---
+      # n1 - Demo unit
+
+      ## n1 failure-mode matrix
+      | Row | Operation | Failure mode | Test |
+      | --- | --- | --- | --- |
+      | 1.1 | a | b | c |
+    MD
+    File.write(File.join(dir, "outcome.md"), "<!-- plastic:placeholder -->\n---\ndisposition: delivered|abandoned\n---\n")
+    write_ledger(dir, ["2026-09-09T10:00:00Z  n1  done gates=tests commit=abc1234\n"])
+
+    _out, status = run_end_intent
+    assert_equal 0, status
+    text = File.read(File.join(dir, "outcome.md"))
+    # A malformed graph.md must never be written up as delivery fact (spec
+    # D1): the close falls through to the intent-308 backfill instead, the
+    # same as the shipped `outcome-report` CLI refusing (exit 3) on the same
+    # directory.
+    refute_includes text, "was not declared in graph.md"
+    assert_includes text, "backfilled from the record"
   end
 
   # --- 7.3 -------------------------------------------------------------------

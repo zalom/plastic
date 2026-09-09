@@ -184,6 +184,16 @@ class OutcomeReportTest < Minitest::Test
     refute_nil model
   end
 
+  # --- v1f.4 (N4) --------------------------------------------------------------
+
+  def test_model_rescues_a_raising_reader
+    write_graph("- n1 needs nothing\n")
+    write_node("n1", title: "Title")
+    model = OutcomeReport.model(@dir, node_file_parser: ->(*) { raise "boom" })
+    refute model[:ok]
+    assert(model[:errors].any? { |e| e.include?("boom") })
+  end
+
   # --- 1.11 ------------------------------------------------------------------
 
   def test_library_source_reads_no_clock_or_environment
@@ -355,6 +365,28 @@ class OutcomeReportTest < Minitest::Test
     })
     assert called
     assert File.exist?(File.join(@dir, "outcome.md"))
+  end
+
+  # --- v1f.3 (B3) --------------------------------------------------------------
+
+  def test_frontmatter_value_with_colon_round_trips
+    existing = "---\ndisposition: delivered\nnote: \"a value: with a colon\"\n---\n# Outcome: x\n\n## Summary\nx\n"
+    text = OutcomeReport.render(build_model, disposition: "delivered", existing: existing)
+    fm_block = text.split("---", 3)[1].to_s
+    parsed = YAML.safe_load(fm_block, permitted_classes: [Date, Time])
+    refute_nil parsed
+    assert_equal "a value: with a colon", parsed["note"]
+    assert_equal "delivered", parsed["disposition"]
+  end
+
+  # --- v1f.11 (N10) --------------------------------------------------------------
+
+  def test_title_is_a_sentence_not_a_wrapped_line
+    goal = "This is a goal sentence that is intentionally long enough to wrap\nacross two lines in the source file."
+    model = build_model(goal: goal)
+    title = OutcomeReport.title_text(model)
+    assert_includes title, "wrap across two lines in the source file."
+    refute_includes title, "\n"
   end
 
   # --- n3: plan versus delivered, and stale -----------------------------------
@@ -561,8 +593,13 @@ class OutcomeReportTest < Minitest::Test
   # --- 4.5 -----------------------------------------------------------------
 
   def test_insights_without_findings_subsection_returns_empty
+    # A bulleted Insights fixture (post-execution review N5): a fallback that
+    # returns the whole "## Insights" body as one finding stays green against
+    # a non-bullet fixture, since finding_bullet_rows finds no bullet to
+    # return. Real records carry bullet-shaped Insights lines, so this
+    # fixture must too.
     write_intent_file(<<~MD)
-      2026-09-09T10:00:00Z · Exec · someone (autonomous) - an insight with no findings subsection
+      - 2026-09-09T10:00:00Z · Exec · someone (autonomous) - an insight with no findings subsection
     MD
     assert_equal [], OutcomeReport.findings(@dir)
   end

@@ -134,8 +134,12 @@ class ReportScreenNodesTest < Minitest::Test
 
   def test_node_state_comes_from_ledger
     write_basics
-    write_graph("- n1 needs nothing\n")
+    write_graph("- n1 needs nothing\n- n2 needs nothing\n")
     write_node("n1")
+    write_node("n2")
+    # n2 gets no ledger line at all, so its state reads "planned" - a second
+    # node whose ledger state differs from n1's "done" (post-execution review
+    # N6), so a hardcoded "done" cannot pass both rows.
     write("savepoint.md", "2026-08-30T12:00:00Z  What  12--slug.md\n2026-09-09T10:00:00Z  n1  done gates=tests commit=aaa1111\n")
     write("outcome.md", <<~MD)
       ---
@@ -152,8 +156,12 @@ class ReportScreenNodesTest < Minitest::Test
       | n1 | some other claim |
     MD
     out = ReportScreen.render_delivered(intent_dir: @dir)
-    row = out.lines.find { |l| l.start_with?("| n1 |") && l.include?("work") }
-    refute_nil row
-    assert_includes row, "done"
+    row1 = out.lines.find { |l| l.start_with?("| n1 |") && l.include?("work") }
+    row2 = out.lines.find { |l| l.start_with?("| n2 |") && l.include?("work") }
+    refute_nil row1
+    refute_nil row2
+    assert_includes row1, "done"
+    assert_includes row2, "planned"
+    refute_includes row2, "done"
   end
 end

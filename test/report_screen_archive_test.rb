@@ -55,12 +55,16 @@ class ReportScreenArchiveTest < Minitest::Test
   # --- 6.2 -------------------------------------------------------------------
 
   def test_disposition_read_from_outcome_frontmatter
+    # The fixture dirname must never spell the expected disposition (3--
+    # stopped, not 3--abandoned): a fixture whose answer is derivable from
+    # its own name lets a hardcoded disposition pass (post-execution review
+    # N7).
     make_intent("2--done", outcome: "---\ndisposition: delivered\n---\n")
-    make_intent("3--abandoned", outcome: "---\ndisposition: abandoned\n---\n")
-    write_index(completed: ["2--done"], abandoned: ["3--abandoned"])
+    make_intent("3--stopped", outcome: "---\ndisposition: abandoned\n---\n")
+    write_index(completed: ["2--done"], abandoned: ["3--stopped"])
     out = ReportScreen.render_archive(@root)
     row_done = out.lines.find { |l| l.include?("2--done") }
-    row_abandoned = out.lines.find { |l| l.include?("3--abandoned") }
+    row_abandoned = out.lines.find { |l| l.include?("3--stopped") }
     assert_includes row_done, "delivered"
     assert_includes row_abandoned, "abandoned"
   end
@@ -105,8 +109,11 @@ class ReportScreenArchiveTest < Minitest::Test
   # --- 6.6 -------------------------------------------------------------------
 
   def test_usage_line_names_archive
-    source = File.read(CLI)
-    assert_match(/archive/, source)
-    assert_includes source, "report-screen archive <store_root>"
+    # Asserted against the printed usage line the command actually emits, not
+    # a grep of its source (post-execution review N8): the artifact row 6.6
+    # is about is the message a reader sees on an unknown verb.
+    _out, err, status = Open3.capture3("ruby", CLI, "bogus-verb")
+    assert_equal 2, status.exitstatus
+    assert_includes err, "archive"
   end
 end
