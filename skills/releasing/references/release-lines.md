@@ -78,7 +78,7 @@ re-deriving this decision.
 of 1.1.0, versioned `1.2.0-beta.1` (`c48601a`). There is nothing left to execute on the git side;
 this playbook describes what happens next, not a pending action.
 
-**Preconditions**, both required before any npm publish of `1.2.0-beta.1`:
+**Preconditions**, both required before any publish of `1.2.0-beta.1`:
 
 - (a) One documentation pass over beta-line skills and docs for the hybrid savepoint contract:
   on beta, only the terminal Done bookend still writes a live `savepoint.md`; every other
