@@ -321,11 +321,14 @@ class ScreenWidthTest < Minitest::Test
     # when the v1f fold (row v1f.10, N1) deleted the duplicated
     # `archive_dirnames` method above `render_archive` - two fewer lines,
     # shifting every site below that point by -2 (1056->1054, 1135->1133,
-    # 1579->1577, 1585->1583, 1597->1595). Same five sites, matched by
-    # content; leg 1's literal appends (render_archive's row,
+    # 1579->1577, 1585->1583, 1597->1595). Then again the same day when S9
+    # (D17) inserted `verify_node_criteria_count` above `proven_by` - 32 more
+    # lines, shifting every site below that point by +32 (1054->1086,
+    # 1133->1165, 1577->1609, 1583->1615, 1595->1627). Same five sites,
+    # matched by content; leg 1's literal appends (render_archive's row,
     # render_nodes_block's node/findings rows) are unaffected, so this list's
     # five members are unchanged in kind, only in position.
-    [1054, 1133, 1577, 1583, 1595].each do |line|
+    [1086, 1165, 1609, 1615, 1627].each do |line|
       assert_includes lines, line, "leg 2 must still carry the screen-emitting non-literal append at line #{line}"
     end
   end

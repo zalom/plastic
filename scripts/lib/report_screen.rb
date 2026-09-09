@@ -18,6 +18,7 @@ require_relative "roadmap_queue"
 require_relative "roadmap_savepoint"
 require_relative "screen_paint"
 require_relative "outcome_report"
+require_relative "node_file"
 
 module ReportScreen
   NOT_RECORDED = "not recorded"
@@ -645,12 +646,43 @@ def self.matching_action_heading(intent_dir, label)
     0
   end
 
+  # 339 S9 (D17): a verify node owns `## Criteria`, never a matrix, so its
+  # Proven-by is how many criteria its node file names - not the
+  # absent-source phrase `matching_action_heading`/`matching_matrix_rows`
+  # falls through to for a label with no matrix anywhere. The kind comes from
+  # the node file's own envelope, `NodeFile.parse`, never guessed from the
+  # label's prefix and never by sniffing a body for a criteria-shaped list
+  # (row 9.4): a work node whose body happens to carry a bulleted "##
+  # Criteria" section must never borrow this path. Returns nil (not 0) when
+  # `label` is not a verify node at all, so `proven_by` can tell "not a
+  # verify node" apart from "a verify node with zero criteria".
+  def self.verify_node_criteria_count(intent_dir, label)
+    path = Dir.glob(File.join(intent_dir, "nodes", "#{label}.md")).first ||
+           Dir.glob(File.join(intent_dir, "nodes", "#{label}--*.md")).sort.first
+    return nil unless path
+
+    parsed = NodeFile.parse(path)
+    return nil unless parsed[:ok] && parsed[:kind] == "verify"
+
+    NodeFile.split_by_headings(parsed[:body].to_s).each do |heading, body|
+      next unless heading.to_s.sub(/\A#+\s*/, "").strip == "Criteria"
+
+      return body.each_line.count { |line| line.strip.start_with?("-") }
+    end
+    nil
+  end
+
   # D7: a label with no letter never resolves, on either path - it is a
   # bullet-derived Delivered number (delivered_rows), never a label anyone
   # wrote, and would otherwise fabricate proof from a numbered heading like
   # "## 1. What this intent is" or from a numbered matrix row-cell column.
   def self.proven_by(intent_dir, label)
     return NOT_RECORDED unless label.to_s.match?(/[A-Za-z]/)
+
+    criteria_count = verify_node_criteria_count(intent_dir, label)
+    unless criteria_count.nil?
+      return criteria_count.positive? ? "#{criteria_count} criteri#{criteria_count == 1 ? 'on' : 'a'}" : NOT_RECORDED
+    end
 
     _heading, body = matching_action_heading(intent_dir, label)
     if body

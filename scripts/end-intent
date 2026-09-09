@@ -307,6 +307,27 @@ def heading_id_labels(paths, id_label_re)
   end
 end
 
+# 339 S9 (D18): a node id counts as a label in an actions/*.md heading too,
+# but only when it stands alone as one of the heading's " - "-delimited
+# segments - this repo's own convention, "### S1 - n1 - Title" (this action
+# file's own headings, post-fold) or the bare "### n1 - Title". Never as a
+# free word inside ordinary prose: the comment above ACTION_ID_LABEL_RE
+# records exactly why intent 334 restricted the node-id grammar to
+# nodes/*.md headings in the first place, and that reasoning does not change
+# here - a word-scan widened onto actions/ headings would let this repo's own
+# house words ("v1", "v2" for plan review and post-execution review)
+# manufacture a label out of ordinary prose and refuse a legitimate legacy
+# close. Segment position is what a word-scan cannot see: "v2" embedded
+# mid-sentence is never its own " - "-delimited segment, but a heading built
+# to this convention always puts the node id in one.
+def heading_node_id_segments(paths, id_label_re)
+  paths.flat_map do |path|
+    ReportScreen.split_by_headings(File.read(path)).flat_map do |heading, _body|
+      heading.to_s.sub(/\A#+\s*/, "").split(/\s+-\s+/).map(&:strip).select { |seg| seg.match?(id_label_re) }
+    end
+  end
+end
+
 def hollow_report_reason(intent_dir, disposition)
   return nil unless disposition == "delivered"
 
@@ -316,20 +337,32 @@ def hollow_report_reason(intent_dir, disposition)
   return nil if text.include?("<!-- backfilled from the record by end-intent on ")
 
   # The gate's evidence bar (A7/B7): it judges only records that CLAIM a
-  # labeled convention - at least one actions/*.md heading carrying an S-label,
-  # or at least one nodes/*.md heading carrying a node id ("n1", "v2", "d3",
-  # "r4"). A terse legacy close with no labeled matrix stays report-and-proceed
-  # (intent 334, G1, D10r).
+  # labeled convention - at least one actions/*.md heading carrying an
+  # S-label or a node-id segment, or at least one nodes/*.md heading carrying
+  # a node id ("n1", "v2", "d3", "r4"). A terse legacy close with no labeled
+  # matrix stays report-and-proceed (intent 334, G1, D10r).
   #
   # Every matching token per heading is kept, not just the first (fold A3):
   # a legacy actions/ heading can carry BOTH an S-label and prose that reads
-  # like a node id ("### The v2 rewrite (S3)"). Restricting the node-id
-  # grammar to nodes/*.md headings (post-execution review, blocking 2) means
-  # "v2" in that heading is never even tested against it, so the heading's
-  # real "S3" label is never at risk.
+  # like a node id ("### The v2 rewrite (S3)"). Restricting the word-scan
+  # node-id grammar to nodes/*.md headings (post-execution review, blocking
+  # 2) means "v2" in that heading is never even tested against it, so the
+  # heading's real "S3" label is never at risk.
+  #
+  # 339 S9 (D18): a graph-era action file headed by node id alone ("### n1 -
+  # Title", no S-label) used to yield an empty label set here and the gate
+  # returned before judging anything - every such record closed unjudged by
+  # silent exemption. `heading_node_id_segments` widens the actions/*.md side
+  # to see that shape without reopening the word-scan hole above: it matches
+  # a node id only when the heading's own " - "-delimited segments carry one,
+  # never a free word in prose. The node_paths call stays exactly as it was;
+  # nodes/*.md headings already resolve node ids correctly (test_node_id_
+  # labels_are_recognized) and their heading grammar is controlled, so a
+  # word-scan there carries none of the prose risk.
   action_paths = Dir.glob(File.join(intent_dir, "actions", "*.md")).sort
   node_paths = Dir.glob(File.join(intent_dir, "nodes", "*.md")).sort
   heading_labels = (heading_id_labels(action_paths, ACTION_ID_LABEL_RE) +
+                     heading_node_id_segments(action_paths, NODE_ID_LABEL_RE) +
                      heading_id_labels(node_paths, NODE_ID_LABEL_RE)).uniq
   return nil if heading_labels.empty?
 
