@@ -5,6 +5,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require_relative "../scripts/lib/outcome_report"
+require_relative "../scripts/lib/report_screen"
 
 # OutcomeReport (intent 339, G6): the report model over graph.md, nodes/, and
 # the node ledger (n1), the generator and its command (n2), the plan-versus-
@@ -194,5 +195,163 @@ class OutcomeReportTest < Minitest::Test
   def test_model_does_not_call_needs_from_graph
     source = File.read(File.join(__dir__, "..", "scripts", "lib", "outcome_report.rb"))
     refute_includes source, "needs_from_graph"
+  end
+
+  # --- n2 helpers ------------------------------------------------------------
+
+  def build_model(nodes: {}, edges: {}, goal: "Test goal.")
+    { ok: true, errors: [], goal: goal, edges: edges, nodes: nodes }
+  end
+
+  def a_node(kind: "work", state: "done", title: "Title", fields: {}, retries: 0,
+             declared: true, file_present: true)
+    { declared: declared, file_present: file_present, kind: kind, title: title,
+      state: state, fields: fields, retries: retries }
+  end
+
+  # --- 2.1 -------------------------------------------------------------------
+
+  def test_frontmatter_carries_requested_disposition
+    text = OutcomeReport.render(build_model, disposition: "delivered")
+    assert_match(/\Adisposition: delivered/, text.split("---")[1].to_s.strip)
+  end
+
+  # --- 2.2 -------------------------------------------------------------------
+
+  def test_authored_summary_preserved_byte_for_byte
+    existing = "---\ndisposition: delivered\n---\n# Outcome: x\n\n## Summary\nMy authored words survive.\n\n## Delivered\n| Row | What |\n| --- | --- |\n"
+    text = OutcomeReport.render(build_model, disposition: "delivered", existing: existing)
+    assert_includes text, "My authored words survive."
+  end
+
+  # --- 2.3 -------------------------------------------------------------------
+
+  def test_placeholder_summary_replaced_with_facts
+    existing = "---\ndisposition: delivered\n---\n# Outcome: x\n\n## Summary\n(what was delivered)\n\n## Delivered\n| Row | What |\n| --- | --- |\n"
+    text = OutcomeReport.render(build_model(nodes: { "n1" => a_node }), disposition: "delivered", existing: existing)
+    refute_includes text, "(what was delivered)"
+    assert_match(/\d+ of \d+ work node/, text)
+  end
+
+  # --- 2.4 -------------------------------------------------------------------
+
+  def test_delivered_rows_are_done_work_nodes_labeled_by_id
+    model = build_model(nodes: { "n1" => a_node(title: "Alpha thing") })
+    text = OutcomeReport.render(model, disposition: "delivered")
+    assert_includes text, "| n1 | Alpha thing |"
+  end
+
+  # --- 2.5 -------------------------------------------------------------------
+
+  def test_non_work_nodes_are_not_delivered_rows
+    model = build_model(nodes: { "v1" => a_node(kind: "verify", title: "Review") })
+    text = OutcomeReport.render(model, disposition: "delivered")
+    refute_includes text, "| v1 |"
+  end
+
+  # --- 2.6 -------------------------------------------------------------------
+
+  def test_no_done_work_nodes_renders_honest_delivered_section
+    model = build_model(nodes: { "n1" => a_node(state: "planned") })
+    text = OutcomeReport.render(model, disposition: "delivered")
+    assert_includes text, "## Delivered"
+    delivered = text.split("## Delivered", 2)[1].split("## ", 2)[0]
+    refute_match(/\|\s*n1\s*\|/, delivered)
+  end
+
+  # --- 2.7 -------------------------------------------------------------------
+
+  def test_verification_lines_come_from_ledger_fields
+    model = build_model(nodes: { "n1" => a_node(fields: { "gates" => "tests", "commit" => "abc1234" }) })
+    text = OutcomeReport.render(model, disposition: "delivered")
+    verification = text.split("## Verification", 2)[1].to_s
+    assert_includes verification, "abc1234"
+    assert_includes verification, "tests"
+  end
+
+  # --- 2.8 -------------------------------------------------------------------
+
+  def test_generated_verification_yields_evidence_rows
+    model = build_model(nodes: { "n1" => a_node(fields: { "gates" => "tests", "commit" => "abc1234" }) })
+    text = OutcomeReport.render(model, disposition: "delivered")
+    write("outcome.md", text)
+    write("12--slug.md", "---\nid: \"12\"\nintent: \"x\"\n---\n\n## Intent\nx\n")
+    refute_empty ReportScreen.evidence_rows(@dir)
+  end
+
+  # --- 2.9 -------------------------------------------------------------------
+
+  def test_pipe_in_title_reads_back_whole_through_delivered_rows
+    model = build_model(nodes: { "n1" => a_node(title: "A | B thing") })
+    text = OutcomeReport.render(model, disposition: "delivered")
+    write("outcome.md", text)
+    write("12--slug.md", "---\nid: \"12\"\nintent: \"x\"\n---\n\n## Intent\nx\n")
+    rows = ReportScreen.delivered_rows(@dir)
+    row = rows.find { |r| r[:label] == "n1" }
+    refute_nil row
+    assert_equal "A / B thing", row[:text]
+  end
+
+  # --- 2.10 --------------------------------------------------------------------
+
+  def test_authored_needs_you_and_followups_preserved
+    existing = <<~MD
+      ---
+      disposition: delivered
+      ---
+      # Outcome: x
+
+      ## Summary
+      x
+
+      ## Delivered
+      | Row | What |
+      | --- | --- |
+
+      ## Needs you
+      | N | Need | Reason |
+      | --- | --- | --- |
+      | N1 | Pick a color | because reasons |
+
+      ## Follow-ups
+      | N | What | Why |
+      | --- | --- | --- |
+      | 1 | Do a thing | because reasons |
+    MD
+    text = OutcomeReport.render(build_model, disposition: "delivered", existing: existing)
+    assert_includes text, "Pick a color"
+    assert_includes text, "Do a thing"
+  end
+
+  # --- 2.11 --------------------------------------------------------------------
+
+  def test_regeneration_preserves_mode_frontmatter
+    existing = "---\ndisposition: delivered\nmode: auto\n---\n# Outcome: x\n\n## Summary\nx\n"
+    text = OutcomeReport.render(build_model, disposition: "delivered", existing: existing)
+    assert_match(/^mode: auto$/, text.split("---")[1].to_s)
+  end
+
+  # --- 2.12 --------------------------------------------------------------------
+
+  def test_needs_decision_nodes_render_as_needs_you_rows
+    model = build_model(nodes: { "n1" => a_node(state: "needs_decision", fields: { "question" => "Which color?" }) })
+    text = OutcomeReport.render(model, disposition: "delivered")
+    needs = text.split("## Needs you", 2)[1].to_s
+    assert_includes needs, "Which color?"
+  end
+
+  # --- 2.13 --------------------------------------------------------------------
+
+  def test_write_goes_through_atomic_write
+    write_graph("- n1 needs nothing\n")
+    write_node("n1", title: "Title")
+    write_ledger(["2026-09-09T10:00:00Z  n1  done gates=tests commit=abc1234\n"])
+    called = false
+    OutcomeReport.write(@dir, disposition: "delivered", renamer: lambda { |temp, target|
+      called = true
+      File.rename(temp, target)
+    })
+    assert called
+    assert File.exist?(File.join(@dir, "outcome.md"))
   end
 end
