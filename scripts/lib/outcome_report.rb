@@ -315,11 +315,59 @@ module OutcomeReport
     "## Graph diff\n#{lines.map { |l| "- #{l}" }.join("\n")}\n"
   end
 
-  # n4 replaces this with the real ### Findings reader; a report generated
-  # before n4 lands simply carries no ## Findings section (row 4.3's own
-  # "omit when absent" rule, one node early).
-  def findings(_intent_dir)
-    []
+  # --- n4: findings, read and capped ------------------------------------------
+
+  # Two lines at the screens' own 115-column limit (spec D15). A named
+  # constant so the number is never folded into a regex.
+  FINDING_CAP = 200
+
+  # `### Findings` under the intent record's own `## Insights` section (spec
+  # D7). G7 writes those lines one Insight entry at a time; nothing writes one
+  # today, so this reads a fixture shape until then. [] when the record, the
+  # `## Insights` section, or the `### Findings` subsection is absent -
+  # never raises, never treats the whole Insights section as one finding.
+  def findings(intent_dir)
+    path = File.join(intent_dir, "#{File.basename(intent_dir)}.md")
+    return [] unless File.exist?(path)
+
+    text = File.read(path)
+    insights = text.split(/^## Insights\s*$/, 2)[1].to_s.split(/^## /, 2)[0].to_s
+    body = insights.split(/^### Findings\s*$/, 2)[1]
+    return [] if body.nil?
+
+    body = body.split(/^#+\s/, 2)[0]
+    finding_bullet_rows(body).map { |f| cap_finding(sanitize_cell(f)) }
+  end
+
+  # Same continuation-line rule as ReportScreen.bullet_rows: a "- " line plus
+  # its wrapped continuation, ending at a blank line or the next heading.
+  def finding_bullet_rows(section)
+    rows = []
+    section.to_s.each_line do |line|
+      stripped = line.strip
+      if line.lstrip.start_with?("- ")
+        rows << line.lstrip.sub(/\A-\s*/, "").strip
+      elsif stripped.empty? || line.start_with?("#")
+        rows << nil unless rows.empty? || rows.last.nil?
+      elsif !rows.empty? && !rows.last.nil?
+        rows[rows.length - 1] = "#{rows.last} #{stripped}"
+      end
+    end
+    rows.compact
+  end
+
+  def cap_finding(text)
+    return text if text.length <= FINDING_CAP
+
+    "#{text[0...(FINDING_CAP - 3)].rstrip}..."
+  end
+
+  def render_findings_section(findings)
+    return "" if findings.nil? || findings.empty?
+
+    lines = ["## Findings", "| Finding |", "| --- |"]
+    findings.each { |f| lines << "| #{f} |" }
+    "#{lines.join("\n")}\n"
   end
 
   def write(intent_dir, disposition:, renamer: File.method(:rename))
