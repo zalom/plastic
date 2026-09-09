@@ -33,6 +33,7 @@ require_relative "lib/report_screen"
 require_relative "lib/roadmap_queue"
 require_relative "lib/day_summary"
 require_relative "lib/screen_paint"
+require_relative "lib/ready_set"
 
 # Intent 331a (D6/R8): every caller-added screen kind file registers itself on
 # load, so this glob is the only wiring a new kind needs (scripts/report-screen:42
@@ -268,7 +269,25 @@ def parse_intent(store_info, dir_name, status_index)
     # durable lock beside the intent. intent_line deliberately does not expose
     # this filesystem path in --data or any rendered surface.
     intent_dir: File.expand_path(dir),
+    # Intent 336 (G3, D14): the ready node count for a graph-shaped intent,
+    # read through ReadySet, nil for every other intent. Explicitly advisory,
+    # entirely separate from the sources-derived "unblocked" flag below,
+    # which is the cross-intent knowledge graph and stays exactly as it was
+    # (327 D40 forbids that field from gating work). ReadySet.analyze is
+    # called only when real.("graph.md") is true, so the cost of this read
+    # is zero for every intent that has no graph.
+    ready_node_count: real.("graph.md") ? ready_node_count_for(dir) : nil,
   }
+end
+
+# The count of currently-ready nodes in a graph-shaped intent's own graph.md,
+# or nil when ReadySet cannot analyze it (a malformed or cyclic graph never
+# raises out of the dashboard).
+def ready_node_count_for(dir)
+  analysis = ReadySet.analyze(dir)
+  return nil unless analysis[:ok]
+
+  analysis[:nodes].count { |_, view| view[:ready] }
 end
 
 def checklist_partially_done?(path)
@@ -828,6 +847,7 @@ def next_work(records, cap: NEXT_WORK_CAP)
     { id: r[:id], intent: r[:intent], scope: r[:scope], lifecycle: r[:lifecycle],
       value: r[:value].to_s, disposition: r[:disposition], flags: r[:flags],
       what: cell(text), flags_label: cell(Array(r[:flags]).join(", ")),
+      ready_node_count: r[:ready_node_count],
       line: "#{r[:id]} #{text}" }
   end
 end
