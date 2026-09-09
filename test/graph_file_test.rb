@@ -43,7 +43,39 @@ class GraphFileTest < Minitest::Test
     | n2 | planned |  |
   MD
 
+  # A Goal body carrying multibyte characters (fold: byte vs char indexing).
+  # Every consumer slices `content` with String#[] and finds newlines with
+  # String#index, both character-indexed - section_bounds must accumulate in
+  # the same unit or a non-ASCII byte before a boundary desynchronizes them.
+  MULTIBYTE = <<~MD
+    # Graph: Démo
+
+    ## Goal
+    Ship -> fast with café and Über review.
+
+    ## Decisions
+    - D1 pick approach
+
+    ## Graph
+    - n1 needs nothing
+    - n2 needs n1
+
+    ## Status
+    | Node | State | Detail |
+    | --- | --- | --- |
+    | n1 | planned |  |
+    | n2 | planned |  |
+  MD
+
   # --- split into sections, fence-aware ---------------------------------------
+
+  def test_multibyte_goal_body_does_not_bleed_into_the_next_heading
+    write(MULTIBYTE)
+    result = GraphFile.parse(@path)
+    assert_equal "Ship -> fast with café and Über review.\n", result[:goal]
+    refute_includes result[:goal], "## Decisions"
+    assert_includes result[:decisions], "D1 pick approach"
+  end
 
   def test_fenced_heading_does_not_split
     write(<<~MD)
@@ -164,6 +196,17 @@ class GraphFileTest < Minitest::Test
     refute_includes text, "planned"
   end
 
+  def test_status_write_leaves_the_status_heading_intact_with_a_multibyte_goal_body
+    write(MULTIBYTE)
+    rows = [{ node: "n1", state: "done", detail: "" }, { node: "n2", state: "planned", detail: "" }]
+    result = GraphFile.write_status(@path, rows)
+    assert result[:ok], result[:errors].inspect
+
+    text = File.read(@path)
+    assert_includes text, "\n## Status\n"
+    refute_includes text, "## ## Status"
+  end
+
   def test_status_write_discards_hand_edits
     write(BASE.sub("| n1 | planned |  |", "| n1 | planned |  |\n| hand-edited | fake | row |"))
     rows = [{ node: "n1", state: "done", detail: "" }, { node: "n2", state: "running", detail: "" }]
@@ -231,6 +274,19 @@ class GraphFileTest < Minitest::Test
   end
 
   # --- append a decision -------------------------------------------------------
+
+  def test_append_decision_leaves_graph_byte_identical_with_a_multibyte_goal_body
+    write(MULTIBYTE)
+    graph_before = File.read(@path)[/## Graph\n.*?(?=\n## Status)/m]
+    refute_nil graph_before
+
+    result = GraphFile.append_decision(@path, "D2 a new decision")
+    assert result[:ok], result[:errors].inspect
+
+    after = File.read(@path)
+    assert_includes after, graph_before
+    assert_includes after, "## Graph\n"
+  end
 
   def test_append_decision_leaves_other_sections_byte_identical
     write(BASE)
