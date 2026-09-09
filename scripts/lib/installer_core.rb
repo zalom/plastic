@@ -492,6 +492,10 @@ class InstallerCore
       # Intent 339 (G6): the generated outcome.md library and its CLI.
       "scripts/lib/outcome_report.rb" => "scripts/lib/outcome_report.rb",
       "scripts/outcome-report" => "scripts/outcome-report",
+      # Intent 342 (G9): the backward shim that presents actions/*.md as a
+      # node graph for any legacy intent, so WorkGraphValidator can require
+      # it without going red on contact with install_sync_test.
+      "scripts/lib/action_graph_shim.rb" => "scripts/lib/action_graph_shim.rb",
     }
   end
 
