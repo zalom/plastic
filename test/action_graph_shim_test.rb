@@ -98,9 +98,11 @@ class ActionGraphShimTest < Minitest::Test
     write_action("ACTION-1-bridge-ledger-api.md", "# hyphen\n")
     write_action("ACTION_1_milestone_map.md", "# underscore\n")
     write_action("01-roadmap-queue-reader.md", "# leading-zero\n")
+    write_action("NOTES.md", "# no integer at all\n")
     nodes = ActionGraphShim.nodes(@dir)
-    assert_equal 3, nodes.length
-    assert_equal %w[n1 n2 n3], nodes.map { |n| n[:node] }
+    assert_equal [["n1", "01-roadmap-queue-reader.md"], ["n2", "ACTION-1-bridge-ledger-api.md"],
+                  ["n3", "ACTION_1_milestone_map.md"], ["n4", "NOTES.md"]],
+                 nodes.map { |n| [n[:node], File.basename(n[:path])] }
   end
 
   # --- glob action files -----------------------------------------------------
@@ -160,9 +162,16 @@ class ActionGraphShimTest < Minitest::Test
       - `scripts/lib/b.rb`
       - `test/b_test.rb`
     MD
+    write_action("ACTION_3.md", <<~MD)
+      # Action 3
+
+      ## Files:
+      - `scripts/lib/c.rb`
+    MD
     nodes = ActionGraphShim.nodes(@dir)
     assert_equal ["scripts/lib/a.rb", "test/a_test.rb"], nodes[0][:files]
     assert_equal ["scripts/lib/b.rb", "test/b_test.rb"], nodes[1][:files]
+    assert_equal ["scripts/lib/c.rb"], nodes[2][:files]
   end
 
   # --- parse a negated files section --------------------------------------------
@@ -178,6 +187,44 @@ class ActionGraphShimTest < Minitest::Test
     nodes = ActionGraphShim.nodes(@dir)
     assert_equal [], nodes[0][:files]
     assert nodes[0][:ok]
+  end
+
+  # --- parse a negation inside the section body (342 review D17) -----------------
+
+  def test_negation_in_the_section_body_stops_the_harvest
+    write_action("ACTION_1.md", <<~MD)
+      # Action 1
+
+      ## Files to touch
+
+      - `scripts/lib/a.rb`
+      - `scripts/lib/b.rb`
+
+      These paths must NOT be touched: `scripts/lib/c.rb`, `scripts/lib/d.rb`.
+    MD
+    files = ActionGraphShim.nodes(@dir)[0][:files]
+    assert_equal ["scripts/lib/a.rb", "scripts/lib/b.rb"], files
+  end
+
+  # --- fence-aware path extraction (342 review D18) -------------------------------
+
+  def test_backticks_inside_a_fenced_block_are_not_paths
+    write_action("ACTION_1.md", <<~MD)
+      # Action 1
+
+      ## Files
+
+      - `scripts/lib/real.rb`
+
+      ```ruby
+      { nodes: <new map>,
+        changes: [ <structured change records> ] }
+      ```
+
+      - `scripts/lib/after.rb`
+    MD
+    files = ActionGraphShim.nodes(@dir)[0][:files]
+    assert_equal ["scripts/lib/real.rb", "scripts/lib/after.rb"], files
   end
 
   # --- extract paths from a files section ---------------------------------------
@@ -338,6 +385,43 @@ class ActionGraphShimTest < Minitest::Test
       refute_empty records.first[:errors]
     ensure
       File.chmod(0o644, path)
+    end
+  end
+
+  # --- a nil intent_dir never raises on any entry point (342 review should-fix 5) ----
+
+  def test_nil_intent_dir_never_raises_on_any_entry_point
+    assert_equal :none, ActionGraphShim.shape(nil)
+    assert_equal [], ActionGraphShim.nodes(nil)
+    view = ActionGraphShim.view(nil)
+    refute view[:ok]
+    refute_nil view[:errors]
+    assert_equal [], ActionGraphShim.needs(nil, "n1")
+  end
+
+  # --- authored nodes sort numerically, not lexically (342 review nit 8) -------------
+
+  def test_authored_nodes_sort_numerically_not_lexically
+    write_graph((1..11).map { |i| "- n#{i} needs nothing" }.join("\n"))
+    (1..11).each { |i| write_node("n#{i}", body: "# n#{i} - a work node\n\n## Steps\n1. do it\n") }
+    nodes = ActionGraphShim.nodes(@dir)
+    assert_equal (1..11).map { |i| "n#{i}" }, nodes.map { |n| n[:node] }
+  end
+
+  # --- action_graph_shim and work_graph_validator load in either order (342 review should-fix 6) --
+
+  def test_both_files_load_standalone_in_either_order
+    require "open3"
+    require "rbconfig"
+    repo = File.expand_path("..", __dir__)
+    lib_dir = File.join(repo, "scripts", "lib")
+    action_shim = File.join(lib_dir, "action_graph_shim.rb")
+    validator = File.join(lib_dir, "work_graph_validator.rb")
+
+    [[action_shim, validator], [validator, action_shim]].each do |first, second|
+      code = "require #{first.inspect}; require #{second.inspect}"
+      _out, err, status = Open3.capture3(RbConfig.ruby, "-e", code)
+      assert status.success?, "loading #{File.basename(first)} then #{File.basename(second)} failed: #{err}"
     end
   end
 end

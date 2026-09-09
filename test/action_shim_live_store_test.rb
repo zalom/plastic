@@ -78,6 +78,25 @@ class ActionShimLiveStoreTest < Minitest::Test
     end
   end
 
+  def test_dogfood_files_stop_at_the_out_of_bounds_clause
+    dogfood_dir = File.join(REPO, "test", "fixtures", "dogfood_intent")
+    node = ActionGraphShim.nodes(dogfood_dir).first
+    out_of_bounds = %w[
+      scripts/hook-capture .github/ project.yml scripts/node-transition
+      scripts/lib/report_screen.rb scripts/end-intent
+    ]
+    out_of_bounds.each do |path|
+      refute_includes node[:files], path, "out-of-bounds path #{path} leaked into files"
+    end
+    in_bounds_first = %w[
+      scripts/lib/action_graph_shim.rb scripts/lib/work_graph_validator.rb
+      scripts/lib/installer_core.rb test/action_graph_shim_test.rb
+      test/work_graph_validator_test.rb test/action_shim_live_store_test.rb
+      test/fixtures/legacy_intents/ CHANGELOG.md
+    ]
+    assert_equal in_bounds_first, node[:files]
+  end
+
   def test_dogfood_record_key_set_matches_authored_node
     dogfood_dir = File.join(REPO, "test", "fixtures", "dogfood_intent")
     action_path = File.join(dogfood_dir, "actions", "ACTION_1.md")
