@@ -10,7 +10,7 @@ require_relative "work_graph_validator"
 # ActionGraphShim (intent 342, G9): a read-time backward shim that presents
 # any intent directory's actions/*.md as a node graph, in the record shape
 # NodeFile.parse returns, so 336, 338 and 339 read a legacy intent through
-# the same call they already use for an authored graph.md (spec.md D1-D14).
+# the same call they already use for an authored graph.md (spec.md D1-D18).
 #
 # Writes nothing, anywhere, ever (D1). An authored graph.md always wins over
 # the synthetic chain (D3) - the reverse of 334's forward shim, which
@@ -172,21 +172,48 @@ module ActionGraphShim
 
   # The first heading whose leading token is "Files" (case-insensitively),
   # unless the heading text carries a negation, in which case it is not a
-  # files section and the search continues (D10). Paths are the backticked
-  # spans anywhere in that section's body, in document order, de-duplicated
-  # (D11). No qualifying heading gives [] (D9).
+  # files section and the search continues (D10). Paths come out of that
+  # section's BODY through extract_files_paths, which is itself
+  # negation-aware and fence-aware (D17, D18). No qualifying heading gives
+  # [] (D9).
   def files_section_paths(text)
     NodeFile.split_by_headings(text).each do |heading, section|
       next unless files_heading?(heading)
 
-      return section.to_s.scan(BACKTICK_RE).flatten.uniq
+      return extract_files_paths(section.to_s)
     end
     []
   end
 
+  # Fence-aware (D18) and negation-aware over the section body, not only
+  # its heading (D17). D10 already stops a heading like "## Files you must
+  # NOT change" from being read as a files section at all; this handles
+  # the equally common case where a legitimate "## Files to touch" heading
+  # is followed, inside the same section, by an out-of-bounds paragraph -
+  # live on this intent's own dogfood fixture. A fenced block is dropped
+  # before anything else runs, reusing NodeFile.each_fence_line rather than
+  # a bare backtick scan, which is exactly what that helper exists to
+  # prevent. Lines are scanned in document order; harvesting stops at the
+  # first line carrying a negation, and only what precedes it is scanned
+  # (D17's own wording), so an out-of-bounds clause never contributes a
+  # path regardless of what follows it in the same section. Any span that
+  # still holds a newline is rejected as a backstop: a path is never more
+  # than one line.
+  def extract_files_paths(section)
+    kept = +""
+    NodeFile.each_fence_line(section) do |line, fenced|
+      next if fenced
+      break if line.match?(FILES_NEGATION_RE)
+
+      kept << line
+    end
+    kept.scan(BACKTICK_RE).flatten.reject { |s| s.include?("\n") }.uniq
+  end
+
   def files_heading?(heading)
     stripped = heading.to_s.sub(/\A#+\s*/, "")
-    return false unless stripped.split(/\s+/, 2).first.to_s.casecmp?("Files")
+    first_token = stripped.split(/\s+/, 2).first.to_s.sub(/[^A-Za-z]+\z/, "")
+    return false unless first_token.casecmp?("Files")
 
     !heading.to_s.match?(FILES_NEGATION_RE)
   end
