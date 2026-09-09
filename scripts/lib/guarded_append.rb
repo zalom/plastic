@@ -55,6 +55,7 @@ module GuardedAppend
   # as itself, never read as Unavailable.
   def call(path, retries: DEFAULT_RETRIES, backoff: DEFAULT_BACKOFF, strict: true,
            flock: DEFAULT_FLOCK, sleeper: DEFAULT_SLEEPER, &block)
+    created = !File.exist?(path)
     handle = File.open(path, File::RDWR | File::APPEND | File::CREAT, 0o644)
     begin
       status = take_lock(handle, retries: retries, backoff: backoff, flock: flock, sleeper: sleeper)
@@ -78,6 +79,9 @@ module GuardedAppend
     ensure
       handle.close
     end
+  rescue Unavailable
+    remove_freshly_created_empty_file(path) if created
+    raise
   end
 
   # Attempt the lock up to `retries` times. Returns :locked, :unsupported (a
@@ -136,4 +140,16 @@ module GuardedAppend
     nil
   end
   private_class_method :unlock
+
+  # Row 7.9 (post-execution review): a give-up (Unavailable) must not leave a zero-byte
+  # file behind that File::CREAT created for a target that did not exist before this
+  # call. Only ever removes a file this same call created (never a pre-existing file,
+  # spec matrix 1.11) and only when it is still empty (no write ever reached it on the
+  # give-up paths this rescues).
+  def remove_freshly_created_empty_file(path)
+    File.unlink(path) if File.exist?(path) && File.zero?(path)
+  rescue SystemCallError
+    nil
+  end
+  private_class_method :remove_freshly_created_empty_file
 end

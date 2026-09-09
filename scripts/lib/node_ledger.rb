@@ -65,6 +65,14 @@ module NodeLedger
 
   SEPARATOR = "  "
 
+  # The field key character class, shared by the emitter (#render_fields, below) and
+  # the parser (FIELD_TOKEN_RE, further down): a key outside this class is a key the
+  # parser can never read back as a pair, so it must never be emitted (post-execution
+  # review row 7.7). One source of truth for the char class keeps the two families
+  # from drifting the way they did before this row's fix.
+  FIELD_KEY_CHARS = "[a-z_]+"
+  FIELD_KEY_RE = /\A#{FIELD_KEY_CHARS}\z/.freeze
+
   # timestamp<SEP>subject<SEP>state field=value... (comment). Two-space
   # separators keep the line a three-field line under both `split(/\s{2,}/)`
   # and every reader's own `SAVEPOINT_RE` (spec "Line shape"). Raises
@@ -84,16 +92,24 @@ module NodeLedger
     "#{timestamp}#{SEPARATOR}#{subject}#{SEPARATOR}#{rest}\n"
   end
 
-  # Collapse every run of two-or-more spaces in `text` to one (spec "Line
-  # shape"), so a caller-supplied value or comment can never reintroduce the
-  # double-space the line's own separators rely on. A tab or a newline is
-  # refused outright (raises ArgumentError) rather than collapsed: silently
-  # eating either would hide a value that could otherwise tear a ledger line.
+  # Collapse every run of two-or-more WHITESPACE characters in `text` to one
+  # (spec "Line shape": "collapses every whitespace run inside a field value
+  # to a single space"), so a caller-supplied value or comment can never
+  # reintroduce a two-or-more run the line's own separators rely on being
+  # unique to field boundaries. A tab or a newline is refused outright (raises
+  # ArgumentError) rather than collapsed: silently eating either would hide a
+  # value that could otherwise tear a ledger line. Post-execution review row
+  # 7.6: a bare `/ {2,}/` collapsed only literal spaces, so a carriage return,
+  # vertical tab or form feed beside a space still reached field 3 as a
+  # two-whitespace run that `split(/\s{2,}/)` reads as four fields while
+  # SAVEPOINT_RE reads as three - `\s{2,}` is what the acceptance criterion
+  # ("no run of two or more whitespace characters ever reaches field 3")
+  # actually requires.
   def normalize_value(text)
     value = text.to_s
     raise ArgumentError, "value must not contain a tab or a newline: #{value.inspect}" if value =~ /[\t\n]/
 
-    value.gsub(/ {2,}/, " ")
+    value.gsub(/\s{2,}/, " ")
   end
 
   # A required-field D4 check independent of vocabulary validity: given a state
@@ -122,6 +138,11 @@ module NodeLedger
 
   def render_fields(fields)
     normalized = stringify_keys(fields)
+    unreadable = normalized.keys.reject { |key| key.match?(FIELD_KEY_RE) }
+    if unreadable.any?
+      raise ArgumentError, "field key(s) the parser cannot read back: #{unreadable.join(', ')}"
+    end
+
     known = FIELD_ORDER.select { |key| normalized.key?(key) }
     extra = (normalized.keys - FIELD_ORDER).sort
     (known + extra).map { |key| "#{key}=#{render_value(normalized[key])}" }
@@ -149,7 +170,7 @@ module NodeLedger
   TRANSITION_LINE_RE = /\A(\S+)#{SEPARATOR}(\S+)#{SEPARATOR}(.+?)\s*\z/.freeze
   private_constant :TRANSITION_LINE_RE
 
-  FIELD_TOKEN_RE = /([a-z_]+)=("(?:[^"\\]|\\.)*"|[^\s"]+)/.freeze
+  FIELD_TOKEN_RE = /(#{FIELD_KEY_CHARS})=("(?:[^"\\]|\\.)*"|[^\s"]+)/.freeze
   private_constant :FIELD_TOKEN_RE
 
   # Parse one raw ledger line into {timestamp:, subject:, state:, fields:,
@@ -249,7 +270,18 @@ module NodeLedger
   def entries(path)
     return [] unless path && File.exist?(path)
 
-    File.read(path).scrub.each_line.filter_map do |raw|
+    entries_from_content(File.read(path))
+  end
+
+  # Same as #entries, but over an in-memory string rather than a path (post-
+  # execution review row 7.1/7.2): the readiness decision `node-transition`
+  # makes for `running` must be evaluated against the exact content
+  # GuardedAppend read under its lock hold, never a re-read of the path (which
+  # could observe a different file than the one the guard is holding closed
+  # against other writers, and reintroduces the check-then-append gap this row
+  # exists to close).
+  def entries_from_content(content)
+    content.to_s.scrub.each_line.filter_map do |raw|
       line = raw.chomp
       next nil if line.strip.empty?
       next nil unless Savepoint.transition_candidate?(line)
@@ -274,7 +306,12 @@ module NodeLedger
   # unattributed-but-well-formed line still counts for status (D10: status
   # shows it; only the readiness check ignores it).
   def status(path)
-    entries(path).each_with_object({}) do |entry, memo|
+    status_from_content(path && File.exist?(path) ? File.read(path) : "")
+  end
+
+  # Content-based counterpart to #status (see #entries_from_content).
+  def status_from_content(content)
+    entries_from_content(content).each_with_object({}) do |entry, memo|
       next if entry[:torn]
 
       memo[entry[:subject]] = resolved_state(entry[:state])
@@ -285,6 +322,11 @@ module NodeLedger
   # starting state), never raises.
   def status_for(path, subject)
     status(path).fetch(subject.to_s, "planned")
+  end
+
+  # Content-based counterpart to #status_for (see #entries_from_content).
+  def status_for_content(content, subject)
+    status_from_content(content).fetch(subject.to_s, "planned")
   end
 
   # The last (file-order) non-torn `running` entry for `subject`, or nil. Used
@@ -314,11 +356,23 @@ module NodeLedger
   # file (spec C20), then append through `guard` (default GuardedAppend,
   # strict), skipping dedup entirely (spec D11: transition lines never consult
   # savepoint_recorded_pairs). Returns whatever `guard.call` returns
-  # (:written); propagates GuardedAppend::Unavailable rather than swallowing it
-  # (a caller must never believe a line landed when it did not).
-  def append_transition(path, subject:, state:, fields: {}, comment: nil, now: Time.now, guard: GuardedAppend)
+  # (:written or :refused); propagates GuardedAppend::Unavailable rather than
+  # swallowing it (a caller must never believe a line landed when it did not).
+  #
+  # `precondition:` (post-execution review rows 7.1-7.3) is an optional
+  # callable evaluated INSIDE the guard's lock hold, against the exact
+  # `content` the guard just read - never a value captured before the call.
+  # When it returns falsy, the block returns nil (GuardedAppend's own
+  # refusal contract) and nothing is written; the caller sees :refused,
+  # distinguishable from :written, and must not believe the line landed. This
+  # is what makes "is the subject still ready" and "append running" atomic
+  # against a second writer: a check followed by a separate append never is.
+  def append_transition(path, subject:, state:, fields: {}, comment: nil, now: Time.now, guard: GuardedAppend,
+                         precondition: nil)
     line = transition_line(subject: subject, state: state, fields: fields, comment: comment, now: now)
-    guard.call(path, strict: true) { |_content| line }
+    guard.call(path, strict: true) do |content|
+      precondition && !precondition.call(content) ? nil : line
+    end
   end
 
   # --- The temporary `needs` reader (spec Approach; replaced by 334) ---------

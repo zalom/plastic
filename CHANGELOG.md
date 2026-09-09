@@ -18,6 +18,18 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   without evidence, and `reclaimed` before expiry. The existing stage ledger, its rebuild, and
   its phantom detector keep working unchanged beside the new lines; `RoadmapSavepoint` now writes
   through the same guard and keeps its own scope.
+- 335 (G2) post-execution review fixes: the readiness decision for `running` now runs INSIDE
+  `GuardedAppend`'s lock hold, as `NodeLedger.append_transition`'s new `precondition:` seam
+  evaluated against the exact content the guard read, closing the check-then-append race that let
+  four concurrent writers land more than one `running` line in 17 of 20 rounds; `reclaimed` now
+  refuses unless the subject's current status is `running`, so a `done` node whose last `running`
+  line has a past `expires=` can no longer revert to `planned`; value normalization collapses
+  every whitespace run (`\s{2,}`), not only literal spaces, so a carriage return or form feed
+  beside a space can no longer reach field 3 as an unflagged two-whitespace run; the emitter
+  refuses a field key the parser cannot read back; `rebuild_savepoint`'s transition-preservation
+  read now `scrub`s before scanning, so a non-UTF-8 byte no longer crashes the one repair tool
+  three doctor fix hints point at; and `GuardedAppend`'s give-up path unlinks a file it created
+  when the target did not previously exist.
 
 ## Released
 

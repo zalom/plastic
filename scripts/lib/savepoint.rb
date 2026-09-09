@@ -315,7 +315,11 @@ module Savepoint
 
     savepoint_path = File.join(intent_dir, SAVEPOINT_FILE)
     if File.exist?(savepoint_path)
-      transition_lines = File.read(savepoint_path).each_line.select { |raw| transition_candidate?(raw) }
+      # #scrub before scanning (post-execution review row 7.8), the same way
+      # NodeLedger.entries does (matrix 2.44): a stray non-UTF-8 byte anywhere
+      # in the ledger must not raise out of the one repair tool three doctor
+      # fix hints and maintenance-run --tool rebuild-savepoint point at.
+      transition_lines = File.read(savepoint_path).scrub.each_line.select { |raw| transition_candidate?(raw) }
       lines += transition_lines.map { |raw| raw.end_with?("\n") ? raw : "#{raw}\n" }
     end
 

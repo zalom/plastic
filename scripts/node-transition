@@ -46,14 +46,25 @@ module NodeTransition
   # reader finds the seam). A subject is ready when its own resolved status is
   # eligible (see READY_PRIOR_STATES above), and every `needs` target's LAST
   # attributed, well-formed line in the same ledger has state `done`.
-  def readiness_check(savepoint_path, subject, needs)
-    own_status = NodeLedger.status_for(savepoint_path, subject)
+  #
+  # Takes `content` (the ledger's raw text), never a path, so this method can
+  # be run twice: once as a cheap unguarded pre-check for a fast, readable
+  # refusal, and once - the AUTHORITATIVE decision - as the guard's
+  # precondition, evaluated against the exact content GuardedAppend just read
+  # under its lock hold (post-execution review row 7.1). A path-based re-read
+  # here would defeat the guard: two callers could each open their own handle,
+  # both see "planned", and both go on to append `running`, which is the exact
+  # failure the spec's Problem section names ("two runners can both decide a
+  # node is ready and both append running").
+  def readiness_check(content, subject, needs)
+    own_status = NodeLedger.status_for_content(content, subject)
     unless READY_PRIOR_STATES.include?(own_status)
       return [false, "#{subject} is #{own_status}, not eligible to enter running"]
     end
 
+    entries = NodeLedger.entries_from_content(content)
     needs.each do |target|
-      entry = NodeLedger.entries(savepoint_path).select { |e| e[:subject] == target && !e[:torn] }.last
+      entry = entries.select { |e| e[:subject] == target && !e[:torn] }.last
       unless entry && entry[:state] == "done" && NodeLedger.attributed?(entry)
         return [false, "needs target #{target} has no attributed, well-formed done line"]
       end
@@ -189,6 +200,7 @@ module NodeTransition
     end
 
     savepoint_path = File.join(intent_dir, "savepoint.md")
+    precondition = nil
 
     case state
     when "running"
@@ -205,15 +217,34 @@ module NodeTransition
                 NodeLedger.needs_from_graph(File.join(intent_dir, "graph.md"), subject)
               end
 
-      ready, reason = readiness_check(savepoint_path, subject, needs)
+      # Fast, unguarded pre-check: a cheap, readable refusal for the common
+      # case, but NEVER the authoritative decision (post-execution review row
+      # 7.1). The authoritative check is the `precondition` below, run inside
+      # GuardedAppend's lock hold against the content it actually read.
+      precheck_content = File.exist?(savepoint_path) ? File.read(savepoint_path) : ""
+      ready, reason = readiness_check(precheck_content, subject, needs)
       unless ready
         warn "node-transition: #{reason}"
         exit 5
       end
+
+      precondition = ->(content) { readiness_check(content, subject, needs).first }
     when "reclaimed"
       running_entry = NodeLedger.last_running(savepoint_path, subject)
       unless running_entry
         warn "node-transition: #{subject} has no running line to reclaim"
+        exit 6
+      end
+
+      # Post-execution review row 7.4: expiry alone is not enough. A `done`
+      # node whose last `running` line's expires= happens to be in the past
+      # must not revert to `planned` and become re-dispatchable - reclaim is
+      # deliberately lock-free (spec D43), so this status check is the only
+      # thing that stops it. Row 7.5 pins that a genuinely running, expired
+      # subject is still reclaimable, so the crash sweep keeps working.
+      current_status = NodeLedger.status_for(savepoint_path, subject)
+      unless current_status == "running"
+        warn "node-transition: #{subject} is #{current_status}, not running; nothing to reclaim"
         exit 6
       end
 
@@ -230,12 +261,20 @@ module NodeTransition
       end
     end
 
-    begin
+    result = begin
       NodeLedger.append_transition(savepoint_path, subject: subject, state: state, fields: fields,
-                                    comment: comment, now: now)
+                                    comment: comment, now: now, precondition: precondition)
     rescue GuardedAppend::Unavailable => e
       warn "node-transition: #{e.message}"
       exit 3
+    rescue ArgumentError => e
+      warn "node-transition: #{e.message}"
+      exit 2
+    end
+
+    if result == :refused
+      warn "node-transition: #{subject} was no longer ready by the time the write lock was taken"
+      exit 5
     end
 
     puts "node-transition: appended #{state} for #{subject}"
