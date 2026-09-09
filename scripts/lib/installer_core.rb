@@ -486,6 +486,9 @@ class InstallerCore
       "scripts/lib/graph_file.rb" => "scripts/lib/graph_file.rb",
       "scripts/lib/work_graph_validator.rb" => "scripts/lib/work_graph_validator.rb",
       "scripts/validate-work-graph" => "scripts/validate-work-graph",
+      # Intent 335a: every id an intent has ever seen, so a deleted node's id
+      # is never reissued to a new node with the dead one's ledger history.
+      "scripts/lib/node_ids.rb" => "scripts/lib/node_ids.rb",
     }
   end
 

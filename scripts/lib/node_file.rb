@@ -12,8 +12,10 @@ require "date"
 #
 # Pure and side-effect-free: parse reads one file and returns a Result hash,
 # never raising across the boundary; mint_id takes the ids already present
-# and returns the next free one. Reserving an id against a concurrent minter
-# is G7's problem, not a claim this module makes (D16r).
+# and returns one past the highest of them. Reserving an id against a
+# concurrent minter is G7's problem, not a claim this module makes (D16r);
+# gathering the ids an intent has ever seen is NodeIds' job (335a), which is
+# why this module still requires nothing but yaml and date.
 module NodeFile
   module_function
 
@@ -183,9 +185,21 @@ module NodeFile
     end
   end
 
-  # The next free id for a kind: purely numeric, so ids never sort as
-  # strings ("n10" ranking above "n9") and a gap in the sequence is filled
-  # rather than skipped past.
+  # One past the highest id ever seen for the kind: purely numeric, so ids
+  # never sort as strings ("n10" ranking above "n9"), and a gap in the
+  # sequence STAYS a gap.
+  #
+  # Node ids never recycle (335a, owner ruling 2026-09-09). Intent 335 keyed
+  # the work ledger in savepoint.md on node id, and deletion is not a
+  # transition, so nothing in the ledger says a node is gone. Reissuing a
+  # deleted node's id therefore hands the new node the dead one's whole
+  # history: its `done` line, its evidence, its holder, and the successors
+  # that line released. The failure is silent, which is the worst shape it
+  # could take, so the gap is a headstone rather than free space.
+  #
+  # `taken` may carry ids this kind's grammar rejects, because NodeIds
+  # over-reserves on purpose (335a D11); they are ignored without shifting
+  # the sequence.
   def mint_id(kind, taken)
     prefix = KIND_PREFIX[kind.to_s]
     return nil unless prefix
@@ -195,8 +209,6 @@ module NodeFile
       m && m[1].to_i
     end
 
-    n = 1
-    n += 1 while used.include?(n)
-    "#{prefix}#{n}"
+    "#{prefix}#{(used.max || 0) + 1}"
   end
 end
