@@ -1618,3 +1618,49 @@ it from an all-letter word that happens to be valid hex.
 `:roadmap_delivered` (331a's registry, a file rather than a diff to `screen_paint.rb`), openers
 that are strict subsets of the shipped `intent`/`delivered` openers. No `paint:` lambda: the
 palette stays `IntentScreenAnsi`'s shared pipeline, exactly like every shipped kind before it.
+
+## trusted publishing over OIDC (intent 347)
+
+`@zalom/plastic` used to depend on a long-lived npm access token sitting in one maintainer's
+`~/.npmrc`. On 2026-09-08 that token had expired, the alpha.18 release stalled at the publish
+step, and the package reached the registry only the next morning after a manual `npm publish`
+from a detached checkout of the tag. `.github/workflows/publish.yml` closes that failure mode
+structurally: no npm token exists anywhere, on any machine or in any GitHub secret.
+
+**The mechanism.** A pushed `v*` tag, or a `workflow_dispatch` naming an existing tag, runs a
+job granted `id-token: write`. The npm CLI detects the OIDC environment, fetches a short-lived
+token scoped to this repository and this exact workflow filename, and presents it to the
+registry instead of an `_authToken`. The registry compares the token's claims against the
+trusted publisher registered on npmjs.com and publishes only on an exact match. The trust is
+pinned to the workflow file's name, not to a person: anyone who can push a matching tag can
+publish, and renaming `publish.yml` silently breaks every future release, which is why a test
+pins the path.
+
+**The guard.** `scripts/release-check`, a thin CLI over `scripts/lib/release_guard.rb`, runs
+before the suite and before the publish step. It asserts the pushed (or dispatched) tag equals
+`v` plus the version in `package.json`, that the three repo version files agree
+(`ReleaseGuard.check`, unchanged from the stable-cut guard the releasing skill already runs),
+and that the runner's npm meets the 11.5.1 floor OIDC requires, comparing version segments
+numerically so `11.10.0` does not lose to `11.5.1` as a string. It writes the derived dist-tag
+to `$GITHUB_OUTPUT` by appending, never truncating, so another step's output in the same file
+survives.
+
+**One dist-tag rule, one implementation.** `ReleaseGuard.dist_tag(version)` returns `alpha` for
+an `-alpha` suffix, `beta` for `-beta`, `latest` for no suffix at all, and the raw suffix itself
+(never `latest`) for anything else. The workflow's `--tag` argument is always
+`${{ steps.guard.outputs.dist_tag }}`, never a literal, because the alternative - a second,
+untested implementation of the same rule in shell - is exactly the kind of drift that would put
+an alpha on `latest` and pull every stable user onto it at their next `plastic update`.
+
+**No GitHub environment.** The npmjs.com trusted-publisher configuration's Environment name
+field stays blank. On a single-maintainer repository the only approver a deployment gate could
+add is the person who already pushed the tag, so it excludes nobody; the control that matters
+is who can push a `v*` tag, which tag protection already governs.
+
+**The releasing skill's second post-push action.** `skills/releasing/SKILL.md` keeps its
+`npm_publish` action (a local `npm publish`) for every other project, and adds
+`npm_publish_workflow` as a sibling: the tag push already started the publish, so the session
+confirms a run exists (`gh run list --workflow publish.yml`), follows it (`gh run watch`), and
+verifies the registry (`npm view <package> dist-tags`) rather than running `npm publish` itself.
+Plastic's own `~/.plastic/projects/plastic/project.yml` is the only project that names the new
+action; every other project's `on_green` list is untouched.
