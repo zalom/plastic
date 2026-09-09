@@ -56,7 +56,7 @@ module GraphEdges
       end
 
       if raw_targets.include?(ROOT_TARGET) && raw_targets.length > 1
-        errors << "prose tail after targets: #{stripped.inspect}"
+        errors << "root target #{ROOT_TARGET.inspect} mixed with a real target, root must be the only target: #{stripped.inspect}"
         next
       end
 
