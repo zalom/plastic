@@ -19,7 +19,18 @@ require_relative "work_graph_validator"
 module ActionGraphShim
   module_function
 
+  # D10's heading test: unchanged, four tokens, verified correct on the live
+  # store. Governs only whether a "## Files ..." heading itself is negated
+  # (e.g. "## Files you must NOT change"), never the section body.
   FILES_NEGATION_RE = /\bnot\b|\bnever\b|\bavoid\b|don't/i.freeze
+
+  # D19's body-truncation vocabulary: the four heading tokens plus the
+  # exclusion phrases the live corpus actually uses ("Out of bounds, owned
+  # by leads running in parallel right now:" matched none of the original
+  # four). Governs whether a body LINE truncates the files harvest -
+  # never the heading test above, which stays on FILES_NEGATION_RE.
+  FILES_EXCLUSION_RE = /\bnot\b|\bnever\b|\bavoid\b|don't|\bout of bounds\b|\bout of scope\b|\bhands off\b|\bleave alone\b|\bexcluded\b/i.freeze
+
   BACKTICK_RE = /`([^`]+)`/.freeze
   PROVEN_BY_LABEL_RE = /\AS\d+\z/.freeze
 
@@ -204,21 +215,38 @@ module ActionGraphShim
   # live on this intent's own dogfood fixture. A fenced block is dropped
   # before anything else runs, reusing NodeFile.each_fence_line rather than
   # a bare backtick scan, which is exactly what that helper exists to
-  # prevent. Lines are scanned in document order; harvesting stops at the
-  # first line carrying a negation, and only what precedes it is scanned
-  # (D17's own wording), so an out-of-bounds clause never contributes a
-  # path regardless of what follows it in the same section. Any span that
-  # still holds a newline is rejected as a backstop: a path is never more
-  # than one line.
+  # prevent.
+  #
+  # Lines are scanned in document order; harvesting stops at the first line
+  # an exclusion GOVERNS (D19), not merely mentions - a negation is a false
+  # positive as often as a real exclusion clause, since an action file
+  # routinely annotates an in-bounds path with a "do NOT rename it" aside.
+  # governs_exclusion? draws the line: the match governs when it begins
+  # before the line's first backtick (an exclusion clause introducing
+  # paths) or when the line carries no backtick at all (a bare warning
+  # sentence); it annotates, and the line is kept, when the match falls
+  # after the first backtick (a parenthetical about a path already named).
+  # Any span that still holds a newline is rejected as a backstop: a path
+  # is never more than one line.
   def extract_files_paths(section)
     kept = +""
     NodeFile.each_fence_line(section) do |line, fenced|
       next if fenced
-      break if line.match?(FILES_NEGATION_RE)
+      break if governs_exclusion?(line)
 
       kept << line
     end
     kept.scan(BACKTICK_RE).flatten.reject { |s| s.include?("\n") }.uniq
+  end
+
+  # True when a FILES_EXCLUSION_RE match on this line governs the paths on
+  # it rather than merely annotating one (D19).
+  def governs_exclusion?(line)
+    match = line.match(FILES_EXCLUSION_RE)
+    return false unless match
+
+    first_backtick = line.index("`")
+    first_backtick.nil? || match.begin(0) < first_backtick
   end
 
   def files_heading?(heading)
