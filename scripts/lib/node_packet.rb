@@ -35,11 +35,39 @@ module NodePacket
   # reports is not provisioned.
   STOP_DIRECTIVE = "STOP: no lease is recorded for this node. Do not edit files or run any command until a runner dispatches this node with a holder, an expiry and a model."
 
+  # Pinned so `packet=<sha>` is a function of the repo's history alone
+  # (post-execution review finding B4): unpinned, `git log --stat` varies
+  # with the terminal's COLUMNS (abbreviates paths, narrows the graph
+  # column), the caller's `color.ui` (ANSI escapes land in the ledger data
+  # block), and gitconfig's `format.pretty`/`log.date`/`log.showSignature`.
+  GIT_LOG_FIXED_ARGS = %w[-c color.ui=false -c log.showSignature=false --no-pager log --no-color --pretty=fuller
+                          --stat=200,200].freeze
+  LANDED_COMMITS_MAX_BYTES = 8000
+
+  def git_log_command(repo_dir:, files:)
+    ["git", "-C", repo_dir.to_s, *GIT_LOG_FIXED_ARGS, "-n", MAX_LANDED_COMMITS.to_s, "--", *Array(files)]
+  end
+
+  # `COLUMNS` unset (Process.spawn/Open3 delete a var whose value is nil)
+  # rather than merely left alone, so an interactive caller's terminal width
+  # never reaches `git log --stat`'s column math.
+  def git_log_env
+    { "COLUMNS" => nil }
+  end
+
+  # `landed commits` is one of the three never-cut blocks (matrix 3.9), so an
+  # unbounded `git log --stat` (ten verbose commit messages, say) could route
+  # the whole packet straight to exit 4 with no cut able to help.
+  def truncate_landed_commits(out)
+    return out.to_s if out.to_s.bytesize <= LANDED_COMMITS_MAX_BYTES
+
+    "#{out.byteslice(0, LANDED_COMMITS_MAX_BYTES)}\n[landed commits truncated at #{LANDED_COMMITS_MAX_BYTES} bytes]"
+  end
+
   DEFAULT_GIT_RUNNER = lambda do |repo_dir:, files:|
     require "open3"
-    out, _err, status = Open3.capture3("git", "-C", repo_dir.to_s, "log", "--stat", "-n", MAX_LANDED_COMMITS.to_s,
-                                        "--", *files)
-    status.success? ? out : nil
+    out, _err, status = Open3.capture3(git_log_env, *git_log_command(repo_dir: repo_dir, files: files))
+    status.success? ? truncate_landed_commits(out) : nil
   end
 
   PROJECT_LAYOUT_RE = %r{\A(.*)/projects/([^/]+)/store/[^/]+\z}.freeze
@@ -115,27 +143,35 @@ module NodePacket
 
   # Every transition line for `node`, in file order, torn lines marked as
   # such rather than silently dropped or read as evidence (matrix 2.4-2.6).
-  def ledger_lines_block(intent_dir:, node:)
-    entries = NodeLedger.entries(savepoint_path(intent_dir)).select { |e| e[:subject] == node.to_s }
-    return "(no transition lines for #{node})" if entries.empty?
+  def ledger_lines_block(intent_dir:, node:, entries: nil)
+    entries ||= NodeLedger.entries(savepoint_path(intent_dir))
+    node_entries = entries.select { |e| e[:subject] == node.to_s }
+    return "(no transition lines for #{node})" if node_entries.empty?
 
-    entries.map { |e| e[:torn] ? "[torn] #{e[:raw]}" : e[:raw] }.join("\n")
+    node_entries.map { |e| e[:torn] ? "[torn] #{e[:raw]}" : e[:raw] }.join("\n")
   end
 
   # Predecessors come from graph.md's edges (327 D41 removed them from the
   # node envelope, matrix 2.7); only an attributed, well-formed `done` line
   # counts as evidence the predecessor actually finished (matrix 2.8).
-  def predecessor_block(intent_dir:, node:, graph_reader: GraphFile.method(:parse))
+  # `entries` is an optional pre-read of the whole ledger (matrix 2.7a, B12
+  # of the post-execution review): `node-transition` is a concurrent
+  # appending writer, so re-reading `savepoint.md` once per predecessor let a
+  # line landing mid-build make the Transitions, Lease and attempt number of
+  # one packet disagree with each other. `build` reads once and threads the
+  # same entries through every block; a direct caller with no entries to
+  # share still gets a real default that reads the file itself.
+  def predecessor_block(intent_dir:, node:, graph_reader: GraphFile.method(:parse), entries: nil)
     graph = graph_reader.call(graph_path(intent_dir))
     return "(no predecessors)" unless graph[:ok]
 
     targets = graph[:graph][:edges][node.to_s] || []
     return "(no predecessors)" if targets.empty?
 
-    path = savepoint_path(intent_dir)
+    entries ||= NodeLedger.entries(savepoint_path(intent_dir))
     targets.map do |t|
-      entries = NodeLedger.entries(path).select { |e| e[:subject] == t }
-      evidence = entries.select { |e| !e[:torn] && e[:attributed] && e[:state] == "done" }.last
+      target_entries = entries.select { |e| e[:subject] == t }
+      evidence = target_entries.select { |e| !e[:torn] && e[:attributed] && e[:state] == "done" }.last
       evidence ? "#{t}: done — #{evidence[:raw]}" : "#{t}: not yet done"
     end.join("\n")
   end
@@ -145,19 +181,37 @@ module NodePacket
   end
   private_class_method :lease_present?
 
+  def last_running_entry(node:, entries:)
+    entries.select { |e| e[:subject] == node.to_s && !e[:torn] && e[:state] == "running" }.last
+  end
+  private_class_method :last_running_entry
+
+  # Whether the packet renders no lease at all (matrix 2.11a, post-execution
+  # review finding A1): neither a flag-supplied lease nor a recorded
+  # `running` line for this node. `lease_block` itself only ever renders
+  # `lease: none` for this case (spec D3: block 2 is retrieved data, and C7's
+  # stop directive is instruction, so it can never live inside that data
+  # block, on pain of being self-cancelling under the packet's own trust
+  # rule). `build` uses this to decide whether the stop directive belongs in
+  # block 5 instead, deduplicated against the worktree's own copy.
+  def lease_missing?(node:, holder:, expires:, model:, entries:)
+    return false if lease_present?(holder) || lease_present?(expires) || lease_present?(model)
+
+    last_running_entry(node: node, entries: entries).nil?
+  end
+
   # The lease from --holder/--expires/--model when given (matrix 2.9), else
   # the node's last `running` ledger line (matrix 2.10), else `lease: none`
-  # plus the stop directive (matrix 2.11, spec D9/C7).
-  def lease_block(intent_dir:, node:, holder: nil, expires: nil, model: nil)
+  # (matrix 2.11) with no directive of any kind: the stop directive is
+  # instruction (spec D3) and is rendered in block 5 by `build`, never here.
+  def lease_block(intent_dir:, node:, holder: nil, expires: nil, model: nil, entries: nil)
     if lease_present?(holder) || lease_present?(expires) || lease_present?(model)
       return "lease: holder=#{holder} expires=#{expires} model=#{model}"
     end
 
-    entries = NodeLedger.entries(savepoint_path(intent_dir)).select do |e|
-      e[:subject] == node.to_s && !e[:torn] && e[:state] == "running"
-    end
-    last = entries.last
-    return "lease: none\n#{STOP_DIRECTIVE}" unless last
+    entries ||= NodeLedger.entries(savepoint_path(intent_dir))
+    last = last_running_entry(node: node, entries: entries)
+    return "lease: none" unless last
 
     f = last[:fields] || {}
     "lease: holder=#{f['holder']} expires=#{f['expires']} model=#{f['model']}"
@@ -166,9 +220,10 @@ module NodePacket
   # Landed commits after a reclaim (spec D14, C11). Never shells out to git
   # unless the node actually carries a `reclaimed` line (matrix 2.13); a
   # failing runner degrades to a note, never an exception (matrix 2.14).
-  def landed_commits_block(intent_dir:, node:, files:, repo_dir:, git_runner: DEFAULT_GIT_RUNNER)
-    entries = NodeLedger.entries(savepoint_path(intent_dir)).select { |e| e[:subject] == node.to_s && !e[:torn] }
-    return nil unless entries.any? { |e| e[:state] == "reclaimed" }
+  def landed_commits_block(intent_dir:, node:, files:, repo_dir:, git_runner: DEFAULT_GIT_RUNNER, entries: nil)
+    entries ||= NodeLedger.entries(savepoint_path(intent_dir))
+    node_entries = entries.select { |e| e[:subject] == node.to_s && !e[:torn] }
+    return nil unless node_entries.any? { |e| e[:state] == "reclaimed" }
     return nil if Array(files).empty? || repo_dir.to_s.empty?
 
     begin
@@ -233,20 +288,47 @@ module NodePacket
   # source is noted, never raised (matrix 2.21). Capped at `hop_tokens`, with
   # a truncation note when it is cut (matrix 2.22); `hop_tokens` 0 disables
   # the hop entirely (matrix 2.23, spec D7/224's kill criterion).
+  #
+  # `hop=` on the running line is measured against this cap (C33, intent
+  # 224's kill criterion), so the reported `tokens` must never overshoot it
+  # by the truncation note's own cost (post-execution review finding C13):
+  # the note's bytes are subtracted from the byte budget before slicing, and
+  # the slice is trimmed to valid UTF-8 (never repaired) before it is
+  # counted, because a raw `byteslice` can split a multi-byte character.
+  # Trimming, not `String#scrub`, is what keeps the count honest: `scrub`
+  # repairs an invalid tail by inserting a three-byte replacement character,
+  # which can grow the slice back past the very budget it was cut to.
   def hop_block(store_dir:, sources:, hop_tokens: DEFAULT_HOP_TOKENS)
     return { text: nil, tokens: 0 } if hop_tokens.to_i <= 0 || Array(sources).empty?
 
     chunks = Array(sources).map { |src| hop_chunk(store_dir, src) }
-    text = chunks.join("\n\n")
+    text = chunks.join("\n\n").scrub
     cap = hop_tokens.to_i
     tokens = PacketWrapper.estimate_tokens(text)
     if tokens > cap
-      max_bytes = [cap * 4, 0].max
-      text = "#{text.byteslice(0, max_bytes)}\n[hop truncated at #{cap} tokens]"
+      note = "\n[hop truncated at #{cap} tokens]"
+      max_bytes = [(cap * 4) - note.bytesize, 0].max
+      text = "#{safe_byteslice(text, max_bytes)}#{note}"
       tokens = PacketWrapper.estimate_tokens(text)
     end
     { text: text, tokens: tokens }
   end
+
+  # Shrinks a byte slice (never grows it) until it is valid UTF-8, so a cut
+  # that lands inside a multi-byte character is trimmed away rather than
+  # repaired with a replacement character (post-execution review finding
+  # C13). Bounded by `max_bytes` on every path: the result's bytesize never
+  # exceeds what was asked for.
+  def safe_byteslice(text, max_bytes)
+    bytes = [max_bytes.to_i, 0].max
+    slice = text.to_s.byteslice(0, bytes)
+    while slice && !slice.valid_encoding? && bytes.positive?
+      bytes -= 1
+      slice = text.to_s.byteslice(0, bytes)
+    end
+    slice && slice.valid_encoding? ? slice : ""
+  end
+  private_class_method :safe_byteslice
 
   def hop_chunk(store_dir, source_id)
     source_dir = resolve_source_dir(store_dir, source_id)
@@ -259,11 +341,35 @@ module NodePacket
     if decisions_text.to_s.strip.empty?
       spec_path = File.join(source_dir, "spec.md")
       spec_content = File.exist?(spec_path) ? File.read(spec_path) : nil
-      decisions_text = spec_content ? section_at_level(spec_content, 2, /\ADecisions\z/i) : nil
+      # D13's fallback (post-execution review finding B10): `\b` here, to
+      # match `record_block`'s own `### Decisions` pattern, which D12's
+      # Findings rule already establishes tolerates a trailing qualifier on
+      # the heading line. `\z` required an exact "Decisions" heading, so a
+      # source whose spec.md carries "## Decisions (from intent Context)" or
+      # "## Decisions Log" (eight specs in this store do) silently rendered
+      # an empty hop instead of using the fallback D13 exists to provide.
+      decisions_text = spec_content ? section_at_level(spec_content, 2, /\ADecisions\b/i) : nil
     end
     "### #{source_id}\n#### Outcome\n#{outcome}\n\n#### Decisions\n#{decisions_text.to_s.strip}"
   end
   private_class_method :hop_chunk
+
+  # The record's and each hop source's real store-relative path (post-
+  # execution review finding C15, spec D5a: "source is rendered
+  # store-relative"): the literal constants "record" and "sources" were not
+  # paths at all, defeating matrix row 1.3's reason for the attribute to
+  # exist (telling the executor which file a paragraph came from).
+  def record_source_path(intent_dir)
+    path = Savepoint.intent_file(intent_dir)
+    "#{File.basename(intent_dir)}/#{File.basename(path)}"
+  end
+
+  def hop_source_paths(store_dir, sources)
+    Array(sources).map do |src|
+      dir = resolve_source_dir(store_dir, src)
+      dir ? "#{File.basename(dir)}/#{File.basename(Savepoint.intent_file(dir))}" : "#{src} (unresolved)"
+    end.join(", ")
+  end
 
   def resolve_source_dir(store_dir, source_id)
     exact = File.join(store_dir, source_id.to_s)
@@ -292,8 +398,13 @@ module NodePacket
     path = File.join(home, "projects", slug, "project.yml")
     return nil unless File.exist?(path)
 
+    # `permitted_classes` (post-execution review finding B3): the same bug
+    # class `record_sources` already fixed once in 607e31e. Any project.yml
+    # that gains a date-typed value (a `created:` field, say) silently
+    # stripped the test command from every packet for that project, since
+    # the rescue swallowed `Psych::DisallowedClass` and returned nil.
     data = begin
-      YAML.safe_load(File.read(path))
+      YAML.safe_load(File.read(path), permitted_classes: [Date, Time])
     rescue StandardError
       nil
     end
@@ -303,7 +414,15 @@ module NodePacket
     return nil unless release.is_a?(Hash)
 
     verify = release["verify"]
-    verify.is_a?(String) && !verify.empty? ? verify : nil
+    return nil unless verify.is_a?(String) && !verify.strip.empty?
+
+    # A multi-line `verify` (post-execution review finding A2) is collapsed
+    # to one line rather than refused: each of its own lines is joined with
+    # "; ", the shell-sequencing separator, so "ruby bin/test\necho done"
+    # reads as "ruby bin/test; echo done" instead of landing as extra raw
+    # lines in block 5 (instruction, un-wrapped) where one of those lines
+    # could happen to be a complete data marker.
+    verify.split("\n").map(&:strip).reject(&:empty?).join("; ")
   end
 
   def test_command_block(intent_dir:, project_reader: method(:default_project_reader))
@@ -311,10 +430,17 @@ module NodePacket
     cmd ? "test command: #{cmd}" : "test command: none recorded in the project record"
   end
 
+  # `lease_missing` (post-execution review finding A1) hoists C7's stop
+  # directive here, block 5 (instruction, spec D3), whenever the packet
+  # carries no lease. `worktree_block` already renders its own copy when the
+  # worktree is unprovisioned; the two conditions often fire together, so a
+  # directive already present is never repeated.
   def where_to_work_block(intent_dir:, worktree_reader: Arm.method(:worktree_block),
-                           project_reader: method(:default_project_reader))
-    "#{worktree_block(intent_dir: intent_dir, worktree_reader: worktree_reader)}\n" \
-      "#{test_command_block(intent_dir: intent_dir, project_reader: project_reader)}"
+                           project_reader: method(:default_project_reader), lease_missing: false)
+    wt = worktree_block(intent_dir: intent_dir, worktree_reader: worktree_reader)
+    parts = [wt, test_command_block(intent_dir: intent_dir, project_reader: project_reader)]
+    parts << STOP_DIRECTIVE if lease_missing && !wt.include?(STOP_DIRECTIVE)
+    parts.join("\n")
   end
 
   # --- section and list parsing (shared) -------------------------------------
@@ -428,18 +554,20 @@ module NodePacket
   # The whole "ledger" data block (spec block 2): the node's own transition
   # lines, its predecessors' evidence, its lease, and any landed commits
   # after a reclaim.
-  def full_ledger_text(intent_dir:, node:, files:, holder:, expires:, model:, repo_dir:, git_runner:)
+  def full_ledger_text(intent_dir:, node:, files:, holder:, expires:, model:, repo_dir:, git_runner:, entries: nil)
+    entries ||= NodeLedger.entries(savepoint_path(intent_dir))
     landed = landed_commits_block(intent_dir: intent_dir, node: node, files: files, repo_dir: repo_dir,
-                                   git_runner: git_runner)
+                                   git_runner: git_runner, entries: entries)
     parts = [
       "### Transitions",
-      ledger_lines_block(intent_dir: intent_dir, node: node),
+      ledger_lines_block(intent_dir: intent_dir, node: node, entries: entries),
       "",
       "### Predecessors",
-      predecessor_block(intent_dir: intent_dir, node: node),
+      predecessor_block(intent_dir: intent_dir, node: node, entries: entries),
       "",
       "### Lease",
-      lease_block(intent_dir: intent_dir, node: node, holder: holder, expires: expires, model: model),
+      lease_block(intent_dir: intent_dir, node: node, holder: holder, expires: expires, model: model,
+                  entries: entries),
     ]
     if landed
       parts << ""
@@ -466,7 +594,17 @@ module NodePacket
   # record and (when present) hop wrapped as labeled data sharing ONE
   # boundary token computed over their raw payloads (spec D2-D4, matrix
   # 3.1-3.3).
-  def render_packet(node_text:, ledger_text:, intent_text:, decisions:, insights:, hop:, where_text:)
+  #
+  # Blocks 1 and 5 are raw-interpolated (spec D3: instruction, not data), but
+  # that trust does not reach a `release.verify` a project.yml can carry
+  # (post-execution review finding A2): a line that is, on its own, a
+  # complete data marker is disarmed by `PacketWrapper.neutralize_marker_lines`
+  # before it ever reaches the packet, so a forged marker cannot open a
+  # block outside the wrapper's own boundary. `record_source`/`hop_source`
+  # (finding C15) are the record's and the hop sources' real store-relative
+  # paths, never the placeholder label "record"/"sources".
+  def render_packet(node_text:, ledger_text:, intent_text:, decisions:, insights:, hop:, where_text:,
+                     record_source: "record", hop_source: "sources")
     record_text = render_record_text(intent: intent_text, decisions: decisions, insights: insights)
     hop_text = hop && hop[:text]
 
@@ -474,23 +612,55 @@ module NodePacket
     payloads << hop_text if hop_text
     token = PacketWrapper.boundary_token(payloads)
 
-    parts = [node_text.to_s.rstrip, ""]
+    node_text_safe = PacketWrapper.neutralize_marker_lines(node_text.to_s)
+    where_text_safe = PacketWrapper.neutralize_marker_lines(where_text.to_s)
+
+    # Normalized through `attr_safe` exactly as `wrap` normalizes the marker
+    # attributes it writes (post-execution review finding A2's integrity
+    # check): comparing the raw `record_source`/`hop_source` against what
+    # `unwrap` reads back off the rendered marker line raised on every nil
+    # source, because `attr_safe(nil)` renders as `""`, not `"nil".to_s`.
+    wrapped_specs = [
+      { label: PacketWrapper.attr_safe(LEDGER_LABEL), source: PacketWrapper.attr_safe("savepoint.md") },
+      { label: PacketWrapper.attr_safe(RECORD_LABEL), source: PacketWrapper.attr_safe(record_source) },
+    ]
+    wrapped_specs << { label: PacketWrapper.attr_safe(HOP_LABEL), source: PacketWrapper.attr_safe(hop_source) } if hop_text
+
+    parts = [node_text_safe.rstrip, ""]
     parts << PacketWrapper.wrap(ledger_text, label: LEDGER_LABEL, source: "savepoint.md", token: token).rstrip
     parts << ""
-    parts << PacketWrapper.wrap(record_text, label: RECORD_LABEL, source: "record", token: token).rstrip
+    parts << PacketWrapper.wrap(record_text, label: RECORD_LABEL, source: record_source, token: token).rstrip
     parts << ""
     if hop_text
-      parts << PacketWrapper.wrap(hop_text, label: HOP_LABEL, source: "sources", token: token).rstrip
+      parts << PacketWrapper.wrap(hop_text, label: HOP_LABEL, source: hop_source, token: token).rstrip
       parts << ""
     end
-    parts << where_text.to_s.rstrip
-    "#{parts.join("\n")}\n"
+    parts << where_text_safe.rstrip
+    rendered = "#{parts.join("\n")}\n"
+
+    assert_packet_integrity!(rendered, wrapped_specs)
+    rendered
   end
+
+  # The trust boundary's own invariant (post-execution review finding A2):
+  # the finished packet must unwrap to exactly the data blocks that were
+  # wrapped, same count, same labels, same sources, in order. This is what
+  # the escaping rule and the marker-line neutralization pass are FOR, so the
+  # check belongs here, not only in a test that could rot independently of
+  # the code it is meant to guard.
+  def assert_packet_integrity!(rendered, wrapped_specs)
+    actual = PacketWrapper.unwrap(rendered).map { |b| { label: b[:label], source: b[:source] } }
+    return if actual == wrapped_specs
+
+    raise "node packet integrity check failed: expected #{wrapped_specs.inspect}, got #{actual.inspect}"
+  end
+  private_class_method :assert_packet_integrity!
 
   def render_from_state(state)
     render_packet(node_text: state[:node_text], ledger_text: state[:ledger_text], intent_text: state[:intent_text],
                   decisions: state[:decisions], insights: state[:insights], hop: state[:hop],
-                  where_text: state[:where_text])
+                  where_text: state[:where_text], record_source: state[:record_source] || "record",
+                  hop_source: state[:hop_source] || "sources")
   end
   private_class_method :render_from_state
 
@@ -570,10 +740,9 @@ module NodePacket
 
   # C21: the number of `running` lines already recorded for `node`, plus one
   # when a lease is being supplied by flag (a NEW dispatch), floored at 1.
-  def compute_attempt_number(intent_dir:, node:, lease_flag_given:)
-    count = NodeLedger.entries(savepoint_path(intent_dir)).count do |e|
-      e[:subject] == node.to_s && e[:state] == "running"
-    end
+  def compute_attempt_number(intent_dir:, node:, lease_flag_given:, entries: nil)
+    entries ||= NodeLedger.entries(savepoint_path(intent_dir))
+    count = entries.count { |e| e[:subject] == node.to_s && e[:state] == "running" }
     [count + (lease_flag_given ? 1 : 0), 1].max
   end
 
@@ -623,19 +792,35 @@ module NodePacket
     rescue StandardError
       nil
     end
+
+    # Read the ledger once and thread it through every block that consults
+    # it (post-execution review finding B12): `node-transition` is a
+    # concurrent appending writer, so re-reading `savepoint.md` once per
+    # block risked a line landing mid-build and making the Transitions,
+    # Lease and attempt number of one packet disagree with each other.
+    entries = NodeLedger.entries(savepoint_path(intent_dir))
+
     ledger_text = full_ledger_text(intent_dir: intent_dir, node: node, files: nb[:files], holder: holder,
-                                    expires: expires, model: model, repo_dir: repo_dir, git_runner: git_runner)
+                                    expires: expires, model: model, repo_dir: repo_dir, git_runner: git_runner,
+                                    entries: entries)
 
     store_dir = File.dirname(intent_dir)
     sources = record_sources(intent_dir)
     hop_full = hop_block(store_dir: store_dir, sources: sources, hop_tokens: hop_tokens)
 
+    # Finding A1: the stop directive belongs in block 5 (instruction)
+    # whenever the packet carries no lease at all, never inside block 2's
+    # ledger data (spec D3's self-cancellation risk).
+    missing_lease = lease_missing?(node: node, holder: holder, expires: expires, model: model, entries: entries)
     where_text = where_to_work_block(intent_dir: intent_dir, worktree_reader: worktree_reader,
-                                      project_reader: project_reader)
+                                      project_reader: project_reader, lease_missing: missing_lease)
 
     state = {
       node_text: nb[:text], ledger_text: ledger_text, intent_text: record[:intent],
       decisions: record[:decisions], insights: record[:insights], hop: hop_full, where_text: where_text,
+      # Finding C15: the record's and the hop sources' real store-relative
+      # paths, never the placeholder labels "record"/"sources".
+      record_source: record_source_path(intent_dir), hop_source: hop_source_paths(store_dir, sources),
     }
 
     rendered, tokens, cuts_applied = apply_cut_ladder(state, budget_tokens)
@@ -657,7 +842,7 @@ module NodePacket
     end
 
     attempt_n = attempt || compute_attempt_number(intent_dir: intent_dir, node: node,
-                                                   lease_flag_given: lease_flag_given?(holder))
+                                                   lease_flag_given: lease_flag_given?(holder), entries: entries)
     path = out ? File.expand_path(out) : packet_path(intent_dir: intent_dir, node: node, attempt: attempt_n)
     FileUtils.mkdir_p(File.dirname(path))
 

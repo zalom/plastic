@@ -104,6 +104,25 @@ module PacketWrapper
     blocks
   end
 
+  # Disarm any line that is, on its own, a complete open or close marker
+  # (intent 338 post-execution review, finding A2). Blocks 1 and 5 are
+  # instruction, raw-interpolated rather than wrapped, on the grounds that
+  # they are orchestrator- and project-record-authored; that trust does not
+  # extend to `release.verify` in project.yml, which the owner and other
+  # agents write. `escape` already disarms every occurrence of the marker
+  # substring wherever it falls, but a marker sitting mid-line (matrix 1.5's
+  # convention of quoting a matrix row verbatim inside a node file) is
+  # already harmless, because `unwrap` only recognizes a marker that is the
+  # WHOLE line. Rewriting a harmless mid-line quote would be needless churn
+  # on instruction text an owner reads, so only a line that fully matches
+  # `OPEN_LINE_RE` or `CLOSE_LINE_RE` gets `escape`'s backslash treatment.
+  def neutralize_marker_lines(text)
+    text.to_s.each_line.map do |line|
+      chomped = line.chomp("\n")
+      chomped.match?(OPEN_LINE_RE) || chomped.match?(CLOSE_LINE_RE) ? escape(line) : line
+    end.join
+  end
+
   # (bytes / 4.0).round (spec D6): the estimate G10 measures against. Taken
   # over bytesize, never characters, so multi-byte text is never
   # under-counted.
