@@ -1618,3 +1618,68 @@ it from an all-letter word that happens to be valid hex.
 `:roadmap_delivered` (331a's registry, a file rather than a diff to `screen_paint.rb`), openers
 that are strict subsets of the shipped `intent`/`delivered` openers. No `paint:` lambda: the
 palette stays `IntentScreenAnsi`'s shared pipeline, exactly like every shipped kind before it.
+
+## the node packet command (intent 338, G5)
+
+A node agent is stateless (327 D45): its whole input is its packet. `PacketWrapper`
+(`scripts/lib/packet_wrapper.rb`) owns the trust boundary a packet is built over. A data
+block is opened by `<<<PLASTIC-DATA:<token> label="..." source="...">>>` and closed by
+`<<<END-PLASTIC-DATA:<token>>>`, one token per packet, the first twelve hex characters of
+the SHA-256 over the packet's raw payloads joined by a newline - content-derived rather than
+random, so the same node built twice produces the same bytes and the same hash (spec D4).
+Every payload is escaped independently of the token (spec D5): a literal opening or closing
+marker inside a payload is rewritten with a backslash after the angle brackets, so a resource
+carrying the packet's own marker still cannot close its block even if the token leaks.
+`label` and `source` marker attributes are not payload text and are sanitized separately, by
+a whitelist rather than the payload escaping rule (spec D5a, the plan review's blocking
+finding): every character outside `[A-Za-z0-9 _.,:#/@+=-]` becomes `_`, truncated to 200
+characters, so neither a quote nor a newline in a hostile `sources:` entry can break a
+marker line. `PacketWrapper.estimate_tokens` is `(bytes / 4.0).round`, the one arithmetic
+every budget in this delivery is spent in (spec D6).
+
+`NodePacket` (`scripts/lib/node_packet.rb`) gathers the five blocks 327 section 8 fixed, in
+a caller-independent order (spec D2): the node, the ledger, the record, the knowledge hop,
+and where to work. Blocks 1 and 5 are instruction, authored for this node by the orchestrator
+and by the project record; blocks 2, 3 and 4 are retrieved text and are wrapped as labeled
+data sharing the packet's one boundary token (spec D3). The node block reconciles the node
+file against `graph.md`'s declared nodes, refusing rather than rendering an empty block for
+an id the graph does not declare. The ledger block carries every transition line for the
+node in file order (torn lines marked, never counted as evidence), predecessor evidence read
+from `graph.md`'s edges (never the node envelope, which 327 D41 removed `needs` from) and
+counted only from an attributed well-formed `done` line, the lease from `--holder`/`--expires`/
+`--model` or the last `running` line or `lease: none` plus a stop directive (spec D9, C7), and
+landed commits after a reclaim through an injected git runner that is never invoked without a
+`reclaimed` line (spec D14, C11). The record block carries only `## Intent` (the floor, never
+cut), `### Decisions` (falling back to a top-level `## Decisions` when the nested one is
+absent) and the last three `## Insights` entries, with a kind-aware exclusion of any
+`### Findings` subsection for a verify node (spec D12, C23) anchored to the `## Insights` body
+itself, so a `### Findings` living under `## Context` (intent 109's own shape) is never
+touched. The knowledge hop is one level and never transitive (spec D13): each frontmatter
+`sources:` entry contributes only its `## Outcome` and its `### Decisions` (or, when the
+record carries none - about half the store, intent 327 among them - that source's own
+`spec.md` `## Decisions`), capped at `hop_tokens` with a truncation note, and disabled
+entirely at `--hop-tokens 0` (224's kill criterion, spec D7).
+
+Assembly (same file) renders the five blocks, measures the budget over the fully rendered
+bytes with markers included, and applies the C28 cut ladder only as far as needed and only
+when a step actually shrinks the render: drop the hop whole, cut Insights to the last one,
+cut Decisions to the last five (spec D8). The node, ledger and where-to-work blocks are never
+touched by any cut. Still over budget after the third cut: no file is written, exit 4, and
+the exact `node-transition ... --state needs_decision --field question="..."` command is
+returned, naming the oversized block and its token count so the owner knows what to shorten.
+Attempts are numbered from the node's prior `running` lines, plus one when a lease is
+supplied by flag (a new dispatch), floored at 1, overridable with `--attempt` (spec D11,
+C21); the packet lands at `packets/<node>--a<N>.packet` (a `.packet` extension, not `.md`,
+so QMD's `**/*.md` collection glob never re-indexes a packet's wrapped payloads back into
+search results). Rebuilding an attempt is a no-op when the bytes are unchanged and a refusal
+(exit 5) otherwise, unless `--force` is given. The hash is the SHA-256 of the file's own
+bytes on disk, first twelve hex, printed and never embedded in the file (spec D10); it is the
+value `node-transition running --field packet=<sha>` takes.
+
+`scripts/node-packet <intent_dir> --node <id>` is the CLI, shaped like `node-transition` and
+`validate-work-graph`: 0 success, 2 usage (not an intent directory, missing `--node`, or an
+unknown node), 3 an unreadable/unparsable graph, node file or record, 4 overflow, 5 an
+attempt conflict (spec D17, shared exit-code family so a runner routes on the same codes
+across both node commands). On success it prints a parsable summary
+(`path=... sha=... tokens=... hop_tokens=... attempt=...`) and the exact `node-transition
+running` command to record, both of which intent 340's runner parses.

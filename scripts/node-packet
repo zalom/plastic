@@ -1,0 +1,92 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+require_relative "lib/node_packet"
+require_relative "lib/savepoint"
+
+# node-packet - the CLI over NodePacket (intent 338, G5). Builds one node's
+# whole input from disk and writes it to packets/<node>--a<N>.packet (or
+# --out), printing a parsable summary and the exact node-transition running
+# command intent 340's runner should record.
+#
+# Usage:
+#   node-packet <intent_dir> --node <id> [--budget N] [--hop-tokens N]
+#               [--holder H] [--expires E] [--model M] [--attempt N]
+#               [--out PATH] [--force]
+#
+# Exit codes (spec D17, shared with node-transition's family):
+#   0 - the packet was written (or the identical bytes already existed)
+#   2 - usage: not an intent directory, missing --node, or an unknown node
+#   3 - an unreadable, cyclic or unparsable graph, node file, or record
+#   4 - overflow past the third cut; nothing was written
+#   5 - an existing attempt file whose bytes differ; nothing was written
+module NodePacketCLI
+  module_function
+
+  def usage
+    warn "Usage: node-packet <intent_dir> --node <id> [--budget N] [--hop-tokens N] " \
+         "[--holder H] [--expires E] [--model M] [--attempt N] [--out PATH] [--force]"
+  end
+
+  def intent_directory?(dir)
+    dir && File.directory?(dir) && File.exist?(Savepoint.intent_file(dir))
+  end
+
+  def opt(args, name)
+    (i = args.index(name)) && args[i + 1]
+  end
+
+  def main(argv)
+    args = argv.dup
+    intent_dir_arg = args.shift
+
+    unless intent_directory?(intent_dir_arg && File.expand_path(intent_dir_arg))
+      warn "node-packet: #{intent_dir_arg.inspect} is not an intent directory"
+      usage
+      exit 2
+    end
+    intent_dir = File.expand_path(intent_dir_arg)
+
+    node = opt(args, "--node")
+    if node.to_s.strip.empty?
+      warn "node-packet: --node is required"
+      usage
+      exit 2
+    end
+
+    budget = opt(args, "--budget")
+    hop_tokens = opt(args, "--hop-tokens")
+    attempt = opt(args, "--attempt")
+    out = opt(args, "--out")
+    holder = opt(args, "--holder")
+    expires = opt(args, "--expires")
+    model = opt(args, "--model")
+    force = args.include?("--force")
+
+    result = NodePacket.build(
+      intent_dir: intent_dir,
+      node: node,
+      budget_tokens: budget ? budget.to_i : NodePacket::DEFAULT_BUDGET_TOKENS,
+      hop_tokens: hop_tokens ? hop_tokens.to_i : NodePacket::DEFAULT_HOP_TOKENS,
+      holder: holder,
+      expires: expires,
+      model: model,
+      attempt: attempt ? attempt.to_i : nil,
+      out: out,
+      force: force,
+    )
+
+    if result[:ok]
+      puts NodePacket.summary_line(result)
+      puts result[:running_command]
+      exit 0
+    end
+
+    Array(result[:errors]).each { |e| warn "node-packet: #{e}" }
+    puts result[:needs_decision_command] if result[:needs_decision_command]
+    exit result[:exit_code]
+  end
+end
+
+NodePacketCLI.main(ARGV) if $PROGRAM_NAME == __FILE__

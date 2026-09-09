@@ -489,6 +489,11 @@ class InstallerCore
       # Intent 335a: every id an intent has ever seen, so a deleted node's id
       # is never reissued to a new node with the dead one's ledger history.
       "scripts/lib/node_ids.rb" => "scripts/lib/node_ids.rb",
+      # Intent 338 (G5): the node packet command - the trust-boundary wrapper,
+      # the five-block gatherer/assembler, and the CLI 340's runner calls.
+      "scripts/lib/packet_wrapper.rb" => "scripts/lib/packet_wrapper.rb",
+      "scripts/lib/node_packet.rb" => "scripts/lib/node_packet.rb",
+      "scripts/node-packet" => "scripts/node-packet",
     }
   end
 

@@ -603,7 +603,7 @@ module NodePacket
   # record, 4 overflow past the third cut, 5 an existing attempt whose bytes
   # differ.
   def build(intent_dir:, node:, budget_tokens: DEFAULT_BUDGET_TOKENS, hop_tokens: DEFAULT_HOP_TOKENS,
-            holder: nil, expires: nil, model: nil, attempt: nil, force: false,
+            holder: nil, expires: nil, model: nil, attempt: nil, out: nil, force: false,
             renamer: File.method(:rename), git_runner: DEFAULT_GIT_RUNNER,
             worktree_reader: Arm.method(:worktree_block), project_reader: method(:default_project_reader))
     intent_dir = File.expand_path(intent_dir)
@@ -657,7 +657,7 @@ module NodePacket
 
     attempt_n = attempt || compute_attempt_number(intent_dir: intent_dir, node: node,
                                                    lease_flag_given: lease_flag_given?(holder))
-    path = packet_path(intent_dir: intent_dir, node: node, attempt: attempt_n)
+    path = out ? File.expand_path(out) : packet_path(intent_dir: intent_dir, node: node, attempt: attempt_n)
     FileUtils.mkdir_p(File.dirname(path))
 
     if File.exist?(path)
