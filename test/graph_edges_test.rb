@@ -89,6 +89,17 @@ class GraphEdgesTest < Minitest::Test
     refute_includes result[:nodes], "and"
   end
 
+  # Post-execution review, non-blocking 7: `nothing` mixed with a real target
+  # is not a prose tail (every token is a valid target token) - it names its
+  # own defect, the root keyword used alongside a real target.
+  def test_root_target_mixed_with_a_real_target_is_an_error
+    result = GraphEdges.parse("- n1 needs nothing n2\n")
+    refute_empty result[:errors]
+    refute result[:edges].key?("n1")
+    refute_includes result[:errors].join, "prose tail after targets"
+    assert_includes result[:errors].join, "nothing"
+  end
+
   def test_duplicate_node_line_is_an_error
     result = GraphEdges.parse("- n1 needs v1\n- n1 needs v2\n")
     refute_empty result[:errors]
