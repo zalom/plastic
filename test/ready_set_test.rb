@@ -411,6 +411,9 @@ class ReadySetTest < Minitest::Test
     assert result[:ok], "one malformed node file must not sink the whole analysis"
     assert(result[:errors].any? { |e| e.include?("n2") })
     assert result[:nodes]["n1"]
+    refute result[:nodes]["n2"][:ready], "a node with a malformed file must not read as ready"
+    assert(result[:nodes]["n2"][:blockers].any? { |b| b.include?("malformed") },
+           "the blocker must name the malformed file")
   end
 
   def test_declared_node_without_a_file_is_reported
@@ -419,6 +422,33 @@ class ReadySetTest < Minitest::Test
     result = ReadySet.analyze(@dir)
     assert(result[:errors].any? { |e| e.include?("n2") })
     assert_nil result[:nodes]["n2"][:kind]
+    refute result[:nodes]["n2"][:ready], "a node declared with no readable file must not read as ready"
+    assert(result[:nodes]["n2"][:blockers].any? { |b| b.include?("no nodes/ file") },
+           "the blocker must name the unreadable file")
+  end
+
+  def test_unknown_kind_gets_the_work_cap_not_no_cap
+    content = (1..3).map do |i|
+      line("n1", "running", holder: "auto-#{i}", expires: "t", packet: "p", model: "m")
+    end.join
+    result = ReadySet.ready?(content: content, subject: "n1", graph: { edges: { "n1" => [] } },
+                              nodes: { "n1" => { kind: "mystery", files: [] } },
+                              caps: ReadySet::DEFAULT_CAPS)
+    refute result[:ready], "an unknown kind must still be capped, not skipped"
+    assert(result[:blockers].any? { |b| b.include?("cap") })
+  end
+
+  def test_nil_kind_falls_back_to_the_work_cap
+    # The legacy path (no graph.md at all): nodes is empty, so kind is nil.
+    # Finding 1a: this must keep working (335's shipped legacy behavior),
+    # bounded by the work cap rather than skipped entirely.
+    content = (1..3).map do |i|
+      line("n1", "running", holder: "auto-#{i}", expires: "t", packet: "p", model: "m")
+    end.join
+    result = ReadySet.ready?(content: content, subject: "n1", graph: { edges: {} }, nodes: {},
+                              caps: ReadySet::DEFAULT_CAPS)
+    refute result[:ready], "nil kind must be capped at the work cap, not left uncapped"
+    assert(result[:blockers].any? { |b| b.include?("cap") })
   end
 
   def test_ready_set_survives_an_invalid_byte_in_the_ledger
@@ -432,13 +462,21 @@ class ReadySetTest < Minitest::Test
   end
 
   def test_every_failed_condition_contributes_a_named_blocker
-    content = line("n1", "done", gates: "g1", commit: "c1")
+    # All four conditions fail at once: n1's own state is done (not
+    # eligible), its need n2 is not done, n2 is running and overlaps n1's
+    # own file, and the cap is exhausted at zero.
+    content = line("n1", "done", gates: "g1", commit: "c1") +
+              line("n2", "running", holder: "auto-1", expires: "t", packet: "p", model: "m")
     result = ReadySet.ready?(content: content, subject: "n1", graph: { edges: { "n1" => ["n2"] } },
                               nodes: { "n1" => { kind: "work", files: ["a.rb"] },
                                        "n2" => { kind: "work", files: ["a.rb"] } },
                               caps: { "work" => 0 })
     refute result[:ready]
-    assert_operator result[:blockers].length, :>=, 2
+    assert_equal 4, result[:blockers].length, result[:blockers].inspect
+    assert(result[:blockers].any? { |b| b.match?(/eligible/) }, "own-status blocker")
+    assert(result[:blockers].any? { |b| b.match?(/needs target n2/) }, "unmet-need blocker")
+    assert(result[:blockers].any? { |b| b.match?(/overlap/) }, "file-overlap blocker")
+    assert(result[:blockers].any? { |b| b.match?(/cap/) }, "dispatch-cap blocker")
   end
 
   # --- n3: batches as topological layers, every maximal-length critical path --

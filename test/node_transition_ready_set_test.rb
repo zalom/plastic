@@ -157,6 +157,7 @@ class NodeTransitionReadySetTest < Minitest::Test
     out, err, status = run_cli(@intent_dir, "--node", "n3", "--state", "running", "--session", "sess-a",
                                 *running_field_args)
     assert_equal 5, status.exitstatus, out + err
+    assert_match(/dead end/, err, "the dead-end condition must contribute its own named blocker")
   end
 
   def test_readiness_refusals_all_exit_five
@@ -309,7 +310,7 @@ class NodeTransitionReadySetTest < Minitest::Test
 
   # --- legacy and intent-scope handling -------------------------------------------
 
-  def test_missing_graph_refuses_with_a_message_not_a_raise
+  def test_cyclic_graph_refuses_with_a_message_not_a_raise
     # A cyclic graph.md is present but unusable - node-transition must refuse
     # cleanly (a message, exit 5), never raise out with a Ruby backtrace.
     write_graph("- n1 needs n2\n- n2 needs n1\n")
@@ -320,6 +321,28 @@ class NodeTransitionReadySetTest < Minitest::Test
                                 *running_field_args)
     assert_equal 5, status.exitstatus, out + err
     refute_match(/\.rb:\d+:in/, err, "must not raise a Ruby backtrace")
+  end
+
+  # Finding 6: the previous test above exercised a present-but-cyclic
+  # graph.md, never the genuinely absent case. A legacy intent with NO
+  # graph.md at all must keep dispatching (335's shipped behavior):
+  # resolve_graph_and_nodes degrades to {edges: {}, nodes: {}}, so the needs
+  # condition is vacuous and the node's kind is nil - which, since finding
+  # 1a, falls back to the work cap rather than skipping the cap check
+  # entirely. It works up to that cap, then is refused at it.
+  def test_transition_with_no_graph_md_dispatches_up_to_the_work_cap
+    write_lock(@intent_dir, owner: "sess-a")
+    3.times do |i|
+      out, err, status = run_cli(@intent_dir, "--node", "n1", "--state", "running", "--session", "sess-a",
+                                  *running_field_args)
+      assert_equal 0, status.exitstatus, "attempt #{i}: #{out}#{err}"
+      append_line(@intent_dir, subject: "n1", state: "reclaimed",
+                  fields: { holder: "auto-owner", expired: "2026-09-09T20:00:00Z" })
+    end
+    out, err, status = run_cli(@intent_dir, "--node", "n1", "--state", "running", "--session", "sess-a",
+                                *running_field_args)
+    assert_equal 5, status.exitstatus, out + err
+    assert_match(/cap/, err)
   end
 
   def test_intent_subject_is_not_subject_to_node_readiness

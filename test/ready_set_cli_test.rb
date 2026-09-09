@@ -94,9 +94,16 @@ class ReadySetCliTest < Minitest::Test
   end
 
   def test_cli_ranker_flag_changes_the_order
-    write_graph("## Graph\n- n1 needs nothing\n- n2 needs nothing\n")
+    # A chain (n1 -> n2) plus an off-path leaf (n3), where n3 is a retry:
+    # finish-first (which prefers a retry over a fresh node) and
+    # critical-path (which prefers the node on the longest chain) must
+    # genuinely disagree, not merely carry different names.
+    write_graph("## Graph\n- n1 needs nothing\n- n2 needs n1\n- n3 needs nothing\n")
     write_node("n1")
     write_node("n2")
+    write_node("n3")
+    File.write(File.join(@dir, "savepoint.md"),
+               "2026-09-09T10:00:00Z  n3  failed_verification gates=g1 reason=broke\n")
     out1, err1, status1 = run_cli(@dir, "--json", "--ranker", "finish-first")
     out2, err2, status2 = run_cli(@dir, "--json", "--ranker", "critical-path")
     assert_equal 0, status1.exitstatus, err1
@@ -105,6 +112,9 @@ class ReadySetCliTest < Minitest::Test
     data2 = JSON.parse(out2)
     assert_equal "finish-first", data1["ranker"]
     assert_equal "critical-path", data2["ranker"]
+    refute_equal data1["ready"], data2["ready"], "the two rankers must genuinely disagree on order"
+    assert_equal %w[n3 n1], data1["ready"]
+    assert_equal %w[n1 n3], data2["ready"]
   end
 
   def test_cli_exits_two_on_a_non_intent_directory

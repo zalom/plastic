@@ -136,9 +136,16 @@ class NodeGraphCrossParserTest < Minitest::Test
 
     validator = WorkGraphValidator.validate(@dir)
     assert validator[:ok], validator[:errors].join("; ")
+    # WorkGraphValidator builds its checks over its own, independent parse
+    # of graph.md (it never receives GraphFile's already-parsed edges); its
+    # edge view is that second parse, and it must equal GraphFile's own.
+    validator_edges = GraphFile.parse(File.join(@dir, "graph.md"))[:graph][:edges]
+    assert_equal edges, validator_edges, "the validator's own edge view must equal GraphFile's"
 
     ready = ReadySet.analyze(@dir)
     assert_equal false, ready[:nodes]["n1"][:dead_end]
+    ready_edges = ReadySet.load_graph(@dir)[:edges]
+    assert_equal edges, ready_edges, "ReadySet's own edge view must equal GraphFile's"
   end
 
   def test_all_readers_see_the_same_kinds_and_files

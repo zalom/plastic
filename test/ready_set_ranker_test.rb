@@ -105,6 +105,48 @@ class ReadySetRankerTest < Minitest::Test
     assert_empty(ReadySet::ROW_KEYS & forbidden)
   end
 
+  # C16 (finding 3): ROW_KEYS is not decoration - build_row's actual keys,
+  # and the keys of a row taken from analyze's own ranked_ready, must equal
+  # it exactly. Adding a stray key to build_row (a telemetry field, say)
+  # must turn this red.
+  def test_build_row_keys_equal_row_keys_exactly
+    assert_equal ReadySet::ROW_KEYS, row(id: "n1").keys
+  end
+
+  def test_ranked_ready_rows_carry_exactly_row_keys
+    dir = build_two_node_ready_fixture
+    result = ReadySet.analyze(dir)
+    refute_empty result[:ranked_ready]
+    result[:ranked_ready].each { |r| assert_equal ReadySet::ROW_KEYS, r.keys }
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
+  # Finding 4: analyze must apply the injected ranker's order to
+  # ranked_ready, not the pre-rank rows. A reversing ranker over a ready set
+  # whose default (finish-first) order is not already its own reverse
+  # proves the wiring; changing `ranked_ready: ranked` to `ranked_ready: rows`
+  # in ReadySet.analyze would make this fail.
+  def test_analyze_applies_the_injected_ranker_to_ranked_ready
+    dir = build_two_node_ready_fixture
+    default_order = ReadySet.analyze(dir)[:ranked_ready].map { |r| r[:id] }
+    refute_equal default_order, default_order.reverse, "the fixture must have a non-palindromic order"
+
+    reversing = Class.new do
+      def rank(rows)
+        rows.reverse
+      end
+
+      def name
+        "reverse-order"
+      end
+    end.new
+    reversed_order = ReadySet.analyze(dir, ranker: reversing)[:ranked_ready].map { |r| r[:id] }
+    assert_equal default_order.reverse, reversed_order
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
   def test_ready_set_source_never_names_sources
     source = File.read(File.expand_path("../scripts/lib/ready_set.rb", __dir__))
     refute_match(/sources/, source)

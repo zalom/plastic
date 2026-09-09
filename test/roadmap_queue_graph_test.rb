@@ -31,7 +31,7 @@ class RoadmapQueueGraphTest < Minitest::Test
     File.write(File.join(@roadmaps, "#{slug}.md"), body)
   end
 
-  # waves: {"Heading" => ["id text — status", ...], ...}
+  # waves: {"Heading" => ["id text - status", ...], ...}
   def write_graph_roadmap(waves:, graph:, slug: "demo", graph_heading: "## Graph")
     lines = ["# Roadmap: Demo", "", "## Goal", "Ship it.", "", "## Batches"]
     waves.each do |heading, entries|
@@ -105,27 +105,54 @@ class RoadmapQueueGraphTest < Minitest::Test
     assert_equal ["101"], result["dispatchable_queue"].map { |e| e["id"] }
   end
 
-  # A hermetic reproduction of the real hazard R-C5 names (never a live read
-  # of ~/.plastic): claudechat/roadmaps/chat-shell-maturity.md:8 carries this
-  # exact heading text. A prefix match would read it as an empty graph and
-  # silently report exhausted; the fix falls all the way back to the wave
-  # behavior, byte for byte with the pre-336 payload shape.
-  def test_live_roadmap_fixtures_produce_the_pre_change_payload
-    body = <<~MD
-      # Roadmap: Chat shell maturity fixture
+  # [R-C5] Runs the queue over COPIES of every *.md under the two live
+  # roadmaps/ directories (never a live read that could write to the real
+  # store): for a file with no real ## Graph section, the graph path must be
+  # a no-op, byte for byte with the pre-336 wave-only fallback. A file that
+  # genuinely carries a real ## Graph section (327's own roadmap dogfoods
+  # this branch's own feature) is checked differently: every id its
+  # frontier names must be a real graph or batch id, never invented. Skips
+  # cleanly when no live roadmaps/ directory exists, so the suite stays
+  # green on a fresh machine.
+  def live_roadmap_files
+    dirs = (Dir.glob(File.expand_path("~/.plastic/projects/*/roadmaps")) +
+            Dir.glob(File.expand_path("~/.plastic/roadmaps"))).select { |d| Dir.exist?(d) }
+    dirs.flat_map { |d| Dir.glob(File.join(d, "*.md")) }.reject { |p| p.end_with?(".savepoint.md") }
+  end
 
-      ## Batches
+  def test_live_roadmap_fixtures_take_the_no_op_path_unless_they_have_a_real_graph
+    live_files = live_roadmap_files
+    skip("no live roadmap files found under ~/.plastic/projects/*/roadmaps or ~/.plastic/roadmaps") if live_files.empty?
 
-      ### Batch 1
-      - [ ] 201 Ship the shell — queued
+    live_files.each do |source_path|
+      copy_dir = Dir.mktmpdir("roadmap-queue-live-copy")
+      begin
+        copy_path = File.join(copy_dir, File.basename(source_path))
+        FileUtils.cp(source_path, copy_path)
+        queue = RoadmapQueue.new(roadmaps_dir: copy_dir, now: NOW)
 
-      ## Graph (2026-09-01, superseded by the Nodes and Edges under ## Batches on 2026-09-04)
-      - 201 needs 555
-    MD
-    write_roadmap("chat-shell-maturity", body)
-    result = reader.queue
-    assert_equal "dispatchable", result["state"]
-    assert_equal ["201"], result["dispatchable_queue"].map { |e| e["id"] }
+        result = queue.roadmap(copy_path)
+        parsed = queue.send(:reconcile, [queue.send(:parse_roadmap, copy_path)]).first
+
+        if parsed[:graph_edges].nil?
+          fallback = queue.send(:wave_frontier_for, parsed)
+          if fallback.nil?
+            assert_nil result[:frontier],
+                       "#{source_path}: the graph path must be a no-op when there is no real graph"
+          else
+            assert_equal fallback, result[:frontier],
+                         "#{source_path}: the graph path must be a no-op when there is no real graph"
+          end
+        else
+          known_ids = queue.send(:all_graph_nodes, parsed[:graph_edges][:edges]) +
+                      parsed[:waves].flat_map { |w| w[:entries].map { |e| e[:id] } }
+          entries = result[:frontier] ? result[:frontier][:dispatchable] + result[:frontier][:in_flight] : []
+          entries.each { |e| assert_includes known_ids, e["id"], "#{source_path}: #{e['id']} is not a real id" }
+        end
+      ensure
+        FileUtils.remove_entry(copy_dir)
+      end
+    end
   end
 
   def test_roadmap_without_a_graph_keeps_wave_behavior
@@ -199,6 +226,39 @@ class RoadmapQueueGraphTest < Minitest::Test
     result = reader.queue
     assert_empty result["dispatchable_queue"]
     refute_equal "error", result["state"]
+    reasons = result["blocked"].map { |e| e["reason"] }
+    assert_includes reasons, "graph names \"999\", no batch entry"
+  end
+
+  # R-2, the G4 partial-migration path: a batch entry the graph does not
+  # name is never dropped. It keeps the pre-change wave behavior (needing
+  # nothing, so it stays dispatchable) rather than silently vanishing the
+  # moment the roadmap grows a ## Graph section.
+  def test_a_batch_entry_the_graph_does_not_name_stays_dispatchable
+    write_graph_roadmap(
+      waves: { "Batch 1" => ["101 First — delivered", "102 Second — queued"] },
+      graph: "- 101 needs nothing\n"
+    )
+    result = reader.queue
+    assert_equal ["102"], result["dispatchable_queue"].map { |e| e["id"] }
+    refute_equal "exhausted", result["state"]
+  end
+
+  # The invariant guard (R-2's third rule): state is never "exhausted" while
+  # a queued entry sits unaccounted for. Here 101 can never resolve (its
+  # need 999 is not a real batch entry), so it stays queued forever - but it
+  # must show up in `blocked` right alongside the unreported id, never
+  # silently dropped the way an "exhausted" roadmap with no explanation
+  # would read to auto mode.
+  def test_a_queued_entry_stuck_behind_an_unreported_id_is_reported_too
+    write_graph_roadmap(
+      waves: { "Batch 1" => ["101 First — queued"] },
+      graph: "- 101 needs 999\n- 999 needs nothing\n"
+    )
+    result = reader.queue
+    blocked_ids = result["blocked"].map { |e| e["id"] }
+    assert_includes blocked_ids, "999"
+    assert_includes blocked_ids, "101"
   end
 
   def test_a_fenced_example_edge_is_not_an_edge
