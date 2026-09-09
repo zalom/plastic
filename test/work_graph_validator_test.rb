@@ -282,4 +282,65 @@ class WorkGraphValidatorTest < Minitest::Test
     _out2, _err2, status2 = run_cli(File.join(@dir, "no-such-dir"))
     assert_equal 1, status2
   end
+
+  # --- G9 backward shim: the actions-only shape (intent 342, n2) -------------------
+
+  def write_action_file(name, body)
+    dir = File.join(@dir, "actions")
+    FileUtils.mkdir_p(dir)
+    File.write(File.join(dir, name), body)
+  end
+
+  def test_actions_only_intent_validates
+    write_action_file("ACTION_1.md", "# Action 1\nSome legacy prose, no Steps, no Proven by.\n")
+    result = WorkGraphValidator.validate(@dir)
+    assert result[:ok], result[:errors].inspect
+  end
+
+  def test_actions_only_intent_returns_no_errors
+    write_action_file("ACTION_1.md", "# Action 1\nlegacy body\n")
+    write_action_file("ACTION_2.md", "# Action 2\nlegacy body\n")
+    result = WorkGraphValidator.validate(@dir)
+    assert_equal [], result[:missing]
+    assert_equal [], result[:errors]
+    assert result[:ok]
+  end
+
+  def test_authored_invalid_graph_still_fails_unchanged
+    write_graph("- n1 needs n2\n")
+    write_node("n1.md", node: "n1", kind: "work", body: work_body("n1"))
+    write_action_file("ACTION_1.md", "# legacy action that must never rescue an authored intent\n")
+    result = WorkGraphValidator.validate(@dir)
+    refute result[:ok]
+    assert(result[:errors].any? { |e| e.include?("n2") })
+  end
+
+  def test_empty_intent_dir_still_missing_graph_section
+    result = WorkGraphValidator.validate(@dir)
+    refute result[:ok]
+    assert_equal ["graph.md ## Graph section"], result[:missing]
+  end
+
+  def test_synthetic_shape_skips_matrix_and_verify_bars
+    write_action_file("ACTION_1.md", "# Action 1\nlegacy body, no Steps, no Proven by, no matrix.\n")
+    write_action_file("ACTION_2.md", "# Action 2\nlegacy body, no Steps, no Proven by, no matrix.\n")
+    write_action_file("ACTION_3.md", "# Action 3\nlegacy body, no Steps, no Proven by, no matrix.\n")
+    result = WorkGraphValidator.validate(@dir)
+    assert result[:ok], result[:errors].inspect
+  end
+
+  def test_malformed_graph_md_does_not_fall_through_to_actions
+    File.write(File.join(@dir, "graph.md"), "# Graph: Demo\n\nNo Graph section at all.\n")
+    write_action_file("ACTION_1.md", "# legacy action, must not rescue the malformed graph.md\n")
+    result = WorkGraphValidator.validate(@dir)
+    refute result[:ok]
+    assert_equal ["graph.md ## Graph section"], result[:missing]
+  end
+
+  def test_cli_exits_zero_on_actions_only_dir
+    write_action_file("ACTION_1.md", "# Action 1\nlegacy body\n")
+    out, _err, status = run_cli(@dir)
+    assert_equal 0, status
+    assert_match(/\AOK: /, out)
+  end
 end

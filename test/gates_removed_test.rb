@@ -160,9 +160,13 @@ class GatesRemovedTest < Minitest::Test
   private
 
   def scan_files
+    # Intent 342 (G9): test/fixtures/legacy_intents/ and test/fixtures/dogfood_intent/
+    # are frozen copies of historical intent records, not shipped tree; the scanner
+    # polices what ships, not history quoted verbatim in a fixture (spec.md D15).
     SCAN_ROOTS.flat_map do |root|
       abs = File.join(REPO, root)
       File.directory?(abs) ? Dir[File.join(abs, "**", "*")].select { |f| File.file?(f) } : [abs]
     end.reject { |f| f == File.expand_path(__FILE__) }
+       .reject { |f| f.include?("test/fixtures/legacy_intents/") || f.include?("test/fixtures/dogfood_intent/") }
   end
 end

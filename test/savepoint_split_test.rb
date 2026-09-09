@@ -175,7 +175,11 @@ class SavepointSplitTest < Minitest::Test
   private
 
   def scan_files
+    # Intent 342 (G9): test/fixtures/legacy_intents/ and test/fixtures/dogfood_intent/
+    # are frozen copies of historical intent records, not shipped tree; the scanner
+    # polices what ships, not history quoted verbatim in a fixture (spec.md D15).
     SCAN_ROOTS.flat_map { |root| p = File.join(REPO, root); File.file?(p) ? [p] : Dir[File.join(p, "**", "*")].select { |f| File.file?(f) } }
              .reject { |f| f == File.expand_path(__FILE__) || f.end_with?("scripts/lib/savepoint.rb") }
+             .reject { |f| f.include?("test/fixtures/legacy_intents/") || f.include?("test/fixtures/dogfood_intent/") }
   end
 end
