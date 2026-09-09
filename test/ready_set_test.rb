@@ -71,7 +71,8 @@ class ReadySetTest < Minitest::Test
     File.write(File.join(@dir, "savepoint.md"), content)
   end
 
-  def line(subject, state, fields = {}, ts: "2026-09-09T10:00:00Z")
+  def line(subject, state, fields = nil, ts: "2026-09-09T10:00:00Z", **kwfields)
+    fields = (fields || {}).merge(kwfields)
     rendered = fields.map { |k, v| "#{k}=#{v}" }.join(" ")
     rendered = " #{rendered}" unless rendered.empty?
     "#{ts}  #{subject}  #{state}#{rendered}\n"
@@ -80,7 +81,7 @@ class ReadySetTest < Minitest::Test
   # --- n2: the four readiness conditions ---------------------------------------
 
   def test_done_node_is_not_ready
-    result = ReadySet.ready?(content: line("n1", "done", gates: "g1"), subject: "n1",
+    result = ReadySet.ready?(content: line("n1", "done", gates: "g1", commit: "c1"), subject: "n1",
                               graph: { edges: { "n1" => [] } }, nodes: { "n1" => { kind: "work", files: [] } })
     refute result[:ready]
     assert(result[:blockers].any? { |b| b.include?("done") })
@@ -136,7 +137,7 @@ class ReadySetTest < Minitest::Test
   end
 
   def test_unattributed_done_does_not_satisfy_a_need
-    content = "2026-09-09T10:00:00Z  n1  done gates=g1\n"
+    content = "2026-09-09T10:00:00Z  n1  done gates=g1 commit=c1\n"
     result = ReadySet.ready?(content: content, subject: "n2", graph: { edges: { "n2" => ["n1"] } },
                               nodes: { "n1" => { kind: "work", files: [] }, "n2" => { kind: "work", files: [] } })
     refute result[:ready]
@@ -150,7 +151,7 @@ class ReadySetTest < Minitest::Test
   end
 
   def test_superseded_after_done_does_not_satisfy_a_need
-    content = line("n1", "done", gates: "g1", holder: "auto-1") + line("n1", "superseded", by: "n9")
+    content = line("n1", "done", gates: "g1", commit: "c1", holder: "auto-1") + line("n1", "superseded", by: "n9")
     result = ReadySet.ready?(content: content, subject: "n2", graph: { edges: { "n2" => ["n1"] } },
                               nodes: { "n1" => { kind: "work", files: [] }, "n2" => { kind: "work", files: [] } })
     refute result[:ready]
@@ -275,7 +276,8 @@ class ReadySetTest < Minitest::Test
 
   def test_caps_are_injectable
     content = (1..3).map do |i|
-      line("n1", "running", holder: "auto-#{i}", expires: "t", packet: "p", model: "m")
+      line("n1", "running", holder: "auto-#{i}", expires: "t", packet: "p", model: "m") +
+        line("n1", "reclaimed", holder: "auto-#{i}", expired: "t")
     end.join
     result = ReadySet.ready?(content: content, subject: "n1", graph: { edges: { "n1" => [] } },
                               nodes: { "n1" => { kind: "work", files: [] } }, caps: { "work" => 10 })
@@ -324,8 +326,8 @@ class ReadySetTest < Minitest::Test
     write_node("n1.md", node: "n1", kind: "work", files: [])
     write_node("n2.md", node: "n2", kind: "work", files: [])
     write_savepoint(
-      line("n1", "done", gates: "g1", holder: "auto-1") +
-      line("n2", "done", gates: "g1", holder: "auto-1") +
+      line("n1", "done", gates: "g1", commit: "c1", holder: "auto-1") +
+      line("n2", "done", gates: "g1", commit: "c1", holder: "auto-1") +
       line("n1", "superseded", by: "n9")
     )
     analysis = ReadySet.analyze(@dir)
@@ -337,10 +339,10 @@ class ReadySetTest < Minitest::Test
     write_node("n1.md", node: "n1", kind: "work", files: [])
     write_node("n2.md", node: "n2", kind: "work", files: [])
     write_savepoint(
-      line("n2", "done", gates: "g1", holder: "auto-1") +
+      line("n2", "done", gates: "g1", commit: "c1", holder: "auto-1") +
       line("n1", "superseded", by: "n9") +
       line("n1", "reclaimed", holder: "auto-1", expired: "t") +
-      line("n1", "done", gates: "g1", holder: "auto-1")
+      line("n1", "done", gates: "g1", commit: "c1", holder: "auto-1")
     )
     analysis = ReadySet.analyze(@dir)
     refute analysis[:nodes]["n2"][:stale]
@@ -353,7 +355,7 @@ class ReadySetTest < Minitest::Test
     # n2's done line carries a LATER timestamp than n1's supersede, but n1's
     # supersede line comes AFTER n2's done line in file order.
     write_savepoint(
-      line("n2", "done", gates: "g1", holder: "auto-1", ts: "2026-09-09T12:00:00Z") +
+      line("n2", "done", gates: "g1", commit: "c1", holder: "auto-1", ts: "2026-09-09T12:00:00Z") +
       line("n1", "superseded", by: "n9", ts: "2026-09-09T09:00:00Z")
     )
     analysis = ReadySet.analyze(@dir)
@@ -366,7 +368,7 @@ class ReadySetTest < Minitest::Test
     write_node("n2.md", node: "n2", kind: "work", files: [])
     write_savepoint(
       line("n1", "superseded", by: "n9") +
-      line("n2", "done", gates: "g1", holder: "auto-1")
+      line("n2", "done", gates: "g1", commit: "c1", holder: "auto-1")
     )
     analysis = ReadySet.analyze(@dir)
     refute analysis[:nodes]["n2"][:stale]
@@ -377,10 +379,10 @@ class ReadySetTest < Minitest::Test
     write_node("n1.md", node: "n1", kind: "work", files: [])
     write_node("n2.md", node: "n2", kind: "work", files: [])
     write_savepoint(
-      line("n1", "done", gates: "g1", holder: "auto-1") +
-      line("n2", "done", gates: "g1", holder: "auto-1") +
+      line("n1", "done", gates: "g1", commit: "c1", holder: "auto-1") +
+      line("n2", "done", gates: "g1", commit: "c1", holder: "auto-1") +
       line("n1", "reclaimed", holder: "auto-1", expired: "t") +
-      line("n1", "done", gates: "g1", holder: "auto-1", ts: "2026-09-09T13:00:00Z")
+      line("n1", "done", gates: "g1", commit: "c1", holder: "auto-1", ts: "2026-09-09T13:00:00Z")
     )
     analysis = ReadySet.analyze(@dir)
     refute analysis[:nodes]["n2"][:stale]
@@ -430,7 +432,7 @@ class ReadySetTest < Minitest::Test
   end
 
   def test_every_failed_condition_contributes_a_named_blocker
-    content = line("n1", "done", gates: "g1")
+    content = line("n1", "done", gates: "g1", commit: "c1")
     result = ReadySet.ready?(content: content, subject: "n1", graph: { edges: { "n1" => ["n2"] } },
                               nodes: { "n1" => { kind: "work", files: ["a.rb"] },
                                        "n2" => { kind: "work", files: ["a.rb"] } },
