@@ -4,6 +4,7 @@
 require_relative "graph_file"
 require_relative "graph_edges"
 require_relative "node_file"
+require_relative "action_graph_shim"
 
 # WorkGraphValidator (intent 334, n4): the in-batch reader over one intent's
 # graph.md and nodes/ - 327's rule for budget, files, and the decision and
@@ -29,6 +30,19 @@ module WorkGraphValidator
 
     graph = parsed[:graph]
     if graph.nil?
+      # G9 (intent 342, D6/D7/D12): a legacy intent that never got a
+      # graph.md still reads as a valid work graph, structurally, through
+      # the backward shim - but only when graph.md is genuinely absent.
+      # A graph.md that exists but is malformed (no "## Graph" section)
+      # must never fall through to the synthetic chain and hide its own
+      # error (D12's whole point). The fresh error list here is
+      # deliberate: `errors` above already holds the not-found error from
+      # `parsed[:errors]`, and reusing it would return ok: false for every
+      # legacy intent in the store.
+      if !File.exist?(graph_path) && ActionGraphShim.shape(intent_dir) == :actions
+        return validate_actions_shape(intent_dir)
+      end
+
       missing << "graph.md ## Graph section"
       return { ok: false, missing: missing, errors: errors }
     end
@@ -152,5 +166,36 @@ module WorkGraphValidator
     NodeFile.split_by_headings(body.to_s).any? do |heading, section|
       heading_tokens(heading).include?(id) && NodeFile.table_rows(section).any?
     end
+  end
+
+  # The structural check the synthetic (actions/-only) shape gets, and
+  # nothing more (D6): at least one node, unique ids, every needs target
+  # names a declared node, acyclic. Never the kind-section rules, the
+  # failure-mode matrix bar, or the verify-attachment bar - a legacy action
+  # file labels its headings "S1", or nothing at all, and was never asked
+  # to meet a bar written for a graph authored under 327.
+  def validate_actions_shape(intent_dir)
+    errors = []
+    graph = ActionGraphShim.view(intent_dir)[:graph] || { nodes: [], edges: [], errors: [] }
+    nodes = graph[:nodes]
+    edges = graph[:edges]
+
+    errors << "actions/ yields no nodes" if nodes.empty?
+    # D16: uniqueness is checked over the node array, not edges.keys - a
+    # Hash key set is unique by construction, so checking edges.keys can
+    # never fire.
+    errors << "duplicate node ids in synthetic chain" if nodes.uniq.length != nodes.length
+
+    # D16: every needs target is checked against the declared node list,
+    # not the node list against its own key set (nodes - edges.keys, which
+    # can never differ since the builder mints edges.keys from nodes).
+    (edges.values.flatten.uniq - nodes).each do |id|
+      errors << "needs target #{id.inspect} names no declared node"
+    end
+
+    cyc = GraphEdges.cycle(edges)
+    errors << "cyclic graph, cannot validate: #{cyc.join(' > ')}" if cyc
+
+    { ok: errors.empty?, missing: [], errors: errors }
   end
 end

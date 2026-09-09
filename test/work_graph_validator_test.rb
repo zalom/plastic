@@ -343,4 +343,35 @@ class WorkGraphValidatorTest < Minitest::Test
     assert_equal 0, status
     assert_match(/\AOK: /, out)
   end
+
+  # These two exercise validate_actions_shape's structural checks directly,
+  # against a hand-built graph the shim's own builder could never mint (it
+  # never mints a dangling needs target or a duplicate id), so a future
+  # regression in the builder's uniqueness or reference logic is caught
+  # rather than the check passing vacuously (spec.md D16).
+  def with_stubbed_shim_view(graph)
+    original = ActionGraphShim.method(:view)
+    ActionGraphShim.define_singleton_method(:view) { |_intent_dir| { graph: graph } }
+    yield
+  ensure
+    ActionGraphShim.define_singleton_method(:view, original)
+  end
+
+  def test_synthetic_check_rejects_a_dangling_needs_target
+    graph = { nodes: %w[n1 n2], edges: { "n1" => [], "n2" => ["n3"] }, errors: [] }
+    with_stubbed_shim_view(graph) do
+      result = WorkGraphValidator.validate_actions_shape(@dir)
+      refute result[:ok]
+      assert(result[:errors].any? { |e| e.include?('"n3"') })
+    end
+  end
+
+  def test_synthetic_check_rejects_duplicate_ids
+    graph = { nodes: %w[n1 n1], edges: { "n1" => [] }, errors: [] }
+    with_stubbed_shim_view(graph) do
+      result = WorkGraphValidator.validate_actions_shape(@dir)
+      refute result[:ok]
+      assert_includes result[:errors], "duplicate node ids in synthetic chain"
+    end
+  end
 end
