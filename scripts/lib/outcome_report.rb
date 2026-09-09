@@ -240,6 +240,7 @@ module OutcomeReport
     lines << ""
     lines << render_delivered_section(model)
     lines << render_verification_section(model)
+    lines << graph_diff(model)
     lines << render_findings_section(findings) unless findings.nil? || findings.empty?
     lines << "## Needs you"
     lines << needs_you
@@ -247,6 +248,71 @@ module OutcomeReport
     lines << "## Follow-ups"
     lines << follow_ups
     "#{lines.join("\n")}\n"
+  end
+
+  # --- n3: plan versus delivered, and stale -----------------------------------
+
+  # A done node's transitive `needs` closure (spec D5), by ledger LINE
+  # POSITION, never timestamp - the ledger's own status rule is last line per
+  # subject in file order, so a flag computed from anything else could
+  # disagree with the state printed beside it. `stale_fn:` (spec D6) lets
+  # intent 336's ready-set module supply its own computation without an edit
+  # here. Cycle-guarded: a node already on the current walk's path is never
+  # re-entered.
+  def stale_nodes(entries:, edges:, stale_fn: nil)
+    return stale_fn.call(entries: entries, edges: edges) if stale_fn
+
+    non_torn = entries.reject { |e| e[:torn] }
+    last_state = {}
+    last_index = {}
+    done_index = {}
+    non_torn.each_with_index do |e, i|
+      last_state[e[:subject]] = e[:state]
+      last_index[e[:subject]] = i
+      done_index[e[:subject]] = i if e[:state] == "done"
+    end
+
+    edges.keys.select do |id|
+      done_index.key?(id) && stale_via_closure?(id, edges, last_state, last_index, done_index[id], [])
+    end
+  end
+
+  def stale_via_closure?(id, edges, last_state, last_index, own_done_idx, visiting)
+    return false if visiting.include?(id)
+
+    visiting = visiting + [id]
+    (edges[id] || []).any? do |dep|
+      (last_state[dep] == "superseded" && last_index[dep] && last_index[dep] > own_done_idx) ||
+        stale_via_closure?(dep, edges, last_state, last_index, own_done_idx, visiting)
+    end
+  end
+
+  # The plan-versus-delivered divergence: a planned node not done, a node the
+  # ledger knows that the graph never declared, a node that took a retry, a
+  # stale node (spec D4). One line saying so when nothing diverged.
+  def graph_diff(model)
+    lines = []
+
+    declared = model[:nodes].select { |_, n| n[:declared] }
+    sort_ids(declared.keys).each do |id|
+      lines << "#{id} is #{declared[id][:state]}, not done" unless declared[id][:state] == "done"
+    end
+
+    undeclared = model[:nodes].reject { |_, n| n[:declared] }
+    sort_ids(undeclared.keys).each { |id| lines << "#{id} was not declared in graph.md" }
+
+    retried = model[:nodes].select { |_, n| n[:retries].to_i.positive? }
+    sort_ids(retried.keys).each do |id|
+      n = retried[id]
+      lines << "#{id} took #{n[:retries]} #{n[:retries] == 1 ? 'retry' : 'retries'}"
+    end
+
+    stale = stale_nodes(entries: model[:entries] || [], edges: model[:edges] || {})
+    sort_ids(stale).each { |id| lines << "#{id} is stale: a dependency was superseded after it finished" }
+
+    return "## Graph diff\nDelivered matches the plan.\n" if lines.empty?
+
+    "## Graph diff\n#{lines.map { |l| "- #{l}" }.join("\n")}\n"
   end
 
   # n4 replaces this with the real ### Findings reader; a report generated
