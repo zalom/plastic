@@ -495,6 +495,10 @@ class InstallerCore
       # test/install_sync_test.rb stays green across every intermediate unit.
       "scripts/lib/ready_set.rb" => "scripts/lib/ready_set.rb",
       "scripts/ready-set" => "scripts/ready-set",
+      # Intent 342 (G9): the backward shim that presents actions/*.md as a
+      # node graph for any legacy intent, so WorkGraphValidator can require
+      # it without going red on contact with install_sync_test.
+      "scripts/lib/action_graph_shim.rb" => "scripts/lib/action_graph_shim.rb",
     }
   end
 
