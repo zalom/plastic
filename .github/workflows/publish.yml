@@ -1,0 +1,56 @@
+name: publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing version tag to publish, for example v2.0.0-alpha.19'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      - name: Install an npm that speaks OIDC
+        run: npm install -g npm@latest
+
+      - name: Guard the tag, the version files, and the npm floor
+        id: guard
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: >
+          ruby scripts/release-check
+          --tag "$TAG"
+          --npm-version "$(npm --version)"
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public --tag "${{ steps.guard.outputs.dist_tag }}"

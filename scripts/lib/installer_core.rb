@@ -494,6 +494,10 @@ class InstallerCore
       "scripts/lib/packet_wrapper.rb" => "scripts/lib/packet_wrapper.rb",
       "scripts/lib/node_packet.rb" => "scripts/lib/node_packet.rb",
       "scripts/node-packet" => "scripts/node-packet",
+      # Intent 342 (G9): the backward shim that presents actions/*.md as a
+      # node graph for any legacy intent, so WorkGraphValidator can require
+      # it without going red on contact with install_sync_test.
+      "scripts/lib/action_graph_shim.rb" => "scripts/lib/action_graph_shim.rb",
     }
   end
 

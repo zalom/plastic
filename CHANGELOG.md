@@ -19,6 +19,15 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   per attempt at `packets/<node>--a<N>.packet` and hashed, so `packet=<sha>` on a `running`
   line names an exact set of bytes an executor can be replayed from on any harness.
 
+- 342 (G9, roadmap graph-ready-plastic, batch 2) - a backward shim for legacy intents that
+  never got a `graph.md`. `ActionGraphShim` reads an intent's `actions/*.md` files, in filename
+  order, as a synthetic node chain, in the same record shape `NodeFile.parse` returns, so a
+  caller reads either shape through one call. `WorkGraphValidator` now accepts this shape
+  structurally (one node minimum, unique ids, every needs target declared, acyclic) without
+  applying the bars written for an authored graph. An authored `graph.md` always wins.
+
+- Intent 347: npm trusted publishing (OIDC) via GitHub Actions. `.github/workflows/publish.yml` publishes `@zalom/plastic` from a pushed version tag using a short-lived, per-run credential instead of the laptop-held npm token that stalled the alpha.18 release; `scripts/release-check` guards the tag against `package.json`, the three version files against each other, and the runner's npm against the 11.5.1 OIDC floor before the package publishes with `--provenance --access public`. The planned suite step inside the publish job came out on evidence (D7): extending `test.yml` to `alpha` produced the first hosted-runner run since 2026-08-25 and it was red, on three test-hermeticity defects unrelated to the release path, so the suite keeps gating the release as `release.verify` before the tag is cut and a test pins the step's absence. The releasing skill's `npm_publish_workflow` action replaces the local `npm_publish` step for this project only.
+
 - 335a: node ids never recycle (owner ruling, 2026-09-09). `NodeFile.mint_id` mints one past the
   highest id ever seen for a kind rather than the lowest free one, so deleting `n2` no longer
   frees `n2`. Intent 335 keyed the work ledger on node id and deletion is not a transition, so a

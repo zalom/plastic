@@ -34,17 +34,21 @@ cleared is a no-op.
 ## Promotion
 
 Promotion is not a CLI flag; there is no `--promote` command. It is a set of steps the
-agent performs during the releasing workflow, reusing the normal release mechanics
-(version bump, tag, `npm publish` with the channel's dist-tag, GitHub release):
+agent performs during the releasing workflow, reusing the normal release mechanics (version
+bump, tag, GitHub release). For a project on the `npm_publish_workflow` post-push action,
+the tag push itself starts the publish; there is no local publish command to run.
 
 ```bash
-# Promote alpha → beta: set version files from -alpha.N to -beta.1, commit, tag, then
-npm publish --access public --tag beta
+# Promote alpha → beta: set version files from -alpha.N to -beta.1, commit, tag, push.
+# The publish workflow reads the new version and publishes to the beta dist-tag.
 
 # Promote beta → stable: strip the pre-release suffix (e.g., 1.0.0-beta.3 → 1.0.0),
-# commit, tag, then
-npm publish --access public          # no --tag flag publishes to latest
+# commit, tag, push. The publish workflow reads the new version and publishes to latest.
 ```
+
+A project still on the `npm_publish` action (publishing locally from the session) runs
+`npm publish --access public --tag <channel>` at this point instead, per that action's own
+section in SKILL.md.
 
 **Promotion rules:**
 - Linear only: alpha → beta → stable. Cannot skip channels.

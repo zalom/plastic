@@ -206,6 +206,45 @@ The dist-tag is derived from the version string in `package.json`:
 - Contains `-beta` → `--tag beta`
 - No pre-release suffix → no `--tag` flag (publishes to `latest`)
 
+#### `npm_publish_workflow`
+
+The tag pushed in step 6 starts the project's publish workflow (GitHub Actions, keyed on the
+workflow file `publish.yml`) instead of a local `npm publish`. The workflow runs with a
+short-lived, per-run OIDC credential, so no npm token exists in this session or on this
+machine.
+
+1. **Confirm a run exists for the tag.** A tag cut from a ref that does not carry the
+   workflow starts no run at all, and silence would read as success:
+
+   ```bash
+   gh run list --workflow publish.yml --limit 5
+   ```
+
+2. **Follow the run.**
+
+   ```bash
+   gh run watch <run-id>
+   ```
+
+3. **Verify the registry, not just the run.** The release is not done until the new version
+   shows up on the expected channel:
+
+   ```bash
+   npm view <package> dist-tags
+   ```
+
+The dist-tag is derived from the version string in `package.json`, the same rule
+`ReleaseGuard.dist_tag` implements:
+
+| Version contains | dist-tag |
+| --- | --- |
+| `-alpha` | `alpha` |
+| `-beta` | `beta` |
+| no pre-release suffix | `latest` |
+
+Do not run `npm whoami` on this path. npm documents that `whoami` does not reflect OIDC
+authentication, so on a workflow-published project it can only mislead.
+
 #### Other values
 
 If `on_green` contains an action not listed above, log it:
