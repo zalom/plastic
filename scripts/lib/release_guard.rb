@@ -45,6 +45,22 @@ module ReleaseGuard
     )
   end
 
+  # Derives the npm dist-tag from a version string: "alpha" when it carries
+  # an -alpha pre-release suffix, "beta" for -beta, "latest" for no
+  # pre-release suffix at all. Any other suffix returns the suffix itself,
+  # never "latest" - an unrecognized shape (a "-rc.1", say) must not resolve
+  # to the stable channel. Pure function, no ENV reads, shared by
+  # scripts/release-check and the test suite so the channel rule has exactly
+  # one implementation (intent 347).
+  def self.dist_tag(version)
+    suffix = version[/-(.+)\z/, 1]
+    return "latest" if suffix.nil?
+    return "alpha" if version.include?("-alpha")
+    return "beta" if version.include?("-beta")
+
+    suffix
+  end
+
   def self.plastic_plugin_version(data)
     plugins = Array(data["plugins"])
     plugin = plugins.find { |p| p["name"] == "plastic" } || plugins.first

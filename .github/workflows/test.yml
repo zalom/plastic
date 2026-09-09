@@ -2,9 +2,10 @@ name: test
 
 on:
   push:
-    branches: [main]
+    branches: [main, alpha]
   pull_request:
-    branches: [main]
+    branches: [main, alpha]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -15,4 +16,4 @@ jobs:
         with:
           ruby-version: '3.3'
       - name: Run the full suite
-        run: ruby -Itest -e 'Dir["test/*_test.rb"].each { |f| require File.expand_path(f) }'
+        run: ruby bin/test
