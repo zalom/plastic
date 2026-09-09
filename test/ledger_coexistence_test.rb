@@ -74,6 +74,20 @@ class LedgerCoexistenceTest < Minitest::Test
     assert_equal positions, positions.sort, "transition lines must keep their original relative order"
   end
 
+  # 7.8 (post-execution review) - the transition-preservation read must scrub, the same
+  # way NodeLedger.entries does (matrix 2.44), so a stray non-UTF-8 byte anywhere in the
+  # ledger cannot take down the one repair tool three doctor fix hints point at.
+  def test_rebuild_survives_an_invalid_byte_in_the_ledger
+    File.write(File.join(@dir, "spec.md"), "# Spec\n")
+    File.open(savepoint_path, "wb") do |io|
+      io.write("2026-07-01T00:00:00Z  What  1--demo.md\n")
+      io.write("2026-07-01T00:01:00Z  Why  spec.md created\n")
+      io.write("2026-07-01T00:02:00Z  n1  blocked reason=\"bad\xFFbyte\"\n")
+    end
+    count = Savepoint.rebuild_savepoint(@dir)
+    assert_operator count, :>, 0
+  end
+
   def test_rebuild_still_works_on_a_stage_only_ledger
     File.write(File.join(@dir, "spec.md"), "# Spec\n")
     write_savepoint("2026-07-01T00:00:00Z  What  1--demo.md\n2026-07-01T00:01:00Z  Why  spec.md created\n")
@@ -246,12 +260,19 @@ class LedgerCoexistenceTest < Minitest::Test
 
   # --- 4.16: boarding tables (doc assertion) ---------------------------------------
 
+  # 7.11 (post-execution review) - assert the ROW'S OWN TEXT in each file, not merely
+  # that the word "transition" occurs somewhere in a long document, which passes even
+  # when the actual row is missing or wrong.
   def test_the_boarding_tables_carry_a_transition_line_row
+    row_text = "A node or `Intent` transition line (`n1  running ...`, " \
+               "`Intent  needs_decision ...`)"
+
     auto_skill = File.read(File.join(REPO, "skills", "auto", "SKILL.md"))
     boarding_matrix = File.read(File.join(REPO, "skills", "intent-continuing", "references", "boarding-matrix.md"))
 
     [auto_skill, boarding_matrix].each do |text|
-      assert_match(/transition/i, text, "boarding table must name a row for a ledger ending in a transition line")
+      assert_includes text, row_text, "boarding table must carry the transition-line row's own text"
+      assert_match(/NodeLedger\.status/, text, "the row must point a resuming agent at NodeLedger.status")
     end
   end
 
@@ -357,6 +378,13 @@ class LedgerCoexistenceTest < Minitest::Test
       - 2026-09-01 11:00 UTC dispatched 1
     MD
     count = RoadmapSavepoint.rebuild(roadmap_path)
-    assert_operator count, :>, 0
+    # 7.12 (post-execution review) - assert the rebuilt CONTENT, not merely a positive
+    # count, against a row that reads "rebuild regresses".
+    assert_equal 2, count
+    assert_equal(
+      "2026-09-01T10:00:00Z  created  created the roadmap\n" \
+      "2026-09-01T11:00:00Z  dispatched  dispatched 1\n",
+      File.read(roadmap_path.sub(/\.md\z/, ".savepoint.md"))
+    )
   end
 end

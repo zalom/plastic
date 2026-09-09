@@ -139,6 +139,19 @@ class GuardedAppendTest < Minitest::Test
     assert_equal before, File.read(@path)
   end
 
+  # 7.9 (post-execution review) - the give-up path must not leave a zero-byte file
+  # behind when the target did not exist before the call. Row 1.11 above only covers
+  # the pre-existing-file half of the give-up path.
+  def test_unavailable_does_not_leave_a_file_the_call_created
+    refute File.exist?(@path)
+    flock = ->(_handle, _mode) { raise Errno::EWOULDBLOCK }
+    sleeper = ->(_seconds) { nil }
+    assert_raises(GuardedAppend::Unavailable) do
+      GuardedAppend.call(@path, flock: flock, sleeper: sleeper) { |_c| "n1  running\n" }
+    end
+    refute File.exist?(@path), "a failed attempt must not leave behind a file it created"
+  end
+
   # 1.12 - unlock and close: a second call after a successful call succeeds
   def test_a_second_call_after_a_successful_call_succeeds
     GuardedAppend.call(@path) { |_c| "n1  running\n" }

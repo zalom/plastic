@@ -59,6 +59,25 @@ class NodeLedgerTest < Minitest::Test
     assert_includes line, "(two spaces here)"
   end
 
+  # 7.6 (post-execution review) - a carriage return, vertical tab or form feed beside a
+  # space is a two-whitespace run too, so it must collapse just like two literal spaces.
+  def test_a_carriage_return_in_a_value_is_collapsed_and_the_line_stays_three_fields
+    line = build(subject: "n1", state: "blocked", fields: { reason: "waiting \r on review" })
+    parts = line.chomp.split(/\s{2,}/)
+    assert_equal 3, parts.length
+    assert_includes line, "waiting on review"
+    refute_match(/\r/, line)
+  end
+
+  # 7.7 (post-execution review) - a field key FIELD_TOKEN_RE cannot read back must be
+  # refused at the emitter, before it becomes an unparseable pair that swallows every
+  # field rendered after it.
+  def test_a_field_key_the_parser_cannot_read_is_refused
+    assert_raises(ArgumentError) do
+      build(subject: "n1", state: "planned", fields: { "Sha" => "1" })
+    end
+  end
+
   def test_transition_line_timestamp_is_utc_iso8601
     line = build(subject: "n1", state: "planned")
     timestamp = line.split(/\s{2,}/).first
@@ -310,6 +329,9 @@ class NodeLedgerTest < Minitest::Test
     NodeLedger.append_transition(@path, subject: "n1", state: "planned", guard: fake_guard)
     assert_equal 1, calls.length
     assert_equal @path, calls.first[0]
+    # 7.10 (post-execution review): pin strict: true. Spec D12a forbids a non-strict
+    # guard for transition appends; a regression to strict: false must fail this test.
+    assert_equal({ strict: true }, calls.first[1])
   end
 
   def test_append_transition_propagates_unavailable
@@ -319,6 +341,29 @@ class NodeLedgerTest < Minitest::Test
     assert_raises(GuardedAppend::Unavailable) do
       NodeLedger.append_transition(@path, subject: "n1", state: "planned", guard: fake_guard)
     end
+  end
+
+  # --- 7.1-7.3 (post-execution review): the readiness decision under the guard's hold ---
+
+  # 7.2 - a precondition must be evaluated against the CONTENT THE GUARD READ under its
+  # hold, never a stale copy captured before the lock was taken.
+  def test_append_transition_evaluates_the_precondition_against_the_guarded_content
+    File.write(@path, "2026-09-08T18:00:00Z  n1  planned\n")
+    seen_content = nil
+    precondition = ->(content) { seen_content = content; true }
+    NodeLedger.append_transition(@path, subject: "n1", state: "running", fields: RUNNING_FIELDS,
+                                  precondition: precondition)
+    assert_equal "2026-09-08T18:00:00Z  n1  planned\n", seen_content
+  end
+
+  # 7.3 - a refusing precondition must write nothing and report the refusal
+  # distinguishably from a successful write (spec "Approach": "a block returning nil is
+  # a refusal and writes nothing").
+  def test_a_refusing_precondition_writes_nothing_and_reports_the_refusal
+    result = NodeLedger.append_transition(@path, subject: "n1", state: "planned",
+                                           precondition: ->(_content) { false })
+    assert_equal :refused, result
+    assert_equal "", File.read(@path)
   end
 
   # --- 2.42-2.43: needs_from_graph -----------------------------------------------

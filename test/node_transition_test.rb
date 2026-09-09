@@ -182,6 +182,52 @@ class NodeTransitionTest < Minitest::Test
     assert_equal 0, status.exitstatus, err
   end
 
+  # --- 7.1 (post-execution review): the readiness decision must happen INSIDE the
+  # guard's hold, or two concurrent writers both decide a node is ready and both append
+  # running. Fork-based against real OS flock (modelled on GuardedAppendTest's
+  # test_forked_writers_produce_one_line_each_with_no_interleaving), not sequential:
+  # the reviewer reproduced 17/20 rounds landing more than one running line with four
+  # concurrent writers.
+
+  def test_concurrent_running_writers_produce_exactly_one_running_line
+    script = NODE_TRANSITION
+    rounds = 20
+    writers = 4
+
+    rounds.times do |round|
+      home = Dir.mktmpdir("node-transition-race")
+      begin
+        intent_dir = build_intent_dir(home)
+        write_lock(intent_dir, owner: "sess-a")
+        savepoint_path = File.join(intent_dir, "savepoint.md")
+        args = [intent_dir, "--node", "n1", "--state", "running", "--session", "sess-a"] + running_field_args
+
+        pids = Array.new(writers) do
+          fork do
+            $PROGRAM_NAME = "node-transition-race-child"
+            $stdout.reopen(File::NULL, "w")
+            $stderr.reopen(File::NULL, "w")
+            load script
+            status = begin
+              NodeTransition.main(args)
+              0
+            rescue SystemExit => e
+              e.status
+            end
+            exit!(status)
+          end
+        end
+        pids.each { |pid| Process.waitpid(pid) }
+
+        running_lines = File.exist?(savepoint_path) ? File.readlines(savepoint_path).grep(/  running /) : []
+        assert_equal 1, running_lines.length,
+                     "round #{round}: expected exactly one running line, got #{running_lines.length}"
+      ensure
+        FileUtils.remove_entry(home)
+      end
+    end
+  end
+
   # --- 3.14-3.15: done ---------------------------------------------------------------
 
   def test_done_without_gates_or_evidence_exits_2
@@ -231,6 +277,33 @@ class NodeTransitionTest < Minitest::Test
     refute File.exist?(File.join(@intent_dir, "delivery.lock"))
   end
 
+  # --- 7.4-7.5 (post-execution review): reclaim must check the CURRENT status, not
+  # only the expiry of the last running line -----------------------------------------
+
+  def test_reclaimed_on_a_done_subject_exits_6
+    # The running line's own expires= must be genuinely in the past, so this test fails
+    # for the status-check gap (blocker 2), never for the pre-existing expiry check.
+    append_line(@intent_dir, subject: "n1", state: "running",
+                fields: { holder: "h", expires: "2020-01-01T00:00:00Z", packet: "p", model: "sonnet" },
+                now: Time.utc(2019, 12, 31, 23, 0, 0))
+    append_line(@intent_dir, subject: "n1", state: "done", fields: { gates: "suite", commit: "abc", holder: "h" },
+                now: Time.utc(2020, 1, 1, 1, 0, 0))
+    before = File.read(@savepoint_path)
+    out, err, status = run_cli(@intent_dir, "--node", "n1", "--state", "reclaimed",
+                                "--field", "holder=h", "--field", "expired=2020-01-02T00:00:00Z",
+                                "--now", "2020-01-02T00:00:01Z")
+    assert_equal 6, status.exitstatus, out + err
+    assert_equal before, File.read(@savepoint_path), "a done node reclaimed as expired must not revert to planned"
+  end
+
+  def test_reclaimed_on_a_running_expired_subject_is_still_accepted
+    append_line(@intent_dir, subject: "n1", state: "running", fields: RUNNING_FIELDS)
+    _out, err, status = run_cli(@intent_dir, "--node", "n1", "--state", "reclaimed",
+                                 "--field", "holder=auto-owner", "--field", "expired=2026-09-08T20:01:00Z",
+                                 "--now", "2026-09-08T20:05:00Z")
+    assert_equal 0, status.exitstatus, err
+  end
+
   # --- 3.20-3.23: general refusal hygiene -----------------------------------------
 
   def test_every_refusal_leaves_the_ledger_byte_identical
@@ -239,8 +312,6 @@ class NodeTransitionTest < Minitest::Test
 
     run_cli(@intent_dir, "--node", "n1", "--state", "running", *running_field_args) # no lock: exit 4
     assert_equal before, File.read(@savepoint_path)
-
-    append_raw(@intent_dir, "not touched deliberately") if false # keep before stable
 
     run_cli(@intent_dir, "--node", "n1", "--state", "reclaimed",
             "--field", "holder=x", "--field", "expired=2026-09-08T20:01:00Z") # no running line: exit 6
@@ -272,6 +343,15 @@ class NodeTransitionTest < Minitest::Test
     out, _err, status = run_cli(plain_dir, "--node", "n1", "--state", "planned")
     assert_equal 2, status.exitstatus, out
     refute File.exist?(File.join(plain_dir, "savepoint.md"))
+  end
+
+  # 7.7 (post-execution review) - a field key the parser cannot read back must be
+  # refused at usage time, not silently emitted as a pair that swallows every field
+  # rendered after it.
+  def test_a_field_key_the_parser_cannot_read_exits_2
+    out, err, status = run_cli(@intent_dir, "--node", "n1", "--state", "planned", "--field", "Sha=1")
+    assert_equal 2, status.exitstatus, out + err
+    refute File.exist?(@savepoint_path)
   end
 
   # --- 3.24-3.26: report verb, plain output, packaging ----------------------------
