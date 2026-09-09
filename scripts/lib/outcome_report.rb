@@ -86,6 +86,12 @@ module OutcomeReport
     state = non_torn.empty? ? "planned" : NodeLedger.resolved_state(non_torn.last[:state])
     done_entry = non_torn.select { |e| e[:state] == "done" }.last
     fields = done_entry ? done_entry[:fields] : {}
+    # Row v1f.14: carried alongside `fields`, never merged into it - a
+    # `failed_verification` node has no `done` entry, so `fields` stays {}
+    # (row 1.4 must stay true). The failure branch of
+    # verification_line_for reads its reason from here instead.
+    failure_entry = non_torn.select { |e| e[:state] == "failed_verification" }.last
+    failure_fields = failure_entry ? failure_entry[:fields] : {}
     retries = non_torn.count { |e| e[:state] == "failed_verification" }
 
     {
@@ -95,6 +101,7 @@ module OutcomeReport
       title: title,
       state: state,
       fields: fields,
+      failure_fields: failure_fields,
       retries: retries,
     }
   end
@@ -192,7 +199,10 @@ module OutcomeReport
 
   def verification_line_for(id, node)
     fields = node[:fields] || {}
-    return "- #{id}: verification failed (#{sanitize_cell(fields['reason'] || 'reason not recorded')})" if node[:state] == "failed_verification"
+    if node[:state] == "failed_verification"
+      reason = (node[:failure_fields] || {})["reason"] || "reason not recorded"
+      return "- #{id}: verification failed (#{sanitize_cell(reason)})"
+    end
 
     parts = []
     parts << "tests committed red before `#{sanitize_cell(fields['commit'])}`" if fields["commit"]
