@@ -27,6 +27,7 @@ require_relative "lib/links_projection"
 require_relative "lib/links_section"
 require_relative "lib/lock"
 require_relative "lib/savepoint"
+require_relative "lib/node_ledger"
 require_relative "lib/agent_models"
 require_relative "lib/outcome_guard"
 require_relative "lib/skill_lint"
@@ -1468,20 +1469,37 @@ end
     expected_pair = Savepoint.savepoint_milestone(intent_dir, File.basename(Savepoint.intent_file(intent_dir)))
 
     phantoms = Savepoint.savepoint_phantom_lines(intent_dir)
+    # Intent 335 (spec C2/C5): a torn or unattributed node/Intent transition
+    # line has no reader anywhere else in the tree, so this is where it
+    # surfaces. NodeLedger.anomalies never touches a stage line (its own
+    # transition-candidate gate excludes them), so this is purely additive
+    # beside the phantom check above.
+    transition_anomalies = NodeLedger.anomalies(savepoint)
     problems = []
     problems << "born line #{born_pair.inspect} does not match the expected #{expected_pair.inspect}" \
       if born_pair != expected_pair
     problems << "#{phantoms.size} phantom savepoint line(s): " \
                 "#{phantoms.map { |l, r| "#{l} (#{r})" }.join("; ")}" if phantoms.any?
+    problems << "#{transition_anomalies.size} torn/unattributed transition line(s): " \
+                "#{transition_anomalies.map { |a| "#{a[:line]} (#{a[:reason]})" }.join("; ")}" \
+      if transition_anomalies.any?
 
     if problems.empty?
       check(category: "intent_end", name: "intent_savepoint_truthful", status: "pass",
             message: "Savepoint born line and phantom-line state are truthful")
     else
+      # A torn or unattributed transition line's CONTENT cannot be repaired by
+      # a rebuild (rebuild_savepoint preserves it verbatim, spec D13), unlike a
+      # born-line mismatch or a stage phantom, which rebuild does fix. Say so
+      # explicitly rather than pointing at a fix that will not fix it.
+      fix_hint = "Rebuild the ledger via Savepoint.rebuild_savepoint"
+      fix_hint += "; note: rebuild preserves a torn or unattributed transition line " \
+                  "verbatim and does not repair one - hand-edit it or accept the finding" \
+        if transition_anomalies.any?
       check(category: "intent_end", name: "intent_savepoint_truthful", status: "warn",
             message: "#{problems.size} savepoint truthfulness issue(s) (advisory, never blocking)",
             details: problems,
-            fixable: true, fix_hint: "Rebuild the ledger via Savepoint.rebuild_savepoint")
+            fixable: true, fix_hint: fix_hint)
     end
   end
 

@@ -169,6 +169,7 @@ ledger is missing (then rebuild it with `Savepoint.rebuild_savepoint`).
 | `How  plan.md created` / `How  checklist.md created` / `Exec  started` | Exec (verify plan, matrix, checklist) |
 | `Exec  outcome.md created` | Exec done; complete the intent |
 | `Done  delivered|abandoned` | Terminal; do not resume |
+| A node or `Intent` transition line (`n1  running ...`, `Intent  needs_decision ...`) | Exec; a graph delivery is in progress - read node status through `NodeLedger.status` before dispatching anything, never re-derive it by eye |
 
 Filesystem fallback, in order: `checklist.md` with items checked means resume Exec from the
 first unchecked item; `plan.md` plus `checklist.md` means enter Exec; `spec.md` alone means
@@ -184,9 +185,7 @@ Announce which stage you are entering and why.
 3. Decide: pick the best option per gap, record it in `## Context > ### Decisions` with the
    rationale, and log it in `## Insights` with the `(autonomous)` marker through
    `scripts/insight-append`.
-4. Write `spec.md`.
-
-Then How.
+4. Write `spec.md`. Then How.
 
 ## How (the lead), then the plan review
 

@@ -3,6 +3,7 @@
 
 require "time"
 require "fileutils"
+require_relative "guarded_append"
 
 # RoadmapSavepoint - the roadmap's machine counterpart to its human `## Log` (intent 134).
 #
@@ -95,17 +96,37 @@ module RoadmapSavepoint
   # recorded (no-op). Creates the paired ledger file (and its directory) lazily. Raises
   # ArgumentError when `event` is outside the controlled vocabulary. Returns true when a line
   # was written, false on a dedup no-op.
-  def append(roadmap_path, event, detail, now: Time.now)
+  #
+  # Intent 335 (spec D14): the dedup check moves INSIDE one GuardedAppend hold, which makes
+  # "is this pair already recorded" and "append it" atomic against a second writer without
+  # changing what this method returns. `strict: false` keeps this ledger's existing
+  # flock-less-filesystem fallback exactly as it was before the guard existed (spec D12a): a
+  # single O_APPEND write still lands whole there, so this ledger never refuses on such a
+  # filesystem, unlike a strict transition append elsewhere in 335. `guard:` is the sole thing
+  # this module takes from 335 (spec D14: "RoadmapSavepoint takes GuardedAppend and nothing else");
+  # `flock:`/`sleeper:` pass straight through as GuardedAppend test seams, never read from an
+  # environment variable. The directory is created BEFORE the guard is called (spec D12b): the
+  # guard's own File.open would raise Errno::ENOENT on a missing parent, which must propagate as
+  # itself rather than be mistaken for lock contention.
+  def append(roadmap_path, event, detail, now: Time.now, guard: GuardedAppend, **guard_opts)
     unless EVENTS.include?(event)
       raise ArgumentError, "event must be one of #{EVENTS.join(', ')}, got #{event.inspect}"
     end
 
     ledger_path = ledger_path_for(roadmap_path)
-    return false if recorded_pairs(ledger_path).include?([event, detail])
-
     FileUtils.mkdir_p(File.dirname(ledger_path))
-    File.open(ledger_path, "a") { |io| io.write(format_line(now, event, detail)) }
-    true
+
+    pair = [event, detail]
+    written = false
+    guard.call(ledger_path, strict: false, **guard_opts) do |content|
+      if content.each_line.filter_map { |line| parse_pair(line) }.include?(pair)
+        nil
+      else
+        written = true
+        format_line(now, event, detail)
+      end
+    end
+    written
   end
 
   def format_line(time, event, detail)

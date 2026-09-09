@@ -17,6 +17,31 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   `end-intent` treat a `nodes/`-delivered intent exactly as a real `actions/`-delivered one,
   actions/ resolving before nodes/. This intent's own `graph.md` and `nodes/` validate through
   `scripts/validate-work-graph`.
+- 335 (G2, graph-ready plan Batch 1): ledger transitions with refusals. `savepoint.md` now carries
+  node and intent transition lines beside the existing stage milestones: a closed 10-state
+  vocabulary (`planned`, `running`, `done`, `failed_verification`, `needs_decision`, `blocked`,
+  `deferred`, `superseded`, `abandoned`, `reclaimed`), typed evidence fields required per state,
+  and no dedup, so a retry after a failed verification writes a real line instead of being
+  silently dropped. `GuardedAppend` (new) is the shared fail-closed write guard behind it: an
+  exclusive non-blocking lock, five attempts, read-decide-append under one hold, nothing written
+  on a refusal or a give-up. `NodeLedger` (new) owns the line format, torn- and
+  unattributed-line detection, and status as the last line per subject in file order.
+  `node-transition` (new command) refuses `running` without readiness or lock ownership, `done`
+  without evidence, and `reclaimed` before expiry. The existing stage ledger, its rebuild, and
+  its phantom detector keep working unchanged beside the new lines; `RoadmapSavepoint` now writes
+  through the same guard and keeps its own scope.
+- 335 (G2) post-execution review fixes: the readiness decision for `running` now runs INSIDE
+  `GuardedAppend`'s lock hold, as `NodeLedger.append_transition`'s new `precondition:` seam
+  evaluated against the exact content the guard read, closing the check-then-append race that let
+  four concurrent writers land more than one `running` line in 17 of 20 rounds; `reclaimed` now
+  refuses unless the subject's current status is `running`, so a `done` node whose last `running`
+  line has a past `expires=` can no longer revert to `planned`; value normalization collapses
+  every whitespace run (`\s{2,}`), not only literal spaces, so a carriage return or form feed
+  beside a space can no longer reach field 3 as an unflagged two-whitespace run; the emitter
+  refuses a field key the parser cannot read back; `rebuild_savepoint`'s transition-preservation
+  read now `scrub`s before scanning, so a non-UTF-8 byte no longer crashes the one repair tool
+  three doctor fix hints point at; and `GuardedAppend`'s give-up path unlinks a file it created
+  when the target did not previously exist.
 
 ## Released
 
