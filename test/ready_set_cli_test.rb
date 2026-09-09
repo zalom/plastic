@@ -19,7 +19,7 @@ class ReadySetCliTest < Minitest::Test
   def setup
     @dir = Dir.mktmpdir("ready-set-cli")
     FileUtils.mkdir_p(File.join(@dir, "nodes"))
-    File.write(File.join(@dir, "1--demo.md"), "---\nid: \"1\"\nintent: t\n---\n\n## Intent\nb\n")
+    File.write(File.join(@dir, "#{File.basename(@dir)}.md"), "---\nid: \"1\"\nintent: t\n---\n\n## Intent\nb\n")
   end
 
   def teardown
