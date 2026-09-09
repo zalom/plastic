@@ -5,6 +5,13 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 342 (G9, roadmap graph-ready-plastic, batch 2) - a backward shim for legacy intents that
+  never got a `graph.md`. `ActionGraphShim` reads an intent's `actions/*.md` files, in filename
+  order, as a synthetic node chain, in the same record shape `NodeFile.parse` returns, so a
+  caller reads either shape through one call. `WorkGraphValidator` now accepts this shape
+  structurally (one node minimum, unique ids, every needs target declared, acyclic) without
+  applying the bars written for an authored graph. An authored `graph.md` always wins.
+
 - 335a: node ids never recycle (owner ruling, 2026-09-09). `NodeFile.mint_id` mints one past the
   highest id ever seen for a kind rather than the lowest free one, so deleting `n2` no longer
   frees `n2`. Intent 335 keyed the work ledger on node id and deletion is not a transition, so a
