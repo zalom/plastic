@@ -17,6 +17,7 @@ require_relative "session_ledger"
 require_relative "roadmap_queue"
 require_relative "roadmap_savepoint"
 require_relative "screen_paint"
+require_relative "outcome_report"
 
 module ReportScreen
   NOT_RECORDED = "not recorded"
@@ -1124,7 +1125,43 @@ def self.matching_action_heading(intent_dir, label)
       lines << "| --- | --- | --- |"
       needsyou.each { |r| lines << "| #{r[:n]} | #{escape(r[:what])} | #{escape(r[:why])} |" }
     end
-    fit_screen("#{lines.join("\n")}\n")
+    out = fit_screen("#{lines.join("\n")}\n")
+
+    # Intent 339 (G6, n5, spec D8): additive, and only for an intent that has
+    # a graph.md - an intent with none renders exactly the bytes it renders
+    # today (row 5.2's frozen golden). Node state and titles come from the
+    # LEDGER via OutcomeReport.model, never from outcome.md (row 5.6): a
+    # stale hand-edited outcome must never be read as truth here.
+    return out unless File.exist?(File.join(intent_dir, "graph.md"))
+
+    out + fit_screen(render_nodes_block(intent_dir))
+  end
+
+  # Row 5.1/5.4/5.5: a "### Nodes" table (id, kind, ledger state, "(stale)"
+  # when C13 applies) plus a "### Findings" bullet block when the record
+  # carries any (D7). Neither heading is the `**Bold**` shape the delivered
+  # screen's own block scan (`/^\*\*(.+?)\*\*/`) reads, so this block can
+  # never widen that pinned header list (row 5.3).
+  def self.render_nodes_block(intent_dir)
+    model = OutcomeReport.model(intent_dir)
+    stale = OutcomeReport.stale_nodes(entries: model[:entries] || [], edges: model[:edges] || {})
+
+    lines = ["", "### Nodes", "| Node | Kind | State |", "| --- | --- | --- |"]
+    OutcomeReport.sort_ids(model[:nodes].keys).each do |id|
+      n = model[:nodes][id]
+      state = n[:state].to_s
+      state = "#{state} (stale)" if stale.include?(id)
+      lines << "| #{id} | #{escape(n[:kind].to_s)} | #{escape(state)} |"
+    end
+
+    findings = OutcomeReport.findings(intent_dir)
+    unless findings.empty?
+      lines << ""
+      lines << "### Findings"
+      findings.each { |f| lines << "- #{escape(f)}" }
+    end
+
+    "#{lines.join("\n")}\n"
   end
 
   # --- S7: the delay verb -----------------------------------------------------------
