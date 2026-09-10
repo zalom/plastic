@@ -130,7 +130,8 @@ class InstallSyncTest < Minitest::Test
     home = Dir.mktmpdir("core-test")
     core = InstallerCore.new(package_root: REPO, plastic_home: home, version: "1.0.0-test")
     %w[scripts/runner scripts/lib/runner_core.rb scripts/lib/core_integrity.rb
-       scripts/lib/node_return.rb scripts/lib/runner_absorb.rb].each do |rel|
+       scripts/lib/node_return.rb scripts/lib/runner_absorb.rb
+       scripts/lib/runner_policy.rb scripts/lib/runner_dispatch.rb].each do |rel|
       assert core.core_files.key?(rel), "#{rel} missing from core_files (installed ~/.plastic would lack it)"
       assert_equal rel, core.core_files[rel]
       assert File.exist?(File.join(REPO, rel)), "#{rel} registered in core_files but missing on disk"
