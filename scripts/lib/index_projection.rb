@@ -2,6 +2,8 @@
 # frozen_string_literal: true
 
 require_relative "doctor_exclusions"
+require_relative "graph_file"
+require_relative "atomic_write"
 
 # IndexProjection (intent 337, n5): computes every intent's status from its
 # own savepoint.md ledger, reads the status INDEX.md currently claims, and
@@ -50,6 +52,52 @@ module IndexProjection
                                                 .map { |id| { id: id } }
 
     { ok: true, drift: drift, index_only: index_only, directory_only: directory_only, errors: [] }
+  end
+
+  # Render the four status sections (## Active, ## Future, ## Completed,
+  # ## Abandoned) from the projection and write through AtomicWrite. Only
+  # entries `analyze` actually reported as `drift` ever move - an entry
+  # whose ledger is silent or absent never appears in `drift` (row 5.13),
+  # so --write can never demote it (row 6.14). Every other line, including
+  # ## Clusters and ## Relocated (or any other section), is untouched
+  # (row 6.13): only the four named headings are ever replaced.
+  def write(store_path, index_path:, renamer: File.method(:rename))
+    return { ok: false, written: false, error: "no INDEX.md at #{index_path}" } unless File.exist?(index_path)
+
+    analysis = analyze(store_path, index_path: index_path)
+    text = read_utf8(index_path)
+
+    original_lines = {}
+    INDEX_SECTIONS.each do |heading|
+      section_body(text, heading).each_line do |line|
+        next unless line.strip.start_with?("- [")
+
+        m = line.strip.match(/\A-\s*\[(\S+)\s/)
+        original_lines[m[1]] = line if m
+      end
+    end
+
+    moves = analysis[:drift].each_with_object({}) { |r, h| h[r[:id]] = r[:ledger_status] }
+
+    new_bodies = INDEX_SECTIONS.each_with_object({}) do |heading, h|
+      kept = section_body(text, heading).each_line.reject do |line|
+        stripped = line.strip
+        next false unless stripped.start_with?("- [")
+
+        m = stripped.match(/\A-\s*\[(\S+)\s/)
+        m && moves.key?(m[1])
+      end
+      arriving = moves.select { |_id, target| target == heading }.keys
+      h[heading] = (kept + arriving.filter_map { |id| original_lines[id] }).join
+    end
+
+    content = text
+    INDEX_SECTIONS.each do |heading|
+      content = GraphFile.replace_or_append_section(content, "## #{heading}", new_bodies[heading].rstrip + "\n")
+    end
+
+    AtomicWrite.write(index_path, content, renamer: renamer)
+    { ok: true, written: true, moved: analysis[:drift], error: nil }
   end
 
   # --- INDEX -------------------------------------------------------------------
