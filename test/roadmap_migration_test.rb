@@ -201,9 +201,10 @@ class RoadmapMigrationTest < Minitest::Test
       - [ ] 101 First - queued
     B
     result = RoadmapMigration.derive(roadmap_path)
-    # 101's needs come from its LAST (batch 2) occurrence: batch 1's members.
+    # 101's needs come from its LAST (batch 2) occurrence: batch 1's members,
+    # excluding itself - an id must never need itself.
     assert_equal 1, result[:edges].keys.count { |id| id == "101" }
-    assert_equal %w[101 102], result[:edges]["101"].sort
+    assert_equal ["102"], result[:edges]["101"]
   end
 
   # --- 4.17: an abandoned entry is not derived as a need -----------------------

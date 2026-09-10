@@ -60,9 +60,9 @@ class RoadmapGraphCliTest < Minitest::Test
       - 101 needs 102
       - 102 needs 101
     G
-    out, _err, status = run_cli("check", roadmap_path)
+    out, err, status = run_cli("check", roadmap_path)
     assert_equal 1, status.exitstatus
-    assert_match(/101.*>.*102.*>.*101/, out)
+    assert_match(/101.*>.*102.*>.*101/, out + err)
   end
 
   # --- 4.10: --dry-run writes nothing and prints the diff ----------------------
