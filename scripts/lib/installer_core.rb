@@ -504,6 +504,7 @@ class InstallerCore
       # only once the CLI that ships it arrives at n4).
       "scripts/lib/roadmap_graph.rb" => "scripts/lib/roadmap_graph.rb",
       "scripts/lib/graph_tree.rb" => "scripts/lib/graph_tree.rb",
+      "scripts/lib/index_projection.rb" => "scripts/lib/index_projection.rb",
       # Intent 338 (G5): the node packet command - the trust-boundary wrapper,
       # the five-block gatherer/assembler, and the CLI 340's runner calls.
       "scripts/lib/packet_wrapper.rb" => "scripts/lib/packet_wrapper.rb",
