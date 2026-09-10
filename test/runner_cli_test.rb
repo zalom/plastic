@@ -39,6 +39,7 @@ class RunnerCliTest < Minitest::Test
 
   def teardown
     FileUtils.remove_entry(@home) if @home && Dir.exist?(@home)
+    Array(@script_tmp_dirs).each { |d| FileUtils.remove_entry(d) if Dir.exist?(d) }
   end
 
   # --- fixture helpers -----------------------------------------------------------
@@ -173,23 +174,54 @@ class RunnerCliTest < Minitest::Test
 
   # --- 1.6: a missing verb module fails only that verb ----------------------------
 
-  # "rewind" (not "sweep") is the example undelivered verb: intent 340, G7, n2
-  # shipped scripts/lib/runner_sweep.rb, so "sweep" now loads and this row's
-  # premise (its module has not landed) no longer holds for it. "rewind"'s
-  # module (RunnerRewind) has no node yet, so it stays the honest example of
-  # the lazy-dispatch mechanism this row actually proves.
+  # Every shipped verb is delivered as of intent 340, G7, n6 (the last of
+  # them, "rewind"), so no real verb is left whose module has not landed -
+  # this row's original premise is gone. It now SYNTHESIZES that case
+  # instead of relying on one: copy scripts/runner and scripts/lib/ into a
+  # tmpdir, delete one verb's own lib from the copy, and prove the same
+  # lazy-dispatch mechanism the real "not yet delivered" case used to
+  # exercise - a verb whose module fails to load fails only that verb
+  # (never "unknown verb"), and every other verb (here, `status`) keeps
+  # working against the very same tree.
   def test_missing_module_fails_only_its_own_verb
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
 
-    out, err, status = run_cli("rewind", @dir)
+    broken_script = synthesize_runner_missing_lib("runner_sweep.rb")
+
+    out, err, status = run_broken_cli(broken_script, "sweep", @dir)
     refute_equal 0, status.exitstatus
-    refute_match(/unknown verb/, err)
+    refute_match(/unknown verb/, out + err)
     assert_match(/not yet delivered/i, out + err)
 
-    out2, err2, status2 = run_cli("status", @dir)
+    out2, err2, status2 = run_broken_cli(broken_script, "status", @dir)
     assert_equal 0, status2.exitstatus, err2
     assert_match(/n1/, out2)
+  end
+
+  # A copy of scripts/runner plus the whole of scripts/lib/, in a fresh
+  # tmpdir, with `missing_basename` deleted from the copy so a verb whose
+  # own lib depends on it hits a genuine LoadError - the same failure mode
+  # a not-yet-delivered node's lib produced before every real verb shipped.
+  # `require_relative` inside the copied scripts/runner resolves against
+  # ITS OWN path, so copying the whole lib/ directory (not just the one
+  # file under test) is what keeps every OTHER verb's eager and lazy
+  # requires satisfied in the copy.
+  def synthesize_runner_missing_lib(missing_basename)
+    tmp = Dir.mktmpdir("runner-missing-lib")
+    (@script_tmp_dirs ||= []) << tmp
+    FileUtils.mkdir_p(File.join(tmp, "scripts", "lib"))
+    FileUtils.cp(SCRIPT, File.join(tmp, "scripts", "runner"))
+    Dir.glob(File.join(File.dirname(SCRIPT), "lib", "*.rb")).each do |lib|
+      FileUtils.cp(lib, File.join(tmp, "scripts", "lib", File.basename(lib)))
+    end
+    FileUtils.rm_f(File.join(tmp, "scripts", "lib", missing_basename))
+    File.join(tmp, "scripts", "runner")
+  end
+
+  def run_broken_cli(script, *args, env: {})
+    full_env = { "CLAUDE_CODE_SESSION_ID" => nil }.merge(env)
+    Open3.capture3(full_env, RbConfig.ruby, script, *args)
   end
 
   # --- 1.7: RunnerCore.context resolves id/slug/store/home from disk -------------
