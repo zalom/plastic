@@ -45,16 +45,23 @@ class ReleaseDocsTest < Minitest::Test
   CHANGELOG = File.join(REPO, "CHANGELOG.md")
   INTERNALS = File.join(REPO, "docs", "internals.md")
 
-  def test_changelog_unreleased_names_trusted_publishing
+  # The pin follows the entry across the release that ships it: while 347 is
+  # unreleased it lives under ## Unreleased, and the cut that ships it moves
+  # it into the newest ## Released entry. Either way it sits at the top of
+  # the changelog, where a reader asking how @zalom/plastic reaches the
+  # registry looks first.
+  def test_changelog_head_names_trusted_publishing
     body = File.read(CHANGELOG)
     unreleased_start = body.index("## Unreleased")
     released_start = body.index("## Released")
     refute_nil unreleased_start, "expected an ## Unreleased heading"
     refute_nil released_start, "expected a ## Released heading"
-    unreleased_section = body[unreleased_start...released_start]
-    assert_match(/trusted publish/i, unreleased_section,
-      "expected the Unreleased section to mention trusted publishing")
-    assert_includes unreleased_section, "347"
+    entries = body[released_start..].split("\n- ")
+    newest_release_entry = entries.length > 1 ? entries[1] : ""
+    head = body[unreleased_start...released_start] + newest_release_entry
+    assert_match(/trusted publish/i, head,
+      "expected the Unreleased section or the newest release entry to mention trusted publishing")
+    assert_includes head, "347"
   end
 
   def test_internals_doc_describes_the_publish_workflow
