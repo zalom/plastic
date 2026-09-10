@@ -129,7 +129,7 @@ class RoadmapRenderTest < Minitest::Test
     write_roadmap(original)
     assert_raises(Errno::ENOENT) { RoadmapRender.write(roadmap_path, renamer: FAILING_RENAMER) }
     assert_equal original, File.read(roadmap_path)
-    leftovers = Dir.glob(File.join(@dir, ".*"))
+    leftovers = Dir.glob(File.join(@dir, ".*")).reject { |p| File.basename(p) == "." || File.basename(p) == ".." }
     assert_empty leftovers, "no temp file should be left behind: #{leftovers.inspect}"
   end
 
