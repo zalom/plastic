@@ -301,4 +301,107 @@ class RoadmapQueueGraphTest < Minitest::Test
     assert_equal %w[102 101], result["dispatchable_queue"].map { |e| e["id"] }
     assert_equal "reverse-order", result["ranking_strategy"]
   end
+
+  # --- intent 337, n9: RoadmapQueue reads the shared model ------------------
+
+  # 9.1: no second topological sort survives in roadmap_queue.rb - the one
+  # sort is ReadySet.batches (327 D1).
+  def test_roadmap_queue_defines_no_topological_sort_of_its_own
+    source = File.read(File.expand_path("../scripts/lib/roadmap_queue.rb", __dir__))
+    refute_match(/def topological_layers/, source)
+  end
+
+  # 9.2: no second "## Graph" reader survives - edges come from the shared
+  # RoadmapGraph.parse_graph_section, which itself defers to GraphEdges.
+  def test_roadmap_queue_parses_no_graph_section_of_its_own
+    source = File.read(File.expand_path("../scripts/lib/roadmap_queue.rb", __dir__))
+    refute_match(/def parse_roadmap_graph/, source)
+  end
+
+  # 9.3: the queue/which/roadmap payload contract is unchanged for a
+  # multi-batch, multi-entry acyclic graph roadmap.
+  def test_payload_is_unchanged_for_every_live_roadmap_fixture
+    write_graph_roadmap(
+      waves: { "Batch 1" => ["101 First - delivered", "102 Second - queued"],
+               "Batch 2" => ["103 Third - queued"] },
+      graph: "- 101 needs nothing\n- 102 needs nothing\n- 103 needs 101 102\n"
+    )
+    result = reader.queue
+    assert_equal ["102"], result["dispatchable_queue"].map { |e| e["id"] }
+    assert_equal "dispatchable", result["state"]
+    assert_equal "Batch 1", result["frontier_wave"]
+  end
+
+  # 9.4: a graphless roadmap keeps the wave-order frontier fallback.
+  def test_graphless_roadmap_keeps_wave_order_frontier
+    body = <<~MD
+      # Roadmap: Demo
+
+      ## Batches
+
+      ### Batch 1
+      - [ ] 101 First - queued
+      - [ ] 102 Second - queued
+    MD
+    write_roadmap("demo", body)
+    result = reader.queue
+    assert_equal %w[101 102], result["dispatchable_queue"].map { |e| e["id"] }.sort
+    assert_equal "Batch 1", result["frontier_wave"]
+  end
+
+  # 9.5: an id the graph names that no batch lists is still reported, not
+  # swallowed, after the refactor.
+  def test_unlisted_graph_id_is_still_reported_in_blocked
+    write_graph_roadmap(
+      waves: { "Batch 1" => ["101 First - queued"] },
+      graph: "- 101 needs 555\n- 555 needs nothing\n"
+    )
+    result = reader.queue
+    reasons = result["blocked"].map { |e| e["reason"] }
+    assert_includes reasons, "graph names \"555\", no batch entry"
+  end
+
+  # 9.6: a cyclic roadmap still returns the error state naming the whole path.
+  def test_cyclic_roadmap_still_returns_error_state_with_the_whole_path
+    write_graph_roadmap(
+      waves: { "Batch 1" => ["101 First - queued", "102 Second - queued", "103 Third - queued"] },
+      graph: "- 101 needs 102\n- 102 needs 103\n- 103 needs 101\n"
+    )
+    result = reader.queue
+    assert_equal "error", result["state"]
+    assert_match(/101.*>.*102.*>.*103.*>.*101/, result["frontier_wave"].to_s)
+  end
+
+  # 9.7: the injected ranker seam still orders a graph-driven dispatchable
+  # queue, not only the wave-order fallback.
+  def test_injected_ranker_still_orders_the_dispatchable_queue
+    write_graph_roadmap(
+      waves: { "Batch 1" => ["102 Second - queued", "101 First - queued"] },
+      graph: "- 101 needs nothing\n- 102 needs nothing\n"
+    )
+    reversed = Class.new do
+      def rank(rows)
+        rows.sort_by { |r| r[:id] }.reverse
+      end
+
+      def name
+        "reverse-order"
+      end
+    end.new
+    result = reader(ranker: reversed).queue
+    assert_equal %w[102 101], result["dispatchable_queue"].map { |e| e["id"] }
+  end
+
+  # 9.8: entries within a batch keep the roadmap file's own order (not a
+  # lexical sort) before the ranker ever sees them - folded at the
+  # 2026-09-10 plan review: chat-shell-maturity.md's rank 1 flips from "5"
+  # to "2" under a lexical sort of one batch's entries.
+  def test_dispatchable_order_matches_roadmap_file_order_within_a_batch
+    write_graph_roadmap(
+      waves: { "Batch 1" => ["205 Fifth - queued", "102 Second - queued", "101 First - queued"] },
+      graph: "- 205 needs nothing\n- 102 needs nothing\n- 101 needs nothing\n"
+    )
+    result = reader.queue
+    assert_equal %w[205 102 101], result["dispatchable_queue"].map { |e| e["id"] }
+  end
 end
