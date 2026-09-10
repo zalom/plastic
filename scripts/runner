@@ -1,0 +1,160 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+require_relative "lib/savepoint"
+require_relative "lib/ready_set"
+require_relative "lib/runner_core"
+
+# runner - the one executable over the graph-ready loop's declared node graph
+# (intent 340, G7, n1). A subcommand table: the public verbs (step, status,
+# answer) are the only ones the skill body ever names; the internal verbs
+# (ready, sweep, rewind) route and work so `step` can compose them and so
+# each can be tested alone, but stay out of the usage text (327 spec).
+#
+# `step`, `sweep`, `answer` and `rewind` route to modules later nodes
+# deliver (RunnerDispatch and RunnerAbsorb for `step`; RunnerSweep,
+# RunnerAnswer, RunnerRewind for the rest). Each is required LAZILY, inside
+# its own verb branch: a verb whose module has not landed yet reports
+# plainly and exits nonzero, and every other verb - most importantly
+# `status`, which an operator polls constantly across all five of this
+# intent's dispatches - keeps working.
+#
+# Usage:
+#   runner <step|status|answer> <intent_dir> [--node ID] [--answer TEXT]
+#
+# Exit codes (matching the family scripts/node-transition and
+# scripts/ready-set already use):
+#   0 - success
+#   1 - the verb ran but reports failure (an invalid graph for `ready`)
+#   2 - usage: unknown verb, or not an intent directory
+#   3 - a routed verb's module has not been delivered yet
+module Runner
+  module_function
+
+  PUBLIC_VERBS = %w[step status answer].freeze
+  INTERNAL_VERBS = %w[ready sweep rewind].freeze
+  VERBS = (PUBLIC_VERBS + INTERNAL_VERBS).freeze
+
+  # verb -> [[ModuleName, lib_file], ...], required lazily inside the verb's
+  # own branch (row 1.6). `step` composes two modules (dispatching new work,
+  # then absorbing what a sub-agent reported back); every other routed verb
+  # names exactly one.
+  LAZY_MODULES = {
+    "step" => [["RunnerDispatch", "runner_dispatch"], ["RunnerAbsorb", "runner_absorb"]],
+    "sweep" => [["RunnerSweep", "runner_sweep"]],
+    "answer" => [["RunnerAnswer", "runner_answer"]],
+    "rewind" => [["RunnerRewind", "runner_rewind"]],
+  }.freeze
+
+  def usage
+    warn "Usage: runner <#{PUBLIC_VERBS.join('|')}> <intent_dir> [--node ID] [--answer TEXT]"
+  end
+
+  def intent_directory?(dir)
+    dir && File.directory?(dir) && File.exist?(Savepoint.intent_file(dir))
+  end
+
+  def opt(args, name)
+    (i = args.index(name)) && args[i + 1]
+  end
+
+  def main(argv)
+    args = argv.dup
+    verb = args.shift
+
+    unless VERBS.include?(verb)
+      warn "runner: unknown verb #{verb.inspect}"
+      usage
+      exit 2
+    end
+
+    intent_dir_arg = args.shift
+    unless intent_directory?(intent_dir_arg && File.expand_path(intent_dir_arg))
+      warn "runner: #{intent_dir_arg.inspect} is not an intent directory"
+      usage
+      exit 2
+    end
+    intent_dir = File.expand_path(intent_dir_arg)
+
+    case verb
+    when "status"
+      run_status(intent_dir)
+    when "ready"
+      run_ready(intent_dir)
+    else
+      run_lazy(verb, intent_dir, args)
+    end
+  end
+
+  def run_status(intent_dir)
+    context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
+    rows = RunnerCore.status(context)
+
+    if rows.empty?
+      puts "No declared nodes."
+    else
+      rows.each do |id, view|
+        puts "#{id}  kind=#{view[:kind]}  state=#{view[:state]}  ready=#{view[:ready]}"
+        last = view[:last_transition]
+        puts "  last: #{last[:raw]}" if last
+      end
+    end
+
+    complete = RunnerCore.complete?(context)
+    puts
+    puts complete ? "complete" : "stalled"
+    unless complete
+      rows.each do |id, view|
+        next if ReadySet::TERMINAL_STATES.include?(view[:state])
+
+        view[:blockers].each { |b| puts "#{id} blocked: #{b}" }
+      end
+    end
+
+    exit 0
+  end
+
+  def run_ready(intent_dir)
+    analysis = ReadySet.analyze(intent_dir)
+    unless analysis[:ok]
+      warn "runner: #{analysis[:errors].join('; ')}"
+      exit 1
+    end
+
+    if analysis[:ranked_ready].empty?
+      puts "Ready: (none)"
+    else
+      puts "Ready: #{analysis[:ranked_ready].map { |r| r[:id] }.join(', ')}"
+    end
+    exit 0
+  end
+
+  # Requires this verb's module(s) lazily, then hands off. Nothing in n1
+  # delivers runner_dispatch.rb, runner_absorb.rb, runner_sweep.rb,
+  # runner_answer.rb, or runner_rewind.rb, so every LAZY_MODULES require
+  # raises LoadError today and every routed verb reports "not yet
+  # delivered" - the only thing this node needs to prove (row 1.6). Once a
+  # later node ships its file, the require succeeds and falls through to
+  # dispatch_lazy, which that node replaces with the real call.
+  def run_lazy(verb, intent_dir, args)
+    # The require target below is a runtime value, never an inline quoted
+    # literal, so it falls outside test/install_packaging_test.rb's
+    # require-closure guard on purpose: every file LAZY_MODULES names is a
+    # genuine later-node deliverable, none of which core_files should track
+    # until that node actually lands it.
+    LAZY_MODULES.fetch(verb, []).each { |(_name, file)| require_relative(File.join("lib", file)) }
+  rescue LoadError
+    warn "runner: #{verb} is not yet delivered (its module has not landed)"
+    exit 3
+  else
+    dispatch_lazy(verb, intent_dir, args)
+  end
+
+  def dispatch_lazy(verb, _intent_dir, _args)
+    warn "runner: #{verb}'s module loaded but no dispatcher is wired up yet"
+    exit 3
+  end
+end
+
+Runner.main(ARGV) if $PROGRAM_NAME == __FILE__

@@ -507,6 +507,13 @@ class InstallerCore
       # node graph for any legacy intent, so WorkGraphValidator can require
       # it without going red on contact with install_sync_test.
       "scripts/lib/action_graph_shim.rb" => "scripts/lib/action_graph_shim.rb",
+      # Intent 340 (G7, n1): the runner command - the subcommand table over
+      # the declared node graph, its shared context (RunnerCore), and the
+      # installed-core integrity check (CoreIntegrity) the runner's trust
+      # boundary and doctor will both call.
+      "scripts/runner" => "scripts/runner",
+      "scripts/lib/runner_core.rb" => "scripts/lib/runner_core.rb",
+      "scripts/lib/core_integrity.rb" => "scripts/lib/core_integrity.rb",
     }
   end
 
