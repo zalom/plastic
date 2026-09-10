@@ -92,7 +92,8 @@ class RunnerAbsorbTest < Minitest::Test
     )
   end
 
-  def line(subject, state, fields = {}, ts: "2026-01-01T00:00:00Z")
+  def line(subject, state, fields = nil, ts: "2026-01-01T00:00:00Z", **kwfields)
+    fields = (fields || {}).merge(kwfields)
     rendered = fields.map { |k, v| "#{k}=#{v}" }.join(" ")
     rendered = " #{rendered}" unless rendered.empty?
     "#{ts}  #{subject}  #{state}#{rendered}\n"
@@ -499,7 +500,7 @@ class RunnerAbsorbTest < Minitest::Test
 
     body = File.read(record_path)
     assert_includes body, "### Findings"
-    assert_equal ["a durable discovery"], OutcomeReport.findings(@dir)
+    assert_equal ["[n4] a durable discovery"], OutcomeReport.findings(@dir)
   end
 
   # --- 4.39: an absent verify command writes suite=none, gates records suite:absent -

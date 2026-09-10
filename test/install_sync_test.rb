@@ -118,16 +118,19 @@ class InstallSyncTest < Minitest::Test
     FileUtils.rm_rf(home)
   end
 
-  # Regression guard (intent 340, G7, n1, row 1.21): scripts/runner requires
-  # scripts/lib/runner_core.rb, which requires scripts/lib/core_integrity.rb's sibling
-  # deliverable; the generic require_relative scans above already catch a drifted
-  # require, but this names all three files explicitly so the installer manifest goes
-  # red the moment any one of them is dropped from core_files, not just when a require
-  # trips over it.
+  # Regression guard (intent 340, G7, n1, row 1.21; extended n4, row 4.45):
+  # scripts/runner requires scripts/lib/runner_core.rb, which requires
+  # scripts/lib/core_integrity.rb's sibling deliverable, and scripts/runner's
+  # `step` verb lazily requires scripts/lib/runner_absorb.rb, which requires
+  # scripts/lib/node_return.rb; the generic require_relative scans above
+  # already catch a drifted require, but this names every file explicitly so
+  # the installer manifest goes red the moment any one of them is dropped
+  # from core_files, not just when a require trips over it.
   def test_core_files_match_disk
     home = Dir.mktmpdir("core-test")
     core = InstallerCore.new(package_root: REPO, plastic_home: home, version: "1.0.0-test")
-    %w[scripts/runner scripts/lib/runner_core.rb scripts/lib/core_integrity.rb].each do |rel|
+    %w[scripts/runner scripts/lib/runner_core.rb scripts/lib/core_integrity.rb
+       scripts/lib/node_return.rb scripts/lib/runner_absorb.rb].each do |rel|
       assert core.core_files.key?(rel), "#{rel} missing from core_files (installed ~/.plastic would lack it)"
       assert_equal rel, core.core_files[rel]
       assert File.exist?(File.join(REPO, rel)), "#{rel} registered in core_files but missing on disk"

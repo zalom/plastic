@@ -522,6 +522,11 @@ class InstallerCore
       # intent branch tip, merged back into the intent branch, and swept once
       # its node is terminal.
       "scripts/lib/node_worktree.rb" => "scripts/lib/node_worktree.rb",
+      # Intent 340 (G7, n4): the return schema (NodeReturn) and the six-check
+      # gate (RunnerAbsorb) that turns one executor return into exactly one
+      # node ledger transition, required lazily by scripts/runner's `step`.
+      "scripts/lib/node_return.rb" => "scripts/lib/node_return.rb",
+      "scripts/lib/runner_absorb.rb" => "scripts/lib/runner_absorb.rb",
     }
   end
 
