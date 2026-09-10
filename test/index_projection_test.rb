@@ -181,12 +181,11 @@ class IndexProjectionTest < Minitest::Test
   # --- 5.12: doctor exclusions (savepoint_operational, backfilled_complete) ----
 
   def test_excluded_directories_are_skipped
-    write_index(active: ["101"])
-    write_intent("101", savepoint_lines: nil)
+    write_index # 101 unlisted, so without the exclusion it would be directory_only
+    write_intent("101", savepoint_lines: ["2026-01-01T00:00:00Z  Done  delivered"])
     write_exclusions("savepoint_operational 101")
     result = IndexProjection.analyze(@store)
     refute_includes result[:directory_only].map { |r| r[:id] }, "101"
-    refute(result[:drift].any? { |r| r[:id] == "101" })
   end
 
   # --- 5.13: a silent or absent ledger keeps the INDEX status ------------------
