@@ -527,6 +527,11 @@ class InstallerCore
       # node ledger transition, required lazily by scripts/runner's `step`.
       "scripts/lib/node_return.rb" => "scripts/lib/node_return.rb",
       "scripts/lib/runner_absorb.rb" => "scripts/lib/runner_absorb.rb",
+      # Intent 340 (G7, n5): validation, policy, leases and the dispatch plan
+      # - RunnerPolicy (the kind table) and RunnerDispatch, required lazily
+      # by scripts/runner's `step`.
+      "scripts/lib/runner_policy.rb" => "scripts/lib/runner_policy.rb",
+      "scripts/lib/runner_dispatch.rb" => "scripts/lib/runner_dispatch.rb",
     }
   end
 

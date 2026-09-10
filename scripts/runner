@@ -41,7 +41,8 @@ module Runner
   # then absorbing what a sub-agent reported back); every other routed verb
   # names exactly one.
   LAZY_MODULES = {
-    "step" => [["RunnerDispatch", "runner_dispatch"], ["RunnerAbsorb", "runner_absorb"]],
+    "step" => [["RunnerSweep", "runner_sweep"], ["RunnerAbsorb", "runner_absorb"],
+               ["RunnerDispatch", "runner_dispatch"]],
     "sweep" => [["RunnerSweep", "runner_sweep"]],
     "answer" => [["RunnerAnswer", "runner_answer"]],
     "rewind" => [["RunnerRewind", "runner_rewind"]],
@@ -151,9 +152,76 @@ module Runner
     dispatch_lazy(verb, intent_dir, args)
   end
 
-  def dispatch_lazy(verb, _intent_dir, _args)
-    warn "runner: #{verb}'s module loaded but no dispatcher is wired up yet"
-    exit 3
+  def dispatch_lazy(verb, intent_dir, args)
+    case verb
+    when "step"
+      run_step(intent_dir, args)
+    else
+      warn "runner: #{verb}'s module loaded but no dispatcher is wired up yet"
+      exit 3
+    end
+  end
+
+  # run_step (intent 340, G7, n5): one turn of the loop, in the fixed order
+  # 327 D14 and RunnerSweep's own docstring name - abort on a stuck merge,
+  # the delivery-lease heartbeat, absorb every `--return NODE=PATH` this call
+  # carries, THEN reclaim (so a node this very call just absorbed is never
+  # reclaimed out from under its own return, matrix row 2.19/2.20) - and only
+  # then dispatch whatever is left ready. Never spawns an agent (327 D42):
+  # the session makes every subagent call from the plan this prints.
+  def run_step(intent_dir, args)
+    context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
+
+    abort_result = RunnerSweep.abort_if_merging(context)
+    unless abort_result[:ok]
+      warn "runner: #{abort_result[:error]}"
+      warn "runner: run `#{abort_result[:recovery_command]}` before the next step can dispatch"
+      exit 1
+    end
+
+    Lock.heartbeat(intent_dir, session: context.session) unless context.session.to_s.strip.empty?
+
+    returns = opt_all(args, "--return").each_with_object({}) do |pair, memo|
+      node, path = pair.to_s.split("=", 2)
+      memo[node] = path if node && !node.empty? && path
+    end
+
+    returns.each do |node, path|
+      absorbed = RunnerAbsorb.absorb(context, node: node, return_path: path)
+      puts "absorbed #{node}: #{absorbed[:state]}"
+    end
+
+    swept = RunnerSweep.reclaim(context, skip: returns.keys)
+    swept[:reclaimed].each { |r| puts "reclaimed #{r[:node]} (holder=#{r[:holder]})" }
+    swept[:extended].each { |e| puts "extended #{e[:node]} (head=#{e[:head]})" }
+
+    result = RunnerDispatch.dispatch(context)
+    unless result[:ok]
+      warn "runner: step refused (#{result[:reason]}): #{Array(result[:errors]).join('; ')}"
+      warn result[:rearm_command] if result[:rearm_command]
+      exit 1
+    end
+
+    case result[:status]
+    when "dispatched"
+      puts result[:plan]
+    when "needs_decision"
+      stop = result[:stop]
+      puts "needs_decision: #{stop[:node]} - #{stop[:question]}"
+      puts stop[:answer_command]
+    when "complete"
+      puts "complete"
+    else
+      puts "stalled"
+      result[:blockers].each { |b| puts "blocked: #{b}" }
+    end
+
+    result[:parked].each do |p|
+      puts "parked #{p[:node]} (#{p[:reason]}): #{p[:question]}"
+      puts p[:answer_command]
+    end
+
+    exit 0
   end
 end
 
