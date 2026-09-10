@@ -53,6 +53,23 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   structurally (one node minimum, unique ids, every needs target declared, acyclic) without
   applying the bars written for an authored graph. An authored `graph.md` always wins.
 
+- 340 (G7, roadmap graph-ready-plastic, batch 2) - `scripts/runner`, the one executable that
+  drives a graph-era intent's declared node graph from inside the harness session, on three
+  public verbs: `step` (sweeps a stale lease or a dead merge, re-reads and cycle-checks
+  `graph.md`, mints leases and per-node worktrees, and prints a dispatch plan at concurrency
+  two - no Ruby process ever spawns an agent, the session makes every subagent call and returns
+  with `step --return <node>=<path>`), `status` (renders ledger state, safe to poll constantly,
+  touches nothing), and `answer` (closes a `needs_decision` node with the owner's text). `ready`,
+  `sweep`, and `rewind` route and work as internal verbs the published surface never names;
+  `rewind` stays unpublished until a later node measures a real run. A schema-checked YAML
+  return (`NodeReturn`, absorbed by `RunnerAbsorb`) is the only path to `done`: core integrity
+  against the installed manifest, an in-`files:` diff, every named test present, a clean
+  per-node-worktree merge with conflict routing (a conflict inside `files:` is
+  `failed_verification`, outside it is `needs_decision` naming the paths), and a green suite the
+  runner runs itself - anything short of all five lands `failed_verification`, `needs_decision`,
+  or `blocked` instead. Extension, reclaim, and accepted proposals are all ledger-line facts,
+  never new state of their own.
+
 - Intent 347: npm trusted publishing (OIDC) via GitHub Actions. `.github/workflows/publish.yml` publishes `@zalom/plastic` from a pushed version tag using a short-lived, per-run credential instead of the laptop-held npm token that stalled the alpha.18 release; `scripts/release-check` guards the tag against `package.json`, the three version files against each other, and the runner's npm against the 11.5.1 OIDC floor before the package publishes with `--provenance --access public`. The planned suite step inside the publish job came out on evidence (D7): extending `test.yml` to `alpha` produced the first hosted-runner run since 2026-08-25 and it was red, on three test-hermeticity defects unrelated to the release path, so the suite keeps gating the release as `release.verify` before the tag is cut and a test pins the step's absence. The releasing skill's `npm_publish_workflow` action replaces the local `npm_publish` step for this project only.
 - 339 (G6, roadmap graph-ready-plastic, batch 2) - `outcome.md` is generated at the close
   rather than authored by hand. `scripts/lib/outcome_report.rb` reads `graph.md`, `nodes/`,
