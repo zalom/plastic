@@ -21,8 +21,13 @@ module IndexProjection
   TERMINAL_STATUSES = %w[Completed Abandoned].freeze
   EXCLUSION_RULES = %w[savepoint_operational backfilled_complete].freeze
 
-  def analyze(store_path)
-    index_path = File.join(store_path, "INDEX.md")
+  # `store_path` holds the intent directories (a project's own `store/`, or
+  # the global `~/.plastic/store`). `index_path` defaults to a sibling
+  # `INDEX.md` inside `store_path` (matching every fixture in this test
+  # file), but the real Plastic layout keeps INDEX.md one level ABOVE
+  # `store/` - callers there (doctor.rb, the CLI) pass it explicitly.
+  def analyze(store_path, index_path: nil)
+    index_path ||= File.join(store_path, "INDEX.md")
     index_map = read_index(index_path)
     dir_ids = store_intent_ids(store_path)
 

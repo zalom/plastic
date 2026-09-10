@@ -224,4 +224,29 @@ class IndexProjectionTest < Minitest::Test
     refute_includes ids, "101"
     assert_includes ids, "102"
   end
+
+  # --- an explicit index_path: overrides the co-located default, matching --
+  # --- the real layout (INDEX.md one level above store/), for n6's callers -
+
+  def test_explicit_index_path_overrides_the_co_located_default
+    root = Dir.mktmpdir("index-projection-root")
+    begin
+      store_dir = File.join(root, "store")
+      FileUtils.mkdir_p(store_dir)
+      index_path = File.join(root, "INDEX.md")
+      File.write(index_path, ["# Index", "", "## Active", "", "## Future", "",
+                               "## Clusters", "", "## Abandoned", "", "## Completed", "",
+                               "- [101 - Title](store/101--slug/101--slug.md) - note."].join("\n") + "\n")
+      dir = File.join(store_dir, "101--slug")
+      FileUtils.mkdir_p(dir)
+      File.write(File.join(dir, "savepoint.md"), "2026-01-01T00:00:00Z  Done  delivered\n")
+
+      result = IndexProjection.analyze(store_dir, index_path: index_path)
+      assert_empty result[:drift]
+      assert_empty result[:index_only]
+      assert_empty result[:directory_only]
+    ensure
+      FileUtils.remove_entry(root)
+    end
+  end
 end
