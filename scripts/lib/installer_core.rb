@@ -532,6 +532,14 @@ class InstallerCore
       # by scripts/runner's `step`.
       "scripts/lib/runner_policy.rb" => "scripts/lib/runner_policy.rb",
       "scripts/lib/runner_dispatch.rb" => "scripts/lib/runner_dispatch.rb",
+      # Intent 340 (G7, n6): answer (closes a decision node or unparks a
+      # work node parked at needs_decision), proposals (mints ids for what
+      # an executor proposed), and rewind (resets the intent branch to a
+      # node's own commit and respins it) - routed from scripts/runner's
+      # `answer` and `rewind` verbs.
+      "scripts/lib/runner_answer.rb" => "scripts/lib/runner_answer.rb",
+      "scripts/lib/runner_proposals.rb" => "scripts/lib/runner_proposals.rb",
+      "scripts/lib/runner_rewind.rb" => "scripts/lib/runner_rewind.rb",
     }
   end
 

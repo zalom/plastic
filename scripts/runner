@@ -156,10 +156,66 @@ module Runner
     case verb
     when "step"
       run_step(intent_dir, args)
+    when "answer"
+      run_answer(intent_dir, args)
+    when "rewind"
+      run_rewind(intent_dir, args)
     else
       warn "runner: #{verb}'s module loaded but no dispatcher is wired up yet"
       exit 3
     end
+  end
+
+  # run_answer (intent 340, G7, n6): closes a decision node or unparks a
+  # work node the runner parked at `needs_decision` (327 D22, C26), then
+  # prints what became ready so the owner knows the loop can continue.
+  def run_answer(intent_dir, args)
+    node = opt(args, "--node")
+    text = opt(args, "--answer")
+
+    unless node
+      warn "runner: answer requires --node ID"
+      exit 2
+    end
+
+    context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
+    result = RunnerAnswer.answer(context, node: node, text: text.to_s)
+
+    unless result[:ok]
+      warn "runner: answer refused (#{result[:reason]})"
+      exit 1
+    end
+
+    puts "answered #{node}"
+    puts "respun to #{result[:respun_to]}" if result[:respun_to]
+    puts "newly ready: #{result[:newly_ready].join(', ')}" if result[:newly_ready].any?
+    exit 0
+  end
+
+  # run_rewind (intent 340, G7, n6): confirm-gated reset of the intent
+  # branch to a node's own recorded commit, superseding every downstream
+  # node and respinning the rewound node itself (327 D15's rewind clause).
+  def run_rewind(intent_dir, args)
+    node = opt(args, "--node")
+    confirm = args.include?("--confirm")
+
+    unless node
+      warn "runner: rewind requires --node ID"
+      exit 2
+    end
+
+    context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
+    result = RunnerRewind.rewind(context, node: node, confirm: confirm)
+
+    unless result[:ok]
+      warn "runner: rewind refused (#{result[:reason]})"
+      exit 1
+    end
+
+    puts "reset #{node} to #{result[:reset_to]}"
+    puts "superseded: #{result[:superseded].join(', ')}" if result[:superseded].any?
+    puts "respun to #{result[:respun_to]}"
+    exit 0
   end
 
   # run_step (intent 340, G7, n5): one turn of the loop, in the fixed order

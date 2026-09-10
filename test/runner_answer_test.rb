@@ -124,7 +124,7 @@ class RunnerAnswerTest < Minitest::Test
     loaded = ReadySet.load_graph(@dir)
     RunnerCore::Context.new(
       intent_dir: @dir, intent_id: INTENT_ID, intent_slug: INTENT_SLUG,
-      store: nil, plastic_home: @root, session: nil,
+      store: nil, plastic_home: @root, session: "auto-test-holder",
       worktree: nil, worktree_branch: nil,
       graph: loaded.merge(ok: true), errors: []
     )
