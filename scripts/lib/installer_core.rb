@@ -518,6 +518,10 @@ class InstallerCore
       # the first thing every `step` does, routed from scripts/runner's `sweep`
       # verb.
       "scripts/lib/runner_sweep.rb" => "scripts/lib/runner_sweep.rb",
+      # Intent 340 (G7, n3): a work node's own git worktree, cut from the
+      # intent branch tip, merged back into the intent branch, and swept once
+      # its node is terminal.
+      "scripts/lib/node_worktree.rb" => "scripts/lib/node_worktree.rb",
     }
   end
 

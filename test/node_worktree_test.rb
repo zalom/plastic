@@ -28,6 +28,10 @@ class NodeWorktreeTest < Minitest::Test
     git("init", "-q", "-b", "alpha")
     git("config", "user.email", "nwt@example.com")
     git("config", "user.name", "NWT Test")
+    # Disable background gc/maintenance: it can race a tmpdir teardown that
+    # removes the repo out from under it (`.git/objects/maintenance.lock`
+    # vanishing mid-remove), which is a test-harness flake, not a real bug.
+    git("config", "gc.auto", "0")
     File.write(File.join(@repo, "README.md"), "hi\n")
     git("add", "README.md")
     git("commit", "-q", "-m", "init")
@@ -188,12 +192,12 @@ class NodeWorktreeTest < Minitest::Test
   def test_merge_refuses_wrong_checked_out_branch
     ctx = build_context
     commit_on_node("n1", filename: "n1.txt", content: "work\n", context: ctx)
-    git("checkout", "-q", "alpha", dir: @intent_worktree)
+    git("checkout", "-q", "-b", "decoy-branch", dir: @intent_worktree)
 
     result = NodeWorktree.merge(ctx, node: "n1")
 
     refute result[:ok]
-    assert_match(/alpha/, result[:error])
+    assert_match(/decoy-branch/, result[:error])
     refute File.exist?(File.join(@intent_worktree, "n1.txt"))
   end
 
@@ -243,39 +247,38 @@ class NodeWorktreeTest < Minitest::Test
 
   # --- 3.12/3.12a: conflict handling -----------------------------------------------
 
-  def test_conflict_aborts_merge_and_names_paths
+  # Provisions n1 from the CURRENT intent branch tip (before shared.txt exists
+  # anywhere), then commits DIVERGENT shared.txt content on the node branch
+  # and on the intent worktree - a genuine add/add conflict, the only honest
+  # way to prove the abort-and-report path fires.
+  def provision_and_diverge_on_shared_file
     ctx = build_context
-    # Both the intent worktree and the node branch modify the same file.
-    File.write(File.join(@intent_worktree, "shared.txt"), "intent version\n")
-    git("add", "shared.txt", dir: @intent_worktree)
-    git("commit", "-q", "-m", "intent edits shared.txt", dir: @intent_worktree)
-
     NodeWorktree.provision(ctx, node: "n1", kind: "work")
     node_path = NodeWorktree.paths(ctx, node: "n1")["path"]
     File.write(File.join(node_path, "shared.txt"), "node version\n")
     git("add", "shared.txt", dir: node_path)
     git("commit", "-q", "-m", "node edits shared.txt", dir: node_path)
+
+    File.write(File.join(@intent_worktree, "shared.txt"), "intent version\n")
+    git("add", "shared.txt", dir: @intent_worktree)
+    git("commit", "-q", "-m", "intent edits shared.txt", dir: @intent_worktree)
+
+    ctx
+  end
+
+  def test_conflict_aborts_merge_and_names_paths
+    ctx = provision_and_diverge_on_shared_file
 
     result = NodeWorktree.merge(ctx, node: "n1")
 
     refute result[:ok]
     assert_equal ["shared.txt"], result[:conflicted]
-    merge_head = File.join(@intent_worktree, ".git")
     status = git("status", "--porcelain", dir: @intent_worktree)
     assert_empty status.strip, "the abort must leave the intent worktree clean"
   end
 
   def test_conflict_result_carries_paths
-    ctx = build_context
-    File.write(File.join(@intent_worktree, "shared.txt"), "intent version\n")
-    git("add", "shared.txt", dir: @intent_worktree)
-    git("commit", "-q", "-m", "intent edits shared.txt", dir: @intent_worktree)
-
-    NodeWorktree.provision(ctx, node: "n1", kind: "work")
-    node_path = NodeWorktree.paths(ctx, node: "n1")["path"]
-    File.write(File.join(node_path, "shared.txt"), "node version\n")
-    git("add", "shared.txt", dir: node_path)
-    git("commit", "-q", "-m", "node edits shared.txt", dir: node_path)
+    ctx = provision_and_diverge_on_shared_file
 
     result = NodeWorktree.merge(ctx, node: "n1")
 
