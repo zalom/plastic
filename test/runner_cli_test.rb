@@ -173,11 +173,16 @@ class RunnerCliTest < Minitest::Test
 
   # --- 1.6: a missing verb module fails only that verb ----------------------------
 
+  # "rewind" (not "sweep") is the example undelivered verb: intent 340, G7, n2
+  # shipped scripts/lib/runner_sweep.rb, so "sweep" now loads and this row's
+  # premise (its module has not landed) no longer holds for it. "rewind"'s
+  # module (RunnerRewind) has no node yet, so it stays the honest example of
+  # the lazy-dispatch mechanism this row actually proves.
   def test_missing_module_fails_only_its_own_verb
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
 
-    out, err, status = run_cli("sweep", @dir)
+    out, err, status = run_cli("rewind", @dir)
     refute_equal 0, status.exitstatus
     refute_match(/unknown verb/, err)
     assert_match(/not yet delivered/i, out + err)

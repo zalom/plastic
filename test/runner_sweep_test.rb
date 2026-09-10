@@ -312,8 +312,7 @@ class RunnerSweepTest < Minitest::Test
   end
 
   def test_reclaim_records_landed_commits
-    init_repo
-    commit_on_node_branch("n1")
+    init_repo # the node branch is never created: this is the plain "no new commits" reclaim path
     write_savepoint(line("n1", "running", running_fields(expires: "2000-01-01T00:00:00Z")))
     ctx = build_context(worktree: @repo)
 

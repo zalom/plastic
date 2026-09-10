@@ -514,6 +514,10 @@ class InstallerCore
       "scripts/runner" => "scripts/runner",
       "scripts/lib/runner_core.rb" => "scripts/lib/runner_core.rb",
       "scripts/lib/core_integrity.rb" => "scripts/lib/core_integrity.rb",
+      # Intent 340 (G7, n2): the merge abort, the reclaim, and the extension -
+      # the first thing every `step` does, routed from scripts/runner's `sweep`
+      # verb.
+      "scripts/lib/runner_sweep.rb" => "scripts/lib/runner_sweep.rb",
     }
   end
 
