@@ -137,4 +137,38 @@ class GraphTreeTest < Minitest::Test
     a6_idx = lines2.index { |l| l.include?("a6") }
     assert a6_idx > a5_idx
   end
+
+  # --- 2.15: a fan-in node occupies exactly one position in the tree ------------
+
+  # The drawn identity of a line: the box-drawing prefix and the critical-path
+  # marker stripped, up to the first space or bracket. Counting substring
+  # mentions instead would count a converging reference ("also needs n2") as
+  # a second drawing of n2.
+  def drawn_ids(text)
+    text.each_line.map do |line|
+      line.chomp.sub(/\A[\s│├└─]*/, "").sub(/\A\* /, "")[/\A[^\s(]+/]
+    end
+  end
+
+  def test_fan_in_node_is_drawn_once_not_under_every_need
+    # n3 needs n1 and n2. The placement rule (2.14) gives it ONE position,
+    # under n1, with n2 shown as a converging reference. Drawn under both,
+    # a reader counts n3 twice and plans two deliveries of one intent.
+    # Rows 2.2 and 2.14 both read with lines.index, which sees only the
+    # first occurrence, so neither catches the duplicate (post-execution
+    # review, 2026-09-10).
+    edges = { "n1" => [], "n2" => [], "n3" => %w[n1 n2] }
+    ids = drawn_ids(GraphTree.render(edges: edges, labels: {}, marks: {}, width: 80)[:text])
+    assert_equal %w[n1 n2 n3], ids.sort, "one line per node, no node drawn twice"
+
+    # Three needs, the same rule: d hangs under one of a, b, c only.
+    edges2 = { "a" => [], "b" => [], "c" => [], "d" => %w[a b c] }
+    ids2 = drawn_ids(GraphTree.render(edges: edges2, labels: {}, marks: {}, width: 80)[:text])
+    assert_equal %w[a b c d], ids2.sort, "a node with three converging needs is drawn once"
+
+    # A deeper fan-in, where the duplicate would carry a whole subtree with it.
+    edges3 = { "r" => [], "x" => ["r"], "y" => ["r"], "j" => %w[x y], "k" => ["j"] }
+    ids3 = drawn_ids(GraphTree.render(edges: edges3, labels: {}, marks: {}, width: 80)[:text])
+    assert_equal %w[j k r x y], ids3.sort, "a duplicated join node would drag its subtree along"
+  end
 end
