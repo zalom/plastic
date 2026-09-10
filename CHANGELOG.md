@@ -5,6 +5,30 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 337 (G4, roadmap graph-ready-plastic, batch 3): a roadmap file gets its own graph. `RoadmapGraph`
+  reads one roadmap into the node scope's own shape - entries with their INDEX-reconciled status,
+  the `## Graph` edge map, a cycle path when one exists, topological batches and the critical path
+  from `ReadySet`, dead ends, and dangling ids the graph names but no batch lists - keeping a
+  batch's entries in the roadmap file's own order rather than a lexical sort. `GraphTree` draws any
+  edge map as a box-drawing tree, marking the critical path and the ready set, a shared node hung
+  under its highest-batch need (ties by smallest id) with its other needs shown as converging
+  references. `RoadmapRender.write` renders `## Tree` and the grouping section (`## Batches`, or
+  legacy `## Waves`, never renamed) through `AtomicWrite`, carrying every entry line - including one
+  the canonical grammar cannot parse, and prose written between batch headings - over verbatim.
+  `RoadmapMigration.derive` reads a graphless roadmap's existing batch order into the conservative
+  edge set (batch N needs every non-abandoned entry of batch N-1) without ever overwriting an
+  existing `## Graph` (or graph-like) heading. `scripts/roadmap-graph` exposes `check`/`render`/
+  `migrate`, every verb honouring `--dry-run`. `RoadmapQueue#frontier_for` now reads batches and
+  graph sections through this shared model, deleting its own second topological sort and second
+  `## Graph` reader. `IndexProjection` computes every intent's status from its own `savepoint.md`
+  ledger and reports the drift against INDEX.md - the ledger wins only where it actually speaks: a
+  silent or absent ledger keeps INDEX's status, never a demotion. `scripts/index-projection <store
+  root>` prints the drift (exit 1 when any exists) and writes it back under `--write`, moving only
+  the conflicting entries and leaving `## Clusters`/`## Relocated` untouched; the same drift, scoped
+  to what `savepoint_operational` does not already report, is a new `index_ledger_drift` finding in
+  `scripts/doctor.rb`. The roadmap plan screen prints the tree when a roadmap carries a real graph,
+  byte-identical to before on a graphless one; the roadmap template now teaches `## Graph` (its
+  example edges fenced so they are never read as real) so a new roadmap is never born graphless.
 - 336 (G3, roadmap graph-ready-plastic, batch 2): `ReadySet`, the one function that says what
   runs next. A node is ready when its own state is eligible, every need is done under an
   attributed non-torn line, no file-overlapping sibling is running, and its dispatch attempts

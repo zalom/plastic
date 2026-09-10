@@ -43,6 +43,23 @@ See `references/file-format.md` for the exact entry-line shape, status vocabular
 format, and a worked example. See `references/operations.md` for step-by-step mechanics of each
 verb above.
 
+## Graph (intent 337)
+
+A roadmap may carry an optional `## Graph` section - the same `needs` edge grammar as an
+intent's own `graph.md` (`- <id> needs <id> <id>`, or `- <id> needs nothing` for a root). When
+present, batches are computed from it (`roadmap-graph check`/`render`), not hand-ordered; the
+template scaffolds a fenced example so a new roadmap starts with the section already in place.
+Three verbs, all `--dry-run`-able:
+
+| Verb | What it does |
+|------|--------------|
+| `roadmap-graph check <roadmap.md>` | Prints the computed batches, the ready set, and any dangling id (a graph names it, no batch lists it); exits 1 on a cyclic graph or a dangling id. |
+| `roadmap-graph render <roadmap.md>` | Writes `## Tree` (a box-drawing render of the graph) and regroups the batch/wave section from the computed batches, entry lines carried over verbatim. |
+| `roadmap-graph migrate <roadmap.md>` | Derives a conservative `## Graph` for a graphless roadmap from its existing batch order (batch N needs every entry of batch N-1); never overwrites an existing graph. |
+
+A roadmap with no `## Graph` section keeps working exactly as before (wave-order dispatch); the
+graph is additive, never required.
+
 Read `../plastic-conventions/references/roadmaps.md` for the roadmap file format, batch
 semantics, and the status-mirror rule that this skill's own file-format reference builds on. This
 path resolves relative to this skill's own installed directory.

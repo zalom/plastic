@@ -324,11 +324,17 @@ class ScreenWidthTest < Minitest::Test
     # 1579->1577, 1585->1583, 1597->1595). Then again the same day when S9
     # (D17) inserted `verify_node_criteria_count` above `proven_by` - 32 more
     # lines, shifting every site below that point by +32 (1054->1086,
-    # 1133->1165, 1577->1609, 1583->1615, 1595->1627). Same five sites,
+    # 1133->1165, 1577->1609, 1583->1615, 1595->1627). Re-derived again
+    # 2026-09-10 when 337 (G4, n7) added two `require_relative` lines
+    # (roadmap_graph, graph_tree) near the top of the file, above every
+    # pinned site - +2 to all five (1086->1088, 1165->1167, 1609->1611,
+    # 1615->1617, 1627->1629). `roadmap_tree_block` itself, inserted lower in
+    # the file, sits below every pinned site and uses no `<<` of any kind, so
+    # it shifts nothing else and adds no new leg-2 site. Same five sites,
     # matched by content; leg 1's literal appends (render_archive's row,
     # render_nodes_block's node/findings rows) are unaffected, so this list's
     # five members are unchanged in kind, only in position.
-    [1086, 1165, 1609, 1615, 1627].each do |line|
+    [1088, 1167, 1611, 1617, 1629].each do |line|
       assert_includes lines, line, "leg 2 must still carry the screen-emitting non-literal append at line #{line}"
     end
   end

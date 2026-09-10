@@ -222,6 +222,8 @@ class ReportScreenCliTest < Minitest::Test
       # the shared RoadmapGraph model, which itself needs ReadySet.
       FileUtils.cp(File.join(REPO, "scripts", "lib", "ready_set.rb"), File.join(tmp_root, "scripts", "lib", "ready_set.rb"))
       FileUtils.cp(File.join(REPO, "scripts", "lib", "roadmap_graph.rb"), File.join(tmp_root, "scripts", "lib", "roadmap_graph.rb"))
+      # 337 (n7): report_screen.rb itself prints the roadmap plan tree.
+      FileUtils.cp(File.join(REPO, "scripts", "lib", "graph_tree.rb"), File.join(tmp_root, "scripts", "lib", "graph_tree.rb"))
       # Intent 339 (G6): report_screen.rb now require_relatives outcome_report.rb,
       # which pulls in its own graph/node/ledger readers and AtomicWrite.
       FileUtils.cp(File.join(REPO, "scripts", "lib", "outcome_report.rb"), File.join(tmp_root, "scripts", "lib", "outcome_report.rb"))
