@@ -28,11 +28,14 @@ class RoadmapTest < Minitest::Test
     assert_match(/\A# Roadmap:/, body, "must open with a '# Roadmap:' header")
   end
 
+  # Intent 337 (n7): the template gained an optional "## Graph" section
+  # between Goal and Batches, teaching the edge grammar so a new roadmap is
+  # never born graphless.
   def test_template_has_the_four_sections_in_order
     body = File.read(TEMPLATE)
     headings = body.scan(/^## .+$/)
-    assert_equal ["## Goal", "## Batches", "## Log"], headings,
-                 "must contain ## Goal, ## Batches, ## Log in that order"
+    assert_equal ["## Goal", "## Graph", "## Batches", "## Log"], headings,
+                 "must contain ## Goal, ## Graph, ## Batches, ## Log in that order"
   end
 
   def test_template_waves_has_a_status_entry_line
