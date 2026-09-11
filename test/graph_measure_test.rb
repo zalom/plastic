@@ -83,14 +83,14 @@ class GraphMeasureTest < Minitest::Test
         stage(stamp("2026-01-01T00:00:00Z"), "Why", "spec.md created"),
         transition(stamp("2026-01-01T00:01:00Z"), "n1", "running", fields: RUNNING),
         transition(stamp("2026-01-01T00:05:00Z"), "n1", "done",
-                   fields: RUNNING.merge(gates: "suite", reason: "two  spaces value")),
+                   fields: RUNNING.merge(gates: "suite", commit: "abc1234", reason: 'has "quotes" and spaces inside')),
       ])
       record = GraphMeasure.read(dir)
       attempt = record[:nodes]["n1"][:attempts].first
-      # A hand-rolled second parser using a naive key=value split would either
-      # keep the surrounding quotes or truncate at the first embedded space; a
+      # A hand-rolled second parser using a naive `key=value` split on
+      # whitespace would mis-split this quoted, embedded-quote value; a
       # correct reader agrees with NodeLedger's own quote-and-escape-aware scan.
-      assert_equal "two  spaces value", attempt[:fields]["reason"]
+      assert_equal 'has "quotes" and spaces inside', attempt[:fields]["reason"]
     end
   end
 
@@ -140,7 +140,7 @@ class GraphMeasureTest < Minitest::Test
       write_savepoint(dir, [
         stage(why_at, "Why", "spec.md created"),
         transition(running_at, "n1", "running", fields: RUNNING),
-        transition(done_at, "n1", "done", fields: RUNNING.merge(gates: "suite")),
+        transition(done_at, "n1", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234")),
       ])
       record = GraphMeasure.read(dir)
       attempt = record[:nodes]["n1"][:attempts].first
@@ -155,9 +155,9 @@ class GraphMeasureTest < Minitest::Test
         transition(t0, "n6", "running", fields: RUNNING),
         transition(t0 + 60, "n6", "reclaimed", fields: { holder: "auto-1", expired: "2026-01-01T00:00:30Z" }),
         transition(t0 + 120, "n6", "running", fields: RUNNING),
-        transition(t0 + 180, "n6", "failed_verification", fields: RUNNING.merge(gates: "suite", reason: "suite_red")),
+        transition(t0 + 180, "n6", "failed_verification", fields: RUNNING.merge(gates: "suite", commit: "abc1234", reason: "suite_red")),
         transition(t0 + 240, "n6", "running", fields: RUNNING),
-        transition(t0 + 300, "n6", "done", fields: RUNNING.merge(gates: "suite")),
+        transition(t0 + 300, "n6", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234")),
       ])
       record = GraphMeasure.read(dir)
       attempts = record[:nodes]["n6"][:attempts]
@@ -184,7 +184,7 @@ class GraphMeasureTest < Minitest::Test
     with_intent_dir do |dir|
       t0 = stamp("2026-01-01T00:00:00Z")
       write_savepoint(dir, [
-        transition(t0, "n1", "done", fields: { gates: "suite" }),
+        transition(t0, "n1", "done", fields: { gates: "suite", commit: "abc1234" }),
       ])
       record = GraphMeasure.read(dir)
       attempt = record[:nodes]["n1"][:attempts].first
@@ -256,7 +256,7 @@ class GraphMeasureTest < Minitest::Test
       write_savepoint(dir, [
         stage(why_at, "Why", "spec.md created"),
         transition(running_at, "n1", "running", fields: RUNNING),
-        transition(done_at, "n1", "done", fields: RUNNING.merge(gates: "suite")),
+        transition(done_at, "n1", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234")),
         stage(done_at + 60, "Done", "delivered"),
       ])
       record = GraphMeasure.read(dir)
@@ -295,7 +295,7 @@ class GraphMeasureTest < Minitest::Test
         stage(why_at, "Why", "spec.md created"),
         transition(prev_at, "n4", "running", fields: RUNNING),
         stage(takeover_at, "Lock", "takeover: auto-2 reclaimed delivery lock from auto-1"),
-        transition(takeover_at + 30, "n4", "done", fields: RUNNING.merge(gates: "suite")),
+        transition(takeover_at + 30, "n4", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234")),
         stage(done_at, "Done", "delivered"),
       ])
       record = GraphMeasure.read(dir)
@@ -314,8 +314,8 @@ class GraphMeasureTest < Minitest::Test
       done_at = t2 + 60
       write_savepoint(dir, [
         stage(why_at, "Why", "spec.md created"),
-        transition(t1, "n1", "done", fields: { gates: "suite" }),
-        transition(t2, "n2", "done", fields: { gates: "suite" }),
+        transition(t1, "n1", "done", fields: { gates: "suite", commit: "abc1234" }),
+        transition(t2, "n2", "done", fields: { gates: "suite", commit: "abc1234" }),
         stage(done_at, "Done", "delivered"),
       ])
       default_record = GraphMeasure.read(dir)
@@ -341,8 +341,8 @@ class GraphMeasureTest < Minitest::Test
         transition(n4_running, "n4", "running", fields: RUNNING),
         stage(paused_at, "Report", "PAUSED for the night"),
         transition(n9_running, "n9", "running", fields: RUNNING),
-        transition(n4_done, "n4", "done", fields: RUNNING.merge(gates: "suite")),
-        transition(n9_done, "n9", "done", fields: RUNNING.merge(gates: "suite")),
+        transition(n4_done, "n4", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234")),
+        transition(n9_done, "n9", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234")),
         stage(done_at, "Done", "delivered"),
       ])
       record = GraphMeasure.read(dir)
@@ -362,7 +362,7 @@ class GraphMeasureTest < Minitest::Test
         stage(why_at, "Why", "spec.md created"),
         stage(paused_at, "Report", "PAUSED by the orchestrator"),
         transition(resumed_at, "n2", "running", fields: RUNNING),
-        transition(resumed_at + 30, "n2", "done", fields: RUNNING.merge(gates: "suite")),
+        transition(resumed_at + 30, "n2", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234")),
         stage(done_at, "Done", "delivered"),
       ])
       record = GraphMeasure.read(dir)
@@ -380,7 +380,7 @@ class GraphMeasureTest < Minitest::Test
       write_node_file(dir, "v2", "work")
       write_graph(dir, "- v2 needs nothing")
       write_savepoint(dir, [
-        transition(stamp("2026-01-01T00:00:00Z"), "v2", "done", fields: { gates: "suite" }),
+        transition(stamp("2026-01-01T00:00:00Z"), "v2", "done", fields: { gates: "suite", commit: "abc1234" }),
       ])
       record = GraphMeasure.read(dir)
       assert_equal "work", record[:nodes]["v2"][:kind]
@@ -423,7 +423,7 @@ class GraphMeasureTest < Minitest::Test
   def test_four_field_suite_parses_as_runs_assertions_failures_errors
     with_intent_dir do |dir|
       write_savepoint(dir, [
-        transition(stamp("2026-01-01T00:00:00Z"), "n1", "done", fields: { gates: "suite", suite: "100/200/1/2" }),
+        transition(stamp("2026-01-01T00:00:00Z"), "n1", "done", fields: { gates: "suite", commit: "abc1234", suite: "100/200/1/2" }),
       ])
       record = GraphMeasure.read(dir)
       suite = record[:nodes]["n1"][:attempts].first[:suite]
@@ -434,7 +434,7 @@ class GraphMeasureTest < Minitest::Test
   def test_two_field_suite_parses_as_runs_and_failures
     with_intent_dir do |dir|
       write_savepoint(dir, [
-        transition(stamp("2026-01-01T00:00:00Z"), "n1", "done", fields: { gates: "suite", suite: "16/0" }),
+        transition(stamp("2026-01-01T00:00:00Z"), "n1", "done", fields: { gates: "suite", commit: "abc1234", suite: "16/0" }),
       ])
       record = GraphMeasure.read(dir)
       suite = record[:nodes]["n1"][:attempts].first[:suite]
@@ -447,7 +447,7 @@ class GraphMeasureTest < Minitest::Test
   def test_done_without_suite_is_unavailable_not_zero
     with_intent_dir do |dir|
       write_savepoint(dir, [
-        transition(stamp("2026-01-01T00:00:00Z"), "n1", "done", fields: { gates: "suite" }),
+        transition(stamp("2026-01-01T00:00:00Z"), "n1", "done", fields: { gates: "suite", commit: "abc1234" }),
       ])
       record = GraphMeasure.read(dir)
       assert_equal :unavailable, record[:nodes]["n1"][:attempts].first[:suite]
@@ -458,10 +458,10 @@ class GraphMeasureTest < Minitest::Test
     with_intent_dir do |dir|
       t0 = stamp("2026-01-01T00:00:00Z")
       write_savepoint(dir, [
-        transition(t0, "n1", "done", fields: { gates: "suite" }),
-        transition(t0 + 60, "n2", "done", fields: { gates: "suite" }),
-        transition(t0 + 120, "n3", "done", fields: { gates: "suite", suite: "3886/19751/0/0" }),
-        transition(t0 + 180, "n4", "done", fields: { gates: "suite", suite: "3921/19893/0/0" }),
+        transition(t0, "n1", "done", fields: { gates: "suite", commit: "abc1234" }),
+        transition(t0 + 60, "n2", "done", fields: { gates: "suite", commit: "abc1234" }),
+        transition(t0 + 120, "n3", "done", fields: { gates: "suite", commit: "abc1234", suite: "3886/19751/0/0" }),
+        transition(t0 + 180, "n4", "done", fields: { gates: "suite", commit: "abc1234", suite: "3921/19893/0/0" }),
       ])
       record = GraphMeasure.read(dir)
       history = record[:suite_history]
@@ -489,7 +489,7 @@ class GraphMeasureTest < Minitest::Test
       # field, so the node's hop status is unavailable, never "off".
       write_savepoint(dir, [
         transition(stamp("2026-01-01T00:00:00Z"), "n1", "running", fields: RUNNING),
-        transition(stamp("2026-01-01T00:10:00Z"), "n1", "done", fields: RUNNING.merge(gates: "suite")),
+        transition(stamp("2026-01-01T00:10:00Z"), "n1", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234")),
       ])
       record_a = GraphMeasure.read(dir)
       assert_equal :unavailable, record_a[:nodes]["n1"][:hop]
@@ -500,9 +500,9 @@ class GraphMeasureTest < Minitest::Test
       # line lacking it is genuinely hop off, not unavailable.
       write_savepoint(dir, [
         transition(stamp("2026-01-01T00:00:00Z"), "n1", "running", fields: RUNNING),
-        transition(stamp("2026-01-01T00:10:00Z"), "n1", "done", fields: RUNNING.merge(gates: "suite")),
+        transition(stamp("2026-01-01T00:10:00Z"), "n1", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234")),
         transition(stamp("2026-01-01T00:20:00Z"), "n2", "running", fields: RUNNING.merge(hop: "2000")),
-        transition(stamp("2026-01-01T00:30:00Z"), "n2", "done", fields: RUNNING.merge(gates: "suite", hop: "2000")),
+        transition(stamp("2026-01-01T00:30:00Z"), "n2", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234", hop: "2000")),
       ])
       record_b = GraphMeasure.read(dir)
       assert_equal false, record_b[:nodes]["n1"][:hop]
@@ -594,7 +594,7 @@ class GraphMeasureTest < Minitest::Test
         bad byte here -> #{bad_byte} <-
       MD
       write_savepoint(dir, [
-        transition(stamp("2026-01-01T00:00:00Z"), "n1", "done", fields: { gates: "suite" }),
+        transition(stamp("2026-01-01T00:00:00Z"), "n1", "done", fields: { gates: "suite", commit: "abc1234" }),
       ])
 
       record = GraphMeasure.read(dir)
