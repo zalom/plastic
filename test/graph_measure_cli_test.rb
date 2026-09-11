@@ -137,10 +137,12 @@ class GraphMeasureCliTest < Minitest::Test
 
   # --- 2.6: an unlanded verb's module fails only itself -------------------------------
 
+  # n4 lands "budget"; "cohorts" (n5) is still unlanded and carries this row
+  # now.
   def test_missing_module_fails_only_its_own_verb
     write_happy_path_fixture
 
-    out, err, status = run_cli("budget", @dir)
+    out, err, status = run_cli("cohorts", @dir)
     assert_equal 3, status.exitstatus
     assert_empty out
     assert_match(/not yet delivered/, err)
@@ -193,6 +195,39 @@ class GraphMeasureCliTest < Minitest::Test
     assert_match(/== Nodes ==/, out)
     assert_match(/n1/, out)
     assert_match(/all green/, out)
+  end
+
+  # --- 4.15: the real budget verb, in a subprocess, both formats ---------------------
+
+  def test_subprocess_budget_report_renders
+    dir_340 = File.expand_path("fixtures/ledgers/340--runner-core-in-session", __dir__)
+
+    out, err, status = run_cli("budget", dir_340)
+    assert_equal 0, status.exitstatus, err
+    assert_match(/== Budget ==/, out)
+    assert_match(/n6/, out)
+    assert_match(/== Suspected ceiling ==/, out)
+
+    out_json, err_json, status_json = run_cli("budget", dir_340, "--format", "json")
+    assert_equal 0, status_json.exitstatus, err_json
+    parsed = JSON.parse(out_json)
+    assert parsed.key?("nodes")
+    assert parsed.key?("ceiling")
+  end
+
+  # --- 4.16: no packet activity at all still exits 0, with an explicit message -------
+
+  def test_budget_without_packets_directory_exits_zero
+    write_graph("- n1 needs nothing\n")
+    write_savepoint([
+      stage("2026-01-01T09:00:00Z", "Why", "spec.md created"),
+      stage("2026-01-01T09:21:00Z", "Done", "delivered"),
+    ])
+    refute Dir.exist?(File.join(@dir, "packets"))
+
+    out, err, status = run_cli("budget", @dir)
+    assert_equal 0, status.exitstatus, err
+    assert_match(/no packet attempts recorded/i, out)
   end
 
   # --- 2.22: malformed graph.md, a torn ledger, and invalid UTF-8 never raise ---------
