@@ -5,6 +5,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "json"
+require "shellwords"
 
 require_relative "../scripts/lib/installer_core"
 require_relative "../scripts/lib/release_guard"
@@ -76,6 +77,19 @@ class RunnerInstallTest < Minitest::Test
       stable: false
     )
     assert result.ok?, "the three version files must still agree: #{result.mismatches.inspect}"
-    assert_equal "2.0.0-alpha.18", result.version, "n7 must not bump any version file"
+
+    # The reference is the branch point with `alpha`, never a literal: this
+    # branch merged `alpha` in at the close, and `alpha` carries release
+    # bumps of its own, so a hard-coded version goes red on the next release
+    # rather than on the thing this row guards against. Comparing against the
+    # merge base still catches a bump that rode in on THIS branch, which is
+    # the collision the row exists to prevent.
+    base = `git -C #{Shellwords.escape(REPO)} merge-base HEAD alpha 2>/dev/null`.strip
+    skip "no alpha branch in this checkout" if base.empty?
+
+    base_package = `git -C #{Shellwords.escape(REPO)} show #{base}:package.json 2>/dev/null`
+    refute_empty base_package, "could not read package.json at the branch point #{base}"
+    assert_equal JSON.parse(base_package)["version"], result.version,
+    "no version bump may ride in on this branch (branch point #{base[0, 7]})"
   end
 end
