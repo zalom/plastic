@@ -30,7 +30,7 @@ class NodeAgentsTest < Minitest::Test
 
   def body_for(basename)
     content = File.read(File.join(REPO, "agents", "#{basename}.md"))
-    _front, body = content.split(/^---\s*$/, 3)
+    _blank, _front, body = content.split(/^---\s*$/, 3)
     body.to_s
   end
 

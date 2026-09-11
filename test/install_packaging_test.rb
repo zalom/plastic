@@ -492,6 +492,11 @@ class InstallPackagingTest < Minitest::Test
   # names (D23: every public script this intent adds gets a subprocess test).
   def test_real_agent_roster_installs
     Dir.mktmpdir("n2-real-install-home") do |fake_home|
+      # install_for_agent probes the agent's own dir as the presence signal (intent 198,
+      # D1): a real machine only gets this far because Claude Code itself already created
+      # ~/.claude, so the fixture pre-creates it the same way codex_install_test does for
+      # ~/.codex.
+      FileUtils.mkdir_p(File.join(fake_home, ".claude"))
       env = { "HOME" => fake_home, "RUBYOPT" => nil, "CLAUDE_CODE_SESSION_ID" => nil,
                "PLASTIC_HOME" => nil, "PLASTIC_PACKAGE_ROOT" => nil }
 
