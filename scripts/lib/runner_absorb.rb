@@ -18,6 +18,8 @@ require_relative "worktree"
 require_relative "insights"
 require_relative "savepoint"
 require_relative "guarded_append"
+require_relative "atomic_write"
+require_relative "runner_proposals"
 
 # RunnerAbsorb (intent 340, G7, n4): the gate that turns one executor return
 # into exactly one node ledger transition. It runs six checks in a fixed
@@ -69,7 +71,8 @@ module RunnerAbsorb
              ledger: NodeLedger,
              runner: Worktree::ShellRunner.new,
              suite_runner: method(:default_suite_runner),
-             project_reader: method(:default_project_reader))
+             project_reader: method(:default_project_reader),
+             proposals: RunnerProposals)
     node = node.to_s
     intent_dir = context.intent_dir
     savepoint_path = File.join(intent_dir.to_s, "savepoint.md")
@@ -121,6 +124,18 @@ module RunnerAbsorb
 
     append_findings(intent_dir, node, parsed.findings, now: now)
 
+    # 340 n10, M4: proposals are accepted or refused right after the schema
+    # gate, on the proposing node - the only production caller RunnerProposals
+    # ever gets. Every return from here on carries `proposal:` (nil when the
+    # return proposed nothing), so a refusal is surfaced in the step report
+    # rather than left to a savepoint comment nobody reads (row 10.3).
+    proposal_result = nil
+    if Array(parsed.proposed_nodes).any? || Array(parsed.proposed_edges).any?
+      proposal_result = proposals.accept(context, proposer: node, proposed_nodes: parsed.proposed_nodes,
+                                          proposed_edges: parsed.proposed_edges, now: now)
+    end
+    finish = ->(result) { result.merge(proposal: proposal_result) }
+
     # B1: the return's own status governs from here on. The six mechanical
     # checks (3-6) exist to VERIFY a `done` claim, never to overrule an
     # executor's own report of its failure or its own open question - a
@@ -131,24 +146,24 @@ module RunnerAbsorb
       fields = { holder: holder, gates: checks_ran.join("+") }.merge(extra_fields)
       fields[:question] = parsed.question if parsed.status == "needs_decision"
       fields[:reason] = parsed.reason if %w[blocked failed_verification].include?(parsed.status)
-      return write_transition(savepoint_path, context, node, parsed.status, fields, now: now, ledger: ledger)
+      return finish.call(write_transition(savepoint_path, context, node, parsed.status, fields, now: now, ledger: ledger))
     end
 
     # 3. scope --------------------------------------------------------------
     checks_ran << "scope"
     changed = worktree.changed_paths(context, node: node, kind: kind, runner: runner)
     if changed.nil?
-      return fail_check(savepoint_path, context, node, "scope_unmeasurable", checks_ran, holder, extra_fields, now, ledger)
+      return finish.call(fail_check(savepoint_path, context, node, "scope_unmeasurable", checks_ran, holder, extra_fields, now, ledger))
     end
     scope_reason = scope_violation(kind, changed, declared_files)
     if scope_reason
-      return fail_check(savepoint_path, context, node, scope_reason, checks_ran, holder, extra_fields, now, ledger)
+      return finish.call(fail_check(savepoint_path, context, node, scope_reason, checks_ran, holder, extra_fields, now, ledger))
     end
 
     # 4. named_tests ----------------------------------------------------------
     checks_ran << "named_tests"
     if missing_named_tests?(context, node, kind, worktree)
-      return fail_check(savepoint_path, context, node, "named_test_missing", checks_ran, holder, extra_fields, now, ledger)
+      return finish.call(fail_check(savepoint_path, context, node, "named_test_missing", checks_ran, holder, extra_fields, now, ledger))
     end
 
     # 5. merge ------------------------------------------------------------------
@@ -163,17 +178,17 @@ module RunnerAbsorb
       unless merge_result[:ok]
         conflicted = Array(merge_result[:conflicted])
         if conflicted.empty?
-          return fail_check(savepoint_path, context, node, "merge_failed", checks_ran, holder, extra_fields, now, ledger)
+          return finish.call(fail_check(savepoint_path, context, node, "merge_failed", checks_ran, holder, extra_fields, now, ledger))
         end
 
         outside = conflicted.reject { |p| path_covered?(p, declared_files) }
         if outside.empty?
-          return fail_check(savepoint_path, context, node, "merge_conflict", checks_ran, holder, extra_fields, now, ledger)
+          return finish.call(fail_check(savepoint_path, context, node, "merge_conflict", checks_ran, holder, extra_fields, now, ledger))
         end
 
         question = "merge conflict touches path(s) outside files: #{outside.sort.join(', ')}"
         fields = { question: question, holder: holder, gates: checks_ran.join("+") }.merge(extra_fields)
-        return write_transition(savepoint_path, context, node, "needs_decision", fields, now: now, ledger: ledger)
+        return finish.call(write_transition(savepoint_path, context, node, "needs_decision", fields, now: now, ledger: ledger))
       end
       merge_commit = merge_result[:commit]
     else
@@ -188,7 +203,7 @@ module RunnerAbsorb
       # project with no verify command at all - the record is broken, so the
       # node blocks rather than proceeding to `done` with `suite:absent`.
       fields = { reason: "verify_command_unreadable", gates: checks_ran.join("+"), holder: holder }.merge(extra_fields)
-      return write_transition(savepoint_path, context, node, "blocked", fields, now: now, ledger: ledger)
+      return finish.call(write_transition(savepoint_path, context, node, "blocked", fields, now: now, ledger: ledger))
     end
     if command.nil?
       gates = (checks_ran[0..-2] + ["suite:absent"]).join("+")
@@ -198,7 +213,7 @@ module RunnerAbsorb
       unless suite_result[:ok]
         fields = { reason: "suite_red", gates: checks_ran.join("+"), holder: holder,
                    suite: format_suite(suite_result) }.merge(extra_fields)
-        return write_transition(savepoint_path, context, node, "failed_verification", fields, now: now, ledger: ledger)
+        return finish.call(write_transition(savepoint_path, context, node, "failed_verification", fields, now: now, ledger: ledger))
       end
       gates = checks_ran.join("+")
       suite_value = format_suite(suite_result)
@@ -210,7 +225,7 @@ module RunnerAbsorb
 
     worktree.release(context, node: node, state: "done", runner: runner) if result[:written]
 
-    result
+    finish.call(result)
   end
 
   # --- transitions -------------------------------------------------------------
@@ -295,12 +310,16 @@ module RunnerAbsorb
 
   # --- named tests -----------------------------------------------------------
 
-  # Row 4.19: read the node's own failure-mode matrix table, take every
-  # `Test` cell's file basename (before the `#`), and check that
-  # `test/<basename>.rb` exists on the node's own worktree - the tree the
-  # executor actually wrote to, not the not-yet-merged intent tree. A node
-  # file that cannot be read, or that carries no such section, names no
-  # tests and passes this check vacuously (nothing to prove missing).
+  # Row 4.19/minor 1: read the node's own failure-mode matrix table, take
+  # every `Test` cell's file basename AND method name (before/after the
+  # `#`), and check both that `test/<basename>.rb` exists on the node's own
+  # worktree - the tree the executor actually wrote to, not the not-yet-
+  # merged intent tree - and that it actually DEFINES the named method
+  # (post-execution review minor 1: proving only the file exists lets an
+  # executor delete the test method while keeping its file and still pass
+  # this gate). A node file that cannot be read, or that carries no such
+  # section, names no tests and passes this check vacuously (nothing to
+  # prove missing).
   def missing_named_tests?(context, node, kind, worktree)
     path = ReadySet.find_node_path(context.intent_dir, node)
     return false unless path
@@ -311,20 +330,41 @@ module RunnerAbsorb
     section = NodeFile.split_by_headings(nf[:body]).find { |(heading, _)| heading.to_s =~ /failure-mode matrix/i }
     return false unless section
 
-    basenames = NodeFile.table_rows(section[1]).filter_map do |row|
+    tests = NodeFile.table_rows(section[1]).filter_map do |row|
       cell = row[3]
       next nil if cell.to_s.strip.empty?
 
-      cell.gsub("`", "").split("#").first
+      basename, method = cell.gsub("`", "").split("#", 2)
+      next nil if basename.to_s.strip.empty?
+
+      [basename.strip, method.to_s.strip]
     end.uniq
-    return false if basenames.empty?
+    return false if tests.empty?
 
     check_dir = kind.to_s == "work" ? (worktree.paths(context, node: node) || {})["path"] : context.worktree
     return false if check_dir.nil?
 
-    basenames.any? { |b| !File.exist?(File.join(check_dir, "test", "#{b}.rb")) }
+    tests.any? do |basename, method|
+      test_path = File.join(check_dir, "test", "#{basename}.rb")
+      !File.exist?(test_path) || !method_defined_in_file?(test_path, method)
+    end
   end
   private_class_method :missing_named_tests?
+
+  # true when `method` is blank (a matrix row that names only a file, no
+  # `#method`, still passes on file presence alone) or when `path`'s own
+  # source text defines it. A source-text check, not a `require` and
+  # introspect: loading an untrusted executor-written test file as living
+  # Ruby is not a check RunnerAbsorb should ever perform.
+  def method_defined_in_file?(path, method)
+    return true if method.to_s.empty?
+    return false unless File.exist?(path)
+
+    File.read(path).match?(/^\s*def\s+#{Regexp.escape(method)}\b/)
+  rescue StandardError
+    false
+  end
+  private_class_method :method_defined_in_file?
 
   # --- findings --------------------------------------------------------------
 
@@ -332,6 +372,17 @@ module RunnerAbsorb
   # when either heading is absent (row 4.35): Insights.append_insight never
   # creates a nested subsection, so this is its own small insertion, not a
   # call into that module.
+  #
+  # M12: the read-modify-write is now taken under GuardedAppend's own flock
+  # hold on the intent record, so a concurrent writer's line is never lost
+  # to the classic unguarded-read race. GuardedAppend itself only ever
+  # appends at EOF (`### Findings` is rarely the file's last bytes - a
+  # `## Links` section commonly follows it), so the block performs the real
+  # mid-file rewrite as a side effect via AtomicWrite, under the SAME lock
+  # hold, and returns nil (a "refused" append to GuardedAppend, which is
+  # correct: nothing more is appended after the rewrite already landed).
+  # Lock contention is a missed finding, never a failed absorb (findings are
+  # best-effort, D16), so Unavailable is swallowed.
   def append_findings(intent_dir, node, findings, now:)
     return if Array(findings).empty?
 
@@ -340,8 +391,12 @@ module RunnerAbsorb
     bullet = "- [#{node}] #{text}"
 
     path = Savepoint.intent_file(intent_dir)
-    content = File.exist?(path) ? File.read(path) : ""
-    File.write(path, insert_finding_bullet(content, bullet))
+    GuardedAppend.call(path) do |content|
+      AtomicWrite.write(path, insert_finding_bullet(content, bullet))
+      nil
+    end
+  rescue GuardedAppend::Unavailable
+    nil
   end
   private_class_method :append_findings
 
@@ -364,6 +419,17 @@ module RunnerAbsorb
       idx += 1
     end
     insights_end = idx
+
+    # M12: `split("\n", -1)` keeps a trailing "" element exactly when
+    # `content` itself ends in a newline (the file's own trailing newline
+    # made visible as an array slot). When Insights is the LAST section (no
+    # further "## " heading), `insights_end` walks all the way to
+    # `lines.length`, folding that sentinel INTO the section - the very next
+    # insert then landed AFTER it, turning the file's trailing newline into
+    # a spurious blank line and leaving the new bullet as the final element
+    # with no newline of its own. Excluding the sentinel here restores both:
+    # the bullet lands where content actually ends, one newline intact.
+    insights_end -= 1 if insights_end == lines.length && lines.last == ""
 
     if findings_idx
       fidx = findings_idx + 1

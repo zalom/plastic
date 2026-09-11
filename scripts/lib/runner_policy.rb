@@ -30,7 +30,16 @@ module RunnerPolicy
   # D31 (327): "One advisor: the smartest model available, or the model set
   # in user config." Never the cheap tier - that is the one thing D31 rules
   # out for a verify node (matrix 5.14).
-  DEFAULT_EXECUTOR_MODEL = "sonnet"
+  #
+  # D19 (327): "knows nothing about either harness." The executor default
+  # resolves through AgentModels::TIER_DEFAULTS, the one place
+  # `plastic-executor`'s shipped tier is already declared (post-execution
+  # review minor 4), rather than a second, independently-drifting literal
+  # here. `plastic-advisor` carries no lifecycle-stage entry in
+  # TIER_DEFAULTS at all (it is a consultation agent, never auto-dispatched
+  # - see agent_models.rb's own docstring), so its default stays the one
+  # literal this table cannot source from anywhere else.
+  DEFAULT_EXECUTOR_MODEL = AgentModels::TIER_DEFAULTS.fetch("plastic-executor")
   DEFAULT_ADVISOR_MODEL = "opus"
 
   EXECUTOR_CONFIG_KEY = "plastic-executor"

@@ -71,8 +71,14 @@ module RunnerDispatch
     # Row 5.1/5.2/5.3: the full validator runs only when the ledger holds no
     # `running` line for ANY node yet (327 D17's exact precondition) - every
     # later dispatch skips it and relies on the cheaper re-read below.
+    #
+    # M9: both the validator and the ready analyzer re-parse graph.md fresh
+    # (RunnerCore.context's own first read, already guarded, is not reused
+    # here on purpose - row 5.4), and a malformed graph.md - non-UTF-8 bytes,
+    # say - raises out of both rather than reporting :ok false. Guarded here
+    # so `step` refuses cleanly instead of dying with a raw stack trace.
     if entries.none? { |e| e[:state] == "running" }
-      full = validator.call(intent_dir)
+      full = safe_validate(validator, intent_dir)
       return invalid_graph_result(full[:errors]) unless full[:ok]
     end
 
@@ -80,19 +86,28 @@ module RunnerDispatch
     # not. ReadySet.analyze re-parses graph.md and nodes/ from disk itself,
     # so nothing here trusts `context.graph`, which was resolved once,
     # before this step even started.
-    analysis = ready_analyzer.call(intent_dir, now: now, caps: caps)
+    analysis = safe_analyze(ready_analyzer, intent_dir, now: now, caps: caps)
     return invalid_graph_result(analysis[:errors]) unless analysis[:ok]
 
-    loaded = ReadySet.load_graph(intent_dir)
+    loaded = RunnerCore.safe_load_graph(intent_dir)
+    return invalid_graph_result(loaded[:errors]) unless loaded[:ok]
+
     edges = loaded[:edges]
     nodes_decl = loaded[:nodes]
 
-    running_count = NodeLedger.status_from_content(content).values.count { |s| s == "running" }
+    # Minor 9: count `running` only for NODE subjects - an `Intent` subject
+    # in a running-like state must never eat a dispatch slot meant for the
+    # concurrency ceiling over nodes.
+    running_count = NodeLedger.status_from_content(content).count do |subject, s|
+      s == "running" && subject.to_s.match?(Savepoint::NODE_SUBJECT_RE)
+    end
     slots = [limit.to_i - running_count, 0].max
 
     dispatched = []
     parked = []
     stop = nil
+    packet_failures = []
+    ceiling_blocked = false
 
     analysis[:ranked_ready].each do |row|
       break if stop
@@ -122,11 +137,21 @@ module RunnerDispatch
         next
       end
 
-      next if slots <= 0
+      # M10: a ready node that cannot dispatch because every slot is taken
+      # is QUEUED, not stalled - the graph can still continue, it is merely
+      # waiting on the ceiling, matrix row 10.13.
+      if slots <= 0
+        ceiling_blocked = true
+        next
+      end
 
       result = dispatch_one(context, node: node, kind: kind, now: now, config: config, caps: caps,
                              edges: edges, nodes_decl: nodes_decl, packet_builder: packet_builder,
                              worktree: worktree, ledger: ledger, runner: runner)
+      if result[:packet_build_failed]
+        packet_failures << result
+        next
+      end
       next unless result[:ok]
 
       dispatched << result[:entry]
@@ -140,8 +165,25 @@ module RunnerDispatch
     # transition.
     RunnerCore.render_status(context) if dispatched.any? || stop || parked.any?
 
-    build_report(context: context, dispatched: dispatched, stop: stop, parked: parked)
+    build_report(context: context, dispatched: dispatched, stop: stop, parked: parked,
+                 ceiling_blocked: ceiling_blocked, packet_failures: packet_failures)
   end
+
+  # --- guarded re-entries into graph.md (M9) ----------------------------------
+
+  def safe_validate(validator, intent_dir)
+    validator.call(intent_dir)
+  rescue StandardError => e
+    { ok: false, errors: ["graph.md could not be read: #{e.message}"] }
+  end
+  private_class_method :safe_validate
+
+  def safe_analyze(ready_analyzer, intent_dir, now:, caps:)
+    ready_analyzer.call(intent_dir, now: now, caps: caps)
+  rescue StandardError => e
+    { ok: false, errors: ["graph.md could not be read: #{e.message}"] }
+  end
+  private_class_method :safe_analyze
 
   # --- one node's whole dispatch (packet, lease, `running`) -------------------
 
@@ -153,6 +195,12 @@ module RunnerDispatch
     holder = context.session
     model = RunnerPolicy.model_for(kind, config: config)
     expires = RunnerPolicy.lease_expires(kind, now: now)
+
+    # Row 10.16/M13: recorded BEFORE provisioning - a worktree this dispatch
+    # finds already on disk (kept there by a prior failed_verification
+    # attempt, D7) must never be the one a later rollback in this same call
+    # deletes; only a worktree THIS call actually creates may be rolled back.
+    pre_existing_worktree = worktree_pre_existing?(worktree, context, node, kind)
 
     # Row 5.16/5.29: only a `work` node gets a worktree, and this is the
     # node-scoped `worktree_reader:` D23 injects into NodePacket.build - it
@@ -170,9 +218,20 @@ module RunnerDispatch
     # so an existing file at that path is always an orphan from a step that
     # crashed between building the packet and writing `running`, safe to
     # overwrite outright.
+    # Row 5.20/10.8: the node's own declared budget: (M7) - nil when the node
+    # names none, in which case NodePacket.build falls back to its own
+    # default (row 10.9).
     build_result = packet_builder.call(intent_dir: intent_dir, node: node, holder: holder, expires: expires,
-                                        model: model, force: true, worktree_reader: node_reader)
-    return { ok: false } unless build_result[:ok]
+                                        model: model, force: true, worktree_reader: node_reader,
+                                        budget_tokens: node_declared_budget(intent_dir, node))
+    unless build_result[:ok]
+      # M6: a failed packet build never leaves an orphan worktree behind, and
+      # its errors travel back up so the step's report can name the node and
+      # the reason instead of a bare "stalled" (row 10.6/10.7).
+      rollback_dispatch(context, node: node, kind: kind, packet_path: build_result[:path], runner: runner,
+                         worktree: worktree, created_this_dispatch: !pre_existing_worktree)
+      return { ok: false, packet_build_failed: true, node: node, errors: build_result[:errors] }
+    end
 
     precondition = lambda do |c|
       ReadySet.ready?(content: c, subject: node, graph: { edges: edges }, nodes: nodes_decl, caps: caps)[:ready]
@@ -190,7 +249,8 @@ module RunnerDispatch
     # side effects this method already produced - the node never ran, so
     # nothing may act like it did.
     unless result == :written
-      rollback_dispatch(context, node: node, kind: kind, packet_path: build_result[:path], runner: runner)
+      rollback_dispatch(context, node: node, kind: kind, packet_path: build_result[:path], runner: runner,
+                         worktree: worktree, created_this_dispatch: !pre_existing_worktree)
       return { ok: false }
     end
 
@@ -201,6 +261,30 @@ module RunnerDispatch
     }
   end
 
+  # The node's own declared budget: (frontmatter), or nil when it names
+  # none - M7. Parsed directly off the node file, never through
+  # `nodes_decl` (ReadySet.load_graph's own decl hash carries only kind and
+  # files, never budget), so this stays independent of that module.
+  def node_declared_budget(intent_dir, node)
+    path = ReadySet.find_node_path(intent_dir, node)
+    return nil unless path
+
+    nf = NodeFile.parse(path)
+    nf[:ok] ? nf[:budget] : nil
+  end
+  private_class_method :node_declared_budget
+
+  # true iff a `work` node's own worktree already exists BEFORE this call
+  # provisions anything - the pre-check `rollback_dispatch` needs to tell a
+  # worktree this dispatch created from one it merely found (row 10.16).
+  def worktree_pre_existing?(worktree, context, node, kind)
+    return false unless RunnerPolicy.worktree?(kind)
+
+    p = worktree.paths(context, node: node)
+    !!(p && p["path"] && Dir.exist?(p["path"]))
+  end
+  private_class_method :worktree_pre_existing?
+
   def role_for(kind)
     kind.to_s == "verify" ? "advisor" : "executor"
   end
@@ -210,11 +294,16 @@ module RunnerDispatch
   end
   private_class_method :unprovisioned
 
-  def rollback_dispatch(context, node:, kind:, packet_path:, runner:)
+  # Row 10.16/M13: `created_this_dispatch:` gates the worktree half of the
+  # rollback - a worktree this call did not create (kept on disk by a prior
+  # attempt's failed_verification, D7) is never touched, only a packet this
+  # call's own `packet_builder` may have written is ever deleted.
+  def rollback_dispatch(context, node:, kind:, packet_path:, runner:, worktree:, created_this_dispatch:)
     File.delete(packet_path) if packet_path && File.exist?(packet_path)
     return unless RunnerPolicy.worktree?(kind)
+    return unless created_this_dispatch
 
-    p = NodeWorktree.paths(context, node: node)
+    p = worktree.paths(context, node: node)
     return if p["path"].nil? || !Dir.exist?(p["path"])
 
     Worktree.remove_worktree(runner, repo: p["repo"], worktree: p["path"])
@@ -305,7 +394,7 @@ module RunnerDispatch
   end
   private_class_method :invalid_graph_result
 
-  def build_report(context:, dispatched:, stop:, parked:)
+  def build_report(context:, dispatched:, stop:, parked:, ceiling_blocked: false, packet_failures: [])
     base = empty_result.merge(dispatched: dispatched, stop: stop, parked: parked,
                                plan: render_plan(dispatched))
 
@@ -313,14 +402,33 @@ module RunnerDispatch
       base.merge(status: "dispatched")
     elsif stop
       base.merge(status: "needs_decision")
+    elsif ceiling_blocked
+      # M10: a ready node merely waiting on the concurrency ceiling is
+      # QUEUED - the graph can still continue, it is not the dead end
+      # "stalled" names.
+      base.merge(status: "queued")
     else
       # Row 5.25: complete iff EVERY declared node is terminal - an empty
       # ready set from parked/blocked nodes must never read as finished.
       complete = RunnerCore.complete?(context)
-      complete ? base.merge(status: "complete") : base.merge(status: "stalled", blockers: named_blockers(context))
+      if complete
+        base.merge(status: "complete")
+      else
+        # M6/row 10.7: a failed packet build writes no ledger line at all,
+        # so `named_blockers` (ledger-derived) never sees it on its own -
+        # its own node and reason are named here so `stalled` never prints
+        # bare.
+        blockers = named_blockers(context) + packet_failures.map { |f| packet_failure_blocker(f) }
+        base.merge(status: "stalled", blockers: blockers)
+      end
     end
   end
   private_class_method :build_report
+
+  def packet_failure_blocker(failure)
+    "#{failure[:node]}: packet build failed (#{Array(failure[:errors]).join('; ')})"
+  end
+  private_class_method :packet_failure_blocker
 
   # Row 5.25a/5.26: every unfinished node's own blockers, with ReadySet's
   # hard-attempt-cap wording renamed so it reads as the named backstop it is

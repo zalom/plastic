@@ -71,6 +71,24 @@ module Runner
     args.each_index.select { |i| args[i] == name }.map { |i| args[i + 1] }.compact
   end
 
+  # KNOWN_FLAGS (minor 2): the exact flag vocabulary each verb accepts. A
+  # flag not in a verb's own list is refused rather than silently ignored -
+  # a mistyped `--session` used to vanish with no effect and the runner
+  # simply acted as whichever session `CLAUDE_CODE_SESSION_ID` names.
+  KNOWN_FLAGS = {
+    "step" => %w[--return --allow-core-drift],
+    "answer" => %w[--node --answer],
+    "rewind" => %w[--node --confirm],
+  }.freeze
+
+  # unrecognized_flag(verb, args) -> the first token in `args` that looks
+  # like a flag (`--...`) and is not in `verb`'s own KNOWN_FLAGS, or nil. A
+  # verb absent from KNOWN_FLAGS (status, ready, sweep) accepts none.
+  def unrecognized_flag(verb, args)
+    allowed = KNOWN_FLAGS.fetch(verb, [])
+    args.find { |a| a.is_a?(String) && a.start_with?("--") && !allowed.include?(a) }
+  end
+
   def main(argv)
     args = argv.dup
     verb = args.shift
@@ -88,6 +106,13 @@ module Runner
       exit 2
     end
     intent_dir = File.expand_path(intent_dir_arg)
+
+    bad_flag = unrecognized_flag(verb, args)
+    if bad_flag
+      warn "runner: unknown flag #{bad_flag.inspect} for #{verb}"
+      usage
+      exit 2
+    end
 
     case verb
     when "status"
@@ -286,6 +311,12 @@ module Runner
       exit 1
     end
 
+    # M3/row 10.1: `--allow-core-drift` (D11) - the one escape hatch letting
+    # Plastic's own repository, which legitimately drifts from the installed
+    # manifest, dogfood its own runner. Threaded straight into the absorb,
+    # never defaulted true.
+    allow_core_drift = args.include?("--allow-core-drift")
+
     returns = {}
     opt_all(args, "--return").each do |pair|
       node, path = pair.to_s.split("=", 2)
@@ -297,13 +328,23 @@ module Runner
     end
 
     returns.each do |node, path|
-      absorbed = RunnerAbsorb.absorb(context, node: node, return_path: path)
+      absorbed = RunnerAbsorb.absorb(context, node: node, return_path: path, allow_core_drift: allow_core_drift)
       puts "absorbed #{node}: #{absorbed[:state]}"
+      # M4/row 10.3: a refused proposal is surfaced here, not left to a
+      # savepoint comment the operator never sees - the exact reason the
+      # proposer's next attempt otherwise proposes the same thing again.
+      proposal = absorbed[:proposal]
+      puts "  proposal refused: #{Array(proposal[:errors]).join('; ')}" if proposal && !proposal[:ok]
     end
 
     swept = RunnerSweep.reclaim(context, skip: returns.keys)
     swept[:reclaimed].each { |r| puts "reclaimed #{r[:node]} (holder=#{r[:holder]})" }
     swept[:extended].each { |e| puts "extended #{e[:node]} (head=#{e[:head]})" }
+
+    # M5/row 10.4: NodeWorktree.reap runs once per step, right after the
+    # reclaim pass - D26's reaper, unreachable from anywhere until now.
+    reaped = NodeWorktree.reap(context)
+    reaped[:removed].each { |r| puts "reaped #{r[:node]} worktree" }
 
     result = RunnerDispatch.dispatch(context)
     unless result[:ok]
@@ -315,15 +356,28 @@ module Runner
     case result[:status]
     when "dispatched"
       puts result[:plan]
-    when "needs_decision"
-      stop = result[:stop]
-      puts "needs_decision: #{stop[:node]} - #{stop[:question]}"
-      puts stop[:answer_command]
+    when "queued"
+      puts "queued (concurrency ceiling reached)"
     when "complete"
       puts "complete"
+    when "needs_decision"
+      # printed below, alongside a dispatch plan when the same step also
+      # dispatched (M11/row 10.14) - `result[:stop]` is set whenever
+      # status is needs_decision.
     else
       puts "stalled"
       result[:blockers].each { |b| puts "blocked: #{b}" }
+    end
+
+    # M11/row 10.14: a `needs_decision` stop must print even when THIS SAME
+    # step also dispatched other nodes ahead of the decision node in ranked
+    # order - `result[:status]` reads "dispatched" in that case (dispatched
+    # takes priority in RunnerDispatch's own report), which used to swallow
+    # the stop and its `runner answer` command entirely.
+    if result[:stop]
+      stop = result[:stop]
+      puts "needs_decision: #{stop[:node]} - #{stop[:question]}"
+      puts stop[:answer_command]
     end
 
     result[:parked].each do |p|

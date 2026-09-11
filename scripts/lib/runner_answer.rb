@@ -9,6 +9,8 @@ require_relative "atomic_write"
 require_relative "node_file"
 require_relative "node_ids"
 require_relative "runner_core"
+require_relative "node_worktree"
+require_relative "worktree"
 
 # RunnerAnswer (intent 340, G7, n6): closes a decision node into graph.md's
 # ## Decisions (C26), or unparks a work node the runner parked at
@@ -34,14 +36,19 @@ module RunnerAnswer
   module_function
 
   def answer(context, node:, text:, now: Time.now, ledger: NodeLedger,
-             caps: ReadySet::DEFAULT_CAPS, renamer: File.method(:rename))
+             caps: ReadySet::DEFAULT_CAPS, renamer: File.method(:rename),
+             worktree: NodeWorktree, runner: Worktree::ShellRunner.new)
     node = node.to_s
     intent_dir = context.intent_dir
     graph_path = File.join(intent_dir, "graph.md")
 
     return refusal("empty_answer") if text.to_s.strip.empty?
 
-    loaded = ReadySet.load_graph(intent_dir)
+    # M9: a second, unguarded re-parse of graph.md - RunnerCore.context's own
+    # first read is already safe, but this fresh read is not.
+    loaded = RunnerCore.safe_load_graph(intent_dir)
+    return refusal("invalid_graph", errors: loaded[:errors]) unless loaded[:ok]
+
     nodes_decl = loaded[:nodes]
     edges = loaded[:edges]
     before_content = read_savepoint(intent_dir)
@@ -73,7 +80,7 @@ module RunnerAnswer
 
       if cap && attempts >= cap
         respun_to = respin(intent_dir, node, nodes_decl, edges, ledger: ledger, now: now, renamer: renamer,
-                            holder: context.session)
+                            holder: context.session, context: context, worktree: worktree, runner: runner)
       else
         fields = {}
         fields[:holder] = context.session unless blank?(context.session)
@@ -93,7 +100,8 @@ module RunnerAnswer
 
   # --- the hard-cap respin (327 D22) ------------------------------------------
 
-  def respin(intent_dir, node, nodes_decl, edges, ledger:, now:, renamer:, holder: nil)
+  def respin(intent_dir, node, nodes_decl, edges, ledger:, now:, renamer:, holder: nil,
+             context:, worktree: NodeWorktree, runner: Worktree::ShellRunner.new)
     decl = nodes_decl[node] || {}
     kind = decl[:kind]
     node_path = ReadySet.find_node_path(intent_dir, node)
@@ -120,6 +128,10 @@ module RunnerAnswer
     ledger.append_transition(savepoint_path(intent_dir), subject: node, state: "superseded",
                               fields: fields, now: now)
 
+    # M5/D7: a superseded node's evidence no longer needs to survive - its
+    # own worktree releases here, the same as `done`'s does in RunnerAbsorb.
+    worktree.release(context, node: node, state: "superseded", runner: runner)
+
     succ_id
   end
   private_class_method :respin
@@ -144,7 +156,9 @@ module RunnerAnswer
   # --- what became ready (C26) ------------------------------------------------
 
   def newly_ready(intent_dir, before_content:, before_nodes:, before_edges:)
-    after = ReadySet.load_graph(intent_dir)
+    after = RunnerCore.safe_load_graph(intent_dir)
+    return [] unless after[:ok]
+
     after_content = read_savepoint(intent_dir)
 
     after[:nodes].keys.select do |id|

@@ -740,9 +740,14 @@ module NodePacket
 
   # C21: the number of `running` lines already recorded for `node`, plus one
   # when a lease is being supplied by flag (a NEW dispatch), floored at 1.
+  # Minor 5: a torn `running` line (missing holder=/expires=/packet=/model=)
+  # is skipped here exactly as ReadySet.attempts_count already skips it -
+  # counting it desynchronizes this attempt number from the extensions file
+  # a live node's own `packets/<node>--a<N>.extensions` names, since that
+  # file is keyed by the attempt sweep computed off the SAME filtered count.
   def compute_attempt_number(intent_dir:, node:, lease_flag_given:, entries: nil)
     entries ||= NodeLedger.entries(savepoint_path(intent_dir))
-    count = entries.count { |e| e[:subject] == node.to_s && e[:state] == "running" }
+    count = entries.count { |e| !e[:torn] && e[:subject] == node.to_s && e[:state] == "running" }
     [count + (lease_flag_given ? 1 : 0), 1].max
   end
 
@@ -772,7 +777,13 @@ module NodePacket
   # usage (unknown node), 3 unreadable/unparsable graph, node file or
   # record, 4 overflow past the third cut, 5 an existing attempt whose bytes
   # differ.
-  def build(intent_dir:, node:, budget_tokens: DEFAULT_BUDGET_TOKENS, hop_tokens: DEFAULT_HOP_TOKENS,
+  # M7/row 10.9: `budget_tokens: nil` (rather than DEFAULT_BUDGET_TOKENS)
+  # is how a caller says "no override" - the fallback below then reaches for
+  # the node block's OWN declared `budget:` before ever touching the
+  # shipped default, so a caller that never learned about a node's budget
+  # (the CLI, another future caller) still gets it, not just the one path
+  # RunnerDispatch explicitly threads it through (row 10.8).
+  def build(intent_dir:, node:, budget_tokens: nil, hop_tokens: DEFAULT_HOP_TOKENS,
             holder: nil, expires: nil, model: nil, attempt: nil, out: nil, force: false,
             renamer: File.method(:rename), git_runner: DEFAULT_GIT_RUNNER,
             worktree_reader: Arm.method(:worktree_block), project_reader: method(:default_project_reader))
@@ -782,6 +793,8 @@ module NodePacket
     unless nb[:ok]
       return { ok: false, exit_code: nb[:error_kind] == :unknown_node ? 2 : 3, errors: nb[:errors] }
     end
+
+    budget_tokens = (budget_tokens || nb[:budget] || DEFAULT_BUDGET_TOKENS).to_i
 
     record = record_block(intent_dir: intent_dir, kind: nb[:kind])
     return { ok: false, exit_code: 3, errors: record[:errors] } unless record[:ok]

@@ -536,9 +536,11 @@ class RunnerCliTest < Minitest::Test
                                 env: { "CLAUDE_CODE_SESSION_ID" => session })
     assert_equal 0, status.exitstatus, out + err
 
-    entry = NodeLedger.entries(savepoint_path).select { |e| e[:subject] == "n1" }.last
-    assert_equal "failed_verification", entry[:state],
-                 "with --allow-core-drift the return's own status must land, not blocked reason=core_integrity: #{out}#{err}"
+    # The absorbed line, specifically - a later dispatch phase within this
+    # SAME step may retry n1 (a fresh `running` line), which is not what
+    # this row proves.
+    entry = NodeLedger.entries(savepoint_path).select { |e| e[:subject] == "n1" && e[:state] == "failed_verification" }.last
+    refute_nil entry, "the return's own status must land, not blocked reason=core_integrity: #{out}#{err}"
     assert_equal "true", entry[:fields]["allow_core_drift"],
                  "the flag must reach the absorb and be recorded on the transition line"
   end
@@ -657,16 +659,22 @@ class RunnerCliTest < Minitest::Test
   # --- 10.14: a needs_decision stop prints even alongside a dispatch (M11) ----
 
   def test_stop_is_printed_alongside_a_dispatch_plan
-    write_graph("- n1 needs nothing\n- d1 needs nothing\n")
+    # n2's higher batch (it needs the already-done n1) ranks it ahead of the
+    # decision node d1 (FinishFirstRanker prefers the deeper batch), so this
+    # one step both dispatches n2 AND reaches d1's stop - exactly the case
+    # that used to swallow the stop entirely (M11).
+    write_graph("- verify: none reason=fixture\n- n1 needs nothing\n- n2 needs n1\n- d1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
+    write_node("n2.md", node: "n2", kind: "work")
     write_node("d1.md", node: "d1", kind: "decision",
                body: "# d1 - a decision\n\n## Question\nWhich approach should this take?\n")
     session = "stop-alongside-session"
+    write_savepoint(line("n1", "done", gates: "g", commit: "c1", holder: session))
     write_lock(@dir, owner: session)
 
     out, err, status = run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
     assert_equal 0, status.exitstatus, out + err
-    assert_match(/n1/, out, "the dispatch plan for n1 must still print: #{out}")
+    assert_match(/n2/, out, "the dispatch plan for n2 must still print: #{out}")
     assert_match(/needs_decision: d1/, out,
                  "the decision stop must print even though the same step dispatched: #{out}")
   end

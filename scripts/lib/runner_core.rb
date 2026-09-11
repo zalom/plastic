@@ -136,12 +136,33 @@ module RunnerCore
   # (which renders "planned"); a graph.md with no ## Status section gets one
   # created, never a raise - both guarantees come from GraphFile.write_status
   # itself, this method only ever supplies the rows.
+  #
+  # M8: Detail carries the readiness BLOCKERS only for a node still in play;
+  # a TERMINAL node (done, superseded, abandoned) instead renders its own
+  # last transition's fields, so a `done` node reads its commit rather than
+  # the nonsense "n1 is done, not eligible to enter running" every later
+  # transition used to rewrite it to.
   def render_status(context)
     rows = status(context)
     graph_rows = rows.map do |id, view|
-      { node: id, state: view[:state], detail: Array(view[:blockers]).join("; ") }
+      { node: id, state: view[:state], detail: detail_for(view) }
     end
     GraphFile.write_status(File.join(context.intent_dir.to_s, "graph.md"), graph_rows)
+  end
+
+  def detail_for(view)
+    if ReadySet::TERMINAL_STATES.include?(view[:state])
+      transition_detail(view[:last_transition])
+    else
+      Array(view[:blockers]).join("; ")
+    end
+  end
+
+  def transition_detail(last_transition)
+    return "" unless last_transition
+
+    fields = last_transition[:fields] || {}
+    fields.map { |k, v| "#{k}=#{v}" }.join(" ")
   end
 
   def savepoint_content(intent_dir)
@@ -154,5 +175,20 @@ module RunnerCore
   rescue StandardError => e
     errors << "#{label}: #{e.message}"
     nil
+  end
+
+  # safe_load_graph(intent_dir) -> ReadySet.load_graph's own result, or the
+  # same {ok: false, edges: {}, nodes: {}, errors: [...]} shape when the
+  # graph is not the well-formed UTF-8 ReadySet assumes (post-execution
+  # review M9). `step`, `answer` and `rewind` all re-read and re-parse
+  # graph.md fresh, after RunnerCore.context's own first, already-guarded
+  # read (`safe` above) - a raise from THAT second read crossed the
+  # runner's boundary as a raw stack trace. The one safe loader every such
+  # call site uses now, so a graph that goes bad between two reads refuses
+  # cleanly everywhere, not just here.
+  def safe_load_graph(intent_dir)
+    ReadySet.load_graph(intent_dir)
+  rescue StandardError => e
+    { ok: false, edges: {}, nodes: {}, errors: ["graph.md could not be read: #{e.message}"] }
   end
 end

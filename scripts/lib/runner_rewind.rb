@@ -10,6 +10,7 @@ require_relative "graph_file"
 require_relative "atomic_write"
 require_relative "runner_core"
 require_relative "worktree"
+require_relative "node_worktree"
 
 # RunnerRewind (intent 340, G7, n6): resets the intent branch to a node's own
 # recorded commit, marks every downstream node superseded (its evidence no
@@ -33,12 +34,17 @@ module RunnerRewind
   module_function
 
   def rewind(context, node:, confirm:, now: Time.now, ledger: NodeLedger,
-             runner: Worktree::ShellRunner.new, renamer: File.method(:rename))
+             runner: Worktree::ShellRunner.new, renamer: File.method(:rename),
+             worktree: NodeWorktree)
     node = node.to_s
     return refusal("confirm_required") unless confirm
 
     intent_dir = context.intent_dir
-    loaded = ReadySet.load_graph(intent_dir)
+    # M9: a second, unguarded re-parse of graph.md - RunnerCore.context's
+    # own first read is already safe, but this fresh read is not.
+    loaded = RunnerCore.safe_load_graph(intent_dir)
+    return refusal("invalid_graph", detail: Array(loaded[:errors]).join("; ")) unless loaded[:ok]
+
     edges = loaded[:edges]
     nodes_decl = loaded[:nodes]
     before_content = read_savepoint(intent_dir)
@@ -59,9 +65,13 @@ module RunnerRewind
     downstream.each do |d|
       ledger.append_transition(savepoint_path(intent_dir), subject: d, state: "superseded",
                                 fields: { by: node }, now: now)
+      # M5/D7: a rewind-superseded node's evidence no longer stands once the
+      # code it was built on is gone - its worktree releases here too.
+      worktree.release(context, node: d, state: "superseded", runner: runner)
     end
 
-    succ_id = respin(intent_dir, node, nodes_decl, edges, ledger: ledger, now: now, renamer: renamer)
+    succ_id = respin(intent_dir, node, nodes_decl, edges, ledger: ledger, now: now, renamer: renamer,
+                      context: context, worktree: worktree, runner: runner)
 
     RunnerCore.render_status(context)
 
@@ -100,7 +110,8 @@ module RunnerRewind
 
   # --- the respin (327 D22, same shape as RunnerAnswer's hard-cap path) ------
 
-  def respin(intent_dir, node, nodes_decl, edges, ledger:, now:, renamer:)
+  def respin(intent_dir, node, nodes_decl, edges, ledger:, now:, renamer:,
+             context:, worktree: NodeWorktree, runner: Worktree::ShellRunner.new)
     decl = nodes_decl[node] || {}
     kind = decl[:kind]
     node_path = ReadySet.find_node_path(intent_dir, node)
@@ -125,6 +136,10 @@ module RunnerRewind
     ledger.append_transition(savepoint_path(intent_dir), subject: node, state: "superseded",
                               fields: { by: succ_id }, now: now)
 
+    # M5/D7: the rewound node's own worktree releases too, same as the
+    # downstream nodes above.
+    worktree.release(context, node: node, state: "superseded", runner: runner)
+
     succ_id
   end
   private_class_method :respin
@@ -147,7 +162,9 @@ module RunnerRewind
   private_class_method :substitute_id
 
   def newly_ready(intent_dir, before_content:, before_nodes:, before_edges:)
-    after = ReadySet.load_graph(intent_dir)
+    after = RunnerCore.safe_load_graph(intent_dir)
+    return [] unless after[:ok]
+
     after_content = read_savepoint(intent_dir)
 
     after[:nodes].keys.select do |id|
