@@ -323,4 +323,39 @@ class RunnerAnswerTest < Minitest::Test
     d1_row = rows.find { |r| r[:node] == "d1" }
     assert_equal "done", d1_row[:state]
   end
+
+  # === n11: what the fold broke (v2 review) ===================================
+
+  # --- 11.10: answer unparks a blocked node, not only a needs_decision one (v2 NEW-6) --
+
+  def test_answer_unparks_a_blocked_node
+    write_graph("- n2 needs nothing\n")
+    write_work_node("n2")
+    write_savepoint(
+      running_line("n2", packet: "p1") +
+      line("n2", "blocked", reason: "core_integrity")
+    )
+
+    result = RunnerAnswer.answer(build_context, node: "n2", text: "cleared, retry it")
+
+    assert result[:ok], result.inspect
+    assert_nil result[:respun_to]
+    assert_equal "planned", NodeLedger.status_for_content(savepoint_content, "n2"),
+                 "a node the runner itself blocked must be recoverable, not dead forever"
+  end
+
+  # --- 11.11: answer still refuses a node that is not parked at all (v2 NEW-6) --
+
+  def test_answer_still_refuses_a_healthy_node
+    write_graph("- n2 needs nothing\n")
+    write_work_node("n2")
+    write_savepoint(line("n2", "done", gates: "g", commit: "c1", holder: "h"))
+
+    result = RunnerAnswer.answer(build_context, node: "n2", text: "release it anyway")
+
+    refute result[:ok]
+    assert_equal "not_parked", result[:reason],
+                 "widening answer to blocked must never widen it to every state"
+    assert_equal "done", NodeLedger.status_for_content(savepoint_content, "n2")
+  end
 end

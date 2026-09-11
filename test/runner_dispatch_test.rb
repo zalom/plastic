@@ -744,4 +744,25 @@ class RunnerDispatchTest < Minitest::Test
     assert_equal ["n2"], result[:dispatched].map { |d| d[:node] },
                  "an Intent-subject running line must not eat a dispatch slot meant for node subjects"
   end
+
+  # === n11: what the fold broke (v2 review) ===================================
+
+  # --- 11.12: any running node reports queued, not only a ceiling-blocked ready one (v2 NEW-7) --
+
+  def test_running_nodes_report_queued_not_stalled
+    write_graph("- n1 needs nothing\n- n2 needs n1\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    write_node("n2.md", node: "n2", kind: "work")
+    write_savepoint(
+      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p1", model: "sonnet")
+    )
+    ctx = build_context
+
+    result = RunnerDispatch.dispatch(ctx)
+
+    assert result[:ok], result[:errors].inspect
+    assert_empty result[:dispatched]
+    assert_equal "queued", result[:status],
+                 "a node already running, with nothing else ready, is in flight - never stalled"
+  end
 end

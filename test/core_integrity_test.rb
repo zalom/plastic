@@ -94,4 +94,22 @@ class CoreIntegrityTest < Minitest::Test
     refute result[:ok]
     refute_nil result[:reason]
   end
+
+  # --- 11.16: an unreadable tracked file is reported, never raised (v1 minor 6) --
+
+  def test_unreadable_file_is_reported_not_raised
+    f = write_tracked_file("scripts/runner", "content-a")
+    write_manifest([f])
+    File.chmod(0o000, f)
+
+    begin
+      result = CoreIntegrity.check(plastic_home: @home)
+    ensure
+      File.chmod(0o644, f)
+    end
+
+    refute result[:ok]
+    assert_includes result[:drifted], f
+    assert_empty result[:missing]
+  end
 end

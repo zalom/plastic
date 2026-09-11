@@ -656,6 +656,84 @@ class RunnerCliTest < Minitest::Test
     end
   end
 
+  # --- 11.9: a --return on a running node survives a malformed graph.md (v2 NEW-5) --
+
+  # 10.12 above drives every verb generically and never reproduces this: the
+  # raise sits behind `render_status`, reached only from the SAME
+  # `write_transition` a real absorbed return goes through, on a node that
+  # is genuinely `running` when the return comes in.
+  def test_return_on_a_running_node_survives_a_malformed_graph
+    write_malformed_graph
+    write_node("n1.md", node: "n1", kind: "work")
+    session = "malformed-return-session"
+    write_savepoint(line("n1", "running", holder: session, expires: "2099-01-01T00:00:00Z",
+                              packet: "abc", model: "sonnet"))
+    write_lock(@dir, owner: session)
+
+    doc = { "node" => "n1", "status" => "failed_verification", "reason" => "ci broke" }
+    return_path = File.join(@home, "return-n1.yaml")
+    File.write(return_path, YAML.dump(doc))
+
+    out, err, _status = run_cli("step", @dir, "--return", "n1=#{return_path}",
+                                 env: { "CLAUDE_CODE_SESSION_ID" => session })
+
+    refute_match(/\.rb:\d+:in [`']/, out + err,
+                 "a return on a running node must survive a malformed graph.md, never a raw trace: #{out}#{err}")
+    entry = NodeLedger.entries(savepoint_path).select { |e| e[:subject] == "n1" }.last
+    refute_nil entry, "the return must still land a transition despite the malformed graph.md: #{out}#{err}"
+    refute_equal "running", entry[:state], "n1 must never be left stuck running: #{out}#{err}"
+  end
+
+  # --- 11.18: the merge-in-progress warning prints exactly once (v1 minor 3) ---
+
+  def test_merge_warning_is_printed_once
+    slug = "demo-merge-warn"
+    plastic = File.join(@home, ".plastic")
+    repo = File.join(@home, "apps", slug)
+    FileUtils.mkdir_p(repo)
+    git!("init", "-q", "-b", "alpha", dir: repo)
+    git!("config", "user.email", "m@example.com", dir: repo)
+    git!("config", "user.name", "Merge Test", dir: repo)
+    git!("config", "gc.auto", "0", dir: repo)
+    File.write(File.join(repo, "f.txt"), "a\n")
+    git!("add", "f.txt", dir: repo)
+    git!("commit", "-q", "-m", "init", dir: repo)
+
+    File.write(File.join(plastic, "projects.yml"), { "projects" => { slug => { "path" => repo } } }.to_yaml)
+
+    proj_store = File.join(plastic, "projects", slug, "store")
+    @dir = File.join(proj_store, "1--demo")
+    FileUtils.mkdir_p(File.join(@dir, "nodes"))
+    File.write(File.join(@dir, "1--demo.md"), "---\nid: \"1\"\nintent: t\n---\n\n## Intent\nbody\n")
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+
+    intent_worktree = File.join(repo, ".claude", "worktrees", "1--demo")
+    intent_branch = "plastic/1--demo"
+    FileUtils.mkdir_p(File.dirname(intent_worktree))
+    git!("worktree", "add", intent_worktree, "-b", intent_branch, dir: repo)
+
+    # A real conflicting merge, so MERGE_HEAD genuinely resolves in the
+    # intent worktree - the only honest way to prove the warning, not a
+    # fixture standing in for it.
+    git!("checkout", "-q", "-b", "conflict-branch", dir: repo)
+    File.write(File.join(repo, "f.txt"), "b\n")
+    git!("commit", "-q", "-am", "conflicting change", dir: repo)
+    File.write(File.join(intent_worktree, "f.txt"), "c\n")
+    git!("commit", "-q", "-am", "other side", dir: intent_worktree)
+    _out, _err, merge_status = Open3.capture3("git", "-C", intent_worktree, "merge", "conflict-branch")
+    refute merge_status.success?, "fixture sanity: the merge must actually conflict"
+
+    out, err, status = run_cli("step", @dir)
+
+    refute_equal 0, status.exitstatus, out + err
+    combined = out + err
+    occurrences = combined.scan(/merge is (?:already )?in progress/i).length
+    assert_equal 1, occurrences,
+                 "the merge-in-progress warning must print exactly once, not once from the library and " \
+                 "once from the CLI: #{combined.inspect}"
+  end
+
   # --- 10.14: a needs_decision stop prints even alongside a dispatch (M11) ----
 
   def test_stop_is_printed_alongside_a_dispatch_plan

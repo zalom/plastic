@@ -1020,4 +1020,410 @@ class RunnerAbsorbTest < Minitest::Test
     assert_equal "named_test_missing", entry[:fields]["reason"],
                  "the file exists but the exact named method does not - the gate must still refuse"
   end
+
+  # === n11: what the fold broke (v2 review) ===================================
+
+  # A ledger double whose FIRST call raises ArgumentError (standing in for
+  # any return prose the ledger refuses to write, whatever it is) and whose
+  # every later call delegates to the real NodeLedger - proving
+  # write_transition's own fallback actually lands a real, valid line.
+  class UnwritableOnceLedger
+    def initialize
+      @calls = 0
+    end
+
+    def append_transition(*args, **kwargs)
+      @calls += 1
+      raise ArgumentError, "value must not contain a tab or a newline (fixture)" if @calls == 1
+
+      NodeLedger.append_transition(*args, **kwargs)
+    end
+  end
+
+  def write_malformed_graph
+    bad = "# Graph: Demo\n\n## Goal\nG\n\n## Decisions\n- D1 x\n\n## Graph\n" \
+          "- n4 needs nothing\n\xFF\xFE bad bytes\n\n## Status\n| Node | State | Detail |\n| --- | --- | --- |\n"
+    File.binwrite(File.join(@dir, "graph.md"), bad)
+  end
+
+  # --- 11.1: a multi-line question is squashed into one ledger field (v2 NEW-1) --
+
+  def test_multiline_question_is_normalized_into_one_field
+    write_savepoint(running_line)
+    write_node_file
+    touch_named_test
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    context = build_context
+    return_path = write_return(status: "needs_decision", commit: nil,
+                                extra: { "question" => "Line one?\nLine two, with detail." })
+
+    result = RunnerAbsorb.absorb(
+      context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+      worktree: fake_wt, suite_runner: ok_suite, project_reader: command_reader
+    )
+
+    assert_equal "needs_decision", result[:state]
+    assert result[:written], result.inspect
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    refute_match(/[\t\n]/, entry[:raw], "the ledger line itself must never carry a raw tab or newline")
+    assert_equal "Line one? Line two, with detail.", entry[:fields]["question"]
+  end
+
+  # --- 11.2: a return whose prose the ledger still refuses blocks, never raises (v2 NEW-1) --
+
+  def test_unwritable_return_prose_blocks_rather_than_raises
+    write_savepoint(running_line)
+    write_node_file
+    touch_named_test
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    context = build_context
+    return_path = write_return(status: "needs_decision", commit: nil, extra: { "question" => "a real question" })
+    ledger = UnwritableOnceLedger.new
+
+    result = RunnerAbsorb.absorb(
+      context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+      worktree: fake_wt, suite_runner: ok_suite, project_reader: command_reader, ledger: ledger
+    )
+
+    assert_equal "blocked", result[:state]
+    assert result[:written], result.inspect
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_equal "blocked", entry[:state]
+    assert_equal "return_unwritable", entry[:fields]["reason"]
+  end
+
+  # --- 11.3: an unresolvable kind blocks rather than writing done (v2 NEW-2) ----
+
+  def test_unresolvable_kind_blocks_rather_than_writing_done
+    write_savepoint(running_line)
+    write_node_file
+    touch_named_test
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    context = RunnerCore::Context.new(
+      intent_dir: @dir, intent_id: INTENT_ID, intent_slug: INTENT_SLUG,
+      store: nil, plastic_home: @home, session: nil,
+      worktree: @dir, worktree_branch: "plastic/x",
+      graph: { ok: false, edges: {}, nodes: {}, errors: ["graph.md could not be read"] },
+      errors: []
+    )
+    return_path = write_return(status: "done", commit: "exec1234")
+
+    result = RunnerAbsorb.absorb(
+      context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+      worktree: fake_wt, suite_runner: ok_suite, project_reader: command_reader
+    )
+
+    refute_equal "done", result[:state],
+                 "an unresolvable kind must never let done land on unverified work"
+    assert_equal "blocked", result[:state]
+    assert_empty fake_wt.calls, "no worktree call must happen once the graph is unresolvable"
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_equal "blocked", entry[:state]
+    assert_equal "invalid_graph", entry[:fields]["reason"]
+  end
+
+  # --- 11.4: an unmerged commit can never land on done, proven against a real branch (v2 NEW-2) --
+
+  def test_done_requires_the_commit_to_be_merged
+    repo = Dir.mktmpdir("absorb-real-repo")
+    begin
+      real_git("init", "-q", "-b", "alpha", dir: repo)
+      real_git("config", "user.email", "t@example.com", dir: repo)
+      real_git("config", "user.name", "Test", dir: repo)
+      real_git("config", "gc.auto", "0", dir: repo)
+      File.write(File.join(repo, "README.md"), "hi\n")
+      real_git("add", "README.md", dir: repo)
+      real_git("commit", "-q", "-m", "init", dir: repo)
+
+      # A real intent worktree, the shape NodeWorktree itself expects
+      # (`<repo>/.claude/worktrees/<id>--<slug>`) - the ONLY honest way to
+      # drive absorb's own scope/merge machinery for real, rather than a
+      # bare repo path a fixture merely hands it.
+      intent_branch = "plastic/#{INTENT_ID}--#{INTENT_SLUG}"
+      intent_worktree = File.join(repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}")
+      FileUtils.mkdir_p(File.dirname(intent_worktree))
+      real_git("worktree", "add", intent_worktree, "-b", intent_branch, dir: repo)
+
+      # A commit that genuinely exists in the repo but is NOT reachable from
+      # the intent branch - exactly the shape an executor's self-reported
+      # commit takes when NEW-2's merge is skipped entirely.
+      real_git("checkout", "-q", "-b", "off-branch-work", dir: repo)
+      File.write(File.join(repo, "unmerged.txt"), "x\n")
+      real_git("add", "unmerged.txt", dir: repo)
+      real_git("commit", "-q", "-m", "never merged", dir: repo)
+      unmerged_commit = real_git("rev-parse", "HEAD", dir: repo).strip
+
+      write_savepoint(running_line)
+      # No named tests declared: with `kind` unresolvable, the named-tests
+      # gate would otherwise check the wrong directory (the intent worktree,
+      # never a per-node one that was never provisioned for this node) and
+      # refuse for an unrelated reason before ever reaching the merge this
+      # row is actually about.
+      write_node_file("n4", tests: [])
+
+      # graph.md is unresolvable (context.graph[:ok] is false) - NEW-2's
+      # exact reproduction - so absorb must refuse before it ever reaches a
+      # merge or a `done` write.
+      context = RunnerCore::Context.new(
+        intent_dir: @dir, intent_id: INTENT_ID, intent_slug: INTENT_SLUG,
+        store: nil, plastic_home: @home, session: nil,
+        worktree: intent_worktree, worktree_branch: intent_branch,
+        graph: { ok: false, edges: {}, nodes: {}, errors: ["graph.md could not be read"] },
+        errors: []
+      )
+      return_path = write_return(status: "done", commit: unmerged_commit)
+
+      result = RunnerAbsorb.absorb(
+        context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+        worktree: NodeWorktree, suite_runner: ok_suite, project_reader: command_reader
+      )
+
+      refute_equal "done", result[:state],
+                   "an unresolvable kind must never let an unmerged, self-reported commit land as done: #{result.inspect}"
+      entries = NodeLedger.entries(File.join(@dir, "savepoint.md"))
+      refute(entries.any? { |e| e[:subject] == "n4" && e[:state] == "done" },
+             "no done line may ever be written for this commit")
+
+      _out, _err, status = Open3.capture3("git", "-C", repo, "merge-base", "--is-ancestor", unmerged_commit,
+                                           intent_branch)
+      refute status.success?,
+             "fixture sanity: the commit must genuinely NOT be an ancestor of the intent branch"
+    ensure
+      FileUtils.remove_entry(repo) if repo && Dir.exist?(repo)
+    end
+  end
+
+  # --- 11.5: gates= says suite:unreadable on that state, never a bare suite (v2 NEW-3) --
+
+  def test_gates_says_suite_unreadable_on_that_state
+    slug = "demo-project-unreadable"
+    @dir = File.join(@root, "projects", slug, "store", "#{INTENT_ID}--#{INTENT_SLUG}")
+    FileUtils.mkdir_p(File.join(@dir, "nodes"))
+    write_savepoint(running_line)
+    write_node_file
+    touch_named_test
+    File.write(File.join(@root, "projects", slug, "project.yml"), "release:\n  verify: \"unterminated\n")
+
+    fake_wt = FakeWorktree.new(changed: ["scripts/lib/foo.rb"],
+                                paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    context = build_context
+    return_path = write_return(status: "done", commit: "exec1234")
+
+    result = RunnerAbsorb.absorb(
+      context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+      worktree: fake_wt, project_reader: RunnerAbsorb.method(:default_project_reader)
+    )
+
+    assert_equal "blocked", result[:state]
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    gates = entry[:fields]["gates"].split("+")
+    assert_includes gates, "suite:unreadable"
+    refute_includes gates, "suite"
+  end
+
+  # --- 11.6: the findings append no longer claims a guard it lacks (v2 NEW-4) --
+
+  def test_finding_append_does_not_claim_a_guard_it_lacks
+    record_path = File.join(@dir, "#{INTENT_ID}--#{INTENT_SLUG}.md")
+    File.write(record_path, <<~MD)
+      ---
+      id: "#{INTENT_ID}"
+      intent: t
+      ---
+
+      ## Intent
+      body
+
+      ## Insights
+      (observations captured throughout)
+    MD
+
+    # A concurrent flock held on the SAME path, exactly the hold
+    # GuardedAppend itself would take under the old shape - the previous
+    # code took this same lock and, on contention, retried for ~100ms and
+    # then silently dropped the finding. Proving append_findings now lands
+    # its write regardless is proof the false guard is gone.
+    holder = File.open(record_path, File::RDWR)
+    holder.flock(File::LOCK_EX)
+    begin
+      write_savepoint(running_line)
+      result, = absorb_happy(return_extra: { "findings" => ["a concurrent finding"] })
+      assert_equal "done", result[:state]
+    ensure
+      holder.flock(File::LOCK_UN)
+      holder.close
+    end
+
+    content = File.read(record_path)
+    assert_match(/- \[n4\] a concurrent finding/, content,
+                 "append_findings must land its write even while another session holds the old flock")
+  end
+
+  # --- 11.7: the findings append stays atomic without the false guard (v2 NEW-4) --
+
+  def test_finding_append_stays_atomic
+    record_path = File.join(@dir, "#{INTENT_ID}--#{INTENT_SLUG}.md")
+    original = <<~MD
+      ---
+      id: "#{INTENT_ID}"
+      intent: t
+      ---
+
+      ## Intent
+      body
+
+      ## Insights
+      (observations captured throughout)
+    MD
+    File.write(record_path, original)
+
+    failing_renamer = ->(_from, _to) { raise Errno::EACCES, "fixture: rename refused" }
+
+    result = RunnerAbsorb.send(:append_findings, @dir, "n4", ["a finding that never lands"], now: Time.now,
+                                renamer: failing_renamer)
+
+    assert_nil result, "a failed append is best-effort, D16 - it must never raise into absorb"
+    assert_equal original, File.read(record_path),
+                 "a failed rename must never leave a half-written or truncated intent record"
+    refute(Dir.glob(File.join(@dir, ".*.tmp.*")).any?,
+           "AtomicWrite must clean up its own temp file on a failed rename")
+  end
+
+  # --- 11.8: the proposal path refuses a malformed graph without raising (v2 NEW-5) --
+
+  def test_proposal_path_refuses_a_malformed_graph_without_raising
+    write_savepoint(running_line)
+    write_node_file
+    touch_named_test
+    # graph.md on disk is malformed even though the context resolved before
+    # this step started still says ok: true (it was parsed once, earlier) -
+    # RunnerProposals re-reads graph.md fresh from disk on its own, never
+    # trusting context.graph, and that fresh read hits the real invalid byte
+    # sequence.
+    write_malformed_graph
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    context = build_context
+    return_path = write_return(
+      extra: { "proposed_nodes" => [{ "kind" => "work", "title" => "New work", "needs" => [] }] }
+    )
+
+    result = RunnerAbsorb.absorb(
+      context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+      worktree: fake_wt, suite_runner: ok_suite, project_reader: command_reader
+    )
+
+    assert_equal "done", result[:state]
+    refute_nil result[:proposal], "a malformed graph.md must still report a proposal refusal, never raise"
+    refute result[:proposal][:ok]
+    assert_match(/unreadable/i, result[:proposal][:errors].join)
+  end
+
+  # --- 11.13: an accepted proposal's own validator verdict is reported (v2 minor 8) --
+
+  def test_proposal_validator_verdict_is_reported
+    write_savepoint(running_line)
+    write_node_file
+    touch_named_test
+    record_path = File.join(@dir, "#{INTENT_ID}--#{INTENT_SLUG}.md")
+    File.write(record_path, <<~MD)
+      ---
+      id: "#{INTENT_ID}"
+      intent: t
+      ---
+
+      ## Intent
+      body
+    MD
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    context = build_context
+    return_path = write_return(
+      extra: { "proposed_nodes" => [{ "kind" => "work", "title" => "New work", "needs" => [] }] }
+    )
+    proposals = ProposalsSpy.new(
+      result: { ok: true, minted: ["n9"],
+                validator: { ok: false, missing: [], errors: ["cyclic graph, cannot validate: n9 > n9"] },
+                errors: [] }
+    )
+
+    result = RunnerAbsorb.absorb(
+      context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+      worktree: fake_wt, suite_runner: ok_suite, project_reader: command_reader, proposals: proposals
+    )
+
+    assert_equal "done", result[:state]
+    content = File.read(record_path)
+    assert_match(/\[n4\].*invalidates the graph/, content)
+    assert_match(/cyclic graph/, content)
+  end
+
+  # --- 11.14: a proposal is applied only on a done return (v2 minor 11) --------
+
+  def test_proposals_are_not_applied_on_a_failing_return
+    write_savepoint(running_line)
+    write_node_file
+    touch_named_test
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    context = build_context
+    return_path = write_return(
+      status: "failed_verification", commit: nil,
+      extra: { "reason" => "broke ci", "proposed_nodes" => [{ "kind" => "work", "title" => "New work", "needs" => [] }] }
+    )
+    proposals = ProposalsSpy.new
+
+    result = RunnerAbsorb.absorb(
+      context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+      worktree: fake_wt, suite_runner: ok_suite, project_reader: command_reader, proposals: proposals
+    )
+
+    assert_equal "failed_verification", result[:state]
+    assert_empty proposals.calls, "a failing return must never grow the graph"
+    assert_nil result[:proposal]
+  end
+
+  # --- 11.15: a project.yml that parses to a non-Hash is unreadable, not absent (v2 minor 13) --
+
+  def test_non_hash_project_record_is_unreadable
+    slug = "demo-project-non-hash"
+    @dir = File.join(@root, "projects", slug, "store", "#{INTENT_ID}--#{INTENT_SLUG}")
+    FileUtils.mkdir_p(File.join(@dir, "nodes"))
+    write_savepoint(running_line)
+    write_node_file
+    touch_named_test
+    File.write(File.join(@root, "projects", slug, "project.yml"), "- just\n- an\n- array\n")
+
+    fake_wt = FakeWorktree.new(changed: ["scripts/lib/foo.rb"],
+                                paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    context = build_context
+    return_path = write_return(status: "done", commit: "exec1234")
+
+    result = RunnerAbsorb.absorb(
+      context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+      worktree: fake_wt, project_reader: RunnerAbsorb.method(:default_project_reader)
+    )
+
+    assert_equal "blocked", result[:state]
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_equal "verify_command_unreadable", entry[:fields]["reason"]
+  end
+
+  # --- 11.17: the suite counts come from the LAST summary line (v1 minor 7) ----
+
+  def test_suite_counts_come_from_the_last_summary
+    dir = Dir.mktmpdir("absorb-suite-fixture")
+    script = File.join(dir, "fake_suite.rb")
+    File.write(script, <<~RUBY)
+      puts "3 runs, 3 assertions, 1 failures, 0 errors"
+      puts "10 runs, 20 assertions, 0 failures, 0 errors"
+    RUBY
+
+    result = RunnerAbsorb.default_suite_runner(dir: dir, command: "ruby #{script}")
+
+    assert result[:ok], result.inspect
+    assert_equal 10, result[:runs]
+    assert_equal 20, result[:assertions]
+    assert_equal 0, result[:failures]
+    assert_equal 0, result[:errors]
+  ensure
+    FileUtils.remove_entry(dir) if dir && Dir.exist?(dir)
+  end
 end
