@@ -631,4 +631,117 @@ class RunnerDispatchTest < Minitest::Test
     row = rows.find { |r| r[:node] == "n1" }
     assert_equal "running", row[:state]
   end
+
+  # --- 10.6: a failed packet build rolls back the worktree it provisioned (M6) --
+
+  def test_failed_packet_build_rolls_back_the_worktree
+    setup_real_repo
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    ctx = build_context(worktree: @intent_worktree, worktree_branch: @intent_branch)
+
+    failing_builder = ->(**_kwargs) { { ok: false, errors: ["synthetic packet build failure"] } }
+
+    result = RunnerDispatch.dispatch(ctx, packet_builder: failing_builder)
+    assert result[:ok], result[:errors].inspect
+    assert_empty result[:dispatched]
+
+    node_path = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}--n1")
+    refute Dir.exist?(node_path), "a failed packet build must roll back the worktree it provisioned"
+  end
+
+  # --- 10.7: a failed packet build's errors reach the step's blockers (M6) ----
+
+  def test_failed_packet_build_names_the_node_and_the_reason
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    ctx = build_context
+
+    failing_builder = ->(**_kwargs) { { ok: false, errors: ["synthetic packet build failure"] } }
+
+    result = RunnerDispatch.dispatch(ctx, packet_builder: failing_builder)
+    assert result[:ok], result[:errors].inspect
+    assert_empty result[:dispatched]
+    assert_equal "stalled", result[:status]
+    refute_empty result[:blockers]
+    assert(result[:blockers].any? { |b| b.include?("n1") && b.include?("synthetic packet build failure") },
+           result[:blockers].inspect)
+  end
+
+  # --- 10.8: the node's declared budget: reaches the packet builder (M7) ------
+
+  def test_dispatch_passes_the_nodes_declared_budget
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work", budget: 123_456)
+    ctx = build_context
+
+    seen_budget = nil
+    spy_builder = lambda do |**kwargs|
+      seen_budget = kwargs[:budget_tokens]
+      NodePacket.build(**kwargs)
+    end
+
+    result = RunnerDispatch.dispatch(ctx, packet_builder: spy_builder)
+    assert result[:ok], result[:errors].inspect
+    assert_equal 123_456, seen_budget
+  end
+
+  # --- 10.13: the concurrency ceiling reports queued, never stalled (M10) -----
+
+  def test_ceiling_full_reports_queued_not_stalled
+    write_graph("- verify: none reason=fixture\n- n1 needs nothing\n- n2 needs nothing\n- n3 needs nothing\n")
+    %w[n1 n2 n3].each { |n| write_node("#{n}.md", node: n, kind: "work") }
+    write_savepoint(
+      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p1", model: "sonnet") +
+      line("n2", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p2", model: "sonnet")
+    )
+    ctx = build_context
+
+    result = RunnerDispatch.dispatch(ctx)
+    assert result[:ok], result[:errors].inspect
+    assert_empty result[:dispatched]
+    assert_equal "queued", result[:status],
+                 "a ready node waiting only on the concurrency ceiling must never read as stalled"
+  end
+
+  # --- 10.16: a refused running rolls back only the worktree THIS dispatch made (M13) --
+
+  def test_rollback_keeps_a_preexisting_worktree
+    setup_real_repo
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    ctx = build_context(worktree: @intent_worktree, worktree_branch: @intent_branch)
+
+    # A prior attempt's worktree, kept on disk per D7 (failed_verification
+    # keeps evidence) - this dispatch must never destroy it on its OWN refusal.
+    pre = NodeWorktree.provision(ctx, node: "n1", kind: "work")
+    assert pre[:ok] && pre[:provisioned], pre.inspect
+    node_path = pre[:path]
+    assert Dir.exist?(node_path)
+
+    result = RunnerDispatch.dispatch(ctx, ledger: RefusingRunningLedger.new)
+    assert result[:ok], result[:errors].inspect
+    assert_empty result[:dispatched]
+
+    assert Dir.exist?(node_path),
+           "a refused running write must never delete a worktree that existed before this dispatch"
+  end
+
+  # --- 10.21: the ceiling counts node subjects only, never Intent (minor 9) ---
+
+  def test_ceiling_counts_only_node_subjects
+    write_graph("- verify: none reason=fixture\n- n1 needs nothing\n- n2 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    write_node("n2.md", node: "n2", kind: "work")
+    write_savepoint(
+      line("Intent", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "px", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p1", model: "sonnet")
+    )
+    ctx = build_context
+
+    result = RunnerDispatch.dispatch(ctx, limit: 2)
+    assert result[:ok], result[:errors].inspect
+    assert_equal ["n2"], result[:dispatched].map { |d| d[:node] },
+                 "an Intent-subject running line must not eat a dispatch slot meant for node subjects"
+  end
 end

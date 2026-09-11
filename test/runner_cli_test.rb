@@ -21,6 +21,8 @@ require_relative "../scripts/lib/graph_file"
 require_relative "../scripts/lib/arm"
 require_relative "../scripts/lib/lock"
 require_relative "../scripts/lib/core_integrity"
+require_relative "../scripts/lib/node_worktree"
+require_relative "../scripts/lib/worktree"
 
 # scripts/runner (intent 340, G7, n1): the one executable with a subcommand
 # table, its shared context (RunnerCore), and the two read-only queries plus
@@ -507,5 +509,191 @@ class RunnerCliTest < Minitest::Test
 
   def savepoint_path
     File.join(@dir, "savepoint.md")
+  end
+
+  def git!(*args, dir:)
+    out, err, status = Open3.capture3("git", "-C", dir, *args.map(&:to_s))
+    raise "git #{args.join(' ')} failed: #{err}" unless status.success?
+
+    out
+  end
+
+  # --- 10.1: --allow-core-drift reaches the absorb (M3) -----------------------
+
+  def test_allow_core_drift_flag_reaches_the_absorb
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work", files: [])
+    session = "drift-session"
+    write_savepoint(line("n1", "running", holder: session, expires: "2099-01-01T00:00:00Z",
+                              packet: "abc", model: "sonnet"))
+    write_lock(@dir, owner: session)
+
+    doc = { "node" => "n1", "status" => "failed_verification", "reason" => "synthetic" }
+    return_path = File.join(@home, "return-n1.yaml")
+    File.write(return_path, YAML.dump(doc))
+
+    out, err, status = run_cli("step", @dir, "--return", "n1=#{return_path}", "--allow-core-drift",
+                                env: { "CLAUDE_CODE_SESSION_ID" => session })
+    assert_equal 0, status.exitstatus, out + err
+
+    entry = NodeLedger.entries(savepoint_path).select { |e| e[:subject] == "n1" }.last
+    assert_equal "failed_verification", entry[:state],
+                 "with --allow-core-drift the return's own status must land, not blocked reason=core_integrity: #{out}#{err}"
+    assert_equal "true", entry[:fields]["allow_core_drift"],
+                 "the flag must reach the absorb and be recorded on the transition line"
+  end
+
+  # --- 10.4: `step` reaps stale node worktrees after the reclaim pass (M5) ----
+
+  def test_step_reaps_stale_node_worktrees
+    slug = "demo-reap"
+    plastic = File.join(@home, ".plastic")
+    repo = File.join(@home, "apps", slug)
+    FileUtils.mkdir_p(repo)
+    git!("init", "-q", "-b", "alpha", dir: repo)
+    git!("config", "user.email", "reap@example.com", dir: repo)
+    git!("config", "user.name", "Reap Test", dir: repo)
+    git!("config", "gc.auto", "0", dir: repo)
+    File.write(File.join(repo, "README.md"), "hi\n")
+    git!("add", "README.md", dir: repo)
+    git!("commit", "-q", "-m", "init", dir: repo)
+
+    File.write(File.join(plastic, "projects.yml"), { "projects" => { slug => { "path" => repo } } }.to_yaml)
+
+    proj_store = File.join(plastic, "projects", slug, "store")
+    @dir = File.join(proj_store, "1--demo")
+    FileUtils.mkdir_p(File.join(@dir, "nodes"))
+    File.write(File.join(@dir, "1--demo.md"), "---\nid: \"1\"\nintent: t\n---\n\n## Intent\nbody\n")
+
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+
+    intent_worktree = File.join(repo, ".claude", "worktrees", "1--demo")
+    intent_branch = "plastic/1--demo"
+    FileUtils.mkdir_p(File.dirname(intent_worktree))
+    git!("worktree", "add", intent_worktree, "-b", intent_branch, dir: repo)
+
+    # A stale, terminal, fully-merged node worktree - exactly what
+    # NodeWorktree.reap must remove once `step` actually calls it.
+    node_branch = "plastic/1--demo--n1"
+    node_worktree = File.join(repo, ".claude", "worktrees", "1--demo--n1")
+    git!("worktree", "add", node_worktree, "-b", node_branch, intent_branch, dir: repo)
+    write_savepoint(line("n1", "done", gates: "g", commit: "c1", holder: "h"))
+
+    session = "reap-session"
+    write_lock(@dir, owner: session)
+
+    out, err, status = run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
+    assert_equal 0, status.exitstatus, out + err
+    refute Dir.exist?(node_worktree),
+           "a stale, merged, terminal node worktree must be reaped by the same step: #{out}#{err}"
+  end
+
+  # --- 10.10: a terminal node's Detail renders its last transition, not a blocker (M8) --
+
+  def test_status_table_detail_shows_commit_for_a_done_node
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    write_savepoint(line("n1", "done", gates: "integrity+schema+scope+named_tests+merge+suite",
+                              commit: "abc1234", holder: "auto-1"))
+
+    context = RunnerCore.context(intent_dir: @dir, home: @home, env: nil)
+    result = RunnerCore.render_status(context)
+    assert result[:ok], result[:errors].inspect
+
+    rows = GraphFile.status_rows(File.join(@dir, "graph.md"))
+    row = rows.find { |r| r[:node] == "n1" }
+    assert_equal "done", row[:state]
+    assert_match(/commit=abc1234/, row[:detail])
+    refute_match(/not eligible to enter running/, row[:detail])
+  end
+
+  # --- 10.11: a non-terminal node keeps its blockers in Detail (M8) -----------
+
+  def test_status_table_detail_shows_blockers_for_a_blocked_node
+    write_graph("- n1 needs nothing\n- n2 needs n1\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    write_node("n2.md", node: "n2", kind: "work")
+    write_savepoint(line("n1", "blocked", reason: "waiting on owner"))
+
+    context = RunnerCore.context(intent_dir: @dir, home: @home, env: nil)
+    result = RunnerCore.render_status(context)
+    assert result[:ok], result[:errors].inspect
+
+    rows = GraphFile.status_rows(File.join(@dir, "graph.md"))
+    n2_row = rows.find { |r| r[:node] == "n2" }
+    assert_match(/needs target n1/, n2_row[:detail])
+  end
+
+  # --- 10.12: step/answer/rewind refuse a malformed graph.md, never raise (M9) ---
+
+  def write_malformed_graph
+    bad = "# Graph: Demo\n\n## Goal\nG\n\n## Decisions\n- D1 x\n\n## Graph\n" \
+          "- n1 needs nothing\n\xFF\xFE bad bytes\n\n## Status\n| Node | State | Detail |\n| --- | --- | --- |\n"
+    File.binwrite(File.join(@dir, "graph.md"), bad)
+  end
+
+  def test_verbs_refuse_a_malformed_graph_without_raising
+    write_malformed_graph
+    write_node("n1.md", node: "n1", kind: "work")
+
+    session = "malformed-graph-session"
+    write_lock(@dir, owner: session)
+
+    checks = {
+      "step" => [],
+      "answer" => ["--node", "n1", "--answer", "go"],
+      "rewind" => ["--node", "n1", "--confirm"],
+    }
+
+    checks.each do |verb, extra_args|
+      out, err, _status = run_cli(verb, @dir, *extra_args, env: { "CLAUDE_CODE_SESSION_ID" => session })
+      refute_match(/\.rb:\d+:in [`']/, out + err,
+                   "#{verb} must not raise a raw stack trace on a malformed graph.md: #{out}#{err}")
+      assert_match(/runner:/, err, "#{verb} must print a plain runner refusal: #{out}#{err}")
+    end
+  end
+
+  # --- 10.14: a needs_decision stop prints even alongside a dispatch (M11) ----
+
+  def test_stop_is_printed_alongside_a_dispatch_plan
+    write_graph("- n1 needs nothing\n- d1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    write_node("d1.md", node: "d1", kind: "decision",
+               body: "# d1 - a decision\n\n## Question\nWhich approach should this take?\n")
+    session = "stop-alongside-session"
+    write_lock(@dir, owner: session)
+
+    out, err, status = run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
+    assert_equal 0, status.exitstatus, out + err
+    assert_match(/n1/, out, "the dispatch plan for n1 must still print: #{out}")
+    assert_match(/needs_decision: d1/, out,
+                 "the decision stop must print even though the same step dispatched: #{out}")
+  end
+
+  # --- 10.18: an unrecognized flag is refused, never silently ignored (minor 2) --
+
+  def test_unknown_flag_is_refused
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+
+    out, err, status = run_cli("status", @dir, "--session", "sneaky")
+    assert_equal 2, status.exitstatus, out + err
+    assert_match(/unknown flag/i, err)
+  end
+
+  # --- 10.22: the CHANGELOG names six checks and the real proposal behavior (minor 10) --
+
+  def test_changelog_says_six_checks
+    path = File.expand_path("../CHANGELOG.md", __dir__)
+    changelog = File.read(path)
+    start_idx = changelog.index("- 340 (G7")
+    refute_nil start_idx, "the 340 CHANGELOG entry must exist"
+    stop_idx = changelog.index("\n- 339 (G6", start_idx)
+    entry = changelog[start_idx...stop_idx]
+
+    assert_match(/all six/, entry, "the gate runs six checks: integrity, schema, scope, named_tests, merge, suite")
+    refute_match(/all five/, entry)
+    refute_match(/accepted proposals.*ledger-line/, entry)
   end
 end

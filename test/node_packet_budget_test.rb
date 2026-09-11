@@ -574,4 +574,39 @@ class NodePacketBudgetTest < Minitest::Test
     MD
     source_dir
   end
+
+  # --- 10.9: no budget_tokens given falls back to the node block's own budget (M7) --
+
+  def test_build_uses_the_node_blocks_budget_when_none_is_given
+    write_node("n1", budget: 100_000)
+    write_graph("- n1 needs nothing\n")
+    pad = "x" * 400
+    insights_body = (1..80).map { |i| "2026-01-01T00:00:00Z · Exec · tester — insight #{i} #{pad}\n" }.join
+    write_record(insights_count: 0)
+    File.write(record_path, File.read(record_path).sub(
+      "(observations captured throughout — raw material for future intents)\n", insights_body
+    ))
+
+    result = build(node: "n1")
+
+    assert result[:ok], "the node's own 100000-token budget must be honored, not the 8000 default: #{result.inspect}"
+    assert_empty result[:cuts_applied],
+                 "a budget this large must need no cut at all when the node's own budget: is honored"
+  end
+
+  # --- 10.20: a torn running line is skipped when computing the attempt number (minor 5) --
+
+  def test_attempt_number_skips_torn_lines
+    setup_minimal(intent_text: "Torn line test.")
+    File.write(File.join(@dir, "savepoint.md"), <<~LEDGER)
+      2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z packet=abc model=sonnet
+      2026-09-01T00:30:00Z  n1  running holder=h1
+      2026-09-01T01:00:01Z  n1  failed_verification gates=lint reason="nope"
+      2026-09-01T02:00:00Z  n1  running holder=h2 expires=2026-09-01T03:00:00Z packet=def model=sonnet
+    LEDGER
+    result = build
+
+    assert_equal 2, result[:attempt],
+                 "a torn running line (missing expires/packet/model) must not count toward the attempt number"
+  end
 end

@@ -6,6 +6,7 @@ require "time"
 
 require_relative "../scripts/lib/runner_policy"
 require_relative "../scripts/lib/node_ledger"
+require_relative "../scripts/lib/agent_models"
 
 # RunnerPolicy (intent 340, G7, n5): the kind table. Matrix rows 5.12-5.17
 # and 5.21 in actions/ACTION_1.md n5 (every other n5 row lives in
@@ -112,5 +113,28 @@ class RunnerPolicyTest < Minitest::Test
     assert_operator work_expires, :>, verify_expires,
                      "a long work build must not share verify's short lease"
     assert_operator work_expires, :>, now
+  end
+
+  # --- 10.19: the shipped executor default resolves through AgentModels ------
+  #
+  # A value comparison cannot tell "hardcoded, coincidentally equal" apart
+  # from "resolved through AgentModels::TIER_DEFAULTS" (both read "sonnet"
+  # today, and Ruby's frozen-string-literal dedup even makes them the same
+  # object). This reads RunnerPolicy's OWN declaration line and requires it
+  # to name AgentModels::TIER_DEFAULTS, never a second bare literal.
+
+  def test_models_resolve_through_agent_models
+    assert_equal "sonnet", AgentModels::TIER_DEFAULTS.fetch("plastic-executor"),
+                 "fixture assumption: this test targets the shipped plastic-executor tier"
+
+    source = File.read(File.expand_path("../scripts/lib/runner_policy.rb", __dir__))
+    default_line = source[/^\s*DEFAULT_EXECUTOR_MODEL\s*=.*$/]
+    refute_nil default_line, "DEFAULT_EXECUTOR_MODEL must be declared in runner_policy.rb"
+    assert_match(/AgentModels::TIER_DEFAULTS/, default_line,
+                 "RunnerPolicy's default executor model must be resolved through " \
+                 "AgentModels::TIER_DEFAULTS, not a second hardcoded literal (D19)")
+    refute_match(/"sonnet"/, default_line,
+                 "must resolve through AgentModels::TIER_DEFAULTS alone, not also carry the bare literal")
+    assert_equal AgentModels::TIER_DEFAULTS.fetch("plastic-executor"), RunnerPolicy::DEFAULT_EXECUTOR_MODEL
   end
 end

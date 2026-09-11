@@ -14,6 +14,8 @@ require_relative "../scripts/lib/guarded_append"
 require_relative "../scripts/lib/outcome_report"
 require_relative "../scripts/lib/runner_proposals"
 require_relative "../scripts/lib/node_worktree"
+require_relative "../scripts/lib/runner_answer"
+require_relative "../scripts/lib/atomic_write"
 
 # RunnerAbsorb (intent 340, G7, n4): the gate that turns one executor return
 # into exactly one node ledger transition. Matrix rows 4.13-4.36, 4.39-4.44 in
@@ -66,6 +68,22 @@ class RunnerAbsorbTest < Minitest::Test
   class UnavailableLedger
     def append_transition(*)
       raise GuardedAppend::Unavailable, "lock contention (fixture)"
+    end
+  end
+
+  # --- a configurable RunnerProposals double for rows 10.2/10.3 ---------------
+
+  class ProposalsSpy
+    attr_reader :calls
+
+    def initialize(result: { ok: true, minted: ["n9"], validator: { ok: true, errors: [] }, errors: [] })
+      @calls = []
+      @result = result
+    end
+
+    def accept(_context, proposer:, proposed_nodes: [], proposed_edges: [], now: Time.now)
+      @calls << { proposer: proposer, proposed_nodes: proposed_nodes, proposed_edges: proposed_edges }
+      @result
     end
   end
 
@@ -135,10 +153,20 @@ class RunnerAbsorbTest < Minitest::Test
     MD
   end
 
-  def touch_named_test(basename = "runner_absorb_fixture_test")
+  # Row 10.17: writes a fixture test FILE that also defines the named METHOD,
+  # not just a comment - `missing_named_tests?` now proves the method exists,
+  # so a fixture carrying only "# fixture" would wrongly read as missing for
+  # every test in this file that expects the named-tests gate to pass.
+  def touch_named_test(basename = "runner_absorb_fixture_test", method: "test_ok")
     path = File.join(@node_wt, "test", "#{basename}.rb")
     FileUtils.mkdir_p(File.dirname(path))
-    File.write(path, "# fixture\n")
+    File.write(path, <<~RUBY)
+      # fixture
+      class RunnerAbsorbFixtureTest < Minitest::Test
+        def #{method}
+        end
+      end
+    RUBY
   end
 
   def write_return(node: "n4", status: "done", commit: "exec1234", extra: {})
@@ -852,5 +880,144 @@ class RunnerAbsorbTest < Minitest::Test
     raise "git #{args.join(' ')} failed: #{err}" unless status.success?
 
     out
+  end
+
+  # --- 10.2: a proposal is accepted from production, not just validated -------
+
+  def test_absorb_accepts_a_proposed_node
+    write_savepoint(running_line)
+    write_node_file
+    touch_named_test
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    context = build_context
+    return_path = write_return(
+      extra: { "proposed_nodes" => [{ "kind" => "work", "title" => "New work", "needs" => [] }] }
+    )
+    proposals = ProposalsSpy.new
+
+    result = RunnerAbsorb.absorb(
+      context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+      worktree: fake_wt, suite_runner: ok_suite, project_reader: command_reader, proposals: proposals
+    )
+
+    assert_equal "done", result[:state]
+    assert_equal 1, proposals.calls.length, "RunnerProposals.accept must be called in production, not merely tested alone"
+    assert_equal "n4", proposals.calls.first[:proposer]
+    assert_equal 1, proposals.calls.first[:proposed_nodes].length
+  end
+
+  # --- 10.3: a refused proposal is surfaced in the step report ----------------
+
+  def test_refused_proposal_is_reported
+    write_savepoint(running_line)
+    write_node_file
+    touch_named_test
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    context = build_context
+    return_path = write_return(
+      extra: { "proposed_nodes" => [{ "kind" => "work", "title" => "New work", "needs" => [] }] }
+    )
+    proposals = ProposalsSpy.new(
+      result: { ok: false, minted: [], validator: nil,
+                errors: ["edge n9->n10 refused (would_cycle): would make the graph cyclic"] }
+    )
+
+    result = RunnerAbsorb.absorb(
+      context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+      worktree: fake_wt, suite_runner: ok_suite, project_reader: command_reader, proposals: proposals
+    )
+
+    assert_equal "done", result[:state]
+    refute_nil result[:proposal], "a refused proposal must land in absorb's own result, not be silently dropped"
+    refute result[:proposal][:ok]
+    assert_includes result[:proposal][:errors].join, "would_cycle"
+  end
+
+  # --- 10.5: a superseded node releases its own worktree (M5) -----------------
+
+  def test_superseded_node_releases_its_worktree
+    File.write(File.join(@dir, "graph.md"), <<~MD)
+      # Graph: Fixture
+
+      ## Goal
+      Ship it.
+
+      ## Decisions
+      - D1 pick approach
+
+      ## Graph
+      - n1 needs nothing
+
+      ## Status
+      | Node | State | Detail |
+      | --- | --- | --- |
+    MD
+    write_node_file("n1")
+    write_savepoint(
+      running_line(node: "n1", holder: "h") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T02:00:00Z", packet: "p2", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T03:00:00Z", packet: "p3", model: "sonnet") +
+      line("n1", "needs_decision", question: "capped")
+    )
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "plastic/x--n1", "repo" => @dir })
+    context = build_context(node: "n1", kind: "work")
+
+    result = RunnerAnswer.answer(context, node: "n1", text: "retry it", worktree: fake_wt)
+
+    assert result[:ok], result.inspect
+    refute_nil result[:respun_to], "a hard-capped node at needs_decision must respin, superseding itself"
+    assert_includes fake_wt.released, ["n1", "superseded"],
+                     "RunnerAnswer.respin must release the superseded node's own worktree (D7)"
+  end
+
+  # --- 10.15: findings land through GuardedAppend, keeping the trailing newline (M12) ---
+
+  def test_findings_are_appended_under_the_guard
+    write_savepoint(running_line)
+    record_path = File.join(@dir, "#{INTENT_ID}--#{INTENT_SLUG}.md")
+    File.write(record_path, <<~MD)
+      ---
+      id: "#{INTENT_ID}"
+      intent: t
+      ---
+
+      ## Intent
+      body
+
+      ## Insights
+      (observations captured throughout)
+
+      ### Findings
+      - [n1] existing finding
+    MD
+
+    result, = absorb_happy(return_extra: { "findings" => ["a brand new finding"] })
+    assert_equal "done", result[:state]
+
+    content = File.read(record_path)
+    assert content.end_with?("\n"), "the intent record must keep its trailing newline: #{content.inspect}"
+    refute_match(/\n\n- \[n4\] a brand new finding/, content,
+                 "the new bullet must not land after a spurious blank line")
+    assert_match(/- \[n4\] a brand new finding\n\z/, content)
+  end
+
+  # --- 10.17: the named-tests gate checks the method, not only the file -------
+
+  def test_named_tests_gate_checks_the_method_not_the_file
+    write_savepoint(running_line)
+    write_node_file("n4", tests: ["runner_absorb_fixture_test#test_ok"])
+    touch_named_test("runner_absorb_fixture_test", method: "test_something_else")
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    context = build_context
+
+    result = RunnerAbsorb.absorb(
+      context, node: "n4", return_path: write_return, integrity_checker: ok_integrity,
+      worktree: fake_wt, suite_runner: ok_suite, project_reader: command_reader
+    )
+
+    assert_equal "failed_verification", result[:state]
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_equal "named_test_missing", entry[:fields]["reason"],
+                 "the file exists but the exact named method does not - the gate must still refuse"
   end
 end
