@@ -48,8 +48,18 @@ module CoreIntegrity
         next
       end
 
-      actual_hash = Digest::SHA256.file(path).hexdigest
-      drifted << path unless actual_hash == expected_hash
+      # v1 minor 6/row 11.16: a tracked file that exists but cannot be read
+      # (permissions changed under this process) must never raise out of a
+      # module whose whole contract is "never raises across its boundary" -
+      # unreadable is reported the same way a hash mismatch is: this
+      # process cannot confirm the file matches what the manifest expects,
+      # which is exactly what `drifted` already means.
+      actual_hash = begin
+        Digest::SHA256.file(path).hexdigest
+      rescue SystemCallError
+        nil
+      end
+      drifted << path if actual_hash.nil? || actual_hash != expected_hash
     end
 
     { ok: drifted.empty? && missing.empty?, drifted: drifted, missing: missing, reason: nil }

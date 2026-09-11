@@ -166,7 +166,7 @@ module RunnerDispatch
     RunnerCore.render_status(context) if dispatched.any? || stop || parked.any?
 
     build_report(context: context, dispatched: dispatched, stop: stop, parked: parked,
-                 ceiling_blocked: ceiling_blocked, packet_failures: packet_failures)
+                 ceiling_blocked: ceiling_blocked, packet_failures: packet_failures, running_count: running_count)
   end
 
   # --- guarded re-entries into graph.md (M9) ----------------------------------
@@ -394,7 +394,8 @@ module RunnerDispatch
   end
   private_class_method :invalid_graph_result
 
-  def build_report(context:, dispatched:, stop:, parked:, ceiling_blocked: false, packet_failures: [])
+  def build_report(context:, dispatched:, stop:, parked:, ceiling_blocked: false, packet_failures: [],
+                    running_count: 0)
     base = empty_result.merge(dispatched: dispatched, stop: stop, parked: parked,
                                plan: render_plan(dispatched))
 
@@ -402,10 +403,13 @@ module RunnerDispatch
       base.merge(status: "dispatched")
     elsif stop
       base.merge(status: "needs_decision")
-    elsif ceiling_blocked
-      # M10: a ready node merely waiting on the concurrency ceiling is
-      # QUEUED - the graph can still continue, it is not the dead end
-      # "stalled" names.
+    elsif ceiling_blocked || running_count.to_i.positive?
+      # M10/v2 NEW-7: a ready node waiting on the concurrency ceiling is one
+      # shape of "still in flight" - a graph where every ready node is
+      # ALREADY running (no candidate ever reaches the ceiling check at all,
+      # so `ceiling_blocked` never sets) is the ordinary busy case, and it
+      # used to fall all the way through to `stalled`. Any node genuinely
+      # `running` means the graph can still continue on its own.
       base.merge(status: "queued")
     else
       # Row 5.25: complete iff EVERY declared node is terminal - an empty

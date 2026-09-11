@@ -289,12 +289,12 @@ module Runner
   def run_step(intent_dir, args)
     context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
 
+    # v1 minor 3/row 11.18: RunnerSweep.abort_if_merging already prints the
+    # whole sentence itself (its own error PLUS the recovery command) - this
+    # used to print both halves again, so the operator read the same merge
+    # warning twice for one refusal.
     abort_result = RunnerSweep.abort_if_merging(context)
-    unless abort_result[:ok]
-      warn "runner: #{abort_result[:error]}"
-      warn "runner: run `#{abort_result[:recovery_command]}` before the next step can dispatch"
-      exit 1
-    end
+    exit 1 unless abort_result[:ok]
 
     Lock.heartbeat(intent_dir, session: context.session) unless context.session.to_s.strip.empty?
 

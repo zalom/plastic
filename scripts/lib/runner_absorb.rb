@@ -90,6 +90,17 @@ module RunnerAbsorb
     kind = node_decl[:kind]
     declared_files = normalize_files(node_decl[:files])
 
+    # v2 NEW-2: a `graph.md` that failed to parse, or a node whose kind
+    # cannot be resolved from it, refuses right here - before ANY check
+    # runs. Falling through with `kind` nil used to skip the whole work-node
+    # branch (no merge ever ran), pass scope vacuously (`declared_files` was
+    # empty), and land `done` carrying the executor's own self-reported
+    # commit on work nothing had verified ever reached the intent branch.
+    unless (context.graph || {})[:ok] && !kind.nil?
+      fields = { reason: "invalid_graph", holder: holder }
+      return write_transition(savepoint_path, context, node, "blocked", fields, now: now, ledger: ledger)
+    end
+
     checks_ran = []
     extra_fields = {}
 
@@ -124,16 +135,7 @@ module RunnerAbsorb
 
     append_findings(intent_dir, node, parsed.findings, now: now)
 
-    # 340 n10, M4: proposals are accepted or refused right after the schema
-    # gate, on the proposing node - the only production caller RunnerProposals
-    # ever gets. Every return from here on carries `proposal:` (nil when the
-    # return proposed nothing), so a refusal is surfaced in the step report
-    # rather than left to a savepoint comment nobody reads (row 10.3).
     proposal_result = nil
-    if Array(parsed.proposed_nodes).any? || Array(parsed.proposed_edges).any?
-      proposal_result = proposals.accept(context, proposer: node, proposed_nodes: parsed.proposed_nodes,
-                                          proposed_edges: parsed.proposed_edges, now: now)
-    end
     finish = ->(result) { result.merge(proposal: proposal_result) }
 
     # B1: the return's own status governs from here on. The six mechanical
@@ -142,11 +144,40 @@ module RunnerAbsorb
     # `needs_decision`, `blocked` or `failed_verification` return writes
     # exactly that state, carrying the field its own schema required
     # (`question` or `reason`), and stops here. Only `done` falls through.
+    #
+    # v2 NEW-1: the prose riding in `question`/`reason` is the executor's
+    # own free text - a YAML block scalar (a two-line question) is the
+    # natural way to write it, and `NodeLedger.normalize_value` refuses a
+    # tab or a newline outright. Squashed to one line before it ever reaches
+    # the ledger, same as every other whitespace run the ledger's own format
+    # already collapses.
     unless parsed.status == "done"
       fields = { holder: holder, gates: checks_ran.join("+") }.merge(extra_fields)
-      fields[:question] = parsed.question if parsed.status == "needs_decision"
-      fields[:reason] = parsed.reason if %w[blocked failed_verification].include?(parsed.status)
+      fields[:question] = squash_prose(parsed.question) if parsed.status == "needs_decision"
+      fields[:reason] = squash_prose(parsed.reason) if %w[blocked failed_verification].include?(parsed.status)
       return finish.call(write_transition(savepoint_path, context, node, parsed.status, fields, now: now, ledger: ledger))
+    end
+
+    # 340 n10/n11, M4/row 11.14: a proposal is accepted or refused only on a
+    # `done` return, right after the schema gate - the only production
+    # caller RunnerProposals ever gets. An executor looping on retries must
+    # never grow the graph on a failing attempt (v2 minor 11). Every `done`
+    # return from here on carries `proposal:` (nil when it proposed
+    # nothing), so a refusal is surfaced in the step report rather than left
+    # to a savepoint comment nobody reads (row 10.3).
+    if Array(parsed.proposed_nodes).any? || Array(parsed.proposed_edges).any?
+      proposal_result = proposals.accept(context, proposer: node, proposed_nodes: parsed.proposed_nodes,
+                                          proposed_edges: parsed.proposed_edges, now: now)
+      # v2 minor 8/row 11.13: an ACCEPTED proposal's own validator verdict
+      # used to be attached only to `result[:proposal]`, which nothing reads
+      # - an accepted proposal that invalidates the whole graph bricked
+      # every later dispatch with `invalid_graph` and left no record of why.
+      # Reported through the same Findings channel the executor's own
+      # findings already use, so it survives in the intent record.
+      if proposal_result[:ok] && proposal_result[:validator] && !proposal_result[:validator][:ok]
+        verdict_errors = Array(proposal_result[:validator][:errors]).join("; ")
+        append_findings(intent_dir, node, ["accepted proposal invalidates the graph: #{verdict_errors}"], now: now)
+      end
     end
 
     # 3. scope --------------------------------------------------------------
@@ -202,7 +233,13 @@ module RunnerAbsorb
       # M1: a project.yml that fails to parse is not the same fact as a
       # project with no verify command at all - the record is broken, so the
       # node blocks rather than proceeding to `done` with `suite:absent`.
-      fields = { reason: "verify_command_unreadable", gates: checks_ran.join("+"), holder: holder }.merge(extra_fields)
+      #
+      # v2 NEW-3: `gates=` must say `suite:unreadable`, never the bare
+      # `suite` `checks_ran` already carries - the suite check itself never
+      # ran, so claiming it did is M2's exact defect, reintroduced on the
+      # state M1 added.
+      gates = (checks_ran[0..-2] + ["suite:unreadable"]).join("+")
+      fields = { reason: "verify_command_unreadable", gates: gates, holder: holder }.merge(extra_fields)
       return finish.call(write_transition(savepoint_path, context, node, "blocked", fields, now: now, ledger: ledger))
     end
     if command.nil?
@@ -248,17 +285,66 @@ module RunnerAbsorb
   # nothing happened at all. Re-renders graph.md's ## Status after a
   # successfully written line (row 4.44, D28) - RunnerCore already owns that
   # render, this is its only production caller today.
+  #
+  # v2 NEW-1/row 11.2: `squash_prose` (below) removes every raw tab and
+  # newline before a value ever reaches here, but nothing guarantees that is
+  # the ONLY way a return's own prose can make `NodeLedger.transition_line`
+  # refuse it (`ArgumentError`, raised before any file is ever touched) - a
+  # pathological return must still land a transition, not crash the whole
+  # step and leave the node stuck `running` until its lease expires. Falls
+  # back to `blocked reason=return_unwritable`, whose own fields are all
+  # runner-owned strings, never executor prose, so the fallback write itself
+  # can never hit the same wall.
   def write_transition(savepoint_path, context, node, state, fields, now:, ledger:)
     result = ledger.append_transition(savepoint_path, subject: node, state: state, fields: fields, now: now)
   rescue GuardedAppend::Unavailable => e
     { state: "append_failed", written: false, fields: fields, gates: fields[:gates],
       commit: fields[:commit], error: e.message }
+  rescue ArgumentError => e
+    fallback_fields = { reason: "return_unwritable", holder: fields[:holder], gates: fields[:gates] }.compact
+    fallback = begin
+      ledger.append_transition(savepoint_path, subject: node, state: "blocked", fields: fallback_fields, now: now)
+    rescue GuardedAppend::Unavailable
+      :unavailable
+    end
+    written = fallback == :written
+    safe_render_status(context) if written
+    { state: "blocked", written: written, fields: fallback_fields, gates: fallback_fields[:gates], commit: nil,
+      error: e.message }
   else
     written = result == :written
-    RunnerCore.render_status(context) if written
+    safe_render_status(context) if written
     { state: state, written: written, fields: fields, gates: fields[:gates], commit: fields[:commit] }
   end
   private_class_method :write_transition
+
+  # v2 NEW-5/row 11.9: `RunnerCore.render_status` re-reads and re-parses
+  # graph.md from scratch (never trusting `context.graph`, resolved once
+  # before this step started) purely to rewrite its own ## Status table - a
+  # cosmetic, best-effort render, not evidence. A `graph.md` that turned
+  # unreadable mid-step (or was already unreadable, on a node whose kind
+  # this call's own NEW-2 guard let through as `blocked`) must never turn a
+  # transition ALREADY WRITTEN into a raw stack trace and a half-finished
+  # step - the transition already landed in savepoint.md by the time this
+  # runs, so a failed render is a missed cosmetic refresh, not a lost write.
+  def safe_render_status(context)
+    RunnerCore.render_status(context)
+  rescue StandardError
+    nil
+  end
+  private_class_method :safe_render_status
+
+  # Collapse every run of whitespace (space, tab, newline, ...) in an
+  # executor's own free text to a single space (v2 NEW-1): the ledger's own
+  # field format is a single line, and `NodeLedger.normalize_value` raises
+  # ArgumentError outright on a bare tab or newline rather than collapsing
+  # it. A YAML block scalar is the natural way to write a two-sentence
+  # question, so this runs on every `question:`/`reason:` before either
+  # ever reaches a ledger field.
+  def squash_prose(text)
+    text.to_s.gsub(/\s+/, " ").strip
+  end
+  private_class_method :squash_prose
 
   def holder_for(entries, node)
     last = entries.select { |e| !e[:torn] && e[:subject] == node && e[:state] == "running" }.last
@@ -373,17 +459,27 @@ module RunnerAbsorb
   # creates a nested subsection, so this is its own small insertion, not a
   # call into that module.
   #
-  # M12: the read-modify-write is now taken under GuardedAppend's own flock
-  # hold on the intent record, so a concurrent writer's line is never lost
-  # to the classic unguarded-read race. GuardedAppend itself only ever
-  # appends at EOF (`### Findings` is rarely the file's last bytes - a
-  # `## Links` section commonly follows it), so the block performs the real
-  # mid-file rewrite as a side effect via AtomicWrite, under the SAME lock
-  # hold, and returns nil (a "refused" append to GuardedAppend, which is
-  # correct: nothing more is appended after the rewrite already landed).
-  # Lock contention is a missed finding, never a failed absorb (findings are
-  # best-effort, D16), so Unavailable is swallowed.
-  def append_findings(intent_dir, node, findings, now:)
+  # v2 NEW-4: this is a mid-file rewrite (a `## Links` section commonly
+  # follows `### Findings`), so it goes through AtomicWrite directly -
+  # sibling-temp-plus-rename, the same shape every other writer in this tree
+  # uses (D19r) - which is genuine crash safety: a process that dies mid-
+  # write leaves the ORIGINAL file untouched, never a half-written one.
+  #
+  # It is NOT mutual exclusion, and no longer pretends to be one. The
+  # previous shape opened this same path under GuardedAppend's flock first
+  # and called AtomicWrite.write from inside that hold - but flock guards
+  # one open file HANDLE, and AtomicWrite's own rename puts a brand new
+  # inode at the path underneath it. A second writer that opened its handle
+  # before the rename keeps the OLD, now-unlinked inode; once the first
+  # writer unlocks, the second takes a lock that excludes nobody, reads
+  # stale content off the orphaned inode, and its own rename overwrites the
+  # first writer's already-landed bullet - reproduced with two real
+  # processes. `Insights.append_insight` (this module's sibling for the same
+  # file) takes no lock at all either, so a bigger lock here would still
+  # lose the race against that path. Findings are best-effort (D16): a lost
+  # bullet under real concurrency is an accepted gap, not a promise this
+  # method makes and breaks.
+  def append_findings(intent_dir, node, findings, now:, renamer: File.method(:rename))
     return if Array(findings).empty?
 
     joined = Array(findings).join("; ")
@@ -391,11 +487,10 @@ module RunnerAbsorb
     bullet = "- [#{node}] #{text}"
 
     path = Savepoint.intent_file(intent_dir)
-    GuardedAppend.call(path) do |content|
-      AtomicWrite.write(path, insert_finding_bullet(content, bullet))
-      nil
-    end
-  rescue GuardedAppend::Unavailable
+    content = File.exist?(path) ? File.read(path) : ""
+    AtomicWrite.write(path, insert_finding_bullet(content, bullet), renamer: renamer)
+    nil
+  rescue StandardError
     nil
   end
   private_class_method :append_findings
@@ -464,13 +559,18 @@ module RunnerAbsorb
 
   # --- the suite ---------------------------------------------------------------
 
+  # v1 minor 7/row 11.17: reads the LAST summary line, not the first match -
+  # a suite command that shells out to more than one sub-process (or prints
+  # its own retry) can carry an earlier RED summary line before the one that
+  # actually decided its exit status, and `.match` (first match) would
+  # record that earlier line's counts on the `done` line instead.
   def default_suite_runner(dir:, command:)
     out, err, status = Open3.capture3(command, chdir: dir.to_s)
     combined = "#{out}\n#{err}"
-    m = combined.match(/(\d+)\s+runs,\s+(\d+)\s+assertions,\s+(\d+)\s+failures,\s+(\d+)\s+errors/)
-    return { ok: false, runs: nil, assertions: nil, failures: nil, errors: nil } unless m
+    matches = combined.scan(/(\d+)\s+runs,\s+(\d+)\s+assertions,\s+(\d+)\s+failures,\s+(\d+)\s+errors/)
+    return { ok: false, runs: nil, assertions: nil, failures: nil, errors: nil } if matches.empty?
 
-    runs, assertions, failures, errors = m.captures.map(&:to_i)
+    runs, assertions, failures, errors = matches.last.map(&:to_i)
     { ok: status.success? && failures.zero? && errors.zero?, runs: runs, assertions: assertions,
       failures: failures, errors: errors }
   end
@@ -501,7 +601,13 @@ module RunnerAbsorb
     rescue StandardError
       return UNREADABLE_VERIFY_COMMAND
     end
-    return nil unless data.is_a?(Hash)
+    # v2 minor 13/row 11.15: a project.yml that PARSES cleanly but to
+    # something other than a mapping (an empty file, a bare string, a list)
+    # is the same broken-record fact as one that fails to parse outright -
+    # M1's whole point was that a broken record must never read the same as
+    # "no verify command declared", and reading a non-Hash as nil silently
+    # reopened that exact gap.
+    return UNREADABLE_VERIFY_COMMAND unless data.is_a?(Hash)
 
     release = data["release"]
     return nil unless release.is_a?(Hash)

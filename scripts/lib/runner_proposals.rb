@@ -58,7 +58,17 @@ module RunnerProposals
     graph_path = File.join(intent_dir, "graph.md")
     templates_root = templates_dir || File.join(context.plastic_home.to_s, "templates")
 
-    loaded = ReadySet.load_graph(intent_dir)
+    # v2 NEW-5/row 11.8: `ReadySet.load_graph` documents itself as never
+    # raising, but that guarantee is only as good as the parser underneath
+    # it - a `graph.md` carrying invalid UTF-8 bytes raises `ArgumentError`
+    # out of `GraphFile`'s own fence-line scan before `load_graph` ever gets
+    # a chance to catch it. M4 made this call reachable straight from
+    # `RunnerAbsorb#absorb`, so a `--return` carrying a proposal against a
+    # malformed graph used to die with a raw stack trace instead of a plain
+    # refusal.
+    loaded = safe_load_graph(intent_dir)
+    return refuse(intent_dir, proposer, "graph.md is unreadable: #{loaded[:errors].join('; ')}", now) if loaded[:unreadable]
+
     declared = loaded[:edges].keys
     status_map = NodeLedger.status_from_content(read_savepoint(intent_dir))
 
@@ -124,7 +134,11 @@ module RunnerProposals
       append_to_graph(graph_path, node_specs: node_specs, edge_specs: edge_specs, renamer: renamer)
     end
 
-    { ok: true, minted: node_specs.map { |s| s[:id] }, validator: validator.call(intent_dir), errors: [] }
+    # v2 NEW-5/row 11.8: the accept itself already landed on disk by this
+    # point (327 D17's "a mid-run scaffold is checked" runs strictly AFTER
+    # the write) - a raising validator must report a broken verdict, never
+    # turn an already-successful accept into an uncaught exception.
+    { ok: true, minted: node_specs.map { |s| s[:id] }, validator: safe_validate(validator, intent_dir), errors: [] }
   end
 
   # --- node scaffolding --------------------------------------------------
@@ -204,6 +218,26 @@ module RunnerProposals
     { ok: false, minted: [], validator: nil, errors: [reason] }
   end
   private_class_method :refuse
+
+  # --- guarded re-entries into graph.md (v2 NEW-5/row 11.8) -------------------
+
+  # `unreadable: true` marks the ONE case a raise actually happened -
+  # distinct from `ReadySet.load_graph`'s own ordinary `ok: false` (a
+  # cyclic graph, a missing node file, ...), which callers here already
+  # tolerate and must keep tolerating unchanged.
+  def safe_load_graph(intent_dir)
+    ReadySet.load_graph(intent_dir)
+  rescue StandardError => e
+    { ok: false, edges: {}, nodes: {}, errors: ["graph.md could not be read: #{e.message}"], unreadable: true }
+  end
+  private_class_method :safe_load_graph
+
+  def safe_validate(validator, intent_dir)
+    validator.call(intent_dir)
+  rescue StandardError => e
+    { ok: false, missing: [], errors: ["graph.md could not be validated: #{e.message}"] }
+  end
+  private_class_method :safe_validate
 
   # --- internals -------------------------------------------------------------
 

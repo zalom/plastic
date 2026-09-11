@@ -35,6 +35,14 @@ require_relative "worktree"
 module RunnerAnswer
   module_function
 
+  # v2 NEW-6: `blocked` is neither in `ReadySet::READY_PRIOR_STATES` nor in
+  # `ReadySet::TERMINAL_STATES` - a node the runner itself blocks (a broken
+  # `project.yml`, a core-integrity drift, an unresolvable graph) was
+  # unrecoverable forever, since `answer` refused everything but
+  # `needs_decision`. Both park an executor's own dispatch pending an owner
+  # decision; only the reason differs.
+  PARKED_STATES = %w[needs_decision blocked].freeze
+
   def answer(context, node:, text:, now: Time.now, ledger: NodeLedger,
              caps: ReadySet::DEFAULT_CAPS, renamer: File.method(:rename),
              worktree: NodeWorktree, runner: Worktree::ShellRunner.new)
@@ -55,12 +63,15 @@ module RunnerAnswer
     entries = NodeLedger.entries_from_content(before_content)
     current_state = NodeLedger.status_for_content(before_content, node)
 
-    return refusal("not_parked") unless current_state == "needs_decision"
+    # v2 NEW-6/row 11.10/11.11: parked is `needs_decision` OR `blocked` -
+    # anything else (planned, running, done, ...) is a healthy node with no
+    # evidence to release it on, and must stay refused exactly as before.
+    return refusal("not_parked") unless PARKED_STATES.include?(current_state)
 
     kind = (nodes_decl[node] || {})[:kind]
     respun_to = nil
 
-    if kind.to_s == "decision"
+    if kind.to_s == "decision" && current_state == "needs_decision"
       gf = GraphFile.append_decision(graph_path, text.to_s.strip, renamer: renamer)
       return refusal("graph_write_failed", errors: gf[:errors]) unless gf[:ok]
 
