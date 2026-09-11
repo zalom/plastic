@@ -9,6 +9,10 @@ require "open3"
 require "rbconfig"
 require "time"
 
+# scripts/runner has no .rb extension, so `require_relative` cannot resolve
+# it; `load` has no such restriction and is idempotent here since Runner is
+# a module, reopened harmlessly on a second load.
+load File.expand_path("../scripts/runner", __dir__)
 require_relative "../scripts/lib/runner_core"
 require_relative "../scripts/lib/ready_set"
 require_relative "../scripts/lib/node_ledger"
@@ -370,5 +374,48 @@ class RunnerCliTest < Minitest::Test
     assert_equal 0, status.exitstatus, err
     assert_match(/n1.*not eligible/, out)
     assert_match(/n2.*needs target n1/, out)
+  end
+
+  # --- 8.4: `sweep` reaches RunnerSweep, not the unwired fall-through arm --------
+  #
+  # n7's dogfood (intent 340, G7, n8) found `runner sweep` printing "sweep's
+  # module loaded but no dispatcher is wired up yet" and exiting 3 on every
+  # call, because `dispatch_lazy` had no `when "sweep"` arm even though
+  # `RunnerSweep.run` is a complete, standalone entry point. This proves the
+  # real module ran: an expired `running` lease with no worktree (this
+  # scratch intent names no registered project, so RunnerSweep's own
+  # branch-head lookup fails open to "no new commits") is reclaimed outright.
+
+  def test_sweep_verb_reaches_runner_sweep
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    write_savepoint(line("n1", "running", holder: "auto-1", expires: "2000-01-01T00:00:00Z",
+                              packet: "abc", model: "sonnet"))
+
+    out, err, status = run_cli("sweep", @dir)
+    assert_equal 0, status.exitstatus, out + err
+    refute_match(/no dispatcher is wired up yet/, out + err)
+    assert_match(/reclaimed n1/, out)
+  end
+
+  # --- 8.5: every declared verb reaches a real dispatcher -------------------------
+  #
+  # A structural guard, not a feature test: it walks `Runner::VERBS` itself so
+  # the next verb added to that list without a matching `when` arm in
+  # `dispatch_lazy` fails here, in CI, rather than in someone's dogfood the
+  # way `sweep` did.
+
+  def test_every_declared_verb_reaches_a_dispatcher
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+
+    routed_verbs = Runner::VERBS - %w[status ready]
+    refute_empty routed_verbs, "this test has nothing to prove if no verb routes through dispatch_lazy"
+
+    routed_verbs.each do |verb|
+      out, err, _status = run_cli(verb, @dir)
+      refute_match(/no dispatcher is wired up yet/, out + err,
+                   "verb #{verb.inspect} fell through to the unwired dispatcher arm: #{out}#{err}")
+    end
   end
 end
