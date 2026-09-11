@@ -5,12 +5,15 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "time"
+require "open3"
 
 require_relative "../scripts/lib/runner_absorb"
 require_relative "../scripts/lib/runner_core"
 require_relative "../scripts/lib/node_ledger"
 require_relative "../scripts/lib/guarded_append"
 require_relative "../scripts/lib/outcome_report"
+require_relative "../scripts/lib/runner_proposals"
+require_relative "../scripts/lib/node_worktree"
 
 # RunnerAbsorb (intent 340, G7, n4): the gate that turns one executor return
 # into exactly one node ledger transition. Matrix rows 4.13-4.36, 4.39-4.44 in
@@ -42,7 +45,7 @@ class RunnerAbsorbTest < Minitest::Test
       @paths_value
     end
 
-    def changed_paths(_context, node:, runner:)
+    def changed_paths(_context, node:, kind:, runner:)
       @calls << :changed_paths
       @changed
     end
@@ -82,12 +85,13 @@ class RunnerAbsorbTest < Minitest::Test
 
   # --- fixture helpers -----------------------------------------------------------
 
-  def build_context(kind: "work", files: ["scripts/lib/foo.rb"], worktree: @dir, worktree_branch: "plastic/x")
+  def build_context(node: "n4", kind: "work", files: ["scripts/lib/foo.rb"], worktree: @dir,
+                     worktree_branch: "plastic/x", plastic_home: @home)
     RunnerCore::Context.new(
       intent_dir: @dir, intent_id: INTENT_ID, intent_slug: INTENT_SLUG,
-      store: nil, plastic_home: @home, session: nil,
+      store: nil, plastic_home: plastic_home, session: nil,
       worktree: worktree, worktree_branch: worktree_branch,
-      graph: { ok: true, edges: {}, nodes: { "n4" => { kind: kind, files: files } } },
+      graph: { ok: true, edges: {}, nodes: { node => { kind: kind, files: files } } },
       errors: []
     )
   end
@@ -137,8 +141,8 @@ class RunnerAbsorbTest < Minitest::Test
     File.write(path, "# fixture\n")
   end
 
-  def write_return(status: "done", commit: "exec1234", extra: {})
-    doc = { "node" => "n4", "status" => status }
+  def write_return(node: "n4", status: "done", commit: "exec1234", extra: {})
+    doc = { "node" => node, "status" => status }
     doc["commit"] = commit if commit
     doc.merge!(extra.transform_keys(&:to_s))
     path = File.join(@root, "return-#{rand(1_000_000)}.yaml")
@@ -590,5 +594,263 @@ class RunnerAbsorbTest < Minitest::Test
     body = File.read(graph_path)
     refute_match(/\| n4 \| planned \|/, body)
     assert_match(/\| n4 \| done \|/, body)
+  end
+
+  # ============================================================================
+  # n9: the post-execution review's four blockers plus two majors
+  # ============================================================================
+
+  # --- 9.1/9.4: the return's own status governs, not just the schema gate --------
+
+  def test_needs_decision_return_writes_needs_decision
+    write_savepoint(running_line)
+    write_node_file
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    context = build_context
+    return_path = write_return(status: "needs_decision", commit: nil,
+                                extra: { question: "should scripts/lib/foo.rb keep its old name?" })
+
+    result = RunnerAbsorb.absorb(context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+                                  worktree: fake_wt)
+
+    assert_equal "needs_decision", result[:state]
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_equal "needs_decision", entry[:state]
+    refute_equal "done", entry[:state], "an unfinished return must never unblock downstream nodes as done"
+  end
+
+  # --- 9.2: the needs_decision line carries the question --------------------------
+
+  def test_needs_decision_line_carries_the_question
+    write_savepoint(running_line)
+    write_node_file
+    context = build_context
+    return_path = write_return(status: "needs_decision", commit: nil,
+                                extra: { question: "does scripts/lib/foo.rb need a second reviewer?" })
+
+    RunnerAbsorb.absorb(context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+                         worktree: FakeWorktree.new)
+
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_equal "does scripts/lib/foo.rb need a second reviewer?", entry[:fields]["question"]
+  end
+
+  # --- 9.3: blocked and failed_verification write their own state and reason -----
+
+  def test_self_reported_failure_writes_its_own_state_and_reason
+    write_savepoint(running_line)
+    write_node_file
+    context = build_context
+    blocked_path = write_return(status: "blocked", commit: nil, extra: { reason: "waiting on an owner decision" })
+
+    blocked_result = RunnerAbsorb.absorb(context, node: "n4", return_path: blocked_path,
+                                          integrity_checker: ok_integrity, worktree: FakeWorktree.new)
+
+    assert_equal "blocked", blocked_result[:state]
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_equal "blocked", entry[:state]
+    assert_equal "waiting on an owner decision", entry[:fields]["reason"]
+
+    write_savepoint(running_line)
+    failed_path = write_return(status: "failed_verification", commit: nil,
+                                extra: { reason: "the executor could not make the suite pass" })
+
+    failed_result = RunnerAbsorb.absorb(context, node: "n4", return_path: failed_path,
+                                         integrity_checker: ok_integrity, worktree: FakeWorktree.new)
+
+    assert_equal "failed_verification", failed_result[:state]
+    entry2 = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_equal "failed_verification", entry2[:state]
+    assert_equal "the executor could not make the suite pass", entry2[:fields]["reason"]
+  end
+
+  # --- 9.4: checks 3-6 never run for a non-done return -----------------------------
+
+  def test_mechanical_checks_run_only_for_a_done_return
+    write_savepoint(running_line)
+    write_node_file
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    context = build_context
+    return_path = write_return(status: "blocked", commit: nil, extra: { reason: "waiting on an owner decision" })
+
+    result = RunnerAbsorb.absorb(context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+                                  worktree: fake_wt, suite_runner: ok_suite, project_reader: command_reader)
+
+    assert_equal "blocked", result[:state]
+    assert_empty fake_wt.calls, "scope, named_tests and merge must never run for a non-done return"
+    assert_equal "integrity+schema", result[:gates]
+  end
+
+  # --- 9.6: RunnerProposals' template dir resolves under the corrected home ------
+
+  def test_proposals_template_dir_resolves_under_dot_plastic
+    plastic_home = File.join(@home, ".plastic")
+    templates_dir = File.join(plastic_home, "templates")
+    FileUtils.mkdir_p(templates_dir)
+    File.write(File.join(templates_dir, "node-work.md"), <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: []
+      budget: 1000
+      ---
+      # n1 - template
+
+      ## n1 failure-mode matrix
+      | Row | Operation | Failure mode | Test |
+      | --- | --- | --- | --- |
+
+      ## Steps
+      1. do it
+
+      ## Proven by
+      (filled at close)
+    MD
+
+    File.write(File.join(@dir, "graph.md"), <<~MD)
+      # Graph: Fixture
+
+      ## Goal
+      Ship it.
+
+      ## Decisions
+      - D1 pick approach
+
+      ## Graph
+      - n4 needs nothing
+
+      ## Status
+      | Node | State | Detail |
+      | --- | --- | --- |
+    MD
+
+    context = build_context(plastic_home: plastic_home)
+    result = RunnerProposals.accept(
+      context, proposer: "n4",
+      proposed_nodes: [{ "kind" => "work", "title" => "New work", "needs" => [] }],
+      proposed_edges: [],
+      validator: ->(_dir) { { ok: true, errors: [] } }
+    )
+
+    assert result[:ok], "scaffolding must reach templates/node-work.md under the CORRECTED .plastic dir: #{result.inspect}"
+    assert_equal 1, result[:minted].length
+    minted_id = result[:minted].first
+    assert File.exist?(File.join(@dir, "nodes", "#{minted_id}.md")),
+           "the proposed node's file must be scaffolded from the real template"
+  end
+
+  # --- 9.10: a real commit on the intent branch fails a verify node's scope ------
+
+  def test_verify_node_with_a_diff_fails_scope
+    repo = Dir.mktmpdir("absorb-real-repo")
+    begin
+      real_git("init", "-q", "-b", "alpha", dir: repo)
+      real_git("config", "user.email", "absorb@example.com", dir: repo)
+      real_git("config", "user.name", "Absorb Test", dir: repo)
+      real_git("config", "gc.auto", "0", dir: repo)
+      File.write(File.join(repo, "README.md"), "hi\n")
+      real_git("add", "README.md", dir: repo)
+      real_git("commit", "-q", "-m", "init", dir: repo)
+
+      intent_worktree = File.join(repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}")
+      intent_branch = "plastic/#{INTENT_ID}--#{INTENT_SLUG}"
+      FileUtils.mkdir_p(File.dirname(intent_worktree))
+      real_git("worktree", "add", intent_worktree, "-b", intent_branch, dir: repo)
+
+      # The reviewer's own reproduction: a verify node's executor edits the
+      # code it is reviewing and commits it directly onto the intent branch -
+      # there is no node branch of its own for a verify node to isolate that
+      # commit on, which is exactly what the fix must still catch.
+      File.write(File.join(intent_worktree, "reviewed.rb"), "# edited by the reviewer\n")
+      real_git("add", "reviewed.rb", dir: intent_worktree)
+      real_git("commit", "-q", "-m", "v1 edits the code it is reviewing", dir: intent_worktree)
+
+      write_savepoint(running_line(node: "v1"))
+      write_node_file("v1")
+      context = build_context(node: "v1", kind: "verify", files: [], worktree: intent_worktree,
+                               worktree_branch: intent_branch)
+      return_path = write_return(node: "v1", status: "done", commit: "shouldnotmatter")
+
+      result = RunnerAbsorb.absorb(context, node: "v1", return_path: return_path, integrity_checker: ok_integrity,
+                                    worktree: NodeWorktree, suite_runner: ok_suite, project_reader: command_reader)
+
+      assert_equal "failed_verification", result[:state]
+      entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+      assert_equal "diff_on_verify_node", entry[:fields]["reason"]
+    ensure
+      FileUtils.remove_entry(repo) if repo && Dir.exist?(repo)
+    end
+  end
+
+  # --- 9.11: an unmeasurable diff fails verification, never passes ---------------
+
+  def test_unmeasurable_diff_fails_verification
+    write_savepoint(running_line)
+    result, = absorb_happy(changed: nil)
+
+    assert_equal "failed_verification", result[:state]
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_equal "scope_unmeasurable", entry[:fields]["reason"]
+    assert_equal "integrity+schema+scope", entry[:fields]["gates"]
+  end
+
+  # --- 9.14: a project.yml that fails to parse blocks, never reads as absent -----
+
+  def test_unparsable_project_record_blocks_with_verify_command_unreadable
+    slug = "demo-project"
+    @dir = File.join(@root, "projects", slug, "store", "#{INTENT_ID}--#{INTENT_SLUG}")
+    FileUtils.mkdir_p(File.join(@dir, "nodes"))
+    write_savepoint(running_line)
+    write_node_file
+    touch_named_test
+
+    File.write(File.join(@root, "projects", slug, "project.yml"), "release:\n  verify: \"unterminated\n")
+
+    fake_wt = FakeWorktree.new(changed: ["scripts/lib/foo.rb"],
+                                paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    context = build_context
+    return_path = write_return(status: "done", commit: "exec1234")
+
+    result = RunnerAbsorb.absorb(
+      context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+      worktree: fake_wt, project_reader: RunnerAbsorb.method(:default_project_reader)
+    )
+
+    assert_equal "blocked", result[:state]
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_equal "verify_command_unreadable", entry[:fields]["reason"]
+  end
+
+  # --- 9.15: gates= claims a merge only when a merge actually ran ------------------
+
+  def test_gates_records_merge_only_for_a_work_node
+    write_savepoint(running_line)
+    result, = absorb_happy(kind: "work")
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_includes entry[:fields]["gates"].split("+"), "merge"
+    refute_includes entry[:fields]["gates"].split("+"), "merge:none"
+
+    write_savepoint(running_line)
+    write_node_file("n4", tests: [])
+    context = build_context(kind: "research", files: [])
+    fake_wt = FakeWorktree.new(changed: [], paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    return_path = write_return(status: "done", commit: "r1")
+
+    result2 = RunnerAbsorb.absorb(
+      context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+      worktree: fake_wt, suite_runner: ok_suite, project_reader: command_reader
+    )
+
+    assert_equal "done", result2[:state]
+    entry2 = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_includes entry2[:fields]["gates"].split("+"), "merge:none"
+    refute_includes entry2[:fields]["gates"].split("+"), "merge"
+  end
+
+  def real_git(*args, dir:)
+    out, err, status = Open3.capture3("git", "-C", dir, *args.map(&:to_s))
+    raise "git #{args.join(' ')} failed: #{err}" unless status.success?
+
+    out
   end
 end

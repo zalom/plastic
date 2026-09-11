@@ -8,6 +8,7 @@ require "json"
 require "open3"
 require "rbconfig"
 require "time"
+require "yaml"
 
 # scripts/runner has no .rb extension, so `require_relative` cannot resolve
 # it; `load` has no such restriction and is idempotent here since Runner is
@@ -19,6 +20,7 @@ require_relative "../scripts/lib/node_ledger"
 require_relative "../scripts/lib/graph_file"
 require_relative "../scripts/lib/arm"
 require_relative "../scripts/lib/lock"
+require_relative "../scripts/lib/core_integrity"
 
 # scripts/runner (intent 340, G7, n1): the one executable with a subcommand
 # table, its shared context (RunnerCore), and the two read-only queries plus
@@ -235,7 +237,41 @@ class RunnerCliTest < Minitest::Test
     assert_equal "1", context.intent_id
     assert_equal "demo", context.intent_slug
     assert_equal @store, context.store
-    assert_equal @home, context.plastic_home
+    assert_equal File.join(@home, ".plastic"), context.plastic_home
+  end
+
+  # --- 9.5: plastic_home resolves to the .plastic dir itself, not its parent -----
+
+  def test_context_plastic_home_points_at_the_dot_plastic_dir
+    context = RunnerCore.context(intent_dir: @dir, home: @home, env: nil)
+
+    assert_equal File.join(@home, ".plastic"), context.plastic_home
+    assert_match(%r{\.plastic\z}, context.plastic_home)
+    assert_equal File.join(@home, ".plastic", "manifest.json"), File.join(context.plastic_home, "manifest.json")
+  end
+
+  # --- 9.7: the integrity check reaches THIS MACHINE's real installed manifest ---
+
+  # An intent_dir that carries no `.plastic` path segment at all defeats
+  # Worktree.home_from_store's own store-shaped resolution, so
+  # RunnerCore.context falls through to the `home:` argument exactly the way
+  # a sandboxed test fixture never does (Arm.home_for's own docstring: "a
+  # sandboxed store never resolves to the real Dir.home") - passing the real
+  # Dir.home here is what proves this row against the real installed
+  # manifest.json, not a fixture one, without ever writing under it.
+  def test_core_integrity_finds_the_installed_manifest
+    bare_dir = Dir.mktmpdir("runner-cli-340-bare")
+    (@script_tmp_dirs ||= []) << bare_dir
+    intent_dir = File.join(bare_dir, "1--demo")
+    FileUtils.mkdir_p(File.join(intent_dir, "nodes"))
+    File.write(File.join(intent_dir, "1--demo.md"), "---\nid: \"1\"\nintent: t\n---\n\n## Intent\nbody\n")
+
+    context = RunnerCore.context(intent_dir: intent_dir, home: Dir.home, env: nil)
+    assert_equal File.join(Dir.home, ".plastic"), context.plastic_home
+
+    result = CoreIntegrity.check(plastic_home: context.plastic_home)
+    assert_nil result[:reason],
+                "must reach this machine's real installed manifest.json, not report it missing: #{result.inspect}"
   end
 
   # --- 1.8: RunnerCore.context resolves the session that holds delivery.lock -----
@@ -417,5 +453,59 @@ class RunnerCliTest < Minitest::Test
       refute_match(/no dispatcher is wired up yet/, out + err,
                    "verb #{verb.inspect} fell through to the unwired dispatcher arm: #{out}#{err}")
     end
+  end
+
+  # --- 9.12/9.13: run_step's own lock check, before the absorb loop --------------
+
+  # A live `running` line for n1, a return file claiming it `done`, and a
+  # subprocess `step --return` call with NO session holding delivery.lock
+  # (run_cli's own default env, exactly like every other row in this file).
+  # B4's bug was that RunnerAbsorb wrote the transition anyway, attributed
+  # to n1's rightful holder, before RunnerDispatch ever got a chance to
+  # refuse - so both rows below drive the real subprocess, never the module
+  # API, the same lesson n8's dogfood insight already recorded.
+  def build_running_intent(holder: "auto-rightful-holder")
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    write_savepoint(line("n1", "running", holder: holder, expires: "2099-01-01T00:00:00Z",
+                              packet: "abc", model: "sonnet"))
+  end
+
+  def write_return_file(node: "n1", status: "done", commit: "exec1234")
+    doc = { "node" => node, "status" => status }
+    doc["commit"] = commit if commit
+    path = File.join(@home, "return-#{node}.yaml")
+    File.write(path, YAML.dump(doc))
+    path
+  end
+
+  def test_step_without_the_lock_writes_no_ledger_line
+    build_running_intent
+    return_path = write_return_file
+    before = NodeLedger.entries(savepoint_path)
+
+    out, err, status = run_cli("step", @dir, "--return", "n1=#{return_path}")
+
+    refute_equal 0, status.exitstatus, out + err
+    assert_match(/lock_not_held/, out + err, out + err)
+    after = NodeLedger.entries(savepoint_path)
+    assert_equal before.map { |e| e[:raw] }, after.map { |e| e[:raw] },
+                 "a session holding no lock must never write a node transition"
+  end
+
+  def test_refused_step_leaves_the_ledger_unchanged
+    build_running_intent
+    return_path = write_return_file
+    before_bytes = File.read(savepoint_path)
+
+    _out, err, status = run_cli("step", @dir, "--return", "n1=#{return_path}")
+
+    refute_equal 0, status.exitstatus, err
+    assert_equal before_bytes, File.read(savepoint_path),
+                 "the refusal message must print and the write must never happen"
+  end
+
+  def savepoint_path
+    File.join(@dir, "savepoint.md")
   end
 end

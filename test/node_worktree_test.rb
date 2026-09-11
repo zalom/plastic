@@ -297,6 +297,35 @@ class NodeWorktreeTest < Minitest::Test
     assert_equal ["n1.txt"], paths
   end
 
+  # --- 9.8: an unmeasurable diff is nil, never [] (B3) -------------------------
+
+  def test_changed_paths_returns_nil_when_it_cannot_measure
+    ctx = build_context
+    # n1 has never been provisioned: its branch does not exist, so the git
+    # diff itself fails - that must read as "cannot measure" (nil), never
+    # silently as "nothing changed" ([]), the exact fail-open B3 named.
+    paths = NodeWorktree.changed_paths(ctx, node: "n1", kind: "work")
+
+    assert_nil paths
+  end
+
+  # --- 9.9: a verify/research node's diff is measured against the intent worktree -
+
+  def test_verify_node_diff_is_measured_against_the_intent_worktree
+    ctx = build_context
+    # A verify node gets no worktree or branch of its own (matrix 3.4), so
+    # the only place it could actually leave a diff is the shared intent
+    # worktree - committing directly there is the reviewer's own
+    # reproduction of "a reviewer edits the code it is reviewing".
+    File.write(File.join(@intent_worktree, "verify-edit.txt"), "edited by v1\n")
+    git("add", "verify-edit.txt", dir: @intent_worktree)
+    git("commit", "-q", "-m", "v1 edits the code it is reviewing", dir: @intent_worktree)
+
+    paths = NodeWorktree.changed_paths(ctx, node: "v1", kind: "verify")
+
+    assert_equal ["verify-edit.txt"], paths
+  end
+
   def test_empty_diff_is_empty_not_error
     ctx = build_context
     NodeWorktree.provision(ctx, node: "n1", kind: "work") # no commits on the node branch
