@@ -14,6 +14,7 @@ require_relative "runner_policy"
 require_relative "worktree"
 require_relative "savepoint"
 require_relative "guarded_append"
+require_relative "harness_adapter"
 
 # RunnerDispatch (intent 340, G7, n5): validates the graph, computes the
 # ready set, applies RunnerPolicy, mints leases, builds packets, writes
@@ -49,15 +50,24 @@ module RunnerDispatch
   # :errors, :rearm_command, :dispatched, :stop, :parked, :status, :blockers,
   # :plan - fields that do not apply to a given outcome stay nil/empty rather
   # than being omitted, so a caller never has to guard with `dig`.
-  def dispatch(context, limit: DEFAULT_LIMIT, now: Time.now, config: {}, caps: ReadySet::DEFAULT_CAPS,
+  def dispatch(context, limit: DEFAULT_LIMIT, now: Time.now, config: {}, harness: nil, caps: ReadySet::DEFAULT_CAPS,
                validator: WorkGraphValidator.method(:validate),
                ready_analyzer: ReadySet.method(:analyze),
                packet_builder: NodePacket.method(:build),
                worktree: NodeWorktree,
                ledger: NodeLedger,
-               runner: Worktree::ShellRunner.new)
+               runner: Worktree::ShellRunner.new,
+               harness_adapter: HarnessAdapter)
     intent_dir = context.intent_dir
     savepoint_path = File.join(intent_dir.to_s, "savepoint.md")
+
+    # Intent 340b, G7c, n1, rows 1.19/1.20/D21: resolved ONCE for the whole
+    # step through HarnessAdapter, never a literal - `harness:` (this call's
+    # `--harness` override, or nil) wins over `config`'s own `agent.type`.
+    # Every node this call dispatches carries the SAME value, and the
+    # caller (scripts/runner) reads it back off the report to pick which
+    # harness's block to render.
+    harness_key = harness_adapter.resolve_key(config: config, override: harness)
 
     # Row 5.31/5.32: this is RunnerDispatch's OWN lock check, never a shelled
     # `node-transition` call - append_transition below is used in-process
@@ -145,8 +155,8 @@ module RunnerDispatch
         next
       end
 
-      result = dispatch_one(context, node: node, kind: kind, now: now, config: config, caps: caps,
-                             edges: edges, nodes_decl: nodes_decl, packet_builder: packet_builder,
+      result = dispatch_one(context, node: node, kind: kind, now: now, config: config, harness: harness_key,
+                             caps: caps, edges: edges, nodes_decl: nodes_decl, packet_builder: packet_builder,
                              worktree: worktree, ledger: ledger, runner: runner)
       if result[:packet_build_failed]
         packet_failures << result
@@ -166,7 +176,8 @@ module RunnerDispatch
     RunnerCore.render_status(context) if dispatched.any? || stop || parked.any?
 
     build_report(context: context, dispatched: dispatched, stop: stop, parked: parked,
-                 ceiling_blocked: ceiling_blocked, packet_failures: packet_failures, running_count: running_count)
+                 ceiling_blocked: ceiling_blocked, packet_failures: packet_failures, running_count: running_count,
+                 harness: harness_key)
   end
 
   # --- guarded re-entries into graph.md (M9) ----------------------------------
@@ -187,8 +198,8 @@ module RunnerDispatch
 
   # --- one node's whole dispatch (packet, lease, `running`) -------------------
 
-  def dispatch_one(context, node:, kind:, now:, config:, caps:, edges:, nodes_decl:, packet_builder:, worktree:,
-                    ledger:, runner:)
+  def dispatch_one(context, node:, kind:, now:, config:, harness:, caps:, edges:, nodes_decl:, packet_builder:,
+                    worktree:, ledger:, runner:)
     intent_dir = context.intent_dir
     savepoint_path = File.join(intent_dir.to_s, "savepoint.md")
 
@@ -236,7 +247,10 @@ module RunnerDispatch
     precondition = lambda do |c|
       ReadySet.ready?(content: c, subject: node, graph: { edges: edges }, nodes: nodes_decl, caps: caps)[:ready]
     end
-    fields = { holder: holder, expires: expires, packet: build_result[:sha], model: model }
+    # Row 1.19/1.20/D21: harness= rides alongside model= on every `running`
+    # line, resolved once by the caller through HarnessAdapter and threaded
+    # straight through here - never re-resolved, never a literal.
+    fields = { holder: holder, expires: expires, packet: build_result[:sha], model: model, harness: harness }
 
     result = begin
       ledger.append_transition(savepoint_path, subject: node, state: "running", fields: fields, now: now,
@@ -380,7 +394,7 @@ module RunnerDispatch
 
   def empty_result
     { ok: true, reason: nil, errors: [], rearm_command: nil, dispatched: [], stop: nil, parked: [],
-      status: nil, blockers: [], plan: nil }
+      status: nil, blockers: [], plan: nil, harness: nil }
   end
   private_class_method :empty_result
 
@@ -395,9 +409,9 @@ module RunnerDispatch
   private_class_method :invalid_graph_result
 
   def build_report(context:, dispatched:, stop:, parked:, ceiling_blocked: false, packet_failures: [],
-                    running_count: 0)
+                    running_count: 0, harness: nil)
     base = empty_result.merge(dispatched: dispatched, stop: stop, parked: parked,
-                               plan: render_plan(dispatched))
+                               plan: render_plan(dispatched), harness: harness)
 
     if dispatched.any?
       base.merge(status: "dispatched")

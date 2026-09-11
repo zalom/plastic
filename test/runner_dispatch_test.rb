@@ -765,4 +765,60 @@ class RunnerDispatchTest < Minitest::Test
     assert_equal "queued", result[:status],
                  "a node already running, with nothing else ready, is in flight - never stalled"
   end
+
+  # === Intent 340b, G7c, n1: the harness field on `running` ===================
+
+  # --- 1.19: `running` carries harness= --------------------------------------
+
+  def test_running_line_carries_harness
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    ctx = build_context
+
+    result = RunnerDispatch.dispatch(ctx, config: { "agent" => { "type" => "codex" } })
+    assert result[:ok], result[:errors].inspect
+
+    entry = NodeLedger.last_running(savepoint_path, "n1")
+    refute_nil entry
+    assert_equal "codex", entry[:fields]["harness"], "running line missing harness="
+  end
+
+  # --- 1.20: the dispatcher's harness= comes from HarnessAdapter, not a literal --
+
+  def test_harness_value_comes_from_adapter
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    ctx = build_context
+
+    # No config override at all: HarnessAdapter's own default (claude-code)
+    # must be what lands on the line - never a hardcoded "codex" or a blank.
+    default_result = RunnerDispatch.dispatch(ctx, limit: 3)
+    assert default_result[:ok], default_result[:errors].inspect
+    default_entry = NodeLedger.last_running(savepoint_path, "n1")
+    assert_equal "claude-code", default_entry[:fields]["harness"]
+
+    # A SECOND node, dispatched with an explicit --harness override, must
+    # carry the override's value - proving the field tracks whatever
+    # HarnessAdapter resolves for THIS call, not a value fixed at dispatch
+    # time regardless of input. `limit: 3` keeps every node in this test
+    # dispatchable at once, so a filled concurrency ceiling never masks the
+    # thing this row actually proves.
+    write_node("n2.md", node: "n2", kind: "work")
+    write_graph("- n1 needs nothing\n- n2 needs nothing\n")
+    override_result = RunnerDispatch.dispatch(ctx, limit: 3, harness: "codex")
+    assert override_result[:ok], override_result[:errors].inspect
+    override_entry = NodeLedger.last_running(savepoint_path, "n2")
+    refute_nil override_entry, override_result.inspect
+    assert_equal "codex", override_entry[:fields]["harness"]
+
+    # An unknown value, config or override, falls back through the adapter
+    # to claude-code - a literal `"codex"` inline would never do this.
+    write_node("n3.md", node: "n3", kind: "work")
+    write_graph("- n1 needs nothing\n- n2 needs nothing\n- n3 needs nothing\n")
+    unknown_result = RunnerDispatch.dispatch(ctx, limit: 3, config: { "agent" => { "type" => "hermes" } })
+    assert unknown_result[:ok], unknown_result[:errors].inspect
+    unknown_entry = NodeLedger.last_running(savepoint_path, "n3")
+    refute_nil unknown_entry, unknown_result.inspect
+    assert_equal "claude-code", unknown_entry[:fields]["harness"]
+  end
 end
