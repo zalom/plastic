@@ -784,6 +784,20 @@ class MergeClaudeHooksTest < Minitest::Test
       assert_equal "755", format("%o", File.stat(dest).mode & 0o777), "#{dest} must install at 0755"
     end
   end
+  # Intent 340b (G7c, n4, row 4.34): the Stop launcher installs and is
+  # executable, like every other registered hook - it must be there even
+  # while runner.stop_hook defaults off, or every stop logs an error.
+  def test_stop_launcher_installed_and_executable
+    installer = InstallerCore.new(package_root: REPO, plastic_home: PLASTIC_TEST_HOME, version: "1.0.0-test")
+    claude_dir = File.join(@dir, "claude-install-stop")
+    FileUtils.mkdir_p(claude_dir)
+    installer.install_claude({ name: "Claude Code", dir: claude_dir }, false)
+
+    dest = File.join(claude_dir, "hooks", "plastic-stop")
+    assert File.exist?(dest), "install_claude must place the stop launcher"
+    assert_equal "755", format("%o", File.stat(dest).mode & 0o777)
+  end
+
   # Intent 302: the edit-path gates are gone, so a fresh merge registers NO
   # PreToolUse group at all.
   def test_merge_registers_no_pretooluse_group

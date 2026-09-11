@@ -12,6 +12,7 @@ require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/session_ledger"
 require_relative "../scripts/lib/arm"
 require_relative "../scripts/lib/worktree"
+require_relative "../scripts/lib/hook_registry"
 
 # Codex dispatcher shim (intent 102, Step 3): drives the real scripts/codex-hook
 # as a subprocess, feeding Codex-shaped stdin JSON fixtures (guide Part 4) whose
@@ -545,6 +546,17 @@ class CodexHooksTest < Minitest::Test
       out = io.read
     end
     assert_equal 0, $?.exitstatus, out
+  end
+
+  # Intent 340b (G7c, n4, row 4.30): the Stop hook assumes Claude's payload
+  # shape (stop_hook_active) and has no Codex equivalent, so it must stay out
+  # of every Codex projection: not a live-state event, not the PostToolUse
+  # group, not SessionEnd, and not among the pinned six hook names.
+  def test_stop_not_in_codex_hooks
+    codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook")
+    refute_includes codex.keys, "Stop"
+    refute_includes HookRegistry::CODEX_LIVE_STATE_EVENTS, "Stop"
+    refute_includes HookRegistry.codex_hook_names, "stop"
   end
 
   # Intent 302: the PreToolUse gate names are retired. A Codex install that still

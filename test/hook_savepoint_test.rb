@@ -5,9 +5,11 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "json"
+require "yaml"
 require "open3"
 require_relative "../scripts/lib/session_ledger"
 require_relative "../scripts/lib/handoff"
+require_relative "../scripts/lib/lock"
 
 # Intent 311: the PreCompact hook. `hooks/savepoint` is a bash launcher over
 # `scripts/hook-savepoint`, which writes this session's hand-off for the
@@ -131,6 +133,36 @@ class HookSavepointTest < Minitest::Test
     out, _err, status = Open3.capture3(env, RbConfig.ruby, SCRIPT, stdin_data: payload)
     assert_equal 0, status.exitstatus
     assert_includes message_of(out), "PLASTIC SAVEPOINT"
+  end
+
+  # Intent 340b (G7c, n4, row 4.38): the hand-off's Runner section is only
+  # ever populated when hook-savepoint threads the resolved intent through -
+  # Handoff.render takes no intent on its own, and this hook is the only
+  # caller that knows the session, so it is the only caller that can resolve
+  # one. project_roots is pinned to [] so the walk never leaves this tmp home.
+  def test_precompact_resolves_the_delivering_intent
+    File.write(File.join(@plastic_home, "config.yml"), YAML.dump("version" => 3, "project_roots" => []))
+    pointer(DAY)
+    intent_dir = File.join(@store, "340b--demo")
+    FileUtils.mkdir_p(intent_dir)
+    File.write(File.join(intent_dir, "runner-step.last"), "dispatched: n1\n")
+    Lock.acquire(intent_dir, session: SID, run_mode: "auto")
+
+    out, err, status = run_script(payload)
+    assert_equal 0, status.exitstatus, err
+    text = File.read(handoff_path)
+    assert_includes text, "## Runner"
+    assert_includes text, "dispatched: n1"
+    assert_includes message_of(out), "PLASTIC SAVEPOINT"
+  end
+
+  def test_precompact_omits_runner_section_when_no_intent_resolves
+    File.write(File.join(@plastic_home, "config.yml"), YAML.dump("version" => 3, "project_roots" => []))
+    pointer(DAY)
+    out, err, status = run_script(payload)
+    assert_equal 0, status.exitstatus, err
+    text = File.read(handoff_path)
+    refute_includes text, "## Runner"
   end
 
   # --- the launcher ---------------------------------------------------------------

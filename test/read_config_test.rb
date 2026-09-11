@@ -121,6 +121,20 @@ class ReadConfigTest < Minitest::Test
     _, _, status = run_script("")
     refute status.success?
   end
+
+  # Intent 340b (G7c, n4, D9, row 4.6): runner.stop_hook defaults false with
+  # no config file present, so StopGate has something to parse and doctor
+  # has something to report, even on a fresh install.
+  def test_runner_stop_hook_defaults_false
+    out, _, status = run_script("runner.stop_hook")
+    assert status.success?
+    assert_equal "false", out
+  end
+
+  def test_a_configured_runner_stop_hook_wins_over_the_default
+    write_global_config("version" => 3, "runner" => { "stop_hook" => true })
+    assert_equal "true", run_script("runner.stop_hook").first
+  end
 end
 
 class ReadConfigMigrateTest < Minitest::Test
