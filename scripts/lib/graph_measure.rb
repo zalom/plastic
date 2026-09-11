@@ -84,7 +84,8 @@ module GraphMeasure
       ok: true,
       gap_threshold_minutes: gap_threshold_minutes.to_f,
       scaffold: clock[:scaffold],
-      clock: { start: clock[:start], end: clock[:end], wall_clock_seconds: clock[:wall_clock_seconds] },
+      clock: { start: clock[:start], end: clock[:end], anchor: clock[:anchor],
+                wall_clock_seconds: clock[:wall_clock_seconds] },
       sessions: sessions,
       pauses: pauses,
       active_seconds: clock[:start] && clock[:end] ? sessions.sum { |s| s[:end] - s[:start] } : :unavailable,
@@ -157,6 +158,14 @@ module GraphMeasure
 
   # --- clock: spec D5.1 --------------------------------------------------------
 
+  # D20: the clock anchors on the first `Why` line when one exists. An intent
+  # whose savepoint.md carries no `Why` line at all (337 is the real example)
+  # has nothing for that anchor to start from, so the clock falls back to the
+  # FIRST ledger line of any kind (stage or transition) and the record names
+  # which anchor it used (row 3.23). The scaffold gap (`What` line to `Why`
+  # line) is a distance between two SPECIFIC stage lines; without a `Why` line
+  # that distance does not exist, so the fallback reports it `unavailable`
+  # rather than inventing a number against the wrong anchor.
   def build_clock(events)
     stage_events = events.select { |e| e[:kind] == :stage }
     what_event = stage_events.find { |e| e[:subject] == "What" }
@@ -167,14 +176,23 @@ module GraphMeasure
     why_at = why_event && parse_time(why_event[:timestamp])
     done_at = done_event && parse_time(done_event[:timestamp])
 
+    anchor = :why
+    start_at = why_at
+    unless start_at
+      first_with_time = events.find { |e| parse_time(e[:timestamp]) }
+      start_at = first_with_time && parse_time(first_with_time[:timestamp])
+      anchor = :first_line
+    end
+
     {
-      start: why_at,
+      start: start_at,
       end: done_at,
-      wall_clock_seconds: (why_at && done_at) ? (done_at - why_at) : nil,
+      anchor: anchor,
+      wall_clock_seconds: (start_at && done_at) ? (done_at - start_at) : nil,
       scaffold: {
         what_at: what_at,
         why_at: why_at,
-        gap_seconds: (what_at && why_at) ? (why_at - what_at) : nil,
+        gap_seconds: (anchor == :why && what_at && why_at) ? (why_at - what_at) : nil,
       },
     }
   end
@@ -200,10 +218,17 @@ module GraphMeasure
   end
   private_class_method :build_attempts
 
+  # `fields` merges the RUNNING line's fields under the TERMINAL line's (spec
+  # rows 1.25, 1.26): most fields (`holder`, `model`) are restated on both, but
+  # `hop=` is written once, on the `running` line only (row 3.10's real-ledger
+  # shape), and a terminal-only read silently lost it. A key present on both
+  # takes the terminal's value, which stays the more authoritative line.
   def finalize_attempt(running, terminal, now)
     running_at = running && parse_time(running[:timestamp])
     terminal_at = terminal && parse_time(terminal[:timestamp])
-    fields = (terminal && terminal[:fields]) || (running && running[:fields]) || {}
+    running_fields = (running && running[:fields]) || {}
+    terminal_fields = (terminal && terminal[:fields]) || {}
+    fields = running_fields.merge(terminal_fields)
 
     span_note =
       if running_at && terminal_at then nil

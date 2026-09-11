@@ -295,8 +295,15 @@ class GraphMeasureDogfoodTest < Minitest::Test
       assert_equal :unavailable, node[:model], id
       assert_equal :unavailable, node[:hop], id
     end
+    # No node in 337 has a running line, so no attempt has any span to
+    # contribute (row 3.16): every gate bucket nets to 0.0 and the whole
+    # measured active time (84.2 min) falls into "lead", unaccounted. That
+    # is distinct from "unavailable": active_seconds here IS a real number
+    # (the sessions the generic gap rule still finds), so the buckets are
+    # numerically decomposed, just with nothing to put in verify.
     m = GraphMeasureReport.model(r)
-    assert_equal "unavailable", m[:buckets]["verify"]
+    assert_equal 0.0, m[:buckets]["verify"]
+    assert_in_delta m[:buckets]["active_seconds"], m[:buckets]["lead"], 0.01
   end
 
   # --- 3.18: 337's two-field suite -----------------------------------------------
