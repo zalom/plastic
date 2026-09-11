@@ -543,6 +543,10 @@ class InstallerCore
       # by scripts/runner's `step`.
       "scripts/lib/runner_policy.rb" => "scripts/lib/runner_policy.rb",
       "scripts/lib/runner_dispatch.rb" => "scripts/lib/runner_dispatch.rb",
+      # Intent 340b (G7c, n1): the harness seam - HarnessAdapter, required
+      # by scripts/lib/runner_dispatch.rb and by scripts/runner's `step`
+      # directly.
+      "scripts/lib/harness_adapter.rb" => "scripts/lib/harness_adapter.rb",
       # Intent 340 (G7, n6): answer (closes a decision node or unparks a
       # work node parked at needs_decision), proposals (mints ids for what
       # an executor proposed), and rewind (resets the intent branch to a
