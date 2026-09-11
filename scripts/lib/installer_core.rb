@@ -551,6 +551,11 @@ class InstallerCore
       "scripts/lib/runner_answer.rb" => "scripts/lib/runner_answer.rb",
       "scripts/lib/runner_proposals.rb" => "scripts/lib/runner_proposals.rb",
       "scripts/lib/runner_rewind.rb" => "scripts/lib/runner_rewind.rb",
+      # Intent 343 (G10, n1): the ledger reader - GraphMeasure.read turns one
+      # intent directory into one frozen measurement record. No CLI yet
+      # (scripts/graph-measure ships at n2); registered here so it is never
+      # a lib that exists on disk but never reaches an install.
+      "scripts/lib/graph_measure.rb" => "scripts/lib/graph_measure.rb",
     }
   end
 
