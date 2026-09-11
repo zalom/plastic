@@ -37,6 +37,22 @@ class RunnerInstallTest < Minitest::Test
     FileUtils.rm_rf(home) if home
   end
 
+  # Row 2.20 (intent 343, G10, n2): the same contract for scripts/graph-measure
+  # - the documented invocation (`graph-measure intent <dir>`) fails on a real
+  # machine if the installed copy is not executable.
+  def test_installed_graph_measure_is_executable
+    home = Dir.mktmpdir("runner-install-test")
+    core = InstallerCore.new(package_root: REPO, plastic_home: home, version: "1.0.0-test")
+    core.distribute(:install)
+
+    dest = File.join(home, "scripts", "graph-measure")
+    assert File.exist?(dest), "distribute must install scripts/graph-measure"
+    mode = File.stat(dest).mode
+    assert (mode & 0o111) == 0o111, "installed scripts/graph-measure must be executable (mode #{mode.to_s(8)})"
+  ensure
+    FileUtils.rm_rf(home) if home
+  end
+
   # 7.3: the runner ships three public verbs (step, status, answer); the
   # skill body is the only place an operator learns the command exists.
   def test_skill_names_three_public_verbs

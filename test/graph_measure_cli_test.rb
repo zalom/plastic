@@ -1,0 +1,225 @@
+# encoding: UTF-8
+# frozen_string_literal: true
+
+require "minitest/autorun"
+require "tmpdir"
+require "fileutils"
+require "json"
+require "open3"
+require "rbconfig"
+require "time"
+
+require_relative "../scripts/lib/node_ledger"
+
+# GraphMeasureCliTest (intent 343, G10, n2): scripts/graph-measure, run as a
+# real subprocess (Open3), the house pattern test/runner_cli_test.rb and
+# test/ready_set_cli_test.rb already use (row 2.19: the module alone proves
+# nothing about the script actually running). Matrix rows 2.1-2.6, 2.14,
+# 2.17, 2.19, 2.22 in nodes/n2.md; the report's own content lives in
+# test/graph_measure_report_test.rb.
+class GraphMeasureCliTest < Minitest::Test
+  SCRIPT = File.expand_path("../scripts/graph-measure", __dir__)
+
+  def setup
+    @home = Dir.mktmpdir("graph-measure-cli")
+    @dir = File.join(@home, "1--demo")
+    FileUtils.mkdir_p(File.join(@dir, "nodes"))
+    File.write(File.join(@dir, "1--demo.md"), "---\nid: \"1\"\nintent: t\n---\n\n## Intent\nbody\n")
+  end
+
+  def teardown
+    FileUtils.remove_entry(@home) if @home && Dir.exist?(@home)
+  end
+
+  # --- fixture helpers ----------------------------------------------------------
+
+  def stage(ts, subject, text)
+    "#{ts}  #{subject}  #{text}\n"
+  end
+
+  def transition(ts, subject, state, fields: {}, comment: nil)
+    NodeLedger.transition_line(subject: subject, state: state, fields: fields, comment: comment,
+                                now: Time.iso8601(ts))
+  end
+
+  def write_savepoint(lines)
+    File.write(File.join(@dir, "savepoint.md"), Array(lines).join)
+  end
+
+  def write_graph(edges_body)
+    File.write(File.join(@dir, "graph.md"), <<~MD)
+      # Graph: fixture
+
+      ## Goal
+      fixture
+
+      ## Decisions
+      - none
+
+      ## Graph
+      #{edges_body}
+
+      ## Status
+      | Node | State | Detail |
+      | --- | --- | --- |
+    MD
+  end
+
+  RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", packet: "abc123", model: "sonnet" }.freeze
+
+  def write_happy_path_fixture
+    write_graph("- n1 needs nothing\n")
+    write_savepoint([
+      stage("2026-01-01T09:00:00Z", "Why", "spec.md created"),
+      transition("2026-01-01T09:01:00Z", "n1", "running", fields: RUNNING),
+      transition("2026-01-01T09:20:00Z", "n1", "done",
+                  fields: RUNNING.merge(gates: "suite", commit: "abc1234"), comment: "all green"),
+      stage("2026-01-01T09:21:00Z", "Done", "delivered"),
+    ])
+  end
+
+  def run_cli(*args)
+    Open3.capture3(RbConfig.ruby, SCRIPT, *args)
+  end
+
+  # --- 2.1: no args ---------------------------------------------------------------
+
+  def test_no_args_prints_usage_exit_2
+    out, err, status = run_cli
+    assert_equal 2, status.exitstatus
+    assert_empty out
+    assert_match(/usage/i, err)
+  end
+
+  # --- 2.2: unknown subcommand -----------------------------------------------------
+
+  def test_unknown_subcommand_exit_2
+    out, err, status = run_cli("bogus", @dir)
+    assert_equal 2, status.exitstatus
+    assert_empty out
+    assert_match(/unknown subcommand/, err)
+    assert_match(/"bogus"/, err)
+  end
+
+  # --- 2.3: unknown flag ------------------------------------------------------------
+
+  def test_unknown_flag_refused_by_name
+    write_happy_path_fixture
+    out, err, status = run_cli("intent", @dir, "--formats", "json")
+    assert_equal 2, status.exitstatus
+    assert_empty out
+    assert_match(/unknown flag/, err)
+    assert_match(/--formats/, err)
+  end
+
+  # --- 2.4: not an intent directory --------------------------------------------------
+
+  def test_non_intent_directory_exit_2
+    Dir.mktmpdir("not-an-intent") do |not_intent|
+      out, err, status = run_cli("intent", not_intent)
+      assert_equal 2, status.exitstatus
+      assert_empty out
+      assert_match(/not an intent directory/, err)
+      assert_includes err, not_intent
+    end
+  end
+
+  # --- 2.5: intent directory with no savepoint.md ------------------------------------
+
+  def test_missing_savepoint_exit_1
+    # @dir is a real intent directory (1--demo.md exists) but savepoint.md
+    # was never written.
+    out, err, status = run_cli("intent", @dir)
+    assert_equal 1, status.exitstatus
+    assert_empty out
+    assert_match(/savepoint\.md/, err)
+  end
+
+  # --- 2.6: an unlanded verb's module fails only itself -------------------------------
+
+  def test_missing_module_fails_only_its_own_verb
+    write_happy_path_fixture
+
+    out, err, status = run_cli("budget", @dir)
+    assert_equal 3, status.exitstatus
+    assert_empty out
+    assert_match(/not yet delivered/, err)
+    refute_match(/\.rb:\d+:in/, err, "expected no raw Ruby backtrace, got: #{err}")
+
+    out2, err2, status2 = run_cli("intent", @dir)
+    assert_equal 0, status2.exitstatus, err2
+    assert_match(/Wall clock/, out2)
+  end
+
+  # --- 2.14: anomalies still exit 0 --------------------------------------------------
+
+  def test_anomalies_listed_exit_still_zero
+    write_graph("- n1 needs nothing\n")
+    write_savepoint([
+      stage("2026-01-01T09:00:00Z", "Why", "spec.md created"),
+      transition("2026-01-01T09:01:00Z", "n1", "running", fields: RUNNING),
+      # Torn: a running line missing every required field.
+      "2026-01-01T09:05:00Z  n1  running\n",
+      transition("2026-01-01T09:20:00Z", "n1", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234")),
+    ])
+    out, err, status = run_cli("intent", @dir)
+    assert_equal 0, status.exitstatus, err
+    assert_match(/torn/i, out)
+    assert_includes out, "n1  running"
+  end
+
+  # --- 2.17: --format json emits exactly one parseable document ----------------------
+
+  def test_json_format_is_one_parseable_document
+    write_happy_path_fixture
+    out, err, status = run_cli("intent", @dir, "--format", "json")
+    assert_equal 0, status.exitstatus, err
+    assert_empty err
+
+    lines = out.each_line.to_a
+    assert_equal 1, lines.length, "expected exactly one line of stdout, got: #{out.inspect}"
+    parsed = JSON.parse(out)
+    assert_kind_of Hash, parsed
+    assert parsed.key?("wall_clock")
+  end
+
+  # --- 2.19: the executable actually runs, in a subprocess ---------------------------
+
+  def test_subprocess_intent_report_renders
+    write_happy_path_fixture
+    out, err, status = run_cli("intent", @dir)
+    assert_equal 0, status.exitstatus, err
+    assert_match(/== Wall clock ==/, out)
+    assert_match(/== Nodes ==/, out)
+    assert_match(/n1/, out)
+    assert_match(/all green/, out)
+  end
+
+  # --- 2.22: malformed graph.md, a torn ledger, and invalid UTF-8 never raise ---------
+
+  def test_malformed_inputs_never_raise
+    # Malformed graph.md: no ## Graph section at all.
+    File.write(File.join(@dir, "graph.md"), "not a graph file, no headings here\n")
+
+    content = [
+      stage("2026-01-01T09:00:00Z", "Why", "spec.md created"),
+      transition("2026-01-01T09:01:00Z", "n1", "running", fields: RUNNING),
+      # Torn line.
+      "2026-01-01T09:05:00Z  n1  running\n",
+      transition("2026-01-01T09:20:00Z", "n1", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234"),
+                  comment: "bad byte next"),
+    ].join
+
+    # Invalid UTF-8: a stray continuation byte with no leading byte, appended
+    # as its own line, never scrubbed on disk (GraphMeasure.read scrubs on
+    # read, never mutates the file, spec D2).
+    bytes = content.dup.force_encoding(Encoding::ASCII_8BIT)
+    bytes << "\xFF\xFE not valid utf-8\n".b
+    File.binwrite(File.join(@dir, "savepoint.md"), bytes)
+
+    out, err, status = run_cli("intent", @dir)
+    assert_equal 0, status.exitstatus, err
+    refute_match(/\.rb:\d+:in/, err, "expected no raw Ruby backtrace, got: #{err}")
+    assert_match(/== Wall clock ==/, out)
+  end
+end
