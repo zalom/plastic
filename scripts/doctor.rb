@@ -29,6 +29,7 @@ require_relative "lib/lock"
 require_relative "lib/savepoint"
 require_relative "lib/node_ledger"
 require_relative "lib/ready_set"
+require_relative "lib/index_projection"
 require_relative "lib/agent_models"
 require_relative "lib/outcome_guard"
 require_relative "lib/skill_lint"
@@ -837,12 +838,23 @@ def check_done_signals(scopes: nil)
   unbackfilled = []       # spec/plan/actions gaps on terminal intents (intent 308) - repairable
   excluded_backfill = []  # backfill gaps knowingly exempted via doctor-exclusions (intent 308)
   dead_rows_by_rule = Hash.new { |h, k| h[k] = [] }
+  index_drift = []        # intent 337 (G4): INDEX vs. the intent ledgers, scoped to what
+                           # savepoint_operational does not already report (row 6.7 - a silent or
+                           # absent ledger is already IndexProjection's own exclusion, row 5.13)
 
   done_signal_stores(scopes).each do |store|
     exclusions = DoctorExclusions.load(store[:index])
     if exclusions[:errors].any?
       exclusion_errors.concat(exclusions[:errors].map { |e| "#{store[:scope]}: #{e}" })
       exclusion_error_paths << exclusions[:path]
+    end
+
+    if File.exist?(store[:index])
+      projection = IndexProjection.analyze(store[:store_dir], index_path: store[:index])
+      projection[:drift].each do |row|
+        index_drift << "#{store[:scope]}: #{row[:id]} - INDEX says #{row[:index_status]}, " \
+                        "the ledger's last Done line says #{row[:ledger_status]}"
+      end
     end
 
     consumed = { "savepoint_operational" => [], "backfilled_complete" => [] }
@@ -1086,6 +1098,30 @@ def check_done_signals(scopes: nil)
                 "Savepoint.rebuild_savepoint. Terminal (Completed/Abandoned) intents are immutable: " \
                 "a phantom there stays advisory unless an explicit human grant authorizes the " \
                 "124a manual Done-bookend repair."
+    )
+  end
+
+  # index_ledger_drift (intent 337, G4): a REAL terminal ledger line (Done
+  # delivered or abandoned) that disagrees with the INDEX section an intent
+  # currently sits in. Never fires for a silent or absent ledger - that gap
+  # is savepoint_operational's own concern, and IndexProjection's own drift
+  # computation already excludes it (row 5.13), so no id is ever double
+  # reported across the two checks (row 6.7). Warn+fixable: `index-projection
+  # <store_root> --write` is the repair, never invented here.
+  if index_drift.empty?
+    checks << check(
+      category: "done_signals", name: "index_ledger_drift", status: "pass",
+      message: "No INDEX section disagrees with an intent's own terminal ledger line"
+    )
+  else
+    checks << check(
+      category: "done_signals", name: "index_ledger_drift", status: "warn",
+      message: "#{index_drift.size} intent#{index_drift.size == 1 ? "" : "s"} whose terminal " \
+               "ledger line disagrees with the INDEX section it currently sits in",
+      details: index_drift, fixable: true,
+      fix_hint: "Reconcile via `index-projection <store_root> --write` (the ledger wins; only the " \
+                "conflicting entries move, every other byte of INDEX.md, including ## Clusters and " \
+                "## Relocated, is left untouched)."
     )
   end
 

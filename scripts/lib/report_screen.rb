@@ -16,6 +16,8 @@ require_relative "lock"
 require_relative "session_ledger"
 require_relative "roadmap_queue"
 require_relative "roadmap_savepoint"
+require_relative "roadmap_graph"
+require_relative "graph_tree"
 require_relative "screen_paint"
 require_relative "outcome_report"
 require_relative "node_file"
@@ -1752,6 +1754,29 @@ def self.matching_action_heading(intent_dir, label)
     ]
   end
 
+  # Intent 337, n7: the graph tree block for the plan screen, additive only
+  # - a roadmap with no real "## Graph" section (RoadmapGraph.analyze's
+  # `has_graph: false`) or a cyclic one renders no block at all, so a
+  # graphless roadmap's screen stays byte-identical to before this method
+  # existed (row 7.2). Fits the same screen limit `fit_screen` enforces
+  # everywhere else (row 7.3), fenced so a box-drawing line is never
+  # mistaken for a markdown table row.
+  def self.roadmap_tree_block(path, store_root)
+    index_path = File.join(store_root, "INDEX.md")
+    analysis = RoadmapGraph.analyze(path, index_path: index_path)
+    return "" unless analysis[:has_graph] && analysis[:cycle].nil?
+
+    labels = analysis[:entries].each_with_object({}) { |(id, e), h| h[id] = e[:title] }
+    marks = {
+      critical_path: analysis[:critical_paths] ? (analysis[:critical_paths][:critical_path] || []) : [],
+      ready: analysis[:ready] || [],
+    }
+    tree = GraphTree.render(edges: analysis[:edges], labels: labels, marks: marks, width: FIT_SCREEN_DEFAULT_LIMIT)
+    return "" unless tree[:ok]
+
+    "\n\n**Tree**\n\n```\n#{tree[:text]}```\n"
+  end
+
   def self.roadmap_plan_entries_table(data)
     label = roadmap_batch_label(data)
     rows = ["| #{label} | Graph ID | Intent | Status |", "| --- | --- | --- | --- |"]
@@ -1919,6 +1944,7 @@ def self.matching_action_heading(intent_dir, label)
     when "plan"
       out = out.gsub("{{fields.rows}}", state_rows(roadmap_plan_fields(text, data, events)).join("\n"))
       out = out.gsub("{{entries.table}}", roadmap_plan_entries_table(data))
+      out = out.gsub("{{tree}}", roadmap_tree_block(path, store_root))
     when "state"
       out = out.gsub("{{fields.rows}}", state_rows(roadmap_state_fields(text, data, events, store_root, now)).join("\n"))
       out = out.gsub("{{entries.table}}", roadmap_state_entries_table(data, store_root, now))

@@ -6,4 +6,4 @@
 
 **Batches**
 
-{{entries.table}}
+{{entries.table}}{{tree}}

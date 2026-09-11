@@ -6,6 +6,8 @@ require "json"
 require_relative "roadmap_savepoint"
 require_relative "graph_file"
 require_relative "graph_edges"
+require_relative "ready_set"
+require_relative "roadmap_graph"
 
 # FileOrderRanker - the default value-ordering strategy: today's roadmap file order,
 # unchanged. This is the intent-173 ranking-swap seam (sibling to the 147 DB-swap seam): a
@@ -143,25 +145,15 @@ class RoadmapQueue
     {
       slug: File.basename(path, ".md"), path: path,
       waves: parse_waves(RoadmapSavepoint.grouping_section_body(text, path: path)),
-      graph_edges: parse_roadmap_graph(text),
+      # D15: an exact "## Graph" heading line only, never a prefix - a live
+      # roadmap can carry "## Graph (2026-09-01, superseded by ...)". A
+      # section that yields no real edge lines is treated the same as no
+      # section at all: the fallback to wave order, both silent (D15).
+      # Fence-aware (D18). Intent 337 n9: reads through the shared model
+      # (RoadmapGraph.parse_graph_section) rather than a second local
+      # parser, so this heading/fence/emptiness rule is made in one place.
+      graph_edges: RoadmapGraph.parse_graph_section(text),
     }
-  end
-
-  # D15: an exact "## Graph" heading line only, never a prefix - a live
-  # roadmap can carry "## Graph (2026-09-01, superseded by ...)", which
-  # GraphFile.section_body already treats as a non-match because it locates
-  # a section by an exact stripped-line comparison. A section that yields no
-  # real edge lines (GraphEdges.parse finds zero nodes) is treated the same
-  # as no section at all: the fallback to wave order, both silent (D15).
-  # Fence-aware (D18): a fenced example edge line is never read as real.
-  def parse_roadmap_graph(text)
-    section = GraphFile.section_body(text, "## Graph")
-    return nil if section.nil?
-
-    parsed = GraphEdges.parse(GraphFile.strip_fenced_blocks(section))
-    return nil if parsed[:nodes].empty?
-
-    parsed
   end
 
   def parse_waves(waves_body)
@@ -329,7 +321,13 @@ class RoadmapQueue
 
     (id_to_entry.keys - all_graph_nodes(edges)).each { |id| edges[id] = [] }
 
-    topological_layers(edges).each do |layer|
+    # Intent 337 n9: the one topological sort (327 D1) is ReadySet.batches;
+    # RoadmapGraph.order_batches only reorders WITHIN a layer to match the
+    # roadmap file's own entry order (row 9.8), never a second sort.
+    batch_result = ReadySet.batches(edges)
+    layers = batch_result[:ok] ? RoadmapGraph.order_batches(batch_result[:batches], id_to_entry.keys) : []
+
+    layers.each do |layer|
       layer_ids = layer.select { |id| id_to_entry.key?(id) }
       next if layer_ids.empty?
 
@@ -354,29 +352,6 @@ class RoadmapQueue
       return { heading: heading, dispatchable: dispatchable, in_flight: in_flight }
     end
     nil
-  end
-
-  # Topological layers of `edges` ({id => [needs...]}): layer one is every
-  # id needing nothing, layer k is every id all of whose needs sit in layers
-  # below k. Never called on a cyclic graph (the caller checks first), so no
-  # cycle guard is needed here.
-  def topological_layers(edges)
-    nodes = edges.keys.dup
-    edges.each_value { |targets| (targets || []).each { |t| nodes << t unless nodes.include?(t) } }
-
-    layer = {}
-    assign = nil
-    assign = lambda do |node|
-      next layer[node] if layer.key?(node)
-
-      needs = edges[node] || []
-      layer[node] = needs.empty? ? 1 : 1 + needs.map { |t| assign.call(t) }.max
-    end
-    nodes.each { |n| assign.call(n) }
-
-    grouped = Hash.new { |h, k| h[k] = [] }
-    layer.each { |n, l| grouped[l] << n }
-    grouped.keys.sort.map { |l| grouped[l].sort }
   end
 
   def blocked_for(candidate)

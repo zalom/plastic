@@ -1,0 +1,119 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# roadmap-graph - the CLI over the roadmap graph model (intent 337, G4):
+# `check`, `render`, `migrate`, every verb honouring --dry-run.
+#
+# Usage:
+#   roadmap-graph check <roadmap.md> [--dry-run]
+#   roadmap-graph render <roadmap.md> [--dry-run]
+#   roadmap-graph migrate <roadmap.md> [--dry-run]
+#
+# Exit codes:
+#   0 - printed / rendered / migrated cleanly (or a migrate skip: the
+#       roadmap already carries a graph)
+#   1 - a real finding: a cyclic graph, a dangling id, or a render/migrate
+#       refusal (no ## Graph, no grouping heading)
+#   2 - usage: no argument, an unknown verb, or a missing/non-file path
+
+require_relative "lib/roadmap_graph"
+require_relative "lib/roadmap_render"
+require_relative "lib/roadmap_migration"
+
+module RoadmapGraphCli
+  module_function
+
+  VERBS = %w[check render migrate].freeze
+
+  def usage
+    warn "Usage: roadmap-graph <#{VERBS.join('|')}> <roadmap.md> [--dry-run]"
+  end
+
+  def main(argv)
+    args = argv.dup
+    dry_run = !!args.delete("--dry-run")
+
+    verb = args.shift
+    unless verb && VERBS.include?(verb)
+      warn "roadmap-graph: unknown verb #{verb.inspect} (use #{VERBS.join(', ')})" if verb
+      usage
+      return 2
+    end
+
+    path = args.shift
+    unless path && File.file?(path)
+      warn "roadmap-graph: #{path.inspect} is not a file"
+      return 2
+    end
+
+    case verb
+    when "check" then check(path)
+    when "render" then render(path, dry_run)
+    when "migrate" then migrate(path, dry_run)
+    end
+  end
+
+  def check(path)
+    result = RoadmapGraph.analyze(path)
+    unless result[:has_graph]
+      warn "roadmap-graph check: #{result[:reason]}"
+      return 1
+    end
+    if result[:cycle]
+      warn "roadmap-graph check: cyclic graph: #{result[:cycle].join(' > ')}"
+      return 1
+    end
+    if result[:reason]
+      warn "roadmap-graph check: #{result[:reason]}"
+      return 1
+    end
+
+    puts "Batches: #{result[:batches].map { |b| b.join(', ') }.join(' | ')}"
+    puts "Ready: #{result[:ready].join(', ')}"
+    puts "Dead ends: #{result[:dead_ends].join(', ')}" unless result[:dead_ends].empty?
+
+    unless result[:dangling].empty?
+      warn "roadmap-graph check: graph names #{result[:dangling].map(&:inspect).join(', ')}, no batch entry"
+      return 1
+    end
+
+    0
+  end
+
+  def render(path, dry_run)
+    result = RoadmapRender.write(path, dry_run: dry_run)
+    unless result[:ok]
+      warn "roadmap-graph render: #{result[:error]}"
+      return 1
+    end
+
+    if dry_run
+      puts result[:content]
+    else
+      puts "roadmap-graph render: wrote #{path}"
+    end
+    0
+  end
+
+  def migrate(path, dry_run)
+    result = RoadmapMigration.write(path, dry_run: dry_run)
+    unless result[:ok]
+      if result[:skipped]
+        puts "roadmap-graph migrate: #{result[:reason]}"
+        return 0
+      end
+      warn "roadmap-graph migrate: #{result[:reason]}"
+      return 1
+    end
+
+    if dry_run
+      puts result[:content]
+    else
+      puts "roadmap-graph migrate: wrote #{path}"
+    end
+    0
+  end
+end
+
+exit(RoadmapGraphCli.main(ARGV)) if $PROGRAM_NAME == __FILE__

@@ -498,6 +498,17 @@ class InstallerCore
       # test/install_sync_test.rb stays green across every intermediate unit.
       "scripts/lib/ready_set.rb" => "scripts/lib/ready_set.rb",
       "scripts/ready-set" => "scripts/ready-set",
+      # Intent 337 (G4): the roadmap graph model and its tree renderer,
+      # registered as they land (test/installer_core_test.rb requires every
+      # scripts/lib file to be manifest-covered as soon as it exists, not
+      # only once the CLI that ships it arrives at n4).
+      "scripts/lib/roadmap_graph.rb" => "scripts/lib/roadmap_graph.rb",
+      "scripts/lib/graph_tree.rb" => "scripts/lib/graph_tree.rb",
+      "scripts/lib/index_projection.rb" => "scripts/lib/index_projection.rb",
+      "scripts/lib/roadmap_render.rb" => "scripts/lib/roadmap_render.rb",
+      "scripts/lib/roadmap_migration.rb" => "scripts/lib/roadmap_migration.rb",
+      "scripts/roadmap-graph" => "scripts/roadmap-graph",
+      "scripts/index-projection" => "scripts/index-projection",
       # Intent 338 (G5): the node packet command - the trust-boundary wrapper,
       # the five-block gatherer/assembler, and the CLI 340's runner calls.
       "scripts/lib/packet_wrapper.rb" => "scripts/lib/packet_wrapper.rb",
