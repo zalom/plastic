@@ -60,6 +60,17 @@ module Runner
     (i = args.index(name)) && args[i + 1]
   end
 
+  # opt_all(args, name) -> every value given for a repeated flag, in the order
+  # they appear, or [] when the flag never occurs (intent 340, G7, n8, row
+  # 8.1-8.3). `run_step` needs this, not `opt`, for `--return`: one step may
+  # carry more than one `--return NODE=PATH` pair (one per node the session
+  # is reporting back on), and `opt`'s single-value semantics would silently
+  # keep only the first, absorbing one node while stranding the other's
+  # lease until it expires.
+  def opt_all(args, name)
+    args.each_index.select { |i| args[i] == name }.map { |i| args[i + 1] }.compact
+  end
+
   def main(argv)
     args = argv.dup
     verb = args.shift
@@ -156,6 +167,8 @@ module Runner
     case verb
     when "step"
       run_step(intent_dir, args)
+    when "sweep"
+      run_sweep(intent_dir, args)
     when "answer"
       run_answer(intent_dir, args)
     when "rewind"
@@ -164,6 +177,29 @@ module Runner
       warn "runner: #{verb}'s module loaded but no dispatcher is wired up yet"
       exit 3
     end
+  end
+
+  # run_sweep (intent 340, G7, n8): the standalone `sweep` verb, unreachable
+  # from the CLI until this node - `dispatch_lazy` had no `when "sweep"` arm
+  # even though `RunnerSweep.run` (n2) is a complete, documented standalone
+  # entry point, exactly the shape a bare `runner sweep` call needs (abort
+  # check, THEN the lease heartbeat, THEN reclaim - RunnerSweep's own fixed
+  # order). `step` never calls this method: it composes `abort_if_merging`
+  # and `reclaim` itself, interleaved around absorb.
+  def run_sweep(intent_dir, args)
+    context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
+    result = RunnerSweep.run(context)
+
+    unless result[:ok]
+      warn "runner: #{result[:error]}"
+      warn "runner: run `#{result[:recovery_command]}` before the next sweep can run" if result[:recovery_command]
+      exit 1
+    end
+
+    result[:reclaimed].each { |r| puts "reclaimed #{r[:node]} (holder=#{r[:holder]})" }
+    result[:extended].each { |e| puts "extended #{e[:node]} (head=#{e[:head]})" }
+    puts "nothing to sweep" if result[:reclaimed].empty? && result[:extended].empty?
+    exit 0
   end
 
   # run_answer (intent 340, G7, n6): closes a decision node or unparks a
@@ -237,9 +273,14 @@ module Runner
 
     Lock.heartbeat(intent_dir, session: context.session) unless context.session.to_s.strip.empty?
 
-    returns = opt_all(args, "--return").each_with_object({}) do |pair, memo|
+    returns = {}
+    opt_all(args, "--return").each do |pair|
       node, path = pair.to_s.split("=", 2)
-      memo[node] = path if node && !node.empty? && path
+      if node.to_s.empty? || path.to_s.empty?
+        warn "runner: malformed --return #{pair.inspect}, expected NODE=PATH"
+        exit 2
+      end
+      returns[node] = path
     end
 
     returns.each do |node, path|
