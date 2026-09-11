@@ -1,0 +1,308 @@
+# Node n4
+kind: work
+files: scripts/runner, scripts/lib/node_return.rb, scripts/lib/runner_absorb.rb, scripts/lib/installer_core.rb, test/node_return_test.rb, test/runner_absorb_test.rb, test/install_sync_test.rb
+budget: 140000
+
+# n4 - The return schema and the gate that writes one transition
+
+`NodeReturn.parse(text)` reads one YAML document against a closed schema and returns a struct or a
+named failure. Keys: `node`, `status`, `commit`, `summary`, `findings`, `proposed_nodes`,
+`proposed_edges`, `question`, `reason`. Anything unparsable or off-schema is
+`failed_verification reason=return_unparsable`.
+
+`RunnerAbsorb.absorb(context, node:, return_path:)` is the gate that turns one return into exactly
+one transition line. It runs the checks in a fixed order and stops at the first refusal: core
+integrity, schema, diff scope, named tests exist, merge, suite. Only a clean pass through all six
+writes `done` (D18). Every other path writes `failed_verification`, `needs_decision` or `blocked`,
+with the reason that stopped it.
+
+Findings land as one capped Insight line per node per return under `### Findings`. The rest of the
+return is discarded (D45, C27). `Insights.append_insight` never creates that subsection, so this
+node creates it when absent; without the heading, `outcome-report` reads no findings at all.
+
+Every line the gate writes carries `gates=`, a plus-joined list of the checks that actually ran,
+from the closed set `integrity`, `schema`, `scope`, `named_tests`, `merge`, `suite`. It is a
+required ledger field on both `done` and `failed_verification` (D20).
+
+The entry sub-schemas are pinned here, not left to the implementer: a `proposed_nodes` entry
+carries `kind`, `title` and `needs`, with optional `files` and `budget`; a `proposed_edges` entry
+carries `from` and `to`.
+
+## n4 failure-mode matrix
+| Row | Operation | Failure mode | Test |
+| --- | --- | --- | --- |
+| 4.1 | Parse a well-formed return | The happy path fails and no node can ever reach `done` | `node_return_test#test_valid_return_parses` |
+| 4.2 | Refuse text that is not YAML | A raw transcript is read as a return and its prose becomes fields | `node_return_test#test_non_yaml_is_return_unparsable` |
+| 4.3 | Refuse YAML that is not a mapping | A YAML list or scalar reaches the field readers and raises `NoMethodError` | `node_return_test#test_non_mapping_is_return_unparsable` |
+| 4.4 | Refuse an unknown key | An executor invents a field the runner silently drops, and the contract erodes with nobody noticing | `node_return_test#test_unknown_key_is_refused` |
+| 4.5 | Refuse an unknown `status` | A misspelled status falls through to a default and a failed node reads as done | `node_return_test#test_unknown_status_is_refused` |
+| 4.6 | Require `commit` on a work node's `done` | `done` lands with no evidence at all, which is exactly what D44 refuses one layer down | `node_return_test#test_done_without_commit_is_refused` |
+| 4.7 | Require `question` on `needs_decision` | The loop stops and prints no question, so the owner is asked nothing | `node_return_test#test_needs_decision_without_question_is_refused` |
+| 4.8 | Require `reason` on `failed_verification` and `blocked` | The ledger records a failure with no cause and the retry repeats it | `node_return_test#test_failure_without_reason_is_refused` |
+| 4.9 | Refuse a return whose `node` is not the dispatched node | An executor's return is absorbed against another node and closes work that never ran | `node_return_test#test_node_mismatch_is_refused` |
+| 4.10 | Cap and coerce `findings` to strings | A nested structure lands in an Insight line and breaks the guarded append | `node_return_test#test_findings_are_coerced_and_capped` |
+| 4.11 | Survive a YAML alias or anchor bomb | A crafted return exhausts memory and takes the session down | `node_return_test#test_aliases_are_refused` |
+| 4.12 | Survive invalid UTF-8 in the return | `ArgumentError: invalid byte sequence` escapes the parser and kills the step | `node_return_test#test_invalid_utf8_does_not_raise` |
+| 4.13 | Check core integrity before writing any transition | A drifted engine writes the transition, so the refusal that was supposed to catch it ran under the code it was checking | `runner_absorb_test#test_integrity_checked_before_transition` |
+| 4.14 | Write `blocked reason=core_integrity` on drift | Drift is reported and the step continues anyway | `runner_absorb_test#test_drift_blocks_and_records_reason` |
+| 4.15 | Record `--allow-core-drift` on the line when it is used | The override is invisible and a run under a drifted core looks identical to a clean one | `runner_absorb_test#test_allow_core_drift_is_recorded` |
+| 4.16 | Refuse a work node's diff touching a path outside `files:` | An executor edits anything it likes and the declared surface means nothing | `runner_absorb_test#test_diff_outside_files_fails_verification` |
+| 4.17 | Refuse any diff at all on a verify node | A verify node writes the code it is meant to judge | `runner_absorb_test#test_any_diff_on_verify_fails_verification` |
+| 4.18 | Refuse any diff at all on a research node | A research node commits code nobody planned | `runner_absorb_test#test_any_diff_on_research_fails_verification` |
+| 4.19 | Refuse `done` when the matrix names a test file that does not exist | The node claims a test as its proof and the file was never written | `runner_absorb_test#test_named_test_missing_fails_verification` |
+| 4.20 | Merge cleanly and record the merge commit | The node branch is never merged and the intent branch ships without the work | `runner_absorb_test#test_clean_merge_records_commit` |
+| 4.21 | Route a conflict entirely inside `files:` to `failed_verification` | A conflict the retry can fix stops the whole run for an owner decision | `runner_absorb_test#test_conflict_inside_files_fails_verification` |
+| 4.22 | Route a conflict touching a path outside `files:` to `needs_decision` with the paths | A graph error the owner owns is retried blindly until the cap | `runner_absorb_test#test_conflict_outside_files_needs_decision_with_paths` |
+| 4.23 | Run the project's tests and write `suite=` | The runner takes the executor's word for green, which D18 exists to refuse | `runner_absorb_test#test_done_line_carries_runner_measured_suite` |
+| 4.24 | Write `failed_verification reason=suite_red` on a red suite | A red suite writes `done` and the intent ships broken | `runner_absorb_test#test_red_suite_fails_verification` |
+| 4.25 | Run the suite only after a clean merge | The suite measures the node branch, not the integrated tree, and passes on code that does not integrate | `runner_absorb_test#test_suite_runs_on_merged_tree` |
+| 4.26 | Write exactly one transition per return | Two lines land for one return and the attempt count is wrong forever | `runner_absorb_test#test_one_transition_per_return` |
+| 4.27 | Append one capped Insight line per return under `### Findings` | Findings are lost, or a long return floods the record | `runner_absorb_test#test_findings_append_one_capped_line` |
+| 4.28 | Discard the rest of the return | Executor prose reaches the record and the record stops being the runner's own account | `runner_absorb_test#test_return_body_is_not_recorded` |
+| 4.29 | Keep the node worktree on a failing absorb | The evidence for the failure is deleted with the worktree | `runner_absorb_test#test_failing_absorb_keeps_worktree` |
+| 4.30 | Absorb a return for a node that is not `running` | A stale return closes a node that was already reclaimed and re-dispatched | `runner_absorb_test#test_return_for_non_running_node_is_refused` |
+| 4.31 | Write `gates=` on every `done` line (D20, fold of blocker 1) | `gates` is a required field, so `append_transition` raises before touching the file and no node can ever reach `done` | `runner_absorb_test#test_done_line_carries_gates` |
+| 4.32 | Write `gates=` on every `failed_verification` line | Same refusal, on the failure path, so no failure can be recorded either | `runner_absorb_test#test_failed_verification_line_carries_gates` |
+| 4.33 | Record in `gates=` only the checks that actually ran | A failure at check two claims all six ran and the line overstates what was verified | `runner_absorb_test#test_gates_lists_only_checks_that_ran` |
+| 4.34 | Write `holder=` on every line the gate writes (fold of major 10) | An unattributed `done` wedges the node: `running` is refused at exit 5 and `reclaimed` at exit 6, and no successor becomes ready | `runner_absorb_test#test_every_written_line_carries_holder` |
+| 4.35 | Create the `### Findings` subsection when it is absent (fold of major 13) | `Insights.append_insight` never creates the heading, so `outcome-report` splits on it and reads nothing | `runner_absorb_test#test_findings_subsection_created_when_absent` |
+| 4.36 | Synthesize the `question=` for a conflict outside `files:` (D29, fold of major 12) | `needs_decision` requires `question`, so the append raises and the conflict is never recorded | `runner_absorb_test#test_conflict_needs_decision_carries_question` |
+| 4.37 | Refuse a malformed `proposed_nodes` entry (D29, fold of major 17) | A string where a mapping belongs reaches the proposal writer and raises out of the step | `node_return_test#test_malformed_proposed_node_entry_is_refused` |
+| 4.38 | Refuse a malformed `proposed_edges` entry | Same, for edges | `node_return_test#test_malformed_proposed_edge_entry_is_refused` |
+| 4.39 | Write `suite=none` and record `suite:absent` in `gates` when the project records no verify command (D29, fold of major 23) | `default_project_reader` returns nil and the sixth check has no defined behavior: `done` either lands unverified or the node blocks forever | `runner_absorb_test#test_absent_verify_command_writes_suite_none` |
+| 4.40 | Report the merge commit when the ledger append fails after a landed merge (D30, fold of major 15) | The merge is on the intent branch, the suite has run, and no line records any of it | `runner_absorb_test#test_append_failure_after_merge_reports_commit` |
+| 4.41 | Remove the node worktree only after the `done` line lands | The worktree is gone and the transition that justified removing it never landed | `runner_absorb_test#test_worktree_removed_after_done_line_lands` |
+| 4.42 | Keep the return file as `packets/<node>--a<N>.return` (D30, fold of minor 28) | The evidence behind a `done` line is discarded and the line cannot be audited | `runner_absorb_test#test_return_file_kept_beside_packet` |
+| 4.43 | Record drift with the field key `core_drift` (D30, fold of minor 27) | An unnamed field, or one outside `[a-z_]+`, is emitted and the parser can never read it back | `runner_absorb_test#test_core_drift_field_key` |
+| 4.44 | Re-render `graph.md` `## Status` after the transition (D28) | The graph's Status table still reads `planned` after the node is done | `runner_absorb_test#test_absorb_rerenders_graph_status` |
+| 4.45 | Register `node_return.rb` and `runner_absorb.rb` in `core_files` (D25) | `install_sync_test` goes red as soon as `scripts/runner` requires them | `install_sync_test#test_core_files_match_disk` |
+
+## Steps
+1. Red: the matrix's tests above, committed before any code.
+2. Write `NodeReturn` and `RunnerAbsorb`, and wire absorption into `step`.
+3. Green, then the whole suite at its baseline.
+
+## Proven by
+(filled at close from the ledger: commit, suite counts, review verdict)
+
+<<<PLASTIC-DATA:f4f58facb4b6 label="ledger" source="savepoint.md">>>
+### Transitions
+(no transition lines for n4)
+
+### Predecessors
+n1: done — 2026-09-10T06:33:16Z  n1  done holder=auto-6aa701e173 model=sonnet gates=integrity+schema+scope+named_tests+merge+suite commit=b43b170
+n3: done — 2026-09-10T06:59:00Z  n3  done holder=auto-6aa701e173 model=sonnet gates=integrity+schema+scope+named_tests+merge+suite commit=2d2e4f9
+
+### Lease
+lease: holder=auto-6aa701e173 expires=2026-09-10T10:17:44Z model=sonnet
+<<<END-PLASTIC-DATA:f4f58facb4b6>>>
+
+<<<PLASTIC-DATA:f4f58facb4b6 label="record" source="340--runner-core-in-session/340--runner-core-in-session.md">>>
+## Intent
+G7 of the graph-ready plan (intent 327, Batch 3, needs G3 (336), G5 (338), G6 (339)): Runner core in the harness session. Runner core in the harness session over the Ruby commands: three public verbs, `ready` and `sweep` internal (C29); validation before first dispatch (C9); crash sweep with `reclaimed` lines recording landed commits (C11), live-node extension capped at two per attempt (C6, C30), `MERGE_HEAD` abort at sweep start (C5); ready-set dispatch at concurrency two through native subagents; per-node worktrees off the intent branch with lifecycle through failure states (C31, D32), merge on `done`, conflict inside `files:` is `failed_verification` and outside `files:` is `needs_decision` with the paths (C12); `graph.md` re-read and cycle-checked before each dispatch (C12); kind policies with retry caps (C3); verify nodes as a separate invocation with only the packet on the advisor model, no worktree, any diff fails (C4); the runner runs the tests itself at `done` and writes `suite=` (C18); return is one schema-checked YAML document, unparsable is `failed_verification` (C22); diff outside `files:` is `failed_verification` (C4); findings land as one capped Insight line per node (C27); `needs_decision` stop with an answer command (C26); proposed nodes and edges accepted mechanically or refused with a reason, never into a running node (C8); core integrity check against the hashed manifest after every return (C10); `done` only on code-verified evidence (absorbs 69's six primitives, supersedes 44); rewind command after the runner proves itself (C15).
+
+## Decisions
+- D1. Three public verbs on one command, `scripts/runner`: `step`, `status`, `answer` (C29).
+  `ready` and `sweep` are subcommands of the same binary, working and callable, but absent from
+  the skill body so the published surface stays three. `rewind` (C15) ships as a sixth, internal,
+  confirm-gated subcommand: the graph facts it needs are all here now, and publishing it before
+  G10 has measured a real run would invite a reset nobody has evidence for.
+- D2. `runner step` is one turn of the loop and prints a dispatch plan; the session makes the
+  subagent calls. Ruby sweeps, validates, re-reads the graph, absorbs returns, mints leases,
+  builds packets, writes `running`, and then prints, per dispatched node, the packet path, the
+  model, the worktree path, the kind and the agent role. The session dispatches those, collects
+  each return as a file, and calls `runner step --return <node>=<path>` on the next turn. No Ruby
+  process ever spawns an agent (D42).
+- D3. Concurrency two is a ceiling on `running` nodes, checked in Ruby, not a thread pool. One
+  `step` dispatches at most `2 - running` nodes, in `ready-set` order.
+- D4. The executor return is one YAML document with a closed schema, parsed by the runner, not by
+  `node-transition`. Keys: `node`, `status`, `commit`, `summary`, `findings`, `proposed_nodes`,
+  `proposed_edges`, `question`, `reason`. Anything unparsable or off-schema is
+  `failed_verification reason=return_unparsable` (C22). This is a deliberate deviation from C22's
+  wording, which put the parser in `node-transition`: that command is the field-level refusal
+  layer with a stable exit-code contract, and giving it a second input grammar would make its
+  refusals ambiguous. The refusal semantics C22 asks for are preserved exactly, one layer up.
+- D5. The packet is not extended; the return contract rides in the dispatch prompt. 338's D2 fixes
+  five packet blocks and `packet=<sha>` names an exact set of bytes, so the runner appends the
+  return-schema instruction to the prompt after the packet rather than into it.
+- D6. Work nodes get a per-node worktree at `<repo>/.claude/worktrees/<id>--<slug>--<node>` on
+  branch `plastic/<id>--<slug>--<node>`, cut from the intent branch tip. Verify, research and
+  decision nodes get none (C4, D29): they produce no diff, so a worktree would only give them a
+  place to write one. A new `NodeWorktree` module owns this; `Worktree` stays intent-scoped and
+  untouched.
+- D7. Node worktree lifecycle through failure states (C31, D32): provisioned at `running`, merged
+  into the intent branch at `done` and then removed, KEPT on `failed_verification` and
+  `needs_decision` so the evidence survives for the retry or the owner, removed on `superseded`
+  and `abandoned`. `sweep-store-worktrees` learns the node branch shape so a crashed run leaves
+  no orphan.
+- D8. Conflict routing (C12): the merge is aborted on any conflict. Every conflicted path inside
+  the node's `files:` is `failed_verification reason=merge_conflict`; any conflicted path outside
+  `files:` is `needs_decision` whose question names the paths, because a node that collided
+  outside its declared surface is a graph error the owner owns.
+- D9. Diff-scope check at `done`, before the merge (C4): a verify or research node with any diff
+  at all is `failed_verification reason=diff_on_verify_node`; a work node with a changed path
+  outside `files:` is `failed_verification reason=diff_outside_files`.
+- D10. The runner runs the tests itself (C18) after a clean merge, in the intent worktree, using
+  the project's own verify command, and writes `suite=<runs>/<assertions>/<failures>` on the
+  `done` line. A red suite is `failed_verification reason=suite_red`. A test named in the node's
+  failure-mode matrix whose file does not exist is `failed_verification reason=named_test_missing`,
+  which is C18's refusal of a named test that does not exist.
+- D11. Core integrity after every return (C10), before any transition is written: re-hash the
+  files listed in `<plastic_home>/manifest.json` and compare, in a new `CoreIntegrity` module that
+  doctor's manifest check also calls, so the two cannot drift. Drift stops the step and writes
+  `blocked reason=core_integrity` on the Intent subject. `--allow-core-drift` exists and is
+  recorded on the line, because Plastic's own repository is the one legitimate drift case and the
+  runner has to be able to dogfood itself.
+- D12. Kind policy table with retry caps (C3): work runs on the executor model, gets a worktree,
+  retry cap 2, tests at `done`, diff allowed inside `files:`. Verify runs on the advisor model
+  (D31, D42), no worktree, retry cap 1, no diff. Research runs on the executor model, no worktree,
+  retry cap 1, no diff. Decision is never dispatched: a ready decision node stops the loop with
+  `needs_decision` and the answer command. The cap counts `failed_verification` lines through
+  `ReadySet.failed_verification_count`, which 336 already ships; at the cap the node becomes
+  `needs_decision`.
+- D13. Extension is not a ledger state (C6, C30). A second `running` line for a live node is
+  refused by the transition layer, so an extension cannot be written as one. Sweep records each
+  extension as a line in `packets/<node>--a<N>.extensions` next to the packet, carrying the
+  observed head sha and the time, capped at two per attempt; the third expiry reclaims regardless
+  of new commits. Each extension is printed in the step report, which is what G7b's watch records.
+- D14. `reclaimed` records the landed commits (C11): sweep writes the reclaim line, then the
+  packet for the next attempt shows those commits under "already landed", which 338 already
+  builds. Sweep runs first in every step and aborts the whole step when `MERGE_HEAD` resolves in
+  the intent worktree (C5), because a half-finished merge means the previous step died mid-merge.
+- D15. Proposals are accepted mechanically or refused with a reason, never into a running node
+  (C8, D28, D30). The runner mints the id; a proposed node is scaffolded from its kind's template
+  and appended to `## Graph` as planned. A proposed edge is accepted only when both endpoints
+  exist, the head is not `running`, and the result stays acyclic; a refusal writes one ledger
+  comment naming which of the three failed, and nothing is partially written.
+- D16. Findings land as one capped Insight line per node per return under `### Findings` (C27),
+  200 characters, through the guarded append; the rest of the return is discarded (D45).
+- D17. Validation before the first dispatch (C9): the full `WorkGraphValidator` runs when the
+  ledger holds no `running` line for any node, and refuses to dispatch when it fails. Every step,
+  first dispatch or not, re-reads `graph.md` and cycle-checks before dispatching (C12).
+- D18. `done` is written only on code-verified evidence: a schema-valid return saying done, clean
+  integrity, in-scope diff, existing named tests, a clean merge, and a green suite. Every other
+  path writes `failed_verification`, `needs_decision` or `blocked`. This is what absorbs 69's
+  primitives into one refusal.
+- D19. Deferred to 340a: the timer, the stalled and done-unreported classification, the launchd
+  job. Deferred to 340b: the Claude Code and Codex adapters, per-kind agent definitions with
+  `tools:`, the permission deny rule, the Stop hook (C32) and the PreCompact hand-off. The runner
+  prints a harness-neutral dispatch plan and knows nothing about either harness.
+
+## Insights
+2026-09-10T06:22:41Z · How · claude-code — (autonomous) 327's C31 is wrong one level up: sweep-store-worktrees globs the store-worktree tree intent 178 retired and derives a plastic-store/ branch, so it can never see a node worktree. G8 should carry the correction into the doctrine, not just 340.
+2026-09-10T06:22:41Z · How · claude-code — (autonomous) The adversarial plan review paid for itself twice over before a line of code: gates= is a required ledger field that appeared in no decision and no matrix row, so every terminal transition would have raised, and install_sync_test would have been red from n1 to n7 under the original registration order.
+2026-09-10T06:33:33Z · Exec · plastic-executor (autonomous) — test/install_packaging_test.rb's require-closure guard is a naive source-text regex over require_relative "...": it matches ANY literal occurrence of that pattern in the file, including inside a comment (not just real require_relative calls). A dynamic lazy-require (require_relative(File.join("lib", var))) correctly falls outside it since there is no inline quoted literal, but a doc comment that quotes an example like require_relative "lib/..." trips the same guard as if it were real code. When writing a lazy-loaded verb dispatch table, keep example require paths in comments unquoted or paraphrased.
+<<<END-PLASTIC-DATA:f4f58facb4b6>>>
+
+<<<PLASTIC-DATA:f4f58facb4b6 label="knowledge hop" source="327--graph-of-work-under-the-roadmap/327--graph-of-work-under-the-roadmap.md">>>
+### 327
+#### Outcome
+Ruled plan for graph-ready Plastic: two graphs over one store, graph.md plus nodes/ per intent, needs as the one edge, ledger state with refusals, stateless node agents, in-harness runner; D1 to D48, C1 to C37, sixteen pages; intents 334 to 344 created and roadmap graph-ready-plastic opened.
+
+#### Decisions
+Owner rulings from the 2026-09-05 goal and the 2026-09-04 review, recorded as Why-stage
+insights on the record:
+
+- D1. Intents stay as the thought work starts from, human or agent, and stay where they are.
+- D2. Work executes by planning a graph of delivery under the intent; actions merge into nodes.
+- D3. "No work without an intent" stays as the capture rule and loses its ceremonies.
+- D4. Plastic is the record of work (knowledge graph) that uses graph engineering to deliver
+  work (workflow graph). The two layers are named and bounded (282 carries the boundary).
+- D5. The best work is invisible in front: agents execute with savepoints, the human gets a
+  short report. This is the base statement every other decision serves.
+- D6. Keep the best of prompt, context, harness, loop, and graph engineering, in the owner's
+  way.
+- D7 (review, point 3). One write per transition: the savepoint line. Everything else renders.
+- D8 (review, point 2). `running` plus an expiring lease on the node replaces lock files,
+  bridge keys, and the worktree pointer.
+- D9 (review, gap 1). Explicit `depends_on` edges are the only scheduling input; `sources` and
+  `chain` stay formation and lineage and never drive order.
+- D10 (review, point 5). Node kind sets default policy (executor model, which verify node
+  attaches, whether a mockup gate precedes); a per-node governance block overrides.
+- D11 (review, point 7). Executors load the node packet, built by a deterministic command.
+- D12 (review). Executors propose new nodes and edges; they never commit hard dependencies.
+- D13 (review). Non-completion is first class: blocked, deferred, needs_decision,
+  failed_verification, superseded.
+- D14 (review, point 1). Artifacts stay versioned files referenced from the node; a plan
+  rejected at review is superseded, never rewritten in place.
+- D15 (review, contradiction). Written status with a transition log wins over derived state.
+
+Decisions the research settles:
+
+- D16. Status is the last transition line in the ledger, never a field; file presence becomes a
+  doctor consistency check (settles the state contradiction between the two Perplexity reports).
+- D17. One edge kind for scheduling, `depends_on` (roadmap syntax `needs`); a node's `depends_on`
+  names sibling nodes only; cross-intent edges live only in the roadmap `## Graph`; knowledge edges
+  are never cycle-checked and may be reciprocal; execution edges are cycle-checked at every write.
+- D18. Four node kinds only: work, verify, decision, research. No kind or edge is added without a
+  reader script in the same batch.
+- D19 (revised by the second review). One lease file, one ledger, no heartbeat: the intent lease
+  (`delivery.lock`) stays for Done and the worktree merge and is touched by the runner at each
+  transition; the node lease is the `running` line's `holder=` and `expires=`, written once from
+  the kind's default; an expired running node is reclaimed by the runner's sweep with an audited
+  line; executors never touch leases; bridge key and pointer retire in G11 after G10 measures.
+- D20 (327). Batches are topological layers computed from edges; hand pins are marked overrides;
+  critical path is hops. (D20 in 323 named supersedes and lineage; kept as `superseded` state and
+  `supersedes` recorded in the ledger line.)
+- D21. Verification is a node whose input is the artifact plus criteria; its `done` releases
+  successors; `done` is never written on an executor's word.
+- D22. `plan.md` and `checklist.md` leave the common path; `spec.md` becomes optional; `outcome.md`
+  is generated; `actions/` becomes `nodes/`.
+- D23. Files and git stay canonical; no database in this cut.
+- D24. The roadmap authors Goal and Graph; tree, batches, and status are rendered.
+- D25. The knowledge hop in the node packet ships with 224's 2000-token cap and thirty-delivery
+  kill criterion.
+- D26 (review B2). Node transition lines skip the ledger dedup; status appends are guarded and fail
+  closed; status is the last line in file order.
+- D27 (review B7). The trivial path is one work node, no verify node, matrix optional; the ceremony
+  bar moves with node count.
+- D28 (review risk 1). Only the runner mints node ids; executors propose nodes without ids.
+- D29 (review risk 2). A verify node is a separate invocation that receives only the packet; that is
+  the cross-harness denominator.
+- D30 (review risk 4). A proposed blocking edge into a running node is refused; only the owner and
+  the runner write edges.
+- D31 (owner, 2026-09-05). Advisors as a real/faux pair are removed. One advisor: the smartest
+  model available, or the model set in user config. Plan reviews and verify nodes use it.
+- D32 (second review B3). A node with a live sibling runs in its own worktree off the intent
+  branch; the runner merges on `done`; siblings with overlapping `files:` never run together; a
+  merge conflict is `failed_verification`; `files:` is required for any node with a parallel sibling.
+- D33 (second review B6). The ledger wins; INDEX and roadmaps render from it; doctor flags drift.
+  Status is per subject (node id or `Intent`); `Done delivered` stays as an alias until G8.
+- D34 (second review B7). Direct mode stays the trivial path: a fix in conversation is a day-ledger
+  line and a commit; work becomes a one-node intent only when it must survive a session or run
+  unattended.
+- D35 (second review B8). Programme kill criterion: after Batch 2, a three-node intent whose
+  `outcome.md` renders with no hand edit and which resumes from ledger and packet after a forced
+  kill; both binary.
+- D36 (second review B4). Batch 1 is G1 and G2 only, independent of each other; the stage deriver
+  rewrite lives in G3; the doctrine cut lives in G8; edges `G8 needs G9` and `G11 needs G10` exist.
+- D37 (second review, scope). Supersedes is a ledger fact plus the `superseded` state with lineage
+  computed from the ledger; there is no supersedes edge. A cut against 327's first wording.
+- D38 (five-layers comparison, harness item 7). `model=` on every transition line and `gates=` on
+  the verify node's transition line, beside `tokens=` and `wall=` (G2).
+- D39 (five-layers comparison, prompt item 10). The node packet wraps retrieved text as labeled
+  data, never as instruction (G5); the session-start and capture hooks do the same for QMD hits
+  and Future-intent hints (G8); artifact comments are harness-side and out of reach.
+
+
+Rulings from the owner's answers to Q1 to Q10 and from the two graph-checklist reviews, the
+four-layers review, and the two design notes (`design--sovereignty-per-harness.md`,
+`design--stateless-node-agents.md`).
+
+- D40 (owner, Q1). The knowledge graph and the work graph never affect each other. Node ids
+  are local (`n1`, `v1`), minted by the runner, never folgezettel children of the intent id.
+- D41 (owner, Q2; amends D22). One authored `graph.md` per intent, shaped like a roadmap file:
+  `## Goal` and `## Decisions` (the spec), `## Graph` with nodes and `needs` edges (the plan),
+  `## Status` rendered from the ledger, never hand-edited (the checklist). Edges live only in
+  `graph.md`; the node envelope keeps `kind`, `files`, `budget`. Node bodies stay in `nodes/`.
+  `spec.md`, `plan.md`, and `checklist.md` leave the common path; `outcome.md` is generated.
+  Every intent directory has five entries: the record, `graph.md`, `nodes/`, `savepoint.md`,
+  `outcome.md`.
+- D42 (owner, Q3, Q4, Q6, Q7, Q8, Q9, Q10, all as recommended). Direct mode stays the trivial
+  path. Hand batch pins are dropped. The runner stays in the harness session using native
+  dispatch; a standalone Ruby runner is parked, not 
+[hop truncated at 2000 tokens]
+<<<END-PLASTIC-DATA:f4f58facb4b6>>>
+
+worktree: /Users/zlatko/apps/personal/plastic/.claude/worktrees/340--runner-core-in-session (branch plastic/340--runner-core-in-session)
+test command: ruby bin/test

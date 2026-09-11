@@ -1,0 +1,282 @@
+# Node n10
+kind: work
+files: scripts/runner, scripts/lib/runner_absorb.rb, scripts/lib/runner_core.rb, scripts/lib/runner_dispatch.rb, scripts/lib/runner_policy.rb, scripts/lib/runner_answer.rb, scripts/lib/runner_rewind.rb, scripts/lib/node_worktree.rb, scripts/lib/node_packet.rb, CHANGELOG.md, test/runner_dispatch_test.rb, test/runner_absorb_test.rb, test/runner_cli_test.rb, test/runner_policy_test.rb, test/node_packet_budget_test.rb
+budget: 160000
+
+# n10 - The wiring the review found missing
+
+n9 closes the four blockers. What is left from `resources/review--post-execution-2026-09-11.md` is a
+set of pieces that exist, are tested in isolation, and are never called; plus a set of reports that
+say something the code did not do.
+
+Three whole components have no production caller. `RunnerProposals` is validated by `NodeReturn`,
+carried in every return, and then dropped on the floor, so D15's minted ids and refusal rules are
+vacuously satisfied and n7's CHANGELOG line about them is untrue. `NodeWorktree.reap` is D26's
+runner-owned reaper and runs nowhere. `--allow-core-drift` is D11's escape hatch, exists as a
+keyword argument, and no flag reaches it, which is precisely why Plastic's own repository, whose
+tree legitimately drifts from the installed manifest, cannot dogfood its own runner.
+
+Two reports lie. The Status table renders a blocker string into every terminal node's Detail, so a
+node that is `done` reads "n1 is done, not eligible to enter running". A step that dispatched
+nothing because the concurrency ceiling was full reports `stalled`, which is the word for a graph
+that cannot continue, not for one that is simply busy.
+
+And one number is inert. A node's declared `budget:` reaches nothing: dispatch passes no budget,
+the packet builder never reads the node block's own, and the ready-set loader does not carry it. A
+node with a large body is not cut down, it is refused outright, and by the same review's M6 that
+refusal prints nothing at all.
+
+## n10 failure-mode matrix
+| Row | Operation | Failure mode | Test |
+| --- | --- | --- | --- |
+| 10.1 | Parse `--allow-core-drift` in `run_step` and thread it into the absorb (M3) | D11's escape hatch is unreachable and Plastic's own repo cannot run its own runner | `runner_cli_test#test_allow_core_drift_flag_reaches_the_absorb` |
+| 10.2 | Call `RunnerProposals` from the absorb, on the proposing node, after the schema gate (M4) | Proposals are validated and silently dropped, so D15 is vacuous and the shipped CHANGELOG line is false | `runner_absorb_test#test_absorb_accepts_a_proposed_node` |
+| 10.3 | Surface a refused proposal in the step report (M4) | A refusal is silent and the executor proposes the same thing every attempt | `runner_absorb_test#test_refused_proposal_is_reported` |
+| 10.4 | Call `NodeWorktree.reap` once per step, after the reclaim pass (M5) | D26's reaper never runs and abandoned node worktrees accumulate forever | `runner_cli_test#test_step_reaps_stale_node_worktrees` |
+| 10.5 | Release a node worktree on `superseded` and `abandoned` (M5) | `RunnerAnswer.respin` and `RunnerRewind` leave worktrees on disk, against D7 | `runner_absorb_test#test_superseded_node_releases_its_worktree` |
+| 10.6 | Roll back a provisioned worktree when the packet build fails (M6) | A packet that cannot be built leaves an orphan worktree and the node is retried into the same orphan on every later step | `runner_dispatch_test#test_failed_packet_build_rolls_back_the_worktree` |
+| 10.7 | Carry the packet builder's errors into the step's blockers (M6) | The step prints a bare `stalled` with no blocker lines, forever, with nothing to diagnose | `runner_dispatch_test#test_failed_packet_build_names_the_node_and_the_reason` |
+| 10.8 | Read the node's declared `budget:` and pass it as `budget_tokens:` (M7) | Every packet is capped at the 8,000-token default, the knowledge hop is silently dropped, and a node with a large body is refused outright rather than cut | `runner_dispatch_test#test_dispatch_passes_the_nodes_declared_budget` |
+| 10.9 | Fall back to the node block's own budget inside the packet builder (M7) | The CLI and any other caller keep the inert default, so the fix holds only on one path | `node_packet_budget_test#test_build_uses_the_node_blocks_budget_when_none_is_given` |
+| 10.10 | Render a terminal node's Detail from its last transition line (M8) | Every `done` node's Status row reads as a nonsense blocker, rewritten on every transition | `runner_cli_test#test_status_table_detail_shows_commit_for_a_done_node` |
+| 10.11 | Keep blockers in Detail only for a non-terminal node (M8) | The fix trades one wrong column for another and a blocked node stops saying why | `runner_cli_test#test_status_table_detail_shows_blockers_for_a_blocked_node` |
+| 10.12 | Guard every `ReadySet.load_graph` call site behind one safe loader (M9) | `step`, `answer` and `rewind` die with a raw stack trace on a malformed or non-UTF-8 `graph.md`, against criterion 8 | `runner_cli_test#test_verbs_refuse_a_malformed_graph_without_raising` |
+| 10.13 | Report `queued` rather than `stalled` when a ready node waits on the concurrency ceiling (M10) | The operator, and 340a's timer, read a busy graph as a dead one | `runner_dispatch_test#test_ceiling_full_reports_queued_not_stalled` |
+| 10.14 | Print the `needs_decision` stop even when the same step dispatched (M11) | The question and its `runner answer` command never reach the operator | `runner_cli_test#test_stop_is_printed_alongside_a_dispatch_plan` |
+| 10.15 | Append a finding to the intent record through `GuardedAppend`, keeping the trailing newline (M12) | A concurrent writer's change is lost, and the next plain append concatenates onto the finding line | `runner_absorb_test#test_findings_are_appended_under_the_guard` |
+| 10.16 | Roll back only a worktree this dispatch created (M13) | Lock contention on a retry deletes the worktree that `failed_verification` deliberately kept, destroying the evidence the retry exists to examine | `runner_dispatch_test#test_rollback_keeps_a_preexisting_worktree` |
+| 10.17 | Assert the named test method exists, not only its file (minor 1) | Deleting a test method while keeping its file passes the named-tests gate | `runner_absorb_test#test_named_tests_gate_checks_the_method_not_the_file` |
+| 10.18 | Refuse an unknown flag rather than ignoring it (minor 2) | A mistyped `--session` is silently dropped and the runner acts as somebody else | `runner_cli_test#test_unknown_flag_is_refused` |
+| 10.19 | Resolve the model aliases through `AgentModels::TIER_DEFAULTS` (minor 4) | The runner hard-codes model names, against D19's "knows nothing about either harness" | `runner_policy_test#test_models_resolve_through_agent_models` |
+| 10.20 | Filter torn lines when computing the attempt number, as `ReadySet.attempts_count` does (minor 5) | One torn `running` line names the extensions file and the packet after different attempts | `node_packet_budget_test#test_attempt_number_skips_torn_lines` |
+| 10.21 | Count `running` only for node subjects when measuring the ceiling (minor 9) | An `Intent` subject in a running-like state eats a dispatch slot | `runner_dispatch_test#test_ceiling_counts_only_node_subjects` |
+| 10.22 | Correct the CHANGELOG line: six checks, and proposals that are actually applied (minor 10) | The release notes describe a gate and a behaviour the code does not have | `runner_cli_test#test_changelog_says_six_checks` |
+
+## Steps
+1. Red: the matrix's tests above, committed before any code.
+2. Wire what is missing and correct what misreports, smallest change each.
+3. Green, then the whole suite at its baseline.
+
+## Proven by
+(filled at close from the ledger: commit, suite counts, review verdict)
+
+<<<PLASTIC-DATA:3406638baf86 label="ledger" source="savepoint.md">>>
+### Transitions
+(no transition lines for n10)
+
+### Predecessors
+n9: done — 2026-09-11T01:32:03Z  n9  done holder=auto-6aa701e173 model=sonnet gates=integrity+schema+scope+named_tests+merge+suite commit=ce67e2a suite=3977/20115/0/0 (v1 blockers B1 to B4 plus M1 and M2 closed; all four hand-reproduced against a real scratch repo and confirmed fixed)
+
+### Lease
+lease: holder=auto-6aa701e173 expires=2026-09-11T05:32:03Z model=sonnet
+<<<END-PLASTIC-DATA:3406638baf86>>>
+
+<<<PLASTIC-DATA:3406638baf86 label="record" source="340--runner-core-in-session/340--runner-core-in-session.md">>>
+## Intent
+G7 of the graph-ready plan (intent 327, Batch 3, needs G3 (336), G5 (338), G6 (339)): Runner core in the harness session. Runner core in the harness session over the Ruby commands: three public verbs, `ready` and `sweep` internal (C29); validation before first dispatch (C9); crash sweep with `reclaimed` lines recording landed commits (C11), live-node extension capped at two per attempt (C6, C30), `MERGE_HEAD` abort at sweep start (C5); ready-set dispatch at concurrency two through native subagents; per-node worktrees off the intent branch with lifecycle through failure states (C31, D32), merge on `done`, conflict inside `files:` is `failed_verification` and outside `files:` is `needs_decision` with the paths (C12); `graph.md` re-read and cycle-checked before each dispatch (C12); kind policies with retry caps (C3); verify nodes as a separate invocation with only the packet on the advisor model, no worktree, any diff fails (C4); the runner runs the tests itself at `done` and writes `suite=` (C18); return is one schema-checked YAML document, unparsable is `failed_verification` (C22); diff outside `files:` is `failed_verification` (C4); findings land as one capped Insight line per node (C27); `needs_decision` stop with an answer command (C26); proposed nodes and edges accepted mechanically or refused with a reason, never into a running node (C8); core integrity check against the hashed manifest after every return (C10); `done` only on code-verified evidence (absorbs 69's six primitives, supersedes 44); rewind command after the runner proves itself (C15).
+
+## Decisions
+- D1. Three public verbs on one command, `scripts/runner`: `step`, `status`, `answer` (C29).
+  `ready` and `sweep` are subcommands of the same binary, working and callable, but absent from
+  the skill body so the published surface stays three. `rewind` (C15) ships as a sixth, internal,
+  confirm-gated subcommand: the graph facts it needs are all here now, and publishing it before
+  G10 has measured a real run would invite a reset nobody has evidence for.
+- D2. `runner step` is one turn of the loop and prints a dispatch plan; the session makes the
+  subagent calls. Ruby sweeps, validates, re-reads the graph, absorbs returns, mints leases,
+  builds packets, writes `running`, and then prints, per dispatched node, the packet path, the
+  model, the worktree path, the kind and the agent role. The session dispatches those, collects
+  each return as a file, and calls `runner step --return <node>=<path>` on the next turn. No Ruby
+  process ever spawns an agent (D42).
+- D3. Concurrency two is a ceiling on `running` nodes, checked in Ruby, not a thread pool. One
+  `step` dispatches at most `2 - running` nodes, in `ready-set` order.
+- D4. The executor return is one YAML document with a closed schema, parsed by the runner, not by
+  `node-transition`. Keys: `node`, `status`, `commit`, `summary`, `findings`, `proposed_nodes`,
+  `proposed_edges`, `question`, `reason`. Anything unparsable or off-schema is
+  `failed_verification reason=return_unparsable` (C22). This is a deliberate deviation from C22's
+  wording, which put the parser in `node-transition`: that command is the field-level refusal
+  layer with a stable exit-code contract, and giving it a second input grammar would make its
+  refusals ambiguous. The refusal semantics C22 asks for are preserved exactly, one layer up.
+- D5. The packet is not extended; the return contract rides in the dispatch prompt. 338's D2 fixes
+  five packet blocks and `packet=<sha>` names an exact set of bytes, so the runner appends the
+  return-schema instruction to the prompt after the packet rather than into it.
+- D6. Work nodes get a per-node worktree at `<repo>/.claude/worktrees/<id>--<slug>--<node>` on
+  branch `plastic/<id>--<slug>--<node>`, cut from the intent branch tip. Verify, research and
+  decision nodes get none (C4, D29): they produce no diff, so a worktree would only give them a
+  place to write one. A new `NodeWorktree` module owns this; `Worktree` stays intent-scoped and
+  untouched.
+- D7. Node worktree lifecycle through failure states (C31, D32): provisioned at `running`, merged
+  into the intent branch at `done` and then removed, KEPT on `failed_verification` and
+  `needs_decision` so the evidence survives for the retry or the owner, removed on `superseded`
+  and `abandoned`. `sweep-store-worktrees` learns the node branch shape so a crashed run leaves
+  no orphan.
+- D8. Conflict routing (C12): the merge is aborted on any conflict. Every conflicted path inside
+  the node's `files:` is `failed_verification reason=merge_conflict`; any conflicted path outside
+  `files:` is `needs_decision` whose question names the paths, because a node that collided
+  outside its declared surface is a graph error the owner owns.
+- D9. Diff-scope check at `done`, before the merge (C4): a verify or research node with any diff
+  at all is `failed_verification reason=diff_on_verify_node`; a work node with a changed path
+  outside `files:` is `failed_verification reason=diff_outside_files`.
+- D10. The runner runs the tests itself (C18) after a clean merge, in the intent worktree, using
+  the project's own verify command, and writes `suite=<runs>/<assertions>/<failures>` on the
+  `done` line. A red suite is `failed_verification reason=suite_red`. A test named in the node's
+  failure-mode matrix whose file does not exist is `failed_verification reason=named_test_missing`,
+  which is C18's refusal of a named test that does not exist.
+- D11. Core integrity after every return (C10), before any transition is written: re-hash the
+  files listed in `<plastic_home>/manifest.json` and compare, in a new `CoreIntegrity` module that
+  doctor's manifest check also calls, so the two cannot drift. Drift stops the step and writes
+  `blocked reason=core_integrity` on the Intent subject. `--allow-core-drift` exists and is
+  recorded on the line, because Plastic's own repository is the one legitimate drift case and the
+  runner has to be able to dogfood itself.
+- D12. Kind policy table with retry caps (C3): work runs on the executor model, gets a worktree,
+  retry cap 2, tests at `done`, diff allowed inside `files:`. Verify runs on the advisor model
+  (D31, D42), no worktree, retry cap 1, no diff. Research runs on the executor model, no worktree,
+  retry cap 1, no diff. Decision is never dispatched: a ready decision node stops the loop with
+  `needs_decision` and the answer command. The cap counts `failed_verification` lines through
+  `ReadySet.failed_verification_count`, which 336 already ships; at the cap the node becomes
+  `needs_decision`.
+- D13. Extension is not a ledger state (C6, C30). A second `running` line for a live node is
+  refused by the transition layer, so an extension cannot be written as one. Sweep records each
+  extension as a line in `packets/<node>--a<N>.extensions` next to the packet, carrying the
+  observed head sha and the time, capped at two per attempt; the third expiry reclaims regardless
+  of new commits. Each extension is printed in the step report, which is what G7b's watch records.
+- D14. `reclaimed` records the landed commits (C11): sweep writes the reclaim line, then the
+  packet for the next attempt shows those commits under "already landed", which 338 already
+  builds. Sweep runs first in every step and aborts the whole step when `MERGE_HEAD` resolves in
+  the intent worktree (C5), because a half-finished merge means the previous step died mid-merge.
+- D15. Proposals are accepted mechanically or refused with a reason, never into a running node
+  (C8, D28, D30). The runner mints the id; a proposed node is scaffolded from its kind's template
+  and appended to `## Graph` as planned. A proposed edge is accepted only when both endpoints
+  exist, the head is not `running`, and the result stays acyclic; a refusal writes one ledger
+  comment naming which of the three failed, and nothing is partially written.
+- D16. Findings land as one capped Insight line per node per return under `### Findings` (C27),
+  200 characters, through the guarded append; the rest of the return is discarded (D45).
+- D17. Validation before the first dispatch (C9): the full `WorkGraphValidator` runs when the
+  ledger holds no `running` line for any node, and refuses to dispatch when it fails. Every step,
+  first dispatch or not, re-reads `graph.md` and cycle-checks before dispatching (C12).
+- D18. `done` is written only on code-verified evidence: a schema-valid return saying done, clean
+  integrity, in-scope diff, existing named tests, a clean merge, and a green suite. Every other
+  path writes `failed_verification`, `needs_decision` or `blocked`. This is what absorbs 69's
+  primitives into one refusal.
+- D19. Deferred to 340a: the timer, the stalled and done-unreported classification, the launchd
+  job. Deferred to 340b: the Claude Code and Codex adapters, per-kind agent definitions with
+  `tools:`, the permission deny rule, the Stop hook (C32) and the PreCompact hand-off. The runner
+  prints a harness-neutral dispatch plan and knows nothing about either harness.
+
+## Insights
+2026-09-10T23:32:46Z · Exec · plastic-enforcer — HookMessageDisplayTest#test_concurrent_session_blanks_and_buffers_every_chunk is flaky under the parallel full suite: it failed once at 3950/19581/1/0 (a chunk passed through as raw Markdown), then passed in isolation (83 runs, 0 failures) and passed again in the next full run at 3950/20006/0/0. The assertion count differing by 425 between the failing and passing full runs points at fork-parallel timing, not at a code change; hooks/ is untouched by intent 340. Worth a real fix or a serialization pin before it costs another node a gate.
+2026-09-10T23:52:03Z · Exec · plastic-executor (autonomous) — The n7 dogfood against an authored scratch intent (status/sweep/step, resources/dogfood--runner-2026-09-10.md) found two real defects in scripts/runner outside n7's scope: 'sweep' is unreachable from the CLI (dispatch_lazy has no case for it even though RunnerSweep.run is a complete standalone entry point), and 'step' crashes with NoMethodError: undefined method 'opt_all' on every call, before any dispatch work runs; no test exercises the runner step CLI end to end, which is how a green 3955/20025/0/0 suite shipped over it.
+2026-09-11T00:19:28Z · Exec · plastic-enforcer — n7's dogfood found what five green node gates missed: runner step raised NoMethodError on opt_all on every invocation and runner sweep never reached a dispatcher. Both slipped through because every runner test drove the module API (RunnerDispatch.dispatch, RunnerSweep.run) and none drove scripts/runner as a subprocess past argument parsing. The suite proved the engine and never turned the key. n8 fixed both and pinned the class of bug with a structural test walking Runner::VERBS. Rule for every future CLI node: one end-to-end subprocess test per public verb, or the verb is unproven.
+<<<END-PLASTIC-DATA:3406638baf86>>>
+
+<<<PLASTIC-DATA:3406638baf86 label="knowledge hop" source="327--graph-of-work-under-the-roadmap/327--graph-of-work-under-the-roadmap.md">>>
+### 327
+#### Outcome
+Ruled plan for graph-ready Plastic: two graphs over one store, graph.md plus nodes/ per intent, needs as the one edge, ledger state with refusals, stateless node agents, in-harness runner; D1 to D48, C1 to C37, sixteen pages; intents 334 to 344 created and roadmap graph-ready-plastic opened.
+
+#### Decisions
+Owner rulings from the 2026-09-05 goal and the 2026-09-04 review, recorded as Why-stage
+insights on the record:
+
+- D1. Intents stay as the thought work starts from, human or agent, and stay where they are.
+- D2. Work executes by planning a graph of delivery under the intent; actions merge into nodes.
+- D3. "No work without an intent" stays as the capture rule and loses its ceremonies.
+- D4. Plastic is the record of work (knowledge graph) that uses graph engineering to deliver
+  work (workflow graph). The two layers are named and bounded (282 carries the boundary).
+- D5. The best work is invisible in front: agents execute with savepoints, the human gets a
+  short report. This is the base statement every other decision serves.
+- D6. Keep the best of prompt, context, harness, loop, and graph engineering, in the owner's
+  way.
+- D7 (review, point 3). One write per transition: the savepoint line. Everything else renders.
+- D8 (review, point 2). `running` plus an expiring lease on the node replaces lock files,
+  bridge keys, and the worktree pointer.
+- D9 (review, gap 1). Explicit `depends_on` edges are the only scheduling input; `sources` and
+  `chain` stay formation and lineage and never drive order.
+- D10 (review, point 5). Node kind sets default policy (executor model, which verify node
+  attaches, whether a mockup gate precedes); a per-node governance block overrides.
+- D11 (review, point 7). Executors load the node packet, built by a deterministic command.
+- D12 (review). Executors propose new nodes and edges; they never commit hard dependencies.
+- D13 (review). Non-completion is first class: blocked, deferred, needs_decision,
+  failed_verification, superseded.
+- D14 (review, point 1). Artifacts stay versioned files referenced from the node; a plan
+  rejected at review is superseded, never rewritten in place.
+- D15 (review, contradiction). Written status with a transition log wins over derived state.
+
+Decisions the research settles:
+
+- D16. Status is the last transition line in the ledger, never a field; file presence becomes a
+  doctor consistency check (settles the state contradiction between the two Perplexity reports).
+- D17. One edge kind for scheduling, `depends_on` (roadmap syntax `needs`); a node's `depends_on`
+  names sibling nodes only; cross-intent edges live only in the roadmap `## Graph`; knowledge edges
+  are never cycle-checked and may be reciprocal; execution edges are cycle-checked at every write.
+- D18. Four node kinds only: work, verify, decision, research. No kind or edge is added without a
+  reader script in the same batch.
+- D19 (revised by the second review). One lease file, one ledger, no heartbeat: the intent lease
+  (`delivery.lock`) stays for Done and the worktree merge and is touched by the runner at each
+  transition; the node lease is the `running` line's `holder=` and `expires=`, written once from
+  the kind's default; an expired running node is reclaimed by the runner's sweep with an audited
+  line; executors never touch leases; bridge key and pointer retire in G11 after G10 measures.
+- D20 (327). Batches are topological layers computed from edges; hand pins are marked overrides;
+  critical path is hops. (D20 in 323 named supersedes and lineage; kept as `superseded` state and
+  `supersedes` recorded in the ledger line.)
+- D21. Verification is a node whose input is the artifact plus criteria; its `done` releases
+  successors; `done` is never written on an executor's word.
+- D22. `plan.md` and `checklist.md` leave the common path; `spec.md` becomes optional; `outcome.md`
+  is generated; `actions/` becomes `nodes/`.
+- D23. Files and git stay canonical; no database in this cut.
+- D24. The roadmap authors Goal and Graph; tree, batches, and status are rendered.
+- D25. The knowledge hop in the node packet ships with 224's 2000-token cap and thirty-delivery
+  kill criterion.
+- D26 (review B2). Node transition lines skip the ledger dedup; status appends are guarded and fail
+  closed; status is the last line in file order.
+- D27 (review B7). The trivial path is one work node, no verify node, matrix optional; the ceremony
+  bar moves with node count.
+- D28 (review risk 1). Only the runner mints node ids; executors propose nodes without ids.
+- D29 (review risk 2). A verify node is a separate invocation that receives only the packet; that is
+  the cross-harness denominator.
+- D30 (review risk 4). A proposed blocking edge into a running node is refused; only the owner and
+  the runner write edges.
+- D31 (owner, 2026-09-05). Advisors as a real/faux pair are removed. One advisor: the smartest
+  model available, or the model set in user config. Plan reviews and verify nodes use it.
+- D32 (second review B3). A node with a live sibling runs in its own worktree off the intent
+  branch; the runner merges on `done`; siblings with overlapping `files:` never run together; a
+  merge conflict is `failed_verification`; `files:` is required for any node with a parallel sibling.
+- D33 (second review B6). The ledger wins; INDEX and roadmaps render from it; doctor flags drift.
+  Status is per subject (node id or `Intent`); `Done delivered` stays as an alias until G8.
+- D34 (second review B7). Direct mode stays the trivial path: a fix in conversation is a day-ledger
+  line and a commit; work becomes a one-node intent only when it must survive a session or run
+  unattended.
+- D35 (second review B8). Programme kill criterion: after Batch 2, a three-node intent whose
+  `outcome.md` renders with no hand edit and which resumes from ledger and packet after a forced
+  kill; both binary.
+- D36 (second review B4). Batch 1 is G1 and G2 only, independent of each other; the stage deriver
+  rewrite lives in G3; the doctrine cut lives in G8; edges `G8 needs G9` and `G11 needs G10` exist.
+- D37 (second review, scope). Supersedes is a ledger fact plus the `superseded` state with lineage
+  computed from the ledger; there is no supersedes edge. A cut against 327's first wording.
+- D38 (five-layers comparison, harness item 7). `model=` on every transition line and `gates=` on
+  the verify node's transition line, beside `tokens=` and `wall=` (G2).
+- D39 (five-layers comparison, prompt item 10). The node packet wraps retrieved text as labeled
+  data, never as instruction (G5); the session-start and capture hooks do the same for QMD hits
+  and Future-intent hints (G8); artifact comments are harness-side and out of reach.
+
+
+Rulings from the owner's answers to Q1 to Q10 and from the two graph-checklist reviews, the
+four-layers review, and the two design notes (`design--sovereignty-per-harness.md`,
+`design--stateless-node-agents.md`).
+
+- D40 (owner, Q1). The knowledge graph and the work graph never affect each other. Node ids
+  are local (`n1`, `v1`), minted by the runner, never folgezettel children of the intent id.
+- D41 (owner, Q2; amends D22). One authored `graph.md` per intent, shaped like a roadmap file:
+  `## Goal` and `## Decisions` (the spec), `## Graph` with nodes and `needs` edges (the plan),
+  `## Status` rendered from the ledger, never hand-edited (the checklist). Edges live only in
+  `graph.md`; the node envelope keeps `kind`, `files`, `budget`. Node bodies stay in `nodes/`.
+  `spec.md`, `plan.md`, and `checklist.md` leave the common path; `outcome.md` is generated.
+  Every intent directory has five entries: the record, `graph.md`, `nodes/`, `savepoint.md`,
+  `outcome.md`.
+- D42 (owner, Q3, Q4, Q6, Q7, Q8, Q9, Q10, all as recommended). Direct mode stays the trivial
+  path. Hand batch pins are dropped. The runner stays in the harness session using native
+  dispatch; a standalone Ruby runner is parked, not 
+[hop truncated at 2000 tokens]
+<<<END-PLASTIC-DATA:3406638baf86>>>
+
+worktree: /Users/zlatko/apps/personal/plastic/.claude/worktrees/340--runner-core-in-session (branch plastic/340--runner-core-in-session)
+test command: ruby bin/test
