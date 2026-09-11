@@ -68,6 +68,18 @@ module HookRegistry
           { "name" => "message-display", "status" => "" },
         ] },
       ],
+      # Continuation on Claude Code (intent 340b, G7c, n4, D5/D7): registered
+      # statically here, like every other hook, and decided at runtime by
+      # StopGate, which reads runner.stop_hook itself (default false, D9).
+      # Not one of CODEX_LIVE_STATE_EVENTS, CODEX_POST_HOOKS or
+      # CODEX_SESSION_END_HOOKS, so codex_hooks_json never picks it up and
+      # codex_hook_names stays at its pinned six (test/hook_registry_test.rb,
+      # test/codex_hooks_test.rb).
+      "Stop" => [
+        { "matcher" => "", "hooks" => [
+          { "name" => "stop", "status" => "" },
+        ] },
+      ],
     }
   end
 

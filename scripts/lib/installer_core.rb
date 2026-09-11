@@ -547,6 +547,12 @@ class InstallerCore
       # by scripts/lib/runner_dispatch.rb and by scripts/runner's `step`
       # directly.
       "scripts/lib/harness_adapter.rb" => "scripts/lib/harness_adapter.rb",
+      # Intent 340b (G7c, n4): the Stop gate, the shared ActiveDelivery walk
+      # it and the PreCompact hand-off both call, and hook-stop, the Stop
+      # hook body scripts/hook-stop's launcher (hooks/stop) relays into.
+      "scripts/lib/stop_gate.rb" => "scripts/lib/stop_gate.rb",
+      "scripts/lib/active_delivery.rb" => "scripts/lib/active_delivery.rb",
+      "scripts/hook-stop" => "scripts/hook-stop",
       # Intent 340 (G7, n6): answer (closes a decision node or unparks a
       # work node parked at needs_decision), proposals (mints ids for what
       # an executor proposed), and rewind (resets the intent branch to a

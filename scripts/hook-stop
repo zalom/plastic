@@ -1,0 +1,57 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# hook-stop (intent 340b, G7c, n4, D5): the Stop hook body. Reads the harness
+# payload from stdin, gathers the runtime config StopGate needs, and asks it
+# whether this session may stop. Prints Claude Code's Stop block schema on
+# stdout only when the answer is block; a permit prints nothing at all.
+# Registration is static (hooks/hooks.json, settings.json) - this launcher
+# always installs - and the decision is runtime, off by default
+# (runner.stop_hook defaults false), so the owner flips continuation on or
+# off by editing config with no reinstall. Every error permits: always
+# exits 0, never raises out to the harness.
+#
+# Usage: hook-stop <plastic_home>   (stdin: the hook JSON)
+
+require "json"
+require_relative "lib/stop_gate"
+
+plastic_home = ARGV[0]
+exit 0 if plastic_home.nil? || plastic_home.empty?
+
+def read_config_value(key, home, read_config)
+  IO.popen({ "PLASTIC_HOME" => home }, [read_config, key], err: File::NULL, &:read).to_s.strip
+rescue StandardError
+  ""
+end
+
+begin
+  raw = $stdin.tty? ? "" : $stdin.read.to_s
+  payload = raw.strip.empty? ? {} : JSON.parse(raw)
+  payload = {} unless payload.is_a?(Hash)
+
+  home = File.expand_path(plastic_home)
+  global_store = File.join(home, "store")
+  read_config = File.expand_path("read-config", __dir__)
+
+  config_stop_hook = read_config_value("runner.stop_hook", home, read_config)
+  roots_raw = read_config_value("project_roots", home, read_config)
+  project_roots =
+    begin
+      roots_raw.strip.empty? ? [] : Array(JSON.parse(roots_raw))
+    rescue JSON::ParserError
+      []
+    end
+  project_roots = project_roots.map { |root| File.expand_path(root.to_s) }
+
+  session = payload["session_id"].to_s
+
+  result = StopGate.decide(payload: payload, config_stop_hook: config_stop_hook, session: session,
+                           global_store: global_store, project_roots: project_roots)
+
+  puts JSON.generate("decision" => "block", "reason" => result[:reason]) if result[:block]
+rescue StandardError
+  nil
+end
+exit 0
