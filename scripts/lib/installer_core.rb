@@ -561,6 +561,10 @@ class InstallerCore
       # over the one record it returns.
       "scripts/graph-measure" => "scripts/graph-measure",
       "scripts/lib/graph_measure_report.rb" => "scripts/lib/graph_measure_report.rb",
+      # Intent 343 (G10, n4): the `budget` verb - whether the `budget:` a
+      # node's envelope declares (327 C19) is a ceiling that ever actually
+      # held, read from the ledger and the real packet files.
+      "scripts/lib/graph_measure_budget.rb" => "scripts/lib/graph_measure_budget.rb",
     }
   end
 

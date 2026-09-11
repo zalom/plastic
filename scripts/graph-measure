@@ -15,10 +15,10 @@ require_relative "lib/savepoint"
 # Usage:
 #   graph-measure <intent|budget|cohorts> <dir> [--format text|json]
 #
-# Only `intent` (n2) is delivered here. `budget` (n4) and `cohorts` (n5) are
+# `intent` (n2) and `budget` (n4) are delivered here. `cohorts` (n5) is
 # named in the table already so the subcommand list never shrinks as later
-# nodes land, but their libraries do not exist yet: calling either today
-# reports "not yet delivered" and exits 3, exactly like scripts/runner's own
+# nodes land, but its library does not exist yet: calling it today reports
+# "not yet delivered" and exits 3, exactly like scripts/runner's own
 # unlanded verbs.
 #
 # Exit codes:
@@ -127,10 +127,20 @@ module GraphMeasureCLI
     case verb
     when "intent"
       run_intent(dir, format)
+    when "budget"
+      run_budget(dir, format)
     else
       warn "graph-measure: #{verb}'s module loaded but no dispatcher is wired up yet"
       3
     end
+  end
+
+  def missing_savepoint(dir)
+    savepoint_path = File.join(dir, SAVEPOINT_FILE)
+    return nil if File.exist?(savepoint_path)
+
+    warn "graph-measure: #{savepoint_path} does not exist, nothing to measure"
+    savepoint_path
   end
 
   def run_intent(dir, format)
@@ -138,14 +148,18 @@ module GraphMeasureCLI
     # missing file to an empty (not absent) record by design (D3) - the CLI
     # boundary is the only place that can still tell "nothing to measure"
     # apart from "measured, and it is empty".
-    savepoint_path = File.join(dir, SAVEPOINT_FILE)
-    unless File.exist?(savepoint_path)
-      warn "graph-measure: #{savepoint_path} does not exist, nothing to measure"
-      return 1
-    end
+    return 1 if missing_savepoint(dir)
 
     record = GraphMeasure.read(dir)
     puts format == "json" ? GraphMeasureReport.render_json(record) : GraphMeasureReport.render_text(record)
+    0
+  end
+
+  def run_budget(dir, format)
+    return 1 if missing_savepoint(dir)
+
+    record = GraphMeasureBudget.read(dir)
+    puts format == "json" ? GraphMeasureBudget.render_json(record) : GraphMeasureBudget.render_text(record)
     0
   end
 end
