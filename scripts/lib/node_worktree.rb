@@ -93,21 +93,96 @@ module NodeWorktree
 
   # --- diffing -----------------------------------------------------------------
 
-  # changed_paths(context, node:) -> the file paths that differ between the
-  # intent branch and this node's branch, or [] when either branch or the
-  # repo cannot be resolved, or when the diff is genuinely empty (matrix
-  # 3.13/3.14 - the empty case is never distinguished from "cannot compute",
-  # both read as "nothing to report").
-  def changed_paths(context, node:, runner: Worktree::ShellRunner.new)
+  # changed_paths(context, node:, kind:) -> the file paths a node's return
+  # actually touched, or nil when that cannot be measured (matrix 3.13/3.14,
+  # B3): a genuinely empty diff is [], never conflated with "the git call
+  # itself could not run" or "there was nowhere to measure a diff at all" -
+  # RunnerAbsorb treats nil as `failed_verification reason=scope_unmeasurable`,
+  # never as a clean pass.
+  #
+  # A `work` node has its own branch (matrix 3.1-3.3), so its diff is the
+  # ordinary two-branch comparison. A verify or research node gets no
+  # worktree or branch of its own (D6, D29) - the only place such a node
+  # could actually leave a diff is the shared INTENT worktree itself, so its
+  # diff is measured there instead (row 9.9), never against a per-node
+  # branch that, for these kinds, never exists (the exact fail-open B3
+  # named: that lookup always failed and always read as "nothing changed").
+  def changed_paths(context, node:, kind: "work", runner: Worktree::ShellRunner.new)
+    if WORKTREE_KINDS.include?(kind.to_s)
+      node_branch_diff(context, node: node, runner: runner)
+    else
+      intent_worktree_diff(context, runner: runner)
+    end
+  end
+
+  def node_branch_diff(context, node:, runner:)
     p = paths(context, node: node)
     repo, branch = p["repo"], p["branch"]
-    return [] if blank?(repo) || blank?(branch) || blank?(context.worktree_branch)
+    return nil if blank?(repo) || blank?(branch) || blank?(context.worktree_branch)
 
     res = runner.run("-C", repo, "diff", "--name-only", "#{context.worktree_branch}...#{branch}")
-    return [] unless res.success?
+    return nil unless res.success?
 
     res.stdout.to_s.each_line.map(&:strip).reject(&:empty?)
   end
+  private_class_method :node_branch_diff
+
+  # A non-work node's diff, measured in the intent worktree itself (row 9.9)
+  # against the last commit the ledger already knows is clean: the most
+  # recent `done` transition's own `commit=` (any subject) - the intent
+  # branch only ever advances past that point through a work node's own
+  # merge (recorded there) or through exactly the kind of out-of-band commit
+  # this check exists to catch. With no such transition recorded yet (no
+  # work node has landed on this intent branch at all), the fork point with
+  # the repo's own currently checked-out branch is the only other honest
+  # baseline available; either baseline missing is "cannot measure" (nil),
+  # never "clean" (matrix 3.6's fail-open direction reversed: unmeasurable
+  # refuses here, it does not pass).
+  def intent_worktree_diff(context, runner:)
+    intent_worktree = context.worktree
+    branch = context.worktree_branch
+    return nil if blank?(intent_worktree) || blank?(branch)
+    return nil unless Worktree.git_repo?(runner, intent_worktree)
+
+    baseline = last_done_commit(context) || repo_fork_point(context, runner)
+    return nil if blank?(baseline)
+
+    res = runner.run("-C", intent_worktree, "diff", "--name-only", baseline, branch)
+    return nil unless res.success?
+
+    res.stdout.to_s.each_line.map(&:strip).reject(&:empty?)
+  end
+  private_class_method :intent_worktree_diff
+
+  # The most recent `done` transition's own `commit=`, across every subject
+  # in the ledger (torn lines excluded) - the last point RunnerAbsorb itself
+  # already vouched for for as clean.
+  def last_done_commit(context)
+    content = savepoint_content(context.intent_dir)
+    entries = NodeLedger.entries_from_content(content)
+    entry = entries.reverse.find { |e| !e[:torn] && e[:state] == "done" && (e[:fields] || {})["commit"] }
+    entry && entry[:fields]["commit"]
+  end
+  private_class_method :last_done_commit
+
+  # merge-base(intent_branch, repo's own checked-out branch) - the point the
+  # intent branch itself forked from (the repo's own checkout never receives
+  # a node merge, so this stays stable across every later delivery), used
+  # only when the ledger has no `done` commit yet to anchor on.
+  def repo_fork_point(context, runner)
+    repo = repo_root(context)
+    return nil if repo.nil?
+
+    current = Worktree.current_branch(runner, repo: repo)
+    return nil if blank?(current)
+
+    res = runner.run("-C", repo, "merge-base", context.worktree_branch, current)
+    return nil unless res.success?
+
+    sha = res.stdout.to_s.strip
+    sha.empty? ? nil : sha
+  end
+  private_class_method :repo_fork_point
 
   # --- merging -----------------------------------------------------------------
 

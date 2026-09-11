@@ -46,6 +46,12 @@ module RunnerAbsorb
 
   CHECKS = %w[integrity schema scope named_tests merge suite].freeze
 
+  # M1: `default_project_reader`'s own sentinel for "the project record
+  # exists but could not be parsed" - distinct from nil ("no verify command
+  # declared at all, or no project record"), so absorb can block rather than
+  # silently proceeding as if nothing were declared.
+  UNREADABLE_VERIFY_COMMAND = :verify_command_unreadable
+
   # The one joined-line cap for a node's findings on one return (D16): a
   # nested structure never reaches this far (NodeReturn already coerced it
   # to plain strings), this cap is purely about line length.
@@ -115,9 +121,25 @@ module RunnerAbsorb
 
     append_findings(intent_dir, node, parsed.findings, now: now)
 
+    # B1: the return's own status governs from here on. The six mechanical
+    # checks (3-6) exist to VERIFY a `done` claim, never to overrule an
+    # executor's own report of its failure or its own open question - a
+    # `needs_decision`, `blocked` or `failed_verification` return writes
+    # exactly that state, carrying the field its own schema required
+    # (`question` or `reason`), and stops here. Only `done` falls through.
+    unless parsed.status == "done"
+      fields = { holder: holder, gates: checks_ran.join("+") }.merge(extra_fields)
+      fields[:question] = parsed.question if parsed.status == "needs_decision"
+      fields[:reason] = parsed.reason if %w[blocked failed_verification].include?(parsed.status)
+      return write_transition(savepoint_path, context, node, parsed.status, fields, now: now, ledger: ledger)
+    end
+
     # 3. scope --------------------------------------------------------------
     checks_ran << "scope"
-    changed = worktree.changed_paths(context, node: node, runner: runner)
+    changed = worktree.changed_paths(context, node: node, kind: kind, runner: runner)
+    if changed.nil?
+      return fail_check(savepoint_path, context, node, "scope_unmeasurable", checks_ran, holder, extra_fields, now, ledger)
+    end
     scope_reason = scope_violation(kind, changed, declared_files)
     if scope_reason
       return fail_check(savepoint_path, context, node, scope_reason, checks_ran, holder, extra_fields, now, ledger)
@@ -130,9 +152,13 @@ module RunnerAbsorb
     end
 
     # 5. merge ------------------------------------------------------------------
-    checks_ran << "merge"
+    # M2: `merge` lands in gates= only when a merge actually ran - a verify
+    # or research return never reaches a merge (only a work node's diff
+    # lives on a mergeable branch), so its evidence line must say `merge:none`
+    # rather than claiming a check the code skipped for its kind.
     merge_commit = nil
     if kind.to_s == "work"
+      checks_ran << "merge"
       merge_result = worktree.merge(context, node: node, runner: runner)
       unless merge_result[:ok]
         conflicted = Array(merge_result[:conflicted])
@@ -150,11 +176,20 @@ module RunnerAbsorb
         return write_transition(savepoint_path, context, node, "needs_decision", fields, now: now, ledger: ledger)
       end
       merge_commit = merge_result[:commit]
+    else
+      checks_ran << "merge:none"
     end
 
     # 6. suite --------------------------------------------------------------
     checks_ran << "suite"
     command = project_reader.call(intent_dir)
+    if command == UNREADABLE_VERIFY_COMMAND
+      # M1: a project.yml that fails to parse is not the same fact as a
+      # project with no verify command at all - the record is broken, so the
+      # node blocks rather than proceeding to `done` with `suite:absent`.
+      fields = { reason: "verify_command_unreadable", gates: checks_ran.join("+"), holder: holder }.merge(extra_fields)
+      return write_transition(savepoint_path, context, node, "blocked", fields, now: now, ledger: ledger)
+    end
     if command.nil?
       gates = (checks_ran[0..-2] + ["suite:absent"]).join("+")
       suite_value = "none"
@@ -383,7 +418,10 @@ module RunnerAbsorb
   # (that class needs a full instance to call its own copy): reads
   # project.yml's release.verify for the project this intent belongs to,
   # nil for a global-store-only intent or a project record with none
-  # recorded (row 4.39's absent-command case).
+  # recorded (row 4.39's absent-command case). M1/row 9.14: a project.yml
+  # that EXISTS but fails to parse returns UNREADABLE_VERIFY_COMMAND, never
+  # nil - that record is broken, not merely silent on a verify command, and
+  # the caller must not read the two the same way.
   def default_project_reader(intent_dir)
     m = intent_dir.to_s.match(PROJECT_LAYOUT_RE)
     return nil unless m
@@ -395,7 +433,7 @@ module RunnerAbsorb
     data = begin
       YAML.safe_load(File.read(path), permitted_classes: [Date, Time])
     rescue StandardError
-      nil
+      return UNREADABLE_VERIFY_COMMAND
     end
     return nil unless data.is_a?(Hash)
 

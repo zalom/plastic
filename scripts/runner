@@ -273,6 +273,19 @@ module Runner
 
     Lock.heartbeat(intent_dir, session: context.session) unless context.session.to_s.strip.empty?
 
+    # B4: this is the runner's ACTUAL lock check now - the absorb loop below
+    # writes node transitions, and RunnerDispatch's own check (row 5.31/5.32)
+    # runs too late to stop that: a session holding no lock would otherwise
+    # have every `--return` it carries written anyway, attributed to
+    # whichever session's holder= happens to be on the node's `running`
+    # line. RunnerDispatch keeps its own check too, as defence in depth for
+    # a caller that reaches it some other way.
+    unless context.session
+      warn "runner: step refused (lock_not_held)"
+      warn RunnerDispatch.rearm_command(intent_dir)
+      exit 1
+    end
+
     returns = {}
     opt_all(args, "--return").each do |pair|
       node, path = pair.to_s.split("=", 2)

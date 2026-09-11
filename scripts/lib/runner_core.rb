@@ -40,13 +40,24 @@ module RunnerCore
     intent_id = safe(errors, "intent id") { Arm.intent_id_for(dir) }
     intent_slug = safe(errors, "intent slug") { Worktree.slug_from_dir(dir) }
     store = safe(errors, "store") { Arm.store_for(dir) }
-    plastic_home = safe(errors, "plastic home") { Arm.home_for(dir, home: home) } || home
+
+    # Arm.home_for's own docstring says it returns the PARENT of `.plastic`
+    # (the OS home, honestly named `home_root` here) - everywhere else in the
+    # tree, including CoreIntegrity.check and RunnerProposals' templates_dir,
+    # `plastic_home` means the `.plastic` directory itself. Row 9.5: append
+    # it once, here, so every consumer of `context.plastic_home` sees the
+    # same directory `manifest.json` and `templates/` actually live in.
+    home_root = safe(errors, "plastic home") { Arm.home_for(dir, home: home) } || home
+    plastic_home = File.join(home_root, ".plastic")
 
     resolved_session = safe(errors, "session") do
       resolve_owning_session(dir, explicit: session, env_session: env, store: store, intent_id: intent_id)
     end
 
-    worktree_block = safe(errors, "worktree") { Arm.worktree_block(intent_dir: dir, home: plastic_home) } || {}
+    # Arm.worktree_block's own `home:` parameter is the OS-home fallback
+    # `Arm.home_for` takes (it re-derives home_for internally), not the
+    # `.plastic` directory - pass it `home_root`, never `plastic_home`.
+    worktree_block = safe(errors, "worktree") { Arm.worktree_block(intent_dir: dir, home: home_root) } || {}
 
     graph = safe(errors, "graph") { ReadySet.load_graph(dir) } ||
             { ok: false, edges: {}, nodes: {}, errors: ["graph could not be resolved"] }
