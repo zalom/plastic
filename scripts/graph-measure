@@ -1,0 +1,153 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+require_relative "lib/savepoint"
+
+# graph-measure - the one read-only executable over the node ledger (intent
+# 343, G10, n2). A subcommand table over one library, following
+# scripts/runner's shape (327 spec): the public verbs are named up front even
+# before every module lands, a flag outside a verb's own vocabulary is
+# refused by name, and each verb's module is required LAZILY inside its own
+# branch so a verb whose module has not landed yet reports plainly instead of
+# taking `intent`, the verb an operator runs constantly, down with it.
+#
+# Usage:
+#   graph-measure <intent|budget|cohorts> <dir> [--format text|json]
+#
+# Only `intent` (n2) is delivered here. `budget` (n4) and `cohorts` (n5) are
+# named in the table already so the subcommand list never shrinks as later
+# nodes land, but their libraries do not exist yet: calling either today
+# reports "not yet delivered" and exits 3, exactly like scripts/runner's own
+# unlanded verbs.
+#
+# Exit codes:
+#   0 - a report rendered (anomalies never change this: a ledger with torn
+#       lines still renders, lists them, and exits 0)
+#   1 - the directory has no savepoint.md to measure at all, named
+#   2 - usage: no args, an unknown subcommand, an unknown flag, or the path
+#       is not an intent directory
+#   3 - the verb's module has not been delivered yet
+module GraphMeasureCLI
+  module_function
+
+  VERBS = %w[intent budget cohorts].freeze
+  SAVEPOINT_FILE = "savepoint.md"
+
+  # verb -> [[ModuleName, lib_file], ...], required lazily inside the verb's
+  # own branch (row 2.6). "budget" and "cohorts" name libraries n4 and n5
+  # ship; requiring them today raises LoadError, caught below.
+  LAZY_MODULES = {
+    "intent" => [["GraphMeasure", "graph_measure"], ["GraphMeasureReport", "graph_measure_report"]],
+    "budget" => [["GraphMeasureBudget", "graph_measure_budget"]],
+    "cohorts" => [["GraphMeasureCohorts", "graph_measure_cohorts"]],
+  }.freeze
+
+  KNOWN_FLAGS = {
+    "intent" => %w[--format],
+    "budget" => %w[--format],
+    "cohorts" => %w[--format],
+  }.freeze
+
+  def usage
+    warn "Usage: graph-measure <#{VERBS.join('|')}> <dir> [--format text|json]"
+  end
+
+  def intent_directory?(dir)
+    dir && File.directory?(dir) && File.exist?(Savepoint.intent_file(dir))
+  end
+
+  def opt(args, name)
+    (i = args.index(name)) && args[i + 1]
+  end
+
+  def unrecognized_flag(verb, args)
+    allowed = KNOWN_FLAGS.fetch(verb, [])
+    args.find { |a| a.is_a?(String) && a.start_with?("--") && !allowed.include?(a) }
+  end
+
+  def main(argv)
+    args = argv.dup
+    verb = args.shift
+
+    unless verb
+      usage
+      return 2
+    end
+
+    unless VERBS.include?(verb)
+      warn "graph-measure: unknown subcommand #{verb.inspect}"
+      usage
+      return 2
+    end
+
+    dir_arg = args.shift
+    unless intent_directory?(dir_arg && File.expand_path(dir_arg))
+      warn "graph-measure: #{dir_arg.inspect} is not an intent directory"
+      usage
+      return 2
+    end
+    dir = File.expand_path(dir_arg)
+
+    bad_flag = unrecognized_flag(verb, args)
+    if bad_flag
+      warn "graph-measure: unknown flag #{bad_flag.inspect} for #{verb}"
+      usage
+      return 2
+    end
+
+    format = opt(args, "--format") || "text"
+    unless %w[text json].include?(format)
+      warn "graph-measure: unknown --format #{format.inspect} (use text or json)"
+      usage
+      return 2
+    end
+
+    run_lazy(verb, dir, format)
+  rescue StandardError => e
+    # Row 2.22: a malformed graph.md, a torn ledger, or invalid UTF-8 never
+    # raises out of GraphMeasure or GraphMeasureReport (both are built to
+    # resolve broken data to an anomaly, never an exception) - this is
+    # defence in depth so a defect in either never reaches the owner as a
+    # bare Ruby backtrace.
+    warn "graph-measure: internal error: #{e.message}"
+    1
+  end
+
+  def run_lazy(verb, dir, format)
+    LAZY_MODULES.fetch(verb, []).each { |(_name, file)| require_relative(File.join("lib", file)) }
+  rescue LoadError
+    warn "graph-measure: #{verb} is not yet delivered (its module has not landed)"
+    3
+  else
+    dispatch_lazy(verb, dir, format)
+  end
+
+  def dispatch_lazy(verb, dir, format)
+    case verb
+    when "intent"
+      run_intent(dir, format)
+    else
+      warn "graph-measure: #{verb}'s module loaded but no dispatcher is wired up yet"
+      3
+    end
+  end
+
+  def run_intent(dir, format)
+    # Row 2.5: checked directly, ahead of GraphMeasure.read, which resolves a
+    # missing file to an empty (not absent) record by design (D3) - the CLI
+    # boundary is the only place that can still tell "nothing to measure"
+    # apart from "measured, and it is empty".
+    savepoint_path = File.join(dir, SAVEPOINT_FILE)
+    unless File.exist?(savepoint_path)
+      warn "graph-measure: #{savepoint_path} does not exist, nothing to measure"
+      return 1
+    end
+
+    record = GraphMeasure.read(dir)
+    puts format == "json" ? GraphMeasureReport.render_json(record) : GraphMeasureReport.render_text(record)
+    0
+  end
+end
+
+exit GraphMeasureCLI.main(ARGV) if $PROGRAM_NAME == __FILE__

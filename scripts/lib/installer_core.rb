@@ -556,6 +556,11 @@ class InstallerCore
       # (scripts/graph-measure ships at n2); registered here so it is never
       # a lib that exists on disk but never reaches an install.
       "scripts/lib/graph_measure.rb" => "scripts/lib/graph_measure.rb",
+      # Intent 343 (G10, n2): the graph-measure command - the subcommand
+      # table over the ledger reader, and the two renderers (text, JSON)
+      # over the one record it returns.
+      "scripts/graph-measure" => "scripts/graph-measure",
+      "scripts/lib/graph_measure_report.rb" => "scripts/lib/graph_measure_report.rb",
     }
   end
 
