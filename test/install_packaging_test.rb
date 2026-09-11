@@ -3,6 +3,8 @@ require "tmpdir"
 require "json"
 require "fileutils"
 require "digest"
+require "open3"
+require "rbconfig"
 
 # Intent 29: Plastic ships as flat, hyphen-namespaced personal skills
 # (plastic-<name>/) with NO Claude Code plugin/marketplace registration, a
@@ -480,6 +482,33 @@ class InstallPackagingTest < Minitest::Test
   def test_advisor_protocol_reference_exists_in_repo
     assert File.file?(File.join(REPO, "skills", "agent-advisor", "references", "advisor-protocol.md")),
       "skills/agent-advisor/references/advisor-protocol.md must exist in the repo"
+  end
+
+  # Intent 340b, G7c, n2, row 2.13: the command-line proof, the program run the way
+  # the owner would. A real subprocess of `scripts/install.rb --claude` against a
+  # throwaway HOME, never a synthetic fixture, must copy the three new node-kind
+  # agent definitions; a real subprocess of `scripts/read-config` against that same
+  # HOME must then answer the tier `read-config agents.models.plastic-node-verify`
+  # names (D23: every public script this intent adds gets a subprocess test).
+  def test_real_agent_roster_installs
+    Dir.mktmpdir("n2-real-install-home") do |fake_home|
+      env = { "HOME" => fake_home, "RUBYOPT" => nil, "CLAUDE_CODE_SESSION_ID" => nil,
+               "PLASTIC_HOME" => nil, "PLASTIC_PACKAGE_ROOT" => nil }
+
+      out, err, status = Open3.capture3(env, RbConfig.ruby, File.join(REPO, "scripts", "install.rb"),
+                                         "--claude", chdir: REPO)
+      assert status.success?, "install.rb --claude failed:\n#{out}\n#{err}"
+
+      %w[plastic-node-work plastic-node-verify plastic-node-research].each do |basename|
+        dest = File.join(fake_home, ".claude", "agents", "#{basename}.md")
+        assert File.file?(dest), "the real installer must copy #{basename}.md into ~/.claude/agents"
+      end
+
+      out2, err2, status2 = Open3.capture3(env, RbConfig.ruby, File.join(REPO, "scripts", "read-config"),
+                                            "agents.models.plastic-node-verify", chdir: REPO)
+      assert status2.success?, "read-config failed: #{err2}"
+      assert_equal AgentModels::TIER_DEFAULTS.fetch("plastic-node-verify"), out2.strip
+    end
   end
 
   # --- Require-closure guard (intent 274): a new scripts/lib/*.rb that is required by a

@@ -43,7 +43,8 @@ class Subtraction304Test < Minitest::Test
     roadmap rollback tutorial uninstall update
   ].freeze
 
-  KEPT_AGENTS = %w[plastic-advisor.md plastic-enforcer.md plastic-executor.md plastic-faux-advisor.md].freeze
+  KEPT_AGENTS = %w[plastic-advisor.md plastic-enforcer.md plastic-executor.md plastic-faux-advisor.md
+                   plastic-node-research.md plastic-node-verify.md plastic-node-work.md].freeze
 
   MOVED_DOCS = %w[
     docs/skill-authoring/creating/SKILL.md docs/skill-authoring/creating/scripts/scaffold.rb
@@ -98,9 +99,10 @@ class Subtraction304Test < Minitest::Test
     end
   end
 
-  def test_agents_are_exactly_four_and_tier_defaults_match
+  def test_agents_are_exactly_seven_and_tier_defaults_match
     assert_equal KEPT_AGENTS, Dir.children(File.join(REPO, "agents")).sort
-    assert_equal %w[plastic-enforcer plastic-executor], AgentModels::TIER_DEFAULTS.keys.sort
+    assert_equal %w[plastic-enforcer plastic-executor plastic-node-research plastic-node-verify plastic-node-work],
+                 AgentModels::TIER_DEFAULTS.keys.sort
   end
 
   def test_no_intent_tier_grammar_anywhere_in_the_shipped_tree
