@@ -1649,6 +1649,16 @@ class DoctorCoreHookEventsCommentTest < Minitest::Test
     src = File.read(File.expand_path("../scripts/lib/doctor_core.rb", __dir__))
     refute_match(/five-event/, src, "CLAUDE_HOOK_EVENTS comment still says \"five-event\" (it is now #{Doctor::CLAUDE_HOOK_EVENTS.size})")
   end
+
+  # Intent 340b (G7c, n4, row 4.33): CLAUDE_HOOK_EVENTS grew to seven with
+  # Stop; the comment beside it must name that count, not the six it rotted
+  # to catching up to MessageDisplay.
+  def test_the_hook_events_comment_names_seven_not_six
+    src = File.read(File.expand_path("../scripts/lib/doctor_core.rb", __dir__))
+    refute_match(/six-event/, src, "CLAUDE_HOOK_EVENTS comment still says \"six-event\" (it is now #{Doctor::CLAUDE_HOOK_EVENTS.size})")
+    assert_match(/seven-event/, src)
+    assert_equal 7, Doctor::CLAUDE_HOOK_EVENTS.size
+  end
 end
 
 # ===========================================================================
