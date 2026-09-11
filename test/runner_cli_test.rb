@@ -782,4 +782,276 @@ class RunnerCliTest < Minitest::Test
     refute_match(/all five/, entry)
     refute_match(/accepted proposals.*ledger-line/, entry)
   end
+
+  # === Intent 340b, G7c, n1: the harness seam, --harness, runner-step.last ===
+
+  # --- 1.2: --harness overrides config for one call ---------------------------
+
+  def test_step_harness_flag_overrides_config
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    session = "harness-override-session"
+    write_lock(@dir, owner: session)
+
+    out, err, status = run_cli("step", @dir, "--harness", "codex", env: { "CLAUDE_CODE_SESSION_ID" => session })
+    assert_equal 0, status.exitstatus, out + err
+
+    entry = NodeLedger.last_running(savepoint_path, "n1")
+    refute_nil entry, out + err
+    assert_equal "codex", entry[:fields]["harness"], "--harness must override config for this one call"
+  end
+
+  # --- 1.4: --harness is a known step flag, never refused ---------------------
+
+  def test_harness_is_a_known_step_flag
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    session = "harness-flag-known-session"
+    write_lock(@dir, owner: session)
+
+    out, err, status = run_cli("step", @dir, "--harness", "codex", env: { "CLAUDE_CODE_SESSION_ID" => session })
+    refute_equal 2, status.exitstatus, out + err
+    refute_match(/unknown flag/i, err)
+  end
+
+  # --- 1.5: the YAML plan still prints, unchanged, before the rendered block --
+
+  def test_yaml_plan_still_printed_before_rendering
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    session = "plan-then-block-session"
+    write_lock(@dir, owner: session)
+
+    out, err, status = run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
+    assert_equal 0, status.exitstatus, out + err
+
+    plan_idx = out.index("dispatch:")
+    block_idx = out.index("plastic-node-work")
+    refute_nil plan_idx, "the YAML plan must still print: #{out}"
+    refute_nil block_idx, "the rendered block must print: #{out}"
+    assert plan_idx < block_idx, "the YAML plan must print before the rendered block: #{out}"
+  end
+
+  # --- 1.21: runner-step.last is written on every step call -------------------
+
+  def test_step_writes_runner_step_last
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    session = "step-last-session"
+    write_lock(@dir, owner: session)
+
+    out, err, status = run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
+    assert_equal 0, status.exitstatus, out + err
+
+    last_path = File.join(@dir, "runner-step.last")
+    assert File.exist?(last_path), "runner-step.last must be written on every step call"
+    assert_match(/n1/, File.read(last_path), "the persisted output must carry what stdout printed")
+  end
+
+  # --- 1.22: runner-step.last is overwritten, not appended --------------------
+
+  def test_runner_step_last_is_overwritten
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    session = "step-last-overwrite-session"
+    write_lock(@dir, owner: session)
+
+    run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
+    first = File.read(File.join(@dir, "runner-step.last"))
+    assert_match(/dispatch:/, first, "fixture sanity: the first call must have dispatched n1: #{first}")
+
+    out2, err2, status2 = run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
+    assert_equal 0, status2.exitstatus, out2 + err2
+
+    second = File.read(File.join(@dir, "runner-step.last"))
+    refute_match(/dispatch:/, second,
+                 "runner-step.last must be OVERWRITTEN, not appended - it must not still carry the first " \
+                 "call's plan: #{second.inspect}")
+    assert_match(/queued/, second)
+  end
+
+  # --- 1.23: runner-step.last is written even when the step dispatches nothing --
+
+  def test_runner_step_last_written_on_empty_step
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    session = "step-last-empty-session"
+    write_savepoint(line("n1", "done", gates: "g", commit: "c1", holder: session))
+    write_lock(@dir, owner: session)
+
+    out, err, status = run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
+    assert_equal 0, status.exitstatus, out + err
+    assert_match(/complete/, out)
+
+    last_path = File.join(@dir, "runner-step.last")
+    assert File.exist?(last_path), "runner-step.last must be written even when the step dispatches nothing"
+    assert_match(/complete/, File.read(last_path))
+  end
+
+  # --- 1.24: runner-step.last lives beside savepoint.md, never inside packets/ --
+
+  def test_runner_step_last_lives_beside_savepoint
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    session = "step-last-location-session"
+    write_lock(@dir, owner: session)
+
+    run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
+
+    assert File.exist?(File.join(@dir, "runner-step.last"))
+    refute File.exist?(File.join(@dir, "packets", "runner-step.last")),
+           "runner-step.last must live beside savepoint.md, never inside packets/"
+  end
+
+  # --- 1.25: an unwritable intent directory never crashes the step ------------
+
+  def test_step_survives_unwritable_last_file
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    session = "step-last-unwritable-session"
+    write_lock(@dir, owner: session)
+    # A directory sits where the file must go, forcing the write to fail.
+    FileUtils.mkdir_p(File.join(@dir, "runner-step.last"))
+
+    out, err, status = run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
+    assert_equal 0, status.exitstatus, out + err
+    refute_match(/\.rb:\d+:in [`']/, out + err,
+                 "an unwritable runner-step.last must never crash the step: #{out}#{err}")
+  end
+
+  # --- 1.27: the CLI subprocess renders the codex block, not only the module API --
+
+  def test_step_subprocess_renders_codex_block
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    session = "codex-block-session"
+    write_lock(@dir, owner: session)
+
+    out, err, status = run_cli("step", @dir, "--harness", "codex", env: { "CLAUDE_CODE_SESSION_ID" => session })
+    assert_equal 0, status.exitstatus, out + err
+    assert_match(/node-run n1/, out, "the codex block must render for --harness codex: #{out}")
+  end
+
+  # --- 1.28: the plan and the rendered block are separated by a document marker --
+
+  def test_plan_and_block_separated_by_document_marker
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    session = "doc-marker-session"
+    write_lock(@dir, owner: session)
+
+    out, err, status = run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
+    assert_equal 0, status.exitstatus, out + err
+
+    plan_idx = out.index("dispatch:")
+    marker_idx = out.index("\n...\n")
+    refute_nil plan_idx, out
+    refute_nil marker_idx, "an explicit document boundary must separate the plan from the block: #{out.inspect}"
+    block_idx = out.index("RETURN CONTRACT", marker_idx)
+    refute_nil block_idx, out
+    assert plan_idx < marker_idx, out
+    assert marker_idx < block_idx, out
+  end
+
+  # --- 1.29: runner-step.last is written on the MERGE_HEAD abort path ---------
+
+  def test_last_file_written_on_merge_abort
+    slug = "demo-merge-last"
+    plastic = File.join(@home, ".plastic")
+    repo = File.join(@home, "apps", slug)
+    FileUtils.mkdir_p(repo)
+    git!("init", "-q", "-b", "alpha", dir: repo)
+    git!("config", "user.email", "m@example.com", dir: repo)
+    git!("config", "user.name", "Merge Test", dir: repo)
+    git!("config", "gc.auto", "0", dir: repo)
+    File.write(File.join(repo, "f.txt"), "a\n")
+    git!("add", "f.txt", dir: repo)
+    git!("commit", "-q", "-m", "init", dir: repo)
+
+    File.write(File.join(plastic, "projects.yml"), { "projects" => { slug => { "path" => repo } } }.to_yaml)
+
+    proj_store = File.join(plastic, "projects", slug, "store")
+    @dir = File.join(proj_store, "1--demo")
+    FileUtils.mkdir_p(File.join(@dir, "nodes"))
+    File.write(File.join(@dir, "1--demo.md"), "---\nid: \"1\"\nintent: t\n---\n\n## Intent\nbody\n")
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+
+    intent_worktree = File.join(repo, ".claude", "worktrees", "1--demo")
+    intent_branch = "plastic/1--demo"
+    FileUtils.mkdir_p(File.dirname(intent_worktree))
+    git!("worktree", "add", intent_worktree, "-b", intent_branch, dir: repo)
+
+    git!("checkout", "-q", "-b", "conflict-branch", dir: repo)
+    File.write(File.join(repo, "f.txt"), "b\n")
+    git!("commit", "-q", "-am", "conflicting change", dir: repo)
+    File.write(File.join(intent_worktree, "f.txt"), "c\n")
+    git!("commit", "-q", "-am", "other side", dir: intent_worktree)
+    _out, _err, merge_status = Open3.capture3("git", "-C", intent_worktree, "merge", "conflict-branch")
+    refute merge_status.success?, "fixture sanity: the merge must actually conflict"
+
+    out, err, status = run_cli("step", @dir)
+    refute_equal 0, status.exitstatus, out + err
+
+    last_path = File.join(@dir, "runner-step.last")
+    assert File.exist?(last_path), "runner-step.last must be written even on the merge-abort refusal"
+    content = File.read(last_path)
+    assert_match(/merge is (?:already )?in progress/i, content,
+                 "the merge-abort refusal reason must land in the file, not only on stderr: #{content.inspect}")
+  end
+
+  # --- 1.30: runner-step.last is written on the two other pre-plan refusals ---
+
+  def test_last_file_written_on_refusal_paths
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    last_path = File.join(@dir, "runner-step.last")
+
+    # lock_not_held: run_cli's own default env holds no session at all.
+    out, err, status = run_cli("step", @dir)
+    refute_equal 0, status.exitstatus, out + err
+    assert File.exist?(last_path), "runner-step.last must be written on the lock_not_held refusal"
+    assert_match(/lock_not_held/, File.read(last_path))
+
+    # malformed --return: a session DOES hold the lock this time, so the call
+    # reaches past the lock check into the malformed-pair check.
+    session = "malformed-return-last-session"
+    write_lock(@dir, owner: session)
+    out2, err2, status2 = run_cli("step", @dir, "--return", "bogus-no-equals",
+                                   env: { "CLAUDE_CODE_SESSION_ID" => session })
+    refute_equal 0, status2.exitstatus, out2 + err2
+    assert_match(/malformed --return/, File.read(last_path))
+  end
+
+  # --- 1.31: the refusal reason lands in the file, not only on stderr --------
+
+  def test_last_file_carries_the_refusal_reason
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+
+    _out, err, status = run_cli("step", @dir)
+    refute_equal 0, status.exitstatus
+    assert_match(/lock_not_held/, err, "fixture sanity: the reason really does print to stderr")
+
+    content = File.read(File.join(@dir, "runner-step.last"))
+    assert_match(/lock_not_held/, content,
+                 "the refusal reason must be persisted to the file, not left only on stderr")
+  end
+
+  # --- 1.32: runner-step.last is git-ignored in the store ---------------------
+
+  def test_last_file_is_git_ignored
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    session = "gitignore-session"
+    write_lock(@dir, owner: session)
+
+    run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
+
+    gitignore_path = File.join(@home, ".plastic", ".gitignore")
+    assert File.exist?(gitignore_path), "step must ensure the store's own .gitignore exists"
+    patterns = File.read(gitignore_path).lines.map(&:strip)
+    assert_includes patterns, "runner-step.last",
+                    "runner-step.last must be ignored in the store's own git tree: #{patterns.inspect}"
+  end
 end

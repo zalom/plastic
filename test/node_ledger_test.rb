@@ -94,6 +94,60 @@ class NodeLedgerTest < Minitest::Test
     assert_equal "running holder=auto-x expires=2026-09-08T19:40:40Z packet=1f3c9a2 model=sonnet", rest
   end
 
+  # --- Intent 340b, G7c, n1: harness= is an accepted field on every state ----
+
+  # The minimal valid fields hash per state, so a line can be built at all
+  # (transition_line raises ArgumentError on a missing required field) -
+  # mirrors NodeLedger::REQUIRED_FIELDS plus done's own commit-or-verdict
+  # evidence rule.
+  MINIMAL_FIELDS_BY_STATE = {
+    "planned" => {},
+    "running" => RUNNING_FIELDS,
+    "done" => { gates: "g", commit: "c1" },
+    "failed_verification" => { gates: "g", reason: "r" },
+    "needs_decision" => { question: "q" },
+    "blocked" => { reason: "r" },
+    "deferred" => { reason: "r" },
+    "superseded" => { by: "n2" },
+    "abandoned" => { reason: "r" },
+    "reclaimed" => { holder: "h", expired: "2026-09-08T19:40:40Z" },
+  }.freeze
+
+  # 1.15: harness= rides as an accepted field, required by none, on every one
+  # of the ten states - written and read back under its own key, never
+  # silently dropped or misfiled, on states well beyond `running`.
+  def test_harness_field_round_trips_on_every_state
+    NodeLedger::STATES.each do |state|
+      fields = MINIMAL_FIELDS_BY_STATE.fetch(state).merge(harness: "codex")
+      line = build(subject: "n1", state: state, fields: fields)
+      parsed = NodeLedger.parse_transition_line(line)
+      assert_equal "codex", parsed[:fields]["harness"], "state #{state} must round-trip harness="
+      refute NodeLedger.torn?(line), "state #{state} with harness= must not read as torn: #{line.inspect}"
+    end
+  end
+
+  # 1.17: harness= renders in a stable, DECLARED FIELD_ORDER position - right
+  # after model=, never sorted into the trailing extras. `core_drift` (a real
+  # extra field, alphabetically BEFORE "harness") is the differentiator: an
+  # unlisted `harness` would sort as an extra alongside it, alphabetically
+  # ahead of it ("core_drift=... harness=..."); a declared `harness` renders
+  # with the other known dispatch-time fields, ahead of every extra
+  # ("... harness=codex core_drift=true").
+  def test_harness_field_order_is_stable
+    fields = { model: "sonnet", packet: "1f3c9a2", holder: "auto-x", expires: "2026-09-08T19:40:40Z",
+               harness: "codex", core_drift: "true" }
+    line = build(subject: "n1", state: "running", fields: fields)
+    rest = line.chomp.split(/\s{2,}/).last
+    assert_equal "running holder=auto-x expires=2026-09-08T19:40:40Z packet=1f3c9a2 model=sonnet " \
+                 "harness=codex core_drift=true", rest
+
+    # Insertion order must never matter (mirrors test_fields_render_in_a_stable_declared_order).
+    reordered = build(subject: "n1", state: "running",
+                       fields: { core_drift: "true", harness: "codex", holder: "auto-x",
+                                 expires: "2026-09-08T19:40:40Z", model: "sonnet", packet: "1f3c9a2" })
+    assert_equal line, reordered
+  end
+
   def test_a_value_with_a_single_space_is_double_quoted_and_round_trips
     line = build(subject: "Intent", state: "needs_decision", fields: { question: "two words" })
     assert_match(/question="two words"/, line)
