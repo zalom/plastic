@@ -70,14 +70,22 @@ module GraphMeasureReport
       "what_at" => av_time(scaffold[:what_at]),
       "why_at" => av_time(scaffold[:why_at]),
       "done_at" => av_time(clock[:end]),
+      # D20: "why" when the clock anchors on the ledger's own `Why` line,
+      # "first_line" when it fell back to the first ledger line because no
+      # `Why` line exists at all (row 3.23). Never nil: build_clock always
+      # sets one of the two.
+      "clock_anchor" => clock[:anchor].to_s,
     }
   end
   private_class_method :wall_clock_model
 
   def wall_clock_block(w)
+    anchor_label = w["clock_anchor"] == "first_line" ? "first ledger line" : "why line"
     [
       "== Wall clock ==",
-      "delivery total: #{fmt_minutes(w['delivery_total_seconds'])} min (why line to done line)",
+      "clock anchor: #{anchor_label}" \
+      "#{w['clock_anchor'] == 'first_line' ? ' (no Why line in this ledger, D20 fallback)' : ''}",
+      "delivery total: #{fmt_minutes(w['delivery_total_seconds'])} min (#{anchor_label} to done line)",
       "active: #{fmt_minutes(w['active_seconds'])} min",
       "paused: #{fmt_minutes(w['paused_seconds'])} min",
       "scaffold gap (what line to why line, not counted in delivery total): " \
@@ -111,7 +119,9 @@ module GraphMeasureReport
   # rather than by array index, because `complement` skips a zero-length
   # session at either end (row 2.8).
   def session_start_evidence(session, pauses, clock)
-    return "why line (delivery start)" if clock[:start] && session[:start] == clock[:start]
+    if clock[:start] && session[:start] == clock[:start]
+      return clock[:anchor] == :first_line ? "first ledger line (delivery start, no Why line)" : "why line (delivery start)"
+    end
 
     closing = pauses.find { |p| p[:end] == session[:start] }
     return "pause closed by #{closing[:closed_by]}" if closing
