@@ -204,31 +204,32 @@ class GraphMeasureDogfoodTest < Minitest::Test
     assert_equal "2000", attempts[2][:fields]["hop"]
   end
 
-  # --- 3.11: fold bucket, transitive, about 160 minutes --------------------------
+  # --- 3.11: review-fix bucket, transitive, about 160 minutes ---------------------
 
-  def test_340_fold_bucket_is_transitive_and_largest
+  def test_340_review_fix_bucket_is_transitive_and_largest
     r = record_340
-    assert_equal true, r[:nodes]["n9"][:fold]
-    assert_equal true, r[:nodes]["n10"][:fold]
-    assert_equal true, r[:nodes]["n11"][:fold]
+    assert_equal true, r[:nodes]["n9"][:review_fix]
+    assert_equal true, r[:nodes]["n10"][:review_fix]
+    assert_equal true, r[:nodes]["n11"][:review_fix]
     # n1-n8 need nothing that needs a verify node (v1 needs THEM, not the
-    # reverse), so none of them can fold under the transitive rule.
-    %w[n1 n2 n3 n4 n5 n6 n7 n8].each { |id| assert_equal false, r[:nodes][id][:fold], id }
+    # reverse), so none of them can be classified a review fix under the
+    # transitive rule.
+    %w[n1 n2 n3 n4 n5 n6 n7 n8].each { |id| assert_equal false, r[:nodes][id][:review_fix], id }
 
     m = GraphMeasureReport.model(r)
-    fold_min = m[:buckets]["fold"] / 60.0
-    assert_in_delta 160.0, fold_min, 5.0
-    assert_operator fold_min, :>, m[:buckets]["verify"] / 60.0
-    assert_operator fold_min, :>, m[:buckets]["lead"] / 60.0
-    # Pinned difference (row 3.22): against this real ledger, transitive fold
-    # (about 160 min) is the SECOND-largest bucket, not the largest overall;
-    # "build" (n1-n8's own active spans) is larger, at about 200.6 min. The
-    # plan review's "larger than any other bucket" holds against verify and
-    # lead, the two buckets the non-transitive-vs-transitive contrast (93.2
-    # min, 62 to 46 percent) was actually about; it does not hold against
-    # build, and this test does not force that comparison to pass by
-    # miscounting build.
-    assert_operator m[:buckets]["build"] / 60.0, :>, fold_min
+    review_fix_min = m[:buckets]["review_fix"] / 60.0
+    assert_in_delta 160.0, review_fix_min, 5.0
+    assert_operator review_fix_min, :>, m[:buckets]["verify"] / 60.0
+    assert_operator review_fix_min, :>, m[:buckets]["lead"] / 60.0
+    # Pinned difference (row 3.22): against this real ledger, the transitive
+    # review-fix bucket (about 160 min) is the SECOND-largest bucket, not
+    # the largest overall; "build" (n1-n8's own active spans) is larger, at
+    # about 200.6 min. The plan review's "larger than any other bucket"
+    # holds against verify and lead, the two buckets the
+    # non-transitive-vs-transitive contrast (93.2 min, 62 to 46 percent)
+    # was actually about; it does not hold against build, and this test
+    # does not force that comparison to pass by miscounting build.
+    assert_operator m[:buckets]["build"] / 60.0, :>, review_fix_min
   end
 
   # --- 3.12: 337's three holders --------------------------------------------------
@@ -289,17 +290,22 @@ class GraphMeasureDogfoodTest < Minitest::Test
 
   # --- 3.17: 337's model, hop, verify cost unavailable ---------------------------
 
-  # Corrected by the v1 fold (B3, n8 row 8.7): this test used to pin
+  # Corrected by the v1 review fix (B3, n8 row 8.7): this test used to pin
   # `assert_equal 0.0, m[:buckets]["verify"]` with a comment rationalizing
   # it as "every gate bucket nets to 0.0" - that IS the defect the review
   # found (a bucket with no measured source read as a false, indistinguishable
   # zero rather than "unavailable"), not a fact worth pinning. No node in
   # 337 has a `running` line at all, so NONE of the three gate buckets ever
-  # receives a single measured span; each now renders "unavailable", never
-  # 0.0. active_seconds is still a real number (the sessions the generic gap
+  # receives a single measured span; build and verify render "unavailable".
+  # active_seconds is still a real number (the sessions the generic gap
   # rule still finds inside 337's own file-ordered lines), so that whole
   # span lands in "lead", the one bucket that is always a real number by
   # construction.
+  #
+  # Corrected again by n9 row 9.3 (v2 NEW-3): the review-fix bucket is a
+  # real zero here, not unavailable - 337 has no graph.md at all, so no
+  # node is ever classified a review fix in the first place, distinct from
+  # build/verify, whose nodes exist but never carried a measured span.
   def test_337_model_hop_verify_cost_unavailable
     r = record_337
     r[:nodes].each do |id, node|
@@ -309,7 +315,7 @@ class GraphMeasureDogfoodTest < Minitest::Test
     m = GraphMeasureReport.model(r)
     assert_equal "unavailable", m[:buckets]["build"]
     assert_equal "unavailable", m[:buckets]["verify"]
-    assert_equal "unavailable", m[:buckets]["fold"]
+    assert_equal 0.0, m[:buckets]["review_fix"]
     assert_in_delta m[:buckets]["active_seconds"], m[:buckets]["lead"], 0.01
   end
 
@@ -401,11 +407,11 @@ class GraphMeasureDogfoodTest < Minitest::Test
     assert_equal :first_line, r337[:clock][:anchor]
     assert_in_delta 74.9, r337[:clock][:wall_clock_seconds] / 3600.0, 0.1
 
-    # The plan review's D7 "fold bucket is larger than any other bucket"
-    # note does not hold against "build" for 340 (see
-    # test_340_fold_bucket_is_transitive_and_largest); pinned there, not here,
-    # because it is a difference in a DERIVED bucket comparison, not in a
-    # field the ledger states directly.
+    # The plan review's D7 "review-fix bucket is larger than any other
+    # bucket" note does not hold against "build" for 340 (see
+    # test_340_review_fix_bucket_is_transitive_and_largest); pinned there,
+    # not here, because it is a difference in a DERIVED bucket comparison,
+    # not in a field the ledger states directly.
   end
 
   # --- 3.23: 337's clock anchor and the anchor label -----------------------------

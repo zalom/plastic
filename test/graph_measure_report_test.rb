@@ -83,7 +83,7 @@ class GraphMeasureReportTest < Minitest::Test
       text = GraphMeasureReport.render_text(record)
 
       # Delivery total is Why-to-Done, 10 minutes; the What-to-Why gap is 2h,
-      # reported separately and never folded into the total.
+      # reported separately and never counted inside the total.
       assert_match(/delivery total: 10\.0 min/, text)
       assert_match(/scaffold gap.*: 120\.0 min/, text)
       refute_match(/delivery total: 130\.0 min/, text)
@@ -266,15 +266,80 @@ class GraphMeasureReportTest < Minitest::Test
       buckets = GraphMeasureReport.model(record)[:buckets]
 
       assert_in_delta 540.0, buckets["verify"], 0.001   # v1: 60..600
-      assert_in_delta 1140.0, buckets["build"], 0.001   # n1: 660..1800, not fold
-      assert_in_delta 1140.0, buckets["fold"], 0.001    # n2: 1860..3000, needs v1
+      assert_in_delta 1140.0, buckets["build"], 0.001   # n1: 660..1800, not a review fix
+      assert_in_delta 1140.0, buckets["review_fix"], 0.001 # n2: 1860..3000, needs v1
       assert_in_delta 240.0, buckets["lead"], 0.001      # the four terminal-to-running gaps, 60s each
       assert_equal true, buckets["sums_to_active"]
-      sum = buckets["build"] + buckets["verify"] + buckets["fold"] + buckets["lead"]
+      sum = buckets["build"] + buckets["verify"] + buckets["review_fix"] + buckets["lead"]
       assert_in_delta buckets["active_seconds"], sum, 0.001
 
       text = GraphMeasureReport.render_text(record)
       assert_match(/sum equals active time.*: true/, text)
+    end
+  end
+
+  # --- 9.3 (v2 NEW-3): an absent kind renders zero, an unmeasured kind renders unavailable --
+
+  # v2's review (NEW-3): `contributed` could only track whether a bucket
+  # HAD a measured span, so it could not tell "no node of this kind exists
+  # in this intent at all" from "nodes of this kind exist, none of their
+  # attempts ever carried a measured span" - both rendered "unavailable".
+  # Reproduced by hand before this fix, against a hermetic one-node
+  # work-only intent with no verify node and no review-fix node anywhere:
+  # the build bucket read 30.0 minutes while the other two both read
+  # unavailable, though the report's own node table proves neither of those
+  # two kinds exists at all.
+  def test_absent_kind_renders_zero_and_unmeasured_renders_unavailable
+    with_intent_dir do |dir|
+      t0 = stamp("2026-01-01T09:00:00Z")
+      write_savepoint(dir, [
+        stage(t0, "Why", "spec.md created"),
+        transition(t0 + 60, "n1", "running", fields: RUNNING),
+        transition(t0 + 1860, "n1", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234")),
+        stage(t0 + 1920, "Done", "delivered"),
+      ])
+      record = GraphMeasure.read(dir)
+      buckets = GraphMeasureReport.model(record)[:buckets]
+      assert_equal 0.0, buckets["verify"], "no verify node exists anywhere in this intent; that is a real zero"
+      assert_equal 0.0, buckets["review_fix"],
+                   "no review-fix node exists anywhere in this intent; that is a real zero"
+    end
+
+    record = GraphMeasure.read(DIR_337)
+    buckets = GraphMeasureReport.model(record)[:buckets]
+    assert_equal "unavailable", buckets["verify"],
+                 "337 has a verify node (v1) whose only attempt never carries a running line, so its " \
+                 "span was never measured - unmeasured, never absent"
+    assert_equal "unavailable", buckets["build"],
+                 "337's work nodes exist but none of them ever carries a running line either"
+  end
+
+  # --- 9.5 (owner ruling): the node and bucket keys are exactly the named set --
+
+  # Asserted positively (a complete, sorted key set), never by grepping a
+  # source file for the retired word: the renamed key is proved present,
+  # and the retired key is proved gone because it is absent from the set.
+  def test_bucket_and_node_keys_are_exactly_the_named_set
+    with_intent_dir do |dir|
+      t0 = stamp("2026-01-01T00:00:00Z")
+      write_graph(dir, "- v1 needs nothing\n- n1 needs nothing\n- n2 needs v1\n")
+      write_savepoint(dir, [
+        stage(t0, "Why", "spec.md created"),
+        transition(t0 + 60, "v1", "running", fields: RUNNING),
+        transition(t0 + 600, "v1", "done", fields: RUNNING.merge(gates: "suite", verdict: "approve")),
+        transition(t0 + 660, "n1", "running", fields: RUNNING),
+        transition(t0 + 1800, "n1", "done", fields: RUNNING.merge(gates: "suite", commit: "aaa1111")),
+        transition(t0 + 1860, "n2", "running", fields: RUNNING),
+        transition(t0 + 3000, "n2", "done", fields: RUNNING.merge(gates: "suite", commit: "bbb2222")),
+        stage(t0 + 3060, "Done", "delivered"),
+      ])
+      record = GraphMeasure.read(dir)
+      m = GraphMeasureReport.model(record)
+
+      assert_equal %w[active_seconds build lead review_fix sums_to_active verify].sort, m[:buckets].keys.sort
+      node = m[:nodes].find { |n| n["id"] == "n2" }
+      assert_equal %w[attempts hop id kind kind_source model review_fix status].sort, node.keys.sort
+      assert_equal true, node["review_fix"], "n2 needs v1 directly and must be classified a review fix"
     end
   end
 

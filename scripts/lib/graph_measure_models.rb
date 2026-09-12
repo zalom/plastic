@@ -94,6 +94,27 @@ module GraphMeasureModels
     deep_freeze(record)
   end
 
+  # NEW-4 (v2 review, D22): the one code path both the `cohorts` verb
+  # (scripts/graph-measure) and the doctor's re-qualification rule
+  # (scripts/doctor.rb) call to name the project-scope agent config file for
+  # a given store - the store's sibling `config.yml`, the file that actually
+  # exists in the wild and shares the global config.yml schema
+  # (`~/.plastic/projects/knowdb/config.yml` is a real example), never
+  # `project.yml`, whose template carries no `agents:` key at all. Pure path
+  # arithmetic; the caller still owns loading it (this module's own DI
+  # convention above - `read` never touches disk or ENV itself).
+  #
+  # Reproduced by hand before this fix: `scripts/graph-measure:225` read
+  # `<store>/../project.yml`, so a real `plastic-executor: opus` override
+  # written to a store's sibling `config.yml` never reached the `cohorts`
+  # verb's own model comparison, while `scripts/doctor.rb`'s
+  # `model_requalification_checks` passed an empty project config on
+  # purpose - two different silences over the same store, agreeing with
+  # each other only by accident.
+  def project_config_path(store_dir)
+    File.join(File.dirname(store_dir.to_s), "config.yml")
+  end
+
   # --- rendering ---------------------------------------------------------------
 
   def render_json(record)

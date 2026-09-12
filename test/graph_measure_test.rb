@@ -370,7 +370,7 @@ class GraphMeasureTest < Minitest::Test
     end
   end
 
-  # --- 1.18-1.20: kind and foldness ---------------------------------------------
+  # --- 1.18-1.20: kind and review-fix classification ---------------------------
 
   def test_kind_comes_from_the_node_file
     with_intent_dir do |dir|
@@ -402,7 +402,7 @@ class GraphMeasureTest < Minitest::Test
     end
   end
 
-  def test_fold_classification_is_transitive
+  def test_review_fix_classification_is_transitive
     with_intent_dir do |dir|
       write_graph(dir, <<~GRAPH)
         - n9 needs v1
@@ -412,9 +412,10 @@ class GraphMeasureTest < Minitest::Test
       GRAPH
       write_savepoint(dir, [])
       record = GraphMeasure.read(dir)
-      assert record[:nodes]["n9"][:fold], "n9 needs v1 directly and must fold"
-      assert record[:nodes]["n10"][:fold], "n10 reaches v1 transitively through n9 and must fold"
-      refute record[:nodes]["n11"][:fold], "n11 never reaches a verify node and must not fold"
+      assert record[:nodes]["n9"][:review_fix], "n9 needs v1 directly and must be classified a review fix"
+      assert record[:nodes]["n10"][:review_fix],
+             "n10 reaches v1 transitively through n9 and must be classified a review fix"
+      refute record[:nodes]["n11"][:review_fix], "n11 never reaches a verify node and must not be a review fix"
     end
   end
 

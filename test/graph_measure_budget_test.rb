@@ -201,6 +201,56 @@ class GraphMeasureBudgetTest < Minitest::Test
     assert_equal 16, ceiling[:attempt_count]
   end
 
+  # --- 9.2 (v2 NEW-2): the ceiling rule separates four pinned cases (D21) -------
+
+  # v2's own review (resources/review--v2-2026-09-12.md, NEW-2): the old rule
+  # reported the largest observed packet as a ceiling whenever every usable
+  # attempt's own declared budget was merely generous, and missed a genuine
+  # shared ceiling whenever declared budgets were tight. Reproduced by hand
+  # before this fix, against the exact numbers v2 named: two nodes at 3000
+  # and 7000 effective tokens against a declared 100000 each, plus one at
+  # 1200 against 150000, reported "detected: true, value: 7000" though only
+  # one attempt anywhere sits near that candidate; three nodes converging
+  # tightly on 7717/7690/7650 against a declared 10000 each - a real shared
+  # ceiling - reported "not_well_below_declared_budgets"; and two nodes
+  # declaring a budget of 0 with 0 effective tokens each reported "detected:
+  # true, value: 0" rather than the disqualification D21 requires for an
+  # absent or zero declared budget.
+  def test_ceiling_rule_separates_the_four_pinned_cases
+    real = GraphMeasureBudget.read(DIR_340)
+    assert real[:ceiling][:detected], "340's real packets cluster far under their own declared budgets"
+    assert_equal 7717, real[:ceiling][:value]
+
+    generous_no_cluster = {
+      "n1" => { declared_budget: 100_000, attempts: [{ effective_tokens: 3000 }] },
+      "n2" => { declared_budget: 100_000, attempts: [{ effective_tokens: 7000 }] },
+      "n3" => { declared_budget: 150_000, attempts: [{ effective_tokens: 1200 }] },
+    }
+    no_cluster = GraphMeasureBudget.send(:detect_ceiling, generous_no_cluster)
+    refute no_cluster[:detected],
+           "one high value with no other attempt approaching it from below is not a shared ceiling, " \
+           "no matter how generous the declared budgets are"
+
+    tight_shared_ceiling = {
+      "n1" => { declared_budget: 10_000, attempts: [{ effective_tokens: 7717 }] },
+      "n2" => { declared_budget: 10_000, attempts: [{ effective_tokens: 7690 }] },
+      "n3" => { declared_budget: 10_000, attempts: [{ effective_tokens: 7650 }] },
+    }
+    tight = GraphMeasureBudget.send(:detect_ceiling, tight_shared_ceiling)
+    assert tight[:detected],
+           "three distinct nodes converging tightly on the same value is the evidence D21 asks for, " \
+           "even under a tight declared budget"
+    assert_equal 7717, tight[:value]
+
+    all_zero = {
+      "n1" => { declared_budget: 0, attempts: [{ effective_tokens: 0 }] },
+      "n2" => { declared_budget: 0, attempts: [{ effective_tokens: 0 }] },
+    }
+    zero = GraphMeasureBudget.send(:detect_ceiling, all_zero)
+    refute zero[:detected], "an attempt with no declared budget is disqualified, never read as a zero ceiling"
+    assert_nil zero[:value]
+  end
+
   # --- 4.9: a single node never reports a ceiling --------------------------------
 
   def test_single_node_never_reports_a_ceiling

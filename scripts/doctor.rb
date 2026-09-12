@@ -1800,8 +1800,14 @@ end
   # walks a whole store_dir itself in one pass. A store this process cannot
   # read - or any other exception the store walk raises - is skipped, never
   # fatal: one bad store must never take every other doctor check down with
-  # it. `project_config` stays `{}`, mirroring check_agent_model_drift's own
-  # precedent: there is no live project scope at doctor-run time.
+  # it.
+  #
+  # NEW-4 (v2 review, D22): this rule used to pass `project_config: {}` on
+  # purpose, reasoning there was no live project scope at doctor-run time -
+  # false: each discovered store DOES have a real sibling `config.yml`
+  # (`GraphMeasureModels.project_config_path`), the same file the `cohorts`
+  # verb resolves. Loading it here means the doctor and `cohorts` can never
+  # disagree about the same store's project-scope override again.
   def model_requalification_checks(scopes: nil)
     global_config = load_yaml_safe(File.join(plastic_home, "config.yml")) || {}
     findings = []
@@ -1809,8 +1815,9 @@ end
     store_discovery[:stores].each do |s|
       next if scopes && !scopes.include?(s[:key])
 
+      project_config = load_yaml_safe(GraphMeasureModels.project_config_path(s[:store])) || {}
       record = begin
-        GraphMeasureModels.read(s[:store], project_config: {}, global_config: global_config)
+        GraphMeasureModels.read(s[:store], project_config: project_config, global_config: global_config)
       rescue StandardError
         next
       end

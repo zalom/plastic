@@ -290,11 +290,42 @@ module GraphMeasureBudget
   # correctly reports no ceiling.
   WELL_BELOW_RATIO = 0.5
 
+  # NEW-2 (v2 review, D21): `candidate <= budget * WELL_BELOW_RATIO` checked
+  # against EVERY usable attempt in the intent, with no requirement that
+  # more than one of them actually sit anywhere near the candidate. That
+  # fires on any spread of generous, unrelated budgets (reproduced: nodes at
+  # 3000, 7000 and 1200 effective tokens against declared budgets of
+  # 100000, 100000 and 150000 reported "detected: true, value: 7000" though
+  # only the 7000 attempt sits anywhere near that number), and it misses a
+  # genuine shared ceiling under tight budgets, where the honest utilization
+  # of a real cluster crosses 50% (reproduced: three nodes converging
+  # tightly on 7717/7690/7650 against a declared 10000 each reported
+  # "not_well_below_declared_budgets"). D21's own fix: a candidate is
+  # evidence of a ceiling only once several distinct usable attempts
+  # actually approach it from below (CLUSTER_BAND_RATIO), and the "well
+  # below budget" bar only needs to be strict (WELL_BELOW_RATIO) when that
+  # cluster is thin (fewer than SEVERAL_CLUSTER_THRESHOLD distinct nodes);
+  # once several distinct nodes converge on the same value, the convergence
+  # itself is the primary evidence and the budget bar relaxes to
+  # CLUSTERED_WELL_BELOW_RATIO. 340's real cluster (five distinct nodes
+  # converging between 6237 and 7717) clears either bar by a wide margin;
+  # the two-node 1999/1998-vs-2000 case never reaches the cluster threshold
+  # of three, so it still runs against the strict 50% bar unchanged.
+  CLUSTER_BAND_RATIO = 0.8
+  SEVERAL_CLUSTER_THRESHOLD = 3
+  CLUSTERED_WELL_BELOW_RATIO = 0.9
+
   def detect_ceiling(nodes)
     usable = []
     nodes.each do |id, node|
       budget = node[:declared_budget]
-      next unless budget.is_a?(Integer)
+      # D21: an attempt whose declared budget is absent or zero carries no
+      # evidence either way and is disqualified from the comparison, never
+      # the whole intent (reproduced: two nodes declaring a budget of 0
+      # with 0 effective tokens each reported "detected: true, value: 0",
+      # an artifact of comparing a candidate against a budget of 0 rather
+      # than real evidence of a ceiling).
+      next unless budget.is_a?(Integer) && budget.positive?
 
       node[:attempts].each do |a|
         next unless a[:effective_tokens].is_a?(Integer)
@@ -312,7 +343,16 @@ module GraphMeasureBudget
     end
 
     candidate = usable.map { |u| u[:effective] }.max
-    well_below = usable.all? { |u| candidate <= u[:budget] * WELL_BELOW_RATIO }
+    cluster = usable.select { |u| u[:effective] >= candidate * CLUSTER_BAND_RATIO }
+    cluster_nodes = cluster.map { |u| u[:node] }.uniq
+
+    if cluster_nodes.length < 2
+      return { detected: false, reason: :no_cluster, value: nil,
+                node_count: distinct_nodes.length, attempt_count: attempt_count }
+    end
+
+    ratio = cluster_nodes.length >= SEVERAL_CLUSTER_THRESHOLD ? CLUSTERED_WELL_BELOW_RATIO : WELL_BELOW_RATIO
+    well_below = cluster.all? { |u| candidate <= u[:budget] * ratio }
 
     unless well_below
       return { detected: false, reason: :not_well_below_declared_budgets, value: nil,

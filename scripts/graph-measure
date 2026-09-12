@@ -220,9 +220,17 @@ module GraphMeasureCLI
   # themselves) - this executable is the boundary that is allowed to, the
   # same role `scripts/doctor.rb` already plays for the same two config
   # files.
+  #
+  # NEW-4 (v2 review, D22): the project-scope half named `<store>/../project.yml`,
+  # a file whose template carries no `agents:` key at all, so a real
+  # operator override at the file that DOES exist in the wild - the store's
+  # sibling `config.yml` - was silently ignored. The path now comes from
+  # `GraphMeasureModels.project_config_path`, the one function
+  # `scripts/doctor.rb`'s own rule calls too, so the two commands cannot
+  # resolve a different file for the same store.
   def run_cohorts(dir, format)
     global_config = load_yaml_safe(File.join(plastic_home, "config.yml"))
-    project_config = load_yaml_safe(File.join(File.dirname(dir), "project.yml"))
+    project_config = load_yaml_safe(GraphMeasureModels.project_config_path(dir))
 
     models_record = GraphMeasureModels.read(dir, project_config: project_config, global_config: global_config)
     cohorts_record = GraphMeasureCohorts.read(dir, qualified: models_record[:qualified],

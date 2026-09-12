@@ -7,6 +7,8 @@ require "fileutils"
 require "time"
 require "open3"
 require "rbconfig"
+require "yaml"
+require "date"
 
 require_relative "../scripts/lib/node_ledger"
 require_relative "../scripts/lib/graph_measure"
@@ -15,28 +17,32 @@ require_relative "../scripts/lib/graph_measure_budget"
 require_relative "../scripts/lib/graph_measure_models"
 require_relative "../scripts/lib/graph_measure_cohorts"
 
-# GraphMeasureFoldTest (intent 343, G10, n8): the fold of the v1 adversarial
-# review (resources/review--v1-2026-09-12.md, in the intent store, outside
-# this repo). Matrix rows 8.1-8.13 in nodes/n8.md.
+# GraphMeasureReviewFixTest (intent 343, G10, n8, renamed by n9 row 9.5):
+# the v1 adversarial review's review fix (resources/review--v1-2026-09-12.md,
+# in the intent store, outside this repo). Matrix rows 8.1-8.13 in
+# nodes/n8.md, plus n9's own rows 9.1 and 9.4 (a second review fix, on paths
+# the first one had itself written).
 #
 # Rows 8.5-8.7, 8.9-8.11 and 8.13 each pin one specific v1 finding's fix
 # against a hand-reproduced case (the fix site's own comment names how it
-# was reproduced by hand before this file existed). Rows 8.1-8.4 check the
-# FOLD's own discipline - reproduced first, red before fix, no weakened
-# assertion, every finding accounted for - mechanically, against the
-# repository's own history and content, rather than against one code path.
+# was reproduced by hand before this file existed). Rows 8.1-8.4 check this
+# REVIEW FIX's own discipline - reproduced first, red before fix, no
+# weakened assertion, every finding accounted for - mechanically, against
+# the repository's own history and content, rather than against one code
+# path.
 #
 # 8.8 (row 2.6's missing test) lives in test/graph_measure_cli_test.rb next
 # to the other CLI subprocess rows; 8.12 (row 7.3's false claim) lives in
 # test/doctor_requalification_test.rb next to the rest of the
 # re-qualification rule's own tests. Both corrected an EXISTING assertion,
 # named in this node's return, never invented a new file for an old row.
-class GraphMeasureFoldTest < Minitest::Test
+class GraphMeasureReviewFixTest < Minitest::Test
   REPO_ROOT = File.expand_path("..", __dir__)
   FIXTURES = File.expand_path("fixtures/ledgers", __dir__)
-  # The merge commit this fold started from (n7 landing, before any of n8's
-  # commits): a fixed, permanent point in this repo's history, never this
-  # node's own interim commits (which a later rebase or squash may reshape).
+  # The merge commit this review fix started from (n7 landing, before any of
+  # n8's commits): a fixed, permanent point in this repo's history, never
+  # this node's own interim commits (which a later rebase or squash may
+  # reshape).
   BASE_SHA = "dabfeb0"
 
   RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", packet: "abc123" }.freeze
@@ -49,7 +55,7 @@ class GraphMeasureFoldTest < Minitest::Test
     NodeLedger.transition_line(subject: subject, state: state, fields: fields, comment: comment, now: ts)
   end
 
-  # --- 8.1: every blocker/major this fold closes names its own repro -----------
+  # --- 8.1: every blocker/major this review fix closes names its own repro ----
 
   # A mechanical proxy for "reproduced by hand before writing the fix": each
   # fix site's own comment must name the finding it closes AND the word
@@ -85,15 +91,15 @@ class GraphMeasureFoldTest < Minitest::Test
     end
   end
 
-  # --- 8.2: the fold's own tests are red against the pre-fold code -------------
+  # --- 8.2: this review fix's own tests are red against the pre-fix code ------
 
   # Materializes BASE_SHA's scripts/ tree (the code exactly as n7 left it,
-  # before any of this fold's fixes) into a throwaway directory, drops
-  # THIS test file's current content on top of it, and runs only the
-  # substantive rows (never 8.1-8.4, which are about the fold itself and
-  # would otherwise recurse) against that pre-fold code. If they do not
-  # fail there, they prove nothing about the fold - the fixed code and the
-  # test would agree by coincidence, not by design.
+  # before any of this review fix's own fixes) into a throwaway directory,
+  # drops THIS test file's current content on top of it, and runs only the
+  # substantive rows (never 8.1-8.4, which are about this review fix itself
+  # and would otherwise recurse) against that pre-fix code. If they do not
+  # fail there, they prove nothing about this review fix - the fixed code
+  # and the test would agree by coincidence, not by design.
   RED_AGAINST_BASE = %w[
     test_suite_growth_survives_an_unknown_suite_value
     test_open_clock_active_span_is_unavailable_not_zero
@@ -104,26 +110,26 @@ class GraphMeasureFoldTest < Minitest::Test
     test_hop_arms_exclude_open_intents_and_name_the_confound
   ].freeze
 
-  def test_fold_tests_committed_red_first
-    Dir.mktmpdir("fold-red-check") do |tmp|
+  def test_review_fix_tests_committed_red_first
+    Dir.mktmpdir("review-fix-red-check") do |tmp|
       archive = File.join(tmp, "base.tar")
       _out, err, status = Open3.capture3("git", "-C", REPO_ROOT, "archive", BASE_SHA, "-o", archive)
       assert status.success?, "git archive #{BASE_SHA} must succeed: #{err}"
 
       _out, err, status = Open3.capture3("tar", "-xf", archive, "-C", tmp)
-      assert status.success?, "extracting the pre-fold tree must succeed: #{err}"
+      assert status.success?, "extracting the pre-fix tree must succeed: #{err}"
 
       FileUtils.mkdir_p(File.join(tmp, "test"))
       FileUtils.cp_r(File.join(REPO_ROOT, "test", "fixtures"), File.join(tmp, "test", "fixtures"))
-      FileUtils.cp(File.join(REPO_ROOT, "test", "graph_measure_fold_test.rb"),
-                   File.join(tmp, "test", "graph_measure_fold_test.rb"))
+      FileUtils.cp(File.join(REPO_ROOT, "test", "graph_measure_review_fix_test.rb"),
+                   File.join(tmp, "test", "graph_measure_review_fix_test.rb"))
 
       pattern = "/\\A(#{RED_AGAINST_BASE.join('|')})\\z/"
       out, err, status = Open3.capture3(
-        RbConfig.ruby, File.join(tmp, "test", "graph_measure_fold_test.rb"), "-n", pattern
+        RbConfig.ruby, File.join(tmp, "test", "graph_measure_review_fix_test.rb"), "-n", pattern
       )
       refute status.success?,
-             "this fold's own substantive tests must FAIL against the pre-fold code at #{BASE_SHA}, " \
+             "this review fix's own substantive tests must FAIL against the pre-fix code at #{BASE_SHA}, " \
              "or they prove nothing was actually broken:\n#{out}\n#{err}"
     end
   end
@@ -139,12 +145,33 @@ class GraphMeasureFoldTest < Minitest::Test
   ].freeze
 
   # These two rows are corrected, not removed: their OLD assertion pinned
-  # the very defect this fold fixes (row 8.7's dogfood test pinned B3's
-  # zero; row 8.12's doctor test pinned M4's false "passes quietly" claim).
-  # Both must still exist by name, just asserting the right thing now.
+  # the very defect this review fix fixes (row 8.7's dogfood test pinned
+  # B3's zero; row 8.12's doctor test pinned M4's false "passes quietly"
+  # claim). Both must still exist by name, just asserting the right thing
+  # now.
   CORRECTED_ASSERTIONS = {
     "test/graph_measure_dogfood_test.rb" => %w[test_337_model_hop_verify_cost_unavailable],
     "test/doctor_requalification_test.rb" => %w[test_current_store_passes_quietly],
+  }.freeze
+
+  # The owner's naming ruling (D23, carried out here by n9 row 9.5) renamed
+  # a v1-era test method in each of these two files, because the method's
+  # own name embedded the retired word - exactly the rename row 9.5 exists
+  # to do, never the dropped-test weakening the check below otherwise
+  # flags. Never spelled as a literal here, on purpose (D23 binds every
+  # character this node writes, this file's own meta-tests included):
+  # RENAMED_TEST_ALLOWANCE bounds how many base methods this rename alone
+  # may remove per file, so the check below still fails loudly if anything
+  # ELSE goes missing, and NEW_NAME_AFTER_RENAME pins the replacement name
+  # each file must carry instead.
+  RENAMED_TEST_ALLOWANCE = {
+    "test/graph_measure_test.rb" => 1,
+    "test/graph_measure_dogfood_test.rb" => 1,
+  }.freeze
+
+  NEW_NAME_AFTER_RENAME = {
+    "test/graph_measure_test.rb" => "test_review_fix_classification_is_transitive",
+    "test/graph_measure_dogfood_test.rb" => "test_340_review_fix_bucket_is_transitive_and_largest",
   }.freeze
 
   def method_names_in(content)
@@ -158,9 +185,10 @@ class GraphMeasureFoldTest < Minitest::Test
 
   # One test method's own body (from its `def` line to the next `def ` or
   # the file's closing `end`), so a `skip` added inside a brand-NEW test
-  # this fold writes (a portability guard, the same shape the dogfood
-  # test's own `test_fixtures_are_verbatim_copies...` already uses) is never
-  # confused with a `skip` added to weaken a test that already existed.
+  # this review fix writes (a portability guard, the same shape the
+  # dogfood test's own `test_fixtures_are_verbatim_copies...` already uses)
+  # is never confused with a `skip` added to weaken a test that already
+  # existed.
   def method_body(content, name)
     content.to_s[/^\s*def #{name}\b.*?(?=^\s*def test_|\z)/m].to_s
   end
@@ -171,17 +199,29 @@ class GraphMeasureFoldTest < Minitest::Test
       next if base_content.nil? # not part of this repo at BASE_SHA; nothing to preserve
 
       current_content = File.read(File.join(REPO_ROOT, rel))
+      allowance = RENAMED_TEST_ALLOWANCE[rel] || 0
 
       base_methods = method_names_in(base_content)
       current_methods = method_names_in(current_content)
       missing = base_methods - current_methods
-      assert_empty missing, "#{rel} must not drop any test method while folding: #{missing.join(', ')}"
+      assert_operator missing.length, :<=, allowance,
+                       "#{rel} must not drop any test method beyond the naming ruling's own rename: " \
+                       "#{missing.join(', ')}"
+
+      new_name = NEW_NAME_AFTER_RENAME[rel]
+      if new_name
+        assert_includes current_methods, new_name,
+                         "#{rel} must carry #{new_name}, the naming ruling's replacement name"
+      end
 
       base_methods.each do |name|
+        next unless current_methods.include?(name) # renamed away; no old body left to compare
+
         base_skips = method_body(base_content, name).scan(/^\s*skip[\s(]/).length
         current_skips = method_body(current_content, name).scan(/^\s*skip[\s(]/).length
         assert_operator current_skips, :<=, base_skips,
-                         "#{rel}##{name} must not gain a new skip while folding (was #{base_skips}, now #{current_skips})"
+                         "#{rel}##{name} must not gain a new skip in this review fix (was #{base_skips}, " \
+                         "now #{current_skips})"
       end
     end
 
@@ -193,14 +233,14 @@ class GraphMeasureFoldTest < Minitest::Test
     end
   end
 
-  # --- 8.4: every v1 finding is folded or recorded as residue ------------------
+  # --- 8.4: every v1 finding is fixed or recorded as residue -------------------
 
   REVIEW_PATH = "/Users/zlatko/.plastic/projects/plastic/store/343--graph-measurement/" \
                 "resources/review--v1-2026-09-12.md"
   RESIDUE_PATH = "/Users/zlatko/.plastic/projects/plastic/store/343--graph-measurement/" \
                  "resources/residue--343-2026-09-12.md"
 
-  def test_every_v1_finding_folded_or_recorded_as_residue
+  def test_every_v1_finding_fixed_or_recorded_as_residue
     skip "review file not present on this machine" unless File.exist?(REVIEW_PATH)
     skip "residue file not written yet" unless File.exist?(RESIDUE_PATH)
 
@@ -212,7 +252,7 @@ class GraphMeasureFoldTest < Minitest::Test
 
     labels.each do |label|
       assert_match(/\b#{label}\b/, residue,
-                   "#{label} must be named as folded or residue in #{RESIDUE_PATH}; findings must not vanish silently")
+                   "#{label} must be named as fixed or residue in #{RESIDUE_PATH}; findings must not vanish silently")
     end
 
     minors_section = review[/## Minors\n(.*?)(?:\n##|\z)/m, 1].to_s
@@ -224,7 +264,7 @@ class GraphMeasureFoldTest < Minitest::Test
   # --- 8.5 (B1): suite_growth survives an unknown suite= form ------------------
 
   def test_suite_growth_survives_an_unknown_suite_value
-    Dir.mktmpdir("fold-8-5") do |dir|
+    Dir.mktmpdir("review-fix-8-5") do |dir|
       t0 = Time.iso8601("2026-01-01T09:00:00Z")
       lines = [
         stage(t0, "Why", "spec.md created"),
@@ -253,7 +293,7 @@ class GraphMeasureFoldTest < Minitest::Test
   # --- 8.6 (B2): an open delivery clock reports unavailable, never 0.0 ---------
 
   def test_open_clock_active_span_is_unavailable_not_zero
-    Dir.mktmpdir("fold-8-6") do |dir|
+    Dir.mktmpdir("review-fix-8-6") do |dir|
       t0 = Time.iso8601("2026-01-01T09:00:00Z")
       lines = [
         stage(t0, "Why", "spec.md created"),
@@ -283,19 +323,28 @@ class GraphMeasureFoldTest < Minitest::Test
 
   # --- 8.7 (B3): a bucket with no measured source renders unavailable ---------
 
+  # Corrected again by n9 row 9.3 (v2 NEW-3): 337 has no graph.md at all, so
+  # its review-fix bucket has no node of that kind in the first place (a
+  # real zero), distinct from "build" and "verify", which have real nodes
+  # that simply never carried a measured span (unavailable). The old
+  # assertion here pinned NEW-3's own defect - all three buckets
+  # collapsing into the same "unavailable" - not a fact worth keeping.
   def test_absent_bucket_source_renders_unavailable
     record = GraphMeasure.read(File.join(FIXTURES, "337--roadmap-graph"))
     m = GraphMeasureReport.model(record)
-    %w[build verify fold].each do |key|
+    %w[build verify].each do |key|
       assert_equal "unavailable", m[:buckets][key],
                    "337 has no `running` line anywhere, so #{key} has no measured source and must read " \
                    "unavailable, never 0.0"
     end
+    assert_equal 0.0, m[:buckets]["review_fix"],
+                 "337 has no graph.md at all, so no node is ever classified a review fix; that is a real " \
+                 "zero, not an unmeasured source"
     assert_in_delta m[:buckets]["active_seconds"], m[:buckets]["lead"], 0.01,
                      "active time is still real here (the generic gap rule finds sessions); it must all " \
                      "land in lead, not be hidden behind a false zero elsewhere"
 
-    Dir.mktmpdir("fold-8-7-open-verify") do |dir|
+    Dir.mktmpdir("review-fix-8-7-open-verify") do |dir|
       FileUtils.mkdir_p(File.join(dir, "nodes"))
       File.write(File.join(dir, "nodes", "v1.md"), <<~MD)
         ---
@@ -361,7 +410,7 @@ class GraphMeasureFoldTest < Minitest::Test
   # --- 8.10 (B6): a bad byte in a node file never takes a verb down -----------
 
   def test_bad_byte_in_a_node_file_never_takes_a_verb_down
-    Dir.mktmpdir("fold-8-10-real") do |store|
+    Dir.mktmpdir("review-fix-8-10-real") do |store|
       intent_dir = File.join(store, "340--runner-core-in-session")
       FileUtils.cp_r(File.join(FIXTURES, "340--runner-core-in-session"), intent_dir)
       File.open(File.join(intent_dir, "nodes", "n1.md"), "ab") { |f| f.write("\xFF\xFE".b) }
@@ -371,7 +420,7 @@ class GraphMeasureFoldTest < Minitest::Test
       assert GraphMeasureModels.read(store)[:ok], "cohorts' model half must survive one bad byte in a node file"
     end
 
-    Dir.mktmpdir("fold-8-10-doctor") do |store|
+    Dir.mktmpdir("review-fix-8-10-doctor") do |store|
       t0 = Time.iso8601("2026-01-01T09:00:00Z")
       node_md = <<~MD
         ---
@@ -417,7 +466,7 @@ class GraphMeasureFoldTest < Minitest::Test
   # --- 8.11 (M1): the cohorts verb resolves the real config chain ------------
 
   def test_cohorts_verb_resolves_the_config_chain
-    Dir.mktmpdir("fold-8-11") do |home|
+    Dir.mktmpdir("review-fix-8-11") do |home|
       store = File.join(home, "projects", "demo", "store")
       intent_dir = File.join(store, "1--demo")
       FileUtils.mkdir_p(File.join(intent_dir, "nodes"))
@@ -455,7 +504,7 @@ class GraphMeasureFoldTest < Minitest::Test
   # --- 8.13 (M5): the hop arms exclude an open intent, and name the confound --
 
   def test_hop_arms_exclude_open_intents_and_name_the_confound
-    Dir.mktmpdir("fold-8-13") do |store|
+    Dir.mktmpdir("review-fix-8-13") do |store|
       t0 = Time.iso8601("2026-01-01T09:00:00Z")
 
       closed_dir = File.join(store, "1--closed")
@@ -477,9 +526,9 @@ class GraphMeasureFoldTest < Minitest::Test
         transition(t0 + 660, "n1", "failed_verification",
                    fields: { holder: "auto-1", model: "sonnet", hop: "2000", gates: "suite", reason: "suite_red" }),
         # No Done stage line: this intent is still open. Its own attempt is
-        # real and closed, but before this fold it still leaked into the
-        # hop-on arm and into the confound's intent set (M5's real repro:
-        # 343's own open ledger inflating the set past one intent).
+        # real and closed, but before this review fix it still leaked into
+        # the hop-on arm and into the confound's intent set (M5's real
+        # repro: 343's own open ledger inflating the set past one intent).
       ].join)
 
       record = GraphMeasureCohorts.read(store)
@@ -490,6 +539,110 @@ class GraphMeasureFoldTest < Minitest::Test
                  "1--closed alone supplies both arms once the open intent is excluded; this must not be silent"
       assert_includes record[:hop_cohorts][:confound], "1--closed"
       refute_includes record[:hop_cohorts][:confound], "2--open"
+    end
+  end
+
+  # --- 9.1 (v2 NEW-1): verify cost is unavailable whenever no verify attempt has a measured span --
+
+  # v2's review (NEW-1): `has_running` was satisfied by a CLOSED attempt
+  # (running_at and terminal_at both present) even when the open-clock fix
+  # had already left that attempt's own `active_span_seconds` nil, because
+  # the intent's delivery clock itself has no end yet. `sum_active_spans`
+  # then coerced that nil to 0.0, so an in-flight intent's report showed
+  # "active: unavailable" at the top of the clock block and "total active
+  # span: 0.0 min" a few sections later, in Verify cost. Reproduced by hand
+  # before this fix: a hermetic one-verify-node intent with a single closed
+  # attempt spanning a real hour and no `Done` stage line printed exactly
+  # that pair.
+  def test_verify_cost_unavailable_when_the_clock_has_no_end
+    Dir.mktmpdir("review-fix-9-1") do |dir|
+      FileUtils.mkdir_p(File.join(dir, "nodes"))
+      File.write(File.join(dir, "nodes", "v1.md"), <<~MD)
+        ---
+        node: v1
+        kind: verify
+        files: []
+        ---
+        # v1
+        body
+      MD
+      t0 = Time.iso8601("2026-01-01T09:00:00Z")
+      File.write(File.join(dir, "savepoint.md"), [
+        stage(t0, "Why", "spec.md created"),
+        transition(t0 + 60, "v1", "running", fields: RUNNING.merge(model: "opus")),
+        transition(t0 + 3660, "v1", "done", fields: RUNNING.merge(model: "opus", gates: "suite", commit: "abc1234")),
+        # No Done stage line: the delivery clock itself is still open.
+      ].join)
+
+      record = GraphMeasure.read(dir)
+      assert_equal :unavailable, record[:active_seconds]
+      attempt = record[:nodes]["v1"][:attempts].first
+      refute_nil attempt[:raw_span_seconds], "v1's own attempt closed with a real, known span"
+      assert_nil attempt[:active_span_seconds], "the active span is unmeasurable while the clock is open"
+
+      text = GraphMeasureReport.render_text(record)
+      refute_match(/total active span: 0\.0 min/, text,
+                   "a verify attempt with no measured span must never report a fabricated zero cost")
+      assert_match(/total active span: unavailable min/, text)
+    end
+  end
+
+  # --- 9.4 (v2 NEW-4): the cohorts verb and the doctor rule resolve project config the same way --
+
+  # v2's review (NEW-4): `scripts/graph-measure` read `<store>/../project.yml`
+  # for the project-scope agent config, but `templates/project.yml` carries
+  # no `agents:` key at all - only `governing_docs`, `release` and `flow` -
+  # while the store's sibling `config.yml` (D22) is the file that actually
+  # exists in the wild, sharing the global config.yml schema
+  # (`~/.plastic/projects/knowdb/config.yml` is a real example). Reproduced
+  # by hand before this fix: with a `plastic-executor: opus` override
+  # written to a synthetic store's sibling `config.yml`, `cohorts` reported
+  # no drift for a node recorded under `model=sonnet`, while
+  # `GraphMeasureModels.read` given that same loaded config directly
+  # reported real drift.
+  def test_cohorts_and_doctor_resolve_project_config_the_same_way
+    Dir.mktmpdir("review-fix-9-4") do |home|
+      store = File.join(home, "projects", "demo", "store")
+      intent_dir = File.join(store, "1--demo")
+      FileUtils.mkdir_p(File.join(intent_dir, "nodes"))
+      File.write(File.join(intent_dir, "nodes", "n1.md"), <<~MD)
+        ---
+        node: n1
+        kind: work
+        files: []
+        ---
+        # n1
+        body
+      MD
+      t0 = Time.iso8601("2026-01-01T09:00:00Z")
+      File.write(File.join(intent_dir, "savepoint.md"), [
+        stage(t0, "Why", "spec.md created"),
+        transition(t0 + 60, "n1", "running", fields: RUNNING.merge(model: "sonnet")),
+        transition(t0 + 600, "n1", "done", fields: RUNNING.merge(model: "sonnet", gates: "suite", commit: "abc1234")),
+        stage(t0 + 660, "Done", "delivered"),
+      ].join)
+
+      FileUtils.mkdir_p(File.join(home, "projects", "demo"))
+      File.write(File.join(home, "projects", "demo", "config.yml"), <<~YAML)
+        agents:
+          models:
+            claude:
+              plastic-executor: opus
+      YAML
+
+      script = File.expand_path("../scripts/graph-measure", __dir__)
+      out, err, status = Open3.capture3(RbConfig.ruby, script, "cohorts", store)
+      assert status.success?, err
+      assert_includes out, "opus",
+                       "the cohorts verb must resolve the operator's real project-scope override - the " \
+                       "store's sibling config.yml - not the unused project.yml"
+
+      project_config_path = GraphMeasureModels.project_config_path(store)
+      project_config = YAML.safe_load(File.read(project_config_path), permitted_classes: [Date, Time]) || {}
+      record = GraphMeasureModels.read(store, project_config: project_config, global_config: {})
+      assert_includes record[:drift][:executor].map { |r| r[:intent] }, "1--demo",
+                       "the doctor rule's own config path must see the same real override the cohorts " \
+                       "verb sees, through the same one code path"
     end
   end
 end
