@@ -4,6 +4,8 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
+require "open3"
+require "rbconfig"
 
 require_relative "../scripts/lib/skill_lint"
 
@@ -19,6 +21,7 @@ require_relative "../scripts/lib/skill_lint"
 class SkillLintTest < Minitest::Test
   REPO = File.expand_path("../../", __FILE__)
   FIXTURES_ROOT = File.join(REPO, "test", "fixtures", "skill_lint")
+  SKILL_LINT_CLI = File.join(REPO, "scripts", "skill-lint")
 
   # Build an isolated temp skills_dir containing ONLY the named fixture
   # subdirectories (symlinked, not copied, for speed), run SkillLint over it,
@@ -34,7 +37,7 @@ class SkillLintTest < Minitest::Test
   def test_fixtures_exist
     %w[pass fail_body_lines fail_body_tokens fail_yaml fail_name fail_user_invocable
        fail_bare_pointer fail_bare_pointer_paragraph_leak fail_bare_pointer_bullet_list
-       fail_orphan fail_depth fail_refusal_restatement pass_refusal_link].each do |name|
+       fail_orphan fail_depth].each do |name|
       assert File.file?(File.join(FIXTURES_ROOT, name, "SKILL.md")),
         "expected fixture test/fixtures/skill_lint/#{name}/SKILL.md to exist"
     end
@@ -149,24 +152,65 @@ class SkillLintTest < Minitest::Test
     assert_match(/unrouted\.md/, record[:file])
   end
 
-  # --- refusal-restatement (intent 341, G8, n1, C35): a skill body must not restate a refusal
-  # rule the conventions chapter already carries; a paragraph that links the chapter instead is
-  # accepted even when it also states the rule. The "conventions" fixture dir carries no
-  # SKILL.md of its own, so it never trips the other five checks; it only feeds the doctrine
-  # text this check compares against.
+  # --- refusal-restatement (intent 341, G8, n1, C35): the `skill-lint` CLI (not SkillLint
+  # itself) flags a skill body that restates a refusal rule the conventions chapter already
+  # carries; a paragraph that links the chapter instead is accepted even when it also states
+  # the rule. Each proof builds its own hermetic tmpdir tree (a conventions/references
+  # chapter plus one SKILL.md) and runs the CLI as a subprocess with --skills-dir pointing at
+  # it, so it never touches the shipped skills/ tree.
+
+  def write_skill_fixture(root, name, body)
+    skill_dir = File.join(root, name)
+    FileUtils.mkdir_p(skill_dir)
+    File.write(File.join(skill_dir, "SKILL.md"), <<~MD)
+      ---
+      name: plastic-#{name}
+      description: Fixture skill for the refusal-restatement CLI check.
+      user-invocable: true
+      ---
+
+      # #{name}
+
+      #{body}
+    MD
+  end
+
+  def write_conventions_chapter(root, text)
+    refs_dir = File.join(root, "conventions", "references")
+    FileUtils.mkdir_p(refs_dir)
+    File.write(File.join(refs_dir, "locks.md"), text)
+  end
+
+  def run_skill_lint_cli(skills_dir)
+    Open3.capture3(RbConfig.ruby, SKILL_LINT_CLI, "--skills-dir", skills_dir)
+  end
 
   def test_restated_refusal_rule_is_flagged
-    result = lint("conventions", "fail_refusal_restatement")
-    refute result.ok?, "a skill body that restates a conventions refusal rule verbatim must trip red"
-    checks = result.violations.map { |v| v[:check] }.uniq
-    assert_equal ["refusal-restatement"], checks, "fail_refusal_restatement should trip ONLY refusal-restatement"
-    record = result.violations_for("refusal-restatement").first
-    assert_equal "fail_refusal_restatement", record[:skill]
+    Dir.mktmpdir("skill-lint-cli-test") do |root|
+      write_conventions_chapter(root, "Never reclaim a lock without checking the lease first.")
+      write_skill_fixture(root, "fail_refusal_restatement",
+        "Refuse to reclaim a lock without checking the lease first, no exceptions.")
+
+      _out, err, status = run_skill_lint_cli(root)
+
+      assert_equal 1, status.exitstatus, "a restated refusal rule must exit 1: #{err}"
+      violation_lines = err.lines.drop(1).map(&:strip)
+      assert_equal 1, violation_lines.size, "expected exactly one violation line: #{err}"
+      assert_match(/^refusal-restatement fail_refusal_restatement /, violation_lines.first)
+    end
   end
 
   def test_conventions_link_is_not_a_restatement
-    result = lint("conventions", "pass_refusal_link")
-    assert result.ok?, "a skill that links the conventions chapter must not be flagged: #{result.violations.inspect}"
+    Dir.mktmpdir("skill-lint-cli-test") do |root|
+      write_conventions_chapter(root, "Never reclaim a lock without checking the lease first.")
+      write_skill_fixture(root, "pass_refusal_link",
+        "Refuse to bypass the lock lifecycle; see conventions/references/locks.md for the rule.")
+
+      out, err, status = run_skill_lint_cli(root)
+
+      assert_equal 0, status.exitstatus, "a skill that links the chapter must not be flagged: #{err}"
+      assert_match(/^OK:/, out)
+    end
   end
 
   def test_fail_depth_trips_references_depth_check_only
