@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "json"
+require "tmpdir"
 require_relative "node_ledger"
 require_relative "node_file"
 require_relative "runner_policy"
@@ -306,10 +307,21 @@ module GraphMeasureModels
   # equivalent, or define one in this module - never reopen another module to
   # make its private method public), so this is this module's own copy over
   # the same public `NodeFile` API.
+  # B6 (v1 review): NodeFile.parse reads its own path and does not scrub, so
+  # one bad byte anywhere under nodes/*.md raised out of it and took the
+  # whole `cohorts` verb down with it - reproduced by appending an invalid
+  # UTF-8 byte to a copy of 340's nodes/n1.md: `cohorts` exited 1 with
+  # "internal error: invalid byte sequence in UTF-8" (via this module's own
+  # store walk, since `cohorts` calls `GraphMeasureModels.read` for its
+  # model-comparison half), the same failure `budget` hit through its own
+  # direct `NodeFile.parse` call. `GraphMeasure.with_safe_path` already
+  # solves this; it is `private_class_method` (carried from n1), so this is
+  # a local copy, the same shape `resolve_kind` and `present?` already are
+  # in this module, never a reopen.
   def resolve_kind(intent_dir, id)
     path = find_node_file(intent_dir, id)
     if path
-      parsed = NodeFile.parse(path)
+      parsed = with_safe_path(path) { |p| p ? NodeFile.parse(p) : nil }
       return [parsed[:kind], :node_file] if parsed && parsed[:kind] && !parsed[:kind].to_s.empty?
     end
 
@@ -325,6 +337,21 @@ module GraphMeasureModels
     end
   end
   private_class_method :find_node_file
+
+  def with_safe_path(path)
+    return yield(nil) unless path && File.exist?(path)
+
+    raw = File.read(path)
+    scrubbed = raw.scrub
+    return yield(path) if scrubbed == raw
+
+    Dir.mktmpdir("graph-measure-models-scrub") do |tmp|
+      safe_path = File.join(tmp, File.basename(path))
+      File.write(safe_path, scrubbed)
+      yield(safe_path)
+    end
+  end
+  private_class_method :with_safe_path
 
   # --- drift and unmeasured kinds: spec rows 5.7, 5.9 ------------------------------
 
