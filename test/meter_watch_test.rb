@@ -101,6 +101,32 @@ class MeterWatchTest < Minitest::Test
     assert_equal "resume", watch(now: NOW + 660).tick["state"]
   end
 
+  # B4: resume must compare against the STOP's own resets_at, not the
+  # cache's current one, since the cache moves resets_at on to the next
+  # window before five_hour/seven_day themselves drop.
+  def test_resume_when_cache_moved_to_next_window
+    reset_at = NOW + 600
+    write_cache(five_hour: 90, seven_day: 10, resets_at: reset_at)
+    assert_equal "stop", watch(now: NOW).tick["state"]
+
+    next_window_reset_at = NOW + (6 * 3600)
+    write_cache(five_hour: 90, seven_day: 10, resets_at: next_window_reset_at, at: NOW + 660)
+    assert_equal "resume", watch(now: NOW + 660).tick["state"],
+                 "now is past the stop's OWN reset time, even though the cache has already " \
+                 "moved resets_at on to a later window"
+  end
+
+  # B4: a stale tick while stopped must carry the stop state forward, never
+  # replace it with "stale".
+  def test_stale_tick_keeps_stop
+    write_cache(five_hour: 90, seven_day: 10, resets_at: NOW + 3600, at: NOW)
+    assert_equal "stop", watch(now: NOW).tick["state"]
+
+    stale_now = NOW + MeterWatch::STALE_AFTER_SECONDS + 1
+    assert_equal "stop", watch(now: stale_now).tick["state"],
+                 "a stale tick must carry the stop state forward, never overwrite it with stale"
+  end
+
   # 5.5
   def test_stale_cache_is_stale_not_ok
     write_cache(five_hour: 10, seven_day: 10, at: NOW - (39 * 60))
