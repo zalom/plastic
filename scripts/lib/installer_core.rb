@@ -438,6 +438,8 @@ class InstallerCore
       "scripts/verify-intent" => "scripts/verify-intent",
       "scripts/lib/exec_worktree.rb" => "scripts/lib/exec_worktree.rb",
       "scripts/exec-worktree" => "scripts/exec-worktree",
+      "scripts/lib/session_usage.rb" => "scripts/lib/session_usage.rb",
+      "scripts/session-usage" => "scripts/session-usage",
       "scripts/doctor.rb" => "scripts/doctor.rb",
       "scripts/lib/doctor_core.rb" => "scripts/lib/doctor_core.rb",
       "scripts/lib/hook_replay.rb" => "scripts/lib/hook_replay.rb",
