@@ -7,6 +7,7 @@ require "fileutils"
 require "open3"
 require "time"
 require "yaml"
+require "json"
 
 require_relative "../scripts/lib/runner_dispatch"
 require_relative "../scripts/lib/runner_policy"
@@ -461,6 +462,55 @@ class RunnerDispatchTest < Minitest::Test
     assert_kind_of Hash, parsed
     assert_kind_of Array, parsed["dispatch"]
     assert_equal "n1", parsed["dispatch"].first["node"]
+  end
+
+  # --- n6, 6.1: one spawn block per dispatched node --------------------------
+
+  def test_plan_renders_spawn_block
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work", files: ["test/x_test.rb"])
+    ctx = build_context
+
+    result = RunnerDispatch.dispatch(ctx)
+    entry = result[:dispatched].first
+    refute_nil entry[:spawn], "a dispatched node must carry its own spawn block"
+    assert_includes entry[:spawn], "agent: #{RunnerDispatch::SPAWN_AGENT}"
+    assert_includes entry[:spawn], "packet: #{entry[:packet]}"
+    assert_includes entry[:spawn], "ruby bin/test --only test/x_test.rb"
+    assert_includes entry[:spawn], RunnerPolicy.call_cap("work").to_s
+
+    plan = YAML.safe_load(result[:plan])
+    assert_equal entry[:spawn], plan["spawn"].first
+  end
+
+  # --- n6, 6.2: the spawn block's model comes from RunnerPolicy.model_for ---
+
+  def test_spawn_block_model_from_policy
+    work_block = RunnerDispatch.spawn_block(model: RunnerPolicy.model_for("work"), packet: "/tmp/n1--a.packet",
+                                             test_command: "test command: ruby bin/test --only test/x_test.rb",
+                                             call_cap: RunnerPolicy.call_cap("work"))
+    verify_block = RunnerDispatch.spawn_block(model: RunnerPolicy.model_for("verify"), packet: "/tmp/n2--a.packet",
+                                               test_command: "test command: ruby bin/test --only test/y_test.rb",
+                                               call_cap: RunnerPolicy.call_cap("verify"))
+
+    assert_includes work_block, "model: #{RunnerPolicy.model_for('work')}"
+    assert_includes verify_block, "model: #{RunnerPolicy.model_for('verify')}"
+    refute_equal RunnerPolicy.model_for("work"), RunnerPolicy.model_for("verify"),
+                 "the fixture must exercise two different resolved models"
+  end
+
+  # --- n6, 6.4: the plan's data carries the fully rendered spawn block ------
+
+  def test_json_plan_carries_spawn
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work", files: ["test/x_test.rb"])
+    ctx = build_context
+
+    result = RunnerDispatch.dispatch(ctx)
+    data = YAML.safe_load(result[:plan])
+    reparsed = JSON.parse(JSON.generate(data))
+
+    assert_equal [result[:dispatched].first[:spawn]], reparsed["spawn"]
   end
 
   # --- 5.25: complete only when every declared node is terminal --------------
