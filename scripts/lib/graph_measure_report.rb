@@ -241,6 +241,18 @@ module GraphMeasureReport
   # between one terminal line and the next running line"), so the four
   # buckets always sum to active time by construction; row 2.13 states that
   # explicitly rather than leaving it for the reader to add up.
+  # B3 (v1 review): the three gate buckets seeded at 0.0 and never fell back
+  # to UNAVAILABLE, so a ledger where NO attempt in a bucket ever carries a
+  # measured span (337, which has no `running` line anywhere) rendered
+  # "build: 0.0 / verify: 0.0 / fold: 0.0", indistinguishable from "measured
+  # and genuinely zero", six lines above `== Verify cost ==` correctly
+  # printing "unavailable" for the same absent source. Reproduced by hand:
+  # `graph-measure intent test/fixtures/ledgers/337--roadmap-graph` prints
+  # exactly that shape. `contributed` tracks
+  # whether at least one attempt actually reached a bucket; the running sum
+  # (`sums`) still starts at 0.0 for the arithmetic `lead`/`sums_to_active`
+  # need, but the RENDERED value for a bucket nothing contributed to is
+  # UNAVAILABLE, never the seed.
   def buckets_model(record)
     active = record[:active_seconds]
     unless active.is_a?(Numeric)
@@ -248,18 +260,26 @@ module GraphMeasureReport
                "active_seconds" => UNAVAILABLE, "sums_to_active" => false }
     end
 
-    totals = { "build" => 0.0, "verify" => 0.0, "fold" => 0.0 }
+    sums = { "build" => 0.0, "verify" => 0.0, "fold" => 0.0 }
+    contributed = { "build" => false, "verify" => false, "fold" => false }
     record[:nodes].each_value do |node|
       key = bucket_key(node)
       node[:attempts].each do |a|
-        totals[key] += a[:active_span_seconds] if a[:active_span_seconds].is_a?(Numeric)
+        next unless a[:active_span_seconds].is_a?(Numeric)
+
+        sums[key] += a[:active_span_seconds]
+        contributed[key] = true
       end
     end
-    accounted = totals.values.sum
+    accounted = sums.values.sum
     lead = [active - accounted, 0.0].max
+    sums_to_active = (sums["build"] + sums["verify"] + sums["fold"] + lead - active).abs < 0.001
+
+    totals = {}
+    %w[build verify fold].each { |key| totals[key] = contributed[key] ? sums[key] : UNAVAILABLE }
     totals["lead"] = lead
     totals["active_seconds"] = active
-    totals["sums_to_active"] = (totals["build"] + totals["verify"] + totals["fold"] + lead - active).abs < 0.001
+    totals["sums_to_active"] = sums_to_active
     totals
   end
   private_class_method :buckets_model
@@ -296,10 +316,21 @@ module GraphMeasureReport
   # the `running` line convention has no verify spans to sum, and 0.0 would
   # read as "verification is free" rather than "unmeasurable from this
   # ledger" (spec D3).
+  #
+  # B3 second hole (v1 review): `a[:running_at]` alone is satisfied by an
+  # OPEN attempt too (running, not yet terminal), so a verify node still
+  # mid-review reported "total active span: 0.0 min" - measured and zero -
+  # rather than "unavailable" - not yet measurable. Reproduced with a single
+  # verify node whose only attempt is an open `running` line inside an
+  # otherwise-closed clock: `has_running` was `true` (the open attempt has a
+  # `running_at`) so the guard let a real `sum_active_spans` call through,
+  # and that sum is 0.0 over an attempt with no `span_seconds` yet. A span
+  # is only measured once an attempt has CLOSED (spec row 1.4-1.9's own
+  # running-to-terminal pairing), so the guard checks `terminal_at` too.
   def verify_cost_model(record)
     verify_nodes = record[:nodes].select { |_, n| n[:kind] == "verify" }
     all_attempts = verify_nodes.values.flat_map { |n| n[:attempts] }
-    has_running = all_attempts.any? { |a| a[:running_at] }
+    has_running = all_attempts.any? { |a| a[:running_at] && a[:terminal_at] }
     active = record[:active_seconds]
 
     total = has_running ? sum_active_spans(all_attempts) : nil
@@ -315,7 +346,7 @@ module GraphMeasureReport
 
   def verify_node_model(id, node)
     attempts = node[:attempts]
-    node_total = attempts.any? { |a| a[:running_at] } ? sum_active_spans(attempts) : nil
+    node_total = attempts.any? { |a| a[:running_at] && a[:terminal_at] } ? sum_active_spans(attempts) : nil
     {
       "id" => id,
       "active_span_seconds" => av_seconds(node_total),

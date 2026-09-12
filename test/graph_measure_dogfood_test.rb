@@ -289,20 +289,27 @@ class GraphMeasureDogfoodTest < Minitest::Test
 
   # --- 3.17: 337's model, hop, verify cost unavailable ---------------------------
 
+  # Corrected by the v1 fold (B3, n8 row 8.7): this test used to pin
+  # `assert_equal 0.0, m[:buckets]["verify"]` with a comment rationalizing
+  # it as "every gate bucket nets to 0.0" - that IS the defect the review
+  # found (a bucket with no measured source read as a false, indistinguishable
+  # zero rather than "unavailable"), not a fact worth pinning. No node in
+  # 337 has a `running` line at all, so NONE of the three gate buckets ever
+  # receives a single measured span; each now renders "unavailable", never
+  # 0.0. active_seconds is still a real number (the sessions the generic gap
+  # rule still finds inside 337's own file-ordered lines), so that whole
+  # span lands in "lead", the one bucket that is always a real number by
+  # construction.
   def test_337_model_hop_verify_cost_unavailable
     r = record_337
     r[:nodes].each do |id, node|
       assert_equal :unavailable, node[:model], id
       assert_equal :unavailable, node[:hop], id
     end
-    # No node in 337 has a running line, so no attempt has any span to
-    # contribute (row 3.16): every gate bucket nets to 0.0 and the whole
-    # measured active time (84.2 min) falls into "lead", unaccounted. That
-    # is distinct from "unavailable": active_seconds here IS a real number
-    # (the sessions the generic gap rule still finds), so the buckets are
-    # numerically decomposed, just with nothing to put in verify.
     m = GraphMeasureReport.model(r)
-    assert_equal 0.0, m[:buckets]["verify"]
+    assert_equal "unavailable", m[:buckets]["build"]
+    assert_equal "unavailable", m[:buckets]["verify"]
+    assert_equal "unavailable", m[:buckets]["fold"]
     assert_in_delta m[:buckets]["active_seconds"], m[:buckets]["lead"], 0.01
   end
 

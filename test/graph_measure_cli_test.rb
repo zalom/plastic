@@ -135,14 +135,37 @@ class GraphMeasureCliTest < Minitest::Test
     assert_match(/savepoint\.md/, err)
   end
 
-  # --- 2.6: an unlanded verb's module fails only itself -------------------------------
+  # --- 2.6/8.8: an unlanded verb's module fails only itself ----------------------------
 
-  # n5 lands "cohorts" (its model section); every verb named in VERBS is now
-  # delivered, so this row has no remaining unlanded verb to demonstrate
-  # against. What still matters from row 2.6 - a verb's own failure never
-  # takes another verb down - is covered by test_subprocess_cohorts_model_section_renders
-  # (cohorts) alongside test_subprocess_intent_report_renders (intent) and
-  # test_subprocess_budget_report_renders (budget) all passing side by side.
+  # v1 review B4: row 2.6 named this test and nothing in test/ ever defined
+  # it - the lazy-require branch at scripts/graph-measure:132-139 was
+  # entirely untested. Every verb's module is delivered today, so this
+  # exercises the branch the only way still possible: run the real script
+  # against a COPY of scripts/ with one verb's own lib file removed.
+  # Reproduced by hand first: copying scripts/ to a tmpdir, deleting
+  # lib/graph_measure_budget.rb, then running that copy's own executable -
+  # `budget` reported "graph-measure: budget is not yet delivered (its
+  # module has not landed)" and exited 3, while `intent` (a different
+  # verb, a different lib file, untouched) still exited 0 against the same
+  # copy.
+  def test_missing_module_fails_only_its_own_verb
+    Dir.mktmpdir("graph-measure-missing-module") do |scripts_copy_home|
+      scripts_copy = File.join(scripts_copy_home, "scripts")
+      FileUtils.cp_r(File.expand_path("../scripts", __dir__), scripts_copy)
+      FileUtils.rm(File.join(scripts_copy, "lib", "graph_measure_budget.rb"))
+      copy_script = File.join(scripts_copy, "graph-measure")
+
+      out, err, status = Open3.capture3(RbConfig.ruby, copy_script, "budget", @dir)
+      assert_equal 3, status.exitstatus
+      assert_empty out
+      assert_match(/budget is not yet delivered/, err)
+
+      write_happy_path_fixture
+      out, err, status = Open3.capture3(RbConfig.ruby, copy_script, "intent", @dir)
+      assert_equal 0, status.exitstatus, err
+      assert_match(/== Wall clock ==/, out)
+    end
+  end
 
   # --- 5.14: the real cohorts verb's model section, in a subprocess, both formats -----
 

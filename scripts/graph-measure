@@ -3,6 +3,8 @@
 # frozen_string_literal: true
 
 require "json"
+require "yaml"
+require "date"
 require_relative "lib/savepoint"
 
 # graph-measure - the one read-only executable over the node ledger (intent
@@ -152,6 +154,23 @@ module GraphMeasureCLI
     end
   end
 
+  # M1: the boundary's own config resolution, never GraphMeasureModels' or
+  # GraphMeasureCohorts' (spec D2, both modules' own DI convention). Mirrors
+  # scripts/doctor.rb's own `PLASTIC_HOME` fallback and `load_yaml_safe`
+  # shape exactly, so a missing or malformed config.yml/project.yml resolves
+  # to `{}` (the shipped-default chain), never an exception.
+  def plastic_home
+    ENV.fetch("PLASTIC_HOME") { File.join(Dir.home, ".plastic") }
+  end
+
+  def load_yaml_safe(path)
+    return {} unless path && File.exist?(path)
+
+    YAML.safe_load(File.read(path), permitted_classes: [Date, Time]) || {}
+  rescue StandardError
+    {}
+  end
+
   def missing_savepoint(dir)
     savepoint_path = File.join(dir, SAVEPOINT_FILE)
     return nil if File.exist?(savepoint_path)
@@ -188,9 +207,26 @@ module GraphMeasureCLI
   # from `GraphMeasureCohorts`. Its bar section reuses the one
   # `GraphMeasureModels` walk's `qualified` counts (passed in here) rather
   # than triggering a second store walk for the same numbers.
+  #
+  # M1 (v1 review): this call used to pass neither `project_config:` nor
+  # `global_config:`, so the model comparison always resolved against
+  # RunnerPolicy's shipped defaults only, never the real project-then-
+  # global-then-default chain the CHANGELOG describes and
+  # `scripts/doctor.rb`'s own `model_requalification_checks` actually reads.
+  # Reproduced: with a `plastic-executor:` override present in global
+  # config, `GraphMeasureModels.read` reports real drift rows while this
+  # verb (unpatched) always reported zero. `GraphMeasure`'s own modules stay
+  # config-free by design (D2's DI convention: they never read disk or ENV
+  # themselves) - this executable is the boundary that is allowed to, the
+  # same role `scripts/doctor.rb` already plays for the same two config
+  # files.
   def run_cohorts(dir, format)
-    models_record = GraphMeasureModels.read(dir)
-    cohorts_record = GraphMeasureCohorts.read(dir, qualified: models_record[:qualified])
+    global_config = load_yaml_safe(File.join(plastic_home, "config.yml"))
+    project_config = load_yaml_safe(File.join(File.dirname(dir), "project.yml"))
+
+    models_record = GraphMeasureModels.read(dir, project_config: project_config, global_config: global_config)
+    cohorts_record = GraphMeasureCohorts.read(dir, qualified: models_record[:qualified],
+                                                    project_config: project_config, global_config: global_config)
     if format == "json"
       combined = GraphMeasureModels.model(models_record).merge(GraphMeasureCohorts.model(cohorts_record))
       puts JSON.generate(combined)

@@ -56,7 +56,16 @@ module GraphMeasure
     active_running_intervals = merge_running_intervals(attempts_by_subject, now)
     pauses = compute_pauses(events, active_running_intervals, threshold_seconds, clock, now)
     sessions = complement(pauses, clock[:start], clock[:end])
-    fill_active_spans!(attempts_by_subject, sessions)
+    # B2 (v1 review): `complement` returns `[]` whenever the clock has no end
+    # (an intent with no `Done` line yet), and summing an empty session list
+    # against a real running-to-terminal span silently produced `0.0`
+    # instead of `nil` - every attempt in an open intent reported "active
+    # 0.0 min" no matter how long it actually ran (reproduced against this
+    # very intent's own live savepoint.md while n8 was `running`: n4's
+    # closed attempt showed "raw 1094.4 / active 0.0"). An active span is
+    # only knowable once the delivery clock itself has both ends.
+    clock_known = !!(clock[:start] && clock[:end])
+    fill_active_spans!(attempts_by_subject, sessions, clock_known)
 
     graph = load_graph(dir)
     node_ids = (graph[:node_ids] + attempts_by_subject.keys.reject { |s| s == Savepoint::INTENT_SUBJECT }).uniq
@@ -262,12 +271,12 @@ module GraphMeasure
   end
   private_class_method :finalize_attempt
 
-  def fill_active_spans!(attempts_by_subject, sessions)
+  def fill_active_spans!(attempts_by_subject, sessions, clock_known)
     attempts_by_subject.each_value do |attempts|
       attempts.each do |attempt|
         next unless attempt[:span_seconds]
 
-        attempt[:active_span_seconds] = intersect_with_sessions(attempt[:running_at], attempt[:terminal_at], sessions)
+        attempt[:active_span_seconds] = clock_known ? intersect_with_sessions(attempt[:running_at], attempt[:terminal_at], sessions) : nil
       end
     end
   end
@@ -545,7 +554,15 @@ module GraphMeasure
   private_class_method :suite_history
 
   def suite_growth(prev, cur)
-    growth = { runs: cur[:runs] - prev[:runs] }
+    # B1 (v1 review): `runs` used to be a bare subtraction while the other
+    # three fields went through `numeric_delta`. A `suite=` value that does
+    # not split into 2 or 4 slash-separated parts parses to `form: :unknown`
+    # with every field (including `runs`) set to `:unavailable`; subtracting
+    # two symbols raised NoMethodError and took the whole `cohorts` verb down
+    # with it (reproduced against intent 339's own savepoint.md, whose
+    # `suite=` values carry the words "runs" and "assertions" rather than the
+    # bare four-slash form `parse_suite` expects).
+    growth = { runs: numeric_delta(prev[:runs], cur[:runs]) }
     growth[:failures] = numeric_delta(prev[:failures], cur[:failures])
     growth[:assertions] = numeric_delta(prev[:assertions], cur[:assertions])
     growth[:errors] = numeric_delta(prev[:errors], cur[:errors])
