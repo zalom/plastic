@@ -34,7 +34,7 @@ class SkillLintTest < Minitest::Test
   def test_fixtures_exist
     %w[pass fail_body_lines fail_body_tokens fail_yaml fail_name fail_user_invocable
        fail_bare_pointer fail_bare_pointer_paragraph_leak fail_bare_pointer_bullet_list
-       fail_orphan fail_depth].each do |name|
+       fail_orphan fail_depth fail_refusal_restatement pass_refusal_link].each do |name|
       assert File.file?(File.join(FIXTURES_ROOT, name, "SKILL.md")),
         "expected fixture test/fixtures/skill_lint/#{name}/SKILL.md to exist"
     end
@@ -147,6 +147,26 @@ class SkillLintTest < Minitest::Test
     assert_equal ["orphan-files"], checks, "fail_orphan should trip ONLY orphan-files"
     record = result.violations_for("orphan-files").first
     assert_match(/unrouted\.md/, record[:file])
+  end
+
+  # --- refusal-restatement (intent 341, G8, n1, C35): a skill body must not restate a refusal
+  # rule the conventions chapter already carries; a paragraph that links the chapter instead is
+  # accepted even when it also states the rule. The "conventions" fixture dir carries no
+  # SKILL.md of its own, so it never trips the other five checks; it only feeds the doctrine
+  # text this check compares against.
+
+  def test_restated_refusal_rule_is_flagged
+    result = lint("conventions", "fail_refusal_restatement")
+    refute result.ok?, "a skill body that restates a conventions refusal rule verbatim must trip red"
+    checks = result.violations.map { |v| v[:check] }.uniq
+    assert_equal ["refusal-restatement"], checks, "fail_refusal_restatement should trip ONLY refusal-restatement"
+    record = result.violations_for("refusal-restatement").first
+    assert_equal "fail_refusal_restatement", record[:skill]
+  end
+
+  def test_conventions_link_is_not_a_restatement
+    result = lint("conventions", "pass_refusal_link")
+    assert result.ok?, "a skill that links the conventions chapter must not be flagged: #{result.violations.inspect}"
   end
 
   def test_fail_depth_trips_references_depth_check_only
