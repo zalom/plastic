@@ -12,7 +12,7 @@ Classify from the last line alone, then verify only that line's artifact is real
 | `How  started` / `How  plan.md created` | (How in progress) | **How** | finish `plan.md` and `checklist.md` |
 | `How  checklist.md created` / `Exec  started` | How | **Exec** | do the work, check off the checklist |
 | `Exec  outcome.md created` | Exec | **ready to complete** | the ending procedure (`plastic-intent-ending`) |
-| `Done  delivered` / `Done  abandoned` | terminal | **report only** | immutable; ask what is next |
+| A terminal savepoint line (`delivered` or `abandoned`) | terminal | **report only** | immutable; ask what is next |
 | A node or `Intent` transition line (`n1  running ...`, `Intent  needs_decision ...`) | Exec | **Exec** | a graph delivery is in progress; read node status through `NodeLedger.status`, never re-derive it by eye |
 
 ## Per-stage behaviour (what "continue" means)
@@ -24,7 +24,7 @@ Classify from the last line alone, then verify only that line's artifact is real
   The first unchecked `checklist.md` item is the next step; the newest `## Insights` entry
   supplies the context.
 - **ready to complete**: `outcome.md` is real; run the ending procedure.
-- **Done**: terminal. Report the outcome, ask what is next. Never reopen; `INDEX.md` is
+- **End**: terminal. Report the outcome, ask what is next. Never reopen; `INDEX.md` is
   authoritative.
 
 ## Notes

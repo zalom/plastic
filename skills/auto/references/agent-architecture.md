@@ -29,12 +29,13 @@ in 2.0, intent 304; the lead writes the Why and How record itself):
 - **plastic-executor** (Exec): commits the matrix's tests red, writes the code, checks off
   `checklist.md`, appends `## Insights`, and drives the suite green.
 - **the plan reviewer**: a fresh agent on `plastic-intent-executing`'s
-  `plan-reviewer-prompt.md`, dispatched once before any code exists.
+  `plan-reviewer-prompt.md`, an optional dispatch before any code exists.
 - **the post-execution reviewer**: a fresh agent on `code-quality-reviewer-prompt.md`,
   dispatched only when the auto skill's risk rule fires; never the maker.
 
-Two agent boots is the normal delivery (the plan reviewer, the executor); the post-execution
-reviewer is the third only when risk calls for it.
+One agent boot (the executor) is the minimum delivery; the plan reviewer is a second,
+optional boot when the lead calls for review before code, and the post-execution reviewer is
+a third only when risk calls for it.
 
 ### Handoff Contracts
 
@@ -44,8 +45,8 @@ the code, the red and green commits, a checked-off checklist, `## Insights`, and
 report. Dispatch is sequential on a single branch, because the deliverables share files.
 
 The chain: intent `## Intent` / `## Context`, then enriched `## Context` plus `### Decisions`,
-then `spec.md`, then `plan.md` plus `actions/` plus `checklist.md`, then the plan review, then
-the code changes plus a checked-off checklist plus `## Insights`.
+then `spec.md`, then `plan.md` plus `actions/` plus `checklist.md`, then an optional plan
+review, then the code changes plus a checked-off checklist plus `## Insights`.
 
 ### Spawn Preamble (L2 live-state injection)
 
@@ -88,9 +89,10 @@ not revoke the registered delegate's authorization.
 
 ### Review Ownership
 
-The lead owns every review decision: it dispatches the plan reviewer before code, folds the
-findings itself, and decides from the risk rule whether the post-execution reviewer runs. It
-never delegates that decision, and neither reviewer is ever the maker of what it reviews.
+The lead owns every review decision: it dispatches the plan reviewer before code when one
+runs, takes the review into its own record, and decides from the risk rule whether the
+post-execution reviewer runs. It never delegates that decision, and neither reviewer is ever
+the maker of what it reviews.
 Nothing blocks a write in 2.0 (the gate hooks were removed, intent 302); the lock, the
 worktree, and the record are how the team keeps one delivery in one place.
 

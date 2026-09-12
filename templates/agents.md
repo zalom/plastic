@@ -58,10 +58,10 @@ Plastic has its own lifecycle skills. When a Plastic skill exists for the curren
 | Why | `plastic-intent-speccing` | Rulings as insights, `resources/*.md`, `spec.md` |
 | How | `plastic-intent-speccing` | `actions/`, `plan.md`, `checklist.md` |
 | Exec | `plastic-intent-executing` | Code + `outcome.md` |
-| Done | `plastic-intent-ending` | Lifecycle transition |
+| End | `plastic-intent-ending` | Lifecycle transition |
 
 **Artifact convention:** ALL lifecycle artifacts go to the active intent directory (`store/{id}--{slug}/`). Never write specs to `docs/superpowers/specs/` or plans to `docs/superpowers/plans/`.
 
-## When You're Done
+## When the Project Wraps
 
 When this project satisfies the governing intent's goal, report back. The orchestrator will complete the strategic intent.

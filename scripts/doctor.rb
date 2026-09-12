@@ -800,7 +800,11 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
     # written from the record by `scaffold-intent backfill`, so this is repairable and
     # reported as a fixable warn (backfilled_complete). Its exclusions go to their OWN
     # bucket so savepoint_operational's consumed/dead-row bookkeeping above never sees them.
-    backfill_gaps = %w[spec.md plan.md].reject { |f| Savepoint.stage_file_present?(File.join(dir, f)) }
+    # A graph intent (real graph.md on disk) never carries spec.md or plan.md by design
+    # (D1, no ceremonies, intent 341): the graph IS the spec and the plan, so a missing one
+    # is never a gap here.
+    is_graph_intent = File.exist?(File.join(dir, "graph.md"))
+    backfill_gaps = is_graph_intent ? [] : %w[spec.md plan.md].reject { |f| Savepoint.stage_file_present?(File.join(dir, f)) }
     # Name whichever directory the intent actually used (post-execution
     # review, non-blocking 8), consistent with Savepoint.missing_for_stage:
     # a nodes/ directory on disk means the intent chose the node-graph
@@ -858,7 +862,7 @@ def check_done_signals(scopes: nil)
       projection = IndexProjection.analyze(store[:store_dir], index_path: store[:index])
       projection[:drift].each do |row|
         index_drift << "#{store[:scope]}: #{row[:id]} - INDEX says #{row[:index_status]}, " \
-                        "the ledger's last Done line says #{row[:ledger_status]}"
+                        "the ledger's last line says #{row[:ledger_status]}"
       end
     end
 
@@ -1102,7 +1106,7 @@ def check_done_signals(scopes: nil)
       fix_hint: "For a live (Active) intent, rebuild the ledger via " \
                 "Savepoint.rebuild_savepoint. Terminal (Completed/Abandoned) intents are immutable: " \
                 "a phantom there stays advisory unless an explicit human grant authorizes the " \
-                "124a manual Done-bookend repair."
+                "124a manual terminal-bookend repair."
     )
   end
 
@@ -1299,9 +1303,13 @@ end
   end
 
   INTENT_END_LIFECYCLE_FILES = %w[spec.md plan.md checklist.md outcome.md].freeze
+  # A graph intent (D1, no ceremonies, intent 341) never carries spec.md, plan.md, or
+  # checklist.md by design; the graph IS the spec and the plan. outcome.md stays mandatory.
+  GRAPH_INTENT_LIFECYCLE_FILES = %w[outcome.md].freeze
 
   def intent_lifecycle_artifacts_check(intent_dir, disposition)
-    missing = INTENT_END_LIFECYCLE_FILES.select { |f| !Savepoint.stage_file_present?(File.join(intent_dir, f)) }
+    files = File.exist?(File.join(intent_dir, "graph.md")) ? GRAPH_INTENT_LIFECYCLE_FILES : INTENT_END_LIFECYCLE_FILES
+    missing = files.select { |f| !Savepoint.stage_file_present?(File.join(intent_dir, f)) }
     unless Savepoint.stage_file_present?(Savepoint.intent_file(intent_dir))
       missing = [File.basename(Savepoint.intent_file(intent_dir))] + missing
     end

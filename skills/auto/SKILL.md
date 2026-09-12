@@ -1,7 +1,7 @@
 ---
 name: plastic-auto
 description: >-
-  Autonomous intent delivery - a background team takes a registered intent from How to Done.
+  Autonomous intent delivery - a background team takes a registered intent from How to End.
   Use when user says "auto", "take it from here", "deliver this", or when a thinking
   conversation concludes and the user confirms autonomous execution. Requires an active intent
   in INDEX.md.
@@ -93,7 +93,7 @@ dispatched agent.
   review findings, verifies, closes.
 - **plastic-executor**: one dispatch per intent, implements the consolidated action tests first,
   ticks the checklist, appends `## Insights`, drives the suite green.
-- **the plan reviewer**: one dispatch before code, from `plastic-intent-executing`'s
+- **the plan reviewer**: an optional dispatch before code, from `plastic-intent-executing`'s
   `plan-reviewer-prompt.md`; a fresh agent, never the lead.
 - **the post-execution reviewer**: dispatched only by the risk rule, from
   `code-quality-reviewer-prompt.md`; a fresh agent, never the maker.
@@ -164,7 +164,7 @@ ledger is missing (then rebuild it with `Savepoint.rebuild_savepoint`).
 | `Why  spec.md created` | How |
 | `How  plan.md created` / `How  checklist.md created` / `Exec  started` | Exec (verify plan, matrix, checklist) |
 | `Exec  outcome.md created` | Exec done; complete the intent |
-| `Done  delivered|abandoned` | Terminal; do not resume |
+| A terminal savepoint line (`delivered` or `abandoned`) | Terminal; do not resume |
 | A node or `Intent` transition line (`n1  running ...`, `Intent  needs_decision ...`) | Exec; a graph delivery is in progress - drive it through `scripts/runner`'s three public verbs, `step` (one turn of the dispatch loop), `status` (renders ledger state, safe to poll constantly), and `answer` (closes a `needs_decision` node) - read node status through `NodeLedger.status` before dispatching anything, never re-derive it by eye |
 
 Filesystem fallback, in order: `checklist.md` with items checked means resume Exec from the
@@ -189,11 +189,12 @@ For a graph delivery, How is `graph.md` itself: no `plan.md`, no separate plan r
 341). For work with no graph: write `plan.md` (numbered steps) and at least one real
 `actions/ACTION_N.md` carrying the failure-mode matrix (one row per operation, the failure
 mode, the test that catches it; a `.gitkeep`-only `actions/` is not a finished How), then
-`checklist.md` covering every action, then dispatch the plan reviewer (boot 1) with
+`checklist.md` covering every action. The plan reviewer is optional, not a required step:
+when the delivery warrants review before code, dispatch it (boot 1) with
 `plastic-intent-executing`'s `plan-reviewer-prompt.md`, the spawn preamble, and the intent
-directory. Apply every finding to the spec, the matrix, and the tests; record what was dropped
-and why in the action file's review notes. A REVISE verdict is applied and not re-reviewed
-unless a finding changes a decision.
+directory, apply every finding to the spec, the matrix, and the tests, and record what was
+dropped and why in the action file's review notes. A REVISE verdict is applied and not
+re-reviewed unless a finding changes a decision.
 
 Print `ruby ~/.plastic/scripts/report-screen plan <intent_dir>` as the first characters of
 the reply, nothing before it, no fence, before dispatching the executor (see
