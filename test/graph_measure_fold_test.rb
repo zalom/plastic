@@ -7,6 +7,8 @@ require "fileutils"
 require "time"
 require "open3"
 require "rbconfig"
+require "yaml"
+require "date"
 
 require_relative "../scripts/lib/node_ledger"
 require_relative "../scripts/lib/graph_measure"
@@ -490,6 +492,110 @@ class GraphMeasureFoldTest < Minitest::Test
                  "1--closed alone supplies both arms once the open intent is excluded; this must not be silent"
       assert_includes record[:hop_cohorts][:confound], "1--closed"
       refute_includes record[:hop_cohorts][:confound], "2--open"
+    end
+  end
+
+  # --- 9.1 (v2 NEW-1): verify cost is unavailable whenever no verify attempt has a measured span --
+
+  # v2's review (NEW-1): `has_running` was satisfied by a CLOSED attempt
+  # (running_at and terminal_at both present) even when the open-clock fix
+  # had already left that attempt's own `active_span_seconds` nil, because
+  # the intent's delivery clock itself has no end yet. `sum_active_spans`
+  # then coerced that nil to 0.0, so an in-flight intent's report showed
+  # "active: unavailable" at the top of the clock block and "total active
+  # span: 0.0 min" a few sections later, in Verify cost. Reproduced by hand
+  # before this fix: a hermetic one-verify-node intent with a single closed
+  # attempt spanning a real hour and no `Done` stage line printed exactly
+  # that pair.
+  def test_verify_cost_unavailable_when_the_clock_has_no_end
+    Dir.mktmpdir("review-fix-9-1") do |dir|
+      FileUtils.mkdir_p(File.join(dir, "nodes"))
+      File.write(File.join(dir, "nodes", "v1.md"), <<~MD)
+        ---
+        node: v1
+        kind: verify
+        files: []
+        ---
+        # v1
+        body
+      MD
+      t0 = Time.iso8601("2026-01-01T09:00:00Z")
+      File.write(File.join(dir, "savepoint.md"), [
+        stage(t0, "Why", "spec.md created"),
+        transition(t0 + 60, "v1", "running", fields: RUNNING.merge(model: "opus")),
+        transition(t0 + 3660, "v1", "done", fields: RUNNING.merge(model: "opus", gates: "suite", commit: "abc1234")),
+        # No Done stage line: the delivery clock itself is still open.
+      ].join)
+
+      record = GraphMeasure.read(dir)
+      assert_equal :unavailable, record[:active_seconds]
+      attempt = record[:nodes]["v1"][:attempts].first
+      refute_nil attempt[:raw_span_seconds], "v1's own attempt closed with a real, known span"
+      assert_nil attempt[:active_span_seconds], "the active span is unmeasurable while the clock is open"
+
+      text = GraphMeasureReport.render_text(record)
+      refute_match(/total active span: 0\.0 min/, text,
+                   "a verify attempt with no measured span must never report a fabricated zero cost")
+      assert_match(/total active span: unavailable min/, text)
+    end
+  end
+
+  # --- 9.4 (v2 NEW-4): the cohorts verb and the doctor rule resolve project config the same way --
+
+  # v2's review (NEW-4): `scripts/graph-measure` read `<store>/../project.yml`
+  # for the project-scope agent config, but `templates/project.yml` carries
+  # no `agents:` key at all - only `governing_docs`, `release` and `flow` -
+  # while the store's sibling `config.yml` (D22) is the file that actually
+  # exists in the wild, sharing the global config.yml schema
+  # (`~/.plastic/projects/knowdb/config.yml` is a real example). Reproduced
+  # by hand before this fix: with a `plastic-executor: opus` override
+  # written to a synthetic store's sibling `config.yml`, `cohorts` reported
+  # no drift for a node recorded under `model=sonnet`, while
+  # `GraphMeasureModels.read` given that same loaded config directly
+  # reported real drift.
+  def test_cohorts_and_doctor_resolve_project_config_the_same_way
+    Dir.mktmpdir("review-fix-9-4") do |home|
+      store = File.join(home, "projects", "demo", "store")
+      intent_dir = File.join(store, "1--demo")
+      FileUtils.mkdir_p(File.join(intent_dir, "nodes"))
+      File.write(File.join(intent_dir, "nodes", "n1.md"), <<~MD)
+        ---
+        node: n1
+        kind: work
+        files: []
+        ---
+        # n1
+        body
+      MD
+      t0 = Time.iso8601("2026-01-01T09:00:00Z")
+      File.write(File.join(intent_dir, "savepoint.md"), [
+        stage(t0, "Why", "spec.md created"),
+        transition(t0 + 60, "n1", "running", fields: RUNNING.merge(model: "sonnet")),
+        transition(t0 + 600, "n1", "done", fields: RUNNING.merge(model: "sonnet", gates: "suite", commit: "abc1234")),
+        stage(t0 + 660, "Done", "delivered"),
+      ].join)
+
+      FileUtils.mkdir_p(File.join(home, "projects", "demo"))
+      File.write(File.join(home, "projects", "demo", "config.yml"), <<~YAML)
+        agents:
+          models:
+            claude:
+              plastic-executor: opus
+      YAML
+
+      script = File.expand_path("../scripts/graph-measure", __dir__)
+      out, err, status = Open3.capture3(RbConfig.ruby, script, "cohorts", store)
+      assert status.success?, err
+      assert_includes out, "opus",
+                       "the cohorts verb must resolve the operator's real project-scope override - the " \
+                       "store's sibling config.yml - not the unused project.yml"
+
+      project_config_path = GraphMeasureModels.project_config_path(store)
+      project_config = YAML.safe_load(File.read(project_config_path), permitted_classes: [Date, Time]) || {}
+      record = GraphMeasureModels.read(store, project_config: project_config, global_config: {})
+      assert_includes record[:drift][:executor].map { |r| r[:intent] }, "1--demo",
+                       "the doctor rule's own config path must see the same real override the cohorts " \
+                       "verb sees, through the same one code path"
     end
   end
 end
