@@ -183,4 +183,18 @@ class RunnerStepCliTest < Minitest::Test
     assert_equal [], Runner.opt_all([], "--return")
     assert_equal [], Runner.opt_all(["--node", "n1"], "--return")
   end
+
+  # --- 355 n3, 3.6: status prints the review fix count and the cap ----------------
+
+  def test_status_prints_review_fix_count_and_cap
+    write_graph("- n1 needs nothing\n- v1 needs n1\n- n2 needs v1\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    write_node("v1.md", node: "v1", kind: "verify")
+    write_node("n2.md", node: "n2", kind: "work")
+
+    out, err, status = run_cli("status", @dir)
+
+    assert_equal 0, status.exitstatus, out + err
+    assert_match(/^review fixes: 1 of 2$/, out)
+  end
 end

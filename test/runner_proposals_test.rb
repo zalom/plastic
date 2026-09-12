@@ -285,4 +285,111 @@ class RunnerProposalsTest < Minitest::Test
     assert_equal before_graph, File.read(graph_path)
     assert_equal before_node_files, Dir.glob(File.join(@dir, "nodes", "*.md")).sort
   end
+
+  # --- 355 n3: the review fix cap (D4) ---------------------------------------------
+
+  TWO_REVIEW_FIXES = "- n1 needs nothing\n- v1 needs n1\n- n2 needs v1\n- v2 needs n2\n- n3 needs v2\n- v3 needs n3\n"
+
+  def write_verify_node(node)
+    File.write(File.join(@dir, "nodes", "#{node}.md"), <<~MD)
+      ---
+      node: #{node}
+      kind: verify
+      files: []
+      budget: 40000
+      ---
+      # #{node} - a verify node
+
+      ## Criteria
+      - it holds
+    MD
+  end
+
+  def write_declared(graph_body)
+    write_graph(graph_body)
+    graph_body.scan(/^- (\S+) needs/).flatten.each do |id|
+      id.start_with?("v") ? write_verify_node(id) : write_work_node(id)
+    end
+    write_savepoint(line("n1", "planned"))
+  end
+
+  def propose_work(*needs_lists)
+    accept(proposed_nodes: needs_lists.map { |needs| { "kind" => "work", "title" => "a follow-up", "needs" => needs } })
+  end
+
+  # --- 3.1: a review fix is classified through work nodes, transitively -------------
+
+  def test_review_fix_classified_transitively
+    write_declared("- n1 needs nothing\n- v1 needs n1\n- n2 needs v1\n- v2 needs n2\n- n3 needs n2\n")
+    kinds = { "n1" => "work", "v1" => "verify", "n2" => "work", "v2" => "verify", "n3" => "work", "n4" => "work" }
+    edges = { "n1" => [], "v1" => ["n1"], "n2" => ["v1"], "v2" => ["n2"], "n3" => ["n2"], "n4" => ["n3"] }
+    assert_equal %w[n2 n3 n4], GraphEdges.review_fixes(edges, kinds)
+
+    result = propose_work(["n3"])
+
+    refute result[:ok], result.inspect
+    assert_match(/review_fix_cap/, result[:errors].join)
+  end
+
+  # --- 3.2: review fixes already in the graph count toward the cap ------------------
+
+  def test_existing_review_fixes_counted
+    write_declared("- n1 needs nothing\n- v1 needs n1\n- n2 needs v1\n- v2 needs n2\n")
+
+    second = propose_work(["v2"])
+    assert second[:ok], second.inspect
+
+    third = propose_work(["v2"])
+    refute third[:ok], third.inspect
+    assert_match(/review_fix_cap/, third[:errors].join)
+  end
+
+  # --- 3.3: the third review fix is refused with a reason and a ledger line --------
+
+  def test_third_review_fix_refused_with_reason
+    write_declared(TWO_REVIEW_FIXES)
+
+    result = propose_work(["v3"])
+
+    refute result[:ok]
+    assert_equal [], result[:minted]
+    assert_match(/review_fix_cap/, result[:errors].join)
+    assert_match(/n1: .*\(review_fix_cap\)/, savepoint_content)
+  end
+
+  # --- 3.4: the first and second review fix are accepted ----------------------------
+
+  def test_first_two_review_fixes_accepted
+    write_declared("- n1 needs nothing\n- v1 needs n1\n")
+
+    result = propose_work(["v1"], ["v1"])
+
+    assert result[:ok], result.inspect
+    assert_equal %w[n2 n3], result[:minted]
+  end
+
+  # --- 3.5: a work node that reaches no verify node ignores the cap ----------------
+
+  def test_plain_work_node_unaffected_by_cap
+    write_declared("#{TWO_REVIEW_FIXES}- n4 needs v3\n")
+
+    result = propose_work(["n1"], [])
+
+    assert result[:ok], result.inspect
+    assert_equal 2, result[:minted].length
+  end
+
+  # --- 3.7: a refusal writes nothing to disk -----------------------------------------
+
+  def test_refusal_writes_no_node_file
+    write_declared(TWO_REVIEW_FIXES)
+    before_graph = File.read(graph_path)
+    before_node_files = Dir.glob(File.join(@dir, "nodes", "*.md")).sort
+
+    result = propose_work(["v3"])
+
+    refute result[:ok]
+    assert_equal before_graph, File.read(graph_path)
+    assert_equal before_node_files, Dir.glob(File.join(@dir, "nodes", "*.md")).sort
+  end
 end
