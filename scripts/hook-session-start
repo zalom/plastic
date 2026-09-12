@@ -232,9 +232,8 @@ begin
     qmd_status = Timeout.timeout(2) { QmdSync.status(plastic_home: plastic_home) }
     if qmd_status[:present]
       # C23 (intent 341, G8): a QMD hit is untrusted text, so it never sits
-      # loose in additionalContext alongside the owner's own banners — it
-      # rides inside PacketWrapper's data boundary, same as the capture
-      # hook's own QMD hits (scripts/hook-capture).
+      # loose in additionalContext alongside the owner's own banners; it
+      # rides inside PacketWrapper's data boundary.
       qmd_line = if qmd_status[:all_registered]
         "QMD: #{qmd_status[:registered].size} Plastic collections indexed (search with the qmd skill)."
       else

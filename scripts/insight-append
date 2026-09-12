@@ -13,7 +13,7 @@
 #
 # --rule (intent 341, G8, C37): tags the entry as a rule, not just an
 # observation, by prepending the literal "rule: " onto the text before it
-# ever reaches Insights.append_insight — the library itself stays untouched,
+# ever reaches Insights.append_insight; the library itself stays untouched,
 # since a tag is a text-level convention, not a new field on the ledger.
 # Doctor's unpromoted_rules check (scripts/doctor.rb) later lists any tagged
 # entry whose exact text no skills/conventions/references/*.md chapter
