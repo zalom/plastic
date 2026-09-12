@@ -209,9 +209,14 @@ class SessionStartStagePathTest < Minitest::Test
     JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
   end
 
-  def test_stage_line_is_derived_from_the_intent_directory
-    expected_stage = Savepoint.derive_stage(@intent_dir)
-    assert_includes context, "Stage: #{expected_stage} | Next: "
+  # Intent 341, G8: the stage line was doctrine ceremony (a skill deriving
+  # the same stage by reading the intent directory already carries it) and
+  # is cut from the live boot. Savepoint.derive_stage itself is untouched
+  # (still callable, still correct); only the hook stops printing its result.
+  def test_stage_line_is_no_longer_printed_at_boot
+    refute_includes context, "Stage: ", "the stage line is ceremony the hook no longer prints (intent 341)"
+    assert_equal Savepoint.derive_stage(@intent_dir), Savepoint.derive_stage(@intent_dir),
+                 "Savepoint.derive_stage itself stays callable; only the hook's print is cut"
   end
 
   def test_no_bridge_file_is_written
@@ -547,8 +552,7 @@ class SessionStartSubagentTest < Minitest::Test
     assert_equal 0, status.exitstatus
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
 
-    assert_includes ctx, "Active intents"
-    assert_includes ctx, "Stale future intents"
+    assert_includes ctx, "Active: [555 — 555 - An active intent]"
     assert_includes ctx, "day ledger"
   end
 
@@ -561,14 +565,14 @@ class SessionStartSubagentTest < Minitest::Test
                                         stdin_data: payload_without_marker)
     assert_equal 0, status.exitstatus
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
-    assert_includes ctx, "Active intents",
+    assert_includes ctx, "Active: [555 — 555 - An active intent]",
                     "an agent id carried only on the env, never on stdin, must never mark a subagent session"
 
     payload_with_marker = JSON.generate("session_id" => "sess-marker-only", "agent_id" => "agent-42")
     out2, _err2, status2 = run_hook(stdin_data: payload_with_marker, session_id: "sess-marker-only")
     assert_equal 0, status2.exitstatus
     ctx2 = JSON.parse(out2).dig("hookSpecificOutput", "additionalContext")
-    refute_includes ctx2, "Active intents",
+    refute_includes ctx2, "Active: [555",
                     "the marker on the stdin payload alone, with no env support at all, must still mark a subagent"
   end
 
@@ -581,7 +585,7 @@ class SessionStartSubagentTest < Minitest::Test
     assert_equal 0, status.exitstatus
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
 
-    assert_includes ctx, "Active intents",
+    assert_includes ctx, "Active: [555 — 555 - An active intent]",
                      "agent_type alone, with no agent_id, must be a live session, not a subagent"
   end
 
@@ -594,7 +598,125 @@ class SessionStartSubagentTest < Minitest::Test
     assert_includes parsed["systemMessage"], "Plastic Core loaded"
     ctx = parsed.dig("hookSpecificOutput", "additionalContext")
     assert_includes ctx, "Plastic Core loaded"
-    refute_includes ctx, "Active intents",
+    refute_includes ctx, "Active:",
                     "a malformed marker value must still degrade to a banner-only boot, never crash to nothing"
+  end
+end
+
+# Intent 341, G8 (node n2), row 2.1: session start stops dumping doctrine. A
+# live boot carries the core banner, the project (or global) banner with its
+# one active intent, and the QMD line; the conventions dump, the bulleted
+# active-intents listing, the stage line, and the stale-future paragraph are
+# all cut (a skill or the conventions chapter already carries that text).
+# Deprecation warnings, the update notice, the sweep line and the day-ledger
+# line are unrelated bookkeeping this cut does not touch, so this fixture
+# carries none of them and the assertions below do not need to exclude them.
+class SessionStartDoctrineCutTest < Minitest::Test
+  HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
+
+  def setup
+    @home = Dir.mktmpdir("session-start-doctrine-cut-home")
+    @tmp = Dir.mktmpdir("session-start-doctrine-cut-tmp")
+    @index = File.join(@home, "INDEX.md")
+
+    File.write(File.join(@home, "PLASTIC.md"), <<~MD)
+      # Plastic: Conventions
+
+      THIS CONVENTIONS PROSE PARAGRAPH MUST NEVER REACH A LIVE BOOT.
+    MD
+
+    active_dir = File.join(@home, "store", "701--an-active-intent")
+    FileUtils.mkdir_p(active_dir)
+    File.write(File.join(active_dir, "701--an-active-intent.md"),
+               "---\nid: \"701\"\n---\n\n## Intent\nActive.\n")
+
+    stale_dir = File.join(@home, "store", "702--a-stale-intent")
+    FileUtils.mkdir_p(stale_dir)
+    File.write(File.join(stale_dir, "702--a-stale-intent.md"),
+               "---\nid: \"702\"\ncreated: '2000-01-01'\n---\n\n## Intent\nStale.\n")
+
+    File.write(@index, <<~MD)
+      # Index
+
+      ## Active
+      - [701 - An active intent](store/701--an-active-intent/701--an-active-intent.md)
+
+      ## Future
+      - [702 - A stale intent](store/702--a-stale-intent/702--a-stale-intent.md)
+    MD
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+    FileUtils.rm_rf(@tmp)
+  end
+
+  def context
+    out, _err, status = Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-doctrine-cut" },
+                                        "ruby", HOOK, @index, @home, "global")
+    assert_equal 0, status.exitstatus
+    JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+  end
+
+  # Row 2.1
+  def test_live_session_boot_carries_banners_only
+    ctx = context
+
+    assert_includes ctx, "Plastic Core loaded", "the core banner must still boot"
+    assert_includes ctx, "Active: [701 — 701 - An active intent]",
+                    "the project/global banner keeps its one active intent"
+
+    refute_includes ctx, "CONVENTIONS PROSE", "PLASTIC.md's conventions dump must not reach a live boot"
+    refute_includes ctx, "Active intents:", "the bulleted active-intents listing is cut"
+    refute_includes ctx, "No active intents", "the no-active-intent nudge is cut"
+    refute_includes ctx, "Stale future intents", "the stale-future paragraph is cut"
+    refute_includes ctx, "Stage: ", "the stage line is cut"
+  end
+end
+
+# Intent 341, G8 (node n2), row 2.4: the cut must not introduce a raise path
+# that boots a live session with nothing. hook-session-start now computes the
+# core banner before anything that reads INDEX.md, projects.yml, or
+# PLASTIC.md, and wraps that entire best-effort assembly in one rescue that
+# falls back to a banner-only boot. A malformed projects.yml (a project entry
+# that is not a mapping, so `info["path"]` blows up trying to build a
+# `File.expand_path` argument) is a real, reachable, hermetic way to raise
+# partway through that assembly.
+class SessionStartBannerExceptionTest < Minitest::Test
+  HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
+
+  def setup
+    @home = Dir.mktmpdir("session-start-banner-exception-home")
+    @tmp = Dir.mktmpdir("session-start-banner-exception-tmp")
+    @index = File.join(@home, "INDEX.md")
+    File.write(@index, "# Index\n\n## Active\n\n## Future\n")
+    File.write(File.join(@home, "PLASTIC.md"), "# Plastic: Conventions\n")
+    # "broken" maps to an Integer, not a Hash: info["path"] then raises
+    # TypeError (Integer#[] takes no implicit String), reachable before the
+    # project/global banner is ever built.
+    File.write(File.join(@home, "projects.yml"), "projects:\n  broken: 12345\n")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+    FileUtils.rm_rf(@tmp)
+  end
+
+  def run_hook
+    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-banner-exception" },
+                   "ruby", HOOK, @index, @home, "global")
+  end
+
+  def test_exception_degrades_to_banner
+    out, err, status = run_hook
+
+    assert_equal 0, status.exitstatus, "a raise anywhere in the best-effort assembly must still exit 0: #{err}"
+    assert_empty err.strip, "the rescue must swallow the exception, never leak a backtrace to stderr"
+
+    parsed = JSON.parse(out)
+    assert_includes parsed["systemMessage"], "Plastic Core loaded"
+    ctx = parsed.dig("hookSpecificOutput", "additionalContext")
+    assert_includes ctx, "Plastic Core loaded", "the boot must degrade to the banner, never to nothing"
+    refute_includes ctx, "Active:", "a failed assembly must not leak a partial banner line"
   end
 end
