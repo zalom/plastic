@@ -27,14 +27,15 @@ class Doctor
     "hermes" => { name: "Hermes",      dir: File.join(Dir.home, ".hermes") },
   }.freeze
 
-  # The Claude events hooks_registered expects in settings.json: the seven-event map of
+  # The Claude events hooks_registered expects in settings.json: the eight-event map of
   # cut-inventory 3b (intent 309 added SessionEnd, registered for close since intent 301;
   # intent 316a added MessageDisplay, registered for message-display, Claude only; intent
-  # 340b added Stop, registered for stop, Claude only). Stop's registration is static
-  # (D5/D7) even though its runtime arm defaults off (D9, runner.stop_hook), so an
-  # install missing it is exactly as broken as one missing PreCompact, and this list
-  # keeps hooks_registered and hooks_match_registry agreeing on that (row 4.32).
-  CLAUDE_HOOK_EVENTS = %w[SessionStart PreCompact PostToolUse UserPromptSubmit SessionEnd
+  # 355 added PreToolUse, registered for call-budget, Claude only; intent 340b added Stop,
+  # registered for stop, Claude only). Stop's registration is static (D5/D7) even though
+  # its runtime arm defaults off (D9, runner.stop_hook), so an install missing it is
+  # exactly as broken as one missing PreCompact, and this list keeps hooks_registered and
+  # hooks_match_registry agreeing on that (row 4.32).
+  CLAUDE_HOOK_EVENTS = %w[SessionStart PreToolUse PreCompact PostToolUse UserPromptSubmit SessionEnd
                           MessageDisplay Stop].freeze
 
   # Launchers the installer places in the agent's hooks dir that are NOT hooks

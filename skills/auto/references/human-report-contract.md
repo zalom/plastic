@@ -78,7 +78,7 @@ an executor's intermediate commit, or an agent going idle is NOT one of them:
 
 | Trigger | Scope |
 |---|---|
-| A savepoint line lands (a stage boundary: Why, How, Exec started, outcome written, Done) | that intent |
+| A savepoint line lands (a stage boundary: Why, How, Exec started, outcome written, End) | that intent |
 | A review verdict returns (plan review or post-execution review), naming what it changed | that intent |
 | A blocker or needs-input is logged | that intent |
 | A merge or a release lands | that intent |

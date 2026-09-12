@@ -631,6 +631,11 @@ class Doctor
     # ReadySet's own require chain is 65,648 bytes, far past that budget.
     checks.concat(node_graph_checks(intent_dirs))
 
+    # unpromoted_rules (intent 341, G8, C37): an Insights entry tagged
+    # `rule:` (via `insight-append --rule`) is a promise the rule will make
+    # it into project doctrine. Advisory only.
+    checks.concat(unpromoted_rules_checks(intent_dirs, home: Dir.home))
+
     # cross_store_resolution — RESOLVES (not just shape-checks) every cross-store
     # `store:id` ref against the FULL store family via the relocation map
     # (relocation consulted first), closing the shape-only gap i1/i3/i4 leave open.
@@ -795,7 +800,11 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
     # written from the record by `scaffold-intent backfill`, so this is repairable and
     # reported as a fixable warn (backfilled_complete). Its exclusions go to their OWN
     # bucket so savepoint_operational's consumed/dead-row bookkeeping above never sees them.
-    backfill_gaps = %w[spec.md plan.md].reject { |f| Savepoint.stage_file_present?(File.join(dir, f)) }
+    # A graph intent (real graph.md on disk) never carries spec.md or plan.md by design
+    # (D1, no ceremonies, intent 341): the graph IS the spec and the plan, so a missing one
+    # is never a gap here.
+    is_graph_intent = File.exist?(File.join(dir, "graph.md"))
+    backfill_gaps = is_graph_intent ? [] : %w[spec.md plan.md].reject { |f| Savepoint.stage_file_present?(File.join(dir, f)) }
     # Name whichever directory the intent actually used (post-execution
     # review, non-blocking 8), consistent with Savepoint.missing_for_stage:
     # a nodes/ directory on disk means the intent chose the node-graph
@@ -853,7 +862,7 @@ def check_done_signals(scopes: nil)
       projection = IndexProjection.analyze(store[:store_dir], index_path: store[:index])
       projection[:drift].each do |row|
         index_drift << "#{store[:scope]}: #{row[:id]} - INDEX says #{row[:index_status]}, " \
-                        "the ledger's last Done line says #{row[:ledger_status]}"
+                        "the ledger's last line says #{row[:ledger_status]}"
       end
     end
 
@@ -1097,7 +1106,7 @@ def check_done_signals(scopes: nil)
       fix_hint: "For a live (Active) intent, rebuild the ledger via " \
                 "Savepoint.rebuild_savepoint. Terminal (Completed/Abandoned) intents are immutable: " \
                 "a phantom there stays advisory unless an explicit human grant authorizes the " \
-                "124a manual Done-bookend repair."
+                "124a manual terminal-bookend repair."
     )
   end
 
@@ -1294,9 +1303,13 @@ end
   end
 
   INTENT_END_LIFECYCLE_FILES = %w[spec.md plan.md checklist.md outcome.md].freeze
+  # A graph intent (D1, no ceremonies, intent 341) never carries spec.md, plan.md, or
+  # checklist.md by design; the graph IS the spec and the plan. outcome.md stays mandatory.
+  GRAPH_INTENT_LIFECYCLE_FILES = %w[outcome.md].freeze
 
   def intent_lifecycle_artifacts_check(intent_dir, disposition)
-    missing = INTENT_END_LIFECYCLE_FILES.select { |f| !Savepoint.stage_file_present?(File.join(intent_dir, f)) }
+    files = File.exist?(File.join(intent_dir, "graph.md")) ? GRAPH_INTENT_LIFECYCLE_FILES : INTENT_END_LIFECYCLE_FILES
+    missing = files.select { |f| !Savepoint.stage_file_present?(File.join(intent_dir, f)) }
     unless Savepoint.stage_file_present?(Savepoint.intent_file(intent_dir))
       missing = [File.basename(Savepoint.intent_file(intent_dir))] + missing
     end
@@ -1771,6 +1784,68 @@ end
         message: "#{findings.size} #{name} violation(s)",
         details: findings, fixable: false, fix_hint: fix_hint
       )
+    end
+  end
+
+  # --- Check: unpromoted rule: findings (intent 341, G8, C37) ---------------
+  #
+  # `insight-append --rule` tags an entry "... - rule: <text>". A tag is a
+  # promise the rule will make it into project doctrine; until the exact
+  # rule text shows up in some skills/conventions/references/*.md chapter,
+  # it is only visible to a session that happens to read this one intent
+  # file, and the next session repeats the mistake the rule names. Advisory
+  # only (warn, never fail): a freshly tagged rule is not yet promoted by
+  # design, and nothing here can auto-promote it (that is an editorial call,
+  # not a mechanical one).
+  RULE_ENTRY_RE = /—\s*rule:\s*(.+?)\s*\z/.freeze
+
+  def unpromoted_rules_checks(intent_dirs, package_root: PACKAGE_ROOT, home: nil)
+    # The installed doctor runs from ~/.plastic/scripts, so PACKAGE_ROOT
+    # (~/.plastic) has no skills/ directory: the conventions chapters install
+    # to the agent home layout instead. `home` is caller-injected (never an
+    # ENV read here) so this stays hermetic in tests; the real call site
+    # passes the process's actual home directory.
+    chapter_dirs = []
+    if home
+      chapter_dirs << File.join(home, ".claude", "skills", "plastic-conventions", "references")
+      chapter_dirs << File.join(home, ".agents", "skills", "plastic-conventions", "references")
+    end
+    chapter_dirs << File.join(package_root, "skills", "conventions", "references")
+
+    chapters_text = chapter_dirs.select { |d| Dir.exist?(d) }
+                                .flat_map { |d| Dir.glob(File.join(d, "*.md")) }
+                                .map { |f| File.read(f) }
+                                .join("\n\n")
+
+    unpromoted = []
+    intent_dirs.each do |d|
+      md_path = File.join(d[:path], "#{d[:name]}.md")
+      next unless File.exist?(md_path)
+
+      File.readlines(md_path).each do |line|
+        m = line.chomp.match(RULE_ENTRY_RE)
+        next unless m
+
+        rule_text = m[1].strip
+        next if rule_text.empty?
+
+        unpromoted << "#{tilde(d[:path])}: #{rule_text}" unless chapters_text.include?(rule_text)
+      end
+    end
+
+    if unpromoted.empty?
+      [check(
+        category: "conventions", name: "unpromoted_rules", status: "pass",
+        message: "Every tagged rule: finding is carried by a conventions chapter"
+      )]
+    else
+      [check(
+        category: "conventions", name: "unpromoted_rules", status: "warn",
+        message: "#{unpromoted.size} tagged rule(s) not yet carried by any conventions chapter",
+        details: unpromoted, fixable: false,
+        fix_hint: "Promote the rule into the right skills/conventions/references/*.md chapter, " \
+                  "or drop the tag if the finding does not belong in doctrine"
+      )]
     end
   end
 

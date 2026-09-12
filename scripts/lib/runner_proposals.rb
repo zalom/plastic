@@ -46,6 +46,8 @@ module RunnerProposals
     "research" => "node-research.md",
   }.freeze
 
+  REVIEW_FIX_CAP = 2
+
   # accept(context, proposer:, proposed_nodes:, proposed_edges:, now:,
   # validator:, templates_dir:, renamer:) -> {ok:, minted:, validator:,
   # errors:}. `proposer` names the node whose return carried these proposals
@@ -129,6 +131,14 @@ module RunnerProposals
       edge_specs << { from: from, to: to }
     end
 
+    trial_nodes = loaded[:nodes].merge(node_specs.to_h { |s| [s[:id], { kind: s[:kind] }] })
+    existing_fixes = review_fix_count(loaded[:edges], loaded[:nodes])
+    trial_fixes = review_fix_count(trial_edges, trial_nodes)
+    if trial_fixes > [existing_fixes, REVIEW_FIX_CAP].max
+      return refuse(intent_dir, proposer,
+                     "proposal refused (review_fix_cap): would make #{trial_fixes} review fixes, the cap is #{REVIEW_FIX_CAP}", now)
+    end
+
     node_specs.each { |s| scaffold_node_file(intent_dir, s) }
     if node_specs.any? || edge_specs.any?
       append_to_graph(graph_path, node_specs: node_specs, edge_specs: edge_specs, renamer: renamer)
@@ -139,6 +149,17 @@ module RunnerProposals
     # the write) - a raising validator must report a broken verdict, never
     # turn an already-successful accept into an uncaught exception.
     { ok: true, minted: node_specs.map { |s| s[:id] }, validator: safe_validate(validator, intent_dir), errors: [] }
+  end
+
+  # --- review fixes (355 D4) -------------------------------------------------
+
+  # review_fix_count(edges, nodes) -> how many work nodes GraphEdges.review_fixes
+  # finds, a node's kind read from its declaration and, when that is missing,
+  # from its id's NodeFile::KIND_PREFIX (343 D6).
+  def review_fix_count(edges, nodes)
+    ids = (edges.keys + edges.values.flatten).uniq
+    kinds = ids.to_h { |id| [id, (nodes[id] || {})[:kind] || NodeFile::KIND_PREFIX.key(id.to_s[/\A[a-z]+/])] }
+    GraphEdges.review_fixes(edges, kinds).length
   end
 
   # --- node scaffolding --------------------------------------------------

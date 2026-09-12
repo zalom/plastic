@@ -1,16 +1,16 @@
-# Completion and Done
+# Completion and the End Tail
 
 This chapter holds what "intent done" means and the End-stage tail.
 
 #### What "intent done" means (intent 93)
 
-Done is one law with three signals, and they must agree. INDEX `## Completed` /
+Completion is one law with three signals, and they must agree. INDEX `## Completed` /
 `## Abandoned` is the single canonical terminal marker: it is the store-wide ledger a fresh
 session reads first, so it wins on any conflict. `outcome.md` is the "deliverable exists"
-signal, and the savepoint `Done delivered|abandoned` line is the audit echo. All three must
-agree; when they disagree, INDEX is authoritative and `doctor` flags the mismatch (the
+signal, and the savepoint's terminal `delivered|abandoned` line is the audit echo. All three
+must agree; when they disagree, INDEX is authoritative and `doctor` flags the mismatch (the
 `done_signals` check: `outcome.md` real but still under `## Active`, or terminal without a
-real `outcome.md`, or a terminal intent whose savepoint carries no `Done` line).
+real `outcome.md`, or a terminal intent whose savepoint carries no terminal disposition line).
 
 `outcome.md` is mandatory at every terminal transition, delivered and abandoned alike. It
 self-declares its disposition through a `disposition: delivered|abandoned` frontmatter
@@ -18,8 +18,8 @@ header. The delivered path authors it with the result; the abandoned path author
 the abandonment reason and no longer leaves the scaffolded placeholder sentinel in place.
 
 The canonical End tail runs in this order, and the QMD reindex is always LAST, after the
-purge: `outcome.md -> INDEX terminal -> savepoint Done -> commit -> disarm (Worktree.release
--> Lock.release -> purge) -> QMD reindex`. Running the reindex last keeps the index from
+purge: `outcome.md -> INDEX terminal -> the terminal savepoint line -> commit -> disarm
+(Worktree.release -> Lock.release -> purge) -> QMD reindex`. Running the reindex last keeps the index from
 ever referencing a bridge or lock that disarm is about to remove.
 
 `scripts/end-intent` performs this order's disarm step (verify the code worktree is clean,

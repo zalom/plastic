@@ -8,6 +8,7 @@ require_relative "lib/savepoint"
 require_relative "lib/ready_set"
 require_relative "lib/runner_core"
 require_relative "lib/harness_adapter"
+require_relative "lib/runner_proposals"
 
 # runner - the one executable over the graph-ready loop's declared node graph
 # (intent 340, G7, n1). A subcommand table: the public verbs (step, status,
@@ -151,6 +152,10 @@ module Runner
         puts "  last: #{last[:raw]}" if last
       end
     end
+
+    graph = context.graph || {}
+    fixes = RunnerProposals.review_fix_count(graph[:edges] || {}, graph[:nodes] || {})
+    puts "review fixes: #{fixes} of #{RunnerProposals::REVIEW_FIX_CAP}"
 
     complete = RunnerCore.complete?(context)
     puts

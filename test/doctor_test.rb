@@ -1631,8 +1631,9 @@ class DoctorAgentRegistrationTest < Minitest::Test
     # gate-check to record (8), intent 301 added close (9), intent 302
     # removed edit-gates and bash-gate (7), intent 309 retired power-tools (6),
     # intent 316a added message-display (MessageDisplay, Claude only) (7),
-    # and intent 340b added stop (Stop, Claude only): 8 launchers.
-    assert_equal 8, HookRegistry.claude_launcher_names.size
+    # intent 355 n2 added call-budget (PreToolUse, Claude only) (8), and
+    # intent 340b added stop (Stop, Claude only): 9 launchers.
+    assert_equal 9, HookRegistry.claude_launcher_names.size
     assert_equal "pass", hooks_check[:status]
     assert_equal "pass", exec_check[:status]
     assert_equal "pass", orphan_check[:status]
@@ -1650,14 +1651,14 @@ class DoctorCoreHookEventsCommentTest < Minitest::Test
     refute_match(/five-event/, src, "CLAUDE_HOOK_EVENTS comment still says \"five-event\" (it is now #{Doctor::CLAUDE_HOOK_EVENTS.size})")
   end
 
-  # Intent 340b (G7c, n4, row 4.33): CLAUDE_HOOK_EVENTS grew to seven with
-  # Stop; the comment beside it must name that count, not the six it rotted
-  # to catching up to MessageDisplay.
-  def test_the_hook_events_comment_names_seven_not_six
+  # Intent 340b (G7c, n4, row 4.33): CLAUDE_HOOK_EVENTS grew to eight with
+  # Stop on top of 355's PreToolUse; the comment beside it must name that
+  # count, not a stale six or seven.
+  def test_the_hook_events_comment_names_eight
     src = File.read(File.expand_path("../scripts/lib/doctor_core.rb", __dir__))
-    refute_match(/six-event/, src, "CLAUDE_HOOK_EVENTS comment still says \"six-event\" (it is now #{Doctor::CLAUDE_HOOK_EVENTS.size})")
-    assert_match(/seven-event/, src)
-    assert_equal 7, Doctor::CLAUDE_HOOK_EVENTS.size
+    refute_match(/(six|seven)-event/, src, "CLAUDE_HOOK_EVENTS comment names a stale count (it is now #{Doctor::CLAUDE_HOOK_EVENTS.size})")
+    assert_match(/eight-event/, src)
+    assert_equal 8, Doctor::CLAUDE_HOOK_EVENTS.size
   end
 end
 

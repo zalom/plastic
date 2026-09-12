@@ -49,9 +49,9 @@ class CompactInstructionsTest < Minitest::Test
     refute_includes CompactInstructions::BODY, EM_DASH
   end
 
-  def test_body_states_both_thresholds_and_names_both_config_keys
-    assert_includes CompactInstructions::BODY, "350,000"
-    assert_includes CompactInstructions::BODY, "500,000"
+  def test_block_names_new_defaults
+    assert_includes CompactInstructions::BODY, "150,000"
+    assert_includes CompactInstructions::BODY, "250,000"
     assert_includes CompactInstructions::BODY, "context_offer_tokens"
     assert_includes CompactInstructions::BODY, "context_insist_tokens"
   end
@@ -83,15 +83,15 @@ class CompactInstructionsTest < Minitest::Test
   end
 
   def test_offer_threshold_agrees_across_the_constant_the_template_and_the_defaults
-    assert_equal 350_000, CompactInstructions::OFFER_TOKENS
-    assert_equal 350_000, template_config["context_offer_tokens"]
-    assert_equal 350_000, read_config_default("context_offer_tokens")
+    assert_equal 150_000, CompactInstructions::OFFER_TOKENS
+    assert_equal 150_000, template_config["context_offer_tokens"]
+    assert_equal 150_000, read_config_default("context_offer_tokens")
   end
 
   def test_insist_threshold_agrees_across_the_constant_the_template_and_the_defaults
-    assert_equal 500_000, CompactInstructions::INSIST_TOKENS
-    assert_equal 500_000, template_config["context_insist_tokens"]
-    assert_equal 500_000, read_config_default("context_insist_tokens")
+    assert_equal 250_000, CompactInstructions::INSIST_TOKENS
+    assert_equal 250_000, template_config["context_insist_tokens"]
+    assert_equal 250_000, read_config_default("context_insist_tokens")
   end
 
   # --- the section and its hash -------------------------------------------------

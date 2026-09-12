@@ -3,11 +3,19 @@ require "json"
 require_relative "../scripts/lib/hook_registry"
 
 # The single source of truth for hook registration (intent 108, D7). Since intent 302
-# there is no PreToolUse event at all: the edit-path gates are gone, and the only
-# write-path hook is `record` under PostToolUse.
+# the edit-path gates are gone, and the only write-path hook is `record` under
+# PostToolUse. Intent 355, n2 adds one PreToolUse hook back, call-budget, a
+# different kind of gate (a per-attempt call COUNT, never a content deny).
 class HookRegistryTest < Minitest::Test
-  def test_no_pre_tool_use_event_is_registered
-    refute HookRegistry.events.key?("PreToolUse"), "the edit-path gates were removed in 2.0 (intent 302)"
+  def test_pre_tool_use_registers_only_call_budget
+    groups = HookRegistry.events["PreToolUse"]
+    refute_nil groups, "call-budget must be registered under PreToolUse"
+    assert_equal 1, groups.size
+    assert_equal "", groups.first["matcher"]
+    assert_equal ["call-budget"], groups.first["hooks"].map { |h| h["name"] }
+  end
+
+  def test_edit_path_gate_constants_stay_gone
     %i[GATE_TOOLS CODEX_GATE_TOOLS CODEX_PRE_HOOKS CODEX_BASH_HOOKS].each do |const| # removed in 2.0
       refute HookRegistry.const_defined?(const), "HookRegistry::#{const} must be gone with the gates"
     end
@@ -50,7 +58,7 @@ class HookRegistryTest < Minitest::Test
     settings = HookRegistry.claude_settings_hooks(hook_dir: "/x/hooks")
     record = settings["PostToolUse"]
     assert_equal "/x/hooks/plastic-record", record["hooks"][0]["command"]
-    refute settings.key?("PreToolUse")
+    assert_equal "/x/hooks/plastic-call-budget", settings["PreToolUse"]["hooks"][0]["command"]
   end
 
   def test_every_registry_hook_name_has_a_launcher_file
@@ -92,7 +100,6 @@ class HookRegistryTest < Minitest::Test
       json = raw[event].flat_map { |g| g["hooks"].map { |h| hook_name(h["command"]) } }
       assert_equal reg, json, "hooks.json #{event} drifted from the registry"
     end
-    refute raw.key?("PreToolUse")
   end
 
   # --- Codex registration (intent 102) ---

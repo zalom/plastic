@@ -6,110 +6,51 @@ user-invocable: true
 
 # Creating an Intent
 
-## When to Use
+Creating writes the thought to disk: an id, a directory, a born-complete intent file.
+Nothing else runs here; specifying, planning, and execution are separate, later skills.
+
+## When to use
 - User starts new work ("build X", "fix Y", "research Z")
 - No active intent matches the current task
 - User explicitly says "new intent" or "create intent"
 - An agent discovers work needed during implementation
 
-## Determine the store
+## Decide the store and the shape, before scaffolding
 
-**Global intent** (strategic): created when working outside a registered project, or when the user expresses a high-level goal. Stored in `~/.plastic/store/`.
-
-**Project intent** (tactical): created when working inside a registered project directory. Stored in `~/.plastic/projects/{slug}/store/`. Automatically linked to the project's governing intent.
-
-### Detection logic:
-1. Read `~/.plastic/projects.yml`
-2. **CWD match:** Match CWD against registered project paths
-   - If CWD is inside a registered project → **project intent (tactical)**
-3. **Explicit mention:** User mentions an existing project by name ("add this to reddit-kb", "new intent for plastic")
-   - Look up project in `projects.yml` by slug
-   - If found → **project intent (tactical)** in that project's store at `~/.plastic/projects/{slug}/store/`
-   - Agent changes working directory to the project path for execution
-4. **No match:** CWD is not in a project AND no project mentioned
-   - → **global intent (strategic)** in `~/.plastic/store/`
-
-When creating a tactical intent in a project store:
-- Read the project's `AGENTS.md` for project context and decisions
-- Link back to the project's governing intent (from `projects.yml` `parent` field) via `sources` (the project genuinely is formed from its founding intent, a true formative edge, reciprocated on the founding intent's `chain`)
-- Add `[[global:<parent_ID>]]` backlink in `## Links`
-- The intent's Folgezettel ID is scoped to the project store (run `folgezettel-id` against the project's store at `~/.plastic/projects/{slug}/store/`)
-
-## Workflow
-
-### 1. Determine Store Location
-
-- **Global:** `~/.plastic/store/`
-- **Project:** `~/.plastic/projects/{slug}/store/`
-
-### 2. Check for a Duplicate or Predecessor (QMD-first)
-
-QMD-first (when available): before scanning the store with grep/Read, run
-`ruby ~/.plastic/scripts/qmd-sync search "<terms>"` to surface candidate, prior, or duplicate
-intents, then open the authoritative intent file for any hit you act on. The command is a no-op
-when QMD is absent, so fall back to the existing INDEX.md / file scan. Do this before allocating
-the id so a near-duplicate can be reused and a true predecessor can be set in `--sources`.
-
-### 3. Decide Branch vs Root
-
-Decide this BEFORE scaffolding, because it sets whether you pass `--parent`.
-Having a "parent" in mind does NOT automatically mean branch. Choose by meaning:
-
-- **Branch (`14a`, `14b`)**: a sub-task, refinement, or direct continuation. It only
-  makes sense as part of the parent's work. Pass `--parent <parent_id>`.
-- **Root (`15`, `16`)**: an independent thought. Two cases, decided by ORIGIN:
-  - **Created from another intent** (it emerged from that intent's lifecycle): make it a
-    root and set `--sources <ascendant_id>`. `sources` is reserved for true created-from /
-    direct-ascendant provenance (D1).
-  - **Merely related to / inspired by another intent** (it did NOT come out of that
-    intent's lifecycle): carry NO `--sources`. Record the relation on the PREDECESSOR's
-    `chain` instead (the related-but-not-spawned rule); the `## Links` section follows
-    from that edge, you do not write it by hand.
-- **Rule of thumb:** if the intent could exist without its parent, make it a root; only set
-  `--sources` when it was genuinely created from / emerged from that intent's lifecycle.
-  Topic similarity alone is not a `sources` edge.
+- **CWD inside a registered project** (`~/.plastic/projects.yml`), or the user names a
+  project by slug -> **project intent (tactical)**, `~/.plastic/projects/{slug}/store/`,
+  linked back to the project's governing intent (`projects.yml` `parent` field) via
+  `sources`, with `[[global:<parent_ID>]]` in `## Links` and a Folgezettel id scoped to
+  that store.
+- **No match** -> **global intent (strategic)**, `~/.plastic/store/`.
+- **Duplicate or predecessor check (QMD-first):** before allocating an id, run
+  `ruby ~/.plastic/scripts/qmd-sync search "<terms>"` (a no-op when QMD is absent, fall
+  back to INDEX.md) so a near-duplicate is reused and a true predecessor lands in
+  `--sources`.
+- **Branch vs root**, decided by meaning, not by "a parent in mind": branch
+  (`--parent <parent_id>`) when the intent only makes sense as part of the parent's work;
+  root with `--sources <ascendant_id>` when it was created from another intent's
+  lifecycle; root with no `--sources` when it is merely related (record that relation on
+  the PREDECESSOR's `chain` instead - topic similarity alone is never a `sources` edge).
 
 When a branch intent exists because a late ruling arrived AFTER its parent was already
-completed (the owner's late-ruling rule), the parent is restored to v1 via
-`scripts/restore-intent-v1`, never by a hand-run `git checkout`/revert. See
-`plastic-conventions > references/maintenance-and-revisions.md`, WORK vs MAINTENANCE, for the
-rule and the tool.
+completed, the parent is restored to v1 via `scripts/restore-intent-v1`, never a hand-run
+`git checkout`/revert (see `plastic-conventions > references/maintenance-and-revisions.md`,
+WORK vs MAINTENANCE).
 
-`## Links` is a DERIVED view of `sources`/`chain`. Never hand-write a `## Links` line; add the
-frontmatter edge and reproject. Links are decided by context influence (a `chain` edge has a high
-bar: the candidate's context must materially help deliver this intent), not by shared files or a
-similarity score. To gather candidates with their context and record an edge, use the
-`scripts/link-suggest` and `scripts/project-links`.
+`## Links` is a DERIVED view of `sources`/`chain`: never hand-write a `## Links` line, add
+the frontmatter edge and reproject. Links follow context influence (a `chain` edge needs
+the candidate's context to materially help deliver this intent), never shared files or a
+similarity score; `scripts/link-suggest` and `scripts/project-links` gather candidates.
+Read `../plastic-conventions/references/knowledge-graph.md` for the full linking doctrine:
+the tiers of influence, sources versus chain, and how `## Links` is derived.
 
-Read `../plastic-conventions/references/knowledge-graph.md` for the full linking doctrine: the
-tiers of influence, sources versus chain, and how the `## Links` projection is derived. This path
-resolves relative to this skill's own installed directory.
+## Scaffold
 
-### 4. Determine Intent Properties
-
-Ask or infer from context:
-- **intent**: one-line description
-- **slug**: short hyphenated handle for the directory name
-- **author**: `human` | `claude-code` | other agent name
-- **sources**: the direct ascendant(s) this intent was created from / emerged from the
-  lifecycle of (formation, not topic similarity), e.g., `4a1`. For a project intent,
-  include the governing intent's id. A branch's structural parent is ALSO recorded in
-  `sources` (the ID carries it for the human/paper tree, `sources` carries it for
-  software), which `new-intent` does automatically (see `new-intent:126`).
-- **tags**: freeform list (use `project-<name>` for project membership)
-
-`chain` carries what this intent spawns AND related-but-not-spawned successors it leads to;
-it starts empty and is populated later. See
-[`how-plastic-sources-and-chains-intents.md`](https://github.com/zalom/plastic/blob/main/docs/concepts/how-plastic-sources-and-chains-intents.md) for the full model.
-Place the intent in `## Active` or `## Future` in INDEX.md (status is
-convention-derived, not a frontmatter field).
-
-### 5. Scaffold via new-intent (single call)
-
-Delegate id allocation, directory and file creation, the born-complete intent
-file, the sentinel placeholder lifecycle files, the reciprocal file links, and
-self-validation to one `new-intent` invocation. Do NOT hand-author any of these
-files.
+One call does the rest: id allocation, the directory, `actions/` and `resources/`, the
+born-complete intent file, sentinel placeholder lifecycle files (each marked
+`<!-- plastic:placeholder -->` so no stage detector reads them as reached), reciprocal
+`[[id]]` links, and self-validation. Do NOT hand-author any of these files.
 
 ```bash
 ruby ~/.plastic/scripts/new-intent \
@@ -118,47 +59,31 @@ ruby ~/.plastic/scripts/new-intent \
   [--sources "id,id"] [--tags "project-<slug>,tag"]
 ```
 
-`new-intent` allocates the Folgezettel id (root, or a branch of `--parent`),
-creates `<STORE>/<id>--<slug>/` plus `actions/` and `resources/`, renders the
-born-complete `<id>--<slug>.md` from the intent template, writes the sentinel
-placeholder `spec.md`/`plan.md`/`checklist.md`/`outcome.md` (each marked
-`<!-- plastic:placeholder -->` so no stage detector reads them as reached), wires
-the reciprocal `[[id]]` links, and self-validates (frontmatter plus the sanctioned
-`##` sections). It prints the created directory path and exits 0.
+It does NOT touch INDEX.md, git, or project creation (Finish, below). If it exits
+non-zero, read the stderr report, fix the inputs (slug, intent, sources), and retry;
+never work around a failed scaffold by hand-writing the files.
 
-It does NOT touch INDEX.md, git, or project creation: those stay in this skill
-(steps 6 to 9 below).
+`chain` carries what this intent spawns AND related-but-not-spawned successors it leads
+to; it starts empty and is populated later. See
+[`how-plastic-sources-and-chains-intents.md`](https://github.com/zalom/plastic/blob/main/docs/concepts/how-plastic-sources-and-chains-intents.md)
+for the full model.
 
-If `new-intent` exits non-zero, read the stderr report and fix the inputs (slug,
-intent, sources). Do not commit or announce an intent that did not scaffold
-cleanly, and do not work around the failure by hand-writing the files.
+## Finish
 
-### 6. If Implementation Intent Spawns a Project
-
-When the user says "start building" or the plan calls for a new project, invoke the
-`plastic-project-creating` skill; it owns project directory creation, AGENTS.md
-population, projects.yml registration, store provisioning, and the auto-commit of
-both stores. Add `project-<slug>` to this intent's `tags` array either before
-invoking it or as part of that skill's handoff.
-
-### 7. Update INDEX.md
-
-- **Global intents:** update `~/.plastic/INDEX.md`
-- **Project intents:** no global INDEX.md change (tactical intents are project-scoped)
-
-Add to `## Active` (or `## Future`) and appropriate cluster.
-
-### 8. Auto-commit
-
-```bash
-cd <store-root> && git add . && git commit -m "feat: create intent ID - [name]"
-```
-
-### 9. Announce
-
-"Created intent ID - [name]. Placed in: [Active|Future]. Store: [global|project:<slug>|local]."
+1. **Global intent:** add a line to `~/.plastic/INDEX.md` under `## Active` (or
+   `## Future`) and the right cluster. **Project intent:** no global INDEX.md change.
+2. When the user says "start building" or the plan calls for a new project, invoke
+   `plastic-project-creating`; it owns project directory creation, AGENTS.md population,
+   `projects.yml` registration, store provisioning, and the auto-commit of both stores.
+   Add `project-<slug>` to this intent's `tags` either before invoking it or as part of
+   that skill's handoff.
+3. Commit: `cd <store-root> && git add . && git commit -m "feat: create intent ID - [name]"`.
+4. Announce: "Created intent ID - [name]. Placed in: [Active|Future]. Store:
+   [global|project:<slug>]."
 
 ## References
 
-- Read `references/lifecycle.md` for the full What→Why→How→Exec stage detail, filesystem-as-schema conventions, and creating-intent step-by-step
-- Read `references/wikilinks.md` for the wikilink syntax table when adding `## Links` to intents
+- Read `references/lifecycle.md` for the full What->Why->How->Exec stage detail and the
+  filesystem-as-schema conventions.
+- Read `references/wikilinks.md` for the wikilink syntax table when hand-checking a
+  `## Links` projection.

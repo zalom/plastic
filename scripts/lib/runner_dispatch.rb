@@ -46,6 +46,22 @@ module RunnerDispatch
 
   HARD_CAP_RE = /\Ais at its dispatch cap \((\d+)\/(\d+)\)\z/.freeze
 
+  # D8 (355, n6): the agent every dispatched, non-decision node names - a
+  # role, never a harness (matrix 6.5), and never `plastic-advisor`, which
+  # stays a deliberate, never-auto-dispatched consultation agent.
+  SPAWN_AGENT = "plastic-executor"
+
+  # matrix 6.1/6.2: one spawn block per dispatched node - agent, the model
+  # RunnerPolicy.model_for resolved, the packet path, the one test command
+  # (NodePacket.test_command_block, n4), and the call cap (n2) - fenced so a
+  # session pastes it straight into the Agent tool (327 D42: the runner
+  # itself never spawns).
+  def spawn_block(model:, packet:, test_command:, call_cap:, agent: SPAWN_AGENT)
+    lines = ["agent: #{agent}", "model: #{model}", "packet: #{packet}", test_command,
+             NodePacket.call_cap_sentence(call_cap)]
+    (["```"] + lines + ["```"]).join("\n")
+  end
+
   # dispatch(context, limit:) -> a result hash. Always carries :ok, :reason,
   # :errors, :rearm_command, :dispatched, :stop, :parked, :status, :blockers,
   # :plan - fields that do not apply to a given outcome stay nil/empty rather
@@ -206,6 +222,7 @@ module RunnerDispatch
     holder = context.session
     model = RunnerPolicy.model_for(kind, config: config)
     expires = RunnerPolicy.lease_expires(kind, now: now)
+    calls_cap = RunnerPolicy.call_cap(kind, config: config)
 
     # Row 10.16/M13: recorded BEFORE provisioning - a worktree this dispatch
     # finds already on disk (kept there by a prior failed_verification
@@ -234,7 +251,7 @@ module RunnerDispatch
     # default (row 10.9).
     build_result = packet_builder.call(intent_dir: intent_dir, node: node, holder: holder, expires: expires,
                                         model: model, force: true, worktree_reader: node_reader,
-                                        budget_tokens: node_declared_budget(intent_dir, node))
+                                        budget_tokens: node_declared_budget(intent_dir, node), call_cap: calls_cap)
     unless build_result[:ok]
       # M6: a failed packet build never leaves an orphan worktree behind, and
       # its errors travel back up so the step's report can name the node and
@@ -250,7 +267,8 @@ module RunnerDispatch
     # Row 1.19/1.20/D21: harness= rides alongside model= on every `running`
     # line, resolved once by the caller through HarnessAdapter and threaded
     # straight through here - never re-resolved, never a literal.
-    fields = { holder: holder, expires: expires, packet: build_result[:sha], model: model, harness: harness }
+    fields = { holder: holder, expires: expires, packet: build_result[:sha], model: model, harness: harness,
+               calls: calls_cap }
 
     result = begin
       ledger.append_transition(savepoint_path, subject: node, state: "running", fields: fields, now: now,
@@ -268,10 +286,13 @@ module RunnerDispatch
       return { ok: false }
     end
 
+    test_command = NodePacket.test_command_block(intent_dir: intent_dir, files: (nodes_decl[node] || {})[:files])
+    spawn = spawn_block(model: model, packet: build_result[:path], test_command: test_command, call_cap: calls_cap)
+
     {
       ok: true,
       entry: { node: node, kind: kind.to_s, role: role_for(kind), model: model, worktree: provisioned[:path],
-                packet: build_result[:path] },
+                packet: build_result[:path], spawn: spawn },
     }
   end
 
@@ -475,7 +496,10 @@ module RunnerDispatch
   # Row 5.22/5.23/5.24: one machine-readable (YAML) document naming, per
   # dispatched node, the packet path, the model, the worktree, the kind and
   # the role, plus the return contract ONCE at the top level - never inside
-  # any one node's packet.
+  # any one node's packet. Row 6.4: "spawn" carries the same, already fully
+  # rendered spawn block for each dispatched node in order, so any reader of
+  # this data (YAML today, JSON if it is ever re-serialized) finds it under
+  # `spawn` rather than re-deriving it from the other fields.
   def render_plan(dispatched)
     return nil if dispatched.empty?
 
@@ -484,7 +508,8 @@ module RunnerDispatch
       "dispatch" => dispatched.map do |d|
         { "node" => d[:node], "kind" => d[:kind], "role" => d[:role], "model" => d[:model],
           "worktree" => d[:worktree], "packet" => d[:packet] }
-      end
+      end,
+      "spawn" => dispatched.map { |d| d[:spawn] }
     )
   end
   private_class_method :render_plan

@@ -34,6 +34,17 @@ module HookRegistry
           { "name" => "check-update", "status" => "" },
         ] },
       ],
+      # Intent 355, n2: the call budget guard. Not one of the edit-path
+      # gates intent 302 removed (those denied a write on content; this
+      # denies a call on a per-attempt COUNT, read from the session's own
+      # transcript, never from the tool's arguments) - see scripts/hook-
+      # call-budget. Claude only: CODEX_LIVE_STATE_EVENTS below does not
+      # carry PreToolUse, so codex_hooks_json never projects it.
+      "PreToolUse" => [
+        { "matcher" => "", "hooks" => [
+          { "name" => "call-budget", "status" => "" },
+        ] },
+      ],
       "PreCompact" => [
         { "matcher" => "", "hooks" => [
           { "name" => "savepoint", "status" => "Saving Plastic intent state..." },
@@ -87,8 +98,9 @@ module HookRegistry
   # the PostToolUse record hook collapses from Claude's multi-tool matcher onto
   # Codex's single apply_patch tool (181 F4: apply_patch is Codex's sole
   # file-mutation tool; tool_name always reports apply_patch), and the live-state
-  # events project through whole. Since intent 302 there is no PreToolUse group at
-  # all: the edit-path gates are gone on both harnesses. Command invokes the
+  # events project through whole. PreToolUse (intent 355, n2's call-budget guard,
+  # Claude only) is not one of CODEX_LIVE_STATE_EVENTS below, so Codex still
+  # carries no PreToolUse group of its own. Command invokes the
   # codex-hook dispatcher with the hook name. Guide-settled shape [guide Part 3]:
   # top-level {"hooks":{<Event>: [{"matcher","hooks":[{"type":"command","command",
   # "statusMessage"}]}]}}, identical to Claude's shape, string command. Single

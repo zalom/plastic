@@ -50,9 +50,9 @@ class InstallerCore
   # hand-curated pointer rather than embedding the core wholesale, and it never drifts
   # because it only ever points, never duplicates.
   CODEX_AGENTS_MD_BODY = <<~MD.freeze
-    Plastic is installed for this agent. Plastic is intent-driven state management: all
-    work flows through an intent, moved through What, Why, How, then Exec. Do not jump
-    straight to code.
+    Plastic is installed for this agent. Plastic is intent-driven state management: work runs
+    in one of three modes, direct, thinking, or auto (a team drives the runner loop:
+    `runner step`, `status`, `answer`). Do not jump straight to code.
 
     Standing rules:
     - Core conventions live in ~/.plastic/PLASTIC.md. Read it and follow it exactly. For
@@ -439,6 +439,8 @@ class InstallerCore
       "scripts/verify-intent" => "scripts/verify-intent",
       "scripts/lib/exec_worktree.rb" => "scripts/lib/exec_worktree.rb",
       "scripts/exec-worktree" => "scripts/exec-worktree",
+      "scripts/lib/session_usage.rb" => "scripts/lib/session_usage.rb",
+      "scripts/session-usage" => "scripts/session-usage",
       "scripts/doctor.rb" => "scripts/doctor.rb",
       "scripts/lib/doctor_core.rb" => "scripts/lib/doctor_core.rb",
       "scripts/lib/hook_replay.rb" => "scripts/lib/hook_replay.rb",
@@ -564,6 +566,12 @@ class InstallerCore
       "scripts/lib/stop_gate.rb" => "scripts/lib/stop_gate.rb",
       "scripts/lib/active_delivery.rb" => "scripts/lib/active_delivery.rb",
       "scripts/hook-stop" => "scripts/hook-stop",
+      # Intent 355 (n2): the call budget PreToolUse hook (RunnerPolicy.call_cap
+      # is its cap table, above); its launcher (hooks/call-budget) ships via
+      # hook_files' own glob, so only the hook script itself needs an entry.
+      "scripts/hook-call-budget" => "scripts/hook-call-budget",
+      "scripts/meter-watch" => "scripts/meter-watch",
+      "scripts/lib/meter_watch.rb" => "scripts/lib/meter_watch.rb",
       # Intent 340 (G7, n6): answer (closes a decision node or unparks a
       # work node parked at needs_decision), proposals (mints ids for what
       # an executor proposed), and rewind (resets the intent branch to a
@@ -589,8 +597,8 @@ class InstallerCore
       version: 3
       execution_mode: subagent-driven
       stale_threshold_days: 3
-      context_offer_tokens: 350000
-      context_insist_tokens: 500000
+      context_offer_tokens: 150000
+      context_insist_tokens: 250000
       hash_length: 6
       hash_algorithm: sha256-base36
       max_slug_words: 5

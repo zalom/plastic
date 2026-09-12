@@ -14,6 +14,9 @@ user-invocable: true
 
 # Intent Speccing: thinking mode
 
+Speccing is optional: a ruled or small-enough intent skips straight to How/Exec, and this
+skill runs only when the request genuinely needs a design conversation first.
+
 One skill for the whole thinking conversation on an intent. It asks one question at a time,
 records every owner ruling the moment it lands, grills when asked, deposits research in
 `resources/`, and ends by writing the action files the work runs from and consolidating the

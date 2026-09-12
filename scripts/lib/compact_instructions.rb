@@ -19,9 +19,9 @@ require "digest"
 #
 # Library only: no CLI, no ENV, no I/O.
 module CompactInstructions
-  # 35 and 50 percent of a 1M window.
-  OFFER_TOKENS = 350_000
-  INSIST_TOKENS = 500_000
+  # 15 and 25 percent of a 1M window (intent 355, n5, D7).
+  OFFER_TOKENS = 150_000
+  INSIST_TOKENS = 250_000
 
   # Static on purpose. A body rendered from the user's config would change its hash
   # every time they edited config.yml, and doctor would then report a correct install
@@ -32,10 +32,10 @@ module CompactInstructions
     Plastic watches this session's context. When the harness reports how much of the
     window is used:
 
-    - At 350,000 tokens, offer to compact. Say that the hand-off in today's day ledger
+    - At 150,000 tokens, offer to compact. Say that the hand-off in today's day ledger
       is written and current, and take no for an answer: a task that is nearly done
       does not need the interruption.
-    - At 500,000 tokens, insist. Take no new work, write the hand-off in today's day
+    - At 250,000 tokens, insist. Take no new work, write the hand-off in today's day
       ledger, and compact before continuing.
     - After a compaction, say continue. The day summary at boot and the hand-off carry
       the state; do not rebuild it by re-reading files.

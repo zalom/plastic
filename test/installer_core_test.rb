@@ -262,12 +262,18 @@ class InstallerCoreTest < Minitest::Test
 
   # --- intent 312: the seeded config and the compact-instructions block ---
 
-  def test_bootstrap_seeds_the_two_context_thresholds
+  def test_compaction_defaults_150k_250k
     capture_io { @core.bootstrap }
     config = YAML.safe_load(File.read(File.join(@home, "config.yml")))
 
-    assert_equal 350_000, config["context_offer_tokens"]
-    assert_equal 500_000, config["context_insist_tokens"]
+    assert_equal 150_000, config["context_offer_tokens"]
+    assert_equal 250_000, config["context_insist_tokens"]
+  end
+
+  def test_installer_does_not_install_timer
+    source = File.read(File.join(WORKTREE, "scripts", "lib", "installer_core.rb"))
+    refute_match(/install-timer/, source)
+    refute_match(/install_timer/, source)
   end
 
   def test_install_claude_injects_the_compact_block_and_never_tracks_claude_md

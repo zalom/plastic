@@ -18,7 +18,7 @@
        core_files         -> "Core Files"
        project_stores     -> "Project Stores"
        deprecations       -> "Deprecations"
-       done_signals       -> "Done Signals"
+       done_signals       -> "Completion Signals"
        session_ledger     -> "Session Ledger" (global store only)
   4. For each check within a category, emit one line with the status icon
      and the check message. If the check has non-empty details, list them

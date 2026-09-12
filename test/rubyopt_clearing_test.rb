@@ -176,11 +176,12 @@ class RubyoptClearingTest < Minitest::Test
     # Intent 298 replaced continue, future-intent-check, auto-arm, and gate-check
     # with capture and record; intent 301 added close; intent 302 removed the
     # edit-gates and bash-gate launchers, intent 309 retired power-tools, intent
-    # 311 turned savepoint into a launcher, intent 316a added message-display, and
-    # intent 340b added stop, so the baseline is 8 recognized spawn lines (capture,
-    # check-update, close, message-display, record, savepoint, session-start, stop).
-    assert_equal 8, recognized,
-      "the shell scan should recognize 8 ruby command words across hooks/, all already " \
+    # 311 turned savepoint into a launcher, intent 316a added message-display,
+    # intent 355 n2 added call-budget, and intent 340b added stop, so the baseline
+    # is 9 recognized spawn lines (call-budget, capture, check-update, close,
+    # message-display, record, savepoint, session-start, stop).
+    assert_equal 9, recognized,
+      "the shell scan should recognize 9 ruby command words across hooks/, all already " \
       "cleared; if this number drops, SHELL_SPAWN_TOKEN stopped matching and the hooks test " \
       "above is vacuous"
   end
