@@ -565,6 +565,10 @@ class InstallerCore
       # node's envelope declares (327 C19) is a ceiling that ever actually
       # held, read from the ledger and the real packet files.
       "scripts/lib/graph_measure_budget.rb" => "scripts/lib/graph_measure_budget.rb",
+      # Intent 343 (G10, n5): the `cohorts` verb's model section - the store
+      # walk and whether a recorded model= still matches what config
+      # resolves today through RunnerPolicy.
+      "scripts/lib/graph_measure_models.rb" => "scripts/lib/graph_measure_models.rb",
     }
   end
 
