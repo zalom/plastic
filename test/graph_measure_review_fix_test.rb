@@ -323,12 +323,14 @@ class GraphMeasureReviewFixTest < Minitest::Test
 
   # --- 8.7 (B3): a bucket with no measured source renders unavailable ---------
 
-  # Corrected again by n9 row 9.3 (v2 NEW-3): 337 has no graph.md at all, so
-  # its review-fix bucket has no node of that kind in the first place (a
-  # real zero), distinct from "build" and "verify", which have real nodes
-  # that simply never carried a measured span (unavailable). The old
-  # assertion here pinned NEW-3's own defect - all three buckets
-  # collapsing into the same "unavailable" - not a fact worth keeping.
+  # Corrected again by n9 row 9.3 (v2 NEW-3), then corrected a second time by
+  # n10 row 10.1 (v3 B1): n9's own fix pinned "337 has no graph.md at all, so
+  # no node is ever classified a review fix" as though the missing file were
+  # evidence of absence. It is the opposite: 337 has a verify node (v1), so a
+  # missing graph.md means the review-fix classification could not be read at
+  # all, which is unavailable, not a real zero (D24). Correcting this
+  # assertion is not weakening it; the old one pinned exactly the fabricated
+  # zero v3's B1 found on this intent's own acceptance fixture.
   def test_absent_bucket_source_renders_unavailable
     record = GraphMeasure.read(File.join(FIXTURES, "337--roadmap-graph"))
     m = GraphMeasureReport.model(record)
@@ -337,9 +339,9 @@ class GraphMeasureReviewFixTest < Minitest::Test
                    "337 has no `running` line anywhere, so #{key} has no measured source and must read " \
                    "unavailable, never 0.0"
     end
-    assert_equal 0.0, m[:buckets]["review_fix"],
-                 "337 has no graph.md at all, so no node is ever classified a review fix; that is a real " \
-                 "zero, not an unmeasured source"
+    assert_equal "unavailable", m[:buckets]["review_fix"],
+                 "337 has a verify node (v1) but no graph.md; the review-fix classification could not be " \
+                 "read, which is unavailable, never a fabricated zero (D24)"
     assert_in_delta m[:buckets]["active_seconds"], m[:buckets]["lead"], 0.01,
                      "active time is still real here (the generic gap rule finds sessions); it must all " \
                      "land in lead, not be hidden behind a false zero elsewhere"
@@ -370,6 +372,76 @@ class GraphMeasureReviewFixTest < Minitest::Test
     end
   end
 
+  # --- 10.1 (v3 B1): a fabricated zero from an unread edge source ------------
+
+  # v3's own review (resources/review--v3-2026-09-12.md, B1): the review-fix
+  # predicate reads `needs` edges from graph.md, and a missing or unparsable
+  # graph.md silently yielded an empty edge set, so no work node ever
+  # satisfied the predicate and the bucket fell to a confident-looking 0.0 -
+  # on this intent's own 337 acceptance fixture, between two honest
+  # "unavailable" lines, with `== Anomalies ==` printing "(none)". Reproduced
+  # by hand before this fix against 337 (a verify node exists, no graph.md
+  # anywhere) and against a hermetic dir whose graph.md is present but
+  # unparsable (no `## Graph` section): both gave "review_fix" => 0.0 with
+  # no anomaly naming the unread source.
+  #
+  # D24 draws the line this row enforces: a bucket renders a real 0.0 only
+  # when the absence of its kind is provable from what was actually read -
+  # either the edge source was read successfully, or no verify node exists
+  # anywhere in the record, in which case no node can satisfy the predicate
+  # whatever the edges say (the reason the hermetic one-node case in
+  # test/graph_measure_report_test.rb stays a real zero). 337 has a verify
+  # node and no graph.md, so the honest value is unavailable, with the
+  # unread source named per D4.
+  def test_absent_edge_source_renders_unavailable_not_zero
+    record = GraphMeasure.read(File.join(FIXTURES, "337--roadmap-graph"))
+    m = GraphMeasureReport.model(record)
+    assert_equal "unavailable", m[:buckets]["review_fix"],
+                 "337 has a verify node (v1) but no graph.md; the review-fix classification could not be " \
+                 "read, which is unavailable, never a fabricated zero"
+    refute_empty m[:anomalies]["unread_source"],
+                 "D4 asks for the unread source to be listed as an anomaly, never passed over in silence"
+    assert(m[:anomalies]["unread_source"].any? { |line| line.include?("graph.md") })
+
+    Dir.mktmpdir("review-fix-10-1-unparsable") do |dir|
+      FileUtils.mkdir_p(File.join(dir, "nodes"))
+      File.write(File.join(dir, "nodes", "v1.md"), <<~MD)
+        ---
+        node: v1
+        kind: verify
+        files: []
+        ---
+        # v1
+        body
+      MD
+      File.write(File.join(dir, "nodes", "n1.md"), <<~MD)
+        ---
+        node: n1
+        kind: work
+        files: []
+        ---
+        # n1
+        body
+      MD
+      File.write(File.join(dir, "graph.md"), "# not a real graph file\nno graph section here\n")
+      t0 = Time.iso8601("2026-01-01T09:00:00Z")
+      File.write(File.join(dir, "savepoint.md"), [
+        stage(t0, "Why", "spec.md created"),
+        transition(t0 + 60, "n1", "running", fields: RUNNING),
+        transition(t0 + 1800, "n1", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234")),
+        stage(t0 + 1860, "Done", "delivered"),
+      ].join)
+
+      r = GraphMeasure.read(dir)
+      m2 = GraphMeasureReport.model(r)
+      assert_equal "unavailable", m2[:buckets]["review_fix"],
+                   "an unparsable graph.md (present but missing its own ## Graph section) is the same " \
+                   "unread-source case as a missing file"
+      refute_empty r[:anomalies][:unread_source],
+                   "an unparsable graph.md must be named as an anomaly, never passed over in silence"
+    end
+  end
+
   # --- 8.9 (B5): no ceiling when a candidate merely honored the budgets -------
 
   def test_no_ceiling_reported_when_budgets_were_merely_honored
@@ -383,12 +455,22 @@ class GraphMeasureReviewFixTest < Minitest::Test
 
     # Pin the stated threshold (WELL_BELOW_RATIO = 0.5): a candidate must
     # use at most half of EVERY usable attempt's own declared budget.
+    #
+    # Corrected by n10 row 10.2 (v3 M1): this used to assert `detected`
+    # here, on the strength of the ratio alone. D25 rules that a two-node
+    # band is never "several" no matter how far under budget it sits (the
+    # same shape as M1's own false positive, two nodes comfortably under a
+    # generous budget); reaching WELL_BELOW_RATIO is necessary but not
+    # sufficient once SEVERAL_CLUSTER_THRESHOLD also gates detection.
     at_boundary = {
       "n1" => { declared_budget: 2000, attempts: [{ effective_tokens: 1000 }] },
       "n2" => { declared_budget: 2000, attempts: [{ effective_tokens: 999 }] },
     }
     boundary = GraphMeasureBudget.send(:detect_ceiling, at_boundary)
-    assert boundary[:detected], "1000 of 2000 is exactly the 50% threshold and must still count as well below"
+    refute boundary[:detected],
+           "1000 of 2000 clears the 50% ratio, but two nodes are still not \"several\" (D25); the ratio " \
+           "alone is not evidence of a shared ceiling"
+    assert_equal :insufficient_cluster, boundary[:reason]
 
     just_over = {
       "n1" => { declared_budget: 2000, attempts: [{ effective_tokens: 1001 }] },

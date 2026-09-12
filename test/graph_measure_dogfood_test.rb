@@ -302,10 +302,14 @@ class GraphMeasureDogfoodTest < Minitest::Test
   # span lands in "lead", the one bucket that is always a real number by
   # construction.
   #
-  # Corrected again by n9 row 9.3 (v2 NEW-3): the review-fix bucket is a
-  # real zero here, not unavailable - 337 has no graph.md at all, so no
-  # node is ever classified a review fix in the first place, distinct from
-  # build/verify, whose nodes exist but never carried a measured span.
+  # Corrected again by n9 row 9.3 (v2 NEW-3), then corrected a second time by
+  # n10 row 10.1 (v3 B1): n9's own fix pinned "337 has no graph.md at all, so
+  # no node is ever classified a review fix" as evidence of a real zero. It
+  # is the opposite: 337 has a verify node (v1), so a missing graph.md means
+  # the review-fix classification could not be read at all, which is
+  # unavailable, not a real zero (D24). Correcting this assertion is not
+  # weakening it; the old one pinned the exact fabricated zero v3's B1 found
+  # on this intent's own acceptance fixture.
   def test_337_model_hop_verify_cost_unavailable
     r = record_337
     r[:nodes].each do |id, node|
@@ -315,7 +319,7 @@ class GraphMeasureDogfoodTest < Minitest::Test
     m = GraphMeasureReport.model(r)
     assert_equal "unavailable", m[:buckets]["build"]
     assert_equal "unavailable", m[:buckets]["verify"]
-    assert_equal 0.0, m[:buckets]["review_fix"]
+    assert_equal "unavailable", m[:buckets]["review_fix"]
     assert_in_delta m[:buckets]["active_seconds"], m[:buckets]["lead"], 0.01
   end
 

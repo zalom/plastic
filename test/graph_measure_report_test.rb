@@ -481,4 +481,41 @@ class GraphMeasureReportTest < Minitest::Test
     assert_equal "blockers_found", v1_337["verdict"]
     assert_equal "unavailable", v1_337["active_span_seconds"]
   end
+
+  # --- 10.4 (v3 M3): the sum check is withheld when a term is unavailable -------
+
+  # v3's own review (M3, the second half of v2's NEW-3): `sums_to_active` was
+  # computed from the internal numeric sums, which always hold numbers, while
+  # the rendered bucket terms may be "unavailable". Reproduced by hand before
+  # this fix against 337: "build: unavailable / verify: unavailable /
+  # review fix: 0.0 / lead: 84.2 / sum equals active time (84.2 min): true" -
+  # two of the four addends are not shown on the line above, and the line
+  # below still vouches for arithmetic the reader cannot check.
+  def test_the_sum_check_is_withheld_when_a_term_is_unavailable
+    record = GraphMeasure.read(DIR_337)
+    buckets = GraphMeasureReport.model(record)[:buckets]
+    assert_equal "unavailable", buckets["build"]
+    assert_equal "unavailable", buckets["verify"]
+    assert_equal "unavailable", buckets["sums_to_active"],
+                 "two of the four addends are not shown as numbers, so the sum cannot be checked from " \
+                 "what is shown; it must not still assert true"
+
+    text = GraphMeasureReport.render_text(record)
+    assert_match(/sum equals active time \(84\.2 min\): unavailable/, text)
+
+    with_intent_dir do |dir|
+      t0 = stamp("2026-01-01T09:00:00Z")
+      write_savepoint(dir, [
+        stage(t0, "Why", "spec.md created"),
+        transition(t0 + 60, "n1", "running", fields: RUNNING),
+        transition(t0 + 1860, "n1", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234")),
+        stage(t0 + 1920, "Done", "delivered"),
+      ])
+      record_all_numeric = GraphMeasure.read(dir)
+      buckets_all_numeric = GraphMeasureReport.model(record_all_numeric)[:buckets]
+      assert_equal true, buckets_all_numeric["sums_to_active"],
+                   "when all four terms render as real numbers the arithmetic is checkable and the " \
+                   "boolean stands"
+    end
+  end
 end
