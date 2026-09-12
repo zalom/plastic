@@ -46,14 +46,19 @@ class MeterWatch
 
   def compute_state(previous)
     return base_state("unavailable") unless File.file?(@cache_path)
-    return base_state("stale") if stale?
+    return stopped?(previous) ? previous : base_state("stale") if stale?
 
     cache = JSON.parse(File.read(@cache_path))
     five_hour = cache["five_hour"]
     seven_day = cache["seven_day"]
     resets_at = cache["resets_at"]
 
-    label = if previous && previous["state"] == "stop" && reset_passed?(resets_at)
+    # Resume compares `now` against the STOP's OWN resets_at (carried
+    # forward on `previous`, from the tick that first wrote "stop"), never
+    # the cache's current resets_at: the cache moves resets_at on to the
+    # NEXT window before five_hour/seven_day themselves drop, so comparing
+    # against the live value would never report resume (B4).
+    label = if stopped?(previous) && reset_passed?(previous["resets_at"])
               "resume"
             else
               classify(five_hour, seven_day)
@@ -62,6 +67,10 @@ class MeterWatch
     base_state(label, five_hour: five_hour, seven_day: seven_day, resets_at: resets_at)
   rescue JSON::ParserError
     base_state("unavailable")
+  end
+
+  def stopped?(previous)
+    previous && previous["state"] == "stop"
   end
 
   def classify(five_hour, seven_day)

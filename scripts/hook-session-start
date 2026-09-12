@@ -36,15 +36,18 @@ rescue StandardError
 end
 payload_session_id = stdin_payload.is_a?(Hash) ? stdin_payload["session_id"].to_s : ""
 
-# --- subagent marker (intent 355 spec D9, node n7): the stdin payload carries
-# agent_id or agent_type only when this SessionStart call runs inside a
-# spawned agent. Read from that payload only, never from an environment
-# variable, so a helper needs the core banner alone. An absent marker (the
+# --- subagent marker (intent 355 spec D9, node n7; review fix n8, B6): the
+# stdin payload carries agent_id only when this SessionStart call runs
+# inside a spawned agent. agent_type alone is not enough: a live
+# `claude --agent` session carries agent_type on every turn but never
+# agent_id, so keying on agent_type would boot a live agent session with the
+# core banner only. Read from that payload only, never from an environment
+# variable, so a helper needs the core banner alone. An absent agent_id (the
 # common case) is a live session. Any exception here still boots the banner,
 # never nothing: the rescue falls back to a live session, whose own content
 # already comes from paths this file already guards independently.
 subagent_session = begin
-  stdin_payload.is_a?(Hash) && !!(stdin_payload["agent_id"] || stdin_payload["agent_type"])
+  stdin_payload.is_a?(Hash) && !!stdin_payload["agent_id"]
 rescue StandardError
   false
 end

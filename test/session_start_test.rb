@@ -474,9 +474,11 @@ class SessionStartDayLedgerTest < Minitest::Test
   end
 end
 
-# Intent 355 spec D9, node n7: a subagent needs the core banner only. The
-# stdin payload's agent_id/agent_type marks a subagent SessionStart call; an
-# absent marker is a live session, and the marker is read only from that
+# Intent 355 spec D9, node n7 (review fix n8, B6): a subagent needs the core
+# banner only. The stdin payload's agent_id alone marks a subagent
+# SessionStart call; agent_type is carried by a live `claude --agent` session
+# too, so agent_type without agent_id is a live session, not a subagent. An
+# absent agent_id is a live session, and the marker is read only from that
 # payload, never from an environment variable. Fixture carries an active
 # intent and a stale future intent behind PLASTIC.md so a live boot's full
 # content (Active intents, Stale future intents, day ledger) has something to
@@ -562,12 +564,25 @@ class SessionStartSubagentTest < Minitest::Test
     assert_includes ctx, "Active intents",
                     "an agent id carried only on the env, never on stdin, must never mark a subagent session"
 
-    payload_with_marker = JSON.generate("session_id" => "sess-marker-only", "agent_type" => "executor")
+    payload_with_marker = JSON.generate("session_id" => "sess-marker-only", "agent_id" => "agent-42")
     out2, _err2, status2 = run_hook(stdin_data: payload_with_marker, session_id: "sess-marker-only")
     assert_equal 0, status2.exitstatus
     ctx2 = JSON.parse(out2).dig("hookSpecificOutput", "additionalContext")
     refute_includes ctx2, "Active intents",
                     "the marker on the stdin payload alone, with no env support at all, must still mark a subagent"
+  end
+
+  # Row 7.2 (B6): a live `claude --agent` session carries agent_type but no
+  # agent_id (only a spawned subagent carries agent_id). Reading agent_type
+  # as the marker would boot a live agent session with the core banner only.
+  def test_agent_type_without_agent_id_is_a_live_session
+    payload = JSON.generate("session_id" => "live-agent-type-only", "agent_type" => "executor")
+    out, _err, status = run_hook(stdin_data: payload, session_id: "live-agent-type-only")
+    assert_equal 0, status.exitstatus
+    ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+
+    assert_includes ctx, "Active intents",
+                     "agent_type alone, with no agent_id, must be a live session, not a subagent"
   end
 
   # Row 7.6
