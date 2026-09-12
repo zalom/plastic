@@ -3,7 +3,7 @@
 > **This file is maintained by Plastic.** It is overwritten on update; do not edit it. Project
 > rules go in `AGENTS.md`. Deeper doctrine lives in the six `plastic-conventions` chapters
 > (`references/<chapter>.md`: knowledge-graph, lifecycle-and-savepoints, locks-and-worktrees,
-> completion-and-done, maintenance-and-revisions, roadmaps), read on demand.
+> completion-and-done, maintenance-and-revisions, roadmaps).
 
 ## Two Modes, Plus Auto
 
@@ -56,7 +56,7 @@ ledger), and `runner answer` (close a `needs_decision` node). `spec.md` stays op
 `plan.md` and `checklist.md` exist only for a legacy intent with no `graph.md`.
 
 Invoke a skill for your harness: Claude Code uses the slash form (`/plastic-intent-creating`);
-Codex CLI uses a dollar prefix (`$plastic-intent-creating`) and may select a skill by its description.
+Codex CLI uses a dollar prefix instead (`$plastic-intent-creating`), and may also select a skill implicitly by matching its description.
 
 `## Insights` is the append-only log of durable discoveries from every stage, newest at the
 bottom, never prepended, each entry prefixed `{utc-iso8601} · {stage} · {author}`. Write
@@ -71,8 +71,8 @@ An auto team is `plastic-enforcer` (the lead) plus `plastic-executor`; models li
 Twenty skills, each `plastic-<name>`, listed by your harness. `plastic-doctor` checks
 installation health (core, store, and full scopes). `plastic-feedback` turns a Plastic quirk,
 bug, or feature idea into a redacted local report and a prefilled GitHub issue URL; only the
-user submits it. If the user hits one, offer to invoke the plastic-feedback skill yourself
-instead of waiting to be asked. A release is a collection of intents; `plastic-releasing`
+user submits it. If the user hits one, offer to invoke the plastic-feedback skill yourself.
+A release is a collection of intents; `plastic-releasing`
 runs the flow. A roadmap is an ordered, delivery-side collection; `plastic-roadmap` owns it.
 
 ## State System
