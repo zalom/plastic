@@ -169,12 +169,7 @@ ledger is missing (then rebuild it with `Savepoint.rebuild_savepoint`).
 | `How  plan.md created` / `How  checklist.md created` / `Exec  started` | Exec (verify plan, matrix, checklist) |
 | `Exec  outcome.md created` | Exec done; complete the intent |
 | `Done  delivered|abandoned` | Terminal; do not resume |
-| A node or `Intent` transition line (`n1  running ...`, `Intent  needs_decision ...`) | Exec; a graph delivery is in progress - drive it through `scripts/runner`'s three public verbs, `step` (one turn of the dispatch loop), `status` (renders ledger state, safe to poll constantly), and `answer` (closes a `needs_decision` node) - read node status through `NodeLedger.status` before dispatching anything, never re-derive it by eye |
-
-`scripts/graph-measure` is the read-only sibling over that same ledger, on its own three public
-verbs: `intent` (a per-intent summary), `budget` (spend against the stated cut order), and
-`cohorts` (population, qualified-field counts, and model drift across a whole store) - it never
-dispatches and never writes, so it is always safe to run alongside a live delivery.
+| A node or `Intent` transition line (`n1  running ...`, `Intent  needs_decision ...`) | Exec; a graph delivery is in progress - drive it through `scripts/runner`'s three public verbs, `step` (one turn of the dispatch loop), `status` (renders ledger state, safe to poll constantly), and `answer` (closes a `needs_decision` node) - read node status through `NodeLedger.status` before dispatching anything, never re-derive it by eye. `scripts/graph-measure` is the read-only sibling over that same ledger, with its own three public verbs `intent`, `budget`, and `cohorts` - it never dispatches and never writes |
 
 Filesystem fallback, in order: `checklist.md` with items checked means resume Exec from the
 first unchecked item; `plan.md` plus `checklist.md` means enter Exec; `spec.md` alone means
