@@ -335,10 +335,8 @@ class NodeRunCliTest < Minitest::Test
     write_lock(owner: "sess-1")
     provision_node_worktree("n1")
 
-    before_refusal = File.exist?(savepoint_path) ? File.read(savepoint_path) : nil
     run_cli(@dir, "--node", "n1", "--session", "sess-1")
-    after_refusal = File.exist?(savepoint_path) ? File.read(savepoint_path) : nil
-    assert_equal before_refusal, after_refusal, "a refusal must never touch savepoint.md"
+    refute File.exist?(savepoint_path), "a refusal must never write savepoint.md into existence"
 
     build_running_node(node: "n1", session: "sess-1")
     before_run = File.read(savepoint_path)
