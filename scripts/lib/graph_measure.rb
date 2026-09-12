@@ -73,6 +73,18 @@ module GraphMeasure
     hop_ever_seen = transition_events.any? { |e| e[:fields].key?("hop") }
     review_fix_memo = {}
 
+    # D24 (after v3 B1): a work node can only be PROVEN not a review fix by
+    # reading the `needs` edges that would have made it one. When graph.md
+    # is missing or unparsable, `edges` above falls back to `{}` in silence,
+    # which used to read exactly like "read the edges, found none" - a
+    # bucket built on that silently reassigns real minutes to "build" and
+    # reports a confident 0.0 for review fixes. The only case where an
+    # unread edge source is still harmless is when no verify node exists
+    # anywhere in the record at all: then no node can reach one through any
+    # edge set, read or not (the hermetic one-node case this preserves).
+    verify_node_exists = kind_of.values.include?("verify")
+    review_fix_unreadable = !graph[:readable] && verify_node_exists
+
     nodes = node_ids.each_with_object({}) do |id, memo|
       attempts = attempts_by_subject[id] || []
       kind = kind_of[id]
@@ -88,6 +100,15 @@ module GraphMeasure
     end
 
     anomalies = split_anomalies(NodeLedger.anomalies(File.join(dir, SAVEPOINT_FILE)))
+    # D4: an unread classification source is counted and named, never passed
+    # over in silence (spec row 1.10's own rule, applied to graph.md rather
+    # than a torn ledger line).
+    anomalies[:unread_source] = if review_fix_unreadable
+                                   [{ line: "graph.md missing or unparsable; review-fix classification excluded",
+                                      reason: "unread_source" }]
+                                 else
+                                   []
+                                 end
 
     record = {
       ok: true,
@@ -427,9 +448,10 @@ module GraphMeasure
   def load_graph(dir)
     graph_path = File.join(dir, "graph.md")
     result = with_safe_path(graph_path) { |p| p ? GraphFile.parse(p) : nil }
-    edges = result && result[:graph] ? result[:graph][:edges] : {}
-    node_ids = result && result[:graph] ? result[:graph][:nodes] : []
-    { edges: edges || {}, node_ids: node_ids || [] }
+    readable = !!(result && result[:graph])
+    edges = readable ? result[:graph][:edges] : {}
+    node_ids = readable ? result[:graph][:nodes] : []
+    { edges: edges || {}, node_ids: node_ids || [], readable: readable }
   end
   private_class_method :load_graph
 
@@ -582,7 +604,7 @@ module GraphMeasure
   def split_anomalies(anomalies)
     torn = anomalies.select { |a| a[:reason].to_s.start_with?("torn:") }
     unattributed = anomalies.select { |a| a[:reason].to_s.start_with?("unattributed") }
-    { torn: torn, unattributed: unattributed }
+    { torn: torn, unattributed: unattributed, unread_source: [] }
   end
   private_class_method :split_anomalies
 

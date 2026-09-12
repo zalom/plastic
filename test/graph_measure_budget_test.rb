@@ -251,6 +251,69 @@ class GraphMeasureBudgetTest < Minitest::Test
     assert_nil zero[:value]
   end
 
+  # --- 10.2 (v3 M1): a cluster needs SEVERAL_CLUSTER_THRESHOLD nodes, not two ----
+
+  # v3's own review (resources/review--v3-2026-09-12.md, M1): the existence
+  # test at the old `graph_measure_budget.rb:349` accepted two nodes, so any
+  # two packets within twenty percent of each other formed a "cluster" and
+  # the candidate was still `max(effective)`. Reproduced by hand before this
+  # fix, against the exact shape v3 named: two nodes at 6000 and 7000
+  # effective tokens against a declared 100000 each, plus one at 1200
+  # against 150000, reported "detected: true, value: 7000" though only the
+  # two-node pair sits anywhere near that number. Reproduced again against
+  # 340's own real table: the n1+n2 subset alone reported "detected: true,
+  # value: 6295", a number the full 14-node table's real ceiling (7717)
+  # never produces.
+  def test_two_nodes_within_the_band_are_not_several
+    two_of_three = {
+      "n1" => { declared_budget: 100_000, attempts: [{ effective_tokens: 6000 }] },
+      "n2" => { declared_budget: 100_000, attempts: [{ effective_tokens: 7000 }] },
+      "n3" => { declared_budget: 150_000, attempts: [{ effective_tokens: 1200 }] },
+    }
+    ceiling = GraphMeasureBudget.send(:detect_ceiling, two_of_three)
+    refute ceiling[:detected],
+           "two nodes converging within the band are not \"several\" distinct usable attempts (D21, D25); " \
+           "a two-node band is not the evidence a shared ceiling needs"
+
+    record = GraphMeasureBudget.read(DIR_340)
+    n1_n2 = record[:nodes].select { |id, _| %w[n1 n2].include?(id) }
+    subset = GraphMeasureBudget.send(:detect_ceiling, n1_n2)
+    refute subset[:detected],
+           "340's own n1+n2 subset is a two-node band; it must not report a ceiling the full 14-node " \
+           "table's own real ceiling (7717) never produces"
+  end
+
+  # --- 10.3 (v3 M2): the clustered well-below ratio is 0.8, not 0.9 -------------
+
+  # v3's own review (M2): `CLUSTERED_WELL_BELOW_RATIO = 0.9` let a cluster at
+  # ninety percent of its declared budget report a ceiling, the case where
+  # the declared budget IS the ceiling, the opposite of what C19 asks.
+  # Reproduced by hand before this fix: three nodes at 9000, 8990 and 8980
+  # against a declared 10000 each reported "detected: true, value: 9000".
+  # D25 rules "far under" at 0.8, which the four D21 pinned cases (asserted
+  # above and in test_ceiling_rule_separates_the_four_pinned_cases) still
+  # separate correctly.
+  def test_a_cluster_at_ninety_percent_of_its_budget_is_not_a_ceiling
+    ninety_percent = {
+      "n1" => { declared_budget: 10_000, attempts: [{ effective_tokens: 9000 }] },
+      "n2" => { declared_budget: 10_000, attempts: [{ effective_tokens: 8990 }] },
+      "n3" => { declared_budget: 10_000, attempts: [{ effective_tokens: 8980 }] },
+    }
+    ceiling = GraphMeasureBudget.send(:detect_ceiling, ninety_percent)
+    refute ceiling[:detected],
+           "ninety percent utilisation of the declared budget is the case where the declared budget IS " \
+           "the ceiling, not evidence of one sitting under it (D21, D25)"
+    assert_equal :not_well_below_declared_budgets, ceiling[:reason]
+
+    eighty_percent = {
+      "n1" => { declared_budget: 10_000, attempts: [{ effective_tokens: 8000 }] },
+      "n2" => { declared_budget: 10_000, attempts: [{ effective_tokens: 7990 }] },
+      "n3" => { declared_budget: 10_000, attempts: [{ effective_tokens: 7980 }] },
+    }
+    at_ratio = GraphMeasureBudget.send(:detect_ceiling, eighty_percent)
+    assert at_ratio[:detected], "eighty percent of the declared budget is exactly D25's \"far under\" bar"
+  end
+
   # --- 4.9: a single node never reports a ceiling --------------------------------
 
   def test_single_node_never_reports_a_ceiling
