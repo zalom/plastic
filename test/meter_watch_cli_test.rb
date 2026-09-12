@@ -52,6 +52,6 @@ class MeterWatchCliTest < Minitest::Test
     assert_includes content, SCRIPT
     assert_includes out, plist_path
 
-    refute_match(/launchctl/, content), "the plist must not shell out to launchctl"
+    refute_match(/launchctl/, content, "the plist must not shell out to launchctl")
   end
 end
