@@ -83,7 +83,7 @@ class GraphMeasureReportTest < Minitest::Test
       text = GraphMeasureReport.render_text(record)
 
       # Delivery total is Why-to-Done, 10 minutes; the What-to-Why gap is 2h,
-      # reported separately and never folded into the total.
+      # reported separately and never counted inside the total.
       assert_match(/delivery total: 10\.0 min/, text)
       assert_match(/scaffold gap.*: 120\.0 min/, text)
       refute_match(/delivery total: 130\.0 min/, text)
@@ -266,11 +266,11 @@ class GraphMeasureReportTest < Minitest::Test
       buckets = GraphMeasureReport.model(record)[:buckets]
 
       assert_in_delta 540.0, buckets["verify"], 0.001   # v1: 60..600
-      assert_in_delta 1140.0, buckets["build"], 0.001   # n1: 660..1800, not fold
-      assert_in_delta 1140.0, buckets["fold"], 0.001    # n2: 1860..3000, needs v1
+      assert_in_delta 1140.0, buckets["build"], 0.001   # n1: 660..1800, not a review fix
+      assert_in_delta 1140.0, buckets["review_fix"], 0.001 # n2: 1860..3000, needs v1
       assert_in_delta 240.0, buckets["lead"], 0.001      # the four terminal-to-running gaps, 60s each
       assert_equal true, buckets["sums_to_active"]
-      sum = buckets["build"] + buckets["verify"] + buckets["fold"] + buckets["lead"]
+      sum = buckets["build"] + buckets["verify"] + buckets["review_fix"] + buckets["lead"]
       assert_in_delta buckets["active_seconds"], sum, 0.001
 
       text = GraphMeasureReport.render_text(record)
@@ -286,8 +286,9 @@ class GraphMeasureReportTest < Minitest::Test
   # attempts ever carried a measured span" - both rendered "unavailable".
   # Reproduced by hand before this fix, against a hermetic one-node
   # work-only intent with no verify node and no review-fix node anywhere:
-  # buckets read build: 30.0 / verify: unavailable / fold: unavailable,
-  # though the report's own node table proves neither kind exists at all.
+  # the build bucket read 30.0 minutes while the other two both read
+  # unavailable, though the report's own node table proves neither of those
+  # two kinds exists at all.
   def test_absent_kind_renders_zero_and_unmeasured_renders_unavailable
     with_intent_dir do |dir|
       t0 = stamp("2026-01-01T09:00:00Z")

@@ -71,7 +71,7 @@ module GraphMeasure
     node_ids = (graph[:node_ids] + attempts_by_subject.keys.reject { |s| s == Savepoint::INTENT_SUBJECT }).uniq
     kind_of, kind_source_of = resolve_kinds(dir, node_ids)
     hop_ever_seen = transition_events.any? { |e| e[:fields].key?("hop") }
-    fold_memo = {}
+    review_fix_memo = {}
 
     nodes = node_ids.each_with_object({}) do |id, memo|
       attempts = attempts_by_subject[id] || []
@@ -79,7 +79,7 @@ module GraphMeasure
       memo[id] = {
         kind: kind,
         kind_source: kind_source_of[id] || :unknown,
-        fold: kind == "work" ? fold?(id, kind_of, graph[:edges], fold_memo) : false,
+        review_fix: kind == "work" ? review_fix?(id, kind_of, graph[:edges], review_fix_memo) : false,
         status: NodeLedger.status_for_content(content, id),
         model: node_model(attempts),
         hop: node_hop(attempts, hop_ever_seen),
@@ -422,7 +422,7 @@ module GraphMeasure
   end
   private_class_method :complement
 
-  # --- kind and foldness: spec D6, D7, rows 1.18-1.20 --------------------------
+  # --- kind and review-fix classification: spec D6, D7, rows 1.18-1.20 --------
 
   def load_graph(dir)
     graph_path = File.join(dir, "graph.md")
@@ -469,20 +469,20 @@ module GraphMeasure
   end
   private_class_method :find_node_file
 
-  # A fold node is a work node that reaches a verify node through `needs`
-  # without passing through another verify node, transitively (spec D7, row
-  # 1.20): traversal stops expanding past the first verify node on any
-  # branch, so a work node several `needs` hops from its nearest verify still
-  # folds.
-  def fold?(id, kind_of, edges, memo)
+  # A review-fix node is a work node that reaches a verify node through
+  # `needs` without passing through another verify node, transitively (spec
+  # D7, D23, row 1.20): traversal stops expanding past the first verify node
+  # on any branch, so a work node several `needs` hops from its nearest
+  # verify is still classified a review fix.
+  def review_fix?(id, kind_of, edges, memo)
     return memo[id] if memo.key?(id)
 
     memo[id] = false
     memo[id] = (edges[id] || []).any? do |target|
-      kind_of[target] == "verify" || fold?(target, kind_of, edges, memo)
+      kind_of[target] == "verify" || review_fix?(target, kind_of, edges, memo)
     end
   end
-  private_class_method :fold?
+  private_class_method :review_fix?
 
   # --- model, hop: spec rows 1.25, 1.26 -----------------------------------------
 

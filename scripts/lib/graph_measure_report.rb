@@ -167,7 +167,7 @@ module GraphMeasureReport
         "id" => id,
         "kind" => av(node[:kind]),
         "kind_source" => av(node[:kind_source] && node[:kind_source].to_s),
-        "fold" => node[:fold],
+        "review_fix" => node[:review_fix],
         "status" => av(node[:status]),
         "model" => av(node[:model]),
         "hop" => node[:hop] == false ? false : av(node[:hop]),
@@ -216,9 +216,10 @@ module GraphMeasureReport
   private_class_method :sanitize_comment
 
   def node_block(nodes)
-    lines = ["== Nodes ==", "| Node | Kind | Fold | Status | Model | Hop |", "| --- | --- | --- | --- | --- | --- |"]
+    lines = ["== Nodes ==", "| Node | Kind | Review fix | Status | Model | Hop |",
+             "| --- | --- | --- | --- | --- | --- |"]
     nodes.each do |n|
-      lines << "| #{n['id']} | #{n['kind']} | #{n['fold']} | #{n['status']} | #{n['model']} | #{n['hop']} |"
+      lines << "| #{n['id']} | #{n['kind']} | #{n['review_fix']} | #{n['status']} | #{n['model']} | #{n['hop']} |"
       next if n["attempts"].empty?
 
       lines << "  | Attempt | Holder | Terminal | Raw (min) | Active (min) | Comment |"
@@ -234,25 +235,26 @@ module GraphMeasureReport
 
   # --- buckets: spec D17, matrix row 2.13 --------------------------------------
 
-  # Buckets by node kind (spec's "build, verify, fold" split): a verify node's
-  # attempts go to "verify", a folded work node's attempts go to "fold",
-  # everything else with a span goes to "build". "lead" is the remainder of
-  # active time no attempt's intersected span accounts for (spec's "lead gaps
-  # between one terminal line and the next running line"), so the four
-  # buckets always sum to active time by construction; row 2.13 states that
-  # explicitly rather than leaving it for the reader to add up.
+  # Buckets by node kind (spec's "build, verify, review fix" split): a
+  # verify node's attempts go to "verify", a review-fix work node's
+  # attempts go to "review_fix", everything else with a span goes to
+  # "build". "lead" is the remainder of active time no attempt's
+  # intersected span accounts for (spec's "lead gaps between one terminal
+  # line and the next running line"), so the four buckets always sum to
+  # active time by construction; row 2.13 states that explicitly rather
+  # than leaving it for the reader to add up.
   # B3 (v1 review): the three gate buckets seeded at 0.0 and never fell back
   # to UNAVAILABLE, so a ledger where NO attempt in a bucket ever carries a
   # measured span (337, which has no `running` line anywhere) rendered
-  # "build: 0.0 / verify: 0.0 / fold: 0.0", indistinguishable from "measured
-  # and genuinely zero", six lines above `== Verify cost ==` correctly
-  # printing "unavailable" for the same absent source. Reproduced by hand:
-  # `graph-measure intent test/fixtures/ledgers/337--roadmap-graph` prints
-  # exactly that shape. `contributed` tracks
-  # whether at least one attempt actually reached a bucket; the running sum
-  # (`sums`) still starts at 0.0 for the arithmetic `lead`/`sums_to_active`
-  # need, but the RENDERED value for a bucket nothing contributed to is
-  # UNAVAILABLE, never the seed.
+  # "build: 0.0 / verify: 0.0 / review_fix: 0.0", indistinguishable from
+  # "measured and genuinely zero", six lines above `== Verify cost ==`
+  # correctly printing "unavailable" for the same absent source. Reproduced
+  # by hand: `graph-measure intent test/fixtures/ledgers/337--roadmap-graph`
+  # prints exactly that shape. `contributed` tracks whether at least one
+  # attempt actually reached a bucket; the running sum (`sums`) still
+  # starts at 0.0 for the arithmetic `lead`/`sums_to_active` need, but the
+  # RENDERED value for a bucket nothing contributed to is UNAVAILABLE,
+  # never the seed.
   #
   # NEW-3 (v2 review): `contributed` could only say "nothing landed here",
   # never distinguish WHY - a bucket with no node of its kind in this intent
@@ -260,22 +262,22 @@ module GraphMeasureReport
   # same UNAVAILABLE as a bucket whose nodes exist but never carried a
   # measured span (unmeasurable, not absent). Reproduced by hand against a
   # hermetic one-node work-only intent: "build: 30.0 / verify: unavailable
-  # / fold: unavailable" though the intent has no verify node and no fold
-  # node anywhere, which the report's own node table already proves.
-  # `has_kind` now tracks whether ANY node of a bucket's kind exists at
-  # all; a bucket with no node of its kind renders 0.0 (a real, checkable
-  # zero), and only a bucket whose nodes exist but never contributed a
-  # measured span renders UNAVAILABLE.
+  # / review_fix: unavailable" though the intent has no verify node and no
+  # review-fix node anywhere, which the report's own node table already
+  # proves. `has_kind` now tracks whether ANY node of a bucket's kind
+  # exists at all; a bucket with no node of its kind renders 0.0 (a real,
+  # checkable zero), and only a bucket whose nodes exist but never
+  # contributed a measured span renders UNAVAILABLE.
   def buckets_model(record)
     active = record[:active_seconds]
     unless active.is_a?(Numeric)
-      return { "build" => UNAVAILABLE, "verify" => UNAVAILABLE, "fold" => UNAVAILABLE, "lead" => UNAVAILABLE,
+      return { "build" => UNAVAILABLE, "verify" => UNAVAILABLE, "review_fix" => UNAVAILABLE, "lead" => UNAVAILABLE,
                "active_seconds" => UNAVAILABLE, "sums_to_active" => false }
     end
 
-    sums = { "build" => 0.0, "verify" => 0.0, "fold" => 0.0 }
-    has_kind = { "build" => false, "verify" => false, "fold" => false }
-    contributed = { "build" => false, "verify" => false, "fold" => false }
+    sums = { "build" => 0.0, "verify" => 0.0, "review_fix" => 0.0 }
+    has_kind = { "build" => false, "verify" => false, "review_fix" => false }
+    contributed = { "build" => false, "verify" => false, "review_fix" => false }
     record[:nodes].each_value do |node|
       key = bucket_key(node)
       has_kind[key] = true
@@ -288,10 +290,10 @@ module GraphMeasureReport
     end
     accounted = sums.values.sum
     lead = [active - accounted, 0.0].max
-    sums_to_active = (sums["build"] + sums["verify"] + sums["fold"] + lead - active).abs < 0.001
+    sums_to_active = (sums["build"] + sums["verify"] + sums["review_fix"] + lead - active).abs < 0.001
 
     totals = {}
-    %w[build verify fold].each do |key|
+    %w[build verify review_fix].each do |key|
       totals[key] = if contributed[key]
                       sums[key]
                     elsif has_kind[key]
@@ -309,7 +311,7 @@ module GraphMeasureReport
 
   def bucket_key(node)
     return "verify" if node[:kind] == "verify"
-    return "fold" if node[:fold]
+    return "review_fix" if node[:review_fix]
 
     "build"
   end
@@ -322,7 +324,7 @@ module GraphMeasureReport
     else
       lines << "build: #{fmt_minutes(b['build'])} min"
       lines << "verify: #{fmt_minutes(b['verify'])} min"
-      lines << "fold: #{fmt_minutes(b['fold'])} min"
+      lines << "review fix: #{fmt_minutes(b['review_fix'])} min"
       lines << "lead: #{fmt_minutes(b['lead'])} min"
       lines << "sum equals active time (#{fmt_minutes(b['active_seconds'])} min): #{b['sums_to_active']}"
     end
