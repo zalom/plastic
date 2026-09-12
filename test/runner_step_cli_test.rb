@@ -157,6 +157,25 @@ class RunnerStepCliTest < Minitest::Test
     refute_nil entry["packet"]
   end
 
+  # --- n6, 6.3: step's text output fences the spawn block for a paste -------
+
+  def test_step_prints_spawn_block_fenced
+    build_ready_intent
+    arm_lock
+
+    out, _err, status = run_cli("step", @dir)
+    assert_equal 0, status.exitstatus, out
+
+    assert_includes out, "```", "the spawn block must be fenced so a session can paste it: #{out}"
+    assert_includes out, "agent: plastic-executor", out
+
+    plan = YAML.safe_load(out, permitted_classes: [], aliases: false)
+    refute_nil plan, "step's stdout must still be the YAML dispatch plan, got: #{out.inspect}"
+    assert_kind_of Array, plan["spawn"]
+    refute_empty plan["spawn"]
+    assert_includes plan["spawn"].first, "```"
+  end
+
   # --- 8.8: a malformed --return pair is refused, never raised --------------------
 
   def test_step_refuses_a_malformed_return_pair
