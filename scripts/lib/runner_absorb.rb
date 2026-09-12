@@ -86,6 +86,17 @@ module RunnerAbsorb
     return refused("node_not_running") unless current_state == "running"
 
     holder = holder_for(entries, node)
+    # 340b n8: the harness that ran this attempt, read off the node's own
+    # `running` line - never the harness of the session doing the absorbing
+    # (row 8.12). `extra_fields` carries it into every terminal fields hash
+    # below through the same `.merge(extra_fields)` every path already uses,
+    # so it reaches `done`, every `failed_verification`/`needs_decision`, and
+    # `blocked` alike; a running line with no `harness=` leaves it out of
+    # `extra_fields` entirely, so nothing invents a value (row 8.13).
+    harness = harness_for(entries, node)
+    extra_fields = {}
+    extra_fields[:harness] = harness if harness
+
     node_decl = ((context.graph || {})[:nodes] || {})[node] || {}
     kind = node_decl[:kind]
     declared_files = normalize_files(node_decl[:files])
@@ -97,12 +108,11 @@ module RunnerAbsorb
     # empty), and land `done` carrying the executor's own self-reported
     # commit on work nothing had verified ever reached the intent branch.
     unless (context.graph || {})[:ok] && !kind.nil?
-      fields = { reason: "invalid_graph", holder: holder }
+      fields = { reason: "invalid_graph", holder: holder }.merge(extra_fields)
       return write_transition(savepoint_path, context, node, "blocked", fields, now: now, ledger: ledger)
     end
 
     checks_ran = []
-    extra_fields = {}
 
     # 1. integrity ------------------------------------------------------------
     checks_ran << "integrity"
@@ -112,7 +122,7 @@ module RunnerAbsorb
         extra_fields["allow_core_drift"] = "true"
       else
         fields = { reason: "core_integrity", core_drift: drift_summary(integrity), holder: holder,
-                   gates: checks_ran.join("+") }
+                   gates: checks_ran.join("+") }.merge(extra_fields)
         return write_transition(savepoint_path, context, node, "blocked", fields, now: now, ledger: ledger)
       end
     end
@@ -301,7 +311,13 @@ module RunnerAbsorb
     { state: "append_failed", written: false, fields: fields, gates: fields[:gates],
       commit: fields[:commit], error: e.message }
   rescue ArgumentError => e
-    fallback_fields = { reason: "return_unwritable", holder: fields[:holder], gates: fields[:gates] }.compact
+    # 340b n8, row 8.11: this fallback still merges no caller `extra_fields`
+    # (unchanged from before this node), but `fields[:harness]` is read
+    # straight off the fields hash the failed write attempted, which already
+    # carries `harness` whenever the caller's own `extra_fields` had it -
+    # `.compact` drops the key rather than writing it empty when it did not.
+    fallback_fields = { reason: "return_unwritable", holder: fields[:holder], gates: fields[:gates],
+                         harness: fields[:harness] }.compact
     fallback = begin
       ledger.append_transition(savepoint_path, subject: node, state: "blocked", fields: fallback_fields, now: now)
     rescue GuardedAppend::Unavailable
@@ -351,6 +367,16 @@ module RunnerAbsorb
     last && (last[:fields] || {})["holder"]
   end
   private_class_method :holder_for
+
+  # 340b n8/row 8.12: mirrors holder_for exactly - the value on the node's
+  # OWN last `running` line, never a fresh resolve of the current session's
+  # own harness. nil when that line carried none (row 8.13), which is what
+  # keeps `extra_fields` from ever inventing the key.
+  def harness_for(entries, node)
+    last = entries.select { |e| !e[:torn] && e[:subject] == node && e[:state] == "running" }.last
+    last && (last[:fields] || {})["harness"]
+  end
+  private_class_method :harness_for
 
   def drift_summary(integrity)
     parts = []

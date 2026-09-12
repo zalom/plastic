@@ -35,6 +35,12 @@ node returns.
 The dispatch step is the paste, not a lead's hand-typed brief: copy each spawn block into the
 Agent tool as its own dispatch, verbatim.
 
+On Claude Code, the session spawns each dispatched node as a background subagent of its
+per-kind agent (`plastic-node-work`, `plastic-node-verify`, `plastic-node-research`) named in
+the spawn block. On Codex, one node runs over `codex exec` in a sandbox scoped to its kind and
+writes only a return file, which the next `step` absorbs the same way it absorbs a Claude Code
+return.
+
 ## status
 
 `ruby scripts/runner status <intent_dir>` renders the graph's ledger state: which nodes are

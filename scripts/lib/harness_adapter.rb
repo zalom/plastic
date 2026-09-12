@@ -118,4 +118,46 @@ module HarnessAdapter
     "#{return_contract.to_s.strip}\n\n#{blocks.join("\n\n")}\n"
   end
   private_class_method :render_codex
+
+  # cross_harness_resume(entries) -> [{node:, harnesses: [...], commits: {...}}, ...]
+  # (spec D12, 340b n8). `entries` is a node ledger's own parsed lines (the
+  # shape `NodeLedger.entries`/`entries_from_content` return): every declared
+  # node's own `harness=` values, read across every non-torn line for that
+  # subject in file order, deduplicated by first appearance (matrix row 8.6:
+  # the starting harness is whichever key showed up first). A `reclaimed`
+  # line carries no `harness=` of its own and is never a boundary here (row
+  # 8.7) - it is simply a line with nothing to contribute, scanned like any
+  # other. A node whose lines carry one key, or none at all, reports nothing
+  # (rows 8.2, 8.3): an old ledger with no `harness=` field anywhere must
+  # stay silent rather than raise.
+  #
+  # Every node named by ANY entry is scanned (row 8.8), not only the first;
+  # `RunnerAbsorb` is what put `harness=` on both the running line and the
+  # terminal line, so the commit that lands with the finishing harness's own
+  # terminal line is exactly the evidence a resumed node actually left
+  # behind (row 8.5).
+  def cross_harness_resume(entries)
+    live = Array(entries).reject { |e| e[:torn] }
+    nodes = live.map { |e| e[:subject] }.uniq
+
+    nodes.filter_map do |node|
+      node_lines = live.select { |e| e[:subject] == node }
+      keys = []
+      commits = Hash.new { |h, k| h[k] = [] }
+
+      node_lines.each do |e|
+        fields = e[:fields] || {}
+        key = fields["harness"]
+        next if blank?(key)
+
+        keys << key unless keys.include?(key)
+        commit = fields["commit"]
+        commits[key] << commit unless blank?(commit) || commits[key].include?(commit)
+      end
+
+      next if keys.size < 2
+
+      { node: node, harnesses: keys, commits: keys.to_h { |k| [k, commits[k]] } }
+    end
+  end
 end

@@ -46,6 +46,22 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   per attempt at `packets/<node>--a<N>.packet` and hashed, so `packet=<sha>` on a `running`
   line names an exact set of bytes an executor can be replayed from on any harness.
 
+- 340b (G7c, roadmap graph-ready-plastic, batch 4): `HarnessAdapter` is the one module that
+  names a harness (`claude-code` and `codex`), resolved from config with a `--harness`
+  override; an unknown key falls back to `claude-code` with a warning rather than to no
+  adapter at all. Three per-kind agent definitions ship - `plastic-node-work`,
+  `plastic-node-verify`, `plastic-node-research` - with verify and research carrying no
+  `Bash`. A `permissions.deny` block covering the engine directories is merged into
+  `settings.json` and removed surgically on uninstall. The Stop hook ships registered and off
+  (`runner.stop_hook` false); `runner step`'s own output is persisted to `runner-step.last`
+  and rendered in the PreCompact hand-off. `scripts/node-run` runs one node over `codex exec`
+  with a sandbox per kind (`workspace-write` for work, `read-only` for verify and research)
+  and writes only a return file for the next `step` to absorb; an internal `runner
+  until-empty` loop runs at concurrency two, capped by iteration. `harness=` rides on the
+  `running` line and every terminal line `RunnerAbsorb` writes, so
+  `HarnessAdapter.cross_harness_resume` can name a node that started on one harness and
+  finished on the other, for the release check.
+
 - 342 (G9, roadmap graph-ready-plastic, batch 2) - a backward shim for legacy intents that
   never got a `graph.md`. `ActionGraphShim` reads an intent's `actions/*.md` files, in filename
   order, as a synthetic node chain, in the same record shape `NodeFile.parse` returns, so a
