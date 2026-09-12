@@ -27,6 +27,17 @@ class SkillLint
   # A `to <verb>` or `for <noun-phrase>` purpose clause.
   PURPOSE_RE = /\b(to|for)\s+\S/i
 
+  # A refusal-doctrine keyword (intent 341, G8, n1, C35): "refuse(s/d/ing)" or "refusal".
+  REFUSAL_KEYWORD_RE = /\brefus(e|es|ed|ing|al)\b/i
+
+  # A paragraph that points at the conventions chapter instead of restating its rule.
+  CONVENTIONS_LINK_RE = %r{conventions/references/|plastic-conventions}i
+
+  # How many consecutive normalized words must match, verbatim, between a skill's refusal
+  # paragraph and the doctrine text before it counts as a restatement rather than a coincidental
+  # shared word. Long enough that ordinary doctrine-adjacent phrasing does not collide.
+  RESTATEMENT_NGRAM = 6
+
   Result = Struct.new(:violations) do
     def ok?
       violations.empty?
@@ -45,6 +56,7 @@ class SkillLint
 
   def run
     violations = []
+    doctrine = doctrine_normalized_blob
 
     skill_md_paths.each do |skill_md|
       skill_dir = File.dirname(skill_md)
@@ -55,6 +67,7 @@ class SkillLint
       violations.concat(check_bare_pointer(skill_dir, skill_md, content))
       violations.concat(check_orphan_files(skill_dir))
       violations.concat(check_references_depth(skill_dir))
+      violations.concat(check_refusal_restatement(skill_dir, skill_md, content, doctrine)) if doctrine
     end
 
     Result.new(violations)
@@ -247,6 +260,58 @@ class SkillLint
     end
     blocks << { start: start, end: lines.length - 1, text: lines[start..-1].join } if start
     blocks
+  end
+
+  # --- 6. refusal-restatement (intent 341, G8, n1, C35) ---
+
+  # Normalizes and joins every skills/conventions/references/*.md chapter into one blob, word-
+  # boundary padded, for the substring n-gram check below. Returns nil when the injected
+  # skills_dir carries no conventions/references/ directory, so this check no-ops for any
+  # SkillLint call (a fixture dir, an older tree) that never wired conventions in.
+  def doctrine_normalized_blob
+    doctrine_files = Dir.glob(File.join(@skills_dir, "conventions", "references", "*.md")).sort
+    return nil if doctrine_files.empty?
+
+    text = doctrine_files.map { |f| File.read(f) }.join(" ")
+    " #{normalize_words(text).join(" ")} "
+  end
+
+  def normalize_words(text)
+    text.downcase.gsub("`", "").gsub(/[^a-z0-9\s-]/, " ").split(/\s+/).reject(&:empty?)
+  end
+
+  def check_refusal_restatement(skill_dir, skill_md, content, doctrine)
+    violations = []
+    name = skill_name(skill_dir)
+    return violations if name == "conventions" # the doctrine source never restates itself
+
+    parsed = frontmatter_and_body(content)
+    body_lines = parsed[:body].lines
+    offset = parsed[:body_offset_lines]
+    blocks = paragraph_blocks(body_lines)
+
+    blocks.each do |block|
+      next unless block[:text].match?(REFUSAL_KEYWORD_RE)
+      next if block[:text].match?(CONVENTIONS_LINK_RE) # links the chapter instead of restating
+
+      words = normalize_words(block[:text])
+      next if words.length < RESTATEMENT_NGRAM
+
+      restated = (0..(words.length - RESTATEMENT_NGRAM)).any? do |i|
+        ngram = words[i, RESTATEMENT_NGRAM].join(" ")
+        doctrine.include?(" #{ngram} ")
+      end
+      next unless restated
+
+      violations << violation(
+        check: "refusal-restatement", skill: name, file: skill_md, line: offset + block[:start] + 1,
+        rule: "a refusal rule the conventions chapter already carries is linked, never restated",
+        message: "this paragraph restates a refusal rule word-for-word from skills/conventions/references/; " \
+                  "link the chapter instead of repeating its text"
+      )
+    end
+
+    violations
   end
 
   # --- 4. orphan-files ---

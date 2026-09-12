@@ -1,116 +1,61 @@
 ---
 name: plastic-intent-executing
-description: Use when you have a written implementation plan to execute. Default mode is subagent-driven (one executor dispatch for the whole consolidated action, tests first, reviewed by risk). Fallback mode is inline execution for environments without subagent support. If superpowers:subagent-driven-development or superpowers:executing-plans are available, delegates to them.
+description: Use when you have a graph or a plan to execute. A graph delivery runs on
+  `scripts/runner`'s three verbs, `step`, `status`, and `answer`; older, non-graph work
+  dispatches the `plastic-executor` agent for one consolidated action.
 user-invocable: true
 ---
 
 # Executing a Plan
 
-## Overview
-
-Load plan from the active intent's `plan.md`, execute all tasks, review as below, report when complete.
-
 ## Step 0: Sync Worktree First
 
-Before Step 1 (Load Plan) in either workflow below, sync the code worktree with
-main first, so no edit lands on a path a merged rename or delete already removed:
+Before touching any file the graph or the plan names, sync the code worktree with main so no
+edit lands on a path a merged rename or delete already removed:
 
 ```
 git -C <worktree> fetch origin && git -C <worktree> merge --ff-only origin/main
 ```
 
-After syncing, verify the plan's target files exist at the paths plan.md names.
-If a named file or directory is missing (renamed or removed upstream), stop and
-report it rather than editing a stale path.
+If a named file or directory is missing (renamed or removed upstream), stop and report it
+rather than editing a stale path. Read
+`../plastic-conventions/references/locks-and-worktrees.md` for delivery isolation before
+touching the worktree above.
 
-Read `../plastic-conventions/references/locks-and-worktrees.md` for delivery isolation: the
-single-owner lock, claims, worktrees, solo mode, and the station ledger, before touching the
-worktree above. This path resolves relative to this skill's own installed directory.
+## step
 
-## Mode Selection
-
-### Check for superpowers first
-If `superpowers:subagent-driven-development` is available as a skill, delegate to it. If only `superpowers:executing-plans` is available, delegate to that. If neither is available, use Plastic's own execution engine below.
-
-**CRITICAL: when delegating to superpowers:**
-- Tell the skill that the plan is at `~/.plastic/store/ID--slug/plan.md` (not `docs/superpowers/plans/`)
-- Tell the skill that specs live at `~/.plastic/store/ID--slug/spec.md` (not `docs/superpowers/specs/`)
-- All meta-artifacts must stay inside `~/.plastic/store/ID--slug/`
-- Code files go in the project tree as normal
-- Superpowers skills respect "user preferences for plan/spec location"; Plastic IS that preference
-
-### Subagent-Driven (Default)
-Dispatches subagents to do the work. The controller never implements. It dispatches, reviews, and tracks progress. One executor dispatch implements the whole consolidated action from `plan.md`, the action file's failure-mode matrix, and `checklist.md` in one pass, tests first: the matrix's tests are committed red before the code. Several independent action files are handed to the same executor in order; they are not a reason for a per-task review loop (removed in 2.0, intent 307).
-
-The post-execution review in Step 3 runs by risk (the rule lives in the auto skill). When it runs, the reviewer is a separate agent with fresh context, never the maker. The plan itself is reviewed before code by the adversarial plan reviewer (`plan-reviewer-prompt.md`), dispatched by the lead at How.
+`ruby scripts/runner step <intent_dir>` computes which nodes in `graph.md`/`nodes/*.md` are
+ready, applies dispatch policy (model, call cap), and prints a spawn block per dispatched node
+- agent, model, packet path, the one test command, the call cap - fenced in its own stdout.
+The runner itself never spawns an agent (327 D42). Call `step` again after each dispatched
+node returns.
 
 ### Graph dispatch: the paste
 
-When the plan is a graph (`nodes/*.md`, not `plan.md` plus action files), the dispatch step is the paste, not a lead's hand-typed brief. `runner step` computes readiness, applies policy, and prints a spawn block per dispatched node - agent, model, packet path, the one test command, the call cap - fenced in its own stdout. Copy each block into the Agent tool as its own dispatch, verbatim; the runner itself never spawns an agent (327 D42).
+The dispatch step is the paste, not a lead's hand-typed brief: copy each spawn block into the
+Agent tool as its own dispatch, verbatim.
 
-### Inline (Fallback)
-Executes tasks sequentially in the current session. Use when subagents aren't available or user explicitly requests inline mode.
+## status
 
-To select: user says "inline", "execute inline", or "no subagents".
+`ruby scripts/runner status <intent_dir>` renders the graph's ledger state: which nodes are
+running, done, blocked, or waiting on a decision. Safe to poll constantly; read node status
+through `NodeLedger.status` before dispatching anything, never re-derive it by eye.
 
-## Subagent-Driven Workflow
+## answer
 
-### Step 1: Load Plan
-Run Step 0 (Sync Worktree First) before this step.
-1. Read the active intent's `plan.md`
-2. Extract ALL tasks with their full text, store in memory. Never make subagents read the plan file.
-3. Create a task list to track progress
+`ruby scripts/runner answer <intent_dir> --node <id> --decision "<text>"` closes a
+`needs_decision` node with the owner's ruling, recorded to the ledger, so `step` can resume
+the graph past it.
 
-### Step 2: Execute Each Task
+## Non-graph work
 
-Dispatch ONE executor subagent and give it the whole delivery: every task's full text from `plan.md` (pasted in, never a file reference), every action file with its failure-mode matrix, the checklist items it must tick, the project context from CLAUDE.md, the active intent context from `{ID}--{slug}.md`, and the worktree path. In auto mode this is the `plastic-executor` agent; elsewhere use the `implementer-prompt.md` template. The executor writes the matrix's tests and commits them red, implements the consolidated action in order, ticks each item as it lands (see `## Tick-as-you-land`), and drives the test suite green.
-
-After each commit lands (the red commit and every commit after it), append a `Commit` line to the savepoint ledger: `ruby ~/.plastic/scripts/savepoint-note <intent_dir> --kind Commit --text "<sha> <what it proves>"` (intent 317, D17). This is what feeds `report-screen delay`; a commit with no line is a gap the delay report cannot explain.
-
-Print `ruby ~/.plastic/scripts/report-screen state <intent_dir> --changed "<what just landed>"` as the first characters of the reply, nothing before it, no fence, right after the red commit and again once the suite goes green (intent 331f).
-
-Read its response by code:
-- DONE or DONE_WITH_CONCERNS → proceed to Step 3.
-- NEEDS_CONTEXT → provide the missing context, re-dispatch the executor.
-- BLOCKED → stop, report to the user, wait for resolution.
-
-### Step 3: Review by Risk
-Apply the auto skill's risk rule to the executor's return and the diff: a matrix row no test could prove, a diff touching a hook, the lock, the worktree code, the installer, or a release file, a DONE_WITH_CONCERNS or a deviation from the matrix, or an owner-facing surface no test pins. When a rule fires, dispatch the post-execution reviewer with `code-quality-reviewer-prompt.md` (a separate agent with fresh context, never the maker); if it returns changes, re-dispatch the executor to fix them, then run the suite once more. When no rule fires, the green suite is the review.
-
-Whenever a review verdict returns - the plan review before code, or the post-execution review above - the lead appends a `Review` line: `ruby ~/.plastic/scripts/savepoint-note <intent_dir> --kind Review --text "<verdict, what changed>"` (intent 317, D17). This is the other half of what `report-screen delay` reads.
-
-**The D19 heading convention.** An action file's `## Delivered` row (in `outcome.md`) is proven by the first `actions/ACTION_N.md` OR `nodes/*.md` heading that carries that row's label as a standalone token AND owns the matrix table (322 D1r, 334 D10r) - `### Row A -` with a table beneath it proves row A, `### S1 -` proves row S1, `## n1 failure-mode matrix` proves row n1; a heading that only names the label, with no table under it, is skipped. Readers check `actions/` first, then `nodes/` (334 D15r). Write action-file or node-file section headings so the label they prove is unambiguous (never a substring another label could also match, like `A` inside `AB`); `report-screen delivered`'s Proven-by column renders `not recorded` when no heading owns a matching table and no matrix row cell carries the label either.
-
-### Step 4: Update Intent and Complete
-Capture observations in `## Insights`. When ALL checklist items are checked:
-
-1. Update the intent's cluster entries in `INDEX.md` to show `_(completed)_`. Do this first, so the store auto-commit in the next step picks it up. `plastic-intent-ending` does not cover cluster maintenance (`store-indexing` and `store-curating` own it), so doing it here keeps the step from being lost.
-2. Hand the mechanical close to `plastic-intent-ending`. It owns `outcome.md`, the intent file's `## Outcome` stamp, the INDEX terminal move, the savepoint `Done` line, the store auto-commit, disarm, the QMD reindex, and the EM-to-CTO owner report, as ONE delegation. Author the outcome.md content when that skill asks for it; do not restate the mechanical steps here.
-
-**This is NOT optional.** An intent with all checklist items done but no Outcome is a broken state. Complete the intent immediately, do not leave it for later.
-
-## Inline Workflow
-
-### Step 1: Load and Review Plan
-Run Step 0 (Sync Worktree First) before this step.
-1. Read plan file from active intent
-2. Review critically, raise concerns before starting
-3. Create task list to track progress
-
-### Step 2: Execute Tasks
-For each task:
-1. Mark as in_progress
-2. Follow each step exactly
-3. Run verifications as specified
-4. Tick as it lands: follow `## Tick-as-you-land` below
-
-### Step 3: Update Intent and Complete
-Capture observations in `## Insights`. When ALL checklist items are checked:
-
-1. Update the intent's cluster entries in `INDEX.md` to show `_(completed)_`. Do this first, so the store auto-commit in the next step picks it up. `plastic-intent-ending` does not cover cluster maintenance (`store-indexing` and `store-curating` own it), so doing it here keeps the step from being lost.
-2. Hand the mechanical close to `plastic-intent-ending`. It owns `outcome.md`, the intent file's `## Outcome` stamp, the INDEX terminal move, the savepoint `Done` line, the store auto-commit, disarm, the QMD reindex, and the EM-to-CTO owner report, as ONE delegation. Author the outcome.md content when that skill asks for it; do not restate the mechanical steps here.
-
-**This is NOT optional.** Complete the intent immediately when work is done.
+When the intent has no `graph.md`, dispatch ONE `plastic-executor` subagent with the whole
+consolidated action pasted in (never a file reference): every task's full text, every action
+file with its failure-mode matrix, the checklist items it must tick, the project context, and
+the worktree path. It writes the matrix's tests and commits them red, implements the
+consolidated action in order, ticks each item as it lands (see `## Tick-as-you-land`), and
+drives the test suite green. Read its response by code: DONE or DONE_WITH_CONCERNS proceeds;
+NEEDS_CONTEXT provides the missing context and re-dispatches; BLOCKED stops and reports.
 
 ## Tick-as-you-land
 
@@ -124,57 +69,13 @@ progress. Do not batch several tasks' worth of checklist updates into one
 later edit; tick the moment the task is verified, before moving to the next
 task.
 
-## Verify before every owner review
-
-Hard rule: before presenting any completed work to the owner, independently
-verify it. Grep or run the artifact the work just produced (the test suite,
-the changed file, the installed output) rather than restating the intended
-change. Never present an unverified claim to the owner. If verification
-fails, fix it before the review, not after.
-
-## Methods report (audits and sweeps)
-
-When the work is an audit or a sweep (checking many files or many instances of
-something rather than building one artifact), deposit a methods report to
-`{intent_dir}/resources/` before the review: what was checked, how it was
-checked, and what was found. This lets the owner review the method, not just
-the conclusion.
-
-## Reroute vs dispatch
-
-A human-facing instruction like "run /plastic-intent-speccing" means the user
-types that slash command themselves; it is never handed to a
-subagent. Agent-facing dispatch text is a prompt passed to the Agent tool for
-a subagent to execute. Keep the two separate: do not address a slash command
-to a subagent, and do not paste a dispatch prompt at the user.
-
-## Owner decisions during Exec
-
-When presenting a batch of Exec decisions for the owner to rule, read
-`~/.plastic/_decision-tables.md` and follow the numbered-table procedure,
-persisting each ruling with `--stage Exec`.
-
 ## Position in the cycle
 
-- **Before:** `plan.md` and `checklist.md` exist; the worktree is armed.
-- **Produces:** code changes, a ticked checklist, and (for audits or sweeps) a methods report in `resources/`.
-- **Next:** `plastic-intent-ending` owns `outcome.md` and the rest of the mechanical close (see intent 161). The Update-Intent-and-Complete step above hands off to it.
+- **Before:** the graph (`graph.md`, `nodes/*.md`), or `plan.md`/`checklist.md`, exists; the
+  worktree is armed.
+- **Produces:** code changes and a ticked checklist.
+- **Next:** `plastic-intent-ending` owns `outcome.md`, generated through
+  `scripts/outcome-report`, and the rest of the mechanical close.
 
 Read `../plastic-conventions/references/lifecycle-and-savepoints.md` for the subagent
 report-home contract this handoff relies on.
-
-## Model Selection for Subagents
-
-Match model to task complexity:
-- **Mechanical tasks** (config files, boilerplate): cheapest available
-- **Standard implementation**: default model
-- **Architecture, integration, review**: most capable model
-
-## Prompt Templates
-
-Subagent prompts are in this skill's directory:
-- `implementer-prompt.md`: template for implementer subagents
-- `spec-reviewer-prompt.md`: template for spec compliance reviewers
-- `code-quality-reviewer-prompt.md`: template for code quality reviewers
-
-Read the appropriate template when dispatching each subagent type.
