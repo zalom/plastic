@@ -8,7 +8,6 @@ require "date"
 require "yaml"
 require "fileutils"
 require_relative "lib/bridge"
-require_relative "lib/savepoint"
 require_relative "lib/boot_banner"
 require_relative "lib/qmd_sync"
 require_relative "lib/doctor_core"
@@ -58,141 +57,10 @@ end
 # doubled store/ segment.
 store_dir = File.join(plastic_home, "store")
 
-# --- Parse INDEX.md ---
-
-lines = File.readlines(index_path)
-active = []
-future = []
-section = nil
-
-lines.each do |line|
-  if line.start_with?("## Active")
-    section = :active
-    next
-  elsif line.start_with?("## Future")
-    section = :future
-    next
-  elsif line.start_with?("## ")
-    section = nil
-    next
-  end
-
-  next unless section && line.strip.start_with?("- [")
-
-  if section == :active
-    active << line.strip
-  elsif section == :future
-    future << line.strip
-  end
-end
-
-# --- Stage of the single active intent (the /tmp bridge this once derived was removed in 2.0, intent 307) ---
-
-stage_line = nil
-if active.length == 1 && active.first =~ /store\/([\w-]+)\//
-  dir_name = $1
-  intent_dir = "#{store_dir}/#{dir_name}"
-  begin
-    stage = Savepoint.derive_stage(intent_dir)
-    missing = Savepoint.missing_for_stage(stage, intent_dir)
-    missing_str = missing.empty? ? "none" : missing.join(", ")
-    stage_line = "Stage: #{stage} | Next: #{missing_str}"
-  rescue StandardError
-    stage_line = nil
-  end
-end
-
-# --- Detect stale future intents ---
-
-stale = []
-read_config = if plugin_root && !plugin_root.empty?
-  "#{plugin_root}/scripts/read-config"
-else
-  File.expand_path("~/.plastic/scripts/read-config")
-end
-stale_days = `"#{read_config}" stale_threshold_days`.strip.to_i
-stale_days = 3 if stale_days == 0
-
-future.each do |f|
-  if f =~ /store\/([\w-]+)\//
-    dir_name = $1
-    intent_file = "#{store_dir}/#{dir_name}/#{dir_name}.md"
-    next unless File.exist?(intent_file)
-
-    content = File.read(intent_file)
-    if content =~ /^created:\s*['"]?(\d{4}-\d{2}-\d{2})/
-      age = (Date.today - Date.parse($1)).to_i
-      if age >= stale_days
-        name = f[/\[([^\]]+)\]/, 1] || "unknown"
-        stale << { name: name, age: age, entry: f }
-      end
-    end
-  end
-end
-
-# --- Detect current project ---
-
-current_project = nil
-project_active = []
-project_future = []
-
-projects_path = "#{plastic_home}/projects.yml"
-if File.exist?(projects_path)
-  projects = YAML.safe_load(File.read(projects_path)) rescue {}
-  cwd = Dir.pwd
-  (projects["projects"] || {}).each do |slug, info|
-    project_path = File.expand_path(info["path"])
-    if cwd.start_with?(project_path)
-      current_project = { "slug" => slug, "parent" => info["parent"], "path" => project_path }
-      project_index = "#{plastic_home}/projects/#{slug}/INDEX.md"
-      if File.exist?(project_index)
-        p_section = nil
-        File.readlines(project_index).each do |pline|
-          if pline.start_with?("## Active")
-            p_section = :active
-            next
-          elsif pline.start_with?("## Future")
-            p_section = :future
-            next
-          elsif pline.start_with?("## ")
-            p_section = nil
-            next
-          end
-          next unless p_section && pline.strip.start_with?("- [")
-          project_active << pline.strip if p_section == :active
-          project_future << pline.strip if p_section == :future
-        end
-      end
-      break
-    end
-  end
-end
-
-# --- Load PLASTIC.md conventions ---
-
-plastic_md_path = "#{plastic_home}/PLASTIC.md"
-plastic_md = File.exist?(plastic_md_path) ? File.read(plastic_md_path).strip : nil
-
-# --- Load deprecations ---
-
-dep_file = if plugin_root && !plugin_root.empty?
-  "#{plugin_root}/deprecations.yml"
-else
-  "#{plastic_home}/deprecations.yml"
-end
-
-deprecations = []
-if File.exist?(dep_file)
-  dep_data = YAML.safe_load(File.read(dep_file)) rescue {}
-  deprecations = dep_data["deprecations"] || []
-end
-
-dismissed_json = `"#{read_config}" deprecations_dismissed`.strip
-dismissed = begin
-  JSON.parse(dismissed_json)
-rescue
-  []
-end
+# --- Current version ---
+# Read early, before any of the richer INDEX/project parsing below, so the
+# core banner (the one thing every session must get) never depends on
+# anything that can raise.
 
 current_version = nil
 version_file = "#{plastic_home}/VERSION"
@@ -203,23 +71,6 @@ elsif plugin_root && !plugin_root.empty?
   if File.exist?(plugin_json_path)
     pj = JSON.parse(File.read(plugin_json_path)) rescue {}
     current_version = pj["version"]
-  end
-end
-
-active_deprecations = deprecations.select do |dep|
-  next true if dep["severity"] == "critical"
-  next true if current_version && dep["removal"] == current_version
-  !dismissed.include?(dep["id"])
-end
-
-# --- Check for available updates (from previous session's check) ---
-
-update_notice = nil
-cache_file = "#{plastic_home}/.cache/update-check.json"
-if File.exist?(cache_file)
-  cache = JSON.parse(File.read(cache_file)) rescue {}
-  if cache["updateAvailable"]
-    update_notice = "Plastic update available: #{cache["current"]} -> #{cache["latest"]} — run /plastic-update"
   end
 end
 
@@ -235,206 +86,322 @@ rescue
 end
 core_banner = BootBanner.render(health: core_health, version: current_version)
 
-# --- Assemble session context ---
-
-all_active = active + project_active
-all_future = future + project_future
-
 # --- Build context ---
-# PLASTIC.md conventions and intent context render only when conventions are
-# installed. Deprecation warnings and update notices render regardless, so a
-# partial install (or a missing PLASTIC.md) still surfaces critical warnings.
+# The core banner is the one thing a session always gets. Everything below it
+# (the project/global banner with its active intent, the QMD line,
+# deprecations, the update notice, the first-boot sweep, the day ledger) is
+# best-effort: intent 341, G8 wraps all of it in one rescue so any exception
+# anywhere in that assembly degrades to a banner-only boot, never nothing —
+# the same "as today" contract every individual sub-block already kept on its
+# own, made a whole-block guarantee now that the doctrine dump this used to
+# gate everything on (PLASTIC.md's conventions prose, the active-intents
+# listing, the stage line, the stale-future list — all cut, since a skill or
+# the conventions chapter already carries that text) no longer sits in front
+# of it.
 
-parts = []
+parts = [core_banner, ""]
 
-# Boot banner first: every session start surfaces that Plastic loaded, with the
-# version (clean) or the first failing core check (degraded). Owned by the hook
-# so it runs by construction — the plastic-intent-continuing skill no longer does this.
-parts << core_banner
-parts << ""
-
-# --- QMD search status (intent 45a, READ-ONLY) ---
-# Report-only line for the model (additionalContext), never systemMessage and
-# never the exit code. QmdSync.status shells out to `qmd collection list`, so the
-# whole block is guarded: a 2s timeout caps any hang, and rescue-all guarantees a
-# slow/broken/missing qmd appends nothing and the hook continues cleanly.
 begin
-  require "timeout"
-  qmd_status = Timeout.timeout(2) { QmdSync.status(plastic_home: plastic_home) }
-  if qmd_status[:present]
-    if qmd_status[:all_registered]
-      parts << "QMD: #{qmd_status[:registered].size} Plastic collections indexed (search with the qmd skill)."
-    else
-      parts << "QMD detected — run `qmd-sync register --all` to index your Plastic stores for search."
+  # --- Parse INDEX.md ---
+
+  lines = File.readlines(index_path)
+  active = []
+  future = []
+  section = nil
+
+  lines.each do |line|
+    if line.start_with?("## Active")
+      section = :active
+      next
+    elsif line.start_with?("## Future")
+      section = :future
+      next
+    elsif line.start_with?("## ")
+      section = nil
+      next
+    end
+
+    next unless section && line.strip.start_with?("- [")
+
+    if section == :active
+      active << line.strip
+    elsif section == :future
+      future << line.strip
     end
   end
-rescue Exception
-  # Any failure (timeout, missing binary, parse error) — stay silent, never crash.
-end unless subagent_session
 
-if plastic_md && !subagent_session
-  # Conventions always loaded first
-  parts << plastic_md
-  parts << "\n---\n"
+  # --- read-config path (used below for author and dismissed deprecations) ---
 
-  if current_project
-    slug = current_project["slug"]
-    banner = "Project: #{slug} | Store: ~/.plastic/projects/#{slug}/store/"
-    if project_active.any? && project_active.first =~ /\[([^\]]+)\].*store\/([\w-]+)\//
-      intent_name, dir_name = $1, $2
-      intent_id = dir_name.split("--").first
-      banner += "\nActive: [#{intent_id} — #{intent_name}] | Artifacts → store/#{dir_name}/"
-    end
-    parts << banner + "\n"
+  read_config = if plugin_root && !plugin_root.empty?
+    "#{plugin_root}/scripts/read-config"
   else
-    parts << "PLASTIC — Global store loaded from ~/.plastic/\n"
+    File.expand_path("~/.plastic/scripts/read-config")
   end
 
-  if all_active.any?
-    parts << "Active intents:\n"
-    all_active.each { |a| parts << a }
-    parts << stage_line if stage_line
-    parts << ""
-  else
-    parts << "No active intents. #{future.length} future intents available.\n"
-  end
+  # --- Detect current project ---
 
-  if stale.any?
-    parts << "\nStale future intents (untouched for days):\n"
-    stale.each do |s|
-      parts << "- #{s[:name]} (#{s[:age]} days) — consider: activate, abandon, or defer to agent"
-    end
-    parts << "\nWhen appropriate, ask the user what to do with stale intents."
-  end
-end
+  current_project = nil
+  project_active = []
+  project_future = []
 
-if active_deprecations.any? && !subagent_session
-  parts << ""
-  active_deprecations.each do |dep|
-    severity = dep["severity"] || "info"
-    summary = dep["summary"] || dep["id"]
-    removal = dep["removal"]
-    link = dep["link"]
-    steps = dep["migration_steps"] || []
-
-    if severity == "info"
-      line = "i Deprecation: #{summary}. Removed in: #{removal}."
-      line += " See: #{link}" if link
-      parts << line
-    else
-      marker = severity == "critical" ? "!! DEPRECATION (critical)" : "! DEPRECATION (warning)"
-      parts << "#{marker}: #{summary}"
-      if steps.any?
-        parts << "  Migration steps:"
-        steps.each_with_index { |s, i| parts << "  #{i + 1}. #{s}" }
+  projects_path = "#{plastic_home}/projects.yml"
+  if File.exist?(projects_path)
+    projects = YAML.safe_load(File.read(projects_path)) rescue {}
+    cwd = Dir.pwd
+    (projects["projects"] || {}).each do |slug, info|
+      project_path = File.expand_path(info["path"])
+      if cwd.start_with?(project_path)
+        current_project = { "slug" => slug, "parent" => info["parent"], "path" => project_path }
+        project_index = "#{plastic_home}/projects/#{slug}/INDEX.md"
+        if File.exist?(project_index)
+          p_section = nil
+          File.readlines(project_index).each do |pline|
+            if pline.start_with?("## Active")
+              p_section = :active
+              next
+            elsif pline.start_with?("## Future")
+              p_section = :future
+              next
+            elsif pline.start_with?("## ")
+              p_section = nil
+              next
+            end
+            next unless p_section && pline.strip.start_with?("- [")
+            project_active << pline.strip if p_section == :active
+            project_future << pline.strip if p_section == :future
+          end
+        end
+        break
       end
-      trail = "  Removed in: #{removal}"
-      trail += " | Details: #{link}" if link
-      parts << trail
     end
   end
-end
 
-if update_notice && !subagent_session
-  parts.unshift("! #{update_notice}\n")
-end
+  # --- Load PLASTIC.md conventions ---
+  # Its content no longer renders at boot (intent 341, G8): the gate stays,
+  # so a partial install without PLASTIC.md still renders no project banner,
+  # but the text itself is never read into `parts`.
 
-# --- First-boot sweep (intent 301, spec D9): file every unclosed prior day
-# ledger into today, oldest first, at most 3 per boot within a 5-second
-# budget. Each day runs the sibling file-session-intent in its own rescue;
-# the boot never blocks on it.
-begin
-  require "open3"
-  require "timeout"
-  require_relative "lib/session_backfill"
+  plastic_md_path = "#{plastic_home}/PLASTIC.md"
+  plastic_md = File.exist?(plastic_md_path) ? File.read(plastic_md_path).strip : nil
 
-  sweep_today = SessionLedger.day_id
-  sweep_root = SessionLedger.sessions_root(store_dir)
-  sweep_filer = File.expand_path("file-session-intent", __dir__)
-  sweep_templates = File.expand_path("../templates", __dir__)
-  candidates = []
-  if Dir.exist?(sweep_root) && File.exist?(sweep_filer)
-    candidates = Dir.children(sweep_root).select do |name|
-      File.directory?(File.join(sweep_root, name)) && SessionLedger.valid_day_id?(name) &&
-        name < sweep_today && !SessionBackfill.closed?(store_dir, name)
-    end.sort
+  # --- Load deprecations ---
+
+  dep_file = if plugin_root && !plugin_root.empty?
+    "#{plugin_root}/deprecations.yml"
+  else
+    "#{plastic_home}/deprecations.yml"
   end
-  filed = 0
-  budget_end = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
-  candidates.first(3).each do |day|
-    break if Process.clock_gettime(Process::CLOCK_MONOTONIC) > budget_end
 
+  deprecations = []
+  if File.exist?(dep_file)
+    dep_data = YAML.safe_load(File.read(dep_file)) rescue {}
+    deprecations = dep_data["deprecations"] || []
+  end
+
+  dismissed_json = `"#{read_config}" deprecations_dismissed`.strip
+  dismissed = begin
+    JSON.parse(dismissed_json)
+  rescue
+    []
+  end
+
+  active_deprecations = deprecations.select do |dep|
+    next true if dep["severity"] == "critical"
+    next true if current_version && dep["removal"] == current_version
+    !dismissed.include?(dep["id"])
+  end
+
+  # --- Check for available updates (from previous session's check) ---
+
+  update_notice = nil
+  cache_file = "#{plastic_home}/.cache/update-check.json"
+  if File.exist?(cache_file)
+    cache = JSON.parse(File.read(cache_file)) rescue {}
+    if cache["updateAvailable"]
+      update_notice = "Plastic update available: #{cache["current"]} -> #{cache["latest"]} — run /plastic-update"
+    end
+  end
+
+  # --- QMD search status (intent 45a, READ-ONLY) ---
+  # Report-only line for the model (additionalContext), never systemMessage and
+  # never the exit code. QmdSync.status shells out to `qmd collection list`, so the
+  # whole block is guarded: a 2s timeout caps any hang, and rescue-all guarantees a
+  # slow/broken/missing qmd appends nothing and the hook continues cleanly.
+  begin
+    require "timeout"
+    qmd_status = Timeout.timeout(2) { QmdSync.status(plastic_home: plastic_home) }
+    if qmd_status[:present]
+      if qmd_status[:all_registered]
+        parts << "QMD: #{qmd_status[:registered].size} Plastic collections indexed (search with the qmd skill)."
+      else
+        parts << "QMD detected — run `qmd-sync register --all` to index your Plastic stores for search."
+      end
+    end
+  rescue Exception
+    # Any failure (timeout, missing binary, parse error) — stay silent, never crash.
+  end unless subagent_session
+
+  # --- Project (or global) banner with its active intent ---
+  # The one piece of intent context a live boot still carries: which store
+  # is live, and which intent (if any) is active in it (intent 341, G8, D4).
+  if plastic_md && !subagent_session
+    if current_project
+      slug = current_project["slug"]
+      banner = "Project: #{slug} | Store: ~/.plastic/projects/#{slug}/store/"
+      if project_active.any? && project_active.first =~ /\[([^\]]+)\].*store\/([\w-]+)\//
+        intent_name, dir_name = $1, $2
+        intent_id = dir_name.split("--").first
+        banner += "\nActive: [#{intent_id} — #{intent_name}] | Artifacts → store/#{dir_name}/"
+      end
+      parts << banner
+    else
+      banner = "PLASTIC — Global store loaded from ~/.plastic/"
+      if active.any? && active.first =~ /\[([^\]]+)\].*store\/([\w-]+)\//
+        intent_name, dir_name = $1, $2
+        intent_id = dir_name.split("--").first
+        banner += "\nActive: [#{intent_id} — #{intent_name}] | Artifacts → store/#{dir_name}/"
+      end
+      parts << banner
+    end
+  end
+
+  if active_deprecations.any? && !subagent_session
+    parts << ""
+    active_deprecations.each do |dep|
+      severity = dep["severity"] || "info"
+      summary = dep["summary"] || dep["id"]
+      removal = dep["removal"]
+      link = dep["link"]
+      steps = dep["migration_steps"] || []
+
+      if severity == "info"
+        line = "i Deprecation: #{summary}. Removed in: #{removal}."
+        line += " See: #{link}" if link
+        parts << line
+      else
+        marker = severity == "critical" ? "!! DEPRECATION (critical)" : "! DEPRECATION (warning)"
+        parts << "#{marker}: #{summary}"
+        if steps.any?
+          parts << "  Migration steps:"
+          steps.each_with_index { |s, i| parts << "  #{i + 1}. #{s}" }
+        end
+        trail = "  Removed in: #{removal}"
+        trail += " | Details: #{link}" if link
+        parts << trail
+      end
+    end
+  end
+
+  if update_notice && !subagent_session
+    parts.unshift("! #{update_notice}\n")
+  end
+
+  # --- First-boot sweep (intent 301, spec D9): file every unclosed prior day
+  # ledger into today, oldest first, at most 3 per boot within a 5-second
+  # budget. Each day runs the sibling file-session-intent in its own rescue;
+  # the boot never blocks on it.
+  unless subagent_session
     begin
-      Timeout.timeout(5) do
-        _out, _err, sweep_status = Open3.capture3({ "RUBYOPT" => nil }, RbConfig.ruby, sweep_filer,
-                                                  "--day", day, "--carry-to", sweep_today,
-                                                  "--store", store_dir, "--templates", sweep_templates)
-        filed += 1 if sweep_status.success? && SessionBackfill.closed?(store_dir, day)
+      require "open3"
+      require "timeout"
+      require_relative "lib/session_backfill"
+
+      sweep_today = SessionLedger.day_id
+      sweep_root = SessionLedger.sessions_root(store_dir)
+      sweep_filer = File.expand_path("file-session-intent", __dir__)
+      sweep_templates = File.expand_path("../templates", __dir__)
+      candidates = []
+      if Dir.exist?(sweep_root) && File.exist?(sweep_filer)
+        candidates = Dir.children(sweep_root).select do |name|
+          File.directory?(File.join(sweep_root, name)) && SessionLedger.valid_day_id?(name) &&
+            name < sweep_today && !SessionBackfill.closed?(store_dir, name)
+        end.sort
+      end
+      filed = 0
+      budget_end = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+      candidates.first(3).each do |day|
+        break if Process.clock_gettime(Process::CLOCK_MONOTONIC) > budget_end
+
+        begin
+          Timeout.timeout(5) do
+            _out, _err, sweep_status = Open3.capture3({ "RUBYOPT" => nil }, RbConfig.ruby, sweep_filer,
+                                                      "--day", day, "--carry-to", sweep_today,
+                                                      "--store", store_dir, "--templates", sweep_templates)
+            filed += 1 if sweep_status.success? && SessionBackfill.closed?(store_dir, day)
+          end
+        rescue StandardError
+          nil
+        end
+      end
+      if filed.positive?
+        line = "PLASTIC: filed #{filed} prior day ledger(s) into #{sweep_today}"
+        remaining = candidates.size - filed
+        line += ", #{remaining} more wait for the next boot" if remaining.positive?
+        parts << line
       end
     rescue StandardError
       nil
     end
   end
-  if filed.positive?
-    line = "PLASTIC: filed #{filed} prior day ledger(s) into #{sweep_today}"
-    remaining = candidates.size - filed
-    line += ", #{remaining} more wait for the next boot" if remaining.positive?
-    parts << line
-  end
-rescue StandardError
-  nil
-end unless subagent_session
 
-# --- Session day ledger: open or join today, write the per-session pointer
-# and heartbeat (intent 298, spec D4). Best-effort: any failure here degrades
-# to no ledger context line, never blocks the session.
-begin
-  templates = File.expand_path("../templates", __dir__)
-  day = SessionLedger.day_id
-  author = `"#{read_config}" author`.strip
-  author = "session" if author.empty?
-  SessionLedger.open_day(store: store_dir, day: day, templates: templates, author: author)
+  # --- Session day ledger: open or join today, write the per-session pointer
+  # and heartbeat (intent 298, spec D4). Best-effort: any failure here degrades
+  # to no ledger context line, never blocks the session.
+  unless subagent_session
+    begin
+      templates = File.expand_path("../templates", __dir__)
+      day = SessionLedger.day_id
+      author = `"#{read_config}" author`.strip
+      author = "session" if author.empty?
+      SessionLedger.open_day(store: store_dir, day: day, templates: templates, author: author)
 
-  session = if !payload_session_id.empty?
-              payload_session_id
-            else
-              ENV["CLAUDE_CODE_SESSION_ID"] || Process.pid.to_s
-            end
-  sid = SessionLedger.short_session_id(nil, session)
-  SessionLedger.ensure_tmp_root(store_dir)
-  FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store_dir, sid))
-  File.write(SessionLedger.heartbeat_path(store_dir, sid), "#{Time.now.utc.iso8601}\n")
-  pointer = SessionLedger.pointer_path(store_dir, sid)
-  File.write(pointer, "#{day}\n") unless File.exist?(pointer)
+      session = if !payload_session_id.empty?
+                  payload_session_id
+                else
+                  ENV["CLAUDE_CODE_SESSION_ID"] || Process.pid.to_s
+                end
+      sid = SessionLedger.short_session_id(nil, session)
+      SessionLedger.ensure_tmp_root(store_dir)
+      FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store_dir, sid))
+      File.write(SessionLedger.heartbeat_path(store_dir, sid), "#{Time.now.utc.iso8601}\n")
+      pointer = SessionLedger.pointer_path(store_dir, sid)
+      File.write(pointer, "#{day}\n") unless File.exist?(pointer)
 
-  checklist = SessionLedger.checklist_path(store_dir, day)
-  open_count = 0
-  pending_count = 0
-  if File.exist?(checklist)
-    File.readlines(checklist).each do |line|
-      parsed = SessionLedger.parse_checklist_line(line)
-      next unless parsed
+      checklist = SessionLedger.checklist_path(store_dir, day)
+      open_count = 0
+      pending_count = 0
+      if File.exist?(checklist)
+        File.readlines(checklist).each do |line|
+          parsed = SessionLedger.parse_checklist_line(line)
+          next unless parsed
 
-      open_count += 1 if parsed[:state] == :open
-      pending_count += 1 if parsed[:state] == :pending
+          open_count += 1 if parsed[:state] == :open
+          pending_count += 1 if parsed[:state] == :pending
+        end
+      end
+      parts << "PLASTIC: day ledger #{day} joined (#{open_count} open items, #{pending_count} pending)"
+
+      # The day summary (intent 311, spec D8): open items, the last five done,
+      # live auto intents, other active sessions. Never the raw ledger. A
+      # failure here leaves the joined line alone.
+      begin
+        summary = DaySummary.build(store: store_dir, day: day, session: sid, home: plastic_home, now: Time.now)
+        parts << summary unless summary.empty?
+      rescue StandardError
+        nil
+      end
+    rescue StandardError
+      nil
     end
   end
-  parts << "PLASTIC: day ledger #{day} joined (#{open_count} open items, #{pending_count} pending)"
-
-  # The day summary (intent 311, spec D8): open items, the last five done,
-  # live auto intents, other active sessions. Never the raw ledger. A
-  # failure here leaves the joined line alone.
-  begin
-    summary = DaySummary.build(store: store_dir, day: day, session: sid, home: plastic_home, now: Time.now)
-    parts << summary unless summary.empty?
-  rescue StandardError
-    nil
-  end
 rescue StandardError
-  nil
-end unless subagent_session
+  # Anything unhandled above (a malformed INDEX.md, a broken projects.yml, or
+  # any other surprise) degrades the whole boot to the core banner alone,
+  # never a naked crash with no JSON at all (intent 341, G8, row 2.4).
+  parts = [core_banner, ""]
+end
 
-# Emit nothing when there is genuinely nothing to surface (no conventions,
+# Emit nothing when there is genuinely nothing to surface (no active intent,
 # no deprecations, no update notice).
 exit 0 if parts.join.strip.empty?
 
