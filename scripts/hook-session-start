@@ -36,6 +36,19 @@ rescue StandardError
 end
 payload_session_id = stdin_payload.is_a?(Hash) ? stdin_payload["session_id"].to_s : ""
 
+# --- subagent marker (intent 355 spec D9, node n7): the stdin payload carries
+# agent_id or agent_type only when this SessionStart call runs inside a
+# spawned agent. Read from that payload only, never from an environment
+# variable, so a helper needs the core banner alone. An absent marker (the
+# common case) is a live session. Any exception here still boots the banner,
+# never nothing: the rescue falls back to a live session, whose own content
+# already comes from paths this file already guards independently.
+subagent_session = begin
+  stdin_payload.is_a?(Hash) && !!(stdin_payload["agent_id"] || stdin_payload["agent_type"])
+rescue StandardError
+  false
+end
+
 # Plastic home and the store are two different paths (intent 231). The shim passes
 # home (~/.plastic) as argument 2; the store lives one level below it. Compose the
 # store exactly once here, so no later line re-derives it and no path can gain a
@@ -254,9 +267,9 @@ begin
   end
 rescue Exception
   # Any failure (timeout, missing binary, parse error) — stay silent, never crash.
-end
+end unless subagent_session
 
-if plastic_md
+if plastic_md && !subagent_session
   # Conventions always loaded first
   parts << plastic_md
   parts << "\n---\n"
@@ -292,7 +305,7 @@ if plastic_md
   end
 end
 
-if active_deprecations.any?
+if active_deprecations.any? && !subagent_session
   parts << ""
   active_deprecations.each do |dep|
     severity = dep["severity"] || "info"
@@ -319,7 +332,7 @@ if active_deprecations.any?
   end
 end
 
-if update_notice
+if update_notice && !subagent_session
   parts.unshift("! #{update_notice}\n")
 end
 
@@ -367,7 +380,7 @@ begin
   end
 rescue StandardError
   nil
-end
+end unless subagent_session
 
 # --- Session day ledger: open or join today, write the per-session pointer
 # and heartbeat (intent 298, spec D4). Best-effort: any failure here degrades
@@ -416,7 +429,7 @@ begin
   end
 rescue StandardError
   nil
-end
+end unless subagent_session
 
 # Emit nothing when there is genuinely nothing to surface (no conventions,
 # no deprecations, no update notice).
