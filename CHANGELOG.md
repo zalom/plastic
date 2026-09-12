@@ -71,6 +71,17 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   mechanically into `graph.md` and `nodes/`, or refused with one recorded reason, never new
   ledger state of its own.
 
+- 343 (G10, roadmap graph-ready-plastic, batch 2) - `graph-measure`, the one read-only
+  executable over the node ledger, on three public verbs: `intent` (a per-intent summary),
+  `budget` (spend against a node's stated cut order), and `cohorts` (population, qualified-field
+  counts, and model drift across a whole store). `GraphMeasureModels` walks a store once,
+  resolving every recorded `model=` against `RunnerPolicy.model_for(kind, config:)` through the
+  project-then-global-then-shipped-default chain, and doctor gains a companion rule: when a
+  recorded `model=` no longer matches what config resolves for its role today, it warns, never
+  fails, naming the role, the recorded and current model, and the affected intent and node, so
+  the old measurements get re-qualified before anyone acts on their numbers. The rule lives in
+  `scripts/doctor.rb`, next to the node-graph checks, never `doctor_core.rb`.
+
 - Intent 347: npm trusted publishing (OIDC) via GitHub Actions. `.github/workflows/publish.yml` publishes `@zalom/plastic` from a pushed version tag using a short-lived, per-run credential instead of the laptop-held npm token that stalled the alpha.18 release; `scripts/release-check` guards the tag against `package.json`, the three version files against each other, and the runner's npm against the 11.5.1 OIDC floor before the package publishes with `--provenance --access public`. The planned suite step inside the publish job came out on evidence (D7): extending `test.yml` to `alpha` produced the first hosted-runner run since 2026-08-25 and it was red, on three test-hermeticity defects unrelated to the release path, so the suite keeps gating the release as `release.verify` before the tag is cut and a test pins the step's absence. The releasing skill's `npm_publish_workflow` action replaces the local `npm_publish` step for this project only.
 - 339 (G6, roadmap graph-ready-plastic, batch 2) - `outcome.md` is generated at the close
   rather than authored by hand. `scripts/lib/outcome_report.rb` reads `graph.md`, `nodes/`,

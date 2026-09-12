@@ -29,6 +29,7 @@ require_relative "lib/lock"
 require_relative "lib/savepoint"
 require_relative "lib/node_ledger"
 require_relative "lib/ready_set"
+require_relative "lib/graph_measure_models"
 require_relative "lib/index_projection"
 require_relative "lib/agent_models"
 require_relative "lib/outcome_guard"
@@ -630,6 +631,15 @@ class Doctor
     # boot path to exactly three project files and 781 bytes of headroom;
     # ReadySet's own require chain is 65,648 bytes, far past that budget.
     checks.concat(node_graph_checks(intent_dirs))
+
+    # model_requalification (D42, intent 343 G10 n7): a recorded model= that no
+    # longer matches what RunnerPolicy.model_for resolves for its role today
+    # means every measurement taken under the old model measured a different
+    # system. Lives here for the same reason node_graph_checks does: pins to
+    # test/doctor_core_split_test.rb's exact-set boot-path assertion, never
+    # doctor_core.rb (D11) - GraphMeasureModels' own require chain (NodeLedger,
+    # NodeFile, RunnerPolicy, AgentModels) is far past that file's byte budget.
+    checks.concat(model_requalification_checks(scopes: scopes))
 
     # cross_store_resolution — RESOLVES (not just shape-checks) every cross-store
     # `store:id` ref against the FULL store family via the relocation map
@@ -1771,6 +1781,63 @@ end
         message: "#{findings.size} #{name} violation(s)",
         details: findings, fixable: false, fix_hint: fix_hint
       )
+    end
+  end
+
+  # --- Check: re-qualification on model change (D42, intent 343 G10 n7) ---
+  #
+  # When the model behind a role changes, every measurement GraphMeasureModels
+  # took under the old model measured a different system, and the numbers
+  # need re-qualifying before anyone acts on them (D42). This warns, never
+  # fails (D10): a model change is routine, and a red doctor over it would
+  # train people to stop reading the report. The comparison itself is
+  # GraphMeasureModels' own (D16, via RunnerPolicy.model_for) - this method
+  # never re-derives it, it only names the drift rows GraphMeasureModels
+  # already computed.
+  #
+  # Runs once per discovered store (StoreDiscovery, shared with every other
+  # store-scoped check here), never per intent directory: GraphMeasureModels
+  # walks a whole store_dir itself in one pass. A store this process cannot
+  # read - or any other exception the store walk raises - is skipped, never
+  # fatal: one bad store must never take every other doctor check down with
+  # it. `project_config` stays `{}`, mirroring check_agent_model_drift's own
+  # precedent: there is no live project scope at doctor-run time.
+  def model_requalification_checks(scopes: nil)
+    global_config = load_yaml_safe(File.join(plastic_home, "config.yml")) || {}
+    findings = []
+
+    store_discovery[:stores].each do |s|
+      next if scopes && !scopes.include?(s[:key])
+
+      record = begin
+        GraphMeasureModels.read(s[:store], project_config: {}, global_config: global_config)
+      rescue StandardError
+        next
+      end
+
+      %i[executor advisor].each do |role|
+        Array(record[:drift][role]).each do |row|
+          findings << "#{s[:key]}/#{row[:intent]}/#{row[:node]} (#{role}): recorded model=#{row[:recorded]}, " \
+                      "current config resolves #{row[:expected]} for kind #{row[:kind]} - re-qualify any " \
+                      "measurement taken while model=#{row[:recorded]} was in effect"
+        end
+      end
+    end
+
+    if findings.empty?
+      [check(
+        category: "conventions", name: "model_requalification", status: "pass",
+        message: "No recorded model= differs from what config resolves today for its role"
+      )]
+    else
+      [check(
+        category: "conventions", name: "model_requalification", status: "warn",
+        message: "#{findings.size} node(s) recorded a model that no longer matches the role's " \
+                 "config-resolved model",
+        details: findings, fixable: false,
+        fix_hint: "The old measurements were taken against a different model; re-qualify them under " \
+                  "the current model before acting on their numbers"
+      )]
     end
   end
 
