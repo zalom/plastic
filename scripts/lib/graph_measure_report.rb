@@ -272,7 +272,7 @@ module GraphMeasureReport
     active = record[:active_seconds]
     unless active.is_a?(Numeric)
       return { "build" => UNAVAILABLE, "verify" => UNAVAILABLE, "review_fix" => UNAVAILABLE, "lead" => UNAVAILABLE,
-               "active_seconds" => UNAVAILABLE, "sums_to_active" => false }
+               "active_seconds" => UNAVAILABLE, "sums_to_active" => UNAVAILABLE }
     end
 
     sums = { "build" => 0.0, "verify" => 0.0, "review_fix" => 0.0 }
@@ -290,11 +290,21 @@ module GraphMeasureReport
     end
     accounted = sums.values.sum
     lead = [active - accounted, 0.0].max
-    sums_to_active = (sums["build"] + sums["verify"] + sums["review_fix"] + lead - active).abs < 0.001
+
+    # D24 (after v3 B1): `has_kind["review_fix"]` cannot tell "no work node
+    # reaches a verify node" from "graph.md could not be read, so no node
+    # ever reached one" - both walk the record and find nothing. Only the
+    # record itself, through the unread_source anomaly GraphMeasure already
+    # raised, knows which case this is. When the edge source is unread and a
+    # verify node exists, review fix renders UNAVAILABLE regardless of what
+    # has_kind/contributed computed from the (silently empty) edges.
+    review_fix_unreadable = !record[:anomalies][:unread_source].empty?
 
     totals = {}
     %w[build verify review_fix].each do |key|
-      totals[key] = if contributed[key]
+      totals[key] = if key == "review_fix" && review_fix_unreadable
+                      UNAVAILABLE
+                    elsif contributed[key]
                       sums[key]
                     elsif has_kind[key]
                       UNAVAILABLE
@@ -304,7 +314,18 @@ module GraphMeasureReport
     end
     totals["lead"] = lead
     totals["active_seconds"] = active
-    totals["sums_to_active"] = sums_to_active
+
+    # M3 (v3 review, the second half of v2's NEW-3): the sum-equals-active
+    # boolean is only checkable when the reader can actually see all four
+    # addends as numbers. Computing it from the internal `sums` hash (which
+    # always holds a number, even for a bucket rendered UNAVAILABLE above)
+    # vouches for arithmetic the reader cannot verify from what is shown.
+    checkable = %w[build verify review_fix].all? { |key| totals[key].is_a?(Numeric) }
+    totals["sums_to_active"] = if checkable
+                                  (totals["build"] + totals["verify"] + totals["review_fix"] + lead - active).abs < 0.001
+                                else
+                                  UNAVAILABLE
+                                end
     totals
   end
   private_class_method :buckets_model
@@ -441,17 +462,19 @@ module GraphMeasureReport
     {
       "torn" => record[:anomalies][:torn].map { |a| a[:line] },
       "unattributed" => record[:anomalies][:unattributed].map { |a| a[:line] },
+      "unread_source" => record[:anomalies][:unread_source].map { |a| a[:line] },
     }
   end
   private_class_method :anomalies_model
 
   def anomaly_block(a)
     lines = ["== Anomalies =="]
-    if a["torn"].empty? && a["unattributed"].empty?
+    if a["torn"].empty? && a["unattributed"].empty? && a["unread_source"].empty?
       lines << "(none)"
     else
       a["torn"].each { |raw| lines << "torn: #{raw}" }
       a["unattributed"].each { |raw| lines << "unattributed: #{raw}" }
+      a["unread_source"].each { |raw| lines << "unread source: #{raw}" }
     end
     lines
   end

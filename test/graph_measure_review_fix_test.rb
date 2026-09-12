@@ -427,8 +427,12 @@ class GraphMeasureReviewFixTest < Minitest::Test
       t0 = Time.iso8601("2026-01-01T09:00:00Z")
       File.write(File.join(dir, "savepoint.md"), [
         stage(t0, "Why", "spec.md created"),
-        transition(t0 + 60, "n1", "running", fields: RUNNING),
-        transition(t0 + 1800, "n1", "done", fields: RUNNING.merge(gates: "suite", commit: "abc1234")),
+        # A ledger transition, not the node file alone, is what makes a node
+        # discoverable at all (spec D6/row 1.18): the 337 fixture this
+        # mirrors carries a real "v1 done" line for exactly this reason.
+        transition(t0 + 10, "v1", "done", fields: { gates: "review", verdict: "approve" }),
+        transition(t0 + 60, "n1", "running", fields: RUNNING.merge(model: "sonnet")),
+        transition(t0 + 1800, "n1", "done", fields: RUNNING.merge(model: "sonnet", gates: "suite", commit: "abc1234")),
         stage(t0 + 1860, "Done", "delivered"),
       ].join)
 

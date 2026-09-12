@@ -313,7 +313,11 @@ module GraphMeasureBudget
   # of three, so it still runs against the strict 50% bar unchanged.
   CLUSTER_BAND_RATIO = 0.8
   SEVERAL_CLUSTER_THRESHOLD = 3
-  CLUSTERED_WELL_BELOW_RATIO = 0.9
+  # D25 (after v3 M2): 0.9 let a cluster using ninety percent of its own
+  # declared budget report a ceiling - the case where the declared budget IS
+  # the ceiling, the opposite of what C19 asks for. 0.8 is "far under" and
+  # still clears the pinned cluster case (7717/10000 = 77.17%).
+  CLUSTERED_WELL_BELOW_RATIO = 0.8
 
   def detect_ceiling(nodes)
     usable = []
@@ -356,6 +360,17 @@ module GraphMeasureBudget
 
     unless well_below
       return { detected: false, reason: :not_well_below_declared_budgets, value: nil,
+                node_count: distinct_nodes.length, attempt_count: attempt_count }
+    end
+
+    # M1 (v3 review, D25): SEVERAL_CLUSTER_THRESHOLD was read only to pick
+    # which budget bar applies, never enforced as the bar for "several"
+    # itself, so any two-node band that cleared WELL_BELOW_RATIO still
+    # reported a ceiling. Clearing the budget bar is necessary but not
+    # sufficient: D21 asks for several distinct usable attempts to approach
+    # the candidate, and two is a band, not several.
+    if cluster_nodes.length < SEVERAL_CLUSTER_THRESHOLD
+      return { detected: false, reason: :insufficient_cluster, value: nil,
                 node_count: distinct_nodes.length, attempt_count: attempt_count }
     end
 
