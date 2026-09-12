@@ -108,6 +108,9 @@ class SessionUsageTest < Minitest::Test
                               call("m2", at: at(7, 1), input: 0, model: "<synthetic>")])
     write_transcript("lead/subagents/agent-aexec", [prompt([{ "type" => "text", "text" => "Execute the packet" }]),
                                                     call("m1", at: at(7), input: 5, model: "claude-sonnet-5")])
+write_transcript("lead/subagents/agent-alead-355-1",
+                 [prompt(%(<teammate-message teammate_id="main" summary="Lead n1">\nLead intent 355 node n1\nmore\n</teammate-message>)),
+                  call("m1", at: at(7), input: 5)])
     report = usage.report(since: at(6))
     lead = session(report, "lead")
     assert_equal "Run node n1 of intent 355", lead["label"]
@@ -116,6 +119,7 @@ class SessionUsageTest < Minitest::Test
     executor = session(report, "agent-aexec")
     assert_equal "Execute the packet", executor["label"]
     assert_equal "claude-sonnet-5", executor["model"]
+    assert_equal "Lead intent 355 node n1", session(report, "agent-alead-355-1")["label"]
   end
 
   def test_cutoff_from_flag_or_reset_time
