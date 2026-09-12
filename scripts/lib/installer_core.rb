@@ -569,6 +569,10 @@ class InstallerCore
       # walk and whether a recorded model= still matches what config
       # resolves today through RunnerPolicy.
       "scripts/lib/graph_measure_models.rb" => "scripts/lib/graph_measure_models.rb",
+      # Intent 343 (G10, n6): the rest of the `cohorts` verb - approve-then-
+      # fix per verify model, hop on versus off, delivery latency, the
+      # evidence bar, and the two concurrency ceilings.
+      "scripts/lib/graph_measure_cohorts.rb" => "scripts/lib/graph_measure_cohorts.rb",
     }
   end
 

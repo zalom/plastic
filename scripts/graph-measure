@@ -2,6 +2,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require "json"
 require_relative "lib/savepoint"
 
 # graph-measure - the one read-only executable over the node ledger (intent
@@ -41,7 +42,7 @@ module GraphMeasureCLI
   LAZY_MODULES = {
     "intent" => [["GraphMeasure", "graph_measure"], ["GraphMeasureReport", "graph_measure_report"]],
     "budget" => [["GraphMeasureBudget", "graph_measure_budget"]],
-    "cohorts" => [["GraphMeasureModels", "graph_measure_models"]],
+    "cohorts" => [["GraphMeasureModels", "graph_measure_models"], ["GraphMeasureCohorts", "graph_measure_cohorts"]],
   }.freeze
 
   KNOWN_FLAGS = {
@@ -182,9 +183,21 @@ module GraphMeasureCLI
   # Row 2.5's "missing savepoint.md" check does not apply here: `dir` is a
   # STORE directory (spec D1's "the directory holding id--slug/ intent
   # folders"), which never carries a savepoint.md of its own.
+  #
+  # n6 adds the rates, the latency and the bar to this same verb, sourced
+  # from `GraphMeasureCohorts`. Its bar section reuses the one
+  # `GraphMeasureModels` walk's `qualified` counts (passed in here) rather
+  # than triggering a second store walk for the same numbers.
   def run_cohorts(dir, format)
-    record = GraphMeasureModels.read(dir)
-    puts format == "json" ? GraphMeasureModels.render_json(record) : GraphMeasureModels.render_text(record)
+    models_record = GraphMeasureModels.read(dir)
+    cohorts_record = GraphMeasureCohorts.read(dir, qualified: models_record[:qualified])
+    if format == "json"
+      combined = GraphMeasureModels.model(models_record).merge(GraphMeasureCohorts.model(cohorts_record))
+      puts JSON.generate(combined)
+    else
+      puts GraphMeasureModels.render_text(models_record)
+      puts GraphMeasureCohorts.render_text(cohorts_record)
+    end
     0
   end
 end
