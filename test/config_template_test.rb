@@ -31,8 +31,8 @@ class ConfigTemplateTest < Minitest::Test
   def test_has_context_thresholds
     assert_kind_of Integer, @config["context_offer_tokens"]
     assert_kind_of Integer, @config["context_insist_tokens"]
-    assert_equal 350_000, @config["context_offer_tokens"]
-    assert_equal 500_000, @config["context_insist_tokens"]
+    assert_equal 150_000, @config["context_offer_tokens"]
+    assert_equal 250_000, @config["context_insist_tokens"]
   end
 
   def test_has_project_roots

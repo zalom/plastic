@@ -549,6 +549,8 @@ class InstallerCore
       # is its cap table, above); its launcher (hooks/call-budget) ships via
       # hook_files' own glob, so only the hook script itself needs an entry.
       "scripts/hook-call-budget" => "scripts/hook-call-budget",
+      "scripts/meter-watch" => "scripts/meter-watch",
+      "scripts/lib/meter_watch.rb" => "scripts/lib/meter_watch.rb",
       # Intent 340 (G7, n6): answer (closes a decision node or unparks a
       # work node parked at needs_decision), proposals (mints ids for what
       # an executor proposed), and rewind (resets the intent branch to a
@@ -570,8 +572,8 @@ class InstallerCore
       version: 3
       execution_mode: subagent-driven
       stale_threshold_days: 3
-      context_offer_tokens: 350000
-      context_insist_tokens: 500000
+      context_offer_tokens: 150000
+      context_insist_tokens: 250000
       hash_length: 6
       hash_algorithm: sha256-base36
       max_slug_words: 5

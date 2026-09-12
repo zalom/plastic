@@ -39,14 +39,14 @@ class ReadConfigTest < Minitest::Test
 
   # Intent 312: the two absolute-token compaction thresholds resolve from DEFAULTS
   # with no config file present, and a config value wins over them.
-  def test_context_thresholds_fall_back_to_the_shipped_defaults
+  def test_context_defaults
     out, _, status = run_script("context_offer_tokens")
     assert status.success?
-    assert_equal "350000", out
+    assert_equal "150000", out
 
     out, _, status = run_script("context_insist_tokens")
     assert status.success?
-    assert_equal "500000", out
+    assert_equal "250000", out
   end
 
   def test_a_configured_context_threshold_wins_over_the_default

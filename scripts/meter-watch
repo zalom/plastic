@@ -1,0 +1,57 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# meter-watch (intent 355, n5, D6): reads the rate-limit cache under --home
+# and writes ~/.plastic/.cache/meter-state.json with the state (ok, reduce,
+# stop, resume, stale, unavailable), the two raw percentages, the reset
+# time, and when it was checked. A session watches that one file instead of
+# every session parsing the cache and re-deriving the thresholds.
+#
+# Usage:
+#   meter-watch [--home DIR]
+#   meter-watch --install-timer [--home DIR]
+#
+# --install-timer writes a LaunchAgent plist under --home (default
+# ~/.plastic when --home is not given) that runs this tick every 20
+# minutes. It never calls launchctl; load it yourself with the command it
+# prints. The Plastic installer never calls --install-timer on its own.
+#
+# Exit codes: 0 reported (unavailable included); 2 usage error.
+
+require "json"
+require_relative "lib/meter_watch"
+
+def usage_abort(message)
+  warn "meter-watch: #{message}"
+  warn "Usage: meter-watch [--home DIR] [--install-timer]"
+  exit 2
+end
+
+home = File.join(Dir.home, ".plastic")
+install_timer = false
+
+argv = ARGV.dup
+until argv.empty?
+  case (token = argv.shift)
+  when "--home"
+    usage_abort("--home requires a value") if argv.empty?
+    home = argv.shift
+  when "--install-timer"
+    install_timer = true
+  else
+    usage_abort("unknown argument #{token.inspect}")
+  end
+end
+
+home = File.expand_path(home)
+
+if install_timer
+  plist_path = MeterWatch.install_timer(home: home, script_path: File.expand_path(__FILE__))
+  puts "Installed LaunchAgent at #{plist_path}"
+  puts "Run `launchctl load #{plist_path}` to activate it."
+  exit 0
+end
+
+state = MeterWatch.new(home: home).tick
+puts JSON.generate(state)
