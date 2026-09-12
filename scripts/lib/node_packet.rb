@@ -435,12 +435,23 @@ module NodePacket
   # carries no lease. `worktree_block` already renders its own copy when the
   # worktree is unprovisioned; the two conditions often fire together, so a
   # directive already present is never repeated.
+  #
+  # `call_cap` (intent 355, n2, D2): one sentence naming this attempt's tool
+  # call cap and the return it hits at, so the executor learns the number
+  # from the packet it starts with, never from a denied call mid-edit
+  # (matrix 2.4). nil (a caller that names no cap) renders nothing here.
   def where_to_work_block(intent_dir:, worktree_reader: Arm.method(:worktree_block),
-                           project_reader: method(:default_project_reader), lease_missing: false)
+                           project_reader: method(:default_project_reader), lease_missing: false, call_cap: nil)
     wt = worktree_block(intent_dir: intent_dir, worktree_reader: worktree_reader)
     parts = [wt, test_command_block(intent_dir: intent_dir, project_reader: project_reader)]
     parts << STOP_DIRECTIVE if lease_missing && !wt.include?(STOP_DIRECTIVE)
+    parts << call_cap_sentence(call_cap) if call_cap
     parts.join("\n")
+  end
+
+  def call_cap_sentence(call_cap)
+    "call budget: this attempt may make at most #{call_cap} tool calls; past that a hook denies the " \
+      "next one, so commit what is green and return failed_verification reason=call_budget."
   end
 
   # --- section and list parsing (shared) -------------------------------------
@@ -786,7 +797,8 @@ module NodePacket
   def build(intent_dir:, node:, budget_tokens: nil, hop_tokens: DEFAULT_HOP_TOKENS,
             holder: nil, expires: nil, model: nil, attempt: nil, out: nil, force: false,
             renamer: File.method(:rename), git_runner: DEFAULT_GIT_RUNNER,
-            worktree_reader: Arm.method(:worktree_block), project_reader: method(:default_project_reader))
+            worktree_reader: Arm.method(:worktree_block), project_reader: method(:default_project_reader),
+            call_cap: nil)
     intent_dir = File.expand_path(intent_dir)
 
     nb = node_block(intent_dir: intent_dir, node: node)
@@ -826,7 +838,8 @@ module NodePacket
     # ledger data (spec D3's self-cancellation risk).
     missing_lease = lease_missing?(node: node, holder: holder, expires: expires, model: model, entries: entries)
     where_text = where_to_work_block(intent_dir: intent_dir, worktree_reader: worktree_reader,
-                                      project_reader: project_reader, lease_missing: missing_lease)
+                                      project_reader: project_reader, lease_missing: missing_lease,
+                                      call_cap: call_cap)
 
     state = {
       node_text: nb[:text], ledger_text: ledger_text, intent_text: record[:intent],

@@ -195,6 +195,7 @@ module RunnerDispatch
     holder = context.session
     model = RunnerPolicy.model_for(kind, config: config)
     expires = RunnerPolicy.lease_expires(kind, now: now)
+    calls_cap = RunnerPolicy.call_cap(kind, config: config)
 
     # Row 10.16/M13: recorded BEFORE provisioning - a worktree this dispatch
     # finds already on disk (kept there by a prior failed_verification
@@ -223,7 +224,7 @@ module RunnerDispatch
     # default (row 10.9).
     build_result = packet_builder.call(intent_dir: intent_dir, node: node, holder: holder, expires: expires,
                                         model: model, force: true, worktree_reader: node_reader,
-                                        budget_tokens: node_declared_budget(intent_dir, node))
+                                        budget_tokens: node_declared_budget(intent_dir, node), call_cap: calls_cap)
     unless build_result[:ok]
       # M6: a failed packet build never leaves an orphan worktree behind, and
       # its errors travel back up so the step's report can name the node and
@@ -236,7 +237,7 @@ module RunnerDispatch
     precondition = lambda do |c|
       ReadySet.ready?(content: c, subject: node, graph: { edges: edges }, nodes: nodes_decl, caps: caps)[:ready]
     end
-    fields = { holder: holder, expires: expires, packet: build_result[:sha], model: model }
+    fields = { holder: holder, expires: expires, packet: build_result[:sha], model: model, calls: calls_cap }
 
     result = begin
       ledger.append_transition(savepoint_path, subject: node, state: "running", fields: fields, now: now,

@@ -1,0 +1,147 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# Usage: hook-call-budget (reads the PreToolUse stdin JSON payload)
+#
+# Intent 355, n2. A node gets a call budget by kind (RunnerPolicy.call_cap):
+# a cap on tool calls per attempt. RunnerDispatch writes the cap onto the
+# running line as `calls=` and states it as one sentence in the node's own
+# input, so the executor learns the number before it ever gets denied. This
+# hook is the enforcement half: on every PreToolUse call it finds the
+# session's own lease (the intent whose savepoint names this session, or a
+# delegate of it, as the holder of a `running` node), counts the tool_use
+# blocks already in this session's transcript, and denies the call past the
+# cap, naming the return the executor must make (D3): commit what is green
+# and return `failed_verification reason=call_budget`.
+#
+# A session with no lease at all (a plain conversation, a session outside
+# the dispatch lifecycle) is never capped: `find_lease` returns nil and the
+# hook allows (matrix 2.6). An unreadable transcript fails open the same way
+# (matrix 2.9), leaving one line on the intent's own savepoint ledger so the
+# gap is not silent.
+#
+# The whole decision is pure and dependency-injected down to the plastic
+# home directory; the trailing block guarded by `$PROGRAM_NAME == __FILE__`
+# is this file's only I/O (stdin, stdout, ENV), so a test can `load` this
+# file and call HookCallBudget's module functions directly without spawning
+# a process or touching stdin.
+
+require "json"
+require_relative "lib/store_discovery"
+require_relative "lib/lock"
+require_relative "lib/node_ledger"
+require_relative "lib/savepoint"
+
+module HookCallBudget
+  module_function
+
+  RETURN_INSTRUCTION = "commit what is green and return failed_verification reason=call_budget"
+
+  # {node:, intent_dir:, cap:}, or nil when no intent's delivery lock
+  # authorizes this session (matrix 2.6: owner or a registered delegate,
+  # Lock.holds? already carries that rule). Scoped to intents that currently
+  # hold a delivery.lock at all, so the common case (most intents dormant)
+  # never reads a savepoint.md just to rule itself out.
+  def find_lease(session_id, plastic_home:)
+    return nil if session_id.to_s.strip.empty?
+
+    StoreDiscovery.discover(plastic_home)[:stores].each do |store|
+      Dir.glob(File.join(store[:store], "*")).sort.each do |dir|
+        next unless File.directory?(dir)
+        next unless File.exist?(File.join(dir, "delivery.lock"))
+        next unless Lock.holds?(dir, session: session_id)
+
+        running = last_running_node(dir)
+        next unless running
+
+        cap = (running[:fields] || {})["calls"]
+        next unless cap
+
+        return { node: running[:subject], intent_dir: dir, cap: cap.to_i }
+      end
+    end
+    nil
+  end
+
+  def last_running_node(intent_dir)
+    path = File.join(intent_dir, "savepoint.md")
+    return nil unless File.exist?(path)
+
+    entries = NodeLedger.entries_from_content(File.read(path))
+    entries.select do |e|
+      !e[:torn] && e[:state] == "running" && Savepoint::NODE_SUBJECT_RE.match?(e[:subject].to_s)
+    end.last
+  end
+
+  # Streams `path` a line at a time, counting `"type":"tool_use"` content
+  # blocks with a plain regex rather than a full JSON parse per line (matrix
+  # 2.5/2.8): a 3 MB transcript counts in well under 50 ms this way.
+  def count_tool_use_blocks(path)
+    count = 0
+    File.foreach(path) { |ln| count += ln.scan(/"type"\s*:\s*"tool_use"/).length }
+    count
+  end
+
+  def deny_payload(reason)
+    { "hookSpecificOutput" => { "hookEventName" => "PreToolUse", "permissionDecision" => "deny",
+                                 "permissionDecisionReason" => reason } }
+  end
+
+  # Best-effort note that the transcript could not be read (matrix 2.9): a
+  # plain milestone line, the same shared primitive Commit/Review/Report
+  # lines already use, dedup'd on (stage, milestone) so a repeat failure in
+  # the same session with the same message is not written twice.
+  def note_unreadable(intent_dir, session_id, message, now: Time.now)
+    Savepoint.append_savepoint_line(intent_dir, "CallBudget", "transcript unreadable for #{session_id}: #{message}",
+                                     now)
+  rescue StandardError
+    nil
+  end
+
+  # The one decision: nil (allow, no output) or a deny payload Hash. Never
+  # raises across its own boundary.
+  def decide(payload, plastic_home:)
+    return nil unless payload.is_a?(Hash)
+
+    session_id = payload["session_id"].to_s
+    transcript_path = payload["transcript_path"].to_s
+    return nil if session_id.empty? || transcript_path.empty?
+
+    lease = find_lease(session_id, plastic_home: plastic_home)
+    return nil unless lease
+
+    count = begin
+      count_tool_use_blocks(transcript_path)
+    rescue StandardError => e
+      note_unreadable(lease[:intent_dir], session_id, e.message)
+      return nil
+    end
+
+    return nil if count <= lease[:cap]
+
+    deny_payload("#{lease[:node]} is past its call budget (#{count}/#{lease[:cap]} tool calls); #{RETURN_INSTRUCTION}")
+  end
+end
+
+if $PROGRAM_NAME == __FILE__
+  raw = begin
+    $stdin.read
+  rescue StandardError
+    nil
+  end
+
+  if raw && !raw.strip.empty?
+    payload = begin
+      JSON.parse(raw)
+    rescue StandardError
+      nil
+    end
+
+    plastic_home = File.expand_path(ENV["PLASTIC_HOME"] || "~/.plastic")
+    result = HookCallBudget.decide(payload, plastic_home: plastic_home)
+    puts JSON.generate(result) if result
+  end
+
+  exit 0
+end

@@ -60,15 +60,16 @@ class Harness309Test < Minitest::Test
     assert_equal ["capture"], names
   end
 
-  # Intent 316a added MessageDisplay, Claude only (D6) — Codex has no equivalent
-  # hook seam, so the two harnesses' event maps are no longer identical. Codex
-  # keeps exactly the five-event shape this test used to require of both; Claude
-  # carries those five plus MessageDisplay.
+  # Intent 316a added MessageDisplay, Claude only (D6); intent 355 n2 added
+  # PreToolUse (call-budget), Claude only too. Codex has no equivalent hook
+  # seam for either, so the two harnesses' event maps are no longer identical.
+  # Codex keeps exactly the five-event shape this test used to require of
+  # both; Claude carries those five plus MessageDisplay and PreToolUse.
   def test_the_event_map_matches_except_for_claude_only_message_display
     claude = HookRegistry.events.keys.sort
     codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook").keys.sort
     assert_equal %w[PostToolUse PreCompact SessionEnd SessionStart UserPromptSubmit], codex
-    assert_equal (codex + ["MessageDisplay"]).sort, claude
+    assert_equal (codex + %w[MessageDisplay PreToolUse]).sort, claude
     refute_includes claude, "Stop"
   end
 
