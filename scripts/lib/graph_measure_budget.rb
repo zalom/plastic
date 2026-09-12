@@ -3,6 +3,7 @@
 
 require "digest"
 require "json"
+require "tmpdir"
 require_relative "node_ledger"
 require_relative "node_file"
 require_relative "node_packet"
@@ -166,15 +167,45 @@ module GraphMeasureBudget
   end
   private_class_method :read_content
 
+  # B6 (v1 review): `node_reader` (NodeFile.parse by default) reads its own
+  # path and does not scrub, so one bad byte anywhere in a node envelope
+  # raised out of NodeFile's regex matching and took the whole `budget` verb
+  # down (reproduced by appending an invalid UTF-8 byte to a copy of 340's
+  # nodes/n1.md: `budget` exited 1 with "internal error: invalid byte
+  # sequence in UTF-8", the same as `cohorts`, while `intent` - which never
+  # calls NodeFile.parse without GraphMeasure's own `with_safe_path` guard -
+  # stayed at exit 0). `GraphMeasure.with_safe_path` already solves exactly
+  # this, but it is `private_class_method` (carried from n1, same pattern
+  # n5's `GraphMeasureModels` already uses for its own `present?` and
+  # `resolve_kind`): a local copy, not a second parser or a reopen.
   def declared_budget_for(dir, node, node_reader)
     path = NodePacket.find_node_path(dir, node)
     return :unavailable unless path
 
-    parsed = node_reader.call(path)
+    parsed = with_safe_path(path) { |p| p ? node_reader.call(p) : nil }
     budget = parsed && parsed[:budget]
     budget.is_a?(Integer) ? budget : :unavailable
   end
   private_class_method :declared_budget_for
+
+  # Own copy of GraphMeasure's `with_safe_path` (private there): scrub a
+  # bad-UTF-8 file into a throwaway Dir.mktmpdir copy before handing it to a
+  # reader that does not scrub itself, never writing into `intent_dir`
+  # (spec D2).
+  def with_safe_path(path)
+    return yield(nil) unless path && File.exist?(path)
+
+    raw = File.read(path)
+    scrubbed = raw.scrub
+    return yield(path) if scrubbed == raw
+
+    Dir.mktmpdir("graph-measure-budget-scrub") do |tmp|
+      safe_path = File.join(tmp, File.basename(path))
+      File.write(safe_path, scrubbed)
+      yield(safe_path)
+    end
+  end
+  private_class_method :with_safe_path
 
   def build_attempt(dir, subject, attempt_number, entry, declared_budget)
     fields = entry[:fields] || {}
@@ -237,6 +268,28 @@ module GraphMeasureBudget
   # Row 4.9: fewer than two distinct nodes never reports a ceiling; one
   # node's own repeated attempts are not evidence of a ceiling shared across
   # the intent.
+  #
+  # B5 (v1 review): `candidate < u[:budget]` alone reads "nothing went over
+  # budget", which is true of every intent that simply stayed under its own
+  # declared budgets - reproduced with two nodes estimated at 1999 and 1998
+  # effective tokens against declared budgets of 2000 each, which the old
+  # code reported as "detected: true, value: 1999" though there was no
+  # ceiling there at all: both attempts used over 99.9% of their own
+  # declared allowance, they just never quite crossed it.
+  #
+  # "Well below" needs a stated threshold: WELL_BELOW_RATIO is that
+  # threshold, and a ceiling is reported only when the candidate uses no
+  # more than this fraction of EVERY usable attempt's own declared budget.
+  # Reproduced against 340's real packets: declared budgets there run from
+  # 50000 to 160000 tokens (327 D47's per-kind defaults), and every
+  # attempt's effective token count clusters between 3380 and 7717 - the
+  # candidate (7717) is at most 7717/50000 = 15.4% of even the SMALLEST
+  # declared budget among the usable attempts, so it clears this threshold
+  # by a wide margin and 340 still reports a detected ceiling. The
+  # synthetic 1999-vs-2000 case clears none of it (99.95%, not <= 50%) and
+  # correctly reports no ceiling.
+  WELL_BELOW_RATIO = 0.5
+
   def detect_ceiling(nodes)
     usable = []
     nodes.each do |id, node|
@@ -259,7 +312,7 @@ module GraphMeasureBudget
     end
 
     candidate = usable.map { |u| u[:effective] }.max
-    well_below = usable.all? { |u| candidate < u[:budget] }
+    well_below = usable.all? { |u| candidate <= u[:budget] * WELL_BELOW_RATIO }
 
     unless well_below
       return { detected: false, reason: :not_well_below_declared_budgets, value: nil,
