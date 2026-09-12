@@ -920,3 +920,89 @@ class DoctorUnpromotedRulesTest < Minitest::Test
     assert_equal "pass", check[:status]
   end
 end
+
+# Row 4.4 (intent 341, G8 node n4): a graph intent (D1, no ceremonies) never carries
+# spec.md, plan.md, or checklist.md by design. Doctor's backfilled_complete check must
+# not warn about them on a graph intent; a legacy intent (no graph.md) keeps today's
+# behavior of warning on a real gap.
+class DoctorGraphIntentSpecOptionalTest < Minitest::Test
+  def setup
+    @home = Dir.mktmpdir("plastic-doctor-graph-spec-optional")
+  end
+
+  def teardown
+    FileUtils.remove_entry(@home) if @home && Dir.exist?(@home)
+  end
+
+  def store_dir = File.join(@home, "store")
+
+  def doctor = Doctor.new(plastic_home: @home)
+
+  def write_index(id)
+    body = +"# Index\n\n"
+    %w[Active Future Clusters Abandoned].each { |s| body << "## #{s}\n\n" }
+    body << "## Completed\n"
+    body << "- [#{id} — t](store/#{id}--slug/#{id}--slug.md) — 2026-09-12\n"
+    File.write(File.join(@home, "INDEX.md"), body)
+  end
+
+  def intent_dir(id) = File.join(store_dir, "#{id}--slug")
+
+  def write_common(id)
+    dir = intent_dir(id)
+    FileUtils.mkdir_p(dir)
+    File.write(File.join(dir, "#{id}--slug.md"), <<~MD)
+      ---
+      id: "#{id}"
+      intent: "Test intent"
+      sources: []
+      chain: []
+      created: 2026-09-12
+      author: test
+      tags: []
+      ---
+
+      ## Intent
+      Test intent.
+    MD
+    File.write(File.join(dir, "outcome.md"), "---\ndisposition: delivered\n---\n\n## Summary\nDone.\n")
+    File.write(File.join(dir, "savepoint.md"), "2026-09-12T00:00:00Z  Done  delivered\n")
+  end
+
+  def check(name)
+    doctor.check_done_signals.find { |c| c[:name] == name }
+  end
+
+  def test_missing_spec_is_not_a_warning
+    id = "341n4a"
+    write_index(id)
+    write_common(id)
+    dir = intent_dir(id)
+    File.write(File.join(dir, "graph.md"), "# Graph\n\n## Goal\nTest.\n")
+    FileUtils.mkdir_p(File.join(dir, "nodes"))
+    File.write(File.join(dir, "nodes", "n1.md"), "# n1\n\nreal node content.\n")
+
+    refute File.exist?(File.join(dir, "spec.md"))
+    refute File.exist?(File.join(dir, "plan.md"))
+    refute File.exist?(File.join(dir, "checklist.md"))
+
+    c = check("backfilled_complete")
+    assert_equal "pass", c[:status], c.inspect
+  end
+
+  def test_missing_spec_on_a_legacy_intent_still_warns
+    id = "341n4b"
+    write_index(id)
+    write_common(id)
+    dir = intent_dir(id)
+    FileUtils.mkdir_p(File.join(dir, "actions"))
+    File.write(File.join(dir, "actions", "ACTION_1.md"), "# Action 1\n\nreal content.\n")
+
+    refute File.exist?(File.join(dir, "spec.md"))
+    refute File.exist?(File.join(dir, "plan.md"))
+
+    c = check("backfilled_complete")
+    assert_equal "warn", c[:status], c.inspect
+    assert(c[:details].any? { |d| d.include?("spec.md") }, c[:details].inspect)
+  end
+end
