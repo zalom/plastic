@@ -9,6 +9,7 @@ require_relative "../scripts/lib/qmd_sync"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/session_ledger"
+require_relative "../scripts/lib/packet_wrapper"
 
 # Unit coverage for the pure boot-banner renderer (intent 36a). Health is
 # injected, so these are fully hermetic — no doctor run, no ~/.claude, no ENV.
@@ -125,6 +126,62 @@ class SessionStartHookTest < Minitest::Test
       assert(ctx.include?("Plastic collections indexed") || ctx.include?("qmd-sync register --all"),
              "QMD line, when present, must be one of the two known states")
     end
+  end
+
+  # --- QMD hits wrapped as untrusted data (intent 341, G8, C23) --------------------
+
+  # A fake `qmd` on a PATH-only bindir, prepended onto the real PATH so `ruby`
+  # itself still resolves. Guarantees the "all registered" QMD line fires
+  # deterministically, regardless of the host's own qmd state.
+  def bindir_with_fake_qmd
+    bindir = Dir.mktmpdir("session-start-qmd-bin")
+    fake = File.join(bindir, "qmd")
+    File.write(fake, <<~RUBY)
+      #!/usr/bin/env ruby
+      puts "plastic-global (qmd://plastic-global/)"
+    RUBY
+    File.chmod(0o755, fake)
+    bindir
+  end
+
+  def run_hook_with_path(path_prefix)
+    Open3.capture3({ "PLASTIC_TMP" => @dir, "CLAUDE_CODE_SESSION_ID" => nil,
+                      "PATH" => [path_prefix, ENV.fetch("PATH", "")].join(File::PATH_SEPARATOR) },
+                   "ruby", HOOK, @index, @dir, "global")
+  end
+
+  def strip_wrapped_blocks(text)
+    text.gsub(/<<<PLASTIC-DATA:[0-9a-f]+ label="[^"]*" source="[^"]*">>>\n.*?<<<END-PLASTIC-DATA:[0-9a-f]+>>>\n?/m, "")
+  end
+
+  def test_qmd_hits_are_wrapped_with_the_packet_wrapper
+    bindir = bindir_with_fake_qmd
+    out, _err, status = run_hook_with_path(bindir)
+    assert_equal 0, status.exitstatus
+
+    ctx = context_from(out)
+    blocks = PacketWrapper.unwrap(ctx)
+    qmd_block = blocks.find { |b| b[:label] == "qmd-hit" }
+    refute_nil qmd_block, "the QMD status line must be wrapped in a data block"
+    assert_includes qmd_block[:payload], "Plastic collections indexed"
+  ensure
+    FileUtils.rm_rf(bindir) if bindir
+  end
+
+  def test_banners_stay_unwrapped
+    bindir = bindir_with_fake_qmd
+    out, _err, status = run_hook_with_path(bindir)
+    assert_equal 0, status.exitstatus
+
+    ctx = context_from(out)
+    assert_includes ctx, "Plastic collections indexed", "fixture sanity: the fake qmd must yield the indexed line"
+
+    residual = strip_wrapped_blocks(ctx)
+    assert_includes residual, "Plastic Core loaded", "the core banner must survive outside every data block"
+    refute_includes residual, "Plastic collections indexed",
+                     "the QMD line must live only inside a data block, never loose too"
+  ensure
+    FileUtils.rm_rf(bindir) if bindir
   end
 end
 

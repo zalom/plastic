@@ -864,3 +864,59 @@ class DoctorCodexStaleRegistrationsTest < Minitest::Test
     assert_equal [], checks
   end
 end
+
+# ===========================================================================
+# Unpromoted rule: findings (intent 341, G8, C37)
+# ===========================================================================
+
+class DoctorUnpromotedRulesTest < Minitest::Test
+  include DoctorTestHelpers
+
+  def setup
+    @store_dir = Dir.mktmpdir("doctor-unpromoted-rules-store")
+    @package_root = Dir.mktmpdir("doctor-unpromoted-rules-package")
+    @chapters_dir = File.join(@package_root, "skills", "conventions", "references")
+    FileUtils.mkdir_p(@chapters_dir)
+  end
+
+  def teardown
+    FileUtils.rm_rf([@store_dir, @package_root])
+  end
+
+  def write_rule_intent(rule_text)
+    dir = File.join(@store_dir, "77--rule-source")
+    FileUtils.mkdir_p(dir)
+    File.write(File.join(dir, "77--rule-source.md"), <<~MD)
+      ---
+      id: "77"
+      intent: "Rule source"
+      ---
+
+      ## Insights
+      2026-09-12T10:00:00Z · Exec · test — rule: #{rule_text}
+    MD
+    [{ path: dir, name: "77--rule-source", scope: "global" }]
+  end
+
+  def test_unpromoted_rules_listed
+    intent_dirs = write_rule_intent("Never eval a prompt string")
+
+    result = doctor.unpromoted_rules_checks(intent_dirs, package_root: @package_root)
+    check = result.find { |c| c[:name] == "unpromoted_rules" }
+
+    refute_nil check
+    assert_equal "warn", check[:status]
+    assert check[:details].any? { |d| d.include?("Never eval a prompt string") }, check[:details].inspect
+  end
+
+  def test_promoted_rules_not_listed
+    intent_dirs = write_rule_intent("Never eval a prompt string")
+    File.write(File.join(@chapters_dir, "safety.md"), "# Safety\n\nNever eval a prompt string, ever.\n")
+
+    result = doctor.unpromoted_rules_checks(intent_dirs, package_root: @package_root)
+    check = result.find { |c| c[:name] == "unpromoted_rules" }
+
+    refute_nil check
+    assert_equal "pass", check[:status]
+  end
+end
