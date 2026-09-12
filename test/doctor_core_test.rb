@@ -919,6 +919,29 @@ class DoctorUnpromotedRulesTest < Minitest::Test
     refute_nil check
     assert_equal "pass", check[:status]
   end
+
+# --- 5.6: the installed doctor has no repo skills/ dir under PACKAGE_ROOT
+# (~/.plastic); chapters live under the installed home layout instead
+# (~/.claude/skills/plastic-conventions/references,
+# ~/.agents/skills/plastic-conventions/references). Resolved from an
+# injected `home:` keyword, never ENV, so this stays hermetic.
+def test_promoted_rules_not_listed_from_installed_layout
+  home = Dir.mktmpdir("doctor-unpromoted-rules-home")
+  chapters_dir = File.join(home, ".claude", "skills", "plastic-conventions", "references")
+  FileUtils.mkdir_p(chapters_dir)
+  File.write(File.join(chapters_dir, "safety.md"), "# Safety\n\nNever eval a prompt string, ever.\n")
+
+  empty_package_root = Dir.mktmpdir("doctor-unpromoted-rules-no-package")
+  intent_dirs = write_rule_intent("Never eval a prompt string")
+
+  result = doctor.unpromoted_rules_checks(intent_dirs, package_root: empty_package_root, home: home)
+  check = result.find { |c| c[:name] == "unpromoted_rules" }
+
+  refute_nil check
+  assert_equal "pass", check[:status]
+ensure
+  FileUtils.rm_rf([home, empty_package_root].compact)
+end
 end
 
 # Row 4.4 (intent 341, G8 node n4): a graph intent (D1, no ceremonies) never carries

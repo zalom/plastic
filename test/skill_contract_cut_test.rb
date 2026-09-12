@@ -87,4 +87,28 @@ class SkillContractCutTest < Minitest::Test
       assert lines <= 300, "#{f} is #{lines} lines, over the 300-line cap"
     end
   end
+
+# --- 5.4: ending's Step 0 checks graph terminality for a graph intent, and
+# only asks about spec.md/checklist.md for a legacy intent with no graph.md.
+# The trigger in the description must not require a checklist reaching 100
+# percent either, since a graph intent has no checklist.md at all.
+def test_ending_step_zero_names_no_spec_or_checklist_for_a_graph
+  text = read("skills/intent-ending/SKILL.md")
+
+  refute_match(/when a checklist reaches 100 percent/i, text,
+               "the description must not trigger only on a checklist reaching 100 percent")
+
+  step_zero = text[/### Step 0\..*?(?=\n### )/m, 0].to_s
+  refute_empty step_zero, "Step 0 section not found"
+
+  graph_clause = step_zero[/For an intent with a `graph\.md`.*?(?=For an intent with no `graph\.md`)/m, 0].to_s
+  refute_empty graph_clause, "no graph-specific precondition clause found in Step 0"
+  assert_match(/terminal/i, graph_clause)
+  assert_match(/verify node/i, graph_clause)
+
+  legacy_clause = step_zero[/For an intent with no `graph\.md`.*/m, 0].to_s
+  refute_empty legacy_clause, "no legacy-specific precondition clause found in Step 0"
+  assert_match(/checklist\.md/i, legacy_clause)
+  assert_match(/spec\.md/i, legacy_clause)
+end
 end
