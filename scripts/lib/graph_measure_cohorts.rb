@@ -65,9 +65,24 @@ module GraphMeasureCohorts
 
       measure = GraphMeasure.read(path, now: now)
       entries = NodeLedger.entries_from_content(content).reject { |e| e[:torn] }
+      # Row 6.12 already excludes an intent with no `Done` line from
+      # latency; the same exclusion never reached the hop arms (row 8.13,
+      # v1 review M5). A still-open intent's attempts have no known active
+      # span (B2), and even after B2 stops fabricating a 0.0 for them, their
+      # CLOSED attempts (a failed_verification, say) still counted toward
+      # `n` and toward the confound's intent set - inflating a comparison
+      # meant to read as "one intent's two delivery phases" into "two
+      # intents", silencing `confound_note` exactly when the confound is
+      # most real. Reproduced by hand against the real store: before this
+      # fix, `graph-measure cohorts` against this very intent's own store
+      # printed "confound: (none)" for 340's hop split, because this still-
+      # open intent's own hop-tracking attempts were leaking into the "on"
+      # arm's intent set; after B2 and this exclusion it correctly names
+      # "single intent 340--runner-core-in-session supplies both arms".
+      has_done = !!(measure[:clock][:start] && measure[:clock][:end])
 
       accumulate_approve_then_fix!(entries, measure[:nodes], approve_acc)
-      accumulate_hop_cohorts!(name, content, measure[:nodes], hop_acc)
+      accumulate_hop_cohorts!(name, content, measure[:nodes], hop_acc, has_done)
       accumulate_latency!(name, measure[:clock], measure[:scaffold], latency_rows, latency_excluded)
       accumulate_concurrency!(name, measure[:nodes], now, concurrency_rows)
     end
@@ -305,7 +320,8 @@ module GraphMeasureCohorts
   # CLOSED attempt (any terminal state) in a ledger that does track hop=
   # goes to the "on" arm when ITS OWN running line carried `hop=` (spec row
   # 6.7: split per attempt, never per node) and to "off" otherwise.
-  def accumulate_hop_cohorts!(name, content, nodes, hop_acc)
+  def accumulate_hop_cohorts!(name, content, nodes, hop_acc, has_done)
+    return unless has_done
     return unless content.match?(HOP_FIELD_RE)
 
     nodes.each_value do |node|
