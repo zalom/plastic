@@ -253,6 +253,19 @@ module GraphMeasureReport
   # (`sums`) still starts at 0.0 for the arithmetic `lead`/`sums_to_active`
   # need, but the RENDERED value for a bucket nothing contributed to is
   # UNAVAILABLE, never the seed.
+  #
+  # NEW-3 (v2 review): `contributed` could only say "nothing landed here",
+  # never distinguish WHY - a bucket with no node of its kind in this intent
+  # at all (a real zero: there was never anything to measure) rendered the
+  # same UNAVAILABLE as a bucket whose nodes exist but never carried a
+  # measured span (unmeasurable, not absent). Reproduced by hand against a
+  # hermetic one-node work-only intent: "build: 30.0 / verify: unavailable
+  # / fold: unavailable" though the intent has no verify node and no fold
+  # node anywhere, which the report's own node table already proves.
+  # `has_kind` now tracks whether ANY node of a bucket's kind exists at
+  # all; a bucket with no node of its kind renders 0.0 (a real, checkable
+  # zero), and only a bucket whose nodes exist but never contributed a
+  # measured span renders UNAVAILABLE.
   def buckets_model(record)
     active = record[:active_seconds]
     unless active.is_a?(Numeric)
@@ -261,9 +274,11 @@ module GraphMeasureReport
     end
 
     sums = { "build" => 0.0, "verify" => 0.0, "fold" => 0.0 }
+    has_kind = { "build" => false, "verify" => false, "fold" => false }
     contributed = { "build" => false, "verify" => false, "fold" => false }
     record[:nodes].each_value do |node|
       key = bucket_key(node)
+      has_kind[key] = true
       node[:attempts].each do |a|
         next unless a[:active_span_seconds].is_a?(Numeric)
 
@@ -276,7 +291,15 @@ module GraphMeasureReport
     sums_to_active = (sums["build"] + sums["verify"] + sums["fold"] + lead - active).abs < 0.001
 
     totals = {}
-    %w[build verify fold].each { |key| totals[key] = contributed[key] ? sums[key] : UNAVAILABLE }
+    %w[build verify fold].each do |key|
+      totals[key] = if contributed[key]
+                      sums[key]
+                    elsif has_kind[key]
+                      UNAVAILABLE
+                    else
+                      0.0
+                    end
+    end
     totals["lead"] = lead
     totals["active_seconds"] = active
     totals["sums_to_active"] = sums_to_active
@@ -327,13 +350,25 @@ module GraphMeasureReport
   # and that sum is 0.0 over an attempt with no `span_seconds` yet. A span
   # is only measured once an attempt has CLOSED (spec row 1.4-1.9's own
   # running-to-terminal pairing), so the guard checks `terminal_at` too.
+  #
+  # NEW-1 (v2 review): checking `running_at && terminal_at` alone is still
+  # not "a span was measured" - it is only "the attempt itself closed". Once
+  # the open-clock fix left EVERY attempt's `active_span_seconds` nil while
+  # the delivery clock has no end yet, a closed verify attempt inside that
+  # open clock still satisfied this guard, and `sum_active_spans` coerced
+  # its nil span to 0.0. Reproduced by hand: a hermetic intent with one
+  # verify node, one closed attempt spanning a real hour, and no `Done`
+  # stage line printed "active: unavailable" at the top of the clock block
+  # and "total active span: 0.0 min" in Verify cost a few lines later. The
+  # guard now requires an actual numeric `active_span_seconds` on at least
+  # one attempt, never merely a closed one.
   def verify_cost_model(record)
     verify_nodes = record[:nodes].select { |_, n| n[:kind] == "verify" }
     all_attempts = verify_nodes.values.flat_map { |n| n[:attempts] }
-    has_running = all_attempts.any? { |a| a[:running_at] && a[:terminal_at] }
+    has_measured = all_attempts.any? { |a| measured_span?(a) }
     active = record[:active_seconds]
 
-    total = has_running ? sum_active_spans(all_attempts) : nil
+    total = has_measured ? sum_active_spans(all_attempts) : nil
     share = (total && active.is_a?(Numeric) && active.positive?) ? total / active : nil
 
     {
@@ -346,7 +381,7 @@ module GraphMeasureReport
 
   def verify_node_model(id, node)
     attempts = node[:attempts]
-    node_total = attempts.any? { |a| a[:running_at] && a[:terminal_at] } ? sum_active_spans(attempts) : nil
+    node_total = attempts.any? { |a| measured_span?(a) } ? sum_active_spans(attempts) : nil
     {
       "id" => id,
       "active_span_seconds" => av_seconds(node_total),
@@ -354,6 +389,14 @@ module GraphMeasureReport
     }
   end
   private_class_method :verify_node_model
+
+  # An attempt is closed (running_at and terminal_at both present) AND its
+  # own active span actually resolved to a number, never merely nil because
+  # the delivery clock itself has no end yet (NEW-1).
+  def measured_span?(a)
+    a[:running_at] && a[:terminal_at] && a[:active_span_seconds].is_a?(Numeric)
+  end
+  private_class_method :measured_span?
 
   def sum_active_spans(attempts)
     attempts.sum { |a| a[:active_span_seconds].is_a?(Numeric) ? a[:active_span_seconds] : 0.0 }

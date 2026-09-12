@@ -285,14 +285,23 @@ class GraphMeasureFoldTest < Minitest::Test
 
   # --- 8.7 (B3): a bucket with no measured source renders unavailable ---------
 
+  # Corrected again by n9 row 9.3 (v2 NEW-3): 337 has no graph.md at all, so
+  # its "fold" bucket has no node of that kind in the first place (a real
+  # zero), distinct from "build" and "verify", which have real nodes that
+  # simply never carried a measured span (unavailable). The old assertion
+  # here pinned NEW-3's own defect - all three buckets collapsing into the
+  # same "unavailable" - not a fact worth keeping.
   def test_absent_bucket_source_renders_unavailable
     record = GraphMeasure.read(File.join(FIXTURES, "337--roadmap-graph"))
     m = GraphMeasureReport.model(record)
-    %w[build verify fold].each do |key|
+    %w[build verify].each do |key|
       assert_equal "unavailable", m[:buckets][key],
                    "337 has no `running` line anywhere, so #{key} has no measured source and must read " \
                    "unavailable, never 0.0"
     end
+    assert_equal 0.0, m[:buckets]["fold"],
+                 "337 has no graph.md at all, so no node is ever classified fold; that is a real zero, " \
+                 "not an unmeasured source"
     assert_in_delta m[:buckets]["active_seconds"], m[:buckets]["lead"], 0.01,
                      "active time is still real here (the generic gap rule finds sessions); it must all " \
                      "land in lead, not be hidden behind a false zero elsewhere"
