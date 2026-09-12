@@ -473,3 +473,113 @@ class SessionStartDayLedgerTest < Minitest::Test
     assert JSON.parse(out), "the hook must still emit valid JSON when stdin is a tty"
   end
 end
+
+# Intent 355 spec D9, node n7: a subagent needs the core banner only. The
+# stdin payload's agent_id/agent_type marks a subagent SessionStart call; an
+# absent marker is a live session, and the marker is read only from that
+# payload, never from an environment variable. Fixture carries an active
+# intent and a stale future intent behind PLASTIC.md so a live boot's full
+# content (Active intents, Stale future intents, day ledger) has something to
+# suppress; a fixture without that content would leave the suppression
+# unproven either way.
+class SessionStartSubagentTest < Minitest::Test
+  HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
+
+  def setup
+    @home = Dir.mktmpdir("session-start-subagent-home")
+    @tmp = Dir.mktmpdir("session-start-subagent-tmp")
+    @index = File.join(@home, "INDEX.md")
+    File.write(File.join(@home, "PLASTIC.md"), "# Plastic: Conventions\n")
+
+    active_dir = File.join(@home, "store", "555--an-active-intent")
+    FileUtils.mkdir_p(active_dir)
+    File.write(File.join(active_dir, "555--an-active-intent.md"),
+               "---\nid: \"555\"\n---\n\n## Intent\nActive.\n")
+
+    stale_dir = File.join(@home, "store", "556--a-stale-intent")
+    FileUtils.mkdir_p(stale_dir)
+    File.write(File.join(stale_dir, "556--a-stale-intent.md"),
+               "---\nid: \"556\"\ncreated: '2000-01-01'\n---\n\n## Intent\nStale.\n")
+
+    File.write(@index, <<~MD)
+      # Index
+
+      ## Active
+      - [555 - An active intent](store/555--an-active-intent/555--an-active-intent.md)
+
+      ## Future
+      - [556 - A stale intent](store/556--a-stale-intent/556--a-stale-intent.md)
+    MD
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+    FileUtils.rm_rf(@tmp)
+  end
+
+  def run_hook(stdin_data:, session_id: "sess-subagent")
+    env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => session_id }
+    Open3.capture3(env, "ruby", HOOK, @index, @home, "global", stdin_data: stdin_data)
+  end
+
+  # Row 7.1
+  def test_subagent_session_boot_is_core_banner_only
+    payload = JSON.generate("session_id" => "sub-1", "agent_id" => "agent-42")
+    out, _err, status = run_hook(stdin_data: payload)
+    assert_equal 0, status.exitstatus
+    parsed = JSON.parse(out)
+    ctx = parsed.dig("hookSpecificOutput", "additionalContext")
+    banner = parsed["systemMessage"]
+
+    assert_equal "#{banner}\n", ctx,
+                 "a subagent boot must emit the core banner and nothing else"
+    refute_includes ctx, "Active intents"
+    refute_includes ctx, "Stale future intents"
+    refute_includes ctx, "day ledger"
+  end
+
+  # Row 7.2
+  def test_missing_subagent_marker_is_a_live_session
+    payload = JSON.generate("session_id" => "live-1")
+    out, _err, status = run_hook(stdin_data: payload)
+    assert_equal 0, status.exitstatus
+    ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+
+    assert_includes ctx, "Active intents"
+    assert_includes ctx, "Stale future intents"
+    assert_includes ctx, "day ledger"
+  end
+
+  # Row 7.3
+  def test_marker_read_from_hook_input
+    env_with_stray_agent_env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-env-only",
+                                  "CLAUDE_AGENT_ID" => "agent-from-env-must-be-ignored" }
+    payload_without_marker = JSON.generate("session_id" => "sess-env-only")
+    out, _err, status = Open3.capture3(env_with_stray_agent_env, "ruby", HOOK, @index, @home, "global",
+                                        stdin_data: payload_without_marker)
+    assert_equal 0, status.exitstatus
+    ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+    assert_includes ctx, "Active intents",
+                    "an agent id carried only on the env, never on stdin, must never mark a subagent session"
+
+    payload_with_marker = JSON.generate("session_id" => "sess-marker-only", "agent_type" => "executor")
+    out2, _err2, status2 = run_hook(stdin_data: payload_with_marker, session_id: "sess-marker-only")
+    assert_equal 0, status2.exitstatus
+    ctx2 = JSON.parse(out2).dig("hookSpecificOutput", "additionalContext")
+    refute_includes ctx2, "Active intents",
+                    "the marker on the stdin payload alone, with no env support at all, must still mark a subagent"
+  end
+
+  # Row 7.6
+  def test_subagent_branch_exception_degrades_to_banner
+    payload = JSON.generate("session_id" => "sub-weird", "agent_id" => { "nested" => ["weird", 1, nil] })
+    out, _err, status = run_hook(stdin_data: payload, session_id: "sess-subagent-weird")
+    assert_equal 0, status.exitstatus
+    parsed = JSON.parse(out)
+    assert_includes parsed["systemMessage"], "Plastic Core loaded"
+    ctx = parsed.dig("hookSpecificOutput", "additionalContext")
+    assert_includes ctx, "Plastic Core loaded"
+    refute_includes ctx, "Active intents",
+                    "a malformed marker value must still degrade to a banner-only boot, never crash to nothing"
+  end
+end

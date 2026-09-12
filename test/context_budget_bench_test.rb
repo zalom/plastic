@@ -483,3 +483,62 @@ class ContextBudgetCliTest < Minitest::Test
     assert_match(/usage/i, out)
   end
 end
+
+# Intent 355 spec D9, node n7: the subagent boot (hook-session-start's core
+# banner only branch) gets its own measurement and its own ceiling, so the
+# "helper boots small" claim is asserted rather than guessed. Kept local to
+# this test file rather than added to ContextBudget's shared CEILINGS: node
+# n7's declared files are the hook and its two test files, not
+# bin/lib/context_budget.rb, so the branch stays self-contained (spec D13)
+# for intent 341 to rebase on.
+class ContextBudgetSubagentBootTest < Minitest::Test
+  REPO = File.expand_path("../../", __FILE__)
+
+  # A real subagent boot is one banner line: "Plastic Core loaded - v<ver> |
+  # doctor --core run: <success|error - run /plastic-doctor>\n", measured at
+  # 69-91 bytes against this repo's own version string. 512 gives a
+  # generous multiple of headroom for a longer version string while staying
+  # tight enough that any future subagent-branch regression (the stale list,
+  # the day ledger, a QMD line) blows through it immediately.
+  SUBAGENT_BOOT_CEILING = 512
+
+  def self.subagent_context
+    @subagent_context ||= Dir.mktmpdir("plastic-bench-subagent") do |dir|
+      fixture = ContextBudget::Fixture.build(dir: dir, repo: REPO)
+      runner = lambda do |env, *cmd, **opts|
+        Open3.capture3(env, *cmd, **opts,
+                       stdin_data: JSON.generate("session_id" => "bench-subagent", "agent_id" => "bench-agent"))
+      end
+      context, = ContextBudget.boot(fixture: fixture, repo: REPO, runner: runner)
+      context
+    end
+  end
+
+  def context
+    self.class.subagent_context
+  end
+
+  def failure_line(bytes:, ceiling:)
+    "subagent boot is #{bytes} bytes against a #{ceiling} byte ceiling"
+  end
+
+  # Row 7.4
+  def test_subagent_boot_under_its_ceiling
+    bytes = context.bytesize
+    assert_operator bytes, :<, SUBAGENT_BOOT_CEILING, failure_line(bytes: bytes, ceiling: SUBAGENT_BOOT_CEILING)
+  end
+
+  def test_subagent_boot_carries_no_live_session_content
+    refute_includes context, "Active intents"
+    refute_includes context, "day ledger"
+  end
+
+  # Row 7.5: can-fail proof of the message itself, driven by a synthetic
+  # over-ceiling byte count rather than by inflating the real boot.
+  def test_subagent_ceiling_failure_names_both_numbers
+    message = failure_line(bytes: 9_000, ceiling: SUBAGENT_BOOT_CEILING)
+
+    assert_includes message, "9000"
+    assert_includes message, SUBAGENT_BOOT_CEILING.to_s
+  end
+end
