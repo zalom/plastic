@@ -15,18 +15,19 @@ require_relative "lib/savepoint"
 # Usage:
 #   graph-measure <intent|budget|cohorts> <dir> [--format text|json]
 #
-# `intent` (n2) and `budget` (n4) are delivered here. `cohorts` (n5) is
-# named in the table already so the subcommand list never shrinks as later
-# nodes land, but its library does not exist yet: calling it today reports
-# "not yet delivered" and exits 3, exactly like scripts/runner's own
-# unlanded verbs.
+# `intent` (n2) and `budget` (n4) take an INTENT directory. `cohorts` (n5,
+# its model section; n6 adds the rates, the latency and the bar to the same
+# verb) takes a STORE directory instead - the directory holding `id--slug/`
+# intent folders for one project - and is validated against that shape, not
+# `intent_directory?`.
 #
 # Exit codes:
 #   0 - a report rendered (anomalies never change this: a ledger with torn
 #       lines still renders, lists them, and exits 0)
 #   1 - the directory has no savepoint.md to measure at all, named
 #   2 - usage: no args, an unknown subcommand, an unknown flag, or the path
-#       is not an intent directory
+#       is not the right shape for its verb (an intent directory for
+#       `intent`/`budget`, a store directory for `cohorts`)
 #   3 - the verb's module has not been delivered yet
 module GraphMeasureCLI
   module_function
@@ -40,7 +41,7 @@ module GraphMeasureCLI
   LAZY_MODULES = {
     "intent" => [["GraphMeasure", "graph_measure"], ["GraphMeasureReport", "graph_measure_report"]],
     "budget" => [["GraphMeasureBudget", "graph_measure_budget"]],
-    "cohorts" => [["GraphMeasureCohorts", "graph_measure_cohorts"]],
+    "cohorts" => [["GraphMeasureModels", "graph_measure_models"]],
   }.freeze
 
   KNOWN_FLAGS = {
@@ -49,12 +50,24 @@ module GraphMeasureCLI
     "cohorts" => %w[--format],
   }.freeze
 
+  # "intent" and "budget" take one intent directory; "cohorts" takes the
+  # store directory that holds many of them (row 5.15).
+  DIR_KIND = { "intent" => :intent, "budget" => :intent, "cohorts" => :store }.freeze
+
   def usage
     warn "Usage: graph-measure <#{VERBS.join('|')}> <dir> [--format text|json]"
   end
 
   def intent_directory?(dir)
     dir && File.directory?(dir) && File.exist?(Savepoint.intent_file(dir))
+  end
+
+  def store_directory?(dir)
+    dir && File.directory?(dir)
+  end
+
+  def valid_dir?(verb, dir)
+    DIR_KIND.fetch(verb, :intent) == :store ? store_directory?(dir) : intent_directory?(dir)
   end
 
   def opt(args, name)
@@ -82,8 +95,9 @@ module GraphMeasureCLI
     end
 
     dir_arg = args.shift
-    unless intent_directory?(dir_arg && File.expand_path(dir_arg))
-      warn "graph-measure: #{dir_arg.inspect} is not an intent directory"
+    unless valid_dir?(verb, dir_arg && File.expand_path(dir_arg))
+      label = DIR_KIND.fetch(verb, :intent) == :store ? "not a store directory" : "not an intent directory"
+      warn "graph-measure: #{dir_arg.inspect} is #{label}"
       usage
       return 2
     end
@@ -129,6 +143,8 @@ module GraphMeasureCLI
       run_intent(dir, format)
     when "budget"
       run_budget(dir, format)
+    when "cohorts"
+      run_cohorts(dir, format)
     else
       warn "graph-measure: #{verb}'s module loaded but no dispatcher is wired up yet"
       3
@@ -160,6 +176,15 @@ module GraphMeasureCLI
 
     record = GraphMeasureBudget.read(dir)
     puts format == "json" ? GraphMeasureBudget.render_json(record) : GraphMeasureBudget.render_text(record)
+    0
+  end
+
+  # Row 2.5's "missing savepoint.md" check does not apply here: `dir` is a
+  # STORE directory (spec D1's "the directory holding id--slug/ intent
+  # folders"), which never carries a savepoint.md of its own.
+  def run_cohorts(dir, format)
+    record = GraphMeasureModels.read(dir)
+    puts format == "json" ? GraphMeasureModels.render_json(record) : GraphMeasureModels.render_text(record)
     0
   end
 end
