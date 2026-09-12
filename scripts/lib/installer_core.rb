@@ -545,6 +545,10 @@ class InstallerCore
       # by scripts/runner's `step`.
       "scripts/lib/runner_policy.rb" => "scripts/lib/runner_policy.rb",
       "scripts/lib/runner_dispatch.rb" => "scripts/lib/runner_dispatch.rb",
+      # Intent 355 (n2): the call budget PreToolUse hook (RunnerPolicy.call_cap
+      # is its cap table, above); its launcher (hooks/call-budget) ships via
+      # hook_files' own glob, so only the hook script itself needs an entry.
+      "scripts/hook-call-budget" => "scripts/hook-call-budget",
       # Intent 340 (G7, n6): answer (closes a decision node or unparks a
       # work node parked at needs_decision), proposals (mints ids for what
       # an executor proposed), and rewind (resets the intent branch to a

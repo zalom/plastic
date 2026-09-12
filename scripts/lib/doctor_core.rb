@@ -30,7 +30,8 @@ class Doctor
   # The Claude events hooks_registered expects in settings.json: the six-event map of
   # cut-inventory 3b (intent 309 added SessionEnd, registered for close since intent 301;
   # intent 316a added MessageDisplay, registered for message-display, Claude only).
-  CLAUDE_HOOK_EVENTS = %w[SessionStart PreCompact PostToolUse UserPromptSubmit SessionEnd MessageDisplay].freeze
+  CLAUDE_HOOK_EVENTS = %w[SessionStart PreToolUse PreCompact PostToolUse UserPromptSubmit SessionEnd
+                          MessageDisplay].freeze
 
   # Launchers the installer places in the agent's hooks dir that are NOT hooks
   # (intent 204): plastic-statusline is the settings["statusLine"] command, wired
