@@ -108,8 +108,25 @@ class DoctorRequalificationTest < Minitest::Test
                  "a model change is routine; it must never turn the doctor red"
   end
 
-  # --- 7.3: pass quietly on the store as it stands -------------------------
+  # --- 7.3: pass quietly when every recorded model matches config ----------
 
+  # Corrected by the v1 fold (M4, n8 row 8.12): n7's own prose claimed the
+  # rule "finds nothing on the store as it stands" - read as a claim about
+  # the REAL project store, that is false. `doctor.rb --store plastic`
+  # warns today, naming
+  # "project:plastic/336--ready-set-and-batches/v1 (advisor): recorded
+  # model=sonnet, current config resolves opus" (reproduced by hand,
+  # 2026-09-12). This test never touched the real store - only a synthetic
+  # tmpdir built to match config's shipped defaults - so it could not have
+  # proven that claim either way; renamed in intent, not in method name
+  # (the matrix names this exact test), to state only what it actually
+  # tests: a synthetic ledger whose recorded models already match
+  # RunnerPolicy's shipped defaults passes quietly. The warning the doctor
+  # produces on the real store is correct behaviour, not a bug to silence;
+  # test_subprocess_doctor_reports_the_finding below (unchanged) is the one
+  # that pins a real warn, and the real-store check right after this one
+  # pins the corrected claim against project:plastic itself, skipped where
+  # that store is absent.
   def test_current_store_passes_quietly
     write_intent("1--demo",
                  transitions: node_transitions("n1", "sonnet") + node_transitions("v1", "opus"),
@@ -119,6 +136,20 @@ class DoctorRequalificationTest < Minitest::Test
     assert_equal "pass", result[:status],
                  "work=sonnet and verify=opus both match RunnerPolicy's shipped defaults today"
     assert_empty result[:details]
+  end
+
+  # --- 7.3 corrected: the REAL project store warns today, it does not pass -
+
+  def test_real_project_store_warns_not_passes_quietly
+    real_home = File.expand_path("~/.plastic")
+    skip "real ~/.plastic not present on this machine" unless Dir.exist?(real_home)
+
+    result = Doctor.new(plastic_home: real_home).model_requalification_checks(scopes: ["project:plastic"])
+                    .find { |c| c[:name] == "model_requalification" }
+    refute_nil result
+    assert_equal "warn", result[:status],
+                 "the real project:plastic store carries at least one recorded model that no longer " \
+                 "matches what config resolves today (336's v1); it must not report pass"
   end
 
   # --- 7.4: the finding names the role, both models, and the affected node ---
