@@ -2,7 +2,10 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# Runs the FULL Minitest suite in a single process.
+# Runs the Minitest suite in a single process, either the whole suite or a
+# named subset via --only (intent 355, n4, D5). Every run, named or full,
+# goes through FailuresReporter, so a green run costs one line and a red run
+# prints only the failures plus that line, never a dot per test.
 #
 # `release.verify` used to be `ruby -Itest test/*_test.rb`, but Ruby runs only
 # the first glob-expanded file as the program — the rest land in ARGV and are
@@ -12,17 +15,34 @@
 # loaded.
 
 root = File.expand_path("..", __dir__)
-
-files = Dir.glob(File.join(root, "test", "**", "*_test.rb")).sort
-abort "No test files found under #{File.join(root, "test")}" if files.empty?
+discover = -> { Dir.glob(File.join(root, "test", "**", "*_test.rb")).sort }
 
 # `bin/test --list` prints the discovered files without running them, so the
 # discovery logic can be tested cheaply (no full-suite execution).
 if ARGV.delete("--list")
+  files = discover.call
+  abort "No test files found under #{File.join(root, "test")}" if files.empty?
   puts files.map { |f| f.sub("#{root}/", "") }
   exit 0
 end
 
+only_index = ARGV.index("--only")
+if only_index
+  named = ARGV.slice!(only_index..-1)
+  named.shift
+  abort "--only requires at least one test file" if named.empty?
+  files = named.map { |f| File.expand_path(f, root) }
+  missing = files.reject { |f| File.exist?(f) }
+  unless missing.empty?
+    warn "no such test file: #{missing.map { |f| f.sub("#{root}/", "") }.join(', ')}"
+    exit 2
+  end
+else
+  files = discover.call
+  abort "No test files found under #{File.join(root, "test")}" if files.empty?
+end
+
 $LOAD_PATH.unshift File.join(root, "test")
+require_relative "../test/lib/failures_reporter"
 require "minitest/autorun"
 files.each { |f| require f }
