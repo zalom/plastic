@@ -91,13 +91,12 @@ core_banner = BootBanner.render(health: core_health, version: current_version)
 # (the project/global banner with its active intent, the QMD line,
 # deprecations, the update notice, the first-boot sweep, the day ledger) is
 # best-effort: intent 341, G8 wraps all of it in one rescue so any exception
-# anywhere in that assembly degrades to a banner-only boot, never nothing —
-# the same "as today" contract every individual sub-block already kept on its
-# own, made a whole-block guarantee now that the doctrine dump this used to
-# gate everything on (PLASTIC.md's conventions prose, the active-intents
-# listing, the stage line, the stale-future list — all cut, since a skill or
-# the conventions chapter already carries that text) no longer sits in front
-# of it.
+# anywhere in that assembly degrades to a banner-only boot, never nothing.
+# That is the same "as today" contract every individual sub-block already
+# kept on its own, made a whole-block guarantee now that the doctrine dump
+# this used to gate everything on is cut (PLASTIC.md's conventions prose, the
+# active-intents listing, the stage line, the stale-future list), since a
+# skill or the conventions chapter already carries that text.
 
 parts = [core_banner, ""]
 

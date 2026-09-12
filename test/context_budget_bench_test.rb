@@ -503,8 +503,8 @@ end
 # live fixture boot (a project registered, one active intent, PLASTIC.md
 # installed, one real deprecation warning, the day ledger's join line, QMD
 # unreachable on the pinned PATH) the boot comes to roughly 500 bytes. 1,000
-# gives modest headroom over that measured value — room for the day ledger's
-# counts and an extra deprecation line to vary — while staying tight enough
+# gives modest headroom over that measured value, room for the day ledger's
+# counts and an extra deprecation line to vary, while staying tight enough
 # that a doctrine-dump regression (PLASTIC.md, the active-intents listing,
 # the stale-future list) blows through it immediately. Kept local to this
 # test file the same way node n7 (intent 355) kept the subagent-boot ceiling
