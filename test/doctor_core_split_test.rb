@@ -228,7 +228,14 @@ class DoctorCoreSplitTest < Minitest::Test
   # read_json_safe against a malformed-JSON retry that used to escape its
   # rescue and crash doctor outright. Ceiling raised to 74,000 (headroom
   # ~780 bytes above the measured total, in line with prior raises).
-  BOOT_PATH_BYTE_BUDGET = 74_000
+  #
+  # Intent 340b added Stop to Doctor::CLAUDE_HOOK_EVENTS, plus the comment
+  # explaining why a statically registered hook whose runtime arm defaults
+  # off still belongs in that list, growing doctor_core.rb by roughly 200
+  # bytes; no new file joined the boot path. Measured 74,200 bytes. Ceiling
+  # raised to 75,000 (headroom ~800 bytes above the measured total, in line
+  # with prior raises).
+  BOOT_PATH_BYTE_BUDGET = 75_000
 
   def test_core_require_stays_under_the_boot_path_byte_budget
     plastic_files = loaded_after_core_require.select { |i| i["path"].start_with?(ROOT) }
