@@ -40,6 +40,8 @@ module GraphMeasureReport
     lines << ""
     lines.concat(bucket_block(m[:buckets]))
     lines << ""
+    lines.concat(verify_cost_block(m[:verify_cost]))
+    lines << ""
     lines.concat(anomaly_block(m[:anomalies]))
     "#{lines.join("\n")}\n"
   end
@@ -53,6 +55,7 @@ module GraphMeasureReport
       sessions: sessions_model(record),
       nodes: nodes_model(record),
       buckets: buckets_model(record),
+      verify_cost: verify_cost_model(record),
       anomalies: anomalies_model(record),
     }
   end
@@ -284,6 +287,78 @@ module GraphMeasureReport
   end
   private_class_method :bucket_block
 
+  # --- verify cost: intent 343 (G10, n4), matrix rows 4.12-4.14 ----------------
+
+  # The verify nodes' total active span and its share of active time: the
+  # same per-attempt `active_span_seconds` the buckets above sum, but
+  # reported `unavailable` rather than 0.0 when NOT ONE verify-kind node's
+  # attempt carries a `running` line at all (row 4.13) - a ledger predating
+  # the `running` line convention has no verify spans to sum, and 0.0 would
+  # read as "verification is free" rather than "unmeasurable from this
+  # ledger" (spec D3).
+  def verify_cost_model(record)
+    verify_nodes = record[:nodes].select { |_, n| n[:kind] == "verify" }
+    all_attempts = verify_nodes.values.flat_map { |n| n[:attempts] }
+    has_running = all_attempts.any? { |a| a[:running_at] }
+    active = record[:active_seconds]
+
+    total = has_running ? sum_active_spans(all_attempts) : nil
+    share = (total && active.is_a?(Numeric) && active.positive?) ? total / active : nil
+
+    {
+      "total_active_span_seconds" => av_seconds(total),
+      "share_of_active_time" => av_seconds(share),
+      "nodes" => sort_ids(verify_nodes.keys).map { |id| verify_node_model(id, verify_nodes[id]) },
+    }
+  end
+  private_class_method :verify_cost_model
+
+  def verify_node_model(id, node)
+    attempts = node[:attempts]
+    node_total = attempts.any? { |a| a[:running_at] } ? sum_active_spans(attempts) : nil
+    {
+      "id" => id,
+      "active_span_seconds" => av_seconds(node_total),
+      "verdict" => av(verdict_for(attempts)),
+    }
+  end
+  private_class_method :verify_node_model
+
+  def sum_active_spans(attempts)
+    attempts.sum { |a| a[:active_span_seconds].is_a?(Numeric) ? a[:active_span_seconds] : 0.0 }
+  end
+  private_class_method :sum_active_spans
+
+  # The last (file-order) attempt whose fields carry a `verdict=` (row
+  # 4.14): a review's verdict is shown beside its cost even when the cost
+  # itself is unavailable, mirroring `GraphMeasure`'s own "most recent field
+  # wins" reading of `model=`.
+  def verdict_for(attempts)
+    attempts.reverse_each do |a|
+      verdict = a[:fields]["verdict"]
+      return verdict if verdict && !verdict.to_s.strip.empty?
+    end
+    nil
+  end
+  private_class_method :verdict_for
+
+  def verify_cost_block(vc)
+    lines = ["== Verify cost =="]
+    lines << "total active span: #{fmt_minutes(vc['total_active_span_seconds'])} min"
+    lines << "share of active time: #{fmt_percent(vc['share_of_active_time'])}"
+    if vc["nodes"].empty?
+      lines << "(no verify nodes)"
+    else
+      lines << "| Verify node | Active (min) | Verdict |"
+      lines << "| --- | --- | --- |"
+      vc["nodes"].each do |n|
+        lines << "| #{n['id']} | #{fmt_minutes(n['active_span_seconds'])} | #{n['verdict']} |"
+      end
+    end
+    lines
+  end
+  private_class_method :verify_cost_block
+
   # --- anomalies: spec D4, matrix row 2.14 -------------------------------------
 
   def anomalies_model(record)
@@ -338,6 +413,13 @@ module GraphMeasureReport
     format("%.1f", seconds / 60.0)
   end
   private_class_method :fmt_minutes
+
+  def fmt_percent(ratio)
+    return UNAVAILABLE unless ratio.is_a?(Numeric)
+
+    format("%.1f%%", ratio * 100)
+  end
+  private_class_method :fmt_percent
 
   # Numeric-aware id sort ("n2" before "n10"), the same shape
   # scripts/lib/outcome_report.rb's sort_ids uses.

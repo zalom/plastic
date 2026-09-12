@@ -17,6 +17,13 @@ require_relative "../scripts/lib/graph_measure_report"
 # Dir.mktmpdir, authored by this test (spec D18); rows 2.9 and 2.10 build the
 # synthetic declared-vs-ledger mismatch neither real ledger produces.
 class GraphMeasureReportTest < Minitest::Test
+  # n4's verify-cost rows (4.12-4.14) read the real intent 340 and 337
+  # fixtures the n3 dogfood already copied in (spec D18: a row a real ledger
+  # produces is checked against that real ledger, never a stand-in).
+  FIXTURES = File.expand_path("fixtures/ledgers", __dir__)
+  DIR_340 = File.join(FIXTURES, "340--runner-core-in-session")
+  DIR_337 = File.join(FIXTURES, "337--roadmap-graph")
+
   def with_intent_dir
     Dir.mktmpdir("graph-measure-report-test") do |dir|
       yield dir
@@ -356,5 +363,57 @@ class GraphMeasureReportTest < Minitest::Test
       # independently: the model itself is the single source both read.
       assert_equal JSON.generate(GraphMeasureReport.model(record)), GraphMeasureReport.render_json(record)
     end
+  end
+
+  # --- 4.12: verify cost, the verify nodes' total active span and share ---------
+
+  def test_verify_cost_span_and_share
+    record = GraphMeasure.read(DIR_340)
+    vc = GraphMeasureReport.model(record)[:verify_cost]
+
+    assert_in_delta 3903.0, vc["total_active_span_seconds"], 0.001
+    assert_in_delta 65.05, vc["total_active_span_seconds"] / 60.0, 0.01
+    assert_in_delta 0.1271, vc["share_of_active_time"], 0.001
+
+    text = GraphMeasureReport.render_text(record)
+    assert_match(/== Verify cost ==/, text)
+    assert_match(/65\.1? ?min|65\.0 min/, text)
+  end
+
+  # --- 4.13: verify cost is unavailable without a single running line -----------
+
+  def test_verify_cost_unavailable_without_running_lines
+    record = GraphMeasure.read(DIR_337)
+    vc = GraphMeasureReport.model(record)[:verify_cost]
+
+    assert_equal "unavailable", vc["total_active_span_seconds"]
+    assert_equal "unavailable", vc["share_of_active_time"]
+
+    text = GraphMeasureReport.render_text(record)
+    assert_match(/== Verify cost ==/, text)
+    assert_match(/unavailable/, text)
+  end
+
+  # --- 4.14: each verify node's verdict is shown beside its cost -----------------
+
+  def test_verify_verdicts_beside_cost
+    record = GraphMeasure.read(DIR_340)
+    nodes = GraphMeasureReport.model(record)[:verify_cost]["nodes"]
+
+    v1 = nodes.find { |n| n["id"] == "v1" }
+    assert_equal "revise", v1["verdict"]
+    assert_operator v1["active_span_seconds"], :>, 0
+
+    v3 = nodes.find { |n| n["id"] == "v3" }
+    assert_equal "accept", v3["verdict"]
+
+    # 337 has no running line anywhere, so v1's cost is unavailable, but its
+    # verdict (written on the terminal line alone) still shows beside it -
+    # the cost of a review is never shown without what the review found.
+    record_337 = GraphMeasure.read(DIR_337)
+    nodes_337 = GraphMeasureReport.model(record_337)[:verify_cost]["nodes"]
+    v1_337 = nodes_337.find { |n| n["id"] == "v1" }
+    assert_equal "blockers_found", v1_337["verdict"]
+    assert_equal "unavailable", v1_337["active_span_seconds"]
   end
 end
