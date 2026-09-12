@@ -10,9 +10,18 @@
 module AgentModels
   # Claude Code aliases only (never pinned ids, never Fable). Keys are the agent
   # file basenames without the `.md` extension.
+  # The three per-kind node agents (intent 340b, G7c, n2), dispatched by
+  # HarnessAdapter::AGENT_TYPE_BY_KIND. work and research resolve the
+  # executor tier, verify the advisor tier, mirroring RunnerPolicy's
+  # model_role split (327 D12): work and research run on plastic-executor's
+  # own tier, verify on the same tier plastic-advisor's imitation
+  # (plastic-faux-advisor) ships, never the cheap tier.
   TIER_DEFAULTS = {
     "plastic-enforcer" => "opus",
-    "plastic-executor" => "sonnet"
+    "plastic-executor" => "sonnet",
+    "plastic-node-work" => "sonnet",
+    "plastic-node-verify" => "opus",
+    "plastic-node-research" => "sonnet"
   }.freeze
 
   # The two advisor agents (intent 185 final design): plastic-advisor (the real

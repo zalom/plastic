@@ -129,8 +129,10 @@ class RunnerAbsorbTest < Minitest::Test
     File.read(File.join(@dir, "savepoint.md"))
   end
 
-  def running_line(node: "n4", holder: "auto-abc")
-    line(node, "running", holder: holder, expires: "2026-01-01T01:00:00Z", packet: "deadbeef", model: "sonnet")
+  def running_line(node: "n4", holder: "auto-abc", harness: nil)
+    fields = { holder: holder, expires: "2026-01-01T01:00:00Z", packet: "deadbeef", model: "sonnet" }
+    fields[:harness] = harness if harness
+    line(node, "running", fields)
   end
 
   def write_node_file(node = "n4", tests: ["runner_absorb_fixture_test#test_ok"])
@@ -216,8 +218,8 @@ class RunnerAbsorbTest < Minitest::Test
     touch_named_test
     fake_wt = FakeWorktree.new(changed: changed, merge_result: merge_result,
                                 paths: { "path" => @node_wt, "branch" => "plastic/x--n4", "repo" => @dir })
-    context = build_context(kind: kind, files: files)
-    return_path = write_return(status: return_status, commit: return_commit, extra: return_extra)
+    context = build_context(node: node, kind: kind, files: files)
+    return_path = write_return(node: node, status: return_status, commit: return_commit, extra: return_extra)
 
     result = RunnerAbsorb.absorb(
       context, node: node, return_path: return_path, now: now, allow_core_drift: allow_core_drift,
@@ -690,6 +692,28 @@ class RunnerAbsorbTest < Minitest::Test
     entry2 = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
     assert_equal "failed_verification", entry2[:state]
     assert_equal "the executor could not make the suite pass", entry2[:fields]["reason"]
+  end
+
+  # --- intent 355, n2, matrix 2.10: a call-budget return is a self-reported
+  # failed_verification like any other (D3), and keeps the node's worktree
+  # (the partial commit) exactly as test_failing_absorb_keeps_worktree already
+  # proves for a mechanically-failed return.
+
+  def test_call_budget_return_keeps_partial_commit
+    write_savepoint(running_line)
+    write_node_file
+    context = build_context
+    fake_wt = FakeWorktree.new
+    return_path = write_return(status: "failed_verification", commit: nil, extra: { reason: "call_budget" })
+
+    result = RunnerAbsorb.absorb(context, node: "n4", return_path: return_path,
+                                  integrity_checker: ok_integrity, worktree: fake_wt)
+
+    assert_equal "failed_verification", result[:state]
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_equal "failed_verification", entry[:state]
+    assert_equal "call_budget", entry[:fields]["reason"]
+    assert_empty fake_wt.released, "a call-budget return must keep the node's worktree (the partial commit)"
   end
 
   # --- 9.4: checks 3-6 never run for a non-done return -----------------------------
@@ -1425,5 +1449,79 @@ class RunnerAbsorbTest < Minitest::Test
     assert_equal 0, result[:errors]
   ensure
     FileUtils.remove_entry(dir) if dir && Dir.exist?(dir)
+  end
+
+  # === 340b n8: harness= carried onto every terminal state RunnerAbsorb writes ===
+
+  # --- row 8.9: done carries harness -----------------------------------------
+
+  def test_done_carries_harness
+    write_savepoint(running_line(harness: "claude-code"))
+    result, = absorb_happy
+
+    assert_equal "done", result[:state]
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_equal "claude-code", entry[:fields]["harness"]
+  end
+
+  # --- row 8.10: failed_verification and needs_decision both carry harness ----
+
+  def test_failure_states_carry_harness
+    write_savepoint(running_line(node: "n4", harness: "codex"))
+    result, = absorb_happy(node: "n4", suite: red_suite)
+    assert_equal "failed_verification", result[:state]
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).select { |e| e[:subject] == "n4" }.last
+    assert_equal "codex", entry[:fields]["harness"]
+
+    File.write(File.join(@dir, "savepoint.md"), savepoint_content + running_line(node: "n5", harness: "codex"))
+    result2, = absorb_happy(node: "n5", merge_result: { ok: false, commit: nil,
+                                                          conflicted: ["outside/file.rb"], error: "conflict" })
+    assert_equal "needs_decision", result2[:state]
+    entry2 = NodeLedger.entries(File.join(@dir, "savepoint.md")).select { |e| e[:subject] == "n5" }.last
+    assert_equal "codex", entry2[:fields]["harness"]
+  end
+
+  # --- row 8.11: the return_unwritable fallback carries harness too -----------
+
+  def test_unwritable_fallback_carries_harness
+    write_savepoint(running_line(harness: "codex"))
+    write_node_file
+    touch_named_test
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    context = build_context
+    return_path = write_return(status: "needs_decision", commit: nil, extra: { "question" => "a real question" })
+    ledger = UnwritableOnceLedger.new
+
+    result = RunnerAbsorb.absorb(
+      context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
+      worktree: fake_wt, suite_runner: ok_suite, project_reader: command_reader, ledger: ledger
+    )
+
+    assert_equal "blocked", result[:state]
+    assert result[:written], result.inspect
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_equal "return_unwritable", entry[:fields]["reason"]
+    assert_equal "codex", entry[:fields]["harness"]
+  end
+
+  # --- row 8.12: the value is the running line's own harness, never a fresh one --
+
+  def test_terminal_harness_is_the_running_lines_harness
+    write_savepoint(running_line(harness: "codex"))
+    absorb_happy
+
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_equal "codex", entry[:fields]["harness"],
+                 "the terminal line must carry the harness that ran the node, not any other value"
+  end
+
+  # --- row 8.13: an absent harness is never invented ---------------------------
+
+  def test_absent_harness_is_not_invented
+    write_savepoint(running_line)
+    absorb_happy
+
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    refute entry[:fields].key?("harness"), "an old running line with no harness= must not grow one"
   end
 end

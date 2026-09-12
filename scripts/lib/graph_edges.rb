@@ -118,4 +118,20 @@ module GraphEdges
     visited[node] = true
     nil
   end
+
+  # The declared work ids whose `needs` reach a verify node without passing
+  # through another verify node (343 D7), in declaration order. `kinds` maps
+  # an id to its node kind, so this module stays blind to where a kind lives.
+  def review_fixes(edges, kinds)
+    edges.keys.select { |id| kinds[id] == "work" && reaches_verify?(id, edges, kinds, {}) }
+  end
+
+  def reaches_verify?(node, edges, kinds, seen)
+    (edges[node] || []).any? do |target|
+      next false if seen[target]
+
+      seen[target] = true
+      kinds[target] == "verify" || reaches_verify?(target, edges, kinds, seen)
+    end
+  end
 end

@@ -14,6 +14,7 @@ require_relative "runner_policy"
 require_relative "worktree"
 require_relative "savepoint"
 require_relative "guarded_append"
+require_relative "harness_adapter"
 
 # RunnerDispatch (intent 340, G7, n5): validates the graph, computes the
 # ready set, applies RunnerPolicy, mints leases, builds packets, writes
@@ -45,19 +46,44 @@ module RunnerDispatch
 
   HARD_CAP_RE = /\Ais at its dispatch cap \((\d+)\/(\d+)\)\z/.freeze
 
+  # D8 (355, n6): the agent every dispatched, non-decision node names - a
+  # role, never a harness (matrix 6.5), and never `plastic-advisor`, which
+  # stays a deliberate, never-auto-dispatched consultation agent.
+  SPAWN_AGENT = "plastic-executor"
+
+  # matrix 6.1/6.2: one spawn block per dispatched node - agent, the model
+  # RunnerPolicy.model_for resolved, the packet path, the one test command
+  # (NodePacket.test_command_block, n4), and the call cap (n2) - fenced so a
+  # session pastes it straight into the Agent tool (327 D42: the runner
+  # itself never spawns).
+  def spawn_block(model:, packet:, test_command:, call_cap:, agent: SPAWN_AGENT)
+    lines = ["agent: #{agent}", "model: #{model}", "packet: #{packet}", test_command,
+             NodePacket.call_cap_sentence(call_cap)]
+    (["```"] + lines + ["```"]).join("\n")
+  end
+
   # dispatch(context, limit:) -> a result hash. Always carries :ok, :reason,
   # :errors, :rearm_command, :dispatched, :stop, :parked, :status, :blockers,
   # :plan - fields that do not apply to a given outcome stay nil/empty rather
   # than being omitted, so a caller never has to guard with `dig`.
-  def dispatch(context, limit: DEFAULT_LIMIT, now: Time.now, config: {}, caps: ReadySet::DEFAULT_CAPS,
+  def dispatch(context, limit: DEFAULT_LIMIT, now: Time.now, config: {}, harness: nil, caps: ReadySet::DEFAULT_CAPS,
                validator: WorkGraphValidator.method(:validate),
                ready_analyzer: ReadySet.method(:analyze),
                packet_builder: NodePacket.method(:build),
                worktree: NodeWorktree,
                ledger: NodeLedger,
-               runner: Worktree::ShellRunner.new)
+               runner: Worktree::ShellRunner.new,
+               harness_adapter: HarnessAdapter)
     intent_dir = context.intent_dir
     savepoint_path = File.join(intent_dir.to_s, "savepoint.md")
+
+    # Intent 340b, G7c, n1, rows 1.19/1.20/D21: resolved ONCE for the whole
+    # step through HarnessAdapter, never a literal - `harness:` (this call's
+    # `--harness` override, or nil) wins over `config`'s own `agent.type`.
+    # Every node this call dispatches carries the SAME value, and the
+    # caller (scripts/runner) reads it back off the report to pick which
+    # harness's block to render.
+    harness_key = harness_adapter.resolve_key(config: config, override: harness)
 
     # Row 5.31/5.32: this is RunnerDispatch's OWN lock check, never a shelled
     # `node-transition` call - append_transition below is used in-process
@@ -145,8 +171,8 @@ module RunnerDispatch
         next
       end
 
-      result = dispatch_one(context, node: node, kind: kind, now: now, config: config, caps: caps,
-                             edges: edges, nodes_decl: nodes_decl, packet_builder: packet_builder,
+      result = dispatch_one(context, node: node, kind: kind, now: now, config: config, harness: harness_key,
+                             caps: caps, edges: edges, nodes_decl: nodes_decl, packet_builder: packet_builder,
                              worktree: worktree, ledger: ledger, runner: runner)
       if result[:packet_build_failed]
         packet_failures << result
@@ -166,7 +192,8 @@ module RunnerDispatch
     RunnerCore.render_status(context) if dispatched.any? || stop || parked.any?
 
     build_report(context: context, dispatched: dispatched, stop: stop, parked: parked,
-                 ceiling_blocked: ceiling_blocked, packet_failures: packet_failures, running_count: running_count)
+                 ceiling_blocked: ceiling_blocked, packet_failures: packet_failures, running_count: running_count,
+                 harness: harness_key)
   end
 
   # --- guarded re-entries into graph.md (M9) ----------------------------------
@@ -187,14 +214,15 @@ module RunnerDispatch
 
   # --- one node's whole dispatch (packet, lease, `running`) -------------------
 
-  def dispatch_one(context, node:, kind:, now:, config:, caps:, edges:, nodes_decl:, packet_builder:, worktree:,
-                    ledger:, runner:)
+  def dispatch_one(context, node:, kind:, now:, config:, harness:, caps:, edges:, nodes_decl:, packet_builder:,
+                    worktree:, ledger:, runner:)
     intent_dir = context.intent_dir
     savepoint_path = File.join(intent_dir.to_s, "savepoint.md")
 
     holder = context.session
     model = RunnerPolicy.model_for(kind, config: config)
     expires = RunnerPolicy.lease_expires(kind, now: now)
+    calls_cap = RunnerPolicy.call_cap(kind, config: config)
 
     # Row 10.16/M13: recorded BEFORE provisioning - a worktree this dispatch
     # finds already on disk (kept there by a prior failed_verification
@@ -223,7 +251,7 @@ module RunnerDispatch
     # default (row 10.9).
     build_result = packet_builder.call(intent_dir: intent_dir, node: node, holder: holder, expires: expires,
                                         model: model, force: true, worktree_reader: node_reader,
-                                        budget_tokens: node_declared_budget(intent_dir, node))
+                                        budget_tokens: node_declared_budget(intent_dir, node), call_cap: calls_cap)
     unless build_result[:ok]
       # M6: a failed packet build never leaves an orphan worktree behind, and
       # its errors travel back up so the step's report can name the node and
@@ -236,7 +264,11 @@ module RunnerDispatch
     precondition = lambda do |c|
       ReadySet.ready?(content: c, subject: node, graph: { edges: edges }, nodes: nodes_decl, caps: caps)[:ready]
     end
-    fields = { holder: holder, expires: expires, packet: build_result[:sha], model: model }
+    # Row 1.19/1.20/D21: harness= rides alongside model= on every `running`
+    # line, resolved once by the caller through HarnessAdapter and threaded
+    # straight through here - never re-resolved, never a literal.
+    fields = { holder: holder, expires: expires, packet: build_result[:sha], model: model, harness: harness,
+               calls: calls_cap }
 
     result = begin
       ledger.append_transition(savepoint_path, subject: node, state: "running", fields: fields, now: now,
@@ -254,10 +286,13 @@ module RunnerDispatch
       return { ok: false }
     end
 
+    test_command = NodePacket.test_command_block(intent_dir: intent_dir, files: (nodes_decl[node] || {})[:files])
+    spawn = spawn_block(model: model, packet: build_result[:path], test_command: test_command, call_cap: calls_cap)
+
     {
       ok: true,
       entry: { node: node, kind: kind.to_s, role: role_for(kind), model: model, worktree: provisioned[:path],
-                packet: build_result[:path] },
+                packet: build_result[:path], spawn: spawn },
     }
   end
 
@@ -380,7 +415,7 @@ module RunnerDispatch
 
   def empty_result
     { ok: true, reason: nil, errors: [], rearm_command: nil, dispatched: [], stop: nil, parked: [],
-      status: nil, blockers: [], plan: nil }
+      status: nil, blockers: [], plan: nil, harness: nil }
   end
   private_class_method :empty_result
 
@@ -395,9 +430,9 @@ module RunnerDispatch
   private_class_method :invalid_graph_result
 
   def build_report(context:, dispatched:, stop:, parked:, ceiling_blocked: false, packet_failures: [],
-                    running_count: 0)
+                    running_count: 0, harness: nil)
     base = empty_result.merge(dispatched: dispatched, stop: stop, parked: parked,
-                               plan: render_plan(dispatched))
+                               plan: render_plan(dispatched), harness: harness)
 
     if dispatched.any?
       base.merge(status: "dispatched")
@@ -461,7 +496,10 @@ module RunnerDispatch
   # Row 5.22/5.23/5.24: one machine-readable (YAML) document naming, per
   # dispatched node, the packet path, the model, the worktree, the kind and
   # the role, plus the return contract ONCE at the top level - never inside
-  # any one node's packet.
+  # any one node's packet. Row 6.4: "spawn" carries the same, already fully
+  # rendered spawn block for each dispatched node in order, so any reader of
+  # this data (YAML today, JSON if it is ever re-serialized) finds it under
+  # `spawn` rather than re-deriving it from the other fields.
   def render_plan(dispatched)
     return nil if dispatched.empty?
 
@@ -470,7 +508,8 @@ module RunnerDispatch
       "dispatch" => dispatched.map do |d|
         { "node" => d[:node], "kind" => d[:kind], "role" => d[:role], "model" => d[:model],
           "worktree" => d[:worktree], "packet" => d[:packet] }
-      end
+      end,
+      "spawn" => dispatched.map { |d| d[:spawn] }
     )
   end
   private_class_method :render_plan

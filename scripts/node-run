@@ -1,0 +1,224 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+require "digest"
+require "time"
+require "yaml"
+require "fileutils"
+require_relative "lib/savepoint"
+require_relative "lib/node_ledger"
+require_relative "lib/node_packet"
+require_relative "lib/node_worktree"
+require_relative "lib/node_file"
+require_relative "lib/ready_set"
+require_relative "lib/runner_core"
+require_relative "lib/codex_adapter"
+
+# node-run - the Codex leg of one node's whole attempt (intent 340b, G7c, n6).
+#
+# On Claude Code a subagent dispatch IS the executor; on Codex the executor
+# is a subprocess, so this script owns the timing of a whole node: it reads
+# the node's live `running` line, resolves the packet that line names,
+# builds the `codex exec` argv for the node's kind (CodexAdapter), runs it
+# in the node's worktree with the packet on stdin, reads the executor's
+# final message, and writes it to the attempt's own return path.
+#
+# It writes NO ledger transition, on any path - success, refusal or error
+# alike. That is the whole point: exactly one thing writes `done` (the
+# runner's own six-check absorb gate), and a second writer here would throw
+# that guarantee away. The caller absorbs with `runner step --return
+# ID=PATH` through the same six checks every other return goes through.
+#
+# Usage:
+#   node-run <intent_dir> --node <id> [--session SID] [--now ISO8601]
+#            [--timeout-seconds N]
+#
+# Exit codes: 0 - a return file was written (whatever its content actually
+# says; that judgment belongs to the absorb gate, not this script). Every
+# other code is a REFUSAL: nothing is written, node-run never even reached
+# `codex exec`.
+#   2 - usage: not an intent directory, or missing --node
+#   3 - the node has no live `running` line
+#   4 - the running line is held by another session
+#   5 - the packet the running line names is missing from disk
+#   6 - the packet on disk does not hash to the running line's packet=
+#   7 - no worktree could be resolved to run in
+module NodeRunCLI
+  module_function
+
+  def usage
+    warn "Usage: node-run <intent_dir> --node <id> [--session SID] [--now ISO8601] " \
+         "[--timeout-seconds N]"
+  end
+
+  def opt(args, name)
+    (i = args.index(name)) && args[i + 1]
+  end
+
+  def intent_directory?(dir)
+    dir && File.directory?(dir) && File.exist?(Savepoint.intent_file(dir))
+  end
+
+  # <intent_dir>/packets/<node>--a<N>.return.yml (spec): beside the packet,
+  # one per attempt, the same treatment packet files already get - never
+  # reused across attempts, so a second attempt's return can never be
+  # mistaken for the first's.
+  def return_path(intent_dir, node, attempt)
+    File.join(intent_dir, "packets", "#{node}--a#{attempt}.return.yml")
+  end
+
+  # The node's own declared kind, read straight off its node file - "work"
+  # when the file cannot be found or parsed at all (mirroring RunnerPolicy's
+  # own unknown-kind fallback), but the LITERAL string it declares
+  # otherwise, even an invalid one (matrix row 6.10): CodexAdapter's own
+  # kind table only distinguishes "read-only" (verify, research) from
+  # everything else, so an unrecognized kind still gets the widest, safest
+  # treatment rather than no treatment at all.
+  def resolve_kind(intent_dir, node)
+    path = ReadySet.find_node_path(intent_dir, node)
+    return "work" unless path
+
+    parsed = NodeFile.parse(path)
+    kind = parsed[:kind].to_s.strip
+    kind.empty? ? "work" : kind
+  end
+
+  # The directory `codex exec -C` runs in: a `work` node's own worktree when
+  # one is actually provisioned on disk, else the shared intent worktree -
+  # verify and research nodes never get a worktree of their own (327 D6,
+  # D29), so the only place they could ever leave a diff is the intent
+  # worktree itself, exactly where NodeWorktree.changed_paths already looks
+  # for one.
+  def node_target_dir(context, node:, kind:)
+    if NodeWorktree::WORKTREE_KINDS.include?(kind.to_s)
+      p = NodeWorktree.paths(context, node: node)
+      return p["path"] if p["path"] && Dir.exist?(p["path"])
+    end
+    context.worktree
+  end
+
+  # A synthetic, deliberately non-YAML-mapping line the absorb gate reads as
+  # unparsable (spec Approach: "a return file the gate reads as
+  # unparsable"), covering every subprocess failure the same way: a nonzero
+  # exit, a timeout, an empty message file, and a message with no YAML
+  # document either way. Carries no colon-shaped `key: value` text on
+  # purpose, so it can never accidentally parse as a YAML mapping that
+  # happens to satisfy NodeReturn's own schema.
+  def unparsable_body(node, result)
+    reason =
+      if result[:timed_out]
+        "node-run - codex exec for #{node} timed out with no usable return"
+      elsif !result[:exit_code].nil? && result[:exit_code] != 0
+        "node-run - codex exec for #{node} exited #{result[:exit_code]} with no usable return"
+      else
+        "node-run - codex exec for #{node} produced no parsable YAML document on either " \
+          "--output-last-message or stdout"
+      end
+    "#{reason}\n"
+  end
+
+  def main(argv)
+    args = argv.dup
+    intent_dir_arg = args.shift
+
+    unless intent_directory?(intent_dir_arg && File.expand_path(intent_dir_arg))
+      warn "node-run: #{intent_dir_arg.inspect} is not an intent directory"
+      usage
+      exit 2
+    end
+    intent_dir = File.expand_path(intent_dir_arg)
+
+    node = opt(args, "--node")
+    if node.to_s.strip.empty?
+      warn "node-run: --node is required"
+      usage
+      exit 2
+    end
+
+    session_flag = opt(args, "--session")
+    now_flag = opt(args, "--now")
+    timeout_flag = opt(args, "--timeout-seconds")
+
+    begin
+      now_flag ? Time.iso8601(now_flag) : Time.now
+    rescue ArgumentError
+      warn "node-run: --now must be ISO 8601"
+      exit 2
+    end
+
+    context = RunnerCore.context(intent_dir: intent_dir, session: session_flag,
+                                  env: ENV["CLAUDE_CODE_SESSION_ID"])
+
+    savepoint_path = File.join(intent_dir, "savepoint.md")
+    current_status = NodeLedger.status_for(savepoint_path, node)
+    running_entry = NodeLedger.last_running(savepoint_path, node)
+    unless current_status == "running" && running_entry
+      warn "node-run: #{node} has no live running line (state is #{current_status})"
+      exit 3
+    end
+
+    fields = running_entry[:fields] || {}
+    holder = fields["holder"]
+    if context.session.nil? || context.session.to_s != holder.to_s
+      warn "node-run: #{node}'s running line is held by #{holder.inspect}, not this session"
+      exit 4
+    end
+
+    kind = resolve_kind(intent_dir, node)
+
+    # matrix row 6.11: the attempt number comes from NodePacket's own
+    # counter, never a hand count. `lease_flag_given: false` because the
+    # running line this attempt is acting on ALREADY exists on disk (it is
+    # what we just read above) - counting it a second time would double it
+    # (the same count, plus one, that produced it in the first place when
+    # the packet was originally built).
+    attempt = NodePacket.compute_attempt_number(intent_dir: intent_dir, node: node, lease_flag_given: false)
+    packet_path = NodePacket.packet_path(intent_dir: intent_dir, node: node, attempt: attempt)
+
+    unless File.exist?(packet_path)
+      warn "node-run: #{node}'s packet is missing at #{packet_path}"
+      exit 5
+    end
+
+    packet_bytes = File.binread(packet_path)
+    actual_sha = Digest::SHA256.hexdigest(packet_bytes)[0, 12]
+    expected_sha = fields["packet"]
+    unless expected_sha && actual_sha == expected_sha
+      warn "node-run: #{node}'s packet at #{packet_path} does not hash to packet=#{expected_sha.inspect} " \
+           "(computed #{actual_sha})"
+      exit 6
+    end
+
+    worktree = node_target_dir(context, node: node, kind: kind)
+    if worktree.nil? || !Dir.exist?(worktree)
+      warn "node-run: #{node} has no resolvable worktree to run in"
+      exit 7
+    end
+
+    out_path = return_path(intent_dir, node, attempt)
+    FileUtils.mkdir_p(File.dirname(out_path))
+    message_path = "#{out_path}.msg"
+
+    timeout_seconds = timeout_flag ? timeout_flag.to_i : CodexAdapter.timeout_seconds(kind)
+    codex_argv = CodexAdapter.build_argv(kind: kind, worktree: worktree, output_last_message: message_path)
+
+    result = CodexAdapter.execute(codex_argv, stdin_data: packet_bytes, timeout_seconds: timeout_seconds,
+                                   output_last_message_path: message_path)
+
+    # matrix rows 6.20-6.22: a nonzero exit or a timeout is authoritative -
+    # any message text the child managed to leave behind is never trusted
+    # once either has happened. Only a clean exit with no usable message at
+    # all falls to "no parsable YAML document".
+    failed = result[:timed_out] || (!result[:exit_code].nil? && result[:exit_code] != 0)
+    body = failed ? unparsable_body(node, result) : (result[:message] || unparsable_body(node, result))
+
+    File.write(out_path, body)
+    File.delete(message_path) if File.exist?(message_path)
+
+    puts out_path
+    exit 0
+  end
+end
+
+NodeRunCLI.main(ARGV) if $PROGRAM_NAME == __FILE__

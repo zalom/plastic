@@ -4,7 +4,9 @@ require "fileutils"
 require "json"
 require "yaml"
 require "open3"
+require "rbconfig"
 require_relative "../scripts/lib/session_ledger"
+require_relative "../scripts/lib/packet_wrapper"
 
 # Intent 298: hook-capture replaces hook-continue, hook-future-intent-check,
 # and hook-auto-arm. One UserPromptSubmit process that appends a pending line
@@ -454,6 +456,8 @@ end
                  File.join(scripts, "lib", "store_provisioning.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "dashboard_banner.rb"),
                  File.join(scripts, "lib", "dashboard_banner.rb"))
+    FileUtils.cp(File.join(real_scripts, "lib", "qmd_sync.rb"), File.join(scripts, "lib", "qmd_sync.rb"))
+    FileUtils.cp(File.join(real_scripts, "lib", "packet_wrapper.rb"), File.join(scripts, "lib", "packet_wrapper.rb"))
     FileUtils.chmod(0o755, File.join(scripts, "hook-capture"))
     root
   end
@@ -504,4 +508,45 @@ end
     body = File.read(launcher)
     assert_includes body, "hook-capture"
   end
+
+# --- capture never invokes qmd (intent 341, G8, n5: blocker 5.5) ----------
+#
+# n3 wired a bounded QMD search into a capture-worthy prompt (job (f)); v1's
+# review found the timeout (`Timeout.timeout(2)`) never actually bounds an
+# `Open3.capture3` child process, so a hung `qmd` can hang the hook. Removed
+# entirely rather than reworked: the capture hook invokes no qmd at all.
+
+def register_project(slug, dir)
+  FileUtils.mkdir_p(dir)
+  File.write(File.join(@plastic_home, "projects.yml"), YAML.dump("projects" => { slug => { "path" => dir } }))
+end
+
+def test_capture_hook_never_invokes_qmd
+  project_dir = File.join(@home, "code", "proj")
+  register_project("proj", project_dir)
+
+  marker_dir = Dir.mktmpdir("capture-hook-qmd-marker")
+  marker = File.join(marker_dir, "qmd-was-called")
+  bindir = Dir.mktmpdir("capture-hook-qmd-bin")
+  fake = File.join(bindir, "qmd")
+  File.write(fake, <<~FAKE)
+    #!/usr/bin/env ruby
+    File.write(#{marker.inspect}, "called: \#{ARGV.join(' ')}\\n")
+    puts "[]"
+  FAKE
+  File.chmod(0o755, fake)
+
+  prompt = "let's revisit the widget project design and figure out the next implementation steps"
+  payload = { "session_id" => "sess-no-qmd", "user_prompt" => prompt, "cwd" => project_dir }
+  env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil,
+          "PATH" => [bindir, ENV.fetch("PATH", "")].join(File::PATH_SEPARATOR) }
+  out, status = Open3.capture2(env, "ruby", SCRIPT, stdin_data: JSON.generate(payload))
+
+  assert_equal 0, status.exitstatus, out
+  refute File.exist?(marker), "the capture hook must never invoke qmd"
+  refute_includes out, "qmd-hit", "the output must carry no qmd-hit data block"
+ensure
+  FileUtils.rm_rf(bindir) if bindir
+  FileUtils.rm_rf(marker_dir) if marker_dir
+end
 end

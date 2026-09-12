@@ -14,9 +14,9 @@ require_relative "lib/agent_models"
 DEFAULTS = {
   "version" => 3,
   "stale_threshold_days" => 3,
-  # Absolute token counts for a 1M window, 35 and 50 percent (intent 312, 296 D38).
-  "context_offer_tokens" => 350_000,
-  "context_insist_tokens" => 500_000,
+  # Absolute token counts for a 1M window, 15 and 25 percent (intent 355, n5, D7).
+  "context_offer_tokens" => 150_000,
+  "context_insist_tokens" => 250_000,
   "execution_mode" => "subagent-driven",
   "hash_length" => 6,
   "hash_algorithm" => "sha256-base36",
@@ -33,6 +33,12 @@ DEFAULTS = {
   },
   "architect" => {
     "style" => nil
+  },
+  # Intent 340b (G7c, n4, D9): the Stop hook's runtime arm. Off until the
+  # owner's C32 ruling; read-config emits it as the string "false", which
+  # StopGate parses as a boolean itself rather than trusting.
+  "runner" => {
+    "stop_hook" => false
   }
 }.freeze
 

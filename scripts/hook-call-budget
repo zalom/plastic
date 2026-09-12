@@ -1,0 +1,222 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# Usage: hook-call-budget (reads the PreToolUse stdin JSON payload)
+#
+# Intent 355, n2 (review fix n8). A node gets a call budget by kind
+# (RunnerPolicy.call_cap): a cap on tool calls per attempt. RunnerDispatch
+# writes the cap onto the running line as `calls=` and states it as one
+# sentence in the node's own input, so the executor learns the number before
+# it ever gets denied.
+#
+# Inside a subagent the hook input's session_id and transcript_path are the
+# MAIN session's, never the subagent's own (v1 finding). So this hook caps
+# ONLY a subagent call: agent_id present in the payload. A call with no
+# agent_id (the main thread, a plain conversation, a live --agent session's
+# own turns) is never capped and the decision returns before any file is
+# touched.
+#
+# Which node a subagent is working is read from the subagent's OWN
+# transcript, at <dirname(transcript_path)>/<session_id>/subagents/
+# agent-<agent_id>.jsonl (the main transcript_path plus the main session_id
+# plus the subagent's own agent_id): its first user record carries the
+# dispatch prompt, and the lead/spawn block always pastes the node's packet
+# path into that prompt (PACKET_PATH_RE). The packet path names the intent
+# directory directly (its grandparent), so this hook never scans the store to
+# find it. No packet path in that first prompt means allow.
+#
+# The cap applies only when that node's LATEST transition line in
+# <intent>/savepoint.md is `running` and carries `calls=`; a later `done` or
+# `failed_verification` line (or a sibling node's own running line) means no
+# cap. Past the cap, a Bash call that runs only a safe git verb (add, commit,
+# status, rev-parse, log) is still allowed, so the denial the hook itself
+# orders (commit what is green) is never the thing the hook blocks.
+#
+# Pure and dependency-injected down to the paths it reads; the trailing block
+# guarded by `$PROGRAM_NAME == __FILE__` is this file's only I/O (stdin,
+# stdout), so a test can `load` this file and call HookCallBudget's module
+# functions directly without spawning a process or touching stdin.
+
+require "json"
+require_relative "lib/node_ledger"
+require_relative "lib/savepoint"
+
+module HookCallBudget
+  module_function
+
+  RETURN_INSTRUCTION = "commit what is green and return failed_verification reason=call_budget"
+
+  # A node id, then "--a", then an attempt number, inside a /packets/
+  # directory: the exact shape RunnerDispatch's spawn block pastes into a
+  # subagent's own first prompt. Captures [full_path, node].
+  PACKET_PATH_RE = %r{(\S+/packets/([a-z]{1,2}\d+)--a\d+\.packet)}.freeze
+
+  FIRST_RECORD_SCAN_LIMIT = 20
+
+  GIT_ALLOWED_VERBS = %w[add commit status rev-parse log].freeze
+  GIT_UNSAFE_RE = /[;&|\n]|\$\(|`/.freeze
+
+  # The one decision: nil (allow, no output) or a deny payload Hash. Never
+  # raises across its own boundary.
+  def decide(payload)
+    return nil unless payload.is_a?(Hash)
+
+    agent_id = payload["agent_id"]
+    return nil if agent_id.to_s.strip.empty?
+
+    session_id = payload["session_id"].to_s
+    transcript_path = payload["transcript_path"].to_s
+    return nil if session_id.empty? || transcript_path.empty?
+
+    sub_path = subagent_transcript_path(transcript_path, session_id, agent_id)
+
+    prompt = begin
+      first_user_prompt_text(sub_path)
+    rescue StandardError
+      nil
+    end
+    return nil unless prompt
+
+    match = PACKET_PATH_RE.match(prompt)
+    return nil unless match
+
+    node = match[2]
+    intent_dir = File.dirname(File.dirname(match[1]))
+
+    cap = node_cap(intent_dir, node)
+    return nil unless cap
+
+    count = begin
+      count_tool_use_blocks(sub_path)
+    rescue StandardError => e
+      note_unreadable(intent_dir, session_id, e.message)
+      return nil
+    end
+
+    return nil if count <= cap
+    return nil if git_only_bash_call?(payload)
+
+    deny_payload("#{node} is past its call budget (#{count}/#{cap} tool calls); #{RETURN_INSTRUCTION}")
+  end
+
+  def subagent_transcript_path(main_transcript_path, session_id, agent_id)
+    File.join(File.dirname(main_transcript_path), session_id, "subagents", "agent-#{agent_id}.jsonl")
+  end
+
+  # The first `"type":"user"` record in `path`'s own transcript, rendered to
+  # plain text (message.content as a string, or the joined text blocks of a
+  # content array). Scans at most FIRST_RECORD_SCAN_LIMIT lines: the dispatch
+  # prompt is always the transcript's opening record, so this never touches
+  # the bulk of a long-running subagent's history. Raises on a genuinely
+  # unreadable path (a directory, a permission error); the caller decides
+  # what that means.
+  def first_user_prompt_text(path)
+    File.open(path) do |f|
+      f.each_line.first(FIRST_RECORD_SCAN_LIMIT).each do |raw|
+        record = begin
+          JSON.parse(raw)
+        rescue JSON::ParserError
+          next
+        end
+        next unless record.is_a?(Hash) && record["type"] == "user"
+
+        return message_text(record)
+      end
+    end
+    nil
+  end
+
+  def message_text(record)
+    content = record.dig("message", "content")
+    case content
+    when String
+      content
+    when Array
+      content.select { |b| b.is_a?(Hash) && b["type"] == "text" }.map { |b| b["text"].to_s }.join("\n")
+    else
+      ""
+    end
+  end
+
+  # The cap named on `node`'s LATEST (file-order) non-torn transition line in
+  # `intent_dir`/savepoint.md, or nil when that line is not `running`, carries
+  # no `calls=`, or does not exist at all (matrix 2.6/2.6b: a later done/
+  # failed_verification line, or a sibling node's own running line, never
+  # caps this node).
+  def node_cap(intent_dir, node)
+    path = File.join(intent_dir, "savepoint.md")
+    return nil unless File.exist?(path)
+
+    latest = NodeLedger.entries(path).select { |e| !e[:torn] && e[:subject] == node }.last
+    return nil unless latest && latest[:state] == "running"
+
+    cap = (latest[:fields] || {})["calls"]
+    cap ? cap.to_i : nil
+  end
+
+  # Streams `path` a line at a time, counting `"type":"tool_use"` content
+  # blocks with a plain regex rather than a full JSON parse per line (matrix
+  # 2.5/2.8): a 3 MB transcript counts in well under 50 ms this way.
+  def count_tool_use_blocks(path)
+    count = 0
+    File.foreach(path) { |ln| count += ln.scan(/"type"\s*:\s*"tool_use"/).length }
+    count
+  end
+
+  # Past the cap, a Bash call is still allowed when its command runs only one
+  # safe git verb (matrix 2.7/D3): the git add/commit the denial itself
+  # orders must never be the call the hook blocks. Any chaining token
+  # (`;`, `&`, `|`, a newline, a subshell or a backtick) refuses the whole
+  # command, so a compound command can never smuggle an unrelated call past
+  # the cap riding on a leading `git`.
+  def git_only_bash_call?(payload)
+    return false unless payload["tool_name"].to_s == "Bash"
+
+    command = payload.dig("tool_input", "command").to_s.strip
+    return false if command.empty? || GIT_UNSAFE_RE.match?(command)
+
+    tokens = command.split(/\s+/)
+    return false unless tokens.shift == "git"
+
+    tokens.shift(2) if tokens.first == "-C"
+    GIT_ALLOWED_VERBS.include?(tokens.first)
+  end
+
+  def deny_payload(reason)
+    { "hookSpecificOutput" => { "hookEventName" => "PreToolUse", "permissionDecision" => "deny",
+                                 "permissionDecisionReason" => reason } }
+  end
+
+  # Best-effort note that the transcript could not be counted (matrix 2.9): a
+  # plain milestone line, the same shared primitive Commit/Review/Report
+  # lines already use, dedup'd on (stage, milestone) so a repeat failure in
+  # the same session with the same message is not written twice.
+  def note_unreadable(intent_dir, session_id, message, now: Time.now)
+    Savepoint.append_savepoint_line(intent_dir, "CallBudget", "transcript unreadable for #{session_id}: #{message}",
+                                     now)
+  rescue StandardError
+    nil
+  end
+end
+
+if $PROGRAM_NAME == __FILE__
+  raw = begin
+    $stdin.read
+  rescue StandardError
+    nil
+  end
+
+  if raw && !raw.strip.empty?
+    payload = begin
+      JSON.parse(raw)
+    rescue StandardError
+      nil
+    end
+
+    result = HookCallBudget.decide(payload)
+    puts JSON.generate(result) if result
+  end
+
+  exit 0
+end

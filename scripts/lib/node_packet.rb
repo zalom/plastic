@@ -425,7 +425,15 @@ module NodePacket
     verify.split("\n").map(&:strip).reject(&:empty?).join("; ")
   end
 
-  def test_command_block(intent_dir:, project_reader: method(:default_project_reader))
+  # `files` (intent 355, n4, D5): a node's own declared `*_test.rb` files
+  # name the only test command the executor needs - `bin/test --only <those
+  # files>` - so it never has to invent one or fall back to the project's
+  # generic `release.verify`. A node that declares no test files (a docs-only
+  # node, say) still falls back to `project_reader` exactly as before.
+  def test_command_block(intent_dir:, files: [], project_reader: method(:default_project_reader))
+    named = Array(files).select { |f| f.to_s.end_with?("_test.rb") }
+    return "test command: ruby bin/test --only #{named.join(' ')}" if named.any?
+
     cmd = project_reader.call(intent_dir)
     cmd ? "test command: #{cmd}" : "test command: none recorded in the project record"
   end
@@ -435,12 +443,24 @@ module NodePacket
   # carries no lease. `worktree_block` already renders its own copy when the
   # worktree is unprovisioned; the two conditions often fire together, so a
   # directive already present is never repeated.
+  #
+  # `call_cap` (intent 355, n2, D2): one sentence naming this attempt's tool
+  # call cap and the return it hits at, so the executor learns the number
+  # from the packet it starts with, never from a denied call mid-edit
+  # (matrix 2.4). nil (a caller that names no cap) renders nothing here.
   def where_to_work_block(intent_dir:, worktree_reader: Arm.method(:worktree_block),
-                           project_reader: method(:default_project_reader), lease_missing: false)
+                           project_reader: method(:default_project_reader), lease_missing: false, call_cap: nil,
+                           files: [])
     wt = worktree_block(intent_dir: intent_dir, worktree_reader: worktree_reader)
-    parts = [wt, test_command_block(intent_dir: intent_dir, project_reader: project_reader)]
+    parts = [wt, test_command_block(intent_dir: intent_dir, files: files, project_reader: project_reader)]
     parts << STOP_DIRECTIVE if lease_missing && !wt.include?(STOP_DIRECTIVE)
+    parts << call_cap_sentence(call_cap) if call_cap
     parts.join("\n")
+  end
+
+  def call_cap_sentence(call_cap)
+    "call budget: this attempt may make at most #{call_cap} tool calls; past that a hook denies the " \
+      "next one, so commit what is green and return failed_verification reason=call_budget."
   end
 
   # --- section and list parsing (shared) -------------------------------------
@@ -786,7 +806,8 @@ module NodePacket
   def build(intent_dir:, node:, budget_tokens: nil, hop_tokens: DEFAULT_HOP_TOKENS,
             holder: nil, expires: nil, model: nil, attempt: nil, out: nil, force: false,
             renamer: File.method(:rename), git_runner: DEFAULT_GIT_RUNNER,
-            worktree_reader: Arm.method(:worktree_block), project_reader: method(:default_project_reader))
+            worktree_reader: Arm.method(:worktree_block), project_reader: method(:default_project_reader),
+            call_cap: nil)
     intent_dir = File.expand_path(intent_dir)
 
     nb = node_block(intent_dir: intent_dir, node: node)
@@ -826,7 +847,8 @@ module NodePacket
     # ledger data (spec D3's self-cancellation risk).
     missing_lease = lease_missing?(node: node, holder: holder, expires: expires, model: model, entries: entries)
     where_text = where_to_work_block(intent_dir: intent_dir, worktree_reader: worktree_reader,
-                                      project_reader: project_reader, lease_missing: missing_lease)
+                                      project_reader: project_reader, lease_missing: missing_lease,
+                                      call_cap: call_cap, files: nb[:files])
 
     state = {
       node_text: nb[:text], ledger_text: ledger_text, intent_text: record[:intent],

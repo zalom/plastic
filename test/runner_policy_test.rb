@@ -137,4 +137,29 @@ class RunnerPolicyTest < Minitest::Test
                  "must resolve through AgentModels::TIER_DEFAULTS alone, not also carry the bare literal")
     assert_equal AgentModels::TIER_DEFAULTS.fetch("plastic-executor"), RunnerPolicy::DEFAULT_EXECUTOR_MODEL
   end
+
+  # --- intent 355, n2 ----------------------------------------------------------
+
+  # 2.1: the shipped call cap per kind, closed and pinned so no future edit
+  # can let the three files it also lives in (running line, node input,
+  # this table) drift apart from each other.
+  def test_call_cap_by_kind
+    assert_equal 60, RunnerPolicy.call_cap("work")
+    assert_equal 40, RunnerPolicy.call_cap("verify")
+    assert_equal 40, RunnerPolicy.call_cap("research")
+    assert_equal 10, RunnerPolicy.call_cap("decision")
+    assert_equal 60, RunnerPolicy.call_cap("unknown-kind"),
+                 "an unknown kind must fall back to work's cap, never raise or return nil"
+  end
+
+  # 2.2: a project's own config.yml can raise (or lower) the shipped cap
+  # without editing the script.
+  def test_call_cap_config_override
+    config = { "runner" => { "call_caps" => { "work" => 120 } } }
+    assert_equal 120, RunnerPolicy.call_cap("work", config: config)
+    assert_equal 40, RunnerPolicy.call_cap("verify", config: config),
+                 "an override for one kind must not leak into another kind's cap"
+    assert_equal 60, RunnerPolicy.call_cap("work", config: {}),
+                 "no config override must fall back to the shipped cap"
+  end
 end

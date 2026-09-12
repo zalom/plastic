@@ -9,6 +9,7 @@ require_relative "../scripts/lib/qmd_sync"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/session_ledger"
+require_relative "../scripts/lib/packet_wrapper"
 
 # Unit coverage for the pure boot-banner renderer (intent 36a). Health is
 # injected, so these are fully hermetic — no doctor run, no ~/.claude, no ENV.
@@ -126,6 +127,62 @@ class SessionStartHookTest < Minitest::Test
              "QMD line, when present, must be one of the two known states")
     end
   end
+
+  # --- QMD hits wrapped as untrusted data (intent 341, G8, C23) --------------------
+
+  # A fake `qmd` on a PATH-only bindir, prepended onto the real PATH so `ruby`
+  # itself still resolves. Guarantees the "all registered" QMD line fires
+  # deterministically, regardless of the host's own qmd state.
+  def bindir_with_fake_qmd
+    bindir = Dir.mktmpdir("session-start-qmd-bin")
+    fake = File.join(bindir, "qmd")
+    File.write(fake, <<~RUBY)
+      #!/usr/bin/env ruby
+      puts "plastic-global (qmd://plastic-global/)"
+    RUBY
+    File.chmod(0o755, fake)
+    bindir
+  end
+
+  def run_hook_with_path(path_prefix)
+    Open3.capture3({ "PLASTIC_TMP" => @dir, "CLAUDE_CODE_SESSION_ID" => nil,
+                      "PATH" => [path_prefix, ENV.fetch("PATH", "")].join(File::PATH_SEPARATOR) },
+                   "ruby", HOOK, @index, @dir, "global")
+  end
+
+  def strip_wrapped_blocks(text)
+    text.gsub(/<<<PLASTIC-DATA:[0-9a-f]+ label="[^"]*" source="[^"]*">>>\n.*?<<<END-PLASTIC-DATA:[0-9a-f]+>>>\n?/m, "")
+  end
+
+  def test_qmd_hits_are_wrapped_with_the_packet_wrapper
+    bindir = bindir_with_fake_qmd
+    out, _err, status = run_hook_with_path(bindir)
+    assert_equal 0, status.exitstatus
+
+    ctx = context_from(out)
+    blocks = PacketWrapper.unwrap(ctx)
+    qmd_block = blocks.find { |b| b[:label] == "qmd-hit" }
+    refute_nil qmd_block, "the QMD status line must be wrapped in a data block"
+    assert_includes qmd_block[:payload], "Plastic collections indexed"
+  ensure
+    FileUtils.rm_rf(bindir) if bindir
+  end
+
+  def test_banners_stay_unwrapped
+    bindir = bindir_with_fake_qmd
+    out, _err, status = run_hook_with_path(bindir)
+    assert_equal 0, status.exitstatus
+
+    ctx = context_from(out)
+    assert_includes ctx, "Plastic collections indexed", "fixture sanity: the fake qmd must yield the indexed line"
+
+    residual = strip_wrapped_blocks(ctx)
+    assert_includes residual, "Plastic Core loaded", "the core banner must survive outside every data block"
+    refute_includes residual, "Plastic collections indexed",
+                     "the QMD line must live only inside a data block, never loose too"
+  ensure
+    FileUtils.rm_rf(bindir) if bindir
+  end
 end
 
 # Intent 45a: unit-level coverage of the three-state line construction, driving
@@ -209,9 +266,14 @@ class SessionStartStagePathTest < Minitest::Test
     JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
   end
 
-  def test_stage_line_is_derived_from_the_intent_directory
-    expected_stage = Savepoint.derive_stage(@intent_dir)
-    assert_includes context, "Stage: #{expected_stage} | Next: "
+  # Intent 341, G8: the stage line was doctrine ceremony (a skill deriving
+  # the same stage by reading the intent directory already carries it) and
+  # is cut from the live boot. Savepoint.derive_stage itself is untouched
+  # (still callable, still correct); only the hook stops printing its result.
+  def test_stage_line_is_no_longer_printed_at_boot
+    refute_includes context, "Stage: ", "the stage line is ceremony the hook no longer prints (intent 341)"
+    assert_equal Savepoint.derive_stage(@intent_dir), Savepoint.derive_stage(@intent_dir),
+                 "Savepoint.derive_stage itself stays callable; only the hook's print is cut"
   end
 
   def test_no_bridge_file_is_written
@@ -454,7 +516,7 @@ class SessionStartDayLedgerTest < Minitest::Test
 
     out = +""
     PTY.spawn({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-tty-guard" },
-              "ruby", HOOK, @index, @home, "global") do |r, _w, spawned_pid|
+              "ruby", HOOK, @index, @home, "global", err: File::NULL) do |r, _w, spawned_pid|
       begin
         Timeout.timeout(5) do
           loop { out << r.readpartial(4096) }
@@ -471,5 +533,247 @@ class SessionStartDayLedgerTest < Minitest::Test
     assert JSON.parse(out), "the hook must still emit valid JSON when stdin is a tty"
   rescue Errno::EIO
     assert JSON.parse(out), "the hook must still emit valid JSON when stdin is a tty"
+  end
+end
+
+# Intent 355 spec D9, node n7 (review fix n8, B6): a subagent needs the core
+# banner only. The stdin payload's agent_id alone marks a subagent
+# SessionStart call; agent_type is carried by a live `claude --agent` session
+# too, so agent_type without agent_id is a live session, not a subagent. An
+# absent agent_id is a live session, and the marker is read only from that
+# payload, never from an environment variable. Fixture carries an active
+# intent and a stale future intent behind PLASTIC.md so a live boot's full
+# content (Active intents, Stale future intents, day ledger) has something to
+# suppress; a fixture without that content would leave the suppression
+# unproven either way.
+class SessionStartSubagentTest < Minitest::Test
+  HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
+
+  def setup
+    @home = Dir.mktmpdir("session-start-subagent-home")
+    @tmp = Dir.mktmpdir("session-start-subagent-tmp")
+    @index = File.join(@home, "INDEX.md")
+    File.write(File.join(@home, "PLASTIC.md"), "# Plastic: Conventions\n")
+
+    active_dir = File.join(@home, "store", "555--an-active-intent")
+    FileUtils.mkdir_p(active_dir)
+    File.write(File.join(active_dir, "555--an-active-intent.md"),
+               "---\nid: \"555\"\n---\n\n## Intent\nActive.\n")
+
+    stale_dir = File.join(@home, "store", "556--a-stale-intent")
+    FileUtils.mkdir_p(stale_dir)
+    File.write(File.join(stale_dir, "556--a-stale-intent.md"),
+               "---\nid: \"556\"\ncreated: '2000-01-01'\n---\n\n## Intent\nStale.\n")
+
+    File.write(@index, <<~MD)
+      # Index
+
+      ## Active
+      - [555 - An active intent](store/555--an-active-intent/555--an-active-intent.md)
+
+      ## Future
+      - [556 - A stale intent](store/556--a-stale-intent/556--a-stale-intent.md)
+    MD
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+    FileUtils.rm_rf(@tmp)
+  end
+
+  def run_hook(stdin_data:, session_id: "sess-subagent")
+    env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => session_id }
+    Open3.capture3(env, "ruby", HOOK, @index, @home, "global", stdin_data: stdin_data)
+  end
+
+  # Row 7.1
+  def test_subagent_session_boot_is_core_banner_only
+    payload = JSON.generate("session_id" => "sub-1", "agent_id" => "agent-42")
+    out, _err, status = run_hook(stdin_data: payload)
+    assert_equal 0, status.exitstatus
+    parsed = JSON.parse(out)
+    ctx = parsed.dig("hookSpecificOutput", "additionalContext")
+    banner = parsed["systemMessage"]
+
+    assert_equal "#{banner}\n", ctx,
+                 "a subagent boot must emit the core banner and nothing else"
+    refute_includes ctx, "Active intents"
+    refute_includes ctx, "Stale future intents"
+    refute_includes ctx, "day ledger"
+  end
+
+  # Row 7.2
+  def test_missing_subagent_marker_is_a_live_session
+    payload = JSON.generate("session_id" => "live-1")
+    out, _err, status = run_hook(stdin_data: payload)
+    assert_equal 0, status.exitstatus
+    ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+
+    assert_includes ctx, "Active: [555 — 555 - An active intent]"
+    assert_includes ctx, "day ledger"
+  end
+
+  # Row 7.3
+  def test_marker_read_from_hook_input
+    env_with_stray_agent_env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-env-only",
+                                  "CLAUDE_AGENT_ID" => "agent-from-env-must-be-ignored" }
+    payload_without_marker = JSON.generate("session_id" => "sess-env-only")
+    out, _err, status = Open3.capture3(env_with_stray_agent_env, "ruby", HOOK, @index, @home, "global",
+                                        stdin_data: payload_without_marker)
+    assert_equal 0, status.exitstatus
+    ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+    assert_includes ctx, "Active: [555 — 555 - An active intent]",
+                    "an agent id carried only on the env, never on stdin, must never mark a subagent session"
+
+    payload_with_marker = JSON.generate("session_id" => "sess-marker-only", "agent_id" => "agent-42")
+    out2, _err2, status2 = run_hook(stdin_data: payload_with_marker, session_id: "sess-marker-only")
+    assert_equal 0, status2.exitstatus
+    ctx2 = JSON.parse(out2).dig("hookSpecificOutput", "additionalContext")
+    refute_includes ctx2, "Active: [555",
+                    "the marker on the stdin payload alone, with no env support at all, must still mark a subagent"
+  end
+
+  # Row 7.2 (B6): a live `claude --agent` session carries agent_type but no
+  # agent_id (only a spawned subagent carries agent_id). Reading agent_type
+  # as the marker would boot a live agent session with the core banner only.
+  def test_agent_type_without_agent_id_is_a_live_session
+    payload = JSON.generate("session_id" => "live-agent-type-only", "agent_type" => "executor")
+    out, _err, status = run_hook(stdin_data: payload, session_id: "live-agent-type-only")
+    assert_equal 0, status.exitstatus
+    ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+
+    assert_includes ctx, "Active: [555 — 555 - An active intent]",
+                     "agent_type alone, with no agent_id, must be a live session, not a subagent"
+  end
+
+  # Row 7.6
+  def test_subagent_branch_exception_degrades_to_banner
+    payload = JSON.generate("session_id" => "sub-weird", "agent_id" => { "nested" => ["weird", 1, nil] })
+    out, _err, status = run_hook(stdin_data: payload, session_id: "sess-subagent-weird")
+    assert_equal 0, status.exitstatus
+    parsed = JSON.parse(out)
+    assert_includes parsed["systemMessage"], "Plastic Core loaded"
+    ctx = parsed.dig("hookSpecificOutput", "additionalContext")
+    assert_includes ctx, "Plastic Core loaded"
+    refute_includes ctx, "Active:",
+                    "a malformed marker value must still degrade to a banner-only boot, never crash to nothing"
+  end
+end
+
+# Intent 341, G8 (node n2), row 2.1: session start stops dumping doctrine. A
+# live boot carries the core banner, the project (or global) banner with its
+# one active intent, and the QMD line; the conventions dump, the bulleted
+# active-intents listing, the stage line, and the stale-future paragraph are
+# all cut (a skill or the conventions chapter already carries that text).
+# Deprecation warnings, the update notice, the sweep line and the day-ledger
+# line are unrelated bookkeeping this cut does not touch, so this fixture
+# carries none of them and the assertions below do not need to exclude them.
+class SessionStartDoctrineCutTest < Minitest::Test
+  HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
+
+  def setup
+    @home = Dir.mktmpdir("session-start-doctrine-cut-home")
+    @tmp = Dir.mktmpdir("session-start-doctrine-cut-tmp")
+    @index = File.join(@home, "INDEX.md")
+
+    File.write(File.join(@home, "PLASTIC.md"), <<~MD)
+      # Plastic: Conventions
+
+      THIS CONVENTIONS PROSE PARAGRAPH MUST NEVER REACH A LIVE BOOT.
+    MD
+
+    active_dir = File.join(@home, "store", "701--an-active-intent")
+    FileUtils.mkdir_p(active_dir)
+    File.write(File.join(active_dir, "701--an-active-intent.md"),
+               "---\nid: \"701\"\n---\n\n## Intent\nActive.\n")
+
+    stale_dir = File.join(@home, "store", "702--a-stale-intent")
+    FileUtils.mkdir_p(stale_dir)
+    File.write(File.join(stale_dir, "702--a-stale-intent.md"),
+               "---\nid: \"702\"\ncreated: '2000-01-01'\n---\n\n## Intent\nStale.\n")
+
+    File.write(@index, <<~MD)
+      # Index
+
+      ## Active
+      - [701 - An active intent](store/701--an-active-intent/701--an-active-intent.md)
+
+      ## Future
+      - [702 - A stale intent](store/702--a-stale-intent/702--a-stale-intent.md)
+    MD
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+    FileUtils.rm_rf(@tmp)
+  end
+
+  def context
+    out, _err, status = Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-doctrine-cut" },
+                                        "ruby", HOOK, @index, @home, "global")
+    assert_equal 0, status.exitstatus
+    JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+  end
+
+  # Row 2.1
+  def test_live_session_boot_carries_banners_only
+    ctx = context
+
+    assert_includes ctx, "Plastic Core loaded", "the core banner must still boot"
+    assert_includes ctx, "Active: [701 — 701 - An active intent]",
+                    "the project/global banner keeps its one active intent"
+
+    refute_includes ctx, "CONVENTIONS PROSE", "PLASTIC.md's conventions dump must not reach a live boot"
+    refute_includes ctx, "Active intents:", "the bulleted active-intents listing is cut"
+    refute_includes ctx, "No active intents", "the no-active-intent nudge is cut"
+    refute_includes ctx, "Stale future intents", "the stale-future paragraph is cut"
+    refute_includes ctx, "Stage: ", "the stage line is cut"
+  end
+end
+
+# Intent 341, G8 (node n2), row 2.4: the cut must not introduce a raise path
+# that boots a live session with nothing. hook-session-start now computes the
+# core banner before anything that reads INDEX.md, projects.yml, or
+# PLASTIC.md, and wraps that entire best-effort assembly in one rescue that
+# falls back to a banner-only boot. A malformed projects.yml (a project entry
+# that is not a mapping, so `info["path"]` blows up trying to build a
+# `File.expand_path` argument) is a real, reachable, hermetic way to raise
+# partway through that assembly.
+class SessionStartBannerExceptionTest < Minitest::Test
+  HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
+
+  def setup
+    @home = Dir.mktmpdir("session-start-banner-exception-home")
+    @tmp = Dir.mktmpdir("session-start-banner-exception-tmp")
+    @index = File.join(@home, "INDEX.md")
+    File.write(@index, "# Index\n\n## Active\n\n## Future\n")
+    File.write(File.join(@home, "PLASTIC.md"), "# Plastic: Conventions\n")
+    # "broken" maps to an Integer, not a Hash: info["path"] then raises
+    # TypeError (Integer#[] takes no implicit String), reachable before the
+    # project/global banner is ever built.
+    File.write(File.join(@home, "projects.yml"), "projects:\n  broken: 12345\n")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+    FileUtils.rm_rf(@tmp)
+  end
+
+  def run_hook
+    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-banner-exception" },
+                   "ruby", HOOK, @index, @home, "global")
+  end
+
+  def test_exception_degrades_to_banner
+    out, err, status = run_hook
+
+    assert_equal 0, status.exitstatus, "a raise anywhere in the best-effort assembly must still exit 0: #{err}"
+    assert_empty err.strip, "the rescue must swallow the exception, never leak a backtrace to stderr"
+
+    parsed = JSON.parse(out)
+    assert_includes parsed["systemMessage"], "Plastic Core loaded"
+    ctx = parsed.dig("hookSpecificOutput", "additionalContext")
+    assert_includes ctx, "Plastic Core loaded", "the boot must degrade to the banner, never to nothing"
+    refute_includes ctx, "Active:", "a failed assembly must not leak a partial banner line"
   end
 end

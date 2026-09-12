@@ -3,6 +3,7 @@ require "tmpdir"
 require "fileutils"
 require "time"
 require_relative "../scripts/lib/savepoint"
+require_relative "../scripts/lib/node_ledger"
 # Tests for the deterministic cycle-step savepoint ledger added in intent 34.
 class SavepointLedgerTest < Minitest::Test
   def setup
@@ -223,6 +224,25 @@ class SavepointLedgerTest < Minitest::Test
     assert_equal true, Savepoint.append_terminal_savepoint(@dir, "delivered", now: Time.now)
     assert_equal false, Savepoint.append_terminal_savepoint(@dir, "delivered", now: Time.now)
     assert_equal 1, ledger_lines.length
+  end
+
+  # === Intent 340b, G7c, n1: harness= is additive to NodeLedger ==============
+
+  # 1.16: a `running` line written before `harness=` existed - only holder=,
+  # expires=, packet=, model=, with no harness= at all - must still read as a
+  # clean, non-torn line after harness is added to FIELD_ORDER. FIELD_ORDER
+  # only governs render position for fields that ARE present; REQUIRED_FIELDS
+  # for `running` never gains harness, so an old line naming none of it is
+  # never torn.
+  def test_pre_harness_ledger_still_parses
+    pre_change_line = "2026-01-01T00:00:00Z  n1  running holder=auto-1 " \
+                       "expires=2026-01-01T01:00:00Z packet=abc123 model=sonnet\n"
+    entries = NodeLedger.entries_from_content(pre_change_line)
+    entry = entries.first
+    refute_nil entry, "a pre-harness running line must still parse as a transition candidate"
+    refute entry[:torn], "a pre-harness running line must not read as torn: #{entry.inspect}"
+    assert_equal "running", entry[:state]
+    assert_nil entry[:fields]["harness"]
   end
 
   # --- rebuild stays a pure file-landing skeleton -----------------------------

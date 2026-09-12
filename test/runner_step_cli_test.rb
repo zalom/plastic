@@ -157,6 +157,25 @@ class RunnerStepCliTest < Minitest::Test
     refute_nil entry["packet"]
   end
 
+  # --- n6, 6.3: step's text output fences the spawn block for a paste -------
+
+  def test_step_prints_spawn_block_fenced
+    build_ready_intent
+    arm_lock
+
+    out, _err, status = run_cli("step", @dir)
+    assert_equal 0, status.exitstatus, out
+
+    assert_includes out, "```", "the spawn block must be fenced so a session can paste it: #{out}"
+    assert_includes out, "agent: plastic-executor", out
+
+    plan = YAML.safe_load(out, permitted_classes: [], aliases: false)
+    refute_nil plan, "step's stdout must still be the YAML dispatch plan, got: #{out.inspect}"
+    assert_kind_of Array, plan["spawn"]
+    refute_empty plan["spawn"]
+    assert_includes plan["spawn"].first, "```"
+  end
+
   # --- 8.8: a malformed --return pair is refused, never raised --------------------
 
   def test_step_refuses_a_malformed_return_pair
@@ -182,5 +201,19 @@ class RunnerStepCliTest < Minitest::Test
   def test_opt_all_returns_empty_array_when_flag_absent
     assert_equal [], Runner.opt_all([], "--return")
     assert_equal [], Runner.opt_all(["--node", "n1"], "--return")
+  end
+
+  # --- 355 n3, 3.6: status prints the review fix count and the cap ----------------
+
+  def test_status_prints_review_fix_count_and_cap
+    write_graph("- n1 needs nothing\n- v1 needs n1\n- n2 needs v1\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    write_node("v1.md", node: "v1", kind: "verify")
+    write_node("n2.md", node: "n2", kind: "work")
+
+    out, err, status = run_cli("status", @dir)
+
+    assert_equal 0, status.exitstatus, out + err
+    assert_match(/^review fixes: 1 of 2$/, out)
   end
 end

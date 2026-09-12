@@ -139,4 +139,35 @@ module RunnerPolicy
   def lease_expires(kind, now: Time.now)
     (now + (lease_minutes(kind) * 60)).utc.strftime("%Y-%m-%dT%H:%M:%SZ")
   end
+
+  # --- call budget (intent 355, n2) -------------------------------------------
+  #
+  # D2: a cap on tool calls per attempt, enforced by a PreToolUse hook that
+  # counts tool calls in the session transcript. Shipped per kind (matrix
+  # 2.1); `decision` carries one too even though it is never dispatched
+  # (327 D12 leaves it out of every lease table for the same reason), so
+  # `call_cap` never has to special-case an unknown kind here any more than
+  # `retry_cap` does.
+  CALL_CAP_TABLE = { "work" => 60, "verify" => 40, "research" => 40, "decision" => 10 }.freeze
+
+  # matrix 5.17's own fallback rule, one call: an unknown or nil kind reads
+  # `work`'s cap, never a fourth, undeclared number.
+  def call_cap(kind, config: {})
+    override = call_caps_section(config)[kind.to_s]
+    present?(override) ? override.to_i : CALL_CAP_TABLE.fetch(kind.to_s, CALL_CAP_TABLE["work"])
+  end
+
+  # matrix 2.2: `runner.call_caps.<kind>` in the project config overrides the
+  # shipped cap, the same nested-Hash shape AgentModels.models_section reads
+  # `agents.models` from - one more caller of the pattern, not a new one.
+  def call_caps_section(config)
+    return {} unless config.is_a?(Hash)
+
+    runner = config["runner"]
+    return {} unless runner.is_a?(Hash)
+
+    section = runner["call_caps"]
+    section.is_a?(Hash) ? section : {}
+  end
+  private_class_method :call_caps_section
 end

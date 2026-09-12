@@ -61,7 +61,14 @@ module NodeLedger
   # 2.6): every key named in REQUIRED_FIELDS or DONE_EVIDENCE_FIELDS, plus
   # `model` (accepted on any state). A field outside this list still renders,
   # sorted after these, so an unrecognized key is never silently dropped.
-  FIELD_ORDER = %w[holder expires packet model gates commit verdict reason question by expired].freeze
+  #
+  # `harness` (intent 340b, G7c, n1, D21) sits right after `model`: both are
+  # dispatch-time metadata `running` writes and every terminal transition
+  # carries forward, accepted on every state and required by none - the same
+  # treatment `suite=`, `hop=` and `core_drift=` already get as extras, given
+  # a stable declared position instead of falling to the alphabetical extras
+  # tail (matrix row 1.17).
+  FIELD_ORDER = %w[holder expires packet model harness gates commit verdict reason question by expired].freeze
 
   SEPARATOR = "  "
 

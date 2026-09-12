@@ -39,14 +39,14 @@ class ReadConfigTest < Minitest::Test
 
   # Intent 312: the two absolute-token compaction thresholds resolve from DEFAULTS
   # with no config file present, and a config value wins over them.
-  def test_context_thresholds_fall_back_to_the_shipped_defaults
+  def test_context_defaults
     out, _, status = run_script("context_offer_tokens")
     assert status.success?
-    assert_equal "350000", out
+    assert_equal "150000", out
 
     out, _, status = run_script("context_insist_tokens")
     assert status.success?
-    assert_equal "500000", out
+    assert_equal "250000", out
   end
 
   def test_a_configured_context_threshold_wins_over_the_default
@@ -120,6 +120,20 @@ class ReadConfigTest < Minitest::Test
   def test_exits_with_error_when_no_key_given
     _, _, status = run_script("")
     refute status.success?
+  end
+
+  # Intent 340b (G7c, n4, D9, row 4.6): runner.stop_hook defaults false with
+  # no config file present, so StopGate has something to parse and doctor
+  # has something to report, even on a fresh install.
+  def test_runner_stop_hook_defaults_false
+    out, _, status = run_script("runner.stop_hook")
+    assert status.success?
+    assert_equal "false", out
+  end
+
+  def test_a_configured_runner_stop_hook_wins_over_the_default
+    write_global_config("version" => 3, "runner" => { "stop_hook" => true })
+    assert_equal "true", run_script("runner.stop_hook").first
   end
 end
 

@@ -81,6 +81,13 @@ class RunnerInstallTest < Minitest::Test
     refute_match(/rewind/i, body, "the skill body must not name the rewind verb")
   end
 
+  # 7.12 (intent 340b, G7c, n7): until-empty is internal, like rewind - the
+  # skill body must never grow a fourth verb 327 did not name.
+  def test_skill_does_not_name_until_empty
+    body = File.read(SKILL)
+    refute_match(/until-empty|until empty/i, body, "the skill body must not name the until-empty verb")
+  end
+
   # 7.5: the largest change in the batch must have a line under Unreleased,
   # added beside whatever earlier intents already wrote there, not in place
   # of them.

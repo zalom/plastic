@@ -1300,8 +1300,8 @@ the window is used, and the model acts on the installed block. The keys exist so
 can retune the numbers that block states.
 
 ```yaml
-context_offer_tokens: 350000    # offer a compaction
-context_insist_tokens: 500000   # insist on one
+context_offer_tokens: 150000    # offer a compaction
+context_insist_tokens: 250000   # insist on one
 ```
 
 They are absolute token counts, not percentages, and they resolve through the ordinary
@@ -1312,6 +1312,11 @@ behind that are architectural, so a percentage that is right at a 200k window wo
 five times as many raw tokens pile up before firing at 1M. The three places the numbers
 live (the `DEFAULTS` hash, `templates/config.yml`, and `InstallerCore#bootstrap`'s seeded
 config) are pinned equal by `test/compact_instructions_test.rb`.
+
+Intent 355's n5 (D7) lowered both numbers again, from 350,000/500,000 to 150,000/250,000:
+a live session that let the window run from 434,000 to 506,000 tokens spent a third of
+that window on 41 calls before it compacted. The three-way pin above still holds; only
+the shipped values moved.
 
 The block itself is `CompactInstructions::BODY` in `scripts/lib/compact_instructions.rb`,
 installed into `~/.claude/CLAUDE.md` as a marked section:
@@ -1347,6 +1352,42 @@ that difference is deliberate, not an oversight. `doctor_core.rb` keeps its own 
 the two marker literals, as it does for Codex, but the body and its hash come from the
 shared lib, so the text has exactly one home.
 
+
+## meter-watch: the rate-limit meter on a timer (intent 355, n5, D6)
+
+`scripts/meter-watch` reads the owner's rate-limit cache
+(`~/.plastic/.cache/rate-limits.json`, written by the owner's live statusline hook, not
+by anything in this repo) and writes `~/.plastic/.cache/meter-state.json`, so a session
+watches one small file instead of every session parsing the cache and re-deriving the
+thresholds for itself. `MeterWatch` (`scripts/lib/meter_watch.rb`) does the reading and
+classifying; the CLI is a thin wrapper.
+
+The state file carries `state`, `five_hour`, `seven_day`, `resets_at`, and `checked_at`.
+`state` is one of:
+
+- `ok` -- below every threshold
+- `reduce` -- `five_hour` at or above `meter.reduce_at` (default 55)
+- `stop` -- `five_hour` at or above `meter.stop_at` (default 85), or `seven_day` at or
+  above `meter.weekly_stop_at` (default 97)
+- `resume` -- the previous state was `stop` and `resets_at` has passed
+- `stale` -- the cache is older than two ticks (40 minutes at the default 20-minute
+  tick), so its numbers are not trusted
+- `unavailable` -- no cache file exists
+
+The three thresholds resolve from `meter.reduce_at`, `meter.stop_at`, and
+`meter.weekly_stop_at` in config, the same DI-first pattern as everything else here:
+`MeterWatch.new` takes `home`, `now`, `cache_path`, and a `renamer` for the underlying
+atomic write, never ENV.
+
+The state file is written through `AtomicWrite` (temp file, then rename) and only when
+`state` actually changes, so a watcher never fires on a tick that changed nothing and a
+crash mid-write can never leave a torn file behind.
+
+`meter-watch --install-timer` writes a LaunchAgent plist under the given `--home`
+(`Library/LaunchAgents/com.plastic.meter-watch.plist`) that reruns the tick every 20
+minutes. It never calls `launchctl`; it prints the `launchctl load` command for the
+owner to run by hand. The Plastic installer never calls `--install-timer` on its own --
+starting a background job is the owner's decision, not the installer's.
 
 ## living-document
 

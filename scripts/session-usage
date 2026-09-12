@@ -1,0 +1,56 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# session-usage (intent 355, D10): read the harness transcripts since a cutoff
+# and report per session the model, calls, boot context, last context, median
+# step, steps over 5k, and cache read. Broken records are counted and named.
+#
+# Usage:
+#   session-usage [--since <iso8601>] [--format text|json] [--root <dir>] [--rate-limits <file>]
+#
+# Defaults: the root is ~/.claude/projects, the rate-limit cache is
+# ~/.plastic/.cache/rate-limits.json, and the cutoff is that cache's reset
+# time minus five hours, else the last five hours.
+#
+# Exit codes: 0 reported (unavailable included); 2 usage error.
+
+require "json"
+require "time"
+require_relative "lib/session_usage"
+
+FLAGS = %w[--since --format --root --rate-limits].freeze
+FORMATS = %w[text json].freeze
+
+def usage_abort(message)
+  warn "session-usage: #{message}"
+  warn "Usage: session-usage [--since <iso8601>] [--format text|json] [--root <dir>] [--rate-limits <file>]"
+  exit 2
+end
+
+def parse_args(argv)
+  usage_abort("every flag takes a value") if argv.length.odd?
+  opts = argv.each_slice(2).to_h
+  unknown = opts.keys - FLAGS
+  usage_abort("unknown flag #{unknown.first.inspect}") unless unknown.empty?
+  usage_abort("unknown format #{opts['--format'].inspect}") if opts["--format"] && !FORMATS.include?(opts["--format"])
+  opts
+end
+
+def parse_since(value)
+  value && Time.iso8601(value)
+rescue ArgumentError
+  usage_abort("--since #{value.inspect} is not an ISO 8601 time")
+end
+
+opts = parse_args(ARGV)
+usage = SessionUsage.new(
+  transcripts_root: File.expand_path(opts.fetch("--root", File.join(Dir.home, ".claude", "projects"))),
+  rate_limits_path: File.expand_path(opts.fetch("--rate-limits", File.join(Dir.home, ".plastic", ".cache", "rate-limits.json")))
+)
+report = usage.report(since: parse_since(opts["--since"]))
+if opts["--format"] == "json"
+  puts JSON.pretty_generate(report)
+else
+  print SessionUsage.render_text(report)
+end

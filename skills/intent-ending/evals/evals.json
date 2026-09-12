@@ -19,7 +19,7 @@
       "scope": "behavior",
       "set": "train",
       "prompt": "Run the mechanical close (scripts/end-intent) for a delivered intent with a real outcome.md.",
-      "expected_output": "The savepoint Done bookend lands exactly once in savepoint.md, and a second run of the same command does not duplicate it (this is the regression the intent fixes: releasing used to skip this line entirely).",
+      "expected_output": "The terminal savepoint line lands exactly once in savepoint.md, and a second run of the same command does not duplicate it (this is the regression the intent fixes: releasing used to skip this line entirely).",
       "files": [],
       "assertions": [
         { "type": "human", "check": "SKILL.md Step 1-4 calls scripts/end-intent as one script instead of restating the outcome/INDEX/savepoint one-liners in prose", "result": "expect-pass" },

@@ -19,6 +19,10 @@ module Handoff
   DONE_CAP = 10
   RECENT_CAP = 10
   OTHERS_CAP = 10
+  # Intent 340b (G7c, n4, D11/D12): runner-step.last is raw stdout+stderr,
+  # not a bounded list of items like every other section, so it gets a byte
+  # cap of its own rather than an item count.
+  RUNNER_CAP = 2048
   # A ledger summary may run to 200 characters; a hand-off line shows the
   # first 80, so the caps above are reachable inside the byte budget.
   SUMMARY_MAX = 80
@@ -74,9 +78,34 @@ module Handoff
     end
   end
 
+  # Raw text of the delivering intent's runner-step.last, or nil when there
+  # is no intent, the file is absent, or it cannot be read (row 4.41: a torn
+  # file must never raise a PreCompact hand-off out of existence).
+  def read_runner_last(intent)
+    return nil if intent.to_s.strip.empty?
+
+    path = File.join(intent, "runner-step.last")
+    return nil unless File.file?(path)
+
+    text = File.read(path)
+    text.strip.empty? ? nil : text
+  rescue StandardError
+    nil
+  end
+
+  # Omitted entirely when no intent resolves or the file is absent/empty
+  # (row 4.39); capped like every other section otherwise (row 4.40).
+  def runner_section(intent)
+    text = read_runner_last(intent)
+    return nil unless text
+
+    clipped = text.bytesize > RUNNER_CAP ? "#{text.byteslice(0, RUNNER_CAP)}\n(truncated)" : text
+    "## Runner\n#{clipped}\n"
+  end
+
   # --- rendering, pure -----------------------------------------------------------
 
-  def render(store:, day:, session:, trigger:, now: Time.now)
+  def render(store:, day:, session:, trigger:, now: Time.now, intent: nil)
     raise ArgumentError, "unknown trigger: #{trigger.inspect}" unless TRIGGERS.include?(trigger)
 
     items = read_items(store, day)
@@ -102,8 +131,9 @@ module Handoff
       "Written #{now.utc.strftime('%Y-%m-%dT%H:%M:%SZ')} at #{trigger}",
       "",
     ]
+    runner = runner_section(intent)
     loop do
-      text = compose(header, lists, hidden)
+      text = compose(header, lists, hidden, runner)
       return text if text.bytesize <= BUDGET
 
       key = TRIM_ORDER.find { |k| !lists[k].empty? }
@@ -123,12 +153,13 @@ module Handoff
     lists[key] = lists[key].last(cap)
   end
 
-  def compose(header, lists, hidden)
+  def compose(header, lists, hidden, runner = nil)
     sections = [
       section("Open", lists[:open], hidden[:open]),
       section("Done", lists[:done], hidden[:done]),
       section("Recent", lists[:recent], hidden[:recent]),
       section("Others today", lists[:others], hidden[:others]),
+      runner,
       "## Resume\n#{RESUME}\n",
     ]
     (header + sections.compact).join("\n")
@@ -168,13 +199,13 @@ module Handoff
   # partial hand-off and two writers for one session (a tick overlapping a
   # PreCompact) never share a temp name. Returns the path. With
   # `templates: nil` the day is not scaffolded, only its directory ensured.
-  def write(store:, day:, session:, trigger:, templates:, now: Time.now)
+  def write(store:, day:, session:, trigger:, templates:, now: Time.now, intent: nil)
     if templates
       SessionLedger.open_day(store: store, day: day, templates: templates, author: session)
     else
       FileUtils.mkdir_p(SessionLedger.day_dir(store, day))
     end
-    text = render(store: store, day: day, session: session, trigger: trigger, now: now)
+    text = render(store: store, day: day, session: session, trigger: trigger, now: now, intent: intent)
     target = path_for(store, day, session)
     tmp = File.join(File.dirname(target), ".handoff-#{session}-#{Process.pid}-#{Thread.current.object_id}.tmp")
     File.write(tmp, text)

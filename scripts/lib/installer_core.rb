@@ -10,6 +10,7 @@ require_relative "hook_registry"
 require_relative "agent_models"
 require_relative "harness_text"
 require_relative "compact_instructions"
+require_relative "engine_permissions"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/rollback) and their tests can run
@@ -49,9 +50,9 @@ class InstallerCore
   # hand-curated pointer rather than embedding the core wholesale, and it never drifts
   # because it only ever points, never duplicates.
   CODEX_AGENTS_MD_BODY = <<~MD.freeze
-    Plastic is installed for this agent. Plastic is intent-driven state management: all
-    work flows through an intent, moved through What, Why, How, then Exec. Do not jump
-    straight to code.
+    Plastic is installed for this agent. Plastic is intent-driven state management: work runs
+    in one of three modes, direct, thinking, or auto (a team drives the runner loop:
+    `runner step`, `status`, `answer`). Do not jump straight to code.
 
     Standing rules:
     - Core conventions live in ~/.plastic/PLASTIC.md. Read it and follow it exactly. For
@@ -438,6 +439,8 @@ class InstallerCore
       "scripts/verify-intent" => "scripts/verify-intent",
       "scripts/lib/exec_worktree.rb" => "scripts/lib/exec_worktree.rb",
       "scripts/exec-worktree" => "scripts/exec-worktree",
+      "scripts/lib/session_usage.rb" => "scripts/lib/session_usage.rb",
+      "scripts/session-usage" => "scripts/session-usage",
       "scripts/doctor.rb" => "scripts/doctor.rb",
       "scripts/lib/doctor_core.rb" => "scripts/lib/doctor_core.rb",
       "scripts/lib/hook_replay.rb" => "scripts/lib/hook_replay.rb",
@@ -543,6 +546,32 @@ class InstallerCore
       # by scripts/runner's `step`.
       "scripts/lib/runner_policy.rb" => "scripts/lib/runner_policy.rb",
       "scripts/lib/runner_dispatch.rb" => "scripts/lib/runner_dispatch.rb",
+      # Intent 340b (G7c, n1): the harness seam - HarnessAdapter, required
+      # by scripts/lib/runner_dispatch.rb and by scripts/runner's `step`
+      # directly.
+      "scripts/lib/harness_adapter.rb" => "scripts/lib/harness_adapter.rb",
+      # Intent 340b (G7c, n6): the Codex leg - CodexAdapter (the `codex exec`
+      # argv, the sandbox per kind, and the bounded subprocess) and
+      # scripts/node-run, the CLI that runs one node's whole attempt over
+      # it and writes only a return file, never a ledger transition.
+      "scripts/lib/codex_adapter.rb" => "scripts/lib/codex_adapter.rb",
+      "scripts/node-run" => "scripts/node-run",
+      # Intent 340b (G7c, n3): the engine deny rule - the frozen permissions.deny
+      # entry list, merged into settings.json at install and removed surgically
+      # at uninstall.
+      "scripts/lib/engine_permissions.rb" => "scripts/lib/engine_permissions.rb",
+      # Intent 340b (G7c, n4): the Stop gate, the shared ActiveDelivery walk
+      # it and the PreCompact hand-off both call, and hook-stop, the Stop
+      # hook body scripts/hook-stop's launcher (hooks/stop) relays into.
+      "scripts/lib/stop_gate.rb" => "scripts/lib/stop_gate.rb",
+      "scripts/lib/active_delivery.rb" => "scripts/lib/active_delivery.rb",
+      "scripts/hook-stop" => "scripts/hook-stop",
+      # Intent 355 (n2): the call budget PreToolUse hook (RunnerPolicy.call_cap
+      # is its cap table, above); its launcher (hooks/call-budget) ships via
+      # hook_files' own glob, so only the hook script itself needs an entry.
+      "scripts/hook-call-budget" => "scripts/hook-call-budget",
+      "scripts/meter-watch" => "scripts/meter-watch",
+      "scripts/lib/meter_watch.rb" => "scripts/lib/meter_watch.rb",
       # Intent 340 (G7, n6): answer (closes a decision node or unparks a
       # work node parked at needs_decision), proposals (mints ids for what
       # an executor proposed), and rewind (resets the intent branch to a
@@ -573,6 +602,10 @@ class InstallerCore
       # fix per verify model, hop on versus off, delivery latency, the
       # evidence bar, and the two concurrency ceilings.
       "scripts/lib/graph_measure_cohorts.rb" => "scripts/lib/graph_measure_cohorts.rb",
+      # Intent 340b (G7c, n7): the Codex loop - composes `step` and
+      # `node-run` itself (concurrency two, serial absorb, iteration-capped),
+      # routed from scripts/runner's internal `until-empty` verb.
+      "scripts/lib/runner_until_empty.rb" => "scripts/lib/runner_until_empty.rb",
     }
   end
 
@@ -586,8 +619,8 @@ class InstallerCore
       version: 3
       execution_mode: subagent-driven
       stale_threshold_days: 3
-      context_offer_tokens: 350000
-      context_insist_tokens: 500000
+      context_offer_tokens: 150000
+      context_insist_tokens: 250000
       hash_length: 6
       hash_algorithm: sha256-base36
       max_slug_words: 5
@@ -945,6 +978,11 @@ class InstallerCore
     settings_path = File.join(config[:dir], "settings.json")
     choice = statusline_choice(settings_path, argv: argv, input: input, reinstall: reinstall)
     merge_claude_hooks(settings_path, choice: choice)
+
+    # The engine deny rule (intent 340b, G7c, n3, D4): a second ownership
+    # mechanism from the hook merge above, so it is its own call rather than a
+    # branch inside merge_claude_hooks.
+    merge_engine_permissions(settings_path)
 
     # Instruction injection (intent 312): the compact-instructions block into
     # ~/.claude/CLAUDE.md. A partial-ownership user file, so it is NOT manifest-tracked
@@ -1499,6 +1537,44 @@ class InstallerCore
     removed
   end
 
+  # --- The engine deny rule (intent 340b, G7c, n3) ---
+  #
+  # A second ownership mechanism from merge_claude_hooks above (D4, node n3): a
+  # permissions.deny entry is a bare string with no marker in it, so EnginePermissions
+  # owns its four entries by exact-string membership, not by a plastic- launcher
+  # basename. This pair only does the read-modify-write; EnginePermissions.merge_into
+  # and .remove_from are the pure transforms.
+
+  # Merges EnginePermissions::ENTRIES into settings.json. Unlike merge_claude_hooks,
+  # this refuses rather than starting from {} when the existing file cannot be
+  # parsed (row 3.11): a hand-edited settings file is never silently replaced.
+  # Returns true when it wrote, false when it refused.
+  def merge_engine_permissions(settings_path)
+    if File.exist?(settings_path)
+      settings = read_json_safe(settings_path)
+      return false if settings.nil?
+    else
+      settings = {}
+    end
+
+    write_json_atomic(settings_path, EnginePermissions.merge_into(settings))
+    true
+  end
+
+  # Removes exactly EnginePermissions::ENTRIES from settings.json, leaving every
+  # other deny entry (the owner's own, and any Plastic entry the owner has since
+  # edited) in place. Returns true when it wrote, false on a missing or
+  # unparseable file, or a permissions/deny shape it does not recognize.
+  def remove_engine_permissions(settings_path)
+    return false unless File.exist?(settings_path)
+
+    settings = read_json_safe(settings_path)
+    return false unless settings.is_a?(Hash)
+
+    write_json_atomic(settings_path, EnginePermissions.remove_from(settings))
+    true
+  end
+
   # --- Codex AGENTS.md marked-section injection (22a/Beads pattern) ---
   # New primitive: markdown marked-section merge, the analog of merge_claude_hooks'
   # JSON read-modify-write for a partial-ownership text file. Three states
@@ -1688,6 +1764,7 @@ class InstallerCore
     if key == "claude"
       settings_path = File.join(config[:dir], "settings.json")
       remove_claude_hooks(settings_path) if File.exist?(settings_path)
+      remove_engine_permissions(settings_path) if File.exist?(settings_path)
       removed.concat(migrate_legacy_plugin(config[:dir]))
 
       # The compact-instructions block in the user-owned CLAUDE.md (intent 312): a
@@ -1836,11 +1913,22 @@ class InstallerCore
 
   def read_json_safe(path)
     return nil unless File.exist?(path)
+
     JSON.parse(File.read(path))
   rescue JSON::ParserError
-    # Try JSONC stripping (remove // comments and trailing commas)
-    content = File.read(path).gsub(%r{//[^\n]*}, "").gsub(/,(\s*[}\]])/, '\1')
-    JSON.parse(content)
+    # The comment/trailing-comma-stripped retry below can itself raise
+    # JSON::ParserError on genuinely malformed content (a truncated file, or
+    # plain garbage). A nested begin/rescue is required here because a
+    # method-level `rescue` clause never catches an exception raised from
+    # INSIDE a sibling rescue clause's own body (only from the main body);
+    # doctor_core.rb#read_json_safe carries the same fix for the same reason
+    # (intent 331e, F5).
+    begin
+      content = File.read(path).gsub(%r{//[^\n]*}, "").gsub(/,(\s*[}\]])/, '\1')
+      JSON.parse(content)
+    rescue
+      nil
+    end
   rescue
     nil
   end

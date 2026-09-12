@@ -242,6 +242,19 @@ class CodexInstallTest < Minitest::Test
     end
   end
 
+  # Intent 340b, G7c, n2, row 2.12: the three node-kind agents (not consultation
+  # agents) each generate a Codex TOML, mechanically, through the real
+  # generate_codex_agents path against the real shipped agents/*.md tree.
+  def test_node_agents_generate_codex_toml
+    @core.install_for_agent("codex", false)
+
+    %w[plastic-node-work plastic-node-verify plastic-node-research].each do |basename|
+      dest = File.join(@codex_home, "agents", "#{basename}.toml")
+      assert File.file?(dest), "codex: #{basename}.toml must be generated into #{@codex_home}/agents"
+      assert_includes File.read(dest), "developer_instructions"
+    end
+  end
+
   # --- Intent 210, D2: uniform per-agent record dir + legacy manifest migration ---
 
   def test_install_codex_writes_the_uniform_record_dir_and_no_legacy_manifest

@@ -312,7 +312,7 @@ A release IS a delivery. The active intent that drove this work must be complete
 2. For each active intent being delivered:
    a. Write a real `outcome.md` (never leave the scaffold placeholder), `disposition: delivered`, referencing the release tag.
    b. Update `## Insights` with final observations.
-   c. Run the mechanical close (`scripts/end-intent`'s steps 1-5): this stamps the intent file's `## Outcome` summary, moves the INDEX.md line to `## Completed` (dated today, with a rich entry description via `--index-note`), appends the savepoint `Done` bookend, commits the store, and disarms (releases the worktree - already gone from step 8 above - and clears `delivery.lock`), all in one call:
+   c. Run the mechanical close (`scripts/end-intent`'s steps 1-5): this stamps the intent file's `## Outcome` summary, moves the INDEX.md line to `## Completed` (dated today, with a rich entry description via `--index-note`), appends the terminal savepoint line, commits the store, and disarms (releases the worktree - already gone from step 8 above - and clears `delivery.lock`), all in one call:
       ```bash
       ruby ~/.plastic/scripts/end-intent --store <store_path> --id <ID> --disposition delivered \
         --session "$CLAUDE_CODE_SESSION_ID" \

@@ -864,3 +864,168 @@ class DoctorCodexStaleRegistrationsTest < Minitest::Test
     assert_equal [], checks
   end
 end
+
+# ===========================================================================
+# Unpromoted rule: findings (intent 341, G8, C37)
+# ===========================================================================
+
+class DoctorUnpromotedRulesTest < Minitest::Test
+  include DoctorTestHelpers
+
+  def setup
+    @store_dir = Dir.mktmpdir("doctor-unpromoted-rules-store")
+    @package_root = Dir.mktmpdir("doctor-unpromoted-rules-package")
+    @chapters_dir = File.join(@package_root, "skills", "conventions", "references")
+    FileUtils.mkdir_p(@chapters_dir)
+  end
+
+  def teardown
+    FileUtils.rm_rf([@store_dir, @package_root])
+  end
+
+  def write_rule_intent(rule_text)
+    dir = File.join(@store_dir, "77--rule-source")
+    FileUtils.mkdir_p(dir)
+    File.write(File.join(dir, "77--rule-source.md"), <<~MD)
+      ---
+      id: "77"
+      intent: "Rule source"
+      ---
+
+      ## Insights
+      2026-09-12T10:00:00Z · Exec · test — rule: #{rule_text}
+    MD
+    [{ path: dir, name: "77--rule-source", scope: "global" }]
+  end
+
+  def test_unpromoted_rules_listed
+    intent_dirs = write_rule_intent("Never eval a prompt string")
+
+    result = doctor.unpromoted_rules_checks(intent_dirs, package_root: @package_root)
+    check = result.find { |c| c[:name] == "unpromoted_rules" }
+
+    refute_nil check
+    assert_equal "warn", check[:status]
+    assert check[:details].any? { |d| d.include?("Never eval a prompt string") }, check[:details].inspect
+  end
+
+  def test_promoted_rules_not_listed
+    intent_dirs = write_rule_intent("Never eval a prompt string")
+    File.write(File.join(@chapters_dir, "safety.md"), "# Safety\n\nNever eval a prompt string, ever.\n")
+
+    result = doctor.unpromoted_rules_checks(intent_dirs, package_root: @package_root)
+    check = result.find { |c| c[:name] == "unpromoted_rules" }
+
+    refute_nil check
+    assert_equal "pass", check[:status]
+  end
+
+# --- 5.6: the installed doctor has no repo skills/ dir under PACKAGE_ROOT
+# (~/.plastic); chapters live under the installed home layout instead
+# (~/.claude/skills/plastic-conventions/references,
+# ~/.agents/skills/plastic-conventions/references). Resolved from an
+# injected `home:` keyword, never ENV, so this stays hermetic.
+def test_promoted_rules_not_listed_from_installed_layout
+  home = Dir.mktmpdir("doctor-unpromoted-rules-home")
+  chapters_dir = File.join(home, ".claude", "skills", "plastic-conventions", "references")
+  FileUtils.mkdir_p(chapters_dir)
+  File.write(File.join(chapters_dir, "safety.md"), "# Safety\n\nNever eval a prompt string, ever.\n")
+
+  empty_package_root = Dir.mktmpdir("doctor-unpromoted-rules-no-package")
+  intent_dirs = write_rule_intent("Never eval a prompt string")
+
+  result = doctor.unpromoted_rules_checks(intent_dirs, package_root: empty_package_root, home: home)
+  check = result.find { |c| c[:name] == "unpromoted_rules" }
+
+  refute_nil check
+  assert_equal "pass", check[:status]
+ensure
+  FileUtils.rm_rf([home, empty_package_root].compact)
+end
+end
+
+# Row 4.4 (intent 341, G8 node n4): a graph intent (D1, no ceremonies) never carries
+# spec.md, plan.md, or checklist.md by design. Doctor's backfilled_complete check must
+# not warn about them on a graph intent; a legacy intent (no graph.md) keeps today's
+# behavior of warning on a real gap.
+class DoctorGraphIntentSpecOptionalTest < Minitest::Test
+  def setup
+    @home = Dir.mktmpdir("plastic-doctor-graph-spec-optional")
+  end
+
+  def teardown
+    FileUtils.remove_entry(@home) if @home && Dir.exist?(@home)
+  end
+
+  def store_dir = File.join(@home, "store")
+
+  def doctor = Doctor.new(plastic_home: @home)
+
+  def write_index(id)
+    body = +"# Index\n\n"
+    %w[Active Future Clusters Abandoned].each { |s| body << "## #{s}\n\n" }
+    body << "## Completed\n"
+    body << "- [#{id} - t](store/#{id}--slug/#{id}--slug.md) - 2026-09-12\n"
+    File.write(File.join(@home, "INDEX.md"), body)
+  end
+
+  def intent_dir(id) = File.join(store_dir, "#{id}--slug")
+
+  def write_common(id)
+    dir = intent_dir(id)
+    FileUtils.mkdir_p(dir)
+    File.write(File.join(dir, "#{id}--slug.md"), <<~MD)
+      ---
+      id: "#{id}"
+      intent: "Test intent"
+      sources: []
+      chain: []
+      created: 2026-09-12
+      author: test
+      tags: []
+      ---
+
+      ## Intent
+      Test intent.
+    MD
+    File.write(File.join(dir, "outcome.md"), "---\ndisposition: delivered\n---\n\n## Summary\nDone.\n")
+    File.write(File.join(dir, "savepoint.md"), "2026-09-12T00:00:00Z  Done  delivered\n")
+  end
+
+  def check(name)
+    doctor.check_done_signals.find { |c| c[:name] == name }
+  end
+
+  def test_missing_spec_is_not_a_warning
+    id = "341n4a"
+    write_index(id)
+    write_common(id)
+    dir = intent_dir(id)
+    File.write(File.join(dir, "graph.md"), "# Graph\n\n## Goal\nTest.\n")
+    FileUtils.mkdir_p(File.join(dir, "nodes"))
+    File.write(File.join(dir, "nodes", "n1.md"), "# n1\n\nreal node content.\n")
+
+    refute File.exist?(File.join(dir, "spec.md"))
+    refute File.exist?(File.join(dir, "plan.md"))
+    refute File.exist?(File.join(dir, "checklist.md"))
+
+    c = check("backfilled_complete")
+    assert_equal "pass", c[:status], c.inspect
+  end
+
+  def test_missing_spec_on_a_legacy_intent_still_warns
+    id = "341n4b"
+    write_index(id)
+    write_common(id)
+    dir = intent_dir(id)
+    FileUtils.mkdir_p(File.join(dir, "actions"))
+    File.write(File.join(dir, "actions", "ACTION_1.md"), "# Action 1\n\nreal content.\n")
+
+    refute File.exist?(File.join(dir, "spec.md"))
+    refute File.exist?(File.join(dir, "plan.md"))
+
+    c = check("backfilled_complete")
+    assert_equal "warn", c[:status], c.inspect
+    assert(c[:details].any? { |d| d.include?("spec.md") }, c[:details].inspect)
+  end
+end

@@ -33,7 +33,7 @@ queued intent from the dashboard's queue itself.)
 
 No new command at this station. Watch how the work splits.
 
-Auto owns How (the plan, the checklist, the action files) and Exec (the code, the tests, the
+Auto owns How (`graph.md`, `nodes/`) and Exec (the code, the tests, the
 mechanical close) from here on. Inside Exec it follows a few fixed habits: it syncs its
 working copy with the main line before touching anything, ticks each task the moment it
 lands rather than batching several into one later edit, and independently verifies its own
@@ -63,7 +63,7 @@ Checkpoint: open the intent's `savepoint.md` and name the stage its last line re
 
 ### 4. Reading the per-stage reports
 
-No new command. At each stage boundary (What, Why, How, Exec, Done) the agent briefs in a
+No new command. At each stage boundary (What, Why, How, Exec) the agent briefs in a
 fixed three-line shape: State (what happened and why it matters), Risk (the one thing that
 could bite, or "nothing flagged"), and Call (the decision left to the user, or the call the
 agent is taking on its own). That is the depth for a medium or large intent. A small intent

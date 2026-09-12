@@ -561,6 +561,39 @@ class DoctorAgentRegistrationTest < Minitest::Test
     assert statuses.all? { |s| s == "pass" }, "All checks should pass, got: #{checks.map { |c| [c[:name], c[:status]] }}"
   end
 
+  # Intent 340b (G7c, n4, row 4.32): Stop's registration is static (it ships
+  # and registers even while runner.stop_hook defaults off), so it belongs
+  # in CLAUDE_HOOK_EVENTS beside every other required Claude event. An
+  # install missing it must be exactly as broken by hooks_registered as one
+  # missing PreCompact, so the two checks never disagree about it.
+  def test_stop_hook_reporting_is_consistent
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    agent_manifest = File.join(DOCTOR_TEST_CLAUDE, "plastic", "manifest.json")
+    FileUtils.mkdir_p(File.dirname(agent_manifest))
+    File.write(agent_manifest, JSON.pretty_generate({ "files" => {} }))
+
+    write_claude_hooks(hooks_dir)
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    write_skills(DOCTOR_TEST_CLAUDE)
+    write_agents(DOCTOR_TEST_CLAUDE)
+    write_claude_compact_section(DOCTOR_TEST_CLAUDE)
+
+    assert_includes Doctor::CLAUDE_HOOK_EVENTS, "Stop"
+
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"].delete("Stop")
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    registered = checks.find { |c| c[:name] == "hooks_registered" }
+    matched = checks.find { |c| c[:name] == "hooks_match_registry" }
+
+    assert_equal "fail", registered[:status], "hooks_registered must require Stop"
+    assert_equal "fail", matched[:status], "hooks_match_registry must flag the missing Stop group"
+    assert_includes registered[:details].join, "Stop"
+  end
+
   # --- intent 312: the compact-instructions block ---
 
   def compact_check
@@ -1597,9 +1630,10 @@ class DoctorAgentRegistrationTest < Minitest::Test
     # intent 298 collapsed three prompt hooks into capture and renamed
     # gate-check to record (8), intent 301 added close (9), intent 302
     # removed edit-gates and bash-gate (7), intent 309 retired power-tools (6),
-    # and intent 316a added message-display (MessageDisplay, Claude only): 7
-    # launchers.
-    assert_equal 7, HookRegistry.claude_launcher_names.size
+    # intent 316a added message-display (MessageDisplay, Claude only) (7),
+    # intent 355 n2 added call-budget (PreToolUse, Claude only) (8), and
+    # intent 340b added stop (Stop, Claude only): 9 launchers.
+    assert_equal 9, HookRegistry.claude_launcher_names.size
     assert_equal "pass", hooks_check[:status]
     assert_equal "pass", exec_check[:status]
     assert_equal "pass", orphan_check[:status]
@@ -1615,6 +1649,16 @@ class DoctorCoreHookEventsCommentTest < Minitest::Test
   def test_the_hook_events_comment_names_the_real_count_not_five_event
     src = File.read(File.expand_path("../scripts/lib/doctor_core.rb", __dir__))
     refute_match(/five-event/, src, "CLAUDE_HOOK_EVENTS comment still says \"five-event\" (it is now #{Doctor::CLAUDE_HOOK_EVENTS.size})")
+  end
+
+  # Intent 340b (G7c, n4, row 4.33): CLAUDE_HOOK_EVENTS grew to eight with
+  # Stop on top of 355's PreToolUse; the comment beside it must name that
+  # count, not a stale six or seven.
+  def test_the_hook_events_comment_names_eight
+    src = File.read(File.expand_path("../scripts/lib/doctor_core.rb", __dir__))
+    refute_match(/(six|seven)-event/, src, "CLAUDE_HOOK_EVENTS comment names a stale count (it is now #{Doctor::CLAUDE_HOOK_EVENTS.size})")
+    assert_match(/eight-event/, src)
+    assert_equal 8, Doctor::CLAUDE_HOOK_EVENTS.size
   end
 end
 

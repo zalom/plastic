@@ -7,6 +7,7 @@ require "fileutils"
 require "open3"
 require "time"
 require "yaml"
+require "json"
 
 require_relative "../scripts/lib/runner_dispatch"
 require_relative "../scripts/lib/runner_policy"
@@ -377,6 +378,22 @@ class RunnerDispatchTest < Minitest::Test
     %w[holder expires packet model].each { |k| refute_nil fields[k], "running line missing #{k}=" }
   end
 
+  # --- intent 355, n2, matrix 2.3: `running` carries calls=<cap> -------------
+
+  def test_running_line_carries_calls_cap
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    ctx = build_context
+
+    result = RunnerDispatch.dispatch(ctx)
+    assert result[:ok], result[:errors].inspect
+
+    entry = NodeLedger.last_running(savepoint_path, "n1")
+    refute_nil entry
+    assert_equal RunnerPolicy.call_cap("work").to_s, entry[:fields]["calls"],
+                 "the running line must carry work's shipped call cap"
+  end
+
   # --- 5.20: a refused `running` rolls back the worktree and the packet -----
 
   def test_refused_running_rolls_back_side_effects
@@ -445,6 +462,55 @@ class RunnerDispatchTest < Minitest::Test
     assert_kind_of Hash, parsed
     assert_kind_of Array, parsed["dispatch"]
     assert_equal "n1", parsed["dispatch"].first["node"]
+  end
+
+  # --- n6, 6.1: one spawn block per dispatched node --------------------------
+
+  def test_plan_renders_spawn_block
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work", files: ["test/x_test.rb"])
+    ctx = build_context
+
+    result = RunnerDispatch.dispatch(ctx)
+    entry = result[:dispatched].first
+    refute_nil entry[:spawn], "a dispatched node must carry its own spawn block"
+    assert_includes entry[:spawn], "agent: #{RunnerDispatch::SPAWN_AGENT}"
+    assert_includes entry[:spawn], "packet: #{entry[:packet]}"
+    assert_includes entry[:spawn], "ruby bin/test --only test/x_test.rb"
+    assert_includes entry[:spawn], RunnerPolicy.call_cap("work").to_s
+
+    plan = YAML.safe_load(result[:plan])
+    assert_equal entry[:spawn], plan["spawn"].first
+  end
+
+  # --- n6, 6.2: the spawn block's model comes from RunnerPolicy.model_for ---
+
+  def test_spawn_block_model_from_policy
+    work_block = RunnerDispatch.spawn_block(model: RunnerPolicy.model_for("work"), packet: "/tmp/n1--a.packet",
+                                             test_command: "test command: ruby bin/test --only test/x_test.rb",
+                                             call_cap: RunnerPolicy.call_cap("work"))
+    verify_block = RunnerDispatch.spawn_block(model: RunnerPolicy.model_for("verify"), packet: "/tmp/n2--a.packet",
+                                               test_command: "test command: ruby bin/test --only test/y_test.rb",
+                                               call_cap: RunnerPolicy.call_cap("verify"))
+
+    assert_includes work_block, "model: #{RunnerPolicy.model_for('work')}"
+    assert_includes verify_block, "model: #{RunnerPolicy.model_for('verify')}"
+    refute_equal RunnerPolicy.model_for("work"), RunnerPolicy.model_for("verify"),
+                 "the fixture must exercise two different resolved models"
+  end
+
+  # --- n6, 6.4: the plan's data carries the fully rendered spawn block ------
+
+  def test_json_plan_carries_spawn
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work", files: ["test/x_test.rb"])
+    ctx = build_context
+
+    result = RunnerDispatch.dispatch(ctx)
+    data = YAML.safe_load(result[:plan])
+    reparsed = JSON.parse(JSON.generate(data))
+
+    assert_equal [result[:dispatched].first[:spawn]], reparsed["spawn"]
   end
 
   # --- 5.25: complete only when every declared node is terminal --------------
@@ -764,5 +830,61 @@ class RunnerDispatchTest < Minitest::Test
     assert_empty result[:dispatched]
     assert_equal "queued", result[:status],
                  "a node already running, with nothing else ready, is in flight - never stalled"
+  end
+
+  # === Intent 340b, G7c, n1: the harness field on `running` ===================
+
+  # --- 1.19: `running` carries harness= --------------------------------------
+
+  def test_running_line_carries_harness
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    ctx = build_context
+
+    result = RunnerDispatch.dispatch(ctx, config: { "agent" => { "type" => "codex" } })
+    assert result[:ok], result[:errors].inspect
+
+    entry = NodeLedger.last_running(savepoint_path, "n1")
+    refute_nil entry
+    assert_equal "codex", entry[:fields]["harness"], "running line missing harness="
+  end
+
+  # --- 1.20: the dispatcher's harness= comes from HarnessAdapter, not a literal --
+
+  def test_harness_value_comes_from_adapter
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    ctx = build_context
+
+    # No config override at all: HarnessAdapter's own default (claude-code)
+    # must be what lands on the line - never a hardcoded "codex" or a blank.
+    default_result = RunnerDispatch.dispatch(ctx, limit: 3)
+    assert default_result[:ok], default_result[:errors].inspect
+    default_entry = NodeLedger.last_running(savepoint_path, "n1")
+    assert_equal "claude-code", default_entry[:fields]["harness"]
+
+    # A SECOND node, dispatched with an explicit --harness override, must
+    # carry the override's value - proving the field tracks whatever
+    # HarnessAdapter resolves for THIS call, not a value fixed at dispatch
+    # time regardless of input. `limit: 3` keeps every node in this test
+    # dispatchable at once, so a filled concurrency ceiling never masks the
+    # thing this row actually proves.
+    write_node("n2.md", node: "n2", kind: "work")
+    write_graph("- n1 needs nothing\n- n2 needs nothing\n")
+    override_result = RunnerDispatch.dispatch(ctx, limit: 3, harness: "codex")
+    assert override_result[:ok], override_result[:errors].inspect
+    override_entry = NodeLedger.last_running(savepoint_path, "n2")
+    refute_nil override_entry, override_result.inspect
+    assert_equal "codex", override_entry[:fields]["harness"]
+
+    # An unknown value, config or override, falls back through the adapter
+    # to claude-code - a literal `"codex"` inline would never do this.
+    write_node("n3.md", node: "n3", kind: "work")
+    write_graph("- n1 needs nothing\n- n2 needs nothing\n- n3 needs nothing\n")
+    unknown_result = RunnerDispatch.dispatch(ctx, limit: 3, config: { "agent" => { "type" => "hermes" } })
+    assert unknown_result[:ok], unknown_result[:errors].inspect
+    unknown_entry = NodeLedger.last_running(savepoint_path, "n3")
+    refute_nil unknown_entry, unknown_result.inspect
+    assert_equal "claude-code", unknown_entry[:fields]["harness"]
   end
 end

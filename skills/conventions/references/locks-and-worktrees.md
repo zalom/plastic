@@ -84,13 +84,13 @@ Provisioning fails open for intents that touch no project code (pure research or
 intents in the global store, or a non-git repo): those get the lock only, and the worktree
 block stays unprovisioned. The fail-open path is always logged, never silent.
 
-Cleanup is part of Done: the End tail merges the branch, then removes the worktree. Never leave
+Cleanup is part of the End tail: it merges the branch, then removes the worktree. Never leave
 an orphaned worktree behind, and clear a stale worktree reference with `git worktree prune`.
 
 
 #### Intent delivery, station by station
 
-How one auto-team intent travels from boarding to Done, and what the lock, the pointer, and
+How one auto-team intent travels from boarding to the End tail, and what the lock, the pointer, and
 the record hook do at each station. Nothing in the third column blocks; the fourth column is
 what gets written down.
 
@@ -101,7 +101,7 @@ what gets written down.
 | Why | `spec.md` | owner writes refresh the lease (lock file mtime heartbeat) | savepoint `Why started`, `Why spec.md created` |
 | How | `plan.md`, `actions/ACTION_N.md` (at least one), `checklist.md` | heartbeat on writes | savepoint `How started`, `How plan.md created`, `How checklist.md created`, `Exec started` |
 | Exec | code on the intent branch, checklist checked off | heartbeat; code edits confined to the provisioned worktree; delegates write under the owner's lock | checklist boxes; savepoint milestones; the day-ledger line promotes when a project file lands |
-| End (done) | mandatory `outcome.md` (`disposition: delivered\|abandoned`), INDEX moves to Completed or Abandoned | ordered End tail: verify, merge and remove worktrees, disarm clears `delivery.lock`, then the pointer is purge-eligible, and the QMD reindex runs LAST (after purge); `end-intent` backfills a placeholder `outcome.md` from the record and its structure check reports (never refuses) | savepoint `Done delivered` (or `abandoned`); takeover audits, if any, remain in savepoint.md |
+| End (done) | mandatory `outcome.md` (`disposition: delivered\|abandoned`), INDEX moves to Completed or Abandoned | ordered End tail: verify, merge and remove worktrees, disarm clears `delivery.lock`, then the pointer is purge-eligible, and the QMD reindex runs LAST (after purge); `end-intent` backfills a placeholder `outcome.md` from the record and its structure check reports (never refuses) | the savepoint's terminal `delivered` (or `abandoned`) line; takeover audits, if any, remain in savepoint.md |
 | Maintenance (Future, Terminal, or Active-with-a-stale-or-no-lock) | `revisions.md` move-and-record entries | detects (never acquires) `delivery.lock`; defers and reports while the target's lock is FRESH (`Lock.fresh?`); a stale or absent lock is not-active, maintenance proceeds | append-only, rule-tagged `revisions.md` entry written in the same operation as the change, or the change is refused; lands via a fresh branch off store main merged back as one closed op, never `git add -A` |
 
 ## The write guard is not residue

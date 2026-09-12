@@ -595,6 +595,16 @@ class NodePacketReadersTest < Minitest::Test
     assert_includes text, "none recorded in the project record"
   end
 
+  # 4.6 (intent 355, n4): the node's own declared `*_test.rb` files name the
+  # only test command, never the project's generic release.verify.
+  def test_packet_names_the_only_test_command
+    files = %w[bin/test test/lib/failures_reporter.rb scripts/lib/node_packet.rb
+               test/bin_test_test.rb test/node_packet_readers_test.rb]
+    reader = ->(_intent_dir) { "some other command" }
+    text = NodePacket.test_command_block(intent_dir: @dir, files: files, project_reader: reader)
+    assert_equal "test command: ruby bin/test --only test/bin_test_test.rb test/node_packet_readers_test.rb", text
+  end
+
   def test_an_unprovisioned_worktree_renders_a_stop_directive_not_an_empty_path
     reader = ->(intent_dir:) { { "code" => nil, "code_branch" => nil, "provisioned" => false } }
     text = NodePacket.worktree_block(intent_dir: @dir, worktree_reader: reader)

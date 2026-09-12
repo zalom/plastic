@@ -6,6 +6,7 @@ require "digest"
 require "yaml"
 
 require_relative "../scripts/lib/installer_core"
+require_relative "../scripts/lib/engine_permissions"
 
 # Channel derivation, semver, and the append-only versions.json ledger (intent 30a1a).
 class InstallerCoreTest < Minitest::Test
@@ -261,12 +262,18 @@ class InstallerCoreTest < Minitest::Test
 
   # --- intent 312: the seeded config and the compact-instructions block ---
 
-  def test_bootstrap_seeds_the_two_context_thresholds
+  def test_compaction_defaults_150k_250k
     capture_io { @core.bootstrap }
     config = YAML.safe_load(File.read(File.join(@home, "config.yml")))
 
-    assert_equal 350_000, config["context_offer_tokens"]
-    assert_equal 500_000, config["context_insist_tokens"]
+    assert_equal 150_000, config["context_offer_tokens"]
+    assert_equal 250_000, config["context_insist_tokens"]
+  end
+
+  def test_installer_does_not_install_timer
+    source = File.read(File.join(WORKTREE, "scripts", "lib", "installer_core.rb"))
+    refute_match(/install-timer/, source)
+    refute_match(/install_timer/, source)
   end
 
   def test_install_claude_injects_the_compact_block_and_never_tracks_claude_md
@@ -281,6 +288,35 @@ class InstallerCoreTest < Minitest::Test
     tracked = (manifest["files"] || {}).keys
     refute_includes tracked, claude_md,
       "CLAUDE.md is a partial-ownership user file: tracking it would delete it wholesale on uninstall"
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
+  # Intent 340b (G7c, n3, row 3.16): the engine deny rule, driven end to end through
+  # the real install_claude / uninstall_agent wiring rather than the module's pure
+  # functions directly, against a settings.json that already carries the owner's own
+  # permissions. The round trip must land back exactly where it started.
+  def test_install_then_uninstall_leaves_settings_as_found
+    dir = Dir.mktmpdir("install-then-uninstall-permissions")
+    settings_path = File.join(dir, "settings.json")
+    found = {
+      "permissions" => {
+        "allow" => ["Bash(git status)"],
+        "deny" => ["Bash(curl:*)"],
+      },
+    }
+    File.write(settings_path, JSON.generate(found))
+
+    capture_io { @core.install_claude({ name: "Claude Code", dir: dir }, false, argv: ["--no-statusline"]) }
+
+    installed_deny = JSON.parse(File.read(settings_path)).dig("permissions", "deny")
+    EnginePermissions::ENTRIES.each { |entry| assert_includes installed_deny, entry }
+
+    capture_io { @core.uninstall_agent("claude", { name: "Claude Code", dir: dir }) }
+
+    final_permissions = JSON.parse(File.read(settings_path))["permissions"]
+    assert_equal found["permissions"]["allow"], final_permissions["allow"]
+    assert_equal found["permissions"]["deny"], final_permissions["deny"]
   ensure
     FileUtils.rm_rf(dir)
   end

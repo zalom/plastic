@@ -784,11 +784,28 @@ class MergeClaudeHooksTest < Minitest::Test
       assert_equal "755", format("%o", File.stat(dest).mode & 0o777), "#{dest} must install at 0755"
     end
   end
-  # Intent 302: the edit-path gates are gone, so a fresh merge registers NO
-  # PreToolUse group at all.
-  def test_merge_registers_no_pretooluse_group
+  # Intent 340b (G7c, n4, row 4.34): the Stop launcher installs and is
+  # executable, like every other registered hook - it must be there even
+  # while runner.stop_hook defaults off, or every stop logs an error.
+  def test_stop_launcher_installed_and_executable
+    installer = InstallerCore.new(package_root: REPO, plastic_home: PLASTIC_TEST_HOME, version: "1.0.0-test")
+    claude_dir = File.join(@dir, "claude-install-stop")
+    FileUtils.mkdir_p(claude_dir)
+    installer.install_claude({ name: "Claude Code", dir: claude_dir }, false)
+
+    dest = File.join(claude_dir, "hooks", "plastic-stop")
+    assert File.exist?(dest), "install_claude must place the stop launcher"
+    assert_equal "755", format("%o", File.stat(dest).mode & 0o777)
+  end
+
+  # Intent 302: the edit-path gates are gone. Intent 355, n2 adds one
+  # PreToolUse hook back, call-budget, so a fresh merge registers exactly
+  # that one, never a revived edit-path gate.
+  def test_merge_registers_only_call_budget_under_pretooluse
     settings = merged_settings
-    assert_empty plastic_commands(settings, "PreToolUse"), "no Plastic PreToolUse hook may ship"
+    commands = plastic_commands(settings, "PreToolUse")
+    assert_equal 1, commands.size
+    assert commands.first.include?("plastic-call-budget"), commands.inspect
   end
 
   # The one write-path hook is record, under PostToolUse, on the full WRITE_MATCHER
@@ -821,8 +838,8 @@ class MergeClaudeHooksTest < Minitest::Test
   end
 
   # An install that predates intent 302 still carries the merged edit-gates
-  # dispatcher and bash-gate under PreToolUse. The purge must remove both and
-  # register nothing in their place.
+  # dispatcher and bash-gate under PreToolUse. The purge must remove both,
+  # leaving only the one PreToolUse hook intent 355, n2 registers today.
   def test_merge_purges_the_retired_pretooluse_registrations
     settings = {
       "hooks" => {
@@ -837,7 +854,9 @@ class MergeClaudeHooksTest < Minitest::Test
     File.write(@settings_path, JSON.pretty_generate(settings))
     @installer.merge_claude_hooks(@settings_path)
     merged = JSON.parse(File.read(@settings_path))
-    assert_empty plastic_commands(merged, "PreToolUse"),
-                 "retired PreToolUse gates must be purged: #{merged["hooks"]["PreToolUse"].inspect}"
+    commands = plastic_commands(merged, "PreToolUse")
+    refute commands.any? { |c| c.include?("plastic-edit-gates") || c.include?("plastic-bash-gate") },
+           "retired PreToolUse gates must be purged: #{merged["hooks"]["PreToolUse"].inspect}"
+    assert commands.any? { |c| c.include?("plastic-call-budget") }, "call-budget must register fresh"
   end
 end

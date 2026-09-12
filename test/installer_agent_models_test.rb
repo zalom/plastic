@@ -112,6 +112,17 @@ class InstallerAgentModelsTest < Minitest::Test
       "CONSULTATION_AGENTS member (add it to scripts/lib/agent_models.rb): #{unclassified.inspect}"
   end
 
+  # Intent 340b, G7c, n2, row 2.8: the three node-kind agents each get a
+  # TIER_DEFAULTS entry, so `read-config agents.models.plastic-node-verify`
+  # (and its siblings) answers the shipped tier and an override can be
+  # checked against something real.
+  def test_node_agents_have_tier_defaults
+    %w[plastic-node-work plastic-node-verify plastic-node-research].each do |basename|
+      assert AgentModels::TIER_DEFAULTS.key?(basename), "TIER_DEFAULTS must carry #{basename}"
+      refute_empty AgentModels::TIER_DEFAULTS[basename].to_s, "#{basename}'s tier default must not be blank"
+    end
+  end
+
   def test_install_agents_preserves_each_advisors_shipped_default_model
     @core.install_agents(@dest)
     assert_equal "model: fable", model_line("plastic-advisor")
