@@ -10,6 +10,7 @@ require_relative "hook_registry"
 require_relative "agent_models"
 require_relative "harness_text"
 require_relative "compact_instructions"
+require_relative "engine_permissions"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/rollback) and their tests can run
@@ -547,6 +548,10 @@ class InstallerCore
       # by scripts/lib/runner_dispatch.rb and by scripts/runner's `step`
       # directly.
       "scripts/lib/harness_adapter.rb" => "scripts/lib/harness_adapter.rb",
+      # Intent 340b (G7c, n3): the engine deny rule - the frozen permissions.deny
+      # entry list, merged into settings.json at install and removed surgically
+      # at uninstall.
+      "scripts/lib/engine_permissions.rb" => "scripts/lib/engine_permissions.rb",
       # Intent 340b (G7c, n4): the Stop gate, the shared ActiveDelivery walk
       # it and the PreCompact hand-off both call, and hook-stop, the Stop
       # hook body scripts/hook-stop's launcher (hooks/stop) relays into.
@@ -933,6 +938,11 @@ class InstallerCore
     settings_path = File.join(config[:dir], "settings.json")
     choice = statusline_choice(settings_path, argv: argv, input: input, reinstall: reinstall)
     merge_claude_hooks(settings_path, choice: choice)
+
+    # The engine deny rule (intent 340b, G7c, n3, D4): a second ownership
+    # mechanism from the hook merge above, so it is its own call rather than a
+    # branch inside merge_claude_hooks.
+    merge_engine_permissions(settings_path)
 
     # Instruction injection (intent 312): the compact-instructions block into
     # ~/.claude/CLAUDE.md. A partial-ownership user file, so it is NOT manifest-tracked
@@ -1487,6 +1497,44 @@ class InstallerCore
     removed
   end
 
+  # --- The engine deny rule (intent 340b, G7c, n3) ---
+  #
+  # A second ownership mechanism from merge_claude_hooks above (D4, node n3): a
+  # permissions.deny entry is a bare string with no marker in it, so EnginePermissions
+  # owns its four entries by exact-string membership, not by a plastic- launcher
+  # basename. This pair only does the read-modify-write; EnginePermissions.merge_into
+  # and .remove_from are the pure transforms.
+
+  # Merges EnginePermissions::ENTRIES into settings.json. Unlike merge_claude_hooks,
+  # this refuses rather than starting from {} when the existing file cannot be
+  # parsed (row 3.11): a hand-edited settings file is never silently replaced.
+  # Returns true when it wrote, false when it refused.
+  def merge_engine_permissions(settings_path)
+    if File.exist?(settings_path)
+      settings = read_json_safe(settings_path)
+      return false if settings.nil?
+    else
+      settings = {}
+    end
+
+    write_json_atomic(settings_path, EnginePermissions.merge_into(settings))
+    true
+  end
+
+  # Removes exactly EnginePermissions::ENTRIES from settings.json, leaving every
+  # other deny entry (the owner's own, and any Plastic entry the owner has since
+  # edited) in place. Returns true when it wrote, false on a missing or
+  # unparseable file, or a permissions/deny shape it does not recognize.
+  def remove_engine_permissions(settings_path)
+    return false unless File.exist?(settings_path)
+
+    settings = read_json_safe(settings_path)
+    return false unless settings.is_a?(Hash)
+
+    write_json_atomic(settings_path, EnginePermissions.remove_from(settings))
+    true
+  end
+
   # --- Codex AGENTS.md marked-section injection (22a/Beads pattern) ---
   # New primitive: markdown marked-section merge, the analog of merge_claude_hooks'
   # JSON read-modify-write for a partial-ownership text file. Three states
@@ -1676,6 +1724,7 @@ class InstallerCore
     if key == "claude"
       settings_path = File.join(config[:dir], "settings.json")
       remove_claude_hooks(settings_path) if File.exist?(settings_path)
+      remove_engine_permissions(settings_path) if File.exist?(settings_path)
       removed.concat(migrate_legacy_plugin(config[:dir]))
 
       # The compact-instructions block in the user-owned CLAUDE.md (intent 312): a
@@ -1824,11 +1873,22 @@ class InstallerCore
 
   def read_json_safe(path)
     return nil unless File.exist?(path)
+
     JSON.parse(File.read(path))
   rescue JSON::ParserError
-    # Try JSONC stripping (remove // comments and trailing commas)
-    content = File.read(path).gsub(%r{//[^\n]*}, "").gsub(/,(\s*[}\]])/, '\1')
-    JSON.parse(content)
+    # The comment/trailing-comma-stripped retry below can itself raise
+    # JSON::ParserError on genuinely malformed content (a truncated file, or
+    # plain garbage). A nested begin/rescue is required here because a
+    # method-level `rescue` clause never catches an exception raised from
+    # INSIDE a sibling rescue clause's own body (only from the main body);
+    # doctor_core.rb#read_json_safe carries the same fix for the same reason
+    # (intent 331e, F5).
+    begin
+      content = File.read(path).gsub(%r{//[^\n]*}, "").gsub(/,(\s*[}\]])/, '\1')
+      JSON.parse(content)
+    rescue
+      nil
+    end
   rescue
     nil
   end
