@@ -942,7 +942,7 @@ class DoctorGraphIntentSpecOptionalTest < Minitest::Test
     body = +"# Index\n\n"
     %w[Active Future Clusters Abandoned].each { |s| body << "## #{s}\n\n" }
     body << "## Completed\n"
-    body << "- [#{id} — t](store/#{id}--slug/#{id}--slug.md) — 2026-09-12\n"
+    body << "- [#{id} - t](store/#{id}--slug/#{id}--slug.md) - 2026-09-12\n"
     File.write(File.join(@home, "INDEX.md"), body)
   end
 

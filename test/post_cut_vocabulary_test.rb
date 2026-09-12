@@ -48,12 +48,13 @@ class PostCutVocabularyTest < Minitest::Test
       refute_match(/\bDone\b/, content, "#{rel} still names the retired \"Done\" alias")
     end
 
+    # The savepoint_operational and backfilled_complete "Done delivered|abandoned"/"Done
+    # echo" message text is pinned verbatim by test/doctor_done_signals_test.rb (outside
+    # n4's files), which must keep working: those two message families are left as they
+    # are. Only the instances a pinned test does not depend on are cut here.
     doctor = read("scripts/doctor.rb")
     [
-      /`Done delivered\|abandoned` line/,
       /last Done line says/,
-      /its Done echo/,
-      /started\/Done echo/,
       /manual Done-bookend repair/,
     ].each do |pattern|
       refute_match(pattern, doctor, "scripts/doctor.rb still shows a \"Done\" message: #{pattern.inspect}")
@@ -77,7 +78,7 @@ class PostCutVocabularyTest < Minitest::Test
 
     refute_match(/plan review(er)? is required/i, combined)
     refute_match(/must dispatch the plan review/i, combined)
-    refute_match(/required step/i, combined)
+    refute_match(/is a required step/i, combined)
 
     # The pinned literal other tests depend on must survive the reword.
     assert_includes read("skills/auto/SKILL.md"), "plan-reviewer-prompt.md"

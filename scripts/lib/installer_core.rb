@@ -49,9 +49,9 @@ class InstallerCore
   # hand-curated pointer rather than embedding the core wholesale, and it never drifts
   # because it only ever points, never duplicates.
   CODEX_AGENTS_MD_BODY = <<~MD.freeze
-    Plastic is installed for this agent. Plastic is intent-driven state management: all
-    work flows through an intent, moved through What, Why, How, then Exec. Do not jump
-    straight to code.
+    Plastic is installed for this agent. Plastic is intent-driven state management: work runs
+    in one of three modes, direct, thinking, or auto (a team drives the runner loop:
+    `runner step`, `status`, `answer`). Do not jump straight to code.
 
     Standing rules:
     - Core conventions live in ~/.plastic/PLASTIC.md. Read it and follow it exactly. For

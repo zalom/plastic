@@ -21,7 +21,8 @@ reference. Every checkpoint inside a track is prose, never another menu.
 
 1. **Guided**: deliver a first intent, stage by stage, approving each step yourself. Routes to
    `references/track-1-guided.md`.
-2. **Auto**: hand delivery to the agent and watch the record and reports as it works. Routes to
+2. **Auto**: create the intent, write its `graph.md`, then hand it to `scripts/runner step` to
+   drive every node to the end, watching the record and reports as it works. Routes to
    `references/track-2-auto.md`.
 3. **Projects and roadmaps**: grow a founding intent into a small real project, add more
    intents, and plan a delivery batch with a roadmap. Routes to
