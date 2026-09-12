@@ -516,7 +516,7 @@ class SessionStartDayLedgerTest < Minitest::Test
 
     out = +""
     PTY.spawn({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-tty-guard" },
-              "ruby", HOOK, @index, @home, "global") do |r, _w, spawned_pid|
+              "ruby", HOOK, @index, @home, "global", err: File::NULL) do |r, _w, spawned_pid|
       begin
         Timeout.timeout(5) do
           loop { out << r.readpartial(4096) }

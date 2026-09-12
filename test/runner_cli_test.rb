@@ -252,28 +252,29 @@ class RunnerCliTest < Minitest::Test
     assert_equal File.join(@home, ".plastic", "manifest.json"), File.join(context.plastic_home, "manifest.json")
   end
 
-  # --- 9.7: the integrity check reaches THIS MACHINE's real installed manifest ---
+  # --- 9.7: the integrity check reaches the manifest under the resolved home ---
 
   # An intent_dir that carries no `.plastic` path segment at all defeats
   # Worktree.home_from_store's own store-shaped resolution, so
-  # RunnerCore.context falls through to the `home:` argument exactly the way
-  # a sandboxed test fixture never does (Arm.home_for's own docstring: "a
-  # sandboxed store never resolves to the real Dir.home") - passing the real
-  # Dir.home here is what proves this row against the real installed
-  # manifest.json, not a fixture one, without ever writing under it.
+  # RunnerCore.context falls through to the `home:` argument. A fixture home
+  # holding .plastic/manifest.json proves the integrity check reads the
+  # manifest from that resolved home on any machine, Plastic installed or not.
   def test_core_integrity_finds_the_installed_manifest
     bare_dir = Dir.mktmpdir("runner-cli-340-bare")
-    (@script_tmp_dirs ||= []) << bare_dir
+    home = Dir.mktmpdir("runner-cli-340-home")
+    (@script_tmp_dirs ||= []).push(bare_dir, home)
     intent_dir = File.join(bare_dir, "1--demo")
     FileUtils.mkdir_p(File.join(intent_dir, "nodes"))
     File.write(File.join(intent_dir, "1--demo.md"), "---\nid: \"1\"\nintent: t\n---\n\n## Intent\nbody\n")
+    FileUtils.mkdir_p(File.join(home, ".plastic"))
+    File.write(File.join(home, ".plastic", "manifest.json"), JSON.generate("files" => {}))
 
-    context = RunnerCore.context(intent_dir: intent_dir, home: Dir.home, env: nil)
-    assert_equal File.join(Dir.home, ".plastic"), context.plastic_home
+    context = RunnerCore.context(intent_dir: intent_dir, home: home, env: nil)
+    assert_equal File.join(home, ".plastic"), context.plastic_home
 
     result = CoreIntegrity.check(plastic_home: context.plastic_home)
     assert_nil result[:reason],
-                "must reach this machine's real installed manifest.json, not report it missing: #{result.inspect}"
+                "must reach the manifest.json under the resolved home, not report it missing: #{result.inspect}"
   end
 
   # --- 1.8: RunnerCore.context resolves the session that holds delivery.lock -----
