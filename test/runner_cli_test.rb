@@ -1054,4 +1054,36 @@ class RunnerCliTest < Minitest::Test
     assert_includes patterns, "runner-step.last",
                     "runner-step.last must be ignored in the store's own git tree: #{patterns.inspect}"
   end
+
+  # === Intent 340b, G7c, n7: until-empty, the Codex loop ===
+
+  # --- 7.6: until-empty has a KNOWN_FLAGS entry, --harness is never refused ---
+
+  def test_until_empty_known_flags
+    assert_includes Runner::KNOWN_FLAGS.fetch("until-empty", []), "--harness",
+                     "until-empty must accept --harness or unrecognized_flag falls back to an " \
+                     "empty list and refuses every flag it needs"
+
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+
+    _out, err, status = run_cli("until-empty", @dir, "--harness", "codex")
+    refute_equal 2, status.exitstatus, err
+    refute_match(/unknown flag/i, err)
+  end
+
+  # --- 7.13: until-empty is internal - callable, never in the public usage ---
+
+  def test_until_empty_is_internal
+    _out, err, status = run_cli("swep", @dir)
+    assert_equal 2, status.exitstatus
+    refute_match(/until-empty/, err, "the usage text must not advertise the internal until-empty verb")
+
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+
+    _out2, err2, _status2 = run_cli("until-empty", @dir)
+    refute_match(/unknown verb/, err2,
+                 "until-empty must be a recognized internal verb, not routed through the unknown-verb refusal")
+  end
 end
