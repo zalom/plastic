@@ -23,6 +23,16 @@ class HookRegistryTest < Minitest::Test
     assert_equal ["message-display"], groups.first["hooks"].map { |h| h["name"] }
   end
 
+  # Intent 340b (G7c, n4, row 4.28): the Stop hook is registered statically,
+  # like every other hook, even though its runtime arm defaults off (D9).
+  def test_stop_event_registered
+    groups = HookRegistry.events["Stop"]
+    refute_nil groups, "Stop must be registered in events"
+    assert_equal 1, groups.size
+    assert_equal "", groups.first["matcher"]
+    assert_equal ["stop"], groups.first["hooks"].map { |h| h["name"] }
+  end
+
   def test_write_matcher_covers_mcp_edit_tools
     assert_includes HookRegistry::WRITE_MATCHER, "mcp__serena__replace_content"
     assert_includes HookRegistry::WRITE_MATCHER, "mcp__serena__replace_symbol_body"

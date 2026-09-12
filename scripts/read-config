@@ -33,6 +33,12 @@ DEFAULTS = {
   },
   "architect" => {
     "style" => nil
+  },
+  # Intent 340b (G7c, n4, D9): the Stop hook's runtime arm. Off until the
+  # owner's C32 ruling; read-config emits it as the string "false", which
+  # StopGate parses as a boolean itself rather than trusting.
+  "runner" => {
+    "stop_hook" => false
   }
 }.freeze
 

@@ -142,6 +142,26 @@ class InstallSyncTest < Minitest::Test
     FileUtils.rm_rf(home)
   end
 
+  # Intent 340b (G7c, n4, row 4.35): the Stop gate, the shared ActiveDelivery
+  # walk, and scripts/hook-stop must all be registered for install, or the
+  # installed hooks/plastic-stop launcher points at a require that is not
+  # there. test_every_hook_script_is_registered_for_install and
+  # test_every_required_lib_is_distributed already glob scripts/hook-* and
+  # scan require_relative respectively, so those two alone would already go
+  # red without this; this names the three explicitly so a future rename
+  # trips a message that says exactly what is missing.
+  def test_n4_stop_gate_files_are_registered_for_install
+    home = Dir.mktmpdir("core-test")
+    core = InstallerCore.new(package_root: REPO, plastic_home: home, version: "1.0.0-test")
+    %w[scripts/lib/stop_gate.rb scripts/lib/active_delivery.rb scripts/hook-stop].each do |rel|
+      assert core.core_files.key?(rel), "#{rel} missing from core_files (installed ~/.plastic would lack it)"
+      assert_equal rel, core.core_files[rel]
+      assert File.exist?(File.join(REPO, rel)), "#{rel} registered in core_files but missing on disk"
+    end
+  ensure
+    FileUtils.rm_rf(home)
+  end
+
   # Companion guard: registration alone isn't enough, distribute must actually land an
   # executable copy with a matching manifest entry, the same contract every other
   # core_files script gets.

@@ -15,11 +15,30 @@
 require "json"
 require_relative "lib/session_ledger"
 require_relative "lib/handoff"
+require_relative "lib/active_delivery"
 
 MESSAGE = "PLASTIC SAVEPOINT - context is being compacted. The hand-off for this " \
           "session is written in today's day ledger " \
           "(store/.sessions/<day>/handoff--<session>.md). " \
           "After compaction say continue to resume from it."
+
+# The intent this session is delivering, resolved through the same walk the
+# Stop gate uses (row 4.38): read-config's project_roots, plus the global
+# store, glob for a live delivery.lock this session holds. Never raises
+# (ActiveDelivery.resolve rescues its own reads); a lookup failure just
+# means the Runner section is omitted, never that the hand-off is lost.
+def resolve_intent(plastic_home, session_id, read_config_path)
+  return nil if session_id.strip.empty?
+
+  global_store = File.join(plastic_home, "store")
+  roots_raw = IO.popen({ "PLASTIC_HOME" => plastic_home }, [read_config_path, "project_roots"],
+                       err: File::NULL, &:read).to_s.strip
+  project_roots = roots_raw.empty? ? [] : Array(JSON.parse(roots_raw))
+  project_roots = project_roots.map { |root| File.expand_path(root.to_s) }
+  ActiveDelivery.resolve(global_store: global_store, project_roots: project_roots, session: session_id)
+rescue StandardError
+  nil
+end
 
 written = nil
 begin
@@ -30,11 +49,14 @@ begin
   session_id = payload["session_id"].to_s
 
   unless plastic_home.empty? || session_id.strip.empty?
-    store = File.join(File.expand_path(plastic_home), "store")
+    home = File.expand_path(plastic_home)
+    store = File.join(home, "store")
     session = SessionLedger.short_session_id(session_id, nil)
     day = Handoff.day_for(store, session, today: SessionLedger.day_id)
+    read_config_path = File.expand_path("read-config", __dir__)
+    intent = resolve_intent(home, session_id, read_config_path)
     written = Handoff.write(store: store, day: day, session: session, trigger: "precompact",
-                            templates: File.expand_path("../templates", __dir__))
+                            templates: File.expand_path("../templates", __dir__), intent: intent)
   end
 rescue StandardError, JSON::ParserError
   nil

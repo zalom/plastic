@@ -60,16 +60,20 @@ class Harness309Test < Minitest::Test
     assert_equal ["capture"], names
   end
 
-  # Intent 316a added MessageDisplay, Claude only (D6) — Codex has no equivalent
-  # hook seam, so the two harnesses' event maps are no longer identical. Codex
-  # keeps exactly the five-event shape this test used to require of both; Claude
-  # carries those five plus MessageDisplay.
-  def test_the_event_map_matches_except_for_claude_only_message_display
+  # Intent 316a added MessageDisplay, Claude only (D6); intent 340b added Stop,
+  # Claude only (D5/D7) — Codex has no equivalent hook seam for either, so the
+  # two harnesses' event maps are no longer identical. Codex keeps exactly the
+  # five-event shape this test used to require of both; Claude carries those
+  # five plus the two events named here. Named explicitly, not folded into a
+  # widened expectation, so a THIRD Claude-only event still fails this test
+  # until it is deliberately added to the list.
+  CLAUDE_ONLY_EVENTS = %w[MessageDisplay Stop].freeze
+
+  def test_the_event_map_matches_except_for_the_claude_only_events
     claude = HookRegistry.events.keys.sort
     codex = HookRegistry.codex_hooks_json(dispatcher_path: "/x/codex-hook").keys.sort
     assert_equal %w[PostToolUse PreCompact SessionEnd SessionStart UserPromptSubmit], codex
-    assert_equal (codex + ["MessageDisplay"]).sort, claude
-    refute_includes claude, "Stop"
+    assert_equal (codex + CLAUDE_ONLY_EVENTS).sort, claude
   end
 
   def test_no_doc_still_describes_the_hook_or_says_codex_lacks_session_end

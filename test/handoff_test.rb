@@ -230,6 +230,63 @@ class HandoffTest < Minitest::Test
     assert_includes section(text, "Done"), "first"
   end
 
+  # --- the Runner section (intent 340b, G7c, n4, D11/D12) ----------------------
+
+  def test_handoff_renders_runner_section
+    intent = Dir.mktmpdir("handoff-intent")
+    File.write(File.join(intent, "runner-step.last"), "dispatched: n1\nplan: work on n1\n")
+    text = Handoff.render(store: @store, day: DAY, session: SID, trigger: "tick", now: NOW, intent: intent)
+    assert_includes text, "## Runner"
+    assert_includes text, "dispatched: n1"
+  ensure
+    FileUtils.rm_rf(intent)
+  end
+
+  def test_handoff_omits_runner_section_when_absent
+    text_no_intent = Handoff.render(store: @store, day: DAY, session: SID, trigger: "tick", now: NOW, intent: nil)
+    refute_includes text_no_intent, "## Runner"
+
+    empty_intent = Dir.mktmpdir("handoff-intent-empty")
+    text_no_file = Handoff.render(store: @store, day: DAY, session: SID, trigger: "tick", now: NOW,
+                                  intent: empty_intent)
+    refute_includes text_no_file, "## Runner"
+  ensure
+    FileUtils.rm_rf(empty_intent) if empty_intent
+  end
+
+  def test_runner_section_is_capped
+    intent = Dir.mktmpdir("handoff-intent-big")
+    File.write(File.join(intent, "runner-step.last"), "x" * (Handoff::RUNNER_CAP * 4))
+    text = Handoff.render(store: @store, day: DAY, session: SID, trigger: "tick", now: NOW, intent: intent)
+    section_text = section(text, "Runner")
+    assert_operator section_text.bytesize, :<=, Handoff::RUNNER_CAP + 200
+    assert_includes section_text, "(truncated)"
+  ensure
+    FileUtils.rm_rf(intent)
+  end
+
+  def test_handoff_survives_unreadable_runner_file
+    intent = Dir.mktmpdir("handoff-intent-unreadable")
+    path = File.join(intent, "runner-step.last")
+    File.write(path, "unreadable")
+    File.chmod(0o000, path)
+    text = Handoff.render(store: @store, day: DAY, session: SID, trigger: "tick", now: NOW, intent: intent)
+    refute_includes text, "## Runner"
+    assert_includes text, "## Resume"
+  ensure
+    File.chmod(0o644, path) if path && File.exist?(path)
+    FileUtils.rm_rf(intent)
+  end
+
+  def test_handoff_omits_runner_section_for_a_non_file_path
+    intent = Dir.mktmpdir("handoff-intent-dir")
+    FileUtils.mkdir_p(File.join(intent, "runner-step.last")) # a directory, not a file
+    text = Handoff.render(store: @store, day: DAY, session: SID, trigger: "tick", now: NOW, intent: intent)
+    refute_includes text, "## Runner"
+  ensure
+    FileUtils.rm_rf(intent)
+  end
+
   # --- the pointer day -------------------------------------------------------------
 
   def test_day_for_returns_the_pointer_day_and_today_when_no_pointer_or_an_intent_pointer
