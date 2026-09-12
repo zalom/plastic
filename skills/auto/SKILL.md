@@ -71,32 +71,26 @@ owner override. Do not proceed as the owner after an exit 1.
 Read `../plastic-conventions/references/locks-and-worktrees.md` for what the lock and the
 worktree mean and the station table behind them. Code edits happen only inside the worktree.
 
-## The shape (five steps, two agent boots)
+## The shape
 
-Every auto delivery runs the same shape, ruled by the owner on 2026-08-29. There is no intent
-tier and no stage agent; depth follows the work.
+Work is a graph (`graph.md`: Goal, Decisions, Graph, Status; one `nodes/*.md` per node) or,
+for work small enough to skip speccing, delivered inline with no separate plan review. There
+is no intent tier and no stage agent; depth follows the work.
 
-| Step | Who | What lands |
-|---|---|---|
-| 1. The lead writes How | this session | `plan.md`, at least one `actions/ACTION_N.md` carrying a failure-mode matrix (one row per operation: the failure and the test that catches it), `checklist.md` |
-| 2. Adversarial plan review | boot 1, a fresh agent on `plan-reviewer-prompt.md` | a review file; the lead folds every finding into the spec, the matrix, and the tests |
-| 3. Execute, tests first | boot 2, `plastic-executor` | the red commit (the matrix's tests, failing), then the code, then a green suite |
-| 4. Review by risk | boot 3 only when risk calls for it (below) | a pass or a list of fixes the executor applies |
-| 5. One suite run, then close | this session | `outcome.md`, `end-intent`, the roadmap ledger |
+`runner step` computes readiness and prints a spawn block per dispatched node - agent, model,
+packet path, the test command, the call cap - fenced for a session to paste into the Agent
+tool; the runner never spawns (327 D42). `runner status` renders the ledger; `runner answer`
+closes a `needs_decision` node.
 
-Two boots is the normal delivery; the third is the exception the risk rule names. The lead is
-this session (the `plastic-enforcer` role), never a dispatched agent.
-
-A lead is a choice, not a requirement (D8, 355). `runner step` computes the plan and prints a
-spawn block per node - agent, model, packet path, the test command, the call cap - fenced for a
-session to paste into the Agent tool; the runner never spawns (327 D42). A lead earns its keep
-on a graph carrying a decision node, weighing its `needs_decision` stop; a graph with none runs
-end to end from `runner step` alone.
+A lead is a choice, not a requirement (D8, 355). A lead earns its keep on a graph carrying a
+decision node, weighing its `needs_decision` stop; a graph with none runs end to end from
+`runner step` alone. When this session leads, it is the `plastic-enforcer` role, never a
+dispatched agent.
 
 ## Team
 
-- **plastic-enforcer**: this session. Writes the Why and How record, dispatches, folds reviews,
-  verifies, closes.
+- **plastic-enforcer**: this session. Writes the Why and How record, dispatches, applies
+  review findings, verifies, closes.
 - **plastic-executor**: one dispatch per intent, implements the consolidated action tests first,
   ticks the checklist, appends `## Insights`, drives the suite green.
 - **the plan reviewer**: one dispatch before code, from `plastic-intent-executing`'s
@@ -154,7 +148,9 @@ Only the owner can delegate. Delegates cannot re-delegate or release.
 Headless note: in a headless or background run the session id may be unset; the arm verb then keys the lock by a derived key and the record hook still writes the ledger.
 Verify with `plastic-lock status` rather than assuming.
 
-Solo fallback: on a harness with no agent dispatch (Codex CLI today), this session walks the five steps itself, still writing the matrix and the tests first and reviewing its own plan against the matrix before code, saying so in `## Insights`.
+Solo fallback: on a harness with no agent dispatch (Codex CLI today), this session walks the
+graph (or the plan) itself, still writing the matrix and the tests first and reviewing its own
+plan against the matrix before code, saying so in `## Insights`.
 
 ## Stage-Aware Entry
 
@@ -179,42 +175,42 @@ Announce which stage you are entering and why.
 
 ## Why (the lead)
 
-1. Read `## Context` and `### Decisions`; assess the gaps.
-2. Research yourself: code, docs, related intents through `## Links`, the web if needed. No
-   questions to the human.
-3. Decide: pick the best option per gap, record it in `## Context > ### Decisions` with the
-   rationale, and log it in `## Insights` with the `(autonomous)` marker through
-   `scripts/insight-append`.
-4. Write `spec.md`. Then How.
+For a graph delivery, Why is already written into `graph.md`'s Goal and Decisions; nothing
+else to do here. For work with no graph: read `## Context` and `### Decisions`, assess the
+gaps, research them yourself (code, docs, related intents through `## Links`, the web if
+needed; no questions to the human), record each decision in `## Context > ### Decisions` with
+its rationale, log it in `## Insights` with the `(autonomous)` marker through
+`scripts/insight-append`, and write `spec.md` only when the intent needs one (speccing is
+optional). Then How.
 
 ## How (the lead), then the plan review
 
-1. Write `plan.md`: numbered steps.
-2. Write at least one real `actions/ACTION_N.md` (one consolidated `ACTION_1.md` by default;
-   several only when the work splits into independent, parallel-safe actions). Each action
-   carries the failure-mode matrix: one row per operation, the failure mode, and the test that
-   catches it. A `.gitkeep`-only `actions/` is not a finished How.
-3. Write `checklist.md` covering every action.
-4. Dispatch the plan reviewer (boot 1) with `plastic-intent-executing`'s
-   `plan-reviewer-prompt.md`, the spawn preamble, and the intent directory. Fold every finding
-   into the spec, the matrix, and the tests; record what was dropped and why in the action
-   file's review fold. A REVISE verdict is folded and not re-reviewed unless a finding changes
-   a decision.
-5. Print `ruby ~/.plastic/scripts/report-screen plan <intent_dir>` as the first characters of
-   the reply, nothing before it, no fence, before dispatching the executor (see
-   `references/human-report-contract.md` for the full binding table). It informs; it does not wait.
+For a graph delivery, How is `graph.md` itself: no `plan.md`, no separate plan review (D1,
+341). For work with no graph: write `plan.md` (numbered steps) and at least one real
+`actions/ACTION_N.md` carrying the failure-mode matrix (one row per operation, the failure
+mode, the test that catches it; a `.gitkeep`-only `actions/` is not a finished How), then
+`checklist.md` covering every action, then dispatch the plan reviewer (boot 1) with
+`plastic-intent-executing`'s `plan-reviewer-prompt.md`, the spawn preamble, and the intent
+directory. Apply every finding to the spec, the matrix, and the tests; record what was dropped
+and why in the action file's review notes. A REVISE verdict is applied and not re-reviewed
+unless a finding changes a decision.
+
+Print `ruby ~/.plastic/scripts/report-screen plan <intent_dir>` as the first characters of
+the reply, nothing before it, no fence, before dispatching the executor (see
+`references/human-report-contract.md` for the full binding table). It informs; it does not wait.
 
 Then Exec.
 
 ## Exec (the executor)
 
-1. Dispatch `plastic-executor` (boot 2) through `plastic-intent-executing` with the whole
-   consolidated action pasted in: the spec decisions, the matrix, the checklist items, the
-   worktree path from the preamble. Tests first: the executor commits the matrix's tests red,
-   then builds, then drives the full suite green.
-2. Read its return by code: DONE or DONE_WITH_CONCERNS proceeds; NEEDS_CONTEXT re-dispatches
-   with the missing context; BLOCKED stops under the error procedure.
-3. Tick the checklist as items land (the executor does this); verify tick-versus-diff against the diff. A mismatch is a review finding, not a lead cleanup.
+For a graph delivery, `runner step` prints the spawn block for the next ready node; paste it
+into the Agent tool, verbatim. For work with no graph, dispatch `plastic-executor` (boot 2)
+through `plastic-intent-executing` with the whole consolidated action pasted in.
+
+1. Read the executor's return by code: DONE or DONE_WITH_CONCERNS proceeds; NEEDS_CONTEXT
+   re-dispatches with the missing context; BLOCKED stops under the error procedure.
+2. Tick the checklist as items land (the executor does this); verify tick-versus-diff against
+   the diff. A mismatch is a review finding, not a lead cleanup.
 
 ## Review by risk (boot 3, only when a rule fires)
 
@@ -224,13 +220,14 @@ holds, each checkable from disk with no judgment; otherwise the green suite is t
 1. `git diff --name-only <red-commit>..HEAD` touches a path on the risk list in
    `references/agent-architecture.md` (hooks, the lock, the arming module, the installer, a
    release file).
-2. A row of any `actions/ACTION_N.md` failure-mode matrix names a test file that is not in that
-   diff, or a test the green run did not execute.
+2. A row of any failure-mode matrix (an `actions/ACTION_N.md` or a `nodes/*.md` file) names a
+   test file that is not in that diff, or a test the green run did not execute.
 3. The executor's completion report carries a status other than `delivered`, or a non-empty
    `deviations` or `blockers` field.
 
 The reviewer returns a pass or a list of fixes; the executor (re-dispatched) applies them, then
-the suite runs once more.
+the suite runs once more. On a graph, the risk rule maps onto the verify nodes named in
+`graph.md`'s decisions; at most one review-fix round, never more.
 ## Project Creation
 
 If the plan calls for creating a new project, determine the path from `~/.plastic/config.yml`

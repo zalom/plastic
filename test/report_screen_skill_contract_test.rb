@@ -52,20 +52,30 @@ class ReportScreenSkillContractTest < Minitest::Test
     assert_includes text, "report-screen delay"
   end
 
-  # --- row 91: intent-executing/SKILL.md names savepoint-note for both kinds ---
+  # Rows 91/92 (savepoint-note for both kinds, the D19 heading convention stated in
+  # intent-executing/SKILL.md) were retired by intent 341 (G8, n1): the runner-driven executing
+  # skill names only `step`, `status`, `answer`, and the D19 heading match is now code-only
+  # (scripts/lib/outcome_report.rb's ReportScreen.matching_action_heading), not prose an
+  # executor needs to read.
 
-  def test_intent_executing_names_savepoint_note_for_both_kinds
-    text = read("skills/intent-executing/SKILL.md")
-    assert_includes text, "savepoint-note"
-    assert_includes text, "--kind Commit"
-    assert_includes text, "--kind Review"
-  end
+  # --- 1.9 (intent 341, G8, n1): the skill contract the report screens read still resolves
+  # after the ceremony cut - the headings the tests above and tick_with_commit_contract_test.rb
+  # anchor on by name.
 
-  # --- row 92: the D19 heading convention is written into the executing skill -
-
-  def test_intent_executing_states_the_d19_heading_convention
-    text = read("skills/intent-executing/SKILL.md")
-    assert_includes text, "standalone token"
+  def test_contract_headings_present
+    headings = {
+      "skills/auto/SKILL.md" => ["## Why (the lead)", "## How (the lead), then the plan review",
+                                  "## Exec (the executor)", "## Review by risk", "## Completion",
+                                  "## Team"],
+      "skills/intent-executing/SKILL.md" => ["## step", "## status", "## answer", "## Tick-as-you-land"],
+      "skills/intent-ending/SKILL.md" => ["## Routing", "## Abandoned is the same procedure"],
+      "skills/intent-speccing/SKILL.md" => ["## Closing the conversation"],
+      "skills/intent-creating/SKILL.md" => ["## Scaffold", "## References"],
+    }
+    headings.each do |file, hs|
+      text = read(file)
+      hs.each { |h| assert_includes text, h, "#{file} lost the #{h} heading a report-screen contract anchors on" }
+    end
   end
 
   # --- item 10 (owner ruling 2026-08-31): cross-harness by construction, not
@@ -82,14 +92,9 @@ class ReportScreenSkillContractTest < Minitest::Test
     assert_includes text, "harness name"
   end
 
-  # --- 317a S6 (matrix S6c): the ending skill, which drives the outcome
-  # backfill, must teach the label convention the readers match on.
-
-  def test_ending_skill_teaches_the_labeled_table_convention
-    text = read("skills/intent-ending/SKILL.md")
-    assert_includes text, "| Row | What |"
-    assert_includes text, "action-file heading"
-  end
+  # The 317a S6c labeled-table teaching in intent-ending/SKILL.md ("| Row | What |",
+  # "action-file heading") was retired by intent 341 (G8, n1): outcome.md is generated, never
+  # hand-authored, so the skill no longer teaches a human author the table shape.
 
   # --- intent 322 S5: the contract names the owner-of-the-table rule ---------
 
@@ -98,15 +103,9 @@ class ReportScreenSkillContractTest < Minitest::Test
     assert_includes text, "owns the matrix table"
   end
 
-  def test_executing_skill_names_the_owning_heading
-    text = read("skills/intent-executing/SKILL.md")
-    assert_includes text, "owns the matrix table"
-  end
-
-  def test_ending_skill_names_the_owning_heading
-    text = read("skills/intent-ending/SKILL.md")
-    assert_includes text, "owns the matrix table"
-  end
+  # The intent-executing/intent-ending "owns the matrix table" prose pins were retired by
+  # intent 341 (G8, n1) alongside the labeled-table teaching above: the rule is enforced by
+  # scripts/lib/outcome_report.rb, not restated for a human author any more.
 
   # --- intent 330, O4: an unnamed status ask routes to the session verb -------
 
@@ -232,13 +231,9 @@ class ReportScreenSkillContractTest < Minitest::Test
     assert_includes text, "dashboard.rb project <slug> --screen"
   end
 
-  # F12
-  def test_executing_prints_state
-    text = read("skills/intent-executing/SKILL.md")
-    assert_includes text, "report-screen state <intent_dir>"
-    assert_includes text, "red commit"
-    assert_includes text, "suite goes green"
-  end
+  # F12 (test_executing_prints_state) was retired by intent 341 (G8, n1): the runner-driven
+  # executing skill no longer prints report-screen state itself; the lead does, from the auto
+  # skill's How/Exec/Completion steps.
 
   BOUND_SKILL_FILES = %w[
     skills/intent-continuing/SKILL.md
@@ -247,7 +242,6 @@ class ReportScreenSkillContractTest < Minitest::Test
     skills/intent-speccing/SKILL.md
     skills/roadmap/SKILL.md
     skills/dashboard/SKILL.md
-    skills/intent-executing/SKILL.md
   ].freeze
 
   # F13
