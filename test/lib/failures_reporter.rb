@@ -32,4 +32,4 @@ module Minitest
   end
 end
 
-Minitest.register_plugin("failures_reporter") unless Minitest.extensions.include?("failures_reporter")
+Minitest.extensions << "failures_reporter" unless Minitest.extensions.include?("failures_reporter")
