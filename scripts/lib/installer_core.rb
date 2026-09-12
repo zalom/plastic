@@ -548,6 +548,12 @@ class InstallerCore
       # by scripts/lib/runner_dispatch.rb and by scripts/runner's `step`
       # directly.
       "scripts/lib/harness_adapter.rb" => "scripts/lib/harness_adapter.rb",
+      # Intent 340b (G7c, n6): the Codex leg - CodexAdapter (the `codex exec`
+      # argv, the sandbox per kind, and the bounded subprocess) and
+      # scripts/node-run, the CLI that runs one node's whole attempt over
+      # it and writes only a return file, never a ledger transition.
+      "scripts/lib/codex_adapter.rb" => "scripts/lib/codex_adapter.rb",
+      "scripts/node-run" => "scripts/node-run",
       # Intent 340b (G7c, n3): the engine deny rule - the frozen permissions.deny
       # entry list, merged into settings.json at install and removed surgically
       # at uninstall.
