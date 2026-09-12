@@ -376,6 +376,7 @@ class InstallerCore
       "scripts/lib/savepoint.rb" => "scripts/lib/savepoint.rb",
       "scripts/lib/guarded_append.rb" => "scripts/lib/guarded_append.rb",
       "scripts/lib/node_ledger.rb" => "scripts/lib/node_ledger.rb",
+      "scripts/lib/node_progress.rb" => "scripts/lib/node_progress.rb",
       "scripts/node-transition" => "scripts/node-transition",
       "scripts/lib/arm.rb" => "scripts/lib/arm.rb",
       "scripts/lib/lock.rb" => "scripts/lib/lock.rb",

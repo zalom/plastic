@@ -137,6 +137,7 @@ class InstallSyncTest < Minitest::Test
        scripts/lib/graph_measure.rb scripts/graph-measure scripts/lib/graph_measure_report.rb
        scripts/lib/graph_measure_budget.rb scripts/lib/graph_measure_models.rb
        scripts/lib/graph_measure_cohorts.rb
+       scripts/lib/node_progress.rb
        scripts/session-usage scripts/lib/session_usage.rb
        scripts/hook-call-budget
        scripts/meter-watch scripts/lib/meter_watch.rb].each do |rel|
