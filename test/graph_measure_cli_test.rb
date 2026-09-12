@@ -137,20 +137,39 @@ class GraphMeasureCliTest < Minitest::Test
 
   # --- 2.6: an unlanded verb's module fails only itself -------------------------------
 
-  # n4 lands "budget"; "cohorts" (n5) is still unlanded and carries this row
-  # now.
-  def test_missing_module_fails_only_its_own_verb
-    write_happy_path_fixture
+  # n5 lands "cohorts" (its model section); every verb named in VERBS is now
+  # delivered, so this row has no remaining unlanded verb to demonstrate
+  # against. What still matters from row 2.6 - a verb's own failure never
+  # takes another verb down - is covered by test_subprocess_cohorts_model_section_renders
+  # (cohorts) alongside test_subprocess_intent_report_renders (intent) and
+  # test_subprocess_budget_report_renders (budget) all passing side by side.
 
-    out, err, status = run_cli("cohorts", @dir)
-    assert_equal 3, status.exitstatus
+  # --- 5.14: the real cohorts verb's model section, in a subprocess, both formats -----
+
+  def test_subprocess_cohorts_model_section_renders
+    store = File.expand_path("fixtures/ledgers", __dir__)
+
+    out, err, status = run_cli("cohorts", store)
+    assert_equal 0, status.exitstatus, err
+    assert_match(/== Population ==/, out)
+    assert_match(/== Model drift ==/, out)
+
+    out_json, err_json, status_json = run_cli("cohorts", store, "--format", "json")
+    assert_equal 0, status_json.exitstatus, err_json
+    parsed = JSON.parse(out_json)
+    assert parsed.key?("population")
+    assert parsed.key?("drift")
+  end
+
+  # --- 5.15: cohorts refuses a path that is not a store, exit 2, naming it -----------
+
+  def test_cohorts_non_store_path_exit_2
+    not_store = File.join(@home, "does-not-exist")
+    out, err, status = run_cli("cohorts", not_store)
+    assert_equal 2, status.exitstatus
     assert_empty out
-    assert_match(/not yet delivered/, err)
-    refute_match(/\.rb:\d+:in/, err, "expected no raw Ruby backtrace, got: #{err}")
-
-    out2, err2, status2 = run_cli("intent", @dir)
-    assert_equal 0, status2.exitstatus, err2
-    assert_match(/Wall clock/, out2)
+    assert_match(/not a store directory/, err)
+    assert_includes err, not_store
   end
 
   # --- 2.14: anomalies still exit 0 --------------------------------------------------
