@@ -139,6 +139,12 @@ class RunnerUntilEmptyTest < Minitest::Test
     FileUtils.mkdir_p(File.join(@home, ".plastic"))
     File.write(File.join(@home, ".plastic", "projects.yml"),
                YAML.dump("projects" => { PROJECT_SLUG => { "path" => @repo } }))
+    # An empty, but real, manifest.json - CoreIntegrity.check reads "no
+    # files tracked" as clean rather than "manifest.json not found", the
+    # honest way to keep this fixture's own sandboxed home out of the way
+    # of a check this file has nothing to do with (row 7.2/7.3/7.4/7.5's
+    # own concern is the loop, never core integrity).
+    File.write(File.join(@home, ".plastic", "manifest.json"), JSON.generate("files" => {}))
 
     @intent_worktree = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}")
     @intent_branch = "plastic/#{INTENT_ID}--#{INTENT_SLUG}"

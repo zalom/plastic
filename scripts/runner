@@ -12,16 +12,17 @@ require_relative "lib/harness_adapter"
 # runner - the one executable over the graph-ready loop's declared node graph
 # (intent 340, G7, n1). A subcommand table: the public verbs (step, status,
 # answer) are the only ones the skill body ever names; the internal verbs
-# (ready, sweep, rewind) route and work so `step` can compose them and so
-# each can be tested alone, but stay out of the usage text (327 spec).
+# (ready, sweep, rewind, until-empty) route and work so `step` can compose
+# them and so each can be tested alone, but stay out of the usage text (327
+# spec, 340b n7).
 #
-# `step`, `sweep`, `answer` and `rewind` route to modules later nodes
-# deliver (RunnerDispatch and RunnerAbsorb for `step`; RunnerSweep,
-# RunnerAnswer, RunnerRewind for the rest). Each is required LAZILY, inside
-# its own verb branch: a verb whose module has not landed yet reports
-# plainly and exits nonzero, and every other verb - most importantly
-# `status`, which an operator polls constantly across all five of this
-# intent's dispatches - keeps working.
+# `step`, `sweep`, `answer`, `rewind` and `until-empty` route to modules
+# later nodes deliver (RunnerDispatch and RunnerAbsorb for `step`;
+# RunnerSweep, RunnerAnswer, RunnerRewind, RunnerUntilEmpty for the rest).
+# Each is required LAZILY, inside its own verb branch: a verb whose module
+# has not landed yet reports plainly and exits nonzero, and every other verb
+# - most importantly `status`, which an operator polls constantly across all
+# five of this intent's dispatches - keeps working.
 #
 # Usage:
 #   runner <step|status|answer> <intent_dir> [--node ID] [--answer TEXT]
@@ -36,7 +37,7 @@ module Runner
   module_function
 
   PUBLIC_VERBS = %w[step status answer].freeze
-  INTERNAL_VERBS = %w[ready sweep rewind].freeze
+  INTERNAL_VERBS = %w[ready sweep rewind until-empty].freeze
   VERBS = (PUBLIC_VERBS + INTERNAL_VERBS).freeze
 
   # verb -> [[ModuleName, lib_file], ...], required lazily inside the verb's
@@ -49,6 +50,7 @@ module Runner
     "sweep" => [["RunnerSweep", "runner_sweep"]],
     "answer" => [["RunnerAnswer", "runner_answer"]],
     "rewind" => [["RunnerRewind", "runner_rewind"]],
+    "until-empty" => [["RunnerUntilEmpty", "runner_until_empty"]],
   }.freeze
 
   def usage
@@ -82,6 +84,7 @@ module Runner
     "step" => %w[--return --allow-core-drift --harness],
     "answer" => %w[--node --answer],
     "rewind" => %w[--node --confirm],
+    "until-empty" => %w[--harness],
   }.freeze
 
   # The explicit YAML document-end marker (intent 340b, G7c, n1, row 1.28)
@@ -209,6 +212,8 @@ module Runner
       run_answer(intent_dir, args)
     when "rewind"
       run_rewind(intent_dir, args)
+    when "until-empty"
+      run_until_empty(intent_dir, args)
     else
       warn "runner: #{verb}'s module loaded but no dispatcher is wired up yet"
       exit 3
@@ -288,6 +293,34 @@ module Runner
     puts "superseded: #{result[:superseded].join(', ')}" if result[:superseded].any?
     puts "respun to #{result[:respun_to]}"
     exit 0
+  end
+
+  # run_until_empty (intent 340b, G7c, n7): the Codex loop. Internal, like
+  # `rewind` (row 7.13) - `RunnerUntilEmpty.run` composes `step` and
+  # `node-run` itself, since Codex has no session on the other end to make
+  # the subagent calls `step` only ever prints a plan for. `--harness`
+  # threads into every turn the loop runs (row 7.5), never re-resolved per
+  # iteration from a literal. The lock check here is the same defence in
+  # depth `run_step_body` carries (B4): `RunnerUntilEmpty.step_once` refuses
+  # `lock_not_held` on its own first call regardless, so this exits before
+  # even constructing the loop's own state.
+  def run_until_empty(intent_dir, args)
+    harness_override = opt(args, "--harness")
+    context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
+
+    unless context.session
+      warn "runner: until-empty refused (lock_not_held)"
+      exit 1
+    end
+
+    result = RunnerUntilEmpty.run(context, harness: harness_override)
+
+    case result[:status]
+    when "complete", "stalled", "needs_decision", "iteration_cap"
+      exit 0
+    else
+      exit 1
+    end
   end
 
   # run_step (intent 340, G7, n5): one turn of the loop. The real work lives

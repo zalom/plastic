@@ -572,6 +572,10 @@ class InstallerCore
       "scripts/lib/runner_answer.rb" => "scripts/lib/runner_answer.rb",
       "scripts/lib/runner_proposals.rb" => "scripts/lib/runner_proposals.rb",
       "scripts/lib/runner_rewind.rb" => "scripts/lib/runner_rewind.rb",
+      # Intent 340b (G7c, n7): the Codex loop - composes `step` and
+      # `node-run` itself (concurrency two, serial absorb, iteration-capped),
+      # routed from scripts/runner's internal `until-empty` verb.
+      "scripts/lib/runner_until_empty.rb" => "scripts/lib/runner_until_empty.rb",
     }
   end
 
