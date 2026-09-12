@@ -61,7 +61,7 @@ class Harness309Test < Minitest::Test
   end
 
   # Intent 316a added MessageDisplay, Claude only (D6); intent 355 n2 added
-  # PreToolUse (call-budget), Claude only too — Codex has no equivalent hook
+  # PreToolUse (call-budget), Claude only too. Codex has no equivalent hook
   # seam for either, so the two harnesses' event maps are no longer identical.
   # Codex keeps exactly the five-event shape this test used to require of
   # both; Claude carries those five plus MessageDisplay and PreToolUse.
