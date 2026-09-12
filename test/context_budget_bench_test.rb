@@ -234,19 +234,24 @@ class ContextBudgetBootTest < Minitest::Test
       "a degraded fixture measures a boot no real session sees")
   end
 
-  def test_the_boot_carries_the_core_block
-    assert_includes report.context, "# Plastic: Conventions"
+  # Intent 341, G8: the conventions dump no longer reaches a live boot; the
+  # core block is still measured on its own (the `core` row below reads
+  # PLASTIC.md directly), just never injected into additionalContext.
+  def test_the_boot_no_longer_carries_the_core_block
+    refute_includes report.context, "# Plastic: Conventions"
   end
 
   def test_the_boot_renders_the_project_banner_and_its_active_intent
     assert_includes report.context, "Project: "
-    assert_includes report.context, "Active intents:"
+    assert_includes report.context, "Active: [0100"
   end
 
-  # The rendered age must be a constant, not a function of the calendar, or the
-  # byte count drifts by a digit every ten days.
-  def test_the_stale_line_age_does_not_drift_with_the_calendar
-    assert_includes report.context, "(30 days)"
+  # Intent 341, G8: the stale-future paragraph is cut from a live boot; the
+  # fixture still seeds a 30-day-old future intent (FIXTURE_STALE_DAYS), so
+  # this proves the cut, not merely that nothing stale happened to render.
+  def test_the_stale_future_paragraph_is_cut
+    refute_includes report.context, "Stale future intents"
+    refute_includes report.context, "(30 days)"
   end
 
   # The two QMD status lines the hook can emit (hook-session-start's qmd block).
@@ -491,6 +496,57 @@ end
 # n7's declared files are the hook and its two test files, not
 # bin/lib/context_budget.rb, so the branch stays self-contained (spec D13)
 # for intent 341 to rebase on.
+# Intent 341, G8 (node n2), rows 2.2-2.3: the post-cut boot ceiling (C28). A
+# live boot no longer carries the conventions dump, so its size drops far
+# below intent 296's original 15,000-byte "boot" ceiling in CEILINGS above
+# (unchanged; this class does not touch it). Measured against this repo's own
+# live fixture boot (a project registered, one active intent, PLASTIC.md
+# installed, one real deprecation warning, the day ledger's join line, QMD
+# unreachable on the pinned PATH) the boot comes to roughly 500 bytes. 1,000
+# gives modest headroom over that measured value — room for the day ledger's
+# counts and an extra deprecation line to vary — while staying tight enough
+# that a doctrine-dump regression (PLASTIC.md, the active-intents listing,
+# the stale-future list) blows through it immediately. Kept local to this
+# test file the same way node n7 (intent 355) kept the subagent-boot ceiling
+# local rather than adding a shared constant to bin/lib/context_budget.rb,
+# which is not one of this node's declared files.
+class ContextBudgetPostCutBootTest < Minitest::Test
+  REPO = File.expand_path("../../", __FILE__)
+
+  POST_CUT_BOOT_CEILING = 1_000
+
+  def self.live_context
+    @live_context ||= Dir.mktmpdir("plastic-bench-post-cut-boot") do |dir|
+      fixture = ContextBudget::Fixture.build(dir: dir, repo: REPO)
+      context, = ContextBudget.boot(fixture: fixture, repo: REPO)
+      context
+    end
+  end
+
+  def context
+    self.class.live_context
+  end
+
+  def failure_line(bytes:, ceiling:)
+    "post-cut boot is #{bytes} bytes against a #{ceiling} byte ceiling"
+  end
+
+  # Row 2.2
+  def test_post_cut_boot_under_ceiling
+    bytes = context.bytesize
+    assert_operator bytes, :<, POST_CUT_BOOT_CEILING, failure_line(bytes: bytes, ceiling: POST_CUT_BOOT_CEILING)
+  end
+
+  # Row 2.3: can-fail proof of the message itself, driven by a synthetic
+  # over-ceiling byte count rather than by inflating the real boot.
+  def test_ceiling_failure_names_both_numbers
+    message = failure_line(bytes: 9_000, ceiling: POST_CUT_BOOT_CEILING)
+
+    assert_includes message, "9000"
+    assert_includes message, POST_CUT_BOOT_CEILING.to_s
+  end
+end
+
 class ContextBudgetSubagentBootTest < Minitest::Test
   REPO = File.expand_path("../../", __FILE__)
 
