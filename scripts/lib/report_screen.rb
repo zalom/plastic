@@ -21,6 +21,7 @@ require_relative "graph_tree"
 require_relative "screen_paint"
 require_relative "outcome_report"
 require_relative "node_file"
+require_relative "node_progress"
 
 module ReportScreen
   NOT_RECORDED = "not recorded"
@@ -920,7 +921,7 @@ def self.matching_action_heading(intent_dir, label)
     f["status.note"] = status == "unlisted" ? "no INDEX.md line names this id" : "listed under ## #{status} in INDEX.md"
     f.merge!(IntentScreen.savepoint_fields(intent_dir, text.to_s))
     items = IntentScreen.checklist_items(intent_dir)
-    f.merge!(IntentScreen.progress_fields(items))
+    f.merge!(NodeProgress.fields(intent_dir, store_root: store_root) || IntentScreen.progress_fields(items))
     f.merge!(IntentScreen.next_fields(items, status, checklist_present: IntentScreen.items_present?(intent_dir)))
     f.merge!(IntentScreen.insight_fields(text.to_s))
 
@@ -931,7 +932,7 @@ def self.matching_action_heading(intent_dir, label)
       ["Status", f["status"], f["status.note"]],
       ["Stage", f["stage"], f["stage.note"]],
       ["Savepoint", f["savepoint"], f["savepoint.note"]],
-      ["Progress", "#{f['progress.bar']} #{f['progress.done']} / #{f['progress.total']}", f["progress.note"]],
+      ["Progress", "#{f['progress.bar']} #{f['progress.done']} / #{f['progress.total']}#{f['progress.unit'] ? " #{f['progress.unit']}" : ''}", f["progress.note"]],
       ["Next", f["next"], f["next.note"]],
       ["Insight", f["insight"], f["insight.note"]],
       ["Changed", changed_value, CHANGED_NOTE],
@@ -1101,9 +1102,10 @@ def self.matching_action_heading(intent_dir, label)
       text = intent_text(e[:dir]).to_s
       savepoint = IntentScreen.savepoint_fields(e[:dir], text)
       items = IntentScreen.checklist_items(e[:dir])
-      progress = IntentScreen.progress_fields(items)
+      progress = NodeProgress.fields(e[:dir], store_root: store_root) || IntentScreen.progress_fields(items)
+      unit = progress["progress.unit"] ? " #{progress['progress.unit']}" : ""
       ch = state_fields(intent_dir: e[:dir], store_root: store_root, changed: changed)[:rows].find { |l, _, _| l == "Changed" }[1]
-      table << "| #{e[:id]} | #{savepoint['stage']} | #{progress['progress.bar']} #{progress['progress.done']} / #{progress['progress.total']} | #{escape(ch)} | #{lead(e[:dir], now: now)} |"
+      table << "| #{e[:id]} | #{savepoint['stage']} | #{progress['progress.bar']} #{progress['progress.done']} / #{progress['progress.total']}#{unit} | #{escape(ch)} | #{lead(e[:dir], now: now)} |"
     end
     blocks = entries.map { |e| render_collapsed_block(e[:dir], store_root, changed: changed) }
     head_and_table = ([header, ""] + table).join("\n")
@@ -1721,8 +1723,9 @@ def self.matching_action_heading(intent_dir, label)
   def self.roadmap_entry_progress(dir)
     return NOT_RECORDED unless dir
     items = IntentScreen.checklist_items(dir)
-    fields = IntentScreen.progress_fields(items)
-    "#{fields['progress.bar']} #{fields['progress.done']} / #{fields['progress.total']}"
+    fields = NodeProgress.fields(dir) || IntentScreen.progress_fields(items)
+    unit = fields["progress.unit"] ? " #{fields['progress.unit']}" : ""
+    "#{fields['progress.bar']} #{fields['progress.done']} / #{fields['progress.total']}#{unit}"
   end
 
   def self.roadmap_progress_bar(done, total)

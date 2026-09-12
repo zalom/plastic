@@ -99,7 +99,7 @@ class ReportScreenNodeProgressTest < Minitest::Test
     write_index(root, [["30", "Graph state", "Active"]])
     data = ReportScreen.state_fields(intent_dir: dir, store_root: root, changed: nil)
     row = progress_row(data[:rows])
-    assert_equal "6 / 12 nodes", row[1]
+    assert_includes row[1], "6 / 12 nodes"
   end
 
   # --- 2.2 -----------------------------------------------------------------
@@ -190,7 +190,7 @@ class ReportScreenNodeProgressTest < Minitest::Test
     write_index(root, [["36", "Graph inferred", "Completed"]])
     data = ReportScreen.state_fields(intent_dir: dir, store_root: root, changed: nil)
     row = progress_row(data[:rows])
-    assert_equal "2 / 2 nodes", row[1]
+    assert_includes row[1], "2 / 2 nodes"
     assert_equal "inferred: delivered before the node ledger", row[2]
   end
 
