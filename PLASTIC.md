@@ -43,20 +43,20 @@ IDs follow Luhmann's alternating convention (`1`, `1a`, `1a1`, `1a1a`); siblings
 
 ## The Record: Stages as its Shape
 
-| Stage | Section | Deliverable | Skill |
-|---|---|---|---|
-| **What** | `## Intent` | `{ID}--{slug}.md` | `plastic-intent-creating` |
-| **Why** | `## Context` + Decisions | `spec.md` | `plastic-intent-speccing` (thinking mode) |
-| **How** | `checklist.md` + `actions/` | `plan.md` | `plastic-intent-speccing` writes the action files |
-| **Exec** | `## Outcome` | `outcome.md` | `plastic-intent-executing`; `plastic-intent-ending` closes |
+| Stage | Section | Skill |
+|---|---|---|
+| **What** | `## Intent` | `plastic-intent-creating` |
+| **Why** | `## Context` + Decisions | `plastic-intent-speccing` (optional) |
+| **How** | `graph.md` + `nodes/` | `plastic-intent-speccing` |
+| **Exec** | `## Outcome` | `plastic-intent-executing` drives the runner loop; `plastic-intent-ending` closes |
 
-Stages are the shape of the record, not checkpoints: nothing blocks a write. Only "how to
-execute" (a checklist item plus its action) must exist before work; the rest is backfilled at
-intent end from what was recorded while working.
+Stages are the shape of the record, not checkpoints: nothing blocks a write. Work runs on
+`graph.md` and `nodes/`, driven by `runner step` (dispatch), `runner status` (read the
+ledger), and `runner answer` (close a `needs_decision` node). `spec.md` stays optional;
+`plan.md` and `checklist.md` exist only for a legacy intent with no `graph.md`.
 
 Invoke a skill for your harness: Claude Code uses the slash form (`/plastic-intent-creating`);
-Codex CLI uses a dollar prefix instead (`$plastic-intent-creating`), and may also select a skill
-implicitly by matching its description.
+Codex CLI uses a dollar prefix (`$plastic-intent-creating`) and may select a skill by its description.
 
 `## Insights` is the append-only log of durable discoveries from every stage, newest at the
 bottom, never prepended, each entry prefixed `{utc-iso8601} · {stage} · {author}`. Write
@@ -108,8 +108,10 @@ the store root, so the id allocator and every 1.x store walker skip them.
 2. Artifacts go in the intent directory, never in `docs/plans/` or `docs/specs/`: code goes in
    the project, everything else in the intent. Capture observations in `## Insights`; at the
    end write `outcome.md` and `## Outcome`, and update INDEX.md.
-3. State is derived from what exists: `outcome.md` present means done, so never write it
-   before the checklist is fully checked. Status lives on checklist items, not intents.
+3. State is derived from what exists: `outcome.md` present means the intent is closed, so
+   never write it before every node in `graph.md` reaches a terminal status (checklist.md
+   fully checked, for a legacy intent). Status lives on graph nodes or checklist items,
+   never on intents.
 4. The global store is never pushed (`~/.plastic/` holds sensitive data); agent-created repos
    are private by default (`gh repo create --private`).
 5. Intents are created only via `plastic-intent-creating`, never hand-authored. It
@@ -137,5 +139,5 @@ treating work as new. Enola, or Serena when Enola is absent: prefer its symbol r
 Locks and worktrees exist only for auto teams. One team develops an intent at a time: a
 session-keyed `delivery.lock` in the intent directory, alive while its mtime lease is fresh.
 Code edits happen in the intent's worktree (`<repo>/.claude/worktrees/{id}--{slug}`, branch
-`plastic/{id}--{slug}`). "Done" is three signals that agree: INDEX `## Completed` or
-`## Abandoned`, `outcome.md`, and the savepoint `Done` line; INDEX wins on conflict.
+`plastic/{id}--{slug}`). A terminal intent is three signals that agree: INDEX
+`## Completed`/`## Abandoned`, `outcome.md`, and the terminal savepoint line; INDEX wins.

@@ -8,7 +8,7 @@ Plastic separates two different things an earlier doctrine blurred under one wor
 "immutable." WORK is the delivered CONTENT an intent produced: the code and project files a
 delivery changed, the research it recorded, the outcome it wrote. Once the intent is terminal
 (Completed or Abandoned), that content is immutable - the only way to change it is another
-intent that continues or reverts it. Editing a Done intent's own artifacts so it looks like it
+intent that continues or reverts it. Editing a terminal intent's own artifacts so it looks like it
 delivered something different, or that parts are missing, is forbidden (the book analogy:
 never rewrite the text on the pages of an old, valuable book).
 

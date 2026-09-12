@@ -96,4 +96,69 @@ class PostCutVocabularyTest < Minitest::Test
     assert_match(/runner\s*step/i, auto_bullet)
     assert_match(/\bend\b/i, auto_bullet)
   end
+
+# Row 5.1 - PLASTIC.md names the runner loop, not the old stage-ladder
+# deliverable table, and never requires a checklist item plus action before
+# work can start.
+def test_plastic_md_names_runner_loop_not_stage_ladder
+  content = read("PLASTIC.md")
+
+  assert_match(/runner step/i, content, "PLASTIC.md must name runner step")
+  assert_match(/runner status/i, content, "PLASTIC.md must name runner status")
+  assert_match(/runner answer/i, content, "PLASTIC.md must name runner answer")
+  assert_match(/reaches a terminal status/i, content,
+               "PLASTIC.md must tie \"done\" to graph nodes reaching a terminal status")
+
+  record_section = content[/## The Record: Stages as its Shape\n(.*?)\n## /m, 1].to_s
+  refute_empty record_section, "The Record section not found"
+  refute_match(/\|\s*`spec\.md`\s*\|/, record_section,
+               "the stage table must not list spec.md as a required deliverable")
+  refute_match(/\|\s*`plan\.md`\s*\|/, record_section,
+               "the stage table must not list plan.md as a required deliverable")
+
+  refute_match(/must exist before work/i, content,
+               "PLASTIC.md must not require a checklist item plus action before work any more")
+end
+
+# Row 5.2 - both tutorial tracks walk create, graph, runner step, end -
+# never the old consolidate-the-spec / plan.md-and-checklist ceremony.
+def test_tutorial_tracks_walk_the_runner_loop
+  track1 = read("skills/tutorial/references/track-1-guided.md")
+  track2 = read("skills/tutorial/references/track-2-auto.md")
+
+  [track1, track2].each do |content|
+    assert_match(/graph\.md/, content, "must name graph.md")
+  end
+
+  assert_match(/runner\s+step/i, track1, "track 1 must walk runner step")
+  refute_match(/Consolidate the spec/i, track1,
+               "track 1 must not walk the retired consolidate-the-spec station")
+  refute_match(/###\s*\d+\.\s*Done\b/, track1,
+               "track 1 must not name a station \"Done\"")
+  assert_match(/###\s*\d+\.\s*End\b/, track1, "track 1 must name an End station")
+
+  refute_match(/Auto owns How \(the plan, the checklist, the action files\)/, track2,
+               "track 2 must not describe Auto's How as plan/checklist/action files any more")
+end
+
+# Row 5.3 - the retired "Done" alias names no state or stage anywhere in the
+# shipped skills/templates tree or PLASTIC.md, outside a backtick-quoted
+# literal ledger token. scripts/ is out (doctor.rb messages are pinned by
+# test/doctor_done_signals_test.rb).
+def test_done_alias_absent_from_whole_shipped_tree
+  targets = Dir.glob(File.join(REPO, "skills", "**", "*")).select { |f| File.file?(f) } +
+            Dir.glob(File.join(REPO, "templates", "**", "*")).select { |f| File.file?(f) } +
+            [File.join(REPO, "PLASTIC.md")]
+
+  offenders = []
+  targets.each do |path|
+    content = File.read(path)
+    stripped = content.gsub(/`[^`]*`/, "")
+    offenders << path.sub("#{REPO}/", "") if stripped.match?(/\bDone\b/)
+  end
+
+  assert_empty offenders.uniq,
+               "these files still name the retired \"Done\" state/stage outside backticks: " \
+               "#{offenders.uniq.join(", ")}"
+end
 end

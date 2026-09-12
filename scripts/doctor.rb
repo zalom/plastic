@@ -634,7 +634,7 @@ class Doctor
     # unpromoted_rules (intent 341, G8, C37): an Insights entry tagged
     # `rule:` (via `insight-append --rule`) is a promise the rule will make
     # it into project doctrine. Advisory only.
-    checks.concat(unpromoted_rules_checks(intent_dirs))
+    checks.concat(unpromoted_rules_checks(intent_dirs, home: Dir.home))
 
     # cross_store_resolution — RESOLVES (not just shape-checks) every cross-store
     # `store:id` ref against the FULL store family via the relocation map
@@ -1799,13 +1799,23 @@ end
   # not a mechanical one).
   RULE_ENTRY_RE = /—\s*rule:\s*(.+?)\s*\z/.freeze
 
-  def unpromoted_rules_checks(intent_dirs, package_root: PACKAGE_ROOT)
-    chapters_dir = File.join(package_root, "skills", "conventions", "references")
-    chapters_text = if Dir.exist?(chapters_dir)
-      Dir.glob(File.join(chapters_dir, "*.md")).map { |f| File.read(f) }.join("\n\n")
-    else
-      ""
+  def unpromoted_rules_checks(intent_dirs, package_root: PACKAGE_ROOT, home: nil)
+    # The installed doctor runs from ~/.plastic/scripts, so PACKAGE_ROOT
+    # (~/.plastic) has no skills/ directory: the conventions chapters install
+    # to the agent home layout instead. `home` is caller-injected (never an
+    # ENV read here) so this stays hermetic in tests; the real call site
+    # passes the process's actual home directory.
+    chapter_dirs = []
+    if home
+      chapter_dirs << File.join(home, ".claude", "skills", "plastic-conventions", "references")
+      chapter_dirs << File.join(home, ".agents", "skills", "plastic-conventions", "references")
     end
+    chapter_dirs << File.join(package_root, "skills", "conventions", "references")
+
+    chapters_text = chapter_dirs.select { |d| Dir.exist?(d) }
+                                .flat_map { |d| Dir.glob(File.join(d, "*.md")) }
+                                .map { |f| File.read(f) }
+                                .join("\n\n")
 
     unpromoted = []
     intent_dirs.each do |d|
