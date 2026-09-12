@@ -161,6 +161,34 @@ class GraphMeasureCliTest < Minitest::Test
     assert parsed.key?("drift")
   end
 
+  # --- 6.21: the full cohorts verb (n5's model section plus n6's rates, latency, --
+  # bar and concurrency), in a subprocess, both formats -----------------------------
+
+  def test_subprocess_cohorts_full_report_renders
+    store = File.expand_path("fixtures/ledgers", __dir__)
+
+    out, err, status = run_cli("cohorts", store)
+    assert_equal 0, status.exitstatus, err
+    assert_match(/== Population ==/, out)
+    assert_match(/== Model drift ==/, out)
+    assert_match(/== Approve-then-fix ==/, out)
+    assert_match(/== Hop cohorts ==/, out)
+    assert_match(/== Delivery latency ==/, out)
+    assert_match(/== Evidence bar/, out)
+    assert_match(/== Concurrency ==/, out)
+
+    out_json, err_json, status_json = run_cli("cohorts", store, "--format", "json")
+    assert_equal 0, status_json.exitstatus, err_json
+    parsed = JSON.parse(out_json)
+    assert parsed.key?("population")
+    assert parsed.key?("drift")
+    assert parsed.key?("approve_then_fix")
+    assert parsed.key?("hop_cohorts")
+    assert parsed.key?("latency")
+    assert parsed.key?("bar")
+    assert parsed.key?("concurrency")
+  end
+
   # --- 5.15: cohorts refuses a path that is not a store, exit 2, naming it -----------
 
   def test_cohorts_non_store_path_exit_2
