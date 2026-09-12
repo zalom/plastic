@@ -55,12 +55,22 @@ class RunnerInstallTest < Minitest::Test
 
   # 7.3: the runner ships three public verbs (step, status, answer); the
   # skill body is the only place an operator learns the command exists.
+  #
+  # Row 7.12 (intent 343, G10, n7): graph-measure is the read-only sibling
+  # over the same ledger, with its own three public verbs (intent, budget,
+  # cohorts); the same skill body is the only place a lead learns it exists,
+  # so this test carries both commands' verb-naming rows together.
   def test_skill_names_three_public_verbs
     body = File.read(SKILL)
     assert_includes body, "scripts/runner", "the skill body must name scripts/runner"
     assert_includes body, "`step`", "the skill body must name the step verb"
     assert_includes body, "`status`", "the skill body must name the status verb"
     assert_includes body, "`answer`", "the skill body must name the answer verb"
+
+    assert_includes body, "scripts/graph-measure", "the skill body must name scripts/graph-measure"
+    assert_includes body, "`intent`", "the skill body must name graph-measure's intent verb"
+    assert_includes body, "`budget`", "the skill body must name graph-measure's budget verb"
+    assert_includes body, "`cohorts`", "the skill body must name graph-measure's cohorts verb"
   end
 
   # 7.4: rewind (C15) is real and callable, but ships unpublished until a
