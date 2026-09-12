@@ -135,7 +135,8 @@ class InstallSyncTest < Minitest::Test
        scripts/lib/runner_answer.rb scripts/lib/runner_proposals.rb
        scripts/lib/runner_rewind.rb
        scripts/session-usage scripts/lib/session_usage.rb
-       scripts/hook-call-budget].each do |rel|
+       scripts/hook-call-budget
+       scripts/meter-watch scripts/lib/meter_watch.rb].each do |rel|
       assert core.core_files.key?(rel), "#{rel} missing from core_files (installed ~/.plastic would lack it)"
       assert_equal rel, core.core_files[rel]
       assert File.exist?(File.join(REPO, rel)), "#{rel} registered in core_files but missing on disk"
