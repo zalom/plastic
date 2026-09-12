@@ -44,6 +44,10 @@ Dispatches subagents to do the work. The controller never implements. It dispatc
 
 The post-execution review in Step 3 runs by risk (the rule lives in the auto skill). When it runs, the reviewer is a separate agent with fresh context, never the maker. The plan itself is reviewed before code by the adversarial plan reviewer (`plan-reviewer-prompt.md`), dispatched by the lead at How.
 
+### Graph dispatch: the paste
+
+When the plan is a graph (`nodes/*.md`, not `plan.md` plus action files), the dispatch step is the paste, not a lead's hand-typed brief. `runner step` computes readiness, applies policy, and prints a spawn block per dispatched node - agent, model, packet path, the one test command, the call cap - fenced in its own stdout. Copy each block into the Agent tool as its own dispatch, verbatim; the runner itself never spawns an agent (327 D42).
+
 ### Inline (Fallback)
 Executes tasks sequentially in the current session. Use when subagents aren't available or user explicitly requests inline mode.
 

@@ -13,20 +13,18 @@ user-invocable: true
 Announce: "Taking over intent [ID] - [name] for autonomous delivery."
 
 **Advisory (not a rule).** At auto-mode start, recommend once that the user run this
-orchestrating main session on the best available thinking model (Fable, Opus, or whatever
-supersedes them). This is advice only: it changes no behavior. Dispatched agents keep their
-configured model and never resolve to Fable unless an explicit `agents.models.<name>` config
-override names Fable for that role. The two advisors, `plastic-advisor` and
-`plastic-faux-advisor`, are consultation roles the user or the main session summons
-deliberately; the auto pipeline never dispatches them.
+orchestrating session on the best available thinking model (Fable, Opus, or whatever supersedes
+them); this is advice only, and dispatched agents keep their configured model, never resolving
+to Fable without an explicit `agents.models.<name>` config override. `plastic-advisor` and
+`plastic-faux-advisor` are consultation roles the user or this session summons deliberately;
+the auto pipeline never dispatches them.
 
 ## Precondition
 
 An active intent MUST exist in INDEX.md. If none exists, refuse: "No active intent found.
 Create one first with /plastic-intent-creating."
 
-If several active intents exist, ask the user which one to deliver (the one question auto asks
-at boarding, before delivery starts).
+If several active intents exist, ask which to deliver (the one question auto asks at boarding).
 
 **Picking work when no intent is specified.** If the user says "auto" without naming an intent
 and none is active, consult the roadmap first (the primary planning surface), then fall back to
@@ -42,9 +40,8 @@ frontier batch is still delivering, report it and wait, never dispatch a later b
 `exhausted` means fall back to `ruby ~/.plastic/scripts/dashboard.rb all --json` and work its
 `dispatchable_queue` in `rank` order, leaving `human_only` and `next_big_thing` for the user.
 
-QMD-first (when available): when the user describes the work rather than naming an intent, run
-`ruby ~/.plastic/scripts/qmd-sync search "<terms>"` before scanning the store, then open the
-authoritative intent file for the hit you take over. The command is a no-op when QMD is absent.
+QMD-first (when available): when the user describes the work instead of naming an intent, run
+`ruby ~/.plastic/scripts/qmd-sync search "<terms>"` first, then open the hit's authoritative intent file; a no-op when QMD is absent.
 
 ## Take the intent (do this FIRST)
 
@@ -89,6 +86,12 @@ tier and no stage agent; depth follows the work.
 
 Two boots is the normal delivery; the third is the exception the risk rule names. The lead is
 this session (the `plastic-enforcer` role), never a dispatched agent.
+
+A lead is a choice, not a requirement (D8, 355). `runner step` computes the plan and prints a
+spawn block per node - agent, model, packet path, the test command, the call cap - fenced for a
+session to paste into the Agent tool; the runner never spawns (327 D42). A lead earns its keep
+on a graph carrying a decision node, weighing its `needs_decision` stop; a graph with none runs
+end to end from `runner step` alone.
 
 ## Team
 
@@ -148,13 +151,10 @@ each one as a delegate before (or when) it needs to write into the intent dir:
 
 Only the owner can delegate. Delegates cannot re-delegate or release.
 
-Headless note: in a headless or background run the session id may be unset; the arm verb then
-keys the lock by a derived key and the record hook still writes the savepoint ledger from the
-written path. Verify the lock with `plastic-lock status` rather than assuming.
+Headless note: in a headless or background run the session id may be unset; the arm verb then keys the lock by a derived key and the record hook still writes the ledger.
+Verify with `plastic-lock status` rather than assuming.
 
-Solo fallback: on a harness with no agent dispatch (Codex CLI today), this session walks the
-five steps itself: it still writes the matrix, still writes the tests first, and reviews its own
-plan against the matrix before code, saying so in `## Insights`.
+Solo fallback: on a harness with no agent dispatch (Codex CLI today), this session walks the five steps itself, still writing the matrix and the tests first and reviewing its own plan against the matrix before code, saying so in `## Insights`.
 
 ## Stage-Aware Entry
 
