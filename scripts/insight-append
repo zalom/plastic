@@ -11,8 +11,16 @@
 # `now:` seam is the test seam; the CLI uses the default Time.now, which is fine
 # because determinism is covered at the library level (test/insights_test.rb).
 #
+# --rule (intent 341, G8, C37): tags the entry as a rule, not just an
+# observation, by prepending the literal "rule: " onto the text before it
+# ever reaches Insights.append_insight — the library itself stays untouched,
+# since a tag is a text-level convention, not a new field on the ledger.
+# Doctor's unpromoted_rules check (scripts/doctor.rb) later lists any tagged
+# entry whose exact text no skills/conventions/references/*.md chapter
+# carries yet.
+#
 # Usage:
-#   insight-append <intent_dir> <text> --stage S --author A
+#   insight-append <intent_dir> <text> --stage S --author A [--rule]
 #
 # Exit codes: 0 (entry appended), 2 (usage).
 
@@ -21,6 +29,7 @@ require_relative "lib/insights"
 def parse_args(argv)
   stage = nil
   author = nil
+  rule = false
   positional = []
   i = 0
   while i < argv.length
@@ -31,20 +40,25 @@ def parse_args(argv)
     when "--author"
       author = argv[i + 1]
       i += 2
+    when "--rule"
+      rule = true
+      i += 1
     else
       positional << argv[i]
       i += 1
     end
   end
-  [positional[0], positional[1], stage, author]
+  [positional[0], positional[1], stage, author, rule]
 end
 
-intent_dir, text, stage, author = parse_args(ARGV)
+intent_dir, text, stage, author, rule = parse_args(ARGV)
 
 if [intent_dir, text, stage, author].any? { |v| v.nil? || v.to_s.empty? }
-  warn "usage: insight-append <intent_dir> <text> --stage S --author A"
+  warn "usage: insight-append <intent_dir> <text> --stage S --author A [--rule]"
   exit 2
 end
+
+text = "rule: #{text}" if rule
 
 entry = Insights.append_insight(File.expand_path(intent_dir), text,
                                 stage: stage, author: author)

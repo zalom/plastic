@@ -631,6 +631,11 @@ class Doctor
     # ReadySet's own require chain is 65,648 bytes, far past that budget.
     checks.concat(node_graph_checks(intent_dirs))
 
+    # unpromoted_rules (intent 341, G8, C37): an Insights entry tagged
+    # `rule:` (via `insight-append --rule`) is a promise the rule will make
+    # it into project doctrine. Advisory only.
+    checks.concat(unpromoted_rules_checks(intent_dirs))
+
     # cross_store_resolution — RESOLVES (not just shape-checks) every cross-store
     # `store:id` ref against the FULL store family via the relocation map
     # (relocation consulted first), closing the shape-only gap i1/i3/i4 leave open.
@@ -1771,6 +1776,58 @@ end
         message: "#{findings.size} #{name} violation(s)",
         details: findings, fixable: false, fix_hint: fix_hint
       )
+    end
+  end
+
+  # --- Check: unpromoted rule: findings (intent 341, G8, C37) ---------------
+  #
+  # `insight-append --rule` tags an entry "... - rule: <text>". A tag is a
+  # promise the rule will make it into project doctrine; until the exact
+  # rule text shows up in some skills/conventions/references/*.md chapter,
+  # it is only visible to a session that happens to read this one intent
+  # file, and the next session repeats the mistake the rule names. Advisory
+  # only (warn, never fail): a freshly tagged rule is not yet promoted by
+  # design, and nothing here can auto-promote it (that is an editorial call,
+  # not a mechanical one).
+  RULE_ENTRY_RE = /—\s*rule:\s*(.+?)\s*\z/.freeze
+
+  def unpromoted_rules_checks(intent_dirs, package_root: PACKAGE_ROOT)
+    chapters_dir = File.join(package_root, "skills", "conventions", "references")
+    chapters_text = if Dir.exist?(chapters_dir)
+      Dir.glob(File.join(chapters_dir, "*.md")).map { |f| File.read(f) }.join("\n\n")
+    else
+      ""
+    end
+
+    unpromoted = []
+    intent_dirs.each do |d|
+      md_path = File.join(d[:path], "#{d[:name]}.md")
+      next unless File.exist?(md_path)
+
+      File.readlines(md_path).each do |line|
+        m = line.chomp.match(RULE_ENTRY_RE)
+        next unless m
+
+        rule_text = m[1].strip
+        next if rule_text.empty?
+
+        unpromoted << "#{tilde(d[:path])}: #{rule_text}" unless chapters_text.include?(rule_text)
+      end
+    end
+
+    if unpromoted.empty?
+      [check(
+        category: "conventions", name: "unpromoted_rules", status: "pass",
+        message: "Every tagged rule: finding is carried by a conventions chapter"
+      )]
+    else
+      [check(
+        category: "conventions", name: "unpromoted_rules", status: "warn",
+        message: "#{unpromoted.size} tagged rule(s) not yet carried by any conventions chapter",
+        details: unpromoted, fixable: false,
+        fix_hint: "Promote the rule into the right skills/conventions/references/*.md chapter, " \
+                  "or drop the tag if the finding does not belong in doctrine"
+      )]
     end
   end
 
