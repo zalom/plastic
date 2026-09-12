@@ -692,6 +692,28 @@ class RunnerAbsorbTest < Minitest::Test
     assert_equal "the executor could not make the suite pass", entry2[:fields]["reason"]
   end
 
+  # --- intent 355, n2, matrix 2.10: a call-budget return is a self-reported
+  # failed_verification like any other (D3), and keeps the node's worktree
+  # (the partial commit) exactly as test_failing_absorb_keeps_worktree already
+  # proves for a mechanically-failed return.
+
+  def test_call_budget_return_keeps_partial_commit
+    write_savepoint(running_line)
+    write_node_file
+    context = build_context
+    fake_wt = FakeWorktree.new
+    return_path = write_return(status: "failed_verification", commit: nil, extra: { reason: "call_budget" })
+
+    result = RunnerAbsorb.absorb(context, node: "n4", return_path: return_path,
+                                  integrity_checker: ok_integrity, worktree: fake_wt)
+
+    assert_equal "failed_verification", result[:state]
+    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
+    assert_equal "failed_verification", entry[:state]
+    assert_equal "call_budget", entry[:fields]["reason"]
+    assert_empty fake_wt.released, "a call-budget return must keep the node's worktree (the partial commit)"
+  end
+
   # --- 9.4: checks 3-6 never run for a non-done return -----------------------------
 
   def test_mechanical_checks_run_only_for_a_done_return

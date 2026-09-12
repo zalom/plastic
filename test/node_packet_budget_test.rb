@@ -609,4 +609,22 @@ class NodePacketBudgetTest < Minitest::Test
     assert_equal 2, result[:attempt],
                  "a torn running line (missing expires/packet/model) must not count toward the attempt number"
   end
+
+  # --- intent 355 n2, matrix 2.4: the call cap sentence in block 5 -----------
+
+  def test_packet_states_call_cap_sentence
+    setup_minimal(intent_text: "Call cap intent.")
+    result = build(call_cap: 60)
+    assert result[:ok]
+    content = File.read(result[:path])
+    assert_includes content, "call budget: this attempt may make at most 60 tool calls"
+    assert_includes content, "failed_verification reason=call_budget"
+  end
+
+  def test_packet_omits_call_cap_sentence_when_none_given
+    setup_minimal(intent_text: "No call cap intent.")
+    result = build
+    content = File.read(result[:path])
+    refute_includes content, "call budget:"
+  end
 end

@@ -377,6 +377,22 @@ class RunnerDispatchTest < Minitest::Test
     %w[holder expires packet model].each { |k| refute_nil fields[k], "running line missing #{k}=" }
   end
 
+  # --- intent 355, n2, matrix 2.3: `running` carries calls=<cap> -------------
+
+  def test_running_line_carries_calls_cap
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    ctx = build_context
+
+    result = RunnerDispatch.dispatch(ctx)
+    assert result[:ok], result[:errors].inspect
+
+    entry = NodeLedger.last_running(savepoint_path, "n1")
+    refute_nil entry
+    assert_equal RunnerPolicy.call_cap("work").to_s, entry[:fields]["calls"],
+                 "the running line must carry work's shipped call cap"
+  end
+
   # --- 5.20: a refused `running` rolls back the worktree and the packet -----
 
   def test_refused_running_rolls_back_side_effects
