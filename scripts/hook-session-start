@@ -13,6 +13,7 @@ require_relative "lib/qmd_sync"
 require_relative "lib/doctor_core"
 require_relative "lib/session_ledger"
 require_relative "lib/day_summary"
+require_relative "lib/packet_wrapper"
 
 index_path, plastic_home, mode, plugin_root = ARGV
 exit 0 unless index_path && plastic_home && mode
@@ -230,11 +231,17 @@ begin
     require "timeout"
     qmd_status = Timeout.timeout(2) { QmdSync.status(plastic_home: plastic_home) }
     if qmd_status[:present]
-      if qmd_status[:all_registered]
-        parts << "QMD: #{qmd_status[:registered].size} Plastic collections indexed (search with the qmd skill)."
+      # C23 (intent 341, G8): a QMD hit is untrusted text, so it never sits
+      # loose in additionalContext alongside the owner's own banners — it
+      # rides inside PacketWrapper's data boundary, same as the capture
+      # hook's own QMD hits (scripts/hook-capture).
+      qmd_line = if qmd_status[:all_registered]
+        "QMD: #{qmd_status[:registered].size} Plastic collections indexed (search with the qmd skill)."
       else
-        parts << "QMD detected — run `qmd-sync register --all` to index your Plastic stores for search."
+        "QMD detected — run `qmd-sync register --all` to index your Plastic stores for search."
       end
+      token = PacketWrapper.boundary_token([qmd_line])
+      parts << PacketWrapper.wrap(qmd_line, label: "qmd-hit", source: "qmd-sync", token: token).rstrip
     end
   rescue Exception
     # Any failure (timeout, missing binary, parse error) — stay silent, never crash.
