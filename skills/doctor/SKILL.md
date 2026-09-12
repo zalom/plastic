@@ -223,7 +223,7 @@ knowingly-exempt `(intent_id, rule)` pairs. Format: one `rule_name id id id` lin
 blank lines and `#` comments ignored. v1 honors exactly one rule, `savepoint_operational`.
 
 **Reading the count.** When any exclusion applies, the `savepoint_operational` check's message
-folds in the count and the file's path, e.g. `"... (3 excluded via ~/.plastic/doctor-exclusions)"`.
+includes the count and the file's path, e.g. `"... (3 excluded via ~/.plastic/doctor-exclusions)"`.
 A malformed line in the file forces the check to `warn` with the parse error in `details`, even
 when zero real gaps remain, so a broken file is never silently permissive.
 
@@ -262,7 +262,7 @@ Locks exist for auto teams: a `delivery.lock` file in the intent directory names
 session, and the `record` hook refreshes its mtime on every edit (the lease heartbeat; stale
 means older than the TTL). Direct work takes no lock. When a lock reads held by a session
 that is gone, when work resumes after a crash, reboot, or `/tmp` wipe, or when the user says
-"fix the lock", "who holds the lock", or "reclaim the lock", use the CLI (intent 304 folded
+"fix the lock", "who holds the lock", or "reclaim the lock", use the CLI (intent 304 merged
 the former locking skill here):
 
 | Verb | What it does | When |
@@ -290,7 +290,7 @@ these verbs (claims, worktrees, the station ledger).
 ## Provisioning a project store
 
 When a project is registered in `~/.plastic/projects.yml` but has no store on disk (doctor
-reports `project_store_dir`), provision it (intent 304 folded the former provisioning skill
+reports `project_store_dir`), provision it (intent 304 merged the former provisioning skill
 here). The slug is the project's key under `projects`; an unregistered slug exits non-zero and
 creates nothing, and this procedure never edits `projects.yml`.
 

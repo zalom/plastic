@@ -7,9 +7,9 @@ require_relative "atomic_write"
 # GraphFile (intent 334, n2): the four graph.md sections (## Goal,
 # ## Decisions, ## Graph, ## Status), the verify:-none directive, and the two
 # writers - write_status and append_decision. Both writers refuse a cyclic
-# graph and both go through AtomicWrite (fold D19r). Fence-aware everywhere a
+# graph and both go through AtomicWrite (review D19r). Fence-aware everywhere a
 # heading is located, so a fenced example carrying a fake "## " line never
-# splits or ends a real section (fold A8's sibling concern, applied to
+# splits or ends a real section (review A8's sibling concern, applied to
 # section boundaries rather than edge lines).
 module GraphFile
   module_function
@@ -19,8 +19,8 @@ module GraphFile
 
   # {ok:, goal:, decisions:, graph:, status:, verify:, errors:}. `graph` is
   # GraphEdges.parse's own Result hash, over the Graph section text with any
-  # verify:-none directive line stripped first (fold A8). A missing ## Graph
-  # section, or one that declares no nodes, is an error naming which (fold
+  # verify:-none directive line stripped first (review A8). A missing ## Graph
+  # section, or one that declares no nodes, is an error naming which (review
   # A10).
   def parse(path)
     return failure(["graph file not found: #{path}"]) unless File.exist?(path)

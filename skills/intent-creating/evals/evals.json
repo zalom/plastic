@@ -35,7 +35,7 @@
       "scope": "behavior",
       "set": "validation",
       "prompt": "Create an intent that is the direct continuation of intent 41: it emerged from intent 41's lifecycle and could not exist without it.",
-      "expected_output": "Because the new intent was genuinely CREATED FROM 41 (D1), it carries 41 in --sources (or branches from 41, which folds 41 into sources via the redundant-explicit rule). The reciprocal I1 backlink lands: intent 41's frontmatter chain gains the new intent's id. This is the created-from case, contrasted with the related-but-not-spawned case in eval 1.",
+      "expected_output": "Because the new intent was genuinely CREATED FROM 41 (D1), it carries 41 in --sources (or branches from 41, which merges 41 into sources via the redundant-explicit rule). The reciprocal I1 backlink lands: intent 41's frontmatter chain gains the new intent's id. This is the created-from case, contrasted with the related-but-not-spawned case in eval 1.",
       "files": [],
       "assertions": [
         {

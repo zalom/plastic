@@ -28,7 +28,7 @@ deliberately; the auto pipeline never dispatches them.
    the test that catches it), and `checklist.md`. One consolidated `ACTION_1.md` by default,
    never an empty `actions/`.
 3. **Have the plan reviewed before code** - dispatch one adversarial plan reviewer on
-   `plastic-intent-executing`'s `plan-reviewer-prompt.md`; fold every finding into the spec, the
+   `plastic-intent-executing`'s `plan-reviewer-prompt.md`; merge every finding into the spec, the
    matrix, and the tests.
 4. **Dispatch one executor, tests first** - the executor commits the matrix's tests red, then
    builds, then drives the full suite green; you verify tick-versus-diff at the
@@ -50,7 +50,7 @@ dispatch call's model parameter, alongside the spawn-preamble live-state injecti
 
 1. Take the intent; record the rulings in `## Context` + `### Decisions`; write `spec.md`.
 2. Write `plan.md`, the action files with their matrix, and `checklist.md`; dispatch the plan
-   reviewer; fold the review.
+   reviewer; merge the review findings.
 3. Dispatch the executor through `plastic-intent-executing` with the whole consolidated action
    pasted in; require the red commit before the code and a green suite after it. Sequential,
    one team per intent, on one branch when files are shared.

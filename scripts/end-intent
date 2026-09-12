@@ -287,7 +287,7 @@ end
 # Abandoned closes and machine-backfilled outcomes (the backfill marker) are
 # exempt: the reader cannot expect labels the writer never had.
 #
-# Intent 334 (G1, fold A3; post-execution review, blocking 2): the legacy
+# Intent 334 (G1, review A3; post-execution review, blocking 2): the legacy
 # "S3" label grammar applies only to actions/*.md headings, and the node id
 # grammar (kind prefix n/v/d/r plus digits, D1r) applies only to nodes/*.md
 # headings - never both over both directories. This repo's own house words
@@ -310,7 +310,7 @@ end
 # 339 S9 (D18): a node id counts as a label in an actions/*.md heading too,
 # but only when it stands alone as one of the heading's " - "-delimited
 # segments - this repo's own convention, "### S1 - n1 - Title" (this action
-# file's own headings, post-fold) or the bare "### n1 - Title". Never as a
+# file's own headings, post-merge) or the bare "### n1 - Title". Never as a
 # free word inside ordinary prose: the comment above ACTION_ID_LABEL_RE
 # records exactly why intent 334 restricted the node-id grammar to
 # nodes/*.md headings in the first place, and that reasoning does not change
@@ -342,7 +342,7 @@ def hollow_report_reason(intent_dir, disposition)
   # a node id ("n1", "v2", "d3", "r4"). A terse legacy close with no labeled
   # matrix stays report-and-proceed (intent 334, G1, D10r).
   #
-  # Every matching token per heading is kept, not just the first (fold A3):
+  # Every matching token per heading is kept, not just the first (review A3):
   # a legacy actions/ heading can carry BOTH an S-label and prose that reads
   # like a node id ("### The v2 rewrite (S3)"). Restricting the word-scan
   # node-id grammar to nodes/*.md headings (post-execution review, blocking

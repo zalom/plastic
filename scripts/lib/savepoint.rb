@@ -145,7 +145,7 @@ module Savepoint
     ["spec.md", "graph.md", "plan.md", "checklist.md", "outcome.md"].each do |f|
       files << f if stage_file_present?("#{intent_dir}/#{f}")
     end
-    # Name the directory that actually exists (fold B3): a nodes-only intent
+    # Name the directory that actually exists (review B3): a nodes-only intent
     # must never claim the literal "actions/" artifact it does not have.
     # Checks actions/ first, matching D15r's read order.
     if has_real_files_in?("actions", intent_dir)
@@ -160,7 +160,7 @@ module Savepoint
     ifile = intent_dir ? File.basename(intent_file(intent_dir)) : "intent.md"
     # A How-stage intent that already started a nodes/ directory is named
     # accordingly, so the next-step hint never tells a node-graph intent to
-    # go make an actions/ directory it will never use (fold B3). Mirrors
+    # go make an actions/ directory it will never use (review B3). Mirrors
     # has_real_files_in?'s actions-first order and its real-file requirement
     # (post-execution review, non-blocking 4): an intent carrying real files
     # in both directories, or a real actions/ file beside an empty or
@@ -177,7 +177,7 @@ module Savepoint
     when "why" then ["spec.md"]
     when "how"
       # A node-shaped How intent (a real graph.md already) is named after its
-      # own two artifacts, never the three D41 removed from its path (fold
+      # own two artifacts, never the three D41 removed from its path (review
       # B3, extended by 336 D13): checked via stage_file_present? alone, the
       # same primitive derive_stage itself uses.
       if intent_dir && stage_file_present?("#{intent_dir}/graph.md")

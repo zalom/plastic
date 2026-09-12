@@ -245,7 +245,7 @@ module SessionGit
   # The branch HEAD points to, even on an unborn branch (review R3: a fresh
   # `git init`, zero commits). `git rev-parse --abbrev-ref HEAD` FAILS on an
   # unborn branch (there is no commit for it to resolve yet), which the old
-  # implementation misread as "cannot determine a branch" and folded into
+  # implementation misread as "cannot determine a branch" and merged into
   # the detached-HEAD case. `git symbolic-ref --quiet --short HEAD` succeeds
   # on both a normal AND an unborn branch (HEAD is a symbolic ref to
   # `refs/heads/<name>` in both cases) and only fails when HEAD is
@@ -354,7 +354,7 @@ module SessionGit
 
     # An unknown mode/workspace value, or workspace: worktree's degradation
     # to checkout, is itself a degradation (spec D2, BLOCKER 3 ruling), so
-    # it always turns the outcome into a Note, folding both facts into the
+    # it always turns the outcome into a Note, merging both facts into the
     # single savepoint line spec D7 allows.
     Result.new(message: "#{flow_notes.join('; ')}; #{result.message}", event: "Note")
   end

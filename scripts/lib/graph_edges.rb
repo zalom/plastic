@@ -4,11 +4,11 @@
 # GraphEdges (intent 334, n1): the shared `needs` syntax and cycle-path check
 # (327 D2r-D4r, D12r). Parses a "## Graph" section's edge lines into a node
 # set and an edge map, the one parser an intent's graph.md and a roadmap's
-# own ## Graph section both use unchanged (C1, fold A5): the same list-item
+# own ## Graph section both use unchanged (C1, review A5): the same list-item
 # grammar, the same root keyword, the same cycle walk. Deliberately loose
 # about what an id looks like - a roadmap id is numeric ("334", "340a"), a
 # node id carries a kind prefix ("n1") - the kind-prefix rule belongs to
-# NodeFile and WorkGraphValidator, never here (D12r, fold A6).
+# NodeFile and WorkGraphValidator, never here (D12r, review A6).
 #
 # Grammar (D2r/D3r): a list item shaped "- <id> needs <target> [<target>
 # ...]", ending at end of line. The single literal target "nothing" declares
@@ -18,7 +18,7 @@
 # all, "nothing" alongside other targets, or a target token carrying
 # sentence punctuation (a period, a colon, ...) rather than the loose
 # id-token charset, is an error naming the line, never a silently
-# mis-parsed edge or an invented node (fold A7).
+# mis-parsed edge or an invented node (review A7).
 #
 # Pure and side-effect-free; never raises across the boundary, matching the
 # Result-hash convention every library in scripts/lib/ follows.
@@ -30,7 +30,7 @@ module GraphEdges
   ROOT_TARGET = "nothing"
 
   # {nodes:, edges:, errors:} - nodes is the declared ids together with every
-  # id any edge targets (fold A5), in first-seen order; edges maps a declared
+  # id any edge targets (review A5), in first-seen order; edges maps a declared
   # id to its target ids (empty for a root); errors names each malformed
   # edge-shaped line. Prose lines contribute nothing and raise nothing.
   def parse(section_text)

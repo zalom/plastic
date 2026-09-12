@@ -173,7 +173,7 @@ module HookRegistry
   # name here in the SAME change. Skip it and every existing install keeps a dead
   # registration no update will ever clean up.
   #
-  # Never fold these into claude_launcher_names: that method is what doctor's
+  # Never merge these into claude_launcher_names: that method is what doctor's
   # hooks_exist demands be present on disk, so a retired name there makes a correct
   # install report missing launchers.
   RETIRED_HOOK_NAMES = %w[

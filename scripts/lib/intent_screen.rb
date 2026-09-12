@@ -287,7 +287,7 @@ module IntentScreen
   # Returns [clause_without_terminal_punctuation, remainder_or_nil]. `nil` for
   # the remainder means either no boundary exists at all, or the boundary
   # sits at the absolute end of `text` (a single trailing clause with nothing
-  # after it) — both cases where there is no SECOND clause to fold in.
+  # after it) — both cases where there is no SECOND clause to merge in.
   def self.clause_and_rest(text)
     m = text.match(/\A(.+?)[.;](\s+(.*)|\z)/m)
     return [text, nil] unless m

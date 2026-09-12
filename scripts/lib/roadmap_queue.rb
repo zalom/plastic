@@ -306,7 +306,7 @@ class RoadmapQueue
   # and never an invented dispatchable entry with no title. An id a batch
   # lists that the graph does not name is never dropped either: it keeps
   # the pre-change wave behavior (the G4 partial-migration path) by being
-  # folded in as needing nothing (never called on a cyclic graph: #analyze
+  # included as needing nothing (never called on a cyclic graph: #analyze
   # checks that first and reports "error" instead).
   def graph_frontier_for(candidate)
     edges = candidate[:graph_edges][:edges].dup

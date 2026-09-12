@@ -545,7 +545,7 @@ module RunnerAbsorb
     # `content` itself ends in a newline (the file's own trailing newline
     # made visible as an array slot). When Insights is the LAST section (no
     # further "## " heading), `insights_end` walks all the way to
-    # `lines.length`, folding that sentinel INTO the section - the very next
+    # `lines.length`, merging that sentinel INTO the section - the very next
     # insert then landed AFTER it, turning the file's trailing newline into
     # a spurious blank line and leaving the new bullet as the final element
     # with no newline of its own. Excluding the sentinel here restores both:

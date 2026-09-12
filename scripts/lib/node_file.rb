@@ -102,14 +102,14 @@ module NodeFile
   # <id>.md or <id>--<slug>.md, exactly - a longer id's file (n11--x.md) must
   # never satisfy a shorter id (n1), so the id is matched as the whole prefix
   # up to end-of-string or the literal "--" separator, never as a substring
-  # (fold A9).
+  # (review A9).
   def filename_matches_id?(basename, id)
     basename.match?(/\A#{Regexp.escape(id)}(--[A-Za-z0-9][A-Za-z0-9-]*)?\z/)
   end
 
   # budget: normalizes to a plain integer token ceiling. A bare integer and
   # {tokens: N} both normalize to N; {turns: N} is the field 327 D47 removed
-  # and is a named error, never silently accepted (fold: report's example).
+  # and is a named error, never silently accepted (from report's example).
   def normalize_budget(raw)
     return [nil, []] if raw.nil?
     return [raw, []] if raw.is_a?(Integer)
@@ -128,7 +128,7 @@ module NodeFile
 
   # Every [heading_line, body] pair in the body text, split on any heading
   # line, fence-aware: a "#" line inside a fenced block never starts a new
-  # section (fold: "a node passes on a section it does not have").
+  # section (see: "a node passes on a section it does not have").
   def split_by_headings(text)
     sections = []
     heading = nil

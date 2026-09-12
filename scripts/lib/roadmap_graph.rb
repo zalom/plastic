@@ -51,7 +51,7 @@ module RoadmapGraph
     entry_ids = order.dup
 
     # 1.6: an entry the graph never named (not declared, not targeted) is
-    # folded in as a root, so a partly migrated roadmap never silently
+    # included as a root, so a partly migrated roadmap never silently
     # drops real work from the batches.
     edges = parsed_edges[:edges].dup
     entry_ids.each do |id|

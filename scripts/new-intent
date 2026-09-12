@@ -362,7 +362,7 @@ def main(argv)
   # 4a. I1 reciprocity: write the child's id into EACH source intent's frontmatter
   # `chain` (the formative-reciprocity backlink), for BOTH the `--parent` and the
   # `--sources` path. `sources` is the redundant-explicit set from step 3 (it already
-  # folds in `--parent`). Collect the touched source files so their `## Links` can be
+  # includes `--parent`). Collect the touched source files so their `## Links` can be
   # re-projected once the chain edges are on disk.
   source_files = []
   sources.each do |src_id|

@@ -11,7 +11,7 @@ require_relative "atomic_write"
 # (row 5.1/5.2): a REAL terminal line (Done delivered/abandoned, or a
 # classifiable Done detail) beats a stale INDEX section. An intent whose
 # ledger is silent (no terminal line) or absent (no savepoint.md at all)
-# keeps the status INDEX already carries (row 5.13, folded at the
+# keeps the status INDEX already carries (row 5.13, merged at the
 # 2026-09-10 plan review): 63 of 451 intents in the plastic store have no
 # savepoint.md and 59 more never reach a Done line, and a literal reading
 # would demote all of them. This module computes and compares only; it
