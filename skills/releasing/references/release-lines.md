@@ -81,7 +81,7 @@ this playbook describes what happens next, not a pending action.
 **Preconditions**, both required before any publish of `1.2.0-beta.1`:
 
 - (a) One documentation pass over beta-line skills and docs for the hybrid savepoint contract:
-  on beta, only the terminal Done bookend still writes a live `savepoint.md`; every other
+  on beta, only the terminal savepoint line still writes a live `savepoint.md`; every other
   milestone lives in `savepoint_events` plus a committed JSONL export. Beta-line prose that
   still assumes an always-live ledger needs updating first, so a beta-line reader does not
   mistake an empty ledger for a broken one.

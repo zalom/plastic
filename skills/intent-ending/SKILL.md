@@ -2,8 +2,10 @@
 name: plastic-intent-ending
 description: >
   Wrap, finish, or close an intent as delivered or abandoned. Use
-  when completing or abandoning an intent, when a checklist reaches 100
-  percent and Exec is finished, or when asked to "wrap this up".
+  when completing or abandoning an intent, when a graph's last node
+  reaches a terminal status (or, for a legacy intent, a checklist
+  reaches 100 percent) and Exec is finished, or when asked to "wrap
+  this up".
 user-invocable: true
 ---
 
@@ -26,7 +28,7 @@ installed directory.
 | 0 | Precondition check | You, before touching outcome.md |
 | 1 | backfill spec/plan/action/outcome from the record, self-check, intent-file `## Outcome` summary | `scripts/end-intent` |
 | 2 | INDEX.md terminal move (Active -> Completed/Abandoned) | `scripts/end-intent` |
-| 3 | savepoint `Done` bookend | `scripts/end-intent` |
+| 3 | the terminal savepoint line | `scripts/end-intent` |
 | 4 | store auto-commit | `scripts/end-intent` |
 | 5 | disarm (worktree + lock) | `scripts/end-intent` (intent 188) |
 | 6 | QMD reindex, async, LAST | You |
@@ -45,13 +47,18 @@ Nothing refuses the close any more (the 1.x write-time gate and `end-intent`'s
 exit-6 structure gate were retired in 2.0, intents 302 and 308). What you leave
 on disk is what the record becomes, so before the call:
 
-1. Read checklist.md. Tick every item as it is actually performed, including
-   an item that describes the close itself: running this very procedure IS
-   what that item describes. An unchecked box is not a refusal, it is a
-   reported gap that lands verbatim in the backfilled `## Follow-ups`.
-2. Confirm every acceptance criterion in spec.md is verifiable (tests pass,
-   or the manual check described in its HOW line was actually run).
-3. Decide what you have to say. For an intent with a `graph.md`, never hand-write
+1. For an intent with a `graph.md`: confirm every node's Status in `graph.md` is
+   terminal (`done` or `failed_verification`, nothing left `running`, `blocked`, or
+   waiting `needs_decision`), and that the last verify node's gates were
+   accepted. A node still open is not a refusal, it is a reported gap that lands
+   verbatim in the backfilled `## Follow-ups`.
+   For an intent with no `graph.md` (legacy): read checklist.md, tick every item as
+   it is actually performed, including an item that describes the close itself:
+   running this very procedure IS what that item describes; an unchecked box is not
+   a refusal, it is a reported gap. Also confirm every acceptance criterion in
+   spec.md is verifiable (tests pass, or the manual check described in its HOW line
+   was actually run).
+2. Decide what you have to say. For an intent with a `graph.md`, never hand-write
    `outcome.md`: `scripts/end-intent` GENERATES it, through
    `scripts/lib/outcome_report.rb` (`scripts/outcome-report` is its standalone
    CLI, useful for checking the generated text before the close). `## Delivered`,
@@ -102,7 +109,7 @@ line from `## Active` to `## Completed` or `## Abandoned` (dated today,
 idempotent, accepting either a real em dash or a plain hyphen as the id/
 title separator on read while always emitting the real em dash on write)
 with the `--index-note` text appended after the date so the entry stays
-rich, appends the savepoint `Done` bookend, commits the store repo, and
+rich, appends the terminal savepoint line, commits the store repo, and
 disarms (releases the code worktree and clears `delivery.lock`, verified
 against the durable lock file on disk, never merely trusted). Omit
 `--index-note` for a thin id+date entry, add `--no-commit` when a separate

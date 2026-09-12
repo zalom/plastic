@@ -12,11 +12,8 @@
 require "json"
 require "open3"
 require "fileutils"
-require "timeout"
 require_relative "lib/session_ledger"
 require_relative "lib/dashboard_banner"
-require_relative "lib/qmd_sync"
-require_relative "lib/packet_wrapper"
 
 raw = begin
   $stdin.read
@@ -140,38 +137,6 @@ begin
     context_parts << "Auto-mode request detected. Invoke the plastic-auto skill to deliver the " \
                       "active intent autonomously - it takes the intent under a lock and a worktree " \
                       "and points this session at it."
-  end
-rescue StandardError
-  nil
-end
-
-# --- (f) QMD hits, wrapped as untrusted data (intent 341, G8, C23) --------
-# A capture-worthy prompt (the same predicate job (c) uses) inside a
-# REGISTERED project is worth a bounded QMD search: the agent's own better
-# tool from intent 345, wired back into the turn instead of the removed
-# grep-based Future-intent hint, this time never sitting loose in the
-# model's context. SessionLedger.project_slug resolves anywhere else to the
-# literal "global", and that case is skipped entirely, not searched - an
-# ordinary session working directly in a Plastic store never pays a real
-# qmd round trip. Every hit is untrusted store text, so it is wrapped, never
-# interpolated raw; PacketWrapper.wrap's escaping disarms a hit that itself
-# carries the boundary marker. All hits from one capture share one boundary
-# token, so the two hooks (this one and hook-session-start) can never drift
-# on how a QMD hit gets wrapped.
-begin
-  if SessionLedger.capture_worthy?(prompt)
-    project = SessionLedger.project_slug(cwd, plastic_home: plastic_home)
-    if project != "global"
-      collections = QmdSync.collections_for_cwd(cwd, plastic_home: plastic_home)
-      hits = Timeout.timeout(2) { QmdSync.search(prompt, collections: collections, limit: 2) }
-      unless hits.empty?
-        token = PacketWrapper.boundary_token(hits.map { |h| h[:snippet].to_s })
-        hits.each do |hit|
-          text = "#{hit[:title]} (#{hit[:file]})\n#{hit[:snippet]}"
-          context_parts << PacketWrapper.wrap(text, label: "qmd-hit", source: hit[:file].to_s, token: token).rstrip
-        end
-      end
-    end
   end
 rescue StandardError
   nil
