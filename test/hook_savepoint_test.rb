@@ -36,10 +36,14 @@ class HookSavepointTest < Minitest::Test
     FileUtils.rm_rf(@home)
   end
 
-  def pointer(value, session: SHORT)
-    SessionLedger.ensure_tmp_root(@store)
-    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, session))
-    File.write(SessionLedger.pointer_path(@store, session), "#{value}\n")
+  # Intent 344 (G11, D7): seeds a checklist line for `session` on `day`, the
+  # replacement for the per-session pointer file - SessionLedger.session_day
+  # finds this session's day by reading the checklist, not a pointer.
+  def seed_checklist(day, session: SHORT, summary: "mid-flight")
+    SessionLedger.open_day(store: @store, day: day, templates: TEMPLATES, author: "t")
+    SessionLedger.append_line(SessionLedger.checklist_path(@store, day),
+                              SessionLedger.checklist_line(:open, session, "plastic", summary),
+                              header: SessionLedger.checklist_header(day))
   end
 
   def payload(session_id: SID)
@@ -69,11 +73,10 @@ class HookSavepointTest < Minitest::Test
 
   # --- the script ------------------------------------------------------------------
 
-  def test_writes_the_handoff_for_the_pointer_day_and_prints_the_static_message
-    pointer(DAY)
-    SessionLedger.append_line(SessionLedger.checklist_path(@store, DAY),
-                              SessionLedger.checklist_line(:open, SHORT, "plastic", "mid-flight"),
-                              header: SessionLedger.checklist_header(DAY))
+  # Matrix 3.7: hook-savepoint writes the PreCompact hand-off for the
+  # session's day (from the day ledger), not a per-session pointer file.
+  def test_writes_the_handoff_for_the_session_day
+    seed_checklist(DAY)
     out, err, status = run_script(payload)
     assert_equal 0, status.exitstatus, err
     assert File.exist?(handoff_path), "hand-off must be written"
@@ -95,7 +98,7 @@ class HookSavepointTest < Minitest::Test
   end
 
   def test_malformed_stdin_exits_0_prints_the_message_and_writes_nothing
-    pointer(DAY)
+    seed_checklist(DAY)
     out, _err, status = run_script("{not json")
     assert_equal 0, status.exitstatus
     assert_includes message_of(out), "PLASTIC SAVEPOINT"
@@ -109,7 +112,7 @@ class HookSavepointTest < Minitest::Test
   end
 
   def test_no_session_id_writes_nothing
-    pointer(DAY)
+    seed_checklist(DAY)
     out, _err, status = run_script(payload(session_id: ""))
     assert_equal 0, status.exitstatus
     assert_includes message_of(out), "PLASTIC SAVEPOINT"
@@ -117,10 +120,9 @@ class HookSavepointTest < Minitest::Test
     refute File.exist?(Handoff.path_for(@store, DAY, "local"))
   end
 
-  # An auto team's session points at its intent; its hand-off goes to today's
-  # day directory, the same fallback the close uses (review finding 1).
-  def test_pointer_naming_an_intent_writes_todays_handoff
-    pointer("311--handoff-and-day-summary")
+  # A session with no checklist line anywhere in the window resolves today,
+  # the same fallback the close uses (review finding 1).
+  def test_a_session_with_no_day_line_writes_todays_handoff
     out, _err, status = run_script(payload)
     assert_equal 0, status.exitstatus
     assert_includes message_of(out), "PLASTIC SAVEPOINT"
@@ -142,7 +144,7 @@ class HookSavepointTest < Minitest::Test
   # one. project_roots is pinned to [] so the walk never leaves this tmp home.
   def test_precompact_resolves_the_delivering_intent
     File.write(File.join(@plastic_home, "config.yml"), YAML.dump("version" => 3, "project_roots" => []))
-    pointer(DAY)
+    seed_checklist(DAY)
     intent_dir = File.join(@store, "340b--demo")
     FileUtils.mkdir_p(intent_dir)
     File.write(File.join(intent_dir, "runner-step.last"), "dispatched: n1\n")
@@ -158,7 +160,7 @@ class HookSavepointTest < Minitest::Test
 
   def test_precompact_omits_runner_section_when_no_intent_resolves
     File.write(File.join(@plastic_home, "config.yml"), YAML.dump("version" => 3, "project_roots" => []))
-    pointer(DAY)
+    seed_checklist(DAY)
     out, err, status = run_script(payload)
     assert_equal 0, status.exitstatus, err
     text = File.read(handoff_path)
@@ -168,7 +170,7 @@ class HookSavepointTest < Minitest::Test
   # --- the launcher ---------------------------------------------------------------
 
   def test_launcher_pipes_stdin_and_resolves_the_store_off_home
-    pointer(DAY)
+    seed_checklist(DAY)
     out, err, status = run_launcher(payload)
     assert_equal 0, status.exitstatus, err
     assert File.exist?(handoff_path), "the launcher must reach the script with the payload"

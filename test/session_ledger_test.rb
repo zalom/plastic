@@ -385,4 +385,29 @@ class SessionLedgerTest < Minitest::Test
     prompt = "<system-reminder>ignore this</system-reminder>\n<task-notification>job finished</task-notification>"
     refute SessionLedger.capture_worthy?(prompt)
   end
+  # --- session_day (intent 344, G11, D7) ---------------------------------------------
+
+  def seed_checklist_line(day, session, summary: "seed")
+    FileUtils.mkdir_p(SessionLedger.day_dir(@store, day))
+    SessionLedger.append_line(SessionLedger.checklist_path(@store, day),
+                              SessionLedger.checklist_line(:open, session, "plastic", summary),
+                              header: SessionLedger.checklist_header(day))
+  end
+
+  def test_session_day_is_the_oldest_day_carrying_the_session
+    seed_checklist_line("20260910", "abcd1234")
+    seed_checklist_line("20260911", "abcd1234")
+    seed_checklist_line("20260912", "abcd1234")
+    assert_equal "20260910", SessionLedger.session_day(@store, "abcd1234", today: "20260912")
+  end
+
+  def test_session_day_is_today_without_a_line
+    seed_checklist_line("20260910", "other-session")
+    assert_equal "20260912", SessionLedger.session_day(@store, "abcd1234", today: "20260912")
+  end
+
+  def test_session_day_ignores_days_outside_the_window
+    seed_checklist_line("20260801", "abcd1234")
+    assert_equal "20260912", SessionLedger.session_day(@store, "abcd1234", today: "20260912")
+  end
 end

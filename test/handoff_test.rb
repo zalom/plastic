@@ -287,16 +287,20 @@ class HandoffTest < Minitest::Test
     FileUtils.rm_rf(intent)
   end
 
-  # --- the pointer day -------------------------------------------------------------
+  # --- the session day (intent 344, G11, D7) ----------------------------------------
 
-  def test_day_for_returns_the_pointer_day_and_today_when_no_pointer_or_an_intent_pointer
+  # Matrix 3.6: the hand-off day comes from SessionLedger.session_day, not a
+  # per-session pointer file - a session with no day line reads today, and a
+  # session whose only checklist line sits on an earlier day reads that day.
+  def test_handoff_day_comes_from_the_session_ledger
     assert_equal DAY, Handoff.day_for(@store, SID, today: DAY)
-    SessionLedger.ensure_tmp_root(@store)
-    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, SID))
-    File.write(SessionLedger.pointer_path(@store, SID), "20260829\n")
-    assert_equal "20260829", Handoff.day_for(@store, SID, today: DAY)
-    File.write(SessionLedger.pointer_path(@store, SID), "311--handoff-and-day-summary\n")
-    assert_equal DAY, Handoff.day_for(@store, SID, today: DAY)
+
+    yesterday = "20260829"
+    SessionLedger.open_day(store: @store, day: yesterday, templates: TEMPLATES, author: "t")
+    SessionLedger.append_line(SessionLedger.checklist_path(@store, yesterday),
+                              SessionLedger.checklist_line(:pending, SID, "plastic", "late night"),
+                              header: SessionLedger.checklist_header(yesterday))
+    assert_equal yesterday, Handoff.day_for(@store, SID, today: DAY)
   end
 end
 

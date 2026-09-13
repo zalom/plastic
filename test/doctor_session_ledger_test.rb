@@ -16,6 +16,9 @@ require_relative "../scripts/lib/session_ledger"
 # clock is injected as `now:` and every fixture timestamp is derived from it, never a
 # clock ahead of a file's mtime. Both checks live in the global store only (spec D7): a
 # project scope emits no session_ledger check at all.
+#
+# Intent 344 (G11, D10): the third check this category used to carry,
+# `no_pointer_session_tmp`, is retired along with the per-session pointer it read.
 class DoctorSessionLedgerTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("plastic-doctor-session-ledger")
@@ -38,13 +41,11 @@ class DoctorSessionLedgerTest < Minitest::Test
   def check(name) = checks.find { |c| c[:name] == name }
 
   # A .tmp/<session>/ dir. `heartbeat:` is nil (no file), a Time (ISO-8601 content), or a
-  # String written verbatim. `mtime:` backdates the dir and the heartbeat file. `pointer:`
-  # false skips writing `current` at all (row H's no-pointer class, spec D9).
-  def write_session_tmp(session, heartbeat: @now, mtime: nil, pointer: true)
+  # String written verbatim. `mtime:` backdates the dir and the heartbeat file.
+  def write_session_tmp(session, heartbeat: @now, mtime: nil)
     SessionLedger.ensure_tmp_root(global_store)
     dir = SessionLedger.session_tmp_dir(global_store, session)
     FileUtils.mkdir_p(dir)
-    File.write(SessionLedger.pointer_path(global_store, session), "20260830\n") if pointer
     unless heartbeat.nil?
       content = heartbeat.is_a?(Time) ? "#{heartbeat.utc.iso8601}\n" : heartbeat
       File.write(SessionLedger.heartbeat_path(global_store, session), content)
@@ -67,7 +68,7 @@ class DoctorSessionLedgerTest < Minitest::Test
   # --- orphaned_session_tmp --------------------------------------------------------------
 
   def test_all_checks_pass_when_neither_directory_exists
-    assert_equal %w[orphaned_session_tmp no_pointer_session_tmp day_ledger_shape], checks.map { |c| c[:name] }
+    assert_equal %w[orphaned_session_tmp day_ledger_shape], checks.map { |c| c[:name] }
     assert(checks.all? { |c| c[:status] == "pass" }, checks.inspect)
     assert(checks.all? { |c| c[:category] == "session_ledger" })
   end
@@ -130,30 +131,18 @@ class DoctorSessionLedgerTest < Minitest::Test
     assert_equal "pass", check("orphaned_session_tmp")[:status]
   end
 
-  # --- no_pointer_session_tmp (row H, spec D9) -----------------------------------------
+  # --- no_pointer_session_tmp retirement (intent 344, G11, D10) -----------------------
 
-  def test_h1_no_pointer_dir_under_the_short_ttl_passes
-    write_session_tmp("nopt0001", heartbeat: @now - 60, pointer: false)
-    assert_equal "pass", check("no_pointer_session_tmp")[:status]
-  end
-
-  def test_h2_no_pointer_dir_past_the_short_ttl_warns_distinctly_and_leaves_the_24h_check_alone
-    old = @now - Doctor::NO_POINTER_TTL_SECONDS - 60
-    dir = write_session_tmp("nopt0002", heartbeat: old, pointer: false)
-    no_pointer_check = check("no_pointer_session_tmp")
-
-    assert_equal "warn", no_pointer_check[:status]
-    assert_equal 1, no_pointer_check[:details].size
-    assert_includes no_pointer_check[:details].first, dir
-    assert_includes no_pointer_check[:details].first, "nopt0002"
-    refute_equal check("orphaned_session_tmp")[:message], no_pointer_check[:message]
-    assert_equal "pass", check("orphaned_session_tmp")[:status],
-                 "a no-pointer dir well under 24h old must not affect the 24-hour orphan count"
-  end
-
-  def test_h3_a_healthy_young_session_with_a_pointer_is_not_flagged
-    write_session_tmp("live0001", heartbeat: @now)
-    assert_equal "pass", check("no_pointer_session_tmp")[:status]
+  # Matrix 3.8: without the retirement, a live session whose heartbeat is a few
+  # minutes old (well inside the 24h orphan window) but which carries no `current`
+  # pointer (nothing writes one for this purpose any more) would still warn under
+  # the old check. The check itself must be gone; the orphan check must stay.
+  def test_no_pointer_check_is_gone_and_orphan_check_stays
+    write_session_tmp("live0001", heartbeat: @now - 600)
+    names = checks.map { |c| c[:name] }
+    refute_includes names, "no_pointer_session_tmp"
+    assert_includes names, "orphaned_session_tmp"
+    assert_equal "pass", check("orphaned_session_tmp")[:status]
   end
 
   # --- day_ledger_shape ------------------------------------------------------------------
