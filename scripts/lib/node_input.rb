@@ -19,7 +19,7 @@ require_relative "arm"
 # knowledge hop, and where to work. n2 (this half) is the readers: every one
 # of them a keyword seam with a real default, so the suite never shells out
 # to git, never reads the owner's real store, and never sets an environment
-# variable (spec D16). n3 adds assembly, the budget, and the packet's
+# variable (spec D16). n3 adds assembly, the budget, and the node input's
 # identity on top of the same file.
 module NodeInput
   module_function
@@ -31,7 +31,7 @@ module NodeInput
   INSIGHTS_KEEP = 3
 
   # C7's "the executor stops without it" (spec D9), rendered whenever a
-  # packet carries no lease and whenever the worktree Arm.worktree_block
+  # node input carries no lease and whenever the worktree Arm.worktree_block
   # reports is not provisioned.
   STOP_DIRECTIVE = "STOP: no lease is recorded for this node. Do not edit files or run any command until a runner dispatches this node with a holder, an expiry and a model."
 
@@ -57,7 +57,7 @@ module NodeInput
 
   # `landed commits` is one of the three never-cut blocks (matrix 3.9), so an
   # unbounded `git log --stat` (ten verbose commit messages, say) could route
-  # the whole packet straight to exit 4 with no cut able to help.
+  # the whole node input straight to exit 4 with no cut able to help.
   def truncate_landed_commits(out)
     return out.to_s if out.to_s.bytesize <= LANDED_COMMITS_MAX_BYTES
 
@@ -158,7 +158,7 @@ module NodeInput
   # of the post-execution review): `node-transition` is a concurrent
   # appending writer, so re-reading `savepoint.md` once per predecessor let a
   # line landing mid-build make the Transitions, Lease and attempt number of
-  # one packet disagree with each other. `build` reads once and threads the
+  # one node input disagree with each other. `build` reads once and threads the
   # same entries through every block; a direct caller with no entries to
   # share still gets a real default that reads the file itself.
   def predecessor_block(intent_dir:, node:, graph_reader: GraphFile.method(:parse), entries: nil)
@@ -186,12 +186,12 @@ module NodeInput
   end
   private_class_method :last_running_entry
 
-  # Whether the packet renders no lease at all (matrix 2.11a, post-execution
+  # Whether the node input renders no lease at all (matrix 2.11a, post-execution
   # review finding A1): neither a flag-supplied lease nor a recorded
   # `running` line for this node. `lease_block` itself only ever renders
   # `lease: none` for this case (spec D3: block 2 is retrieved data, and C7's
   # stop directive is instruction, so it can never live inside that data
-  # block, on pain of being self-cancelling under the packet's own trust
+  # block, on pain of being self-cancelling under the node input's own trust
   # rule). `build` uses this to decide whether the stop directive belongs in
   # block 5 instead, deduplicated against the worktree's own copy.
   def lease_missing?(node:, holder:, expires:, model:, entries:)
@@ -401,7 +401,7 @@ module NodeInput
     # `permitted_classes` (post-execution review finding B3): the same bug
     # class `record_sources` already fixed once in 607e31e. Any project.yml
     # that gains a date-typed value (a `created:` field, say) silently
-    # stripped the test command from every packet for that project, since
+    # stripped the test command from every node input for that project, since
     # the rescue swallowed `Psych::DisallowedClass` and returned nil.
     data = begin
       YAML.safe_load(File.read(path), permitted_classes: [Date, Time])
@@ -439,14 +439,14 @@ module NodeInput
   end
 
   # `lease_missing` (post-execution review finding A1) hoists C7's stop
-  # directive here, block 5 (instruction, spec D3), whenever the packet
+  # directive here, block 5 (instruction, spec D3), whenever the node input
   # carries no lease. `worktree_block` already renders its own copy when the
   # worktree is unprovisioned; the two conditions often fire together, so a
   # directive already present is never repeated.
   #
   # `call_cap` (intent 355, n2, D2): one sentence naming this attempt's tool
   # call cap and the return it hits at, so the executor learns the number
-  # from the packet it starts with, never from a denied call mid-edit
+  # from the node input it starts with, never from a denied call mid-edit
   # (matrix 2.4). nil (a caller that names no cap) renders nothing here.
   def where_to_work_block(intent_dir:, worktree_reader: Arm.method(:worktree_block),
                            project_reader: method(:default_project_reader), lease_missing: false, call_cap: nil,
@@ -563,7 +563,7 @@ module NodeInput
   end
 
   # ===========================================================================
-  # n3: assembly, the budget, and the packet's identity
+  # n3: assembly, the budget, and the node input's identity
   # ===========================================================================
 
   # Block labels/sources for the wrapped (data) blocks, spec D3.
@@ -610,7 +610,7 @@ module NodeInput
     "#{parts.join("\n")}\n"
   end
 
-  # One packet, node and where-to-work as plain instruction text, ledger,
+  # One node input, node and where-to-work as plain instruction text, ledger,
   # record and (when present) hop wrapped as labeled data sharing ONE
   # boundary token computed over their raw payloads (spec D2-D4, matrix
   # 3.1-3.3).
@@ -619,7 +619,7 @@ module NodeInput
   # that trust does not reach a `release.verify` a project.yml can carry
   # (post-execution review finding A2): a line that is, on its own, a
   # complete data marker is disarmed by `DataBoundary.neutralize_marker_lines`
-  # before it ever reaches the packet, so a forged marker cannot open a
+  # before it ever reaches the node input, so a forged marker cannot open a
   # block outside the wrapper's own boundary. `record_source`/`hop_source`
   # (finding C15) are the record's and the hop sources' real store-relative
   # paths, never the placeholder label "record"/"sources".
@@ -663,7 +663,7 @@ module NodeInput
   end
 
   # The trust boundary's own invariant (post-execution review finding A2):
-  # the finished packet must unwrap to exactly the data blocks that were
+  # the finished node input must unwrap to exactly the data blocks that were
   # wrapped, same count, same labels, same sources, in order. This is what
   # the escaping rule and the marker-line neutralization pass are FOR, so the
   # check belongs here, not only in a test that could rot independently of
@@ -789,7 +789,7 @@ module NodeInput
     "node-transition #{intent_dir} --node #{node} --state needs_decision --field question=\"#{escaped}\""
   end
 
-  # Build one node's whole packet from disk (spec D1). Returns
+  # Build one node's whole input from disk (spec D1). Returns
   # {ok:, exit_code:, path:, sha:, tokens:, hop_tokens:, attempt:,
   # cuts_applied:, running_command:, errors:} on success, or
   # {ok: false, exit_code:, errors:, needs_decision_command: (on overflow)}
@@ -831,7 +831,7 @@ module NodeInput
     # it (post-execution review finding B12): `node-transition` is a
     # concurrent appending writer, so re-reading `savepoint.md` once per
     # block risked a line landing mid-build and making the Transitions,
-    # Lease and attempt number of one packet disagree with each other.
+    # Lease and attempt number of one node input disagree with each other.
     entries = NodeLedger.entries(savepoint_path(intent_dir))
 
     ledger_text = full_ledger_text(intent_dir: intent_dir, node: node, files: nb[:files], holder: holder,
@@ -843,7 +843,7 @@ module NodeInput
     hop_full = hop_block(store_dir: store_dir, sources: sources, hop_tokens: hop_tokens)
 
     # Finding A1: the stop directive belongs in block 5 (instruction)
-    # whenever the packet carries no lease at all, never inside block 2's
+    # whenever the node input carries no lease at all, never inside block 2's
     # ledger data (spec D3's self-cancellation risk).
     missing_lease = lease_missing?(node: node, holder: holder, expires: expires, model: model, entries: entries)
     where_text = where_to_work_block(intent_dir: intent_dir, worktree_reader: worktree_reader,

@@ -101,7 +101,7 @@ class ReadySetRankerTest < Minitest::Test
   end
 
   def test_ranker_rows_carry_no_telemetry_key
-    forbidden = %i[tokens wall model suite packet]
+    forbidden = %i[tokens wall model suite input]
     assert_empty(ReadySet::ROW_KEYS & forbidden)
   end
 

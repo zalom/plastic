@@ -129,7 +129,7 @@ class HarnessAdapterTest < Minitest::Test
     refute_match(/sonnet/, block)
   end
 
-  # --- 1.12: the packet path is the whole prompt -------------------------------
+  # --- 1.12: the node input path is the whole prompt -------------------------------
 
   def test_input_path_is_the_prompt
     block = HarnessAdapter.render([ENTRY], harness: "claude-code", return_contract: RETURN_CONTRACT)
@@ -177,7 +177,7 @@ class HarnessAdapterTest < Minitest::Test
     # A newline can never survive into the resolved key. Squashed, it never
     # equals a known key, so it falls back to the safe default rather than
     # reaching NodeLedger's own fields hash unsquashed - which raises
-    # ArgumentError out of the dispatcher mid-dispatch, after the packet is
+    # ArgumentError out of the dispatcher mid-dispatch, after the node input is
     # already built (this row's whole failure mode).
     assert_equal "claude-code", key
     refute_match(/[\t\n]/, key)

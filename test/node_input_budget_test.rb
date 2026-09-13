@@ -8,7 +8,7 @@ require "digest"
 
 require_relative "../scripts/lib/node_input"
 
-# Intent 338 (G5), n3: assembly, the budget, and the packet's identity.
+# Intent 338 (G5), n3: assembly, the budget, and the node input's identity.
 # Matrix rows 3.1 to 3.26 in actions/ACTION_1.md. Hermetic: Dir.mktmpdir
 # fixtures, every seam injected, no environment read.
 class NodeInputBudgetTest < Minitest::Test
@@ -154,7 +154,7 @@ class NodeInputBudgetTest < Minitest::Test
 
   # --- 3.5-3.11: the cut ladder ------------------------------------------------
 
-  def test_a_packet_under_budget_keeps_every_block
+  def test_a_node_input_under_budget_keeps_every_block
     write_source("src-2", outcome: "small hop")
     setup_minimal(intent_text: "Small intent.", decisions_items: ["- D1 one"], insights_count: 2, sources: ["src-2"])
     result = build(budget_tokens: 8000, hop_tokens: 2000)
@@ -291,7 +291,7 @@ class NodeInputBudgetTest < Minitest::Test
     assert_equal 12, result[:sha].length
   end
 
-  def test_the_packet_file_does_not_contain_its_own_hash
+  def test_the_input_file_does_not_contain_its_own_hash
     setup_minimal(intent_text: "No self-hash.")
     result = build
     content = File.read(result[:path])
@@ -335,7 +335,7 @@ class NodeInputBudgetTest < Minitest::Test
     assert Dir.exist?(File.join(@dir, "attempts"))
   end
 
-  def test_the_packet_is_written_through_the_injected_atomicwrite_renamer
+  def test_the_input_is_written_through_the_injected_atomicwrite_renamer
     setup_minimal(intent_text: "Renamer spy.")
     called = false
     spy = ->(from, to) { called = true; File.rename(from, to) }
@@ -461,7 +461,7 @@ class NodeInputBudgetTest < Minitest::Test
 
   # B3: the same bug class `record_sources` already fixed once (607e31e).
   # Any project.yml that gains a date-typed value (a `created:` field, say)
-  # silently stripped the test command from every packet for that project:
+  # silently stripped the test command from every node input for that project:
   # `YAML.safe_load` without `permitted_classes: [Date, Time]` raises
   # `Psych::DisallowedClass`, and the rescue swallowed it and returned nil.
   def test_a_date_typed_project_yml_value_still_yields_the_test_command
@@ -486,12 +486,12 @@ class NodeInputBudgetTest < Minitest::Test
   # never survives as a standalone line at all), and
   # `DataBoundary.neutralize_marker_lines` disarms any full marker line
   # that DOES reach block 5 or block 1 regardless of how it got there. Proof
-  # that removing either alone still leaves the packet safe: if the collapse
+  # that removing either alone still leaves the node input safe: if the collapse
   # were removed, the raw "\n" inside `verify` would still produce a real
   # standalone marker line inside `where_text`, and `neutralize_marker_lines`
   # (applied to the whole block) would still disarm it; if
   # `neutralize_marker_lines` were removed, the collapse alone already never
-  # lets the forged text stand alone on its own line. The built packet must
+  # lets the forged text stand alone on its own line. The built node input must
   # unwrap to exactly its real blocks either way, and the raw forged line
   # must never appear verbatim anywhere in the rendered file.
   def test_a_forged_open_marker_line_in_release_verify_cannot_open_a_block
@@ -607,12 +607,12 @@ class NodeInputBudgetTest < Minitest::Test
     result = build
 
     assert_equal 2, result[:attempt],
-                 "a torn running line (missing expires/packet/model) must not count toward the attempt number"
+                 "a torn running line (missing expires/input/model) must not count toward the attempt number"
   end
 
   # --- intent 355 n2, matrix 2.4: the call cap sentence in block 5 -----------
 
-  def test_packet_states_call_cap_sentence
+  def test_input_states_call_cap_sentence
     setup_minimal(intent_text: "Call cap intent.")
     result = build(call_cap: 60)
     assert result[:ok]
@@ -621,7 +621,7 @@ class NodeInputBudgetTest < Minitest::Test
     assert_includes content, "failed_verification reason=call_budget"
   end
 
-  def test_packet_omits_call_cap_sentence_when_none_given
+  def test_input_omits_call_cap_sentence_when_none_given
     setup_minimal(intent_text: "No call cap intent.")
     result = build
     content = File.read(result[:path])

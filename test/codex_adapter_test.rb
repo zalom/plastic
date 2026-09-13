@@ -118,7 +118,7 @@ class CodexAdapterTest < Minitest::Test
     assert_equal worktree, argv[idx + 1]
   end
 
-  # --- 6.9: the packet rides on stdin, never as an argument --------------------
+  # --- 6.9: the node input rides on stdin, never as an argument --------------------
 
   def test_input_goes_on_stdin
     stub = write_stub("echo-stdin", <<~RUBY)

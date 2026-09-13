@@ -199,7 +199,7 @@ class LedgerCoexistenceTest < Minitest::Test
   def test_doctor_reports_torn_and_unattributed_transition_lines
     write_savepoint(
       "2026-07-01T00:00:00Z  What  1--demo.md\n" \
-      "2026-09-08T12:00:00Z  n1  running holder=auto-ce5\n" # torn: missing expires/packet/model
+      "2026-09-08T12:00:00Z  n1  running holder=auto-ce5\n" # torn: missing expires/input/model
     )
     checks = doctor.check_intent_end("1")
     result = find(checks, "intent_savepoint_truthful")

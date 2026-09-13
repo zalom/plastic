@@ -594,7 +594,7 @@ class InstallerCore
       "scripts/lib/graph_measure_report.rb" => "scripts/lib/graph_measure_report.rb",
       # Intent 343 (G10, n4): the `budget` verb - whether the `budget:` a
       # node's envelope declares (327 C19) is a ceiling that ever actually
-      # held, read from the ledger and the real packet files.
+      # held, read from the ledger and the real input files.
       "scripts/lib/graph_measure_budget.rb" => "scripts/lib/graph_measure_budget.rb",
       # Intent 343 (G10, n5): the `cohorts` verb's model section - the store
       # walk and whether a recorded model= still matches what config

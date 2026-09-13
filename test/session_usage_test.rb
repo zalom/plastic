@@ -106,7 +106,7 @@ class SessionUsageTest < Minitest::Test
                               prompt("\nRun node n1 of intent 355\nsecond line"),
                               call("m1", at: at(7), input: 5),
                               call("m2", at: at(7, 1), input: 0, model: "<synthetic>")])
-    write_transcript("lead/subagents/agent-aexec", [prompt([{ "type" => "text", "text" => "Execute the packet" }]),
+    write_transcript("lead/subagents/agent-aexec", [prompt([{ "type" => "text", "text" => "Execute the node input" }]),
                                                     call("m1", at: at(7), input: 5, model: "claude-sonnet-5")])
 write_transcript("lead/subagents/agent-alead-355-1",
                  [prompt(%(<teammate-message teammate_id="main" summary="Lead n1">\nLead intent 355 node n1\nmore\n</teammate-message>)),
@@ -117,7 +117,7 @@ write_transcript("lead/subagents/agent-alead-355-1",
     assert_equal "claude-opus-5", lead["model"]
     assert_equal 1, lead["calls"]
     executor = session(report, "agent-aexec")
-    assert_equal "Execute the packet", executor["label"]
+    assert_equal "Execute the node input", executor["label"]
     assert_equal "claude-sonnet-5", executor["model"]
     assert_equal "Lead intent 355 node n1", session(report, "agent-alead-355-1")["label"]
   end

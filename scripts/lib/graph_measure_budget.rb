@@ -12,22 +12,22 @@ require_relative "data_boundary"
 
 # GraphMeasureBudget (intent 343, G10, n4): whether the `budget:` a node's
 # envelope declares (327 C19, D47) is a ceiling that ever actually held.
-# Intent 340 found at 22:14Z on 2026-09-10 that every runner-built packet
+# Intent 340 found at 22:14Z on 2026-09-10 that every runner-built node input
 # was capped at 8000 tokens whatever the node declared (v1 major M7); this
 # module is the measurement of whether that still holds, from the ledger
-# and the real packet files alone.
+# and the real input files alone.
 #
 # Read-only (spec D2): it opens `nodes/*.md`, `savepoint.md` and files under
 # `attempts/`, and writes nothing. A measure with no source prints
-# `:unavailable`, never zero and never blank (spec D3); a packet file named
+# `:unavailable`, never zero and never blank (spec D3); a input file named
 # by `input=` that is not on disk is counted and named by its sha, never
 # silently treated as zero bytes (spec D4).
 #
 # Adds no second parser and no second estimator: `NodeLedger` owns the
 # transition-line format, `NodeFile` owns the envelope's `budget:`,
-# `NodeInput` owns packet path resolution and attempt numbering, and
+# `NodeInput` owns node input path resolution and attempt numbering, and
 # `DataBoundary.estimate_tokens` is the one token formula, the same the
-# packet builder enforced with (spec D8).
+# input builder enforced with (spec D8).
 module GraphMeasureBudget
   module_function
 
@@ -133,7 +133,7 @@ module GraphMeasureBudget
   def node_block(nodes)
     lines = ["== Budget =="]
     if nodes.empty?
-      lines << "(no packet attempts recorded)"
+      lines << "(no node input attempts recorded)"
       return lines
     end
 
@@ -259,13 +259,13 @@ module GraphMeasureBudget
 
   # --- the suspected ceiling: spec matrix rows 4.8, 4.9 -----------------------
 
-  # A run of packets whose estimates all fall under one value well below
+  # A run of node inputs whose estimates all fall under one value well below
   # their own declared budgets (row 4.8): the candidate ceiling is the
   # largest effective estimate among the usable attempts (every attempt
-  # whose declared budget and packet file are both known), and it is only
+  # whose declared budget and input file are both known), and it is only
   # reported when that value sits strictly under EVERY one of those
   # attempts' own declared budgets - never a "cluster within a few percent"
-  # of each other, which never fires against a real spread of packet sizes.
+  # of each other, which never fires against a real spread of node input sizes.
   # Row 4.9: fewer than two distinct nodes never reports a ceiling; one
   # node's own repeated attempts are not evidence of a ceiling shared across
   # the intent.
@@ -281,7 +281,7 @@ module GraphMeasureBudget
   # "Well below" needs a stated threshold: WELL_BELOW_RATIO is that
   # threshold, and a ceiling is reported only when the candidate uses no
   # more than this fraction of EVERY usable attempt's own declared budget.
-  # Reproduced against 340's real packets: declared budgets there run from
+  # Reproduced against 340's real node inputs: declared budgets there run from
   # 50000 to 160000 tokens (327 D47's per-kind defaults), and every
   # attempt's effective token count clusters between 3380 and 7717 - the
   # candidate (7717) is at most 7717/50000 = 15.4% of even the SMALLEST

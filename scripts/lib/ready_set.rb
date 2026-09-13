@@ -45,7 +45,7 @@ module ReadySet
 
   # The fixed key list a ranker row ever carries (D11/C16): every key is
   # state- or edge-derived, never a telemetry field (tokens, wall, model,
-  # suite, packet). Pinned by test/ready_set_ranker_test.rb.
+  # suite, input). Pinned by test/ready_set_ranker_test.rb.
   ROW_KEYS = %i[id kind batch retry downstream_hops on_critical_path].freeze
 
   # --- the readiness decision (D1) ---------------------------------------------

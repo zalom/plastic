@@ -17,12 +17,12 @@ require_relative "guarded_append"
 require_relative "harness_adapter"
 
 # RunnerDispatch (intent 340, G7, n5): validates the graph, computes the
-# ready set, applies RunnerPolicy, mints leases, builds packets, writes
+# ready set, applies RunnerPolicy, mints leases, builds node inputs, writes
 # `running`, and returns the dispatch plan `step` prints. Never spawns an
 # agent itself (327 D42): the session does that from the plan this returns.
 #
 # Pure and dependency-injected down to the clock: every side effect - the
-# full validator, the ready-set analyzer, the packet builder, the worktree
+# full validator, the ready-set analyzer, the input builder, the worktree
 # module, the ledger write, git itself - is an injectable keyword argument
 # with a real default, so a test never touches a real repository or a real
 # filesystem outside its own tmpdir.
@@ -32,7 +32,7 @@ module RunnerDispatch
   DEFAULT_LIMIT = 2
 
   # The return-schema instruction (327 D5): rides in the dispatch PLAN, never
-  # inside the packet, so `input=<sha>` keeps naming a reproducible input
+  # inside the node input, so `input=<sha>` keeps naming a reproducible input
   # (matrix row 5.23). NodeReturn.parse (n4) is this text's implementation.
   RETURN_CONTRACT = <<~TEXT.freeze
     RETURN CONTRACT: reply with exactly one YAML document as your final
@@ -52,7 +52,7 @@ module RunnerDispatch
   SPAWN_AGENT = "plastic-executor"
 
   # matrix 6.1/6.2: one spawn block per dispatched node - agent, the model
-  # RunnerPolicy.model_for resolved, the packet path, the one test command
+  # RunnerPolicy.model_for resolved, the node input path, the one test command
   # (NodeInput.test_command_block, n4), and the call cap (n2) - fenced so a
   # session pastes it straight into the Agent tool (327 D42: the runner
   # itself never spawns).
@@ -212,7 +212,7 @@ module RunnerDispatch
   end
   private_class_method :safe_analyze
 
-  # --- one node's whole dispatch (packet, lease, `running`) -------------------
+  # --- one node's whole dispatch (node input, lease, `running`) -------------------
 
   def dispatch_one(context, node:, kind:, now:, config:, harness:, caps:, edges:, nodes_decl:, input_builder:,
                     worktree:, ledger:, runner:)
@@ -239,12 +239,12 @@ module RunnerDispatch
       { "code" => provisioned[:path], "code_branch" => provisioned[:branch], "provisioned" => !!provisioned[:provisioned] }
     end
 
-    # Row 5.18: build the packet BEFORE writing `running` - a `running` line
-    # naming bytes that do not exist yet is worse than a packet nobody reads.
+    # Row 5.18: build the node input BEFORE writing `running` - a `running` line
+    # naming bytes that do not exist yet is worse than a node input nobody reads.
     # Row 5.30: `force: true` always - a fresh attempt number this dispatch
     # computes is, by construction, never one `running` has already claimed,
     # so an existing file at that path is always an orphan from a step that
-    # crashed between building the packet and writing `running`, safe to
+    # crashed between building the node input and writing `running`, safe to
     # overwrite outright.
     # Row 5.20/10.8: the node's own declared budget: (M7) - nil when the node
     # names none, in which case NodeInput.build falls back to its own
@@ -253,7 +253,7 @@ module RunnerDispatch
                                         model: model, force: true, worktree_reader: node_reader,
                                         budget_tokens: node_declared_budget(intent_dir, node), call_cap: calls_cap)
     unless build_result[:ok]
-      # M6: a failed packet build never leaves an orphan worktree behind, and
+      # M6: a failed input build never leaves an orphan worktree behind, and
       # its errors travel back up so the step's report can name the node and
       # the reason instead of a bare "stalled" (row 10.6/10.7).
       rollback_dispatch(context, node: node, kind: kind, input_path: build_result[:path], runner: runner,
@@ -331,7 +331,7 @@ module RunnerDispatch
 
   # Row 10.16/M13: `created_this_dispatch:` gates the worktree half of the
   # rollback - a worktree this call did not create (kept on disk by a prior
-  # attempt's failed_verification, D7) is never touched, only a packet this
+  # attempt's failed_verification, D7) is never touched, only a node input this
   # call's own `input_builder` may have written is ever deleted.
   def rollback_dispatch(context, node:, kind:, input_path:, runner:, worktree:, created_this_dispatch:)
     File.delete(input_path) if input_path && File.exist?(input_path)
@@ -453,7 +453,7 @@ module RunnerDispatch
       if complete
         base.merge(status: "complete")
       else
-        # M6/row 10.7: a failed packet build writes no ledger line at all,
+        # M6/row 10.7: a failed input build writes no ledger line at all,
         # so `named_blockers` (ledger-derived) never sees it on its own -
         # its own node and reason are named here so `stalled` never prints
         # bare.
@@ -494,9 +494,9 @@ module RunnerDispatch
   private_class_method :name_blocker
 
   # Row 5.22/5.23/5.24: one machine-readable (YAML) document naming, per
-  # dispatched node, the packet path, the model, the worktree, the kind and
+  # dispatched node, the node input path, the model, the worktree, the kind and
   # the role, plus the return contract ONCE at the top level - never inside
-  # any one node's packet. Row 6.4: "spawn" carries the same, already fully
+  # any one node's input. Row 6.4: "spawn" carries the same, already fully
   # rendered spawn block for each dispatched node in order, so any reader of
   # this data (YAML today, JSON if it is ever re-serialized) finds it under
   # `spawn` rather than re-deriving it from the other fields.

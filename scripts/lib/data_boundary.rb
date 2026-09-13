@@ -8,8 +8,8 @@ require "digest"
 # and is opened by `<<<PLASTIC-DATA:<token> label="..." source="...">>>` and
 # closed by `<<<END-PLASTIC-DATA:<token>>>`. The token is content-derived
 # (spec D4), so the same payloads always produce the same token and the
-# packet stays deterministic; the escaping rule (spec D5) runs on every
-# payload independently of the token, so a payload carrying this packet's
+# node input stays deterministic; the escaping rule (spec D5) runs on every
+# payload independently of the token, so a payload carrying this node input's
 # own closing marker still cannot close its block. Attribute values
 # (`label`, `source`) are sanitized separately, by a whitelist (spec D5a),
 # because they are not payload text and the payload escaping rule does not
@@ -34,16 +34,16 @@ module DataBoundary
   CLOSE_LINE_RE = /\A#{Regexp.escape(MARKER_CLOSE)}([0-9a-f]+)>>>\z/.freeze
 
   # The first twelve hex characters of the SHA-256 over the payloads joined
-  # by a newline (spec D4): fixed per packet, unguessable from any single
+  # by a newline (spec D4): fixed per node input, unguessable from any single
   # record file, deterministic across two builds of the same payloads.
   def boundary_token(payloads)
     Digest::SHA256.hexdigest(Array(payloads).map(&:to_s).join("\n"))[0, 12]
   end
 
   # One-way marker escaping (spec D5), plus a UTF-8 scrub (matrix 1.10) so
-  # one invalid byte anywhere in a record never raises the whole packet
+  # one invalid byte anywhere in a record never raises the whole node input
   # build. Runs regardless of what token trails the marker text, because a
-  # payload copied from an earlier packet may carry ANY token, not only this
+  # payload copied from an earlier node input may carry ANY token, not only this
   # one (matrix 1.2's concern applied to escaping rather than to the token
   # itself).
   def escape(payload)

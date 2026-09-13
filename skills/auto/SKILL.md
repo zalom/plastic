@@ -78,7 +78,7 @@ for work small enough to skip speccing, delivered inline with no separate plan r
 is no intent tier and no stage agent; depth follows the work.
 
 `runner step` computes readiness and prints a spawn block per dispatched node - agent, model,
-packet path, the test command, the call cap - fenced for a session to paste into the Agent
+node input path, the test command, the call cap - fenced for a session to paste into the Agent
 tool; the runner never spawns (327 D42). `runner status` renders the ledger; `runner answer`
 closes a `needs_decision` node.
 

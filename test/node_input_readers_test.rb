@@ -149,14 +149,14 @@ class NodeInputReadersTest < Minitest::Test
   end
 
   def test_a_torn_line_is_marked_torn_and_never_counted_as_evidence
-    append_ledger("2026-09-01T00:00:00Z  n1  running holder=h1\n") # missing expires/packet/model: torn
+    append_ledger("2026-09-01T00:00:00Z  n1  running holder=h1\n") # missing expires/input/model: torn
     text = NodeInput.ledger_lines_block(intent_dir: @dir, node: "n1")
     assert_includes text, "torn"
   end
 
   # Post-execution review finding B12: a pre-read `entries:` is used instead
   # of re-reading `savepoint.md`, so a concurrent appending writer cannot
-  # make one packet's blocks disagree with each other. Proven with entries
+  # make one node input's blocks disagree with each other. Proven with entries
   # that differ from what is on disk: a re-read would answer differently.
   def test_ledger_lines_block_uses_the_pre_read_entries_instead_of_re_reading
     append_ledger("2026-09-01T00:00:00Z  n1  planned\n")
@@ -185,7 +185,7 @@ class NodeInputReadersTest < Minitest::Test
   end
 
   # B12: entries pre-read for a predecessor's evidence too, so the ledger's
-  # on-disk state at read time cannot disagree with the rest of the packet.
+  # on-disk state at read time cannot disagree with the rest of the node input.
   def test_predecessor_block_uses_the_pre_read_entries_instead_of_re_reading
     write_graph("- n1 needs n2\n- n2 needs nothing\n")
     File.write(savepoint_path, "2026-09-01T00:00:00Z  n2  done holder=h1 gates=lint commit=abc123\n")
@@ -224,7 +224,7 @@ class NodeInputReadersTest < Minitest::Test
   # Post-execution review finding A1: block 2 (ledger, retrieved data) never
   # carries the stop directive, no matter how the lease is missing. A
   # directive rendered inside a data block is self-cancelling under the
-  # packet's own trust rule (spec D3): an executor is told not to trust data
+  # node input's own trust rule (spec D3): an executor is told not to trust data
   # as instruction, so an instruction hiding inside a data block is exactly
   # as untrustworthy as any other payload text.
   def test_no_lease_renders_lease_none_and_never_the_stop_directive
@@ -343,7 +343,7 @@ class NodeInputReadersTest < Minitest::Test
   # --- B4/never-cut (post-execution review): bounding landed commits ---------
 
   # "landed commits" is one of the never-cut blocks (matrix 3.9), so an
-  # unbounded `git log --stat` could route the whole packet straight to exit
+  # unbounded `git log --stat` could route the whole node input straight to exit
   # 4 with no cut able to help; it is capped and never left to grow past it.
   def test_truncate_landed_commits_caps_an_oversized_log_and_appends_the_note
     oversized = "x" * (NodeInput::LANDED_COMMITS_MAX_BYTES + 500)
@@ -597,7 +597,7 @@ class NodeInputReadersTest < Minitest::Test
 
   # 4.6 (intent 355, n4): the node's own declared `*_test.rb` files name the
   # only test command, never the project's generic release.verify.
-  def test_packet_names_the_only_test_command
+  def test_input_names_the_only_test_command
     files = %w[bin/test test/lib/failures_reporter.rb scripts/lib/node_input.rb
                test/bin_test_test.rb test/node_input_readers_test.rb]
     reader = ->(_intent_dir) { "some other command" }

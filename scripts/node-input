@@ -16,7 +16,7 @@ require_relative "lib/savepoint"
 #               [--out PATH] [--force]
 #
 # Exit codes (spec D17, shared with node-transition's family):
-#   0 - the packet was written (or the identical bytes already existed)
+#   0 - the node input was written (or the identical bytes already existed)
 #   2 - usage: not an intent directory, missing --node, or an unknown node
 #   3 - an unreadable, cyclic or unparsable graph, node file, or record
 #   4 - overflow past the third cut; nothing was written

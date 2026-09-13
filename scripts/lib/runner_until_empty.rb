@@ -184,7 +184,7 @@ module RunnerUntilEmpty
   # stdout_io:, stderr_io:}. `harness:` is accepted for symmetry with
   # `step_once` even though node-run itself never takes a --harness flag -
   # the harness was already recorded on the node's own `running` line by the
-  # dispatch this call followed, and node-run reads its packet off that
+  # dispatch this call followed, and node-run reads its node input off that
   # line, never off this argv. RUBYOPT is cleared explicitly, the same
   # contract every other ruby-spawning site in this tree carries.
   def spawn_node_run(context, node:, harness: nil)

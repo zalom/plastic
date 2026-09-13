@@ -26,7 +26,7 @@ touching the worktree above.
 
 `ruby scripts/runner step <intent_dir>` computes which nodes in `graph.md`/`nodes/*.md` are
 ready, applies dispatch policy (model, call cap), and prints a spawn block per dispatched node
-- agent, model, packet path, the one test command, the call cap - fenced in its own stdout.
+- agent, model, node input path, the one test command, the call cap - fenced in its own stdout.
 The runner itself never spawns an agent (327 D42). Call `step` again after each dispatched
 node returns.
 

@@ -15,7 +15,7 @@ require_relative "../scripts/lib/ready_set"
 require_relative "../scripts/lib/graph_measure_budget"
 
 # GraphMeasureBudgetTest (intent 343, G10, n4): the budget ceiling (C19) and
-# the token estimate the packet builder actually enforced. Matrix rows
+# the token estimate the input builder actually enforced. Matrix rows
 # 4.1-4.11 in nodes/n4.md.
 #
 # Rows 4.5, 4.7 and 4.8 read the real intent 340 fixture (never authored by
@@ -65,7 +65,7 @@ class GraphMeasureBudgetTest < Minitest::Test
 
   # Writes a real attempts/<node>--a<attempt>.input file and returns its real
   # sha256[0,12], the same function NodeInput itself uses to mint input=.
-  def write_packet(dir, node, attempt, content)
+  def write_input(dir, node, attempt, content)
     attempts_dir = File.join(dir, "attempts")
     FileUtils.mkdir_p(attempts_dir)
     path = File.join(attempts_dir, "#{node}--a#{attempt}.input")
@@ -80,7 +80,7 @@ class GraphMeasureBudgetTest < Minitest::Test
   def test_declared_budget_read_from_the_envelope
     with_intent_dir do |dir|
       write_node_file(dir, "n1", "work", budget: 120_000)
-      sha = write_packet(dir, "n1", 1, "x" * 400)
+      sha = write_input(dir, "n1", 1, "x" * 400)
       write_savepoint(dir, [transition(stamp("2026-01-01T09:00:00Z"), "n1", "running",
                                         fields: RUNNING.merge(input: sha))])
 
@@ -94,7 +94,7 @@ class GraphMeasureBudgetTest < Minitest::Test
   def test_absent_budget_is_unavailable_not_zero
     with_intent_dir do |dir|
       write_node_file(dir, "n1", "work", budget: nil)
-      sha = write_packet(dir, "n1", 1, "x" * 400)
+      sha = write_input(dir, "n1", 1, "x" * 400)
       write_savepoint(dir, [transition(stamp("2026-01-01T09:00:00Z"), "n1", "running",
                                         fields: RUNNING.merge(input: sha))])
 
@@ -109,7 +109,7 @@ class GraphMeasureBudgetTest < Minitest::Test
   def test_input_resolved_by_path_not_by_sha_name
     with_intent_dir do |dir|
       write_node_file(dir, "n1", "work", budget: 120_000)
-      real_sha = write_packet(dir, "n1", 1, "y" * 800)
+      real_sha = write_input(dir, "n1", 1, "y" * 800)
       # A decoy file named after the sha itself. If the reader ever searched
       # for a sha-named file instead of resolving by path, it would find
       # this file's (wrong) size instead.
@@ -128,7 +128,7 @@ class GraphMeasureBudgetTest < Minitest::Test
   def test_input_sha_verified_against_the_running_line
     with_intent_dir do |dir|
       write_node_file(dir, "n1", "work", budget: 120_000)
-      write_packet(dir, "n1", 1, "a" * 400)
+      write_input(dir, "n1", 1, "a" * 400)
       declared_sha = "deadbeefcafe"
       write_savepoint(dir, [transition(stamp("2026-01-01T09:00:00Z"), "n1", "running",
                                         fields: RUNNING.merge(input: declared_sha))])
@@ -146,7 +146,7 @@ class GraphMeasureBudgetTest < Minitest::Test
   def test_declared_sha_reads_from_a_legacy_running_line
     with_intent_dir do |dir|
       write_node_file(dir, "n1", "work", budget: 120_000)
-      sha = write_packet(dir, "n1", 1, "x" * 400)
+      sha = write_input(dir, "n1", 1, "x" * 400)
       legacy_line = "2026-01-01T09:00:00Z  n1  running holder=auto-1 expires=2099-01-01T00:00:00Z " \
                     "#{NodeInputCompatibility::LEGACY_FIELD}=#{sha} model=sonnet\n"
       write_savepoint(dir, [legacy_line])
@@ -181,7 +181,7 @@ class GraphMeasureBudgetTest < Minitest::Test
       # so a hand-rolled second formula would be caught rather than pass by
       # coincidence.
       content = "x" * 402
-      sha = write_packet(dir, "n1", 1, content)
+      sha = write_input(dir, "n1", 1, content)
       write_savepoint(dir, [transition(stamp("2026-01-01T09:00:00Z"), "n1", "running",
                                         fields: RUNNING.merge(input: sha))])
 
@@ -207,7 +207,7 @@ class GraphMeasureBudgetTest < Minitest::Test
     refute a3[:over_budget], "6,945 effective tokens is well under n6's declared 140,000 budget"
   end
 
-  # --- 4.8: packets under a common ceiling report it by value -------------------
+  # --- 4.8: node inputs under a common ceiling report it by value -------------------
 
   def test_inputs_under_a_common_ceiling_report_it_by_value
     record = GraphMeasureBudget.read(DIR_340)
@@ -222,7 +222,7 @@ class GraphMeasureBudgetTest < Minitest::Test
   # --- 9.2 (v2 NEW-2): the ceiling rule separates four pinned cases (D21) -------
 
   # v2's own review (resources/review--v2-2026-09-12.md, NEW-2): the old rule
-  # reported the largest observed packet as a ceiling whenever every usable
+  # reported the largest observed node input as a ceiling whenever every usable
   # attempt's own declared budget was merely generous, and missed a genuine
   # shared ceiling whenever declared budgets were tight. Reproduced by hand
   # before this fix, against the exact numbers v2 named: two nodes at 3000
@@ -236,7 +236,7 @@ class GraphMeasureBudgetTest < Minitest::Test
   # absent or zero declared budget.
   def test_ceiling_rule_separates_the_four_pinned_cases
     real = GraphMeasureBudget.read(DIR_340)
-    assert real[:ceiling][:detected], "340's real packets cluster far under their own declared budgets"
+    assert real[:ceiling][:detected], "340's real node inputs cluster far under their own declared budgets"
     assert_equal 7717, real[:ceiling][:value]
 
     generous_no_cluster = {
@@ -273,7 +273,7 @@ class GraphMeasureBudgetTest < Minitest::Test
 
   # v3's own review (resources/review--v3-2026-09-12.md, M1): the existence
   # test at the old `graph_measure_budget.rb:349` accepted two nodes, so any
-  # two packets within twenty percent of each other formed a "cluster" and
+  # two node inputs within twenty percent of each other formed a "cluster" and
   # the candidate was still `max(effective)`. Reproduced by hand before this
   # fix, against the exact shape v3 named: two nodes at 6000 and 7000
   # effective tokens against a declared 100000 each, plus one at 1200
@@ -337,8 +337,8 @@ class GraphMeasureBudgetTest < Minitest::Test
   def test_single_node_never_reports_a_ceiling
     with_intent_dir do |dir|
       write_node_file(dir, "n1", "work", budget: 120_000)
-      sha1 = write_packet(dir, "n1", 1, "x" * 400)
-      sha2 = write_packet(dir, "n1", 2, "x" * 800)
+      sha1 = write_input(dir, "n1", 1, "x" * 400)
+      sha2 = write_input(dir, "n1", 2, "x" * 800)
       write_savepoint(dir, [
         transition(stamp("2026-01-01T09:00:00Z"), "n1", "running", fields: RUNNING.merge(input: sha1)),
         transition(stamp("2026-01-01T09:05:00Z"), "n1", "failed_verification",
@@ -357,7 +357,7 @@ class GraphMeasureBudgetTest < Minitest::Test
   def test_over_budget_node_is_flagged
     with_intent_dir do |dir|
       write_node_file(dir, "n1", "work", budget: 50)
-      sha = write_packet(dir, "n1", 1, "x" * 400) # estimate 100 tokens, far over 50
+      sha = write_input(dir, "n1", 1, "x" * 400) # estimate 100 tokens, far over 50
       write_savepoint(dir, [transition(stamp("2026-01-01T09:00:00Z"), "n1", "running",
                                         fields: RUNNING.merge(input: sha))])
 
@@ -367,7 +367,7 @@ class GraphMeasureBudgetTest < Minitest::Test
     end
   end
 
-  # --- 4.11: a missing packet file is unavailable, with its sha (D18) -----------
+  # --- 4.11: a missing input file is unavailable, with its sha (D18) -----------
 
   def test_missing_input_file_is_unavailable_with_its_sha
     with_intent_dir do |dir|

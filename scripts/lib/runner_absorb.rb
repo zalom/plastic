@@ -570,7 +570,7 @@ module RunnerAbsorb
   end
   private_class_method :read_return_text
 
-  # Row 4.42: the return is kept beside the packet at
+  # Row 4.42: the return is kept beside the node input at
   # attempts/<node>--a<N>.return - copied there when `return_path` names
   # somewhere else, left alone when it already is that file.
   def preserve_return_file(intent_dir, node, attempt, return_path, text)

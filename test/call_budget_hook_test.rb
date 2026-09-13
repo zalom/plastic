@@ -23,7 +23,7 @@ load File.expand_path("../scripts/hook-call-budget", __dir__)
 # MAIN session's, never the subagent's own, so the cap is keyed on agent_id
 # and reads the subagent's OWN transcript (at
 # <dirname(transcript_path)>/<session_id>/subagents/agent-<agent_id>.jsonl),
-# whose first user record names the node's packet path.
+# whose first user record names the node's input path.
 class CallBudgetHookTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("call-budget-home")
@@ -63,7 +63,7 @@ class CallBudgetHookTest < Minitest::Test
     path
   end
 
-  def packet_prompt(intent_dir, node)
+  def input_prompt(intent_dir, node)
     "Your node input: #{intent_dir}/attempts/#{node}--a1.input (read it only if something is unclear)"
   end
 
@@ -106,17 +106,17 @@ class CallBudgetHookTest < Minitest::Test
     intent_dir = File.join(@store, "999--demo")
     write_running_line(intent_dir, "n1", cap: 1)
     write_subagent_transcript(session_id: "main-sess", agent_id: "agent-1",
-                               prompt: packet_prompt(intent_dir, "n1"), tool_use_counts: Array.new(500, 1))
+                               prompt: input_prompt(intent_dir, "n1"), tool_use_counts: Array.new(500, 1))
 
     assert_nil HookCallBudget.decide(payload(session_id: "main-sess")),
                "a call with no agent_id must never be capped, no matter what the subagent transcript holds"
   end
 
-  # --- no packet path in the first prompt means allow ------------------------
+  # --- no node input path in the first prompt means allow ------------------------
 
   def test_no_input_path_in_first_prompt_means_allow
     write_subagent_transcript(session_id: "main-sess", agent_id: "agent-1",
-                               prompt: "no packet path in this prompt at all", tool_use_counts: Array.new(500, 1))
+                               prompt: "no node input path in this prompt at all", tool_use_counts: Array.new(500, 1))
 
     assert_nil HookCallBudget.decide(payload(session_id: "main-sess", agent_id: "agent-1"))
   end
@@ -127,7 +127,7 @@ class CallBudgetHookTest < Minitest::Test
     intent_dir = File.join(@store, "999--demo")
     write_running_line(intent_dir, "n8", cap: 60)
     write_subagent_transcript(session_id: "main-sess-uuid", agent_id: "agent-77",
-                               prompt: packet_prompt(intent_dir, "n8"), tool_use_counts: Array.new(61, 1))
+                               prompt: input_prompt(intent_dir, "n8"), tool_use_counts: Array.new(61, 1))
 
     result = HookCallBudget.decide(payload(session_id: "main-sess-uuid", agent_id: "agent-77"))
 
@@ -146,7 +146,7 @@ class CallBudgetHookTest < Minitest::Test
       f.puts JSON.generate("type" => "assistant", "message" => { "content" => blocks })
     end
     write_subagent_transcript(session_id: "main-sess", agent_id: "agent-5",
-                               prompt: packet_prompt(intent_dir, "n8"), tool_use_counts: [5])
+                               prompt: input_prompt(intent_dir, "n8"), tool_use_counts: [5])
 
     assert_nil HookCallBudget.decide(payload(session_id: "main-sess", agent_id: "agent-5")),
                "the count must come from the subagent's own transcript (5 blocks), " \
@@ -159,7 +159,7 @@ class CallBudgetHookTest < Minitest::Test
     intent_dir = File.join(@store, "999--demo")
     write_running_line(intent_dir, "n8", cap: 2)
     write_subagent_transcript(session_id: "main-sess", agent_id: "agent-9",
-                               prompt: packet_prompt(intent_dir, "n8"), tool_use_counts: [5])
+                               prompt: input_prompt(intent_dir, "n8"), tool_use_counts: [5])
 
     base = payload(session_id: "main-sess", agent_id: "agent-9")
 
@@ -192,7 +192,7 @@ class CallBudgetHookTest < Minitest::Test
       2026-01-01T00:05:00Z  n1  done gates=integrity commit=abc123
     LEDGER
     write_subagent_transcript(session_id: "main-sess", agent_id: "agent-1",
-                               prompt: packet_prompt(intent_dir, "n1"), tool_use_counts: [5, 5, 5])
+                               prompt: input_prompt(intent_dir, "n1"), tool_use_counts: [5, 5, 5])
 
     assert_nil HookCallBudget.decide(payload(session_id: "main-sess", agent_id: "agent-1")),
                "a node whose latest ledger line is done must never be capped by an earlier running line"
@@ -207,7 +207,7 @@ class CallBudgetHookTest < Minitest::Test
       2026-01-01T00:06:00Z  n2  running holder=auto-2 expires=2026-01-01T01:00:00Z input=abc model=sonnet calls=10
     LEDGER
     write_subagent_transcript(session_id: "main-sess", agent_id: "agent-1",
-                               prompt: packet_prompt(intent_dir, "n1"), tool_use_counts: [5, 5, 5])
+                               prompt: input_prompt(intent_dir, "n1"), tool_use_counts: [5, 5, 5])
 
     assert_nil HookCallBudget.decide(payload(session_id: "main-sess", agent_id: "agent-1")),
                "a sibling node's own running line must never cap this subagent's node"
@@ -219,7 +219,7 @@ class CallBudgetHookTest < Minitest::Test
     intent_dir = File.join(@store, "999--demo")
     write_running_line(intent_dir, "n2", cap: 2)
     write_subagent_transcript(session_id: "main-sess", agent_id: "agent-2",
-                               prompt: packet_prompt(intent_dir, "n2"), tool_use_counts: [1, 1, 1])
+                               prompt: input_prompt(intent_dir, "n2"), tool_use_counts: [1, 1, 1])
 
     result = HookCallBudget.decide(payload(session_id: "main-sess", agent_id: "agent-2"))
     refute_nil result
@@ -234,7 +234,7 @@ class CallBudgetHookTest < Minitest::Test
     intent_dir = File.join(@store, "999--demo")
     write_running_line(intent_dir, "n3", cap: 3)
     write_subagent_transcript(session_id: "main-sess", agent_id: "agent-3",
-                               prompt: packet_prompt(intent_dir, "n3"), tool_use_counts: [1, 1, 1])
+                               prompt: input_prompt(intent_dir, "n3"), tool_use_counts: [1, 1, 1])
 
     assert_nil HookCallBudget.decide(payload(session_id: "main-sess", agent_id: "agent-3"))
   end
@@ -248,7 +248,7 @@ class CallBudgetHookTest < Minitest::Test
     path = subagent_transcript_path("main-sess", "agent-4")
     FileUtils.mkdir_p(File.dirname(path))
     File.open(path, "w") do |f|
-      f.puts JSON.generate("type" => "user", "message" => { "content" => packet_prompt(intent_dir, "n4") })
+      f.puts JSON.generate("type" => "user", "message" => { "content" => input_prompt(intent_dir, "n4") })
       line = JSON.generate("type" => "assistant",
                             "message" => { "content" => [{ "type" => "text", "text" => "x" * 1500 }] })
       target = 3 * 1024 * 1024
@@ -277,7 +277,7 @@ class CallBudgetHookTest < Minitest::Test
     path = subagent_transcript_path("main-sess", "agent-5")
     FileUtils.mkdir_p(File.dirname(path))
     File.open(path, "wb") do |f|
-      f.puts JSON.generate("type" => "user", "message" => { "content" => packet_prompt(intent_dir, "n5") })
+      f.puts JSON.generate("type" => "user", "message" => { "content" => input_prompt(intent_dir, "n5") })
       f.puts JSON.generate("type" => "assistant", "message" => { "content" => [{ "type" => "tool_use", "id" => "t1" }] })
       f.write("\xFF\xFE not valid utf-8 \"type\":\"tool_use\"\n".b)
     end
@@ -312,7 +312,7 @@ class CallBudgetHookTest < Minitest::Test
     intent_dir = File.join(@store, "999--demo")
     write_running_line(intent_dir, "n8", cap: 1000)
     write_subagent_transcript(session_id: "main-sess", agent_id: "agent-1",
-                               prompt: packet_prompt(intent_dir, "n8"), tool_use_counts: [5, 5])
+                               prompt: input_prompt(intent_dir, "n8"), tool_use_counts: [5, 5])
 
     capped_input = JSON.generate(payload(session_id: "main-sess", agent_id: "agent-1"))
     no_agent_input = JSON.generate(payload(session_id: "main-sess"))

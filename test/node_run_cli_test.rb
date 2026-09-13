@@ -152,12 +152,12 @@ class NodeRunCliTest < Minitest::Test
     NodeWorktree.provision(build_context, node: node, kind: kind)
   end
 
-  # A ready node with a real running line and a real, hashed packet on disk
+  # A ready node with a real running line and a real, hashed node input on disk
   # at `attempt` - the fixture every non-refusal row needs.
   def build_running_node(node: "n1", session: "sess-1", attempt: 1, expires: "2099-01-01T00:00:00Z")
     build = NodeInput.build(intent_dir: @dir, node: node, holder: session, expires: expires, model: "sonnet",
                               attempt: attempt, force: true)
-    raise "packet build failed: #{build[:errors].inspect}" unless build[:ok]
+    raise "input build failed: #{build[:errors].inspect}" unless build[:ok]
 
     append_savepoint(line(node, "running", holder: session, expires: expires, input: build[:sha], model: "sonnet"))
     build
@@ -252,10 +252,10 @@ class NodeRunCliTest < Minitest::Test
     assert status.success?, err
     assert_equal File.join(@dir, "attempts", "n1--a2.return.yml"), out.strip
     refute File.exist?(File.join(@dir, "attempts", "n1--a1.return.yml")),
-      "attempt 1's packet must never be the one this call absorbs"
+      "attempt 1's node input must never be the one this call absorbs"
   end
 
-  # --- 6.12: a resolved packet that does not hash to input= is refused --------
+  # --- 6.12: a resolved node input that does not hash to input= is refused --------
 
   def test_refuses_on_input_hash_mismatch
     write_graph("- n1 needs nothing\n")
@@ -293,9 +293,9 @@ class NodeRunCliTest < Minitest::Test
     assert_empty out
   end
 
-  # --- 6.14: the packet the running line names is missing from disk -----------
+  # --- 6.14: the node input the running line names is missing from disk -----------
 
-  def test_refuses_when_packet_missing
+  def test_refuses_when_input_missing
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")

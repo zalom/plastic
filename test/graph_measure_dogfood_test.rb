@@ -77,9 +77,9 @@ class GraphMeasureDogfoodTest < Minitest::Test
 
     assert Dir.exist?(File.join(DIR_340, NodeInputCompatibility::LEGACY_DIRECTORY)), "340's legacy attempt files must be copied in (n4's budget rows need it)"
     assert_operator Dir.glob(File.join(DIR_340, NodeInputCompatibility::LEGACY_DIRECTORY, "*")).length, :>, 0
-    src_packets = Dir.glob(File.join(src_340, NodeInputCompatibility::LEGACY_DIRECTORY, "*")).map { |f| File.basename(f) }.sort
-    dst_packets = Dir.glob(File.join(DIR_340, NodeInputCompatibility::LEGACY_DIRECTORY, "*")).map { |f| File.basename(f) }.sort
-    assert_equal src_packets, dst_packets
+    src_files = Dir.glob(File.join(src_340, NodeInputCompatibility::LEGACY_DIRECTORY, "*")).map { |f| File.basename(f) }.sort
+    dst_files = Dir.glob(File.join(DIR_340, NodeInputCompatibility::LEGACY_DIRECTORY, "*")).map { |f| File.basename(f) }.sort
+    assert_equal src_files, dst_files
 
     assert Dir.exist?(File.join(DIR_337, "nodes")), "337's nodes/ must be copied in (its only kind: research node)"
     research_files = Dir.glob(File.join(DIR_337, "nodes", "*.md")).select { |f| File.read(f).include?("kind: research") }
