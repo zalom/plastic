@@ -237,4 +237,38 @@ class InstallerAgentModelsTest < Minitest::Test
     refute File.exist?(File.join(@home, "config.yml")),
       "apply_config_flags must not create config.yml when no relevant flag is present"
   end
+  def effort_line(basename)
+    File.read(File.join(@dest, "#{basename}.md"))[/^effort:.*$/]
+  end
+
+  def test_plastic_advisor_ships_effort_medium
+    @core.install_agents(@dest)
+    assert_equal "effort: medium", effort_line("plastic-advisor")
+  end
+
+  def test_project_effort_override_wins_over_global
+    g = { "agents" => { "efforts" => { "claude" => { "plastic-advisor" => "high" } } } }
+    p = { "agents" => { "efforts" => { "claude" => { "plastic-advisor" => "low" } } } }
+    assert_equal "low", AgentModels.effort_override_map(project_config: p, global_config: g)["plastic-advisor"]
+  end
+
+  def test_effort_override_map_ignores_a_malformed_section
+    assert_equal({}, AgentModels.effort_override_map(global_config: { "agents" => { "efforts" => "high" } }))
+  end
+
+  def test_effort_override_rewrites_the_effort_line_and_keeps_the_model
+    @core.install_agents(@dest, efforts: { "plastic-advisor" => "xhigh" })
+    assert_equal "effort: xhigh", effort_line("plastic-advisor")
+    assert_equal "model: fable", model_line("plastic-advisor")
+  end
+
+  def test_effort_override_inserts_a_line_when_the_agent_ships_none
+    @core.install_agents(@dest, efforts: { "plastic-executor" => "low" })
+    assert_equal "effort: low", effort_line("plastic-executor")
+  end
+
+  def test_effort_overrides_read_the_global_config
+    File.write(File.join(@home, "config.yml"), { "agents" => { "efforts" => { "claude" => { "plastic-advisor" => "high" } } } }.to_yaml)
+    assert_equal({ "plastic-advisor" => "high" }, @core.agent_effort_overrides)
+  end
 end

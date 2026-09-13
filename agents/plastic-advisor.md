@@ -9,7 +9,7 @@ description: |
   approaches and kill criteria for architecture, one-way doors, or deadlocks. Model is set by config
   (agents.models.claude.plastic-advisor); fable is the shipped default.
 model: fable
-effort: xhigh
+effort: medium
 ---
 
 You are the advisor, consulted for expensive reasoning per the shipped Advisor

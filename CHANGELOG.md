@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- Intent 359: `plastic-advisor` ships `effort: medium` (was `xhigh`). The new config key `agents.efforts.claude.<agent>` sets a Claude agent's effort at install time, with project config over global; the installer inserts an `effort:` line when the agent ships none.
+
 - 344 (G11, roadmap graph-ready-plastic, batch 6): the bridge key retires into `IndexEntry`
   and `ProjectConfig`, and `Arm.delivery` is the hash `Worktree.provision`, `release`, and
   `finish` take. The per-session pointer retires too: the delivery lock answers which intent

@@ -102,6 +102,17 @@ module AgentModels
     models_section(global_config, harness: harness).merge(models_section(project_config, harness: harness))
   end
 
+  def effort_override_map(project_config: {}, global_config: {}, harness: "claude")
+    efforts_section(global_config, harness).merge(efforts_section(project_config, harness))
+  end
+
+  def efforts_section(config, harness)
+    agents = config.is_a?(Hash) ? config["agents"] : nil
+    efforts = agents.is_a?(Hash) ? agents["efforts"] : nil
+    section = efforts.is_a?(Hash) ? efforts[harness] : nil
+    section.is_a?(Hash) ? section : {}
+  end
+
   # The model_reasoning_effort for a Plastic tier alias, or nil for any value that is not
   # one of the three shipped aliases (the caller treats nil as a literal Codex model id).
   def effort_for(value)

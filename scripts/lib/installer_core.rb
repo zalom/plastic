@@ -1081,7 +1081,7 @@ class InstallerCore
     installed += install_skills_flat(skills_source, skills_root, exclude: skill_exclude) if File.directory?(skills_source)
 
     # Copy agent role files into <dir>/agents (manifest-tracked, pruned on update)
-    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides, advisor_enabled: advisor_enabled?)
+    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides, efforts: agent_effort_overrides, advisor_enabled: advisor_enabled?)
 
     # Write VERSION
     version_file = File.join(plastic_dir, "VERSION")
@@ -1314,7 +1314,7 @@ class InstallerCore
     skills_source = File.join(package_root, "skills")
     skill_exclude = advisor_enabled? ? [] : ["agent-advisor"]
     installed += install_skills_flat(skills_source, File.join(config[:dir], "skills"), exclude: skill_exclude) if File.directory?(skills_source)
-    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides, advisor_enabled: advisor_enabled?)
+    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides, efforts: agent_effort_overrides, advisor_enabled: advisor_enabled?)
 
     # Uniform per-agent record (intent 210, D2): write VERSION alongside the manifest,
     # the same shape install_claude already writes.
@@ -1365,7 +1365,7 @@ class InstallerCore
   # AgentModels::CONSULTATION_AGENTS file entirely (both plastic-advisor and
   # plastic-faux-advisor), so a user who declined the advisor never gets either
   # agent installed.
-  def install_agents(agents_root, models: {}, advisor_enabled: true)
+  def install_agents(agents_root, models: {}, efforts: {}, advisor_enabled: true)
     sources = Dir.glob(File.join(package_root, "agents", "*.md"))
     return [] if sources.empty?
 
@@ -1377,9 +1377,13 @@ class InstallerCore
     sources.map do |src|
       dest = File.join(agents_root, File.basename(src))
       basename = File.basename(src, ".md")
-      override = models[basename]
-      if override
-        File.write(dest, rewrite_model_line(File.read(src), override))
+      model = models[basename]
+      effort = efforts[basename]
+      if model || effort
+        content = File.read(src)
+        content = rewrite_model_line(content, model) if model
+        content = rewrite_effort_line(content, effort) if effort
+        File.write(dest, content)
       else
         FileUtils.cp(src, dest)
       end
@@ -1391,6 +1395,12 @@ class InstallerCore
   # Only the frontmatter (between the first two `---` fences) is touched.
   def rewrite_model_line(content, model)
     content.sub(/^model:[^\n]*$/, "model: #{model}")
+  end
+
+  def rewrite_effort_line(content, effort)
+    return content.sub(/^effort:[^\n]*$/, "effort: #{effort}") if content.match?(/^effort:/)
+
+    content.sub(/^(model:[^\n]*)$/) { "#{Regexp.last_match(1)}\neffort: #{effort}" }
   end
 
   # Resolve per-agent model overrides for this install: project config (when a
@@ -1414,6 +1424,12 @@ class InstallerCore
         {}
       end
     AgentModels.override_map(project_config: project_config, global_config: global_config, harness: harness)
+  end
+
+  def agent_effort_overrides(project_dir = nil, harness: "claude")
+    global_config = load_config_yaml(File.join(plastic_home, "config.yml"))
+    project_config = project_dir ? load_config_yaml(File.join(project_dir, ".plastic_store", "config.yml")) : {}
+    AgentModels.effort_override_map(project_config: project_config, global_config: global_config, harness: harness)
   end
 
   # advisor.enabled: project overlays global, missing or malformed counts as
