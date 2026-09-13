@@ -562,4 +562,12 @@ class RunnerWatchTest < Minitest::Test
     assert_equal "closed", result[:class]
     assert_empty result[:dispatched]
   end
+
+  # --- 3.5: runner_watch.rb writes no plist XML of its own ------------------------
+
+  def test_timer_reuses_the_meter_watch_writer
+    source = File.read(File.expand_path("../scripts/lib/runner_watch.rb", __dir__))
+    refute_includes source, "<plist", "runner_watch.rb must never render plist XML itself; " \
+                                       "reuse MeterWatch.install_timer instead"
+  end
 end

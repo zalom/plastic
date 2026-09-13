@@ -777,3 +777,204 @@ class SessionStartBannerExceptionTest < Minitest::Test
     refute_includes ctx, "Active:", "a failed assembly must not leak a partial banner line"
   end
 end
+
+# Intent 340a, G7b, n3, rows 3.7-3.11: hook-session-start gains one
+# unrecorded watch tick (RunnerWatch.tick(..., record: false)) per intent
+# ActiveDelivery.candidate_intent_dirs finds, naming every stalled or
+# done_unreported one in a single line, nothing when there is none.
+# Hermetic: project_roots is pinned to [] under this fixture's own
+# plastic_home so the walk never leaves this tmp home; record: false means
+# a boot must never write the fixture's own watch.state or watch.record.
+class SessionStartWatchTest < Minitest::Test
+  HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
+
+  MATRIX = <<~MD
+    | Operation | Failure mode | Test |
+    | --- | --- | --- |
+    | op | mode | a test |
+  MD
+
+  def setup
+    @home = Dir.mktmpdir("session-start-watch-home")
+    @tmp = Dir.mktmpdir("session-start-watch-tmp")
+    @index = File.join(@home, "INDEX.md")
+    File.write(@index, "# Index\n\n## Active\n\n## Future\n")
+    File.write(File.join(@home, "PLASTIC.md"), "# Plastic: Conventions\n")
+    File.write(File.join(@home, "config.yml"), "version: 3\nproject_roots: []\n")
+    @store = File.join(@home, "store")
+    FileUtils.mkdir_p(@store)
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+    FileUtils.rm_rf(@tmp)
+  end
+
+  def run_hook(stdin_data: "", session_id: "sess-watch")
+    env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => session_id }
+    Open3.capture3(env, "ruby", HOOK, @index, @home, "global", stdin_data: stdin_data)
+  end
+
+  def context(**kwargs)
+    out, err, status = run_hook(**kwargs)
+    assert_equal 0, status.exitstatus, err
+    JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+  end
+
+  def write_node(dir, node)
+    File.write(File.join(dir, "nodes", "#{node}.md"), <<~MD)
+      ---
+      node: #{node}
+      kind: work
+      files: []
+      budget: 100000
+      ---
+      # #{node} - a node
+
+      ## #{node} failure-mode matrix
+      #{MATRIX}
+      ## Steps
+      1. do it
+
+      ## Proven by
+      (filled at close)
+    MD
+  end
+
+  def write_graph(dir, graph_body)
+    File.write(File.join(dir, "graph.md"), <<~MD)
+      # Graph: Demo
+
+      ## Goal
+      Ship it.
+
+      ## Decisions
+      - D1 pick approach
+
+      ## Graph
+      #{graph_body}
+      ## Status
+      | Node | State | Detail |
+      | --- | --- | --- |
+    MD
+  end
+
+  # A single-node, parked delivery: n1 is needs_decision, so nothing is
+  # ready and nothing is running - the plain "stalled" shape.
+  def stalled_intent(id)
+    dir = File.join(@store, "#{id}--stalled-demo")
+    FileUtils.mkdir_p(File.join(dir, "nodes"))
+    File.write(File.join(dir, "#{id}--stalled-demo.md"), "---\nid: \"#{id}\"\nintent: t\n---\n\n## Intent\nbody\n")
+    write_graph(dir, "- n1 needs nothing\n")
+    write_node(dir, "n1")
+    File.write(File.join(dir, "savepoint.md"), "2026-09-13T00:00:00Z  n1  needs_decision\n")
+    File.write(File.join(dir, "delivery.lock"), "stale\n")
+    dir
+  end
+
+  # A single-node delivery whose one node is done, with no Done line - the
+  # plain "done_unreported" shape.
+  def done_unreported_intent(id)
+    dir = File.join(@store, "#{id}--done-demo")
+    FileUtils.mkdir_p(File.join(dir, "nodes"))
+    File.write(File.join(dir, "#{id}--done-demo.md"), "---\nid: \"#{id}\"\nintent: t\n---\n\n## Intent\nbody\n")
+    write_graph(dir, "- n1 needs nothing\n")
+    write_node(dir, "n1")
+    File.write(File.join(dir, "savepoint.md"),
+               "2026-09-13T00:00:00Z  n1  done holder=h gates=g1+g2 " \
+               "commit=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa suite=1/1/0/0\n")
+    File.write(File.join(dir, "delivery.lock"), "stale\n")
+    dir
+  end
+
+  # A single-node delivery with nothing done and nothing parked: n1 is
+  # ready, so the tick reports "moving" - a delivery that needs no
+  # attention at all.
+  def moving_intent(id)
+    dir = File.join(@store, "#{id}--moving-demo")
+    FileUtils.mkdir_p(File.join(dir, "nodes"))
+    File.write(File.join(dir, "#{id}--moving-demo.md"), "---\nid: \"#{id}\"\nintent: t\n---\n\n## Intent\nbody\n")
+    write_graph(dir, "- n1 needs nothing\n")
+    write_node(dir, "n1")
+    File.write(File.join(dir, "delivery.lock"), "stale\n")
+    dir
+  end
+
+  # A directory whose savepoint.md is a directory, not a file: RunnerWatch's
+  # own read (File.read, unguarded at that call site) raises partway through
+  # the tick, proving the whole watch block is one guarded unit.
+  def malformed_intent(id)
+    dir = File.join(@store, "#{id}--broken-demo")
+    FileUtils.mkdir_p(File.join(dir, "nodes"))
+    File.write(File.join(dir, "#{id}--broken-demo.md"), "---\nid: \"#{id}\"\nintent: t\n---\n\n## Intent\nbody\n")
+    write_graph(dir, "- n1 needs nothing\n")
+    write_node(dir, "n1")
+    FileUtils.mkdir_p(File.join(dir, "savepoint.md"))
+    File.write(File.join(dir, "delivery.lock"), "stale\n")
+    dir
+  end
+
+  def watch_state_path(dir)
+    File.join(dir, "watch.state")
+  end
+
+  def watch_record_path(dir)
+    File.join(dir, "watch.record")
+  end
+
+  # Row 3.7
+  def test_watch_line_names_stalled_and_done_unreported_intents
+    stalled_intent("911")
+    done_unreported_intent("912")
+
+    ctx = context
+    line = ctx.lines.find { |l| l.include?("PLASTIC watch:") }
+    assert line, "boot must carry one PLASTIC watch line naming both deliveries"
+    assert_includes line, "911 stalled ("
+    assert_includes line, "912 done_unreported"
+  end
+
+  # Row 3.8
+  def test_watch_line_absent_when_nothing_needs_attention
+    moving_intent("913")
+
+    refute_includes context, "PLASTIC watch:"
+  end
+
+  # Row 3.9
+  def test_boot_watch_leaves_snapshots_untouched
+    dir = stalled_intent("914")
+
+    context
+
+    refute File.exist?(watch_state_path(dir)), "an unrecorded boot tick must never write watch.state"
+    refute File.exist?(watch_record_path(dir)), "an unrecorded boot tick must never write watch.record"
+  end
+
+  # Row 3.10
+  def test_subagent_boot_runs_no_watch
+    dir = stalled_intent("915")
+    payload = JSON.generate("session_id" => "sub-915", "agent_id" => "agent-1")
+
+    ctx = context(stdin_data: payload, session_id: "sess-sub-915")
+
+    refute_includes ctx, "PLASTIC watch:", "a subagent boot must never pay for a store walk"
+    refute File.exist?(watch_state_path(dir))
+    refute File.exist?(watch_record_path(dir))
+  end
+
+  # Row 3.11
+  def test_watch_failure_never_blocks_boot
+    malformed_intent("916")
+    stalled_intent("917")
+
+    out, err, status = run_hook
+    assert_equal 0, status.exitstatus, err
+    parsed = JSON.parse(out)
+    assert_includes parsed["systemMessage"], "Plastic Core loaded",
+                     "a raise inside one delivery's tick must still let boot finish"
+    ctx = parsed.dig("hookSpecificOutput", "additionalContext")
+    refute_includes ctx, "PLASTIC watch:",
+                     "the whole watch block is one guarded unit; a raise on any candidate must add nothing"
+  end
+end
