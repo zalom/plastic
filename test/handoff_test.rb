@@ -302,6 +302,22 @@ class HandoffTest < Minitest::Test
                               header: SessionLedger.checklist_header(yesterday))
     assert_equal yesterday, Handoff.day_for(@store, SID, today: DAY)
   end
+
+  # Matrix 6.5: a session that crossed midnight hands off under the newest
+  # day it carries, today, not the oldest.
+  def test_handoff_day_is_the_newest_day_carrying_the_session
+    today = SessionLedger.day_id
+    yesterday = SessionLedger.day_id(Time.now - 86_400)
+    SessionLedger.open_day(store: @store, day: today, templates: TEMPLATES, author: "t")
+    SessionLedger.open_day(store: @store, day: yesterday, templates: TEMPLATES, author: "t")
+    SessionLedger.append_line(SessionLedger.checklist_path(@store, yesterday),
+                              SessionLedger.checklist_line(:pending, SID, "plastic", "late night"),
+                              header: SessionLedger.checklist_header(yesterday))
+    SessionLedger.append_line(SessionLedger.checklist_path(@store, today),
+                              SessionLedger.checklist_line(:pending, SID, "plastic", "morning"),
+                              header: SessionLedger.checklist_header(today))
+    assert_equal today, Handoff.day_for(@store, SID, today: today)
+  end
 end
 
 # The CLI: a thin wrapper, driven as a subprocess with an explicit store.

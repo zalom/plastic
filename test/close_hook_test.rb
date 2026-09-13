@@ -13,7 +13,7 @@ require_relative "../scripts/lib/session_close"
 # PLASTIC_HOME and PLASTIC_TMP isolated and CLAUDE_CODE_SESSION_ID cleared.
 #
 # Intent 344 (G11, D7): the session's day comes from SessionLedger.session_day
-# (the oldest day in the window whose checklist carries the session's line),
+# (the newest day in the window whose checklist carries the session's line),
 # not from a per-session pointer file. `append` seeds that line; a test that
 # needs only a tmp dir present (no day resolution) uses `seed_tmp_dir`.
 class CloseHookTest < Minitest::Test
@@ -103,7 +103,7 @@ class CloseHookTest < Minitest::Test
   end
 
   # Matrix 3.4: close drops the pending lines on the session's day (the
-  # oldest day in the window carrying this session's checklist line) and
+  # newest day in the window carrying this session's checklist line) and
   # spawns the carry filer to today.
   def test_close_drops_pending_on_the_session_day_and_carries
     SessionLedger.open_day(store: @store, day: YESTERDAY, templates: TEMPLATES, author: "t")
@@ -115,6 +115,19 @@ class CloseHookTest < Minitest::Test
     assert_equal [report[:spawned]], @spawned
     assert_equal ["- [-]"], markers(YESTERDAY)
     assert_operator elapsed, :<, 3
+  end
+
+  # Matrix 6.4: a session that crossed midnight drops pending lines on every
+  # day it carries, not only the oldest, and the carry names the earlier day.
+  def test_close_drops_pending_on_every_session_day
+    SessionLedger.open_day(store: @store, day: YESTERDAY, templates: TEMPLATES, author: "t")
+    append(YESTERDAY, :pending, "late night")
+    append(TODAY, :pending, "morning")
+    report = run_close
+    assert_equal ["- [-]"], markers(YESTERDAY)
+    assert_equal ["- [-]"], markers(TODAY)
+    assert_equal ["--day", YESTERDAY, "--carry-to", TODAY, "--store", @store], report[:spawned]
+    assert_equal [report[:spawned]], @spawned
   end
 
   # Matrix 3.5: a session whose only day line sits on today resolves today,

@@ -160,15 +160,16 @@ module SessionLedger
 
   # --- Session day (spec D7 replacement for the retired pointer) ------------
 
-  # The oldest day, no later than `today` and no earlier than `today` minus
-  # `window_days`, whose checklist carries at least one line tagged to
-  # `session` (any state). Answers the one question the per-session state
-  # used to answer: which day ledger this session's close and hand-off write
-  # belong to. Falls back to `today` when no day in the window carries the
-  # session's line, and on any error reading the store (never raises).
-  def session_day(store, session, today:, window_days: 7)
+  # Every day, ascending, no later than `today` and no earlier than `today`
+  # minus `window_days`, whose checklist carries at least one line tagged to
+  # `session` (any state). Each day's checklist is read inside its own
+  # rescue, so one unreadable or missing checklist skips that day only and
+  # never gives up on a later one. Returns an empty array when no day in the
+  # window carries the session's line, and on any error reading the store
+  # (never raises).
+  def session_days(store, session, today:, window_days: 7)
     root = sessions_root(store)
-    return today unless File.directory?(root)
+    return [] unless File.directory?(root)
 
     today_date = Date.strptime(today, "%Y%m%d")
     floor_date = today_date - window_days
@@ -178,17 +179,27 @@ module SessionLedger
       date >= floor_date && date <= today_date
     end.sort
 
-    days.each do |day|
-      carries = read_locked(checklist_path(store, day)).each_line.any? do |line|
-        parsed = parse_checklist_line(line)
-        parsed && parsed[:session] == session
+    days.select do |day|
+      begin
+        read_locked(checklist_path(store, day)).each_line.any? do |line|
+          parsed = parse_checklist_line(line)
+          parsed && parsed[:session] == session
+        end
+      rescue StandardError
+        false
       end
-      return day if carries
     end
-
-    today
   rescue StandardError
-    today
+    []
+  end
+
+  # The newest day in `session_days`, the day this session's close and
+  # hand-off write belong to (intent 344, G11, D13: a session that crosses
+  # midnight carries lines on more than one day, and the newest is the one
+  # still open). Falls back to `today` when no day in the window carries the
+  # session's line.
+  def session_day(store, session, today:, window_days: 7)
+    session_days(store, session, today: today, window_days: window_days).last || today
   end
 
   # Create `.tmp/` plus a `.gitignore` holding exactly `*`, if that file does

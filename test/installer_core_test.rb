@@ -466,4 +466,95 @@ class InstallerCoreTest < Minitest::Test
     assert_equal 0, removed
     assert File.exist?(current), "an undeletable candidate must be left in place, not raised over"
   end
+
+  # Matrix 6.6: a `current` file reached only through a symlinked session
+  # directory is never a candidate.
+  def test_removal_skips_current_under_a_symlinked_session_dir
+    outside = Dir.mktmpdir("outside-session")
+    outside_current = File.join(outside, "current")
+    File.write(outside_current, "20260913
+")
+
+    tmp_root = File.join(@home, "store", ".tmp")
+    FileUtils.mkdir_p(tmp_root)
+    File.symlink(outside, File.join(tmp_root, "evil"))
+
+    removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [])
+
+    assert_equal 0, removed
+    assert File.exist?(outside_current)
+  ensure
+    FileUtils.rm_rf(outside)
+  end
+
+  # Matrix 6.7: `current` files under a symlinked `.tmp`, store, or project
+  # store directory are never candidates, even one level up from the leaf.
+  def test_removal_skips_current_under_a_symlinked_store_path
+    outside_tmp = Dir.mktmpdir("outside-tmp")
+    tmp_current = File.join(outside_tmp, "sess1", "current")
+    FileUtils.mkdir_p(File.dirname(tmp_current))
+    File.write(tmp_current, "20260913
+")
+    FileUtils.mkdir_p(File.join(@home, "store"))
+    File.symlink(outside_tmp, File.join(@home, "store", ".tmp"))
+
+    outside_store = Dir.mktmpdir("outside-store")
+    store_current = File.join(outside_store, ".tmp", "sess2", "current")
+    FileUtils.mkdir_p(File.dirname(store_current))
+    File.write(store_current, "20260913
+")
+    FileUtils.mkdir_p(File.join(@home, "projects", "p"))
+    File.symlink(outside_store, File.join(@home, "projects", "p", "store"))
+
+    removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [])
+
+    assert_equal 0, removed
+    assert File.exist?(tmp_current)
+    assert File.exist?(store_current)
+  ensure
+    FileUtils.rm_rf(outside_tmp)
+    FileUtils.rm_rf(outside_store)
+  end
+
+  # Matrix 6.8: the tmp-file name matcher runs on raw bytes and never raises
+  # on an undecodable name; remove_retired_session_state never raises over
+  # one either, on the platforms that let such a name reach the filesystem.
+  def test_retired_name_match_never_raises_on_invalid_bytes
+    bad_name = ("plastic-" + 255.chr + "--x.json").dup.force_encoding("UTF-8")
+
+    result = @core.retired_tmp_name?(bad_name)
+    assert_includes [true, false], result
+
+    tmp = Dir.mktmpdir("bad-byte-tmp")
+    begin
+      begin
+        File.write(File.join(tmp, bad_name), "{}")
+      rescue StandardError
+        return # this filesystem refuses the byte sequence; the assertion above already holds
+      end
+
+      removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [tmp])
+      assert_equal 1, removed
+    ensure
+      FileUtils.rm_rf(tmp)
+    end
+  end
+
+  # Matrix 6.9: a real leftover is still removed when the tmp directory
+  # itself is a symlink (macOS's real `/tmp` is one).
+  def test_removal_follows_a_symlinked_tmp_dir_root
+    real_tmp = Dir.mktmpdir("real-tmp-root")
+    leftover = File.join(real_tmp, "plastic-abc--1.json")
+    File.write(leftover, "{}")
+    symlinked_root = File.join(Dir.mktmpdir("tmp-parent"), "tmp-link")
+    File.symlink(real_tmp, symlinked_root)
+
+    removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [symlinked_root])
+
+    assert_equal 1, removed
+    refute File.exist?(leftover)
+  ensure
+    FileUtils.rm_rf(real_tmp)
+    FileUtils.rm_rf(File.dirname(symlinked_root)) if symlinked_root
+  end
 end
