@@ -38,15 +38,11 @@ module Handoff
     File.join(SessionLedger.day_dir(store, day), "handoff--#{session}.md")
   end
 
-  # The day this session's hand-off belongs to: the pointer's day id when
-  # the pointer holds one, else today (no pointer, or a pointer naming an
-  # intent), the same fallback SessionClose uses for the drop at close.
+  # The day this session's hand-off belongs to: the session's day from the
+  # day ledger (SessionLedger.session_day, graph.md D7), the same lookup
+  # SessionClose uses for the drop at close.
   def day_for(store, session, today:)
-    path = SessionLedger.pointer_path(store, session)
-    return today unless File.exist?(path)
-
-    value = File.read(path).strip
-    SessionLedger.valid_day_id?(value) ? value : today
+    SessionLedger.session_day(store, session, today: today)
   end
 
   def clip(summary)

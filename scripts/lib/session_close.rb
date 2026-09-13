@@ -17,8 +17,9 @@ module SessionClose
   NOOP_REASONS = %w[clear resume].freeze
 
   # The default hand-off writer (intent 311, spec D6): renders this session's
-  # share of the pointer day into handoff--<session>.md before the tmp dir
-  # goes. The hook script builds it with the shipped templates dir.
+  # share of its session day (SessionLedger.session_day, graph.md D7) into
+  # handoff--<session>.md before the tmp dir goes. The hook script builds it
+  # with the shipped templates dir.
   def default_handoff(templates)
     lambda do |store, day, session|
       Handoff.write(store: store, day: day, session: session, trigger: "close", templates: templates)
@@ -45,14 +46,14 @@ module SessionClose
     session = SessionLedger.short_session_id(payload.is_a?(Hash) ? payload["session_id"] : nil, nil)
     return report if session.empty?
 
-    pointer_day = safely { read_pointer_day(store, session) } || today
+    session_day = safely { SessionLedger.session_day(store, session, today: today) } || today
     project = "global"
 
     report[:dropped] = safely do
-      checklist = SessionLedger.checklist_path(store, pointer_day)
+      checklist = SessionLedger.checklist_path(store, session_day)
       count = SessionLedger.flip_all(checklist, from: :pending, to: :dropped, session: session)
       if count.positive?
-        SessionLedger.append_line(SessionLedger.savepoint_path(store, pointer_day),
+        SessionLedger.append_line(SessionLedger.savepoint_path(store, session_day),
                                   SessionLedger.savepoint_line("Note", session, project,
                                                                "dropped #{count} pending lines at close", now: now))
       end
@@ -60,11 +61,11 @@ module SessionClose
     end || 0
 
     # The hand-off (intent 311, spec D6) is written after the drop, so it
-    # reflects it, and before the tmp dir goes, since the pointer lives there.
-    # An intent pointer falls back to today, the same as the drop above.
+    # reflects it, and before the tmp dir goes. A session with no line in the
+    # day ledger's window falls back to today, the same as the drop above.
     if handoff
       report[:handoff] = safely do
-        handoff.call(store, pointer_day, session)
+        handoff.call(store, session_day, session)
         true
       end || false
     end
@@ -75,25 +76,14 @@ module SessionClose
       true
     end || false
 
-    if pointer_day < today
+    if session_day < today
       report[:spawned] = safely do
-        args = ["--day", pointer_day, "--carry-to", today, "--store", store]
+        args = ["--day", session_day, "--carry-to", today, "--store", store]
         spawner.call(args)
         args
       end
     end
     report
-  end
-
-  # The pointer names the intent this session records into; a day id means
-  # the day ledger. Anything else (an intent id) means an auto team owns the
-  # record and the close touches no day ledger.
-  def read_pointer_day(store, session)
-    path = SessionLedger.pointer_path(store, session)
-    return nil unless File.exist?(path)
-
-    value = File.read(path).strip
-    SessionLedger.valid_day_id?(value) ? value : nil
   end
 
   def safely

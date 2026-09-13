@@ -20,7 +20,11 @@ class HookSavepointTest < Minitest::Test
   SCRIPT = File.join(REPO, "scripts", "hook-savepoint")
   LAUNCHER = File.join(REPO, "hooks", "savepoint")
   TEMPLATES = File.join(REPO, "templates")
-  DAY = "20260830"
+  # Real wall-clock today: the script under test computes its own "today" via
+  # SessionLedger.day_id (Time.now), and SessionLedger.session_day only looks
+  # a 7-day window back from that, so a fixture day has to track it rather
+  # than naming a fixed calendar date.
+  DAY = SessionLedger.day_id
   SID = "b7137962-dead-beef"
   SHORT = "b7137962"
 

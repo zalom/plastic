@@ -6,6 +6,7 @@ require "yaml"
 require "fileutils"
 require "digest"
 require "time"
+require "tmpdir"
 require_relative "hook_registry"
 require_relative "agent_models"
 require_relative "harness_text"
@@ -254,7 +255,10 @@ class InstallerCore
 
   # --- Distribution phase ---
 
-  def distribute(mode)
+  # `tmp_dirs:` defaults to the real system tmp directory plus `/tmp` (where a
+  # retired bridge JSON leftover would sit); a test overrides it (often to
+  # `[]`) so the removal never scans the real filesystem's tmp directories.
+  def distribute(mode, tmp_dirs: [Dir.tmpdir, "/tmp"].uniq)
     puts "  \u{1f4e6} #{mode == :update ? "Updating" : "Installing"} core files to #{plastic_home}"
 
     manifest_path = File.join(plastic_home, "manifest.json")
@@ -296,6 +300,8 @@ class InstallerCore
     write_manifest(global_files, manifest_path)
 
     pruned = prune_removed_files(old_files - global_files, root: plastic_home)
+    removed = remove_retired_session_state(plastic_home: plastic_home, tmp_dirs: tmp_dirs)
+    puts "  \u{1f9f9} #{removed} retired session state file(s) removed" if removed.positive?
 
     puts "  \u{2705} Core files synced (v#{version})#{pruned.positive? ? ", #{pruned} stale file(s) pruned" : ""}"
   end
@@ -882,6 +888,43 @@ class InstallerCore
     end
     dirs.uniq.sort_by { |d| -d.length }.each do |d|
       FileUtils.rmdir(d) if File.directory?(d) && Dir.empty?(d)
+    end
+    removed
+  end
+
+  # Intent 344 (G11, D10): leftovers from the retired per-session day pointer
+  # and the retired inter-hook bridge key. Deletes every `store/.tmp/*/current`
+  # under the global store and every project store, plus every bridge JSON
+  # file (`plastic-<session>--<id>.json`) sitting in an injected tmp
+  # directory. Never opens or parses a candidate: a torn or malformed
+  # leftover is deleted by name alone, exactly like a well-formed one. Only a
+  # regular file that is not a symlink is ever a candidate for deletion.
+  # Returns the count removed; a delete failure warns once per path and the
+  # sync continues, since a stuck leftover must never fail an install.
+  def remove_retired_session_state(plastic_home:, tmp_dirs:)
+    candidates = Dir.glob(File.join(plastic_home, "store", ".tmp", "*", "current")) +
+                 Dir.glob(File.join(plastic_home, "projects", "*", "store", ".tmp", "*", "current"))
+
+    Array(tmp_dirs).compact.each do |dir|
+      candidates.concat(Dir.glob(File.join(dir, "plastic-*--*.json")).select do |candidate|
+        File.basename(candidate).match?(/\Aplastic-[^\/]+--[^\/]+\.json\z/)
+      end)
+    end
+
+    removed = 0
+    candidates.uniq.each do |candidate|
+      begin
+        next unless File.lstat(candidate).file?
+      rescue SystemCallError
+        next
+      end
+
+      begin
+        File.delete(candidate)
+        removed += 1
+      rescue SystemCallError => e
+        warn "  \u{26a0}\u{fe0f}  Could not remove retired session state #{candidate}: #{e.message}"
+      end
     end
     removed
   end

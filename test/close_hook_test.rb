@@ -19,8 +19,12 @@ require_relative "../scripts/lib/session_close"
 class CloseHookTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/hook-close", __dir__)
   TEMPLATES = File.expand_path("../templates", __dir__)
-  TODAY = "20260829"
-  YESTERDAY = "20260828"
+  # Real wall-clock today: the spawned hook-close script computes its own
+  # "today" via SessionLedger.day_id (Time.now), and SessionLedger.session_day
+  # only looks a 7-day window back from that, so the subprocess tests below
+  # need fixture days that track it rather than fixed calendar dates.
+  TODAY = SessionLedger.day_id
+  YESTERDAY = SessionLedger.day_id(Time.now - 86_400)
   SID = "b7137962-dead-beef"
   SHORT = "b7137962"
 
