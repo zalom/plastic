@@ -87,7 +87,7 @@ module Runner
     "answer" => %w[--node --answer],
     "rewind" => %w[--node --confirm],
     "until-empty" => %w[--harness],
-    "watch" => %w[--dispatch --harness],
+    "watch" => %w[--dispatch --harness --install-timer --home],
   }.freeze
 
   # The explicit YAML document-end marker (intent 340b, G7c, n1, row 1.28)
@@ -340,12 +340,25 @@ module Runner
   # when the resolved harness's `HarnessAdapter.unattended_start?` is
   # false, so a refusal never leaves a `watch.record` line behind that
   # looks like a completed tick.
+  # --install-timer (intent 340a, G7b, n3, graph.md D9): the Codex carrier.
+  # Writes the plist and prints the path plus the `launchctl load` command;
+  # never runs `launchctl` itself, so the owner stays in control of when the
+  # job actually loads. `--home` defaults to the OS home, as
+  # `scripts/meter-watch --install-timer` already does.
   def run_watch(intent_dir, args)
     dispatch = args.include?("--dispatch")
     harness_override = opt(args, "--harness")
     context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
     agent_config = load_agent_config(context.plastic_home)
     harness = HarnessAdapter.resolve_key(config: agent_config, override: harness_override)
+
+    if args.include?("--install-timer")
+      home = opt(args, "--home") || Dir.home
+      plist_path = RunnerWatch.install_timer(context, home: home, harness_key: harness)
+      puts "plist: #{plist_path}"
+      puts "launchctl load #{plist_path}"
+      exit 0
+    end
 
     if dispatch && !HarnessAdapter.unattended_start?(harness)
       warn HarnessAdapter::UNATTENDED_START_SENTENCE

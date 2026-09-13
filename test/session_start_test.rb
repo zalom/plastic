@@ -867,7 +867,7 @@ class SessionStartWatchTest < Minitest::Test
     File.write(File.join(dir, "#{id}--stalled-demo.md"), "---\nid: \"#{id}\"\nintent: t\n---\n\n## Intent\nbody\n")
     write_graph(dir, "- n1 needs nothing\n")
     write_node(dir, "n1")
-    File.write(File.join(dir, "savepoint.md"), "2026-09-13T00:00:00Z  n1  needs_decision\n")
+    File.write(File.join(dir, "savepoint.md"), "2026-09-13T00:00:00Z  n1  needs_decision question=q\n")
     File.write(File.join(dir, "delivery.lock"), "stale\n")
     dir
   end
