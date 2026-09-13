@@ -358,7 +358,7 @@ class SessionLedgerWritesTest < Minitest::Test
     %i[
       day_id valid_day_id? short_session_id project_slug
       sessions_root day_dir day_file checklist_path savepoint_path
-      tmp_root session_tmp_dir pointer_path heartbeat_path ensure_tmp_root
+      tmp_root session_tmp_dir heartbeat_path ensure_tmp_root
       open_day
       sanitize_summary checklist_line savepoint_line parse_checklist_line checklist_header
       append_line set_state read_locked
