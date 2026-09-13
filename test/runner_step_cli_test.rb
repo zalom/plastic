@@ -154,7 +154,7 @@ class RunnerStepCliTest < Minitest::Test
     assert_equal "n1", entry["node"]
     assert_equal "work", entry["kind"]
     assert_equal "executor", entry["role"]
-    refute_nil entry["packet"]
+    refute_nil entry["input"]
   end
 
   # --- n6, 6.3: step's text output fences the spawn block for a paste -------

@@ -16,7 +16,7 @@ class HarnessAdapterTest < Minitest::Test
   ENTRY = {
     node: "n1", kind: "work", role: "executor", model: "sonnet",
     worktree: "/repo/.claude/worktrees/1--demo--n1",
-    packet: "/store/1--demo/attempts/n1--a1.input",
+    input: "/store/1--demo/attempts/n1--a1.input",
   }.freeze
 
   def capture_stderr
@@ -131,9 +131,9 @@ class HarnessAdapterTest < Minitest::Test
 
   # --- 1.12: the packet path is the whole prompt -------------------------------
 
-  def test_packet_path_is_the_prompt
+  def test_input_path_is_the_prompt
     block = HarnessAdapter.render([ENTRY], harness: "claude-code", return_contract: RETURN_CONTRACT)
-    assert_includes block, ENTRY[:packet]
+    assert_includes block, ENTRY[:input]
   end
 
   # --- 1.13: the return contract renders once, never per node -----------------
@@ -157,8 +157,17 @@ class HarnessAdapterTest < Minitest::Test
     claude = HarnessAdapter.render([ENTRY], harness: "claude-code", return_contract: RETURN_CONTRACT)
     codex = HarnessAdapter.render([ENTRY], harness: "codex", return_contract: RETURN_CONTRACT)
     refute_equal claude, codex
-    assert_includes codex, ENTRY[:packet]
+    assert_includes codex, ENTRY[:input]
     refute_match(/plastic-node-work/, codex)
+  end
+
+  # --- 338a n4, 4.8: the Codex rendering names the input path, never the retired key ---
+
+  def test_codex_rendering_names_the_input_path
+    codex = HarnessAdapter.render([ENTRY], harness: "codex", return_contract: RETURN_CONTRACT)
+    assert_includes codex, "input: /store/1--demo/attempts/n1--a1.input"
+    retired = "pack" + "et"
+    refute_match(/^#{retired}: /, codex, "the codex rendering must not keep a #{retired}: line: #{codex.inspect}")
   end
 
   # --- 1.18: a config-authored key is squashed before it reaches the ledger --

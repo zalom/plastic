@@ -120,20 +120,20 @@ class CodexAdapterTest < Minitest::Test
 
   # --- 6.9: the packet rides on stdin, never as an argument --------------------
 
-  def test_packet_goes_on_stdin
+  def test_input_goes_on_stdin
     stub = write_stub("echo-stdin", <<~RUBY)
       #!/usr/bin/env ruby
       File.write(ARGV[0], $stdin.read)
     RUBY
     out_path = File.join(@tmp, "out.msg")
-    huge_packet = "PACKET-MARKER-#{'x' * 5000}"
+    huge_input = "INPUT-MARKER-#{'x' * 5000}"
 
     argv = [stub, out_path]
-    result = CodexAdapter.execute(argv, stdin_data: huge_packet, timeout_seconds: 5,
+    result = CodexAdapter.execute(argv, stdin_data: huge_input, timeout_seconds: 5,
                                    output_last_message_path: out_path)
 
-    refute_includes argv.join(" "), huge_packet
-    assert_equal huge_packet, result[:message]
+    refute_includes argv.join(" "), huge_input
+    assert_equal huge_input, result[:message]
   end
 
   # --- 6.10: an unknown kind gets the work sandbox -----------------------------
@@ -157,7 +157,7 @@ class CodexAdapterTest < Minitest::Test
     RUBY
     out_path = File.join(@tmp, "out.msg")
 
-    result = CodexAdapter.execute([stub, out_path], stdin_data: "packet", timeout_seconds: 5,
+    result = CodexAdapter.execute([stub, out_path], stdin_data: "input", timeout_seconds: 5,
                                    output_last_message_path: out_path)
 
     assert_equal "node: n1\nstatus: done\ncommit: abc123def456\n", result[:message]
@@ -181,7 +181,7 @@ class CodexAdapterTest < Minitest::Test
     RUBY
     missing_path = File.join(@tmp, "never-written.msg")
 
-    result = CodexAdapter.execute([stub, missing_path], stdin_data: "packet", timeout_seconds: 5,
+    result = CodexAdapter.execute([stub, missing_path], stdin_data: "input", timeout_seconds: 5,
                                    output_last_message_path: missing_path)
 
     parsed = YAML.safe_load(result[:message])
