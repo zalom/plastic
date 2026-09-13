@@ -278,4 +278,31 @@ class ReportScreenNodeProgressTest < Minitest::Test
   def test_unresolvable_entry_still_renders_not_recorded
     assert_equal "not recorded", ReportScreen.roadmap_entry_progress(nil)
   end
+
+  # --- B2 (n6) -----------------------------------------------------------------
+
+  def test_subprocess_roadmap_entry_says_inferred
+    node_ids = %w[n1 n2]
+    make_graph_intent(@home, id: "43", title: "Graph roadmap check", node_ids: node_ids,
+                       ledger_lines: ["2026-09-01T00:10:00Z  Done  delivered\n"], delivered: true)
+    lines = ["# Index", "", "## Active", "",
+             "- [43 - Graph roadmap check](store/43--slug/43--slug.md) - tags",
+             "", "## Future", "", "## Completed", "", "## Abandoned", ""]
+    File.write(File.join(@home, "INDEX.md"), lines.join("\n") + "\n")
+    roadmap_path = File.join(@home, "roadmap.md")
+    File.write(roadmap_path, <<~MD)
+      # Roadmap: Demo
+      ## Goal
+      test.
+      ## Batches
+      ### Batch 1
+      - [ ] 43 Graph roadmap check - queued
+      ## Log
+    MD
+    out, err, status = Open3.capture3("ruby", CLI, "roadmap", roadmap_path, "state", "--store-root", @home)
+    assert_equal 0, status.exitstatus, err
+    row43 = out.lines.find { |l| l.include?("| 43 |") }
+    refute_nil row43, "no roadmap row for 43 in:\n#{out}"
+    assert_includes row43, "inferred"
+  end
 end
