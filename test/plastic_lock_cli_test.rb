@@ -9,7 +9,6 @@ require_relative "../scripts/lib/session_ledger"
 require "rbconfig"
 require "stringio"
 require_relative "../scripts/lib/lock"
-require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/arm"
 require_relative "../scripts/lib/worktree"
 
@@ -193,7 +192,7 @@ class PlasticLockCliTest < Minitest::Test
     FileUtils.mkdir_p(code_wt)
 
     with_worktree(:provision, ->(d, *_a, **_kw) { d }) { repair }
-    after = Arm.bridge_hash(intent_dir: @intent_dir, home: @home)
+    after = Arm.delivery(intent_dir: @intent_dir, home: @home)
     assert_equal code_wt, after.dig("worktree", "code"), "the block is derived from projects.yml and the directory on disk"
 
     recorder = Recorder.new
@@ -217,6 +216,14 @@ class PlasticLockCliTest < Minitest::Test
     refute report.key?("bridge_present"), "the bridge cache fields left in 2.0 (intent 307)"
   end
 
+  def test_status_names_the_intent_id_from_the_dir
+    out, _err, st = cli("status")
+    assert st.success?, out
+    report = JSON.parse(out)
+    assert_equal @intent_dir, report["intent_dir"]
+    assert_equal "sess-1", report["session"]
+  end
+  
   # --- arm (intent 307) ---------------------------------------------------------
 
   def test_cli_arm_takes_the_lock_and_points_the_session

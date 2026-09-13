@@ -189,10 +189,11 @@ class ArmTest < Minitest::Test
     assert_equal true, block["provisioned"]
   end
 
-  def test_bridge_hash_carries_the_intent_store_for_worktree_finish
-    data = Arm.bridge_hash(intent_dir: @dir, home: @home)
+  def test_delivery_carries_the_intent_and_worktree_blocks
+    data = Arm.delivery(intent_dir: @dir, home: @home)
     assert_equal({ "id" => "96", "dir" => "96--demo", "store" => @store }, data["intent"])
     assert data["worktree"].is_a?(Hash)
+    assert_equal %w[code code_branch provisioned].sort, data["worktree"].keys.sort
   end
 
   # --- disarm ------------------------------------------------------------------

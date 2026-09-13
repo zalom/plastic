@@ -29,7 +29,7 @@
 #      end-intent's dirty-worktree handling. abandoned skips this guard entirely: the
 #      branch survives and can be reclaimed, so a dirty worktree is not a reason to
 #      refuse.
-#   2. Finish: Worktree.finish(bridge_data, home:, runner:, merge: disposition ==
+#   2. Finish: Worktree.finish(delivery, home:, runner:, merge: disposition ==
 #      "delivered"). Worktree.finish is fail-open and never raises, so failure is
 #      detected by checking, for a delivered disposition only, whether the worktree
 #      directory still exists on disk afterward (release removes it on success).

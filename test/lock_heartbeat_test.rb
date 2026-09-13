@@ -5,7 +5,6 @@ require "json"
 require "open3"
 require "rbconfig"
 require_relative "../scripts/lib/lock"
-require_relative "../scripts/lib/bridge"
 
 # Lease heartbeat wiring (intent 108 D1, moved in intent 302): owner tool activity
 # refreshes the delivery.lock mtime through the PostToolUse `record` hook, the one

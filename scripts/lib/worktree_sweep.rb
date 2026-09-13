@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 require_relative "worktree"
-require_relative "bridge"
+require_relative "index_entry"
 
 # WorktreeSweep -- the one-time orphan sweep for store worktrees retired by
 # intent 178 (D2). Pure candidate classification plus a thin apply step, both
@@ -62,7 +62,7 @@ module WorktreeSweep
 
   # The INDEX.md section heading (e.g. "Active", "Completed") that lists this
   # intent dir, or nil if no INDEX.md entry links to it. Reuses
-  # Bridge.index_entry_match so this never drifts from the shared parser.
+  # IndexEntry.match so this never drifts from the shared parser.
   def index_status(intent_dir, name)
     store = File.dirname(intent_dir)
     index = File.join(File.dirname(store), "INDEX.md")
@@ -75,7 +75,7 @@ module WorktreeSweep
         section = stripped.sub(/\A##\s*/, "").strip
         next
       end
-      m = Bridge.index_entry_match(stripped)
+      m = IndexEntry.match(stripped)
       next unless m
       return section if m[3].to_s.include?(name)
     end

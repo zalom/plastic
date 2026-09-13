@@ -3,7 +3,6 @@
 
 require "fileutils"
 require_relative "worktree"
-require_relative "bridge"
 require_relative "savepoint"
 require_relative "intent_validator"
 
@@ -21,13 +20,17 @@ require_relative "intent_validator"
 # copy or a mechanical rendering of a committed artifact.
 #
 # Pure and dependency-injected: never calls `exit` or `abort`, never reads `ARGV` or
-# `ENV` directly (only via the ambient `Dir.home` default, matching Bridge/Worktree
+# `ENV` directly (only via the ambient `Dir.home` default, matching this module's own
 # convention). A git seam is injected as `runner:`, defaulting to
 # `Worktree::ShellRunner.new`, so tests drive this in process with a fake runner and
 # never touch real git. Every method returns a value; `scripts/scaffold-intent` maps the
 # returned result to an exit code.
 module ScaffoldIntent
   module_function
+
+  def blank?(value)
+    value.nil? || value.to_s.strip.empty?
+  end
 
   # --- path resolution (pure) --------------------------------------------------
 
@@ -211,7 +214,7 @@ module ScaffoldIntent
       end
     end
 
-    unless Bridge.blank?(test_summary)
+    unless blank?(test_summary)
       out << "\n"
       out << "Test summary from #{test_summary}:\n"
       out << "```\n"

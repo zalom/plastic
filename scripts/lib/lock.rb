@@ -27,13 +27,12 @@ module Lock
   # Skill-invocation prefix per harness (intent 201, D2/D3). Claude Code invokes a
   # skill with a slash (/plastic-doctor); Codex CLI invokes explicitly with a
   # dollar ($plastic-doctor) and may also select one implicitly by matching the
-  # skill's description. This table is the actual source of truth for
-  # Bridge.skill_ref (bridge.rb requires lock.rb, never the reverse, so the
-  # table lives here rather than pulling Bridge into this dependency-free file
-  # just to render two characters). InstallerCore::DEFAULT_AGENTS carries the
-  # same values per adapter as documented config (see ACTION_2); this constant
-  # is not read from it at runtime, by the same reasoning bridge.rb/hook-*
-  # already stay clear of installer_core.rb (spec Alternatives Considered).
+  # skill's description. This table is the package-wide source of truth for
+  # `Lock.skill_ref`; every caller reaches it directly rather than duplicating
+  # the prefix table. InstallerCore::DEFAULT_AGENTS carries the same values per
+  # adapter as documented config (see ACTION_2); this constant is not read from
+  # it at runtime, by the same reasoning this file and hook-* already stay
+  # clear of installer_core.rb (spec Alternatives Considered).
   SKILL_PREFIXES = { "claude" => "/", "codex" => "$" }.freeze
 
   # Renders a skill reference for the given harness. Unset or unrecognized

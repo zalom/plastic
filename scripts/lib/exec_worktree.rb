@@ -2,7 +2,6 @@
 # frozen_string_literal: true
 
 require "open3"
-require_relative "bridge"
 require_relative "arm"
 require_relative "lock"
 require_relative "worktree"
@@ -29,8 +28,8 @@ require_relative "scaffold_intent"
 # fail-open, see the merge-verification note below), `finisher:` (defaults to
 # `Worktree.method(:finish)`), `status_checker:` (defaults to a `git status --porcelain`
 # lambda). Every seam exists so
-# tests run with no real git, no real worktree removal, and no real bridge file outside a
-# tmpdir.
+# tests run with no real git, no real worktree removal, and no real delivery-lock file
+# outside a tmpdir.
 #
 # MERGE VERIFICATION (delivered disposition only). `Worktree.merge_branch` is deliberately
 # fail-open: on a conflict it runs `git merge --abort`, warns, and returns false, and
@@ -39,7 +38,7 @@ require_relative "scaffold_intent"
 # module never trusts the discarded return value; it asks git directly, AFTER finish, whether
 # the intent's code branch is now an ancestor of the repo's current HEAD
 # (`merged_into_current_branch?` below). `repo` and `branch` are captured BEFORE the finisher
-# runs, because finish deletes the bridge's `worktree` block.
+# runs, because finish deletes the delivery's `worktree` block.
 #
 # DOES NOT RUN A TEST SUITE, in any form. `verify-intent` owns test execution; one concern
 # per script (spec D8).
@@ -60,6 +59,10 @@ module ExecWorktree
   # [stdout, stderr, status] triple Open3.capture3 returns (status responds to
   # success?). A raised error (git missing, corrupt repo) is caught and reported as a
   # nil status, so the caller can fail closed the same way a failed exit status would.
+  def blank?(value)
+    value.nil? || value.to_s.strip.empty?
+  end
+
   def default_status_checker
     lambda do |worktree_code|
       Open3.capture3("git", "-C", worktree_code, "status", "--porcelain")
@@ -85,7 +88,7 @@ module ExecWorktree
   # `<repo>/.claude/worktrees/<name>` (scripts/lib/worktree.rb:75), so walking up three
   # directories recovers `<repo>` deterministically, with no I/O and no git.
   def repo_from_worktree_code(worktree_code)
-    return nil if Bridge.blank?(worktree_code)
+    return nil if blank?(worktree_code)
     File.dirname(File.dirname(File.dirname(worktree_code.to_s)))
   end
 
@@ -94,7 +97,7 @@ module ExecWorktree
   # i.e. the merge actually landed. Fails CLOSED (not merged) on a blank repo/branch or a
   # raising runner, so an inconclusive check is never reported as a success.
   def merged_into_current_branch?(runner, repo:, branch:)
-    return false if Bridge.blank?(repo) || Bridge.blank?(branch)
+    return false if blank?(repo) || blank?(branch)
     runner.run("-C", repo, "merge-base", "--is-ancestor", branch, "HEAD").success?
   rescue StandardError
     false
@@ -106,12 +109,12 @@ module ExecWorktree
   # The lock-owner fallback is correct here: this is a teardown step on an intent this
   # session has been delivering.
   def resolve_session(explicit, env_session, intent_dir)
-    return explicit.to_s.strip unless Bridge.blank?(explicit)
-    return env_session.to_s.strip unless Bridge.blank?(env_session)
+    return explicit.to_s.strip unless blank?(explicit)
+    return env_session.to_s.strip unless blank?(env_session)
     lock = Lock.read(intent_dir)
     return nil unless lock
     owner = lock["owner_session"].to_s
-    Bridge.blank?(owner) ? nil : owner
+    blank?(owner) ? nil : owner
   end
 
   # --- result builders (the exit_code/stdout/stderr shape the thin CLIs share) --------
@@ -181,7 +184,7 @@ module ExecWorktree
     merge_line =
       if disposition != "delivered"
         "not attempted (abandoned)"
-      elsif Bridge.blank?(target_branch)
+      elsif blank?(target_branch)
         "merged (integration target branch could not be resolved)"
       else
         "merged into #{target_branch}"
@@ -202,10 +205,10 @@ module ExecWorktree
           runner: Worktree::ShellRunner.new,
           finisher: Worktree.method(:finish),
           status_checker: default_status_checker)
-    return usage_result("--store is required") if Bridge.blank?(store)
-    return usage_result("--id is required") if Bridge.blank?(id)
-    return usage_result("--home is required") if Bridge.blank?(home)
-    return usage_result("--disposition is required") if Bridge.blank?(disposition)
+    return usage_result("--store is required") if blank?(store)
+    return usage_result("--id is required") if blank?(id)
+    return usage_result("--home is required") if blank?(home)
+    return usage_result("--disposition is required") if blank?(disposition)
     unless DISPOSITIONS.include?(disposition)
       return usage_result("--disposition must be one of #{DISPOSITIONS.join('|')} (got #{disposition.inspect})")
     end
@@ -220,16 +223,16 @@ module ExecWorktree
 
     # Step 0: session resolution + pre-flight refusal (D3-mirroring; see resolve_session).
     key_session = resolve_session(session, env_session, intent_dir)
-    if Bridge.blank?(key_session) && File.exist?(Lock.path(intent_dir))
+    if blank?(key_session) && File.exist?(Lock.path(intent_dir))
       return deny_result(EXIT_UNRESOLVED, no_session_message(intent_dir))
     end
 
-    bridge_data = Arm.bridge_hash(intent_dir: intent_dir, home: normalized_home)
-    worktree_code = bridge_data.dig("worktree", "code")
-    return ok_result(nothing_provisioned_message(intent_dir)) if Bridge.blank?(worktree_code)
+    delivery = Arm.delivery(intent_dir: intent_dir, home: normalized_home)
+    worktree_code = delivery.dig("worktree", "code")
+    return ok_result(nothing_provisioned_message(intent_dir)) if blank?(worktree_code)
 
-    branch = bridge_data.dig("worktree", "code_branch")
-    # Captured now, before `finisher.call` below (Worktree.finish) deletes the bridge's
+    branch = delivery.dig("worktree", "code_branch")
+    # Captured now, before `finisher.call` below (Worktree.finish) deletes the delivery's
     # `worktree` block, so the post-finish merge verification (BLOCKING 1/2) still has
     # both `repo` and `branch` to work with.
     repo = repo_from_worktree_code(worktree_code)
@@ -254,7 +257,7 @@ module ExecWorktree
     # disposition only, whether the worktree directory still exists on disk (teardown
     # incomplete); second, for a delivered disposition only, whether the branch actually
     # merged (BLOCKING 1/2, see merged_into_current_branch? above).
-    finisher.call(bridge_data, home: normalized_home, runner: runner,
+    finisher.call(delivery, home: normalized_home, runner: runner,
                   merge: disposition == "delivered")
 
     removed = !Dir.exist?(worktree_code)

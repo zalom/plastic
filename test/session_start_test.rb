@@ -6,8 +6,8 @@ require "open3"
 
 require_relative "../scripts/lib/boot_banner"
 require_relative "../scripts/lib/qmd_sync"
-require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/savepoint"
+require_relative "../scripts/lib/index_entry"
 require_relative "../scripts/lib/session_ledger"
 require_relative "../scripts/lib/packet_wrapper"
 
@@ -300,8 +300,8 @@ class SessionStartStagePathTest < Minitest::Test
   # intent_active? resolves the INDEX as the PARENT of the store dir; home as the store
   # is what once made a live intent look inactive.
   def test_intent_active_resolves_the_index_from_the_store_not_home
-    assert Bridge.intent_active?("231", store: File.join(@home, "store"))
-    refute Bridge.intent_active?("231", store: @home)
+    assert IndexEntry.active?("231", store: File.join(@home, "store"))
+    refute IndexEntry.active?("231", store: @home)
   end
 end
 

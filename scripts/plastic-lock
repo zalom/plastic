@@ -40,7 +40,6 @@
 
 require "json"
 require "yaml"
-require_relative "lib/bridge"
 require_relative "lib/lock"
 require_relative "lib/arm"
 require_relative "lib/session_ledger"
@@ -144,7 +143,7 @@ if verb == "who"
   exit 0
 end
 
-intent_id = Bridge.intent_id_from_dir(dir)
+intent_id = Arm.intent_id_for(dir)
 store = File.dirname(dir)
 key = Arm.resolve_session(session, store: store, intent_id: intent_id)
 

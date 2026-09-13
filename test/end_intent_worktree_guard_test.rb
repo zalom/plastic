@@ -8,7 +8,6 @@ require "open3"
 require "json"
 require "yaml"
 require "rbconfig"
-require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/lock"
 
 # end-intent step 5's dirty-worktree guard (intent 188, D16, AC11/AC12). A

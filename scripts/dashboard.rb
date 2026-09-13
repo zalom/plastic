@@ -100,7 +100,7 @@ end
 # instead, with no end-of-line requirement, so trailing note prose is irrelevant. The
 # separator there may be a real em dash (U+2014, INDEX.md's normal on-write convention,
 # built from the codepoint so this source line stays em-dash free) or a plain hyphen
-# (end-intent's own Bridge.index_entry_match accepts either on read). Because regex
+# (end-intent's own IndexEntry.match accepts either on read). Because regex
 # alternation is leftmost-first, this only ever matches the date immediately after the
 # link. It never continues scanning into the note prose, so a second date mentioned
 # later in a note's free text cannot be mistaken for the completion date. The id class

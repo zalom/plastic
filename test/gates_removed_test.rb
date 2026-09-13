@@ -7,17 +7,21 @@ require "tmpdir"
 require "fileutils"
 require "open3"
 require "rbconfig"
-require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/lock"
+require_relative "../scripts/lib/arm"
+require_relative "../scripts/lib/index_entry"
+require_relative "../scripts/lib/project_config"
 require_relative "../scripts/lib/hook_registry"
 require_relative "../scripts/lib/exec_worktree"
 
 # Intent 302: the edit-path gates are gone. This file is the reverse-dependency
-# acceptance test (spec D8): the removed files do not exist, the removed Bridge
-# methods do not respond, the kept methods the plan review found inside the cut
-# ranges still work, the registry and the installer carry no gate, every script
-# still parses and every lib still loads, and no live file references a removed
-# name outside the retired-name list and the 2.0 removal notes.
+# acceptance test (spec D8): the removed files do not exist, the removed gate
+# methods answer nowhere (the shared-helpers module that used to carry them was
+# itself retired by intent 344), the kept helpers the plan review found inside
+# the cut ranges still work on their new owners, the registry and the installer
+# carry no gate, every script still parses and every lib still loads, and no
+# live file references a removed name outside the retired-name list and the
+# 2.0 removal notes.
 class GatesRemovedTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
 
@@ -63,23 +67,24 @@ class GatesRemovedTest < Minitest::Test
   end
 
   def test_bridge_no_longer_responds_to_the_gate_methods
-    left = REMOVED_BRIDGE_METHODS.select { |m| Bridge.respond_to?(m) }
-    assert_empty left, "Bridge still responds to #{left.inspect}"
-    %i[STAGE_LABELS NEXT_HINTS PLASTIC_OK_RE].each do |c|
-      refute Bridge.const_defined?(c), "Bridge::#{c} only served the gates"
-    end
+    refute Object.const_defined?(:Bridge), "the shared-helpers module must be fully retired (intent 344)"
   end
 
   def test_bridge_still_responds_to_the_kept_methods
-    missing = KEPT_BRIDGE_METHODS.reject { |m| Bridge.respond_to?(m) }
-    assert_empty missing, "Bridge lost #{missing.inspect}"
+    assert Arm.respond_to?(:blank?)
+    assert IndexEntry.respond_to?(:match)
+    assert IndexEntry.respond_to?(:active?)
+    assert Arm.respond_to?(:intent_id_for)
+    assert ProjectConfig.respond_to?(:deep_merge)
+    assert ProjectConfig.respond_to?(:read)
+    assert Lock.respond_to?(:skill_ref)
   end
 
   def test_deep_merge_and_intent_id_from_dir_survive_the_cut
-    merged = Bridge.deep_merge({ "a" => 1, "n" => { "x" => 1 } }, { "n" => { "y" => 2 } })
+    merged = ProjectConfig.deep_merge({ "a" => 1, "n" => { "x" => 1 } }, { "n" => { "y" => 2 } })
     assert_equal({ "a" => 1, "n" => { "x" => 1, "y" => 2 } }, merged)
-    assert_equal "96", Bridge.intent_id_from_dir("/s/store/96--demo")
-    assert_nil Bridge.intent_id_from_dir("/s/store/nodash")
+    assert_equal "96", Arm.intent_id_for("/s/store/96--demo")
+    assert_equal "nodash", Arm.intent_id_for("/s/store/nodash")
   end
 
   def test_read_project_config_returns_merged_defaults_after_the_cut
@@ -87,7 +92,7 @@ class GatesRemovedTest < Minitest::Test
       prev = ENV["HOME"]
       ENV["HOME"] = home
       begin
-        config = Bridge.read_project_config("no-such-project")
+        config = ProjectConfig.read("no-such-project")
         assert_equal ["AGENTS.md"], config["governing_docs"]
         assert_equal "commit", config.dig("release", "on_complete")
       ensure
