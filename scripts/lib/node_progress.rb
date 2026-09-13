@@ -31,18 +31,21 @@ module NodeProgress
     return nil if nodes.nil? || nodes.empty?
 
     status = NodeLedger.status(File.join(intent_dir, "savepoint.md"))
-    done = nodes.count { |n| status[n] == "done" }
-    running = nodes.count { |n| status[n] == "running" }
-    total = nodes.length
+    superseded = nodes.count { |n| status[n] == "superseded" }
+    abandoned = nodes.count { |n| status[n] == "abandoned" }
+    remaining = nodes.reject { |n| status[n] == "superseded" || status[n] == "abandoned" }
+    done = remaining.count { |n| status[n] == "done" }
+    running = remaining.count { |n| status[n] == "running" }
+    total = remaining.length
 
-    inferred = done.zero? && delivered?(intent_dir, store_root)
+    inferred = done.zero? && total.positive? && delivered?(intent_dir, store_root)
     done = total if inferred
 
     {
       "progress.bar" => bar_for(done, total),
       "progress.done" => done.to_s,
       "progress.total" => total.to_s,
-      "progress.note" => note_for(done, total, running, inferred),
+      "progress.note" => note_for(done, total, running, inferred, superseded, abandoned),
       "progress.unit" => "nodes",
     }
   rescue StandardError
@@ -74,15 +77,34 @@ module NodeProgress
   end
   private_class_method :bar_for
 
-  # D8's four exact note strings.
-  def note_for(done, total, running, inferred)
+  # D8's four exact note strings, plus a superseded/abandoned suffix (n6, B1):
+  # a node whose resolved state is superseded or abandoned leaves the total
+  # and the numerator, and the note names it, superseded first, appended as
+  # ", K superseded" and/or ", J abandoned". Unchanged when there are none of
+  # either. The inferred case never carries a suffix: it counts the already-
+  # reduced total, so the note stays exactly "inferred: delivered before the
+  # node ledger".
+  def note_for(done, total, running, inferred, superseded, abandoned)
     return "inferred: delivered before the node ledger" if inferred
 
-    open = total - done
-    return "all nodes done" if open.zero?
-    return "#{open} nodes open, #{running} running" if running.positive?
+    base =
+      if total.zero?
+        "no nodes counted"
+      else
+        open = total - done
+        if open.zero?
+          "all nodes done"
+        elsif running.positive?
+          "#{open} nodes open, #{running} running"
+        else
+          "#{open} nodes open"
+        end
+      end
 
-    "#{open} nodes open"
+    suffix = []
+    suffix << "#{superseded} superseded" if superseded.positive?
+    suffix << "#{abandoned} abandoned" if abandoned.positive?
+    suffix.empty? ? base : "#{base}, #{suffix.join(', ')}"
   end
   private_class_method :note_for
 
@@ -114,13 +136,17 @@ module NodeProgress
   end
   private_class_method :index_completed?
 
+  # Only a Done line whose text begins with "delivered" proves delivered (n6,
+  # B3): end-intent writes "Done  delivered" or "Done  abandoned"
+  # (scripts/end-intent, Savepoint.append_terminal_savepoint), and only the
+  # first disposition is delivery.
   def done_savepoint_line?(intent_dir)
     path = File.join(intent_dir, "savepoint.md")
     return false unless File.exist?(path)
 
     File.read(path).scrub.each_line.any? do |line|
       m = line.strip.match(IntentScreen::SAVEPOINT_RE)
-      m && m[2] == "Done"
+      m && m[2] == "Done" && m[3].to_s.start_with?("delivered")
     end
   end
   private_class_method :done_savepoint_line?

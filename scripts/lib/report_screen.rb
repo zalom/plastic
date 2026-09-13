@@ -1725,7 +1725,8 @@ def self.matching_action_heading(intent_dir, label)
     items = IntentScreen.checklist_items(dir)
     fields = NodeProgress.fields(dir) || IntentScreen.progress_fields(items)
     unit = fields["progress.unit"] ? " #{fields['progress.unit']}" : ""
-    "#{fields['progress.bar']} #{fields['progress.done']} / #{fields['progress.total']}#{unit}"
+    inferred = fields["progress.note"].to_s.start_with?("inferred") ? " inferred" : ""
+    "#{fields['progress.bar']} #{fields['progress.done']} / #{fields['progress.total']}#{unit}#{inferred}"
   end
 
   def self.roadmap_progress_bar(done, total)
