@@ -114,6 +114,21 @@ class RunnerWatchCliTest < Minitest::Test
     refute File.exist?(state_path), "a refused --dispatch must write no watch.state either"
   end
 
+  # --- 5.4: --dispatch --harness codex on an unheld lock records lock=not_held ----
+
+  def test_subprocess_dispatch_on_codex_without_the_lock_records_not_held
+    write_graph("- n1 needs nothing\n")
+    write_node("n1")
+
+    out, err, status = run_cli("watch", @dir, "--dispatch", "--harness", "codex")
+
+    assert_equal 0, status.exitstatus, out + err
+    assert_includes out, "dispatched: (none)"
+    line = File.read(record_path).each_line.to_a.first
+    assert_match(/lock=not_held/, line)
+    assert_match(/dispatched=-/, line)
+  end
+
   # --- 3.2: --install-timer writes the delivery-watch plist and prints the load line ---
 
   def test_install_timer_writes_a_delivery_watch_plist
