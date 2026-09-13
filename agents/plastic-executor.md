@@ -67,4 +67,5 @@ verification, checklist deltas, deviations, blockers, insights) plus the executo
 - Do not claim done until the full suite is green; show the final summary
 - Every test, file, and symbol you name comes from the same concept family: graph engineering,
   the Plastic concepts coined on top of it, and the software and AI engineering concepts those
-  rest on
+  rest on; a name from outside that stack is refused, and a gap is a design finding to raise,
+  not a word to coin

@@ -3,14 +3,15 @@
 
 require "minitest/autorun"
 
-# NamingRuleTest (intent 337a, node n5, D13/D14): a thing is named after the
-# concept family it lives under. This test pins the owner's naming paragraph
-# in PLASTIC.md and in the knowledge-graph conventions chapter, and pins one
-# carrying sentence in each of the enforcer and executor agent files, without
-# letting either agent file drift out of its current section shape.
+# NamingRuleTest (intent 337a, node n5, D13/D14 amended): a thing is named
+# after the concept family it lives under. PLASTIC.md carries no copy (the
+# per-boot budget and the doctrine-305 gate word refuse it there); the
+# knowledge-graph conventions chapter carries the paragraph verbatim, and the
+# enforcer and executor agent files each carry one sentence that agrees with
+# the chapter, without letting either agent file drift out of its current
+# section shape.
 class NamingRuleTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
-  PLASTIC_MD = File.join(REPO, "PLASTIC.md")
   KNOWLEDGE_GRAPH_MD = File.join(REPO, "skills", "conventions", "references", "knowledge-graph.md")
   ENFORCER_MD = File.join(REPO, "agents", "plastic-enforcer.md")
   EXECUTOR_MD = File.join(REPO, "agents", "plastic-executor.md")
@@ -32,27 +33,9 @@ class NamingRuleTest < Minitest::Test
     section_lines.join.strip
   end
 
-  def test_plastic_md_has_a_naming_section
-    body = File.read(PLASTIC_MD)
-    all_headings = headings(body)
-
-    assert_includes all_headings, "## Naming", "PLASTIC.md is missing a '## Naming' section"
-
-    house_style_index = all_headings.index("## House Style (self-check)")
-    qmd_index = all_headings.index { |h| h.start_with?("## QMD, Enola") }
-    naming_index = all_headings.index("## Naming")
-
-    refute_nil house_style_index, "PLASTIC.md is missing '## House Style (self-check)'"
-    refute_nil qmd_index, "PLASTIC.md is missing the '## QMD, Enola, and Serena' heading"
-    assert_equal house_style_index + 1, naming_index,
-      "'## Naming' must sit directly after '## House Style (self-check)'"
-    assert_equal naming_index + 1, qmd_index,
-      "'## Naming' must sit directly before '## QMD, Enola, and Serena'"
-  end
-
   def test_naming_paragraph_names_the_three_families
-    raw = section_body(File.read(PLASTIC_MD), "Naming")
-    refute_nil raw, "PLASTIC.md has no '## Naming' section body"
+    raw = section_body(File.read(KNOWLEDGE_GRAPH_MD), "Naming")
+    refute_nil raw, "knowledge-graph.md has no '## Naming' section body"
     paragraph = raw.gsub(/\s+/, " ")
 
     assert_match(/graph engineering/, paragraph)
@@ -64,8 +47,8 @@ class NamingRuleTest < Minitest::Test
   end
 
   def test_naming_paragraph_states_refusal_and_the_design_finding_route
-    raw = section_body(File.read(PLASTIC_MD), "Naming")
-    refute_nil raw, "PLASTIC.md has no '## Naming' section body"
+    raw = section_body(File.read(KNOWLEDGE_GRAPH_MD), "Naming")
+    refute_nil raw, "knowledge-graph.md has no '## Naming' section body"
     paragraph = raw.gsub(/\s+/, " ")
 
     assert_match(/A name from outside that stack is refused\./, paragraph)
@@ -82,17 +65,29 @@ class NamingRuleTest < Minitest::Test
     assert_match(/A thing is named after the concept family it lives under\./, paragraph)
   end
 
-  def test_the_two_copies_agree
-    normalize = ->(text) { text.gsub(/\s+/, " ").strip }
+  def test_the_sentences_agree_with_the_chapter
+    chapter_paragraph = section_body(File.read(KNOWLEDGE_GRAPH_MD), "Naming").gsub(/\s+/, " ")
+    refute_nil chapter_paragraph, "knowledge-graph.md has no '## Naming' section body"
 
-    plastic_paragraph = section_body(File.read(PLASTIC_MD), "Naming")
-    conventions_paragraph = section_body(File.read(KNOWLEDGE_GRAPH_MD), "Naming")
+    enforcer_body = File.read(ENFORCER_MD).gsub(/\s+/, " ")
+    executor_raw = section_body(File.read(EXECUTOR_MD), "Constraints")
+    refute_nil executor_raw, "plastic-executor.md has no '## Constraints' section body"
+    executor_body = executor_raw.gsub(/\s+/, " ")
 
-    refute_nil plastic_paragraph, "PLASTIC.md has no '## Naming' section body"
-    refute_nil conventions_paragraph, "knowledge-graph.md has no '## Naming' section body"
+    [["enforcer", enforcer_body], ["executor", executor_body]].each do |name, body|
+      assert_match(/graph engineering/, body, "#{name} sentence drops graph engineering")
+      assert_match(/Plastic concepts coined on top of it/, body,
+        "#{name} sentence drops the Plastic-concepts family")
+      assert_match(/software and AI engineering/, body,
+        "#{name} sentence drops the software and AI engineering family")
 
-    assert_equal normalize.call(plastic_paragraph), normalize.call(conventions_paragraph),
-      "the PLASTIC.md and knowledge-graph.md naming paragraphs must agree after whitespace normalization"
+      names_refusal = body.match?(/is refused/)
+      names_design_finding_route = body.match?(/design finding to raise, not a word to coin/)
+      assert names_refusal || names_design_finding_route,
+        "#{name} sentence states neither the refusal nor the design-finding route the chapter states"
+    end
+
+    assert_match(/graph engineering/, chapter_paragraph)
   end
 
   def test_enforcer_carries_the_naming_sentence

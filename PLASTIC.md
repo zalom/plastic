@@ -127,15 +127,6 @@ question-cluster at a time; reasoning stays in the thinking channel. Tables are 
 for discovery deposits, research reports, and agent reports, and required for any listing of
 intents or multi-factor comparison.
 
-## Naming
-
-A thing is named after the concept family it lives under. A node is a graph-engineering
-concept, so its name comes from graph engineering (node, edge, ready set, critical path),
-from the Plastic concepts coined on top of it (intent, ledger, packet, lease, gate, runner),
-and from the software and AI engineering concepts those rest on (review, fix, test, verify,
-dispatch, executor, reviewer). A name from outside that stack is refused. Where no existing
-concept fits, that is a design finding to raise, not a word to coin.
-
 ## QMD, Enola, and Serena
 
 Recommendations, not obligations, and only when present. QMD: prefer `qmd search` /
