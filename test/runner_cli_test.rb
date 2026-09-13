@@ -305,7 +305,7 @@ class RunnerCliTest < Minitest::Test
     write_node("n1.md", node: "n1", kind: "work")
     write_node("n2.md", node: "n2", kind: "work")
     write_savepoint(line("n1", "running", holder: "auto-1", expires: "2026-09-10T11:00:00Z",
-                              packet: "abc", model: "sonnet"))
+                              input: "abc", model: "sonnet"))
 
     out, err, status = run_cli("status", @dir)
     assert_equal 0, status.exitstatus, err
@@ -429,7 +429,7 @@ class RunnerCliTest < Minitest::Test
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_savepoint(line("n1", "running", holder: "auto-1", expires: "2000-01-01T00:00:00Z",
-                              packet: "abc", model: "sonnet"))
+                              input: "abc", model: "sonnet"))
 
     out, err, status = run_cli("sweep", @dir)
     assert_equal 0, status.exitstatus, out + err
@@ -471,7 +471,7 @@ class RunnerCliTest < Minitest::Test
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_savepoint(line("n1", "running", holder: holder, expires: "2099-01-01T00:00:00Z",
-                              packet: "abc", model: "sonnet"))
+                              input: "abc", model: "sonnet"))
   end
 
   def write_return_file(node: "n1", status: "done", commit: "exec1234")
@@ -526,7 +526,7 @@ class RunnerCliTest < Minitest::Test
     write_node("n1.md", node: "n1", kind: "work", files: [])
     session = "drift-session"
     write_savepoint(line("n1", "running", holder: session, expires: "2099-01-01T00:00:00Z",
-                              packet: "abc", model: "sonnet"))
+                              input: "abc", model: "sonnet"))
     write_lock(@dir, owner: session)
 
     doc = { "node" => "n1", "status" => "failed_verification", "reason" => "synthetic" }
@@ -668,7 +668,7 @@ class RunnerCliTest < Minitest::Test
     write_node("n1.md", node: "n1", kind: "work")
     session = "malformed-return-session"
     write_savepoint(line("n1", "running", holder: session, expires: "2099-01-01T00:00:00Z",
-                              packet: "abc", model: "sonnet"))
+                              input: "abc", model: "sonnet"))
     write_lock(@dir, owner: session)
 
     doc = { "node" => "n1", "status" => "failed_verification", "reason" => "ci broke" }

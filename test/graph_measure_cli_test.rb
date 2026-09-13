@@ -65,7 +65,7 @@ class GraphMeasureCliTest < Minitest::Test
     MD
   end
 
-  RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", packet: "abc123", model: "sonnet" }.freeze
+  RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", input: "abc123", model: "sonnet" }.freeze
 
   def write_happy_path_fixture
     write_graph("- n1 needs nothing\n")

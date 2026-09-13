@@ -288,7 +288,7 @@ class RunnerRewindTest < Minitest::Test
     write_work_node("n2")
     write_savepoint(
       line("n1", "done", gates: "g", commit: "c1") +
-      line("n2", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p", model: "sonnet")
+      line("n2", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p", model: "sonnet")
     )
 
     result = RunnerRewind.rewind(build_context, node: "n1", confirm: true, runner: RefusingToRunRunner.new)

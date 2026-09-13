@@ -132,7 +132,7 @@ class NodePacketReadersTest < Minitest::Test
 
   def test_every_transition_line_for_the_node_is_carried_in_file_order
     append_ledger("2026-09-01T00:00:00Z  n1  planned\n")
-    append_ledger("2026-09-01T00:01:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z packet=abc model=sonnet\n")
+    append_ledger("2026-09-01T00:01:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z input=abc model=sonnet\n")
     append_ledger("2026-09-01T00:02:00Z  n1  failed_verification gates=lint reason=\"missed a case\"\n")
     text = NodePacket.ledger_lines_block(intent_dir: @dir, node: "n1")
     lines = text.split("\n")
@@ -142,7 +142,7 @@ class NodePacketReadersTest < Minitest::Test
 
   def test_the_last_failed_verification_line_carries_its_reason
     append_ledger("2026-09-01T00:00:00Z  n1  failed_verification gates=lint reason=\"first mistake\"\n")
-    append_ledger("2026-09-01T00:01:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z packet=abc model=sonnet\n")
+    append_ledger("2026-09-01T00:01:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z input=abc model=sonnet\n")
     append_ledger("2026-09-01T00:02:00Z  n1  failed_verification gates=lint reason=\"second mistake\"\n")
     text = NodePacket.ledger_lines_block(intent_dir: @dir, node: "n1")
     assert_includes text, "second mistake"
@@ -206,7 +206,7 @@ class NodePacketReadersTest < Minitest::Test
   # B12: entries pre-read for the lease too, closing the loop for the block
   # the finding cites by name (Lease disagreeing with Transitions).
   def test_lease_block_uses_the_pre_read_entries_instead_of_re_reading
-    append_ledger("2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z packet=abc model=sonnet\n")
+    append_ledger("2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z input=abc model=sonnet\n")
     stale_entries = [{ subject: "n1", torn: false, state: "running",
                         fields: { "holder" => "STALE-HOLDER", "expires" => "later", "model" => "haiku" } }]
     text = NodePacket.lease_block(intent_dir: @dir, node: "n1", entries: stale_entries)
@@ -215,7 +215,7 @@ class NodePacketReadersTest < Minitest::Test
   end
 
   def test_without_flags_the_last_running_line_is_the_lease
-    append_ledger("2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z packet=abc model=sonnet\n")
+    append_ledger("2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z input=abc model=sonnet\n")
     text = NodePacket.lease_block(intent_dir: @dir, node: "n1")
     assert_includes text, "h1"
     assert_includes text, "sonnet"
@@ -241,7 +241,7 @@ class NodePacketReadersTest < Minitest::Test
   end
 
   def test_lease_missing_is_false_when_a_running_line_is_recorded
-    append_ledger("2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z packet=abc model=sonnet\n")
+    append_ledger("2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z input=abc model=sonnet\n")
     entries = NodeLedger.entries(savepoint_path)
     refute NodePacket.lease_missing?(node: "n1", holder: nil, expires: nil, model: nil, entries: entries)
   end

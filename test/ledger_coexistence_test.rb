@@ -63,7 +63,7 @@ class LedgerCoexistenceTest < Minitest::Test
   def test_rebuild_preserves_transition_line_relative_order
     l1 = transition_line(subject: "n1", state: "planned", now: Time.utc(2026, 9, 8, 10, 0, 0))
     l2 = transition_line(subject: "n1", state: "running",
-                          fields: { holder: "x", expires: "2026-09-08T11:00:00Z", packet: "p", model: "sonnet" },
+                          fields: { holder: "x", expires: "2026-09-08T11:00:00Z", input: "p", model: "sonnet" },
                           now: Time.utc(2026, 9, 8, 10, 5, 0))
     l3 = transition_line(subject: "n1", state: "done", fields: { gates: "suite", commit: "abc" },
                           now: Time.utc(2026, 9, 8, 10, 10, 0))
@@ -162,7 +162,7 @@ class LedgerCoexistenceTest < Minitest::Test
       "2026-07-01T00:00:00Z  What  1--demo.md\n" \
       "2026-07-01T00:01:00Z  Why  spec.md created\n" +
       transition_line(subject: "n1", state: "running",
-                       fields: { holder: "x", expires: "2026-09-08T11:00:00Z", packet: "p", model: "sonnet" })
+                       fields: { holder: "x", expires: "2026-09-08T11:00:00Z", input: "p", model: "sonnet" })
     )
     fields = IntentScreen.savepoint_fields(@dir, "")
     assert_equal "How", fields["stage"]
@@ -176,7 +176,7 @@ class LedgerCoexistenceTest < Minitest::Test
 
   def test_a_transition_line_renders_whole_as_the_savepoint_field
     line = transition_line(subject: "n1", state: "running",
-                            fields: { holder: "x", expires: "2026-09-08T11:00:00Z", packet: "p", model: "sonnet" })
+                            fields: { holder: "x", expires: "2026-09-08T11:00:00Z", input: "p", model: "sonnet" })
     write_savepoint("2026-07-01T00:00:00Z  What  1--demo.md\n" + line)
     fields = IntentScreen.savepoint_fields(@dir, "")
     assert_match(/holder=x/, fields["savepoint"])
@@ -211,7 +211,7 @@ class LedgerCoexistenceTest < Minitest::Test
     write_savepoint(
       "2026-07-01T00:00:00Z  What  1--demo.md\n" +
       transition_line(subject: "n1", state: "running",
-                       fields: { holder: "x", expires: "2026-09-08T11:00:00Z", packet: "p", model: "sonnet" })
+                       fields: { holder: "x", expires: "2026-09-08T11:00:00Z", input: "p", model: "sonnet" })
     )
     checks = doctor.check_intent_end("1")
     result = find(checks, "intent_savepoint_truthful")

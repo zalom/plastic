@@ -28,7 +28,7 @@ class CrossHarnessResumeTest < Minitest::Test
 
   def test_reports_node_and_both_keys
     content = line("n1", "running", holder: "h1", expires: "2026-01-01T01:00:00Z",
-                                     packet: "deadbeef", model: "sonnet", harness: "claude-code") +
+                                     input: "deadbeef", model: "sonnet", harness: "claude-code") +
               line("n1", "done", gates: "integrity", commit: "aaa1111", harness: "codex")
 
     result = HarnessAdapter.cross_harness_resume(entries_for(content))
@@ -42,7 +42,7 @@ class CrossHarnessResumeTest < Minitest::Test
 
   def test_single_harness_reports_nothing
     content = line("n1", "running", holder: "h1", expires: "2026-01-01T01:00:00Z",
-                                     packet: "deadbeef", model: "sonnet", harness: "claude-code") +
+                                     input: "deadbeef", model: "sonnet", harness: "claude-code") +
               line("n1", "done", gates: "integrity", commit: "aaa1111", harness: "claude-code")
 
     assert_empty HarnessAdapter.cross_harness_resume(entries_for(content))
@@ -52,7 +52,7 @@ class CrossHarnessResumeTest < Minitest::Test
 
   def test_ledger_without_harness_field_reports_nothing
     content = line("n1", "running", holder: "h1", expires: "2026-01-01T01:00:00Z",
-                                     packet: "deadbeef", model: "sonnet") +
+                                     input: "deadbeef", model: "sonnet") +
               line("n1", "done", gates: "integrity", commit: "aaa1111")
 
     assert_empty HarnessAdapter.cross_harness_resume(entries_for(content))
@@ -62,7 +62,7 @@ class CrossHarnessResumeTest < Minitest::Test
 
   def test_torn_lines_ignored
     content = line("n1", "running", holder: "h1", expires: "2026-01-01T01:00:00Z",
-                                     packet: "deadbeef", model: "sonnet", harness: "claude-code") +
+                                     input: "deadbeef", model: "sonnet", harness: "claude-code") +
               # torn: a running line missing the required packet=/model= fields
               line("n1", "running", holder: "h1", harness: "third-harness") +
               line("n1", "done", gates: "integrity", commit: "aaa1111", harness: "codex")
@@ -77,12 +77,12 @@ class CrossHarnessResumeTest < Minitest::Test
 
   def test_reports_landed_commits_per_harness
     content = line("n1", "running", holder: "h1", expires: "2026-01-01T01:00:00Z",
-                                     packet: "deadbeef", model: "sonnet", harness: "claude-code") +
+                                     input: "deadbeef", model: "sonnet", harness: "claude-code") +
               line("n1", "failed_verification", gates: "integrity", reason: "call_budget",
                                                   commit: "aaa1111", harness: "claude-code") +
               line("n1", "reclaimed", holder: "h1", expired: "2026-01-01T02:00:00Z") +
               line("n1", "running", holder: "h2", expires: "2026-01-01T03:00:00Z",
-                                     packet: "deadbeef", model: "sonnet", harness: "codex") +
+                                     input: "deadbeef", model: "sonnet", harness: "codex") +
               line("n1", "done", gates: "integrity", commit: "bbb2222", harness: "codex")
 
     result = HarnessAdapter.cross_harness_resume(entries_for(content))
@@ -94,11 +94,11 @@ class CrossHarnessResumeTest < Minitest::Test
 
   def test_starting_harness_reported_first
     content = line("n1", "running", holder: "h1", expires: "2026-01-01T01:00:00Z",
-                                     packet: "deadbeef", model: "sonnet", harness: "codex") +
+                                     input: "deadbeef", model: "sonnet", harness: "codex") +
               line("n1", "failed_verification", gates: "integrity", reason: "call_budget",
                                                   harness: "codex") +
               line("n1", "running", holder: "h2", expires: "2026-01-01T02:00:00Z",
-                                     packet: "deadbeef", model: "sonnet", harness: "claude-code") +
+                                     input: "deadbeef", model: "sonnet", harness: "claude-code") +
               line("n1", "done", gates: "integrity", commit: "ccc3333", harness: "claude-code")
 
     result = HarnessAdapter.cross_harness_resume(entries_for(content))
@@ -110,10 +110,10 @@ class CrossHarnessResumeTest < Minitest::Test
 
   def test_reads_across_reclaimed_line
     content = line("n1", "running", holder: "h1", expires: "2026-01-01T01:00:00Z",
-                                     packet: "deadbeef", model: "sonnet", harness: "claude-code") +
+                                     input: "deadbeef", model: "sonnet", harness: "claude-code") +
               line("n1", "reclaimed", holder: "h1", expired: "2026-01-01T02:00:00Z") +
               line("n1", "running", holder: "h2", expires: "2026-01-01T03:00:00Z",
-                                     packet: "deadbeef", model: "sonnet", harness: "codex") +
+                                     input: "deadbeef", model: "sonnet", harness: "codex") +
               line("n1", "done", gates: "integrity", commit: "ddd4444", harness: "codex")
 
     result = HarnessAdapter.cross_harness_resume(entries_for(content))
@@ -126,10 +126,10 @@ class CrossHarnessResumeTest < Minitest::Test
 
   def test_scans_every_node
     content = line("n1", "running", holder: "h1", expires: "2026-01-01T01:00:00Z",
-                                     packet: "deadbeef", model: "sonnet", harness: "claude-code") +
+                                     input: "deadbeef", model: "sonnet", harness: "claude-code") +
               line("n1", "done", gates: "integrity", commit: "aaa1111", harness: "claude-code") +
               line("n2", "running", holder: "h1", expires: "2026-01-01T01:00:00Z",
-                                     packet: "deadbeef", model: "sonnet", harness: "claude-code") +
+                                     input: "deadbeef", model: "sonnet", harness: "claude-code") +
               line("n2", "done", gates: "integrity", commit: "bbb2222", harness: "codex")
 
     result = HarnessAdapter.cross_harness_resume(entries_for(content))

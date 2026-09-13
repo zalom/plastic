@@ -120,7 +120,7 @@ module OutcomeReport
   # --- n2: the generator -------------------------------------------------------
 
   PLACEHOLDER_SUMMARY = "(what was delivered)"
-  NON_EVIDENCE_FIELD_KEYS = %w[holder expires packet model gates commit verdict reason question by expired suite].freeze
+  NON_EVIDENCE_FIELD_KEYS = %w[holder expires input model gates commit verdict reason question by expired suite].freeze
 
   # D14: a pipe in any generated table cell (or bullet line) is replaced with a
   # forward slash, never escaped - ReportScreen.table_rows splits on the bare

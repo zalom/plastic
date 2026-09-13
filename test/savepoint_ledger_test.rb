@@ -236,7 +236,7 @@ class SavepointLedgerTest < Minitest::Test
   # never torn.
   def test_pre_harness_ledger_still_parses
     pre_change_line = "2026-01-01T00:00:00Z  n1  running holder=auto-1 " \
-                       "expires=2026-01-01T01:00:00Z packet=abc123 model=sonnet\n"
+                       "expires=2026-01-01T01:00:00Z input=abc123 model=sonnet\n"
     entries = NodeLedger.entries_from_content(pre_change_line)
     entry = entries.first
     refute_nil entry, "a pre-harness running line must still parse as a transition candidate"

@@ -144,8 +144,8 @@ class RunnerWatchTest < Minitest::Test
     "#{ts}  #{subject}  #{state}#{rendered}\n"
   end
 
-  def running_fields(expires:, holder: "auto-abc", packet: "deadbeef", model: "sonnet")
-    { holder: holder, expires: expires, packet: packet, model: model }
+  def running_fields(expires:, holder: "auto-abc", input: "deadbeef", model: "sonnet")
+    { holder: holder, expires: expires, input: input, model: model }
   end
 
   def write_state(fingerprint:, quiet_ticks:, tick:, at: "2026-09-13T00:00:00Z")

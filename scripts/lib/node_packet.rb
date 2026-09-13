@@ -760,7 +760,7 @@ module NodePacket
 
   # C21: the number of `running` lines already recorded for `node`, plus one
   # when a lease is being supplied by flag (a NEW dispatch), floored at 1.
-  # Minor 5: a torn `running` line (missing holder=/expires=/packet=/model=)
+  # Minor 5: a torn `running` line (missing holder=/expires=/input=/model=)
   # is skipped here exactly as ReadySet.attempts_count already skips it -
   # counting it desynchronizes this attempt number from the extensions file
   # a live node's own `packets/<node>--a<N>.extensions` names, since that
@@ -781,7 +781,7 @@ module NodePacket
   end
 
   def running_command(intent_dir:, node:, sha:, hop_tokens:)
-    "node-transition #{intent_dir} --node #{node} --state running --field packet=#{sha} --field hop=#{hop_tokens}"
+    "node-transition #{intent_dir} --node #{node} --state running --field input=#{sha} --field hop=#{hop_tokens}"
   end
 
   def needs_decision_command(intent_dir:, node:, question:)

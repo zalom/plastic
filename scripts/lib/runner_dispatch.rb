@@ -267,7 +267,7 @@ module RunnerDispatch
     # Row 1.19/1.20/D21: harness= rides alongside model= on every `running`
     # line, resolved once by the caller through HarnessAdapter and threaded
     # straight through here - never re-resolved, never a literal.
-    fields = { holder: holder, expires: expires, packet: build_result[:sha], model: model, harness: harness,
+    fields = { holder: holder, expires: expires, input: build_result[:sha], model: model, harness: harness,
                calls: calls_cap }
 
     result = begin

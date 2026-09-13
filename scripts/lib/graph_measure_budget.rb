@@ -209,7 +209,7 @@ module GraphMeasureBudget
 
   def build_attempt(dir, subject, attempt_number, entry, declared_budget)
     fields = entry[:fields] || {}
-    packet_sha_declared = present?(fields["packet"]) ? fields["packet"] : :unavailable
+    packet_sha_declared = present?(fields["input"]) ? fields["input"] : :unavailable
     # D8: hop= is written once, on the running line; absent means no hop
     # block was appended (the feature predates this line, or hop is off),
     # never an unknown quantity to subtract.

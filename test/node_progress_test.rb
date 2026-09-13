@@ -61,7 +61,7 @@ class NodeProgressTest < Minitest::Test
   def running_line(subject, extra = {})
     NodeLedger.transition_line(subject: subject, state: "running",
                                 fields: { holder: "auto-a", expires: "2026-09-12T19:00:00Z",
-                                          packet: "abc123", model: "sonnet" }.merge(extra))
+                                          input: "abc123", model: "sonnet" }.merge(extra))
   end
 
   # --- 1.1 / 1.2: graph-era gate -----------------------------------------------
