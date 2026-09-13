@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
+require_relative "../scripts/lib/harness_adapter"
 
 # Structural test (intent 201, AC8): docs/reference/harness-adapters.md documents the
 # skill-invocation prefix for each adapter. Modeled on
@@ -57,5 +58,40 @@ class HarnessAdaptersDocTest < Minitest::Test
     assert_includes body, "20 ms"
     assert_includes body, "2 s"
     assert_match(/stale[^.]*PENDING[^.]*NOSCREEN/, body)
+  end
+
+  # --- Delivery watch (intent 340a, G7b, n4) ----------------------------------
+
+  def test_documents_unattended_start_honestly
+    body = normalized_body
+    assert_includes body, "## Delivery watch"
+    assert_includes body, "unattended continuation is delivered on both harnesses"
+    assert_includes body, "unattended start"
+    assert_includes body, "only where a Ruby loop owns dispatch"
+    assert_includes body, "Codex"
+    assert_includes body, "parked on Claude Code"
+    assert_includes body, "Q6"
+  end
+
+  def test_unattended_start_sentence_matches_the_adapter
+    body = normalized_body
+    assert_includes body, HarnessAdapter::UNATTENDED_START_SENTENCE
+  end
+
+  def test_documents_the_watch_timer_per_harness
+    body = normalized_body
+    assert_includes body, "/loop"
+    assert_includes body, "runner watch"
+    assert_includes body, "SessionStart"
+    assert_includes body, "--install-timer"
+    assert_includes body, "launchctl"
+    assert_includes body, "--dispatch --harness codex"
+  end
+
+  GUIDE = File.join(ROOT, "docs", "guides", "using-plastic-with-claude-code.md")
+
+  def test_claude_code_guide_names_the_watch_loop
+    body = File.read(GUIDE).gsub(/\s+/, " ")
+    assert_includes body, "runner watch"
   end
 end
