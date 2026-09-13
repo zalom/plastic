@@ -7,6 +7,7 @@ require "fileutils"
 require "json"
 require_relative "../scripts/lib/session_ledger"
 require_relative "../scripts/lib/day_summary"
+require_relative "../scripts/lib/lock"
 
 # Intent 311: the day summary is what SessionStart injects, a bounded
 # rendering of the day ledger, the live locks, and the heartbeats. In
@@ -50,14 +51,14 @@ class DaySummaryTest < Minitest::Test
     File.write(path, body)
   end
 
-  def intent(store, dirname, lock_age: nil, savepoint: nil, run_mode: "auto")
+  def intent(store, dirname, lock_age: nil, savepoint: nil, run_mode: "auto", owner: "x")
     dir = File.join(store, dirname)
     FileUtils.mkdir_p(dir)
     File.write(File.join(dir, "#{dirname}.md"), "---\nid: \"#{dirname.split('--').first}\"\n---\n")
     File.write(File.join(dir, "savepoint.md"), savepoint) if savepoint
     if lock_age
       lock = File.join(dir, "delivery.lock")
-      data = { "type" => "delivery", "owner_session" => "x" }
+      data = { "type" => "delivery", "owner_session" => owner }
       data["run_mode"] = run_mode if run_mode
       File.write(lock, JSON.generate(data))
       FileUtils.touch(lock, mtime: NOW - lock_age)
@@ -65,11 +66,10 @@ class DaySummaryTest < Minitest::Test
     dir
   end
 
-  def session_tmp(sid, heartbeat:, current: DAY)
+  def session_tmp(sid, heartbeat:)
     SessionLedger.ensure_tmp_root(@store)
     dir = SessionLedger.session_tmp_dir(@store, sid)
     FileUtils.mkdir_p(dir)
-    File.write(SessionLedger.pointer_path(@store, sid), "#{current}\n") if current
     path = SessionLedger.heartbeat_path(@store, sid)
     if heartbeat.is_a?(Time)
       File.write(path, "#{heartbeat.utc.iso8601}\n")
@@ -102,7 +102,7 @@ class DaySummaryTest < Minitest::Test
     session_tmp(SELF, heartbeat: NOW)
     session_tmp("fresh111", heartbeat: NOW - 600)
     session_tmp("stale222", heartbeat: NOW - 7200)
-    session_tmp("empty333", heartbeat: :empty, current: "311--handoff-and-day-summary")
+    session_tmp("empty333", heartbeat: :empty)
   end
 
   def build(session: SELF, ttl: 3600)
@@ -211,7 +211,7 @@ class DaySummaryTest < Minitest::Test
     5.times { |i| event("Done", "done #{i} #{'x' * 190}", at: NOW + i) }
     index(File.join(@home, "INDEX.md"), active: (1..5).map { |i| "#{i}--slug-#{i}" })
     (1..5).each { |i| intent(@store, "#{i}--slug-#{i}", lock_age: 5, savepoint: "2026-08-30T11:00:00Z  Exec  #{'z' * 150}\n") }
-    10.times { |i| session_tmp(format("h%07d", i), heartbeat: NOW - i, current: "311--handoff-and-day-summary") }
+    10.times { |i| session_tmp(format("h%07d", i), heartbeat: NOW - i) }
     text = build
     assert_operator text.bytesize, :<=, DaySummary::BUDGET
     refute_match(/\(\+\d+ more\)/, text)
@@ -230,8 +230,8 @@ class DaySummaryTest < Minitest::Test
     others = part(build, "Other active sessions:")
     refute_includes others, SELF
     refute_includes others, "stale222"
-    assert_includes others, "- fresh111 (10m ago, on #{DAY})"
-    assert_includes others, "- empty333 (2m ago, on 311--handoff-and-day-summary)"
+    assert_includes others, "- fresh111 (10m ago, on day ledger)"
+    assert_includes others, "- empty333 (2m ago, on day ledger)"
   end
 
   def test_heartbeat_ttl_is_honored
@@ -239,6 +239,21 @@ class DaySummaryTest < Minitest::Test
     others = part(build(ttl: 300), "Other active sessions:")
     refute_includes others, "fresh111"
     assert_includes others, "empty333"
+  end
+
+  # --- 2.15 (344 n2): an active session labeled by its delivering intent -----------
+
+  def test_active_session_names_its_delivering_intent
+    index(File.join(@home, "INDEX.md"), active: %w[60--delivering])
+    dir = intent(@store, "60--delivering", lock_age: 30,
+                         savepoint: "2026-08-30T11:00:00Z  Exec  working\n", owner: "deliv999-full-session-id")
+
+    session_tmp("deliv999", heartbeat: NOW - 120)
+
+    others = part(build, "Other active sessions:")
+    assert_includes others, "- deliv999 (2m ago, on 60)"
+  ensure
+    FileUtils.rm_rf(dir) if dir
   end
 
   # --- invariants ------------------------------------------------------------------

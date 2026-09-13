@@ -16,6 +16,7 @@ require "fileutils"
 require_relative "lib/savepoint"
 require_relative "lib/lock"
 require_relative "lib/session_ledger"
+require_relative "lib/active_delivery"
 
 raw = begin
   $stdin.read
@@ -80,11 +81,20 @@ unless skip_day_ledger
     sid = SessionLedger.short_session_id(nil, session_id)
     today = SessionLedger.day_id
 
+    # A live delivery lock naming this session's full id skips promotion
+    # (344 n2, D5, D12): the lock, not the retired pointer, decides.
     proceed = true
-    pointer = SessionLedger.pointer_path(store, sid)
-    if File.exist?(pointer)
-      current = File.read(pointer).strip
-      proceed = current.empty? || current == today
+    unless session_id.empty?
+      begin
+        held = ActiveDelivery.resolve(
+          global_store: store,
+          project_roots: ActiveDelivery.project_roots(plastic_home),
+          session: session_id
+        )
+        proceed = held.nil?
+      rescue StandardError
+        proceed = true
+      end
     end
 
     if proceed
@@ -135,19 +145,16 @@ unless skip_day_ledger
   end
 end
 
-# --- (d) heartbeat, guarded on the pointer (spec D9) -----------------------
-# Session start writes the `current` pointer; with no pointer at all, session
-# start never ran for this session (a `-p` print session, a resumed
-# background job, an unregistered SessionStart hook), so neither the
-# per-session dir nor its heartbeat is created here -- guarding only the
-# write would still leave an empty directory that heartbeat_age's mtime
-# fallback reports as an orphan just the same.
+# --- (d) heartbeat, guarded on the session tmp dir (344 n2, D4) ------------
+# Session start creates the per-session tmp directory; with no such
+# directory at all, session start never ran for this session (a `-p` print
+# session, a resumed background job, an unregistered SessionStart hook), so
+# the heartbeat is not written and no directory is created here either --
+# the session tmp directory, created by session start, is the guard.
 begin
   store ||= File.join(plastic_home, "store")
   sid ||= SessionLedger.short_session_id(nil, session_id)
-  if File.exist?(SessionLedger.pointer_path(store, sid))
-    SessionLedger.ensure_tmp_root(store)
-    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store, sid))
+  if Dir.exist?(SessionLedger.session_tmp_dir(store, sid))
     File.write(SessionLedger.heartbeat_path(store, sid), "#{Time.now.utc.iso8601}\n")
   end
 rescue StandardError

@@ -5,6 +5,7 @@ require "yaml"
 require_relative "worktree"
 require_relative "scaffold_intent"
 require_relative "session_ledger"
+require_relative "active_delivery"
 
 # SessionGit - the branch model and per-repo flow settings behind
 # `scripts/session-commit` (intent 300), which is how a checklist item
@@ -185,24 +186,29 @@ module SessionGit
     text.to_s.downcase.scan(/[a-z0-9]+/).first(max_words).join("-")
   end
 
-  # The intent id named by the session's pointer file when `ticket_source`
-  # is `intent_id`, else the day id (spec D4). Per intent 298 spec D6, the
-  # pointer at `.tmp/<session>/current` holds exactly one line: either
-  # today's day id (the session records into the day ledger) or an intent
-  # id (an auto team owns the record). A day id in the pointer is therefore
-  # not an intent name, and falls back to the day id here too, which is the
-  # same value either way.
-  def resolve_ticket(day:, store:, session:, ticket_source:)
+  # The delivering intent's id when `ticket_source` is `intent_id`, else the
+  # day id (344 n2, D4-D7, D12). `resolver` is injected so tests need no
+  # real ~/.plastic; it defaults to ActiveDelivery.resolve_by_short_session
+  # against the store's own project roots.
+  def resolve_ticket(day:, store:, session:, ticket_source:, resolver: nil)
     return day.to_s unless ticket_source.to_s == "intent_id"
 
-    pointer = SessionLedger.pointer_path(store, session)
-    return day.to_s unless File.exist?(pointer)
+    resolver ||= lambda { |short_session|
+      ActiveDelivery.resolve_by_short_session(
+        global_store: store,
+        project_roots: ActiveDelivery.project_roots(File.dirname(store)),
+        short_session: short_session
+      )
+    }
 
-    content = File.read(pointer).to_s.strip
-    return day.to_s if content.empty?
-    return day.to_s if SessionLedger.valid_day_id?(content)
+    dir = begin
+      resolver.call(session)
+    rescue StandardError
+      nil
+    end
+    return day.to_s if dir.to_s.empty?
 
-    content
+    File.basename(dir).split("--", 2).first
   end
 
   # --- commit message ------------------------------------------------------------

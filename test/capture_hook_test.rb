@@ -7,6 +7,7 @@ require "open3"
 require "rbconfig"
 require_relative "../scripts/lib/session_ledger"
 require_relative "../scripts/lib/packet_wrapper"
+require_relative "../scripts/lib/lock"
 
 # Intent 298: hook-capture replaces hook-continue, hook-future-intent-check,
 # and hook-auto-arm. One UserPromptSubmit process that appends a pending line
@@ -78,15 +79,13 @@ class CaptureHookTest < Minitest::Test
 
   # --- prompt under 10 chars ----------------------------------------------------
 
-  # Amended for spec D9: the no-pointer guard (row H) now skips the heartbeat
-  # write (and the tmp dir) entirely when session start never wrote a
-  # pointer, so this pinned case writes the pointer in the fixture first,
-  # exactly like a real booted session, and still proves the short prompt
-  # itself earns no pending line.
+  # 344 n2 (D4-D5): the tmp-dir guard now checks the session tmp directory
+  # directly rather than the retired pointer, so this pinned case creates the
+  # directory in the fixture first, exactly like a real booted session, and
+  # still proves the short prompt itself earns no pending line.
   def test_prompt_under_ten_chars_no_pending_line_heartbeat_still_rewritten
     sid = sid_for("sess-short")
     FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, sid))
-    File.write(SessionLedger.pointer_path(@store, sid), "#{SessionLedger.day_id}\n")
 
     out, status = run_hook("hi there", session: "sess-short")
     assert_equal 0, status.exitstatus
@@ -95,16 +94,16 @@ class CaptureHookTest < Minitest::Test
     assert_empty out.strip
   end
 
-  # --- row H9 sibling: no pointer at all means no directory, either ----------------
+  # --- 2.5: no session tmp dir at all means no directory is created ----------
 
-  def test_no_pointer_at_all_creates_no_tmp_directory_or_heartbeat
+  def test_capture_creates_no_tmp_dir_for_an_unstarted_session
     refute File.exist?(SessionLedger.session_tmp_dir(@store, sid_for("sess-orphan"))),
            "fixture must start with no session tmp dir"
 
     out, status = run_hook("hi there", session: "sess-orphan")
     assert_equal 0, status.exitstatus
     refute File.exist?(SessionLedger.session_tmp_dir(@store, sid_for("sess-orphan"))),
-           "no pointer means no .tmp/<sid>/ directory at all, not just no heartbeat"
+           "an unstarted session must not gain a .tmp/<sid>/ directory from capture"
     assert_empty out.strip
   end
 
@@ -113,12 +112,63 @@ class CaptureHookTest < Minitest::Test
   def test_capture_worthy_gate_bare_question_adds_no_pending_line
     sid = sid_for("sess-a9-question")
     FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, sid))
-    File.write(SessionLedger.pointer_path(@store, sid), "#{SessionLedger.day_id}\n")
 
     out, status = run_hook("what does the arm verb do to the worktree?", session: "sess-a9-question")
     assert_equal 0, status.exitstatus, out
     lines = parsed_checklist_lines.select { |l| l[:session] == sid }
     assert_empty lines, "a bare question must not earn a pending line"
+  end
+
+  # --- 2.2 to 2.4, 2.6 (344 n2): the delivery lock replaces the pointer -----------
+
+  def acquire_lock(intent_name, session:, stale: false)
+    intent_dir = File.join(@store, intent_name)
+    FileUtils.mkdir_p(intent_dir)
+    Lock.acquire(intent_dir, session: session, run_mode: "auto")
+    FileUtils.touch(Lock.path(intent_dir), mtime: Time.now - Lock::TTL_SECONDS - 60) if stale
+    intent_dir
+  end
+
+  def test_capture_skips_day_ledger_for_a_delivering_session
+    sid = sid_for("sess-delivering")
+    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, sid))
+    acquire_lock("344--retire-the-bridge", session: "sess-delivering")
+
+    out, status = run_hook("fix the dashboard date parser for the wikilink form", session: "sess-delivering")
+    assert_equal 0, status.exitstatus, out
+    lines = parsed_checklist_lines.select { |l| l[:session] == sid }
+    assert_empty lines, "a delivering session must not earn a pending line"
+  end
+
+  def test_capture_writes_pending_line_without_a_delivery_lock
+    sid = sid_for("sess-no-lock")
+
+    out, status = run_hook("fix the dashboard date parser for the wikilink form", session: "sess-no-lock")
+    assert_equal 0, status.exitstatus, out
+    lines = parsed_checklist_lines.select { |l| l[:session] == sid }
+    assert_equal 1, lines.length
+    assert_equal :pending, lines.first[:state]
+  end
+
+  def test_capture_ignores_a_stale_delivery_lock
+    sid = sid_for("sess-stale-lock")
+    acquire_lock("344--retire-the-bridge", session: "sess-stale-lock", stale: true)
+
+    out, status = run_hook("fix the dashboard date parser for the wikilink form", session: "sess-stale-lock")
+    assert_equal 0, status.exitstatus, out
+    lines = parsed_checklist_lines.select { |l| l[:session] == sid }
+    assert_equal 1, lines.length, "a stale lock must not suppress the day ledger"
+  end
+
+  def test_capture_writes_today_for_a_session_started_yesterday
+    sid = sid_for("sess-yesterday")
+    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, sid))
+    File.write(SessionLedger.heartbeat_path(@store, sid), "#{(Time.now.utc - 86_400).iso8601}\n")
+
+    out, status = run_hook("fix the dashboard date parser for the wikilink form", session: "sess-yesterday")
+    assert_equal 0, status.exitstatus, out
+    lines = parsed_checklist_lines(SessionLedger.day_id).select { |l| l[:session] == sid }
+    assert_equal 1, lines.length, "a session started yesterday must still capture into today's ledger"
   end
 
   def test_capture_worthy_gate_imperative_prompt_adds_exactly_one_pending_line
@@ -161,21 +211,21 @@ class CaptureHookTest < Minitest::Test
     refute_nil b, "session b's line must survive the race"
   end
 
-  # --- current names an intent id -------------------------------------------------
+  # --- a live delivery lock names this session --------------------------------------
 
   # 345: the prompt used to read "please continue with the important work",
   # which relied on the old \bcontinue\b cockpit trigger to produce context.
   # Under the exact-match cockpit (D34) that prompt now yields nothing, so
   # the prompt is changed to one that still earns context through job (e)'s
   # auto-trigger phrase "take it from here", keeping both assertions honest.
-  def test_current_names_an_intent_id_no_pending_line_context_still_produced
+  def test_a_delivery_lock_suppresses_the_pending_line_context_still_produced
     sid = sid_for("sess-1")
     FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, sid))
-    File.write(SessionLedger.pointer_path(@store, sid), "42--some-intent\n")
+    acquire_lock("42--some-intent", session: "sess-1")
 
     out, status = run_hook("please continue with the important work, take it from here", session: "sess-1")
     assert_equal 0, status.exitstatus, out
-    assert_empty parsed_checklist_lines, "current names an intent, so no pending line"
+    assert_empty parsed_checklist_lines, "a live delivery lock names this session, so no pending line"
     refute_empty out.strip, "the continue context must still be produced"
   end
 
@@ -458,6 +508,8 @@ end
                  File.join(scripts, "lib", "dashboard_banner.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "qmd_sync.rb"), File.join(scripts, "lib", "qmd_sync.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "packet_wrapper.rb"), File.join(scripts, "lib", "packet_wrapper.rb"))
+    FileUtils.cp(File.join(real_scripts, "lib", "active_delivery.rb"), File.join(scripts, "lib", "active_delivery.rb"))
+    FileUtils.cp(File.join(real_scripts, "lib", "lock.rb"), File.join(scripts, "lib", "lock.rb"))
     FileUtils.chmod(0o755, File.join(scripts, "hook-capture"))
     root
   end
