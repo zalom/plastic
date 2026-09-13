@@ -54,8 +54,8 @@ the 15 observable signals and the response each one selects.
   item.
 - Only a prompt that changes something on disk or produces an artifact becomes a checklist item.
   A pure question is answered inline and recorded nowhere.
-- Direct work records into the day ledger that the per-session pointer names. Assume the pointer
-  exists. Never write it.
+- Direct work records into the day ledger for the session's day (the oldest day in the last
+  seven whose checklist carries the session's line, else today). Never write that lookup by hand.
 
 ## 5. What direct does not take
 

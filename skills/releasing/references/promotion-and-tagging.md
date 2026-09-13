@@ -13,7 +13,7 @@ for why the intent's worktree is merged before removal.
 ## Worktree merge-then-remove rationale
 
 **Worktree-isolated intents (intent 73c3).** When the intent was delivered in a Plastic
-worktree (the bridge has a provisioned `worktree` block), its code lives on the branch
+worktree (the delivery lock has a provisioned `worktree` block), its code lives on the branch
 `plastic/{id}--{slug}` inside `<repo>/.claude/worktrees/{id}--{slug}`, not on a hand-made
 feature branch. The merge-then-remove of that worktree is handled together with cleanup in
 Workflow step 9, which merges `plastic/{id}--{slug}` into the default branch BEFORE removing the

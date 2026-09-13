@@ -44,10 +44,6 @@ class CaptureHookTest < Minitest::Test
     SessionLedger.short_session_id(nil, session)
   end
 
-  def pointer_path(session)
-    SessionLedger.pointer_path(@store, sid_for(session))
-  end
-
   def heartbeat_path(session)
     SessionLedger.heartbeat_path(@store, sid_for(session))
   end

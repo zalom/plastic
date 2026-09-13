@@ -171,11 +171,12 @@ class AutoCore307Test < Minitest::Test
     assert_includes src, "S/M", "the 304 tier scan must cover the S/M spelling (review A5 of intent 306)" # removed in 2.0 (intent 304)
   end
 
-  def test_plastic_md_names_the_pointer_and_lock_not_the_bridge
+  def test_plastic_md_names_the_lock_not_the_bridge_or_pointer
     body = read("PLASTIC.md")
     refute_includes body, "arm_auto"
     refute_includes body, "Lifecycle Gate"
     refute_match(%r{/tmp.*bridge}i, body)
-    assert_includes body, "current (the pointer)"
+    refute_includes body, "current (the pointer)"
+    assert_includes body, "delivery.lock"
   end
 end

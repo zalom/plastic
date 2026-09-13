@@ -2,7 +2,7 @@
 # encoding: UTF-8
 
 # insights.rb - the blessed write path for an intent's `## Insights` section
-# (intent 82). A sibling library to bridge.rb so the insight write path stays
+# (intent 82). A standalone library so the insight write path stays
 # independent of the savepoint ledger (the spec forbids touching the ledger).
 #
 # Every entry leads with a fixed, machine-parseable prefix

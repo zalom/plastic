@@ -256,7 +256,7 @@ class InstallerCore
   # --- Distribution phase ---
 
   # `tmp_dirs:` defaults to the real system tmp directory plus `/tmp` (where a
-  # retired bridge JSON leftover would sit); a test overrides it (often to
+  # retired session-state leftover would sit); a test overrides it (often to
   # `[]`) so the removal never scans the real filesystem's tmp directories.
   def distribute(mode, tmp_dirs: [Dir.tmpdir, "/tmp"].uniq)
     puts "  \u{1f4e6} #{mode == :update ? "Updating" : "Installing"} core files to #{plastic_home}"
@@ -893,8 +893,8 @@ class InstallerCore
   end
 
   # Intent 344 (G11, D10): leftovers from the retired per-session day pointer
-  # and the retired inter-hook bridge key. Deletes every `store/.tmp/*/current`
-  # under the global store and every project store, plus every bridge JSON
+  # and the retired inter-hook coordination key. Deletes every `store/.tmp/*/current`
+  # under the global store and every project store, plus every retired session
   # file (`plastic-<session>--<id>.json`) sitting in an injected tmp
   # directory. Never opens or parses a candidate: a torn or malformed
   # leftover is deleted by name alone, exactly like a well-formed one. Only a

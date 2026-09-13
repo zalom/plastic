@@ -293,11 +293,11 @@ branch, then removes the worktree, and prunes the repo:
 
 ```bash
 ruby -r ~/.plastic/scripts/lib/worktree -r ~/.plastic/scripts/lib/arm -e \
-  'Worktree.finish(Arm.bridge_hash(intent_dir: "<STORE>/<dir>"), merge: true)'
+  'Worktree.finish(Arm.delivery(intent_dir: "<STORE>/<dir>"), merge: true)'
 ```
 
 (The worktree block is derived from `projects.yml` and the intent id, so the one-liner needs
-only the intent directory; the `/tmp` bridge it once discovered was removed in 2.0, intent 307.)
+only the intent directory.)
 
 Honor the worktree-cleanup rule: never leave an orphaned worktree, and run `git worktree
 prune` in the affected repo if you hit a stale reference. For why this is the one place the

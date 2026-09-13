@@ -3,14 +3,13 @@
 # frozen_string_literal: true
 
 # Savepoint: the intent-directory savepoint ledger and the stage derivation it
-# rests on (intent 303, split out of bridge.rb). Everything here is derived from
+# rests on (intent 303). Everything here is derived from
 # the files on disk inside one intent directory: which lifecycle files are real
 # (not the placeholder sentinel), which stage that makes, and the append-only
-# savepoint.md ledger that records each milestone. No session, no bridge, no
+# savepoint.md ledger that records each milestone. No session, no lock, no
 # lock: a caller that only wants to append a ledger line or ask "which stage is
-# this intent at" loads this file and nothing else. bridge.rb (the session
-# pointer, arm and disarm, lock repair) requires this file; this file never
-# requires the bridge.
+# this intent at" loads this file and nothing else. `scripts/lib/arm.rb` (arm,
+# disarm, lock repair) requires this file; this file never requires arm.rb.
 require "fileutils"
 require "time" # Time#iso8601 for the ledger timestamps
 
@@ -60,7 +59,7 @@ module Savepoint
 
   # Walk up from file_path; return the first ancestor that looks like an intent
   # directory (`.../store/<id>--<slug>`), else nil. Used to derive the savepoint
-  # target without needing a bridge. The input is always a file inside the intent
+  # target without needing the lock or arm machinery. The input is always a file inside the intent
   # dir (never the dir itself), so the walk-up starts at its parent.
   def self.intent_dir_for(file_path)
     dir = File.expand_path(file_path)
@@ -384,7 +383,7 @@ module Savepoint
 
   # --- Phantom-line detection (intent 134) ------------------------------------
   #
-  # A companion to the ledger, not a new writer: pure, disk-only, hermetic (no bridge or
+  # A companion to the ledger, not a new writer: pure, disk-only, hermetic (no lock or
   # session resolution, no writes), matching intent 52's savepoint-decoupling precedent. Under
   # a gate-routing misfire (bug 131) or an out-of-band merge (124a's precedent), a ledger line
   # can go stale or duplicate without the file evidence agreeing. This detects, never repairs;

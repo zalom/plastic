@@ -17,7 +17,7 @@ require_relative "session_ledger"
 # raised. Depends on the including class for `plastic_home` and `check`.
 #
 # Intent 344 (G11, D10): the third check this category used to carry,
-# `no_pointer_session_tmp`, is retired along with the per-session pointer it read.
+# `no_pointer_session_tmp`, is retired along with the per-session state it read.
 module DoctorSessionLedger
   ORPHAN_TTL_SECONDS = 24 * 60 * 60
 

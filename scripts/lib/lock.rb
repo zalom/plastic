@@ -12,8 +12,8 @@ require "time"
 # savepoint.md (git-ignored, transient state). Ownership is session-keyed (D1):
 # the file records the owner session, never a pid. Liveness is a lease: the
 # owner's hooks touch the file mtime on tool calls (heartbeat); the lock is
-# stale only when that heartbeat is older than the TTL. The /tmp bridge is a
-# per-session CACHE of this state; on any disagreement the lock file wins (D2).
+# stale only when that heartbeat is older than the TTL. This lock file is
+# the sole truth of ownership (D2).
 #
 # Mutual-exclusion seam (D3): the schema carries a type ("delivery" now,
 # "maintenance" in a chained intent after 93) and acquire refuses while the
