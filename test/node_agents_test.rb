@@ -90,4 +90,18 @@ class NodeAgentsTest < Minitest::Test
     body = body_for("plastic-node-work")
     assert_match(/not a sandbox on what `Bash` can do/, body)
   end
+
+  # 338a n5, 5.7: each node agent names the node input as its whole input,
+  # built from parts so this file carries no whole-word hit of the retired name.
+  def test_node_agents_name_the_node_input
+    retired = Regexp.union(
+      /(?<![a-zA-Z])pack(?:et|ets)(?![a-zA-Z])/i,
+      /(?<=[a-z0-9])Pack(?:et|ets)(?![a-z])/
+    )
+    NODE_AGENTS.each do |basename|
+      body = body_for(basename)
+      assert_match(/node input/, body, "#{basename} must name the node input")
+      refute_match retired, body, "#{basename} must carry no hit of the retired word"
+    end
+  end
 end
