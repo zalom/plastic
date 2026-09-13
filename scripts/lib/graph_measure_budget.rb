@@ -19,7 +19,7 @@ require_relative "packet_wrapper"
 # Read-only (spec D2): it opens `nodes/*.md`, `savepoint.md` and files under
 # `packets/`, and writes nothing. A measure with no source prints
 # `:unavailable`, never zero and never blank (spec D3); a packet file named
-# by `packet=` that is not on disk is counted and named by its sha, never
+# by `input=` that is not on disk is counted and named by its sha, never
 # silently treated as zero bytes (spec D4).
 #
 # Adds no second parser and no second estimator: `NodeLedger` owns the
@@ -35,7 +35,7 @@ module GraphMeasureBudget
 
   # {ok:, nodes: {id => {declared_budget:, attempts: [...]}}, ceiling: {...}}.
   # Never raises: a missing savepoint.md, a node with no envelope file, and a
-  # packet= naming a file that does not exist on disk all resolve to
+  # input= naming a file that does not exist on disk all resolve to
   # `:unavailable` fields rather than an exception.
   def read(intent_dir, node_reader: NodeFile.method(:parse))
     dir = File.expand_path(intent_dir.to_s)
@@ -209,7 +209,7 @@ module GraphMeasureBudget
 
   def build_attempt(dir, subject, attempt_number, entry, declared_budget)
     fields = entry[:fields] || {}
-    packet_sha_declared = present?(fields["packet"]) ? fields["packet"] : :unavailable
+    packet_sha_declared = present?(fields["input"]) ? fields["input"] : :unavailable
     # D8: hop= is written once, on the running line; absent means no hop
     # block was appended (the feature predates this line, or hop is off),
     # never an unknown quantity to subtract.

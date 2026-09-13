@@ -104,8 +104,8 @@ class RunnerAnswerTest < Minitest::Test
     "#{ts}  #{subject}  #{state}#{rendered}\n"
   end
 
-  def running_line(node, holder: "h", packet: "p1")
-    line(node, "running", holder: holder, expires: "2026-01-01T01:00:00Z", packet: packet, model: "sonnet")
+  def running_line(node, holder: "h", input: "p1")
+    line(node, "running", holder: holder, expires: "2026-01-01T01:00:00Z", input: input, model: "sonnet")
   end
 
   def savepoint_path
@@ -193,7 +193,7 @@ class RunnerAnswerTest < Minitest::Test
     write_graph("- n2 needs nothing\n")
     write_work_node("n2")
     write_savepoint(
-      running_line("n2", packet: "p1") +
+      running_line("n2", input: "p1") +
       line("n2", "needs_decision", question: "retry?")
     )
 
@@ -210,7 +210,7 @@ class RunnerAnswerTest < Minitest::Test
     write_graph("- n2 needs nothing\n")
     write_work_node("n2")
     cap = ReadySet::DEFAULT_CAPS["work"]
-    running = (1..cap).map { |i| running_line("n2", packet: "p#{i}") }.join
+    running = (1..cap).map { |i| running_line("n2", input: "p#{i}") }.join
     write_savepoint(running + line("n2", "needs_decision", question: "retry?"))
 
     result = RunnerAnswer.answer(build_context, node: "n2", text: "give up on this attempt")
@@ -228,7 +228,7 @@ class RunnerAnswerTest < Minitest::Test
     write_work_node("n1")
     write_work_node("n2", files: ["scripts/lib/bar.rb", "test/bar_test.rb"])
     cap = ReadySet::DEFAULT_CAPS["work"]
-    running = (1..cap).map { |i| running_line("n2", packet: "p#{i}") }.join
+    running = (1..cap).map { |i| running_line("n2", input: "p#{i}") }.join
     write_savepoint(running + line("n2", "needs_decision", question: "retry?"))
 
     result = RunnerAnswer.answer(build_context, node: "n2", text: "respin it")
@@ -252,7 +252,7 @@ class RunnerAnswerTest < Minitest::Test
     write_graph("- n2 needs nothing\n")
     write_work_node("n2")
     cap = ReadySet::DEFAULT_CAPS["work"]
-    running = (1..cap).map { |i| running_line("n2", packet: "p#{i}") }.join
+    running = (1..cap).map { |i| running_line("n2", input: "p#{i}") }.join
     write_savepoint(running + line("n2", "needs_decision", question: "retry?"))
 
     result = RunnerAnswer.answer(build_context, node: "n2", text: "respin it")
@@ -332,7 +332,7 @@ class RunnerAnswerTest < Minitest::Test
     write_graph("- n2 needs nothing\n")
     write_work_node("n2")
     write_savepoint(
-      running_line("n2", packet: "p1") +
+      running_line("n2", input: "p1") +
       line("n2", "blocked", reason: "core_integrity")
     )
 

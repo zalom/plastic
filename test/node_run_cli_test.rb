@@ -159,7 +159,7 @@ class NodeRunCliTest < Minitest::Test
                               attempt: attempt, force: true)
     raise "packet build failed: #{build[:errors].inspect}" unless build[:ok]
 
-    append_savepoint(line(node, "running", holder: session, expires: expires, packet: build[:sha], model: "sonnet"))
+    append_savepoint(line(node, "running", holder: session, expires: expires, input: build[:sha], model: "sonnet"))
     build
   end
 
@@ -255,9 +255,9 @@ class NodeRunCliTest < Minitest::Test
       "attempt 1's packet must never be the one this call absorbs"
   end
 
-  # --- 6.12: a resolved packet that does not hash to packet= is refused -------
+  # --- 6.12: a resolved packet that does not hash to input= is refused --------
 
-  def test_refuses_on_packet_hash_mismatch
+  def test_refuses_on_input_hash_mismatch
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
@@ -267,7 +267,7 @@ class NodeRunCliTest < Minitest::Test
     assert build[:ok], build[:errors].inspect
 
     append_savepoint(line("n1", "running", holder: "sess-1", expires: "2099-01-01T00:00:00Z",
-                            packet: "deadbeefdead", model: "sonnet"))
+                            input: "deadbeefdead", model: "sonnet"))
 
     before = File.read(savepoint_path)
     out, err, status = run_cli(@dir, "--node", "n1", "--session", "sess-1")
@@ -301,7 +301,7 @@ class NodeRunCliTest < Minitest::Test
     write_lock(owner: "sess-1")
 
     append_savepoint(line("n1", "running", holder: "sess-1", expires: "2099-01-01T00:00:00Z",
-                            packet: "abcdefabcdef", model: "sonnet"))
+                            input: "abcdefabcdef", model: "sonnet"))
 
     out, err, status = run_cli(@dir, "--node", "n1", "--session", "sess-1")
 

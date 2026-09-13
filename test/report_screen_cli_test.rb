@@ -231,6 +231,7 @@ class ReportScreenCliTest < Minitest::Test
       FileUtils.cp(File.join(REPO, "scripts", "lib", "graph_edges.rb"), File.join(tmp_root, "scripts", "lib", "graph_edges.rb"))
       FileUtils.cp(File.join(REPO, "scripts", "lib", "node_file.rb"), File.join(tmp_root, "scripts", "lib", "node_file.rb"))
       FileUtils.cp(File.join(REPO, "scripts", "lib", "node_ledger.rb"), File.join(tmp_root, "scripts", "lib", "node_ledger.rb"))
+      FileUtils.cp(File.join(REPO, "scripts", "lib", "node_input_compatibility.rb"), File.join(tmp_root, "scripts", "lib", "node_input_compatibility.rb"))
       FileUtils.cp(File.join(REPO, "scripts", "lib", "atomic_write.rb"), File.join(tmp_root, "scripts", "lib", "atomic_write.rb"))
       # 337a (n2): report_screen.rb now require_relatives node_progress.rb, the graph-era node count reader.
       FileUtils.cp(File.join(REPO, "scripts", "lib", "node_progress.rb"), File.join(tmp_root, "scripts", "lib", "node_progress.rb"))

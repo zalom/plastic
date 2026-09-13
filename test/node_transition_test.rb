@@ -22,7 +22,7 @@ class NodeTransitionTest < Minitest::Test
   NODE_TRANSITION = File.expand_path("../scripts/node-transition", __dir__)
   REPO = File.expand_path("..", __dir__)
 
-  RUNNING_FIELDS = { holder: "auto-owner", expires: "2026-09-08T20:00:00Z", packet: "abc123", model: "sonnet" }.freeze
+  RUNNING_FIELDS = { holder: "auto-owner", expires: "2026-09-08T20:00:00Z", input: "abc123", model: "sonnet" }.freeze
 
   def setup
     @home = Dir.mktmpdir("node-transition")
@@ -284,7 +284,7 @@ class NodeTransitionTest < Minitest::Test
     # The running line's own expires= must be genuinely in the past, so this test fails
     # for the status-check gap (blocker 2), never for the pre-existing expiry check.
     append_line(@intent_dir, subject: "n1", state: "running",
-                fields: { holder: "h", expires: "2020-01-01T00:00:00Z", packet: "p", model: "sonnet" },
+                fields: { holder: "h", expires: "2020-01-01T00:00:00Z", input: "p", model: "sonnet" },
                 now: Time.utc(2019, 12, 31, 23, 0, 0))
     append_line(@intent_dir, subject: "n1", state: "done", fields: { gates: "suite", commit: "abc", holder: "h" },
                 now: Time.utc(2020, 1, 1, 1, 0, 0))

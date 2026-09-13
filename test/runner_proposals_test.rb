@@ -228,7 +228,7 @@ class RunnerProposalsTest < Minitest::Test
     write_graph("- n1 needs nothing\n- n2 needs nothing\n")
     write_work_node("n1")
     write_work_node("n2")
-    write_savepoint(line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p",
+    write_savepoint(line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p",
                               model: "sonnet"))
     before = File.read(graph_path)
 

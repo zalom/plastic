@@ -27,9 +27,9 @@ class RunnerPolicyTest < Minitest::Test
 
   def test_retry_cap_counts_failed_verification_only
     reclaims_only = entries_for(
-      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p1", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p1", model: "sonnet") +
       line("n1", "reclaimed", holder: "h", expired: "2026-01-01T01:00:00Z") +
-      line("n1", "running", holder: "h", expires: "2026-01-01T02:00:00Z", packet: "p2", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T02:00:00Z", input: "p2", model: "sonnet") +
       line("n1", "reclaimed", holder: "h", expired: "2026-01-01T02:00:00Z")
     )
     assert_equal 0, RunnerPolicy.retry_count(reclaims_only, "n1"),
@@ -37,9 +37,9 @@ class RunnerPolicyTest < Minitest::Test
     refute RunnerPolicy.at_retry_cap?(reclaims_only, "n1", "work")
 
     with_failures = entries_for(
-      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p1", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p1", model: "sonnet") +
       line("n1", "failed_verification", holder: "h", gates: "g", reason: "suite_red") +
-      line("n1", "running", holder: "h", expires: "2026-01-01T02:00:00Z", packet: "p2", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T02:00:00Z", input: "p2", model: "sonnet") +
       line("n1", "failed_verification", holder: "h", gates: "g", reason: "suite_red")
     )
     assert_equal 2, RunnerPolicy.retry_count(with_failures, "n1")

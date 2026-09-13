@@ -42,7 +42,7 @@ require_relative "lib/codex_adapter"
 #   3 - the node has no live `running` line
 #   4 - the running line is held by another session
 #   5 - the packet the running line names is missing from disk
-#   6 - the packet on disk does not hash to the running line's packet=
+#   6 - the packet on disk does not hash to the running line's input=
 #   7 - no worktree could be resolved to run in
 module NodeRunCLI
   module_function
@@ -183,9 +183,9 @@ module NodeRunCLI
 
     packet_bytes = File.binread(packet_path)
     actual_sha = Digest::SHA256.hexdigest(packet_bytes)[0, 12]
-    expected_sha = fields["packet"]
+    expected_sha = fields["input"]
     unless expected_sha && actual_sha == expected_sha
-      warn "node-run: #{node}'s packet at #{packet_path} does not hash to packet=#{expected_sha.inspect} " \
+      warn "node-run: #{node}'s packet at #{packet_path} does not hash to input=#{expected_sha.inspect} " \
            "(computed #{actual_sha})"
       exit 6
     end

@@ -26,7 +26,7 @@ class GraphMeasureModelsTest < Minitest::Test
   DIR_337 = File.join(FIXTURES, "337--roadmap-graph")
   DIR_340 = File.join(FIXTURES, "340--runner-core-in-session")
 
-  RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", packet: "abc123" }.freeze
+  RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", input: "abc123" }.freeze
 
   def with_store_dir
     Dir.mktmpdir("graph-measure-models-test") { |dir| yield dir }

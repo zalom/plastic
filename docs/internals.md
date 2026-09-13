@@ -1729,7 +1729,7 @@ so QMD's `**/*.md` collection glob never re-indexes a packet's wrapped payloads 
 search results). Rebuilding an attempt is a no-op when the bytes are unchanged and a refusal
 (exit 5) otherwise, unless `--force` is given. The hash is the SHA-256 of the file's own
 bytes on disk, first twelve hex, printed and never embedded in the file (spec D10); it is the
-value `node-transition running --field packet=<sha>` takes.
+value `node-transition running --field input=<sha>` takes.
 
 `scripts/node-packet <intent_dir> --node <id>` is the CLI, shaped like `node-transition` and
 `validate-work-graph`: 0 success, 2 usage (not an intent directory, missing `--node`, or an

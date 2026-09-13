@@ -45,7 +45,7 @@ class GraphMeasureReviewFixTest < Minitest::Test
   # reshape).
   BASE_SHA = "dabfeb0"
 
-  RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", packet: "abc123" }.freeze
+  RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", input: "abc123" }.freeze
 
   def stage(ts, subject, text)
     "#{ts.utc.strftime('%Y-%m-%dT%H:%M:%SZ')}  #{subject}  #{text}\n"

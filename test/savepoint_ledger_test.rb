@@ -229,14 +229,14 @@ class SavepointLedgerTest < Minitest::Test
   # === Intent 340b, G7c, n1: harness= is additive to NodeLedger ==============
 
   # 1.16: a `running` line written before `harness=` existed - only holder=,
-  # expires=, packet=, model=, with no harness= at all - must still read as a
+  # expires=, input=, model=, with no harness= at all - must still read as a
   # clean, non-torn line after harness is added to FIELD_ORDER. FIELD_ORDER
   # only governs render position for fields that ARE present; REQUIRED_FIELDS
   # for `running` never gains harness, so an old line naming none of it is
   # never torn.
   def test_pre_harness_ledger_still_parses
     pre_change_line = "2026-01-01T00:00:00Z  n1  running holder=auto-1 " \
-                       "expires=2026-01-01T01:00:00Z packet=abc123 model=sonnet\n"
+                       "expires=2026-01-01T01:00:00Z input=abc123 model=sonnet\n"
     entries = NodeLedger.entries_from_content(pre_change_line)
     entry = entries.first
     refute_nil entry, "a pre-harness running line must still parse as a transition candidate"

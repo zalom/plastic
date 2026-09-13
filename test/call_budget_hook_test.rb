@@ -38,7 +38,7 @@ class CallBudgetHookTest < Minitest::Test
   def write_running_line(intent_dir, node, cap:)
     FileUtils.mkdir_p(intent_dir)
     File.write(File.join(intent_dir, "savepoint.md"), <<~LEDGER)
-      2026-01-01T00:00:00Z  #{node}  running holder=auto-1 expires=2026-01-01T01:00:00Z packet=abc model=sonnet calls=#{cap}
+      2026-01-01T00:00:00Z  #{node}  running holder=auto-1 expires=2026-01-01T01:00:00Z input=abc model=sonnet calls=#{cap}
     LEDGER
   end
 
@@ -188,7 +188,7 @@ class CallBudgetHookTest < Minitest::Test
     intent_dir = File.join(@store, "999--demo")
     FileUtils.mkdir_p(intent_dir)
     File.write(File.join(intent_dir, "savepoint.md"), <<~LEDGER)
-      2026-01-01T00:00:00Z  n1  running holder=auto-1 expires=2026-01-01T01:00:00Z packet=abc model=sonnet calls=2
+      2026-01-01T00:00:00Z  n1  running holder=auto-1 expires=2026-01-01T01:00:00Z input=abc model=sonnet calls=2
       2026-01-01T00:05:00Z  n1  done gates=integrity commit=abc123
     LEDGER
     write_subagent_transcript(session_id: "main-sess", agent_id: "agent-1",
@@ -202,9 +202,9 @@ class CallBudgetHookTest < Minitest::Test
     intent_dir = File.join(@store, "999--demo")
     FileUtils.mkdir_p(intent_dir)
     File.write(File.join(intent_dir, "savepoint.md"), <<~LEDGER)
-      2026-01-01T00:00:00Z  n1  running holder=auto-1 expires=2026-01-01T01:00:00Z packet=abc model=sonnet calls=2
+      2026-01-01T00:00:00Z  n1  running holder=auto-1 expires=2026-01-01T01:00:00Z input=abc model=sonnet calls=2
       2026-01-01T00:05:00Z  n1  done gates=integrity commit=abc123
-      2026-01-01T00:06:00Z  n2  running holder=auto-2 expires=2026-01-01T01:00:00Z packet=abc model=sonnet calls=10
+      2026-01-01T00:06:00Z  n2  running holder=auto-2 expires=2026-01-01T01:00:00Z input=abc model=sonnet calls=10
     LEDGER
     write_subagent_transcript(session_id: "main-sess", agent_id: "agent-1",
                                prompt: packet_prompt(intent_dir, "n1"), tool_use_counts: [5, 5, 5])

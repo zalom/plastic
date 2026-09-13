@@ -32,7 +32,7 @@ module RunnerDispatch
   DEFAULT_LIMIT = 2
 
   # The return-schema instruction (327 D5): rides in the dispatch PLAN, never
-  # inside the packet, so `packet=<sha>` keeps naming a reproducible input
+  # inside the packet, so `input=<sha>` keeps naming a reproducible input
   # (matrix row 5.23). NodeReturn.parse (n4) is this text's implementation.
   RETURN_CONTRACT = <<~TEXT.freeze
     RETURN CONTRACT: reply with exactly one YAML document as your final
@@ -267,7 +267,7 @@ module RunnerDispatch
     # Row 1.19/1.20/D21: harness= rides alongside model= on every `running`
     # line, resolved once by the caller through HarnessAdapter and threaded
     # straight through here - never re-resolved, never a literal.
-    fields = { holder: holder, expires: expires, packet: build_result[:sha], model: model, harness: harness,
+    fields = { holder: holder, expires: expires, input: build_result[:sha], model: model, harness: harness,
                calls: calls_cap }
 
     result = begin

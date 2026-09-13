@@ -88,7 +88,7 @@ class ReadySetTest < Minitest::Test
   end
 
   def test_running_node_is_not_ready
-    content = line("n1", "running", holder: "auto-1", expires: "2026-09-09T11:00:00Z", packet: "abc", model: "sonnet")
+    content = line("n1", "running", holder: "auto-1", expires: "2026-09-09T11:00:00Z", input: "abc", model: "sonnet")
     result = ReadySet.ready?(content: content, subject: "n1", graph: { edges: { "n1" => [] } },
                               nodes: { "n1" => { kind: "work", files: [] } })
     refute result[:ready]
@@ -129,7 +129,7 @@ class ReadySetTest < Minitest::Test
   end
 
   def test_node_with_unfinished_need_is_not_ready
-    content = line("n1", "running", holder: "auto-1", expires: "2026-09-09T11:00:00Z", packet: "abc", model: "sonnet")
+    content = line("n1", "running", holder: "auto-1", expires: "2026-09-09T11:00:00Z", input: "abc", model: "sonnet")
     result = ReadySet.ready?(content: content, subject: "n2", graph: { edges: { "n2" => ["n1"] } },
                               nodes: { "n1" => { kind: "work", files: [] }, "n2" => { kind: "work", files: [] } })
     refute result[:ready]
@@ -174,7 +174,7 @@ class ReadySetTest < Minitest::Test
     nodes = { "n1" => { kind: "work", files: ["a.rb"] }, "n2" => { kind: "work", files: ["a.rb"] } }
     before = ReadySet.ready?(content: "", subject: "n1", graph: graph, nodes: nodes)
     assert before[:ready]
-    after_content = line("n2", "running", holder: "auto-1", expires: "2026-09-09T11:00:00Z", packet: "abc",
+    after_content = line("n2", "running", holder: "auto-1", expires: "2026-09-09T11:00:00Z", input: "abc",
                                            model: "sonnet")
     after = ReadySet.ready?(content: after_content, subject: "n1", graph: graph, nodes: nodes)
     refute after[:ready]
@@ -183,7 +183,7 @@ class ReadySetTest < Minitest::Test
   def test_file_overlap_with_a_running_sibling_blocks
     graph = { edges: { "n1" => [], "n2" => [] } }
     nodes = { "n1" => { kind: "work", files: ["a.rb"] }, "n2" => { kind: "work", files: ["a.rb"] } }
-    content = line("n2", "running", holder: "auto-1", expires: "2026-09-09T11:00:00Z", packet: "abc",
+    content = line("n2", "running", holder: "auto-1", expires: "2026-09-09T11:00:00Z", input: "abc",
                                      model: "sonnet")
     result = ReadySet.ready?(content: content, subject: "n1", graph: graph, nodes: nodes)
     refute result[:ready]
@@ -207,7 +207,7 @@ class ReadySetTest < Minitest::Test
     graph = { edges: { "n1" => [], "n2" => [] } }
     nodes = { "n1" => { kind: "work", files: ["./scripts/x.rb"] },
               "n2" => { kind: "work", files: ["scripts/x.rb/"] } }
-    content = line("n2", "running", holder: "auto-1", expires: "2026-09-09T11:00:00Z", packet: "abc",
+    content = line("n2", "running", holder: "auto-1", expires: "2026-09-09T11:00:00Z", input: "abc",
                                      model: "sonnet")
     result = ReadySet.ready?(content: content, subject: "n1", graph: graph, nodes: nodes)
     refute result[:ready]
@@ -216,7 +216,7 @@ class ReadySetTest < Minitest::Test
   def test_empty_files_never_overlaps
     graph = { edges: { "n1" => [], "v1" => [] } }
     nodes = { "n1" => { kind: "work", files: [] }, "v1" => { kind: "verify", files: [] } }
-    content = line("v1", "running", holder: "auto-1", expires: "2026-09-09T11:00:00Z", packet: "abc",
+    content = line("v1", "running", holder: "auto-1", expires: "2026-09-09T11:00:00Z", input: "abc",
                                      model: "sonnet")
     result = ReadySet.ready?(content: content, subject: "n1", graph: graph, nodes: nodes)
     assert result[:ready]
@@ -224,9 +224,9 @@ class ReadySetTest < Minitest::Test
 
   def test_attempts_count_running_lines
     entries = NodeLedger.entries_from_content(
-      line("n1", "running", holder: "auto-1", expires: "t", packet: "p", model: "m") +
+      line("n1", "running", holder: "auto-1", expires: "t", input: "p", model: "m") +
       line("n1", "reclaimed", holder: "auto-1", expired: "t") +
-      line("n1", "running", holder: "auto-2", expires: "t", packet: "p", model: "m") +
+      line("n1", "running", holder: "auto-2", expires: "t", input: "p", model: "m") +
       line("n1", "reclaimed", holder: "auto-2", expired: "t")
     )
     assert_equal 2, ReadySet.attempts_count(entries, "n1")
@@ -234,19 +234,19 @@ class ReadySetTest < Minitest::Test
 
   def test_attempts_reset_at_the_last_terminal_line
     entries = NodeLedger.entries_from_content(
-      line("n1", "running", holder: "auto-1", expires: "t", packet: "p", model: "m") +
+      line("n1", "running", holder: "auto-1", expires: "t", input: "p", model: "m") +
       line("n1", "superseded", by: "n9") +
-      line("n1", "running", holder: "auto-2", expires: "t", packet: "p", model: "m")
+      line("n1", "running", holder: "auto-2", expires: "t", input: "p", model: "m")
     )
     assert_equal 1, ReadySet.attempts_count(entries, "n1")
   end
 
   def test_node_reclaimed_past_its_cap_is_not_ready
-    content = line("n1", "running", holder: "auto-1", expires: "t", packet: "p", model: "m") +
+    content = line("n1", "running", holder: "auto-1", expires: "t", input: "p", model: "m") +
                line("n1", "reclaimed", holder: "auto-1", expired: "t") +
-               line("n1", "running", holder: "auto-2", expires: "t", packet: "p", model: "m") +
+               line("n1", "running", holder: "auto-2", expires: "t", input: "p", model: "m") +
                line("n1", "reclaimed", holder: "auto-2", expired: "t") +
-               line("n1", "running", holder: "auto-3", expires: "t", packet: "p", model: "m") +
+               line("n1", "running", holder: "auto-3", expires: "t", input: "p", model: "m") +
                line("n1", "reclaimed", holder: "auto-3", expired: "t")
     result = ReadySet.ready?(content: content, subject: "n1", graph: { edges: { "n1" => [] } },
                               nodes: { "n1" => { kind: "work", files: [] } },
@@ -257,7 +257,7 @@ class ReadySetTest < Minitest::Test
 
   def test_node_at_its_cap_is_not_ready
     content = (1..3).map do |i|
-      line("n1", "running", holder: "auto-#{i}", expires: "t", packet: "p", model: "m")
+      line("n1", "running", holder: "auto-#{i}", expires: "t", input: "p", model: "m")
     end.join
     result = ReadySet.ready?(content: content, subject: "n1", graph: { edges: { "n1" => [] } },
                               nodes: { "n1" => { kind: "work", files: [] } }, caps: { "work" => 3 })
@@ -265,9 +265,9 @@ class ReadySetTest < Minitest::Test
   end
 
   def test_caps_differ_by_kind
-    content = line("r1", "running", holder: "auto-1", expires: "t", packet: "p", model: "m") +
+    content = line("r1", "running", holder: "auto-1", expires: "t", input: "p", model: "m") +
                line("r1", "reclaimed", holder: "auto-1", expired: "t") +
-               line("r1", "running", holder: "auto-2", expires: "t", packet: "p", model: "m")
+               line("r1", "running", holder: "auto-2", expires: "t", input: "p", model: "m")
     result = ReadySet.ready?(content: content, subject: "r1", graph: { edges: { "r1" => [] } },
                               nodes: { "r1" => { kind: "research", files: [] } },
                               caps: ReadySet::DEFAULT_CAPS)
@@ -276,7 +276,7 @@ class ReadySetTest < Minitest::Test
 
   def test_caps_are_injectable
     content = (1..3).map do |i|
-      line("n1", "running", holder: "auto-#{i}", expires: "t", packet: "p", model: "m") +
+      line("n1", "running", holder: "auto-#{i}", expires: "t", input: "p", model: "m") +
         line("n1", "reclaimed", holder: "auto-#{i}", expired: "t")
     end.join
     result = ReadySet.ready?(content: content, subject: "n1", graph: { edges: { "n1" => [] } },
@@ -429,7 +429,7 @@ class ReadySetTest < Minitest::Test
 
   def test_unknown_kind_gets_the_work_cap_not_no_cap
     content = (1..3).map do |i|
-      line("n1", "running", holder: "auto-#{i}", expires: "t", packet: "p", model: "m")
+      line("n1", "running", holder: "auto-#{i}", expires: "t", input: "p", model: "m")
     end.join
     result = ReadySet.ready?(content: content, subject: "n1", graph: { edges: { "n1" => [] } },
                               nodes: { "n1" => { kind: "mystery", files: [] } },
@@ -443,7 +443,7 @@ class ReadySetTest < Minitest::Test
     # Finding 1a: this must keep working (335's shipped legacy behavior),
     # bounded by the work cap rather than skipped entirely.
     content = (1..3).map do |i|
-      line("n1", "running", holder: "auto-#{i}", expires: "t", packet: "p", model: "m")
+      line("n1", "running", holder: "auto-#{i}", expires: "t", input: "p", model: "m")
     end.join
     result = ReadySet.ready?(content: content, subject: "n1", graph: { edges: {} }, nodes: {},
                               caps: ReadySet::DEFAULT_CAPS)
@@ -466,7 +466,7 @@ class ReadySetTest < Minitest::Test
     # eligible), its need n2 is not done, n2 is running and overlaps n1's
     # own file, and the cap is exhausted at zero.
     content = line("n1", "done", gates: "g1", commit: "c1") +
-              line("n2", "running", holder: "auto-1", expires: "t", packet: "p", model: "m")
+              line("n2", "running", holder: "auto-1", expires: "t", input: "p", model: "m")
     result = ReadySet.ready?(content: content, subject: "n1", graph: { edges: { "n1" => ["n2"] } },
                               nodes: { "n1" => { kind: "work", files: ["a.rb"] },
                                        "n2" => { kind: "work", files: ["a.rb"] } },

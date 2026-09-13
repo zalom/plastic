@@ -342,7 +342,7 @@ class NodeWorktreeTest < Minitest::Test
     result = commit_on_node("n1", filename: "n1.txt", content: "work\n", context: ctx)
     NodeWorktree.merge(ctx, node: "n1")
     write_savepoint(line("n1", "running", holder: "auto-1", expires: "2026-01-01T00:00:00Z",
-                              packet: "abc", model: "sonnet") +
+                              input: "abc", model: "sonnet") +
                      line("n1", "done", gates: "integrity+suite", commit: "abc123", ts: "2026-01-01T01:00:00Z"))
 
     outcome = NodeWorktree.reap(ctx)
@@ -356,7 +356,7 @@ class NodeWorktreeTest < Minitest::Test
     result = commit_on_node("n1", filename: "n1.txt", content: "work\n", context: ctx)
     # Never merged: n1's branch carries a commit the intent branch does not have.
     write_savepoint(line("n1", "running", holder: "auto-1", expires: "2026-01-01T00:00:00Z",
-                              packet: "abc", model: "sonnet") +
+                              input: "abc", model: "sonnet") +
                      line("n1", "done", gates: "integrity+suite", commit: "abc123", ts: "2026-01-01T01:00:00Z"))
 
     outcome = NodeWorktree.reap(ctx)
@@ -371,7 +371,7 @@ class NodeWorktreeTest < Minitest::Test
     result = commit_on_node("n1", filename: "n1.txt", content: "work\n", context: ctx)
     NodeWorktree.merge(ctx, node: "n1")
     write_savepoint(line("n1", "running", holder: "auto-1", expires: "2026-01-01T00:00:00Z",
-                              packet: "abc", model: "sonnet"))
+                              input: "abc", model: "sonnet"))
 
     outcome = NodeWorktree.reap(ctx)
 

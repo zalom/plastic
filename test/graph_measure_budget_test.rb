@@ -8,6 +8,7 @@ require "digest"
 require "time"
 
 require_relative "../scripts/lib/node_ledger"
+require_relative "../scripts/lib/node_input_compatibility"
 require_relative "../scripts/lib/node_packet"
 require_relative "../scripts/lib/packet_wrapper"
 require_relative "../scripts/lib/ready_set"
@@ -63,7 +64,7 @@ class GraphMeasureBudgetTest < Minitest::Test
   end
 
   # Writes a real packets/<node>--a<attempt>.packet file and returns its real
-  # sha256[0,12], the same function NodePacket itself uses to mint packet=.
+  # sha256[0,12], the same function NodePacket itself uses to mint input=.
   def write_packet(dir, node, attempt, content)
     packets_dir = File.join(dir, "packets")
     FileUtils.mkdir_p(packets_dir)
@@ -81,7 +82,7 @@ class GraphMeasureBudgetTest < Minitest::Test
       write_node_file(dir, "n1", "work", budget: 120_000)
       sha = write_packet(dir, "n1", 1, "x" * 400)
       write_savepoint(dir, [transition(stamp("2026-01-01T09:00:00Z"), "n1", "running",
-                                        fields: RUNNING.merge(packet: sha))])
+                                        fields: RUNNING.merge(input: sha))])
 
       record = GraphMeasureBudget.read(dir)
       assert_equal 120_000, record[:nodes]["n1"][:declared_budget]
@@ -95,7 +96,7 @@ class GraphMeasureBudgetTest < Minitest::Test
       write_node_file(dir, "n1", "work", budget: nil)
       sha = write_packet(dir, "n1", 1, "x" * 400)
       write_savepoint(dir, [transition(stamp("2026-01-01T09:00:00Z"), "n1", "running",
-                                        fields: RUNNING.merge(packet: sha))])
+                                        fields: RUNNING.merge(input: sha))])
 
       record = GraphMeasureBudget.read(dir)
       assert_equal :unavailable, record[:nodes]["n1"][:declared_budget]
@@ -114,7 +115,7 @@ class GraphMeasureBudgetTest < Minitest::Test
       # this file's (wrong) size instead.
       File.write(File.join(dir, "packets", "#{real_sha}.packet"), "z" * 40)
       write_savepoint(dir, [transition(stamp("2026-01-01T09:00:00Z"), "n1", "running",
-                                        fields: RUNNING.merge(packet: real_sha))])
+                                        fields: RUNNING.merge(input: real_sha))])
 
       record = GraphMeasureBudget.read(dir)
       attempt = record[:nodes]["n1"][:attempts].first
@@ -122,7 +123,7 @@ class GraphMeasureBudgetTest < Minitest::Test
     end
   end
 
-  # --- 4.4: sha verified against the running line's packet= --------------------
+  # --- 4.4: sha verified against the running line's input= ---------------------
 
   def test_packet_sha_verified_against_the_running_line
     with_intent_dir do |dir|
@@ -130,13 +131,30 @@ class GraphMeasureBudgetTest < Minitest::Test
       write_packet(dir, "n1", 1, "a" * 400)
       declared_sha = "deadbeefcafe"
       write_savepoint(dir, [transition(stamp("2026-01-01T09:00:00Z"), "n1", "running",
-                                        fields: RUNNING.merge(packet: declared_sha))])
+                                        fields: RUNNING.merge(input: declared_sha))])
 
       record = GraphMeasureBudget.read(dir)
       attempt = record[:nodes]["n1"][:attempts].first
       assert attempt[:file_exists]
       refute attempt[:sha_match]
       refute_equal declared_sha, attempt[:packet_sha_actual]
+    end
+  end
+
+  # --- 338a n1, 1.15: the declared sha reads from a legacy running line ------
+
+  def test_declared_sha_reads_from_a_legacy_running_line
+    with_intent_dir do |dir|
+      write_node_file(dir, "n1", "work", budget: 120_000)
+      sha = write_packet(dir, "n1", 1, "x" * 400)
+      legacy_line = "2026-01-01T09:00:00Z  n1  running holder=auto-1 expires=2099-01-01T00:00:00Z " \
+                    "#{NodeInputCompatibility::LEGACY_FIELD}=#{sha} model=sonnet\n"
+      write_savepoint(dir, [legacy_line])
+
+      record = GraphMeasureBudget.read(dir)
+      attempt = record[:nodes]["n1"][:attempts].first
+      assert_equal sha, attempt[:packet_sha_declared]
+      assert attempt[:sha_match]
     end
   end
 
@@ -165,7 +183,7 @@ class GraphMeasureBudgetTest < Minitest::Test
       content = "x" * 402
       sha = write_packet(dir, "n1", 1, content)
       write_savepoint(dir, [transition(stamp("2026-01-01T09:00:00Z"), "n1", "running",
-                                        fields: RUNNING.merge(packet: sha))])
+                                        fields: RUNNING.merge(input: sha))])
 
       record = GraphMeasureBudget.read(dir)
       attempt = record[:nodes]["n1"][:attempts].first
@@ -322,10 +340,10 @@ class GraphMeasureBudgetTest < Minitest::Test
       sha1 = write_packet(dir, "n1", 1, "x" * 400)
       sha2 = write_packet(dir, "n1", 2, "x" * 800)
       write_savepoint(dir, [
-        transition(stamp("2026-01-01T09:00:00Z"), "n1", "running", fields: RUNNING.merge(packet: sha1)),
+        transition(stamp("2026-01-01T09:00:00Z"), "n1", "running", fields: RUNNING.merge(input: sha1)),
         transition(stamp("2026-01-01T09:05:00Z"), "n1", "failed_verification",
                    fields: { holder: "auto-1", model: "sonnet", gates: "suite", reason: "red" }),
-        transition(stamp("2026-01-01T09:06:00Z"), "n1", "running", fields: RUNNING.merge(packet: sha2)),
+        transition(stamp("2026-01-01T09:06:00Z"), "n1", "running", fields: RUNNING.merge(input: sha2)),
       ])
 
       record = GraphMeasureBudget.read(dir)
@@ -341,7 +359,7 @@ class GraphMeasureBudgetTest < Minitest::Test
       write_node_file(dir, "n1", "work", budget: 50)
       sha = write_packet(dir, "n1", 1, "x" * 400) # estimate 100 tokens, far over 50
       write_savepoint(dir, [transition(stamp("2026-01-01T09:00:00Z"), "n1", "running",
-                                        fields: RUNNING.merge(packet: sha))])
+                                        fields: RUNNING.merge(input: sha))])
 
       record = GraphMeasureBudget.read(dir)
       attempt = record[:nodes]["n1"][:attempts].first
@@ -356,7 +374,7 @@ class GraphMeasureBudgetTest < Minitest::Test
       write_node_file(dir, "n1", "work", budget: 120_000)
       missing_sha = "deadbeef0000"
       write_savepoint(dir, [transition(stamp("2026-01-01T09:00:00Z"), "n1", "running",
-                                        fields: RUNNING.merge(packet: missing_sha))])
+                                        fields: RUNNING.merge(input: missing_sha))])
 
       record = GraphMeasureBudget.read(dir)
       attempt = record[:nodes]["n1"][:attempts].first
