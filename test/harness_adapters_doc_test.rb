@@ -65,8 +65,8 @@ class HarnessAdaptersDocTest < Minitest::Test
   def test_documents_unattended_start_honestly
     body = normalized_body
     assert_includes body, "## Delivery watch"
-    assert_includes body, "unattended continuation is delivered on both harnesses"
-    assert_includes body, "unattended start"
+    assert_includes body, "Unattended continuation is delivered on both harnesses"
+    assert_includes body, "Unattended start"
     assert_includes body, "only where a Ruby loop owns dispatch"
     assert_includes body, "Codex"
     assert_includes body, "parked on Claude Code"

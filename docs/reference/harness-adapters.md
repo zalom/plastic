@@ -374,6 +374,36 @@ The hooks feature and the headless trust-bypass fix land on the 0.13x release li
 is required regardless of version, because the project-scoped file has an open
 worktree-scoping bug.
 
+## Delivery watch
+
+`runner watch <intent_dir>` runs one tick over disk truth. It takes a non-blocking lock, aborts
+the tick if a merge is in progress, reclaims any expired lease, then classifies the delivery. A
+watch tick never heartbeats the delivery lease the way `runner step` does, so a stalled lead
+cannot look alive just because a timer keeps polling it.
+
+Each tick sorts the delivery into one of five classes. `closed` means the savepoint already
+carries a `Done` line. `done_unreported` means every node is terminal but no `Done` line was
+written. `stalled` means nothing is running and nothing is ready, or nothing has moved for two
+recorded ticks with no lease still open. `moving` means the fingerprint changed since the last
+recorded tick. `quiet` means nothing changed yet, but not for long enough to call it stalled.
+
+A recorded tick appends one line to `watch.record` in the intent directory: the time, the tick
+number, the class, what was reclaimed, what is ready, and what the tick dispatched.
+
+On Claude Code, a local `/loop` carries the timer: it runs `ruby ~/.plastic/scripts/runner watch
+<intent_dir>` on a fixed interval, and the live session reads the tick's ready set and dispatches
+through `runner step`. On Codex, two carriers exist. `SessionStart` runs one unrecorded tick for
+every active delivery and reports the stalled and done-unreported ones at boot. `runner watch
+<intent_dir> --install-timer` writes a LaunchAgent plist the owner loads with `launchctl`; that
+plist carries `--dispatch --harness codex`, so each timer tick both classifies and dispatches,
+unattended.
+
+Unattended continuation is delivered on both harnesses: either carrier keeps a delivery moving
+once it has started. Unattended start is delivered only where a Ruby loop owns dispatch, which
+today is Codex, and is parked on Claude Code with the standalone runner under Q6.
+
+> Unattended start is delivered only where a Ruby loop owns dispatch (Codex, through runner watch --dispatch); on Claude Code the runner is the harness session (327 Q6), so arm /loop over runner watch in a live session instead.
+
 ## Roadmap
 
 Later adapters extend this contract to other harnesses. They arrive as new ROOT intents (not

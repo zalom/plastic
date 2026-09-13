@@ -187,6 +187,7 @@ FIELDS=$(printf '%s' "$INPUT" | awk '
     wanted["context_window.current_usage.cache_read_input_tokens"] = 1
     wanted["cost.total_cost_usd"] = 1
     wanted["rate_limits.five_hour.used_percentage"] = 1
+    wanted["rate_limits.five_hour.resets_at"] = 1
     wanted["rate_limits.seven_day.used_percentage"] = 1
   }
   { buf = buf $0 " " }
@@ -209,6 +210,7 @@ CU_CC=""
 CU_CR=""
 COST_RAW=""
 M5_PCT=""
+M5_RESETS=""
 M7_PCT=""
 
 while IFS=$'\t' read -r k v; do
@@ -224,6 +226,7 @@ while IFS=$'\t' read -r k v; do
     context_window.current_usage.cache_read_input_tokens) CU_CR="$v" ;;
     cost.total_cost_usd) COST_RAW="$v" ;;
     rate_limits.five_hour.used_percentage) M5_PCT="$v" ;;
+    rate_limits.five_hour.resets_at) M5_RESETS="$v" ;;
     rate_limits.seven_day.used_percentage) M7_PCT="$v" ;;
   esac
 done <<FIELDS_EOF
@@ -300,6 +303,31 @@ meter_seg() {   # $1 = label, $2 = raw percentage
 }
 M5=$(meter_seg "5h" "$M5_PCT")
 M7=$(meter_seg "7d" "$M7_PCT")
+
+# --- Rate-limits cache for MeterWatch (graph.md D11) ---
+# Written only when the payload carries a meter at all; an API-key session
+# with no rate_limits section leaves the cache untouched. A present meter
+# with no matching value writes null rather than dropping the key, so
+# MeterWatch always sees the same three fields. Temp file in the cache
+# directory, then mv, so MeterWatch never reads a half-written file.
+if [ -n "$M5_PCT" ] || [ -n "$M7_PCT" ]; then
+  CACHE_DIR="$HOME/.plastic/.cache"
+  mkdir -p "$CACHE_DIR"
+  CACHE5=$(to_int "$M5_PCT")
+  CACHE7=$(to_int "$M7_PCT")
+  [ -z "$CACHE5" ] && CACHE5=null
+  [ -z "$CACHE7" ] && CACHE7=null
+  if [ -n "$M5_RESETS" ]; then
+    RESETS_JSON="\"$M5_RESETS\""
+  else
+    RESETS_JSON=null
+  fi
+  CACHE_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  CACHE_TMP="$CACHE_DIR/.rate-limits.json.tmp.$$"
+  printf '{"five_hour":%s,"seven_day":%s,"resets_at":%s,"at":"%s"}\n' \
+    "$CACHE5" "$CACHE7" "$RESETS_JSON" "$CACHE_AT" > "$CACHE_TMP"
+  mv "$CACHE_TMP" "$CACHE_DIR/rate-limits.json"
+fi
 
 # --- Session cost (stdin cost.total_cost_usd); hidden when it renders as $0.00 ---
 COST_SEG=""
