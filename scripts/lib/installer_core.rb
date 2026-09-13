@@ -977,7 +977,7 @@ class InstallerCore
     []
   end
 
-  # Retired bridge-key files sitting directly in `dir`, resolved through
+  # Retired session-state leftover files sitting directly in `dir`, resolved through
   # `dir`'s own real path so a symlinked tmp root (macOS's real /tmp) still
   # works; the name match runs on raw bytes so an undecodable name is
   # simply not a match, never a raised error.
@@ -988,7 +988,7 @@ class InstallerCore
     []
   end
 
-  # True when `name`'s raw bytes match the retired bridge-key shape
+  # True when `name`'s raw bytes match the retired session-state leftover shape
   # (`plastic-<session>--<id>.json`). Runs on `name.b` so a name that is
   # not valid UTF-8 is judged on bytes instead of raising.
   def retired_tmp_name?(name)
