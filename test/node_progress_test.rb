@@ -289,4 +289,41 @@ class NodeProgressTest < Minitest::Test
     File.open(File.join(bad_utf8, "graph.md"), "wb") { |f| f.write("## Graph\n- n1 needs nothing \xFF\xFE\n") }
     NodeProgress.fields(bad_utf8) # must not raise
   end
+
+  # --- B1 (n6): superseded and abandoned nodes leave the total -------------------
+
+  def test_superseded_and_abandoned_nodes_leave_the_total
+    all_done = graph_intent("63--superseded-all-done", %w[n1 n2])
+    write_savepoint(all_done, [
+      done_line("n1"),
+      NodeLedger.transition_line(subject: "n2", state: "superseded", fields: { by: "n6" }),
+    ].join)
+    fields = NodeProgress.fields(all_done)
+    assert_equal "1", fields["progress.total"]
+    assert_equal "1", fields["progress.done"]
+    assert_equal "all nodes done, 1 superseded", fields["progress.note"]
+
+    with_abandoned = graph_intent("64--abandoned-running", %w[n1 n2 n3])
+    write_savepoint(with_abandoned, [
+      running_line("n1"),
+      NodeLedger.transition_line(subject: "n3", state: "abandoned", fields: { reason: "owner_ruling" }),
+    ].join)
+    fields2 = NodeProgress.fields(with_abandoned)
+    assert_equal "2", fields2["progress.total"]
+    assert_equal "0", fields2["progress.done"]
+    assert_equal "2 nodes open, 1 running, 1 abandoned", fields2["progress.note"]
+  end
+
+  # --- B3 (n6): a Done abandoned line never proves delivered ---------------------
+
+  def test_done_abandoned_line_never_proves_delivered
+    dir = graph_intent("65--done-abandoned", %w[n1 n2 n3])
+    write_outcome(dir)
+    write_savepoint(dir, "2026-09-12T18:00:00Z  Done  abandoned\n")
+    fields = NodeProgress.fields(dir)
+    assert_equal "0", fields["progress.done"]
+    assert_equal "3", fields["progress.total"]
+    refute_equal "inferred: delivered before the node ledger", fields["progress.note"]
+    assert_equal "3 nodes open", fields["progress.note"]
+  end
 end

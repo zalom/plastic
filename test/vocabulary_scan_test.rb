@@ -17,13 +17,28 @@ class VocabularyScanTest < Minitest::Test
 
   SCANNED_PATHS = %w[scripts hooks agents skills templates bin test docs PLASTIC.md].freeze
 
-  # Grouped so the word boundary binds the whole alternation, not just the first
-  # and last branches (each branch is bounded on both ends this way).
-  REFUSED = /\bf(?:old|olds|olded|olding)\b/i
+  # Two segment rules (n6, B4), combined so each keeps its own case
+  # sensitivity (Regexp.union wraps each branch in its own (?i-mx:...), so
+  # the CamelCase branch never inherits the snake/kebab branch's /i - putting
+  # it under one shared case-insensitive flag is exactly the trap that makes
+  # "ffold" in scaffold match).
+  #
+  # Snake/kebab: case-insensitive, a refused form bounded on both sides by a
+  # non-letter (start, end, underscore, hyphen, digit, dot, space, or any
+  # other non-letter). Implemented as "not preceded/followed by a letter"
+  # rather than \b, since \b treats underscore as a word character and never
+  # matches inside snake_case.
+  SNAKE_KEBAB = /(?<![a-zA-Z])f(?:old|olds|olded|olding)(?![a-zA-Z])/i
+  # CamelCase: case-sensitive, a capital F plus a refused suffix, preceded by
+  # a lowercase letter or digit, followed by end or a non-lowercase
+  # character.
+  CAMEL = /(?<=[a-z0-9])F(?:old|olds|olded|olding)(?![a-z])/
+  REFUSED = Regexp.union(SNAKE_KEBAB, CAMEL)
 
   def self.offenders(root, files)
     hits = []
     files.each do |rel|
+      hits << "#{rel}:0" if rel.match?(REFUSED)
       path = File.join(root, rel)
       next unless File.file?(path)
       raw = File.binread(path)
@@ -86,6 +101,42 @@ class VocabularyScanTest < Minitest::Test
       TEXT
       offenders = self.class.offenders(dir, %w[clean.md])
       assert_empty offenders, "a whole-word scan must not flag scaffold, Folgezettel, folder or unfolding"
+    end
+  end
+
+  # n6, B4: the scan must catch the refused word inside a snake_case or
+  # CamelCase identifier segment, and inside a tracked file name, while
+  # leaving scaffold, Folgezettel, folder/Folder, unfolding and manifold
+  # alone in every shape (identifier or file name).
+  def test_scan_refuses_identifier_segments_and_file_names
+    Dir.mktmpdir("vocabulary-scan-identifiers") do |dir|
+      snake_hit = "review_" + "f" + "old"
+      camel_hit = "Review" + "F" + "old" + "Node"
+      hit_file_name = "x_" + "f" + "olded" + "_test.rb"
+
+      File.write(File.join(dir, "snake.rb"), "value = #{snake_hit}\n")
+      File.write(File.join(dir, "camel.rb"), "class #{camel_hit}; end\n")
+      File.write(File.join(dir, hit_file_name), "nothing refused in the content\n")
+      File.write(File.join(dir, "clean.rb"), <<~RUBY)
+        def scaffold_intent
+          ScaffoldIntent.new
+          # scaffold-intent, Folgezettel, folder, Folder, unfolding, manifold
+        end
+      RUBY
+      File.write(File.join(dir, "scaffold_intent.rb"), "clean\n")
+      File.write(File.join(dir, "scaffold-intent"), "clean\n")
+      File.write(File.join(dir, "ScaffoldIntent"), "clean\n")
+
+      names = %w[snake.rb camel.rb clean.rb scaffold_intent.rb scaffold-intent ScaffoldIntent] + [hit_file_name]
+      offenders = self.class.offenders(dir, names)
+
+      assert_includes offenders, "snake.rb:1"
+      assert_includes offenders, "camel.rb:1"
+      assert_includes offenders, "#{hit_file_name}:0"
+      assert_empty offenders.select { |h| h.start_with?("clean.rb:") }
+      assert_empty offenders.select { |h| h.start_with?("scaffold_intent.rb") }
+      assert_empty offenders.select { |h| h.start_with?("scaffold-intent") }
+      assert_empty offenders.select { |h| h.start_with?("ScaffoldIntent") }
     end
   end
 
