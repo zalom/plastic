@@ -256,7 +256,7 @@ module RunnerDispatch
       # M6: a failed packet build never leaves an orphan worktree behind, and
       # its errors travel back up so the step's report can name the node and
       # the reason instead of a bare "stalled" (row 10.6/10.7).
-      rollback_dispatch(context, node: node, kind: kind, packet_path: build_result[:path], runner: runner,
+      rollback_dispatch(context, node: node, kind: kind, input_path: build_result[:path], runner: runner,
                          worktree: worktree, created_this_dispatch: !pre_existing_worktree)
       return { ok: false, packet_build_failed: true, node: node, errors: build_result[:errors] }
     end
@@ -281,7 +281,7 @@ module RunnerDispatch
     # side effects this method already produced - the node never ran, so
     # nothing may act like it did.
     unless result == :written
-      rollback_dispatch(context, node: node, kind: kind, packet_path: build_result[:path], runner: runner,
+      rollback_dispatch(context, node: node, kind: kind, input_path: build_result[:path], runner: runner,
                          worktree: worktree, created_this_dispatch: !pre_existing_worktree)
       return { ok: false }
     end
@@ -333,8 +333,8 @@ module RunnerDispatch
   # rollback - a worktree this call did not create (kept on disk by a prior
   # attempt's failed_verification, D7) is never touched, only a packet this
   # call's own `packet_builder` may have written is ever deleted.
-  def rollback_dispatch(context, node:, kind:, packet_path:, runner:, worktree:, created_this_dispatch:)
-    File.delete(packet_path) if packet_path && File.exist?(packet_path)
+  def rollback_dispatch(context, node:, kind:, input_path:, runner:, worktree:, created_this_dispatch:)
+    File.delete(input_path) if input_path && File.exist?(input_path)
     return unless RunnerPolicy.worktree?(kind)
     return unless created_this_dispatch
 

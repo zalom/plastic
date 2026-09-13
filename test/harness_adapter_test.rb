@@ -16,7 +16,7 @@ class HarnessAdapterTest < Minitest::Test
   ENTRY = {
     node: "n1", kind: "work", role: "executor", model: "sonnet",
     worktree: "/repo/.claude/worktrees/1--demo--n1",
-    packet: "/store/1--demo/packets/n1--a1.packet",
+    packet: "/store/1--demo/attempts/n1--a1.input",
   }.freeze
 
   def capture_stderr

@@ -22,7 +22,7 @@
 # agent-<agent_id>.jsonl (the main transcript_path plus the main session_id
 # plus the subagent's own agent_id): its first user record carries the
 # dispatch prompt, and the lead/spawn block always pastes the node's packet
-# path into that prompt (PACKET_PATH_RE). The packet path names the intent
+# path into that prompt (INPUT_PATH_RE). The packet path names the intent
 # directory directly (its grandparent), so this hook never scans the store to
 # find it. No packet path in that first prompt means allow.
 #
@@ -47,10 +47,10 @@ module HookCallBudget
 
   RETURN_INSTRUCTION = "commit what is green and return failed_verification reason=call_budget"
 
-  # A node id, then "--a", then an attempt number, inside a /packets/
+  # A node id, then "--a", then an attempt number, inside a /attempts/
   # directory: the exact shape RunnerDispatch's spawn block pastes into a
   # subagent's own first prompt. Captures [full_path, node].
-  PACKET_PATH_RE = %r{(\S+/packets/([a-z]{1,2}\d+)--a\d+\.packet)}.freeze
+  INPUT_PATH_RE = %r{(\S+/attempts/([a-z]{1,2}\d+)--a\d+\.input)}.freeze
 
   FIRST_RECORD_SCAN_LIMIT = 20
 
@@ -78,7 +78,7 @@ module HookCallBudget
     end
     return nil unless prompt
 
-    match = PACKET_PATH_RE.match(prompt)
+    match = INPUT_PATH_RE.match(prompt)
     return nil unless match
 
     node = match[2]

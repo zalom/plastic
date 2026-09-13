@@ -32,7 +32,7 @@ require_relative "savepoint"
 # newer commits is extended instead, up to twice per attempt (row 2.7); the
 # extension is never a ledger transition (`running` cannot re-enter `running`
 # under the transition layer), so it is one line appended to
-# packets/<node>--a<N>.extensions, `N` derived from the ledger's own attempt
+# attempts/<node>--a<N>.extensions, `N` derived from the ledger's own attempt
 # count (row 2.18), never trusted from the caller. A third expiry reclaims
 # regardless of new commits.
 #
@@ -207,7 +207,7 @@ module RunnerSweep
   private_class_method :current_attempt
 
   def extensions_path(intent_dir, node, attempt)
-    File.join(intent_dir.to_s, "packets", "#{node}--a#{attempt}.extensions")
+    File.join(intent_dir.to_s, "attempts", "#{node}--a#{attempt}.extensions")
   end
   private_class_method :extensions_path
 

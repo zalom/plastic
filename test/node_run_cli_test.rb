@@ -233,7 +233,7 @@ class NodeRunCliTest < Minitest::Test
 
   # --- 6.11: the attempt number comes from NodeInput.compute_attempt_number --
 
-  def test_packet_path_comes_from_compute_attempt_number
+  def test_input_path_comes_from_compute_attempt_number
     setup_real_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
@@ -250,8 +250,8 @@ class NodeRunCliTest < Minitest::Test
     out, err, status = run_cli(@dir, "--node", "n1", "--session", "sess-1", env: stub_env)
 
     assert status.success?, err
-    assert_equal File.join(@dir, "packets", "n1--a2.return.yml"), out.strip
-    refute File.exist?(File.join(@dir, "packets", "n1--a1.return.yml")),
+    assert_equal File.join(@dir, "attempts", "n1--a2.return.yml"), out.strip
+    refute File.exist?(File.join(@dir, "attempts", "n1--a1.return.yml")),
       "attempt 1's packet must never be the one this call absorbs"
   end
 
@@ -276,7 +276,7 @@ class NodeRunCliTest < Minitest::Test
     assert_match(/does not hash/, err)
     assert_empty out
     assert_equal before, File.read(savepoint_path)
-    refute File.exist?(File.join(@dir, "packets", "n1--a1.return.yml"))
+    refute File.exist?(File.join(@dir, "attempts", "n1--a1.return.yml"))
   end
 
   # --- 6.13: no live running line at all is refused ----------------------------
@@ -306,7 +306,7 @@ class NodeRunCliTest < Minitest::Test
     out, err, status = run_cli(@dir, "--node", "n1", "--session", "sess-1")
 
     refute status.success?
-    assert_match(/packet is missing/, err)
+    assert_match(/node input is missing/, err)
     assert_empty out
   end
 
@@ -359,7 +359,7 @@ class NodeRunCliTest < Minitest::Test
     out1, err1, status1 = run_cli(@dir, "--node", "n1", "--session", "sess-1", env: stub_env)
     assert status1.success?, err1
     path1 = out1.strip
-    assert_equal File.join(@dir, "packets", "n1--a1.return.yml"), path1
+    assert_equal File.join(@dir, "attempts", "n1--a1.return.yml"), path1
     content1 = File.read(path1)
 
     append_savepoint(line("n1", "failed_verification", reason: "synthetic"))
@@ -367,7 +367,7 @@ class NodeRunCliTest < Minitest::Test
     out2, err2, status2 = run_cli(@dir, "--node", "n1", "--session", "sess-1", env: stub_env)
     assert status2.success?, err2
     path2 = out2.strip
-    assert_equal File.join(@dir, "packets", "n1--a2.return.yml"), path2
+    assert_equal File.join(@dir, "attempts", "n1--a2.return.yml"), path2
 
     refute_equal path1, path2
     assert File.exist?(path1), "attempt 1's return must survive attempt 2's run"
@@ -467,7 +467,7 @@ class NodeRunCliTest < Minitest::Test
     out, err, status = run_cli(@dir, "--node", "n1", "--session", "sess-1", env: stub_env)
 
     assert status.success?, err
-    assert_equal File.join(@dir, "packets", "n1--a1.return.yml"), out.strip
+    assert_equal File.join(@dir, "attempts", "n1--a1.return.yml"), out.strip
   end
 
   # --- 338a n3, 3.4: the return lands under attempts/, not the retired directory -

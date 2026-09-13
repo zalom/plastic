@@ -227,7 +227,7 @@ class NodeInputBudgetTest < Minitest::Test
     result = build(budget_tokens: 100, hop_tokens: 2000)
     refute result[:ok]
     assert_equal 4, result[:exit_code]
-    refute File.exist?(File.join(@dir, "packets"))
+    refute File.exist?(File.join(@dir, "attempts"))
   end
 
   def test_the_overflow_refusal_prints_a_needs_decision_command_carrying_a_non_empty_question
@@ -272,15 +272,15 @@ class NodeInputBudgetTest < Minitest::Test
     setup_minimal(intent_text: "Attempt override.")
     result = build(attempt: 7)
     assert_equal 7, result[:attempt]
-    assert_includes result[:path], "n1--a7.packet"
+    assert_includes result[:path], "n1--a7.input"
   end
 
   # --- 3.15-3.19: place, hash, report -----------------------------------------
 
-  def test_the_packet_lands_under_packets_named_by_node_and_attempt
+  def test_the_input_lands_under_attempts_named_by_node_and_attempt
     setup_minimal(intent_text: "Path test.")
     result = build(attempt: 3)
-    assert_equal File.join(@dir, "packets", "n1--a3.packet"), result[:path]
+    assert_equal File.join(@dir, "attempts", "n1--a3.input"), result[:path]
   end
 
   def test_the_hash_is_sha256_of_the_file_bytes_first_twelve_hex
@@ -327,12 +327,12 @@ class NodeInputBudgetTest < Minitest::Test
 
   # --- 3.20-3.24: writing and floor -------------------------------------------
 
-  def test_the_packets_directory_is_created_when_absent
+  def test_the_attempts_directory_is_created_when_absent
     setup_minimal(intent_text: "Dir creation.")
-    refute Dir.exist?(File.join(@dir, "packets"))
+    refute Dir.exist?(File.join(@dir, "attempts"))
     result = build
     assert result[:ok]
-    assert Dir.exist?(File.join(@dir, "packets"))
+    assert Dir.exist?(File.join(@dir, "attempts"))
   end
 
   def test_the_packet_is_written_through_the_injected_atomicwrite_renamer

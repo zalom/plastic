@@ -125,7 +125,7 @@ class NodeInputCliTest < Minitest::Test
     assert_equal 0, status.exitstatus, out + err
     assert_match(/path=.*sha=.*tokens=.*hop_tokens=.*attempt=/, out)
     assert_match(/node-transition .* --state running/, out)
-    assert File.exist?(File.join(@intent_dir, "packets", "n1--a1.packet"))
+    assert File.exist?(File.join(@intent_dir, "attempts", "n1--a1.input"))
   end
 
   # --- 2.3/2.4: the renamed command, as a real subprocess ----------------------
@@ -133,7 +133,7 @@ class NodeInputCliTest < Minitest::Test
   def test_node_input_command_writes_the_input_as_a_subprocess
     out, err, status = run_cli(@intent_dir, "--node", "n1")
     assert_equal 0, status.exitstatus, out + err
-    assert File.exist?(File.join(@intent_dir, "packets", "n1--a1.packet"))
+    assert File.exist?(File.join(@intent_dir, "attempts", "n1--a1.input"))
   end
 
   def test_usage_names_the_node_input_command
@@ -198,10 +198,10 @@ class NodeInputCliTest < Minitest::Test
     refute_equal 0, status_budget.exitstatus
     refute_equal out_default, out_budget
 
-    custom_path = File.join(@intent_dir, "packets", "custom.packet")
+    custom_path = File.join(@intent_dir, "attempts", "custom.input")
     out_attempt, _err, status_attempt = run_cli(@intent_dir, "--node", "n1", "--attempt", "9")
     assert_equal 0, status_attempt.exitstatus
-    assert_includes out_attempt, "n1--a9.packet"
+    assert_includes out_attempt, "n1--a9.input"
 
     out_out, _err, status_out = run_cli(@intent_dir, "--node", "n1", "--attempt", "10", "--out", custom_path)
     assert_equal 0, status_out.exitstatus

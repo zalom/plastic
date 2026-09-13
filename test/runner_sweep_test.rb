@@ -81,7 +81,7 @@ class RunnerSweepTest < Minitest::Test
   end
 
   def extensions_path(node, attempt)
-    File.join(@dir, "packets", "#{node}--a#{attempt}.extensions")
+    File.join(@dir, "attempts", "#{node}--a#{attempt}.extensions")
   end
 
   # --- real git fixture (branch head + commit time) -------------------------------
@@ -259,7 +259,7 @@ class RunnerSweepTest < Minitest::Test
     init_repo
     commit_time = commit_on_node_branch("n1")
     expires_1 = (commit_time - 3600).utc.iso8601
-    FileUtils.mkdir_p(File.join(@dir, "packets"))
+    FileUtils.mkdir_p(File.join(@dir, "attempts"))
     File.write(extensions_path("n1", 1), "2026-01-01T00:00:00Z  head=aaaa\n2026-01-01T00:01:00Z  head=bbbb\n")
 
     expires_2 = (commit_time - 60).utc.iso8601

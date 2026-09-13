@@ -64,7 +64,7 @@ class CallBudgetHookTest < Minitest::Test
   end
 
   def packet_prompt(intent_dir, node)
-    "Your packet: #{intent_dir}/packets/#{node}--a1.packet (read it only if something is unclear)"
+    "Your node input: #{intent_dir}/attempts/#{node}--a1.input (read it only if something is unclear)"
   end
 
   def payload(session_id:, agent_id: nil, extra: {})
@@ -114,7 +114,7 @@ class CallBudgetHookTest < Minitest::Test
 
   # --- no packet path in the first prompt means allow ------------------------
 
-  def test_no_packet_path_in_first_prompt_means_allow
+  def test_no_input_path_in_first_prompt_means_allow
     write_subagent_transcript(session_id: "main-sess", agent_id: "agent-1",
                                prompt: "no packet path in this prompt at all", tool_use_counts: Array.new(500, 1))
 
@@ -123,7 +123,7 @@ class CallBudgetHookTest < Minitest::Test
 
   # --- B1/B2: keyed on agent_id, counted from the subagent's own transcript -
 
-  def test_subagent_capped_by_agent_id_and_packet_path
+  def test_subagent_capped_by_agent_id_and_input_path
     intent_dir = File.join(@store, "999--demo")
     write_running_line(intent_dir, "n8", cap: 60)
     write_subagent_transcript(session_id: "main-sess-uuid", agent_id: "agent-77",

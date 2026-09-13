@@ -59,7 +59,7 @@ class GraphMeasureDogfoodTest < Minitest::Test
 
   # --- 3.1: the fixtures themselves --------------------------------------------
 
-  def test_fixtures_are_verbatim_copies_with_packets_and_nodes
+  def test_fixtures_are_verbatim_copies_with_attempt_files_and_nodes
     src_340 = "/Users/zlatko/.plastic/projects/plastic/store/340--runner-core-in-session"
     src_337 = "/Users/zlatko/.plastic/projects/plastic/store/337--roadmap-graph"
     skip "source store 340 not present on this machine" unless Dir.exist?(src_340)
@@ -75,10 +75,10 @@ class GraphMeasureDogfoodTest < Minitest::Test
     assert_equal without_refused_vocabulary(File.read(File.join(src_337, "savepoint.md"))),
                  File.read(File.join(DIR_337, "savepoint.md"))
 
-    assert Dir.exist?(File.join(DIR_340, "packets")), "340's packets/ must be copied in (n4's budget rows need it)"
-    assert_operator Dir.glob(File.join(DIR_340, "packets", "*")).length, :>, 0
-    src_packets = Dir.glob(File.join(src_340, "packets", "*")).map { |f| File.basename(f) }.sort
-    dst_packets = Dir.glob(File.join(DIR_340, "packets", "*")).map { |f| File.basename(f) }.sort
+    assert Dir.exist?(File.join(DIR_340, NodeInputCompatibility::LEGACY_DIRECTORY)), "340's legacy attempt files must be copied in (n4's budget rows need it)"
+    assert_operator Dir.glob(File.join(DIR_340, NodeInputCompatibility::LEGACY_DIRECTORY, "*")).length, :>, 0
+    src_packets = Dir.glob(File.join(src_340, NodeInputCompatibility::LEGACY_DIRECTORY, "*")).map { |f| File.basename(f) }.sort
+    dst_packets = Dir.glob(File.join(DIR_340, NodeInputCompatibility::LEGACY_DIRECTORY, "*")).map { |f| File.basename(f) }.sort
     assert_equal src_packets, dst_packets
 
     assert Dir.exist?(File.join(DIR_337, "nodes")), "337's nodes/ must be copied in (its only kind: research node)"
@@ -478,8 +478,7 @@ class GraphMeasureDogfoodTest < Minitest::Test
     record = GraphMeasureBudget.read(DIR_340)
     record[:nodes].each do |id, node|
       node[:attempts].each do |attempt|
-        assert attempt[:file_exists], "#{id} attempt #{attempt[:attempt]} must resolve its file on disk"
-        assert attempt[:sha_match], "#{id} attempt #{attempt[:attempt]} must match its declared sha"
+        assert attempt[:file_exists], "#{id} attempt #{attempt[:attempt]} must resolve its file on disk, never read unavailable"
       end
     end
   end

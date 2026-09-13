@@ -166,9 +166,11 @@ class GraphMeasureReviewFixTest < Minitest::Test
   # each file must carry instead.
   RENAMED_TEST_ALLOWANCE = {
     "test/graph_measure_test.rb" => 1,
-    "test/graph_measure_dogfood_test.rb" => 1,
-    # Intent 338a (n2): two methods named after the retired builder and wrapper.
-    "test/graph_measure_budget_test.rb" => 2,
+    "test/graph_measure_dogfood_test.rb" => 2,
+    # Intent 338a (n3): the attempts directory and input suffix rename carries
+    # more of these files' own method names than n2's builder/wrapper rename did.
+    "test/graph_measure_budget_test.rb" => 6,
+    "test/graph_measure_cli_test.rb" => 1,
   }.freeze
 
   NEW_NAME_AFTER_RENAME = {
