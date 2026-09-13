@@ -5,6 +5,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require_relative "../scripts/lib/arm"
+require_relative "../scripts/lib/session_ledger"
 require_relative "../scripts/lib/index_entry"
 
 # AutoCore307Test (intent 307): auto mode runs on the new core. The /tmp
@@ -23,8 +24,9 @@ class AutoCore307Test < Minitest::Test
                       bridge_valid? bridge_cwd_tier enclosing_worktree_dir discover_bridge
                       purge_done_bridges read write derive_data derive arm arm_auto arm_guided
                       sole_bridge_data disarm_auto repair_lock].freeze
-  ARM_API = %i[arm disarm worktree_block repair resolve_session delivery intent_dir_from_pointer
-               read_pointer write_pointer reset_pointer derive_key].freeze
+  ARM_API = %i[arm disarm worktree_block repair resolve_session delivery derive_key].freeze
+  REMOVED_POINTER_API = %i[pointer_path read_pointer write_pointer reset_pointer
+                           preexisting_pointer? intent_dir_from_pointer].freeze
 
   # Every caller that names a removed Bridge method must carry the 2.0 note on
   # the same line (the docs under docs/ are not scanned: their bridge sections
@@ -52,6 +54,11 @@ class AutoCore307Test < Minitest::Test
 
   def test_arm_carries_the_api
     ARM_API.each { |m| assert Arm.respond_to?(m), "Arm.#{m} must exist" }
+  end
+
+  def test_arm_api_has_no_pointer_methods
+    REMOVED_POINTER_API.each { |m| refute Arm.respond_to?(m), "Arm.#{m} must be gone (344 n4)" }
+    refute SessionLedger.respond_to?(:pointer_path), "SessionLedger.pointer_path must be gone (344 n4)"
   end
 
   def test_no_caller_names_a_removed_bridge_method

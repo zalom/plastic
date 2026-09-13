@@ -158,7 +158,7 @@ class LockSystemTest < Minitest::Test
     derived = Arm.derive_key(@store, "96")
     result = arm(nil)
     assert_equal derived, Lock.read(@dir96)["owner_session"]
-    assert_nil result[:pointer], "a derived key gets no session pointer: no hook would read it"
+    refute result.key?(:pointer), "a derived key gets no :pointer key: no hook would read it"
   end
 
   # --- 5. concurrent parallel sessions ------------------------------------------
