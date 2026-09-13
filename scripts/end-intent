@@ -46,9 +46,9 @@
 #   5. Disarm (intent 188, D2/D16; intent 307): check the code worktree (derived
 #      from projects.yml and the intent id, Arm.worktree_block) for uncommitted
 #      changes first (exit 5 if dirty, unless --discard-worktree-changes); call the
-#      disarm seam (default Arm.disarm: worktree released, lock cleared, the session
-#      pointer back on the day ledger); verify the durable lock file is actually gone
-#      afterward, and release it directly when a foreign-keyed disarm left it (the
+#      disarm seam (default Arm.disarm: worktree released, lock cleared); verify
+#      the durable lock file is actually gone afterward, and release it directly
+#      when a foreign-keyed disarm left it (the
 #      /tmp bridge this step once read was removed in 2.0, intent 307).
 #
 # Exit codes:

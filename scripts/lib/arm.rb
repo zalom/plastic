@@ -10,12 +10,13 @@ require_relative "savepoint"
 
 # Arm - how an auto team takes an intent and gives it back (intent 307).
 #
-# Three durable facts make a delivery: the delivery lock in the intent
-# directory (who owns it), the code worktree under the project repo (where
-# the code lands), and the per-session pointer in the global store's `.tmp/`
-# (which intent this session records into; a day id means the day ledger).
-# Before 2.0 a fourth thing, a `/tmp` bridge JSON, cached all three plus a
-# stage snapshot; ruling 6 of intent 296 retired it. This module carries the
+# Two durable facts make a delivery: the delivery lock in the intent
+# directory says who delivers, and the code worktree under the project repo
+# says where the code lands. A conversation session's tmp directory under
+# the global store's `.tmp/` says only that a session started; it names no
+# intent (the per-session pointer that once did was retired in 344 G11).
+# Before 2.0 a third thing, a `/tmp` bridge JSON, cached both plus a stage
+# snapshot; ruling 6 of intent 296 retired it. This module carries the
 # arm, disarm, and repair operations (intent 307); the pure INDEX/project-config
 # helpers that once sat alongside them on a shared-helpers module now live on
 # IndexEntry and ProjectConfig (intent 344).
@@ -96,48 +97,26 @@ module Arm
     }
   end
 
-  # Owner rule 2026-08-31: does this session already have a live top-level
-  # pointer pointing SOMEWHERE ELSE (the day ledger or another intent)? A
-  # pointer already on this intent is the owner re-arming mid-delivery and
-  # stays idempotent. True means a
-  # conversation session. Reads only; rescues to false (fail open).
-  def preexisting_pointer?(session, home:)
-    path = pointer_path(session, home: home)
-    File.exist?(path) && !File.read(path).to_s.strip.empty?
+  # Owner rule 2026-08-31: has this session already started a conversation?
+  # A conversation session's tmp directory is made at boot under the global
+  # store's `.tmp/`; a dispatched or headless session (a derived key) never
+  # gets one. Reads only; rescues to false (fail open: a broken store must
+  # never block a legitimate delivery).
+  def started_session?(session, home:)
+    store = global_store(home)
+    Dir.exist?(SessionLedger.session_tmp_dir(store, SessionLedger.short_session_id(nil, session)))
   rescue StandardError
     false
-  end
-
-  # --- the pointer -------------------------------------------------------------
-
-
-  def pointer_path(session, home:)
-    store = global_store(home)
-    SessionLedger.pointer_path(store, SessionLedger.short_session_id(nil, session))
-  end
-
-  def read_pointer(session, home:)
-    path = pointer_path(session, home: home)
-    File.exist?(path) ? File.read(path).strip : nil
-  end
-
-  def write_pointer(session, value, home:)
-    store = global_store(home)
-    SessionLedger.ensure_tmp_root(store)
-    path = pointer_path(session, home: home)
-    FileUtils.mkdir_p(File.dirname(path))
-    File.write(path, "#{value}\n")
-    path
   end
 
   # --- arm ---------------------------------------------------------------------
 
   # Take an intent for `session`: acquire delivery.lock (stamped with the run
-  # mode and the provenance the caller knows), provision the code worktree
-  # (fail-open for a global-only or non-git intent), and point the session at
-  # the intent. Returns `{status:, lock:, worktree:, session:, pointer:}`.
-  # A held, stale, excluded, or corrupt lock returns that status with the
-  # lock data read and touches nothing.
+  # mode and the provenance the caller knows) and provision the code worktree
+  # (fail-open for a global-only or non-git intent). Returns
+  # `{status:, lock:, worktree:, session:}`. A held, stale, excluded, or
+  # corrupt lock returns that status with the lock data read and touches
+  # nothing.
   def arm(intent_dir:, session:, mode: "auto", home: Dir.home, harness: nil,
           agent: nil, model: nil, thread: nil, now: Time.now, runner: Worktree::ShellRunner.new,
           host: Socket.gethostname, allow_inline: false)
@@ -147,22 +126,21 @@ module Arm
     h = home_for(dir, home: home)
 
     # Owner rule 2026-08-31: the main session never delivers an intent inline.
-    # A session that already carries a top-level session pointer is a
-    # conversation session (SessionStart wrote it at boot); arming there is
-    # inline delivery and is refused BEFORE any lock is taken. A dispatched or
-    # headless session has no pre-existing pointer and arms freely.
-    # --allow-inline is the explicit owner override. Fail open on read errors:
-    # a broken pointer file must never block a legitimate delivery.
-    if !allow_inline && preexisting_pointer?(key, home: h) &&
-       read_pointer(key, home: h).to_s.strip != intent_id_for(dir)
-      return { status: :inline_refused, lock: nil, worktree: nil, session: key, pointer: nil }
+    # A conversation session (its tmp directory already exists under the
+    # global store) arming an intent it does not already hold the lock for is
+    # inline delivery and is refused BEFORE any lock is taken. Re-arming the
+    # intent it already holds stays idempotent. A dispatched or headless
+    # session has no tmp directory and arms freely. --allow-inline is the
+    # explicit owner override.
+    if !allow_inline && started_session?(key, home: h) && !Lock.holds?(dir, session: key)
+      return { status: :inline_refused, lock: nil, worktree: nil, session: key }
     end
 
     status, lock = Lock.acquire(dir, session: key, host: host, now: now,
                                 harness: harness, agent: agent, model: model,
                                 thread: thread, run_mode: mode.to_s)
     unless %i[acquired owned].include?(status)
-      return { status: status, lock: lock, worktree: nil, session: key, pointer: nil }
+      return { status: status, lock: lock, worktree: nil, session: key }
     end
 
     data = delivery(intent_dir: dir, home: h, with_worktree: false)
@@ -172,27 +150,15 @@ module Arm
       warn "plastic: worktree provision raised, continuing unprovisioned: #{e.message}"
     end
 
-    # The pointer is what the capture and record hooks read; they key on the
-    # harness's real session id, so a derived key gets no pointer (nothing would
-    # ever read it). A pointer failure warns and never undoes an acquired lock.
-    pointer = nil
-    unless key == derive_key(store_for(dir), intent_id_for(dir))
-      begin
-        pointer = write_pointer(key, intent_id_for(dir), home: h)
-      rescue StandardError => e
-        warn "plastic: session pointer not written (#{e.message}); the lock is held regardless"
-      end
-    end
     { status: status, lock: lock, worktree: worktree_block(intent_dir: dir, home: h),
-      session: key, pointer: pointer }
+      session: key }
   end
 
   # --- disarm ------------------------------------------------------------------
 
-  # Give the intent back: remove the worktree (when `remove`), release the
-  # lock as its recorded owner (falling back to `session`), and reset the
-  # session pointer to today's day id when it named this intent. Returns
-  # the lock release status (:released, :none, :not_owner, or :raised).
+  # Give the intent back: remove the worktree (when `remove`) and release the
+  # lock as its recorded owner (falling back to `session`). Returns the lock
+  # release status (:released, :none, :not_owner, or :raised).
   def disarm(intent_dir:, session:, home: Dir.home, runner: Worktree::ShellRunner.new,
              remove: true, now: Time.now)
     dir = File.expand_path(intent_dir)
@@ -207,27 +173,12 @@ module Arm
 
     lock = Lock.read(dir)
     owner = lock && !blank?(lock["owner_session"]) ? lock["owner_session"] : key
-    release_status = begin
+    begin
       Lock.release(dir, session: owner)
     rescue StandardError => e
       warn "plastic: delivery lock release raised for #{dir}, continuing: #{e.message}"
       :raised
     end
-
-    begin
-      reset_pointer(key, intent_id_for(dir), home: h, now: now)
-    rescue StandardError => e
-      warn "plastic: session pointer not reset (#{e.message})"
-    end
-    release_status
-  end
-
-  # Point the session back at the day ledger, but only when it names `intent_id`.
-  def reset_pointer(session, intent_id, home:, now: Time.now)
-    current = read_pointer(session, home: home)
-    return false unless current == intent_id.to_s
-    write_pointer(session, SessionLedger.day_id(now), home: home)
-    true
   end
 
   # --- repair ------------------------------------------------------------------
@@ -294,17 +245,5 @@ module Arm
     actions << "stage #{Savepoint.derive_stage(dir)}"
 
     { "status" => "repaired", "actions" => actions, "lock" => lock_data, "session" => key }
-  end
-
-  # The intent directory this session's pointer names, searched in the given
-  # stores in order; nil when the pointer is absent, empty, or a day id.
-  def intent_dir_from_pointer(session, home:, stores:)
-    current = read_pointer(session, home: home)
-    return nil if blank?(current) || SessionLedger.valid_day_id?(current)
-    stores.each do |store|
-      match = Dir.glob(File.join(store, "#{current}--*")).find { |p| File.directory?(p) }
-      return match if match
-    end
-    nil
   end
 end
