@@ -5,6 +5,7 @@ require "json"
 require "open3"
 require "rbconfig"
 require_relative "../scripts/lib/session_ledger"
+require_relative "../scripts/lib/lock"
 
 # Intent 298: hook-record replaces hook-gate-check. It keeps the decoupled
 # savepoint ledger (intent 34/52) byte for byte, promotes the session's newest
@@ -84,24 +85,41 @@ class RecordHookTest < Minitest::Test
     SessionLedger.short_session_id(nil, session)
   end
 
-  # --- the pointer names an intent (intent 307) --------------------------------
+  # --- 2.7 (344 n2): a delegate of a live delivery lock -------------------------
 
-  # While a session is armed on an intent the pointer holds that intent's id, so
-  # the day ledger goes quiet: no pending line is promoted and no Item savepoint
-  # line lands. The lock and session heartbeats still run.
-  def test_pointer_naming_an_intent_skips_the_day_ledger_but_keeps_the_heartbeat
-    seed_pending_line("sess-1", "do the thing")
-    sid = sid_for("sess-1")
+  # While a session is a delegate of a live delivery lock the day ledger goes
+  # quiet: no pending line is promoted and no Item savepoint line lands. The
+  # lock and session heartbeats still run.
+  def test_record_skips_day_ledger_for_a_delegate_session
+    seed_pending_line("sess-delegate", "do the thing")
+    Lock.acquire(@intent_dir, session: "owner-session", run_mode: "auto")
+    Lock.add_delegate(@intent_dir, delegate: "sess-delegate", session: "owner-session")
+    sid = sid_for("sess-delegate")
     SessionLedger.ensure_tmp_root(@store)
     FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, sid))
-    File.write(SessionLedger.pointer_path(@store, sid), "52\n")
     before = File.read(checklist_path)
 
-    _out, status = run_hook(File.join(@root, "app.rb"), session: "sess-1")
+    _out, status = run_hook(File.join(@root, "app.rb"), session: "sess-delegate")
     assert_equal 0, status.exitstatus
-    assert_equal before, File.read(checklist_path), "no pending line is promoted while the pointer names an intent"
+    assert_equal before, File.read(checklist_path), "no pending line is promoted for a delivering delegate"
     refute File.exist?(savepoint_path), "no Item line lands in the day ledger"
     assert File.exist?(SessionLedger.heartbeat_path(@store, sid)), "the session heartbeat still runs"
+  end
+
+  # --- 2.8 (344 n2): no delivery lock at all still promotes ---------------------
+
+  def test_record_promotes_pending_line_without_a_delivery_lock
+    seed_pending_line("sess-1", "Promoted without a lock")
+    project_file = File.join(@root, "code", "app.rb")
+    FileUtils.mkdir_p(File.dirname(project_file))
+    File.write(project_file, "puts 1\n")
+
+    out, status = run_hook(project_file, session: "sess-1", cwd: @root)
+    assert_equal 0, status.exitstatus, out
+
+    parsed = File.read(checklist_path).lines.map { |l| SessionLedger.parse_checklist_line(l) }.compact
+    line = parsed.find { |l| l[:summary] == "Promoted without a lock" }
+    assert_equal :open, line[:state], "no delivery lock means promotion still runs"
   end
 
   # --- malformed stdin, no file_path -----------------------------------------
@@ -191,28 +209,27 @@ class RecordHookTest < Minitest::Test
 
   # --- (b) inside ~/.plastic but not an intent dir: nothing but heartbeat -----
 
-  # Amended for spec D9 (row H4): the no-pointer guard now skips both the
-  # per-session tmp directory and its heartbeat when session start never
-  # wrote a pointer, so this fixture writes the pointer first, exactly like
-  # a real booted session, before asserting the heartbeat lands.
+  # 344 n2 (D4-D5): the heartbeat guard now checks the session tmp directory
+  # directly rather than the retired pointer, so this fixture creates the
+  # directory first, exactly like a real booted session, before asserting the
+  # heartbeat lands.
   def test_file_inside_plastic_home_not_an_intent_dir_writes_only_heartbeat
     plain = File.join(@plastic_home, "PLASTIC.md")
     File.write(plain, "conventions")
     sid = SessionLedger.short_session_id(nil, "sess-1")
     FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, sid))
-    File.write(SessionLedger.pointer_path(@store, sid), "#{SessionLedger.day_id}\n")
     heartbeat = SessionLedger.heartbeat_path(@store, sid)
 
     out, status = run_hook(plain, session: "sess-1")
     assert_equal 0, status.exitstatus, out
-    assert File.exist?(heartbeat), "heartbeat must still be written when a pointer exists"
+    assert File.exist?(heartbeat), "heartbeat must still be written when the session tmp dir exists"
     refute File.exist?(checklist_path), "no day-ledger write for a plain ~/.plastic file"
     refute File.exist?(File.join(@intent_dir, "savepoint.md")), "no savepoint for a non-intent-dir file"
   end
 
-  # --- row H4: no pointer at all means no directory, either --------------------
+  # --- 2.9 (344 n2): no session tmp dir at all means no directory is created ---
 
-  def test_no_pointer_at_all_creates_no_tmp_directory_or_heartbeat
+  def test_record_creates_no_tmp_dir_for_an_unstarted_session
     plain = File.join(@plastic_home, "PLASTIC.md")
     File.write(plain, "conventions")
     sid = SessionLedger.short_session_id(nil, "sess-orphan")
@@ -221,7 +238,7 @@ class RecordHookTest < Minitest::Test
     out, status = run_hook(plain, session: "sess-orphan")
     assert_equal 0, status.exitstatus, out
     refute File.exist?(SessionLedger.session_tmp_dir(@store, sid)),
-           "no pointer means no .tmp/<sid>/ directory at all, not just no heartbeat"
+           "an unstarted session must not gain a .tmp/<sid>/ directory from record"
   end
 
   # --- (c) project file, pending line exists -----------------------------------

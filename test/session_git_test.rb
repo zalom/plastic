@@ -714,32 +714,27 @@ class SessionGitTest < Minitest::Test
     assert_equal "pr/20260829/300/fix-login", rendered
   end
 
-  def test_resolve_ticket_uses_the_pointer_when_it_names_an_intent
-    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store, @session))
-    File.write(SessionLedger.pointer_path(store, @session), "300\n")
-
-    ticket = SessionGit.resolve_ticket(day: @day, store: store, session: @session, ticket_source: "intent_id")
-    assert_equal "300", ticket
+  # 344 n2 (D4-D7, D12): resolve_ticket names the delivering intent's id when a
+  # live delivery lock names the session, else the day id. The resolver is
+  # injected so this test needs no real ~/.plastic.
+  def test_ticket_is_the_delivering_intent_id
+    resolver = ->(_session) { File.join(store, "344--retire-the-bridge") }
+    ticket = SessionGit.resolve_ticket(day: @day, store: store, session: @session,
+                                        ticket_source: "intent_id", resolver: resolver)
+    assert_equal "344", ticket
   end
 
-  def test_resolve_ticket_falls_back_to_the_day_id_when_the_pointer_names_the_day
-    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store, @session))
-    File.write(SessionLedger.pointer_path(store, @session), "#{@day}\n")
-
-    ticket = SessionGit.resolve_ticket(day: @day, store: store, session: @session, ticket_source: "intent_id")
+  def test_ticket_falls_back_to_the_day_without_a_lock
+    resolver = ->(_session) { nil }
+    ticket = SessionGit.resolve_ticket(day: @day, store: store, session: @session,
+                                        ticket_source: "intent_id", resolver: resolver)
     assert_equal @day, ticket
   end
 
-  def test_resolve_ticket_falls_back_to_the_day_id_when_no_pointer_exists
-    ticket = SessionGit.resolve_ticket(day: @day, store: store, session: @session, ticket_source: "intent_id")
-    assert_equal @day, ticket
-  end
-
-  def test_resolve_ticket_ignores_the_pointer_when_ticket_source_is_not_intent_id
-    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store, @session))
-    File.write(SessionLedger.pointer_path(store, @session), "300\n")
-
-    ticket = SessionGit.resolve_ticket(day: @day, store: store, session: @session, ticket_source: "day")
+  def test_ticket_ignores_the_resolver_when_ticket_source_is_not_intent_id
+    resolver = ->(_session) { raise "resolver must not be called for ticket_source day" }
+    ticket = SessionGit.resolve_ticket(day: @day, store: store, session: @session,
+                                        ticket_source: "day", resolver: resolver)
     assert_equal @day, ticket
   end
 

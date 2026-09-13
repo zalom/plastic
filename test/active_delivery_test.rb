@@ -116,4 +116,26 @@ class ActiveDeliveryTest < Minitest::Test
     result = ActiveDelivery.resolve(global_store: @global_store, project_roots: ["", nil], session: SESSION)
     assert_equal dir, result
   end
+
+  # --- 2.10 to 2.12 (344 n2): project_roots from config.yml, in process ------
+
+  def write_config(body)
+    File.write(File.join(@home, "config.yml"), body)
+  end
+
+  def test_project_roots_come_from_config_yml
+    custom = File.join(@home, "custom-projects")
+    write_config("project_roots:\n  - #{custom}\n")
+    assert_equal [custom], ActiveDelivery.project_roots(@home)
+  end
+
+  def test_project_roots_default_without_the_key
+    write_config("release:\n  on_complete: commit\n")
+    assert_equal [File.expand_path("~/.plastic/projects")], ActiveDelivery.project_roots(@home)
+  end
+
+  def test_project_roots_default_on_malformed_config
+    write_config("not: [valid\n")
+    assert_equal [File.expand_path("~/.plastic/projects")], ActiveDelivery.project_roots(@home)
+  end
 end

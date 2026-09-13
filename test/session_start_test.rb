@@ -332,7 +332,9 @@ class SessionStartDayLedgerTest < Minitest::Test
                    "ruby", HOOK, @index, @home, "global")
   end
 
-  def test_first_boot_creates_day_file_writes_pointer_and_heartbeat
+  # 344 n2 (D4): session start creates the tmp directory and the heartbeat,
+  # and stops writing the retired per-session pointer altogether.
+  def test_session_start_writes_heartbeat_and_no_pointer
     day = SessionLedger.day_id
     out, _err, status = run_hook(session_id: "sess-boot-1")
     assert_equal 0, status.exitstatus
@@ -340,18 +342,16 @@ class SessionStartDayLedgerTest < Minitest::Test
     assert File.exist?(SessionLedger.day_file(store, day)), ".sessions/<day>/<day>.md must be created"
 
     sid = SessionLedger.short_session_id(nil, "sess-boot-1")
-    pointer = SessionLedger.pointer_path(store, sid)
-    assert File.exist?(pointer), "the per-session pointer must be written"
-    assert_equal day, File.read(pointer).strip, "current must be today's day id on first boot"
     assert File.exist?(SessionLedger.heartbeat_path(store, sid)), "the heartbeat must be written"
+    refute File.exist?(SessionLedger.pointer_path(store, sid)), "the retired pointer must never be written"
 
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
     assert_includes ctx, "day ledger #{day} joined"
   end
 
-  def test_second_boot_joins_current_untouched_and_counts_are_correct
+  def test_second_boot_joins_and_counts_are_correct
     day = SessionLedger.day_id
-    run_hook(session_id: "sess-boot-2") # first boot: scaffolds the day and writes current
+    run_hook(session_id: "sess-boot-2") # first boot: scaffolds the day and the tmp dir
 
     SessionLedger.append_line(SessionLedger.checklist_path(store, day),
                                SessionLedger.checklist_line(:open, "aaaaaaaa", "global", "An open item"),
@@ -361,26 +361,16 @@ class SessionStartDayLedgerTest < Minitest::Test
                                header: nil)
 
     sid = SessionLedger.short_session_id(nil, "sess-boot-2")
-    pointer = SessionLedger.pointer_path(store, sid)
-    before = File.read(pointer)
+    tmp_dir = SessionLedger.session_tmp_dir(store, sid)
+    assert Dir.exist?(tmp_dir), "the first boot must create the session tmp directory"
 
     out, _err, status = run_hook(session_id: "sess-boot-2") # second boot: joins
     assert_equal 0, status.exitstatus
-    assert_equal before, File.read(pointer), "current must be untouched on a second boot"
+    assert Dir.exist?(tmp_dir), "the second boot must not remove the session tmp directory"
+    refute File.exist?(SessionLedger.pointer_path(store, sid)), "the retired pointer must never be written"
 
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
     assert_includes ctx, "1 open items, 1 pending"
-  end
-
-  def test_current_already_naming_an_intent_is_left_as_is
-    sid = SessionLedger.short_session_id(nil, "sess-boot-3")
-    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store, sid))
-    File.write(SessionLedger.pointer_path(store, sid), "42--some-intent\n")
-
-    out, _err, status = run_hook(session_id: "sess-boot-3")
-    assert_equal 0, status.exitstatus, out
-    assert_equal "42--some-intent", File.read(SessionLedger.pointer_path(store, sid)).strip,
-                 "current already names an intent; session-start must not overwrite it"
   end
 
   # --- the day summary (intent 311, spec D8) ------------------------------------------
@@ -420,7 +410,6 @@ class SessionStartDayLedgerTest < Minitest::Test
     other = "cccccccc"
     FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store, other))
     File.write(SessionLedger.heartbeat_path(store, other), "#{Time.now.utc.iso8601}\n")
-    File.write(SessionLedger.pointer_path(store, other), "#{day}\n")
 
     out, _err, status = run_hook(session_id: "sess-boot-5")
     assert_equal 0, status.exitstatus
@@ -472,9 +461,9 @@ class SessionStartDayLedgerTest < Minitest::Test
 
     sid = SessionLedger.short_session_id(nil, "payload-sid-g1")
     other_sid = SessionLedger.short_session_id(nil, "env-sid-g1")
-    assert File.exist?(SessionLedger.pointer_path(store, sid)),
-           "the pointer must be created under the payload's session id"
-    refute File.exist?(SessionLedger.pointer_path(store, other_sid)),
+    assert Dir.exist?(SessionLedger.session_tmp_dir(store, sid)),
+           "the tmp dir must be created under the payload's session id"
+    refute Dir.exist?(SessionLedger.session_tmp_dir(store, other_sid)),
            "the env var's session id must not be used when the payload names one"
   end
 
@@ -485,7 +474,7 @@ class SessionStartDayLedgerTest < Minitest::Test
     assert JSON.parse(out)
 
     sid = SessionLedger.short_session_id(nil, "env-sid-g2")
-    assert File.exist?(SessionLedger.pointer_path(store, sid)),
+    assert Dir.exist?(SessionLedger.session_tmp_dir(store, sid)),
            "the env var must be used when the stdin payload names no session_id"
   end
 
@@ -505,7 +494,7 @@ class SessionStartDayLedgerTest < Minitest::Test
     assert JSON.parse(out)
 
     expected_sid = SessionLedger.short_session_id(nil, child_pid.to_s)
-    assert File.exist?(SessionLedger.pointer_path(store, expected_sid)),
+    assert Dir.exist?(SessionLedger.session_tmp_dir(store, expected_sid)),
            "with no payload id and no env var, the session must be keyed by the hook's own pid " \
            "(#{expected_sid}), not skipped or left to some other fallback"
   end
