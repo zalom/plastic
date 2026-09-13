@@ -4,7 +4,6 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
-require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/lock"
 # `load`, not `require_relative`: the script has no .rb suffix, and Ruby's
 # require/require_relative feature resolution refuses to load an extension-

@@ -4,7 +4,6 @@ require "fileutils"
 require "json"
 require "open3"
 require "rbconfig"
-require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/session_ledger"
 
 # Intent 298: hook-record replaces hook-gate-check. It keeps the decoupled

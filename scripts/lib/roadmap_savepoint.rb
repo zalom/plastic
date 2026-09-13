@@ -8,7 +8,7 @@ require_relative "guarded_append"
 # RoadmapSavepoint - the roadmap's machine counterpart to its human `## Log` (intent 134).
 #
 # Mirrors scripts/lib/qmd_sync.rb's class shape and the cycle-step savepoint ledger in
-# scripts/lib/bridge.rb (append semantics: idempotent `(event, detail)` pair dedup, one
+# scripts/lib/savepoint.rb (append semantics: idempotent `(event, detail)` pair dedup, one
 # deterministic append primitive). Constructor-DI, hermetic: no eval, no ENV or global config
 # seam, clock injected through `now:`. Two operations:
 #

@@ -37,7 +37,7 @@
 #   2. Move the intent's INDEX.md line from `## Active` into `## Completed`
 #      (delivered) or `## Abandoned` (abandoned), dated today, appending
 #      --index-note (if given). Accepts a real em dash OR a plain hyphen as
-#      the id/title separator on READ (shared matcher, Bridge.index_entry_match);
+#      the id/title separator on READ (shared matcher, IndexEntry.match);
 #      always EMITS the real em dash on write. An id that resolves to neither
 #      `## Active` nor the terminal section is a loud failure (exit 1); an id
 #      already correctly in the terminal section is a quiet, idempotent success.
@@ -73,8 +73,8 @@ require "fileutils"
 require "date"
 require "open3"
 require "pathname"
-require_relative "lib/bridge"
 require_relative "lib/arm"
+require_relative "lib/index_entry"
 require_relative "lib/savepoint"
 require_relative "lib/lock"
 require_relative "lib/intent_validator"
@@ -89,7 +89,7 @@ DISPOSITIONS = %w[delivered abandoned].freeze
 # dash (U+2014), the existing INDEX.md convention (store files are exempt from
 # the no-em-dash shipped-file rule). Built from the codepoint, not a literal
 # byte in this source file, so the script's own source stays em-dash free.
-# READING accepts a plain hyphen too, via the shared Bridge.index_entry_match
+# READING accepts a plain hyphen too, via the shared IndexEntry.match
 # (intent 188, D9/D12): see move_index_to_terminal below.
 EM_DASH = "\u2014"
 
@@ -98,6 +98,10 @@ EM_DASH = "\u2014"
 class UnresolvedIndexEntry < StandardError; end
 
 # --- Explicit flag parsing (no eval, no global injection) -------------------
+
+def blank?(value)
+  value.nil? || value.to_s.strip.empty?
+end
 
 def parse_args(argv)
   opts = {
@@ -438,10 +442,10 @@ def section_stop(lines, heading_idx)
   stop
 end
 
-# Shared matcher (Bridge.index_entry_match, intent 188 D12): accepts a real em
+# Shared matcher (IndexEntry.match, intent 188 D12): accepts a real em
 # dash OR a plain hyphen as the id/title separator on READ.
 def active_line_id(line)
-  m = Bridge.index_entry_match(line)
+  m = IndexEntry.match(line)
   m && m[1]
 end
 
@@ -520,7 +524,7 @@ def move_index_to_terminal(content, id, disposition, today:, index_note: nil)
     raise UnresolvedIndexEntry, "INDEX.md has no #{target_heading} heading; cannot complete the move"
   end
 
-  m = Bridge.index_entry_match(lines[entry_idx])
+  m = IndexEntry.match(lines[entry_idx])
   title, link = m[2], m[3]
   note_suffix = (index_note && !index_note.to_s.strip.empty?) ? " #{index_note.to_s.strip}" : ""
   new_entry = "- [#{id} #{EM_DASH} #{title}](#{link}) #{EM_DASH} #{today}#{note_suffix}\n"
@@ -609,13 +613,13 @@ end
 # exclusion with a raw backtrace. nil is the only safe "could not resolve"
 # signal; main refuses explicitly on it rather than ever reaching takeover.
 def resolve_end_session(explicit, intent_dir)
-  return explicit.to_s.strip unless Bridge.blank?(explicit)
+  return explicit.to_s.strip unless blank?(explicit)
   env = ENV["CLAUDE_CODE_SESSION_ID"]
-  return env.to_s.strip unless Bridge.blank?(env)
+  return env.to_s.strip unless blank?(env)
   lock = Lock.read(intent_dir)
   return nil unless lock
   owner = lock["owner_session"].to_s
-  Bridge.blank?(owner) ? nil : owner
+  blank?(owner) ? nil : owner
 end
 
 # Read-only pre-flight verdict (D4). Returns [:proceed, lock_or_nil],
@@ -663,7 +667,7 @@ end
 def run_disarm(intent_dir, id, session, discard_worktree_changes:,
                worktree_reader: ->(dir) { Arm.worktree_block(intent_dir: dir) },
                disarm: ->(sess, dir) { Arm.disarm(intent_dir: dir, session: sess) })
-  return :ok if Bridge.blank?(session)
+  return :ok if blank?(session)
 
   block = worktree_reader.call(intent_dir)
   worktree_code = block.is_a?(Hash) ? block["code"] : nil
@@ -788,7 +792,7 @@ def main(argv)
   # Lock.takeover (blank session reaches Lock.acquire's blank? guard AFTER the
   # existing lock file was already deleted) or silently mis-arbitrate. Refuse
   # rather than guess; nothing has been written yet.
-  if Bridge.blank?(session) && File.exist?(Lock.path(intent_dir))
+  if blank?(session) && File.exist?(Lock.path(intent_dir))
     warn "end-intent: a delivery lock exists at #{Lock.path(intent_dir)} but no session " \
          "identity could be resolved (--session, CLAUDE_CODE_SESSION_ID, and the lock's " \
          "own recorded owner are all blank); refusing rather than guessing. Pass " \

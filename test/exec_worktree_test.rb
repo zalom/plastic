@@ -6,7 +6,6 @@ require "tmpdir"
 require "fileutils"
 require "json"
 require_relative "../scripts/lib/exec_worktree"
-require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/lock"
 require_relative "../scripts/lib/worktree"
 
@@ -146,6 +145,22 @@ class ExecWorktreeTest < Minitest::Test
                      session: session, env_session: env_session, **seams)
   end
 
+  def test_finish_resolves_the_worktree_through_arm_delivery
+    build_intent_dir(how_complete: true)
+    code = worktree_code_path
+    FileUtils.mkdir_p(code)
+    finisher, calls = spy_finisher
+
+    run_exec_worktree(disposition: "delivered", finisher: finisher,
+                      status_checker: clean_status_checker, runner: merged_runner)
+
+    assert_equal 1, calls.length
+    delivered = calls.first[:bridge_data]
+    assert_equal "213", delivered.dig("intent", "id")
+    assert_equal "213--demo", delivered.dig("intent", "dir")
+    refute Dir.exist?(code), "the finisher must have received the delivery worktree code path"
+  end
+  
   # --- 1: --disposition routes merge: true|false to the finisher seam --------------
 
   def test_delivered_calls_finisher_with_merge_true

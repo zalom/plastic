@@ -6,13 +6,17 @@ require "open3"
 require "rbconfig"
 require "tmpdir"
 require_relative "../scripts/lib/savepoint"
-require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/arm"
+require_relative "../scripts/lib/lock"
+require_relative "../scripts/lib/index_entry"
+require_relative "../scripts/lib/project_config"
 
-# Intent 303: the intent-dir savepoint ledger and the stage derivation moved out of
-# bridge.rb into scripts/lib/savepoint.rb. This file proves the split: the ledger
-# loads without the bridge, every moved name answers on Savepoint and not on Bridge,
-# no caller still reaches a moved name through Bridge, and the eight files whose only
-# bridge use was a moved name no longer require the bridge at all.
+# Intent 303 moved the intent-dir savepoint ledger and the stage derivation out of
+# bridge.rb into scripts/lib/savepoint.rb. Intent 344 retired bridge.rb itself: its
+# remaining pointer-side helpers now answer on Arm, Lock, IndexEntry, and ProjectConfig.
+# This file proves both splits still hold: the ledger loads standalone, every moved
+# name answers on Savepoint, the retired helpers answer on their new owners, and no
+# caller still reaches a moved name through the retired module.
 class SavepointSplitTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
 
@@ -25,15 +29,6 @@ class SavepointSplitTest < Minitest::Test
   ].freeze
 
   MOVED_CONSTS = %i[PLACEHOLDER_SENTINEL SAVEPOINT_FILE TERMINAL_DISPOSITIONS SAVEPOINT_STATE_PREREQUISITES].freeze
-
-  # Pointer-side names that stay on Bridge (spec D2; intent_id_from_dir per review B1).
-  # The seven helpers left on Bridge after the bridge JSON itself went (intent 307).
-  STAYING_METHODS = %i[
-    intent_id_from_dir deep_merge read_project_config intent_active? index_entry_match blank? skill_ref
-  ].freeze
-
-  # Bridge names the moved code must never call bare (they stayed behind).
-  STAYING_NAMES = %w[blank? index_entry_match skill_ref intent_active?].freeze
 
   # Files whose only bridge use was a moved name: they require savepoint, not bridge.
   BRIDGE_FREE = %w[
@@ -55,64 +50,45 @@ class SavepointSplitTest < Minitest::Test
       project = loaded.select { |f| f.start_with?("#{REPO}/") }.map { |f| f.sub("#{REPO}/", "") }.sort
       assert_equal %w[scripts/lib/savepoint.rb], project
       leaked = loaded.grep(%r{/(bridge|lock|worktree)\.rb\z|/yaml(\.rb)?\z|/socket\.rb\z|/digest\.rb\z})
-      assert_empty leaked, "savepoint.rb pulled in the bridge's dependencies: #{leaked.inspect}"
+      assert_empty leaked, "savepoint.rb pulled in unwanted dependencies: #{leaked.inspect}"
     end
   end
 
   def test_moved_methods_respond_on_savepoint_and_not_on_bridge
     missing = MOVED_METHODS.reject { |m| Savepoint.respond_to?(m) }
     assert_empty missing, "Savepoint lacks #{missing.inspect}"
-    left = MOVED_METHODS.select { |m| Bridge.respond_to?(m) }
-    assert_empty left, "Bridge still answers #{left.inspect} (a shim or a forgotten delete)"
+    refute Object.const_defined?(:Bridge), "Bridge must be fully retired (intent 344)"
   end
 
-  def test_pointer_names_stay_on_bridge_and_not_on_savepoint
-    missing = STAYING_METHODS.reject { |m| Bridge.respond_to?(m) }
-    assert_empty missing, "Bridge lost #{missing.inspect}"
-    strayed = STAYING_METHODS.select { |m| Savepoint.respond_to?(m) }
-    assert_empty strayed, "Savepoint answers pointer-side #{strayed.inspect}"
-    assert_equal "96", Bridge.intent_id_from_dir("/s/store/96--demo")
+  def test_retired_bridge_helpers_answer_on_their_owners
+    assert_equal "96", Arm.intent_id_for("/s/store/96--demo")
+    merged = ProjectConfig.deep_merge({ "a" => 1, "n" => { "x" => 1 } }, { "n" => { "y" => 2 } })
+    assert_equal({ "a" => 1, "n" => { "x" => 1, "y" => 2 } }, merged)
+    assert_equal ["AGENTS.md"], ProjectConfig::DEFAULTS["governing_docs"]
+    assert IndexEntry.match("- [96 #{IndexEntry::EM_DASH} demo](store/96--demo/96--demo.md)")
+    assert IndexEntry.active?("5", store: "irrelevant", index_active_ids: %w[5 6])
+    refute IndexEntry.active?("7", store: "irrelevant", index_active_ids: %w[5 6])
+    assert_equal "/plastic-doctor", Lock.skill_ref("plastic-doctor")
+    refute Object.const_defined?(:Bridge), "Bridge must be fully retired (intent 344)"
   end
 
   def test_moved_constants_live_on_savepoint_only_and_stages_is_gone
     MOVED_CONSTS.each do |c|
       assert Savepoint.const_defined?(c, false), "Savepoint::#{c} missing"
-      refute Bridge.const_defined?(c, false), "Bridge::#{c} must not be re-exported"
     end
     assert_equal "<!-- plastic:placeholder -->", Savepoint::PLACEHOLDER_SENTINEL
     assert_equal "savepoint.md", Savepoint::SAVEPOINT_FILE
-    refute Bridge.const_defined?(:STAGES, false), "dead STAGES rides along on Bridge"
     refute Savepoint.const_defined?(:STAGES, false), "dead STAGES was moved instead of deleted"
   end
 
-  def test_savepoint_never_names_the_bridge_and_bridge_requires_savepoint
+  def test_savepoint_never_names_the_bridge
     sp = File.read(File.join(REPO, "scripts", "lib", "savepoint.rb"))
     refute_match(/\bBridge\b/, sp, "savepoint.rb must not reference Bridge")
     refute_match(/require_relative\s+["'](bridge|lock|worktree)["']/, sp)
-    br = File.read(File.join(REPO, "scripts", "lib", "bridge.rb"))
-    refute_match(/require_relative\s+["']savepoint["']/, br, "bridge.rb needs no savepoint since the bridge JSON went (intent 307)")
-    refute_match(/^require\s+["'](socket|tempfile)["']/, br, "bridge.rb keeps a dead require")
   end
 
-  def test_savepoint_source_calls_no_staying_bridge_name
-    sp = File.read(File.join(REPO, "scripts", "lib", "savepoint.rb"))
-    offenders = STAYING_NAMES.select { |n| sp.match?(/(?<![.\w])#{Regexp.escape(n)}(?![\w?!])/) }
-    assert_empty offenders, "savepoint.rb calls a name that stayed on Bridge: #{offenders.inspect}"
-  end
-
-  def test_bridge_internal_uses_of_moved_names_are_qualified
-    offenders = []
-    File.foreach(File.join(REPO, "scripts", "lib", "bridge.rb")).with_index(1) do |line, n|
-      code = line.chomp.sub(/#.*/, "")
-      MOVED_METHODS.each do |m|
-        name = Regexp.escape(m.to_s)
-        offenders << "#{n}: #{m}" if code.match?(/(?<![.\w:])#{name}(?![\w?!])/)
-      end
-      MOVED_CONSTS.each do |c|
-        offenders << "#{n}: #{c}" if code.match?(/(?<![.\w:])#{c}(?![\w])/)
-      end
-    end
-    assert_empty offenders, "bridge.rb uses a moved name without Savepoint.: #{offenders.first(20).inspect}"
+  def test_bridge_library_file_is_gone
+    refute File.exist?(File.join(REPO, "scripts", "lib", "bridge.rb"))
   end
 
   def test_no_caller_reaches_a_moved_name_through_bridge_in_code_or_docs
@@ -136,7 +112,7 @@ class SavepointSplitTest < Minitest::Test
         offenders << "#{path.sub("#{REPO}/", "")}:#{n}" if MOVED_METHODS.any? { |m| line.include?(m.to_s) }
       end
     end
-    assert_empty offenders, "skill recipes still load the bridge for a moved method:\n#{offenders.join("\n")}"
+    assert_empty offenders, "skill recipes still load the retired bridge for a moved method:\n#{offenders.join("\n")}"
   end
 
   def test_bridge_free_files_require_savepoint_not_bridge
@@ -148,10 +124,11 @@ class SavepointSplitTest < Minitest::Test
     end
   end
 
-  def test_plastic_lock_stays_pointer_side_and_requires_no_savepoint
+  def test_plastic_lock_stays_pointer_side_and_names_arm_not_bridge
     src = File.read(File.join(REPO, "scripts", "plastic-lock"))
     refute_match(/require_relative\s+["'][^"']*savepoint["']/, src)
-    assert_match(/Bridge\.intent_id_from_dir/, src)
+    refute_match(/\bBridge\b/, src)
+    assert_match(/Arm\.intent_id_for/, src)
   end
 
   def test_every_file_using_savepoint_requires_it_itself
@@ -166,10 +143,10 @@ class SavepointSplitTest < Minitest::Test
     assert_empty offenders, "uses Savepoint without requiring it: #{offenders.inspect}"
   end
 
-  def test_bridge_shrank_and_the_manifest_ships_savepoint
-    assert_operator File.foreach(File.join(REPO, "scripts", "lib", "bridge.rb")).count, :<, 800
+  def test_manifest_ships_savepoint_and_not_bridge
     manifest = File.read(File.join(REPO, "scripts", "lib", "installer_core.rb"))
     assert_includes manifest, '"scripts/lib/savepoint.rb" => "scripts/lib/savepoint.rb"'
+    refute_includes manifest, '"scripts/lib/bridge.rb"'
   end
 
   private

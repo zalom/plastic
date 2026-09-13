@@ -4,8 +4,8 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
-require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/arm"
+require_relative "../scripts/lib/index_entry"
 
 # AutoCore307Test (intent 307): auto mode runs on the new core. The /tmp
 # bridge JSON is gone (ruling 6 of intent 296: the session pointer plus
@@ -23,7 +23,7 @@ class AutoCore307Test < Minitest::Test
                       bridge_valid? bridge_cwd_tier enclosing_worktree_dir discover_bridge
                       purge_done_bridges read write derive_data derive arm arm_auto arm_guided
                       sole_bridge_data disarm_auto repair_lock].freeze
-  ARM_API = %i[arm disarm worktree_block repair resolve_session bridge_hash intent_dir_from_pointer
+  ARM_API = %i[arm disarm worktree_block repair resolve_session delivery intent_dir_from_pointer
                read_pointer write_pointer reset_pointer derive_key].freeze
 
   # Every caller that names a removed Bridge method must carry the 2.0 note on
@@ -47,9 +47,7 @@ class AutoCore307Test < Minitest::Test
   # --- the bridge is gone --------------------------------------------------------
 
   def test_bridge_keeps_exactly_the_seven_helpers
-    KEPT_BRIDGE.each { |m| assert Bridge.respond_to?(m), "Bridge.#{m} must stay" }
-    REMOVED_BRIDGE.each { |m| refute Bridge.respond_to?(m), "Bridge.#{m} was removed in 2.0 (intent 307)" }
-    refute Bridge.const_defined?(:LockHeldError), "LockHeldError was removed in 2.0 (intent 307)"
+    refute Object.const_defined?(:Bridge), "the shared-helpers module was fully retired (intent 344)"
   end
 
   def test_arm_carries_the_api
@@ -70,7 +68,10 @@ class AutoCore307Test < Minitest::Test
   end
 
   def test_no_bridge_test_file_remains
-    assert_empty Dir[File.join(ROOT, "test", "bridge_*_test.rb")].map { |f| File.basename(f) }
+    leftover = Dir[File.join(ROOT, "test", "bridge_*_test.rb")]
+                 .map { |f| File.basename(f) }
+                 .reject { |f| f == "bridge_retired_test.rb" }
+    assert_empty leftover
   end
 
   def test_plastic_lock_usage_names_arm
@@ -82,9 +83,9 @@ class AutoCore307Test < Minitest::Test
 
   # The two pure helpers the deleted purge test pinned (bridge_purge_test.rb).
   def test_index_entry_match_accepts_em_dash_and_plain_hyphen
-    assert Bridge.index_entry_match("- [96 — demo](store/96--demo/96--demo.md) — note")
-    assert Bridge.index_entry_match("- [96 - demo](store/96--demo/96--demo.md) - note")
-    refute Bridge.index_entry_match("- plain bullet")
+    assert IndexEntry.match("- [96 — demo](store/96--demo/96--demo.md) — note")
+    assert IndexEntry.match("- [96 - demo](store/96--demo/96--demo.md) - note")
+    refute IndexEntry.match("- plain bullet")
   end
 
   # The six assertions the deleted bridge_purge_test pinned on the two INDEX
@@ -93,14 +94,14 @@ class AutoCore307Test < Minitest::Test
     Dir.mktmpdir("auto-core-307") do |home|
       store = File.join(home, ".plastic", "projects", "x", "store")
       FileUtils.mkdir_p(store)
-      refute Bridge.intent_active?("96", store: store), "no INDEX.md means not active"
+      refute IndexEntry.active?("96", store: store), "no INDEX.md means not active"
       File.write(File.join(File.dirname(store), "INDEX.md"),
                  "## Active\n- [96 — demo](store/96--demo/96--demo.md)\n- [98 - hyphen](store/98--h/98--h.md)\n\n## Future\n- [97 — x](store/97--x/97--x.md)\n")
-      assert Bridge.intent_active?("96", store: store)
-      assert Bridge.intent_active?("98", store: store), "a plain-hyphen separator reads as active"
-      refute Bridge.intent_active?("97", store: store), "an id under Future is not active"
-      assert Bridge.intent_active?("5", store: store, index_active_ids: %w[5 6]), "the pure-data seam"
-      refute Bridge.intent_active?("7", store: store, index_active_ids: %w[5 6])
+      assert IndexEntry.active?("96", store: store)
+      assert IndexEntry.active?("98", store: store), "a plain-hyphen separator reads as active"
+      refute IndexEntry.active?("97", store: store), "an id under Future is not active"
+      assert IndexEntry.active?("5", store: store, index_active_ids: %w[5 6]), "the pure-data seam"
+      refute IndexEntry.active?("7", store: store, index_active_ids: %w[5 6])
     end
   end
 

@@ -15,8 +15,10 @@ require_relative "savepoint"
 # the code lands), and the per-session pointer in the global store's `.tmp/`
 # (which intent this session records into; a day id means the day ledger).
 # Before 2.0 a fourth thing, a `/tmp` bridge JSON, cached all three plus a
-# stage snapshot; ruling 6 of intent 296 retired it, and this module is what
-# replaced the bridge's arm, disarm, and repair methods (removed in 2.0, intent 307).
+# stage snapshot; ruling 6 of intent 296 retired it. This module carries the
+# arm, disarm, and repair operations (intent 307); the pure INDEX/project-config
+# helpers that once sat alongside them on a shared-helpers module now live on
+# IndexEntry and ProjectConfig (intent 344).
 #
 # Pure and dependency-injected: every path and clock is an argument, every git
 # call goes through an injected runner, and the only environment read is the
@@ -32,7 +34,7 @@ module Arm
   end
 
   # Deterministic, session-less key derived from the store and the intent id,
-  # for headless runs that carry no session id at all (moved from Bridge).
+  # for headless runs that carry no session id at all.
   def derive_key(store, intent_id)
     "auto-" + Digest::SHA256.hexdigest("#{store}/#{intent_id}")[0, 10]
   end
@@ -67,7 +69,7 @@ module Arm
 
   # The minimal hash Worktree.provision, release, and finish consume: the
   # intent block plus, when asked, the derived worktree block.
-  def bridge_hash(intent_dir:, home: Dir.home, with_worktree: true)
+  def delivery(intent_dir:, home: Dir.home, with_worktree: true)
     dir = File.expand_path(intent_dir)
     data = {
       "intent" => { "id" => intent_id_for(dir), "dir" => File.basename(dir), "store" => store_for(dir) },
@@ -163,7 +165,7 @@ module Arm
       return { status: status, lock: lock, worktree: nil, session: key, pointer: nil }
     end
 
-    data = bridge_hash(intent_dir: dir, home: h, with_worktree: false)
+    data = delivery(intent_dir: dir, home: h, with_worktree: false)
     begin
       Worktree.provision(data, home: h, runner: runner)
     rescue StandardError => e
@@ -198,7 +200,7 @@ module Arm
     key = resolve_session(session, store: store_for(dir), intent_id: intent_id_for(dir))
 
     begin
-      Worktree.release(bridge_hash(intent_dir: dir, home: h), home: h, runner: runner, remove: remove)
+      Worktree.release(delivery(intent_dir: dir, home: h), home: h, runner: runner, remove: remove)
     rescue StandardError => e
       warn "plastic: worktree release raised, continuing: #{e.message}"
     end
@@ -284,7 +286,7 @@ module Arm
     end
 
     begin
-      Worktree.provision(bridge_hash(intent_dir: dir, home: h, with_worktree: false), home: h, runner: runner)
+      Worktree.provision(delivery(intent_dir: dir, home: h, with_worktree: false), home: h, runner: runner)
     rescue StandardError => e
       warn "plastic: worktree provision raised during repair, continuing unprovisioned: #{e.message}"
     end

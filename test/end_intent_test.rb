@@ -131,6 +131,28 @@ class EndIntentTest < Minitest::Test
     File.exist?(path) ? File.read(path).lines.map(&:strip).reject(&:empty?) : []
   end
 
+def test_index_move_reads_a_hyphen_separated_entry
+  build_intent
+  File.write(@index, <<~MD)
+    # Index
+
+    ## Active
+    - [161 - Demo intent](store/161--demo/161--demo.md) - a hyphen-separated entry
+
+    ## Completed
+    _(none)_
+
+    ## Abandoned
+    _(none)_
+  MD
+
+  out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                "--index", @index, "--no-commit")
+  assert_equal 0, status, out
+  assert_match(/^## Completed\n- \[161 /, File.read(@index))
+  refute_match(/^## Active\n- \[161 /, File.read(@index))
+end
+
   # --- (a) Done bookend lands once and is idempotent [AC3] -------------------
 
   def test_done_bookend_lands_once_and_is_idempotent

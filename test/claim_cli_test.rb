@@ -5,7 +5,6 @@ require "json"
 require "open3"
 require "rbconfig"
 require_relative "../scripts/lib/lock"
-require_relative "../scripts/lib/bridge"
 
 # plastic-lock claim/release-claim verbs + claims in status (intent 111 D5,
 # AC2 via CLI, AC5). Hermetic: store in mktmpdir, PLASTIC_TMP injected for the
