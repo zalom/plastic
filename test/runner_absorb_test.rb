@@ -571,7 +571,7 @@ class RunnerAbsorbTest < Minitest::Test
     assert_equal [["n4", "done"]], fake_wt.released
   end
 
-  # --- 4.42: the return file is kept beside the packet ------------------------------
+  # --- 4.42: the return file is kept beside the node input ------------------------------
 
   def test_return_file_kept_beside_the_input
     write_savepoint(running_line)

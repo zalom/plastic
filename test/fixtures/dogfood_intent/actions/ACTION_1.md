@@ -19,7 +19,7 @@ Work in `/Users/zlatko/apps/personal/plastic/.claude/worktrees/342--backward-shi
 - `CHANGELOG.md`, one line under Unreleased
 
 Out of bounds, owned by leads running in parallel right now: `scripts/hook-capture`, `.github/`,
-the releasing skill, `project.yml`, `scripts/node-transition`, the ready-set code, the packet
+the releasing skill, `project.yml`, `scripts/node-transition`, the ready-set code, the node input
 command, outcome generation, `scripts/lib/report_screen.rb`. `scripts/end-intent` is read, never
 written.
 

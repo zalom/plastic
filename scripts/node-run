@@ -19,9 +19,9 @@ require_relative "lib/codex_adapter"
 #
 # On Claude Code a subagent dispatch IS the executor; on Codex the executor
 # is a subprocess, so this script owns the timing of a whole node: it reads
-# the node's live `running` line, resolves the packet that line names,
+# the node's live `running` line, resolves the node input that line names,
 # builds the `codex exec` argv for the node's kind (CodexAdapter), runs it
-# in the node's worktree with the packet on stdin, reads the executor's
+# in the node's worktree with the node input on stdin, reads the executor's
 # final message, and writes it to the attempt's own return path.
 #
 # It writes NO ledger transition, on any path - success, refusal or error
@@ -41,8 +41,8 @@ require_relative "lib/codex_adapter"
 #   2 - usage: not an intent directory, or missing --node
 #   3 - the node has no live `running` line
 #   4 - the running line is held by another session
-#   5 - the packet the running line names is missing from disk
-#   6 - the packet on disk does not hash to the running line's input=
+#   5 - the node input the running line names is missing from disk
+#   6 - the node input on disk does not hash to the running line's input=
 #   7 - no worktree could be resolved to run in
 module NodeRunCLI
   module_function
@@ -60,8 +60,8 @@ module NodeRunCLI
     dir && File.directory?(dir) && File.exist?(Savepoint.intent_file(dir))
   end
 
-  # <intent_dir>/attempts/<node>--a<N>.return.yml (spec): beside the packet,
-  # one per attempt, the same treatment packet files already get - never
+  # <intent_dir>/attempts/<node>--a<N>.return.yml (spec): beside the node input,
+  # one per attempt, the same treatment input files already get - never
   # reused across attempts, so a second attempt's return can never be
   # mistaken for the first's.
   def return_path(intent_dir, node, attempt)
@@ -172,7 +172,7 @@ module NodeRunCLI
     # running line this attempt is acting on ALREADY exists on disk (it is
     # what we just read above) - counting it a second time would double it
     # (the same count, plus one, that produced it in the first place when
-    # the packet was originally built).
+    # the node input was originally built).
     attempt = NodeInput.compute_attempt_number(intent_dir: intent_dir, node: node, lease_flag_given: false)
     input_path = NodeInput.input_path(intent_dir: intent_dir, node: node, attempt: attempt)
 

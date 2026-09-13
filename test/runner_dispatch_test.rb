@@ -22,7 +22,7 @@ require_relative "../scripts/lib/worktree"
 require_relative "../scripts/lib/guarded_append"
 
 # A ledger double that records when `running` is about to be written, so a
-# test can prove the packet exists on disk before that call happens (matrix
+# test can prove the node input exists on disk before that call happens (matrix
 # row 5.18), without reaching into RunnerDispatch's own internals.
 class OrderSpyLedger
   def initialize(order)
@@ -38,7 +38,7 @@ end
 
 # A ledger double that refuses every `running` write outright, standing in
 # for a concurrent writer that made the subject no longer ready between the
-# packet build and the guarded append (matrix row 5.20).
+# input build and the guarded append (matrix row 5.20).
 class RefusingRunningLedger
   def append_transition(path, subject:, state:, fields: {}, now: Time.now, precondition: nil)
     return :refused if state == "running"
@@ -344,7 +344,7 @@ class RunnerDispatchTest < Minitest::Test
     assert_equal "needs_decision", NodeLedger.status_for(savepoint_path, "n1")
   end
 
-  # --- 5.18: the packet is built before `running` is written -----------------
+  # --- 5.18: the node input is built before `running` is written -----------------
 
   def test_input_built_before_running_line
     write_graph("- n1 needs nothing\n")
@@ -414,7 +414,7 @@ class RunnerDispatchTest < Minitest::Test
                  "the running line must carry work's shipped call cap"
   end
 
-  # --- 5.20: a refused `running` rolls back the worktree and the packet -----
+  # --- 5.20: a refused `running` rolls back the worktree and the node input -----
 
   def test_refused_running_rolls_back_side_effects
     setup_real_repo
@@ -429,10 +429,10 @@ class RunnerDispatchTest < Minitest::Test
     node_path = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}--n1")
     refute Dir.exist?(node_path), "a refused running write must roll back the worktree it provisioned"
     refute Dir.glob(File.join(@dir, "attempts", "n1--a*.input")).any?,
-           "a refused running write must roll back the packet it built"
+           "a refused running write must roll back the node input it built"
   end
 
-  # --- 5.22: the plan lists packet, model, worktree, kind and role -----------
+  # --- 5.22: the plan lists node input, model, worktree, kind and role -----------
 
   def test_plan_lists_input_model_worktree_kind_role
     write_graph("- n1 needs nothing\n")
@@ -457,7 +457,7 @@ class RunnerDispatchTest < Minitest::Test
     assert_equal entry[:input], row["input"]
   end
 
-  # --- 5.23: the return contract lives in the plan, never in the packet -----
+  # --- 5.23: the return contract lives in the plan, never in the node input -----
 
   def test_return_contract_is_in_plan_not_input
     write_graph("- n1 needs nothing\n")
@@ -636,7 +636,7 @@ class RunnerDispatchTest < Minitest::Test
     assert_match(/\Arunner answer #{Regexp.escape(@dir)} --node n1 --answer /, cmd)
   end
 
-  # --- 5.29: the packet names the node worktree and node branch --------------
+  # --- 5.29: the node input names the node worktree and node branch --------------
 
   def test_input_names_node_worktree_and_branch
     setup_real_repo
@@ -657,7 +657,7 @@ class RunnerDispatchTest < Minitest::Test
     refute_includes input_text, "worktree: #{@intent_worktree} (branch #{@intent_branch})"
   end
 
-  # --- 5.30: an orphan packet (no running line for its attempt) is rebuilt --
+  # --- 5.30: an orphan node input (no running line for its attempt) is rebuilt --
 
   def test_orphan_input_is_rebuilt_with_force
     write_graph("- n1 needs nothing\n")
@@ -685,7 +685,7 @@ class RunnerDispatchTest < Minitest::Test
     assert_equal "lock_not_held", result[:reason]
     assert_empty result[:dispatched]
     refute File.exist?(savepoint_path), "a lock refusal must write nothing"
-    refute Dir.exist?(File.join(@dir, "attempts")), "a lock refusal must build no packet"
+    refute Dir.exist?(File.join(@dir, "attempts")), "a lock refusal must build no node input"
   end
 
   # --- 5.32: the lock refusal prints the re-arm command -----------------------
@@ -728,7 +728,7 @@ class RunnerDispatchTest < Minitest::Test
     assert_equal "running", row[:state]
   end
 
-  # --- 10.6: a failed packet build rolls back the worktree it provisioned (M6) --
+  # --- 10.6: a failed input build rolls back the worktree it provisioned (M6) --
 
   def test_failed_input_build_rolls_back_the_worktree
     setup_real_repo
@@ -743,10 +743,10 @@ class RunnerDispatchTest < Minitest::Test
     assert_empty result[:dispatched]
 
     node_path = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}--n1")
-    refute Dir.exist?(node_path), "a failed packet build must roll back the worktree it provisioned"
+    refute Dir.exist?(node_path), "a failed input build must roll back the worktree it provisioned"
   end
 
-  # --- 10.7: a failed packet build's errors reach the step's blockers (M6) ----
+  # --- 10.7: a failed input build's errors reach the step's blockers (M6) ----
 
   def test_failed_input_build_names_the_node_and_the_reason
     write_graph("- n1 needs nothing\n")
@@ -764,7 +764,7 @@ class RunnerDispatchTest < Minitest::Test
            result[:blockers].inspect)
   end
 
-  # --- 10.8: the node's declared budget: reaches the packet builder (M7) ------
+  # --- 10.8: the node's declared budget: reaches the input builder (M7) ------
 
   def test_dispatch_passes_the_nodes_declared_budget
     write_graph("- n1 needs nothing\n")

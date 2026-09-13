@@ -21,10 +21,10 @@
 # transcript, at <dirname(transcript_path)>/<session_id>/subagents/
 # agent-<agent_id>.jsonl (the main transcript_path plus the main session_id
 # plus the subagent's own agent_id): its first user record carries the
-# dispatch prompt, and the lead/spawn block always pastes the node's packet
-# path into that prompt (INPUT_PATH_RE). The packet path names the intent
+# dispatch prompt, and the lead/spawn block always pastes the node's input
+# path into that prompt (INPUT_PATH_RE). The node input path names the intent
 # directory directly (its grandparent), so this hook never scans the store to
-# find it. No packet path in that first prompt means allow.
+# find it. No node input path in that first prompt means allow.
 #
 # The cap applies only when that node's LATEST transition line in
 # <intent>/savepoint.md is `running` and carries `calls=`; a later `done` or

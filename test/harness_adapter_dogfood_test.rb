@@ -240,7 +240,7 @@ class HarnessAdapterDogfoodTest < Minitest::Test
     end
   end
 
-  # --- 5.4: the rendered packet path exists ---------------------------------------
+  # --- 5.4: the rendered node input path exists ---------------------------------------
 
   def test_rendered_input_path_exists
     assert_git_available!
@@ -270,7 +270,7 @@ class HarnessAdapterDogfoodTest < Minitest::Test
 
     blocks = parsed_dispatch_blocks(out)
     refute_empty blocks, "the rendered block must name at least one dispatch:\n#{out}"
-    blocks.each do |_agent, node, model, _packet|
+    blocks.each do |_agent, node, model, _input|
       assert_equal plan_models[node], model,
                    "the rendered block's model for #{node} must match the plan's own model"
     end
@@ -374,7 +374,7 @@ class HarnessAdapterDogfoodTest < Minitest::Test
       assert d["worktree"].to_s.start_with?(@repo),
              "a dispatched node's worktree must live under the scratch repo, not #{d['worktree'].inspect}"
       assert d["input"].to_s.start_with?(@home),
-             "a dispatched node's packet must live under the scratch home, not #{d['input'].inspect}"
+             "a dispatched node's input must live under the scratch home, not #{d['input'].inspect}"
     end
 
     written = Dir.glob(File.join(@dir, "**", "*"), File::FNM_DOTMATCH).reject { |p| File.directory?(p) }

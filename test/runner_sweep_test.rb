@@ -393,7 +393,7 @@ class RunnerSweepTest < Minitest::Test
 
   def test_torn_running_line_is_skipped
     init_repo
-    torn = "2026-01-01T00:00:00Z  n1  running holder=auto-1\n" # missing expires/packet/model
+    torn = "2026-01-01T00:00:00Z  n1  running holder=auto-1\n" # missing expires/input/model
     healthy = line("n2", "running", running_fields(expires: "2000-01-01T00:00:00Z"))
     write_savepoint(torn + healthy)
     ctx = build_context(worktree: @repo)

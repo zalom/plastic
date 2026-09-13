@@ -8,7 +8,7 @@ require_relative "runner_policy"
 
 # CodexAdapter (intent 340b, G7c, n6): the argv `codex exec` needs for one
 # node's kind, and the mechanics of running it once - a bounded subprocess
-# whose stdin carries the packet, whose stdout and `--output-last-message`
+# whose stdin carries the node input, whose stdout and `--output-last-message`
 # file are the only two places a return can come from, and whose timeout
 # kills the whole process group rather than one pid.
 #
@@ -69,7 +69,7 @@ module CodexAdapter
   # kind's row calls for and nothing else (row 6.7 - never the intent
   # worktree, never `~/.plastic`), `--output-last-message` at the path the
   # caller names, and a bare `-` so the prompt is read from stdin (row 6.9) -
-  # the packet itself never rides in this array.
+  # the node input itself never rides in this array.
   def build_argv(kind:, worktree:, output_last_message:)
     [
       "codex", "exec",

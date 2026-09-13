@@ -253,7 +253,7 @@ class GraphMeasureCohortsTest < Minitest::Test
 
       # 337 carries no Why line at all (spec D20): its clock falls back to
       # the first ledger line, so it is never presented as Why-anchored and
-      # its scaffold gap is unavailable, not zero. The packet's "about 5h"
+      # its scaffold gap is unavailable, not zero. The node input's "about 5h"
       # prose does not hold on real data: 337's real, fallback-anchored
       # number is pinned here instead of tuned to match that prose.
       row_337 = record[:latency][:rows].find { |r| r[:intent] == "337--roadmap-graph" }
