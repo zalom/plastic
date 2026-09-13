@@ -1087,4 +1087,35 @@ class RunnerCliTest < Minitest::Test
     refute_match(/unknown verb/, err2,
                  "until-empty must be a recognized internal verb, not routed through the unknown-verb refusal")
   end
+
+  # === Intent 340a, G7b, n2: watch, the one-tick verb ===
+
+  # --- 2.1: watch is internal - out of the usage text, callable ------------
+
+  def test_watch_is_internal
+    _out, err, _status = run_cli("swep", @dir)
+    refute_match(/\bwatch\b/, err, "the usage text must not advertise the internal watch verb")
+
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+
+    _out2, err2, _status2 = run_cli("watch", @dir)
+    refute_match(/unknown verb/, err2,
+                 "watch must be a recognized internal verb, not routed through the unknown-verb refusal")
+  end
+
+  # --- 2.2: watch's flags are never refused as unknown ----------------------
+
+  def test_watch_known_flags
+    assert_includes Runner::KNOWN_FLAGS.fetch("watch", []), "--dispatch",
+                     "watch must accept --dispatch or unrecognized_flag refuses it"
+    assert_includes Runner::KNOWN_FLAGS.fetch("watch", []), "--harness",
+                     "watch must accept --harness or unrecognized_flag refuses it"
+
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+
+    _out, err, _status = run_cli("watch", @dir, "--harness", "codex")
+    refute_match(/unknown flag/i, err)
+  end
 end

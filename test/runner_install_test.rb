@@ -99,6 +99,25 @@ class RunnerInstallTest < Minitest::Test
     assert_includes unreleased, "336 (G3", "must not replace the existing 336 entry"
   end
 
+  # 2.3 (intent 340a, G7b, n2): watch is internal, like rewind and
+  # until-empty - the skill body must never grow a fifth verb 327 did not
+  # name. `/runner watch/` specifically, never the bare word "watch", which
+  # the skill body may legitimately use in an unrelated English sentence.
+  def test_skill_does_not_name_runner_watch
+    body = File.read(SKILL)
+    refute_match(/runner watch/i, body, "the skill body must not name the runner watch verb")
+  end
+
+  # 2.13 (intent 340a, G7b, n2): the delivery watch gets its own Unreleased
+  # line, beside 343's, never in place of it.
+  def test_changelog_has_unreleased_watch_line
+    body = File.read(CHANGELOG)
+    unreleased = body[/^## Unreleased\n(.*?)^## /m, 1]
+    refute_nil unreleased, "CHANGELOG.md must have an Unreleased section"
+    assert_match(/340a.*G7b/, unreleased, "expected an intent 340a (G7b) line under Unreleased")
+    assert_includes unreleased, "343 (G10", "must not replace the existing 343 entry"
+  end
+
   # 7.6: a version bump riding in on this feature branch would collide with
   # the release intent; the three repo version files must still agree, at
   # whatever version they carried before this node touched anything.
