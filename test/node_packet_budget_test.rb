@@ -251,9 +251,9 @@ class NodePacketBudgetTest < Minitest::Test
   def test_the_attempt_number_counts_the_nodes_prior_running_lines
     setup_minimal(intent_text: "Attempt counting.")
     File.write(File.join(@dir, "savepoint.md"), <<~LEDGER)
-      2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z packet=abc model=sonnet
+      2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z input=abc model=sonnet
       2026-09-01T01:00:01Z  n1  failed_verification gates=lint reason="nope"
-      2026-09-01T02:00:00Z  n1  running holder=h2 expires=2026-09-01T03:00:00Z packet=def model=sonnet
+      2026-09-01T02:00:00Z  n1  running holder=h2 expires=2026-09-01T03:00:00Z input=def model=sonnet
     LEDGER
     result = build
     assert_equal 2, result[:attempt]
@@ -262,7 +262,7 @@ class NodePacketBudgetTest < Minitest::Test
   def test_a_lease_flag_increments_the_attempt
     setup_minimal(intent_text: "Attempt increment.")
     File.write(File.join(@dir, "savepoint.md"), <<~LEDGER)
-      2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z packet=abc model=sonnet
+      2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z input=abc model=sonnet
     LEDGER
     result = build(holder: "auto-newholder", expires: "2026-09-02T00:00:00Z", model: "sonnet")
     assert_equal 2, result[:attempt]
@@ -395,11 +395,11 @@ class NodePacketBudgetTest < Minitest::Test
     assert_equal original_bytes, File.binread(r3[:path])
   end
 
-  def test_success_prints_the_node_transition_running_command_carrying_packet_and_hop
+  def test_success_prints_the_node_transition_running_command_carrying_input_and_hop
     setup_minimal(intent_text: "Running command test.")
     result = build(hop_tokens: 0)
     assert_includes result[:running_command], "--state running"
-    assert_includes result[:running_command], "packet=#{result[:sha]}"
+    assert_includes result[:running_command], "input=#{result[:sha]}"
     assert_includes result[:running_command], "hop=0"
   end
 
@@ -599,10 +599,10 @@ class NodePacketBudgetTest < Minitest::Test
   def test_attempt_number_skips_torn_lines
     setup_minimal(intent_text: "Torn line test.")
     File.write(File.join(@dir, "savepoint.md"), <<~LEDGER)
-      2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z packet=abc model=sonnet
+      2026-09-01T00:00:00Z  n1  running holder=h1 expires=2026-09-01T01:00:00Z input=abc model=sonnet
       2026-09-01T00:30:00Z  n1  running holder=h1
       2026-09-01T01:00:01Z  n1  failed_verification gates=lint reason="nope"
-      2026-09-01T02:00:00Z  n1  running holder=h2 expires=2026-09-01T03:00:00Z packet=def model=sonnet
+      2026-09-01T02:00:00Z  n1  running holder=h2 expires=2026-09-01T03:00:00Z input=def model=sonnet
     LEDGER
     result = build
 

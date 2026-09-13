@@ -63,7 +63,7 @@ class CrossHarnessResumeTest < Minitest::Test
   def test_torn_lines_ignored
     content = line("n1", "running", holder: "h1", expires: "2026-01-01T01:00:00Z",
                                      input: "deadbeef", model: "sonnet", harness: "claude-code") +
-              # torn: a running line missing the required packet=/model= fields
+              # torn: a running line missing the required input=/model= fields
               line("n1", "running", holder: "h1", harness: "third-harness") +
               line("n1", "done", gates: "integrity", commit: "aaa1111", harness: "codex")
 

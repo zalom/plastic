@@ -362,7 +362,7 @@ class RunnerDispatchTest < Minitest::Test
     assert_equal [:packet, :running], order
   end
 
-  # --- 5.19: `running` carries holder=, expires=, packet= and model= ---------
+  # --- 5.19: `running` carries holder=, expires=, input= and model= ---------
 
   def test_running_line_carries_required_fields
     write_graph("- n1 needs nothing\n")
@@ -375,7 +375,27 @@ class RunnerDispatchTest < Minitest::Test
     entry = NodeLedger.last_running(savepoint_path, "n1")
     refute_nil entry
     fields = entry[:fields]
-    %w[holder expires packet model].each { |k| refute_nil fields[k], "running line missing #{k}=" }
+    %w[holder expires input model].each { |k| refute_nil fields[k], "running line missing #{k}=" }
+  end
+
+  # --- intent 338a, n1, matrix 1.10: the dispatcher writes input=, never the
+  # field NodeInputCompatibility::LEGACY_FIELD names, on the `running` line
+  # it appends ------------------------------------------------------------
+
+  def test_running_line_carries_input_field
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    ctx = build_context
+
+    result = RunnerDispatch.dispatch(ctx)
+    assert result[:ok], result[:errors].inspect
+
+    entry = NodeLedger.last_running(savepoint_path, "n1")
+    refute_nil entry
+    fields = entry[:fields]
+    refute_nil fields["input"], "running line missing input="
+    assert_nil fields[NodeInputCompatibility::LEGACY_FIELD],
+               "running line must never carry the retired #{NodeInputCompatibility::LEGACY_FIELD}= field"
   end
 
   # --- intent 355, n2, matrix 2.3: `running` carries calls=<cap> -------------

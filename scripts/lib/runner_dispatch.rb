@@ -32,7 +32,7 @@ module RunnerDispatch
   DEFAULT_LIMIT = 2
 
   # The return-schema instruction (327 D5): rides in the dispatch PLAN, never
-  # inside the packet, so `packet=<sha>` keeps naming a reproducible input
+  # inside the packet, so `input=<sha>` keeps naming a reproducible input
   # (matrix row 5.23). NodeReturn.parse (n4) is this text's implementation.
   RETURN_CONTRACT = <<~TEXT.freeze
     RETURN CONTRACT: reply with exactly one YAML document as your final

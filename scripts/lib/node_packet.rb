@@ -35,7 +35,7 @@ module NodePacket
   # reports is not provisioned.
   STOP_DIRECTIVE = "STOP: no lease is recorded for this node. Do not edit files or run any command until a runner dispatches this node with a holder, an expiry and a model."
 
-  # Pinned so `packet=<sha>` is a function of the repo's history alone
+  # Pinned so `input=<sha>` is a function of the repo's history alone
   # (post-execution review finding B4): unpinned, `git log --stat` varies
   # with the terminal's COLUMNS (abbreviates paths, narrows the graph
   # column), the caller's `color.ui` (ANSI escapes land in the ledger data

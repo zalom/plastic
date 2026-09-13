@@ -64,7 +64,7 @@ class GraphMeasureBudgetTest < Minitest::Test
   end
 
   # Writes a real packets/<node>--a<attempt>.packet file and returns its real
-  # sha256[0,12], the same function NodePacket itself uses to mint packet=.
+  # sha256[0,12], the same function NodePacket itself uses to mint input=.
   def write_packet(dir, node, attempt, content)
     packets_dir = File.join(dir, "packets")
     FileUtils.mkdir_p(packets_dir)

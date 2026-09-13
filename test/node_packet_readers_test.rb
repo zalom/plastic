@@ -322,7 +322,7 @@ class NodePacketReadersTest < Minitest::Test
 
   # Unpinned, `git log --stat` varies with the caller's terminal COLUMNS, the
   # caller's color.ui, and gitconfig's pretty/date/showSignature settings, so
-  # `packet=<sha>` was not a pure function of the repo's history alone.
+  # `input=<sha>` was not a pure function of the repo's history alone.
   def test_git_log_command_is_pinned_against_terminal_and_gitconfig_variance
     cmd = NodePacket.git_log_command(repo_dir: "/tmp/repo", files: ["a.rb", "b.rb"])
     joined = cmd.join(" ")
