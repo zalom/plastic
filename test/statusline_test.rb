@@ -221,6 +221,57 @@ class StatuslineTest < Minitest::Test
     assert_includes header, "plastic-hook-version: 4.0.0"
   end
 
+  # --- rate-limits cache (graph.md D11, 340a n4) ------------------------------
+
+  def cache_path
+    File.join(@home, ".plastic", ".cache", "rate-limits.json")
+  end
+
+  def test_rate_limits_cache_written_in_meter_watch_shape
+    render(stdin_json(rate_limits: {
+      "five_hour" => { "used_percentage" => 42.5, "resets_at" => "2026-09-13T10:00:00Z" },
+      "seven_day" => { "used_percentage" => 13 },
+    }))
+    cache = JSON.parse(File.read(cache_path))
+    assert_equal 42, cache["five_hour"]
+    assert_equal 13, cache["seven_day"]
+    assert_equal "2026-09-13T10:00:00Z", cache["resets_at"]
+    assert_match(/\A\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ\z/, cache["at"])
+  end
+
+  def test_rate_limits_cache_missing_meter_is_null
+    render(stdin_json(rate_limits: { "five_hour" => { "used_percentage" => 42 } }))
+    cache = JSON.parse(File.read(cache_path))
+    assert_equal 42, cache["five_hour"]
+    assert_nil cache["seven_day"]
+    assert_nil cache["resets_at"]
+  end
+
+  def test_rate_limits_cache_untouched_without_rate_limits
+    FileUtils.mkdir_p(File.dirname(cache_path))
+    stale = '{"five_hour":1,"seven_day":2,"resets_at":"x","at":"y"}'
+    File.write(cache_path, stale)
+    render(stdin_json)
+    assert_equal stale, File.read(cache_path)
+  end
+
+  def test_rate_limits_cache_write_is_atomic
+    code = File.read(STATUSLINE)
+    assert_match(/\.rate-limits\.json\.tmp/, code,
+                 "the cache must be written to a temp path under the cache dir, then mv'd")
+    assert_match(/\bmv\b.*rate-limits\.json/, code)
+  end
+
+  def test_meter_watch_reads_the_statusline_cache
+    render(stdin_json(rate_limits: {
+      "five_hour" => { "used_percentage" => 42, "resets_at" => "2026-09-13T10:00:00Z" },
+    }))
+    require_relative "../scripts/lib/meter_watch"
+    state = MeterWatch.new(home: File.join(@home, ".plastic")).tick
+    refute_equal "unavailable", state["state"]
+    assert_equal 42, state["five_hour"]
+  end
+
   def test_no_ruby_or_jq_invoked
     # Strip comments; assert no ruby/jq token survives in executable lines.
     body = File.read(STATUSLINE)

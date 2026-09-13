@@ -69,7 +69,9 @@ brief someone checking in on progress.
 
 Two Claude Code harness commands, not Plastic skills, keep a session moving
 without you restarting it each time. `/loop` repeats a prompt or command on a
-fixed time interval, until you stop it or Claude decides the work is done.
+fixed time interval, until you stop it or Claude decides the work is done. A
+delivery loop runs `/loop` over `runner watch <intent_dir>`, the prompt it
+repeats to check a delivery and dispatch it when it is ready.
 `/goal` works differently: you give it a condition instead of an interval, it
 sets that as the completion condition, and Claude keeps working, turn after
 turn, until a fast checker model confirms from what Claude has actually
