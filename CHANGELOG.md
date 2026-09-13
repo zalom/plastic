@@ -26,7 +26,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   expired running leases from `scripts/doctor.rb` (never `doctor_core.rb`); the dashboard reads a
   graph intent's ready node count, advisory, entirely separate from the `sources`-derived
   "unblocked" flag. `scripts/ready-set` prints the ready order, blockers, batches and critical
-  paths, and emits JSON. A post-execution review fold closed two silent gaps: a node whose kind
+  paths, and emits JSON. A post-execution review fix closed two silent gaps: a node whose kind
   is unknown, or whose declared file is missing or malformed, now falls back to the work cap
   (never no cap at all) and is never ready without a readable file; `RoadmapQueue`'s graph
   frontier reports (in `blocked`) an id the graph names but no batch lists, and never drops a
