@@ -570,4 +570,81 @@ class RunnerWatchTest < Minitest::Test
     refute_includes source, "<plist", "runner_watch.rb must never render plist XML itself; " \
                                        "reuse MeterWatch.install_timer instead"
   end
+
+  # === Intent 340a, G7b, n5: the review fix (B1-B3) ===
+
+  # A double for RunnerUntilEmpty whose #run drives the given `step:` proc
+  # exactly once - dispatching the ids handed to .new - and then raises, the
+  # way a launchd SIGTERM or a Process.spawn Errno would mid-delivery (B1,
+  # probe P2). #step_once is what `wrapped_step` calls to learn what to
+  # collect, same as FakeUntilEmpty above.
+  class RaisingUntilEmpty
+    def initialize(dispatched)
+      @dispatched = dispatched
+    end
+
+    def step_once(_context, harness:, returns:)
+      { ok: true, dispatched: @dispatched }
+    end
+
+    def run(context, harness:, step:)
+      step.call(context, harness: harness, returns: {})
+      raise "boom mid-delivery"
+    end
+  end
+
+  # --- 5.1: the record survives a raise inside until_empty.run --------------------
+
+  def test_record_survives_a_raise_inside_until_empty
+    write_one_node_graph
+    write_savepoint("")
+    ctx = build_context(session: "sess-1")
+    until_empty = RaisingUntilEmpty.new(["n1"])
+
+    assert_raises(RuntimeError) do
+      RunnerWatch.tick(ctx, runner: FakeRunner.new, dispatch: true, harness: "codex",
+                        until_empty: until_empty, now: Time.iso8601("2026-09-13T03:00:00Z"))
+    end
+
+    assert File.exist?(record_path), "watch.record must exist even when until_empty.run raises"
+    line = File.read(record_path).each_line.to_a.first
+    assert_match(/dispatched=n1/, line)
+  end
+
+  # A sweep double that proves B2: it delegates abort_if_merging to the real
+  # RunnerSweep but always answers reclaim with a non-empty `extended`, the
+  # way a live executor past its lease with new commits would.
+  module ExtendingSweep
+    module_function
+
+    def abort_if_merging(context, runner:)
+      RunnerSweep.abort_if_merging(context, runner: runner)
+    end
+
+    def reclaim(context, runner:, skip: [], now: Time.now)
+      { reclaimed: [], extended: [{ node: "n1", head: "abc123", time: now.utc.iso8601 }] }
+    end
+  end
+
+  # --- 5.2: an extended lease counts as movement -----------------------------------
+
+  def test_extended_lease_counts_as_movement
+    write_one_node_graph
+    write_savepoint(line("n1", "running", running_fields(expires: "2000-01-01T00:00:00Z")))
+    ctx = build_context
+
+    3.times do
+      result = RunnerWatch.tick(ctx, runner: FakeRunner.new, sweep: ExtendingSweep,
+                                 now: Time.iso8601("2026-09-13T00:00:00Z"))
+      assert_equal "moving", result[:class]
+    end
+  end
+
+  # --- 5.3: runner_watch.rb names no harness literal -------------------------------
+
+  def test_runner_watch_names_no_harness_literal
+    source = File.read(File.expand_path("../scripts/lib/runner_watch.rb", __dir__))
+    refute_match(/["']codex["']/, source, "runner_watch.rb must not name the harness literal \"codex\"")
+    refute_match(/["']claude-code["']/, source, "runner_watch.rb must not name the harness literal \"claude-code\"")
+  end
 end
