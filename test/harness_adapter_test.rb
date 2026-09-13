@@ -161,6 +161,15 @@ class HarnessAdapterTest < Minitest::Test
     refute_match(/plastic-node-work/, codex)
   end
 
+  # --- 338a n4, 4.8: the Codex rendering names the input path, never the retired key ---
+
+  def test_codex_rendering_names_the_input_path
+    codex = HarnessAdapter.render([ENTRY], harness: "codex", return_contract: RETURN_CONTRACT)
+    assert_includes codex, "input: /store/1--demo/attempts/n1--a1.input"
+    retired = "pack" + "et"
+    refute_match(/^#{retired}: /, codex, "the codex rendering must not keep a #{retired}: line: #{codex.inspect}")
+  end
+
   # --- 1.18: a config-authored key is squashed before it reaches the ledger --
 
   def test_harness_key_is_squashed_before_the_ledger

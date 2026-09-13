@@ -1127,4 +1127,25 @@ class RunnerCliTest < Minitest::Test
     assert_includes Runner::KNOWN_FLAGS.fetch("watch", []), "--home",
                      "watch must accept --home or unrecognized_flag refuses it"
   end
+
+  # --- 338a n4, 4.11: `runner step`'s subprocess plan names input, never the retired key ---
+
+  def test_step_subprocess_plan_names_input
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    session = "input-plan-session"
+    write_lock(@dir, owner: session)
+
+    out, err, status = run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
+    assert_equal 0, status.exitstatus, out + err
+
+    plan_yaml = out.split("...\n").first
+    plan = YAML.safe_load(plan_yaml, permitted_classes: [], aliases: false)
+    entry = plan["dispatch"]&.first
+    refute_nil entry, "the plan must dispatch n1: #{out.inspect}"
+    assert entry.key?("input"), "the dispatch entry must carry an input key: #{entry.inspect}"
+    assert File.exist?(entry["input"]), "the input path the plan names must exist: #{entry["input"]}"
+    retired = "pack" + "et"
+    refute entry.key?(retired), "the dispatch entry must not keep the retired #{retired} key: #{entry.inspect}"
+  end
 end

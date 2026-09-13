@@ -519,6 +519,16 @@ class RunnerDispatchTest < Minitest::Test
                  "the fixture must exercise two different resolved models"
   end
 
+  # --- 338a n4, 4.2: the spawn block names the input path, never the retired key ---
+
+  def test_spawn_block_names_the_input_path
+    block = RunnerDispatch.spawn_block(model: "sonnet", input: "/tmp/n1--a1.input",
+                                        test_command: "test command: none", call_cap: 60)
+    assert_includes block, "input: /tmp/n1--a1.input"
+    retired = "pack" + "et"
+    refute_match(/^#{retired}: /, block, "the spawn block must not keep a #{retired}: line: #{block.inspect}")
+  end
+
   # --- n6, 6.4: the plan's data carries the fully rendered spawn block ------
 
   def test_json_plan_carries_spawn
