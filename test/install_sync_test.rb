@@ -217,4 +217,22 @@ class InstallSyncTest < Minitest::Test
     assert_empty missing,
       "skill-referenced scripts missing from core_files (installed skills would point at nothing): #{missing.join(", ")}"
   end
+  # Regression guard (intent 344, G11, D10, matrix row 3.14): the core sync path
+  # (InstallerCore#distribute) must actually call remove_retired_session_state
+  # after it prunes removed core files, or no installed machine is ever cleaned
+  # of leftover session pointers. tmp_dirs: [] keeps this hermetic (no scan of
+  # the real system tmp directory or /tmp).
+  def test_sync_calls_the_retired_session_state_removal
+    home = Dir.mktmpdir("sync-retired-state")
+    core = InstallerCore.new(package_root: REPO, plastic_home: home, version: "1.0.0-test")
+    current = File.join(home, "store", ".tmp", "abcd1234", "current")
+    FileUtils.mkdir_p(File.dirname(current))
+    File.write(current, "20260913\n")
+
+    core.distribute(:install, tmp_dirs: [])
+
+    refute File.exist?(current), "distribute must call remove_retired_session_state and remove leftover pointers"
+  ensure
+    FileUtils.rm_rf(home)
+  end
 end

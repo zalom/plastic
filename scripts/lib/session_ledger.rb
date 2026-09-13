@@ -162,6 +162,39 @@ module SessionLedger
     File.join(session_tmp_dir(store, session_id), "heartbeat")
   end
 
+  # --- Session day (spec D7 replacement for the retired pointer) ------------
+
+  # The oldest day, no later than `today` and no earlier than `today` minus
+  # `window_days`, whose checklist carries at least one line tagged to
+  # `session` (any state). Answers the one question the per-session pointer
+  # used to answer: which day ledger this session's close and hand-off write
+  # belong to. Falls back to `today` when no day in the window carries the
+  # session's line, and on any error reading the store (never raises).
+  def session_day(store, session, today:, window_days: 7)
+    root = sessions_root(store)
+    return today unless File.directory?(root)
+
+    today_date = Date.strptime(today, "%Y%m%d")
+    floor_date = today_date - window_days
+
+    days = Dir.children(root).select { |name| valid_day_id?(name) }.select do |name|
+      date = Date.strptime(name, "%Y%m%d")
+      date >= floor_date && date <= today_date
+    end.sort
+
+    days.each do |day|
+      carries = read_locked(checklist_path(store, day)).each_line.any? do |line|
+        parsed = parse_checklist_line(line)
+        parsed && parsed[:session] == session
+      end
+      return day if carries
+    end
+
+    today
+  rescue StandardError
+    today
+  end
+
   # Create `.tmp/` plus a `.gitignore` holding exactly `*`, if that file does
   # not already exist. The store is a local git repo that auto-commits
   # `add -A`, so without this ignore file every heartbeat write would enter

@@ -4,7 +4,8 @@
 
 # hook-savepoint (intent 311): the PreCompact hook body. Reads the harness
 # payload from stdin (session_id, cwd), takes the Plastic home from argv,
-# writes this session's hand-off for the pointer's day, and prints one
+# writes this session's hand-off for the session's day from the day ledger,
+# and prints one
 # message: the fixed text, plus the written file's path when a session
 # resolved (both harnesses relay the same launcher and the Codex pin feeds
 # both sides the same payload, so the two stay equal). Always exits 0,

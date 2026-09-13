@@ -384,4 +384,86 @@ class InstallerCoreTest < Minitest::Test
   ensure
     FileUtils.rm_rf(dir)
   end
+  # --- remove_retired_session_state (intent 344, G11, D10) ---------------------------
+
+  def test_sync_removes_retired_session_pointer_files
+    global_current = File.join(@home, "store", ".tmp", "abcd1234", "current")
+    project_current = File.join(@home, "projects", "demo", "store", ".tmp", "efgh5678", "current")
+    FileUtils.mkdir_p(File.dirname(global_current))
+    FileUtils.mkdir_p(File.dirname(project_current))
+    File.write(global_current, "20260913\n")
+    File.write(project_current, "297\n")
+
+    removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [])
+
+    assert_equal 2, removed
+    refute File.exist?(global_current)
+    refute File.exist?(project_current)
+  end
+
+  def test_sync_removes_retired_bridge_files_by_name
+    tmp = Dir.mktmpdir("bridge-leftovers")
+    bridge = File.join(tmp, "plastic-b7137962--311.json")
+    File.write(bridge, "{}")
+
+    removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [tmp])
+
+    assert_equal 1, removed
+    refute File.exist?(bridge)
+  ensure
+    FileUtils.rm_rf(tmp)
+  end
+
+  def test_sync_keeps_heartbeats_and_unrelated_tmp_files
+    global_dir = File.join(@home, "store", ".tmp", "abcd1234")
+    FileUtils.mkdir_p(global_dir)
+    heartbeat = File.join(global_dir, "heartbeat")
+    File.write(heartbeat, Time.now.utc.iso8601)
+
+    tmp = Dir.mktmpdir("unrelated-tmp")
+    other = File.join(tmp, "some-other-tool.json")
+    File.write(other, "{}")
+    near_miss = File.join(tmp, "plastic-nodash.json")
+    File.write(near_miss, "{}")
+
+    removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [tmp])
+
+    assert_equal 0, removed
+    assert File.exist?(heartbeat)
+    assert File.exist?(other)
+    assert File.exist?(near_miss)
+  ensure
+    FileUtils.rm_rf(tmp)
+  end
+
+  def test_sync_removes_a_malformed_bridge_file_without_reading_it
+    tmp = Dir.mktmpdir("torn-bridge")
+    torn = File.join(tmp, "plastic-b7137962--311.json")
+    File.write(torn, "{not json at all, torn mid-write")
+
+    removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [tmp])
+
+    assert_equal 1, removed
+    refute File.exist?(torn)
+  ensure
+    FileUtils.rm_rf(tmp)
+  end
+
+  def test_retired_state_removal_failure_never_fails_the_sync
+    global_dir = File.join(@home, "store", ".tmp", "abcd1234")
+    FileUtils.mkdir_p(global_dir)
+    current = File.join(global_dir, "current")
+    File.write(current, "20260913\n")
+    File.chmod(0o500, global_dir)
+
+    removed = nil
+    begin
+      removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [])
+    ensure
+      File.chmod(0o755, global_dir)
+    end
+
+    assert_equal 0, removed
+    assert File.exist?(current), "an undeletable candidate must be left in place, not raised over"
+  end
 end

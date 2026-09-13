@@ -11,11 +11,20 @@ require_relative "../scripts/lib/session_close"
 # Intent 301: the per-session close. The library is exercised in process with
 # a recording spawner; the script is spawned once for stdin handling, with
 # PLASTIC_HOME and PLASTIC_TMP isolated and CLAUDE_CODE_SESSION_ID cleared.
+#
+# Intent 344 (G11, D7): the session's day comes from SessionLedger.session_day
+# (the oldest day in the window whose checklist carries the session's line),
+# not from a per-session pointer file. `append` seeds that line; a test that
+# needs only a tmp dir present (no day resolution) uses `seed_tmp_dir`.
 class CloseHookTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/hook-close", __dir__)
   TEMPLATES = File.expand_path("../templates", __dir__)
-  TODAY = "20260829"
-  YESTERDAY = "20260828"
+  # Real wall-clock today: the spawned hook-close script computes its own
+  # "today" via SessionLedger.day_id (Time.now), and SessionLedger.session_day
+  # only looks a 7-day window back from that, so the subprocess tests below
+  # need fixture days that track it rather than fixed calendar dates.
+  TODAY = SessionLedger.day_id
+  YESTERDAY = SessionLedger.day_id(Time.now - 86_400)
   SID = "b7137962-dead-beef"
   SHORT = "b7137962"
 
@@ -44,11 +53,10 @@ class CloseHookTest < Minitest::Test
     File.readlines(SessionLedger.checklist_path(@store, day)).grep(/\A- \[/).map { |l| l[0, 5] }
   end
 
-  def pointer(day)
+  def seed_tmp_dir(session: SHORT)
     SessionLedger.ensure_tmp_root(@store)
-    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, SHORT))
-    File.write(SessionLedger.pointer_path(@store, SHORT), "#{day}\n")
-    File.write(SessionLedger.heartbeat_path(@store, SHORT), "2026-08-29T10:00:00Z\n")
+    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, session))
+    File.write(SessionLedger.heartbeat_path(@store, session), "2026-08-29T10:00:00Z\n")
   end
 
   def run_close(reason: "other", session_id: SID)
@@ -59,11 +67,11 @@ class CloseHookTest < Minitest::Test
 
   def test_clear_and_resume_change_nothing
     append(TODAY, :pending, "keep me")
-    pointer(TODAY)
+    seed_tmp_dir
     %w[clear resume].each do |reason|
       run_close(reason: reason)
       assert_equal ["- [~]"], markers(TODAY)
-      assert File.exist?(SessionLedger.pointer_path(@store, SHORT)), "pointer removed on #{reason}"
+      assert Dir.exist?(SessionLedger.session_tmp_dir(@store, SHORT)), "tmp dir removed on #{reason}"
     end
     assert_empty @spawned
   end
@@ -72,7 +80,6 @@ class CloseHookTest < Minitest::Test
     append(TODAY, :pending, "mine")
     append(TODAY, :pending, "theirs", session: "other1")
     append(TODAY, :open, "mine open")
-    pointer(TODAY)
     report = run_close(reason: nil)
     assert_equal 1, report[:dropped]
     assert_equal ["- [-]", "- [~]", "- [ ]"], markers(TODAY)
@@ -81,13 +88,12 @@ class CloseHookTest < Minitest::Test
 
   def test_no_note_when_nothing_was_pending
     append(TODAY, :open, "mine open")
-    pointer(TODAY)
     run_close
     refute File.exist?(SessionLedger.savepoint_path(@store, TODAY))
   end
 
   def test_removes_the_session_tmp_dir_and_tolerates_its_absence
-    pointer(TODAY)
+    seed_tmp_dir
     report = run_close
     assert report[:removed_tmp]
     refute Dir.exist?(SessionLedger.session_tmp_dir(@store, SHORT))
@@ -96,10 +102,12 @@ class CloseHookTest < Minitest::Test
     assert_equal 0, report[:dropped]
   end
 
-  def test_pointer_day_before_today_spawns_the_filer_with_carry_to_today
+  # Matrix 3.4: close drops the pending lines on the session's day (the
+  # oldest day in the window carrying this session's checklist line) and
+  # spawns the carry filer to today.
+  def test_close_drops_pending_on_the_session_day_and_carries
     SessionLedger.open_day(store: @store, day: YESTERDAY, templates: TEMPLATES, author: "t")
     append(YESTERDAY, :pending, "late night")
-    pointer(YESTERDAY)
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     report = run_close
     elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
@@ -109,15 +117,13 @@ class CloseHookTest < Minitest::Test
     assert_operator elapsed, :<, 3
   end
 
-  def test_pointer_naming_an_intent_touches_no_day_ledger
+  # Matrix 3.5: a session whose only day line sits on today resolves today,
+  # so the drop runs there and no carry ever spawns (today onto today).
+  def test_close_without_earlier_day_spawns_no_carry
     append(TODAY, :pending, "mine")
-    SessionLedger.ensure_tmp_root(@store)
-    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, SHORT))
-    File.write(SessionLedger.pointer_path(@store, SHORT), "297\n")
-    run_close
-    # An intent pointer means the day ledger is still today's for the drop of
-    # this session's pending lines; the tmp dir goes either way.
-    refute Dir.exist?(SessionLedger.session_tmp_dir(@store, SHORT))
+    report = run_close
+    assert_equal 1, report[:dropped]
+    assert_nil report[:spawned]
     assert_empty @spawned
   end
 
@@ -129,49 +135,39 @@ class CloseHookTest < Minitest::Test
     SessionClose.run(payload: payload, store: @store, today: TODAY, spawner: @spawner, handoff: handoff)
   end
 
-  def test_close_hands_off_the_pointer_day_before_removing_the_tmp_dir
-    pointer(YESTERDAY)
+  def test_close_hands_off_the_session_day_before_removing_the_tmp_dir
+    SessionLedger.open_day(store: @store, day: YESTERDAY, templates: TEMPLATES, author: "t")
+    append(YESTERDAY, :pending, "late night")
+    seed_tmp_dir
     calls = []
     recorder = lambda do |store, day, session|
-      calls << [store, day, session, File.exist?(SessionLedger.pointer_path(@store, SHORT))]
+      calls << [store, day, session, Dir.exist?(SessionLedger.session_tmp_dir(@store, SHORT))]
     end
     run_close_with_handoff(handoff: recorder)
     assert_equal [[@store, YESTERDAY, SHORT, true]], calls
     refute Dir.exist?(SessionLedger.session_tmp_dir(@store, SHORT))
   end
 
-  def test_close_without_a_pointer_hands_off_today
+  def test_close_without_a_session_day_hands_off_today
     calls = []
     run_close_with_handoff(handoff: ->(_s, day, _sid) { calls << day })
     assert_equal [TODAY], calls
   end
 
   def test_clear_and_resume_never_hand_off
-    pointer(TODAY)
     calls = []
     %w[clear resume].each { |reason| run_close_with_handoff(reason: reason, handoff: ->(*a) { calls << a }) }
     assert_empty calls
   end
 
-  def test_pointer_naming_an_intent_hands_off_today
-    SessionLedger.ensure_tmp_root(@store)
-    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@store, SHORT))
-    File.write(SessionLedger.pointer_path(@store, SHORT), "297\n")
-    calls = []
-    run_close_with_handoff(handoff: ->(_s, day, _sid) { calls << day })
-    assert_equal [TODAY], calls
-  end
-
   def test_handoff_failure_is_swallowed_and_the_rest_of_close_runs
     append(TODAY, :pending, "mine")
-    pointer(TODAY)
     report = run_close_with_handoff(handoff: ->(*) { raise IOError, "disk full" })
     assert_equal 1, report[:dropped]
     assert report[:removed_tmp]
   end
 
   def test_default_handoff_writes_the_file_with_the_close_trigger
-    pointer(TODAY)
     append(TODAY, :open, "mine open")
     handoff = SessionClose.default_handoff(TEMPLATES)
     run_close_with_handoff(handoff: handoff)
@@ -182,7 +178,6 @@ class CloseHookTest < Minitest::Test
   end
 
   def test_script_writes_the_handoff_for_a_real_payload
-    pointer(TODAY)
     append(TODAY, :open, "mine open")
     env = { "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_HOME" => @home, "PLASTIC_TMP" => @tmp, "HOME" => @tmp }
     IO.popen(env, [RbConfig.ruby, SCRIPT, @home], "r+", err: [:child, :out]) do |io|
@@ -198,7 +193,6 @@ class CloseHookTest < Minitest::Test
 
   def test_script_reads_stdin_and_the_store_from_argv_and_ignores_malformed_input
     append(TODAY, :pending, "mine")
-    pointer(TODAY)
     env = { "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_HOME" => @home, "PLASTIC_TMP" => @tmp, "HOME" => @tmp }
     out = IO.popen(env, [RbConfig.ruby, SCRIPT, @home], "r+", err: [:child, :out]) do |io|
       io.write("{not json")
