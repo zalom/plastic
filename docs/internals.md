@@ -175,7 +175,7 @@ each lifecycle boundary. That is the existing hook mechanism bound to the artifa
 trigger, with the ledger as a derived form-fix on top. It is sugar over the conventions,
 never a source of truth: state stays derivable from files-on-disk and the ledger is
 rebuildable via `Savepoint.rebuild_savepoint`. The ledger and the stage derivation it rests on
-live in `scripts/lib/savepoint.rb` (intent 303), apart from the session pointer in `bridge.rb`.
+live in `scripts/lib/savepoint.rb` (intent 303).
 The `plastic-intent-savepoint` skill is now a thin (removed in 2.0, intent 304)
 reader/verifier, not a writer.
 
@@ -257,13 +257,13 @@ recommendation can replace the ordering rule without reworking parsing, frontier
 the rest of the JSON contract.
 
 A companion rule keeps the intent-dir ledger itself honest. `Savepoint.savepoint_phantom_lines`
-(intent 134) is pure and disk-only, no bridge or session resolution and no writes, matching
+(intent 134) is pure and disk-only, no lock or session resolution and no writes, matching
 intent 52's decoupling precedent: it flags a `savepoint.md` line that disk evidence contradicts,
 in three classes: a file-landing milestone (built from the same map `savepoint_milestone` uses)
 whose file is absent or still a sentinel placeholder; a duplicate `(stage, milestone)` pair (the
 later occurrence is the one flagged); or a state line, `How  started` or `Exec  started`, whose
 stage prerequisite (the PRECEDING stage's real artifact, not its own, since a `started` line
-legitimately fires before its own stage's file is real) is absent on disk. The bug-131 bridge
+legitimately fires before its own stage's file is real) is absent on disk. The bug-131 lock
 clobber and the 124a out-of-band merge are the two live precedents this guards against: either
 can leave a phantom or dropped line that nothing previously detected. The
 `plastic-intent-savepoint` skill's verify step runs the detector and, on a hit, auto-rebuilds via (removed in 2.0, intent 304)
@@ -351,50 +351,24 @@ has nothing to suppress *yet*). A rule left with zero ids after pruning is dropp
 rather than rendered as a bare `rule_name` line, which the loader would reject. Like the add
 direction, `--prune` writes no `revisions.md` entries.
 
-Removed in 2.0 (intent 307): the `/tmp` bridge JSON and every `Bridge` method that read or wrote it; the session pointer plus `delivery.lock` replaced it, through `scripts/lib/arm.rb`. The bridge prose in this document describes the 1.x cache as it was. Session resolution feeds the record hook and the lock (intent 52; the gate hooks it once fed were removed in 2.0, intent 302). Claude Code does
-not export a session id env var into the hook environment; it passes `session_id` on the hook
-stdin JSON. So the bash wrappers parse `session_id` out of stdin (in Ruby, never in bash) and
-hand it to the hook scripts as a second argument. `Bridge.resolve_session` then takes the
-first non-empty of three sources, in precedence order: the explicit stdin `session_id`, the
-`CLAUDE_CODE_SESSION_ID` environment variable, and a derived `auto-<digest>` key
-(`Bridge.derive_key`, a short SHA256 of `store/intent_id`). The derived key is deterministic,
-so a session-less arm and a later session-less record resolve to the same bridge file
-instead of writing `plastic-.json` with a null session. `Bridge.write` now refuses an empty
-session, so a null-session bridge can never be persisted.
+Session resolution feeds the record hook and the lock (intent 52). Claude Code does not
+export a session id env var into the hook environment; it passes `session_id` on the hook
+stdin JSON, so the hooks parse it out of stdin (in Ruby, never in bash) and hand it to the
+hook scripts as a second argument. `Arm.resolve_session` takes the first non-empty of three
+sources, in precedence order: the explicit stdin `session_id`, the `CLAUDE_CODE_SESSION_ID`
+environment variable, and a derived `auto-<digest>` key (a short SHA256 of `store/intent_id`).
+The derived key is deterministic, so a session-less arm and a later session-less check resolve
+to the same session key, and a null session can never be persisted to `delivery.lock`.
 
-Because that scan parses every `plastic-*.json` on each fire, the temp directory has to stay
-small or the per-fire cost grows without bound (intent 67). `Bridge.purge_done_bridges` runs
-on `arm_auto` and on `disarm_auto`, so every auto run cleans up dead bridges at its start and
-at delivery. The rule is terminal-state, not age-based (intent 80). A bridge is purged only when
-its intent is terminal: its id is no longer in its store's `INDEX.md` `## Active` block.
-`Bridge.intent_active?` resolves that INDEX from the bridge's own `intent.store` (the INDEX lives
-at the parent of the `store/` directory), scans only the `## Active` section, and reports whether
-the bridge's `intent.id` is listed. An Active intent's bridge is kept unconditionally, because
-while the intent is live the bridge is load-bearing: it is the continuation signal (a parked or
-interrupted run resumes from it) and the anti-collision lock for parallel deliveries on one store.
-The current session's own bridge is never purged (preserving the `disarm_auto` contract that it
-stays readable), and a bridge that cannot be parsed or that carries no `intent.id` or
-`intent.store` is treated as junk and removed. An age window was the wrong axis: it left dead
-bridges resident for up to two days and could reap bridges of interrupted-but-still-active
-intents, which are exactly the ones to preserve. The sweep is best-effort and never raises (a
-file that another job already deleted, or any other error, is swallowed), so it can never break
-arming or delivery. `intent_active?` accepts an injectable `index_active_ids:` array and the temp
-directory is injectable, so the rule is testable hermetically.
+Leftover cleanup happens at install and update, not at arm or disarm: `InstallerCore#distribute`
+deletes every `store/.tmp/*/current` file and every `plastic-<session>--<id>.json` file sitting
+in an injected tmp directory, by name alone, never opening or parsing a candidate.
 
-The `## Active` line shape that scan depends on is load-bearing. `Bridge.intent_active?`
-matches a line shaped like `` `- [ID <sep> Title](path)` ``, where `<sep>` is either a real
-em dash (U+2014) or a plain hyphen, as the id/title separator on READ, through the
-single shared matcher `Bridge.index_entry_match` (`Bridge::INDEX_ENTRY_RE`), the same one
-`scripts/end-intent`'s own INDEX-move parser uses (intent 188). Before intent 188, a plain
-hyphen line made `intent_active?` return false, which failed the lock gate OPEN: an intent
-that was genuinely active read as not-active, its bridge became purge-eligible, and writes
-stopped being gated for it; intents 96 and 169 both flagged this and deliberately deferred
-hardening it, since accepting a hyphen changes fail-open behavior and deserved its own
-decision rather than a silent widening. Intent 188 makes that decision: hardening
-`intent_active?` is strictly MORE blocking than before (a hyphen-formatted `## Active` line
-is now correctly gated instead of silently ignored), accepted as a bug fix since no passing
-test relied on the old fail-open behavior. Every WRITE still emits the real em dash; only
-what the readers can PARSE has widened.
+`IndexEntry.match` and `IndexEntry.active?` (`scripts/lib/index_entry.rb`) are the one shared
+matcher for the INDEX `## Active` line shape (`` `- [ID <sep> Title](path)` ``, where `<sep>`
+is a real em dash or a plain hyphen on READ; every write still emits the real em dash), used by
+both `end-intent`'s own INDEX-move parser and any caller asking whether an intent is still
+active.
 
 The `plastic-intent-continuing` skill consumes that ledger on the resume path (intent 36): when the
 user or an agent asks to continue a specific intent, the skill reads the last ledger line as
@@ -542,8 +516,8 @@ trigger lives at a fixed point:
 - **intent delivery**: the delivery/completion path reindexes the delivering
   store's collection. This is the LAST step of the canonical End tail (intent
   93): it runs after the INDEX terminal move, the savepoint `Done` line, the
-  commit, and disarm (worktree release, `Lock.release`, then the bridge purge),
-  so the index never references a bridge or lock that disarm is about to remove.
+  commit, and disarm (worktree release, then `Lock.release`),
+  so the index never references a lock that disarm has just released.
   It is mandatory on completion and runs async
   (`reindex --store <dir> --async`) so it never blocks the turn. The sync
   `reindex` runs `qmd update` then `qmd embed -c plastic-<slug>` inline;
@@ -686,8 +660,8 @@ test results, the diff). Everything else stays judgment and stays with the agent
 scripts, each a thin CLI over its own `scripts/lib/` module, apply that rule to the four
 lifecycle steps that qualify.
 
-`scripts/start-intent` composes `Bridge.arm_auto` or `Bridge.arm_guided`, then reads the four (removed in 2.0, intent 304)
-lifecycle files and prints a resume-station report. It never releases or takes over a lock.
+`scripts/start-intent` armed the intent, then read the four (removed in 2.0, intent 304)
+lifecycle files and printed a resume-station report. It never released or took over a lock.
 
 `scripts/scaffold-intent` is one CLI with one verb, `backfill` (its `spec`, `checklist`, and
 `outcome` subcommands were removed in 2.0, intent 308). It runs `BackfillIntent`
@@ -837,7 +811,7 @@ models are user configuration (fable and opus by default on Claude Code).
 - **What-stage discovery agent**: `plastic-intent-discovery` (paired with the (removed in 2.0, intent 304)
   `skills/intent-discovering/SKILL.md` (removed in 2.0, intent 304) workflow) closes the What-stage gap in the
   one-agent-per-stage table. It fires inside `plastic-intent-continuing`, right after
-  an intent is activated (moved from `## Future` to `## Active`) and the bridge is
+  an intent is activated (moved from `## Future` to `## Active`) and the delivery lock is
   armed, running under that lock as the owner session (it does not acquire the
   lock itself and is not blocked by it): it reads the intent's `chain`/`sources`
   frontmatter, runs QMD-first
@@ -872,12 +846,12 @@ own isolation instead, deterministic and cwd-independent.
   197's branch-from-main plus scoped-commit mechanism.
   `Worktree.repo_for` resolves the abs repo path from `projects.yml` (reusing the
   qmd_sync safe-loader pattern), or nil.
-- **Provision and release**: `Worktree.provision(bridge_data)` resolves the slug
-  from `bridge_data["intent"]["store"]`, creates the code worktree idempotently
+- **Provision and release**: `Worktree.provision(delivery)` resolves the slug
+  from `delivery["intent"]["store"]`, creates the code worktree idempotently
   (an existing worktree path is reused, never re-created or errored), and writes
   the `worktree` block plus `provisioned: true`. It fails open with a stderr log
   when the repo is unresolvable or not a git work tree, setting `provisioned:
-  false` and leaving `code: null`. `Worktree.release(bridge_data)` removes the
+  false` and leaving `code: null`. `Worktree.release(delivery)` removes the
   worktree, prunes, and clears the block; it is a no-op when nothing was
   provisioned.
 - **Unified `PLASTIC_HOME` seam** (intent 169): every CLI-script and hook entry
@@ -892,7 +866,7 @@ own isolation instead, deterministic and cwd-independent.
   `plastic_home = File.expand_path(File.join(home, ".plastic"))` internally, so
   threading the env value straight into `home:` would yield a
   `~/.plastic/.plastic` bug. `Worktree.provision` therefore never reads the env:
-  it derives `home` from the already-sandboxed `bridge_data["intent"]["store"]`
+  it derives `home` from the already-sandboxed `delivery["intent"]["store"]`
   path (anchored on the `.plastic` path segment, via the pure `home_from_store`
   helper), falling back to its `home: Dir.home` default only when the store is
   blank or unrecognized. This closes a real incident where a sandboxed board,
@@ -935,7 +909,7 @@ close that gap.
 - **Scope, per-intent-per-artifact, never session-global.** A claim's on-disk
   path is always `<intent_dir>/.claims/<artifact>.claim`, so it can only ever
   affect one artifact of one intent. This is the hard guard against recreating
-  the collision-90 failure mode, where an over-armed bridge froze unrelated
+  the collision-90 failure mode, where an over-armed lock froze unrelated
   sessions.
 - **Exclusivity is O_EXCL at acquire, not session-equality.**
   `Claim.acquire_claim` creates the file with `File::EXCL`; the first writer
@@ -1149,7 +1123,7 @@ start.
 
 **The consumer list.** Who builds on this contract, and what each one needs:
 
-- intent 298: the session-start and post-tool hooks, the per-session pointer and heartbeat
+- intent 298: the session-start and post-tool hooks, and the heartbeat
   under `.tmp/<session>/`, and capture and record.
 - intent 300 (delivered): `scripts/session-commit`, which appends one `Item` or `Note`
   savepoint line per commit. See "the session branch model and session-commit" below.
@@ -1248,11 +1222,10 @@ guards above, plus the empty-summary and missing/nonexistent-base checks direct 
 branch name renders `branch_template` with three tokens: `{{day}}`, `{{ticket}}`, and
 `{{slug}}` (the summary's first five words, kebab-cased), validated with
 `git check-ref-format --branch` the same way direct mode's session branch is. `{{ticket}}` is
-the intent id named by the session's pointer file (`.tmp/<session>/current`) when
-`ticket_source` is `intent_id`; per intent 298's spec D6 that pointer holds exactly one line,
-either today's day id or an intent id, so a day id found there resolves to the day id anyway
-(the two are the same value in that case) and any other non-blank content is treated as the
-intent id. The branch is cut from `B`'s tip and checked out, both with their exit status
+the intent id when the session holds the intent's `delivery.lock` (as owner or delegate) and
+`ticket_source` is `intent_id`; per 344 G11 this replaces the retired per-session state file,
+falling back to the session's day id (from the day ledger) when no lock is held, so either case
+resolves to one non-blank ticket value. The branch is cut from `B`'s tip and checked out, both with their exit status
 checked the same way direct mode's are; `gh pr create --base B --head <branch> --fill` runs,
 inside the resolved repository (`gh_runner.available?(repo)` and `gh_runner.run(..., dir:
 repo)`), when `gh` is on PATH. Without an explicit working directory, `gh` resolves its target

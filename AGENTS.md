@@ -89,16 +89,14 @@ Rules for any agent (or human) contributing to this repository.
   Minitest reports just that one file's tests and you get a falsely small green run. The
   loader command above requires every `test/*_test.rb` file, so the whole suite runs.
 - Confirm green before committing code changes.
-- Lock and bridge tests must stay hermetic: inject `PLASTIC_TMP` plus explicit paths and
+- Lock and worktree tests must stay hermetic: inject `PLASTIC_TMP` plus explicit paths and
   never write with the ambient session id (`test/hermeticity_guard_test.rb` enforces this).
 
 ### Worktrees and the single-owner lock
 - Single owner, mandatory. Exactly one session or agent develops an intent's delivery at a
   time. Ownership is a session-keyed `delivery.lock` file in the intent directory; liveness
   is a lease (the owner's hooks refresh the file mtime on tool activity, stale means the
-  heartbeat is older than the TTL). The per-session pointer
-  (`~/.plastic/store/.tmp/<session>/current`) names the intent a session records into; the
-  lock file is the truth of ownership. If you find a fresh lock owned by another session, back
+  heartbeat is older than the TTL); the lock file is the truth of ownership. If you find a fresh lock owned by another session, back
   off. A stale lock is reclaimed only through `plastic-lock reclaim` (audited in
   savepoint.md); disarm clears the lock, and `plastic-lock fix` is the repair path for
   corrupt or legacy state.

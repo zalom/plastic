@@ -46,10 +46,10 @@ QMD-first (when available): when the user describes the work instead of naming a
 ## Take the intent (do this FIRST)
 
 Immediately after selecting the intent, take it for this session. One verb acquires the durable
-`delivery.lock` in the intent directory (stamped `run_mode: auto`), provisions the code worktree
-at `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`, and points this
-session at the intent (`~/.plastic/store/.tmp/<session>/current`), so the record hook writes
-savepoint lines and heartbeats for it instead of the day ledger:
+`delivery.lock` in the intent directory (stamped `run_mode: auto`) and provisions the code worktree
+at `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`; the delivery lock
+names this session as the one delivering the intent, so the record hook writes savepoint lines
+and heartbeats for it instead of the day ledger:
 
 ```bash
 codex="${CODEX_THREAD_ID:-}"; claude="${CLAUDE_CODE_SESSION_ID:-}"
@@ -259,8 +259,8 @@ Read `../plastic-conventions/references/completion-and-done.md` for what "intent
 4. Review `## Insights` for observations that should become future intents; create them through
    `plastic-intent-creating` and update `chain`.
 5. Close through `plastic-intent-ending`, which runs `scripts/end-intent`: outcome, INDEX,
-   savepoint, the store commit, and the disarm (the worktree released, `delivery.lock` cleared,
-   the session pointer back on the day ledger), then the QMD reindex last and the single owner
+   savepoint, the store commit, and the disarm (the worktree released, `delivery.lock`
+   cleared), then the QMD reindex last and the single owner
    report. Pass `--session` and `--index-note`:
    ```bash
    ruby ~/.plastic/scripts/end-intent --store <store_path> --id <ID> --disposition delivered \

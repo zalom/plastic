@@ -68,10 +68,10 @@ class Doctrine305Test < Minitest::Test
     body = read(PLASTIC_MD)
     assert_includes body, ".sessions/<YYYYMMDD>/", "the day ledger directory"
     assert_includes body, ".tmp/<session>/", "the per-session directory"
-    assert_includes body, "current (the pointer)", "the pointer file"
+    assert_includes body, "proof only that the session started", "the heartbeat file's role"
     assert_includes body, "heartbeat", "the heartbeat file"
     assert_includes body, "first eight characters of the session id", "the short session id"
-    assert_includes normalized(PLASTIC_MD), "The pointer holds a day id (the day ledger takes the record) or an intent id (an auto team owns the record)"
+    assert_includes normalized(PLASTIC_MD), "The delivery lock (`delivery.lock` in the intent directory) names the session delivering an intent, as its owner or a delegate"
     assert_includes body, "digits only (`20260828`)", "the day id rule"
     assert_includes body, "mode: direct", "the day ledger's one extra frontmatter field"
   end
@@ -130,7 +130,7 @@ class Doctrine305Test < Minitest::Test
     body = read(NEW_GUIDE)
     assert_includes body, "savepoint.md"
     assert_includes body, ".sessions/<YYYYMMDD>/"
-    assert_includes body, "`current`"
+    assert_includes body, "`heartbeat`"
     assert_includes body, "delivery.lock"
   end
 

@@ -48,8 +48,7 @@
 #      changes first (exit 5 if dirty, unless --discard-worktree-changes); call the
 #      disarm seam (default Arm.disarm: worktree released, lock cleared); verify
 #      the durable lock file is actually gone afterward, and release it directly
-#      when a foreign-keyed disarm left it (the
-#      /tmp bridge this step once read was removed in 2.0, intent 307).
+#      when a foreign-keyed disarm left it.
 #
 # Exit codes:
 #   0  ok - the intent is closed and no delivery.lock remains.
@@ -57,7 +56,7 @@
 #      nor the terminal section (D11). Deliberately double duty; see plan.md.
 #   2  retired in 2.0 (intent 308): the outcome.md guard reports and proceeds.
 #   3  steps 1-4 already committed, but the delivery lock genuinely could not
-#      be cleared (not a bridge cache miss; see step 5 above).
+#      be cleared (see step 5 above).
 #   4  pre-flight refusal: a FRESH foreign lock is held by a live,
 #      non-delegate session; a FRESH lock that will not parse (corrupt); or a
 #      lock file with no resolvable session identity at all. Authors nothing.

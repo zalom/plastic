@@ -27,7 +27,7 @@ orients, and the record hook writes down what happened.
 | Layer | Load (does it arrive) | Honor (what the agent does with it) |
 |---|---|---|
 | L1 standing conventions | Convention docs (PLASTIC.md, AGENTS.md, CLAUDE.md) inject into the agent's context at start | The conventions frame every decision; the agent reads them as standing rules |
-| L2 live state | The day ledger, the session pointer, and the active intent's stage arrive at the point of work (session event and/or spawn preamble) | The live snapshot tells the agent where it records and where it is in the cycle |
+| L2 live state | The day ledger, the delivery lock, and the active intent's stage arrive at the point of work (session event and/or spawn preamble) | The live snapshot tells the agent where it records and where it is in the cycle |
 | L3 the record | The record hook fires after every file write; the capture hook on every prompt; the close hook at session end | The savepoint and day ledgers record the move; the delivery-lock lease is refreshed for an auto team |
 
 ### Lock provenance contract
@@ -49,7 +49,7 @@ authorization. Plastic bounds finished or failed activity history to the 20 most
 
 Each adapter's users invoke a Plastic skill with a different literal prefix in front of the bare
 skill name (for example `plastic-doctor`). `InstallerCore::DEFAULT_AGENTS` carries this as each
-entry's `skill_prefix`, the documented source both `Bridge.skill_ref` (`scripts/lib/lock.rb`) and
+entry's `skill_prefix`, the documented source both `Lock.skill_ref` (`scripts/lib/lock.rb`) and
 this table cite; the hook scripts do not read `DEFAULT_AGENTS` at runtime, so the two are
 independently maintained by hand.
 
@@ -170,7 +170,7 @@ standing rules.
 
 `SessionStart` (`hooks/session-start` -> `scripts/hook-session-start`) injects `PLASTIC.md`,
 opens or joins today's day ledger under `~/.plastic/store/.sessions/<YYYYMMDD>/`, and writes
-the per-session pointer (`.tmp/<session-id>/current`) and heartbeat. `UserPromptSubmit`
+the session's heartbeat under `.tmp/<session-id>/`. `UserPromptSubmit`
 (`hooks/capture`) appends the prompt as a pending day-ledger line, detects `auto` and
 `continue`, and hints at matching parked intents. `PreCompact` (`hooks/savepoint` ->
 `scripts/hook-savepoint`) writes the session's hand-off into the day ledger

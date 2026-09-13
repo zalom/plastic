@@ -83,14 +83,15 @@ runs the flow. A roadmap is an ordered, delivery-side collection; `plastic-roadm
   config.yml, projects.yml     # Preferences; slug -> path
   store/ID--slug/              # Strategic intents
   store/.sessions/<YYYYMMDD>/  # Day ledger: <YYYYMMDD>.md, checklist.md, savepoint.md
-  store/.tmp/<session>/        # current (the pointer), heartbeat; git-ignored
+  store/.tmp/<session>/        # heartbeat; git-ignored
 ~/.plastic/projects/{slug}/    # Project store: INDEX.md, AGENTS.md, roadmaps/, store/
 ```
 
-`<session>` is the first eight characters of the session id. The pointer holds a day id (the
-day ledger takes the record) or an intent id (an auto team owns the record); session start
-writes today's day id. The SessionStart hook picks the project store by matching the working
-directory against `projects.yml`; no Plastic files land in project code.
+`<session>` is the first eight characters of the session id. Session start writes the heartbeat
+file, proof only that the session started. The delivery lock (`delivery.lock` in the intent
+directory) names the session delivering an intent, as its owner or a delegate; with no lock a
+session records into its day ledger. SessionStart matches the working directory against
+`projects.yml` to pick the project store.
 
 Naming: intents are `ID--three-to-five-words`, the file matching the directory
 (`1a1--slug/1a1--slug.md`); next id: `ruby ~/.plastic/scripts/folgezettel-id <parent_id>

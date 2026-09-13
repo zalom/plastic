@@ -389,7 +389,7 @@ begin
   end
 
   # --- Session day ledger: open or join today, create the tmp dir and write
-  # the heartbeat (344 n2, spec D4). The per-session pointer retired: hooks
+  # the heartbeat (344 n2, spec D4). The per-session state retired: hooks
   # now ask ActiveDelivery.resolve for a live delivery lock instead.
   # Best-effort: any failure here degrades to no ledger context line, never
   # blocks the session.

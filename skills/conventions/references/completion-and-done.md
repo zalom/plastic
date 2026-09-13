@@ -17,10 +17,10 @@ self-declares its disposition through a `disposition: delivered|abandoned` front
 header. The delivered path authors it with the result; the abandoned path authors it with
 the abandonment reason and no longer leaves the scaffolded placeholder sentinel in place.
 
-The canonical End tail runs in this order, and the QMD reindex is always LAST, after the
-purge: `outcome.md -> INDEX terminal -> the terminal savepoint line -> commit -> disarm
-(Worktree.release -> Lock.release -> purge) -> QMD reindex`. Running the reindex last keeps the index from
-ever referencing a bridge or lock that disarm is about to remove.
+The canonical End tail runs in this order: `outcome.md -> INDEX terminal -> the terminal
+savepoint line -> commit -> disarm (Worktree.release -> Lock.release) -> QMD reindex`, the
+reindex always LAST. Running the reindex last keeps the index from ever referencing a lock
+that disarm just removed.
 
 `scripts/end-intent` performs this order's disarm step (verify the code worktree is clean,
 then merge/remove worktrees, then clear the lock) as its own step 5, mechanically, since
@@ -31,12 +31,11 @@ foreign session, reclaims a stale one with an audit line), and a dirty code work
 refuses before removal rather than force-discarding uncommitted changes.
 
 The post-done access window is lock-bounded: `[INDEX terminal -> Lock.release]`. Through it
-the completing session keeps full read and write access to the terminal directory and no
-purge can fire (108's lock-held keep-guard keeps the bridge while `delivery.lock` exists).
-Once the lock is released the window closes: the bridge becomes purge-eligible and the
-directory is frozen. A crash mid-tail is recovered by stale-lock reclaim plus finishing the
-tail; `doctor` surfaces this as a "stalled completion" (terminal in INDEX but the lock is
-still present or stale). Finishing the tail is FINISHING a completion, never a reactivation:
+the completing session keeps full read and write access to the terminal directory (108's
+lock-held keep-guard holds it open while `delivery.lock` exists). Once the lock is released
+the window closes and the directory is frozen. A crash mid-tail is recovered by stale-lock
+reclaim plus finishing the tail; `doctor` surfaces this as a "stalled completion" (terminal in
+INDEX but the lock is still present or stale). Finishing the tail is FINISHING a completion, never a reactivation:
 a done intent is never moved back to `## Active`.
 
 One report per audience: a delivery produces `outcome.md` plus one EM-to-CTO owner report, and

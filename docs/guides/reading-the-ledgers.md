@@ -93,17 +93,19 @@ with the event one of `Item` (a request was recorded), `Done` (an item was ticke
 Sessions share one day's files safely: every append takes a file lock, so two sessions never
 interleave a line.
 
-## The pointer and the heartbeat
+## The heartbeat
 
-Each live session keeps two small files under `~/.plastic/store/.tmp/<session>/`, where
+Each live session keeps one small file under `~/.plastic/store/.tmp/<session>/`, where
 `<session>` is the first eight characters of the session id:
 
-- `current`, the pointer. It holds one line: today's day id (the day ledger takes the record)
-  or an intent id (an auto team owns the record). Session start writes today's day id into it.
 - `heartbeat`, a timestamp the hooks refresh. It is how a later session tells whether this one
-  is still alive.
+  is still alive; its existence means session start ran.
 
-Nothing in `.tmp/` is durable or committed (it carries its own `.gitignore`). Losing it costs
+Which intent a session delivers is answered by the delivery lock (`delivery.lock` in the
+intent directory), not by anything under `.tmp/`; which day a session's work belongs to is
+answered by the day ledger itself (the oldest day in the last seven whose checklist carries
+the session's line, else today). Nothing in `.tmp/` is durable or committed (it carries its
+own `.gitignore`). Losing it costs
 nothing; the next session start recreates it.
 
 ## The hand-off and the day summary

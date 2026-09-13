@@ -29,7 +29,7 @@ Work rides the beta-verified lane when it changes operational substrate, carries
 migration, lock, or state-format risk, or cannot be fully validated by a hermetic suite alone.
 Everything else merges straight to main.
 
-Intent 41's DB layer is the archetypal beta-lane case: it replaces the bridge, lock, and session
+Intent 41's DB layer is the archetypal beta-lane case: it replaces the lock and session
 file formats with a new persistent SQLite substrate. A green suite proves the code correct; it
 cannot prove the new substrate survives real, uncontrolled usage, so real-use verification on
 beta comes first.

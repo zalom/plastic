@@ -5,6 +5,15 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- 344 (G11, roadmap graph-ready-plastic, batch 6): the bridge key retires into `IndexEntry`
+  and `ProjectConfig`, and `Arm.delivery` is the hash `Worktree.provision`, `release`, and
+  `finish` take. The per-session pointer retires too: the delivery lock answers which intent
+  a session delivers, the day ledger answers which day its work belongs to, and a session's
+  `.tmp/` directory answers only that it started. `plastic-lock status` reports whether a
+  session is delivering an intent (not whether a pointer names it); doctor's no-pointer check
+  retires with the pointer. Install and update remove `store/.tmp/*/current` and
+  `plastic-<session>--<id>.json` leftovers by name.
+
 - 336 (G3, roadmap graph-ready-plastic, batch 2): `ReadySet`, the one function that says what
   runs next. A node is ready when its own state is eligible, every need is done under an
   attributed non-torn line, no file-overlapping sibling is running, and its dispatch attempts

@@ -34,8 +34,8 @@
 # Without --intent-dir the intent is resolved from this session's held
 # delivery lock (ActiveDelivery.resolve over the global store and the
 # configured project roots): exactly one fresh lock this session owns or
-# delegates for. The /tmp bridge JSON and the per-session pointer this CLI
-# used to resolve through were removed in 2.0 (intent 307) and 344 G11.
+# delegates for. Session resolution no longer reads any per-session state
+# file; that path was retired in 2.0 (intent 307) and 344 G11.
 # Exit 0 on success/report; exit 1 when the verb is blocked.
 
 require "json"

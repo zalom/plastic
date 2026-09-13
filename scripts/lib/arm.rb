@@ -14,9 +14,7 @@ require_relative "savepoint"
 # directory says who delivers, and the code worktree under the project repo
 # says where the code lands. A conversation session's tmp directory under
 # the global store's `.tmp/` says only that a session started; it names no
-# intent (the per-session pointer that once did was retired in 344 G11).
-# Before 2.0 a third thing, a `/tmp` bridge JSON, cached both plus a stage
-# snapshot; ruling 6 of intent 296 retired it. This module carries the
+# intent. This module carries the
 # arm, disarm, and repair operations (intent 307); the pure INDEX/project-config
 # helpers that once sat alongside them on a shared-helpers module now live on
 # IndexEntry and ProjectConfig (intent 344).
@@ -183,7 +181,7 @@ module Arm
 
   # --- repair ------------------------------------------------------------------
 
-  # One idempotent repair (the lock half of the bridge's repair, removed in 2.0):
+  # One idempotent repair (the lock half of the repair path):
   # remove a corrupt lock, back off from a fresh foreign lock (`held`), report
   # a stale foreign lock (`stale`) for the explicit reclaim verb, keep and
   # enrich an own lock, heartbeat a delegated one, acquire when none, and

@@ -298,8 +298,8 @@ module Worktree
   # --- lock ------------------------------------------------------------------
 
   # True iff ANOTHER session's delivery.lock is FRESH on this intent's dir
-  # (intent 108, D2): the durable lock file decides; /tmp bridges are not
-  # consulted and no pid is probed. current_session being the owner or a
+  # (intent 108, D2): the durable lock file decides alone, and no pid is
+  # probed. current_session being the owner or a
   # delegate does not count as "other". A stale lock does not hold (explicit
   # takeover reclaims it).
   def lock_held_by_other?(intent_id:, store:, current_session:, home: Dir.home,

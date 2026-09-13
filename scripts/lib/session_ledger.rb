@@ -162,7 +162,7 @@ module SessionLedger
 
   # The oldest day, no later than `today` and no earlier than `today` minus
   # `window_days`, whose checklist carries at least one line tagged to
-  # `session` (any state). Answers the one question the per-session pointer
+  # `session` (any state). Answers the one question the per-session state
   # used to answer: which day ledger this session's close and hand-off write
   # belong to. Falls back to `today` when no day in the window carries the
   # session's line, and on any error reading the store (never raises).
