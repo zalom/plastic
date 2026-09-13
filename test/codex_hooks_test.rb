@@ -370,6 +370,11 @@ class CodexHooksTest < Minitest::Test
 
   # --- SessionEnd close, handed off detached (intent 309, spec D2) --------------------
 
+  # SessionLedger.session_day resolves this session's day by reading the
+  # checklist within a 7-day window of the dispatcher's real wall-clock
+  # today (SessionLedger.day_id, Time.now), not a pointer file any more, so
+  # the fixture's day dir has to track that real today rather than naming a
+  # fixed calendar date.
   def close_fixture(session_id)
     plastic_home = File.join(@fake_home, ".plastic")
     store = File.join(plastic_home, "store")
@@ -377,11 +382,11 @@ class CodexHooksTest < Minitest::Test
     FileUtils.mkdir_p(tmp_dir)
     File.write(File.join(store, ".tmp", ".gitignore"), "*\n")
     File.write(File.join(tmp_dir, "heartbeat"), "#{Time.now.utc.iso8601}\n")
-    File.write(File.join(tmp_dir, "current"), "20260830\n")
-    day_dir = File.join(store, ".sessions", "20260830")
+    day = SessionLedger.day_id
+    day_dir = File.join(store, ".sessions", day)
     FileUtils.mkdir_p(day_dir)
     File.write(File.join(day_dir, "checklist.md"),
-               "# Checklist: session ledger 20260830\n\n- [~] [#{session_id}] [global] still pending at close\n")
+               "# Checklist: session ledger #{day}\n\n- [~] [#{session_id}] [global] still pending at close\n")
     tmp_dir
   end
 
@@ -408,7 +413,7 @@ class CodexHooksTest < Minitest::Test
     assert_operator elapsed, :<, 1.5, "the dispatcher must return well inside Codex's 3-second ceiling"
     assert wait_until(5) { !Dir.exist?(tmp_dir) },
            "the detached close hook must remove the session's tmp dir after the dispatcher exited"
-    checklist = File.join(@fake_home, ".plastic", "store", ".sessions", "20260830", "checklist.md")
+    checklist = File.join(@fake_home, ".plastic", "store", ".sessions", SessionLedger.day_id, "checklist.md")
     assert wait_until(5) { File.read(checklist).include?("- [-] [abcd1234] [global] still pending at close") },
            "the close hook's ledger half must flip this session's pending line to dropped"
   end
