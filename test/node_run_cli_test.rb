@@ -470,6 +470,22 @@ class NodeRunCliTest < Minitest::Test
     assert_equal File.join(@dir, "packets", "n1--a1.return.yml"), out.strip
   end
 
+  # --- 338a n3, 3.4: the return lands under attempts/, not the retired directory -
+
+  def test_return_lands_under_attempts
+    setup_real_repo
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    write_lock(owner: "sess-1")
+    provision_node_worktree("n1")
+    build_running_node(node: "n1", session: "sess-1")
+
+    out, err, status = run_cli(@dir, "--node", "n1", "--session", "sess-1", env: stub_env)
+
+    assert status.success?, err
+    assert_equal File.join(@dir, "attempts", "n1--a1.return.yml"), out.strip
+  end
+
   # --- 6.26: exit codes distinguish a refusal from a written return -----------
 
   def test_exit_codes_distinguish_refusal_from_return

@@ -4,6 +4,8 @@
 require "minitest/autorun"
 require "open3"
 require "rbconfig"
+require "fileutils"
+require "tmpdir"
 
 require_relative "../scripts/lib/node_input_compatibility"
 require_relative "../scripts/lib/node_ledger"
@@ -59,5 +61,43 @@ class NodeInputCompatibilityTest < Minitest::Test
     entries = NodeLedger.entries_from_content(raw)
     running = entries.count { |e| !e[:torn] && e[:subject] == "n1" && e[:state] == "running" }
     assert_equal 1, running
+  end
+
+  # --- 338a n3, 3.9-3.11: the legacy input path, resolved by the reader's own constants -
+
+  def test_legacy_input_path_resolves_when_the_new_file_is_absent
+    Dir.mktmpdir("node-input-compatibility") do |dir|
+      legacy_dir = File.join(dir, NodeInputCompatibility::LEGACY_DIRECTORY)
+      FileUtils.mkdir_p(legacy_dir)
+      legacy_file = File.join(legacy_dir, "n1--a1#{NodeInputCompatibility::LEGACY_SUFFIX}")
+      File.write(legacy_file, "hello")
+
+      resolved = NodeInputCompatibility.input_path(intent_dir: dir, node: "n1", attempt: 1)
+      assert_equal legacy_file, resolved
+    end
+  end
+
+  def test_new_input_path_wins_when_both_exist
+    Dir.mktmpdir("node-input-compatibility") do |dir|
+      new_dir = File.join(dir, "attempts")
+      FileUtils.mkdir_p(new_dir)
+      new_file = File.join(new_dir, "n1--a1.input")
+      File.write(new_file, "new")
+
+      legacy_dir = File.join(dir, NodeInputCompatibility::LEGACY_DIRECTORY)
+      FileUtils.mkdir_p(legacy_dir)
+      File.write(File.join(legacy_dir, "n1--a1#{NodeInputCompatibility::LEGACY_SUFFIX}"), "old")
+
+      resolved = NodeInputCompatibility.input_path(intent_dir: dir, node: "n1", attempt: 1)
+      assert_equal new_file, resolved
+    end
+  end
+
+  def test_missing_input_names_the_new_path
+    Dir.mktmpdir("node-input-compatibility") do |dir|
+      expected = File.join(dir, "attempts", "n1--a1.input")
+      resolved = NodeInputCompatibility.input_path(intent_dir: dir, node: "n1", attempt: 1)
+      assert_equal expected, resolved
+    end
   end
 end

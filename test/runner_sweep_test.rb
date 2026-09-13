@@ -294,6 +294,24 @@ class RunnerSweepTest < Minitest::Test
     assert_match(/#{Regexp.escape(now.utc.iso8601)}/, written)
   end
 
+  # --- 338a n3, 3.6: extensions are written and counted under attempts/ ---------
+
+  def test_extensions_file_lives_under_attempts
+    init_repo
+    commit_time = commit_on_node_branch("n1")
+    expires = (commit_time - 60).utc.iso8601
+    write_savepoint(line("n1", "running", running_fields(expires: expires)))
+    ctx = build_context(worktree: @repo)
+
+    now = commit_time + 3600
+    result = RunnerSweep.reclaim(ctx, now: now)
+
+    expected = File.join(@dir, "attempts", "n1--a1.extensions")
+    assert_equal 1, result[:extended].length
+    assert File.exist?(expected), "extension file must live under attempts/, not the retired directory"
+    assert_equal 1, File.read(expected).each_line.count
+  end
+
   # --- 2.10/2.11: the reclaim line's required fields and node-input integration --
 
   def test_reclaim_line_carries_required_fields

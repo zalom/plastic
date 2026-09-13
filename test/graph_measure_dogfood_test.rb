@@ -10,6 +10,8 @@ require "time"
 
 require_relative "../scripts/lib/graph_measure"
 require_relative "../scripts/lib/graph_measure_report"
+require_relative "../scripts/lib/graph_measure_budget"
+require_relative "../scripts/lib/node_input_compatibility"
 
 # GraphMeasureDogfoodTest (intent 343, G10, n3): the try-out. Runs the real
 # `scripts/graph-measure` command, through `GraphMeasure.read` and through the
@@ -468,6 +470,18 @@ class GraphMeasureDogfoodTest < Minitest::Test
     refute_nil lock_pause, "the Lock takeover pause must survive even though n4's running attempt spans it"
     assert_operator n4[:running_at], :<, lock_pause[:end]
     assert_operator n4[:terminal_at], :>, lock_pause[:start]
+  end
+
+  # --- 338a n3, 3.12: every attempt of the real 340 fixture resolves its file --
+
+  def test_legacy_fixture_measures_every_attempt_from_its_files
+    record = GraphMeasureBudget.read(DIR_340)
+    record[:nodes].each do |id, node|
+      node[:attempts].each do |attempt|
+        assert attempt[:file_exists], "#{id} attempt #{attempt[:attempt]} must resolve its file on disk"
+        assert attempt[:sha_match], "#{id} attempt #{attempt[:attempt]} must match its declared sha"
+      end
+    end
   end
 
   private
