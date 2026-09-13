@@ -68,31 +68,41 @@ module RunnerWatch
 
       reclaim_result = sweep.reclaim(context, runner: runner, skip: [], now: now)
       reclaimed_ids = Array(reclaim_result[:reclaimed]).map { |r| r[:node] }
+      extended = !Array(reclaim_result[:extended]).empty?
 
-      view = classify(context, runner: runner, now: now, intent_dir: intent_dir)
+      view = classify(context, runner: runner, now: now, intent_dir: intent_dir, extended: extended)
 
       lock_state = context.session ? "held" : "not_held"
       harness_field = "-"
       meter_state = "-"
       dispatched_ids = []
 
-      if dispatch
-        harness_field = blank?(harness) ? "-" : harness.to_s
-        meter_state = read_meter_state(context)
+      # B1: the dispatch loop and the persist step share one inner
+      # begin/ensure so a raise mid `until_empty.run` (a launchd SIGTERM, a
+      # Process.spawn Errno) still lands the snapshot and the record line
+      # with whatever `dispatched_ids` was collected before the raise, and
+      # then the exception keeps propagating past this method (the outer
+      # `ensure` below still releases the tick lock).
+      begin
+        if dispatch
+          harness_field = blank?(harness) ? "-" : harness.to_s
+          meter_state = read_meter_state(context)
 
-        if context.session && !FINISHED_CLASSES.include?(view[:class]) && meter_state != "stop"
-          dispatched_ids = run_until_empty_dispatch(context, harness: harness, until_empty: until_empty)
+          if context.session && !FINISHED_CLASSES.include?(view[:class]) && meter_state != "stop"
+            run_until_empty_dispatch(context, harness: harness, until_empty: until_empty,
+                                      dispatched_ids: dispatched_ids)
+          end
         end
-      end
-
-      if record
-        Worktree.ensure_gitignored(context.plastic_home, STATE_FILENAME, runner: runner)
-        write_snapshot(intent_dir, view[:snapshot])
-        append_record(
-          intent_dir, now: now, tick: view[:tick], klass: view[:class],
-          reclaimed: reclaimed_ids, ready: view[:ready], dispatched: dispatched_ids,
-          harness: harness_field, meter: meter_state, lock: lock_state
-        )
+      ensure
+        if record
+          Worktree.ensure_gitignored(context.plastic_home, STATE_FILENAME, runner: runner)
+          write_snapshot(intent_dir, view[:snapshot])
+          append_record(
+            intent_dir, now: now, tick: view[:tick], klass: view[:class],
+            reclaimed: reclaimed_ids, ready: view[:ready], dispatched: dispatched_ids,
+            harness: harness_field, meter: meter_state, lock: lock_state
+          )
+        end
       end
 
       {
@@ -118,7 +128,7 @@ module RunnerWatch
   def install_timer(context, home:, harness_key:, installer: MeterWatch)
     runner_path = File.expand_path(File.join(__dir__, "..", "runner"))
     arguments = [RbConfig.ruby, runner_path, "watch", context.intent_dir.to_s]
-    arguments += ["--dispatch", "--harness", "codex"] if HarnessAdapter.unattended_start?(harness_key)
+    arguments += ["--dispatch", "--harness", harness_key.to_s] if HarnessAdapter.unattended_start?(harness_key)
 
     installer.install_timer(home: home, script_path: runner_path,
                              label: "com.plastic.delivery-watch.#{context.intent_id}", arguments: arguments)
@@ -130,8 +140,7 @@ module RunnerWatch
   # `:dispatched` ids, the same shape RunnerDispatch.dispatch returns
   # (graph.md D8); `until_empty.run` itself still owns spawning and waiting
   # on the real `node-run` subprocesses (never duplicated here).
-  def run_until_empty_dispatch(context, harness:, until_empty:)
-    dispatched_ids = []
+  def run_until_empty_dispatch(context, harness:, until_empty:, dispatched_ids:)
     wrapped_step = lambda do |ctx, harness:, returns:|
       result = until_empty.step_once(ctx, harness: harness, returns: returns)
       dispatched_ids.concat(Array(result[:dispatched]))
@@ -139,7 +148,6 @@ module RunnerWatch
     end
 
     until_empty.run(context, harness: harness, step: wrapped_step)
-    dispatched_ids
   end
   private_class_method :run_until_empty_dispatch
 
@@ -206,7 +214,7 @@ module RunnerWatch
 
   # --- classification (D4), first match wins ------------------------------------
 
-  def classify(context, runner:, now:, intent_dir:)
+  def classify(context, runner:, now:, intent_dir:, extended: false)
     content = savepoint_content(intent_dir)
     recorded_pairs = Savepoint.savepoint_recorded_pairs(intent_dir)
     previous = read_snapshot(intent_dir)
@@ -240,7 +248,12 @@ module RunnerWatch
 
     current_fingerprint = fingerprint(context, runner: runner)
 
-    if previous.nil? || previous[:fingerprint] != current_fingerprint
+    # B2: a reclaim that extended a lease is evidence of live work (the
+    # sweep extends only when the node branch has commits newer than the
+    # expiry), so it counts as movement here, at the fingerprint
+    # comparison, after closed/malformed-graph/done_unreported/the
+    # nothing-running-nothing-ready stall have already returned above.
+    if extended || previous.nil? || previous[:fingerprint] != current_fingerprint
       return settle("moving", blockers: [], ready_ids: ready_ids, previous: previous, tick_number: tick_number,
                      quiet_ticks: 0, content: content, context: context, runner: runner, now: now,
                      fingerprint: current_fingerprint)
