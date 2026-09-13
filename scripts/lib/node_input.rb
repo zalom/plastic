@@ -10,18 +10,18 @@ require_relative "graph_file"
 require_relative "node_ledger"
 require_relative "savepoint"
 require_relative "insights"
-require_relative "packet_wrapper"
+require_relative "data_boundary"
 require_relative "atomic_write"
 require_relative "arm"
 
-# NodePacket (intent 338, G5): builds a node's whole input from disk, the
+# NodeInput (intent 338, G5): builds a node's whole input from disk, the
 # five blocks 327 section 8 fixed - the node, the ledger, the record, the
 # knowledge hop, and where to work. n2 (this half) is the readers: every one
 # of them a keyword seam with a real default, so the suite never shells out
 # to git, never reads the owner's real store, and never sets an environment
 # variable (spec D16). n3 adds assembly, the budget, and the packet's
 # identity on top of the same file.
-module NodePacket
+module NodeInput
   module_function
 
   DEFAULT_BUDGET_TOKENS = 8000
@@ -304,12 +304,12 @@ module NodePacket
     chunks = Array(sources).map { |src| hop_chunk(store_dir, src) }
     text = chunks.join("\n\n").scrub
     cap = hop_tokens.to_i
-    tokens = PacketWrapper.estimate_tokens(text)
+    tokens = DataBoundary.estimate_tokens(text)
     if tokens > cap
       note = "\n[hop truncated at #{cap} tokens]"
       max_bytes = [(cap * 4) - note.bytesize, 0].max
       text = "#{safe_byteslice(text, max_bytes)}#{note}"
-      tokens = PacketWrapper.estimate_tokens(text)
+      tokens = DataBoundary.estimate_tokens(text)
     end
     { text: text, tokens: tokens }
   end
@@ -618,22 +618,22 @@ module NodePacket
   # Blocks 1 and 5 are raw-interpolated (spec D3: instruction, not data), but
   # that trust does not reach a `release.verify` a project.yml can carry
   # (post-execution review finding A2): a line that is, on its own, a
-  # complete data marker is disarmed by `PacketWrapper.neutralize_marker_lines`
+  # complete data marker is disarmed by `DataBoundary.neutralize_marker_lines`
   # before it ever reaches the packet, so a forged marker cannot open a
   # block outside the wrapper's own boundary. `record_source`/`hop_source`
   # (finding C15) are the record's and the hop sources' real store-relative
   # paths, never the placeholder label "record"/"sources".
-  def render_packet(node_text:, ledger_text:, intent_text:, decisions:, insights:, hop:, where_text:,
+  def render_input(node_text:, ledger_text:, intent_text:, decisions:, insights:, hop:, where_text:,
                      record_source: "record", hop_source: "sources")
     record_text = render_record_text(intent: intent_text, decisions: decisions, insights: insights)
     hop_text = hop && hop[:text]
 
     payloads = [ledger_text, record_text]
     payloads << hop_text if hop_text
-    token = PacketWrapper.boundary_token(payloads)
+    token = DataBoundary.boundary_token(payloads)
 
-    node_text_safe = PacketWrapper.neutralize_marker_lines(node_text.to_s)
-    where_text_safe = PacketWrapper.neutralize_marker_lines(where_text.to_s)
+    node_text_safe = DataBoundary.neutralize_marker_lines(node_text.to_s)
+    where_text_safe = DataBoundary.neutralize_marker_lines(where_text.to_s)
 
     # Normalized through `attr_safe` exactly as `wrap` normalizes the marker
     # attributes it writes (post-execution review finding A2's integrity
@@ -641,24 +641,24 @@ module NodePacket
     # `unwrap` reads back off the rendered marker line raised on every nil
     # source, because `attr_safe(nil)` renders as `""`, not `"nil".to_s`.
     wrapped_specs = [
-      { label: PacketWrapper.attr_safe(LEDGER_LABEL), source: PacketWrapper.attr_safe("savepoint.md") },
-      { label: PacketWrapper.attr_safe(RECORD_LABEL), source: PacketWrapper.attr_safe(record_source) },
+      { label: DataBoundary.attr_safe(LEDGER_LABEL), source: DataBoundary.attr_safe("savepoint.md") },
+      { label: DataBoundary.attr_safe(RECORD_LABEL), source: DataBoundary.attr_safe(record_source) },
     ]
-    wrapped_specs << { label: PacketWrapper.attr_safe(HOP_LABEL), source: PacketWrapper.attr_safe(hop_source) } if hop_text
+    wrapped_specs << { label: DataBoundary.attr_safe(HOP_LABEL), source: DataBoundary.attr_safe(hop_source) } if hop_text
 
     parts = [node_text_safe.rstrip, ""]
-    parts << PacketWrapper.wrap(ledger_text, label: LEDGER_LABEL, source: "savepoint.md", token: token).rstrip
+    parts << DataBoundary.wrap(ledger_text, label: LEDGER_LABEL, source: "savepoint.md", token: token).rstrip
     parts << ""
-    parts << PacketWrapper.wrap(record_text, label: RECORD_LABEL, source: record_source, token: token).rstrip
+    parts << DataBoundary.wrap(record_text, label: RECORD_LABEL, source: record_source, token: token).rstrip
     parts << ""
     if hop_text
-      parts << PacketWrapper.wrap(hop_text, label: HOP_LABEL, source: hop_source, token: token).rstrip
+      parts << DataBoundary.wrap(hop_text, label: HOP_LABEL, source: hop_source, token: token).rstrip
       parts << ""
     end
     parts << where_text_safe.rstrip
     rendered = "#{parts.join("\n")}\n"
 
-    assert_packet_integrity!(rendered, wrapped_specs)
+    assert_input_integrity!(rendered, wrapped_specs)
     rendered
   end
 
@@ -668,16 +668,16 @@ module NodePacket
   # the escaping rule and the marker-line neutralization pass are FOR, so the
   # check belongs here, not only in a test that could rot independently of
   # the code it is meant to guard.
-  def assert_packet_integrity!(rendered, wrapped_specs)
-    actual = PacketWrapper.unwrap(rendered).map { |b| { label: b[:label], source: b[:source] } }
+  def assert_input_integrity!(rendered, wrapped_specs)
+    actual = DataBoundary.unwrap(rendered).map { |b| { label: b[:label], source: b[:source] } }
     return if actual == wrapped_specs
 
-    raise "node packet integrity check failed: expected #{wrapped_specs.inspect}, got #{actual.inspect}"
+    raise "node input integrity check failed: expected #{wrapped_specs.inspect}, got #{actual.inspect}"
   end
-  private_class_method :assert_packet_integrity!
+  private_class_method :assert_input_integrity!
 
   def render_from_state(state)
-    render_packet(node_text: state[:node_text], ledger_text: state[:ledger_text], intent_text: state[:intent_text],
+    render_input(node_text: state[:node_text], ledger_text: state[:ledger_text], intent_text: state[:intent_text],
                   decisions: state[:decisions], insights: state[:insights], hop: state[:hop],
                   where_text: state[:where_text], record_source: state[:record_source] || "record",
                   hop_source: state[:hop_source] || "sources")
@@ -685,7 +685,7 @@ module NodePacket
   private_class_method :render_from_state
 
   def estimate_rendered_tokens(rendered)
-    PacketWrapper.estimate_tokens(rendered)
+    DataBoundary.estimate_tokens(rendered)
   end
 
   # The C28 cut ladder: drop the hop whole, then cut Insights to the last
@@ -748,8 +748,8 @@ module NodePacket
       "record" => record_text,
       "where to work" => state[:where_text],
     }
-    name, text = candidates.max_by { |_, t| PacketWrapper.estimate_tokens(t.to_s) }
-    [name, PacketWrapper.estimate_tokens(text.to_s)]
+    name, text = candidates.max_by { |_, t| DataBoundary.estimate_tokens(t.to_s) }
+    [name, DataBoundary.estimate_tokens(text.to_s)]
   end
   private_class_method :name_oversized_block
 
@@ -867,7 +867,7 @@ module NodePacket
         decisions: cuts_applied.include?(:decisions) ? state[:decisions].last(DECISIONS_KEEP) : state[:decisions],
       )
       oversized_name, oversized_tokens = name_oversized_block(final_state)
-      question = "packet for #{node} is #{tokens} tokens after every cut, over the #{budget_tokens}-token " \
+      question = "node input for #{node} is #{tokens} tokens after every cut, over the #{budget_tokens}-token " \
                  "budget; #{oversized_name} alone is #{oversized_tokens} tokens, shorten it"
       return {
         ok: false, exit_code: 4, tokens: tokens,

@@ -16,7 +16,7 @@ load File.expand_path("../scripts/hook-call-budget", __dir__)
 
 # HookCallBudget (intent 355, n2, review fix n8). Matrix rows 2.5-2.9 and
 # 2.11 in the node's own failure-mode matrix (2.1-2.4 live in
-# runner_policy_test.rb/runner_dispatch_test.rb/node_packet_budget_test.rb,
+# runner_policy_test.rb/runner_dispatch_test.rb/node_input_budget_test.rb,
 # 2.10 in runner_absorb_test.rb, 2.12 in install_sync_test.rb).
 #
 # Inside a subagent the hook input's session_id and transcript_path are the

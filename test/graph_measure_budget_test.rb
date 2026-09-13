@@ -9,8 +9,8 @@ require "time"
 
 require_relative "../scripts/lib/node_ledger"
 require_relative "../scripts/lib/node_input_compatibility"
-require_relative "../scripts/lib/node_packet"
-require_relative "../scripts/lib/packet_wrapper"
+require_relative "../scripts/lib/node_input"
+require_relative "../scripts/lib/data_boundary"
 require_relative "../scripts/lib/ready_set"
 require_relative "../scripts/lib/graph_measure_budget"
 
@@ -64,7 +64,7 @@ class GraphMeasureBudgetTest < Minitest::Test
   end
 
   # Writes a real packets/<node>--a<attempt>.packet file and returns its real
-  # sha256[0,12], the same function NodePacket itself uses to mint input=.
+  # sha256[0,12], the same function NodeInput itself uses to mint input=.
   def write_packet(dir, node, attempt, content)
     packets_dir = File.join(dir, "packets")
     FileUtils.mkdir_p(packets_dir)
@@ -104,7 +104,7 @@ class GraphMeasureBudgetTest < Minitest::Test
     end
   end
 
-  # --- 4.3: resolved by NodePacket.packet_path, not a sha-named file -----------
+  # --- 4.3: resolved by NodeInput.packet_path, not a sha-named file -----------
 
   def test_packet_resolved_by_path_not_by_sha_name
     with_intent_dir do |dir|
@@ -158,9 +158,9 @@ class GraphMeasureBudgetTest < Minitest::Test
     end
   end
 
-  # --- 4.5: attempt numbering follows NodePacket, never ReadySet ---------------
+  # --- 4.5: attempt numbering follows NodeInput, never ReadySet ---------------
 
-  def test_attempt_numbering_follows_node_packet_not_ready_set
+  def test_attempt_numbering_follows_node_input_not_ready_set
     record = GraphMeasureBudget.read(DIR_340)
     attempts = record[:nodes]["n6"][:attempts]
     assert_equal [1, 2, 3], attempts.map { |a| a[:attempt] }
@@ -171,9 +171,9 @@ class GraphMeasureBudgetTest < Minitest::Test
                  "it cannot be used to number the attempt a past running line was"
   end
 
-  # --- 4.6: tokens via PacketWrapper.estimate_tokens, raw bytes beside it ------
+  # --- 4.6: tokens via DataBoundary.estimate_tokens, raw bytes beside it ------
 
-  def test_token_estimate_reuses_packet_wrapper
+  def test_token_estimate_reuses_data_boundary
     with_intent_dir do |dir|
       write_node_file(dir, "n1", "work", budget: 120_000)
       # 402 bytes: (402 / 4.0).round is 101, while a naive integer division
@@ -189,7 +189,7 @@ class GraphMeasureBudgetTest < Minitest::Test
       attempt = record[:nodes]["n1"][:attempts].first
       assert_equal 402, attempt[:bytes]
       assert_equal 101, attempt[:estimate_tokens]
-      assert_equal PacketWrapper.estimate_tokens(content), attempt[:estimate_tokens]
+      assert_equal DataBoundary.estimate_tokens(content), attempt[:estimate_tokens]
     end
   end
 

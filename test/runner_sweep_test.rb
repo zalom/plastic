@@ -10,7 +10,7 @@ require "time"
 require_relative "../scripts/lib/runner_sweep"
 require_relative "../scripts/lib/runner_core"
 require_relative "../scripts/lib/node_ledger"
-require_relative "../scripts/lib/node_packet"
+require_relative "../scripts/lib/node_input"
 require_relative "../scripts/lib/worktree"
 
 # RunnerSweep (intent 340, G7, n2): the merge abort, the reclaim, and the
@@ -294,7 +294,7 @@ class RunnerSweepTest < Minitest::Test
     assert_match(/#{Regexp.escape(now.utc.iso8601)}/, written)
   end
 
-  # --- 2.10/2.11: the reclaim line's required fields and node-packet integration --
+  # --- 2.10/2.11: the reclaim line's required fields and node-input integration --
 
   def test_reclaim_line_carries_required_fields
     init_repo
@@ -316,15 +316,15 @@ class RunnerSweepTest < Minitest::Test
     write_savepoint(line("n1", "running", running_fields(expires: "2000-01-01T00:00:00Z")))
     ctx = build_context(worktree: @repo)
 
-    before = NodePacket.landed_commits_block(
+    before = NodeInput.landed_commits_block(
       intent_dir: @dir, node: "n1", files: ["n1.txt"], repo_dir: @repo,
       git_runner: ->(repo_dir:, files:) { "stub landed commits for #{files.join(',')}" }
     )
-    assert_nil before, "no reclaimed line yet, so node-packet must show nothing landed"
+    assert_nil before, "no reclaimed line yet, so node-input must show nothing landed"
 
     RunnerSweep.reclaim(ctx, now: Time.iso8601("2030-01-01T00:00:00Z"))
 
-    after = NodePacket.landed_commits_block(
+    after = NodeInput.landed_commits_block(
       intent_dir: @dir, node: "n1", files: ["n1.txt"], repo_dir: @repo,
       git_runner: ->(repo_dir:, files:) { "stub landed commits for #{files.join(',')}" }
     )

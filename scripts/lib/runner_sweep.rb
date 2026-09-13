@@ -199,7 +199,7 @@ module RunnerSweep
 
   # Row 2.18: the attempt number comes from the ledger's own count of
   # `running` lines since the subject's last terminal line - the exact same
-  # arithmetic NodePacket uses to name that attempt's packet file, so the
+  # arithmetic NodeInput uses to name that attempt's packet file, so the
   # extensions file for a `running` line always matches the packet it extends.
   def current_attempt(entries, subject)
     ReadySet.attempts_count(entries, subject)

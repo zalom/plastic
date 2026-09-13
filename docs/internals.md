@@ -1674,10 +1674,10 @@ it from an all-letter word that happens to be valid hex.
 that are strict subsets of the shipped `intent`/`delivered` openers. No `paint:` lambda: the
 palette stays `IntentScreenAnsi`'s shared pipeline, exactly like every shipped kind before it.
 
-## the node packet command (intent 338, G5)
+## the node input command (intent 338, G5)
 
-A node agent is stateless (327 D45): its whole input is its packet. `PacketWrapper`
-(`scripts/lib/packet_wrapper.rb`) owns the trust boundary a packet is built over. A data
+A node agent is stateless (327 D45): its whole input is its packet. `DataBoundary`
+(`scripts/lib/data_boundary.rb`) owns the trust boundary a packet is built over. A data
 block is opened by `<<<PLASTIC-DATA:<token> label="..." source="...">>>` and closed by
 `<<<END-PLASTIC-DATA:<token>>>`, one token per packet, the first twelve hex characters of
 the SHA-256 over the packet's raw payloads joined by a newline - content-derived rather than
@@ -1689,10 +1689,10 @@ carrying the packet's own marker still cannot close its block even if the token 
 a whitelist rather than the payload escaping rule (spec D5a, the plan review's blocking
 finding): every character outside `[A-Za-z0-9 _.,:#/@+=-]` becomes `_`, truncated to 200
 characters, so neither a quote nor a newline in a hostile `sources:` entry can break a
-marker line. `PacketWrapper.estimate_tokens` is `(bytes / 4.0).round`, the one arithmetic
+marker line. `DataBoundary.estimate_tokens` is `(bytes / 4.0).round`, the one arithmetic
 every budget in this delivery is spent in (spec D6).
 
-`NodePacket` (`scripts/lib/node_packet.rb`) gathers the five blocks 327 section 8 fixed, in
+`NodeInput` (`scripts/lib/node_input.rb`) gathers the five blocks 327 section 8 fixed, in
 a caller-independent order (spec D2): the node, the ledger, the record, the knowledge hop,
 and where to work. Blocks 1 and 5 are instruction, authored for this node by the orchestrator
 and by the project record; blocks 2, 3 and 4 are retrieved text and are wrapped as labeled
@@ -1731,7 +1731,7 @@ search results). Rebuilding an attempt is a no-op when the bytes are unchanged a
 bytes on disk, first twelve hex, printed and never embedded in the file (spec D10); it is the
 value `node-transition running --field input=<sha>` takes.
 
-`scripts/node-packet <intent_dir> --node <id>` is the CLI, shaped like `node-transition` and
+`scripts/node-input <intent_dir> --node <id>` is the CLI, shaped like `node-transition` and
 `validate-work-graph`: 0 success, 2 usage (not an intent directory, missing `--node`, or an
 unknown node), 3 an unreadable/unparsable graph, node file or record, 4 overflow, 5 an
 attempt conflict (spec D17, shared exit-code family so a runner routes on the same codes

@@ -10,7 +10,7 @@ require_relative "node_return"
 require_relative "node_ledger"
 require_relative "node_worktree"
 require_relative "node_file"
-require_relative "node_packet"
+require_relative "node_input"
 require_relative "ready_set"
 require_relative "core_integrity"
 require_relative "runner_core"
@@ -132,7 +132,7 @@ module RunnerAbsorb
     text = read_return_text(return_path)
     parsed = NodeReturn.parse(text)
 
-    attempt = NodePacket.compute_attempt_number(intent_dir: intent_dir, node: node, lease_flag_given: false,
+    attempt = NodeInput.compute_attempt_number(intent_dir: intent_dir, node: node, lease_flag_given: false,
                                                  entries: entries)
     preserve_return_file(intent_dir, node, attempt, return_path, text)
 
@@ -574,7 +574,7 @@ module RunnerAbsorb
   # packets/<node>--a<N>.return - copied there when `return_path` names
   # somewhere else, left alone when it already is that file.
   def preserve_return_file(intent_dir, node, attempt, return_path, text)
-    target = NodePacket.packet_path(intent_dir: intent_dir, node: node, attempt: attempt).sub(/\.packet\z/, ".return")
+    target = NodeInput.packet_path(intent_dir: intent_dir, node: node, attempt: attempt).sub(/\.packet\z/, ".return")
     return target if File.expand_path(return_path.to_s) == File.expand_path(target)
 
     FileUtils.mkdir_p(File.dirname(target))
