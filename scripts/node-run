@@ -8,7 +8,7 @@ require "yaml"
 require "fileutils"
 require_relative "lib/savepoint"
 require_relative "lib/node_ledger"
-require_relative "lib/node_packet"
+require_relative "lib/node_input"
 require_relative "lib/node_worktree"
 require_relative "lib/node_file"
 require_relative "lib/ready_set"
@@ -167,14 +167,14 @@ module NodeRunCLI
 
     kind = resolve_kind(intent_dir, node)
 
-    # matrix row 6.11: the attempt number comes from NodePacket's own
+    # matrix row 6.11: the attempt number comes from NodeInput's own
     # counter, never a hand count. `lease_flag_given: false` because the
     # running line this attempt is acting on ALREADY exists on disk (it is
     # what we just read above) - counting it a second time would double it
     # (the same count, plus one, that produced it in the first place when
     # the packet was originally built).
-    attempt = NodePacket.compute_attempt_number(intent_dir: intent_dir, node: node, lease_flag_given: false)
-    packet_path = NodePacket.packet_path(intent_dir: intent_dir, node: node, attempt: attempt)
+    attempt = NodeInput.compute_attempt_number(intent_dir: intent_dir, node: node, lease_flag_given: false)
+    packet_path = NodeInput.packet_path(intent_dir: intent_dir, node: node, attempt: attempt)
 
     unless File.exist?(packet_path)
       warn "node-run: #{node}'s packet is missing at #{packet_path}"

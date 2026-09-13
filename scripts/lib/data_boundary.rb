@@ -3,7 +3,7 @@
 
 require "digest"
 
-# PacketWrapper (intent 338, G5, n1): the trust boundary a node packet is
+# DataBoundary (intent 338, G5, n1): the trust boundary a node input is
 # built over. A data block carries text other agents and the owner wrote,
 # and is opened by `<<<PLASTIC-DATA:<token> label="..." source="...">>>` and
 # closed by `<<<END-PLASTIC-DATA:<token>>>`. The token is content-derived
@@ -18,7 +18,7 @@ require "digest"
 # Pure and side-effect-free: no I/O, no clock, nothing raised across the
 # boundary. `estimate_tokens` is the one arithmetic every budget in this
 # delivery is spent in (spec D6): bytes over four, rounded.
-module PacketWrapper
+module DataBoundary
   module_function
 
   MARKER_OPEN = "<<<PLASTIC-DATA:"

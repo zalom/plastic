@@ -6,7 +6,7 @@ require "yaml"
 require_relative "ready_set"
 require_relative "node_ledger"
 require_relative "node_file"
-require_relative "node_packet"
+require_relative "node_input"
 require_relative "node_worktree"
 require_relative "work_graph_validator"
 require_relative "runner_core"
@@ -53,12 +53,12 @@ module RunnerDispatch
 
   # matrix 6.1/6.2: one spawn block per dispatched node - agent, the model
   # RunnerPolicy.model_for resolved, the packet path, the one test command
-  # (NodePacket.test_command_block, n4), and the call cap (n2) - fenced so a
+  # (NodeInput.test_command_block, n4), and the call cap (n2) - fenced so a
   # session pastes it straight into the Agent tool (327 D42: the runner
   # itself never spawns).
   def spawn_block(model:, packet:, test_command:, call_cap:, agent: SPAWN_AGENT)
     lines = ["agent: #{agent}", "model: #{model}", "packet: #{packet}", test_command,
-             NodePacket.call_cap_sentence(call_cap)]
+             NodeInput.call_cap_sentence(call_cap)]
     (["```"] + lines + ["```"]).join("\n")
   end
 
@@ -69,7 +69,7 @@ module RunnerDispatch
   def dispatch(context, limit: DEFAULT_LIMIT, now: Time.now, config: {}, harness: nil, caps: ReadySet::DEFAULT_CAPS,
                validator: WorkGraphValidator.method(:validate),
                ready_analyzer: ReadySet.method(:analyze),
-               packet_builder: NodePacket.method(:build),
+               packet_builder: NodeInput.method(:build),
                worktree: NodeWorktree,
                ledger: NodeLedger,
                runner: Worktree::ShellRunner.new,
@@ -231,7 +231,7 @@ module RunnerDispatch
     pre_existing_worktree = worktree_pre_existing?(worktree, context, node, kind)
 
     # Row 5.16/5.29: only a `work` node gets a worktree, and this is the
-    # node-scoped `worktree_reader:` D23 injects into NodePacket.build - it
+    # node-scoped `worktree_reader:` D23 injects into NodeInput.build - it
     # names THIS node's own worktree and branch, never the intent's.
     provisioned = RunnerPolicy.worktree?(kind) ? worktree.provision(context, node: node, kind: kind, runner: runner)
                                                 : unprovisioned
@@ -247,7 +247,7 @@ module RunnerDispatch
     # crashed between building the packet and writing `running`, safe to
     # overwrite outright.
     # Row 5.20/10.8: the node's own declared budget: (M7) - nil when the node
-    # names none, in which case NodePacket.build falls back to its own
+    # names none, in which case NodeInput.build falls back to its own
     # default (row 10.9).
     build_result = packet_builder.call(intent_dir: intent_dir, node: node, holder: holder, expires: expires,
                                         model: model, force: true, worktree_reader: node_reader,
@@ -286,7 +286,7 @@ module RunnerDispatch
       return { ok: false }
     end
 
-    test_command = NodePacket.test_command_block(intent_dir: intent_dir, files: (nodes_decl[node] || {})[:files])
+    test_command = NodeInput.test_command_block(intent_dir: intent_dir, files: (nodes_decl[node] || {})[:files])
     spawn = spawn_block(model: model, packet: build_result[:path], test_command: test_command, call_cap: calls_cap)
 
     {

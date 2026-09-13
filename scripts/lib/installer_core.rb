@@ -514,11 +514,11 @@ class InstallerCore
       "scripts/lib/roadmap_migration.rb" => "scripts/lib/roadmap_migration.rb",
       "scripts/roadmap-graph" => "scripts/roadmap-graph",
       "scripts/index-projection" => "scripts/index-projection",
-      # Intent 338 (G5): the node packet command - the trust-boundary wrapper,
+      # Intent 338 (G5): the node input command - the trust-boundary wrapper,
       # the five-block gatherer/assembler, and the CLI 340's runner calls.
-      "scripts/lib/packet_wrapper.rb" => "scripts/lib/packet_wrapper.rb",
-      "scripts/lib/node_packet.rb" => "scripts/lib/node_packet.rb",
-      "scripts/node-packet" => "scripts/node-packet",
+      "scripts/lib/data_boundary.rb" => "scripts/lib/data_boundary.rb",
+      "scripts/lib/node_input.rb" => "scripts/lib/node_input.rb",
+      "scripts/node-input" => "scripts/node-input",
       # Intent 342 (G9): the backward shim that presents actions/*.md as a
       # node graph for any legacy intent, so WorkGraphValidator can require
       # it without going red on contact with install_sync_test.

@@ -6,8 +6,8 @@ require "json"
 require "tmpdir"
 require_relative "node_ledger"
 require_relative "node_file"
-require_relative "node_packet"
-require_relative "packet_wrapper"
+require_relative "node_input"
+require_relative "data_boundary"
 
 # GraphMeasureBudget (intent 343, G10, n4): whether the `budget:` a node's
 # envelope declares (327 C19, D47) is a ceiling that ever actually held.
@@ -24,8 +24,8 @@ require_relative "packet_wrapper"
 #
 # Adds no second parser and no second estimator: `NodeLedger` owns the
 # transition-line format, `NodeFile` owns the envelope's `budget:`,
-# `NodePacket` owns packet path resolution and attempt numbering, and
-# `PacketWrapper.estimate_tokens` is the one token formula, the same the
+# `NodeInput` owns packet path resolution and attempt numbering, and
+# `DataBoundary.estimate_tokens` is the one token formula, the same the
 # packet builder enforced with (spec D8).
 module GraphMeasureBudget
   module_function
@@ -54,12 +54,12 @@ module GraphMeasureBudget
       declared_budget = declared_budget_for(dir, subject, node_reader)
       attempts = indices.map do |idx|
         entry = entries[idx]
-        # Row 4.5: the attempt number is NodePacket's own count of non-torn
+        # Row 4.5: the attempt number is NodeInput's own count of non-torn
         # `running` lines up to and including this one, never
         # ReadySet.attempts_count (which resets after `done`, `superseded`
         # or `abandoned` and answers "attempts left", not "which attempt was
         # this line").
-        attempt_number = NodePacket.compute_attempt_number(
+        attempt_number = NodeInput.compute_attempt_number(
           intent_dir: dir, node: subject, lease_flag_given: false, entries: entries[0..idx]
         )
         build_attempt(dir, subject, attempt_number, entry, declared_budget)
@@ -179,7 +179,7 @@ module GraphMeasureBudget
   # n5's `GraphMeasureModels` already uses for its own `present?` and
   # `resolve_kind`): a local copy, not a second parser or a reopen.
   def declared_budget_for(dir, node, node_reader)
-    path = NodePacket.find_node_path(dir, node)
+    path = NodeInput.find_node_path(dir, node)
     return :unavailable unless path
 
     parsed = with_safe_path(path) { |p| p ? node_reader.call(p) : nil }
@@ -214,14 +214,14 @@ module GraphMeasureBudget
     # block was appended (the feature predates this line, or hop is off),
     # never an unknown quantity to subtract.
     hop = present?(fields["hop"]) ? fields["hop"].to_i : 0
-    path = NodePacket.packet_path(intent_dir: dir, node: subject, attempt: attempt_number)
+    path = NodeInput.packet_path(intent_dir: dir, node: subject, attempt: attempt_number)
     file_exists = File.exist?(path)
 
     if file_exists
       raw = File.binread(path)
       bytes = raw.bytesize
       sha_actual = Digest::SHA256.hexdigest(raw)[0, 12]
-      estimate = PacketWrapper.estimate_tokens(raw)
+      estimate = DataBoundary.estimate_tokens(raw)
       effective = estimate - hop
       over_budget = declared_budget.is_a?(Integer) ? effective > declared_budget : :unavailable
       sha_match = sha_actual == packet_sha_declared
