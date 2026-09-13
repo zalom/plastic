@@ -7,6 +7,7 @@ require "tmpdir"
 require_relative "node_ledger"
 require_relative "node_file"
 require_relative "node_input"
+require_relative "node_input_compatibility"
 require_relative "data_boundary"
 
 # GraphMeasureBudget (intent 343, G10, n4): whether the `budget:` a node's
@@ -17,7 +18,7 @@ require_relative "data_boundary"
 # and the real packet files alone.
 #
 # Read-only (spec D2): it opens `nodes/*.md`, `savepoint.md` and files under
-# `packets/`, and writes nothing. A measure with no source prints
+# `attempts/`, and writes nothing. A measure with no source prints
 # `:unavailable`, never zero and never blank (spec D3); a packet file named
 # by `input=` that is not on disk is counted and named by its sha, never
 # silently treated as zero bytes (spec D4).
@@ -105,9 +106,9 @@ module GraphMeasureBudget
   def attempt_model(a)
     {
       "attempt" => a[:attempt],
-      "packet_sha_declared" => av(a[:packet_sha_declared]),
+      "input_sha_declared" => av(a[:input_sha_declared]),
       "file_exists" => a[:file_exists],
-      "packet_sha_actual" => av(a[:packet_sha_actual]),
+      "input_sha_actual" => av(a[:input_sha_actual]),
       "sha_match" => a[:sha_match],
       "bytes" => av(a[:bytes]),
       "estimate_tokens" => av(a[:estimate_tokens]),
@@ -209,12 +210,12 @@ module GraphMeasureBudget
 
   def build_attempt(dir, subject, attempt_number, entry, declared_budget)
     fields = entry[:fields] || {}
-    packet_sha_declared = present?(fields["input"]) ? fields["input"] : :unavailable
+    input_sha_declared = present?(fields["input"]) ? fields["input"] : :unavailable
     # D8: hop= is written once, on the running line; absent means no hop
     # block was appended (the feature predates this line, or hop is off),
     # never an unknown quantity to subtract.
     hop = present?(fields["hop"]) ? fields["hop"].to_i : 0
-    path = NodeInput.packet_path(intent_dir: dir, node: subject, attempt: attempt_number)
+    path = NodeInputCompatibility.input_path(intent_dir: dir, node: subject, attempt: attempt_number)
     file_exists = File.exist?(path)
 
     if file_exists
@@ -224,7 +225,7 @@ module GraphMeasureBudget
       estimate = DataBoundary.estimate_tokens(raw)
       effective = estimate - hop
       over_budget = declared_budget.is_a?(Integer) ? effective > declared_budget : :unavailable
-      sha_match = sha_actual == packet_sha_declared
+      sha_match = sha_actual == input_sha_declared
     else
       bytes = :unavailable
       sha_actual = :unavailable
@@ -236,10 +237,10 @@ module GraphMeasureBudget
 
     {
       attempt: attempt_number,
-      packet_sha_declared: packet_sha_declared,
-      packet_path: path,
+      input_sha_declared: input_sha_declared,
+      input_path: path,
       file_exists: file_exists,
-      packet_sha_actual: sha_actual,
+      input_sha_actual: sha_actual,
       sha_match: sha_match,
       bytes: bytes,
       estimate_tokens: estimate,

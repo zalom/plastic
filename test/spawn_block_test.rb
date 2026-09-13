@@ -16,7 +16,7 @@ class SpawnBlockTest < Minitest::Test
   # --- 6.5: the block never names a harness ----------------------------------
 
   def test_block_is_harness_neutral
-    block = RunnerDispatch.spawn_block(model: RunnerPolicy.model_for("work"), packet: "/tmp/n1--abc.packet",
+    block = RunnerDispatch.spawn_block(model: RunnerPolicy.model_for("work"), packet: "/tmp/n1--abc.input",
                                         test_command: "test command: ruby bin/test --only test/x_test.rb",
                                         call_cap: RunnerPolicy.call_cap("work"))
 

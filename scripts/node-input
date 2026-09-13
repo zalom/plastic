@@ -6,7 +6,7 @@ require_relative "lib/node_input"
 require_relative "lib/savepoint"
 
 # node-input - the CLI over NodeInput (intent 338, G5). Builds one node's
-# whole input from disk and writes it to packets/<node>--a<N>.packet (or
+# whole input from disk and writes it to attempts/<node>--a<N>.input (or
 # --out), printing a parsable summary and the exact node-transition running
 # command intent 340's runner should record.
 #

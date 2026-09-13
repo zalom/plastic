@@ -60,12 +60,12 @@ module NodeRunCLI
     dir && File.directory?(dir) && File.exist?(Savepoint.intent_file(dir))
   end
 
-  # <intent_dir>/packets/<node>--a<N>.return.yml (spec): beside the packet,
+  # <intent_dir>/attempts/<node>--a<N>.return.yml (spec): beside the packet,
   # one per attempt, the same treatment packet files already get - never
   # reused across attempts, so a second attempt's return can never be
   # mistaken for the first's.
   def return_path(intent_dir, node, attempt)
-    File.join(intent_dir, "packets", "#{node}--a#{attempt}.return.yml")
+    File.join(intent_dir, "attempts", "#{node}--a#{attempt}.return.yml")
   end
 
   # The node's own declared kind, read straight off its node file - "work"
@@ -174,18 +174,18 @@ module NodeRunCLI
     # (the same count, plus one, that produced it in the first place when
     # the packet was originally built).
     attempt = NodeInput.compute_attempt_number(intent_dir: intent_dir, node: node, lease_flag_given: false)
-    packet_path = NodeInput.packet_path(intent_dir: intent_dir, node: node, attempt: attempt)
+    input_path = NodeInput.input_path(intent_dir: intent_dir, node: node, attempt: attempt)
 
-    unless File.exist?(packet_path)
-      warn "node-run: #{node}'s packet is missing at #{packet_path}"
+    unless File.exist?(input_path)
+      warn "node-run: #{node}'s node input is missing at #{input_path}"
       exit 5
     end
 
-    packet_bytes = File.binread(packet_path)
-    actual_sha = Digest::SHA256.hexdigest(packet_bytes)[0, 12]
+    input_bytes = File.binread(input_path)
+    actual_sha = Digest::SHA256.hexdigest(input_bytes)[0, 12]
     expected_sha = fields["input"]
     unless expected_sha && actual_sha == expected_sha
-      warn "node-run: #{node}'s packet at #{packet_path} does not hash to input=#{expected_sha.inspect} " \
+      warn "node-run: #{node}'s node input at #{input_path} does not hash to input=#{expected_sha.inspect} " \
            "(computed #{actual_sha})"
       exit 6
     end
@@ -203,7 +203,7 @@ module NodeRunCLI
     timeout_seconds = timeout_flag ? timeout_flag.to_i : CodexAdapter.timeout_seconds(kind)
     codex_argv = CodexAdapter.build_argv(kind: kind, worktree: worktree, output_last_message: message_path)
 
-    result = CodexAdapter.execute(codex_argv, stdin_data: packet_bytes, timeout_seconds: timeout_seconds,
+    result = CodexAdapter.execute(codex_argv, stdin_data: input_bytes, timeout_seconds: timeout_seconds,
                                    output_last_message_path: message_path)
 
     # matrix rows 6.20-6.22: a nonzero exit or a timeout is authoritative -

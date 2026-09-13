@@ -889,7 +889,7 @@ class RunnerCliTest < Minitest::Test
     assert_match(/complete/, File.read(last_path))
   end
 
-  # --- 1.24: runner-step.last lives beside savepoint.md, never inside packets/ --
+  # --- 1.24: runner-step.last lives beside savepoint.md, never inside attempts/ --
 
   def test_runner_step_last_lives_beside_savepoint
     write_graph("- n1 needs nothing\n")
@@ -900,8 +900,8 @@ class RunnerCliTest < Minitest::Test
     run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
 
     assert File.exist?(File.join(@dir, "runner-step.last"))
-    refute File.exist?(File.join(@dir, "packets", "runner-step.last")),
-           "runner-step.last must live beside savepoint.md, never inside packets/"
+    refute File.exist?(File.join(@dir, "attempts", "runner-step.last")),
+           "runner-step.last must live beside savepoint.md, never inside attempts/"
   end
 
   # --- 1.25: an unwritable intent directory never crashes the step ------------

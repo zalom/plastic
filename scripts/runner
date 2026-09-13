@@ -412,7 +412,7 @@ module Runner
     exit(exit_code)
   end
 
-  # Row 1.24: lives beside savepoint.md, never inside packets/ (which the
+  # Row 1.24: lives beside savepoint.md, never inside attempts/ (which the
   # reaper treats as attempt evidence). Row 1.32: registers itself in the
   # store's own top-level `.gitignore` (Worktree.ensure_gitignored's own
   # idempotent, non-raising append) the same way `*.lock` already is, so a

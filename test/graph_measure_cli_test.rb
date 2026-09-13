@@ -287,13 +287,13 @@ class GraphMeasureCliTest < Minitest::Test
 
   # --- 4.16: no packet activity at all still exits 0, with an explicit message -------
 
-  def test_budget_without_packets_directory_exits_zero
+  def test_budget_without_attempts_directory_exits_zero
     write_graph("- n1 needs nothing\n")
     write_savepoint([
       stage("2026-01-01T09:00:00Z", "Why", "spec.md created"),
       stage("2026-01-01T09:21:00Z", "Done", "delivered"),
     ])
-    refute Dir.exist?(File.join(@dir, "packets"))
+    refute Dir.exist?(File.join(@dir, "attempts"))
 
     out, err, status = run_cli("budget", @dir)
     assert_equal 0, status.exitstatus, err

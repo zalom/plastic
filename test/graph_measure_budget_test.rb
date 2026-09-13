@@ -22,7 +22,7 @@ require_relative "../scripts/lib/graph_measure_budget"
 # this test, spec D18's rule the other way round: a row a real ledger DOES
 # produce gets checked against that real ledger, not a stand-in). Every
 # other row builds its own hermetic fixture in a Dir.mktmpdir, including a
-# real packets/ directory with real files this test writes and hashes
+# real attempts/ directory with real files this test writes and hashes
 # itself, because GraphMeasureBudget resolves and verifies actual bytes on
 # disk (spec D1's "budget: read by G10").
 class GraphMeasureBudgetTest < Minitest::Test
@@ -63,12 +63,12 @@ class GraphMeasureBudgetTest < Minitest::Test
     MD
   end
 
-  # Writes a real packets/<node>--a<attempt>.packet file and returns its real
+  # Writes a real attempts/<node>--a<attempt>.input file and returns its real
   # sha256[0,12], the same function NodeInput itself uses to mint input=.
   def write_packet(dir, node, attempt, content)
-    packets_dir = File.join(dir, "packets")
-    FileUtils.mkdir_p(packets_dir)
-    path = File.join(packets_dir, "#{node}--a#{attempt}.packet")
+    attempts_dir = File.join(dir, "attempts")
+    FileUtils.mkdir_p(attempts_dir)
+    path = File.join(attempts_dir, "#{node}--a#{attempt}.input")
     File.write(path, content)
     Digest::SHA256.hexdigest(File.binread(path))[0, 12]
   end
@@ -104,16 +104,16 @@ class GraphMeasureBudgetTest < Minitest::Test
     end
   end
 
-  # --- 4.3: resolved by NodeInput.packet_path, not a sha-named file -----------
+  # --- 4.3: resolved by NodeInput.input_path, not a sha-named file -----------
 
-  def test_packet_resolved_by_path_not_by_sha_name
+  def test_input_resolved_by_path_not_by_sha_name
     with_intent_dir do |dir|
       write_node_file(dir, "n1", "work", budget: 120_000)
       real_sha = write_packet(dir, "n1", 1, "y" * 800)
       # A decoy file named after the sha itself. If the reader ever searched
       # for a sha-named file instead of resolving by path, it would find
       # this file's (wrong) size instead.
-      File.write(File.join(dir, "packets", "#{real_sha}.packet"), "z" * 40)
+      File.write(File.join(dir, "attempts", "#{real_sha}.input"), "z" * 40)
       write_savepoint(dir, [transition(stamp("2026-01-01T09:00:00Z"), "n1", "running",
                                         fields: RUNNING.merge(input: real_sha))])
 
@@ -125,7 +125,7 @@ class GraphMeasureBudgetTest < Minitest::Test
 
   # --- 4.4: sha verified against the running line's input= ---------------------
 
-  def test_packet_sha_verified_against_the_running_line
+  def test_input_sha_verified_against_the_running_line
     with_intent_dir do |dir|
       write_node_file(dir, "n1", "work", budget: 120_000)
       write_packet(dir, "n1", 1, "a" * 400)
@@ -137,7 +137,7 @@ class GraphMeasureBudgetTest < Minitest::Test
       attempt = record[:nodes]["n1"][:attempts].first
       assert attempt[:file_exists]
       refute attempt[:sha_match]
-      refute_equal declared_sha, attempt[:packet_sha_actual]
+      refute_equal declared_sha, attempt[:input_sha_actual]
     end
   end
 
@@ -153,7 +153,7 @@ class GraphMeasureBudgetTest < Minitest::Test
 
       record = GraphMeasureBudget.read(dir)
       attempt = record[:nodes]["n1"][:attempts].first
-      assert_equal sha, attempt[:packet_sha_declared]
+      assert_equal sha, attempt[:input_sha_declared]
       assert attempt[:sha_match]
     end
   end
@@ -209,7 +209,7 @@ class GraphMeasureBudgetTest < Minitest::Test
 
   # --- 4.8: packets under a common ceiling report it by value -------------------
 
-  def test_packets_under_a_common_ceiling_report_it_by_value
+  def test_inputs_under_a_common_ceiling_report_it_by_value
     record = GraphMeasureBudget.read(DIR_340)
     ceiling = record[:ceiling]
 
@@ -369,7 +369,7 @@ class GraphMeasureBudgetTest < Minitest::Test
 
   # --- 4.11: a missing packet file is unavailable, with its sha (D18) -----------
 
-  def test_missing_packet_file_is_unavailable_with_its_sha
+  def test_missing_input_file_is_unavailable_with_its_sha
     with_intent_dir do |dir|
       write_node_file(dir, "n1", "work", budget: 120_000)
       missing_sha = "deadbeef0000"
@@ -382,7 +382,7 @@ class GraphMeasureBudgetTest < Minitest::Test
       assert_equal :unavailable, attempt[:bytes]
       assert_equal :unavailable, attempt[:estimate_tokens]
       assert_equal :unavailable, attempt[:effective_tokens]
-      assert_equal missing_sha, attempt[:packet_sha_declared]
+      assert_equal missing_sha, attempt[:input_sha_declared]
     end
   end
 end

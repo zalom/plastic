@@ -428,7 +428,7 @@ class RunnerDispatchTest < Minitest::Test
 
     node_path = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}--n1")
     refute Dir.exist?(node_path), "a refused running write must roll back the worktree it provisioned"
-    refute Dir.glob(File.join(@dir, "packets", "n1--a*.packet")).any?,
+    refute Dir.glob(File.join(@dir, "attempts", "n1--a*.input")).any?,
            "a refused running write must roll back the packet it built"
   end
 
@@ -465,8 +465,8 @@ class RunnerDispatchTest < Minitest::Test
     ctx = build_context
 
     result = RunnerDispatch.dispatch(ctx)
-    packet_bytes = File.read(result[:dispatched].first[:packet])
-    refute_includes packet_bytes, "RETURN CONTRACT"
+    input_bytes = File.read(result[:dispatched].first[:packet])
+    refute_includes input_bytes, "RETURN CONTRACT"
     assert_includes result[:plan], "RETURN CONTRACT"
   end
 
@@ -506,10 +506,10 @@ class RunnerDispatchTest < Minitest::Test
   # --- n6, 6.2: the spawn block's model comes from RunnerPolicy.model_for ---
 
   def test_spawn_block_model_from_policy
-    work_block = RunnerDispatch.spawn_block(model: RunnerPolicy.model_for("work"), packet: "/tmp/n1--a.packet",
+    work_block = RunnerDispatch.spawn_block(model: RunnerPolicy.model_for("work"), packet: "/tmp/n1--a.input",
                                              test_command: "test command: ruby bin/test --only test/x_test.rb",
                                              call_cap: RunnerPolicy.call_cap("work"))
-    verify_block = RunnerDispatch.spawn_block(model: RunnerPolicy.model_for("verify"), packet: "/tmp/n2--a.packet",
+    verify_block = RunnerDispatch.spawn_block(model: RunnerPolicy.model_for("verify"), packet: "/tmp/n2--a.input",
                                                test_command: "test command: ruby bin/test --only test/y_test.rb",
                                                call_cap: RunnerPolicy.call_cap("verify"))
 
@@ -652,8 +652,8 @@ class RunnerDispatchTest < Minitest::Test
   def test_orphan_packet_is_rebuilt_with_force
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
-    FileUtils.mkdir_p(File.join(@dir, "packets"))
-    orphan_path = File.join(@dir, "packets", "n1--a1.packet")
+    FileUtils.mkdir_p(File.join(@dir, "attempts"))
+    orphan_path = File.join(@dir, "attempts", "n1--a1.input")
     File.write(orphan_path, "stale bytes from a crashed dispatch\n")
     ctx = build_context
 
@@ -675,7 +675,7 @@ class RunnerDispatchTest < Minitest::Test
     assert_equal "lock_not_held", result[:reason]
     assert_empty result[:dispatched]
     refute File.exist?(savepoint_path), "a lock refusal must write nothing"
-    refute Dir.exist?(File.join(@dir, "packets")), "a lock refusal must build no packet"
+    refute Dir.exist?(File.join(@dir, "attempts")), "a lock refusal must build no packet"
   end
 
   # --- 5.32: the lock refusal prints the re-arm command -----------------------

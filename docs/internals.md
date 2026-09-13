@@ -1724,7 +1724,7 @@ the exact `node-transition ... --state needs_decision --field question="..."` co
 returned, naming the oversized block and its token count so the owner knows what to shorten.
 Attempts are numbered from the node's prior `running` lines, plus one when a lease is
 supplied by flag (a new dispatch), floored at 1, overridable with `--attempt` (spec D11,
-C21); the packet lands at `packets/<node>--a<N>.packet` (a `.packet` extension, not `.md`,
+C21); the packet lands at `attempts/<node>--a<N>.input` (a `.input` extension, not `.md`,
 so QMD's `**/*.md` collection glob never re-indexes a packet's wrapped payloads back into
 search results). Rebuilding an attempt is a no-op when the bytes are unchanged and a refusal
 (exit 5) otherwise, unless `--force` is given. The hash is the SHA-256 of the file's own

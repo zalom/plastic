@@ -573,12 +573,12 @@ class RunnerAbsorbTest < Minitest::Test
 
   # --- 4.42: the return file is kept beside the packet ------------------------------
 
-  def test_return_file_kept_beside_packet
+  def test_return_file_kept_beside_the_input
     write_savepoint(running_line)
     _result, _fake_wt, original_return_path = absorb_happy
 
-    kept = File.join(@dir, "packets", "n4--a1.return")
-    assert File.exist?(kept), "the return must be copied to packets/n4--a1.return"
+    kept = File.join(@dir, "attempts", "n4--a1.return")
+    assert File.exist?(kept), "the return must be copied to attempts/n4--a1.return"
     assert_equal File.read(original_return_path), File.read(kept)
   end
 
