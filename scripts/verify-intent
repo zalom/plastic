@@ -11,7 +11,7 @@
 #
 # --base overrides the auto-detected diff base (default: the merge base with the repo's
 # detected default branch) for repos where detection is ambiguous. --suite is an optional
-# caller-supplied command to run (in the repo directory) and fold into the verdict. No
+# caller-supplied command to run (in the repo directory) and merge into the verdict. No
 # other flags exist.
 #
 # Checks, all run every invocation (the fourth only when --suite is given):

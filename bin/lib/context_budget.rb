@@ -87,7 +87,7 @@ module ContextBudget
 
   # What the harness loads at boot: every skill's name and description VALUES,
   # YAML-parsed. Not the raw frontmatter (that would count the keys and the
-  # operational fields), and not a line regex (that would truncate a folded
+  # operational fields), and not a line regex (that would truncate a flattened
   # description at its first line).
   def self.skill_catalog_bytes(repo:)
     skill_paths(repo: repo).sum do |path|

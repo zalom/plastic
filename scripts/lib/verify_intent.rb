@@ -9,7 +9,7 @@ require_relative "scaffold_intent"
 # (`Doctor#run_intent_check`), a net-new added-line em-dash diff guard (the first standing
 # implementation of this check; the only prior automated em-dash check,
 # `test/skill_command_lint_test.rb`, asserts against two FIXED file sets and cannot scan a
-# diff), a diffstat, and an optional caller-supplied `--suite` command folded into the same
+# diff), a diffstat, and an optional caller-supplied `--suite` command merged into the same
 # verdict.
 #
 # Repo resolution and base-branch detection are NOT re-implemented here: `resolve_repo_dir`,
@@ -245,7 +245,7 @@ module VerifyIntent
 
   # Every `Report`-kind savepoint line for this intent, oldest first: [timestamp, text].
   # Never fails or gates anything (D3: the diffstat check already prints a summary block,
-  # this folds into the same verdict so verify-intent surfaces them too) - a delivery with
+  # this merges into the same verdict so verify-intent surfaces them too) - a delivery with
   # no Report line is visible to `doctor`'s intent_reports_printed_check instead.
   def report_lines(intent_dir)
     path = File.join(intent_dir, "savepoint.md")

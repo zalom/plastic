@@ -139,7 +139,7 @@ class Doctor
         --intent ID     Per-intent structure gate at intent-end (intent 222): one
                         closing intent only, never a store sweep. Pair with
                         --store <key> to disambiguate an id that collides across
-                        stores, and --disposition delivered|abandoned to fold in
+                        stores, and --disposition delivered|abandoned to include
                         the outcome.md disposition check. 3-state pass/warn/fail.
         -h, --help      Show this help
 
@@ -992,14 +992,14 @@ def check_done_signals(scopes: nil)
   # rebuild-savepoint for most gaps, or knowingly excluded for the ones 219 D6 forbids ever
   # repairing (no real outcome.md to echo a disposition from). Three branches (spec D4/D5):
   # a malformed exclusion file can never report pass (loud), a clean remaining gap set reports
-  # pass with the exclusion count folded in, and a real remaining gap set stays warn, same as
-  # before intent 274, with the same count folded in when exclusions applied.
+  # pass with the exclusion count included, and a real remaining gap set stays warn, same as
+  # before intent 274, with the same count included when exclusions applied.
   #
-  # `dead_suffix` (intent 280) folds in a second, independent drift notice: exclusion rows that
+  # `dead_suffix` (intent 280) adds a second, independent drift notice: exclusion rows that
   # suppressed nothing this run. It is purely informational, exactly like `exclusion_suffix` - it
   # never changes status on any of the three branches below, because a stale governance-record row
   # is bookkeeping drift, not a store regression (219 D6 is untouched: no disposition is invented).
-  # Per rule (intent 308): savepoint_operational and backfilled_complete each fold in only
+  # Per rule (intent 308): savepoint_operational and backfilled_complete each include only
   # their own exclusions and dead rows, so one check never carries the other's counts.
   suffixes = lambda do |excluded_rows, dead|
     ex = excluded_rows.empty? ? "" : " (#{excluded_rows.size} excluded via #{exclusion_paths.join(", ")})"
@@ -1050,7 +1050,7 @@ def check_done_signals(scopes: nil)
   # backfilled_complete (intent 308): spec.md, plan.md, or a real action file missing on a
   # terminal intent. Same three branches as savepoint_operational: a malformed exclusion
   # file is always loud, a clean set passes with its own exclusion and dead-row counts
-  # folded in, a real gap set warns with the backfill verb as the fix.
+  # included, a real gap set warns with the backfill verb as the fix.
   backfill_hint = "Write the missing documents from the record via " \
                   "`scaffold-intent backfill --store <store> --id <id> --disposition " \
                   "<delivered|abandoned>` (never touches real content, one intent per invocation)."

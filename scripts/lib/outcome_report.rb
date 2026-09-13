@@ -377,7 +377,7 @@ module OutcomeReport
   # --- n4: findings, read and capped ------------------------------------------
 
   # Two lines at the screens' own 115-column limit (spec D15). A named
-  # constant so the number is never folded into a regex.
+  # constant so the number is never embedded into a regex.
   FINDING_CAP = 200
 
   # `### Findings` under the intent record's own `## Insights` section (spec

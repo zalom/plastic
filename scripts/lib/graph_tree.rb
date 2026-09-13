@@ -4,13 +4,13 @@
 require_relative "graph_edges"
 require_relative "ready_set"
 
-# GraphTree (intent 337, n2, folds 327a): draws any edge map ({id => [needs...]})
+# GraphTree (intent 337, n2, incorporates 327a): draws any edge map ({id => [needs...]})
 # as an indented tree with box-drawing branches. A node may have any number
 # of children; a node several branches need (fan-out) is drawn once, at the
 # point where those branches join. A node that itself needs several things
 # (fan-in) can only occupy one position in the tree: it hangs under its
 # highest-batch need, ties broken by smallest id, with its other needs shown
-# as converging references at the join (row 2.14, folded at the 2026-09-10
+# as converging references at the join (row 2.14, merged at the 2026-09-10
 # plan review). Pure, plain text, no roadmap knowledge, so the same
 # renderer serves the roadmap file, the roadmap screens, and later the node
 # scope. Batch numbers (for placement) and the topological sort come from

@@ -8,14 +8,14 @@ require_relative "action_graph_shim"
 
 # WorkGraphValidator (intent 334, n4): the in-batch reader over one intent's
 # graph.md and nodes/ - 327's rule for budget, files, and the decision and
-# research kinds (fold A17). {ok:, missing:, errors:}, the same Result shape
-# ProjectValidator returns (fold B7). Named apart from
+# research kinds (review A17). {ok:, missing:, errors:}, the same Result shape
+# ProjectValidator returns (review B7). Named apart from
 # IntentValidator#validate_graph, which already exists for the KNOWLEDGE
-# graph and stays unrelated to this one under D40 (fold B9).
+# graph and stays unrelated to this one under D40 (review B9).
 #
 # Built over GraphFile, GraphEdges, and NodeFile only - never IntentValidator,
 # never ReportScreen. Every check accumulates into `errors` rather than
-# short-circuiting on the first one (fold: "the owner fixes one thing per
+# short-circuiting on the first one (see: "the owner fixes one thing per
 # run").
 module WorkGraphValidator
   module_function
@@ -140,7 +140,7 @@ module WorkGraphValidator
 
   # A node "touches" the graph when some edge involves it on either side:
   # it targets something, or something targets it. A verify node declared
-  # with "needs nothing" and targeted by nothing is fully isolated (fold
+  # with "needs nothing" and targeted by nothing is fully isolated (review
   # A13).
   def node_touches_graph?(id, edges)
     (edges[id] || []).any? || edges.values.any? { |targets| targets.include?(id) }
@@ -159,7 +159,7 @@ module WorkGraphValidator
   end
 
   # The matrix table must sit under a heading whose tokens include the
-  # node's own id, and that heading must own at least one data row (fold
+  # node's own id, and that heading must own at least one data row (review
   # A1 - the same table-owning rule report_screen's resolver uses, so a
   # node's own Proven-by cell is never "not recorded" the moment it ships).
   def has_valid_matrix?(id, body)

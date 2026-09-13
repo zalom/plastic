@@ -14,7 +14,7 @@ require_relative "atomic_write"
 # byte of the file alone.
 #
 # The regroup is surgical, never a rebuild from parsed fields (327's own
-# lesson, folded at the 2026-09-10 plan review, rows 3.2/3.13/3.14): only
+# lesson, merged at the 2026-09-10 plan review, rows 3.2/3.13/3.14): only
 # entry lines RoadmapGraph itself recognized (the canonical checkbox +
 # status grammar) ever move. A line the grammar cannot parse, and any prose
 # a human wrote between batch headings, is untouched OUTPUT text - it is
