@@ -13,7 +13,7 @@ require_relative "../scripts/lib/session_close"
 # PLASTIC_HOME and PLASTIC_TMP isolated and CLAUDE_CODE_SESSION_ID cleared.
 #
 # Intent 344 (G11, D7): the session's day comes from SessionLedger.session_day
-# (the oldest day in the window whose checklist carries the session's line),
+# (the newest day in the window whose checklist carries the session's line),
 # not from a per-session pointer file. `append` seeds that line; a test that
 # needs only a tmp dir present (no day resolution) uses `seed_tmp_dir`.
 class CloseHookTest < Minitest::Test
@@ -103,7 +103,7 @@ class CloseHookTest < Minitest::Test
   end
 
   # Matrix 3.4: close drops the pending lines on the session's day (the
-  # oldest day in the window carrying this session's checklist line) and
+  # newest day in the window carrying this session's checklist line) and
   # spawns the carry filer to today.
   def test_close_drops_pending_on_the_session_day_and_carries
     SessionLedger.open_day(store: @store, day: YESTERDAY, templates: TEMPLATES, author: "t")

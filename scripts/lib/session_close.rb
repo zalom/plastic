@@ -46,18 +46,25 @@ module SessionClose
     session = SessionLedger.short_session_id(payload.is_a?(Hash) ? payload["session_id"] : nil, nil)
     return report if session.empty?
 
-    session_day = safely { SessionLedger.session_day(store, session, today: today) } || today
+    days = safely { SessionLedger.session_days(store, session, today: today) } || []
+    days = [today] if days.empty?
+    session_day = days.last
     project = "global"
 
+    # Intent 344 (G11, D13): a session that crossed midnight carries pending
+    # lines on more than one day ledger; every one of them drops, not only
+    # the newest, so a close never leaves an earlier day's lines pending.
     report[:dropped] = safely do
-      checklist = SessionLedger.checklist_path(store, session_day)
-      count = SessionLedger.flip_all(checklist, from: :pending, to: :dropped, session: session)
-      if count.positive?
-        SessionLedger.append_line(SessionLedger.savepoint_path(store, session_day),
-                                  SessionLedger.savepoint_line("Note", session, project,
-                                                               "dropped #{count} pending lines at close", now: now))
+      days.sum do |day|
+        checklist = SessionLedger.checklist_path(store, day)
+        count = SessionLedger.flip_all(checklist, from: :pending, to: :dropped, session: session)
+        if count.positive?
+          SessionLedger.append_line(SessionLedger.savepoint_path(store, day),
+                                    SessionLedger.savepoint_line("Note", session, project,
+                                                                 "dropped #{count} pending lines at close", now: now))
+        end
+        count
       end
-      count
     end || 0
 
     # The hand-off (intent 311, spec D6) is written after the drop, so it
@@ -76,11 +83,16 @@ module SessionClose
       true
     end || false
 
-    if session_day < today
+    # One carry spawns per day earlier than today, oldest first; a single
+    # earlier day keeps reporting its own arg array (not a one-element
+    # list) so an existing caller reading report[:spawned] as one array is
+    # unaffected.
+    earlier_days = days.select { |day| day < today }
+    unless earlier_days.empty?
       report[:spawned] = safely do
-        args = ["--day", session_day, "--carry-to", today, "--store", store]
-        spawner.call(args)
-        args
+        arg_lists = earlier_days.map { |day| ["--day", day, "--carry-to", today, "--store", store] }
+        arg_lists.each { |args| spawner.call(args) }
+        arg_lists.length == 1 ? arg_lists.first : arg_lists
       end
     end
     report

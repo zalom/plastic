@@ -893,22 +893,30 @@ class InstallerCore
   end
 
   # Intent 344 (G11, D10): leftovers from the retired per-session day pointer
-  # and the retired inter-hook coordination key. Deletes every `store/.tmp/*/current`
-  # under the global store and every project store, plus every retired session
-  # file (`plastic-<session>--<id>.json`) sitting in an injected tmp
-  # directory. Never opens or parses a candidate: a torn or malformed
-  # leftover is deleted by name alone, exactly like a well-formed one. Only a
-  # regular file that is not a symlink is ever a candidate for deletion.
-  # Returns the count removed; a delete failure warns once per path and the
-  # sync continues, since a stuck leftover must never fail an install.
+  # and the retired inter-hook coordination key. A `current` candidate is
+  # real only when reached with no symlink between plastic_home and the
+  # session directory: a store root's own real path must equal the plain
+  # join of plastic_home's real path with the store's lexical relative path
+  # (a symlinked store, or a symlinked projects/<slug> above it, breaks
+  # that equality), and neither the store's `.tmp` directory nor the
+  # session directory beneath it may itself be a symlink. A tmp-file
+  # candidate is judged by its containing directory's real path instead,
+  # so a symlinked tmp root such as macOS's real /tmp still works; its
+  # name is matched on raw bytes so an undecodable name never raises.
+  # Never opens or parses a candidate: a torn or malformed leftover is
+  # deleted by name alone, exactly like a well-formed one. Only a regular
+  # file that is not a symlink is ever a candidate for deletion. Returns
+  # the count removed; a delete failure warns once per path and the sync
+  # continues, since a stuck leftover must never fail an install.
   def remove_retired_session_state(plastic_home:, tmp_dirs:)
-    candidates = Dir.glob(File.join(plastic_home, "store", ".tmp", "*", "current")) +
-                 Dir.glob(File.join(plastic_home, "projects", "*", "store", ".tmp", "*", "current"))
+    candidates = []
+
+    real_store_roots(plastic_home).each do |store_root|
+      candidates.concat(current_candidates(store_root))
+    end
 
     Array(tmp_dirs).compact.each do |dir|
-      candidates.concat(Dir.glob(File.join(dir, "plastic-*--*.json")).select do |candidate|
-        File.basename(candidate).match?(/\Aplastic-[^\/]+--[^\/]+\.json\z/)
-      end)
+      candidates.concat(tmp_json_candidates(dir))
     end
 
     removed = 0
@@ -927,6 +935,66 @@ class InstallerCore
       end
     end
     removed
+  rescue StandardError
+    removed || 0
+  end
+
+  # Every store root (the global store, plus each project store) whose real
+  # path is reached with no symlink between it and plastic_home.
+  def real_store_roots(plastic_home)
+    roots = [File.join(plastic_home, "store")] +
+            Dir.glob(File.join(plastic_home, "projects", "*", "store"))
+    roots.select { |root| real_store_root?(plastic_home, root) }
+  end
+
+  def real_store_root?(plastic_home, store_root)
+    return false unless File.directory?(store_root)
+
+    real_home = File.realpath(plastic_home)
+    relative = store_root.sub(/\A#{Regexp.escape(plastic_home)}\/?/, "")
+    File.realpath(store_root) == File.join(real_home, relative)
+  rescue SystemCallError
+    false
+  end
+
+  # `current` candidates under one validated store root: `.tmp` and every
+  # session directory beneath it must be real directories, never symlinks.
+  def current_candidates(store_root)
+    tmp_root = File.join(store_root, ".tmp")
+    return [] unless File.lstat(tmp_root).directory?
+
+    Dir.children(tmp_root).filter_map do |child|
+      begin
+        session_dir = File.join(tmp_root, child)
+        next unless File.lstat(session_dir).directory?
+
+        File.join(session_dir, "current")
+      rescue SystemCallError
+        nil
+      end
+    end
+  rescue SystemCallError
+    []
+  end
+
+  # Retired bridge-key files sitting directly in `dir`, resolved through
+  # `dir`'s own real path so a symlinked tmp root (macOS's real /tmp) still
+  # works; the name match runs on raw bytes so an undecodable name is
+  # simply not a match, never a raised error.
+  def tmp_json_candidates(dir)
+    real = File.realpath(dir)
+    Dir.children(real).select { |name| retired_tmp_name?(name) }.map { |name| File.join(real, name) }
+  rescue SystemCallError
+    []
+  end
+
+  # True when `name`'s raw bytes match the retired bridge-key shape
+  # (`plastic-<session>--<id>.json`). Runs on `name.b` so a name that is
+  # not valid UTF-8 is judged on bytes instead of raising.
+  def retired_tmp_name?(name)
+    name.b.match?(/\Aplastic-[^\/]+--[^\/]+\.json\z/n)
+  rescue StandardError
+    false
   end
 
   # True when `path`, once expanded, is one of `roots` itself or lives underneath
