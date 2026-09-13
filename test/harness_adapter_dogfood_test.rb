@@ -234,7 +234,7 @@ class HarnessAdapterDogfoodTest < Minitest::Test
 
     blocks = parsed_dispatch_blocks(out)
     refute_empty blocks, "the rendered block must name at least one dispatch:\n#{out}"
-    blocks.each do |agent, _node, _model, _packet|
+    blocks.each do |agent, _node, _model, _input|
       assert File.exist?(File.join(AGENTS_DIR, "#{agent}.md")),
              "#{agent.inspect} must be a real file under agents/"
     end
@@ -242,7 +242,7 @@ class HarnessAdapterDogfoodTest < Minitest::Test
 
   # --- 5.4: the rendered packet path exists ---------------------------------------
 
-  def test_rendered_packet_path_exists
+  def test_rendered_input_path_exists
     assert_git_available!
     build_scratch_intent
 
@@ -251,8 +251,8 @@ class HarnessAdapterDogfoodTest < Minitest::Test
 
     blocks = parsed_dispatch_blocks(out)
     refute_empty blocks, "the rendered block must name at least one dispatch:\n#{out}"
-    blocks.each do |_agent, _node, _model, packet|
-      assert File.exist?(packet), "the rendered packet path #{packet.inspect} must exist on disk"
+    blocks.each do |_agent, _node, _model, input|
+      assert File.exist?(input), "the rendered node input path #{input.inspect} must exist on disk"
     end
   end
 
@@ -373,8 +373,8 @@ class HarnessAdapterDogfoodTest < Minitest::Test
     Array(plan["dispatch"]).each do |d|
       assert d["worktree"].to_s.start_with?(@repo),
              "a dispatched node's worktree must live under the scratch repo, not #{d['worktree'].inspect}"
-      assert d["packet"].to_s.start_with?(@home),
-             "a dispatched node's packet must live under the scratch home, not #{d['packet'].inspect}"
+      assert d["input"].to_s.start_with?(@home),
+             "a dispatched node's packet must live under the scratch home, not #{d['input'].inspect}"
     end
 
     written = Dir.glob(File.join(@dir, "**", "*"), File::FNM_DOTMATCH).reject { |p| File.directory?(p) }

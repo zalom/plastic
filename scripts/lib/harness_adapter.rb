@@ -101,7 +101,7 @@ module HarnessAdapter
   # list (matrix row 1.14: a step that dispatched nothing prints no
   # instruction block for a session to act on). `dispatched` is the runner's
   # own plan entries (RunnerDispatch's `:dispatched` shape): [{node:, kind:,
-  # role:, model:, worktree:, packet:}, ...]. The model and the packet path
+  # role:, model:, worktree:, input:}, ...]. The model and the packet path
   # ride straight from each entry - never a fresh lookup (matrix row 1.11)
   # and never a summary (matrix row 1.12) - and `return_contract` (the exact
   # text RunnerDispatch::RETURN_CONTRACT already carries in the YAML plan)
@@ -119,7 +119,7 @@ module HarnessAdapter
   # path as the whole prompt.
   def render_claude_code(entries, return_contract)
     blocks = entries.map do |d|
-      "Dispatch #{agent_type_for_kind(d[:kind])} for #{d[:node]} (model: #{d[:model]}):\n  prompt: #{d[:packet]}"
+      "Dispatch #{agent_type_for_kind(d[:kind])} for #{d[:node]} (model: #{d[:model]}):\n  prompt: #{d[:input]}"
     end
     "#{return_contract.to_s.strip}\n\n#{blocks.join("\n\n")}\n"
   end
@@ -134,7 +134,7 @@ module HarnessAdapter
   # that belongs to n6's own adapter.
   def render_codex(entries, return_contract)
     blocks = entries.map do |d|
-      "node-run #{d[:node]} (#{d[:kind]}, model: #{d[:model]}):\n  packet: #{d[:packet]}"
+      "node-run #{d[:node]} (#{d[:kind]}, model: #{d[:model]}):\n  input: #{d[:input]}"
     end
     "#{return_contract.to_s.strip}\n\n#{blocks.join("\n\n")}\n"
   end
