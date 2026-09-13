@@ -607,6 +607,9 @@ class InstallerCore
       # `node-run` itself (concurrency two, serial absorb, iteration-capped),
       # routed from scripts/runner's internal `until-empty` verb.
       "scripts/lib/runner_until_empty.rb" => "scripts/lib/runner_until_empty.rb",
+      # Intent 340a (G7b, n1): the delivery watch - one tick over disk truth,
+      # stalled and done-unreported classification, no CLI and no dispatch.
+      "scripts/lib/runner_watch.rb" => "scripts/lib/runner_watch.rb",
     }
   end
 
