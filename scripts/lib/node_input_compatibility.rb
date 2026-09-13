@@ -22,7 +22,10 @@ module NodeInputCompatibility
 
   # A copy of `fields` where LEGACY_FIELD maps to "input" when "input" is
   # absent or blank. "input" wins when both are present (D11): the newer,
-  # authoritative name is never overwritten by the retired one.
+  # authoritative name is never overwritten by the retired one. LEGACY_FIELD
+  # itself is dropped from the copy either way, so a caller that renders
+  # every field it does not recognize (outcome-report's evidence line) never
+  # sees the retired key leak through as a second, unrecognized field.
   def fields(fields)
     source = fields || {}
     return source.dup unless source.key?(LEGACY_FIELD)
@@ -31,6 +34,7 @@ module NodeInputCompatibility
     unless present?(mapped["input"])
       mapped["input"] = mapped[LEGACY_FIELD]
     end
+    mapped.delete(LEGACY_FIELD)
     mapped
   end
 
