@@ -763,7 +763,7 @@ module NodeInput
   # Minor 5: a torn `running` line (missing holder=/expires=/input=/model=)
   # is skipped here exactly as ReadySet.attempts_count already skips it -
   # counting it desynchronizes this attempt number from the extensions file
-  # a live node's own `packets/<node>--a<N>.extensions` names, since that
+  # a live node's own `attempts/<node>--a<N>.extensions` names, since that
   # file is keyed by the attempt sweep computed off the SAME filtered count.
   def compute_attempt_number(intent_dir:, node:, lease_flag_given:, entries: nil)
     entries ||= NodeLedger.entries(savepoint_path(intent_dir))
@@ -771,8 +771,8 @@ module NodeInput
     [count + (lease_flag_given ? 1 : 0), 1].max
   end
 
-  def packet_path(intent_dir:, node:, attempt:)
-    File.join(intent_dir, "packets", "#{node}--a#{attempt}.packet")
+  def input_path(intent_dir:, node:, attempt:)
+    File.join(intent_dir, "attempts", "#{node}--a#{attempt}.input")
   end
 
   def summary_line(result)
@@ -878,7 +878,7 @@ module NodeInput
 
     attempt_n = attempt || compute_attempt_number(intent_dir: intent_dir, node: node,
                                                    lease_flag_given: lease_flag_given?(holder), entries: entries)
-    path = out ? File.expand_path(out) : packet_path(intent_dir: intent_dir, node: node, attempt: attempt_n)
+    path = out ? File.expand_path(out) : input_path(intent_dir: intent_dir, node: node, attempt: attempt_n)
     FileUtils.mkdir_p(File.dirname(path))
 
     if File.exist?(path)
