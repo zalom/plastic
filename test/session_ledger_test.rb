@@ -393,11 +393,43 @@ class SessionLedgerTest < Minitest::Test
                               header: SessionLedger.checklist_header(day))
   end
 
-  def test_session_day_is_the_oldest_day_carrying_the_session
-    seed_checklist_line("20260910", "abcd1234")
-    seed_checklist_line("20260911", "abcd1234")
-    seed_checklist_line("20260912", "abcd1234")
-    assert_equal "20260910", SessionLedger.session_day(@store, "abcd1234", today: "20260912")
+  # Matrix 6.1: session_days lists every day in the window carrying the
+  # session, ascending, not just one of them.
+  def test_session_days_lists_every_day_carrying_the_session
+    earlier = SessionLedger.day_id(Time.now - 86_400)
+    today = SessionLedger.day_id
+    seed_checklist_line(earlier, "abcd1234")
+    seed_checklist_line(today, "abcd1234")
+    assert_equal [earlier, today], SessionLedger.session_days(@store, "abcd1234", today: today)
+  end
+
+  # Matrix 6.2: an unreadable checklist skips only its own day; a later day
+  # that carries the session still counts.
+  def test_session_days_skips_an_unreadable_checklist
+    skip "cannot deny self read access as root" if Process.respond_to?(:uid) && Process.uid.zero?
+
+    earlier = SessionLedger.day_id(Time.now - (2 * 86_400))
+    middle = SessionLedger.day_id(Time.now - 86_400)
+    today = SessionLedger.day_id
+    seed_checklist_line(earlier, "abcd1234")
+    seed_checklist_line(middle, "abcd1234")
+    seed_checklist_line(today, "abcd1234")
+    path = SessionLedger.checklist_path(@store, middle)
+    File.chmod(0o000, path)
+    begin
+      assert_equal [earlier, today], SessionLedger.session_days(@store, "abcd1234", today: today)
+    ensure
+      File.chmod(0o644, path)
+    end
+  end
+
+  # Matrix 6.3: session_day is the newest carrying day, not the oldest.
+  def test_session_day_is_the_newest_day_carrying_the_session
+    earlier = SessionLedger.day_id(Time.now - 86_400)
+    today = SessionLedger.day_id
+    seed_checklist_line(earlier, "abcd1234")
+    seed_checklist_line(today, "abcd1234")
+    assert_equal today, SessionLedger.session_day(@store, "abcd1234", today: today)
   end
 
   def test_session_day_is_today_without_a_line

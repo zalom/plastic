@@ -117,6 +117,19 @@ class CloseHookTest < Minitest::Test
     assert_operator elapsed, :<, 3
   end
 
+  # Matrix 6.4: a session that crossed midnight drops pending lines on every
+  # day it carries, not only the oldest, and the carry names the earlier day.
+  def test_close_drops_pending_on_every_session_day
+    SessionLedger.open_day(store: @store, day: YESTERDAY, templates: TEMPLATES, author: "t")
+    append(YESTERDAY, :pending, "late night")
+    append(TODAY, :pending, "morning")
+    report = run_close
+    assert_equal ["- [-]"], markers(YESTERDAY)
+    assert_equal ["- [-]"], markers(TODAY)
+    assert_equal ["--day", YESTERDAY, "--carry-to", TODAY, "--store", @store], report[:spawned]
+    assert_equal [report[:spawned]], @spawned
+  end
+
   # Matrix 3.5: a session whose only day line sits on today resolves today,
   # so the drop runs there and no carry ever spawns (today onto today).
   def test_close_without_earlier_day_spawns_no_carry
