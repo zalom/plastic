@@ -1279,34 +1279,17 @@ class HookMessageDisplayTest < Minitest::Test
   # NOSCREEN (D2); the poll budget scales with the chunk index (D3).
   # =========================================================================
 
-  # A single concurrent replay can occasionally still show a stray
-  # passthrough under heavy HOST CPU contention (several sibling test
-  # suites competing for the same cores can delay chunk 0's own bash
-  # process past the few-millisecond stagger before a later chunk's
-  # process even starts) - a scheduler artifact of this machine's load at
-  # test time, not the decision-marker logic failing. Confirmed by hand:
-  # `bash -x hooks/message-display` on a quiet run always shows PENDING
-  # already staked (handoff=1 via the directory check) before a later
-  # chunk's own process is even dispatched; only concurrent load this
-  # severe (observed load averages above 12 during this intent's own
-  # verification, from sibling intents' parallel test suites) reproduces
-  # the flake. Retries a bounded number of times and returns as soon as
-  # one attempt is clean, so a genuine regression (passthrough on every
-  # attempt) still fails the caller's assertion; only the last
-  # (still-failing) attempt is returned once all of them show passthrough.
-  def replay_concurrent_until_clean(text:, attempts: 6)
-    last_outs = nil
-    attempts.times do
-      tmp = Dir.mktmpdir("concurrent-retry")
-      begin
-        outs = HookReplay.replay_concurrent(hook_path: LAUNCHER, tmp_root: tmp, text: text)
-        last_outs = outs
-        return outs if HookReplay.passthrough_indices(outs).empty?
-      ensure
-        FileUtils.rm_rf(tmp)
-      end
-    end
-    last_outs
+  # Concurrent chunks are fired only after the engaging chunk has decided
+  # (HookReplay's lead_until_engaged), so the callers below assert "no late
+  # passthrough once the decision marker is in place" without depending on
+  # whether chunk 0's own process boots inside a later chunk's poll budget
+  # on a loaded host. The still-deciding race is pinned deterministically by
+  # the injected-sleeper budget tests and by L1 (PENDING before Ruby).
+  def replay_concurrent_engaged(text:)
+    tmp = Dir.mktmpdir("concurrent-engaged")
+    HookReplay.replay_concurrent(hook_path: LAUNCHER, tmp_root: tmp, text: text, lead_until_engaged: true)
+  ensure
+    FileUtils.rm_rf(tmp)
   end
 
   # --- L1: PENDING exists before Ruby ever runs ------------------------------
@@ -1591,7 +1574,7 @@ class HookMessageDisplayTest < Minitest::Test
   def test_concurrent_replay_has_no_late_passthrough
     %w[state roster].each do |name|
       text = File.read(File.join(REPO, "test", "fixtures", "live_capture_#{name}.txt"))
-      outs = replay_concurrent_until_clean(text: text)
+      outs = replay_concurrent_engaged(text: text)
       assert_empty HookReplay.passthrough_indices(outs),
         "#{name} capture must show zero late passthrough once the decision marker is in place"
     end
@@ -1609,7 +1592,7 @@ class HookMessageDisplayTest < Minitest::Test
     # exceeds 120 chunks instead; the untrimmed capture is not kept in the
     # repo since nothing else references it.
     text = File.read(File.join(REPO, "test", "fixtures", "live_capture_session_trimmed.txt"))
-    outs = replay_concurrent_until_clean(text: text)
+    outs = replay_concurrent_engaged(text: text)
     assert_operator outs.length, :>, 120
 
     passthrough = HookReplay.passthrough_indices(outs)
@@ -1759,6 +1742,45 @@ class HookMessageDisplayTest < Minitest::Test
       spread_ms = (timestamps.max - timestamps.min) * 1000
       assert_operator spread_ms, :>=, gap_ms * 2,
         "the default must stagger by roughly gap_ms per chunk, not fire all chunks at once"
+    ensure
+      HookReplay.define_singleton_method(:run_one, original)
+      FileUtils.rm_rf(stub_dir)
+      FileUtils.rm_rf(tmp)
+    end
+  end
+
+  def test_concurrent_mode_leads_sequentially_until_a_chunk_engages
+    stub_dir = Dir.mktmpdir("stub-launcher-lead")
+    stub_launcher = File.join(stub_dir, "launcher")
+    File.write(stub_launcher, "#!/bin/bash\npayload=$(cat)\ncase \"$payload\" in *'\"index\":2,'*) printf engaged ;; esac\n")
+    FileUtils.chmod(0o755, stub_launcher)
+
+    tmp = Dir.mktmpdir("lead")
+    text = "x" * 240 # 6 chunks of 40 chars at the default chunk size
+    calls = []
+    mutex = Mutex.new
+    original = HookReplay.method(:run_one)
+    HookReplay.define_singleton_method(:run_one) do |*args|
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      result = original.call(*args)
+      finished = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      mutex.synchronize { calls << { index: args[1]["index"], started: started, finished: finished } }
+      result
+    end
+    begin
+      outs = HookReplay.replay_concurrent(hook_path: stub_launcher, tmp_root: tmp, text: text,
+                                          gap_ms: 0, jitter: false, lead_until_engaged: true)
+      assert_equal (0..5).to_a, outs.map { |o| o[:index] }
+      assert_equal "engaged", outs[2][:stdout]
+      assert_equal (0..5).to_a, calls.map { |c| c[:index] }.sort
+
+      lead = calls.select { |c| c[:index] <= 2 }
+      rest = calls.select { |c| c[:index] > 2 }
+      assert_operator lead.map { |c| c[:finished] }.max, :<=, rest.map { |c| c[:started] }.min,
+        "every chunk up to the engaging one must finish before any later chunk fires"
+      lead.sort_by { |c| c[:index] }.each_cons(2) do |before, after|
+        assert_operator before[:finished], :<=, after[:started], "lead chunks run one at a time, in order"
+      end
     ensure
       HookReplay.define_singleton_method(:run_one, original)
       FileUtils.rm_rf(stub_dir)

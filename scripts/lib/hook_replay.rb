@@ -83,22 +83,40 @@ module HookReplay
   # index/exitstatus/stdout/stderr/final), ordered by index regardless of
   # the order the threads actually finish in.
   def replay_concurrent(hook_path:, tmp_root:, text:, chunk: 40, session_id: "s-replay",
-                         message_id: "replay", env: {}, gap_ms: 5, jitter: true)
+                         message_id: "replay", env: {}, gap_ms: 5, jitter: true, lead_until_engaged: false)
     chunks = text.scan(/.{1,#{chunk}}/m)
     chunks = [""] if chunks.empty?
     full_env = { "PLASTIC_TMP" => tmp_root }.merge(env)
     gap = gap_ms / 1000.0
 
-    results = Array.new(chunks.length)
-    threads = chunks.each_with_index.map do |delta, i|
-      payload = {
+    payloads = chunks.each_with_index.map do |delta, i|
+      {
         "session_id" => session_id, "message_id" => message_id, "index" => i,
         "final" => i == chunks.length - 1, "delta" => delta, "cwd" => tmp_root,
         "hook_event_name" => "MessageDisplay",
       }
+    end
+    results = Array.new(chunks.length)
+
+    # `lead_until_engaged` runs chunks one at a time until one engages, so
+    # the decision marker is on disk before the rest fire concurrently. A
+    # caller proving "no late passthrough once the decision is in place"
+    # then tests exactly that, instead of whether chunk 0's own process
+    # booted inside a later chunk's poll budget on a loaded machine.
+    lead = 0
+    if lead_until_engaged
+      payloads.each_with_index do |payload, i|
+        out, err, exitstatus = run_one(hook_path, payload, full_env, tmp_root, nil)
+        results[i] = { index: i, exitstatus: exitstatus, stdout: out, stderr: err, final: payload["final"] }
+        lead = i + 1
+        break unless out.to_s.empty?
+      end
+    end
+
+    threads = payloads.each_with_index.drop(lead).map do |payload, i|
       Thread.new do
         begin
-          delay = i * gap
+          delay = (i - lead) * gap
           delay += (rand * gap / 2.0) if jitter
           sleep(delay)
           out, err, exitstatus = run_one(hook_path, payload, full_env, tmp_root, nil)
