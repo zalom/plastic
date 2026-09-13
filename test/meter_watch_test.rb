@@ -163,4 +163,36 @@ class MeterWatchTest < Minitest::Test
 
     assert_equal "stop", read_state["state"]
   end
+
+  # 3.1 (intent 340a, G7b, n3): generalizing install_timer for the
+  # delivery-watch timer must never change meter-watch's own plist by one
+  # byte. This literal is meter-watch's plist exactly as it read before
+  # install_timer gained label:/arguments: keywords.
+  def test_install_timer_default_plist_is_unchanged
+    plist_path = MeterWatch.install_timer(home: @home, script_path: "/opt/plastic/scripts/meter-watch",
+                                           ruby: "/usr/bin/ruby", interval: 1200)
+
+    assert_equal File.join(@home, "Library", "LaunchAgents", "com.plastic.meter-watch.plist"), plist_path
+    assert_equal <<~XML, File.read(plist_path)
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+      <plist version="1.0">
+      <dict>
+        <key>Label</key>
+        <string>com.plastic.meter-watch</string>
+        <key>ProgramArguments</key>
+        <array>
+          <string>/usr/bin/ruby</string>
+          <string>/opt/plastic/scripts/meter-watch</string>
+          <string>--home</string>
+          <string>#{@home}</string>
+        </array>
+        <key>StartInterval</key>
+        <integer>1200</integer>
+        <key>RunAtLoad</key>
+        <true/>
+      </dict>
+      </plist>
+    XML
+  end
 end

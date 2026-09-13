@@ -1118,4 +1118,13 @@ class RunnerCliTest < Minitest::Test
     _out, err, _status = run_cli("watch", @dir, "--harness", "codex")
     refute_match(/unknown flag/i, err)
   end
+
+  # --- 3.6 (intent 340a, G7b, n3): the timer flags are never refused as unknown ---
+
+  def test_watch_timer_flags_are_known
+    assert_includes Runner::KNOWN_FLAGS.fetch("watch", []), "--install-timer",
+                     "watch must accept --install-timer or unrecognized_flag refuses it"
+    assert_includes Runner::KNOWN_FLAGS.fetch("watch", []), "--home",
+                     "watch must accept --home or unrecognized_flag refuses it"
+  end
 end

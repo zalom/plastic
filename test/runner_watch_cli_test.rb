@@ -113,4 +113,80 @@ class RunnerWatchCliTest < Minitest::Test
     refute File.exist?(record_path), "a refused --dispatch must leave no watch.record line behind"
     refute File.exist?(state_path), "a refused --dispatch must write no watch.state either"
   end
+
+  # --- 3.2: --install-timer writes the delivery-watch plist and prints the load line ---
+
+  def test_install_timer_writes_a_delivery_watch_plist
+    write_graph("- n1 needs nothing\n")
+    write_node("n1")
+    home = Dir.mktmpdir("runner-watch-cli-home")
+
+    begin
+      out, err, status = run_cli("watch", @dir, "--install-timer", "--home", home)
+
+      assert_equal 0, status.exitstatus, out + err
+      plist_path = File.join(home, "Library", "LaunchAgents", "com.plastic.delivery-watch.1.plist")
+      assert File.file?(plist_path), "--install-timer must write the delivery-watch plist under --home"
+      assert_includes out, plist_path
+      assert_includes out, "launchctl load #{plist_path}"
+      refute File.exist?(record_path), "--install-timer must never take a tick"
+      refute File.exist?(state_path)
+    ensure
+      FileUtils.remove_entry(home)
+    end
+  end
+
+  # --- 3.3: --dispatch --harness codex ride only where unattended start holds -----
+
+  def test_install_timer_dispatches_only_where_unattended_start_holds
+    write_graph("- n1 needs nothing\n")
+    write_node("n1")
+    home = Dir.mktmpdir("runner-watch-cli-home")
+    plist_path = File.join(home, "Library", "LaunchAgents", "com.plastic.delivery-watch.1.plist")
+
+    begin
+      out, err, status = run_cli("watch", @dir, "--install-timer", "--home", home)
+      assert_equal 0, status.exitstatus, out + err
+      claude_code_content = File.read(plist_path)
+      refute_includes claude_code_content, "--dispatch",
+                       "a Claude Code machine must never claim unattended start (327 Q6)"
+
+      out2, err2, status2 = run_cli("watch", @dir, "--install-timer", "--home", home, "--harness", "codex")
+      assert_equal 0, status2.exitstatus, out2 + err2
+      codex_content = File.read(plist_path)
+      assert_includes codex_content, "<string>--dispatch</string>"
+      assert_includes codex_content, "<string>--harness</string>"
+      assert_includes codex_content, "<string>codex</string>"
+    ensure
+      FileUtils.remove_entry(home)
+    end
+  end
+
+  # --- 3.4: the label carries the intent id ----------------------------------------
+
+  def test_install_timer_label_is_per_intent
+    write_graph("- n1 needs nothing\n")
+    write_node("n1")
+    other_dir = File.join(@store, "2--demo-two")
+    FileUtils.mkdir_p(File.join(other_dir, "nodes"))
+    File.write(File.join(other_dir, "2--demo-two.md"), "---\nid: \"2\"\nintent: t\n---\n\n## Intent\nbody\n")
+    FileUtils.cp(File.join(@dir, "graph.md"), File.join(other_dir, "graph.md"))
+    FileUtils.cp(File.join(@dir, "nodes", "n1.md"), File.join(other_dir, "nodes", "n1.md"))
+    home = Dir.mktmpdir("runner-watch-cli-home")
+
+    begin
+      out1, err1, status1 = run_cli("watch", @dir, "--install-timer", "--home", home)
+      assert_equal 0, status1.exitstatus, out1 + err1
+      out2, err2, status2 = run_cli("watch", other_dir, "--install-timer", "--home", home)
+      assert_equal 0, status2.exitstatus, out2 + err2
+
+      first = File.join(home, "Library", "LaunchAgents", "com.plastic.delivery-watch.1.plist")
+      second = File.join(home, "Library", "LaunchAgents", "com.plastic.delivery-watch.2.plist")
+      assert File.file?(first), "the first intent's own timer must survive the second intent's install"
+      assert File.file?(second), "a second intent must get its own plist, never overwrite the first"
+      refute_equal File.read(first), File.read(second)
+    ensure
+      FileUtils.remove_entry(home)
+    end
+  end
 end

@@ -142,30 +142,36 @@ class MeterWatch
     # with launchctl (scripts/meter-watch --install-timer calls this and
     # nothing else). RunAtLoad primes the first tick; StartInterval repeats
     # it every 20 minutes.
-    def install_timer(home:, script_path:, ruby: RbConfig.ruby, interval: TICK_SECONDS)
+    #
+    # `label:` and `arguments:` (intent 340a, G7b, n3, graph.md D9) let the
+    # delivery watch's own `runner watch --install-timer` reuse this one
+    # writer for its `com.plastic.delivery-watch.<id>` job instead of
+    # rendering plist XML a second time; their defaults reproduce today's
+    # meter-watch plist byte for byte (row 3.1).
+    def install_timer(home:, script_path:, ruby: RbConfig.ruby, interval: TICK_SECONDS,
+                       label: "com.plastic.meter-watch", arguments: nil)
       agents_dir = File.join(home, "Library", "LaunchAgents")
       FileUtils.mkdir_p(agents_dir)
-      plist_path = File.join(agents_dir, "com.plastic.meter-watch.plist")
-      File.write(plist_path, plist(script_path, home, ruby, interval))
+      plist_path = File.join(agents_dir, "#{label}.plist")
+      args = arguments || [ruby, script_path, "--home", home]
+      File.write(plist_path, plist(label, args, interval))
       plist_path
     end
 
     private
 
-    def plist(script_path, home, ruby, interval)
+    def plist(label, arguments, interval)
+      args_xml = arguments.map { |a| "    <string>#{a}</string>" }.join("\n")
       <<~XML
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
         <dict>
           <key>Label</key>
-          <string>com.plastic.meter-watch</string>
+          <string>#{label}</string>
           <key>ProgramArguments</key>
           <array>
-            <string>#{ruby}</string>
-            <string>#{script_path}</string>
-            <string>--home</string>
-            <string>#{home}</string>
+        #{args_xml}
           </array>
           <key>StartInterval</key>
           <integer>#{interval}</integer>

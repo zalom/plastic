@@ -4,6 +4,7 @@
 require "json"
 require "digest"
 require "time"
+require "rbconfig"
 require_relative "worktree"
 require_relative "runner_core"
 require_relative "runner_sweep"
@@ -12,6 +13,8 @@ require_relative "node_ledger"
 require_relative "savepoint"
 require_relative "atomic_write"
 require_relative "runner_until_empty"
+require_relative "harness_adapter"
+require_relative "meter_watch"
 
 # RunnerWatch (intent 340a, G7b, n1): one tick over disk truth. The whole
 # watch minus the CLI and the dispatch branch (340a n2). Composes the
@@ -99,6 +102,26 @@ module RunnerWatch
     ensure
       release_lock(lock_handle)
     end
+  end
+
+  # install_timer(context, home:, harness_key:, installer:) -> the written
+  # plist path. Graph.md D9: the Codex carrier is `runner watch
+  # --install-timer`, and it reuses MeterWatch's own writer through
+  # `label:`/`arguments:` rather than rendering plist XML here (row 3.5) - a
+  # second writer is exactly the drift D9 rules out. The label carries the
+  # intent id (row 3.4), so a second intent's timer never overwrites the
+  # first's job; `--dispatch --harness codex` rides the arguments only when
+  # `HarnessAdapter.unattended_start?` holds for the resolved harness (row
+  # 3.3), the same predicate `run_watch` itself already gates `--dispatch`
+  # on. `installer:` is `MeterWatch` by default so a test can inject a
+  # double that never touches a real home.
+  def install_timer(context, home:, harness_key:, installer: MeterWatch)
+    runner_path = File.expand_path(File.join(__dir__, "..", "runner"))
+    arguments = [RbConfig.ruby, runner_path, "watch", context.intent_dir.to_s]
+    arguments += ["--dispatch", "--harness", "codex"] if HarnessAdapter.unattended_start?(harness_key)
+
+    installer.install_timer(home: home, script_path: runner_path,
+                             label: "com.plastic.delivery-watch.#{context.intent_id}", arguments: arguments)
   end
 
   # run_until_empty_dispatch(context, harness:, until_empty:) -> every node

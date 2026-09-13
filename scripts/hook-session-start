@@ -14,6 +14,9 @@ require_relative "lib/doctor_core"
 require_relative "lib/session_ledger"
 require_relative "lib/day_summary"
 require_relative "lib/packet_wrapper"
+require_relative "lib/active_delivery"
+require_relative "lib/runner_core"
+require_relative "lib/runner_watch"
 
 index_path, plastic_home, mode, plugin_root = ARGV
 exit 0 unless index_path && plastic_home && mode
@@ -244,6 +247,43 @@ begin
     end
   rescue Exception
     # Any failure (timeout, missing binary, parse error) — stay silent, never crash.
+  end unless subagent_session
+
+  # --- Delivery watch (intent 340a, G7b, n3, graph.md D10) ---
+  # One unrecorded tick (record: false: reclaim and classify, no snapshot,
+  # no record line, so boot never advances a quiet count) per intent
+  # ActiveDelivery.candidate_intent_dirs finds, naming every stalled or
+  # done_unreported one in a single line, nothing when there are none. The
+  # whole block is one guarded unit, like the QMD block above it: a raise or
+  # a hang on any one candidate must add nothing rather than name only the
+  # candidates seen before the failure, so the line a boot does print is
+  # never a partial one.
+  begin
+    Timeout.timeout(2) do
+      roots_raw = IO.popen({ "PLASTIC_HOME" => plastic_home }, [read_config, "project_roots"],
+                            err: File::NULL, &:read).to_s.strip
+      project_roots = roots_raw.empty? ? [] : Array(JSON.parse(roots_raw))
+      project_roots = project_roots.map { |root| File.expand_path(root.to_s) }
+
+      attention = []
+      ActiveDelivery.candidate_intent_dirs(global_store: store_dir, project_roots: project_roots).uniq.each do |dir|
+        watch_context = RunnerCore.context(intent_dir: dir)
+        result = RunnerWatch.tick(watch_context, record: false)
+        next unless %w[stalled done_unreported].include?(result[:class])
+
+        watch_intent_id = File.basename(dir).split("--").first
+        if result[:class] == "stalled"
+          blocker = Array(result[:blockers]).first
+          attention << (blocker ? "#{watch_intent_id} stalled (#{blocker})" : "#{watch_intent_id} stalled")
+        else
+          attention << "#{watch_intent_id} done_unreported"
+        end
+      end
+      parts << "PLASTIC watch: #{attention.join(', ')}" if attention.any?
+    end
+  rescue Exception
+    # Any failure or timeout (a malformed intent directory, a hung tick) -
+    # stay silent, never crash boot.
   end unless subagent_session
 
   # --- Project (or global) banner with its active intent ---
