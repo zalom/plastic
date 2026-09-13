@@ -87,6 +87,19 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
   mechanically into `graph.md` and `nodes/`, or refused with one recorded reason, never new
   ledger state of its own.
 
+- 340a (G7b, roadmap graph-ready-plastic, batch 4) - delivery watch, an internal `runner watch
+  <intent_dir> [--dispatch] [--harness KEY]` verb that ticks a graph-era intent's ledger over
+  disk truth: the class, the blockers, the ready ids and the dispatched ids, exiting 0 on every
+  class. `--dispatch` is unattended start, granted only where a Ruby loop owns dispatch end to
+  end (`HarnessAdapter.unattended_start?`, true for `codex` alone) - on Claude Code, where the
+  runner is the harness session (327 Q6), it is refused before the tick ever takes its lock or
+  writes anything, printing `HarnessAdapter::UNATTENDED_START_SENTENCE` to steer the owner at
+  `/loop` instead. On Codex, the dispatch branch drives `RunnerUntilEmpty.run` and records every
+  node it triggered on the tick's own record line, alongside the resolved harness, the read-only
+  meter state (`ok`, `stop`, or `unavailable`, never written here), and whether the lock is
+  actually held - a stopped meter or an unheld lock blocks dispatch outright, and a closed or
+  done-unreported intent is never re-run.
+
 - 343 (G10, roadmap graph-ready-plastic, batch 2) - `graph-measure`, the one read-only
   executable over the node ledger, on three public verbs: `intent` (a per-intent summary),
   `budget` (spend against a node's stated cut order), and `cohorts` (population, qualified-field

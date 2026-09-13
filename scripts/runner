@@ -38,7 +38,7 @@ module Runner
   module_function
 
   PUBLIC_VERBS = %w[step status answer].freeze
-  INTERNAL_VERBS = %w[ready sweep rewind until-empty].freeze
+  INTERNAL_VERBS = %w[ready sweep rewind until-empty watch].freeze
   VERBS = (PUBLIC_VERBS + INTERNAL_VERBS).freeze
 
   # verb -> [[ModuleName, lib_file], ...], required lazily inside the verb's
@@ -52,6 +52,7 @@ module Runner
     "answer" => [["RunnerAnswer", "runner_answer"]],
     "rewind" => [["RunnerRewind", "runner_rewind"]],
     "until-empty" => [["RunnerUntilEmpty", "runner_until_empty"]],
+    "watch" => [["RunnerWatch", "runner_watch"]],
   }.freeze
 
   def usage
@@ -86,6 +87,7 @@ module Runner
     "answer" => %w[--node --answer],
     "rewind" => %w[--node --confirm],
     "until-empty" => %w[--harness],
+    "watch" => %w[--dispatch --harness],
   }.freeze
 
   # The explicit YAML document-end marker (intent 340b, G7c, n1, row 1.28)
@@ -219,6 +221,8 @@ module Runner
       run_rewind(intent_dir, args)
     when "until-empty"
       run_until_empty(intent_dir, args)
+    when "watch"
+      run_watch(intent_dir, args)
     else
       warn "runner: #{verb}'s module loaded but no dispatcher is wired up yet"
       exit 3
@@ -326,6 +330,35 @@ module Runner
     else
       exit 1
     end
+  end
+
+  # run_watch (intent 340a, G7b, n2): one tick over disk truth. Internal,
+  # like until-empty and rewind - the timer that carries it lives outside
+  # this process (a local `/loop` on Claude Code, a launchd job on Codex,
+  # n3/n4). `--dispatch` is unattended start (graph.md D7): refused here,
+  # before RunnerWatch.tick ever takes the tick lock or writes anything,
+  # when the resolved harness's `HarnessAdapter.unattended_start?` is
+  # false, so a refusal never leaves a `watch.record` line behind that
+  # looks like a completed tick.
+  def run_watch(intent_dir, args)
+    dispatch = args.include?("--dispatch")
+    harness_override = opt(args, "--harness")
+    context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
+    agent_config = load_agent_config(context.plastic_home)
+    harness = HarnessAdapter.resolve_key(config: agent_config, override: harness_override)
+
+    if dispatch && !HarnessAdapter.unattended_start?(harness)
+      warn HarnessAdapter::UNATTENDED_START_SENTENCE
+      exit 1
+    end
+
+    result = RunnerWatch.tick(context, dispatch: dispatch, harness: harness)
+
+    puts "class: #{result[:class]}"
+    result[:blockers].each { |b| puts "blocked: #{b}" }
+    puts "ready: #{result[:ready].empty? ? '(none)' : result[:ready].join(', ')}"
+    puts "dispatched: #{result[:dispatched].empty? ? '(none)' : result[:dispatched].join(', ')}"
+    exit 0
   end
 
   # run_step (intent 340, G7, n5): one turn of the loop. The real work lives

@@ -22,6 +22,27 @@ module HarnessAdapter
   DEFAULT_KEY = "claude-code"
   KNOWN_KEYS = %w[claude-code codex].freeze
 
+  # The exact sentence 340a's watch prints to stderr and exits 1 with,
+  # before any write, when `--dispatch` is asked of a harness
+  # #unattended_start? refuses (graph.md D7). Quoted verbatim in
+  # docs/reference/harness-adapters.md (D12); change the wording in one
+  # place only.
+  UNATTENDED_START_SENTENCE =
+    "Unattended start is delivered only where a Ruby loop owns dispatch (Codex, through runner " \
+    "watch --dispatch); on Claude Code the runner is the harness session (327 Q6), so arm /loop " \
+    "over runner watch in a live session instead."
+
+  # unattended_start?(key) -> true only for "codex" (graph.md D7): the one
+  # harness where a Ruby loop (RunnerUntilEmpty, through `runner watch
+  # --dispatch`) owns dispatch end to end with nobody on the other end
+  # making subagent calls. Claude Code IS the harness session (327 Q6), and
+  # an unknown key is never granted unattended start either - this module
+  # stays the only place that names a harness, so RunnerWatch asks this
+  # predicate and never compares a key against "codex" itself.
+  def unattended_start?(key)
+    key.to_s == "codex"
+  end
+
   # kind -> the Claude Code agent type dispatched for it (spec Approach).
   # Verify and research carry no `Bash` in their own frontmatter (n2); this
   # table only names WHICH agent a kind maps to. An unknown kind gets

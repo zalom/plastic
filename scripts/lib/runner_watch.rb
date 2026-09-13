@@ -11,6 +11,7 @@ require_relative "ready_set"
 require_relative "node_ledger"
 require_relative "savepoint"
 require_relative "atomic_write"
+require_relative "runner_until_empty"
 
 # RunnerWatch (intent 340a, G7b, n1): one tick over disk truth. The whole
 # watch minus the CLI and the dispatch branch (340a n2). Composes the
@@ -32,13 +33,23 @@ module RunnerWatch
   STATE_FILENAME = "watch.state"
   RECORD_FILENAME = "watch.record"
 
-  # tick(context, record:, dispatch:, now:, runner:, sweep:) -> {class:,
-  # blockers:, ready:, reclaimed:, dispatched:, tick:, busy:}. `dispatch:` is
-  # accepted and ignored here; 340a n2 fills it in. `dispatched` always
-  # reads `[]` and the record line's `dispatched=`, `harness=` and `meter=`
-  # fields always read `-` until then.
-  def tick(context, record: true, dispatch: false, now: Time.now,
-           runner: Worktree::ShellRunner.new, sweep: RunnerSweep)
+  # Classes that never dispatch (D8): a finished delivery re-running its own
+  # graph on every tick is exactly the bug a timer must not have.
+  FINISHED_CLASSES = %w[closed done_unreported].freeze
+
+  # tick(context, record:, dispatch:, harness:, now:, runner:, sweep:,
+  # until_empty:) -> {class:, blockers:, ready:, reclaimed:, dispatched:,
+  # tick:, busy:}. `dispatch:` (327 Q6, D7, D8) only ever runs under an
+  # explicit ask - never inferred from the class - and only when the lock is
+  # held, the class is not finished, and the meter does not read `stop`.
+  # `until_empty:` is `RunnerUntilEmpty` by default; a test can inject a
+  # double so the whole dispatch path never spawns a real `node-run`
+  # subprocess. `harness=` and `meter=` on the record line read `-` only
+  # when `dispatch:` itself was never asked for (D5) - every other refusal
+  # (an unheld lock, a finished class, a stopped meter) still consults and
+  # records the meter, since the tick DID look, it just chose not to act.
+  def tick(context, record: true, dispatch: false, harness: nil, now: Time.now,
+           runner: Worktree::ShellRunner.new, sweep: RunnerSweep, until_empty: RunnerUntilEmpty)
     intent_dir = context.intent_dir.to_s
     lock_handle = acquire_lock(File.join(intent_dir, LOCK_FILENAME))
     return busy_result unless lock_handle
@@ -57,23 +68,79 @@ module RunnerWatch
 
       view = classify(context, runner: runner, now: now, intent_dir: intent_dir)
 
+      lock_state = context.session ? "held" : "not_held"
+      harness_field = "-"
+      meter_state = "-"
+      dispatched_ids = []
+
+      if dispatch
+        harness_field = blank?(harness) ? "-" : harness.to_s
+        meter_state = read_meter_state(context)
+
+        if context.session && !FINISHED_CLASSES.include?(view[:class]) && meter_state != "stop"
+          dispatched_ids = run_until_empty_dispatch(context, harness: harness, until_empty: until_empty)
+        end
+      end
+
       if record
         Worktree.ensure_gitignored(context.plastic_home, STATE_FILENAME, runner: runner)
         write_snapshot(intent_dir, view[:snapshot])
         append_record(
           intent_dir, now: now, tick: view[:tick], klass: view[:class],
-          reclaimed: reclaimed_ids, ready: view[:ready], dispatched: []
+          reclaimed: reclaimed_ids, ready: view[:ready], dispatched: dispatched_ids,
+          harness: harness_field, meter: meter_state, lock: lock_state
         )
       end
 
       {
         class: view[:class], blockers: view[:blockers], ready: view[:ready],
-        reclaimed: reclaimed_ids, dispatched: [], tick: view[:tick], busy: false,
+        reclaimed: reclaimed_ids, dispatched: dispatched_ids, tick: view[:tick], busy: false,
       }
     ensure
       release_lock(lock_handle)
     end
   end
+
+  # run_until_empty_dispatch(context, harness:, until_empty:) -> every node
+  # id the loop dispatched (C30). `until_empty.run` gets `step:` wrapped
+  # around `until_empty.step_once` so this method sees every turn's own
+  # `:dispatched` ids, the same shape RunnerDispatch.dispatch returns
+  # (graph.md D8); `until_empty.run` itself still owns spawning and waiting
+  # on the real `node-run` subprocesses (never duplicated here).
+  def run_until_empty_dispatch(context, harness:, until_empty:)
+    dispatched_ids = []
+    wrapped_step = lambda do |ctx, harness:, returns:|
+      result = until_empty.step_once(ctx, harness: harness, returns: returns)
+      dispatched_ids.concat(Array(result[:dispatched]))
+      result
+    end
+
+    until_empty.run(context, harness: harness, step: wrapped_step)
+    dispatched_ids
+  end
+  private_class_method :run_until_empty_dispatch
+
+  # read_meter_state(context) -> "ok", "reduce", "stop", "resume", "stale"
+  # (whatever MeterWatch's own tick last wrote), or "unavailable" for a
+  # missing or unparseable file (D8) - read-only, at MeterWatch's own state
+  # path under `context.plastic_home`, never through a MeterWatch instance
+  # (that class computes a FRESH state from the rate-limit cache; this tick
+  # only ever reads what it already wrote).
+  def read_meter_state(context)
+    path = File.join(context.plastic_home.to_s, ".cache", "meter-state.json")
+    return "unavailable" unless File.file?(path)
+
+    state = JSON.parse(File.read(path))["state"]
+    blank?(state) ? "unavailable" : state.to_s
+  rescue StandardError
+    "unavailable"
+  end
+  private_class_method :read_meter_state
+
+  def blank?(value)
+    value.nil? || value.to_s.strip.empty?
+  end
+  private_class_method :blank?
 
   # fingerprint(context, runner:) -> the SHA256 D4 defines: savepoint.md's
   # current content plus the intent branch head, so a commit that lands no
@@ -270,9 +337,11 @@ module RunnerWatch
 
   # --- the record (D5) -----------------------------------------------------------
 
-  def append_record(intent_dir, now:, tick:, klass:, reclaimed:, ready:, dispatched:)
+  def append_record(intent_dir, now:, tick:, klass:, reclaimed:, ready:, dispatched:, harness: "-", meter: "-",
+                     lock:)
     line = "#{now.utc.iso8601}  tick=#{tick} class=#{klass} reclaimed=#{list_or_dash(reclaimed)} " \
-           "ready=#{list_or_dash(ready)} dispatched=#{list_or_dash(dispatched)} harness=- meter=- lock=held\n"
+           "ready=#{list_or_dash(ready)} dispatched=#{list_or_dash(dispatched)} harness=#{harness} " \
+           "meter=#{meter} lock=#{lock}\n"
     File.open(File.join(intent_dir, RECORD_FILENAME), "a") { |f| f.write(line) }
   end
   private_class_method :append_record
