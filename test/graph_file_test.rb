@@ -8,7 +8,7 @@ require_relative "../scripts/lib/graph_file"
 
 # GraphFile (intent 334, n2): graph.md's four sections, the ## Status writer,
 # and the ## Decisions appender. Both writers refuse a cyclic graph and both
-# go through AtomicWrite (fold D19r).
+# go through AtomicWrite (review D19r).
 class GraphFileTest < Minitest::Test
   def setup
     @dir = Dir.mktmpdir("graph-file")
@@ -43,7 +43,7 @@ class GraphFileTest < Minitest::Test
     | n2 | planned |  |
   MD
 
-  # A Goal body carrying multibyte characters (fold: byte vs char indexing).
+  # A Goal body carrying multibyte characters (review: byte vs char indexing).
   # Every consumer slices `content` with String#[] and finds newlines with
   # String#index, both character-indexed - section_bounds must accumulate in
   # the same unit or a non-ASCII byte before a boundary desynchronizes them.
@@ -266,7 +266,7 @@ class GraphFileTest < Minitest::Test
   def test_status_round_trips_to_the_same_rows
     write(BASE)
     rows = [
-      { node: "n1", state: "done", detail: "verdict REVISE, folded" },
+      { node: "n1", state: "done", detail: "verdict REVISE, merged" },
       { node: "n2", state: "planned", detail: "" },
     ]
     GraphFile.write_status(@path, rows)

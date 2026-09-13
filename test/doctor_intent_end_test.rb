@@ -122,7 +122,7 @@ class DoctorIntentEndTest < Minitest::Test
     assert_match(/outcome\.md is missing/i, reason)
   end
 
-  def test_lifecycle_artifacts_folds_in_outcome_disposition_mismatch
+  def test_lifecycle_artifacts_merges_in_outcome_disposition_mismatch
     dir = write_clean_intent(id: "42")
     File.write(File.join(dir, "outcome.md"),
                "---\ndisposition: abandoned\n---\n# Outcome\n\n## Summary\nDid it.\n")
@@ -130,7 +130,7 @@ class DoctorIntentEndTest < Minitest::Test
     checks = doctor.check_intent_end("42", disposition: "delivered")
     assert_equal 7, checks.size
     lifecycle_checks = checks.select { |c| c[:name] == "intent_lifecycle_artifacts" }
-    assert_equal 1, lifecycle_checks.size, "the disposition mismatch must fold into the SAME check, not a second one"
+    assert_equal 1, lifecycle_checks.size, "the disposition mismatch must merge into the SAME check, not a second one"
 
     result = lifecycle_checks.first
     assert_equal "fail", result[:status]
@@ -222,7 +222,7 @@ class DoctorIntentEndTest < Minitest::Test
   end
 
   # A terminal intent whose id is registered under savepoint_operational (281 D1) reaches
-  # pass, with the honest count and the exclusions path folded into the message (274 D4's
+  # pass, with the honest count and the exclusions path merged into the message (274 D4's
   # wording) and nothing in details.
   def test_missing_savepoint_is_excluded_for_a_terminal_registered_intent
     dir = write_clean_intent(id: "51")

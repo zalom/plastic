@@ -324,7 +324,7 @@ class RunnerAnswerTest < Minitest::Test
     assert_equal "done", d1_row[:state]
   end
 
-  # === n11: what the fold broke (v2 review) ===================================
+  # === n11: what the fix broke (v2 review) ===================================
 
   # --- 11.10: answer unparks a blocked node, not only a needs_decision one (v2 NEW-6) --
 

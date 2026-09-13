@@ -69,7 +69,7 @@ Worst stall points (of 25): mandatory auto-or-guided ask (intent-starting:98-107
 
 Move control into scripts:
 1. `scripts/next-step <dir>` → {stage, next_action, required_artifact, blocking_gate, dispatch_role, model}; derive_stage (bridge.rb:456) + missing_for_stage (:479) already compute every input.
-2. `scripts/board-intent <id> --mode` folding INDEX activation + lock fix + arm + discovery (precedent: intent 188's end-intent).
+2. `scripts/board-intent <id> --mode` merging INDEX activation + lock fix + arm + discovery (precedent: intent 188's end-intent).
 3. `scripts/dispatch-specialist --role R` replacing auto/SKILL.md:147-181.
 4. Enforce tier stamp in hook-gate-check spec branch.
 5. Reviewer receipt `.reviews/final.json` + doctor check.

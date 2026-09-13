@@ -273,7 +273,7 @@ are the actual point of the work, not an afterthought:
   of this batch's scope) are not this intent's or any single future intent's job to close; noted
   here only so the number is not mistaken for a regression by a future doctor run.
 - The follow-ups each of the nine collected intents recorded in their own outcome.md (Enola
-  reindex-at-close automation, wiring the safe Links projector into the End tail, folding
+  reindex-at-close automation, wiring the safe Links projector into the End tail, merging
   `ProjectValidator` into doctor, narrowing `restore-intent-v1`'s Links reproject to one intent,
   correcting PLASTIC.md's `chain` bullet direction, and others) belong to future intents, not
   this release decision (spec.md Non-Goals).

@@ -146,7 +146,7 @@ class PublishWorkflowTest < Minitest::Test
   # straight into the run: string, so an untrusted value cannot land in a
   # shell context even though nothing escalates today (pushing a v* tag or
   # dispatching the workflow both already need write access; the job still
-  # holds id-token: write, so this is belt-and-suspenders) (review fold-in 4).
+  # holds id-token: write, so this is belt-and-suspenders) (review fix 4).
   def test_guard_reads_the_dispatch_tag_or_the_pushed_tag
     assert_equal "${{ inputs.tag || github.ref_name }}", guard_step["env"]["TAG"]
     assert_includes guard_step["run"], '--tag "$TAG"'

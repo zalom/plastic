@@ -1045,7 +1045,7 @@ class RunnerAbsorbTest < Minitest::Test
                  "the file exists but the exact named method does not - the gate must still refuse"
   end
 
-  # === n11: what the fold broke (v2 review) ===================================
+  # === n11: what the fix broke (v2 review) ===================================
 
   # A ledger double whose FIRST call raises ArgumentError (standing in for
   # any return prose the ledger refuses to write, whatever it is) and whose

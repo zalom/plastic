@@ -124,7 +124,7 @@ class ReleaseCheckCliTest < Minitest::Test
   # exit status alone does not pin which branch caught it. Assert the
   # diagnostic message too: "empty or not numeric" comes only from the
   # degenerate-input check, never from the floor comparison, which would
-  # instead say "is below the 11.5.1 floor" (review fold-in 1).
+  # instead say "is below the 11.5.1 floor" (review fix 1).
   def test_rejects_an_empty_or_non_numeric_npm_version
     Dir.mktmpdir do |dir|
       build_repo(dir, version: "2.0.0-alpha.19")

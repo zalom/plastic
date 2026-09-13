@@ -44,6 +44,17 @@ class GraphMeasureDogfoodTest < Minitest::Test
     seconds / 60.0
   end
 
+  # The same word-for-word substitution the vocabulary scan required of the
+  # shipped copy (test/vocabulary_scan_test.rb), applied here only to the
+  # in-memory comparison text, never to the store file itself (D11).
+  def without_refused_vocabulary(text)
+    text.gsub(/\bf(?:old|olds|olded|olding)\b/i) do |m|
+      suffix = m.sub(/\Af/i, "").sub(/\Aold/i, "")
+      first_upper = m[0] == m[0].upcase
+      (first_upper ? "Meld" : "meld") + suffix
+    end
+  end
+
   # --- 3.1: the fixtures themselves --------------------------------------------
 
   def test_fixtures_are_verbatim_copies_with_packets_and_nodes
@@ -52,9 +63,15 @@ class GraphMeasureDogfoodTest < Minitest::Test
     skip "source store 340 not present on this machine" unless Dir.exist?(src_340)
     skip "source store 337 not present on this machine" unless Dir.exist?(src_337)
 
-    assert_equal File.read(File.join(src_340, "savepoint.md")), File.read(File.join(DIR_340, "savepoint.md"))
+    # 337a (n4): the store ledger keeps every line it already wrote (D11), so
+    # the two savepoint.md copies below are verbatim except for the refused
+    # vocabulary the shipped copy no longer carries; normalize the source
+    # side by the same substitution before comparing.
+    assert_equal without_refused_vocabulary(File.read(File.join(src_340, "savepoint.md"))),
+                 File.read(File.join(DIR_340, "savepoint.md"))
     assert_equal File.read(File.join(src_340, "graph.md")), File.read(File.join(DIR_340, "graph.md"))
-    assert_equal File.read(File.join(src_337, "savepoint.md")), File.read(File.join(DIR_337, "savepoint.md"))
+    assert_equal without_refused_vocabulary(File.read(File.join(src_337, "savepoint.md"))),
+                 File.read(File.join(DIR_337, "savepoint.md"))
 
     assert Dir.exist?(File.join(DIR_340, "packets")), "340's packets/ must be copied in (n4's budget rows need it)"
     assert_operator Dir.glob(File.join(DIR_340, "packets", "*")).length, :>, 0
@@ -79,7 +96,7 @@ class GraphMeasureDogfoodTest < Minitest::Test
     assert_in_delta 81_411.0, r[:clock][:wall_clock_seconds], 0.01
     assert_in_delta 22 * 3600 + 36 * 60 + 51, r[:clock][:wall_clock_seconds], 0.01
 
-    # The 67-hour What-to-Why scaffold gap, reported separately, never folded
+    # The 67-hour What-to-Why scaffold gap, reported separately, never merged
     # into the delivery total above.
     assert_in_delta 67.0, r[:scaffold][:gap_seconds] / 3600.0, 0.02
   end

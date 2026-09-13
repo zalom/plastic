@@ -30,7 +30,7 @@
       (drop dealintell 3b's three broken single-dash wikilinks, add the missing frontmatter
       edge `3a.chain += ["15"]`, reproject global 26). Until granted, this item stays open and
       `graph_links_projection` stays at warn. Carried forward visibly here and in outcome.md's
-      Follow-ups, never silently folded into the release.
+      Follow-ups, never silently merged into the release.
 
 ## Completed
 (move items here when done)

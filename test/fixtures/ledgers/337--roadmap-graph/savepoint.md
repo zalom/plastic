@@ -20,7 +20,7 @@
 2026-09-10T07:05:56Z  Commit  be321c6 fix: pin the template's four-section order with the new ## Graph section (337 n7)
 2026-09-10T07:08:39Z  Commit  be321c6 final full suite green: 3889 runs, 19678 assertions, 0 failures, 0 errors, 0 skips (all eight work nodes done)
 2026-09-10T13:01:15Z  Lock  takeover: auto-cb9a10c2fb reclaimed delivery lock from auto-cb9a10c2fb
-2026-09-10T13:36:49Z  v1  done gates=review verdict=blockers_found (one blocker, a test gap on fan-in placement, folded as row 2.15 and proven red against the reviewer's own mutation)
+2026-09-10T13:36:49Z  v1  done gates=review verdict=blockers_found (one blocker, a test gap on fan-in placement, melded as row 2.15 and proven red against the reviewer's own mutation)
 2026-09-10T13:36:57Z  r1  done holder=lead:337 gates=deposit verdict=delivered (21 of 23 live roadmaps migrated, 2 untouched by design, 282 insertions 0 deletions, one frontier change explained)
 2026-09-10T13:37:04Z  v1  done holder=reviewer:337 gates=review verdict=blockers_found (attribution for the 13:36:49Z v1 line: fresh code-quality-reviewer delegate reviewer-337-v1, sonnet)
 2026-09-10T13:38:43Z  Done  delivered

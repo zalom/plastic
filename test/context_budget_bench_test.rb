@@ -83,7 +83,7 @@ class ContextBudgetMeasureTest < Minitest::Test
 
       body of alpha
     MD
-    # A folded (multi-line) description: the shape a naive line regex truncates.
+    # A wrapped (multi-line) description: the shape a naive line regex truncates.
     File.write(File.join(b, "SKILL.md"), <<~MD)
       ---
       name: plastic-beta
@@ -115,15 +115,15 @@ class ContextBudgetMeasureTest < Minitest::Test
     end
   end
 
-  def test_skill_catalog_keeps_a_folded_description_whole
-    Dir.mktmpdir("plastic-bench-folded") do |dir|
+  def test_skill_catalog_keeps_a_wrapped_description_whole
+    Dir.mktmpdir("plastic-bench-wrapped") do |dir|
       build_skill_tree(dir)
       beta = File.join(dir, "skills", "beta", "SKILL.md")
       frontmatter, = ContextBudget.split_skill(File.read(beta))
       description = (YAML.safe_load(frontmatter) || {})["description"].to_s
 
       assert_includes description, "second half",
-        "a folded description must be parsed whole, not truncated at the first line"
+        "a wrapped description must be parsed whole, not truncated at the first line"
     end
   end
 

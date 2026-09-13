@@ -63,7 +63,7 @@ holder, and on the `done` path deletes a node worktree out from under a live exe
 (no transition lines for n9)
 
 ### Predecessors
-v1: done — 2026-09-11T00:34:38Z  v1  done holder=auto-6aa701e173 model=opus gates=integrity+schema+scope verdict=revise (4 blockers, 13 majors, 10 minors; no diff produced; review at resources/review--post-execution-2026-09-11.md; fold runs as n9 and n10)
+v1: done — 2026-09-11T00:34:38Z  v1  done holder=auto-6aa701e173 model=opus gates=integrity+schema+scope verdict=revise (4 blockers, 13 majors, 10 minors; no diff produced; review at resources/review--post-execution-2026-09-11.md; meld runs as n9 and n10)
 
 ### Lease
 lease: holder=auto-6aa701e173 expires=2026-09-11T04:36:38Z model=sonnet

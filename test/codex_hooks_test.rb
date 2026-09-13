@@ -202,7 +202,7 @@ class CodexHooksTest < Minitest::Test
   # stale-intent threshold (no CLAUDE_PLUGIN_ROOT on Codex, so it always takes
   # the ~/.plastic branch). A fake $HOME with no installed scripts/ makes that
   # shell-out fail with a noisy "No such file" on stderr, which run_hook's
-  # merged out+err would fold into the captured JSON. Same shim pattern
+  # merged out+err would combine into the captured JSON. Same shim pattern
   # test/deprecation_display_test.rb already uses for the identical gap.
   def write_read_config_shim(plastic_home)
     shim = <<~'RUBY'

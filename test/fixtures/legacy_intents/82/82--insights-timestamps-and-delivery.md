@@ -74,7 +74,7 @@ the nuggets bg/sub-agents find actually land in the file instead of evaporating 
 - **Structured per-entry prefix `{utc-iso8601} · {stage} · {author}`.** Every `## Insights` entry
   leads with an exact UTC timestamp plus provenance — e.g.
   `2026-06-24T08:13:05Z · Why · plastic-brainstorming (autonomous)`. Rationale: a bare timestamp
-  answers "when" but not "who/where"; folding stage and author into the prefix makes each nugget
+  answers "when" but not "who/where"; merging stage and author into the prefix makes each nugget
   self-describing for later reads (which stage surfaced it, which agent, whether autonomous) without
   changing the prose body. The `·` separator and field order are fixed so the prefix is machine-
   parseable by a future doctor/index pass.

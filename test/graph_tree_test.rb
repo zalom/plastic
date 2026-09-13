@@ -4,12 +4,12 @@
 require "minitest/autorun"
 require_relative "../scripts/lib/graph_tree"
 
-# GraphTree (intent 337, n2, folds 327a): draws any edge map as an indented
+# GraphTree (intent 337, n2, incorporates 327a): draws any edge map as an indented
 # tree with box-drawing branches. A node several branches need is drawn once
 # at the point where those branches join (fan-out); a node that itself needs
 # several things is drawn under its highest-batch need, ties broken by
 # smallest id, with its other needs shown as converging references at the
-# join (fan-in, row 2.14, folded at the 2026-09-10 plan review). Pure, plain
+# join (fan-in, row 2.14, resolved at the 2026-09-10 plan review). Pure, plain
 # text, no roadmap knowledge. Matrix rows from actions/ACTION_1.md S2/n2.
 class GraphTreeTest < Minitest::Test
   def test_chain_renders_each_need_above_its_dependent

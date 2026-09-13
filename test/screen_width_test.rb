@@ -318,7 +318,7 @@ class ScreenWidthTest < Minitest::Test
                  "the derived site table's leg 2 count has drifted from the repo - re-derive it"
     # Re-derived 2026-09-09 when 339 (G6) inserted render_archive above #roster
     # and render_nodes_block after #render_delivered, then again the same day
-    # when the v1f fold (row v1f.10, N1) deleted the duplicated
+    # when the v1f fix (row v1f.10, N1) deleted the duplicated
     # `archive_dirnames` method above `render_archive` - two fewer lines,
     # shifting every site below that point by -2 (1056->1054, 1135->1133,
     # 1579->1577, 1585->1583, 1597->1595). Then again the same day when S9

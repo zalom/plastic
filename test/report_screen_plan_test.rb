@@ -99,16 +99,16 @@ class ReportScreenPlanTest < Minitest::Test
 
   def test_reviewer_uses_plan_review_line_only
     write("savepoint.md", <<~SP)
-      2026-08-30T12:00:00Z  Review  plan review REVISE: two findings folded
+      2026-08-30T12:00:00Z  Review  plan review REVISE: two findings merged
       2026-08-30T13:00:00Z  Review  post-execution review FAIL: reproduced by the lead
     SP
     assert_equal "REVISE", ReportScreen.plan_reviewer(@dir)
   end
 
   def test_reviewer_recognizes_the_shipped_verdict_vocabulary # P5a
-    write("savepoint.md", "2026-08-30T12:00:00Z  Review  plan review PROCEED: nothing folded\n")
+    write("savepoint.md", "2026-08-30T12:00:00Z  Review  plan review PROCEED: nothing merged\n")
     assert_equal "PROCEED", ReportScreen.plan_reviewer(@dir)
-    write("savepoint.md", "2026-08-30T12:00:00Z  Review  plan review REVISE: one finding folded\n")
+    write("savepoint.md", "2026-08-30T12:00:00Z  Review  plan review REVISE: one finding merged\n")
     assert_equal "REVISE", ReportScreen.plan_reviewer(@dir)
   end
 
@@ -118,9 +118,9 @@ class ReportScreenPlanTest < Minitest::Test
 # reporting the stale REVISE forever and no test would fail.
 def test_reviewer_takes_the_last_plan_review_line # P5b
   write("savepoint.md", <<~SP)
-    2026-08-30T12:00:00Z  Review  plan review REVISE: two findings folded
+    2026-08-30T12:00:00Z  Review  plan review REVISE: two findings merged
     2026-08-30T13:00:00Z  Review  post-execution review FAIL: reproduced by the lead
-    2026-08-30T14:00:00Z  Review  plan review PROCEED: the findings are folded
+    2026-08-30T14:00:00Z  Review  plan review PROCEED: the findings are merged
   SP
   assert_equal "PROCEED", ReportScreen.plan_reviewer(@dir)
 end

@@ -336,7 +336,7 @@ class BackfillIntentTest < Minitest::Test
                        templates_dir: File.join(@home, "missing-templates"), now: @now)
     assert_includes read(dir, "spec.md"), "## Goals\n- ...\n"
   end
-  # --- review folds (intent 308 plan review) ---------------------------------------------
+  # --- review fixes (intent 308 plan review) ---------------------------------------------
 
   def test_a_sentinel_over_hand_written_content_is_left_untouched_and_noted
     dir = build_intent

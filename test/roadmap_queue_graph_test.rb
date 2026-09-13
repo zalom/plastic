@@ -393,7 +393,7 @@ class RoadmapQueueGraphTest < Minitest::Test
   end
 
   # 9.8: entries within a batch keep the roadmap file's own order (not a
-  # lexical sort) before the ranker ever sees them - folded at the
+  # lexical sort) before the ranker ever sees them - resolved at the
   # 2026-09-10 plan review: chat-shell-maturity.md's rank 1 flips from "5"
   # to "2" under a lexical sort of one batch's entries.
   def test_dispatchable_order_matches_roadmap_file_order_within_a_batch

@@ -33,7 +33,7 @@ a stage, and a milestone, separated by two spaces.
 2026-06-16T14:20:00Z  Why     spec.md created
 2026-06-16T15:10:00Z  How     plan.md created
 2026-06-16T15:11:00Z  How     checklist.md created
-2026-06-16T15:45:00Z  Review  plan REVISE, folded
+2026-06-16T15:45:00Z  Review  plan REVISE, merged
 2026-06-16T16:20:00Z  Commit  abc1234 tests red
 2026-06-16T16:35:00Z  Commit  def5678 2460 runs, 0 failures
 2026-06-16T16:40:00Z  Exec    outcome.md created
