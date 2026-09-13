@@ -10,8 +10,8 @@ require_relative "../scripts/lib/lock"
 require_relative "../scripts/lib/worktree"
 require_relative "../scripts/lib/session_ledger"
 
-# Arm (intent 307): taking an intent is the lock, the worktree, and the
-# session pointer; giving it back reverses all three. Hermetic: a tmp HOME
+# Arm (intent 307): taking an intent is the lock and the worktree; giving it
+# back reverses both. Hermetic: a tmp HOME
 # holds the sandbox `.plastic` (projects.yml, a project store, the global
 # store's `.tmp/`), every git call goes through a fake runner that creates the
 # worktree directory on `worktree add` and removes it on `worktree remove`,
@@ -69,8 +69,8 @@ class ArmTest < Minitest::Test
     Arm.arm(intent_dir: @dir, session: session, home: @home, now: @now, runner: @runner, **kw)
   end
 
-  def pointer(session = "sess-a")
-    Arm.read_pointer(session, home: @home)
+  def start_session!(session)
+    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(@global, SessionLedger.short_session_id(nil, session)))
   end
 
   def worktree_path
@@ -92,12 +92,6 @@ class ArmTest < Minitest::Test
   def test_arm_stamps_guided_mode_when_asked
     arm(mode: "guided")
     assert_equal "guided", Lock.read(@dir)["run_mode"]
-  end
-
-  def test_arm_writes_the_intent_id_into_the_session_pointer
-    arm
-    assert_equal "96", pointer
-    assert File.exist?(File.join(@global, ".tmp", ".gitignore")), "the tmp root stays git-ignored"
   end
 
   def test_arm_provisions_the_code_worktree_and_reports_it
@@ -124,11 +118,11 @@ class ArmTest < Minitest::Test
     assert File.exist?(Lock.path(global_dir)), "the lock is taken even when no worktree can be"
   end
 
-  def test_arm_is_idempotent_for_the_owner
-    arm
+  def test_arm_is_idempotent_for_the_lock_owner
+    Lock.acquire(@dir, session: "sess-a", now: @now)
+    start_session!("sess-a")
     result = arm
     assert_equal :owned, result[:status]
-    assert_equal "96", pointer
   end
 
   def test_arm_backs_off_from_a_held_lock_and_touches_nothing
@@ -138,7 +132,6 @@ class ArmTest < Minitest::Test
     assert_equal :held, result[:status]
     assert_equal "sess-b", result[:lock]["owner_session"]
     assert_equal before, File.read(Lock.path(@dir))
-    assert_nil pointer, "a refused arm never points the session at the intent"
     refute Dir.exist?(worktree_path)
   end
 
@@ -163,6 +156,11 @@ class ArmTest < Minitest::Test
     assert_equal :acquired, result[:status]
     assert_equal derived, Lock.read(@dir)["owner_session"]
     assert_equal derived, result[:session]
+  end
+
+  def test_arm_arms_a_session_with_no_tmp_dir
+    result = arm("headless-x")
+    assert_equal :acquired, result[:status]
   end
 
   def test_resolve_session_order_is_explicit_then_env_then_derived
@@ -198,38 +196,35 @@ class ArmTest < Minitest::Test
 
   # --- disarm ------------------------------------------------------------------
 
-  def test_disarm_removes_the_worktree_then_releases_the_lock_and_resets_the_pointer
+  def test_disarm_removes_the_worktree_then_releases_the_lock
     arm
     status = Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, runner: @runner, now: @now)
     assert_equal :released, status
     refute File.exist?(Lock.path(@dir))
     refute Dir.exist?(worktree_path)
-    assert_equal SessionLedger.day_id(@now), pointer
     remove_at = @runner.calls.index { |c| c[2] == "worktree" && c[3] == "remove" }
     refute_nil remove_at, "the worktree is removed"
   end
 
   def test_disarm_never_releases_a_foreign_fresh_lock
     Lock.acquire(@dir, session: "sess-b", now: @now)
-    Arm.write_pointer("sess-a", "96", home: @home)
     status = Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, runner: @runner, now: @now)
     assert_equal :released, status,
       "disarm releases as the RECORDED owner: end-intent's pre-flight decides who may close"
     refute File.exist?(Lock.path(@dir))
   end
 
-  def test_disarm_leaves_a_pointer_that_names_another_intent_alone
-    arm
-    Arm.write_pointer("sess-a", "97", home: @home)
-    Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, runner: @runner, now: @now)
-    assert_equal "97", pointer
-  end
-
-  def test_disarm_with_no_lock_reports_none_and_still_resets_the_pointer
-    Arm.write_pointer("sess-a", "96", home: @home)
+  def test_disarm_with_no_lock_reports_none
     status = Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, runner: @runner, now: @now)
     assert_equal :none, status
-    assert_equal SessionLedger.day_id(@now), pointer
+  end
+
+  def test_disarm_touches_no_session_tmp_file
+    arm
+    tmp_dir = SessionLedger.session_tmp_dir(@global, SessionLedger.short_session_id(nil, "sess-a"))
+    FileUtils.rm_rf(tmp_dir)
+    Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, runner: @runner, now: @now)
+    refute Dir.exist?(tmp_dir), "disarm must not recreate a closed session's tmp directory"
   end
 
   def test_disarm_without_remove_keeps_the_worktree
@@ -303,41 +298,33 @@ class ArmTest < Minitest::Test
     assert_equal "sess-a", Lock.read(@dir)["owner_session"]
   end
 
-  # --- the pointer as a resolver -------------------------------------------------
-
-  def test_intent_dir_from_pointer_resolves_an_intent_id_and_ignores_a_day_id
-    Arm.write_pointer("sess-a", "96", home: @home)
-    assert_equal @dir, Arm.intent_dir_from_pointer("sess-a", home: @home, stores: [@store, @global])
-    Arm.write_pointer("sess-a", "20260830", home: @home)
-    assert_nil Arm.intent_dir_from_pointer("sess-a", home: @home, stores: [@store, @global])
-    assert_nil Arm.intent_dir_from_pointer("nobody", home: @home, stores: [@store])
-  end
-
   # --- owner rule 2026-08-31 (day-ledger direct item): no inline delivery ----
-  # A session that already carries a top-level session pointer is a
-  # conversation session (SessionStart wrote the pointer at boot); arming an
-  # intent there is inline delivery and is refused. A dispatched or headless
-  # session has no pre-existing pointer and arms freely. --allow-inline is the
-  # explicit owner override.
+  # A conversation session is one whose tmp directory already exists under
+  # the global store's .tmp/ (SessionStart made it at boot); arming an intent
+  # there, for a lock it does not already hold, is inline delivery and is
+  # refused. A dispatched or headless session has no tmp directory and arms
+  # freely. --allow-inline is the explicit owner override.
 
-  def test_arm_refuses_a_session_with_a_preexisting_pointer
-    Arm.write_pointer("sess-a", "day-ledger", home: @home)
+  def test_arm_refuses_a_started_conversation_session
+    start_session!("sess-a")
     result = Arm.arm(intent_dir: @dir, session: "sess-a", home: @home, runner: FakeRunner.new)
     assert_equal :inline_refused, result[:status]
     refute File.exist?(File.join(@dir, "delivery.lock")),
            "a refused arm must not leave a lock behind"
   end
 
-  def test_arm_allow_inline_overrides_the_refusal
-    Arm.write_pointer("sess-a", "day-ledger", home: @home)
+  def test_allow_inline_bypasses_the_started_session_refusal
+    start_session!("sess-a")
     result = Arm.arm(intent_dir: @dir, session: "sess-a", home: @home,
                      runner: FakeRunner.new, allow_inline: true)
     assert_equal :acquired, result[:status]
   end
 
-  def test_arm_without_a_preexisting_pointer_still_acquires
-    result = Arm.arm(intent_dir: @dir, session: "dispatched-x", home: @home, runner: FakeRunner.new)
-    assert_equal :acquired, result[:status]
+  def test_arm_writes_no_session_pointer
+    result = arm
+    refute result.key?(:pointer), "arm must return no :pointer key"
+    assert_empty Dir.glob(File.join(@global, ".tmp", "**", "current")),
+                 "arm must write no current file under the store's tmp root"
   end
 
 end

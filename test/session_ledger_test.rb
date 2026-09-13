@@ -174,7 +174,6 @@ class SessionLedgerTest < Minitest::Test
     session_id = "b7137962"
     assert_equal File.join(@store, ".tmp"), SessionLedger.tmp_root(@store)
     assert_equal File.join(@store, ".tmp", session_id), SessionLedger.session_tmp_dir(@store, session_id)
-    assert_equal File.join(@store, ".tmp", session_id, "current"), SessionLedger.pointer_path(@store, session_id)
     assert_equal File.join(@store, ".tmp", session_id, "heartbeat"), SessionLedger.heartbeat_path(@store, session_id)
   end
 

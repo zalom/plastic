@@ -19,12 +19,11 @@
 #                 corrupt lock with the resolving doctor hint
 #   who           compact, read-only durable owner/activity view
 #   status        report the lock file, its freshness, the derived worktree,
-#                 whether this session's pointer names the intent, and any
-#                 live per-artifact claims
+#                 whether this session is the one delivering the intent, and
+#                 any live per-artifact claims
 #   fix           idempotent repair of the lock for the current session; never
 #                 touches a fresh foreign lock
-#   release       owner clears the lock and points the session back at the day
-#                 ledger (End tail / abandoning a boarding)
+#   release       owner clears the lock (End tail / abandoning a boarding)
 #   reclaim       explicit takeover of a stale lock, audited in savepoint.md
 #   delegate      owner registers a subagent session under the lock (D4)
 #   claim         acquire the named --artifact's claim token (intent 111);
@@ -32,17 +31,18 @@
 #                 including this same session; takes over a stale claim
 #   release-claim free the named --artifact's claim token
 #
-# Without --intent-dir the intent is resolved from this session's pointer
-# (~/.plastic/store/.tmp/<session>/current) when it names an intent id, looked
-# up in the working directory's project store and then the global store. The
-# /tmp bridge JSON this CLI used to resolve through was removed in 2.0
-# (intent 307). Exit 0 on success/report; exit 1 when the verb is blocked.
+# Without --intent-dir the intent is resolved from this session's held
+# delivery lock (ActiveDelivery.resolve over the global store and the
+# configured project roots): exactly one fresh lock this session owns or
+# delegates for. The /tmp bridge JSON and the per-session pointer this CLI
+# used to resolve through were removed in 2.0 (intent 307) and 344 G11.
+# Exit 0 on success/report; exit 1 when the verb is blocked.
 
 require "json"
 require "yaml"
 require_relative "lib/lock"
 require_relative "lib/arm"
-require_relative "lib/session_ledger"
+require_relative "lib/active_delivery"
 
 VERBS = %w[arm status who fix release reclaim delegate claim release-claim].freeze
 
@@ -87,16 +87,7 @@ hint_harness = harness || "claude"
 plastic_home_env = ENV["PLASTIC_HOME"].to_s.strip
 home = plastic_home_env.empty? ? Dir.home : File.dirname(File.expand_path(plastic_home_env))
 
-# The stores this session's pointer is resolved against: the project store of
-# the working directory (projects.yml, longest path match), then the global one.
-def candidate_stores(home, cwd)
-  plastic_home = File.join(home, ".plastic")
-  stores = []
-  slug = SessionLedger.project_slug(cwd, plastic_home: plastic_home)
-  stores << File.join(plastic_home, "projects", slug, "store") if slug && slug != "global"
-  stores << File.join(plastic_home, "store")
-  stores
-end
+plastic_home = File.join(home, ".plastic")
 
 dir = opts[:dir]
 if dir.nil? || dir.strip.empty?
@@ -104,11 +95,21 @@ if dir.nil? || dir.strip.empty?
     warn "plastic-lock: #{verb} needs --intent-dir <intent dir>"
     exit 1
   end
-  dir = Arm.intent_dir_from_pointer(session, home: home, stores: candidate_stores(home, Dir.pwd))
-end
-if dir.nil?
-  warn "plastic-lock: no intent resolved; pass --intent-dir <intent dir>"
-  exit 1
+  roots = ActiveDelivery.project_roots(plastic_home)
+  global_store = File.join(plastic_home, "store")
+  dir = ActiveDelivery.resolve(global_store: global_store, project_roots: roots, session: session)
+  if dir.nil?
+    candidates = ActiveDelivery.candidate_intent_dirs(global_store: global_store, project_roots: roots).uniq
+    held = candidates.select do |candidate|
+      Lock.fresh?(candidate) && Lock.holds?(candidate, session: session)
+    end
+    if held.size > 1
+      warn "plastic-lock: more than one held delivery lock names this session; pass --intent-dir <intent dir>"
+    else
+      warn "plastic-lock: no intent resolved; pass --intent-dir <intent dir>"
+    end
+    exit 1
+  end
 end
 dir = File.expand_path(dir)
 
@@ -162,7 +163,7 @@ when "arm"
     puts JSON.pretty_generate(
       "intent_dir" => dir, "session" => result[:session], "status" => result[:status].to_s,
       "run_mode" => result[:lock] && result[:lock]["run_mode"],
-      "worktree" => wt, "pointer" => result[:pointer]
+      "worktree" => wt
     )
   when :held
     warn "plastic-lock: delivery lock for intent #{intent_id} is held by session " \
@@ -187,7 +188,10 @@ when "arm"
   end
 when "status"
   lock = Lock.read(dir)
-  pointer = Arm.read_pointer(key, home: home)
+  resolved = ActiveDelivery.resolve(global_store: File.join(plastic_home, "store"),
+                                    project_roots: ActiveDelivery.project_roots(plastic_home),
+                                    session: key)
+  delivering = !resolved.nil? && File.expand_path(resolved) == File.expand_path(dir)
   report = {
     "intent_dir" => dir,
     "session" => key,
@@ -195,8 +199,7 @@ when "status"
     "lock_fresh" => Lock.fresh?(dir),
     "lock_corrupt" => Lock.corrupt?(dir),
     "worktree" => Arm.worktree_block(intent_dir: dir, home: home),
-    "pointer" => pointer,
-    "pointer_names_intent" => pointer == intent_id,
+    "delivering" => delivering,
     "claims" => Claim.claims_status(dir),
   }
   puts JSON.pretty_generate(report)
@@ -216,7 +219,6 @@ when "release"
     warn "plastic-lock: not the owner; run plastic-lock status"
     exit 1
   end
-  Arm.reset_pointer(key, intent_id, home: home)
   puts "released (#{result})"
 when "reclaim"
   status, lock_data = Lock.takeover(dir, session: key, harness: harness,

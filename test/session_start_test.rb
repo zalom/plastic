@@ -343,7 +343,7 @@ class SessionStartDayLedgerTest < Minitest::Test
 
     sid = SessionLedger.short_session_id(nil, "sess-boot-1")
     assert File.exist?(SessionLedger.heartbeat_path(store, sid)), "the heartbeat must be written"
-    refute File.exist?(SessionLedger.pointer_path(store, sid)), "the retired pointer must never be written"
+    refute File.exist?(File.join(SessionLedger.session_tmp_dir(store, sid), "current")), "the retired pointer must never be written"
 
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
     assert_includes ctx, "day ledger #{day} joined"
@@ -367,7 +367,7 @@ class SessionStartDayLedgerTest < Minitest::Test
     out, _err, status = run_hook(session_id: "sess-boot-2") # second boot: joins
     assert_equal 0, status.exitstatus
     assert Dir.exist?(tmp_dir), "the second boot must not remove the session tmp directory"
-    refute File.exist?(SessionLedger.pointer_path(store, sid)), "the retired pointer must never be written"
+    refute File.exist?(File.join(SessionLedger.session_tmp_dir(store, sid), "current")), "the retired pointer must never be written"
 
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
     assert_includes ctx, "1 open items, 1 pending"

@@ -45,7 +45,7 @@ class PlasticLockCliTest < Minitest::Test
     Arm.repair(intent_dir: @intent_dir, session: session, home: @home, **kw)
   end
 
-  # The CLI without --intent-dir: the intent resolves from this session's pointer.
+  # The CLI without --intent-dir: the intent resolves via ActiveDelivery from the held lock.
   def cli_bare(*args, session: "sess-1", chdir: @home)
     Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil, "HOME" => @home },
                    RbConfig.ruby, CLI, *args, "--session", session, chdir: chdir)
@@ -204,7 +204,7 @@ class PlasticLockCliTest < Minitest::Test
 
   # --- CLI verbs ---------------------------------------------------------------
 
-  def test_cli_status_reports_lock_worktree_and_pointer
+  def test_cli_status_reports_lock_worktree_and_delivering
     Lock.acquire(@intent_dir, session: "sess-1")
     out, _err, st = cli("status")
     assert st.success?
@@ -212,7 +212,7 @@ class PlasticLockCliTest < Minitest::Test
     assert_includes out, "delivery"
     report = JSON.parse(out)
     assert report.key?("worktree")
-    assert_equal false, report["pointer_names_intent"]
+    assert_equal true, report["delivering"]
     refute report.key?("bridge_present"), "the bridge cache fields left in 2.0 (intent 307)"
   end
 
@@ -226,17 +226,16 @@ class PlasticLockCliTest < Minitest::Test
   
   # --- arm (intent 307) ---------------------------------------------------------
 
-  def test_cli_arm_takes_the_lock_and_points_the_session
+  def test_cli_arm_takes_the_lock
     out, err, st = cli("arm", "--mode", "auto", "--agent", "plastic-enforcer", "--harness", "claude")
     assert st.success?, "#{out}\n#{err}"
     lock = Lock.read(@intent_dir)
     assert_equal "sess-1", lock["owner_session"]
     assert_equal "auto", lock["run_mode"]
     assert_equal "plastic-enforcer", lock["owner_agent"]
-    pointer = Arm.read_pointer("sess-1", home: @home)
-    assert_equal "96", pointer
     report = JSON.parse(out)
     assert_equal "acquired", report["status"]
+    refute report.key?("pointer")
     assert_equal false, report.dig("worktree", "provisioned"), "no repo is registered, so provisioning fails open"
   end
 
@@ -247,7 +246,6 @@ class PlasticLockCliTest < Minitest::Test
     assert_includes err, "held by session other"
     assert_includes err, "/plastic-doctor"
     assert_equal "other", Lock.read(@intent_dir)["owner_session"]
-    assert_nil Arm.read_pointer("sess-1", home: @home)
   end
 
   def test_cli_arm_needs_an_intent_dir
@@ -256,29 +254,42 @@ class PlasticLockCliTest < Minitest::Test
     assert_includes err, "needs --intent-dir"
   end
 
-  def test_cli_release_resets_the_pointer
+  def test_release_writes_no_session_pointer
     cli("arm")
-    assert_equal "96", Arm.read_pointer("sess-1", home: @home)
     _out, _err, st = cli("release")
     assert st.success?
     refute File.exist?(Lock.path(@intent_dir))
-    assert_equal SessionLedger.day_id, Arm.read_pointer("sess-1", home: @home)
+    assert_empty Dir.glob(File.join(@home, ".plastic", "store", ".tmp", "**", "current"))
   end
 
-  def test_cli_resolves_the_intent_from_the_pointer_when_no_intent_dir_is_given
-    # realpath on both sides: macOS mounts tmp under /var, a symlink to /private/var, and
-    # the project match compares expanded paths, not resolved ones.
-    FileUtils.mkdir_p(File.join(@home, "repo"))
-    repo = File.realpath(File.join(@home, "repo"))
-    File.write(File.join(@home, ".plastic", "projects.yml"), "projects:\n  demo:\n    path: #{repo}\n")
-    cli("arm")
-    out, err, st = cli_bare("status", chdir: repo)
+  def test_status_without_intent_dir_resolves_the_held_lock
+    Lock.acquire(@intent_dir, session: "sess-1")
+    out, err, st = cli_bare("status")
     assert st.success?, "#{out}\n#{err}"
     assert_equal @intent_dir, JSON.parse(out)["intent_dir"]
   end
 
-  def test_cli_reports_no_intent_when_the_pointer_holds_a_day_id
-    Arm.write_pointer("sess-1", SessionLedger.day_id, home: @home)
+  def test_status_without_intent_dir_refuses_two_held_locks
+    other_dir = File.join(@store, "97--other")
+    FileUtils.mkdir_p(other_dir)
+    Lock.acquire(@intent_dir, session: "sess-1")
+    Lock.acquire(other_dir, session: "sess-1")
+    _out, err, st = cli_bare("status")
+    refute st.success?
+    assert_includes err, "more than one held delivery lock names this session"
+  end
+
+  def test_status_reports_delivering_not_pointer
+    Lock.acquire(@intent_dir, session: "sess-1")
+    out, _err, st = cli("status")
+    assert st.success?
+    report = JSON.parse(out)
+    assert_equal true, report["delivering"]
+    refute report.key?("pointer")
+    refute report.key?("pointer_names_intent")
+  end
+
+  def test_cli_reports_no_intent_when_no_lock_is_held
     _out, err, st = cli_bare("status")
     refute st.success?
     assert_includes err, "no intent resolved"

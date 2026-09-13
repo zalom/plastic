@@ -154,10 +154,6 @@ module SessionLedger
     File.join(tmp_root(store), session_id)
   end
 
-  def pointer_path(store, session_id)
-    File.join(session_tmp_dir(store, session_id), "current")
-  end
-
   def heartbeat_path(store, session_id)
     File.join(session_tmp_dir(store, session_id), "heartbeat")
   end
