@@ -45,3 +45,12 @@ This chapter holds the linking doctrine from Frontmatter and the branch-vs-root 
   the relation on the PREDECESSOR's `chain` (and mirror it as a
   `[[id--slug|<target's full intent: text>]]` wikilink in `## Links`).
 - **Rule of thumb:** if the intent could exist without its parent, it's a root.
+
+## Naming
+
+A thing is named after the concept family it lives under. A node is a graph-engineering
+concept, so its name comes from graph engineering (node, edge, ready set, critical path),
+from the Plastic concepts coined on top of it (intent, ledger, packet, lease, gate, runner),
+and from the software and AI engineering concepts those rest on (review, fix, test, verify,
+dispatch, executor, reviewer). A name from outside that stack is refused. Where no existing
+concept fits, that is a design finding to raise, not a word to coin.

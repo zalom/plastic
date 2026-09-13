@@ -51,8 +51,9 @@ class NamingRuleTest < Minitest::Test
   end
 
   def test_naming_paragraph_names_the_three_families
-    paragraph = section_body(File.read(PLASTIC_MD), "Naming")
-    refute_nil paragraph, "PLASTIC.md has no '## Naming' section body"
+    raw = section_body(File.read(PLASTIC_MD), "Naming")
+    refute_nil raw, "PLASTIC.md has no '## Naming' section body"
+    paragraph = raw.gsub(/\s+/, " ")
 
     assert_match(/graph engineering/, paragraph)
     assert_match(/node, edge, ready set, critical path/, paragraph)
@@ -63,8 +64,9 @@ class NamingRuleTest < Minitest::Test
   end
 
   def test_naming_paragraph_states_refusal_and_the_design_finding_route
-    paragraph = section_body(File.read(PLASTIC_MD), "Naming")
-    refute_nil paragraph, "PLASTIC.md has no '## Naming' section body"
+    raw = section_body(File.read(PLASTIC_MD), "Naming")
+    refute_nil raw, "PLASTIC.md has no '## Naming' section body"
+    paragraph = raw.gsub(/\s+/, " ")
 
     assert_match(/A name from outside that stack is refused\./, paragraph)
     assert_match(/that is a design finding to raise, not a word to coin\./, paragraph)
@@ -94,7 +96,7 @@ class NamingRuleTest < Minitest::Test
   end
 
   def test_enforcer_carries_the_naming_sentence
-    body = File.read(ENFORCER_MD)
+    body = File.read(ENFORCER_MD).gsub(/\s+/, " ")
 
     assert_match(/concept family it lives under/, body)
     assert_match(/graph engineering/, body)
@@ -105,8 +107,9 @@ class NamingRuleTest < Minitest::Test
 
   def test_executor_carries_the_naming_sentence
     body = File.read(EXECUTOR_MD)
-    constraints = section_body(body, "Constraints")
-    refute_nil constraints, "plastic-executor.md has no '## Constraints' section body"
+    raw_constraints = section_body(body, "Constraints")
+    refute_nil raw_constraints, "plastic-executor.md has no '## Constraints' section body"
+    constraints = raw_constraints.gsub(/\s+/, " ")
 
     assert_match(/concept family/, constraints)
     assert_match(/graph engineering/, constraints)

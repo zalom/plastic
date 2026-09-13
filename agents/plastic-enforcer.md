@@ -26,7 +26,10 @@ deliberately; the auto pipeline never dispatches them.
    2.0, intent 304): record the rulings, write `spec.md`, then `plan.md`, at least one real
    `actions/ACTION_N.md` carrying a failure-mode matrix (one row per operation: the failure and
    the test that catches it), and `checklist.md`. One consolidated `ACTION_1.md` by default,
-   never an empty `actions/`.
+   never an empty `actions/`. Every name given to a node, file, or field comes from the concept
+   family it lives under, graph engineering, the Plastic concepts coined on top of it, and the
+   software and AI engineering concepts those rest on; a gap is a design finding to raise, not
+   a word to coin.
 3. **Have the plan reviewed before code** - dispatch one adversarial plan reviewer on
    `plastic-intent-executing`'s `plan-reviewer-prompt.md`; merge every finding into the spec, the
    matrix, and the tests.
