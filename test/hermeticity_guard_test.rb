@@ -88,7 +88,7 @@ class HermeticityGuardTest < Minitest::Test
     relative_paths = local_dependency_closure(root, AMBIENT_READ_BOUNDARY_ROOTS)
       .map { |path| path.delete_prefix("#{root}#{File::SEPARATOR}") }
 
-    %w[scripts/lib/bridge.rb scripts/lib/worktree.rb scripts/doctor.rb].each do |expected|
+    %w[scripts/lib/arm.rb scripts/lib/worktree.rb scripts/doctor.rb].each do |expected|
       assert_includes relative_paths, expected
     end
   end
