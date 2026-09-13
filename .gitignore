@@ -5,3 +5,6 @@ node_modules/
 
 .serena/
 .enola/
+coverage/
+tmp/rubycritic/
+.mutineer/
