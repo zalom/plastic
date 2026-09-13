@@ -9,7 +9,7 @@ require_relative "../scripts/lib/qmd_sync"
 require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/session_ledger"
-require_relative "../scripts/lib/packet_wrapper"
+require_relative "../scripts/lib/data_boundary"
 
 # Unit coverage for the pure boot-banner renderer (intent 36a). Health is
 # injected, so these are fully hermetic — no doctor run, no ~/.claude, no ENV.
@@ -154,13 +154,13 @@ class SessionStartHookTest < Minitest::Test
     text.gsub(/<<<PLASTIC-DATA:[0-9a-f]+ label="[^"]*" source="[^"]*">>>\n.*?<<<END-PLASTIC-DATA:[0-9a-f]+>>>\n?/m, "")
   end
 
-  def test_qmd_hits_are_wrapped_with_the_packet_wrapper
+  def test_qmd_hits_are_wrapped_with_the_data_boundary
     bindir = bindir_with_fake_qmd
     out, _err, status = run_hook_with_path(bindir)
     assert_equal 0, status.exitstatus
 
     ctx = context_from(out)
-    blocks = PacketWrapper.unwrap(ctx)
+    blocks = DataBoundary.unwrap(ctx)
     qmd_block = blocks.find { |b| b[:label] == "qmd-hit" }
     refute_nil qmd_block, "the QMD status line must be wrapped in a data block"
     assert_includes qmd_block[:payload], "Plastic collections indexed"

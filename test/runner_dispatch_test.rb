@@ -16,7 +16,7 @@ require_relative "../scripts/lib/node_ledger"
 require_relative "../scripts/lib/ready_set"
 require_relative "../scripts/lib/graph_file"
 require_relative "../scripts/lib/node_worktree"
-require_relative "../scripts/lib/node_packet"
+require_relative "../scripts/lib/node_input"
 require_relative "../scripts/lib/work_graph_validator"
 require_relative "../scripts/lib/worktree"
 require_relative "../scripts/lib/guarded_append"
@@ -354,7 +354,7 @@ class RunnerDispatchTest < Minitest::Test
     order = []
     packet_builder = lambda do |**kwargs|
       order << :packet
-      NodePacket.build(**kwargs)
+      NodeInput.build(**kwargs)
     end
 
     result = RunnerDispatch.dispatch(ctx, packet_builder: packet_builder, ledger: OrderSpyLedger.new(order))
@@ -764,7 +764,7 @@ class RunnerDispatchTest < Minitest::Test
     seen_budget = nil
     spy_builder = lambda do |**kwargs|
       seen_budget = kwargs[:budget_tokens]
-      NodePacket.build(**kwargs)
+      NodeInput.build(**kwargs)
     end
 
     result = RunnerDispatch.dispatch(ctx, packet_builder: spy_builder)

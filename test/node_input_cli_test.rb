@@ -9,16 +9,16 @@ require "rbconfig"
 
 require_relative "../scripts/lib/installer_core"
 
-# Intent 338 (G5), n4: scripts/node-packet, the command 340's runner will
+# Intent 338 (G5), n4: scripts/node-input, the command 340's runner will
 # actually call. Matrix rows 4.1 to 4.8 in actions/ACTION_1.md. Every test
 # spawns the real CLI as a subprocess (Open3), the house pattern for
 # scripts/node-transition and scripts/validate-work-graph.
-class NodePacketCliTest < Minitest::Test
-  NODE_PACKET = File.expand_path("../scripts/node-packet", __dir__)
+class NodeInputCliTest < Minitest::Test
+  NODE_INPUT = File.expand_path("../scripts/node-input", __dir__)
   REPO = File.expand_path("..", __dir__)
 
   def setup
-    @home = Dir.mktmpdir("node-packet-cli")
+    @home = Dir.mktmpdir("node-input-cli")
     @intent_dir = build_intent_dir(@home)
   end
 
@@ -78,7 +78,7 @@ class NodePacketCliTest < Minitest::Test
   end
 
   def run_cli(*args)
-    Open3.capture3(RbConfig.ruby, NODE_PACKET, *args)
+    Open3.capture3(RbConfig.ruby, NODE_INPUT, *args)
   end
 
   # --- 4.1-4.6: usage and exit codes -------------------------------------------
@@ -128,16 +128,63 @@ class NodePacketCliTest < Minitest::Test
     assert File.exist?(File.join(@intent_dir, "packets", "n1--a1.packet"))
   end
 
+  # --- 2.3/2.4: the renamed command, as a real subprocess ----------------------
+
+  def test_node_input_command_writes_the_input_as_a_subprocess
+    out, err, status = run_cli(@intent_dir, "--node", "n1")
+    assert_equal 0, status.exitstatus, out + err
+    assert File.exist?(File.join(@intent_dir, "packets", "n1--a1.packet"))
+  end
+
+  def test_usage_names_the_node_input_command
+    retired_word = %w[pack et].join
+    out, err, status = run_cli(@intent_dir)
+    assert_equal 2, status.exitstatus, out + err
+    assert_match(/node-input/, err)
+    refute_match(/node-#{retired_word}/, err)
+  end
+
   # --- 4.7: installer manifest -------------------------------------------------
 
-  def test_node_packet_and_both_libraries_are_registered_in_the_installer_manifest
+  def test_node_input_and_both_libraries_are_registered_in_the_installer_manifest
     core = InstallerCore.new(package_root: REPO)
     manifest = core.core_files
-    assert manifest.key?("scripts/node-packet"), "scripts/node-packet is missing from the installer manifest"
-    assert manifest.key?("scripts/lib/packet_wrapper.rb"),
-           "scripts/lib/packet_wrapper.rb is missing from the installer manifest"
-    assert manifest.key?("scripts/lib/node_packet.rb"),
-           "scripts/lib/node_packet.rb is missing from the installer manifest"
+    assert manifest.key?("scripts/node-input"), "scripts/node-input is missing from the installer manifest"
+    assert manifest.key?("scripts/lib/data_boundary.rb"),
+           "scripts/lib/data_boundary.rb is missing from the installer manifest"
+    assert manifest.key?("scripts/lib/node_input.rb"),
+           "scripts/lib/node_input.rb is missing from the installer manifest"
+  end
+
+  # 2.6: the manifest prune only fires when the retired paths are actually
+  # gone from `core_files` (D15) - built from parts so this file carries no
+  # whole-word hit for a vocabulary scan to trip on.
+  def test_retired_files_leave_core_files
+    retired_word = %w[pack et].join
+    retired = ["scripts/node-#{retired_word}", "scripts/lib/node_#{retired_word}.rb",
+               "scripts/lib/#{retired_word}_wrapper.rb"]
+    core = InstallerCore.new(package_root: REPO)
+    manifest = core.core_files
+    retired.each do |path|
+      refute manifest.key?(path), "#{path} should have left the installer manifest"
+    end
+  end
+
+  # 2.10: a stale require would resolve locally against an old installed
+  # copy and pass by accident, so this walks every script on disk instead
+  # of trusting one caller's own diff.
+  def test_no_script_requires_a_retired_library
+    retired_word = %w[pack et].join
+    retired_libs = ["node_#{retired_word}", "#{retired_word}_wrapper"]
+    Dir.glob(File.join(REPO, "scripts", "**", "*")).each do |path|
+      next unless File.file?(path)
+
+      content = File.read(path)
+      retired_libs.each do |lib|
+        refute_match(/require_relative\s+["'](?:[^"']*\/)?#{Regexp.escape(lib)}["']/, content,
+                     "#{path} still requires the retired #{lib} library")
+      end
+    end
   end
 
   # --- 4.8: flags ---------------------------------------------------------------

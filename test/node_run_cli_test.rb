@@ -11,7 +11,7 @@ require "yaml"
 require "json"
 
 require_relative "../scripts/lib/node_ledger"
-require_relative "../scripts/lib/node_packet"
+require_relative "../scripts/lib/node_input"
 require_relative "../scripts/lib/node_worktree"
 require_relative "../scripts/lib/node_return"
 require_relative "../scripts/lib/ready_set"
@@ -155,7 +155,7 @@ class NodeRunCliTest < Minitest::Test
   # A ready node with a real running line and a real, hashed packet on disk
   # at `attempt` - the fixture every non-refusal row needs.
   def build_running_node(node: "n1", session: "sess-1", attempt: 1, expires: "2099-01-01T00:00:00Z")
-    build = NodePacket.build(intent_dir: @dir, node: node, holder: session, expires: expires, model: "sonnet",
+    build = NodeInput.build(intent_dir: @dir, node: node, holder: session, expires: expires, model: "sonnet",
                               attempt: attempt, force: true)
     raise "packet build failed: #{build[:errors].inspect}" unless build[:ok]
 
@@ -231,7 +231,7 @@ class NodeRunCliTest < Minitest::Test
     { "PATH" => "#{codex_stub_bin}#{File::PATH_SEPARATOR}#{ENV['PATH']}" }.merge(extra)
   end
 
-  # --- 6.11: the attempt number comes from NodePacket.compute_attempt_number --
+  # --- 6.11: the attempt number comes from NodeInput.compute_attempt_number --
 
   def test_packet_path_comes_from_compute_attempt_number
     setup_real_repo
@@ -262,7 +262,7 @@ class NodeRunCliTest < Minitest::Test
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
 
-    build = NodePacket.build(intent_dir: @dir, node: "n1", holder: "sess-1", expires: "2099-01-01T00:00:00Z",
+    build = NodeInput.build(intent_dir: @dir, node: "n1", holder: "sess-1", expires: "2099-01-01T00:00:00Z",
                               model: "sonnet", attempt: 1, force: true)
     assert build[:ok], build[:errors].inspect
 

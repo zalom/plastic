@@ -6,18 +6,18 @@ require "tmpdir"
 require "fileutils"
 require "digest"
 
-require_relative "../scripts/lib/node_packet"
+require_relative "../scripts/lib/node_input"
 
 # Intent 338 (G5), n3: assembly, the budget, and the packet's identity.
 # Matrix rows 3.1 to 3.26 in actions/ACTION_1.md. Hermetic: Dir.mktmpdir
 # fixtures, every seam injected, no environment read.
-class NodePacketBudgetTest < Minitest::Test
+class NodeInputBudgetTest < Minitest::Test
   NULL_WORKTREE_READER = ->(intent_dir:) { { "code" => nil, "code_branch" => nil, "provisioned" => false } }
   NULL_PROJECT_READER = ->(_intent_dir) { nil }
   NULL_GIT_RUNNER = ->(repo_dir:, files:) { nil }
 
   def setup
-    @dir = Dir.mktmpdir("node-packet-budget")
+    @dir = Dir.mktmpdir("node-input-budget")
     FileUtils.mkdir_p(File.join(@dir, "nodes"))
   end
 
@@ -103,7 +103,7 @@ class NodePacketBudgetTest < Minitest::Test
       intent_dir: @dir, node: node, worktree_reader: NULL_WORKTREE_READER, project_reader: NULL_PROJECT_READER,
       git_runner: NULL_GIT_RUNNER,
     }
-    NodePacket.build(**defaults.merge(overrides))
+    NodeInput.build(**defaults.merge(overrides))
   end
 
   # --- 3.1-3.4: order, trust split, one token, determinism --------------------
@@ -126,7 +126,7 @@ class NodePacketBudgetTest < Minitest::Test
     setup_minimal(intent_text: "The wrapped intent.")
     result = build
     content = File.read(result[:path])
-    blocks = PacketWrapper.unwrap(content)
+    blocks = DataBoundary.unwrap(content)
     payload = blocks.map { |b| b[:payload] }.join
     refute_includes payload, "Do the thing."
     refute_includes payload, "worktree:"
@@ -301,7 +301,7 @@ class NodePacketBudgetTest < Minitest::Test
   def test_stdout_is_a_parsable_summary_carrying_path_sha_tokens_hop_and_attempt
     setup_minimal(intent_text: "Summary test.")
     result = build
-    line = NodePacket.summary_line(result)
+    line = NodeInput.summary_line(result)
     fields = line.split(/\s+/).each_with_object({}) do |tok, h|
       k, v = tok.split("=", 2)
       h[k] = v
@@ -347,7 +347,7 @@ class NodePacketBudgetTest < Minitest::Test
   def test_the_budget_is_measured_over_the_rendered_bytes_markers_included
     setup_minimal(intent_text: "Marker accounting.")
     result = build
-    raw_payload_tokens = PacketWrapper.estimate_tokens(File.read(record_path))
+    raw_payload_tokens = DataBoundary.estimate_tokens(File.read(record_path))
     rendered_tokens = result[:tokens]
     assert_operator rendered_tokens, :>, 0
     refute_equal raw_payload_tokens, rendered_tokens
@@ -415,7 +415,7 @@ class NodePacketBudgetTest < Minitest::Test
     setup_minimal(intent_text: "Source path test.")
     result = build
     content = File.read(result[:path])
-    blocks = PacketWrapper.unwrap(content)
+    blocks = DataBoundary.unwrap(content)
     record_block = blocks.find { |b| b[:label] == "record" }
     refute_nil record_block
     expected = "#{File.basename(@dir)}/#{File.basename(@dir)}.md"
@@ -428,7 +428,7 @@ class NodePacketBudgetTest < Minitest::Test
     setup_minimal(intent_text: "Hop source test.", sources: ["src-11"])
     result = build(hop_tokens: 2000)
     content = File.read(result[:path])
-    blocks = PacketWrapper.unwrap(content)
+    blocks = DataBoundary.unwrap(content)
     hop_block = blocks.find { |b| b[:label] == "knowledge hop" }
     refute_nil hop_block
     expected = "#{File.basename(source_dir)}/#{File.basename(source_dir)}.md"
@@ -439,10 +439,10 @@ class NodePacketBudgetTest < Minitest::Test
   # --- post-execution review B3, A2: real project.yml, real default reader ---
 
   # Nests the intent dir under home/projects/<slug>/store/... so
-  # `NodePacket::PROJECT_LAYOUT_RE` matches and `default_project_reader`
+  # `NodeInput::PROJECT_LAYOUT_RE` matches and `default_project_reader`
   # (the real one, not a test double) is exercised end to end.
   def with_project_layout(slug: "demo-project")
-    home = Dir.mktmpdir("node-packet-project-layout")
+    home = Dir.mktmpdir("node-input-project-layout")
     nested_dir = File.join(home, "projects", slug, "store", "1--demo")
     FileUtils.mkdir_p(File.join(nested_dir, "nodes"))
     FileUtils.mkdir_p(File.join(home, "projects", slug))
@@ -456,7 +456,7 @@ class NodePacketBudgetTest < Minitest::Test
 
   def build_in_place(node: "n1", **overrides)
     defaults = { intent_dir: @dir, node: node, worktree_reader: NULL_WORKTREE_READER, git_runner: NULL_GIT_RUNNER }
-    NodePacket.build(**defaults.merge(overrides))
+    NodeInput.build(**defaults.merge(overrides))
   end
 
   # B3: the same bug class `record_sources` already fixed once (607e31e).
@@ -484,7 +484,7 @@ class NodePacketBudgetTest < Minitest::Test
   # are in play - `default_project_reader` collapses every line of `verify`
   # into one with "; " before it ever reaches block 5 (so the forged line
   # never survives as a standalone line at all), and
-  # `PacketWrapper.neutralize_marker_lines` disarms any full marker line
+  # `DataBoundary.neutralize_marker_lines` disarms any full marker line
   # that DOES reach block 5 or block 1 regardless of how it got there. Proof
   # that removing either alone still leaves the packet safe: if the collapse
   # were removed, the raw "\n" inside `verify` would still produce a real
@@ -507,7 +507,7 @@ class NodePacketBudgetTest < Minitest::Test
       result = build_in_place
       assert result[:ok], result[:errors].inspect
       content = File.read(result[:path])
-      blocks = PacketWrapper.unwrap(content)
+      blocks = DataBoundary.unwrap(content)
       assert_equal ["ledger", "record"], blocks.map { |b| b[:label] }
       refute_includes content.each_line.map(&:chomp), forged
     end
@@ -526,7 +526,7 @@ class NodePacketBudgetTest < Minitest::Test
       result = build_in_place
       assert result[:ok], result[:errors].inspect
       content = File.read(result[:path])
-      blocks = PacketWrapper.unwrap(content)
+      blocks = DataBoundary.unwrap(content)
       assert_equal ["ledger", "record"], blocks.map { |b| b[:label] }
       refute_includes content.each_line.map(&:chomp), forged
     end
@@ -544,7 +544,7 @@ class NodePacketBudgetTest < Minitest::Test
     result = build
     assert result[:ok], result[:errors].inspect
     content = File.read(result[:path])
-    blocks = PacketWrapper.unwrap(content)
+    blocks = DataBoundary.unwrap(content)
     assert_equal ["ledger", "record"], blocks.map { |b| b[:label] }
     refute_includes content.each_line.map(&:chomp), forged
   end
