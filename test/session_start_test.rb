@@ -787,6 +787,7 @@ end
 # a boot must never write the fixture's own watch.state or watch.record.
 class SessionStartWatchTest < Minitest::Test
   HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
+  PLUGIN_ROOT = File.expand_path("..", __dir__)
 
   MATRIX = <<~MD
     | Operation | Failure mode | Test |
@@ -812,7 +813,7 @@ class SessionStartWatchTest < Minitest::Test
 
   def run_hook(stdin_data: "", session_id: "sess-watch")
     env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => session_id }
-    Open3.capture3(env, "ruby", HOOK, @index, @home, "global", stdin_data: stdin_data)
+    Open3.capture3(env, "ruby", HOOK, @index, @home, "global", PLUGIN_ROOT, stdin_data: stdin_data)
   end
 
   def context(**kwargs)
