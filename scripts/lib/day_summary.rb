@@ -12,6 +12,7 @@ require "time"
 require_relative "session_ledger"
 require_relative "handoff"
 require_relative "lock"
+require_relative "active_delivery"
 require_relative "report_screen"
 
 module DaySummary
@@ -43,7 +44,7 @@ module DaySummary
       open: open_items(store, day),
       done: last_done(store, day),
       live: live_intents(home, now: now),
-      others: active_sessions(store, session, now: now, ttl: heartbeat_ttl),
+      others: active_sessions(store, session, now: now, ttl: heartbeat_ttl, home: home),
     }
     hidden = Hash.new(0)
     cap!(lists, hidden, :open, OPEN_CAP, keep: :newest)
@@ -142,7 +143,7 @@ module DaySummary
     "(no savepoint yet)"
   end
 
-  def active_sessions(store, session, now:, ttl:)
+  def active_sessions(store, session, now:, ttl:, home: nil)
     tmp_root = SessionLedger.tmp_root(store)
     return [] unless File.directory?(tmp_root)
 
@@ -155,7 +156,7 @@ module DaySummary
       age = heartbeat_age(dir, now)
       next if age.nil? || age > ttl
 
-      "- #{sid} (#{(age / 60).floor}m ago, on #{pointer_of(dir)})"
+      "- #{sid} (#{(age / 60).floor}m ago, on #{delivering_label(store, home, sid, now)})"
     end
   rescue SystemCallError
     []
@@ -178,14 +179,21 @@ module DaySummary
     nil
   end
 
-  def pointer_of(dir)
-    path = File.join(dir, "current")
-    return "?" unless File.file?(path)
+  # The delivering intent's id, or "day ledger" (344 n2, D4-D7): the
+  # basename before "--" of ActiveDelivery.resolve_by_short_session's
+  # match, else the session records into today's day ledger.
+  def delivering_label(store, home, sid, now)
+    return "day ledger" if home.to_s.empty?
 
-    value = File.read(path).strip
-    value.empty? ? "?" : value[0, 80]
-  rescue SystemCallError
-    "?"
+    dir = ActiveDelivery.resolve_by_short_session(
+      global_store: store,
+      project_roots: ActiveDelivery.project_roots(home),
+      short_session: sid,
+      now: now
+    )
+    dir ? File.basename(dir).split("--", 2).first : "day ledger"
+  rescue StandardError
+    "day ledger"
   end
 
   # --- rendering, pure -------------------------------------------------------------

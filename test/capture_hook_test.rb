@@ -508,6 +508,8 @@ end
                  File.join(scripts, "lib", "dashboard_banner.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "qmd_sync.rb"), File.join(scripts, "lib", "qmd_sync.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "packet_wrapper.rb"), File.join(scripts, "lib", "packet_wrapper.rb"))
+    FileUtils.cp(File.join(real_scripts, "lib", "active_delivery.rb"), File.join(scripts, "lib", "active_delivery.rb"))
+    FileUtils.cp(File.join(real_scripts, "lib", "lock.rb"), File.join(scripts, "lib", "lock.rb"))
     FileUtils.chmod(0o755, File.join(scripts, "hook-capture"))
     root
   end
