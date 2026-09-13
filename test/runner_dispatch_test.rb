@@ -16,13 +16,13 @@ require_relative "../scripts/lib/node_ledger"
 require_relative "../scripts/lib/ready_set"
 require_relative "../scripts/lib/graph_file"
 require_relative "../scripts/lib/node_worktree"
-require_relative "../scripts/lib/node_packet"
+require_relative "../scripts/lib/node_input"
 require_relative "../scripts/lib/work_graph_validator"
 require_relative "../scripts/lib/worktree"
 require_relative "../scripts/lib/guarded_append"
 
 # A ledger double that records when `running` is about to be written, so a
-# test can prove the packet exists on disk before that call happens (matrix
+# test can prove the node input exists on disk before that call happens (matrix
 # row 5.18), without reaching into RunnerDispatch's own internals.
 class OrderSpyLedger
   def initialize(order)
@@ -38,7 +38,7 @@ end
 
 # A ledger double that refuses every `running` write outright, standing in
 # for a concurrent writer that made the subject no longer ready between the
-# packet build and the guarded append (matrix row 5.20).
+# input build and the guarded append (matrix row 5.20).
 class RefusingRunningLedger
   def append_transition(path, subject:, state:, fields: {}, now: Time.now, precondition: nil)
     return :refused if state == "running"
@@ -206,7 +206,7 @@ class RunnerDispatchTest < Minitest::Test
     write_graph("- verify: none reason=fixture\n- n1 needs nothing\n- n2 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_node("n2.md", node: "n2", kind: "work")
-    write_savepoint(line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p",
+    write_savepoint(line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p",
                               model: "sonnet"))
     ctx = build_context
 
@@ -223,7 +223,7 @@ class RunnerDispatchTest < Minitest::Test
     write_graph("- n1 needs n2\n- n2 needs n1\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_node("n2.md", node: "n2", kind: "work")
-    write_savepoint(line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p",
+    write_savepoint(line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p",
                               model: "sonnet"))
     ctx = build_context
 
@@ -253,8 +253,8 @@ class RunnerDispatchTest < Minitest::Test
     write_graph("- verify: none reason=fixture\n- n1 needs nothing\n- n2 needs nothing\n- n3 needs nothing\n")
     %w[n1 n2 n3].each { |n| write_node("#{n}.md", node: n, kind: "work") }
     write_savepoint(
-      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p1", model: "sonnet") +
-      line("n2", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p2", model: "sonnet")
+      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p1", model: "sonnet") +
+      line("n2", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p2", model: "sonnet")
     )
     ctx = build_context
 
@@ -284,7 +284,7 @@ class RunnerDispatchTest < Minitest::Test
     write_graph("- verify: none reason=fixture\n- n1 needs nothing\n- n2 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work", files: ["scripts/lib/shared.rb"])
     write_node("n2.md", node: "n2", kind: "work", files: ["scripts/lib/shared.rb"])
-    write_savepoint(line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p1",
+    write_savepoint(line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p1",
                               model: "sonnet"))
     ctx = build_context
 
@@ -329,9 +329,9 @@ class RunnerDispatchTest < Minitest::Test
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_savepoint(
-      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p1", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p1", model: "sonnet") +
       line("n1", "failed_verification", holder: "h", gates: "g", reason: "suite_red") +
-      line("n1", "running", holder: "h", expires: "2026-01-01T02:00:00Z", packet: "p2", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T02:00:00Z", input: "p2", model: "sonnet") +
       line("n1", "failed_verification", holder: "h", gates: "g", reason: "suite_red")
     )
     ctx = build_context
@@ -344,25 +344,25 @@ class RunnerDispatchTest < Minitest::Test
     assert_equal "needs_decision", NodeLedger.status_for(savepoint_path, "n1")
   end
 
-  # --- 5.18: the packet is built before `running` is written -----------------
+  # --- 5.18: the node input is built before `running` is written -----------------
 
-  def test_packet_built_before_running_line
+  def test_input_built_before_running_line
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     ctx = build_context
 
     order = []
-    packet_builder = lambda do |**kwargs|
-      order << :packet
-      NodePacket.build(**kwargs)
+    input_builder = lambda do |**kwargs|
+      order << :input
+      NodeInput.build(**kwargs)
     end
 
-    result = RunnerDispatch.dispatch(ctx, packet_builder: packet_builder, ledger: OrderSpyLedger.new(order))
+    result = RunnerDispatch.dispatch(ctx, input_builder: input_builder, ledger: OrderSpyLedger.new(order))
     assert_equal 1, result[:dispatched].length, result.inspect
-    assert_equal [:packet, :running], order
+    assert_equal [:input, :running], order
   end
 
-  # --- 5.19: `running` carries holder=, expires=, packet= and model= ---------
+  # --- 5.19: `running` carries holder=, expires=, input= and model= ---------
 
   def test_running_line_carries_required_fields
     write_graph("- n1 needs nothing\n")
@@ -375,7 +375,27 @@ class RunnerDispatchTest < Minitest::Test
     entry = NodeLedger.last_running(savepoint_path, "n1")
     refute_nil entry
     fields = entry[:fields]
-    %w[holder expires packet model].each { |k| refute_nil fields[k], "running line missing #{k}=" }
+    %w[holder expires input model].each { |k| refute_nil fields[k], "running line missing #{k}=" }
+  end
+
+  # --- intent 338a, n1, matrix 1.10: the dispatcher writes input=, never the
+  # field NodeInputCompatibility::LEGACY_FIELD names, on the `running` line
+  # it appends ------------------------------------------------------------
+
+  def test_running_line_carries_input_field
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    ctx = build_context
+
+    result = RunnerDispatch.dispatch(ctx)
+    assert result[:ok], result[:errors].inspect
+
+    entry = NodeLedger.last_running(savepoint_path, "n1")
+    refute_nil entry
+    fields = entry[:fields]
+    refute_nil fields["input"], "running line missing input="
+    assert_nil fields[NodeInputCompatibility::LEGACY_FIELD],
+               "running line must never carry the retired #{NodeInputCompatibility::LEGACY_FIELD}= field"
   end
 
   # --- intent 355, n2, matrix 2.3: `running` carries calls=<cap> -------------
@@ -394,7 +414,7 @@ class RunnerDispatchTest < Minitest::Test
                  "the running line must carry work's shipped call cap"
   end
 
-  # --- 5.20: a refused `running` rolls back the worktree and the packet -----
+  # --- 5.20: a refused `running` rolls back the worktree and the node input -----
 
   def test_refused_running_rolls_back_side_effects
     setup_real_repo
@@ -408,13 +428,13 @@ class RunnerDispatchTest < Minitest::Test
 
     node_path = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}--n1")
     refute Dir.exist?(node_path), "a refused running write must roll back the worktree it provisioned"
-    refute Dir.glob(File.join(@dir, "packets", "n1--a*.packet")).any?,
-           "a refused running write must roll back the packet it built"
+    refute Dir.glob(File.join(@dir, "attempts", "n1--a*.input")).any?,
+           "a refused running write must roll back the node input it built"
   end
 
-  # --- 5.22: the plan lists packet, model, worktree, kind and role -----------
+  # --- 5.22: the plan lists node input, model, worktree, kind and role -----------
 
-  def test_plan_lists_packet_model_worktree_kind_role
+  def test_plan_lists_input_model_worktree_kind_role
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     ctx = build_context
@@ -426,7 +446,7 @@ class RunnerDispatchTest < Minitest::Test
     assert_equal "executor", entry[:role]
     assert_equal RunnerPolicy::DEFAULT_EXECUTOR_MODEL, entry[:model]
     assert entry.key?(:worktree)
-    assert entry[:packet] && File.exist?(entry[:packet])
+    assert entry[:input] && File.exist?(entry[:input])
 
     plan = YAML.safe_load(result[:plan])
     row = plan["dispatch"].first
@@ -434,19 +454,19 @@ class RunnerDispatchTest < Minitest::Test
     assert_equal entry[:kind], row["kind"]
     assert_equal entry[:role], row["role"]
     assert_equal entry[:model], row["model"]
-    assert_equal entry[:packet], row["packet"]
+    assert_equal entry[:input], row["input"]
   end
 
-  # --- 5.23: the return contract lives in the plan, never in the packet -----
+  # --- 5.23: the return contract lives in the plan, never in the node input -----
 
-  def test_return_contract_is_in_plan_not_packet
+  def test_return_contract_is_in_plan_not_input
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     ctx = build_context
 
     result = RunnerDispatch.dispatch(ctx)
-    packet_bytes = File.read(result[:dispatched].first[:packet])
-    refute_includes packet_bytes, "RETURN CONTRACT"
+    input_bytes = File.read(result[:dispatched].first[:input])
+    refute_includes input_bytes, "RETURN CONTRACT"
     assert_includes result[:plan], "RETURN CONTRACT"
   end
 
@@ -475,7 +495,7 @@ class RunnerDispatchTest < Minitest::Test
     entry = result[:dispatched].first
     refute_nil entry[:spawn], "a dispatched node must carry its own spawn block"
     assert_includes entry[:spawn], "agent: #{RunnerDispatch::SPAWN_AGENT}"
-    assert_includes entry[:spawn], "packet: #{entry[:packet]}"
+    assert_includes entry[:spawn], "input: #{entry[:input]}"
     assert_includes entry[:spawn], "ruby bin/test --only test/x_test.rb"
     assert_includes entry[:spawn], RunnerPolicy.call_cap("work").to_s
 
@@ -486,10 +506,10 @@ class RunnerDispatchTest < Minitest::Test
   # --- n6, 6.2: the spawn block's model comes from RunnerPolicy.model_for ---
 
   def test_spawn_block_model_from_policy
-    work_block = RunnerDispatch.spawn_block(model: RunnerPolicy.model_for("work"), packet: "/tmp/n1--a.packet",
+    work_block = RunnerDispatch.spawn_block(model: RunnerPolicy.model_for("work"), input: "/tmp/n1--a.input",
                                              test_command: "test command: ruby bin/test --only test/x_test.rb",
                                              call_cap: RunnerPolicy.call_cap("work"))
-    verify_block = RunnerDispatch.spawn_block(model: RunnerPolicy.model_for("verify"), packet: "/tmp/n2--a.packet",
+    verify_block = RunnerDispatch.spawn_block(model: RunnerPolicy.model_for("verify"), input: "/tmp/n2--a.input",
                                                test_command: "test command: ruby bin/test --only test/y_test.rb",
                                                call_cap: RunnerPolicy.call_cap("verify"))
 
@@ -497,6 +517,16 @@ class RunnerDispatchTest < Minitest::Test
     assert_includes verify_block, "model: #{RunnerPolicy.model_for('verify')}"
     refute_equal RunnerPolicy.model_for("work"), RunnerPolicy.model_for("verify"),
                  "the fixture must exercise two different resolved models"
+  end
+
+  # --- 338a n4, 4.2: the spawn block names the input path, never the retired key ---
+
+  def test_spawn_block_names_the_input_path
+    block = RunnerDispatch.spawn_block(model: "sonnet", input: "/tmp/n1--a1.input",
+                                        test_command: "test command: none", call_cap: 60)
+    assert_includes block, "input: /tmp/n1--a1.input"
+    retired = "pack" + "et"
+    refute_match(/^#{retired}: /, block, "the spawn block must not keep a #{retired}: line: #{block.inspect}")
   end
 
   # --- n6, 6.4: the plan's data carries the fully rendered spawn block ------
@@ -551,7 +581,7 @@ class RunnerDispatchTest < Minitest::Test
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     content = (1..3).map do |i|
-      line("n1", "running", holder: "h", expires: "2026-01-01T0#{i}:00:00Z", packet: "p#{i}", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T0#{i}:00:00Z", input: "p#{i}", model: "sonnet") +
         line("n1", "reclaimed", holder: "h", expired: "2026-01-01T0#{i}:00:00Z")
     end.join
     write_savepoint(content)
@@ -570,9 +600,9 @@ class RunnerDispatchTest < Minitest::Test
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_savepoint(
-      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p1", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p1", model: "sonnet") +
       line("n1", "failed_verification", holder: "h", gates: "g", reason: "suite_red") +
-      line("n1", "running", holder: "h", expires: "2026-01-01T02:00:00Z", packet: "p2", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T02:00:00Z", input: "p2", model: "sonnet") +
       line("n1", "failed_verification", holder: "h", gates: "g", reason: "suite_red")
     )
     ctx = build_context
@@ -594,9 +624,9 @@ class RunnerDispatchTest < Minitest::Test
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_savepoint(
-      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p1", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p1", model: "sonnet") +
       line("n1", "failed_verification", holder: "h", gates: "g", reason: "suite_red") +
-      line("n1", "running", holder: "h", expires: "2026-01-01T02:00:00Z", packet: "p2", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T02:00:00Z", input: "p2", model: "sonnet") +
       line("n1", "failed_verification", holder: "h", gates: "g", reason: "suite_red")
     )
     ctx = build_context
@@ -606,9 +636,9 @@ class RunnerDispatchTest < Minitest::Test
     assert_match(/\Arunner answer #{Regexp.escape(@dir)} --node n1 --answer /, cmd)
   end
 
-  # --- 5.29: the packet names the node worktree and node branch --------------
+  # --- 5.29: the node input names the node worktree and node branch --------------
 
-  def test_packet_names_node_worktree_and_branch
+  def test_input_names_node_worktree_and_branch
     setup_real_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
@@ -622,18 +652,18 @@ class RunnerDispatchTest < Minitest::Test
     node_branch = "plastic/#{INTENT_ID}--#{INTENT_SLUG}--n1"
     assert_equal node_path, entry[:worktree]
 
-    packet_text = File.read(entry[:packet])
-    assert_includes packet_text, "worktree: #{node_path} (branch #{node_branch})"
-    refute_includes packet_text, "worktree: #{@intent_worktree} (branch #{@intent_branch})"
+    input_text = File.read(entry[:input])
+    assert_includes input_text, "worktree: #{node_path} (branch #{node_branch})"
+    refute_includes input_text, "worktree: #{@intent_worktree} (branch #{@intent_branch})"
   end
 
-  # --- 5.30: an orphan packet (no running line for its attempt) is rebuilt --
+  # --- 5.30: an orphan node input (no running line for its attempt) is rebuilt --
 
-  def test_orphan_packet_is_rebuilt_with_force
+  def test_orphan_input_is_rebuilt_with_force
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
-    FileUtils.mkdir_p(File.join(@dir, "packets"))
-    orphan_path = File.join(@dir, "packets", "n1--a1.packet")
+    FileUtils.mkdir_p(File.join(@dir, "attempts"))
+    orphan_path = File.join(@dir, "attempts", "n1--a1.input")
     File.write(orphan_path, "stale bytes from a crashed dispatch\n")
     ctx = build_context
 
@@ -655,7 +685,7 @@ class RunnerDispatchTest < Minitest::Test
     assert_equal "lock_not_held", result[:reason]
     assert_empty result[:dispatched]
     refute File.exist?(savepoint_path), "a lock refusal must write nothing"
-    refute Dir.exist?(File.join(@dir, "packets")), "a lock refusal must build no packet"
+    refute Dir.exist?(File.join(@dir, "attempts")), "a lock refusal must build no node input"
   end
 
   # --- 5.32: the lock refusal prints the re-arm command -----------------------
@@ -698,43 +728,43 @@ class RunnerDispatchTest < Minitest::Test
     assert_equal "running", row[:state]
   end
 
-  # --- 10.6: a failed packet build rolls back the worktree it provisioned (M6) --
+  # --- 10.6: a failed input build rolls back the worktree it provisioned (M6) --
 
-  def test_failed_packet_build_rolls_back_the_worktree
+  def test_failed_input_build_rolls_back_the_worktree
     setup_real_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     ctx = build_context(worktree: @intent_worktree, worktree_branch: @intent_branch)
 
-    failing_builder = ->(**_kwargs) { { ok: false, errors: ["synthetic packet build failure"] } }
+    failing_builder = ->(**_kwargs) { { ok: false, errors: ["synthetic input build failure"] } }
 
-    result = RunnerDispatch.dispatch(ctx, packet_builder: failing_builder)
+    result = RunnerDispatch.dispatch(ctx, input_builder: failing_builder)
     assert result[:ok], result[:errors].inspect
     assert_empty result[:dispatched]
 
     node_path = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}--n1")
-    refute Dir.exist?(node_path), "a failed packet build must roll back the worktree it provisioned"
+    refute Dir.exist?(node_path), "a failed input build must roll back the worktree it provisioned"
   end
 
-  # --- 10.7: a failed packet build's errors reach the step's blockers (M6) ----
+  # --- 10.7: a failed input build's errors reach the step's blockers (M6) ----
 
-  def test_failed_packet_build_names_the_node_and_the_reason
+  def test_failed_input_build_names_the_node_and_the_reason
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     ctx = build_context
 
-    failing_builder = ->(**_kwargs) { { ok: false, errors: ["synthetic packet build failure"] } }
+    failing_builder = ->(**_kwargs) { { ok: false, errors: ["synthetic input build failure"] } }
 
-    result = RunnerDispatch.dispatch(ctx, packet_builder: failing_builder)
+    result = RunnerDispatch.dispatch(ctx, input_builder: failing_builder)
     assert result[:ok], result[:errors].inspect
     assert_empty result[:dispatched]
     assert_equal "stalled", result[:status]
     refute_empty result[:blockers]
-    assert(result[:blockers].any? { |b| b.include?("n1") && b.include?("synthetic packet build failure") },
+    assert(result[:blockers].any? { |b| b.include?("n1") && b.include?("synthetic input build failure") },
            result[:blockers].inspect)
   end
 
-  # --- 10.8: the node's declared budget: reaches the packet builder (M7) ------
+  # --- 10.8: the node's declared budget: reaches the input builder (M7) ------
 
   def test_dispatch_passes_the_nodes_declared_budget
     write_graph("- n1 needs nothing\n")
@@ -744,10 +774,10 @@ class RunnerDispatchTest < Minitest::Test
     seen_budget = nil
     spy_builder = lambda do |**kwargs|
       seen_budget = kwargs[:budget_tokens]
-      NodePacket.build(**kwargs)
+      NodeInput.build(**kwargs)
     end
 
-    result = RunnerDispatch.dispatch(ctx, packet_builder: spy_builder)
+    result = RunnerDispatch.dispatch(ctx, input_builder: spy_builder)
     assert result[:ok], result[:errors].inspect
     assert_equal 123_456, seen_budget
   end
@@ -758,8 +788,8 @@ class RunnerDispatchTest < Minitest::Test
     write_graph("- verify: none reason=fixture\n- n1 needs nothing\n- n2 needs nothing\n- n3 needs nothing\n")
     %w[n1 n2 n3].each { |n| write_node("#{n}.md", node: n, kind: "work") }
     write_savepoint(
-      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p1", model: "sonnet") +
-      line("n2", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p2", model: "sonnet")
+      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p1", model: "sonnet") +
+      line("n2", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p2", model: "sonnet")
     )
     ctx = build_context
 
@@ -800,8 +830,8 @@ class RunnerDispatchTest < Minitest::Test
     write_node("n1.md", node: "n1", kind: "work")
     write_node("n2.md", node: "n2", kind: "work")
     write_savepoint(
-      line("Intent", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "px", model: "sonnet") +
-      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p1", model: "sonnet")
+      line("Intent", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "px", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p1", model: "sonnet")
     )
     ctx = build_context
 
@@ -820,7 +850,7 @@ class RunnerDispatchTest < Minitest::Test
     write_node("n1.md", node: "n1", kind: "work")
     write_node("n2.md", node: "n2", kind: "work")
     write_savepoint(
-      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", packet: "p1", model: "sonnet")
+      line("n1", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p1", model: "sonnet")
     )
     ctx = build_context
 

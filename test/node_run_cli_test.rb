@@ -11,7 +11,7 @@ require "yaml"
 require "json"
 
 require_relative "../scripts/lib/node_ledger"
-require_relative "../scripts/lib/node_packet"
+require_relative "../scripts/lib/node_input"
 require_relative "../scripts/lib/node_worktree"
 require_relative "../scripts/lib/node_return"
 require_relative "../scripts/lib/ready_set"
@@ -152,14 +152,14 @@ class NodeRunCliTest < Minitest::Test
     NodeWorktree.provision(build_context, node: node, kind: kind)
   end
 
-  # A ready node with a real running line and a real, hashed packet on disk
+  # A ready node with a real running line and a real, hashed node input on disk
   # at `attempt` - the fixture every non-refusal row needs.
   def build_running_node(node: "n1", session: "sess-1", attempt: 1, expires: "2099-01-01T00:00:00Z")
-    build = NodePacket.build(intent_dir: @dir, node: node, holder: session, expires: expires, model: "sonnet",
+    build = NodeInput.build(intent_dir: @dir, node: node, holder: session, expires: expires, model: "sonnet",
                               attempt: attempt, force: true)
-    raise "packet build failed: #{build[:errors].inspect}" unless build[:ok]
+    raise "input build failed: #{build[:errors].inspect}" unless build[:ok]
 
-    append_savepoint(line(node, "running", holder: session, expires: expires, packet: build[:sha], model: "sonnet"))
+    append_savepoint(line(node, "running", holder: session, expires: expires, input: build[:sha], model: "sonnet"))
     build
   end
 
@@ -231,9 +231,9 @@ class NodeRunCliTest < Minitest::Test
     { "PATH" => "#{codex_stub_bin}#{File::PATH_SEPARATOR}#{ENV['PATH']}" }.merge(extra)
   end
 
-  # --- 6.11: the attempt number comes from NodePacket.compute_attempt_number --
+  # --- 6.11: the attempt number comes from NodeInput.compute_attempt_number --
 
-  def test_packet_path_comes_from_compute_attempt_number
+  def test_input_path_comes_from_compute_attempt_number
     setup_real_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
@@ -250,24 +250,24 @@ class NodeRunCliTest < Minitest::Test
     out, err, status = run_cli(@dir, "--node", "n1", "--session", "sess-1", env: stub_env)
 
     assert status.success?, err
-    assert_equal File.join(@dir, "packets", "n1--a2.return.yml"), out.strip
-    refute File.exist?(File.join(@dir, "packets", "n1--a1.return.yml")),
-      "attempt 1's packet must never be the one this call absorbs"
+    assert_equal File.join(@dir, "attempts", "n1--a2.return.yml"), out.strip
+    refute File.exist?(File.join(@dir, "attempts", "n1--a1.return.yml")),
+      "attempt 1's node input must never be the one this call absorbs"
   end
 
-  # --- 6.12: a resolved packet that does not hash to packet= is refused -------
+  # --- 6.12: a resolved node input that does not hash to input= is refused --------
 
-  def test_refuses_on_packet_hash_mismatch
+  def test_refuses_on_input_hash_mismatch
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
 
-    build = NodePacket.build(intent_dir: @dir, node: "n1", holder: "sess-1", expires: "2099-01-01T00:00:00Z",
+    build = NodeInput.build(intent_dir: @dir, node: "n1", holder: "sess-1", expires: "2099-01-01T00:00:00Z",
                               model: "sonnet", attempt: 1, force: true)
     assert build[:ok], build[:errors].inspect
 
     append_savepoint(line("n1", "running", holder: "sess-1", expires: "2099-01-01T00:00:00Z",
-                            packet: "deadbeefdead", model: "sonnet"))
+                            input: "deadbeefdead", model: "sonnet"))
 
     before = File.read(savepoint_path)
     out, err, status = run_cli(@dir, "--node", "n1", "--session", "sess-1")
@@ -276,7 +276,7 @@ class NodeRunCliTest < Minitest::Test
     assert_match(/does not hash/, err)
     assert_empty out
     assert_equal before, File.read(savepoint_path)
-    refute File.exist?(File.join(@dir, "packets", "n1--a1.return.yml"))
+    refute File.exist?(File.join(@dir, "attempts", "n1--a1.return.yml"))
   end
 
   # --- 6.13: no live running line at all is refused ----------------------------
@@ -293,20 +293,20 @@ class NodeRunCliTest < Minitest::Test
     assert_empty out
   end
 
-  # --- 6.14: the packet the running line names is missing from disk -----------
+  # --- 6.14: the node input the running line names is missing from disk -----------
 
-  def test_refuses_when_packet_missing
+  def test_refuses_when_input_missing
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
 
     append_savepoint(line("n1", "running", holder: "sess-1", expires: "2099-01-01T00:00:00Z",
-                            packet: "abcdefabcdef", model: "sonnet"))
+                            input: "abcdefabcdef", model: "sonnet"))
 
     out, err, status = run_cli(@dir, "--node", "n1", "--session", "sess-1")
 
     refute status.success?
-    assert_match(/packet is missing/, err)
+    assert_match(/node input is missing/, err)
     assert_empty out
   end
 
@@ -359,7 +359,7 @@ class NodeRunCliTest < Minitest::Test
     out1, err1, status1 = run_cli(@dir, "--node", "n1", "--session", "sess-1", env: stub_env)
     assert status1.success?, err1
     path1 = out1.strip
-    assert_equal File.join(@dir, "packets", "n1--a1.return.yml"), path1
+    assert_equal File.join(@dir, "attempts", "n1--a1.return.yml"), path1
     content1 = File.read(path1)
 
     append_savepoint(line("n1", "failed_verification", reason: "synthetic"))
@@ -367,7 +367,7 @@ class NodeRunCliTest < Minitest::Test
     out2, err2, status2 = run_cli(@dir, "--node", "n1", "--session", "sess-1", env: stub_env)
     assert status2.success?, err2
     path2 = out2.strip
-    assert_equal File.join(@dir, "packets", "n1--a2.return.yml"), path2
+    assert_equal File.join(@dir, "attempts", "n1--a2.return.yml"), path2
 
     refute_equal path1, path2
     assert File.exist?(path1), "attempt 1's return must survive attempt 2's run"
@@ -467,7 +467,23 @@ class NodeRunCliTest < Minitest::Test
     out, err, status = run_cli(@dir, "--node", "n1", "--session", "sess-1", env: stub_env)
 
     assert status.success?, err
-    assert_equal File.join(@dir, "packets", "n1--a1.return.yml"), out.strip
+    assert_equal File.join(@dir, "attempts", "n1--a1.return.yml"), out.strip
+  end
+
+  # --- 338a n3, 3.4: the return lands under attempts/, not the retired directory -
+
+  def test_return_lands_under_attempts
+    setup_real_repo
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    write_lock(owner: "sess-1")
+    provision_node_worktree("n1")
+    build_running_node(node: "n1", session: "sess-1")
+
+    out, err, status = run_cli(@dir, "--node", "n1", "--session", "sess-1", env: stub_env)
+
+    assert status.success?, err
+    assert_equal File.join(@dir, "attempts", "n1--a1.return.yml"), out.strip
   end
 
   # --- 6.26: exit codes distinguish a refusal from a written return -----------

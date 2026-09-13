@@ -305,7 +305,7 @@ class RunnerCliTest < Minitest::Test
     write_node("n1.md", node: "n1", kind: "work")
     write_node("n2.md", node: "n2", kind: "work")
     write_savepoint(line("n1", "running", holder: "auto-1", expires: "2026-09-10T11:00:00Z",
-                              packet: "abc", model: "sonnet"))
+                              input: "abc", model: "sonnet"))
 
     out, err, status = run_cli("status", @dir)
     assert_equal 0, status.exitstatus, err
@@ -429,7 +429,7 @@ class RunnerCliTest < Minitest::Test
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_savepoint(line("n1", "running", holder: "auto-1", expires: "2000-01-01T00:00:00Z",
-                              packet: "abc", model: "sonnet"))
+                              input: "abc", model: "sonnet"))
 
     out, err, status = run_cli("sweep", @dir)
     assert_equal 0, status.exitstatus, out + err
@@ -471,7 +471,7 @@ class RunnerCliTest < Minitest::Test
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_savepoint(line("n1", "running", holder: holder, expires: "2099-01-01T00:00:00Z",
-                              packet: "abc", model: "sonnet"))
+                              input: "abc", model: "sonnet"))
   end
 
   def write_return_file(node: "n1", status: "done", commit: "exec1234")
@@ -526,7 +526,7 @@ class RunnerCliTest < Minitest::Test
     write_node("n1.md", node: "n1", kind: "work", files: [])
     session = "drift-session"
     write_savepoint(line("n1", "running", holder: session, expires: "2099-01-01T00:00:00Z",
-                              packet: "abc", model: "sonnet"))
+                              input: "abc", model: "sonnet"))
     write_lock(@dir, owner: session)
 
     doc = { "node" => "n1", "status" => "failed_verification", "reason" => "synthetic" }
@@ -668,7 +668,7 @@ class RunnerCliTest < Minitest::Test
     write_node("n1.md", node: "n1", kind: "work")
     session = "malformed-return-session"
     write_savepoint(line("n1", "running", holder: session, expires: "2099-01-01T00:00:00Z",
-                              packet: "abc", model: "sonnet"))
+                              input: "abc", model: "sonnet"))
     write_lock(@dir, owner: session)
 
     doc = { "node" => "n1", "status" => "failed_verification", "reason" => "ci broke" }
@@ -889,7 +889,7 @@ class RunnerCliTest < Minitest::Test
     assert_match(/complete/, File.read(last_path))
   end
 
-  # --- 1.24: runner-step.last lives beside savepoint.md, never inside packets/ --
+  # --- 1.24: runner-step.last lives beside savepoint.md, never inside attempts/ --
 
   def test_runner_step_last_lives_beside_savepoint
     write_graph("- n1 needs nothing\n")
@@ -900,8 +900,8 @@ class RunnerCliTest < Minitest::Test
     run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
 
     assert File.exist?(File.join(@dir, "runner-step.last"))
-    refute File.exist?(File.join(@dir, "packets", "runner-step.last")),
-           "runner-step.last must live beside savepoint.md, never inside packets/"
+    refute File.exist?(File.join(@dir, "attempts", "runner-step.last")),
+           "runner-step.last must live beside savepoint.md, never inside attempts/"
   end
 
   # --- 1.25: an unwritable intent directory never crashes the step ------------
@@ -1126,5 +1126,26 @@ class RunnerCliTest < Minitest::Test
                      "watch must accept --install-timer or unrecognized_flag refuses it"
     assert_includes Runner::KNOWN_FLAGS.fetch("watch", []), "--home",
                      "watch must accept --home or unrecognized_flag refuses it"
+  end
+
+  # --- 338a n4, 4.11: `runner step`'s subprocess plan names input, never the retired key ---
+
+  def test_step_subprocess_plan_names_input
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    session = "input-plan-session"
+    write_lock(@dir, owner: session)
+
+    out, err, status = run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
+    assert_equal 0, status.exitstatus, out + err
+
+    plan_yaml = out.split("...\n").first
+    plan = YAML.safe_load(plan_yaml, permitted_classes: [], aliases: false)
+    entry = plan["dispatch"]&.first
+    refute_nil entry, "the plan must dispatch n1: #{out.inspect}"
+    assert entry.key?("input"), "the dispatch entry must carry an input key: #{entry.inspect}"
+    assert File.exist?(entry["input"]), "the input path the plan names must exist: #{entry["input"]}"
+    retired = "pack" + "et"
+    refute entry.key?(retired), "the dispatch entry must not keep the retired #{retired} key: #{entry.inspect}"
   end
 end

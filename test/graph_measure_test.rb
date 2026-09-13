@@ -73,7 +73,7 @@ class GraphMeasureTest < Minitest::Test
     NodeLedger.transition_line(subject: subject, state: state, fields: fields, comment: comment, now: ts)
   end
 
-  RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", packet: "abc123", model: "sonnet" }.freeze
+  RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", input: "abc123", model: "sonnet" }.freeze
 
   # --- 1.1: delegation to NodeLedger -------------------------------------------
 

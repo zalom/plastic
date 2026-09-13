@@ -6,7 +6,7 @@ require "yaml"
 require_relative "ready_set"
 require_relative "node_ledger"
 require_relative "node_file"
-require_relative "node_packet"
+require_relative "node_input"
 require_relative "node_worktree"
 require_relative "work_graph_validator"
 require_relative "runner_core"
@@ -17,12 +17,12 @@ require_relative "guarded_append"
 require_relative "harness_adapter"
 
 # RunnerDispatch (intent 340, G7, n5): validates the graph, computes the
-# ready set, applies RunnerPolicy, mints leases, builds packets, writes
+# ready set, applies RunnerPolicy, mints leases, builds node inputs, writes
 # `running`, and returns the dispatch plan `step` prints. Never spawns an
 # agent itself (327 D42): the session does that from the plan this returns.
 #
 # Pure and dependency-injected down to the clock: every side effect - the
-# full validator, the ready-set analyzer, the packet builder, the worktree
+# full validator, the ready-set analyzer, the input builder, the worktree
 # module, the ledger write, git itself - is an injectable keyword argument
 # with a real default, so a test never touches a real repository or a real
 # filesystem outside its own tmpdir.
@@ -32,7 +32,7 @@ module RunnerDispatch
   DEFAULT_LIMIT = 2
 
   # The return-schema instruction (327 D5): rides in the dispatch PLAN, never
-  # inside the packet, so `packet=<sha>` keeps naming a reproducible input
+  # inside the node input, so `input=<sha>` keeps naming a reproducible input
   # (matrix row 5.23). NodeReturn.parse (n4) is this text's implementation.
   RETURN_CONTRACT = <<~TEXT.freeze
     RETURN CONTRACT: reply with exactly one YAML document as your final
@@ -52,13 +52,13 @@ module RunnerDispatch
   SPAWN_AGENT = "plastic-executor"
 
   # matrix 6.1/6.2: one spawn block per dispatched node - agent, the model
-  # RunnerPolicy.model_for resolved, the packet path, the one test command
-  # (NodePacket.test_command_block, n4), and the call cap (n2) - fenced so a
+  # RunnerPolicy.model_for resolved, the node input path, the one test command
+  # (NodeInput.test_command_block, n4), and the call cap (n2) - fenced so a
   # session pastes it straight into the Agent tool (327 D42: the runner
   # itself never spawns).
-  def spawn_block(model:, packet:, test_command:, call_cap:, agent: SPAWN_AGENT)
-    lines = ["agent: #{agent}", "model: #{model}", "packet: #{packet}", test_command,
-             NodePacket.call_cap_sentence(call_cap)]
+  def spawn_block(model:, input:, test_command:, call_cap:, agent: SPAWN_AGENT)
+    lines = ["agent: #{agent}", "model: #{model}", "input: #{input}", test_command,
+             NodeInput.call_cap_sentence(call_cap)]
     (["```"] + lines + ["```"]).join("\n")
   end
 
@@ -69,7 +69,7 @@ module RunnerDispatch
   def dispatch(context, limit: DEFAULT_LIMIT, now: Time.now, config: {}, harness: nil, caps: ReadySet::DEFAULT_CAPS,
                validator: WorkGraphValidator.method(:validate),
                ready_analyzer: ReadySet.method(:analyze),
-               packet_builder: NodePacket.method(:build),
+               input_builder: NodeInput.method(:build),
                worktree: NodeWorktree,
                ledger: NodeLedger,
                runner: Worktree::ShellRunner.new,
@@ -132,7 +132,7 @@ module RunnerDispatch
     dispatched = []
     parked = []
     stop = nil
-    packet_failures = []
+    input_failures = []
     ceiling_blocked = false
 
     analysis[:ranked_ready].each do |row|
@@ -172,10 +172,10 @@ module RunnerDispatch
       end
 
       result = dispatch_one(context, node: node, kind: kind, now: now, config: config, harness: harness_key,
-                             caps: caps, edges: edges, nodes_decl: nodes_decl, packet_builder: packet_builder,
+                             caps: caps, edges: edges, nodes_decl: nodes_decl, input_builder: input_builder,
                              worktree: worktree, ledger: ledger, runner: runner)
-      if result[:packet_build_failed]
-        packet_failures << result
+      if result[:input_build_failed]
+        input_failures << result
         next
       end
       next unless result[:ok]
@@ -192,7 +192,7 @@ module RunnerDispatch
     RunnerCore.render_status(context) if dispatched.any? || stop || parked.any?
 
     build_report(context: context, dispatched: dispatched, stop: stop, parked: parked,
-                 ceiling_blocked: ceiling_blocked, packet_failures: packet_failures, running_count: running_count,
+                 ceiling_blocked: ceiling_blocked, input_failures: input_failures, running_count: running_count,
                  harness: harness_key)
   end
 
@@ -212,9 +212,9 @@ module RunnerDispatch
   end
   private_class_method :safe_analyze
 
-  # --- one node's whole dispatch (packet, lease, `running`) -------------------
+  # --- one node's whole dispatch (node input, lease, `running`) -------------------
 
-  def dispatch_one(context, node:, kind:, now:, config:, harness:, caps:, edges:, nodes_decl:, packet_builder:,
+  def dispatch_one(context, node:, kind:, now:, config:, harness:, caps:, edges:, nodes_decl:, input_builder:,
                     worktree:, ledger:, runner:)
     intent_dir = context.intent_dir
     savepoint_path = File.join(intent_dir.to_s, "savepoint.md")
@@ -231,7 +231,7 @@ module RunnerDispatch
     pre_existing_worktree = worktree_pre_existing?(worktree, context, node, kind)
 
     # Row 5.16/5.29: only a `work` node gets a worktree, and this is the
-    # node-scoped `worktree_reader:` D23 injects into NodePacket.build - it
+    # node-scoped `worktree_reader:` D23 injects into NodeInput.build - it
     # names THIS node's own worktree and branch, never the intent's.
     provisioned = RunnerPolicy.worktree?(kind) ? worktree.provision(context, node: node, kind: kind, runner: runner)
                                                 : unprovisioned
@@ -239,26 +239,26 @@ module RunnerDispatch
       { "code" => provisioned[:path], "code_branch" => provisioned[:branch], "provisioned" => !!provisioned[:provisioned] }
     end
 
-    # Row 5.18: build the packet BEFORE writing `running` - a `running` line
-    # naming bytes that do not exist yet is worse than a packet nobody reads.
+    # Row 5.18: build the node input BEFORE writing `running` - a `running` line
+    # naming bytes that do not exist yet is worse than a node input nobody reads.
     # Row 5.30: `force: true` always - a fresh attempt number this dispatch
     # computes is, by construction, never one `running` has already claimed,
     # so an existing file at that path is always an orphan from a step that
-    # crashed between building the packet and writing `running`, safe to
+    # crashed between building the node input and writing `running`, safe to
     # overwrite outright.
     # Row 5.20/10.8: the node's own declared budget: (M7) - nil when the node
-    # names none, in which case NodePacket.build falls back to its own
+    # names none, in which case NodeInput.build falls back to its own
     # default (row 10.9).
-    build_result = packet_builder.call(intent_dir: intent_dir, node: node, holder: holder, expires: expires,
+    build_result = input_builder.call(intent_dir: intent_dir, node: node, holder: holder, expires: expires,
                                         model: model, force: true, worktree_reader: node_reader,
                                         budget_tokens: node_declared_budget(intent_dir, node), call_cap: calls_cap)
     unless build_result[:ok]
-      # M6: a failed packet build never leaves an orphan worktree behind, and
+      # M6: a failed input build never leaves an orphan worktree behind, and
       # its errors travel back up so the step's report can name the node and
       # the reason instead of a bare "stalled" (row 10.6/10.7).
-      rollback_dispatch(context, node: node, kind: kind, packet_path: build_result[:path], runner: runner,
+      rollback_dispatch(context, node: node, kind: kind, input_path: build_result[:path], runner: runner,
                          worktree: worktree, created_this_dispatch: !pre_existing_worktree)
-      return { ok: false, packet_build_failed: true, node: node, errors: build_result[:errors] }
+      return { ok: false, input_build_failed: true, node: node, errors: build_result[:errors] }
     end
 
     precondition = lambda do |c|
@@ -267,7 +267,7 @@ module RunnerDispatch
     # Row 1.19/1.20/D21: harness= rides alongside model= on every `running`
     # line, resolved once by the caller through HarnessAdapter and threaded
     # straight through here - never re-resolved, never a literal.
-    fields = { holder: holder, expires: expires, packet: build_result[:sha], model: model, harness: harness,
+    fields = { holder: holder, expires: expires, input: build_result[:sha], model: model, harness: harness,
                calls: calls_cap }
 
     result = begin
@@ -281,18 +281,18 @@ module RunnerDispatch
     # side effects this method already produced - the node never ran, so
     # nothing may act like it did.
     unless result == :written
-      rollback_dispatch(context, node: node, kind: kind, packet_path: build_result[:path], runner: runner,
+      rollback_dispatch(context, node: node, kind: kind, input_path: build_result[:path], runner: runner,
                          worktree: worktree, created_this_dispatch: !pre_existing_worktree)
       return { ok: false }
     end
 
-    test_command = NodePacket.test_command_block(intent_dir: intent_dir, files: (nodes_decl[node] || {})[:files])
-    spawn = spawn_block(model: model, packet: build_result[:path], test_command: test_command, call_cap: calls_cap)
+    test_command = NodeInput.test_command_block(intent_dir: intent_dir, files: (nodes_decl[node] || {})[:files])
+    spawn = spawn_block(model: model, input: build_result[:path], test_command: test_command, call_cap: calls_cap)
 
     {
       ok: true,
       entry: { node: node, kind: kind.to_s, role: role_for(kind), model: model, worktree: provisioned[:path],
-                packet: build_result[:path], spawn: spawn },
+                input: build_result[:path], spawn: spawn },
     }
   end
 
@@ -331,10 +331,10 @@ module RunnerDispatch
 
   # Row 10.16/M13: `created_this_dispatch:` gates the worktree half of the
   # rollback - a worktree this call did not create (kept on disk by a prior
-  # attempt's failed_verification, D7) is never touched, only a packet this
-  # call's own `packet_builder` may have written is ever deleted.
-  def rollback_dispatch(context, node:, kind:, packet_path:, runner:, worktree:, created_this_dispatch:)
-    File.delete(packet_path) if packet_path && File.exist?(packet_path)
+  # attempt's failed_verification, D7) is never touched, only a node input this
+  # call's own `input_builder` may have written is ever deleted.
+  def rollback_dispatch(context, node:, kind:, input_path:, runner:, worktree:, created_this_dispatch:)
+    File.delete(input_path) if input_path && File.exist?(input_path)
     return unless RunnerPolicy.worktree?(kind)
     return unless created_this_dispatch
 
@@ -429,7 +429,7 @@ module RunnerDispatch
   end
   private_class_method :invalid_graph_result
 
-  def build_report(context:, dispatched:, stop:, parked:, ceiling_blocked: false, packet_failures: [],
+  def build_report(context:, dispatched:, stop:, parked:, ceiling_blocked: false, input_failures: [],
                     running_count: 0, harness: nil)
     base = empty_result.merge(dispatched: dispatched, stop: stop, parked: parked,
                                plan: render_plan(dispatched), harness: harness)
@@ -453,21 +453,21 @@ module RunnerDispatch
       if complete
         base.merge(status: "complete")
       else
-        # M6/row 10.7: a failed packet build writes no ledger line at all,
+        # M6/row 10.7: a failed input build writes no ledger line at all,
         # so `named_blockers` (ledger-derived) never sees it on its own -
         # its own node and reason are named here so `stalled` never prints
         # bare.
-        blockers = named_blockers(context) + packet_failures.map { |f| packet_failure_blocker(f) }
+        blockers = named_blockers(context) + input_failures.map { |f| input_failure_blocker(f) }
         base.merge(status: "stalled", blockers: blockers)
       end
     end
   end
   private_class_method :build_report
 
-  def packet_failure_blocker(failure)
-    "#{failure[:node]}: packet build failed (#{Array(failure[:errors]).join('; ')})"
+  def input_failure_blocker(failure)
+    "#{failure[:node]}: node input build failed (#{Array(failure[:errors]).join('; ')})"
   end
-  private_class_method :packet_failure_blocker
+  private_class_method :input_failure_blocker
 
   # Row 5.25a/5.26: every unfinished node's own blockers, with ReadySet's
   # hard-attempt-cap wording renamed so it reads as the named backstop it is
@@ -494,9 +494,9 @@ module RunnerDispatch
   private_class_method :name_blocker
 
   # Row 5.22/5.23/5.24: one machine-readable (YAML) document naming, per
-  # dispatched node, the packet path, the model, the worktree, the kind and
+  # dispatched node, the node input path, the model, the worktree, the kind and
   # the role, plus the return contract ONCE at the top level - never inside
-  # any one node's packet. Row 6.4: "spawn" carries the same, already fully
+  # any one node's input. Row 6.4: "spawn" carries the same, already fully
   # rendered spawn block for each dispatched node in order, so any reader of
   # this data (YAML today, JSON if it is ever re-serialized) finds it under
   # `spawn` rather than re-deriving it from the other fields.
@@ -507,7 +507,7 @@ module RunnerDispatch
       "return_contract" => RETURN_CONTRACT,
       "dispatch" => dispatched.map do |d|
         { "node" => d[:node], "kind" => d[:kind], "role" => d[:role], "model" => d[:model],
-          "worktree" => d[:worktree], "packet" => d[:packet] }
+          "worktree" => d[:worktree], "input" => d[:input] }
       end,
       "spawn" => dispatched.map { |d| d[:spawn] }
     )

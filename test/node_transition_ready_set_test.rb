@@ -24,7 +24,7 @@ load File.expand_path("../scripts/node-transition", __dir__)
 class NodeTransitionReadySetTest < Minitest::Test
   NODE_TRANSITION = File.expand_path("../scripts/node-transition", __dir__)
 
-  RUNNING_FIELDS = { holder: "auto-owner", expires: "2026-09-09T20:00:00Z", packet: "abc123", model: "sonnet" }.freeze
+  RUNNING_FIELDS = { holder: "auto-owner", expires: "2026-09-09T20:00:00Z", input: "abc123", model: "sonnet" }.freeze
 
   def setup
     @home = Dir.mktmpdir("node-transition-ready-set")
@@ -137,7 +137,7 @@ class NodeTransitionReadySetTest < Minitest::Test
     write_lock(@intent_dir, owner: "sess-a")
     3.times do |i|
       append_line(@intent_dir, subject: "n1", state: "running",
-                  fields: { holder: "auto-#{i}", expires: "2026-09-09T20:00:00Z", packet: "p", model: "m" })
+                  fields: { holder: "auto-#{i}", expires: "2026-09-09T20:00:00Z", input: "p", model: "m" })
       append_line(@intent_dir, subject: "n1", state: "reclaimed",
                   fields: { holder: "auto-#{i}", expired: "2026-09-09T20:00:00Z" })
     end
@@ -205,7 +205,7 @@ class NodeTransitionReadySetTest < Minitest::Test
 
     n2_running = NodeLedger.transition_line(subject: "n2", state: "running",
                                              fields: { holder: "h", expires: "2026-09-09T20:00:00Z",
-                                                       packet: "p", model: "m" })
+                                                       input: "p", model: "m" })
     refute precondition.call(n2_running),
            "the SAME precondition object must re-derive readiness from whatever content it is given, " \
            "never a value captured before the call"

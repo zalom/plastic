@@ -96,7 +96,7 @@ class DoctorNodeGraphTest < Minitest::Test
   def test_doctor_reports_an_expired_running_lease
     write_intent("1", graph_body: "## Graph\n- n1 needs nothing\n", nodes: { "n1" => "work" },
                        savepoint: "2020-01-01T00:00:00Z  n1  running holder=h expires=2020-01-01T00:05:00Z " \
-                                  "packet=p model=m\n")
+                                  "input=p model=m\n")
     result = check("node_graph_expired_running_lease")
     assert_equal "warn", result[:status]
     assert(result[:details].any? { |d| d.include?("1--demo") && d.include?("n1") })

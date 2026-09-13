@@ -10,7 +10,7 @@ require "time"
 require_relative "../scripts/lib/runner_sweep"
 require_relative "../scripts/lib/runner_core"
 require_relative "../scripts/lib/node_ledger"
-require_relative "../scripts/lib/node_packet"
+require_relative "../scripts/lib/node_input"
 require_relative "../scripts/lib/worktree"
 
 # RunnerSweep (intent 340, G7, n2): the merge abort, the reclaim, and the
@@ -76,12 +76,12 @@ class RunnerSweepTest < Minitest::Test
     "#{ts}  #{subject}  #{state}#{rendered}\n"
   end
 
-  def running_fields(expires:, holder: "auto-abc", packet: "deadbeef", model: "sonnet")
-    { holder: holder, expires: expires, packet: packet, model: model }
+  def running_fields(expires:, holder: "auto-abc", input: "deadbeef", model: "sonnet")
+    { holder: holder, expires: expires, input: input, model: model }
   end
 
   def extensions_path(node, attempt)
-    File.join(@dir, "packets", "#{node}--a#{attempt}.extensions")
+    File.join(@dir, "attempts", "#{node}--a#{attempt}.extensions")
   end
 
   # --- real git fixture (branch head + commit time) -------------------------------
@@ -259,7 +259,7 @@ class RunnerSweepTest < Minitest::Test
     init_repo
     commit_time = commit_on_node_branch("n1")
     expires_1 = (commit_time - 3600).utc.iso8601
-    FileUtils.mkdir_p(File.join(@dir, "packets"))
+    FileUtils.mkdir_p(File.join(@dir, "attempts"))
     File.write(extensions_path("n1", 1), "2026-01-01T00:00:00Z  head=aaaa\n2026-01-01T00:01:00Z  head=bbbb\n")
 
     expires_2 = (commit_time - 60).utc.iso8601
@@ -294,7 +294,25 @@ class RunnerSweepTest < Minitest::Test
     assert_match(/#{Regexp.escape(now.utc.iso8601)}/, written)
   end
 
-  # --- 2.10/2.11: the reclaim line's required fields and node-packet integration --
+  # --- 338a n3, 3.6: extensions are written and counted under attempts/ ---------
+
+  def test_extensions_file_lives_under_attempts
+    init_repo
+    commit_time = commit_on_node_branch("n1")
+    expires = (commit_time - 60).utc.iso8601
+    write_savepoint(line("n1", "running", running_fields(expires: expires)))
+    ctx = build_context(worktree: @repo)
+
+    now = commit_time + 3600
+    result = RunnerSweep.reclaim(ctx, now: now)
+
+    expected = File.join(@dir, "attempts", "n1--a1.extensions")
+    assert_equal 1, result[:extended].length
+    assert File.exist?(expected), "extension file must live under attempts/, not the retired directory"
+    assert_equal 1, File.read(expected).each_line.count
+  end
+
+  # --- 2.10/2.11: the reclaim line's required fields and node-input integration --
 
   def test_reclaim_line_carries_required_fields
     init_repo
@@ -316,15 +334,15 @@ class RunnerSweepTest < Minitest::Test
     write_savepoint(line("n1", "running", running_fields(expires: "2000-01-01T00:00:00Z")))
     ctx = build_context(worktree: @repo)
 
-    before = NodePacket.landed_commits_block(
+    before = NodeInput.landed_commits_block(
       intent_dir: @dir, node: "n1", files: ["n1.txt"], repo_dir: @repo,
       git_runner: ->(repo_dir:, files:) { "stub landed commits for #{files.join(',')}" }
     )
-    assert_nil before, "no reclaimed line yet, so node-packet must show nothing landed"
+    assert_nil before, "no reclaimed line yet, so node-input must show nothing landed"
 
     RunnerSweep.reclaim(ctx, now: Time.iso8601("2030-01-01T00:00:00Z"))
 
-    after = NodePacket.landed_commits_block(
+    after = NodeInput.landed_commits_block(
       intent_dir: @dir, node: "n1", files: ["n1.txt"], repo_dir: @repo,
       git_runner: ->(repo_dir:, files:) { "stub landed commits for #{files.join(',')}" }
     )
@@ -375,7 +393,7 @@ class RunnerSweepTest < Minitest::Test
 
   def test_torn_running_line_is_skipped
     init_repo
-    torn = "2026-01-01T00:00:00Z  n1  running holder=auto-1\n" # missing expires/packet/model
+    torn = "2026-01-01T00:00:00Z  n1  running holder=auto-1\n" # missing expires/input/model
     healthy = line("n2", "running", running_fields(expires: "2000-01-01T00:00:00Z"))
     write_savepoint(torn + healthy)
     ctx = build_context(worktree: @repo)

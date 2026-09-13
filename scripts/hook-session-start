@@ -12,7 +12,7 @@ require_relative "lib/qmd_sync"
 require_relative "lib/doctor_core"
 require_relative "lib/session_ledger"
 require_relative "lib/day_summary"
-require_relative "lib/packet_wrapper"
+require_relative "lib/data_boundary"
 require_relative "lib/active_delivery"
 require_relative "lib/runner_core"
 require_relative "lib/runner_watch"
@@ -235,14 +235,14 @@ begin
     if qmd_status[:present]
       # C23 (intent 341, G8): a QMD hit is untrusted text, so it never sits
       # loose in additionalContext alongside the owner's own banners; it
-      # rides inside PacketWrapper's data boundary.
+      # rides inside DataBoundary's data boundary.
       qmd_line = if qmd_status[:all_registered]
         "QMD: #{qmd_status[:registered].size} Plastic collections indexed (search with the qmd skill)."
       else
         "QMD detected — run `qmd-sync register --all` to index your Plastic stores for search."
       end
-      token = PacketWrapper.boundary_token([qmd_line])
-      parts << PacketWrapper.wrap(qmd_line, label: "qmd-hit", source: "qmd-sync", token: token).rstrip
+      token = DataBoundary.boundary_token([qmd_line])
+      parts << DataBoundary.wrap(qmd_line, label: "qmd-hit", source: "qmd-sync", token: token).rstrip
     end
   rescue Exception
     # Any failure (timeout, missing binary, parse error) — stay silent, never crash.

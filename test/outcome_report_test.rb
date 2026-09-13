@@ -116,11 +116,11 @@ class OutcomeReportTest < Minitest::Test
     write_graph("- n1 needs nothing\n")
     write_node("n1", title: "Title")
     write_ledger([
-      "2026-09-09T10:00:00Z  n1  running holder=h expires=2026-09-09T11:00:00Z packet=A model=sonnet\n",
+      "2026-09-09T10:00:00Z  n1  running holder=h expires=2026-09-09T11:00:00Z input=A model=sonnet\n",
       "2026-09-09T10:01:00Z  n1  failed_verification gates=tests reason=broke\n",
-      "2026-09-09T10:02:00Z  n1  running holder=h expires=2026-09-09T11:00:00Z packet=A model=sonnet\n",
+      "2026-09-09T10:02:00Z  n1  running holder=h expires=2026-09-09T11:00:00Z input=A model=sonnet\n",
       "2026-09-09T10:03:00Z  n1  failed_verification gates=tests reason=broke\n",
-      "2026-09-09T10:04:00Z  n1  running holder=h expires=2026-09-09T11:00:00Z packet=A model=sonnet\n",
+      "2026-09-09T10:04:00Z  n1  running holder=h expires=2026-09-09T11:00:00Z input=A model=sonnet\n",
       "2026-09-09T10:05:00Z  n1  done gates=tests commit=ccc3333\n",
     ])
     model = OutcomeReport.model(@dir)
@@ -167,7 +167,7 @@ class OutcomeReportTest < Minitest::Test
     write_node("n1", title: "Title")
     write_ledger([
       "2026-09-09T10:00:00Z  n1  done gates=tests commit=aaa1111\n",
-      "2026-09-09T10:05:00Z  n1  running holder=h\n", # torn: missing expires/packet/model
+      "2026-09-09T10:05:00Z  n1  running holder=h\n", # torn: missing expires/input/model
     ])
     model = OutcomeReport.model(@dir)
     assert_equal "done", model[:nodes]["n1"][:state]
@@ -292,7 +292,7 @@ class OutcomeReportTest < Minitest::Test
     write_graph("- v1 needs nothing\n")
     write_node("v1", kind: "verify", title: "Review")
     write_ledger([
-      "2026-09-09T10:00:00Z  v1  running holder=h expires=2026-09-09T11:00:00Z packet=A model=sonnet\n",
+      "2026-09-09T10:00:00Z  v1  running holder=h expires=2026-09-09T11:00:00Z input=A model=sonnet\n",
       "2026-09-09T10:05:00Z  v1  failed_verification gates=tests reason=\"3 blocking: row 7.2 tautology hides the guard\"\n",
     ])
     model = OutcomeReport.model(@dir)
@@ -310,6 +310,36 @@ class OutcomeReportTest < Minitest::Test
     write("outcome.md", text)
     write("12--slug.md", "---\nid: \"12\"\nintent: \"x\"\n---\n\n## Intent\nx\n")
     refute_empty ReportScreen.evidence_rows(@dir)
+  end
+
+  # --- intent 338a, n1, matrix 1.13: input= is dispatch metadata, never
+  # rendered as evidence in a Proven-by line -----------------------------
+
+  def test_input_field_is_not_evidence
+    model = build_model(nodes: { "n1" => a_node(fields: { "gates" => "tests", "commit" => "ccc3333",
+                                                            "input" => "deadbeef" }) })
+    text = OutcomeReport.render(model, disposition: "delivered")
+    verification = text.split("## Verification", 2)[1].to_s
+    assert_includes verification, "ccc3333"
+    refute_includes verification, "deadbeef"
+    refute_includes verification, "input="
+  end
+
+  # --- intent 338a, n1, matrix 1.14: a legacy `done` line's mapped input
+  # sha renders no differently: still no evidence -----------------------
+
+  def test_legacy_ledger_renders_no_input_sha_as_evidence
+    write_graph("- n1 needs nothing\n")
+    write_node("n1", title: "Title")
+    write_ledger([
+      "2026-09-09T10:00:00Z  n1  done gates=tests commit=ccc3333 " \
+      "#{NodeInputCompatibility::LEGACY_FIELD}=deadbeef\n",
+    ])
+    model = OutcomeReport.model(@dir)
+    text = OutcomeReport.render(model, disposition: "delivered")
+    verification = text.split("## Verification", 2)[1].to_s
+    assert_includes verification, "ccc3333"
+    refute_includes verification, "deadbeef"
   end
 
   # --- 2.9 -------------------------------------------------------------------
@@ -503,7 +533,7 @@ class OutcomeReportTest < Minitest::Test
     write_ledger([
       "2026-09-09T10:00:00Z  n2  done gates=tests commit=aaa1111\n",
       "2026-09-09T10:01:00Z  n1  superseded by=n1b\n",
-      "2026-09-09T10:02:00Z  n1  running holder=h expires=2026-09-09T11:00:00Z packet=A model=sonnet\n",
+      "2026-09-09T10:02:00Z  n1  running holder=h expires=2026-09-09T11:00:00Z input=A model=sonnet\n",
     ])
     stale = OutcomeReport.stale_nodes(entries: ledger_entries, edges: { "n2" => ["n1"] })
     refute_includes stale, "n2"

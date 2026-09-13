@@ -6,27 +6,28 @@ require "json"
 require "tmpdir"
 require_relative "node_ledger"
 require_relative "node_file"
-require_relative "node_packet"
-require_relative "packet_wrapper"
+require_relative "node_input"
+require_relative "node_input_compatibility"
+require_relative "data_boundary"
 
 # GraphMeasureBudget (intent 343, G10, n4): whether the `budget:` a node's
 # envelope declares (327 C19, D47) is a ceiling that ever actually held.
-# Intent 340 found at 22:14Z on 2026-09-10 that every runner-built packet
+# Intent 340 found at 22:14Z on 2026-09-10 that every runner-built node input
 # was capped at 8000 tokens whatever the node declared (v1 major M7); this
 # module is the measurement of whether that still holds, from the ledger
-# and the real packet files alone.
+# and the real input files alone.
 #
 # Read-only (spec D2): it opens `nodes/*.md`, `savepoint.md` and files under
-# `packets/`, and writes nothing. A measure with no source prints
-# `:unavailable`, never zero and never blank (spec D3); a packet file named
-# by `packet=` that is not on disk is counted and named by its sha, never
+# `attempts/`, and writes nothing. A measure with no source prints
+# `:unavailable`, never zero and never blank (spec D3); a input file named
+# by `input=` that is not on disk is counted and named by its sha, never
 # silently treated as zero bytes (spec D4).
 #
 # Adds no second parser and no second estimator: `NodeLedger` owns the
 # transition-line format, `NodeFile` owns the envelope's `budget:`,
-# `NodePacket` owns packet path resolution and attempt numbering, and
-# `PacketWrapper.estimate_tokens` is the one token formula, the same the
-# packet builder enforced with (spec D8).
+# `NodeInput` owns node input path resolution and attempt numbering, and
+# `DataBoundary.estimate_tokens` is the one token formula, the same the
+# input builder enforced with (spec D8).
 module GraphMeasureBudget
   module_function
 
@@ -35,7 +36,7 @@ module GraphMeasureBudget
 
   # {ok:, nodes: {id => {declared_budget:, attempts: [...]}}, ceiling: {...}}.
   # Never raises: a missing savepoint.md, a node with no envelope file, and a
-  # packet= naming a file that does not exist on disk all resolve to
+  # input= naming a file that does not exist on disk all resolve to
   # `:unavailable` fields rather than an exception.
   def read(intent_dir, node_reader: NodeFile.method(:parse))
     dir = File.expand_path(intent_dir.to_s)
@@ -54,12 +55,12 @@ module GraphMeasureBudget
       declared_budget = declared_budget_for(dir, subject, node_reader)
       attempts = indices.map do |idx|
         entry = entries[idx]
-        # Row 4.5: the attempt number is NodePacket's own count of non-torn
+        # Row 4.5: the attempt number is NodeInput's own count of non-torn
         # `running` lines up to and including this one, never
         # ReadySet.attempts_count (which resets after `done`, `superseded`
         # or `abandoned` and answers "attempts left", not "which attempt was
         # this line").
-        attempt_number = NodePacket.compute_attempt_number(
+        attempt_number = NodeInput.compute_attempt_number(
           intent_dir: dir, node: subject, lease_flag_given: false, entries: entries[0..idx]
         )
         build_attempt(dir, subject, attempt_number, entry, declared_budget)
@@ -105,9 +106,9 @@ module GraphMeasureBudget
   def attempt_model(a)
     {
       "attempt" => a[:attempt],
-      "packet_sha_declared" => av(a[:packet_sha_declared]),
+      "input_sha_declared" => av(a[:input_sha_declared]),
       "file_exists" => a[:file_exists],
-      "packet_sha_actual" => av(a[:packet_sha_actual]),
+      "input_sha_actual" => av(a[:input_sha_actual]),
       "sha_match" => a[:sha_match],
       "bytes" => av(a[:bytes]),
       "estimate_tokens" => av(a[:estimate_tokens]),
@@ -132,7 +133,7 @@ module GraphMeasureBudget
   def node_block(nodes)
     lines = ["== Budget =="]
     if nodes.empty?
-      lines << "(no packet attempts recorded)"
+      lines << "(no node input attempts recorded)"
       return lines
     end
 
@@ -179,7 +180,7 @@ module GraphMeasureBudget
   # n5's `GraphMeasureModels` already uses for its own `present?` and
   # `resolve_kind`): a local copy, not a second parser or a reopen.
   def declared_budget_for(dir, node, node_reader)
-    path = NodePacket.find_node_path(dir, node)
+    path = NodeInput.find_node_path(dir, node)
     return :unavailable unless path
 
     parsed = with_safe_path(path) { |p| p ? node_reader.call(p) : nil }
@@ -209,22 +210,22 @@ module GraphMeasureBudget
 
   def build_attempt(dir, subject, attempt_number, entry, declared_budget)
     fields = entry[:fields] || {}
-    packet_sha_declared = present?(fields["packet"]) ? fields["packet"] : :unavailable
+    input_sha_declared = present?(fields["input"]) ? fields["input"] : :unavailable
     # D8: hop= is written once, on the running line; absent means no hop
     # block was appended (the feature predates this line, or hop is off),
     # never an unknown quantity to subtract.
     hop = present?(fields["hop"]) ? fields["hop"].to_i : 0
-    path = NodePacket.packet_path(intent_dir: dir, node: subject, attempt: attempt_number)
+    path = NodeInputCompatibility.input_path(intent_dir: dir, node: subject, attempt: attempt_number)
     file_exists = File.exist?(path)
 
     if file_exists
       raw = File.binread(path)
       bytes = raw.bytesize
       sha_actual = Digest::SHA256.hexdigest(raw)[0, 12]
-      estimate = PacketWrapper.estimate_tokens(raw)
+      estimate = DataBoundary.estimate_tokens(raw)
       effective = estimate - hop
       over_budget = declared_budget.is_a?(Integer) ? effective > declared_budget : :unavailable
-      sha_match = sha_actual == packet_sha_declared
+      sha_match = sha_actual == input_sha_declared
     else
       bytes = :unavailable
       sha_actual = :unavailable
@@ -236,10 +237,10 @@ module GraphMeasureBudget
 
     {
       attempt: attempt_number,
-      packet_sha_declared: packet_sha_declared,
-      packet_path: path,
+      input_sha_declared: input_sha_declared,
+      input_path: path,
       file_exists: file_exists,
-      packet_sha_actual: sha_actual,
+      input_sha_actual: sha_actual,
       sha_match: sha_match,
       bytes: bytes,
       estimate_tokens: estimate,
@@ -258,13 +259,13 @@ module GraphMeasureBudget
 
   # --- the suspected ceiling: spec matrix rows 4.8, 4.9 -----------------------
 
-  # A run of packets whose estimates all fall under one value well below
+  # A run of node inputs whose estimates all fall under one value well below
   # their own declared budgets (row 4.8): the candidate ceiling is the
   # largest effective estimate among the usable attempts (every attempt
-  # whose declared budget and packet file are both known), and it is only
+  # whose declared budget and input file are both known), and it is only
   # reported when that value sits strictly under EVERY one of those
   # attempts' own declared budgets - never a "cluster within a few percent"
-  # of each other, which never fires against a real spread of packet sizes.
+  # of each other, which never fires against a real spread of node input sizes.
   # Row 4.9: fewer than two distinct nodes never reports a ceiling; one
   # node's own repeated attempts are not evidence of a ceiling shared across
   # the intent.
@@ -280,7 +281,7 @@ module GraphMeasureBudget
   # "Well below" needs a stated threshold: WELL_BELOW_RATIO is that
   # threshold, and a ceiling is reported only when the candidate uses no
   # more than this fraction of EVERY usable attempt's own declared budget.
-  # Reproduced against 340's real packets: declared budgets there run from
+  # Reproduced against 340's real node inputs: declared budgets there run from
   # 50000 to 160000 tokens (327 D47's per-kind defaults), and every
   # attempt's effective token count clusters between 3380 and 7717 - the
   # candidate (7717) is at most 7717/50000 = 15.4% of even the SMALLEST

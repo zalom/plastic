@@ -9,6 +9,7 @@ require "rbconfig"
 
 require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/node_ledger"
+require_relative "../scripts/lib/node_input_compatibility"
 
 # Intent 335 (G2), S2: the transition line and its reader. Matrix rows 2.1-2.45 in
 # actions/ACTION_1.md. Hermetic: Dir.mktmpdir fixtures, no environment read.
@@ -28,7 +29,7 @@ class NodeLedgerTest < Minitest::Test
     NodeLedger.transition_line(subject: subject, state: state, fields: fields, comment: comment, now: now)
   end
 
-  RUNNING_FIELDS = { holder: "auto-ce50567419", expires: "2026-09-08T19:40:40Z", packet: "1f3c9a2", model: "sonnet" }.freeze
+  RUNNING_FIELDS = { holder: "auto-ce50567419", expires: "2026-09-08T19:40:40Z", input: "1f3c9a2", model: "sonnet" }.freeze
 
   # --- 2.1-2.9: building a line ------------------------------------------------
 
@@ -86,12 +87,12 @@ class NodeLedgerTest < Minitest::Test
 
   def test_fields_render_in_a_stable_declared_order
     a = build(subject: "n1", state: "running",
-              fields: { model: "sonnet", packet: "1f3c9a2", holder: "auto-x", expires: "2026-09-08T19:40:40Z" })
+              fields: { model: "sonnet", input: "1f3c9a2", holder: "auto-x", expires: "2026-09-08T19:40:40Z" })
     b = build(subject: "n1", state: "running",
-              fields: { holder: "auto-x", expires: "2026-09-08T19:40:40Z", model: "sonnet", packet: "1f3c9a2" })
+              fields: { holder: "auto-x", expires: "2026-09-08T19:40:40Z", model: "sonnet", input: "1f3c9a2" })
     assert_equal a, b
     rest = a.chomp.split(/\s{2,}/).last
-    assert_equal "running holder=auto-x expires=2026-09-08T19:40:40Z packet=1f3c9a2 model=sonnet", rest
+    assert_equal "running holder=auto-x expires=2026-09-08T19:40:40Z input=1f3c9a2 model=sonnet", rest
   end
 
   # --- Intent 340b, G7c, n1: harness= is an accepted field on every state ----
@@ -134,17 +135,17 @@ class NodeLedgerTest < Minitest::Test
   # with the other known dispatch-time fields, ahead of every extra
   # ("... harness=codex core_drift=true").
   def test_harness_field_order_is_stable
-    fields = { model: "sonnet", packet: "1f3c9a2", holder: "auto-x", expires: "2026-09-08T19:40:40Z",
+    fields = { model: "sonnet", input: "1f3c9a2", holder: "auto-x", expires: "2026-09-08T19:40:40Z",
                harness: "codex", core_drift: "true" }
     line = build(subject: "n1", state: "running", fields: fields)
     rest = line.chomp.split(/\s{2,}/).last
-    assert_equal "running holder=auto-x expires=2026-09-08T19:40:40Z packet=1f3c9a2 model=sonnet " \
+    assert_equal "running holder=auto-x expires=2026-09-08T19:40:40Z input=1f3c9a2 model=sonnet " \
                  "harness=codex core_drift=true", rest
 
     # Insertion order must never matter (mirrors test_fields_render_in_a_stable_declared_order).
     reordered = build(subject: "n1", state: "running",
                        fields: { core_drift: "true", harness: "codex", holder: "auto-x",
-                                 expires: "2026-09-08T19:40:40Z", model: "sonnet", packet: "1f3c9a2" })
+                                 expires: "2026-09-08T19:40:40Z", model: "sonnet", input: "1f3c9a2" })
     assert_equal line, reordered
   end
 
@@ -209,10 +210,31 @@ class NodeLedgerTest < Minitest::Test
 
   # --- 2.17-2.28: required fields and vocabulary -------------------------------
 
-  def test_running_without_packet_is_refused_by_name
-    fields = RUNNING_FIELDS.reject { |k, _| k == :packet }
+  def test_running_without_input_is_refused_by_name
+    fields = RUNNING_FIELDS.reject { |k, _| k == :input }
     error = assert_raises(ArgumentError) { build(subject: "n1", state: "running", fields: fields) }
-    assert_match(/packet/, error.message)
+    assert_match(/input/, error.message)
+  end
+
+  # --- 1.6, 1.7, 1.8: node-input compatibility on the running line -----------
+
+  def test_legacy_running_line_is_not_torn
+    line = "2026-09-08T19:10:40Z  n1  running holder=auto-x expires=2026-09-08T19:40:40Z " \
+           "#{NodeInputCompatibility::LEGACY_FIELD}=1f3c9a2 model=sonnet\n"
+    refute NodeLedger.torn?(line), "a legacy running line must not read as torn: #{line.inspect}"
+  end
+
+  def test_running_with_only_the_legacy_field_is_refused
+    fields = RUNNING_FIELDS.reject { |k, _| k == :input }
+                            .merge(NodeInputCompatibility::LEGACY_FIELD.to_sym => "1f3c9a2")
+    error = assert_raises(ArgumentError) { build(subject: "n1", state: "running", fields: fields) }
+    assert_match(/input/, error.message)
+  end
+
+  def test_input_field_order_is_stable
+    line = build(subject: "n1", state: "running", fields: RUNNING_FIELDS)
+    rest = line.chomp.split(/\s{2,}/).last
+    assert_equal "running holder=auto-ce50567419 expires=2026-09-08T19:40:40Z input=1f3c9a2 model=sonnet", rest
   end
 
   def test_running_without_model_is_refused_by_name

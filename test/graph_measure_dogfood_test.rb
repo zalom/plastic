@@ -10,6 +10,8 @@ require "time"
 
 require_relative "../scripts/lib/graph_measure"
 require_relative "../scripts/lib/graph_measure_report"
+require_relative "../scripts/lib/graph_measure_budget"
+require_relative "../scripts/lib/node_input_compatibility"
 
 # GraphMeasureDogfoodTest (intent 343, G10, n3): the try-out. Runs the real
 # `scripts/graph-measure` command, through `GraphMeasure.read` and through the
@@ -57,7 +59,7 @@ class GraphMeasureDogfoodTest < Minitest::Test
 
   # --- 3.1: the fixtures themselves --------------------------------------------
 
-  def test_fixtures_are_verbatim_copies_with_packets_and_nodes
+  def test_fixtures_are_verbatim_copies_with_attempt_files_and_nodes
     src_340 = "/Users/zlatko/.plastic/projects/plastic/store/340--runner-core-in-session"
     src_337 = "/Users/zlatko/.plastic/projects/plastic/store/337--roadmap-graph"
     skip "source store 340 not present on this machine" unless Dir.exist?(src_340)
@@ -73,11 +75,11 @@ class GraphMeasureDogfoodTest < Minitest::Test
     assert_equal without_refused_vocabulary(File.read(File.join(src_337, "savepoint.md"))),
                  File.read(File.join(DIR_337, "savepoint.md"))
 
-    assert Dir.exist?(File.join(DIR_340, "packets")), "340's packets/ must be copied in (n4's budget rows need it)"
-    assert_operator Dir.glob(File.join(DIR_340, "packets", "*")).length, :>, 0
-    src_packets = Dir.glob(File.join(src_340, "packets", "*")).map { |f| File.basename(f) }.sort
-    dst_packets = Dir.glob(File.join(DIR_340, "packets", "*")).map { |f| File.basename(f) }.sort
-    assert_equal src_packets, dst_packets
+    assert Dir.exist?(File.join(DIR_340, NodeInputCompatibility::LEGACY_DIRECTORY)), "340's legacy attempt files must be copied in (n4's budget rows need it)"
+    assert_operator Dir.glob(File.join(DIR_340, NodeInputCompatibility::LEGACY_DIRECTORY, "*")).length, :>, 0
+    src_files = Dir.glob(File.join(src_340, NodeInputCompatibility::LEGACY_DIRECTORY, "*")).map { |f| File.basename(f) }.sort
+    dst_files = Dir.glob(File.join(DIR_340, NodeInputCompatibility::LEGACY_DIRECTORY, "*")).map { |f| File.basename(f) }.sort
+    assert_equal src_files, dst_files
 
     assert Dir.exist?(File.join(DIR_337, "nodes")), "337's nodes/ must be copied in (its only kind: research node)"
     research_files = Dir.glob(File.join(DIR_337, "nodes", "*.md")).select { |f| File.read(f).include?("kind: research") }
@@ -468,6 +470,17 @@ class GraphMeasureDogfoodTest < Minitest::Test
     refute_nil lock_pause, "the Lock takeover pause must survive even though n4's running attempt spans it"
     assert_operator n4[:running_at], :<, lock_pause[:end]
     assert_operator n4[:terminal_at], :>, lock_pause[:start]
+  end
+
+  # --- 338a n3, 3.12: every attempt of the real 340 fixture resolves its file --
+
+  def test_legacy_fixture_measures_every_attempt_from_its_files
+    record = GraphMeasureBudget.read(DIR_340)
+    record[:nodes].each do |id, node|
+      node[:attempts].each do |attempt|
+        assert attempt[:file_exists], "#{id} attempt #{attempt[:attempt]} must resolve its file on disk, never read unavailable"
+      end
+    end
   end
 
   private

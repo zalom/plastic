@@ -41,7 +41,7 @@ class NamingRuleTest < Minitest::Test
     assert_match(/graph engineering/, paragraph)
     assert_match(/node, edge, ready set, critical path/, paragraph)
     assert_match(/Plastic concepts coined on top of it/, paragraph)
-    assert_match(/intent, ledger, packet, lease, gate, runner/, paragraph)
+    assert_match(/intent, ledger, node input, lease, gate, runner/, paragraph)
     assert_match(/software and AI engineering/, paragraph)
     assert_match(/review, fix, test, verify, dispatch, executor, reviewer/, paragraph)
   end

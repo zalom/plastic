@@ -56,7 +56,7 @@ class ReportScreenNodeProgressTest < Minitest::Test
   def running_line(subject)
     NodeLedger.transition_line(subject: subject, state: "running",
                                 fields: { holder: "auto-a", expires: "2026-09-12T19:00:00Z",
-                                          packet: "abc123", model: "sonnet" })
+                                          input: "abc123", model: "sonnet" })
   end
 
   STAGE_LINE = "2026-09-01T00:00:00Z  Exec  starting work\n"

@@ -45,7 +45,7 @@ class GraphMeasureReviewFixTest < Minitest::Test
   # reshape).
   BASE_SHA = "dabfeb0"
 
-  RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", packet: "abc123" }.freeze
+  RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", input: "abc123" }.freeze
 
   def stage(ts, subject, text)
     "#{ts.utc.strftime('%Y-%m-%dT%H:%M:%SZ')}  #{subject}  #{text}\n"
@@ -166,7 +166,11 @@ class GraphMeasureReviewFixTest < Minitest::Test
   # each file must carry instead.
   RENAMED_TEST_ALLOWANCE = {
     "test/graph_measure_test.rb" => 1,
-    "test/graph_measure_dogfood_test.rb" => 1,
+    "test/graph_measure_dogfood_test.rb" => 2,
+    # Intent 338a (n3): the attempts directory and input suffix rename carries
+    # more of these files' own method names than n2's builder/wrapper rename did.
+    "test/graph_measure_budget_test.rb" => 6,
+    "test/graph_measure_cli_test.rb" => 1,
   }.freeze
 
   NEW_NAME_AFTER_RENAME = {

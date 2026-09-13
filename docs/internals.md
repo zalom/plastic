@@ -1647,29 +1647,29 @@ it from an all-letter word that happens to be valid hex.
 that are strict subsets of the shipped `intent`/`delivered` openers. No `paint:` lambda: the
 palette stays `IntentScreenAnsi`'s shared pipeline, exactly like every shipped kind before it.
 
-## the node packet command (intent 338, G5)
+## the node input command (intent 338, G5)
 
-A node agent is stateless (327 D45): its whole input is its packet. `PacketWrapper`
-(`scripts/lib/packet_wrapper.rb`) owns the trust boundary a packet is built over. A data
+A node agent is stateless (327 D45): its whole input is its node input. `DataBoundary`
+(`scripts/lib/data_boundary.rb`) owns the trust boundary a node input is built over. A data
 block is opened by `<<<PLASTIC-DATA:<token> label="..." source="...">>>` and closed by
-`<<<END-PLASTIC-DATA:<token>>>`, one token per packet, the first twelve hex characters of
-the SHA-256 over the packet's raw payloads joined by a newline - content-derived rather than
+`<<<END-PLASTIC-DATA:<token>>>`, one token per node input, the first twelve hex characters of
+the SHA-256 over the node input's raw payloads joined by a newline - content-derived rather than
 random, so the same node built twice produces the same bytes and the same hash (spec D4).
 Every payload is escaped independently of the token (spec D5): a literal opening or closing
 marker inside a payload is rewritten with a backslash after the angle brackets, so a resource
-carrying the packet's own marker still cannot close its block even if the token leaks.
+carrying the node input's own marker still cannot close its block even if the token leaks.
 `label` and `source` marker attributes are not payload text and are sanitized separately, by
 a whitelist rather than the payload escaping rule (spec D5a, the plan review's blocking
 finding): every character outside `[A-Za-z0-9 _.,:#/@+=-]` becomes `_`, truncated to 200
 characters, so neither a quote nor a newline in a hostile `sources:` entry can break a
-marker line. `PacketWrapper.estimate_tokens` is `(bytes / 4.0).round`, the one arithmetic
+marker line. `DataBoundary.estimate_tokens` is `(bytes / 4.0).round`, the one arithmetic
 every budget in this delivery is spent in (spec D6).
 
-`NodePacket` (`scripts/lib/node_packet.rb`) gathers the five blocks 327 section 8 fixed, in
+`NodeInput` (`scripts/lib/node_input.rb`) gathers the five blocks 327 section 8 fixed, in
 a caller-independent order (spec D2): the node, the ledger, the record, the knowledge hop,
 and where to work. Blocks 1 and 5 are instruction, authored for this node by the orchestrator
 and by the project record; blocks 2, 3 and 4 are retrieved text and are wrapped as labeled
-data sharing the packet's one boundary token (spec D3). The node block reconciles the node
+data sharing the node input's one boundary token (spec D3). The node block reconciles the node
 file against `graph.md`'s declared nodes, refusing rather than rendering an empty block for
 an id the graph does not declare. The ledger block carries every transition line for the
 node in file order (torn lines marked, never counted as evidence), predecessor evidence read
@@ -1697,14 +1697,14 @@ the exact `node-transition ... --state needs_decision --field question="..."` co
 returned, naming the oversized block and its token count so the owner knows what to shorten.
 Attempts are numbered from the node's prior `running` lines, plus one when a lease is
 supplied by flag (a new dispatch), floored at 1, overridable with `--attempt` (spec D11,
-C21); the packet lands at `packets/<node>--a<N>.packet` (a `.packet` extension, not `.md`,
-so QMD's `**/*.md` collection glob never re-indexes a packet's wrapped payloads back into
+C21); the node input lands at `attempts/<node>--a<N>.input` (a `.input` extension, not `.md`,
+so QMD's `**/*.md` collection glob never re-indexes a node input's wrapped payloads back into
 search results). Rebuilding an attempt is a no-op when the bytes are unchanged and a refusal
 (exit 5) otherwise, unless `--force` is given. The hash is the SHA-256 of the file's own
 bytes on disk, first twelve hex, printed and never embedded in the file (spec D10); it is the
-value `node-transition running --field packet=<sha>` takes.
+value `node-transition running --field input=<sha>` takes.
 
-`scripts/node-packet <intent_dir> --node <id>` is the CLI, shaped like `node-transition` and
+`scripts/node-input <intent_dir> --node <id>` is the CLI, shaped like `node-transition` and
 `validate-work-graph`: 0 success, 2 usage (not an intent directory, missing `--node`, or an
 unknown node), 3 an unreadable/unparsable graph, node file or record, 4 overflow, 5 an
 attempt conflict (spec D17, shared exit-code family so a runner routes on the same codes

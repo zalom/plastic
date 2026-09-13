@@ -64,7 +64,7 @@ module HarnessAdapter
   # squashed (whitespace collapsed, matrix row 1.18) before it is even
   # compared, so a config-authored value carrying a tab or a newline can
   # never reach `NodeLedger` unsquashed and raise `ArgumentError` mid-dispatch,
-  # after the packet is already built. A value that still is not one of
+  # after the node input is already built. A value that still is not one of
   # KNOWN_KEYS after squashing falls back to DEFAULT_KEY with a warning
   # (never to no adapter), so this method's return is always one of the two
   # known, clean strings - safe to hand straight to a ledger field.
@@ -101,7 +101,7 @@ module HarnessAdapter
   # list (matrix row 1.14: a step that dispatched nothing prints no
   # instruction block for a session to act on). `dispatched` is the runner's
   # own plan entries (RunnerDispatch's `:dispatched` shape): [{node:, kind:,
-  # role:, model:, worktree:, packet:}, ...]. The model and the packet path
+  # role:, model:, worktree:, input:}, ...]. The model and the node input path
   # ride straight from each entry - never a fresh lookup (matrix row 1.11)
   # and never a summary (matrix row 1.12) - and `return_contract` (the exact
   # text RunnerDispatch::RETURN_CONTRACT already carries in the YAML plan)
@@ -115,11 +115,11 @@ module HarnessAdapter
   end
 
   # The Claude Code rendering (spec Approach): per dispatched node, the agent
-  # type from the kind, the model the plan already resolved, and the packet
+  # type from the kind, the model the plan already resolved, and the node input
   # path as the whole prompt.
   def render_claude_code(entries, return_contract)
     blocks = entries.map do |d|
-      "Dispatch #{agent_type_for_kind(d[:kind])} for #{d[:node]} (model: #{d[:model]}):\n  prompt: #{d[:packet]}"
+      "Dispatch #{agent_type_for_kind(d[:kind])} for #{d[:node]} (model: #{d[:model]}):\n  prompt: #{d[:input]}"
     end
     "#{return_contract.to_s.strip}\n\n#{blocks.join("\n\n")}\n"
   end
@@ -128,13 +128,13 @@ module HarnessAdapter
   # The Codex rendering: a Codex node runs end to end through `scripts/
   # node-run` (n6), which reads the ledger's own `running` line directly and
   # never through this printed block - so this names, per node, the same
-  # facts the block gives Claude Code (kind, model, packet path) framed as
+  # facts the block gives Claude Code (kind, model, node input path) framed as
   # `node-run` calls, proving the seam renders SOMETHING for the second
   # harness rather than nothing (matrix row 1.27), without inventing detail
   # that belongs to n6's own adapter.
   def render_codex(entries, return_contract)
     blocks = entries.map do |d|
-      "node-run #{d[:node]} (#{d[:kind]}, model: #{d[:model]}):\n  packet: #{d[:packet]}"
+      "node-run #{d[:node]} (#{d[:kind]}, model: #{d[:model]}):\n  input: #{d[:input]}"
     end
     "#{return_contract.to_s.strip}\n\n#{blocks.join("\n\n")}\n"
   end

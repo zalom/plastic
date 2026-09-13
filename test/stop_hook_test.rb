@@ -102,7 +102,7 @@ class StopGateTest < Minitest::Test
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1")
     write_savepoint(txline("n1", "running", holder: SESSION, expires: "2026-09-11T12:00:00Z",
-                           packet: "n1--a1", model: "sonnet"))
+                           input: "n1--a1", model: "sonnet"))
   end
 
   # A dead-end graph: n2 needs n1, n1 is superseded, so neither is ever ready

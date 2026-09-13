@@ -24,7 +24,7 @@ require_relative "../scripts/lib/node_ledger"
 # Hermetic throughout: every fixture lives in a Dir.mktmpdir, and no test
 # reads the real ~/.plastic.
 class DoctorRequalificationTest < Minitest::Test
-  RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", packet: "abc123" }.freeze
+  RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", input: "abc123" }.freeze
 
   def setup
     @home = Dir.mktmpdir("plastic-doctor-requalification")

@@ -68,7 +68,7 @@ class NodeIdsTest < Minitest::Test
   def test_taken_includes_a_ledger_subject_with_no_node_file
     write_node("n1.md", node: "n1")
     write_savepoint(<<~L)
-      2026-09-08T17:00:00Z  n5  running holder=h expires=2030-01-01T00:00:00Z packet=p model=m
+      2026-09-08T17:00:00Z  n5  running holder=h expires=2030-01-01T00:00:00Z input=p model=m
       2026-09-08T17:01:00Z  n5  done holder=h gates=suite commit=abc
     L
     assert_includes NodeIds.taken(@dir), "n5"
@@ -91,7 +91,7 @@ class NodeIdsTest < Minitest::Test
   end
 
   def test_the_intent_subject_is_not_gathered_as_a_node_id
-    write_savepoint("2026-09-08T17:00:00Z  Intent  running holder=h expires=x packet=p model=m\n")
+    write_savepoint("2026-09-08T17:00:00Z  Intent  running holder=h expires=x input=p model=m\n")
     refute_includes NodeIds.taken(@dir), "Intent"
   end
 
@@ -172,7 +172,7 @@ class NodeIdsTest < Minitest::Test
     write_node("n3.md", node: "n3")
     write_graph("- n1 needs nothing\n      - n3 needs n1")
     write_savepoint(<<~L)
-      2026-09-08T17:00:00Z  n2  running holder=h expires=2030-01-01T00:00:00Z packet=p model=m
+      2026-09-08T17:00:00Z  n2  running holder=h expires=2030-01-01T00:00:00Z input=p model=m
       2026-09-08T17:01:00Z  n2  done holder=h gates=suite commit=abc
     L
     # n2's file is gone; its ledger history is not. Minting must not reissue n2.

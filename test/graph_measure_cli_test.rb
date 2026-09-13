@@ -65,7 +65,7 @@ class GraphMeasureCliTest < Minitest::Test
     MD
   end
 
-  RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", packet: "abc123", model: "sonnet" }.freeze
+  RUNNING = { holder: "auto-1", expires: "2099-01-01T00:00:00Z", input: "abc123", model: "sonnet" }.freeze
 
   def write_happy_path_fixture
     write_graph("- n1 needs nothing\n")
@@ -285,19 +285,19 @@ class GraphMeasureCliTest < Minitest::Test
     assert parsed.key?("ceiling")
   end
 
-  # --- 4.16: no packet activity at all still exits 0, with an explicit message -------
+  # --- 4.16: no node input activity at all still exits 0, with an explicit message -------
 
-  def test_budget_without_packets_directory_exits_zero
+  def test_budget_without_attempts_directory_exits_zero
     write_graph("- n1 needs nothing\n")
     write_savepoint([
       stage("2026-01-01T09:00:00Z", "Why", "spec.md created"),
       stage("2026-01-01T09:21:00Z", "Done", "delivered"),
     ])
-    refute Dir.exist?(File.join(@dir, "packets"))
+    refute Dir.exist?(File.join(@dir, "attempts"))
 
     out, err, status = run_cli("budget", @dir)
     assert_equal 0, status.exitstatus, err
-    assert_match(/no packet attempts recorded/i, out)
+    assert_match(/no node input attempts recorded/i, out)
   end
 
   # --- 2.22: malformed graph.md, a torn ledger, and invalid UTF-8 never raise ---------

@@ -130,7 +130,7 @@ class RunnerAbsorbTest < Minitest::Test
   end
 
   def running_line(node: "n4", holder: "auto-abc", harness: nil)
-    fields = { holder: holder, expires: "2026-01-01T01:00:00Z", packet: "deadbeef", model: "sonnet" }
+    fields = { holder: holder, expires: "2026-01-01T01:00:00Z", input: "deadbeef", model: "sonnet" }
     fields[:harness] = harness if harness
     line(node, "running", fields)
   end
@@ -571,14 +571,14 @@ class RunnerAbsorbTest < Minitest::Test
     assert_equal [["n4", "done"]], fake_wt.released
   end
 
-  # --- 4.42: the return file is kept beside the packet ------------------------------
+  # --- 4.42: the return file is kept beside the node input ------------------------------
 
-  def test_return_file_kept_beside_packet
+  def test_return_file_kept_beside_the_input
     write_savepoint(running_line)
     _result, _fake_wt, original_return_path = absorb_happy
 
-    kept = File.join(@dir, "packets", "n4--a1.return")
-    assert File.exist?(kept), "the return must be copied to packets/n4--a1.return"
+    kept = File.join(@dir, "attempts", "n4--a1.return")
+    assert File.exist?(kept), "the return must be copied to attempts/n4--a1.return"
     assert_equal File.read(original_return_path), File.read(kept)
   end
 
@@ -979,8 +979,8 @@ class RunnerAbsorbTest < Minitest::Test
     write_node_file("n1")
     write_savepoint(
       running_line(node: "n1", holder: "h") +
-      line("n1", "running", holder: "h", expires: "2026-01-01T02:00:00Z", packet: "p2", model: "sonnet") +
-      line("n1", "running", holder: "h", expires: "2026-01-01T03:00:00Z", packet: "p3", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T02:00:00Z", input: "p2", model: "sonnet") +
+      line("n1", "running", holder: "h", expires: "2026-01-01T03:00:00Z", input: "p3", model: "sonnet") +
       line("n1", "needs_decision", question: "capped")
     )
     fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "plastic/x--n1", "repo" => @dir })

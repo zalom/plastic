@@ -6,7 +6,7 @@ require "yaml"
 require "open3"
 require "rbconfig"
 require_relative "../scripts/lib/session_ledger"
-require_relative "../scripts/lib/packet_wrapper"
+require_relative "../scripts/lib/data_boundary"
 require_relative "../scripts/lib/lock"
 
 # Intent 298: hook-capture replaces hook-continue, hook-future-intent-check,
@@ -503,7 +503,7 @@ end
     FileUtils.cp(File.join(real_scripts, "lib", "dashboard_banner.rb"),
                  File.join(scripts, "lib", "dashboard_banner.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "qmd_sync.rb"), File.join(scripts, "lib", "qmd_sync.rb"))
-    FileUtils.cp(File.join(real_scripts, "lib", "packet_wrapper.rb"), File.join(scripts, "lib", "packet_wrapper.rb"))
+    FileUtils.cp(File.join(real_scripts, "lib", "data_boundary.rb"), File.join(scripts, "lib", "data_boundary.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "active_delivery.rb"), File.join(scripts, "lib", "active_delivery.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "lock.rb"), File.join(scripts, "lib", "lock.rb"))
     FileUtils.chmod(0o755, File.join(scripts, "hook-capture"))

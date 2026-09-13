@@ -4,6 +4,7 @@
 require "strscan"
 require_relative "savepoint"
 require_relative "guarded_append"
+require_relative "node_input_compatibility"
 
 # NodeLedger - the node and intent transition line (intent 335, G2). Owns the
 # line's byte-exact format, the closed state vocabulary, the required fields per
@@ -40,7 +41,7 @@ module NodeLedger
   # a flat list; DONE_EVIDENCE_FIELDS below carries the "at least one of" half.
   REQUIRED_FIELDS = {
     "planned" => [],
-    "running" => %w[holder expires packet model],
+    "running" => %w[holder expires input model],
     "done" => %w[gates],
     "failed_verification" => %w[gates reason],
     "needs_decision" => %w[question],
@@ -68,7 +69,7 @@ module NodeLedger
   # treatment `suite=`, `hop=` and `core_drift=` already get as extras, given
   # a stable declared position instead of falling to the alphabetical extras
   # tail (matrix row 1.17).
-  FIELD_ORDER = %w[holder expires packet model harness gates commit verdict reason question by expired].freeze
+  FIELD_ORDER = %w[holder expires input model harness gates commit verdict reason question by expired].freeze
 
   SEPARATOR = "  "
 
@@ -194,6 +195,7 @@ module NodeLedger
     timestamp, subject, rest = m.captures
     state, remainder = rest.split(/\s+/, 2)
     fields, comment = scan_fields(remainder.to_s)
+    fields = NodeInputCompatibility.fields(fields)
     { timestamp: timestamp, subject: subject, state: state, fields: fields, comment: comment, raw: raw }
   end
 
