@@ -10,7 +10,7 @@ require_relative "../scripts/lib/backfill_intent"
 # Intent 334 (G1, n6): the forward shim widens has_real_action? to nodes/ too
 # (D10r/D15r) - an intent delivered as a node graph is exactly as real as one
 # delivered as actions/*.md, and has_files/missing_for_stage name whichever
-# directory actually exists rather than the literal "actions/" (fold B3).
+# directory actually exists rather than the literal "actions/" (review B3).
 class RealActionTest < Minitest::Test
   SENTINEL = Savepoint::PLACEHOLDER_SENTINEL
 
@@ -84,7 +84,7 @@ class RealActionTest < Minitest::Test
     assert_equal "exec", Savepoint.derive_stage(@intent_dir)
   end
 
-  # --- n6: nodes/ counts as a real action too (fold: five globs, D15r) -------
+  # --- n6: nodes/ counts as a real action too (review: five globs, D15r) -------
 
   def test_nodes_dir_counts_as_a_real_action
     FileUtils.rm_rf(actions_dir)

@@ -823,7 +823,7 @@ class EndIntentTest < Minitest::Test
     assert_match(/complete intent 161/, log, "the close must still commit the store")
   end
 
-  # --- n6 (334): the hollow-report gate reads nodes/ too (fold A2/A3) --------
+  # --- n6 (334): the hollow-report gate reads nodes/ too (review A2/A3) --------
 
   def node_intent_dir(delivered_label: "n1", node_heading: "## n1 failure-mode matrix")
     dir = Dir.mktmpdir("hollow-gate-nodes")
@@ -880,7 +880,7 @@ class EndIntentTest < Minitest::Test
                "a correctly labeled node-delivered intent must pass the gate"
 
     # Prove the gate actually looked at nodes/ rather than short-circuiting on
-    # an empty label set (fold A2): a mismatched label must now be refused.
+    # an empty label set (review A2): a mismatched label must now be refused.
     mismatched = node_intent_dir(delivered_label: "bogus")
     refute_nil hollow_report_reason(mismatched, "delivered"),
                "the gate must engage on a node intent and catch a real mismatch"

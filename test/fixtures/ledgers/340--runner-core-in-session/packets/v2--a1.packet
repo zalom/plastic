@@ -3,16 +3,16 @@ kind: verify
 files: 
 budget: 60000
 
-# v2 - Re-verify the fold
+# v2 - Re-verify the meld
 
-v1 returned REVISE with four blockers, thirteen majors and ten minors, and n9 and n10 fold them.
-A fold of that size touches the same gate the review was about, so the green suite is not the
-review. A fresh agent that wrote none of it reads the fold against v1's findings and against the
+v1 returned REVISE with four blockers, thirteen majors and ten minors, and n9 and n10 meld them.
+A meld of that size touches the same gate the review was about, so the green suite is not the
+review. A fresh agent that wrote none of it reads the meld against v1's findings and against the
 same criteria, and tries again to make the runner write `done` on something the code did not
 verify.
 
-This pass is narrower than v1. v1 covered the whole intent; v2 covers the fold and the parts of the
-gate the fold moved.
+This pass is narrower than v1. v1 covered the whole intent; v2 covers the meld and the parts of the
+gate the meld moved.
 
 ## Criteria
 - Every blocker v1 raised is closed by code, not by a test that asserts on its own fixture.
@@ -27,7 +27,7 @@ gate the fold moved.
   `step`.
 - Every major v1 raised is either closed or explicitly recorded as dropped with a reason. Name any
   that were dropped.
-- The fold introduced no new path that raises across the runner's boundary, and no new report that
+- The meld introduced no new path that raises across the runner's boundary, and no new report that
   claims a check the code skipped.
 - `gates=` names exactly the checks that ran, on every state the absorb can write.
 - The matrices of n9 and n10 name tests that exist and that genuinely exercise the stated operation.

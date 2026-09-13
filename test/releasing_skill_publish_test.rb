@@ -97,7 +97,7 @@ class ReleasingSkillPublishTest < Minitest::Test
   # still instructing the session to publish locally. promotion-and-tagging.md:50
   # legitimately carries an inline `npm publish --access public --tag <channel>`
   # span in prose documenting the OTHER action (npm_publish); that line sits
-  # outside any fence and must still be accepted (review fold-in 3).
+  # outside any fence and must still be accepted (review fix 3).
   def test_promotion_reference_has_no_local_publish_command
     content = File.read(PROMOTION_PATH)
     offenders = []

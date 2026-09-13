@@ -3,10 +3,10 @@ kind: verify
 files: 
 budget: 50000
 
-# v3 - Closure check on the second fold
+# v3 - Closure check on the second meld
 
-v1 returned REVISE and n9 and n10 folded it. v2 confirmed that fold closed all four original
-blockers and found two new ones plus five majors, and n11 folded those. This pass asks one bounded
+v1 returned REVISE and n9 and n10 melded it. v2 confirmed that meld closed all four original
+blockers and found two new ones plus five majors, and n11 melded those. This pass asks one bounded
 question and stops: is the runner safe to merge, or does another blocker stand?
 
 Both previous passes found real blockers, so a third pass is warranted. It is deliberately narrower
@@ -130,7 +130,7 @@ G7 of the graph-ready plan (intent 327, Batch 3, needs G3 (336), G5 (338), G6 (3
 ## Insights
 2026-09-10T23:52:03Z · Exec · plastic-executor (autonomous) — The n7 dogfood against an authored scratch intent (status/sweep/step, resources/dogfood--runner-2026-09-10.md) found two real defects in scripts/runner outside n7's scope: 'sweep' is unreachable from the CLI (dispatch_lazy has no case for it even though RunnerSweep.run is a complete standalone entry point), and 'step' crashes with NoMethodError: undefined method 'opt_all' on every call, before any dispatch work runs; no test exercises the runner step CLI end to end, which is how a green 3955/20025/0/0 suite shipped over it.
 2026-09-11T00:19:28Z · Exec · plastic-enforcer — n7's dogfood found what five green node gates missed: runner step raised NoMethodError on opt_all on every invocation and runner sweep never reached a dispatcher. Both slipped through because every runner test drove the module API (RunnerDispatch.dispatch, RunnerSweep.run) and none drove scripts/runner as a subprocess past argument parsing. The suite proved the engine and never turned the key. n8 fixed both and pinned the class of bug with a structural test walking Runner::VERBS. Rule for every future CLI node: one end-to-end subprocess test per public verb, or the verb is unproven.
-2026-09-11T03:49:52Z · Exec · plastic-enforcer — Two adversarial verify passes on this runner each found blockers a green suite had hidden, and the second found that the first fold introduced two more. The pattern is consistent: every new blocker sat on a path the previous fold had just created. Writing the executor's own prose into a ledger field met a field validator that refuses newlines; wiring proposals into absorb made an unguarded graph re-read reachable; wrapping an atomic rewrite in an append guard made the rename defeat the lock. New production surface written in one pass carries new failure modes, so a fold of a review is itself review-worthy, and budgeting one verify pass per intent underestimates a fold that touches the gate the review was about.
+2026-09-11T03:49:52Z · Exec · plastic-enforcer — Two adversarial verify passes on this runner each found blockers a green suite had hidden, and the second found that the first meld introduced two more. The pattern is consistent: every new blocker sat on a path the previous meld had just created. Writing the executor's own prose into a ledger field met a field validator that refuses newlines; wiring proposals into absorb made an unguarded graph re-read reachable; wrapping an atomic rewrite in an append guard made the rename defeat the lock. New production surface written in one pass carries new failure modes, so a meld of a review is itself review-worthy, and budgeting one verify pass per intent underestimates a meld that touches the gate the review was about.
 <<<END-PLASTIC-DATA:c6a01dfc3c87>>>
 
 <<<PLASTIC-DATA:c6a01dfc3c87 label="knowledge hop" source="327--graph-of-work-under-the-roadmap/327--graph-of-work-under-the-roadmap.md">>>

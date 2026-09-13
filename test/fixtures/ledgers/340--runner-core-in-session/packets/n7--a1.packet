@@ -24,15 +24,15 @@ it, and runs `status`, `sweep` and `step` against it.
 ## n7 failure-mode matrix
 | Row | Operation | Failure mode | Test |
 | --- | --- | --- | --- |
-| 7.1 | Keep `install_sync_test` green with every runner lib registered (D25, fold of blocker 7) | A lib registered nowhere means `scripts/runner` installs and dies on its first `require_relative` | `install_sync_test#test_core_files_match_disk` |
+| 7.1 | Keep `install_sync_test` green with every runner lib registered (D25, meld of blocker 7) | A lib registered nowhere means `scripts/runner` installs and dies on its first `require_relative` | `install_sync_test#test_core_files_match_disk` |
 | 7.2 | Make the installed `scripts/runner` executable | The installed copy is not executable and every invocation fails with EACCES | `runner_install_test#test_installed_runner_is_executable` |
 | 7.3 | Name the three public verbs in the auto skill | The runner ships and no skill tells anyone it exists | `runner_install_test#test_skill_names_three_public_verbs` |
 | 7.4 | Keep `rewind` out of the skill body | A reset verb is published before anything has measured a run | `runner_install_test#test_skill_does_not_name_rewind` |
 | 7.5 | Add the CHANGELOG line under Unreleased | The release notes omit the largest change in the batch | `runner_install_test#test_changelog_has_unreleased_runner_line` |
 | 7.6 | Leave the version files alone | A version bump rides in on a feature branch and collides with the release intent | `runner_install_test#test_no_version_bump` |
-| 7.7 | Run the dogfood against an authored multi-node scratch intent (fold of major 22) | A copy of a delivered intent has an empty ready set and no lock, so the dogfood exercises nothing and reports success | the recorded transcript under `resources/` |
+| 7.7 | Run the dogfood against an authored multi-node scratch intent (meld of major 22) | A copy of a delivered intent has an empty ready set and no lock, so the dogfood exercises nothing and reports success | the recorded transcript under `resources/` |
 | 7.8 | Arm a lock for the dogfood session before any `running` write | `node-transition` exits 4 on every dispatch and the transcript records only refusals | the recorded transcript under `resources/` |
-| 7.9 | Shell no `timeout` anywhere in the dogfood (fold of probe 36) | `timeout` does not exist on this machine and every step that calls it fails with command not found | the recorded transcript under `resources/` |
+| 7.9 | Shell no `timeout` anywhere in the dogfood (meld of probe 36) | `timeout` does not exist on this machine and every step that calls it fails with command not found | the recorded transcript under `resources/` |
 
 ## Steps
 1. Red: the matrix's tests above, committed before any code.
@@ -147,7 +147,7 @@ G7 of the graph-ready plan (intent 327, Batch 3, needs G3 (336), G5 (338), G6 (3
 
 ## Insights
 2026-09-10T13:50:13Z · Exec · plastic-enforcer — n6 carries a running line (packet=bde4259df9be, expires 2026-09-10T16:43:35Z) whose executor dispatch was interrupted before it started, so no work was done under that lease. node-transition correctly refuses a reclaim before expiry. A resuming lead should re-dispatch n6 on the already-minted a1 packet and absorb its return against that same lease, or wait for expiry and reclaim.
-2026-09-10T22:14:28Z · Exec · plastic-enforcer — RunnerDispatch#dispatch_one calls NodePacket.build without budget_tokens:, so every runner-built packet is capped at DEFAULT_BUDGET_TOKENS 8000 and a node's declared frontmatter budget: is inert. At 8000 the cut ladder silently drops the whole knowledge hop (hop_tokens=0) and cuts Insights; n6's declared budget 140000 renders 8237 tokens with the hop intact. scripts/node-packet has the same hole: it passes NodePacket::DEFAULT_BUDGET_TOKENS when --budget is absent instead of letting build fall back to the node block's parsed budget. Fix belongs to the v1 review fold, since runner_dispatch.rb is outside n6's files.
+2026-09-10T22:14:28Z · Exec · plastic-enforcer — RunnerDispatch#dispatch_one calls NodePacket.build without budget_tokens:, so every runner-built packet is capped at DEFAULT_BUDGET_TOKENS 8000 and a node's declared frontmatter budget: is inert. At 8000 the cut ladder silently drops the whole knowledge hop (hop_tokens=0) and cuts Insights; n6's declared budget 140000 renders 8237 tokens with the hop intact. scripts/node-packet has the same hole: it passes NodePacket::DEFAULT_BUDGET_TOKENS when --budget is absent instead of letting build fall back to the node block's parsed budget. Fix belongs to the v1 review meld, since runner_dispatch.rb is outside n6's files.
 2026-09-10T23:32:46Z · Exec · plastic-enforcer — HookMessageDisplayTest#test_concurrent_session_blanks_and_buffers_every_chunk is flaky under the parallel full suite: it failed once at 3950/19581/1/0 (a chunk passed through as raw Markdown), then passed in isolation (83 runs, 0 failures) and passed again in the next full run at 3950/20006/0/0. The assertion count differing by 425 between the failing and passing full runs points at fork-parallel timing, not at a code change; hooks/ is untouched by intent 340. Worth a real fix or a serialization pin before it costs another node a gate.
 <<<END-PLASTIC-DATA:a3deda7f7ccf>>>
 

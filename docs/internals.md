@@ -296,7 +296,7 @@ exclusion file per store and routes a suppressed `savepoint_operational` finding
 `details` strings (keeping intent 222's single-source-of-truth guarantee intact); the key is
 `(intent_id, rule)`, never bare `intent_id`, so excluding `savepoint_operational` for an intent
 has no effect on `signals_complete`'s independent report for that same intent. The check's
-message always folds in the honest count and the file's path once any exclusion applies, and
+message always merges in the honest count and the file's path once any exclusion applies, and
 reaches `pass` once every remaining gap is excluded.
 
 The same registration also holds on doctor's per-intent surface: `doctor.rb --intent <id>`'s
@@ -338,7 +338,7 @@ structurally impossible here. A dead row reports as one of two buckets: `:no_fin
 names an intent doctor walked, but the rule fired nothing to suppress this run) or `:no_intent`
 (the id names no walked directory at all - a typo, or a deleted intent; the two are
 indistinguishable from the data available, and the remedy is the same either way). The count, the
-buckets, and the file path fold into `savepoint_operational`'s message and `details` exactly the
+buckets, and the file path merge into `savepoint_operational`'s message and `details` exactly the
 way the exclusion count already does; the notice is purely informational and never moves the
 check off `pass` or changes doctor's exit code - a stale governance-record row is bookkeeping
 drift, not a store regression. `maintenance-run --tool register-exclusions --prune [--apply]` is
@@ -592,7 +592,7 @@ one shared definition of "born complete" that creation and diagnosis both consul
   the doctor skill applies the fix), and a new `frontmatter_valid` check flags
   malformed `sources` or `chain`. There is no `--fix` flag on `doctor.rb`.
 - **Section structure (intent 60b)**: the validator also carries
-  `SANCTIONED_SECTIONS` plus a pure `validate_sections`, folded into `validate`, so
+  `SANCTIONED_SECTIONS` plus a pure `validate_sections`, merged into `validate`, so
   born-complete now means frontmatter complete AND the sanctioned `##` section set
   present with no unknown sections. The same consumers (the CLI, `end-intent`, doctor)
   share this one definition (the create gate that once shared it was removed in 2.0, intent 302). See the sanctioned-creation-path
@@ -667,7 +667,7 @@ Four coordinated pieces deliver that.
   plus a pure `validate_sections(body)` flag any unknown top-level `##` heading and
   any missing sanctioned section. `### Decisions` is the only sanctioned `###`
   subsection and is OPTIONAL (added after brainstorming), so its absence is never
-  flagged. `validate` folds the section findings into the frontmatter result so the
+  flagged. `validate` merges the section findings into the frontmatter result so the
   CLI and the gate get both checks from one call; the gate, the `validate-intent`
   CLI, and doctor's read-only `section_structure` check all share this one
   definition so it cannot drift.
@@ -709,7 +709,7 @@ gate; when it would not, the write is reverted and the close falls through to th
 above unchanged. `scripts/outcome-report` is the same generator's standalone CLI, for
 checking or regenerating the file outside a close.
 
-`scripts/verify-intent` folds doctor scoped to the intent, the added-line em-dash diff guard
+`scripts/verify-intent` merges doctor scoped to the intent, the added-line em-dash diff guard
 (the first standing implementation of that check), a diffstat, and an optional
 caller-supplied suite command into one verdict. It does not invent a project test-command
 config. The doctor scan includes the `intent_ticks_lag` warning (intent 329): a WARN when the
@@ -1022,7 +1022,7 @@ registered and no longer does (`code-gate`, `create-gate`, `links-gate`, `lock-g
 `savepoint-pre`, `qmd-search`, `retrieval-gate`, `model-instructions`, `opus-manual`), seeded
 from git history. It exists because an old install's settings.json can carry an entry for a
 launcher `events` no longer mentions, and nothing else can prove that entry was ever Plastic's.
-It is purge-only and stays disjoint from `claude_launcher_names`: folding retired names into
+It is purge-only and stays disjoint from `claude_launcher_names`: merging retired names into
 the current list would make `hooks_exist` demand launchers that no longer ship.
 **Maintenance duty:** renaming or removing a hook from `events` requires adding its old name to
 `RETIRED_HOOK_NAMES` in the same change, or every existing install keeps a dead registration no
@@ -1199,7 +1199,7 @@ exist, else every knob defaults: `mode: direct`, `base:` from
 `branch_template: "session/{{day}}"`, `ticket_source: intent_id`, `workspace: checkout`. An
 unknown `mode` or `workspace` value falls back to its default and always turns the whole
 outcome into a `Note`, even when the git operation underneath it succeeds: an unrecognized
-flow value is itself a degradation from the configured intent, and `SessionGit.commit!` folds
+flow value is itself a degradation from the configured intent, and `SessionGit.commit!` merges
 both facts into the one savepoint line a caller gets to write. `workspace: worktree` gets the
 same treatment even though it IS a recognized value: see below.
 
@@ -1237,7 +1237,7 @@ self-heal absent), and the commit-msg-hook case silently moved the owner's uncom
 of their own working tree into the hidden worktree with no notice in the Note. The mechanism is
 removed rather than hardened. `workspace: worktree` stays a valid, accepted config value (the
 validator does not reject it), but `SessionGit.load_flow` now treats it as `checkout` and adds
-`SessionGit::WORKSPACE_WORKTREE_NOTE` to the notes it returns, which folds into a `Note`
+`SessionGit::WORKSPACE_WORKTREE_NOTE` to the notes it returns, which merges into a `Note`
 savepoint line the same way an unknown flow value does. The item still commits, through the
 checkout, exactly as `workspace: checkout` would; only the ledger line differs, recording that
 the configured workspace was not honored. A real worktree-based session workspace, if wanted, is
@@ -1660,7 +1660,7 @@ falls back to plain.
 **The Merged cell** matches a line only when the entry's id is its SUBJECT - the first
 whitespace-delimited token of the ledger detail, never a whole word anywhere in it, because a
 real ledger line can name one entry's id as its subject and a second entry's id in passing (a
-post-execution-review fold: the second entry's row was picking up the first entry's sha). Among
+post-execution-review fix: the second entry's row was picking up the first entry's sha). Among
 subject-matching lines, one is read when the ledger's own event is `merged` or the detail matches
 `RoadmapSavepoint::KEYWORD_TABLE`'s own merged pattern - a real per-entry merge is sometimes filed
 under a different event word (`dispatched`, in the real `codex-fixes` ledger, because the rest of

@@ -10,7 +10,7 @@ require_relative "../scripts/lib/index_projection"
 # own savepoint.md ledger, reads the status INDEX.md currently claims, and
 # returns both plus the drift between them. The ledger wins WHERE THE LEDGER
 # SPEAKS - an intent whose ledger is absent or silent keeps the status INDEX
-# already carries (row 5.13, folded at the 2026-09-10 plan review). Matrix
+# already carries (row 5.13, resolved at the 2026-09-10 plan review). Matrix
 # rows from actions/ACTION_1.md S3/n5. Hermetic: every fixture lives in a
 # Dir.mktmpdir; this module never reads the real ~/.plastic.
 class IndexProjectionTest < Minitest::Test

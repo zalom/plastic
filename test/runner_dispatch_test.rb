@@ -811,7 +811,7 @@ class RunnerDispatchTest < Minitest::Test
                  "an Intent-subject running line must not eat a dispatch slot meant for node subjects"
   end
 
-  # === n11: what the fold broke (v2 review) ===================================
+  # === n11: what the fix broke (v2 review) ===================================
 
   # --- 11.12: any running node reports queued, not only a ceiling-blocked ready one (v2 NEW-7) --
 

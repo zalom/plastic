@@ -1,6 +1,6 @@
 ---
 id: "337"
-intent: "G4 of the graph-ready plan (intent 327, Batch 3, needs G3 (336)): Roadmap graph. Roadmap graph: `## Graph`, cycle check at read, rendered tree (folds 327a), computed `## Batches` with no hand pins (D42), `graph.md` and roadmap files written through the rename writer (C5), migration of live roadmaps, INDEX rendered from ledgers."
+intent: "G4 of the graph-ready plan (intent 327, Batch 3, needs G3 (336)): Roadmap graph. Roadmap graph: `## Graph`, cycle check at read, rendered tree (melds 327a), computed `## Batches` with no hand pins (D42), `graph.md` and roadmap files written through the rename writer (C5), migration of live roadmaps, INDEX rendered from ledgers."
 sources: ["327"]
 chain: []
 created: 2026-09-07
@@ -9,7 +9,7 @@ tags: ["project-plastic", "graph-ready", "batch-3", "g4"]
 ---
 
 ## Intent
-G4 of the graph-ready plan (intent 327, Batch 3, needs G3 (336)): Roadmap graph. Roadmap graph: `## Graph`, cycle check at read, rendered tree (folds 327a), computed `## Batches` with no hand pins (D42), `graph.md` and roadmap files written through the rename writer (C5), migration of live roadmaps, INDEX rendered from ledgers.
+G4 of the graph-ready plan (intent 327, Batch 3, needs G3 (336)): Roadmap graph. Roadmap graph: `## Graph`, cycle check at read, rendered tree (melds 327a), computed `## Batches` with no hand pins (D42), `graph.md` and roadmap files written through the rename writer (C5), migration of live roadmaps, INDEX rendered from ledgers.
 
 ## Context
 G4 of the graph-ready plan (intent 327). The roadmap is the only place a cross-intent edge
@@ -28,7 +28,7 @@ roadmap's `## Graph` when one exists and falls back to wave order when it does n
 already refuses to compute a frontier on a cyclic graph.
 
 What is missing is the roadmap-facing half: one reader that turns a roadmap file into the same
-shape the node scope uses, a tree rendering (intent 327a, folded here by 327's plan), rendered
+shape the node scope uses, a tree rendering (intent 327a, melded here by 327's plan), rendered
 `## Tree` and `## Batches` sections written through the rename writer, a migration that gives
 the eighteen graphless roadmaps a starting `## Graph`, and INDEX as a projection of the
 ledgers rather than a second hand-kept truth.
@@ -36,7 +36,7 @@ ledgers rather than a second hand-kept truth.
 Intent 327a is the branch that owns how the graph is shown: an indented tree with box-drawing
 branches where one node may have many children and a shared dependency is drawn once where the
 branches join, marking the critical path and the ready set, plain text first with color only
-through the fail-open display hook. It is folded into this intent rather than delivered
+through the fail-open display hook. It is melded into this intent rather than delivered
 separately.
 
 ### Decisions
@@ -44,13 +44,13 @@ separately.
   the cycle walk and on `ReadySet` for batches, critical paths, and downstream hops. No second
   edge parser, no second topological sort, no second cycle check anywhere in this intent
   (327 C1, D41). Amended at the plan review (A7): `RoadmapQueue#frontier_for` is refactored onto
-  `RoadmapGraph` and its duplicate roadmap-graph reader, topological sort, unnamed-entry fold,
+  `RoadmapGraph` and its duplicate roadmap-graph reader, topological sort, unnamed-entry meld,
   and unlisted-id report are deleted. Leaving them would make D1 false the day it shipped: the
   screens would render batches from `ReadySet` while `roadmap-next` dispatched from a second
   sort that agrees only by luck.
 - D2 The cycle check runs at read, on every path that can return a tree, a batch list, or a
   frontier, and it reports the whole cycle path. A cyclic roadmap renders the cycle instead of
-  batches; it never renders a partial or invented order, and the writer refuses it (folds 241,
+  batches; it never renders a partial or invented order, and the writer refuses it (melds 241,
   327's ranked risk list).
 - D3 `## Tree` and `## Batches` are rendered sections, never authored. The writer replaces
   exactly those two sections and leaves `## Goal`, `## Graph`, `## Log`, and every other
@@ -62,7 +62,7 @@ separately.
   the live roadmaps today; a regroup that rebuilds the section from parsed entries deletes them.
 - D4 No hand batch pins (327 D42). A batch is a topological layer of `## Graph` and its heading
   is `### Batch N`. The 327 report's "hand pins marked" wording is superseded by D42, which is
-  the later owner ruling. An entry a batch lists that `## Graph` does not name is folded in as
+  the later owner ruling. An entry a batch lists that `## Graph` does not name is melded in as
   needing nothing, so a partly migrated roadmap still renders rather than dropping work.
 - D5 Every roadmap file write in this intent goes through `AtomicWrite` (C5). No roadmap is
   truncated in place, and the interrupted-rename case is tested through the injected renamer.

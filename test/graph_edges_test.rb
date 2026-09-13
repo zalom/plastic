@@ -56,7 +56,7 @@ class GraphEdgesTest < Minitest::Test
     assert_equal %w[334 335], result[:edges]["336"]
     assert_equal %w[340b 337 342], result[:edges]["341"]
     # 334 and 335 are undeclared roots: they never appear on the left of a
-    # "needs", only as targets, and must still join the node set (fold A5).
+    # "needs", only as targets, and must still join the node set (review A5).
     assert_includes result[:nodes], "334"
     assert_includes result[:nodes], "335"
     refute result[:edges].key?("334")

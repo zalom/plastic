@@ -71,7 +71,7 @@ REPORT_CONTRACT (the delivery mechanics, including the new `insights:` field).
 
 ## Alternatives Considered
 - **Bare timestamp prefix (no stage/author)** — not chosen because a bare timestamp answers "when"
-  but not "who/where"; folding stage and author into the prefix makes each nugget self-describing
+  but not "who/where"; merging stage and author into the prefix makes each nugget self-describing
   for later reads without changing the prose body.
 - **A second, parallel delivery channel for bg/agent insights** — not chosen because the [[74]]
   completion report already carries structured payload home; adding a parallel mechanism duplicates

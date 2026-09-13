@@ -266,7 +266,7 @@ class NewIntentTest < Minitest::Test
   def test_sources_path_gets_child_in_chain_frontmatter
     # The related-but-not-spawned / created-from scenario: B is created with
     # --sources A (no --parent). A's frontmatter chain must gain B (I1), and B's
-    # sources must include A (the line-126 redundant-explicit fold).
+    # sources must include A (the line-126 redundant-explicit merge).
     a, = run_new_intent("--store", @store, "--intent", "Root A", "--slug", "root-a")
     a_id = File.basename(a).split("--").first
 

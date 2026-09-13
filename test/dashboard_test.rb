@@ -231,7 +231,7 @@ class DashboardTest < Minitest::Test
       assert data.key?(k), "missing #{k}"
     end
     refute data.key?("recently_worked"), "recently_worked is replaced by the prose summary (D6)"
-    # Global next_work is global-store intents only (no project intents folded in).
+    # Global next_work is global-store intents only (no project intents merged in).
     scopes = data["next_work"].map { |r| r["scope"] }.reject(&:empty?)
     assert(scopes.all? { |s| s == "global" }, "global next_work leaked non-global scope: #{scopes.uniq}")
   end

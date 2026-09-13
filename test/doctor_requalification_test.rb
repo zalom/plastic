@@ -110,7 +110,7 @@ class DoctorRequalificationTest < Minitest::Test
 
   # --- 7.3: pass quietly when every recorded model matches config ----------
 
-  # Corrected by the v1 fold (M4, n8 row 8.12): n7's own prose claimed the
+  # Corrected by the v1 fix (M4, n8 row 8.12): n7's own prose claimed the
   # rule "finds nothing on the store as it stands" - read as a claim about
   # the REAL project store, that is false. `doctor.rb --store plastic`
   # warns today, naming

@@ -143,9 +143,9 @@ class RoadmapGraphTest < Minitest::Test
     assert_equal "delivered", result[:entries]["101"][:status]
   end
 
-  # --- 1.6: an entry absent from the graph is folded in as a root ------------
+  # --- 1.6: an entry absent from the graph is merged in as a root ------------
 
-  def test_entry_absent_from_graph_is_folded_in_as_a_root
+  def test_entry_absent_from_graph_is_merged_in_as_a_root
     write_roadmap(basic_roadmap(<<~B, <<~G))
       ### Batch 1
       - [ ] 101 First - queued

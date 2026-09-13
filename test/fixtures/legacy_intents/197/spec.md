@@ -138,7 +138,7 @@ at once (rule of thumb: more than about 5), which must stay rare. Any such batch
 decision: the agent always asks first and always shows the diff, what changes and what the
 difference is, before proceeding. This exception governs rare cross-intent sweeps; it does not
 apply to an ordinary single-intent graph repair such as the three proof-case violations below,
-which are folded into this intent's own delivery rather than gated per-repair.
+which are merged into this intent's own delivery rather than gated per-repair.
 
 Maintenance is eligible on a target intent by state: a Future intent, yes; a Terminal (Completed
 or Abandoned) intent, yes; an Active intent that is mid-delivery, wait. The wait is keyed on
@@ -255,7 +255,7 @@ primitive.
 - D6: No maintenance lock is needed. `revisions.md` captures the change diff itself, every
   removal, addition, and modification. The delivery lock stays the only lock, and the
   `revisions.md` receipt is the whole maintenance contract. This matches parked intent 122's own
-  conclusion; 122 is folded into 197 and marked Abandoned as superseded, so 197 carries its
+  conclusion; 122 is merged into 197 and marked Abandoned as superseded, so 197 carries its
   design forward rather than starting a new one.
 - D7: Doctor stays a detector (core and full, all installed agents, global and project stores). It
   does not gain a write mode. `doctor --fix-all` is a router that dispatches each detected issue
@@ -396,7 +396,7 @@ primitive.
 None. Every question raised during Why has a resolving Decision:
 - Whether a "meaning vs structure" gate on graph edits is needed: resolved by D8/D9 (content vs
   metadata is decidable; no per-edit owner gate for ordinary graph fixes).
-- Whether intent 122 should be folded into or left parallel to 197: resolved by D6 (folded,
+- Whether intent 122 should be merged into or left parallel to 197: resolved by D6 (merged,
   122 marked Abandoned as superseded).
 - Whether PLASTIC.md's stale intent-112 prose should be corrected as part of this intent: resolved
   by D18.

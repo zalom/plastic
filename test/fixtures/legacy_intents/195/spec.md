@@ -34,7 +34,7 @@ cut once the nine are confirmed delivered.
   channel.
 - Close the roadmap accurately: fix its stale Batch 4 checkbox for 194 and append a closing Log
   entry that states the true partial result, without rewriting the Goal section itself.
-- Keep the pending dealintell Links repair an explicit open item, not silently folded into the
+- Keep the pending dealintell Links repair an explicit open item, not silently merged into the
   release.
 - Record the two mechanism-level lessons the batch taught as part of the delivered record, since
   they are the real yield of the work.
@@ -52,7 +52,7 @@ cut once the nine are confirmed delivered.
 - Closing the 3 pre-convention `signals_complete` gaps. Their cause is unrelated to this batch
   and closing them is not this batch's job.
 - Any of the follow-ups the nine intents recorded in their own outcome.md files (Enola
-  reindex-at-close automation, wiring the safe Links projector into the End tail, folding
+  reindex-at-close automation, wiring the safe Links projector into the End tail, merging
   `ProjectValidator` into doctor, narrowing `restore-intent-v1`'s Links reproject to one intent,
   correcting PLASTIC.md's `chain` bullet direction, and others). These belong to future intents,
   not this release decision.
@@ -114,7 +114,7 @@ only record of a real relationship.
 | Alternative | Not chosen because |
 |---|---|
 | Hold the release until graph_links_projection and signals_complete both reach zero | The remaining warnings need either an owner grant to touch Completed intents, or are advisory forever by design; holding the release would strand nine already delivered, tested intents for a decision this batch cannot make on its own |
-| Execute the dealintell Links repair as part of this release | It touches Completed intents (3b, 15, global 26); the standing rule requires an explicit one-time owner grant before any such edit, and folding it in without that grant would break the very rule this batch protects |
+| Execute the dealintell Links repair as part of this release | It touches Completed intents (3b, 15, global 26); the standing rule requires an explicit one-time owner grant before any such edit, and merging it in without that grant would break the very rule this batch protects |
 | Ship a patch release (1.3.x) instead of a minor bump | The batch adds new user-facing surface (the links-gate hook, the restore-intent-v1 and validate-project CLIs, the config_asks mechanism), which the project's own versioning convention treats as a minor bump, not a patch |
 
 ## Decisions

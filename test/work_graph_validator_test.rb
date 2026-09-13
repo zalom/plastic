@@ -10,8 +10,8 @@ require_relative "../scripts/lib/report_screen"
 
 # WorkGraphValidator (intent 334, n4): the in-batch reader over graph.md and
 # nodes/ (327's rule for budget, files, and the decision/research kinds,
-# fold A17). Named apart from IntentValidator#validate_graph, which already
-# exists for the knowledge graph and stays unrelated under D40 (fold B9).
+# review A17). Named apart from IntentValidator#validate_graph, which already
+# exists for the knowledge graph and stays unrelated under D40 (review B9).
 class WorkGraphValidatorTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/validate-work-graph", __dir__)
 

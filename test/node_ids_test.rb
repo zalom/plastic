@@ -79,7 +79,7 @@ class NodeIdsTest < Minitest::Test
   # v3 for the next verify node.
   def test_a_node_id_inside_a_milestone_line_is_not_gathered
     write_savepoint(<<~L)
-      2026-09-08T17:05:22Z  Review  plan review 2026-09-08 opus: REVISE, 10 matrix gaps, folded into spec D6 D9 D12 D13 D16-D20 and ACTION_1 v2
+      2026-09-08T17:05:22Z  Review  plan review 2026-09-08 opus: REVISE, 10 matrix gaps, merged into spec D6 D9 D12 D13 D16-D20 and ACTION_1 v2
       2026-09-08T17:26:19Z  Commit  476235a S1 GuardedAppend, 15/15 matrix tests green
     L
     assert_equal [], NodeIds.taken(@dir)

@@ -72,7 +72,7 @@ late ruling.
   goal above) means the restore path itself never writes or preserves a confirmed-dead edge, which
   partially covers the symptom at restore time, but nothing here unwinds a backlink at the
   moment a directory is DELETED, since no delete/abandon verb exists anywhere to hook such a
-  check into. Building that hook is parked as a candidate follow-up intent, not folded in here.
+  check into. Building that hook is parked as a candidate follow-up intent, not merged in here.
 - Building lock acquisition, checking, or management into the tool. The maintenance lock is
   named in the procedure doc as the lock restore-to-v1 runs under; the tool only prints a
   reminder, per fail-open doctrine (111): locks are the orchestrator's job, never built into a
@@ -181,7 +181,7 @@ unknown flag triggers a full store-wide apply.
 | Re-derive the restored intent's chain purely from scanning other intents' sources for reciprocal entries | I2 asymmetry (a chain entry with no reciprocal sources) is a legitimate, non-reciprocal edge shape doctor.rb never auto-fixes; a pure re-derive would silently delete every such edge, reproducing the same class of silent destruction this intent exists to fix |
 | Auto-detect the v1 commit from commit-message patterns (for example "intent N delivered") | Fragile: relies on message-text conventions that are not enforced anywhere, and a wrong guess would restore against the wrong anchor with no operator in the loop to catch it; the standard, boring option is to let the operator name the exact git ref, exactly as the 124 incident's own revisions.md reconstruction already did by hand |
 | Default the CLI to a real run, matching rebuild-graph and project-links (opt into --dry-run) | Restore-to-v1 is rarer and higher-blast-radius than routine graph repair, and this exact class of tool already destroyed live store data once; defaulting to dry-run forces a deliberate --apply before any write |
-| Fold the deleted-directory dangling-backlink sibling symptom into this intent | Different trigger event (directory deletion, not a completed-intent restore) and no delete/abandon verb exists today to hook a fix into; widening scope here would mean inventing a delete-time hook this intent was not chartered to build |
+| Merge the deleted-directory dangling-backlink sibling symptom into this intent | Different trigger event (directory deletion, not a completed-intent restore) and no delete/abandon verb exists today to hook a fix into; widening scope here would mean inventing a delete-time hook this intent was not chartered to build |
 | Write a new general-purpose frontmatter YAML rewriter for this tool | scripts/lib/frontmatter_writer.rb already does exactly this, scoped to sources/chain, style-preserving, and proven in rebuild-graph; reusing it is the standard/boring choice over inventing a second rewriter |
 | Write a new target-existence resolver for the union | GraphRebuild.resolve_ref already classifies same_store, cross_store, dead, and unknown_store using StoreDiscovery and each store's Relocated log; reusing it verbatim is the standard/boring choice and guarantees this tool can never disagree with rebuild-graph or doctor.rb about what exists |
 | Build maintenance-lock acquisition or checking into the tool itself | Fail-open doctrine (111): the lock system never traps a session, and lock acquisition/repair is the orchestrator's job, not a CLI's; the procedure doc names the lock and the tool prints a courtesy reminder instead |
@@ -211,7 +211,7 @@ unknown flag triggers a full store-wide apply.
   reprojection failure is reported loudly (with the exact rerun command) but does not roll back
   the already-correct frontmatter write.
 - D9. The deleted-directory dangling-backlink sibling symptom is explicitly parked as a
-  candidate follow-up intent, not folded into this one and not silently dropped.
+  candidate follow-up intent, not merged into this one and not silently dropped.
 - D10. All tests run against hermetic tmpdir git fixtures (the `test/new_intent_test.rb`
   `git init`/`git worktree add` pattern), never against the live `~/.plastic` store; at least
   one test reproduces the old failure mode before proving the new tool's fix.

@@ -54,7 +54,7 @@ ruby -Itest -e 'Dir["test/*_test.rb"].each { |f| require File.expand_path(f) }'
       both files; `env -u RUBYOPT` precedes `ruby` at all three sites; heredoc delimiters
       unchanged.
 - [x] A10 (independent-review nits 2-5). `test/rubyopt_clearing_test.rb`: added a vacuity guard
-      for the shell detector (recounts 14 recognized command words across `hooks/`); folded
+      for the shell detector (recounts 14 recognized command words across `hooks/`); merged
       `ruby_spawn_line?` into the hooks scan so a Ruby-language hook (for example
       `Open3.capture3("ruby", ...)`) is caught by both detectors, verified red with a throwaway
       hook then removed; `plastic-rubyopt-exempt` now requires a colon plus a reason to exempt a
