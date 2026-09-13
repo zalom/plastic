@@ -177,4 +177,14 @@ class HarnessAdapterTest < Minitest::Test
   def test_harness_key_with_incidental_whitespace_still_resolves
     assert_equal "codex", HarnessAdapter.resolve_key(config: { "agent" => { "type" => " codex \n" } })
   end
+
+  # --- 2.5 (intent 340a, G7b, n2): unattended start only where a Ruby loop
+  # owns dispatch ------------------------------------------------------------
+
+  def test_unattended_start_only_where_ruby_owns_dispatch
+    assert HarnessAdapter.unattended_start?("codex")
+    refute HarnessAdapter.unattended_start?("claude-code")
+    refute HarnessAdapter.unattended_start?("some-unknown-harness")
+    refute HarnessAdapter.unattended_start?(nil)
+  end
 end
