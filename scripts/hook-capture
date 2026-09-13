@@ -15,6 +15,7 @@ require "time"
 require "fileutils"
 require_relative "lib/session_ledger"
 require_relative "lib/dashboard_banner"
+require_relative "lib/active_delivery"
 
 raw = begin
   $stdin.read
@@ -48,32 +49,31 @@ def truncate(text, max)
   "#{text[0, max - 3]}..."
 end
 
-# --- (a) tmp root + heartbeat, guarded on the pointer (spec D9) ------------
-# Session start writes the `current` pointer; a capture with no pointer yet
+# --- (a) heartbeat, guarded on the session tmp dir already existing --------
+# Session start creates `.tmp/<sid>/`; a capture with no such directory yet
 # means session start never ran for this session at all (a `-p` print
 # session, a resumed background job, an unregistered SessionStart hook), so
-# neither the per-session dir nor its heartbeat is created. UserPromptSubmit
-# fires before PostToolUse, so capture is the FIRST creator of every orphan
-# `.tmp/<sid>/` this guard prevents; hook-record carries the same guard for
-# its own (later) heartbeat write.
+# neither the directory nor its heartbeat is created HERE either.
+# UserPromptSubmit fires before PostToolUse, so capture is the FIRST place
+# this guard matters; hook-record carries the same guard for its own
+# (later) heartbeat write. (344 n2, D4-D5)
 begin
-  if File.exist?(SessionLedger.pointer_path(store, sid))
-    SessionLedger.ensure_tmp_root(store)
-    FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store, sid))
+  if Dir.exist?(SessionLedger.session_tmp_dir(store, sid))
     File.write(SessionLedger.heartbeat_path(store, sid), "#{Time.now.utc.iso8601}\n")
   end
 rescue StandardError
   nil
 end
 
-# --- (b) read the pointer -----------------------------------------------
+# --- (b) a live delivery lock names this session (344 n2, D5, D12) ----------
 skip_day_ledger = false
 begin
-  pointer = SessionLedger.pointer_path(store, sid)
-  if File.exist?(pointer)
-    current = File.read(pointer).strip
-    skip_day_ledger = !current.empty? && current != today
-  end
+  full_session = session_id.empty? ? ENV["CLAUDE_CODE_SESSION_ID"].to_s : session_id
+  skip_day_ledger = !ActiveDelivery.resolve(
+    global_store: store,
+    project_roots: ActiveDelivery.project_roots(plastic_home),
+    session: full_session
+  ).nil?
 rescue StandardError
   nil
 end

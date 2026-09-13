@@ -388,9 +388,11 @@ begin
     end
   end
 
-  # --- Session day ledger: open or join today, write the per-session pointer
-  # and heartbeat (intent 298, spec D4). Best-effort: any failure here degrades
-  # to no ledger context line, never blocks the session.
+  # --- Session day ledger: open or join today, create the tmp dir and write
+  # the heartbeat (344 n2, spec D4). The per-session pointer retired: hooks
+  # now ask ActiveDelivery.resolve for a live delivery lock instead.
+  # Best-effort: any failure here degrades to no ledger context line, never
+  # blocks the session.
   unless subagent_session
     begin
       templates = File.expand_path("../templates", __dir__)
@@ -408,8 +410,6 @@ begin
       SessionLedger.ensure_tmp_root(store_dir)
       FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store_dir, sid))
       File.write(SessionLedger.heartbeat_path(store_dir, sid), "#{Time.now.utc.iso8601}\n")
-      pointer = SessionLedger.pointer_path(store_dir, sid)
-      File.write(pointer, "#{day}\n") unless File.exist?(pointer)
 
       checklist = SessionLedger.checklist_path(store_dir, day)
       open_count = 0
