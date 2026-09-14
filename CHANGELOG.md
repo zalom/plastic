@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- Moved the general skill-authoring guides from `docs/skill-authoring/` to the `skill-creating` and `skill-evaluating` skills at https://github.com/zalom/agent-skills; `docs/skill-authoring.md` keeps the Plastic-only rules.
+
 ## Released
 
 - `2.0.0-alpha.11` - shipped 2026-09-01 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); collected a direct fix to the delivered report screen: `report-screen delivered` read its version with `git describe` next to the script, which on an installed copy is `~/.plastic` (no tags) and in-repo is the tag nearest HEAD, so every post-delivery screen said `not recorded` or named the wrong release. The shipped version now comes from the record first (outcome.md's own "Shipped as", "released as", "Delivered in", "Release v" line) and, when the record is silent, from the lowest git tag that contains the intent's merge commit, in the project's repository resolved from `projects.yml` beside the store (`--repo <dir>` overrides). With neither, the screen still says `not recorded` rather than guessing from HEAD. The auto skill's two "Print the screen" steps now say the screen opens the reply with nothing before it and no code fence, the reason a screen pasted after prose rendered plain. Twelve new tests (seven readers, five CLI with a real tagged repo); tests landed red before the code. Full suite green on alpha.

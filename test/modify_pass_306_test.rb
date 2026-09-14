@@ -26,7 +26,7 @@ class ModifyPass306Test < Minitest::Test
     write_config_test dashboard_test spawn_preamble_test plastic_lock_cli_test lock_system_test
     roadmap_queue_test roadmap_savepoint_test qmd_sync_test skill_command_lint_test
     skill_rename_prune_test doctor_stray_skills_test auto_skill_contract_test update_verb_test
-    rollback_verb_test creating_skills_scaffold_test
+    rollback_verb_test
   ].freeze
 
   # Stale fixture text, comment wording, and test names the pass corrected,

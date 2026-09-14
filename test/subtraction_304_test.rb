@@ -45,9 +45,10 @@ class Subtraction304Test < Minitest::Test
 
   KEPT_AGENTS = %w[plastic-advisor.md plastic-enforcer.md plastic-executor.md plastic-faux-advisor.md].freeze
 
-  MOVED_DOCS = %w[
-    docs/skill-authoring/creating/SKILL.md docs/skill-authoring/creating/scripts/scaffold.rb
-    docs/skill-authoring/evaluating/SKILL.md
+  MOVED_DOCS = %w[docs/skill-authoring.md].freeze
+
+  MOVED_TO_AGENT_SKILLS = %w[
+    docs/skill-authoring/creating docs/skill-authoring/evaluating test/creating_skills_scaffold_test.rb
   ].freeze
 
   # Names that may appear nowhere in the scanned roots except on a line that carries the
@@ -88,6 +89,8 @@ class Subtraction304Test < Minitest::Test
     assert_empty dirs, "skill directories still on disk: #{dirs.inspect}"
     missing = MOVED_DOCS.reject { |rel| File.exist?(File.join(REPO, rel)) }
     assert_empty missing, "moved authoring docs missing: #{missing.inspect}"
+    left_behind = MOVED_TO_AGENT_SKILLS.select { |rel| File.exist?(File.join(REPO, rel)) }
+    assert_empty left_behind, "guides moved to zalom/agent-skills still here: #{left_behind.inspect}"
   end
 
   def test_skill_tree_is_exactly_the_twenty_plus_decision_tables
