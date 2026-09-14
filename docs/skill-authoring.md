@@ -46,8 +46,8 @@ Use these checks with the `skill-evaluating` skill when an eval covers intent co
 | Intent file exists | `{ID}--{slug}.md` is present in the intent directory |
 | Frontmatter complete | `id`, `intent`, `sources`, `chain`, `created`, `author`, and `tags` are present |
 | ID format | Digits and letters alternate, in the Luhmann style |
-| Directory name | `{ID}--{slug}`, with a slug of 3 to 5 words |
-| Lifecycle artifacts | Present artifacts match the stage: `spec.md` is optional, and a graph delivery carries `graph.md` and `nodes/` instead of `plan.md` |
-| Checklist gate | `checklist.md` exists only when `plan.md` exists |
-| Outcome gate | In a plan delivery, `outcome.md` exists only when every checklist item is checked |
+| Directory name | `{ID}--{slug}`, with a short kebab-case slug |
+| Placeholders | `scripts/new-intent` writes `spec.md`, `plan.md`, `checklist.md`, and `outcome.md` at birth with `<!-- plastic:placeholder -->` as the first line, so a stage counts as reached only when its file has lost that line, never because the file exists |
+| Graph delivery | A graph delivery adds `graph.md` and `nodes/` next to a real `plan.md`, and its `checklist.md` can stay a placeholder |
+| Outcome | A delivered or abandoned intent has a real `outcome.md` |
 | Insights append-only | The `## Insights` section only grows |
