@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- The core doctor leaves out the `codex_hooks_trust` reminder. The reminder always warns, because Codex keeps no trust record Plastic can read, and the core doctor turns any warning into a failure, so every Codex core check failed. The full doctor still shows the reminder.
+
 - Intent 359: `plastic-advisor` ships `effort: medium` (was `xhigh`). The new config key `agents.efforts.claude.<agent>` sets a Claude agent's effort at install time, with project config over global; the installer inserts an `effort:` line when the agent ships none.
 
 - 344 (G11, roadmap graph-ready-plastic, batch 6): the bridge key retires into `IndexEntry`

@@ -1257,7 +1257,7 @@ class Doctor
   # agent_model_drift, no store-content scanning).
   def run_core_checks(agent_key)
     all_checks = []
-    all_checks += check_agent_registration(agent_key)
+    all_checks += check_agent_registration(agent_key).reject { |c| c[:name] == "codex_hooks_trust" }
     all_checks += check_core_files(agent_key, include_drift: false)
     all_checks += check_manifest_sync(agent_key)
     all_checks += check_registered_project_paths

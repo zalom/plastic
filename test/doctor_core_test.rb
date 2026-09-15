@@ -809,6 +809,19 @@ class DoctorCodexStaleRegistrationsTest < Minitest::Test
     refute_includes names, "codex_stale_registrations"
   end
 
+  # codex_hooks_trust always warns (Codex exposes no trust record to read), and the core
+  # roll-up is binary, so carrying it in core would fail every Codex boot check.
+  def test_run_core_checks_leaves_out_the_codex_hooks_trust_reminder
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    full_names = doctor_for.check_agent_registration("codex").map { |c| c[:name] }
+    assert_includes full_names, "codex_hooks_trust"
+
+    core_names = doctor_for.run_core_checks("codex")[:checks].map { |c| c[:name] }
+    refute_includes core_names, "codex_hooks_trust"
+  end
+
   # --- SHOULD-FIX item 5: name-only comparison goes blind to two real cases --------
 
   # (a) the SAME (event, name) pair registered twice: a name-only "is it expected"
