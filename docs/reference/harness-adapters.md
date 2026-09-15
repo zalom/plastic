@@ -364,6 +364,8 @@ of discovering silently that no hook ever fires. `doctor`'s `check_codex_registr
 `codex_hooks_trust` advisory (`warn`, never `pass` or `fail`) once hooks are registered as
 expected: whether Codex persists a queryable trust record anywhere under `~/.codex` is
 undocumented and unverified, so this can never be a real pass or fail check, only a reminder.
+The full doctor carries it; the core doctor leaves it out, because its binary roll-up turns any
+`warn` into `fail` and would fail every Codex boot check on a reminder.
 Because trust is keyed to each hook's current command hash, any future Plastic release that
 changes a hook's command re-arms the review, and the advisory's wording says so.
 
