@@ -154,12 +154,14 @@ class NodeRunCliTest < Minitest::Test
 
   # A ready node with a real running line and a real, hashed node input on disk
   # at `attempt` - the fixture every non-refusal row needs.
-  def build_running_node(node: "n1", session: "sess-1", attempt: 1, expires: "2099-01-01T00:00:00Z")
-    build = NodeInput.build(intent_dir: @dir, node: node, holder: session, expires: expires, model: "sonnet",
+  def build_running_node(node: "n1", session: "sess-1", attempt: 1, expires: "2099-01-01T00:00:00Z",
+                         model: "sonnet", effort: "medium")
+    build = NodeInput.build(intent_dir: @dir, node: node, holder: session, expires: expires, model: model,
                               attempt: attempt, force: true)
     raise "input build failed: #{build[:errors].inspect}" unless build[:ok]
 
-    append_savepoint(line(node, "running", holder: session, expires: expires, input: build[:sha], model: "sonnet"))
+    append_savepoint(line(node, "running", holder: session, expires: expires, input: build[:sha], model: model,
+                           effort: effort))
     build
   end
 
@@ -191,6 +193,7 @@ class NodeRunCliTest < Minitest::Test
       end
 
       args = ARGV.dup
+      File.write(ENV["STUB_CODEX_ARGV"], args.join("\n")) if ENV["STUB_CODEX_ARGV"]
       out_path = opt(args, "-o", "--output-last-message")
       cdir = opt(args, "-C", "--cd")
       $stdin.read
@@ -225,6 +228,24 @@ class NodeRunCliTest < Minitest::Test
     RUBY
     FileUtils.chmod(0o755, path)
     path
+  end
+
+  def test_running_fields_reach_codex_argv
+    setup_real_repo
+    write_graph("- n1 needs nothing\n")
+    write_node("n1.md", node: "n1", kind: "work")
+    write_lock(owner: "sess-1")
+    provision_node_worktree("n1")
+    build_running_node(node: "n1", session: "sess-1", model: "gpt-6-astra", effort: "medium")
+    argv_path = File.join(@home, "codex-argv")
+
+    _out, err, status = run_cli(@dir, "--node", "n1", "--session", "sess-1",
+                                  env: stub_env("STUB_CODEX_ARGV" => argv_path))
+
+    assert status.success?, err
+    argv = File.readlines(argv_path, chomp: true)
+    assert_equal "gpt-6-astra", argv[argv.index("--model") + 1]
+    assert_includes argv, 'model_reasoning_effort="medium"'
   end
 
   def stub_env(extra = {})

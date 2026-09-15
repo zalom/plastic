@@ -57,6 +57,36 @@ class RunnerPolicyTest < Minitest::Test
     assert_equal "haiku", RunnerPolicy.model_for("research", config: config)
   end
 
+  def test_claude_models_use_aliases
+    assert_equal "sonnet", RunnerPolicy.model_for("work", config: {}, harness: "claude-code")
+    assert_equal "opus", RunnerPolicy.model_for("verify", config: {}, harness: "claude-code")
+  end
+
+  def test_codex_models_use_openai_ids
+    assert_equal "gpt-5.6-terra", RunnerPolicy.model_for("work", config: {}, harness: "codex")
+    assert_equal "gpt-5.6-terra", RunnerPolicy.model_for("research", config: {}, harness: "codex")
+    assert_equal "gpt-5.6-sol", RunnerPolicy.model_for("verify", config: {}, harness: "codex")
+  end
+
+  def test_every_dispatched_kind_defaults_to_medium_effort
+    %w[work verify research].each do |kind|
+      assert_equal "medium", RunnerPolicy.effort_for(kind, config: {}, harness: "claude-code")
+      assert_equal "medium", RunnerPolicy.effort_for(kind, config: {}, harness: "codex")
+    end
+  end
+
+  def test_harness_scoped_model_and_effort_overrides
+    config = {
+      "agents" => {
+        "models" => { "codex" => { "plastic-executor" => "gpt-6-astra" } },
+        "efforts" => { "codex" => { "plastic-executor" => "high" } }
+      }
+    }
+
+    assert_equal "gpt-6-astra", RunnerPolicy.model_for("work", config: config, harness: "codex")
+    assert_equal "high", RunnerPolicy.effort_for("work", config: config, harness: "codex")
+  end
+
   # --- 5.14: verify resolves the advisor model, never the cheap tier -------------
 
   def test_verify_uses_advisor_model

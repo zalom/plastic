@@ -61,6 +61,25 @@ class NodeReturnTest < Minitest::Test
     assert(result.errors.any? { |e| e.include?("made_up_field") })
   end
 
+  def test_report_content_is_part_of_closed_schema
+    result = NodeReturn.parse(<<~YAML)
+      node: r1
+      status: done
+      commit: research-only
+      report: |
+        # Findings
+
+        The result.
+    YAML
+
+    assert result.ok, result.errors.inspect
+    assert_equal "# Findings\n\nThe result.\n", result.report
+
+    invalid = NodeReturn.parse("node: r1\nstatus: done\ncommit: research-only\nreport: [not, text]\n")
+    refute invalid.ok
+    assert(invalid.errors.any? { |e| e.include?("report") })
+  end
+
   # --- 4.5: an unknown status ----------------------------------------------------
 
   def test_unknown_status_is_refused

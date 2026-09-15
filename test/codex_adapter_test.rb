@@ -118,6 +118,20 @@ class CodexAdapterTest < Minitest::Test
     assert_equal worktree, argv[idx + 1]
   end
 
+  def test_build_argv_passes_model
+    argv = CodexAdapter.build_argv(kind: "verify", worktree: @tmp, output_last_message: "/tmp/out.msg",
+                                    model: "gpt-5.6-sol", effort: "medium")
+
+    assert_equal "gpt-5.6-sol", argv[argv.index("--model") + 1]
+  end
+
+  def test_build_argv_passes_reasoning_effort
+    argv = CodexAdapter.build_argv(kind: "verify", worktree: @tmp, output_last_message: "/tmp/out.msg",
+                                    model: "gpt-5.6-sol", effort: "medium")
+
+    assert_includes argv, 'model_reasoning_effort="medium"'
+  end
+
   # --- 6.9: the node input rides on stdin, never as an argument --------------------
 
   def test_input_goes_on_stdin

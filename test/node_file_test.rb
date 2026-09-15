@@ -177,6 +177,32 @@ class NodeFileTest < Minitest::Test
     assert(result[:errors].any? { |e| e.include?("files") })
   end
 
+  def test_research_report_path_is_confined_to_resources
+    valid = write("r1.md", valid_envelope(node: "r1", kind: "research", files: []).sub(
+      "budget: 100000", "budget: 100000\nreport: resources/research.md"
+    ))
+    assert_equal "resources/research.md", NodeFile.parse(valid)[:report]
+
+    %w[../outside.md /tmp/outside.md resources/../outside.md resources/report.txt].each_with_index do |report, i|
+      path = write("r#{i + 2}.md", valid_envelope(node: "r#{i + 2}", kind: "research", files: []).sub(
+        "budget: 100000", "budget: 100000\nreport: #{report}"
+      ))
+      result = NodeFile.parse(path)
+      refute result[:ok], report
+      assert(result[:errors].any? { |e| e.include?("report") }, result[:errors].inspect)
+    end
+  end
+
+  def test_only_research_nodes_may_declare_reports
+    path = write("n1.md", valid_envelope.sub(
+      "budget: 100000", "budget: 100000\nreport: resources/research.md"
+    ))
+    result = NodeFile.parse(path)
+
+    refute result[:ok]
+    assert(result[:errors].any? { |e| e.include?("research") })
+  end
+
   # --- body sections -----------------------------------------------------------------
 
   def test_heading_inside_fence_is_not_a_section

@@ -20,13 +20,42 @@ class ReadConfigTest < Minitest::Test
     FileUtils.rm_rf(@project_dir)
   end
 
-  def run_script(key, default: nil, global_dir: @global_dir, project_dir: nil)
+  def run_script(key, default: nil, global_dir: @global_dir, project_dir: nil, harness: nil)
     env = { "PLASTIC_HOME" => global_dir }
     args = [SCRIPT, key]
     args += ["--default", default] if default
     args += ["--project", project_dir] if project_dir
+    args += ["--harness", harness] if harness
     stdout, stderr, status = Open3.capture3(env, *args)
     [stdout.strip, stderr.strip, status]
+  end
+
+
+  def test_harness_selects_model_namespace
+    write_global_config(
+      "agents" => {
+        "models" => {
+          "claude" => { "plastic-executor" => "haiku" },
+          "codex" => { "plastic-executor" => "gpt-6-astra" }
+        },
+        "efforts" => {
+          "claude" => { "plastic-executor" => "low" },
+          "codex" => { "plastic-executor" => "high" }
+        }
+      }
+    )
+
+    assert_equal "haiku", run_script("agents.models.plastic-executor", harness: "claude").first
+    assert_equal "gpt-6-astra", run_script("agents.models.plastic-executor", harness: "codex").first
+    assert_equal "low", run_script("agents.efforts.plastic-executor", harness: "claude").first
+    assert_equal "high", run_script("agents.efforts.plastic-executor", harness: "codex").first
+  end
+
+  def test_harness_defaults_translate_codex_models_and_use_medium_effort
+    assert_equal "sonnet", run_script("agents.models.plastic-executor", harness: "claude").first
+    assert_equal "gpt-5.6-terra", run_script("agents.models.plastic-executor", harness: "codex").first
+    assert_equal "medium", run_script("agents.efforts.plastic-executor", harness: "claude").first
+    assert_equal "medium", run_script("agents.efforts.plastic-executor", harness: "codex").first
   end
 
   def write_global_config(data)

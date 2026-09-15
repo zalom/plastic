@@ -103,13 +103,13 @@ class RunnerAbsorbTest < Minitest::Test
 
   # --- fixture helpers -----------------------------------------------------------
 
-  def build_context(node: "n4", kind: "work", files: ["scripts/lib/foo.rb"], worktree: @dir,
+  def build_context(node: "n4", kind: "work", files: ["scripts/lib/foo.rb"], report: nil, worktree: @dir,
                      worktree_branch: "plastic/x", plastic_home: @home)
     RunnerCore::Context.new(
       intent_dir: @dir, intent_id: INTENT_ID, intent_slug: INTENT_SLUG,
       store: nil, plastic_home: plastic_home, session: nil,
       worktree: worktree, worktree_branch: worktree_branch,
-      graph: { ok: true, edges: {}, nodes: { node => { kind: kind, files: files } } },
+      graph: { ok: true, edges: {}, nodes: { node => { kind: kind, files: files, report: report } } },
       errors: []
     )
   end
@@ -135,16 +135,17 @@ class RunnerAbsorbTest < Minitest::Test
     line(node, "running", fields)
   end
 
-  def write_node_file(node = "n4", tests: ["runner_absorb_fixture_test#test_ok"])
+  def write_node_file(node = "n4", tests: ["runner_absorb_fixture_test#test_ok"], kind: "work", files: ["scripts/lib/foo.rb"], report: nil)
     path = File.join(@dir, "nodes", "#{node}.md")
     FileUtils.mkdir_p(File.dirname(path))
     rows = tests.each_with_index.map { |t, i| "| #{i + 1} | op | fail | `#{t}` |" }
     File.write(path, <<~MD)
       ---
       node: #{node}
-      kind: work
-      files: [scripts/lib/foo.rb]
+      kind: #{kind}
+      files: #{files.inspect}
       budget: 1000
+      #{report ? "report: #{report}" : nil}
       ---
       # #{node} - fixture
 
@@ -153,6 +154,51 @@ class RunnerAbsorbTest < Minitest::Test
       | --- | --- | --- | --- |
       #{rows.join("\n")}
     MD
+  end
+
+
+  def absorb_research(report_decl:, report_body: nil)
+    write_savepoint(running_line(node: "r1"))
+    write_node_file("r1", tests: [], kind: "research", files: [], report: report_decl)
+    context = build_context(node: "r1", kind: "research", files: [], report: report_decl)
+    return_path = write_return(node: "r1", status: "done", commit: "research-only",
+                               extra: report_body.nil? ? {} : { "report" => report_body })
+    RunnerAbsorb.absorb(
+      context, node: "r1", return_path: return_path, integrity_checker: ok_integrity,
+      worktree: FakeWorktree.new(changed: []), suite_runner: ok_suite, project_reader: no_command_reader
+    )
+  end
+
+  def test_research_report_is_written_under_intent_resources
+    result = absorb_research(report_decl: "resources/research.md", report_body: "# Research\n\nResult.\n")
+
+    assert_equal "done", result[:state], result.inspect
+    assert_equal "# Research\n\nResult.\n", File.read(File.join(@dir, "resources", "research.md"))
+  end
+
+  def test_declared_report_requires_content
+    result = absorb_research(report_decl: "resources/research.md")
+
+    assert_equal "failed_verification", result[:state]
+    refute File.exist?(File.join(@dir, "resources", "research.md"))
+  end
+
+  def test_undeclared_report_is_refused
+    result = absorb_research(report_decl: nil, report_body: "unexpected")
+
+    assert_equal "failed_verification", result[:state]
+    refute Dir.exist?(File.join(@dir, "resources"))
+  end
+
+  def test_conflicting_report_is_not_overwritten
+    FileUtils.mkdir_p(File.join(@dir, "resources"))
+    path = File.join(@dir, "resources", "research.md")
+    File.write(path, "existing\n")
+
+    result = absorb_research(report_decl: "resources/research.md", report_body: "different\n")
+
+    assert_equal "failed_verification", result[:state]
+    assert_equal "existing\n", File.read(path)
   end
 
   # Row 10.17: writes a fixture test FILE that also defines the named METHOD,
