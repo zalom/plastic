@@ -1582,7 +1582,7 @@ class InstallerCore
     puts "  \u{2139}\u{fe0f}  Kept #{kept.size} hook(s) Plastic does not own, named with the reserved plastic- prefix:"
     kept.each { |cmd| puts "     - #{tilde(cmd.to_s)}" }
     puts "     The plastic- prefix is reserved for Plastic's own hooks. Rename yours (for"
-    puts "     example ~/.claude/hooks/writing-style) so a future update never mistakes it."
+    puts "     example ~/.claude/hooks/plain-writing) so a future update never mistakes it."
   end
 
   # --- settings.json merge (read-modify-write, never clobber) ---

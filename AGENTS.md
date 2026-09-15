@@ -64,7 +64,7 @@ Rules for any agent (or human) contributing to this repository.
   `docs/internals.md` in the same change.
 - Keep the README light. It carries the pitch, install, and a pointer into `docs/`.
   Deeper material belongs in `docs/`.
-- Writing follows the `writing-style` skill. It owns the wording rules for every document in this repository; this file does not restate them.
+- Writing follows the `plain-writing` skill. It owns the wording rules for every document in this repository; this file does not restate them.
 
 ### Work
 - All work flows through an intent. Move it through What, Why, How, Exec. Do not jump

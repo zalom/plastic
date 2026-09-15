@@ -412,7 +412,7 @@ class Doctor
         fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest --claude (prunes " \
                   "stale launchers). The plastic- prefix is reserved for Plastic's own hooks: " \
                   "if one of these is yours, rename it (for example to ~/.claude/hooks/" \
-                  "writing-style) and re-register it in settings.json before re-running."
+                  "plain-writing) and re-register it in settings.json before re-running."
       )
     end
 

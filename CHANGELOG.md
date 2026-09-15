@@ -220,7 +220,9 @@ to carry a criteria-shaped list still reports its matrix rows.
   `scripts/doctor.rb`. The roadmap plan screen prints the tree when a roadmap carries a real graph,
   byte-identical to before on a graphless one; the roadmap template now teaches `## Graph` (its
   example edges fenced so they are never read as real) so a new roadmap is never born graphless.
+
 - Moved the general skill-authoring guides from `docs/skill-authoring/` to the `skill-creating` and `skill-evaluating` skills at https://github.com/zalom/agent-skills; `docs/skill-authoring.md` keeps the Plastic-only rules.
+- `AGENTS.md`, the auto report contract, and the doctor and installer hook examples name the `plain-writing` skill, renamed from `writing-style`.
 
 ## Released
 

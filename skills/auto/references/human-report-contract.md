@@ -120,7 +120,7 @@ renders. The two never merge.
 
 ## Brevity: point, don't repeat
 
-Surface rules are owned by the `writing-style` skill. This contract does not restate them. Its
+Surface rules are owned by the `plain-writing` skill. This contract does not restate them. Its
 job is naming which screen prints when, not the wording inside it - `report-screen` derives
 every cell from the record (D14), so there is no prose left to style here.
 
