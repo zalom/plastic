@@ -1403,7 +1403,7 @@ Three pieces close the loop the day ledger (intent 297) and the capture and reco
 accepts `session: nil` for any-session addressing; `flip_all` flips every matching line under one
 lock with one `pwrite` per line.
 
-The skill-authoring guides live under `docs/skill-authoring/` since 2.0 (intent 304); they are reference material, not installed skills.
+The general skill-authoring guides moved to the `skill-creating` and `skill-evaluating` skills in [zalom/agent-skills](https://github.com/zalom/agent-skills); `docs/skill-authoring.md` keeps the Plastic-only rules.
 
 ## the context budget bench (intent 313)
 

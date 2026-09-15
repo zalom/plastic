@@ -46,9 +46,10 @@ class Subtraction304Test < Minitest::Test
   KEPT_AGENTS = %w[plastic-advisor.md plastic-enforcer.md plastic-executor.md plastic-faux-advisor.md
                    plastic-node-research.md plastic-node-verify.md plastic-node-work.md].freeze
 
-  MOVED_DOCS = %w[
-    docs/skill-authoring/creating/SKILL.md docs/skill-authoring/creating/scripts/scaffold.rb
-    docs/skill-authoring/evaluating/SKILL.md
+  PLASTIC_AUTHORING_DOCS = %w[docs/skill-authoring.md].freeze
+
+  MOVED_TO_AGENT_SKILLS = %w[
+    docs/skill-authoring/creating docs/skill-authoring/evaluating test/creating_skills_scaffold_test.rb
   ].freeze
 
   # Names that may appear nowhere in the scanned roots except on a line that carries the
@@ -82,13 +83,15 @@ class Subtraction304Test < Minitest::Test
     "skills/roadmap/SKILL.md" => "global tier",
   }.freeze
 
-  def test_removed_files_are_gone_and_moved_docs_are_present
+  def test_removed_files_are_gone_and_the_plastic_authoring_doc_is_present
     present = REMOVED_FILES.select { |rel| File.exist?(File.join(REPO, rel)) }
     assert_empty present, "still on disk: #{present.inspect}"
     dirs = REMOVED_SKILL_DIRS.select { |d| File.directory?(File.join(REPO, "skills", d)) }
     assert_empty dirs, "skill directories still on disk: #{dirs.inspect}"
-    missing = MOVED_DOCS.reject { |rel| File.exist?(File.join(REPO, rel)) }
-    assert_empty missing, "moved authoring docs missing: #{missing.inspect}"
+    missing = PLASTIC_AUTHORING_DOCS.reject { |rel| File.exist?(File.join(REPO, rel)) }
+    assert_empty missing, "Plastic authoring doc missing: #{missing.inspect}"
+    left_behind = MOVED_TO_AGENT_SKILLS.select { |rel| File.exist?(File.join(REPO, rel)) }
+    assert_empty left_behind, "guides moved to zalom/agent-skills still here: #{left_behind.inspect}"
   end
 
   def test_skill_tree_is_exactly_the_twenty_plus_decision_tables

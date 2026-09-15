@@ -220,6 +220,8 @@ to carry a criteria-shaped list still reports its matrix rows.
   `scripts/doctor.rb`. The roadmap plan screen prints the tree when a roadmap carries a real graph,
   byte-identical to before on a graphless one; the roadmap template now teaches `## Graph` (its
   example edges fenced so they are never read as real) so a new roadmap is never born graphless.
+- Moved the general skill-authoring guides from `docs/skill-authoring/` to the `skill-creating` and `skill-evaluating` skills at https://github.com/zalom/agent-skills; `docs/skill-authoring.md` keeps the Plastic-only rules.
+
 ## Released
 
 - `2.0.0-alpha.24` - shipped 2026-09-13 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); collected batch 6 of roadmap graph-ready-plastic, the last batch (15 of 15 delivered): 344, the bridge key and the session pointer retired, measured first with `graph-measure` over six graph-era ledgers (`scripts/lib/bridge.rb` split into `IndexEntry` and `ProjectConfig`, `Arm.bridge_hash` renamed `Arm.delivery`, the delivering intent read from the delivery lock and a session's day from the day ledger, `plastic-lock status` reports `delivering`, and install and update remove leftover pointer and bridge files by name without following a symlink); 338a, the node input rename (`scripts/node-input`, `NodeInput`, `DataBoundary`, `attempts/<node>--a<N>.input`, the `input=` ledger field, and `NodeInputCompatibility`, which keeps completed intents' older ledgers and attempt files readable).
