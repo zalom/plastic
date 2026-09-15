@@ -31,26 +31,25 @@ module AgentModels
   # hard-wired identity: agents.models.claude.<name> (or the legacy flat form)
   # overrides either one through the same install-time frontmatter rewrite
   # every agent override uses. Neither is a lifecycle-stage role: never
-  # dispatched by the auto pipeline, not part of TIER_DEFAULTS. Claude-only for
-  # this release (generate_codex_agents skips both by name; the Codex advisor
-  # case is intent 186, not a permanent exclusion).
-  #
-  # Intent 186 DEFINES the advisor Codex pairing but keeps emission deferred: when the skip is
-  # lifted, plastic-advisor pairs to gpt-5.6-sol at xhigh (the deepest) and plastic-faux-advisor
-  # to gpt-5.6-terra at high (cheaper). Neither is in TIER_DEFAULTS and neither is auto-dispatched.
+  # dispatched by the auto pipeline, not part of TIER_DEFAULTS. Codex installs
+  # pair plastic-advisor with Sol and plastic-faux-advisor with Terra.
   CONSULTATION_AGENTS = %w[plastic-advisor plastic-faux-advisor].freeze
 
-  # Codex reasoning-effort per tier alias (intent 102a). model_reasoning_effort is a
-  # depth-of-thinking dial independent of model selection (181 line 317-318), so mapping
-  # the tier here never encodes a rotting Codex model id (116 D1). opus is the deepest
-  # reasoning tier -> the deepest generally-safe effort (high, not the model-dependent
-  # xhigh); sonnet the mid execution tier -> medium; haiku the lightest -> low. minimal is
-  # unused.
+  SHIPPED_MODEL_DEFAULTS = TIER_DEFAULTS.merge(
+    "plastic-advisor" => "fable",
+    "plastic-faux-advisor" => "opus"
+  ).freeze
+
+  # Codex reasoning effort per tier alias. Model choice and reasoning effort are independent:
+  # aliases select the recommended OpenAI model, while every Plastic role starts at medium.
+  # A valid harness-scoped user override can still choose another effort for one agent.
   EFFORT_BY_ALIAS = {
-    "opus" => "high",
+    "opus" => "medium",
     "sonnet" => "medium",
-    "haiku" => "low"
+    "haiku" => "medium"
   }.freeze
+
+  DEFAULT_EFFORT = "medium"
 
   # Codex model id per tier alias (intent 186). Codex has NO vendor alias layer: every model id
   # is a literal versioned string that rots (gpt-5.2 / gpt-5.3-codex already deprecated), which is
@@ -58,13 +57,18 @@ module AgentModels
   # centralizing every id in ONE map: Plastic owns the alias, so per-role identity costs a single
   # line to refresh on a Codex deprecation plus a Plastic release, and no per-role file carries a
   # raw id. opus (deepest reasoning tier) -> the flagship Sol; sonnet (execution tier) -> the
-  # balanced Terra; haiku (lightest) -> the fast/cheap Luna. Paired with EFFORT_BY_ALIAS so
-  # reasoning roles get a stronger model AND higher effort than executors. This is a shipped
-  # DEFAULT, fully overridable via agents.models.codex.<name>.
+  # balanced Terra; haiku (lightest) -> the fast/cheap Luna. This is a shipped
+  # DEFAULT, fully overridable via agents.models.codex.<name>. Model strength does not change
+  # effort: all three aliases use medium unless agents.efforts.codex.<name> overrides it.
   CODEX_MODEL_BY_ALIAS = {
     "opus" => "gpt-5.6-sol",
     "sonnet" => "gpt-5.6-terra",
     "haiku" => "gpt-5.6-luna"
+  }.freeze
+
+  CODEX_MODEL_BY_AGENT = {
+    "plastic-advisor" => "gpt-5.6-sol",
+    "plastic-faux-advisor" => "gpt-5.6-terra"
   }.freeze
 
   module_function
@@ -123,5 +127,12 @@ module AgentModels
   # shipped aliases (the caller then treats the value as a literal Codex model id, or omits it).
   def codex_model_for(value)
     CODEX_MODEL_BY_ALIAS[value.to_s]
+  end
+
+  def shipped_model_for(agent, harness: "claude")
+    value = SHIPPED_MODEL_DEFAULTS[agent.to_s]
+    return value unless harness.to_s == "codex"
+
+    CODEX_MODEL_BY_AGENT[agent.to_s] || codex_model_for(value) || value
   end
 end

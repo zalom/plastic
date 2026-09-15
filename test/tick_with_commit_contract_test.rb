@@ -119,7 +119,7 @@ class TickWithCommitContractTest < Minitest::Test
   # D12, hard constraint: the frontmatter `description:` block feeds the context-budget
   # catalog ceiling and the Codex TOML `description` field; it must never be touched.
   def test_agent_frontmatter_descriptions_are_unchanged
-    executor_front = File.readlines(EXECUTOR, chomp: true)[0..6].join("\n")
+    executor_front = File.readlines(EXECUTOR, chomp: true)[0..7].join("\n")
     assert_equal <<~FRONT.strip, executor_front
       ---
       name: plastic-executor
@@ -127,10 +127,11 @@ class TickWithCommitContractTest < Minitest::Test
         Use for the Exec stage in auto mode: commit the plan's tests red, implement
         the actions, check off the checklist, and drive the test suite green.
       model: sonnet
+      effort: medium
       ---
     FRONT
 
-    enforcer_front = File.readlines(ENFORCER, chomp: true)[0..7].join("\n")
+    enforcer_front = File.readlines(ENFORCER, chomp: true)[0..8].join("\n")
     assert_equal <<~FRONT.strip, enforcer_front
       ---
       name: plastic-enforcer
@@ -139,6 +140,7 @@ class TickWithCommitContractTest < Minitest::Test
         record, has the plan reviewed before code, dispatches one executor, reviews
         by risk, and closes.
       model: opus
+      effort: medium
       ---
     FRONT
   end

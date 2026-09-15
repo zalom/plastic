@@ -227,13 +227,9 @@ class CodexInstallTest < Minitest::Test
   def test_install_codex_manifest_tracks_the_generated_tomls_one_per_source_agent
     @core.install_for_agent("codex", false)
 
-    # Consultation agents (intent 185) pin `fable` in authored frontmatter, and
-    # Codex has no fable alias, so generate_codex_agents skips them: one toml per
-    # shipped agent EXCEPT those three.
     sources = Dir.glob(File.join(WORKTREE, "agents", "*.md"))
-      .reject { |p| AgentModels::CONSULTATION_AGENTS.include?(File.basename(p, ".md")) }
     tomls = Dir.glob(File.join(@codex_home, "agents", "*.toml"))
-    assert_equal sources.size, tomls.size, "one generated toml per shipped agent .md, excluding consultation agents"
+    assert_equal sources.size, tomls.size, "one generated toml per shipped agent .md"
 
     manifest = JSON.parse(File.read(File.join(@agent_dir, "plastic", "manifest.json")))
     manifest_keys = manifest["files"].keys
@@ -381,10 +377,10 @@ class CodexInstallTest < Minitest::Test
   end
 
   def test_codex_model_fields_by_shape
-    assert_equal %(model = "gpt-5.6-sol"\nmodel_reasoning_effort = "high"), @core.codex_model_fields("opus")
+    assert_equal %(model = "gpt-5.6-sol"\nmodel_reasoning_effort = "medium"), @core.codex_model_fields("opus")
     assert_equal %(model = "gpt-5.6-terra"\nmodel_reasoning_effort = "medium"), @core.codex_model_fields("sonnet")
-    assert_equal %(model = "gpt-5.6-luna"\nmodel_reasoning_effort = "low"), @core.codex_model_fields("haiku")
-    assert_equal 'model = "gpt-5.4-codex"', @core.codex_model_fields("gpt-5.4-codex")
+    assert_equal %(model = "gpt-5.6-luna"\nmodel_reasoning_effort = "medium"), @core.codex_model_fields("haiku")
+    assert_equal %(model = "gpt-5.4-codex"\nmodel_reasoning_effort = "medium"), @core.codex_model_fields("gpt-5.4-codex")
     assert_equal "", @core.codex_model_fields("")
     assert_equal "", @core.codex_model_fields(nil)
   end
@@ -400,28 +396,28 @@ class CodexInstallTest < Minitest::Test
   def test_codex_tier_alias_emits_model_then_effort
     %w[opus sonnet haiku].each do |a|
       out = @core.codex_model_fields(a)
-      assert_match(/\Amodel = "gpt-5\.6-[a-z]+"\nmodel_reasoning_effort = "(high|medium|low)"\z/, out)
+      assert_match(/\Amodel = "gpt-5\.6-[a-z]+"\nmodel_reasoning_effort = "medium"\z/, out)
     end
   end
 
-  def test_reasoning_roles_get_stronger_model_and_higher_effort_than_executors
+  def test_reasoning_roles_get_stronger_models_at_the_same_medium_effort
     reasoning = @core.codex_model_fields(AgentModels::TIER_DEFAULTS["plastic-enforcer"])  # opus
     executor  = @core.codex_model_fields(AgentModels::TIER_DEFAULTS["plastic-executor"]) # sonnet
     assert_includes reasoning, 'model = "gpt-5.6-sol"'
-    assert_includes reasoning, 'model_reasoning_effort = "high"'
+    assert_includes reasoning, 'model_reasoning_effort = "medium"'
     assert_includes executor, 'model = "gpt-5.6-terra"'
     assert_includes executor, 'model_reasoning_effort = "medium"'
     refute_equal reasoning, executor
   end
 
   def test_agents_models_codex_tier_override_selects_model_and_effort
-    # override plastic-executor to the opus tier via agents.models.codex.*; expect sol/high to win.
+    # override plastic-executor to the opus tier via agents.models.codex.*; expect Sol at medium.
     File.write(File.join(@home, "config.yml"),
                "agents:\n  models:\n    codex:\n      plastic-executor: opus\n")
     @core.install_for_agent("codex", false)
     toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
     assert_includes toml, 'model = "gpt-5.6-sol"'
-    assert_includes toml, 'model_reasoning_effort = "high"'
+    assert_includes toml, 'model_reasoning_effort = "medium"'
   end
 
   def test_render_codex_agent_toml_maps_frontmatter_and_carries_the_body_verbatim
@@ -463,14 +459,14 @@ class CodexInstallTest < Minitest::Test
 
     opus_toml = File.read(File.join(@codex_home, "agents", "plastic-enforcer.toml"))
     assert_includes opus_toml, 'model = "gpt-5.6-sol"'
-    assert_includes opus_toml, 'model_reasoning_effort = "high"'
+    assert_includes opus_toml, 'model_reasoning_effort = "medium"'
 
     sonnet_toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
     assert_includes sonnet_toml, 'model = "gpt-5.6-terra"'
     assert_includes sonnet_toml, 'model_reasoning_effort = "medium"'
   end
 
-  def test_haiku_alias_maps_to_low_effort_via_synthetic_render
+  def test_haiku_alias_maps_to_medium_effort_via_synthetic_render
     dir = Dir.mktmpdir("codex-agent-src")
     begin
       src = File.join(dir, "plastic-haiku-sample.md")
@@ -485,7 +481,7 @@ class CodexInstallTest < Minitest::Test
       MD
 
       toml = @core.render_codex_agent_toml(src, nil)
-      assert_includes toml, 'model_reasoning_effort = "low"'
+      assert_includes toml, 'model_reasoning_effort = "medium"'
       assert_includes toml, 'model = "gpt-5.6-luna"'
     ensure
       FileUtils.rm_rf(dir)
@@ -495,7 +491,7 @@ class CodexInstallTest < Minitest::Test
   # Codex-scoped config (intent 185 final design): agents.models is
   # harness-scoped, so a Codex override must be written under
   # agents.models.codex.* to reach the Codex TOML render.
-  def test_override_with_a_codex_model_id_wins_as_a_literal_model_and_drops_effort
+  def test_override_with_a_codex_model_id_wins_and_keeps_medium_effort
     File.write(File.join(@home, "config.yml"),
                "agents:\n  models:\n    codex:\n      plastic-executor: gpt-5.4-codex\n")
 
@@ -503,7 +499,7 @@ class CodexInstallTest < Minitest::Test
 
     toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
     assert_includes toml, 'model = "gpt-5.4-codex"'
-    refute_match(/^model_reasoning_effort = /, toml)
+    assert_includes toml, 'model_reasoning_effort = "medium"'
   end
 
   def test_override_with_a_tier_word_maps_to_model_and_effort
@@ -513,7 +509,7 @@ class CodexInstallTest < Minitest::Test
     @core.install_for_agent("codex", false)
 
     toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
-    assert_includes toml, 'model_reasoning_effort = "low"'
+    assert_includes toml, 'model_reasoning_effort = "medium"'
     assert_includes toml, 'model = "gpt-5.6-luna"'
   end
 

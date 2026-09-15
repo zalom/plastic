@@ -2159,6 +2159,8 @@ end
 
     global_config = load_yaml_safe(File.join(plastic_home, "config.yml")) || {}
     overrides = AgentModels.override_map(project_config: {}, global_config: global_config, harness: "codex")
+    effort_overrides = AgentModels.effort_override_map(project_config: {}, global_config: global_config,
+                                                        harness: "codex")
 
     drifted = []
     sanctioned = []
@@ -2169,13 +2171,13 @@ end
       fields = codex_agent_toml_model_fields(File.read(path))
       override = overrides[basename]
 
-      if override
+      if override || effort_overrides[basename]
         sanctioned << "#{basename}: toml model=#{fields[:model].inspect}, " \
-                      "toml effort=#{fields[:effort].inspect}, sanctioned override=#{override.inspect}"
-      elsif AgentModels::TIER_DEFAULTS.key?(basename)
-        tier = AgentModels::TIER_DEFAULTS[basename]
-        expected_model = AgentModels.codex_model_for(tier)
-        expected_effort = AgentModels.effort_for(tier)
+                      "toml effort=#{fields[:effort].inspect}, sanctioned model override=#{override.inspect}, " \
+                      "effort override=#{effort_overrides[basename].inspect}"
+      elsif AgentModels::SHIPPED_MODEL_DEFAULTS.key?(basename)
+        expected_model = AgentModels.shipped_model_for(basename, harness: "codex")
+        expected_effort = AgentModels::DEFAULT_EFFORT
         mismatches = []
         if expected_model && fields[:model] != expected_model
           mismatches << "model=#{fields[:model].inspect}, resolved default model=#{expected_model.inspect}"
@@ -2187,7 +2189,7 @@ end
       else
         unclassified << "#{basename}: toml model=#{fields[:model].inspect}, " \
                         "toml effort=#{fields[:effort].inspect}, no resolved default (basename is in " \
-                        "neither AgentModels::TIER_DEFAULTS nor AgentModels::CONSULTATION_AGENTS in " \
+                        "AgentModels::SHIPPED_MODEL_DEFAULTS in " \
                         "scripts/lib/agent_models.rb; add it there, or set agents.models.codex.#{basename} " \
                         "to sanction a model explicitly)"
       end

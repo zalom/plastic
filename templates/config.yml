@@ -34,6 +34,13 @@ architect:
 #       plastic-enforcer: opus
 #     codex:
 #       plastic-executor: gpt-5.6-terra
+#   efforts:
+#     claude:
+#       plastic-executor: medium
+#     codex:
+#       plastic-executor: medium
+# Every shipped agent defaults to medium reasoning effort on both harnesses.
+# An agents.efforts.<harness>.<agent> entry is an explicit per-agent override.
 
 # The advisor (intent 185): two consultation agents, plastic-advisor (the real
 # advisor, expensive, model fable by default) and plastic-faux-advisor (the
@@ -43,7 +50,9 @@ architect:
 # AGENT NAME, never a model name, so it can point at
 # a locally registered agent instead. Set at install time via --no-advisor /
 # --advisor, or uncomment here directly. Each agent's actual model is a plain
-# agents.models.claude.<name> override, same mechanism as any other agent.
+# agents.models.claude.<name> override, same mechanism as any other agent. Codex
+# generates both advisors too: plastic-advisor uses gpt-5.6-sol and
+# plastic-faux-advisor uses gpt-5.6-terra, both at medium effort.
 # advisor:
 #   enabled: false               # skip installing both advisor agents and the
 #                                 # agent-advisor skill entirely

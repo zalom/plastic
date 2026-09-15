@@ -375,7 +375,7 @@ class RunnerDispatchTest < Minitest::Test
     entry = NodeLedger.last_running(savepoint_path, "n1")
     refute_nil entry
     fields = entry[:fields]
-    %w[holder expires input model].each { |k| refute_nil fields[k], "running line missing #{k}=" }
+    %w[holder expires input model effort].each { |k| refute_nil fields[k], "running line missing #{k}=" }
   end
 
   # --- intent 338a, n1, matrix 1.10: the dispatcher writes input=, never the
@@ -877,6 +877,8 @@ class RunnerDispatchTest < Minitest::Test
     entry = NodeLedger.last_running(savepoint_path, "n1")
     refute_nil entry
     assert_equal "codex", entry[:fields]["harness"], "running line missing harness="
+    assert_equal "gpt-5.6-terra", entry[:fields]["model"]
+    assert_equal "medium", entry[:fields]["effort"]
   end
 
   # --- 1.20: the dispatcher's harness= comes from HarnessAdapter, not a literal --

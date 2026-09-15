@@ -33,7 +33,7 @@ module NodeReturn
   STATUSES = %w[done failed_verification needs_decision blocked].freeze
 
   ALLOWED_KEYS = %w[
-    node status commit summary findings proposed_nodes proposed_edges question reason
+    node status commit summary findings report proposed_nodes proposed_edges question reason
   ].freeze
 
   REQUIRED_FIELDS = {
@@ -51,7 +51,7 @@ module NodeReturn
 
   Result = Struct.new(
     :ok, :node, :status, :commit, :summary, :findings, :proposed_nodes, :proposed_edges,
-    :question, :reason, :errors,
+    :report, :question, :reason, :errors,
     keyword_init: true
   )
 
@@ -86,6 +86,10 @@ module NodeReturn
     proposed_edges, edge_errors = normalize_proposed_edges(doc["proposed_edges"])
     return failure(edge_errors) if edge_errors.any?
 
+    if !doc["report"].nil? && !doc["report"].is_a?(String)
+      return failure(["report: must be a Markdown string"])
+    end
+
     Result.new(
       ok: true,
       node: doc["node"].to_s,
@@ -95,6 +99,7 @@ module NodeReturn
       findings: normalize_findings(doc["findings"]),
       proposed_nodes: proposed_nodes,
       proposed_edges: proposed_edges,
+      report: doc["report"],
       question: doc["question"],
       reason: doc["reason"],
       errors: [],
@@ -111,7 +116,7 @@ module NodeReturn
   def failure(errors)
     Result.new(
       ok: false, node: nil, status: nil, commit: nil, summary: nil, findings: [],
-      proposed_nodes: [], proposed_edges: [], question: nil, reason: nil,
+      proposed_nodes: [], proposed_edges: [], report: nil, question: nil, reason: nil,
       errors: Array(errors)
     )
   end

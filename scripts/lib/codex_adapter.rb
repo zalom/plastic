@@ -70,15 +70,16 @@ module CodexAdapter
   # worktree, never `~/.plastic`), `--output-last-message` at the path the
   # caller names, and a bare `-` so the prompt is read from stdin (row 6.9) -
   # the node input itself never rides in this array.
-  def build_argv(kind:, worktree:, output_last_message:)
-    [
+  def build_argv(kind:, worktree:, output_last_message:, model: nil, effort: nil)
+    argv = [
       "codex", "exec",
       "-C", worktree.to_s,
       "--sandbox", sandbox_mode(kind),
       *add_dir_args(kind: kind, worktree: worktree),
-      "--output-last-message", output_last_message.to_s,
-      "-",
     ]
+    argv += ["--model", model.to_s] unless model.to_s.strip.empty?
+    argv += ["--config", %(model_reasoning_effort="#{effort}")] unless effort.to_s.strip.empty?
+    argv + ["--output-last-message", output_last_message.to_s, "-"]
   end
 
   # matrix row 6.23: the wall-clock bound comes from the KIND's own lease

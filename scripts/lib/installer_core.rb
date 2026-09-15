@@ -1132,7 +1132,12 @@ class InstallerCore
     # Codex-scoped overrides only (agents.models.codex.*): a literal Claude
     # model id set under agents.models.claude.* (or the legacy flat form,
     # which resolves as claude) must never reach a Codex TOML.
-    installed += generate_codex_agents(File.join(config[:home_dir], "agents"), models: agent_model_overrides(harness: "codex"))
+    installed += generate_codex_agents(
+      File.join(config[:home_dir], "agents"),
+      models: agent_model_overrides(harness: "codex"),
+      efforts: agent_effort_overrides(harness: "codex"),
+      advisor_enabled: advisor_enabled?
+    )
 
     # Instruction injection (L1): Plastic standing conventions into ~/.codex/AGENTS.md.
     # Partial-ownership file, so it is NOT manifest-tracked (stripped surgically on uninstall).
@@ -1162,24 +1167,17 @@ class InstallerCore
   # a whole-file, Plastic-owned .toml per repo agents/*.md instead of copying markdown.
   # The returned paths append to `installed`, so they are manifest-tracked and pruned on
   # uninstall by the manifest whole-file-delete path, exactly like ~/.claude/agents/*.md.
-  def generate_codex_agents(agents_root, models: {})
+  def generate_codex_agents(agents_root, models: {}, efforts: {}, advisor_enabled: true)
     sources = Dir.glob(File.join(package_root, "agents", "*.md"))
     return [] if sources.empty?
 
     FileUtils.mkdir_p(agents_root)
     sources.filter_map do |src|
       basename = File.basename(src, ".md")
-      # Codex advisor support is out of scope for this release (intent 185): the
-      # owner has not evaluated the Codex reasoning-model ecosystem long enough to
-      # judge it. Skip every AgentModels::CONSULTATION_AGENTS file (both
-      # plastic-advisor and plastic-faux-advisor) by name, a deliberate and
-      # mechanical scope cut tracked at intent 186 (Codex advisor evaluation), not
-      # a permanent exclusion and not conditioned on any frontmatter or override
-      # value.
-      next if AgentModels::CONSULTATION_AGENTS.include?(basename)
+      next if !advisor_enabled && AgentModels::CONSULTATION_AGENTS.include?(basename)
 
       dest = File.join(agents_root, "#{basename}.toml")
-      write_text_atomic(dest, render_codex_agent_toml(src, models[basename]))
+      write_text_atomic(dest, render_codex_agent_toml(src, models[basename], efforts[basename]))
       dest
     end
   end
@@ -1187,16 +1185,25 @@ class InstallerCore
   # Render one repo agents/*.md into a deterministic Codex agent TOML document. Fixed field
   # order (name, description, the model field(s) from codex_model_fields, developer_instructions)
   # so regenerate is byte-identical (idempotency).
-  def render_codex_agent_toml(source_path, override)
+  def render_codex_agent_toml(source_path, override, effort_override = nil)
     front, body = split_frontmatter(File.read(source_path))
     name = (front["name"] || File.basename(source_path, ".md")).to_s
     description = (front["description"] || "").to_s
-    effective = (override && !override.to_s.empty? ? override : front["model"]).to_s
+    effective = if override && !override.to_s.empty?
+                  override
+                else
+                  AgentModels.shipped_model_for(name, harness: "codex") || front["model"]
+                end
+    effort = if effort_override && !effort_override.to_s.empty?
+               effort_override
+             else
+               front["effort"] || AgentModels::DEFAULT_EFFORT
+             end
 
     parts = []
     parts << %(name = "#{toml_inline_escape(name)}")
     parts << %(description = "#{toml_inline_escape(description)}")
-    parts << codex_model_fields(effective)
+    parts << codex_model_fields(effective, effort: effort)
     parts << "developer_instructions = \"\"\"\n#{toml_ml_escape(body.strip)}\n\"\"\""
     parts.reject(&:empty?).join("\n") + "\n"
   end
@@ -1216,20 +1223,20 @@ class InstallerCore
   # The model-selection line(s). A known tier alias (opus/sonnet/haiku) emits BOTH a `model` line
   # (from AgentModels.codex_model_for, the intent-186 per-role Codex identity) and a
   # model_reasoning_effort line, model first for deterministic byte-identical regenerate. Any other
-  # non-empty value is a literal Codex model id emitted verbatim as `model` only. Empty -> no line
-  # (the agent inherits the session default). If an alias somehow lacks a mapped model, the effort
-  # line still emits alone (backward-safe).
-  def codex_model_fields(effective)
+  # non-empty value is a literal Codex model id. Every non-empty model also emits the resolved effort,
+  # medium by default or the harness-scoped override. Empty emits no model fields.
+  def codex_model_fields(effective, effort: AgentModels::DEFAULT_EFFORT)
     return "" if effective.nil? || effective.to_s.empty?
-    effort = AgentModels.effort_for(effective)
-    if effort
+    if AgentModels.effort_for(effective)
       lines = []
       model = AgentModels.codex_model_for(effective)
       lines << %(model = "#{toml_inline_escape(model)}") if model && !model.to_s.empty?
-      lines << %(model_reasoning_effort = "#{effort}")
+      lines << %(model_reasoning_effort = "#{toml_inline_escape(effort)}") unless effort.to_s.empty?
       lines.join("\n")
     else
-      %(model = "#{toml_inline_escape(effective.to_s)}")
+      lines = [%(model = "#{toml_inline_escape(effective.to_s)}")]
+      lines << %(model_reasoning_effort = "#{toml_inline_escape(effort)}") unless effort.to_s.empty?
+      lines.join("\n")
     end
   end
 

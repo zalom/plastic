@@ -39,7 +39,7 @@ class NodeInputReadersTest < Minitest::Test
     MD
   end
 
-  def write_node(id, kind: "work", files: ["scripts/lib/x.rb"], budget: 100_000, body: nil)
+  def write_node(id, kind: "work", files: ["scripts/lib/x.rb"], budget: 100_000, report: nil, body: nil)
     body ||= "# #{id}\nDo the thing.\n"
     File.write(File.join(@dir, "nodes", "#{id}.md"), <<~MD)
       ---
@@ -47,9 +47,22 @@ class NodeInputReadersTest < Minitest::Test
       kind: #{kind}
       files: #{files.inspect}
       budget: #{budget}
+      #{report ? "report: #{report}" : nil}
       ---
       #{body}
     MD
+  end
+
+  def test_research_node_block_carries_report_delivery_instruction
+    write_graph("- r1 needs nothing\n")
+    write_node("r1", kind: "research", files: [], report: "resources/report--topic.md")
+
+    result = NodeInput.node_block(intent_dir: @dir, node: "r1")
+
+    assert result[:ok], result[:errors].inspect
+    assert_equal "resources/report--topic.md", result[:report]
+    assert_includes result[:text], "report: resources/report--topic.md"
+    assert_includes result[:text], "return the complete Markdown body"
   end
 
   def savepoint_path

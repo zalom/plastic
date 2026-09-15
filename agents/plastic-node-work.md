@@ -13,6 +13,7 @@ tools:
   - Glob
   - Grep
 model: sonnet
+effort: medium
 ---
 
 You are one node in Plastic's node-graph runner: one node input in, your files and your commit and

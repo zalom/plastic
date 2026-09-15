@@ -224,12 +224,17 @@ class Subtraction304Test < Minitest::Test
     assert_includes body, "reclaim"
   end
 
-  def test_advisor_brief_keys_on_effort_not_a_tier_letter
+  def test_advisor_contract_uses_medium_effort_without_a_brief_override
     %w[agents/plastic-advisor.md agents/plastic-faux-advisor.md skills/agent-advisor/SKILL.md
        skills/agent-advisor/references/advisor-protocol.md].each do |rel|
       body = File.read(File.join(REPO, rel))
       refute_match(/TIER: |S, M, or L|\bL tier\b|\bS tier\b/, body, "#{rel} still carries the S/M/L brief grammar")
-      assert_includes body, "EFFORT", "#{rel} lost the effort line"
+    end
+
+    %w[agents/plastic-advisor.md agents/plastic-faux-advisor.md].each do |rel|
+      body = File.read(File.join(REPO, rel))
+      assert_match(/^effort: medium$/, body, "#{rel} must ship at medium effort")
+      refute_match(/^EFFORT:/, body, "#{rel} must not require a per-brief effort override")
     end
   end
 

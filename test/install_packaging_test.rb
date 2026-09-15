@@ -401,9 +401,7 @@ class InstallPackagingTest < Minitest::Test
     agents_root = File.join(home_dir, "agents")
     manifest = JSON.parse(File.read(File.join(codex_dir, "plastic", "manifest.json")))["files"]
 
-    # Codex has no fable alias: consultation agents (intent 185) are excluded from
-    # generation, checked separately below.
-    codex_expected = agent_basenames - AgentModels::CONSULTATION_AGENTS
+    codex_expected = agent_basenames
 
     codex_expected.each do |basename|
       dest = File.join(agents_root, "#{basename}.toml")
@@ -417,7 +415,7 @@ class InstallPackagingTest < Minitest::Test
       "codex: the dead ~/.agents/agents/*.md copy must not be written"
   end
 
-  def test_generate_codex_agents_skips_consultation_agents_by_name
+  def test_generate_codex_agents_includes_consultation_agents_with_openai_models
     installer = InstallerCore.new(package_root: REPO, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
     agents_root = File.join(@dir, "codex-agents")
 
@@ -425,17 +423,15 @@ class InstallPackagingTest < Minitest::Test
 
     AgentModels::CONSULTATION_AGENTS.each do |basename|
       dest = File.join(agents_root, "#{basename}.toml")
-      refute File.exist?(dest), "codex: #{basename}.toml must not be generated (no Codex advisor this release, intent 186)"
-      refute_includes installed, dest
+      assert File.exist?(dest), "codex: #{basename}.toml must be generated"
+      assert_includes installed, dest
+      assert_includes File.read(dest), 'model_reasoning_effort = "medium"'
     end
   end
 
-  # Regression guard: the Codex skip is unconditional and name-based
-  # (AgentModels::CONSULTATION_AGENTS), never a peek at the authored or
-  # overridden model value, so a models: override that flips an advisor's
-  # model must NOT accidentally un-skip it. There is no Codex advisor path,
-  # full stop.
-  def test_generate_codex_agents_skip_survives_a_model_override
+  # Regression guard: consultation agents remain outside the auto lifecycle,
+  # while a Codex-scoped model override still changes their installed TOML.
+  def test_generate_codex_agents_consultation_model_override_is_honored
     installer = InstallerCore.new(package_root: REPO, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
     agents_root = File.join(@dir, "codex-agents-override")
 
@@ -444,8 +440,9 @@ class InstallPackagingTest < Minitest::Test
 
     AgentModels::CONSULTATION_AGENTS.each do |basename|
       dest = File.join(agents_root, "#{basename}.toml")
-      refute File.exist?(dest), "codex: #{basename}.toml must stay skipped even under a models: override"
-      refute_includes installed, dest
+      assert File.exist?(dest), "codex: #{basename}.toml must be generated under a model override"
+      assert_includes installed, dest
+      assert_includes File.read(dest), 'model = "gpt-5.6-sol"'
     end
   end
 

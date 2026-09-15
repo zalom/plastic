@@ -201,7 +201,8 @@ module NodeRunCLI
     message_path = "#{out_path}.msg"
 
     timeout_seconds = timeout_flag ? timeout_flag.to_i : CodexAdapter.timeout_seconds(kind)
-    codex_argv = CodexAdapter.build_argv(kind: kind, worktree: worktree, output_last_message: message_path)
+    codex_argv = CodexAdapter.build_argv(kind: kind, worktree: worktree, output_last_message: message_path,
+                                          model: fields["model"], effort: fields["effort"])
 
     result = CodexAdapter.execute(codex_argv, stdin_data: input_bytes, timeout_seconds: timeout_seconds,
                                    output_last_message_path: message_path)

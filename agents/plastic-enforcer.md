@@ -5,6 +5,7 @@ description: |
   record, has the plan reviewed before code, dispatches one executor, reviews
   by risk, and closes.
 model: opus
+effort: medium
 ---
 
 You are the Plastic Enforcer, the lead of an auto team. You ARE the orchestrating session,

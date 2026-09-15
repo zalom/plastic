@@ -69,23 +69,41 @@ module RunnerPolicy
   # verify resolves the advisor model, and a config with no override falls
   # back to the shipped default rather than an empty string (`running`
   # requires a non-blank `model=`).
-  def model_for(kind, config: {})
-    policy_for(kind)[:model_role] == :advisor ? advisor_model(config: config) : executor_model(config: config)
+  def model_for(kind, config: {}, harness: "claude-code")
+    alias_or_id = policy_for(kind)[:model_role] == :advisor ? advisor_model(config: config, harness: harness) :
+                                                              executor_model(config: config, harness: harness)
+    codex_harness?(harness) ? (AgentModels.codex_model_for(alias_or_id) || alias_or_id) : alias_or_id
   end
 
-  def executor_model(config: {})
-    resolve_model(config, EXECUTOR_CONFIG_KEY, DEFAULT_EXECUTOR_MODEL)
+  def executor_model(config: {}, harness: "claude-code")
+    resolve_model(config, EXECUTOR_CONFIG_KEY, DEFAULT_EXECUTOR_MODEL, harness)
   end
 
-  def advisor_model(config: {})
-    resolve_model(config, ADVISOR_CONFIG_KEY, DEFAULT_ADVISOR_MODEL)
+  def advisor_model(config: {}, harness: "claude-code")
+    resolve_model(config, ADVISOR_CONFIG_KEY, DEFAULT_ADVISOR_MODEL, harness)
   end
 
-  def resolve_model(config, key, shipped_default)
-    value = AgentModels.models_section(config)[key]
+  def effort_for(kind, config: {}, harness: "claude-code")
+    key = policy_for(kind)[:model_role] == :advisor ? ADVISOR_CONFIG_KEY : EXECUTOR_CONFIG_KEY
+    value = AgentModels.efforts_section(config, harness_name(harness))[key]
+    present?(value) ? value : AgentModels::DEFAULT_EFFORT
+  end
+
+  def resolve_model(config, key, shipped_default, harness)
+    value = AgentModels.models_section(config, harness: harness_name(harness))[key]
     present?(value) ? value : shipped_default
   end
   private_class_method :resolve_model
+
+  def harness_name(harness)
+    codex_harness?(harness) ? "codex" : "claude"
+  end
+  private_class_method :harness_name
+
+  def codex_harness?(harness)
+    harness.to_s == "codex"
+  end
+  private_class_method :codex_harness?
 
   def present?(value)
     !(value.nil? || value.to_s.strip.empty?)

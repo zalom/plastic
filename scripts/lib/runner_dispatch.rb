@@ -37,7 +37,7 @@ module RunnerDispatch
   RETURN_CONTRACT = <<~TEXT.freeze
     RETURN CONTRACT: reply with exactly one YAML document as your final
     message, nothing else around it. Keys: node, status, commit, summary,
-    findings, proposed_nodes, proposed_edges, question, reason. status is one
+    findings, report, proposed_nodes, proposed_edges, question, reason. status is one
     of done, failed_verification, needs_decision, blocked. done requires
     commit; needs_decision requires question; failed_verification and
     blocked require reason. Anything that does not parse under this closed
@@ -56,8 +56,8 @@ module RunnerDispatch
   # (NodeInput.test_command_block, n4), and the call cap (n2) - fenced so a
   # session pastes it straight into the Agent tool (327 D42: the runner
   # itself never spawns).
-  def spawn_block(model:, input:, test_command:, call_cap:, agent: SPAWN_AGENT)
-    lines = ["agent: #{agent}", "model: #{model}", "input: #{input}", test_command,
+  def spawn_block(model:, input:, test_command:, call_cap:, effort: AgentModels::DEFAULT_EFFORT, agent: SPAWN_AGENT)
+    lines = ["agent: #{agent}", "model: #{model}", "effort: #{effort}", "input: #{input}", test_command,
              NodeInput.call_cap_sentence(call_cap)]
     (["```"] + lines + ["```"]).join("\n")
   end
@@ -220,7 +220,8 @@ module RunnerDispatch
     savepoint_path = File.join(intent_dir.to_s, "savepoint.md")
 
     holder = context.session
-    model = RunnerPolicy.model_for(kind, config: config)
+    model = RunnerPolicy.model_for(kind, config: config, harness: harness)
+    effort = RunnerPolicy.effort_for(kind, config: config, harness: harness)
     expires = RunnerPolicy.lease_expires(kind, now: now)
     calls_cap = RunnerPolicy.call_cap(kind, config: config)
 
@@ -267,7 +268,7 @@ module RunnerDispatch
     # Row 1.19/1.20/D21: harness= rides alongside model= on every `running`
     # line, resolved once by the caller through HarnessAdapter and threaded
     # straight through here - never re-resolved, never a literal.
-    fields = { holder: holder, expires: expires, input: build_result[:sha], model: model, harness: harness,
+    fields = { holder: holder, expires: expires, input: build_result[:sha], model: model, effort: effort, harness: harness,
                calls: calls_cap }
 
     result = begin
@@ -287,11 +288,13 @@ module RunnerDispatch
     end
 
     test_command = NodeInput.test_command_block(intent_dir: intent_dir, files: (nodes_decl[node] || {})[:files])
-    spawn = spawn_block(model: model, input: build_result[:path], test_command: test_command, call_cap: calls_cap)
+    spawn = spawn_block(model: model, effort: effort, input: build_result[:path], test_command: test_command,
+                        call_cap: calls_cap)
 
     {
       ok: true,
-      entry: { node: node, kind: kind.to_s, role: role_for(kind), model: model, worktree: provisioned[:path],
+      entry: { node: node, kind: kind.to_s, role: role_for(kind), model: model, effort: effort,
+                worktree: provisioned[:path],
                 input: build_result[:path], spawn: spawn },
     }
   end
@@ -507,6 +510,7 @@ module RunnerDispatch
       "return_contract" => RETURN_CONTRACT,
       "dispatch" => dispatched.map do |d|
         { "node" => d[:node], "kind" => d[:kind], "role" => d[:role], "model" => d[:model],
+          "effort" => d[:effort],
           "worktree" => d[:worktree], "input" => d[:input] }
       end,
       "spawn" => dispatched.map { |d| d[:spawn] }

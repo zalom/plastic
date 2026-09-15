@@ -297,13 +297,13 @@ escaped). Output is deterministic and byte-identical on regenerate.
 
 The shipped model alias (`opus`, `sonnet`, `haiku`) resolves to BOTH a `model` line and a
 `model_reasoning_effort` line, model first (intent 186, `AgentModels::CODEX_MODEL_BY_ALIAS`
-paired with `AgentModels::EFFORT_BY_ALIAS`): opus roles to `gpt-5.6-sol` at `high`, sonnet
-roles to `gpt-5.6-terra` at `medium`, haiku roles to `gpt-5.6-luna` at `low`. Codex has no
+paired with `AgentModels::EFFORT_BY_ALIAS`): opus roles to `gpt-5.6-sol`, sonnet roles to
+`gpt-5.6-terra`, and haiku roles to `gpt-5.6-luna`, all at `medium`. Codex has no
 vendor alias layer of its own, so a Codex model id rots on every release; Plastic resolves that
 by owning the alias itself, centralizing every id in one map. An existing
 `agents.models.<name>` config override is honored by shape: an alias word maps to model and
 effort together exactly like the default; any other value is written verbatim as a literal
-`model` id only, with no effort line (the user owns that value and its staleness). An empty
+`model` ID and receives medium effort unless explicitly overridden. An empty
 value emits nothing, so an agent with no override and no shipped alias cleanly inherits the
 user's globally configured Codex model. `doctor`'s codex check validates the generated `.toml`
 files (presence plus a structural check for the mandatory fields).
@@ -320,11 +320,17 @@ override stays sanctioned and is never compared, because model and effort are us
 configuration per harness and per project. The check validates only, it never enforces and it
 never fails the boot.
 
-The two advisor agents (`plastic-advisor`, `plastic-faux-advisor`) have a Codex pairing
-defined at intent 186 (`plastic-advisor` to `gpt-5.6-sol` at `xhigh`, `plastic-faux-advisor`
-to `gpt-5.6-terra` at `high`) but emission stays deferred: `generate_codex_agents` still
-skips both `AgentModels::CONSULTATION_AGENTS` files by name, so no Codex TOML is written for
-either yet.
+The two advisor agents generate Codex TOMLs too: `plastic-advisor` uses `gpt-5.6-sol` and
+`plastic-faux-advisor` uses `gpt-5.6-terra`, both at medium effort. `advisor.enabled: false`
+omits them.
+
+At graph runtime, `RunnerDispatch` records the literal Codex model and effort on the node's
+`running` line. `scripts/node-run` passes both to `codex exec` with `--model` and
+`--config model_reasoning_effort=...`, so a node never inherits an unrelated global model.
+A research node may declare one `report: resources/<name>.md` path. The subprocess stays
+read only and returns the Markdown body in its YAML `report` field. `RunnerAbsorb` validates
+and atomically writes that one intent resource after the normal integrity, scope, and suite
+checks pass.
 
 ### L3 the record (intent 102, cut to the record hook in intent 302)
 

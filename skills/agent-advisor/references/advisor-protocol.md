@@ -5,8 +5,8 @@
 *Adapted for Plastic (intent 185): this is the shipped reference copy the
 `plastic-agent-advisor` skill teaches from. Two named agents carry it,
 `plastic-advisor` (the real advisor) and `plastic-faux-advisor` (the cheaper
-imitation, the same discipline at a fraction of the cost); EFFORT and the
-answer shape below shape the brief and the answer on whichever one you
+imitation, the same discipline at a fraction of the cost); the
+answer shape below shapes the brief and the answer on whichever one you
 dispatch, never which file to pick. The
 `plastic-agent-advisor` skill reads harness-scoped config
 (`advisor.claude.default`, falling back to `secondary`, then to
@@ -53,17 +53,17 @@ You own the work and the outcome. Fable owns the hardest thinking, on demand.
 
 ---
 
-## 2. Effort and answer shape
+## 2. Answer shape
 
 Classify every consultation before sending it. Default to the smallest shape and
-prove your way up. Never open at a higher effort "to be safe": effort follows the cost of being
-wrong, not the importance the task feels like it has.
+prove your way up. Every advisor ships at medium reasoning effort on Claude Code and Codex.
+An explicit harness-scoped config override may change one agent's effort.
 
 | Shape | Coding | Business | Research | Effort | Brief size | Expected return |
 |------|--------|----------|----------|--------|------------|-----------------|
-| **Verdict** | Verdict on one step; choose between two named implementations | Pick between two options you already compared (vendor, pricing point) | Judge whether one source or result is trustworthy enough to build on | `low` | Under 300 words | Verdict, one paragraph of reasoning, the single biggest risk |
-| **Plan** | Plan a feature inside one system; review a full plan for holes; design one interface; rank root causes | Positioning or pricing decision from a compiled evidence pack; review a proposal before sending it | Design a research plan for a bounded question; rank competing explanations of the data you gathered | `medium`, or `high` if an irreversible step is inside | Up to one page | Decision, numbered plan with per-step checks, risk map |
-| **Architecture** | Cross-system architecture; migration with one-way doors; deadlock after two failed attempts; security-critical design | Build-vs-buy, market entry, or any commitment measured in months; strategy where reversal is expensive | Synthesis across many sources where the conclusion drives a large bet; contested questions with conflicting evidence | `xhigh`; `max` only when being wrong means data loss, a broken contract, or weeks of rework | Full evidence brief | Decision, plan, risk register, kill criteria, list of what could not be verified |
+| **Verdict** | Verdict on one step; choose between two named implementations | Pick between two options you already compared (vendor, pricing point) | Judge whether one source or result is trustworthy enough to build on | `medium` | Under 300 words | Verdict, one paragraph of reasoning, the single biggest risk |
+| **Plan** | Plan a feature inside one system; review a full plan for holes; design one interface; rank root causes | Positioning or pricing decision from a compiled evidence pack; review a proposal before sending it | Design a research plan for a bounded question; rank competing explanations of the data you gathered | `medium` | Up to one page | Decision, numbered plan with per-step checks, risk map |
+| **Architecture** | Cross-system architecture; migration with one-way doors; deadlock after two failed attempts; security-critical design | Build-vs-buy, market entry, or any commitment measured in months; strategy where reversal is expensive | Synthesis across many sources where the conclusion drives a large bet; contested questions with conflicting evidence | `medium` | Full evidence brief | Decision, plan, risk register, kill criteria, list of what could not be verified |
 
 **Escalate one shape when any of these holds:**
 
@@ -124,11 +124,8 @@ What actually raises the quality of my answer, in order of impact:
    under the Operating Manual." Then I write steps you can run at your best:
    each step with its own check, its own trap named, and its own
    stop-and-return trigger. A plan without that is half a plan.
-6. **Know what effort buys.** At `low` I stress-test your candidate and give a
-   verdict. At `medium`/`high` I generate rival solutions and compare them. At
-   `xhigh`/`max` I build the strongest case for every rival and then try to
-   break my own winner before you ever see it. Buy the depth the failure cost
-   justifies, nothing more.
+6. **Use the medium default well.** Ask for the smallest answer shape that can decide the
+   question, and spend the available reasoning on the load-bearing risk.
 7. **Come back on the same thread.** My context is cached inside a session.
    The second question in a thread costs a fraction of the first. A new session
    pays for your whole brief again.
@@ -142,7 +139,7 @@ briefing described above; use the block as your completeness check before
 sending. Fable must never need to explore.
 
 ```
-SHAPE: verdict | plan | architecture        EFFORT: low | medium | high | xhigh | max
+SHAPE: verdict | plan | architecture
 DOMAIN: coding | business | research
 GOAL: <target state in one sentence, and the decision this answer feeds>
 QUESTIONS:
@@ -229,8 +226,8 @@ reformat, then work with what you have.
   hear yes.
 - **Drip-feeding.** Splitting one decision across many small calls, paying
   session overhead each time.
-- **Prestige escalation.** Requesting `max` because the task feels important.
-  Effort follows failure cost, nothing else.
+- **Prestige escalation.** Changing the medium default because the task feels important,
+  without evidence that a harness-scoped override will improve the decision.
 - **Unbounded questions.** "Any thoughts on this approach?" invites an essay.
   Ask for a decision with named options.
 - **Silent adoption.** Pasting Fable's plan straight into execution without

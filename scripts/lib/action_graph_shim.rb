@@ -83,7 +83,7 @@ module ActionGraphShim
   end
 
   # Node records for either shape (D8), always carrying NodeFile.parse's own
-  # key set (ok:, node:, kind:, files:, budget:, body:, errors:) plus
+  # key set (ok:, node:, kind:, files:, budget:, report:, body:, errors:) plus
   # needs:, path: and proven_by:. [] on :none, never a raise on a real
   # directory.
   def nodes(intent_dir)
@@ -153,6 +153,7 @@ module ActionGraphShim
           kind: "work",
           files: files_section_paths(text),
           budget: nil,
+          report: nil,
           body: text,
           errors: [],
           needs: needs_targets,
@@ -166,6 +167,7 @@ module ActionGraphShim
           kind: "work",
           files: [],
           budget: nil,
+          report: nil,
           body: nil,
           errors: ["could not read #{path}: #{e.message}"],
           needs: needs_targets,

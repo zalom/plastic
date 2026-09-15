@@ -118,22 +118,26 @@ module NodeInput
     end
 
     text = render_node_block(node: node, kind: parsed[:kind], files: parsed[:files], budget: parsed[:budget],
-                              body: parsed[:body])
+                              report: parsed[:report], body: parsed[:body])
     { ok: true, error_kind: nil, text: text, errors: [], kind: parsed[:kind], files: parsed[:files] || [],
-      budget: parsed[:budget] }
+      budget: parsed[:budget], report: parsed[:report] }
   end
 
   def failure_block(kind, errors)
-    { ok: false, error_kind: kind, text: nil, errors: errors, kind: nil, files: nil, budget: nil }
+    { ok: false, error_kind: kind, text: nil, errors: errors, kind: nil, files: nil, budget: nil, report: nil }
   end
   private_class_method :failure_block
 
-  def render_node_block(node:, kind:, files:, budget:, body:)
+  def render_node_block(node:, kind:, files:, budget:, body:, report: nil)
     lines = []
     lines << "# Node #{node}"
     lines << "kind: #{kind}"
     lines << "files: #{Array(files).join(', ')}"
     lines << "budget: #{budget}"
+    if report
+      lines << "report: #{report}"
+      lines << "report delivery: return the complete Markdown body in the YAML report field; the runner writes it"
+    end
     lines << ""
     lines << body.to_s.strip
     "#{lines.join("\n")}\n"

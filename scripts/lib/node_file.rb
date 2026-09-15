@@ -5,7 +5,8 @@ require "yaml"
 require "date"
 
 # NodeFile (intent 334, n3): one node file's YAML envelope (`node`, `kind`,
-# `files`, `budget`) over a Markdown body, plus the deterministic id minter
+# `files`, `budget`, and the optional research `report`) over a Markdown body,
+# plus the deterministic id minter
 # (327 D1r, D5r, D9r-D12r, D16r). The kind-prefix rule lives here, not in
 # GraphEdges, which stays loose about id grammar so a numeric roadmap id
 # parses the same way (D12r).
@@ -83,6 +84,8 @@ module NodeFile
 
     budget, budget_errors = normalize_budget(fm["budget"])
     errors.concat(budget_errors)
+    report, report_errors = normalize_report(fm["report"], kind)
+    errors.concat(report_errors)
 
     {
       ok: errors.empty?,
@@ -90,14 +93,31 @@ module NodeFile
       kind: kind.empty? ? nil : kind,
       files: files.is_a?(Array) ? files : nil,
       budget: budget,
+      report: report,
       body: body,
       errors: errors,
     }
   end
 
   def failure(errors)
-    { ok: false, node: nil, kind: nil, files: nil, budget: nil, body: nil, errors: errors }
+    { ok: false, node: nil, kind: nil, files: nil, budget: nil, report: nil, body: nil, errors: errors }
   end
+
+  def normalize_report(raw, kind)
+    return [nil, []] if raw.nil?
+    return [nil, ["report: is allowed only on research nodes"]] unless kind == "research"
+    return [nil, ["report: must be a non-empty relative Markdown path under resources/"]] unless raw.is_a?(String)
+
+    path = raw
+    parts = path.split("/", -1)
+    valid = path == path.strip && parts.length >= 2 && parts.first == "resources" &&
+            parts.none? { |part| part.empty? || %w[. ..].include?(part) } &&
+            !path.include?("\\") && path.end_with?(".md")
+    return [nil, ["report: must be a relative .md path under resources/ with no traversal"]] unless valid
+
+    [path, []]
+  end
+  private_class_method :normalize_report
 
   # <id>.md or <id>--<slug>.md, exactly - a longer id's file (n11--x.md) must
   # never satisfy a shorter id (n1), so the id is matched as the whole prefix

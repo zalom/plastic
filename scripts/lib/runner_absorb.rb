@@ -100,6 +100,7 @@ module RunnerAbsorb
     node_decl = ((context.graph || {})[:nodes] || {})[node] || {}
     kind = node_decl[:kind]
     declared_files = normalize_files(node_decl[:files])
+    report_path = declared_report_path(intent_dir, node)
 
     # v2 NEW-2: a `graph.md` that failed to parse, or a node whose kind
     # cannot be resolved from it, refuses right here - before ANY check
@@ -141,6 +142,11 @@ module RunnerAbsorb
     end
     if parsed.node != node
       return fail_check(savepoint_path, context, node, "node_mismatch", checks_ran, holder, extra_fields, now, ledger)
+    end
+
+    report_reason = report_contract_violation(kind, report_path, parsed)
+    if report_reason
+      return fail_check(savepoint_path, context, node, report_reason, checks_ran, holder, extra_fields, now, ledger)
     end
 
     append_findings(intent_dir, node, parsed.findings, now: now)
@@ -267,6 +273,14 @@ module RunnerAbsorb
     end
 
     commit_value = merge_commit || parsed.commit
+    if report_path
+      report_result = persist_report(intent_dir, report_path, parsed.report)
+      unless report_result[:ok]
+        return finish.call(fail_check(savepoint_path, context, node, report_result[:reason], gates.split("+") + ["report"],
+                                      holder, extra_fields, now, ledger))
+      end
+      gates = "#{gates}+report"
+    end
     fields = { gates: gates, commit: commit_value, holder: holder, suite: suite_value }.merge(extra_fields)
     result = write_transition(savepoint_path, context, node, "done", fields, now: now, ledger: ledger)
 
@@ -419,6 +433,48 @@ module RunnerAbsorb
     path.to_s.sub(%r{\A\./}, "").sub(%r{/\z}, "")
   end
   private_class_method :normalize_scope_path
+
+  # --- research report -------------------------------------------------------
+
+  def declared_report_path(intent_dir, node)
+    path = ReadySet.find_node_path(intent_dir, node)
+    return nil unless path
+
+    parsed = NodeFile.parse(path)
+    parsed[:ok] ? parsed[:report] : nil
+  end
+  private_class_method :declared_report_path
+
+  def report_contract_violation(kind, declared, parsed)
+    return "report_not_declared" if parsed.report && declared.nil?
+    return nil unless parsed.status == "done"
+    return "report_missing" if declared && parsed.report.to_s.strip.empty?
+    return "report_not_research" if parsed.report && kind.to_s != "research"
+
+    nil
+  end
+  private_class_method :report_contract_violation
+
+  def persist_report(intent_dir, relative_path, content)
+    resources_root = File.expand_path(File.join(intent_dir, "resources"))
+    target = File.expand_path(File.join(intent_dir, relative_path.to_s))
+    unless target.start_with?("#{resources_root}/") && target.end_with?(".md")
+      return { ok: false, reason: "report_path_invalid" }
+    end
+
+    if File.exist?(target)
+      return { ok: true, path: target } if File.binread(target) == content.to_s
+
+      return { ok: false, reason: "report_conflict" }
+    end
+
+    FileUtils.mkdir_p(File.dirname(target))
+    AtomicWrite.write(target, content.to_s)
+    { ok: true, path: target }
+  rescue StandardError
+    { ok: false, reason: "report_write_failed" }
+  end
+  private_class_method :persist_report
 
   # --- named tests -----------------------------------------------------------
 

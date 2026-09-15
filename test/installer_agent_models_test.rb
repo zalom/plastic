@@ -68,9 +68,9 @@ class InstallerAgentModelsTest < Minitest::Test
   # --- effort_for (intent 102a): Codex model_reasoning_effort mapping ---
 
   def test_effort_for_maps_the_three_shipped_aliases
-    assert_equal "high", AgentModels.effort_for("opus")
+    assert_equal "medium", AgentModels.effort_for("opus")
     assert_equal "medium", AgentModels.effort_for("sonnet")
-    assert_equal "low", AgentModels.effort_for("haiku")
+    assert_equal "medium", AgentModels.effort_for("haiku")
   end
 
   def test_effort_for_returns_nil_for_a_non_alias_value

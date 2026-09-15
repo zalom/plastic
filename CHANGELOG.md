@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- Intent 360: every Plastic agent now defaults to medium reasoning effort on Claude Code and Codex. Codex dispatch passes literal OpenAI model IDs and effort into `codex exec`, Codex installs OpenAI equivalents for both advisors, `read-config` is harness-aware, and read-only research nodes can return one declared Markdown report for the runner to write under the intent's `resources/` directory.
+
 - The core doctor leaves out the `codex_hooks_trust` reminder. The reminder always warns, because Codex keeps no trust record Plastic can read, and the core doctor turns any warning into a failure, so every Codex core check failed. The full doctor still shows the reminder.
 
 - Intent 359: `plastic-advisor` ships `effort: medium` (was `xhigh`). The new config key `agents.efforts.claude.<agent>` sets a Claude agent's effort at install time, with project config over global; the installer inserts an `effort:` line when the agent ships none.

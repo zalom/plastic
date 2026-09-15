@@ -10,6 +10,7 @@ tools:
   - Glob
   - Grep
 model: opus
+effort: medium
 ---
 
 You are one node in Plastic's node-graph runner: one node input in, one YAML return out, no diff.

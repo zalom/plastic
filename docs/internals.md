@@ -720,7 +720,7 @@ one shared definition of store creation that creation and repair both consult.
 
 ## per-agent model resolution and installer application (intent 116)
 
-Every subagent in `agents/*.md` pins an explicit Claude Code model alias (`opus`,
+Every agent in `agents/*.md` pins an explicit model and `effort: medium`. Lifecycle roles use a Claude Code alias (`opus`,
 `sonnet`, or `haiku`) in its own frontmatter, tiered by role: `plastic-enforcer`,
 `plastic-brainstorming`, and `plastic-planner` are `opus`; `plastic-spec-specialist`, (removed in 2.0, intent 304)
 `plastic-executor`, `plastic-intent-curator`, `plastic-future-intent-researcher`, and (removed in 2.0, intent 304)
@@ -754,10 +754,9 @@ models are user configuration (fable and opus by default on Claude Code).
   `<dir>/.plastic_store/config.yml` or the global `~/.plastic/config.yml` overrides
   one agent's tier, honoring the same `project -> global -> built-in default`
   precedence `read-config` already applies to every other key.
-  `scripts/read-config` seeds `DEFAULTS["agents"]["models"]` from
-  `AgentModels::TIER_DEFAULTS` (requiring `lib/agent_models` rather than re-typing the
-  table), so `read-config agents.models.plastic-executor` answers `sonnet` out of the
-  box and honors an override the same way any other dotted key does.
+  `scripts/read-config --harness` resolves the requested model namespace and translates
+  shipped aliases to OpenAI IDs for Codex. It resolves effort from the matching harness
+  namespace and defaults every agent to medium.
   `templates/config.yml` documents the key as a commented example so a user does not
   need to read source to find it.
 - **Installer applies the override at copy time**: `InstallerCore#install_agents`
@@ -778,13 +777,18 @@ models are user configuration (fable and opus by default on Claude Code).
   Codex reads standalone `~/.codex/agents/<name>.toml` files, not the `.md` frontmatter
   format, so a tier alias (opus, sonnet, haiku) resolves to BOTH a `model` line (from
   `AgentModels::CODEX_MODEL_BY_ALIAS`, model first) and a `model_reasoning_effort`
-  line, a literal override resolves to a `model` line only, and an empty value emits
-  nothing (the agent inherits the session model). Scoping the Codex call to `harness:
+  line. A literal override also receives medium effort unless `agents.efforts.codex.*`
+  overrides it. An empty value emits nothing. Scoping the Codex call to `harness:
   "codex"` is what closes the literal-model-id leak: a value set under the legacy flat
   form or `agents.models.claude.*` is claude-scoped only and is never visible to the
   codex-scoped resolution, so it can never surface in a generated Codex TOML `model`
   line. See [harness-adapters.md](reference/harness-adapters.md) for the full codex
   agent TOML contract.
+- **Graph runtime contract**: `RunnerPolicy` resolves model and effort for the active harness.
+  `RunnerDispatch` records both on `running`, and `scripts/node-run` passes both explicitly
+  to `codex exec`. A research node can declare one Markdown report under `resources/`.
+  The read-only node returns its content in YAML and `RunnerAbsorb` performs the confined,
+  atomic write after validation.
 - **Dispatch-time contract (belt-and-braces)**: because Claude Code reading
   frontmatter at dispatch time is a harness implementation detail rather than a
   contract Plastic controls, every dispatch site (the enforcer's per-stage

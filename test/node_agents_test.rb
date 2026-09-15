@@ -85,6 +85,13 @@ class NodeAgentsTest < Minitest::Test
     end
   end
 
+  def test_every_shipped_agent_defaults_to_medium_effort
+    Dir.glob(File.join(REPO, "agents", "*.md")).each do |path|
+      basename = File.basename(path, ".md")
+      assert_equal "medium", frontmatter(basename)["effort"], "#{basename} must default to medium effort"
+    end
+  end
+
   # 2.14
   def test_work_agent_states_the_bash_caveat
     body = body_for("plastic-node-work")
