@@ -459,20 +459,20 @@ class InstallPackagingTest < Minitest::Test
   end
 
   # --- The advisor agents and the shipped Advisor Protocol reference ship with
-  # no injection surface (intent 185 final design): the faux advisor inlines
+  # no injection surface: the Secondary Advisor inlines
   # the Operating Manual in its own body, and the Advisor Protocol ships as a
   # skill reference. These guards fail loudly if either moves or disappears.
 
   def test_advisor_agent_files_exist_in_repo
-    %w[plastic-advisor.md plastic-faux-advisor.md].each do |name|
+    %w[plastic-primary-advisor.md plastic-secondary-advisor.md].each do |name|
       assert File.file?(File.join(REPO, "agents", name)), "agents/#{name} must exist in the repo"
     end
   end
 
-  def test_faux_advisor_inlines_the_operating_manual
-    body = File.read(File.join(REPO, "agents", "plastic-faux-advisor.md"))
+  def test_secondary_advisor_inlines_the_operating_manual
+    body = File.read(File.join(REPO, "agents", "plastic-secondary-advisor.md"))
     assert_includes body, "# The Operating Manual",
-      "plastic-faux-advisor.md must inline the full Operating Manual in its own body"
+      "plastic-secondary-advisor.md must inline the full Operating Manual in its own body"
     assert_includes body, "The five-question self-test"
   end
 

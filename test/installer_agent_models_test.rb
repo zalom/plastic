@@ -79,12 +79,15 @@ class InstallerAgentModelsTest < Minitest::Test
     assert_nil AgentModels.effort_for(nil)
   end
 
-  # --- The two advisor agents (intent 185 final design): plastic-advisor
-  # (real, ships fable) and plastic-faux-advisor (imitation, ships opus).
-  # Each ships its own default in frontmatter, not a hard-wired exception ---
+  # --- The two consultation agents: Primary and Secondary Advisor. ---
 
-  def test_consultation_agents_contains_exactly_the_two_advisors
-    assert_equal %w[plastic-advisor plastic-faux-advisor], AgentModels::CONSULTATION_AGENTS
+  def test_consultation_agents_have_primary_secondary_defaults
+    assert_equal %w[plastic-primary-advisor plastic-secondary-advisor], AgentModels::CONSULTATION_AGENTS
+    @core.install_agents(@dest)
+    assert_equal "model: fable", model_line("plastic-primary-advisor")
+    assert_equal "effort: medium", effort_line("plastic-primary-advisor")
+    assert_equal "model: fable", model_line("plastic-secondary-advisor")
+    assert_equal "effort: high", effort_line("plastic-secondary-advisor")
   end
 
   def test_tier_defaults_excludes_every_consultation_agent
@@ -125,14 +128,14 @@ class InstallerAgentModelsTest < Minitest::Test
 
   def test_install_agents_preserves_each_advisors_shipped_default_model
     @core.install_agents(@dest)
-    assert_equal "model: fable", model_line("plastic-advisor")
-    assert_equal "model: opus", model_line("plastic-faux-advisor")
+    assert_equal "model: fable", model_line("plastic-primary-advisor")
+    assert_equal "model: fable", model_line("plastic-secondary-advisor")
   end
 
   def test_install_agents_rewrites_advisor_model_on_override
-    @core.install_agents(@dest, models: { "plastic-advisor" => "opus", "plastic-faux-advisor" => "fable" })
-    assert_equal "model: opus", model_line("plastic-advisor")
-    assert_equal "model: fable", model_line("plastic-faux-advisor")
+    @core.install_agents(@dest, models: { "plastic-primary-advisor" => "opus", "plastic-secondary-advisor" => "fable" })
+    assert_equal "model: opus", model_line("plastic-primary-advisor")
+    assert_equal "model: fable", model_line("plastic-secondary-advisor")
   end
 
   def write_global_config(hash)
@@ -206,7 +209,7 @@ class InstallerAgentModelsTest < Minitest::Test
 
   # --- advisor.enabled / apply_config_flags (intent 185 final design):
   # advisor.claude.default names an AGENT, never a model; --advisor accepts
-  # the agent name or the "real"/"faux" shorthand ---
+  # the agent name or current/compatibility shorthand ---
 
   def test_apply_config_flags_no_advisor_disables
     @core.apply_config_flags(["--no-advisor"])
@@ -214,16 +217,19 @@ class InstallerAgentModelsTest < Minitest::Test
     assert_equal false, config.dig("advisor", "enabled")
   end
 
-  def test_apply_config_flags_advisor_shorthand_real_writes_plastic_advisor
+  def test_advisor_flag_shorthands_write_current_agent_names
+    @core.apply_config_flags(["--advisor", "primary"])
+    config = YAML.safe_load(File.read(File.join(@home, "config.yml")))
+    assert_equal "plastic-primary-advisor", config.dig("advisor", "claude", "default")
+    @core.apply_config_flags(["--advisor", "secondary"])
+    config = YAML.safe_load(File.read(File.join(@home, "config.yml")))
+    assert_equal "plastic-secondary-advisor", config.dig("advisor", "claude", "default")
     @core.apply_config_flags(["--advisor", "real"])
     config = YAML.safe_load(File.read(File.join(@home, "config.yml")))
-    assert_equal "plastic-advisor", config.dig("advisor", "claude", "default")
-  end
-
-  def test_apply_config_flags_advisor_shorthand_faux_writes_plastic_faux_advisor
+    assert_equal "plastic-primary-advisor", config.dig("advisor", "claude", "default")
     @core.apply_config_flags(["--advisor", "faux"])
     config = YAML.safe_load(File.read(File.join(@home, "config.yml")))
-    assert_equal "plastic-faux-advisor", config.dig("advisor", "claude", "default")
+    assert_equal "plastic-secondary-advisor", config.dig("advisor", "claude", "default")
   end
 
   def test_apply_config_flags_advisor_value_passes_through_a_literal_agent_name
@@ -241,15 +247,16 @@ class InstallerAgentModelsTest < Minitest::Test
     File.read(File.join(@dest, "#{basename}.md"))[/^effort:.*$/]
   end
 
-  def test_plastic_advisor_ships_effort_medium
+  def test_primary_advisor_ships_effort_medium_and_secondary_ships_high
     @core.install_agents(@dest)
-    assert_equal "effort: medium", effort_line("plastic-advisor")
+    assert_equal "effort: medium", effort_line("plastic-primary-advisor")
+    assert_equal "effort: high", effort_line("plastic-secondary-advisor")
   end
 
   def test_project_effort_override_wins_over_global
-    g = { "agents" => { "efforts" => { "claude" => { "plastic-advisor" => "high" } } } }
-    p = { "agents" => { "efforts" => { "claude" => { "plastic-advisor" => "low" } } } }
-    assert_equal "low", AgentModels.effort_override_map(project_config: p, global_config: g)["plastic-advisor"]
+    g = { "agents" => { "efforts" => { "claude" => { "plastic-primary-advisor" => "high" } } } }
+    p = { "agents" => { "efforts" => { "claude" => { "plastic-primary-advisor" => "low" } } } }
+    assert_equal "low", AgentModels.effort_override_map(project_config: p, global_config: g)["plastic-primary-advisor"]
   end
 
   def test_effort_override_map_ignores_a_malformed_section
@@ -257,9 +264,9 @@ class InstallerAgentModelsTest < Minitest::Test
   end
 
   def test_effort_override_rewrites_the_effort_line_and_keeps_the_model
-    @core.install_agents(@dest, efforts: { "plastic-advisor" => "xhigh" })
-    assert_equal "effort: xhigh", effort_line("plastic-advisor")
-    assert_equal "model: fable", model_line("plastic-advisor")
+    @core.install_agents(@dest, efforts: { "plastic-primary-advisor" => "xhigh" })
+    assert_equal "effort: xhigh", effort_line("plastic-primary-advisor")
+    assert_equal "model: fable", model_line("plastic-primary-advisor")
   end
 
   def test_effort_override_inserts_a_line_when_the_agent_ships_none
@@ -268,7 +275,7 @@ class InstallerAgentModelsTest < Minitest::Test
   end
 
   def test_effort_overrides_read_the_global_config
-    File.write(File.join(@home, "config.yml"), { "agents" => { "efforts" => { "claude" => { "plastic-advisor" => "high" } } } }.to_yaml)
-    assert_equal({ "plastic-advisor" => "high" }, @core.agent_effort_overrides)
+    File.write(File.join(@home, "config.yml"), { "agents" => { "efforts" => { "claude" => { "plastic-primary-advisor" => "high" } } } }.to_yaml)
+    assert_equal({ "plastic-primary-advisor" => "high" }, @core.agent_effort_overrides)
   end
 end
