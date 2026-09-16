@@ -1423,10 +1423,14 @@ class InstallerCore
   # which agent the advisor SKILL routes to by default is a routing decision
   # (advisor.claude.default), never a model-selection one.
   def agent_model_overrides(project_dir = nil, harness: "claude")
-    global_config = load_config_yaml(File.join(plastic_home, "config.yml"))
+    global_path = File.join(plastic_home, "config.yml")
+    migrate_advisor_config_file(global_path)
+    global_config = load_config_yaml(global_path)
     project_config =
       if project_dir
-        load_config_yaml(File.join(project_dir, ".plastic_store", "config.yml"))
+        project_path = File.join(project_dir, ".plastic_store", "config.yml")
+        migrate_advisor_config_file(project_path)
+        load_config_yaml(project_path)
       else
         {}
       end
@@ -1434,8 +1438,12 @@ class InstallerCore
   end
 
   def agent_effort_overrides(project_dir = nil, harness: "claude")
-    global_config = load_config_yaml(File.join(plastic_home, "config.yml"))
-    project_config = project_dir ? load_config_yaml(File.join(project_dir, ".plastic_store", "config.yml")) : {}
+    global_path = File.join(plastic_home, "config.yml")
+    migrate_advisor_config_file(global_path)
+    global_config = load_config_yaml(global_path)
+    project_path = project_dir && File.join(project_dir, ".plastic_store", "config.yml")
+    migrate_advisor_config_file(project_path) if project_path
+    project_config = project_path ? load_config_yaml(project_path) : {}
     AgentModels.effort_override_map(project_config: project_config, global_config: global_config, harness: harness)
   end
 
@@ -1515,6 +1523,18 @@ class InstallerCore
       %w[claude codex].each { |harness| migrate_advisor_keys!(section[harness]) if section[harness].is_a?(Hash) }
     end
     config
+  end
+
+  def migrate_advisor_config_file(path)
+    return false unless path && File.file?(path)
+    parsed = YAML.safe_load(File.read(path))
+    return false unless parsed.is_a?(Hash)
+    migrated = migrate_advisor_config(parsed)
+    return false if migrated == parsed
+    File.write(path, YAML.dump(migrated))
+    true
+  rescue StandardError
+    false
   end
 
   def migrate_advisor_keys!(section)

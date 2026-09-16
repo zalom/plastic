@@ -81,6 +81,7 @@ class Install < InstallerCore
 
     distribute(mode)
     bootstrap if fresh
+    migrate_advisor_config_file(File.join(plastic_home, "config.yml"))
     apply_config_flags(argv)
 
     results = selected.map do |key|

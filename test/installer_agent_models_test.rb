@@ -90,6 +90,24 @@ class InstallerAgentModelsTest < Minitest::Test
     assert_equal "effort: high", effort_line("plastic-secondary-advisor")
   end
 
+  def test_migrate_advisor_config_renames_global_and_scoped_keys_without_losing_current_values
+    config = {
+      "keep" => { "value" => true },
+      "advisor" => { "claude" => { "default" => "plastic-advisor" } },
+      "agents" => {
+        "models" => { "plastic-advisor" => "flat", "claude" => { "plastic-advisor" => "old", "plastic-primary-advisor" => "current" }, "codex" => { "plastic-faux-advisor" => "astra" } },
+        "efforts" => { "claude" => { "plastic-advisor" => "high" }, "codex" => { "plastic-faux-advisor" => "xhigh" } }
+      }
+    }
+    migrated = @core.migrate_advisor_config(config)
+    assert_equal true, migrated.dig("keep", "value")
+    assert_equal "plastic-primary-advisor", migrated.dig("advisor", "claude", "default")
+    assert_equal "current", migrated.dig("agents", "models", "claude", "plastic-primary-advisor")
+    assert_equal "astra", migrated.dig("agents", "models", "codex", "plastic-secondary-advisor")
+    assert_equal "xhigh", migrated.dig("agents", "efforts", "codex", "plastic-secondary-advisor")
+    assert_equal migrated, @core.migrate_advisor_config(migrated)
+  end
+
   def test_tier_defaults_excludes_every_consultation_agent
     AgentModels::CONSULTATION_AGENTS.each do |basename|
       refute AgentModels::TIER_DEFAULTS.key?(basename),
