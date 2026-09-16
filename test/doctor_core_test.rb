@@ -479,16 +479,17 @@ class DoctorAgentModelDriftTest < Minitest::Test
   end
 
   # Write an installed agent role file with an explicit frontmatter `model:`.
-  def write_agent_file(agent_dir, basename, model:)
+  def write_agent_file(agent_dir, basename, model:, effort: nil)
     agents_dir = File.join(agent_dir, "agents")
     FileUtils.mkdir_p(agents_dir)
     path = File.join(agents_dir, "#{basename}.md")
+    effort_line = effort ? "effort: #{effort}\n" : ""
     File.write(path, <<~MD)
       ---
       name: #{basename}
       description: test fixture
       model: #{model}
-      ---
+      #{effort_line}---
       # #{basename}
     MD
     path
@@ -574,8 +575,8 @@ class DoctorAgentModelDriftTest < Minitest::Test
   end
 
   def test_consultation_agent_with_shipped_default_never_flagged_as_drift
-    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-advisor", model: "fable")
-    # No config.yml -> no override configured for plastic-advisor.
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-primary-advisor", model: "fable")
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-secondary-advisor", model: "fable", effort: "high")
 
     checks = doctor.check_agent_model_drift("claude")
     drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
@@ -583,15 +584,17 @@ class DoctorAgentModelDriftTest < Minitest::Test
     refute_nil drift_check
     assert_equal "pass", drift_check[:status],
       "a consultation agent must never be flagged as drift; its model is user configuration"
-    assert drift_check[:details].any? { |d| d.include?("plastic-advisor") && d.include?("consultation") },
-      "expected plastic-advisor to be listed informationally as a consultation role, got: #{drift_check[:details].inspect}"
+    %w[plastic-primary-advisor plastic-secondary-advisor].each do |name|
+      assert drift_check[:details].any? { |d| d.include?(name) && d.include?("consultation") },
+        "expected #{name} to be listed informationally as a consultation role, got: #{drift_check[:details].inspect}"
+    end
   end
 
   def test_consultation_agent_model_change_is_still_not_flagged_as_drift
-    # plastic-advisor ships fable by default; installing it with a DIFFERENT
+    # A consultation advisor may carry a configured model; installing it with a different
     # model and no override must still never be treated as drift, because
     # bucket 3 never compares a consultation agent's frontmatter to anything.
-    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-advisor", model: "opus")
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-primary-advisor", model: "opus")
 
     checks = doctor.check_agent_model_drift("claude")
     drift_check = checks.find { |c| c[:name] == "agent_model_drift" }

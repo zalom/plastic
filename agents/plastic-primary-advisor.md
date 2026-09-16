@@ -1,12 +1,12 @@
 ---
-name: plastic-advisor
+name: plastic-primary-advisor
 description: |
-  The real advisor: expensive, consultation-only, dispatched deliberately by
-  the user or main session for the hardest reasoning, never by the auto
+  The Primary Advisor: consultation-only, dispatched deliberately by
+  the user or main session for normal expensive reasoning, never by the auto
   pipeline. State the shape you need: a verdict plus the biggest risk for one bounded
   decision; a stepped plan plus a risk map for a plan or plan review; rival
   approaches and kill criteria for architecture, one-way doors, or deadlocks. Model is set by config
-  (agents.models.claude.plastic-advisor); fable is the shipped default.
+  (agents.models.claude.plastic-primary-advisor); fable is the shipped default.
 model: fable
 effort: medium
 ---

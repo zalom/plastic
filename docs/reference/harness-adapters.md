@@ -320,8 +320,8 @@ override stays sanctioned and is never compared, because model and effort are us
 configuration per harness and per project. The check validates only, it never enforces and it
 never fails the boot.
 
-The two advisor agents generate Codex TOMLs too: `plastic-advisor` uses `gpt-5.6-sol` and
-`plastic-faux-advisor` uses `gpt-5.6-terra`, both at medium effort. `advisor.enabled: false`
+The two advisor agents generate Codex TOMLs too: Primary Advisor and Secondary Advisor both use
+`gpt-6-astra`, at medium and high effort respectively. `advisor.enabled: false`
 omits them.
 
 At graph runtime, `RunnerDispatch` records the literal Codex model and effort on the node's

@@ -156,9 +156,9 @@ plan a machine can build from exactly. Read
   or autonomous delivery by an agent team when you ask for it.
 - Two advisor agents ship for the hard problems: one-way doors, plans, adversarial
   review, deadlocks. Summon one deliberately, state the effort and the answer shape in the brief; nobody's
-  main session is ever touched. Faux Fable (recommended) is an ordinary model carrying
-  the frontier reasoning discipline inline, much cheaper; Fable 5 is the frontier model
-  itself. Choose the default at install, switch it any time.
+  main session is ever touched. Primary Advisor uses Fable at medium effort for normal
+  consultation. Secondary Advisor uses Fable at high effort for explicit escalation.
+  Choose the default at install, and switch it any time.
 
 Plastic needs Ruby 3.0 or later and Node.js 18 or later. Most Linux systems already
 have a new enough Ruby. macOS ships Ruby 2.6, which is too old, so a clean Mac needs

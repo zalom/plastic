@@ -35,7 +35,7 @@ module RunnerPolicy
   # resolves through AgentModels::TIER_DEFAULTS, the one place
   # `plastic-executor`'s shipped tier is already declared (post-execution
   # review minor 4), rather than a second, independently-drifting literal
-  # here. `plastic-advisor` carries no lifecycle-stage entry in
+  # here. `plastic-primary-advisor` carries no lifecycle-stage entry in
   # TIER_DEFAULTS at all (it is a consultation agent, never auto-dispatched
   # - see agent_models.rb's own docstring), so its default stays the one
   # literal this table cannot source from anywhere else.
@@ -43,7 +43,7 @@ module RunnerPolicy
   DEFAULT_ADVISOR_MODEL = "opus"
 
   EXECUTOR_CONFIG_KEY = "plastic-executor"
-  ADVISOR_CONFIG_KEY = "plastic-advisor"
+  ADVISOR_CONFIG_KEY = "plastic-primary-advisor"
 
   # {model_role:, worktree:, retry_cap:, diff_rule:, lease_minutes:} per kind
   # (327 D12). `decision` carries no retry cap or lease: it is never

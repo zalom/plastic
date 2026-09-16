@@ -15,8 +15,8 @@ Announce: "Taking over intent [ID] - [name] for autonomous delivery."
 **Advisory (not a rule).** At auto-mode start, recommend once that the user run this
 orchestrating session on the best available thinking model (Fable, Opus, or whatever supersedes
 them); this is advice only, and dispatched agents keep their configured model, never resolving
-to Fable without an explicit `agents.models.<name>` config override. `plastic-advisor` and
-`plastic-faux-advisor` are consultation roles the user or this session summons deliberately;
+to Fable without an explicit `agents.models.<name>` config override. Primary Advisor and
+Secondary Advisor are consultation roles the user or this session summons deliberately;
 the auto pipeline never dispatches them.
 
 ## Precondition

@@ -1197,7 +1197,7 @@ class InstallerCore
     effort = if effort_override && !effort_override.to_s.empty?
                effort_override
              else
-               front["effort"] || AgentModels::DEFAULT_EFFORT
+               front["effort"] || AgentModels.shipped_effort_for(name)
              end
 
     parts = []
@@ -1369,8 +1369,7 @@ class InstallerCore
   # them to `installed` before write_manifest (manifest + prune are then automatic).
   # No-op safe: returns [] when the package has no agents dir or it is empty.
   # advisor_enabled: false (advisor.enabled config key) skips every
-  # AgentModels::CONSULTATION_AGENTS file entirely (both plastic-advisor and
-  # plastic-faux-advisor), so a user who declined the advisor never gets either
+  # AgentModels::CONSULTATION_AGENTS file entirely, so a user who declined the advisor never gets either
   # agent installed.
   def install_agents(agents_root, models: {}, efforts: {}, advisor_enabled: true)
     sources = Dir.glob(File.join(package_root, "agents", "*.md"))
@@ -1415,18 +1414,21 @@ class InstallerCore
   # ("claude" or "codex"). Defaults are NOT included, so unconfigured agents
   # keep their shipped frontmatter.
   #
-  # Both advisor agents (plastic-advisor, plastic-faux-advisor) resolve through
+  # Both advisor agents resolve through
   # this SAME generic map, like any other agent: a config author sets
-  # agents.models.claude.plastic-advisor (or the legacy flat
-  # agents.models.plastic-advisor, read as claude) to point either agent at a
+  # agents.models.claude.<agent> (or the legacy flat form, read as Claude) to point either agent at a
   # different literal model. There is no separate advisor-specific model key;
   # which agent the advisor SKILL routes to by default is a routing decision
   # (advisor.claude.default), never a model-selection one.
   def agent_model_overrides(project_dir = nil, harness: "claude")
-    global_config = load_config_yaml(File.join(plastic_home, "config.yml"))
+    global_path = File.join(plastic_home, "config.yml")
+    migrate_advisor_config_file(global_path)
+    global_config = load_config_yaml(global_path)
     project_config =
       if project_dir
-        load_config_yaml(File.join(project_dir, ".plastic_store", "config.yml"))
+        project_path = File.join(project_dir, ".plastic_store", "config.yml")
+        migrate_advisor_config_file(project_path)
+        load_config_yaml(project_path)
       else
         {}
       end
@@ -1434,8 +1436,12 @@ class InstallerCore
   end
 
   def agent_effort_overrides(project_dir = nil, harness: "claude")
-    global_config = load_config_yaml(File.join(plastic_home, "config.yml"))
-    project_config = project_dir ? load_config_yaml(File.join(project_dir, ".plastic_store", "config.yml")) : {}
+    global_path = File.join(plastic_home, "config.yml")
+    migrate_advisor_config_file(global_path)
+    global_config = load_config_yaml(global_path)
+    project_path = project_dir && File.join(project_dir, ".plastic_store", "config.yml")
+    migrate_advisor_config_file(project_path) if project_path
+    project_config = project_path ? load_config_yaml(project_path) : {}
     AgentModels.effort_override_map(project_config: project_config, global_config: global_config, harness: harness)
   end
 
@@ -1450,10 +1456,14 @@ class InstallerCore
     value != false
   end
 
-  # Agent-name shorthands for the --advisor flag: the two shipped choices,
-  # named for the role (real advisor vs. the cheaper imitation), never a model
-  # name.
-  ADVISOR_SHORTHANDS = { "real" => "plastic-advisor", "faux" => "plastic-faux-advisor" }.freeze
+  ADVISOR_NAME_MIGRATIONS = {
+    "plastic-advisor" => "plastic-primary-advisor",
+    "plastic-faux-advisor" => "plastic-secondary-advisor"
+  }.freeze
+  ADVISOR_SHORTHANDS = {
+    "primary" => "plastic-primary-advisor", "secondary" => "plastic-secondary-advisor",
+    "real" => "plastic-primary-advisor", "faux" => "plastic-secondary-advisor"
+  }.freeze
 
   # Write advisor.enabled / advisor.claude.default into the global config.yml
   # from install-time flags. Absent flags change nothing: advisor.enabled
@@ -1461,7 +1471,7 @@ class InstallerCore
   # (the skill's own fallback chain applies) when missing.
   #   --no-advisor      -> advisor.enabled: false
   #   --advisor VALUE   -> advisor.claude.default: VALUE (an agent name, or the
-  #                        shorthand "real"/"faux")
+  #                        shorthand "primary"/"secondary")
   def apply_config_flags(argv)
     no_advisor = argv.include?("--no-advisor")
     advisor_idx = argv.index("--advisor")
@@ -1469,7 +1479,13 @@ class InstallerCore
     return unless no_advisor || advisor_value
 
     config_path = File.join(plastic_home, "config.yml")
-    config = load_config_yaml(config_path)
+    config = if File.exist?(config_path)
+               parsed = YAML.safe_load(File.read(config_path))
+               return false unless parsed.nil? || parsed.is_a?(Hash)
+               migrate_advisor_config(parsed || {})
+             else
+               {}
+             end
 
     if no_advisor
       config["advisor"] ||= {}
@@ -1484,6 +1500,9 @@ class InstallerCore
 
     FileUtils.mkdir_p(plastic_home)
     File.write(config_path, YAML.dump(config))
+    true
+  rescue StandardError
+    false
   end
 
   def load_config_yaml(path)
@@ -1491,6 +1510,45 @@ class InstallerCore
     YAML.safe_load(File.read(path)) || {}
   rescue StandardError
     {}
+  end
+
+  # Renames retired advisor keys without discarding a current key. It accepts
+  # malformed config sections and leaves unrelated values untouched.
+  def migrate_advisor_config(config)
+    return {} unless config.is_a?(Hash)
+    config = Marshal.load(Marshal.dump(config))
+    advisor = config["advisor"]
+    if advisor.is_a?(Hash) && advisor["claude"].is_a?(Hash)
+      default = advisor["claude"]["default"]
+      advisor["claude"]["default"] = ADVISOR_NAME_MIGRATIONS.fetch(default, default)
+    end
+    agents = config["agents"]
+    %w[models efforts].each do |section_name|
+      section = agents.is_a?(Hash) ? agents[section_name] : nil
+      next unless section.is_a?(Hash)
+      migrate_advisor_keys!(section)
+      %w[claude codex].each { |harness| migrate_advisor_keys!(section[harness]) if section[harness].is_a?(Hash) }
+    end
+    config
+  end
+
+  def migrate_advisor_config_file(path)
+    return false unless path && File.file?(path)
+    parsed = YAML.safe_load(File.read(path))
+    return false unless parsed.is_a?(Hash)
+    migrated = migrate_advisor_config(parsed)
+    return false if migrated == parsed
+    File.write(path, YAML.dump(migrated))
+    true
+  rescue StandardError
+    false
+  end
+
+  def migrate_advisor_keys!(section)
+    ADVISOR_NAME_MIGRATIONS.each do |legacy, current|
+      section[current] = section[legacy] if !section.key?(current) && section.key?(legacy)
+      section.delete(legacy)
+    end
   end
 
   # --- Legacy plugin migration ---

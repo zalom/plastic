@@ -252,17 +252,17 @@ class CodexInstallTest < Minitest::Test
   end
 
 
-  def test_consultation_agents_generate_openai_equivalents_at_medium_effort
+  def test_codex_agents_use_expected_default_models
     @core.install_for_agent("codex", false)
 
     expected = {
-      "plastic-advisor" => "gpt-5.6-sol",
-      "plastic-faux-advisor" => "gpt-5.6-terra"
+      "plastic-primary-advisor" => "gpt-6-astra",
+      "plastic-secondary-advisor" => "gpt-6-astra"
     }
     expected.each do |basename, model|
       toml = File.read(File.join(@codex_home, "agents", "#{basename}.toml"))
       assert_includes toml, %(model = "#{model}")
-      assert_includes toml, 'model_reasoning_effort = "medium"'
+      assert_includes toml, %(model_reasoning_effort = "#{basename == "plastic-secondary-advisor" ? "high" : "medium"}")
     end
   end
 

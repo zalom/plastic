@@ -24,7 +24,7 @@ require_relative "agent_models"
 # through `RunnerPolicy.model_for(kind, config:)`, the one place that maps a
 # node's kind to the role the runner actually dispatched it against - never
 # a hand-rolled kind-to-role table, and never `AgentModels::TIER_DEFAULTS`
-# directly, which carries no `plastic-advisor` entry at all (that agent is a
+# directly, which carries no `plastic-primary-advisor` entry at all (that agent is a
 # consultation agent, never auto-dispatched). Adds no second parser:
 # `NodeLedger` owns the transition-line format, `NodeFile` owns the kind
 # envelope and the `KIND_PREFIX` fallback, `RunnerPolicy`/`AgentModels` own

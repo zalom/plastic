@@ -47,7 +47,7 @@ module RunnerDispatch
   HARD_CAP_RE = /\Ais at its dispatch cap \((\d+)\/(\d+)\)\z/.freeze
 
   # D8 (355, n6): the agent every dispatched, non-decision node names - a
-  # role, never a harness (matrix 6.5), and never `plastic-advisor`, which
+  # role, never a harness (matrix 6.5), and never a consultation advisor, which
   # stays a deliberate, never-auto-dispatched consultation agent.
   SPAWN_AGENT = "plastic-executor"
 
