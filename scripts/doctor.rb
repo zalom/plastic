@@ -2177,7 +2177,7 @@ end
                       "effort override=#{effort_overrides[basename].inspect}"
       elsif AgentModels::SHIPPED_MODEL_DEFAULTS.key?(basename)
         expected_model = AgentModels.shipped_model_for(basename, harness: "codex")
-        expected_effort = AgentModels::DEFAULT_EFFORT
+        expected_effort = AgentModels.shipped_effort_for(basename)
         mismatches = []
         if expected_model && fields[:model] != expected_model
           mismatches << "model=#{fields[:model].inspect}, resolved default model=#{expected_model.inspect}"

@@ -34,8 +34,8 @@ class ConfigAsksTest < Minitest::Test
       "introduced" => introduced,
       "question" => "Which advisor should be the default?",
       "options" => [
-        { "label" => "Faux Fable", "value" => "plastic-faux-advisor" },
-        { "label" => "Fable 5", "value" => "plastic-advisor" },
+        { "label" => "Primary Advisor", "value" => "plastic-primary-advisor" },
+        { "label" => "Secondary Advisor", "value" => "plastic-secondary-advisor" },
       ],
     }
   end
@@ -52,7 +52,7 @@ class ConfigAsksTest < Minitest::Test
 
   def test_not_pending_when_key_is_set
     write_manifest([sample_entry])
-    write_config("advisor" => { "claude" => { "default" => "plastic-advisor" } })
+    write_config("advisor" => { "claude" => { "default" => "plastic-primary-advisor" } })
 
     assert_equal [], ConfigAsks.pending(@home)
   end
@@ -79,8 +79,8 @@ class ConfigAsksTest < Minitest::Test
   end
 
   def test_write_config_command_and_dismiss_command_shape
-    cmd = ConfigAsks.write_config_command(@home, "advisor.claude.default", "plastic-faux-advisor")
-    assert_equal "ruby #{@home}/scripts/write-config advisor.claude.default plastic-faux-advisor", cmd
+    cmd = ConfigAsks.write_config_command(@home, "advisor.claude.default", "plastic-primary-advisor")
+    assert_equal "ruby #{@home}/scripts/write-config advisor.claude.default plastic-primary-advisor", cmd
 
     dismiss = ConfigAsks.dismiss_command(@home, "advisor-default")
     assert_equal "ruby #{@home}/scripts/write-config config_asks_dismissed --push advisor-default", dismiss
@@ -116,7 +116,7 @@ class ConfigAsksTest < Minitest::Test
     # Use the REAL, shipped config_asks.yml (not a synthetic fixture) so this
     # is a direct regression guard for the owner's actual production state.
     FileUtils.cp(File.join(REPO_ROOT, "config_asks.yml"), File.join(@home, "config_asks.yml"))
-    write_config("advisor" => { "claude" => { "default" => "plastic-faux-advisor" } })
+    write_config("advisor" => { "claude" => { "default" => "plastic-primary-advisor" } })
 
     pending = ConfigAsks.pending(@home)
 

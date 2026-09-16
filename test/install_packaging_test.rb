@@ -425,7 +425,8 @@ class InstallPackagingTest < Minitest::Test
       dest = File.join(agents_root, "#{basename}.toml")
       assert File.exist?(dest), "codex: #{basename}.toml must be generated"
       assert_includes installed, dest
-      assert_includes File.read(dest), 'model_reasoning_effort = "medium"'
+      expected_effort = basename == "plastic-secondary-advisor" ? "high" : "medium"
+      assert_includes File.read(dest), %(model_reasoning_effort = "#{expected_effort}")
     end
   end
 

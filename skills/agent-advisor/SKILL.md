@@ -15,12 +15,10 @@ user-invocable: true
 Plastic ships two consultation agents, never dispatched by the auto pipeline, summoned
 only when you decide the reasoning is worth buying:
 
-- **`plastic-advisor`** ("the real advisor"): the frontier model itself, expensive,
-  billed through usage credits. Spawn it for a few rounds on the hardest problem, then
-  close the session.
-- **`plastic-faux-advisor`** ("the imitation advisor"): an ordinary model carrying the
-  same reasoning discipline inline in its own body, so it reasons the same disciplined
-  way at a fraction of the cost. The cheaper default.
+- **Primary Advisor** (`plastic-primary-advisor`): Fable at medium effort. Use it for
+  normal consultation.
+- **Secondary Advisor** (`plastic-secondary-advisor`): Fable at high effort. Use it only
+  as an explicit escalation for harder or higher-risk reasoning.
 
 ## When to consult (and when not to)
 
@@ -40,18 +38,17 @@ a session.
 ## Routing: which advisor answers
 
 1. Read the harness-scoped config: `advisor.claude.default`, the only advisor routing key
-   the installer writes. If unset, use `plastic-advisor`, the shipped default.
-2. If the user names which advisor they want ("ask the real one", "use Fable", "ask the
-   cheap one"), honor that directly and dispatch `plastic-advisor` (the real advisor) or
-   `plastic-faux-advisor` (the cheaper imitation) accordingly, overriding step 1 for this
+   the installer writes. If unset, use `plastic-primary-advisor`, the shipped default.
+2. If the user explicitly asks for Secondary Advisor, dispatch `plastic-secondary-advisor`;
+   otherwise dispatch Primary Advisor, overriding step 1 for this
    consultation only.
 3. If `advisor.enabled` reads `false`, neither advisor agent nor this skill is
    installed; this step should not be reachable, but if it is, tell the user the
    advisor is disabled and point at "Setting the default" below.
 4. Dispatch the resolved agent with a brief built per `references/advisor-protocol.md`
    section 4 (natural prose, the block is a completeness check, not a form to fill).
-   State the answer shape explicitly. Medium is the shipped effort default; only an
-   explicit owner config override changes it.
+   State the answer shape explicitly. Primary uses medium effort and Secondary uses high;
+   only an explicit owner config override changes either value.
 5. Consume the answer per the protocol's section 5: run the Operating Manual's
    five-question self-test on the advisor's plan before executing it. Advice is input,
    not authority; the plan is the advisor's, the outcome is yours.
@@ -66,21 +63,17 @@ ruby ~/.plastic/scripts/read-config advisor.claude.default --project <repo>
 
 ## Setting the default advisor
 
-When asked to change the default ("make Fable my advisor", "switch my advisor", "use
-the cheaper one by default"), present the two options in plain language and write the
+When asked to change the default, present the two options in plain language and write the
 choice:
 
-- **Faux Fable** (`plastic-faux-advisor`, recommended): an ordinary model carrying the
-  frontier reasoning instructions. Much cheaper, available on any plan, reasons in the
-  same disciplined way.
-- **Fable 5** (`plastic-advisor`): the frontier model itself. The strongest reasoning
-  available, billed through usage credits, so summon it for a few rounds and close it.
+- **Primary Advisor** (`plastic-primary-advisor`, recommended): Fable at medium effort.
+- **Secondary Advisor** (`plastic-secondary-advisor`): Fable at high effort.
 
 These are the same two options the installer offers at install and update time. Write
 the choice to `advisor.claude.default` in the global `~/.plastic/config.yml` (or the
 project's `.plastic_store/config.yml` when the user scopes the change to one project):
-read the file as YAML, set `advisor.claude.default` to the agent name (`plastic-advisor`
-or `plastic-faux-advisor`, never a model name or nickname), and write it back. Confirm
+read the file as YAML, set `advisor.claude.default` to the agent name (`plastic-primary-advisor`
+or `plastic-secondary-advisor`, never a model name or nickname), and write it back. Confirm
 the new default back to the user in one line.
 
 ## References

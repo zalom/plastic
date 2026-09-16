@@ -239,10 +239,9 @@ class Install < InstallerCore
         --no-advisor         Skip installing both advisor agents and the agent-advisor
                              skill (advisor.enabled: false)
         --advisor VALUE      Which advisor agent is the default: an agent name, or the
-                             shorthand "real" (plastic-advisor) or "faux"
-                             (plastic-faux-advisor). Writes advisor.claude.default. Left
-                             unset, the agent-advisor skill falls back to
-                             plastic-faux-advisor at consult time.
+                             shorthand "primary" or "secondary". Legacy "real" and
+                             "faux" aliases remain accepted. Writes advisor.claude.default.
+                             Left unset, the agent-advisor skill falls back to Primary Advisor.
         -h, --help           Show this help
 
       Notes:

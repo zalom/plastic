@@ -43,7 +43,7 @@ class Subtraction304Test < Minitest::Test
     roadmap rollback tutorial uninstall update
   ].freeze
 
-  KEPT_AGENTS = %w[plastic-advisor.md plastic-enforcer.md plastic-executor.md plastic-faux-advisor.md
+  KEPT_AGENTS = %w[plastic-primary-advisor.md plastic-enforcer.md plastic-executor.md plastic-secondary-advisor.md
                    plastic-node-research.md plastic-node-verify.md plastic-node-work.md].freeze
 
   PLASTIC_AUTHORING_DOCS = %w[docs/skill-authoring.md].freeze
@@ -225,13 +225,13 @@ class Subtraction304Test < Minitest::Test
   end
 
   def test_advisor_contract_uses_medium_effort_without_a_brief_override
-    %w[agents/plastic-advisor.md agents/plastic-faux-advisor.md skills/agent-advisor/SKILL.md
+    %w[agents/plastic-primary-advisor.md agents/plastic-secondary-advisor.md skills/agent-advisor/SKILL.md
        skills/agent-advisor/references/advisor-protocol.md].each do |rel|
       body = File.read(File.join(REPO, rel))
       refute_match(/TIER: |S, M, or L|\bL tier\b|\bS tier\b/, body, "#{rel} still carries the S/M/L brief grammar")
     end
 
-    %w[agents/plastic-advisor.md agents/plastic-faux-advisor.md].each do |rel|
+    %w[agents/plastic-primary-advisor.md agents/plastic-secondary-advisor.md].each do |rel|
       body = File.read(File.join(REPO, rel))
       assert_match(/^effort: medium$/, body, "#{rel} must ship at medium effort")
       refute_match(/^EFFORT:/, body, "#{rel} must not require a per-brief effort override")

@@ -4,13 +4,13 @@
 
 *Adapted for Plastic (intent 185): this is the shipped reference copy the
 `plastic-agent-advisor` skill teaches from. Two named agents carry it,
-`plastic-advisor` (the real advisor) and `plastic-faux-advisor` (the cheaper
-imitation, the same discipline at a fraction of the cost); the
+`plastic-primary-advisor` (Primary Advisor) and `plastic-secondary-advisor`
+(Secondary Advisor, the explicit escalation); the
 answer shape below shapes the brief and the answer on whichever one you
 dispatch, never which file to pick. The
 `plastic-agent-advisor` skill reads harness-scoped config
-(`advisor.claude.default`, falling back to `secondary`, then to
-`plastic-faux-advisor`) to route your consultation automatically; name a
+(`advisor.claude.default`, falling back to `plastic-primary-advisor`) to route your
+consultation automatically; name a
 specific advisor in your request to override it. A frontier model rewards a
 single, well-formed one-shot brief more than a back-and-forth, so front-load
 everything section 3 below asks for before you send. The rest of this

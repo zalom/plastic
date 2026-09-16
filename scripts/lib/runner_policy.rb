@@ -43,7 +43,7 @@ module RunnerPolicy
   DEFAULT_ADVISOR_MODEL = "opus"
 
   EXECUTOR_CONFIG_KEY = "plastic-executor"
-  ADVISOR_CONFIG_KEY = "plastic-advisor"
+  ADVISOR_CONFIG_KEY = "plastic-primary-advisor"
 
   # {model_role:, worktree:, retry_cap:, diff_rule:, lease_minutes:} per kind
   # (327 D12). `decision` carries no retry cap or lease: it is never

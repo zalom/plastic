@@ -231,8 +231,8 @@ class UpdateVerbTest < Minitest::Test
       "introduced" => "1.3.0",
       "question" => "Which advisor should be the default?",
       "options" => [
-        { "label" => "Faux Fable", "value" => "plastic-faux-advisor" },
-        { "label" => "Fable 5", "value" => "plastic-advisor" },
+        { "label" => "Primary Advisor", "value" => "plastic-primary-advisor" },
+        { "label" => "Secondary Advisor", "value" => "plastic-secondary-advisor" },
       ],
     }
   end
@@ -269,16 +269,16 @@ class UpdateVerbTest < Minitest::Test
 
     output = buf.string
     assert_match(/Which advisor should be the default\?/, output)
-    assert_match(/Faux Fable/, output)
-    assert_match(/Fable 5/, output)
-    assert_match(/write-config advisor\.claude\.default plastic-faux-advisor/, output)
-    assert_match(/write-config advisor\.claude\.default plastic-advisor/, output)
+    assert_match(/Primary Advisor/, output)
+    assert_match(/Secondary Advisor/, output)
+    assert_match(/write-config advisor\.claude\.default plastic-primary-advisor/, output)
+    assert_match(/write-config advisor\.claude\.default plastic-secondary-advisor/, output)
     assert_match(/write-config config_asks_dismissed --push advisor-default/, output)
   end
 
   def test_announce_silent_when_key_already_set
     write_manifest([sample_config_ask_entry])
-    write_global_config("advisor" => { "claude" => { "default" => "plastic-advisor" } })
+    write_global_config("advisor" => { "claude" => { "default" => "plastic-primary-advisor" } })
 
     buf = StringIO.new
     @u.announce_pending_config_asks(out: buf)

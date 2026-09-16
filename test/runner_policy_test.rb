@@ -93,7 +93,7 @@ class RunnerPolicyTest < Minitest::Test
     assert_equal RunnerPolicy::DEFAULT_ADVISOR_MODEL, RunnerPolicy.model_for("verify", config: {})
     refute_equal RunnerPolicy::DEFAULT_EXECUTOR_MODEL, RunnerPolicy.model_for("verify", config: {})
 
-    config = { "agents" => { "models" => { "plastic-advisor" => "fable" } } }
+    config = { "agents" => { "models" => { "plastic-primary-advisor" => "fable" } } }
     assert_equal "fable", RunnerPolicy.model_for("verify", config: config)
     # a config override for the executor role must never leak into the advisor role
     exec_only = { "agents" => { "models" => { "claude" => { "plastic-executor" => "haiku" } } } }

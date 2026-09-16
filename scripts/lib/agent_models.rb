@@ -33,11 +33,11 @@ module AgentModels
   # every agent override uses. Neither is a lifecycle-stage role: never
   # dispatched by the auto pipeline, not part of TIER_DEFAULTS. Codex installs
   # pair plastic-advisor with Sol and plastic-faux-advisor with Terra.
-  CONSULTATION_AGENTS = %w[plastic-advisor plastic-faux-advisor].freeze
+  CONSULTATION_AGENTS = %w[plastic-primary-advisor plastic-secondary-advisor].freeze
 
   SHIPPED_MODEL_DEFAULTS = TIER_DEFAULTS.merge(
-    "plastic-advisor" => "fable",
-    "plastic-faux-advisor" => "opus"
+    "plastic-primary-advisor" => "fable",
+    "plastic-secondary-advisor" => "fable"
   ).freeze
 
   # Codex reasoning effort per tier alias. Model choice and reasoning effort are independent:
@@ -50,6 +50,11 @@ module AgentModels
   }.freeze
 
   DEFAULT_EFFORT = "medium"
+
+  SHIPPED_EFFORT_DEFAULTS = {
+    "plastic-primary-advisor" => "medium",
+    "plastic-secondary-advisor" => "high"
+  }.freeze
 
   # Codex model id per tier alias (intent 186). Codex has NO vendor alias layer: every model id
   # is a literal versioned string that rots (gpt-5.2 / gpt-5.3-codex already deprecated), which is
@@ -67,11 +72,15 @@ module AgentModels
   }.freeze
 
   CODEX_MODEL_BY_AGENT = {
-    "plastic-advisor" => "gpt-5.6-sol",
-    "plastic-faux-advisor" => "gpt-5.6-terra"
+    "plastic-primary-advisor" => "gpt-6-astra",
+    "plastic-secondary-advisor" => "gpt-6-astra"
   }.freeze
 
   module_function
+
+  def shipped_effort_for(agent)
+    SHIPPED_EFFORT_DEFAULTS.fetch(agent.to_s, DEFAULT_EFFORT)
+  end
 
   # Pull { basename => model } out of a loaded config hash's `agents.models`
   # section, scoped to `harness` ("claude" or "codex"), tolerating a missing or
