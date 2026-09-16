@@ -1369,8 +1369,7 @@ class InstallerCore
   # them to `installed` before write_manifest (manifest + prune are then automatic).
   # No-op safe: returns [] when the package has no agents dir or it is empty.
   # advisor_enabled: false (advisor.enabled config key) skips every
-  # AgentModels::CONSULTATION_AGENTS file entirely (both plastic-advisor and
-  # plastic-faux-advisor), so a user who declined the advisor never gets either
+  # AgentModels::CONSULTATION_AGENTS file entirely, so a user who declined the advisor never gets either
   # agent installed.
   def install_agents(agents_root, models: {}, efforts: {}, advisor_enabled: true)
     sources = Dir.glob(File.join(package_root, "agents", "*.md"))
@@ -1415,10 +1414,9 @@ class InstallerCore
   # ("claude" or "codex"). Defaults are NOT included, so unconfigured agents
   # keep their shipped frontmatter.
   #
-  # Both advisor agents (plastic-advisor, plastic-faux-advisor) resolve through
+  # Both advisor agents resolve through
   # this SAME generic map, like any other agent: a config author sets
-  # agents.models.claude.plastic-advisor (or the legacy flat
-  # agents.models.plastic-advisor, read as claude) to point either agent at a
+  # agents.models.claude.<agent> (or the legacy flat form, read as Claude) to point either agent at a
   # different literal model. There is no separate advisor-specific model key;
   # which agent the advisor SKILL routes to by default is a routing decision
   # (advisor.claude.default), never a model-selection one.
@@ -1473,7 +1471,7 @@ class InstallerCore
   # (the skill's own fallback chain applies) when missing.
   #   --no-advisor      -> advisor.enabled: false
   #   --advisor VALUE   -> advisor.claude.default: VALUE (an agent name, or the
-  #                        shorthand "real"/"faux")
+  #                        shorthand "primary"/"secondary")
   def apply_config_flags(argv)
     no_advisor = argv.include?("--no-advisor")
     advisor_idx = argv.index("--advisor")
@@ -1481,7 +1479,13 @@ class InstallerCore
     return unless no_advisor || advisor_value
 
     config_path = File.join(plastic_home, "config.yml")
-    config = migrate_advisor_config(load_config_yaml(config_path))
+    config = if File.exist?(config_path)
+               parsed = YAML.safe_load(File.read(config_path))
+               return false unless parsed.nil? || parsed.is_a?(Hash)
+               migrate_advisor_config(parsed || {})
+             else
+               {}
+             end
 
     if no_advisor
       config["advisor"] ||= {}
@@ -1496,6 +1500,9 @@ class InstallerCore
 
     FileUtils.mkdir_p(plastic_home)
     File.write(config_path, YAML.dump(config))
+    true
+  rescue StandardError
+    false
   end
 
   def load_config_yaml(path)

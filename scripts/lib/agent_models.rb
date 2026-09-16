@@ -14,8 +14,7 @@ module AgentModels
   # HarnessAdapter::AGENT_TYPE_BY_KIND. work and research resolve the
   # executor tier, verify the advisor tier, mirroring RunnerPolicy's
   # model_role split (327 D12): work and research run on plastic-executor's
-  # own tier, verify on the same tier plastic-advisor's imitation
-  # (plastic-faux-advisor) ships, never the cheap tier.
+  # own tier, and verify on the lifecycle advisor tier, never the cheap tier.
   TIER_DEFAULTS = {
     "plastic-enforcer" => "opus",
     "plastic-executor" => "sonnet",
@@ -24,15 +23,14 @@ module AgentModels
     "plastic-node-research" => "sonnet"
   }.freeze
 
-  # The two advisor agents (intent 185 final design): plastic-advisor (the real
-  # advisor, ships `model: fable`) and plastic-faux-advisor (the imitation
-  # advisor, an ordinary model carrying the same reasoning discipline inline,
-  # ships `model: opus`). Both are shipped DEFAULTS in frontmatter, never a
+  # The two consultation agents are Primary Advisor and Secondary Advisor.
+  # Both ship Fable; Primary uses medium effort and Secondary uses high effort.
+  # Both are shipped defaults in frontmatter, never a
   # hard-wired identity: agents.models.claude.<name> (or the legacy flat form)
   # overrides either one through the same install-time frontmatter rewrite
   # every agent override uses. Neither is a lifecycle-stage role: never
   # dispatched by the auto pipeline, not part of TIER_DEFAULTS. Codex installs
-  # pair plastic-advisor with Sol and plastic-faux-advisor with Terra.
+  # generate both advisors with Astra and preserve each role's effort.
   CONSULTATION_AGENTS = %w[plastic-primary-advisor plastic-secondary-advisor].freeze
 
   SHIPPED_MODEL_DEFAULTS = TIER_DEFAULTS.merge(

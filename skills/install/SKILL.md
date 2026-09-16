@@ -94,16 +94,14 @@ Ask the user one feature question, interactive sessions only:
 
 If yes, ask which advisor is the default, exactly two choices:
 > "Which advisor should be the default?"
-> - **Faux Fable** (recommended): Opus 4.8 carrying the frontier reasoning
->   instructions. Much cheaper, available on any plan, reasons in the same
->   disciplined way. -> append `--advisor faux`
-> - **Fable 5**: the frontier model itself. The strongest reasoning available,
->   billed through usage credits, so summon it for a few rounds and close it. ->
->   append `--advisor real`
+> - **Primary Advisor** (recommended): Fable at medium effort for normal
+>   consultation. -> append `--advisor primary`
+> - **Secondary Advisor**: Fable at high effort for explicit escalation. ->
+>   append `--advisor secondary`
 
 Non-interactive sessions (no tty) skip the question entirely: the install ships with the
 shipped default, advisor enabled with no `--advisor` flag (the `plastic-agent-advisor`
-skill's own routing falls back to `plastic-faux-advisor` at consult time).
+skill's own routing falls back to `plastic-primary-advisor` at consult time).
 
 Update flow: pending config questions, including this one, are now announced
 generically by `plastic-update`'s Step 2, sourced from `config_asks.yml` - not

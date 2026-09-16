@@ -5,6 +5,7 @@ require "fileutils"
 require "digest"
 require "open3"
 require "rbconfig"
+require "yaml"
 
 # Intent 29: Plastic ships as flat, hyphen-namespaced personal skills
 # (plastic-<name>/) with NO Claude Code plugin/marketplace registration, a
@@ -475,6 +476,79 @@ class InstallPackagingTest < Minitest::Test
     assert_includes body, "# The Operating Manual",
       "plastic-secondary-advisor.md must inline the full Operating Manual in its own body"
     assert_includes body, "The five-question self-test"
+  end
+
+  def test_advisor_skill_routes_configured_default_and_explicit_roles
+    body = File.read(File.join(REPO, "skills", "agent-advisor", "SKILL.md"))
+    assert_includes body, "If unset, use `plastic-primary-advisor`"
+    assert_includes body, "explicitly asks for Primary Advisor or Secondary Advisor"
+    assert_includes body, "Otherwise, dispatch the configured agent"
+    assert_includes body, "If `advisor.enabled` reads `false`"
+  end
+
+  def test_claude_update_prunes_retired_advisor_files_in_both_advisor_states
+    [true, false].each do |enabled|
+      FileUtils.rm_f(File.join(PKG_TEST_HOME, "config.yml"))
+      unless enabled
+        File.write(File.join(PKG_TEST_HOME, "config.yml"), YAML.dump("advisor" => { "enabled" => false }))
+      end
+      dir = File.join(@dir, "claude-#{enabled}")
+      FileUtils.mkdir_p(File.join(dir, "agents"))
+      retired = %w[plastic-advisor.md plastic-faux-advisor.md].map { |name| File.join(dir, "agents", name) }
+      retired.each { |path| File.write(path, "retired") }
+      manifest_dir = File.join(dir, "plastic")
+      FileUtils.mkdir_p(manifest_dir)
+      File.write(File.join(manifest_dir, "manifest.json"), JSON.generate(
+        "files" => retired.to_h { |path| [path, Digest::SHA256.file(path).hexdigest] },
+      ))
+      installer = InstallerCore.new(
+        package_root: REPO,
+        plastic_home: PKG_TEST_HOME,
+        agents: [{ key: "claude", name: "Claude Code", dir: dir, flag: "--claude" }],
+        version: "1.0.0-test",
+      )
+
+      installer.install_for_agent("claude", false)
+
+      retired.each { |path| refute File.exist?(path), "retired Claude advisor must be pruned" }
+      current = %w[plastic-primary-advisor.md plastic-secondary-advisor.md]
+      current.each do |name|
+        assert_equal enabled, File.exist?(File.join(dir, "agents", name)), "advisor enablement must control #{name}"
+      end
+    end
+  end
+
+  def test_codex_update_prunes_retired_advisor_files_in_both_advisor_states
+    [true, false].each do |enabled|
+      FileUtils.rm_f(File.join(PKG_TEST_HOME, "config.yml"))
+      unless enabled
+        File.write(File.join(PKG_TEST_HOME, "config.yml"), YAML.dump("advisor" => { "enabled" => false }))
+      end
+      dir = File.join(@dir, "codex-shared-#{enabled}")
+      home_dir = File.join(@dir, "codex-home-#{enabled}")
+      FileUtils.mkdir_p(File.join(home_dir, "agents"))
+      retired = %w[plastic-advisor.toml plastic-faux-advisor.toml].map { |name| File.join(home_dir, "agents", name) }
+      retired.each { |path| File.write(path, "retired") }
+      manifest_dir = File.join(dir, "plastic")
+      FileUtils.mkdir_p(manifest_dir)
+      File.write(File.join(manifest_dir, "manifest.json"), JSON.generate(
+        "files" => retired.to_h { |path| [path, Digest::SHA256.file(path).hexdigest] },
+      ))
+      installer = InstallerCore.new(
+        package_root: REPO,
+        plastic_home: PKG_TEST_HOME,
+        agents: [{ key: "codex", name: "Codex CLI", dir: dir, home_dir: home_dir, flag: "--codex" }],
+        version: "1.0.0-test",
+      )
+
+      installer.install_for_agent("codex", false)
+
+      retired.each { |path| refute File.exist?(path), "retired Codex advisor must be pruned" }
+      current = %w[plastic-primary-advisor.toml plastic-secondary-advisor.toml]
+      current.each do |name|
+        assert_equal enabled, File.exist?(File.join(home_dir, "agents", name)), "advisor enablement must control #{name}"
+      end
+    end
   end
 
   def test_advisor_protocol_reference_exists_in_repo

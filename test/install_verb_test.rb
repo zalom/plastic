@@ -2,6 +2,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "json"
+require "yaml"
 
 require_relative "../scripts/install"
 
@@ -96,6 +97,19 @@ class InstallVerbTest < Minitest::Test
     out, _err = capture_io { i.run(selected: ["claude"]) }
     assert_match "docs/guides/your-first-intent-in-10-minutes.md", out,
       "the install results must point a first-time user at guide 1"
+  end
+
+  def test_run_migrates_legacy_advisor_config_before_installing
+    File.write(File.join(@home, "config.yml"), YAML.dump(
+      "advisor" => { "claude" => { "default" => "plastic-faux-advisor" } },
+      "agents" => { "models" => { "claude" => { "plastic-advisor" => "fable" } } },
+    ))
+
+    build.run(selected: ["claude"])
+
+    config = YAML.safe_load_file(File.join(@home, "config.yml"))
+    assert_equal "plastic-secondary-advisor", config.dig("advisor", "claude", "default")
+    assert_equal "fable", config.dig("agents", "models", "claude", "plastic-primary-advisor")
   end
 end
 

@@ -15,8 +15,8 @@ spanning the whole What->Why->How->Exec cycle; you are not a separately dispatch
 orchestrating main session on the best available thinking model (Fable, Opus, or whatever
 supersedes them). This is advice only: it changes no behavior. Dispatched agents keep their
 configured model and never resolve to Fable unless an explicit `agents.models.<name>` config
-override names Fable for that role. The two advisors, `plastic-advisor` and
-`plastic-faux-advisor`, are consultation roles the user or the main session summons
+override names Fable for that role. Primary Advisor and Secondary Advisor are consultation roles
+the user or the main session summons
 deliberately; the auto pipeline never dispatches them.
 
 ## Your Responsibilities

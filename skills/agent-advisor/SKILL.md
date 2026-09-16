@@ -6,7 +6,7 @@ description: >-
   failed attempts, or ranking several plausible options. Use when the user asks for
   a second opinion, a hard design decision, an architecture review, help breaking a
   deadlock, or says "ask the advisor". Also sets which advisor is the default when
-  asked ("make Fable my advisor", "switch my advisor", "use the real advisor").
+  asked ("make Primary Advisor my default", "switch my advisor", "use Secondary Advisor").
 user-invocable: true
 ---
 
@@ -39,9 +39,8 @@ a session.
 
 1. Read the harness-scoped config: `advisor.claude.default`, the only advisor routing key
    the installer writes. If unset, use `plastic-primary-advisor`, the shipped default.
-2. If the user explicitly asks for Secondary Advisor, dispatch `plastic-secondary-advisor`;
-   otherwise dispatch Primary Advisor, overriding step 1 for this
-   consultation only.
+2. If the user explicitly asks for Primary Advisor or Secondary Advisor, honor that choice for
+   this consultation. Otherwise, dispatch the configured agent from step 1.
 3. If `advisor.enabled` reads `false`, neither advisor agent nor this skill is
    installed; this step should not be reachable, but if it is, tell the user the
    advisor is disabled and point at "Setting the default" below.

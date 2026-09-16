@@ -146,8 +146,8 @@ class GraphMeasureModelsTest < Minitest::Test
   # --- 5.5: verify resolves against the advisor default, not TIER_DEFAULTS -----
 
   def test_verify_resolves_the_advisor_default_not_tier_defaults
-    refute AgentModels::TIER_DEFAULTS.key?("plastic-advisor"),
-      "fixture assumption: plastic-advisor carries no TIER_DEFAULTS entry"
+    refute AgentModels::TIER_DEFAULTS.key?("plastic-primary-advisor"),
+      "fixture assumption: Primary Advisor carries no TIER_DEFAULTS entry"
 
     with_store_dir do |store|
       write_intent(store, "1--demo", transitions: node_transitions("v1", "opus"), node_kinds: { "v1" => "verify" })

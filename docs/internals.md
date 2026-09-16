@@ -730,12 +730,9 @@ notice below (about the human's main session, never a dispatched subagent), an
 explicit `agents.models.<name>` config override, which is honored as written for a
 dispatched subagent when one is configured (e.g. `plastic-brainstorming: fable`, (removed in 2.0, intent 304)
 mihradesign intent 24, a sanctioned, permanent override, not drift), and the shipped
-default of one of the two consultation agents (`plastic-advisor`; its sibling
-`plastic-faux-advisor` ships `opus`, not Fable). The two advisors, `plastic-advisor`
-and `plastic-faux-advisor`, are not lifecycle stage roles: the never-Fable rule governs
-stage agents only. Neither is ever dispatched by the auto pipeline; they are
-consultation roles summoned deliberately by the user or the main session, and their
-models are user configuration (fable and opus by default on Claude Code).
+defaults of the two consultation agents. Primary Advisor and Secondary Advisor are not
+lifecycle stage roles. Neither is ever dispatched by the auto pipeline. Both use Fable on
+Claude Code and Astra on Codex; Primary uses medium effort, and Secondary uses high effort.
 
 - **Single source of truth for the tier table**: `scripts/lib/agent_models.rb` holds
   `AgentModels::TIER_DEFAULTS`, a pure Ruby hash mirroring the shipped frontmatter
@@ -807,11 +804,10 @@ models are user configuration (fable and opus by default on Claude Code).
   nothing if ignored; it concerns only the human's main session, since dispatched
   subagents keep their pinned tier and never resolve to Fable, unless an explicit
   `agents.models.<name>` config override names Fable for that role, in which case the
-  override is honored as written. The two advisors, `plastic-advisor` and
-  `plastic-faux-advisor`, are not lifecycle stage roles: the never-Fable rule governs
+  override is honored as written. Primary Advisor and Secondary Advisor are not lifecycle stage roles: the never-Fable rule governs
   stage agents only. Neither is ever dispatched by the auto pipeline; they are
-  consultation roles summoned deliberately by the user or the main session, and their
-  models are user configuration (fable and opus by default on Claude Code).
+  consultation roles summoned deliberately by the user or the main session. Both default
+  to Fable on Claude Code and Astra on Codex. Primary uses medium effort. Secondary uses high.
 - **What-stage discovery agent**: `plastic-intent-discovery` (paired with the (removed in 2.0, intent 304)
   `skills/intent-discovering/SKILL.md` (removed in 2.0, intent 304) workflow) closes the What-stage gap in the
   one-agent-per-stage table. It fires inside `plastic-intent-continuing`, right after

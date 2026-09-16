@@ -102,10 +102,52 @@ class InstallerAgentModelsTest < Minitest::Test
     migrated = @core.migrate_advisor_config(config)
     assert_equal true, migrated.dig("keep", "value")
     assert_equal "plastic-primary-advisor", migrated.dig("advisor", "claude", "default")
+    assert_equal "flat", migrated.dig("agents", "models", "plastic-primary-advisor")
     assert_equal "current", migrated.dig("agents", "models", "claude", "plastic-primary-advisor")
     assert_equal "astra", migrated.dig("agents", "models", "codex", "plastic-secondary-advisor")
     assert_equal "xhigh", migrated.dig("agents", "efforts", "codex", "plastic-secondary-advisor")
+    refute migrated.dig("agents", "models").key?("plastic-advisor")
+    refute migrated.dig("agents", "models", "claude").key?("plastic-advisor")
+    refute migrated.dig("agents", "models", "codex").key?("plastic-faux-advisor")
     assert_equal migrated, @core.migrate_advisor_config(migrated)
+  end
+
+  def test_migrate_advisor_config_preserves_unrelated_malformed_sections
+    config = {
+      "advisor" => "custom",
+      "agents" => { "models" => "custom", "efforts" => { "claude" => "custom" } },
+      "keep" => [1, 2, 3],
+    }
+    assert_equal config, @core.migrate_advisor_config(config)
+  end
+
+  def test_migrate_advisor_config_file_persists_global_and_project_shapes
+    global_path = File.join(@home, "config.yml")
+    write_global_config(
+      "advisor" => { "claude" => { "default" => "plastic-faux-advisor" } },
+      "agents" => { "models" => { "plastic-advisor" => "fable" } },
+    )
+    project_dir = File.join(@home, "project")
+    write_project_config(
+      project_dir,
+      "agents" => { "efforts" => { "codex" => { "plastic-faux-advisor" => "high" } } },
+    )
+
+    assert @core.migrate_advisor_config_file(global_path)
+    assert_equal "plastic-secondary-advisor", YAML.safe_load_file(global_path).dig("advisor", "claude", "default")
+    assert_equal "fable", @core.agent_model_overrides["plastic-primary-advisor"]
+    assert_equal "high", @core.agent_effort_overrides(project_dir, harness: "codex")["plastic-secondary-advisor"]
+    refute @core.migrate_advisor_config_file(global_path), "a second migration must be a no-op"
+  end
+
+  def test_migration_and_flags_preserve_malformed_yaml
+    path = File.join(@home, "config.yml")
+    original = "advisor: [not: valid\n"
+    File.write(path, original)
+
+    refute @core.migrate_advisor_config_file(path)
+    refute @core.apply_config_flags(["--advisor", "primary"])
+    assert_equal original, File.read(path)
   end
 
   def test_tier_defaults_excludes_every_consultation_agent

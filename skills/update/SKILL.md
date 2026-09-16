@@ -81,7 +81,7 @@ Once the user picks an option, run the printed `write-config` command for that
 option, for example:
 
 ```
-ruby ~/.plastic/scripts/write-config advisor.claude.default plastic-faux-advisor
+ruby ~/.plastic/scripts/write-config advisor.claude.default plastic-primary-advisor
 ```
 
 If they say "not now" / want to keep the default, run the printed dismissal

@@ -100,6 +100,30 @@ class RunnerPolicyTest < Minitest::Test
     assert_equal RunnerPolicy::DEFAULT_ADVISOR_MODEL, RunnerPolicy.model_for("verify", config: exec_only)
   end
 
+  def test_verify_keeps_lifecycle_defaults_and_honors_primary_overrides_on_each_harness
+    assert_equal "opus", RunnerPolicy.model_for("verify", config: {}, harness: "claude-code")
+    assert_equal "medium", RunnerPolicy.effort_for("verify", config: {}, harness: "claude-code")
+    assert_equal "gpt-5.6-sol", RunnerPolicy.model_for("verify", config: {}, harness: "codex")
+    assert_equal "medium", RunnerPolicy.effort_for("verify", config: {}, harness: "codex")
+
+    config = {
+      "agents" => {
+        "models" => {
+          "claude" => { "plastic-primary-advisor" => "fable" },
+          "codex" => { "plastic-primary-advisor" => "gpt-6-astra" },
+        },
+        "efforts" => {
+          "claude" => { "plastic-primary-advisor" => "high" },
+          "codex" => { "plastic-primary-advisor" => "xhigh" },
+        },
+      },
+    }
+    assert_equal "fable", RunnerPolicy.model_for("verify", config: config, harness: "claude-code")
+    assert_equal "high", RunnerPolicy.effort_for("verify", config: config, harness: "claude-code")
+    assert_equal "gpt-6-astra", RunnerPolicy.model_for("verify", config: config, harness: "codex")
+    assert_equal "xhigh", RunnerPolicy.effort_for("verify", config: config, harness: "codex")
+  end
+
   # --- 5.15: a blank config falls back to a shipped default, never "" -----------
 
   def test_model_falls_back_to_shipped_default

@@ -56,8 +56,9 @@ You own the work and the outcome. Fable owns the hardest thinking, on demand.
 ## 2. Answer shape
 
 Classify every consultation before sending it. Default to the smallest shape and
-prove your way up. Every advisor ships at medium reasoning effort on Claude Code and Codex.
-An explicit harness-scoped config override may change one agent's effort.
+prove your way up. Primary Advisor ships at medium reasoning effort. Secondary Advisor ships
+at high reasoning effort on Claude Code and Codex. An explicit harness-scoped config override
+may change one agent's effort.
 
 | Shape | Coding | Business | Research | Effort | Brief size | Expected return |
 |------|--------|----------|----------|--------|------------|-----------------|
