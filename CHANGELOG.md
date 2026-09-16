@@ -230,6 +230,8 @@ to carry a criteria-shaped list still reports its matrix rows.
 
 ## Released
 
+- `2.0.0-alpha.27` - shipped 2026-09-16 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); collected intent 361, which renamed the consultation tiers to Primary and Secondary Advisor, aligned their Claude and Codex model defaults, and migrated legacy configuration and installed files.
+
 - `2.0.0-alpha.26` - shipped 2026-09-15 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); a fix found at the alpha.25 install, delivered without an intent: the core doctor leaves out the `codex_hooks_trust` reminder, which always warns and so failed every Codex core check; the full doctor still shows it.
 
 - `2.0.0-alpha.25` - shipped 2026-09-15 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); collected 359, `plastic-advisor` ships `effort: medium` and the new `agents.efforts.claude.<agent>` config key sets a Claude agent's effort at install time; the general skill-authoring guides moved to the `skill-creating` and `skill-evaluating` skills at zalom/agent-skills, with `docs/skill-authoring.md` keeping the Plastic-only rules; `AGENTS.md`, the auto report contract, and the doctor and installer hook examples name the `plain-writing` skill; a development Gemfile pins the Ruby 4.0 test toolchain.
