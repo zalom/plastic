@@ -15,7 +15,7 @@ require "set"
 # for typed commands: the transcript tree is pruned to about 45 days and
 # would undercount typed use by two orders of magnitude. `TranscriptScanner`
 # reads the ~/.claude/projects tree for agent invocations, loads,
-# attribution, and mentions. `Tally` folds both sources through the name
+# attribution, and mentions. `Tally` maps both sources through the name
 # map, and `Report` renders the result as Markdown or JSON.
 #
 # Maintainer tool: `bin/plastic-skill-census` lives beside `bin/plastic-bench`
@@ -30,13 +30,13 @@ module SkillCensus
   DEFAULT_CUTOFF = "2026-09-02"
 
   # Attested only (review 32): every entry has occurred in the live files at
-  # least once. Each group cites the intent 304 fold that produced it.
+  # least once. Each group cites the intent 304 absorption that produced it.
   NAME_MAP = {
-    # folded into plastic-intent-speccing (intent 304: brainstorming,
+    # absorbed into plastic-intent-speccing (intent 304: brainstorming,
     # grilling, and researching absorbed into speccing)
     "plastic-intent-brainstorming" => "plastic-intent-speccing",
     "plastic-brainstorming" => "plastic-intent-speccing",
-    # folded into plastic-intent-continuing (intent 304: continuing,
+    # absorbed into plastic-intent-continuing (intent 304: continuing,
     # project-continuing, roadmap-continuing, and intent-starting absorbed)
     "plastic-continuing" => "plastic-intent-continuing",
     "plastic-project-continuing" => "plastic-intent-continuing",
@@ -55,7 +55,7 @@ module SkillCensus
   ].freeze
 
   # ~/.plastic/scripts/* filenames, never skills (review 3). plastic-lock
-  # alone occurs 257 times in the live files; folding it into plastic-doctor
+  # alone occurs 257 times in the live files; mapping it into plastic-doctor
   # was the original map's worst counting bug.
   SCRIPTS = [
     "plastic-lock",
@@ -90,7 +90,7 @@ module SkillCensus
   MENTION_SCAN_RE = /plastic[:-][a-z0-9][a-z0-9-]*/.freeze
   LOAD_PREFIX = "Base directory for this skill:"
 
-  # The pre-npm plugin colon namespace folds onto the hyphen form before the
+  # The pre-npm plugin colon namespace maps onto the hyphen form before the
   # name map is consulted (D10): plastic:update normalises to plastic-update.
   def self.normalize(raw)
     raw.sub(":", "-")
@@ -327,7 +327,7 @@ module SkillCensus
         id = block["id"]
         next if id && !state[:seen_tool_use_ids].add?(id)
 
-        # Only the plastic: colon namespace folds onto the hyphen form (D10);
+        # Only the plastic: colon namespace maps onto the hyphen form (D10);
         # a plugin-prefixed non-Plastic name like claudish-to-english:claudish
         # must appear verbatim in other_skills, not split on its own colon.
         name = raw.start_with?("plastic:") ? SkillCensus.normalize(raw) : raw
@@ -490,13 +490,13 @@ module SkillCensus
   end
 
   # -------------------------------------------------------------------
-  # Tally - folds both sources' events onto the roster through NAME_MAP,
+  # Tally - maps both sources' events onto the roster through NAME_MAP,
   # RETIRED, and MECHANISMS.
   # -------------------------------------------------------------------
   class Tally
     SkillRow = Struct.new(
       :name, :user_invocable, :typed, :calls_main, :calls_agent, :loads,
-      :attributed, :folded_from, :mechanism, :first_seen, :last_seen,
+      :attributed, :mapped_from, :mechanism, :first_seen, :last_seen,
       keyword_init: true
     ) do
       def evidence?
@@ -526,7 +526,7 @@ module SkillCensus
               else rows[target]
               end
         row[field] += 1
-        row.folded_from[raw_name] += 1 if target != raw_name
+        row.mapped_from[raw_name] += 1 if target != raw_name
         track_row_span(row, date)
       end
 
@@ -537,7 +537,7 @@ module SkillCensus
       @transcript.attributed.each { |name, count| count.times { apply.call(name, :attributed) } }
 
       map_coverage = NAME_MAP.map do |raw, target|
-        { raw: raw, target: target, observed: rows[target]&.folded_from&.fetch(raw, 0) || 0 }
+        { raw: raw, target: target, observed: rows[target]&.mapped_from&.fetch(raw, 0) || 0 }
       end
 
       Built.new(skills: @roster.map { |s| rows[s.name] }, retired: retired_row, unmapped: unmapped_row,
@@ -550,7 +550,7 @@ module SkillCensus
       SkillRow.new(
         name: skill&.name || name, user_invocable: skill&.user_invocable,
         typed: 0, calls_main: 0, calls_agent: 0, loads: 0, attributed: 0,
-        folded_from: Hash.new(0), mechanism: skill && MECHANISMS[skill.name]
+        mapped_from: Hash.new(0), mechanism: skill && MECHANISMS[skill.name]
       )
     end
 
@@ -659,9 +659,9 @@ module SkillCensus
         end
         lines << "| loads | #{row.loads} |"
         lines << "| attributed | #{row.attributed} (time spent under this skill, not invocations) |"
-        unless row.folded_from.empty?
-          folded = row.folded_from.map { |name, count| "#{name} (#{count})" }.join(", ")
-          lines << "| folded from | #{folded} |"
+        unless row.mapped_from.empty?
+          mapped = row.mapped_from.map { |name, count| "#{name} (#{count})" }.join(", ")
+          lines << "| mapped from | #{mapped} |"
         end
         lines << "| first seen | #{row.first_seen} |" if row.first_seen
         lines << "| last seen | #{row.last_seen} |" if row.last_seen
@@ -702,7 +702,7 @@ module SkillCensus
 
       lines << "## Map coverage"
       lines << ""
-      lines << "| raw name | folds to | observed |"
+      lines << "| raw name | maps to | observed |"
       lines << "| --- | --- | --- |"
       built.map_coverage.each { |entry| lines << "| #{entry[:raw]} | #{entry[:target]} | #{entry[:observed]} |" }
       lines << ""
@@ -815,7 +815,7 @@ module SkillCensus
         "name" => row.name, "user_invocable" => row.user_invocable,
         "typed" => row.typed, "calls_main" => row.calls_main, "calls_agent" => row.calls_agent,
         "loads" => row.loads, "attributed" => row.attributed,
-        "folded_from" => row.folded_from, "mechanism" => row.mechanism,
+        "mapped_from" => row.mapped_from, "mechanism" => row.mechanism,
         "first_seen" => row.first_seen&.to_s, "last_seen" => row.last_seen&.to_s,
       }
     end

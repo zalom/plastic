@@ -109,9 +109,9 @@ class SkillCensusRosterTest < Minitest::Test
     scripts = SkillCensus::SCRIPTS.to_set
     agents = SkillCensus::AGENTS.to_set
 
-    assert_empty scripts & map_raw, "a script name must never fold into a skill via NAME_MAP"
+    assert_empty scripts & map_raw, "a script name must never map into a skill via NAME_MAP"
     assert_empty scripts & map_targets, "a script must never be a NAME_MAP target"
-    assert_empty agents & map_raw, "an agent name must never fold into a skill via NAME_MAP"
+    assert_empty agents & map_raw, "an agent name must never map into a skill via NAME_MAP"
     assert_empty agents & map_targets, "an agent must never be a NAME_MAP target"
     assert_empty scripts & agents
     assert_empty scripts & retired
@@ -216,7 +216,7 @@ class SkillCensusHistoryTest < Minitest::Test
     assert_equal 1, typed_names.count("plastic-continuing") # plastic-continuing retired in 2.0 (intent 304)
   end
 
-  def test_colon_namespace_folds_onto_hyphen_form
+  def test_colon_namespace_maps_onto_hyphen_form
     result = scan
     typed_names = result.typed.map(&:name)
 
@@ -584,7 +584,7 @@ class SkillCensusLoadsAttributionMentionsTest < Minitest::Test
 end
 
 # ---------------------------------------------------------------------------
-# S6 - Name folding
+# S6 - Name mapping
 # ---------------------------------------------------------------------------
 class SkillCensusTallyTest < Minitest::Test
   def roster
@@ -609,15 +609,15 @@ class SkillCensusTallyTest < Minitest::Test
     )
   end
 
-  def test_absorbed_name_folds_into_successor
+  def test_absorbed_name_maps_into_successor
     built = SkillCensus::Tally.new(history_scan(["plastic-intent-brainstorming"]), transcript_scan, roster).build # plastic-intent-brainstorming retired in 2.0
 
     speccing = built.skills.find { |s| s.name == "plastic-intent-speccing" }
     assert_equal 1, speccing.typed
-    assert_equal 1, speccing.folded_from["plastic-intent-brainstorming"] # plastic-intent-brainstorming retired in 2.0
+    assert_equal 1, speccing.mapped_from["plastic-intent-brainstorming"] # plastic-intent-brainstorming retired in 2.0
   end
 
-  def test_row_shows_folded_from_names_and_their_counts
+  def test_row_shows_mapped_from_names_and_their_counts
     roster_with_target = roster + [SkillCensus::Roster::Skill.new(name: "plastic-intent-continuing", user_invocable: true)]
     built = SkillCensus::Tally.new(
       history_scan(["plastic-continuing"] * 5 + ["plastic-intent-continuing"]), # plastic-continuing retired in 2.0
@@ -626,7 +626,7 @@ class SkillCensusTallyTest < Minitest::Test
 
     row = built.skills.find { |s| s.name == "plastic-intent-continuing" }
     assert_equal 6, row.typed
-    assert_equal 5, row.folded_from["plastic-continuing"] # plastic-continuing retired in 2.0
+    assert_equal 5, row.mapped_from["plastic-continuing"] # plastic-continuing retired in 2.0
   end
 
   def test_retired_name_goes_to_retired_row
@@ -645,7 +645,7 @@ class SkillCensusTallyTest < Minitest::Test
     built = SkillCensus::Tally.new(history_scan(["plastic-auto"]), transcript_scan, roster).build
 
     assert_equal 1, built.skills.find { |s| s.name == "plastic-auto" }.typed
-    assert_empty built.skills.find { |s| s.name == "plastic-auto" }.folded_from
+    assert_empty built.skills.find { |s| s.name == "plastic-auto" }.mapped_from
   end
 
   def test_rows_follow_roster_order_then_retired_then_unmapped
