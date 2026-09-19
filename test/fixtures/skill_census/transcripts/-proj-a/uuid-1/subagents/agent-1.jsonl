@@ -1,0 +1,2 @@
+{"type": "user", "uuid": "sub-1", "timestamp": "2026-07-21T10:00:01Z", "isSidechain": true, "message": {"role": "user", "content": "<command-message>plastic-auto</command-message>\n<command-name>/plastic-auto</command-name>"}}
+{"type": "assistant", "uuid": "sub-2", "timestamp": "2026-07-21T10:00:02Z", "isSidechain": true, "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "toolu_sub_1", "name": "Skill", "input": {"skill": "plastic-doctor"}}]}}

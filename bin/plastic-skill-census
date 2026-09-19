@@ -1,0 +1,114 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# Plastic skill usage census (intent 324). Counts typed /plastic-* commands
+# from the prompt history against agent-invoked Skill calls, loads, and
+# attribution from the transcript tree, so D19 (which Plastic verbs stay
+# visible as slash commands) is decided on measured use.
+#
+# Maintainer tool: it reads the paths given to it and is never installed
+# into ~/.plastic. This file never resolves the running process's home
+# directory or its home environment variable: `bin/` ships in the npm
+# tarball, so a default rooted there would make a published executable
+# read any installer's transcripts. `--history` and `--transcripts` are
+# required, with no default.
+#
+# Usage: bin/plastic-skill-census --history PATH --transcripts DIR
+#          [--skills-dir DIR] [--format md|json] [--out PATH]
+#          [--cutoff YYYY-MM-DD]
+#
+#   --history PATH     ~/.claude/history.jsonl, or a fixture (required)
+#   --transcripts DIR   ~/.claude/projects, or a fixture tree (required)
+#   --skills-dir DIR    a skill roster directory (default: this repo's skills/)
+#   --format md|json    report format (default: md)
+#   --out PATH          write the report here instead of stdout
+#   --cutoff YYYY-MM-DD  exclude records on or after this date (default: 2026-09-02)
+#
+# Exit codes: 0 a report was produced, 1 a named path does not exist,
+# 2 bad usage or a missing required flag.
+
+require_relative "lib/skill_census"
+
+USAGE = <<~TEXT
+  usage: plastic-skill-census --history PATH --transcripts DIR [--skills-dir DIR] [--format md|json] [--out PATH] [--cutoff YYYY-MM-DD]
+
+    --history PATH      ~/.claude/history.jsonl, or a fixture (required)
+    --transcripts DIR    ~/.claude/projects, or a fixture tree (required)
+    --skills-dir DIR     a skill roster directory (default: this repo's skills/)
+    --format md|json     report format (default: md)
+    --out PATH           write the report here instead of stdout
+    --cutoff YYYY-MM-DD   exclude records on or after this date (default: #{SkillCensus::DEFAULT_CUTOFF})
+    --help                this message
+
+  Exits 0 on a report, 1 when a named path is missing, 2 on bad usage.
+TEXT
+
+def fail_usage(message)
+  warn "plastic-skill-census: #{message}"
+  warn USAGE
+  exit 2
+end
+
+history = nil
+transcripts = nil
+skills_dir = File.expand_path("../skills", __dir__)
+format = "md"
+out_path = nil
+cutoff = SkillCensus::DEFAULT_CUTOFF
+
+argv = ARGV.dup
+until argv.empty?
+  case (flag = argv.shift)
+  when "--help", "-h"
+    puts USAGE
+    exit 0
+  when "--history"
+    history = argv.shift
+    fail_usage("--history needs a path") if history.to_s.empty?
+  when "--transcripts"
+    transcripts = argv.shift
+    fail_usage("--transcripts needs a path") if transcripts.to_s.empty?
+  when "--skills-dir"
+    skills_dir = argv.shift
+    fail_usage("--skills-dir needs a path") if skills_dir.to_s.empty?
+  when "--format"
+    format = argv.shift
+    fail_usage("--format must be md or json") unless %w[md json].include?(format)
+  when "--out"
+    out_path = argv.shift
+    fail_usage("--out needs a path") if out_path.to_s.empty?
+  when "--cutoff"
+    cutoff = argv.shift
+    fail_usage("--cutoff needs a YYYY-MM-DD date") if cutoff.to_s.empty?
+  else
+    fail_usage("unknown argument #{flag}")
+  end
+end
+
+fail_usage("--history is required") if history.nil?
+fail_usage("--transcripts is required") if transcripts.nil?
+
+begin
+  roster = SkillCensus::Roster.load(skills_dir)
+  history_scan = SkillCensus::HistoryScanner.new(history, cutoff: cutoff).scan
+  transcript_scan = SkillCensus::TranscriptScanner.new(transcripts, cutoff: cutoff).scan
+  built = SkillCensus::Tally.new(history_scan, transcript_scan, roster).build
+
+  report = if format == "json"
+             SkillCensus::Report.json(built, history_path: history, transcripts_path: transcripts, cutoff: cutoff)
+           else
+             SkillCensus::Report.markdown(built, history_path: history, transcripts_path: transcripts, cutoff: cutoff)
+           end
+rescue RuntimeError => error
+  warn "plastic-skill-census: #{error.message}"
+  exit 1
+end
+
+if out_path
+  File.write(out_path, report)
+else
+  puts report
+end
+
+exit 0

@@ -1,0 +1,1 @@
+{"type": "assistant", "uuid": "top-1", "timestamp": "2026-07-21T10:00:00Z", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "toolu_top_1", "name": "Skill", "input": {"skill": "plastic-auto"}}]}}
