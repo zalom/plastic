@@ -17,6 +17,7 @@ class NodeAgentsTest < Minitest::Test
 
   NODE_AGENTS = %w[plastic-node-work plastic-node-verify plastic-node-research].freeze
   READ_ONLY_AGENTS = %w[plastic-node-verify plastic-node-research].freeze
+  ESCALATION_AGENT = "plastic-secondary-advisor"
 
   def frontmatter(basename)
     content = File.read(File.join(REPO, "agents", "#{basename}.md"))
@@ -85,10 +86,11 @@ class NodeAgentsTest < Minitest::Test
     end
   end
 
-  def test_every_shipped_agent_defaults_to_medium_effort
+  def test_every_shipped_agent_declares_its_default_effort
     Dir.glob(File.join(REPO, "agents", "*.md")).each do |path|
       basename = File.basename(path, ".md")
-      assert_equal "medium", frontmatter(basename)["effort"], "#{basename} must default to medium effort"
+      expected = basename == ESCALATION_AGENT ? "high" : "medium"
+      assert_equal expected, frontmatter(basename)["effort"], "#{basename} must default to #{expected} effort"
     end
   end
 
