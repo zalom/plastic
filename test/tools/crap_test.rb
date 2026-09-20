@@ -183,13 +183,14 @@ class CrapTest < Minitest::Test
       assert_includes out.string, "#a"
     end
   end
+
   def test_the_cli_reads_a_resultset_that_is_on_disk
     Dir.mktmpdir("crap-resultset") do |root|
       FileUtils.mkdir_p(File.join(root, "lib"))
       FileUtils.mkdir_p(File.join(root, "coverage"))
       File.write(File.join(root, "lib", "a.rb"), "def a(x)\n  x ? 1 : 2\nend\n")
       File.write(File.join(root, "coverage", ".resultset.json"),
-                 { "run" => { "coverage" => { File.join(root, "lib", "a.rb") => { "lines" => [1, 0, nil] } } } }.to_json)
+        { "run" => { "coverage" => { File.join(root, "lib", "a.rb") => { "lines" => [1, 0, nil] } } } }.to_json)
       out = StringIO.new
 
       assert_equal 0, Crap::CLI.new(["lib/a.rb"], root: root, out: out).run
