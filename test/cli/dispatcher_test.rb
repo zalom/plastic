@@ -18,7 +18,7 @@ class CliDispatcherTest < Minitest::Test
   end
 
   def run_cli(*argv)
-    Plastic::CLI.new(argv, **@fixture.streams).run
+    Plastic::CLI.call(argv, **@fixture.streams)
   end
 
   def test_no_arguments_print_the_command_list
@@ -47,6 +47,30 @@ class CliDispatcherTest < Minitest::Test
     run_cli("zzzzzz")
 
     assert_includes @fixture.warned, "plastic help"
+  end
+
+  def test_a_scrambled_command_name_names_that_command_and_no_other
+    run_cli("necotinu")
+
+    assert_includes @fixture.warned, "Closest: continue\n"
+  end
+
+  def test_a_commands_help_flag_prints_its_usage_line
+    assert_equal 0, run_cli("status", "--help")
+
+    assert_includes @fixture.printed, "plastic status [--json]"
+  end
+
+  def test_a_commands_short_help_flag_prints_its_usage_line
+    assert_equal 0, run_cli("status", "-h")
+
+    assert_includes @fixture.printed, "plastic status [--json]"
+  end
+
+  def test_a_commands_help_flag_answers_in_json_when_asked
+    assert_equal 0, run_cli("status", "--help", "--json")
+
+    assert_includes @fixture.printed, %("usage": "plastic status [--json]")
   end
 
   def test_an_unknown_command_prints_nothing_on_the_result_stream
@@ -85,7 +109,7 @@ class CliDispatcherTest < Minitest::Test
     cli = Plastic::CLI.new(%w[help tutorial], table: table, **@fixture.streams)
 
     assert_equal ["help tutorial", []], cli.match(%w[help tutorial])
-    assert_equal 0, cli.run
+    assert_equal 0, cli.call
   end
 
   def test_a_one_word_command_keeps_its_remaining_arguments

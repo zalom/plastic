@@ -35,13 +35,13 @@ class CliNextTest < Minitest::Test
   end
 
   def next_command(*argv)
-    Plastic::CLI::Commands::Next.new(argv + ["--project", "plastic"], directory: "/nowhere",
+    Plastic::CLI::Commands::Next.call(argv + ["--project", "plastic"], directory: "/nowhere",
                                                                       **@fixture.streams)
   end
 
   def test_a_dispatchable_frontier_names_the_first_entry
     @fixture.roadmap("plastic", "cli-and-rlm", ROADMAP)
-    next_command.run
+    next_command
 
     assert_equal "next work  363  in Batch 1 the command line foundation",
       @fixture.printed.lines.first.chomp
@@ -49,7 +49,7 @@ class CliNextTest < Minitest::Test
 
   def test_a_dispatchable_frontier_points_at_the_intent_plan
     @fixture.roadmap("plastic", "cli-and-rlm", ROADMAP)
-    next_command.run
+    next_command
 
     assert_includes @fixture.printed,
       "next: read #{File.join(@fixture.intent_dir("plastic", "363"), "plan.md")}"
@@ -57,14 +57,14 @@ class CliNextTest < Minitest::Test
 
   def test_a_dispatchable_frontier_says_why_that_entry
     @fixture.roadmap("plastic", "cli-and-rlm", ROADMAP)
-    next_command.run
+    next_command
 
     assert_includes @fixture.printed, "because: 363 is first on the frontier of cli-and-rlm"
   end
 
   def test_a_plain_run_prints_one_result_line
     @fixture.roadmap("plastic", "cli-and-rlm", ROADMAP)
-    next_command.run
+    next_command
     rows = @fixture.printed.lines.take_while { |line| line.strip != "" }
 
     assert_equal 1, rows.length
@@ -72,7 +72,7 @@ class CliNextTest < Minitest::Test
 
   def why_output
     @fixture.roadmap("plastic", "cli-and-rlm", ROADMAP)
-    next_command("--why").run
+    next_command("--why")
     @fixture.printed
   end
 
@@ -95,20 +95,20 @@ class CliNextTest < Minitest::Test
     body = ROADMAP.sub("- [ ] 363 the command line — queued",
       "- [ ] 363 the command line — delivering")
     @fixture.roadmap("plastic", "cli-and-rlm", body)
-    next_command.run
+    next_command
 
     assert_includes @fixture.printed, "next work  367  in Batch 1 the command line foundation"
   end
 
   def test_a_project_with_no_roadmap_directory_says_there_is_none
-    next_command.run
+    next_command
 
     assert_includes @fixture.printed, "next work  none"
     assert_includes @fixture.printed, "because: plastic has no roadmap"
   end
 
   def test_a_project_with_no_roadmap_directory_still_exits_zero
-    assert_equal 0, next_command.run
+    assert_equal 0, next_command
   end
 
   def test_an_exhausted_roadmap_says_every_entry_is_delivered
@@ -116,7 +116,7 @@ class CliNextTest < Minitest::Test
     @fixture.project("plastic", active: [],
       completed: [["363", "The command line"], ["367", "The skill cut"]])
     @fixture.roadmap("plastic", "cli-and-rlm", body)
-    next_command.run
+    next_command
 
     assert_includes @fixture.printed, "next work  none"
     assert_includes @fixture.printed, "because: every entry on cli-and-rlm is delivered"
@@ -125,13 +125,13 @@ class CliNextTest < Minitest::Test
   def test_a_roadmap_with_no_grouping_heading_fails_loudly
     @fixture.roadmap("plastic", "broken", "# Roadmap\n\nno grouping heading here\n")
 
-    assert_equal 1, next_command.run
+    assert_equal 1, next_command
     assert_includes @fixture.warned, "grouping heading"
   end
 
   def test_json_carries_the_next_work_and_the_reason
     @fixture.roadmap("plastic", "cli-and-rlm", ROADMAP)
-    next_command("--json").run
+    next_command("--json")
     payload = JSON.parse(@fixture.printed)
 
     assert_equal "363  in Batch 1 the command line foundation", payload.dig("result", "next work")
@@ -141,7 +141,7 @@ class CliNextTest < Minitest::Test
   def test_an_id_with_no_intent_directory_falls_back_to_naming_the_id
     body = ROADMAP.sub("363 the command line", "999 a missing intent")
     @fixture.roadmap("plastic", "cli-and-rlm", body)
-    next_command.run
+    next_command
 
     assert_includes @fixture.printed, "next: plastic status"
     assert_includes @fixture.printed, "because: 999 is first on the frontier of cli-and-rlm"

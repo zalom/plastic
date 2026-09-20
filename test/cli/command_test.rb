@@ -11,18 +11,20 @@ class CliCommandTest < Minitest::Test
 
     attr_reader :seen
 
-    def options(parser)
-      parser.on("--loud") { @options[:loud] = true }
-      parser.on("--raise KIND") { |kind| @options[:raise] = kind }
+    def call
+      @seen = arguments.dup
+      raise Plastic::CLI::Command::Refusal, "the owner arms the lock" if options[:raise] == "refusal"
+      raise Plastic::CLI::Command::Failure, "install.rb exited 7" if options[:raise] == "failure"
+
+      @output.row("loud", options[:loud] ? "yes" : "no")
+      @output.next_step("plastic help", because: "the probe is done")
     end
 
-    def call
-      @seen = @argv.dup
-      raise Plastic::CLI::Command::Refusal, "the owner arms the lock" if @options[:raise] == "refusal"
-      raise Plastic::CLI::Command::Failure, "install.rb exited 7" if @options[:raise] == "failure"
+    private
 
-      @output.row("loud", @options[:loud] ? "yes" : "no")
-      @output.next_step("plastic help", because: "the probe is done")
+    def switches(parser)
+      parser.on("--loud") { @options[:loud] = true }
+      parser.on("--raise KIND") { |kind| @options[:raise] = kind }
     end
   end
 
@@ -35,16 +37,31 @@ class CliCommandTest < Minitest::Test
     @err = StringIO.new
   end
 
+  def silent(*argv)
+    Silent.call(argv, out: @out, err: @err, env: {}, home: "/nowhere")
+  end
+
+  def probe(*argv)
+    Probe.call(argv, out: @out, err: @err, env: {}, home: "/nowhere")
+  end
+
   def test_a_subclass_that_defines_no_work_says_so_by_name
-    error = assert_raises(NoMethodError) do
-      Silent.new([], out: @out, err: @err, env: {}, home: "/nowhere").run
-    end
+    error = assert_raises(NoMethodError) { silent }
 
     assert_equal "#{Silent} must define call", error.message
   end
 
-  def probe(*argv)
-    Probe.new(argv, out: @out, err: @err, env: {}, home: "/nowhere")
+  def test_a_subclass_that_defines_no_work_parses_no_option_before_it_fails
+    error = assert_raises(NoMethodError) { silent("--nope") }
+
+    assert_equal "#{Silent} must define call", error.message
+  end
+
+  def test_a_subclass_that_defines_no_work_writes_to_neither_stream
+    assert_raises(NoMethodError) { silent("--nope") }
+
+    assert_empty @out.string
+    assert_empty @err.string
   end
 
   def test_the_success_code_is_zero
@@ -63,74 +80,69 @@ class CliCommandTest < Minitest::Test
     assert_equal 3, Plastic::CLI::Command::REFUSED
   end
 
-  def test_a_plain_run_exits_zero
-    assert_equal 0, probe.run
+  def test_a_plain_call_exits_zero
+    assert_equal 0, probe
   end
 
-  def test_a_plain_run_prints_its_result
-    probe.run
+  def test_a_plain_call_prints_its_result
+    probe
 
     assert_equal "loud  no\n\nnext: plastic help\nbecause: the probe is done\n", @out.string
   end
 
   def test_an_option_the_command_declares_is_parsed
-    probe("--loud").run
+    probe("--loud")
 
     assert_includes @out.string, "loud  yes"
   end
 
   def test_the_json_flag_is_parsed_by_the_base_class
-    probe("--json").run
+    probe("--json")
 
     assert_includes @out.string, %("next": "plastic help")
   end
 
   def test_positional_arguments_survive_option_parsing
-    command = probe("--loud", "363")
-    command.run
+    command = Probe.new(["--loud", "363"], out: @out, err: @err, env: {}, home: "/nowhere")
+    command.call
 
     assert_equal ["363"], command.seen
   end
 
   def test_an_unknown_option_exits_with_the_usage_code
-    assert_equal 2, probe("--nope").run
+    assert_equal 2, probe("--nope")
   end
 
   def test_an_unknown_option_prints_the_usage_line
-    probe("--nope").run
+    probe("--nope")
 
     assert_includes @err.string, "plastic probe [--loud] [--json]"
   end
 
   def test_an_unknown_option_prints_nothing_on_the_result_stream
-    probe("--nope").run
+    probe("--nope")
 
     assert_empty @out.string
   end
 
   def test_a_refusal_exits_three
-    assert_equal 3, probe("--raise", "refusal").run
+    assert_equal 3, probe("--raise", "refusal")
   end
 
   def test_a_refusal_says_the_step_belongs_to_the_owner
-    probe("--raise", "refusal").run
+    probe("--raise", "refusal")
 
     assert_includes @err.string, "the owner arms the lock"
     assert_includes @err.string, "Stop and ask"
   end
 
   def test_a_failure_exits_one
-    assert_equal 1, probe("--raise", "failure").run
+    assert_equal 1, probe("--raise", "failure")
   end
 
   def test_a_failure_names_what_went_wrong
-    probe("--raise", "failure").run
+    probe("--raise", "failure")
 
     assert_includes @err.string, "install.rb exited 7"
-  end
-
-  def test_the_help_flag_prints_the_usage_line_and_exits_zero
-    assert_equal 0, probe("--help").run
-    assert_includes @out.string, "plastic probe [--loud] [--json]"
   end
 end

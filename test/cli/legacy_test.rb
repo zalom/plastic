@@ -7,6 +7,12 @@ require "tmpdir"
 require_relative "../../scripts/lib/cli/legacy"
 
 class CliLegacyTest < Minitest::Test
+  class SignalledStatus
+    def success? = false
+
+    def exitstatus = nil
+  end
+
   def legacy(status, recorder = [])
     runner = lambda do |path, arguments|
       recorder << [path, arguments]
@@ -84,6 +90,10 @@ class CliLegacyTest < Minitest::Test
     assert_raises(Plastic::CLI::Command::Refusal) { legacy.run("refuse.rb") }
   ensure
     FileUtils.remove_entry(dir)
+  end
+
+  def test_a_status_with_no_exit_code_reads_as_a_plain_failure
+    assert_equal Plastic::CLI::Command::FAILED, Plastic::CLI::Legacy.exit_code(SignalledStatus.new)
   end
 
   def test_the_default_runner_reports_a_signalled_child_as_a_failure

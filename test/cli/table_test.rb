@@ -41,6 +41,15 @@ class CliTableTest < Minitest::Test
     end
   end
 
+  def test_every_command_class_defines_a_usage_line_of_its_own
+    Plastic::CLI::TABLE.each do |name, (file, const, _summary)|
+      require File.join(LIB, "cli", "#{file}.rb")
+      klass = Plastic::CLI::Commands.const_get(const)
+
+      assert klass.const_defined?(:USAGE_LINE, false), "#{name} defines no usage line of its own"
+    end
+  end
+
   def test_every_command_class_carries_a_usage_line_that_starts_with_its_name
     Plastic::CLI::TABLE.each do |name, (file, const, _summary)|
       require File.join(LIB, "cli", "#{file}.rb")
