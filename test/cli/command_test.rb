@@ -26,9 +26,21 @@ class CliCommandTest < Minitest::Test
     end
   end
 
+  class Silent < Plastic::CLI::Command
+    USAGE_LINE = "plastic silent"
+  end
+
   def setup
     @out = StringIO.new
     @err = StringIO.new
+  end
+
+  def test_a_subclass_that_defines_no_work_says_so_by_name
+    error = assert_raises(NoMethodError) do
+      Silent.new([], out: @out, err: @err, env: {}, home: "/nowhere").run
+    end
+
+    assert_equal "#{Silent} must define call", error.message
   end
 
   def probe(*argv)

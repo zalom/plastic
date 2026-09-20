@@ -5,20 +5,6 @@ require "optparse"
 require_relative "output"
 require_relative "scope"
 
-# Plastic::CLI::Command (intent 363) - the base every command sits on. It parses
-# options with the standard OptionParser, owns the four exit codes, and takes
-# its output stream, error stream, environment and home directory as arguments,
-# so a test builds a command over a temporary store and no test reads the real
-# ~/.plastic.
-#
-#   0 the command did its work
-#   1 it tried and failed
-#   2 the call was wrong
-#   3 it refused, because the step belongs to the owner
-#
-# Exit code 3 is the one an agent must never retry with a flag. Raise Refusal
-# for it and Failure for an ordinary failure; anything else is a bug and
-# crashes, which is what a bug should do.
 module Plastic
   class CLI
     class Command
@@ -59,6 +45,10 @@ module Plastic
       end
 
       private
+
+      def call
+        raise NoMethodError, "#{self.class} must define call"
+      end
 
       def parse
         parser.parse!(@argv)
