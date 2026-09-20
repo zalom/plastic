@@ -50,5 +50,4 @@ class HarnessInvocationDocsTest < Minitest::Test
     body = normalized("docs/guides/reading-the-ledgers.md")
     assert_includes body, "On Codex CLI, invoke the same skill with a dollar prefix instead (for example `$plastic-doctor`)"
   end
-
 end

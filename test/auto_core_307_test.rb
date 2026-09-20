@@ -176,5 +176,4 @@ class AutoCore307Test < Minitest::Test
     src = read("test/subtraction_304_test.rb")
     assert_includes src, "S/M", "the 304 tier scan must cover the S/M spelling (review A5 of intent 306)" # removed in 2.0 (intent 304)
   end
-
 end

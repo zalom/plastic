@@ -23,7 +23,7 @@ class CliStatusTest < Minitest::Test
 
   def test_one_row_per_store_with_the_active_count
     @fixture.global_store(active: [["41", "Security first"]])
-            .project("plastic", active: [["363", "The command line"], ["367", "The skill cut"]])
+      .project("plastic", active: [["363", "The command line"], ["367", "The skill cut"]])
     status.run
 
     assert_equal "global   1 active  41", @fixture.printed.lines[0].chomp
@@ -48,7 +48,7 @@ class CliStatusTest < Minitest::Test
 
   def test_the_working_directory_chooses_the_store_to_continue
     @fixture.global_store(active: [["41", "Security first"], ["52", "The registry"]])
-            .project("plastic", active: [["363", "The command line"]])
+      .project("plastic", active: [["363", "The command line"]])
     status(directory: File.join(@fixture.home, "code", "plastic", "scripts")).run
 
     assert_includes @fixture.printed, "next: plastic continue --project plastic"
@@ -57,7 +57,7 @@ class CliStatusTest < Minitest::Test
 
   def test_the_busiest_store_wins_when_the_directory_says_nothing
     @fixture.global_store(active: [["41", "Security first"]])
-            .project("plastic", active: [["363", "The command line"], ["367", "The skill cut"]])
+      .project("plastic", active: [["363", "The command line"], ["367", "The skill cut"]])
     status.run
 
     assert_includes @fixture.printed, "next: plastic continue --project plastic"
@@ -95,8 +95,8 @@ class CliStatusTest < Minitest::Test
     @fixture.global_store(active: [["41", "Security first"]]).project("plastic", active: [])
     status("--json").run
 
-    assert_equal({ "global" => "1 active  41", "plastic" => "0 active" },
-                 JSON.parse(@fixture.printed).fetch("result"))
+    assert_equal({"global" => "1 active  41", "plastic" => "0 active"},
+      JSON.parse(@fixture.printed).fetch("result"))
   end
 
   def test_the_working_directory_defaults_to_the_current_one

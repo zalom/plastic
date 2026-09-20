@@ -14,14 +14,14 @@ class CliRuntimeRequiresTest < Minitest::Test
     Plastic::CLI::TABLE.each_value.map { |file, _const, _summary| File.join(ROOT, "scripts", "lib", "cli", "#{file}.rb") }
   end
 
-# Bundler exports RUBYOPT=-rbundler/setup, which loads RubyGems into every child
-# Ruby and would hide the very thing these tests measure. The child starts from a
-# cleared environment so it sees only what the files under test require.
-CLEAN_ENV = { "RUBYOPT" => nil, "RUBYLIB" => nil }.freeze
+  # Bundler exports RUBYOPT=-rbundler/setup, which loads RubyGems into every child
+  # Ruby and would hide the very thing these tests measure. The child starts from a
+  # cleared environment so it sees only what the files under test require.
+  CLEAN_ENV = {"RUBYOPT" => nil, "RUBYLIB" => nil}.freeze
 
-def capture(script)
-  Open3.capture3(CLEAN_ENV, RbConfig.ruby, "--disable-gems", "-e", script)
-end
+  def capture(script)
+    Open3.capture3(CLEAN_ENV, RbConfig.ruby, "--disable-gems", "-e", script)
+  end
 
   def requires_script(paths)
     paths.map { |path| "require #{path.inspect}" }.join("\n")
@@ -49,7 +49,7 @@ end
 
   def test_nothing_the_commands_load_names_rubygems
     script = requires_script(self.class.command_files) +
-             "\nputs $LOADED_FEATURES.grep(/rubygems/).length"
+      "\nputs $LOADED_FEATURES.grep(/rubygems/).length"
     out, err, status = capture(script)
 
     assert_predicate status, :success?, err
@@ -58,7 +58,7 @@ end
 
   def test_no_command_reaches_a_library_ruby_four_demoted_from_the_default_set
     script = requires_script(self.class.command_files) +
-             "\nputs $LOADED_FEATURES.grep(/#{DEMOTED_ON_RUBY_FOUR.join("|")}/).length"
+      "\nputs $LOADED_FEATURES.grep(/#{DEMOTED_ON_RUBY_FOUR.join("|")}/).length"
     out, err, status = capture(script)
 
     assert_predicate status, :success?, err

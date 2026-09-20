@@ -65,7 +65,7 @@ module Plastic
 
       def print_json
         @out.puts JSON.pretty_generate("result" => @rows.to_h, "next" => @next_step,
-                                       "because" => @because)
+          "because" => @because)
       end
 
       def print_text

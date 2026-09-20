@@ -80,8 +80,8 @@ class CliDispatcherTest < Minitest::Test
   end
 
   def test_a_two_word_command_beats_its_one_word_prefix
-    table = { "help" => ["commands/help", "Help", "one word"],
-              "help tutorial" => ["commands/help", "Help", "two words"] }
+    table = {"help" => ["commands/help", "Help", "one word"],
+             "help tutorial" => ["commands/help", "Help", "two words"]}
     cli = Plastic::CLI.new(%w[help tutorial], table: table, **@fixture.streams)
 
     assert_equal ["help tutorial", []], cli.match(%w[help tutorial])

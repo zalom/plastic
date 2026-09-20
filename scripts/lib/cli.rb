@@ -14,11 +14,11 @@ require_relative "cli/command"
 # never becomes a stack trace.
 module Plastic
   class CLI
-    FLAGS = { "--version" => "version", "-v" => "version",
-              "--help" => "help", "-h" => "help" }.freeze
+    FLAGS = {"--version" => "version", "-v" => "version",
+             "--help" => "help", "-h" => "help"}.freeze
 
     def initialize(argv, out: $stdout, err: $stderr, env: ENV, home: Dir.home,
-                   directory: Dir.pwd, table: TABLE)
+      directory: Dir.pwd, table: TABLE)
       @argv = argv.dup
       @out = out
       @err = err
@@ -56,7 +56,7 @@ module Plastic
       file, const, = @table.fetch(name)
       require_relative "cli/#{file}"
       Commands.const_get(const).new(rest, out: @out, err: @err, env: @env, home: @home,
-                                          directory: @directory)
+        directory: @directory)
     end
 
     def unknown(name)

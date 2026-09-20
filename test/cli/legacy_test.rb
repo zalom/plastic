@@ -22,7 +22,7 @@ class CliLegacyTest < Minitest::Test
   end
 
   def test_the_package_root_can_be_injected_through_the_environment
-    legacy = Plastic::CLI::Legacy.new(env: { "PLASTIC_PACKAGE_ROOT" => "/opt/plastic" })
+    legacy = Plastic::CLI::Legacy.new(env: {"PLASTIC_PACKAGE_ROOT" => "/opt/plastic"})
 
     assert_equal "/opt/plastic/scripts/install.rb", legacy.script_path("install.rb")
   end
@@ -58,6 +58,7 @@ class CliLegacyTest < Minitest::Test
   def test_a_run_that_exits_two_answers_two_rather_than_refusing
     assert_equal 2, legacy(2).run("install.rb")
   end
+
   # The default runner is the one seam no other test exercises, because every
   # other case injects a runner. It spawns a real Ruby child, so these two run a
   # script written to a temporary package root and read the status back.
@@ -71,14 +72,14 @@ class CliLegacyTest < Minitest::Test
   def test_the_default_runner_hands_back_a_childs_exit_code
     dir = package_with("ok.rb", "exit 0\n")
 
-    assert_equal 0, Plastic::CLI::Legacy.new(env: { "PLASTIC_PACKAGE_ROOT" => dir }).run("ok.rb")
+    assert_equal 0, Plastic::CLI::Legacy.new(env: {"PLASTIC_PACKAGE_ROOT" => dir}).run("ok.rb")
   ensure
     FileUtils.remove_entry(dir)
   end
 
   def test_the_default_runner_turns_a_childs_refusal_into_a_refusal
     dir = package_with("refuse.rb", "exit 3\n")
-    legacy = Plastic::CLI::Legacy.new(env: { "PLASTIC_PACKAGE_ROOT" => dir })
+    legacy = Plastic::CLI::Legacy.new(env: {"PLASTIC_PACKAGE_ROOT" => dir})
 
     assert_raises(Plastic::CLI::Command::Refusal) { legacy.run("refuse.rb") }
   ensure
@@ -89,7 +90,7 @@ class CliLegacyTest < Minitest::Test
     dir = package_with("killed.rb", %(Process.kill("KILL", Process.pid)\n))
 
     assert_equal Plastic::CLI::Command::FAILED,
-                 Plastic::CLI::Legacy.new(env: { "PLASTIC_PACKAGE_ROOT" => dir }).run("killed.rb")
+      Plastic::CLI::Legacy.new(env: {"PLASTIC_PACKAGE_ROOT" => dir}).run("killed.rb")
   ensure
     FileUtils.remove_entry(dir)
   end

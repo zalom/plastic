@@ -64,24 +64,24 @@ class CliOutputTest < Minitest::Test
     @output.next_step("plastic status", because: "it names the work")
     @output.flush(json: true)
 
-    assert_equal({ "result" => { "project" => "plastic", "active" => %w[363 367] },
-                   "next" => "plastic status", "because" => "it names the work" },
-                 JSON.parse(@out.string))
+    assert_equal({"result" => {"project" => "plastic", "active" => %w[363 367]},
+                   "next" => "plastic status", "because" => "it names the work"},
+      JSON.parse(@out.string))
   end
 
   def test_json_without_a_next_step_carries_null
     @output.row("project", "plastic")
     @output.flush(json: true)
 
-    assert_equal({ "result" => { "project" => "plastic" }, "next" => nil, "because" => nil },
-                 JSON.parse(@out.string))
+    assert_equal({"result" => {"project" => "plastic"}, "next" => nil, "because" => nil},
+      JSON.parse(@out.string))
   end
 
   def test_json_ends_with_one_newline
     @output.row("project", "plastic")
     @output.flush(json: true)
 
-    assert @out.string.end_with?("}\n"), @out.string
+    assert @out.string.end_with?("}\n"), "the JSON result must end with one newline"
   end
 
   def test_nothing_reaches_the_error_stream_on_a_result
@@ -104,7 +104,7 @@ class CliOutputTest < Minitest::Test
 
     assert_equal "plastic: refused, a live session holds the lock on 363\n" \
                  "This step belongs to the owner. Stop and ask; do not retry with a flag.\n",
-                 @err.string
+      @err.string
   end
 
   def test_a_failure_goes_to_the_error_stream

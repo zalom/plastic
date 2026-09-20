@@ -22,7 +22,7 @@ ROADMAPS = {
   "dispatchable" => format(BATCH_ONE, first: "— queued", second: "— queued"),
   "in flight" => format(BATCH_ONE, first: "— delivering", second: "— queued"),
   "delivered" => format(BATCH_ONE, first: "— delivered", second: "— delivered"),
-  "absent" => nil,
+  "absent" => nil
 }.freeze
 
 steps do

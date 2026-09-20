@@ -39,7 +39,7 @@ class CliContinueTest < Minitest::Test
 
     assert_equal "project  plastic", @fixture.printed.lines[0].chomp
     assert_equal "root     #{File.join(@fixture.plastic_home, "projects", "plastic")}",
-                 @fixture.printed.lines[1].chomp
+      @fixture.printed.lines[1].chomp
   end
 
   def test_the_active_row_lists_every_active_intent_with_its_title
@@ -71,7 +71,7 @@ class CliContinueTest < Minitest::Test
     continue("--project", "plastic").run
 
     assert_includes @fixture.printed,
-                    "next: read #{File.join(@fixture.intent_dir("plastic", "363"), "plan.md")}"
+      "next: read #{File.join(@fixture.intent_dir("plastic", "363"), "plan.md")}"
     assert_includes @fixture.printed, "because: 363 is first on the frontier of cli-and-rlm"
   end
 
@@ -79,7 +79,7 @@ class CliContinueTest < Minitest::Test
     continue("--project", "plastic").run
 
     assert_includes @fixture.printed,
-                    "next: read #{File.join(@fixture.intent_dir("plastic", "363"), "plan.md")}"
+      "next: read #{File.join(@fixture.intent_dir("plastic", "363"), "plan.md")}"
     assert_includes @fixture.printed, "because: 363 is the first active intent in plastic"
   end
 
@@ -114,6 +114,7 @@ class CliContinueTest < Minitest::Test
     assert_equal ["363  The command line", "367  The skill cut"], payload.dig("result", "active")
     assert_equal "363 is first on the frontier of cli-and-rlm", payload.fetch("because")
   end
+
   def test_a_roadmap_with_no_grouping_heading_fails_rather_than_guessing
     @fixture.roadmap("plastic", "cli-and-rlm", "# Roadmap: cli and rlm\n\n- [ ] 363 the command line\n")
 

@@ -6,8 +6,8 @@ require "stringio"
 require_relative "../../scripts/lib/cli"
 
 class CliInstallerVerbsTest < Minitest::Test
-  VERBS = { "install" => "install.rb", "update" => "update.rb",
-            "uninstall" => "uninstall.rb", "rollback" => "rollback.rb" }.freeze
+  VERBS = {"install" => "install.rb", "update" => "update.rb",
+           "uninstall" => "uninstall.rb", "rollback" => "rollback.rb"}.freeze
 
   def setup
     @out = StringIO.new
@@ -23,7 +23,7 @@ class CliInstallerVerbsTest < Minitest::Test
       status
     end
     Plastic::CLI::Commands.const_get(const).new(argv, out: @out, err: @err, env: {},
-                                                home: "/nowhere", runner: runner)
+      home: "/nowhere", runner: runner)
   end
 
   def test_every_verb_runs_its_own_script

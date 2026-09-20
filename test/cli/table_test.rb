@@ -13,7 +13,7 @@ class CliTableTest < Minitest::Test
 
   def test_the_table_holds_every_command_batch_one_ships
     assert_equal %w[continue help install next rollback status uninstall update version],
-                 Plastic::CLI::TABLE.keys.sort
+      Plastic::CLI::TABLE.keys.sort
   end
 
   def test_every_row_names_a_file_a_class_and_a_summary

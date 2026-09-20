@@ -62,7 +62,7 @@ class CliScopeTest < Minitest::Test
   def test_the_longest_matching_repository_path_wins
     root = File.join(@fixture.home, "code")
     nested = Plastic::CLI::Scope.new(env: @fixture.env, home: @fixture.home, slug: nil,
-                                     directory: File.join(root, "plastic"))
+      directory: File.join(root, "plastic"))
 
     assert_equal "plastic", nested.slug
   end
@@ -112,6 +112,7 @@ class CliScopeTest < Minitest::Test
   def test_an_unknown_intent_id_has_no_directory
     assert_nil scope(slug: "plastic").intent_dir("999")
   end
+
   def test_a_registered_repository_with_no_store_answers_the_plastic_home
     @fixture.register("fresh", "path" => File.join(@fixture.home, "code", "fresh"))
 

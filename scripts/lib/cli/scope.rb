@@ -69,7 +69,7 @@ module Plastic
       end
 
       def intent_dir(id)
-        Dir.glob(File.join(store, "#{id}--*")).sort.first
+        Dir.glob(File.join(store, "#{id}--*")).min
       end
 
       def directory_project
@@ -93,7 +93,7 @@ module Plastic
         return @requested if known_slugs.include?(@requested)
 
         raise UnknownProject,
-              "no project named #{@requested.inspect}; this machine has #{known_slugs.join(", ")}"
+          "no project named #{@requested.inspect}; this machine has #{known_slugs.join(", ")}"
       end
 
       def project_for_directory

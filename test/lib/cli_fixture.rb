@@ -22,11 +22,11 @@ class CliFixture
   end
 
   def env(extra = {})
-    { "PLASTIC_HOME" => @plastic_home }.merge(extra)
+    {"PLASTIC_HOME" => @plastic_home}.merge(extra)
   end
 
   def streams
-    { out: @out, err: @err, env: env, home: @home }
+    {out: @out, err: @err, env: env, home: @home}
   end
 
   def printed
@@ -45,7 +45,7 @@ class CliFixture
   def project(slug, active: [], completed: [], repository: nil)
     root = File.join(@plastic_home, "projects", slug)
     write_store(root, active: active, completed: completed)
-    @projects[slug] = { "path" => repository || File.join(@home, "code", slug) }
+    @projects[slug] = {"path" => repository || File.join(@home, "code", slug)}
     FileUtils.mkdir_p(@projects[slug]["path"])
     write_projects
     self
@@ -62,7 +62,7 @@ class CliFixture
   end
 
   def roadmap(slug, name, body)
-    root = slug == "global" ? @plastic_home : File.join(@plastic_home, "projects", slug)
+    root = (slug == "global") ? @plastic_home : File.join(@plastic_home, "projects", slug)
     dir = File.join(root, "roadmaps")
     FileUtils.mkdir_p(dir)
     File.write(File.join(dir, "#{name}.md"), body)
@@ -70,12 +70,12 @@ class CliFixture
   end
 
   def intent_dir(slug, id)
-    root = slug == "global" ? @plastic_home : File.join(@plastic_home, "projects", slug)
+    root = (slug == "global") ? @plastic_home : File.join(@plastic_home, "projects", slug)
     Dir.glob(File.join(root, "store", "#{id}--*")).first
   end
 
   def drop_index(slug)
-    root = slug == "global" ? @plastic_home : File.join(@plastic_home, "projects", slug)
+    root = (slug == "global") ? @plastic_home : File.join(@plastic_home, "projects", slug)
     FileUtils.rm_f(File.join(root, "INDEX.md"))
     self
   end

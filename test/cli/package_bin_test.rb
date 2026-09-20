@@ -12,7 +12,7 @@ class CliPackageBinTest < Minitest::Test
   end
 
   def test_the_npm_bin_entry_names_the_ruby_launcher
-    assert_equal({ "plastic" => "bin/plastic" }, package.fetch("bin"))
+    assert_equal({"plastic" => "bin/plastic"}, package.fetch("bin"))
   end
 
   def test_the_npm_bin_entry_points_at_a_file_that_exists

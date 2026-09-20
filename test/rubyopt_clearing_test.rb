@@ -223,17 +223,17 @@ class RubyoptClearingTest < Minitest::Test
     end
   end
 
-# --- the entry point ---
+  # --- the entry point ---
 
-# The npm entry point was `bin/plastic.js`, which spawned `ruby` from PATH and had to
-# clear RUBYOPT so a global flag the found ruby did not know could not crash it. Intent
-# 363 replaced it with `bin/plastic`, a Ruby launcher. A RUBYOPT the interpreter cannot
-# read now fails before any Plastic code runs, and every child the launcher spawns runs
-# the same interpreter under the same RUBYOPT, so there is nothing left to clear here.
-def test_the_entry_point_is_ruby_and_spawns_no_interpreter_it_did_not_already_run_under
-  assert_path_exists File.join(REPO, "bin/plastic")
-  refute_path_exists File.join(REPO, "bin/plastic.js")
+  # The npm entry point was `bin/plastic.js`, which spawned `ruby` from PATH and had to
+  # clear RUBYOPT so a global flag the found ruby did not know could not crash it. Intent
+  # 363 replaced it with `bin/plastic`, a Ruby launcher. A RUBYOPT the interpreter cannot
+  # read now fails before any Plastic code runs, and every child the launcher spawns runs
+  # the same interpreter under the same RUBYOPT, so there is nothing left to clear here.
+  def test_the_entry_point_is_ruby_and_spawns_no_interpreter_it_did_not_already_run_under
+    assert_path_exists File.join(REPO, "bin/plastic")
+    refute_path_exists File.join(REPO, "bin/plastic.js")
 
-  assert_includes File.read(File.join(REPO, "scripts/lib/cli/legacy.rb")), "RbConfig.ruby"
-end
+    assert_includes File.read(File.join(REPO, "scripts/lib/cli/legacy.rb")), "RbConfig.ruby"
+  end
 end

@@ -611,12 +611,12 @@ class InstallPackagingTest < Minitest::Test
       next unless File.file?(abs_path)
 
       File.read(abs_path).scan(/require_relative\s+["']([^"']+)["']/) do |(target)|
-# A target built from a variable, as the CLI dispatcher's
-# `require_relative "cli/#{file}"` is, has no static answer and a literal
-# path with a dollar-brace in it is not a file. The CLI subtree is
-# registered by glob (InstallerCore#cli_files) and walked row by row by
-# test/cli/table_test.rb, so nothing hides behind this skip.
-next if target.include?('#{')
+        # A target built from a variable, as the CLI dispatcher's
+        # `require_relative "cli/#{file}"` is, has no static answer and a literal
+        # path with a dollar-brace in it is not a file. The CLI subtree is
+        # registered by glob (InstallerCore#cli_files) and walked row by row by
+        # test/cli/table_test.rb, so nothing hides behind this skip.
+        next if target.include?('#{')
 
         target = "#{target}.rb" unless target.end_with?(".rb")
         abs_target = File.expand_path(File.join(REPO, File.dirname(repo_relative_path), target))

@@ -135,6 +135,7 @@ class CrapTest < Minitest::Test
     assert_equal 2, Crap::CLI.new(["--since", "--coverage", "coverage/.resultset.json"], root: Dir.pwd, out: out).run
     assert_includes out.string, "Usage: bin/crap"
   end
+
   # Intent 363 added these: they are the branches of the vendored tool that its
   # own tests leave open, and the patch-coverage gate counts every line of a
   # file on the commit that brings it in.
@@ -180,6 +181,19 @@ class CrapTest < Minitest::Test
 
       assert_equal 0, Crap::CLI.new([], root: root, out: out).run
       assert_includes out.string, "#a"
+    end
+  end
+  def test_the_cli_reads_a_resultset_that_is_on_disk
+    Dir.mktmpdir("crap-resultset") do |root|
+      FileUtils.mkdir_p(File.join(root, "lib"))
+      FileUtils.mkdir_p(File.join(root, "coverage"))
+      File.write(File.join(root, "lib", "a.rb"), "def a(x)\n  x ? 1 : 2\nend\n")
+      File.write(File.join(root, "coverage", ".resultset.json"),
+                 { "run" => { "coverage" => { File.join(root, "lib", "a.rb") => { "lines" => [1, 0, nil] } } } }.to_json)
+      out = StringIO.new
+
+      assert_equal 0, Crap::CLI.new(["lib/a.rb"], root: root, out: out).run
+      assert_includes out.string, "0%"
     end
   end
 end

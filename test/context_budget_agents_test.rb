@@ -25,7 +25,7 @@ class ContextBudgetAgentsTest < Minitest::Test
     FileUtils.mkdir_p(File.join(@dir, "agents"))
     agents.each do |name, description|
       File.write(File.join(@dir, "agents", "#{name}.md"),
-                 "---\nname: #{name}\ndescription: #{description}\nmodel: opus\n---\n\nBody.\n")
+        "---\nname: #{name}\ndescription: #{description}\nmodel: opus\n---\n\nBody.\n")
     end
     @dir
   end
@@ -34,7 +34,7 @@ class ContextBudgetAgentsTest < Minitest::Test
     repo = fixture_repo("zulu" => "last", "alpha" => "first")
 
     assert_equal %w[alpha.md zulu.md],
-                 ContextBudget.agent_paths(repo: repo).map { |path| File.basename(path) }
+      ContextBudget.agent_paths(repo: repo).map { |path| File.basename(path) }
   end
 
   def test_agent_paths_are_empty_when_the_repository_has_no_agents
@@ -45,14 +45,14 @@ class ContextBudgetAgentsTest < Minitest::Test
     repo = fixture_repo("alpha" => "twelve chars")
 
     assert_equal "alpha".bytesize + "twelve chars".bytesize,
-                 ContextBudget.agent_catalog_bytes(repo: repo)
+      ContextBudget.agent_catalog_bytes(repo: repo)
   end
 
   def test_the_agent_catalog_sums_every_agent
     repo = fixture_repo("alpha" => "one", "beta" => "two")
 
     assert_equal "alphaone".bytesize + "betatwo".bytesize,
-                 ContextBudget.agent_catalog_bytes(repo: repo)
+      ContextBudget.agent_catalog_bytes(repo: repo)
   end
 
   def test_the_agent_catalog_of_this_repository_is_measured_not_guessed
@@ -69,7 +69,7 @@ class ContextBudgetAgentsTest < Minitest::Test
     report = ContextBudget.run(repo: REPO, repeat: 1)
 
     assert_includes report.row(:agent_catalog).label,
-                    "#{ContextBudget.agent_paths(repo: REPO).length} name + description values"
+      "#{ContextBudget.agent_paths(repo: REPO).length} name + description values"
   end
 
   def test_the_standing_row_is_the_sum_of_the_four_surfaces
@@ -95,8 +95,8 @@ class ContextBudgetAgentsTest < Minitest::Test
     report = ContextBudget.run(repo: REPO, repeat: 1)
 
     assert_operator report.row(:standing).headroom, :<=, 250,
-                    "the standing ceiling carries #{report.row(:standing).headroom} bytes of " \
-                    "headroom; it is set to the measured number, not to a round one"
+      "the standing ceiling carries #{report.row(:standing).headroom} bytes of " \
+      "headroom; it is set to the measured number, not to a round one"
   end
 
   def test_the_bench_passes_on_this_repository

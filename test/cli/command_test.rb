@@ -35,10 +35,19 @@ class CliCommandTest < Minitest::Test
     Probe.new(argv, out: @out, err: @err, env: {}, home: "/nowhere")
   end
 
-  def test_the_four_exit_codes_are_the_documented_ones
+  def test_the_success_code_is_zero
     assert_equal 0, Plastic::CLI::Command::OK
+  end
+
+  def test_the_failure_code_is_one
     assert_equal 1, Plastic::CLI::Command::FAILED
+  end
+
+  def test_the_usage_code_is_two
     assert_equal 2, Plastic::CLI::Command::USAGE
+  end
+
+  def test_the_refusal_code_is_three
     assert_equal 3, Plastic::CLI::Command::REFUSED
   end
 

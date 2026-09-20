@@ -74,7 +74,7 @@ module Plastic
 
       def payload
         @payload ||= RoadmapQueue.new(roadmaps_dir: @scope.roadmaps_dir,
-                                      index_path: @scope.index_path).queue
+          index_path: @scope.index_path).queue
       end
 
       def ids(entries)

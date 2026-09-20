@@ -40,7 +40,7 @@ module Plastic
           return File.read(path).strip unless path.end_with?(".json")
 
           number = JSON.parse(File.read(path))["version"]
-          number && number.to_s.strip
+          number&.to_s&.strip
         rescue JSON::ParserError
           nil
         end

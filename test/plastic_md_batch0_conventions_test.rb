@@ -47,5 +47,4 @@ class PlasticMdBatch0ConventionsTest < Minitest::Test
   # --- 151: insight-append ships on every install and update ---------------
 
   # --- 154: new-intent style-preserving chain wiring + quoting -------------
-
 end

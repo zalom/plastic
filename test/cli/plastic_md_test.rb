@@ -27,7 +27,7 @@ class CliPlasticMdTest < Minitest::Test
 
   def test_the_file_stays_short
     assert_operator File.size(PATH), :<=, CEILING_BYTES,
-                    "PLASTIC.md is #{File.size(PATH)} bytes; the ceiling is #{CEILING_BYTES}"
+      "PLASTIC.md is #{File.size(PATH)} bytes; the ceiling is #{CEILING_BYTES}"
   end
 
   def test_every_command_it_names_is_in_the_table

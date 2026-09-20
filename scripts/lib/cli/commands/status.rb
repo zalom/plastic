@@ -57,11 +57,11 @@ module Plastic
 
         def intents(slug)
           count = counted.fetch(slug).length
-          count == 1 ? "1 intent" : "#{count} intents"
+          (count == 1) ? "1 intent" : "#{count} intents"
         end
 
         def continue_command(slug)
-          slug == Scope::GLOBAL ? "plastic continue" : "plastic continue --project #{slug}"
+          (slug == Scope::GLOBAL) ? "plastic continue" : "plastic continue --project #{slug}"
         end
       end
     end

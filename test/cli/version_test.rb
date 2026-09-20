@@ -21,7 +21,7 @@ class CliVersionTest < Minitest::Test
 
   def version(*argv, root: @dir)
     Plastic::CLI::Commands::Version.new(argv, out: @out, err: @err,
-                                        env: { "PLASTIC_PACKAGE_ROOT" => root }, home: "/nowhere")
+      env: {"PLASTIC_PACKAGE_ROOT" => root}, home: "/nowhere")
   end
 
   def test_the_version_file_wins
@@ -86,7 +86,7 @@ class CliVersionTest < Minitest::Test
     File.write(File.join(@dir, "VERSION"), "2.0.0\n")
     version("--json").run
 
-    assert_equal({ "version" => "2.0.0", "source" => File.join(@dir, "VERSION") },
-                 JSON.parse(@out.string).fetch("result"))
+    assert_equal({"version" => "2.0.0", "source" => File.join(@dir, "VERSION")},
+      JSON.parse(@out.string).fetch("result"))
   end
 end

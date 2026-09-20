@@ -44,7 +44,7 @@ class CliNextTest < Minitest::Test
     next_command.run
 
     assert_equal "next work  363  in Batch 1 the command line foundation",
-                 @fixture.printed.lines.first.chomp
+      @fixture.printed.lines.first.chomp
   end
 
   def test_a_dispatchable_frontier_points_at_the_intent_plan
@@ -52,7 +52,7 @@ class CliNextTest < Minitest::Test
     next_command.run
 
     assert_includes @fixture.printed,
-                    "next: read #{File.join(@fixture.intent_dir("plastic", "363"), "plan.md")}"
+      "next: read #{File.join(@fixture.intent_dir("plastic", "363"), "plan.md")}"
   end
 
   def test_a_dispatchable_frontier_says_why_that_entry
@@ -70,20 +70,30 @@ class CliNextTest < Minitest::Test
     assert_equal 1, rows.length
   end
 
-  def test_the_why_flag_adds_the_roadmap_the_frontier_and_what_is_blocked
+  def why_output
     @fixture.roadmap("plastic", "cli-and-rlm", ROADMAP)
     next_command("--why").run
+    @fixture.printed
+  end
 
-    assert_includes @fixture.printed, "roadmap       cli-and-rlm"
-    assert_includes @fixture.printed, "frontier      Batch 1 the command line foundation"
-    assert_includes @fixture.printed, "dispatchable  363, 367"
-    assert_includes @fixture.printed, "in flight     none"
-    assert_includes @fixture.printed, "blocked       none"
+  def test_the_why_flag_names_the_roadmap_and_its_frontier
+    printed = why_output
+
+    assert_includes printed, "roadmap       cli-and-rlm"
+    assert_includes printed, "frontier      Batch 1 the command line foundation"
+  end
+
+  def test_the_why_flag_lists_what_is_dispatchable_in_flight_and_blocked
+    printed = why_output
+
+    assert_includes printed, "dispatchable  363, 367"
+    assert_includes printed, "in flight     none"
+    assert_includes printed, "blocked       none"
   end
 
   def test_an_entry_already_delivering_is_named_as_in_flight
     body = ROADMAP.sub("- [ ] 363 the command line — queued",
-                       "- [ ] 363 the command line — delivering")
+      "- [ ] 363 the command line — delivering")
     @fixture.roadmap("plastic", "cli-and-rlm", body)
     next_command.run
 
@@ -104,7 +114,7 @@ class CliNextTest < Minitest::Test
   def test_an_exhausted_roadmap_says_every_entry_is_delivered
     body = ROADMAP.gsub("— queued", "— delivered")
     @fixture.project("plastic", active: [],
-                                completed: [["363", "The command line"], ["367", "The skill cut"]])
+      completed: [["363", "The command line"], ["367", "The skill cut"]])
     @fixture.roadmap("plastic", "cli-and-rlm", body)
     next_command.run
 
