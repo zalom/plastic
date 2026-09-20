@@ -36,8 +36,20 @@ class RealHomeGuardTest < Minitest::Test
   def self.fingerprint
     files = %w[.plastic/versions.json .plastic/VERSION .plastic/manifest.json]
     directories = %w[.claude/hooks .claude/skills]
-    files.to_h { |path| [path, (File.read(File.join(REAL_HOME, path)) rescue nil)] }
-      .merge(directories.to_h { |path| [path, (Dir.children(File.join(REAL_HOME, path)).sort rescue nil)] })
+    files.to_h { |path| [path, file_body(path)] }
+      .merge(directories.to_h { |path| [path, directory_children(path)] })
+  end
+
+  def self.file_body(path)
+    File.read(File.join(REAL_HOME, path))
+  rescue SystemCallError
+    nil
+  end
+
+  def self.directory_children(path)
+    Dir.children(File.join(REAL_HOME, path)).sort
+  rescue SystemCallError
+    nil
   end
 
   BEFORE = fingerprint.freeze

@@ -35,8 +35,8 @@ steps do
         .project("plastic", active: closed ? [] : intents, completed: closed ? intents : [])
       body = ROADMAPS.fetch(row["roadmap"])
       fixture.roadmap("plastic", "cli-and-rlm", body) if body
-      code = Plastic::CLI::Commands::Next.new(["--project", "plastic"], directory: "/nowhere",
-                                              **fixture.streams).run
+      code = Plastic::CLI::Commands::Next.call(["--project", "plastic"], directory: "/nowhere",
+                                               **fixture.streams)
       lines = fixture.printed.lines.map(&:chomp)
       row.merge(
         "exit" => code.to_s,
