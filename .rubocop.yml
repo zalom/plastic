@@ -14,3 +14,10 @@ AllCops:
     - "node_modules/**/*"
     - "coverage/**/*"
     - "tmp/**/*"
+
+# Every one of this repository's 468 Ruby files opens with the same header, and
+# the magic encoding comment is the first line of it. Standard reads the comment
+# as dead weight, which it is on Ruby 3, but a cop that fires on every file in
+# the repository reports nothing about a change.
+Style/Encoding:
+  Enabled: false
