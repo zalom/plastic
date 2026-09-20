@@ -36,7 +36,12 @@ module ContextBudget
   #                     Not a ruling: a 313 ratchet over the measured 16,537, so
   #                     the second-largest per-boot cost cannot regrow unwatched.
   #                     Lower it as the catalog shrinks; never raise it.
-  CEILINGS = { core: 8_192, boot: 15_000, boot_plus_catalog: 17_500 }.freeze
+  #   standing          every byte a session carries before it does any work:
+  #                     the core block, the boot injection, the skill catalog
+  #                     and the agent catalog. Intent 363 ratchet, not a
+  #                     ruling. It is the measured number plus a little, and it
+  #                     only ever moves down, once per skill family removed.
+  CEILINGS = { core: 8_192, boot: 15_000, boot_plus_catalog: 17_500, standing: 11_000 }.freeze
 
   # The doctrine working set (boot + _decision-tables.md + the median skill body)
   # is reported against this target, never enforced: its median term steps by
@@ -95,6 +100,27 @@ module ContextBudget
       data = YAML.safe_load(frontmatter.to_s, permitted_classes: [Date, Time], aliases: true) || {}
       data["name"].to_s.bytesize + data["description"].to_s.bytesize
     end
+  end
+
+  def self.agent_paths(repo:)
+    Dir.glob(File.join(repo, "agents", "*.md")).sort
+  end
+
+  # The agent catalog is the skill catalog's twin: the harness lists every agent's
+  # name and description to the top-level session, whether or not one is ever
+  # dispatched. Same YAML read as skill_catalog_bytes, for the same reason.
+  def self.agent_catalog_bytes(repo:)
+    agent_paths(repo: repo).sum { |path| agent_entry(path).bytesize }
+  end
+
+  def self.agent_catalog_text(repo:)
+    agent_paths(repo: repo).map { |path| agent_entry(path) }.join
+  end
+
+  def self.agent_entry(path)
+    frontmatter, = split_skill(File.read(path))
+    data = YAML.safe_load(frontmatter.to_s, permitted_classes: [Date, Time], aliases: true) || {}
+    "#{data["name"]}#{data["description"]}"
   end
 
   def self.skill_body_sizes(repo:)
@@ -345,11 +371,13 @@ def self.build_rows(fixture:, repo:, context:)
   core = measure(File.read(File.join(fixture.plastic_home, "PLASTIC.md")))
   boot_measurement = measure(context)
   catalog = measure(skill_catalog_text(repo: repo))
+  agents = measure(agent_catalog_text(repo: repo))
   bodies = skill_body_sizes(repo: repo)
   median_body = median(bodies)
   fragment = fragment_bytes(repo: repo)
 
   combined = boot_measurement.bytes + catalog.bytes
+  standing = core.bytes + boot_measurement.bytes + catalog.bytes + agents.bytes
   working_set = boot_measurement.bytes + fragment + median_body
 
   # tokens(w) is a word count of a real body, so the rows that are arithmetic
@@ -361,8 +389,12 @@ def self.build_rows(fixture:, repo:, context:)
         tokens: boot_measurement.tokens, ceiling: CEILINGS[:boot]),
     row(:skill_catalog, "skill catalog (#{bodies.length} name + description values)",
         catalog.bytes, tokens: catalog.tokens),
+    row(:agent_catalog, "agent catalog (#{agent_paths(repo: repo).length} name + description values)",
+        agents.bytes, tokens: agents.tokens),
     row(:boot_plus_catalog, "boot injection + skill catalog", combined,
         ceiling: CEILINGS[:boot_plus_catalog]),
+    row(:standing, "standing surface (core + boot + both catalogs)", standing,
+        ceiling: CEILINGS[:standing]),
     row(:median_skill_body, "median skill body (of #{bodies.length})", median_body),
     row(:working_set, "doctrine working set (boot + fragment + median body)",
         working_set, target: WORKING_SET_TARGET),
