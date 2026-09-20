@@ -62,6 +62,23 @@ class CompactInstructionsTest < Minitest::Test
     assert_includes CompactInstructions::BODY, "managed by the Plastic installer"
   end
 
+# Intent 363: PLASTIC.md is the only instruction text Plastic puts in a Claude session,
+# and this line is how it gets there. It resolves against the installed copy in the
+# Plastic home, not against ~/.claude, which holds no PLASTIC.md.
+def test_body_imports_the_installed_instruction_file
+  assert_includes CompactInstructions::BODY, "@~/.plastic/PLASTIC.md"
+end
+
+def test_the_imported_instruction_file_is_one_the_installer_copies
+  assert_equal "PLASTIC.md", @core.core_files.fetch("PLASTIC.md")
+end
+
+def test_an_injected_block_carries_the_import_line
+  @core.inject_claude_compact_md(claude_md)
+
+  assert_includes File.read(claude_md), "@~/.plastic/PLASTIC.md"
+end
+
   # The block must not name a path 311 has not shipped: it points in words only.
   def test_body_names_no_file_path
     refute_match(%r{\.sessions/}, CompactInstructions::BODY)

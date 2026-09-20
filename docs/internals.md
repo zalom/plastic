@@ -1300,6 +1300,11 @@ installed into `~/.claude/CLAUDE.md` as a marked section:
 <!-- END PLASTIC COMPACT -->
 ```
 
+Intent 363 added the first line of that block: a Claude Code import, `@~/.plastic/PLASTIC.md`.
+Ruling D43 makes `PLASTIC.md` the only instruction text Plastic puts in a session, and this
+import is how the harness reads it. The path names the installed copy under the Plastic home,
+because a bare `@PLASTIC.md` would resolve against `~/.claude`, which holds no such file.
+
 `InstallerCore#inject_marked_section` is the same three-state merge (create, append,
 replace) that puts Plastic's standing conventions into `~/.codex/AGENTS.md`, with the
 markers as parameters. The Claude block gets its own pair rather than reusing

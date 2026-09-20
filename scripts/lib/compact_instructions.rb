@@ -28,7 +28,15 @@ module CompactInstructions
   # as stale, so the block states the shipped numbers and names the two keys as the
   # override instead. It names the hand-off in words and never by path, so it reads
   # correctly whether or not the hand-off writer is installed.
+  # The `@` line is a Claude Code import: the harness reads the named file into the
+  # session. It is the whole of ruling D43, that PLASTIC.md is the only instruction text
+  # Plastic carries. It names the installed copy under the Plastic home, because a bare
+  # `@PLASTIC.md` would resolve against ~/.claude, where no such file exists.
   BODY = <<~MD.freeze
+    Plastic runs from one command, `plastic`. Its instructions are one page, imported here:
+
+    @~/.plastic/PLASTIC.md
+
     Plastic watches this session's context. When the harness reports how much of the
     window is used:
 
