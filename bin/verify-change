@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 require "fileutils"
 require "open3"
+require "tmpdir"
 
 class VerifyChange
   USAGE = <<~TEXT
@@ -24,6 +25,9 @@ class VerifyChange
     A lint failure is reported but does not stop the other checks. Lint is
     skipped, not failed, with no style guide, two style guides, no changed
     Ruby files, or the linter gem missing from Gemfile.lock.
+
+    Every child runs under a throwaway HOME and PLASTIC_TMP, so a test or a
+    mutant that spawns an installer cannot reach the real home directory.
 
     Exit codes: 0 verified, 1 a check failed, 2 usage or git error.
   TEXT
@@ -56,13 +60,25 @@ class VerifyChange
     end
   end
 
-  def initialize(argv, root: Dir.pwd, out: $stdout, err: $stderr, git: nil, run: nil)
+  def initialize(argv, root: Dir.pwd, out: $stdout, err: $stderr, git: nil, run: nil, sandbox: nil)
     @argv = argv.dup
     @root = root
     @out = out
     @err = err
     @git = git || ->(*args) { Open3.capture2e("git", "-C", root, *args) }
     @run = run || ->(env, command) { system(env, *command, chdir: root) }
+    @sandbox = sandbox
+    @owned_sandbox = sandbox.nil?
+  end
+
+  # A throwaway home for every child this script spawns. A gate step runs the
+  # project's own tests, and a test (or a mutant that defeats an injected
+  # runner) can spawn an installer, which resolves ~/.plastic and ~/.claude
+  # from HOME. Pointing HOME at a fresh directory is what keeps the real home
+  # out of reach; PLASTIC_TMP does the same for the session bridge files.
+  def sandbox
+    @sandbox ||= { "HOME" => Dir.mktmpdir("verify-change-home"),
+                   "PLASTIC_TMP" => Dir.mktmpdir("verify-change-tmp") }
   end
 
   def call
@@ -79,6 +95,15 @@ class VerifyChange
     report_both_suites(chosen)
     plan = plan(changed: changed_files(base), extra_tests: extra_tests, base: base, rails: rails?, suite: chosen)
     execute(plan, requested_base)
+  ensure
+    discard_sandbox
+  end
+
+  def discard_sandbox
+    return unless @owned_sandbox && @sandbox
+
+    @sandbox.each_value { |dir| FileUtils.remove_entry(dir, true) }
+    @sandbox = nil
   end
 
   def plan(changed:, extra_tests:, base:, rails:, suite: MINITEST)
@@ -146,12 +171,16 @@ class VerifyChange
 
   def steps(sources, tests, base, rails, suite)
     steps = []
-    steps << Step.new(TESTS_STEP, { "COVERAGE" => "1" }, test_command(tests, rails, suite)) unless tests.empty?
+    steps << step(TESTS_STEP, { "COVERAGE" => "1" }, test_command(tests, rails, suite)) unless tests.empty?
     return steps if sources.empty?
 
-    steps << Step.new("Patch coverage", {}, %W[bundle exec simplecov patch --base #{base} --minimum #{PATCH_COVERAGE_MINIMUM}])
-    steps << Step.new("Mutation testing", {}, mutation_command(sources, tests, base, rails, suite))
-    steps << Step.new("CRAP scores", {}, %W[bundle exec bin/crap --threshold #{CRAP_THRESHOLD} --since #{base}] + sources)
+    steps << step("Patch coverage", {}, %W[bundle exec simplecov patch --base #{base} --minimum #{PATCH_COVERAGE_MINIMUM}])
+    steps << step("Mutation testing", {}, mutation_command(sources, tests, base, rails, suite))
+    steps << step("CRAP scores", {}, %W[bundle exec bin/crap --threshold #{CRAP_THRESHOLD} --since #{base}] + sources)
+  end
+
+  def step(title, env, command)
+    Step.new(title, sandbox.merge(env), command)
   end
 
   def test_command(tests, rails, suite)
@@ -183,7 +212,7 @@ class VerifyChange
   # against as the todo shrinks.
   def lint_step(guide, lint_files)
     command = guide == :standard ? %w[bundle exec standardrb --force-exclusion] : rubocop_command
-    Step.new(LINT_STEP, {}, command + lint_files)
+    step(LINT_STEP, {}, command + lint_files)
   end
 
   def rubocop_command
@@ -270,6 +299,7 @@ class VerifyChange
     @out.puts "Base:    #{requested_base}"
     @out.puts "Sources: #{plan.sources.empty? ? "none" : plan.sources.join(", ")}"
     @out.puts "Tests:   #{plan.tests.join(", ")}"
+    @out.puts "Home:    #{sandbox["HOME"]}"
     FileUtils.rm_rf(File.join(@root, "coverage"))
     failed = []
     if plan.lint_decision.step
