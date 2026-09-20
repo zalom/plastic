@@ -73,11 +73,11 @@ module Plastic
       end
 
       def directory_project
-  @directory_project = project_for_directory unless defined?(@directory_project)
-  @directory_project
-end
+        @directory_project = project_for_directory unless defined?(@directory_project)
+        @directory_project
+      end
 
-def known_slugs
+      def known_slugs
         stores.map { |store| store[:slug] }.sort
       end
 

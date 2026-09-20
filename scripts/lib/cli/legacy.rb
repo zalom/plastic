@@ -17,7 +17,8 @@ module Plastic
   class CLI
     class Legacy
       DEFAULT_RUNNER = lambda do |path, arguments|
-        system(RbConfig.ruby, path, *arguments) ? 0 : ($CHILD_STATUS || $?)&.exitstatus || 1
+        system(RbConfig.ruby, path, *arguments)
+        $CHILD_STATUS.exitstatus || Command::FAILED
       end
 
       def initialize(env:, runner: nil)

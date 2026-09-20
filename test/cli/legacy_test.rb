@@ -2,6 +2,8 @@
 # frozen_string_literal: true
 
 require_relative "../test_helper"
+require "fileutils"
+require "tmpdir"
 require_relative "../../scripts/lib/cli/legacy"
 
 class CliLegacyTest < Minitest::Test
@@ -55,5 +57,40 @@ class CliLegacyTest < Minitest::Test
 
   def test_a_run_that_exits_two_answers_two_rather_than_refusing
     assert_equal 2, legacy(2).run("install.rb")
+  end
+  # The default runner is the one seam no other test exercises, because every
+  # other case injects a runner. It spawns a real Ruby child, so these two run a
+  # script written to a temporary package root and read the status back.
+  def package_with(script, body)
+    dir = Dir.mktmpdir("plastic-legacy-runner")
+    FileUtils.mkdir_p(File.join(dir, "scripts"))
+    File.write(File.join(dir, "scripts", script), body)
+    dir
+  end
+
+  def test_the_default_runner_hands_back_a_childs_exit_code
+    dir = package_with("ok.rb", "exit 0\n")
+
+    assert_equal 0, Plastic::CLI::Legacy.new(env: { "PLASTIC_PACKAGE_ROOT" => dir }).run("ok.rb")
+  ensure
+    FileUtils.remove_entry(dir)
+  end
+
+  def test_the_default_runner_turns_a_childs_refusal_into_a_refusal
+    dir = package_with("refuse.rb", "exit 3\n")
+    legacy = Plastic::CLI::Legacy.new(env: { "PLASTIC_PACKAGE_ROOT" => dir })
+
+    assert_raises(Plastic::CLI::Command::Refusal) { legacy.run("refuse.rb") }
+  ensure
+    FileUtils.remove_entry(dir)
+  end
+
+  def test_the_default_runner_reports_a_signalled_child_as_a_failure
+    dir = package_with("killed.rb", %(Process.kill("KILL", Process.pid)\n))
+
+    assert_equal Plastic::CLI::Command::FAILED,
+                 Plastic::CLI::Legacy.new(env: { "PLASTIC_PACKAGE_ROOT" => dir }).run("killed.rb")
+  ensure
+    FileUtils.remove_entry(dir)
   end
 end

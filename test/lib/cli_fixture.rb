@@ -51,6 +51,16 @@ class CliFixture
     self
   end
 
+  # A projects.yml row with no store behind it. Plastic registers a repository
+  # before the first intent is written there, so this is an ordinary state, and
+  # it is the one that reaches Scope#root's fallback. `info` takes whatever the
+  # file might really hold, including a row that is not a mapping at all.
+  def register(slug, info)
+    @projects[slug] = info
+    write_projects
+    self
+  end
+
   def roadmap(slug, name, body)
     root = slug == "global" ? @plastic_home : File.join(@plastic_home, "projects", slug)
     dir = File.join(root, "roadmaps")

@@ -71,8 +71,6 @@ module Plastic
     end
 
     def distance(left, right)
-      return left.length if right.empty?
-
       (left.chars - right.chars).length + (right.chars - left.chars).length +
         (left.length - right.length).abs
     end

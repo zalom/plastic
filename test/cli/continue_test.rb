@@ -114,4 +114,18 @@ class CliContinueTest < Minitest::Test
     assert_equal ["363  The command line", "367  The skill cut"], payload.dig("result", "active")
     assert_equal "363 is first on the frontier of cli-and-rlm", payload.fetch("because")
   end
+  def test_a_roadmap_with_no_grouping_heading_fails_rather_than_guessing
+    @fixture.roadmap("plastic", "cli-and-rlm", "# Roadmap: cli and rlm\n\n- [ ] 363 the command line\n")
+
+    assert_equal Plastic::CLI::Command::FAILED, continue("--project", "plastic").run
+    assert_match(/grouping heading/, @fixture.warned)
+  end
+
+  def test_an_intent_listed_with_no_directory_sends_the_reader_to_status
+    FileUtils.rm_rf(@fixture.intent_dir("plastic", "363"))
+
+    continue("--project", "plastic").run
+
+    assert_includes @fixture.printed, "next: plastic status"
+  end
 end

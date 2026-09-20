@@ -158,7 +158,7 @@ class VerifyChange
     return %w[bundle exec rspec] + tests if suite == RSPEC
     return %w[bin/rails test] + tests if rails
 
-    %w[bundle exec ruby -Ilib -Itools -Itest -e] + ["ARGV.each { |file| require File.expand_path(file) }"] + tests
+    %w[bundle exec ruby -Ilib -Itools -Itest -e] + [%(require "test_helper"; ARGV.each { |file| require File.expand_path(file) })] + tests
   end
 
   def lint_decision(lint_files)
@@ -176,9 +176,19 @@ class VerifyChange
     LintDecision.new(nil, "no style guide found")
   end
 
+  # Local adaptation (intent 363): RuboCop reads .rubocop_with_todo.yml here, which
+  # is .rubocop.yml plus the generated todo. The todo holds this repository's 16,116
+  # pre-existing offences, so a lint run reports what the change did and nothing
+  # else. .rubocop.yml, the todo-free config, is what the repository is measured
+  # against as the todo shrinks.
   def lint_step(guide, lint_files)
-    command = guide == :standard ? %w[bundle exec standardrb --force-exclusion] : %w[bundle exec rubocop --force-exclusion]
+    command = guide == :standard ? %w[bundle exec standardrb --force-exclusion] : rubocop_command
     Step.new(LINT_STEP, {}, command + lint_files)
+  end
+
+  def rubocop_command
+    base = %w[bundle exec rubocop --force-exclusion]
+    exist?(".rubocop_with_todo.yml") ? base + %w[--config .rubocop_with_todo.yml] : base
   end
 
   def lint_gem_available?(command_gem)

@@ -112,4 +112,41 @@ class CliScopeTest < Minitest::Test
   def test_an_unknown_intent_id_has_no_directory
     assert_nil scope(slug: "plastic").intent_dir("999")
   end
+  def test_a_registered_repository_with_no_store_answers_the_plastic_home
+    @fixture.register("fresh", "path" => File.join(@fixture.home, "code", "fresh"))
+
+    resolved = scope(directory: File.join(@fixture.home, "code", "fresh"))
+
+    assert_equal "fresh", resolved.slug
+    assert_equal @fixture.plastic_home, resolved.root
+  end
+
+  def test_the_directory_project_is_resolved_once_and_remembered
+    resolved = scope(directory: File.join(@fixture.home, "code", "plastic"))
+
+    assert_equal "plastic", resolved.directory_project
+    assert_equal "plastic", resolved.directory_project
+  end
+
+  def test_a_directory_outside_every_repository_has_no_project
+    assert_nil scope.directory_project
+  end
+
+  def test_a_projects_row_that_is_not_a_mapping_is_ignored
+    @fixture.register("broken", "just a string")
+
+    assert_nil scope(directory: File.join(@fixture.home, "code", "broken")).directory_project
+  end
+
+  def test_a_projects_row_with_an_empty_path_is_ignored
+    @fixture.register("pathless", "path" => "")
+
+    assert_nil scope(directory: File.join(@fixture.home, "code", "pathless")).directory_project
+  end
+
+  def test_an_index_with_no_active_section_has_no_active_entries
+    File.write(File.join(@fixture.plastic_home, "INDEX.md"), "# Index\n\n## Completed\n\n")
+
+    assert_empty scope.active_entries
+  end
 end

@@ -135,4 +135,51 @@ class CrapTest < Minitest::Test
     assert_equal 2, Crap::CLI.new(["--since", "--coverage", "coverage/.resultset.json"], root: Dir.pwd, out: out).run
     assert_includes out.string, "Usage: bin/crap"
   end
+  # Intent 363 added these: they are the branches of the vendored tool that its
+  # own tests leave open, and the patch-coverage gate counts every line of a
+  # file on the commit that brings it in.
+  def test_an_empty_body_has_no_decisions
+    assert_equal 0, Crap.decisions(nil)
+  end
+
+  def test_a_resultset_written_as_a_bare_array_reads_the_same_as_a_hash
+    array_form = { "a" => { "coverage" => { "/x.rb" => [nil, 1, 0] } } }.to_json
+
+    assert_equal({ "/x.rb" => [nil, 1, 0] }, Crap.line_coverage(array_form))
+  end
+
+  def test_a_one_line_method_is_measured_on_that_line
+    found = { first_line: 2, last_line: 2 }
+
+    assert_in_delta 1.0, Crap.method_coverage(found, [nil, 4, nil])
+  end
+
+  def test_a_method_with_no_measurable_line_counts_as_covered
+    found = { first_line: 1, last_line: 3 }
+
+    assert_in_delta 1.0, Crap.method_coverage(found, [nil, nil, nil])
+  end
+
+  def test_a_diff_hunk_with_no_count_marks_the_single_line_it_names
+    diff = "+++ b/lib/a.rb\n@@ -1 +7 @@\n+one\n"
+
+    assert_equal({ "lib/a.rb" => [7] }, Crap.changed_lines(diff))
+  end
+
+  def test_a_diff_hunk_with_a_zero_count_still_marks_its_start_line
+    diff = "+++ b/lib/a.rb\n@@ -1 +7,0 @@\n"
+
+    assert_equal({ "lib/a.rb" => [7] }, Crap.changed_lines(diff))
+  end
+
+  def test_the_cli_globs_the_default_directories_when_no_path_is_given
+    Dir.mktmpdir("crap-default-paths") do |root|
+      FileUtils.mkdir_p(File.join(root, "lib"))
+      File.write(File.join(root, "lib", "a.rb"), "def a\n  1\nend\n")
+      out = StringIO.new
+
+      assert_equal 0, Crap::CLI.new([], root: root, out: out).run
+      assert_includes out.string, "#a"
+    end
+  end
 end

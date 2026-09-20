@@ -353,17 +353,17 @@ class InstallerCore
     end
   end
 
-# The command line (intent 363). Glob-derived for the reason screen_files is:
-# a command is one row in scripts/lib/cli/table.rb plus one file, and a
-# hand-written manifest would make it two files and a diff. The launcher
-# bin/plastic requires scripts/lib/cli.rb by a relative path, so the whole
-# subtree travels together or an installed copy LoadErrors on the first call.
-def cli_files
-  Dir.glob(File.join(package_root, "scripts", "lib", "cli", "**", "*.rb")).each_with_object({}) do |path, acc|
-    rel = path.sub("#{package_root}/", "")
-    acc[rel] = rel
+  # The command line (intent 363). Glob-derived for the reason screen_files is:
+  # a command is one row in scripts/lib/cli/table.rb plus one file, and a
+  # hand-written manifest would make it two files and a diff. The launcher
+  # bin/plastic requires scripts/lib/cli.rb by a relative path, so the whole
+  # subtree travels together or an installed copy LoadErrors on the first call.
+  def cli_files
+    Dir.glob(File.join(package_root, "scripts", "lib", "cli", "**", "*.rb")).each_with_object({}) do |path, acc|
+      rel = path.sub("#{package_root}/", "")
+      acc[rel] = rel
+    end
   end
-end
 
   # Files copied into ~/.plastic on install/update. Every verb script + the shared lib
   # must be here so the installed ~/.plastic/scripts copy is self-complete (sync-guarded
