@@ -1,0 +1,16 @@
+require:
+  - standard
+
+plugins:
+  - rubocop-minitest
+
+inherit_gem:
+  standard: config/base.yml
+
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 3.3
+  Exclude:
+    - "node_modules/**/*"
+    - "coverage/**/*"
+    - "tmp/**/*"

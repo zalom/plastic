@@ -1,0 +1,13 @@
+operators:
+  - arithmetic
+  - comparison
+  - boolean_connector
+  - boolean_literal
+  - statement_removal
+  - return_nil
+  - literal_mutation
+  - condition_negation
+  - string_literal
+  - regex
+  - collection_method
+threshold: 75

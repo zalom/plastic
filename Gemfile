@@ -8,4 +8,7 @@ group :development, :test do
   gem "rubycritic", "~> 4.12"
   gem "flog", "~> 4.9"
   gem "ostruct", "~> 0.6"
+  gem "standard", require: false
+  gem "rubocop-minitest", require: false
+  gem "varar-minitest", require: false
 end
