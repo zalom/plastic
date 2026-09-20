@@ -56,9 +56,10 @@ class InstallerCore
     `runner step`, `status`, `answer`). Do not jump straight to code.
 
     Standing rules:
-    - Core conventions live in ~/.plastic/PLASTIC.md. Read it and follow it exactly. For
-      depth, read a chapter from ~/.agents/skills/plastic-conventions/references/ on demand.
-      Both are generated and overwritten on Plastic updates, so never edit them.
+    - The command line is ~/.plastic/PLASTIC.md. Read it and follow it exactly. The
+      conventions live in ~/.agents/skills/plastic-conventions/, a chapter from its
+      references/ on demand. Both are generated and overwritten on Plastic updates,
+      so never edit them.
     - Operational procedures are installed as skills under ~/.agents/skills/ (each
       plastic-<name>/SKILL.md). Invoke one explicitly as $plastic-<name> (for example
       $plastic-doctor), or let Codex pick one implicitly by matching its description.
@@ -352,12 +353,24 @@ class InstallerCore
     end
   end
 
+# The command line (intent 363). Glob-derived for the reason screen_files is:
+# a command is one row in scripts/lib/cli/table.rb plus one file, and a
+# hand-written manifest would make it two files and a diff. The launcher
+# bin/plastic requires scripts/lib/cli.rb by a relative path, so the whole
+# subtree travels together or an installed copy LoadErrors on the first call.
+def cli_files
+  Dir.glob(File.join(package_root, "scripts", "lib", "cli", "**", "*.rb")).each_with_object({}) do |path, acc|
+    rel = path.sub("#{package_root}/", "")
+    acc[rel] = rel
+  end
+end
+
   # Files copied into ~/.plastic on install/update. Every verb script + the shared lib
   # must be here so the installed ~/.plastic/scripts copy is self-complete (sync-guarded
   # by install_sync_test). The templates and screen-kind halves are glob-derived
   # (template_files, screen_files above); the rest stays a hand-written literal.
   def core_files
-    hand_registered_files.merge(template_files).merge(hook_files).merge(screen_files)
+    hand_registered_files.merge(template_files).merge(hook_files).merge(screen_files).merge(cli_files)
   end
 
   def hand_registered_files
@@ -391,6 +404,9 @@ class InstallerCore
       "scripts/plastic-lock" => "scripts/plastic-lock",
       "scripts/lib/hook_registry.rb" => "scripts/lib/hook_registry.rb",
       "scripts/lib/compact_instructions.rb" => "scripts/lib/compact_instructions.rb",
+      "scripts/lib/version_number.rb" => "scripts/lib/version_number.rb",
+      "scripts/lib/cli.rb" => "scripts/lib/cli.rb",
+      "bin/plastic" => "bin/plastic",
       "scripts/agent-report" => "scripts/agent-report",
       "scripts/lib/insights.rb" => "scripts/lib/insights.rb",
       "scripts/insight-append" => "scripts/insight-append",

@@ -13,6 +13,12 @@ require_relative "../scripts/lib/installer_core"
 # them, no live script still reaches for it, and every library this node touched
 # still loads clean in a fresh subprocess.
 class BridgeRetiredTest < Minitest::Test
+  # Intent 363 emptied PLASTIC.md of doctrine. It is now a one-page pointer at the
+  # `plastic` command line (ruling D43), so the content pins that used to live here
+  # were deleted rather than rewritten. The doctrine they guarded is still in the
+  # conventions skill and its reference chapters, which Batch 2 rehomes into the
+  # commands that need it.
+
   REPO = File.expand_path("..", __dir__)
 
   CHANGED_LIBS = %w[
@@ -96,13 +102,6 @@ class BridgeRetiredTest < Minitest::Test
       end
     end
     assert_empty offenders, "still names the retired session pointer: #{offenders.join(', ')}"
-  end
-
-  def test_plastic_md_tmp_layout_lists_heartbeat_only
-    line = File.readlines(File.join(REPO, "PLASTIC.md")).find { |l| l.include?("store/.tmp/<session>/") }
-    refute_nil line, "PLASTIC.md no longer documents the store/.tmp/<session>/ layout line"
-    assert_includes line, "heartbeat", "PLASTIC.md's .tmp/ layout line drops heartbeat: #{line}"
-    refute_includes line, "current", "PLASTIC.md's .tmp/ layout line still lists current: #{line}"
   end
 
   def test_locks_chapter_names_the_delivery_lock_as_the_answer

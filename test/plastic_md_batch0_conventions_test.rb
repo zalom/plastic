@@ -11,6 +11,12 @@ require "minitest/autorun"
 # is wrapped. Two of the four moved to their conventions chapter in 223; two stay
 # in core.
 class PlasticMdBatch0ConventionsTest < Minitest::Test
+  # Intent 363 emptied PLASTIC.md of doctrine. It is now a one-page pointer at the
+  # `plastic` command line (ruling D43), so the content pins that used to live here
+  # were deleted rather than rewritten. The doctrine they guarded is still in the
+  # conventions skill and its reference chapters, which Batch 2 rehomes into the
+  # commands that need it.
+
   ROOT = File.expand_path("..", __dir__)
   PLASTIC_MD = File.join(ROOT, "PLASTIC.md")
   # The gates and dispatch chapters were removed in 2.0 (intent 304); the spawn-preamble
@@ -40,21 +46,6 @@ class PlasticMdBatch0ConventionsTest < Minitest::Test
 
   # --- 151: insight-append ships on every install and update ---------------
 
-  def test_plastic_md_states_insight_append_ships_every_install
-    assert_includes normalized_body,
-      "which ships with every install and update, formats the prefix, validates it, and appends at the bottom.",
-      "the insight-append paragraph must state the CLI ships with every install and update"
-  end
-
   # --- 154: new-intent style-preserving chain wiring + quoting -------------
 
-  def test_plastic_md_states_new_intent_quoting_and_chain_style
-    body = normalized_body
-    assert_includes body,
-      "`--intent` text is escaped for double quotes and backslashes before it lands in frontmatter",
-      "Rules for Skills rule 6 must state --intent text is safely escaped"
-    assert_includes body,
-      "a reciprocal `chain:` append preserves the target intent's existing flow- or block-style entries",
-      "Rules for Skills rule 6 must state chain wiring preserves flow- or block-style entries"
-  end
 end
