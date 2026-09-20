@@ -2292,10 +2292,23 @@ class DoctorIntegrationTest < Minitest::Test
     assert_equal result[:checks].size, summary[:total], "Summary total should match"
   end
 
+  # run_checks calls check_qmd with its default detector and runner, which query the
+  # machine's own qmd installation and its own index. The fixture store is never
+  # registered there, so the collections check warns on a healthy installation and the
+  # overall status turns on whatever the machine happens to have indexed. Reporting QMD
+  # as absent is the branch that says nothing about Plastic's health.
+  def without_qmd
+    original = QmdSync.method(:detect)
+    QmdSync.define_singleton_method(:detect) { |**| false }
+    yield
+  ensure
+    QmdSync.define_singleton_method(:detect, original)
+  end
+
   def test_healthy_installation_status_is_pass
     build_healthy_installation
 
-    result = doctor.run_checks("claude")
+    result = without_qmd { doctor.run_checks("claude") }
 
     assert_equal "pass", result[:status], "Healthy installation should have pass status, failures: #{
       result[:checks].reject { |c| c[:status] == "pass" }.map { |c| [c[:name], c[:status], c[:message]] }
