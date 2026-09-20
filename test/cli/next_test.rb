@@ -103,6 +103,8 @@ class CliNextTest < Minitest::Test
 
   def test_an_exhausted_roadmap_says_every_entry_is_delivered
     body = ROADMAP.gsub("— queued", "— delivered")
+    @fixture.project("plastic", active: [],
+                                completed: [["363", "The command line"], ["367", "The skill cut"]])
     @fixture.roadmap("plastic", "cli-and-rlm", body)
     next_command.run
 

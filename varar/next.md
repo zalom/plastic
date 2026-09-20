@@ -5,7 +5,7 @@
 
 Each row gives the roadmap, the exit code, the result and the reason:
 
-| roadmap      | exit | result                                      | because                                     |
+| roadmap      | exit | result                                      | reason                                      |
 | ------------ | ---: | ------------------------------------------- | ------------------------------------------- |
 | dispatchable |    0 | 363  in Batch 1 the command line foundation | 363 is first on the frontier of cli-and-rlm |
 | in flight    |    0 | 367  in Batch 1 the command line foundation | 367 is first on the frontier of cli-and-rlm |

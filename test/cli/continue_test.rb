@@ -37,29 +37,29 @@ class CliContinueTest < Minitest::Test
   def test_the_project_block_names_the_project_and_its_root
     continue("--project", "plastic").run
 
-    assert_equal "project   plastic", @fixture.printed.lines[0].chomp
-    assert_equal "root      #{File.join(@fixture.plastic_home, "projects", "plastic")}",
+    assert_equal "project  plastic", @fixture.printed.lines[0].chomp
+    assert_equal "root     #{File.join(@fixture.plastic_home, "projects", "plastic")}",
                  @fixture.printed.lines[1].chomp
   end
 
   def test_the_active_row_lists_every_active_intent_with_its_title
     continue("--project", "plastic").run
 
-    assert_includes @fixture.printed, "active    363  The command line"
-    assert_includes @fixture.printed, "          367  The skill cut"
+    assert_includes @fixture.printed, "active   363  The command line"
+    assert_includes @fixture.printed, "         367  The skill cut"
   end
 
   def test_the_roadmap_row_names_the_roadmap_and_its_frontier
     @fixture.roadmap("plastic", "cli-and-rlm", ROADMAP)
     continue("--project", "plastic").run
 
-    assert_includes @fixture.printed, "roadmap   cli-and-rlm  frontier Batch 1 the command line foundation"
+    assert_includes @fixture.printed, "roadmap  cli-and-rlm  frontier Batch 1 the command line foundation"
   end
 
   def test_a_project_with_no_roadmap_says_none
     continue("--project", "plastic").run
 
-    assert_includes @fixture.printed, "roadmap   none"
+    assert_includes @fixture.printed, "roadmap  none"
   end
 
   def test_a_project_with_no_roadmap_still_exits_zero
@@ -92,7 +92,7 @@ class CliContinueTest < Minitest::Test
   def test_the_working_directory_picks_the_project_without_a_flag
     continue(directory: File.join(@fixture.home, "code", "plastic")).run
 
-    assert_includes @fixture.printed, "project   plastic"
+    assert_includes @fixture.printed, "project  plastic"
   end
 
   def test_an_unknown_project_exits_with_the_usage_code

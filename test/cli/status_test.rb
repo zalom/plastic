@@ -26,16 +26,16 @@ class CliStatusTest < Minitest::Test
             .project("plastic", active: [["363", "The command line"], ["367", "The skill cut"]])
     status.run
 
-    assert_equal "global    1 active  41", @fixture.printed.lines[0].chomp
-    assert_equal "plastic   2 active  363, 367", @fixture.printed.lines[1].chomp
+    assert_equal "global   1 active  41", @fixture.printed.lines[0].chomp
+    assert_equal "plastic  2 active  363, 367", @fixture.printed.lines[1].chomp
   end
 
   def test_a_store_with_no_active_work_still_has_a_row
     @fixture.global_store(active: []).project("plastic", active: [])
     status.run
 
-    assert_includes @fixture.printed, "global    0 active"
-    assert_includes @fixture.printed, "plastic   0 active"
+    assert_includes @fixture.printed, "global   0 active"
+    assert_includes @fixture.printed, "plastic  0 active"
   end
 
   def test_a_store_whose_index_is_missing_is_listed_with_nothing_active
@@ -43,7 +43,7 @@ class CliStatusTest < Minitest::Test
     @fixture.drop_index("plastic")
     status.run
 
-    assert_includes @fixture.printed, "plastic   0 active"
+    assert_includes @fixture.printed, "plastic  0 active"
   end
 
   def test_the_working_directory_chooses_the_store_to_continue

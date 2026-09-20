@@ -4,7 +4,7 @@
   "description": "Intent-driven idea development system for AI coding agents",
   "type": "module",
   "bin": {
-    "plastic": "bin/plastic.js"
+    "plastic": "bin/plastic"
   },
   "engines": {
     "node": ">=18.0.0"

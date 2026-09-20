@@ -28,9 +28,11 @@ ROADMAPS = {
 steps do
   sensor("the roadmap, the exit code, the result and the reason") do |_state, row|
     Dir.mktmpdir("plastic-varar-next") do |dir|
+      intents = [["363", "The command line"], ["367", "The skill cut"]]
+      closed = row["roadmap"] == "delivered"
       fixture = CliFixture.new(dir)
         .global_store(active: [])
-        .project("plastic", active: [["363", "The command line"], ["367", "The skill cut"]])
+        .project("plastic", active: closed ? [] : intents, completed: closed ? intents : [])
       body = ROADMAPS.fetch(row["roadmap"])
       fixture.roadmap("plastic", "cli-and-rlm", body) if body
       code = Plastic::CLI::Commands::Next.new(["--project", "plastic"], directory: "/nowhere",
@@ -39,7 +41,7 @@ steps do
       row.merge(
         "exit" => code.to_s,
         "result" => lines.first.to_s.sub(/\Anext work\s+/, ""),
-        "because" => lines.find { |line| line.start_with?("because: ") }.to_s.sub("because: ", "")
+        "reason" => lines.find { |line| line.start_with?("because: ") }.to_s.sub("because: ", "")
       )
     end
   end
