@@ -15,8 +15,6 @@ module Plastic
 
         SOURCES = ["VERSION", "package.json"].freeze
 
-        private
-
         def call
           path, number = found
           raise Failure, "no VERSION file and no package.json under #{package_root}" unless number
@@ -25,6 +23,8 @@ module Plastic
           @output.row("source", path)
           @output.next_step("plastic status", because: "the command line works, so read the work next")
         end
+
+        private
 
         def found
           SOURCES.each do |name|

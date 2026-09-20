@@ -14,19 +14,19 @@ module Plastic
       class Next < Command
         USAGE_LINE = "plastic next [--why] [--project SLUG] [--json]"
 
-        private
-
-        def options(parser)
-          parser.on("--why") { @options[:why] = true }
-          parser.on("--project SLUG") { |slug| @options[:project] = slug }
-        end
-
         def call
           @output.row("next work", frontier.summary)
-          detail if @options[:why]
+          detail if options[:why]
           @output.next_step(frontier.next_step, because: frontier.because)
         rescue RoadmapSavepoint::MissingGroupingHeading => e
           raise Failure, e.message
+        end
+
+        private
+
+        def switches(parser)
+          parser.on("--why") { @options[:why] = true }
+          parser.on("--project SLUG") { |slug| @options[:project] = slug }
         end
 
         def detail

@@ -16,13 +16,13 @@ module Plastic
       class Status < Command
         USAGE_LINE = "plastic status [--json]"
 
-        private
-
         def call
           counted.each { |slug, ids| @output.row(slug, summary(ids)) }
           command, because = decision
           @output.next_step(command, because: because)
         end
+
+        private
 
         def counted
           @counted ||= scope.stores.to_h do |store|

@@ -18,7 +18,13 @@ module Plastic
     class Legacy
       DEFAULT_RUNNER = lambda do |path, arguments|
         system(RbConfig.ruby, path, *arguments)
-        $CHILD_STATUS.exitstatus || Command::FAILED
+        exit_code($CHILD_STATUS)
+      end
+
+      def self.exit_code(status)
+        return Command::OK if status.success?
+
+        status.exitstatus || Command::FAILED
       end
 
       def initialize(env:, runner: nil)

@@ -17,12 +17,6 @@ module Plastic
       class Continue < Command
         USAGE_LINE = "plastic continue [--project SLUG] [--json]"
 
-        private
-
-        def options(parser)
-          parser.on("--project SLUG") { |slug| @options[:project] = slug }
-        end
-
         def call
           @output.row("project", scope.slug)
           @output.row("root", scope.root)
@@ -32,6 +26,12 @@ module Plastic
           @output.next_step(command, because: because)
         rescue RoadmapSavepoint::MissingGroupingHeading => e
           raise Failure, e.message
+        end
+
+        private
+
+        def switches(parser)
+          parser.on("--project SLUG") { |slug| @options[:project] = slug }
         end
 
         def active

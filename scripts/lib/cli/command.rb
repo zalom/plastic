@@ -17,64 +17,69 @@ module Plastic
       Refusal = Class.new(StandardError)
       Failure = Class.new(StandardError)
 
+      def self.call(...)
+        command = new(...)
+        command.call
+        command.flush
+        OK
+      rescue OptionParser::ParseError, Scope::UnknownProject, Usage => e
+        command.output.usage(e.message, self::USAGE_LINE)
+        USAGE
+      rescue Refusal => e
+        command.output.refused(e.message)
+        REFUSED
+      rescue Failure => e
+        command.output.failed(e.message)
+        FAILED
+      end
+
+      attr_reader :output
+
       def initialize(argv, out:, err:, env: ENV, home: Dir.home, directory: Dir.pwd)
         @argv = argv.dup
         @env = env
         @home = home
         @directory = directory
-        @options = {}
         @output = Output.new(out: out, err: err)
       end
-
-      def run
-        parse
-        return help if @options[:help]
-
-        call
-        @output.flush(json: @options[:json])
-        OK
-      rescue OptionParser::ParseError, Scope::UnknownProject, Usage => e
-        @output.usage(e.message, self.class::USAGE_LINE)
-        USAGE
-      rescue Refusal => e
-        @output.refused(e.message)
-        REFUSED
-      rescue Failure => e
-        @output.failed(e.message)
-        FAILED
-      end
-
-      private
 
       def call
         raise NoMethodError, "#{self.class} must define call"
       end
 
-      def parse
-        parser.parse!(@argv)
+      def flush
+        @output.flush(json: options[:json])
       end
 
-      def help
-        @output.row("usage", self.class::USAGE_LINE)
-        @output.flush(json: @options[:json])
-        OK
+      private
+
+      def options
+        return @options if @options
+
+        @options = {}
+        parser.parse!(@argv)
+        @options
+      end
+
+      def arguments
+        options
+        @argv
       end
 
       def parser
         @parser ||= OptionParser.new do |o|
           o.banner = self.class::USAGE_LINE
           o.on("--json") { @options[:json] = true }
-          o.on("-h", "--help") { @options[:help] = true }
-          options(o)
+          switches(o)
         end
       end
 
-      def options(_parser)
+      def switches(_parser)
         nil
       end
 
       def scope
-        @scope ||= Scope.new(env: @env, home: @home, slug: @options[:project], directory: @directory)
+        @scope ||= Scope.new(env: @env, home: @home, slug: options[:project], directory: @directory)
       end
     end
   end

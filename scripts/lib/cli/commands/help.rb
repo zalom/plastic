@@ -13,15 +13,15 @@ module Plastic
       class Help < Command
         USAGE_LINE = "plastic help [COMMAND] [--json]"
 
-        private
-
         def call
-          return one_command(@argv.join(" ")) unless @argv.empty?
+          return one_command(arguments.join(" ")) unless arguments.empty?
 
           @output.row("usage", "plastic <command> [options]")
           TABLE.sort.each { |name, (_file, _const, summary)| @output.row(name, summary) }
           @output.next_step("plastic status", because: "it needs no argument and names the rest")
         end
+
+        private
 
         def one_command(name)
           file, const, summary = TABLE.fetch(name) { raise Usage, "no command named #{name.inspect}" }

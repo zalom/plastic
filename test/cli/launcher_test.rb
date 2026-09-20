@@ -80,7 +80,7 @@ class CliLauncherTest < Minitest::Test
 
   def test_the_launcher_loads_only_the_command_it_runs
     script = "require #{File.join(ROOT, "scripts", "lib", "cli").inspect}\n" \
-             "Plastic::CLI.new(['version'], out: StringIO.new, err: StringIO.new).run\n" \
+             "Plastic::CLI.call(['version'], out: StringIO.new, err: StringIO.new)\n" \
              "puts $LOADED_FEATURES.grep(%r{/cli/commands/}).map { |f| File.basename(f) }.sort.join(',')\n"
     out, err, status = Open3.capture3(@env, "ruby", "--disable-gems", "-rstringio", "-e", script)
 

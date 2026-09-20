@@ -13,21 +13,21 @@ module Plastic
           @runner = runner
         end
 
-        private
-
         def call
-          status = legacy.run(self.class::SCRIPT, *@argv)
+          status = legacy.run(self.class::SCRIPT, *arguments)
           raise Failure, "#{self.class::SCRIPT} exited #{status}" unless status.zero?
 
           @output.next_step(self.class::AFTER, because: self.class::BECAUSE)
         end
 
-        def legacy
-          @legacy ||= Legacy.new(env: @env, runner: @runner)
+        private
+
+        def options
+          @options ||= {}
         end
 
-        def parse
-          nil
+        def legacy
+          @legacy ||= Legacy.new(env: @env, runner: @runner)
         end
       end
     end
