@@ -19,14 +19,12 @@ class Harness310Test < Minitest::Test
     assert_empty missing, "registered at the package root but not in package.json files: #{missing.inspect}"
   end
 
-  def test_install_verb_and_skill_carry_no_dead_channel_flag
+  def test_install_verb_carries_no_dead_channel_flag
     install = File.read(File.join(REPO, "scripts", "install.rb"))
-    skill = File.read(File.join(REPO, "skills", "install", "SKILL.md"))
     %w[--alpha --beta --latest].each do |flag|
       refute_includes install, flag, "install.rb still advertises #{flag} (dead since 2.0, intent 310)"
-      refute_match(/\| `#{flag}` \|/, skill, "the install skill still tables #{flag}")
     end
-    assert_match(/@zalom\/plastic@alpha install/, skill, "the skill names the pinned alpha install")
+    assert_match(/@zalom\/plastic@alpha install/, File.read(File.join(REPO, "INSTALL.md")))
     refute_match(/def channel_from/, File.read(File.join(REPO, "scripts", "lib", "installer_core.rb")))
   end
 

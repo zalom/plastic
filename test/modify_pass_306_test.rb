@@ -19,7 +19,7 @@ class ModifyPass306Test < Minitest::Test
     plastic_core_budget_test plastic_md_batch0_conventions_test hook_registry_test install_hooks_test
     install_codex_hooks_test codex_hooks_test install_packaging_test codex_install_test
     codex_install_content_test installer_core_test install_sync_test installer_agent_models_test
-    harness_support_docs_test harness_invocation_docs_test harness_text_test harness_adapters_doc_test
+    harness_support_docs_test harness_text_test harness_adapters_doc_test
     session_start_test savepoint_ledger_test savepoint_phantom_test scaffold_intent_test end_intent_test
     end_intent_disarm_toctou_test end_intent_worktree_guard_test new_intent_test exec_worktree_test
     doctor_test doctor_core_test doctor_core_split_test doctor_revisions_remedy_test insights_test
