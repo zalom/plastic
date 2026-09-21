@@ -108,11 +108,14 @@ class CodexInstallContentTest < Minitest::Test
     refute_includes auto_skill, "CLAUDE_PLUGIN_ROOT"
   end
 
-  def test_claude_roots_are_rewritten
-    dashboard_skill = File.read(File.join(@skills_root, "plastic-dashboard", "SKILL.md"))
-
-    assert_includes dashboard_skill, "~/.agents/skills/plastic-dashboard/templates/"
-  end
+  # test_claude_roots_are_rewritten was retired by intent 372 (family 3): it read
+  # the installed plastic-dashboard/SKILL.md for a ~/.claude/skills/ path this
+  # rewrite turns into ~/.agents/skills/. That skill is gone (its board and
+  # ranking rules moved into `plastic status`), and no other file the kept
+  # skills install still carries a real ~/.claude root to rewrite. The mechanism
+  # itself stays covered at the unit level by harness_text_test.rb's
+  # test_rule_order_pinned, which needs no real dashboard data from the shipped
+  # tree.
 
   # test_near_miss_paths_survive_untouched was retired by intent 372 (family 4): it
   # read the installed plastic-auto/SKILL.md for the relative path

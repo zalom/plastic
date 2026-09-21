@@ -530,26 +530,12 @@ class DashboardTest < Minitest::Test
     end
   end
 
-  def test_project_markdown_mechanical_fill_renders_five_active_columns_and_values
-    with_lock_visibility_fixture do
-      out, = run_dash("project", "demo", "--data")
-      data = JSON.parse(out)
-      template = File.read(File.expand_path("../skills/dashboard/templates/dashboard-project.md", __dir__))
-      rows = data["active"].map do |row|
-        "| #{row['id']} | #{row['what']} | #{row['stage']} | #{row['worker']} | #{row['activity']} |"
-      end.join("\n")
-      markdown = template.gsub("{{slug}}", data["slug"])
-                         .gsub("{{date}}", data["date"])
-                         .gsub("{{summary}}", data["summary"])
-                         .gsub("{{active.rows}}", rows)
-      assert_includes markdown, "| Graph ID | Intent | Stage | Worker | Activity |"
-      assert_includes markdown, "| c | Claude enriched | Exec | plastic-enforcer · Claude | Fresh · writer writer-session |"
-      assert_includes markdown, "| x | Codex enriched | How | plastic-executor · Codex | Fresh |"
-      markdown.lines.grep(/^\| [cxl] \|/).each do |line|
-        assert_equal 6, line.count("|"), "expected exactly five Markdown cells: #{line.inspect}"
-      end
-    end
-  end
+  # test_project_markdown_mechanical_fill_renders_five_active_columns_and_values was retired
+  # by intent 372 (family 3): it filled skills/dashboard/templates/dashboard-project.md by
+  # hand from --data JSON, the mechanical-fill recipe the dashboard skill's prose instructed
+  # an agent to follow. That skill is gone (the board and ranking rules moved into `plastic
+  # status`, which renders directly, no hand fill), and the five-column shape it checked stays
+  # covered by the --plain and --data assertions elsewhere in this file.
 
   def test_project_render_uses_one_fixed_clock_at_the_ttl_boundary
     fixed_now = Time.utc(2026, 7, 14, 12, 0, 0)
@@ -599,29 +585,12 @@ class DashboardTest < Minitest::Test
     end
   end
 
-  def test_project_markdown_template_has_worker_and_activity_columns
-    template = File.read(File.expand_path("../skills/dashboard/templates/dashboard-project.md", __dir__))
-    assert_includes template, "| Graph ID | Intent | Stage | Worker | Activity |"
-    assert_includes template, "| --- | --- | --- | --- | --- |"
-
-    contract = File.read(File.expand_path("../skills/dashboard/SKILL.md", __dir__))
-    assert_includes contract, "| {id} | {what} | {stage} | {worker} | {activity} |"
-    assert_includes contract, "| _(none)_ | | | |"
-  end
-
-  # --- F29 (intent 331f, R1): neither board template heads an id column "Id" or a title
-  # column "What" any more - the owner ruled on column names, not on painting.
-
-  def test_dashboard_board_templates_use_graph_id_and_intent
-    project_template = File.read(File.expand_path("../skills/dashboard/templates/dashboard-project.md", __dir__))
-    global_template = File.read(File.expand_path("../skills/dashboard/templates/dashboard-global.md", __dir__))
-
-    refute_match(/\|\s*Id\s*\|\s*What\s*\|/, project_template)
-    refute_match(/\|\s*Id\s*\|\s*What\s*\|/, global_template)
-    assert_includes project_template, "| Graph ID | Intent | Stage | Worker | Activity |"
-    assert_includes project_template, "| Graph ID | Intent | Value | Disposition | Flags |"
-    assert_includes global_template, "| Graph ID | Intent | Value | Disposition | Flags |"
-  end
+  # test_project_markdown_template_has_worker_and_activity_columns and
+  # test_dashboard_board_templates_use_graph_id_and_intent (F29, intent 331f R1) were retired
+  # by intent 372 (family 3): both read skills/dashboard/templates/*.md and skills/dashboard/
+  # SKILL.md directly, the prose board and its fill rules the disposition dropped outright.
+  # `plastic status` never renders these templates; the column shape it prints stays covered
+  # by the --plain and --data assertions elsewhere in this file.
 
   def test_cell_escapes_pipe_in_intent
     rec = { id: "99", intent: "left | right\nmid", scope: "project:demo", lifecycle: "what",

@@ -38,8 +38,7 @@ class Subtraction304Test < Minitest::Test
   ].freeze
 
   KEPT_SKILL_DIRS = %w[
-    agent-advisor auto dashboard direct
-    project-creating releasing roadmap
+    agent-advisor auto direct releasing
   ].freeze
 
   KEPT_AGENTS = %w[plastic-enforcer.md plastic-executor.md plastic-node-research.md
@@ -80,7 +79,7 @@ class Subtraction304Test < Minitest::Test
     "scripts/agent-report" => "Tier B/C",
     "scripts/update.rb" => "fast core tier",
     "scripts/link-suggest" => "Tiers, by context influence",
-    "skills/roadmap/SKILL.md" => "global tier",
+    "docs/help/roadmaps.md" => "global tier",
   }.freeze
 
   def test_removed_files_are_gone_and_the_plastic_authoring_doc_is_present

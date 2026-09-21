@@ -165,32 +165,21 @@ class ReportScreenSkillContractTest < Minitest::Test
   # 372 (family 2): `plastic intent end` and `plastic intent spec` are commands now, not
   # skill prose, so there is no SKILL.md text left for these to read.
 
-  # F10
-  def test_roadmap_skill_prints_roadmap_screens
-    text = read("skills/roadmap/SKILL.md")
-    assert_includes text, "report-screen roadmap <roadmap.md> plan"
-    assert_includes text, "report-screen roadmap <roadmap.md> state"
-    assert_includes text, "report-screen roadmap <roadmap.md> delivered"
-  end
-
-  # F11
-  def test_dashboard_skill_prints_screen
-    text = read("skills/dashboard/SKILL.md")
-    assert_includes text, "default surface on every invocation"
-    assert_includes text, "dashboard.rb project <slug> --screen"
-  end
+  # F10/F11 (test_roadmap_skill_prints_roadmap_screens, test_dashboard_skill_prints_screen)
+  # were retired by intent 372 (family 3): `plastic roadmap show` and `plastic status` run
+  # report-screen and the dashboard board directly now, not skill prose, so there is no
+  # SKILL.md text left for these to read.
 
   # F12 (test_executing_prints_state) was retired by intent 341 (G8, n1): the runner-driven
   # executing skill no longer prints report-screen state itself; the lead does, from the auto
   # skill's How/Exec/Completion steps.
 
   # skills/intent-continuing/SKILL.md, skills/intent-ending/SKILL.md and
-  # skills/intent-speccing/SKILL.md dropped by intent 372 (family 2): all three moved into
+  # skills/intent-speccing/SKILL.md dropped by intent 372 (family 2); skills/roadmap/SKILL.md
+  # and skills/dashboard/SKILL.md dropped by intent 372 (family 3): all five moved into
   # commands; their files are gone.
   BOUND_SKILL_FILES = %w[
     skills/auto/SKILL.md
-    skills/roadmap/SKILL.md
-    skills/dashboard/SKILL.md
   ].freeze
 
   # F13
