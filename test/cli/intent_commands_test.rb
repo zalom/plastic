@@ -283,10 +283,10 @@ class CliIntentCommandsTest < Minitest::Test
     assert_equal 1, run_cli("intent", "show", "999")
   end
 
-  def test_an_unknown_intent_id_prints_a_next_line
+  def test_an_unknown_intent_id_names_plastic_status
     run_cli("intent", "show", "999")
 
-    assert_includes @fixture.printed, "next: plastic status"
+    assert_includes @fixture.warned, "plastic status lists the ones that exist"
   end
 
   def test_an_unknown_intent_id_never_runs_a_script

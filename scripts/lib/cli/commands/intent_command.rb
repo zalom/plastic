@@ -9,40 +9,13 @@ require_relative "../legacy"
 # subclass names, and prints the `next:`/`because:` trailer the plan calls
 # for. A subcommand that needs more than that (extra usage checks, printed
 # guidance, a different script-exit contract) overrides `call`.
-#
-# An id that resolves to no intent directory answers `NotFound` (a `Failure`
-# a caller can tell apart): the row and the next: line are already on the
-# output stream before it raises, so the reply reads like an ordinary
-# command that found nothing rather than a crash - `plastic: <message>`
-# alone.
 module Plastic
   class CLI
     module Commands
       class IntentCommand < Command
-        NotFound = Class.new(Failure)
-
         def initialize(argv, runner: nil, **streams)
           super(argv, **streams)
           @runner = runner
-        end
-
-        def self.call(...)
-          command = new(...)
-          command.call
-          command.flush
-          OK
-        rescue OptionParser::ParseError, Scope::UnknownProject, Usage => e
-          command.output.usage(e.message, self::USAGE_LINE)
-          USAGE
-        rescue NotFound
-          command.flush
-          FAILED
-        rescue Refusal => e
-          command.output.refused(e.message)
-          REFUSED
-        rescue Failure => e
-          command.output.failed(e.message)
-          FAILED
         end
 
         def call
@@ -64,9 +37,7 @@ module Plastic
           @intent_dir = scope.intent_dir(id)
           return @intent_dir if @intent_dir
 
-          @output.row("intent", "no intent named #{id.inspect} in #{scope.slug}")
-          @output.next_step("plastic status", because: "the id does not exist, so status can find what does")
-          raise NotFound, "no intent named #{id.inspect}"
+          raise Failure, "no intent #{id.inspect} in #{scope.slug}; plastic status lists the ones that exist"
         end
 
         def legacy
