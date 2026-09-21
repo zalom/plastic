@@ -252,7 +252,7 @@ plastic version                       # The installed version
 
 ### Help and feedback
 ```bash
-plastic help                          # Every command and help topic
+plastic help                          # All commands and help topics
 plastic help intent end               # The usage line of one command
 plastic help roadmaps                 # One help topic
 plastic feedback "TITLE" < report.md  # Save a problem report and print a link that files it
