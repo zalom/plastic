@@ -16,6 +16,8 @@
 | `plastic rollback [--version VERSION]` | Moves to a Plastic version this machine has run before. |
 | `plastic uninstall [--claude] [--codex] [--hermes] [--all]` | Removes Plastic from this machine's agents. |
 | `plastic intent new`, `show`, `spec`, `rule`, `note`, `step`, `answer`, `verify`, `end` | Carries one intent from its first line to its close. See [Intent commands](intent-commands.md). |
+| `plastic project list`, `new`, `links` | Registers projects and lists the stores. See [Project and roadmap commands](project-and-roadmap-commands.md). |
+| `plastic roadmap next`, `show`, `log`, `check` | Reads a roadmap and appends to its ledger. See [Project and roadmap commands](project-and-roadmap-commands.md). |
 
 ## Commands that are planned
 
@@ -30,8 +32,7 @@ These commands do not exist yet. The batch numbers come from the CLI and RLM roa
 ## What stays with the agent
 
 The commands print the state and the rules. The judgment stays with the agent: what the
-intent is for, what the specification says, and whether the work is done. The auto team, the
-dashboard and the roadmap still run as Plastic skills. Intent 372 moves them to
-commands, one family at a time.
+intent is for, what the specification says, and whether the work is done. The auto team still
+runs as a Plastic skill. Intent 372 moves it to commands.
 
 Plastic ships no release command. The repository publishes from its branches.
