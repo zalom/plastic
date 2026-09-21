@@ -100,8 +100,8 @@ sections you turned into the condition above.
 
 No command run here; describe the step instead. Each delivered intent's code merges to main
 as it lands. When the batch (or a meaningful slice of it) is ready to ship, cutting a release
-runs through `/plastic-releasing`, which merges, bumps the version, tags, and completes the
-intents it collects.
+is a push to `alpha`, `beta`, or `main`: the version files are bumped in that push, and CI
+tags, publishes, and completes the intents it collects.
 
 Releases and any npm publish step are described here, not run: this walkthrough stays in a
 sandbox and never touches a real package registry.

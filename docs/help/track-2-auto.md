@@ -20,7 +20,7 @@ track touches a real project.
 ### 1. Board a small intent and choose auto
 
 Start from an active intent (create one first with `plastic intent new` if none
-exists, the same way as track 1 station 1). Type `/plastic-auto`.
+exists, the same way as track 1 station 1). Run `plastic auto take ID`.
 
 Artifact: the delivery lock arms, and the agent announces it is taking over the intent for
 autonomous delivery.
