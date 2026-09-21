@@ -23,7 +23,8 @@ class CliHelpTest < Minitest::Test
   def test_the_command_list_opens_with_the_usage_line
     help
 
-    assert_equal "usage      plastic <command> [options]", @out.string.lines.first.chomp
+    assert_equal "usage".ljust(Plastic::CLI::TABLE.keys.map(&:length).max + 2) + "plastic <command> [options]",
+      @out.string.lines.first.chomp
   end
 
   def test_the_command_list_names_every_command_in_the_table
@@ -67,7 +68,7 @@ class CliHelpTest < Minitest::Test
   def test_several_words_are_joined_into_one_grouped_command_name
     help("intent", "new")
 
-    assert_includes @err.string, "intent new"
+    assert_includes @out.string, Plastic::CLI::Commands::IntentNew::USAGE_LINE
   end
 
   def test_an_unknown_command_exits_with_the_usage_code
