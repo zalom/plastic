@@ -14,6 +14,7 @@
 #
 # Usage: hook-stop <plastic_home>   (stdin: the hook JSON)
 
+require_relative "lib/store_layout"
 require "json"
 require_relative "lib/stop_gate"
 
@@ -32,7 +33,7 @@ begin
   payload = {} unless payload.is_a?(Hash)
 
   home = File.expand_path(plastic_home)
-  global_store = File.join(home, "store")
+  global_store = Plastic::StoreLayout.global_store(home)
   read_config = File.expand_path("read-config", __dir__)
 
   config_stop_hook = read_config_value("runner.stop_hook", home, read_config)

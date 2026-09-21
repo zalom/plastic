@@ -8,6 +8,7 @@
 # out. Dependency injection for anything reaching outside the fixture: the
 # clock is passed as `now:`, git tag reading as `tag_reader:`, and the ANSI
 # renderer path as `renderer_path:` (D2).
+require_relative "store_layout"
 require "time"
 require "json"
 require "date"
@@ -805,14 +806,14 @@ def self.matching_action_heading(intent_dir, label)
   # (<home>/projects/<slug>/store/<id--slug>); nil otherwise (a global-store
   # intent, a project with no `flow:` key, or malformed YAML). Pure: no git,
   # no shell-out, just the one file this intent's own layout already reads.
-  PROJECT_LAYOUT_RE = %r{\A(.*)/projects/([^/]+)/store/[^/]+\z}.freeze
+  PROJECT_LAYOUT_RE = %r{\A(.*)/(?:projects|stores)/([^/]+)/store/[^/]+\z}.freeze
 
   def self.flow_base(intent_dir)
     m = intent_dir.to_s.match(PROJECT_LAYOUT_RE)
     return nil unless m
 
     home, slug = m[1], m[2]
-    path = File.join(home, "projects", slug, "project.yml")
+    path = File.join(Plastic::StoreLayout.project_root(home, slug), "project.yml")
     return nil unless File.exist?(path)
 
     require "yaml"
@@ -1480,7 +1481,7 @@ def self.matching_action_heading(intent_dir, label)
 
   # D5: "global" is <home> itself; any other slug is <home>/projects/<slug>.
   def self.store_for_slug(home, slug)
-    slug == "global" ? home : File.join(home, "projects", slug)
+    slug == "global" ? home : Plastic::StoreLayout.project_root(home, slug)
   end
 
   # D4: the newest valid day directory that is not in the future, when

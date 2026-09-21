@@ -38,6 +38,7 @@
 # file; that path was retired in 2.0 (intent 307) and 344 G11.
 # Exit 0 on success/report; exit 1 when the verb is blocked.
 
+require_relative "lib/store_layout"
 require "json"
 require "yaml"
 require_relative "lib/lock"
@@ -96,7 +97,7 @@ if dir.nil? || dir.strip.empty?
     exit 1
   end
   roots = ActiveDelivery.project_roots(plastic_home)
-  global_store = File.join(plastic_home, "store")
+  global_store = Plastic::StoreLayout.global_store(plastic_home)
   dir = ActiveDelivery.resolve(global_store: global_store, project_roots: roots, session: session)
   if dir.nil?
     candidates = ActiveDelivery.candidate_intent_dirs(global_store: global_store, project_roots: roots).uniq
@@ -188,7 +189,7 @@ when "arm"
   end
 when "status"
   lock = Lock.read(dir)
-  resolved = ActiveDelivery.resolve(global_store: File.join(plastic_home, "store"),
+  resolved = ActiveDelivery.resolve(global_store: Plastic::StoreLayout.global_store(plastic_home),
                                     project_roots: ActiveDelivery.project_roots(plastic_home),
                                     session: key)
   delivering = !resolved.nil? && File.expand_path(resolved) == File.expand_path(dir)

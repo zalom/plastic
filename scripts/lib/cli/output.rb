@@ -43,6 +43,11 @@ module Plastic
         self
       end
 
+      def raw(text)
+        @out.puts text
+        self
+      end
+
       def usage(message, banner)
         @err.puts "plastic: #{message}"
         @err.puts banner

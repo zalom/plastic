@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require_relative "worktree"
 require_relative "index_entry"
 
@@ -55,8 +56,8 @@ module WorktreeSweep
   # Matching on the full name, not just the numeric id, sidesteps id
   # collisions across projects (ids are only unique WITHIN one store).
   def resolve_intent_dir(plastic_home, name)
-    candidates = [File.join(plastic_home, "store", name)] +
-                 Dir.glob(File.join(plastic_home, "projects", "*", "store", name))
+    candidates = [File.join(Plastic::StoreLayout.global_store(plastic_home), name)] +
+                 Dir.glob(File.join(Plastic::StoreLayout.projects_root(plastic_home), "*", "store", name))
     candidates.find { |d| Dir.exist?(d) }
   end
 

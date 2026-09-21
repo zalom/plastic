@@ -3,6 +3,7 @@
 # Usage: hook-session-start <index_path> <plastic_home> <mode> [plugin_root]
 # Outputs hook JSON for the session-start hook. Exits silently if nothing to show.
 
+require_relative "lib/store_layout"
 require "json"
 require "date"
 require "yaml"
@@ -58,7 +59,7 @@ end
 # home (~/.plastic) as argument 2; the store lives one level below it. Compose the
 # store exactly once here, so no later line re-derives it and no path can gain a
 # doubled store/ segment.
-store_dir = File.join(plastic_home, "store")
+store_dir = Plastic::StoreLayout.global_store(plastic_home)
 
 # --- Current version ---
 # Read early, before any of the richer INDEX/project parsing below, so the
@@ -154,7 +155,7 @@ begin
       project_path = File.expand_path(info["path"])
       if cwd.start_with?(project_path)
         current_project = { "slug" => slug, "parent" => info["parent"], "path" => project_path }
-        project_index = "#{plastic_home}/projects/#{slug}/INDEX.md"
+        project_index = File.join(Plastic::StoreLayout.project_root(plastic_home, slug), "INDEX.md")
         if File.exist?(project_index)
           p_section = nil
           File.readlines(project_index).each do |pline|
@@ -291,7 +292,7 @@ begin
   if plastic_md && !subagent_session
     if current_project
       slug = current_project["slug"]
-      banner = "Project: #{slug} | Store: ~/.plastic/projects/#{slug}/store/"
+      banner = "Project: #{slug} | Store: #{File.join(Plastic::StoreLayout.project_root(plastic_home, slug), "store").sub(Dir.home, "~")}/"
       if project_active.any? && project_active.first =~ /\[([^\]]+)\].*store\/([\w-]+)\//
         intent_name, dir_name = $1, $2
         intent_id = dir_name.split("--").first

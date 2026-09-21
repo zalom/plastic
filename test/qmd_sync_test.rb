@@ -291,4 +291,11 @@ class QmdSyncTest < Minitest::Test
     assert_equal ["plastic-dealintell", "plastic-global"], cols
   end
 
+  def test_collection_name_for_a_store_that_is_not_registered
+    assert_equal "plastic-ghost",
+      QmdSync.collection_name(File.join(@home, "projects", "ghost", "store"), plastic_home: @home)
+    assert_equal "plastic-thing",
+      QmdSync.collection_name(File.join(@home, "elsewhere", "thing", "store"), plastic_home: @home)
+  end
+
 end

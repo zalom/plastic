@@ -68,6 +68,7 @@
 #   7  hollow delivered report refused (317a D7) - intent 308's one deliberate
 #      exception to report-and-proceed; --allow-hollow-report overrides.
 
+require_relative "lib/store_layout"
 require "fileutils"
 require "date"
 require "open3"
@@ -170,14 +171,7 @@ end
 # "projects" (the StoreDiscovery convention, scripts/lib/store_discovery.rb), never by
 # hardcoding ".plastic" as a name.
 def resolve_plastic_home_and_scope(store)
-  parent = File.dirname(store)
-  grandparent = File.dirname(parent)
-  if File.basename(grandparent) == "projects"
-    slug = File.basename(parent)
-    [File.dirname(grandparent), "project:#{slug}"]
-  else
-    [parent, "global"]
-  end
+  Plastic::StoreLayout.home_and_scope(store)
 end
 
 # --- outcome generation, before the backfill (intent 339, G6, spec D10) -----

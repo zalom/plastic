@@ -23,8 +23,6 @@ module Plastic
           @output.next_step("plastic status", because: "the command line works, so read the work next")
         end
 
-        private
-
         def found
           SOURCES.each do |name|
             path = File.join(package_root, name)
@@ -33,6 +31,8 @@ module Plastic
           end
           [nil, nil]
         end
+
+        private
 
         def read(path)
           return nil unless File.file?(path)

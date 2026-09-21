@@ -35,6 +35,7 @@
 # exactly one line, `created <dir>` or `joined <dir>`; exit 0 either way,
 # exit 1 on bad input or failed self-validation.
 
+require_relative "lib/store_layout"
 require "fileutils"
 require "date"
 require_relative "lib/savepoint"
@@ -167,17 +168,7 @@ end
 # [nil, "global"] only if the layout is unrecognized, in which case Links
 # projection falls back to single-store resolution rooted at this store.
 def store_context(store)
-  store = File.expand_path(store)
-  parent = File.dirname(store)               # `<home>` or `<home>/projects/<slug>`
-  if File.basename(store) == "store" && File.basename(File.dirname(parent)) == "projects"
-    slug = File.basename(parent)
-    home = File.dirname(File.dirname(parent)) # strip projects/<slug>
-    [home, "project:#{slug}"]
-  elsif File.basename(store) == "store"
-    [parent, "global"]                        # `<home>/store`
-  else
-    [parent, "global"]
-  end
+  Plastic::StoreLayout.home_and_scope(store)
 end
 
 # The in-scope stores under `plastic_home`, each { key:, store: }. Delegates to
@@ -283,7 +274,7 @@ def run_tmp(opts)
   abort "new-intent: --sources is not valid with --tmp" unless opts[:sources].empty?
   abort "new-intent: --tags is not valid with --tmp" unless opts[:tags].empty?
 
-  store = opts[:store] ? expand(opts[:store]) : expand(File.join(ENV.fetch("PLASTIC_HOME", "~/.plastic"), "store"))
+  store = opts[:store] ? expand(opts[:store]) : Plastic::StoreLayout.global_store(expand(ENV.fetch("PLASTIC_HOME", "~/.plastic")))
   templates = opts[:templates] ? expand(opts[:templates]) : default_templates_dir
   abort "new-intent: templates dir not found: #{templates}" unless Dir.exist?(templates)
 

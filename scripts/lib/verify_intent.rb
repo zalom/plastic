@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require_relative "worktree"
 require_relative "scaffold_intent"
 
@@ -96,13 +97,7 @@ module VerifyIntent
   # shapes are told apart by whether store's grandparent is literally named "projects" (the
   # StoreDiscovery convention), never by hardcoding ".plastic" as a name.
   def resolve_plastic_home_and_scope(store)
-    parent = File.dirname(store)
-    grandparent = File.dirname(parent)
-    if File.basename(grandparent) == "projects"
-      [File.dirname(grandparent), "project:#{File.basename(parent)}"]
-    else
-      [parent, "global"]
-    end
+    Plastic::StoreLayout.home_and_scope(store)
   end
 
   # --- check 1: doctor, scoped to the intent --------------------------------------

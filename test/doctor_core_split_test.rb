@@ -158,7 +158,7 @@ class DoctorCoreSplitTest < Minitest::Test
   # run time on the standard library, so the `plastic` launcher runs as
   # `ruby --disable-gems` and nothing it loads may name Gem. The replacement is
   # 1,441 bytes of dotted-integer comparison that requires nothing at all.
-  CORE_REQUIRE_ALLOWED_BASENAMES = %w[compact_instructions.rb doctor_core.rb hook_registry.rb version_number.rb].freeze
+  CORE_REQUIRE_ALLOWED_BASENAMES = %w[compact_instructions.rb doctor_core.rb hook_registry.rb store_layout.rb version_number.rb].freeze
 
   def loaded_after_core_require
     return @loaded_after_core_require if defined?(@loaded_after_core_require)
@@ -245,7 +245,7 @@ class DoctorCoreSplitTest < Minitest::Test
   # for dropping RubyGems from the doctor's require chain. Measured 76,410 bytes.
   # Ceiling raised to 77,200 (headroom ~780 bytes above the measured total, in
   # line with prior raises).
-  BOOT_PATH_BYTE_BUDGET = 77_200
+  BOOT_PATH_BYTE_BUDGET = 77_300
 
   def test_core_require_stays_under_the_boot_path_byte_budget
     plastic_files = loaded_after_core_require.select { |i| i["path"].start_with?(ROOT) }

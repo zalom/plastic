@@ -506,6 +506,7 @@ end
     FileUtils.cp(File.join(real_scripts, "lib", "data_boundary.rb"), File.join(scripts, "lib", "data_boundary.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "active_delivery.rb"), File.join(scripts, "lib", "active_delivery.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "lock.rb"), File.join(scripts, "lib", "lock.rb"))
+    FileUtils.cp(File.join(real_scripts, "lib", "store_layout.rb"), File.join(scripts, "lib", "store_layout.rb"))
     FileUtils.chmod(0o755, File.join(scripts, "hook-capture"))
     root
   end

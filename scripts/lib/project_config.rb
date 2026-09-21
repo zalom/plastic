@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require "yaml"
 
 # ProjectConfig - reads a project's project.yml merged over the shipped defaults
@@ -18,7 +19,7 @@ module ProjectConfig
   }.freeze
 
   def read(slug)
-    path = File.join(Dir.home, ".plastic", "projects", slug, "project.yml")
+    path = File.join(Plastic::StoreLayout.project_root(File.join(Dir.home, ".plastic"), slug), "project.yml")
     config = if File.exist?(path)
                YAML.safe_load(File.read(path)) || {}
              else

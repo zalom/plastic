@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require_relative "store_provisioning"
 
 # StoreDiscovery: the single source of truth for "what stores exist" (intent 189).
@@ -39,20 +40,20 @@ module StoreDiscovery
     stores = []
     missing = []
 
-    global_store = File.join(plastic_home, "store")
+    global_store = Plastic::StoreLayout.global_store(plastic_home)
     if File.directory?(global_store)
-      stores << { key: "global", slug: "global", root: plastic_home,
-                  store: global_store, index: File.join(plastic_home, "INDEX.md") }
+      global_root = Plastic::StoreLayout.global_root(plastic_home)
+      stores << { key: "global", slug: "global", root: global_root,
+                  store: global_store, index: File.join(global_root, "INDEX.md") }
     end
 
     registered = StoreProvisioning.load_projects(plastic_home) # { slug => info }, {} on error/absence
-    projects_root = File.join(plastic_home, "projects")
-    on_disk = File.directory?(projects_root) ? Dir.children(projects_root).reject { |e| e.start_with?(".") } : []
+    on_disk = Plastic::StoreLayout.project_slugs(plastic_home)
 
     all_slugs = (registered.keys + on_disk).uniq.sort
 
     all_slugs.each do |slug|
-      root = File.join(projects_root, slug)
+      root = Plastic::StoreLayout.project_root(plastic_home, slug)
       store_dir = File.join(root, "store")
       if File.directory?(store_dir)
         stores << { key: "project:#{slug}", slug: slug, root: root,

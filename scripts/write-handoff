@@ -16,6 +16,7 @@
 #
 # Exit codes: 0 done; 2 usage error.
 
+require_relative "lib/store_layout"
 require_relative "lib/session_ledger"
 require_relative "lib/handoff"
 
@@ -48,7 +49,7 @@ usage_abort("--trigger is required (#{Handoff::TRIGGERS.join(', ')})") unless op
 usage_abort("--trigger must be one of #{Handoff::TRIGGERS.join(', ')}") unless Handoff::TRIGGERS.include?(opts[:trigger])
 
 plastic_home = expand(ENV.fetch("PLASTIC_HOME", "~/.plastic"))
-store = opts[:store] ? expand(opts[:store]) : File.join(plastic_home, "store")
+store = opts[:store] ? expand(opts[:store]) : Plastic::StoreLayout.global_store(plastic_home)
 templates = opts[:templates] ? expand(opts[:templates]) : File.expand_path("../templates", __dir__)
 usage_abort("templates dir not found: #{templates}") unless Dir.exist?(templates)
 

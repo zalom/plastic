@@ -8,6 +8,7 @@
 # the store, conventions, intent and CLI halves, so Doctor stays one class with
 # one public surface and one definition of which checks are core (intent 36a).
 
+require_relative "store_layout"
 require "json"
 require "yaml"
 require "time"
@@ -301,7 +302,7 @@ class Doctor
       return checks
     end
 
-    index_path = File.join(plastic_home, "INDEX.md")
+    index_path = File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md")
     if File.exist?(index_path)
       checks << check(
         category: "global_store", name: "global_index_reachable", status: "pass",

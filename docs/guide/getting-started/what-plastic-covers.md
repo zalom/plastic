@@ -19,16 +19,9 @@
 | `plastic intent new`, `show`, `spec`, `rule`, `note`, `step`, `answer`, `verify`, `end` | Carries one intent from its first line to its close. See [Intent commands](intent-commands.md). |
 | `plastic auto take`, `brief`, `report`, `lock` and `plastic session summary`, `handoff`, `commit` | Serves an auto team and keeps the day ledger. See [Auto and session commands](auto-and-session-commands.md). |
 | `plastic roadmap next`, `show`, `log`, `check` | Reads a roadmap and appends to its ledger. See [Project and roadmap commands](project-and-roadmap-commands.md). |
-
-## Commands that are planned
-
-These commands do not exist yet. The batch numbers come from the CLI and RLM roadmap.
-
-| Command | Batch | Intent |
-| ------- | ----- | ------ |
-| `plastic search`, `plastic query` | 3 | 368 |
-| `plastic backup` | 3 | 366 |
-| A command that moves the stores under `stores/` | 3 | 370 |
+| `plastic index`, `plastic search TERMS`, `plastic query SQL` | Builds and reads the search index of the stores. See [Search commands](search-commands.md). |
+| `plastic backup [--list]` | Writes one archive of the three databases and the top-level files. See [Backup command](backup-command.md). |
+| `plastic migrate stores [--dry-run]` | Moves every store under `~/.plastic/stores/`, after a copy of the home. See [Migrate command](migrate-command.md). |
 
 ## What stays with the agent
 

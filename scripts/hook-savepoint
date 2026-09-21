@@ -13,6 +13,7 @@
 #
 # Usage: hook-savepoint <plastic_home>   (stdin: the hook JSON)
 
+require_relative "lib/store_layout"
 require "json"
 require_relative "lib/session_ledger"
 require_relative "lib/handoff"
@@ -31,7 +32,7 @@ MESSAGE = "PLASTIC SAVEPOINT - context is being compacted. The hand-off for this
 def resolve_intent(plastic_home, session_id, read_config_path)
   return nil if session_id.strip.empty?
 
-  global_store = File.join(plastic_home, "store")
+  global_store = Plastic::StoreLayout.global_store(plastic_home)
   roots_raw = IO.popen({ "PLASTIC_HOME" => plastic_home }, [read_config_path, "project_roots"],
                        err: File::NULL, &:read).to_s.strip
   project_roots = roots_raw.empty? ? [] : Array(JSON.parse(roots_raw))
@@ -51,7 +52,7 @@ begin
 
   unless plastic_home.empty? || session_id.strip.empty?
     home = File.expand_path(plastic_home)
-    store = File.join(home, "store")
+    store = Plastic::StoreLayout.global_store(home)
     session = SessionLedger.short_session_id(session_id, nil)
     day = Handoff.day_for(store, session, today: SessionLedger.day_id)
     read_config_path = File.expand_path("read-config", __dir__)

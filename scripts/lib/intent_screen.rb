@@ -1,4 +1,5 @@
 # encoding: UTF-8
+require_relative "store_layout"
 # frozen_string_literal: true
 # IntentScreen (intent 316) - fills templates/intent-screen.md from one intent's
 # record: the intent file, the tier's INDEX.md, savepoint.md and checklist.md.
@@ -101,9 +102,8 @@ module IntentScreen
   # --- store ---------------------------------------------------------------------
 
   def self.store_fields(store_root)
-    parent = File.basename(File.dirname(store_root))
-    if parent == "projects"
-      slug = File.basename(store_root)
+    slug = Plastic::StoreLayout.locate(File.join(store_root, "store")).last
+    if slug != Plastic::StoreLayout::GLOBAL
       { "store" => "project:#{slug}", "store.note" => "the #{slug} project store" }
     else
       { "store" => "global", "store.note" => "the global store" }

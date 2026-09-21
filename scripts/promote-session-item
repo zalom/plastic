@@ -21,6 +21,7 @@
 # Exit codes: 0 promoted (prints the intent dir last), 1 new-intent failed,
 # 2 usage error or nothing to promote.
 
+require_relative "lib/store_layout"
 require "open3"
 require "yaml"
 require_relative "lib/session_ledger"
@@ -61,7 +62,7 @@ usage_abort("--day must be a real calendar date, YYYYMMDD") unless SessionLedger
 usage_abort("--match is required") if opts[:match].nil? || opts[:match].empty?
 
 plastic_home = File.expand_path(opts[:plastic_home] || ENV.fetch("PLASTIC_HOME", "~/.plastic"))
-store = opts[:store] || File.join(plastic_home, "store")
+store = opts[:store] || Plastic::StoreLayout.global_store(plastic_home)
 templates = opts[:templates] || File.expand_path("../templates", __dir__)
 session = opts[:session] ? SessionLedger.short_session_id(opts[:session]) : nil
 
@@ -69,7 +70,7 @@ target_store = store
 if opts[:project]
   projects = StoreProvisioning.load_projects(plastic_home)
   usage_abort("--project #{opts[:project]} is not a registered project") unless projects.key?(opts[:project])
-  target_store = File.join(plastic_home, "projects", opts[:project], "store")
+  target_store = File.join(Plastic::StoreLayout.project_root(plastic_home, opts[:project]), "store")
 end
 
 # --- pick the target line ---------------------------------------------------

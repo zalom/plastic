@@ -2102,6 +2102,16 @@ class DoctorProjectStoresTest < Minitest::Test
     assert_equal "projects_yml", checks[0][:name]
     assert_equal "pass", checks[0][:status]
   end
+
+  def test_a_parent_intent_missing_from_the_global_store_is_a_warning
+    File.write(File.join(DOCTOR_TEST_HOME, "projects.yml"), YAML.dump({
+      "projects" => {"my-app" => {"path" => Dir.tmpdir, "parent" => "999"}}
+    }))
+    FileUtils.mkdir_p(File.join(@projects_dir, "my-app", "store"))
+    links = doctor.check_project_stores.select { |c| c[:name] == "cross_references" }
+
+    assert_equal ["warn"], links.map { |c| c[:status] }
+  end
 end
 
 # ===========================================================================

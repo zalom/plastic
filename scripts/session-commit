@@ -18,6 +18,7 @@
 #   0 - always, except a usage error
 #   2 - usage error (missing --cwd or --summary); nothing is written
 
+require_relative "lib/store_layout"
 require "fileutils"
 require_relative "lib/session_git"
 require_relative "lib/session_ledger"
@@ -78,7 +79,7 @@ def main(argv)
   usage_abort("--summary is required") if opts[:summary].nil?
 
   plastic_home = expand(opts[:plastic_home] || ENV.fetch("PLASTIC_HOME", "~/.plastic"))
-  store = opts[:store] ? expand(opts[:store]) : File.join(plastic_home, "store")
+  store = opts[:store] ? expand(opts[:store]) : Plastic::StoreLayout.global_store(plastic_home)
   cwd = expand(opts[:cwd])
 
   day = opts[:day] || SessionLedger.day_id

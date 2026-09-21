@@ -9,6 +9,7 @@
 # Exit codes: 0 (all pass), 1 (warnings only), 2 (failures present)
 # Read-only — never modifies files.
 
+require_relative "lib/store_layout"
 require "date"
 require "open3"
 require "timeout"
@@ -40,6 +41,7 @@ require_relative "lib/preflight"
 require_relative "lib/ruby_probe"
 require_relative "lib/doctor_session_ledger"
 require_relative "lib/intent_screen"
+require_relative "lib/store_sync"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -216,7 +218,7 @@ class Doctor
   def check_global_store
     checks = []
 
-    index_path = File.join(plastic_home, "INDEX.md")
+    index_path = File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md")
 
     # index_exists
     if File.exist?(index_path)
@@ -252,7 +254,7 @@ class Doctor
     end
 
     # orphaned_intents — directories in store/ not referenced in INDEX.md
-    store_dir = File.join(plastic_home, "store")
+    store_dir = Plastic::StoreLayout.global_store(plastic_home)
     if File.directory?(store_dir)
       intent_dirs = store_intent_dirs(store_dir)
       orphans = intent_dirs.reject { |d| content.include?("store/#{d}") }
@@ -278,7 +280,7 @@ class Doctor
     store_paths = content.scan(%r{store/\S+}).map { |ref| ref.gsub(/[)\]>].*/, "").chomp("/") }.uniq
 
     ghosts = store_paths.select do |ref|
-      full_path = File.join(plastic_home, ref)
+      full_path = File.join(Plastic::StoreLayout.global_root(plastic_home), ref)
       !File.exist?(full_path) && !File.directory?(full_path)
     end
 
@@ -705,14 +707,14 @@ class Doctor
     if scopes.nil? || scopes.include?("global")
       stores << {
         scope: "global",
-        index: File.join(plastic_home, "INDEX.md"),
-        store_dir: File.join(plastic_home, "store"),
+        index: File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md"),
+        store_dir: Plastic::StoreLayout.global_store(plastic_home),
       }
     end
 
-    projects_root = File.join(plastic_home, "projects")
+    projects_root = Plastic::StoreLayout.projects_root(plastic_home)
     if File.directory?(projects_root)
-      Dir.children(projects_root).sort.each do |project|
+      Plastic::StoreLayout.project_slugs(plastic_home).each do |project|
         scope = "project:#{project}"
         next unless scopes.nil? || scopes.include?(scope)
 
@@ -2294,7 +2296,7 @@ end
   # project can be checked in isolation (used by `--store <slug>`).
   def check_project_store(slug, project_info)
     checks = []
-    project_dir = File.join(plastic_home, "projects", slug)
+    project_dir = Plastic::StoreLayout.project_root(plastic_home, slug)
 
     # project_dir_exists
     if File.directory?(project_dir)
@@ -2344,7 +2346,7 @@ end
     end
 
     # project_yml_exists
-    project_yml_path = File.join(plastic_home, "projects", slug, "project.yml")
+    project_yml_path = File.join(Plastic::StoreLayout.project_root(plastic_home, slug), "project.yml")
     project_yml_data = nil
 
     if File.exist?(project_yml_path)
@@ -2391,7 +2393,7 @@ end
     return checks unless parent_id
 
     # Find the intent directory for the parent ID
-    store_dir = File.join(plastic_home, "store")
+    store_dir = Plastic::StoreLayout.global_store(plastic_home)
     parent_dir = nil
     if File.directory?(store_dir)
       parent_dir = Dir.children(store_dir).find { |d| d.start_with?("#{parent_id}--") }
@@ -3012,6 +3014,16 @@ end
     end
   end
 
+  def check_graph_links
+    return [] unless File.exist?(Plastic::WorkGraph.path(plastic_home))
+
+    orphans = Plastic::StoreSync.orphans(plastic_home)
+    return [check(category: "graph_links", name: "graph_links", status: "pass", message: "every stored file belongs to an intent in work_graph.db")] if orphans.empty?
+
+    [check(category: "graph_links", name: "graph_links", status: "warn", details: orphans, fixable: false,
+      message: "#{orphans.size} intent id(s) hold files and have no row in work_graph.db")]
+  end
+
   # --- Run all checks ---
 
   def run_checks(agent_key)
@@ -3030,6 +3042,7 @@ end
     all_checks += check_session_ledger(scopes: ["global"])
     all_checks += check_skill_lint
     all_checks += check_install_integrity
+    all_checks += check_graph_links
     all_checks += check_display_registration(agent_key)
     all_checks += check_display_paints(agent_key)
     all_checks += check_display_not_defeated(agent_key)

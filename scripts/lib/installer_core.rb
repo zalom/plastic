@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require "json"
 require "yaml"
 require "fileutils"
@@ -357,7 +358,7 @@ class InstallerCore
   # bin/plastic requires scripts/lib/cli.rb by a relative path, so the whole
   # subtree travels together or an installed copy LoadErrors on the first call.
   def cli_files
-    Dir.glob(File.join(package_root, "scripts", "lib", "cli", "**", "*.rb")).each_with_object({}) do |path, acc|
+    Dir.glob(File.join(package_root, "scripts", "lib", "{cli,rlm}", "**", "*.rb")).each_with_object({}) do |path, acc|
       rel = path.sub("#{package_root}/", "")
       acc[rel] = rel
     end
@@ -432,6 +433,14 @@ class InstallerCore
       "scripts/lib/intent_validator.rb" => "scripts/lib/intent_validator.rb",
       "scripts/lib/graph_rebuild.rb" => "scripts/lib/graph_rebuild.rb",
       "scripts/lib/store_discovery.rb" => "scripts/lib/store_discovery.rb",
+      "scripts/lib/store_layout.rb" => "scripts/lib/store_layout.rb",
+      "scripts/lib/stores_move.rb" => "scripts/lib/stores_move.rb",
+      "scripts/lib/sqlite.rb" => "scripts/lib/sqlite.rb",
+      "scripts/lib/search_index.rb" => "scripts/lib/search_index.rb",
+      "scripts/lib/store_sync.rb" => "scripts/lib/store_sync.rb",
+      "scripts/lib/work_graph.rb" => "scripts/lib/work_graph.rb",
+      "scripts/lib/reference_archive.rb" => "scripts/lib/reference_archive.rb",
+      "scripts/lib/backup.rb" => "scripts/lib/backup.rb",
       "scripts/lib/frontmatter_writer.rb" => "scripts/lib/frontmatter_writer.rb",
       "scripts/lib/links_projection.rb" => "scripts/lib/links_projection.rb",
       "scripts/lib/links_section.rb" => "scripts/lib/links_section.rb",
@@ -650,7 +659,7 @@ class InstallerCore
   def bootstrap
     puts "  \u{1f331} First install \u{2014} bootstrapping store..."
 
-    FileUtils.mkdir_p(File.join(plastic_home, "store"))
+    FileUtils.mkdir_p(Plastic::StoreLayout.global_store(plastic_home))
     FileUtils.mkdir_p(File.join(plastic_home, "projects"))
 
     write_if_missing(File.join(plastic_home, "config.yml"), <<~YAML)
@@ -669,7 +678,7 @@ class InstallerCore
 
     write_if_missing(File.join(plastic_home, "projects.yml"), "---\nprojects: {}\n")
 
-    write_if_missing(File.join(plastic_home, "INDEX.md"), <<~MD)
+    write_if_missing(File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md"), <<~MD)
       # Index
 
       ## Active
@@ -988,9 +997,9 @@ class InstallerCore
   # Every store root (the global store, plus each project store) whose real
   # path is reached with no symlink between it and plastic_home.
   def real_store_roots(plastic_home)
-    roots = [File.join(plastic_home, "store")] +
-            Dir.glob(File.join(plastic_home, "projects", "*", "store"))
-    roots.select { |root| real_store_root?(plastic_home, root) }
+    roots = [Plastic::StoreLayout.global_store(plastic_home)] +
+            Dir.glob(File.join(Plastic::StoreLayout.projects_root(plastic_home), "*", "store"))
+    roots.uniq.select { |root| real_store_root?(plastic_home, root) }
   end
 
   def real_store_root?(plastic_home, store_root)
@@ -1065,7 +1074,7 @@ class InstallerCore
   # fails milder than the bug it prevents, independent of what any caller's `root:` is or
   # what a hand-edited manifest claims.
   def store_roots
-    [File.join(plastic_home, "store"), File.join(plastic_home, "projects")].map { |p| File.expand_path(p) }
+    %w[store projects stores].map { |name| File.expand_path(File.join(plastic_home, name)) }
   end
 
   # `install_skills_flat` relocates any top-level underscore-prefixed markdown

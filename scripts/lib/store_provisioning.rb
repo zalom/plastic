@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require "fileutils"
 require "yaml"
 
@@ -63,7 +64,7 @@ module StoreProvisioning
       }
     end
 
-    project_dir = File.join(plastic_home, "projects", slug)
+    project_dir = Plastic::StoreLayout.project_root(plastic_home, slug)
     store_dir = File.join(project_dir, "store")
     FileUtils.mkdir_p(store_dir)
 

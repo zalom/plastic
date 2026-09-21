@@ -14,6 +14,7 @@
 #
 # Exit codes: 0 done; 2 usage error.
 
+require_relative "lib/store_layout"
 require_relative "lib/session_ledger"
 require_relative "lib/day_summary"
 
@@ -43,7 +44,7 @@ end
 
 opts = parse_args(ARGV)
 home = opts[:home] ? expand(opts[:home]) : expand(ENV.fetch("PLASTIC_HOME", "~/.plastic"))
-store = opts[:store] ? expand(opts[:store]) : File.join(home, "store")
+store = opts[:store] ? expand(opts[:store]) : Plastic::StoreLayout.global_store(home)
 day = opts[:day] || SessionLedger.day_id
 usage_abort("--day must be eight digits parsing as a real date, got #{day.inspect}") unless SessionLedger.valid_day_id?(day)
 session = SessionLedger.short_session_id(opts[:session], ENV["CLAUDE_CODE_SESSION_ID"])

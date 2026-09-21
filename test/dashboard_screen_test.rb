@@ -39,18 +39,11 @@ class DashboardScreenTest < Minitest::Test
   # --- store re-derivation (no PLASTIC_HOME dependency) -----------------------
 
   def stores_for(home)
-    list = []
-    global = File.join(home, "store")
-    list << { scope: "global", store: global, index: File.join(home, "INDEX.md") } if File.directory?(global)
-    projects_root = File.join(home, "projects")
-    if File.directory?(projects_root)
-      Dir.children(projects_root).sort.each do |proj|
-        store = File.join(projects_root, proj, "store")
-        next unless File.directory?(store)
-        list << { scope: "project:#{proj}", store: store, index: File.join(projects_root, proj, "INDEX.md") }
-      end
-    end
-    list
+    stores(home)
+  end
+
+  def test_a_home_with_no_global_store_has_no_stores
+    Dir.mktmpdir("plastic-dash-empty") { |empty| assert_empty stores(empty) }
   end
 
   def load_all_for(home)

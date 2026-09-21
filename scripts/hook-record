@@ -10,6 +10,7 @@
 # lands, and calls the session-commit seam when that script exists. Always
 # exits 0 (spec D3).
 
+require_relative "lib/store_layout"
 require "json"
 require "timeout"
 require "fileutils"
@@ -77,7 +78,7 @@ skip_day_ledger = inside_plastic || !intent_dir_abs.nil?
 # --- (c) promote the newest pending line, Item savepoint, seam -------------
 unless skip_day_ledger
   begin
-    store = File.join(plastic_home, "store")
+    store = Plastic::StoreLayout.global_store(plastic_home)
     sid = SessionLedger.short_session_id(nil, session_id)
     today = SessionLedger.day_id
 
@@ -152,7 +153,7 @@ end
 # the heartbeat is not written and no directory is created here either --
 # the session tmp directory, created by session start, is the guard.
 begin
-  store ||= File.join(plastic_home, "store")
+  store ||= Plastic::StoreLayout.global_store(plastic_home)
   sid ||= SessionLedger.short_session_id(nil, session_id)
   if Dir.exist?(SessionLedger.session_tmp_dir(store, sid))
     File.write(SessionLedger.heartbeat_path(store, sid), "#{Time.now.utc.iso8601}\n")
