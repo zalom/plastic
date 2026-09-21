@@ -42,8 +42,10 @@ class CliHelpTest < Minitest::Test
   def test_the_command_list_is_sorted_by_name
     help
     names = @out.string.lines.drop(1).filter_map { |line| line[/\A(\S+)\s\s/, 1] }
+    commands = names - ["topics"]
 
-    assert_equal names.sort, names
+    assert_equal commands.sort, commands
+    assert_equal "topics", names.last, "the topic list sits under the commands, not sorted among them"
   end
 
   def test_the_command_list_ends_with_a_next_step
@@ -91,6 +93,6 @@ class CliHelpTest < Minitest::Test
     help("--json")
     result = JSON.parse(@out.string).fetch("result")
 
-    assert_equal Plastic::CLI::TABLE.keys.sort, (result.keys - ["usage"]).sort
+    assert_equal Plastic::CLI::TABLE.keys.sort, (result.keys - %w[usage topics]).sort
   end
 end
