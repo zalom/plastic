@@ -330,7 +330,7 @@ class Doctor
           category: "core_files", name: name, status: "warn",
           message: "#{config[:name]}'s agent-side VERSION file not found at #{tilde(agent_version_path)}",
           fixable: true,
-          fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or plastic-rollback to a prior version"
+          fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or `plastic rollback` to a prior version"
         )
       else
         agent_version = File.read(agent_version_path).strip
@@ -348,7 +348,7 @@ class Doctor
               "#{tilde(agent_version_path)}: #{agent_version}",
             ],
             fixable: true,
-            fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or plastic-rollback to a prior version"
+            fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or `plastic rollback` to a prior version"
           )
         end
       end

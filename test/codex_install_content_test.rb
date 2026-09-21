@@ -59,14 +59,6 @@ class CodexInstallContentTest < Minitest::Test
   # survive on a Codex install). An entry that stops matching anything is a dead entry
   # and fails test_no_dead_allowlist_entries below.
   ALLOWED = [
-    ["plastic-uninstall/SKILL.md", "~/.claude/hooks/plastic-*",
-     "Spec D5. Codex installs no per-agent hook launchers, so there is no Codex path to " \
-     "substitute. The correct Codex text is a rewrite of the surrounding sentence, which " \
-     "is doc authoring rather than an install-time transform."],
-    ["plastic-uninstall/SKILL.md", "~/.claude/hooks",
-     "Spec D5. The same sentence's verification command (`ls ~/.claude/hooks | grep`). " \
-     "Harmless on Codex (it returns nothing, which is the correct answer there) and it " \
-     "has no Codex equivalent to point at."],
     ["plastic-doctor/report.md", "~/.claude/hooks/plastic-session-start",
      "Spec D5. Sample doctor OUTPUT, printed inside the report template as an example " \
      "of the format for a Claude install. Not an instruction to the agent."],
@@ -123,13 +115,9 @@ class CodexInstallContentTest < Minitest::Test
   end
 
   def test_claude_roots_are_rewritten
-    uninstall_skill = File.read(File.join(@skills_root, "plastic-uninstall", "SKILL.md"))
     doctor_skill = File.read(File.join(@skills_root, "plastic-doctor", "SKILL.md"))
     dashboard_skill = File.read(File.join(@skills_root, "plastic-dashboard", "SKILL.md"))
 
-    assert_includes uninstall_skill, "~/.agents/skills/plastic-*/"
-    assert_includes uninstall_skill, "~/.agents/plastic/"
-    assert_includes uninstall_skill, "~/.codex/hooks.json"
     assert_includes doctor_skill, "~/.agents/plastic/manifest.json"
     assert_includes dashboard_skill, "~/.agents/skills/plastic-dashboard/templates/"
   end

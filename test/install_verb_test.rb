@@ -131,7 +131,7 @@ class InstallVerbTest < Minitest::Test
     assert_equal 1, list_calls.length, "the QMD registration must run exactly once for a fresh home"
 
     add_calls = calls.select { |args| args[0..1] == ["collection", "add"] }
-    assert_equal [File.expand_path(File.join(@home, "store")), "--name", "plastic-global"], add_calls.first[1..]
+    assert_equal [File.expand_path(File.join(@home, "store")), "--name", "plastic-global"], add_calls.first[2..]
   end
 
   def test_run_skips_qmd_registration_when_qmd_is_absent

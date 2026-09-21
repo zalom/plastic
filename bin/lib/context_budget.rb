@@ -41,7 +41,7 @@ module ContextBudget
   #                     and the agent catalog. Intent 363 ratchet, not a
   #                     ruling. It is the measured number plus a little, and it
   #                     only ever moves down, once per skill family removed.
-  CEILINGS = { core: 8_192, boot: 15_000, boot_plus_catalog: 17_500, standing: 11_000 }.freeze
+  CEILINGS = { core: 8_192, boot: 15_000, boot_plus_catalog: 17_500, standing: 9_668 }.freeze
 
   # The doctrine working set (boot + _decision-tables.md + the median skill body)
   # is reported against this target, never enforced: its median term steps by

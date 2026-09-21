@@ -1165,7 +1165,7 @@ class Doctor
               "#{tilde(agent_version_path)}: #{agent_version}",
             ],
             fixable: true,
-            fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or plastic-rollback to a prior version"
+            fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or `plastic rollback` to a prior version"
           )
         end
       else
@@ -1173,7 +1173,7 @@ class Doctor
           category: "core_files", name: "version_match", status: "warn",
           message: "Agent-side VERSION file not found at #{tilde(agent_version_path)}",
           fixable: true,
-          fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or plastic-rollback to a prior version"
+          fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or `plastic rollback` to a prior version"
         )
       end
     end
@@ -1278,7 +1278,7 @@ class Doctor
 
   DISPLAY_HOOK_FIX_HINT = "Re-run the Plastic installer to repair the hook registration: " \
                           "npx @zalom/plastic@<channel> install --reinstall --claude " \
-                          "(plastic-install --repair)".freeze
+                          "(plastic install --reinstall)".freeze
 
   # display_hook_registered (intent 331e, D1, category "display"): the Claude
   # settings carry the plastic-message-display command, on-disk, executable.

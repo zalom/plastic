@@ -90,7 +90,7 @@ class SkillCensusRosterTest < Minitest::Test
     end.sort
 
     assert_equal expected.map { |e| "plastic-#{e}" }.sort, roster.map(&:name).sort
-    assert_equal 20, roster.length
+    assert_equal 16, roster.length
     assert_equal 3, roster.count { |s| !s.user_invocable }
   end
 

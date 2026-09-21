@@ -12,6 +12,7 @@ require_relative "agent_models"
 require_relative "harness_text"
 require_relative "compact_instructions"
 require_relative "engine_permissions"
+require_relative "qmd_sync"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/rollback) and their tests can run
@@ -686,6 +687,25 @@ class InstallerCore
     MD
 
     puts "  \u{2705} Store bootstrapped"
+  end
+
+  # Intent 372 (former install skill, lines 119-127): `~/.plastic` becomes its own
+  # git repository the first time it exists, so `update` can later commit the core
+  # files it re-syncs. Leaves an existing repository alone.
+  def git_init_if_absent(runner: ->(cmd) { system(*cmd) })
+    FileUtils.mkdir_p(plastic_home)
+    return if File.directory?(File.join(plastic_home, ".git"))
+    runner.call(["git", "-C", plastic_home, "init", "-q"])
+  end
+
+  # Intent 372 (former install skill, lines 167-179): register every Plastic store as
+  # a QMD collection. QmdSync.register already no-ops per store when QMD is absent;
+  # the detector is injected too so a run stays hermetic on a machine that happens to
+  # have the real `qmd` binary on PATH.
+  def register_with_qmd(runner: QmdSync.default_runner, detector: QmdSync.method(:detect))
+    QmdSync.enumerate_stores(plastic_home: plastic_home).each do |store|
+      QmdSync.register(collection: store[:collection], dir: store[:dir], runner: runner, detector: detector)
+    end
   end
 
   # --- Agent adapters ---

@@ -13,7 +13,7 @@ module Plastic
 
         SCRIPT = "update.rb"
         AFTER = "plastic version"
-        BECAUSE = "the update is done, and the version says where it landed"
+        BECAUSE = "the update is done, and restarting the session picks up the new conventions"
       end
     end
   end
