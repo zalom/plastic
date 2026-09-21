@@ -251,9 +251,9 @@ class Update < InstallerCore
   # re-syncs nothing new, and that is still worth a ledger-adjacent commit.
   def commit_core_files(target, runner: ->(cmd) { system(*cmd) })
     runner.call(["git", "-C", plastic_home, "add", "PLASTIC.md", "scripts", "AGENTS.md", "VERSION",
-                 "versions.json", "deprecations.yml", "config_asks.yml"])
+      "versions.json", "deprecations.yml", "config_asks.yml"])
     runner.call(["git", "-C", plastic_home, "commit", "-m", "chore: update Plastic to #{target}",
-                 "--allow-empty"])
+      "--allow-empty"])
   end
 
   def clear_update_check_cache

@@ -123,7 +123,10 @@ class InstallVerbTest < Minitest::Test
   # machine that happens to have the real `qmd` binary on PATH.
   def test_run_registers_with_qmd_once_through_an_injected_runner
     calls = []
-    runner = ->(args) { calls << args; ["", true] }
+    runner = ->(args) {
+      calls << args
+      ["", true]
+    }
 
     build.run(selected: ["claude"], qmd_runner: runner, qmd_detector: -> { true })
 
@@ -136,7 +139,10 @@ class InstallVerbTest < Minitest::Test
 
   def test_run_skips_qmd_registration_when_qmd_is_absent
     calls = []
-    runner = ->(args) { calls << args; ["", true] }
+    runner = ->(args) {
+      calls << args
+      ["", true]
+    }
 
     build.run(selected: ["claude"], qmd_runner: runner, qmd_detector: -> { false })
 

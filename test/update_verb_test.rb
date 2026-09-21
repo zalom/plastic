@@ -97,9 +97,9 @@ class UpdateVerbTest < Minitest::Test
     assert_equal 2, calls.length
     add, commit = calls
     assert_equal ["git", "-C", @home, "add", "PLASTIC.md", "scripts", "AGENTS.md", "VERSION",
-                  "versions.json", "deprecations.yml", "config_asks.yml"], add
+      "versions.json", "deprecations.yml", "config_asks.yml"], add
     assert_equal ["git", "-C", @home, "commit", "-m", "chore: update Plastic to 1.0.0-alpha.19",
-                  "--allow-empty"], commit
+      "--allow-empty"], commit
   end
 
   def test_clear_update_check_cache_deletes_the_file
