@@ -58,12 +58,9 @@ class RoadmapTemplateGraphTest < Minitest::Test
     assert_match(/337 \(G4/, unreleased)
   end
 
-  # --- 7.9: the roadmap skill documents the three verbs -------------------------
-
-  def test_roadmap_skill_documents_the_three_verbs
-    skill = File.read(File.join(REPO, "skills", "roadmap", "SKILL.md"))
-    assert_match(/roadmap-graph check/, skill)
-    assert_match(/roadmap-graph render/, skill)
-    assert_match(/roadmap-graph migrate/, skill)
-  end
+  # test_roadmap_skill_documents_the_three_verbs was retired by intent 372 (family 3):
+  # skills/roadmap/SKILL.md is gone. `check` is now `plastic roadmap check`, covered by
+  # test/cli/project_roadmap_commands_test.rb; `render` and `migrate` stay raw
+  # roadmap-graph invocations with no command wrapper (disposition: "roadmap render is
+  # left to roadmap-graph"), so no shipped prose teaches them any more.
 end
