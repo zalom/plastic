@@ -10,11 +10,12 @@
 module Plastic
   class CLI
     TABLE = {
-      "auto" => ["commands/auto", "Auto", "List the auto subcommands"],
       "auto brief" => ["commands/auto_brief", "AutoBrief", "Print an intent's spawn preamble, and the advisor shapes for --role advisor"],
       "auto lock" => ["commands/auto_lock", "AutoLock", "Inspect, repair, or release an intent's delivery lock"],
       "auto report" => ["commands/auto_report", "AutoReport", "Print an intent's completion report, then the review-by-risk rules"],
       "auto take" => ["commands/auto_take", "AutoTake", "Arm an intent's delivery lock for this session"],
+      "auto" => ["commands/auto", "Auto", "List the auto subcommands"],
+      "checkout" => ["commands/checkout", "Checkout", "Restore missing store files from the databases"],
       "continue" => ["commands/continue", "Continue", "Show where one project stands and what runs next"],
       "doctor" => ["commands/doctor", "Doctor", "Diagnose Plastic installation health"],
       "feedback" => ["commands/feedback", "Feedback", "File a feedback report, body on standard input"],
@@ -38,6 +39,7 @@ module Plastic
       "project list" => ["commands/project_list", "ProjectList", "List every store this machine holds"],
       "project new" => ["commands/project_new", "ProjectNew", "Register, provision and validate a new project"],
       "query" => ["commands/query", "Query", "Run one read-only SQL statement on the index"],
+      "render" => ["commands/render", "Render", "Print one markdown file as an HTML page"],
       "roadmap" => ["commands/roadmap", "Roadmap", "List the roadmap subcommands"],
       "roadmap check" => ["commands/roadmap_check", "RoadmapCheck", "Check a roadmap's graph for cycles and dangling ids"],
       "roadmap log" => ["commands/roadmap_log", "RoadmapLog", "Append a savepoint line to a roadmap's ledger"],
@@ -50,6 +52,7 @@ module Plastic
       "session summary" => ["commands/session_summary", "SessionSummary", "Print the day ledger's open items and recent activity"],
       "session" => ["commands/session", "Session", "List the session subcommands"],
       "status" => ["commands/status", "Status", "Show active work in every store"],
+      "sync" => ["commands/sync", "Sync", "Bring the store files and the three databases level"],
       "uninstall" => ["commands/uninstall", "Uninstall", "Remove Plastic from this machine's agents"],
       "update" => ["commands/update", "Update", "Move Plastic to the next version on its channel"],
       "version" => ["commands/version", "Version", "Print the installed Plastic version"]

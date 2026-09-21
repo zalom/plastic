@@ -6,7 +6,7 @@ module Plastic
   module SearchIndex
     NAME = "knowledge_graph.db"
     SCHEMA = <<~SQL
-      CREATE TABLE doc(id INTEGER PRIMARY KEY, path TEXT, sz INT, data BLOB);
+      CREATE TABLE doc(id INTEGER PRIMARY KEY, path TEXT, sz INT, data BLOB, hash TEXT);
       CREATE VIEW doc_v AS SELECT id AS rowid, CAST(sqlar_uncompress(data, sz) AS TEXT) AS body FROM doc;
       CREATE VIRTUAL TABLE ft USING fts5(body, content='doc_v', content_rowid='rowid');
     SQL
@@ -33,7 +33,8 @@ module Plastic
 
     def self.insert(home, file)
       source = quote(File.join(home, file))
-      "INSERT INTO doc(path, sz, data) VALUES(#{quote(file)}, length(readfile(#{source})), sqlar_compress(readfile(#{source})));"
+      "INSERT INTO doc(path, sz, data, hash) VALUES(#{quote(file)}, length(readfile(#{source})), " \
+        "sqlar_compress(readfile(#{source})), lower(hex(sha3(readfile(#{source}), 256))));"
     end
 
     def self.search(home, terms, limit:, prefix: "")
@@ -47,7 +48,7 @@ module Plastic
     end
 
     def self.quote(text)
-      "'#{text.gsub("'", "''")}'"
+      Sqlite.quote(text)
     end
   end
 end

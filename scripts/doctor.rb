@@ -40,6 +40,7 @@ require_relative "lib/preflight"
 require_relative "lib/ruby_probe"
 require_relative "lib/doctor_session_ledger"
 require_relative "lib/intent_screen"
+require_relative "lib/store_sync"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -3012,6 +3013,16 @@ end
     end
   end
 
+  def check_graph_links
+    return [] unless File.exist?(Plastic::WorkGraph.path(plastic_home))
+
+    orphans = Plastic::StoreSync.orphans(plastic_home)
+    return [check(category: "graph_links", name: "graph_links", status: "pass", message: "every stored file belongs to an intent in work_graph.db")] if orphans.empty?
+
+    [check(category: "graph_links", name: "graph_links", status: "warn", details: orphans, fixable: false,
+      message: "#{orphans.size} intent id(s) hold files and have no row in work_graph.db")]
+  end
+
   # --- Run all checks ---
 
   def run_checks(agent_key)
@@ -3030,6 +3041,7 @@ end
     all_checks += check_session_ledger(scopes: ["global"])
     all_checks += check_skill_lint
     all_checks += check_install_integrity
+    all_checks += check_graph_links
     all_checks += check_display_registration(agent_key)
     all_checks += check_display_paints(agent_key)
     all_checks += check_display_not_defeated(agent_key)
