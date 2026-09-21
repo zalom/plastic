@@ -230,6 +230,8 @@ to carry a criteria-shaped list still reports its matrix rows.
 
 ## Released
 
+- `2.0.0-alpha.28` - shipped 2026-09-21 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); the first release with the `plastic` command. It collected the three batches of the cli-and-rlm roadmap: the command line foundation with publishing from branches (intents 363 and 376), the move from skills to commands (intent 372), and the search index, the three databases, sync, checkout, backup and the stores move (Batch 3, pull request 5). The README now follows a command-first structure with every command listed.
+
 - `2.0.0-alpha.27` - shipped 2026-09-16 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); collected intent 361, which renamed the consultation tiers to Primary and Secondary Advisor, aligned their Claude and Codex model defaults, and migrated legacy configuration and installed files.
 
 - `2.0.0-alpha.26` - shipped 2026-09-15 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); a fix found at the alpha.25 install, delivered without an intent: the core doctor leaves out the `codex_hooks_trust` reminder, which always warns and so failed every Codex core check; the full doctor still shows it.
