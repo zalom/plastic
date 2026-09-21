@@ -20,8 +20,6 @@ The installer replaces only its managed block in `CLAUDE.md` and `AGENTS.md`. Te
 the markers stays as you wrote it. `plastic uninstall` removes what the installer wrote and
 leaves your stores in place.
 
-Run any installer command with `--dry-run` to read the list of writes first.
-
 ## Your stores
 
 A store is a Git repository of Markdown files under `~/.plastic/`. It can hold private notes.

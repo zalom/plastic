@@ -12,12 +12,6 @@ npx -y @zalom/plastic install --claude
 
 Replace `--claude` with `--codex` for Codex CLI. Pass both flags to install for both agents.
 
-To see what the installer would write without writing it, add `--dry-run`:
-
-```bash
-npx -y @zalom/plastic install --claude --dry-run
-```
-
 ## Choose a channel
 
 The package version selects the channel. To install the alpha channel:
@@ -40,9 +34,9 @@ plastic status
 
 | Command | What it does |
 | ------- | ------------ |
-| `plastic update [--dry-run]` | Moves Plastic to the next version on its channel. |
-| `plastic rollback [VERSION] [--list]` | Moves to a version this machine has run before. `--list` shows them. |
-| `plastic uninstall [--dry-run]` | Removes Plastic from this machine's agents. Your stores stay. |
+| `plastic update` | Moves Plastic to the next version on its channel. |
+| `plastic rollback [--version VERSION]` | Moves to a version this machine has run before. With no version, it lists them. |
+| `plastic uninstall` | Removes Plastic from this machine's agents. Your stores stay. |
 
 ## A clean Mac
 
@@ -55,9 +49,18 @@ mise use --global ruby@3.3
 
 The installer checks the Ruby version before it writes anything.
 
-## Planned
+## Install without npm
 
-A shell installer, `install.sh`, and publishing from a branch push are planned in intent 376
-of the CLI and RLM roadmap. They do not exist yet.
+`install.sh` downloads the release archive for a channel, unpacks it under
+`~/.local/share/plastic` and links `~/.local/bin/plastic`. It needs Ruby and curl. The
+channel is `latest`, `beta` or `alpha`, and `latest` is the default.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh -s -- alpha
+plastic install --claude
+```
+
+A release carries the archive from the first version published by a branch push. Earlier
+releases have no archive, and the script reports that it cannot download one.
 
 For what the installer writes on your machine, see [SECURITY.md](SECURITY.md).

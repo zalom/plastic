@@ -9,10 +9,10 @@
 | `plastic status [--json]` | Shows active work in every store. |
 | `plastic continue [--project SLUG] [--json]` | Shows where one project stands and what runs next. |
 | `plastic next [--why] [--project SLUG] [--json]` | Prints the next action in one line. |
-| `plastic install [--claude] [--codex] [--dry-run]` | Installs Plastic into this machine's agents. |
-| `plastic update [--dry-run]` | Moves Plastic to the next version on its channel. |
-| `plastic rollback [VERSION] [--list]` | Moves to a Plastic version this machine has run before. |
-| `plastic uninstall [--dry-run]` | Removes Plastic from this machine's agents. |
+| `plastic install [--claude] [--codex] [--hermes] [--all]` | Installs Plastic into this machine's agents. |
+| `plastic update [--claude] [--codex] [--hermes] [--all]` | Moves Plastic to the next version on its channel. |
+| `plastic rollback [--version VERSION]` | Moves to a Plastic version this machine has run before. |
+| `plastic uninstall [--claude] [--codex] [--hermes] [--all]` | Removes Plastic from this machine's agents. |
 
 ## Commands that are planned
 
