@@ -10,9 +10,9 @@ class CliTableTest < Minitest::Test
     assert_predicate Plastic::CLI::TABLE, :frozen?
   end
 
-  def test_the_table_holds_every_command_batches_one_and_two_ship
-    assert_equal %w[continue help install intent intent\ answer intent\ end intent\ new
-      intent\ note intent\ rule intent\ show intent\ spec intent\ step intent\ verify
+  def test_the_table_holds_every_command_shipped_so_far
+    assert_equal %w[continue doctor feedback help install intent intent\ answer intent\ end
+      intent\ new intent\ note intent\ rule intent\ show intent\ spec intent\ step intent\ verify
       next rollback status uninstall update version],
       Plastic::CLI::TABLE.keys.sort
   end
