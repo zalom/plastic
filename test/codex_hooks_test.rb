@@ -321,7 +321,7 @@ class CodexHooksTest < Minitest::Test
     out, status = run_hook("capture", payload)
     assert_equal 0, status.exitstatus
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
-    assert_includes ctx, "plastic-intent-continuing skill workflow"
+    assert_includes ctx, "Run `plastic continue` to resume"
   end
 
   # 345 (D7, 323): the Codex relay path shares scripts/hook-capture with the

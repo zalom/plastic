@@ -39,11 +39,13 @@ class PostCutVocabularyTest < Minitest::Test
   # Row 4.2 - templates, skills, and doctor MESSAGES never call the terminal state "Done"
   # (parser code that reads real `Done delivered|abandoned` ledger lines stays untouched:
   # scripts/lib/savepoint.rb, scripts/lib/index_projection.rb, scripts/append-ledger).
+  # skills/intent-continuing/references/boarding-matrix.md dropped from this list by intent
+  # 372 (family 2): intent-continuing moved into `plastic continue`, a command; its file
+  # is gone.
   PROSE_FILES_MUST_NOT_SAY_DONE = %w[
     templates/agents.md
     skills/conventions/references/completion-and-done.md
     skills/conventions/references/locks-and-worktrees.md
-    skills/intent-continuing/references/boarding-matrix.md
     skills/auto/SKILL.md
     skills/auto/references/human-report-contract.md
   ].freeze

@@ -35,12 +35,15 @@ class SpawnBlockTest < Minitest::Test
                  "the auto skill must name graphs with decision nodes as where a lead earns its keep")
   end
 
-  # --- 6.7: the executing skill names the paste as the dispatch step --------
+  # --- 6.7: the auto skill names the paste as the dispatch step -------------
+  # (family 2, intent 372: `plastic-intent-executing` moved into the `plastic
+  # intent step` command; the auto skill is now the only prose reader of a
+  # graph delivery's dispatch step.)
 
-  def test_executing_skill_names_the_paste
-    text = File.read(File.join(ROOT, "skills", "intent-executing", "SKILL.md"))
+  def test_auto_skill_names_the_paste
+    text = File.read(File.join(ROOT, "skills", "auto", "SKILL.md"))
 
-    assert_match(/paste/i, text, "the executing skill must name the paste into the Agent tool as the dispatch step")
-    assert_match(/spawn block/i, text, "the executing skill must name the spawn block runner step prints")
+    assert_match(/paste/i, text, "the auto skill must name the paste into the Agent tool as the dispatch step")
+    assert_match(/spawn block/i, text, "the auto skill must name the spawn block runner step prints")
   end
 end

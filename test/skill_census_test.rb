@@ -90,7 +90,7 @@ class SkillCensusRosterTest < Minitest::Test
     end.sort
 
     assert_equal expected.map { |e| "plastic-#{e}" }.sort, roster.map(&:name).sort
-    assert_equal 16, roster.length
+    assert_equal 11, roster.length
     assert_equal 3, roster.count { |s| !s.user_invocable }
   end
 
@@ -610,23 +610,25 @@ class SkillCensusTallyTest < Minitest::Test
   end
 
   def test_absorbed_name_maps_into_successor
-    built = SkillCensus::Tally.new(history_scan(["plastic-intent-brainstorming"]), transcript_scan, roster).build # plastic-intent-brainstorming retired in 2.0
+    built = SkillCensus::Tally.new(
+      history_scan(["plastic-old-doctor"]), transcript_scan, roster,
+      name_map: {"plastic-old-doctor" => "plastic-doctor"}
+    ).build
 
-    speccing = built.skills.find { |s| s.name == "plastic-intent-speccing" }
-    assert_equal 1, speccing.typed
-    assert_equal 1, speccing.mapped_from["plastic-intent-brainstorming"] # plastic-intent-brainstorming retired in 2.0
+    doctor = built.skills.find { |s| s.name == "plastic-doctor" }
+    assert_equal 1, doctor.typed
+    assert_equal 1, doctor.mapped_from["plastic-old-doctor"]
   end
 
   def test_row_shows_mapped_from_names_and_their_counts
-    roster_with_target = roster + [SkillCensus::Roster::Skill.new(name: "plastic-intent-continuing", user_invocable: true)]
     built = SkillCensus::Tally.new(
-      history_scan(["plastic-continuing"] * 5 + ["plastic-intent-continuing"]), # plastic-continuing retired in 2.0
-      transcript_scan, roster_with_target
+      history_scan(["plastic-old-doctor"] * 5 + ["plastic-doctor"]), transcript_scan, roster,
+      name_map: {"plastic-old-doctor" => "plastic-doctor"}
     ).build
 
-    row = built.skills.find { |s| s.name == "plastic-intent-continuing" }
+    row = built.skills.find { |s| s.name == "plastic-doctor" }
     assert_equal 6, row.typed
-    assert_equal 5, row.mapped_from["plastic-continuing"] # plastic-continuing retired in 2.0
+    assert_equal 5, row.mapped_from["plastic-old-doctor"]
   end
 
   def test_retired_name_goes_to_retired_row
@@ -658,9 +660,10 @@ class SkillCensusTallyTest < Minitest::Test
   end
 
   def test_map_coverage_lists_every_entry_with_its_observed_count
-    built = SkillCensus::Tally.new(history_scan([]), transcript_scan, roster).build
+    name_map = {"plastic-old-doctor" => "plastic-doctor"}
+    built = SkillCensus::Tally.new(history_scan([]), transcript_scan, roster, name_map: name_map).build
 
-    assert_equal SkillCensus::NAME_MAP.length, built.map_coverage.length
+    assert_equal name_map.length, built.map_coverage.length
     zero_entry = built.map_coverage.find { |e| e[:observed].zero? }
     refute_nil zero_entry
   end

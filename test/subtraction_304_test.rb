@@ -38,9 +38,8 @@ class Subtraction304Test < Minitest::Test
   ].freeze
 
   KEPT_SKILL_DIRS = %w[
-    agent-advisor auto conventions dashboard direct doctor feedback install intent-continuing
-    intent-creating intent-ending intent-executing intent-speccing project-creating releasing
-    roadmap rollback tutorial uninstall update
+    agent-advisor auto conventions dashboard direct doctor feedback
+    project-creating releasing roadmap tutorial
   ].freeze
 
   KEPT_AGENTS = %w[plastic-enforcer.md plastic-executor.md plastic-node-research.md
@@ -204,19 +203,10 @@ class Subtraction304Test < Minitest::Test
     end
   end
 
-  def test_intent_continuing_asks_no_mode_and_routes_three_ways
-    body = File.read(File.join(REPO, "skills", "intent-continuing", "SKILL.md"))
-    refute_match(/auto or guided\?/i, body)
-    %w[Project route Intent route Roadmap route].each { |h| assert_includes body, h }
-    %w[board-fill.md boarding-matrix.md liveness-ranking.md context-management.md].each do |ref|
-      assert File.file?(File.join(REPO, "skills", "intent-continuing", "references", ref)), "#{ref} missing"
-    end
-  end
-
-  def test_intent_speccing_carries_grill_and_research_modes
-    body = File.read(File.join(REPO, "skills", "intent-speccing", "SKILL.md"))
-    %w[Grill\ mode Research\ mode insight-append design-principles.md].each { |s| assert_includes body, s }
-  end
+  # test_intent_continuing_asks_no_mode_and_routes_three_ways and
+  # test_intent_speccing_carries_grill_and_research_modes were retired by intent 372
+  # (family 2): both skills moved into `plastic continue`/`plastic intent spec`,
+  # commands; their files are gone.
 
   def test_doctor_skill_carries_locks_and_provisioning
     body = File.read(File.join(REPO, "skills", "doctor", "SKILL.md"))

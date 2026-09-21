@@ -129,15 +129,11 @@ class AutoCore307Test < Minitest::Test
     refute_includes body, "M and L only"
     refute_includes body, "Bridge." + "arm_auto" # split so the hermeticity scanners see no arm call here
     refute_match(/\bat L\b/, body) # removed in 2.0 (intent 304)
-    assert File.file?(File.join(ROOT, "skills", "intent-executing", "plan-reviewer-prompt.md"))
   end
 
-  def test_plan_reviewer_prompt_reviews_the_matrix_before_code
-    body = read("skills/intent-executing/plan-reviewer-prompt.md")
-    assert_includes body, "failure-mode matrix"
-    assert_match(/before any code/i, body)
-    assert_match(/verdict/i, body)
-  end
+  # test_plan_reviewer_prompt_reviews_the_matrix_before_code was retired by intent 372
+  # (family 2): skills/intent-executing/plan-reviewer-prompt.md is gone; the reviewer
+  # step it described is now `plastic intent step`, a command, not skill prose.
 
   def test_enforcer_and_executor_carry_no_gate_or_tier_grammar
     %w[agents/plastic-enforcer.md agents/plastic-executor.md].each do |rel|
@@ -152,13 +148,9 @@ class AutoCore307Test < Minitest::Test
     end
   end
 
-  def test_intent_executing_keeps_the_executor_codes_and_drops_the_per_task_loop
-    body = read("skills/intent-executing/SKILL.md")
-    assert_includes body, "NEEDS_CONTEXT"
-    assert_includes body, "BLOCKED"
-    refute_includes body, "Several independent actions: one subagent per task"
-    refute_includes body, "two-stage review" # removed in 2.0 (intent 307)
-  end
+  # test_intent_executing_keeps_the_executor_codes_and_drops_the_per_task_loop was retired
+  # by intent 372 (family 2): skills/intent-executing/SKILL.md is gone, moved into the
+  # `plastic intent step` command.
 
   def test_spawn_preamble_exemplar_names_the_executor_not_the_planner
     src = read("scripts/spawn-preamble")

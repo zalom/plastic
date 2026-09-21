@@ -100,17 +100,12 @@ class CodexInstallContentTest < Minitest::Test
     assert_empty dead, "allowlist entries that matched nothing in the installed tree:\n#{dead.inspect}"
   end
 
-  def test_the_three_breaking_lines_resolve_on_codex
-    creating_skill = File.read(File.join(@skills_root, "plastic-intent-creating", "SKILL.md"))
-    lifecycle = File.read(File.join(@skills_root, "plastic-intent-creating", "references", "lifecycle.md"))
+  # The intent-creating/lifecycle.md half of this pin was retired by intent 372 (family 2):
+  # intent-creating moved into `plastic intent new`, a command; its files are gone.
+  def test_the_breaking_line_resolves_on_codex
     auto_skill = File.read(File.join(@skills_root, "plastic-auto", "SKILL.md"))
 
-    assert_includes creating_skill, "~/.plastic/scripts/new-intent"
-    assert_includes lifecycle, "~/.plastic/scripts/new-intent"
     assert_includes auto_skill, "~/.plastic/templates/outcome.md"
-
-    refute_includes creating_skill, "CLAUDE_PLUGIN_ROOT"
-    refute_includes lifecycle, "CLAUDE_PLUGIN_ROOT"
     refute_includes auto_skill, "CLAUDE_PLUGIN_ROOT"
   end
 

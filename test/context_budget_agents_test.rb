@@ -79,12 +79,12 @@ class ContextBudgetAgentsTest < Minitest::Test
     assert_equal parts, report.row(:standing).bytes
   end
 
-  # Intent 372, family 1: deleting the four installer skills (install, uninstall,
-  # update, rollback) frees their name + description bytes from the skill catalog,
-  # 1,332 bytes measured by bin/plastic-bench. The ceiling moves down by exactly
-  # that, never a round number.
-  def test_the_standing_ceiling_is_1332_bytes_lower
-    assert_equal 11_000 - 1_332, ContextBudget::CEILINGS[:standing]
+  # Intent 372: each family's skill deletions free their name + description bytes
+  # from the skill catalog, measured by bin/plastic-bench. The ceiling moves down
+  # by exactly that, never a round number. Family 1 (install, uninstall, update,
+  # rollback) freed 1,332 bytes; family 2 (the five intent skills) freed 2,230.
+  def test_the_standing_ceiling_reflects_every_family_so_far
+    assert_equal 11_000 - 1_332 - 2_230, ContextBudget::CEILINGS[:standing]
   end
 
   def test_the_standing_row_carries_the_ceiling

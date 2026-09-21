@@ -43,14 +43,9 @@ class ReportScreenSkillContractTest < Minitest::Test
     assert lines <= 300, "skills/auto/SKILL.md grew to #{lines} lines, over the 300-line cap"
   end
 
-  # --- row 90: intent-continuing/SKILL.md routes to state/state --all/delay ---
-
-  def test_intent_continuing_routes_to_report_screen
-    text = read("skills/intent-continuing/SKILL.md")
-    assert_includes text, "report-screen state"
-    assert_includes text, "state --all"
-    assert_includes text, "report-screen delay"
-  end
+  # Row 90 (test_intent_continuing_routes_to_report_screen) was retired by intent 372
+  # (family 2): the intent-continuing skill moved into the `plastic continue` command,
+  # which is code, not skill prose - see the lead's routing rewrite in a later pass.
 
   # Rows 91/92 (savepoint-note for both kinds, the D19 heading convention stated in
   # intent-executing/SKILL.md) were retired by intent 341 (G8, n1): the runner-driven executing
@@ -66,11 +61,7 @@ class ReportScreenSkillContractTest < Minitest::Test
     headings = {
       "skills/auto/SKILL.md" => ["## Why (the lead)", "## How (the lead), then the plan review",
                                   "## Exec (the executor)", "## Review by risk", "## Completion",
-                                  "## Team"],
-      "skills/intent-executing/SKILL.md" => ["## step", "## status", "## answer", "## Tick-as-you-land"],
-      "skills/intent-ending/SKILL.md" => ["## Routing", "## Abandoned is the same procedure"],
-      "skills/intent-speccing/SKILL.md" => ["## Closing the conversation"],
-      "skills/intent-creating/SKILL.md" => ["## Scaffold", "## References"],
+                                  "## Team"]
     }
     headings.each do |file, hs|
       text = read(file)
@@ -87,10 +78,8 @@ class ReportScreenSkillContractTest < Minitest::Test
     assert_includes text, "harness name"
   end
 
-  def test_intent_continuing_states_cross_harness_neutrality
-    text = read("skills/intent-continuing/SKILL.md")
-    assert_includes text, "harness name"
-  end
+  # test_intent_continuing_states_cross_harness_neutrality was retired alongside row 90
+  # above: intent-continuing/SKILL.md no longer exists.
 
   # The 317a S6c labeled-table teaching in intent-ending/SKILL.md ("| Row | What |",
   # "action-file heading") was retired by intent 341 (G8, n1): outcome.md is generated, never
@@ -109,18 +98,9 @@ class ReportScreenSkillContractTest < Minitest::Test
 
   # --- intent 330, O4: an unnamed status ask routes to the session verb -------
 
-  # O4.1
-  def test_continuing_skill_routes_a_status_ask_to_the_session_verb
-    text = read("skills/intent-continuing/SKILL.md")
-    assert_includes text, "report-screen session"
-  end
-
-  # O4.2
-  def test_continuing_skill_keeps_the_named_and_delay_routes
-    text = read("skills/intent-continuing/SKILL.md")
-    assert_includes text, "report-screen state <intent_dir>"
-    assert_includes text, "report-screen delay"
-  end
+  # O4.1/O4.2 (test_continuing_skill_routes_a_status_ask_to_the_session_verb,
+  # test_continuing_skill_keeps_the_named_and_delay_routes) were retired alongside row 90:
+  # intent-continuing/SKILL.md no longer exists.
 
   # O4.3
   def test_auto_skill_names_the_session_verb
@@ -134,12 +114,8 @@ class ReportScreenSkillContractTest < Minitest::Test
     assert_includes text, "report-screen session"
   end
 
-  # O4.7: a shipped test already pins "state --all" as the roster-alone verb;
-  # the session-verb rewrite must never drop that string.
-  def test_continuing_skill_still_names_the_roster_verb
-    text = read("skills/intent-continuing/SKILL.md")
-    assert_includes text, "state --all"
-  end
+  # O4.7 (test_continuing_skill_still_names_the_roster_verb) was retired alongside row 90:
+  # intent-continuing/SKILL.md no longer exists.
 
   # --- intent 331b: the plan verb, the PRE-delivery report ---------------------
 
@@ -160,29 +136,10 @@ class ReportScreenSkillContractTest < Minitest::Test
 
   # --- intent 331f: skills bound to reports (S2/S3) --------------------------
 
-  # F1
-  def test_continuing_project_route_prints_dashboard_first
-    text = read("skills/intent-continuing/SKILL.md")
-    assert_includes text, "dashboard.rb project <slug> --screen"
-  end
-
-  # F2
-  def test_continuing_named_intent_prints_state
-    text = read("skills/intent-continuing/SKILL.md")
-    assert_includes text, "report-screen state <intent_dir>"
-  end
-
-  # F3
-  def test_continuing_status_ask_prints_session
-    text = read("skills/intent-continuing/SKILL.md")
-    assert_includes text, "report-screen session"
-  end
-
-  # F4
-  def test_continuing_roadmap_route_prints_roadmap_state
-    text = read("skills/intent-continuing/SKILL.md")
-    assert_includes text, "report-screen roadmap <roadmap.md> state"
-  end
+  # F1-F4 (test_continuing_project_route_prints_dashboard_first,
+  # test_continuing_named_intent_prints_state, test_continuing_status_ask_prints_session,
+  # test_continuing_roadmap_route_prints_roadmap_state) were retired alongside row 90:
+  # intent-continuing/SKILL.md no longer exists.
 
   # F5
   def test_auto_prints_plan_before_executor
@@ -204,17 +161,9 @@ class ReportScreenSkillContractTest < Minitest::Test
     assert_equal 1, text.scan("report-screen delivered").length
   end
 
-  # F8
-  def test_ending_prints_delivered
-    text = read("skills/intent-ending/SKILL.md")
-    assert_includes text, "report-screen delivered <intent_dir>"
-  end
-
-  # F9
-  def test_speccing_prints_plan
-    text = read("skills/intent-speccing/SKILL.md")
-    assert_includes text, "report-screen plan <intent_dir>"
-  end
+  # F8/F9 (test_ending_prints_delivered, test_speccing_prints_plan) were retired by intent
+  # 372 (family 2): `plastic intent end` and `plastic intent spec` are commands now, not
+  # skill prose, so there is no SKILL.md text left for these to read.
 
   # F10
   def test_roadmap_skill_prints_roadmap_screens
@@ -235,11 +184,11 @@ class ReportScreenSkillContractTest < Minitest::Test
   # executing skill no longer prints report-screen state itself; the lead does, from the auto
   # skill's How/Exec/Completion steps.
 
+  # skills/intent-continuing/SKILL.md, skills/intent-ending/SKILL.md and
+  # skills/intent-speccing/SKILL.md dropped by intent 372 (family 2): all three moved into
+  # commands; their files are gone.
   BOUND_SKILL_FILES = %w[
-    skills/intent-continuing/SKILL.md
     skills/auto/SKILL.md
-    skills/intent-ending/SKILL.md
-    skills/intent-speccing/SKILL.md
     skills/roadmap/SKILL.md
     skills/dashboard/SKILL.md
   ].freeze
