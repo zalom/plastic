@@ -44,7 +44,7 @@ module Plastic
       end
 
       def store
-        @store ||= found&.fetch(:store) || StoreLayout.global_store(plastic_home)
+        File.join(root, "store")
       end
 
       def index_path

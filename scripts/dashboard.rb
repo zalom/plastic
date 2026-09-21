@@ -144,13 +144,13 @@ def completion_dates(index_path)
 end
 
 # All stores: global + every registered project. -> [{scope, store, index}]
-def stores
+def stores(home = PLASTIC_HOME)
   list = []
-  global = Plastic::StoreLayout.global_store(PLASTIC_HOME)
-  list << { scope: "global", store: global, index: File.join(Plastic::StoreLayout.global_root(PLASTIC_HOME), "INDEX.md") } if File.directory?(global)
-  projects_root = Plastic::StoreLayout.projects_root(PLASTIC_HOME)
+  global = Plastic::StoreLayout.global_store(home)
+  list << { scope: "global", store: global, index: File.join(Plastic::StoreLayout.global_root(home), "INDEX.md") } if File.directory?(global)
+  projects_root = Plastic::StoreLayout.projects_root(home)
   if File.directory?(projects_root)
-    Plastic::StoreLayout.project_slugs(PLASTIC_HOME).each do |proj|
+    Plastic::StoreLayout.project_slugs(home).each do |proj|
       store = File.join(projects_root, proj, "store")
       next unless File.directory?(store)
       list << { scope: "project:#{proj}", store: store, index: File.join(projects_root, proj, "INDEX.md") }

@@ -165,4 +165,11 @@ class CliSearchCommandsTest < Minitest::Test
   def test_query_without_a_database_exits_one
     assert_equal 1, plastic("query", "SELECT 1")
   end
+
+  def test_search_on_a_broken_index_exits_one
+    plastic("index")
+    File.write(database, "not a database")
+
+    assert_equal 1, plastic("search", "heron")
+  end
 end
