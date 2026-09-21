@@ -59,6 +59,9 @@ module SkillCensus
     "plastic-feedback",
     "plastic-tutorial",
     "plastic-conventions",
+    "plastic-project-creating",
+    "plastic-roadmap",
+    "plastic-dashboard",
   ].freeze
 
   # ~/.plastic/scripts/* filenames, never skills (review 3). plastic-lock
