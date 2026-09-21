@@ -54,6 +54,23 @@ class CliInstallerVerbsTest < Minitest::Test
     assert_equal [["--claude", "--advisor", "primary"]], @calls.map(&:last)
   end
 
+  def test_install_takes_the_flags_that_update_and_rollback_pass
+    command("install", "--reinstall", "--ledger-action", "update", "--claude")
+
+    assert_equal [["--reinstall", "--ledger-action", "update", "--claude"]], @calls.map(&:last)
+  end
+
+  def test_update_and_rollback_pass_only_flags_that_install_lists
+    require File.expand_path("../../scripts/lib/cli/commands/install", __dir__)
+    %w[update.rb rollback.rb].each do |script|
+      source = File.read(File.expand_path("../../scripts/#{script}", __dir__))
+      handoff = source[/"install", (.*?)\*/m, 1]
+      handoff.scan(/"(--[a-z-]+)"/).flatten.each do |flag|
+        assert_includes Plastic::CLI::Commands::Install::FLAGS, flag, "#{script} passes #{flag}"
+      end
+    end
+  end
+
   def test_a_flag_the_script_does_not_know_exits_two
     assert_equal 2, command("uninstall", "--dry-run")
   end

@@ -5,7 +5,7 @@ archive_url="${PLASTIC_ARCHIVE_URL:-https://github.com/zalom/plastic/releases/la
 share="${PLASTIC_SHARE:-$HOME/.local/share/plastic}"
 bin="${PLASTIC_BIN:-$HOME/.local/bin}"
 
-command -v ruby >/dev/null || { echo "plastic needs Ruby 3.3 or later, and no ruby is on the PATH" >&2; exit 1; }
+command -v ruby >/dev/null || { echo "plastic needs Ruby 4.0 or later, and no ruby is on the PATH" >&2; exit 1; }
 
 archive=$(mktemp)
 trap 'rm -f "$archive"' EXIT

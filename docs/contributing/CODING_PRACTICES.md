@@ -20,7 +20,7 @@ The aim is simple code that is easy to change.
 - Inject streams, the environment and paths. Never reach for a global in a command.
 - Call existing library code in the same process. Never copy it.
 - Code carries no comments beyond the file header that states the contract.
-- Scripts run under Ruby 3.0 or later. Shell scripts run under bash 3.2.
+- Scripts run under Ruby 4.0 or later. Shell scripts run under bash 3.2.
 
 ## Lint
 
