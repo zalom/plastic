@@ -25,8 +25,8 @@ module Lock
   module_function
 
   # Skill-invocation prefix per harness (intent 201, D2/D3). Claude Code invokes a
-  # skill with a slash (/plastic-auto); Codex CLI invokes explicitly with a
-  # dollar ($plastic-auto) and may also select one implicitly by matching the
+  # skill with a slash (/plastic-doctor); Codex CLI invokes explicitly with a
+  # dollar ($plastic-doctor) and may also select one implicitly by matching the
   # skill's description. This table is the package-wide source of truth for
   # `Lock.skill_ref`; every caller reaches it directly rather than duplicating
   # the prefix table. InstallerCore::DEFAULT_AGENTS carries the same values per
@@ -38,7 +38,7 @@ module Lock
   # Renders a skill reference for the given harness. Unset or unrecognized
   # harness falls back to Claude's slash form, so an existing call site that
   # never passes harness: keeps behaving exactly as it does today (D2). name
-  # is the bare skill name ("plastic-auto"), never pre-prefixed.
+  # is the bare skill name ("plastic-doctor"), never pre-prefixed.
   def self.skill_ref(name, harness: :claude)
     prefix = SKILL_PREFIXES.fetch(harness.to_s, SKILL_PREFIXES["claude"])
     "#{prefix}#{name}"
