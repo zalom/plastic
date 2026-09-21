@@ -147,8 +147,8 @@ tests first, one suite run per intent.
 ## Autonomous Delivery
 
 Human owns What and Why for human-initiated intents. The team assists (research, exploration)
-but the human drives until handoff. When Why is complete, or the human triggers `plastic-auto`,
-the auto team takes over How and Exec autonomously.
+but the human drives until handoff. When Why is complete, or the human runs
+`plastic auto take ID`, the auto team takes over How and Exec autonomously.
 
 - **Safe-by-default:** the executor always prefers non-destructive routes (rename vs delete,
   additive migrations, backups before changes). Destructive actions on existing projects
