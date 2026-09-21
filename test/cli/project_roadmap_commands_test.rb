@@ -116,7 +116,8 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
     path = project_path
     command("project new", "acme", "--path", path)
 
-    data = YAML.safe_load(File.read(projects_yml))
+    data = YAML.safe_load_file(projects_yml)
+
     assert_equal File.expand_path(path), data["projects"]["acme"]["path"]
     assert_equal "active", data["projects"]["acme"]["status"]
   end
@@ -125,7 +126,8 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
     path = project_path
     command("project new", "acme", "--path", path, "--parent", "372")
 
-    data = YAML.safe_load(File.read(projects_yml))
+    data = YAML.safe_load_file(projects_yml)
+
     assert_equal "372", data["projects"]["acme"]["parent"]
   end
 
@@ -237,7 +239,7 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
   end
 
   def test_a_failing_next_exits_one
-    assert_equal 1, command("roadmap next", status: 3)
+    assert_equal 1, command("roadmap next", status: 8)
   end
 
   # --- roadmap log -------------------------------------------------------------------
