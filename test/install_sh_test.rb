@@ -9,9 +9,8 @@ require "open3"
 class InstallShTest < Minitest::Test
   SCRIPT = File.expand_path("../install.sh", __dir__)
 
-  def install(home, *arguments, archive: nil)
-    env = {"HOME" => home, "PLASTIC_ARCHIVE_URL" => archive && "file://#{archive}"}
-    Open3.capture3(env, "sh", SCRIPT, *arguments)
+  def install(home, archive:)
+    Open3.capture3({"HOME" => home, "PLASTIC_ARCHIVE_URL" => "file://#{archive}"}, "sh", SCRIPT)
   end
 
   def archive_in(dir)
@@ -39,11 +38,12 @@ class InstallShTest < Minitest::Test
     end
   end
 
-  def test_an_unknown_channel_exits_two
+  def test_a_download_that_fails_exits_one_and_links_nothing
     Dir.mktmpdir do |dir|
-      _out, _err, status = install(dir, "nightly")
+      _out, _err, status = install(dir, archive: File.join(dir, "missing.tgz"))
 
-      assert_equal 2, status.exitstatus
+      assert_equal 1, status.exitstatus
+      refute_path_exists File.join(dir, ".local", "bin", "plastic")
     end
   end
 end

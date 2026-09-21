@@ -1730,7 +1730,7 @@ reads the version from `package.json`. When the tag for that version exists, it 
 it runs the suite and the guard, packs one archive, creates the tag and the GitHub release
 with `plastic.tgz` attached, and publishes that same archive to npm. To release, change the
 version in the three version files and push the branch. `install.sh` at the repository root
-downloads the archive for a channel, unpacks it under `~/.local/share/plastic` and links
+downloads the archive of the latest stable release, unpacks it under `~/.local/share/plastic` and links
 `~/.local/bin/plastic`.
 
 **The mechanism.** The publish job is granted `id-token: write`. The npm CLI detects the OIDC environment, fetches a short-lived

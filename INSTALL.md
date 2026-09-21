@@ -51,16 +51,19 @@ The installer checks the Ruby version before it writes anything.
 
 ## Install without npm
 
-`install.sh` downloads the release archive for a channel, unpacks it under
-`~/.local/share/plastic` and links `~/.local/bin/plastic`. It needs Ruby and curl. The
-channel is `latest`, `beta` or `alpha`, and `latest` is the default.
+`install.sh` always installs the latest stable release. It downloads that release's archive,
+unpacks it under `~/.local/share/plastic` and links `~/.local/bin/plastic`. It needs Ruby and
+curl.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh -s -- alpha
+curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
 plastic install --claude
 ```
 
-A release carries the archive from the first version published by a branch push. Earlier
-releases have no archive, and the script reports that it cannot download one.
+To move an installed Plastic to another channel, run `plastic update --beta` or
+`plastic update --alpha`.
+
+No stable release carries the archive yet. Until the first one does, the script reports
+that and exits, and npm is the way to install.
 
 For what the installer writes on your machine, see [SECURITY.md](SECURITY.md).
