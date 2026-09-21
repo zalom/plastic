@@ -11,11 +11,13 @@ class CliTableTest < Minitest::Test
   end
 
   def test_the_table_holds_every_command_shipped_so_far
-    assert_equal %w[continue doctor feedback help hook install intent intent\ answer intent\ end
+    assert_equal %w[auto auto\ brief auto\ lock auto\ report auto\ take
+      continue doctor feedback help hook install intent intent\ answer intent\ end
       intent\ new intent\ note intent\ rule intent\ show intent\ spec intent\ step intent\ verify
       next project project\ links project\ list project\ new
       roadmap roadmap\ check roadmap\ log roadmap\ next roadmap\ show
-      rollback status uninstall update version],
+      rollback session session\ commit session\ handoff session\ summary
+      status uninstall update version],
       Plastic::CLI::TABLE.keys.sort
   end
 

@@ -10,6 +10,11 @@
 module Plastic
   class CLI
     TABLE = {
+      "auto" => ["commands/auto", "Auto", "List the auto subcommands"],
+      "auto brief" => ["commands/auto_brief", "AutoBrief", "Print an intent's spawn preamble, and the advisor shapes for --role advisor"],
+      "auto lock" => ["commands/auto_lock", "AutoLock", "Inspect, repair, or release an intent's delivery lock"],
+      "auto report" => ["commands/auto_report", "AutoReport", "Print an intent's completion report, then the review-by-risk rules"],
+      "auto take" => ["commands/auto_take", "AutoTake", "Arm an intent's delivery lock for this session"],
       "continue" => ["commands/continue", "Continue", "Show where one project stands and what runs next"],
       "doctor" => ["commands/doctor", "Doctor", "Diagnose Plastic installation health"],
       "feedback" => ["commands/feedback", "Feedback", "File a feedback report, body on standard input"],
@@ -37,6 +42,10 @@ module Plastic
       "roadmap next" => ["commands/roadmap_next", "RoadmapNext", "Name the roadmap most worth continuing"],
       "roadmap show" => ["commands/roadmap_show", "RoadmapShow", "Print a roadmap's state screen"],
       "rollback" => ["commands/rollback", "Rollback", "Move to a Plastic version this machine has run before"],
+      "session" => ["commands/session", "Session", "List the session subcommands"],
+      "session commit" => ["commands/session_commit", "SessionCommit", "Commit one verified checklist item"],
+      "session handoff" => ["commands/session_handoff", "SessionHandoff", "Write this session's hand-off into the day ledger"],
+      "session summary" => ["commands/session_summary", "SessionSummary", "Print the day ledger's open items and recent activity"],
       "status" => ["commands/status", "Status", "Show active work in every store"],
       "uninstall" => ["commands/uninstall", "Uninstall", "Remove Plastic from this machine's agents"],
       "update" => ["commands/update", "Update", "Move Plastic to the next version on its channel"],

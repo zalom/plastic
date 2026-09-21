@@ -45,11 +45,20 @@ class CliAutoSessionCommandsTest < Minitest::Test
 
   # --- plastic auto, alone or with an unknown word -----------------------------
 
-  def test_bare_auto_lists_the_subcommands
+  def test_bare_auto_exits_zero
     assert_equal 0, run_cli("auto")
+  end
+
+  def test_bare_auto_lists_the_take_and_brief_subcommands
+    run_cli("auto")
 
     assert_includes @fixture.printed, "auto take"
     assert_includes @fixture.printed, "auto brief"
+  end
+
+  def test_bare_auto_lists_the_report_and_lock_subcommands
+    run_cli("auto")
+
     assert_includes @fixture.printed, "auto report"
     assert_includes @fixture.printed, "auto lock"
   end
@@ -68,8 +77,12 @@ class CliAutoSessionCommandsTest < Minitest::Test
 
   # --- plastic session, alone or with an unknown word --------------------------
 
-  def test_bare_session_lists_the_subcommands
+  def test_bare_session_exits_zero
     assert_equal 0, run_cli("session")
+  end
+
+  def test_bare_session_lists_the_subcommands
+    run_cli("session")
 
     assert_includes @fixture.printed, "session commit"
     assert_includes @fixture.printed, "session handoff"
@@ -203,6 +216,7 @@ class CliAutoSessionCommandsTest < Minitest::Test
 
   def test_lock_names_the_next_verb_by_current_verb
     command("auto lock", "status", "372")
+
     assert_includes @fixture.printed, "next: plastic auto lock fix 372"
   end
 
