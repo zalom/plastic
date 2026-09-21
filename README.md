@@ -77,6 +77,14 @@ npx -y @zalom/plastic install --claude
 
 Replace `--claude` with `--codex` for Codex CLI, or pass both flags.
 
+The npm path puts the command at `~/.plastic/bin/plastic` and does not change your `PATH`.
+Link the command into a directory that is on your `PATH`:
+
+```bash
+mkdir -p ~/.local/bin
+ln -sf ~/.plastic/bin/plastic ~/.local/bin/plastic
+```
+
 ### Alpha channel
 
 Plastic 2.0 is on the alpha channel.

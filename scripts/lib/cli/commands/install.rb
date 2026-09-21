@@ -9,8 +9,8 @@ module Plastic
   class CLI
     module Commands
       class Install < InstallerVerb
-        USAGE_LINE = "plastic install [--claude] [--codex] [--hermes] [--all] [--reinstall] [--force] [--advisor NAME] [--no-advisor] [--statusline]"
-        FLAGS = %w[--claude --codex --hermes --all --reinstall --force --advisor --no-advisor --statusline].freeze
+        USAGE_LINE = "plastic install [--claude] [--codex] [--hermes] [--all] [--reinstall] [--force] [--advisor NAME] [--no-advisor] [--statusline] [--ledger-action NAME]"
+        FLAGS = %w[--claude --codex --hermes --all --reinstall --force --advisor --no-advisor --statusline --ledger-action].freeze
 
         SCRIPT = "install.rb"
         AFTER = "plastic version"
