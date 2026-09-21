@@ -82,9 +82,10 @@ class ContextBudgetAgentsTest < Minitest::Test
   # Intent 372: each family's skill deletions free their name + description bytes
   # from the skill catalog, measured by bin/plastic-bench. The ceiling moves down
   # by exactly that, never a round number. Family 1 (install, uninstall, update,
-  # rollback) freed 1,332 bytes; family 2 (the five intent skills) freed 2,230.
+  # rollback) freed 1,332 bytes; family 2 (the five intent skills) freed 2,230;
+  # family 4 (doctor, feedback, tutorial, conventions) freed 1,074.
   def test_the_standing_ceiling_reflects_every_family_so_far
-    assert_equal 11_000 - 1_332 - 2_230, ContextBudget::CEILINGS[:standing]
+    assert_equal 11_000 - 1_332 - 2_230 - 1_074, ContextBudget::CEILINGS[:standing]
   end
 
   def test_the_standing_row_carries_the_ceiling
