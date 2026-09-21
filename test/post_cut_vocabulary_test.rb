@@ -10,6 +10,12 @@ require "minitest/autorun"
 # required step. A graph intent (D1, no ceremonies) is judged on graph.md and nodes/,
 # never dinged for a missing spec.md/plan.md/checklist.md.
 class PostCutVocabularyTest < Minitest::Test
+  # Intent 363 emptied PLASTIC.md of doctrine. It is now a one-page pointer at the
+  # `plastic` command line (ruling D43), so the content pins that used to live here
+  # were deleted rather than rewritten. The doctrine they guarded is still in the
+  # conventions skill and its reference chapters, which Batch 2 rehomes into the
+  # commands that need it.
+
   REPO = File.expand_path("../../", __FILE__)
 
   def read(rel) = File.read(File.join(REPO, rel))
@@ -96,29 +102,6 @@ class PostCutVocabularyTest < Minitest::Test
     assert_match(/runner\s*step/i, auto_bullet)
     assert_match(/\bend\b/i, auto_bullet)
   end
-
-# Row 5.1 - PLASTIC.md names the runner loop, not the old stage-ladder
-# deliverable table, and never requires a checklist item plus action before
-# work can start.
-def test_plastic_md_names_runner_loop_not_stage_ladder
-  content = read("PLASTIC.md")
-
-  assert_match(/runner step/i, content, "PLASTIC.md must name runner step")
-  assert_match(/runner status/i, content, "PLASTIC.md must name runner status")
-  assert_match(/runner answer/i, content, "PLASTIC.md must name runner answer")
-  assert_match(/reaches a terminal status/i, content,
-               "PLASTIC.md must tie \"done\" to graph nodes reaching a terminal status")
-
-  record_section = content[/## The Record: Stages as its Shape\n(.*?)\n## /m, 1].to_s
-  refute_empty record_section, "The Record section not found"
-  refute_match(/\|\s*`spec\.md`\s*\|/, record_section,
-               "the stage table must not list spec.md as a required deliverable")
-  refute_match(/\|\s*`plan\.md`\s*\|/, record_section,
-               "the stage table must not list plan.md as a required deliverable")
-
-  refute_match(/must exist before work/i, content,
-               "PLASTIC.md must not require a checklist item plus action before work any more")
-end
 
 # Row 5.2 - both tutorial tracks walk create, graph, runner step, end -
 # never the old consolidate-the-spec / plan.md-and-checklist ceremony.

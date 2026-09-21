@@ -9,6 +9,12 @@ require "minitest/autorun"
 # test/plastic_md_batch0_conventions_test.rb's pattern: read the file, normalize
 # whitespace, assert on its prose.
 class HarnessInvocationDocsTest < Minitest::Test
+  # Intent 363 emptied PLASTIC.md of doctrine. It is now a one-page pointer at the
+  # `plastic` command line (ruling D43), so the content pins that used to live here
+  # were deleted rather than rewritten. The doctrine they guarded is still in the
+  # conventions skill and its reference chapters, which Batch 2 rehomes into the
+  # commands that need it.
+
   ROOT = File.expand_path("..", __dir__)
 
   def normalized(path)
@@ -43,18 +49,5 @@ class HarnessInvocationDocsTest < Minitest::Test
   def test_reading_the_ledgers_names_both_prefixes
     body = normalized("docs/guides/reading-the-ledgers.md")
     assert_includes body, "On Codex CLI, invoke the same skill with a dollar prefix instead (for example `$plastic-doctor`)"
-  end
-
-  def test_plastic_md_names_both_prefixes_once
-    body = normalized("PLASTIC.md")
-    assert_includes body,
-      "Codex CLI uses a dollar prefix instead (`$plastic-intent-creating`), and may also " \
-      "select a skill implicitly by matching its description."
-  end
-
-  def test_plastic_md_feedback_bullet_no_longer_hardcodes_a_slash
-    body = normalized("PLASTIC.md")
-    assert_includes body, "offer to invoke the plastic-feedback skill yourself"
-    refute_includes body, "offer to run `/plastic-feedback` yourself"
   end
 end

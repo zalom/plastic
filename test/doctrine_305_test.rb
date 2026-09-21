@@ -12,6 +12,12 @@ require "minitest/autorun"
 # test/plastic_core_budget_test.rb (tightened in the same change, the intent
 # 223 rule); this file pins content, not size.
 class Doctrine305Test < Minitest::Test
+  # Intent 363 emptied PLASTIC.md of doctrine. It is now a one-page pointer at the
+  # `plastic` command line (ruling D43), so the content pins that used to live here
+  # were deleted rather than rewritten. The doctrine they guarded is still in the
+  # conventions skill and its reference chapters, which Batch 2 rehomes into the
+  # commands that need it.
+
   ROOT = File.expand_path("..", __dir__)
   PLASTIC_MD = File.join(ROOT, "PLASTIC.md")
   ADAPTERS = File.join(ROOT, "docs", "reference", "harness-adapters.md")
@@ -53,54 +59,6 @@ class Doctrine305Test < Minitest::Test
     hits = read(PLASTIC_MD).lines.each_with_index.select { |l, _| l.match?(/\bgates?\b/i) }
     assert_empty hits.map { |l, i| "#{i + 1}: #{l.strip}" },
       "PLASTIC.md must not mention a gate; nothing blocks a write in 2.0"
-  end
-
-  def test_plastic_md_names_the_two_modes_plus_auto
-    body = normalized(PLASTIC_MD)
-    assert_includes body, "**Direct**"
-    assert_includes body, "**Thinking**"
-    assert_includes body, "**Auto**"
-    assert_includes body, "There are no tiers: there is only work."
-    assert_includes body, "The Coordinator loop (build, observe, repeat) wraps every intent"
-  end
-
-  def test_plastic_md_describes_the_shipped_store_layout
-    body = read(PLASTIC_MD)
-    assert_includes body, ".sessions/<YYYYMMDD>/", "the day ledger directory"
-    assert_includes body, ".tmp/<session>/", "the per-session directory"
-    assert_includes body, "proof only that the session started", "the heartbeat file's role"
-    assert_includes body, "heartbeat", "the heartbeat file"
-    assert_includes body, "first eight characters of the session id", "the short session id"
-    assert_includes normalized(PLASTIC_MD), "The delivery lock (`delivery.lock` in the intent directory) names the session delivering an intent, as its owner or a delegate"
-    assert_includes body, "digits only (`20260828`)", "the day id rule"
-    assert_includes body, "mode: direct", "the day ledger's one extra frontmatter field"
-  end
-
-  def test_plastic_md_carries_the_power_tools_mandate_as_a_recommendation
-    body = normalized(PLASTIC_MD)
-    assert_includes body, "Recommendations, not obligations, and only when present."
-    assert_includes body, "prefer `qmd search` / `qmd query` over the `plastic-*` collections"
-    assert_includes body, "Enola, or Serena when Enola is absent"
-    assert_includes body, "for code navigation over grep"
-  end
-
-  def test_plastic_md_scopes_locks_and_worktrees_to_auto_teams
-    body = normalized(PLASTIC_MD)
-    assert_includes body, "Locks and worktrees exist only for auto teams."
-    assert_includes body, "`delivery.lock`"
-  end
-
-  # PlasticChapterWiringTest reads only skills/*/SKILL.md, so a chapter pointer
-  # dropped from PLASTIC.md is invisible to it (review A3). The core names
-  # every chapter once, so a reader holding only the core knows where deeper
-  # doctrine lives.
-  def test_plastic_md_names_every_conventions_chapter
-    body = read(PLASTIC_MD)
-    chapters = Dir.glob(File.join(ROOT, "skills", "conventions", "references", "*.md"))
-                  .map { |p| File.basename(p, ".md") }.sort
-    refute_empty chapters
-    missing = chapters.reject { |name| body.include?(name) }
-    assert_empty missing, "PLASTIC.md must name every conventions chapter; missing: #{missing.join(', ')}"
   end
 
   # --- harness-adapters.md ---------------------------------------------------

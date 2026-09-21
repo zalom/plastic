@@ -12,8 +12,8 @@ require "json"
 require "yaml"
 require "time"
 require "digest"
-require "rubygems"
 
+require_relative "version_number"
 require_relative "hook_registry"
 require_relative "compact_instructions"
 
@@ -1061,9 +1061,7 @@ class Doctor
   end
 
   def safe_version(str)
-    Gem::Version.new(str.to_s)
-  rescue ArgumentError
-    nil
+    VersionNumber.parse(str)
   end
 
   def check_core_files(agent_key, include_drift: true)

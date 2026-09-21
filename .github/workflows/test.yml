@@ -16,6 +16,8 @@ jobs:
           fetch-depth: 0
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.3'
+          ruby-version: '4.0'
+      - name: Install the test gems
+        run: bundle install
       - name: Run the full suite
         run: ruby bin/test

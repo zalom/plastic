@@ -52,6 +52,8 @@ module ReleaseGuard
   # to the stable channel. Pure function, no ENV reads, shared by
   # scripts/release-check and the test suite so the channel rule has exactly
   # one implementation (intent 347).
+  CHANNELS = {"alpha" => "alpha", "beta" => "beta", "main" => "latest"}.freeze
+
   def self.dist_tag(version)
     suffix = version[/-(.+)\z/, 1]
     return "latest" if suffix.nil?

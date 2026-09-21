@@ -146,6 +146,23 @@ The agent helps most at Why and How: turning a rough idea into rulings, and ruli
 plan a machine can build from exactly. Read
 [pick your mode](docs/guides/pick-your-mode.md) to decide how much of that to hand over.
 
+## The `plastic` command
+
+Plastic is moving from skills to one command with direct results. These commands exist today:
+
+| Command | What it does |
+| ------- | ------------ |
+| `plastic help [COMMAND]` | Lists the commands, or shows one command's usage. |
+| `plastic version` | Prints the installed Plastic version. |
+| `plastic status` | Shows active work in every store. |
+| `plastic continue` | Shows where one project stands and what runs next. |
+| `plastic next` | Prints the next action in one line. |
+| `plastic install`, `update`, `rollback`, `uninstall` | Manage the installation. |
+
+Every result ends with a `next:` line and a `because:` line, and `--json` prints the same
+result as data. Planned commands, with their batch, are listed in
+[what Plastic covers](docs/guide/getting-started/what-plastic-covers.md).
+
 ## Compatibility and ownership
 
 - Native installers for Claude Code and Codex CLI, both from npm. Hermes is a packaging
@@ -184,6 +201,13 @@ behind releases are part of the repository, not a hidden process.
 
 ## Documentation
 
+- [`INSTALL.md`](INSTALL.md), [`SECURITY.md`](SECURITY.md) and
+  [`CONTRIBUTING.md`](CONTRIBUTING.md): every install path, what Plastic touches on your
+  machine, and how to change it.
+- [`docs/guide/`](docs/guide/index.md): getting started with the `plastic` command.
+- [`docs/usage/`](docs/usage/FEATURES.md): features, the audit guide and tracking.
+- [`docs/contributing/`](docs/contributing/ARCHITECTURE.md): the command architecture, the
+  coding practices and the gates.
 - [`docs/architecture.md`](docs/architecture.md): system structure, the two
   processes, the store layout, and the full stage table.
 - [`docs/internals.md`](docs/internals.md): how Plastic stays deterministic

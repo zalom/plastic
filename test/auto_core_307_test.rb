@@ -16,6 +16,12 @@ require_relative "../scripts/lib/index_entry"
 # reviewer reads them before code, one executor builds tests first, a light
 # post-execution review by risk, the full suite once. Static and hermetic.
 class AutoCore307Test < Minitest::Test
+  # Intent 363 emptied PLASTIC.md of doctrine. It is now a one-page pointer at the
+  # `plastic` command line (ruling D43), so the content pins that used to live here
+  # were deleted rather than rewritten. The doctrine they guarded is still in the
+  # conventions skill and its reference chapters, which Batch 2 rehomes into the
+  # commands that need it.
+
   ROOT = File.expand_path("..", __dir__)
 
   KEPT_BRIDGE = %i[blank? index_entry_match intent_active? intent_id_from_dir deep_merge
@@ -169,14 +175,5 @@ class AutoCore307Test < Minitest::Test
   def test_subtraction_scan_sees_slash_tier_grammar
     src = read("test/subtraction_304_test.rb")
     assert_includes src, "S/M", "the 304 tier scan must cover the S/M spelling (review A5 of intent 306)" # removed in 2.0 (intent 304)
-  end
-
-  def test_plastic_md_names_the_lock_not_the_bridge_or_pointer
-    body = read("PLASTIC.md")
-    refute_includes body, "arm_auto"
-    refute_includes body, "Lifecycle Gate"
-    refute_match(%r{/tmp.*bridge}i, body)
-    refute_includes body, "current (the pointer)"
-    assert_includes body, "delivery.lock"
   end
 end

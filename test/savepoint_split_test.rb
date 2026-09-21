@@ -49,7 +49,11 @@ class SavepointSplitTest < Minitest::Test
       loaded = out.lines.map(&:strip)
       project = loaded.select { |f| f.start_with?("#{REPO}/") }.map { |f| f.sub("#{REPO}/", "") }.sort
       assert_equal %w[scripts/lib/savepoint.rb], project
-      leaked = loaded.grep(%r{/(bridge|lock|worktree)\.rb\z|/yaml(\.rb)?\z|/socket\.rb\z|/digest\.rb\z})
+      # bridge/lock/worktree are Plastic's own files, so the pattern is anchored to the
+      # repository: RubyGems ships its own source/lock.rb and loads it whenever the child
+      # inherits a bundler environment, which says nothing about what savepoint.rb needs.
+      plastic_leak = %r{\A#{Regexp.escape(REPO)}/.*/(bridge|lock|worktree)\.rb\z}
+      leaked = loaded.grep(Regexp.union(plastic_leak, %r{/yaml(\.rb)?\z|/socket\.rb\z|/digest\.rb\z}))
       assert_empty leaked, "savepoint.rb pulled in unwanted dependencies: #{leaked.inspect}"
     end
   end

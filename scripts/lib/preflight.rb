@@ -1,7 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-require "rubygems"
+require_relative "version_number"
 
 # Pure, dependency-injected pre-flight checks for Plastic's runtime dependencies
 # (intent 38). Takes injected probes (ruby version, node version, git presence,
@@ -63,9 +63,7 @@ module Preflight
   end
 
   def safe_version(str)
-    Gem::Version.new(str.to_s)
-  rescue ArgumentError
-    nil
+    VersionNumber.parse(str)
   end
 
   def strip_leading_v(str)

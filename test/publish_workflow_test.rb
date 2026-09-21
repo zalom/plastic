@@ -65,13 +65,16 @@ class PublishWorkflowTest < Minitest::Test
     assert_nil parsed["on"], "parsed[\"on\"] must be nil; Psych resolves the bare key to true"
   end
 
-  def test_triggers_on_version_tags_only
-    assert_equal ["v*"], triggers["push"]["tags"]
-    refute triggers["push"].key?("branches"), "a branch push must not trigger a publish"
+  def test_triggers_on_a_push_to_each_channel_branch
+    assert_equal %w[alpha beta main], triggers["push"]["branches"]
   end
 
-  def test_supports_manual_dispatch_with_a_required_tag_input
-    assert triggers["workflow_dispatch"]["inputs"]["tag"]["required"]
+  def test_a_pushed_tag_starts_nothing
+    refute triggers["push"].key?("tags")
+  end
+
+  def test_supports_manual_dispatch
+    assert triggers.key?("workflow_dispatch")
   end
 
   def test_has_no_pull_request_trigger
@@ -84,7 +87,7 @@ class PublishWorkflowTest < Minitest::Test
   end
 
   def test_publish_job_requests_an_id_token
-    assert_equal({ "contents" => "read", "id-token" => "write" }, publish_job["permissions"])
+    assert_equal({"contents" => "write", "id-token" => "write"}, publish_job["permissions"])
   end
 
   def test_workflow_permissions_default_to_read
@@ -122,24 +125,11 @@ class PublishWorkflowTest < Minitest::Test
     assert guard_index < publish_index, "the guard must run before the publish step"
   end
 
-  # D7, resolved 2026-09-09 against evidence. test.yml ran on a hosted runner
-  # for the first time since 2026-08-25, on the alpha merge of this intent:
-  # https://github.com/zalom/plastic/actions/runs/34335126166. It came back red
-  # with three failures that have nothing to do with the release path and
-  # everything to do with test hermeticity on Linux: session_start_test reads a
-  # real ~/.plastic/scripts/read-config that no runner has, capture_hook_test
-  # does not rewrite its heartbeat there, and maintenance_run_test's teardown
-  # cannot rmdir a .git/objects tree. Gating a publish on that suite would
-  # relocate the alpha.18 stall from the laptop to the runner, the exact failure
-  # this intent exists to remove, so the suite step comes out of the publish job.
-  # The suite still gates the release where it always did, as release.verify, run
-  # before the tag is cut. Pin the absence so restoring the step is a deliberate
-  # act taken with the runner green, not an accident.
-  def test_does_not_run_the_full_suite_in_the_publish_job
-    suite_step = steps.find { |s| s["run"].to_s.strip == "ruby bin/test" }
-    assert_nil suite_step,
-      "the publish job must not run the suite while it is red on a hosted runner (D7); " \
-      "restore this step only once test.yml is green on alpha"
+  def test_the_suite_runs_before_the_guard
+    suite_index = steps.index { |s| s["run"].to_s.strip == "ruby bin/test" }
+
+    refute_nil suite_index, "expected a step that runs ruby bin/test"
+    assert_operator suite_index, :<, steps.index(guard_step)
   end
 
   # The dispatch-or-pushed tag reaches the guard through env:, not interpolated
@@ -147,17 +137,36 @@ class PublishWorkflowTest < Minitest::Test
   # shell context even though nothing escalates today (pushing a v* tag or
   # dispatching the workflow both already need write access; the job still
   # holds id-token: write, so this is belt-and-suspenders) (review fix 4).
-  def test_guard_reads_the_dispatch_tag_or_the_pushed_tag
-    assert_equal "${{ inputs.tag || github.ref_name }}", guard_step["env"]["TAG"]
-    assert_includes guard_step["run"], '--tag "$TAG"'
-    refute_includes guard_step["run"], "inputs.tag",
-      "the tag expression must reach the shell through env:, never interpolated straight into run:"
+  def test_guard_reads_the_pushed_branch_through_env
+    assert_equal "${{ github.ref_name }}", guard_step["env"]["BRANCH"]
+    assert_includes guard_step["run"], '--branch "$BRANCH"'
   end
 
-  def test_checkout_uses_the_dispatch_tag_or_the_pushed_ref
-    checkout = step_using("actions/checkout@v7")
-    refute_nil checkout, "expected an actions/checkout@v7 step"
-    assert_equal "${{ inputs.tag || github.ref }}", checkout["with"]["ref"]
+  def test_publish_waits_for_an_unreleased_version
+    assert_equal "unreleased", publish_job["needs"]
+    assert_equal "needs.unreleased.outputs.tag != ''", publish_job["if"]
+  end
+
+  def test_an_existing_tag_leaves_the_tag_output_empty
+    run = parsed["jobs"]["unreleased"]["steps"].last["run"]
+
+    assert_includes run, 'git ls-remote --exit-code --tags origin "refs/tags/$tag"'
+  end
+
+  def test_the_release_carries_the_archive_at_the_pushed_commit
+    run = step_named("Create the tag and the GitHub release")["run"]
+
+    assert_includes run, 'gh release create "$TAG" plastic.tgz --target "$GITHUB_SHA"'
+  end
+
+  def test_the_release_is_made_before_the_npm_publish
+    release_index = steps.index(step_named("Create the tag and the GitHub release"))
+
+    assert_operator release_index, :<, steps.index(publish_step)
+  end
+
+  def test_npm_publishes_the_same_archive_the_release_carries
+    assert_includes publish_step["run"], "npm publish plastic.tgz"
   end
 
   def test_publish_passes_provenance

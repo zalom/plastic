@@ -152,7 +152,13 @@ class DoctorCoreSplitTest < Minitest::Test
   # to tell a current block from one an older version left behind. The file is
   # constants only (two integers, one 860-byte string, one hash method), it requires
   # nothing but digest, and the byte budget below was NOT raised to accommodate it.
-  CORE_REQUIRE_ALLOWED_BASENAMES = %w[compact_instructions.rb doctor_core.rb hook_registry.rb].freeze
+  # Intent 363 added version_number.rb. It replaces `require "rubygems"`, which
+  # doctor_core.rb carried for Gem::Version alone. RubyGems costs about 26 of the
+  # 40 milliseconds a plain Ruby process spends starting, and ruling D21 keeps the
+  # run time on the standard library, so the `plastic` launcher runs as
+  # `ruby --disable-gems` and nothing it loads may name Gem. The replacement is
+  # 1,441 bytes of dotted-integer comparison that requires nothing at all.
+  CORE_REQUIRE_ALLOWED_BASENAMES = %w[compact_instructions.rb doctor_core.rb hook_registry.rb version_number.rb].freeze
 
   def loaded_after_core_require
     return @loaded_after_core_require if defined?(@loaded_after_core_require)
@@ -235,7 +241,11 @@ class DoctorCoreSplitTest < Minitest::Test
   # bytes; no new file joined the boot path. Measured 74,200 bytes. Ceiling
   # raised to 75,000 (headroom ~800 bytes above the measured total, in line
   # with prior raises).
-  BOOT_PATH_BYTE_BUDGET = 75_000
+  # Intent 363 put version_number.rb on the boot path, 1,441 bytes, in exchange
+  # for dropping RubyGems from the doctor's require chain. Measured 76,410 bytes.
+  # Ceiling raised to 77,200 (headroom ~780 bytes above the measured total, in
+  # line with prior raises).
+  BOOT_PATH_BYTE_BUDGET = 77_200
 
   def test_core_require_stays_under_the_boot_path_byte_budget
     plastic_files = loaded_after_core_require.select { |i| i["path"].start_with?(ROOT) }

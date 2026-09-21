@@ -8,3 +8,6 @@ node_modules/
 coverage/
 tmp/rubycritic/
 .mutineer/
+
+# Varar per-run results; varar.lock.json is the tracked conformance lock.
+.varar/
