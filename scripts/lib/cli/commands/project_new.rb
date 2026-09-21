@@ -25,6 +25,7 @@ module Plastic
           raise Usage, "SLUG is required" if slug.to_s.empty?
           raise Usage, "--path is required" if options[:path].to_s.empty?
           raise Failure, "#{options[:path]} does not exist" unless Dir.exist?(options[:path])
+          raise Failure, "#{options[:path]} has no AGENTS.md; write one first" unless File.file?(File.join(options[:path], "AGENTS.md"))
           raise Failure, "#{slug} is already registered" if StoreProvisioning.registered?(slug, scope.plastic_home)
 
           register

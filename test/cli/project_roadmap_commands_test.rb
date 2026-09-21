@@ -47,6 +47,7 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
   def project_path
     dir = File.join(@dir, "code", "acme")
     FileUtils.mkdir_p(dir)
+    File.write(File.join(dir, "AGENTS.md"), "# acme\n")
     dir
   end
 
@@ -122,6 +123,13 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
     assert_equal "active", data["projects"]["acme"]["status"]
   end
 
+  def test_new_keeps_the_projects_already_registered
+    File.write(projects_yml, YAML.dump("projects" => {"older" => {"path" => "/elsewhere"}}))
+    command("project new", "acme", "--path", project_path)
+
+    assert_equal %w[acme older], YAML.safe_load_file(projects_yml)["projects"].keys.sort
+  end
+
   def test_new_passes_through_parent
     path = project_path
     command("project new", "acme", "--path", path, "--parent", "372")
@@ -156,6 +164,14 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
 
   def test_new_with_a_path_that_does_not_exist_is_a_failure
     assert_equal 1, command("project new", "acme", "--path", File.join(@dir, "missing"))
+  end
+
+  def test_new_with_no_agents_file_never_registers
+    bare = File.join(@dir, "bare")
+    FileUtils.mkdir_p(bare)
+
+    assert_equal 1, command("project new", "acme", "--path", bare)
+    refute_path_exists projects_yml
   end
 
   def test_new_with_a_path_that_does_not_exist_never_registers
@@ -250,6 +266,10 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
     assert_equal [script("roadmap-savepoint")], @calls.map(&:first)
     assert_equal [["append", "--roadmap", File.join(@fixture.plastic_home, "roadmaps", "372.md"),
       "--event", "Commit", "--detail", "shipped the thin slice"]], @calls.map(&:last)
+  end
+
+  def test_log_with_a_failing_script_exits_one
+    assert_equal 1, command("roadmap log", "372", "Commit", "shipped the thin slice", status: 7)
   end
 
   def test_log_names_show_in_its_next_step
