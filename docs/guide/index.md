@@ -9,6 +9,7 @@ This guide is for a person who uses Plastic. To change Plastic, read
 | ---- | --------------- |
 | [Installation](getting-started/installation.md) | How do I install it? |
 | [Quick start](getting-started/quick-start.md) | What do I run first? |
+| [Intent commands](getting-started/intent-commands.md) | How do I carry one piece of work from its first line to its close? |
 | [Configuration](getting-started/configuration.md) | What can I set, and where? |
 | [What Plastic covers](getting-started/what-plastic-covers.md) | Which commands exist, and which are planned? |
 | [Supported agents](getting-started/supported-agents.md) | Which coding agents does it install into? |

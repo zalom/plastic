@@ -22,6 +22,18 @@ command exits with code 2.
 
 **Ruby is too old.** See "A clean Mac" in [INSTALL.md](../../../INSTALL.md).
 
+## Repair a broken install
+
+Skills are missing, hooks do not fire, or an old plugin layout is left over. Run the installer
+again:
+
+```bash
+plastic install --reinstall --claude
+```
+
+The installer is safe to repeat. It removes files that Plastic no longer ships and any old
+plugin layout.
+
 ## Check the installation
 
 Run the `plastic-doctor` skill in your agent. A `plastic doctor` command is not part of this

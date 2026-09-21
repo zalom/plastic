@@ -8,6 +8,31 @@
 | `--help`, `-h` | Prints the usage line of the command. |
 | `--project SLUG` | On `continue` and `next`, names a project other than the one in the current directory. |
 
+## Choices at install time
+
+The installer asks no questions. It writes the defaults, and the following flags change them:
+
+| Flag | Effect |
+| ---- | ------ |
+| `--advisor NAME` | Sets the default advisor agent: `primary` or `secondary`. |
+| `--no-advisor` | Installs no advisor agent. |
+| `--statusline VALUE` | `keep` keeps a status line you already have. `plastic` replaces it with the Plastic one. Without the flag, your line stays. |
+
+## Keys in `config.yml`
+
+The following table lists the keys that the installer writes into `~/.plastic/config.yml`:
+
+| Key | Default | Meaning |
+| --- | ------- | ------- |
+| `project_roots` | `~/.plastic/projects` | The directories where Plastic looks for projects. |
+| `stale_threshold_days` | `3` | The age at which a future intent is shown for triage. |
+| `context_offer_tokens` | `150000` | The context size at which the agent offers to compact. |
+| `context_insist_tokens` | `250000` | The context size at which the agent insists on compacting. |
+| `agent.type` | `claude-code` | The agent that runs Plastic. |
+| `agent.parallel_mode` | `agent-teams` | `agent-teams` runs teammates in parallel. `linear` uses subagents only. |
+
+Edit the file to change a key.
+
 ## Files
 
 | File | Holds |
