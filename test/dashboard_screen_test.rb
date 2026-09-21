@@ -42,6 +42,10 @@ class DashboardScreenTest < Minitest::Test
     stores(home)
   end
 
+  def test_a_home_with_no_global_store_has_no_stores
+    Dir.mktmpdir("plastic-dash-empty") { |empty| assert_empty stores(empty) }
+  end
+
   def load_all_for(home)
     all = []
     done_ids = {}
