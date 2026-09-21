@@ -70,12 +70,12 @@ class PostCutVocabularyTest < Minitest::Test
     end
   end
 
-  # Row 4.3 (test_plan_review_not_required_anywhere) was retired by intent 372 (family 5):
-  # skills/auto/SKILL.md, its sole source for the "the plan review is optional" wording, is
-  # gone with no successor prose; the surviving file (docs/help/agent-architecture.md) never
-  # carried that "optional" claim itself. Whether the plan review is optional or required is a
-  # standing question for the lead's own agent body (agents/plastic-enforcer.md), which this
-  # family did not touch beyond fixing a stale path; flagged for the lead, not resolved here.
+# Row 4.3 (test_plan_review_not_required_anywhere) was retired by intent 372 (family 5):
+# skills/auto/SKILL.md, its sole source for the "the plan review is optional" wording, is
+# gone with no successor prose; the surviving file (docs/help/agent-architecture.md) never
+# carried that "optional" claim itself. Whether the plan review is optional or required is a
+# standing question for the lead's own agent body (agents/plastic-enforcer.md), which this
+# family did not touch beyond fixing a stale path; flagged for the lead, not resolved here.
 
 # Row 5.2 - both tutorial tracks walk create, graph, runner step, end -
 # never the old consolidate-the-spec / plan.md-and-checklist ceremony.

@@ -24,7 +24,7 @@ class ModifyPass306Test < Minitest::Test
     doctor_test doctor_core_test doctor_core_split_test doctor_revisions_remedy_test insights_test
     write_config_test dashboard_test spawn_preamble_test plastic_lock_cli_test lock_system_test
     roadmap_queue_test roadmap_savepoint_test qmd_sync_test
-    skill_rename_prune_test doctor_stray_skills_test auto_skill_contract_test update_verb_test
+    skill_rename_prune_test doctor_stray_skills_test update_verb_test
     rollback_verb_test
   ].freeze
   # skill_command_lint_test.rb dropped from this list by intent 372 (family 4): it

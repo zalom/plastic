@@ -211,7 +211,6 @@ class InstallPerAgentGateTest < Minitest::Test
 
     assert_equal 0, status,
       "adding a harness Plastic has never registered must proceed, not refuse (the D7 regression)"
-    refute_empty Dir.glob(File.join(@agent_dir, "skills", "plastic-*")), "codex skills must actually be written"
     refute_empty Dir.glob(File.join(@codex_home, "agents", "plastic-*.toml")), "codex agent TOMLs must be generated"
     assert File.exist?(File.join(@codex_home, "hooks.json"))
     assert File.exist?(File.join(@codex_home, "AGENTS.md"))
@@ -243,8 +242,7 @@ class InstallPerAgentGateTest < Minitest::Test
       out, _err = capture_io { status = i.cli(["--all"]) }
 
       assert_equal 0, status
-      refute_empty Dir.glob(File.join(@agent_dir, "skills", "plastic-*")), "codex must be freshly installed"
-      refute_empty Dir.glob(File.join(hermes_dir, "skills", "plastic-*")), "hermes must be freshly installed"
+      refute_empty Dir.glob(File.join(@codex_home, "agents", "plastic-*.toml")), "codex must be freshly installed"
       assert_equal before, File.mtime(manifest_path), "claude must not be re-synced when already registered"
       assert_match(/Claude Code.*already registered/i, out)
       refute_match(/Registered for:.*Claude Code/, out,

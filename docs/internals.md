@@ -92,7 +92,7 @@ role per cycle stage) rather than free-prose producers: each names what it consu
 and produces, and the enforcer (which is the auto orchestrator itself) sequences and
 reviews them. The installer syncs `agents/` into each harness agent directory and
 tracks the role files in the manifest, so they prune on update and uninstall with the
-skills and hooks. The team model lives in `skills/auto/references/agent-architecture.md`.
+skills and hooks. The team model lives in `docs/help/agent-architecture.md`.
 
 The mixed 18 are template- or script-backed skills with free-prose content
 pockets: the lifecycle producers, the execution skills, the maintenance skills,
@@ -789,7 +789,7 @@ Claude Code and Astra on Codex; Primary uses medium effort, and Secondary uses h
 - **Dispatch-time contract (belt-and-braces)**: because Claude Code reading
   frontmatter at dispatch time is a harness implementation detail rather than a
   contract Plastic controls, every dispatch site (the enforcer's per-stage
-  dispatches, `skills/auto/SKILL.md`'s dispatch mechanics, the
+  dispatches, the `plastic auto` commands, the
   `plastic-intent-discovery` dispatch inside `plastic continue`, and the (removed in 2.0, intent 304)
   `plastic continue` stale-future-intent triage's dispatch of
   `plastic-future-intent-researcher` (which does not itself spawn further (removed in 2.0, intent 304)
