@@ -107,6 +107,18 @@ class CliInstallerVerbsTest < Minitest::Test
     assert_includes @out.string, "next: plastic version"
   end
 
+  def test_a_clean_update_because_line_tells_the_reader_to_restart_the_session
+    command("update")
+
+    assert_includes @out.string, "because: the update is done, and restarting the session picks up the new conventions"
+  end
+
+  def test_the_four_installer_skills_no_longer_exist
+    %w[install uninstall update rollback].each do |name|
+      refute_path_exists File.expand_path("../../skills/#{name}", __dir__)
+    end
+  end
+
   def test_a_clean_uninstall_names_no_further_command
     command("uninstall")
 
