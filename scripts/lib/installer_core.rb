@@ -60,9 +60,7 @@ class InstallerCore
     - The command line is ~/.plastic/PLASTIC.md. Read it and follow it exactly. The
       conventions are chapters `plastic help TOPIC` prints on demand. Both are
       generated and overwritten on Plastic updates, so never edit them.
-    - Operational procedures are installed as skills under ~/.agents/skills/ (each
-      plastic-<name>/SKILL.md). Invoke one explicitly as $plastic-<name> (for example
-      $plastic-auto), or let Codex pick one implicitly by matching its description.
+    - Operational procedures are the `plastic` command line itself, run directly.
     - Intents, specs, plans, checklists, and outcomes live under ~/.plastic/, never in
       the project tree.
 
