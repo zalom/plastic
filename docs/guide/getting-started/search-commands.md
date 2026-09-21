@@ -12,6 +12,7 @@ The following table shows each command and what it does:
 | ------- | ------------ |
 | `plastic index` | Rebuilds the whole index and prints the number of files. |
 | `plastic search TERMS [--project SLUG] [--limit N]` | Prints the best matching paths, each with one excerpt. The limit defaults to 10. |
+| `plastic search --ask "QUESTION"` | Searches with a whole question. See [Ask a question](ask-a-question.md). |
 | `plastic query SQL` | Runs one read-only SQL statement on the index and prints the rows. |
 
 Every command takes `--json`.
