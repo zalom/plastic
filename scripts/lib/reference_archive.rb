@@ -9,15 +9,16 @@ module Plastic
     SCHEMA = <<~SQL
       CREATE TABLE IF NOT EXISTS sqlar(name TEXT PRIMARY KEY, mode INT, mtime INT, sz INT, data BLOB, intent_id TEXT, sha256 TEXT);
     SQL
-    INTENT_ID = %r{/([^/-]+)--[^/]+/resources/}
+    INTENT_ID = %r{/([^/-]+)--[^/]+/}
+    SKIPPED = %r{(\A|/)(\.git|\.tmp)/|\.DS_Store\z|\.lock\z}
 
     def self.path(home)
       File.join(home, NAME)
     end
 
     def self.files(home)
-      Dir.glob("{store,projects}/**/resources/**/*", File::FNM_DOTMATCH, base: home)
-        .select { |file| File.file?(File.join(home, file)) && File.extname(file) != ".md" }.sort
+      Dir.glob("{store,projects}/**/*", File::FNM_DOTMATCH, base: home)
+        .select { |file| File.file?(File.join(home, file)) && File.extname(file) != ".md" && !file.match?(SKIPPED) }.sort
     end
 
     def self.build(home)

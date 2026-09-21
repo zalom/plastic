@@ -15,6 +15,7 @@ module Plastic
       "auto report" => ["commands/auto_report", "AutoReport", "Print an intent's completion report, then the review-by-risk rules"],
       "auto take" => ["commands/auto_take", "AutoTake", "Arm an intent's delivery lock for this session"],
       "auto" => ["commands/auto", "Auto", "List the auto subcommands"],
+      "backup" => ["commands/backup", "Backup", "Write one archive of the three databases and the config"],
       "checkout" => ["commands/checkout", "Checkout", "Restore missing store files from the databases"],
       "continue" => ["commands/continue", "Continue", "Show where one project stands and what runs next"],
       "doctor" => ["commands/doctor", "Doctor", "Diagnose Plastic installation health"],

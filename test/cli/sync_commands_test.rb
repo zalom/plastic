@@ -245,6 +245,15 @@ class CliSyncCommandsTest < Minitest::Test
     assert_equal [{"intent_id" => nil}], sql("references.db", "SELECT intent_id FROM sqlar WHERE name LIKE '%report.html'")
   end
 
+  def test_a_file_outside_resources_is_archived_and_a_lock_is_not
+    seed("store/1--alpha/graph.yml", "nodes: []\n")
+    seed("store/1--alpha/delivery.lock", "held\n")
+    plastic("sync")
+
+    assert_equal [{"name" => "store/1--alpha/graph.yml", "intent_id" => "1"}],
+      sql("references.db", "SELECT name, intent_id FROM sqlar WHERE name LIKE 'store/1--alpha/%' AND name NOT LIKE '%resources%'")
+  end
+
   def test_render_keeps_every_heading_and_table_cell
     seed("page.md", "# Title\n\n## Part\n\n| Name | Value |\n|---|---|\n| heron | 7 |\n")
     plastic("render", File.join(home, "page.md"))
