@@ -13,7 +13,7 @@ This guide is for a person who uses Plastic. To change Plastic, read
 | [Project and roadmap commands](getting-started/project-and-roadmap-commands.md) | How do I register a project and read a roadmap? |
 | [Auto and session commands](getting-started/auto-and-session-commands.md) | How does an auto team take an intent, and how does a session keep its ledger? |
 | [Search commands](getting-started/search-commands.md) | How do I find text in the stores? |
-| [Sync commands](getting-started/sync-commands.md) | How do the store files and the databases stay level? |
+\1| [Backup command](getting-started/backup-command.md) | How do I back up and restore everything? |
 | [Configuration](getting-started/configuration.md) | What can I set, and where? |
 | [What Plastic covers](getting-started/what-plastic-covers.md) | Which commands exist, and which are planned? |
 | [Supported agents](getting-started/supported-agents.md) | Which coding agents does it install into? |

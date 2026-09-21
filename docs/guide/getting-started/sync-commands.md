@@ -12,7 +12,7 @@ The following table shows each database and what it holds:
 | -------- | ----- |
 | `~/.plastic/knowledge_graph.db` | Every markdown file in the stores, compressed, with a hash and the search index. |
 | `~/.plastic/work_graph.db` | One `intent` row for each `INDEX.md` line, and one `ledger` row for each `savepoint.md` line. |
-| `~/.plastic/references.db` | Every other file under a `resources/` directory, with its intent id and SHA-256 hash. |
+| `~/.plastic/references.db` | Every other file in the stores, with its intent id and SHA-256 hash. Lock files, `.tmp` files and `.DS_Store` files are left out. |
 
 ## Commands
 
