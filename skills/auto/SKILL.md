@@ -22,7 +22,7 @@ the auto pipeline never dispatches them.
 ## Precondition
 
 An active intent MUST exist in INDEX.md. If none exists, refuse: "No active intent found.
-Create one first with /plastic-intent-creating."
+Create one first with plastic intent new."
 
 If several active intents exist, ask which to deliver (the one question auto asks at boarding).
 
@@ -93,10 +93,10 @@ dispatched agent.
   review findings, verifies, closes.
 - **plastic-executor**: one dispatch per intent, implements the consolidated action tests first,
   ticks the checklist, appends `## Insights`, drives the suite green.
-- **the plan reviewer**: an optional dispatch before code, from `plastic-intent-executing`'s
-  `plan-reviewer-prompt.md`; a fresh agent, never the lead.
+- **the plan reviewer**: an optional dispatch before code, from
+  `references/plan-reviewer-prompt.md`; a fresh agent, never the lead.
 - **the post-execution reviewer**: dispatched only by the risk rule, from
-  `code-quality-reviewer-prompt.md`; a fresh agent, never the maker.
+  `references/code-quality-reviewer-prompt.md`; a fresh agent, never the maker.
 
 Spawn preamble (live-state injection): before dispatching any agent, run
 `scripts/spawn-preamble <intent_dir> --role <role>` and PREPEND its output to the prompt. The
@@ -191,7 +191,7 @@ For a graph delivery, How is `graph.md` itself: no `plan.md`, no separate plan r
 mode, the test that catches it; a `.gitkeep`-only `actions/` is not a finished How), then
 `checklist.md` covering every action. The plan reviewer is optional, not a required step:
 when the delivery warrants review before code, dispatch it (boot 1) with
-`plastic-intent-executing`'s `plan-reviewer-prompt.md`, the spawn preamble, and the intent
+`references/plan-reviewer-prompt.md`, the spawn preamble, and the intent
 directory, apply every finding to the spec, the matrix, and the tests, and record what was
 dropped and why in the action file's review notes. A REVISE verdict is applied and not
 re-reviewed unless a finding changes a decision.
@@ -206,7 +206,7 @@ Then Exec.
 
 For a graph delivery, `runner step` prints the spawn block for the next ready node; paste it
 into the Agent tool, verbatim. For work with no graph, dispatch `plastic-executor` (boot 2)
-through `plastic-intent-executing` with the whole consolidated action pasted in.
+through `plastic intent step` with the whole consolidated action pasted in.
 
 1. Read the executor's return by code: DONE or DONE_WITH_CONCERNS proceeds; NEEDS_CONTEXT
    re-dispatches with the missing context; BLOCKED stops under the error procedure.
@@ -215,7 +215,7 @@ through `plastic-intent-executing` with the whole consolidated action pasted in.
 
 ## Review by risk (boot 3, only when a rule fires)
 
-Dispatch the post-execution reviewer with `code-quality-reviewer-prompt.md` when any of these
+Dispatch the post-execution reviewer with `references/code-quality-reviewer-prompt.md` when any of these
 holds, each checkable from disk with no judgment; otherwise the green suite is the review:
 
 1. `git diff --name-only <red-commit>..HEAD` touches a path on the risk list in
@@ -257,8 +257,8 @@ Read `../plastic-conventions/references/completion-and-done.md` for what "intent
    `manual`), `verify` (green proceeds; red follows `on_red`: `fix_and_retry` up to twice,
    `stop`, or `manual`), and `on_green` (delegate entirely to `plastic-releasing`).
 4. Review `## Insights` for observations that should become future intents; create them through
-   `plastic-intent-creating` and update `chain`.
-5. Close through `plastic-intent-ending`, which runs `scripts/end-intent`: outcome, INDEX,
+   `plastic intent new` and update `chain`.
+5. Close through `plastic intent end`, which runs `scripts/end-intent`: outcome, INDEX,
    savepoint, the store commit, and the disarm (the worktree released, `delivery.lock`
    cleared), then the QMD reindex last and the single owner
    report. Pass `--session` and `--index-note`:

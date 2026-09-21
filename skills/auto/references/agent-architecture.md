@@ -28,9 +28,9 @@ in 2.0, intent 304; the lead writes the Why and How record itself):
   reviewed before code; dispatches the executor; applies the risk rule; closes.
 - **plastic-executor** (Exec): commits the matrix's tests red, writes the code, checks off
   `checklist.md`, appends `## Insights`, and drives the suite green.
-- **the plan reviewer**: a fresh agent on `plastic-intent-executing`'s
-  `plan-reviewer-prompt.md`, an optional dispatch before any code exists.
-- **the post-execution reviewer**: a fresh agent on `code-quality-reviewer-prompt.md`,
+- **the plan reviewer**: a fresh agent on the auto skill's
+  `references/plan-reviewer-prompt.md`, an optional dispatch before any code exists.
+- **the post-execution reviewer**: a fresh agent on `references/code-quality-reviewer-prompt.md`,
   dispatched only when the auto skill's risk rule fires; never the maker.
 
 One agent boot (the executor) is the minimum delivery; the plan reviewer is a second,
@@ -118,14 +118,14 @@ written path, and the lead verifies state from the files (`plastic-lock status`,
 ### Delegation
 
 The roles are thin handoff contracts, not a spawning engine. Dispatch runs through Plastic's
-own engine, `plastic-intent-executing`: one executor for the consolidated action, the two
+own engine, `plastic intent step`: one executor for the consolidated action, the two
 reviewer prompts as fresh agents. The team model defines who hands what to whom and where the
 reviews sit; the engine does the actual spawning.
 
 ### Fallback by Case
 
 If the harness supports agent dispatch, auto mode dispatches through
-`plastic-intent-executing`. If the harness has no agent dispatch at all (Codex CLI today), the
+`plastic intent step`. If the harness has no agent dispatch at all (Codex CLI today), the
 lead walks the five steps itself: it still writes the matrix and the tests first, and reviews
 its own plan against the matrix before code, saying so in `## Insights`.
 
