@@ -356,7 +356,7 @@ class CodexHooksTest < Minitest::Test
     out, status = run_hook("capture", payload)
     assert_equal 0, status.exitstatus
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
-    assert_includes ctx, "Invoke the plastic-auto skill"
+    assert_includes ctx, "Run `plastic auto take ID`"
   end
 
   # Intent 309: power-tools is retired on both harnesses. An old ~/.codex/hooks.json that
