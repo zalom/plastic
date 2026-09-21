@@ -60,6 +60,9 @@ jobs:
       - name: Install an npm that speaks OIDC
         run: npm install -g npm@latest
 
+      - name: Install the test gems
+        run: bundle install
+
       - name: Run the full suite
         run: ruby bin/test
 
