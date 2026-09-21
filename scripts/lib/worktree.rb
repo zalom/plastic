@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require "json"
 require "yaml"
 require "socket"
@@ -377,14 +378,8 @@ module Worktree
   # (no project repo). Mirrors qmd_sync's slug_for_store fallback.
   def slug_for_store(store_dir, home: Dir.home)
     return nil if blank?(store_dir)
-    plastic_home = File.expand_path(File.join(home, ".plastic"))
-    store_dir = File.expand_path(store_dir)
-    return nil if store_dir == File.join(plastic_home, "store")
-
-    parts = store_dir.split(File::SEPARATOR)
-    idx = parts.rindex("projects")
-    return parts[idx + 1] if idx && parts[idx + 1] && parts[idx + 2] == "store"
-    nil
+    slug = Plastic::StoreLayout.locate(store_dir).last
+    (slug == Plastic::StoreLayout::GLOBAL) ? nil : slug
   end
 
   # Best-effort slug for the worktree dir-name from an intent dir/store path:

@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require "json"
 require "tmpdir"
 require_relative "node_ledger"
@@ -112,7 +113,8 @@ module GraphMeasureModels
   # purpose - two different silences over the same store, agreeing with
   # each other only by accident.
   def project_config_path(store_dir)
-    File.join(File.dirname(store_dir.to_s), "config.yml")
+    home, slug = Plastic::StoreLayout.locate(store_dir.to_s)
+    File.join((slug == Plastic::StoreLayout::GLOBAL) ? home : File.dirname(store_dir.to_s), "config.yml")
   end
 
   # --- rendering ---------------------------------------------------------------

@@ -9,6 +9,7 @@
 # runs in its own rescue and the hook always exits 0 (spec D2). Intent 345
 # (D7, 323) removed the per-prompt Future-intent hint step entirely.
 
+require_relative "lib/store_layout"
 require "json"
 require "open3"
 require "time"
@@ -38,7 +39,7 @@ cwd = payload["cwd"].to_s
 cwd = Dir.pwd if cwd.empty?
 
 plastic_home = File.expand_path(ENV["PLASTIC_HOME"] || "~/.plastic")
-store = File.join(plastic_home, "store")
+store = Plastic::StoreLayout.global_store(plastic_home)
 templates = File.expand_path("../templates", __dir__)
 sid = SessionLedger.short_session_id(nil, session_id)
 today = SessionLedger.day_id

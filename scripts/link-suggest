@@ -26,6 +26,7 @@
 # nothing. --edge is explicit and required (sources is decided by origin, never
 # inferred); --rating is required when --edge is chain.
 
+require_relative "lib/store_layout"
 require_relative "lib/link_suggestions"
 
 module LinkSuggestCLI
@@ -69,7 +70,7 @@ module LinkSuggestCLI
         i += 1
       end
     end
-    opts[:store_dir] ||= File.join(opts[:home], "store")
+    opts[:store_dir] ||= Plastic::StoreLayout.global_store(opts[:home])
     opts
   end
 

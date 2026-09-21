@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require "yaml"
 require_relative "worktree"
 require_relative "scaffold_intent"
@@ -160,7 +161,7 @@ module SessionGit
   def read_project_flow(slug, plastic_home)
     return nil if slug == "global"
 
-    project_yml = File.join(plastic_home, "projects", slug, "project.yml")
+    project_yml = File.join(Plastic::StoreLayout.project_root(plastic_home, slug), "project.yml")
     return nil unless File.exist?(project_yml)
 
     data = begin
@@ -196,7 +197,7 @@ module SessionGit
     resolver ||= lambda { |short_session|
       ActiveDelivery.resolve_by_short_session(
         global_store: store,
-        project_roots: ActiveDelivery.project_roots(File.dirname(store)),
+        project_roots: ActiveDelivery.project_roots(Plastic::StoreLayout.locate(store).first),
         short_session: short_session
       )
     }
@@ -333,7 +334,7 @@ module SessionGit
   # a detached HEAD. Both modes now share exactly one check of each.
   def commit!(cwd:, summary:, day:, session:, plastic_home:, store: nil,
               runner: Worktree::ShellRunner.new, gh_runner: GhRunner.new)
-    effective_store = store || File.join(plastic_home, "store")
+    effective_store = store || Plastic::StoreLayout.global_store(plastic_home)
     repo = resolve_repo(cwd, runner: runner)
     return note("no repo") if repo.nil?
 

@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require "digest"
 require "fileutils"
 require_relative "lock"
@@ -63,7 +64,7 @@ module Arm
   end
 
   def global_store(home)
-    File.join(File.expand_path(home), ".plastic", "store")
+    Plastic::StoreLayout.global_store(File.join(File.expand_path(home), ".plastic"))
   end
 
   # The minimal hash Worktree.provision, release, and finish consume: the

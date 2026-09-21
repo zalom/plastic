@@ -8,6 +8,7 @@
 # heartbeat. Never the raw ledger (296 D36). No environment reads; every
 # path is injected.
 
+require_relative "store_layout"
 require "time"
 require_relative "session_ledger"
 require_relative "handoff"
@@ -82,10 +83,10 @@ module DaySummary
   # The global store plus every projects/<slug>/store, each with its INDEX
   # one level up, the way doctor enumerates them.
   def stores(home)
-    list = [[File.join(home, "INDEX.md"), File.join(home, "store")]]
-    projects_root = File.join(home, "projects")
+    list = [[File.join(Plastic::StoreLayout.global_root(home), "INDEX.md"), Plastic::StoreLayout.global_store(home)]]
+    projects_root = Plastic::StoreLayout.projects_root(home)
     if File.directory?(projects_root)
-      Dir.children(projects_root).sort.each do |slug|
+      Plastic::StoreLayout.project_slugs(home).each do |slug|
         list << [File.join(projects_root, slug, "INDEX.md"), File.join(projects_root, slug, "store")]
       end
     end

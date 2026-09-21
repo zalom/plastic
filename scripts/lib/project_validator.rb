@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require "yaml"
 
 # ProjectValidator - the single source of truth for "is a project spawn
@@ -52,7 +53,7 @@ module ProjectValidator
       errors << "registered project directory does not exist: #{project_path}"
     end
 
-    project_dir = File.join(plastic_home, "projects", slug)
+    project_dir = Plastic::StoreLayout.project_root(plastic_home, slug)
 
     # Invariant 3: project.yml exists AND parses as YAML.
     project_yml_path = File.join(project_dir, "project.yml")

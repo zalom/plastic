@@ -21,6 +21,7 @@
 #
 # Read-only. Never modifies files.
 
+require_relative "lib/store_layout"
 require "json"
 require "yaml"
 require "date"
@@ -145,11 +146,11 @@ end
 # All stores: global + every registered project. -> [{scope, store, index}]
 def stores
   list = []
-  global = File.join(PLASTIC_HOME, "store")
-  list << { scope: "global", store: global, index: File.join(PLASTIC_HOME, "INDEX.md") } if File.directory?(global)
-  projects_root = File.join(PLASTIC_HOME, "projects")
+  global = Plastic::StoreLayout.global_store(PLASTIC_HOME)
+  list << { scope: "global", store: global, index: File.join(Plastic::StoreLayout.global_root(PLASTIC_HOME), "INDEX.md") } if File.directory?(global)
+  projects_root = Plastic::StoreLayout.projects_root(PLASTIC_HOME)
   if File.directory?(projects_root)
-    Dir.children(projects_root).sort.each do |proj|
+    Plastic::StoreLayout.project_slugs(PLASTIC_HOME).each do |proj|
       store = File.join(projects_root, proj, "store")
       next unless File.directory?(store)
       list << { scope: "project:#{proj}", store: store, index: File.join(projects_root, proj, "INDEX.md") }
@@ -855,7 +856,7 @@ end
 def short_description(scope)
   return "" unless scope.start_with?("project:")
   slug = scope.sub("project:", "")
-  agents = File.join(PLASTIC_HOME, "projects", slug, "AGENTS.md")
+  agents = File.join(Plastic::StoreLayout.project_root(PLASTIC_HOME, slug), "AGENTS.md")
   if File.exist?(agents)
     File.readlines(agents).each do |l|
       t = l.strip
@@ -1022,7 +1023,7 @@ end
 # directly under PLASTIC_HOME, with no intervening "store" segment.
 def screen_tier_root(plastic_home, scope)
   return plastic_home if scope == "global"
-  File.join(plastic_home, "projects", screen_scope_slug(scope))
+  Plastic::StoreLayout.project_root(plastic_home, screen_scope_slug(scope))
 end
 
 # "global" spans every store (the same aggregate render_continue and --json's
@@ -1085,7 +1086,7 @@ end
 # PLASTIC_HOME/store tmp root, and `session: nil` (A6) so the calling
 # session's own live heartbeat counts rather than being excluded as "self".
 def screen_sessions_count(plastic_home, now:)
-  store = File.join(plastic_home, "store")
+  store = Plastic::StoreLayout.global_store(plastic_home)
   DaySummary.active_sessions(store, nil, now: now, ttl: DaySummary::HEARTBEAT_TTL).size
 end
 

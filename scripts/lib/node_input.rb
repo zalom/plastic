@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require "yaml"
 require "date"
 require "digest"
@@ -70,7 +71,7 @@ module NodeInput
     status.success? ? truncate_landed_commits(out) : nil
   end
 
-  PROJECT_LAYOUT_RE = %r{\A(.*)/projects/([^/]+)/store/[^/]+\z}.freeze
+  PROJECT_LAYOUT_RE = %r{\A(.*)/(?:projects|stores)/([^/]+)/store/[^/]+\z}.freeze
 
   # --- paths ---------------------------------------------------------------
 
@@ -399,7 +400,7 @@ module NodeInput
     return nil unless m
 
     home, slug = m[1], m[2]
-    path = File.join(home, "projects", slug, "project.yml")
+    path = File.join(Plastic::StoreLayout.project_root(home, slug), "project.yml")
     return nil unless File.exist?(path)
 
     # `permitted_classes` (post-execution review finding B3): the same bug

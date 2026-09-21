@@ -17,7 +17,7 @@ module Plastic
     end
 
     def self.files(home)
-      Dir.glob("{store,projects}/**/*.md", File::FNM_DOTMATCH, base: home).reject { |file| file.include?("/.git/") }.sort
+      Dir.glob("{store,projects,stores}/**/*.md", File::FNM_DOTMATCH, base: home).reject { |file| file.include?("/.git/") }.sort
     end
 
     def self.build(home)

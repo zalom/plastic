@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../store_layout"
 require_relative "../index_entry"
 require_relative "../store_discovery"
 
@@ -39,11 +40,11 @@ module Plastic
       end
 
       def root
-        @root ||= stores.find { |store| store[:slug] == slug }&.fetch(:root) || plastic_home
+        @root ||= found&.fetch(:root) || plastic_home
       end
 
       def store
-        File.join(root, "store")
+        @store ||= found&.fetch(:store) || StoreLayout.global_store(plastic_home)
       end
 
       def index_path
@@ -81,6 +82,10 @@ module Plastic
       end
 
       private
+
+      def found
+        stores.find { |store| store[:slug] == slug }
+      end
 
       def resolve_slug
         return requested_slug if @requested

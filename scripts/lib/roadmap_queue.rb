@@ -411,8 +411,8 @@ class RoadmapQueue
   # --- scope + payload -----------------------------------------------------------
 
   def scope_label
-    m = @roadmaps_dir.to_s.match(%r{/projects/([^/]+)/roadmaps/?\z})
-    m ? "project:#{m[1]}" : "global"
+    m = @roadmaps_dir.to_s.match(%r{/(?:projects|stores)/([^/]+)/roadmaps/?\z})
+    (m && m[1] != "global") ? "project:#{m[1]}" : "global"
   end
 
   def payload(mode:, state:, roadmap:, frontier_wave:, dispatchable:, in_flight:, blocked:, tie:, tie_candidates:)

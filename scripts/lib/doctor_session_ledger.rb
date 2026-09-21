@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require "time"
 require_relative "session_ledger"
 
@@ -38,7 +39,7 @@ module DoctorSessionLedger
   def check_session_ledger(scopes: nil, now: Time.now)
     return [] unless scopes.nil? || scopes.include?("global")
 
-    store_dir = File.join(plastic_home, "store")
+    store_dir = Plastic::StoreLayout.global_store(plastic_home)
     orphans = orphaned_session_dirs(store_dir, now)
     shape = day_ledger_shape_problems(store_dir)
 

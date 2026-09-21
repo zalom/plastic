@@ -30,6 +30,7 @@
 #   2 - usage error, or promote/tick found nothing to address (no write happens)
 #   3 - promote/tick could not take an exclusive lock (filesystem without flock support)
 
+require_relative "lib/store_layout"
 require_relative "lib/session_ledger"
 require_relative "lib/handoff"
 
@@ -162,7 +163,7 @@ def main(argv)
   usage_abort("verb must be one of #{VERBS.join(", ")}, got #{opts[:verb].inspect}") unless VERBS.include?(opts[:verb])
 
   plastic_home = expand(ENV.fetch("PLASTIC_HOME", "~/.plastic"))
-  store = opts[:store] ? expand(opts[:store]) : File.join(plastic_home, "store")
+  store = opts[:store] ? expand(opts[:store]) : Plastic::StoreLayout.global_store(plastic_home)
   templates = opts[:templates] ? expand(opts[:templates]) : default_templates_dir
   usage_abort("templates dir not found: #{templates}") unless Dir.exist?(templates)
   opts[:templates] = templates

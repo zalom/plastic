@@ -63,7 +63,7 @@ end
 def resolve_repo(intent_dir, explicit_repo, script_dir, include_self: true)
   candidates = []
   candidates << File.expand_path(explicit_repo) if explicit_repo
-  if (m = intent_dir.match(%r{\A(.*)/projects/([^/]+)/store/[^/]+\z}))
+  if (m = intent_dir.match(%r{\A(.*)/(?:projects|stores)/([^/]+)/store/[^/]+\z}))
     home, slug = m[1], m[2]
     projects_yml = File.join(home, "projects.yml")
     if File.exist?(projects_yml)

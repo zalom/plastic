@@ -34,6 +34,8 @@ module Plastic
       "intent spec" => ["commands/intent_spec", "IntentSpec", "Print an intent's state screen, then the speccing rules"],
       "intent step" => ["commands/intent_step", "IntentStep", "Run the next ready step of an intent's graph"],
       "intent verify" => ["commands/intent_verify", "IntentVerify", "Run an intent's merge-gate checks"],
+      "migrate" => ["commands/migrate", "Migrate", "List the migrate subcommands"],
+      "migrate stores" => ["commands/migrate_stores", "MigrateStores", "Move the stores under stores/, behind a full copy of the home"],
       "next" => ["commands/next", "Next", "Print the next action in one line"],
       "project" => ["commands/project", "Project", "List the project subcommands"],
       "project links" => ["commands/project_links", "ProjectLinks", "Project every store's Links sections from frontmatter"],

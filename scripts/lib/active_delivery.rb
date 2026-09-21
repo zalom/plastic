@@ -60,7 +60,7 @@ module ActiveDelivery
     value.nil? || value.to_s.strip.empty?
   end
 
-  DEFAULT_PROJECT_ROOTS = ["~/.plastic/projects"].freeze
+  DEFAULT_PROJECT_ROOTS = ["~/.plastic/projects", "~/.plastic/stores"].freeze
 
   # The configured project roots (344 n2, D6): the `project_roots` list in
   # `<plastic_home>/config.yml`, each expanded, or the default

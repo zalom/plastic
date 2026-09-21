@@ -17,7 +17,7 @@ module Plastic
     end
 
     def self.files(home)
-      Dir.glob("{store,projects}/**/*", File::FNM_DOTMATCH, base: home)
+      Dir.glob("{store,projects,stores}/**/*", File::FNM_DOTMATCH, base: home)
         .select { |file| File.file?(File.join(home, file)) && File.extname(file) != ".md" && !file.match?(SKIPPED) }.sort
     end
 

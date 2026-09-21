@@ -14,6 +14,7 @@
 # and on any filing error (reported on stderr; the next boot tries again), 2 on
 # a usage error.
 
+require_relative "lib/store_layout"
 require_relative "lib/session_ledger"
 require_relative "lib/session_backfill"
 
@@ -48,7 +49,7 @@ if opts[:carry_to] && !SessionLedger.valid_day_id?(opts[:carry_to])
   usage_abort("--carry-to must be a real calendar date, YYYYMMDD")
 end
 
-store = opts[:store] || File.join(File.expand_path(ENV.fetch("PLASTIC_HOME", "~/.plastic")), "store")
+store = opts[:store] || Plastic::StoreLayout.global_store(File.expand_path(ENV.fetch("PLASTIC_HOME", "~/.plastic")))
 templates = opts[:templates] || File.expand_path("../templates", __dir__)
 
 begin

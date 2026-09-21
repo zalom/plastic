@@ -8,7 +8,7 @@ require_relative "work_graph"
 
 module Plastic
   module StoreSync
-    INTENT_PATH = %r{\A(?:projects/([^/]+)/)?store/([^/]+?)--}
+    INTENT_PATH = %r{\A(?:(?:projects|stores)/([^/]+)/)?store/([^/]+?)--}
     ROW_HASH = "lower(hex(sha3(sqlar_uncompress(data, sz), 256)))"
 
     def self.action(state)

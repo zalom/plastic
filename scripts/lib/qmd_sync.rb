@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require "yaml"
 require "json"
 
@@ -50,7 +51,7 @@ module QmdSync
   # to the directory's parent name when no registry match exists.
   def collection_name(store_dir, plastic_home:)
     store_dir = File.expand_path(store_dir)
-    global_store = File.expand_path(File.join(plastic_home, "store"))
+    global_store = File.expand_path(Plastic::StoreLayout.global_store(plastic_home))
     return "plastic-global" if store_dir == global_store
 
     if File.basename(store_dir) == "roadmaps"
@@ -69,7 +70,7 @@ module QmdSync
   def enumerate_stores(plastic_home:)
     stores = [{
       collection: "plastic-global",
-      dir: File.expand_path(File.join(plastic_home, "store")),
+      dir: File.expand_path(Plastic::StoreLayout.global_store(plastic_home)),
     }]
 
     projects = load_projects(plastic_home)
@@ -80,7 +81,7 @@ module QmdSync
       # Project stores live under ~/.plastic/projects/<slug>/store as the mirror;
       # registry `path` is the project code dir, so the tactical store is the
       # plastic_home projects mirror.
-      mirror_store = File.expand_path(File.join(plastic_home, "projects", slug.to_s, "store"))
+      mirror_store = File.expand_path(File.join(Plastic::StoreLayout.project_root(plastic_home, slug.to_s), "store"))
       dir = Dir.exist?(mirror_store) ? mirror_store : project_store
       stores << { collection: "plastic-#{slug}", dir: dir }
     end
@@ -245,13 +246,13 @@ module QmdSync
       path = info.is_a?(Hash) ? info["path"] : nil
       next unless path
       project_root = File.expand_path(path)
-      mirror = File.expand_path(File.join(plastic_home, "projects", slug.to_s, "store"))
+      mirror = File.expand_path(File.join(Plastic::StoreLayout.project_root(plastic_home, slug.to_s), "store"))
       return slug.to_s if store_dir == File.join(project_root, "store") || store_dir == mirror
     end
     # Fallback: <...>/projects/<slug>/store -> slug, else parent dir name.
-    parts = store_dir.split(File::SEPARATOR)
-    idx = parts.rindex("projects")
-    return parts[idx + 1] if idx && parts[idx + 1] && parts[idx + 2] == "store"
+    slug = Plastic::StoreLayout.locate(store_dir).last
+    return slug unless slug == Plastic::StoreLayout::GLOBAL
+
     File.basename(File.dirname(store_dir))
   end
 end
