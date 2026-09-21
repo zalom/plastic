@@ -10,24 +10,17 @@ class ReportScreenSkillContractTest < Minitest::Test
     File.read(File.join(REPO, rel))
   end
 
-  # --- row 87: auto/SKILL.md's How step names report-screen state; Completion
-  # names report-screen delivered --------------------------------------------
-
-  def test_auto_skill_names_report_screen_state_at_how
-    text = read("skills/auto/SKILL.md")
-    assert_includes text, "report-screen state"
-  end
-
-  def test_auto_skill_names_report_screen_delivered_at_completion
-    text = read("skills/auto/SKILL.md")
-    assert_includes text, "report-screen delivered"
-  end
+  # Row 87 (test_auto_skill_names_report_screen_state_at_how,
+  # test_auto_skill_names_report_screen_delivered_at_completion) was retired by intent 372
+  # (family 5): skills/auto/SKILL.md is gone with no successor prose; the report-screen
+  # triggers it named now live in the `plastic auto` and `plastic session` commands
+  # (scripts/lib/cli/commands/auto_*.rb, session_*.rb), not in skill text a test can read.
 
   # --- row 88: human-report-contract.md names the three screens and five
   # triggers (D15, ruling 3) ---------------------------------------------------
 
   def test_human_report_contract_names_the_three_screens_and_triggers
-    text = read("skills/auto/references/human-report-contract.md")
+    text = read("docs/help/human-report-contract.md")
     assert_includes text, "report-screen state"
     assert_includes text, "report-screen delivered"
     assert_includes text, "report-screen delay"
@@ -36,12 +29,8 @@ class ReportScreenSkillContractTest < Minitest::Test
     assert_includes text, "release"
   end
 
-  # --- row 89: auto/SKILL.md stays at or under 300 lines -----------------------
-
-  def test_auto_skill_stays_at_or_under_300_lines
-    lines = read("skills/auto/SKILL.md").lines.length
-    assert lines <= 300, "skills/auto/SKILL.md grew to #{lines} lines, over the 300-line cap"
-  end
+  # Row 89 (test_auto_skill_stays_at_or_under_300_lines) was retired alongside row 87:
+  # skills/auto/SKILL.md is gone.
 
   # Row 90 (test_intent_continuing_routes_to_report_screen) was retired by intent 372
   # (family 2): the intent-continuing skill moved into the `plastic continue` command,
@@ -57,23 +46,17 @@ class ReportScreenSkillContractTest < Minitest::Test
   # after the ceremony cut - the headings the tests above and tick_with_commit_contract_test.rb
   # anchor on by name.
 
-  def test_contract_headings_present
-    headings = {
-      "skills/auto/SKILL.md" => ["## Why (the lead)", "## How (the lead), then the plan review",
-                                  "## Exec (the executor)", "## Review by risk", "## Completion",
-                                  "## Team"]
-    }
-    headings.each do |file, hs|
-      text = read(file)
-      hs.each { |h| assert_includes text, h, "#{file} lost the #{h} heading a report-screen contract anchors on" }
-    end
-  end
+  # test_contract_headings_present was retired by intent 372 (family 5): skills/auto/SKILL.md,
+  # the sole file it read headings from, is gone. The headings it pinned ("## Why (the lead)",
+  # "## How (the lead), then the plan review", "## Exec (the executor)", "## Review by risk",
+  # "## Completion", "## Team") named a skill contract that no longer exists; the auto and
+  # session commands this family added carry no equivalent heading contract to pin.
 
   # --- item 10 (owner ruling 2026-08-31): cross-harness by construction, not
   # by branching - one sentence in each place a screen is printed.
 
   def test_human_report_contract_states_cross_harness_neutrality
-    text = read("skills/auto/references/human-report-contract.md")
+    text = read("docs/help/human-report-contract.md")
     assert_includes text, "every harness"
     assert_includes text, "harness name"
   end
@@ -102,15 +85,12 @@ class ReportScreenSkillContractTest < Minitest::Test
   # test_continuing_skill_keeps_the_named_and_delay_routes) were retired alongside row 90:
   # intent-continuing/SKILL.md no longer exists.
 
-  # O4.3
-  def test_auto_skill_names_the_session_verb
-    text = read("skills/auto/SKILL.md")
-    assert_includes text, "report-screen session"
-  end
+  # O4.3 (test_auto_skill_names_the_session_verb) was retired alongside row 87:
+  # skills/auto/SKILL.md is gone.
 
   # O4.5
   def test_human_report_contract_names_the_session_screen
-    text = read("skills/auto/references/human-report-contract.md")
+    text = read("docs/help/human-report-contract.md")
     assert_includes text, "report-screen session"
   end
 
@@ -120,7 +100,7 @@ class ReportScreenSkillContractTest < Minitest::Test
   # --- intent 331b: the plan verb, the PRE-delivery report ---------------------
 
   def test_human_report_contract_names_the_plan_screen # P12
-    text = read("skills/auto/references/human-report-contract.md")
+    text = read("docs/help/human-report-contract.md")
     assert_includes text, "report-screen plan"
     assert_includes text, "pre-delivery"
     assert_includes text, "How boundary"
@@ -141,25 +121,9 @@ class ReportScreenSkillContractTest < Minitest::Test
   # test_continuing_roadmap_route_prints_roadmap_state) were retired alongside row 90:
   # intent-continuing/SKILL.md no longer exists.
 
-  # F5
-  def test_auto_prints_plan_before_executor
-    text = read("skills/auto/SKILL.md")
-    before_exec = text.split(/^## Exec/, 2).first
-    assert_includes before_exec, "report-screen plan"
-  end
-
-  # F6
-  def test_auto_prints_state_at_triggers
-    text = read("skills/auto/SKILL.md")
-    assert_includes text, "report-screen state"
-    assert_includes text, "human-report-contract.md"
-  end
-
-  # F7
-  def test_auto_prints_delivered_once
-    text = read("skills/auto/SKILL.md")
-    assert_equal 1, text.scan("report-screen delivered").length
-  end
+  # F5/F6/F7 (test_auto_prints_plan_before_executor, test_auto_prints_state_at_triggers,
+  # test_auto_prints_delivered_once) were retired alongside row 87: skills/auto/SKILL.md is
+  # gone with no successor prose to anchor the same ordering claim on.
 
   # F8/F9 (test_ending_prints_delivered, test_speccing_prints_plan) were retired by intent
   # 372 (family 2): `plastic intent end` and `plastic intent spec` are commands now, not
@@ -176,31 +140,17 @@ class ReportScreenSkillContractTest < Minitest::Test
 
   # skills/intent-continuing/SKILL.md, skills/intent-ending/SKILL.md and
   # skills/intent-speccing/SKILL.md dropped by intent 372 (family 2); skills/roadmap/SKILL.md
-  # and skills/dashboard/SKILL.md dropped by intent 372 (family 3): all five moved into
-  # commands; their files are gone.
-  BOUND_SKILL_FILES = %w[
-    skills/auto/SKILL.md
-  ].freeze
+  # and skills/dashboard/SKILL.md dropped by intent 372 (family 3); skills/auto/SKILL.md
+  # dropped by intent 372 (family 5): all six moved into commands; their files are gone.
 
-  # F13
-  def test_bound_skills_carry_first_print_rule
-    BOUND_SKILL_FILES.each do |f|
-      text = read(f).gsub(/\s+/, " ")
-      assert_includes text, "first characters of the reply", "#{f} lacks the no-fence rule"
-    end
-  end
-
-  # F14
-  def test_bound_skills_under_300_lines
-    BOUND_SKILL_FILES.each do |f|
-      lines = read(f).lines.length
-      assert lines <= 300, "#{f} grew to #{lines} lines, over the 300-line cap"
-    end
-  end
+  # F13/F14 (test_bound_skills_carry_first_print_rule, test_bound_skills_under_300_lines, and
+  # the BOUND_SKILL_FILES constant they shared) were retired by intent 372 (family 5):
+  # skills/auto/SKILL.md was the last file BOUND_SKILL_FILES named, and the auto/session
+  # commands that replaced it carry no skill-body no-fence or line-cap contract to pin.
 
   # F23
   def test_contract_states_column_vocabulary
-    text = read("skills/auto/references/human-report-contract.md").gsub(/\s+/, " ")
+    text = read("docs/help/human-report-contract.md").gsub(/\s+/, " ")
     assert_includes text, "Graph ID"
     assert_includes text, "before its first colon"
   end

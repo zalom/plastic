@@ -42,13 +42,13 @@ class PostCutVocabularyTest < Minitest::Test
   # scripts/lib/savepoint.rb, scripts/lib/index_projection.rb, scripts/append-ledger).
   # skills/intent-continuing/references/boarding-matrix.md dropped from this list by intent
   # 372 (family 2): intent-continuing moved into `plastic continue`, a command; its file
-  # is gone.
+  # is gone. skills/auto/SKILL.md dropped by intent 372 (family 5): the skill is gone with no
+  # successor prose; human-report-contract.md moved verbatim to docs/help.
   PROSE_FILES_MUST_NOT_SAY_DONE = %w[
     templates/agents.md
     docs/help/completion-and-done.md
     docs/help/locks-and-worktrees.md
-    skills/auto/SKILL.md
-    skills/auto/references/human-report-contract.md
+    docs/help/human-report-contract.md
   ].freeze
 
   def test_done_alias_absent_from_shipped_tree
@@ -70,28 +70,12 @@ class PostCutVocabularyTest < Minitest::Test
     end
   end
 
-  # Row 4.3 - the plan review is optional everywhere it is named, never required.
-  PLAN_REVIEW_FILES = %w[
-    skills/auto/SKILL.md
-    skills/auto/references/agent-architecture.md
-  ].freeze
-
-  def test_plan_review_not_required_anywhere
-    combined = PLAN_REVIEW_FILES.map { |rel| read(rel) }.join("\n---\n")
-    sentences = combined.split(/(?<=[.:])\s+/)
-    plan_review_sentences = sentences.select { |s| s =~ /plan review/i }
-
-    refute_empty plan_review_sentences, "no sentence names the plan review"
-    assert(plan_review_sentences.any? { |s| s =~ /optional/i },
-           "no sentence naming the plan review calls it optional:\n#{plan_review_sentences.join("\n")}")
-
-    refute_match(/plan review(er)? is required/i, combined)
-    refute_match(/must dispatch the plan review/i, combined)
-    refute_match(/is a required step/i, combined)
-
-    # The pinned literal other tests depend on must survive the reword.
-    assert_includes read("skills/auto/SKILL.md"), "plan-reviewer-prompt.md"
-  end
+  # Row 4.3 (test_plan_review_not_required_anywhere) was retired by intent 372 (family 5):
+  # skills/auto/SKILL.md, its sole source for the "the plan review is optional" wording, is
+  # gone with no successor prose; the surviving file (docs/help/agent-architecture.md) never
+  # carried that "optional" claim itself. Whether the plan review is optional or required is a
+  # standing question for the lead's own agent body (agents/plastic-enforcer.md), which this
+  # family did not touch beyond fixing a stale path; flagged for the lead, not resolved here.
 
 # Row 5.2 - both tutorial tracks walk create, graph, runner step, end -
 # never the old consolidate-the-spec / plan.md-and-checklist ceremony.

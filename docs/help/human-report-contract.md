@@ -29,20 +29,20 @@ written by eye:
 
 ## Binding table (intent 331f)
 
-Every skill that shows state names its own report verb, one row per skill and trigger. Each
-bound skill's file carries the SAME rule next to its verb: print the screen as the first
+Every command or lead role that shows state names its own report verb, one row per binding
+and trigger. Each one carries the SAME rule next to its verb: print the screen as the first
 characters of the reply, nothing before it, no fence, or the hook cannot paint it.
 
-| Skill | Trigger | Verb |
+| Command or lead | Trigger | Verb |
 |---|---|---|
 | `plastic continue` | project route (continue, load project) | `dashboard.rb ... --screen` |
 | `plastic continue` | a named intent | `report-screen state` |
 | `plastic continue` | "where are we" (a status ask) | `report-screen session` |
 | `plastic continue` | "why so long" | `report-screen delay` |
 | `plastic continue` | a roadmap route | `report-screen roadmap ... state` |
-| `plastic-auto` | the How boundary, before the executor | `report-screen plan` |
-| `plastic-auto` | each of the five triggers | `report-screen state` |
-| `plastic-auto` | close | `report-screen delivered` |
+| the auto team's lead | the How boundary, before the executor | `report-screen plan` |
+| the auto team's lead | each of the five triggers | `report-screen state` |
+| the auto team's lead | close | `report-screen delivered` |
 | `plastic intent end` | the close | `report-screen delivered` |
 | `plastic intent spec` | the action files are written | `report-screen plan` |
 | `plastic roadmap show` | any invocation | `report-screen roadmap ... state` |
