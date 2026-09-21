@@ -55,6 +55,10 @@ module SkillCensus
     "plastic-uninstall",
     "plastic-update",
     "plastic-rollback",
+    "plastic-doctor",
+    "plastic-feedback",
+    "plastic-tutorial",
+    "plastic-conventions",
   ].freeze
 
   # ~/.plastic/scripts/* filenames, never skills (review 3). plastic-lock
