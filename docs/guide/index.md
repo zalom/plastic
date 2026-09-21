@@ -11,6 +11,7 @@ This guide is for a person who uses Plastic. To change Plastic, read
 | [Quick start](getting-started/quick-start.md) | What do I run first? |
 | [Intent commands](getting-started/intent-commands.md) | How do I carry one piece of work from its first line to its close? |
 | [Project and roadmap commands](getting-started/project-and-roadmap-commands.md) | How do I register a project and read a roadmap? |
+| [Auto and session commands](getting-started/auto-and-session-commands.md) | How does an auto team take an intent, and how does a session keep its ledger? |
 | [Configuration](getting-started/configuration.md) | What can I set, and where? |
 | [What Plastic covers](getting-started/what-plastic-covers.md) | Which commands exist, and which are planned? |
 | [Supported agents](getting-started/supported-agents.md) | Which coding agents does it install into? |
