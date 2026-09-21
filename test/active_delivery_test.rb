@@ -131,11 +131,11 @@ class ActiveDeliveryTest < Minitest::Test
 
   def test_project_roots_default_without_the_key
     write_config("release:\n  on_complete: commit\n")
-    assert_equal [File.expand_path("~/.plastic/projects")], ActiveDelivery.project_roots(@home)
+    assert_equal [File.expand_path("~/.plastic/projects"), File.expand_path("~/.plastic/stores")], ActiveDelivery.project_roots(@home)
   end
 
   def test_project_roots_default_on_malformed_config
     write_config("not: [valid\n")
-    assert_equal [File.expand_path("~/.plastic/projects")], ActiveDelivery.project_roots(@home)
+    assert_equal [File.expand_path("~/.plastic/projects"), File.expand_path("~/.plastic/stores")], ActiveDelivery.project_roots(@home)
   end
 end
