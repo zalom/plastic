@@ -120,16 +120,10 @@ class AutoCore307Test < Minitest::Test
 
   # --- the auto shape ----------------------------------------------------------
 
-  def test_auto_skill_takes_the_intent_through_plastic_lock_arm
-    body = read("skills/auto/SKILL.md")
-    assert_includes body, "plastic-lock arm"
-    assert_includes body, "plan-reviewer-prompt.md"
-    refute_includes body, "Lifecycle Gate"
-    refute_includes body, "two-stage review" # removed in 2.0 (intent 307)
-    refute_includes body, "M and L only"
-    refute_includes body, "Bridge." + "arm_auto" # split so the hermeticity scanners see no arm call here
-    refute_match(/\bat L\b/, body) # removed in 2.0 (intent 304)
-  end
+  # test_auto_skill_takes_the_intent_through_plastic_lock_arm was retired by intent 372
+  # (family 5): skills/auto/SKILL.md is gone. The arming call it pinned is now
+  # test/cli/auto_session_commands_test.rb's test_take_runs_plastic_lock_arm, which asserts
+  # the same "arm --intent-dir ... --mode auto" call against the real `AutoTake` command.
 
   # test_plan_reviewer_prompt_reviews_the_matrix_before_code was retired by intent 372
   # (family 2): skills/intent-executing/plan-reviewer-prompt.md is gone; the reviewer

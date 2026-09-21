@@ -37,9 +37,9 @@ class Subtraction304Test < Minitest::Test
     intent-locking store-provisioning
   ].freeze
 
-  KEPT_SKILL_DIRS = %w[
-    agent-advisor auto direct releasing
-  ].freeze
+  # Intent 372 (family 5) retired the last four skill directories (auto, direct,
+  # agent-advisor, releasing) into commands and docs/help; zero skills ship now.
+  KEPT_SKILL_DIRS = [].freeze
 
   KEPT_AGENTS = %w[plastic-enforcer.md plastic-executor.md plastic-node-research.md
                    plastic-node-verify.md plastic-node-work.md plastic-primary-advisor.md
@@ -212,8 +212,11 @@ class Subtraction304Test < Minitest::Test
   # SKILL.md, including the locks and provisioning sections, is gone.
 
   def test_advisor_contract_uses_role_specific_effort_without_a_brief_override
-    %w[agents/plastic-primary-advisor.md agents/plastic-secondary-advisor.md skills/agent-advisor/SKILL.md
-       skills/agent-advisor/references/advisor-protocol.md].each do |rel|
+    # skills/agent-advisor/SKILL.md was retired by intent 372 (family 5) with no successor
+    # prose; docs/help/advisor-protocol.md is where its reference file moved (git mv, content
+    # unchanged), so the scan still reads it there.
+    %w[agents/plastic-primary-advisor.md agents/plastic-secondary-advisor.md
+       docs/help/advisor-protocol.md].each do |rel|
       body = File.read(File.join(REPO, rel))
       refute_match(/TIER: |S, M, or L|\bL tier\b|\bS tier\b/, body, "#{rel} still carries the S/M/L brief grammar")
     end

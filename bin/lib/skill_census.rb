@@ -62,6 +62,10 @@ module SkillCensus
     "plastic-project-creating",
     "plastic-roadmap",
     "plastic-dashboard",
+    "plastic-auto",
+    "plastic-direct",
+    "plastic-agent-advisor",
+    "plastic-releasing",
   ].freeze
 
   # ~/.plastic/scripts/* filenames, never skills (review 3). plastic-lock
@@ -87,10 +91,11 @@ module SkillCensus
 
   # Roster skills this instrument cannot observe through the Skill tool or a
   # typed command, with the mechanism that reaches them instead (review 4).
+  # plastic-agent-advisor and plastic-direct were retired by intent 372 (family 5) into
+  # RETIRED above: their skill directories are gone, so Roster.load never yields a row for
+  # them any more, and a MECHANISMS entry that no row can reach is dead.
   MECHANISMS = {
-    "plastic-agent-advisor" => "dispatched as the plastic-advisor / plastic-faux-advisor subagent, not through the Skill tool",
     "plastic-conventions" => "read as references/*.md from inside other skills",
-    "plastic-direct" => "routed by the SessionStart hook and PLASTIC.md",
     "plastic-feedback" => "routed by the SessionStart hook and PLASTIC.md",
   }.freeze
 

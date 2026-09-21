@@ -5,9 +5,9 @@ require "minitest/autorun"
 
 # Intent 329 - a tick is two edits (mark the box `[x]`, move the line to `## Completed`),
 # made in the same commit that lands the work. This contract test pins that wording in every
-# place that states the rule: the executor and enforcer agent bodies, the auto skill's Exec
-# and Completion gates, and docs/internals.md. String/section assertions only, no filesystem
-# fixtures needed: these are real repo files, read directly.
+# place that states the rule: the executor and enforcer agent bodies, and docs/internals.md.
+# String/section assertions only, no filesystem fixtures needed: these are real repo files,
+# read directly.
 #
 # O1/O2 (the canonical definition in skills/intent-executing/SKILL.md's `## Tick-as-you-land`
 # and its implementer-prompt.md template) were retired by intent 372 (family 2):
@@ -17,7 +17,6 @@ class TickWithCommitContractTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   EXECUTOR = File.join(ROOT, "agents/plastic-executor.md")
   ENFORCER = File.join(ROOT, "agents/plastic-enforcer.md")
-  AUTO_SKILL = File.join(ROOT, "skills/auto/SKILL.md")
   INTERNALS = File.join(ROOT, "docs/internals.md")
 
   # Markdown soft-wraps a paragraph across raw newlines; collapse all whitespace runs
@@ -99,19 +98,11 @@ class TickWithCommitContractTest < Minitest::Test
       "A mismatch is a review finding, not a cleanup you perform silently."
   end
 
-  # --- O5: skills/auto/SKILL.md Exec step and Completion gate (M13, M14) ----------------
-
-  def test_auto_exec_step_names_tick_versus_diff
-    exec_section = section(File.read(AUTO_SKILL), "## Exec (the executor)")
-    assert_includes exec_section, "verify tick-versus-diff against the diff"
-    assert_includes exec_section, "A mismatch is a review finding"
-  end
-
-  def test_auto_completion_gate_checks_ticks_against_the_diff
-    completion_section = section(File.read(AUTO_SKILL), "## Completion")
-    assert_includes completion_section, "This is the merge gate"
-    assert_includes completion_section, "verify tick-versus-diff against the diff"
-  end
+  # O5 (test_auto_exec_step_names_tick_versus_diff, test_auto_completion_gate_checks_ticks_
+  # against_the_diff) was retired by intent 372 (family 5): skills/auto/SKILL.md is gone, its
+  # Exec step and Completion gate content did not move to a successor file, and the rule they
+  # pinned is the same one O3/O4 above already pin on agents/plastic-executor.md and
+  # agents/plastic-enforcer.md.
 
   # --- O7: docs/internals.md (M15) -------------------------------------------------------
 

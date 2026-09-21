@@ -90,10 +90,9 @@ class SkillCensusRosterTest < Minitest::Test
     end.sort
 
     assert_equal expected.map { |e| "plastic-#{e}" }.sort, roster.map(&:name).sort
-    # Intent 372 (family 3) dropped project-creating, roadmap, and dashboard, leaving
-    # agent-advisor, auto, direct, releasing; only direct ships user-invocable: false.
-    assert_equal 4, roster.length
-    assert_equal 1, roster.count { |s| !s.user_invocable }
+    # Intent 372 (family 5) retired the last four (agent-advisor, auto, direct, releasing)
+    # into commands and docs/help: zero skill directories remain.
+    assert_equal 0, roster.length
   end
 
   def test_name_map_targets_are_live_roster_names
@@ -671,10 +670,10 @@ class SkillCensusTallyTest < Minitest::Test
   end
 
   def test_mechanism_skill_renders_na_not_zero
-    mechanism_roster = [SkillCensus::Roster::Skill.new(name: "plastic-agent-advisor", user_invocable: false)]
+    mechanism_roster = [SkillCensus::Roster::Skill.new(name: "plastic-feedback", user_invocable: false)]
     built = SkillCensus::Tally.new(history_scan([]), transcript_scan, mechanism_roster).build
 
-    row = built.skills.find { |s| s.name == "plastic-agent-advisor" }
+    row = built.skills.find { |s| s.name == "plastic-feedback" }
     refute row.evidence?
     refute_nil row.mechanism
   end
@@ -748,7 +747,7 @@ class SkillCensusReportTest < Minitest::Test
   end
 
   def test_na_rows_render_na_and_the_mechanism
-    mechanism_roster = [SkillCensus::Roster::Skill.new(name: "plastic-agent-advisor", user_invocable: false)]
+    mechanism_roster = [SkillCensus::Roster::Skill.new(name: "plastic-feedback", user_invocable: false)]
     empty_history = SkillCensus::HistoryScanner::Result.new(record_count: 0, first_seen: nil, last_seen: nil,
                                                                typed: [], mentions: [], builtins: {},
                                                                self_generated: [], monthly: {})
@@ -763,7 +762,7 @@ class SkillCensusReportTest < Minitest::Test
     md = SkillCensus::Report.markdown(built_na, cutoff: "2026-09-02")
 
     assert_includes md, "n/a"
-    assert_includes md, "dispatched as the plastic-advisor"
+    assert_includes md, "routed by the SessionStart hook"
   end
 
   def test_zero_counts_render_as_zero
