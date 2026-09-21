@@ -126,7 +126,10 @@ class UpdateVerbTest < Minitest::Test
   def test_perform_switch_commits_and_clears_cache_on_a_successful_switch
     u = FakeUpdate.new(package_root: ".", plastic_home: @home, version: "x")
 
-    u.send(:perform_switch, "1.0.0-alpha.19", ["--claude"], switch_runner: ->(_cmd) { true })
+    status = nil
+    capture_io { status = u.send(:perform_switch, "1.0.0-alpha.19", ["--claude"], switch_runner: ->(_cmd) { true }) }
+
+    assert_equal 0, status
 
     assert_equal "1.0.0-alpha.19", u.committed_to
     assert u.cache_cleared
@@ -135,7 +138,10 @@ class UpdateVerbTest < Minitest::Test
   def test_perform_switch_does_not_commit_or_clear_cache_on_a_failed_switch
     u = FakeUpdate.new(package_root: ".", plastic_home: @home, version: "x")
 
-    u.send(:perform_switch, "1.0.0-alpha.19", ["--claude"], switch_runner: ->(_cmd) { false })
+    status = nil
+    capture_io { status = u.send(:perform_switch, "1.0.0-alpha.19", ["--claude"], switch_runner: ->(_cmd) { false }) }
+
+    assert_equal 1, status
 
     assert_nil u.committed_to
     refute u.cache_cleared

@@ -16,6 +16,7 @@ class InstallVerbTest < Minitest::Test
     attr_reader :distributed, :bootstrapped
     def distribute(mode) = (@distributed = mode)
     def bootstrap = (@bootstrapped = true)
+    def register_with_qmd(detector: -> { false }, **options) = super
     def transactional_install_for_agent(key, _force, **)
       { agent: key, success: true, files: 1, from_version: nil, to_version: version }
     end
@@ -190,6 +191,7 @@ class InstallPerAgentGateTest < Minitest::Test
 
   def build(agents = @agents)
     Install.new(package_root: WORKTREE, plastic_home: @home, agents: agents, version: "1.0.0-test")
+      .tap { |install| install.define_singleton_method(:register_with_qmd) { |**| } }
   end
 
   # Simulates the owner's exact starting state, via the real install path (not
