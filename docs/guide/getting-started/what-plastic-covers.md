@@ -20,6 +20,7 @@
 | `plastic auto take`, `brief`, `report`, `lock` and `plastic session summary`, `handoff`, `commit` | Serves an auto team and keeps the day ledger. See [Auto and session commands](auto-and-session-commands.md). |
 | `plastic roadmap next`, `show`, `log`, `check` | Reads a roadmap and appends to its ledger. See [Project and roadmap commands](project-and-roadmap-commands.md). |
 | `plastic index`, `plastic search TERMS`, `plastic query SQL` | Builds and reads the search index of the stores. See [Search commands](search-commands.md). |
+| `plastic sync`, `plastic checkout`, `plastic render FILE` | Keeps the store files and the three databases level, restores missing files, and prints a file as HTML. See [Sync commands](sync-commands.md). |
 
 ## Commands that are planned
 
