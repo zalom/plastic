@@ -225,8 +225,8 @@ the roadmap's grouping section (`## Batches`, or legacy `## Waves`) and the tier
 `## Completed` section so every `delivered` batch entry with no
 matching `merged` line in the Log gets one backfilled from INDEX, timestamped only from an
 on-disk source and never invented (an entry with no recoverable source anywhere is silently
-dropped, not fabricated). The `plastic-roadmap` skill's verbs call `append` at the same
-closing-step slot each already uses for its QMD reindex; `plastic continue` reads the
+dropped, not fabricated). The `plastic roadmap log` command calls `append` at the same
+closing-step slot QMD reindex already uses; `plastic continue` reads the
 ledger's last line as a cheap last-event signal, purely as a read. `INDEX.md` stays the single
 status writer throughout; the ledger, like the intent-dir one, is sugar, never a source of truth.
 
@@ -709,7 +709,7 @@ one shared definition of store creation that creation and repair both consult.
   `InstallerCore#bootstrap_project_store`, which is now removed.
 - **Consumers sit on top of it**: the `scripts/provision-project-store` CLI (exit
   0 on success, non-zero with a report when the slug is unregistered or on usage
-  error); the `plastic intent new` command and the `plastic-project-creating` skill (each
+  error); the `plastic intent new` command and the `plastic project new` command (each
   calls the verb after `projects.yml` registration instead of an inline `mkdir`);
   the `plastic-doctor` skill (resolve slug, run the verb, then the
   separate optional `qmd-sync register --store` step); and doctor's read-only
@@ -1537,7 +1537,8 @@ for a decision that is certainly on its way, and `write_screen`/`write_noscreen`
 ## the dashboard screen (intent 331d)
 
 `dashboard.rb continue|project <slug> --screen [--ansi]` prints the dashboard as a screen
-instead of the Markdown board `plastic-dashboard` fills by hand: a title (`## ▶ {scope} ·
+instead of the Markdown board a prose skill once filled by hand, retired in favor of `plastic
+status`: a title (`## ▶ {scope} ·
 dashboard`, scope `global` or `project:<slug>`), six fields (Active, In delivery, Delivered,
 Roadmap, Sessions, Changed), then a Where-we-are table (the active records, most recently
 touched first, capped at 8) and a Where-we-go-next table (the dispatchable queue in rank

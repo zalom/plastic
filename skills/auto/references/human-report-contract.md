@@ -45,10 +45,8 @@ characters of the reply, nothing before it, no fence, or the hook cannot paint i
 | `plastic-auto` | close | `report-screen delivered` |
 | `plastic intent end` | the close | `report-screen delivered` |
 | `plastic intent spec` | the action files are written | `report-screen plan` |
-| `plastic-roadmap` | create | `report-screen roadmap ... plan` |
-| `plastic-roadmap` | read | `report-screen roadmap ... state` |
-| `plastic-roadmap` | close | `report-screen roadmap ... delivered` |
-| `plastic-dashboard` | any invocation | `dashboard.rb ... --screen` |
+| `plastic roadmap show` | any invocation | `report-screen roadmap ... state` |
+| `plastic status` | any invocation | in-process (`Scope#stores`) |
 | `plastic intent step` | after the red commit, and after the suite | `report-screen state` |
 
 ## A roadmap's own three reports (intent 331c)

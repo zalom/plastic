@@ -10,7 +10,7 @@ require "yaml"
 # missing the pieces a real project needs: project.yml, a root AGENTS.md.
 # The intent-26 spawn shipped exactly that shape and was caught only by a
 # much later, pull-only plastic-doctor sweep. This module lets
-# plastic-project-creating verify a spawn BEFORE announcing it as done,
+# `plastic project new` verify a spawn BEFORE announcing it as done,
 # mirroring how scripts/new-intent already runs IntentValidator before
 # announcing a new intent (validate-intent).
 #

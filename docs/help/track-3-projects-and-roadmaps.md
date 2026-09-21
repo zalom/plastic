@@ -33,10 +33,14 @@ into a whole new project.
 
 ### 2. Grow it into a project
 
-Type `/plastic-project-creating`.
+Make the project directory yourself and write its `AGENTS.md`, carrying forward at least one
+decision from the founding intent. Plastic does not create the directory or fill that file;
+that is ordinary agent work, done once, before the project exists. Once the directory exists,
+run `plastic project new SLUG --path PATH` to register it in `projects.yml` and provision and
+validate its store.
 
-Artifact: a new project directory, an `AGENTS.md` file carrying the founding intent's
-decisions, the project's own intent store, and a new entry in `projects.yml` registering it.
+Artifact: a new project directory with its `AGENTS.md`, the project's own intent store, and a
+new entry in `projects.yml` registering it.
 
 Checkpoint: open `AGENTS.md` and find at least one line that traces back to a decision
 recorded in the founding intent back in station 1.
@@ -54,13 +58,16 @@ in the global store.
 
 ### 4. Plan a delivery batch
 
-Type `/plastic-roadmap`.
+Copy `templates/roadmap.md` to `roadmaps/<slug>.md`, next to the project's `INDEX.md`, and fill
+it by hand: a title and short meta header, a `## Goal` section in prose describing what "done"
+looks like for the whole batch, a `## Batches` section (an ordered list of groups of intents;
+intents inside one batch are safe to run in parallel, batches themselves run one after another),
+and an append-only, dated `## Log`. `INDEX.md` stays the single source of truth for each
+intent's status; the roadmap only mirrors it. List the two or more intents from station 3
+across one or more batches.
 
-Teach the roadmap file shape exactly: a title and short meta header, a `## Goal` section in
-prose describing what "done" looks like for the whole batch, a `## Batches` section (an
-ordered list of groups of intents; intents inside one batch are safe to run in parallel,
-batches themselves run one after another), and an append-only, dated `## Log`. `INDEX.md`
-stays the single source of truth for each intent's status; the roadmap only mirrors it.
+Run `plastic roadmap check <slug>` to confirm the file parses, then `plastic roadmap show
+<slug>` to see it rendered as a report.
 
 Artifact: a new `roadmaps/<slug>.md` file, sitting next to the project's `INDEX.md`, listing
 the two or more intents from station 3 across one or more batches.
@@ -108,4 +115,4 @@ This is the same What, Why, How, Exec cycle from tracks 1 and 2, repeated across
 and gathered by a roadmap. Read
 [`using-plastic-with-claude-code.md`](https://github.com/zalom/plastic/blob/main/docs/guides/using-plastic-with-claude-code.md) for roadmap-driven delivery in more depth,
 including a real worked roadmap. For the exact roadmap file format beyond what this
-walkthrough covers, the `plastic-roadmap` skill itself is the reference.
+walkthrough covers, [`docs/help/roadmaps.md`](roadmaps.md) is the reference.

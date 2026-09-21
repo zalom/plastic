@@ -2358,7 +2358,7 @@ end
       checks << check(
         category: "project_stores", name: "project_yml_exists", status: "warn",
         message: "project.yml missing for project '#{slug}'",
-        fixable: true, fix_hint: "Create project.yml from template — see plastic-project-creating"
+        fixable: true, fix_hint: "Create project.yml from template — see plastic project new"
       )
     end
 

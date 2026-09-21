@@ -231,10 +231,12 @@ the suite runs once more. On a graph, the risk rule maps onto the verify nodes n
 `graph.md`'s decisions; at most one review-fix round, never more.
 ## Project Creation
 
-If the plan calls for creating a new project, determine the path from `~/.plastic/config.yml`
-`project_roots` or the intent context, confirm the path with the user (the one human
-interaction added mid-delivery), invoke `plastic-project-creating`, and continue from the
-project directory on the tactical intent.
+If the plan calls for creating a new project, confirm the path with the user (the one human
+interaction added mid-delivery) — the owner makes the directory; Plastic does not. Once it
+exists, run `plastic project new SLUG --path PATH [--parent ID]` to register, provision and
+validate the store, then `plastic intent new` to open the tactical intent and `plastic intent
+end` to close the founding one, and continue from the project directory on the tactical
+intent.
 
 ## Permission Model - Safe-by-Default
 

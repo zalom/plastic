@@ -6,8 +6,8 @@ This chapter holds the full roadmap file format and its relationship to INDEX.md
 
 Roadmaps exist for planned parallel delivery of intents in a coherent and organized way. A roadmap
 is a named, ordered, delivery-side collection of intents: the delivery-side counterpart to a
-release (completion-side, tracked in `CHANGELOG.md`). Use `plastic-roadmap` to create, order,
-close, and consume one.
+release (completion-side, tracked in `CHANGELOG.md`). Create one by hand from the template, then
+use `plastic roadmap show`, `next`, `log`, and `check` to read, drive, and audit it.
 
 File location: `roadmaps/{slug}.md`, a sibling of `INDEX.md`, wherever `INDEX.md` lives, never
 inside `store/` (store holds intent directories, not project artifacts). For a project that is its

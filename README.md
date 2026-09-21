@@ -137,7 +137,7 @@ Walk this once in
 | ------ | -------- |
 | Mode | `plastic-tutorial`, `plastic-auto` |
 | Intent | `plastic intent new`, `plastic continue`, `plastic intent spec`, `plastic intent step`, `plastic intent end` |
-| Project and delivery | `plastic-project-creating`, `plastic-roadmap`, `plastic-releasing` |
+| Project and delivery | `plastic project new`, `plastic roadmap show`, `plastic-releasing` |
 | Product | `plastic install`, `plastic update`, `plastic uninstall`, `plastic rollback`, `plastic-doctor` |
 
 See [`docs/guides/index.md`](docs/guides/index.md) for task-oriented walkthroughs.
