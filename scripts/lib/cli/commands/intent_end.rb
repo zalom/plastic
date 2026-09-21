@@ -18,7 +18,7 @@ module Plastic
         SUMMARY_GUIDANCE = [
           "a good summary is written for the reader deciding whether to merge, release, or accept",
           "delivered: what shipped, impact and risk first, in plain language, never the checklist",
-          "abandoned: why, and the trail if part of the work was dropped mid-flight",
+          "abandoned: why, and the trail if part of the work was dropped mid-flight"
         ].freeze
 
         def call
@@ -36,7 +36,7 @@ module Plastic
 
         def disposition
           return "delivered" if options[:delivered]
-          return "abandoned" if options[:abandoned]
+          "abandoned" if options[:abandoned]
         end
 
         def switches(parser)

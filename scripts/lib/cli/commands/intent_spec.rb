@@ -25,7 +25,7 @@ module Plastic
           "6. record every ruling the instant it lands, never batched:",
           '   plastic intent rule ID "<ruling text>"',
           "7. a later ruling that conflicts with an earlier one gets a new insight naming it superseded",
-          "8. both rulings stay on record; the later one wins",
+          "8. both rulings stay on record; the later one wins"
         ].freeze
 
         def call

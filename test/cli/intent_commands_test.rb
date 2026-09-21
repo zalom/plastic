@@ -5,8 +5,16 @@ require "stringio"
 require "tmpdir"
 require_relative "../lib/cli_fixture"
 require_relative "../../scripts/lib/cli"
+require_relative "../../scripts/lib/cli/commands/intent_command"
 
 class CliIntentCommandsTest < Minitest::Test
+  class Bare < Plastic::CLI::Commands::IntentCommand
+    USAGE_LINE = "plastic bare ID"
+    SCRIPT = "report-screen"
+    AFTER = "plastic status"
+    BECAUSE = "a stand-in for coverage"
+  end
+
   def setup
     @dir = Dir.mktmpdir("plastic-cli-intent")
     @fixture = CliFixture.new(@dir).global_store(active: [["372", "Skills to commands"]])
@@ -61,6 +69,16 @@ class CliIntentCommandsTest < Minitest::Test
     command("intent show", "372")
 
     assert_includes @fixture.printed, "next: plastic intent step 372"
+  end
+
+  def test_a_failing_script_exits_one
+    assert_equal 1, command("intent show", "372", status: 7)
+  end
+
+  def test_a_failing_script_names_the_script_and_its_status
+    command("intent show", "372", status: 7)
+
+    assert_includes @fixture.warned, "report-screen exited 7"
   end
 
   # --- intent spec -------------------------------------------------------------
@@ -211,6 +229,10 @@ class CliIntentCommandsTest < Minitest::Test
     assert_includes @fixture.warned, "needs the owner"
   end
 
+  def test_end_a_plain_failing_status_exits_one
+    assert_equal 1, command("intent end", "372", "--delivered", "--summary", "text", status: 2)
+  end
+
   # --- intent new ----------------------------------------------------------------
 
   def test_new_runs_new_intent_then_index_projection
@@ -235,6 +257,24 @@ class CliIntentCommandsTest < Minitest::Test
 
   def test_new_without_a_slug_exits_two
     assert_equal 2, command("intent new", "a fresh idea")
+  end
+
+  def test_new_with_a_failing_new_intent_exits_one
+    assert_equal 1, command("intent new", "a fresh idea", "--slug", "fresh-idea", status: 9)
+  end
+
+  def test_new_with_a_failing_index_projection_exits_one
+    statuses = [0, 5]
+    runner = lambda do |path, arguments|
+      @calls << [path, arguments]
+      statuses.shift
+    end
+    require File.expand_path("../../scripts/lib/cli/commands/intent_new", __dir__)
+    status = Plastic::CLI::Commands::IntentNew.call(["a fresh idea", "--slug", "fresh-idea"],
+      directory: "/nowhere", runner: runner, **@fixture.streams)
+
+    assert_equal 1, status
+    assert_includes @fixture.warned, "index-projection exited 5"
   end
 
   # --- the base class: an id that names no intent -------------------------------
@@ -279,6 +319,15 @@ class CliIntentCommandsTest < Minitest::Test
 
   def test_an_unknown_subcommand_exits_two
     assert_equal 2, run_cli("intent", "bogus")
+  end
+
+  def test_a_subclass_that_defines_no_script_arguments_says_so_by_name
+    error = assert_raises(NoMethodError) do
+      CliIntentCommandsTest::Bare.new(["372"], out: @fixture.out, err: @fixture.err, env: @fixture.env,
+        home: @fixture.home, directory: "/nowhere").call
+    end
+
+    assert_equal "#{CliIntentCommandsTest::Bare} must define script_arguments", error.message
   end
 
   def test_an_unknown_subcommand_lists_the_subcommands

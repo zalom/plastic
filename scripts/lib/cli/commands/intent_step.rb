@@ -20,7 +20,7 @@ module Plastic
           "no graph.md: dispatch ONE plastic-executor subagent with the whole consolidated action pasted in, never a file reference",
           "it writes the matrix's tests and commits them red, implements the action in order, and drives the suite green",
           "a tick is two edits made together: mark the item's box [x], and move it from ## In Progress to ## Completed",
-          "add one ## Session Log row per tick; never batch several tasks into one later edit",
+          "add one ## Session Log row per tick; never batch several tasks into one later edit"
         ].freeze
 
         def call
