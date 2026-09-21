@@ -22,7 +22,7 @@ module Plastic
           status = legacy.run("feedback-report", "--title", title)
           raise Failure, "feedback-report exited #{status}" unless status.zero?
 
-          @output.next_step("none", because: "the report is filed; open the printed URL to send it")
+          @output.next_step("none", because: "the report is saved as a draft; open the printed URL to send it")
         end
 
         private

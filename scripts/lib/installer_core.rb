@@ -371,8 +371,6 @@ class InstallerCore
   # installs with no diff here.
   def help_files
     Dir.glob(File.join(package_root, "docs", "help", "*.md")).each_with_object({}) do |path, acc|
-      next unless File.file?(path)
-
       rel = File.join("docs", "help", File.basename(path))
       acc[rel] = rel
     end

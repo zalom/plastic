@@ -69,6 +69,14 @@ class CliDoctorFeedbackHelpTest < Minitest::Test
     assert_equal 2, command("feedback")
   end
 
+  def test_feedback_with_a_blank_title_exits_usage
+    assert_equal 2, command("feedback", "  ")
+  end
+
+  def test_feedback_with_a_failing_script_exits_one
+    assert_equal 1, command("feedback", "Something broke", status: 7)
+  end
+
   def test_feedback_with_no_title_never_runs_the_script
     command("feedback")
 
