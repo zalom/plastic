@@ -3,8 +3,6 @@
 require "fileutils"
 require "digest"
 require "json"
-require "rubygems"
-require "rubygems/package"
 require "tmpdir"
 require "zlib"
 require_relative "store_sync"
@@ -44,6 +42,8 @@ module Plastic
     end
 
     def self.pack(work, archive)
+      require "rubygems"
+      require "rubygems/package"
       FileUtils.mkdir_p(File.dirname(archive))
       draft = "#{archive}.tmp"
       Zlib::GzipWriter.open(draft) do |gzip|

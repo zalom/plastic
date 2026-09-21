@@ -334,7 +334,7 @@ class ScreenWidthTest < Minitest::Test
     # matched by content; leg 1's literal appends (render_archive's row,
     # render_nodes_block's node/findings rows) are unaffected, so this list's
     # five members are unchanged in kind, only in position.
-    [1089, 1169, 1613, 1619, 1631].each do |line|
+    [1090, 1170, 1614, 1620, 1632].each do |line|
       assert_includes lines, line, "leg 2 must still carry the screen-emitting non-literal append at line #{line}"
     end
   end
