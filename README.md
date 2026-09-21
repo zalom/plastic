@@ -1,228 +1,408 @@
-# Plastic
+<h1 align="center">PLASTIC</h1>
 
-[![npm version](https://img.shields.io/npm/v/@zalom/plastic)](https://www.npmjs.com/package/@zalom/plastic)
-[![npm downloads](https://img.shields.io/npm/dm/@zalom/plastic)](https://www.npmjs.com/package/@zalom/plastic)
-[![license](https://img.shields.io/npm/l/@zalom/plastic)](LICENSE)
-[![CI](https://github.com/zalom/plastic/actions/workflows/test.yml/badge.svg)](https://github.com/zalom/plastic/actions/workflows/test.yml)
+<p align="center">
+  <strong>One command that turns an intent into a durable, linked record of decisions, plans, delivery and outcomes</strong>
+</p>
 
-## Intent-based idea development system for AI-assisted work.
+<p align="center">
+  <a href="https://www.npmjs.com/package/@zalom/plastic"><img src="https://img.shields.io/npm/v/@zalom/plastic/alpha" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/@zalom/plastic"><img src="https://img.shields.io/npm/dm/@zalom/plastic" alt="npm downloads"></a>
+  <a href="https://github.com/zalom/plastic/actions/workflows/test.yml"><img src="https://github.com/zalom/plastic/actions/workflows/test.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/zalom/plastic/releases"><img src="https://img.shields.io/github/v/release/zalom/plastic?include_prereleases" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/npm/l/@zalom/plastic" alt="License: MIT"></a>
+</p>
 
-> Plastic is a system that turns an intent, a vague goal or idea into a durable, linked record of discovery, decisions, delivery, and outcomes - it serves as a physical brain for your intents.
+<p align="center">
+  <a href="#installation">Install</a> &bull;
+  <a href="#quick-start">Quick start</a> &bull;
+  <a href="#commands">Commands</a> &bull;
+  <a href="docs/guide/getting-started/troubleshooting.md">Troubleshooting</a> &bull;
+  <a href="docs/contributing/ARCHITECTURE.md">Architecture</a> &bull;
+  <a href="MANIFESTO.md">Manifesto</a>
+</p>
 
-[[Install]](#start-in-60-seconds) [[See it work]](#built-with-plastic) [[Read the manifesto]](MANIFESTO.md)
+---
 
+Plastic is an intent-based system for AI-assisted work. You do not always start with a task.
+You start with an intent, such as "I want users who are locked out to recover access safely."
+Plastic carries that intent through four stages, What, Why, How and Exec, and leaves a
+readable record of how the idea became real.
 
-## Why Plastic?
+Plastic is named after neuroplasticity, the brain's ability to change as it learns.
 
-You do not always start with a task.
+## What Plastic does
 
-You start with an intent, something like:
+Plastic keeps the shape of the work fixed and leaves the thinking to you and your agent.
 
-> “I want users who are locked out to recover access safely.”
+| You want to | What Plastic does |
+|-------------|-------------------|
+| Start from a rough idea | Creates one intent directory with an id, a slug and a born-complete intent file |
+| Keep the reasons | Records each ruling in the intent, then consolidates them into `spec.md` |
+| Plan the work | Holds the plan as a graph of nodes, and names the next ready step |
+| Resume tomorrow | Prints where a project stands and the next action in one line |
+| Hand work to an agent team | Arms a delivery lock, briefs each role and reports the result |
+| Close the work | Generates `outcome.md` from the record and moves the intent to Completed |
+| Find an old decision | Searches every store, ranked, with one excerpt for each match |
+| Run many projects | Keeps one store for each project, plus a global store, all in plain Markdown and Git |
+| Steer a long delivery | Reads a roadmap as a graph and names the entry most worth continuing |
+| Protect the record | Writes one archive of the three databases and the config |
 
-Plastic delivers this intent in successive stages: What -> Why -> How -> Exec.
+Every result ends with a `next:` line and a `because:` line. The `--json` option prints the
+same result as data with stable keys.
 
-The result is a readable, linked record of how an idea became real.
+## How the record is built
 
-**Plastic gives changing minds a durable way to develop ideas into work.**
+Each intent is one directory. It carries the same small set of files at every stage.
 
-Plastic is named after neuroplasticity: the brain's amazing ability to change and adapt. It rewires itself as you learn new things, form memories, or heal from injuries. Instead of being fixed like a computer, your brain is more like clay. It constantly reshapes itself based on your experiences.
+| Stage | Question | File on disk |
+|-------|----------|--------------|
+| What | What is the intention? | `{id}--slug.md` |
+| Why | What context, evidence and decisions shape it? | `spec.md` |
+| How | What is the plan? | `plan.md`, `checklist.md`, `actions/` |
+| Exec | What was delivered? | `outcome.md` |
 
-### What Plastic does?
+The files are plain Markdown in a Git repository that you own. See
+[the architecture](docs/architecture.md) for the full store layout.
 
-Plastic keeps the shape of the work stable - **deterministic** work system:
-- one durable intent
-- one visible lifecycle
-- one place for context, decisions, plans, and outcomes
-- links between the ideas that shaped the work and the ideas it creates
+## Installation
 
-Plastic leaves the human or AI model free to think - **non-deterministic** thinking system.
+Plastic needs Ruby 3.0 or later. The npm path also needs Node.js 18 or later, because `npx`
+fetches the package. After the install, the `plastic` command runs on Ruby alone.
 
-Plastic makes that thinking legible, resumable, and useful later.
-
-## Who is Plastic for?
-
-**Plastic is built for an AI-native developer, technical founder, or
-independent builder who works across multiple sessions, has ideas before
-they have intents, and feels the cost of losing reasoning between agents,
-contexts, and days.**
-
-## What it solves?
-
-It solves problems that builder already feels:
-
-- "I want to keep a record of my work - what I worked on, why I worked on it, how it was built"
-- "I do not need another TODO list."
-- "I do not want my work trapped inside a chat."
-- "I want to explore without losing the decision trail."
-- "I want a better model or new agent to inherit the work, not restart it."
-- "I want my ideas to compound."
-
-## Start in 60 seconds
-
-One command installs Plastic for your agent:
+### npm (recommended)
 
 ```bash
 npx -y @zalom/plastic install --claude
 ```
 
-Then load the conventions and begin:
+Replace `--claude` with `--codex` for Codex CLI, or pass both flags.
+
+### Alpha channel
+
+Plastic 2.0 is on the alpha channel.
 
 ```bash
-/clear
-
-I would like to learn more about Plastic and how it works.
+npx -y @zalom/plastic@alpha install --claude
 ```
 
-Describe what you want in plain words, like "add a `--version` flag." Plastic
-scaffolds the intent and walks it through What, Why, How, and Exec. For the
-full path, read [your first intent in 10 minutes](docs/guides/your-first-intent-in-10-minutes.md).
+### Quick install without npm
 
-## How Plastic works?
-
-A task assumes you already know the work.
-
-An intent begins earlier:
-something you want to accomplish, explore, or understand.
-
-Plastic helps you develop it until it becomes a decision,
-a plan, a delivery, and a reusable piece of project history.
-
-### Register What and start with Why
-
-Plastic delivers all work through successive stages ->
-
-| Stage | Meaning                                         | Developed concept  | On-disk artifact (evidence)                    |
-| ----- | ----------------------------------------------- | ------------------ | ---------------------------------------------- |
-| What  | What is the intention?                          | Intent             | {id}--slug.md                                  |
-| Why   | What context, evidence, and decisions shape it? | Specification      | spec.md                                        |
-| How   | What is the plan?                               | Plan and checklist | plan.md, checklist.md, actions/ACTION_1.md ... ACTION_N.md |
-| Exec  | What was actually delivered?                    | Outcome            | outcome.md                                     |
-
-## How to use Plastic
-
-Plastic organizes all work as intents. Each intent is one directory, and it carries the same
-small set of files at every stage.
-
-**The intent directory**
-
-| File | What it holds |
-| ---- | -------------- |
-| `{id}--slug.md` | The intent itself: intent line, context, decisions |
-| `spec.md` | The Why, consolidated into one contract for the plan |
-| `plan.md`, `checklist.md`, `actions/` | The How: the plan and its execution registry |
-| `outcome.md` | The Exec record: what actually shipped |
-
-See [`docs/architecture.md`](docs/architecture.md) for the full store layout, and
-[reading a delivered intent](docs/guides/reading-a-delivered-intent.md) for how to read a
-finished one fast.
-
-**From idea to delivery, one line per stage**
-
-| Stage | What happens |
-| ----- | ------------- |
-| What | Describe the idea in plain words; Plastic scaffolds the intent |
-| Why | Explore it, one ruling at a time, then consolidate into `spec.md` |
-| How | Turn `spec.md` into `plan.md` and `checklist.md` |
-| Exec | Build the change, verify it, tick the checklist |
-| Done | `outcome.md` records what shipped; the index moves the intent to Completed |
-
-Walk this once in
-[your first intent in 10 minutes](docs/guides/your-first-intent-in-10-minutes.md), or run
-`plastic-tutorial` for an interactive, hands-on walkthrough of three different ways to work.
-
-**Commands, by family**
-
-| Family | Commands |
-| ------ | -------- |
-| Mode | `plastic-tutorial`, `plastic auto take ID` |
-| Intent | `plastic intent new`, `plastic continue`, `plastic intent spec`, `plastic intent step`, `plastic intent end` |
-| Project and delivery | `plastic project new`, `plastic roadmap show` |
-| Product | `plastic install`, `plastic update`, `plastic uninstall`, `plastic rollback`, `plastic-doctor` |
-
-See [`docs/guides/index.md`](docs/guides/index.md) for task-oriented walkthroughs.
-
-The agent helps most at Why and How: turning a rough idea into rulings, and rulings into a
-plan a machine can build from exactly. Read
-[pick your mode](docs/guides/pick-your-mode.md) to decide how much of that to hand over.
-
-## The `plastic` command
-
-Plastic is moving from skills to one command with direct results. These commands exist today:
-
-| Command | What it does |
-| ------- | ------------ |
-| `plastic help [COMMAND]` | Lists the commands, or shows one command's usage. |
-| `plastic version` | Prints the installed Plastic version. |
-| `plastic status` | Shows active work in every store. |
-| `plastic continue` | Shows where one project stands and what runs next. |
-| `plastic next` | Prints the next action in one line. |
-| `plastic install`, `update`, `rollback`, `uninstall` | Manage the installation. |
-
-Every result ends with a `next:` line and a `because:` line, and `--json` prints the same
-result as data. Planned commands, with their batch, are listed in
-[what Plastic covers](docs/guide/getting-started/what-plastic-covers.md).
-
-## Compatibility and ownership
-
-- Native installers for Claude Code and Codex CLI, both from npm. Hermes is a packaging
-  target for now. See [harness support](docs/reference/harness-adapters.md).
-- Plain Markdown plus Git. The work stays in files you own.
-- Personal stores by default.
-- Direct work in the session, a thinking conversation when the work needs one,
-  or autonomous delivery by an agent team when you ask for it.
-- Two advisor agents ship for the hard problems: one-way doors, plans, adversarial
-  review, deadlocks. Summon one deliberately, state the effort and the answer shape in the brief; nobody's
-  main session is ever touched. Primary Advisor uses Fable at medium effort for normal
-  consultation. Secondary Advisor uses Fable at high effort for explicit escalation.
-  Choose the default at install, and switch it any time.
-
-Plastic needs Ruby 3.0 or later and Node.js 18 or later. Most Linux systems already
-have a new enough Ruby. macOS ships Ruby 2.6, which is too old, so a clean Mac needs
-a newer one first:
-
+```bash
+curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
+plastic install --claude
 ```
-curl https://mise.run | sh        # only if mise is not installed yet
+
+`install.sh` always installs the latest stable release. To move an installed Plastic to
+another channel, run `plastic update --beta` or `plastic update --alpha`. No stable release
+carries the archive yet. Until the first one does, the script reports that and exits, and
+npm is the way to install.
+
+### A clean Mac
+
+macOS ships Ruby 2.6, which is too old. Install a newer Ruby first:
+
+```bash
+curl https://mise.run | sh
 mise use --global ruby@3.3
 ```
 
-The installer checks this before it does anything and tells you the same thing if the
-Ruby it finds is too old. Bun users can run `bunx` in place of `npx`; Bun is never
-required.
+### Verify the installation
 
-## Built with Plastic
+```bash
+plastic version     # Prints the installed version and the file it came from
+plastic doctor      # Checks the install and the stores
+```
 
-Plastic is developed through Plastic.
+## Quick start
 
-The roadmap, intent history, plans, decisions, and outcomes
-behind releases are part of the repository, not a hidden process.
+```bash
+# 1. Install for your agent
+npx -y @zalom/plastic@alpha install --claude    # Claude Code
+npx -y @zalom/plastic@alpha install --codex     # Codex CLI
+npx -y @zalom/plastic@alpha install --all       # Every supported agent
 
-[changelog](CHANGELOG.md).
+# 2. See what is open
+plastic status
+
+# 3. Start an intent
+plastic intent new "Add a --version flag"
+
+# 4. Ask what to do next, at any time
+plastic next
+```
+
+Restart your agent after the install. For the full path, read
+[your first intent in 10 minutes](docs/guides/your-first-intent-in-10-minutes.md).
+
+## How it works
+
+```
+  You or your agent                 plastic                        ~/.plastic
+  -----------------                 -------                        ----------
+  plastic intent new "..."   -->    creates the intent      -->    store/12--slug/12--slug.md
+  plastic intent rule 12     -->    records a ruling        -->    the intent file, then spec.md
+  plastic intent step 12     -->    runs the next node      -->    graph.md, nodes/, savepoint.md
+  plastic intent end 12      -->    generates the outcome   -->    outcome.md, INDEX.md
+
+        ^                                                              |
+        |            next: one command       because: one reason       |
+        +--------------------------------------------------------------+
+```
+
+Plastic follows four rules:
+
+1. **Commands print state and rules.** The judgment stays with you and the agent.
+2. **The ledger is append-only.** `savepoint.md` holds one line for each event, so a new
+   session resumes from the last line.
+3. **Status is derived.** Plastic reads what is ready from the graph and the ledger.
+4. **Nothing leaves the machine.** Plastic makes no model call and sends none of your files anywhere.
+
+## Commands
+
+### Orientation
+```bash
+plastic status                        # Active work in every store
+plastic continue                      # Where this project stands and what runs next
+plastic continue --project blog       # The same, for a named project
+plastic next                          # The next action in one line
+plastic next --why                    # The next action, with the reasoning
+```
+
+### Intents
+```bash
+plastic intent new "LINE"             # Create an intent
+plastic intent new "LINE" --parent 12 # Create a branch of intent 12
+plastic intent show 12                # Print the state screen
+plastic intent spec 12                # State screen, then the speccing rules
+plastic intent rule 12 "TEXT"         # Record a ruling in Insights
+plastic intent note 12 "TEXT"         # Append a savepoint note
+plastic intent step 12                # Run the next ready step of the graph
+plastic intent answer 12 --node n3 --decision "TEXT"   # Answer a node that needs a decision
+plastic intent verify 12              # Run the merge-gate checks
+plastic intent end 12 --delivered --summary "TEXT"     # Close as delivered
+plastic intent end 12 --abandoned --summary "TEXT"     # Close as abandoned
+```
+
+### Projects
+```bash
+plastic project list                  # Every store this machine holds
+plastic project new blog --path ~/code/blog   # Register and provision a project
+plastic project links                 # Rebuild every Links section from frontmatter
+```
+
+### Roadmaps
+```bash
+plastic roadmap next                  # The roadmap most worth continuing
+plastic roadmap show SLUG             # The state screen of one roadmap
+plastic roadmap check SLUG            # Find cycles and dangling ids in the graph
+plastic roadmap log SLUG EVENT "TEXT" # Append a line to the roadmap ledger
+```
+
+### Auto teams
+```bash
+plastic auto take 12                  # Arm the delivery lock for this session
+plastic auto brief 12 --role executor # Print the spawn preamble for one role
+plastic auto report 12                # Completion report, then the review rules
+plastic auto lock status 12           # Inspect the delivery lock
+plastic auto lock fix 12              # Repair a broken lock
+plastic auto lock release 12          # Release the lock
+```
+
+### Sessions
+```bash
+plastic session summary               # Open items and recent activity in the day ledger
+plastic session commit "SUMMARY"      # Commit one verified checklist item
+plastic session handoff               # Write this session's hand-off
+```
+
+### Search
+```bash
+plastic index                         # Rebuild the search index from every Markdown file
+plastic search recovery flow          # Ranked matches, one excerpt each
+plastic search recovery --project blog --limit 5
+plastic search --ask "Why did we drop the queue?"   # Search with a whole question
+plastic query "SELECT path FROM doc LIMIT 5"        # One read-only SQL statement
+```
+
+### Stores and databases
+```bash
+plastic sync                          # Bring the store files and the three databases level
+plastic sync --dry-run                # Show what would change
+plastic checkout                      # Restore missing store files from the databases
+plastic backup                        # One archive of the three databases and the config
+plastic backup --list                 # Name, size and date of each archive
+plastic migrate stores --dry-run      # Preview the move of every store under stores/
+plastic migrate stores                # Move them, behind a full copy of the home
+plastic render FILE                   # Print one Markdown file as an HTML page
+```
+
+### Product
+```bash
+plastic install --claude              # Install into Claude Code
+plastic install --reinstall --claude  # Repair an install
+plastic update                        # Next version on the current channel
+plastic update --alpha                # Move to the alpha channel
+plastic rollback                      # List the versions this machine has run
+plastic rollback --version 2.0.0-alpha.27
+plastic uninstall --all               # Remove Plastic from every agent. Your stores stay.
+plastic doctor                        # Check the install and the stores
+plastic doctor --core                 # The fast check that runs at session start
+plastic version                       # The installed version
+```
+
+### Help and feedback
+```bash
+plastic help                          # Every command and help topic
+plastic help intent end               # The usage line of one command
+plastic help roadmaps                 # One help topic
+plastic feedback "TITLE" < report.md  # Save a problem report and print a link that files it
+```
+
+## Global options
+
+```bash
+--json          # Print the result as data with stable keys
+-h, --help      # Print the usage line of the command
+--project SLUG  # On continue, next and search, name a project other than the current one
+```
+
+The installer commands do not take `--json`.
+
+## Examples
+
+**Active work in every store:**
+```
+$ plastic status
+global    0 active
+blog      1 active  14
+shop      2 active  7, 9
+
+next: plastic continue --project shop
+because: the working directory is inside shop
+```
+
+**The next action:**
+```
+$ plastic next
+next work  9  in Batch 2: checkout flow
+
+next: read ~/.plastic/projects/shop/store/9--checkout-flow/plan.md
+because: 9 is first on the frontier of the roadmap
+```
+
+**The installed version:**
+```
+$ plastic version
+version  2.0.0-alpha.28
+source   ~/.local/share/plastic/package.json
+
+next: plastic status
+because: the command line works, so read the work next
+```
+
+The slugs and ids in these examples are samples.
+
+## Agent hooks
+
+The installer registers hooks in your agent. At session start a hook runs the fast doctor,
+loads the conventions and prints the open items of the day. Each hook calls one launcher:
+
+```bash
+plastic hook EVENT      # The agent calls this, not you
+```
+
+Run `plastic install --reinstall --claude` when hooks do not fire.
+
+## Supported AI tools
+
+| Tool | Install | State |
+|------|---------|-------|
+| **Claude Code** | `plastic install --claude` | Supported |
+| **Codex CLI** | `plastic install --codex` | Supported |
+| **Hermes** | none | A packaging target only |
+
+The `plastic` command itself needs no agent. It runs in any shell with Ruby. See
+[harness support](docs/reference/harness-adapters.md) for the detail on each agent.
+
+Seven agents ship with Plastic: an enforcer that leads an auto team, an executor, three node
+agents for work, verification and research, and two advisors for hard decisions.
+
+## Configuration
+
+`~/.plastic/config.yml`:
+
+```yaml
+project_roots: ~/.plastic/projects   # Where Plastic looks for projects
+stale_threshold_days: 3              # Age at which a future intent is shown for triage
+context_offer_tokens: 150000         # Context size at which the agent offers to compact
+context_insist_tokens: 250000        # Context size at which the agent insists
+agent:
+  type: claude-code                  # The agent that runs Plastic
+  parallel_mode: agent-teams         # agent-teams or linear
+```
+
+Install-time choices:
+
+```bash
+plastic install --claude --advisor secondary   # Set the default advisor
+plastic install --claude --no-advisor          # Install no advisor agent
+plastic install --claude --statusline plastic  # Use the Plastic status line
+```
+
+See the [configuration guide](docs/guide/getting-started/configuration.md) for every key and file.
+
+### Uninstall
+
+```bash
+plastic uninstall --all     # Remove hooks, agents and conventions from every agent
+```
+
+Your stores under `~/.plastic` stay.
+
+## What changed in 2.0
+
+Plastic 2.0 moves from prose skills to one command with direct results.
+
+- **One `plastic` command.** More than 40 commands replace the skills. The package ships no skill directories.
+- **Direct results.** Every command ends with `next:` and `because:`, and takes `--json`.
+- **Plans are graphs.** An intent holds nodes and edges, and a ready set names what runs next.
+- **A ledger with refusals.** Node transitions are appended to `savepoint.md`, and an invalid transition is refused.
+- **Generated outcomes.** `outcome.md` is built from the graph, the nodes and the ledger at the close.
+- **Roadmaps are graphs too.** `plastic roadmap check` finds cycles and dangling ids.
+- **Search without a service.** One SQLite file holds a full-text index of every store.
+- **Three databases.** `work_graph.db`, `knowledge_graph.db` and `references.db` hold the record, and the files are a checkout of it.
+- **Backup and migrate.** One archive command, and a store move that runs behind a full copy of the home.
+- **Two advisors, medium effort by default.** Summon the Primary Advisor or the Secondary Advisor on purpose.
+- **Codex CLI as a second agent.** The same install, with OpenAI model ids for each role.
+- **Publishing from branches.** A push to `alpha`, `beta` or `main` publishes to the matching npm channel with provenance.
+
+The [changelog](CHANGELOG.md) holds one line for each release.
 
 ## Documentation
 
-- [`INSTALL.md`](INSTALL.md), [`SECURITY.md`](SECURITY.md) and
-  [`CONTRIBUTING.md`](CONTRIBUTING.md): every install path, what Plastic touches on your
-  machine, and how to change it.
-- [`docs/guide/`](docs/guide/index.md): getting started with the `plastic` command.
-- [`docs/usage/`](docs/usage/FEATURES.md): features, the audit guide and tracking.
-- [`docs/contributing/`](docs/contributing/ARCHITECTURE.md): the command architecture, the
-  coding practices and the gates.
-- [`docs/architecture.md`](docs/architecture.md): system structure, the two
-  processes, the store layout, and the full stage table.
-- [`docs/internals.md`](docs/internals.md): how Plastic stays deterministic
-  and how the harness works.
-- [`docs/guides/`](docs/guides/index.md): task-oriented guides, from your
-  first intent in 10 minutes to picking a delivery mode.
+- **[INSTALL.md](INSTALL.md)**: every install path.
+- **[docs/guide/](docs/guide/index.md)**: getting started with the `plastic` command.
+- **[docs/guides/](docs/guides/index.md)**: task guides, from your first intent to picking a mode.
+- **[docs/usage/](docs/usage/FEATURES.md)**: features, the audit guide and tracking.
+- **[docs/architecture.md](docs/architecture.md)**: the structure, the store layout and the stage table.
+- **[docs/internals.md](docs/internals.md)**: how Plastic stays deterministic.
+- **[docs/contributing/](docs/contributing/ARCHITECTURE.md)**: the command architecture, the coding practices and the gates.
 
-## Conventions
+## Privacy
 
-The always-on core conventions live in `PLASTIC.md`, distributed to `~/.plastic/PLASTIC.md`
-and overwritten on every update. Deeper doctrine lives in the `plastic-conventions` skill,
-loaded on demand by the skills that need it. Project-specific rules live in `AGENTS.md`.
-Run `plastic-doctor` to check installation health; it compares files against
-the manifests, checks store state, and runs automatically after every update.
+Plastic runs on your machine. It makes no model call and sends none of your files anywhere.
+Two things use the network: the update check hook and `plastic update`, which ask the npm
+registry for the newest version. See [SECURITY.md](SECURITY.md) for every file the installer writes.
+
+## Built with Plastic
+
+Plastic is developed through Plastic. The roadmap, the intents, the plans, the decisions and
+the outcomes behind each release are part of the record.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).
