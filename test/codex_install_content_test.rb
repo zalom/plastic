@@ -101,12 +101,12 @@ class CodexInstallContentTest < Minitest::Test
 
   # The intent-creating/lifecycle.md half of this pin was retired by intent 372 (family 2):
   # intent-creating moved into `plastic intent new`, a command; its files are gone.
-  def test_the_breaking_line_resolves_on_codex
-    auto_skill = File.read(File.join(@skills_root, "plastic-auto", "SKILL.md"))
-
-    assert_includes auto_skill, "~/.plastic/templates/outcome.md"
-    refute_includes auto_skill, "CLAUDE_PLUGIN_ROOT"
-  end
+  #
+  # The remaining plastic-auto/SKILL.md half (test_the_breaking_line_resolves_on_codex) was
+  # retired by intent 372 (family 5): skills/auto/SKILL.md, the sole shipped file that carried
+  # the literal `~/.plastic/templates/outcome.md` breaking line, is gone with no successor
+  # file carrying that exact path, so there is no fixture left for this regression check to
+  # read.
 
   # test_claude_roots_are_rewritten was retired by intent 372 (family 3): it read
   # the installed plastic-dashboard/SKILL.md for a ~/.claude/skills/ path this
