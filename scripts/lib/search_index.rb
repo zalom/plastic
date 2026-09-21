@@ -40,7 +40,7 @@ module Plastic
     def self.search(home, terms, limit:, prefix: "")
       phrases = terms.map { |term| %("#{term.delete('"')}") }.join(" ")
       Sqlite.call(path(home), <<~SQL, readonly: true)
-        SELECT doc.path AS path, snippet(ft, 0, '[', ']', ' ... ', 12) AS excerpt
+        SELECT doc.id AS id, doc.path AS path, snippet(ft, 0, '[', ']', ' ... ', 12) AS excerpt
         FROM ft JOIN doc ON doc.id = ft.rowid
         WHERE ft MATCH #{quote(phrases)} AND doc.path LIKE #{quote("#{prefix}%")}
         ORDER BY rank LIMIT #{Integer(limit)};

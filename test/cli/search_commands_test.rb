@@ -120,6 +120,13 @@ class CliSearchCommandsTest < Minitest::Test
     assert_includes @fixture.printed, "handoff.md"
   end
 
+  def test_ask_drops_the_stop_words_and_ranks_the_file_with_both_terms_first
+    plastic("index")
+    plastic("search", "--ask", "Where is the heron by the river?")
+
+    assert_match(/\Astore\/1--alpha\/spec\.md .*\n(.*\n)*projects\/acme/, @fixture.printed)
+  end
+
   def test_search_with_no_match_says_so
     plastic("index")
     plastic("search", "zebra")
