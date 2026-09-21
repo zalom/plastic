@@ -11,7 +11,9 @@ module Plastic
   class CLI
     TABLE = {
       "continue" => ["commands/continue", "Continue", "Show where one project stands and what runs next"],
-      "help" => ["commands/help", "Help", "List the commands, or show one command's usage"],
+      "doctor" => ["commands/doctor", "Doctor", "Diagnose Plastic installation health"],
+      "feedback" => ["commands/feedback", "Feedback", "File a feedback report, body on standard input"],
+      "help" => ["commands/help", "Help", "List the commands and help topics, or show one usage"],
       "install" => ["commands/install", "Install", "Install Plastic into this machine's agents"],
       "intent" => ["commands/intent", "Intent", "List the intent subcommands"],
       "intent answer" => ["commands/intent_answer", "IntentAnswer", "Answer an intent's needs_decision node"],

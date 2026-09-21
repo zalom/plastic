@@ -18,7 +18,7 @@ Create `AGENTS.md` in the project root with:
 # <Project Name> — Agent Instructions
 
 Read `PLASTIC.md` in `~/.plastic/` for the core conventions; deeper doctrine lives in
-the `plastic-conventions` skill's chapters. Follow it exactly.
+the chapters `plastic help TOPIC` prints. Follow it exactly.
 
 This file is the operating contract for this project. Any agent entering
 this project reads this file first.

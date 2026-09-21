@@ -60,9 +60,8 @@ Three verbs, all `--dry-run`-able:
 A roadmap with no `## Graph` section keeps working exactly as before (wave-order dispatch); the
 graph is additive, never required.
 
-Read `../plastic-conventions/references/roadmaps.md` for the roadmap file format, batch
-semantics, and the status-mirror rule that this skill's own file-format reference builds on. This
-path resolves relative to this skill's own installed directory.
+Read `plastic help roadmaps` for the roadmap file format, batch semantics, and the
+status-mirror rule that this skill's own file-format reference builds on.
 
 ## Reports (intent 331f)
 

@@ -322,8 +322,8 @@ A release IS a delivery. The active intent that drove this work must be complete
       A non-zero exit needs attention: 4 means a live foreign session holds the lock (back
       off), 5 means the code worktree is still dirty (should not happen here, since step 8
       already removed it; investigate before overriding with `--discard-worktree-changes`),
-      3 means disarm ran but the lock is still present (run `/plastic-doctor check the lock
-      status`).
+      3 means disarm ran but the lock is still present (run `plastic doctor` to check the
+      lock status).
    d. Update clusters to show `_(completed)_`.
 
 **If no active intent exists for this release**, that itself is a problem - work happened outside the intent system. Log it and move on, but flag it.

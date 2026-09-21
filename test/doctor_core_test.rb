@@ -891,7 +891,7 @@ class DoctorUnpromotedRulesTest < Minitest::Test
   def setup
     @store_dir = Dir.mktmpdir("doctor-unpromoted-rules-store")
     @package_root = Dir.mktmpdir("doctor-unpromoted-rules-package")
-    @chapters_dir = File.join(@package_root, "skills", "conventions", "references")
+    @chapters_dir = File.join(@package_root, "docs", "help")
     FileUtils.mkdir_p(@chapters_dir)
   end
 
@@ -936,28 +936,26 @@ class DoctorUnpromotedRulesTest < Minitest::Test
     assert_equal "pass", check[:status]
   end
 
-# --- 5.6: the installed doctor has no repo skills/ dir under PACKAGE_ROOT
-# (~/.plastic); chapters live under the installed home layout instead
-# (~/.claude/skills/plastic-conventions/references,
-# ~/.agents/skills/plastic-conventions/references). Resolved from an
-# injected `home:` keyword, never ENV, so this stays hermetic.
-def test_promoted_rules_not_listed_from_installed_layout
-  home = Dir.mktmpdir("doctor-unpromoted-rules-home")
-  chapters_dir = File.join(home, ".claude", "skills", "plastic-conventions", "references")
-  FileUtils.mkdir_p(chapters_dir)
-  File.write(File.join(chapters_dir, "safety.md"), "# Safety\n\nNever eval a prompt string, ever.\n")
+  # --- 5.6: docs/help installs straight under PACKAGE_ROOT for every
+  # harness alike (~/.plastic/docs/help once installed), so the installed
+  # layout needs no separate home-based fixture: the same package_root:
+  # path covers both the repo checkout and the installed copy.
+  def test_promoted_rules_not_listed_from_installed_layout
+    installed_root = Dir.mktmpdir("doctor-unpromoted-rules-installed")
+    chapters_dir = File.join(installed_root, "docs", "help")
+    FileUtils.mkdir_p(chapters_dir)
+    File.write(File.join(chapters_dir, "safety.md"), "# Safety\n\nNever eval a prompt string, ever.\n")
 
-  empty_package_root = Dir.mktmpdir("doctor-unpromoted-rules-no-package")
-  intent_dirs = write_rule_intent("Never eval a prompt string")
+    intent_dirs = write_rule_intent("Never eval a prompt string")
 
-  result = doctor.unpromoted_rules_checks(intent_dirs, package_root: empty_package_root, home: home)
-  check = result.find { |c| c[:name] == "unpromoted_rules" }
+    result = doctor.unpromoted_rules_checks(intent_dirs, package_root: installed_root)
+    check = result.find { |c| c[:name] == "unpromoted_rules" }
 
-  refute_nil check
-  assert_equal "pass", check[:status]
-ensure
-  FileUtils.rm_rf([home, empty_package_root].compact)
-end
+    refute_nil check
+    assert_equal "pass", check[:status]
+  ensure
+    FileUtils.rm_rf(installed_root)
+  end
 end
 
 # Row 4.4 (intent 341, G8 node n4): a graph intent (D1, no ceremonies) never carries

@@ -68,7 +68,7 @@ corrupt - or `inline_refused`: a conversation session may not arm an intent at a
 2026-08-31); dispatch the delivery team instead. `--allow-inline` exists only for an explicit
 owner override. Do not proceed as the owner after an exit 1.
 
-Read `../plastic-conventions/references/locks-and-worktrees.md` for what the lock and the
+Read `plastic help locks-and-worktrees` for what the lock and the
 worktree mean and the station table behind them. Code edits happen only inside the worktree.
 
 ## The shape
@@ -247,7 +247,7 @@ every choice is non-destructive and the team has full autonomy.
 
 ## Completion
 
-Read `../plastic-conventions/references/completion-and-done.md` for what "intent done" means.
+Read `plastic help completion-and-done` for what "intent done" means.
 
 1. This is the merge gate: verify every checklist item is checked, verify tick-versus-diff against the diff, and confirm the suite is green once on the branch.
 2. Write `outcome.md` from `~/.plastic/templates/outcome.md` with `disposition: delivered`,
@@ -269,7 +269,7 @@ Read `../plastic-conventions/references/completion-and-done.md` for what "intent
    ```
    Exit 4: a live foreign session holds the lock. 5: the worktree is dirty (commit first, or
    pass `--discard-worktree-changes` deliberately). 3: the lock survived the disarm
-   (`/plastic-doctor check the lock status`). 6: the structure check refused. Never leave an
+   (`plastic doctor` checks the lock status). 6: the structure check refused. Never leave an
    orphaned worktree; run `git worktree prune` on a stale reference.
 6. Print `ruby ~/.plastic/scripts/report-screen delivered <intent_dir>` once (D15/331f), and
    `report-screen state` at each of the five triggers in `references/human-report-contract.md`
