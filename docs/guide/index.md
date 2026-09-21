@@ -13,10 +13,11 @@ This guide is for a person who uses Plastic. To change Plastic, read
 | [Project and roadmap commands](getting-started/project-and-roadmap-commands.md) | How do I register a project and read a roadmap? |
 | [Auto and session commands](getting-started/auto-and-session-commands.md) | How does an auto team take an intent, and how does a session keep its ledger? |
 | [Search commands](getting-started/search-commands.md) | How do I find text in the stores? |
-\1| [Ask a question](getting-started/ask-a-question.md) | How do I search with a whole question? |
-\1| [Backup command](getting-started/backup-command.md) | How do I back up and restore everything? |
+| [Ask a question](getting-started/ask-a-question.md) | How do I search with a whole question? |
+| [Backup command](getting-started/backup-command.md) | How do I back up and restore everything? |
+| [Migrate command](getting-started/migrate-command.md) | How do I move the stores under `stores/`? |
 | [Configuration](getting-started/configuration.md) | What can I set, and where? |
-| [What Plastic covers](getting-started/what-plastic-covers.md) | Which commands exist, and which are planned? |
+| [What Plastic covers](getting-started/what-plastic-covers.md) | Which commands exist? |
 | [Supported agents](getting-started/supported-agents.md) | Which coding agents does it install into? |
 | [Troubleshooting](getting-started/troubleshooting.md) | What does an exit code or an error mean? |
 
