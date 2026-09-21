@@ -1,6 +1,6 @@
 ---
 name: plastic-direct
-description: Use when a prompt asks for a change, a fix, an edit, a file, or an answer, and no thinking conversation is open on an intent. Judges whether the work is small enough to run right now, asks one clarifying question when one answer would settle it, or offers a thinking intent when it would not. Do not use for a prompt that says "auto" or "continue", a prompt asking to start a new intent, or a prompt inside an open thinking conversation, which belong to plastic-auto, plastic-intent-continuing, plastic-intent-creating, and plastic-intent-speccing.
+description: Use when a prompt asks for a change, a fix, an edit, a file, or an answer, and no thinking conversation is open on an intent. Judges whether the work is small enough to run right now, asks one clarifying question when one answer would settle it, or offers a thinking intent when it would not. Do not use for a prompt that says "auto" or "continue", a prompt asking to start a new intent, or a prompt inside an open thinking conversation, which belong to plastic-auto, plastic continue, plastic intent new, and plastic intent spec.
 user-invocable: false
 ---
 
@@ -39,10 +39,10 @@ than asking a second question or guessing.
 | What the prompt looks like | Where it goes |
 |---|---|
 | Clear, and bounded at or under five minutes | Run it now, inline |
-| Clear, but the bounded estimate is above five minutes | Offer a dedicated intent, `plastic-intent-creating` |
+| Clear, but the bounded estimate is above five minutes | Offer a dedicated intent, `plastic intent new` |
 | Vague, and one answer would resolve it | Ask one clarifying question, then run |
-| Still vague after that one answer | Offer a thinking intent, `plastic-intent-speccing` |
-| Phrased as needing help rather than as an instruction | Offer grill plus a thinking conversation, `plastic-intent-speccing` |
+| Still vague after that one answer | Offer a thinking intent, `plastic intent spec` |
+| Phrased as needing help rather than as an instruction | Offer grill plus a thinking conversation, `plastic intent spec` |
 | Says "auto" explicitly | Hand off to `plastic-auto` |
 
 Read `references/request-signals.md` when a prompt sits on the boundary between two routes, for
@@ -61,6 +61,6 @@ the 15 observable signals and the response each one selects.
 
 The capture hook detects `auto` and `continue` before you read the prompt, so defer rather than
 keyword-match them yourself. `auto` goes to `plastic-auto`, and `continue` goes to
-`plastic-intent-continuing`. On `auto` with no registered intent, route through
-`plastic-intent-creating` first, because auto requires a registered intent. A prompt that arrives
+`plastic continue`. On `auto` with no registered intent, route through
+`plastic intent new` first, because auto requires a registered intent. A prompt that arrives
 inside an open thinking conversation belongs to that conversation, not here.

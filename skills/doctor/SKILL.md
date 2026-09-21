@@ -13,7 +13,7 @@ Doctor has three scopes. Pick the right one for the situation:
 | Scope | Flag | When it runs | States |
 |-------|------|--------------|--------|
 | Core check | `--core` | SessionStart hook (automatic), also available on demand | Binary: pass or error |
-| Store check | `--store [global\|<slug>]` | Dashboard load, the project route of `plastic-intent-continuing` | Three-state: pass / warn / fail |
+| Store check | `--store [global\|<slug>]` | Dashboard load, the project route of `plastic continue` | Three-state: pass / warn / fail |
 | Full check | (no flag) | After every update (automatic), or `/plastic-doctor` | Three-state: pass / warn / fail |
 
 ### `--core` (binary, operational-readiness only)
@@ -40,7 +40,7 @@ Each manifest maps a file path to its SHA256.
    Skip router from Steps 4-5 below); doctor itself only reports, and each chosen repair
    is dispatched to the maintenance tool or skill that owns it.
 2. If that does not resolve it, roll back to the last known-good version via
-   `plastic-rollback` (restores from the local, append-only `versions.json` ledger of
+   `plastic rollback` (restores from the local, append-only `versions.json` ledger of
    versions actually run).
 3. Optionally report the issue via the feedback command (`scripts/feedback-report`,
    backing the `plastic-feedback` skill), which composes a local report plus a
@@ -86,12 +86,12 @@ painted screen back, a pass when a known defeater like `NO_COLOR` is active, nev
 transcript view), and `display_surfaces_documented` (the harness-adapters doc still names every
 surface class). **Never carries a per-project finding**; that is `--store <slug>`'s job (see
 above). This is what `/plastic-doctor` invokes, and it also runs automatically after every
-`plastic-update` (informational, does not block or revert the update).
+`plastic update` (informational, does not block or revert the update).
 
 ## When to Use
 
 - User invokes `/plastic-doctor` (full check)
-- After `plastic-update` completes (automatically, full check)
+- After `plastic update` completes (automatically, full check)
 - When hooks aren't firing, skills aren't loading, or something seems broken
 - When the user says "check plastic", "diagnose", "what's wrong with plastic"
 
@@ -172,7 +172,7 @@ Use the `fix_hint` value to determine the correct action:
 | "Remove each listed .tmp/<session>/ directory after confirming that session is gone" | For each listed directory, confirm no live session uses it (a live session rewrites its heartbeat on every prompt and edit), then remove that directory by hand; never remove an unlisted one |
 | "For a day directory missing its <day>.md, run `file-session-intent --day <day> ...`" | Run `ruby ~/.plastic/scripts/file-session-intent --day <day> --carry-to <today> --store <store>` for the named day; rename or remove an entry that is not a `YYYYMMDD` day directory |
 | "Run scripts/project-links ... PRESERVES ... --drop-unbacked-links" | Run `ruby ~/.plastic/scripts/maintenance-run --tool project-links --intent <id> --apply` for the one flagged id (never run bare `project-links` against a real store outside the rare owner-approved batch exception, D2) |
-| "Re-run the Plastic installer to repair the hook registration ... (plastic-install --repair)" (`display_hook_registered`) | Run `npx -y @zalom/plastic@<channel> install --reinstall --claude` (the `plastic-install` skill's repair mode), then re-run doctor |
+| "Re-run the Plastic installer to repair the hook registration ... (plastic install --repair)" (`display_hook_registered`) | Run `npx -y @zalom/plastic@<channel> install --reinstall --claude` (the `plastic install` command's repair mode), then re-run doctor |
 
 For fixes the agent cannot handle automatically, explain what the user needs
 to do manually. The `revisions.md` remedy is curator-applied (a move-and-record
@@ -198,7 +198,7 @@ Show the updated results.
 
 ## Post-Update Mode
 
-When invoked from `plastic-update` (not directly by the user):
+When invoked from `plastic update` (not directly by the user):
 
 1. Run the diagnostic script as in Step 1.
 2. If all checks pass, show a single line: **"Health check: all clear."**

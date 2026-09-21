@@ -94,9 +94,9 @@ display-surface matrix. This split is what makes it possible to ask honestly abo
 
 | Harness | Install | Standing conventions | Live state | Record | Statusline | Subagent teams |
 |---|---|---|---|---|---|---|
-| Claude Code | npm, `plastic-install --claude` | native `CLAUDE.md`, plus the compact-instructions marked section injected into `~/.claude/CLAUDE.md` | six hooks through `settings.json` | post-write `record` (savepoint, lock heartbeat, day ledger) | yes | yes |
-| Codex CLI | npm, `plastic-install --codex` | marked section injected into `~/.codex/AGENTS.md` | six hooks through `~/.codex/hooks.json`, all dispatched by one command | post-write `record` on `apply_patch` | no | no, a single agent walks the whole cycle |
-| Hermes | npm, `plastic-install --hermes` | none | none | none | no | no |
+| Claude Code | npm, `plastic install --claude` | native `CLAUDE.md`, plus the compact-instructions marked section injected into `~/.claude/CLAUDE.md` | six hooks through `settings.json` | post-write `record` (savepoint, lock heartbeat, day ledger) | yes | yes |
+| Codex CLI | npm, `plastic install --codex` | marked section injected into `~/.codex/AGENTS.md` | six hooks through `~/.codex/hooks.json`, all dispatched by one command | post-write `record` on `apply_patch` | no | no, a single agent walks the whole cycle |
+| Hermes | npm, `plastic install --hermes` | none | none | none | no | no |
 
 1. Plastic installs from npm only, for every harness above (owner ruling of 2026-08-08).
    No other install path exists or is planned.

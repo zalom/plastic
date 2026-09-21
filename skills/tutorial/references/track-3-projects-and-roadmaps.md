@@ -9,7 +9,7 @@ will exist with more than one intent inside it and a roadmap file describing the
 
 ## Before you start
 
-Run `/plastic-update` first (`$plastic-update` on Codex), so the commands below match what is
+Run `plastic update` first, so the commands below match what is
 actually installed.
 
 Work in a sandbox: this whole track is a walked example. It creates a real project directory
@@ -20,11 +20,11 @@ one this tutorial keeps or ships.
 
 ### 1. Start from a founding implementation intent
 
-Create and board an intent the same way as track 1, stations 1 and 2: `/plastic-intent-creating`,
-then `/plastic-intent-continuing`. Describe something meant to grow into a small real project,
+Create and board an intent the same way as track 1, stations 1 and 2: `plastic intent new`,
+then `plastic continue`. Describe something meant to grow into a small real project,
 for example "build a personal todo app."
 
-Then type `/plastic-intent-speccing` and record a couple of real rulings on this founding
+Then type `plastic intent spec` and record a couple of real rulings on this founding
 intent, for example the language or how tasks get stored. Keep it short: this intent only
 needs enough decisions for the new project to inherit, not a full design.
 
@@ -43,7 +43,7 @@ recorded in the founding intent back in station 1.
 
 ### 3. Add more intents inside the project
 
-Type `/plastic-intent-creating` at least twice, from inside the project, describing two
+Run `plastic intent new` at least twice, from inside the project, describing two
 pieces of real work, for example "add a task list model" and "add a due date field."
 
 Artifact: two or more intent directories inside the project's own store, separate from the

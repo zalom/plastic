@@ -9,7 +9,7 @@ agent end to end, and pausing and resuming that delivery will feel familiar.
 
 ## Before you start
 
-Run `/plastic-update` first (`$plastic-update` on Codex), so the commands below match what is
+Run `plastic update` first, so the commands below match what is
 actually installed.
 
 Work in a sandbox: a throwaway git repository, or a global-store intent. Nothing in this
@@ -19,7 +19,7 @@ track touches a real project.
 
 ### 1. Board a small intent and choose auto
 
-Start from an active intent (create one first with `/plastic-intent-creating` if none
+Start from an active intent (create one first with `plastic intent new` if none
 exists, the same way as track 1 station 1). Type `/plastic-auto`.
 
 Artifact: the delivery lock arms, and the agent announces it is taking over the intent for
@@ -45,7 +45,7 @@ can review how it checked, not just what it found.
 The user keeps two things: the rulings made along the way, and the review points, moments
 auto is built to pause for, such as confirming a project path or stopping before a
 destructive action with no safe way back. When auto tells you to run a command yourself
-("run /plastic-intent-speccing"), that is an instruction for you to type; it is a different
+("run plastic intent spec"), that is an instruction for you to type; it is a different
 thing from the prompts auto hands to its own dispatched subagents, and the two are never
 mixed up in what it tells you.
 
@@ -74,7 +74,7 @@ line.
 
 ### 5. Continue and where-was-I after time away
 
-Type `/plastic-intent-continuing`.
+Run `plastic continue`.
 
 Artifact: the current state, presented and then the session stops. If a specific intent is
 named, the agent reads its stage and savepoint and resumes exactly there, rather than

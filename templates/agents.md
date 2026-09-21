@@ -42,7 +42,7 @@ Active/Future/Completed placement is managed in INDEX.md, not in frontmatter.
 
 ## Creating Tactical Intents
 
-Create through the `plastic-intent-creating` skill, which scaffolds with one call:
+Create through the `plastic intent new` command, which scaffolds with one call:
 `ruby ~/.plastic/scripts/new-intent --store .plastic/store --intent "<one-line>" --slug <slug> [--sources <governing-id>]`.
 It allocates the Folgezettel ID, creates `.plastic/store/ID--slug/ID--slug.md` born
 complete, and wires the links. Never hand-author the files: `new-intent` validates the
@@ -54,11 +54,11 @@ Plastic has its own lifecycle skills. When a Plastic skill exists for the curren
 
 | Phase | Skill | Produces |
 |-------|-------|----------|
-| What | `plastic-intent-creating` | Intent file |
-| Why | `plastic-intent-speccing` | Rulings as insights, `resources/*.md`, `spec.md` |
-| How | `plastic-intent-speccing` | `actions/`, `plan.md`, `checklist.md` |
-| Exec | `plastic-intent-executing` | Code + `outcome.md` |
-| End | `plastic-intent-ending` | Lifecycle transition |
+| What | `plastic intent new` | Intent file |
+| Why | `plastic intent spec` | Rulings as insights, `resources/*.md`, `spec.md` |
+| How | `plastic intent spec` | `actions/`, `plan.md`, `checklist.md` |
+| Exec | `plastic intent step` | Code + `outcome.md` |
+| End | `plastic intent end` | Lifecycle transition |
 
 **Artifact convention:** ALL lifecycle artifacts go to the active intent directory (`store/{id}--{slug}/`). Never write specs to `docs/superpowers/specs/` or plans to `docs/superpowers/plans/`.
 

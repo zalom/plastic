@@ -226,7 +226,7 @@ the roadmap's grouping section (`## Batches`, or legacy `## Waves`) and the tier
 matching `merged` line in the Log gets one backfilled from INDEX, timestamped only from an
 on-disk source and never invented (an entry with no recoverable source anywhere is silently
 dropped, not fabricated). The `plastic-roadmap` skill's verbs call `append` at the same
-closing-step slot each already uses for its QMD reindex; `plastic-intent-continuing` reads the
+closing-step slot each already uses for its QMD reindex; `plastic continue` reads the
 ledger's last line as a cheap last-event signal, purely as a read. `INDEX.md` stays the single
 status writer throughout; the ledger, like the intent-dir one, is sugar, never a source of truth.
 
@@ -234,7 +234,7 @@ The roadmap read path (intent 148) sits on top of that ledger. `scripts/lib/road
 (`RoadmapQueue`, constructor-DI and hermetic: clock and paths injected, no eval, no ENV or global
 config seam; a thin `scripts/roadmap-next` CLI wraps it, both registered in
 `InstallerCore#core_files` and covered by a hermetic test) is the one reader the auto loop and
-`plastic-intent-continuing` share. It does two things: liveness-ranks the tier's `roadmaps/*.md`
+`plastic continue` share. It does two things: liveness-ranks the tier's `roadmaps/*.md`
 (a `delivering` or `blocked` entry wins, else the newest ledger or `## Log` timestamp, read
 through `RoadmapSavepoint.ledger_path_for`), and within the winning roadmap selects the frontier
 batch. The frontier batch is the first batch, top to bottom, holding a `queued` or `delivering`
@@ -247,7 +247,7 @@ INDEX already shows Completed or Abandoned can never be dispatched. The CLI emit
 `dispatchable_queue` array shaped to match the dashboard's, plus `in_flight`, `blocked`, and
 `tie_candidates`. It runs in two modes: queue mode (the default, for the loop) breaks ties
 deterministically (newest ledger line, then slug ascending) and flags `tie: true`; which mode
-(`--which`, for `plastic-intent-continuing`) returns `tie_candidates` so the skill's single ask
+(`--which`, for `plastic continue`) returns `tie_candidates` so the skill's single ask
 resolves the tie. The design is file-based throughout (roadmap `.md`, the 134 ledger, INDEX.md),
 DB-ready but not DB-dependent: `RoadmapQueue` is the single seam a future 147 DB-backed read
 swaps behind without changing either caller. A sibling seam covers ranking itself: dispatchable
@@ -370,7 +370,7 @@ is a real em dash or a plain hyphen on READ; every write still emits the real em
 both `end-intent`'s own INDEX-move parser and any caller asking whether an intent is still
 active.
 
-The `plastic-intent-continuing` skill consumes that ledger on the resume path (intent 36): when the
+The `plastic continue` command consumes that ledger on the resume path (intent 36): when the
 user or an agent asks to continue a specific intent, the skill reads the last ledger line as
 the current stage, confirms the named stage file is present and non-empty, calls
 `Savepoint.rebuild_savepoint` when the ledger and the filesystem disagree, and derives the next
@@ -397,12 +397,12 @@ autonomous execution.
   argument it checks all stores; `global` checks only the global store; a project slug
   checks only that project's store. The dashboard load triggers this automatically: the
   global board runs `--store global`, a project board runs `--store <slug>`. The
-  `plastic-intent-continuing` skill also calls it on resume.
+  the `plastic continue` command also calls it on resume.
 
 - **Full run (no flag)**: three-state. Walks every check category (global store,
   conventions across all intents, agent registration, core files, project stores,
   deprecations, runtime, display). This is what `/plastic-doctor` invokes. It also runs
-  automatically after every `plastic-update` (informational: prints the report but does not
+  automatically after every `plastic update` (informational: prints the report but does not
   block or revert the update).
 
 The `display` category (intent 331e) holds four checks. `display_hook_registered` (defined in
@@ -558,7 +558,7 @@ one shared definition of "born complete" that creation and diagnosis both consul
   well-formed arrays of id references (bare ids, or cross-store references like global:1a2)). It is injectable (`plastic_home`), hermetic,
   uses no eval, and does no global-constant injection, mirroring `qmd_sync.rb`.
 - **Three consumers sit on top of it**: the `validate-intent` CLI (exit 0 when
-  complete, non-zero with a report otherwise); the `plastic-intent-creating`
+  complete, non-zero with a report otherwise); the `plastic intent new`
   self-verify step (run the CLI on the just-written file, inject any missing field
   such as `chain: []`, then re-run before announcing or committing); and doctor's
   read-only conventions checks. Doctor's `frontmatter_fields` check is now
@@ -619,7 +619,7 @@ Per-intent validation cannot see asymmetry between intents, so the cross-intent
 Removed in 2.0 (intent 302): the edit-path gates (edit, bash, code, lock, links), the create gate, and the stage-transition gates are gone with their code. The paragraphs and list items of this section that described them were removed with them; what remains is the `record` hook (savepoint line, lock heartbeat, day ledger) and the doctor checks that replace enforcement (intent 308).
 
 Intent 60 enforced the born-complete OUTCOME but not the PROCESS: an agent could
-bypass `plastic-intent-creating` and hand-author intent files with the same Write
+bypass `plastic intent new` and hand-author intent files with the same Write
 primitive the skill uses. Process-purity is unprovable (the skill and a
 hand-author look identical at the tool layer), so the achievable targets are the
 INVARIANT (every intent file is born complete and structurally sanctioned) plus
@@ -633,7 +633,7 @@ Four coordinated pieces deliver that.
   placeholder lifecycle files, wires the reciprocal `[[id]]` links, and
   self-validates with `IntentValidator` (exit non-zero if not born complete). It
   does NOT touch INDEX.md, git, or project creation: those stay in
-  `plastic-intent-creating`, which is now a thin wrapper that keeps tier/store
+  `plastic intent new`, which is now a thin wrapper that keeps tier/store
   detection and the branch-vs-root judgement and delegates scaffolding to one
   `new-intent` call.
 - **Section-structure arm on `IntentValidator`.** `SANCTIONED_SECTIONS`
@@ -709,7 +709,7 @@ one shared definition of store creation that creation and repair both consult.
   `InstallerCore#bootstrap_project_store`, which is now removed.
 - **Consumers sit on top of it**: the `scripts/provision-project-store` CLI (exit
   0 on success, non-zero with a report when the slug is unregistered or on usage
-  error); the `plastic-intent-creating` and `plastic-project-creating` skills (each
+  error); the `plastic intent new` command and the `plastic-project-creating` skill (each
   calls the verb after `projects.yml` registration instead of an inline `mkdir`);
   the `plastic-doctor` skill (resolve slug, run the verb, then the
   separate optional `qmd-sync register --store` step); and doctor's read-only
@@ -790,8 +790,8 @@ Claude Code and Astra on Codex; Primary uses medium effort, and Secondary uses h
   frontmatter at dispatch time is a harness implementation detail rather than a
   contract Plastic controls, every dispatch site (the enforcer's per-stage
   dispatches, `skills/auto/SKILL.md`'s dispatch mechanics, the
-  `plastic-intent-discovery` dispatch inside `plastic-intent-continuing`, and the (removed in 2.0, intent 304)
-  `plastic-intent-continuing` stale-future-intent triage's dispatch of
+  `plastic-intent-discovery` dispatch inside `plastic continue`, and the (removed in 2.0, intent 304)
+  `plastic continue` stale-future-intent triage's dispatch of
   `plastic-future-intent-researcher` (which does not itself spawn further (removed in 2.0, intent 304)
   sub-agents)) also resolves the target agent's model through the same chain
   (`read-config agents.models.<basename> --project <repo>`) and passes it
@@ -810,7 +810,7 @@ Claude Code and Astra on Codex; Primary uses medium effort, and Secondary uses h
   to Fable on Claude Code and Astra on Codex. Primary uses medium effort. Secondary uses high.
 - **What-stage discovery agent**: `plastic-intent-discovery` (paired with the (removed in 2.0, intent 304)
   `skills/intent-discovering/SKILL.md` (removed in 2.0, intent 304) workflow) closes the What-stage gap in the
-  one-agent-per-stage table. It fires inside `plastic-intent-continuing`, right after
+  one-agent-per-stage table. It fires inside `plastic continue`, right after
   an intent is activated (moved from `## Future` to `## Active`) and the delivery lock is
   armed, running under that lock as the owner session (it does not acquire the
   lock itself and is not blocked by it): it reads the intent's `chain`/`sources`

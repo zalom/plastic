@@ -19,8 +19,8 @@ and nothing to type next; the next prompt is the next item.
 Thinking is a conversation before the work. The agent asks one question at a
 time and records each answer as an insight in the intent, then writes the
 action files that say how the work will be done, then works as in direct. You
-can close the conversation into `spec.md` with `/plastic-intent-speccing`, and
-the intent with `/plastic-intent-ending` once Exec is done. This is
+can close the conversation into `spec.md` with `plastic intent spec`, and
+the intent with `plastic intent end` once Exec is done. This is
 deliberately slower. It is the right choice when you want to watch each
 decision as it happens.
 

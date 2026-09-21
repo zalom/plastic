@@ -285,7 +285,7 @@ step 9 runs, so `end-intent`'s own disarm becomes a harmless no-op for the workt
 lock correctly (G5): before intent 188 this path left the lock stranded, exactly the class
 of bug closed by the End-tail enforcement work.
 
-This is the release branch of `plastic-intent-ending`'s Step 5 disarm (`merge: true`), not a
+This is the release branch of `plastic intent end`'s Step 5 disarm (`merge: true`), not a
 separate concern: a release is the merge-then-remove path for the intent's worktree (intent
 73c3), so the intent's code branch is merged back into the default branch BEFORE the worktree
 is removed. Drive it through `Worktree.finish` with `merge: true`, which merges the code
@@ -306,7 +306,7 @@ read `references/promotion-and-tagging.md`.
 
 ### 9. Complete Active Intent
 
-A release IS a delivery. The active intent that drove this work must be completed as part of the release process. This is NOT optional. The mechanical close (outcome/INDEX/savepoint/commit, AND disarm since intent 188) is `plastic-intent-ending`'s job, not this skill's: run its backing script rather than restating that prose here.
+A release IS a delivery. The active intent that drove this work must be completed as part of the release process. This is NOT optional. The mechanical close (outcome/INDEX/savepoint/commit, AND disarm since intent 188) is `plastic intent end`'s job, not this skill's: run its backing script rather than restating that prose here.
 
 1. Read `~/.plastic/INDEX.md` (or the project's INDEX.md) - find active intent(s) related to this release.
 2. For each active intent being delivered:

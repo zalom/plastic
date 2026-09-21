@@ -20,7 +20,7 @@ state → byte-identical payload, regardless of model. Do NOT hand-summarize int
 
 - User invokes `/plastic-dashboard`
 - User asks "where are we", "what's next", "what should I work on", "show me the intents"
-- `plastic-intent-continuing` lands on the board on a bare resume
+- `plastic continue` lands on the board on a bare resume
 - `plastic-auto` reads `--json` to choose the next dispatchable intent
 
 ## The screen surface (intent 331d/331f)
@@ -30,7 +30,7 @@ default surface on every invocation: print it as the first characters of the rep
 before it, no fence, or the hook cannot paint it. It carries a title, six fields (Active, In
 delivery, Delivered, Roadmap, Sessions, Changed), then the Where-we-are and Where-we-go-next
 tables, its own grammar and painted form standing in for the filled Markdown template below.
-`plastic-intent-continuing`'s project route prints it this way. The Markdown board (Step 1-4
+`plastic continue`'s project route prints it this way. The Markdown board (Step 1-4
 below) stays available as the deeper prose surface a reader can ask for.
 
 ## Procedure (the Markdown board — default human surface)
@@ -134,7 +134,7 @@ a no-op when QMD is absent, so fall back to the existing INDEX.md / file scan.
 The board lists everything; the user navigates by free prose (no capped picker):
 - On the **global** board, the user replies with an **intent id** (work it), a **project
   name** (re-run `project <slug> --data` and present that board), or **"new"** (start a new
-  intent in global via `plastic-intent-creating`).
+  intent in global via `plastic intent new`).
 - On a **project** board, the user replies with an **intent id**, or **"global"** to return.
 
 ## Auto-mode contract (`--json`)

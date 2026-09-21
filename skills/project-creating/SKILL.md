@@ -2,7 +2,7 @@
 name: plastic-project-creating
 description: >-
   Create a new project from an implementation intent. Sets up project directory,
-  git init, AGENTS.md with founding intent decisions, plastic-install --local,
+  git init, AGENTS.md with founding intent decisions, plastic install --local,
   tactical mirror, projects.yml registration, and framework scaffolding.
   Use when an implementation intent spawns a project, or manually by user.
 user-invocable: true
@@ -30,9 +30,9 @@ cd <project_root>/<slug>
 git init
 ```
 
-### 3. Run `plastic-install --local`
+### 3. Run `plastic install --local`
 
-Invoke `plastic-install --local` in the project directory. This creates:
+Invoke `plastic install --local` in the project directory. This creates:
 ```
 .plastic/
 ├── store/
