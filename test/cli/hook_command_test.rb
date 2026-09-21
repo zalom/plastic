@@ -60,6 +60,15 @@ class CliHookCommandTest < Minitest::Test
     assert_equal ["/pkg/hooks/close"], @calls
   end
 
+  def test_the_default_runner_returns_the_launcher_exit_status
+    FileUtils.mkdir_p(File.join(@dir, "hooks"))
+    File.write(File.join(@dir, "hooks", "stop"), "#!/bin/bash\nexit 5\n")
+    File.chmod(0o755, File.join(@dir, "hooks", "stop"))
+
+    assert_equal 5, Hook.call(["stop"], out: @fixture.out, err: @fixture.err,
+      env: @fixture.env("PLASTIC_PACKAGE_ROOT" => @dir), home: @fixture.home)
+  end
+
   def test_an_unknown_event_exits_two
     assert_equal 2, hook("bogus")
   end
