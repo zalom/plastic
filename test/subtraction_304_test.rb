@@ -37,11 +37,9 @@ class Subtraction304Test < Minitest::Test
     intent-locking store-provisioning
   ].freeze
 
-  KEPT_SKILL_DIRS = %w[
-    agent-advisor auto conventions dashboard direct doctor feedback install intent-continuing
-    intent-creating intent-ending intent-executing intent-speccing project-creating releasing
-    roadmap rollback tutorial uninstall update
-  ].freeze
+  # Intent 372 (family 5) retired the last four skill directories (auto, direct,
+  # agent-advisor, releasing) into commands and docs/help; zero skills ship now.
+  KEPT_SKILL_DIRS = [].freeze
 
   KEPT_AGENTS = %w[plastic-enforcer.md plastic-executor.md plastic-node-research.md
                    plastic-node-verify.md plastic-node-work.md plastic-primary-advisor.md
@@ -81,7 +79,7 @@ class Subtraction304Test < Minitest::Test
     "scripts/agent-report" => "Tier B/C",
     "scripts/update.rb" => "fast core tier",
     "scripts/link-suggest" => "Tiers, by context influence",
-    "skills/roadmap/SKILL.md" => "global tier",
+    "docs/help/roadmaps.md" => "global tier",
   }.freeze
 
   def test_removed_files_are_gone_and_the_plastic_authoring_doc_is_present
@@ -204,30 +202,21 @@ class Subtraction304Test < Minitest::Test
     end
   end
 
-  def test_intent_continuing_asks_no_mode_and_routes_three_ways
-    body = File.read(File.join(REPO, "skills", "intent-continuing", "SKILL.md"))
-    refute_match(/auto or guided\?/i, body)
-    %w[Project route Intent route Roadmap route].each { |h| assert_includes body, h }
-    %w[board-fill.md boarding-matrix.md liveness-ranking.md context-management.md].each do |ref|
-      assert File.file?(File.join(REPO, "skills", "intent-continuing", "references", ref)), "#{ref} missing"
-    end
-  end
+  # test_intent_continuing_asks_no_mode_and_routes_three_ways and
+  # test_intent_speccing_carries_grill_and_research_modes were retired by intent 372
+  # (family 2): both skills moved into `plastic continue`/`plastic intent spec`,
+  # commands; their files are gone.
 
-  def test_intent_speccing_carries_grill_and_research_modes
-    body = File.read(File.join(REPO, "skills", "intent-speccing", "SKILL.md"))
-    %w[Grill\ mode Research\ mode insight-append design-principles.md].each { |s| assert_includes body, s }
-  end
-
-  def test_doctor_skill_carries_locks_and_provisioning
-    body = File.read(File.join(REPO, "skills", "doctor", "SKILL.md"))
-    assert_includes body, "plastic-lock"
-    assert_includes body, "provision-project-store"
-    assert_includes body, "reclaim"
-  end
+  # test_doctor_skill_carries_locks_and_provisioning was retired by intent 372
+  # (family 4): the doctor skill moved into `plastic doctor`, a command; its
+  # SKILL.md, including the locks and provisioning sections, is gone.
 
   def test_advisor_contract_uses_role_specific_effort_without_a_brief_override
-    %w[agents/plastic-primary-advisor.md agents/plastic-secondary-advisor.md skills/agent-advisor/SKILL.md
-       skills/agent-advisor/references/advisor-protocol.md].each do |rel|
+    # skills/agent-advisor/SKILL.md was retired by intent 372 (family 5) with no successor
+    # prose; docs/help/advisor-protocol.md is where its reference file moved (git mv, content
+    # unchanged), so the scan still reads it there.
+    %w[agents/plastic-primary-advisor.md agents/plastic-secondary-advisor.md
+       docs/help/advisor-protocol.md].each do |rel|
       body = File.read(File.join(REPO, rel))
       refute_match(/TIER: |S, M, or L|\bL tier\b|\bS tier\b/, body, "#{rel} still carries the S/M/L brief grammar")
     end

@@ -260,22 +260,6 @@ class LedgerCoexistenceTest < Minitest::Test
 
   # --- 4.16: boarding tables (doc assertion) ---------------------------------------
 
-  # 7.11 (post-execution review) - assert the ROW'S OWN TEXT in each file, not merely
-  # that the word "transition" occurs somewhere in a long document, which passes even
-  # when the actual row is missing or wrong.
-  def test_the_boarding_tables_carry_a_transition_line_row
-    row_text = "A node or `Intent` transition line (`n1  running ...`, " \
-               "`Intent  needs_decision ...`)"
-
-    auto_skill = File.read(File.join(REPO, "skills", "auto", "SKILL.md"))
-    boarding_matrix = File.read(File.join(REPO, "skills", "intent-continuing", "references", "boarding-matrix.md"))
-
-    [auto_skill, boarding_matrix].each do |text|
-      assert_includes text, row_text, "boarding table must carry the transition-line row's own text"
-      assert_match(/NodeLedger\.status/, text, "the row must point a resuming agent at NodeLedger.status")
-    end
-  end
-
   # --- S5, matrix rows 5.1-5.9: RoadmapSavepoint shares the appender -----------------
 
   def roadmap_home

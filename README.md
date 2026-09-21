@@ -135,10 +135,10 @@ Walk this once in
 
 | Family | Commands |
 | ------ | -------- |
-| Mode | `plastic-tutorial`, `plastic-auto` |
-| Intent | `plastic-intent-creating`, `plastic-intent-continuing`, `plastic-intent-speccing`, `plastic-intent-executing`, `plastic-intent-ending` |
-| Project and delivery | `plastic-project-creating`, `plastic-roadmap`, `plastic-releasing` |
-| Product | `plastic-install`, `plastic-update`, `plastic-uninstall`, `plastic-rollback`, `plastic-doctor` |
+| Mode | `plastic-tutorial`, `plastic auto take ID` |
+| Intent | `plastic intent new`, `plastic continue`, `plastic intent spec`, `plastic intent step`, `plastic intent end` |
+| Project and delivery | `plastic project new`, `plastic roadmap show` |
+| Product | `plastic install`, `plastic update`, `plastic uninstall`, `plastic rollback`, `plastic-doctor` |
 
 See [`docs/guides/index.md`](docs/guides/index.md) for task-oriented walkthroughs.
 

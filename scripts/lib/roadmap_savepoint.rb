@@ -224,7 +224,7 @@ module RoadmapSavepoint
 
   # The tier root is the parent of `roadmaps/` (a live roadmap's grandparent, or, for one
   # already moved to `roadmaps/archived/`, its great-grandparent); INDEX.md is that root's
-  # sibling file, matching the layout `plastic-roadmap`'s file-format doc defines.
+  # sibling file, matching the layout docs/help/roadmaps.md defines.
   def index_path_for(roadmap_path)
     dir = File.dirname(roadmap_path)
     dir = File.dirname(dir) if File.basename(dir) == "archived"

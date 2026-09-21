@@ -194,24 +194,29 @@ class CodexInstallTest < Minitest::Test
     refute_includes InstallerCore::CODEX_AGENTS_MD_BODY, "—"
   end
 
-  def test_body_teaches_dollar_prefix_invocation
+  # test_body_teaches_dollar_prefix_invocation was retired by intent 372 (family 5): the last
+  # four skills (auto, direct, agent-advisor, releasing) are gone, so the body no longer
+  # teaches `$plastic-<name>` invocation. The surviving line the body carries instead is
+  # pinned below.
+  def test_body_teaches_the_command_line_as_the_operational_procedure
     body = InstallerCore::CODEX_AGENTS_MD_BODY
-    assert_includes body, "$plastic-<name>"
-    assert_includes body, "$plastic-doctor"
-    assert_match(/implicitly.*description/, body)
+    assert_includes body, "Operational procedures are the `plastic` command line itself"
   end
 
   # --- Step 3: install_codex wiring ---
 
-  def test_install_codex_writes_agents_md_skills_and_generates_agent_tomls
+  def test_install_codex_writes_agents_md_and_generates_agent_tomls
     result = @core.install_for_agent("codex", false)
 
     assert result[:success]
     assert File.exist?(agents_md)
     assert_includes File.read(agents_md), InstallerCore::CODEX_SECTION_BEGIN_PREFIX
 
+    # Intent 372 (family 5) retired the last four skills; zero skills ship now, so the
+    # earlier `refute_empty skills, "skills must still be copied"` assertion this test
+    # carried is gone with them.
     skills = Dir.glob(File.join(@agent_dir, "skills", "plastic-*"))
-    refute_empty skills, "skills must still be copied"
+    assert_empty skills, "no skill ships any more; the last four were retired by family 5"
 
     agent_tomls = Dir.glob(File.join(@codex_home, "agents", "plastic-*.toml"))
     refute_empty agent_tomls, "codex agent role files must be generated as TOML under ~/.codex/agents"
@@ -635,7 +640,7 @@ class CodexInstallTest < Minitest::Test
 
     checks = doctor_for(@codex_home).check_agent_registration("codex")
 
-    assert checks.any? { |c| c[:name] == "skills_exist" }, "generic skills check must still run for codex"
+    assert checks.any? { |c| c[:name] == "stray_skills" }, "generic skills check must still run for codex"
     assert checks.any? { |c| c[:name] == "codex_agents_toml" }, "the codex TOML agents check must run"
     refute checks.any? { |c| c[:name] == "agents_exist" },
       "the flat .md agents check must no longer apply to codex"
@@ -1392,7 +1397,11 @@ class CodexPresenceProbeTest < Minitest::Test
 
     assert result[:success], "install must succeed once codex's OWN home is present: #{result[:reason]}"
     assert Dir.exist?(agent_dir), "install must CREATE ~/.agents, not demand it exist"
-    refute_empty Dir.glob(File.join(agent_dir, "skills", "plastic-*")), "skills must land under the newly-created dir"
+    # Intent 372 (family 5) retired the last four skills; zero skills ship, so the earlier
+    # `refute_empty ... skills must land` assertion is gone. The manifest is what lands
+    # under the newly-created dir now.
+    assert File.exist?(File.join(agent_dir, "plastic", "manifest.json")),
+      "the manifest must land under the newly-created dir"
     refute_empty Dir.glob(File.join(codex_home, "agents", "plastic-*.toml")), "agent TOMLs must be generated"
     assert File.exist?(File.join(codex_home, "hooks.json"))
     assert File.exist?(File.join(codex_home, "AGENTS.md"))

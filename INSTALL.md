@@ -38,6 +38,16 @@ plastic status
 | `plastic rollback [--version VERSION]` | Moves to a version this machine has run before. With no version, it lists them. |
 | `plastic uninstall` | Removes Plastic from this machine's agents. Your stores stay. |
 
+## Repair an install
+
+Run the installer again when skills are missing or hooks do not fire:
+
+```bash
+plastic install --reinstall --claude
+```
+
+The installer is safe to repeat.
+
 ## A clean Mac
 
 macOS ships Ruby 2.6, which is too old. Install a newer Ruby first:

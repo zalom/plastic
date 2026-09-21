@@ -48,7 +48,7 @@ valid lifecycle artifacts. Honor it as your live state; do not re-derive or cont
 ## Completion Report
 
 END your turn with a structured completion report as your final message, per the spawn
-preamble's `REPORT_CONTRACT` and `skills/auto/references/agent-report-contract.md`. Do not
+preamble's `REPORT_CONTRACT` and `plastic help agent-report-contract`. Do not
 finish silently. Carry the common envelope (role, intent id, stage, status, artifacts written,
 verification, checklist deltas, deviations, blockers, insights) plus the executor payload:
 

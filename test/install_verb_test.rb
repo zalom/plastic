@@ -16,6 +16,7 @@ class InstallVerbTest < Minitest::Test
     attr_reader :distributed, :bootstrapped
     def distribute(mode) = (@distributed = mode)
     def bootstrap = (@bootstrapped = true)
+    def register_with_qmd(detector: -> { false }, **options) = super
     def transactional_install_for_agent(key, _force, **)
       { agent: key, success: true, files: 1, from_version: nil, to_version: version }
     end
@@ -99,6 +100,56 @@ class InstallVerbTest < Minitest::Test
       "the install results must point a first-time user at guide 1"
   end
 
+  # Intent 372: the installer skills are gone, so a fresh `~/.plastic` needs `git init`
+  # to come from the install verb itself, matching the skill's former step 119-127.
+  def test_run_git_inits_a_fresh_plastic_home
+    build.run(selected: ["claude"])
+
+    assert File.directory?(File.join(@home, ".git")), "a fresh plastic_home must end up under git"
+  end
+
+  def test_run_leaves_an_existing_git_repository_alone
+    FileUtils.mkdir_p(File.join(@home, ".git"))
+    marker = File.join(@home, ".git", "HEAD")
+    File.write(marker, "ref: refs/heads/keep-me\n")
+
+    build.run(selected: ["claude"])
+
+    assert_equal "ref: refs/heads/keep-me\n", File.read(marker),
+      "an existing .git directory must not be touched"
+  end
+
+  # Intent 372: the installer skill's former step 167-179 (register the stores with
+  # QMD) becomes code. The detector is injected too, so this stays hermetic on a
+  # machine that happens to have the real `qmd` binary on PATH.
+  def test_run_registers_with_qmd_once_through_an_injected_runner
+    calls = []
+    runner = ->(args) {
+      calls << args
+      ["", true]
+    }
+
+    build.run(selected: ["claude"], qmd_runner: runner, qmd_detector: -> { true })
+
+    list_calls = calls.select { |args| args[0..1] == ["collection", "list"] }
+    assert_equal 1, list_calls.length, "the QMD registration must run exactly once for a fresh home"
+
+    add_calls = calls.select { |args| args[0..1] == ["collection", "add"] }
+    assert_equal [File.expand_path(File.join(@home, "store")), "--name", "plastic-global"], add_calls.first[2..]
+  end
+
+  def test_run_skips_qmd_registration_when_qmd_is_absent
+    calls = []
+    runner = ->(args) {
+      calls << args
+      ["", true]
+    }
+
+    build.run(selected: ["claude"], qmd_runner: runner, qmd_detector: -> { false })
+
+    assert_empty calls, "no QMD call may be made when qmd is not detected"
+  end
+
   def test_run_migrates_legacy_advisor_config_before_installing
     File.write(File.join(@home, "config.yml"), YAML.dump(
       "advisor" => { "claude" => { "default" => "plastic-faux-advisor" } },
@@ -140,6 +191,7 @@ class InstallPerAgentGateTest < Minitest::Test
 
   def build(agents = @agents)
     Install.new(package_root: WORKTREE, plastic_home: @home, agents: agents, version: "1.0.0-test")
+      .tap { |install| install.define_singleton_method(:register_with_qmd) { |**| } }
   end
 
   # Simulates the owner's exact starting state, via the real install path (not
@@ -159,7 +211,6 @@ class InstallPerAgentGateTest < Minitest::Test
 
     assert_equal 0, status,
       "adding a harness Plastic has never registered must proceed, not refuse (the D7 regression)"
-    refute_empty Dir.glob(File.join(@agent_dir, "skills", "plastic-*")), "codex skills must actually be written"
     refute_empty Dir.glob(File.join(@codex_home, "agents", "plastic-*.toml")), "codex agent TOMLs must be generated"
     assert File.exist?(File.join(@codex_home, "hooks.json"))
     assert File.exist?(File.join(@codex_home, "AGENTS.md"))
@@ -191,8 +242,7 @@ class InstallPerAgentGateTest < Minitest::Test
       out, _err = capture_io { status = i.cli(["--all"]) }
 
       assert_equal 0, status
-      refute_empty Dir.glob(File.join(@agent_dir, "skills", "plastic-*")), "codex must be freshly installed"
-      refute_empty Dir.glob(File.join(hermes_dir, "skills", "plastic-*")), "hermes must be freshly installed"
+      refute_empty Dir.glob(File.join(@codex_home, "agents", "plastic-*.toml")), "codex must be freshly installed"
       assert_equal before, File.mtime(manifest_path), "claude must not be re-synced when already registered"
       assert_match(/Claude Code.*already registered/i, out)
       refute_match(/Registered for:.*Claude Code/, out,

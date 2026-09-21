@@ -90,8 +90,9 @@ class SkillCensusRosterTest < Minitest::Test
     end.sort
 
     assert_equal expected.map { |e| "plastic-#{e}" }.sort, roster.map(&:name).sort
-    assert_equal 20, roster.length
-    assert_equal 3, roster.count { |s| !s.user_invocable }
+    # Intent 372 (family 5) retired the last four (agent-advisor, auto, direct, releasing)
+    # into commands and docs/help: zero skill directories remain.
+    assert_equal 0, roster.length
   end
 
   def test_name_map_targets_are_live_roster_names
@@ -610,23 +611,25 @@ class SkillCensusTallyTest < Minitest::Test
   end
 
   def test_absorbed_name_maps_into_successor
-    built = SkillCensus::Tally.new(history_scan(["plastic-intent-brainstorming"]), transcript_scan, roster).build # plastic-intent-brainstorming retired in 2.0
+    built = SkillCensus::Tally.new(
+      history_scan(["plastic-old-doctor"]), transcript_scan, roster,
+      name_map: {"plastic-old-doctor" => "plastic-doctor"}
+    ).build
 
-    speccing = built.skills.find { |s| s.name == "plastic-intent-speccing" }
-    assert_equal 1, speccing.typed
-    assert_equal 1, speccing.mapped_from["plastic-intent-brainstorming"] # plastic-intent-brainstorming retired in 2.0
+    doctor = built.skills.find { |s| s.name == "plastic-doctor" }
+    assert_equal 1, doctor.typed
+    assert_equal 1, doctor.mapped_from["plastic-old-doctor"]
   end
 
   def test_row_shows_mapped_from_names_and_their_counts
-    roster_with_target = roster + [SkillCensus::Roster::Skill.new(name: "plastic-intent-continuing", user_invocable: true)]
     built = SkillCensus::Tally.new(
-      history_scan(["plastic-continuing"] * 5 + ["plastic-intent-continuing"]), # plastic-continuing retired in 2.0
-      transcript_scan, roster_with_target
+      history_scan(["plastic-old-doctor"] * 5 + ["plastic-doctor"]), transcript_scan, roster,
+      name_map: {"plastic-old-doctor" => "plastic-doctor"}
     ).build
 
-    row = built.skills.find { |s| s.name == "plastic-intent-continuing" }
+    row = built.skills.find { |s| s.name == "plastic-doctor" }
     assert_equal 6, row.typed
-    assert_equal 5, row.mapped_from["plastic-continuing"] # plastic-continuing retired in 2.0
+    assert_equal 5, row.mapped_from["plastic-old-doctor"]
   end
 
   def test_retired_name_goes_to_retired_row
@@ -658,18 +661,19 @@ class SkillCensusTallyTest < Minitest::Test
   end
 
   def test_map_coverage_lists_every_entry_with_its_observed_count
-    built = SkillCensus::Tally.new(history_scan([]), transcript_scan, roster).build
+    name_map = {"plastic-old-doctor" => "plastic-doctor"}
+    built = SkillCensus::Tally.new(history_scan([]), transcript_scan, roster, name_map: name_map).build
 
-    assert_equal SkillCensus::NAME_MAP.length, built.map_coverage.length
+    assert_equal name_map.length, built.map_coverage.length
     zero_entry = built.map_coverage.find { |e| e[:observed].zero? }
     refute_nil zero_entry
   end
 
   def test_mechanism_skill_renders_na_not_zero
-    mechanism_roster = [SkillCensus::Roster::Skill.new(name: "plastic-agent-advisor", user_invocable: false)]
+    mechanism_roster = [SkillCensus::Roster::Skill.new(name: "plastic-feedback", user_invocable: false)]
     built = SkillCensus::Tally.new(history_scan([]), transcript_scan, mechanism_roster).build
 
-    row = built.skills.find { |s| s.name == "plastic-agent-advisor" }
+    row = built.skills.find { |s| s.name == "plastic-feedback" }
     refute row.evidence?
     refute_nil row.mechanism
   end
@@ -743,7 +747,7 @@ class SkillCensusReportTest < Minitest::Test
   end
 
   def test_na_rows_render_na_and_the_mechanism
-    mechanism_roster = [SkillCensus::Roster::Skill.new(name: "plastic-agent-advisor", user_invocable: false)]
+    mechanism_roster = [SkillCensus::Roster::Skill.new(name: "plastic-feedback", user_invocable: false)]
     empty_history = SkillCensus::HistoryScanner::Result.new(record_count: 0, first_seen: nil, last_seen: nil,
                                                                typed: [], mentions: [], builtins: {},
                                                                self_generated: [], monthly: {})
@@ -758,7 +762,7 @@ class SkillCensusReportTest < Minitest::Test
     md = SkillCensus::Report.markdown(built_na, cutoff: "2026-09-02")
 
     assert_includes md, "n/a"
-    assert_includes md, "dispatched as the plastic-advisor"
+    assert_includes md, "routed by the SessionStart hook"
   end
 
   def test_zero_counts_render_as_zero

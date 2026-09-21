@@ -517,9 +517,6 @@ class Doctor
       checks << hooks_entries_owned_check(settings)
     end
 
-    # skills_exist — flat, hyphen-namespaced personal skills (plastic-<name>/)
-    checks << flat_skills_check(agent_dir, "--claude")
-
     # stray_skills — installed plastic-* skill dir with no manifest entry (a leftover,
     # e.g. an old-name copy after a rename; intent 158a AC15)
     checks << stray_skills_check(agent_dir, "--claude", File.join(agent_dir, "plastic", "manifest.json"))
@@ -630,24 +627,6 @@ class Doctor
     )
   end
 
-  def flat_skills_check(agent_dir, installer_flag)
-    skills_root = File.join(agent_dir, "skills")
-    found = Dir.glob(File.join(skills_root, "plastic-*", "SKILL.md"))
-
-    if !found.empty?
-      check(
-        category: "agent_registration", name: "skills_exist", status: "pass",
-        message: "#{found.size} plastic-* skill(s) installed in #{tilde(skills_root)}"
-      )
-    else
-      check(
-        category: "agent_registration", name: "skills_exist", status: "fail",
-        message: "No plastic-* skills found in #{tilde(skills_root)}",
-        fixable: true, fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest #{installer_flag}"
-      )
-    end
-  end
-
   # Manifest-diff stray-skill check (intent 158a), extended (intent 276) to
   # never vanish on a missing manifest and to name the reserved-prefix rule.
   def stray_skills_check(agent_dir, installer_flag, manifest_path)
@@ -706,9 +685,6 @@ class Doctor
 
   def check_flat_skills_and_stray(agent_key, agent_dir)
     checks = []
-
-    # For codex/hermes: just check skills exist (no settings.json hooks)
-    checks << flat_skills_check(agent_dir, "--#{agent_key}")
 
     # stray_skills — installed plastic-* skill dir with no manifest entry (a leftover,
     # e.g. an old-name copy after a rename; intent 158a AC15)
@@ -1165,7 +1141,7 @@ class Doctor
               "#{tilde(agent_version_path)}: #{agent_version}",
             ],
             fixable: true,
-            fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or plastic-rollback to a prior version"
+            fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or `plastic rollback` to a prior version"
           )
         end
       else
@@ -1173,7 +1149,7 @@ class Doctor
           category: "core_files", name: "version_match", status: "warn",
           message: "Agent-side VERSION file not found at #{tilde(agent_version_path)}",
           fixable: true,
-          fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or plastic-rollback to a prior version"
+          fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or `plastic rollback` to a prior version"
         )
       end
     end
@@ -1278,7 +1254,7 @@ class Doctor
 
   DISPLAY_HOOK_FIX_HINT = "Re-run the Plastic installer to repair the hook registration: " \
                           "npx @zalom/plastic@<channel> install --reinstall --claude " \
-                          "(plastic-install --repair)".freeze
+                          "(plastic install --reinstall)".freeze
 
   # display_hook_registered (intent 331e, D1, category "display"): the Claude
   # settings carry the plastic-message-display command, on-disk, executable.

@@ -330,7 +330,7 @@ class Doctor
           category: "core_files", name: name, status: "warn",
           message: "#{config[:name]}'s agent-side VERSION file not found at #{tilde(agent_version_path)}",
           fixable: true,
-          fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or plastic-rollback to a prior version"
+          fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or `plastic rollback` to a prior version"
         )
       else
         agent_version = File.read(agent_version_path).strip
@@ -348,7 +348,7 @@ class Doctor
               "#{tilde(agent_version_path)}: #{agent_version}",
             ],
             fixable: true,
-            fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or plastic-rollback to a prior version"
+            fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or `plastic rollback` to a prior version"
           )
         end
       end
@@ -613,7 +613,7 @@ class Doctor
         fixable: true,
         fix_hint: "Relocate each unsanctioned section into the " \
                   "intent's revisions.md via move-and-record (a missing required section is restored " \
-                  "or reprojected instead); see plastic-conventions > references/maintenance-and-revisions.md"
+                  "or reprojected instead); see `plastic help maintenance-and-revisions`"
       )
     end
 
@@ -644,7 +644,7 @@ class Doctor
     # unpromoted_rules (intent 341, G8, C37): an Insights entry tagged
     # `rule:` (via `insight-append --rule`) is a promise the rule will make
     # it into project doctrine. Advisory only.
-    checks.concat(unpromoted_rules_checks(intent_dirs, home: Dir.home))
+    checks.concat(unpromoted_rules_checks(intent_dirs))
 
     # cross_store_resolution — RESOLVES (not just shape-checks) every cross-store
     # `store:id` ref against the FULL store family via the relocation map
@@ -1228,7 +1228,7 @@ end
       "project-links --intent <id> --apply` over running project-links directly: it detects " \
       "(never acquires) the target's delivery lock, requires a clean store working tree, and " \
       "commits the scoped change plus its revisions.md receipt as one merged operation " \
-      "(plastic-conventions > references/maintenance-and-revisions.md)."
+      "(`plastic help maintenance-and-revisions`)."
     )
   end
 
@@ -1692,7 +1692,7 @@ end
       "Every sources/chain id resolves to a real intent (I4)",
       "Record the dangling sources/chain edge as a " \
       "broken-source/broken-chain move-and-record entry in the intent's revisions.md (see " \
-      "plastic-conventions > references/maintenance-and-revisions.md), or restore the missing intent"
+      "`plastic help maintenance-and-revisions`), or restore the missing intent"
     )
     checks
   end
@@ -1865,31 +1865,25 @@ end
   #
   # `insight-append --rule` tags an entry "... - rule: <text>". A tag is a
   # promise the rule will make it into project doctrine; until the exact
-  # rule text shows up in some skills/conventions/references/*.md chapter,
-  # it is only visible to a session that happens to read this one intent
-  # file, and the next session repeats the mistake the rule names. Advisory
-  # only (warn, never fail): a freshly tagged rule is not yet promoted by
-  # design, and nothing here can auto-promote it (that is an editorial call,
-  # not a mechanical one).
+  # rule text shows up in some docs/help/*.md chapter, it is only visible to
+  # a session that happens to read this one intent file, and the next
+  # session repeats the mistake the rule names. Advisory only (warn, never
+  # fail): a freshly tagged rule is not yet promoted by design, and nothing
+  # here can auto-promote it (that is an editorial call, not a mechanical
+  # one).
   RULE_ENTRY_RE = /—\s*rule:\s*(.+?)\s*\z/.freeze
 
-  def unpromoted_rules_checks(intent_dirs, package_root: PACKAGE_ROOT, home: nil)
-    # The installed doctor runs from ~/.plastic/scripts, so PACKAGE_ROOT
-    # (~/.plastic) has no skills/ directory: the conventions chapters install
-    # to the agent home layout instead. `home` is caller-injected (never an
-    # ENV read here) so this stays hermetic in tests; the real call site
-    # passes the process's actual home directory.
-    chapter_dirs = []
-    if home
-      chapter_dirs << File.join(home, ".claude", "skills", "plastic-conventions", "references")
-      chapter_dirs << File.join(home, ".agents", "skills", "plastic-conventions", "references")
-    end
-    chapter_dirs << File.join(package_root, "skills", "conventions", "references")
+  def unpromoted_rules_checks(intent_dirs, package_root: PACKAGE_ROOT)
+    # docs/help installs straight under PACKAGE_ROOT for every harness alike
+    # (~/.plastic/docs/help once installed, repo docs/help in a checkout), so
+    # a single path covers both the repo and the installed layout; unlike
+    # the old skills-based chapters, help topics are no longer agent-home
+    # specific, so this needs no `home:` split.
+    chapter_dir = File.join(package_root, "docs", "help")
 
-    chapters_text = chapter_dirs.select { |d| Dir.exist?(d) }
-                                .flat_map { |d| Dir.glob(File.join(d, "*.md")) }
-                                .map { |f| File.read(f) }
-                                .join("\n\n")
+    chapters_text = Dir.glob(File.join(chapter_dir, "*.md"))
+                        .map { |f| File.read(f) }
+                        .join("\n\n")
 
     unpromoted = []
     intent_dirs.each do |d|
@@ -1917,7 +1911,7 @@ end
         category: "conventions", name: "unpromoted_rules", status: "warn",
         message: "#{unpromoted.size} tagged rule(s) not yet carried by any conventions chapter",
         details: unpromoted, fixable: false,
-        fix_hint: "Promote the rule into the right skills/conventions/references/*.md chapter, " \
+        fix_hint: "Promote the rule into the right docs/help/*.md chapter, " \
                   "or drop the tag if the finding does not belong in doctrine"
       )]
     end
@@ -1934,8 +1928,7 @@ end
   # skill directory under agent_dir/skills that has NO corresponding entry in the
   # current install manifest is a stray (e.g. a leftover old-name copy the
   # install/update prune should have removed, or one it never saw because the
-  # manifest predates it). Complements flat_skills_check (which only confirms at
-  # least one skill exists). Defers to the manifest check when the manifest itself
+  # manifest predates it). Defers to the manifest check when the manifest itself
   # is missing or malformed, so the two checks never double-report the same gap.
 
   # Auto-mode role agents install as <dir>/agents/plastic-*.md. Pass if at least
@@ -2555,7 +2548,7 @@ end
   # A config-asks warn in that tier would flip every post-update doctor to
   # "fail" on an otherwise healthy install until the question is answered,
   # re-noising the post-update surface intent 126 deliberately quieted. The
-  # recoverable-later path for a pending question is a full `/plastic-doctor`
+  # recoverable-later path for a pending question is a full `plastic doctor`
   # run, the declared maintenance front door; the moment-it-happens path is
   # update.rb#announce_pending_config_asks, which already runs on every hop.
   #

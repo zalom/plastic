@@ -105,7 +105,7 @@ class BridgeRetiredTest < Minitest::Test
   end
 
   def test_locks_chapter_names_the_delivery_lock_as_the_answer
-    text = File.read(File.join(REPO, "skills/conventions/references/locks-and-worktrees.md"))
+    text = File.read(File.join(REPO, "docs/help/locks-and-worktrees.md"))
     assert_includes text,
       "The delivery lock names the session delivering an intent, as its owner or a delegate.",
       "locks-and-worktrees.md does not name the delivery lock as the delivering-session answer"

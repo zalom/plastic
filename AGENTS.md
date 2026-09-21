@@ -80,7 +80,12 @@ Rules for any agent (or human) contributing to this repository.
   else stays judgment and stays with the agent. Make no exceptions for convenience.
 
 ### Testing
-- Run the full suite with:
+- Run each change's tests once, on the changed files only: `ruby bin/test --only test/FILE_test.rb`.
+  Then run the change gate once: `bin/verify-change origin/alpha`.
+- The full suite runs once for each pull request, just before the pull request opens, and again in CI.
+  Never run it after every change. When a deletion breaks tests widely, find them with a search
+  for the deleted names, not with the suite.
+- The full suite command is:
   ```
   ruby -Itest -e 'Dir["test/*_test.rb"].each { |f| require File.expand_path(f) }'
   ```
@@ -88,7 +93,7 @@ Rules for any agent (or human) contributing to this repository.
   and Ruby runs only the FIRST file as the program (the rest land in `ARGV`, unloaded), so
   Minitest reports just that one file's tests and you get a falsely small green run. The
   loader command above requires every `test/*_test.rb` file, so the whole suite runs.
-- Confirm green before committing code changes.
+- Confirm that the changed files' tests and the change gate are green before committing code changes.
 - Lock and worktree tests must stay hermetic: inject `PLASTIC_TMP` plus explicit paths and
   never write with the ambient session id (`test/hermeticity_guard_test.rb` enforces this).
 
@@ -124,12 +129,12 @@ Rules for any agent (or human) contributing to this repository.
 - A push to `alpha`, `beta` or `main` is the release (intent 376). `.github/workflows/publish.yml`
   creates the tag, the GitHub release and the npm publish for a version with no tag yet (OIDC
   trusted publishing, intent 347). Do not run `npm publish` or create a tag by hand.
-- Run the full test suite (see the Testing section) and confirm green before committing code changes.
+- Run the changed files' tests and the change gate before committing code changes (see the Testing section).
 - Never push `~/.plastic/`. The global store is local-only and may contain private data.
 - Core Plastic intents carry no release numbers; the intent schema stays release-agnostic. A release is a collection of intents: a cut (tag) bundles whichever intents have landed since the previous cut and completes them. Which release an intent lands in, and the shipped release history, live in `CHANGELOG.md` at the repo root, not in the intent file and not in PLASTIC.md.
 - Two release lanes exist: default (straight to main) and beta-verified (beta branch, beta
   channel, real-use verification, then main). Read
-  `skills/releasing/references/release-lines.md` for the routing rule, the stable-line
+  `docs/release-lines.md` for the routing rule, the stable-line
   guarantees, and the intent-41 re-land playbook.
 - Stable-line guarantees, in short: main stays always releasable with no pending revert awaiting
   re-land, a stable release always carries the GitHub Latest badge and no pre-release suffix,

@@ -75,12 +75,14 @@ class Install < InstallerCore
   # they are reported, never re-installed, so the summary line and the Codex
   # trust reminder only ever count agents that actually changed this run.
   def run(selected:, force: false, reinstall: false, ledger_action: nil, argv: ARGV, input: $stdin,
-          already_registered: [])
+          already_registered: [], qmd_runner: QmdSync.default_runner, qmd_detector: QmdSync.method(:detect))
     fresh = !installed?
     mode = fresh ? :install : :update # :update here means "re-sync, skip bootstrap"
 
     distribute(mode)
     bootstrap if fresh
+    git_init_if_absent
+    register_with_qmd(runner: qmd_runner, detector: qmd_detector)
     migrate_advisor_config_file(File.join(plastic_home, "config.yml"))
     apply_config_flags(argv)
 

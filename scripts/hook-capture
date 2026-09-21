@@ -108,7 +108,7 @@ begin
       cockpit, _err, status = Open3.capture3({ "RUBYOPT" => nil }, "ruby", dashboard, "continue")
       if status.success? && !cockpit.strip.empty?
         context_parts << (cockpit.rstrip +
-          "\n\nFollow the plastic-intent-continuing skill workflow to resume: " \
+          "\n\nRun `plastic continue` to resume: " \
           "if active intents exist, read their state and resume; otherwise surface the " \
           "most-valuable next work and any stale or triage intents from the board above.")
 
@@ -135,7 +135,7 @@ begin
   auto_triggers = ["take it from here", "deliver this", "/plastic-auto", "auto mode"].freeze
   triggered = auto_triggers.any? { |p| message_lower.include?(p) } || message_lower.match?(/\bauto\b/)
   if triggered
-    context_parts << "Auto-mode request detected. Invoke the plastic-auto skill to deliver the " \
+    context_parts << "Auto-mode request detected. Run `plastic auto take ID` to deliver the " \
                       "active intent autonomously - it takes the intent under a lock and a worktree " \
                       "and points this session at it."
   end

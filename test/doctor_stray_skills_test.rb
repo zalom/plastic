@@ -9,8 +9,7 @@ require_relative "../scripts/doctor"
 # Doctor's stray-skill backstop (intent 158a, AC15): an installed plastic-* skill
 # directory with no corresponding entry in the current install manifest is a leftover
 # (e.g. an old-name copy a rename's prune should have removed, or one predating the
-# manifest). Complements flat_skills_check, which only confirms at least one skill is
-# present and says nothing about drift between what's installed and what's tracked.
+# manifest).
 #
 # Hermetic: self-contained throwaway plastic_home + agent dir under Dir.mktmpdir, a
 # Doctor instance with agents: injected so it never touches ~/.claude. No eval, no
@@ -95,8 +94,7 @@ class DoctorStraySkillsTest < Minitest::Test
   end
 
   # The other half of the same fix: no skills installed AND no manifest is a
-  # genuinely healthy "nothing to verify" state, not a second red alongside
-  # skills_exist's own fail for that state.
+  # genuinely healthy "nothing to verify" state.
   def test_missing_manifest_passes_when_nothing_is_installed
     # No skills installed, no manifest.json.
     check = doctor.stray_skills_check(@agent_dir, "--claude", manifest_path)

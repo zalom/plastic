@@ -220,7 +220,7 @@ begin
   if File.exist?(cache_file)
     cache = JSON.parse(File.read(cache_file)) rescue {}
     if cache["updateAvailable"]
-      update_notice = "Plastic update available: #{cache["current"]} -> #{cache["latest"]} — run /plastic-update"
+      update_notice = "Plastic update available: #{cache["current"]} -> #{cache["latest"]} — run `plastic update`"
     end
   end
 

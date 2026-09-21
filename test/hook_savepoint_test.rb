@@ -198,9 +198,7 @@ class HookSavepointTest < Minitest::Test
     assert_includes guide.downcase, "day summary"
   end
 
-  def test_intent_continuing_reads_the_day_directory_handoff_not_a_per_intent_one
-    skill = File.read(File.join(REPO, "skills", "intent-continuing", "SKILL.md"))
-    refute_includes skill, "resources/handoff", "nothing writes a per-intent hand-off (spec D11)"
-    assert_includes skill, ".sessions/"
-  end
+  # test_intent_continuing_reads_the_day_directory_handoff_not_a_per_intent_one was retired
+  # by intent 372 (family 2): skills/intent-continuing/SKILL.md is gone, moved into the
+  # `plastic continue` command.
 end

@@ -457,7 +457,7 @@ class InstallPackagingTest < Minitest::Test
   def test_skills_dir_is_packaged_for_distribution
     pkg = JSON.parse(File.read(File.join(REPO, "package.json")))
     assert_includes pkg["files"], "skills/",
-      "skills/ must be in package.json `files` so the agent-advisor skill and its references ship to consumers"
+      "skills/ must be in package.json `files` so its contents ship to consumers"
   end
 
   # --- The advisor agents and the shipped Advisor Protocol reference ship with
@@ -478,13 +478,12 @@ class InstallPackagingTest < Minitest::Test
     assert_includes body, "The five-question self-test"
   end
 
-  def test_advisor_skill_routes_configured_default_and_explicit_roles
-    body = File.read(File.join(REPO, "skills", "agent-advisor", "SKILL.md"))
-    assert_includes body, "If unset, use `plastic-primary-advisor`"
-    assert_includes body, "explicitly asks for Primary Advisor or Secondary Advisor"
-    assert_includes body, "Otherwise, dispatch the configured agent"
-    assert_includes body, "If `advisor.enabled` reads `false`"
-  end
+  # test_advisor_skill_routes_configured_default_and_explicit_roles was retired by intent
+  # 372 (family 5): skills/agent-advisor/SKILL.md is gone with no successor prose. Its
+  # references/advisor-protocol.md moved to docs/help/ verbatim (test_advisor_protocol_
+  # reference_exists_in_repo above), but the role-routing wording this test pinned
+  # ("If unset, use plastic-primary-advisor", the explicit-role override, the
+  # advisor.enabled=false path) lived only in the SKILL.md body itself and did not move.
 
   def test_claude_update_prunes_retired_advisor_files_in_both_advisor_states
     [true, false].each do |enabled|
@@ -551,9 +550,12 @@ class InstallPackagingTest < Minitest::Test
     end
   end
 
+  # Retargeted by intent 372 (family 5): skills/agent-advisor/references/advisor-protocol.md
+  # moved (git mv, content unchanged) to docs/help/advisor-protocol.md when the skill it lived
+  # under was retired.
   def test_advisor_protocol_reference_exists_in_repo
-    assert File.file?(File.join(REPO, "skills", "agent-advisor", "references", "advisor-protocol.md")),
-      "skills/agent-advisor/references/advisor-protocol.md must exist in the repo"
+    assert File.file?(File.join(REPO, "docs", "help", "advisor-protocol.md")),
+      "docs/help/advisor-protocol.md must exist in the repo"
   end
 
   # Intent 340b, G7c, n2, row 2.13: the command-line proof, the program run the way

@@ -16,8 +16,7 @@
 # ever reaches Insights.append_insight; the library itself stays untouched,
 # since a tag is a text-level convention, not a new field on the ledger.
 # Doctor's unpromoted_rules check (scripts/doctor.rb) later lists any tagged
-# entry whose exact text no skills/conventions/references/*.md chapter
-# carries yet.
+# entry whose exact text no docs/help/*.md chapter carries yet.
 #
 # Usage:
 #   insight-append <intent_dir> <text> --stage S --author A [--rule]

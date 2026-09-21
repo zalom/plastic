@@ -368,8 +368,8 @@ module Lock
   # file is inert: nothing reads it, it stays zero bytes, and
   # scripts/end-intent:558 keys its exit contract on Lock.path alone. This is
   # a requirement, not a guarantee the code enforces: the curator stray-file
-  # rule (skills/conventions/references/maintenance-and-revisions.md:155)
-  # has no *.lock carve-out today, so a wrongful delete there degrades one
+  # rule (docs/help/maintenance-and-revisions.md:155) has no *.lock
+  # carve-out today, so a wrongful delete there degrades one
   # write window to the pre-fix (unguarded) behavior, not a hard failure.
   def with_write_guard(intent_dir, type: "delivery",
                        guard_timeout: WRITE_GUARD_TIMEOUT_SECONDS,

@@ -58,21 +58,12 @@ class CodexInstallContentTest < Minitest::Test
   # Every entry is (installed relative path, exact matched text, why it is allowed to
   # survive on a Codex install). An entry that stops matching anything is a dead entry
   # and fails test_no_dead_allowlist_entries below.
-  ALLOWED = [
-    ["plastic-uninstall/SKILL.md", "~/.claude/hooks/plastic-*",
-     "Spec D5. Codex installs no per-agent hook launchers, so there is no Codex path to " \
-     "substitute. The correct Codex text is a rewrite of the surrounding sentence, which " \
-     "is doc authoring rather than an install-time transform."],
-    ["plastic-uninstall/SKILL.md", "~/.claude/hooks",
-     "Spec D5. The same sentence's verification command (`ls ~/.claude/hooks | grep`). " \
-     "Harmless on Codex (it returns nothing, which is the correct answer there) and it " \
-     "has no Codex equivalent to point at."],
-    ["plastic-doctor/report.md", "~/.claude/hooks/plastic-session-start",
-     "Spec D5. Sample doctor OUTPUT, printed inside the report template as an example " \
-     "of the format for a Claude install. Not an instruction to the agent."],
-    ["plastic-doctor/report.md", "~/.claude/hooks/plastic-record",
-     "Spec D5. Same sample output block."],
-  ].freeze
+  #
+  # The two plastic-doctor/report.md entries (Spec D5, sample doctor output) were
+  # dropped by intent 372 (family 4): the doctor skill, including report.md, is gone,
+  # replaced by the `plastic doctor` command, whose own output is not installed under
+  # skills/ and so is outside this test's installed_md scan.
+  ALLOWED = [].freeze
 
   # Coverage is checked per MATCH, not per line: the allowlist clears only a match
   # whose own matched text is IDENTICAL to an entry's allow_text for that path. A
@@ -108,37 +99,34 @@ class CodexInstallContentTest < Minitest::Test
     assert_empty dead, "allowlist entries that matched nothing in the installed tree:\n#{dead.inspect}"
   end
 
-  def test_the_three_breaking_lines_resolve_on_codex
-    creating_skill = File.read(File.join(@skills_root, "plastic-intent-creating", "SKILL.md"))
-    lifecycle = File.read(File.join(@skills_root, "plastic-intent-creating", "references", "lifecycle.md"))
-    auto_skill = File.read(File.join(@skills_root, "plastic-auto", "SKILL.md"))
+  # The intent-creating/lifecycle.md half of this pin was retired by intent 372 (family 2):
+  # intent-creating moved into `plastic intent new`, a command; its files are gone.
+  #
+  # The remaining plastic-auto/SKILL.md half (test_the_breaking_line_resolves_on_codex) was
+  # retired by intent 372 (family 5): skills/auto/SKILL.md, the sole shipped file that carried
+  # the literal `~/.plastic/templates/outcome.md` breaking line, is gone with no successor
+  # file carrying that exact path, so there is no fixture left for this regression check to
+  # read.
 
-    assert_includes creating_skill, "~/.plastic/scripts/new-intent"
-    assert_includes lifecycle, "~/.plastic/scripts/new-intent"
-    assert_includes auto_skill, "~/.plastic/templates/outcome.md"
+  # test_claude_roots_are_rewritten was retired by intent 372 (family 3): it read
+  # the installed plastic-dashboard/SKILL.md for a ~/.claude/skills/ path this
+  # rewrite turns into ~/.agents/skills/. That skill is gone (its board and
+  # ranking rules moved into `plastic status`), and no other file the kept
+  # skills install still carries a real ~/.claude root to rewrite. The mechanism
+  # itself stays covered at the unit level by harness_text_test.rb's
+  # test_rule_order_pinned, which needs no real dashboard data from the shipped
+  # tree.
 
-    refute_includes creating_skill, "CLAUDE_PLUGIN_ROOT"
-    refute_includes lifecycle, "CLAUDE_PLUGIN_ROOT"
-    refute_includes auto_skill, "CLAUDE_PLUGIN_ROOT"
-  end
-
-  def test_claude_roots_are_rewritten
-    uninstall_skill = File.read(File.join(@skills_root, "plastic-uninstall", "SKILL.md"))
-    doctor_skill = File.read(File.join(@skills_root, "plastic-doctor", "SKILL.md"))
-    dashboard_skill = File.read(File.join(@skills_root, "plastic-dashboard", "SKILL.md"))
-
-    assert_includes uninstall_skill, "~/.agents/skills/plastic-*/"
-    assert_includes uninstall_skill, "~/.agents/plastic/"
-    assert_includes uninstall_skill, "~/.codex/hooks.json"
-    assert_includes doctor_skill, "~/.agents/plastic/manifest.json"
-    assert_includes dashboard_skill, "~/.agents/skills/plastic-dashboard/templates/"
-  end
-
-  def test_near_miss_paths_survive_untouched
-    auto_skill = File.read(File.join(@skills_root, "plastic-auto", "SKILL.md"))
-
-    assert_includes auto_skill, "../plastic-conventions/references/"
-  end
+  # test_near_miss_paths_survive_untouched was retired by intent 372 (family 4): it
+  # read the installed plastic-auto/SKILL.md for the relative path
+  # "../plastic-conventions/references/", which named the conventions skill's chapter
+  # directory. That skill and its references/ directory are gone (chapters moved to
+  # docs/help/*.md, read through `plastic help TOPIC`), and no other file the kept
+  # skills install still carries a real near-miss path shaped like a slash-prefixed
+  # skill invocation. The mechanism itself (the slash-prefix regex's lookbehind
+  # leaving a relative path alone) stays covered at the unit level by
+  # harness_text_test.rb's test_relative_path_left_alone, which needs no real
+  # near-miss data from the shipped tree.
 
   def test_shared_fragments_are_never_transformed
     %w[_decision-tables.md].each do |name|

@@ -1509,18 +1509,6 @@ class DoctorAgentRegistrationTest < Minitest::Test
     assert_empty Array(owned_check[:details])
   end
 
-  def test_missing_skills_directory_fails
-    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
-    write_claude_hooks(hooks_dir)
-    write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
-    # No skills directory
-
-    checks = doctor.check_agent_registration("claude")
-    skills_check = checks.find { |c| c[:name] == "skills_exist" }
-
-    assert_equal "fail", skills_check[:status]
-  end
-
   def test_missing_agents_directory_fails
     hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
     write_claude_hooks(hooks_dir)

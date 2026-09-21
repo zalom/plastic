@@ -44,7 +44,7 @@ WORKTREE_FALLBACK_INSTRUCTION =
   "directory, cd directly to the code worktree path above before editing project code."
 
 # Verbatim completion-report contract (intent 74). Kept as one constant so the
-# contract doc (skills/auto/references/agent-report-contract.md), the role prompts,
+# contract doc (docs/help/agent-report-contract.md), the role prompts,
 # and the test assert against the exact same string. SINGLE SOURCE OF TRUTH for the
 # report wording: the work output is lifecycle artifacts, the final message is a
 # structured report about them. Both are required and they do not contradict.
@@ -64,7 +64,7 @@ REPORT_CONTRACT =
   "depends on the discovering session's file-write access. Keep the report " \
   "prose-stripped: the envelope and payload only, no greeting, no preamble, " \
   "no end-recap, no restating of the task; reasoning stays in the thinking channel. " \
-  "See skills/auto/references/agent-report-contract.md for the per-role format."
+  "See docs/help/agent-report-contract.md for the per-role format."
 
 def parse_args(argv)
   role = nil

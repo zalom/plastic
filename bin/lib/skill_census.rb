@@ -29,20 +29,7 @@ require "set"
 module SkillCensus
   DEFAULT_CUTOFF = "2026-09-02"
 
-  # Attested only (review 32): every entry has occurred in the live files at
-  # least once. Each group cites the intent 304 absorption that produced it.
-  NAME_MAP = {
-    # absorbed into plastic-intent-speccing (intent 304: brainstorming,
-    # grilling, and researching absorbed into speccing)
-    "plastic-intent-brainstorming" => "plastic-intent-speccing",
-    "plastic-brainstorming" => "plastic-intent-speccing",
-    # absorbed into plastic-intent-continuing (intent 304: continuing,
-    # project-continuing, roadmap-continuing, and intent-starting absorbed)
-    "plastic-continuing" => "plastic-intent-continuing",
-    "plastic-project-continuing" => "plastic-intent-continuing",
-    "plastic-roadmap-continuing" => "plastic-intent-continuing",
-    "plastic-intent-starting" => "plastic-intent-continuing",
-  }.freeze
+  NAME_MAP = {}.freeze
 
   # Retired without a successor (attested only).
   RETIRED = [
@@ -52,6 +39,33 @@ module SkillCensus
     "plastic-skill-creating",
     "plastic-skill-evaluating",
     "plastic-humanizer",
+    "plastic-intent-brainstorming",
+    "plastic-brainstorming",
+    "plastic-continuing",
+    "plastic-project-continuing",
+    "plastic-roadmap-continuing",
+    "plastic-intent-starting",
+    "plastic-intent-creating",
+    "plastic-intent-speccing",
+    "plastic-intent-planning",
+    "plastic-intent-executing",
+    "plastic-intent-ending",
+    "plastic-intent-continuing",
+    "plastic-install",
+    "plastic-uninstall",
+    "plastic-update",
+    "plastic-rollback",
+    "plastic-doctor",
+    "plastic-feedback",
+    "plastic-tutorial",
+    "plastic-conventions",
+    "plastic-project-creating",
+    "plastic-roadmap",
+    "plastic-dashboard",
+    "plastic-auto",
+    "plastic-direct",
+    "plastic-agent-advisor",
+    "plastic-releasing",
   ].freeze
 
   # ~/.plastic/scripts/* filenames, never skills (review 3). plastic-lock
@@ -77,10 +91,11 @@ module SkillCensus
 
   # Roster skills this instrument cannot observe through the Skill tool or a
   # typed command, with the mechanism that reaches them instead (review 4).
+  # plastic-agent-advisor and plastic-direct were retired by intent 372 (family 5) into
+  # RETIRED above: their skill directories are gone, so Roster.load never yields a row for
+  # them any more, and a MECHANISMS entry that no row can reach is dead.
   MECHANISMS = {
-    "plastic-agent-advisor" => "dispatched as the plastic-advisor / plastic-faux-advisor subagent, not through the Skill tool",
     "plastic-conventions" => "read as references/*.md from inside other skills",
-    "plastic-direct" => "routed by the SessionStart hook and PLASTIC.md",
     "plastic-feedback" => "routed by the SessionStart hook and PLASTIC.md",
   }.freeze
 
@@ -506,7 +521,8 @@ module SkillCensus
 
     Built = Struct.new(:skills, :retired, :unmapped, :map_coverage, :history, :transcript, keyword_init: true)
 
-    def initialize(history_scan, transcript_scan, roster)
+    def initialize(history_scan, transcript_scan, roster, name_map: NAME_MAP)
+      @name_map = name_map
       @history = history_scan
       @transcript = transcript_scan
       @roster = roster
@@ -536,7 +552,7 @@ module SkillCensus
       @transcript.loads.each { |event| apply.call(event.name, :loads, event.date) }
       @transcript.attributed.each { |name, count| count.times { apply.call(name, :attributed) } }
 
-      map_coverage = NAME_MAP.map do |raw, target|
+      map_coverage = @name_map.map do |raw, target|
         { raw: raw, target: target, observed: rows[target]&.mapped_from&.fetch(raw, 0) || 0 }
       end
 
@@ -557,7 +573,7 @@ module SkillCensus
     def resolve(raw_name, rows)
       return raw_name if rows.key?(raw_name)
 
-      target = NAME_MAP[raw_name]
+      target = @name_map[raw_name]
       return target if target && rows.key?(target)
       return :retired if RETIRED.include?(raw_name)
 

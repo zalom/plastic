@@ -24,23 +24,4 @@ class SpawnBlockTest < Minitest::Test
     refute_match(/codex/i, block, "the spawn block must never name a harness by name: #{block}")
     assert_includes block, "agent: #{RunnerDispatch::SPAWN_AGENT}"
   end
-
-  # --- 6.6: the auto skill says a lead is optional for a graph delivery -----
-
-  def test_auto_skill_says_lead_optional
-    text = File.read(File.join(ROOT, "skills", "auto", "SKILL.md"))
-
-    assert_match(/lead is a choice/i, text, "the auto skill must say a lead is optional")
-    assert_match(/decision node/i, text,
-                 "the auto skill must name graphs with decision nodes as where a lead earns its keep")
-  end
-
-  # --- 6.7: the executing skill names the paste as the dispatch step --------
-
-  def test_executing_skill_names_the_paste
-    text = File.read(File.join(ROOT, "skills", "intent-executing", "SKILL.md"))
-
-    assert_match(/paste/i, text, "the executing skill must name the paste into the Agent tool as the dispatch step")
-    assert_match(/spawn block/i, text, "the executing skill must name the spawn block runner step prints")
-  end
 end

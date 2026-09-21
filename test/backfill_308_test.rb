@@ -63,10 +63,7 @@ class Backfill308Test < Minitest::Test
     refute_match(/exit-2 path/, lib)
   end
 
-  def test_skills_no_longer_describe_the_write_time_gate
-    skill = File.read(File.join(REPO, "skills", "intent-ending", "SKILL.md"))
-    refute_match(/write-time hook/, skill)
-    refute_match(/exit 6/, skill.gsub(/.*retired in 2\.0.*\n/, ""))
-    assert_match(/backfill/i, skill)
-  end
+  # test_skills_no_longer_describe_the_write_time_gate was retired by intent 372
+  # (family 2): skills/intent-ending/SKILL.md is gone, moved into the
+  # `plastic intent end` command.
 end

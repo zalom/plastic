@@ -232,7 +232,7 @@ class CaptureHookTest < Minitest::Test
     assert_equal 0, status.exitstatus, out
     parsed = JSON.parse(out)
     assert_equal "UserPromptSubmit", parsed.dig("hookSpecificOutput", "hookEventName")
-    assert_includes parsed.dig("hookSpecificOutput", "additionalContext"), "plastic-intent-continuing skill workflow"
+    assert_includes parsed.dig("hookSpecificOutput", "additionalContext"), "Run `plastic continue` to resume"
     assert parsed.key?("systemMessage")
   end
 
@@ -243,19 +243,19 @@ class CaptureHookTest < Minitest::Test
     assert_equal 0, status.exitstatus, out
     refute_empty out.strip, "an over-narrowing mutation must fail here readably, not on an empty-string JSON.parse"
     parsed = JSON.parse(out)
-    assert_includes parsed.dig("hookSpecificOutput", "additionalContext"), "plastic-intent-continuing skill workflow"
+    assert_includes parsed.dig("hookSpecificOutput", "additionalContext"), "Run `plastic continue` to resume"
   end
 
   def test_continue_inside_a_sentence_yields_no_cockpit
     out, status = run_hook("continue the roadmap work on 327", session: "sess-continue-sentence")
     assert_equal 0, status.exitstatus, out
-    refute_includes out.to_s, "plastic-intent-continuing skill workflow"
+    refute_includes out.to_s, "Run `plastic continue` to resume"
   end
 
   def test_please_continue_yields_no_cockpit
     out, status = run_hook("please continue", session: "sess-please-continue")
     assert_equal 0, status.exitstatus, out
-    refute_includes out.to_s, "plastic-intent-continuing skill workflow"
+    refute_includes out.to_s, "Run `plastic continue` to resume"
   end
 
   # Under the old /\bcontinue\b/i trigger this fired; under the exact match
@@ -279,13 +279,13 @@ class CaptureHookTest < Minitest::Test
     out, status = run_hook("take it from here please", session: "sess-auto")
     assert_equal 0, status.exitstatus, out
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
-    assert_includes ctx, "Invoke the plastic-auto skill"
+    assert_includes ctx, "Run `plastic auto take ID`"
   end
 
   def test_bare_auto_word_triggers_steer_text
     out, status = run_hook("please run this in auto for me", session: "sess-auto2")
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
-    assert_includes ctx, "Invoke the plastic-auto skill"
+    assert_includes ctx, "Run `plastic auto take ID`"
   end
 
 # --- the prompt key (intent 315a) -------------------------------------------------
@@ -340,7 +340,7 @@ def test_continue_under_prompt_key_yields_cockpit_context
   assert_equal 0, status.exitstatus, out
   parsed = JSON.parse(out)
   assert_includes parsed.dig("hookSpecificOutput", "additionalContext").to_s,
-                  "plastic-intent-continuing skill workflow"
+                  "Run `plastic continue` to resume"
 end
 
 def test_auto_under_prompt_key_yields_steer_text
@@ -348,7 +348,7 @@ def test_auto_under_prompt_key_yields_steer_text
                             "prompt" => "take it from here please")
   assert_equal 0, status.exitstatus, out
   ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext").to_s
-  assert_includes ctx, "Invoke the plastic-auto skill"
+  assert_includes ctx, "Run `plastic auto take ID`"
 end
 
   # 345: after the hint cut, an ordinary prompt with no trigger word takes the
@@ -542,7 +542,7 @@ end
 
     assert_equal 0, status.exitstatus, out
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext").to_s
-    assert_includes ctx, "Invoke the plastic-auto skill",
+    assert_includes ctx, "Run `plastic auto take ID`",
                     "a missing dashboard must not suppress another job's context"
   ensure
     FileUtils.rm_rf(root) if root

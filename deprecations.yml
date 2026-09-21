@@ -1,6 +1,6 @@
 # Plastic deprecation notices
 # Each entry is shown to the user during SessionStart.
-# See the plastic-releasing skill for the full convention.
+# See CONTRIBUTING.md's "Cut a release" section for the full convention.
 #
 # Schema:
 #   id: unique-slug (used for dismissal tracking)

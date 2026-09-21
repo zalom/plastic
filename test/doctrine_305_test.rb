@@ -14,9 +14,8 @@ require "minitest/autorun"
 class Doctrine305Test < Minitest::Test
   # Intent 363 emptied PLASTIC.md of doctrine. It is now a one-page pointer at the
   # `plastic` command line (ruling D43), so the content pins that used to live here
-  # were deleted rather than rewritten. The doctrine they guarded is still in the
-  # conventions skill and its reference chapters, which Batch 2 rehomes into the
-  # commands that need it.
+  # were deleted rather than rewritten. The doctrine they guarded now lives in the
+  # docs/help chapters `plastic help TOPIC` prints (intent 372, family 4).
 
   ROOT = File.expand_path("..", __dir__)
   PLASTIC_MD = File.join(ROOT, "PLASTIC.md")
@@ -25,9 +24,8 @@ class Doctrine305Test < Minitest::Test
   OLD_GUIDE = "what-the-gates-are-telling-you"
   NEW_GUIDE = File.join(GUIDES, "reading-the-ledgers.md")
   CHAPTERS = %w[locks-and-worktrees.md maintenance-and-revisions.md].map do |name|
-    File.join(ROOT, "skills", "conventions", "references", name)
+    File.join(ROOT, "docs", "help", name)
   end
-  EXECUTING = File.join(ROOT, "skills", "intent-executing", "SKILL.md")
   PICK_MODE = File.join(GUIDES, "pick-your-mode.md")
 
   REMOVAL_NOTE = /removed in 2\.0|retired in 2\.0|left with the gates|no longer|not yet/i.freeze
@@ -138,7 +136,7 @@ class Doctrine305Test < Minitest::Test
   end
 
   def test_tutorial_track_2_walks_the_record_not_the_gates
-    body = read(File.join(ROOT, "skills", "tutorial", "references", "track-2-auto.md"))
+    body = read(File.join(ROOT, "docs", "help", "track-2-auto.md"))
     refute_includes body, "Walking the gates"
     refute_match(/the code gate|the create gate|the links gate|the bash gate/, body)
     assert_includes body, "### 3. Walking the record"
@@ -148,7 +146,7 @@ class Doctrine305Test < Minitest::Test
     refute_includes read(File.join(ROOT, "README.md")), "S, M, or L"
   end
 
-  # --- chapters and intent-executing ------------------------------------------
+  # --- chapters ---------------------------------------------------------------
 
   def test_chapters_name_no_retired_hook
     CHAPTERS.each do |path|
@@ -162,10 +160,7 @@ class Doctrine305Test < Minitest::Test
     end
   end
 
-  def test_intent_executing_carries_no_tier_grammar_and_no_gate
-    body = read(EXECUTING)
-    refute_includes body, "at L " # removed in 2.0 (intent 304)
-    refute_includes body, "at S and M" # removed in 2.0 (intent 304)
-    refute_match(/\bgates?\b/i, body, "intent-executing must not tell the executor to wait for a gate")
-  end
+  # test_intent_executing_carries_no_tier_grammar_and_no_gate was retired by intent 372
+  # (family 2): intent-executing moved into `plastic intent step`, a command; its file
+  # is gone, so there is no tier grammar or gate language left in it to check.
 end

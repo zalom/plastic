@@ -44,11 +44,8 @@ class ReportScreenPackagingTest < Minitest::Test
     assert_includes section, "## Summary"
   end
 
-  def test_intent_ending_skill_states_the_plain_wording_convention
-    text = File.read(File.join(REPO, "skills", "intent-ending", "SKILL.md"))
-    assert_includes text, "plain wording"
-    assert text.lines.length <= 300, "skills/intent-ending/SKILL.md must stay at or under 300 lines"
-  end
+  # test_intent_ending_skill_states_the_plain_wording_convention was retired by intent 372
+  # (family 2): intent-ending moved into `plastic intent end`, a command; its file is gone.
 
   # --- row 82/83: core_files registers the two new scripts ---------------------
 

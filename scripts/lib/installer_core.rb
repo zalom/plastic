@@ -12,6 +12,7 @@ require_relative "agent_models"
 require_relative "harness_text"
 require_relative "compact_instructions"
 require_relative "engine_permissions"
+require_relative "qmd_sync"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/rollback) and their tests can run
@@ -45,11 +46,11 @@ class InstallerCore
   CLAUDE_SECTION_END = "<!-- END PLASTIC COMPACT -->"
   CLAUDE_SECTION_RE = /^<!-- BEGIN PLASTIC COMPACT.*?-->\n.*?\n<!-- END PLASTIC COMPACT -->\n?/m
 
-  # Curated essentials plus a pointer to ~/.plastic/PLASTIC.md and the plastic-conventions
-  # skill, injected into ~/.codex/AGENTS.md. Not a slice of PLASTIC.md itself: AGENTS.md is
-  # a shared file Codex merges from multiple sources, so this block stays a small,
-  # hand-curated pointer rather than embedding the core wholesale, and it never drifts
-  # because it only ever points, never duplicates.
+  # Curated essentials plus a pointer to ~/.plastic/PLASTIC.md and the help topics
+  # `plastic help TOPIC` prints, injected into ~/.codex/AGENTS.md. Not a slice of
+  # PLASTIC.md itself: AGENTS.md is a shared file Codex merges from multiple sources,
+  # so this block stays a small, hand-curated pointer rather than embedding the core
+  # wholesale, and it never drifts because it only ever points, never duplicates.
   CODEX_AGENTS_MD_BODY = <<~MD.freeze
     Plastic is installed for this agent. Plastic is intent-driven state management: work runs
     in one of three modes, direct, thinking, or auto (a team drives the runner loop:
@@ -57,12 +58,9 @@ class InstallerCore
 
     Standing rules:
     - The command line is ~/.plastic/PLASTIC.md. Read it and follow it exactly. The
-      conventions live in ~/.agents/skills/plastic-conventions/, a chapter from its
-      references/ on demand. Both are generated and overwritten on Plastic updates,
-      so never edit them.
-    - Operational procedures are installed as skills under ~/.agents/skills/ (each
-      plastic-<name>/SKILL.md). Invoke one explicitly as $plastic-<name> (for example
-      $plastic-doctor), or let Codex pick one implicitly by matching its description.
+      conventions are chapters `plastic help TOPIC` prints on demand. Both are
+      generated and overwritten on Plastic updates, so never edit them.
+    - Operational procedures are the `plastic` command line itself, run directly.
     - Intents, specs, plans, checklists, and outcomes live under ~/.plastic/, never in
       the project tree.
 
@@ -365,12 +363,24 @@ class InstallerCore
     end
   end
 
+  # `plastic help TOPIC` (intent 372, family 4) reads docs/help/TOPIC.md from
+  # package_root the same way it reads a command's file, so the chapter has to
+  # ship the same way a template does: glob-derived, one file added and it
+  # installs with no diff here.
+  def help_files
+    Dir.glob(File.join(package_root, "docs", "help", "*.md")).each_with_object({}) do |path, acc|
+      rel = File.join("docs", "help", File.basename(path))
+      acc[rel] = rel
+    end
+  end
+
   # Files copied into ~/.plastic on install/update. Every verb script + the shared lib
   # must be here so the installed ~/.plastic/scripts copy is self-complete (sync-guarded
   # by install_sync_test). The templates and screen-kind halves are glob-derived
   # (template_files, screen_files above); the rest stays a hand-written literal.
   def core_files
     hand_registered_files.merge(template_files).merge(hook_files).merge(screen_files).merge(cli_files)
+      .merge(help_files)
   end
 
   def hand_registered_files
@@ -677,7 +687,7 @@ class InstallerCore
       # Plastic: Agent Instructions
 
       Read `PLASTIC.md` in this directory for the core conventions; deeper doctrine lives
-      in the `plastic-conventions` skill's chapters. Follow it exactly. Never modify it:
+      in the chapters `plastic help TOPIC` prints. Follow it exactly. Never modify it:
       it is overwritten on plugin updates.
 
       This file (`AGENTS.md`) is where project-specific rules live.
@@ -686,6 +696,25 @@ class InstallerCore
     MD
 
     puts "  \u{2705} Store bootstrapped"
+  end
+
+  # Intent 372 (former install skill, lines 119-127): `~/.plastic` becomes its own
+  # git repository the first time it exists, so `update` can later commit the core
+  # files it re-syncs. Leaves an existing repository alone.
+  def git_init_if_absent(runner: ->(cmd) { system(*cmd) })
+    FileUtils.mkdir_p(plastic_home)
+    return if File.directory?(File.join(plastic_home, ".git"))
+    runner.call(["git", "-C", plastic_home, "init", "-q"])
+  end
+
+  # Intent 372 (former install skill, lines 167-179): register every Plastic store as
+  # a QMD collection. QmdSync.register already no-ops per store when QMD is absent;
+  # the detector is injected too so a run stays hermetic on a machine that happens to
+  # have the real `qmd` binary on PATH.
+  def register_with_qmd(runner: QmdSync.default_runner, detector: QmdSync.method(:detect))
+    QmdSync.enumerate_stores(plastic_home: plastic_home).each do |store|
+      QmdSync.register(collection: store[:collection], dir: store[:dir], runner: runner, detector: detector)
+    end
   end
 
   # --- Agent adapters ---

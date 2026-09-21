@@ -592,7 +592,7 @@ def render_continue(records)
   out.concat(matrix(open, scope_tag: true))
   out << ""
   out << LEGEND
-  out << "ask    for the <slug> project board  ·  plastic-auto  (works the dispatchable queue)"
+  out << "ask    for the <slug> project board  ·  plastic auto take ID  (works the dispatchable queue)"
   out.join("\n") + "\n"
 end
 
