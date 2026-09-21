@@ -7,6 +7,7 @@
 | `plastic help [COMMAND\|TOPIC] [--json]` | Lists the commands and the help topics, shows one command's usage, or prints one topic. |
 | `plastic doctor [--core] [--store WHICH]` | Checks the install and the stores. |
 | `plastic feedback "TITLE"` | Saves a problem report from standard input and prints a link that files it. |
+| `plastic hook EVENT` | Runs one harness hook event through its launcher and returns the launcher exit status. The agent harness calls it, not you. |
 | `plastic version [--json]` | Prints the installed Plastic version. |
 | `plastic status [--json]` | Shows active work in every store. |
 | `plastic continue [--project SLUG] [--json]` | Shows where one project stands and what runs next. |
