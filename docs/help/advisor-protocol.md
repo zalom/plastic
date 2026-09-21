@@ -2,16 +2,13 @@
 
 *Companion to the Operating Manual. How to use Fable as your advisor and planner.*
 
-*Adapted for Plastic (intent 185): this is the shipped reference copy the
-`plastic-agent-advisor` skill teaches from. Two named agents carry it,
+*Adapted for Plastic (intent 185): this is the shipped reference copy, reached with
+`plastic help advisor-protocol`. Two named agents carry it,
 `plastic-primary-advisor` (Primary Advisor) and `plastic-secondary-advisor`
 (Secondary Advisor, the explicit escalation); the
 answer shape below shapes the brief and the answer on whichever one you
-dispatch, never which file to pick. The
-`plastic-agent-advisor` skill reads harness-scoped config
-(`advisor.claude.default`, falling back to `plastic-primary-advisor`) to route your
-consultation automatically; name a
-specific advisor in your request to override it. A frontier model rewards a
+dispatch, never which file to pick. There is no automatic routing between them: the user or
+the main session dispatches one deliberately, by naming it. A frontier model rewards a
 single, well-formed one-shot brief more than a back-and-forth, so front-load
 everything section 3 below asks for before you send. The rest of this
 document is the owner's protocol, unchanged.*
