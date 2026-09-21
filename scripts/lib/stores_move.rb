@@ -13,10 +13,6 @@ module Plastic
     PATH_COLUMNS = {"knowledge_graph.db" => %w[doc path], "references.db" => %w[sqlar name]}.freeze
     LOCKS = "{store,projects/*/store}/*/delivery.lock"
 
-    def self.call(...)
-      new(...).call
-    end
-
     def initialize(home, qmd_index:, dry_run: false)
       @home = home
       @qmd_index = qmd_index

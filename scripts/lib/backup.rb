@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "fileutils"
 require "digest"
 require "json"
 require "rubygems"
@@ -56,7 +57,7 @@ module Plastic
       File.rename(draft, archive)
       archive
     ensure
-      File.delete(draft) if draft && File.exist?(draft)
+      FileUtils.rm_f(draft.to_s)
     end
   end
 end

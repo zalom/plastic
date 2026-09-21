@@ -145,7 +145,7 @@ class InstallerCoreTest < Minitest::Test
   # be require_relative'd but never installed, raising a LoadError in the live hook.
   def test_every_lib_file_is_in_the_manifest
     manifest = @core.core_files
-    lib_files = Dir[File.join(WORKTREE, "scripts/lib/*.rb")].map do |path|
+    lib_files = Dir[File.join(WORKTREE, "scripts/lib/**/*.rb")].map do |path|
       path.sub("#{WORKTREE}/", "")
     end
     refute_empty lib_files, "expected scripts/lib/*.rb files to exist in the package"

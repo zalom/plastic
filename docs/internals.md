@@ -692,6 +692,25 @@ savepoint's `Commit` ledger has entries and no checklist item is ticked.
 `scripts/lib/spec_header.rb` is the only parser of the `Tier:` and `Settled:` lines at the (removed in 2.0, intent 304)
 top of spec.md. `Savepoint.savepoint_tier` delegates to it. (removed in 2.0, intent 304)
 
+## store layout and the stores move (intent 370)
+
+`scripts/lib/store_layout.rb` is the one place that turns a home and a slug into a store path.
+`Plastic::StoreLayout.moved?(home)` is true when `stores/` exists. Every script asks it for the
+global root, a project root and the list of project roots, so no script joins `"store"` or
+`"projects"` by hand.
+
+`scripts/lib/stores_move.rb` does the move for `plastic migrate stores`. It works in this order:
+
+1. It refuses when `stores/` exists, when a fresh `delivery.lock` is held, or when the copy
+   directory exists.
+1. It copies the home to `~/.plastic-before-stores-move`.
+1. It moves `store`, `INDEX.md` and `roadmaps` to `stores/global/`, and every child of
+   `projects/` to `stores/`.
+1. It rewrites the old paths in `config.yml`, in the QMD `index.yml`, and in the path columns
+   of `knowledge_graph.db` and `references.db`.
+
+The command makes no commit, and it leaves the copy for the owner to remove.
+
 ## project store provisioning
 
 A project could be registered in `projects.yml` yet have no store on disk, which

@@ -2,6 +2,7 @@
 
 require_relative "../test_helper"
 require "tmpdir"
+require "json"
 require_relative "../lib/cli_fixture"
 require_relative "../../scripts/lib/cli"
 require_relative "../../scripts/doctor"
@@ -176,6 +177,21 @@ class CliMigrateCommandTest < Minitest::Test
 
     assert_equal 0, plastic("migrate", "stores")
     refute_includes @fixture.printed, "index.yml"
+  end
+
+  def test_a_home_with_no_projects_directory_still_moves
+    FileUtils.rm_rf(File.join(home, "projects"))
+
+    assert_equal 0, plastic("migrate", "stores")
+    assert_path_exists File.join(home, "stores", "global", "store")
+  end
+
+  def test_search_honors_project_after_the_move
+    plastic("sync")
+    plastic("migrate", "stores")
+    plastic("search", "heron", "--project", "global", "--json")
+
+    assert_equal ["stores/global/store/#{SPEC}"], JSON.parse(@fixture.printed)["result"].keys
   end
 
   def test_the_bare_group_lists_the_stores_subcommand

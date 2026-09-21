@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "fileutils"
 require_relative "sqlite"
 require_relative "index_entry"
 require_relative "store_discovery"
@@ -20,7 +21,7 @@ module Plastic
 
     def self.build(home)
       draft = "#{path(home)}.tmp"
-      File.delete(draft) if File.exist?(draft)
+      FileUtils.rm_f(draft)
       rows = StoreDiscovery.discover(home)[:stores].flat_map { |store| intents(store) + ledger(store) }
       Sqlite.call(draft, [SCHEMA, "BEGIN;", *rows, "COMMIT;"].join("\n"))
       File.rename(draft, path(home))

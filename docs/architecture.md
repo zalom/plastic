@@ -59,6 +59,28 @@ Each store has exactly one `INDEX.md` and a `store/` folder holding one director
 
 The rule of thumb: if the work changes a specific project's code it is tactical and belongs in that project's store; otherwise it is strategic and belongs in the global store. When in doubt, global. Stores are personal and local; the global store is git-tracked locally but never pushed to a remote.
 
+### The stores layout after the move
+
+`plastic migrate stores` moves every store under one directory. Each store root then has the
+same shape, and the global store is the root named `global`:
+
+```
+~/.plastic/stores/global/
+  INDEX.md
+  roadmaps/
+  store/
+    ID--slug/
+
+~/.plastic/stores/{slug}/
+  INDEX.md
+  roadmaps/
+  store/
+    ID--slug/
+```
+
+Plastic reads this layout when `~/.plastic/stores/` exists and reads the earlier layout when it
+does not. A fresh install still creates the earlier layout.
+
 ### intent directory contents
 
 Every intent is a folder named `ID--slug/`. Only the intent file is required; every other artifact appears once its lifecycle stage is reached.

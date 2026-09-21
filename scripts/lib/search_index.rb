@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "fileutils"
 require_relative "sqlite"
 
 module Plastic
@@ -23,12 +24,12 @@ module Plastic
     def self.build(home)
       files = files(home)
       draft = "#{path(home)}.tmp"
-      File.delete(draft) if File.exist?(draft)
+      FileUtils.rm_f(draft)
       Sqlite.call(draft, [SCHEMA, "BEGIN;", *files.map { |file| insert(home, file) }, "COMMIT;", FINISH].join("\n"))
       File.rename(draft, path(home))
       files.size
     ensure
-      File.delete(draft) if draft && File.exist?(draft)
+      FileUtils.rm_f(draft.to_s)
     end
 
     def self.insert(home, file)

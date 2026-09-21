@@ -50,7 +50,9 @@ module Plastic
         def prefix
           return "" unless options[:project]
 
-          (scope.slug == Scope::GLOBAL) ? "store/" : "projects/#{scope.slug}/"
+          home = scope.plastic_home
+          root = (scope.slug == Scope::GLOBAL) ? StoreLayout.global_store(home) : StoreLayout.project_root(home, scope.slug)
+          "#{root.delete_prefix("#{home}/")}/"
         end
       end
     end

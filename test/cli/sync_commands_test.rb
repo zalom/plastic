@@ -175,6 +175,27 @@ class CliSyncCommandsTest < Minitest::Test
     assert_includes @fixture.warned, "plastic sync"
   end
 
+  def test_sync_on_a_broken_database_exits_one
+    plastic("sync")
+    File.write(File.join(home, "knowledge_graph.db"), "not a database")
+
+    assert_equal 1, plastic("sync")
+  end
+
+  def test_checkout_on_a_broken_database_exits_one
+    plastic("sync")
+    File.write(File.join(home, "references.db"), "not a database")
+
+    assert_equal 1, plastic("checkout")
+  end
+
+  def test_a_store_with_no_index_has_no_intent_row
+    File.delete(File.join(home, "projects", "acme", "INDEX.md"))
+    plastic("sync")
+
+    assert_equal [{"n" => 0}], sql("work_graph.db", "SELECT count(*) AS n FROM intent WHERE store = 'acme'")
+  end
+
   def test_the_intent_table_fills_from_the_index_files
     plastic("sync")
 
