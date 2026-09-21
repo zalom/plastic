@@ -235,12 +235,34 @@ class CliIntentCommandsTest < Minitest::Test
 
   # --- intent new ----------------------------------------------------------------
 
-  def test_new_runs_new_intent_then_index_projection
+  def new_fresh_idea
+    FileUtils.mkdir_p(File.join(store, "373--fresh-idea"))
     command("intent new", "a fresh idea", "--slug", "fresh-idea")
+  end
 
-    assert_equal [script("new-intent"), script("index-projection")], @calls.map(&:first)
+  def test_new_runs_new_intent
+    new_fresh_idea
+
+    assert_equal [script("new-intent")], @calls.map(&:first)
     assert_equal ["--store", store, "--intent", "a fresh idea", "--slug", "fresh-idea"], @calls[0].last
-    assert_equal [@fixture.plastic_home, "--write"], @calls[1].last
+  end
+
+  def test_new_files_the_intent_under_active
+    new_fresh_idea
+
+    index = File.read(File.join(@fixture.plastic_home, "INDEX.md"), encoding: "UTF-8")
+
+    assert_includes index, "## Active\n- [373 \u2014 a fresh idea](store/373--fresh-idea/373--fresh-idea.md)\n"
+  end
+
+  def test_new_names_the_new_id_in_its_next_step
+    new_fresh_idea
+
+    assert_includes @fixture.printed, "next: plastic intent spec 373"
+  end
+
+  def test_new_with_no_directory_afterwards_exits_one
+    assert_equal 1, command("intent new", "a fresh idea", "--slug", "fresh-idea")
   end
 
   def test_new_passes_through_parent_sources_and_tags
@@ -255,26 +277,14 @@ class CliIntentCommandsTest < Minitest::Test
     assert_equal 2, command("intent new", "--slug", "fresh-idea")
   end
 
-  def test_new_without_a_slug_exits_two
-    assert_equal 2, command("intent new", "a fresh idea")
+  def test_new_without_a_slug_takes_it_from_the_first_five_words
+    command("intent new", "Move the Plastic skills to commands, family by family")
+
+    assert_equal "move-the-plastic-skills-to", @calls[0].last.last
   end
 
   def test_new_with_a_failing_new_intent_exits_one
     assert_equal 1, command("intent new", "a fresh idea", "--slug", "fresh-idea", status: 9)
-  end
-
-  def test_new_with_a_failing_index_projection_exits_one
-    statuses = [0, 5]
-    runner = lambda do |path, arguments|
-      @calls << [path, arguments]
-      statuses.shift
-    end
-    require File.expand_path("../../scripts/lib/cli/commands/intent_new", __dir__)
-    status = Plastic::CLI::Commands::IntentNew.call(["a fresh idea", "--slug", "fresh-idea"],
-      directory: "/nowhere", runner: runner, **@fixture.streams)
-
-    assert_equal 1, status
-    assert_includes @fixture.warned, "index-projection exited 5"
   end
 
   # --- the base class: an id that names no intent -------------------------------

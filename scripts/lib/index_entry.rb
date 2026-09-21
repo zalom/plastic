@@ -10,6 +10,8 @@
 # plain hyphen as the id/title separator on READ; every WRITE still emits the
 # real em dash (D10). The separator is built from the codepoint, not a
 # literal byte, so this file stays em-dash free.
+require_relative "atomic_write"
+
 module IndexEntry
   module_function
 
@@ -20,6 +22,13 @@ module IndexEntry
   # Returns a MatchData (captures: 1 = id, 2 = title, 3 = link) or nil.
   def match(line)
     line.to_s.match(ENTRY_RE)
+  end
+
+  def add_active(index_path, dir_name:, title:)
+    id = dir_name.split("--").first
+    line = "- [#{id} #{EM_DASH} #{title}](store/#{dir_name}/#{dir_name}.md)\n"
+    text = File.read(index_path, encoding: "UTF-8")
+    AtomicWrite.write(index_path, text.sub(/^## Active\n/) { |heading| heading + line })
   end
 
   # True iff the intent is Active in its store's INDEX.md, which lives at the

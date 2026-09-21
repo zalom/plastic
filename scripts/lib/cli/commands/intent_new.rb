@@ -2,16 +2,14 @@
 
 require_relative "../command"
 require_relative "../legacy"
+require_relative "../../index_entry"
 
-# `plastic intent new` - scaffolds a new intent (still `new-intent`, run
-# through Legacy) and folds it into INDEX.md (`index-projection --write`).
-# There is no id yet, so this is the one intent command that does not resolve
-# one through Scope; it works on the store directly.
 module Plastic
   class CLI
     module Commands
       class IntentNew < Command
-        USAGE_LINE = 'plastic intent new "LINE" --slug SLUG [--parent ID] [--sources IDS] [--tags TAGS] [--json]'
+        USAGE_LINE = 'plastic intent new "LINE" [--slug SLUG] [--parent ID] [--sources IDS] [--tags TAGS] [--json]'
+        PASSED_THROUGH = %i[parent sources tags].freeze
 
         def initialize(argv, runner: nil, **streams)
           super(argv, **streams)
@@ -20,15 +18,12 @@ module Plastic
 
         def call
           raise Usage, "the one-line intent statement is required" if line.to_s.empty?
-          raise Usage, "--slug is required" if options[:slug].to_s.empty?
 
-          status = legacy.run("new-intent", *new_intent_arguments)
+          status = Legacy.new(env: @env, runner: @runner).run("new-intent", *new_intent_arguments)
           raise Failure, "new-intent exited #{status}" unless status.zero?
 
-          status = legacy.run("index-projection", scope.root, "--write")
-          raise Failure, "index-projection exited #{status}" unless status.zero?
-
-          @output.next_step("plastic status", because: "the new intent's id is printed above")
+          IndexEntry.add_active(scope.index_path, dir_name: dir_name, title: line)
+          @output.next_step("plastic intent spec #{id}", because: "a new intent has no specification yet")
         end
 
         private
@@ -37,23 +32,29 @@ module Plastic
           arguments.first
         end
 
+        def slug
+          options[:slug] || line.downcase.scan(/[a-z0-9]+/).first(5).join("-")
+        end
+
+        def dir_name
+          newest = Dir.glob(File.join(scope.store, "*--#{slug}")).max_by { |path| File.mtime(path) }
+          raise Failure, "new-intent made no directory for #{slug}" unless newest
+
+          File.basename(newest)
+        end
+
+        def id
+          dir_name.split("--").first
+        end
+
         def switches(parser)
           parser.on("--slug SLUG") { |v| @options[:slug] = v }
-          parser.on("--parent ID") { |v| @options[:parent] = v }
-          parser.on("--sources IDS") { |v| @options[:sources] = v }
-          parser.on("--tags TAGS") { |v| @options[:tags] = v }
+          PASSED_THROUGH.each { |key| parser.on("--#{key} VALUE") { |v| @options[key] = v } }
         end
 
         def new_intent_arguments
-          args = ["--store", scope.store, "--intent", line, "--slug", options[:slug]]
-          args += ["--parent", options[:parent]] if options[:parent]
-          args += ["--sources", options[:sources]] if options[:sources]
-          args += ["--tags", options[:tags]] if options[:tags]
-          args
-        end
-
-        def legacy
-          @legacy ||= Legacy.new(env: @env, runner: @runner)
+          given = PASSED_THROUGH.select { |key| options[key] }
+          ["--store", scope.store, "--intent", line, "--slug", slug] + given.flat_map { |key| ["--#{key}", options[key]] }
         end
       end
     end

@@ -18,7 +18,7 @@ module Plastic
           end
 
           @output.row("usage", USAGE_LINE)
-          subcommands.each { |name, summary| @output.row(name, summary) }
+          subcommands.each { |name, (_file, _const, summary)| @output.row(name, summary) }
           @output.next_step("plastic intent show ID", because: "an id is the one thing every other subcommand needs")
         end
 
