@@ -32,8 +32,8 @@ deliberately; the auto pipeline never dispatches them.
    software and AI engineering concepts those rest on; a gap is a design finding to raise, not
    a word to coin.
 3. **Have the plan reviewed before code** - dispatch one adversarial plan reviewer on
-   the `plastic-auto` skill's `references/plan-reviewer-prompt.md`; merge every finding into the spec, the
-   matrix, and the tests.
+   `plastic help plan-reviewer-prompt`; merge every finding into the spec, the matrix, and
+   the tests.
 4. **Dispatch one executor, tests first** - the executor commits the matrix's tests red, then
    builds, then drives the full suite green; you verify tick-versus-diff at the
    post-execution review and again before the merge. A mismatch is a review finding, not a
@@ -66,11 +66,10 @@ dispatch call's model parameter, alongside the spawn-preamble live-state injecti
 
 Once per delivery, at How with the plan and the matrix ready and before any code, brief the
 human in EM-to-CTO voice: impact first, the one risk that matters, then the call. In auto mode
-the briefing informs and does not wait. The shape lives in
-`skills/auto/references/human-report-contract.md`. This is separate from the intent 74 report
-contract (`skills/auto/references/agent-report-contract.md`), the internal structured handoff a
-dispatched agent sends back to you; you consume that report to write the human briefing, and
-the two never merge.
+the briefing informs and does not wait. The shape lives in `plastic help
+human-report-contract`. This is separate from the intent 74 report contract (`plastic help
+agent-report-contract`), the internal structured handoff a dispatched agent sends back to you;
+you consume that report to write the human briefing, and the two never merge.
 
 ## Constraints
 
