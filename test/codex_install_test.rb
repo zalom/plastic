@@ -640,7 +640,7 @@ class CodexInstallTest < Minitest::Test
 
     checks = doctor_for(@codex_home).check_agent_registration("codex")
 
-    assert checks.any? { |c| c[:name] == "skills_exist" }, "generic skills check must still run for codex"
+    assert checks.any? { |c| c[:name] == "stray_skills" }, "generic skills check must still run for codex"
     assert checks.any? { |c| c[:name] == "codex_agents_toml" }, "the codex TOML agents check must run"
     refute checks.any? { |c| c[:name] == "agents_exist" },
       "the flat .md agents check must no longer apply to codex"

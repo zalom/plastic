@@ -20,8 +20,8 @@ class PlasticMdBatch0ConventionsTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   PLASTIC_MD = File.join(ROOT, "PLASTIC.md")
   # The gates and dispatch chapters were removed in 2.0 (intent 304); the spawn-preamble
-  # paragraph moved into the auto skill's agent-architecture reference.
-  ARCHITECTURE_REF = File.join(ROOT, "skills", "auto", "references", "agent-architecture.md")
+  # paragraph now lives in docs/help/agent-architecture.md.
+  ARCHITECTURE_REF = File.join(ROOT, "docs", "help", "agent-architecture.md")
 
   def normalized(path)
     File.read(path).gsub(/\s+/, " ")

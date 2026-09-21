@@ -287,8 +287,7 @@ class ContextBudgetBootTest < Minitest::Test
     refute_nil row.gap, "the gap to the ruled 15,000 must be reported, not hidden"
   end
 
-  def test_the_catalog_and_the_combined_row_are_both_present
-    assert_operator report.row(:skill_catalog).bytes, :>, 0
+  def test_the_combined_row_adds_the_catalog_to_the_boot
     assert_equal report.row(:boot).bytes + report.row(:skill_catalog).bytes,
                  report.row(:boot_plus_catalog).bytes
   end

@@ -1928,8 +1928,7 @@ end
   # skill directory under agent_dir/skills that has NO corresponding entry in the
   # current install manifest is a stray (e.g. a leftover old-name copy the
   # install/update prune should have removed, or one it never saw because the
-  # manifest predates it). Complements flat_skills_check (which only confirms at
-  # least one skill exists). Defers to the manifest check when the manifest itself
+  # manifest predates it). Defers to the manifest check when the manifest itself
   # is missing or malformed, so the two checks never double-report the same gap.
 
   # Auto-mode role agents install as <dir>/agents/plastic-*.md. Pass if at least

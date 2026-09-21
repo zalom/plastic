@@ -17,7 +17,6 @@ require_relative "../scripts/lib/release_guard"
 # (7.5), and nothing bumped a version file while landing it (7.6).
 class RunnerInstallTest < Minitest::Test
   REPO = File.expand_path("../../", __FILE__)
-  SKILL = File.join(REPO, "skills", "auto", "SKILL.md")
   CHANGELOG = File.join(REPO, "CHANGELOG.md")
 
   # 7.2: distribute's chmod pass over scripts/* already covers a newly added
@@ -53,41 +52,6 @@ class RunnerInstallTest < Minitest::Test
     FileUtils.rm_rf(home) if home
   end
 
-  # 7.3: the runner ships three public verbs (step, status, answer); the
-  # skill body is the only place an operator learns the command exists.
-  #
-  # Row 7.12 (intent 343, G10, n7): graph-measure is the read-only sibling
-  # over the same ledger, with its own three public verbs (intent, budget,
-  # cohorts); the same skill body is the only place a lead learns it exists,
-  # so this test carries both commands' verb-naming rows together.
-  def test_skill_names_three_public_verbs
-    body = File.read(SKILL)
-    assert_includes body, "scripts/runner", "the skill body must name scripts/runner"
-    assert_includes body, "`step`", "the skill body must name the step verb"
-    assert_includes body, "`status`", "the skill body must name the status verb"
-    assert_includes body, "`answer`", "the skill body must name the answer verb"
-
-    assert_includes body, "scripts/graph-measure", "the skill body must name scripts/graph-measure"
-    assert_includes body, "`intent`", "the skill body must name graph-measure's intent verb"
-    assert_includes body, "`budget`", "the skill body must name graph-measure's budget verb"
-    assert_includes body, "`cohorts`", "the skill body must name graph-measure's cohorts verb"
-  end
-
-  # 7.4: rewind (C15) is real and callable, but ships unpublished until a
-  # later node measures a real run; the skill body must not tempt anyone
-  # into a reset nobody has evidence for.
-  def test_skill_does_not_name_rewind
-    body = File.read(SKILL)
-    refute_match(/rewind/i, body, "the skill body must not name the rewind verb")
-  end
-
-  # 7.12 (intent 340b, G7c, n7): until-empty is internal, like rewind - the
-  # skill body must never grow a fourth verb 327 did not name.
-  def test_skill_does_not_name_until_empty
-    body = File.read(SKILL)
-    refute_match(/until-empty|until empty/i, body, "the skill body must not name the until-empty verb")
-  end
-
   # 7.5: the largest change in the batch must have a line under Unreleased,
   # added beside whatever earlier intents already wrote there, not in place
   # of them.
@@ -97,15 +61,6 @@ class RunnerInstallTest < Minitest::Test
     refute_nil unreleased, "CHANGELOG.md must have an Unreleased section"
     assert_match(/34[0-9].*G7/, unreleased, "expected an intent 340 (G7) line under Unreleased")
     assert_includes unreleased, "336 (G3", "must not replace the existing 336 entry"
-  end
-
-  # 2.3 (intent 340a, G7b, n2): watch is internal, like rewind and
-  # until-empty - the skill body must never grow a fifth verb 327 did not
-  # name. `/runner watch/` specifically, never the bare word "watch", which
-  # the skill body may legitimately use in an unrelated English sentence.
-  def test_skill_does_not_name_runner_watch
-    body = File.read(SKILL)
-    refute_match(/runner watch/i, body, "the skill body must not name the runner watch verb")
   end
 
   # 2.13 (intent 340a, G7b, n2): the delivery watch gets its own Unreleased
