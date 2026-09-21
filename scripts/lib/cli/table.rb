@@ -14,6 +14,7 @@ module Plastic
       "doctor" => ["commands/doctor", "Doctor", "Diagnose Plastic installation health"],
       "feedback" => ["commands/feedback", "Feedback", "File a feedback report, body on standard input"],
       "help" => ["commands/help", "Help", "List the commands and help topics, or show one usage"],
+      "hook" => ["commands/hook", "Hook", "Run one harness hook event through its launcher"],
       "install" => ["commands/install", "Install", "Install Plastic into this machine's agents"],
       "intent" => ["commands/intent", "Intent", "List the intent subcommands"],
       "intent answer" => ["commands/intent_answer", "IntentAnswer", "Answer an intent's needs_decision node"],
