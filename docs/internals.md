@@ -1725,18 +1725,25 @@ step, and the package reached the registry only the next morning after a manual 
 from a detached checkout of the tag. `.github/workflows/publish.yml` closes that failure mode
 structurally: no npm token exists anywhere, on any machine or in any GitHub secret.
 
-**The mechanism.** A pushed `v*` tag, or a `workflow_dispatch` naming an existing tag, runs a
-job granted `id-token: write`. The npm CLI detects the OIDC environment, fetches a short-lived
+**The trigger (intent 376).** A push to `alpha`, `beta` or `main` is the release. The workflow
+reads the version from `package.json`. When the tag for that version exists, it stops. Otherwise
+it runs the suite and the guard, packs one archive, creates the tag and the GitHub release
+with `plastic.tgz` attached, and publishes that same archive to npm. To release, change the
+version in the three version files and push the branch. `install.sh` at the repository root
+downloads the archive for a channel, unpacks it under `~/.local/share/plastic` and links
+`~/.local/bin/plastic`.
+
+**The mechanism.** The publish job is granted `id-token: write`. The npm CLI detects the OIDC environment, fetches a short-lived
 token scoped to this repository and this exact workflow filename, and presents it to the
 registry instead of an `_authToken`. The registry compares the token's claims against the
 trusted publisher registered on npmjs.com and publishes only on an exact match. The trust is
-pinned to the workflow file's name, not to a person: anyone who can push a matching tag can
+pinned to the workflow file's name, not to a person: anyone who can push to a channel branch can
 publish, and renaming `publish.yml` silently breaks every future release, which is why a test
 pins the path.
 
 **The guard.** `scripts/release-check`, a thin CLI over `scripts/lib/release_guard.rb`, runs
-before the publish step and is the only gate in the job. It asserts the pushed (or dispatched) tag equals
-`v` plus the version in `package.json`, that the three repo version files agree
+before the publish step. It asserts that the pushed branch publishes the channel the version
+suffix names (`alpha`, `beta`, or `main` for a version with no suffix), that the three repo version files agree
 (`ReleaseGuard.check`, unchanged from the stable-cut guard the releasing skill already runs),
 and that the runner's npm meets the 11.5.1 floor OIDC requires, comparing version segments
 numerically so `11.10.0` does not lose to `11.5.1` as a string. It writes the derived dist-tag

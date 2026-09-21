@@ -168,6 +168,59 @@ class ReleaseCheckCliTest < Minitest::Test
     end
   end
 
+  def run_for_branch(root:, branch:, github_output: nil)
+    args = ["--branch", branch, "--npm-version", "11.5.1", "--root", root]
+    args += ["--github-output", github_output] if github_output
+    Open3.capture3(RbConfig.ruby, SCRIPT, *args)
+  end
+
+  def test_accepts_a_branch_that_matches_the_version_suffix
+    Dir.mktmpdir do |dir|
+      build_repo(dir, version: "2.0.0-alpha.19")
+      _out, err, status = run_for_branch(root: dir, branch: "alpha")
+
+      assert_predicate status, :success?, err
+    end
+  end
+
+  def test_accepts_main_for_a_version_with_no_suffix
+    Dir.mktmpdir do |dir|
+      build_repo(dir, version: "2.0.0")
+      _out, err, status = run_for_branch(root: dir, branch: "main")
+
+      assert_predicate status, :success?, err
+    end
+  end
+
+  def test_rejects_a_branch_that_does_not_publish_the_version_suffix
+    Dir.mktmpdir do |dir|
+      build_repo(dir, version: "2.0.0-alpha.19")
+      _out, err, status = run_for_branch(root: dir, branch: "main")
+
+      assert_equal 1, status.exitstatus
+      assert_includes err, "branch main publishes latest, and version 2.0.0-alpha.19 is alpha"
+    end
+  end
+
+  def test_rejects_a_branch_that_publishes_nothing
+    Dir.mktmpdir do |dir|
+      build_repo(dir, version: "2.0.0-alpha.19")
+      _out, _err, status = run_for_branch(root: dir, branch: "feature")
+
+      assert_equal 1, status.exitstatus
+    end
+  end
+
+  def test_writes_the_tag_to_github_output
+    Dir.mktmpdir do |dir|
+      build_repo(dir, version: "2.0.0-alpha.19")
+      output_path = File.join(dir, "github_output")
+      run_for_branch(root: dir, branch: "alpha", github_output: output_path)
+
+      assert_includes File.read(output_path), "tag=v2.0.0-alpha.19"
+    end
+  end
+
   def test_reports_usage_for_an_unknown_flag
     Dir.mktmpdir do |dir|
       build_repo(dir, version: "2.0.0-alpha.19")

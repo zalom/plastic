@@ -2,13 +2,8 @@ name: publish
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [alpha, beta, main]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Existing version tag to publish, for example v2.0.0-alpha.19'
-        required: true
 
 permissions:
   contents: read
@@ -18,19 +13,39 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  unreleased:
+    name: Is this version unreleased
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Name the tag when it does not exist yet
+        id: version
+        run: |
+          tag="v$(ruby -rjson -e 'puts JSON.parse(File.read("package.json")).fetch("version")')"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "$tag is already released, nothing to publish"
+          else
+            echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          fi
+
   publish:
     name: Publish to npm
+    needs: unreleased
+    if: needs.unreleased.outputs.tag != ''
     runs-on: ubuntu-latest
     environment:
       name: npm
       url: https://www.npmjs.com/package/@zalom/plastic
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
 
       - uses: ruby/setup-ruby@v1
         with:
@@ -45,15 +60,30 @@ jobs:
       - name: Install an npm that speaks OIDC
         run: npm install -g npm@latest
 
-      - name: Guard the tag, the version files, and the npm floor
+      - name: Run the full suite
+        run: ruby bin/test
+
+      - name: Guard the branch, the version files, and the npm floor
         id: guard
         env:
-          TAG: ${{ inputs.tag || github.ref_name }}
+          BRANCH: ${{ github.ref_name }}
         run: >
           ruby scripts/release-check
-          --tag "$TAG"
+          --branch "$BRANCH"
           --npm-version "$(npm --version)"
           --github-output "$GITHUB_OUTPUT"
 
+      - name: Build the archive
+        run: npm pack && mv zalom-plastic-*.tgz plastic.tgz
+
+      - name: Create the tag and the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.guard.outputs.tag }}
+          STABLE: ${{ steps.guard.outputs.dist_tag == 'latest' }}
+        run: |
+          if [ "$STABLE" = "true" ]; then kind="--latest"; else kind="--prerelease"; fi
+          gh release create "$TAG" plastic.tgz --target "$GITHUB_SHA" --generate-notes "$kind"
+
       - name: Publish to npm
-        run: npm publish --provenance --access public --tag "${{ steps.guard.outputs.dist_tag }}"
+        run: npm publish plastic.tgz --provenance --access public --tag "${{ steps.guard.outputs.dist_tag }}"
