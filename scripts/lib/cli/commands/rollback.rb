@@ -1,4 +1,3 @@
-# encoding: UTF-8
 # frozen_string_literal: true
 
 require_relative "installer_verb"
@@ -9,11 +8,12 @@ module Plastic
   class CLI
     module Commands
       class Rollback < InstallerVerb
-        USAGE_LINE = "plastic rollback [VERSION] [--list]"
+        USAGE_LINE = "plastic rollback [--version VERSION] [--downgrade] [--upgrade] [--reinstall]"
+        FLAGS = %w[--version --downgrade --upgrade --reinstall].freeze
 
         SCRIPT = "rollback.rb"
         AFTER = "plastic version"
-        BECAUSE = "the rollback is done, and the version says where it landed"
+        BECAUSE = "the version says which build is installed"
       end
     end
   end

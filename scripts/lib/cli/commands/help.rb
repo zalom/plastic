@@ -1,4 +1,3 @@
-# encoding: UTF-8
 # frozen_string_literal: true
 
 require_relative "../command"
@@ -28,7 +27,7 @@ module Plastic
           require_relative "../#{file}"
           @output.row("usage", Commands.const_get(const)::USAGE_LINE)
           @output.row("summary", summary)
-          @output.next_step("plastic #{name} --json", because: "the same answer with stable keys")
+          @output.next_step("none", because: "the usage line is the whole answer")
         end
       end
     end

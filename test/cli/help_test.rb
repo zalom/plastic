@@ -1,4 +1,3 @@
-# encoding: UTF-8
 # frozen_string_literal: true
 
 require_relative "../test_helper"
@@ -57,6 +56,12 @@ class CliHelpTest < Minitest::Test
 
     assert_includes @out.string, Plastic::CLI::Commands::Status::USAGE_LINE
     assert_includes @out.string, Plastic::CLI::TABLE.fetch("status")[2]
+  end
+
+  def test_one_command_never_suggests_running_that_command
+    help("uninstall")
+
+    assert_includes @out.string, "next: none"
   end
 
   def test_several_words_are_joined_into_one_grouped_command_name

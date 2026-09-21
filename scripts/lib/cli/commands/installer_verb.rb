@@ -1,4 +1,3 @@
-# encoding: UTF-8
 # frozen_string_literal: true
 
 require_relative "../command"
@@ -14,6 +13,9 @@ module Plastic
         end
 
         def call
+          unknown = arguments.grep(/\A-/) - self.class::FLAGS
+          raise Usage, "#{unknown.first} is not a flag of this command" unless unknown.empty?
+
           status = legacy.run(self.class::SCRIPT, *arguments)
           raise Failure, "#{self.class::SCRIPT} exited #{status}" unless status.zero?
 

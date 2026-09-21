@@ -1,4 +1,3 @@
-# encoding: UTF-8
 # frozen_string_literal: true
 
 require_relative "../test_helper"
@@ -26,6 +25,14 @@ class CliInstallerVerbsTest < Minitest::Test
       home: "/nowhere", runner: runner)
   end
 
+  def each_verb_class
+    VERBS.each_key do |verb|
+      file, const, = Plastic::CLI::TABLE.fetch(verb)
+      require File.expand_path("../../scripts/lib/cli/#{file}", __dir__)
+      yield Plastic::CLI::Commands.const_get(const)
+    end
+  end
+
   def test_every_verb_runs_its_own_script
     VERBS.each do |verb, script|
       @calls = []
@@ -42,9 +49,46 @@ class CliInstallerVerbsTest < Minitest::Test
   end
 
   def test_the_flags_reach_the_script_unchanged
-    command("install", "--claude", "--dry-run")
+    command("install", "--claude", "--advisor", "primary")
 
-    assert_equal [["--claude", "--dry-run"]], @calls.map(&:last)
+    assert_equal [["--claude", "--advisor", "primary"]], @calls.map(&:last)
+  end
+
+  def test_a_flag_the_script_does_not_know_exits_two
+    assert_equal 2, command("uninstall", "--dry-run")
+  end
+
+  def test_a_flag_the_script_does_not_know_never_runs_the_script
+    command("uninstall", "--dry-run")
+
+    assert_empty @calls
+  end
+
+  def test_a_flag_the_script_does_not_know_is_named_on_the_error_stream
+    command("uninstall", "--dry-run")
+
+    assert_includes @err.string, "--dry-run is not a flag of this command"
+  end
+
+  def test_every_listed_flag_is_in_the_usage_line
+    each_verb_class do |verb_class|
+      verb_class::FLAGS.each { |flag| assert_includes verb_class::USAGE_LINE, flag }
+    end
+  end
+
+  def test_every_listed_flag_is_read_by_the_script_or_the_installer_core
+    core = File.read(File.expand_path("../../scripts/lib/installer_core.rb", __dir__))
+    each_verb_class do |verb_class|
+      source = File.read(File.expand_path("../../scripts/#{verb_class::SCRIPT}", __dir__)) + core
+
+      verb_class::FLAGS.each { |flag| assert_includes source, %("#{flag}") }
+    end
+  end
+
+  def test_a_rollback_with_no_target_claims_no_switch
+    command("rollback")
+
+    assert_includes @out.string, "because: the version says which build is installed"
   end
 
   def test_a_clean_install_exits_zero

@@ -1,4 +1,3 @@
-# encoding: UTF-8
 # frozen_string_literal: true
 
 # Plastic::CLI::TABLE (intent 363) - the whole command line in one frozen hash:

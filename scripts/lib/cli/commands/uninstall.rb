@@ -1,4 +1,3 @@
-# encoding: UTF-8
 # frozen_string_literal: true
 
 require_relative "installer_verb"
@@ -9,7 +8,8 @@ module Plastic
   class CLI
     module Commands
       class Uninstall < InstallerVerb
-        USAGE_LINE = "plastic uninstall [--dry-run]"
+        USAGE_LINE = "plastic uninstall [--claude] [--codex] [--hermes] [--all]"
+        FLAGS = %w[--claude --codex --hermes --all].freeze
 
         SCRIPT = "uninstall.rb"
         AFTER = "none"

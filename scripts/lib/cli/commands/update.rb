@@ -1,4 +1,3 @@
-# encoding: UTF-8
 # frozen_string_literal: true
 
 require_relative "installer_verb"
@@ -9,7 +8,8 @@ module Plastic
   class CLI
     module Commands
       class Update < InstallerVerb
-        USAGE_LINE = "plastic update [--dry-run]"
+        USAGE_LINE = "plastic update [--claude] [--codex] [--hermes] [--all] [--latest] [--beta] [--alpha] [--yes] [--reinstall] [--full-doctor]"
+        FLAGS = %w[--claude --codex --hermes --all --latest --beta --alpha --yes --reinstall --full-doctor].freeze
 
         SCRIPT = "update.rb"
         AFTER = "plastic version"
