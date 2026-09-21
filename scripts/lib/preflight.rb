@@ -14,9 +14,9 @@ require_relative "version_number"
 module Preflight
   module_function
 
-  RUBY_FLOOR = "3.0.0"
+  RUBY_FLOOR = "4.0.0"
   NODE_FLOOR = 18
-  RUBY_PIN = "3.3"
+  RUBY_PIN = "4.0"
 
   def check(ruby_version:, node_version:, git_present:, mise_present:)
     messages = []

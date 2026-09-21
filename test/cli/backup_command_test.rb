@@ -47,6 +47,13 @@ class CliBackupCommandTest < Minitest::Test
     entries
   end
 
+  def test_a_backup_makes_git_ignore_the_backups_directory
+    plastic("sync")
+    plastic("backup")
+
+    assert_includes File.read(File.join(home, ".gitignore")).lines.map(&:strip), "backups/"
+  end
+
   def test_backup_writes_one_archive_with_the_dated_name
     plastic("sync")
 

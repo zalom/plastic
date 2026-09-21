@@ -54,18 +54,18 @@ class DoctorRubyRuntimeTest < Minitest::Test
   end
 
   def test_at_the_floor_passes
-    result = only_check(doctor.check_ruby_runtime(probe: probe_for("3.0.0")))
+    result = only_check(doctor.check_ruby_runtime(probe: probe_for("4.0.0")))
 
     assert_equal "pass", result[:status]
-    assert_includes result[:message], "3.0.0"
+    assert_includes result[:message], "4.0.0"
   end
 
   def test_above_the_floor_passes
-    result = only_check(doctor.check_ruby_runtime(probe: probe_for("3.3.5", "/opt/rubies/3.3.5/bin/ruby")))
+    result = only_check(doctor.check_ruby_runtime(probe: probe_for("4.0.1", "/opt/rubies/4.0.1/bin/ruby")))
 
     assert_equal "pass", result[:status]
-    assert_includes result[:message], "3.3.5"
-    assert_includes result[:message], "/opt/rubies/3.3.5/bin/ruby"
+    assert_includes result[:message], "4.0.1"
+    assert_includes result[:message], "/opt/rubies/4.0.1/bin/ruby"
   end
 
   def test_no_resolvable_ruby_warns_instead_of_crashing
@@ -83,7 +83,7 @@ class DoctorRubyRuntimeTest < Minitest::Test
   end
 
   def test_the_check_never_repairs
-    [probe_for("2.6.10"), probe_for("3.3.5"), absent_probe].each do |probe|
+    [probe_for("2.6.10"), probe_for("4.0.1"), absent_probe].each do |probe|
       result = only_check(doctor.check_ruby_runtime(probe: probe))
 
       refute result[:fixable], "runtime/ruby_floor reports only, it must never be fixable"
@@ -92,7 +92,7 @@ class DoctorRubyRuntimeTest < Minitest::Test
   end
 
   def test_no_message_contains_an_em_or_en_dash
-    [probe_for("2.6.10"), probe_for("3.3.5"), absent_probe].each do |probe|
+    [probe_for("2.6.10"), probe_for("4.0.1"), absent_probe].each do |probe|
       result = only_check(doctor.check_ruby_runtime(probe: probe))
 
       refute_includes result[:message], EM_DASH

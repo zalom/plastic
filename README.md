@@ -66,7 +66,7 @@ The files are plain Markdown in a Git repository that you own. See
 
 ## Installation
 
-Plastic needs Ruby 3.0 or later. The npm path also needs Node.js 18 or later, because `npx`
+Plastic needs Ruby 4.0 or later. The npm path also needs Node.js 18 or later, because `npx`
 fetches the package. After the install, the `plastic` command runs on Ruby alone.
 
 ### npm (recommended)
@@ -111,7 +111,7 @@ macOS ships Ruby 2.6, which is too old. Install a newer Ruby first:
 
 ```bash
 curl https://mise.run | sh
-mise use --global ruby@3.3
+mise use --global ruby@4.0
 ```
 
 ### Verify the installation

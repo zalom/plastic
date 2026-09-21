@@ -6,6 +6,7 @@ require "json"
 require "tmpdir"
 require "zlib"
 require_relative "store_sync"
+require_relative "worktree"
 
 module Plastic
   module Backup
@@ -25,6 +26,7 @@ module Plastic
       missing = DATABASES.reject { |name| File.exist?(File.join(home, name)) }
       raise Missing, missing.join(", ") unless missing.empty?
 
+      Worktree.ensure_gitignored(home, "backups/")
       Dir.mktmpdir("plastic-backup") do |work|
         DATABASES.each { |name| Sqlite.call(File.join(home, name), "VACUUM INTO #{Sqlite.quote(File.join(work, name))};", readonly: true) }
         FileUtils.cp(ROOT_FILES.map { |name| File.join(home, name) }.select { |path| File.exist?(path) }, work)

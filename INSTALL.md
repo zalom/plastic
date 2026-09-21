@@ -1,6 +1,6 @@
 # Install Plastic
 
-Plastic needs Ruby 3.0 or later. The npm install path also needs Node.js 18 or later,
+Plastic needs Ruby 4.0 or later. The npm install path also needs Node.js 18 or later,
 because `npx` fetches the package. After the install, the `plastic` command runs on Ruby
 alone.
 
@@ -54,7 +54,7 @@ macOS ships Ruby 2.6, which is too old. Install a newer Ruby first:
 
 ```bash
 curl https://mise.run | sh
-mise use --global ruby@3.3
+mise use --global ruby@4.0
 ```
 
 The installer checks the Ruby version before it writes anything.

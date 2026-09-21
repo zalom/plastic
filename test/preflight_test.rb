@@ -23,8 +23,8 @@ class PreflightTest < Minitest::Test
                               git_present: true, mise_present: true)
     assert result[:fatal]
     refute result[:ok]
-    assert result[:messages].any? { |m| m.include?("3.0.0") }
-    assert result[:messages].any? { |m| m.include?("mise use --global ruby@3.3") }
+    assert result[:messages].any? { |m| m.include?("4.0.0") }
+    assert result[:messages].any? { |m| m.include?("mise use --global ruby@4.0") }
   end
 
   def test_ruby_missing_is_fatal_and_says_not_found
@@ -35,7 +35,7 @@ class PreflightTest < Minitest::Test
   end
 
   def test_ruby_at_or_above_floor_has_no_ruby_issue
-    %w[3.0.0 3.3.5].each do |version|
+    %w[4.0.0 4.0.1].each do |version|
       result = Preflight.check(ruby_version: version, node_version: "v20.0.0",
                                 git_present: true, mise_present: true)
       refute result[:fatal]
@@ -43,10 +43,18 @@ class PreflightTest < Minitest::Test
     end
   end
 
+  def test_ruby_below_the_floor_of_four_is_fatal
+    %w[3.0.0 3.4.7].each do |version|
+      result = Preflight.check(ruby_version: version, node_version: "v20.0.0",
+                                git_present: true, mise_present: true)
+      assert result[:fatal], "Ruby #{version} must not pass"
+    end
+  end
+
   # --- Node floor ---
 
   def test_node_below_floor_is_a_warning_with_pin_command
-    result = Preflight.check(ruby_version: "3.3.0", node_version: "v16.20.0",
+    result = Preflight.check(ruby_version: "4.0.0", node_version: "v16.20.0",
                               git_present: true, mise_present: true)
     refute result[:fatal]
     assert result[:messages].any? { |m| m.include?("node@25") }
@@ -54,7 +62,7 @@ class PreflightTest < Minitest::Test
 
   def test_node_at_or_above_floor_has_no_node_issue
     %w[v18.19.0 v25.0.0].each do |version|
-      result = Preflight.check(ruby_version: "3.3.0", node_version: version,
+      result = Preflight.check(ruby_version: "4.0.0", node_version: version,
                                 git_present: true, mise_present: true)
       assert result[:messages].none? { |m| m.include?("Plastic works best on Node") }
     end
@@ -63,14 +71,14 @@ class PreflightTest < Minitest::Test
   # --- git presence ---
 
   def test_git_absent_is_a_warning
-    result = Preflight.check(ruby_version: "3.3.0", node_version: "v20.0.0",
+    result = Preflight.check(ruby_version: "4.0.0", node_version: "v20.0.0",
                               git_present: false, mise_present: true)
     refute result[:fatal]
     assert result[:messages].any? { |m| m.include?("git was not found") }
   end
 
   def test_git_present_has_no_git_issue
-    result = Preflight.check(ruby_version: "3.3.0", node_version: "v20.0.0",
+    result = Preflight.check(ruby_version: "4.0.0", node_version: "v20.0.0",
                               git_present: true, mise_present: true)
     assert result[:messages].none? { |m| m.include?("git was not found") }
   end
@@ -92,7 +100,7 @@ class PreflightTest < Minitest::Test
   # --- all good ---
 
   def test_all_good_probes_are_ok_with_no_messages
-    result = Preflight.check(ruby_version: "3.3.5", node_version: "v25.0.0",
+    result = Preflight.check(ruby_version: "4.0.1", node_version: "v25.0.0",
                               git_present: true, mise_present: true)
     assert result[:ok]
     refute result[:fatal]
@@ -104,7 +112,7 @@ class PreflightTest < Minitest::Test
   def test_no_message_contains_em_or_en_dash
     scenarios = [
       { ruby_version: "2.6.10", node_version: "v16.20.0", git_present: false, mise_present: false },
-      { ruby_version: "3.3.5", node_version: "v25.0.0", git_present: true, mise_present: true },
+      { ruby_version: "4.0.1", node_version: "v25.0.0", git_present: true, mise_present: true },
     ]
     scenarios.each do |probes|
       Preflight.check(**probes)[:messages].each do |message|
@@ -129,13 +137,13 @@ class PreflightTest < Minitest::Test
     result = install.preflight_gate(ruby_version: "2.6.10", node_version: "v20.0.0",
                                      git_present: true, mise_present: true, out: buf)
     assert_equal 1, result
-    assert_includes buf.string, "mise use --global ruby@3.3"
+    assert_includes buf.string, "mise use --global ruby@4.0"
   end
 
   def test_preflight_gate_returns_0_when_ruby_is_ok
     install = Install.new(package_root: WORKTREE, plastic_home: Dir.mktmpdir("preflight-gate"))
     buf = StringIO.new
-    result = install.preflight_gate(ruby_version: "3.3.0", node_version: "v20.0.0",
+    result = install.preflight_gate(ruby_version: "4.0.0", node_version: "v20.0.0",
                                      git_present: true, mise_present: true, out: buf)
     assert_equal 0, result
   end
