@@ -12,9 +12,10 @@ require "minitest/autorun"
 class PostCutVocabularyTest < Minitest::Test
   # Intent 363 emptied PLASTIC.md of doctrine. It is now a one-page pointer at the
   # `plastic` command line (ruling D43), so the content pins that used to live here
-  # were deleted rather than rewritten. The doctrine they guarded is still in the
-  # conventions skill and its reference chapters, which Batch 2 rehomes into the
-  # commands that need it.
+  # were deleted rather than rewritten. The doctrine they guarded now lives in the
+  # docs/help chapters `plastic help TOPIC` prints (intent 372, family 4). The
+  # tutorial and conventions skills' own routing SKILL.md files carried no doctrine
+  # of their own (family 4 disposition: "dropped"), so they left no chapter behind.
 
   REPO = File.expand_path("../../", __FILE__)
 
@@ -44,8 +45,8 @@ class PostCutVocabularyTest < Minitest::Test
   # is gone.
   PROSE_FILES_MUST_NOT_SAY_DONE = %w[
     templates/agents.md
-    skills/conventions/references/completion-and-done.md
-    skills/conventions/references/locks-and-worktrees.md
+    docs/help/completion-and-done.md
+    docs/help/locks-and-worktrees.md
     skills/auto/SKILL.md
     skills/auto/references/human-report-contract.md
   ].freeze
@@ -92,24 +93,11 @@ class PostCutVocabularyTest < Minitest::Test
     assert_includes read("skills/auto/SKILL.md"), "plan-reviewer-prompt.md"
   end
 
-  # Row 4.5 - the tutorial's auto track names the same four stations the runner loop
-  # actually walks: create the intent, write graph.md, drive it with runner step, end.
-  def test_tutorial_walks_the_runner_loop
-    content = read("skills/tutorial/SKILL.md")
-    auto_bullet = content[/\d+\.\s*\*\*Auto\*\*:(.*?)(?=\n\d+\.|\n\n)/m, 1]
-    refute_nil auto_bullet, "no Auto bullet found in skills/tutorial/SKILL.md"
-
-    assert_match(/create/i, auto_bullet)
-    assert_match(/graph/i, auto_bullet)
-    assert_match(/runner\s*step/i, auto_bullet)
-    assert_match(/\bend\b/i, auto_bullet)
-  end
-
 # Row 5.2 - both tutorial tracks walk create, graph, runner step, end -
 # never the old consolidate-the-spec / plan.md-and-checklist ceremony.
 def test_tutorial_tracks_walk_the_runner_loop
-  track1 = read("skills/tutorial/references/track-1-guided.md")
-  track2 = read("skills/tutorial/references/track-2-auto.md")
+  track1 = read("docs/help/track-1-guided.md")
+  track2 = read("docs/help/track-2-auto.md")
 
   [track1, track2].each do |content|
     assert_match(/graph\.md/, content, "must name graph.md")

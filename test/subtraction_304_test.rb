@@ -38,8 +38,8 @@ class Subtraction304Test < Minitest::Test
   ].freeze
 
   KEPT_SKILL_DIRS = %w[
-    agent-advisor auto conventions dashboard direct doctor feedback
-    project-creating releasing roadmap tutorial
+    agent-advisor auto dashboard direct
+    project-creating releasing roadmap
   ].freeze
 
   KEPT_AGENTS = %w[plastic-enforcer.md plastic-executor.md plastic-node-research.md
@@ -208,12 +208,9 @@ class Subtraction304Test < Minitest::Test
   # (family 2): both skills moved into `plastic continue`/`plastic intent spec`,
   # commands; their files are gone.
 
-  def test_doctor_skill_carries_locks_and_provisioning
-    body = File.read(File.join(REPO, "skills", "doctor", "SKILL.md"))
-    assert_includes body, "plastic-lock"
-    assert_includes body, "provision-project-store"
-    assert_includes body, "reclaim"
-  end
+  # test_doctor_skill_carries_locks_and_provisioning was retired by intent 372
+  # (family 4): the doctor skill moved into `plastic doctor`, a command; its
+  # SKILL.md, including the locks and provisioning sections, is gone.
 
   def test_advisor_contract_uses_role_specific_effort_without_a_brief_override
     %w[agents/plastic-primary-advisor.md agents/plastic-secondary-advisor.md skills/agent-advisor/SKILL.md

@@ -6,13 +6,13 @@ require "minitest/autorun"
 # NamingRuleTest (intent 337a, node n5, D13/D14 amended): a thing is named
 # after the concept family it lives under. PLASTIC.md carries no copy (the
 # per-boot budget and the doctrine-305 gate word refuse it there); the
-# knowledge-graph conventions chapter carries the paragraph verbatim, and the
-# enforcer and executor agent files each carry one sentence that agrees with
-# the chapter, without letting either agent file drift out of its current
-# section shape.
+# knowledge-graph chapter (moved from the conventions skill to docs/help in
+# intent 372, family 4) carries the paragraph verbatim, and the enforcer and
+# executor agent files each carry one sentence that agrees with the chapter,
+# without letting either agent file drift out of its current section shape.
 class NamingRuleTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
-  KNOWLEDGE_GRAPH_MD = File.join(REPO, "skills", "conventions", "references", "knowledge-graph.md")
+  KNOWLEDGE_GRAPH_MD = File.join(REPO, "docs", "help", "knowledge-graph.md")
   ENFORCER_MD = File.join(REPO, "agents", "plastic-enforcer.md")
   EXECUTOR_MD = File.join(REPO, "agents", "plastic-executor.md")
 

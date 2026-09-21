@@ -20,15 +20,17 @@ require_relative "../bin/lib/context_budget"
 # three tightened by intent 305 in the same change that shrank the block).
 # CoreBudget::Measurement keeps skill-lint's 500 and 5000 so its can-fail
 # fixtures still mirror the linter; only the live assertions carry the tighter
-# line and token bar, while the byte boundary IS the ruling. Part B asserts
-# the chapter wiring: every skills/conventions/references/*.md chapter has a
-# consumer load line, and every load line in the skills/ tree resolves to a
-# real chapter file. Part C (intent 305) asserts the per-boot doctrine read.
+# line and token bar, while the byte boundary IS the ruling. Part B (chapter
+# wiring across skills/conventions/references/*.md and consumer SKILL.md load
+# lines) was retired by intent 372 (family 4): the conventions skill and its
+# chapters are gone, replaced by docs/help/*.md printed through `plastic help
+# TOPIC`, a plain command with no load-line convention left to wire-check.
+# Part C (intent 305) asserts the per-boot doctrine read.
 #
-# Hermetic and DI throughout: CoreBudget.measure and ChapterWiring take a
-# string or a path argument, so the exact same code measures the live tree
-# and a Dir.mktmpdir fixture. No eval, no ENV variable, no global config
-# seam, no network, no reads of ~/.plastic.
+# Hermetic and DI throughout: CoreBudget.measure takes a string argument, so
+# the exact same code measures the live tree and a Dir.mktmpdir fixture. No
+# eval, no ENV variable, no global config seam, no network, no reads of
+# ~/.plastic.
 
 # CoreBudget: measures a body's line count and estimated token count using
 # the SAME two-line arithmetic as SkillLint#check_body_budget
@@ -63,48 +65,6 @@ class CoreBudget
   def self.measure(body)
     shared = ContextBudget.measure(body)
     Measurement.new(shared.lines, shared.tokens, shared.bytes)
-  end
-end
-
-# ChapterWiring: derives the chapter set and the consumer wiring from a given
-# skills_root (the live repo root, or a Dir.mktmpdir fixture root shaped the
-# same way), with no hardcoded skill list where a glob will do.
-class ChapterWiring
-  LOAD_LINE_RE = %r{\.\./plastic-conventions/references/([a-z0-9-]+\.md)}
-
-  def initialize(skills_root:)
-    @skills_root = skills_root
-  end
-
-  def chapter_basenames
-    Dir.glob(File.join(@skills_root, "skills", "conventions", "references", "*.md"))
-       .map { |p| File.basename(p) }.sort
-  end
-
-  # Every skills/*/SKILL.md except the router itself (skills/conventions/SKILL.md
-  # only ever mentions the pattern with a <chapter> placeholder, never a bound
-  # literal load line, so it is not a consumer).
-  def consumer_skill_paths
-    Dir.glob(File.join(@skills_root, "skills", "*", "SKILL.md")).sort
-       .reject { |p| File.basename(File.dirname(p)) == "conventions" }
-  end
-
-  # basename => [consuming SKILL.md paths]
-  def referenced_basenames
-    consumer_skill_paths.each_with_object(Hash.new { |h, k| h[k] = [] }) do |path, acc|
-      File.read(path).scan(LOAD_LINE_RE).each { |(basename)| acc[basename] << path }
-    end
-  end
-
-  def orphaned_chapters
-    referenced = referenced_basenames
-    chapter_basenames.reject { |name| referenced.key?(name) }
-  end
-
-  def unresolved_references
-    referenced = referenced_basenames
-    existing = chapter_basenames
-    referenced.keys.reject { |name| existing.include?(name) }
   end
 end
 
@@ -241,110 +201,5 @@ class PlasticPerBootReadTest < Minitest::Test
     detail = sizes.map { |rel, size| "#{rel}=#{size}" }.join(", ")
     assert_operator total, :<, CEILING,
       "per-boot doctrine read is #{total} bytes (#{detail}); must stay under #{CEILING}"
-  end
-end
-
-class PlasticChapterWiringTest < Minitest::Test
-  REPO = File.expand_path("../../", __FILE__)
-
-  # D5/spec.md's ruled chapter set. A 9th chapter added later without a
-  # consumer line is caught by test_every_chapter_has_a_consumer anyway; this
-  # test pins the ruled shape itself.
-  RULED_CHAPTERS = %w[
-    completion-and-done.md
-    knowledge-graph.md
-    lifecycle-and-savepoints.md
-    locks-and-worktrees.md
-    maintenance-and-revisions.md
-    roadmaps.md
-  ].sort.freeze
-
-  def live_wiring
-    ChapterWiring.new(skills_root: REPO)
-  end
-
-  def test_every_chapter_has_a_consumer
-    orphans = live_wiring.orphaned_chapters
-    assert_empty orphans,
-      "orphaned chapter(s) with no consumer load line: #{orphans.join(', ')}"
-  end
-
-  def test_every_load_line_resolves
-    dangling = live_wiring.unresolved_references
-    assert_empty dangling,
-      "load line(s) pointing at a chapter file that does not exist under skills/conventions/references/: " \
-      "#{dangling.join(', ')}"
-  end
-
-  def test_chapter_set_is_the_ruled_set
-    assert_equal RULED_CHAPTERS, live_wiring.chapter_basenames.sort,
-      "skills/conventions/references/ chapter set drifted from the ruled 6-chapter set (spec.md; two chapters removed in 2.0, intent 304)"
-  end
-
-  # Build a minimal skills tree in a Dir.mktmpdir shaped like the real one
-  # (skills/conventions/references/*.md plus skills/*/SKILL.md consumers).
-  def build_fixture_tree(dir)
-    refs_dir = File.join(dir, "skills", "conventions", "references")
-    FileUtils.mkdir_p(refs_dir)
-    File.write(File.join(refs_dir, "chapter-a.md"), "# Chapter A\n")
-    File.write(File.join(refs_dir, "chapter-b.md"), "# Chapter B\n")
-
-    consumer_dir = File.join(dir, "skills", "consumer")
-    FileUtils.mkdir_p(consumer_dir)
-    yield File.join(consumer_dir, "SKILL.md")
-  end
-
-  # Can-fail proof (intent 208): drop the load line for one chapter and
-  # assert the orphan check goes red, naming the orphaned chapter. Hermetic:
-  # built and torn down entirely inside a Dir.mktmpdir, never mutates the
-  # real skills/ tree.
-  def test_orphan_check_can_fail
-    Dir.mktmpdir("plastic-chapter-wiring-orphan-test") do |dir|
-      build_fixture_tree(dir) do |skill_md|
-        # Only chapter-a is loaded; chapter-b's line is deliberately dropped.
-        File.write(skill_md, <<~MD)
-          ---
-          name: plastic-consumer
-          description: fixture consumer
-          user-invocable: true
-          ---
-
-          Read `../plastic-conventions/references/chapter-a.md` for chapter A doctrine.
-        MD
-      end
-
-      wiring = ChapterWiring.new(skills_root: dir)
-      orphans = wiring.orphaned_chapters
-      assert_includes orphans, "chapter-b.md",
-        "expected the dropped-load-line fixture to report chapter-b.md as orphaned; got #{orphans.inspect}"
-      refute_includes orphans, "chapter-a.md",
-        "chapter-a.md has a consumer line in the fixture and must not be reported orphaned"
-    end
-  end
-
-  # Can-fail proof (intent 208): a load line pointing at a chapter file that
-  # does not exist must be reported as a dangling reference, naming it.
-  def test_unresolved_reference_check_can_fail
-    Dir.mktmpdir("plastic-chapter-wiring-dangling-test") do |dir|
-      build_fixture_tree(dir) do |skill_md|
-        File.write(skill_md, <<~MD)
-          ---
-          name: plastic-consumer
-          description: fixture consumer
-          user-invocable: true
-          ---
-
-          Read `../plastic-conventions/references/chapter-a.md` for chapter A doctrine.
-          Read `../plastic-conventions/references/chapter-missing.md` for doctrine that does not exist.
-        MD
-      end
-
-      wiring = ChapterWiring.new(skills_root: dir)
-      dangling = wiring.unresolved_references
-      assert_includes dangling, "chapter-missing.md",
-        "expected the fixture's dangling load line to report chapter-missing.md; got #{dangling.inspect}"
-      refute_includes dangling, "chapter-a.md",
-        "chapter-a.md resolves to a real fixture file and must not be reported dangling"
-    end
   end
 end

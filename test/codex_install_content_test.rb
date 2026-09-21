@@ -58,13 +58,12 @@ class CodexInstallContentTest < Minitest::Test
   # Every entry is (installed relative path, exact matched text, why it is allowed to
   # survive on a Codex install). An entry that stops matching anything is a dead entry
   # and fails test_no_dead_allowlist_entries below.
-  ALLOWED = [
-    ["plastic-doctor/report.md", "~/.claude/hooks/plastic-session-start",
-     "Spec D5. Sample doctor OUTPUT, printed inside the report template as an example " \
-     "of the format for a Claude install. Not an instruction to the agent."],
-    ["plastic-doctor/report.md", "~/.claude/hooks/plastic-record",
-     "Spec D5. Same sample output block."],
-  ].freeze
+  #
+  # The two plastic-doctor/report.md entries (Spec D5, sample doctor output) were
+  # dropped by intent 372 (family 4): the doctor skill, including report.md, is gone,
+  # replaced by the `plastic doctor` command, whose own output is not installed under
+  # skills/ and so is outside this test's installed_md scan.
+  ALLOWED = [].freeze
 
   # Coverage is checked per MATCH, not per line: the allowlist clears only a match
   # whose own matched text is IDENTICAL to an entry's allow_text for that path. A
@@ -110,18 +109,21 @@ class CodexInstallContentTest < Minitest::Test
   end
 
   def test_claude_roots_are_rewritten
-    doctor_skill = File.read(File.join(@skills_root, "plastic-doctor", "SKILL.md"))
     dashboard_skill = File.read(File.join(@skills_root, "plastic-dashboard", "SKILL.md"))
 
-    assert_includes doctor_skill, "~/.agents/plastic/manifest.json"
     assert_includes dashboard_skill, "~/.agents/skills/plastic-dashboard/templates/"
   end
 
-  def test_near_miss_paths_survive_untouched
-    auto_skill = File.read(File.join(@skills_root, "plastic-auto", "SKILL.md"))
-
-    assert_includes auto_skill, "../plastic-conventions/references/"
-  end
+  # test_near_miss_paths_survive_untouched was retired by intent 372 (family 4): it
+  # read the installed plastic-auto/SKILL.md for the relative path
+  # "../plastic-conventions/references/", which named the conventions skill's chapter
+  # directory. That skill and its references/ directory are gone (chapters moved to
+  # docs/help/*.md, read through `plastic help TOPIC`), and no other file the kept
+  # skills install still carries a real near-miss path shaped like a slash-prefixed
+  # skill invocation. The mechanism itself (the slash-prefix regex's lookbehind
+  # leaving a relative path alone) stays covered at the unit level by
+  # harness_text_test.rb's test_relative_path_left_alone, which needs no real
+  # near-miss data from the shipped tree.
 
   def test_shared_fragments_are_never_transformed
     %w[_decision-tables.md].each do |name|

@@ -2,7 +2,6 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
-require_relative "../scripts/lib/hook_registry"
 
 # ModifyPass306Test (intent 306): the 44 MODIFY test files of cut-inventory
 # 6b were walked once against the alpha tree after batches 1 and 2. This file
@@ -24,10 +23,14 @@ class ModifyPass306Test < Minitest::Test
     end_intent_disarm_toctou_test end_intent_worktree_guard_test new_intent_test exec_worktree_test
     doctor_test doctor_core_test doctor_core_split_test doctor_revisions_remedy_test insights_test
     write_config_test dashboard_test spawn_preamble_test plastic_lock_cli_test lock_system_test
-    roadmap_queue_test roadmap_savepoint_test qmd_sync_test skill_command_lint_test
+    roadmap_queue_test roadmap_savepoint_test qmd_sync_test
     skill_rename_prune_test doctor_stray_skills_test auto_skill_contract_test update_verb_test
     rollback_verb_test
   ].freeze
+  # skill_command_lint_test.rb dropped from this list by intent 372 (family 4): it
+  # pinned skills/doctor/SKILL.md's inline npx/bunx re-run command, and the doctor
+  # skill (SKILL.md, report.md, and the whole directory) is gone, replaced by the
+  # `plastic doctor` command; no other shipped file carries the pattern it checked.
 
   # Stale fixture text, comment wording, and test names the pass corrected,
   # per touched file. Every literal names something removed in 2.0 (intents
@@ -64,10 +67,8 @@ class ModifyPass306Test < Minitest::Test
     end
   end
 
-  def test_doctor_report_sample_names_no_retired_launcher
-    body = File.read(File.join(ROOT, "skills", "doctor", "report.md"))
-    retired = HookRegistry::RETIRED_CLAUDE_LAUNCHERS.select { |name| body.include?(name) }
-    assert_empty retired,
-      "skills/doctor/report.md shows a retired launcher as sample output: #{retired.join(', ')}"
-  end
+  # test_doctor_report_sample_names_no_retired_launcher was retired by intent 372
+  # (family 4): it read skills/doctor/report.md's sample output for a retired
+  # launcher name, and that file is gone with the rest of the doctor skill
+  # directory, replaced by the `plastic doctor` command's own output.
 end

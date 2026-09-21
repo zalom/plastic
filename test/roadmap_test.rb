@@ -7,9 +7,10 @@ require "minitest/autorun"
 # Asserts the template's born-complete shape, the skill's frontmatter + slim
 # body + references, and the roadmaps chapter's contract invariants (moved out
 # of PLASTIC.md in intent 127, then out of PLASTIC-reference.md into
-# skills/conventions/references/roadmaps.md in intent 223). Reads ONLY in-repo
-# files; the live project-store roadmap instance (Action 05) is a runtime
-# deliverable, not a test target, so this stays hermetic.
+# skills/conventions/references/roadmaps.md in intent 223, then out of the
+# conventions skill into docs/help/roadmaps.md in intent 372). Reads ONLY
+# in-repo files; the live project-store roadmap instance (Action 05) is a
+# runtime deliverable, not a test target, so this stays hermetic.
 class RoadmapTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   TEMPLATE = File.join(ROOT, "templates", "roadmap.md")
@@ -17,7 +18,7 @@ class RoadmapTest < Minitest::Test
   REFERENCES_DIR = File.join(ROOT, "skills", "roadmap", "references")
   FILE_FORMAT = File.join(REFERENCES_DIR, "file-format.md")
   OPERATIONS = File.join(REFERENCES_DIR, "operations.md")
-  ROADMAPS_CHAPTER = File.join(ROOT, "skills", "conventions", "references", "roadmaps.md")
+  ROADMAPS_CHAPTER = File.join(ROOT, "docs", "help", "roadmaps.md")
   STATUS_TOKENS = %w[queued delivering delivered abandoned blocked].freeze
   LINE_BUDGET = 500
 

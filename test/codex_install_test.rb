@@ -197,7 +197,7 @@ class CodexInstallTest < Minitest::Test
   def test_body_teaches_dollar_prefix_invocation
     body = InstallerCore::CODEX_AGENTS_MD_BODY
     assert_includes body, "$plastic-<name>"
-    assert_includes body, "$plastic-doctor"
+    assert_includes body, "$plastic-auto"
     assert_match(/implicitly.*description/, body)
   end
 
