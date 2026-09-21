@@ -31,6 +31,10 @@ class DashboardTest < Minitest::Test
     FileUtils.remove_entry(@home) if @home && File.directory?(@home)
   end
 
+  def test_the_continue_board_names_the_auto_take_command
+    assert_includes render_continue([]), "plastic auto take ID"
+  end
+
   # --- helpers ---------------------------------------------------------------
 
   def run_dash(*args)
