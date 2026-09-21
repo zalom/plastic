@@ -36,5 +36,26 @@ plugin layout.
 
 ## Check the installation
 
-Run the `plastic-doctor` skill in your agent. A `plastic doctor` command is not part of this
-batch.
+Run `plastic doctor`. It checks the install and every store, and prints the findings as JSON.
+Each finding that is not a pass names its own repair.
+
+The following table lists the three forms of the command:
+
+| Command | What it checks |
+| ------- | -------------- |
+| `plastic doctor` | The install and every store. |
+| `plastic doctor --core` | The install only. This check is fast. |
+| `plastic doctor --store WHICH` | One store. `WHICH` is `global` or a project slug. |
+
+The command exits with code 1 when the doctor reports a warning or a failure.
+
+## Report a problem
+
+The following command saves a report and prints a link that opens a GitHub issue with the
+report filled in:
+
+```bash
+echo "What happened, and what you expected" | plastic feedback "A short title"
+```
+
+Nothing is sent until you open the link and submit the issue.

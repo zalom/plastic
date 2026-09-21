@@ -4,7 +4,9 @@
 
 | Command | What it does |
 | ------- | ------------ |
-| `plastic help [COMMAND] [--json]` | Lists the commands, or shows one command's usage. |
+| `plastic help [COMMAND\|TOPIC] [--json]` | Lists the commands and the help topics, shows one command's usage, or prints one topic. |
+| `plastic doctor [--core] [--store WHICH]` | Checks the install and the stores. |
+| `plastic feedback "TITLE"` | Saves a problem report from standard input and prints a link that files it. |
 | `plastic version [--json]` | Prints the installed Plastic version. |
 | `plastic status [--json]` | Shows active work in every store. |
 | `plastic continue [--project SLUG] [--json]` | Shows where one project stands and what runs next. |
@@ -29,7 +31,7 @@ These commands do not exist yet. The batch numbers come from the CLI and RLM roa
 
 The commands print the state and the rules. The judgment stays with the agent: what the
 intent is for, what the specification says, and whether the work is done. The auto team, the
-dashboard, the doctor and the roadmap still run as Plastic skills. Intent 372 moves them to
+dashboard and the roadmap still run as Plastic skills. Intent 372 moves them to
 commands, one family at a time.
 
 Plastic ships no release command. The repository publishes from its branches.
