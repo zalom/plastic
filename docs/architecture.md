@@ -82,6 +82,12 @@ Plastic reads this layout when `~/.plastic/stores/` exists and reads the earlier
 does not. A fresh install creates `stores/global/` by default. Existing homes retain their
 layout until the explicit migration runs; reinstalling does not move user data.
 
+`varar/store-layout.md` checks fresh installation and legacy migration separately for
+Claude Code and Codex. Its Ruby fixtures execute an npm archive in disposable homes,
+including harness registration and public project and intent creation. These deterministic
+checks supplement the live authenticated agent runs; they do not claim full doctor or
+all-command acceptance.
+
 ### intent directory contents
 
 Every intent is a folder named `ID--slug/`. Only the intent file is required; every other artifact appears once its lifecycle stage is reached.

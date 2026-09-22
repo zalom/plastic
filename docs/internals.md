@@ -700,6 +700,12 @@ layout until explicit migration. Bootstrap on an already migrated home never rec
 The context-budget benchmark seeds its fixture through the same store path resolver, so it
 measures active intents in the layout produced by the real installer.
 
+The four rows in `varar/store-layout.md` bind to `test/varar/store_layout.steps.rb`.
+They pack once per test process, isolate every home and harness configuration, check
+legacy data and backup preservation, and verify repeated migration refusal. The Varar
+test loader checks that all four cases remain discoverable, so a removed or unparsed
+table cannot silently drop this coverage. These rows make no model calls.
+
 `scripts/lib/store_layout.rb` is the one place that turns a home and a slug into a store path.
 `Plastic::StoreLayout.moved?(home)` is true when `stores/` exists. Every script asks it for the
 global root, a project root and the list of project roots, so no script joins `"store"` or

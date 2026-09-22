@@ -9,6 +9,15 @@
           "line": 6
         }
       ]
+    },
+    "varar/store-layout.md": {
+      "sourceHash": "fnv1a:8aac771e",
+      "examples": [
+        {
+          "name": "Each row gives the harness, starting layout, global store, project intent, registered harness, legacy directory, backup, and repeated migration exit:",
+          "line": 10
+        }
+      ]
     }
   }
 }

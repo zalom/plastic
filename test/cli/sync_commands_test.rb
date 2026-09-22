@@ -4,6 +4,7 @@ require_relative "../test_helper"
 require "tmpdir"
 require_relative "../lib/cli_fixture"
 require_relative "../../scripts/lib/cli"
+require_relative "../../scripts/lib/cli/commands/render"
 require_relative "../../scripts/lib/store_sync"
 require_relative "../../scripts/doctor"
 
