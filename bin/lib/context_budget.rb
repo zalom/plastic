@@ -43,7 +43,9 @@ module ContextBudget
   #                     only ever moves down, once per skill family removed.
   #                     Family 5 (intent 372: auto, direct, agent-advisor,
   #                     releasing) freed 1,503 bytes, taking it to 3,788.
-  CEILINGS = { core: 8_192, boot: 15_000, boot_plus_catalog: 17_500, standing: 3_788 }.freeze
+  #                     Intent 381 retired a deprecation notice whose removal
+  #                     had already shipped, freeing 180, taking it to 3,608.
+  CEILINGS = { core: 8_192, boot: 15_000, boot_plus_catalog: 17_500, standing: 3_608 }.freeze
 
   # The doctrine working set (boot + _decision-tables.md + the median skill body)
   # is reported against this target, never enforced: its median term steps by

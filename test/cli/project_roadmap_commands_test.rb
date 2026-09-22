@@ -4,10 +4,18 @@ require_relative "../test_helper"
 require "stringio"
 require "tmpdir"
 require "yaml"
+require "json"
 require_relative "../lib/cli_fixture"
 require_relative "../../scripts/lib/cli"
 
 class CliProjectRoadmapCommandsTest < Minitest::Test
+  WHICH_REPORT = JSON.generate(
+    "state" => "dispatchable", "roadmap" => "cli", "frontier_wave" => "Batch 1",
+    "dispatchable_queue" => [{"id" => "376", "status" => "queued", "wave" => "Batch 1"}],
+    "in_flight" => [{"id" => "363", "status" => "delivering", "wave" => "Batch 1"}],
+    "blocked" => [], "tie" => false, "tie_candidates" => []
+  )
+
   def setup
     @dir = Dir.mktmpdir("plastic-cli-project-roadmap")
     @fixture = CliFixture.new(@dir).global_store(active: [["372", "Skills to commands"]])
@@ -23,9 +31,11 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
   def command(verb, *argv, status: 0, directory: "/nowhere")
     file, const, = Plastic::CLI::TABLE.fetch(verb)
     require File.expand_path("../../scripts/lib/cli/#{file}", __dir__)
-    runner = lambda do |path, arguments|
+    runner = lambda do |path, arguments, capture: false|
       @calls << [path, arguments]
-      status
+      next status unless capture
+
+      [@captured || WHICH_REPORT, status]
     end
     Plastic::CLI::Commands.const_get(const).call(argv, directory: directory, runner: runner, **@fixture.streams)
   end
@@ -248,14 +258,82 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
     assert_equal [["--roadmaps-dir", File.join(@fixture.plastic_home, "roadmaps"), "--which"]], @calls.map(&:last)
   end
 
-  def test_next_names_show_in_its_next_step
+  def test_next_names_the_winning_slug_in_its_next_step
+    command("roadmap next")
+
+    assert_includes @fixture.printed, "next: plastic roadmap show cli"
+  end
+
+  def test_next_falls_back_to_the_placeholder_when_no_roadmap_won
+    @captured = JSON.generate("state" => "none", "roadmap" => nil)
     command("roadmap next")
 
     assert_includes @fixture.printed, "next: plastic roadmap show SLUG"
   end
 
+  def test_next_prints_a_screen_not_the_document
+    command("roadmap next")
+
+    refute_includes @fixture.printed, "dispatchable_queue"
+  end
+
+  def test_next_screen_carries_the_state_and_the_winner
+    command("roadmap next")
+
+    assert_includes @fixture.printed, "state       dispatchable"
+    assert_includes @fixture.printed, "roadmap     cli"
+    assert_includes @fixture.printed, "wave        Batch 1"
+  end
+
+  def test_next_screen_lists_the_queue_and_what_is_in_flight
+    command("roadmap next")
+
+    assert_includes @fixture.printed, "376  queued  Batch 1"
+    assert_includes @fixture.printed, "363  delivering  Batch 1"
+  end
+
+  def test_next_says_none_when_the_queue_is_empty
+    @captured = JSON.generate("state" => "waiting", "roadmap" => "cli", "dispatchable_queue" => [])
+    command("roadmap next")
+
+    assert_includes @fixture.printed, "next     none"
+  end
+
+  def test_next_names_the_tie_candidates_when_two_roadmaps_tie
+    @captured = JSON.generate("state" => "tie", "roadmap" => nil, "tie" => true,
+      "tie_candidates" => %w[cli rlm])
+    command("roadmap next")
+
+    assert_includes @fixture.printed, "cli, rlm"
+  end
+
+  def test_next_under_json_prints_the_rows_as_data
+    command("roadmap next", "--json")
+
+    assert_includes @fixture.printed, '"roadmap": "cli"'
+  end
+
   def test_a_failing_next_exits_one
     assert_equal 1, command("roadmap next", status: 8)
+  end
+
+  def test_a_failing_next_names_the_exit_code
+    command("roadmap next", status: 8)
+
+    assert_includes @fixture.warned, "roadmap-next exited 8"
+  end
+
+  def test_next_with_an_unreadable_report_exits_one
+    @captured = "not a report"
+
+    assert_equal 1, command("roadmap next")
+  end
+
+  def test_next_with_an_unreadable_report_says_so
+    @captured = "not a report"
+    command("roadmap next")
+
+    assert_includes @fixture.warned, "roadmap-next did not print a report"
   end
 
   # --- roadmap log -------------------------------------------------------------------
@@ -292,7 +370,12 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
 
   # --- roadmap check -----------------------------------------------------------------
 
+  def graphed_roadmap(name = "372")
+    @fixture.roadmap("global", name, "# roadmap\n\n## Graph\n- 372 needs nothing\n")
+  end
+
   def test_check_runs_roadmap_graph_check
+    graphed_roadmap
     command("roadmap check", "372")
 
     assert_equal [script("roadmap-graph")], @calls.map(&:first)
@@ -300,6 +383,7 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
   end
 
   def test_check_names_show_in_its_next_step
+    graphed_roadmap
     command("roadmap check", "372")
 
     assert_includes @fixture.printed, "next: plastic roadmap show 372"
@@ -310,6 +394,70 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
   end
 
   def test_a_failing_check_exits_one
+    graphed_roadmap
+
     assert_equal 1, command("roadmap check", "372", status: 4)
+  end
+
+  def test_check_on_a_roadmap_that_does_not_exist_exits_one
+    assert_equal 1, command("roadmap check", "nosuch")
+  end
+
+  def test_check_on_a_roadmap_that_does_not_exist_says_so
+    command("roadmap check", "nosuch")
+
+    assert_includes @fixture.warned, "no roadmap nosuch in roadmaps"
+  end
+
+  def test_check_on_a_roadmap_with_no_graph_names_migrate
+    @fixture.roadmap("global", "372", "# roadmap\n\n## Batches\n")
+    command("roadmap check", "372")
+
+    assert_includes @fixture.warned, "plastic roadmap migrate 372 writes one from its batches"
+  end
+
+  def test_check_on_a_roadmap_with_no_graph_never_runs_the_script
+    @fixture.roadmap("global", "372", "# roadmap\n\n## Batches\n")
+    command("roadmap check", "372")
+
+    assert_empty @calls
+  end
+
+  # --- roadmap migrate --------------------------------------------------------------
+
+  def test_migrate_runs_roadmap_graph_migrate
+    graphed_roadmap
+    command("roadmap migrate", "372")
+
+    assert_equal [script("roadmap-graph")], @calls.map(&:first)
+    assert_equal [["migrate", File.join(@fixture.plastic_home, "roadmaps", "372.md")]], @calls.map(&:last)
+  end
+
+  def test_migrate_passes_dry_run_through
+    graphed_roadmap
+    command("roadmap migrate", "372", "--dry-run")
+
+    assert_includes @calls.first.last, "--dry-run"
+  end
+
+  def test_migrate_names_check_in_its_next_step
+    graphed_roadmap
+    command("roadmap migrate", "372")
+
+    assert_includes @fixture.printed, "next: plastic roadmap check 372"
+  end
+
+  def test_migrate_without_a_slug_exits_two
+    assert_equal 2, command("roadmap migrate")
+  end
+
+  def test_migrate_on_a_roadmap_that_does_not_exist_exits_one
+    assert_equal 1, command("roadmap migrate", "nosuch")
+  end
+
+  def test_a_failing_migrate_exits_one
+    graphed_roadmap
+
+    assert_equal 1, command("roadmap migrate", "372", status: 5)
   end
 end

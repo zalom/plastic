@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "English"
+require "open3"
 require "rbconfig"
 require_relative "command"
 
@@ -15,9 +16,18 @@ require_relative "command"
 module Plastic
   class CLI
     class Legacy
-      DEFAULT_RUNNER = lambda do |path, arguments|
-        system(RbConfig.ruby, path, *arguments)
-        exit_code($CHILD_STATUS)
+      # A runner answers with the child's exit status. Asked to capture, it
+      # answers with the child's stdout and that status, for a command that
+      # renders the script's JSON as a screen. stderr is never captured, so a
+      # warning the script writes there still reaches the terminal.
+      DEFAULT_RUNNER = lambda do |path, arguments, capture: false|
+        unless capture
+          system(RbConfig.ruby, path, *arguments)
+          next exit_code($CHILD_STATUS)
+        end
+
+        out, process = Open3.capture2(RbConfig.ruby, path, *arguments)
+        [out, exit_code(process)]
       end
 
       def self.exit_code(status)
@@ -44,6 +54,13 @@ module Plastic
         raise Command::Refusal, "#{script} needs the owner" if status == Command::REFUSED
 
         status
+      end
+
+      def capture(script, *arguments)
+        out, status = @runner.call(script_path(script), arguments, capture: true)
+        raise Command::Refusal, "#{script} needs the owner" if status == Command::REFUSED
+
+        [out, status]
       end
     end
   end

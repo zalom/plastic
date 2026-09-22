@@ -104,3 +104,54 @@ class CliLegacyTest < Minitest::Test
     FileUtils.remove_entry(dir)
   end
 end
+
+# A captured child refuses exactly as a passed-through one does: exit 3 is the
+# owner's, and it travels as a Refusal rather than as output to parse.
+class LegacyCaptureRefusalTest < Minitest::Test
+  def capture_with(status)
+    runner = lambda { |_path, _arguments, capture: false| capture ? ["", status] : status }
+    Plastic::CLI::Legacy.new(env: {}, runner: runner).capture("doctor.rb")
+  end
+
+  def test_exit_three_travels_as_a_refusal
+    error = assert_raises(Plastic::CLI::Command::Refusal) { capture_with(Plastic::CLI::Command::REFUSED) }
+    assert_includes error.message, "needs the owner"
+  end
+
+  def test_every_other_status_comes_back_with_the_output
+    assert_equal ["", 1], capture_with(1)
+  end
+end
+
+# The shipped runner, not an injected one: the capture branch really spawns the
+# child and hands back what it printed.
+class LegacyDefaultRunnerCaptureTest < Minitest::Test
+  def setup
+    @dir = Dir.mktmpdir("plastic-default-runner")
+    @script = File.join(@dir, "say.rb")
+    File.write(@script, "puts ARGV.join(' '); exit 0\n")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@dir)
+  end
+
+  def test_capture_returns_the_childs_stdout_and_status
+    out, status = Plastic::CLI::Legacy::DEFAULT_RUNNER.call(@script, ["hello", "there"], capture: true)
+
+    assert_equal "hello there\n", out
+    assert_equal 0, status
+  end
+
+  def test_capture_reports_a_failing_childs_status
+    File.write(@script, "exit 4\n")
+    out, status = Plastic::CLI::Legacy::DEFAULT_RUNNER.call(@script, [], capture: true)
+
+    assert_equal "", out
+    assert_equal 4, status
+  end
+
+  def test_without_capture_it_answers_with_the_status_alone
+    assert_equal 0, Plastic::CLI::Legacy::DEFAULT_RUNNER.call(@script, [])
+  end
+end

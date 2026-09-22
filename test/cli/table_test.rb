@@ -15,7 +15,7 @@ class CliTableTest < Minitest::Test
       doctor feedback help hook index install intent intent\ answer
       intent\ end intent\ new intent\ note intent\ rule intent\ show intent\ spec intent\ step intent\ verify
       migrate migrate\ stores next project project\ links project\ list project\ new query
-      render roadmap roadmap\ check roadmap\ log roadmap\ next roadmap\ show rollback search
+      render roadmap roadmap\ check roadmap\ log roadmap\ migrate roadmap\ next roadmap\ show rollback search
       session session\ commit session\ handoff session\ summary status sync uninstall update
       version],
       Plastic::CLI::TABLE.keys.sort

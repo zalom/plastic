@@ -86,8 +86,10 @@ class ContextBudgetAgentsTest < Minitest::Test
   # family 4 (doctor, feedback, tutorial, conventions) freed 1,074; family 3
   # (project-creating, roadmap, dashboard) freed 1,073; family 5 (auto, direct,
   # agent-advisor, releasing) freed 1,503.
+  # Intent 381 retired a deprecation notice whose removal had already shipped,
+  # which freed 180 bytes of the boot injection.
   def test_the_standing_ceiling_reflects_every_family_so_far
-    assert_equal 11_000 - 1_332 - 2_230 - 1_074 - 1_073 - 1_503, ContextBudget::CEILINGS[:standing]
+    assert_equal 11_000 - 1_332 - 2_230 - 1_074 - 1_073 - 1_503 - 180, ContextBudget::CEILINGS[:standing]
   end
 
   def test_the_standing_row_carries_the_ceiling

@@ -293,8 +293,8 @@ class SessionStartStagePathTest < Minitest::Test
     src = File.read(SHIM)
     assert_includes src, '"$HOME/.plastic" "global"',
                     "shim must keep passing Plastic home as argument 2"
-    refute_includes src, "$HOME/.plastic/store",
-                    "the split belongs inside the hook, never in the shim"
+    refute_includes src, '"$HOME/.plastic/store" "global"',
+                    "argument 2 is Plastic home, never the store directory"
   end
 
   # intent_active? resolves the INDEX as the PARENT of the store dir; home as the store
@@ -966,5 +966,124 @@ class SessionStartWatchTest < Minitest::Test
     ctx = parsed.dig("hookSpecificOutput", "additionalContext")
     refute_includes ctx, "PLASTIC watch:",
                      "the whole watch block is one guarded unit; a raise on any candidate must add nothing"
+  end
+end
+
+# Intent 370 moved every store under stores/, so the global INDEX.md left
+# $HOME/.plastic/ for $HOME/.plastic/stores/global/. The shim still guarded on
+# the old path, exited 0 before reaching the hook, and the boot banner
+# disappeared from every session on a moved home. These run the shim for real
+# against a temp HOME, one per layout.
+class SessionStartShimLayoutTest < Minitest::Test
+  SHIM = File.expand_path("../hooks/session-start", __dir__)
+
+  def setup
+    @home = Dir.mktmpdir("plastic-shim-layout")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+  end
+
+  def trace
+    out, = Open3.capture2e({"HOME" => @home}, "bash", "-x", SHIM, stdin_data: "")
+    out
+  end
+
+  def chosen_index(output)
+    output[/GLOBAL_INDEX=(\S+)/, 1]
+  end
+
+  def test_moved_layout_resolves_the_index_under_stores_global
+    FileUtils.mkdir_p(File.join(@home, ".plastic", "stores", "global"))
+    File.write(File.join(@home, ".plastic", "stores", "global", "INDEX.md"), "## Active\n")
+
+    assert_equal File.join(@home, ".plastic", "stores", "global", "INDEX.md"), chosen_index(trace)
+  end
+
+  def test_the_moved_layout_reaches_the_hook
+    FileUtils.mkdir_p(File.join(@home, ".plastic", "stores", "global"))
+    File.write(File.join(@home, ".plastic", "stores", "global", "INDEX.md"), "## Active\n")
+
+    assert_includes trace, "hook-session-start"
+  end
+
+  def test_legacy_layout_still_resolves_the_index_at_the_home_root
+    FileUtils.mkdir_p(File.join(@home, ".plastic"))
+    File.write(File.join(@home, ".plastic", "INDEX.md"), "## Active\n")
+
+    assert_equal File.join(@home, ".plastic", "INDEX.md"), chosen_index(trace)
+  end
+
+  def test_a_home_with_no_index_exits_before_the_hook
+    FileUtils.mkdir_p(File.join(@home, ".plastic"))
+
+    refute_includes trace, "hook-session-start"
+  end
+end
+
+# A deprecation notice named the release that removes the feature, and nothing
+# read that field: the PLASTIC-reference.md notice, removal 1.11.0, still fired
+# at every boot on 2.0.0-alpha.29. A notice whose removal is behind the
+# installed version has nothing left to say, unless it is critical.
+class SessionStartDeprecationAgeTest < Minitest::Test
+  HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
+
+  def setup
+    @home = Dir.mktmpdir("plastic-deprecation-age")
+    @tmp = Dir.mktmpdir("plastic-deprecation-tmp")
+    File.write(File.join(@home, "INDEX.md"), "# Index\n\n## Active\n\n## Future\n")
+    File.write(File.join(@home, "PLASTIC.md"), "# Plastic: Conventions\n")
+    File.write(File.join(@home, "VERSION"), "2.0.0-alpha.29\n")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+    FileUtils.rm_rf(@tmp)
+  end
+
+  def write_deprecation(removal:, severity: "info")
+    File.write(File.join(@home, "deprecations.yml"), <<~YAML)
+      deprecations:
+        - id: a-notice
+          severity: #{severity}
+          summary: "Something moved."
+          migration_steps:
+            - "No action is required."
+          introduced: "1.9.0"
+          removal: "#{removal}"
+    YAML
+  end
+
+  def context
+    out, _err, status = Open3.capture3({"PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil},
+      "ruby", HOOK, File.join(@home, "INDEX.md"), @home, "global")
+
+    assert_equal 0, status.exitstatus
+    JSON.parse(out).dig("hookSpecificOutput", "additionalContext").to_s
+  end
+
+  def test_a_notice_whose_removal_already_shipped_is_gone
+    write_deprecation(removal: "1.11.0")
+
+    refute_includes context, "Something moved."
+  end
+
+  def test_a_notice_removed_in_the_installed_version_still_shows
+    write_deprecation(removal: "2.0.0-alpha.29")
+
+    assert_includes context, "Something moved."
+  end
+
+  def test_a_notice_removed_in_a_later_version_still_shows
+    write_deprecation(removal: "2.1.0")
+
+    assert_includes context, "Something moved."
+  end
+
+  def test_a_critical_notice_outlives_its_own_removal
+    write_deprecation(removal: "1.11.0", severity: "critical")
+
+    assert_includes context, "Something moved."
   end
 end

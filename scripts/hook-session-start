@@ -17,6 +17,7 @@ require_relative "lib/data_boundary"
 require_relative "lib/active_delivery"
 require_relative "lib/runner_core"
 require_relative "lib/runner_watch"
+require_relative "lib/version_number"
 
 index_path, plastic_home, mode, plugin_root = ARGV
 exit 0 unless index_path && plastic_home && mode
@@ -208,9 +209,18 @@ begin
     []
   end
 
+  # A notice whose removal version is already behind the installed one has
+  # nothing left to warn about, and kept firing at every boot until someone
+  # dismissed it by hand. Only a critical notice outlives its own removal.
+  installed = VersionNumber.parse(current_version)
+
   active_deprecations = deprecations.select do |dep|
     next true if dep["severity"] == "critical"
+
+    removal = VersionNumber.parse(dep["removal"])
+    next false if installed && removal && removal < installed
     next true if current_version && dep["removal"] == current_version
+
     !dismissed.include?(dep["id"])
   end
 
