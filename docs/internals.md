@@ -697,6 +697,8 @@ top of spec.md. `Savepoint.savepoint_tier` delegates to it. (removed in 2.0, int
 Fresh bootstrap creates `stores/global/store` and `stores/global/INDEX.md`. Legacy data
 (`store`, `projects`, `INDEX.md`, or `roadmaps` at the home root) keeps bootstrap on the old
 layout until explicit migration. Bootstrap on an already migrated home never recreates `projects/`.
+The context-budget benchmark seeds its fixture through the same store path resolver, so it
+measures active intents in the layout produced by the real installer.
 
 `scripts/lib/store_layout.rb` is the one place that turns a home and a slug into a store path.
 `Plastic::StoreLayout.moved?(home)` is true when `stores/` exists. Every script asks it for the
