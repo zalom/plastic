@@ -293,8 +293,8 @@ class SessionStartStagePathTest < Minitest::Test
     src = File.read(SHIM)
     assert_includes src, '"$HOME/.plastic" "global"',
                     "shim must keep passing Plastic home as argument 2"
-    refute_includes src, "$HOME/.plastic/store",
-                    "the split belongs inside the hook, never in the shim"
+    refute_includes src, '"$HOME/.plastic/store" "global"',
+                    "argument 2 is Plastic home, never the store directory"
   end
 
   # intent_active? resolves the INDEX as the PARENT of the store dir; home as the store
@@ -966,5 +966,58 @@ class SessionStartWatchTest < Minitest::Test
     ctx = parsed.dig("hookSpecificOutput", "additionalContext")
     refute_includes ctx, "PLASTIC watch:",
                      "the whole watch block is one guarded unit; a raise on any candidate must add nothing"
+  end
+end
+
+# Intent 370 moved every store under stores/, so the global INDEX.md left
+# $HOME/.plastic/ for $HOME/.plastic/stores/global/. The shim still guarded on
+# the old path, exited 0 before reaching the hook, and the boot banner
+# disappeared from every session on a moved home. These run the shim for real
+# against a temp HOME, one per layout.
+class SessionStartShimLayoutTest < Minitest::Test
+  SHIM = File.expand_path("../hooks/session-start", __dir__)
+
+  def setup
+    @home = Dir.mktmpdir("plastic-shim-layout")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+  end
+
+  def trace
+    out, = Open3.capture2e({"HOME" => @home}, "bash", "-x", SHIM, stdin_data: "")
+    out
+  end
+
+  def chosen_index(output)
+    output[/GLOBAL_INDEX=(\S+)/, 1]
+  end
+
+  def test_moved_layout_resolves_the_index_under_stores_global
+    FileUtils.mkdir_p(File.join(@home, ".plastic", "stores", "global"))
+    File.write(File.join(@home, ".plastic", "stores", "global", "INDEX.md"), "## Active\n")
+
+    assert_equal File.join(@home, ".plastic", "stores", "global", "INDEX.md"), chosen_index(trace)
+  end
+
+  def test_the_moved_layout_reaches_the_hook
+    FileUtils.mkdir_p(File.join(@home, ".plastic", "stores", "global"))
+    File.write(File.join(@home, ".plastic", "stores", "global", "INDEX.md"), "## Active\n")
+
+    assert_includes trace, "hook-session-start"
+  end
+
+  def test_legacy_layout_still_resolves_the_index_at_the_home_root
+    FileUtils.mkdir_p(File.join(@home, ".plastic"))
+    File.write(File.join(@home, ".plastic", "INDEX.md"), "## Active\n")
+
+    assert_equal File.join(@home, ".plastic", "INDEX.md"), chosen_index(trace)
+  end
+
+  def test_a_home_with_no_index_exits_before_the_hook
+    FileUtils.mkdir_p(File.join(@home, ".plastic"))
+
+    refute_includes trace, "hook-session-start"
   end
 end

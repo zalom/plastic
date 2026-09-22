@@ -100,10 +100,16 @@ curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
 plastic install --claude
 ```
 
-`install.sh` always installs the latest stable release. To move an installed Plastic to
-another channel, run `plastic update --beta` or `plastic update --alpha`. No stable release
-carries the archive yet. Until the first one does, the script reports that and exits, and
-npm is the way to install.
+`install.sh` takes the newest release on a channel that carries the archive. The default
+channel is stable; `PLASTIC_CHANNEL` picks another:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | PLASTIC_CHANNEL=alpha sh
+```
+
+No stable 2.0 release carries the archive yet, so the default channel still installs the 1.x
+line. Use the alpha channel for the `plastic` command, or npm. To move an installed Plastic
+to another channel later, run `plastic update --beta` or `plastic update --alpha`.
 
 ### A clean Mac
 
@@ -255,6 +261,7 @@ plastic rollback --version 2.0.0-alpha.27
 plastic uninstall --all               # Remove Plastic from every agent. Your stores stay.
 plastic doctor                        # Check the install and the stores
 plastic doctor --core                 # The fast check that runs at session start
+plastic doctor --json                 # The full report as data
 plastic version                       # The installed version
 ```
 
@@ -274,7 +281,8 @@ plastic feedback "TITLE" < report.md  # Save a problem report and print a link t
 --project SLUG  # On continue, next and search, name a project other than the current one
 ```
 
-The installer commands do not take `--json`.
+The installer commands do not take `--json`. `plastic doctor` does, and prints its full
+report as the document.
 
 ## Examples
 

@@ -1,5 +1,9 @@
 #!/bin/bash
-GLOBAL_INDEX="$HOME/.plastic/INDEX.md"
+if [ -d "$HOME/.plastic/stores" ]; then
+  GLOBAL_INDEX="$HOME/.plastic/stores/global/INDEX.md"
+else
+  GLOBAL_INDEX="$HOME/.plastic/INDEX.md"
+fi
 
 if [ ! -f "$GLOBAL_INDEX" ]; then
   exit 0
